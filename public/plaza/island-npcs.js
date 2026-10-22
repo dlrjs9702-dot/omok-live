@@ -36,35 +36,45 @@
   const onAnyBridge = (x, z) => [[0, 0], [-0.75, -0.75], [0.75, -0.75], [-0.75, 0.75], [0.75, 0.75]].every(([dx, dz]) => T.onBridge(x + dx, z + dz));
   const cellOf = (x, z) => [Math.floor((x + EXTENT) / CELL), Math.floor((z + EXTENT) / CELL)];
   const centre = (i, j) => ({ x: -EXTENT + (i + 0.5) * CELL, z: -EXTENT + (j + 0.5) * CELL });
-  let grid = null; // Uint8Array: 0 free, 1 blocked; and the cost of stepping on each cell
-  function buildGrid() {
-    if (grid) return grid;
-    const blocked = new Uint8Array(N * N); const cost = new Float32Array(N * N);
-    const solids = [...T.natureSolids(), ...T.villageSolids().map((v) => ({ x: v.x, z: v.z, r: v.r })), ...(T.structureSolids?.() || []), ...(T.HOME_LOTS || []).map((l) => ({ x: l.x, z: l.z, r: 4.4 }))]; // (v1.10.93 마을 소품; 달마루섬 구조물; 묶음 4: the house lots, bought or not -- a house may stand there any day)
-    const near = new Map(); // a coarse bucket of the nature solids
-    for (const s of solids) { const k = `${Math.floor(s.x / 6)},${Math.floor(s.z / 6)}`; if (!near.has(k)) near.set(k, []); near.get(k).push(s); }
-    const spots = T.BUILDINGS; // v1.10.13: the cottages too
-    const props = T.plazaProps();
-    const sceneProps = [...props.benches, ...props.lamps, ...props.beds, ...T.RESERVED_LOTS.map((l) => ({ x: l.x, z: l.z, r: 3.2 }))];
-    for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
-      const x = -EXTENT + (i + 0.5) * CELL; const z = -EXTENT + (j + 0.5) * CELL; const id = j * N + i;
-      const stair = DAL && T.onStairs(x, z); // (묶음 1 주민 동산 순환: the ridge's stairs, their treads (a diagonal strip of the 1.5 m grid needs most of the 3 m to join up) -- the islanders go up to the ridge too)
-      let bad = DAL ? ((stair ? !(stair.v > 0.3 && stair.v < 3.1) : (!onAnyBridge(x, z) && (T.coastDist(x, z) < 2.2 + MARGIN || !T.walkable(x, z) || [[MARGIN, 0], [-MARGIN, 0], [0, MARGIN], [0, -MARGIN]].some(([dx, dz]) => !T.walkable(x + dx, z + dz))))) || Math.hypot(x - PC.x, z - PC.z) < 4.4)
-        : T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
-      if (!bad) for (const s of spots) if (s.kind === 'mall' ? inMall(s, x, z) : s.kind === 'facade' ? inFacade(s, x, z) : s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (BUILDING_R[s.kind] || 2)) { bad = true; break; }
-      if (!bad && T.inTownhall(x, z, MARGIN + 0.5)) bad = true; // v1.10.41: the town hall and its walled yard (the islanders keep out)
-      if (!bad) for (const s of T.STATUE_SPOTS) if (Math.hypot(x - s.x, z - s.z) < 1.9) { bad = true; break; }
-      // v1.10.16: the plaza's benches, lamps and flower beds and the shop street's reserved lot, as the scene places them.
-      // Measured to the whole cell, not its centre: a lamp on a cell corner would otherwise leave all four cells round it
-      // free and a diagonal step straight through it; this way every step between free cells keeps 0.5 clear.
-      if (!bad) for (const s of sceneProps) {
-        const dx = Math.max(0, Math.abs(x - s.x) - CELL / 2); const dz = Math.max(0, Math.abs(z - s.z) - CELL / 2);
-        if (Math.hypot(dx, dz) < s.r + 0.5) { bad = true; break; }
+  let grid = null; // Uint8Array: 0 free, 1 blocked; and the cost of stepping on each cell; comp: each free cell's connected part
+  // (문제 기록 3회차 후속: made in one go it held the page 1.5 s and more just after the island came up -- the page makes it
+  // a few rows a frame instead, buildGridSlice; whoever needs it sooner has the rest made at once, buildGrid)
+  let building = null;
+  function buildGrid() { while (!grid) buildGridSlice(Infinity); return grid; }
+  function buildGridSlice(ms = 8) {
+    if (grid) return true;
+    const until = (typeof performance !== 'undefined' ? performance : Date).now() + ms;
+    if (!building) {
+      const solids = [...T.natureSolids(), ...T.villageSolids().map((v) => ({ x: v.x, z: v.z, r: v.r })), ...(T.structureSolids?.() || []), ...(T.HOME_LOTS || []).map((l) => ({ x: l.x, z: l.z, r: 4.4 }))]; // (v1.10.93 마을 소품; 달마루섬 구조물; 묶음 4: the house lots, bought or not -- a house may stand there any day)
+      const near = new Map(); // a coarse bucket of the nature solids
+      for (const s of solids) { const k = `${Math.floor(s.x / 6)},${Math.floor(s.z / 6)}`; if (!near.has(k)) near.set(k, []); near.get(k).push(s); }
+      const props = T.plazaProps();
+      building = { j: 0, blocked: new Uint8Array(N * N), cost: new Float32Array(N * N), near, spots: T.BUILDINGS /* v1.10.13: the cottages too */, sceneProps: [...props.benches, ...props.lamps, ...props.beds, ...T.RESERVED_LOTS.map((l) => ({ x: l.x, z: l.z, r: 3.2 }))] };
+    }
+    const { blocked, cost, near, spots, sceneProps } = building;
+    for (; building.j < N; building.j += 1) {
+      if ((typeof performance !== 'undefined' ? performance : Date).now() > until) return false; // (a row: about 5 ms on a quick PC)
+      const j = building.j;
+      for (let i = 0; i < N; i += 1) {
+        const x = -EXTENT + (i + 0.5) * CELL; const z = -EXTENT + (j + 0.5) * CELL; const id = j * N + i;
+        const stair = DAL && T.onStairs(x, z); // (묶음 1 주민 동산 순환: the ridge's stairs, their treads (a diagonal strip of the 1.5 m grid needs most of the 3 m to join up) -- the islanders go up to the ridge too)
+        let bad = DAL ? ((stair ? !(stair.v > 0.3 && stair.v < 3.1) : (!onAnyBridge(x, z) && (T.coastDist(x, z) < 2.2 + MARGIN || !T.walkable(x, z) || [[MARGIN, 0], [-MARGIN, 0], [0, MARGIN], [0, -MARGIN]].some(([dx, dz]) => !T.walkable(x + dx, z + dz))))) || Math.hypot(x - PC.x, z - PC.z) < 4.4)
+          : T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
+        if (!bad) for (const s of spots) if (s.kind === 'mall' ? inMall(s, x, z) : s.kind === 'facade' ? inFacade(s, x, z) : s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (BUILDING_R[s.kind] || 2)) { bad = true; break; }
+        if (!bad && T.inTownhall(x, z, MARGIN + 0.5)) bad = true; // v1.10.41: the town hall and its walled yard (the islanders keep out)
+        if (!bad) for (const s of T.STATUE_SPOTS) if (Math.hypot(x - s.x, z - s.z) < 1.9) { bad = true; break; }
+        // v1.10.16: the plaza's benches, lamps and flower beds and the shop street's reserved lot, as the scene places them.
+        // Measured to the whole cell, not its centre: a lamp on a cell corner would otherwise leave all four cells round it
+        // free and a diagonal step straight through it; this way every step between free cells keeps 0.5 clear.
+        if (!bad) for (const s of sceneProps) {
+          const dx = Math.max(0, Math.abs(x - s.x) - CELL / 2); const dz = Math.max(0, Math.abs(z - s.z) - CELL / 2);
+          if (Math.hypot(dx, dz) < s.r + 0.5) { bad = true; break; }
+        }
+        if (!bad) for (let a = -1; a <= 1 && !bad; a += 1) for (let b = -1; b <= 1 && !bad; b += 1) for (const s of near.get(`${Math.floor(x / 6) + a},${Math.floor(z / 6) + b}`) || []) if (Math.hypot(x - s.x, z - s.z) < s.r + (s.rail ? 0.15 : 0.5)) { bad = true; break; } // (a stair rail: a thin post the walkers step round themselves)
+        if (bad && DAL && [[0, 0], [0.75, 0], [-0.75, 0], [0, 0.75], [0, -0.75]].every(([dx, dz]) => T.walkable(x + dx, z + dz))) { /* (the whole cell standable) */ const S = T.STAIRS; const dx = x - S.x; const dz = z - S.z; const u = dx * S.ux + dz * S.uz; const v = dx * S.nx + dz * S.nz; if ((u > -0.5 && u < 2.2 && v > 0 && v < 4.6) || (u > 32.5 && u < 36.5 && v > -9 && v < 1)) bad = false; } // (the stairs' foot -- it faces the 관공서 front's side, the rail starts 1.1 m up -- and the landing at their top onto the ridge, a fill 4 m wide: the ways on and off, open to the islanders)
+        blocked[id] = bad ? 1 : 0;
+        cost[id] = 2.4;
       }
-      if (!bad) for (let a = -1; a <= 1 && !bad; a += 1) for (let b = -1; b <= 1 && !bad; b += 1) for (const s of near.get(`${Math.floor(x / 6) + a},${Math.floor(z / 6) + b}`) || []) if (Math.hypot(x - s.x, z - s.z) < s.r + (s.rail ? 0.15 : 0.5)) { bad = true; break; } // (a stair rail: a thin post the walkers step round themselves)
-      if (bad && DAL && [[0, 0], [0.75, 0], [-0.75, 0], [0, 0.75], [0, -0.75]].every(([dx, dz]) => T.walkable(x + dx, z + dz))) { /* (the whole cell standable) */ const S = T.STAIRS; const dx = x - S.x; const dz = z - S.z; const u = dx * S.ux + dz * S.uz; const v = dx * S.nx + dz * S.nz; if ((u > -0.5 && u < 2.2 && v > 0 && v < 4.6) || (u > 32.5 && u < 36.5 && v > -9 && v < 1)) bad = false; } // (the stairs' foot -- it faces the 관공서 front's side, the rail starts 1.1 m up -- and the landing at their top onto the ridge, a fill 4 m wide: the ways on and off, open to the islanders)
-      blocked[id] = bad ? 1 : 0;
-      cost[id] = 2.4;
     }
     for (const curve of T.streamCurves) for (const [x, z] of curve) { // the streams (bridges stay open)
       const reach = T.STREAM_HALF + (T.riverExtra?.(x, z) || 0) + 0.25 + MARGIN + 0.6; const [i0, j0] = cellOf(x - reach, z - reach); const [i1, j1] = cellOf(x + reach, z + reach);
@@ -78,8 +88,20 @@
         const c = centre(i, j); if (Math.hypot(c.x - x, c.z - z) <= r + 0.2) cost[j * N + i] = 1;
       }
     }
-    grid = { blocked, cost };
-    return grid;
+    // the connected parts (4 ways: a diagonal step needs both sides free, so it never joins two parts): a path between two
+    // parts is known to be none at once -- each failed search went over the whole island (the 아침 rounds by the pier, 9 s)
+    const comp = new Int32Array(N * N).fill(-1); const queue = new Int32Array(N * N);
+    for (let s = 0, label = 0; s < N * N; s += 1) {
+      if (blocked[s] || comp[s] >= 0) continue;
+      let head = 0; let tail = 0; queue[tail++] = s; comp[s] = label;
+      while (head < tail) {
+        const id = queue[head++]; const i = id % N;
+        for (const nid of [i > 0 ? id - 1 : -1, i < N - 1 ? id + 1 : -1, id - N, id + N]) if (nid >= 0 && nid < N * N && !blocked[nid] && comp[nid] < 0) { comp[nid] = label; queue[tail++] = nid; }
+      }
+      label += 1;
+    }
+    grid = { blocked, cost, comp }; building = null;
+    return true;
   }
   // `extra` (a screen's own path to an event's place): more cells it may not step on -- what the shared grid does not
   // know, as October night's pumpkins. It never changes the rounds, which every screen and the server must agree on.
@@ -104,6 +126,7 @@
     if (!sc || !tc || !free(...sc) || !free(...tc)) return null;
     const [si, sj] = sc; const [ti, tj] = tc;
     const start = sj * N + si; const goal = tj * N + ti;
+    if (grid.comp[start] !== grid.comp[goal]) return null; // (no way between them: known without the search -- `extra` only takes cells away)
     const g = new Float32Array(N * N).fill(Infinity); const from = new Int32Array(N * N).fill(-1); const closed = new Uint8Array(N * N);
     const heap = []; // [f, id]
     const push = (f, id) => { heap.push([f, id]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
@@ -449,5 +472,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

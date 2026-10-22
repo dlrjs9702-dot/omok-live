@@ -81,3 +81,19 @@ test('주민 지정: 로컬 회피 위치에서 공용 대기 위치까지 속�
   }
   assert.equal(w.x,14);assert.equal(w.z,10);assert.equal(w.arrived,true);assert.equal(walkers.resyncs(),0);
 });
+
+// 문제 기록 3회차 후속 (#271 「못 고친 것」): the page makes the islanders' grid a few rows a frame -- the same grid as made in
+// one go, in many pieces; and a way between two parts that never meet is found to be none at once (the 아침 rounds)
+test('주민 길 격자: 조금씩 만들어도 한 번에 만든 것과 같고, 이어지지 않은 곳 사이 길은 바로 없음', () => {
+  const fresh = () => { delete require.cache[require.resolve('../public/plaza/island-npcs.js')]; return require('../public/plaza/island-npcs.js'); };
+  T.natureSolids(); // (worked out by the scene before; not the grid's own time)
+  const A = fresh(); let slices = 0; while (!A.buildGridSlice(2)) slices += 1;
+  const B = fresh(); const a = A.buildGrid(); const b = B.buildGrid();
+  assert.ok(slices > 20, `slices ${slices}`);
+  assert.deepEqual([Buffer.from(a.blocked).equals(Buffer.from(b.blocked)), Buffer.from(a.cost.buffer).equals(Buffer.from(b.cost.buffer)), Buffer.from(a.comp.buffer).equals(Buffer.from(b.comp.buffer))], [true, true, true]);
+  const parts = new Map(); a.comp.forEach((c, id) => { if (c >= 0 && !parts.has(c)) parts.set(c, id); });
+  assert.ok(parts.size > 1);
+  const [p, q] = [...parts.values()]; const N = Math.sqrt(a.blocked.length); const E = (N * 1.5) / 2; const at = (id) => ({ x: -E + ((id % N) + 0.5) * 1.5, z: -E + (Math.floor(id / N) + 0.5) * 1.5 });
+  const t0 = performance.now(); assert.equal(A.findPath(at(p), at(q)), null); assert.ok(performance.now() - t0 < 50);
+  assert.deepEqual(A.round(3, 'morning'), B.round(3, 'morning'));
+});
