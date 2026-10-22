@@ -13,14 +13,16 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   const weeds = (await get(request, '/api/island/weeds', token)).data.weeds || [];
   const spot = await page.evaluate((weeds) => { // the river bank spot nearest the plaza with no weed in reach (a weed's prompt comes first)
     const T = window.IslandTerrain; let best = null;
-    const R = T.dalmaru ? 170 : 70; const step = T.dalmaru ? 1 : 0.5; const PC = T.PLAZA_C || { x: 0, z: 0 }; /* (달마루섬: its rivers and lake are further out) */ for (let x = -R; x <= R; x += step) for (let z = -R; z <= R; z += step) if (T.fishWater(x, z) === 'river' && weeds.every(([, wx, wz]) => Math.hypot(wx - x, wz - z) > 4)) { const d = Math.hypot(x - PC.x, z - PC.z); if (!best || d < best.d) best = { x, z, d }; }
+    const R = T.dalmaru ? 170 : 70; const step = T.dalmaru ? 1 : 0.5; const PC = T.PLAZA_C || { x: 0, z: 0 }; /* (달마루섬: its rivers and lake are further out) */ for (let x = -R; x <= R; x += step) for (let z = -R; z <= R; z += step) if (T.fishWater(x, z) === 'river' && (!T.dalmaru || T.dalmaru.riverDist(x, z) < 3) && [[0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6]].every(([dx, dz]) => T.canFish(x + dx, z + dz)) && weeds.every(([, wx, wz]) => Math.hypot(wx - x, wz - z) > 4)) { const d = Math.hypot(x - PC.x, z - PC.z); if (!best || d < best.d) best = { x, z, d }; }
     return best;
   }, weeds);
   expect(spot).not.toBeNull();
   await page.evaluate(({ x, z }) => window.PlazaWarp(x, z), spot);
-  // (CI 3차: once on the CI runner canFish stayed false for 10 s after the warp -- put there again if moved off, and say where it was)
+  // (CI 3차: canFish false for 10 s after the warp on CI, twice -- the nearest 'river' spot was (0, -6), a strip of shallow
+  // water by 윤슬만's beach (fishWater's last case), a push of a few cm off it (an islander walking by) and no fishing; now
+  // a bank of a real river (riverDist < 3) with room round it, put back there if moved off, and where it was if that fails)
   let at = null;
-  await expect.poll(() => page.evaluate(async (s) => { const d = window.PlazaDebug(); if (!d.canFish()) await window.PlazaWarp(s.x, s.z); const e = window.PlazaDebug(); return { can: e.canFish(), x: e.x, z: e.z, space: e.space }; }, spot).then((r) => { at = r; return r.can; }), { timeout: 10000 }).toBe(true).catch((error) => { error.message += `\nlast: ${JSON.stringify(at)} spot: ${JSON.stringify(spot)}`; throw error; });
+  await expect.poll(() => page.evaluate((s) => { const d = window.PlazaDebug(); if (!d.canFish()) d.teleport(s.x, s.z); return { can: d.canFish(), x: d.x, z: d.z, space: d.space }; }, spot).then((r) => { at = r; return r.can; }), { timeout: 10000 }).toBe(true).catch((error) => { error.message += `\nlast: ${JSON.stringify(at)} spot: ${JSON.stringify(spot)}`; throw error; });
   await expect(page.locator('#plazaHint')).toHaveText(/낚시$/, { timeout: 10000 }) // (a phone shows no SPACE);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);

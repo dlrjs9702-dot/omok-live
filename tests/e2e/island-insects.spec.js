@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, get, post, standAt, expectNoScriptError } = require('./skin-support');
+const { shopper, get, post, standAt, expectNoScriptError, spaceOn } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 const Together = require('../../lib/island-together');
 
@@ -13,7 +13,6 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   const b = await shopper(browser, request, isMobile ? '곤충구경m' : '곤충구경', 0, 'female');
   for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
   const { page } = a;
-  const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
   // the same insects on both screens (the server's layout)
   const list = (await get(request, '/api/island/insects', a.token)).data;
   expect(list.list.length).toBeGreaterThan(3); expect(list.next).toBeGreaterThan(0);
@@ -32,12 +31,22 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   // (CI: the insect flew or crawled out of reach between the hint read here and the tap -- on the phone the hint is read
   // and tapped on the page at once)
   const caught = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'));
-  if (isMobile) {
-    await expect.poll(() => page.evaluate(async ([x, z, text]) => { window.PlazaDebug().teleport(x, z); await new Promise((r) => setTimeout(r, 400)); const h = document.getElementById('plazaHint'); if (!h.textContent.includes(text)) return h.textContent; h.click(); return 'tapped'; }, [spot.x, spot.z, `잡기 · ${target.name}`]), { timeout: 40000, intervals: [300] }).toBe('tapped');
-  } else {
-    await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [spot.x, spot.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 40000, intervals: [300] }).toContain(`잡기 · ${target.name}`);
-    await press();
-  }
+  // (CI 3차, run 39699233302 and locally: another insect -- a snail crawling by the 매미, not where the list put it at the
+  // start -- was what SPACE reached for 40 s. Each try: stand by the target where it is on this page now, with no other
+  // insect as near, and SPACE (the phone: the hint) only when the target is what it reaches -- in one call)
+  const standBy = (id) => page.evaluate((id) => {
+    const d = window.PlazaDebug(); const T = window.IslandTerrain; const all = d.insects(); const t = all.find((h) => h.id === id); if (!t) return false;
+    for (const r of [1.2, 1.5, 1.8]) for (let k = 0; k < 12; k += 1) {
+      const x = t.x + Math.cos(k / 2) * r; const z = t.z + Math.sin(k / 2) * r;
+      if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.5) && all.every((o) => o.id === id || Math.hypot(o.x - x, o.z - z) > r + 0.5)) { d.teleport(x, z); return true; } // (the target the nearest by half a metre)
+    }
+    return false;
+  }, id);
+  await expect.poll(async () => {
+    if (!(await standBy(target.id))) return 'no spot';
+    await page.waitForTimeout(400);
+    return (await spaceOn(page, `insect:${target.id}`, isMobile)) ? 'pressed' : page.locator('#plazaHint').textContent();
+  }, { timeout: 40000, intervals: [300] }).toBe('pressed');
   expect((await caught).status()).toBe(200);
   const itemId = `insect_${target.species}`;
   await expect.poll(async () => (await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === itemId), { timeout: 10000 }).toBe(true);

@@ -1604,8 +1604,16 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await a.page.keyboard.down('ArrowUp'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowUp');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
   await expect.poll(() => b.page.evaluate(() => Object.keys(window.PlazaDebug().takenSeats()).length), { timeout: 15000 }).toBe(0);
-  // beside the other player: 인사
-  const bp = await b.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  // beside the other player: 인사 -- (CI 3차, run 39699233302: SPACE reached the 안내 주민 instead, who stands by the spawn
+  // where b is; the two meet 8 m or more off her, clear of benches, lamps, buildings and doors)
+  const bp = await b.page.evaluate(() => {
+    const T = window.IslandTerrain; const d = window.PlazaDebug(); const G = T.VILLAGE.guide; const P = T.plazaProps();
+    const gx = G.x - Math.sin(G.yaw) * 1.2; const gz = G.z - Math.cos(G.yaw) * 1.2; const doors = Object.values(d.doors);
+    const clear = (x, z) => T.walkable(x, z) && Math.hypot(x - gx, z - gz) > 8 && [...P.benches, ...P.lamps].every((s) => Math.hypot(s.x - x, s.z - z) > 3.5)
+      && T.BUILDINGS.every((o) => Math.hypot(o.x - x, o.z - z) > 8) && doors.every((o) => Math.hypot(o.x - x, o.z - z) > 4);
+    for (let r = 8; r <= 20; r += 1) for (let k = 0; k < 16; k += 1) { const x = gx + Math.cos((k / 16) * 2 * Math.PI) * r; const z = gz + Math.sin((k / 16) * 2 * Math.PI) * r; if (clear(x, z) && clear(x + 1.3, z)) return { x, z }; }
+    return { x: d.x, z: d.z };
+  });
   // (CI 2차: an islander walking by comes first for SPACE -- their talk is closed and SPACE pressed again by the player;
   // nor during a motion's hold, when a SPACE goes nowhere)
   // (CI 3차: SPACE read and pressed at once while the player is what it reaches; on failing, what it reached instead)
