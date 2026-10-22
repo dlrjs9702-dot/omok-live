@@ -380,6 +380,15 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     if (pts.some(([x, z]) => streamDist(x, z) < STREAM_HALF + 0.4)) continue;
     pathStrip(pts, 1.7, TIER_COLOR[tierAt(best.wi, best.x, best.z)]);
   }
+  // (문제 기록 3회차 20 「길이랑 마당이 따로 놀아」: the 게임관 stood 3 m off 대청마당 across the grass, its square apart -- a hall
+  // by the terrace walks onto it: a paved way from its door to the paving's edge, 0.3 m under it)
+  if (T.inPlaza) for (const [id] of Object.entries(T.SPOTS).filter(([, x]) => x.kind === 'hall')) {
+    const door = T.facilityDoor(id); const P = T.dalmaru.PLAZA; if (!door) continue;
+    const s = T.SPOTS[id]; const fl = Math.hypot(s.face[0] - s.x, s.face[1] - s.z) || 1; const d = { x: door.x - ((s.face[0] - s.x) / fl) * 1.5, z: door.z - ((s.face[1] - s.z) / fl) * 1.5 }; // (from its steps' foot)
+    const ex = Math.max(P.x - P.hw + 0.3, Math.min(P.x + P.hw - 0.3, d.x)); const ez = Math.max(P.d0 + 0.3, Math.min(P.d1 - 0.3, d.z)); const l = Math.hypot(ex - d.x, ez - d.z);
+    if (l < 0.5 || l > 8) continue;
+    const n = Math.max(2, Math.ceil(l / 0.8)); pathStrip(Array.from({ length: n + 1 }, (_, k) => [d.x + ((ex - d.x) * k) / n, d.z + ((ez - d.z) * k) / n]), 3.2, TIER_COLOR.town);
+  }
   const disc = (x, z, r, material, lift = 0.04, seg = 48) => { const m = new THREE.Mesh(keep(new THREE.CircleGeometry(r, seg)), material); m.rotation.x = -Math.PI / 2; m.position.set(x, land(x, z) + lift, z); m.receiveShadow = true; scene.add(m); return m; };
   if (T.inPlaza) { // 대청마당 (달마루섬): one paved terrace, a band round the fountain
     // (묶음 1, assets 59: 박석 -- one 6 m tile repeated over it; the disc, ring, kerbs, channels and gardens are plaza-scene's)

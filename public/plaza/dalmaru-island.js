@@ -100,7 +100,7 @@
     { tier: 'walk', w: 3, pts: [[-88, 140], [-80, 140], [-55, 140], [-30, 140], [-12, 141.5], [12, 141.5], [30, 140], [55, 140], [80, 140], [88, 140]] }, // 윤슬다리 · 툇마루섬 · 윤슬다리
     { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], thPt(0, 19.5), thPt(0, 15), doorPt('townhall')] }, // → 관공서, through the mayor's gate
     { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-17.5, 11)] }, // → round the yard, past the cliff front's corner
-    { tier: 'walk', w: 2.4, pts: [thPt(-17.5, 11), stairsAt(1.1, 4.6), stairsAt(1, 2)] }, // → onto the ridge's stairs, from their open side by the foot
+    { tier: 'walk', w: 2.4, pts: [thPt(-17.5, 11), stairsAt(-0.4, 4.6), stairsAt(-0.4, 1.7)] }, /* (3회차 10: to the first step's foot, not on it) */ // → onto the ridge's stairs, from their open side by the foot
     { tier: 'town', w: 3, pts: [[44, -86], [56, -93], doorPt('store')] }, // → 백화점
     { tier: 'walk', w: 2.8, pts: [[-41, -59], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34], [-86, 40.5], [-87.1, 43.8]] }, // (묶음 5: on to the stepping stones' walk -- no end in the field) // 이웃골 → the west arm's shore
     { tier: 'trail', w: 2.4, pts: [[-70, -8], [-80, 1.5], [-86, 3.5], [-92, 2.5], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
@@ -118,7 +118,7 @@
     // (묶음 4 내 집: from each of 툇마루섬's twelve lots' door (island-home.js LOTS) to the walk across the isle, round the other houses)
     { tier: 'walk', w: 2.4, pts: [[0, 141], [0, 124], [0, 107.3]] }, // (2회차 15: north from the walk across the isle into its widened part, four houses by it)
     { tier: 'trail', w: 2, pts: [[1.7, 169.2], [4.5, 166.1]] }, { tier: 'trail', w: 2, pts: [[16.4, 163.1], [13.6, 159.9]] }, { tier: 'trail', w: 2, pts: [[2.1, 159.9], [5.4, 162.5]] }, { tier: 'trail', w: 2, pts: [[22.4, 150.3], [18.1, 150.1]] }, { tier: 'trail', w: 2, pts: [[-5.4, 108.5], [-0.9, 108.5]] }, { tier: 'trail', w: 2, pts: [[-5.4, 123.5], [-0.9, 123.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 107.5], [0.9, 107.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 122.5], [0.9, 122.5]] }, { tier: 'trail', w: 2, pts: [[-30.4, 145.4], [-30.2, 141.2]] }, { tier: 'trail', w: 2, pts: [[-29.2, 134.6], [-29.4, 138.8]] }, { tier: 'trail', w: 2, pts: [[28.2, 134.6], [28.4, 138.9]] }, { tier: 'trail', w: 2, pts: [[-15.2, 146.9], [-14.9, 142.6]] },
-    { tier: 'walk', w: 2.8, pts: [stairsAt(34.4, 1.7), stairsAt(34.4, -4.5), po(216, 138), ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
+    { tier: 'walk', w: 2.8, pts: [stairsAt(34.4, -0.4), stairsAt(34.4, -4.5), po(216, 138), ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
   const walkDist = (x, z) => { let d = Infinity; for (const w of walkCurves) d = Math.min(d, lineDist(x, z, w.pts) - w.w / 2); return d; };
@@ -157,6 +157,9 @@
       const edge = Math.max(0.3 - side, side - 5.3, lz - FACADE.d - 0.2, -3 - lz); if (edge < 1.2) h = Math.max(h, lerp(k.top, h, smooth(0, 1.2, edge)));
     }
     for (const p of PADS) { if (Math.abs(x - p.x) >= p.r + 5 || Math.abs(z - p.z) >= p.r + 5) continue; /* (CI 3차: far off on one axis is far off -- 32 pads, most a long way) */ const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
+    // (문제 기록 3회차 20 「마당 경계가 이상해」: the 게임관's pad rose into 대청마당's east side, the grass up through its paving in a
+    // ragged edge -- the terrace stays at its height under all of its paving)
+    if (inPlaza(x, z, 2.5)) h = Math.min(h, P.h); // (2.5 m past its edge: the 2 m ground cells under the edge lie flat too)
     // the fill from the stairs' top back to the ridge: 4 m wide, from the treads to 8 m into the ridge
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
     const edge = Math.max(-along - 0.4, along - 2, -out - 1.5, out - 9); if (edge < 2) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
