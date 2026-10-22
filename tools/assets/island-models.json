@@ -7535,6 +7535,22 @@
       "lowSrc": "angular63:02. Low/angular_tree_stack__winter_low.glb",
       "lowSha256": "f6e359c08891e4a3d27f333123c47fa87ef9099d12a224254b307ac3dde404e3",
       "precompressed": true
+    },
+    {
+      "out": "farmer-v1/farm_shed.glb",
+      "src": "farm68:01. High/farm_shed.glb",
+      "sha256": "e8e035d9f7ace13e15a00a300721304fcfb7c575dabd4b79ba579f5e2b767579",
+      "lowSrc": "farm68:02. Low/farm_shed_low.glb",
+      "lowSha256": "393c15bcd8397bf5ddfde34262e3fd9dc8cdfc72e3a67a1555eefb16b619a8ce",
+      "precompressed": true
+    },
+    {
+      "out": "farmer-v1/farm_scarecrow.glb",
+      "src": "farm68:01. High/farm_scarecrow.glb",
+      "sha256": "89fc1fa3afff6d9d42955c8a68c2427755f0cc578b4190e3c9ee6a81a990c2f4",
+      "lowSrc": "farm68:02. Low/farm_scarecrow_low.glb",
+      "lowSha256": "505e860f416baa32f0f635e7330c32ddca26006e836e44bab36116e20880fd56",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -7579,6 +7595,7 @@
     "insects62": "62. Game Island insect motions 2026-10-20",
     "angular63": "63. Game Island angular nature 2026-10-20",
     "furn64": "64. Game Island furniture moves 2026-10-21",
-    "swing66": "66. Game Island tool swing moves 2026-10-22"
+    "swing66": "66. Game Island tool swing moves 2026-10-22",
+    "farm68": "68. Game Island farm props 2026-10-23"
   }
 }

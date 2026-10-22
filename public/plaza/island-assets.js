@@ -369,6 +369,7 @@
   const farm = (file) => ({ url: `/assets/island/farmer-v1/${file}.glb`, low: { url: `/assets/island/farmer-v1/${file}_low.glb` }, near: 35 });
   for (const s of [0, 1, 2, 3]) REGISTRY[`farm.field.${s}`] = farm(`field_stage${s}`);
   REGISTRY['farm.sign'] = farm('sign_helpers');
+  for (const f of ['shed', 'scarecrow']) REGISTRY[`farm.${f}`] = farm(`farm_${f}`); // (3회차 15 농장 마당, assets 68: the shed -- its door -Z -- and the scarecrow)
   REGISTRY['farm.mallet'] = { url: `${CH}/props/mallet.glb`, low: { url: `${CH}/props/mallet_low.glb` } };
   REGISTRY['character.farmer'] = { url: `${CH}/npc_farmer.glb`, low: { url: `${CH}/npc_farmer_low.glb` }, rotationY: Math.PI, motions: true };
   // v1.10.92 잡화점 (assets 41 store-v1): the building (front -Z, its door at local z -2.65), the room one walks into
