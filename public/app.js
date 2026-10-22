@@ -3684,7 +3684,12 @@
   let plazaVisit = 0; let plazaStateRequest = null; let plazaDeparture = null;
   function plazaPresenceTick() {
     const c = plaza.controller;
-    if (!c?.pose || plazaSending || plazaDeparture || !document.body.classList.contains('plazaMode')) return;
+    if (!c?.pose || plazaDeparture || !document.body.classList.contains('plazaMode')) return;
+    // CI 3차: a start or a stop goes at once -- not after the pose still on its way (one at a time). On a busy page that
+    // took 0.5 s; meanwhile the others' screens walked me on past my last moving pose and, the stop come, drew me a step
+    // back (plaza.spec 「멀티유저」 never-backward, 0.1-0.47 m). The newer pose replaces the one on its way.
+    if (plazaSending && (!plazaLastSent || c.pose().moving === plazaLastSent.moving)) return;
+    if (plazaSending) plazaStateRequest?.abort();
     const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
     const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving
       || p.act !== prev.act || p.actN !== prev.actN || p.seat !== prev.seat; // v1.10.44: a sit, a wave or a cheer goes at once
@@ -11713,7 +11718,9 @@
     const g = state.game;
     const endsAt = g.phase === 'drawing' ? g.roundEndsAt : g.phase === 'reveal' ? g.revealEndsAt : null;
     if (!endsAt || (g.phase === 'drawing' && desktopActionTimerOwns('pictionary'))) return;
-    pictionaryTimer.textContent = g.phase === 'reveal' ? `결과 공개 · ${pictionaryCountdownText(endsAt)}` : pictionaryCountdownText(endsAt);
+    // (CI 3차: the room's render's words -- this tick wrote 「결과 공개」 a second after the render wrote 「다음 라운드」, so the
+    // timer changed its words each second; pictionary-v2.spec waiting for 「다음 라운드」 failed when it read between)
+    pictionaryTimer.textContent = g.phase === 'reveal' ? `다음 라운드 · ${pictionaryCountdownText(endsAt)}` : pictionaryCountdownText(endsAt);
   }, 1000);
 
   setInterval(() => {

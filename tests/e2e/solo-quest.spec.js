@@ -148,7 +148,9 @@ test('연계 퀘스트: 할머니 결과는 계정별·재접속 유지, 멀리 
   await b.page.evaluate(at=>window.PlazaDebug().teleport(at.x,at.z),placed.data);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'empty', frame: false });
   // someone far off: the name tag is drawn out of the fog, the chat bubble only near
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().farSight()), { timeout: 30000 }).toEqual([expect.objectContaining({ tag: true })]); // (30 s: an earlier test's player leaves in 15)
+  // (CI 3차: b's own entry -- another test's player still on the island made the list two long, run 39695746869)
+  const bId = await b.page.evaluate(() => window.PlazaDebug().myId);
+  await expect.poll(() => page.evaluate((id) => window.PlazaDebug().farSight().find((o) => o.id === id) || null, bId), { timeout: 30000 }).toMatchObject({ tag: true });
   await expectNoScriptError(page);
   await a.context.close(); await b.context.close();
 });

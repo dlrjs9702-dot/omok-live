@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, expectNoScriptError } = require('./skin-support');
+const { shopper, post, expectNoScriptError, spaceOn } = require('./skin-support');
 
 // v1.10.89 상점·내 정보 분류 (사용자 2026-10-17): name search, 등급·시리즈·보유 chips, 부위 tabs in 내 정보, and the
 // 파츠 미리보기 -- my character with that item on, in 3D from the island's parts. PC and phone.
@@ -13,8 +13,10 @@ test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기',
 
   // 잡화점 on the island (모자·장식 first)
   await require('./skin-support').intoMall(page, 'accessories', isMobile); // v1.10.92 백화점
-  if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
   const shop = page.locator('#skinShopDialog');
+  // (CI 3차: the sector's prompt read and pressed at once, again until the window is open -- PC parts holding this spec
+  // failed 13 of 54 times on 10/20~21)
+  await expect.poll(async () => { if (await shop.isVisible()) return true; await spaceOn(page, 'accessories', isMobile); await page.waitForTimeout(800); return shop.isVisible(); }, { timeout: 30000, intervals: [500] }).toBe(true);
   await expect(shop.locator('#skinShopTitle')).toHaveText('소품 가게');
   await expect(shop.locator('.skinCard').first()).toBeVisible(); const all = await shop.locator('.skinCard').count();
   await shop.getByRole('group', { name: '보유' }).getByRole('button', { name: '산 것', exact: true }).click();

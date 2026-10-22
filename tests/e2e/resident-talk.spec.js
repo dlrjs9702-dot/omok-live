@@ -18,9 +18,12 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   // walk-off between is retried; an island event may take the islander meanwhile -- events first: let it go for the test)
   const talkTo = async (n) => {
     await expect.poll(async () => {
-      if (!await talking()) { await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate((n) => window.PlazaDebug().talkResident(n), n); await page.waitForTimeout(1500); }
+      // (CI 3차, run 39704740141: 120 s of 「가까이 가서 다시 시도해 주세요」 -- talkResident puts me by them without leaving, so
+      // the server took it as a walk from my last place and stopped me at the other player standing on that line
+      // (plazaSeparate); a warp first (leave, enter fresh), then the talk from a step away)
+      if (!await talking()) { await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 1.1, w.z); window.PlazaDebug().talkResident(n); }, n); await page.waitForTimeout(1500); }
       return talking();
-    }, { timeout: 120000, intervals: [300] }).toBe(true);
+    }, { timeout: 120000, intervals: [300] }).toBe(true).catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')} n: ${n}`; throw error; }); // (CI 3차: once 120 s with no talk on CI -- the server's answer, to find why)
     if (!process.env.CI) expect(await page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe(`resident:${n}`); // the talk camera (사용자 2026-10-18: every talk) -- (CI: a slow screen draws the walker behind, too far for the camera)
   };
   const lines = async () => { for (let k = 0; k < 4 && await page.locator('.lostRequestLine.talkPending').count(); k += 1) await page.keyboard.press('Space'); };

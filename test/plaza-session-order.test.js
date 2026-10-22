@@ -56,6 +56,32 @@ test('광장 위치: 이탈·방 입장·로그아웃 전에 시작한 느린 �
   assert.equal((await loggedOut.result).status, 401);
 });
 
+// CI 3차 검토: a stop cuts off the walking pose on its way (app.js plazaPresenceTick), but a body already sent is still
+// taken -- after the stop, it put back the old spot and the walking step (others saw me walk on until the next pose, 3 s).
+test('광장 위치: 멈춤 뒤에 도착한 더 이른 걷는 중 위치는 멈춤을 덮지 않는다', async t => {
+  const fx = await fixture(t);
+  const t0 = Date.now();
+  await fx.req('/api/plaza/state', fx.token, { x: 25, z: 4, moving: true, t: t0 });
+  const walking = hold(fx.base, '/api/plaza/state', fx.token, { x: 25, z: 4.5, moving: true, t: t0 + 125 });
+  await sleep(150);
+  const stopped = await fx.req('/api/plaza/state', fx.token, { x: 25, z: 5, moving: false, t: t0 + 250 });
+  assert.equal(stopped.status, 200);
+  walking.complete();
+  const late = await walking.result;
+  assert.equal(late.status, 200);
+  assert.deepEqual([late.data.x, late.data.z, late.data.corrected], [stopped.data.x, stopped.data.z, false], 'answered with where I am');
+  const res = await fetch(fx.base + '/api/lobby/events', { headers: { 'X-Session-Token': fx.token } });
+  const reader = res.body.getReader(); const decoder = new TextDecoder(); let text = '';
+  while (!text.includes('event: plaza\n')) { const { value, done } = await reader.read(); if (done) break; text += decoder.decode(value); }
+  await reader.cancel();
+  const frame = text.split('\n\n').find(f => f.startsWith('event: plaza\n'));
+  const me = JSON.parse(frame.match(/^data: (.*)$/m)[1]).players.find(p => p.id === stopped.data.id);
+  assert.deepEqual([me.x, me.z, me.moving], [stopped.data.x, stopped.data.z, false]);
+  // a pose without t (an old client) is taken as before
+  const old = await fx.req('/api/plaza/state', fx.token, { x: 25, z: 5.5, moving: false });
+  assert.deepEqual([old.data.x, old.data.z], [25, 5.5]);
+});
+
 test('첫 heartbeat가 끝나기 전에 닫힌 문서는 늦은 heartbeat로 입장키를 잠그지 않는다', async t => {
   const fx = await fixture(t);
   await fx.req('/api/session/heartbeat', fx.token, { page: 'old' });

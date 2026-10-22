@@ -14,6 +14,13 @@ const { spawn } = require('node:child_process');
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
+// CI 3차: the server's idle timer acted on -- polled until the state says so (bounded by the test's own 30 s), not 12 tries
+// of 50 ms: with the unit tests side by side on the CI runner the 250 ms timer fired past those 0.6 s (Twenty Questions,
+// run 39719039445 #3)
+async function until(read, ok) {
+  for (;;) { const state = await read(); if (ok(state)) return state; await new Promise(resolve => setTimeout(resolve, 50)); }
+}
+
 async function serverFixture(t, extraEnv = {}) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'afk-timeout-'));
   const port = await freePort();
@@ -77,9 +84,7 @@ test('a connected seat that sits on its own turn past the AFK timeout is paused 
   assert.equal(state.game.paused, false);
 
   // Nobody acts. Neither seat disconnects -- both sessions stay fully alive throughout.
-  await new Promise(resolve => setTimeout(resolve, 700));
-  state = (await req('/api/room', b, undefined, 'GET')).data.state;
-  assert.equal(state.game.paused, true);
+  state = await until(async () => (await req('/api/room', b, undefined, 'GET')).data.state, st => st.game.paused); // (CI 3차: until paused, not a fixed 700 ms)
   assert.deepEqual(state.game.disconnectedSeats, ['black']);
 
   // The idle seat is still fully connected, yet is blocked exactly like a real disconnect would
@@ -110,9 +115,7 @@ test('an idle-flagged seat that comes back (present) lifts the pause itself; nob
   assert.equal((await req('/api/room/choose-role', a, { choice: 'black' })).status, 200);
   assert.equal((await req('/api/room/choose-role', b, { choice: 'white' })).status, 200);
 
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  let state = (await req('/api/room', b, undefined, 'GET')).data.state;
-  assert.equal(state.game.paused, true);
+  let state = await until(async () => (await req('/api/room', b, undefined, 'GET')).data.state, st => st.game.paused); // (CI 3차: until paused, not a fixed 1 s)
   assert.deepEqual(state.game.disconnectedSeats, ['black']);
 
   // The waiting side announcing itself does nothing: only the flagged seat's own return counts.
@@ -148,9 +151,7 @@ test('a free-for-all numbered-seat game (bingo) gets the same AFK pause for whic
   const idleSeat = state.game.turn;
   assert.ok(['1', '2', '3'].includes(idleSeat));
 
-  await new Promise(resolve => setTimeout(resolve, 700));
-  state = (await req('/api/room', a, undefined, 'GET')).data.state;
-  assert.equal(state.game.paused, true);
+  state = await until(async () => (await req('/api/room', a, undefined, 'GET')).data.state, st => st.game.paused); // (CI 3차: until paused, not a fixed 700 ms)
   assert.deepEqual(state.game.disconnectedSeats, [idleSeat]);
 
   const otherSeat = ['1', '2', '3'].find(s => s !== idleSeat);
@@ -181,13 +182,7 @@ test('Twenty Questions skips an idle challenger turn instead of pausing the whol
   assert.equal(state.game.turnSeat, '2');
   assert.equal(state.game.questionsUsed, 0);
 
-  let sawNextChallenger = false;
-  for (let i = 0; i < 12; i += 1) {
-    await new Promise(resolve => setTimeout(resolve, 50));
-    state = (await req('/api/room', a, undefined, 'GET')).data.state;
-    if (state.game.turnSeat === '3') { sawNextChallenger = true; break; }
-  }
-  assert.equal(sawNextChallenger, true);
+  state = await until(async () => (await req('/api/room', a, undefined, 'GET')).data.state, st => st.game.turnSeat === '3');
   assert.equal(state.game.questionsUsed, 0);
   assert.ok(state.chat.messages.some(row => row.type === 'system' && /입력 시간이 지나 다음 도전자로/.test(row.text)));
   const nextAction = await req('/api/room/twenty-question', cToken, { question: '다음 도전자 질문' });
@@ -215,13 +210,7 @@ test('Twenty Questions gives a disconnected challenger a grace window, then skip
   assert.equal(state.game.status, 'playing');
   assert.equal(state.game.turnSeat, '2');
 
-  let skipped = false;
-  for (let i = 0; i < 12; i += 1) {
-    await new Promise(resolve => setTimeout(resolve, 50));
-    state = (await req('/api/room', a, undefined, 'GET')).data.state;
-    if (state.game.turnSeat === '3') { skipped = true; break; }
-  }
-  assert.equal(skipped, true);
+  state = await until(async () => (await req('/api/room', a, undefined, 'GET')).data.state, st => st.game.turnSeat === '3');
   assert.equal(state.game.questionsUsed, 0);
   assert.ok(state.chat.messages.some(row => row.type === 'system' && /60초 안에 재접속하지 않아 다음 도전자로/.test(row.text)));
   const nextAction = await req('/api/room/twenty-question', cToken, { question: '계속 진행 질문' });
@@ -243,13 +232,7 @@ test('Twenty Questions voids an idle drawer round with no score and automaticall
   assert.equal((await req('/api/room/twenty-start', a, { mode: 'individual', totalRounds: 2 })).status, 200);
 
   let state;
-  let advanced = false;
-  for (let i = 0; i < 12; i += 1) {
-    await new Promise(resolve => setTimeout(resolve, 50));
-    state = (await req('/api/room', b, undefined, 'GET')).data.state;
-    if (state.game.roundNumber === 2) { advanced = true; break; }
-  }
-  assert.equal(advanced, true);
+  state = await until(async () => (await req('/api/room', b, undefined, 'GET')).data.state, st => st.game.roundNumber === 2);
   assert.equal(state.game.status, 'playing');
   assert.equal(state.game.phase, 'secret');
   assert.equal(state.game.drawerSeat, '2');
@@ -279,13 +262,7 @@ test('Twenty Questions gives a disconnected drawer 60 seconds to return, then vo
   assert.equal(state.game.roundNumber, 1);
   assert.equal(state.game.drawerSeat, '1');
 
-  let advanced = false;
-  for (let i = 0; i < 12; i += 1) {
-    await new Promise(resolve => setTimeout(resolve, 50));
-    state = (await req('/api/room', b, undefined, 'GET')).data.state;
-    if (state.game.roundNumber === 2) { advanced = true; break; }
-  }
-  assert.equal(advanced, true);
+  state = await until(async () => (await req('/api/room', b, undefined, 'GET')).data.state, st => st.game.roundNumber === 2);
   assert.equal(state.game.status, 'playing');
   assert.equal(state.game.drawerSeat, '2');
   assert.deepEqual(state.game.scores, { '1': 0, '2': 0, '3': 0 });

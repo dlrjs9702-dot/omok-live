@@ -51,15 +51,16 @@ test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임,
   await toggle();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe(null);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().othersBikes()[id] ?? null, myId), { timeout: 20000 }).toBe(null);
-  // off by itself: on the ridge's stairs (off at once when put there -- on slow CI the next frame waited on the ridge's models)
+  // off by itself: on the ridge's stairs -- off at once when put there (teleport's bikeCheck), so read in the same call as the
+  // warp. (CI 3차: the poll that read it after timed out on CI, #267·#268 chromium-4 and mobile-2 -- the page was off the bike
+  // all along, but loading the ridge's models then kept it busy past 10 s and the poll's own call could not run.)
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
-  await page.evaluate(() => { const S = window.IslandTerrain.STAIRS; return window.PlazaWarp(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); });
-  try {
-    await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); const S = window.IslandTerrain.STAIRS; if (d.cycling) d.teleport(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); return window.PlazaDebug().cycling; }), { timeout: 10000 }).toBe(null); // (put there again while still riding: the first try on CI once rode on)
-  } catch (error) { // (CI only so far: what the page thought, to find why)
-    console.log('BIKE-STAIRS', JSON.stringify(await page.evaluate(() => { const d = window.PlazaDebug(); const T = window.IslandTerrain; return { cycling: d.cycling, x: d.x, z: d.z, space: d.space, map: T.MAP || T.dalmaru?.MAP || null, onStairs: T.onStairs ? T.onStairs(d.x, d.z) : 'none', stairs: T.STAIRS && { x: T.STAIRS.x, z: T.STAIRS.z, len: T.STAIRS.len, w0: T.STAIRS.w0, w1: T.STAIRS.w1 }, others: (d.others || []).length, train: d.train?.() }; })));
-    throw error;
-  }
+  const onStairs = await page.evaluate(async () => {
+    const S = window.IslandTerrain.STAIRS; await window.PlazaWarp(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7);
+    const d = window.PlazaDebug(); return { onStairs: Boolean(window.IslandTerrain.onStairs(d.x, d.z)), cycling: d.cycling };
+  });
+  expect(onStairs).toEqual({ onStairs: true, cycling: null });
+  expect(await page.evaluate(() => window.PlazaDebug().cycling)).toBe(null); // (and still off once the page is free again)
   // ... among people: three standing within 5 m
   await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [spot.x, spot.z]); await page.waitForTimeout(500);
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');

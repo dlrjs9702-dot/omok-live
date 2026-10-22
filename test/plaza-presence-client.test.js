@@ -72,3 +72,31 @@ test('시설의 선행 위치 확인 중 로그인 전환이 있어도 지급 �
   assert.equal(calls[1].options.headers['X-Session-Token'], 'old');
   calls[1].resolve(); await pending;
 });
+
+// CI 3차: one pose on its way at a time -- but a start or a stop goes at once (the one on its way aborted), so the others'
+// screens do not walk me on past my last moving pose and then draw me a step back
+test('광장 위치 전송: 걷기 시작·멈춤은 보내는 중인 위치를 취소하고 바로, 그 밖에는 응답을 기다린다', async () => {
+  const calls = []; let pose = { x: 0, z: 0, yaw: 0, moving: true };
+  const controller = { pose: () => ({ ...pose }), setOthers() {} };
+  const context = vm.createContext({
+    plaza: { controller }, sessionToken: 'fixture',
+    document: { body: { classList: { contains: () => true } } },
+    setInterval: () => 1, clearInterval() {}, Date, Math, AbortController,
+    fetch: (route, options) => new Promise(resolve => calls.push({ route, options, resolve: data => resolve({ ok: true, status: 200, json: async () => data }) })),
+  });
+  vm.runInContext(source.slice(apiBegin, apiEnd) + source.slice(begin, end) + '\nglobalThis.testHooks = { plazaPresenceTick, setPlazaPresence };', context);
+  const h = context.testHooks;
+  h.setPlazaPresence(true); h.plazaPresenceTick();
+  assert.equal(calls.length, 1);
+  pose = { ...pose, z: 1 }; h.plazaPresenceTick();
+  assert.equal(calls.length, 1, '걷는 중의 새 위치는 앞 응답을 기다림');
+  pose = { ...pose, z: 1.2, moving: false }; h.plazaPresenceTick();
+  assert.equal(calls.length, 2, '멈춤은 바로');
+  assert.equal(calls[0].options.signal.aborted, true, '보내는 중이던 위치는 취소');
+  assert.equal(JSON.parse(calls[1].options.body).moving, false);
+  calls[0].resolve({ ok: true }); await tick();
+  pose = { ...pose, yaw: 1 }; h.plazaPresenceTick();
+  assert.equal(calls.length, 2, '취소된 응답이 와도 지금 보내는 중이면 기다림');
+  calls[1].resolve({ ok: true }); await tick();
+  h.plazaPresenceTick(); assert.equal(calls.length, 3, '응답 뒤 다음 위치');
+});

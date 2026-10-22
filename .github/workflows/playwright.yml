@@ -64,6 +64,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # CI 3차: the browser from the cache (one download per Playwright version) -- a download mirror failing to resolve
+      # (playwright.download.prss.microsoft.com ENOTFOUND, #267·#268 chromium-4) cost the part its retries over again
+      - name: Cache Playwright browsers
+        if: ${{ matrix.group != 'unit' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       # The runner's apt mirror sometimes stops answering (2026-09-30: stuck 53 minutes in apt update).
       # Normally 30 s to 7 min, so each attempt gets 10 minutes and a stuck one is retried once.
       - name: Install Playwright Chromium
@@ -77,9 +86,20 @@ jobs:
           done
           exit 1
 
+      # CI 3차: the failed tests' names also as annotations (the checks API serves them; the logs need a download)
       - name: Run unit and integration tests
         if: ${{ matrix.group == 'unit' }}
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee unit-test.log
+
+      - name: Unit test failures as annotations
+        if: ${{ failure() && matrix.group == 'unit' }}
+        run: |
+          # each failed test's name and the first line of its error (the TAP block under it)
+          awk '/^[[:space:]]*not ok /{ if (n) print "::error title=unit test failed::" n e; n=$0; sub(/^[[:space:]]*not ok [0-9]+ - /, "", n); e=""; w=1; next }
+               w && /^[[:space:]]*error:/ { x=$0; sub(/^[[:space:]]*error:[[:space:]]*[|>-]*[[:space:]]*/, "", x); if (x == "") { getline x; gsub(/^[[:space:]]+/, "", x) } e=" -- " x; w=0 }
+               END { if (n) print "::error title=unit test failed::" n e }' unit-test.log | head -10 || true
 
       # The parts are disjoint and together the whole suite (tools/ci-split.js checks every test is in exactly one part;
       # a split that fails stops the part -- never an empty list, which would run everything). A part stops after 10
@@ -123,6 +143,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
+      fail-fast: false # (CI 3차: all four fail together -- one failing gate used to cancel the other three)
       matrix:
         gate: [games-1, games-2, assets, plaza]
     steps:

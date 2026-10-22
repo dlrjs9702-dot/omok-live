@@ -38,14 +38,19 @@
   const ridgeBulge = (th) => { const a = ((th % TAU) + TAU) % TAU; return 12 * Math.min(smooth(RIDGE.a0 - 0.05, RIDGE.a0 + 0.3, a), smooth(RIDGE.a1 + 0.05, RIDGE.a1 - 0.3, a)); };
   const outerR = (th) => R_OUT + ridgeBulge(th) + 3.2 * Math.sin(3 * th + 0.4) + 2.2 * Math.sin(7 * th + 1.3) + 1.2 * Math.sin(13 * th);
   const bayR = (th) => R_BAY + 2.4 * Math.sin(4 * th + 0.9) + 1.4 * Math.sin(9 * th + 2.1);
+  // (CI 3차: one point is asked for again straight after -- the island's ground() takes landHeight three times over, the
+  // walk grid the coast distance before landHeight does. The last point's answer is kept: the same number, not worked out
+  // again. The server's start was 5 s, 3 of them the walk grid; parallel unit tests waited past 8 s for it.)
+  const lastOf = (f) => { let lx = NaN; let lz = NaN; let lv = 0; return (x, z) => { if (Object.is(x, lx) && Object.is(z, lz)) return lv; lv = f(x, z); lx = x; lz = z; return lv; }; };
   // > 0 on land: distance (roughly, metres) inside the crescent or the island
-  function coastDist(x, z) {
+  const coastDist = lastOf(coastDistOf);
+  function coastDistOf(x, z) {
     const r = Math.hypot(x, z); const th = Math.atan2(z, x);
     const dOut = outerR(th) - r;
     const bx = x, bz = z - BAY_Z; const dBay = Math.hypot(bx, bz) - bayR(Math.atan2(bz, bx));
     const crescent = Math.min(dOut, dBay);
     const isle = ISLE.r + 1.2 * Math.sin(5 * Math.atan2(z - ISLE.z, x) + 0.7) - isleDist(x, z);
-    const cape = Math.max(...CAPES.map((c) => c.r - Math.hypot(x - c.x, z - c.z)));
+    let cape = -Infinity; for (const c of CAPES) cape = Math.max(cape, c.r - Math.hypot(x - c.x, z - c.z)); // (a loop, not a list made per call)
     return Math.max(crescent, isle, cape);
   }
   const inBay = (x, z) => Math.hypot(x, z - BAY_Z) < bayR(Math.atan2(z - BAY_Z, x)) && Math.hypot(x, z) < outerR(Math.atan2(z, x)) + 4 && z < TIP_Z;
@@ -71,11 +76,16 @@
   function segDist(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
   const lineDist = (x, z, pts) => { let d = Infinity; for (let i = 0; i + 1 < pts.length; i++) d = Math.min(d, segDist(x, z, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])); return d; };
   const riverDist = (x, z) => { let d = Infinity; for (const r of RIVERS) d = Math.min(d, lineDist(x, z, r.pts) - r.w / 2); return d; };
+  // (CI 3차: each river's box, grown past its half width and ground()'s 2.2 m bank by a metre more -- outside every box no
+  // river is near enough to cut the ground, and its distance need not be worked out)
+  const RIVER_BOX = RIVERS.map((r) => { const m = r.w / 2 + 3.2; const xs = r.pts.map((p) => p[0]); const zs = r.pts.map((p) => p[1]); return [Math.min(...xs) - m, Math.max(...xs) + m, Math.min(...zs) - m, Math.max(...zs) + m]; });
+  const nearRiver = (x, z) => RIVER_BOX.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
   const lakeDist = (x, z) => (Math.hypot((x - LAKE.x) / LAKE.rx, (z - LAKE.z) / LAKE.rz) - 1) * Math.min(LAKE.rx, LAKE.rz);
-  const poolDist = (x, z) => Math.min(...POOLS.map((p) => Math.hypot(x - p.x, z - p.z) - p.r));
+  const poolDist = (x, z) => { let d = Infinity; for (const p of POOLS) d = Math.min(d, Math.hypot(x - p.x, z - p.z) - p.r); return d; };
   const islePondDist = (x, z) => (Math.hypot((x - ISLE_POND.x) / ISLE_POND.rx, (z - ISLE_POND.z) / ISLE_POND.rz) - 1) * ISLE_POND.rz;
 
-  function landHeight(x, z) {
+  const landHeight = lastOf(landHeightOf);
+  function landHeightOf(x, z) {
     const cd = coastDist(x, z);
     if (cd < 0) return SEA - 0.35 + cd * 0.35; // the sea floor going down
     const r = Math.hypot(x, z);
@@ -97,7 +107,7 @@
   function ground(x, z) {
     let h = landHeight(x, z);
     const cut = (dist, depth, bank) => { if (dist < bank) h = lerp(Math.min(h, SEA - depth), h, smooth(-0.5, bank, dist)); };
-    cut(riverDist(x, z), 0.9, 2.2); cut(lakeDist(x, z), 1.6, 3); cut(poolDist(x, z), 1.8, 2.5); cut(islePondDist(x, z), 0.8, 1.5);
+    cut(nearRiver(x, z) ? riverDist(x, z) : Infinity, 0.9, 2.2); cut(lakeDist(x, z), 1.6, 3); cut(poolDist(x, z), 1.8, 2.5); cut(islePondDist(x, z), 0.8, 1.5);
     for (const f of HEAD_PONDS) { const d = Math.hypot(x - f.x, z - f.z) - f.r; if (d < 1.2) h = lerp(Math.min(h, f.y - 0.6), h, smooth(-0.3, 1.2, d)); } // (2회차 18: the ponds over the falls)
     return h;
   }

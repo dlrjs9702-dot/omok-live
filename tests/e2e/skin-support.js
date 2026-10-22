@@ -5,13 +5,15 @@ const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-
 let ipCounter = 0;
 const uniqueIp = () => `100.72.${process.pid % 250}.${(++ipCounter + Math.floor(Math.random() * 200)) % 250 + 1}`;
 
+// CI 3차 (my-home mobile 「socket hang up」): the server closes a connection idle 5 s (Node's keepAliveTimeout) and a request
+// sent on it at that moment is reset unread -- sent again once on a new one, as a browser does (maxRetries: ECONNRESET only)
 async function post(request, route, token, data) {
-  const response = await request.post(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) }, data: data ?? {} });
+  const response = await request.post(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) }, data: data ?? {}, maxRetries: 1 });
   return { status: response.status(), data: await response.json().catch(() => ({})) };
 }
 
 async function get(request, route, token) {
-  const response = await request.get(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) } });
+  const response = await request.get(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) }, maxRetries: 1 });
   return { status: response.status(), data: await response.json().catch(() => ({})) };
 }
 
@@ -115,6 +117,20 @@ async function expectNoScriptError(page) {
   await expect(page.locator('#toast')).not.toContainText(/is not a function|is not defined|undefined|Cannot read/);
 }
 module.exports.expectNoScriptError = expectNoScriptError;
+// CI 3차: SPACE (a phone: a tap on the hint) on the island when what it reaches (PlazaDebug().near) starts with `prefix` --
+// read and pressed in one call. Read, then pressed by the keyboard, there were frames between (a second or more on the CI
+// runner): an islander walking by took the SPACE (운반·전달 「줍기」 at plaza.spec 1179, 앉기·인사 「인사」), a pet walked off
+// out of reach, a sector's spot gave way to the next. false: something else is nearest.
+async function spaceOn(page, prefix, isMobile = false) {
+  return page.evaluate(([prefix, isMobile]) => {
+    if (!window.PlazaDebug()?.near?.startsWith(prefix)) return false;
+    if (isMobile) { document.getElementById('plazaHint').click(); return true; }
+    const stage = document.getElementById('plazaStage'); stage.focus();
+    for (const type of ['keydown', 'keyup']) stage.dispatchEvent(new KeyboardEvent(type, { code: 'Space', key: ' ', bubbles: true }));
+    return true;
+  }, [prefix, isMobile]);
+}
+module.exports.spaceOn = spaceOn;
 // v1.10.93: stand at a spot of the 백화점's room (local lx, lz) until its prompt shows -- on a slow runner the walk-in can
 // still put me at the door after a first teleport
 async function standInMall(page, lx, lz, text) {
@@ -133,7 +149,7 @@ async function intoMall(page, place = null, isMobile = false) {
     const inside = () => page.evaluate(() => window.PlazaDebug().space === 'store');
     await expect.poll(async () => { if (await inside()) return '백화점 들어가기'; await page.evaluate(() => window.PlazaDebug().place('store')); await page.waitForTimeout(600); return (await inside()) ? '백화점 들어가기' : page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('백화점 들어가기');
     if (await inside()) break;
-    await press();
+    await spaceOn(page, 'store', isMobile); // (CI 3차: the door read and pressed at once)
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 10000 }).toBe('store').catch(() => {});
   }
   expect(await page.evaluate(() => window.PlazaDebug().space)).toBe('store');
@@ -149,8 +165,8 @@ module.exports.intoMall = intoMall;
 async function outOfMall(page) {
   await page.evaluate(() => { const d = window.PlazaDebug(); const door = d.doors['store:exit'] || null; const w = door || window.IslandStore.world(0, -9.1); d.teleport(w.x, w.z); });
   await expect(page.locator('#plazaHint')).toContainText('나가기', { timeout: 10000 });
-  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('island');
+  // (CI 3차: the exit read and pressed at once, again until out)
+  await expect.poll(async () => { if (await page.evaluate(() => window.PlazaDebug().space) === 'island') return 'island'; await spaceOn(page, 'store:exit'); await page.waitForTimeout(1000); return page.evaluate(() => window.PlazaDebug().space); }, { timeout: 15000 }).toBe('island');
 }
 module.exports.outOfMall = outOfMall;
 

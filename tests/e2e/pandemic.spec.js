@@ -28,8 +28,18 @@ test('팬데믹: 시작 → 지도 표시 → 이동 → 다른 사람 화면 �
   const targets = mover.page.locator('#pandemicMap .pdCity.target');
   expect(await targets.count()).toBeGreaterThan(0);
   const to = await targets.first().getAttribute('data-city');
-  await targets.first().dispatchEvent('click');
-  await expect.poll(async () => (await get(request, '/api/room', a.token)).data.state.game.pawns[seat]).toBe(to);
+  // (CI 3차: four times in this PR's CI the pawn never moved, a retry too -- with that city's card in hand there is more than
+  // one way there and the click asks how (「…로 어떻게 갈까요?」); the hand is dealt at random. The drive, 자동차/배 (one
+  // action, as below); the city by name while it is a target, again until the server has the pawn there)
+  const city = mover.page.locator(`#pandemicMap .pdCity.target[data-city="${to}"]`);
+  const drive = mover.page.locator('#pandemicMenu button', { hasText: '자동차/배' });
+  await expect.poll(async () => {
+    const at = (await get(request, '/api/room', a.token)).data.state.game.pawns[seat]; if (at === to) return at;
+    if (await drive.count()) await drive.first().click();
+    else { if (!(await city.count())) await mover.page.getByRole('button', { name: '이동', exact: true }).click(); if (await city.count()) await city.dispatchEvent('click'); }
+    await mover.page.waitForTimeout(500);
+    return (await get(request, '/api/room', a.token)).data.state.game.pawns[seat];
+  }, { timeout: 15000 }).toBe(to);
   const after = (await get(request, '/api/room', a.token)).data.state.game;
   expect(after.pawns[seat]).toBe(to);
   expect(after.actionsLeft).toBe(3);
