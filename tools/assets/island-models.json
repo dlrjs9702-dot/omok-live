@@ -3936,10 +3936,10 @@
     },
     {
       "out": "characters/npc_farmer.glb",
-      "src": "farmer:01. High/npc_farmer_high.glb",
-      "sha256": "5b3283d9bf8c7c3a60d464f34c8af2ca563f7023d7c208faf462a24be49bc590",
-      "lowSrc": "farmer:02. Low/npc_farmer_low.glb",
-      "lowSha256": "7e871af834698612494051b9b3a99eed821dc38952e5cb66d00f0b332752e9fa",
+      "src": "npc52:01. High/npc_farmer.glb",
+      "sha256": "0a7820ff6882751d27dc4ecca2e35ed573d2d0e819c2c89b04355592075aeb7e",
+      "lowSrc": "npc52:02. Low/npc_farmer_low.glb",
+      "lowSha256": "c1a36fae9f7211856171addba26c0b6ad45c3c4124383b2b88ade7585569a3b6",
       "precompressed": true
     },
     {
@@ -4224,10 +4224,10 @@
     },
     {
       "out": "characters/npc_storekeeper.glb",
-      "src": "store41:High/npc_storekeeper.glb",
-      "sha256": "8ce0901476fc1946d74d2b20cd93ec708e83b388e8add0484e9dbc3b22cd9893",
-      "lowSrc": "store41:Low/npc_storekeeper_low.glb",
-      "lowSha256": "fbf3fac263d934e0a30d46443a6aa5b237f61028702ad6236efcab57b14cbe94",
+      "src": "npc52:01. High/npc_storekeeper.glb",
+      "sha256": "11de840d5c33ad24de9c67027b32ecd06e39e2dae244d7e7b86529318a02d089",
+      "lowSrc": "npc52:02. Low/npc_storekeeper_low.glb",
+      "lowSha256": "df40bb7a2bbaa0b007811fc584a5bf2dd480bd08e8ccb275690fd8ffb9916887",
       "precompressed": true
     },
     {
@@ -4304,10 +4304,10 @@
     },
     {
       "out": "characters/npc_transformer.glb",
-      "src": "pochacco42:High/npc_transformer.glb",
-      "sha256": "7e69160a1cb04c024117f65f8aad1bd8b226a26416c74dc9c742abf72f601898",
-      "lowSrc": "pochacco42:Low/npc_transformer_low.glb",
-      "lowSha256": "b8983b763286fb51cc30d1a7d561eb30660a49155b1fabc8f36d5952f05c8d3c",
+      "src": "npc52:01. High/npc_transformer.glb",
+      "sha256": "1c80ed9609178e60933cc957ccb8e94d68f8a68555202e915eff41cbcc1621bb",
+      "lowSrc": "npc52:02. Low/npc_transformer_low.glb",
+      "lowSha256": "3d269100abb0e7cc8f9d52675efc7c0d56aa02b690f62b17460b222196e1e74d",
       "precompressed": true
     },
     {
@@ -4328,58 +4328,58 @@
     },
     {
       "out": "characters/npc_painter.glb",
-      "src": "residents39:01. High/npc_painter_high.glb",
-      "sha256": "d591f3718e4be043c03b1dca52bb19a96d399fb58f370889200018c91a85f025",
-      "lowSrc": "residents39:02. Low/npc_painter_low.glb",
-      "lowSha256": "1e00516644ac41160f876dc7ed5e0ac746e5e2c88a958abfeec468ed2f8fc7b5",
+      "src": "npc52:01. High/npc_painter.glb",
+      "sha256": "8aab8aa160d2ce69cdfdb00d20ee0cf8b4c23add48b3dcb92d6cd67618ad477d",
+      "lowSrc": "npc52:02. Low/npc_painter_low.glb",
+      "lowSha256": "668636f12649e086925c330cabab5bfcffaf053f015bddca1ff212e268bec880",
       "precompressed": true
     },
     {
       "out": "characters/npc_stationmaster.glb",
-      "src": "residents39:01. High/npc_stationmaster_high.glb",
-      "sha256": "4595451cb7615363f965898c243ab6b7cebd5f4d7a0b270698c7ecdcb0635790",
-      "lowSrc": "residents39:02. Low/npc_stationmaster_low.glb",
-      "lowSha256": "0e2a8d8d5b9b13734ade802fa585268a6899036450c9f1cbd6385eadaaa9bf97",
+      "src": "npc52:01. High/npc_stationmaster.glb",
+      "sha256": "798b680eeba5abde107022938273acf337705c0f1df363bda83cf04daf49ba15",
+      "lowSrc": "npc52:02. Low/npc_stationmaster_low.glb",
+      "lowSha256": "cee7dd0a8535e34d3f705e10aa84414659b31eb2115a99655e942818e401480e",
       "precompressed": true
     },
     {
       "out": "characters/npc_busker.glb",
-      "src": "residents39:01. High/npc_busker_high.glb",
-      "sha256": "9ffa94d3dc62446da510a086772da73a4563a8b0f535c9fbd5d82c706e4ece10",
-      "lowSrc": "residents39:02. Low/npc_busker_low.glb",
-      "lowSha256": "62b6818c18f75853656908ad81e8bb37b219941525253b46970394c268860475",
+      "src": "npc52:01. High/npc_busker.glb",
+      "sha256": "61b43fe3db53b6b4255dbb919f572d57e3069c407c6dd4c9659738d276eceefc",
+      "lowSrc": "npc52:02. Low/npc_busker_low.glb",
+      "lowSha256": "ed7609fc803919e17c66b3b77c213f19c0e00df3150f651485194dc2726b5901",
       "precompressed": true
     },
     {
       "out": "characters/npc_electrician.glb",
-      "src": "residents39:01. High/npc_electrician_high.glb",
-      "sha256": "a64d127c7e2b61363451297629db3cd15b0c1b4e1214339525aa69aebb8301a9",
-      "lowSrc": "residents39:02. Low/npc_electrician_low.glb",
-      "lowSha256": "73a566e7d006237f274f03c59dc6fffddded561de7b97c3e81a5070dee5fa10e",
+      "src": "npc52:01. High/npc_electrician.glb",
+      "sha256": "48d23df78288331dab3041a3885c0009dd1555a5c0be538f4f64ae71a37728da",
+      "lowSrc": "npc52:02. Low/npc_electrician_low.glb",
+      "lowSha256": "79e62bea162e86e86e9538dc374b88798278efb98f65eef320b8cf4d513c03cc",
       "precompressed": true
     },
     {
       "out": "characters/npc_builder.glb",
-      "src": "residents39:01. High/npc_builder_high.glb",
-      "sha256": "4fa60db2a51f9535cd52dc44f32afaa35933186d83b2e89ebd0288c6d6131c59",
-      "lowSrc": "residents39:02. Low/npc_builder_low.glb",
-      "lowSha256": "d1a3296a33f35108182704c2cfa7ab1374fa82794242c7290a80cbd911d0d066",
+      "src": "npc52:01. High/npc_builder.glb",
+      "sha256": "2b88bb4ce525d5b344ce9d5499184cff03b8fae0e38ac73b84c61084f757b58b",
+      "lowSrc": "npc52:02. Low/npc_builder_low.glb",
+      "lowSha256": "68b45f897d0c37370d9ca0e6bbe6cea049d8341865f028ae5ce0ea7d185c6173",
       "precompressed": true
     },
     {
       "out": "characters/npc_librarian.glb",
-      "src": "residents39:01. High/npc_librarian_high.glb",
-      "sha256": "f4a007f785a9837a6e6e27559f2be67c4b3919ba94f5432b4f70e22ea954111c",
-      "lowSrc": "residents39:02. Low/npc_librarian_low.glb",
-      "lowSha256": "a4ccb4fb3e867d54e012cce7fbf79538267be50c4fa6dc9da8a9780fbfa516d3",
+      "src": "npc52:01. High/npc_librarian.glb",
+      "sha256": "6e5059ee23a151919f62dfe94de9096a159aacc9ba591351413d9ee94125aa5a",
+      "lowSrc": "npc52:02. Low/npc_librarian_low.glb",
+      "lowSha256": "3dc8d048c5e1ef71b65c75629c893922fbb77c7f1aefe7c917d07606993e5eb5",
       "precompressed": true
     },
     {
       "out": "characters/npc_gazebo_grandpa.glb",
-      "src": "residents39:01. High/npc_gazebo_grandpa_high.glb",
-      "sha256": "4e4fb9c258ed087ef24e37162babb78027b06866eddced7d6e08efcb22966999",
-      "lowSrc": "residents39:02. Low/npc_gazebo_grandpa_low.glb",
-      "lowSha256": "4fc0d68983c9acf1f26fdcbdca6f88e8d68fee34d710b2cc53af5b52fe30352c",
+      "src": "npc52:01. High/npc_gazebo_grandpa.glb",
+      "sha256": "a2e910ee19bb22ea8fccb009f4d4a0c780a55e70eeb49cfdd8fd2ae319253b26",
+      "lowSrc": "npc52:02. Low/npc_gazebo_grandpa_low.glb",
+      "lowSha256": "1711c62e6d23e2789f726533580c13187a1be5954c3e1f137ba1a0d857b98853",
       "precompressed": true
     },
     {
@@ -4816,26 +4816,26 @@
     },
     {
       "out": "characters/npc_clerk_civil.glb",
-      "src": "townhall44:01. High/npc_clerk_civil.glb",
-      "sha256": "41820f93c0d4adaaf2c2a10fbb08901a96c67ad24c46a6219b5fbc76f51db424",
-      "lowSrc": "townhall44:02. Low/npc_clerk_civil_low.glb",
-      "lowSha256": "f5248022a931abe7b5cdb19d0302ab37bce7d5e726f6856fbbfa4184d3462a4f",
+      "src": "npc52:01. High/npc_clerk_civil.glb",
+      "sha256": "b7abf44ea9b7adc0f3d9e28525f4113d459c9fa7aa3f952bf018f911bc190bad",
+      "lowSrc": "npc52:02. Low/npc_clerk_civil_low.glb",
+      "lowSha256": "8bd5a84fdf4aff1da0af948bf32dc01a5201ee72b6226b2e5791d5ba1b66a4f8",
       "precompressed": true
     },
     {
       "out": "characters/npc_clerk_tax.glb",
-      "src": "townhall44:01. High/npc_clerk_tax.glb",
-      "sha256": "404d7689599f6dd6e37dc6f7d9f82495fe1e63baeca2a6e7ab9abd9dcc612fcf",
-      "lowSrc": "townhall44:02. Low/npc_clerk_tax_low.glb",
-      "lowSha256": "b8a688ac7cc2498ba585d6ee66e079702f9816e85eb3745a6f88db7a8a7d4a91",
+      "src": "npc52:01. High/npc_clerk_tax.glb",
+      "sha256": "176032dd9534aaa2dc8b07e668a5dee31ce9dc4e6b7715db92e5bb25fd36c6e9",
+      "lowSrc": "npc52:02. Low/npc_clerk_tax_low.glb",
+      "lowSha256": "9681c6e6facc739790a6138a6a244bcc986edb0aeccc57efb6ba02b3cc6e7c2e",
       "precompressed": true
     },
     {
       "out": "characters/npc_clerk_bank.glb",
-      "src": "townhall44:01. High/npc_clerk_bank.glb",
-      "sha256": "8fae805032318dada50b9a9d9b4dff5e5035c109c0599a7e97be4c9cf8d4038f",
-      "lowSrc": "townhall44:02. Low/npc_clerk_bank_low.glb",
-      "lowSha256": "85f75749094973f79f8a5b314b8f583ea071876eb28328b776e9338f8c8d6c26",
+      "src": "npc52:01. High/npc_clerk_bank.glb",
+      "sha256": "011062969266a85856cf3340914262022bb7879dd26f9962a2354d6cacd2b438",
+      "lowSrc": "npc52:02. Low/npc_clerk_bank_low.glb",
+      "lowSha256": "bd9a6f0001827e81ce01ceeeb9dc4e69fa4bc6b1e77fe4ca4b31216b50834525",
       "precompressed": true
     },
     {
@@ -7588,6 +7588,7 @@
     "angular63": "63. Game Island angular nature 2026-10-20",
     "furn64": "64. Game Island furniture moves 2026-10-21",
     "swing66": "66. Game Island tool swing moves 2026-10-22",
-    "ditto65": "65. Game Island ditto pet 2026-10-22"
+    "ditto65": "65. Game Island ditto pet 2026-10-22",
+    "npc52": "52. Game Island named npc refit 2026-10-18"
   }
 }
