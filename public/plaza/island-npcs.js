@@ -185,12 +185,23 @@
     }
     return best;
   }
+  // (R3 ③ 주민의 하루) the round by the island's time of day -- 아침 by the water, 낮 as ever, 저녁 round the gazebo and
+  // 알림마루, 밤 in the village -- the stopping places within 70 m of that part of the day's spot (all of them if too few).
+  // `phaseOf(ms)`: the island's time of day then, given by the server and each screen alike (setPhaseOf), so every one of
+  // them has each islander in the same place; at a change of the time of day they are on their next round at once
+  let phaseOf = () => 'day';
+  const setPhaseOf = (fn) => { phaseOf = typeof fn === 'function' ? fn : () => 'day'; };
+  const PHASE_SPOT = { morning: () => T.PIER || T.dalmaru?.PLACES?.pier, evening: () => T.SPOTS?.chat, night: () => T.dalmaru?.PLACES?.village || T.VILLAGE };
+  function phasePlaces(phase) {
+    const all = stopPlaces(); const spot = PHASE_SPOT[phase]?.(); if (!spot || !Number.isFinite(spot.x)) return all;
+    const near = all.filter((p) => Math.hypot(p.x - spot.x, p.z - spot.z) <= 70); return near.length >= 8 ? near : all;
+  }
   // One islander's round: legs between stopping places and the time each part takes. Cached.
   const rounds = new Map();
-  function round(n) {
-    if (rounds.has(n)) return rounds.get(n);
-    const rnd = seeded(0x5eed1 + n * 7919);
-    const places = stopPlaces();
+  function round(n, phase = 'day') {
+    const key = phase === 'day' ? n : `${n}:${phase}`; if (rounds.has(key)) return rounds.get(key);
+    const rnd = seeded(0x5eed1 + n * 7919 + ({ day: 0, morning: 101, evening: 202, night: 303 }[phase] || 0));
+    const places = phasePlaces(phase);
     const speed = 1.25 + rnd() * 0.5;
     const route = DAL ? dalmaruRoute(rnd, places) : [places[Math.floor(rnd() * places.length)]];
     for (let guard = 0; !DAL && route.length < 5 + Math.floor(rnd() * 3) && guard < 400; guard += 1) {
@@ -225,12 +236,12 @@
     }
     const look = LOOKS[n % LOOKS.length];
     const r = { period: t, parts, speed, look: { shirt: look[0], hair: look[1], skin: look[2], hat: look[3] }, phase: rnd() * t };
-    rounds.set(n, r);
+    rounds.set(key, r);
     return r;
   }
-  // Where islander n is at server time `ms`: { x, z, yaw, moving }.
+  // Where islander n is at server time `ms`: { x, z, yaw, moving } (on that time of day's round)
   function at(n, ms) {
-    const r = round(n);
+    const r = round(n, phaseOf(ms));
     const t = (((ms / 1000 + r.phase) % r.period) + r.period) % r.period;
     let lo = 0; let hi = r.parts.length - 1;
     while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (r.parts[mid].t0 <= t) lo = mid; else hi = mid - 1; }
@@ -249,14 +260,15 @@
     const st = round(n).parts.filter((p) => !p.moving).map((p) => p.pts[0]);
     return { x: st.reduce((a, p) => a + p.x, 0) / st.length, z: st.reduce((a, p) => a + p.z, 0) / st.length };
   }
-  function hangout(n) {
-    const { x, z } = homeOf(n);
+  function hangout(n, phase = phaseOf(Date.now())) { // (R3: where they are this part of the day)
+    const st = round(n, phase).parts.filter((p) => !p.moving).map((p) => p.pts[0]);
+    const x = st.reduce((a, p) => a + p.x, 0) / st.length; const z = st.reduce((a, p) => a + p.z, 0) / st.length;
     let best = null; let bd = 30;
     for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { best = a.label; bd = d; } }
     if (best) return best;
     // (묶음 1: a round over a wide stretch -- its middle falls in the bay or a field: the place most of their stops are by)
     const count = new Map();
-    for (const p of round(n).parts.filter((q) => !q.moving).map((q) => q.pts[0])) {
+    for (const p of round(n, phase).parts.filter((q) => !q.moving).map((q) => q.pts[0])) {
       let near = null; let nd = 45; for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - p.x, a.z - p.z); if (d < nd) { near = a.label; nd = d; } }
       if (near) count.set(near, (count.get(near) || 0) + 1);
     }
@@ -437,5 +449,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

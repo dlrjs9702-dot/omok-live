@@ -3487,7 +3487,7 @@
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
       if (l.skinId) row.append(el('p', 'smallMuted', `🎁 선물받은 스킨: ${l.skinName || '스킨'} (내 정보에서 입을 수 있어요)`)); // 3-1 스킨 선물
-      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
+      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.hidden = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- answered by talking to them) reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
       row.append(reply);
       if (!l.read) api('/api/island/mail/read', { method: 'POST', body: JSON.stringify({ id: l.id }) }).catch(() => {});
       list.append(row);
@@ -3554,7 +3554,7 @@
   // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): whoever walks by talks; the server holds them on every screen
   // while this window is open (renewed every few seconds, let go when it closes), and after their words come the choices
   let residentBusy = false; let residentTalk = null; // { n, timer } while a talk is open
-  const TALK_CHOICES = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['errand', '부탁할 거 있어요?'], ['ask', '이야기 나눠요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기)
+  const TALK_CHOICES = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['errand', '부탁할 거 있어요?'], ['ask', '이야기 나눠요'], ['gift', '선물해요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물)
   // R2: my 호감도 with each islander (their greeting as I pass by -- the scene), again after each talk
   async function refreshAffinity() { try { const d = await api('/api/island/affinity'); plaza.controller?.setAffinity?.(d.residents); } catch {} }
   function endResidentTalk() {
@@ -3570,7 +3570,7 @@
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${heart}` : `${data.role}${heart}`;
     const list = document.createElement('div'); list.className = 'talkChoices';
     // (R2 ④) their question of the day: three answers in place of the usual choices
-    const choices = data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : TALK_CHOICES;
+    const choices = data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : TALK_CHOICES; // (R3 ⑥: what I could give them)
     for (const [topic, label, choice] of choices) {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
       b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : askResident(data.n, topic, choice)));
@@ -3590,7 +3590,7 @@
   }
   async function askResident(n, topic, choice = null) {
     if (residentBusy) return; residentBusy = true;
-    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? { choice } : {}) }) }); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
+    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
     catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; }
   }
   async function talkResident(n) {

@@ -16,6 +16,9 @@
   const levelOf = (points = 0) => { let k = 0; LEVELS.forEach((l, i) => { if (points >= l.min) k = i; }); return k; };
   // how points come: the first talk of a Seoul day, an errand (the asker more), a story step
   const GAIN = Object.freeze({ talk: 1, errandFrom: 3, errandTo: 2, story: 2 });
+  // (R3 ⑤ 주민 사이의 관계) who gets on with whom -- an errand between two at odds patches it up a little (the server)
+  const RELATIONS = Object.freeze([[0, 3, 'friend'], [2, 8, 'friend'], [4, 7, 'friend'], [1, 5, 'rival'], [6, 9, 'rival'], [3, 6, 'friend'], [5, 8, 'rival']]);
+  const relationOf = (a, b) => RELATIONS.find(([x, y]) => (x === a && y === b) || (x === b && y === a))?.[2] || null;
   // (R2 ① 먼저 말 걸기) what an islander says over their head when I pass by, by level -- 처음 본 사이: nothing yet
   const GREETS = Object.freeze([[], ['안녕하세요, {me}님!', '{me}님, 오늘도 좋은 하루예요.', '어, {me}님이다!'],
     ['{me}님! 마침 생각하고 있었어요.', '{me}님, 어디 가요? 잘 다녀와요!', '오늘 날씨 좋죠, {me}님?'],
@@ -220,5 +223,5 @@
     return out.length ? pick(out, random) : '요즘은 섬이 조용해요. 평화로운 게 제일이죠.';
   }
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { WALKERS, KEEPERS, LEVELS, GAIN, GREETS, PHASES, MOODS, CHATS, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill };
+  return { WALKERS, KEEPERS, LEVELS, GAIN, GREETS, RELATIONS, relationOf, PHASES, MOODS, CHATS, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill };
 }));
