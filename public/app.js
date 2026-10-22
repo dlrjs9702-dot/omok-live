@@ -11713,7 +11713,9 @@
     const g = state.game;
     const endsAt = g.phase === 'drawing' ? g.roundEndsAt : g.phase === 'reveal' ? g.revealEndsAt : null;
     if (!endsAt || (g.phase === 'drawing' && desktopActionTimerOwns('pictionary'))) return;
-    pictionaryTimer.textContent = g.phase === 'reveal' ? `결과 공개 · ${pictionaryCountdownText(endsAt)}` : pictionaryCountdownText(endsAt);
+    // (CI 3차: the room's render's words -- this tick wrote 「결과 공개」 a second after the render wrote 「다음 라운드」, so the
+    // timer changed its words each second; pictionary-v2.spec waiting for 「다음 라운드」 failed when it read between)
+    pictionaryTimer.textContent = g.phase === 'reveal' ? `다음 라운드 · ${pictionaryCountdownText(endsAt)}` : pictionaryCountdownText(endsAt);
   }, 1000);
 
   setInterval(() => {
