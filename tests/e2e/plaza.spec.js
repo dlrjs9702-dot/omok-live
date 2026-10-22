@@ -1308,9 +1308,16 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await page.evaluate((DAL) => { const d = window.PlazaDebug(); d.setCamPitch(0); d.setCamYaw(DAL ? window.IslandTerrain.TOWNHALL.ry : 0); }, DAL);
   for (const lx of [0, 4.6, -6.5]) {
     await page.evaluate((x) => { const p = window.IslandTerrain.townhallWorld(x, 9.5); window.PlazaDebug().teleport(p.x, p.z); }, lx);
-    await page.keyboard.down('ArrowUp'); await page.waitForTimeout(1800); await page.keyboard.up('ArrowUp');
+    // (CI 3차: walked on until stopped, not 1.8 s -- on the slow runner's frames (a frame moves 0.05 s at most) the walk
+    // seldom got to the front, so this was seldom tried; drawn faster since this PR it does. Where it stops depends on
+    // where along the front's circles it slides: 0.638-0.657 m inside z1 measured (CI 6.6929 three times, run 39724207329;
+    // locally 6.702-6.712) -- the old bound 0.65 lay inside that; 0.70 still fails any walk into the hall)
+    await page.keyboard.down('ArrowUp');
+    let last = null;
+    await expect.poll(async () => { const now = await page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandTerrain.townhallLocal(d.x, d.z); }); const still = last && Math.hypot(now.lx - last.lx, now.lz - last.lz) < 0.002; last = now; return still; }, { timeout: 15000, intervals: [500] }).toBe(true);
+    await page.keyboard.up('ArrowUp');
     const at = await page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandTerrain.townhallLocal(d.x, d.z); });
-    expect(at.lz, `${lx}: ${JSON.stringify(at)}`).toBeGreaterThan(DAL ? T.TOWNHALL.body.z1 - 0.65 : Math.abs(at.lx) < 3.3 ? 7.4 : 6.3);
+    expect(at.lz, `${lx}: ${JSON.stringify(at)}`).toBeGreaterThan(DAL ? T.TOWNHALL.body.z1 - 0.7 : Math.abs(at.lx) < 3.3 ? 7.4 : 6.3);
   }
   await expectNoScriptError(page);
   await a.context.close();
