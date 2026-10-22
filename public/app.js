@@ -3145,16 +3145,39 @@
         const data = await api('/api/island/fish/start', { method: 'POST', body: '{}' });
         fishId = data.fishId;
         if (data.bait) showToast(`🪱 ${data.bait}를 썼어요.`); // v1.10.92
-        if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; })) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
-      } else if (phase === 'cast' || phase === 'wait' || phase === 'bite') {
-        try {
-          const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId }) });
-          plaza.controller?.fishResult?.(data.species);
-          showToast(`${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name} +1${data.firstTime ? ' · 도감 등록' : ''}`);
-        } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
-      }
+        if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; fishArrowsEnd(); }, fishArrowsStart)) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
+      } else if (phase === 'cast' || phase === 'wait') await pullFish(); // (too early: it got away)
     } catch (error) { showToast(error.message); } finally { fishBusy = false; }
   }
+  async function pullFish() {
+    try {
+      const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId }) });
+      plaza.controller?.fishResult?.(data.species);
+      showToast(`${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name} +1${data.firstTime ? ' · 도감 등록' : ''}`);
+    } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
+  }
+  // (문제 기록 3회차 4 「낚시 미니게임: 입질 때 화살표」) at the bite, arrows to press in order (4~12, more the rarer the
+  // fish) before the bar runs out: the arrow keys on a PC, the four buttons on a phone; a wrong one only shakes, the last
+  // one pulls it in. Out of time, the scene lets it go (the bite's end).
+  const FISH_DIRS = ['up', 'right', 'down', 'left']; const FISH_KEYS = { ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down', ArrowLeft: 'left' };
+  const fishArrowsBox = byId('fishArrows'); let fishGame = null;
+  function fishArrowsStart(n, ms) {
+    fishGame = { seq: Array.from({ length: n }, () => FISH_DIRS[Math.floor(Math.random() * 4)]), at: 0 };
+    const row = fishArrowsBox.querySelector('.fishArrowSeq');
+    row.replaceChildren(...fishGame.seq.map((dir) => { const s = document.createElement('span'); s.dataset.dir = dir; return s; }));
+    fishArrowsBox.classList.remove('hidden', 'wrong'); fishArrowMark(); // (shown first: a hidden bar runs no transition)
+    const bar = fishArrowsBox.querySelector('.fishArrowTime i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${ms}ms linear`; bar.style.width = '0%';
+  }
+  function fishArrowsEnd() { fishGame = null; fishArrowsBox.classList.add('hidden'); }
+  function fishArrowMark() { [...fishArrowsBox.querySelectorAll('.fishArrowSeq span')].forEach((s, k) => { s.classList.toggle('done', k < fishGame.at); s.classList.toggle('now', k === fishGame.at); }); }
+  function fishArrow(dir) {
+    if (!fishGame || fishBusy) return;
+    if (fishGame.seq[fishGame.at] !== dir) { fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); return; }
+    fishGame.at += 1; fishArrowMark();
+    if (fishGame.at === fishGame.seq.length) { fishArrowsEnd(); fishBusy = true; pullFish().finally(() => { fishBusy = false; }); }
+  }
+  window.addEventListener('keydown', (e) => { if (!fishGame || !FISH_KEYS[e.code]) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) fishArrow(FISH_KEYS[e.code]); }, true);
+  fishArrowsBox.querySelectorAll('.fishArrowPad button').forEach((b) => b.addEventListener('click', () => fishArrow(b.dataset.dir)));
   // v1.10.42 도감: the bag window's other page -- every find, the ones not found yet as silhouettes
   const DEX_ICON = { herb: 'herb', berry: 'berries', mushroom: 'mushrooms' };
   // v1.10.43: the page `on` is 'dex' (the finds) or 'photo' (기념사진: the photo spots and the day each was taken); false the bag

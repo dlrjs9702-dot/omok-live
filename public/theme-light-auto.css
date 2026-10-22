@@ -919,6 +919,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #seatLabel{background:#f7efe1;border:1px solid #d6c3a5;color:#5e4d3b}
 :root[data-theme="light"] .plazaDialog.talkMode{border:2px solid #23806f;background:rgba(247,239,225,.94)}
 :root[data-theme="light"] .plazaDialog.talkMode::backdrop{background:transparent}
+:root[data-theme="light"] .fishArrows{background:rgba(255,250,240,.95);border:3px solid #8a6a4a;box-shadow:0 8px 24px rgba(74,56,40,.28)}
+:root[data-theme="light"] .fishArrowSeq span{background:#efe3cf;color:#4a3828}
+:root[data-theme="light"] .fishArrowSeq span.now{background:#f08a3c;color:#fff}
+:root[data-theme="light"] .fishArrowTime{background:#e6d8c2}
+:root[data-theme="light"] .fishArrowTime i{background:#4caf6a}
 :root[data-theme="light"] .plazaDialog.editMode::backdrop{background:transparent}
 :root[data-theme="light"] .plazaDialog.talkMode::after{background:inherit;border-left:2px solid #23806f;border-top:2px solid #23806f}
 :root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead h2{background:#dff1ec;color:#2a5f55}

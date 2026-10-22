@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { post, get, shopper, buyAndEquip, expectNoScriptError, spaceOn } = require('./skin-support');
+const { post, get, shopper, buyAndEquip, expectNoScriptError, spaceOn, pressFishArrows } = require('./skin-support');
 
 // 게임 아일랜드: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈춘다.
 // v1.9.7부터 일반 사용자에게 기존 로비 전환 UI는 없고, 계정 메뉴는 관리자 창(관리자만)·내 정보·접속 종료만 둔다. PC 전용.
@@ -1358,10 +1358,11 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await expect.poll(async () => {
     if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); return 'cast again'; }
     await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); return page.locator('#plazaHint').textContent();
-  }, { timeout: 40000, intervals: [1500] }).toBe('SPACE · 당기기');
+  }, { timeout: 40000, intervals: [1500] }).toMatch(/^입질! 화살표 \d+개를 순서대로$/); // (3회차 4: the arrows pull it in)
   await expect.poll(seen, { timeout: 5000 }).toBe('fish:reel');
   expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('Space'); expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('bite'); // (SPACE no longer pulls)
+  expect(await pressFishArrows(page)).toBeGreaterThanOrEqual(4);
   await expect.poll(seen, { timeout: 8000 }).not.toBe('fish:reel'); // past the reel there (the catch -- a moment's pose a slow page may miss -- or done); the bag below is the server's own catch
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
