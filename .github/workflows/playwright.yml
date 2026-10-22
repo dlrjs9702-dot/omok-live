@@ -95,7 +95,11 @@ jobs:
 
       - name: Unit test failures as annotations
         if: ${{ failure() && matrix.group == 'unit' }}
-        run: grep -E '^\s*not ok ' unit-test.log | head -10 | sed -E 's/^\s*not ok [0-9]+ - /::error title=unit test failed::/' || true
+        run: |
+          # each failed test's name and the first line of its error (the TAP block under it)
+          awk '/^[[:space:]]*not ok /{ if (n) print "::error title=unit test failed::" n e; n=$0; sub(/^[[:space:]]*not ok [0-9]+ - /, "", n); e=""; w=1; next }
+               w && /^[[:space:]]*error:/ { x=$0; sub(/^[[:space:]]*error:[[:space:]]*[|>-]*[[:space:]]*/, "", x); if (x == "") { getline x; gsub(/^[[:space:]]+/, "", x) } e=" -- " x; w=0 }
+               END { if (n) print "::error title=unit test failed::" n e }' unit-test.log | head -10 || true
 
       # The parts are disjoint and together the whole suite (tools/ci-split.js checks every test is in exactly one part;
       # a split that fails stops the part -- never an empty list, which would run everything). A part stops after 10
