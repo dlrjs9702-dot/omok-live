@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.125 문제 기록 3회차 1묶음: 공통 오류, 수조 물고기, 소파 앉기, 민원실 데스크, 관공서 기둥
+
+- 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 공통 오류·2·3·9·12번.
+- 공통 오류 `reading 'name' @ plaza-scene.js:3091 at step`(4건): 가까운 것(best)이 지난 프레임의 `grab:hold`·`fish:spot`일 때 — 가구를 놓거나 낚싯줄을 거두며 그 자리를 지운 뒤 이름을 읽음. `doorOf`에 없는 id는 건너뜀(모든 경로가 지나는 자리 한 곳).
+- 12: 수조 물고기가 머리(−Z) 쪽으로 헤엄(방향 +π, 에셋 front −Z).
+- 3: 내 집 앉을 자리 높이 — SitIdle 몸 앉는 면이 뿌리보다 0.26 위, 장면이 0.28 올림 → 뿌리를 방석보다 0.54 아래(광장 벤치와 같게, 전에는 0.45로 9 cm 뜸). 침대 0.55·2층 침대 0.5로 모델 매트리스에 맞춤. 단위 시험 `home-seat-height`(모든 앉는 가구: 모델 방석 높이, 앉은 몸).
+- 9: 민원실 — 데스크 앞줄(데스크 앞면 + 0.35) 뒤로는 서지 못하고, 데스크 안에서 밀려날 때도 앞이나 옆으로만(`roomClamp`, 서버 공통). 단위 시험 추가.
+- 2: 관공서 정면 에셋 교체(assets 55 `facade_townhall`, 기둥 ±2.9·±6.0·±9.1·±12.2, 가운데 칸 5.8 m).
+- 검증: 단위(앉는 높이, 민원실, 에셋), e2e 내 집(PC·휴대폰), 광장(PC — 챔피언 이름표 :400·첫 접속 성별 :753은 main에서도 같은 자리에서 실패, CI 3차에 넘김). Codex 검토 대기(10/25).
+
 ## v1.10.124 문제 기록 2회차 6묶음: 가구점·펫샵 바닥, 길 파임, 자전거가 돌판에 묻힘, 진단에 장착
 
 - 근거: gamecenter-notes `docs/issue-log-review-20261021-b.md` 2·3·9·10번(사진 서명 링크로 사진 확인 뒤 원인).
@@ -31,10 +41,3 @@
 - 안내판을 새 줄기 길 옆으로.
 - 섬 주민 둘이 서로 비킬 때 한쪽이 소품에 막히면 다른 쪽이 남은 만큼 비킴(`island-npcs` 짝 떼어 놓기, 전에는 한쪽이 멈춰 선 때만) — 바뀐 경로에서 배회 NPC 시험(가혹한 장면)이 0.74 m를 찾아냄.
 - 검증: 단위(집터 규칙 — 평지·해안·길·서로, 배회 NPC), e2e 내 집·달마루 걷기(PC·휴대폰). Codex 검토 대기(10/25).
-
-## v1.10.122 문제 기록 2회차 4묶음: 내 집 가구를 캐릭터로 직접 옮기기
-
-- 근거: gamecenter-notes `docs/issue-log-review-20261021-b.md` 11번.
-- 11: 내 집에서 가구 앞에 서서 행동 단추(Space)를 0.45초 길게 누르면 잡기 — 앞뒤 이동으로 0.5 m 칸씩 밀고 당기기(속도 0.9), R·돌리기 단추로 90°, 다시 누르면 놓기. 자리 검사는 `HOME.placeError` 그대로, 옮길 때마다 `/api/home/place`로 저장하고 틀리면 되돌림.
-- 모션 4개(FurnGrab·FurnPush·FurnPull·FurnTurn, `island-models.json`), 안내 「가구 놓기 · R 돌리기」, 휴대폰은 행동 단추 누름·뗌으로 같은 동작.
-- 검증: e2e 내 집(잡기·밀기 0.5 m 칸·돌리기·놓기, 서버 반영, PC·휴대폰). Codex 검토 대기(10/25).

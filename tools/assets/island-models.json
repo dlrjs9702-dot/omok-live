@@ -5226,9 +5226,9 @@
     {
       "out": "dalmaru-v1/facade_townhall.glb",
       "src": "dalmaru55:01. High/facade_townhall.glb",
-      "sha256": "f517e8372ab5075405bec554497001d082d476fdf1ebe4f7b5f7a7dbf24c0c79",
+      "sha256": "23f46285ff81fd68bd97cb0933b04fe8ae88324a4316d7bd24275179ddee8b6a",
       "lowSrc": "dalmaru55:02. Low/facade_townhall_low.glb",
-      "lowSha256": "086b8ef78871ef6b74eb8155dcc612c15ae2af9a993c4d0892ca948a6f4619a9",
+      "lowSha256": "a621acdccda07e66addc2570e9a161abdabca975b6c0ddf1abcc05a93e66a755",
       "precompressed": true
     },
     {

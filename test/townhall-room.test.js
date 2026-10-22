@@ -47,3 +47,14 @@ test('관공서 실내: 문에서만 입장, 실내 안에서만 이동, 창구 
   const after = (await stand(a, door.x, door.z + 0.5)).data;
   assert.ok(!T.inRoom(after.x, after.z), '나오면 섬 위');
 });
+
+// (문제 기록 3회차 9 「세금 창구 데스크 뒤로 빨려 들어가」) no one stands behind the desks: put inside one or behind it, out
+// to its front; the customers' chairs stay in front
+test('민원실: 데스크 안·뒤에 놓여도 데스크 앞으로, 창구 의자는 데스크 앞', () => {
+  const R = T.TOWNHALL_ROOM;
+  for (const d of R.layout.desks) for (const dz of [0, -0.4, -1.5, -3.5]) for (const dx of [-1.2, 0, 1.2]) {
+    const w = T.roomClamp(R.x + d.lx + dx, R.z + d.lz + dz);
+    assert.ok(w.z - R.z >= d.lz + 0.55 + 0.35 - 1e-6, `${d.id} (${dx}, ${dz}) -> ${(w.z - R.z).toFixed(2)}`);
+  }
+  for (const s of T.plazaProps().seats.filter((x) => x.counter)) assert.ok(s.z - R.z > -3.6, s.id);
+});

@@ -323,16 +323,22 @@
   const roomWorld = (lx, lz) => ({ x: TOWNHALL_ROOM.x + lx, z: TOWNHALL_ROOM.z + lz });
   const inRoom = (x, z, pad = 0) => Math.abs(x - TOWNHALL_ROOM.x) <= TOWNHALL_ROOM.w / 2 + pad && Math.abs(z - TOWNHALL_ROOM.z) <= TOWNHALL_ROOM.d / 2 + pad;
   // where one may stand inside: within the walls (0.6 m off them) and in front of the counter
+  // the desks' front (their box and the 0.35 a body keeps off it), room-local
+  let deskFront = null;
+  const deskLine = () => deskFront ??= Math.max(...TOWNHALL_ROOM.layout.desks.map((d) => { const o = TOWNHALL_ROOM.layout.obstacles.find(([ox, oz]) => ox === d.lx && oz === d.lz); return d.lz + (o ? o[3] / 2 : 0.55) + 0.35; }));
   function roomClamp(x, z) {
     const R = TOWNHALL_ROOM; const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
     let lx = Math.max(-R.w / 2 + 0.6, Math.min(R.w / 2 - 0.6, fin(x, R.x + R.entry.lx) - R.x));
-    let lz = Math.max(-R.d / 2 + 0.6, Math.min(R.d / 2 - 0.6, fin(z, R.z + R.entry.lz) - R.z));
+    // (문제 기록 3회차 9 「세금 창구 데스크 뒤로 빨려 들어가」: the clerks' side is theirs -- no one stands behind the desks'
+    // front, and a way out of a piece is never one behind it)
+    const line = deskLine();
+    let lz = Math.max(line, Math.min(R.d / 2 - 0.6, fin(z, R.z + R.entry.lz) - R.z));
     // (B 44: out of the desks, chairs and props -- of the four ways out of a piece, the nearest clear one, as in the 백화점)
     const hit = (x, z) => [...R.layout.obstacles, ...COUNTERS.map((c) => [c.lx, c.lz, 1.14, 1.28])].find(([ox, oz, w, d]) => Math.abs(x - ox) < w / 2 + 0.35 - 1e-6 && Math.abs(z - oz) < d / 2 + 0.35 - 1e-6);
     for (let pass = 0, o = hit(lx, lz); o && pass < 4; pass += 1, o = hit(lx, lz)) {
       const hx = o[2] / 2 + 0.35; const hz = o[3] / 2 + 0.35;
       const ways = [[o[0] - hx, lz], [o[0] + hx, lz], [lx, o[1] - hz], [lx, o[1] + hz]].sort((p, q) => Math.hypot(p[0] - lx, p[1] - lz) - Math.hypot(q[0] - lx, q[1] - lz));
-      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= R.w / 2 - 0.6 && Math.abs(z) <= R.d / 2 - 0.6) || ways[0];
+      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= R.w / 2 - 0.6 && z >= line && z <= R.d / 2 - 0.6) || ways.find(([, z]) => z >= line) || ways[0];
     }
     return { x: Math.round((R.x + lx) * 100) / 100, z: Math.round((R.z + lz) * 100) / 100 };
   }
