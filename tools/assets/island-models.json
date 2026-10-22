@@ -446,6 +446,21 @@
       "sha256": "b102ad5dc12d73b24fabdbd50c324aea1c8099b48ccd1ec87eab45dd4c3cdbf7"
     },
     {
+      "out": "characters/motions/NetSwing.glb",
+      "src": "swing66:01. High/motions/NetSwing.glb",
+      "sha256": "2a644ab929d9dddf130ec1d983462376f27b588691bbec027e3668440eb5c542"
+    },
+    {
+      "out": "characters/motions/HitReact.glb",
+      "src": "swing66:01. High/motions/HitReact.glb",
+      "sha256": "b64bc913dff00e6246a8fcf73de920e9e992377f7bc241a1a20840a6bd65e354"
+    },
+    {
+      "out": "characters/motions/Angry.glb",
+      "src": "swing66:01. High/motions/Angry.glb",
+      "sha256": "7f52021cd612a67ac313567c6c822b1ba409a47b6ec9192b1d9974d22a4e3424"
+    },
+    {
       "out": "characters/motions/CarryIdle.glb",
       "src": "motion36:motions/CarryIdle.glb",
       "sha256": "28e911640d2e02370f9739a0e231a9860360b266c4e22e50d865cfe4c434503f"
@@ -7563,6 +7578,7 @@
     "home58": "58. Game Island my home 2026-10-20",
     "insects62": "62. Game Island insect motions 2026-10-20",
     "angular63": "63. Game Island angular nature 2026-10-20",
-    "furn64": "64. Game Island furniture moves 2026-10-21"
+    "furn64": "64. Game Island furniture moves 2026-10-21",
+    "swing66": "66. Game Island tool swing moves 2026-10-22"
   }
 }
