@@ -9,14 +9,16 @@ test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급�
     const who=await island(browser,request,`이탈${kind}`,{__only:true});const {page,token}=who;
     const target=kind==='weed' ? (await get(request,'/api/island/weeds',token)).data.weeds.map(([id,x,z])=>({id,x,z}))[0]
       : (await get(request,'/api/test/island/events',token)).data.events.find(e=>e.type==='berry' && e.state==='open');
-    const placed=await post(request,'/api/plaza/state',token,{x:target.x,z:target.z,yaw:0,moving:false});expect(placed.status).toBe(200);
-    await page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),x:placed.data.x,z:placed.data.z})}));
-    await page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),placed.data);
+    // the page warps there itself (no pose in flight, off the plaza first): a jump posted beside the page's own poses ran
+    // from the spawn, and the server stops a jump at whoever earlier tests left standing in its way
+    // -- and the server has me there (the page's first pose after it) before the action asks it
+    const posed=page.waitForResponse(r=>r.url().endsWith('/api/plaza/state') && Math.hypot((r.request().postDataJSON()?.x??1e9)-target.x,(r.request().postDataJSON()?.z??1e9)-target.z)<1 && r.status()===200);
+    await page.evaluate(p=>window.PlazaWarp(p.x,p.z),target); await posed;
     await expect(page.locator('#plazaHint')).toContainText(kind==='weed'?'잡초':'나무 열매');
     await page.clock.install();await page.clock.pauseAt(await page.evaluate(()=>Date.now()+10000)); // Browser clock; pause before starting the action, not at a host timestamp that can arrive in the past.
     const started=page.waitForResponse(r=>r.url().endsWith(`/api/island/${kind}/start`));
     const cancelled=page.waitForRequest(r=>r.url().endsWith(`/api/island/${kind}/cancel`),{timeout:10000});
-    await page.keyboard.press('Space');expect((await started).status()).toBe(200);
+    await page.keyboard.press('Space');const start=await started;expect(start.status(),await start.text()).toBe(200);
     await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe(kind);
     // An immediate session end bypasses the modal/frame cancellation path, exercising stop/dispose itself.
     await page.evaluate(()=>document.getElementById('logoutConfirmBtn').click());
