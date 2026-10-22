@@ -1867,7 +1867,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id.startsWith('home:') ? homeDoor(id.slice(5)) : id.startsWith('insect:') ? catchInsect(id.slice(7)) : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1875,6 +1875,7 @@
       plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
+      plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -2370,7 +2371,7 @@
         slot.append(itemIcon(item), name, qty);
         if (PLANT_GOODS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = PLANT_GOODS[item.itemId]; use.addEventListener('click', () => plantGood(item.itemId)); slot.append(use); } // B 45
         if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = walking ? '집에 두기' : '데리고 다니기'; use.addEventListener('click', () => choosePet(walking ? null : kind)); slot.append(use); } // B 47
-        if (item.itemId === 'bugnet') { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '채집하기'; use.addEventListener('click', () => { islandBagDialog.close(); showToast('풀밭·꽃·나무의 곤충에게 살금살금 걸어가서 SPACE(휴대폰은 상호작용)로 잡아요. 뛰거나 자전거로 가면 달아나요.', 5000); }); slot.append(use); } // B 47 (묶음 5: the insects are out on the island)
+        if (TOOL_TIPS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = heldTool === item.itemId ? '넣기' : '들기'; use.addEventListener('click', () => holdTool(item.itemId)); slot.append(use); } // (3회차 22: in hand)
         if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
@@ -2390,6 +2391,18 @@
   async function refreshInsects() {
     clearTimeout(insectTimer);
     try { const d = await api('/api/island/insects'); plaza.controller?.setInsects?.(d.list); insectTimer = setTimeout(refreshInsects, Math.max(5000, d.next + 800)); } catch { insectTimer = setTimeout(refreshInsects, 60000); }
+  }
+  // (문제 기록 3회차 22) a tool from the bag in hand (one at a time, again to put it away): with the 잠자리채 SPACE (휴대폰
+  // 상호작용) swings it -- a bug in front is caught, an islander struck gets cross; with the 낚싯대 I fish at the water
+  const TOOL_TIPS = { bugnet: '잠자리채를 들었어요. 곤충 앞에서 SPACE(휴대폰은 상호작용)로 휘둘러 잡아요. 뛰거나 자전거로 가면 달아나요.', fishing_rod: '낚싯대를 들었어요. 물가에서 SPACE(휴대폰은 상호작용)로 던져요.' };
+  let heldTool = null;
+  function holdTool(kind) {
+    heldTool = heldTool === kind ? null : kind; plaza.controller?.setHeldTool?.(heldTool); islandBagDialog.close();
+    showToast(heldTool ? TOOL_TIPS[heldTool] : '가방에 넣었어요.', heldTool ? 5000 : 2000);
+  }
+  async function swingNet() {
+    const hit = await plaza.controller?.netSwing?.(); if (!hit) return;
+    if (hit.insect) await catchInsect(hit.insect); else if (hit.resident != null) plaza.controller?.residentHit?.(hit.resident);
   }
   async function catchInsect(id) {
     try {
