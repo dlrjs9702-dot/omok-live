@@ -18,7 +18,9 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   }, weeds);
   expect(spot).not.toBeNull();
   await page.evaluate(({ x, z }) => window.PlazaWarp(x, z), spot);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish()), { timeout: 10000 }).toBe(true);
+  // (CI 3차: once on the CI runner canFish stayed false for 10 s after the warp -- put there again if moved off, and say where it was)
+  let at = null;
+  await expect.poll(() => page.evaluate(async (s) => { const d = window.PlazaDebug(); if (!d.canFish()) await window.PlazaWarp(s.x, s.z); const e = window.PlazaDebug(); return { can: e.canFish(), x: e.x, z: e.z, space: e.space }; }, spot).then((r) => { at = r; return r.can; }), { timeout: 10000 }).toBe(true).catch((error) => { error.message += `\nlast: ${JSON.stringify(at)} spot: ${JSON.stringify(spot)}`; throw error; });
   await expect(page.locator('#plazaHint')).toHaveText(/낚시$/, { timeout: 10000 }) // (a phone shows no SPACE);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);

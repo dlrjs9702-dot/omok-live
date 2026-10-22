@@ -356,8 +356,10 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - LANE.x, o.z - LANE.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
   const watching = b.page.evaluate((id) => new Promise((resolve) => { // until a stands still on b's screen again
     const out = []; const start = performance.now(); window.__walkDone = false;
-    const tick = () => {
-      const o = (window.PlazaDebug()?.others || []).find((p) => p.id === id); if (o) out.push({ t: performance.now(), z: o.z });
+    // (CI 3차: the frame's own time, the one the scene moves the walker by -- performance.now() here comes after that frame's
+    // drawing, which varies: a long draw then a short one made a full step look like it took a fraction of a frame, 18 m/s)
+    const tick = (now) => {
+      const o = (window.PlazaDebug()?.others || []).find((p) => p.id === id); if (o) out.push({ t: now, z: o.z });
       const settled = window.__walkDone && out.length > 2 && Math.abs(out[out.length - 1].z - window.__walkEnd) < 0.05;
       if (!settled && performance.now() - start < 30000) requestAnimationFrame(tick); else resolve(out);
     };
