@@ -352,9 +352,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
   // v1.10.8: a walks down the harbour walk; on b's screen a moves on evenly -- never backward, never faster than a
   // run in a frame (no surge after a late update), and arrives where a stopped
-  // (CI 3차, run 39706397978 #3, both tries: b drew a 0.34 m step back -- the server stops a walk at another player
-  // (plazaSeparate) and sets the walker back, and another test's player was standing on the lane: one is on the island
-  // 15 s after its page closes, and for a retry the failed try's own a is that player. The lane clear of others first.)
+  // (the lane clear of other players first: the server stops a walk at one, plazaSeparate, and sets the walker back)
   await expect.poll(() => a.page.evaluate(([L, keep]) => (window.PlazaDebug()?.others || []).filter((o) => o.id !== keep && Math.abs(o.x - L.x) < 2.5 && o.z > L.z - 2 && o.z < L.z + 12).length, [LANE, bId]), { timeout: 30000 }).toBe(0);
   await a.page.evaluate((p) => window.PlazaWarp(p.x, p.z), LANE);
   await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - LANE.x, o.z - LANE.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
