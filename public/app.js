@@ -1573,7 +1573,7 @@
     return card;
   }
   function openPlazaWindow(title, nodes) {
-    plazaDialog.classList.remove('talkMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
+    plazaDialog.classList.remove('talkMode', 'editMode', 'folded'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
     // the earlier one's content in it; whatever is not part of this window goes back home first)
@@ -2805,7 +2805,7 @@
     const status = line(pieces.length ? '놓을 가구를 고르세요.' : '가구 창고가 비어 있어요. 백화점 2층 가구점에 가 보세요.'); status.setAttribute('role', 'status');
     const pad = document.createElement('div'); pad.className = 'homeEditPad';
     const show = () => { const why = homeEditing ? plaza.controller?.homeGhost?.(homeEditing) : null; if (homeEditing) status.textContent = `${homeEditing.name} · ${why || '여기에 놓을 수 있어요'}`; for (const b of pad.querySelectorAll('button')) b.disabled = !homeEditing; put.disabled = !homeEditing || Boolean(why); back.disabled = !homeEditing || !placed.has(homeEditing.uid); };
-    const move = (dx, dz) => { if (!homeEditing) return; homeEditing.x = Math.round((homeEditing.x + dx) * 4) / 4; homeEditing.z = Math.round((homeEditing.z + dz) * 4) / 4; show(); };
+    const move = (dx, dz) => { if (!homeEditing) return; const q = H.snapPos({ ...homeEditing, x: homeEditing.x + dx, z: homeEditing.z + dz }, homeInside.home.stage); homeEditing.x = q.x; homeEditing.z = q.z; show(); }; // (3회차 6: up against a wall too)
     for (const p of pieces) {
       const b = btn(`${p.name}${placed.has(p.uid) ? ' · 놓음' : ''}`, 'ghost furniturePiece');
       b.dataset.uid = p.uid; b.setAttribute('role', 'listitem');
@@ -2828,9 +2828,12 @@
     const put = btn('놓기', 'primary', () => homeEditing && send({ uid: homeEditing.uid, x: homeEditing.x, z: homeEditing.z, rot: homeEditing.rot }, `${homeEditing.name} — 놓았어요`));
     const back = btn('창고로 넣기', 'secondary', () => homeEditing && send({ uid: homeEditing.uid, remove: true }, `${homeEditing.name} — 가구 창고로 넣었어요`));
     const row = document.createElement('div'); row.className = 'goodBuy'; row.append(put, back);
-    editBox.replaceChildren(status, pad, row, line(`가구 ${homeInside.home.pieces.length}/${H.stageOf(homeInside.home.stage).pieces}점 · 벽 가구(액자·시계·커튼 창·선반)는 뒤가 벽에 닿게`), list);
-    homeEditing = null; openPlazaWindow('꾸미기', [editBox]); show();
-    plazaDialog.addEventListener('close', () => { homeEditing = null; plaza.controller?.homeGhost?.(null); }, { once: true });
+    const fold = btn('접기', 'ghost tiny homeEditFold', () => { const folded = plazaDialog.classList.toggle('folded'); fold.textContent = folded ? '펼치기' : '접기'; fold.setAttribute('aria-expanded', String(!folded)); }); fold.setAttribute('aria-expanded', 'true');
+    editBox.replaceChildren(fold, status, pad, row, line(`가구 ${homeInside.home.pieces.length}/${H.stageOf(homeInside.home.stage).pieces}점 · 벽 가구(액자·시계·커튼 창·선반)는 뒤가 벽에 닿게`), list);
+    // (문제 기록 3회차 5 「창이 다 가려서 안 보여」: an edge strip -- the right side on a PC, the bottom on a phone -- folded
+    // to its title with 접기, the camera over the whole room)
+    homeEditing = null; openPlazaWindow('꾸미기', [editBox]); plazaDialog.classList.add('editMode'); plazaDialog.classList.remove('folded'); plaza.controller?.homeEditView?.(true); show();
+    plazaDialog.addEventListener('close', () => { homeEditing = null; plaza.controller?.homeGhost?.(null); plaza.controller?.homeEditView?.(false); plazaDialog.classList.remove('editMode', 'folded'); }, { once: true });
   }
   // a tank or the insect case: what is in it (꺼내기 -- back to the bag) and what of my bag fits (넣기)
   const tankBox = document.createElement('div'); tankBox.className = 'homeTank'; tankBox.id = 'homeTank';
