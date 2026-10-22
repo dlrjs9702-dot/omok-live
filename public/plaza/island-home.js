@@ -81,10 +81,15 @@
   // the back of a piece (its +Z, as made) points to: rot 0 -> +z (the back wall), 1 -> -x... (a quarter turn each)
   const backDir = (rot) => [[0, 1], [1, 0], [0, -1], [-1, 0]][((rot % 4) + 4) % 4];
   // -> null when it may stand there, else why not (Korean, for the page)
-  function placeError(p, others = [], stage = 2) {
+  // (문제 기록 3회차 6 「벽면에 딱 안 붙어」: a piece stands on the 0.25 m steps or with an edge right against a wall -- the
+  // walls are not on the steps, so a step short of one left a gap of up to 0.24 m)
+  const onStep = (v) => Math.abs(v * 4 - Math.round(v * 4)) < 1e-6;
+  const flushOn = (v, half, H) => Math.abs(Math.abs(v) + half - H) < 1e-6;
+  function placeError(p, others = [], stage = 2, { free = false } = {}) { // free: a held piece on its way (any place, not only the steps)
     const shape = shapeOf(p.id); if (!SIZE[shape]) return '놓을 수 없는 가구예요.';
-    if (![0, 1, 2, 3].includes(p.rot) || !Number.isFinite(p.x) || !Number.isFinite(p.z) || Math.abs(p.x * 4 - Math.round(p.x * 4)) > 1e-6 || Math.abs(p.z * 4 - Math.round(p.z * 4)) > 1e-6) return '자리를 확인해 주세요.';
+    if (![0, 1, 2, 3].includes(p.rot) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return '자리를 확인해 주세요.';
     const b = boxOf(p); const st = stageOf(stage); const HX = st.hx; const HZ = st.hz;
+    if (!free && !((onStep(p.x) || flushOn(p.x, (b.x1 - b.x0) / 2, HX)) && (onStep(p.z) || flushOn(p.z, (b.z1 - b.z0) / 2, HZ)))) return '자리를 확인해 주세요.';
     if (b.x0 < -HX - 1e-6 || b.x1 > HX + 1e-6 || b.z0 < -HZ - 1e-6 || b.z1 > HZ + 1e-6) return '방 밖으로 나가요.';
     if (st.fixed.some((w) => overlap(b, w))) return '방의 벽이나 창가 의자와 겹쳐요.';
     if (HUNG.has(shape)) { // its back against the back or a side wall (the low front wall holds nothing)
@@ -95,6 +100,13 @@
     if (overlap(b, doorwayOf(stage))) return '문 앞은 비워 두세요.';
     if (FLAT.has(shape)) return null; // (a rug goes under the rest)
     return others.some((o) => !HUNG.has(shapeOf(o.id)) && !FLAT.has(shapeOf(o.id)) && overlap(b, boxOf(o))) ? '다른 가구와 겹쳐요.' : null;
+  }
+  // the place nearest p that placeError takes: its step, or against a wall when that is within a step (3회차 6)
+  function snapPos(p, stage = 2) {
+    const s = SIZE[shapeOf(p.id)]; if (!s) return { x: p.x, z: p.z }; const st = stageOf(stage);
+    const [w, d] = p.rot % 2 ? [s[1], s[0]] : [s[0], s[1]];
+    const one = (v, half, H) => { const hi = H - half; const q = Math.min(hi, Math.max(-hi, Math.round(v * 4) / 4)); return [q, hi, -hi].filter((c) => c === q || Math.abs(c - v) < 0.25).sort((a, b) => Math.abs(a - v) - Math.abs(b - v))[0]; };
+    return { x: one(p.x, w / 2, st.hx), z: one(p.z, d / 2, st.hz) };
   }
   // where one may stand inside: in the walls, out of the floor pieces (0.3 m round them)
   function clamp(lot, x, z, pieces = [], stage = 2) {
@@ -132,5 +144,5 @@
     const list = SEATS[shapeOf(p.id)] || []; const a = (p.rot * Math.PI) / 2;
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, clamp, seatsOf };
+  return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf };
 }));

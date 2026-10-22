@@ -61,3 +61,18 @@ test('집 단계(묶음 4-2): 오두막 9×9 → 작은 집 12×12 → 큰 집 1
   const seats = H.allSeatsOf(H.LOTS[0], { stage: 3, pieces: [] }); assert.equal(seats.length, 1); assert.equal(seats[0].id, 'home:room0:0'); // (the window seat)
   assert.equal(H.allSeatsOf(H.LOTS[0], { stage: 2, pieces: [] }).length, 0);
 });
+
+// (문제 기록 3회차 6 「벽면에 딱 안 붙어」) a piece stands on the 0.25 m steps or flush against a wall, whatever its depth;
+// snapPos settles a slid piece on the nearest of those (pushed up to a wall: flush)
+test('내 집 가구: 0.25 m 칸이나 벽에 딱 붙은 자리, 미끄러진 자리는 가장 가까운 그곳으로', () => {
+  const st = H.stageOf(2); const sofa = { uid: 'u', id: 'sofa__mint', rot: 0, x: 0, z: 0 }; const [w, d] = H.SIZE.sofa;
+  const back = st.hz - d / 2; const side = st.hx - w / 2;
+  assert.equal(H.placeError({ ...sofa, z: back }, [], 2), null); // (5.425: not on the steps, flush with the back wall)
+  assert.equal(H.placeError({ ...sofa, x: -side, z: back }, [], 2), null); // (into the corner)
+  assert.match(H.placeError({ ...sofa, z: back - 0.1 }, [], 2), /자리/);
+  assert.equal(H.placeError({ ...sofa, z: back - 0.1 }, [], 2, { free: true }), null); // (held, on its way)
+  assert.deepEqual(H.snapPos({ ...sofa, z: back }, 2), { x: 0, z: back });
+  assert.deepEqual(H.snapPos({ ...sofa, z: 9 }, 2), { x: 0, z: back });
+  assert.deepEqual(H.snapPos({ ...sofa, x: 1.13, z: 1.38 }, 2), { x: 1.25, z: 1.5 });
+  assert.deepEqual(H.snapPos({ ...sofa, rot: 1, x: 9 }, 2), { x: st.hx - d / 2, z: 0 }); // (turned: its depth along x)
+});

@@ -233,7 +233,7 @@ test('친구: 거절은 알리지 않음, 끊으면 양쪽에서, 50명까지, �
 // 문제 기록 2회차 11 (사용자 「꾸미기가 너무 어려워. 캐릭터로 직접 밀고 당기기, 돌리기」): before a piece of my house, held SPACE
 // (the phone: the 상호작용 button held) grabs it; forward pushes it on in 0.5 m steps, R (돌리기) turns it, SPACE lets go -- each step
 // the server's (the same checks as placing it)
-test('내 집 가구 직접 옮기기: 길게 눌러 잡고 밀기(0.5m 칸), 돌리기, 놓기 -- 서버에 그대로', async ({ browser, request, isMobile }) => {
+test('내 집 가구 직접 옮기기: 길게 눌러 잡고 부드럽게 밀기, 돌리거나 놓을 때 칸·벽에 맞춰 서버에', async ({ browser, request, isMobile }) => {
   test.setTimeout(400000);
   const { a, page, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'g' : 'h');
   { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
@@ -252,10 +252,16 @@ test('내 집 가구 직접 옮기기: 길게 눌러 잡고 밀기(0.5m 칸), �
   await hold(700);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab()?.uid)).toBe(sofa.uid); await expect(page.locator('#plazaHint')).toContainText('가구 놓기');
   const at = async () => (await get(request, '/api/home', a.token)).data.mine.pieces.find((p) => p.uid === sofa.uid);
-  await page.keyboard.down('ArrowUp'); await expect.poll(async () => { const p = await at(); return Math.abs(p.x) + Math.abs(p.z); }, { timeout: 15000 }).toBeGreaterThanOrEqual(0.5); await page.keyboard.up('ArrowUp');
-  const moved = await at(); expect([moved.x, moved.z].every((v) => Math.abs(v * 2 - Math.round(v * 2)) < 1e-6)).toBe(true); expect(moved.x === 0 || moved.z === 0).toBe(true); expect(moved.rot).toBe(0);
-  if (isMobile) await page.locator('#islandTurnBtn').tap(); else await page.keyboard.press('KeyR');
+  // (3회차 7: held, it slides with me -- between the steps too -- and the server is told only when it settles)
+  await page.keyboard.down('ArrowUp'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab()?.off ?? 0), { timeout: 15000 }).toBeGreaterThanOrEqual(0.6);
+  const offs = []; for (let k = 0; k < 6; k += 1) { offs.push(await page.evaluate(() => window.PlazaDebug().grab()?.off ?? 0)); await page.waitForTimeout(60); }
+  await page.keyboard.up('ArrowUp');
+  expect(offs.some((v) => Math.abs(v * 4 - Math.round(v * 4)) > 0.05)).toBe(true); // (not in jumps: some place between the steps)
+  expect(await at()).toMatchObject({ x: 0, z: 0 });
+  if (isMobile) await page.locator('#islandTurnBtn').tap(); else await page.keyboard.press('KeyR'); // (turned: settled first, then turned)
   await expect.poll(async () => (await at()).rot, { timeout: 15000 }).toBe(1);
+  const moved = await at(); expect(Math.abs(moved.x) + Math.abs(moved.z)).toBeGreaterThanOrEqual(0.5); expect(moved.x === 0 || moved.z === 0).toBe(true);
+  expect([moved.x, moved.z].every((v) => Math.abs(v * 4 - Math.round(v * 4)) < 1e-6 || Math.abs(Math.abs(v) + 0.42 - 5.85) < 1e-6 || Math.abs(Math.abs(v) + 0.95 - 5.85) < 1e-6)).toBe(true); // (on a step or flush with a wall)
   await hold(100); await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab())).toBe(null);
   void yaw; await expectNoScriptError(page);
 });
