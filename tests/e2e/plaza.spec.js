@@ -1622,7 +1622,7 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   const bp = await b.page.evaluate(() => {
     const T = window.IslandTerrain; const d = window.PlazaDebug(); const G = T.VILLAGE.guide; const P = T.plazaProps();
     const gx = G.x - Math.sin(G.yaw) * 1.2; const gz = G.z - Math.cos(G.yaw) * 1.2; const doors = Object.values(d.doors);
-    const clear = (x, z) => T.walkable(x, z) && Math.hypot(x - gx, z - gz) > 8 && [...P.benches, ...P.lamps].every((s) => Math.hypot(s.x - x, s.z - z) > 3.5)
+    const clear = (x, z) => T.walkable(x, z) && Math.hypot(x - gx, z - gz) > 8 && [...P.benches, ...P.lamps, ...P.seats].every((s) => Math.hypot(s.x - x, s.z - z) > 3.5) // (3회차 13: the gardens' rim seats too -- with the rim's benches and lamps the spot came by one)
       && T.BUILDINGS.every((o) => Math.hypot(o.x - x, o.z - z) > 8) && doors.every((o) => Math.hypot(o.x - x, o.z - z) > 4);
     for (let r = 8; r <= 20; r += 1) for (let k = 0; k < 16; k += 1) { const x = gx + Math.cos((k / 16) * 2 * Math.PI) * r; const z = gz + Math.sin((k / 16) * 2 * Math.PI) * r; if (clear(x, z) && clear(x + 1.3, z)) return { x, z }; }
     return { x: d.x, z: d.z };
