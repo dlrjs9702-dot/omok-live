@@ -4411,6 +4411,10 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     if (sessions.get(session.token) !== session) return sendError(res, 401, 'AUTH_REQUIRED', '입장 권한이 없습니다.');
     if (getCurrentRoom(session) || generation !== (session.plazaGeneration || 0)) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
+    // CI 3차 검토: a pose sent before the one I hold changes nothing. A start or a stop cuts off the pose on its way, but a
+    // body already here goes on and, through the awaits (parseJson, homeOf, bikeColors), can land after the newer one --
+    // putting back the old spot and step. By the sender's clock (t, never going back); a pose without one, as before.
+    const heldNewer = () => { const here = plazaPresence.get(session.token); return Number.isFinite(body.t) && here?.sentT > body.t ? here : null; };
     const num = (value, limit) => (Number.isFinite(Number(value)) ? Math.max(-limit, Math.min(limit, Number(value))) : 0);
     session.plazaId ||= crypto.randomUUID().slice(0, 8);
     const account = pointAccountForSession(session);
@@ -4455,7 +4459,7 @@ async function requestHandler(req, res) {
       spot = IslandTrain.platformClamp(platform.line, platform.station, wanted.x, wanted.z);
       const entry = IslandTrain.stationOf(platform.station).spot; plazaLastPos.set(session.token, entry); notePlazaSpot(account, entry.x, entry.z);
     } else {
-      const late = IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) && plazaPresence.get(session.token); // v1.10.84: a pose from the room after going out
+      const late = (IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) && plazaPresence.get(session.token)) || heldNewer(); // v1.10.84: a pose from the room after going out (CI 3차 검토: or from before the one I hold)
       spot = late ? { x: late.x, z: late.z } : collecting ? collecting.pos : plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
       if (IslandTerrain.inTownhallYard(spot.x, spot.z) && !passesGate(session)) spot = { ...TOWNHALL_GATE_OUT }; // v1.10.41: not let in yet
       plazaLastPos.set(session.token, spot);
@@ -4464,11 +4468,14 @@ async function requestHandler(req, res) {
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
     if (!petOf.has(account)) { petOf.set(account, null); pointStore.questDoc(account, 'pet').then(({ doc }) => { if (PET_KINDS.includes(doc.kind)) { petOf.set(account, petView(doc)); plazaDirty = true; } }).catch(() => petOf.delete(account)); }
-    plazaPresence.set(session.token, {
+    const bike = BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !ride && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null; // (자전거: theirs, out on the island)
+    const held = heldNewer(); // (after the last await: where I am stays, answered as it is)
+    if (held) spot = { x: held.x, z: held.z };
+    else plazaPresence.set(session.token, {
       pet: petOf.get(account) || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
-      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
-      bike: BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !ride && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null, // (자전거: theirs, out on the island)
+      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
+      bike,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       home: homeInside.has(session.token) ? homeCache.get(homeInside.get(session.token))?.lot || null : null, // (묶음 4: which house, by its lot -- one sees the people in the same one)
@@ -4480,8 +4487,8 @@ async function requestHandler(req, res) {
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
     });
-    plazaDirty = true;
-    const corrected = !ride && (spot.x !== wanted.x || spot.z !== wanted.z);
+    if (!held) plazaDirty = true;
+    const corrected = !ride && !held && (spot.x !== wanted.x || spot.z !== wanted.z);
     const quests = questEntries(account); // v1.10.37 연계 퀘스트
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
     return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)

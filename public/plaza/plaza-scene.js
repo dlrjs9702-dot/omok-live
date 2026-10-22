@@ -1215,7 +1215,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       bikeOf(o.c, o.bike, f.speed, dt); // (자전거: theirs too)
     }
   }
-  const pose = () => ({ t: Number.isFinite(clockRtt) ? Math.round(Date.now() + serverOffset) : undefined, x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() && !riding && !liftRide, act: myAct.act, actN: myAct.n, seat: myAct.seat, bike: cycling }); // v1.10.44 act, 자전거
+  // CI 3차 검토: t never goes back (the server keeps the newest pose by it) -- a better clock reading can move serverOffset back
+  let poseT = 0; const poseClock = () => (poseT = Math.max(poseT + 1, Math.round(Date.now() + serverOffset)));
+  const pose = () => ({ t: Number.isFinite(clockRtt) ? poseClock() : undefined, x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() && !riding && !liftRide, act: myAct.act, actN: myAct.n, seat: myAct.seat, bike: cycling }); // v1.10.44 act, 자전거
 
   // v1.10.30 공통 캐릭터: put a character in the common-rig look (island-assets wardrobeOf -> asset-loader wear) --
   // a player by their look (gender, the items worn, face, dyes), a keeper, visitor or islander in its own colours
