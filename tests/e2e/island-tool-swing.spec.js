@@ -37,7 +37,8 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
   await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [T.SPAWN.x, T.SPAWN.z]); await page.waitForTimeout(1000); // (back among the islanders)
   // an islander right in front: struck -- HitReact, then cross words over the head
   await expect.poll(async () => {
-    const all = await page.evaluate(() => window.PlazaDebug().wanderersAt()); if (!all.length) return 'no islander';
+    const all = await page.evaluate(() => window.PlazaDebug().wanderersAt());
+    if (!all.length) { await page.evaluate(async () => { const w = window.PlazaDebug().wanderersAt(true)[0]; if (w) await window.PlazaWarp(w.x, w.z + 3); }); return 'no islander'; } // (R3: in the evening and at night they gather elsewhere -- go to them)
     const m = all[tries++ % all.length]; // (by a door, the door comes first: the next one)
     for (let k = 0; k < 12; k += 1) {
       const x = m.x + Math.cos(k / 2) * 0.9; const z = m.z + Math.sin(k / 2) * 0.9; if (!T.walkable(x, z)) continue;
