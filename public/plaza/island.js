@@ -910,19 +910,33 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       for (const st of Object.values(train.STATIONS)) { ctx.beginPath(); ctx.arc(X(st.entry[0]), Z(st.entry[1]), Math.max(3, 2.6 * s), 0, TAU); ctx.fillStyle = '#2f6fc0'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); }
     }
   }
-  function drawMap(ctx, w, h, me) {
-    const s = Math.min(w, h) / (T.MAP === 'dalmaru' ? 380 : 236); /* (달마루섬: about twice across) */ const X = (x) => w / 2 + x * s; const Z = (z) => h / 2 + z * s;
+  // (문제 기록 3회차 14 「안내 지도가 너무 지저분해. 크게 확대해서 볼 수 있게」) `view` { zoom, x, z }: closer in round a point
+  // (the 안내 지도 window: wheel, drag, pinch). The names stay one size however close, each above its dot -- below,
+  // right or left of it when that is taken, left out when all are (closer in, there is room). Returns the scale and centre it drew at.
+  function drawMap(ctx, w, h, me, view = {}) {
+    const zoom = view.zoom || 1; const cx = view.x || 0; const cz = view.z || 0; const u = Math.min(w, h);
+    const s = (u / (T.MAP === 'dalmaru' ? 380 : 236)) * zoom; /* (달마루섬: about twice across) */ const X = (x) => w / 2 + (x - cx) * s; const Z = (z) => h / 2 + (z - cz) * s;
     drawGround(ctx, w, h, X, Z, s);
-    ctx.font = `800 ${Math.round(w / 28)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (const area of Object.values(AREAS)) {
-      ctx.beginPath(); ctx.arc(X(area.x), Z(area.z), w / 70, 0, TAU); ctx.fillStyle = '#5b4632'; ctx.fill();
-      ctx.lineWidth = w / 120; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.strokeText(area.label, X(area.x), Z(area.z) - w / 26); ctx.fillStyle = '#3d2f22'; ctx.fillText(area.label, X(area.x), Z(area.z) - w / 26);
+    const font = (k) => `800 ${Math.round(u / k)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const taken = []; const free = (x, y, bw, bh) => !taken.some((r) => Math.abs(r.x - x) < (r.w + bw) / 2 && Math.abs(r.y - y) < (r.h + bh) / 2);
+    const label = (text, px, pz, k, color, off) => {
+      ctx.font = font(k); const bw = ctx.measureText(text).width + u / 60; const bh = u / k * 1.3;
+      const side = bw / 2 + off * 0.7;
+      const at = [[px, pz - off], [px, pz + off], [px + side, pz], [px - side, pz]].find(([x, y]) => free(x, y, bw, bh)); if (!at) return;
+      const [x, y] = at; taken.push({ x, y, w: bw, h: bh });
+      ctx.lineWidth = u / 110; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y);
+    };
+    const dots = Object.values(AREAS).map((a) => [X(a.x), Z(a.z), a.label]);
+    for (const [px, pz] of dots) { ctx.beginPath(); ctx.arc(px, pz, u / 70, 0, TAU); ctx.fillStyle = '#5b4632'; ctx.fill(); }
+    if (me) { // mine first: never the one left out
+      const mx = X(me.x); const mz = Z(me.z);
+      ctx.beginPath(); ctx.arc(mx, mz, u / 46, 0, TAU); ctx.fillStyle = '#e8443c'; ctx.fill(); ctx.lineWidth = u / 160; ctx.strokeStyle = '#fff'; ctx.stroke();
+      taken.push({ x: mx, y: mz, w: u / 23, h: u / 23 }); label('현재 위치', mx, mz, 34, '#b3261e', u / 22);
     }
-    if (me) {
-      ctx.beginPath(); ctx.arc(X(me.x), Z(me.z), w / 46, 0, TAU); ctx.fillStyle = '#e8443c'; ctx.fill(); ctx.lineWidth = w / 160; ctx.strokeStyle = '#fff'; ctx.stroke();
-      ctx.font = `800 ${Math.round(w / 34)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; ctx.lineWidth = w / 110; ctx.strokeStyle = '#fff';
-      ctx.strokeText('현재 위치', X(me.x), Z(me.z) + w / 22); ctx.fillStyle = '#b3261e'; ctx.fillText('현재 위치', X(me.x), Z(me.z) + w / 22);
-    }
+    for (const [px, pz] of dots) taken.push({ x: px, y: pz, w: u / 35, h: u / 35 }); // (no name over another's dot)
+    for (const [px, pz, text] of dots) label(text, px, pz, 30, '#3d2f22', u / 24);
+    return { s, x: cx, z: cz };
   }
 
   // v1.10.2 미니맵: the ground around me (about 80 m across), turned with the camera so the way I look is always up,
