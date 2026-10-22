@@ -1,9 +1,9 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, expectNoScriptError } = require('./skin-support');
+const { shopper, post, get, expectNoScriptError, pressFishArrows } = require('./skin-support');
 
 // v1.10.90 낚시 도감 21종 (IDEAS #future-fishing-dex): a stream's bank is a fishing spot too -- the float lands on the
 // stream, a river fish comes in and goes to the bag (its new model in hand, its icon in the 도감). PC and phone.
-test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 잡아 가방에', async ({ browser, request }) => {
+test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 잡아 가방에', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const who = await shopper(browser, request, '강낚시', 500000, 'male');
   const { page, token } = who;
@@ -31,9 +31,9 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
   expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; const T = window.IslandTerrain; return T.dalmaru ? T.dalmaru.isWater(b.x, b.z) && T.dalmaru.coastDist(b.x, b.z) >= 0 : T.streamDist(b.x, b.z) < T.STREAM_HALF; })).toBe(true); // (달마루섬: inland water -- a river, 거울호수 or a pool) the float is on the stream
   await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); // (a long bite on the page; the server's just before the pull -- see plaza.spec)
-  await expect(page.locator('#plazaHint')).toHaveText(/당기기$/);
+  await expect(page.locator('#plazaHint')).toHaveText(/순서대로$/);
   expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);
-  await page.keyboard.press('Space');
+  await pressFishArrows(page, isMobile); // (3회차 4: the bite's arrows)
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_catfish')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // the catch played out (the 13 new models: test/island-asset-pipeline)
   await expectNoScriptError(page);

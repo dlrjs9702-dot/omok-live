@@ -5493,7 +5493,8 @@ async function requestHandler(req, res) {
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
     const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain });
     fishCasts.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
-    return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.BITE_MS, bait: bait ? IslandItems.ITEMS[bait].name : null });
+    const arrows = IslandFishing.arrowsFor(c.species); // (3회차 4: the arrows at the bite, and the time for them)
+    return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.arrowMs(arrows), arrows, bait: bait ? IslandItems.ITEMS[bait].name : null });
   }
   if (pathname === '/api/island/fish/finish' && req.method === 'POST') {
     const session = requireSession(req, res);
