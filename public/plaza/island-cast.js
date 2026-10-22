@@ -16,6 +16,10 @@
   const levelOf = (points = 0) => { let k = 0; LEVELS.forEach((l, i) => { if (points >= l.min) k = i; }); return k; };
   // how points come: the first talk of a Seoul day, an errand (the asker more), a story step
   const GAIN = Object.freeze({ talk: 1, errandFrom: 3, errandTo: 2, story: 2 });
+  // (R2 ① 먼저 말 걸기) what an islander says over their head when I pass by, by level -- 처음 본 사이: nothing yet
+  const GREETS = Object.freeze([[], ['안녕하세요, {me}님!', '{me}님, 오늘도 좋은 하루예요.', '어, {me}님이다!'],
+    ['{me}님! 마침 생각하고 있었어요.', '{me}님, 어디 가요? 잘 다녀와요!', '오늘 날씨 좋죠, {me}님?'],
+    ['{me}! 보고 싶었어요!', '{me}, 오늘도 같이 걸을래요?', '역시 {me}! 오늘도 반가워요!']]);
   // lines: [처음 본 사이, 아는 사이, 친한 사이, 단짝]
   const WALKERS = [
     { name: '봄이', role: '꽃집 아르바이트생', about: '광장 근처 꽃집에서 일한다. 꽃 이름이라면 뭐든 안다.', lines: [
@@ -216,5 +220,5 @@
     return out.length ? pick(out, random) : '요즘은 섬이 조용해요. 평화로운 게 제일이죠.';
   }
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { WALKERS, KEEPERS, LEVELS, GAIN, PHASES, MOODS, CHATS, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill };
+  return { WALKERS, KEEPERS, LEVELS, GAIN, GREETS, PHASES, MOODS, CHATS, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill };
 }));
