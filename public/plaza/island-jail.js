@@ -17,7 +17,7 @@
   const CELL = Object.freeze({ x0: -2.5, x1: 2.5, z0: 1, z1: 5, door: Object.freeze({ lx: -0.55, lz: 1, w: 1.08 }), inside: Object.freeze({ x0: -2.4, x1: 2.4, z0: 1.1, z1: 4.9 }), stand: Object.freeze({ lx: 0, lz: 3 }) });
   const WARDEN = Object.freeze({ lx: 3.8, lz: 0.05, yaw: Math.PI }); // (behind the desk, facing the room's door -- local -Z)
   const PROPS = Object.freeze([ // id, x, z, yaw (room-local, assets 67 README)
-    ['jail.desk', 3.8, -0.6, 0], ['jail.bench', -3.2, -2.6, 0], ['jail.bench', 0.2, -3.0, 0], ['jail.board', -6.4, -0.5, Math.PI / 2],
+    ['jail.desk', 3.8, -0.6, 0], ['jail.bench', -3.2, -2.6, 0], ['jail.bench', 0.2, -3.0, 0], ['jail.board', -6.4, -0.5, -Math.PI / 2] /* (its papers toward the room) */,
   ].map(([id, x, z, yaw]) => Object.freeze({ id, x, z, yaw })));
   const FIXTURES = Object.freeze([ // what one walks round outside the cell: x, z centre, w, d
     { x: 0, z: 3, w: 5, d: 4 } /* the cell */, { x: 3.8, z: -0.6, w: 1.8, d: 0.8 } /* the desk */, { x: 3.8, z: 0.05, w: 0.6, d: 0.6 } /* the warden */,

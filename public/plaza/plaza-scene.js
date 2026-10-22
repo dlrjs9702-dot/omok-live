@@ -83,6 +83,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, TEST_DRAW ? 0.5 : 1.5)); // (automated tests: 0.5 -- the CI runner draws in software, TEST_DRAW; a phone profile is 2.75)
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.localClippingEnabled = true; // (R4: the 구치소 room's front wall, cut away before the camera)
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.className = 'plazaCanvas';
   host.prepend(renderer.domElement);
@@ -2460,7 +2461,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
     const put = (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
     const R = JAIL.ROOM; const C = JAIL.CELL; const stone = mat(0xb8b2a6); const iron = mat(0x3b3f45);
-    put('jail.room', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(R.w, 0.2, R.d), mat(0x8f8a80), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(R.w, 3.6, 0.3), stone, 0, 1.8, R.d / 2, f); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 3.6, R.d), stone, s * R.w / 2, 1.8, 0, f); });
+    const room = new THREE.Group(); g.add(room); const roomStandIn = new THREE.Group(); room.add(roomStandIn);
+    mesh(new THREE.BoxGeometry(R.w, 0.2, R.d), mat(0x8f8a80), 0, -0.1, 0, roomStandIn); mesh(new THREE.BoxGeometry(R.w, 3.6, 0.3), stone, 0, 1.8, R.d / 2, roomStandIn); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 3.6, R.d), stone, s * R.w / 2, 1.8, 0, roomStandIn);
+    // the model has its front wall (the doorway in it) -- the other rooms have none: from the door it hid the room. Cut
+    // away what stands past 4.8 m to the front (world +z, the room turned half round), on the room's own copy of its material
+    const front = new THREE.Plane(new THREE.Vector3(0, 0, -1), R.z + 4.8);
+    const clipFront = () => room.traverse((o) => { if (!o.isMesh || o.userData.clipped) return; o.userData.clipped = true; o.material = [].concat(o.material).map((m) => { const c = m.clone(); c.onBeforeCompile = m.onBeforeCompile; c.customProgramCacheKey = () => `${m.customProgramCacheKey?.() || ''}:clipFront`; c.clippingPlanes = [front]; c.clipShadows = true; return c; }); if (o.material.length === 1) o.material = o.material[0]; });
+    assets.attach('jail.room', room, roomStandIn, () => clipFront());
     put('jail.cell', 0, 0, C.z0, 0, (f) => { for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.08, 2.7, C.z1 - C.z0), iron, s * 2.5, 1.35, (C.z1 - C.z0) / 2, f); mesh(new THREE.BoxGeometry(1.9, 2.7, 0.08), iron, -1.55, 1.35, 0, f); mesh(new THREE.BoxGeometry(1.9, 2.7, 0.08), iron, 1.55, 1.35, 0, f); });
     const door = put('jail.cell_door', C.door.lx, 0, C.door.lz, 0, (f) => mesh(new THREE.BoxGeometry(C.door.w, 2.58, 0.06), iron, C.door.w / 2, 1.29, 0, f));
     for (const p of JAIL.PROPS) { const root = put(p.id, p.x, 0, p.z, p.yaw, (f) => mesh(new THREE.BoxGeometry(p.id === 'jail.board' ? 1.5 : 1.8, p.id === 'jail.board' ? 1.95 : 0.8, p.id === 'jail.board' ? 0.1 : 0.6), mat(0x8a6a48), 0, p.id === 'jail.board' ? 0.98 : 0.4, 0, f)); if (p.id === 'jail.board') root.add(boardText('오늘의 반성문', 1.2, 0.3, 1.75, -0.07)); }
@@ -2490,7 +2497,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
     mySpace = ['townhall', 'store', 'furniture', 'petshop', 'home', 'jail'].includes(space) ? space : 'island';
     if (mySpace === 'home') buildHomeRoom(); else if (homeHere) setHome(null); // (묶음 4: out of a house, its pets go)
-    indoors = mySpace !== 'island'; lightKey = null; // (bugs 9: the weather stays outside)
+    indoors = mySpace !== 'island'; lightKey = null; halloweenCheckedAt = -Infinity; // (bugs 9: the weather stays outside; 3회차 18: the black or the sky at once, not up to 5 s later)
     if (mySpace === 'townhall') buildRoom();
     if (mySpace === 'store') buildStore();
     if (mySpace === 'furniture') buildFurniture();
