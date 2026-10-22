@@ -310,6 +310,22 @@
     const lamps = [];
     for (let k = 0; k < 8; k += 1) { const p = at(Math.PI / 8 + (k * Math.PI) / 4, 12); if (!busy(p.x, p.z, 3)) lamps.push({ ...p, r: 0.35 }); }
     const beds = []; // (묶음 1 광장 소품 정리: the wooden planters round the lamps gave way to assets 59's gardens and disc)
+    // (문제 기록 3회차 13 「중앙 광장 주변이 좀 황량해」) along the rim inside the kerbs -- south, east and west -- every 14 m a
+    // group: a flower bed 3 m in, a bench each side of it facing the fountain's side, a lamp behind it by the kerb; none
+    // where a walk or a door comes in, on a garden, a channel, a place of the plaza's own or the building fronts' 8 m
+    const { gardens, channels } = paving(); const placesIn = []; const walkIn = (o) => { if (!o || typeof o !== 'object') return; if (Number.isFinite(o.x) && Number.isFinite(o.z)) { if (inPlaza(o.x, o.z, 2)) placesIn.push(o); } else Object.values(o).forEach(walkIn); }; walkIn(PL);
+    const clear = (x, z) => !walkCurves.some((w) => w.pts.some(([a, b]) => Math.hypot(a - x, b - z) < w.w / 2 + 2.5)) && !Object.keys(SPOTS).some((id) => { const d = facilityDoor(id); return d && Math.hypot(d.x - x, d.z - z) < 6; })
+      && !busy(x, z, 6) && !gardens.some((g) => Math.hypot(g.x - x, g.z - z) < (g.kind === 'round' ? 6 : 8)) && !channels.some((c) => Math.hypot(c.x - x, c.z - z) < 4) && !placesIn.some((p) => Math.hypot(p.x - x, p.z - z) < 5) && Math.hypot(x - PL.spawn.x, z - PL.spawn.z) > 6;
+    const rim = [];
+    for (let x = -36; x <= 36; x += 10) rim.push({ x: PLAZA_C.x + x, z: P.d1 - 3, ax: 1, az: 0, ox: 0, oz: 1 }); // south: along x, the kerb +z
+    for (const s of [1, -1]) for (let z = P.d1 - 9; z > P.d0 + 5; z -= 10) rim.push({ x: P.x + s * (P.hw - 3), z, ax: 0, az: 1, ox: s, oz: 0 });
+    for (const g of rim) {
+      if (!clear(g.x, g.z)) continue;
+      const sides = [-2.4, 2.4].map((d) => ({ x: g.x + g.ax * d, z: g.z + g.az * d })).filter((p) => clear(p.x, p.z)); // (a bench where it fits)
+      beds.push({ x: g.x, z: g.z, r: 1.1, i: beds.length, rim: true });
+      for (const p of sides) benches.push({ ...p, r: 0.9, yaw: Math.atan2(-g.ox, -g.oz) }); // (facing in, away from the kerb)
+      lamps.push({ x: g.x + g.ox * 1.6, z: g.z + g.oz * 1.6, r: 0.35 });
+    }
     const seats = benches.map((b, k) => { const ry = b.yaw; return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
     paving().gardens.forEach((g, k) => {
