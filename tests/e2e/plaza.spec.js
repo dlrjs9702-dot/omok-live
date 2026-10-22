@@ -976,13 +976,17 @@ test('일반 자원: 미니맵 ! 없음, 근접 강조·SPACE 채집·다른 화
   test.setTimeout(180000); // two 3D island pages
   const a = await intoPlaza(browser, request, '이벤트손님');
   const b = await intoPlaza(browser, request, '이벤트구경');
-  const target = (await get(request, '/api/test/island/events', a.token)).data.events.find((e) => e.type === 'mushroom' && e.state === 'open');
-  const key = `ev:${target.type}:${target.id}`;
   const spotNear = (page, from, min, max) => page.evaluate(({ from, min, max }) => { // somewhere one may stand, min..max away
     const d = window.PlazaDebug();
     for (let r = min; r <= max; r += 0.5) for (let k = 0; k < 24; k += 1) { const x = from.x + Math.cos(k * 0.26) * r; const z = from.z + Math.sin(k * 0.26) * r; if (d.walkable(x, z)) return { x, z }; }
     return null;
   }, { from, min, max });
+  // (CI 3차, run 39729416981 #3 both tries: the first open mushroom had nowhere to stand 58-70 m off -- by the coast or the
+  // ridge, where the events happened to be that hour. The first open one that has)
+  const mushrooms = (await get(request, '/api/test/island/events', a.token)).data.events.filter((e) => e.type === 'mushroom' && e.state === 'open');
+  let target = null; for (const m of mushrooms) if (await spotNear(a.page, m, 58, 70)) { target = m; break; }
+  expect(target, `open mushrooms: ${mushrooms.length}`).not.toBeNull();
+  const key = `ev:${target.type}:${target.id}`;
   const shownMatchesRange = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d.minimap.markers === d.markers.filter((m) => Math.hypot(m.x - d.x, m.z - d.z) <= 38).length; });
 
   // 60 away: the event is known to my screen but not on the minimap
