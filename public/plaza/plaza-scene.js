@@ -1990,6 +1990,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     };
     const soil = (h) => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(F.w, h, F.d), mat(0x8a5a3b), 0, h / 2, 0, g); return g; };
     const fields = [0, 1, 2, 3].map((s) => place(`farm.field.${s}`, F.x, F.z, soil(0.08 + s * 0.04)));
+    // (3회차 15) the farm yard: the other plots grown, the fence round it (the season's fence, 1.36 m a piece), the shed and the scarecrow
+    const Y = F.yard;
+    for (const [x, z] of Y.plots) place('farm.field.3', x, z, soil(0.2));
+    const runs = [[Y.x0, Y.z0, Y.gate[0], Y.z0], [Y.gate[1], Y.z0, Y.x1, Y.z0], [Y.x1, Y.z0, Y.x1, Y.z1], [Y.x1, Y.z1, Y.x0, Y.z1], [Y.x0, Y.z1, Y.x0, Y.z0]];
+    for (const [ax, az, bx, bz] of runs) { const l = Math.hypot(bx - ax, bz - az); const n = Math.max(1, Math.round(l / 1.36)); const yaw = Math.atan2(-(bz - az), bx - ax);
+      for (let k = 0; k < n; k += 1) { const t = (k + 0.5) / n; place('prop.fence', ax + (bx - ax) * t, az + (bz - az) * t, (() => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(l / n, 0.5, 0.08), mat(0x9a7652), 0, 0.45, 0, g); return g; })(), yaw); } }
+    { const s = Y.shed; const g = new THREE.Group(); mesh(new THREE.BoxGeometry(s.w, 2.1, s.d), mat(0xb98b62), 0, 1.05, 0, g); mesh(new THREE.BoxGeometry(s.w + 0.4, 0.25, s.d + 0.4), mat(0x8a5a3b), 0, 2.3, 0, g); mesh(new THREE.BoxGeometry(1, 1.7, 0.06), mat(0x6b4f3a), 0, 0.85, -s.d / 2 - 0.03, g); place('farm.shed', s.x, s.z, g); }
+    { const s = Y.scarecrow; const g = new THREE.Group(); mesh(new THREE.BoxGeometry(0.08, 1.8, 0.08), mat(0x8a6a48), 0, 0.9, 0, g); mesh(new THREE.BoxGeometry(1.2, 0.08, 0.08), mat(0x8a6a48), 0, 1.35, 0, g); mesh(new THREE.SphereGeometry(0.2, 10, 8), mat(0xe9d8b4), 0, 1.9, 0, g); place('farm.scarecrow', s.x, s.z, g); }
     const post = new THREE.Group(); mesh(new THREE.BoxGeometry(1.4, 0.7, 0.08), mat(0xe9d8b4), 0, 1.29, 0, post); mesh(new THREE.BoxGeometry(0.1, 1.3, 0.1), mat(0x8a6a48), 0, 0.65, 0, post);
     const sign = place('farm.sign', F.sign.x, F.sign.z, post); // its face (-z) toward the lane
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 228;
