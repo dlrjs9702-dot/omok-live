@@ -588,6 +588,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.BoxGeometry(9.8, 4.6, 7.4), mat(0x9a948a), 0, 2.3, 0, visual); mesh(new THREE.ConeGeometry(6.6, 2.1, 4), mat(0x4f5560), 0, 5.65, 0, visual).rotation.y = Math.PI / 4;
       mesh(new THREE.BoxGeometry(1.4, 2.3, 0.1), mat(0x3b3f45), 0, 1.15, 3.75, visual); // the door
       sign(facility.name, root, 7.2);
+      const plaque = new THREE.Group(); plaque.rotation.y = Math.PI; plaque.add(boardText(facility.name, 2.5, 0.62, 3.75, -3.85)); root.add(plaque); // (the board over the door, assets 67: 2.6 x 0.7 m at 3.75 m, its face 3.84 m out -- the model turned half round)
       boxSolids(0, 0, 9.8, 7.4, 0.9);
     } else if (spot.kind === 'tower') { // v1.10.1 등반 도전: a tall stone tower on the hill, a landmark from anywhere on the island
       depth = 6.4;
@@ -2472,7 +2473,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function setJail(state) { // app.js: am I shut in (true), let out today ('free'), or looking on (false)
     jailInmate = state?.inmate ?? false; if (!jail) return;
-    jail.door.rotation.y = jailInmate === true ? 0 : jailInmate === 'free' ? (-100 * Math.PI) / 180 : 0;
+    jail.door.rotation.y = jailInmate === 'free' ? (100 * Math.PI) / 180 : 0; // (its leaf runs +x from the hinge: +100° swings it out, toward the room's -Z)
   }
   function wardenSay(text, leftMs = 0, totalMs = JAIL.SECONDS * 1000) { // the warden's line; with time: a ring counting down (null text: quiet)
     wardenLine = text ? { text, end: leftMs ? performance.now() + leftMs : 0, total: totalMs, shown: -1 } : null;

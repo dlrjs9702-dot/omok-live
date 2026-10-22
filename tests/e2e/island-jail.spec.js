@@ -24,7 +24,7 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
     if (k < 2) await expect.poll(async () => (await get(request, '/api/island/jail', who.token)).data.essay?.i, { timeout: 10000 }).toBe(k + 1);
   }
   await expect(page.locator('#toast')).toContainText('반성문 통과', { timeout: 10000 });
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().jail()), { timeout: 10000 }).toMatchObject({ inmate: 'free', door: -1.75 });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().jail()), { timeout: 10000 }).toMatchObject({ inmate: 'free', door: 1.75 }); // (swung out, toward the room)
   if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-${isMobile ? 'phone' : 'pc'}.png` });
   // the board: today's essays (mine among them)
   await expect.poll(async () => {
