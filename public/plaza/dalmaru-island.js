@@ -70,7 +70,19 @@
   });
   const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide, MUSEUM];
   const MUSEUM = Object.freeze({ ...PL.museum, yaw: yawTo(PL.museum.x, PL.museum.z, [100, 46]), r: 5 }); // (its door toward 잔치마루's walk)
-  const FARM = Object.freeze({ ...PL.farm, w: 8, d: 5, farmer: off(PL.farm, 4.6, -2.8), sign: off(PL.farm, -5.4, -0.9) });
+  // (문제 기록 3회차 15 「밭이 뜬금없어, 풍경과 유리. 밭 넓히고 컨셉 확실히」) a farm yard round the quest field: three more
+  // plots beside it (2 x 2, 2 m between), a fence round them with its gate where the trail comes in (north), a tool shed
+  // in the south-west corner and a scarecrow between the plots -- x across, z the field's own
+  const FARM = Object.freeze({ ...PL.farm, w: 8, d: 5, farmer: off(PL.farm, 4.6, -2.8), sign: off(PL.farm, -5.4, -0.9),
+    yard: Object.freeze({ x0: PL.farm.x - 8, x1: PL.farm.x + 16, z0: PL.farm.z - 6, z1: PL.farm.z + 12.5, gate: [PL.farm.x + 1.5, PL.farm.x + 6],
+      plots: [[PL.farm.x + 10, PL.farm.z], [PL.farm.x, PL.farm.z + 7.5], [PL.farm.x + 10, PL.farm.z + 7.5]],
+      shed: { x: PL.farm.x - 5, z: PL.farm.z + 9.8, w: 3, d: 2.5 }, scarecrow: { x: PL.farm.x + 5, z: PL.farm.z + 3.75 } }) });
+  const inFarmYard = (x, z, m = 0) => { const y = FARM.yard; return x > y.x0 - m && x < y.x1 + m && z > y.z0 - m && z < y.z1 + m; };
+  // the fence's line, every 0.7 m round the yard, the gate left open
+  const farmFence = () => { const y = FARM.yard; const out = [];
+    for (let x = y.x0; x <= y.x1 + 1e-6; x += 0.7) { if (x < y.gate[0] || x > y.gate[1]) out.push({ x, z: y.z0 }); out.push({ x, z: y.z1 }); }
+    for (let z = y.z0 + 0.7; z < y.z1 - 1e-6; z += 0.7) { out.push({ x: y.x0, z }); out.push({ x: y.x1, z }); }
+    return out; };
   const CONTEST_STATUE = Object.freeze({ ...PL.contest }); // (step 3 carves the winner into 영웅마루 instead)
 
   // ---- the walks ----
@@ -126,7 +138,7 @@
   // ---- the ground: dalmaru-terrain's, levelled under what stands and filled where the stairs meet the ridge ----
   const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
   const laneH = COTTAGES.reduce((a, c) => a + D.landHeight(c.x, c.z), 0) / COTTAGES.length; // (이웃골: the houses' pads one level, so the yards between them stay flat)
-  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], [townhallWorld(0, 11.5).x, townhallWorld(0, 11.5).z, 10] /* (관공서 앞마당, level under its marble) */, ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
+  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], ...FARM.yard.plots.map(([x, z]) => [x, z, 6]) /* (3회차 15: the farm's plots level) */, [townhallWorld(0, 11.5).x, townhallWorld(0, 11.5).z, 10] /* (관공서 앞마당, level under its marble) */, ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
     ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5]),
     ...HOME_LOTS.map((l) => [l.x, l.z, 7.2, 0.9]) /* (2회차 15: each lot level, its big house by the shore too) */]
     .map(([x, z, r, h]) => ({ x, z, r, h: h ?? D.landHeight(x, z) }));
@@ -295,6 +307,9 @@
     for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 });
     for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r });
     for (const b of WATERFRONT.benches) out.push({ x: b.x, z: b.z, r: b.r });
+    for (const p of farmFence()) out.push({ ...p, r: 0.22, fence: true }); // (3회차 15: the farm's fence, its shed and scarecrow)
+    { const s = FARM.yard.shed; for (const dx of [-1, 0, 1]) for (const dz of [-0.6, 0.6]) out.push({ x: s.x + dx, z: s.z + dz, r: 0.8 }); }
+    out.push({ ...FARM.yard.scarecrow, r: 0.35 });
     return out;
   }
   const STRUCTURES = { // the pieces of assets 55 that stand once (plaza-scene draws them; solids are theirs)
@@ -344,6 +359,7 @@
   const nearKeeper = (x, z) => Object.values(PL.quests).some((q) => Math.hypot(x - q.x, z - q.z) < 3.5) || [VILLAGE.painter, VILLAGE.busker, VILLAGE.electrician, VILLAGE.builder, VILLAGE.librarian, VILLAGE.grandpa, VILLAGE.guide, FARM.farmer].some((q) => Math.hypot(x - q.x, z - q.z) < 3.5);
   let natureCache = null; const natureBlocks = []; // (island-train: no tree on a lift's way)
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
+  addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
   function nature() {
     if (natureCache) return natureCache;
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -442,7 +458,7 @@
   // the formula's ground and the drawn one together (not a cliff's edge, where the 2 m mesh cuts the corner), and off the
   // walks and stairs
   function settledSpot(x, z) {
-    const h = meshGroundHeight(x, z); if (Math.abs(ground(x, z) - h) >= 0.15 || walkDist(x, z) <= 0.3 || onStairs(x, z)) return false;
+    const h = meshGroundHeight(x, z); if (Math.abs(ground(x, z) - h) >= 0.15 || walkDist(x, z) <= 0.3 || onStairs(x, z) || inFarmYard(x, z, 0.3)) return false;
     for (let a = 0; a < 8; a += 1) if (h - meshGroundHeight(x + Math.cos(a * Math.PI / 4) * 0.3, z + Math.sin(a * Math.PI / 4) * 0.3) > 0.09) return false;
     return true;
   }
