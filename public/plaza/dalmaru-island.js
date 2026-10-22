@@ -358,16 +358,17 @@
     }
     const bushes = [];
     for (let tries = 0; bushes.length < 520 && tries < 7000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (clearOf(x, z)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 }); }
-    // (3회차 8) the tufts seeded on their own: a tree or a flower placed otherwise above no longer moves every weed (`w<index>`)
+    // (3회차 8) the tufts seeded on their own and numbered by their try (`i`, island-weeds `w<i>`), three draws a try taken
+    // or not: a tree or a flower placed otherwise above, or a walk laid across some, never moves or renumbers the rest
     const tufts = []; seed = 0x7a1f5;
-    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7 }); }
+    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.6 + rnd() * 0.7; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s, i: tries }); }
     const rocks = [];
     for (let tries = 0; rocks.length < 160 && tries < 8000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const cd = D.coastDist(x, z);
       if (cd > -1 && cd < 4 && !D.inBay(x, z) && !built(x, z) && !onBridge(x, z)) rocks.push({ x, z, s: 0.5 + rnd() * (D.ridgeAt(x, z) > 0.3 ? 1.6 : 0.8), r: rnd() * 6 });
     }
     // what the train's lifts keep clear is taken out after the seeded scenery, so nothing else moves -- the weeds are
-    // numbered by the tufts (island-weeds `w<index>`): the server and every screen must have the same ones
+    // numbered by the tufts (island-weeds `w<i>`): the server and every screen must have the same ones
     const blocked = (o, r) => natureBlocks.some((fn) => fn(o.x, o.z, r));
     const keptTrees = trees.filter((t) => !blocked(t, 1.5)); const keptBushes = bushes.filter((b) => !blocked(b, 0.8));
     // the walks' lamps (island-terrain's rule): beside the town walks and the 산책로 (not the 오솔길), every 14 points of

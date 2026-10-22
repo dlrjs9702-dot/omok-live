@@ -18,7 +18,9 @@ test('흩어 놓은 돌·꽃·잡초: 땅에서 0.1 m 넘게 뜬 것 없음, 절
   }
   assert.ok(kept.length > 1000, `${kept.length}`); assert.deepEqual(bad.slice(0, 10), []);
   // the weeds keep their numbers: each first weed is still the tuft it was numbered by
-  for (const w of W.active({}).filter((x) => x.id.startsWith('w'))) { const t = n.tufts[Number(w.id.slice(1))]; assert.ok(Math.abs(t.x - w.x) < 0.01 && Math.abs(t.z - w.z) < 0.01, w.id); }
-  // seeded on their own: what the trees or flowers above them do never moves them -- the first one stays put
-  assert.ok(Math.abs(n.tufts[0].x + 137.758) < 0.01 && Math.abs(n.tufts[0].z + 6.443) < 0.01, JSON.stringify(n.tufts[0]));
+  const byTry = new Map(n.tufts.map((t) => [`w${t.i}`, t]));
+  for (const w of W.active({}).filter((x) => x.id.startsWith('w'))) { const t = byTry.get(w.id); assert.ok(t && Math.abs(t.x - w.x) < 0.01 && Math.abs(t.z - w.z) < 0.01, w.id); }
+  // seeded on their own, numbered by their try: what the trees, flowers or walks do never moves or renumbers them
+  assert.ok(Math.abs(byTry.get('w0').x + 137.758) < 0.01 && Math.abs(byTry.get('w0').z + 6.443) < 0.01, JSON.stringify(byTry.get('w0')));
+  assert.ok(Math.abs(byTry.get('w3550').x + 74.093) < 0.01 && Math.abs(byTry.get('w3550').z + 92.009) < 0.01, JSON.stringify(byTry.get('w3550')));
 });
