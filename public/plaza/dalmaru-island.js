@@ -416,10 +416,19 @@
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
 
+  // (문제 기록 3회차 8 「있을 필요 없는 곳에도 돌·잡초, 하늘에 떠 있네」) where a small scattered piece -- a stone, a flower, a weed
+  // -- sits: the drawn ground within its 0.3 m round never more than 0.09 m below its middle (no edge of it hangs in the air),
+  // the formula's ground and the drawn one together (not a cliff's edge, where the 2 m mesh cuts the corner), and off the
+  // walks and stairs
+  function settledSpot(x, z) {
+    const h = meshGroundHeight(x, z); if (Math.abs(ground(x, z) - h) >= 0.15 || walkDist(x, z) <= 0.3 || onStairs(x, z)) return false;
+    for (let a = 0; a < 8; a += 1) if (h - meshGroundHeight(x + Math.cos(a * Math.PI / 4) * 0.3, z + Math.sin(a * Math.PI / 4) * 0.3) > 0.09) return false;
+    return true;
+  }
   return Object.freeze({
     ...C,
     MAP: 'dalmaru', HOME_LOTS, onLot, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
-    coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, heightAt, walkable,
+    coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, settledSpot, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,

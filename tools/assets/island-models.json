@@ -7428,33 +7428,33 @@
     {
       "out": "angular-v1/angular_tree_block__autumn.glb",
       "src": "angular63:01. High/angular_tree_block__autumn.glb",
-      "sha256": "daa04d325c0a38ae68a00f155d0b485c1f8340a78418b500cb3e883fc8d690bb",
+      "sha256": "d72f508ca25b75cb7edf174a803cb371d58b877d4dba00693d4839acf532899d",
       "lowSrc": "angular63:02. Low/angular_tree_block__autumn_low.glb",
-      "lowSha256": "aae5a0da04abc39904c9f927246ea2d36d8e3db4e066c362f8074d953930a31c",
+      "lowSha256": "b0a6f8eef165d41b1f8fe8d0fb09ef94f42cc24386adfeb5030c380fbfaf6c18",
       "precompressed": true
     },
     {
       "out": "angular-v1/angular_tree_block__spring.glb",
       "src": "angular63:01. High/angular_tree_block__spring.glb",
-      "sha256": "2a2b3c84884c9d1c5753404ad560416e1e880124e16085f631f6c8e73a8f3be9",
+      "sha256": "91740cf854f4435c4c90047bb219e8d59b644ace8b9ae73dcc620b4fd72c30c9",
       "lowSrc": "angular63:02. Low/angular_tree_block__spring_low.glb",
-      "lowSha256": "69fcbe245910992e1bcac3d11b31392e2fc67742dada8fcde323506fac8140c2",
+      "lowSha256": "0c46a0d20bc2d14bb293eacbe64186a4037070d8cc21e916db19d8c0b70bf6dc",
       "precompressed": true
     },
     {
       "out": "angular-v1/angular_tree_block__summer.glb",
       "src": "angular63:01. High/angular_tree_block__summer.glb",
-      "sha256": "cde6cbfe0d4acab0c60f8ee4da5b441bc42c19574ef357b3991e127f346a0e3f",
+      "sha256": "d57a1d7182e1279f633afa854b64353aa8b35996834d3d571f23defe22056b6e",
       "lowSrc": "angular63:02. Low/angular_tree_block__summer_low.glb",
-      "lowSha256": "0f974b40df1c17dabf12dfcb7457cbb431a9c301239f683f94d2d6b261ad6c60",
+      "lowSha256": "2fbd6826fe9788264053f531b5155d3299e47fd2f833fdfb71fd5006568198ed",
       "precompressed": true
     },
     {
       "out": "angular-v1/angular_tree_block__winter.glb",
       "src": "angular63:01. High/angular_tree_block__winter.glb",
-      "sha256": "9e8a243447bb0f05e5534340bafbe3ac98edcf890481022022fbeb34013202c1",
+      "sha256": "4d949fa81782035e9c1b67118557663b53520f6efe99b4fc670cae851b3edc64",
       "lowSrc": "angular63:02. Low/angular_tree_block__winter_low.glb",
-      "lowSha256": "afb183fb314f373651d8bb8612550fec35f5507014c5022545e132eae05906fc",
+      "lowSha256": "d256292624694d88137c9a6312971c868963dd9bfa4c6796164bfeca64faca2c",
       "precompressed": true
     },
     {
