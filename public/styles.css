@@ -1762,6 +1762,8 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .plazaDialog.talkMode{width:min(760px,94vw);max-height:46vh;margin:auto auto max(18px,env(safe-area-inset-bottom));border-radius:22px;border:2px solid #60a5fa;background:rgba(15,23,42,.94);overflow:visible;padding:14px 18px 16px}
 .plazaDialog.talkMode::backdrop{background:transparent}
 /* 문제 기록 3회차 5 꾸미기: an edge strip over the room (right on a PC, the bottom on a phone), folded to its title */
+.plazaDialog.mapMode{width:96vw;max-height:96dvh}
+.plazaDialog.mapMode .islandMapCard canvas{width:100%;height:calc(96dvh - 120px);max-height:none;touch-action:none;cursor:grab}
 .plazaDialog.editMode{width:min(340px,92vw);max-height:calc(100dvh - 32px);margin:16px 16px 16px auto;overflow:auto}
 .plazaDialog.editMode::backdrop{background:transparent}
 .plazaDialog.editMode .plazaDialogBody{grid-template-columns:1fr}

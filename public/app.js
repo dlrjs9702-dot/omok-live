@@ -1504,7 +1504,7 @@
     { id: 'naming', name: '개명소', open: () => openNaming() }, // v1.10.9 작명소
     { id: 'townhall', name: '관공서', open: () => townhallDoor(true) }, // v1.10.10 이벤트 인벤토리; v1.10.84 in through the door (the 민원 창구 inside)
     { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
-    { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
+    { id: 'map', name: '안내 지도', open: () => openIslandMap() }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
@@ -1572,8 +1572,47 @@
     });
     return card;
   }
+  // (문제 기록 3회차 14 「안내 지도가 너무 지저분해. 크게 확대해서 볼 수 있게」) the map window as wide as the screen, drawn at
+  // its own size; the wheel or a pinch brings it closer round the point under it (to 6x), a drag moves it
+  const islandMapView = { zoom: 1, x: 0, z: 0 }; let islandMapAt = null;
+  function drawIslandMap() {
+    const canvas = byId('islandMapCanvas'); const r = canvas.getBoundingClientRect(); const k = Math.min(2, window.devicePixelRatio || 1);
+    if (r.width && (canvas.width !== Math.round(r.width * k) || canvas.height !== Math.round(r.height * k))) { canvas.width = Math.round(r.width * k); canvas.height = Math.round(r.height * k); }
+    islandMapAt = plaza.controller?.drawMap?.(canvas, islandMapView) || null;
+  }
+  function openIslandMap() {
+    Object.assign(islandMapView, { zoom: 1, x: 0, z: 0 });
+    openPlazaWindow('안내 지도', [byId('islandMapCard')]); plazaDialog.classList.add('mapMode');
+    requestAnimationFrame(drawIslandMap);
+  }
+  {
+    const canvas = byId('islandMapCanvas'); const pointers = new Map(); let pinch = null;
+    // the point under (px, py) -- CSS pixels on the canvas -- stays under it at the new zoom
+    const zoomAt = (px, py, zoom) => {
+      if (!islandMapAt) return; const r = canvas.getBoundingClientRect(); const k = canvas.width / r.width;
+      const dx = (px * k - canvas.width / 2); const dy = (py * k - canvas.height / 2);
+      const wx = islandMapView.x + dx / islandMapAt.s; const wz = islandMapView.z + dy / islandMapAt.s;
+      const z = Math.max(1, Math.min(6, zoom)); const s = (islandMapAt.s / islandMapView.zoom) * z;
+      Object.assign(islandMapView, { zoom: z, x: wx - dx / s, z: wz - dy / s }); clampMap(); drawIslandMap();
+    };
+    const clampMap = () => { const lim = 200 * (1 - 1 / islandMapView.zoom); islandMapView.x = Math.max(-lim, Math.min(lim, islandMapView.x)); islandMapView.z = Math.max(-lim, Math.min(lim, islandMapView.z)); };
+    const local = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    canvas.addEventListener('wheel', (e) => { e.preventDefault(); const [x, y] = local(e); zoomAt(x, y, islandMapView.zoom * Math.exp(-e.deltaY / 400)); }, { passive: false });
+    canvas.addEventListener('pointerdown', (e) => { pointers.set(e.pointerId, local(e)); pinch = null; try { canvas.setPointerCapture(e.pointerId); } catch { /* not a live pointer */ } });
+    canvas.addEventListener('pointermove', (e) => {
+      const was = pointers.get(e.pointerId); if (!was || !islandMapAt) return; const now = local(e); pointers.set(e.pointerId, now);
+      if (pointers.size >= 2) {
+        const [a, b] = [...pointers.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) zoomAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, islandMapView.zoom * (d / pinch)); pinch = d; return;
+      }
+      const k = canvas.width / canvas.getBoundingClientRect().width;
+      islandMapView.x -= ((now[0] - was[0]) * k) / islandMapAt.s; islandMapView.z -= ((now[1] - was[1]) * k) / islandMapAt.s; clampMap(); drawIslandMap();
+    });
+    const lift = (e) => { pointers.delete(e.pointerId); pinch = null; };
+    canvas.addEventListener('pointerup', lift); canvas.addEventListener('pointercancel', lift);
+  }
   function openPlazaWindow(title, nodes) {
-    plazaDialog.classList.remove('talkMode', 'editMode', 'folded'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
+    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
     // the earlier one's content in it; whatever is not part of this window goes back home first)
