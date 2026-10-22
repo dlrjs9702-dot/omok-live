@@ -14,6 +14,10 @@ const T = require('../../public/plaza/island-terrain.js'); const DAL = T.MAP ===
 const PC = T.PLAZA_C || { x: 0, z: 0 };
 const LANE = DAL ? { x: 0.6, z: -40 } : { x: -1, z: 22 }; // a straight walk going south (the harbour walk / 대청마당 to 물가 거리)
 const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { x: d.x, z: d.z, near: d.near, running: d.running }; });
+// CI 3차 후속: up, and its islanders out -- just after `running` the page works out the islanders' route grid in one task
+// (island-npcs.js buildGrid: 1.5 s on a fast PC, past 8 s on a slow one) and nothing else runs meanwhile, a check's
+// page.evaluate included: a 8 s check right after a reload never got to read anything (첫 접속 성별, 광장 챔피언)
+const islandSettled = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return Boolean(d?.running) && d.wanderers.length === window.IslandNpcs.COUNT; });
 
 // These tests check movement, sync, collision and the island's rules, not its 3D models (tests/e2e/island-assets.spec.js
 // does that): every registered model is switched off, so each page draws the light procedural island. On a CI runner
@@ -446,7 +450,7 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   await plain.page.evaluate(() => document.getElementById('climbDialog').close());
   await champs[1].context.close(); // fewer 3D pages while one reloads
   await champs[0].page.reload();
-  await expect.poll(() => champs[0].page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => islandSettled(champs[0].page), { timeout: 30000 }).toBe(true);
   await expect.poll(() => champs[0].page.evaluate(() => window.PlazaDebug().champion), { timeout: 8000 }).toBe(true);
   await expect.poll(() => seen(plain, idA).then((o) => o?.champion), { timeout: 10000 }).toBe(true);
   for (const who of [champs[0], plain]) await expectNoScriptError(who.page);
@@ -777,7 +781,7 @@ test('첫 접속 성별 선택: 처음 한 번만 묻고, 내 캐릭터·다른 
   await expect.poll(() => watcher.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.look?.gender, myId), { timeout: 10000 }).toBe('female');
   expect((await post(request, '/api/avatar/gender', a.token, { gender: 'male' })).status).toBe(409);
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => islandSettled(page), { timeout: 30000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.gender), { timeout: 8000 }).toBe('female');
   await expect(page.locator('#genderDialog')).toBeHidden();
   for (const who of [a, watcher]) await expectNoScriptError(who.page);

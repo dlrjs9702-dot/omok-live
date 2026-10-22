@@ -25,9 +25,11 @@ function hold(base, route, token, body) {
 
 async function fixture(t) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'presence-order-'));
-  // Cleanup registered before boot: server shutdown runs before removing its data.
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
-  const fx = await boot(t, dir);
+  // Cleanup registered after boot: node:test runs a test's after-hooks in the order they were added, so the server's
+  // shutdown (added in boot) comes first. (CI 3차 후속: added before boot, the folder went while the server still wrote
+  // to it -- 'ENOTEMPTY: directory not empty, rmdir' after 「열린 광장 SSE」, #271 run 39805183750)
+  let fx;
+  try { fx = await boot(t, dir); } finally { t.after(() => fs.rm(dir, { recursive: true, force: true })); }
   const token = await fx.enter(await fx.issue('입퇴장'));
   return { ...fx, token };
 }
