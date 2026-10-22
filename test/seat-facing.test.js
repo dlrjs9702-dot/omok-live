@@ -13,7 +13,8 @@ test('앉는 방향: 광장 벤치(분수 쪽)·정원 테두리(바깥쪽)·집
   P.benches.forEach((b, k) => {
     const s = P.seats.find((x) => x.id === `b${k}`);
     if (!Number.isFinite(b.yaw)) { bad.push(`벤치${k}: 방향 없음`); return; } // (the scene turns the bench by it -- the seat's own)
-    if (off(b.yaw, Math.atan2(C.x - b.x, C.z - b.z)) > 10) bad.push(`벤치${k}: 분수를 보지 않음`);
+    // (3회차 13: the rim's benches sit in a row along the kerb, facing in from it -- into the plaza, not at the fountain)
+    if (off(b.yaw, Math.atan2(C.x - b.x, C.z - b.z)) > (b.rim ? 80 : 10)) bad.push(`벤치${k}: ${b.rim ? '마당 안쪽' : '분수'}을 보지 않음`);
     if (!s || off(s.yaw, b.yaw) > 10) bad.push(`벤치${k}: 앉는 방향 ${s && off(s.yaw, b.yaw).toFixed(0)}°`);
   });
   T.paving().gardens.forEach((g, k) => P.seats.filter((s) => s.id.startsWith(`g${k}-`)).forEach((s) => {

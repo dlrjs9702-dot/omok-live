@@ -338,7 +338,7 @@
       if (!clear(g.x, g.z)) continue;
       const sides = [-2.4, 2.4].map((d) => ({ x: g.x + g.ax * d, z: g.z + g.az * d })).filter((p) => clear(p.x, p.z)); // (a bench where it fits)
       beds.push({ x: g.x, z: g.z, r: 1.1, i: beds.length, rim: true });
-      for (const p of sides) benches.push({ ...p, r: 0.9, yaw: Math.atan2(-g.ox, -g.oz) }); // (facing in, away from the kerb)
+      for (const p of sides) benches.push({ ...p, r: 0.9, yaw: Math.atan2(-g.ox, -g.oz), rim: true }); // (facing in, away from the kerb)
       lamps.push({ x: g.x + g.ox * 1.6, z: g.z + g.oz * 1.6, r: 0.35 });
     }
     const seats = benches.map((b, k) => { const ry = b.yaw; return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
