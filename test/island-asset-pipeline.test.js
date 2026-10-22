@@ -59,7 +59,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     // v1.10.73 마을 환경정비사업 ① 길 3단계 (assets/24): the 11 path pieces in use
     ...Object.keys(REGISTRY).filter((id) => id.startsWith('path.')),
     // v1.10.80 농부 × 두더지 잡기 (assets 26): the field's four stages, the helpers' sign, the farmer and his mallet
-    ...[0, 1, 2, 3].map((s) => `farm.field.${s}`), 'farm.sign', 'farm.mallet', 'character.farmer',
+    ...[0, 1, 2, 3].map((s) => `farm.field.${s}`), 'farm.sign', 'farm.shed', 'farm.scarecrow', 'farm.mallet', 'character.farmer',
     'facility.store', 'character.storekeeper', 'mall.interior', 'character.transformer', /* v1.10.92 (assets 41·42) */
     ...['townhall_interior', 'desk_civil', 'desk_tax', 'desk_bank', 'chair_marble', 'bench_marble', 'ticket_machine', 'notice_board', 'plant_pot', 'mayor_door', 'flag_stand', 'water_cooler', 'counter_bell', 'rope_stand'].map((f) => `townhall3.${f}`), ...['civil', 'tax', 'bank'].map((n) => `character.clerk_${n}`), /* B 44 */
     ...["flower_stage0","flower_stage1","flower_stage2_red","flower_stage3_red","flower_stage2_yellow","flower_stage3_yellow","flower_stage2_white","flower_stage3_white","flower_stage2_pink","flower_stage3_pink","flower_stage2_purple","flower_stage3_purple","tree_stage0","tree_stage1","tree_stage2","tree_stage3","fertilized_mark"].map((f) => `plant.${f}`), /* B 45 */

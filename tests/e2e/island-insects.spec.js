@@ -20,7 +20,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   const insectsNow = async () => (await get(request, '/api/island/insects', a.token)).data.list || [];
   // a free spot by an insect (on the ground, off the trees) with every other insect half a metre farther than it -- so
   // SPACE reaches that one (CI 3차: a snail crawling by the 매미 took it for 40 s, run 39699233302)
-  const by = (list, t) => { for (const r of [1.2, 1.5, 1.8]) for (let k = 0; k < 12; k += 1) { const x = t.x + Math.cos(k / 2) * r; const z = t.z + Math.sin(k / 2) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.5) && list.every((o) => o.id === t.id || Math.hypot(o.x - x, o.z - z) > r + 0.5)) return { x, z }; } return null; };
+  const by = (list, t, rs = [1.2, 1.5, 1.8]) => { for (const r of rs) for (let k = 0; k < 12; k += 1) { const x = t.x + Math.cos(k / 2) * r; const z = t.z + Math.sin(k / 2) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.5) && list.every((o) => o.id === t.id || Math.hypot(o.x - x, o.z - z) > r + 0.5)) return { x, z }; } return null; };
   const pick = (list, not = null) => { const t = list.find((o) => o.id !== not && by(list, o)); return t && { ...t, spot: by(list, t) }; };
   // the same insects on both screens (the server's layout, as it is now)
   expect((await insectsNow()).length).toBeGreaterThan(3); expect((await get(request, '/api/island/insects', a.token)).data.next).toBeGreaterThan(0);
@@ -28,7 +28,8 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   // no net: it says so (and the prompt is a plain line)
   expect((await post(request, '/api/island/insect/catch', a.token, { id: pick(await insectsNow()).id })).data.error).toBe('NO_BUGNET');
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'bugnet', qty: 1 })).status).toBe(200);
-  await page.keyboard.press('KeyI'); await page.keyboard.press('Escape'); // (the bag looked at: the page knows the net)
+  await page.keyboard.press('KeyI'); await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click(); // (3회차 22: the net in hand -- SPACE swings it)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe('bugnet');
   // too far: no
   let target = pick(await insectsNow());
   expect((await post(request, '/api/island/insect/catch', a.token, { id: target.id })).data.error).toBe('TOO_FAR');
@@ -43,11 +44,18 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     const now = await insectsNow(); const t = now.find((o) => o.id === target.id);
     if (!t || !by(now, t)) { const next = pick(now); if (!next) return (last = 'no insect with a spot'); last = `${target.id} ${t ? 'no spot' : 'gone'} -> ${next.id}`; target = next; }
     const at = by(now, target);
-    await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [at.x, at.z]); await page.waitForTimeout(400);
-    const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 10000 }).catch(() => null);
-    if (!(await spaceOn(page, `insect:${target.id}`, isMobile))) { last = await page.locator('#plazaHint').textContent(); return last; }
+    await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [at.x, at.z]); await page.waitForTimeout(400);
+    // (3회차 22: the net swung -- a 1.5 m fan before me, round where the insect is drawn: under a metre from that, facing it)
+    const drawn = await page.evaluate((id) => window.PlazaDebug().insectsDrawn().find((b) => b.id === id), target.id); if (!drawn) return (last = 'not drawn');
+    const here = { ...target, x: drawn.x, z: drawn.z };
+    const close = by(now.map((o) => (o.id === target.id ? here : o)), here, [0.8]) || by([here], here, [0.6, 0.8, 1.0]); // (another insect near: the swing takes the nearest in its fan -- the answer says which)
+    if (!close) return (last = 'no spot near the drawn insect');
+    await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [close.x, close.z]);
+    const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 5000 }).catch(() => null);
+    await page.evaluate((id) => { const d = window.PlazaDebug(); const b = d.insectsDrawn().find((q) => q.id === id); if (b) d.faceTo(b.x, b.z); }, target.id);
+    if (!(await spaceOn(page, 'tool:swing', isMobile))) { last = await page.locator('#plazaHint').textContent(); return last; }
     const r = await answer; const text = r ? await r.text().catch(() => '') : ''; last = r ? `${r.status()} ${text}` : 'no answer';
-    if (r?.status() === 200) caught = JSON.parse(text);
+    if (r?.status() === 200) { caught = JSON.parse(text); const id = r.request().postDataJSON()?.id; if (id) target = { ...target, id }; } // (the one the swing took)
     return r?.status() ?? 'no answer';
   }, { timeout: 40000, intervals: [300] }).toBe(200).catch((error) => { error.message += `\nlast: ${last}`; throw error; });
   expect((await post(request, '/api/island/insect/catch', a.token, { id: target.id })).data).toEqual(caught); // (the same catch again: the same answer)

@@ -446,6 +446,21 @@
       "sha256": "b102ad5dc12d73b24fabdbd50c324aea1c8099b48ccd1ec87eab45dd4c3cdbf7"
     },
     {
+      "out": "characters/motions/NetSwing.glb",
+      "src": "swing66:01. High/motions/NetSwing.glb",
+      "sha256": "2a644ab929d9dddf130ec1d983462376f27b588691bbec027e3668440eb5c542"
+    },
+    {
+      "out": "characters/motions/HitReact.glb",
+      "src": "swing66:01. High/motions/HitReact.glb",
+      "sha256": "b64bc913dff00e6246a8fcf73de920e9e992377f7bc241a1a20840a6bd65e354"
+    },
+    {
+      "out": "characters/motions/Angry.glb",
+      "src": "swing66:01. High/motions/Angry.glb",
+      "sha256": "7f52021cd612a67ac313567c6c822b1ba409a47b6ec9192b1d9974d22a4e3424"
+    },
+    {
       "out": "characters/motions/CarryIdle.glb",
       "src": "motion36:motions/CarryIdle.glb",
       "sha256": "28e911640d2e02370f9739a0e231a9860360b266c4e22e50d865cfe4c434503f"
@@ -7520,6 +7535,22 @@
       "lowSrc": "angular63:02. Low/angular_tree_stack__winter_low.glb",
       "lowSha256": "f6e359c08891e4a3d27f333123c47fa87ef9099d12a224254b307ac3dde404e3",
       "precompressed": true
+    },
+    {
+      "out": "farmer-v1/farm_shed.glb",
+      "src": "farm68:01. High/farm_shed.glb",
+      "sha256": "e8e035d9f7ace13e15a00a300721304fcfb7c575dabd4b79ba579f5e2b767579",
+      "lowSrc": "farm68:02. Low/farm_shed_low.glb",
+      "lowSha256": "393c15bcd8397bf5ddfde34262e3fd9dc8cdfc72e3a67a1555eefb16b619a8ce",
+      "precompressed": true
+    },
+    {
+      "out": "farmer-v1/farm_scarecrow.glb",
+      "src": "farm68:01. High/farm_scarecrow.glb",
+      "sha256": "89fc1fa3afff6d9d42955c8a68c2427755f0cc578b4190e3c9ee6a81a990c2f4",
+      "lowSrc": "farm68:02. Low/farm_scarecrow_low.glb",
+      "lowSha256": "505e860f416baa32f0f635e7330c32ddca26006e836e44bab36116e20880fd56",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -7563,6 +7594,8 @@
     "home58": "58. Game Island my home 2026-10-20",
     "insects62": "62. Game Island insect motions 2026-10-20",
     "angular63": "63. Game Island angular nature 2026-10-20",
-    "furn64": "64. Game Island furniture moves 2026-10-21"
+    "furn64": "64. Game Island furniture moves 2026-10-21",
+    "swing66": "66. Game Island tool swing moves 2026-10-22",
+    "farm68": "68. Game Island farm props 2026-10-23"
   }
 }
