@@ -92,6 +92,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     }
     const scale = entry.scale ?? 1;
     if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
+    else if (id.startsWith('insect.')) assert.ok(scale >= 1 && scale < 2.5, `${id} 곤충 크기`); // (3회차 1: each 0.3 m long -- e2e insect-size measures it)
     else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
       assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea|halloween-v1|winter-v1|townhall-v3|planting-v1|together-v1|halloween-decor-v1|townhall-v2|fishing-v1|train-v1|life-v1|path-tiers-v1|ground-cover-v1|farmer-v1|store-v1|mall-v1|village-v1|dalmaru-v1|plaza-v1|furniture-v1|petshop-v1|bike-v1|home-v1|angular-v1|insects-v1)\//, id); // v1.10.32 + snowcaps, the sea sights

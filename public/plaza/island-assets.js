@@ -442,7 +442,9 @@
   for (const f of ['rock_block', 'rock_lump', 'rock_small', 'rock_stack', 'cliff_a', 'cliff_b', 'grass_a', 'grass_b', 'grass_c', 'grass_d']) REGISTRY[`angular.${f}`] = { url: `${AV}/angular_${f}.glb`, low: { url: `${AV}/angular_${f}_low.glb` }, near: f.startsWith('grass') ? 22 : 40, ...(f.startsWith('grass') ? { shadows: false } : {}) };
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
-  for (const sp of ['butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_blue', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail']) REGISTRY[`insect.${sp}`] = { url: `/assets/island/insects-v1/insect_${sp}.glb`, low: { url: `/assets/island/insects-v1/insect_${sp}_low.glb` }, near: 25, shadows: false };
+  // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)
+  const INSECT_LONG = { butterfly_cabbage: 0.205, butterfly_swallowtail: 0.205, butterfly_blue: 0.205, dragonfly_red: 0.28, dragonfly_emperor: 0.28, cicada: 0.159, rhinoceros_beetle: 0.187, stag_beetle: 0.207, ladybird: 0.134, firefly: 0.147, grasshopper: 0.197, snail: 0.138 };
+  for (const [sp, long] of Object.entries(INSECT_LONG)) REGISTRY[`insect.${sp}`] = { url: `/assets/island/insects-v1/insect_${sp}.glb`, low: { url: `/assets/island/insects-v1/insect_${sp}_low.glb` }, near: 25, shadows: false, scale: Math.round((0.3 / long) * 1000) / 1000 };
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.hut__${r}`] = hv(`home_hut__${r}`, { near: 90 }); // (묶음 4-2: the 오두막, its room, the 공사 중 sign)
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.manor__${r}`] = hv(`home_manor__${r}`, { near: 90 }); // (3단계 큰 집)
   REGISTRY['home.manor_room'] = hv('home_manor_room__base'); REGISTRY['home.hut_room'] = hv('home_hut_room__base'); REGISTRY['home.build_sign'] = hv('home_build_sign__base', { shadows: false });

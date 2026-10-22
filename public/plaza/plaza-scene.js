@@ -1700,7 +1700,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // SPACE catches it (the net swung, app.js)
   const INSECT_FLY = new Set(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor']);
   const INSECT_TREE = new Set(['cicada', 'rhinoceros_beetle', 'stag_beetle']);
-  const INSECT_NEAR = 40; const INSECT_SCARE = 5; const INSECT_REACH = 2;
+  const INSECT_HALF = 0.15; // (3회차 1 곤충 크기: every insect 0.3 m long -- island-assets INSECT_LONG)
+  const INSECT_NEAR = 40; const INSECT_SCARE = 5; const INSECT_REACH = 2 + INSECT_HALF;
   let insectList = []; const insectShown = new Map(); let insectNet = false; let onInsectScare = null;
   function setInsects(list, net) { if (Array.isArray(list)) insectList = list; if (net !== undefined) insectNet = Boolean(net); }
   function insectsGone(ids) { const gone = new Set(ids || []); insectList = insectList.filter((b) => !gone.has(b.id)); for (const id of gone) { const h = insectShown.get(id); if (h && !h.flee) h.flee = { t: 0, x: Math.random() - 0.5, z: Math.random() - 0.5 }; } }
@@ -1764,8 +1765,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function setHeldTool(kind) { heldTool = TOOL_HOLD[kind] ? kind : null; showTool(); }
   // how far before me (x, z) is, Infinity outside the fan (game yaw 0 faces +z)
-  function inFan(x, z) {
-    const m = me.root.position; const dx = x - m.x; const dz = z - m.z; const d = Math.hypot(dx, dz); if (d > SWING_REACH) return Infinity;
+  function inFan(x, z, reach = SWING_REACH) {
+    const m = me.root.position; const dx = x - m.x; const dz = z - m.z; const d = Math.hypot(dx, dz); if (d > reach) return Infinity;
     const a = Math.atan2(dx, dz) - me.root.rotation.y; return d < 0.4 || Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) <= SWING_FAN ? d : Infinity;
   }
   // SPACE with the net: the swing; resolves when the net is down with what it met -- { insect } or { resident } -- or null
@@ -1774,7 +1775,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     swingUntil = now + SWING_MS; me.anim?.play('netSwing');
     return new Promise((done) => setTimeout(() => {
       let best = null; let bd = Infinity;
-      for (const [, h] of insectShown) { if (h.flee) continue; const d = inFan(h.c.root.position.x, h.c.root.position.z); if (d < bd) { bd = d; best = { insect: h.b.id }; } }
+      for (const [, h] of insectShown) { if (h.flee) continue; const d = inFan(h.c.root.position.x, h.c.root.position.z, SWING_REACH + INSECT_HALF); if (d < bd) { bd = d; best = { insect: h.b.id }; } } // (3회차 1: met by its body's edge)
       if (!best) for (const { n, c, w } of wanderers) { if (!c.root.visible) continue; const d = inFan(w.x, w.z); if (d < bd) { bd = d; best = { resident: n }; } }
       const m = me.root.position; lastSwing = { x: +m.x.toFixed(2), z: +m.z.toFixed(2), yaw: +me.root.rotation.y.toFixed(2), hit: best, near: [...insectShown].map(([id, h]) => ({ id, dx: +(h.c.root.position.x - m.x).toFixed(2), dz: +(h.c.root.position.z - m.z).toFixed(2) })).filter((o) => Math.hypot(o.dx, o.dz) < 4) }; // (the debug's)
       done(best);
@@ -2444,7 +2445,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
     mySpace = ['townhall', 'store', 'furniture', 'petshop', 'home'].includes(space) ? space : 'island';
     if (mySpace === 'home') buildHomeRoom(); else if (homeHere) setHome(null); // (묶음 4: out of a house, its pets go)
-    indoors = mySpace !== 'island'; lightKey = null; // (bugs 9: the weather stays outside)
+    indoors = mySpace !== 'island'; lightKey = null; halloweenCheckedAt = -Infinity; // (bugs 9: the weather stays outside; 3회차 18: the black or the sky at once, not up to 5 s later)
     if (mySpace === 'townhall') buildRoom();
     if (mySpace === 'store') buildStore();
     if (mySpace === 'furniture') buildFurniture();
@@ -2586,8 +2587,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!Number.isFinite(serverMs) || rtt < 0 || rtt > clockRtt * 1.5 + 50) return;
     clockRtt = Math.min(clockRtt, rtt); serverOffset = serverMs + rtt / 2 - receivedAt;
   }
-  const wanderersTimer = setTimeout(() => { // after the first frames: the islanders' map takes a moment to work out
-    if (!IslandNpcs) return;
+  // (문제 기록 3회차 후속) the islanders' map a few rows a frame (island-npcs buildGridSlice: made at once it held the page
+  // 1.5 s and more), then they come out
+  let wanderersGone = false;
+  function startWanderers() {
+    if (walkers || wanderersGone || !IslandNpcs || !IslandNpcs.buildGridSlice(6)) return;
     // v1.10.16: walked through the scene's own collision circles and ground (the route grid is only the long plan)
     walkers = IslandNpcs.createWalkers({ walkable, solidsNear, poseAt:residentPose });
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
@@ -2603,9 +2607,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       wanderers.push({ n, c, w });
     }
     setEvents(lastResidentEvents);
-  }, 400);
+  }
   function stepWanderers(dt) {
-    if (!walkers) return;
+    if (!walkers) { startWanderers(); return; }
     const m = me.root.position;
     // v1.10.16: the shared round, stepped around solids, each other and people (island-npcs.js createWalkers): me,
     // other players and event visitors are circles to give way to
@@ -3323,7 +3327,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     questDepartureHeld = false; running = false; cancelAnimationFrame(raf); keys.clear();
     near = null; nearName = null; onNear?.(null);
   }
-  const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
+  const disposeWanderers = () => { wanderersGone = true; for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
     tryOnClose(); stop(); observer.disconnect();
     document.removeEventListener('visibilitychange', resetFrameSample);
