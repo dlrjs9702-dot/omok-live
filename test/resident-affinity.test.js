@@ -11,6 +11,9 @@ const Npcs = require('../public/plaza/island-npcs');
 const Cast = require('../public/plaza/island-cast');
 const A = require('../lib/island-affinity');
 const { boot } = require('../test-support/test-server');
+// (R3 ③: the islanders walk the round of the island's time of day -- here as the server has it, Seoul's hour)
+const seoulPhase = (ms) => { const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; };
+Npcs.setPhaseOf(seoulPhase);
 
 test('호감도 단계·오늘의 이야기 순수 규칙: 지난 단계, 질문 세 답, 좋아하는 답 +2, 단짝 칭호, 친한 사이 가구', () => {
   assert.deepEqual(A.crossed(4, 15), [1, 2]); assert.deepEqual(A.crossed(29, 30), [3]);
@@ -54,4 +57,31 @@ test('주민 호감도: 오늘의 이야기 하루 한 번, 단계 보상 한 �
   const worn = await req('/api/skins/title', a, { skinId: A.titleId(n) }); assert.equal(worn.status, 200, JSON.stringify(worn.data)); assert.equal(worn.data.avatar.title, `${Cast.WALKERS[n].name}의 단짝`);
   assert.equal((await req('/api/skins/title', a, { skinId: A.titleId(n + 1) })).status, 409); // (not 단짝 with them)
   assert.deepEqual((await req('/api/test/affinity', a, { n, delta: 1 })).data.stages, []); // (paid once)
+  // R3 ⑥ 편지: the one I am closest to writes into my 우체통, once a day
+  const mail = async () => (await req('/api/island/mail', a)).data.letters.filter((l) => String(l.from).startsWith('resident:'));
+  const letters = await mail(); assert.equal(letters.length, 1); assert.equal(letters[0].fromName, Cast.WALKERS[n].name); assert.match(letters[0].text, /단짝후보/);
+  assert.equal((await mail()).length, 1);
+});
+
+test('R3: 선물 하루 한 번(좋아함 +3·싫어함 0·보통 +1, 가방에서 빠짐), 서먹한 사이·친구 사이, 시간대마다 다른 하루 길', async (t) => {
+  // ⑤ who gets on with whom
+  assert.equal(Cast.relationOf(1, 5), 'rival'); assert.equal(Cast.relationOf(3, 0), 'friend'); assert.equal(Cast.relationOf(0, 1), null);
+  // ③ the round by the time of day: another place in the morning than by day, the same again for the same time of day
+  Npcs.setPhaseOf(() => 'day'); const day = Npcs.at(1, 123456); Npcs.setPhaseOf(() => 'morning'); const morning = Npcs.at(1, 123456);
+  assert.ok(Math.hypot(day.x - morning.x, day.z - morning.z) > 1, JSON.stringify([day, morning])); assert.deepEqual(Npcs.at(1, 123456), morning); Npcs.setPhaseOf(seoulPhase);
+  // ⑥ a gift
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'resgift-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('선물주기'));
+  await req('/api/test/island/free-residents', a, {});
+  const n = 1; const by = async () => { const w = Npcs.residentAt(n, Date.now(), null); await req('/api/plaza/state', a, { x: w.x + 1, z: w.z, yaw: 0, moving: false }); };
+  const talk = async (body) => { for (let i = 0; i < 6; i += 1) { await by(); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  assert.equal((await talk({})).status, 200);
+  assert.deepEqual((await talk({ topic: 'gift' })).data.gifts, []);
+  await req('/api/test/island/give', a, { itemId: 'fish_goby', qty: 2 }); await req('/api/test/island/give', a, { itemId: 'bugnet', qty: 1 });
+  const offer = await talk({ topic: 'gift' }); assert.deepEqual(offer.data.gifts.map((g) => g.itemId), ['fish_goby']); // (a tool is not given)
+  const given = await talk({ topic: 'gift', itemId: 'fish_goby' }); assert.equal(given.status, 200, JSON.stringify(given.data)); assert.match(given.data.say[0], /제일 좋아하는/); assert.equal(given.data.affinity.points, 1 + 3);
+  assert.equal(((await req('/api/island/bag', a)).data.items.find((e) => e.itemId === 'fish_goby') || {}).qty, 1);
+  const twice = await talk({ topic: 'gift', itemId: 'fish_goby' }); assert.match(twice.data.say[0], /벌써/); assert.equal(twice.data.affinity.points, 4);
+  assert.match((await req('/api/island/affinity', a)).data.residents[n].memory, /망둥어/);
 });
