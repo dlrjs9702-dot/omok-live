@@ -73,7 +73,8 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   const R = () => server.req;
   const weeds = async (s) => (await R()('/api/island/weeds', s)).data;
   const first = await weeds(sa);
-  assert.equal(first.weeds.length, 1400);
+  const BASE = require('../lib/island-weeds').BASE.length; // (3회차 8: the tufts where a weed sits, not all 1,400)
+  assert.equal(first.weeds.length, BASE);
   const [id, x, z] = first.weeds.find(([, wx, wz]) => Math.hypot(wx, wz) > 30);
   const stand = (s, px, pz) => R()('/api/plaza/state', s, { x: px, z: pz, yaw: 0, moving: false });
   await stand(sa, x + 1, z); await stand(sb, x - 1, z);
@@ -112,7 +113,7 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   assert.deepEqual([board.today.pulls.total, board.today.submits.total, board.week.total], [1, 1, 1]);
   assert.deepEqual([board.today.pulls.top[0].total, board.today.pulls.top[0].mine, board.today.submits.top[0].rank], [1, true, 1]);
   assert.ok(!JSON.stringify(board).includes('guest:'), '계정 ID 비공개');
-  assert.equal(board.island.weeds, 1399); assert.deepEqual(board.merit, []);
+  assert.equal(board.island.weeds, BASE - 1); assert.deepEqual(board.merit, []);
   assert.equal((await boardOf(winner === sa ? sb : sa)).today.pulls.me, null);
   assert.equal((await R()('/api/skins/title', winner, { skinId: 'title_weedking' })).status, 409);
   await R()('/api/test/fishking/settle', null, { now: Date.now() + 7 * 24 * 60 * 60 * 1000, asCurrent: true });
@@ -130,7 +131,7 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   const after = await weeds(sa);
   // v1.10.90 / 잡초 2배: 1 pulled the day before (0~279) -> today's total is 3,360; of the 1,961 short of it at most
   // GROW_MAX (700) grow somewhere new tonight, the rest on the nights after
-  assert.equal(after.weeds.length, 1399 + 700, '적게 뽑은 다음 날은 3,360포기를 향해 하룻밤 700포기');
+  assert.equal(after.weeds.length, BASE - 1 + 700, '적게 뽑은 다음 날은 3,360포기를 향해 하룻밤 700포기');
   assert.ok(!after.weeds.some(([w]) => w === id));
   assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, 700);
 });
