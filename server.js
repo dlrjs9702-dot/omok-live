@@ -1312,6 +1312,8 @@ async function questState(account) {
 }
 // the bag changes in many places (finds, sales, weeds); a thing to bring is counted from it, read again every few seconds
 // ponytail: a timed re-read, not a hook on every bag change; per-change invalidation if the bag paths are ever unified
+// (3회차 17) a catch for a request: the bag it left, at once (the islander's mark shows it with my next pose)
+function questBagNow(account, bag) { const st = questCache.get(account); if (st && bag?.items) { st.bag = bag.items.map(({ entryId, itemId, qty, meta }) => ({ entryId, itemId, qty, meta })); st.bagAt = nowMs(); } }
 function questBagFresh(st, account) {
   if (nowMs() - st.bagAt < 2000 || st.reading) return;
   st.reading = true;
@@ -1366,7 +1368,7 @@ function questEntries(account) {
   for (const id of IslandQuests.visibleStories(st.doc,nowMs())) {
     const story=IslandQuests.STORIES[id];
     if (!IslandQuests.isOpen(id, nowMs())) continue; // v1.10.39: the Halloween kid only in October
-    const s = st.doc[id] || { step: 0, taken: false, count: 0, done: false };
+    const s = IslandQuests.storyState(st.doc, id); // (3회차 17: an old photo request under way counts as done)
     entries.push({ id: `quest${id}`, kind: 'quest_npc', x: story.at.x, z: story.at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name, done: Boolean(s.done), requested: Boolean(s.taken && !s.done) });
     const t = IslandQuests.trackOf(id, s, st.bag);
     if (t) { track.push(t); if (t.to && !t.ready) entries.push({ id: `questspot${id}`, kind: 'quest_spot', x: t.to.x, z: t.to.z, verb: null }); }
@@ -5515,6 +5517,7 @@ async function requestHandler(req, res) {
     const f = IslandFishing.SPECIES[c.species];
     c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag };
     if (outcome.applied) { islandProgress('fish', account, 1); contestNote(account, session, 'fish', f.price); } // (A4: a contest catch)
+    questBagNow(account, outcome.bag);
     return sendJson(res, 200, c.done);
   }
   // B 47 곤충 채집: a 잠자리채 in the bag, on the island's grass (not the plaza); the server picks what comes and when
@@ -5542,7 +5545,7 @@ async function requestHandler(req, res) {
     if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
     const s = IslandInsects.SPECIES[b.species];
     const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag };
-    insectGone.add(id); insectCaught.set(id, { account, result }); broadcastIsland('insects', { gone: [id] });
+    insectGone.add(id); insectCaught.set(id, { account, result }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag);
     return sendJson(res, 200, result);
   }
   // run (or ridden) at: off it goes, for everyone (the page says so when one comes fast within reach)
@@ -5842,7 +5845,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
-    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null }, nowMs()); bikesOf.delete(pointAccountForSession(session));
+    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null }, nowMs()); bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
     return sendJson(res, 200, { ok: true, ...result });
   }
 
