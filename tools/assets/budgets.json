@@ -376,6 +376,14 @@
       "triangles": 20000,
       "reason": "B 44 민원실 28x18 m 껍데기(기둥·몰딩 포함, 주문 상한 33,000)"
     },
+    "petshop-v1/pet_ditto.glb": {
+      "triangles": 17000,
+      "reason": "3회차 21 메타몽 펫 High (assets 65, 사용자 2026-10-22 「삼각형 상한을 더 올려서 디테일이 살아있게」: 16,300)"
+    },
+    "petshop-v1/pet_ditto_low.glb": {
+      "triangles": 5500,
+      "reason": "3회차 21 메타몽 펫 Low (assets 65: 5,092)"
+    },
     "townhall-v3/townhall_interior_low.glb": {
       "triangles": 11000,
       "reason": "B 44 민원실 Low"

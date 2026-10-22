@@ -411,6 +411,7 @@
   for (const [kind, coats] of Object.entries(PETS)) for (const coat of coats.split(' ')) REGISTRY[`pet.${kind}__${coat}`] = ps(`pet_${kind}__${coat}`);
   for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60, ...(f === 'floor3' ? FLOOR : {}) });
   REGISTRY['mall.elevator'] = ps('petshop_elevator3', { near: 60 });
+  REGISTRY['together.pet_ditto'] = ps('pet_ditto'); // (3회차 21 메타몽, assets 65: one coat, Idle·Walk·Sit like the others)
   // 자전거 (assets 61 bike-v1): the frame in four colours, a wheel (front and back), the crank -- the game turns the last two;
   // in the 잡화점 a small one on the floor
   const BK = '/assets/island/bike-v1'; const bk = (file, extra = {}) => ({ url: `${BK}/${file}.glb`, low: { url: `${BK}/${file}_low.glb` }, near: 30, ...extra });
