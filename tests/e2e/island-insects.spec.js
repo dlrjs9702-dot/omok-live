@@ -28,26 +28,21 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   expect((await post(request, '/api/island/insect/catch', a.token, { id: target.id })).data.error).toBe('TOO_FAR');
   // walked up to: SPACE catches it -- the bag, the 도감, gone on the other screen
   const spot = besides(target); await standAt(request, a, spot.x, spot.z);
-  // (CI: the insect flew or crawled out of reach between the hint read here and the tap -- on the phone the hint is read
-  // and tapped on the page at once)
-  const caught = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'));
-  // (CI 3차, run 39699233302 and locally: another insect -- a snail crawling by the 매미, not where the list put it at the
-  // start -- was what SPACE reached for 40 s. Each try: stand by the target where it is on this page now, with no other
-  // insect as near, and SPACE (the phone: the hint) only when the target is what it reaches -- in one call)
-  const standBy = (id) => page.evaluate((id) => {
-    const d = window.PlazaDebug(); const T = window.IslandTerrain; const all = d.insects(); const t = all.find((h) => h.id === id); if (!t) return false;
-    for (const r of [1.2, 1.5, 1.8]) for (let k = 0; k < 12; k += 1) {
-      const x = t.x + Math.cos(k / 2) * r; const z = t.z + Math.sin(k / 2) * r;
-      if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.5) && all.every((o) => o.id === id || Math.hypot(o.x - x, o.z - z) > r + 0.5)) { d.teleport(x, z); return true; } // (the target the nearest by half a metre)
-    }
-    return false;
-  }, id);
+  // (CI: the insect flew or crawled out of reach between the hint read here and the tap. CI 3차: another insect -- a snail
+  // crawling by the 매미 -- was what SPACE reached for 40 s (run 39699233302, and locally); stood by the page's drawn places
+  // the server then said TOO_FAR (run 39702592847). Each try: the server's places now, a spot by the target with every other
+  // insect half a metre farther, SPACE (the phone: the hint) only when the target is what it reaches -- in one call -- and
+  // the server's answer; again until it is 200)
+  const by = (list, t) => { for (const r of [1.2, 1.5, 1.8]) for (let k = 0; k < 12; k += 1) { const x = t.x + Math.cos(k / 2) * r; const z = t.z + Math.sin(k / 2) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.5) && list.every((o) => o.id === t.id || Math.hypot(o.x - x, o.z - z) > r + 0.5)) return { x, z }; } return null; };
+  let last = null;
   await expect.poll(async () => {
-    if (!(await standBy(target.id))) return 'no spot';
-    await page.waitForTimeout(400);
-    return (await spaceOn(page, `insect:${target.id}`, isMobile)) ? 'pressed' : page.locator('#plazaHint').textContent();
-  }, { timeout: 40000, intervals: [300] }).toBe('pressed');
-  expect((await caught).status()).toBe(200);
+    const now = (await get(request, '/api/island/insects', a.token)).data.list || []; const t = now.find((o) => o.id === target.id);
+    const at = t && by(now, t); if (!at) return (last = t ? 'no spot' : 'gone');
+    await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [at.x, at.z]); await page.waitForTimeout(400);
+    const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 10000 }).catch(() => null);
+    if (!(await spaceOn(page, `insect:${target.id}`, isMobile))) { last = await page.locator('#plazaHint').textContent(); return last; }
+    const r = await answer; last = r ? `${r.status()} ${await r.text().catch(() => '')}` : 'no answer'; return r?.status() ?? 'no answer';
+  }, { timeout: 40000, intervals: [300] }).toBe(200).catch((error) => { error.message += `\nlast: ${last}`; throw error; });
   const itemId = `insect_${target.species}`;
   await expect.poll(async () => (await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === itemId), { timeout: 10000 }).toBe(true);
   expect((await get(request, '/api/island/dex', a.token)).data.entries.find((e) => e.id === itemId).count).toBeGreaterThan(0);

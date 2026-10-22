@@ -17,12 +17,12 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
     return best;
   }, weeds);
   expect(spot).not.toBeNull();
-  await page.evaluate(({ x, z }) => window.PlazaWarp(x, z), spot);
+  const warpAt = Date.now(); await page.evaluate(({ x, z }) => window.PlazaWarp(x, z), spot); const warpMs = Date.now() - warpAt;
   // (CI 3차: canFish false for 10 s after the warp on CI, twice -- the nearest 'river' spot was (0, -6), a strip of shallow
   // water by 윤슬만's beach (fishWater's last case), a push of a few cm off it (an islander walking by) and no fishing; now
   // a bank of a real river (riverDist < 3) with room round it, put back there if moved off, and where it was if that fails)
   let at = null;
-  await expect.poll(() => page.evaluate((s) => { const d = window.PlazaDebug(); if (!d.canFish()) d.teleport(s.x, s.z); return { can: d.canFish(), x: d.x, z: d.z, space: d.space }; }, spot).then((r) => { at = r; return r.can; }), { timeout: 10000 }).toBe(true).catch((error) => { error.message += `\nlast: ${JSON.stringify(at)} spot: ${JSON.stringify(spot)}`; throw error; });
+  await expect.poll(async () => { const t0 = Date.now(); at = { pending: true }; try { const r = await page.evaluate((s) => { const d = window.PlazaDebug(); if (!d.canFish()) d.teleport(s.x, s.z); return { can: d.canFish(), x: d.x, z: d.z, space: d.space }; }, spot); at = { ...r, ms: Date.now() - t0 }; return r.can; } catch (e) { at = { error: String(e).slice(0, 200), ms: Date.now() - t0 }; return false; } }, { timeout: 10000 }).toBe(true).catch((error) => { error.message += `\nlast: ${JSON.stringify(at)} warp: ${warpMs} ms spot: ${JSON.stringify(spot)}`; throw error; }); // (pending: the page did not answer the call at all)
   await expect(page.locator('#plazaHint')).toHaveText(/낚시$/, { timeout: 10000 }) // (a phone shows no SPACE);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
