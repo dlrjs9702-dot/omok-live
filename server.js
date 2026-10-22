@@ -1110,8 +1110,8 @@ const mallFloor = (token) => (!storeInside.has(token) ? 0 : petshopInside.has(to
 const MALL_FLOORS = { 1: { R: IslandStore, space: 'store' }, 2: { R: IslandFurniture, space: 'furniture' }, 3: { R: IslandPetShop, space: 'petshop' } };
 // 펫샵: the day's eight and who took which (world 'petshop': { day, sold: { slot: account }, buys: { account: n } })
 async function petshopDay() { const day = kstDate(nowMs()); const st = (await pointStore.worldValue('petshop')) || {}; return st.day === day ? { day, sold: st.sold || {}, buys: st.buys || {} } : { day, sold: {}, buys: {} }; }
-const petPrice = (kind) => Economy.value(`good:pet_${kind}`);
-const petView = (p) => (p && IslandPetShop.KINDS[p.kind] ? { kind: p.kind, coat: IslandPetShop.coatOf(p.kind, p.coat), name: String(p.name || '').slice(0, 10) } : null);
+const petPrice = (kind) => { const c = IslandPetShop.catalogOf(kind); return Economy.value(!c ? `good:pet_${kind}` : kind === 'ditto' ? 'pet:ditto' : c.ip ? 'pet:transform_ip' : 'pet:transform_animal'); }; // (3회차 21: the counter's by its kind)
+const petView = (p) => (p && IslandPetShop.known(p.kind) ? { kind: p.kind, coat: IslandPetShop.coatOf(p.kind, p.coat), name: String(p.name || '').slice(0, 10) } : null);
 // my pets: those adopted at the 펫샵 (world 'pets:<account>', each its coat and name) and those bought before at the 잡화점 (in the bag, the first coat)
 async function myPets(account) {
   const adopted = ((await pointStore.worldValue(`pets:${account}`)) || []).map((p) => ({ uid: p.uid, kind: p.kind, coat: p.coat, name: p.name, from: 'petshop' }));
@@ -4817,7 +4817,33 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/petshop' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const st = await petshopDay(); const account = pointAccountForSession(session);
-    return sendJson(res, 200, { ok: true, day: st.day, perDay: 1, mine: st.buys[account] || 0, pets: IslandPetShop.displayOf(st.day).map((p) => ({ ...p, name: IslandPetShop.nameOf(p.kind, p.coat), price: petPrice(p.kind), sold: Boolean(st.sold[p.slot]) })) });
+    const owned = new Set(((await pointStore.worldValue(`pets:${account}`)) || []).map((p) => p.kind)); // (3회차 21: the counter's, one of each)
+    return sendJson(res, 200, { ok: true, day: st.day, perDay: 1, mine: st.buys[account] || 0, pets: IslandPetShop.displayOf(st.day).map((p) => ({ ...p, name: IslandPetShop.nameOf(p.kind, p.coat), price: petPrice(p.kind), sold: Boolean(st.sold[p.slot]) })),
+      catalog: IslandPetShop.catalog().map((p) => ({ kind: p.kind, name: p.name, ip: p.ip, price: petPrice(p.kind), owned: owned.has(p.kind) })) });
+  }
+  // (문제 기록 3회차 21) one from the counter's catalog -- a transformation small or 메타몽 -- at the counter, one of each kind;
+  // named, it walks with me at once (as one from the yard)
+  if (pathname === '/api/island/petshop/buy' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const at = plazaPresence.get(session.token); const account = pointAccountForSession(session);
+    if (!at || !petshopInside.has(session.token)) return sendError(res, 409, 'TOO_FAR', '펫샵에서 다시 시도해 주세요.');
+    const item = IslandPetShop.catalogOf(String(body.kind || '')); if (!item) return sendError(res, 400, 'BAD_PET', '반려동물을 확인해 주세요.');
+    const name = String(body.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 10);
+    return worldEdit(async () => {
+      const owned = (await pointStore.worldValue(`pets:${account}`)) || [];
+      if (owned.some((p) => p.kind === item.kind)) return sendError(res, 409, 'ALREADY_OWNED', '이미 데리고 있는 친구예요.');
+      if (owned.length >= 30) return sendError(res, 409, 'TOO_MANY_PETS', '반려동물이 너무 많아요.');
+      const claimId = `petshop:catalog:${item.kind}:${account}`;
+      let out; try { out = await pointStore.charge({ userId: account, claimId, price: petPrice(item.kind), title: `펫샵 · ${item.name}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      const mine = { uid: crypto.randomUUID(), kind: item.kind, coat: null, name, at: nowMs(), claim: claimId };
+      await pointStore.setWorldValue(`pets:${account}`, [...owned, mine]);
+      await pointStore.questApply(account, 'pet', () => ({ doc: { kind: mine.kind, coat: null, name: mine.name, uid: mine.uid } }));
+      petOf.set(account, petView(mine));
+      for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
+      plazaDirty = true; if (out.applied) notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, pet: petOf.get(account), balance: out.balance ?? null });
+    });
   }
   // a pet taken home: by it in the yard (where it is now -- its round is the server's too), the first one only, one a
   // day each; named, it walks with me at once and is gone from everyone's yard till tomorrow

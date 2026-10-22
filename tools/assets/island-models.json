@@ -6843,6 +6843,14 @@
       "precompressed": true
     },
     {
+      "out": "petshop-v1/pet_ditto.glb",
+      "src": "ditto65:01. High/pet_ditto.glb",
+      "sha256": "d6e9cc9379c8e80405625f008bf50f6566f0c4c3e966dccb2a7f1b43dbd7f279",
+      "lowSrc": "ditto65:02. Low/pet_ditto_low.glb",
+      "lowSha256": "1c02b39417208a447488c1c5a652592f20a0697de68507caf66de41bc69a900e",
+      "precompressed": true
+    },
+    {
       "out": "bike-v1/bike_crank.glb",
       "src": "bike61:01. High/bike_crank__base.glb",
       "sha256": "976d5ca3501d5a1940ca6a0db0fb53d44cb431a3bf71aad82d4b002e238c2b13",
@@ -7596,6 +7604,7 @@
     "angular63": "63. Game Island angular nature 2026-10-20",
     "furn64": "64. Game Island furniture moves 2026-10-21",
     "swing66": "66. Game Island tool swing moves 2026-10-22",
-    "farm68": "68. Game Island farm props 2026-10-23"
+    "farm68": "68. Game Island farm props 2026-10-23",
+    "ditto65": "65. Game Island ditto pet 2026-10-22"
   }
 }
