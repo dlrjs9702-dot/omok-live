@@ -358,7 +358,8 @@
     }
     const bushes = [];
     for (let tries = 0; bushes.length < 520 && tries < 7000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (clearOf(x, z)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 }); }
-    const tufts = [];
+    // (3회차 8) the tufts seeded on their own: a tree or a flower placed otherwise above no longer moves every weed (`w<index>`)
+    const tufts = []; seed = 0x7a1f5;
     for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7 }); }
     const rocks = [];
     for (let tries = 0; rocks.length < 160 && tries < 8000; tries += 1) {
