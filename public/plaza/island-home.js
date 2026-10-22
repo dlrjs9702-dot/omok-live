@@ -53,7 +53,7 @@
   const HUNG = new Set(['picture_frame', 'wall_clock', 'curtain_window', 'wall_shelf']); // (their backs on a wall, at the height made)
   const FLAT = new Set(['rug_round']); // (under the rest)
   // where one sits (assets 57 manifest seats, model local: x, height, z) -- 'lie' and 'floor' sit too for now
-  const SEATS = { window_seat: [[0, 0.5, 0]], armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.45, 0.46, -0.12], [0.45, 0.46, -0.12]], stool: [[0, 0.51, 0]], bed: [[0, 0.5, 0]], bunk_bed: [[0, 0.42, 0]] };
+  const SEATS = { window_seat: [[0, 0.5, 0]], armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.45, 0.46, -0.12], [0.45, 0.46, -0.12]], stool: [[0, 0.51, 0]], bed: [[0, 0.55, 0]], bunk_bed: [[0, 0.5, 0]] }; // (3회차 3: the beds' heights as their models' mattresses)
   // the tanks (assets 57 manifest swim): where fish swim (model local), how many, the biggest size they take, how small fish show
   const TANKS = {
     fish_bowl: { min: [-0.1, 0.88, -0.1], max: [0.1, 1.08, 0.1], slots: 1, biggest: 'small', fishScale: 0.5 },
@@ -125,9 +125,12 @@
   // every seat in a house: its pieces' and the room's own (the 큰 집's window seat: id home:room<k>:0)
   const allSeatsOf = (lot, home) => [...(home?.pieces || []).flatMap((p) => seatsOf(lot, p)), ...stageOf(home?.stage).seats.flatMap((q, k) => seatsOf(lot, { uid: `room${k}`, id: 'window_seat', x: q.x, z: q.z, rot: 0 }))];
   // a piece's seats in the world (room-local turned by rot, then into the world)
+  // (y: the scene lifts a seat 0.28 and SitIdle's seat of the body is 0.26 above the root -- so the root 0.54 under the
+  // seat's top, as on a plaza bench; 3회차 3 「소파 위에 떠 있어」: it was 0.45, 9 cm up)
+  const SIT_BELOW = 0.54;
   function seatsOf(lot, p) {
     const list = SEATS[shapeOf(p.id)] || []; const a = (p.rot * Math.PI) / 2;
-    return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - 0.45, yaw: a }; /* (y: as the scene lifts a seat 0.28 and a sitter's hips sit 0.17 below the seat; yaw: the piece's front, the room turned half round) */ });
+    return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a }; /* (yaw: the piece's front, the room turned half round) */ });
   }
   return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, clamp, seatsOf };
 }));

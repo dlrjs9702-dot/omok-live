@@ -2325,7 +2325,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const v of homeRoomV.pieces.values()) {
       for (const f of v.swim) {
         const p = f.root.position; const d = p.distanceTo(f.to); if (d < 0.04) { f.to = swimTo(f.T, f.bottom); continue; }
-        p.lerp(f.to, Math.min(1, (f.speed * dt) / d)); f.root.rotation.y = Math.atan2(f.to.x - p.x, f.to.z - p.z) + Math.sin(clock * 9 + f.phase) * 0.18; // (the tail's wag)
+        // (the head forward: a fish's front is -Z like every model -- 문제 기록 3회차 12 「뒤로만 움직여」; the tail's wag)
+        p.lerp(f.to, Math.min(1, (f.speed * dt) / d)); f.root.rotation.y = Math.atan2(f.to.x - p.x, f.to.z - p.z) + Math.PI + Math.sin(clock * 9 + f.phase) * 0.18;
       }
       for (const b of v.bubbles) { const T = HOME.TANKS[HOME.shapeOf(homeHere.home.pieces.find((x) => v.root === homeRoomV.pieces.get(x.uid)?.root)?.id)]; if (!T) continue; b.position.y += dt * 0.25; if (b.position.y > T.max[1]) b.position.y = T.min[1]; }
     }
@@ -3095,6 +3096,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     } else delete eventDoors['fish:spot'];
     // (2회차 11: holding a piece, the hint says how to let go and turn it -- not the seat or tank in front)
     if (grab) { eventDoors['grab:hold'] = { x: me.root.position.x, z: me.root.position.z, name: grab.blocked ? `${grab.blocked} · 놓기` : '가구 놓기 · R 돌리기' }; best = 'grab:hold'; } else delete eventDoors['grab:hold'];
+    // (문제 기록 3회차 공통 오류 「reading 'name' at step」: best may still be last frame's grab:hold or fish:spot, taken
+    // away just above when the piece was let go or the line pulled in)
+    if (best && !doorOf(best)) best = null;
     if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName, plain: Boolean(doorOf(near).plain) } : null); }
     me.lookAt = near && !talkView ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
     const ambientClock = lessMotion?.matches ? 0 : clock;
