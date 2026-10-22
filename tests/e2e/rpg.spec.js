@@ -68,21 +68,24 @@ test.describe('잿빛 원정', () => {
 
     // ↑ + → together: diagonal, not faster than straight; page must not scroll.
     const start = await mySnap(me.page);
-    const pressedAt = Date.now();
     await me.page.keyboard.down('ArrowUp');
     await me.page.keyboard.down('ArrowRight');
     await me.page.waitForTimeout(600);
     expect((await debug(me.page)).held).toBe(1 | 8);
+    // Hunter speed 6.2 m/s: the diagonal never faster than straight -- (CI 3차: measured between two server snapshots taken
+    // while held, by the server's own clock; the hold timed here, keys down to the page's release, left out the input's way
+    // to the server: 5.44 m over a 5.37 m allowance, run 39704740141)
+    const s1 = (await debug(me.page)).snap; await me.page.waitForTimeout(400); const s2 = (await debug(me.page)).snap;
+    const q1 = s1.p.find(p => p.s === '1'); const q2 = s2.p.find(p => p.s === '1');
+    expect(s2.t - s1.t).toBeGreaterThan(0.2);
+    expect(Math.hypot(q2.x - q1.x, q2.z - q1.z) / (s2.t - s1.t)).toBeLessThan(6.2 * 1.05); // (snapshot times to 0.01 s)
     await me.page.keyboard.up('ArrowUp');
     await me.page.keyboard.up('ArrowRight');
     await expect.poll(async () => (await debug(me.page)).held).toBe(0);
-    const heldFor = (Date.now() - pressedAt) / 1000;
     await me.page.waitForTimeout(300);
     const end = await mySnap(me.page);
     expect(end.x).toBeGreaterThan(start.x + 1); // screen right
     expect(end.z).toBeLessThan(start.z - 1); // screen up
-    // Hunter speed 6.2 m/s: the diagonal never covers more than the straight-line speed allows.
-    expect(Math.hypot(end.x - start.x, end.z - start.z)).toBeLessThan(6.2 * heldFor + 0.5);
     expect(await me.page.evaluate(() => window.scrollY)).toBe(scroll);
 
     // Space = basic attack (held), Q = skill with a visible cooldown.

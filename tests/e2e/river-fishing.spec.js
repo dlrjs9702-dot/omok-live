@@ -18,6 +18,9 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   }, weeds);
   expect(spot).not.toBeNull();
   const warpAt = Date.now(); await page.evaluate(({ x, z }) => window.PlazaWarp(x, z), spot); const warpMs = Date.now() - warpAt;
+  // (CI 3차, run 39704740141: the warp 111 m off took 4.3 s and the page then answered no call for 10 s -- that part of the
+  // island is loaded as at an entry, so the entry's wait: until the page answers that it runs)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   // (CI 3차: canFish false for 10 s after the warp on CI, twice -- the nearest 'river' spot was (0, -6), a strip of shallow
   // water by 윤슬만's beach (fishWater's last case), a push of a few cm off it (an islander walking by) and no fishing; now
   // a bank of a real river (riverDist < 3) with room round it, put back there if moved off, and where it was if that fails)
