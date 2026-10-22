@@ -475,10 +475,12 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
 // zone's copies procedural; back to automatic, the day is the server clock's
 test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계방향으로 한 구역씩 이동, 파일 없는 계절은 코드 생성형', async ({ browser, request }) => {
   test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */
-  const a = await island(browser, request, '계절', { __only: true, 'nature.rock.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } }); // the round-rock model alone (the whole registry is the next test's)
+  // one bush model alone (the whole registry is the next test's) -- bushes stand in every zone (3회차 8: the round rocks,
+  // only on settled ground now, are in two zones that do not touch, and one zone clockwise had nothing to compare)
+  const a = await island(browser, request, '계절', { __only: true, 'nature.bush.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } });
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.41: rocks only -- October's decor would slow a software-rendered runner
-  const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock.0');
+  const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.bush.0');
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 15000 }).toBe('ready');
   const expectDay = async (day) => {
     await page.evaluate((d) => window.PlazaDebug().setSeasonDay(d), day);
@@ -486,7 +488,7 @@ test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계�
     await expect.poll(async () => (await rock())?.placed).toBe(true);
     const zones = (await rock()).zones;
     const looks = await page.evaluate((d) => [-1, 0, 1, 2, 3].map((zone) => window.IslandTerrain.zoneSeason(zone, d) || window.AssetPipeline.NEUTRAL_LOOK), day);
-    expect(Object.keys(zones).length).toBeGreaterThanOrEqual(3); // rocks all round the island
+    expect(Object.keys(zones).length).toBeGreaterThanOrEqual(3); // bushes all round the island
     for (const [zone, z] of Object.entries(zones)) {
       expect(z.look).toBe(looks[Number(zone) + 1]);
       expect(z.url).toBe(z.look === 'spring' ? BOX : z.look === 'winter' ? BOX2 : null); // no file: procedural
