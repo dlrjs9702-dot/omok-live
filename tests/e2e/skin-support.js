@@ -126,10 +126,11 @@ async function pressFishArrows(page, isMobile = false) {
   const box = page.locator('#fishArrows'); await box.waitFor({ state: 'visible', timeout: 15000 });
   const dirs = await box.locator('.fishArrowSeq span').evaluateAll((spans) => spans.map((s) => s.dataset.dir));
   const KEY = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
-  // (a phone: the buttons tapped in the page at once -- CI #278: the box still coming in, each click waited for it to stand
-  // still and the bite's time ran out between them; the buttons answer a click)
+  // (pressed in the page at once -- CI #278: a phone's clicks waited for the box coming in to stand still, a PC's key presses
+  // a round trip each on the slow runner, and the bite's time ran out between them -- the server's, which a test that
+  // turns the bite into another fish times by that fish, not the count shown. The buttons answer a click, the keys a keydown)
   if (isMobile) await box.evaluate((el, dirs) => { for (const dir of dirs) el.querySelector(`.fishArrowPad button[data-dir=${dir}]`).click(); }, dirs);
-  else for (const dir of dirs) await page.keyboard.press(KEY[dir]);
+  else await page.evaluate(([dirs, KEY]) => { for (const dir of dirs) window.dispatchEvent(new KeyboardEvent('keydown', { code: KEY[dir], key: KEY[dir], bubbles: true })); }, [dirs, KEY]);
   return dirs.length;
 }
 async function spaceOn(page, prefix, isMobile = false) {
