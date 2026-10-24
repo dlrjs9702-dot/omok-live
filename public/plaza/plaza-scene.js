@@ -2587,11 +2587,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!Number.isFinite(serverMs) || rtt < 0 || rtt > clockRtt * 1.5 + 50) return;
     clockRtt = Math.min(clockRtt, rtt); serverOffset = serverMs + rtt / 2 - receivedAt;
   }
-  // (문제 기록 3회차 후속) the islanders' map a few rows a frame (island-npcs buildGridSlice: made at once it held the page
-  // 1.5 s and more), then they come out
-  let wanderersGone = false;
+  // (문제 기록 3회차 후속) the islanders' map a few ms at a time (island-npcs buildGridSlice: made at once it held the page
+  // 1.5 s and more), then they come out -- on a timer between frames, not a slice a frame: a row is one slice where frames
+  // are slow (CI's software drawing, a phone), and a frame each made it a minute and more (#283 CI, plaza 배회 NPC); the
+  // timer's turns wait behind the drawing too (21 s on a quick PC), so past 3 s the rest is made at once
+  let wanderersGone = false; let gridGrowing = false;
   function startWanderers() {
-    if (walkers || wanderersGone || !IslandNpcs || !IslandNpcs.buildGridSlice(6)) return;
+    if (walkers || wanderersGone || !IslandNpcs) return;
+    if (!IslandNpcs.buildGridSlice(0)) {
+      if (!gridGrowing) { gridGrowing = true; const until = performance.now() + 3000; const grow = () => { if (performance.now() > until) IslandNpcs.buildGrid(); else if (!IslandNpcs.buildGridSlice(12)) setTimeout(grow, 0); }; setTimeout(grow, 0); }
+      return;
+    }
     // v1.10.16: walked through the scene's own collision circles and ground (the route grid is only the long plan)
     walkers = IslandNpcs.createWalkers({ walkable, solidsNear, poseAt:residentPose });
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
