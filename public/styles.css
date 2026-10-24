@@ -1798,7 +1798,7 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 @media (max-width:760px){.plazaDialog.editMode{width:auto;max-width:none;max-height:44dvh;margin:auto 8px max(8px,env(safe-area-inset-bottom))}}
 .plazaDialog.talkMode::after{content:"";position:absolute;left:calc(50% - 9px);top:-10px;width:18px;height:18px;background:var(--isle-paper);border-left:1px solid var(--isle-line);border-top:1px solid var(--isle-line);transform:rotate(45deg)} /* (the tail up toward the one speaking: the talk camera keeps them over the bubble's middle) */
 .plazaDialog.talkMode .recordsDialogHead h2{position:absolute;z-index:1;top:-15px;left:20px;margin:0;padding:4px 14px;border-radius:999px;background:var(--talk-tag,var(--isle-tag));color:#fff;font-size:.9rem;font-weight:800;box-shadow:0 2px 6px rgba(74,56,40,.25)}
-.plazaDialog.talkMode .recordsDialogHead{justify-content:flex-end;background:none;border:0;padding:0;margin:0;min-height:0} /* A-6 대화창 통일: one bubble -- no wood bar over it */
+.plazaDialog.talkMode .recordsDialogHead{position:static;justify-content:flex-end;background:none;border:0;padding:0;margin:0;min-height:0} /* (static: the tag and 닫기 sit on the bubble's own edge) */ /* A-6 대화창 통일: one bubble -- no wood bar over it */
 .plazaDialog.talkMode .recordsDialogHead .ghost{position:absolute;top:6px;right:8px;background:transparent;color:var(--isle-soft);border-color:transparent}
 .plazaDialog.talkMode .plazaDialogBody{display:block}
 .plazaDialog.talkMode .lostRequest{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -1806,6 +1806,7 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .plazaDialog.talkMode .lookMeta.talkMeta{font-size:.78rem;line-height:1.4;color:var(--isle-soft)}
 .talkHearts{margin-left:2px;color:#d9930f}
 .plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
+.plazaDialog.talkMode .talkActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto}
 .lostRequestLine.talkPending{display:none}
 /* A-6 주민 대화 선택지 → 대화창 새 단장: their own small bubble over the talk's right side once the words are out,
    numbered for the keys (1~4), 44px rows for a finger */

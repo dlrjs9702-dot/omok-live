@@ -2686,16 +2686,17 @@
     closeIslandWindows(); plaza.controller?.setSpace?.('jail', where.x, where.z); document.body.classList.add('townhallRoom');
     plaza.controller?.setJail?.(where.jail); await refreshJail(); if (jailState?.inmate === true) openWarden();
   }
-  const wardenCard = document.createElement('div'); wardenCard.className = 'goodCard'; wardenCard.id = 'wardenCard';
+  // (대화창 새 단장: the warden speaks in the talk bubble too -- his words, then his buttons)
+  const wardenCard = document.createElement('div'); wardenCard.className = 'talkActions'; wardenCard.id = 'wardenCard';
   async function openWarden() {
     const s = await refreshJail(); if (!s) return;
-    const say = document.createElement('p'); const row = document.createElement('div'); row.className = 'goodBuy';
+    const say = document.createElement('p'); say.className = 'lostRequestLine'; const row = wardenCard; row.replaceChildren();
     const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); return b; };
     if (s.inmate === true) {
       say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
       button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
     } else say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`;
-    wardenCard.replaceChildren(say, row); openPlazaWindow('구치소장', [wardenCard]);
+    lostCard.replaceChildren(say, row); openTalk('구치소장');
   }
   async function startEssay() {
     const gen = essayGen;
