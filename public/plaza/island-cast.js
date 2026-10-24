@@ -23,6 +23,9 @@
   const GREETS = Object.freeze([[], ['안녕하세요, {me}님!', '{me}님, 오늘도 좋은 하루예요.', '어, {me}님이다!'],
     ['{me}님! 마침 생각하고 있었어요.', '{me}님, 어디 가요? 잘 다녀와요!', '오늘 날씨 좋죠, {me}님?'],
     ['{me}! 보고 싶었어요!', '{me}, 오늘도 같이 걸을래요?', '역시 {me}! 오늘도 반가워요!']]);
+  // (대화창 새 단장) each one's name tag colour, white letters on it (4.5:1 or more) -- 봄이 꽃분홍, 바다 할아버지 남색, 하람
+  // 공책 초록, 두리 꿀색, 노을 할머니 노을빛, 오 탐정 먹색, 다온 빵 갈색, 바람이 바다 파랑, 이솔 밤하늘, 가람 파란 모자
+  const TAG_COLORS = Object.freeze(['#b34d70', '#2f4d7a', '#4e7d4a', '#9c6508', '#b45330', '#4a4a4a', '#9a5b2c', '#2a7399', '#4b4f9e', '#2f6fb8']);
   // lines: [처음 본 사이, 아는 사이, 친한 사이, 단짝]
   const WALKERS = [
     { name: '봄이', role: '꽃집 아르바이트생', about: '광장 근처 꽃집에서 일한다. 꽃 이름이라면 뭐든 안다.', lines: [
@@ -85,7 +88,7 @@
       ['{me}님! 오늘도 같이 탐험 가요!', '{me}님 탐험대 대원으로 임명합니다! 짝짝짝!', '제일 아끼는 조개 껍데기, {me}님한테만 보여 줄게요.'],
       ['{me}님은 우리 탐험대 부대장이에요. 대장은 저고요!', '섬 지도에 「{me} 언덕」을 만들었어요. 제 마음대로요!', '어른이 돼도 {me}님이랑 탐험할 거예요. 약속!']],
       morning: '오늘은 어디를 탐험할까요?', night: '엄마가 해 지기 전에 들어오랬는데…!' },
-  ].map((c, n) => Object.freeze({ n, ...c, lines: Object.freeze(c.lines.map((l) => Object.freeze(l))) }));
+  ].map((c, n) => Object.freeze({ n, tagColor: TAG_COLORS[n], ...c, lines: Object.freeze(c.lines.map((l) => Object.freeze(l))) }));
   // the story keepers: their own numbers for 호감도 (after the ten), and their words when the story has nothing to ask
   const KEEPERS = Object.freeze({
     granny: Object.freeze({ n: 10, role: '정원사', lines: [

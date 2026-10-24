@@ -26,8 +26,9 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
     }, { timeout: 120000, intervals: [300] }).toBe(true).catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')} n: ${n}`; throw error; }); // (CI 3차: once 120 s with no talk on CI -- the server's answer, to find why)
     if (!process.env.CI) expect(await page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe(`resident:${n}`); // the talk camera (사용자 2026-10-18: every talk) -- (CI: a slow screen draws the walker behind, too far for the camera)
   };
-  const lines = async () => { for (let k = 0; k < 4 && await page.locator('.lostRequestLine.talkPending').count(); k += 1) await page.keyboard.press('Space'); };
-  const choose = async (key) => { await Promise.all([page.waitForResponse((r) => r.url().includes('/api/island/resident/talk')), page.keyboard.press(key)]); await lines(); };
+  // (대화창 새 단장: the words typed out -- Space shows a line at once, then the next)
+  const lines = async () => { for (let k = 0; k < 8 && await page.locator('.lostRequestLine.talkPending, .lostRequestLine.typing').count(); k += 1) await page.keyboard.press('Space'); };
+  const choose = async (key, all = true) => { await Promise.all([page.waitForResponse((r) => r.url().includes('/api/island/resident/talk')), page.keyboard.press(key)]); if (all) await lines(); };
   const close = async () => { await page.keyboard.press('Escape'); await expect(dialog).not.toHaveClass(/talkMode/); };
   const holdOn = (p, n) => p.evaluate((n) => window.PlazaDebug().residentReservations[n]?.hold?.eventId || null, n);
   await post(request, '/api/test/island/free-residents', token, {}); // (CI: no resident still held by an earlier test's event)
@@ -38,7 +39,16 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   await talkTo(idle);
   await lines();
   const choices = page.locator('#plazaDialog .talkChoices button');
-  await expect(choices).toHaveText(['요즘 어때요?', '섬 소문 있어요?', '부탁할 거 있어요?', '이야기 나눠요', '선물해요', '잘 가요']); // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물)
+  // (대화창 새 단장) four at most and only what can be done today -- nothing to ask of them: no 「부탁」
+  const TOP = ['이야기해요', '선물해요', '잘 가요']; const TOPICS = ['요즘 어때요?', '섬 소문 있어요?', '이야기 나눠요', '← 돌아가기'];
+  await expect(choices).toHaveText(TOP);
+  // the words' bubble and the choices' bubble: on the screen, apart
+  const box = async (sel) => page.locator(sel).boundingBox(); const vp = page.viewportSize();
+  const words = await box('#plazaDialog'); const menu = await box('#plazaDialog .talkChoices');
+  for (const b of [words, menu]) { expect(b.x).toBeGreaterThanOrEqual(0); expect(b.y).toBeGreaterThanOrEqual(0); expect(b.x + b.width).toBeLessThanOrEqual(vp.width); expect(b.y + b.height).toBeLessThanOrEqual(vp.height); }
+  expect(menu.y + menu.height).toBeLessThanOrEqual(words.y);
+  await page.keyboard.press('1'); await expect(choices).toHaveText(TOPICS); await page.keyboard.press('4'); await expect(choices).toHaveText(TOP); // 이야기해요 → 돌아가기
+  await page.keyboard.press('1'); await expect(choices).toHaveText(TOPICS);
   await expect.poll(() => holdOn(other.page, idle), { timeout: 30000 }).toMatch(/^talk:/); // (the other screen hears it from the server: past 15 s on a slow runner)
   // (a slow screen eases the islander into the place it is held at: measured once it stands there)
   let at = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
@@ -49,19 +59,21 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   expect(Math.hypot(still.x - at.x, still.z - at.z)).toBeLessThan(0.6);
   const busy = await post(request, '/api/island/resident/talk', other.token, { n: idle });
   expect(busy.status).toBe(409); expect(busy.data.message).toContain('심부름꾼님과 이야기 중');
-  await choose('2'); // 섬 소문
-  await expect(page.locator('.lostRequestLine').first()).toHaveText(/「.+」/);
-  await expect(choices).toHaveCount(6);
-  await choose('3'); // nothing to ask
-  await expect(page.locator('.lostRequestLine').first()).toHaveText('「오늘은 괜찮아요. 마음만 받을게요!」');
-  // (R2 ④) their question of the day: three answers in place of the choices; one answered, the choices back
-  await choose('4'); await expect(choices).toHaveCount(3); await expect(choices.first()).toHaveAttribute('data-topic', 'answer');
-  await choose('1'); await expect(choices).toHaveCount(6);
-  // (R3 ⑥) a gift: what my bag holds that they could take -- one given, the choices back
+  await choose('2', false); // 섬 소문: typed out (no choices meanwhile), Space shows it all
+  await expect(page.locator('.lostRequestLine.typing')).toHaveCount(1); await expect(page.locator('#plazaDialog .talkChoices')).toBeHidden();
+  await page.keyboard.press('Space'); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
+  await expect(page.locator('.lostRequestLine').first()).toHaveText(/^「.+」$/);
+  await lines(); await expect(choices).toHaveText(TOP);
+  // (R2 ④) their question of the day: three answers in place of the choices; one answered, the choices back -- and that
+  // one gone from the topics for today
+  await page.keyboard.press('1'); await choose('3'); await expect(choices).toHaveCount(3); await expect(choices.first()).toHaveAttribute('data-topic', 'answer');
+  await choose('1'); await expect(choices).toHaveText(TOP);
+  await page.keyboard.press('1'); await expect(choices).toHaveText(['요즘 어때요?', '섬 소문 있어요?', '← 돌아가기']); await page.keyboard.press('3');
+  // (R3 ⑥) a gift: what my bag holds that they could take -- one given, the choices back without 「선물해요」
   await post(request, '/api/test/island/give', token, { itemId: 'berry', qty: 1 });
-  await choose('5'); await expect(choices.first()).toHaveAttribute('data-topic', 'gift'); await expect(choices.first()).toHaveText('나무 열매');
-  await choose('1'); await expect(choices).toHaveCount(6);
-  await page.keyboard.press('6'); await expect(dialog).not.toHaveClass(/talkMode/); // 잘 가요
+  await choose('2'); await expect(choices.first()).toHaveAttribute('data-topic', 'gift'); await expect(choices.first()).toHaveText('나무 열매');
+  await choose('1'); await expect(choices).toHaveText(['이야기해요', '잘 가요']);
+  await page.keyboard.press('2'); await expect(dialog).not.toHaveClass(/talkMode/); // 잘 가요
   await expect.poll(() => holdOn(other.page, idle), { timeout: 15000 }).toBe(null);
   // the asker: the request (their name on the window) before the choices, then the tracker
   const askers = Object.entries(view.marks).filter(([, m]) => m === 'new').map(([n]) => Number(n));
