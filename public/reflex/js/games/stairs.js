@@ -1,7 +1,7 @@
 import { E } from '../engine.js';
 import { clamp } from '../util.js';
 
-// R7 계단 질주(가칭) (gamecenter-notes IDEAS #future-stair-dash): an endless stair up into the island's sky with two buttons
+// R7 하늘 계단 (gamecenter-notes IDEAS #future-stair-dash): an endless stair up into the island's sky with two buttons
 // -- 왼쪽 위 / 오른쪽 위. Each press is a step that way; the wrong way is a slip and the round ends. A breath bar runs down
 // faster the higher you are, and every step gives a little back (a flower step more). Only the idea of climbing stairs
 // with two quick inputs is borrowed: the island's own climber, sky, rules and look.
@@ -22,7 +22,7 @@ function grow(s) { // the next step's column: a run one way, then a turn (made o
 }
 
 export default {
-  id: 'stairs', name: '계단 질주', cat: 'reflex',
+  id: 'stairs', name: '하늘 계단', cat: 'reflex',
   color: '#38bdf8', c2: '#0ea5e9', c3: '#0c4a6e',
   tagline: '왼쪽·오른쪽 두 버튼으로 끝없는 하늘 계단을 올라요',
   howto: [['tap', '다음 계단이 있는 쪽을 누르면 한 칸 올라요 (PC는 ← → 또는 A D)'], ['avoid', '반대쪽을 누르면 헛디뎌요'], ['clock', '숨 막대가 줄어요 — 오를수록 빨리 줄고, 한 칸 오를 때마다 조금 차요 (꽃 발판은 많이)']],

@@ -68,6 +68,8 @@ const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
+// a 순발력 round's pay by level -- 하늘 계단's own (R7, 사용자 2026-10-25: the economy table's solo:stairs), the rest shared
+const reflexPoints = (game, level) => (game === 'stairs' ? Economy.value(`solo:stairs:${level}`) : Reflex.POINTS[level]);
 require('./lib/island-items').setPriceHook(Economy.priceOf);
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
@@ -5402,7 +5404,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session);
     const records = await pointStore.soloRecords(account);
-    return sendJson(res, 200, { ok: true, points: Reflex.POINTS, cap: Reflex.DAILY_CAP, today: await pointStore.soloDailyPaid(account, kstDate(nowMs())),
+    return sendJson(res, 200, { ok: true, points: Reflex.POINTS, gamePoints: { stairs: Object.fromEntries(Object.keys(Reflex.LEVELS).map((l) => [l, reflexPoints('stairs', l)])) }, cap: Reflex.DAILY_CAP, today: await pointStore.soloDailyPaid(account, kstDate(nowMs())),
       records: Object.fromEntries(Object.keys(Reflex.GAMES).map((id) => [id, records[id] || {}])) });
   }
   if ((pathname === '/api/solo/reflex/start' || pathname === '/api/solo/reflex/finish') && req.method === 'POST') {
@@ -5428,7 +5430,7 @@ async function requestHandler(req, res) {
     if (verdict === 'score') return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
     const G = Reflex.GAMES[run.game];
     const out = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher,
-      points: verdict === 'ok' ? Reflex.POINTS[run.level] : 0, daily: { day: kstDate(now), cap: Reflex.DAILY_CAP },
+      points: verdict === 'ok' ? reflexPoints(run.game, run.level) : 0, daily: { day: kstDate(now), cap: Reflex.DAILY_CAP },
       title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name });
     if (out.points) notifyPointsChanged([account]);
     if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a paid round counts

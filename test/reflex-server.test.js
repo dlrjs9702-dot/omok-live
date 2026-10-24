@@ -27,7 +27,7 @@ test('순발력 판정: 최소 시간·사람 점수 범위·최소 노력', () 
   assert.equal(Reflex.judge('numbers', 'normal', 20000, 15000), 'ok'); // 10 s played + 10 wrong taps (penalty is not real time)
   assert.equal(Reflex.judge('numbers', 'normal', 12000, 16500), 'ok');
   assert.equal(Reflex.judge('rhythm', 'easy', 2.5, 61000), 'score');
-  // R7 계단 질주: steps climbed; no faster than ten steps a second; paid from 30 steps
+  // R7 하늘 계단: steps climbed; no faster than ten steps a second; paid from 30 steps
   assert.equal(Reflex.judge('stairs', 'normal', 200, 15000), 'fast'); // 200 steps in 15 s
   assert.equal(Reflex.judge('stairs', 'normal', 200, 25000), 'ok');
   assert.equal(Reflex.judge('stairs', 'normal', 20, 25000), 'low');

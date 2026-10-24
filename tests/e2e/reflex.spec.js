@@ -10,7 +10,7 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → �
   await page.locator('[data-game-mode="single"]').click();
   await page.locator('#soloReflexBtn').click();
   await expect(page.locator('#reflexView')).toBeVisible();
-  await expect(page.locator('.reflexCard strong')).toHaveText(['두더지 잡기', '반응속도', '다른 색 찾기', '숫자 터치', '비트 탭', '계단 질주']);
+  await expect(page.locator('.reflexCard strong')).toHaveText(['두더지 잡기', '반응속도', '다른 색 찾기', '숫자 터치', '비트 탭', '하늘 계단']);
   await expect(page.locator('.reflexToday')).toHaveText('오늘 받은 포인트 0P / 20,000P');
 
   // a round left in the middle: back to the game, nothing reported
@@ -53,16 +53,16 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → �
   await a.context.close();
 });
 
-// R7 계단 질주 (IDEAS #future-stair-dash): two buttons -- PC ← →, a phone the screen's halves -- climb 35 steps the right
-// way, then the wrong way is a slip: the round ends with its steps, and the server pays it (보통 1,500P, 30 steps and up,
+// R7 하늘 계단 (IDEAS #future-stair-dash): two buttons -- PC ← →, a phone the screen's halves -- climb 35 steps the right
+// way, then the wrong way is a slip: the round ends with its steps, and the server pays it (보통 2,500P, 30 steps and up,
 // no faster than ten steps a second)
-test('계단 질주: 두 버튼으로 35계단 → 헛디딤 → 결과·+1,500P', async ({ browser, request, isMobile }) => {
+test('하늘 계단: 두 버튼으로 35계단 → 헛디딤 → 결과·+2,500P', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const a = await shopper(browser, request, isMobile ? '계단손m' : '계단손'); const { page, token } = a;
   await page.locator('[data-game-mode="single"]').click();
   await page.locator('#soloReflexBtn').click();
-  await page.locator('.reflexCard', { hasText: '계단 질주' }).click();
-  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움 · 1,000P', '보통 · 1,500P', '어려움 · 2,000P']);
+  await page.locator('.reflexCard', { hasText: '하늘 계단' }).click();
+  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움 · 1,500P', '보통 · 2,500P', '어려움 · 4,000P']); // (사용자 2026-10-25, 경제 값 solo:stairs)
   const before = (await get(request, '/api/points', token)).data.balance;
   await page.locator('.reflexGo').click();
   await expect(page.locator('#hud')).toBeVisible();
@@ -77,8 +77,8 @@ test('계단 질주: 두 버튼으로 35계단 → 헛디딤 → 결과·+1,500P
   await press(-(await peek()).next); // the wrong way
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 }).catch(async (error) => { error.message += `\n${JSON.stringify(await page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return { state: E.state, peek: E.game?.peek?.(), t: E.t }; }))} ${errs.slice(0, 3).join(' | ')}`; throw error; });
   await expect(page.locator('.reflexScore')).toHaveText(/^35/);
-  await expect(page.locator('.reflexPaid')).toContainText('+1,500P');
-  expect((await get(request, '/api/points', token)).data.balance).toBe(before + 1500);
+  await expect(page.locator('.reflexPaid')).toContainText('+2,500P');
+  expect((await get(request, '/api/points', token)).data.balance).toBe(before + 2500);
   await expectNoScriptError(page);
   await a.context.close();
 });

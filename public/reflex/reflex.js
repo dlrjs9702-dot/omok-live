@@ -92,7 +92,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
   const modeOf = (g) => (launch?.place === 'quest' && optionsOf(g).mode ? 'daily' : optionsOf(g).mode ?? null); // the puzzles: 오늘의 문제 (daily) or 새 문제 (A2b: a quest's round is always the daily)
   const remember = (key, value) => { levels[key] = value; try { localStorage.setItem('gc.reflexLevels', JSON.stringify(levels)); } catch {} };
   const bestOf = (g) => info?.records?.[g.id]?.[levelOf(g)]?.best ?? null;
-  const pointsOf = (g, level) => (set === SETS.cards ? info?.points?.[g.id]?.[level] : info?.points?.[level]) ?? 0;
+  const pointsOf = (g, level) => (set === SETS.cards ? info?.points?.[g.id]?.[level] : info?.gamePoints?.[g.id]?.[level] ?? info?.points?.[level]) ?? 0; // (R7: 하늘 계단 its own)
 
   function head(title, back) {
     const top = el('div', 'reflexHead');
@@ -175,7 +175,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     } catch (error) { if (seq === startSeq) status.textContent = error.message; return; }
     if (seq !== startSeq || view.classList.contains('hidden')) return;
     runId = id; runLevel = level; shown = 'play'; game = g;
-    frame.classList.toggle('wideFrame', set === SETS.cards || set === SETS.puzzle); // A3 G4: the card games and puzzles use a PC's width (game.css)
+    frame.classList.toggle('wideFrame', set === SETS.cards || set === SETS.puzzle || g.id === 'stairs'); // A3 G4: the card games and puzzles use a PC's width (game.css); R7 하늘 계단 its sky too (PC·휴대폰 같게)
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
