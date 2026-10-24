@@ -27,6 +27,11 @@ test('순발력 판정: 최소 시간·사람 점수 범위·최소 노력', () 
   assert.equal(Reflex.judge('numbers', 'normal', 20000, 15000), 'ok'); // 10 s played + 10 wrong taps (penalty is not real time)
   assert.equal(Reflex.judge('numbers', 'normal', 12000, 16500), 'ok');
   assert.equal(Reflex.judge('rhythm', 'easy', 2.5, 61000), 'score');
+  // R7 계단 질주: steps climbed; no faster than ten steps a second; paid from 30 steps
+  assert.equal(Reflex.judge('stairs', 'normal', 200, 15000), 'fast'); // 200 steps in 15 s
+  assert.equal(Reflex.judge('stairs', 'normal', 200, 25000), 'ok');
+  assert.equal(Reflex.judge('stairs', 'normal', 20, 25000), 'low');
+  assert.equal(Reflex.judge('stairs', 'hard', 9000, 999999), 'score');
 });
 
 async function storeBehaves(store) {
@@ -70,7 +75,7 @@ test('순발력 API: 판을 열고 한 번만 보고, 너무 빠르거나 적으
   const balance = async () => (await req('/api/points', sa)).data.balance;
   const info = (await req('/api/solo/reflex', sa)).data;
   assert.deepEqual([info.points.hard, info.cap, info.today], [2000, 20000, 0]);
-  assert.deepEqual(Object.keys(info.records), ['whack', 'reaction', 'colorfind', 'numbers', 'rhythm']);
+  assert.deepEqual(Object.keys(info.records), ['whack', 'reaction', 'colorfind', 'numbers', 'rhythm', 'stairs']);
   assert.equal((await req('/api/solo/reflex/start', sa, { game: 'whack', level: 'huge' })).status, 400);
   const round = async (game, level, ageMs) => {
     const id = (await req('/api/solo/reflex/start', sa, { game, level })).data.id;

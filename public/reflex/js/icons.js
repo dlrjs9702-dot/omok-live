@@ -76,6 +76,8 @@ const A = {
   dodge: `<rect x="4" y="12" width="24" height="9" rx="4.5" fill="${W}"/><rect x="42" y="12" width="18" height="9" rx="4.5" fill="${W}"/>
     <rect x="4" y="30" width="10" height="9" rx="4.5" fill="${W}" opacity=".45"/><rect x="28" y="30" width="32" height="9" rx="4.5" fill="${W}" opacity=".45"/>
     <circle cx="35" cy="52" r="11" fill="${W}" opacity=".22"/><circle cx="35" cy="52" r="6" fill="${W}"/>`,
+  stairs: `<g fill="${W}"><rect x="6" y="50" width="16" height="7" rx="3"/><rect x="18" y="40" width="16" height="7" rx="3" opacity=".9"/><rect x="30" y="30" width="16" height="7" rx="3" opacity=".8"/><rect x="18" y="20" width="16" height="7" rx="3" opacity=".6"/><rect x="30" y="10" width="16" height="7" rx="3" opacity=".4"/></g>
+    <circle cx="38" cy="22" r="6" fill="${W}"/>`, // (R7 계단 질주: a zigzag stair and the climber)
   rhythm: `<g fill="${W}" opacity=".18"><rect x="7" y="2" width="11" height="60" rx="5.5"/><rect x="20" y="2" width="11" height="60" rx="5.5"/><rect x="33" y="2" width="11" height="60" rx="5.5"/><rect x="46" y="2" width="11" height="60" rx="5.5"/></g>
     <rect x="7" y="10" width="11" height="7" rx="3.5" fill="${W}"/><rect x="33" y="22" width="11" height="7" rx="3.5" fill="${W}"/>
     <rect x="20" y="31" width="11" height="7" rx="3.5" fill="${W}" opacity=".8"/><rect x="46" y="38" width="11" height="7" rx="3.5" fill="${W}"/>

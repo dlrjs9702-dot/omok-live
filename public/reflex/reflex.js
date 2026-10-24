@@ -28,6 +28,7 @@ import reaction from './js/games/reaction.js';
 import colorfind from './js/games/colorfind.js';
 import numbers from './js/games/numbers.js';
 import rhythm from './js/games/rhythm.js';
+import stairs from './js/games/stairs.js';
 import sudoku from './js/games/sudoku.js';
 import nonogram from './js/games/nonogram.js';
 import hashi from './js/games/hashi.js';
@@ -41,7 +42,7 @@ import connect4 from './js/games/connect4.js';
 import reversi from './js/games/reversi.js';
 
 const SETS = {
-  reflex: { title: '순발력 게임', games: [whack, reaction, colorfind, numbers, rhythm], info: '/api/solo/reflex' },
+  reflex: { title: '순발력 게임', games: [whack, reaction, colorfind, numbers, rhythm, stairs], info: '/api/solo/reflex' },
   puzzle: { title: '퍼즐', games: [sudoku, nonogram, hashi, circuit], info: '/api/solo/puzzle' },
   cards: { title: '카드 게임', games: [klondike, freecell, spider], info: '/api/solo/cards' },
   ai: { title: 'AI 대전', games: [gomoku, connect4, reversi], info: null }, // practice: no server
