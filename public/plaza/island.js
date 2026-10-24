@@ -269,7 +269,7 @@ col = mix(col, mix(mix(uClover, vec3(0.95, 0.9, 0.95), speck), grass, 0.8 * snow
 col = mix(col, mix(uEarth, grass, 0.92 * snow), smoothstep(0.15, 0.8, ca.g + nz));
 col = mix(col, mix(uGravel, grass, 0.7 * snow), KIND(gravel));
 col = mix(col, mix(uRock, grass, 0.65 * snow), KIND(cb.r)); // (검토 2차 1: snow on the slopes too, a little less on the rock)
-col = mix(col, mix(mix(uSand, uWet, wet), grass, 0.6 * snow * (1.0 - wet)), KIND(ca.b));
+col = mix(col, mix(mix(uSand, uWet, wet), grass, 0.6 * snow * (1.0 - wet)), smoothstep(0.4, 0.58, ca.b + 0.7 * nz)); // (검토 3차 1: the sand's edge a little crisper)
 diffuseColor.rgb = col; gw = vec2(1.0 - max(max(KIND(ca.g), KIND(cb.r)), max(KIND(gravel), KIND(ca.b))), KIND(ca.b));
 }`);
   const paintPath = (path) => (path || !maps ? '' : `
@@ -277,8 +277,8 @@ diffuseColor.rgb = col; gw = vec2(1.0 - max(max(KIND(ca.g), KIND(cb.r)), max(KIN
 vec4 pm = vec4(texture2D(tPathA, (vGroundXZ - uPathBox.xy) / uPathBox.z).rgb, texture2D(tPathB, (vGroundXZ - uPathBox.xy) / uPathBox.z).r);
 if (pm.a > 0.15) {
 float inside = (pm.r * 2.0 - 1.0) * ${globalThis.IslandPaths.EDGE_RANGE.toFixed(2)}; // metres inside its edge
-float fray = 0.16 * sin(vGroundXZ.x * 2.7 + vGroundXZ.y * 1.3) * sin(vGroundXZ.y * 3.1 - vGroundXZ.x * 0.7) + 0.08 * sin(vGroundXZ.x * 9.1 - vGroundXZ.y * 7.3);
-float cover = smoothstep(-0.05, 0.12, inside + 0.6 * fray); // (검토 ⓪-2: a crisp edge -- on a phone a wide blend read as smudged grass)
+float fray = (texture2D(tGrass, vGroundXZ / 5.0).r / 0.611 - 1.0) * 0.3 + (texture2D(tSand, vGroundXZ / 1.6).r / 0.701 - 1.0) * 0.12; // (검토 3차 1: the grain pictures' randomness -- a product of waves zigzagged the edge)
+float cover = smoothstep(-0.08, 0.14, inside + fray); // (검토 ⓪-2: a crisp edge -- on a phone a wide blend read as smudged grass)
 float along = atan(pm.b * 2.0 - 1.0, pm.g * 2.0 - 1.0) / 6.2831853 * ${globalThis.IslandPaths.ALONG_PERIOD.toFixed(1)};
 vec3 pc = pm.a > 0.9 ? uTown : pm.a > 0.55 ? uWalk : uTrail;
 if (pm.a > 0.9) { // flagstones: 1 m along, 0.75 m across, every other row half a stone on
