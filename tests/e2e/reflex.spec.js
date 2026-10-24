@@ -335,10 +335,28 @@ test('PC 넓게: 카드놀이 판 폭 1,000px 이상, 스도쿠 판 700px 이상
   await open('klondike');
   await expect.poll(async () => (await engine()).id, { timeout: 30000 }).toBe('klondike');
   expect((await page.locator('.reflexFrame').boundingBox()).width).toBeGreaterThanOrEqual(1000);
+  // R6: the cards themselves, not only the frame (the frame was 1,200 px while the dealt row spanned about 920): the
+  // leftmost and rightmost card white of the dealt row on the drawn table
+  const span = () => page.evaluate(() => {
+    const cv = document.querySelector('.reflexFrame > canvas'); const r = cv.getBoundingClientRect(); const k = cv.width / r.width;
+    const ctx = cv.getContext('2d'); let lo = Infinity; let hi = -Infinity;
+    for (const y of [0.42, 0.46, 0.5]) { const row = ctx.getImageData(0, Math.round(r.height * y * k), cv.width, 1).data;
+      for (let x = 0; x < cv.width; x += 1) { const i = x * 4; if (row[i] > 235 && row[i + 1] > 235 && row[i + 2] > 235) { lo = Math.min(lo, x); hi = Math.max(hi, x); } } }
+    return Math.round((hi - lo) / k);
+  });
+  await expect.poll(span, { timeout: 10000 }).toBeGreaterThanOrEqual(1000);
   await open('sudoku');
   await expect.poll(async () => (await engine()).id, { timeout: 30000 }).toBe('sudoku');
   expect((await engine()).w).toBeGreaterThanOrEqual(1000); // the board's room (sudoku.js caps it at 820 px on a wide frame)
   await page.screenshot({ path: test.info().outputPath('wide-sudoku.png') });
+  // R6: 지뢰찾기 in the window's middle, sized to its height (초급 9 x 9 was 26 px a cell, 260 px, at the dialog's left)
+  await page.keyboard.press('Escape'); await page.goto('/');
+  await page.locator('[data-game-mode="single"]').click();
+  await page.locator('#soloMinesBtn').click();
+  await expect(page.locator('#minesBoard .minesCell').first()).toBeVisible();
+  const board = await page.locator('#minesBoard').boundingBox();
+  expect(board.height).toBeGreaterThan(1080 * 0.4);
+  expect(Math.abs(board.x + board.width / 2 - 960)).toBeLessThan(40);
   await expectNoScriptError(page); await a.context.close();
 });
 
