@@ -2644,12 +2644,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // (문제 기록 3회차 후속) the islanders' map a few ms at a time (island-npcs buildGridSlice: made at once it held the page
   // 1.5 s and more), then they come out -- on a timer between frames, not a slice a frame: a row is one slice where frames
   // are slow (CI's software drawing, a phone), and a frame each made it a minute and more (#283 CI, plaza 배회 NPC); the
-  // timer's turns wait behind the drawing too (21 s on a quick PC), so past 3 s the rest is made at once
+  // timer's turns wait behind the drawing too (21 s on a quick PC), so past 3 s the rest is made at once.
+  // (주민 길 격자를 서버에서) On the server's own island the grid comes from the server as it made it (/api/island/npc-grid,
+  // a few KB): nothing made here but the connected parts; the above only when that fails or on another map (the preview).
   let wanderersGone = false; let gridGrowing = false;
   function startWanderers() {
     if (walkers || wanderersGone || !IslandNpcs) return;
-    if (!IslandNpcs.buildGridSlice(0)) {
-      if (!gridGrowing) { gridGrowing = true; const until = performance.now() + 3000; const grow = () => { if (performance.now() > until) IslandNpcs.buildGrid(); else if (!IslandNpcs.buildGridSlice(12)) setTimeout(grow, 0); }; setTimeout(grow, 0); }
+    if (!IslandNpcs.hasGrid()) {
+      if (!gridGrowing) {
+        gridGrowing = true;
+        const grow = (until) => { if (performance.now() > until) IslandNpcs.buildGrid(); else if (!IslandNpcs.buildGridSlice(12)) setTimeout(() => grow(until), 0); };
+        const makeHere = () => setTimeout(() => grow(performance.now() + 3000), 0);
+        if (globalThis.GC_ISLAND_LIVE) fetch('/api/island/npc-grid').then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => { if (!IslandNpcs.useGrid(b && new Uint8Array(b))) makeHere(); }).catch(makeHere);
+        else makeHere();
+      }
       return;
     }
     // v1.10.16: walked through the scene's own collision circles and ground (the route grid is only the long plan)

@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.139 주민 길 격자를 서버에서
+
+- 근거: v1.10.137(#283) CI 회귀 후속 — 「검토, 지적」 요청(2026-10-24): 화면이 격자를 만들지 않고 서버가 만든 것을 받기(PC·휴대폰 같게).
+- 서버: `GET /api/island/npc-grid` — `IslandNpcs.packGrid()`(칸마다 2비트: 막힘·산책길, 267 × 267 = 17,823 B, gzip 4,407 B), 처음 한 번 만들어 메모리에, `ETag`(바이트의 sha1)·`Cache-Control: no-cache`(같으면 304). 로그인 필요 없음.
+- 화면: 서버 섬(`GC_ISLAND_LIVE`)이면 섬이 뜰 때 받아 `IslandNpcs.useGrid`(이어진 부분만 계산, 약 10 ms). 받기 실패나 크기가 다르면(다른 지도: 관리자 미리보기) 전처럼 타이머로 만들기(3초 뒤 나머지 한 번에).
+- 서버 격자 = 페이지와 같은 순서(island-train.js가 역·선로 나무를 먼저 비움)로 만든 격자(단위 시험으로 확인).
+- 측정(섬이 뜬 뒤 주민 10명이 나오기까지, 두 번씩): 보통 PC 3.3~3.6초 → 1.0~1.1초, CPU 6배 느리게 14.7~16.2초 → 5.2~5.3초. 받는 시간 103~106 ms(6배: 8 ms, 캐시). 남은 시간은 주민 캐릭터 만들기(격자 10 ms, 바퀴 10개 48 ms).
+- 시험: 단위 `island-npcs`(싸서 받은 화면도 같은 격자·같은 바퀴, 다른 크기 거절, API 304), e2e plaza 「배회 NPC」.
+- Codex 검토 대기(10/25).
+
 ## v1.10.138 R4: 구치소 반성문
 
 - 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R4, 사용자 「구치소 진행」(2026-10-23).
@@ -48,15 +58,4 @@
 - 18: 실내에 들어가면 하늘색 대신 검정이 바로(`setSpace`에서 빛 갱신, 5초 기다리지 않음).
 - 시험: 단위 `island-npcs`·에셋 파이프라인(곤충 scale 범위), e2e `insect-size`.
 
-- Codex 검토 대기(10/25).
-
-## v1.10.136 R1: 이름 있는 주민 13명 새 몸, 배회 주민 10명 고유 외형(F3)
-
-- 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R1(assets 52 F4), F3(assets 51 v2, 2026-10-24 검토 통과).
-- R1: 농부·화가·역무원·거리 악단·전기 담당·공사 인부·도서관 할아버지·정자 할아버지·민원·세무·은행 직원·잡화점 주인·변신 의상실 주인 13명 원본을 `npc52:`로 바꿔 High·Low 26개 다시 빌드. 얼굴·머리·옷 색·직업 소품은 그대로.
-- F3: 배회 주민 10명(봄이·바다 할아버지·하람·두리·노을 할머니·오 탐정·다온·바람이·이솔·가람)이 `character.islander`+옷 색 대신 `character.walker.<id>`(island-cast WALKERS 순서, `WALKER_LOOKS`), baked, 가람 0.75배, 말풍선 높이 주민마다. 예산 예외(사용자): 이 20개만 High ≤ 32,000 / Low ≤ 10,000(`budgets.json` fileOverrides, 원본 sha 고정).
-- F3 상체 기울임(README 권장 각도, 화면만 — 걷는 속도 그대로): `WALKER_LOOKS` lean(노을 할머니 8°, 바다 할아버지 5° 등, 0이면 없음)을 Spine 60 %·Chest 40 %로 나눠 모델 앞(−Z)으로. 움직임 16개가 Spine·Chest 중 하나에 회전 트랙이 없어 지난 프레임 기울임을 먼저 빼고 `anim.update` 뒤 다시 더함(쌓이지 않음).
-- `asset-loader.js` dress(): Low 파일이 있는 통째 캐릭터는 High·Low를 둘 다 받아 Low를 High 뼈에 관절 이름으로 묶고 거리로 바꿈(wearLod, 휴대폰 낮은 등급은 더 가까이서 Low) — 이름 있는 NPC들도 같이 혜택.
-- 남은 것: 노을 할머니 지팡이가 앉을 때 좌석을 통과할 수 있음(배회 주민은 아직 앉지 않음 — 앉게 될 때 숨기기).
-- 시험: 에셋 파이프라인·GLB 예산(예외 사유·sha), e2e `island-assets`·`resident-talk`.
 - Codex 검토 대기(10/25).
