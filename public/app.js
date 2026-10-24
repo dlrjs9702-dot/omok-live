@@ -3613,6 +3613,7 @@
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
       const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
       const head = el('div', 'mailHead'); const who = el('strong', '', islander ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
+      { const stamp = el('span', 'mailStamp', islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
       head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));

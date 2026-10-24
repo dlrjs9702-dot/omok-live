@@ -17,6 +17,8 @@ test('안내 지도: 화면 가득, 휠·핀치 확대, 끌어 이동', async ({
   await expect.poll(() => canvas.evaluate((c) => c.width / c.getBoundingClientRect().width)).toBeGreaterThanOrEqual(1); // drawn at its own size
   const shot = () => canvas.evaluate((c) => c.toDataURL());
   const first = await shot();
+  // the island is on it, not only sea: grass (#9fd67f) somewhere on the canvas
+  expect(await canvas.evaluate((c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let k = 0; k < d.length; k += 4) if (Math.abs(d[k] - 0x9f) < 12 && Math.abs(d[k + 1] - 0xd6) < 12 && Math.abs(d[k + 2] - 0x7f) < 12) n += 1; return n; })).toBeGreaterThan(1000);
   // the wheel: closer round the point under it
   await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.5); await page.mouse.wheel(0, -300);
   const zoomed = await shot(); expect(zoomed).not.toBe(first);
