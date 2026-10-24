@@ -1371,7 +1371,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // 문제 기록 9: Q nearer, E further -- a wheel notch's step, kept the same way (gc.islandZoom); held, it goes on
     if ((event.code === 'KeyQ' || event.code === 'KeyE') && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); setZoom(zoomDist * Math.exp((event.code === 'KeyQ' ? -100 : 100) * 0.0012)); return; }
     if (event.code === 'KeyB' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); const r = toggleBike(); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return; } // (자전거)
-    if (event.code === 'KeyR' && grab && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) { // (Codex 검토 P3: Ctrl+R still reloads) event.preventDefault(); turnGrab(); return; } // (2회차 11: turn the held piece)
+    if (event.code === 'KeyR' && grab && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); turnGrab(); return; } // (2회차 11: turn the held piece; Codex 검토 P3: Ctrl+R still reloads)
     if (event.code === 'Space' && (event.target === document.body || host.contains(event.target))) {
       event.preventDefault();
       if (!event.repeat) actDown(); // (2회차 11: held before a piece of my house it grabs it -- actUp on the key's release)
