@@ -11475,147 +11475,50 @@
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
-  // v1.10.78 메신저 (IDEAS #future-messenger): group rooms for the accounts an administrator lets in -- the server checks
-  // every call; the button only shows for them. No stream here: the open room is asked again every 3 seconds and the
-  // room list every 10 (only while the window is open). Unread = the room's last number past the one last seen here.
+  // 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): the messenger is its own page now
+  // (/messenger, public/messenger.js) -- open beside the game or without it, an app of its own. Here only its buttons (내 계정
+  // and the island's) with what is unread, opening that window (the same one again), and the island's small notice.
   const messenger = (() => {
-    const dialog = byId('messengerDialog'); const body = dialog.querySelector('.messengerBody'); const list = byId('messengerRoomList');
-    const box = byId('messengerMessages'); const pick = byId('messengerPick');
-    // v1.10.88 카카오톡처럼 (IDEAS #future-messenger-kakao): what is read is kept on the server (every device agrees);
-    // the open room's lines are held here (`msgs`) and drawn again when new ones come or someone reads.
-    let state = { rooms: [], people: [], me: '' }; let current = null; let last = 0; let msgs = []; let readsKey = ''; let timers = []; let picking = null;
-    const fail = (err) => { if (err.status === 401 || err.status === 403) { close(); say(err.message, true); } else showToast(err.message, 4000); };
-    const when = (at) => { const d = new Date(at); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); };
-    function renderRooms() {
-      list.replaceChildren(...state.rooms.map((room) => {
-        const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost';
-        const main = document.createElement('span'); main.className = 'messengerRoomMain';
-        const name = document.createElement('strong'); name.textContent = `${room.pinned ? '📌 ' : ''}${room.kind === 'dm' ? room.name : `${room.name} (${room.members.length})`}`; // v1.10.90 고정
-        const preview = document.createElement('span'); preview.className = 'messengerPreview'; preview.textContent = room.last ? room.last.text : '';
-        main.append(name, preview);
-        const side = document.createElement('span'); side.className = 'messengerRoomSide';
-        const time = document.createElement('time'); time.textContent = room.last ? when(room.last.at) : ''; side.append(time);
-        if (room.muted) { const m = document.createElement('span'); m.textContent = '🔕'; m.title = '알림 꺼짐'; side.append(m); }
-        if (room.unread > 0 && room.id !== current?.id) { const n = document.createElement('span'); n.className = 'messengerUnread'; n.textContent = room.unread > 99 ? '99+' : room.unread; side.append(n); }
-        b.append(main, side);
-        b.setAttribute('aria-current', String(room.id === current?.id)); b.addEventListener('click', () => openRoom(room)); li.append(b); return li;
-      }));
-      if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
-    }
-    async function refresh() { try { state = await accountApi('/api/messenger', null, 'GET'); renderRooms(); } catch (err) { fail(err); } }
-    function line(msg, same) { // `same`: the same person just before -- the name once (카톡)
-      if (msg.system) { const p = document.createElement('p'); p.className = 'messengerSystem'; p.textContent = msg.text; return p; }
-      const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
-      if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who); item.append(head); }
-      const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); text.textContent = msg.deleted ? '삭제된 메시지입니다' : msg.text;
-      const meta = document.createElement('span'); meta.className = 'messengerMeta';
-      // 안 읽은 사람 수 (카톡의 「1」): the members (still let in) besides the sender whose last read is before this line
-      const waiting = current.members.filter((m) => m.active && m.id !== msg.from && (current.reads[m.id] || 0) < msg.seq);
-      if (waiting.length) {
-        const n = document.createElement('button'); n.type = 'button'; n.className = 'messengerReadCount'; n.textContent = waiting.length;
-        const who = waiting.map((m) => m.label).join(', '); n.title = `안 읽음: ${who}`; n.setAttribute('aria-label', `안 읽은 사람 ${waiting.length}명: ${who}`);
-        n.addEventListener('click', () => showToast(`안 읽음: ${who}`, 4000)); // a phone has no hover
-        meta.append(n);
-      }
-      const time = document.createElement('time'); time.textContent = new Date(msg.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); meta.append(time);
-      if (msg.from === state.me && !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000) { // v1.10.90 메시지 삭제: mine, within 5 minutes, for everyone
-        const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerUnsend'; del.textContent = '삭제'; del.setAttribute('aria-label', '이 메시지 삭제');
-        del.addEventListener('click', async () => {
-          if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
-          try { await accountApi(`/api/messenger/rooms/${current.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
-        });
-        meta.append(del);
-      }
-      row.append(text, meta); item.append(row); return item;
-    }
-    function render() {
-      const nodes = []; let prev = null; let prevDay = '';
-      if (msgs.length && msgs[0].seq > 1) nodes.push(moreButton());
-      for (const msg of msgs) {
-        const day = new Date(msg.at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-        if (day !== prevDay) { const s = document.createElement('p'); s.className = 'messengerDay'; s.textContent = day; nodes.push(s); }
-        nodes.push(line(msg, prev && !prev.system && prev.from === msg.from && day === prevDay));
-        prev = msg; prevDay = day;
-      }
-      if (nodes.length) box.replaceChildren(...nodes); else box.innerHTML = '<p class="emptyState">첫 메시지를 보내 보세요.</p>';
-    }
-    function showHead() {
-      byId('messengerRoomName').textContent = current.name; byId('messengerMembers').textContent = current.members.map((m) => m.label).join(' · ');
-      const group = current.kind !== 'dm';
-      byId('messengerInviteBtn').classList.toggle('hidden', !group); byId('messengerRenameBtn').classList.toggle('hidden', !group);
-      byId('messengerMuteBtn').textContent = current.muted ? '알림 켜기' : '알림 끄기';
-      byId('messengerPinBtn').textContent = current.pinned ? '고정 해제' : '고정'; // v1.10.90
-    }
-    async function pull() {
-      if (!current) return; const id = current.id;
-      try {
-        const data = await accountApi(`/api/messenger/rooms/${id}/messages?after=${last}`, null, 'GET');
-        if (current?.id !== id) return;
-        const firstPage = !last; current = data.room; showHead();
-        const fresh = data.messages.filter((msg) => msg.seq > last);
-        const key = JSON.stringify([current.reads, current.members]); // (a member shut out changes the counts too -- Codex review)
-        if (!firstPage && !fresh.length && key === readsKey) return;
-        const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-        msgs.push(...fresh); if (fresh.length) last = fresh.at(-1).seq; readsKey = key;
-        render();
-        if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) box.scrollTop = box.scrollHeight;
-      } catch (err) { if (err.status === 404) { current = null; body.classList.remove('inRoom'); refresh(); } else fail(err); }
-    }
-    // v1.10.87 이전 대화: 100 at a time from the top, the view held where it was
-    function moreButton() {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny messengerMore'; b.textContent = '이전 대화 더 보기';
-      b.addEventListener('click', async () => {
-        const id = current?.id; if (!id) return; b.disabled = true;
-        try {
-          const data = await accountApi(`/api/messenger/rooms/${id}/messages?before=${msgs[0].seq}`, null, 'GET');
-          if (current?.id !== id) return;
-          const height = box.scrollHeight;
-          msgs.unshift(...data.messages.filter((msg) => msg.seq < msgs[0].seq)); render();
-          box.scrollTop += box.scrollHeight - height;
-        } catch (err) { b.disabled = false; fail(err); }
-      });
-      return b;
-    }
-    // v1.10.87 알림: the 메신저 button counts what is unread in my rooms (asked every 30 s while it shows and the window is shut;
-    // v1.10.88: the server's count, a room with 알림 끄기 left out)
-    const msgBtn = byId('accountMessengerBtn');
+    const msgBtn = byId('accountMessengerBtn'); const tab = byId('islandMessengerTab'); let on = false;
     const unreadOf = (rooms) => rooms.reduce((n, r) => n + (r.muted ? 0 : r.unread), 0);
+    function open() { // (an open messenger window comes to the front as it is; a new one gets this tab's login with it)
+      let w = window.open('', 'gc-messenger');
+      try { if (!w || w.location.href === 'about:blank') w = window.open('/messenger', 'gc-messenger'); } catch { w = window.open('/messenger', 'gc-messenger'); }
+      w?.focus(); try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {}
+    }
+    msgBtn.addEventListener('click', open); tab.addEventListener('click', open);
+    // v1.10.87 알림: the buttons count what is unread in my rooms (the server's count, a room with 알림 끄기 left out)
     async function badge() {
-      if (msgBtn.classList.contains('hidden') || dialog.open || byId('accountPanel').classList.contains('hidden')) return;
+      if (!on) return;
       try {
-        const unread = unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms);
-        msgBtn.textContent = unread ? `메신저 · 새 메시지 ${unread > 99 ? '99+' : unread}` : '메신저'; msgBtn.classList.toggle('hasUnread', unread > 0);
+        const unread = unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms); const n = unread > 99 ? '99+' : unread;
+        msgBtn.textContent = unread ? `메신저 · 새 메시지 ${n}` : '메신저'; tab.textContent = unread ? `메신저 ${n}` : '메신저';
+        for (const b of [msgBtn, tab]) b.classList.toggle('hasUnread', unread > 0);
       } catch {}
     }
     setInterval(badge, 30000);
-    // A5 메신저 실시간 받기: a held stream (fetch, as the account's token goes in a header); a room's change pulls it at once
-    // where it shows -- the open room, the room list, the 메신저 button and the island's toast; a dropped stream comes back
-    let streamUp = false; let streamCtl = null; let streamWanted = false;
+    // A5 메신저 실시간 받기: a held stream (fetch, as the account's token goes in a header); a room's change counts again at once
+    let streamCtl = null; let streamWanted = false;
     async function openStream() {
       if (!streamWanted || streamCtl) return; streamCtl = new AbortController();
       try {
         const res = await fetch('/api/messenger/stream', { headers: { 'X-Account-Token': accountToken.get() }, signal: streamCtl.signal, cache: 'no-store' });
         if (!res.ok || !res.body) throw new Error(String(res.status));
-        streamUp = true; const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+        const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
         for (;;) {
           const { value, done } = await reader.read(); if (done) break;
           buf += dec.decode(value, { stream: true }); let cut;
-          while ((cut = buf.indexOf('\n\n')) >= 0) {
-            const chunk = buf.slice(0, cut); buf = buf.slice(cut + 2);
-            if (!/^event: msg$/m.test(chunk)) continue;
-            let room = null; try { room = JSON.parse((chunk.match(/^data: (.*)$/m) || [])[1] || '{}').room; } catch {}
-            if (dialog.open) { if (current?.id === room) pull(); refresh(); } else { badge(); islandNotice(); }
-          }
+          while ((cut = buf.indexOf('\n\n')) >= 0) { const chunk = buf.slice(0, cut); buf = buf.slice(cut + 2); if (/^event: msg$/m.test(chunk)) { badge(); islandNotice(); } }
         }
       } catch {}
-      streamUp = false; streamCtl = null;
+      streamCtl = null;
       if (streamWanted) setTimeout(openStream, 5000);
     }
-    function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
-    // v1.10.90 섬 안 알림: on the island (the window shut), a new message in a room not muted shows as a small toast
+    function wantStream(want) { streamWanted = want; if (want) openStream(); else { streamCtl?.abort(); streamCtl = null; } }
+    // v1.10.90 섬 안 알림: on the island, a new message in a room not muted shows as a small toast
     let islandSeen = null;
     async function islandNotice() {
-      if (msgBtn.classList.contains('hidden') || dialog.open || !document.body.classList.contains('plazaMode')) { islandSeen = null; return; }
+      if (!on || !document.body.classList.contains('plazaMode')) { islandSeen = null; return; }
       try {
         const rooms = (await accountApi('/api/messenger', null, 'GET')).rooms; const now = Object.fromEntries(rooms.map((r) => [r.id, r.unread]));
         if (islandSeen) for (const r of rooms) if (!r.muted && r.unread > (islandSeen[r.id] || 0) && r.last && !r.last.system) showToast(`💬 ${r.name} · ${r.last.label}: ${r.last.text.slice(0, 40)}`, 4000);
@@ -11623,65 +11526,13 @@
       } catch {}
     }
     setInterval(islandNotice, 15000);
-    dialog.addEventListener('close', () => { msgBtn.textContent = '메신저'; msgBtn.classList.remove('hasUnread'); badge(); });
-    function openRoom(room) { current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); body.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
-    function showPick(mode) { // 'new' | 'invite' | 'dm'
-      picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
-      byId('messengerPickTitle').textContent = mode === 'new' ? '새 대화방' : mode === 'dm' ? '1:1 대화' : `「${current.name}」에 초대`;
-      byId('messengerPickName').classList.toggle('hidden', mode !== 'new'); byId('messengerPickName').value = '';
-      const people = state.people.filter((p) => !inRoom.has(p.id));
-      byId('messengerPeople').replaceChildren(...people.map((p) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = mode === 'dm' ? 'radio' : 'checkbox'; c.name = 'messengerPerson'; c.value = p.id; l.append(c, p.label); return l; }));
-      if (!people.length) byId('messengerPeople').innerHTML = '<p class="smallMuted">함께할 수 있는 사람이 없습니다. 메신저는 관리자가 허용한 계정끼리 씁니다.</p>';
-      body.classList.add('picking'); pick.classList.remove('hidden');
-    }
-    function hidePick() { picking = null; body.classList.remove('picking'); pick.classList.add('hidden'); }
-    pick.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const members = [...byId('messengerPeople').querySelectorAll('input:checked')].map((c) => c.value);
-      try {
-        if (picking === 'new') { const data = await accountApi('/api/messenger/rooms', { name: byId('messengerPickName').value, members }); hidePick(); await refresh(); openRoom(data.room); }
-        else if (picking === 'dm') { const data = await accountApi('/api/messenger/dm', { with: members[0] }); hidePick(); await refresh(); openRoom(data.room); }
-        else { await accountApi(`/api/messenger/rooms/${current.id}/members`, { members }); hidePick(); pull(); refresh(); }
-      } catch (err) { fail(err); }
-    });
-    byId('messengerPickCancel').addEventListener('click', hidePick);
-    byId('messengerNewBtn').addEventListener('click', () => showPick('new'));
-    byId('messengerDmBtn').addEventListener('click', () => showPick('dm'));
-    byId('messengerInviteBtn').addEventListener('click', () => current && showPick('invite'));
-    byId('messengerRenameBtn').addEventListener('click', async () => {
-      const name = current && window.prompt('새 방 이름 (20자)', current.name); if (!name) return;
-      try { await accountApi(`/api/messenger/rooms/${current.id}/name`, { name }); pull(); refresh(); } catch (err) { fail(err); }
-    });
-    byId('messengerPinBtn').addEventListener('click', async () => { // v1.10.90 대화방 고정 (mine: the top of my list)
-      if (!current) return;
-      try { current = (await accountApi(`/api/messenger/rooms/${current.id}/pin`, { on: !current.pinned })).room; showHead(); refresh(); } catch (err) { fail(err); }
-    });
-    byId('messengerMuteBtn').addEventListener('click', async () => {
-      if (!current) return;
-      try { current = (await accountApi(`/api/messenger/rooms/${current.id}/mute`, { on: !current.muted })).room; showHead(); refresh(); } catch (err) { fail(err); }
-    });
-    byId('messengerBackBtn').addEventListener('click', () => { current = null; body.classList.remove('inRoom'); refresh(); });
-    byId('messengerLeaveBtn').addEventListener('click', async () => { // 창 닫기 ≠ 나가기: only this button (with the warning) takes me out
-      if (!current || !window.confirm(`「${current.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`)) return;
-      try { await accountApi(`/api/messenger/rooms/${current.id}/leave`); current = null; body.classList.remove('inRoom'); box.replaceChildren(); refresh(); } catch (err) { fail(err); }
-    });
-    byId('messengerForm').addEventListener('submit', async (event) => {
-      event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if (!text || !current) return;
-      try { await accountApi(`/api/messenger/rooms/${current.id}/messages`, { text }); input.value = ''; pull(); } catch (err) { fail(err); }
-    });
-    function close() { for (const t of timers) clearInterval(t); timers = []; if (dialog.open) dialog.close(); }
-    dialog.addEventListener('close', close);
-    byId('messengerCloseBtn').addEventListener('click', close);
-    byId('accountMessengerBtn').addEventListener('click', async () => {
-      current = null; hidePick(); body.classList.remove('inRoom'); box.innerHTML = '<p class="emptyState">대화방을 고르거나 새로 만드세요.</p>';
-      dialog.showModal(); await refresh();
-      timers = [setInterval(() => { if (!streamUp) pull(); }, 3000), setInterval(refresh, streamUp ? 30000 : 10000)]; // (A5: asking stays only while the stream is down)
-    });
-    return { show: (on) => { msgBtn.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); wantStream(Boolean(on)); }, close }; // (after the account panel shows; A5: the stream while permitted)
+    return { show: (want) => { on = Boolean(want); msgBtn.classList.toggle('hidden', !on); tab.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); wantStream(on); } }; // (after the account panel shows; A5: the stream while permitted)
   })();
+  // (on the island too: the account this tab logged in with, if the messenger is theirs)
+  if (accountToken.get()) accountApi('/api/account/me', null, 'GET').then((d) => messenger.show(d.account?.messenger === true)).catch(() => {});
   byId('accountLogoutBtn').addEventListener('click', async () => {
     await accountApi('/api/account/logout').catch(() => {});
-    messenger.close(); messenger.show(false); accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
+    messenger.show(false); accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
   });
   byId('accountPasswordBtn').addEventListener('click', () => {
     const form = byId('accountPasswordForm'); const open = form.classList.toggle('hidden') === false;

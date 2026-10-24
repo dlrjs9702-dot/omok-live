@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#fff6e3" />
+  <title>아일랜드 메신저</title>
+  <!-- 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): its own page, no game code; installed as
+       its own app (messenger.webmanifest), a notice when shut (messenger-sw.js) -->
+  <link rel="manifest" href="/messenger.webmanifest" />
+  <link rel="icon" href="/icons/messenger-192.png" />
+  <link rel="apple-touch-icon" href="/icons/messenger-192.png" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/messenger.css" />
+</head>
+<body class="messengerPage">
+  <main class="mPage">
+    <header class="mTop isle-paper">
+      <strong class="mTitle">아일랜드 메신저</strong>
+      <span class="mTopActions">
+        <button id="mInstallBtn" type="button" class="secondary tiny hidden">앱으로 설치</button>
+        <button id="mPushBtn" type="button" class="secondary tiny hidden">알림 켜기</button>
+        <button id="mDevicesBtn" type="button" class="ghost tiny hidden" aria-expanded="false" aria-controls="mDevices">로그인된 기기</button>
+        <button id="mLogoutBtn" type="button" class="ghost tiny hidden">로그아웃</button>
+      </span>
+    </header>
+    <p id="mWake" class="mWake hidden" role="status">서버를 깨우는 중이에요… 처음 한 번은 30~40초 걸릴 수 있어요.</p>
+    <p id="mIosHint" class="mHint hidden">아이폰은 Safari 공유 단추 → 「홈 화면에 추가」로 앱처럼 쓸 수 있어요.</p>
+    <form id="mLogin" class="mLogin isle-paper hidden">
+      <strong>로그인</strong>
+      <label>아이디 <input id="mLoginId" type="text" autocomplete="username" required /></label>
+      <label>비밀번호 <input id="mLoginPw" type="password" autocomplete="current-password" required /></label>
+      <label class="mKeep"><input id="mKeep" type="checkbox" checked /> 이 기기에서 로그인 유지 (60일)</label>
+      <button class="primary" type="submit">로그인</button>
+      <p id="mLoginStatus" class="mStatus" role="status"></p>
+    </form>
+    <section id="mDevices" class="mDevices isle-paper hidden" aria-label="로그인된 기기">
+      <strong>로그인 유지 중인 기기</strong>
+      <ul id="mDeviceList"></ul>
+      <button id="mDropOthers" type="button" class="ghost tiny">이 기기 말고 모두 끊기</button>
+    </section>
+    <div id="mApp" class="messengerBody mApp hidden">
+      <section class="messengerRooms" aria-label="대화방">
+        <div class="messengerRoomsHead"><button id="messengerNewBtn" type="button" class="secondary tiny">새 대화방</button><button id="messengerDmBtn" type="button" class="secondary tiny">1:1 대화</button></div>
+        <ul id="messengerRoomList" class="messengerRoomList"></ul>
+      </section>
+      <section id="messengerRoom" class="messengerRoom" aria-label="대화">
+        <div class="messengerRoomHead"><button id="messengerBackBtn" type="button" class="ghost tiny messengerBack">‹ 목록</button><strong id="messengerRoomName"></strong><button id="messengerInviteBtn" type="button" class="ghost tiny">초대</button><button id="messengerRenameBtn" type="button" class="ghost tiny">이름</button><button id="messengerPinBtn" type="button" class="ghost tiny">고정</button><button id="messengerMuteBtn" type="button" class="ghost tiny">알림 끄기</button><button id="messengerLeaveBtn" type="button" class="ghost tiny">나가기</button></div>
+        <p id="messengerMembers" class="smallMuted"></p>
+        <div id="messengerMessages" class="chatMessages messengerMessages" role="log" aria-live="polite"><p class="emptyState">대화방을 고르거나 새로 만드세요.</p></div>
+        <form id="messengerForm" class="messengerForm"><input id="messengerInput" type="text" maxlength="500" autocomplete="off" placeholder="메시지 입력" aria-label="메시지 입력" /><button class="primary" type="submit">보내기</button></form>
+      </section>
+      <form id="messengerPick" class="messengerPick hidden">
+        <strong id="messengerPickTitle">새 대화방</strong>
+        <input id="messengerPickName" type="text" maxlength="20" placeholder="방 이름 (20자)" aria-label="방 이름" />
+        <div id="messengerPeople" class="messengerPeople"></div>
+        <div class="noticeFormActions"><button class="primary" type="submit">확인</button><button id="messengerPickCancel" class="ghost" type="button">취소</button></div>
+      </form>
+    </div>
+  </main>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="/messenger.js"></script>
+</body>
+</html>
