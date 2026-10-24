@@ -705,6 +705,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const other = walkCurves.findIndex((o, oi) => oi > wi && o.pts.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < 0.9));
     if (other >= 0) pathParts.disc.push({ x, z, town: tierAt(wi, x, z) === 'town' || tierAt(other, x, z) === 'town' });
   }));
+  const buskDisc = T.dalmaru?.PLACES.busk ? [{ x: T.dalmaru.PLACES.busk.x, z: T.dalmaru.PLACES.busk.z, s: 1.2 }] : []; // (거리 악단 자리: a town disc 6 m across)
   const nearDisc = (x, z, r) => pathParts.disc.some((d) => Math.hypot(d.x - x, d.z - z) < r);
   walkCurves.forEach((w, wi) => {
     let s = 0; let n = 0; let was = null;
@@ -770,6 +771,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   for (let k = 0; k < 2; k += 1) lay(`path.trail.step.${'ab'[k]}`, pathParts.step.filter((p) => p.v === k), placeFlat(0));
   const onDisc = placeFlat(0.01, { e: 1, round: 2.5 });
   lay('path.junction.disc.town', pathParts.disc.filter((d) => d.town), onDisc);
+  lay('path.junction.disc.town', buskDisc, placeFlat(0.02, { e: 1.5, round: 3 })); // (over the walk's slabs where it meets them)
   lay('path.junction.disc.walk', pathParts.disc.filter((d) => !d.town), onDisc);
   lay('path.gate.planter', pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { shadow: true });
   instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, onMesh(f.x, f.z), f.z, 0.5, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
