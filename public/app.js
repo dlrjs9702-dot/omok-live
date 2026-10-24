@@ -2595,17 +2595,32 @@
   // window over it -- one line at a time. Space/Enter: the next line, then the focused answer; ↑↓ choose an answer;
   // 1-9 pick one; Esc closes (the dialog's own cancel). Same #plazaDialog underneath, so its closing and sections hold.
   // shot: a quest taken or done, a reward, a big choice -- the camera's two-shot (else over my shoulder, plaza-scene)
-  function openTalk(name, shot = false) {
+  // 대화창 새 단장 (gamecenter-notes docs/dialogue-box-redesign-20261025.md): a cream bubble with the speaker's name tag in
+  // their colour (tag), the words typed out (about 40 letters a second; a tap/Space/Enter shows the line at once), the
+  // choices in their own small bubble once the words are out
+  const lessMotionPref = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  let typing = null; // { line, full, timer }
+  function finishTyping() { const t = typing; if (!t) return false; typing = null; clearInterval(t.timer); t.line.textContent = t.full; t.line.classList.remove('typing'); return true; }
+  function typeLine(line) {
+    finishTyping(); if (!line || lessMotionPref?.matches) return;
+    const full = line.textContent; const t0 = performance.now(); line.textContent = ''; line.classList.add('typing');
+    // (by the time gone, not the ticks: a busy island's long frames hold the timer back, the words keep their pace)
+    typing = { line, full, timer: setInterval(() => { const i = Math.floor((performance.now() - t0) / 25); line.textContent = full.slice(0, i); if (i >= full.length) finishTyping(); }, 25) };
+  }
+  function talkNext() { if (finishTyping()) return true; const pending = lostCard.querySelector('.talkPending'); if (!pending) return false; pending.classList.remove('talkPending'); typeLine(pending); return true; }
+  plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) finishTyping(); });
+  function openTalk(name, shot = false, tag = '') {
     lostCard.classList.remove('hidden');
     openPlazaWindow(name, [lostCard]);
-    plazaDialog.classList.add('talkMode');
+    plazaDialog.classList.add('talkMode'); plazaDialog.style.setProperty('--talk-tag', tag || 'var(--isle-tag)');
     plaza.controller?.talkCamera?.(shot ? 'shot' : 'talk');
     lostCard.querySelectorAll('.lostRequestLine').forEach((line, i) => line.classList.toggle('talkPending', i > 0));
+    typeLine(lostCard.querySelector('.lostRequestLine'));
     lostCard.tabIndex = -1; lostCard.focus({ preventScroll: true }); // the bubble, not an answer: the Space that opened it
     // is still going up, and on a focused answer that would press it
   }
-  plazaDialog.addEventListener('click', (event) => { // a tap on the bubble (not an answer) shows the next line
-    if (plazaDialog.classList.contains('talkMode') && !event.target.closest('button')) lostCard.querySelector('.talkPending')?.classList.remove('talkPending');
+  plazaDialog.addEventListener('click', (event) => { // a tap on the bubble (not an answer): the line at once, then the next
+    if (plazaDialog.classList.contains('talkMode') && !event.target.closest('button')) talkNext();
   });
   const talkButtons = () => [...lostCard.querySelectorAll('button:not(:disabled)')];
   // on the document: a click on the island behind the bubble moves the focus out of it, the keys still talk
@@ -2615,8 +2630,7 @@
     if (event.repeat && event.key !== 'Escape') { event.preventDefault(); return; } // a held Space never runs through the lines
     const buttons = talkButtons();
     if (event.key === ' ' || event.key === 'Enter') {
-      const pending = lostCard.querySelector('.talkPending');
-      if (pending) { event.preventDefault(); pending.classList.remove('talkPending'); return; }
+      if (talkNext()) { event.preventDefault(); return; }
       if (!buttons.includes(event.target) && event.target !== byId('plazaCloseBtn')) { event.preventDefault(); if (lostCard.querySelector('.talkChoices')) buttons[0]?.focus(); else (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); } // (A-6: in the choices, Space first points at one)
       return; // a focused answer (or 닫기) is pressed by the browser
     }
@@ -2672,16 +2686,17 @@
     closeIslandWindows(); plaza.controller?.setSpace?.('jail', where.x, where.z); document.body.classList.add('townhallRoom');
     plaza.controller?.setJail?.(where.jail); await refreshJail(); if (jailState?.inmate === true) openWarden();
   }
-  const wardenCard = document.createElement('div'); wardenCard.className = 'goodCard'; wardenCard.id = 'wardenCard';
+  // (대화창 새 단장: the warden speaks in the talk bubble too -- his words, then his buttons)
+  const wardenCard = document.createElement('div'); wardenCard.className = 'talkActions'; wardenCard.id = 'wardenCard';
   async function openWarden() {
     const s = await refreshJail(); if (!s) return;
-    const say = document.createElement('p'); const row = document.createElement('div'); row.className = 'goodBuy';
+    const say = document.createElement('p'); say.className = 'lostRequestLine'; const row = wardenCard; row.replaceChildren();
     const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); return b; };
     if (s.inmate === true) {
       say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
       button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
     } else say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`;
-    wardenCard.replaceChildren(say, row); openPlazaWindow('구치소장', [wardenCard]);
+    lostCard.replaceChildren(say, row); openTalk('구치소장');
   }
   async function startEssay() {
     const gen = essayGen;
@@ -3646,7 +3661,10 @@
   // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): whoever walks by talks; the server holds them on every screen
   // while this window is open (renewed every few seconds, let go when it closes), and after their words come the choices
   let residentBusy = false; let residentTalk = null; // { n, timer } while a talk is open
-  const TALK_CHOICES = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['errand', '부탁할 거 있어요?'], ['ask', '이야기 나눠요'], ['gift', '선물해요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물)
+  // (대화창 새 단장: four at most -- 「이야기해요」 opens the talk topics in the same bubble; only what can be done today)
+  const TALK_CHOICES = [['talk', '이야기해요'], ['errand', '부탁할 거 있어요?'], ['gift', '선물해요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물)
+  const TALK_TOPICS = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['ask', '이야기 나눠요'], ['back', '← 돌아가기']];
+  const talkToday = (list, today) => list.filter(([topic]) => !today || !((topic === 'errand' && !today.errand) || (topic === 'gift' && today.gifted) || (topic === 'ask' && today.asked)));
   // R2: my 호감도 with each islander (their greeting as I pass by -- the scene), again after each talk
   async function refreshAffinity() { try { const d = await api('/api/island/affinity'); plaza.controller?.setAffinity?.(d.residents); } catch {} }
   function endResidentTalk() {
@@ -3658,18 +3676,19 @@
   function showResidentTalk(data, first) {
     showErrands(data);
     const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
-    const meta = document.createElement('p'); meta.className = 'lookMeta'; const heart = data.affinity ? ` · ${data.affinity.name} ${'♥'.repeat(data.affinity.level + 1)}` : ''; // v1.10.91 호감도
-    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${heart}` : `${data.role}${heart}`;
+    const meta = document.createElement('p'); meta.className = 'lookMeta talkMeta'; const hearts = data.affinity ? `${data.affinity.name} ` : ''; // v1.10.91 호감도 (대화창 새 단장: a small line of its own)
+    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${hearts ? ` · ${hearts}` : ''}` : `${data.role}${hearts ? ` · ${hearts}` : ''}`;
+    if (data.affinity) { const h = document.createElement('span'); h.className = 'talkHearts'; h.textContent = '♥'.repeat(data.affinity.level + 1); meta.append(h); }
     const list = document.createElement('div'); list.className = 'talkChoices';
-    // (R2 ④) their question of the day: three answers in place of the usual choices
-    const choices = data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : TALK_CHOICES; // (R3 ⑥: what I could give them)
-    for (const [topic, label, choice] of choices) {
+    const fill = (choices) => list.replaceChildren(...choices.map(([topic, label, choice]) => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
-      b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : askResident(data.n, topic, choice)));
-      list.append(b);
-    }
+      b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : topic === 'talk' ? (fill(talkToday(TALK_TOPICS, data.today)), list.querySelector('button')?.focus()) : topic === 'back' ? (fill(talkToday(TALK_CHOICES, data.today)), list.querySelector('button')?.focus()) : askResident(data.n, topic, choice)));
+      return b;
+    }));
+    // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them
+    fill(data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : talkToday(TALK_CHOICES, data.today));
     lostCard.replaceChildren(...lines, meta, list);
-    openTalk(data.name, Boolean(data.reward));
+    openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor);
     if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
     if (data.affinity) plaza.controller?.setAffinity?.([{ n: data.n, points: data.affinity.points, level: data.affinity.level }]);
     for (const note of data.stages || []) { showToast(`💛 ${note}`, 6000); loadPoints(); } // (R2: a level reached)
