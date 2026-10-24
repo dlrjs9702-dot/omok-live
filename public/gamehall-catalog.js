@@ -71,7 +71,7 @@
       intro: '1부터 순서대로 빠르게 누르세요', how: how('1부터 끝 숫자까지 순서대로 누릅니다', '시작 전 몇 초 동안 숫자 위치를 외울 수 있어요', '틀린 숫자를 누르면 1초 벌칙') },
     { id: 'rhythm', name: '비트 탭', cats: ['reflex'], players: '혼자', colors: ['#7e22ce', '#581c87'], art: 'rhythm', set: 'reflex',
       intro: '비트에 맞춰 떨어지는 노트를 누르세요', how: how('노트가 판정선에 닿는 순간 그 줄을 누릅니다', 'PC는 D·F·J·K 키', '놓치면 체력이 줄어요, 60초를 버텨 보세요') },
-    { id: 'stairs', name: '하늘 계단', cats: ['reflex'], players: '혼자', colors: ['#0ea5e9', '#0c4a6e'], art: 'stairs', set: 'reflex', // R7 (IDEAS #future-stair-dash)
+    { id: 'stairs', name: '하늘 계단', cats: ['reflex'], players: '혼자', colors: ['#0e7490', '#164e63'], art: 'stairs', set: 'reflex', // R7 (IDEAS #future-stair-dash)
       intro: '왼쪽·오른쪽 두 버튼으로 끝없는 하늘 계단을 올라요', how: how('다음 계단이 있는 쪽을 누르면 한 칸 올라요(PC는 ← → 또는 A D)', '반대쪽을 누르면 헛디뎌요', '숨 막대가 줄어요 — 오를수록 빨리, 한 칸마다 조금 차요') },
     { id: 'sudoku', name: '스도쿠', cats: ['puzzle'], players: '혼자', colors: ['#0369a1', '#0c4a6e'], art: 'sudoku', set: 'puzzle',
       intro: '가로·세로·3×3 칸마다 1부터 9까지 한 번씩', how: how('빈칸을 누르고 숫자를 골라 채웁니다', '메모로 들어갈 수 있는 숫자를 적어 둘 수 있어요', '오늘의 문제는 처음 푼 한 번만 포인트') },
