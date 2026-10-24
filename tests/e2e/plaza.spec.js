@@ -1093,6 +1093,7 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   expect(box.y).toBeGreaterThan(view.height * 0.4); // the island stays in sight above it
   const lines = page.locator('.lostRequest .lostRequestLine');
   await expect(lines.nth(0)).toBeVisible();
+  await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0); // (대화창 새 단장: the first line typed out first -- resident-talk presses through it)
   await expect(lines.nth(1)).toBeHidden();
   await page.keyboard.press('Space');
   await expect(lines.nth(1)).toBeVisible();
