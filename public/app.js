@@ -2677,7 +2677,7 @@
   // v1.10.92 잡화점 (IDEAS #future-general-store): in and out like the 민원실; inside, standing at a good on its shelf, SPACE
   // opens it (what it is for, 1·5·10 to buy -- paid and in the bag at once); the keeper behind the counter greets
   let storeBusy = false; let storeGoods = [];
-  const GOOD_USE = { bike: '가방에 있으면 섬에서 B(휴대폰은 🚲 단추)로 타고 내려요. 걷기보다 빨라요(실내·계단·다리·사람 많은 곳에서는 내려요).', bait: '가방에 있으면 낚시할 때 자동으로 씁니다. 입질이 빨라져요.', show: '가방에서 「쓰기」를 누르면 그 자리에서 모두가 볼 수 있어요.', gift: '다른 사람에게 가방 물건을 선물할 때 하나 씁니다.', errand: '주민이 사다 달라고 부탁하는 물건이에요.', keep: '기념으로 간직하는 물건이에요.' };
+  const GOOD_USE = { bike: '가방에 있으면 섬에서 B(휴대폰은 🚲 단추)로 타고 내려요. 걷기보다 빨라요(실내·계단·다리·사람 많은 곳에서는 내려요).', bait: '가방에 있으면 낚시할 때 자동으로 써요. 입질이 빨라져요.', show: '가방에서 「쓰기」를 누르면 그 자리에서 모두가 볼 수 있어요.', gift: '다른 사람에게 가방 물건을 선물할 때 하나 써요.', errand: '주민이 사다 달라고 부탁하는 물건이에요.', keep: '기념으로 간직하는 물건이에요.' };
   async function storeDoor(entering) {
     if (storeBusy) return; storeBusy = true;
     try {
