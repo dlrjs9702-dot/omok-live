@@ -3116,7 +3116,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       let dir = null; // across the line of sight, a way whose both ends are still over the sea
       for (const turn of [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2]) for (const sign of Math.random() < 0.5 ? [1, -1] : [-1, 1]) {
         if (dir) break; const a = c.a + sign * (Math.PI / 2) + turn; const d = { x: Math.sin(a), z: Math.cos(a) };
-        if ([-1, -0.5, 0.5, 1].every((k) => T.coastDist(c.x + d.x * L * k, c.z + d.z * L * k) < -1)) dir = d;
+        // (the whole flock's way over the sea, not only its middle line: the birds fly up to 6 m to either side and the last
+        // ones start up to 6 m further back -- one over the beach failed the sea-sights test now and then)
+        if ([-1.2, -1, -0.5, 0, 0.5, 1].every((k) => [-7, 0, 7].every((w) => T.coastDist(c.x + d.x * L * k + d.z * w, c.z + d.z * L * k - d.x * w) < -1))) dir = d;
       }
       if (!dir) return false;
       const n = 4 + Math.floor(Math.random() * 3);
