@@ -399,17 +399,17 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // colour a couple of metres down (by the time of day: blue by day, navy-violet in the evening, deep navy at night); lines
   // of ripple coming in to the beach; the faintest ripple everywhere, its glints making a path of the sun (orange in the
   // evening) or the moon on the water
-  const seaDeep = { value: new THREE.Color(0x3aa0d0) }; const seaGlow = { value: new THREE.Color(0xfff2d0) }; const sunDir = { value: new THREE.Vector3(-0.4, 0.8, 0.35) }; const seaSelf = { value: 0 }; const seaLines = { value: 1 }; let seaSun = null;
+  const seaDeep = { value: new THREE.Color(0x3aa0d0) }; const seaGlow = { value: new THREE.Color(0xfff2d0) }; const sunDir = { value: new THREE.Vector3(-0.4, 0.8, 0.35) }; const seaSelf = { value: 0 }; const seaLines = { value: 1 }; const seaClear = { value: 0.45 }; let seaSun = null;
   if (maps) {
     sea.material = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, transparent: true })); // (its own: mat() hands out shared ones)
     sea.material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, tNoise: { value: groundTex.grass } });
+      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uClear: seaClear, tNoise: { value: groundTex.grass } });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vSeaXZ;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeaXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform sampler2D tNoise; varying vec2 vSeaXZ;')
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uClear; uniform sampler2D tNoise; varying vec2 vSeaXZ;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 vec2 suv = (vSeaXZ - uPathBox.xy) / uPathBox.z; vec3 sh = (suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) ? texture2D(tShore, suv).rgb : vec3(0.0, 1.0, 0.0);
 float sd = (sh.r * 2.0 - 1.0) * ${SHORE_RANGE.toFixed(1)}; float shallow = 1.0 - smoothstep(0.0, 0.7, sh.g); // (0..2.1 m)
-diffuseColor.rgb = mix(uDeepSea, uShallowSea, shallow); diffuseColor.a = mix(1.0, 0.45, shallow);
+diffuseColor.rgb = mix(uDeepSea, uShallowSea, shallow); diffuseColor.a = mix(1.0, uClear, shallow);
 float ln = texture2D(tNoise, vSeaXZ / 7.0 + vec2(uShoreTime * 0.004, 0.0)).r / 0.611; float ln2 = texture2D(tNoise, vSeaXZ / 2.9).r / 0.611; // (검토 2차 6: broken, of changing width, fewer, fainter further out)
 float lines = pow(0.5 + 0.5 * sin(sd * 1.3 + uShoreTime * 1.5 + 0.8 * sin(vSeaXZ.x * 0.11 + vSeaXZ.y * 0.07)), mix(7.0, 18.0, clamp(ln2 - 0.6, 0.0, 1.0))) * smoothstep(0.95, 1.2, ln) * pow(smoothstep(-9.0, -1.5, sd), 1.5) * (1.0 - smoothstep(-1.2, 0.0, sd)) * uLines;
 diffuseColor.rgb += 0.16 * lines * vec3(0.9, 1.0, 1.0);`)
@@ -424,8 +424,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     sea.material.customProgramCacheKey = () => 'sea-shore';
   }
   // the time of day's sea (plaza-scene: when the light changes) -- and the sun it follows
-  const SEA_PHASE = { morning: [0x4aa8d2, 0x78d6cc, 0xffe2b8], day: [0x3aa0d0, 0x6fd8d0, 0xfff2d0], evening: [0x27315e, 0x24606a, 0xff8a3c, 0.18, 0.4], night: [0x101b3a, 0x1b4352, 0x9fb8ff, 0.15, 0.3] };
-  function setSeaPhase(phase, sun) { const c = SEA_PHASE[phase] || SEA_PHASE.day; seaDeep.value.set(c[0]); seaShallow.value.set(c[1]); seaGlow.value.set(c[2]); seaSelf.value = c[3] || 0; seaLines.value = c[4] ?? 1; seaSun = sun || null; }
+  const SEA_PHASE = { morning: [0x4aa8d2, 0x78d6cc, 0xffe2b8], day: [0x3aa0d0, 0x6fd8d0, 0xfff2d0], evening: [0x334180, 0x1f7480, 0xff8a3c, 0.3, 0.45], /* (검토 3차 2: a step lighter, the shallows a deep teal -- more of its own light, so the warm dusk does not turn it olive) */ night: [0x101b3a, 0x1b4352, 0x9fb8ff, 0.15, 0.3] };
+  function setSeaPhase(phase, sun) { const c = SEA_PHASE[phase] || SEA_PHASE.day; seaDeep.value.set(c[0]); seaShallow.value.set(c[1]); seaGlow.value.set(c[2]); seaSelf.value = c[3] || 0; seaLines.value = c[4] ?? 1; seaClear.value = phase === 'evening' || phase === 'night' ? 0.78 : 0.45; /* (the sand under it lit by the dusk read olive) */ seaSun = sun || null; }
   const pond = new THREE.Mesh(keep(new THREE.CircleGeometry(POND.r + 0.6, 40)), pondWater);
   pond.rotation.x = -Math.PI / 2; pond.position.set(POND.x, land(POND.x, POND.z) - 0.45, POND.z); scene.add(pond);
   const ribbon = (pts, width, yOf, material, lift = 0) => { // a flat strip along a line, following the ground
