@@ -350,6 +350,47 @@
     ctx.strokeStyle = '#8a3a1a'; ctx.lineWidth = 3; ctx.strokeRect(inset, inset, w - inset * 2, h - inset * 2 - 40);
   }
 
+  // ---- R5 밤장난 꼬마 마녀 (gamecenter-notes docs/yut-skin-night-imp-order-20261012.md): the island's own little witch --
+  // a crooked witch's hat with a crescent, a fringe, half-shut eyes and a grin with one fang, a bat-wing cape. The body is
+  // the team colour and the number its plate, as every piece. (Nothing of another company's character: no jester hood, no
+  // skull, no long rabbit ears, no arrow tail, no white face under a black hood.)
+  const NIGHT = { hat: '#2b2140', rim: '#3b2d58', moon: '#ffd84a' };
+  function witch(ctx, r, c, label) { // 밤장난 꼬마 마녀
+    const T = team(c);
+    ctx.fillStyle = NIGHT.hat; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * .62, -r * .05); ctx.lineTo(s * r * 1.12, -r * .2); ctx.lineTo(s * r * .98, r * .08); ctx.lineTo(s * r * 1.1, r * .3); ctx.lineTo(s * r * .9, r * .36); ctx.lineTo(s * r * .78, r * .56); ctx.closePath(); ctx.fill(); } // the cape's bat-wing ends
+    body(ctx, r, c, .86);
+    ctx.fillStyle = '#10131a'; for (const x of [-.26, -.08, .12]) { ctx.beginPath(); ctx.moveTo(x * r, -r * .6); ctx.lineTo((x + .14) * r, -r * .6); ctx.lineTo((x + .02) * r, -r * .44); ctx.closePath(); ctx.fill(); } // the fringe under the brim
+    ctx.fillStyle = NIGHT.rim; ctx.beginPath(); ctx.ellipse(0, -r * .62, r * .92, r * .2, -.08, 0, TAU); ctx.fill(); // the brim
+    ctx.fillStyle = NIGHT.hat; ctx.beginPath(); ctx.moveTo(-r * .52, -r * .7); ctx.quadraticCurveTo(-r * .18, -r * 1.3, r * .22, -r * 1.46); ctx.quadraticCurveTo(r * .5, -r * 1.48, r * .62, -r * 1.3); ctx.quadraticCurveTo(r * .3, -r * 1.24, r * .2, -r * 1.12); ctx.quadraticCurveTo(r * .36, -r * .92, r * .5, -r * .72); ctx.closePath(); ctx.fill(); // the crooked tip
+    ctx.fillStyle = T.light; ctx.beginPath(); ctx.moveTo(-r * .46, -r * .78); ctx.quadraticCurveTo(0, -r * .9, r * .46, -r * .78); ctx.lineTo(r * .44, -r * .66); ctx.quadraticCurveTo(0, -r * .78, -r * .44, -r * .66); ctx.closePath(); ctx.fill(); // the band, the team's light tone
+    ctx.fillStyle = NIGHT.moon; ctx.beginPath(); ctx.arc(r * .66, -r * 1.3, r * .14, 0, TAU); ctx.fill(); ctx.fillStyle = NIGHT.hat; ctx.beginPath(); ctx.arc(r * .72, -r * 1.34, r * .12, 0, TAU); ctx.fill(); // a crescent on the tip
+    // (the face up high: the number's plate covers the lower half)
+    ctx.strokeStyle = '#10131a'; ctx.lineWidth = r * .07; ctx.lineCap = 'round'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * .42, -r * .24); ctx.quadraticCurveTo(s * r * .3, -r * .32, s * r * .17, -r * .26); ctx.stroke(); } // half-shut eyes: a lid each
+    ctx.lineWidth = r * .06; ctx.beginPath(); ctx.moveTo(-r * .22, -r * .1); ctx.quadraticCurveTo(r * .02, r * .04, r * .26, -r * .14); ctx.stroke(); // the lopsided grin
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(r * .09, -r * .05); ctx.lineTo(r * .19, -r * .09); ctx.lineTo(r * .16, r * .04); ctx.closePath(); ctx.fill(); // one fang
+    ctx.fillStyle = 'rgba(255,150,190,.75)'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(s * r * .5, -r * .1, r * .08, 0, TAU); ctx.fill(); } // pink cheeks
+    ctx.fillStyle = NIGHT.moon; for (const [x, y, k] of [[-.66, .78, .13], [.04, .9, .1], [.7, .74, .12]]) { starPath(ctx, x * r, y * r, k * r, k * r * .45, 5); ctx.fill(); } // little stars at her feet
+    badge(ctx, r, label);
+  }
+  function batTrail(ctx, pts, r, c) { // tiny bats and stars in the night
+    pts.forEach((p, i) => { const a = (i + 1) / pts.length; ctx.fillStyle = i % 2 ? `rgba(255,216,74,${a * .7})` : `rgba(43,33,64,${a * .7})`;
+      if (i % 2) { starPath(ctx, p.x, p.y - r * .2, r * .2 * a, r * .08, 4); ctx.fill(); return; }
+      const k = r * .34 * a; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x - k * .6, p.y - k * .7, p.x - k * 1.4, p.y - k * .2); ctx.quadraticCurveTo(p.x - k * .9, p.y + k * .05, p.x - k * .7, p.y + k * .3); ctx.quadraticCurveTo(p.x - k * .3, p.y + k * .1, p.x, p.y + k * .3); ctx.quadraticCurveTo(p.x + k * .3, p.y + k * .1, p.x + k * .7, p.y + k * .3); ctx.quadraticCurveTo(p.x + k * .9, p.y + k * .05, p.x + k * 1.4, p.y - k * .2); ctx.quadraticCurveTo(p.x + k * .6, p.y - k * .7, p.x, p.y); ctx.fill(); });
+  }
+  function midnight(ctx, w, h) { // 한밤의 마녀 윷판: a night sky, a crescent and stars, a hat and a broom kept dark at the edge; the mat's
+    // cells soft violet stones so the board and the pieces' numbers stay clear
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#1d1636'); g.addColorStop(1, '#2f2352'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const R = rng(91);
+    for (let i = 0; i < 90; i += 1) { ctx.fillStyle = `rgba(255,248,220,${.25 + R() * .6})`; ctx.beginPath(); ctx.arc(R() * w, R() * h, .6 + R() * 1.3, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#ffe58a'; ctx.beginPath(); ctx.arc(w * .86, h * .1, 26, 0, TAU); ctx.fill(); ctx.fillStyle = '#1f1838'; ctx.beginPath(); ctx.arc(w * .86 + 11, h * .1 - 6, 23, 0, TAU); ctx.fill(); // the crescent
+    ctx.fillStyle = 'rgba(12,8,24,.75)'; // the edge's silhouettes: a witch's hat bottom left, a broom along the bottom right
+    ctx.beginPath(); ctx.ellipse(44, h - 10, 28, 6, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(24, h - 11); ctx.quadraticCurveTo(38, h - 30, 48, h - 44); ctx.quadraticCurveTo(60, h - 48, 66, h - 40); ctx.quadraticCurveTo(56, h - 38, 54, h - 32); ctx.lineTo(62, h - 11); ctx.closePath(); ctx.fill(); // (in the strip under the mat)
+    ctx.save(); ctx.translate(w - 120, h - 22); ctx.rotate(-.12); ctx.fillRect(0, -3, 92, 6); ctx.beginPath(); ctx.moveTo(88, -10); ctx.lineTo(118, -16); ctx.lineTo(120, 16); ctx.lineTo(88, 10); ctx.closePath(); ctx.fill(); ctx.restore();
+    const inset = 26; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5;
+    ctx.fillStyle = '#3a2f5c'; ctx.fillRect(inset, inset, w - inset * 2, h - inset * 2 - 40); ctx.restore();
+    ctx.strokeStyle = '#b9a6ff'; ctx.lineWidth = 3; ctx.strokeRect(inset, inset, w - inset * 2, h - inset * 2 - 40);
+  }
+
   // ---- shop pictures ----
   function previewPiece(ctx, w, h, skinId) {
     ctx.fillStyle = '#b8914f'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#f3e7c4'; ctx.fillRect(8, 8, w - 16, h - 16);
@@ -379,5 +420,8 @@ yut_c6: piece(penguin), yut_c7: piece(bear), yut_c8: piece(frog), yut_c9: piece(
     yut_p4: piece(pirate, wakeTrail), yut_p5: piece(balloon, puffTrail), yut_p6: piece(dragon, sparkTrail),
     yut_t3: theme(autumn, 'rgba(90,30,10,.85)', '#fff3d6'),
     yut_l3: piece(tiger, pawTrail, { legend: true, special: roarSpecial, win: tigerWin }), // 호랑이 장군 ↔ 단풍 산길
+    // R5 밤장난 꼬마 마녀 and its room 한밤의 마녀 윷판 (no legend pair)
+    yut_p7: piece(witch, batTrail),
+    yut_t4: theme(midnight, 'rgba(210,196,255,.9)', '#4a3d78'),
   });
 }());
