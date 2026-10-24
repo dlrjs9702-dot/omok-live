@@ -2443,3 +2443,5 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .dressGiftForm .dressGift{background:#db2777;color:#fff;border:0;border-radius:12px;min-height:38px;padding:0 14px;font-weight:900}
 .skinShopDialog.dressing>.dressGiftForm{grid-area:detail;margin-right:16px;z-index:3}
 .skinShopDialog.dressing:has(.dressGiftForm:not(.hidden))>.dressDetail{display:none}
+/* R4 구치소: the day's essays on the board */
+.jailLog{margin:0;padding:0 0 0 1.4em;max-height:50vh;overflow:auto;text-align:left;justify-self:stretch;display:grid;gap:4px;font-size:.92rem;overflow-wrap:anywhere}

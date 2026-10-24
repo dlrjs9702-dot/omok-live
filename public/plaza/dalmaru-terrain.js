@@ -148,7 +148,7 @@
     facadeTownhall: deg(RIDGE.inner - 2, 235), facadeMall: deg(RIDGE.inner - 2, 305),
     stairs: { from: deg(RIDGE.inner - 2, 226), to: deg(RIDGE.inner - 2, 210.5) }, // up the cliff face westward beside 관공서 (문제 기록 3회차 11: on along the ridge, its foot 2 m and more off the hall's front)
     lighthouse: { x: -96, z: 144 }, pier: { x: 98, z: 150, yaw: Math.PI * 0.75 }, dock: { x: 0, z: 3.5 }, // (its gangway onto the beach)
-    gamehall: { x: 56, z: -66 }, notice: { x: -42, z: -71 }, /* (묶음 5: 알림마루 -- one row along 대청마당's west edge, its middle) */ village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
+    gamehall: { x: 56, z: -66 }, jail: { x: -66.4, z: -75.7 } /* (R4 구치소: by 관공서, level ground clear of the walks, its door south to the walk east of it) */, notice: { x: -42, z: -71 }, /* (묶음 5: 알림마루 -- one row along 대청마당's west edge, its middle) */ village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
     // 2단계 (2026-10-19): the rest of what stands by hand -- [x, z] or { x, z, face: [x, z] } (the point its front looks at)
     spawn: { x: -22, z: -60 }, // 첫 접속 자리: 알림마루's east side, on 대청마당
     records: { x: 64, z: -86, face: [60, -95] }, missions: { x: 46, z: -75, face: [40, -75] }, // beside the 게임관 (묶음 5 배치 점검: 기록관 off the 백화점 walk, facing it; 미션 게시판 by the hall's door, off its walk)

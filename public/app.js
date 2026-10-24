@@ -1503,6 +1503,7 @@
     { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
     { id: 'naming', name: '개명소', open: () => openNaming() }, // v1.10.9 작명소
     { id: 'townhall', name: '관공서', open: () => townhallDoor(true) }, // v1.10.10 이벤트 인벤토리; v1.10.84 in through the door (the 민원 창구 inside)
+    { id: 'jail', name: '구치소', open: () => jailDoor(true) }, // R4 구치소 반성문
     { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
     { id: 'map', name: '안내 지도', open: () => openIslandMap() }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
@@ -1867,7 +1868,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2636,6 +2637,68 @@
       const r = await api(entering ? '/api/island/store/enter' : '/api/island/store/leave', { method: 'POST', body: '{}' });
       closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
     } catch (error) { showToast(error.message); } finally { storeBusy = false; }
+  }
+  // R4 구치소 반성문: in and out at its doors; one owing the tax is put in its cell by the server (the first pose of a visit:
+  // jailedBy). The warden's talk: [시작] (his sentence over his head, 20 s a ring; typed into the island chat, his answer
+  // comes back with the chat -- jailAnswer), [지금 세금 내기]; to an onlooker, how many passed today. The board: the day's.
+  let jailBusy = false; let jailState = null; let essayTimer = null;
+  async function jailDoor(entering) {
+    if (jailBusy) return; jailBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const r = await api(entering ? '/api/island/jail/enter' : '/api/island/jail/leave', { method: 'POST', body: '{}' });
+      closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
+      if (r.space === 'jail') await refreshJail(); else { clearTimeout(essayTimer); jailState = null; }
+    } catch (error) { showToast(error.message); } finally { jailBusy = false; }
+  }
+  async function refreshJail() {
+    try { jailState = await api('/api/island/jail'); plaza.controller?.setJail?.(jailState); } catch {}
+    return jailState;
+  }
+  async function jailedBy(where) { // the server put me in the cell (a plaza/state answer)
+    if (plaza.controller?.space?.() === 'jail') return;
+    closeIslandWindows(); plaza.controller?.setSpace?.('jail', where.x, where.z); document.body.classList.add('townhallRoom');
+    plaza.controller?.setJail?.(where.jail); await refreshJail(); if (jailState?.inmate === true) openWarden();
+  }
+  const wardenCard = document.createElement('div'); wardenCard.className = 'goodCard'; wardenCard.id = 'wardenCard';
+  async function openWarden() {
+    const s = await refreshJail(); if (!s) return;
+    const say = document.createElement('p'); const row = document.createElement('div'); row.className = 'goodBuy';
+    const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); return b; };
+    if (s.inmate === true) {
+      say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
+      button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
+    } else say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`;
+    wardenCard.replaceChildren(say, row); openPlazaWindow('구치소장', [wardenCard]);
+  }
+  async function startEssay() {
+    try { const e = await api('/api/island/jail/start', { method: 'POST', body: '{}' }); closeIslandWindows(); showEssay(e); } catch (error) { showToast(error.message); }
+  }
+  function showEssay(e, lead = '') { // the sentence over the warden's head; the time run out: 「다시.」 and the same one again
+    clearTimeout(essayTimer);
+    plaza.controller?.wardenSay?.(`${lead ? `${lead} ` : ''}${e.sentence}`, e.left);
+    essayTimer = setTimeout(async () => { try { const again = await api('/api/island/jail/start', { method: 'POST', body: '{}' }); showEssay(again, '다시.'); } catch {} }, e.left + 300);
+  }
+  function jailAnswer(j) { // the warden's answer to a line I typed (POST /api/lobby/chat)
+    if (!j) return;
+    if (!j.passed) { showEssay(j, j.say); return; }
+    clearTimeout(essayTimer); plaza.controller?.wardenSay?.(j.say, 0); refreshJail(); showToast('반성문 통과! 철창이 열렸어요.');
+  }
+  async function payFromJail() {
+    try {
+      const out = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID() }) });
+      closeIslandWindows(); loadPoints(); refreshPlazaAvatar();
+      showToast(!out.paid ? '낼 포인트가 없습니다.' : out.debt > 0 ? `${Number(out.paid).toLocaleString('ko-KR')}P 냈어요. 남은 체납 ${Number(out.debt).toLocaleString('ko-KR')}P — 반성문은 그대로예요.` : '세금을 다 냈어요. 철창이 열렸어요.');
+      if (!(out.debt > 0)) { clearTimeout(essayTimer); plaza.controller?.wardenSay?.('다 내셨군요. 나가셔도 좋습니다.', 0); } await refreshJail();
+    } catch (error) { showToast(error.message); }
+  }
+  const jailBoardCard = document.createElement('div'); jailBoardCard.className = 'goodCard'; jailBoardCard.id = 'jailBoardCard';
+  async function openJailBoard() {
+    const s = await refreshJail(); if (!s) return;
+    const list = document.createElement('ol'); list.className = 'jailLog';
+    for (const e of [...s.log].reverse()) { const li = document.createElement('li'); li.textContent = `${new Date(e.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} ${e.name}: ${e.text}`; list.append(li); }
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = s.log.length ? `오늘 통과 ${s.passed}명 · 자정에 지워져요` : '오늘은 아직 반성문이 없어요.';
+    jailBoardCard.replaceChildren(note, list); openPlazaWindow('오늘의 반성문', [jailBoardCard]);
   }
   // 묶음 2 가구점 (백화점 2층): up and down by the lift; the day's display from the server (and again when a piece is sold
   // anywhere: SSE 'furniture'); SPACE by a piece opens its window -- bought, it goes to the 가구 창고
@@ -3816,6 +3879,7 @@
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
+        if (data.jail) jailedBy(data); // R4: put in the 구치소's cell
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();
         const waiting = plaza.controller?.platform?.();
@@ -7009,7 +7073,7 @@
     const text = islandChatInput.value.trim();
     if (!text) { closeIslandChatInput(); return; }
     islandChatInput.disabled = true;
-    try { await api('/api/lobby/chat', { method: 'POST', body: JSON.stringify({ text }) }); islandChatInput.disabled = false; closeIslandChatInput(); }
+    try { const r = await api('/api/lobby/chat', { method: 'POST', body: JSON.stringify({ text }) }); islandChatInput.disabled = false; closeIslandChatInput(); jailAnswer(r.jail); }
     catch (err) { islandChatInput.disabled = false; showToast(err.message, 3500); islandChatInput.focus(); }
   });
 
@@ -11169,11 +11233,12 @@
     if (!text) return;
     lobbyChatInput.disabled = true;
     try {
-      await api('/api/lobby/chat', {
+      const r = await api('/api/lobby/chat', {
         method: 'POST',
         body: JSON.stringify({ text }),
       });
       lobbyChatInput.value = '';
+      jailAnswer(r.jail); // (R4: the essay typed here counts the same)
     } catch (err) {
       showToast(err.message, 3500);
     } finally {
