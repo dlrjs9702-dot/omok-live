@@ -326,6 +326,12 @@
   // common motions) and what their weeks of help change on the island -- the mural in four stages, the easel, the busking
   // stage and the guitar (Hand.R), the lamps, the stepping stones, the tables
   for (const n of ['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa']) REGISTRY[`character.${n}`] = { url: `${CH}/npc_${n}.glb`, low: { url: `${CH}/npc_${n}_low.glb` }, rotationY: Math.PI, motions: true };
+  // F3 배회 주민 10명 고유 외형 (assets 51 v2, 2026-10-24): each walking islander their own model on the common rig (island-cast
+  // WALKERS order), made at the body's own size (`baked`); 가람 the stone child at 0.75. headTop: the top of ears or hat in
+  // game metres (the speech bubble over it); lean: the upper body forward, degrees (the README's -- drawn only)
+  const WALKER_LOOKS = Object.freeze([['bomi', 2.75, 0], ['sea_grandpa', 2.18, 5], ['haram', 2.16, 1], ['duri', 2.25, 2], ['noeul_granny', 2.08, 8], ['detective_oh', 2.31, 2], ['daon', 2.54, 1], ['barami', 2.2, 3], ['isol', 2.17, 2], ['garam', 1.65, 1]]
+    .map(([id, headTop, lean]) => Object.freeze({ id, headTop, lean, model: `character.walker.${id}` })));
+  for (const w of WALKER_LOOKS) REGISTRY[w.model] = { url: `${CH}/npc_walker_${w.id}.glb`, low: { url: `${CH}/npc_walker_${w.id}_low.glb` }, rotationY: Math.PI, motions: true, baked: true, ...(w.id === 'garam' ? { scale: 0.75 } : {}) };
   const village = (file, extra = {}) => ({ url: `/assets/island/village-v1/${file}.glb`, low: { url: `/assets/island/village-v1/${file}_low.glb` }, near: 50, ...extra });
   for (const s of [0, 1, 2, 3]) { REGISTRY[`village.mural.${s}`] = village(`mural_stage${s}`); REGISTRY[`village.stepstones.${s}`] = village(`stepstones_stage${s}`); }
   for (const p of ['easel', 'busk_stage', 'lamp_broken', 'lamp_fixed', 'toolbox', 'bookcart', 'table_omok', 'table_cards']) REGISTRY[`village.${p}`] = village(p);
@@ -452,5 +458,5 @@
     if (typeof e.url === 'string' && /\/characters\/wear(-winter)?\//.test(e.url) && !HEAD.test(e.url)) e.baked = true;
     if (e.body && !HEAD.test(e.body.url)) e.body.baked = true;
   }
-  return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
+  return { REGISTRY, WARDROBE, LOOK_SLOTS, WALKER_LOOKS, wardrobeOf };
 });

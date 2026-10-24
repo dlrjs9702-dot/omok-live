@@ -13,6 +13,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.136 R1: 이름 있는 주민 13명 새 몸, 배회 주민 10명 고유 외형(F3)
+
+- 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R1(assets 52 F4), F3(assets 51 v2, 2026-10-24 검토 통과).
+- R1: 농부·화가·역무원·거리 악단·전기 담당·공사 인부·도서관 할아버지·정자 할아버지·민원·세무·은행 직원·잡화점 주인·변신 의상실 주인 13명 원본을 `npc52:`로 바꿔 High·Low 26개 다시 빌드. 얼굴·머리·옷 색·직업 소품은 그대로.
+- F3: 배회 주민 10명(봄이·바다 할아버지·하람·두리·노을 할머니·오 탐정·다온·바람이·이솔·가람)이 `character.islander`+옷 색 대신 `character.walker.<id>`(island-cast WALKERS 순서, `WALKER_LOOKS`), baked, 가람 0.75배, 말풍선 높이 주민마다. 예산 예외(사용자): 이 20개만 High ≤ 32,000 / Low ≤ 10,000(`budgets.json` fileOverrides, 원본 sha 고정).
+- F3 상체 기울임(README 권장 각도, 화면만 — 걷는 속도 그대로): `WALKER_LOOKS` lean(노을 할머니 8°, 바다 할아버지 5° 등, 0이면 없음)을 Spine 60 %·Chest 40 %로 나눠 모델 앞(−Z)으로. 움직임 16개가 Spine·Chest 중 하나에 회전 트랙이 없어 지난 프레임 기울임을 먼저 빼고 `anim.update` 뒤 다시 더함(쌓이지 않음).
+- `asset-loader.js` dress(): Low 파일이 있는 통째 캐릭터는 High·Low를 둘 다 받아 Low를 High 뼈에 관절 이름으로 묶고 거리로 바꿈(wearLod, 휴대폰 낮은 등급은 더 가까이서 Low) — 이름 있는 NPC들도 같이 혜택.
+- 남은 것: 노을 할머니 지팡이가 앉을 때 좌석을 통과할 수 있음(배회 주민은 아직 앉지 않음 — 앉게 될 때 숨기기).
+- 시험: 에셋 파이프라인·GLB 예산(예외 사유·sha), e2e `island-assets`·`resident-talk`.
+- Codex 검토 대기(10/25).
+
 ## v1.10.135 문제 기록 3회차 10묶음: 변신 펫·메타몽
 
 - 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 21번.
@@ -26,12 +37,4 @@
 - 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 17번(사용자 결정 10/22 「곤충·물고기 부탁」).
 - 17: 사진가의 두 부탁(`photomemory` 첫 섬 나들이, `photographer` 주간)을 `catchSteps`로 — 곤충 한 마리(`give insect_*`) 다음 물고기 한 마리(`give fish_*`). 첫 나들이 메뚜기·붕어, 주간 무당벌레·망둥어(날마다 섬 어딘가에 있는 것). 보상 3,000 + 4,000 + 마무리 15,000(합계 그대로). 상태에 `v: 2`, 그 전부터 진행 중이던 사진 부탁(`v` 없음)은 `storyState`가 완료로 봄(받은 보상 그대로). 곤충을 잡거나 물고기를 낚으면 서버가 그 자리에서 부탁용 가방을 갱신(`questBagNow`).
 - 시험: 단위 `island-quests`·`solo-quest-server`, e2e `plaza`(부탁 흐름).
-- Codex 검토 대기(10/25).
-
-## v1.10.133 문제 기록 4회차: 능선 계단 둘레(끊긴 길·뜬 발판·계단 위 산)
-
-- 근거: gamecenter-notes `docs/issue-log-review-20261023.md` 새 기록 3건(모두 v1.10.127에서 계단을 1.5° 옮긴 뒤).
-- 원인: 땅은 2.5 m 그물(`meshGroundHeight`)로 그려지는데, 관공서 옆 절벽 메움(CUTS)이 계단 쪽에서 1.5 m만 비켜 있었음 — 계단이 관공서에서 3 m 떨어진 뒤로는 그려진 절벽이 계단 발치·판 위로 기울어 최대 17 m 덮음(서는 땅은 1.5 m — 「통과할 수 있는 산」), 그 위 갈림길 원판(`placeFlat`, 둘레 가장 높은 땅만큼 올림)이 9 m 공중. 꼭대기 메움(TOP)은 2.4 m 깊이라 그물 사이에 빠져 그려진 땅이 7 m 아래. 능선 길 첫 점이 216°에 고정돼 계단 꼭대기(210.5°)에서 가파른 비탈을 지남.
-- 고침(`dalmaru-island.js`): 계단 둘레 메움 비킴 4.5 m(`STAIRS_CLEAR`, 그물 한 칸 대각선보다 넓게), 꼭대기 메움 5 m 깊이·2.5 m 가장자리, 능선 길은 메움 한가운데에서 계단 꼭대기 각도(`STAIRS_TOP_DEG`)+4°로, 계단 둘레(10 m)는 그려진 땅이 발보다 0.5 m 넘게 위·아래면 설 수 없음(`underDrawnRock` — 보이는 것 = 막는 것).
-- 시험: 새 `stairs-ground`(계단 판 위 그려진 땅 0, 둘레 보이는 땅 = 서는 땅, 위·아래 끝에서 걸어서 길까지, 섬의 모든 길이 걸을 수 있는 땅 — 셋 다 옛 코드에서 실패), `path-paving` 갈림길 원판 0.4 m 넘게 뜨지 않음(옛 코드 실패), `scattered-settled` 잡초 기준점을 계단에서 먼 w3501로(1,396개 번호·자리 그대로, 계단 둘레 4개만 바뀜). e2e 자전거(계단에서 내림)·달마루섬 걷기 통과.
 - Codex 검토 대기(10/25).
