@@ -7545,7 +7545,6 @@
       "precompressed": true
     },
     {
-<<<<<<< HEAD
       "out": "characters/npc_walker_bomi.glb",
       "src": "walker51:01. High/npc_walker_bomi.glb",
       "sha256": "39cd3582ec7ff6df95743440bbe1b5141c6226d807e5c8e668bec1fb1c43e8d7",
@@ -7624,7 +7623,8 @@
       "lowSrc": "walker51:02. Low/npc_walker_garam_low.glb",
       "lowSha256": "f00d871825c4e64f4eabc0c1829f62919674c4f8188994c07a57a2977bdc058b",
       "precompressed": true
-=======
+    },
+    {
       "out": "jail-v1/jail_exterior.glb",
       "src": "jail67:01. High/jail_exterior.glb",
       "sha256": "132f33cd84728efb420dc31df84644fb46f7d5e7199ffa7a4dc3f779c59f8acf",
@@ -7685,7 +7685,6 @@
       "lowSrc": "jail67:02. Low/npc_warden_low.glb",
       "lowSha256": "7d6f0e6323ec276af6dfd7976ceaf3f0b2a7e963f67cf8443525eb6953dd8891",
       "precompressed": false
->>>>>>> aad5e06c (R4 구치소 반성문: 체납자는 철창 안에서 시작, 채팅 반성문 3문장, 지금 세금 내기)
     }
   ],
   "sources": {
@@ -7733,10 +7732,7 @@
     "swing66": "66. Game Island tool swing moves 2026-10-22",
     "ditto65": "65. Game Island ditto pet 2026-10-22",
     "npc52": "52. Game Island named npc refit 2026-10-18",
-<<<<<<< HEAD
-    "walker51": "51. Game Island resident looks 2026-10-23"
-=======
+    "walker51": "51. Game Island resident looks 2026-10-23",
     "jail67": "67. Game Island jail 2026-10-22"
->>>>>>> aad5e06c (R4 구치소 반성문: 체납자는 철창 안에서 시작, 채팅 반성문 3문장, 지금 세금 내기)
   }
 }
