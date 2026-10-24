@@ -42,12 +42,9 @@ function buildCoverMaps(T, res = 1024) {
     const sand = cd < 9 && cliff < 0.5 ? smooth(8.5, 4, cd + (n1 - 0.5) * 1.6) : h[k] < SEA - 0.3 ? 1 : 0;
     // (검토 2차 1: rock only where the ground is near upright -- the slopes keep their grass, a thin band of earth at the steepest)
     const rock = Math.max(cliff > 0.4 && cd < 3.5 ? smooth(3.5, 0.5, cd + (n1 - 0.5)) : 0, smooth(1.9, 2.8, slope + (n1 - 0.5) * 0.3));
-    // (동산 다듬기 검토: a terrace's and a ledge's banks show some earth, the ledge a little rock at its steepest)
-    const bank = (T.dalmaru.BRUSHES || []).find((br) => (br.kind === 'terrace' || br.kind === 'ledge') && Math.hypot(x - br.x, z - br.z) < br.r);
-    const bankSoil = bank ? smooth(0.45, 0.7, slope) * smooth(0.64, 0.72, n1) : 0; // (patches: where the bank is steep and the noise is high)
-    const bankRock = bank?.kind === 'ledge' ? smooth(0.6, 0.8, slope) * smooth(0.66, 0.74, n1) : 0;
-    const rockAll = Math.max(rock, bankRock);
-    const soil = Math.max(smooth(1.15, 1.9, slope + (n1 - 0.5) * 0.25) * (1 - rock) * 0.8, bankSoil * (1 - bankRock), wornAt(x, z)) * (1 - sand);
+    // (동산 다듬기 검토 3차: the banks are grass only -- earth patches on them read as stickers or a cow's coat)
+    const rockAll = rock;
+    const soil = Math.max(smooth(1.15, 1.9, slope + (n1 - 0.5) * 0.25) * (1 - rock) * 0.8, wornAt(x, z)) * (1 - sand);
     const forest = forestAt(x, z) * (1 - sand) * (1 - rock);
     // (검토 2차 2: darker grass in patches from a turned and warped noise -- no grid in it)
     const u = x * 0.8 - z * 0.6; const v = x * 0.6 + z * 0.8; const wx = noise(u * 0.05 + 3.1, v * 0.05) * 9; const wz = noise(u * 0.05, v * 0.05 - 5.7) * 9;
