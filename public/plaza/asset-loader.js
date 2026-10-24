@@ -579,10 +579,26 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     c.assetPending = hit.id; shown[hit.id] = 'loading';
     // v1.10.80 `motions`: a whole character on the common rig moved by the common motion files (the farmer)
     const base = hit.entry.motions ? registry['character.base'] : null; const clipUrls = Object.values(base?.clips || {});
-    Promise.all([cache.get(hit.entry.url), ...clipUrls.map((url) => cache.get(url))]).then(([gltf, ...motions]) => {
+    // (F3 배회 주민, 2026-10-24: a whole character with a Low file -- the islanders, 31k triangles each -- has both: the Low
+    // file's meshes bound by joint name to the High one's bones, one mixer for both, the pair switched by distance as a
+    // worn character's (wearLod; a phone's lower tier sooner); a rigged model's two copies cannot be a THREE.LOD)
+    const lowUrl = hit.entry.motions ? hit.entry.lowUrl : null;
+    Promise.all([cache.get(hit.entry.url), lowUrl ? cache.get(lowUrl) : null, ...clipUrls.map((url) => cache.get(url))]).then(([gltf, lowGltf, ...motions]) => {
       if (disposed || c.assetPending !== hit.id || !c.root.parent) return;
       if (!gltf) { shown[hit.id] = 'procedural'; return; }
       const object = instance(gltf, hit.entry);
+      if (lowGltf) {
+        const bones = new Map(); let rootBone = null; const high = []; const low = [];
+        object.updateMatrixWorld(true); object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } if (o.isSkinnedMesh) high.push(o); });
+        const copy = cloneObject(lowGltf.scene); copy.updateMatrixWorld(true); const meshes = []; copy.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
+        for (const m of meshes) {
+          const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
+          if (skeleton.bones.some((b) => !b)) { low.length = 0; break; } // (another rig: the High one alone, as before)
+          const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
+          m.frustumCulled = false; m.castShadow = true; m.visible = false; low.push(m);
+        }
+        if (low.length) wearing.push({ c, high, low, isHigh: true });
+      }
       const clips = base ? motions.map((m) => m?.animations?.[0]).filter(Boolean) : gltf.animations;
       const anim = P.createAnimator(THREE, object, clips, base ? base.animations : hit.entry.animations || {}, { walkSpeed, speeds: (base || hit.entry).speeds, rates: base?.rates });
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown[hit.id] = 'model';
