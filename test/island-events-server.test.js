@@ -94,8 +94,10 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   assert.equal(picked.data.item.qty,1);assert.equal(picked.data.events.find(e=>e.id===tree.id).available,false);
   await req('/api/test/island/events',a,{grow:tree.id});const regrown=(await all()).find(e=>e.id===tree.id);assert.deepEqual([regrown.x,regrown.z],[tree.x,tree.z]);
   await req('/api/island/resource/cancel',a,{});
-  const coin=(await all()).find(e=>e.type==='coin');await stand(a,coin);const before=(await req('/api/donation',a)).data.balance;
-  await req('/api/island/resource/start',a,{id:coin.id});await sleep(1050);const paid=await req('/api/island/resource/finish',a,{id:coin.id,requestId:crypto.randomUUID()});assert.equal(paid.data.points,2000);assert.equal((await req('/api/donation',a)).data.balance,before+2000);
+  const coin=(await all()).find(e=>e.type==='coin');const before=(await req('/api/donation',a)).data.balance;
+  let dig=null; // (a random coin, like the tree: its own spot may not be stood on -- then beside it)
+  for(const [dx,dz] of [[0,0],[0.9,0],[-0.9,0],[0,0.9],[0,-0.9]]){await stand(a,{x:coin.x+dx,z:coin.z+dz});dig=await req('/api/island/resource/start',a,{id:coin.id});if(dig.status===200)break;}assert.equal(dig.status,200,JSON.stringify(dig.data));
+  await sleep(1050);const paid=await req('/api/island/resource/finish',a,{id:coin.id,requestId:crypto.randomUUID()});assert.equal(paid.data.points,2000);assert.equal((await req('/api/donation',a)).data.balance,before+2000);
   const previousIds=(await all()).map(e=>e.id);await server.stop();server=await boot(t,dir);req=server.req;a=await server.enter(ka);
   assert.equal((await bag(a)).find(e=>e.itemId==='berry').qty,1);
   assert.ok((await all()).every(e=>!previousIds.includes(e.id)));
