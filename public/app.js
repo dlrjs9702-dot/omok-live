@@ -2809,7 +2809,10 @@
     const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '변신 모습 그대로 작게 · 한 종류에 한 마리씩 · 캐릭터 펫은 선물할 수 없어요';
     catalogBox.replaceChildren(note, ...list.map((p) => {
       const row = document.createElement('div'); row.className = 'myPetRow'; row.setAttribute('role', 'listitem'); row.dataset.kind = p.kind;
-      const label = document.createElement('span'); label.textContent = `${p.name}${p.ip ? ' · 캐릭터' : ''} · ${Number(p.price).toLocaleString('ko-KR')}P`;
+      // (창 3단계 검토: the name on one line -- 「캐릭터」 a small tag -- and the price under it)
+      const label = document.createElement('span'); label.className = 'petTagText'; const nm = document.createElement('strong'); nm.textContent = p.name;
+      if (p.ip) { const t = document.createElement('small'); t.className = 'isle-tag'; t.textContent = '캐릭터'; nm.append(' ', t); }
+      const price = document.createElement('small'); price.className = 'petPrice'; price.textContent = `${Number(p.price).toLocaleString('ko-KR')}P`; label.append(nm, price);
       const b = document.createElement('button'); b.type = 'button'; b.className = p.owned ? 'ghost tiny' : 'primary tiny'; b.textContent = p.owned ? '데리고 있어요' : '데려가기'; b.disabled = p.owned;
       b.addEventListener('click', async () => {
         if (furnitureBusy) return; const name = (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') ?? null); if (name === null) return;
@@ -3863,7 +3866,7 @@
         const total = document.createElement('strong'); total.textContent = pts(row.total);
         item.append(who, total); list.append(item);
       }
-      if (!data.ranking.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '이번 주 기부가 아직 없습니다.'; list.append(empty); }
+      if (!data.ranking.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '이번 주 기부가 아직 없어요.'; list.append(empty); }
       document.getElementById('donationLast').textContent = data.hoguking ? `지난주 호구왕 · ${data.hoguking}` : '';
       plazaStatues = data.statues || plazaStatues; plazaStatuesWeek = data.week ?? plazaStatuesWeek; plaza.controller?.setStatues?.(plazaStatues, plazaStatuesWeek);
     } catch (error) { donationStatusEl.textContent = error.message; }

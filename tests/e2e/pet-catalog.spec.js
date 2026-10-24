@@ -20,7 +20,8 @@ test('펫샵 카운터: 변신 펫·메타몽 목록, 데려가면 그 모습 �
     return page.locator('#petCatalog').isVisible();
   }, { timeout: 30000, intervals: [300] }).toBe(true);
   const rows = page.locator('#petCatalog .myPetRow'); expect(await rows.count()).toBeGreaterThanOrEqual(20);
-  await expect(page.locator('#petCatalog .myPetRow[data-kind="ditto"]')).toContainText('메타몽 · 캐릭터 · 12,000P');
+  const ditto = page.locator('#petCatalog .myPetRow[data-kind="ditto"]'); // (창 3단계: the name with its 「캐릭터」 tag, the price on the next line)
+  await expect(ditto.locator('strong')).toContainText('메타몽'); await expect(ditto.locator('.isle-tag')).toHaveText('캐릭터'); await expect(ditto.locator('.petPrice')).toHaveText('12,000P');
   // one taken: a transformation small walks with me (the phone another than the PC's: one server for both)
   const kind = isMobile ? 'tf_animal-panda' : 'tf_pikachu';
   page.once('dialog', (d) => d.accept('꼬마'));

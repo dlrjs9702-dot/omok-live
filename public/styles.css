@@ -2537,14 +2537,13 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .plazaDialog.shopMode .plazaDialogBody{background:transparent;grid-template-columns:1fr}
 .plazaDialog.shopMode .goodCard,.plazaDialog.shopMode .myPetRow{position:relative;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:10px;box-shadow:0 4px 0 rgba(60,35,15,.35);transition:transform .15s ease,box-shadow .15s ease}
 .plazaDialog.shopMode .goodCard{justify-self:center;width:min(380px,100%);padding:22px 20px 16px}
-.plazaDialog.shopMode .goodCard::before,.plazaDialog.shopMode .myPetRow::before{content:"";position:absolute;top:8px;left:50%;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--isle-wood);box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
-.plazaDialog.shopMode .myPetRow::before{top:50%;left:12px;margin:-5px 0 0}
+.plazaDialog.shopMode .goodCard::before{content:"";position:absolute;top:8px;left:50%;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--isle-wood);box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
 .plazaDialog.shopMode .goodCard:hover,.plazaDialog.shopMode .goodCard:focus-within,.plazaDialog.shopMode .myPetRow:hover,.plazaDialog.shopMode .myPetRow:focus-within{transform:translateY(-4px);box-shadow:0 9px 10px rgba(60,35,15,.35)}
 .plazaDialog.shopMode .goodCard strong{font-size:1.05rem}
 .plazaDialog.shopMode .lookMeta{color:var(--isle-soft)}
 .plazaDialog.shopMode .petCatalog{grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:10px}
 .plazaDialog.shopMode .petCatalog>.lookMeta{grid-column:1/-1;margin:0;color:#fff6e3}
-.plazaDialog.shopMode .myPetRow{padding:10px 10px 10px 30px;min-height:52px}.plazaDialog.shopMode .myPetRow button{flex:none;white-space:nowrap}
+.plazaDialog.shopMode .myPetRow{padding:10px 12px;min-height:56px}.plazaDialog.shopMode .myPetRow button{flex:none;white-space:nowrap}
 .plazaDialog.shopMode button.primary,.recordsDialog.counterMode button.primary,.recordsDialog.counterMode button.secondary,#donationDialog #donationSubmit{background:var(--isle-btn);color:#fff;border:0}
 .plazaDialog.shopMode button.secondary,.plazaDialog.shopMode button.ghost,.recordsDialog.counterMode button.ghost,#donationDialog .donationQuick .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 .plazaDialog.shopMode input{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
@@ -2574,3 +2573,11 @@ body.plazaMode .toast::before{content:"";position:absolute;left:50%;top:-8px;wid
 @keyframes isleNoteDrop{from{transform:translateX(-50%) translateY(-120%) rotate(-6deg);opacity:0}to{transform:translateX(-50%) rotate(-1deg);opacity:1}}
 @media(prefers-reduced-motion:reduce){body.plazaMode .toast{animation:none}.plazaDialog.shopMode .goodCard,.plazaDialog.shopMode .myPetRow{transition:none}}
 @media(max-width:600px){body.plazaMode .toast{top:calc(env(safe-area-inset-top) + 140px);max-width:calc(100vw - 32px)}} /* (a narrow phone: under the menu and the minimap) */
+/* (창 3단계 검토) one thing for sale: the window as tall as its tag, the tag standing on one shelf board; the catalog: a name, its 「캐릭터」 tag, the price under it; the donation form on a paper slip */
+.plazaDialog.shopMode:has(.plazaDialogBody>.goodCard){background:var(--isle-wood)}
+.plazaDialog.shopMode:has(.plazaDialogBody>.goodCard) .plazaDialogBody{padding:10px 0 12px;background:linear-gradient(to top,#7a5232 0 3px,#b98a5a 3px 12px,transparent 12px)}
+.plazaDialog.shopMode .petTagText{display:grid;gap:2px;min-width:0}
+.plazaDialog.shopMode .petTagText strong{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plazaDialog.shopMode .petTagText .isle-tag{margin-left:4px;padding:1px 8px;font-size:.66rem;vertical-align:2px}
+.plazaDialog.shopMode .petPrice{color:var(--isle-soft);font-size:.85rem;font-weight:700}
+#donationDialog .donationForm{padding:12px;background:var(--isle-paper);border:1px solid var(--isle-line);border-radius:8px;box-shadow:0 3px 0 rgba(0,0,0,.25)}
