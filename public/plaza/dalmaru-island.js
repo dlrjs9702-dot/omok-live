@@ -90,6 +90,7 @@
   const arc = (a0, a1, step = 6) => { const n = Math.max(1, Math.round(Math.abs(a1 - a0) / step)); return Array.from({ length: n + 1 }, (_, k) => bayAt(a0 + ((a1 - a0) * k) / n)); };
   const doorPt = (id) => { const d = facilityDoor(id); return [d.x, d.z]; };
   const po = (deg, r) => [Math.round(r * Math.cos(rad(deg)) * 10) / 10, Math.round(r * Math.sin(rad(deg)) * 10) / 10];
+  const STAIRS_TOP_DEG = Math.round(((((Math.atan2(PL.stairs.to.z, PL.stairs.to.x) * 180) / Math.PI) + 360) % 360) * 10) / 10; // (the stairs' top, where dalmaru-terrain puts it: what is laid out by it follows when they move)
   const stationPt = (deg, r) => po(deg, r); // (island-train's stops: its way in, 7 m inland of the lift)
   const stairsAt = (u, v) => { const F = PL.stairs.from; const T2 = PL.stairs.to; const l = Math.hypot(T2.x - F.x, T2.z - F.z); const ux = (T2.x - F.x) / l; const uz = (T2.z - F.z) / l; return [Math.round((F.x + ux * u + uz * v) * 10) / 10, Math.round((F.z + uz * u - ux * v) * 10) / 10]; }; // (u along the stairs from the foot, v out from the cliff)
   // 관공서 앞마당 (5단계): the walled yard and the mayor's gate before the cliff front, in the old hall's frame -- its origin
@@ -130,7 +131,7 @@
     // (묶음 4 내 집: from each of 툇마루섬's twelve lots' door (island-home.js LOTS) to the walk across the isle, round the other houses)
     { tier: 'walk', w: 2.4, pts: [[0, 141], [0, 124], [0, 107.3]] }, // (2회차 15: north from the walk across the isle into its widened part, four houses by it)
     { tier: 'trail', w: 2, pts: [[1.7, 169.2], [4.5, 166.1]] }, { tier: 'trail', w: 2, pts: [[16.4, 163.1], [13.6, 159.9]] }, { tier: 'trail', w: 2, pts: [[2.1, 159.9], [5.4, 162.5]] }, { tier: 'trail', w: 2, pts: [[22.4, 150.3], [18.1, 150.1]] }, { tier: 'trail', w: 2, pts: [[-5.4, 108.5], [-0.9, 108.5]] }, { tier: 'trail', w: 2, pts: [[-5.4, 123.5], [-0.9, 123.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 107.5], [0.9, 107.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 122.5], [0.9, 122.5]] }, { tier: 'trail', w: 2, pts: [[-30.4, 145.4], [-30.2, 141.2]] }, { tier: 'trail', w: 2, pts: [[-29.2, 134.6], [-29.4, 138.8]] }, { tier: 'trail', w: 2, pts: [[28.2, 134.6], [28.4, 138.9]] }, { tier: 'trail', w: 2, pts: [[-15.2, 146.9], [-14.9, 142.6]] },
-    { tier: 'walk', w: 2.8, pts: [stairsAt(34.4, -0.4), stairsAt(34.4, -4.5), po(216, 138), ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
+    { tier: 'walk', w: 2.8, pts: [stairsAt(35.6, 1.7), stairsAt(36, -1.5), stairsAt(36, -4.5), stairsAt(35.8, -6.4), po(STAIRS_TOP_DEG + 4, 138) /* (문제 기록 4회차: on the top's fill, not its edge, and toward the ridge from where the stairs now end -- 216° stayed when they moved) */, ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
   const walkDist = (x, z) => { let d = Infinity; for (const w of walkCurves) d = Math.min(d, lineDist(x, z, w.pts) - w.w / 2); return d; };
@@ -157,7 +158,11 @@
   // 문제 기록 15 「백화점이 떠 있어서 이상해. 절벽을 파고 들어가 절벽 안에 지었구나 싶게」: either side of each front the ridge
   // comes forward to its face, 5 m of cliff -- 관공서·백화점 stand in a cut in 영웅마루, not before it
   // (not on the side where 영웅마루's stairs come down by the 관공서 -- its foot stands there)
-  const stairsBand = (x, z) => { const ex = x - STAIRS.x; const ez = z - STAIRS.z; const u = ex * STAIRS.ux + ez * STAIRS.uz; const v = ex * STAIRS.nx + ez * STAIRS.nz; return u > -2.5 && u < STAIRS.len + 1 && Math.abs(v - 1.7) < STAIRS.w1 / 2 + 1.5; };
+  // (문제 기록 4회차: 1.5 m past the treads was too little once the stairs stood 3 m off the hall (3회차 11) -- the ground is
+  // drawn on a 2.5 m mesh, so the cut's wall a cell off leant over the treads and the way to their foot, 17 m over where one
+  // walked; now 4.5 m, more than a cell's diagonal, all round them)
+  const STAIRS_CLEAR = 4.5;
+  const stairsBand = (x, z) => { const ex = x - STAIRS.x; const ez = z - STAIRS.z; const u = ex * STAIRS.ux + ez * STAIRS.uz; const v = ex * STAIRS.nx + ez * STAIRS.nz; return u > -STAIRS_CLEAR - 1.5 && u < STAIRS.len + 1 && v > STAIRS.w0 - STAIRS_CLEAR && v < STAIRS.w1 + STAIRS_CLEAR; };
   const CUTS = Object.values(SPOTS).filter((s) => s.kind === 'facade').map((s) => { const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const c = Math.cos(ry); const sn = Math.sin(ry);
     const foot = (u) => { const x = STAIRS.x + STAIRS.ux * u + STAIRS.nx * 1.7 - s.x; const z = STAIRS.z + STAIRS.uz * u + STAIRS.nz * 1.7 - s.z; return { lx: x * c - z * sn, lz: x * sn + z * c }; };
     const near = [0, 2, 4, 6].map(foot).filter((p) => Math.abs(p.lx) < FACADE.w / 2 + 8 && p.lz > -4 && p.lz < FACADE.d + 3);
@@ -174,7 +179,8 @@
     if (inPlaza(x, z, 2.5)) h = Math.min(h, P.h); // (2.5 m past its edge: the 2 m ground cells under the edge lie flat too)
     // the fill from the stairs' top back to the ridge: 4 m wide, from the treads to 8 m into the ridge
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
-    const edge = Math.max(-along - 0.4, along - 2, -out - 1.5, out - 9); if (edge < 2) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
+    // (문제 기록 4회차: 2.4 m deep it fell between the 2.5 m mesh's points -- drawn 7 m under where one stood at the top; 5 m deep)
+    const edge = Math.max(-along - 0.4, along - 5, -out - 1.5, out - 9); if (edge < 2.5) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2.5, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
     return h;
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
@@ -228,7 +234,14 @@
     const dock = onDock(x, z); if (dock) return dock.deck;
     return Math.max(ground(x, z), SEA);
   }
-  const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2);
+  const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2 && !underDrawnRock(x, z));
+  // (문제 기록 4회차 「통과할 수 있는 산맥」) round the stairs the ridge's face is steeper than the 2.5 m ground mesh: where the
+  // ground is drawn more than 0.5 m over or under one's feet -- rock over one's head, air under one's feet -- one may not
+  // stand: what is seen stops (round them only: a cheap test first)
+  function underDrawnRock(x, z) {
+    const dx = x - STAIRS.x; const dz = z - STAIRS.z; const u = dx * STAIRS.ux + dz * STAIRS.uz; const v = dx * STAIRS.nx + dz * STAIRS.nz;
+    return u > -10 && u < STAIRS.len + 10 && v > STAIRS.w0 - 10 && v < STAIRS.w1 + 10 && Math.abs(meshGroundHeight(x, z) - ground(x, z)) > 0.5;
+  }
   // the cliff faces and the ridge's sea cliffs read as rock
   const cliffAt = (x, z) => Math.min(1, D.ridgeAt(x, z) * smooth(0.25, 0.9, D.slopeAt(x, z)) + (D.ridgeAt(x, z) > 0.3 ? smooth(20, 4, D.coastDist(x, z)) : 0));
   // fishing: a walkable spot with water within 2.4 m -- the sea (and 윤슬만) or fresh water (the lake, rivers, pools)

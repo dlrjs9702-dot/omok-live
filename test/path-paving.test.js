@@ -10,7 +10,7 @@ const g = (x, z) => T.meshGroundHeight(x, z);
 const lean = (px, pz, top, e = 0.5, round = 0) => {
   const gx = (g(px + e, pz) - g(px - e, pz)) / (2 * e); const gz = (g(px, pz + e) - g(px, pz - e)) / (2 * e); const g0 = g(px, pz);
   let over = 0; for (let k = 0; round && k < 32; k += 1) for (const f of [0.5, 1]) { const x = px + Math.cos((k / 32) * Math.PI * 2) * round * f; const z = pz + Math.sin((k / 32) * Math.PI * 2) * round * f; over = Math.max(over, g(x, z) - g0 - gx * (x - px) - gz * (z - pz)); }
-  return (x, z) => g0 + top + over + gx * (x - px) + gz * (z - pz);
+  return Object.assign((x, z) => g0 + top + over + gx * (x - px) + gz * (z - pz), { over });
 };
 const offPath = (x, z) => T.onBridge(x, z) || T.streamDist(x, z) < T.STREAM_HALF + 0.5 || T.inTownhall(x, z, 0.5) || (T.inPlaza && T.inPlaza(x, z));
 test('마을 길 돌판·갈림길 원판: 땅이 위로 솟아 나온 곳이 없다', { skip: !T.dalmaru }, () => {
@@ -36,6 +36,8 @@ test('마을 길 돌판·갈림길 원판: 땅이 위로 솟아 나온 곳이 �
     if (T.walkCurves.some((o, oi) => oi > wi && o.pts.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < 0.9))) discs.push({ x, z });
   }));
   // (each disc as laid: its slope read over 1 m, 1 cm higher than a slab, raised over the most the ground rises in its round)
-  for (const d of discs) { const top = lean(d.x, d.z, 0.06, 1, 2.5); for (let r = 0.5; r <= 2.4; r += 0.6) for (let a = 0; a < 12; a += 1) { const qx = d.x + Math.cos(a / 2) * r; const qz = d.z + Math.sin(a / 2) * r; if (g(qx, qz) > top(qx, qz)) { bad.push(`disc ${d.x.toFixed(1)},${d.z.toFixed(1)} +${(g(qx, qz) - top(qx, qz)).toFixed(3)}`); r = 9; break; } } }
+  // (문제 기록 4회차 「공중에 발판이 떠 있어」: raised over a bump that is not there -- the ground drawn up the cliff by the
+  // stairs' foot -- the disc by the 관공서 stood 7 m up; none more than 0.4 m over its own ground)
+  for (const d of discs) { const top = lean(d.x, d.z, 0.06, 1, 2.5); if (top.over > 0.4) bad.push(`disc ${d.x.toFixed(1)},${d.z.toFixed(1)} 뜸 ${top.over.toFixed(2)}`); for (let r = 0.5; r <= 2.4; r += 0.6) for (let a = 0; a < 12; a += 1) { const qx = d.x + Math.cos(a / 2) * r; const qz = d.z + Math.sin(a / 2) * r; if (g(qx, qz) > top(qx, qz)) { bad.push(`disc ${d.x.toFixed(1)},${d.z.toFixed(1)} +${(g(qx, qz) - top(qx, qz)).toFixed(3)}`); r = 9; break; } } }
   assert.ok(slabs > 500 && discs.length > 5, `${slabs} slabs, ${discs.length} discs`); assert.deepEqual([...new Set(bad)].slice(0, 20), []);
 });
