@@ -2086,7 +2086,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const board = (s) => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(4, 2.4, 0.2), mat(0xf3ead8), 0, 1.2, 0, g); if (s) mesh(new THREE.BoxGeometry(3.6 * s / 3, 1.5, 0.05), mat(0x6aa9e8), -1.8 + 1.8 * s / 3, 1.43, -0.13, g); return g; };
     const murals = [0, 1, 2, 3].map((s) => place(`village.mural.${s}`, V.mural, board(s)));
     const easel = new THREE.Group(); mesh(new THREE.BoxGeometry(0.8, 1.0, 0.06), mat(0xf3ead8), 0, 1.1, 0, easel); place('village.easel', V.easel, easel);
-    const stage = new THREE.Group(); mesh(new THREE.BoxGeometry(3, 0.21, 2), mat(0xb07a4f), 0, 0.105, 0, stage); place('village.busk_stage', V.busk, stage);
+    const stage = new THREE.Group(); mesh(new THREE.BoxGeometry(3, 0.21, 2), mat(0xb07a4f), 0, 0.105, 0, stage); const stageRoot = place('village.busk_stage', V.busk, stage);
+    // (거리 악단 자리 2026-10-25: the benches facing the stage, a lamp beside it, a music stand on it, flowers at its back corners)
+    for (const b of V.buskBenches || []) place('dalmaru.bench_waterfront', b, (() => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(1.8, 0.5, 0.5), mat(0xc58b5a), 0, 0.25, 0, g); return g; })());
+    if (V.buskLamp) place('dalmaru.lamp_waterfront', V.buskLamp, (() => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(0.2, 4.4, 0.2), mat(0x4d5560), 0, 2.2, 0, g); return g; })());
+    if (V.buskBenches) {
+      const stand = new THREE.Group(); stand.position.set(0.9, 0.21, 0.5); stageRoot.add(stand); const iron = mat(0x2f3338);
+      mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.0, 6), iron, 0, 0.5, 0, stand); mesh(new THREE.BoxGeometry(0.5, 0.34, 0.02), iron, 0, 1.08, 0.04, stand).rotation.x = -0.35;
+      for (const s of [-1, 1]) { const f = new THREE.Group(); f.position.set(s * 1.85, 0, -0.85); stageRoot.add(f); const k = `nature.flower.${s < 0 ? 1 : 3}`; const fb = new THREE.Group(); mesh(new THREE.SphereGeometry(0.2, 8, 6), mat(0xe58fb0), 0, 0.2, 0, fb); f.add(fb); assets.attach(k, f, fb); }
+    }
     // A2b: the lamps (broken, or mended -- one more per helper of the week), the stepping stones on the stream (their parent at the
     // water, assets 39 README: streamWaterHeight - 0.23), the electrician's toolbox and the book cart (out once the librarian was helped)
     const post = (lit) => { const g = new THREE.Group(); mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.8, 8), mat(0x56606a), 0, 1.4, 0, g); mesh(new THREE.SphereGeometry(0.22, 12, 8), mat(lit ? 0xfff3c2 : 0x8a8f96), 0, 2.85, 0, g); return g; };
@@ -2096,7 +2104,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const box = new THREE.Group(); mesh(new THREE.BoxGeometry(0.6, 0.35, 0.35), mat(0xc0392b), 0, 0.18, 0, box); place('village.toolbox', V.toolbox, box);
     const table = new THREE.Group(); mesh(new THREE.BoxGeometry(1.1, 0.7, 1.1), mat(0x9a6b45), 0, 0.35, 0, table); place('village.table_omok', V.omokTable, table); // A2c (always there)
     const cartBox = new THREE.Group(); mesh(new THREE.BoxGeometry(1.2, 0.9, 0.6), mat(0x8a5a3b), 0, 0.45, 0, cartBox); const cart = place('village.bookcart', V.bookcart, cartBox); cart.visible = false;
-    village = { murals, mural: -1, busk: false, cheerAt: 0, lamps, lit: 0, stones, stone: 0, cart };
+    // (while he plays: notes rising over him and drifting off -- one each 0.6 s, four at a time)
+    const nc = document.createElement('canvas'); nc.width = 64; nc.height = 64; const nx = nc.getContext('2d'); nx.fillStyle = '#ffffff'; nx.strokeStyle = 'rgba(40,30,20,.55)'; nx.lineWidth = 4; nx.font = '700 48px sans-serif'; nx.textAlign = 'center'; nx.textBaseline = 'middle'; nx.strokeText('♪', 32, 34); nx.fillText('♪', 32, 34);
+    const noteTex = new THREE.CanvasTexture(nc); noteTex.colorSpace = THREE.SRGBColorSpace; textures.push(noteTex);
+    const notes = [0, 1, 2, 3].map((k) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex, transparent: true, depthWrite: false, color: [0xfff3c2, 0xffc4dd, 0xc8e6ff, 0xd8f5c8][k] })); s.scale.setScalar(0.4); s.visible = false; scene.add(s); return { s, t: k * 0.6, side: k % 2 ? 1 : -1 }; });
+    village = { murals, mural: -1, busk: false, cheerAt: 0, lamps, lit: 0, stones, stone: 0, cart, notes };
     return village;
   }
   function setVillage(view) {
@@ -2107,7 +2119,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     v.cart.visible = Boolean(view?.books);
   }
   function stepVillage(dt) { // the busker plays once helped this week
-    if (!village?.busk) return; village.cheerAt -= dt; if (village.cheerAt > 0) return; village.cheerAt = 4 + Math.random() * 3;
+    if (!village) return;
+    const B = globalThis.IslandTerrain.VILLAGE.busker; const playing = village.busk && !lessMotion?.matches && Math.hypot(me.root.position.x - B.x, me.root.position.z - B.z) < 60;
+    for (const n of village.notes) {
+      n.s.visible = playing; if (!playing) continue; n.t = (n.t + dt) % 2.4; const k = n.t / 2.4;
+      n.s.position.set(B.x + n.side * (0.3 + k * 0.5) + Math.sin(n.t * 3) * 0.12, heightAt(B.x, B.z) + 2.0 + k * 1.4, B.z); n.s.material.opacity = Math.min(1, k * 5, (1 - k) * 3);
+    }
+    if (!village.busk) return; village.cheerAt -= dt; if (village.cheerAt > 0) return; village.cheerAt = 4 + Math.random() * 3;
     const o = eventObjs.get('ev:quest_npc:busker'); if (o?.npc && !talkView) o.npc.anim?.play?.('cheer');
   }
   function setFarm(view) {

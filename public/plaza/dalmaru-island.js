@@ -57,10 +57,16 @@
   // what the islanders' errands and games stand by (island-terrain VILLAGE's names; each keeper beside its thing)
   const prop = (p, r, f = p.face) => Object.freeze({ x: p.x, z: p.z, yaw: f ? yawTo(p.x, p.z, f) : 0, r });
   const off = (p, dx, dz) => Object.freeze({ x: p.x + dx, z: p.z + dz });
+  // 거리 악단 자리 (PL.busk: the paved round's middle, facing the water): u toward the water, v across -- the stage at its
+  // back, the busker before it, two benches facing it from the walk's side, a lamp beside it
+  const BU = PL.busk; const BL = Math.hypot(BU.face[0] - BU.x, BU.face[1] - BU.z); const BF = [(BU.face[0] - BU.x) / BL, (BU.face[1] - BU.z) / BL];
+  const buskAt = (u, v) => ({ x: Math.round((BU.x + BF[0] * u - BF[1] * v) * 10) / 10, z: Math.round((BU.z + BF[1] * u + BF[0] * v) * 10) / 10 });
+  const STAGE = buskAt(-1.3, 0);
   const RIVER2 = D.RIVERS[1].pts; const stoneYaw = Math.atan2(RIVER2[3][0] - RIVER2[2][0], RIVER2[3][1] - RIVER2[2][1]);
   const VILLAGE = Object.freeze({
     mural: prop(PL.mural, 2.4), easel: prop({ ...off(PL.mural, 3.4, -1.6), face: PL.mural.face }, 0.7), painter: off(PL.mural, 2.6, -2.8),
-    busk: prop(PL.busk, 2.0), busker: off(PL.busk, -1.7, -1.2),
+    busk: prop({ ...STAGE, face: BU.face }, 1.5), busker: Object.freeze(buskAt(0.1, 0)),
+    buskBenches: Object.freeze([-1, 1].map((s) => prop(buskAt(1.5, 2.1 * s), 0.9, [STAGE.x, STAGE.z]))), buskLamp: prop(buskAt(-1.3, 3), 0.3),
     stationmaster: Object.freeze({ ...PL.stationmaster }),
     lamps: Object.freeze(PL.hallLamps.map(([x, z]) => Object.freeze({ x, z, r: 0.4 }))), electrician: off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -1.2, 1.9),
     toolbox: prop({ ...off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -2.1, 2.6), face: [PLAZA_C.x, PLAZA_C.z] }, 0.4),
@@ -69,7 +75,7 @@
     omokTable: prop(PL.omokTable, 1.4), grandpa: off(PL.omokTable, -0.1, 2.8),
     mailbox: prop(row(3), 0.5), guide: prop({ x: PL.spawn.x - 2, z: PL.spawn.z + 2, face: [PL.spawn.x, PL.spawn.z] }, 0.45), /* (the guide beside 첫 접속's spot) */ birthday: prop(PL.birthday, 0.3),
   });
-  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide, MUSEUM];
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.buskBenches, VILLAGE.buskLamp, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide, MUSEUM];
   const MUSEUM = Object.freeze({ ...PL.museum, yaw: yawTo(PL.museum.x, PL.museum.z, [100, 46]), r: 5 }); // (its door toward 잔치마루's walk)
   // (문제 기록 3회차 15 「밭이 뜬금없어, 풍경과 유리. 밭 넓히고 컨셉 확실히」) a farm yard round the quest field: three more
   // plots beside it (2 x 2, 2 m between), a fence round them with its gate where the trail comes in (north), a tool shed
@@ -128,8 +134,9 @@
     { tier: 'town', w: 3, pts: [doorPt('admin'), [-47, -76], [-43, -79]] }, // → 관리실, from 대청마당 (묶음 5: at 알림마루's end)
     { tier: 'walk', w: 2.8, pts: [[100.5, 47], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 8, MUSEUM.z - Math.cos(MUSEUM.yaw) * 8], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 4.9, MUSEUM.z - Math.cos(MUSEUM.yaw) * 4.9]] }, // → the museum's door (묶음 5: straight at it, clear of its corner)
     { tier: 'walk', w: 2.8, pts: [[12, 141.5], [17, 149], [14, 158], [7, 162.5], [5.3, 165.3]] }, // 툇마루섬 → 툇마루역 (its way in: island-train pulls the stop's straight inward), round its pond
-    // (묶음 3: the villagers' places on a walk too -- the busker's corner, the builder by the stepping stones, the gazebo's grandpa)
-    { tier: 'trail', w: 2.4, pts: [[13.6, -5], [13.8, -9.6]] }, { tier: 'trail', w: 2.4, pts: [[-87.1, 43.8], [-97.8, 37.8]] }, { tier: 'trail', w: 2.4, pts: [[-93.6, -0.3], [-94, -3.9]] },
+    // (묶음 3: the villagers' places on a walk too -- the builder by the stepping stones, the gazebo's grandpa; the busker's
+    // round touches 물가 거리 itself)
+    { tier: 'trail', w: 2.4, pts: [[-87.1, 43.8], [-97.8, 37.8]] }, { tier: 'trail', w: 2.4, pts: [[-93.6, -0.3], [-94, -3.9]] },
     // (묶음 4 내 집: from each of 툇마루섬's twelve lots' door (island-home.js LOTS) to the walk across the isle, round the other houses)
     { tier: 'walk', w: 2.4, pts: [[0, 141], [0, 124], [0, 107.3]] }, // (2회차 15: north from the walk across the isle into its widened part, four houses by it)
     { tier: 'trail', w: 2, pts: [[1.7, 169.2], [4.5, 166.1]] }, { tier: 'trail', w: 2, pts: [[16.4, 163.1], [13.6, 159.9]] }, { tier: 'trail', w: 2, pts: [[2.1, 159.9], [5.4, 162.5]] }, { tier: 'trail', w: 2, pts: [[22.4, 150.3], [18.1, 150.1]] }, { tier: 'trail', w: 2, pts: [[-5.4, 108.5], [-0.9, 108.5]] }, { tier: 'trail', w: 2, pts: [[-5.4, 123.5], [-0.9, 123.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 107.5], [0.9, 107.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 122.5], [0.9, 122.5]] }, { tier: 'trail', w: 2, pts: [[-30.4, 145.4], [-30.2, 141.2]] }, { tier: 'trail', w: 2, pts: [[-29.2, 134.6], [-29.4, 138.8]] }, { tier: 'trail', w: 2, pts: [[28.2, 134.6], [28.4, 138.9]] }, { tier: 'trail', w: 2, pts: [[-15.2, 146.9], [-14.9, 142.6]] },
