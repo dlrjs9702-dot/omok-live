@@ -436,7 +436,7 @@
   const HV = '/assets/island/home-v1'; const hv = (file, extra = {}) => ({ url: `${HV}/${file}.glb`, low: { url: `${HV}/${file}_low.glb` }, near: 60, ...extra });
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.house__${r}`] = hv(`home_house__${r}`, { near: 90 });
   // (묶음 4-2 실내 크기, assets 58 2026-10-21: each room's own floor and wallpaper -- _s1 9 x 9, as named 12 x 12, _s3 16 x 13)
-  for (const t of ['_s1', '', '_s3']) {
+  for (const t of ['_s1', '', '_s3', '_s4']) { // (R8 _s4: the 2층's, its floor round the stair hole, walls 3.0 m)
     for (const [k, v] of ['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink'].map((f) => f.split('__'))) REGISTRY[`home.floor_${k}${t}__${v}`] = hv(`home_floor_${k}${t}__${v}`, { shadows: false, ...FLOOR });
     for (const w of ['cream', 'mint', 'pink', 'sky']) REGISTRY[`home.wallpaper${t}__${w}`] = hv(`home_wallpaper${t}__${w}`, { shadows: false });
   }
@@ -455,6 +455,10 @@
   for (const [sp, long] of Object.entries(INSECT_LONG)) REGISTRY[`insect.${sp}`] = { url: `/assets/island/insects-v1/insect_${sp}.glb`, low: { url: `/assets/island/insects-v1/insect_${sp}_low.glb` }, near: 25, shadows: false, scale: Math.round((0.3 / long) * 1000) / 1000 };
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.hut__${r}`] = hv(`home_hut__${r}`, { near: 90 }); // (묶음 4-2: the 오두막, its room, the 공사 중 sign)
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.manor__${r}`] = hv(`home_manor__${r}`, { near: 90 }); // (3단계 큰 집)
+  // R8 4단계 큰 집 2층 (assets 58 2026-10-25): the two-storey house (the 큰 집's footing and door), the 2층 room (its stair hole
+  // front left, seat stairs_down) and the 1층's stairs up (seat stairs_up at its foot)
+  for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.manor2__${r}`] = hv(`home_manor2__${r}`, { near: 90 });
+  REGISTRY['home.upper_room'] = hv('home_upper_room__base'); for (const w of ['oak', 'walnut']) REGISTRY[`home.stairs_in__${w}`] = hv(`home_stairs_in__${w}`);
   REGISTRY['home.manor_room'] = hv('home_manor_room__base'); REGISTRY['home.hut_room'] = hv('home_hut_room__base'); REGISTRY['home.build_sign'] = hv('home_build_sign__base', { shadows: false });
   REGISTRY['home.room'] = hv('home_room__base'); REGISTRY['home.nameplate'] = hv('home_nameplate__base', { shadows: false }); REGISTRY['home.lot_sign'] = hv('home_lot_sign__base', { shadows: false });
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
