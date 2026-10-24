@@ -40,10 +40,13 @@ function buildCoverMaps(T, res = 1024) {
     const hx = (h[j * res + Math.min(res - 1, i + 1)] - h[j * res + Math.max(0, i - 1)]) / (2 * cell); const hz = (h[Math.min(res - 1, j + 1) * res + i] - h[Math.max(0, j - 1) * res + i]) / (2 * cell);
     const slope = Math.hypot(hx, hz); const cd = T.coastDist(x, z); const cliff = T.cliffAt(x, z); const n1 = noise(x * 0.9, z * 0.9);
     const sand = cd < 9 && cliff < 0.5 ? smooth(8.5, 4, cd + (n1 - 0.5) * 1.6) : h[k] < SEA - 0.3 ? 1 : 0;
-    const rock = Math.max(cliff > 0.4 && cd < 4.5 ? smooth(4.5, 1, cd + (n1 - 0.5)) : 0, smooth(0.85, 1.25, slope + (n1 - 0.5) * 0.25));
-    const soil = Math.max(smooth(0.38, 0.72, slope + (n1 - 0.5) * 0.2) * (1 - rock), wornAt(x, z)) * (1 - sand);
+    // (검토 2차 1: rock only where the ground is near upright -- the slopes keep their grass, a thin band of earth at the steepest)
+    const rock = Math.max(cliff > 0.4 && cd < 3.5 ? smooth(3.5, 0.5, cd + (n1 - 0.5)) : 0, smooth(1.9, 2.8, slope + (n1 - 0.5) * 0.3));
+    const soil = Math.max(smooth(1.15, 1.9, slope + (n1 - 0.5) * 0.25) * (1 - rock) * 0.8, wornAt(x, z)) * (1 - sand);
     const forest = forestAt(x, z) * (1 - sand) * (1 - rock);
-    const dark = smooth(0.58, 0.72, noise(x * 0.11 + 7.3, z * 0.11 - 3.1) * 0.7 + noise(x * 0.37, z * 0.37) * 0.3) * (1 - sand) * (1 - rock) * (1 - forest);
+    // (검토 2차 2: darker grass in patches from a turned and warped noise -- no grid in it)
+    const u = x * 0.8 - z * 0.6; const v = x * 0.6 + z * 0.8; const wx = noise(u * 0.05 + 3.1, v * 0.05) * 9; const wz = noise(u * 0.05, v * 0.05 - 5.7) * 9;
+    const dark = 0.7 * smooth(0.52, 0.78, noise((u + wx) * 0.09, (v + wz) * 0.09) * 0.75 + noise((v - wz) * 0.31 + 1.7, (u + wx) * 0.31) * 0.25) * (1 - sand) * (1 - rock) * (1 - forest);
     put(a, k, 0, forest); put(a, k, 1, soil); put(a, k, 2, sand); put(b, k, 0, rock); put(b, k, 1, dark); put(b, k, 2, flowerAt(x, z) * (1 - sand));
     gravel[k] = Math.round(apronAt(x, z) * 255);
   }

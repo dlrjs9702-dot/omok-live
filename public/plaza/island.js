@@ -258,17 +258,17 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
   const paintCover = (path) => (path || !maps ? '' : `
 { // 땅 종류
 vec2 guv = (vGroundXZ - uPathBox.xy) / uPathBox.z; vec3 ca = texture2D(tCoverA, guv).rgb; vec3 cb = texture2D(tCoverB, guv).rgb; float gravel = texture2D(tPathB, guv).b;
-float nz = (0.5 + 0.5 * sin(vGroundXZ.x * 3.7 + vGroundXZ.y * 2.9) * sin(vGroundXZ.y * 4.3 - vGroundXZ.x * 1.9) - 0.5) * 0.35;
+float nz = (texture2D(tGrass, vGroundXZ / 9.0).r / 0.611 - 1.0) * 0.45 + (texture2D(tSand, vGroundXZ / 2.3).r / 0.701 - 1.0) * 0.18; // (검토 2차 2·3: the grain pictures' own randomness, coarse and fine -- a product of waves made a lattice)
 vec3 grass = diffuseColor.rgb; float snow = smoothstep(0.45, 0.7, min(grass.r, min(grass.g, grass.b)));
-#define KIND(w) smoothstep(0.32, 0.62, (w) + nz)
+#define KIND(w) smoothstep(0.24, 0.72, (w) + nz)
 float wet = smoothstep(${(SEA_PLANE_Y + 0.45).toFixed(2)}, ${(SEA_PLANE_Y + 0.08).toFixed(2)}, vWorldY);
-vec3 col = mix(grass, grass * vec3(0.8, 0.88, 0.76), KIND(cb.g) * (1.0 - 0.6 * snow));
+vec3 col = mix(grass, grass * vec3(0.87, 0.93, 0.84), KIND(cb.g) * (1.0 - 0.6 * snow));
 col = mix(col, mix(uForest, grass, 0.75 * snow), KIND(ca.r) * 0.85);
 float speck = step(0.9, fract(sin(dot(floor(vGroundXZ * 5.0), vec2(12.9898, 78.233))) * 43758.5453));
 col = mix(col, mix(mix(uClover, vec3(0.95, 0.9, 0.95), speck), grass, 0.8 * snow), KIND(cb.b));
-col = mix(col, mix(uEarth, grass, 0.85 * snow), KIND(ca.g));
+col = mix(col, mix(uEarth, grass, 0.92 * snow), smoothstep(0.15, 0.8, ca.g + nz));
 col = mix(col, mix(uGravel, grass, 0.7 * snow), KIND(gravel));
-col = mix(col, mix(uRock, grass, 0.35 * snow), KIND(cb.r));
+col = mix(col, mix(uRock, grass, 0.65 * snow), KIND(cb.r)); // (검토 2차 1: snow on the slopes too, a little less on the rock)
 col = mix(col, mix(mix(uSand, uWet, wet), grass, 0.6 * snow * (1.0 - wet)), KIND(ca.b));
 diffuseColor.rgb = col; gw = vec2(1.0 - max(max(KIND(ca.g), KIND(cb.r)), max(KIND(gravel), KIND(ca.b))), KIND(ca.b));
 }`);
@@ -303,7 +303,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
       Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn,
         uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
         ...(maps ? { tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB } } : {}),
-        uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0xb08a5e) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
+        uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0x9c8a74) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
         uSand: { value: new THREE.Color(0xf1dfae) }, uWet: { value: new THREE.Color(0xd8c48f) }, uClover: { value: new THREE.Color(0x7fb35a) } });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
 attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;`).replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -880,7 +880,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const spots = [];
     for (let gx = -120; gx <= 120; gx += 7) for (let gz = -120; gz <= 120; gz += 7) {
       const x = gx + (hash(gx, gz, 21) - 0.5) * 5; const z = gz + (hash(gz, gx, 22) - 0.5) * 5;
-      if (hash(x, z, 23) > 0.42 || Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 6 || cliffAt(x, z) > 0.2) continue;
+      if (hash(x, z, 23) > 0.42 || Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 7 || cliffAt(x, z) > 0.2) continue; /* (검토 2차 3: off the sand -- the cover map's sand reaches about 6 m in) */
       if (walkDist(x, z) < 3.5 || streamDist(x, z) < STREAM_HALF + 2 || onBridge(x, z) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < 6) || Math.hypot(x - POND.x, z - POND.z) < POND.r + 3) continue;
       const h = ground(x, z); if ([[1.6, 0], [-1.6, 0], [0, 1.6], [0, -1.6]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue; // level ground only
       spots.push({ x, z, v: Math.min(2, Math.floor(hash(x, z, 24) * 3)), r: hash(x, z, 25) * TAU });
@@ -901,7 +901,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const flat = { season: [], moss: [] }; const low = { fern: [], shrub: [], flowers: [] };
     for (let gx = -118; gx <= 118; gx += 3.5) for (let gz = -118; gz <= 118; gz += 3.5) {
       const x = gx + (hash(gx, gz, 41) - 0.5) * 2.6; const z = gz + (hash(gz, gx, 42) - 0.5) * 2.6;
-      if (Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 5 || cliffAt(x, z) > 0.2) continue;
+      if (Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 7 || cliffAt(x, z) > 0.2) continue;
       if (walkDist(x, z) < 3 || streamDist(x, z) < STREAM_HALF + 1.6 || onBridge(x, z) || T.inTownhall(x, z, 2) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < 6) || Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5) continue;
       const h = ground(x, z); if ([[1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue;
       const woods = forestAt(x, z); const r = hash(x, z, 43) * TAU; const s = 0.85 + hash(z, x, 44) * 0.4; const k = hash(x, z, 45);
