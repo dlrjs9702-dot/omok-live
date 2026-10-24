@@ -1137,6 +1137,11 @@ const petshopInside = new Set(); // 묶음 2-2 펫샵: who is up on the 3rd floo
 // pieces placed from the 가구 창고, the fish in each tank), who owns which lot (world 'homeLots'), who is inside whose
 // house (token -> owner account). Kept in memory as read (every change goes through worldEdit and here).
 const homeInside = new Map(); const homeCache = new Map();
+// R8 2층 큰 집: on which floor one is in a house (2: the 2층, a room of its own -- IslandHome.upperLot), the house as seen
+// there (that floor's pieces; the 2층 its own stage) and its room
+const homeFloor = new Map(); const floorOf = (token) => (homeFloor.get(token) === 2 ? 2 : 1);
+const homeLotOn = (h, floor) => { const lot = IslandHome.lotById(h?.lot); return floor === 2 ? IslandHome.upperLot(lot) : lot; };
+const homeAs = (token, h) => IslandHome.floorView(h, floorOf(token));
 async function homeOf(account) {
   if (!homeCache.has(account)) homeCache.set(account, (await pointStore.worldValue(`home:${account}`)) || null);
   const h = homeCache.get(account);
@@ -1331,7 +1336,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); homeInside.delete(token); jailInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -4556,9 +4561,9 @@ async function requestHandler(req, res) {
       const q = IslandTrain.seatAt(ride.id, ride.seat, trainNow()); spot = { x: Math.round(q.x * 100) / 100, z: Math.round(q.z * 100) / 100 };
       const from = IslandTrain.stationOf(ride.from).spot; plazaLastPos.set(session.token, { x: from.x, z: from.z }); notePlazaSpot(account, from.x, from.z); // a visit cut off mid-ride comes back at that stop
     } else if (homeInside.has(session.token)) { // 묶음 4 내 집: in the house's room, round its furniture
-      const owner = homeInside.get(session.token); const h = await homeOf(owner); const lot = IslandHome.lotById(h?.lot);
+      const owner = homeInside.get(session.token); const raw = await homeOf(owner); const lot = homeLotOn(raw, floorOf(session.token)); const h = homeAs(session.token, raw); // (R8: the floor I am on)
       const here = plazaPresence.get(session.token);
-      if (lot) { spot = IslandHome.inRoom(lot, Number(body.x), Number(body.z), 2, h.stage) || !here ? IslandHome.clamp(lot, body.x, body.z, h.pieces, h.stage) : { x: here.x, z: here.z }; Object.assign(wanted, IslandHome.clamp(lot, body.x, body.z, h.pieces, h.stage)); plazaLastPos.set(session.token, IslandHome.doorOf(lot)); }
+      if (lot) { spot = IslandHome.inRoom(lot, Number(body.x), Number(body.z), 2, h.stage) || !here ? IslandHome.clamp(lot, body.x, body.z, h.pieces, h.stage) : { x: here.x, z: here.z }; Object.assign(wanted, IslandHome.clamp(lot, body.x, body.z, h.pieces, h.stage)); plazaLastPos.set(session.token, IslandHome.doorOf(IslandHome.lotById(raw.lot))); }
       else spot = { x: here?.x ?? 0, z: here?.z ?? 0 };
     } else if (petshopInside.has(session.token)) { // 묶음 2-2 펫샵 (as the 2nd floor)
       const here = plazaPresence.get(session.token);
@@ -4607,7 +4612,7 @@ async function requestHandler(req, res) {
       bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) : 0; })(),
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
-      home: homeInside.has(session.token) ? homeCache.get(homeInside.get(session.token))?.lot || null : null, // (묶음 4: which house, by its lot -- one sees the people in the same one)
+      home: homeInside.has(session.token) ? ((l) => (l && floorOf(session.token) === 2 ? `${l}:2` : l || null))(homeCache.get(homeInside.get(session.token))?.lot) : null, /* (R8: the 2층 is `<lot>:2` -- one sees the people on the same floor) */ // (묶음 4: which house, by its lot -- one sees the people in the same one)
       space: jailInside.has(session.token) ? 'jail' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
@@ -4843,9 +4848,10 @@ async function requestHandler(req, res) {
     if (pathname.endsWith('/leave')) {
       const owner = homeInside.get(session.token); const lot = IslandHome.lotById((await homeOf(owner))?.lot);
       if (!owner || !lot || !at) return sendError(res, 409, 'TOO_FAR', '방에서 다시 시도해 주세요.');
+      if (floorOf(session.token) === 2) return sendError(res, 409, 'UPSTAIRS', '계단으로 1층에 내려가서 나가 주세요.'); // (R8)
       const en = IslandHome.entryOf((await homeOf(owner))?.stage); const way = IslandHome.world(lot, en[0], en[1] - 0.6);
       if (Math.hypot(at.x - way.x, at.z - way.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '문간에서 다시 시도해 주세요.');
-      homeInside.delete(session.token); const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
+      homeInside.delete(session.token); homeFloor.delete(session.token); const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
       plazaPresence.set(session.token, { ...at, x: d.x, z: d.z, space: 'island', home: null, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
       return sendJson(res, 200, { ok: true, space: 'island', x: d.x, z: d.z });
     }
@@ -4854,20 +4860,38 @@ async function requestHandler(req, res) {
     const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
     if (!at || homeInside.has(session.token) || storeInside.has(session.token) || townhallInside.has(session.token) || Math.hypot(at.x - d.x, at.z - d.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '문 앞에서 다시 시도해 주세요.');
     if (!await mayVisit(owner, account)) return sendError(res, 403, 'NOT_WELCOME', '지금은 손님을 받지 않는 집이에요.');
-    freeSeat(session.token); homeInside.set(session.token, owner);
+    freeSeat(session.token); homeInside.set(session.token, owner); homeFloor.delete(session.token); // (in by the door: the 1층)
     const en = IslandHome.entryOf((await homeOf(owner))?.stage); const spot = IslandHome.world(lot, en[0], en[1]);
     plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'home', home: lot.id, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: 'home', x: spot.x, z: spot.z, lot: lot.id, owner: owner === account ? 'me' : 'other' });
+  }
+  // R8 2층 큰 집: up the stairs (by their foot, on the 1층) or down (by the hole, on the 2층) -- the owner and the guests
+  // alike; one arrives behind the hole up there, beside the stairs' foot down here
+  if (pathname === '/api/home/stairs' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const owner = homeInside.get(session.token); const raw = owner && await homeOf(owner); const at = plazaPresence.get(session.token);
+    if (!raw || !at) return sendError(res, 409, 'NOT_INSIDE', '집 안이 아니에요.');
+    if (homeStage(raw).n < 4) return sendError(res, 409, 'NO_STAIRS', '2층이 없는 집이에요.');
+    const from = floorOf(session.token); const S = IslandHome.STAIRS; const here = homeLotOn(raw, from);
+    const mark = from === 2 ? S.down : S.foot; const m = IslandHome.world(here, mark.x, mark.z);
+    if (Math.hypot(at.x - m.x, at.z - m.z) > S.reach) return sendError(res, 409, 'TOO_FAR', '계단 가까이에서 다시 시도해 주세요.');
+    const to = from === 2 ? 1 : 2; freeSeat(session.token);
+    if (to === 2) homeFloor.set(session.token, 2); else homeFloor.delete(session.token);
+    const lot = homeLotOn(raw, to); const v = IslandHome.floorView(raw, to);
+    const goal = to === 2 ? IslandHome.world(lot, ...IslandHome.entryOf('upper')) : IslandHome.world(lot, S.foot.x + 1.05, S.foot.z + 0.2);
+    const spot = IslandHome.clamp(lot, goal.x, goal.z, v.pieces, v.stage);
+    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, home: to === 2 ? `${raw.lot}:2` : raw.lot, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
+    return sendJson(res, 200, { ok: true, space: 'home', floor: to, x: spot.x, z: spot.z });
   }
   // a house's inside (for whoever is in it): the room's look, the pieces, the fish in the tanks, the owner's pets (those not
   // walking with them roam the room)
   if (pathname === '/api/home/inside' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const owner = homeInside.get(session.token);
     if (!owner) return sendError(res, 409, 'NOT_INSIDE', '집 안이 아니에요.');
-    const h = await homeOf(owner); const walking = (await pointStore.questDoc(owner, 'pet')).doc;
+    const raw = await homeOf(owner); const h = homeAs(session.token, raw); const walking = (await pointStore.questDoc(owner, 'pet')).doc; // (R8: the floor I am on -- `floor` says which)
     const pets = (await myPets(owner)).filter((p) => !(walking.uid ? walking.uid === p.uid : p.from === 'bag' && walking.kind === p.kind)).map((p) => ({ uid: p.uid, kind: p.kind, coat: p.coat, name: p.name }));
     const dex = owner === pointAccountForSession(session) ? await pointStore.dexOf(owner) : {};
-    return sendJson(res, 200, { ok: true, mine: owner === pointAccountForSession(session), home: h, pets, photos: Object.fromEntries(IslandFishing.PHOTO_SPOTS.map((s) => [s.id, s.name])), names: Object.fromEntries(Object.values(h.tanks).flat().map((f) => [f.itemId, IslandItems.ITEMS[f.itemId]?.name || f.itemId])), myPhotos: IslandFishing.PHOTO_SPOTS.filter((s) => dex[s.id]).map((s) => s.id) });
+    return sendJson(res, 200, { ok: true, mine: owner === pointAccountForSession(session), home: h, floor: floorOf(session.token), pets: floorOf(session.token) === 2 ? [] : pets, photos: Object.fromEntries(IslandFishing.PHOTO_SPOTS.map((s) => [s.id, s.name])), names: Object.fromEntries(Object.values(h.tanks).flat().map((f) => [f.itemId, IslandItems.ITEMS[f.itemId]?.name || f.itemId])), myPhotos: IslandFishing.PHOTO_SPOTS.filter((s) => dex[s.id]).map((s) => s.id) });
   }
   // the owner, inside: a piece from the 가구 창고 placed (or moved, or turned), or put back
   if (pathname === '/api/home/place' && req.method === 'POST') {
@@ -4880,13 +4904,16 @@ async function requestHandler(req, res) {
       const others = h.pieces.filter((p) => p.uid !== piece.uid);
       if (body.remove) {
         if ((h.tanks[piece.uid] || []).length) return sendError(res, 409, 'TANK_FULL', '수조의 물고기를 먼저 꺼내 주세요.');
-        const next = { ...h, pieces: others }; delete next.tanks[piece.uid]; await saveHome(account, next); return sendJson(res, 200, { ok: true, home: next });
+        const next = { ...h, pieces: others }; delete next.tanks[piece.uid]; await saveHome(account, next); return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
       }
-      const p = { uid: piece.uid, id: piece.id, x: Number(body.x), z: Number(body.z), rot: Number(body.rot) };
+      // (R8: on the floor I am on -- its own pieces, count and room; a piece from the other floor comes up or down)
+      const floor = floorOf(session.token); const st = floor === 2 ? 'upper' : h.stage; const here = others.filter((o) => IslandHome.onFloor(o, floor));
+      const p = { uid: piece.uid, id: piece.id, x: Number(body.x), z: Number(body.z), rot: Number(body.rot), ...(floor === 2 ? { floor: 2 } : {}) };
       if (IslandHome.shapeOf(piece.id) === 'picture_frame') { const was = h.pieces.find((x) => x.uid === piece.uid)?.photo; const want = body.photo === undefined ? was : body.photo; if (want) { if (!IslandFishing.PHOTO_SPOTS.some((s) => s.id === want) || !(await pointStore.dexOf(account))[want]) return sendError(res, 409, 'NO_PHOTO', '찍은 기념사진만 걸 수 있어요.'); p.photo = want; } }
-      if (!h.pieces.some((x) => x.uid === p.uid) && h.pieces.length >= homeStage(h).pieces) return sendError(res, 409, 'TOO_MANY', `가구는 ${homeStage(h).pieces}점까지 놓을 수 있어요.`);
-      const why = IslandHome.placeError(p, others, h.stage); if (why) return sendError(res, 409, 'BAD_PLACE', why);
-      const next = { ...h, pieces: [...others, p] }; await saveHome(account, next); return sendJson(res, 200, { ok: true, home: next });
+      const cap = IslandHome.stageOf(st).pieces;
+      if (!h.pieces.some((x) => x.uid === p.uid && IslandHome.onFloor(x, floor)) && here.length >= cap) return sendError(res, 409, 'TOO_MANY', `가구는 ${floor === 2 ? '2층에 ' : ''}${cap}점까지 놓을 수 있어요.`);
+      const why = IslandHome.placeError(p, here, st); if (why) return sendError(res, 409, 'BAD_PLACE', why);
+      const next = { ...h, pieces: [...others, p] }; await saveHome(account, next); return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
     });
   }
   // the owner, inside or out: the room's floor, wallpaper, the roof (each a small price), who may come in (free)
@@ -4905,7 +4932,7 @@ async function requestHandler(req, res) {
         next[k] = body[k]; notifyPointsChanged([account]);
       }
       await saveHome(account, next); if (next.roof !== h.roof || next.visit !== h.visit) broadcastIsland('homes', { lot: h.lot }); // (the door says who may come in)
-      return sendJson(res, 200, { ok: true, home: next });
+      return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
     });
   }
   // a tank: a fish from my bag into it (its size and room checked), or one back into the bag -- each once per request
@@ -4919,20 +4946,20 @@ async function requestHandler(req, res) {
       const fishes = h.tanks[tank.uid] || []; const total = Object.values(h.tanks).reduce((n, l) => n + l.length, 0); const claim = `home_tank_${body.requestId}`;
       if (body.put) {
         const itemId = String(body.put); if (!IslandHome.FISH_SIZE[itemId] && !IslandHome.INSECTS.has(itemId)) return sendError(res, 400, 'BAD_FISH', '물고기를 확인해 주세요.');
-        if (fishes.some((f) => f.claim === claim)) return sendJson(res, 200, { ok: true, home: h });
+        if (fishes.some((f) => f.claim === claim)) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) });
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
         if (fishes.length >= T.slots) return sendError(res, 409, 'TANK_FULL', T.insects ? '곤충 상자에는 한 마리만 넣어요.' : '수조가 가득 찼어요.');
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
         const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim }] } }; await saveHome(account, next);
-        return sendJson(res, 200, { ok: true, home: next });
+        return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
       }
-      const f = fishes.find((x) => x.fid === String(body.take)); if (!f) return sendJson(res, 200, { ok: true, home: h }); // (already taken out)
+      const f = fishes.find((x) => x.fid === String(body.take)); if (!f) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); // (already taken out)
       const out = await pointStore.islandGive({ userId: account, claimId: claim, itemId: f.itemId, qty: 1, quiet: true }, nowMs());
       if (!out.applied && out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
       const next = { ...h, tanks: { ...h.tanks, [tank.uid]: fishes.filter((x) => x.fid !== f.fid) } }; await saveHome(account, next);
-      return sendJson(res, 200, { ok: true, home: next });
+      return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
     });
   }
   // ---- 친구 ----
@@ -5869,7 +5896,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const body = await parseJson(req);
     let seat = SEATS.get(String(body.seat || ''));
-    if (!seat && String(body.seat || '').startsWith('home:') && homeInside.has(session.token)) { const h = await homeOf(homeInside.get(session.token)); const lot = IslandHome.lotById(h?.lot); seat = lot ? IslandHome.allSeatsOf(lot, h).find((s) => s.id === body.seat) : null; } // (묶음 4: a house's sofa, bed...)
+    if (!seat && String(body.seat || '').startsWith('home:') && homeInside.has(session.token)) { const raw = await homeOf(homeInside.get(session.token)); const lot = homeLotOn(raw, floorOf(session.token)); seat = lot ? IslandHome.allSeatsOf(lot, homeAs(session.token, raw)).find((s) => s.id === body.seat) : null; } // (R8: the seats on my floor) // (묶음 4: a house's sofa, bed...)
     if (!seat) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - seat.x, at.z - seat.z) > 2.8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
