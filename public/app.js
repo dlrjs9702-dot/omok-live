@@ -3483,11 +3483,13 @@
     if (!d.letters.length) list.append(el('p', 'smallMuted', '받은 편지가 없어요.'));
     for (const l of d.letters) {
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
-      const head = el('div', 'mailHead'); head.append(el('strong', '', `${l.fromName}님`), el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
+      const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
+      const head = el('div', 'mailHead'); const who = el('strong', '', islander ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
+      head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
       if (l.skinId) row.append(el('p', 'smallMuted', `🎁 선물받은 스킨: ${l.skinName || '스킨'} (내 정보에서 입을 수 있어요)`)); // 3-1 스킨 선물
-      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.hidden = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- answered by talking to them) reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
+      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.hidden = islander; /* (answered by talking to them) */ reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
       row.append(reply);
       if (!l.read) api('/api/island/mail/read', { method: 'POST', body: JSON.stringify({ id: l.id }) }).catch(() => {});
       list.append(row);
