@@ -1876,6 +1876,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
+      refreshAffinity(); // (R2: who greets me first)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -3482,11 +3483,13 @@
     if (!d.letters.length) list.append(el('p', 'smallMuted', '받은 편지가 없어요.'));
     for (const l of d.letters) {
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
-      const head = el('div', 'mailHead'); head.append(el('strong', '', `${l.fromName}님`), el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
+      const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
+      const head = el('div', 'mailHead'); const who = el('strong', '', islander ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
+      head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
       if (l.skinId) row.append(el('p', 'smallMuted', `🎁 선물받은 스킨: ${l.skinName || '스킨'} (내 정보에서 입을 수 있어요)`)); // 3-1 스킨 선물
-      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
+      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.hidden = islander; /* (answered by talking to them) */ reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
       row.append(reply);
       if (!l.read) api('/api/island/mail/read', { method: 'POST', body: JSON.stringify({ id: l.id }) }).catch(() => {});
       list.append(row);
@@ -3553,7 +3556,9 @@
   // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): whoever walks by talks; the server holds them on every screen
   // while this window is open (renewed every few seconds, let go when it closes), and after their words come the choices
   let residentBusy = false; let residentTalk = null; // { n, timer } while a talk is open
-  const TALK_CHOICES = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['errand', '부탁할 거 있어요?'], ['bye', '잘 가요']];
+  const TALK_CHOICES = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['errand', '부탁할 거 있어요?'], ['ask', '이야기 나눠요'], ['gift', '선물해요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물)
+  // R2: my 호감도 with each islander (their greeting as I pass by -- the scene), again after each talk
+  async function refreshAffinity() { try { const d = await api('/api/island/affinity'); plaza.controller?.setAffinity?.(d.residents); } catch {} }
   function endResidentTalk() {
     const t = residentTalk; residentTalk = null; if (!t) return;
     clearInterval(t.timer);
@@ -3566,14 +3571,18 @@
     const meta = document.createElement('p'); meta.className = 'lookMeta'; const heart = data.affinity ? ` · ${data.affinity.name} ${'♥'.repeat(data.affinity.level + 1)}` : ''; // v1.10.91 호감도
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${heart}` : `${data.role}${heart}`;
     const list = document.createElement('div'); list.className = 'talkChoices';
-    for (const [topic, label] of TALK_CHOICES) {
-      const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label;
-      b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : askResident(data.n, topic)));
+    // (R2 ④) their question of the day: three answers in place of the usual choices
+    const choices = data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : TALK_CHOICES; // (R3 ⑥: what I could give them)
+    for (const [topic, label, choice] of choices) {
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
+      b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : askResident(data.n, topic, choice)));
       list.append(b);
     }
     lostCard.replaceChildren(...lines, meta, list);
     openTalk(data.name, Boolean(data.reward));
     if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
+    if (data.affinity) plaza.controller?.setAffinity?.([{ n: data.n, points: data.affinity.points, level: data.affinity.level }]);
+    for (const note of data.stages || []) { showToast(`💛 ${note}`, 6000); loadPoints(); } // (R2: a level reached)
     if (first) {
       residentTalk = { n: data.n, timer: setInterval(() => {
         if (!plazaDialog.open || !plazaDialog.classList.contains('talkMode') || lostCard.classList.contains('hidden')) { endResidentTalk(); return; }
@@ -3581,9 +3590,9 @@
       }, 4000) };
     }
   }
-  async function askResident(n, topic) {
+  async function askResident(n, topic, choice = null) {
     if (residentBusy) return; residentBusy = true;
-    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic }) }); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
+    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
     catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; }
   }
   async function talkResident(n) {

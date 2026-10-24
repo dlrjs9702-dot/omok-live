@@ -70,6 +70,7 @@ const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
 require('./lib/island-items').setPriceHook(Economy.priceOf);
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
+const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
 const IslandFurniture = require('./public/plaza/island-furniture'); // 묶음 2 가구점 (백화점 2층)
@@ -949,6 +950,9 @@ async function errandView(account) {
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
 function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
+// (R3 ③ 주민의 하루: the islanders walk that time of day's round -- the time held by the administrator, kept here as it changes)
+let walkerTimeMode = 'auto';
+IslandNpcs.setPhaseOf((ms) => islandPhase(walkerTimeMode, ms));
 const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
@@ -957,6 +961,37 @@ const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing
 const issueWriters = async () => (await pointStore.worldValue('issueWriters')) || []; // (the accounts the administrator lets write)
 const canWriteIssues = async (session) => session?.role === 'admin' || Boolean(session?.guestKeyId && (await issueWriters()).includes(session.guestKeyId));
 function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
+// R2 호감도 = 보상: the levels an account reached with the walking islanders (points `before` -> `after`), each paid once
+// per account and islander (claim ids) -- 아는 사이 points, 친한 사이 points and their piece into my 가구 창고, 단짝 their
+// title (worn from 내 정보). -> the lines to tell the player
+async function affinityStages(account, before, after) {
+  const notes = [];
+  for (const [k, pts] of Object.entries(after || {})) {
+    const n = Number(k); const c = IslandCast.WALKERS[n]; if (!c) continue;
+    for (const level of IslandAffinity.crossed(before?.[k] || 0, pts)) {
+      const name = IslandCast.LEVELS[level].name;
+      if (level === 3) { notes.push(`${IslandCast.josa(c.name, '과와')} ${name}이 됐어요! 칭호 「${IslandAffinity.titleOf(IslandAffinity.titleId(n)).name}」을 쓸 수 있어요.`); continue; }
+      const out = await pointStore.claimEvent({ eventId: `affinity_${n}_${level}`, userId: account, amount: Economy.value(level === 1 ? 'affinity:known' : 'affinity:close'), title: `호감도 · ${c.name} ${name}` });
+      if (!out.applied) continue; notifyPointsChanged([account]);
+      let gift = '';
+      if (level === 2) {
+        const id = IslandAffinity.CLOSE_GIFT[n]; const g = IslandFurniture.good(id); const claim = `affinity:${n}:2:${account}`;
+        if (g) { await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id, at: nowMs(), price: 0, claim }]); }); gift = ` · 선물 「${g.name}」(가구 창고)`; }
+      }
+      notes.push(`${IslandCast.josa(c.name, '과와')} ${name}! +${Number(out.amount).toLocaleString('ko-KR')}P${gift}`);
+    }
+  }
+  return notes;
+}
+const affinityLevelOf = async (account, n) => IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0);
+// R3 ⑥ 편지: the islander I am closest to (친한 사이 and on) writes a line a day into my 우체통 -- once (its id the day's)
+async function residentLetter(account, label, now) {
+  const day = kstDate(now); const close = Object.entries(await pointStore.affinityOf(account)).filter(([k, p]) => IslandCast.WALKERS[Number(k)] && IslandCast.levelOf(p) >= 2).sort((a, b) => b[1] - a[1]);
+  if (!close.length) return;
+  const n = Number(close[0][0]); const id = `resident-${n}-${day}`;
+  const letter = { id, from: `resident:${n}`, fromName: IslandCast.WALKERS[n].name, text: IslandCast.fill(IslandAffinity.letterOf(n, day), label), itemId: null, itemName: null, at: now, read: false };
+  await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
+}
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
 const WEEKLY_TITLES = {
@@ -3550,7 +3585,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.136' });
+    return sendJson(res, 200, { ok: true, version: '1.10.137' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3782,6 +3817,11 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return worldEdit(async () => { const h = await homeOf(account); if (h?.upgradeDay) { const next = { ...h, upgradeDay: '2000-01-01' }; await saveHome(account, next); broadcastIsland('homes', { lot: h.lot }); } return sendJson(res, 200, { ok: true }); });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity' && req.method === 'POST') { // R2: 호감도 added as a talk would (the levels reached pay)
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: Number(body.n), delta: Number(body.delta) }]);
+    return sendJson(res, 200, { ok: true, points: after[Number(body.n)] || 0, stages: await affinityStages(account, before, after) });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/furniture' && req.method === 'POST') { // 묶음 4: pieces straight into my 가구 창고
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     const ids = (Array.isArray(body.ids) ? body.ids : []).filter((id) => IslandFurniture.good(id));
@@ -3956,6 +3996,7 @@ async function requestHandler(req, res) {
     const { balance } = await pointStore.getAccount(account);
     const dexTitles = IslandFishing.titlesFor(IslandFishing.collectionCount(await pointStore.dexOf(account))).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
     dexTitles.unshift(...heldWeeklyTitles(account)); // v1.10.89 낚시왕 · v1.10.90 제초왕 (this week)
+    for (const [n, pts] of Object.entries(await pointStore.affinityOf(account))) if (IslandCast.levelOf(pts) >= 3) { const t = IslandAffinity.titleOf(IslandAffinity.titleId(n)); if (t) dexTitles.push({ id: t.id, name: t.name }); } // (R2: 단짝)
     return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
   }
 
@@ -4147,6 +4188,10 @@ async function requestHandler(req, res) {
     } else if (dexTitle) {
       if (IslandFishing.collectionCount(await pointStore.dexOf(account)) < dexTitle.need) return sendError(res, 409, 'SKIN_NOT_OWNED', '도감을 더 채우면 쓸 수 있는 칭호입니다.');
       skinId = dexTitle.id; free = true;
+    } else if (IslandAffinity.titleOf(body.skinId)) { // (R2: 「<name>의 단짝」, once 단짝 with them)
+      const t = IslandAffinity.titleOf(body.skinId);
+      if (await affinityLevelOf(account, t.n) < 3) return sendError(res, 409, 'SKIN_NOT_OWNED', `${t.name.replace(/의 단짝$/, '')}와(과) 단짝이 되면 쓸 수 있는 칭호입니다.`);
+      skinId = t.id; free = true;
     } else if (body.skinId !== null && body.skinId !== undefined) {
       const skin = skinById(body.skinId);
       if (!skin || skin.tier !== 'legend' || skin.family === 'avatar') return sendError(res, 404, 'SKIN_NOT_FOUND', '칭호로 쓸 수 있는 전설 스킨이 아닙니다.');
@@ -5051,6 +5096,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/mail' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const now = nowMs();
+    await residentLetter(account, String(session.label || ''), now); // (R3 ⑥)
     const letters = Together.freshLetters((await pointStore.questDoc(account, 'mail')).doc.letters, now);
     const sent = (await pointStore.questDoc(account, 'mailSent')).doc; const t = Together.seoul(now);
     const people = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt && `guest:${k.id}` !== account).map((k) => ({ id: k.id, label: k.label }));
@@ -6088,10 +6134,16 @@ async function requestHandler(req, res) {
     }
     return sendJson(res, 200, { ok: true });
   }
+  // R2 ① 먼저 말 걸기: my 호감도 with each walking islander and the last thing done together (for their greeting as I pass)
+  if (pathname === '/api/island/affinity' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const points = await pointStore.affinityOf(account); const mem = (await pointStore.questDoc(account, 'resmem')).doc; const day = kstDate(nowMs());
+    return sendJson(res, 200, { ok: true, residents: IslandCast.WALKERS.map((c, n) => ({ n, points: points[n] || 0, level: IslandCast.levelOf(points[n] || 0), memory: IslandAffinity.memoryLine(mem, n, day) })) });
+  }
   if (pathname === '/api/island/resident/talk' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
-    if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+    if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
     const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
     const state = islandEvents.residents()[n]; const who = talkKey(session);
     if (state?.hold && state.hold.eventId !== who) {
@@ -6105,7 +6157,7 @@ async function requestHandler(req, res) {
     if (!pos || ![0, 1500, 3000, 4500].some((back) => reach(IslandNpcs.residentAt(n, nowMs() - back, state)))) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (!state?.hold) { islandEvents.residentTalk(n, who, Math.atan2(pos.x - at.x, pos.z - at.z)); residentsChanged(); }
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
-    const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
+    const c = IslandCast.WALKERS[n]; const before = await pointStore.affinityOf(account); const level = IslandCast.levelOf(before[n] || 0); // (the words go by the level before this talk)
     const now = nowMs(); const phase = islandPhase((await pointStore.worldValue('time'))?.mode, now);
     const weather = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode || 'auto').kind;
     const contest = await contestState(); const star = IslandStars.around(starNow(now)).next;
@@ -6126,6 +6178,35 @@ async function requestHandler(req, res) {
       }
       return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView((await pointStore.affinityOf(account))[n] || 0) });
     }
+    // R2 ④ 오늘의 이야기: their question of the day (three answers), once a day each -- the answer they like +2 호감도, the
+    // one they don't 0, the other +1; remembered, and a level reached pays (affinityStages)
+    if (topic === 'ask' || topic === 'answer') {
+      const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, ...extra });
+      if ((await pointStore.questDoc(account, 'resmem')).doc?.asked?.[n] === day) return sendJson(res, 200, view(['오늘은 벌써 이야기 나눴어요. 내일 또 들려줘요!'], { affinity: affinityView(before[n] || 0) }));
+      if (topic === 'ask') { const q = IslandAffinity.questionOf(n, day); return sendJson(res, 200, view([q.q], { question: { answers: q.answers }, affinity: affinityView(before[n] || 0) })); }
+      const a = IslandAffinity.answer(n, day, Number(body.choice)); if (!a) return sendError(res, 400, 'BAD_CHOICE', '잘못된 요청입니다.');
+      let fresh = false;
+      await pointStore.questApply(account, 'resmem', (doc) => { if (doc?.asked?.[n] === day) return { doc }; fresh = true; return { doc: { ...IslandAffinity.remember(doc, n, 'answer', a.text, day), asked: { ...(doc?.asked || {}), [n]: day } } }; });
+      const after = fresh && a.delta ? await pointStore.affinityAdd(account, day, [{ n, delta: a.delta }]) : await pointStore.affinityOf(account);
+      return sendJson(res, 200, view(fresh ? [a.say] : ['오늘은 벌써 이야기 나눴어요. 내일 또 들려줘요!'], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after) }));
+    }
+    // R3 ⑥ 선물: one thing from my bag a day each (fish, insects, the island's finds) -- what they like +3, what they don't
+    // 0 (said kindly), anything else +1; asked without an item: what I could give
+    if (topic === 'gift') {
+      const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView(before[n] || 0), ...extra });
+      const already = ['오늘은 벌써 선물을 받았어요. 마음만으로 충분해요!'];
+      if ((await pointStore.questDoc(account, 'resmem')).doc?.gifted?.[n] === day) return sendJson(res, 200, view(already));
+      const items = ((await pointStore.islandBag(account)).items || []).filter((e) => IslandAffinity.GIFTABLE(e.itemId)).map((e) => ({ itemId: e.itemId, name: IslandItems.ITEMS[e.itemId]?.name || e.itemId }));
+      if (body.itemId == null) return sendJson(res, 200, view([items.length ? '저한테 주려고요? 뭘까요?' : '가방에 줄 만한 게 없네요. 괜찮아요!'], { gifts: [...new Map(items.map((e) => [e.itemId, e])).values()].slice(0, 8) }));
+      const item = items.find((e) => e.itemId === String(body.itemId)); if (!item) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+      const react = IslandAffinity.giftReact(n, item.itemId, item.name);
+      let fresh = false;
+      await pointStore.questApply(account, 'resmem', (doc) => { if (doc?.gifted?.[n] === day) return { doc }; fresh = true; return { doc: { ...IslandAffinity.remember(doc, n, 'gift', item.name, day), gifted: { ...(doc?.gifted || {}), [n]: day } } }; });
+      if (!fresh) return sendJson(res, 200, view(already));
+      const used = await pointStore.islandUse({ userId: account, requestId: `resgift-${n}-${day}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: item.itemId, resident: true });
+      const after = react.delta ? await pointStore.affinityAdd(account, day, [{ n, delta: react.delta }]) : await pointStore.affinityOf(account);
+      return sendJson(res, 200, view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after), ...(used?.bag ? { bag: used.bag } : {}) }));
+    }
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId)); // v1.10.92: what I carry, for a 'buy' errand
@@ -6138,11 +6219,25 @@ async function requestHandler(req, res) {
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
-      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + Economy.value('errand:far') * (r.pay.far || 0) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
+      if (r.pay) {
+        // (R2: an errand for a 친한 asker pays a little more, a 단짝's more again -- the day's three errands are the cap)
+        const asker = IslandCast.levelOf(before[r.pay.from] || 0); const pct = asker >= 3 ? Economy.value('affinity:bestieErrand') : asker >= 2 ? Economy.value('affinity:closeErrand') : 100;
+        const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Math.round((Economy.value(`errand:${r.pay.kind}`) + Economy.value('errand:far') * (r.pay.far || 0)) * pct / 100) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` });
+        if (out.applied) {
+          reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : []));
+          // (R3 ⑤ 관계: an errand between two at odds patches it up -- both a little warmer to me; between friends, a word more)
+          const rel = r.pay.to !== r.pay.from ? IslandCast.relationOf(r.pay.from, r.pay.to) : null;
+          if (rel === 'rival') { gains.push({ n: r.pay.from, delta: 1 }, { n: r.pay.to, delta: 1 }); r = { ...r, say: [...r.say, `사실 ${IslandCast.josa(IslandCast.WALKERS[r.pay.from].name, '과와')} ${IslandCast.WALKERS[r.pay.to].name}, 요즘 좀 서먹했대요. 덕분에 사이가 풀렸어요!`] }; }
+          else if (rel === 'friend') r = { ...r, say: [...r.say, '둘은 오랜 친구라 더 기뻐할 거예요.'] };
+          const what = IslandErrands.title(r.pay); await pointStore.questApply(account, 'resmem', (doc) => ({ doc: [...new Set([r.pay.from, r.pay.to])].reduce((d, m) => IslandAffinity.remember(d, m, 'errand', what, day), doc || {}) })); // (R2 ② 기억)
+        }
+      }
     }
-    const say = r ? r.say : topic === 'errand' ? ['오늘은 괜찮아요. 마음만 받을게요!'] : [IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
-    const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0; // (daily: the first talk of the day only, whatever is chosen)
-    return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, affinity: affinityView(points), ...(await errandView(account)) });
+    // (R2 ② 기억하는 주민: now and then, the last thing done together)
+    const memory = !r && topic === null && level >= 1 && Math.random() < 0.35 ? IslandAffinity.memoryLine((await pointStore.questDoc(account, 'resmem')).doc, n, day) : null;
+    const say = r ? r.say : topic === 'errand' ? ['오늘은 괜찮아요. 마음만 받을게요!'] : [memory ? IslandCast.fill(memory, String(session.label || '')) : IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
+    const after = await pointStore.affinityAdd(account, day, gains); const points = after[n] || 0; // (daily: the first talk of the day only, whatever is chosen)
+    return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, affinity: affinityView(points), stages: await affinityStages(account, before, after), ...(await errandView(account)) });
   }
   // A4 날씨: the island's weather now (the same for everyone) and when it changes; the administrator may hold it
   if (pathname === '/api/island/weather' && req.method === 'GET') {
@@ -6381,7 +6476,7 @@ async function requestHandler(req, res) {
     if (!requireAdmin(req, res)) return;
     const body = await parseJson(req);
     if (!['auto', 'morning', 'day', 'evening', 'night'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '시간대를 골라 주세요.');
-    await pointStore.setWorldValue('time', { mode: body.mode, at: nowMs() });
+    await pointStore.setWorldValue('time', { mode: body.mode, at: nowMs() }); walkerTimeMode = body.mode; // (R3: the islanders' round too)
     broadcastIsland('islandTime', { mode: body.mode });
     return sendJson(res, 200, { ok: true, mode: body.mode });
   }
@@ -7040,6 +7135,7 @@ async function main() {
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
+  walkerTimeMode = (await pointStore.worldValue('time'))?.mode || 'auto'; // (R3 ③: the islanders' round by the held time of day)
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   await dalmaruMoveIn().catch((error) => console.error('달마루섬 이사 실패:', error.message)); // 5단계: once, the first start on the new island
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
@@ -7123,7 +7219,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.136 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.137 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

@@ -38,7 +38,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   await talkTo(idle);
   await lines();
   const choices = page.locator('#plazaDialog .talkChoices button');
-  await expect(choices).toHaveText(['요즘 어때요?', '섬 소문 있어요?', '부탁할 거 있어요?', '잘 가요']);
+  await expect(choices).toHaveText(['요즘 어때요?', '섬 소문 있어요?', '부탁할 거 있어요?', '이야기 나눠요', '선물해요', '잘 가요']); // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물)
   await expect.poll(() => holdOn(other.page, idle), { timeout: 30000 }).toMatch(/^talk:/); // (the other screen hears it from the server: past 15 s on a slow runner)
   // (a slow screen eases the islander into the place it is held at: measured once it stands there)
   let at = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
@@ -51,10 +51,17 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   expect(busy.status).toBe(409); expect(busy.data.message).toContain('심부름꾼님과 이야기 중');
   await choose('2'); // 섬 소문
   await expect(page.locator('.lostRequestLine').first()).toHaveText(/「.+」/);
-  await expect(choices).toHaveCount(4);
+  await expect(choices).toHaveCount(6);
   await choose('3'); // nothing to ask
   await expect(page.locator('.lostRequestLine').first()).toHaveText('「오늘은 괜찮아요. 마음만 받을게요!」');
-  await page.keyboard.press('4'); await expect(dialog).not.toHaveClass(/talkMode/); // 잘 가요
+  // (R2 ④) their question of the day: three answers in place of the choices; one answered, the choices back
+  await choose('4'); await expect(choices).toHaveCount(3); await expect(choices.first()).toHaveAttribute('data-topic', 'answer');
+  await choose('1'); await expect(choices).toHaveCount(6);
+  // (R3 ⑥) a gift: what my bag holds that they could take -- one given, the choices back
+  await post(request, '/api/test/island/give', token, { itemId: 'berry', qty: 1 });
+  await choose('5'); await expect(choices.first()).toHaveAttribute('data-topic', 'gift'); await expect(choices.first()).toHaveText('나무 열매');
+  await choose('1'); await expect(choices).toHaveCount(6);
+  await page.keyboard.press('6'); await expect(dialog).not.toHaveClass(/talkMode/); // 잘 가요
   await expect.poll(() => holdOn(other.page, idle), { timeout: 15000 }).toBe(null);
   // the asker: the request (their name on the window) before the choices, then the tracker
   const askers = Object.entries(view.marks).filter(([, m]) => m === 'new').map(([n]) => Number(n));
