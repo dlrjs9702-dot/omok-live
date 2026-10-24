@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.138 R4: 구치소 반성문
+
+- 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R4, 사용자 「구치소 진행」(2026-10-23).
+- 관공서 옆 구치소(assets 67: 외관·실내·철창·문·책상·벤치·게시판·구치소장 `IslandCast` keeper `warden`), 문은 남쪽, 문 위 간판 「구치소」.
+- 체납자(관리자·가입 첫날 제외)는 섬 방문 첫 자세에서 철창 안으로(`/api/plaza/state` `jail.inmate`); 그날 통과하면 다시 안 갇힘.
+- 구치소장 말풍선 문장(20초 고리)을 섬 채팅으로 똑같이: 틀리거나 늦으면 「다시.」, 3문장(친한 사이 2) 통과로 철창 열림. 「지금 세금 내기」 다 내면 열림.
+- 구경꾼은 철창 밖만(`clamp` 'free'), 오늘 통과 수; 오늘의 반성문 게시판은 구치소 안에서만. 방 앞벽은 잘라 내 문에서도 방이 보이게, 철창 문은 방 쪽으로 +100°.
+- 시험: 서버 `island-jail`, e2e `island-jail`(PC·휴대폰).
+- Codex 검토 대기(10/25).
+
 ## v1.10.137 R2·R3 주민 상호작용 + 문제 기록 3회차 1·18(곤충 크기·주민 길 멈춤·실내 하늘색)
 
 - 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R2·R3, `docs/issue-log-review-20261022.md` 1·18, #271 「못 고친 것」. 사용자 결정(2026-10-24, 같은 문서 끝 「합쳐 내」): 세 묶음을 PR 하나로.
@@ -49,12 +59,4 @@
 - `asset-loader.js` dress(): Low 파일이 있는 통째 캐릭터는 High·Low를 둘 다 받아 Low를 High 뼈에 관절 이름으로 묶고 거리로 바꿈(wearLod, 휴대폰 낮은 등급은 더 가까이서 Low) — 이름 있는 NPC들도 같이 혜택.
 - 남은 것: 노을 할머니 지팡이가 앉을 때 좌석을 통과할 수 있음(배회 주민은 아직 앉지 않음 — 앉게 될 때 숨기기).
 - 시험: 에셋 파이프라인·GLB 예산(예외 사유·sha), e2e `island-assets`·`resident-talk`.
-- Codex 검토 대기(10/25).
-
-## v1.10.135 문제 기록 3회차 10묶음: 변신 펫·메타몽
-
-- 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 21번.
-- 21: 펫샵(백화점 3층) 카운터 SPACE(`petshop:counter`) → 목록 — 변신 22종을 그 모습 그대로 작게(`transformPet`, 0.42배, 공통 Idle·Walk·SitIdle) + 메타몽(assets 65 `together.pet_ditto`, 삼각형 예외 High 17,000 / Low 5,500). `island-petshop.js` `catalog()`·`catalogOf`·`known`·`nameOf`, 가격은 경제 값 `pet:transform_animal` 8,000 · `pet:transform_ip` 12,000 · `pet:ditto` 12,000, `POST /api/island/petshop/buy`. 한 종류에 한 마리, 가방 밖이라 선물 불가.
-- 고침: 승강기로 멀리 간 뒤 펫이 섬 땅 높이로 붙어 방 바닥 아래에 남던 것(`spaceFloor`), 시험용 teleport도 방 바닥 높이로.
-- 시험: 단위 `pet-catalog`, e2e `pet-catalog`(PC·휴대폰).
 - Codex 검토 대기(10/25).
