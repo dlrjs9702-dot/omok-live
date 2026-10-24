@@ -195,6 +195,12 @@
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
   const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z); // (2회차 18: the ponds over the falls are water too)
   const slopeAt = (x, z) => Math.hypot(ground(x + 1, z) - ground(x - 1, z), ground(x, z + 1) - ground(x, z - 1)) / 2;
+  // (동산 다듬기: the scenery is picked on the ground as it was before the 동산 shapes -- the same seeded picks, so nothing
+  // moves; only what then stands on a steep new bank is left out, afterwards)
+  const brushAt = D.brushAt || (() => 0);
+  const slopeBefore = (x, z) => Math.hypot(ground(x + 1, z) - brushAt(x + 1, z) - ground(x - 1, z) + brushAt(x - 1, z), ground(x, z + 1) - brushAt(x, z + 1) - ground(x, z - 1) + brushAt(x, z - 1)) / 2;
+  const walkableBefore = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeBefore(x, z) < 0.9 && D.coastDist(x, z) > 1.2 && !underDrawnRock(x, z));
+  const onBank = (o, limit) => D.BRUSHES?.some((b) => Math.hypot(o.x - b.x, o.z - b.z) < b.r) && slopeAt(o.x, o.z) >= limit;
 
   // ---- bridges: 윤슬다리 (its arched deck the model's), and a plain one wherever a walk crosses a river ----
   const YB = { rise: 3.2, top: 0.43 }; // the model's deck: rise * sin(πt) over its ends, its planks' top 0.43 over that
@@ -390,7 +396,7 @@
       || PADS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + 1.5) || onStairs(x, z) || Math.hypot(x - TOP.x, z - TOP.z) < 6
       || Math.hypot(x - PL.lighthouse.x, z - PL.lighthouse.z) < 6 || Math.hypot(x - PL.pier.x, z - PL.pier.z) < 6 || Math.hypot(x - PL.dock.x, z - PL.dock.z) < 8
       || villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 2) || heroYard(x, z);
-    const clearOf = (x, z) => walkable(x, z) && D.coastDist(x, z) > 5 && slopeAt(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
+    const clearOf = (x, z) => walkableBefore(x, z) && D.coastDist(x, z) > 5 && slopeBefore(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
       && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z);
     const trees = [];
     // (묶음 4: 툇마루섬 -- a season zone of its own -- its grove round the houses; 묶음 5: on the wider isle, and sure to hold
@@ -418,7 +424,7 @@
     // (3회차 8) the tufts seeded on their own and numbered by their try (`i`, island-weeds `w<i>`), three draws a try taken
     // or not: a tree or a flower placed otherwise above, or a walk laid across some, never moves or renumbers the rest
     const tufts = []; seed = 0x7a1f5;
-    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.6 + rnd() * 0.7; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s, i: tries }); }
+    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.6 + rnd() * 0.7; if (walkableBefore(x, z) && D.coastDist(x, z) > 7 && slopeBefore(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s, i: tries }); }
     const rocks = []; seed = 0x40c5; // (3회차 8: on their own too, not after however many tufts were tried)
     for (let tries = 0; rocks.length < 160 && tries < 8000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const cd = D.coastDist(x, z);
@@ -426,7 +432,7 @@
     }
     // what the train's lifts keep clear is taken out after the seeded scenery, so nothing else moves -- the weeds are
     // numbered by the tufts (island-weeds `w<i>`): the server and every screen must have the same ones
-    const blocked = (o, r) => natureBlocks.some((fn) => fn(o.x, o.z, r));
+    const blocked = (o, r) => natureBlocks.some((fn) => fn(o.x, o.z, r)) || onBank(o, 0.35);
     const keptTrees = trees.filter((t) => !blocked(t, 1.5)); const keptBushes = bushes.filter((b) => !blocked(b, 0.8));
     // the walks' lamps (island-terrain's rule): beside the town walks and the 산책로 (not the 오솔길), every 14 points of
     // their curve -- on standable ground, off 대청마당 (its own lamps), the stairs, the bridges, the 관공서 yard, another
@@ -440,7 +446,7 @@
       if ([...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5)) continue;
       lampSpots.push({ x: lx, z: lz });
     } }
-    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts, rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there) */, posts: [], lampSpots };
+    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts: tufts.filter((t) => !onBank(t, 0.5)), rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free

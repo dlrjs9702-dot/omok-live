@@ -296,10 +296,13 @@ vec3 col = mix(grass, grass * vec3(0.87, 0.93, 0.84), KIND(cb.g) * (1.0 - 0.6 * 
 col = mix(col, mix(uForest, grass, 0.75 * snow), KIND(ca.r) * 0.85);
 float speck = step(0.9, fract(sin(dot(floor(vGroundXZ * 5.0), vec2(12.9898, 78.233))) * 43758.5453));
 col = mix(col, mix(mix(uClover, vec3(0.95, 0.9, 0.95), speck), grass, 0.8 * snow), KIND(cb.b));
-col = mix(col, mix(uEarth, grass, 0.92 * snow), smoothstep(0.15, 0.8, ca.g + nz));
+col = mix(col, mix(uEarth, grass, 0.92 * snow), smoothstep(0.44, 0.56, ca.g + nz)); // (동산 검토: bare earth in crisp patches, no smudge)
 col = mix(col, mix(uGravel, grass, 0.7 * snow), KIND(gravel));
 col = mix(col, mix(uRock, grass, 0.65 * snow), KIND(cb.r)); // (검토 2차 1: snow on the slopes too, a little less on the rock)
 col = mix(col, mix(mix(uSand, uWet, wet), grass, 0.6 * snow * (1.0 - wet)), smoothstep(0.4, 0.58, ca.b + 0.7 * nz)); // (검토 3차 1: the sand's edge a little crisper)
+#ifndef FLAT_SHADED
+col *= 1.0 - 0.22 * smoothstep(0.97, 0.82, (vec4(normalize(vNormal), 0.0) * viewMatrix).y); // (동산 검토: a bank's face a little in its own shade, so the steps read)
+#endif
 diffuseColor.rgb = col; gw = vec2(1.0 - max(max(KIND(ca.g), KIND(cb.r)), max(KIND(gravel), KIND(ca.b))), KIND(ca.b));
 }`);
   const paintPath = (path) => (path || !maps ? '' : `
