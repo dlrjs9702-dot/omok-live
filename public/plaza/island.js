@@ -19,10 +19,10 @@ const offPath = (x, z) => plazaDist(x, z) < 0.6 || (!T.inPlaza && Math.hypot(x, 
 // (문제 기록 2회차 2 「자전거가 땅을 파고 들어가」: a 마을 길 is paved with 4 cm slabs laid 1 cm over the ground -- one stands on
 // them, the bike's wheels too, not 5 cm into them: the height everyone stands at (this module's heightAt) has the paving on)
 export const PAVE_TOP = 0.05; const PAVE_LIFT = 0.01;
-// 「땅에 칠하는 길」 시범 (gamecenter-notes docs/path-paint-design-20261025.md 순서 1): north of 대청마당 -- the walks to 관공서,
-// 백화점, 기록관, 관리실, 게임관 and 구치소 -- the walks are painted into the ground itself (island-paths.js); the strips,
-// slabs and discs stay everywhere else until the pilot is approved
-export const PATH_PILOT = T.dalmaru && globalThis.IslandPaths ? { x0: -80, z0: -130, x1: 80, z1: -60 } : null;
+// 「땅에 칠하는 길」 (gamecenter-notes docs/path-paint-design-20261025.md, terrain-paint-design-20261025.md 1): on 달마루섬 the
+// walks are painted into the ground itself (island-paths.js) -- no strips, slabs, discs or planters laid over it any more
+// (the pilot north of 대청마당 was approved: 「전보다 낫다」, then 「확인 없이 전체」). 지금 섬 keeps its strips.
+export const PATH_PILOT = T.dalmaru && globalThis.IslandPaths ? { x0: -1e4, z0: -1e4, x1: 1e4, z1: 1e4 } : null;
 const inPilot = (x, z) => Boolean(PATH_PILOT) && x > PATH_PILOT.x0 && x < PATH_PILOT.x1 && z > PATH_PILOT.z0 && z < PATH_PILOT.z1;
 const paveSegs = []; walkCurves.forEach((w, wi) => { const half = Math.max(1, Math.round(w.w - 0.4)) / 2; for (let i = 1; i < w.pts.length; i += 1) { const [ax, az] = w.pts[i - 1]; const [bx, bz] = w.pts[i]; if (tierAt(wi, (ax + bx) / 2, (az + bz) / 2) === 'town') paveSegs.push({ ax, az, bx, bz, half }); } });
 export function paveLift(x, z) {
@@ -253,20 +253,29 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
   // follow its bends, 산책로 packed sand, 오솔길 earth (one texture, 4 MB: the ground needs no other draw for it)
   const PATH_RES = 1024; const pathData = new Uint8Array(PATH_RES * PATH_RES * 4);
   const pathTex = keep(new THREE.DataTexture(pathData, PATH_RES, PATH_RES)); pathTex.magFilter = THREE.LinearFilter; pathTex.minFilter = THREE.LinearFilter; pathTex.generateMipmaps = false;
+  const joinData = new Uint8Array(PATH_RES * PATH_RES); // (where walks meet: stones with no course)
+  const joinTex = keep(new THREE.DataTexture(joinData, PATH_RES, PATH_RES, THREE.RedFormat)); joinTex.magFilter = THREE.LinearFilter; joinTex.minFilter = THREE.LinearFilter; joinTex.generateMipmaps = false;
   const paintPath = (path) => (path || !PATH_PILOT ? '' : `
 { // 땅에 칠하는 길
 vec4 pm = texture2D(tPath, (vGroundXZ - uPathBox.xy) / uPathBox.z);
 if (pm.a > 0.15 && vGroundXZ.x > uPilot.x && vGroundXZ.x < uPilot.z && vGroundXZ.y > uPilot.y && vGroundXZ.y < uPilot.w) {
 float inside = (pm.r * 2.0 - 1.0) * ${globalThis.IslandPaths.EDGE_RANGE.toFixed(2)}; // metres inside its edge
 float fray = 0.16 * sin(vGroundXZ.x * 2.7 + vGroundXZ.y * 1.3) * sin(vGroundXZ.y * 3.1 - vGroundXZ.x * 0.7) + 0.08 * sin(vGroundXZ.x * 9.1 - vGroundXZ.y * 7.3);
-float cover = smoothstep(-0.12, 0.3, inside + fray);
+float cover = smoothstep(-0.05, 0.12, inside + 0.6 * fray); // (검토 ⓪-2: a crisp edge -- on a phone a wide blend read as smudged grass)
 float along = atan(pm.b * 2.0 - 1.0, pm.g * 2.0 - 1.0) / 6.2831853 * ${globalThis.IslandPaths.ALONG_PERIOD.toFixed(1)};
 vec3 pc = pm.a > 0.9 ? uTown : pm.a > 0.55 ? uWalk : uTrail;
 if (pm.a > 0.9) { // flagstones: 1 m along, 0.75 m across, every other row half a stone on
 vec2 q = vec2(along, inside / 0.75); float row = floor(q.y); q.x += 0.5 * mod(row, 2.0);
 vec2 f = fract(q); float h = fract(sin(dot(vec2(floor(q.x), row), vec2(12.9898, 78.233))) * 43758.5453);
-float joint = smoothstep(0.0, 0.05, min(f.x, 1.0 - f.x)) * smoothstep(0.0, 0.07, min(f.y, 1.0 - f.y));
-pc *= (0.9 + 0.14 * h) * mix(0.72, 1.0, joint);
+float joint = smoothstep(0.0, 0.07, min(f.x, 1.0 - f.x)) * smoothstep(0.0, 0.09, min(f.y, 1.0 - f.y));
+float jn = texture2D(tJoin, (vGroundXZ - uPathBox.xy) / uPathBox.z).r;
+if (jn > 0.01) { // (검토 ⓪-1) where walks meet: irregular stones with no course (cells 0.9 m), blending into the walks' courses
+vec2 vp = vGroundXZ / 0.9; vec2 ip = floor(vp); vec2 fp = fract(vp); float d1 = 8.0; float d2 = 8.0; vec2 idm = ip;
+for (int yy = -1; yy <= 1; yy++) for (int xx = -1; xx <= 1; xx++) { vec2 g = vec2(float(xx), float(yy)); vec2 o = fract(sin(vec2(dot(ip + g, vec2(127.1, 311.7)), dot(ip + g, vec2(269.5, 183.3)))) * 43758.5453); vec2 r = g + 0.15 + 0.7 * o - fp; float d = dot(r, r); if (d < d1) { d2 = d1; d1 = d; idm = ip + g; } else if (d < d2) { d2 = d; } }
+float vj = smoothstep(0.0, 0.09, sqrt(d2) - sqrt(d1)); float vh = fract(sin(dot(idm, vec2(12.9898, 78.233))) * 43758.5453);
+h = mix(h, vh, jn); joint = mix(joint, vj, jn);
+}
+pc *= (0.9 + 0.14 * h) * mix(0.7, 1.0, joint);
 }
 if (uGrain > 0.0) pc *= mix(vec3(1.0), texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, uGrain * (pm.a > 0.9 ? 0.35 : 0.9));
 diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
@@ -275,14 +284,14 @@ diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
   const grained = (material, path) => {
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn,
-        tPath: { value: pathTex }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uPilot: { value: new THREE.Vector4(PATH_PILOT?.x0 ?? 0, PATH_PILOT?.z0 ?? 0, PATH_PILOT?.x1 ?? 0, PATH_PILOT?.z1 ?? 0) },
+        tPath: { value: pathTex }, tJoin: { value: joinTex }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uPilot: { value: new THREE.Vector4(PATH_PILOT?.x0 ?? 0, PATH_PILOT?.z0 ?? 0, PATH_PILOT?.x1 ?? 0, PATH_PILOT?.z1 ?? 0) },
         uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) } });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
 attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ;`).replace('#include <begin_vertex>', `#include <begin_vertex>
 vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; varying vec2 vGround; varying vec2 vGroundXZ;
-uniform sampler2D tPath; uniform vec3 uPathBox; uniform vec4 uPilot; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;`).replace('#include <color_fragment>', `#include <color_fragment>
+uniform sampler2D tPath; uniform sampler2D tJoin; uniform vec3 uPathBox; uniform vec4 uPilot; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;`).replace('#include <color_fragment>', `#include <color_fragment>
 if (uGrain > 0.0) {
 vec3 gGrass = texture2D(tGrass, vGroundXZ / 2.4).rgb / 0.611; // (each over its own mean: the colours keep their brightness, only the grain shows)${path ? `
 float gCover = texture2D(tEdge, vGround).a; // the path: x along it, y across (1 at its grass edge)
@@ -438,7 +447,9 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // (「땅에 칠하는 길」 시범) the pilot's walks into the picture -- not under 대청마당's paving, the hall's yard, a bridge or a stream
   if (PATH_PILOT) {
     const paintable = (x, z) => inPilot(x, z) && !onBridge(x, z) && streamDist(x, z) >= STREAM_HALF + 0.4 && plazaDist(x, z) >= -0.2 && !T.inTownhall(x, z, -0.2);
-    pathData.set(globalThis.IslandPaths.buildPathField(paintedWalks, { x0: -SIZE / 2, z0: -SIZE / 2, size: SIZE, res: PATH_RES, keep: paintable })); pathTex.needsUpdate = true;
+    const box = { x0: -SIZE / 2, z0: -SIZE / 2, size: SIZE, res: PATH_RES };
+    pathData.set(globalThis.IslandPaths.buildPathField(paintedWalks, { ...box, keep: paintable })); pathTex.needsUpdate = true;
+    joinData.set(globalThis.IslandPaths.buildJunctionField(globalThis.IslandPaths.junctionsOf(paintedWalks), box)); joinTex.needsUpdate = true;
   }
   const disc = (x, z, r, material, lift = 0.04, seg = 48) => { const m = new THREE.Mesh(keep(new THREE.CircleGeometry(r, seg)), material); m.rotation.x = -Math.PI / 2; m.position.set(x, land(x, z) + lift, z); m.receiveShadow = true; scene.add(m); return m; };
   if (T.inPlaza) { // 대청마당 (달마루섬): one paved terrace, a band round the fountain
@@ -1042,5 +1053,5 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
 
   function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: Boolean(PATH_PILOT), stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

@@ -969,7 +969,8 @@ test('마을 환경정비사업: 길 3단계 조각이 깔리고, 땅 장식은 
   const env = () => page.evaluate(() => window.PlazaDebug().environment);
   const first = await env();
   expect(first.edgeDecor.paths).toMatchObject({ slab: expect.any(Number), border: expect.any(Number), edge: expect.any(Number), step: expect.any(Number), disc: expect.any(Number) });
-  for (const k of ['slab', 'terrazzo', 'border', 'edge', 'step', 'disc', 'planter']) expect(first.edgeDecor.paths[k], k).toBeGreaterThan(0);
+  // (「땅에 칠하는 길」: on 달마루섬 the walks are painted into the ground -- no pieces laid; 지금 섬 lays them)
+  for (const k of ['slab', 'terrazzo', 'border', 'edge', 'step', 'disc', 'planter']) if (first.edgeDecor.painted) expect(first.edgeDecor.paths[k], k).toBe(0); else expect(first.edgeDecor.paths[k], k).toBeGreaterThan(0);
   expect(first.groundCover.season).toBeGreaterThan(50); expect(first.groundCover.fern).toBeGreaterThan(10);
   for (const [tier, flat, low] of [[0, false, false], [1, true, false], [2, true, true]]) {
     await page.evaluate((t) => window.PlazaDebug().holdQuality(t), tier);

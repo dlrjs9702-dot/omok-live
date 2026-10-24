@@ -36,5 +36,29 @@
     }
     return out;
   }
-  return { EDGE_RANGE, ALONG_PERIOD, TIER, buildPathField };
+  // where walks meet (one's point by another's, as the old junction discs): the stones there have no direction -- the
+  // two walks' courses would meet in a crooked seam (길 시범 검토 ⓪-1) -- 1 within r of a meeting, fading out 1.5 m past it
+  function junctionsOf(curves, near = 0.9, apart = 6) {
+    const out = [];
+    curves.forEach((c, ci) => c.pts.forEach(([x, z]) => {
+      if (out.some((j) => Math.hypot(j.x - x, j.z - z) < apart)) return;
+      const other = curves.find((o, oi) => oi !== ci && o.pts.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < near));
+      if (other) out.push({ x, z, r: Math.max(c.w, other.w) / 2 + 0.6 });
+    }));
+    return out;
+  }
+  function buildJunctionField(junctions, { x0, z0, size, res = 1024 }) {
+    const cell = size / res; const out = new Uint8Array(res * res);
+    for (const j of junctions) {
+      const reach = j.r + 1.5;
+      const i0 = Math.max(0, Math.floor((j.x - reach - x0) / cell)); const i1 = Math.min(res - 1, Math.ceil((j.x + reach - x0) / cell));
+      const k0 = Math.max(0, Math.floor((j.z - reach - z0) / cell)); const k1 = Math.min(res - 1, Math.ceil((j.z + reach - z0) / cell));
+      for (let k = k0; k <= k1; k += 1) for (let i = i0; i <= i1; i += 1) {
+        const d = Math.hypot(x0 + (i + 0.5) * cell - j.x, z0 + (k + 0.5) * cell - j.z); const w = Math.max(0, Math.min(1, 1 - (d - j.r) / 1.5));
+        out[k * res + i] = Math.max(out[k * res + i], Math.round(w * 255));
+      }
+    }
+    return out;
+  }
+  return { EDGE_RANGE, ALONG_PERIOD, TIER, buildPathField, junctionsOf, buildJunctionField };
 }));
