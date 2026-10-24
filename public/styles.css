@@ -1726,6 +1726,7 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 
 /* v1.10.63 메뉴: the ☰ button where the 채팅 tab was (the tab moves right), and the menu window (Esc) */
 #islandChatTab { left: 62px; }
+.islandMessengerTab { left: 132px; } /* 메신저 단독 창: opens its own window */
 .gameMenuBtn { padding: 7px 12px; }
 .gameMenuDialog { width: min(360px, 92vw); }
 .gameMenuList { display: grid; gap: 10px; }
@@ -1989,8 +1990,6 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .yutThrowSummary.gamePanelHead{justify-content:space-between}
 
 /* v1.10.78 메신저: 목록 | 대화 (휴대폰은 한 칸씩) */
-.recordsDialog.messengerDialog{width:min(94vw,860px);height:min(86vh,680px);display:flex;flex-direction:column}
-.messengerDialog:not([open]){display:none}
 .messengerBody{flex:1;min-height:0;display:grid;grid-template-columns:220px 1fr;gap:12px}
 .messengerRooms{display:flex;flex-direction:column;gap:8px;min-height:0}
 .messengerRoomList{list-style:none;margin:0;padding:0;overflow-y:auto;display:grid;gap:4px}
@@ -2051,7 +2050,6 @@ body.touchIsland .plazaHint { left: 50%; right: auto; transform: translateX(-50%
 .recordsDialog.rankingDialog,.recordsDialog.donationDialog{--g1:#b45309;--g2:#a16207}
 .recordsDialog.climbDialog{--g1:#0e7490;--g2:#1d4ed8}
 .recordsDialog.namingDialog{--g1:#7c4a1e;--g2:#9a3412}
-.recordsDialog.messengerDialog{--g1:#0369a1;--g2:#075985}
 .recordsDialog.minesDialog{--g1:#475569;--g2:#334155}
 /* v1.10.84 관공서 실내: no island map inside the 민원실 */
 body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
@@ -2067,7 +2065,7 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .recordsDialog.taxDialog{--g1:#991b1b;--g2:#7f1d1d;width:min(92vw,420px)} /* v1.10.86 세금 창구 */
 /* v1.10.87 메신저: 이전 대화 · 안 읽은 알림 */
 .messengerMore{display:block;margin:4px auto 8px}
-#accountMessengerBtn.hasUnread{box-shadow:0 0 0 2px #ef4444 inset;font-weight:900}
+#accountMessengerBtn.hasUnread,.islandMessengerTab.hasUnread{box-shadow:0 0 0 2px #ef4444 inset;font-weight:900}
 /* v1.10.88 메신저 카카오톡처럼: 목록 미리보기 · 읽음 수 · 시스템 문구 · 날짜 */
 .messengerRoomsHead{display:flex;gap:6px}.messengerRoomsHead button{flex:1}
 .messengerRoomMain{display:flex;flex-direction:column;min-width:0;flex:1}.messengerRoomMain strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

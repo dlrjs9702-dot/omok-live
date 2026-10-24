@@ -13,6 +13,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.147 메신저 단독 창(B안)
+
+- 근거: gamecenter-notes `docs/messenger-standalone-20261025.md`(사용자 「B로 진행하고 대화창 다음에 넣어」).
+- ① `/messenger` 전용 페이지(`public/messenger.html`·`messenger.js`·`messenger.css`): 게임 코드 없음, 크롬 전용 관문 없음(아이폰 Safari 홈 화면 앱도). 방·1:1·고정·알림 끄기·삭제·안 읽은 사람 수는 그대로 옮김. 섬 공통 부품(크림 종이) 색.
+- ② 앱으로 설치: `messenger.webmanifest`(id·scope `/messenger`, 「아일랜드 메신저」, 전용 아이콘) → 게임 앱과 따로 설치되는 독립 창. 설치 단추(`beforeinstallprompt`), 아이폰은 「홈 화면에 추가」 안내.
+- ③ Web Push: `lib/web-push.js`(node crypto로 RFC 8291 aes128gcm + VAPID ES256, 추가 패키지 없음, RFC 부록 A 예와 바이트까지 같음). 환경 변수 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`가 없으면 알림 단추가 안 나옴. 받는 사람 = 방의 다른 사람 중 알림 끈 사람·지금 메신저를 열어 둔 사람(스트림) 빼고. 알림은 「로그인 유지」 기기에서만 켬. 끊긴 구독(404·410) 정리. `messenger-sw.js`(scope `/messenger`)가 알림·앱 아이콘 안 읽은 수, 누르면 그 방.
+- ④ 이 기기에서 로그인 유지: 기기 토큰 60일(해시로 저장, `worldValue messengerDevices`, 계정당 10대), 메신저 API만 됨. 비밀번호 변경·관리자 「메신저 해제」·그 기기 로그아웃이면 끝, 「로그인된 기기」 목록·끊기.
+- ⑤ 게임 안에서: 내 계정·섬 화면의 메신저 단추(안 읽은 수) → 같은 창을 앞으로(새 창이면 이 탭의 로그인을 가져감). 섬 안 작은 알림은 그대로. 내 계정의 메신저 창(dialog)은 없앰.
+- 서버가 잠들어 있으면 첫 요청 2.5초 넘을 때 「서버를 깨우는 중」 표시.
+- 시험: 단위 `web-push`(RFC 예, 받는 기기 키로 풀림, VAPID 서명, 받는 사람), 새 `messenger-device`(기기 토큰은 메신저만, 끝나는 경우 셋, 알림 받는 사람·열어 둔 사람·알림 끈 사람, 구독은 기기와 같이), e2e `messenger`(로그인 유지·새로고침, 내 계정에서 같은 창, 안 읽은 수, 주고받기, 1:1·나가기 경고, 로그아웃, PC·폰).
+
 ## v1.10.146 대화창 새 단장 1단계
 
 - 근거: gamecenter-notes `docs/dialogue-box-redesign-20261025.md`(사용자 「추천대로 진행해」, 섬 공통 부품 「그렇게 해」).
@@ -31,13 +42,3 @@
 - 무대는 뒤가 땅 쪽, 앞이 바다 쪽. 거리 악단은 무대 앞, 무대를 향한 벤치 2개(`bench_waterfront`), 옆 가로등(`lamp_waterfront`), 무대 위 악보 받침, 뒤 모서리 꽃. 이번 주 도움을 받았으면 음표가 떠오름(동작 줄이기면 없음, 60 m 안에서만).
 - 무대까지 가던 오솔길은 지움. 퀘스트 「무대 앞에서 공연 듣기」는 무대 4.5 m 안 그대로(벤치 자리 포함).
 - 시험: 단위 `dalmaru-paths`(길 연결·배치 1 m 간격), `island-npcs`(서버 주민 격자 = 화면 격자), e2e `dalmaru-walk`(보이는 것 = 막는 것, 뜬 것·묻힌 것 0, 모두 걸어서 닿음), `island-solids`.
-
-## v1.10.144 R8 내 집 4단계 2층 큰 집
-
-- 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R8, assets 58(4단계). 경제 값 `home:price_4` 200,000P는 기본값으로 승인됨.
-- 관공서에서 집 넓히기 한 번 더(3 → 4단계, 다음 날 완성). 외관 `manor2` 4색(High 17,357 / Low 8,599 삼각형, 예산 예외 20,000 / 9,000).
-- 1층: 큰 집 방 + 앞 왼쪽 실내 계단(`stairs_in` 오크·월넛, 바닥 색에 맞춤), 가구 70·물고기 40. 계단 발치에서 SPACE(폰 상호작용)로 2층.
-- 2층: 따로 떨어진 방(`upper_room`, `_s4` 바닥·벽지, 16×13, 계단 구멍 비움, 창가 의자), 가구 50. 구멍 옆에서 1층으로. 나가기는 1층에서만(2층에서는 `UPSTAIRS`).
-- 가구는 층마다: 2층에 놓으면 `floor: 2`, 1층에는 안 보임. 손님도 2층에 가고, 같은 층 사람만 보임(presence `home` = `<집터>:2`).
-- 새 API `POST /api/home/stairs`. 들어갈 때 1층부터. 섬을 떠나면 층 기억 지움.
-- 시험: 단위 `island-home`(TOP_STAGE 4, 층마다 가구·자리·막힌 곳), e2e `my-home` 「2층 큰 집(R8)」(계단 오르내리기·층마다 가구·1층에서만 나감·손님 같은 층), 방문 허용 검사를 4단계까지.
