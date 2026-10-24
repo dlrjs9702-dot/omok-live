@@ -44,6 +44,18 @@ test('생일·우체통: 오늘 생일이면 광장 장식·선물 한 번·칭�
   expect((await get(request, '/api/island/bag', b.token)).data.items.some((e) => e.itemId === 'gift_wrap')).toBe(false);
   expect((await post(request, '/api/island/mail/read', a.token, { id: box.letters[0].id })).status).toBe(200);
   expect((await get(request, '/api/island/mail', a.token)).data.unread).toBe(0);
+  // her box at the 우체통 (R3 ⑥): his letter 「님」 with 답장, which picks him to write to; an islander I am close to writes
+  // too -- the name as it is, 「· 주민」, no 답장
+  for (const d of [8, 8]) expect((await post(request, '/api/test/affinity', a.token, { n: 1, delta: d })).status).toBe(200); // 친한 사이
+  await a.page.bringToFront(); await stand(a, M.x - Math.sin(M.yaw) * 1.1, M.z - Math.cos(M.yaw) * 1.1);
+  await expect.poll(() => require('./skin-support').spaceOn(a.page, 'mailbox'), { timeout: 15000 }).toBe(true);
+  const rows = a.page.locator('#plazaDialog .mailLetter');
+  const his = rows.filter({ hasText: '편지손님님' }); const theirs = rows.filter({ hasText: '· 주민' });
+  await expect(his).toHaveCount(1); await expect(theirs).toHaveCount(1);
+  await expect(theirs.locator('strong')).not.toContainText('님 ·'); await expect(theirs.getByRole('button', { name: '답장' })).toBeHidden();
+  await his.getByRole('button', { name: '답장' }).click();
+  await expect(a.page.locator('#plazaDialog select[aria-label="받는 사람"] option:checked')).toHaveText('편지손님');
+  await expect(a.page.locator('#plazaDialog textarea[aria-label="편지 내용"]')).toBeFocused();
   // her window: the letter in the box
   await a.page.evaluate((p) => window.PlazaDebug().teleport(p.x, p.z), T.PLAZA_C || { x: 0, z: 0 });
   for (const w of [a, b]) await expectNoScriptError(w.page);
