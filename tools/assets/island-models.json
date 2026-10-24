@@ -7701,6 +7701,124 @@
       "lowSrc": "jail67:02. Low/npc_warden_low.glb",
       "lowSha256": "7d6f0e6323ec276af6dfd7976ceaf3f0b2a7e963f67cf8443525eb6953dd8891",
       "precompressed": false
+    },
+    {
+      "out": "home-v1/home_floor_boards_s4__oak.glb",
+      "src": "home58:01. High/home_floor_boards_s4__oak.glb",
+      "sha256": "359bcba1188004631bd6991e14e20abac6a6b02cacebd86ab6a5f336ce9cf2fd",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_boards_s4__walnut.glb",
+      "src": "home58:01. High/home_floor_boards_s4__walnut.glb",
+      "sha256": "4f73b1937c9ed3f0962fffe6152c83adff9d2f08405d7610000d9fb672a2c004",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_boards_s4__birch.glb",
+      "src": "home58:01. High/home_floor_boards_s4__birch.glb",
+      "sha256": "27a34099437fe7916cb53d83c8a61afabcdee130290d03e703fc9f9f8d051be5",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_tiles_s4__mint.glb",
+      "src": "home58:01. High/home_floor_tiles_s4__mint.glb",
+      "sha256": "5cdb618696c0b9c841ce4a1fa618857e88c2e428a8f26ef59ac4c4910838c941",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_tiles_s4__pink.glb",
+      "src": "home58:01. High/home_floor_tiles_s4__pink.glb",
+      "sha256": "7313f57fc577b79348ebdf2f8cc293894efc53d1d4378c37b25fcfdc89d1a09d",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_manor2__red.glb",
+      "src": "home58:01. High/home_manor2__red.glb",
+      "sha256": "a51732fb39c781ee2919f590d407656aa7ab8ed389f177abc0e28ff4f76d701c",
+      "lowSrc": "home58:02. Low/home_manor2__red_low.glb",
+      "lowSha256": "2c661007335892411384c8f478429e90fac05b40cd8b03dd068f0eb31524d199",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_manor2__blue.glb",
+      "src": "home58:01. High/home_manor2__blue.glb",
+      "sha256": "6daba16d3f5187e2717b275421b40165c5e64a56a0a18d131aecc3e6c217bc8a",
+      "lowSrc": "home58:02. Low/home_manor2__blue_low.glb",
+      "lowSha256": "58f82fc52e810abf19f8ec0ef35d80b67f0ceceb4a3a38e5a1b22f8c72ce58b1",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_manor2__green.glb",
+      "src": "home58:01. High/home_manor2__green.glb",
+      "sha256": "8567c25ac06a8ac97e248ddc17920a3f23cdfc78a6dd19f027d401c1feb55180",
+      "lowSrc": "home58:02. Low/home_manor2__green_low.glb",
+      "lowSha256": "58e1b563943e3579aab73df8cbfaefb22e40023aa42525fac0613af81538f2da",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_manor2__brown.glb",
+      "src": "home58:01. High/home_manor2__brown.glb",
+      "sha256": "f92acbee5f6649b1177305ae576d50e501548eb12eb2427bf1669a9f16d2e186",
+      "lowSrc": "home58:02. Low/home_manor2__brown_low.glb",
+      "lowSha256": "693bccac123db5dbaa98e05d95c88fba46682130c2f58408693f4335a9c8ce8b",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_stairs_in__oak.glb",
+      "src": "home58:01. High/home_stairs_in__oak.glb",
+      "sha256": "1dcee920861caf3aacb63c8fe860baeca658ee12e81b1e3bf5502ad98bfd7ed5",
+      "lowSrc": "home58:02. Low/home_stairs_in__oak_low.glb",
+      "lowSha256": "b216bcbdc26f27c1f1280a561754dd919a18f949dd4c97fe3f165c5413ae43ed",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_stairs_in__walnut.glb",
+      "src": "home58:01. High/home_stairs_in__walnut.glb",
+      "sha256": "e4166d046f7fa0b670fa46e3035f50e23279485bc6db1f49b55ee6668b8e670b",
+      "lowSrc": "home58:02. Low/home_stairs_in__walnut_low.glb",
+      "lowSha256": "3700139ef95191ba1660d2c806f29f3cb284ef7e4e845fc9bc6e8accec1c5293",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_upper_room__base.glb",
+      "src": "home58:01. High/home_upper_room__base.glb",
+      "sha256": "8000e695e5529b71d8bd6bf64f8207c628e26aa5874caac1fc93d6d04752324d",
+      "lowSrc": "home58:02. Low/home_upper_room__base_low.glb",
+      "lowSha256": "ddf19b5af18f964b411d2c35e929dba8a8aa204cf89f181d37b9da913a72c62d",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper_s4__cream.glb",
+      "src": "home58:01. High/home_wallpaper_s4__cream.glb",
+      "sha256": "e1936b7877fe72268060f98543b2672df15c41f81b52bda2e777ce477c394887",
+      "lowSrc": "home58:02. Low/home_wallpaper_s4__cream_low.glb",
+      "lowSha256": "d17a1d0f78018fa73299687d55e826f41567e6ec7eb692b971b479c4c72f38c8",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper_s4__mint.glb",
+      "src": "home58:01. High/home_wallpaper_s4__mint.glb",
+      "sha256": "9a2b01dd7c5c1ba510922e7fde82ff269681ac539f2b9572ced224c79e39bcf2",
+      "lowSrc": "home58:02. Low/home_wallpaper_s4__mint_low.glb",
+      "lowSha256": "31e19e2a432bd1a933fe1abad794b25be1da9350a7e5714e6c29a153fae78138",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper_s4__pink.glb",
+      "src": "home58:01. High/home_wallpaper_s4__pink.glb",
+      "sha256": "a4aba379e6939e24ca8b871140ca5fb4a35393b6d0209d7ae4bf2b2065e50b8b",
+      "lowSrc": "home58:02. Low/home_wallpaper_s4__pink_low.glb",
+      "lowSha256": "bde297dd796cf2250de087ae7591fd2d30edb093fc17892cb260f5ed364a730a",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper_s4__sky.glb",
+      "src": "home58:01. High/home_wallpaper_s4__sky.glb",
+      "sha256": "4d76c739ea9e4c24ce433304b94b39ca0434bd3bbfe4cb2b5a96eddad594723c",
+      "lowSrc": "home58:02. Low/home_wallpaper_s4__sky_low.glb",
+      "lowSha256": "60fa0ee009d9148a5436099bf8f11de527acf297388db4ad0bee64b0901a6ec0",
+      "precompressed": true
     }
   ],
   "sources": {

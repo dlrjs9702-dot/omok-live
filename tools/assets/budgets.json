@@ -491,6 +491,38 @@
       "triangles": 5728,
       "sourceSha256": "f00d871825c4e64f4eabc0c1829f62919674c4f8188994c07a57a2977bdc058b",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24: realism over the budget -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+    },
+    "home-v1/home_manor2__red.glb": {
+      "triangles": 20000,
+      "reason": "R8 내 집 4단계 큰 집 2층 외관 9.4x6.6 m 2층·발코니 (assets 58 상한 20,000)"
+    },
+    "home-v1/home_manor2__red_low.glb": {
+      "triangles": 9000,
+      "reason": "R8 내 집 4단계 외관 Low (assets 58 상한 9,000)"
+    },
+    "home-v1/home_manor2__blue.glb": {
+      "triangles": 20000,
+      "reason": "R8 내 집 4단계 큰 집 2층 외관 9.4x6.6 m 2층·발코니 (assets 58 상한 20,000)"
+    },
+    "home-v1/home_manor2__blue_low.glb": {
+      "triangles": 9000,
+      "reason": "R8 내 집 4단계 외관 Low (assets 58 상한 9,000)"
+    },
+    "home-v1/home_manor2__green.glb": {
+      "triangles": 20000,
+      "reason": "R8 내 집 4단계 큰 집 2층 외관 9.4x6.6 m 2층·발코니 (assets 58 상한 20,000)"
+    },
+    "home-v1/home_manor2__green_low.glb": {
+      "triangles": 9000,
+      "reason": "R8 내 집 4단계 외관 Low (assets 58 상한 9,000)"
+    },
+    "home-v1/home_manor2__brown.glb": {
+      "triangles": 20000,
+      "reason": "R8 내 집 4단계 큰 집 2층 외관 9.4x6.6 m 2층·발코니 (assets 58 상한 20,000)"
+    },
+    "home-v1/home_manor2__brown_low.glb": {
+      "triangles": 9000,
+      "reason": "R8 내 집 4단계 외관 Low (assets 58 상한 9,000)"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
