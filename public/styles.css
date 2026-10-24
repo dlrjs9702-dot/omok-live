@@ -2521,3 +2521,56 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .plazaDialog.boardMode{background-image:radial-gradient(circle at 20% 30%,rgba(90,55,25,.35) 0 1px,transparent 1.6px),radial-gradient(circle at 70% 80%,rgba(255,228,185,.28) 0 1px,transparent 1.8px),radial-gradient(circle at 45% 55%,rgba(110,70,35,.3) 0 1.3px,transparent 2.2px),radial-gradient(circle at 85% 15%,rgba(80,45,20,.25) 0 .8px,transparent 1.4px);background-size:7px 9px,11px 13px,17px 19px,23px 29px;background-position:0 0,4px 7px,9px 3px,13px 17px}.plazaDialog.mailMode .mailLetter{position:relative;padding-right:64px}
 .plazaDialog.mailMode .mailLetter::before{content:"✉";position:absolute;left:-2px;top:-12px;font-size:1.1rem;color:#9a5b2c;background:var(--isle-paper);border-radius:50%;line-height:1;padding:2px}
 .mailStamp{position:absolute;top:8px;right:10px;width:40px;height:46px;display:grid;place-items:center;background:var(--stamp,#c98a1e);color:#fff;font-size:.7rem;font-weight:900;border-radius:2px;outline:2px dashed #fffdf6;outline-offset:-4px;transform:rotate(4deg);box-shadow:0 1px 3px rgba(74,56,40,.3)}
+/* 창 3단계 (gamecenter-notes docs/dialogue-box-redesign-20261025.md): 가방 = 천 주머니, 가게 = 나무 선반 위 가격표, 관공서 창구 = 말풍선 + 도장 칸 종이, 기부함 = 나무 안내판, 섬의 알림 = 위에서 내려오는 쪽지 */
+:root{--isle-btn:#9c5f14;--isle-wood:#9b6a3f;--isle-wood-dark:#6e4728}
+#islandBagDialog{background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(120,90,50,.07) 0 1px,transparent 1px 4px) #efe3cc;color:var(--isle-ink);border:2px solid #b49a74;outline:2px dashed #c4a77d;outline-offset:-9px}
+#islandBagDialog>.recordsDialogHead{background:#8a5f3a;border-bottom:3px double #e9d6b4;border-radius:20px 20px 0 0}
+#islandBagDialog>.recordsDialogHead .ghost{background:#fff6e3;color:var(--isle-ink);border:1px solid #d9c3a0}
+#islandBagDialog>.recordsDialogHead .ghost.selected{outline:2px solid #fff6e3;background:#f2b544}
+#islandBagDialog .islandBagSlot{background:#f8eedb;border:2px dashed #c4a77d;border-radius:10px 10px 18px 18px;box-shadow:inset 0 6px 8px -6px rgba(110,71,40,.35)}
+#islandBagDialog .islandBagSlot small{color:var(--isle-ink)}
+#islandBagDialog .islandBagSlot span{color:#6b5640}
+#islandBagDialog .islandDexCell{background:#f8eedb;border:1px dashed #c4a77d;color:var(--isle-ink)}
+.plazaDialog.shopMode{background:var(--isle-wood) repeating-linear-gradient(180deg,transparent 0 118px,rgba(60,35,15,.55) 118px 121px,#b98a5a 121px 128px,rgba(60,35,15,.35) 128px 132px);border:8px solid var(--isle-wood-dark);color:var(--isle-ink)}
+.plazaDialog.shopMode .recordsDialogHead{background:var(--isle-wood-dark);color:#fff6e3;border:0}
+.plazaDialog.shopMode .recordsDialogHead .ghost{background:#fff6e3;color:var(--isle-ink);border:1px solid #d9c3a0}
+.plazaDialog.shopMode .plazaDialogBody{background:transparent;grid-template-columns:1fr}
+.plazaDialog.shopMode .goodCard,.plazaDialog.shopMode .myPetRow{position:relative;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:10px;box-shadow:0 4px 0 rgba(60,35,15,.35);transition:transform .15s ease,box-shadow .15s ease}
+.plazaDialog.shopMode .goodCard{justify-self:center;width:min(380px,100%);padding:22px 20px 16px}
+.plazaDialog.shopMode .goodCard::before,.plazaDialog.shopMode .myPetRow::before{content:"";position:absolute;top:8px;left:50%;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--isle-wood);box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+.plazaDialog.shopMode .myPetRow::before{top:50%;left:12px;margin:-5px 0 0}
+.plazaDialog.shopMode .goodCard:hover,.plazaDialog.shopMode .goodCard:focus-within,.plazaDialog.shopMode .myPetRow:hover,.plazaDialog.shopMode .myPetRow:focus-within{transform:translateY(-4px);box-shadow:0 9px 10px rgba(60,35,15,.35)}
+.plazaDialog.shopMode .goodCard strong{font-size:1.05rem}
+.plazaDialog.shopMode .lookMeta{color:var(--isle-soft)}
+.plazaDialog.shopMode .petCatalog{grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:10px}
+.plazaDialog.shopMode .petCatalog>.lookMeta{grid-column:1/-1;margin:0;color:#fff6e3}
+.plazaDialog.shopMode .myPetRow{padding:10px 10px 10px 30px;min-height:52px}.plazaDialog.shopMode .myPetRow button{flex:none;white-space:nowrap}
+.plazaDialog.shopMode button.primary,.recordsDialog.counterMode button.primary,.recordsDialog.counterMode button.secondary,#donationDialog #donationSubmit{background:var(--isle-btn);color:#fff;border:0}
+.plazaDialog.shopMode button.secondary,.plazaDialog.shopMode button.ghost,.recordsDialog.counterMode button.ghost,#donationDialog .donationQuick .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+.plazaDialog.shopMode input{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+.recordsDialog.counterMode{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+.recordsDialog.counterMode>.recordsDialogHead{background:none;color:var(--isle-ink);border-bottom:1px dashed var(--isle-line)}
+.recordsDialog.counterMode>.recordsDialogHead h2{color:var(--isle-ink);display:flex;align-items:center;gap:10px}
+.recordsDialog.counterMode>.recordsDialogHead h2::after{content:"접수";display:inline-grid;place-items:center;width:42px;height:42px;border:2px dashed #c0453a;border-radius:6px;color:#b3261e;font-size:.72rem;font-weight:900;transform:rotate(-6deg)}
+.recordsDialog.counterMode>.recordsDialogHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+.recordsDialog.counterMode>.recordsDialogHead .skinShopBalance{color:var(--isle-ink)}
+.counterSay{position:relative;margin:0 16px 14px;padding:10px 14px;background:#fff;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:18px;font-size:.95rem;line-height:1.5;box-shadow:0 3px 8px rgba(90,70,50,.12)}
+.counterSay::before{content:"";position:absolute;left:26px;top:-9px;width:16px;height:16px;background:#fff;border-left:1px solid var(--isle-line);border-top:1px solid var(--isle-line);transform:rotate(45deg)}
+.recordsDialog.counterMode .islandPlaceRow,.recordsDialog.counterMode .bankSums>div,.recordsDialog.counterMode .islandTaxRow{background:#fffdf6;border:1px solid var(--isle-line);color:var(--isle-ink)}
+.recordsDialog.counterMode .islandPlaceRow strong,.recordsDialog.counterMode .bankSums strong,.recordsDialog.counterMode .islandTaxRow p,.recordsDialog.counterMode .donationMine{color:#8a4b00}
+.recordsDialog.counterMode .bankSums small,.recordsDialog.counterMode .smallMuted,.recordsDialog.counterMode .skinShopStatus{color:var(--isle-soft)}
+.recordsDialog.counterMode input{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+#donationDialog{background:#8b5e34 repeating-linear-gradient(180deg,transparent 0 46px,rgba(60,35,15,.4) 46px 48px);border:8px solid #5e3d22;color:#fff1c9}
+#donationDialog>.recordsDialogHead{background:#805838;border-bottom:0;justify-content:center;gap:14px}
+#donationDialog>.recordsDialogHead h2{padding:4px 16px;background:#fff6e3;color:var(--isle-ink);border-radius:6px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+#donationDialog>.recordsDialogHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+#donationDialog .donationMine{color:#fff1c9}
+#donationDialog .donationRow{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:4px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+#donationDialog .donationRow.me{border:2px solid #f2b544}
+#donationDialog .emptyState,#donationDialog .smallMuted,#donationDialog .skinShopStatus{color:#f3e3c3}
+#donationDialog .donationForm input{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode .toast{top:max(14px,env(safe-area-inset-top));bottom:auto;max-width:min(60vw,440px);background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:4px;padding:14px 18px 12px;box-shadow:0 8px 18px rgba(60,40,20,.3);transform:translateX(-50%) rotate(-1deg);animation:isleNoteDrop .45s cubic-bezier(.2,1.4,.4,1)}
+body.plazaMode .toast::before{content:"";position:absolute;left:50%;top:-8px;width:64px;height:16px;margin-left:-32px;background:rgba(242,181,68,.55);transform:rotate(3deg)}
+@keyframes isleNoteDrop{from{transform:translateX(-50%) translateY(-120%) rotate(-6deg);opacity:0}to{transform:translateX(-50%) rotate(-1deg);opacity:1}}
+@media(prefers-reduced-motion:reduce){body.plazaMode .toast{animation:none}.plazaDialog.shopMode .goodCard,.plazaDialog.shopMode .myPetRow{transition:none}}
+@media(max-width:600px){body.plazaMode .toast{top:calc(env(safe-area-inset-top) + 140px);max-width:calc(100vw - 32px)}} /* (a narrow phone: under the menu and the minimap) */

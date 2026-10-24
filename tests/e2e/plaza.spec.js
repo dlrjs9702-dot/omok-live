@@ -940,11 +940,13 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:desk');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
+  await expect(page.locator('#islandPlaceDialog.counterMode .counterSay')).toContainText('정산해 드려요'); // (창 3단계: the clerk's words in a speech bubble)
   await page.locator('#islandPlaceSubmit').click();
   await expect(page.locator('#islandPlaceStatus')).toContainText('+14,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000); // v1.10.35 단가: 쓰레기 1,000 × 4 + 지갑 10,000
   await page.locator('#islandPlaceCloseBtn').click();
+  await expect(page.locator('#islandPlaceDialog .counterSay')).toHaveCount(0); await expect(page.locator('#islandPlaceDialog')).not.toHaveClass(/counterMode/);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().z - window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil').z)).toBeGreaterThan(0.5); // (stood up, back into the hall -- not behind the desk)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (the stand-up motion done)
   // (달마루섬 5단계) the fourth window, 개명 신청: the 작명소's window from its chair

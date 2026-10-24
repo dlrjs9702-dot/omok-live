@@ -1636,7 +1636,7 @@
     canvas.addEventListener('pointerup', lift); canvas.addEventListener('pointercancel', lift);
   }
   function openPlazaWindow(title, nodes) {
-    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
+    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode', 'shopMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
     // the earlier one's content in it; whatever is not part of this window goes back home first)
@@ -2799,7 +2799,7 @@
     });
     const no = document.createElement('button'); no.type = 'button'; no.className = 'secondary'; no.textContent = '그만두기'; no.addEventListener('click', () => plazaDialog.close());
     row.append(go, no); adoptCard.replaceChildren(name, what, input, row);
-    openPlazaWindow('펫샵', [adoptCard]);
+    openPlazaWindow('펫샵', [adoptCard]); plazaDialog.classList.add('shopMode'); // (창 3단계: a price tag on the shelf)
   }
   // (문제 기록 3회차 21) the counter's catalog: each transformation small and 메타몽, one of each -- a name, 「데려가기」, and
   // it walks with me at once; an IP one can never be given away
@@ -2822,7 +2822,7 @@
       });
       row.append(label, b); return row;
     }));
-    openPlazaWindow('펫샵 · 변신 펫', [catalogBox]);
+    openPlazaWindow('펫샵 · 변신 펫', [catalogBox]); plazaDialog.classList.add('shopMode');
   }
   // my pets (the 펫샵's, each its coat and name, and those bought before at the 잡화점): which walks with me
   const petsBox = document.createElement('div'); petsBox.className = 'myPets'; petsBox.id = 'myPets';
@@ -2873,7 +2873,7 @@
     });
     const no = document.createElement('button'); no.type = 'button'; no.className = 'secondary'; no.textContent = '그만두기'; no.addEventListener('click', () => plazaDialog.close());
     row.append(buy, no); furnitureCard.replaceChildren(name, what, row);
-    openPlazaWindow('가구점', [furnitureCard]);
+    openPlazaWindow('가구점', [furnitureCard]); plazaDialog.classList.add('shopMode');
   }
   // 가구 창고: what I bought, each turned round in 3D (the 꾸미기 창's preview) -- placed once 내 집 comes
   const storageBox = document.createElement('div'); storageBox.className = 'furnitureStorage'; storageBox.id = 'furnitureStorage';
@@ -3102,7 +3102,7 @@
         catch (error) { showToast(error.message, 4000); } finally { goodBusy = false; }
       }); row.append(b); }
     goodCard.replaceChildren(img, name, what, row);
-    openPlazaWindow('잡화점', [goodCard]);
+    openPlazaWindow('잡화점', [goodCard]); plazaDialog.classList.add('shopMode');
   }
   // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
   // where I stand now; the island's map is put away inside (body.townhallRoom)
@@ -3459,7 +3459,9 @@
   let counterSeat = null; // { door, dialog } while seated at a window
   const COUNTER_OPEN = { 'room:desk': () => openIslandPlace('office'), 'room:tax': () => openTax(), 'room:bank': () => openBank(), 'room:rename': () => openNaming() }; // (달마루섬 5단계: 개명 신청 = the 작명소)
   const counterDialogs = { 'room:desk': islandPlaceDialog, 'room:tax': taxDialog, 'room:bank': bankDialog, 'room:rename': document.getElementById('namingDialog') };
-  for (const [door, dialog] of Object.entries(counterDialogs)) dialog.addEventListener('close', () => { if (counterSeat?.door === door && !dialog.open) { counterSeat = null; plaza.controller?.talkCamera?.(false); plaza.controller?.standUp?.(); } });
+  // (창 3단계: the clerk's words in a speech bubble over the window's paper, its 접수 stamp box by the title)
+  const COUNTER_SAY = { 'room:desk': '어서 오세요. 주운 물건은 여기서 정산해 드려요.', 'room:tax': '세금 창구예요. 밀린 세금은 여기서 내시면 돼요.', 'room:bank': '예금 창구예요. 맡기시면 매일 자정에 이자가 붙어요.', 'room:rename': '개명 신청이요? 새 이름을 적어 주세요.' };
+  for (const [door, dialog] of Object.entries(counterDialogs)) dialog.addEventListener('close', () => { dialog.classList.remove('counterMode'); dialog.querySelector('.counterSay')?.remove(); if (counterSeat?.door === door && !dialog.open) { counterSeat = null; plaza.controller?.talkCamera?.(false); plaza.controller?.standUp?.(); } });
   async function sitDown(seat) {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -3468,9 +3470,12 @@
       const door = globalThis.IslandTerrain?.plazaProps().seats.find((x) => x.id === seat)?.door;
       if (door && COUNTER_OPEN[door]) {
         await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller?.pose?.()) }).catch(() => {}); // (seated: where the server checks the counter)
-        counterSeat = { door }; plaza.controller?.counterCamera?.(door); await COUNTER_OPEN[door]();
+        counterSeat = { door }; plaza.controller?.counterCamera?.(door);
+        const dialog = counterDialogs[door]; const say = document.createElement('p'); say.className = 'counterSay'; say.textContent = COUNTER_SAY[door];
+        dialog.querySelector('.counterSay')?.remove(); dialog.querySelector('.recordsDialogHead').after(say); dialog.classList.add('counterMode');
+        await COUNTER_OPEN[door]();
       }
-    } catch (error) { showToast(error.message); }
+    } catch (error) { for (const d of Object.values(counterDialogs)) if (!d.open) { d.classList.remove('counterMode'); d.querySelector('.counterSay')?.remove(); } showToast(error.message); }
   }
   // v1.10.44 다른 사람에게 SPACE: 인사 · 환호 · 게임 초대 (the game hall's room window, then the invite to them)
   let islandInviteTo = null;
