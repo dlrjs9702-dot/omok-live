@@ -1760,8 +1760,17 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 @media(max-width:520px){#roomView>.topbar{padding:7px 10px;margin-bottom:8px}#roomView .boardCard{padding:10px}}
 /* v1.10.63 주민 대화: a speech bubble at the bottom of the island (the island stays in sight above it), the speaker's
    name on a tag, lines one by one (app.js openTalk) */
-.plazaDialog.talkMode{width:min(760px,94vw);max-height:46vh;margin:auto auto max(18px,env(safe-area-inset-bottom));border-radius:22px;border:2px solid #60a5fa;background:rgba(15,23,42,.94);overflow:visible;padding:14px 18px 16px}
-.plazaDialog.talkMode::backdrop{background:transparent}
+/* 대화창 새 단장 (gamecenter-notes docs/dialogue-box-redesign-20261025.md): the island's common parts -- cream paper, brown
+   ink, a light brown line, a name tag pill, a choice -- and the talk bubble made of them (the boards and the other
+   windows follow in 2·3단계) */
+:root{--isle-paper:#fff6e3;--isle-ink:#5a4632;--isle-line:#d9c3a0;--isle-soft:#7d6852;--isle-tag:#8a6a4a;--isle-hover:#f7e7c6}
+.isle-paper{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:22px;box-shadow:0 10px 28px rgba(74,56,40,.22)}
+.isle-tag{display:inline-block;padding:4px 14px;border-radius:999px;background:var(--talk-tag,var(--isle-tag));color:#fff;font-weight:800}
+.isle-choice{display:block;width:100%;min-height:44px;text-align:left;padding:8px 14px;border-radius:14px;border:1px solid var(--isle-line);background:#fffaf0;color:var(--isle-ink);font-weight:700}
+@keyframes islePop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes isleBlink{50%{opacity:.25}}
+.plazaDialog.talkMode{width:min(640px,calc(100vw - 32px));max-height:46vh;margin:auto auto max(18px,env(safe-area-inset-bottom));border-radius:22px;border:1px solid var(--isle-line);background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 10px 28px rgba(74,56,40,.25);overflow:visible;padding:24px 22px 14px}
+.plazaDialog.talkMode::backdrop{background:rgba(40,28,16,.1)}
 /* 문제 기록 3회차 5 꾸미기: an edge strip over the room (right on a PC, the bottom on a phone), folded to its title */
 .fishArrows{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:3;display:grid;gap:10px;justify-items:center;padding:14px 18px;border-radius:18px;background:rgba(255,250,240,.95);border:3px solid #8a6a4a;box-shadow:0 8px 24px rgba(74,56,40,.28);max-width:calc(100% - 24px)}
 .fishArrows.hidden{display:none}
@@ -1787,31 +1796,36 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .plazaDialog.editMode.folded .homeEdit>:not(.homeEditFold){display:none}
 .homeEditFold{justify-self:end}
 @media (max-width:760px){.plazaDialog.editMode{width:auto;max-width:none;max-height:44dvh;margin:auto 8px max(8px,env(safe-area-inset-bottom))}}
-.plazaDialog.talkMode::after{content:"";position:absolute;left:46px;top:-11px;width:18px;height:18px;background:inherit;border-left:2px solid #60a5fa;border-top:2px solid #60a5fa;transform:rotate(45deg)}
-.plazaDialog.talkMode .recordsDialogHead h2{flex:0 1 auto;padding:3px 12px;border-radius:999px;background:#172554;color:#bfdbfe;font-size:.86rem}
-.plazaDialog.talkMode .recordsDialogHead{justify-content:space-between;background:none;border-bottom:1px solid #334155;padding:0 0 8px;margin:0 0 10px} /* A-6 대화창 통일: one bubble -- no wood bar over it */
-.plazaDialog.talkMode .recordsDialogHead .ghost{background:#1e293b;color:#cbd5e1;border-color:#334155}
+.plazaDialog.talkMode::after{content:"";position:absolute;left:calc(50% - 9px);top:-10px;width:18px;height:18px;background:var(--isle-paper);border-left:1px solid var(--isle-line);border-top:1px solid var(--isle-line);transform:rotate(45deg)} /* (the tail up toward the one speaking: the talk camera keeps them over the bubble's middle) */
+.plazaDialog.talkMode .recordsDialogHead h2{position:absolute;z-index:1;top:-15px;left:20px;margin:0;padding:4px 14px;border-radius:999px;background:var(--talk-tag,var(--isle-tag));color:#fff;font-size:.9rem;font-weight:800;box-shadow:0 2px 6px rgba(74,56,40,.25)}
+.plazaDialog.talkMode .recordsDialogHead{justify-content:flex-end;background:none;border:0;padding:0;margin:0;min-height:0} /* A-6 대화창 통일: one bubble -- no wood bar over it */
+.plazaDialog.talkMode .recordsDialogHead .ghost{position:absolute;top:6px;right:8px;background:transparent;color:var(--isle-soft);border-color:transparent}
 .plazaDialog.talkMode .plazaDialogBody{display:block}
 .plazaDialog.talkMode .lostRequest{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.plazaDialog.talkMode .lostRequestLine,.plazaDialog.talkMode .lookMeta{flex:1 0 100%;font-size:1rem}
+.plazaDialog.talkMode .lostRequestLine,.plazaDialog.talkMode .lookMeta{flex:1 0 100%;font-size:1.02rem;line-height:1.7;color:var(--isle-ink)}
+.plazaDialog.talkMode .lookMeta.talkMeta{font-size:.78rem;line-height:1.4;color:var(--isle-soft)}
+.talkHearts{margin-left:2px;color:#d9930f}
 .plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
 .lostRequestLine.talkPending{display:none}
-/* A-6 주민 대화 선택지: a list under the words, numbered for the keys (1~4) */
-.plazaDialog.talkMode .talkChoices{flex:1 0 100%;display:grid;gap:6px;counter-reset:choice;margin-top:4px}
-.plazaDialog.talkMode .lostRequest .talkChoices button{justify-self:stretch;text-align:left;margin:0;padding:8px 12px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#f8fafc;font-size:.95rem}
-.plazaDialog.talkMode .talkChoices button::before{counter-increment:choice;content:counter(choice) ". ";color:#93c5fd}
-.plazaDialog.talkMode .lostRequest .talkChoices button:hover,.plazaDialog.talkMode .lostRequest .talkChoices button:focus-visible{border-color:#60a5fa;background:#172554;outline:none}
-.plazaDialog.talkMode .lostRequest:has(.talkPending) .talkChoices{display:none}
-.plazaDialog.talkMode .lostRequest:has(.talkPending)::after{content:"▼ 다음 (Space · 터치)";flex:1 0 100%;text-align:right;font-size:.72rem;color:#94a3b8}
-@media(max-width:520px){.plazaDialog.talkMode{padding:10px 12px 12px}.plazaDialog.talkMode .lostRequestLine{font-size:.92rem}}
+/* A-6 주민 대화 선택지 → 대화창 새 단장: their own small bubble over the talk's right side once the words are out,
+   numbered for the keys (1~4), 44px rows for a finger */
+.plazaDialog.talkMode .talkChoices{position:absolute;right:10px;bottom:calc(100% + 16px);width:min(280px,calc(100vw - 52px));display:grid;gap:6px;counter-reset:choice;padding:10px;border-radius:18px;border:1px solid var(--isle-line);background:var(--isle-paper);box-shadow:0 8px 22px rgba(74,56,40,.22);animation:islePop .18s ease-out}
+.plazaDialog.talkMode .talkChoices::after{content:"";position:absolute;left:28px;bottom:-9px;width:16px;height:16px;background:var(--isle-paper);border-right:1px solid var(--isle-line);border-bottom:1px solid var(--isle-line);transform:rotate(45deg)}
+.plazaDialog.talkMode .lostRequest .talkChoices button{justify-self:stretch;min-height:44px;text-align:left;margin:0;padding:8px 14px;border-radius:14px;border:1px solid var(--isle-line);background:#fffaf0;color:var(--isle-ink);font-size:.95rem;font-weight:700}
+.plazaDialog.talkMode .talkChoices button::before{counter-increment:choice;content:counter(choice) ". ";color:var(--isle-soft)}
+.plazaDialog.talkMode .lostRequest .talkChoices button:hover,.plazaDialog.talkMode .lostRequest .talkChoices button:focus-visible{border-color:var(--talk-tag,var(--isle-tag));background:var(--isle-hover);outline:none}
+.plazaDialog.talkMode .lostRequest:has(.talkPending) .talkChoices,.plazaDialog.talkMode .lostRequest:has(.typing) .talkChoices{display:none}
+.plazaDialog.talkMode .lostRequest:has(.talkPending)::after{content:"▼";flex:1 0 100%;text-align:right;font-size:.8rem;color:var(--isle-soft);animation:isleBlink 1s steps(2) infinite}
+@media(max-width:520px){.plazaDialog.talkMode{padding:22px 14px 12px}.plazaDialog.talkMode .lostRequestLine{font-size:.95rem}}
+@media(prefers-reduced-motion:reduce){.plazaDialog.talkMode .talkChoices,.plazaDialog.talkMode .lostRequest:has(.talkPending)::after{animation:none}}
 .lostRequest:focus{outline:none}
 /* v1.10.63 (사용자 2026-10-12): the open-rooms card keeps its padding in the 게임관 window too */
 .plazaDialogBody>.publicRoomsCard{padding:22px}
 @media(max-width:520px){.plazaDialogBody>.publicRoomsCard{padding:14px}}
 /* 주민 대화: what Space/Enter will press is always ringed -- the focused answer or 닫기, or (with the bubble itself
    focused) its first answer */
-.plazaDialog.talkMode button:focus{outline:3px solid #60a5fa;outline-offset:3px;box-shadow:0 0 0 6px rgba(96,165,250,.28)}
-.plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid #60a5fa;outline-offset:3px;box-shadow:0 0 0 6px rgba(96,165,250,.28)}
+.plazaDialog.talkMode button:focus{outline:3px solid var(--talk-tag,var(--isle-tag));outline-offset:2px;box-shadow:none}
+.plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid var(--talk-tag,var(--isle-tag));outline-offset:2px;box-shadow:none}
 /* v1.10.63 아이디·비밀번호 로그인: 로그인/회원가입 tabs, 내 계정, the small 관리자 line at the bottom */
 .accountTabs{margin-top:22px}
 .accountForm{margin-top:14px}
