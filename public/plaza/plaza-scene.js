@@ -1003,7 +1003,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     statueKey = key; statueList = next;
     for (const c of statueChars.splice(0)) { occlusion.remove(c.root); assets.release(c); const i = buildingRoots.indexOf(c.root); if (i >= 0) buildingRoots.splice(i, 1); }
     statuePlates.length = 0;
-    for (const r of statueRoots.splice(0)) { r.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } }); r.parent?.remove(r); }
+    // (Codex 검토 P3: a plaque's own face -- its material and letters' texture -- let go too; the shared stone stays)
+    const dropTexture = (t) => { if (!t) return; t.dispose(); const i = textures.indexOf(t); if (i >= 0) textures.splice(i, 1); };
+    for (const r of statueRoots.splice(0)) { const own = Boolean(r.userData.plaque); /* (the statues' figures are the asset cache's: their materials stay) */ r.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); if (own && o.material?.map) { dropTexture(o.material.map); o.material.dispose(); } } if (o.isSprite) { dropTexture(o.material.map); o.material.dispose(); } }); r.parent?.remove(r); }
     // v1.10.30 기부 동상 (사용자 결정 2026-10-05): the donors as they look -- their own colours, hair, clothes and face, the
     // common-rig character when they have it (no gold or silver any more) -- at landmark size: the 1st STATUE_SIZE times
     // a player, the 2nd 70% of that, waving, frozen. Over everyone's heads they never stand in the way (the plinth's
@@ -1369,7 +1371,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // 문제 기록 9: Q nearer, E further -- a wheel notch's step, kept the same way (gc.islandZoom); held, it goes on
     if ((event.code === 'KeyQ' || event.code === 'KeyE') && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); setZoom(zoomDist * Math.exp((event.code === 'KeyQ' ? -100 : 100) * 0.0012)); return; }
     if (event.code === 'KeyB' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); const r = toggleBike(); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return; } // (자전거)
-    if (event.code === 'KeyR' && grab && !event.repeat) { event.preventDefault(); turnGrab(); return; } // (2회차 11: turn the held piece)
+    if (event.code === 'KeyR' && grab && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) { // (Codex 검토 P3: Ctrl+R still reloads) event.preventDefault(); turnGrab(); return; } // (2회차 11: turn the held piece)
     if (event.code === 'Space' && (event.target === document.body || host.contains(event.target))) {
       event.preventDefault();
       if (!event.repeat) actDown(); // (2회차 11: held before a piece of my house it grabs it -- actUp on the key's release)
@@ -1797,8 +1799,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const r = wanderers.find((x) => x.n === n); if (!r) return; const { c } = r; const m = me.root.position;
     c.hitUntil = performance.now() + 2700; c.hitYaw = Math.atan2(m.x - c.root.position.x, m.z - c.root.position.z);
     c.anim?.play('hitReact'); say(c, ANGRY_WORDS[Math.floor(Math.random() * ANGRY_WORDS.length)]);
-    setTimeout(() => { if (c.hitUntil > performance.now()) c.anim?.loop?.('angry'); }, 700);
-    setTimeout(() => { c.anim?.release?.(); c.rejoin = 0.6; }, 2700);
+    const hitN = (c.hitN = (c.hitN || 0) + 1); // (Codex 검토 P3: a second hit's anger is let go by its own timer, not the first's)
+    setTimeout(() => { if (c.hitN === hitN && c.hitUntil > performance.now()) c.anim?.loop?.('angry'); }, 700);
+    setTimeout(() => { if (c.hitN !== hitN) return; c.anim?.release?.(); c.rejoin = 0.6; }, 2700);
   }
   // B 47 반려동물: one small animal walks a little behind and beside its owner (me or another player), Walk while it
   // catches up, Sit when the owner sits, Idle otherwise; its name over it. Far off (a door, a ride) it is simply there.
@@ -2385,8 +2388,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function settleGrab() { // the slid piece onto its step (or the wall), the server told; back where it was if it may not stand there
     const piece = pieceOf(grab.uid); if (!piece || !grab.off) return null;
     const at = heldAt(piece); const next = { ...piece, ...HOME.snapPos(at, homeHere.home.stage) }; grab.off = 0;
-    const why = next.x === piece.x && next.z === piece.z ? null : moveHeld(next);
-    if (why) { const v = homeRoomV.pieces.get(piece.uid); v?.root.position.set(piece.x, 0.04, piece.z); }
+    const same = next.x === piece.x && next.z === piece.z; const why = same ? null : moveHeld(next);
+    if (why || same) { const v = homeRoomV.pieces.get(piece.uid); v?.root.position.set(piece.x, 0.04, piece.z); } // (Codex 검토 #11: a little slide that snaps back to its own step -- the model there too, nothing saved)
     standAtGrab(); return why;
   }
   function endGrab() { if (!grab) return; if (pieceOf(grab.uid)) settleGrab(); grab = null; if (me.anim?.held?.startsWith('furn')) me.anim.release(); onGrab?.(false); }

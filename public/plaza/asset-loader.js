@@ -583,7 +583,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     // file's meshes bound by joint name to the High one's bones, one mixer for both, the pair switched by distance as a
     // worn character's (wearLod; a phone's lower tier sooner); a rigged model's two copies cannot be a THREE.LOD)
     const lowUrl = hit.entry.motions ? hit.entry.lowUrl : null;
-    Promise.all([cache.get(hit.entry.url), lowUrl ? cache.get(lowUrl) : null, ...clipUrls.map((url) => cache.get(url))]).then(([gltf, lowGltf, ...motions]) => {
+    Promise.all([cache.get(hit.entry.url), lowUrl ? cache.get(lowUrl).catch(() => null) : null, ...clipUrls.map((url) => cache.get(url))]).then(([gltf, lowGltf, ...motions]) => { // (Codex 검토 #10: a Low that fails -- the High alone)
       if (disposed || c.assetPending !== hit.id || !c.root.parent) return;
       if (!gltf) { shown[hit.id] = 'procedural'; return; }
       const object = instance(gltf, hit.entry);
