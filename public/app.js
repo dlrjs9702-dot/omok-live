@@ -1496,9 +1496,9 @@
     { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
     { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
-    { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard'), titleHall()]) }, // v1.10.89 + 칭호 명예의 전당
+    { id: 'board', name: '게시판', open: () => { openPlazaWindow('게시판', [byId('announcementsCard'), titleHall()]); plazaDialog.classList.add('boardMode'); } }, // (창 2단계: a cork board) // v1.10.89 + 칭호 명예의 전당
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
-    { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
+    { id: 'attendance', name: '출석', open: () => openAttendanceCard() }, // (창 2단계: a stamp card)
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
     { id: 'naming', name: '개명소', open: () => openNaming() }, // v1.10.9 작명소
@@ -1512,6 +1512,29 @@
   // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): on the plaza board under the notices, folded until opened --
   // a title picked, its holders from the first recorded week as 1대, 2대 ... (the current one marked), 20 at a time.
   // It lives in a hidden holder off the board, so the window puts it back there on closing like any other card.
+  // 창 2단계 출석 (gamecenter-notes docs/dialogue-box-redesign-20261025.md): a stamp card -- this month's days in round
+  // spaces, a stamp on each day attended; today's space waits for its stamp (the button), then takes it with a little press
+  const attendanceCard = document.createElement('section'); attendanceCard.className = 'isle-paper stampCard'; attendanceCard.id = 'stampCard';
+  { const home = document.createElement('div'); home.hidden = true; document.body.append(home); home.append(attendanceCard); } // (a home to go back to, as the other cards)
+  async function openAttendanceCard(stampedNow = false) {
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    attendanceCard.replaceChildren(el('p', 'emptyState', '불러오는 중입니다.'));
+    if (!plazaDialog.open || !plazaDialog.classList.contains('stampMode')) { openPlazaWindow('출석 도장', [attendanceCard]); plazaDialog.classList.add('stampMode'); }
+    try {
+      const d = await api('/api/points/attendance/month'); const [, mm] = d.month.split('-'); const done = new Set(d.days);
+      const head = el('div', 'stampHead'); head.append(el('strong', '', `${Number(mm)}월 출석 도장`), el('span', 'stampCount', `${d.days.length}일 / ${d.length}일`));
+      const grid = el('div', 'stampGrid'); for (const w of ['일', '월', '화', '수', '목', '금', '토']) grid.append(el('span', 'stampWeekday', w));
+      for (let k = 0; k < d.firstWeekday; k += 1) grid.append(el('span', 'stampBlank'));
+      for (let day = 1; day <= d.length; day += 1) {
+        const cell = el('span', `stampDay${done.has(day) ? ' stamped' : ''}${day === d.today ? ' today' : ''}${day > d.today ? ' later' : ''}${stampedNow && day === d.today ? ' justNow' : ''}`);
+        cell.append(el('span', 'stampNum', String(day))); if (done.has(day)) cell.append(el('span', 'stampInk', '참 잘했어요'));
+        cell.setAttribute('aria-label', `${day}일${done.has(day) ? ' 출석' : ''}`); grid.append(cell);
+      }
+      const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(50000).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
+      btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); openAttendanceCard(true); });
+      attendanceCard.replaceChildren(head, grid, btn);
+    } catch (error) { attendanceCard.replaceChildren(el('p', 'emptyState', error.message)); }
+  }
   // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): today's pull and hand-in rankings (top 10 and mine), yesterday's
   // island pulls and today's weeds, yesterday's two best hand-ins, this week's hand-ins and last week's 제초왕
   let weedBoardCard = null;
@@ -1613,7 +1636,7 @@
     canvas.addEventListener('pointerup', lift); canvas.addEventListener('pointercancel', lift);
   }
   function openPlazaWindow(title, nodes) {
-    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
+    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
     // the earlier one's content in it; whatever is not part of this window goes back home first)
@@ -1868,7 +1891,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -3590,6 +3613,7 @@
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
       const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
       const head = el('div', 'mailHead'); const who = el('strong', '', islander ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
+      { const stamp = el('span', 'mailStamp', islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
       head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
@@ -3619,7 +3643,7 @@
       } catch (error) { status.textContent = error.message; send.disabled = false; }
     });
     box.append(el('h3', '', `받은 편지${d.unread ? ` (새 편지 ${d.unread})` : ''}`), list, el('h3', '', '편지 쓰기'), form);
-    openPlazaWindow('우체통', [box]);
+    openPlazaWindow('우체통', [box]); plazaDialog.classList.add('mailMode'); // (창 2단계: letter paper)
     mailUnread = 0;
   }
   async function sendIslandInvite() {

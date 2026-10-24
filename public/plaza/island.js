@@ -1003,13 +1003,13 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   let landImage = null;
   function dalmaruLand() {
     if (landImage) return landImage;
-    const D = T.dalmaru; const N = 200; const cv = document.createElement('canvas'); cv.width = N; cv.height = N; const g = cv.getContext('2d'); const img = g.createImageData(N, N);
+    const D = T.dalmaru; const N = 400; const cv = document.createElement('canvas'); /* (창 2단계 검토: 1 m a pixel, drawn smoothed -- the coast no longer in steps) */ cv.width = N; cv.height = N; const g = cv.getContext('2d'); const img = g.createImageData(N, N);
     const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
     const SEA_C = rgb(0x7fcbe9); const SAND = rgb(0xf1dfae); const GRASS = rgb(0x9fd67f); const ROCK = rgb(0xb7ad9e); const FRESH = rgb(0x5fb4e0);
+    const cliffs = new Uint8Array(200 * 200); for (let j = 0; j < 200; j += 1) for (let i = 0; i < 200; i += 1) cliffs[j * 200 + i] = cliffAt(-200 + i * 2 + 1, -200 + j * 2 + 1) > 0.5 ? 1 : 0; // (the cliffs on the old 2 m grid: the costly part, as before)
+    const at = (x, z) => { const cd = D.coastDist(x, z); return cd < 0 ? SEA_C : D.isWater(x, z) ? FRESH : cliffs[Math.min(199, Math.floor((z + 200) / 2)) * 200 + Math.min(199, Math.floor((x + 200) / 2))] ? ROCK : cd < 4 ? SAND : GRASS; };
     for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
-      const x = -200 + i * 2 + 1; const z = -200 + j * 2 + 1; const cd = D.coastDist(x, z);
-      const c = cd < 0 ? SEA_C : D.isWater(x, z) ? FRESH : cliffAt(x, z) > 0.5 ? ROCK : cd < 4 ? SAND : GRASS;
-      img.data.set([...c, 255], (j * N + i) * 4);
+      img.data.set([...at(-200 + i + 0.5, -200 + j + 0.5), 255], (j * N + i) * 4);
     }
     g.putImageData(img, 0, 0); landImage = cv; return cv;
   }

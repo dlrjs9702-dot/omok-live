@@ -28,7 +28,7 @@ const SURFACE = { // ... where it is a background, line, outline or shadow colou
 };
 // Dark backgrounds the light theme keeps on purpose outside GAME_ART: a game's own felt, board or screen and saturated
 // badges with light text on them (test/theme-light.test.js fails on any other dark background left as it was).
-const KEEP_DARK = /\.(baseball|twenty|sbo\b|rpg|reflex(View|Frame)\b|reflexCard|canvasWrap\.connectFour|stoneMini|brandMark|genderFace|badge-ribbon|pdBtn|dressChip|dressDots|dressGift|dressing>\.recordsDialogHead|dressRoom\)>\.recordsDialogHead|dressing input\.skinSearch)/; // (3-1 꾸미기 창: the wooden sign, the chip, the dots, the gift button)
+const KEEP_DARK = /\.(baseball|twenty|sbo\b|rpg|reflex(View|Frame)\b|reflexCard|canvasWrap\.connectFour|stoneMini|brandMark|genderFace|badge-ribbon|pdBtn|dressChip|dressDots|dressGift|dressing>\.recordsDialogHead|dressRoom\)>\.recordsDialogHead|dressing input\.skinSearch|plazaDialog\.boardMode)/; // (창 2단계: the board's wooden frame and its pins are a drawing) // (3-1 꾸미기 창: the wooden sign, the chip, the dots, the gift button)
 const RGB = { '15,23,42': 'f7efe1', '2,6,23': '3d2f20', '148,163,184': 'b39c7c', '96,165,250': '23806f', '71,85,105': 'c9b394', '30,64,175': '23806f' };
 const SURFACE_PROPS = /^(background|background-color|background-image|border|border-(top|right|bottom|left)(-color)?|border-color|outline|outline-color|box-shadow|fill|stroke)$/;
 const TEXT_PROPS = /^(color|caret-color|-webkit-text-fill-color)$/;
