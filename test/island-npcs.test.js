@@ -25,6 +25,43 @@ test('배회 NPC: 10명, 같은 시각이면 같은 자리, 설 수 있는 곳�
   }
 });
 
+// (주민 길 격자를 서버에서) the grid packed in 2 bits a cell, taken by another screen: the same grid and the same rounds,
+// with nothing made there but the connected parts; bytes of another size (another map) are refused
+test('주민 길 격자를 서버에서: 싸서 받은 화면도 같은 격자·같은 바퀴', () => {
+  const bytes = P.packGrid();
+  delete require.cache[require.resolve('../public/plaza/island-npcs.js')];
+  const Q = require('../public/plaza/island-npcs.js');
+  assert.equal(Q.hasGrid(), false);
+  assert.equal(Q.useGrid(bytes.slice(1)), false); assert.equal(Q.hasGrid(), false);
+  const t0 = performance.now(); assert.equal(Q.useGrid(bytes), true); const took = performance.now() - t0;
+  assert.ok(took < 200, `받아서 쓰기 ${Math.round(took)} ms`);
+  assert.deepEqual(Q.packGrid(), bytes);
+  for (let n = 0; n < P.COUNT; n += 1) assert.deepEqual(Q.round(n), P.round(n), `n${n}`);
+});
+
+// ... and the server hands it out: the same bytes (gzipped on the way), not sent again while unchanged (ETag 304), no login
+test('주민 길 격자 API: 서버가 만든 그대로, 같으면 304', { timeout: 60_000 }, async (t) => {
+  const fs = require('node:fs'); const os = require('node:os'); const path = require('node:path'); const net = require('node:net'); const { spawn } = require('node:child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'npc-grid-'));
+  const port = await new Promise((resolve) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
+  const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'), env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'grid-test', NODE_ENV: 'test' }, stdio: 'ignore' });
+  t.after(async () => {
+    if (proc.exitCode === null && proc.signalCode === null) { const exited = new Promise((resolve) => proc.once('exit', resolve)); proc.kill('SIGTERM'); await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5000).unref())]); }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  const base = `http://127.0.0.1:${port}`;
+  for (let i = 0; i < 200; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 100)); }
+  const res = await fetch(`${base}/api/island/npc-grid`, { headers: { 'Accept-Encoding': 'gzip' } });
+  assert.equal(res.status, 200); assert.equal(res.headers.get('content-encoding'), 'gzip');
+  // (as a page makes it: the train's stations and line clear their trees first -- island-train.js, loaded before
+  // island-npcs.js in index.html and by the server; this file's own P is made without it)
+  const { execFileSync } = require('node:child_process');
+  const asPage = execFileSync(process.execPath, ['-e', "require('./public/plaza/island-train.js'); process.stdout.write(Buffer.from(require('./public/plaza/island-npcs.js').packGrid()).toString('base64'))"], { cwd: path.resolve(__dirname, '..') }).toString();
+  assert.equal(Buffer.from(await res.arrayBuffer()).toString('base64'), asPage);
+  const again = await fetch(`${base}/api/island/npc-grid`, { headers: { 'If-None-Match': res.headers.get('etag') } });
+  assert.equal(again.status, 304);
+});
+
 test('배회 NPC: 서는 곳은 시설 입구에서 떨어져 있고, 왔던 곳으로 바로 돌아가지 않으며, 3~9초 쉰다', () => {
   for (let n = 0; n < P.COUNT; n += 1) {
     const r = P.round(n);

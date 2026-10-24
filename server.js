@@ -401,6 +401,20 @@ async function serveHwatu(req, res, relative) {
   return true;
 }
 
+// (주민 길 격자를 서버에서) the islanders' route grid as the server makes it for their rounds (island-npcs packGrid: 2 bits a
+// cell, gzipped): the screens take it instead of making it -- 1.5 s and more of a quick PC's page, far more on a weak phone.
+// It changes only with the island's code, so an ETag of its bytes (304 on a match), as the code files.
+let npcGrid = null;
+function serveNpcGrid(req, res) {
+  if (!npcGrid) { const raw = Buffer.from(IslandNpcs.packGrid()); npcGrid = { raw, gz: require('node:zlib').gzipSync(raw, { level: 9 }), etag: `"${crypto.createHash('sha1').update(raw).digest('hex').slice(0, 16)}"` }; }
+  const cache = { 'Cache-Control': 'no-cache', ETag: npcGrid.etag };
+  if (notModified(req, res, cache)) return;
+  const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  const body = gzip ? npcGrid.gz : npcGrid.raw;
+  res.writeHead(200, securityHeaders({ 'Content-Type': 'application/octet-stream', 'Content-Length': body.length, ...cache, Vary: 'Accept-Encoding', ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
+  res.end(body);
+}
+
 async function serveStatic(res, pathname, req = null) {
   const relative = pathname.replace(/^\//, '');
   if (!relative || relative.includes('..')) return false;
@@ -7200,6 +7214,7 @@ async function requestHandler(req, res) {
     // 달마루섬 5단계: the server's own island, told before the island's scripts load (island-map.js) -- a page on it never
     // loads twice to learn the map; on 지금 섬 nothing (the administrator's preview keeps its own way)
     if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end("self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n"); }
+    if (pathname === '/api/island/npc-grid') return serveNpcGrid(req, res);
     if (await serveVendor(req, res, pathname)) return;
     if (await serveStatic(res, pathname, req)) return;
   }

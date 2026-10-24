@@ -88,8 +88,12 @@
         const c = centre(i, j); if (Math.hypot(c.x - x, c.z - z) <= r + 0.2) cost[j * N + i] = 1;
       }
     }
-    // the connected parts (4 ways: a diagonal step needs both sides free, so it never joins two parts): a path between two
-    // parts is known to be none at once -- each failed search went over the whole island (the 아침 rounds by the pier, 9 s)
+    grid = { blocked, cost, comp: connect(blocked) }; building = null;
+    return true;
+  }
+  // the connected parts (4 ways: a diagonal step needs both sides free, so it never joins two parts): a path between two
+  // parts is known to be none at once -- each failed search went over the whole island (the 아침 rounds by the pier, 9 s)
+  function connect(blocked) {
     const comp = new Int32Array(N * N).fill(-1); const queue = new Int32Array(N * N);
     for (let s = 0, label = 0; s < N * N; s += 1) {
       if (blocked[s] || comp[s] >= 0) continue;
@@ -100,7 +104,22 @@
       }
       label += 1;
     }
-    grid = { blocked, cost, comp }; building = null;
+    return comp;
+  }
+  // (주민 길 격자를 서버에서) the grid in 2 bits a cell -- blocked, and on a walk (cost 1, else 2.4) -- for the server to hand
+  // to the screens (/api/island/npc-grid), which then make nothing but the connected parts (a few ms)
+  function packGrid() {
+    buildGrid(); const out = new Uint8Array(Math.ceil((N * N) / 4));
+    for (let id = 0; id < N * N; id += 1) out[id >> 2] |= ((grid.blocked[id] ? 1 : 0) | (grid.cost[id] === 1 ? 2 : 0)) << ((id & 3) * 2);
+    return out;
+  }
+  // -> false (and nothing changed) when the bytes are not this island's size (another map: the administrator's preview)
+  function useGrid(bytes) {
+    if (grid) return true;
+    if (!bytes || bytes.length !== Math.ceil((N * N) / 4)) return false;
+    const blocked = new Uint8Array(N * N); const cost = new Float32Array(N * N);
+    for (let id = 0; id < N * N; id += 1) { const v = (bytes[id >> 2] >> ((id & 3) * 2)) & 3; blocked[id] = v & 1; cost[id] = v & 2 ? 1 : 2.4; }
+    grid = { blocked, cost, comp: connect(blocked) }; building = null;
     return true;
   }
   // `extra` (a screen's own path to an event's place): more cells it may not step on -- what the shared grid does not
@@ -472,5 +491,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));
