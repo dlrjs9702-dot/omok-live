@@ -103,10 +103,10 @@
       const p = 0.5 + 0.5 * Math.cos((Math.PI * d) / b.r); // (1 in the middle, 0 at the rim, smooth both ends)
       if (b.kind === 'mound') add += b.h * p;
       else if (b.kind === 'hollow') add -= b.h * p;
-      else if (b.kind === 'terrace') { // flat steps, each a grass bank up (as steep as one may walk: 0.75 on average) -- the outer one by the rim
-        const rise = b.h / b.steps; const bw = rise / 0.75; for (let k = 0; k < b.steps; k += 1) { const at = b.r - bw / 2 - 0.4 - k * (b.r * 0.42); add += rise * (1 - smooth(at - bw / 2, at + bw / 2, d)); }
+      else if (b.kind === 'terrace') { // flat steps, each a grass bank up (0.55 on average: its steepest 0.83, under walkable()'s 0.9) -- the outer one by the rim
+        const rise = b.h / b.steps; const bw = rise / 0.55; for (let k = 0; k < b.steps; k += 1) { const at = b.r - bw / 2 - 0.4 - k * (b.r * 0.42); add += rise * (1 - smooth(at - bw / 2, at + bw / 2, d)); }
       }
-      else if (b.kind === 'ledge') { const bw = b.h / 0.75; add += b.h * smooth(-bw / 2, bw / 2, (x - b.x) * Math.cos(b.yaw) + (z - b.z) * Math.sin(b.yaw)) * Math.min(1, p * 2.2); }
+      else if (b.kind === 'ledge') { const bw = b.h / 0.55; add += b.h * smooth(-bw / 2, bw / 2, (x - b.x) * Math.cos(b.yaw) + (z - b.z) * Math.sin(b.yaw)) * Math.min(1, p * 2.2); }
     }
     return add;
   }

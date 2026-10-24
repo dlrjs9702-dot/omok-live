@@ -199,6 +199,7 @@
   // moves; only what then stands on a steep new bank is left out, afterwards)
   const brushAt = D.brushAt || (() => 0);
   const slopeBefore = (x, z) => Math.hypot(ground(x + 1, z) - brushAt(x + 1, z) - ground(x - 1, z) + brushAt(x - 1, z), ground(x, z + 1) - brushAt(x, z + 1) - ground(x, z - 1) + brushAt(x, z - 1)) / 2;
+  const walkableBefore = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeBefore(x, z) < 0.9 && D.coastDist(x, z) > 1.2 && !underDrawnRock(x, z));
   const onBank = (o, limit) => D.BRUSHES?.some((b) => Math.hypot(o.x - b.x, o.z - b.z) < b.r) && slopeAt(o.x, o.z) >= limit;
 
   // ---- bridges: 윤슬다리 (its arched deck the model's), and a plain one wherever a walk crosses a river ----
@@ -395,7 +396,7 @@
       || PADS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + 1.5) || onStairs(x, z) || Math.hypot(x - TOP.x, z - TOP.z) < 6
       || Math.hypot(x - PL.lighthouse.x, z - PL.lighthouse.z) < 6 || Math.hypot(x - PL.pier.x, z - PL.pier.z) < 6 || Math.hypot(x - PL.dock.x, z - PL.dock.z) < 8
       || villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 2) || heroYard(x, z);
-    const clearOf = (x, z) => walkable(x, z) && D.coastDist(x, z) > 5 && slopeBefore(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
+    const clearOf = (x, z) => walkableBefore(x, z) && D.coastDist(x, z) > 5 && slopeBefore(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
       && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z);
     const trees = [];
     // (묶음 4: 툇마루섬 -- a season zone of its own -- its grove round the houses; 묶음 5: on the wider isle, and sure to hold
@@ -423,7 +424,7 @@
     // (3회차 8) the tufts seeded on their own and numbered by their try (`i`, island-weeds `w<i>`), three draws a try taken
     // or not: a tree or a flower placed otherwise above, or a walk laid across some, never moves or renumbers the rest
     const tufts = []; seed = 0x7a1f5;
-    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.6 + rnd() * 0.7; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeBefore(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s, i: tries }); }
+    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.6 + rnd() * 0.7; if (walkableBefore(x, z) && D.coastDist(x, z) > 7 && slopeBefore(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s, i: tries }); }
     const rocks = []; seed = 0x40c5; // (3회차 8: on their own too, not after however many tufts were tried)
     for (let tries = 0; rocks.length < 160 && tries < 8000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const cd = D.coastDist(x, z);

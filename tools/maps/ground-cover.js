@@ -44,8 +44,8 @@ function buildCoverMaps(T, res = 1024) {
     const rock = Math.max(cliff > 0.4 && cd < 3.5 ? smooth(3.5, 0.5, cd + (n1 - 0.5)) : 0, smooth(1.9, 2.8, slope + (n1 - 0.5) * 0.3));
     // (동산 다듬기 검토: a terrace's and a ledge's banks show some earth, the ledge a little rock at its steepest)
     const bank = (T.dalmaru.BRUSHES || []).find((br) => (br.kind === 'terrace' || br.kind === 'ledge') && Math.hypot(x - br.x, z - br.z) < br.r);
-    const bankSoil = bank ? smooth(0.55, 1.0, slope + (n1 - 0.5) * 0.3) * 0.75 : 0;
-    const bankRock = bank?.kind === 'ledge' ? smooth(0.95, 1.15, slope + (n1 - 0.5) * 0.3) * 0.6 : 0;
+    const bankSoil = bank ? smooth(0.45, 0.7, slope) * smooth(0.64, 0.72, n1) : 0; // (patches: where the bank is steep and the noise is high)
+    const bankRock = bank?.kind === 'ledge' ? smooth(0.6, 0.8, slope) * smooth(0.66, 0.74, n1) : 0;
     const rockAll = Math.max(rock, bankRock);
     const soil = Math.max(smooth(1.15, 1.9, slope + (n1 - 0.5) * 0.25) * (1 - rock) * 0.8, bankSoil * (1 - bankRock), wornAt(x, z)) * (1 - sand);
     const forest = forestAt(x, z) * (1 - sand) * (1 - rock);
