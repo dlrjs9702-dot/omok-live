@@ -155,7 +155,10 @@
     admin: { x: -54, z: -72, face: [-40, -76] }, chat: { x: -86, z: -4, face: [-100, -20] }, climb: { x: -128, z: -12, face: [-112, -10] },
     // (the trader and the 작명소 are indoors: the 백화점's 노점 and the 관공서's 개명 신청 window)
     lane: [[-52, -48], [-74, -4]], // 이웃골's street (the islanders' ten houses either side of it)
-    mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
+    // (거리 악단 자리 2026-10-25 「너무 뜬금없이 있어」: a paved round 6 m across on 물가 거리's land side, west of where the
+    // walk goes down to 배 타는 곳 (266.5°, its middle 105.3 from the bay's centre -- the walk's edge 102.6; clear of the
+    // photographer's spot west of it); faces the water)
+    mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },
     hallLamps: [[-2.8, -22], [3.2, -30], [-2.8, -38]], // the three lamps the electrician mends, beside the walk to the water (off it)
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in

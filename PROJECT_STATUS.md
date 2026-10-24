@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.145 거리 악단 자리
+
+- 근거: 사용자 지적 2026-10-25 「거리 악단이 너무 뜬금없이 있어」 — 무대가 물가 거리 안쪽 빈 풀밭 한가운데, 길에서 떨어져 있었음.
+- 물가 거리 땅 쪽, 배 타는 곳 길 갈림 서쪽(266.5°)에 둥근 포장 자리(지름 6 m, 마을 길 원판 1.2배)를 만들어 걷는 길에 바로 닿게 함. 자리 좌표는 `PL.busk` 한 곳(땅에 칠하는 길 연결망의 「버스킹 자리」 점).
+- 무대는 뒤가 땅 쪽, 앞이 바다 쪽. 거리 악단은 무대 앞, 무대를 향한 벤치 2개(`bench_waterfront`), 옆 가로등(`lamp_waterfront`), 무대 위 악보 받침, 뒤 모서리 꽃. 이번 주 도움을 받았으면 음표가 떠오름(동작 줄이기면 없음, 60 m 안에서만).
+- 무대까지 가던 오솔길은 지움. 퀘스트 「무대 앞에서 공연 듣기」는 무대 4.5 m 안 그대로(벤치 자리 포함).
+- 시험: 단위 `dalmaru-paths`(길 연결·배치 1 m 간격), `island-npcs`(서버 주민 격자 = 화면 격자), e2e `dalmaru-walk`(보이는 것 = 막는 것, 뜬 것·묻힌 것 0, 모두 걸어서 닿음), `island-solids`.
+
 ## v1.10.144 R8 내 집 4단계 2층 큰 집
 
 - 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R8, assets 58(4단계). 경제 값 `home:price_4` 200,000P는 기본값으로 승인됨.
@@ -43,11 +51,3 @@
 - P3(화면): 동상 명판의 재질·글자 텍스처 해제(동상 캐릭터는 자산 캐시라 그대로), 주민 맞음 반응 타이머는 세대 번호로(두 번째가 먼저 풀리지 않음), 가구 잡은 채 Ctrl+R은 새로고침, 섬을 떠나면 주민 길 격자 타이머 멈춤.
 - 단위 시험 `syntax`: server.js·lib·public의 모든 .js(178개)가 읽히는지(스크립트 vm.Script, ES 모듈 .mjs 복사본 `node --check`, 약 7초). 이 묶음에서 줄 가운데 `//`로 문법이 깨진 걸 커밋했다가 고쳤고, 그 판에서 이 시험이 실패하는 것 확인.
 - 시험: 단위 `island-fishing`(틀린 방향·하나 덜·시간 초과·흔들림 하나), 새 `insect-catch-race`(네 곤충을 두 계정이 두 번씩 동시에 → 곤충마다 한 사람, 달려가면 날아감), e2e 낚시·곤충·구치소·우체통·가구 옮기기.
-
-## v1.10.142 R7: 순발력 게임 「하늘 계단」
-
-- 근거: gamecenter-notes IDEAS #future-stair-dash, `docs/backlog-dispatch-20261022.md` R7, 사용자 결정(2026-10-25, 그림 보고): 이름 「하늘 계단」, 보상 1,500·2,500·4,000P, 숨 빠르기 그대로.
-- `public/reflex/js/games/stairs.js`: 두 버튼(왼쪽 위·오른쪽 위; PC ← → / A D, 휴대폰 화면 반쪽), 반대쪽은 헛디딤, 숨 막대(보통: 처음 초당 0.17 + 한 칸마다 0.0009씩 빨라짐, 한 칸 +0.065, 40칸마다 꽃 발판 +0.3), 난이도별 방향 바뀜 길이, 높이 따라 하늘 낮 → 노을 → 밤. PC는 카드·퍼즐처럼 넓은 틀(1,200px).
-- 서버: 순발력 게임 틀(`lib/reflex.js` stairs — 30계단부터, 계단 수 × 0.1초보다 짧은 판은 지급 안 함, 5,000 넘는 기록 거절), 보상은 경제 값 `solo:stairs:easy/normal/hard`(1,500·2,500·4,000P), 순발력 하루 20,000P 함께. `/api/solo/reflex`가 `gamePoints.stairs`로 화면에 값 표시.
-- 시험: 단위 `reflex-server`(빠름·지급·너무 적음·범위 밖), e2e `reflex` 「하늘 계단」(PC·휴대폰 35계단 → 헛디딤 → +2,500P), 순발력 목록 여섯.
-- Codex 검토 대기.
