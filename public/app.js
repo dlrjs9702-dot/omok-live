@@ -2123,7 +2123,10 @@
     document.getElementById('minesBest').textContent = best ? `최고 ${clockText(best)}` : '';
     if (!v) { minesBoard.replaceChildren(); return; }
     document.getElementById('minesLeft').textContent = `💣 ${v.mines - v.flags}`;
-    minesBoard.style.gridTemplateColumns = `repeat(${v.w}, 26px)`;
+    // R6 G4 (게임관 작업서): on a wide mouse screen the board as big as the window's height allows (a 26 px cell elsewhere)
+    const wide = matchMedia('(min-width: 900px) and (pointer: fine)').matches;
+    const cell = wide ? Math.max(26, Math.min(52, Math.floor(Math.min((innerHeight * 0.62) / v.h, (innerWidth * 0.86) / v.w)))) : 26;
+    minesBoard.style.setProperty('--cell', `${cell}px`); minesBoard.style.gridTemplateColumns = `repeat(${v.w}, var(--cell))`;
     const over = v.status === 'won' || v.status === 'lost'; const mineAt = new Set(v.mineAt || []);
     const cells = v.cells.map((c, i) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'minesCell'; b.dataset.i = i;
