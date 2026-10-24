@@ -12,7 +12,16 @@
   const COATS = Object.freeze({ puppy: ['tan', 'white', 'black', 'choco'], kitten: ['grey', 'cheese', 'black', 'white'], bird: ['green', 'yellow', 'blue', 'pink'] }); // (first: the coat they had before)
   const COAT_NAME = Object.freeze({ tan: '갈색', white: '흰색', black: '검정', choco: '초코', grey: '고등어', cheese: '치즈', green: '초록', yellow: '노랑', blue: '파랑', pink: '분홍' });
   const coatOf = (kind, coat) => (COATS[kind]?.includes(coat) ? coat : COATS[kind]?.[0] || null);
-  const nameOf = (kind, coat) => `${KINDS[kind]} (${COAT_NAME[coatOf(kind, coat)]})`;
+  // (문제 기록 3회차 21, 사용자 결정 10/22 「펫샵에서 따로 판매」 + 메타몽) at the counter, always on sale apart from the yard: each
+  // transformation small (`tf_<id>`, the IP characters too -- whoever owns the transformation or not) and 메타몽; one of each.
+  // An IP one (`ip`) is never given away. They walk with their owner as the others do, one coat each.
+  // (built on first use: on the page the transformations' script comes after this one)
+  let catalogList = null;
+  const catalog = () => catalogList ||= Object.freeze([{ kind: 'ditto', name: '메타몽', ip: true }, ...((typeof module === 'object' && module.exports ? require('./character-transformations.js') : globalThis.CharacterTransformations)?.characters || [])
+    .map((c) => ({ kind: `tf_${c.id}`, name: c.label, ip: Boolean(c.ip), transform: c.id }))].map((p) => Object.freeze(p)));
+  const catalogOf = (kind) => catalog().find((p) => p.kind === kind) || null;
+  const known = (kind) => Boolean(KINDS[kind] || catalogOf(kind));
+  const nameOf = (kind, coat) => (catalogOf(kind) ? catalogOf(kind).name : `${KINDS[kind]} (${COAT_NAME[coatOf(kind, coat)]})`);
   const ROOM = Object.freeze({ x: 180, z: -330, y: 0.4, w: 30, d: 20 });
   const world = (lx, lz) => ({ x: Math.round((ROOM.x - lx) * 100) / 100, z: Math.round((ROOM.z - lz) * 100) / 100 });
   const local = (x, z) => ({ lx: ROOM.x - x, lz: ROOM.z - z });
@@ -83,5 +92,5 @@
     }
     return world(lx, lz);
   }
-  return { KINDS, COATS, COAT_NAME, coatOf, nameOf, ROOM, LIFT, PEN, PROPS, COUNTER_KEEPER, FIXTURES, COUNT, REACH, world, local, inRoom, clamp, displayOf, petAt };
+  return { KINDS, COATS, COAT_NAME, coatOf, nameOf, catalog, catalogOf, known, ROOM, LIFT, PEN, PROPS, COUNTER_KEEPER, FIXTURES, COUNT, REACH, world, local, inRoom, clamp, displayOf, petAt };
 }));

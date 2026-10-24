@@ -1867,7 +1867,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2683,6 +2683,29 @@
     const no = document.createElement('button'); no.type = 'button'; no.className = 'secondary'; no.textContent = '그만두기'; no.addEventListener('click', () => plazaDialog.close());
     row.append(go, no); adoptCard.replaceChildren(name, what, input, row);
     openPlazaWindow('펫샵', [adoptCard]);
+  }
+  // (문제 기록 3회차 21) the counter's catalog: each transformation small and 메타몽, one of each -- a name, 「데려가기」, and
+  // it walks with me at once; an IP one can never be given away
+  const catalogBox = document.createElement('div'); catalogBox.className = 'myPets petCatalog'; catalogBox.id = 'petCatalog'; catalogBox.setAttribute('role', 'list');
+  async function openPetCatalog() {
+    await refreshPetshop(); const list = petshopState?.catalog || [];
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '변신 모습 그대로 작게 · 한 종류에 한 마리씩 · 캐릭터 펫은 선물할 수 없어요';
+    catalogBox.replaceChildren(note, ...list.map((p) => {
+      const row = document.createElement('div'); row.className = 'myPetRow'; row.setAttribute('role', 'listitem'); row.dataset.kind = p.kind;
+      const label = document.createElement('span'); label.textContent = `${p.name}${p.ip ? ' · 캐릭터' : ''} · ${Number(p.price).toLocaleString('ko-KR')}P`;
+      const b = document.createElement('button'); b.type = 'button'; b.className = p.owned ? 'ghost tiny' : 'primary tiny'; b.textContent = p.owned ? '데리고 있어요' : '데려가기'; b.disabled = p.owned;
+      b.addEventListener('click', async () => {
+        if (furnitureBusy) return; const name = (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') ?? null); if (name === null) return;
+        furnitureBusy = true; b.disabled = true;
+        try {
+          const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {});
+          const r = await api('/api/island/petshop/buy', { method: 'POST', body: JSON.stringify({ kind: p.kind, name: name.trim().slice(0, 10) }) });
+          myPet = r.pet; plaza.controller?.setMyPet?.(myPet); plazaDialog.close(); showToast(`${myPet.name || p.name}와(과) 함께 다녀요!`, 4000);
+        } catch (error) { showToast(error.message, 4000); b.disabled = false; } finally { furnitureBusy = false; }
+      });
+      row.append(label, b); return row;
+    }));
+    openPlazaWindow('펫샵 · 변신 펫', [catalogBox]);
   }
   // my pets (the 펫샵's, each its coat and name, and those bought before at the 잡화점): which walks with me
   const petsBox = document.createElement('div'); petsBox.className = 'myPets'; petsBox.id = 'myPets';
