@@ -2591,7 +2591,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // starts where its round has it now, not at the origin walking over to it
       const w = walkers.add(n, Date.now() + serverOffset);
       c.root.position.set(w.x, heightAt(w.x, w.z), w.z);
-      scene.add(c.root); assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look);
+      // (F3, assets 51: each their own model -- no wardrobe over it, as the warden's; their own height for the bubble)
+      const own = globalThis.IslandAssets?.WALKER_LOOKS?.[n];
+      scene.add(c.root);
+      if (own) { assets.dress([own.model, 'character.islander'], c); c.headTop = own.headTop; } else { assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look); }
       wanderers.push({ n, c, w });
     }
     setEvents(lastResidentEvents);

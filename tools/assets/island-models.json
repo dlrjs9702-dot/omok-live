@@ -7559,6 +7559,86 @@
       "lowSrc": "farm68:02. Low/farm_scarecrow_low.glb",
       "lowSha256": "505e860f416baa32f0f635e7330c32ddca26006e836e44bab36116e20880fd56",
       "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_bomi.glb",
+      "src": "walker51:01. High/npc_walker_bomi.glb",
+      "sha256": "39cd3582ec7ff6df95743440bbe1b5141c6226d807e5c8e668bec1fb1c43e8d7",
+      "lowSrc": "walker51:02. Low/npc_walker_bomi_low.glb",
+      "lowSha256": "3729e25775252cbf22665150cdf04f687e398f5cd9c042e1166f69c200672695",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_sea_grandpa.glb",
+      "src": "walker51:01. High/npc_walker_sea_grandpa.glb",
+      "sha256": "5df349b8eacd45f82c488b1bbc4006e9b95b6b4123a8b632cee0e226e9e1f23a",
+      "lowSrc": "walker51:02. Low/npc_walker_sea_grandpa_low.glb",
+      "lowSha256": "ebed42bcf70d22c04f8a2a92108f72a1d9a2bc32a160a8b0ea6b5d575996fd3e",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_haram.glb",
+      "src": "walker51:01. High/npc_walker_haram.glb",
+      "sha256": "0ea4f392174f65c75df1f4b6d4a9d9b14e7045628884cc6d0cbffe5917491639",
+      "lowSrc": "walker51:02. Low/npc_walker_haram_low.glb",
+      "lowSha256": "7f42da332b0676690ed66e97a3cf2e813a5e81484fab103a091530ee2ce068dd",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_duri.glb",
+      "src": "walker51:01. High/npc_walker_duri.glb",
+      "sha256": "2befe90d84740e00f4db7288b1372b79ed3645f5ab8aec5b9ce0126a0897208e",
+      "lowSrc": "walker51:02. Low/npc_walker_duri_low.glb",
+      "lowSha256": "bf88025e0391f71ff637b72c235f19d2dce561f27d04f7d1237a7b4dadc8da4b",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_noeul_granny.glb",
+      "src": "walker51:01. High/npc_walker_noeul_granny.glb",
+      "sha256": "80e38900bf4a183d099277596dffb28f1d167a9dc5784e6d62e24569544245b8",
+      "lowSrc": "walker51:02. Low/npc_walker_noeul_granny_low.glb",
+      "lowSha256": "cf0bed672a8950e93d61773cb0585a00ab75cbe9e2efe5d0e906b6b6db49f2b2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_detective_oh.glb",
+      "src": "walker51:01. High/npc_walker_detective_oh.glb",
+      "sha256": "c67424101eba2116b6c43095b28226b2ca19dd2e48b5e7caa9b5c2bef84a1cf3",
+      "lowSrc": "walker51:02. Low/npc_walker_detective_oh_low.glb",
+      "lowSha256": "7032aef6b868d22ef3d57b3de3e174c4bbb9894bddacd0eede359111fdead6b3",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_daon.glb",
+      "src": "walker51:01. High/npc_walker_daon.glb",
+      "sha256": "5b742d8638eabb6cb406840d54a0ac6ddd955e6f729892bf56b0d93e210947c7",
+      "lowSrc": "walker51:02. Low/npc_walker_daon_low.glb",
+      "lowSha256": "e6bdce11b0653838cd9151abf9ea84db5883e7d5a3a8e4ca625d2542f0d2087a",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_barami.glb",
+      "src": "walker51:01. High/npc_walker_barami.glb",
+      "sha256": "b23f85748fb876ee149af52c3cf0ca4a58cdd4634387af4bb23af37b02666c9a",
+      "lowSrc": "walker51:02. Low/npc_walker_barami_low.glb",
+      "lowSha256": "316719a8acb8ce12d8e0476fd55eeb323f80c5604734cd344eed1fd94b8393e9",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_isol.glb",
+      "src": "walker51:01. High/npc_walker_isol.glb",
+      "sha256": "43947c7e9accb265b3dd8bb98526d354fa053f18bd57be72b3e7d65ef17ee6e5",
+      "lowSrc": "walker51:02. Low/npc_walker_isol_low.glb",
+      "lowSha256": "44753051c162118dfa7025ffb88cf9eba1238ff544be2179e3fccf0489b5f484",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_garam.glb",
+      "src": "walker51:01. High/npc_walker_garam.glb",
+      "sha256": "1f02da09bd368f3c0267aa8a2d0a77f6277db1bbf2bb5b8fd0e9b8f2de9e4d84",
+      "lowSrc": "walker51:02. Low/npc_walker_garam_low.glb",
+      "lowSha256": "f00d871825c4e64f4eabc0c1829f62919674c4f8188994c07a57a2977bdc058b",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -7607,6 +7687,7 @@
     "farm68": "68. Game Island farm props 2026-10-23",
     "ditto65": "65. Game Island ditto pet 2026-10-22",
     "ditto65": "65. Game Island ditto pet 2026-10-22",
-    "npc52": "52. Game Island named npc refit 2026-10-18"
+    "npc52": "52. Game Island named npc refit 2026-10-18",
+    "walker51": "51. Game Island resident looks 2026-10-23"
   }
 }
