@@ -345,6 +345,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     scene.background.set(L.background); scene.fog.color.set(L.fog);
     hemi.color.set(L.sky); hemi.groundColor.set(L.ground); hemi.intensity = L.hemi;
     sun.color.set(L.sun); sun.intensity = L.sunI;
+    island.setSeaPhase?.(phase, sun); // (파도: the sea's own colours by the time of day, the sun's or moon's path on it)
     if (wet) { const grey = new THREE.Color(0x6b7785); scene.background.lerp(grey, 0.45); scene.fog.color.lerp(grey, 0.45); hemi.intensity *= 0.66; sun.intensity *= 0.4; } // A4 날씨: a grey, dim rainy sky
     if (indoors) { scene.background.set(0x000000); scene.fog.color.set(0x000000); } // (문제 기록 3회차 18 「밖은 그냥 검은 화면으로」)
     candle.intensity = halloweenOn ? (dark ? 38 : 12) : 0;
