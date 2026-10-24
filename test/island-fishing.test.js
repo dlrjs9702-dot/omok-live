@@ -35,7 +35,12 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
   assert.equal(F.waterAt(T.PIER.x, T.PIER.z), 'sea');
   assert.equal(F.canFish(T.PIER.x, T.PIER.z), true); assert.equal(F.canFish(0, 8), false); assert.equal(F.canFish(30, 30), false);
   const c = { biteAt: 10_000 };
-  assert.deepEqual([F.judge(c, 9000), F.judge(c, 10_500), F.judge(c, 10_000 + F.BITE_MS + F.LATE_MS + 1)], ['early', 'ok', 'late']);
+  assert.deepEqual([F.judge(c, 9000), F.judge(c, 10_500), F.judge(c, 10_000 + F.arrowMs(4) + F.LATE_MS + 1)], ['early', 'ok', 'late']);
+  // (3회차 4) the arrows by grade, 4 to 12, and the time for them: count x 0.7 s + 1.5 s -- a big one's longer
+  assert.deepEqual(['anchovy', 'cutlassfish', 'octopus', 'giant_tuna'].map(F.arrowsFor), [4, 6, 9, 12]);
+  assert.equal(F.arrowMs(12), 9900);
+  assert.equal(F.judge({ biteAt: 10_000, species: 'giant_tuna' }, 10_000 + 9900), 'ok');
+  assert.equal(F.judge({ biteAt: 10_000, species: 'anchovy' }, 10_000 + 9900), 'late');
   assert.deepEqual(F.titlesFor(3), []); assert.deepEqual(F.titlesFor(F.DEX.length).map((t) => t.id), ['dex_title_1', 'dex_title_2', 'dex_title_3', 'dex_title_4']);
   assert.deepEqual(F.titlesFor(18).map((t) => t.id), ['dex_title_1', 'dex_title_2', 'dex_title_3'], '도감 완성은 예전 18개 그대로(이미 받은 사람 유지)');
 });

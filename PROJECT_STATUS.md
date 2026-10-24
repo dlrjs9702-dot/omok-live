@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.132 문제 기록 3회차 8묶음: 낚시 입질 화살표
+
+- 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 4번.
+- 4: 입질 때 SPACE 한 번 대신 화살표 순서 맞추기. `lib/island-fishing.js` `ARROWS {common:4, normal:6, rare:9, big:12}`, `arrowsFor`, 시간 `arrowMs(n) = n×700 + 1500`(늦음 판정도 이것, `BITE_MS` 없앰). 서버 fish/start가 `window`·`arrows`를 보냄. 화면 `#fishArrows`(PC 방향키, 휴대폰 `pointer:coarse`는 단추 4개), 틀리면 찌만 흔들림, 마지막 화살표가 당기기. 시간 막대는 상자가 보인 뒤 줄어듦. 보상은 그대로.
+- 시험: 단위 `island-fishing`, e2e `plaza`(낚시)·`river-fishing`은 `pressFishArrows`로(PC·휴대폰).
+- Codex 검토 대기(10/25).
+
 ## v1.10.131 문제 기록 3회차 7묶음: 잠자리채·낚싯대 들기와 휘두르기, 농장 창고·허수아비
 
 - 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 22번, 15번(에셋 68).
@@ -27,10 +34,3 @@
 - 14: 알림마루 지도판 창을 화면 가득(`plazaDialog.mapMode`, 96vw·96dvh), 캔버스를 보이는 크기 × 화소 비율(최대 2)로 그림. 휠(PC)·두 손가락 핀치(휴대폰)로 그 점을 중심으로 6배까지 확대, 끌어서 이동(섬 밖으로는 안 나감). 이름은 확대해도 같은 크기로, 점 위 → 아래 → 오른쪽 → 왼쪽 중 비는 곳에, 다 막히면 뺌(확대하면 나타남) — 「현재 위치」가 먼저, 다른 이름은 남의 점을 덮지 않음. 3D 지도판 그림도 같은 규칙.
 - 시험 e2e `island-map`(화면 가득·휠·끌기·핀치, PC·휴대폰).
 - Codex 검토 대기(10/25).
-
-## v1.10.129 문제 기록 3회차 5묶음: 대청마당 가장자리 꾸밈, 농장 마당
-
-- 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 13·15번.
-- 13: 대청마당 남·동·서 가장자리 안쪽 3 m에 10 m마다 묶음(화단 1, 양옆 벤치, 연석 쪽 가로등) — 길 입구·문 앞 6 m·정원·물길·마당의 자리·스폰은 비움(`plazaProps` `clear()`). 화단 11, 벤치 14(+기존 4), 가로등 19. 가장자리 벤치는 연석에서 마당 안쪽을 봄(`rim: true`, 시험 `seat-facing`), 광장 좌석 4+14+28(`island-social`).
-- 15: 퀘스트 밭 둘레를 농장 마당으로(`FARM.yard`): 밭 3개 더(2×2, 2 m 사이, 평지 패드), 울타리(0.7 m마다 부딪힘, 오솔길이 들어오는 북쪽은 문으로 비움), 남서쪽 창고, 밭 사이 허수아비. 나무·덤불은 마당 밖(`addNatureBlock`), 돌·꽃·잡초는 `settledSpot`이 마당을 뺌 — 잡초 13포기만 빠지고 나머지 번호·자리 그대로. 창고·허수아비는 에셋 요청 중이라 상자 대신 그림, 울타리는 계절 울타리 모델.
-- 검증: 단위(좌석 방향·수, 흩어진 소품, 길 끝, 건물 간격), e2e 농장 주민·섬 에셋. Codex 검토 대기(10/25).

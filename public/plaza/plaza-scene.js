@@ -1843,11 +1843,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         o.fishTimer = setTimeout(() => { if (o.act !== 'fish:catch' || !p.fish) return; const fit = FISH_HOLD[p.fish] || FISH_HOLD.default; assets.hold(c, `fish.${p.fish}`, 0, { key: 'catch', at: fit.at, rot: fit.rot }); }, 260); }, 420);
     }
   }
-  function fishBegin({ biteIn, window: biteMs }, onEnd) {
+  // (3회차 4) at the bite onBite(arrows, ms): the page's arrows to press within the bite (the last one pulls it in)
+  function fishBegin({ biteIn, window: biteMs, arrows = 4 }, onEnd, onBite) {
     const water = waterFrom(me.root.position.x, me.root.position.z); if (!water || fishing) return false;
     const ok = startGather({ kind: 'fish', ms: Infinity, anim: 'fishCast', at: water, onDone: () => fishStop(false) });
     if (!ok) return false;
-    fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, landed: false };
+    fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, onBite, arrows, landed: false };
     fishAct('cast');
     me.noTuck = true; assets.hold(me, 'fishing.rod', 0, { key: 'rod' });
     return true;
@@ -1872,7 +1873,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const sea = (f.water.y ?? SEA_Y) + 0.02; // (a river's own surface, v1.10.90)
     if (f.phase === 'cast' && f.t >= 0.48 && !f.landed) { f.landed = true; bobberHolder.visible = true; fishLine.visible = true; bobberHolder.position.set(f.water.x, sea, f.water.z); }
     if (f.phase === 'cast' && f.t >= 1.0) { f.phase = 'wait'; me.anim?.loop?.('fishWait'); fishAct('wait'); }
-    if (f.phase === 'wait' && f.t >= f.biteAt) { f.phase = 'bite'; fishAct('reel'); me.anim?.play('fishBite'); me.anim?.loop?.('fishReel'); f.mark = makeStarMark(); f.mark.position.set(0, 0.7, 0); bobberHolder.add(f.mark); }
+    if (f.phase === 'wait' && f.t >= f.biteAt) { f.phase = 'bite'; fishAct('reel'); me.anim?.play('fishBite'); me.anim?.loop?.('fishReel'); f.mark = makeStarMark(); f.mark.position.set(0, 0.7, 0); bobberHolder.add(f.mark); f.onBite?.(f.arrows, (f.biteEnd - f.t) * 1000); }
     if (f.phase === 'bite' && f.t >= f.biteEnd + 0.8) fishResult(null); // nobody pulled: it got away
     if (f.phase === 'catch') {
       const t = f.t - f.t0;
@@ -3175,7 +3176,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // v1.10.42 낚시: by the water with nothing else near -- SPACE casts; while fishing it pulls in (or stops before the bite)
     if (fishing || (!best && !gather && mySpace === 'island' && globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z))) {
       const w = fishing ? fishing.water : waterFrom(me.root.position.x, me.root.position.z);
-      if (w) { eventDoors['fish:spot'] = { x: w.x, z: w.z, name: fishing ? (fishing.phase === 'bite' ? '당기기' : '그만하기') : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
+      if (w) { eventDoors['fish:spot'] = fishing?.phase === 'bite' ? { x: w.x, z: w.z, name: `입질! 화살표 ${fishing.arrows}개를 순서대로`, plain: true } /* (3회차 4: the arrows pull it in) */ : { x: w.x, z: w.z, name: fishing ? '그만하기' : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
     } else delete eventDoors['fish:spot'];
     // (2회차 11: holding a piece, the hint says how to let go and turn it -- not the seat or tank in front)
     if (grab) { eventDoors['grab:hold'] = { x: me.root.position.x, z: me.root.position.z, name: grab.blocked ? `${grab.blocked} · 놓기` : '가구 놓기 · R 돌리기' }; best = 'grab:hold'; } else delete eventDoors['grab:hold'];

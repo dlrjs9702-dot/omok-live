@@ -121,6 +121,18 @@ module.exports.expectNoScriptError = expectNoScriptError;
 // read and pressed in one call. Read, then pressed by the keyboard, there were frames between (a second or more on the CI
 // runner): an islander walking by took the SPACE (운반·전달 「줍기」 at plaza.spec 1179, 앉기·인사 「인사」), a pet walked off
 // out of reach, a sector's spot gave way to the next. false: something else is nearest.
+// (3회차 4) the bite's arrows, pressed in order: the arrow keys (a PC) or the four buttons (a phone)
+async function pressFishArrows(page, isMobile = false) {
+  const box = page.locator('#fishArrows'); await box.waitFor({ state: 'visible', timeout: 15000 });
+  const dirs = await box.locator('.fishArrowSeq span').evaluateAll((spans) => spans.map((s) => s.dataset.dir));
+  const KEY = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
+  // (pressed in the page at once -- CI #278: a phone's clicks waited for the box coming in to stand still, a PC's key presses
+  // a round trip each on the slow runner, and the bite's time ran out between them -- the server's, which a test that
+  // turns the bite into another fish times by that fish, not the count shown. The buttons answer a click, the keys a keydown)
+  if (isMobile) await box.evaluate((el, dirs) => { for (const dir of dirs) el.querySelector(`.fishArrowPad button[data-dir=${dir}]`).click(); }, dirs);
+  else await page.evaluate(([dirs, KEY]) => { for (const dir of dirs) window.dispatchEvent(new KeyboardEvent('keydown', { code: KEY[dir], key: KEY[dir], bubbles: true })); }, [dirs, KEY]);
+  return dirs.length;
+}
 async function spaceOn(page, prefix, isMobile = false) {
   return page.evaluate(([prefix, isMobile]) => {
     if (!window.PlazaDebug()?.near?.startsWith(prefix)) return false;
@@ -131,6 +143,7 @@ async function spaceOn(page, prefix, isMobile = false) {
   }, [prefix, isMobile]);
 }
 module.exports.spaceOn = spaceOn;
+module.exports.pressFishArrows = pressFishArrows;
 // v1.10.93: stand at a spot of the 백화점's room (local lx, lz) until its prompt shows -- on a slow runner the walk-in can
 // still put me at the door after a first teleport
 async function standInMall(page, lx, lz, text) {

@@ -39,11 +39,15 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   // the server then said TOO_FAR (run 39702592847). Each try: the server's places now -- another insect when that one is
   // gone (a new layout) -- its spot, SPACE (the phone: the hint) only when that insect is what it reaches -- in one call --
   // and the server's answer; again until it is 200)
-  let last = null; let caught = null;
+  let last = null; let caught = null; let missed = false;
+  // (CI #278: a flyer went out of the swing's fan in the 450 ms before the net comes down on the slow runner, every try --
+  // the crawlers and those on a trunk first, as island-tool-swing, and another one after a miss)
+  const slow = (b) => (/^dragonfly/.test(b.species) ? 2 : /^butterfly|firefly/.test(b.species) ? 1 : 0);
   await expect.poll(async () => {
     const now = await insectsNow(); const t = now.find((o) => o.id === target.id);
-    if (!t || !by(now, t)) { const next = pick(now); if (!next) return (last = 'no insect with a spot'); last = `${target.id} ${t ? 'no spot' : 'gone'} -> ${next.id}`; target = next; }
-    const at = by(now, target);
+    if (missed || slow(target) > 0) { const next = pick([...now].sort((p, q) => slow(p) - slow(q)), missed ? target.id : null); if (next) target = next; missed = false; }
+    else if (!t || !by(now, t)) { const next = pick(now); if (!next) return (last = 'no insect with a spot'); last = `${target.id} ${t ? 'no spot' : 'gone'} -> ${next.id}`; target = next; }
+    const at = by(now, target); if (!at) return (last = `${target.id} no spot`);
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [at.x, at.z]); await page.waitForTimeout(400);
     // (3회차 22: the net swung -- a 1.5 m fan before me, round where the insect is drawn: under a metre from that, facing it)
     const drawn = await page.evaluate((id) => window.PlazaDebug().insectsDrawn().find((b) => b.id === id), target.id); if (!drawn) return (last = 'not drawn');
@@ -54,7 +58,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 5000 }).catch(() => null);
     await page.evaluate((id) => { const d = window.PlazaDebug(); const b = d.insectsDrawn().find((q) => q.id === id); if (b) d.faceTo(b.x, b.z); }, target.id);
     if (!(await spaceOn(page, 'tool:swing', isMobile))) { last = await page.locator('#plazaHint').textContent(); return last; }
-    const r = await answer; const text = r ? await r.text().catch(() => '') : ''; last = r ? `${r.status()} ${text}` : 'no answer';
+    const r = await answer; const text = r ? await r.text().catch(() => '') : ''; last = r ? `${r.status()} ${text}` : `no answer ${target.species} ${JSON.stringify(await page.evaluate(() => window.PlazaDebug().lastSwing()))}`; missed = !r;
     if (r?.status() === 200) { caught = JSON.parse(text); const id = r.request().postDataJSON()?.id; if (id) target = { ...target, id }; } // (the one the swing took)
     return r?.status() ?? 'no answer';
   }, { timeout: 40000, intervals: [300] }).toBe(200).catch((error) => { error.message += `\nlast: ${last}`; throw error; });
