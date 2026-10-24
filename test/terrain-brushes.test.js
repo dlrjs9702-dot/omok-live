@@ -24,5 +24,10 @@ test('동산 다듬기: 모양마다 빈 땅에(길·문·집·계단·다리·�
     if (steep > 1.2) problems.push(`${name}: 비탈 ${steep.toFixed(2)}`);
   }
   assert.deepEqual(problems, []);
+  // (검토: trees went missing round the shapes) the scenery is picked on the ground before the shapes -- only what would
+  // stand on a steep new bank is left out, nothing else moves: no tree or bush on a bank, and the counts as they were
+  const N = T.nature(); const onBank = (o) => D.BRUSHES.some((b) => Math.hypot(o.x - b.x, o.z - b.z) < b.r) && Math.hypot(T.heightAt(o.x + 1, o.z) - T.heightAt(o.x - 1, o.z), T.heightAt(o.x, o.z + 1) - T.heightAt(o.x, o.z - 1)) / 2 >= 0.4;
+  assert.deepEqual([...N.trees, ...N.bushes].filter(onBank), []);
+  assert.ok(N.trees.length >= 410 && N.bushes.length >= 505 && N.flowers.length >= 60, JSON.stringify([N.trees.length, N.bushes.length, N.flowers.length]));
   assert.ok(D.BRUSHES.length >= 4 && Math.abs(T.heightAt(D.BRUSHES[1].x, D.BRUSHES[1].z) - T.heightAt(D.BRUSHES[1].x + D.BRUSHES[1].r + 1, D.BRUSHES[1].z)) > 1); // (a mound does stand)
 });
