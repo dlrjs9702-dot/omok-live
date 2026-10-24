@@ -78,8 +78,9 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
     const tiers = tier => family.skins.filter(s => s.tier === tier && !s.ip).length; // v1.10.74: the character skins on top (a character theme without its legend has no pair)
     // v1.8.7 오목 → v1.9.2 모든 게임: 테마마다 짝 전설(전설 2)
     const twoLegends = true; // v1.9.2: every game has two legends, one per room theme
-    assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [6, 3, twoLegends ? 3 : 1], family.family); // v1.10.90 스킨 2배: +3 고급, +1 테마, +1 전설
-    if (twoLegends) for (const skin of family.skins.filter(s => (s.tier === 'legend' || s.tier === 'theme') && !s.ip)) assert.ok(skin.pair, `${skin.id} 짝`);
+    const witch = family.family === 'yut' ? 1 : 0; // R5: 윷 고급 4번째 밤장난 꼬마 마녀 + 짝 없는 방 테마 한밤의 마녀 윷판 (사용자 2026-10-12)
+    assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [6 + witch, 3 + witch, twoLegends ? 3 : 1], family.family); // v1.10.90 스킨 2배: +3 고급, +1 테마, +1 전설
+    if (twoLegends) for (const skin of family.skins.filter(s => (s.tier === 'legend' || s.tier === 'theme') && !s.ip && s.id !== 'yut_t4')) assert.ok(skin.pair, `${skin.id} 짝`);
     assert.equal(tiers('common'), family.family === 'omok' ? 15 : 10, family.family); // v1.10.90: +5 일반
   }
 });

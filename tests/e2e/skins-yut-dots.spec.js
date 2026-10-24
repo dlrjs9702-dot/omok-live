@@ -55,7 +55,8 @@ test('윷놀이 스킨: 상점 탭·구역, 방장 테마와 각자 말이 모�
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '윷놀이' }).click();
   await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '희귀', '방 테마', '전설']);
-  await expect(dialog.locator('.skinCard')).toHaveCount(25) /* v1.10.90 스킨 2배 +10 */;
+  await expect(dialog.locator('.skinCard')).toHaveCount(27) /* v1.10.90 스킨 2배 +10, R5 밤장난 꼬마 마녀·한밤의 마녀 윷판 +2 */;
+  await expect(dialog.locator('.skinCard', { hasText: '밤장난 꼬마 마녀' })).toHaveCount(1);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   await twoPlayerRoom(request, a, b, 'yut');
