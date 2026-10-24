@@ -7783,9 +7783,9 @@
     {
       "out": "home-v1/home_upper_room__base.glb",
       "src": "home58:01. High/home_upper_room__base.glb",
-      "sha256": "8000e695e5529b71d8bd6bf64f8207c628e26aa5874caac1fc93d6d04752324d",
+      "sha256": "81f6d3a72fe8e16db67b207fea80a08e5bb0b80115ad40b261c175af35bfb33d",
       "lowSrc": "home58:02. Low/home_upper_room__base_low.glb",
-      "lowSha256": "ddf19b5af18f964b411d2c35e929dba8a8aa204cf89f181d37b9da913a72c62d",
+      "lowSha256": "e0d23fad4d2cdb69261be3ee5f72864ebccf7a3105b860c3791582aaf34496a1",
       "precompressed": true
     },
     {
