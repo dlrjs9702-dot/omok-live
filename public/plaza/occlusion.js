@@ -34,7 +34,7 @@ export function createOcclusion(camera) {
       const box = (mesh.isSkinnedMesh ? mesh.boundingBox : mesh.geometry.boundingBox)?.clone();
       if (!box || box.isEmpty()) return;
       rec.meshes.push({ mesh, original: null });
-      for (let i = 0; i < (mesh.isInstancedMesh ? mesh.instanceMatrix.count : 1); i += 1) {
+      for (let i = 0; i < (mesh.isInstancedMesh ? mesh.count : 1); i += 1) { // (Codex 검토 #13: the drawn ones -- mesh.count -- not the buffer's room)
         const world = mesh.isInstancedMesh ? (mesh.getMatrixAt(i, im), im.premultiply(mesh.matrixWorld)).clone() : mesh.matrixWorld.clone();
         rec.tests.push({ mesh, box, world, inverse: world.clone().invert() });
         rec.box.union(box.clone().applyMatrix4(world));

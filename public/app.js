@@ -2438,9 +2438,18 @@
   turnBtn.addEventListener('click', () => { const why = plaza.controller?.grabTurn?.(); if (why) showToast(why); plazaStage.focus({ preventScroll: true }); });
   function wireHomeMoves() {
     plaza.controller?.onGrab?.((on) => { turnBtn.classList.toggle('hidden', !on); if (on) showToast(touchIsland ? '앞뒤로 밀고 당겨요 · 돌리기 단추로 돌려요 · 상호작용으로 놓아요' : '↑↓ 밀고 당기기 · R 돌리기 · SPACE 놓기'); });
+    // (Codex 검토 #9) one save at a time, in order -- answers (and the server's writes) never cross; while one is on its
+    // way only each piece's latest step waits to go
+    const waiting = new Map(); let sending = false;
     plaza.controller?.onHomeMove?.(async (p) => {
-      try { const r = await api('/api/home/place', { method: 'POST', body: JSON.stringify({ uid: p.uid, x: p.x, z: p.z, rot: p.rot, ...(p.photo ? { photo: p.photo } : {}) }) }); homeInside = { ...homeInside, home: r.home }; }
-      catch (error) { showToast(error.message); plaza.controller?.grabEnd?.(); if (homeInside) showHome(homeInside); }
+      waiting.set(p.uid, p); if (sending) return; sending = true;
+      try {
+        while (waiting.size) {
+          const [uid, q] = waiting.entries().next().value; waiting.delete(uid);
+          try { const r = await api('/api/home/place', { method: 'POST', body: JSON.stringify({ uid: q.uid, x: q.x, z: q.z, rot: q.rot, ...(q.photo ? { photo: q.photo } : {}) }) }); homeInside = { ...homeInside, home: r.home }; }
+          catch (error) { waiting.clear(); showToast(error.message); plaza.controller?.grabEnd?.(); if (homeInside) showHome(homeInside); }
+        }
+      } finally { sending = false; }
     });
   }
   const bikeBtn = byId('islandBikeBtn');
@@ -2644,14 +2653,14 @@
   // R4 구치소 반성문: in and out at its doors; one owing the tax is put in its cell by the server (the first pose of a visit:
   // jailedBy). The warden's talk: [시작] (his sentence over his head, 20 s a ring; typed into the island chat, his answer
   // comes back with the chat -- jailAnswer), [지금 세금 내기]; to an onlooker, how many passed today. The board: the day's.
-  let jailBusy = false; let jailState = null; let essayTimer = null;
+  let jailBusy = false; let jailState = null; let essayTimer = null; let essayGen = 0;
   async function jailDoor(entering) {
     if (jailBusy) return; jailBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api(entering ? '/api/island/jail/enter' : '/api/island/jail/leave', { method: 'POST', body: '{}' });
       closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
-      if (r.space === 'jail') await refreshJail(); else { clearTimeout(essayTimer); jailState = null; }
+      if (r.space === 'jail') await refreshJail(); else { stopEssay(); jailState = null; }
     } catch (error) { showToast(error.message); } finally { jailBusy = false; }
   }
   async function refreshJail() {
@@ -2675,24 +2684,27 @@
     wardenCard.replaceChildren(say, row); openPlazaWindow('구치소장', [wardenCard]);
   }
   async function startEssay() {
-    try { const e = await api('/api/island/jail/start', { method: 'POST', body: '{}' }); closeIslandWindows(); showEssay(e); } catch (error) { showToast(error.message); }
+    const gen = essayGen;
+    try { const e = await api('/api/island/jail/start', { method: 'POST', body: '{}' }); if (gen !== essayGen) return; closeIslandWindows(); showEssay(e); } catch (error) { showToast(error.message); }
   }
   function showEssay(e, lead = '') { // the sentence over the warden's head; the time run out: 「다시.」 and the same one again
-    clearTimeout(essayTimer);
+    clearTimeout(essayTimer); const gen = ++essayGen;
     plaza.controller?.wardenSay?.(`${lead ? `${lead} ` : ''}${e.sentence}`, e.left);
-    essayTimer = setTimeout(async () => { try { const again = await api('/api/island/jail/start', { method: 'POST', body: '{}' }); showEssay(again, '다시.'); } catch {} }, e.left + 300);
+    // (Codex 검토 P3: an answer coming after passing, paying or leaving -- a newer essayGen -- shows nothing)
+    essayTimer = setTimeout(async () => { try { const again = await api('/api/island/jail/start', { method: 'POST', body: '{}' }); if (gen === essayGen) showEssay(again, '다시.'); } catch {} }, e.left + 300);
   }
+  function stopEssay() { clearTimeout(essayTimer); essayGen += 1; }
   function jailAnswer(j) { // the warden's answer to a line I typed (POST /api/lobby/chat)
     if (!j) return;
     if (!j.passed) { showEssay(j, j.say); return; }
-    clearTimeout(essayTimer); plaza.controller?.wardenSay?.(j.say, 0); refreshJail(); showToast('반성문 통과! 철창이 열렸어요.');
+    stopEssay(); plaza.controller?.wardenSay?.(j.say, 0); refreshJail(); showToast('반성문 통과! 철창이 열렸어요.');
   }
   async function payFromJail() {
     try {
       const out = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID() }) });
       closeIslandWindows(); loadPoints(); refreshPlazaAvatar();
       showToast(!out.paid ? '낼 포인트가 없습니다.' : out.debt > 0 ? `${Number(out.paid).toLocaleString('ko-KR')}P 냈어요. 남은 체납 ${Number(out.debt).toLocaleString('ko-KR')}P — 반성문은 그대로예요.` : '세금을 다 냈어요. 철창이 열렸어요.');
-      if (!(out.debt > 0)) { clearTimeout(essayTimer); plaza.controller?.wardenSay?.('다 내셨군요. 나가셔도 좋습니다.', 0); } await refreshJail();
+      if (!(out.debt > 0)) { stopEssay(); plaza.controller?.wardenSay?.('다 내셨군요. 나가셔도 좋습니다.', 0); } await refreshJail();
     } catch (error) { showToast(error.message); }
   }
   const jailBoardCard = document.createElement('div'); jailBoardCard.className = 'goodCard'; jailBoardCard.id = 'jailBoardCard';
@@ -3224,7 +3236,7 @@
   }
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
   // in the bag (and the 도감), too early or too late it got away. The scene shows the cast, the bite and the catch.
-  let fishBusy = false; let fishId = null;
+  let fishBusy = false; let fishId = null; let fishSeq = null; // (Codex 검토 #1: the cast's arrows, the server's)
   async function fishAction() {
     if (fishBusy) return;
     const phase = plaza.controller?.fishingNow?.();
@@ -3233,15 +3245,15 @@
       if (!phase) {
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
         const data = await api('/api/island/fish/start', { method: 'POST', body: '{}' });
-        fishId = data.fishId;
+        fishId = data.fishId; fishSeq = Array.isArray(data.seq) ? data.seq : null;
         if (data.bait) showToast(`🪱 ${data.bait}를 썼어요.`); // v1.10.92
         if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; fishArrowsEnd(); }, fishArrowsStart)) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
       } else if (phase === 'cast' || phase === 'wait') await pullFish(); // (too early: it got away)
     } catch (error) { showToast(error.message); } finally { fishBusy = false; }
   }
-  async function pullFish() {
+  async function pullFish(presses = []) {
     try {
-      const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId }) });
+      const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId, presses }) });
       plaza.controller?.fishResult?.(data.species);
       showToast(`${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name} +1${data.firstTime ? ' · 도감 등록' : ''}`);
     } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
@@ -3252,7 +3264,8 @@
   const FISH_DIRS = ['up', 'right', 'down', 'left']; const FISH_KEYS = { ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down', ArrowLeft: 'left' };
   const fishArrowsBox = byId('fishArrows'); let fishGame = null;
   function fishArrowsStart(n, ms) {
-    fishGame = { seq: Array.from({ length: n }, () => FISH_DIRS[Math.floor(Math.random() * 4)]), at: 0 };
+    // (the server's arrows, the first n of its twelve; every press kept with its time, sent at the pull -- Codex 검토 #1)
+    fishGame = { seq: fishSeq?.length >= n ? fishSeq.slice(0, n) : Array.from({ length: n }, () => FISH_DIRS[Math.floor(Math.random() * 4)]), at: 0, presses: [], shownAt: performance.now() };
     const row = fishArrowsBox.querySelector('.fishArrowSeq');
     row.replaceChildren(...fishGame.seq.map((dir) => { const s = document.createElement('span'); s.dataset.dir = dir; return s; }));
     fishArrowsBox.classList.remove('hidden', 'wrong'); fishArrowMark(); // (shown first: a hidden bar runs no transition)
@@ -3262,9 +3275,10 @@
   function fishArrowMark() { [...fishArrowsBox.querySelectorAll('.fishArrowSeq span')].forEach((s, k) => { s.classList.toggle('done', k < fishGame.at); s.classList.toggle('now', k === fishGame.at); }); }
   function fishArrow(dir) {
     if (!fishGame || fishBusy) return;
+    fishGame.presses.push({ dir, t: Math.round(performance.now() - fishGame.shownAt) });
     if (fishGame.seq[fishGame.at] !== dir) { fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); return; }
     fishGame.at += 1; fishArrowMark();
-    if (fishGame.at === fishGame.seq.length) { fishArrowsEnd(); fishBusy = true; pullFish().finally(() => { fishBusy = false; }); }
+    if (fishGame.at === fishGame.seq.length) { const { presses } = fishGame; fishArrowsEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; }); }
   }
   window.addEventListener('keydown', (e) => { if (!fishGame || !FISH_KEYS[e.code]) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) fishArrow(FISH_KEYS[e.code]); }, true);
   fishArrowsBox.querySelectorAll('.fishArrowPad button').forEach((b) => b.addEventListener('click', () => fishArrow(b.dataset.dir)));
