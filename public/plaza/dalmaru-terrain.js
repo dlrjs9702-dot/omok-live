@@ -90,10 +90,10 @@
   // pads flattened after it as before. mound: a round rise; hollow: a dip; terrace: a hill in flat steps with short risers;
   // ledge: a step across the round (yaw: the step's facing), a little cliff
   const BRUSHES = Object.freeze([
-    { kind: 'terrace', x: 82, z: -58, r: 14, h: 3, steps: 2 },
-    { kind: 'mound', x: 50, z: -22, r: 15, h: 2.2 },
-    { kind: 'mound', x: 138, z: 34, r: 13, h: 1.8 },
-    { kind: 'hollow', x: -126, z: 70, r: 12, h: 0.7 },
+    { kind: 'terrace', x: 82, z: -58, r: 14, h: 4, steps: 2 },
+    { kind: 'mound', x: 50, z: -22, r: 15, h: 3.6 },
+    { kind: 'mound', x: 138, z: 34, r: 13, h: 3 },
+    { kind: 'hollow', x: -126, z: 70, r: 12, h: 0.9 },
     { kind: 'ledge', x: -86, z: -58, r: 13, h: 1.4, yaw: 0.6 },
   ].map((b) => Object.freeze(b)));
   function brushAt(x, z) {
