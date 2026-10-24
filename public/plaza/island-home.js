@@ -16,7 +16,7 @@
   const lotById = (id) => LOTS.find((l) => l.id === id) || null;
   // the house's door: 0.7 m in front of its steps (assets 58 seats kind door: the 오두막 -2.9, the 작은 집 -3.9, the 큰 집
   // -6.2 past its veranda) -- model -Z is the front
-  const DOOR = { 1: 3.6, 2: 4.6, 3: 6.9 };
+  const DOOR = { 1: 3.6, 2: 4.6, 3: 6.9, 4: 6.9 }; // (R8 4단계: the 큰 집's footing and door)
   const doorOf = (lot, stage = 2) => { const d = DOOR[stage] || DOOR[2]; return { x: Math.round((lot.x - Math.sin(lot.yaw) * d) * 100) / 100, z: Math.round((lot.z - Math.cos(lot.yaw) * d) * 100) / 100 }; };
   const ROOFS = Object.freeze(['red', 'blue', 'green', 'brown']);
   const FLOORS = Object.freeze(['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink']);
@@ -25,7 +25,10 @@
   // the room: 8 x 8 m (assets 58 home.room), its low wall and doorway at local -Z (toward the camera), turned half
   // round in the world like the 백화점's floors; each lot's room 200 m from the next
   const ROOM = Object.freeze({ w: 12, d: 12, y: 0.4, half: 5.85 }); // (the 작은 집's; each stage its own -- STAGES)
-  const roomOf = (lot) => ({ x: 300 + lot.n * 200, z: -330, y: ROOM.y });
+  // (R8 2층: a house's upper floor is a room of its own, 90 m behind its 1층 -- a lot marked `upper` stands for it, so
+  // every rule here takes it as it takes a lot)
+  const roomOf = (lot) => ({ x: 300 + lot.n * 200, z: lot.upper ? -420 : -330, y: ROOM.y });
+  const upperLot = (lot) => (lot ? Object.freeze({ ...lot, upper: true }) : null);
   const world = (lot, lx, lz) => { const r = roomOf(lot); return { x: Math.round((r.x - lx) * 100) / 100, z: Math.round((r.z - lz) * 100) / 100 }; };
   const local = (lot, x, z) => { const r = roomOf(lot); return { lx: r.x - x, lz: r.z - z }; };
   // 묶음 4-2 집 단계 (docs/my-home-20261020.md 「단계」·「실내 크기 다시」, 사용자 「첫 주택은 오두막에서 진화해 나가는 걸로」·「좀
@@ -40,14 +43,28 @@
       // (home.manor_room: the half wall at x 2.67 with its arch |z| < 1.4 and two posts, the window seat on the back wall)
       fixed: [{ x0: 2.55, x1: 2.79, z0: 1.25, z1: 6.5 }, { x0: 2.55, x1: 2.79, z0: -5.3, z1: -1.25 }, { x0: -4.0, x1: -1.2, z0: 5.9, z1: 6.5 }],
       seats: [{ x: -2.6, z: 6.05 }] }),
+    // R8 4단계 큰 집 2층 (assets 58 2026-10-25, docs/my-home-20261020.md): the 큰 집's 1층 with the stairs up at its front left
+    // (home.stairs_in at STAIRS, its foot by the front wall), and the 2층 (`upper`, a room of its own: home.upper_room, the
+    // same 16 x 13, walls 3.0 m, the stair hole front left, a window seat at the back, the balcony door in the middle front)
+    4: Object.freeze({ n: 4, w: 16, d: 13, hx: 7.85, hz: 6.35, pieces: 70, fish: 40, house: 'manor2', room: 'manor_room', tile: '_s3', name: '2층 큰 집',
+      fixed: [{ x0: 2.55, x1: 2.79, z0: 1.25, z1: 6.5 }, { x0: 2.55, x1: 2.79, z0: -5.3, z1: -1.25 }, { x0: -4.0, x1: -1.2, z0: 5.9, z1: 6.5 }, { x0: -7.85, x1: -6.55, z0: -5.7, z1: -0.9 }], // (+ the stairs)
+      seats: [{ x: -2.6, z: 6.05 }] }),
+    upper: Object.freeze({ n: 4, upper: true, w: 16, d: 13, hx: 7.85, hz: 6.35, pieces: 50, fish: 40, house: 'manor2', room: 'upper_room', tile: '_s4', name: '2층',
+      fixed: [{ x0: -8, x1: -6, z0: -6.5, z1: -1.5 }], seats: [{ x: 0, z: 6.08 }], entry: [-7, -0.95] }), // (the hole; one comes up behind it)
   });
-  const TOP_STAGE = 3;
+  const TOP_STAGE = 4;
+  // the stairs (room-local): home.stairs_in's middle (its seat stairs_up 2.7 m before it, at its foot), and where the 2층's
+  // way down is (home.upper_room seat stairs_down, in the hole) -- one goes up or down standing within REACH of them
+  const STAIRS = Object.freeze({ x: -7.3, z: -3.3, foot: { x: -7.3, z: -6.0 }, down: { x: -7, z: -2.1 }, reach: 1.8 });
   const stageOf = (n) => STAGES[n] || STAGES[2];
   const inRoom = (lot, x, z, pad = 0, stage = 2) => { const { lx, lz } = local(lot, x, z); const st = stageOf(stage); return Math.abs(lx) <= st.w / 2 + pad && Math.abs(lz) <= st.d / 2 + pad; };
-  const entryOf = (stage = 2) => [0, Math.round((-stageOf(stage).hz + 0.75) * 100) / 100]; // where one stands coming in (the doorway behind)
+  const entryOf = (stage = 2) => stageOf(stage).entry || [0, Math.round((-stageOf(stage).hz + 0.75) * 100) / 100]; // where one stands coming in (the doorway behind; the 2층: by the stairs)
+  // a house as seen on one floor: the 2층 its own stage and the pieces on it (`floor: 2`), the 1층 the rest
+  const onFloor = (p, floor) => (floor === 2 ? p.floor === 2 : p.floor !== 2);
+  const floorView = (home, floor) => (floor === 2 && home ? { ...home, stage: 'upper', pieces: home.pieces.filter((p) => onFloor(p, 2)) } : home && { ...home, pieces: home.pieces.filter((p) => onFloor(p, 1)) });
   const doorwayOf = (stage = 2) => { const h = stageOf(stage).d / 2; return { x0: -0.8, x1: 0.8, z0: -h, z1: -h + 1.4 }; }; // kept clear (the way out)
   const ENTRY = Object.freeze(entryOf(2)); const DOORWAY = Object.freeze(doorwayOf(2));
-  const MAX_PIECES = STAGES[TOP_STAGE].pieces; const MAX_FISH = STAGES[TOP_STAGE].fish;
+  const MAX_PIECES = STAGES[TOP_STAGE].pieces + STAGES.upper.pieces; const MAX_FISH = STAGES[TOP_STAGE].fish; // (R8: both floors)
   // what each furniture shape takes (assets 57 manifest: width x, depth z, height), and which ones hang on a wall
   const SIZE = { aquarium_big: [2.4, 0.82, 1.82], aquarium_pillar: [1.9, 1.9, 2.65], aquarium_wall: [4.2, 1.46, 2.85], armchair: [0.9, 0.85, 0.88], bed: [1.16, 2.12, 0.95], bookshelf: [1.04, 0.37, 1.85], bunk_bed: [1.04, 1.9, 1.6], cheongsa_lantern: [0.52, 0.26, 1.32], coffee_table: [1.1, 0.6, 0.54], counter: [1.64, 0.66, 1.11], cupboard: [1.04, 0.49, 1.71], curtain_window: [1.41, 0.17, 1.29], desk: [1.2, 0.63, 0.85], dining_chair: [0.46, 0.46, 0.98], dining_table: [1.4, 0.85, 1.08], dresser: [1, 0.49, 0.85], fence_piece: [1.93, 0.13, 0.94], fish_bowl: [0.48, 0.48, 1.21], fish_tank: [0.92, 0.42, 1.01], floor_cushion: [0.59, 0.6, 0.11], floor_lamp: [0.52, 0.52, 1.71], folding_screen: [1.79, 0.18, 1.4], fridge: [0.7, 0.7, 1.75], garden_bench: [1.6, 0.53, 0.93], hanger_rack: [1.25, 0.45, 1.5], insect_case: [0.6, 0.34, 0.7], mini_lighthouse: [0.36, 0.36, 0.81], mirror_stand: [0.55, 0.3, 1.6], moon_lamp: [0.34, 0.32, 0.62], nightstand: [0.45, 0.44, 0.84], onggi: [0.6, 0.6, 0.79], parasol_table: [2.1, 2.1, 2.25], piano: [1.4, 0.74, 1.23], picture_frame: [0.7, 0.07, 0.55], plant_pot: [0.64, 0.61, 1.14], planter_box: [1.2, 0.45, 0.71], radio: [0.43, 0.2, 0.52], rug_round: [1.9, 1.9, 0.03], shell_lamp: [0.58, 0.28, 0.58], soban: [0.8, 0.8, 0.37], sofa: [1.9, 0.85, 0.84], stool: [0.36, 0.36, 0.52], tall_clock: [0.52, 0.35, 1.9], toy_box: [0.74, 0.49, 0.65], tv_stand: [1.3, 0.43, 1.16], wall_clock: [0.44, 0.07, 0.44], wall_shelf: [0.9, 0.24, 0.36], wardrobe: [1.26, 0.64, 2.06] };
   const HUNG = new Set(['picture_frame', 'wall_clock', 'curtain_window', 'wall_shelf']); // (their backs on a wall, at the height made)
@@ -144,5 +161,5 @@
     const list = SEATS[shapeOf(p.id)] || []; const a = (p.rot * Math.PI) / 2;
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf };
+  return { LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf };
 }));

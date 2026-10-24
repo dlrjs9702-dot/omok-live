@@ -47,7 +47,7 @@ test('내 집: 앉을 자리는 가구를 따라 돌고, 서 있는 자리는 �
 // (실내 크기 다시, 사용자 2026-10-21: 오두막 9×9·25·10, 작은 집 12×12·45·20, 큰 집 16×13·70·30 with its half wall and window seat)
 test('집 단계(묶음 4-2): 오두막 9×9 → 작은 집 12×12 → 큰 집 16×13 -- 가구는 그 자리, 벽 가구는 새 벽으로, 큰 집의 반벽·창가 의자', () => {
   assert.deepEqual([1, 2, 3].map((n) => { const s = H.stageOf(n); return [s.w, s.d, s.pieces, s.fish]; }), [[9, 9, 25, 10], [12, 12, 45, 20], [16, 13, 70, 30]]);
-  assert.equal(H.stageOf(undefined).n, 2); assert.equal(H.TOP_STAGE, 3); // (v1.10.112's houses: 작은 집)
+  assert.equal(H.stageOf(undefined).n, 2); assert.equal(H.TOP_STAGE, 4); // (v1.10.112's houses: 작은 집; R8: the 2층 큰 집 on top)
   const sofa = { uid: 's', id: 'sofa__mint', x: 0, z: 3.75, rot: 0 };
   assert.match(H.placeError({ ...sofa, z: 4 }, [], 1), /방 밖/); assert.equal(H.placeError(sofa, [], 1), null);
   assert.match(H.placeError({ ...sofa, z: -3.5 }, [], 1), /문 앞/); // (the 오두막's doorway, nearer the middle)
@@ -60,6 +60,27 @@ test('집 단계(묶음 4-2): 오두막 9×9 → 작은 집 12×12 → 큰 집 1
   assert.deepEqual(H.entryOf(1), [0, -3.6]); assert.deepEqual(H.entryOf(3), [0, -5.6]);
   const seats = H.allSeatsOf(H.LOTS[0], { stage: 3, pieces: [] }); assert.equal(seats.length, 1); assert.equal(seats[0].id, 'home:room0:0'); // (the window seat)
   assert.equal(H.allSeatsOf(H.LOTS[0], { stage: 2, pieces: [] }).length, 0);
+});
+
+// R8 4단계 큰 집 2층: the 1층 the 큰 집's with the stairs at its front left (no piece on them; one in their way goes back to
+// the 창고 when the house grows), the 2층 a room of its own (90 m behind, its hole kept clear, one comes up behind it),
+// each floor its own pieces (`floor: 2` up there) and count, both floors' fish together
+test('집 4단계(R8): 2층 큰 집 — 1층 계단 자리·2층 계단 구멍은 비움, 층마다 가구, 2층은 따로 떨어진 방', () => {
+  const s4 = H.stageOf(4); const up = H.stageOf('upper');
+  assert.deepEqual([s4.w, s4.d, s4.pieces, s4.fish, s4.house, up.pieces, up.room, up.tile], [16, 13, 70, 40, 'manor2', 50, 'upper_room', '_s4']);
+  assert.equal(H.MAX_PIECES, 120); assert.equal(H.doorOf(H.LOTS[0], 4).x, H.doorOf(H.LOTS[0], 3).x); // (the same door)
+  const chair = { uid: 'a', id: 'armchair__oak', x: -7, z: -4, rot: 0 };
+  assert.equal(H.placeError(chair, [], 3), null); assert.match(H.placeError(chair, [], 4), /벽|겹/); // (the stairs)
+  assert.match(H.placeError(chair, [], 'upper'), /벽|겹/); assert.equal(H.placeError({ ...chair, x: 0, z: 0 }, [], 'upper'), null); // (the hole)
+  assert.deepEqual(H.grownPieces([chair, { ...chair, uid: 'b', x: 0, z: 0 }], 4).back, ['a']);
+  const lot = H.LOTS[0]; const up2 = H.upperLot(lot);
+  assert.ok(Math.hypot(H.roomOf(up2).x - H.roomOf(lot).x, H.roomOf(up2).z - H.roomOf(lot).z) >= 80, '따로 떨어진 방');
+  assert.deepEqual(H.entryOf('upper'), [-7, -0.95]);
+  const inHole = H.world(up2, -7, -4); const kept = H.local(up2, ...Object.values(H.clamp(up2, inHole.x, inHole.z, [], 'upper')));
+  assert.ok(kept.lx >= -6 + 0.29 || kept.lz >= -1.5 + 0.29, `구멍 밖으로: ${JSON.stringify(kept)}`);
+  const home = { stage: 4, pieces: [{ ...chair, uid: 'f1', x: 0, z: 0 }, { ...chair, uid: 'f2', x: 1, z: 1, floor: 2 }] };
+  assert.deepEqual([H.floorView(home, 1).pieces.map((p) => p.uid), H.floorView(home, 2).pieces.map((p) => p.uid), H.floorView(home, 2).stage], [['f1'], ['f2'], 'upper']);
+  assert.equal(H.allSeatsOf(up2, H.floorView({ stage: 4, pieces: [] }, 2)).length, 1); // (the 2층's window seat)
 });
 
 // (문제 기록 3회차 6 「벽면에 딱 안 붙어」) a piece stands on the 0.25 m steps or flush against a wall, whatever its depth;
