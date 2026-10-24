@@ -276,8 +276,8 @@ diffuseColor.rgb *= mix(1.0, 0.6, wetAge * (1.0 - film) * sandy);
 vec3 filmCol = mix(diffuseColor.rgb * vec3(0.62, 0.86, 0.9), uShallowSea, 0.38) * (1.0 + 0.22 * (1.0 - smoothstep(0.0, 0.7, behind)));
 diffuseColor.rgb = mix(diffuseColor.rgb, filmCol, film * 0.85);
 bool coming = cos(ph) > 0.0; float width = coming ? 0.42 : 0.24;
-float lace = 0.5 + 0.25 * sin(vGroundXZ.x * 11.0 + vGroundXZ.y * 7.0 + uShoreTime * 0.8) + 0.25 * sin(vGroundXZ.y * 13.0 - vGroundXZ.x * 5.0 - uShoreTime * 0.6);
-lace = lace * 0.6 + 0.4 * (0.5 + 0.5 * sin(vGroundXZ.x * 23.0 - vGroundXZ.y * 19.0));
+float lace = 0.5 + 0.25 * sin(vGroundXZ.x * 19.0 + vGroundXZ.y * 13.0 + uShoreTime * 0.8) + 0.25 * sin(vGroundXZ.y * 23.0 - vGroundXZ.x * 9.0 - uShoreTime * 0.6); // (검토: smaller holes -- close up they read as a leopard's spots)
+lace = lace * 0.6 + 0.4 * (0.5 + 0.5 * sin(vGroundXZ.x * 37.0 - vGroundXZ.y * 31.0));
 float holes = smoothstep(coming ? 0.28 : 0.5, coming ? 0.4 : 0.62, lace);
 float band = step(0.0, behind) * (1.0 - smoothstep(width * 0.55, width, behind));
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.97, 0.99, 1.0), band * holes * sandy * 0.95);

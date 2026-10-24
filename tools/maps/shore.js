@@ -17,14 +17,16 @@ function buildShoreMap(T, res = 1024) {
     for (let j = res - 1; j >= 0; j -= 1) for (let i = res - 1; i >= 0; i -= 1) { const k = j * res + i; if (!d[k]) continue; if (i < res - 1) relax(k, k + 1, 1); if (j < res - 1) { relax(k, k + res, 1); if (i < res - 1) relax(k, k + res + 1, 1.4142); if (i) relax(k, k + res - 1, 1.4142); } }
     return d;
   };
-  const land = dist((k) => h[k] >= SEA); const water = dist((k) => h[k] < SEA);
+  // (the sea only: a lake, a river or a pond under the sea's height is fresh water -- calm, no wash -- 검토: 거울호수에 파도)
+  const sea = new Uint8Array(n); for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) { const k = j * res + i; sea[k] = h[k] < SEA && T.coastDist(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell) < 2 ? 1 : 0; }
+  const land = dist((k) => !sea[k]); const water = dist((k) => sea[k]);
   const built = [...(T.WATERFRONT?.rails || []).map((r) => [r.x, r.z, 3]), ...(T.PIER ? [[T.PIER.x, T.PIER.z, (T.PIER.half || 8) + 2]] : []), ...(T.DOCK?.rects || []).map((r) => [r.x, r.z, (r.half || 3) + 2])];
   const out = new Uint8Array(n * 3);
   for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) {
     const k = j * res + i; const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell;
-    const sd = (h[k] >= SEA ? land[k] : -water[k]) * cell; // (metres: + on land)
+    const sd = (sea[k] ? -water[k] : land[k]) * cell; // (metres: + on land)
     out[k * 3] = Math.round((Math.max(-1, Math.min(1, sd / RANGE)) * 0.5 + 0.5) * 255);
-    out[k * 3 + 1] = Math.round(Math.max(0, Math.min(1, (SEA - h[k]) / 3)) * 255);
+    out[k * 3 + 1] = sea[k] ? Math.round(Math.max(0, Math.min(1, (SEA - h[k]) / 3)) * 255) : 0;
     out[k * 3 + 2] = Math.abs(sd) > RANGE ? 0 : built.some(([bx, bz, r]) => Math.hypot(bx - x, bz - z) < r) ? 64 : T.cliffAt(x, z) > 0.4 ? 128 : 255;
   }
   return out;
