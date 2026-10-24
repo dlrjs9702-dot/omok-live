@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.142 R7: 순발력 게임 「하늘 계단」
+
+- 근거: gamecenter-notes IDEAS #future-stair-dash, `docs/backlog-dispatch-20261022.md` R7, 사용자 결정(2026-10-25, 그림 보고): 이름 「하늘 계단」, 보상 1,500·2,500·4,000P, 숨 빠르기 그대로.
+- `public/reflex/js/games/stairs.js`: 두 버튼(왼쪽 위·오른쪽 위; PC ← → / A D, 휴대폰 화면 반쪽), 반대쪽은 헛디딤, 숨 막대(보통: 처음 초당 0.17 + 한 칸마다 0.0009씩 빨라짐, 한 칸 +0.065, 40칸마다 꽃 발판 +0.3), 난이도별 방향 바뀜 길이, 높이 따라 하늘 낮 → 노을 → 밤. PC는 카드·퍼즐처럼 넓은 틀(1,200px).
+- 서버: 순발력 게임 틀(`lib/reflex.js` stairs — 30계단부터, 계단 수 × 0.1초보다 짧은 판은 지급 안 함, 5,000 넘는 기록 거절), 보상은 경제 값 `solo:stairs:easy/normal/hard`(1,500·2,500·4,000P), 순발력 하루 20,000P 함께. `/api/solo/reflex`가 `gamePoints.stairs`로 화면에 값 표시.
+- 시험: 단위 `reflex-server`(빠름·지급·너무 적음·범위 밖), e2e `reflex` 「하늘 계단」(PC·휴대폰 35계단 → 헛디딤 → +2,500P), 순발력 목록 여섯.
+- Codex 검토 대기.
+
 ## v1.10.141 R6: 게임관 G4 남은 것(한판마당 PC 넓게)
 
 - 근거: gamecenter-notes `docs/gamehall-fix-spec-20261018.md` G3·G4 완료 기준, `docs/backlog-dispatch-20261022.md` R6.
@@ -31,13 +39,3 @@
 - 쿠로미 특징(광대 두건·해골·긴 토끼 귀·화살촉 꼬리·흰 얼굴+검정+분홍 배색) 없음, 이름·설명에 다른 회사 캐릭터 이름 없음.
 - 시험: 단위 `skins`(윷 고급 7·테마 4, 새 테마는 짝 없음).
 - Codex 검토 대기.
-
-## v1.10.139 주민 길 격자를 서버에서
-
-- 근거: v1.10.137(#283) CI 회귀 후속 — 「검토, 지적」 요청(2026-10-24): 화면이 격자를 만들지 않고 서버가 만든 것을 받기(PC·휴대폰 같게).
-- 서버: `GET /api/island/npc-grid` — `IslandNpcs.packGrid()`(칸마다 2비트: 막힘·산책길, 267 × 267 = 17,823 B, gzip 4,407 B), 처음 한 번 만들어 메모리에, `ETag`(바이트의 sha1)·`Cache-Control: no-cache`(같으면 304). 로그인 필요 없음.
-- 화면: 서버 섬(`GC_ISLAND_LIVE`)이면 섬이 뜰 때 받아 `IslandNpcs.useGrid`(이어진 부분만 계산, 약 10 ms). 받기 실패나 크기가 다르면(다른 지도: 관리자 미리보기) 전처럼 타이머로 만들기(3초 뒤 나머지 한 번에).
-- 서버 격자 = 페이지와 같은 순서(island-train.js가 역·선로 나무를 먼저 비움)로 만든 격자(단위 시험으로 확인).
-- 측정(섬이 뜬 뒤 주민 10명이 나오기까지, 두 번씩): 보통 PC 3.3~3.6초 → 1.0~1.1초, CPU 6배 느리게 14.7~16.2초 → 5.2~5.3초. 받는 시간 103~106 ms(6배: 8 ms, 캐시). 남은 시간은 주민 캐릭터 만들기(격자 10 ms, 바퀴 10개 48 ms).
-- 시험: 단위 `island-npcs`(싸서 받은 화면도 같은 격자·같은 바퀴, 다른 크기 거절, API 304), e2e plaza 「배회 NPC」.
-- Codex 검토 대기(10/25).
