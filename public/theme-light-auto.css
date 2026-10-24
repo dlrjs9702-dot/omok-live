@@ -917,25 +917,33 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .gameTab[aria-selected="true"]{background:#dff1ec;color:#33281d;border-color:#23806f;box-shadow:0 0 0 2px rgba(35,128,111,.2)}
 :root[data-theme="light"] .gameArt.roomGameArt{background:linear-gradient(135deg,var(--g1),var(--g2))}
 :root[data-theme="light"] #seatLabel{background:#f7efe1;border:1px solid #d6c3a5;color:#5e4d3b}
-:root[data-theme="light"] .plazaDialog.talkMode{border:2px solid #23806f;background:rgba(247,239,225,.94)}
-:root[data-theme="light"] .plazaDialog.talkMode::backdrop{background:transparent}
+:root[data-theme="light"] .isle-paper{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 10px 28px rgba(74,56,40,.22)}
+:root[data-theme="light"] .isle-tag{background:var(--talk-tag,var(--isle-tag));color:#fff}
+:root[data-theme="light"] .isle-choice{border:1px solid var(--isle-line);background:#fffaf0;color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.talkMode{border:1px solid var(--isle-line);background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 10px 28px rgba(74,56,40,.25)}
+:root[data-theme="light"] .plazaDialog.talkMode::backdrop{background:rgba(40,28,16,.1)}
 :root[data-theme="light"] .fishArrows{background:rgba(255,250,240,.95);border:3px solid #8a6a4a;box-shadow:0 8px 24px rgba(74,56,40,.28)}
 :root[data-theme="light"] .fishArrowSeq span{background:#efe3cf;color:#4a3828}
 :root[data-theme="light"] .fishArrowSeq span.now{background:#f08a3c;color:#fff}
 :root[data-theme="light"] .fishArrowTime{background:#e6d8c2}
 :root[data-theme="light"] .fishArrowTime i{background:#4caf6a}
 :root[data-theme="light"] .plazaDialog.editMode::backdrop{background:transparent}
-:root[data-theme="light"] .plazaDialog.talkMode::after{background:inherit;border-left:2px solid #23806f;border-top:2px solid #23806f}
-:root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead h2{background:#dff1ec;color:#2a5f55}
-:root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead{background:none;border-bottom:1px solid #d6c3a5}
-:root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead .ghost{background:#f3e9d8;color:#5e4d3b;border-color:#d6c3a5}
-:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button{border:1px solid #d6c3a5;background:#f3e9d8;color:#33281d}
-:root[data-theme="light"] .plazaDialog.talkMode .talkChoices button::before{color:#1f6f60}
-:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:hover,:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:focus-visible{border-color:#23806f;background:#dff1ec;outline:none}
-:root[data-theme="light"] .plazaDialog.talkMode .lostRequest:has(.talkPending)::after{color:#7a6650}
+:root[data-theme="light"] .plazaDialog.talkMode::after{background:var(--isle-paper);border-left:1px solid var(--isle-line);border-top:1px solid var(--isle-line)}
+:root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead h2{background:var(--talk-tag,var(--isle-tag));color:#fff;box-shadow:0 2px 6px rgba(74,56,40,.25)}
+:root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead{background:none;border:0}
+:root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead .ghost{background:transparent;color:var(--isle-soft);border-color:transparent}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequestLine,:root[data-theme="light"] .plazaDialog.talkMode .lookMeta{color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.talkMode .lookMeta.talkMeta{color:var(--isle-soft)}
+:root[data-theme="light"] .talkHearts{color:#d9930f}
+:root[data-theme="light"] .plazaDialog.talkMode .talkChoices{border:1px solid var(--isle-line);background:var(--isle-paper);box-shadow:0 8px 22px rgba(74,56,40,.22)}
+:root[data-theme="light"] .plazaDialog.talkMode .talkChoices::after{background:var(--isle-paper);border-right:1px solid var(--isle-line);border-bottom:1px solid var(--isle-line)}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button{border:1px solid var(--isle-line);background:#fffaf0;color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.talkMode .talkChoices button::before{color:var(--isle-soft)}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:hover,:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:focus-visible{border-color:var(--talk-tag,var(--isle-tag));background:var(--isle-hover);outline:none}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest:has(.talkPending)::after{color:var(--isle-soft)}
 :root[data-theme="light"] .lostRequest:focus{outline:none}
-:root[data-theme="light"] .plazaDialog.talkMode button:focus{outline:3px solid #23806f;box-shadow:0 0 0 6px rgba(35,128,111,.28)}
-:root[data-theme="light"] .plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid #23806f;box-shadow:0 0 0 6px rgba(35,128,111,.28)}
+:root[data-theme="light"] .plazaDialog.talkMode button:focus{outline:3px solid var(--talk-tag,var(--isle-tag));box-shadow:none}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid var(--talk-tag,var(--isle-tag));box-shadow:none}
 :root[data-theme="light"] .accountForm label small{color:#7a6650}
 :root[data-theme="light"] .accountMessage{color:#166534}
 :root[data-theme="light"] .accountMessage.bad{color:#9b2c2c}
