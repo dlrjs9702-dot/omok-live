@@ -15,6 +15,7 @@ test('메신저 기기 로그인 유지·알림: 메신저만, 비밀번호·허
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const { req, base } = await boot(t, dir);
   let ip = 0;
+  const pushesNow = async (n) => { let got = []; for (let k = 0; k < 50 && got.length < n; k += 1) { got = got.concat((await req('/api/test/messenger/pushes')).data.pushes); if (got.length < n) await new Promise((r) => setTimeout(r, 100)); } return got; };
   const call = async (route, body, auth = {}) => {
     const headers = { 'X-Forwarded-For': `10.79.${Math.floor(++ip / 200)}.${ip % 200 + 1}`, ...(auth.account ? { 'X-Account-Token': auth.account } : {}), ...(auth.device ? { 'X-Messenger-Device': auth.device } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) };
     const res = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
@@ -52,20 +53,17 @@ test('메신저 기기 로그인 유지·알림: 메신저만, 비밀번호·허
   const room = (await call('/api/messenger/rooms', { name: '우리집', members: [mum.id, tot.id] }, { device: p.deviceToken })).data.room;
   await req('/api/test/messenger/pushes'); // (the invite line is the server's own: no push)
   await call(`/api/messenger/rooms/${room.id}/messages`, { text: '저녁 먹자' }, { device: p.deviceToken });
-  await new Promise((r) => setTimeout(r, 200));
-  let pushes = (await req('/api/test/messenger/pushes')).data.pushes;
+  let pushes = await pushesNow(2);
   assert.deepEqual(pushes.map((x) => x.endpoint).sort(), ['https://push.example.net/send/mum', 'https://push.example.net/send/tot']);
   assert.deepEqual(pushes[0].payload, { title: '우리집', body: '아빠: 저녁 먹자', room: room.id, unread: 2 }); // (the invite line + this one)
   await call(`/api/messenger/rooms/${room.id}/mute`, { on: true }, { device: k.deviceToken });
   // someone looking at the messenger now (a stream open) is not told either
   const ctl = new AbortController(); const stream = await fetch(`${base}/api/messenger/stream`, { headers: { 'X-Messenger-Device': m.deviceToken }, signal: ctl.signal });
   await call(`/api/messenger/rooms/${room.id}/messages`, { text: '빨리 와' }, { device: p.deviceToken });
-  await new Promise((r) => setTimeout(r, 200));
-  assert.deepEqual((await req('/api/test/messenger/pushes')).data.pushes, []);
+  await new Promise((r) => setTimeout(r, 300)); assert.deepEqual(await pushesNow(0), []); // (nothing for the one looking)
   ctl.abort(); await stream.body?.cancel().catch(() => {}); await new Promise((r) => setTimeout(r, 200));
   await call(`/api/messenger/rooms/${room.id}/messages`, { text: '다 식어' }, { device: p.deviceToken });
-  await new Promise((r) => setTimeout(r, 200));
-  pushes = (await req('/api/test/messenger/pushes')).data.pushes; assert.deepEqual(pushes.map((x) => x.to), [mum.id]);
+  pushes = await pushesNow(1); assert.deepEqual(pushes.map((x) => x.to), [mum.id]);
   // ending: a new password ends mum's devices (and their subscription); the permission taken away ends pop's; tot's logout its own
   assert.equal((await call('/api/account/password', { current: 'secret123', next: 'secret456' }, { account: m.accountToken })).status, 200);
   assert.equal((await call('/api/messenger', undefined, dev)).status, 401);
@@ -75,6 +73,5 @@ test('메신저 기기 로그인 유지·알림: 메신저만, 비밀번호·허
   assert.equal((await call('/api/messenger', undefined, { device: k.deviceToken })).status, 401);
   await call(`/api/messenger/rooms/${room.id}/mute`, { on: false }, { account: k.accountToken });
   await call(`/api/messenger/rooms/${room.id}/messages`, { text: '아무도' }, { account: k.accountToken });
-  await new Promise((r) => setTimeout(r, 200));
-  assert.deepEqual((await req('/api/test/messenger/pushes')).data.pushes, []); // every subscription went with its device
+  await new Promise((r) => setTimeout(r, 300)); assert.deepEqual(await pushesNow(0), []); // every subscription went with its device
 });
