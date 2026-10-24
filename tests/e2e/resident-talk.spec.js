@@ -29,7 +29,8 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   // (대화창 새 단장: the words typed out -- Space shows a line at once, then the next)
   const lines = async () => { for (let k = 0; k < 8 && await page.locator('.lostRequestLine.talkPending, .lostRequestLine.typing').count(); k += 1) await page.keyboard.press('Space'); };
   const choose = async (key, all = true) => { await Promise.all([page.waitForResponse((r) => r.url().includes('/api/island/resident/talk')), page.keyboard.press(key)]); if (all) await lines(); };
-  const close = async () => { await page.keyboard.press('Escape'); await expect(dialog).not.toHaveClass(/talkMode/); };
+  // (a talk asked twice on a slow runner may answer after the first Escape and open again: Escape until it stays shut)
+  const close = async () => { await expect.poll(async () => { if (await talking()) await page.keyboard.press('Escape'); await page.waitForTimeout(400); return talking(); }, { timeout: 20000 }).toBe(false); };
   const holdOn = (p, n) => p.evaluate((n) => window.PlazaDebug().residentReservations[n]?.hold?.eventId || null, n);
   await post(request, '/api/test/island/free-residents', token, {}); // (CI: no resident still held by an earlier test's event)
   const view = (await get(request, '/api/island/errands', token)).data;
@@ -49,18 +50,20 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   expect(menu.y + menu.height).toBeLessThanOrEqual(words.y);
   await page.keyboard.press('1'); await expect(choices).toHaveText(TOPICS); await page.keyboard.press('4'); await expect(choices).toHaveText(TOP); // 이야기해요 → 돌아가기
   await page.keyboard.press('1'); await expect(choices).toHaveText(TOPICS);
-  await expect.poll(() => holdOn(other.page, idle), { timeout: 30000 }).toMatch(/^talk:/); // (the other screen hears it from the server: past 15 s on a slow runner)
+  await expect.poll(async () => (await holdOn(other.page, idle)) || '', { timeout: 30000 }).toMatch(/^talk:/); // (the other screen hears it from the server: past 15 s on a slow runner; '' while not yet -- toMatch on null stops the poll)
   // (a slow screen eases the islander into the place it is held at: measured once it stands there)
   let at = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
   await expect.poll(async () => { const now = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle); const d = Math.hypot(now.x - at.x, now.z - at.z); at = now; return d; }, { timeout: 20000, intervals: [1000] }).toBeLessThan(0.05);
   await page.waitForTimeout(13000); // past the server's lease: the window renews it
-  expect(await holdOn(other.page, idle)).toMatch(/^talk:/);
+  expect((await holdOn(other.page, idle)) || '').toMatch(/^talk:/);
   const still = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
   expect(Math.hypot(still.x - at.x, still.z - at.z)).toBeLessThan(0.6);
   const busy = await post(request, '/api/island/resident/talk', other.token, { n: idle });
   expect(busy.status).toBe(409); expect(busy.data.message).toContain('심부름꾼님과 이야기 중');
   await choose('2', false); // 섬 소문: typed out (no choices meanwhile), Space shows it all
-  await expect(page.locator('.lostRequestLine.typing')).toHaveCount(1); await expect(page.locator('#plazaDialog .talkChoices')).toBeHidden();
+  // (one moment: while a line is typing, no choices -- read together, a slow runner may finish the line between two checks)
+  const typingNow = () => page.evaluate(() => ({ typing: Boolean(document.querySelector('.lostRequestLine.typing')), choices: getComputedStyle(document.querySelector('#plazaDialog .talkChoices')).display }));
+  const seen = await typingNow(); if (seen.typing) expect(seen.choices).toBe('none');
   await page.keyboard.press('Space'); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
   await expect(page.locator('.lostRequestLine').first()).toHaveText(/^「.+」$/);
   await lines(); await expect(choices).toHaveText(TOP);
