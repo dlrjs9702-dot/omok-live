@@ -15,7 +15,13 @@ body.messengerPage{margin:0;min-height:100dvh;background:#f4ead6;color:var(--isl
 .mApp .messengerRoomList button{color:var(--isle-ink);background:#fffaf0;border:1px solid var(--isle-line)}
 .mApp .messengerRoomList button[aria-current="true"]{outline:2px solid var(--isle-tag)}
 .mApp .messengerMessages{background:#fffdf7;border:1px solid var(--isle-line);border-radius:14px}
-.mApp .chatMessageText{color:#2f2418}
-.mApp .chatMessage.mine .chatMessageText{background:#ffe7a8}
+.mApp .chatMessageText{background:#fff;color:#2f2418;border:1px solid var(--isle-line)}
+.mApp .chatMessage.mine .chatMessageText{background:#ffe7a8;border-color:#f0cf7a}
+.mApp .chatMessageHead strong{color:var(--isle-soft)}
+.mApp .smallMuted,.mApp time,.mApp .messengerUnsend{color:var(--isle-soft)}
+.messengerPage .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+.messengerPage .secondary{background:var(--isle-tag);color:#fff;border-color:transparent}
+.messengerPage .primary{background:#c98a1e;color:#fff;border-color:transparent}
+.messengerPage input[type="text"],.messengerPage input[type="password"]{background:#fff;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:12px;padding:9px 12px;font-size:1rem}
 .messengerPage .toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%)}
 @media(max-width:760px){.mApp{padding:8px}}
