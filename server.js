@@ -1017,7 +1017,8 @@ async function residentLetter(account, label, now) {
   if (!close.length) return;
   const n = Number(close[0][0]); const id = `resident-${n}-${day}`;
   const letter = { id, from: `resident:${n}`, fromName: IslandCast.WALKERS[n].name, text: IslandCast.fill(IslandAffinity.letterOf(n, day), label), itemId: null, itemName: null, at: now, read: false };
-  await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
+  // (Codex 검토 P3) one a day for the account, whoever the closest is by then (the closest changing the same day: no second)
+  await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => String(l.id).startsWith('resident-') && String(l.id).endsWith(`-${day}`)) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
 }
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
@@ -1563,11 +1564,13 @@ function freeSeat(token) { for (const [id, t] of seatTaken) if (t === token) sea
 const TOWNHALL_GATE_OUT = (() => { const p = IslandTerrain.townhallWorld(0, IslandTerrain.TOWNHALL.yard.z1 + 1.4); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; })();
 // 문제 기록 2회차: the key signing the picture links (made once, kept in the world store, never sent anywhere)
 let shotKeyHeld = null;
-async function issueShotKey() {
-  if (shotKeyHeld) return shotKeyHeld;
-  let key = await pointStore.worldValue('issueShotKey');
-  if (typeof key !== 'string' || key.length < 32) { key = crypto.randomBytes(32).toString('hex'); await pointStore.setWorldValue('issueShotKey', key); }
-  return (shotKeyHeld = key);
+function issueShotKey() { // (Codex 검토 P3: one making shared -- two first asks at once never make two keys)
+  shotKeyHeld ||= worldEdit(async () => {
+    let key = await pointStore.worldValue('issueShotKey');
+    if (typeof key !== 'string' || key.length < 32) { key = crypto.randomBytes(32).toString('hex'); await pointStore.setWorldValue('issueShotKey', key); }
+    return key;
+  }).catch((error) => { shotKeyHeld = null; throw error; });
+  return shotKeyHeld;
 }
 const passesGate = (session) => townhallPass.has(session.token) || session.role === 'admin' || (process.env.NODE_ENV === 'test' && !townhallStrict.has(session.token));
 function notePlazaSpot(account, x, z, now = nowMs()) {

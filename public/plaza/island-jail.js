@@ -57,8 +57,11 @@
     '섬의 길과 다리는 세금으로 만듭니다.', '세금은 모두를 위한 것입니다.', '나는 약속을 지키는 사람입니다.', '이번이 마지막 반성문입니다.']);
   const dayNumber = (day) => Math.floor(Date.parse(`${day}T00:00:00Z`) / 86400000);
   function sentencesOf(day, count = 3) {
-    const out = []; let k = dayNumber(day) * 7;
-    while (out.length < count) { const s = POOL[((k % POOL.length) + POOL.length) % POOL.length]; if (!out.includes(s)) out.push(s); k += 5; }
+    // (Codex 검토 #12: a day that is no date, or more than the pool -- never a loop without end: a sound start, at most
+    // as many tries as the pool has)
+    const n = Math.max(0, Math.min(POOL.length, Math.floor(Number(count) || 0))); const d = dayNumber(day);
+    const out = []; let k = (Number.isFinite(d) ? d : 0) * 7;
+    for (let tries = 0; out.length < n && tries < POOL.length * 2; tries += 1) { const s = POOL[((k % POOL.length) + POOL.length) % POOL.length]; if (!out.includes(s)) out.push(s); k += 5; }
     return out;
   }
   const normalize = (text) => String(text || '').replace(/[.。]+\s*$/, '').replace(/\s+/g, ' ').trim();
