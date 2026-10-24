@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.134 문제 기록 3회차 9묶음: 곤충·물고기 부탁
+
+- 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 17번(사용자 결정 10/22 「곤충·물고기 부탁」).
+- 17: 사진가의 두 부탁(`photomemory` 첫 섬 나들이, `photographer` 주간)을 `catchSteps`로 — 곤충 한 마리(`give insect_*`) 다음 물고기 한 마리(`give fish_*`). 첫 나들이 메뚜기·붕어, 주간 무당벌레·망둥어(날마다 섬 어딘가에 있는 것). 보상 3,000 + 4,000 + 마무리 15,000(합계 그대로). 상태에 `v: 2`, 그 전부터 진행 중이던 사진 부탁(`v` 없음)은 `storyState`가 완료로 봄(받은 보상 그대로). 곤충을 잡거나 물고기를 낚으면 서버가 그 자리에서 부탁용 가방을 갱신(`questBagNow`).
+- 시험: 단위 `island-quests`·`solo-quest-server`, e2e `plaza`(부탁 흐름).
+- Codex 검토 대기(10/25).
+
 ## v1.10.133 문제 기록 4회차: 능선 계단 둘레(끊긴 길·뜬 발판·계단 위 산)
 
 - 근거: gamecenter-notes `docs/issue-log-review-20261023.md` 새 기록 3건(모두 v1.10.127에서 계단을 1.5° 옮긴 뒤).
@@ -26,12 +33,4 @@
 - 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 4번.
 - 4: 입질 때 SPACE 한 번 대신 화살표 순서 맞추기. `lib/island-fishing.js` `ARROWS {common:4, normal:6, rare:9, big:12}`, `arrowsFor`, 시간 `arrowMs(n) = n×700 + 1500`(늦음 판정도 이것, `BITE_MS` 없앰). 서버 fish/start가 `window`·`arrows`를 보냄. 화면 `#fishArrows`(PC 방향키, 휴대폰 `pointer:coarse`는 단추 4개), 틀리면 찌만 흔들림, 마지막 화살표가 당기기. 시간 막대는 상자가 보인 뒤 줄어듦. 보상은 그대로.
 - 시험: 단위 `island-fishing`, e2e `plaza`(낚시)·`river-fishing`은 `pressFishArrows`로(PC·휴대폰).
-- Codex 검토 대기(10/25).
-
-## v1.10.131 문제 기록 3회차 7묶음: 잠자리채·낚싯대 들기와 휘두르기, 농장 창고·허수아비
-
-- 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 22번, 15번(에셋 68).
-- 22: 가방의 잠자리채·낚싯대 「들기/넣기」(손에 장착, `TOOL_HOLD`). 잠자리채를 들면 SPACE(휴대폰 상호작용)가 `tool:swing` — NetSwing 동작(assets 66), 앞 1.5 m 부채꼴을 450 ms에 판정: 곤충은 `/api/island/insect/catch`로 잡고, 주민은 HitReact 뒤 Angry와 화난 말풍선. 들지 않으면 곤충 앞 안내만(「가방에서 잠자리채를 들면 잡을 수 있어요」).
-- 15: 농장 마당 창고(`farm.shed`, 문 −Z로 마당 안쪽)·허수아비(`farm.scarecrow`) 모델(assets 68)로 임시 상자 교체.
-- 시험: e2e `island-tool-swing`(들기·곤충 잡기·주민 맞기·넣기, PC·휴대폰), `island-insects`의 잡기를 휘두르기로(#271의 고르기·같은 답 비교 유지), 에셋 파이프라인 목록.
 - Codex 검토 대기(10/25).

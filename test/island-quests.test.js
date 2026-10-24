@@ -138,36 +138,48 @@ test('주간 순환: 서울 월요일 경계·2~3개·첫 주 기존 진행 유�
   }
 });
 
+// 문제 기록 3회차 17: the photo requests became 「곤충·물고기 부탁」 -- one under way from before (step 2 of the old three, no
+// `v`) counts as done (nothing more to ask, what it paid stays), a new one asks for the insect, then the fish
+test('사진 부탁 → 곤충·물고기 부탁: 진행 중이던 옛 사진 부탁은 완료, 새 부탁은 곤충 다음 물고기', () => {
+  const now = Date.parse('2026-10-10T12:00:00+09:00'); const old = { photomemory: { step: 2, taken: true, count: 0, done: false } };
+  assert.equal(Q.storyState(old, 'photomemory').done, true);
+  assert.equal(Q.markOf('photomemory', Q.storyState(old, 'photomemory'), []), null);
+  assert.equal(Q.talk(old, 'photomemory', [], at('photomemory'), now).done, true);
+  assert.equal(Q.note(old, 'at', { x: 0, z: 0, now, scope: 'fixed' }), null);
+  assert.deepEqual(Q.STORIES.photomemory.steps.map((s) => [s.kind, s.item]), [['give', 'insect_grasshopper'], ['give', 'fish_crucian_carp']]);
+  assert.deepEqual(Q.STORIES.photographer.steps.map((s) => s.item), ['insect_ladybird', 'fish_goby']);
+  const taken = Q.talk({}, 'photomemory', [], at('photomemory'), now).doc; assert.equal(Q.storyState(taken, 'photomemory').done, false);
+  const bag = [{ itemId: 'insect_grasshopper', qty: 1 }];
+  const r = Q.talk(taken, 'photomemory', bag, at('photomemory'), now); assert.equal(r.reward, 3000); assert.deepEqual(r.take, { itemId: 'insect_grasshopper', qty: 1 });
+  assert.equal(Q.storyState(r.doc, 'photomemory').done, false); assert.equal(Q.storyState(r.doc, 'photomemory').step, 1);
+});
+
 async function fixedFlow(store, rollback=false) {
   const U='guest:45454545-4545-4545-8545-454545454545', id='photomemory';
   const now=Date.parse('2026-10-10T12:00:00+09:00');
   await store.ensureAccount(U);
   await store.dexNote({userId:U,entry:'photo_bridge'});
-  for(let i=0;i<16;i++) await store.islandGive({userId:U,claimId:`fixed-full-${i}`,itemId:'wallet',qty:1});
+  for(let i=0;i<14;i++) await store.islandGive({userId:U,claimId:`fixed-full-${i}`,itemId:'wallet',qty:1});
   const bag=await store.islandBag(U); const start=(await store.getAccount(U)).balance;
+  // (3회차 17: what the photographer asks for -- an insect, then a fish -- caught and in the bag; the bag then full)
+  for(const s of Q.STORIES[id].steps) await store.islandGive({userId:U,claimId:`fixed-${s.item}`,itemId:s.item,qty:1});
   const pay=(doc,items)=>{const out=Q.talk(doc,id,items,at(id),now);return {...out,payKey:`quest:fixed:${U}:${id}:${out.step}`};};
   await store.questApply(U,'fixed',pay);
-  for(let step=0;step<3;step++) {
-    await store.questApply(U,'fixed',doc=>({doc:Q.note(doc,step===0?'photo':'at',
-      {qty:3,...(Q.STORIES[id].steps[step].spot||{}),now,scope:'fixed'}),reward:0}));
-    if(step<2) await store.questApply(U,'fixed',pay);
-    else {
-      if(rollback) {
-        const before=(await store.getAccount(U)).balance;
-        await store.pool.query("ALTER TABLE island_dex ADD CONSTRAINT fixed_story_test CHECK(entry <> 'memory_island')");
-        await assert.rejects(store.questApply(U,'fixed',pay));
-        assert.equal((await store.questDoc(U,'fixed')).doc.photomemory.step,2);
-        assert.equal((await store.dexOf(U)).memory_island,undefined);
-        assert.equal(store.cachedBalance(U),before,'실패한 보상의 캐시 잔액도 보존');
-        assert.equal(Number((await store.pool.query('SELECT balance FROM point_accounts WHERE user_id=$1',[U])).rows[0].balance),before);
-        await store.pool.query('ALTER TABLE island_dex DROP CONSTRAINT fixed_story_test');
-      }
-      const both=await Promise.all([store.questApply(U,'fixed',pay),store.questApply(U,'fixed',pay)]);
-      assert.equal(both.reduce((n,r)=>n+r.reward,0),17000);
-    }
+  await store.questApply(U,'fixed',pay); // the insect handed over
+  if(rollback) {
+    const before=(await store.getAccount(U)).balance;
+    await store.pool.query("ALTER TABLE island_dex ADD CONSTRAINT fixed_story_test CHECK(entry <> 'memory_island')");
+    await assert.rejects(store.questApply(U,'fixed',pay));
+    assert.equal((await store.questDoc(U,'fixed')).doc.photomemory.step,1);
+    assert.equal((await store.dexOf(U)).memory_island,undefined);
+    assert.equal(store.cachedBalance(U),before,'실패한 보상의 캐시 잔액도 보존');
+    assert.equal(Number((await store.pool.query('SELECT balance FROM point_accounts WHERE user_id=$1',[U])).rows[0].balance),before);
+    await store.pool.query('ALTER TABLE island_dex DROP CONSTRAINT fixed_story_test');
   }
+  const both=await Promise.all([store.questApply(U,'fixed',pay),store.questApply(U,'fixed',pay)]); // the fish: the last step
+  assert.equal(both.reduce((n,r)=>n+r.reward,0),19000);
   assert.equal((await store.getAccount(U)).balance,start+22000);
-  assert.deepEqual(await store.islandBag(U),bag,'16칸이 꽉 차도 기념사진은 가방을 바꾸지 않는다');
+  assert.deepEqual(await store.islandBag(U),bag,'곤충·물고기는 건네져 나가고, 기념사진은 가방을 바꾸지 않는다');
   const mine=await store.dexOf(U);assert.equal(mine.memory_island.count,1);
   assert.equal(require('../lib/island-fishing').collectionCount(mine),1,'기존 도감 칭호 조건은 변하지 않는다');
   assert.equal((await store.questDoc(U,'2026-10-12')).doc.photomemory,undefined);

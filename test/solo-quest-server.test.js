@@ -104,11 +104,11 @@ test('고정 사진가 서버: 근접·서버 활동/방문·최초 보상·기�
   const accepted=(await stand(at.x+.8,at.z)).data.events.find(e=>e.id==='questphotomemory');
   assert.equal(accepted.mark,null);assert.equal(accepted.requested,true);
   const start=await balance();
-  await req('/api/test/quest/note',token,{what:'photo',qty:3,scope:'fixed'});
-  assert.equal((await talk()).data.reward,2000);
-  for(const [i,step] of Q.STORIES.photomemory.steps.entries()) if(i>0) {
-    await stand(step.spot.x,step.spot.z);await new Promise(r=>setTimeout(r,300));await stand(step.spot.x,step.spot.z);
-    await stand(at.x+.8,at.z);assert.equal((await talk()).data.reward,i===1?3000:17000);
+  // (3회차 17) not yet caught: nothing; the insect, then the fish, in the bag and handed over
+  assert.equal((await talk()).data.reward,0);
+  for(const [i,step] of Q.STORIES.photomemory.steps.entries()) {
+    assert.equal((await req('/api/test/island/give',token,{itemId:step.item,qty:1})).status,200);
+    assert.equal((await talk()).data.reward,i===0?3000:19000);
   }
   assert.equal(await balance(),start+22000);assert.equal((await talk()).data.reward,0);
   const finished=(await stand(at.x+.8,at.z)).data.events.find(e=>e.id==='questphotomemory');
