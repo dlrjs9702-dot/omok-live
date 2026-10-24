@@ -1565,11 +1565,12 @@ const TOWNHALL_GATE_OUT = (() => { const p = IslandTerrain.townhallWorld(0, Isla
 // 문제 기록 2회차: the key signing the picture links (made once, kept in the world store, never sent anywhere)
 let shotKeyHeld = null;
 function issueShotKey() { // (Codex 검토 P3: one making shared -- two first asks at once never make two keys)
-  shotKeyHeld ||= worldEdit(async () => {
+  // (not in worldEdit: 문제 기록's save asks for it from inside worldEdit, and a second worldEdit queued behind it never ran)
+  shotKeyHeld ||= (async () => {
     let key = await pointStore.worldValue('issueShotKey');
     if (typeof key !== 'string' || key.length < 32) { key = crypto.randomBytes(32).toString('hex'); await pointStore.setWorldValue('issueShotKey', key); }
     return key;
-  }).catch((error) => { shotKeyHeld = null; throw error; });
+  })().catch((error) => { shotKeyHeld = null; throw error; });
   return shotKeyHeld;
 }
 const passesGate = (session) => townhallPass.has(session.token) || session.role === 'admin' || (process.env.NODE_ENV === 'test' && !townhallStrict.has(session.token));
