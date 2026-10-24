@@ -275,7 +275,7 @@ test('길가 장식과 실물 4계절 회전', async ({ browser, request }) => {
     const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality, batches: d.assets.batches };
   });
   await expect.poll(sample).toMatchObject({ environment: { edgeDecor: { grass: 0 } } });
-  const before = await sample(); expect(before.environment.edgeDecor.tiles).toBeGreaterThan(0);
+  const before = await sample(); if (!before.environment.edgeDecor.painted) expect(before.environment.edgeDecor.tiles).toBeGreaterThan(0); /* (painted walks: no border pieces) */
   expect(before.environment.edgeDecor.flowers).toBeGreaterThan(0); expect(before.environment.edgeDecor.seasonal).toBeGreaterThan(0);
   await expect.poll(async () => (await sample()).batches.find(b => b.ids.includes('deco.layer.edge'))?.placed).toBe(true);
   for (const day of [0, 1, 2, 3]) {
@@ -593,6 +593,8 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // (달마루섬: its cliff fronts are shown as facility.townhall/store, their aliases; the 작명소 and the trader are indoors --
   // the 개명 신청 window and the 백화점's 노점, built on the way in; 묶음 1: 대청마당 has gardens, no planters)
   if (require('../../public/plaza/island-terrain.js').dalmaru) for (const id of ['dalmaru.facade_townhall', 'dalmaru.facade_mall', 'facility.naming', 'facility.trader', 'prop.planter']) { const k = ids.indexOf(id); if (k >= 0) ids.splice(k, 1); }
+  // (「땅에 칠하는 길」: painted walks lay no path pieces -- only 대청마당's busking disc)
+  if (await page.evaluate(() => window.PlazaDebug().environment.edgeDecor.painted)) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('path.') && ids[k] !== 'path.junction.disc.town') ids.splice(k, 1);
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return Object.fromEntries(ids.map((id) => [id, s[id]])); }, { timeout: 60000 }).toEqual(Object.fromEntries(ids.map((id) => [id, 'model']))); // (by id: a miss names itself)
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -969,7 +971,8 @@ test('마을 환경정비사업: 길 3단계 조각이 깔리고, 땅 장식은 
   const env = () => page.evaluate(() => window.PlazaDebug().environment);
   const first = await env();
   expect(first.edgeDecor.paths).toMatchObject({ slab: expect.any(Number), border: expect.any(Number), edge: expect.any(Number), step: expect.any(Number), disc: expect.any(Number) });
-  for (const k of ['slab', 'terrazzo', 'border', 'edge', 'step', 'disc', 'planter']) expect(first.edgeDecor.paths[k], k).toBeGreaterThan(0);
+  // (「땅에 칠하는 길」: on 달마루섬 the walks are painted into the ground -- no pieces laid; 지금 섬 lays them)
+  for (const k of ['slab', 'terrazzo', 'border', 'edge', 'step', 'disc', 'planter']) if (first.edgeDecor.painted) expect(first.edgeDecor.paths[k], k).toBe(0); else expect(first.edgeDecor.paths[k], k).toBeGreaterThan(0);
   expect(first.groundCover.season).toBeGreaterThan(50); expect(first.groundCover.fern).toBeGreaterThan(10);
   for (const [tier, flat, low] of [[0, false, false], [1, true, false], [2, true, true]]) {
     await page.evaluate((t) => window.PlazaDebug().holdQuality(t), tier);
