@@ -84,6 +84,30 @@
   const poolDist = (x, z) => { let d = Infinity; for (const p of POOLS) d = Math.min(d, Math.hypot(x - p.x, z - p.z) - p.r); return d; };
   const islePondDist = (x, z) => (Math.hypot((x - ISLE_POND.x) / ISLE_POND.rx, (z - ISLE_POND.z) / ISLE_POND.rz) - 1) * ISLE_POND.rz;
 
+  // 동산 다듬기 (gamecenter-notes docs/terrain-paint-design-20261025.md 3, 사용자 「진행해」: no baked height picture -- shapes
+  // added to the ground's own formula, the same on the server and every screen): a short list, each in open ground (no walk,
+  // door, stair, bridge or lot within its round -- test/terrain-brushes.test.js), the plaza, the isle and the buildings'
+  // pads flattened after it as before. mound: a round rise; hollow: a dip; terrace: a hill in flat steps with short risers;
+  // ledge: a step across the round (yaw: the step's facing), a little cliff
+  const BRUSHES = Object.freeze([
+    { kind: 'terrace', x: 82, z: -58, r: 14, h: 3, steps: 2 },
+    { kind: 'mound', x: 50, z: -22, r: 15, h: 2.2 },
+    { kind: 'mound', x: 138, z: 34, r: 13, h: 1.8 },
+    { kind: 'hollow', x: -126, z: 70, r: 12, h: 0.7 },
+    { kind: 'ledge', x: -86, z: -58, r: 13, h: 1.4, yaw: 0.6 },
+  ].map((b) => Object.freeze(b)));
+  function brushAt(x, z) {
+    let add = 0;
+    for (const b of BRUSHES) {
+      const d = Math.hypot(x - b.x, z - b.z); if (d >= b.r) continue;
+      const p = 0.5 + 0.5 * Math.cos((Math.PI * d) / b.r); // (1 in the middle, 0 at the rim, smooth both ends)
+      if (b.kind === 'mound') add += b.h * p;
+      else if (b.kind === 'hollow') add -= b.h * p;
+      else if (b.kind === 'terrace') { const s = p * b.steps; const k = Math.min(b.steps - 1, Math.floor(s)); add += (b.h * (k + smooth(0.25, 1, s - k))) / b.steps; }
+      else if (b.kind === 'ledge') add += b.h * smooth(-1.1, 1.1, (x - b.x) * Math.cos(b.yaw) + (z - b.z) * Math.sin(b.yaw)) * Math.min(1, p * 2.2);
+    }
+    return add;
+  }
   const landHeight = lastOf(landHeightOf);
   function landHeightOf(x, z) {
     const cd = coastDist(x, z);
@@ -95,6 +119,7 @@
     // the ridge: 22 m on top, a sheer inner face; its outer side falls to sea cliffs
     const rg = ridgeAt(x, z);
     if (rg > 0) { const outerFall = smooth(2, 9, cd); /* (묶음 5: flat nearly to the coast, then the sea cliff) */ h = lerp(h, RIDGE.top * (0.55 + 0.45 * outerFall) + 1.5 * Math.sin(x * 0.11), rg); }
+    h += brushAt(x, z); // (동산 다듬기)
     // 대청마당: a flat terrace up to the cliff's foot
     const px = Math.max(0, Math.abs(x - PLAZA.x) - PLAZA.hw); const pz = Math.max(0, PLAZA.d0 - z, z - PLAZA.d1);
     const outP = Math.hypot(px, pz); if (outP < 8 && rg < 0.5) h = lerp(PLAZA.h, h, smooth(0, 8, outP));
@@ -171,6 +196,6 @@
   const TRAIN = { r: 194, /* (묶음 5: out from the widened ridge coast, ~177) */ stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };
 
-  return { CAPES, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
+  return { CAPES, BRUSHES, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
     coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap };
 }));
