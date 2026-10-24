@@ -157,8 +157,11 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   expect((await post(request, '/api/home/upgrade', a.token, {})).status).toBe(200);
   await post(request, '/api/test/home/next-day', a.token, {});
   expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ stage: 3, upgradeDay: null });
-  expect((await post(request, '/api/home/upgrade', a.token, {})).data.error).toBe('TOP_STAGE');
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:3:false$/);
+  // (R8 4단계 2층 큰 집: once more; and no further)
+  expect((await post(request, '/api/home/upgrade', a.token, {})).status).toBe(200); await post(request, '/api/test/home/next-day', a.token, {});
+  expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ stage: 4, upgradeDay: null });
+  expect((await post(request, '/api/home/upgrade', a.token, {})).data.error).toBe('TOP_STAGE');
   await through(page, 'room:exit', '나가기', 'island');
   // 방문 허용 (내 집 in the menu): 안 받음 -- the door says so and stays shut; 친구만 -- shut until they are friends
   const bAtDoor = async () => { const d = await b.page.evaluate((id) => window.PlazaDebug().doors[id], `home:${lot}`); await standAt(request, b, d.x, d.z); }; // (the page and the server both: the checks below ask the server)
@@ -194,6 +197,49 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   expect((await get(request, '/api/friends', b.token)).data.friends).toHaveLength(0);
   await goTo(b.page, `home:${lot}`, '집 구경하기'); await bAtDoor();
   expect((await post(request, '/api/home/enter', b.token, { lot })).data.error).toBe('NOT_WELCOME');
+  await expectNoScriptError(page); await expectNoScriptError(b.page);
+  await a.context.close(); await b.context.close();
+});
+
+// R8 4단계 큰 집 2층 (gamecenter-notes docs/backlog-dispatch-20261022.md R8, assets 58 2026-10-25): a 2층 큰 집 -- up the
+// stairs by their foot on the 1층 (SPACE), a room of its own up there (its own pieces: one placed there is not on the 1층),
+// out only from the 1층; a guest goes up too and sees the owner there, not below. PC and phone.
+test('2층 큰 집(R8): 계단으로 2층, 층마다 가구, 1층에서만 나감, 손님도 같은 층끼리 보임', async ({ browser, request, isMobile }) => {
+  test.setTimeout(600000);
+  const { a, b, page, press, goTo, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'u' : 'v');
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
+  await through(page, 'townhall', '관공서 들어가기', 'townhall');
+  const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.owner === null).id;
+  expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'blue' })).status).toBe(200);
+  for (const to of [2, 3, 4]) { expect((await post(request, '/api/home/upgrade', a.token, {})).status).toBe(200); await post(request, '/api/test/home/next-day', a.token, {}); expect((await get(request, '/api/home', a.token)).data.mine.stage).toBe(to); }
+  await through(page, 'room:exit', '나가기', 'island');
+  await through(page, `home:${lot}`, '내 집 들어가기', 'home');
+  const floorOn = (p) => p.evaluate(() => window.PlazaDebug().home()?.floor);
+  const stairs = async (p, door, text, floor) => { // (as the doors: on a slow runner the server may not have my place yet)
+    for (let k = 0; k < 4 && await floorOn(p) !== floor; k += 1) { await goTo(p, door, text); await press(p); await expect.poll(() => floorOn(p), { timeout: 10000 }).toBe(floor).catch(() => {}); }
+    expect(await floorOn(p)).toBe(floor);
+  };
+  expect(await floorOn(page)).toBe(1);
+  await stairs(page, 'home:stairs_up', '2층으로', 2);
+  expect(await page.evaluate(() => window.PlazaDebug().doors['home:exit'])).toBeFalsy();
+  expect((await post(request, '/api/home/leave', a.token, {})).data.error).toBe('UPSTAIRS');
+  // a piece up here: on the 2층 only
+  const [chair] = (await post(request, '/api/test/home/furniture', a.token, { ids: ['sofa__mint'] })).data.pieces;
+  expect((await post(request, '/api/home/place', a.token, { uid: chair.uid, x: 0, z: 0, rot: 0 })).status).toBe(200);
+  expect((await post(request, '/api/home/place', a.token, { uid: chair.uid, x: -7, z: -4, rot: 0 })).data.error).toBe('BAD_PLACE'); // (the stair hole)
+  expect((await get(request, '/api/home/inside', a.token)).data).toMatchObject({ floor: 2, home: { stage: 'upper', pieces: [{ uid: chair.uid, floor: 2 }] } });
+  if (isMobile) await page.screenshot({ path: test.info().outputPath('home-upper-phone.png') }); else await page.screenshot({ path: test.info().outputPath('home-upper-pc.png') });
+  // a guest: in by the door (the 1층 -- the owner not seen there), up the stairs (seen)
+  await through(b.page, `home:${lot}`, '집 구경하기', 'home');
+  const aId = await page.evaluate(() => window.PlazaDebug().myId);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().home()?.floor), { timeout: 10000 }).toBe(1);
+  await b.page.waitForTimeout(1500); expect(await b.page.evaluate((id) => window.PlazaDebug().othersShown().includes(id), aId)).toBe(false);
+  expect((await get(request, '/api/home/inside', b.token)).data.home.pieces.some((p) => p.uid === chair.uid)).toBe(false);
+  await stairs(b.page, 'home:stairs_up', '2층으로', 2);
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().othersShown().includes(id), aId), { timeout: 15000 }).toBe(true);
+  // down and out
+  await stairs(page, 'home:stairs_down', '1층으로', 1);
+  await through(page, 'home:exit', '나가기', 'island');
   await expectNoScriptError(page); await expectNoScriptError(b.page);
   await a.context.close(); await b.context.close();
 });
