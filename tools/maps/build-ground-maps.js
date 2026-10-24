@@ -10,13 +10,14 @@ globalThis.IslandTerrain = T;
 const Paths = require('../../public/plaza/island-paths.js');
 const { buildCoverMaps } = require('./ground-cover.js');
 const { encodeRgb } = require('./png.js');
+const { buildShoreMap } = require('./shore.js');
 
 const RES = 1024;
 const OUT = path.join(__dirname, '..', '..', 'public', 'assets', 'island', 'ground-v2');
 function buildAll(res = RES) {
   const p = Paths.buildPathMaps(T, res); const c = buildCoverMaps(T, res);
   for (let k = 0; k < res * res; k += 1) p.b[k * 3 + 2] = c.gravel[k];
-  return { 'path-a.png': encodeRgb(p.a, res, res), 'path-b.png': encodeRgb(p.b, res, res), 'cover-a.png': encodeRgb(c.a, res, res), 'cover-b.png': encodeRgb(c.b, res, res) };
+  return { 'path-a.png': encodeRgb(p.a, res, res), 'path-b.png': encodeRgb(p.b, res, res), 'cover-a.png': encodeRgb(c.a, res, res), 'cover-b.png': encodeRgb(c.b, res, res), 'shore.png': encodeRgb(buildShoreMap(T, res), res, res) };
 }
 module.exports = { buildAll, OUT };
 

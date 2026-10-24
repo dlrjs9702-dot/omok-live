@@ -23,7 +23,7 @@ export const PAVE_TOP = 0.05; const PAVE_LIFT = 0.01;
 // walks are painted into the ground itself (island-paths.js) -- no strips, slabs, discs or planters laid over it any more
 // (the pilot north of 대청마당 was approved: 「전보다 낫다」, then 「확인 없이 전체」). 지금 섬 keeps its strips.
 export const PAINTED = Boolean(T.dalmaru && globalThis.IslandPaths);
-const SEA_PLANE_Y = -0.6;
+const SEA_PLANE_Y = -0.6; const SHORE_RANGE = 12; // (tools/maps/shore.js: the shore map's ±12 m)
 const paveSegs = []; walkCurves.forEach((w, wi) => { const half = Math.max(1, Math.round(w.w - 0.4)) / 2; for (let i = 1; i < w.pts.length; i += 1) { const [ax, az] = w.pts[i - 1]; const [bx, bz] = w.pts[i]; if (tierAt(wi, (ax + bx) / 2, (az + bz) / 2) === 'town') paveSegs.push({ ax, az, bx, bz, half }); } });
 export function paveLift(x, z) {
   if (PAINTED) return 0; // (painted: no slabs to stand on)
@@ -252,7 +252,37 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
   // meet, the gravel round 대청마당), cover-a/b (forest floor, bare earth, sand / rock, darker grass, clover). A walk and what
   // the ground is made of are the ground's own colour there: nothing laid over it to float, sink or flicker.
   const mapTex = (name) => { const t = keep(new THREE.TextureLoader().load(window.GameBoot?.assetUrl?.(`/assets/island/ground-v2/${name}.png`) ?? `/assets/island/ground-v2/${name}.png`)); t.flipY = false; t.colorSpace = THREE.NoColorSpace; return t; };
-  const maps = PAINTED ? { pathA: mapTex('path-a'), pathB: mapTex('path-b'), coverA: mapTex('cover-a'), coverB: mapTex('cover-b') } : null;
+  const maps = PAINTED ? { pathA: mapTex('path-a'), pathB: mapTex('path-b'), coverA: mapTex('cover-a'), coverB: mapTex('cover-b'), shore: mapTex('shore') } : null;
+  // 파도 치는 바닷가 (gamecenter-notes docs/shore-waves-design-20261025.md, 시범 검토 1~3): on every sand beach the sea runs
+  // up the sand and back -- by the shore map's distance from the sea's edge, so a steep beach gets the same 1.5-2.5 m run as a
+  // flat one; a thin teal film over the sand, lighter at its front; a lace of foam (40 cm, a scalloped front, holes in it)
+  // that thins and breaks up as it goes back; the sand it left dark and shining, drying over about four seconds. All from
+  // the time (one swell about 7 s, each stretch of beach a little off the next): nothing is remembered.
+  const shoreTime = { value: 0 }; const seaShallow = { value: new THREE.Color(0x6fd8d0) };
+  const shoreWash = (path) => (path || !maps ? '' : `
+{ // 파도
+vec3 sh = texture2D(tShore, (vGroundXZ - uPathBox.xy) / uPathBox.z).rgb; float sd = (sh.r * 2.0 - 1.0) * ${SHORE_RANGE.toFixed(1)};
+float sandy = smoothstep(0.8, 0.95, sh.b);
+if (sandy > 0.0 && sd > -1.5 && sd < 4.0) {
+float ph0 = 0.6 * sin(vGroundXZ.x * 0.07 + vGroundXZ.y * 0.05) + 0.3 * sin(vGroundXZ.x * 0.23 - vGroundXZ.y * 0.19);
+#define FRONT(t) (-0.4 + 2.6 * pow(0.5 + 0.5 * sin((t) * 0.9 + ph0), 1.5))
+float ph = uShoreTime * 0.9 + ph0; float front = FRONT(uShoreTime);
+float scallop = 0.14 * sin(vGroundXZ.x * 2.3 + vGroundXZ.y * 1.7) * sin(vGroundXZ.x * 0.9 - vGroundXZ.y * 1.3) + 0.05 * sin(vGroundXZ.x * 7.1 - vGroundXZ.y * 6.3);
+float behind = front + scallop - sd; // (metres behind the wash's front: + under it)
+float film = smoothstep(0.0, 0.12, behind) * sandy;
+float wetAge = 0.0; for (int k = 1; k <= 8; k++) { if (FRONT(uShoreTime - float(k) * 0.5) + scallop > sd) { wetAge = max(wetAge, 1.0 - float(k) / 9.0); } }
+gWet = max(film, wetAge) * sandy;
+diffuseColor.rgb *= mix(1.0, 0.6, wetAge * (1.0 - film) * sandy);
+vec3 filmCol = mix(diffuseColor.rgb * vec3(0.62, 0.86, 0.9), uShallowSea, 0.38) * (1.0 + 0.22 * (1.0 - smoothstep(0.0, 0.7, behind)));
+diffuseColor.rgb = mix(diffuseColor.rgb, filmCol, film * 0.85);
+bool coming = cos(ph) > 0.0; float width = coming ? 0.42 : 0.24;
+float lace = 0.5 + 0.25 * sin(vGroundXZ.x * 19.0 + vGroundXZ.y * 13.0 + uShoreTime * 0.8) + 0.25 * sin(vGroundXZ.y * 23.0 - vGroundXZ.x * 9.0 - uShoreTime * 0.6); // (검토: smaller holes -- close up they read as a leopard's spots)
+lace = lace * 0.6 + 0.4 * (0.5 + 0.5 * sin(vGroundXZ.x * 37.0 - vGroundXZ.y * 31.0));
+float holes = smoothstep(coming ? 0.28 : 0.5, coming ? 0.4 : 0.62, lace);
+float band = step(0.0, behind) * (1.0 - smoothstep(width * 0.55, width, behind));
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.97, 0.99, 1.0), band * holes * sandy * 0.95);
+}
+}`);
   // what the ground is made of over the season's grass (the vertex colour): each kind its own colour, the snow lying
   // thick on grass and earth and thin on rock; the edges between kinds broken up a little
   const paintCover = (path) => (path || !maps ? '' : `
@@ -302,7 +332,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn,
         uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
-        ...(maps ? { tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB } } : {}),
+        ...(maps ? { tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB }, tShore: { value: maps.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
         uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0x9c8a74) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
         uSand: { value: new THREE.Color(0xf1dfae) }, uWet: { value: new THREE.Color(0xd8c48f) }, uClover: { value: new THREE.Color(0x7fb35a) } });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -310,9 +340,9 @@ attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ; varying fl
 vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz; vWorldY = (modelMatrix * vec4(transformed, 1.0)).y;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
-uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tCoverA; uniform sampler2D tCoverB;' : ''}
+uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea;' : ''}
 uniform vec3 uForest; uniform vec3 uEarth; uniform vec3 uGravel; uniform vec3 uRock; uniform vec3 uSand; uniform vec3 uWet; uniform vec3 uClover;`).replace('#include <color_fragment>', `#include <color_fragment>
-vec2 gw = vGround; // (the grass and the sand share, for the grains: the vertex's, or the cover map's)${paintCover(path)}
+vec2 gw = vGround; float gWet = 0.0; // (the grass and the sand share, for the grains: the vertex's, or the cover map's; how wet: 파도)${paintCover(path)}
 if (uGrain > 0.0) {
 vec3 gGrass = texture2D(tGrass, vGroundXZ / 2.4).rgb / 0.611; // (each over its own mean: the colours keep their brightness, only the grain shows)${path ? `
 float gCover = texture2D(tEdge, vGround).a; // the path: x along it, y across (1 at its grass edge)
@@ -321,7 +351,7 @@ diffuseColor.a *= 1.0 - 0.85 * gCover * step(0.001, vGround.y); // the island's 
 }` : `
 vec3 gGrain = mix(mix(vec3(1.0), gGrass, gw.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, gw.y);
 diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
-}`}${paintPath(path)}`);
+}`}${paintPath(path)}${shoreWash(path)}`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.28, gWet);'); // (파도: wet sand shines)
     };
     material.customProgramCacheKey = () => (path ? 'ground-path' : 'ground');
     return material;
@@ -365,6 +395,37 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   const pondWater = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, map: pondTex, roughness: 0.55, metalness: 0 }));
   const sea = new THREE.Mesh(keep(new THREE.PlaneGeometry(900, 900)), mat(0x6cbfe2, { roughness: 0.3 }));
   sea.rotation.x = -Math.PI / 2; sea.position.y = -0.6; sea.receiveShadow = true; scene.add(sea);
+  // (파도 시범 검토 3~5) the sea by the shore map: clear teal and half seen through where it is shallow, the open sea's own
+  // colour a couple of metres down (by the time of day: blue by day, navy-violet in the evening, deep navy at night); lines
+  // of ripple coming in to the beach; the faintest ripple everywhere, its glints making a path of the sun (orange in the
+  // evening) or the moon on the water
+  const seaDeep = { value: new THREE.Color(0x3aa0d0) }; const seaGlow = { value: new THREE.Color(0xfff2d0) }; const sunDir = { value: new THREE.Vector3(-0.4, 0.8, 0.35) }; const seaSelf = { value: 0 }; const seaLines = { value: 1 }; const seaClear = { value: 0.45 }; let seaSun = null;
+  if (maps) {
+    sea.material = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, transparent: true })); // (its own: mat() hands out shared ones)
+    sea.material.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uClear: seaClear, tNoise: { value: groundTex.grass } });
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vSeaXZ;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeaXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uClear; uniform sampler2D tNoise; varying vec2 vSeaXZ;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+vec2 suv = (vSeaXZ - uPathBox.xy) / uPathBox.z; vec3 sh = (suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) ? texture2D(tShore, suv).rgb : vec3(0.0, 1.0, 0.0);
+float sd = (sh.r * 2.0 - 1.0) * ${SHORE_RANGE.toFixed(1)}; float shallow = 1.0 - smoothstep(0.0, 0.7, sh.g); // (0..2.1 m)
+diffuseColor.rgb = mix(uDeepSea, uShallowSea, shallow); diffuseColor.a = mix(1.0, uClear, shallow);
+float ln = texture2D(tNoise, vSeaXZ / 7.0 + vec2(uShoreTime * 0.004, 0.0)).r / 0.611; float ln2 = texture2D(tNoise, vSeaXZ / 2.9).r / 0.611; // (검토 2차 6: broken, of changing width, fewer, fainter further out)
+float lines = pow(0.5 + 0.5 * sin(sd * 1.3 + uShoreTime * 1.5 + 0.8 * sin(vSeaXZ.x * 0.11 + vSeaXZ.y * 0.07)), mix(7.0, 18.0, clamp(ln2 - 0.6, 0.0, 1.0))) * smoothstep(0.95, 1.2, ln) * pow(smoothstep(-9.0, -1.5, sd), 1.5) * (1.0 - smoothstep(-1.2, 0.0, sd)) * uLines;
+diffuseColor.rgb += 0.16 * lines * vec3(0.9, 1.0, 1.0);`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+{ vec2 p = vSeaXZ; float t = uShoreTime;
+vec2 slope = 0.035 * vec2(cos(p.x * 0.9 + p.y * 0.4 + t * 1.1), cos(p.y * 1.1 - p.x * 0.3 + t * 0.9)) + 0.02 * vec2(cos(p.x * 2.3 - p.y * 1.7 - t * 1.7), cos(p.y * 2.6 + p.x * 1.2 + t * 1.4));
+normal = normalize(normal + (viewMatrix * vec4(-slope.x, 0.0, -slope.y, 0.0)).xyz); }`)
+        .replace('#include <lights_fragment_begin>', `{ vec3 r = reflect(normalize(-vViewPosition), normal); vec3 s = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
+totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseColor.rgb * uSelfLit; } // (the evening's and night's sea keeps its own colour under the dim warm light)
+#include <lights_fragment_begin>`);
+    };
+    sea.material.customProgramCacheKey = () => 'sea-shore';
+  }
+  // the time of day's sea (plaza-scene: when the light changes) -- and the sun it follows
+  const SEA_PHASE = { morning: [0x4aa8d2, 0x78d6cc, 0xffe2b8], day: [0x3aa0d0, 0x6fd8d0, 0xfff2d0], evening: [0x334180, 0x1f7480, 0xff8a3c, 0.3, 0.45], /* (검토 3차 2: a step lighter, the shallows a deep teal -- more of its own light, so the warm dusk does not turn it olive) */ night: [0x101b3a, 0x1b4352, 0x9fb8ff, 0.15, 0.3] };
+  function setSeaPhase(phase, sun) { const c = SEA_PHASE[phase] || SEA_PHASE.day; seaDeep.value.set(c[0]); seaShallow.value.set(c[1]); seaGlow.value.set(c[2]); seaSelf.value = c[3] || 0; seaLines.value = c[4] ?? 1; seaClear.value = phase === 'evening' || phase === 'night' ? 0.78 : 0.45; /* (the sand under it lit by the dusk read olive) */ seaSun = sun || null; }
   const pond = new THREE.Mesh(keep(new THREE.CircleGeometry(POND.r + 0.6, 40)), pondWater);
   pond.rotation.x = -Math.PI / 2; pond.position.set(POND.x, land(POND.x, POND.z) - 0.45, POND.z); scene.add(pond);
   const ribbon = (pts, width, yOf, material, lift = 0) => { // a flat strip along a line, following the ground
@@ -1056,7 +1117,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     return { turn, shown };
   }
 
-  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }
