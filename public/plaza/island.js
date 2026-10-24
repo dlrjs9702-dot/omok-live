@@ -807,7 +807,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     }
   });
   // (달마루섬: a walk is one tier end to end -- the planters mark a 산책로 or 오솔길 where it leaves a town walk, 4.2 m in)
-  if (T.dalmaru) walkCurves.forEach((w, wi) => { if (w.tier === 'town') return; for (const end of [0, w.pts.length - 1]) {
+  if (T.dalmaru && !PAINTED) walkCurves.forEach((w, wi) => { if (w.tier === 'town') return; for (const end of [0, w.pts.length - 1]) {
     const [ex, ez] = w.pts[end]; if (!walkCurves.some((o, oi) => oi !== wi && o.tier === 'town' && o.pts.some(([ox, oz]) => Math.hypot(ox - ex, oz - ez) < o.w / 2 + 0.9))) continue;
     const [nx, nz] = w.pts[end ? Math.max(0, end - 4) : Math.min(w.pts.length - 1, 4)]; const l = Math.hypot(nx - ex, nz - ez) || 1; const dx = (nx - ex) / l; const dz = (nz - ez) / l;
     const x = ex + dx * 4.2; const z = ez + dz * 4.2; // (past the junction's disc: none within 3.4 of one)
@@ -840,7 +840,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   lay('path.junction.disc.town', pathParts.disc.filter((d) => d.town), onDisc);
   lay('path.junction.disc.town', buskDisc, placeFlat(0.02, { e: 1.5, round: 3 })); // (over the walk's slabs where it meets them)
   lay('path.junction.disc.walk', pathParts.disc.filter((d) => !d.town), onDisc);
-  lay('path.gate.planter', pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !PAINTED && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { shadow: true });
+  lay('path.gate.planter', pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { shadow: true });
   instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, onMesh(f.x, f.z), f.z, 0.5, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
 
   const nm = new THREE.Matrix3(); const pv = new THREE.Vector3(); const nv = new THREE.Vector3();
