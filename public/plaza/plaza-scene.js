@@ -2594,7 +2594,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // (F3, assets 51: each their own model -- no wardrobe over it, as the warden's; their own height for the bubble)
       const own = globalThis.IslandAssets?.WALKER_LOOKS?.[n];
       scene.add(c.root);
-      if (own) { assets.dress([own.model, 'character.islander'], c); c.headTop = own.headTop; } else { assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look); }
+      if (own) { assets.dress([own.model, 'character.islander'], c); c.headTop = own.headTop; c.modelLean = (own.lean * Math.PI) / 180; } else { assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look); }
       wanderers.push({ n, c, w });
     }
     setEvents(lastResidentEvents);
@@ -3250,7 +3250,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const turn = angleTo(yaw, target);
     const rate = Math.min(1, dt * 12);
     c.root.rotation.y = yaw + turn * rate;
-    if (c.anim) { c.anim.update(dt, speed, { reduceIdle: Boolean(lessMotion?.matches) }); return; } // gait and explicit actions keep playing
+    if (c.anim) {
+      // (F3: an islander's own stoop -- over the frame's pose, the spine 60 % and the chest 40 %. 16 of the 41 motions leave
+      // one of them alone (Give, Receive, the fishing ones...), so last frame's is taken off first: a bone the mixer poses
+      // again is its pose, one it leaves is back where it was -- never bent further each frame)
+      const lean = c.modelLean && c.assetRoot ? (c.leanBones ||= ['Spine', 'Chest'].map((n, k) => { const b = c.assetRoot.getObjectByName(n); return b && { b, on: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -c.modelLean * (k ? 0.4 : 0.6)), applied: false }; }).filter(Boolean)) : null; // (-x: toward the model's front, -Z -- measured)
+      if (lean) for (const l of lean) if (l.applied) { l.b.quaternion.multiply(l.off ||= l.on.clone().invert()); l.applied = false; }
+      c.anim.update(dt, speed, { reduceIdle: Boolean(lessMotion?.matches) }); // gait and explicit actions keep playing
+      if (lean) for (const l of lean) { l.b.quaternion.multiply(l.on); l.applied = true; }
+      return;
+    }
     c.roll += (THREE.MathUtils.clamp(-turn * 0.25, -0.18, 0.18) - c.roll) * Math.min(1, dt * 10); // lean into a turn
     c.gait = (c.gait || 0) + (Math.min(1.7, Math.max(0, speed) / SPEED) - (c.gait || 0)) * Math.min(1, dt * 7);
     const walk = Math.min(1, c.gait); const run = Math.max(0, Math.min(1, (c.gait - 1.1) / 0.5));
