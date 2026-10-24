@@ -59,7 +59,11 @@ test('주민 예약: 안전 위치의 기존10명만 사용하고 가용 주민�
   const r = createIslandResidents({ now: () => 1_000_000, random: () => 0, isSafe: () => false });
   assert.equal(r.reserve('event-a'), null);
   assert.ok(r.snapshot().every(s => s.hold === null));
-  const all = createIslandResidents({ now: () => 1_000_000, random: () => 0 });
+  // (a moment the ten walk apart: two passing each other are never both taken -- which moment that is moves with the map's
+  // routes, so it is looked for, not fixed)
+  let at = 1_000_000; const apart = (t) => { const ps = Array.from({ length: 10 }, (_, n) => Npcs.at(n, t)); return ps.every((p, i) => ps.every((q, j) => j <= i || Math.hypot(p.x - q.x, p.z - q.z) >= Npcs.WALKER.SEP)); };
+  while (!apart(at)) at += 1000;
+  const all = createIslandResidents({ now: () => at, random: () => 0 });
   const owners = Array.from({ length: 10 }, (_,i) => all.reserve(`event-${i}`).n);
   assert.equal(new Set(owners).size, 10);
   assert.equal(all.reserve('event-10'), null);
