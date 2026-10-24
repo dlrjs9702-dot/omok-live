@@ -4083,6 +4083,12 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, balance, ...page });
   }
 
+  // (창 2단계 출석 도장 카드) this month's days attended (Seoul), today and the month's length -- the card's stamps
+  if (pathname === '/api/points/attendance/month' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const today = kstDate(nowMs()); const month = today.slice(0, 7); const [y, m] = month.split('-').map(Number);
+    return sendJson(res, 200, { ok: true, month, today: Number(today.slice(8)), length: new Date(Date.UTC(y, m, 0)).getUTCDate(), firstWeekday: new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), days: await pointStore.attendanceDays(pointAccountForSession(session), month) });
+  }
   if (pathname === '/api/points/attendance' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;

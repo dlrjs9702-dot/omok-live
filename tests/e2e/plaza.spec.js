@@ -209,10 +209,11 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   await expect(page.locator('#plazaDialog #myRecordsCard')).toBeVisible();
   await page.keyboard.press('Escape');
 
-  // Attendance: the keeper pays the daily reward once.
+  // Attendance: the keeper pays the daily reward once (창 2단계: on the stamp card -- attendance-card.spec)
   await page.evaluate(() => window.PlazaDebug().place('attendance'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 출석');
   await page.keyboard.press('Space');
+  await page.locator('#plazaDialog .stampBtn').click();
   await expect(page.locator('#attendanceBtn')).toHaveText('오늘 출석 완료');
 
   await expectNoScriptError(page);

@@ -1154,3 +1154,42 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .dressing .skinSlotTabs [role=tab][data-slot="transform"]::before{background-image:url("/assets/shop/ui/cat_transform.webp")}
 :root[data-theme="light"] .dressGiftForm{background:#f3e9d8;border:1px solid #db2777}
 :root[data-theme="light"] .dressGiftForm .dressGift{background:#db2777;color:#fff;border:0}
+:root[data-theme="light"] .plazaDialog.boardMode{background:#b98a5a;border:10px solid #7a5232;box-shadow:inset 0 0 0 2px #5d3d22,0 12px 30px rgba(40,24,10,.4);background-image:radial-gradient(rgba(90,55,25,.35) 1px,transparent 1.5px),radial-gradient(rgba(255,230,190,.25) 1px,transparent 1.5px)}
+:root[data-theme="light"] .plazaDialog.boardMode .recordsDialogHead{background:#7a5232;color:#fff6e3;border:0}
+:root[data-theme="light"] .plazaDialog.boardMode .plazaDialogBody{background:transparent}
+:root[data-theme="light"] .plazaDialog.boardMode .card{background:transparent;border:0;box-shadow:none;color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.boardMode .noticeBar,:root[data-theme="light"] .plazaDialog.boardMode .titleHallCard>.noticeTab{background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 2px 4px rgba(40,24,10,.3)}
+:root[data-theme="light"] .plazaDialog.boardMode .noticeTab{color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.boardMode .announcementRow,:root[data-theme="light"] .plazaDialog.boardMode .weedBoardList,:root[data-theme="light"] .plazaDialog.boardMode .weedBoardHead,:root[data-theme="light"] .plazaDialog.boardMode .titleHallPanel{background:var(--isle-paper);color:var(--isle-ink);border:0;box-shadow:0 3px 6px rgba(40,24,10,.35)}
+:root[data-theme="light"] .plazaDialog.boardMode .announcementRow::before,:root[data-theme="light"] .plazaDialog.boardMode .weedBoardList::before,:root[data-theme="light"] .plazaDialog.boardMode .weedBoardHead::before{background:radial-gradient(circle at 35% 35%,#ff9a8a,#c0392b 60%,#7d1f15);box-shadow:0 2px 2px rgba(0,0,0,.35)}
+:root[data-theme="light"] .plazaDialog.boardMode .announcementRow.isPinned{background:#fff1c9}
+:root[data-theme="light"] .plazaDialog.boardMode .announcementHead strong,:root[data-theme="light"] .plazaDialog.boardMode .announcementHead time,:root[data-theme="light"] .plazaDialog.boardMode .announcementDetails,:root[data-theme="light"] .plazaDialog.boardMode .smallMuted,:root[data-theme="light"] .plazaDialog.boardMode .weedBoardList li{color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.boardMode .weedBoardList li{background:rgba(217,195,160,.35)}
+:root[data-theme="light"] .plazaDialog.stampMode{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .plazaDialog.stampMode .recordsDialogHead{background:none;border-bottom:1px dashed var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] .stampCard{border:0;box-shadow:none}
+:root[data-theme="light"] .stampCount{color:var(--isle-soft)}
+:root[data-theme="light"] .stampWeekday{color:var(--isle-soft)}
+:root[data-theme="light"] .stampDay{border:2px dashed var(--isle-line);background:#fffaf0}
+:root[data-theme="light"] .stampDay.today{border-color:#c98a1e}
+:root[data-theme="light"] .stampNum{color:var(--isle-soft)}
+:root[data-theme="light"] .stampDay.stamped{border:2px solid #c0392b;background:#fff0ea}
+:root[data-theme="light"] .stampInk{color:#c0392b}
+:root[data-theme="light"] .plazaDialog.mailMode{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .plazaDialog.mailMode .recordsDialogHead{background:none;border-bottom:1px solid var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.mailMode .mailLetter{background:#fffdf6 repeating-linear-gradient(transparent 0 23px,rgba(140,170,200,.35) 23px 24px);border:1px solid var(--isle-line);box-shadow:0 2px 5px rgba(74,56,40,.18);color:var(--isle-ink);border-left:3px double rgba(200,90,90,.45)}
+:root[data-theme="light"] .plazaDialog.mailMode .mailText{color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.mailMode .smallMuted{color:var(--isle-soft)}
+:root[data-theme="light"] .plazaDialog.mailMode input,:root[data-theme="light"] .plazaDialog.mailMode select,:root[data-theme="light"] .plazaDialog.mailMode textarea{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .plazaDialog.mapMode{background:#efe2c4;border:1px solid #c9b48a;color:var(--isle-ink)}
+:root[data-theme="light"] .plazaDialog.mapMode .recordsDialogHead{background:none;color:var(--isle-ink);border-bottom:1px dashed #c9b48a}
+:root[data-theme="light"] .plazaDialog.mapMode .islandMapCard{background:#f4e9cf;border:0;box-shadow:inset 0 0 22px rgba(120,90,40,.35)}
+:root[data-theme="light"] .plazaDialog.mapMode .islandMapCard::after{background:linear-gradient(90deg,transparent calc(33.3% - 1px),rgba(90,60,20,.18) 33.3%,rgba(255,255,255,.25) calc(33.3% + 1px),transparent calc(33.3% + 3px),transparent calc(66.6% - 1px),rgba(90,60,20,.18) 66.6%,rgba(255,255,255,.25) calc(66.6% + 1px),transparent calc(66.6% + 3px)),linear-gradient(0deg,transparent calc(50% - 1px),rgba(90,60,20,.16) 50%,rgba(255,255,255,.22) calc(50% + 1px),transparent calc(50% + 3px))}
+:root[data-theme="light"] .plazaDialog.stampMode .recordsDialogHead h2,:root[data-theme="light"] .plazaDialog.mailMode .recordsDialogHead h2,:root[data-theme="light"] .plazaDialog.mapMode .recordsDialogHead h2{color:var(--isle-ink);background:none}
+:root[data-theme="light"] .plazaDialog.stampMode .recordsDialogHead .ghost,:root[data-theme="light"] .plazaDialog.mailMode .recordsDialogHead .ghost,:root[data-theme="light"] .plazaDialog.mapMode .recordsDialogHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .plazaDialog.stampMode .stampBtn,:root[data-theme="light"] .plazaDialog.mailMode button.primary{background:#c98a1e;color:#fff;border-color:transparent}
+:root[data-theme="light"] .plazaDialog.stampMode .stampBtn:disabled{background:#e7d6b4;color:var(--isle-soft)}
+:root[data-theme="light"] .plazaDialog.boardMode .noticeEmpty,:root[data-theme="light"] .plazaDialog.boardMode .emptyState{color:#fff6e3}
+:root[data-theme="light"] .plazaDialog.boardMode .noticeCount{background:#c0392b;color:#fff}
+:root[data-theme="light"] .plazaDialog.boardMode .announcementDetails summary{color:#9a5b2c}
+:root[data-theme="light"] .plazaDialog.mailMode textarea{background:#fffdf6 repeating-linear-gradient(transparent 0 23px,rgba(140,170,200,.35) 23px 24px);border-left:3px double rgba(200,90,90,.45)}

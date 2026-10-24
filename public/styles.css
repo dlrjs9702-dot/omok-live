@@ -2459,3 +2459,58 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .skinShopDialog.dressing:has(.dressGiftForm:not(.hidden))>.dressDetail{display:none}
 /* R4 구치소: the day's essays on the board */
 .jailLog{margin:0;padding:0 0 0 1.4em;max-height:50vh;overflow:auto;text-align:left;justify-self:stretch;display:grid;gap:4px;font-size:.92rem;overflow-wrap:anywhere}
+
+/* 창 2단계 (gamecenter-notes docs/dialogue-box-redesign-20261025.md 「섬 공통 부품으로 넓히기」): the island's windows on its
+   common parts -- 게시판 a cork board in a wooden frame, each notice a paper pinned at a slight tilt; 출석 a stamp card; 우체통
+   letters on lined paper; 안내 지도 a folded paper map. Text keeps its size and contrast (ink on paper) */
+.plazaDialog.boardMode{background:#b98a5a;border:10px solid #7a5232;border-radius:14px;box-shadow:inset 0 0 0 2px #5d3d22,0 12px 30px rgba(40,24,10,.4);
+  background-image:radial-gradient(rgba(90,55,25,.35) 1px,transparent 1.5px),radial-gradient(rgba(255,230,190,.25) 1px,transparent 1.5px);background-size:7px 7px,11px 11px;background-position:0 0,3px 5px}
+.plazaDialog.boardMode .recordsDialogHead{background:#7a5232;color:#fff6e3;border:0}
+.plazaDialog.boardMode .plazaDialogBody{background:transparent}
+.plazaDialog.boardMode .card{background:transparent;border:0;box-shadow:none;color:var(--isle-ink)}
+.plazaDialog.boardMode .noticeBar,.plazaDialog.boardMode .titleHallCard>.noticeTab{background:var(--isle-paper);color:var(--isle-ink);border-radius:10px;box-shadow:0 2px 4px rgba(40,24,10,.3)}
+.plazaDialog.boardMode .noticeTab{color:var(--isle-ink)}
+.plazaDialog.boardMode .announcementList{display:grid;gap:12px;padding:10px 4px}
+.plazaDialog.boardMode .announcementRow,.plazaDialog.boardMode .weedBoardList,.plazaDialog.boardMode .weedBoardHead,.plazaDialog.boardMode .titleHallPanel{position:relative;background:var(--isle-paper);color:var(--isle-ink);border:0;border-radius:3px;padding:14px 14px 10px;box-shadow:0 3px 6px rgba(40,24,10,.35);transform:rotate(-0.6deg)}
+.plazaDialog.boardMode .announcementRow:nth-child(2n),.plazaDialog.boardMode .weedBoardList:nth-child(2n){transform:rotate(0.7deg)}
+.plazaDialog.boardMode .announcementRow:nth-child(3n),.plazaDialog.boardMode .weedBoardList:nth-child(3n){transform:rotate(-0.3deg)}
+.plazaDialog.boardMode .announcementRow::before,.plazaDialog.boardMode .weedBoardList::before,.plazaDialog.boardMode .weedBoardHead::before{content:"";position:absolute;top:-6px;left:50%;width:13px;height:13px;margin-left:-6px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff9a8a,#c0392b 60%,#7d1f15);box-shadow:0 2px 2px rgba(0,0,0,.35)}
+.plazaDialog.boardMode .announcementRow.isPinned{background:#fff1c9}
+.plazaDialog.boardMode .announcementHead strong,.plazaDialog.boardMode .announcementHead time,.plazaDialog.boardMode .announcementDetails,.plazaDialog.boardMode .smallMuted,.plazaDialog.boardMode .weedBoardList li{color:var(--isle-ink)}
+.plazaDialog.boardMode .weedBoardList li{background:rgba(217,195,160,.35)}
+.plazaDialog.boardMode .weedBoardCard{display:grid;gap:14px;padding:6px 2px}
+/* 출석 도장 카드 */
+.plazaDialog.stampMode{width:min(440px,calc(100vw - 32px));background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+.plazaDialog.stampMode .recordsDialogHead{background:none;border-bottom:1px dashed var(--isle-line);color:var(--isle-ink)}
+.stampCard{display:grid;gap:12px;padding:6px 2px;border:0;box-shadow:none}
+.stampHead{display:flex;justify-content:space-between;align-items:baseline}.stampHead strong{font-size:1.05rem}.stampCount{color:var(--isle-soft);font-weight:700}
+.stampGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.stampWeekday{text-align:center;font-size:.75rem;color:var(--isle-soft);font-weight:700}
+.stampDay{position:relative;aspect-ratio:1;border-radius:50%;border:2px dashed var(--isle-line);display:grid;place-items:center;background:#fffaf0}
+.stampDay.later{opacity:.5}.stampDay.today{border-style:solid;border-color:#c98a1e}
+.stampNum{font-size:.8rem;font-weight:700;color:var(--isle-soft)}
+.stampDay.stamped{border:2px solid #c0392b;background:#fff0ea}
+.stampDay.stamped .stampNum{opacity:.35}
+.stampInk{position:absolute;inset:0;display:grid;place-items:center;font-size:.5rem;font-weight:900;color:#c0392b;letter-spacing:-.02em;line-height:1.05;text-align:center;transform:rotate(-14deg);padding:3px}
+.stampDay.justNow .stampInk{animation:stampPress .45s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes stampPress{from{transform:rotate(-14deg) scale(2.2);opacity:0}to{transform:rotate(-14deg) scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.stampDay.justNow .stampInk{animation:none}}
+.stampBtn{justify-self:stretch;min-height:44px}
+/* 우체통: letters on lined paper */
+.plazaDialog.mailMode{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+.plazaDialog.mailMode .recordsDialogHead{background:none;border-bottom:1px solid var(--isle-line);color:var(--isle-ink)}
+.plazaDialog.mailMode .mailLetter{background:#fffdf6 repeating-linear-gradient(transparent 0 23px,rgba(140,170,200,.35) 23px 24px);border:1px solid var(--isle-line);border-radius:4px;box-shadow:0 2px 5px rgba(74,56,40,.18);color:var(--isle-ink);padding:10px 12px 12px 18px;background-clip:padding-box;border-left:3px double rgba(200,90,90,.45);line-height:24px}
+.plazaDialog.mailMode .mailText{line-height:24px;color:var(--isle-ink)}
+.plazaDialog.mailMode .smallMuted{color:var(--isle-soft)}
+.plazaDialog.mailMode input,.plazaDialog.mailMode select,.plazaDialog.mailMode textarea{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+/* 안내 지도: a folded paper map */
+.plazaDialog.mapMode{background:#efe2c4;border:1px solid #c9b48a;color:var(--isle-ink)}
+.plazaDialog.mapMode .recordsDialogHead{background:none;color:var(--isle-ink);border-bottom:1px dashed #c9b48a}
+.plazaDialog.mapMode .islandMapCard{position:relative;background:#f4e9cf;border:0;padding:6px;box-shadow:inset 0 0 22px rgba(120,90,40,.35)}
+.plazaDialog.mapMode .islandMapCard::after{content:"";position:absolute;inset:6px;pointer-events:none;background:linear-gradient(90deg,transparent calc(33.3% - 1px),rgba(90,60,20,.18) 33.3%,rgba(255,255,255,.25) calc(33.3% + 1px),transparent calc(33.3% + 3px),transparent calc(66.6% - 1px),rgba(90,60,20,.18) 66.6%,rgba(255,255,255,.25) calc(66.6% + 1px),transparent calc(66.6% + 3px)),linear-gradient(0deg,transparent calc(50% - 1px),rgba(90,60,20,.16) 50%,rgba(255,255,255,.22) calc(50% + 1px),transparent calc(50% + 3px))}.plazaDialog.stampMode .recordsDialogHead h2,.plazaDialog.mailMode .recordsDialogHead h2,.plazaDialog.mapMode .recordsDialogHead h2{color:var(--isle-ink);text-shadow:none;background:none}
+.plazaDialog.stampMode .recordsDialogHead .ghost,.plazaDialog.mailMode .recordsDialogHead .ghost,.plazaDialog.mapMode .recordsDialogHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+.plazaDialog.stampMode .stampBtn,.plazaDialog.mailMode button.primary{background:#c98a1e;color:#fff;border-color:transparent}
+.plazaDialog.stampMode .stampBtn:disabled{background:#e7d6b4;color:var(--isle-soft)}
+.plazaDialog.boardMode .noticeEmpty,.plazaDialog.boardMode .emptyState{color:#fff6e3;font-weight:700;text-shadow:0 1px 2px rgba(40,24,10,.6)}
+.plazaDialog.boardMode .noticeCount{background:#c0392b;color:#fff}.plazaDialog.boardMode .announcementDetails summary{color:#9a5b2c}
+.plazaDialog.mailMode textarea{background:#fffdf6 repeating-linear-gradient(transparent 0 23px,rgba(140,170,200,.35) 23px 24px);line-height:24px;border-left:3px double rgba(200,90,90,.45);padding-left:12px}
