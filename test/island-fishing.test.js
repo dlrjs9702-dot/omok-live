@@ -57,19 +57,35 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   await req('/api/test/island/give', sa, { itemId: 'fishing_rod', qty: 1 });
   const early = (await req('/api/island/fish/start', sa, {})).data; assert.ok(early.biteIn >= 5000 && early.biteIn <= 10000);
   assert.equal((await req('/api/island/fish/finish', sa, { fishId: early.fishId })).data.error, 'FISH_EARLY');
+  // (Codex 검토 #1) the arrows are the server's: the cast's twelve, the fish's first n pressed in order within their time --
+  // a wrong one between only shakes; never finished, or finished after the bar: away
+  const press = (seq, n = 12, step = 150) => seq.slice(0, n).map((dir, i) => ({ dir, t: i * step }));
+  const wrongWay = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  // (as many as the cast told the page -- `arrows`; the test bite may change the fish, never that count)
+  const missed = (await req('/api/island/fish/start', sa, {})).data; assert.equal(missed.seq.length, 12); assert.ok(missed.arrows >= 4);
+  await req('/api/test/fish/bite', sa, { species: 'anchovy' });
+  assert.equal((await req('/api/island/fish/finish', sa, { fishId: missed.fishId, presses: press(missed.seq, missed.arrows - 1) })).data.error, 'FISH_WRONG', '하나 덜 누름');
+  const shuffled = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: 'anchovy' });
+  assert.equal((await req('/api/island/fish/finish', sa, { fishId: shuffled.fishId, presses: shuffled.seq.slice(0, shuffled.arrows).map((d, i) => ({ dir: wrongWay[d], t: i * 150 })) })).data.error, 'FISH_WRONG', '틀린 방향만');
+  const slow = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: 'anchovy' });
+  assert.equal((await req('/api/island/fish/finish', sa, { fishId: slow.fishId, presses: press(slow.seq, slow.arrows, 2000) })).data.error, 'FISH_LATE', '시간 초과');
+  const shaky = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: 'anchovy' });
+  const withSlip = [{ dir: wrongWay[shaky.seq[0]], t: 50 }, ...press(shaky.seq, shaky.arrows).map((p) => ({ ...p, t: p.t + 100 }))]; // (a wrong one first: a shake)
+  assert.equal((await req('/api/island/fish/finish', sa, { fishId: shaky.fishId, presses: withSlip })).data.species, 'anchovy', '틀린 것 하나는 흔들림만');
   const cast = (await req('/api/island/fish/start', sa, {})).data;
   await req('/api/test/fish/bite', sa, { species: 'octopus' });
-  const concurrent = await Promise.all(Array.from({ length: 4 }, () => req('/api/island/fish/finish', sa, { fishId: cast.fishId })));
+  const concurrent = await Promise.all(Array.from({ length: 4 }, () => req('/api/island/fish/finish', sa, { fishId: cast.fishId, presses: press(cast.seq) })));
   const got = concurrent[0].data;
   for (const reply of concurrent) { assert.equal(reply.status, 200); assert.deepEqual(reply.data, got, '동일 cast 동시 완료는 같은 답·도감 한 번'); }
   assert.deepEqual([got.species, got.name, got.firstTime], ['octopus', '문어', true]);
-  assert.deepEqual((await req('/api/island/fish/finish', sa, { fishId: cast.fishId })).data.species, 'octopus', '같은 답');
+  assert.deepEqual((await req('/api/island/fish/finish', sa, { fishId: cast.fishId, presses: press(cast.seq) })).data.species, 'octopus', '같은 답');
   const bag = (await req('/api/island/bag', sa)).data.items;
   assert.equal(bag.find((e) => e.itemId === 'fish_octopus')?.qty, 1, '한 마리만');
+  assert.equal(bag.find((e) => e.itemId === 'fish_anchovy')?.qty, 1, '흔들림 하나 있던 멸치만');
   const dex = (await req('/api/island/dex', sa)).data;
-  assert.equal(dex.found, 1); assert.equal(dex.entries.find((e) => e.id === 'fish_octopus').count, 1);
+  assert.equal(dex.found, 2); assert.equal(dex.entries.find((e) => e.id === 'fish_octopus').count, 1);
   assert.equal((await req('/api/skins/title', sa, { skinId: 'dex_title_1' })).status, 409, '도감 4개 전에는 못 씀');
-  for (const sp of ['anchovy', 'goby', 'mackerel']) { const c2 = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: sp }); assert.equal((await req('/api/island/fish/finish', sa, { fishId: c2.fishId })).data.species, sp); }
+  for (const sp of ['goby', 'mackerel']) { const c2 = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: sp }); assert.equal((await req('/api/island/fish/finish', sa, { fishId: c2.fishId, presses: press(c2.seq) })).data.species, sp); } // (멸치 above: four kinds)
   const worn = (await req('/api/skins/title', sa, { skinId: 'dex_title_1' })).data; assert.equal(worn.avatar.title, '섬 탐험가');
   const fisher = require('../lib/island-quests').STORIES.fisher.at;
   await at(fisher.x, fisher.z);
