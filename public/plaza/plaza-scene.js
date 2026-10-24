@@ -2656,7 +2656,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!IslandNpcs.hasGrid()) {
       if (!gridGrowing) {
         gridGrowing = true;
-        const grow = (until) => { if (performance.now() > until) IslandNpcs.buildGrid(); else if (!IslandNpcs.buildGridSlice(12)) setTimeout(() => grow(until), 0); };
+        const grow = (until) => { if (wanderersGone) return; /* (Codex 검토 P3: the island left -- no more) */ if (performance.now() > until) IslandNpcs.buildGrid(); else if (!IslandNpcs.buildGridSlice(12)) setTimeout(() => grow(until), 0); };
         const makeHere = () => setTimeout(() => grow(performance.now() + 3000), 0);
         if (globalThis.GC_ISLAND_LIVE) fetch('/api/island/npc-grid').then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => { if (!IslandNpcs.useGrid(b && new Uint8Array(b))) makeHere(); }).catch(makeHere);
         else makeHere();
