@@ -32,7 +32,9 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   const mall = require('../public/plaza/island-store'); // v1.10.92 백화점: the shops are its sectors (inside), not island lots
   for (const id of ids) if (!mall.sectorOf(id) && !require('../public/plaza/island-terrain').SPOTS[id]) assert.match(terrain, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
   assert.deepEqual(mall.SECTORS.map((s) => s.place).filter((p) => !p.startsWith('mall:')).sort(), ['accessories', 'avatar', 'dye', 'faces', 'hair', 'shop', 'transform']);
-  for (const target of ['openSkinShop', 'missionBtn', 'attendanceBtn', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'openGamehall']) { // v1.10.73: the game hall is its own screen
+  // (창 2단계: 출석 opens the stamp card, which pays through the same claimAttendance as the start screen's button)
+  assert.match(app.match(/async function openAttendanceCard[\s\S]*?\r?\n  \}\r?\n/)[0], /claimAttendance\(\)/, '출석 도장 카드는 같은 출석 지급');
+  for (const target of ['openSkinShop', 'missionBtn', 'openAttendanceCard', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'openGamehall']) { // v1.10.73: the game hall is its own screen
     assert.match(facilities + app.match(/const publicRoomsCardEl = .*/)[0], new RegExp(target), `${target} 재사용`);
   }
 
