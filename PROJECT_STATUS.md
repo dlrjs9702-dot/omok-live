@@ -13,6 +13,33 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.137 R2·R3 주민 상호작용 + 문제 기록 3회차 1·18(곤충 크기·주민 길 멈춤·실내 하늘색)
+
+- 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R2·R3, `docs/issue-log-review-20261022.md` 1·18, #271 「못 고친 것」. 사용자 결정(2026-10-24, 같은 문서 끝 「합쳐 내」): 세 묶음을 PR 하나로.
+
+### R2 먼저 말 걸기·기억·오늘의 이야기·단계 보상
+- ① 아는 사이부터 곁을 지나면 머리 위 인사(함께한 일이 있으면 그 이야기 먼저), 친한 사이부터 인사 동작. 주민마다 10분에 한 번, 전체 20초에 한 번.
+- ② 함께한 일(심부름·오늘의 이야기) 최근 3개를 계정 문서 `resmem`에 기억해 대사와 인사에.
+- ④ 「이야기 나눠요」: 주민마다 하루 한 질문, 세 답 중 좋아하는 답 +2·보통 +1·싫어하는 답 0, 하루 한 번.
+- 단계 보상(계정·주민마다 한 번, `lib/island-affinity.js`): 아는 사이 2,000P, 친한 사이 5,000P + 그 주민의 가구(가구 창고), 단짝 칭호 「<이름>의 단짝」. 친한 주민 심부름 110 %, 단짝 120 %(하루 3개 상한 그대로). 수치는 관리자 경제 값 표.
+- 시험: 단위 `resident-affinity`, e2e `resident-greet`·`resident-talk`(PC·휴대폰).
+
+### R3 주민의 하루·관계·선물·편지(집 방문 제외)
+- ③ 시간대마다 다른 하루 길: 아침 항구 쪽, 낮 그대로, 저녁 정자·알림마루 쪽, 밤 마을 쪽(근처 70 m 멈춤 자리). 서버·화면이 같은 섬 시간대(관리자 고정 포함)로 같은 자리, 소문의 「보통 어디」도 그 시간대.
+- ⑤ 관계표(친구·서먹한 사이): 서먹한 둘 사이 심부름을 끝내면 둘 다 호감도 +1과 화해 대사, 친구 사이면 한마디 더.
+- ⑥ 선물: 하루 한 번 주민마다 가방의 물고기·곤충·섬에서 모은 것 하나(`GIFTABLE`) — 좋아함 +3·보통 +1·싫어함 0, 기억에 남음.
+- ⑥ 편지: 친한 사이 이상 중 가장 가까운 주민이 하루 한 통 우체통에(답장 단추 없음). 보낸 사람은 이름 그대로(「님」 없이)와 작은 「· 주민」, 플레이어 편지는 그대로 「님」.
+- 고침: 플레이어 편지 「답장」이 받는 사람을 고르지 않던 것(누르기 처리가 줄 끝 주석 안에 들어감).
+- 시험: 단위 `resident-affinity`, e2e `resident-talk`(PC·휴대폰), `island-together` 우체통(플레이어 편지 답장 → 받는 사람 골라짐, 주민 편지는 「· 주민」·답장 없음).
+
+### 3k 곤충 크기·주민 길 멈춤·실내 하늘색
+- 1: 섬 곤충 12종 모두 가장 긴 쪽 0.3 m(사용자 10/23 「주먹의 1.5배」) — 등록부 scale = 0.3 / 만든 길이, 휘두르기·안내 거리 +0.15 m(`INSECT_HALF`). 집 곤충 상자 안은 상자(0.24 m)에 맞게 그대로.
+- 주민 길 격자: 화면은 프레임마다 몇 줄씩(`buildGridSlice`), 급하면 남은 것을 한 번에; 이어진 부분 표시로 이어지지 않은 곳 사이는 찾지 않고 바로 없음 — 아침 주민 길 8.6초 → 0.25초, 길은 그대로.
+- 18: 실내에 들어가면 하늘색 대신 검정이 바로(`setSpace`에서 빛 갱신, 5초 기다리지 않음).
+- 시험: 단위 `island-npcs`·에셋 파이프라인(곤충 scale 범위), e2e `insect-size`.
+
+- Codex 검토 대기(10/25).
+
 ## v1.10.136 R1: 이름 있는 주민 13명 새 몸, 배회 주민 10명 고유 외형(F3)
 
 - 근거: gamecenter-notes `docs/backlog-dispatch-20261022.md` R1(assets 52 F4), F3(assets 51 v2, 2026-10-24 검토 통과).
@@ -30,11 +57,4 @@
 - 21: 펫샵(백화점 3층) 카운터 SPACE(`petshop:counter`) → 목록 — 변신 22종을 그 모습 그대로 작게(`transformPet`, 0.42배, 공통 Idle·Walk·SitIdle) + 메타몽(assets 65 `together.pet_ditto`, 삼각형 예외 High 17,000 / Low 5,500). `island-petshop.js` `catalog()`·`catalogOf`·`known`·`nameOf`, 가격은 경제 값 `pet:transform_animal` 8,000 · `pet:transform_ip` 12,000 · `pet:ditto` 12,000, `POST /api/island/petshop/buy`. 한 종류에 한 마리, 가방 밖이라 선물 불가.
 - 고침: 승강기로 멀리 간 뒤 펫이 섬 땅 높이로 붙어 방 바닥 아래에 남던 것(`spaceFloor`), 시험용 teleport도 방 바닥 높이로.
 - 시험: 단위 `pet-catalog`, e2e `pet-catalog`(PC·휴대폰).
-- Codex 검토 대기(10/25).
-
-## v1.10.134 문제 기록 3회차 9묶음: 곤충·물고기 부탁
-
-- 근거: gamecenter-notes `docs/issue-log-review-20261022.md` 17번(사용자 결정 10/22 「곤충·물고기 부탁」).
-- 17: 사진가의 두 부탁(`photomemory` 첫 섬 나들이, `photographer` 주간)을 `catchSteps`로 — 곤충 한 마리(`give insect_*`) 다음 물고기 한 마리(`give fish_*`). 첫 나들이 메뚜기·붕어, 주간 무당벌레·망둥어(날마다 섬 어딘가에 있는 것). 보상 3,000 + 4,000 + 마무리 15,000(합계 그대로). 상태에 `v: 2`, 그 전부터 진행 중이던 사진 부탁(`v` 없음)은 `storyState`가 완료로 봄(받은 보상 그대로). 곤충을 잡거나 물고기를 낚으면 서버가 그 자리에서 부탁용 가방을 갱신(`questBagNow`).
-- 시험: 단위 `island-quests`·`solo-quest-server`, e2e `plaza`(부탁 흐름).
 - Codex 검토 대기(10/25).
