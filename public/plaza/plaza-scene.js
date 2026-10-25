@@ -550,6 +550,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // too with circles that overlap -- 0.5 m ones every 0.5 m, 0.3 in: reaching 0.2 m past the edge
     // 간판: the place's name on a board by the way to its door (lx beside the door's line, lz out from the front), facing out,
     // on the ground there; its legs walked round
+    // (간판 ④, assets 75) a piece that tells the place by its shape, in this facility's frame (its front -Z turned out)
+    const deck = (id, lx, y, lz) => { const g = new THREE.Group(); g.position.set(lx, y, lz); g.rotation.y = Math.PI; root.add(g); const f = new THREE.Group(); g.add(f); assets.attach(id, g, f); return g; };
     const facilitySign = (kind, lx, lz) => { const w = at(lx, lz); signboard(kind, facility.name, root, lx, heightAt(w.x, w.z) - root.position.y, lz, Math.PI); for (const ox of kind === 'stand' ? [-1.25, 1.25] : [0]) solids.push({ ...at(lx + ox, lz), r: 0.3 }); };
     const edgeSolids = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
     if (spot.kind === 'hall') { // v1.10.1 게임관: the island's landmark -- a columned hall with a dome and two towers
@@ -582,6 +584,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       for (const sx of [-0.55, 0.55]) mesh(new THREE.SphereGeometry(0.1, 8, 6), gold, sx, 0.5 + 1.8, depth / 2 + 0.12, visual);
       for (const wx of [-5.6, -3.2, 3.2, 5.6]) for (const wy of [2.1, 4.4]) mesh(new THREE.BoxGeometry(1.1, 1.3, 0.08), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, 0.5 + wy, depth / 2 + 0.03, visual);
       facilitySign('stand', 4.6, depth / 2 + 3.6); // (outside the steps)
+      // (간판 ④ 「밝은 기둥 건물이라 관공서와 헷갈림」: dice, a board and cards on the roof, banners at its front, an arch of
+      // lights over its door with its name -- the hall model's top 11.05, its front 6.4 out)
+      deck('games.roof', 0, 11.05, 0.9); for (const bx of [-5.2, 5.2]) deck('games.banner', bx, 7.0, 6.55);
+      deck('games.marquee', 0, 0.5, 6.7).add(boardText(facility.name, 2.6, 0.6, 3.45, -0.264));
       boxSolids(0, 0.7, w + 1.2, depth + 2.6);
       for (const cx of [-5.4, -3.4, -1.5, 1.5, 3.4, 5.4]) solids.push({ ...at(cx, depth / 2 + 1.25), r: 0.4 });
     } else if (spot.kind === 'facade') { // 달마루섬 2단계: 관공서·백화점 set against 영웅마루 (assets 55 facade.*: 30 x 14, 4.6 out of the cliff)
@@ -589,6 +595,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.BoxGeometry(F.w, 14, F.d), mat(facility.id === 'store' ? 0xd9c9ad : 0xf2ede4), 0, 7, F.d / 2, visual);
       mesh(new THREE.BoxGeometry(4, 5, 0.1), mat(0x8a5a3b), 0, 2.5, F.d + 0.05, visual); // the door
       facilitySign('stand', 5, F.d + 2.6);
+      // (간판 ④ 「가까이선 유리 벽만 보임」: shop windows behind the 백화점's glass, an awning over each -- its glass 4 m out)
+      if (facility.id === 'store') for (const wx of [-12, -7.5, 7.5, 12]) { deck('store.window', wx, 0, 3.0); deck('store.awning', wx, 3.1, 4.0); }
       boxSolids(0, F.d / 2, F.w, F.d, 1.1);
     } else if (spot.kind === 'jail') { // R4 구치소 (assets 67 jail.exterior: 9.8 x 7.4 m, 6.7 high; its sign the game's)
       depth = 7.4;
@@ -650,8 +658,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.5, 0, visual);
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, visual);
       }
-      if (big) facilitySign('stand', 5, depth / 2 + 2.4); else facilitySign('post', w / 2 + 0.7, depth / 2 + 0.8);
-      if (big) boxSolids(0, 0, w, depth, 2.2); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
+      const sized = spot.size; // (assets 75 기록관: its own footprint, from `back` behind the spot to `front` before it)
+      if (sized) { const [sw, sd] = sized; const cz = (spot.front - spot.back) / 2; facilitySign('stand', sw / 2 + 1.6, spot.front + 0.8); boxSolids(0, cz, sw, sd, 1); edgeSolids(0, cz, sw, sd); }
+      else if (big) facilitySign('stand', 5, depth / 2 + 2.4); else facilitySign('post', w / 2 + 0.7, depth / 2 + 0.8);
+      if (sized) { /* (walled above) */ } else if (big) boxSolids(0, 0, w, depth, 2.2); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
       footing(root, w + 0.6, depth + 0.6);
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;

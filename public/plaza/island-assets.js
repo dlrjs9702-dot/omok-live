@@ -430,6 +430,11 @@
   // -- the text on each one's FACE); no letters in the models
   const SG = '/assets/island/signs-v1';
   for (const k of ['stand', 'post', 'wall', 'station', 'plaque']) REGISTRY[`sign.${k}`] = { url: `${SG}/sign_${k}.glb`, low: { url: `${SG}/sign_${k}_low.glb` }, near: 45 };
+  // 건물 생김새 보강 (assets 75 identity-v1, 간판 ④ 생김새 점검): the 게임관's roof piece, banners and door arch, the 백화점's
+  // shop windows and awnings, and a new 기록관 in place of the small house (its size on its spot, dalmaru-island)
+  const IV = '/assets/island/identity-v1';
+  for (const f of ['games_roof', 'games_banner', 'games_marquee', 'store_window', 'store_awning']) REGISTRY[f.replace('_', '.')] = { url: `${IV}/${f}.glb`, low: { url: `${IV}/${f}_low.glb` }, near: 90 };
+  REGISTRY['facility.records'] = { url: `${IV}/records_hall.glb`, low: { url: `${IV}/records_hall_low.glb` }, rotationY: Math.PI, near: 70, snow: true };
   // R4 구치소 (assets 67 jail-v1): the building by 관공서 (its sign the game's), the room, the cell and its door, the desk,
   // the benches, today's board; the warden on the named islanders' body, moved by the common motions
   const JV = '/assets/island/jail-v1';

@@ -60,7 +60,7 @@
         const stair = DAL && T.onStairs(x, z); // (묶음 1 주민 동산 순환: the ridge's stairs, their treads (a diagonal strip of the 1.5 m grid needs most of the 3 m to join up) -- the islanders go up to the ridge too)
         let bad = DAL ? ((stair ? !(stair.v > 0.3 && stair.v < 3.1) : (!onAnyBridge(x, z) && (T.coastDist(x, z) < 2.2 + MARGIN || !T.walkable(x, z) || [[MARGIN, 0], [-MARGIN, 0], [0, MARGIN], [0, -MARGIN]].some(([dx, dz]) => !T.walkable(x + dx, z + dz))))) || Math.hypot(x - PC.x, z - PC.z) < 4.4)
           : T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
-        if (!bad) for (const s of spots) if (s.kind === 'mall' ? inMall(s, x, z) : s.kind === 'facade' ? inFacade(s, x, z) : s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (BUILDING_R[s.kind] || 2)) { bad = true; break; }
+        if (!bad) for (const s of spots) if (s.kind === 'mall' ? inMall(s, x, z) : s.kind === 'facade' ? inFacade(s, x, z) : s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (s.size ? Math.max(s.front ?? 0, ...s.size.map((v) => v / 2)) + 0.5 : BUILDING_R[s.kind] || 2)) { bad = true; break; }
         if (!bad && T.inTownhall(x, z, MARGIN + 0.5)) bad = true; // v1.10.41: the town hall and its walled yard (the islanders keep out)
         if (!bad) for (const s of T.STATUE_SPOTS) if (Math.hypot(x - s.x, z - s.z) < 1.9) { bad = true; break; }
         // v1.10.16: the plaza's benches, lamps and flower beds and the shop street's reserved lot, as the scene places them.
