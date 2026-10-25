@@ -1128,6 +1128,7 @@ async function climbRankingView(week, account) {
 // seconds while standing; the server sends everyone in the lobby one snapshot at most every PLAZA_TICK_MS.
 const PLAZA_TICK_MS = 150;
 const PLAZA_STALE_MS = 15000;
+const STREAM_GRACE_MS = 4000; // (a lobby stream closed: how long a page that still poses -- every 3 s standing -- keeps its visit)
 const PLAZA_BOUND = IslandTerrain.ISLAND_RADIUS; // v1.10.0: the whole island (130; 달마루섬 200)
 const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
 // v1.9.6 player collision: the last word on where a plaza player stands. Smaller than the screen's circles (0.45 each,
@@ -1385,6 +1386,13 @@ function plazaSnapshot() {
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+// (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
+// where I was and how far from the place, how old that pose was, and whether my lobby stream was open
+function nearLog(session, what, at, target) {
+  const t = session.token; const space = jailInside.has(t) ? 'jail' : homeInside.has(t) ? 'home' : townhallInside.has(t) ? 'townhall' : petshopInside.has(t) ? 'petshop' : furnitureInside.has(t) ? 'furniture' : storeInside.has(t) ? 'store' : 'island';
+  const r = (v) => Math.round(v * 100) / 100;
+  console.log(`[near] ${what} space=${space} at=${at ? `${r(at.x)},${r(at.z)}` : 'none'} target=${target ? `${r(target.x)},${r(target.z)}` : 'none'} dist=${at && target ? r(Math.hypot(at.x - target.x, at.z - target.z)) : '-'} poseAge=${at ? nowMs() - at.at : '-'}ms stream=${[...lobbyStreams].some((e) => e.sessionToken === t)}`);
+}
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -3705,7 +3713,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.152' });
+    return sendJson(res, 200, { ok: true, version: '1.10.153' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4593,7 +4601,13 @@ async function requestHandler(req, res) {
     req.on('close', () => {
       clearInterval(heartbeat);
       lobbyStreams.delete(entry);
-      if (![...lobbyStreams].some(other => other.sessionToken === session.token)) dropPlazaPresence(session.token);
+      // (사용자 제보 2026-10-25, 휴대폰: 잡화점·승강기 「가까이」 -- a phone's stream drops and comes back by itself, and
+      // dropping the visit at once forgot I was in the 백화점 and on which floor. A page still there poses at least every
+      // 3 s: with a recent pose the visit waits STREAM_GRACE_MS for the stream or a pose to come back; a page gone at once)
+      const streamless = () => ![...lobbyStreams].some(other => other.sessionToken === session.token);
+      const closedAt = nowMs(); const lastPose = plazaPresence.get(session.token)?.at ?? -Infinity;
+      if (streamless() && closedAt - lastPose > STREAM_GRACE_MS) dropPlazaPresence(session.token);
+      else setTimeout(() => { if (streamless() && !((plazaPresence.get(session.token)?.at ?? -Infinity) > closedAt)) { dropPlazaPresence(session.token); broadcastLobby(); } }, STREAM_GRACE_MS).unref?.();
       broadcastLobby();
     });
     return;
@@ -4630,6 +4644,16 @@ async function requestHandler(req, res) {
     if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token) && await jailable(session, account)) {
       if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
       freeSeat(session.token); jailInside.add(session.token); jailInmates.add(session.token);
+    }
+    // (사용자 제보 2026-10-25, 휴대폰: the visit dropped while I stood inside -- the stream gone a while, the phone put away --
+    // a first pose from inside a room puts me back in it: the 백화점's floors, the open-to-all rooms off the island, and the
+    // 민원실 for one the mayor lets in, as its door would; never a house or the 구치소)
+    if (!plazaPresence.has(session.token) && !ride && !platform && !jailInside.has(session.token) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !homeInside.has(session.token)) {
+      const bx = Number(body.x); const bz = Number(body.z);
+      if (IslandPetShop.inRoom(bx, bz, 0)) { storeInside.add(session.token); petshopInside.add(session.token); }
+      else if (IslandFurniture.inRoom(bx, bz, 0)) { storeInside.add(session.token); furnitureInside.add(session.token); }
+      else if (IslandStore.inStore(bx, bz, 0)) storeInside.add(session.token);
+      else if (IslandTerrain.inRoom(bx, bz, 0) && passesGate(session)) townhallInside.add(session.token);
     }
     let spot;
     if (jailInside.has(session.token)) { // (as the 민원실 below; one shut in, in the cell)
@@ -4867,7 +4891,7 @@ async function requestHandler(req, res) {
     const at = plazaPresence.get(session.token); const body = await parseJson(req); const to = Number(body.to); const here = mallFloor(session.token);
     const from = MALL_FLOORS[here] && MALL_FLOORS[here].R.world(...MALL_FLOORS[here].R.LIFT.stand);
     if (!MALL_FLOORS[to] || to === here) return sendError(res, 400, 'BAD_FLOOR', '층을 확인해 주세요.');
-    if (!at || !from || Math.hypot(at.x - from.x, at.z - from.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '승강기 앞에서 다시 시도해 주세요.');
+    if (!at || !from || Math.hypot(at.x - from.x, at.z - from.z) > 2.6) { nearLog(session, `lift ${here}->${to}`, at, from); return sendError(res, 409, 'TOO_FAR', '승강기 앞에서 다시 시도해 주세요.'); }
     furnitureInside.delete(session.token); petshopInside.delete(session.token);
     if (to === 2) furnitureInside.add(session.token); if (to === 3) petshopInside.add(session.token);
     const { R, space } = MALL_FLOORS[to]; const spot = R.world(...R.LIFT.stand);
@@ -5399,7 +5423,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const body = await parseJson(req); const at = plazaPresence.get(session.token);
     const s = at && storeInside.has(session.token) ? IslandStore.goodAt(at.x, at.z) : null;
-    if (!s || s.id !== body.itemId) return sendError(res, 409, 'TOO_FAR', '물건 가까이 가서 다시 시도해 주세요.');
+    if (!s || s.id !== body.itemId) { const g = IslandStore.SHELF.find((x) => x.id === body.itemId); nearLog(session, `store/buy ${String(body.itemId).slice(0, 24)} got=${s?.id || 'none'}`, at, g ? IslandStore.world(g.at[0], g.at[2]) : null); return sendError(res, 409, 'TOO_FAR', '물건 가까이 가서 다시 시도해 주세요.'); }
     if (s.soon || !IslandItems.ITEMS[s.id]?.good) return sendError(res, 409, 'NOT_ON_SALE', '아직 팔지 않는 물건입니다.');
     const qty = Number(body.qty); if (![1, 5, 10].includes(qty)) return sendError(res, 400, 'BAD_QTY', '수량을 확인해 주세요.');
     const account = pointAccountForSession(session);
@@ -6156,6 +6180,13 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/lost' && req.method === 'POST') {
     const e = islandEvents.spawnLost();
     return sendJson(res, 200, { ok: Boolean(e), event: e && { id: e.id, x: e.x, z: e.z, npc: e.npc } });
+  }
+  // (휴대폰 「가까이」: my lobby stream cut from the server's side, as a phone's network drops it -- the page reconnects)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/lobby/drop' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    let n = 0; for (const e of [...lobbyStreams]) if (e.sessionToken === session.token) { e.res.destroy(); n += 1; }
+    if ((await parseJson(req)).visit === true) dropPlazaPresence(session.token); // (the phone put away long enough: the visit dropped too)
+    return sendJson(res, 200, { ok: true, dropped: n });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/give' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -7484,7 +7515,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.152 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.153 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
