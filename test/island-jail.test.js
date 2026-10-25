@@ -30,8 +30,8 @@ test('구치소 서버: 체납자는 철창 안에서 시작, 반성문 3문장 
   const rich = await server.enter(await server.issue('부자')); const poor = await server.enter(await server.issue('빈털터리'));
   const newbie = await server.enter(await server.issue('새내기'));
   const balance = async (who) => (await req('/api/points', who)).data.balance;
-  for (let d = 1; await balance(poor) > 0 || await balance(newbie) > 0; d += 1) await req('/api/test/tax', rich, { day: `2026-09-${String(d).padStart(2, '0')}` });
-  await req('/api/test/tax', rich, { day: '2026-09-29' });
+  // (주민세 고지서: a day's bill, not paid by its due day -- owed from the midnight after)
+  await req('/api/test/tax', rich, { day: '2026-09-01' }); await req('/api/test/tax', rich, { day: '2026-09-05' });
   assert.ok((await req('/api/island/tax', poor)).data.debt > 0);
   const gate = T.facilityDoor('jail');
   // a debtor on their first day, and one owing nothing: not taken

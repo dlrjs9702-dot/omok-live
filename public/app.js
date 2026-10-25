@@ -2506,21 +2506,33 @@
     await drawTax(); if (!taxDialog.open) taxDialog.showModal();
   }
   document.getElementById('taxCloseBtn').addEventListener('click', () => taxDialog.close());
+  // (주민세 고지서: the unpaid bills -- the 체납 on top -- each paid here, or all at once; whole or not at all)
+  const taxMd = (day) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
   async function drawTax() {
     try {
       const t = await api('/api/island/tax'); const P = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
-      document.getElementById('islandTaxText').textContent = t.debt > 0 ? `체납 세금 ${P(t.debt)} — 다 내기 전까지 체납자입니다.` : `체납 없음 · 오늘 밤 주민세 약 ${P(t.nextTax)} (재산의 ${Math.round(t.rate * 100)}%, 최소 ${P(t.minimum)})`;
-      document.getElementById('islandTaxPay').classList.toggle('hidden', !(t.debt > 0));
+      const total = t.debt + t.bills.reduce((n, b) => n + b.amount, 0);
+      document.getElementById('islandTaxText').textContent = total ? `낼 세금 ${P(total)}${t.debt > 0 ? ' · 체납이 있으면 체납자예요' : ''}` : `낼 고지서가 없어요 · 고지서는 매일 자정 우체통으로 (재산의 ${Math.round(t.rate * 100)}%, 최소 ${P(t.minimum)}, ${t.dueDays}일 안에 여기서)`;
+      const row = (label, amount, note, body) => {
+        const r = document.createElement('div'); r.className = `taxBill${body.debt ? ' overdue' : ''}`; r.setAttribute('role', 'listitem');
+        const text = document.createElement('span'); text.textContent = `${label} · ${P(amount)}`; const small = document.createElement('small'); small.textContent = note; text.append(small);
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'secondary tiny'; b.textContent = '내기'; b.addEventListener('click', () => payTax(body));
+        r.append(text, b); return r;
+      };
+      document.getElementById('taxBillList').replaceChildren(...(t.debt > 0 ? [row('체납', t.debt, '기한 지남', { debt: true })] : []),
+        ...t.bills.map((b) => row(`${taxMd(b.day)}분`, b.amount, b.due === t.today ? '오늘까지' : `${taxMd(b.due)}까지`, { days: [b.day] })));
+      const all = document.getElementById('islandTaxPay'); all.classList.toggle('hidden', !total); all.textContent = `모두 내기 · ${P(total)}`;
     } catch (error) { taxStatus.textContent = error.message; }
   }
-  document.getElementById('islandTaxPay').addEventListener('click', async () => {
+  async function payTax(body) {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      const r = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID() }) });
-      taxStatus.textContent = r.paid ? `세금 ${Number(r.paid).toLocaleString('ko-KR')}P 납부${r.debt ? ` · 남은 체납 ${Number(r.debt).toLocaleString('ko-KR')}P` : ' · 체납 완납'}` : '낼 포인트가 없습니다.';
+      const r = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID(), ...body }) });
+      taxStatus.textContent = `세금 ${Number(r.paid).toLocaleString('ko-KR')}P 냈어요${r.debt || r.bills?.length ? '' : ' · 낼 것 없음'}`;
       loadPoints(); refreshPlazaAvatar(); drawTax();
     } catch (error) { taxStatus.textContent = error.message; }
-  });
+  }
+  document.getElementById('islandTaxPay').addEventListener('click', () => payTax({ all: true }));
   async function openIslandPlace(place) {
     islandPlace = place; islandPlaceStatus.textContent = ''; byId('homeApplyBtn').classList.toggle('hidden', place !== 'office'); // (묶음 4: the 민원 창구 takes the house too)
     if (place === 'office') refreshHomes().then(() => { const m = homesState?.mine; const b = byId('homeApplyBtn'); b.textContent = !m ? '내 집 신청' : m.upgradeDay ? '집 넓히는 중 · 내일 완성' : (m.stage || 2) < 2 ? '집 넓히기' : '내 집'; b.disabled = Boolean(m && (m.upgradeDay || (m.stage || 2) >= 2)); }); // (묶음 4-2)
@@ -3125,7 +3137,12 @@
   function showBank(v) {
     bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
     byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
+    if (typeof v.taxAuto === 'boolean') byId('bankTaxAuto').checked = v.taxAuto; // (주민세 자동이체: the GET's, kept across a move)
   }
+  byId('bankTaxAuto').addEventListener('change', async (event) => {
+    const on = event.target.checked;
+    try { const r = await api('/api/island/bank', { method: 'POST', body: JSON.stringify({ taxAuto: on }) }); event.target.checked = r.taxAuto; byId('bankStatus').textContent = r.taxAuto ? '주민세 자동이체를 켰어요. 매일 자정 지갑 → 예금 순으로 내고, 모자라면 고지서가 와요.' : '주민세 자동이체를 껐어요. 고지서가 우체통으로 와요.'; } catch (error) { event.target.checked = !on; byId('bankStatus').textContent = error.message; }
+  });
   async function openBank() {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -3620,13 +3637,14 @@
     for (const l of d.letters) {
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
       const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
-      const head = el('div', 'mailHead'); const who = el('strong', '', islander ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
-      { const stamp = el('span', 'mailStamp', islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
+      const office = l.from === 'office'; // (주민세 고지서: from the 관공서, its own stamp, no reply)
+      const head = el('div', 'mailHead'); const who = el('strong', '', islander || office ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
+      { const stamp = el('span', 'mailStamp', office ? '관공서' : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? '#8f2f24' : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
       head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
       if (l.skinId) row.append(el('p', 'smallMuted', `🎁 선물받은 스킨: ${l.skinName || '스킨'} (내 정보에서 입을 수 있어요)`)); // 3-1 스킨 선물
-      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.hidden = islander; /* (answered by talking to them) */ reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
+      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.hidden = islander || office; /* (answered by talking to them; a bill at the window) */ reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
       row.append(reply);
       if (!l.read) api('/api/island/mail/read', { method: 'POST', body: JSON.stringify({ id: l.id }) }).catch(() => {});
       list.append(row);
@@ -3969,6 +3987,7 @@
         if (riding && data.ride === null && sentAt > riding.at + 1500) plaza.controller?.alight?.(null); // the server has no ride of mine (a restart)
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
         if (Array.isArray(data.quests)) showQuestTracker(data.quests); // v1.10.37
+        if (data.taxNote) showToast(data.taxNote, 6000); // (주민세 고지서: the day before its last day, once)
       })
       .catch(() => {}).finally(() => { if (plazaStateRequest === abort) { plazaStateRequest = null; plazaSending = false; } });
   }
@@ -5379,11 +5398,11 @@
     if (item.reason === 'daily_attendance') return '출석체크';
     if (item.reason === 'bank_deposit') return '예금 맡기기'; // v1.10.85
     if (item.reason === 'bank_withdraw') return '예금 찾기';
-    if (item.reason === 'resident_tax') return '주민세'; // v1.10.86
+    if (item.reason === 'resident_tax') return '주민세 자동이체'; // v1.10.86 (고지서: only 자동이체 takes it at midnight)
     if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
     if (item.reason === 'outfit_retire_refund') return '변신 옷 정리 환불'; // (2026-10-21)
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92
-    if (item.reason === 'tax_payment') return '체납 세금 납부';
+    if (item.reason === 'tax_payment') return '주민세 납부';
     if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {

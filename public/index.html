@@ -1200,7 +1200,9 @@
   <!-- v1.10.86 관공서 세금 창구 (app.js openTax) -->
   <dialog id="taxDialog" class="recordsDialog taxDialog" aria-labelledby="taxTitle">
     <div class="recordsDialogHead"><h2 id="taxTitle">세금 창구</h2><button id="taxCloseBtn" type="button" class="ghost tiny">닫기</button></div>
-    <div id="islandTaxRow" class="islandTaxRow"><p id="islandTaxText"></p><button id="islandTaxPay" type="button" class="secondary hidden">체납 세금 납부</button></div>
+    <div id="islandTaxRow" class="islandTaxRow"><p id="islandTaxText"></p></div>
+    <div id="taxBillList" class="taxBillList" role="list" aria-label="미납 고지서"></div>
+    <button id="islandTaxPay" type="button" class="primary hidden">모두 내기</button>
     <p id="taxStatus" class="smallMuted" role="status" aria-live="polite"></p>
   </dialog>
   <!-- v1.10.85 관공서 예금 창구 (app.js openBank) -->
@@ -1213,6 +1215,7 @@
       <div class="bankButtons"><button type="submit" class="primary" data-bank="in">맡기기</button><button type="button" class="secondary" data-bank="out">찾기</button></div>
       <div class="bankButtons"><button type="button" class="ghost" data-bank="allIn">전부 맡기기</button><button type="button" class="ghost" data-bank="allOut">전부 찾기</button></div>
     </form>
+    <label class="bankTaxAuto"><input id="bankTaxAuto" type="checkbox" /> 주민세 자동이체 <small>켜면 매일 자정 지갑 → 예금 순으로 내요 · 모자라면 고지서</small></label>
     <p id="bankStatus" class="smallMuted" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="missionDialog" class="recordsDialog missionDialog" aria-labelledby="missionDialogTitle">
