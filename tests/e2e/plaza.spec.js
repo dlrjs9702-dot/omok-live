@@ -1768,3 +1768,51 @@ test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보�
   await expect.poll(()=>cell.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
   await expectNoScriptError(page);await a.context.close();
 });
+
+// E1 계절 행사 (docs/season-events-design-20261025.md): a festival on -- its stall (its name on the board) and host on
+// 대청마당's south side; the host's window (tasks, my stamps), the farm's festival harvest (a stamp), the stall's goods
+test('계절 행사: 수확제 기간에 대청마당 가판대·행사 주민, 주민 창(할 일·도장), 밭 수확 도장, 가판대 창', async ({ browser, request, isMobile }) => {
+  test.setTimeout(150000);
+  test.skip(!DAL, '달마루섬');
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-21T12:00:00+09:00') })).status).toBe(200);
+  try {
+    const a = await intoPlaza(browser, request, isMobile ? '수확제m' : '수확제'); const { page } = a;
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival()?.on), { timeout: 20000 }).toBe('harvest-2026');
+    expect(await page.evaluate(() => window.PlazaDebug().festival().sign)).toBe('🌾 수확제');
+    const P = await page.evaluate(() => window.IslandCalendar.PLACES);
+    // the host: the festival's window -- the tasks and my stamps
+    // (a new account's guide, or another test's player left standing there, may be nearer: round the host's front until it is the one SPACE is for)
+    let turn = 0; await expect.poll(async () => { const a2 = P.host.yaw + [0, 0.5, -0.5, 0.9, -0.9][turn++ % 5]; await page.evaluate(([x, z, a]) => window.PlazaWarp(x + Math.sin(a) * 1.0, z + Math.cos(a) * 1.0), [P.host.x, P.host.z, a2]); await page.waitForTimeout(300); return spaceOn(page, 'fest:host', isMobile); }, { timeout: 20000 }).toBe(true);
+    const card = page.locator('#festivalCard'); await expect(card).toContainText('수확제'); await expect(card).toContainText('밭 수확'); await expect(card.locator('.festivalStamps')).toHaveText('도장 0개');
+    await page.locator('#plazaCloseBtn').click();
+    // the farm: the festival's harvest, a stamp
+    const F = T.FARM; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [F.x, F.z - 1]);
+    const answer = page.waitForResponse((r) => r.url().includes('/api/island/festival/harvest'));
+    expect(await spaceOn(page, 'fest:harvest', isMobile)).toBeTruthy(); expect((await answer).status()).toBe(200);
+    // the stall: its goods, the stamp counted
+    await page.evaluate(([x, z, yaw]) => window.PlazaWarp(x - Math.sin(yaw) * 1.6, z - Math.cos(yaw) * 1.6), [P.stall.x, P.stall.z, P.stall.yaw]);
+    expect(await spaceOn(page, 'fest:stall', isMobile)).toBeTruthy();
+    await expect(card.locator('.festivalStamps')).toHaveText('도장 1개'); await expect(card.locator('.festivalShop li')).toHaveCount(6);
+    await expectNoScriptError(page); await a.context.close();
+  } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
+});
+
+// E1 매주 대회 (A안): a contest day without a festival -- the stall (its board the contest's) and host still there; the
+// host's window starts a three-minute round, counted down at the top of the screen
+test('매주 대회: 토요일 낚시 대회 날 가판대·주민, 주민 창에서 3분 판 시작, 남은 시간 표시', async ({ browser, request, isMobile }) => {
+  test.setTimeout(150000);
+  test.skip(!DAL, '달마루섬');
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-07T12:00:00+09:00') })).status).toBe(200);
+  try {
+    const a = await intoPlaza(browser, request, isMobile ? '대회판m' : '대회판'); const { page } = a;
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival()?.sign), { timeout: 20000 }).toBe('🎣 낚시 대회');
+    expect(await page.evaluate(() => window.PlazaDebug().festival().doors)).toEqual(['fest:host']); // (no festival: no stall's goods, no harvest)
+    const P = await page.evaluate(() => window.IslandCalendar.PLACES);
+    // (a new account's guide, or another test's player left standing there, may be nearer: round the host's front until it is the one SPACE is for)
+    let turn = 0; await expect.poll(async () => { const a2 = P.host.yaw + [0, 0.5, -0.5, 0.9, -0.9][turn++ % 5]; await page.evaluate(([x, z, a]) => window.PlazaWarp(x + Math.sin(a) * 1.0, z + Math.cos(a) * 1.0), [P.host.x, P.host.z, a2]); await page.waitForTimeout(300); return spaceOn(page, 'fest:host', isMobile); }, { timeout: 20000 }).toBe(true);
+    const card = page.locator('#contestCard'); await expect(card).toContainText('오늘은 낚시 대회');
+    await card.getByRole('button', { name: '3분 대회 시작' }).click();
+    await expect(page.locator('#contestTimer')).toContainText(/낚시 대회 · [23]:\d\d · 0점/);
+    await expectNoScriptError(page); await a.context.close();
+  } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
+});

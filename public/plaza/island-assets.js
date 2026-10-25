@@ -419,6 +419,13 @@
   for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60, ...(f === 'floor3' ? FLOOR : {}) });
   REGISTRY['mall.elevator'] = ps('petshop_elevator3', { near: 60 });
   REGISTRY['together.pet_ditto'] = ps('pet_ditto'); // (3회차 21 메타몽, assets 65: one coat, Idle·Walk·Sit like the others)
+  // E1 계절 행사 (assets 72 season-v1): the festival stall, the harvest festival's goods (also its decor round 대청마당) and
+  // the contests' trophies (furniture once won)
+  const SV = '/assets/island/season-v1';
+  const sv = (file, extra = {}) => ({ url: `${SV}/${file}.glb`, low: { url: `${SV}/${file}_low.glb` }, near: 50, ...extra });
+  REGISTRY['event.stall'] = sv('event_stall');
+  for (const k of ['fish', 'bug']) for (const m of ['gold', 'silver', 'bronze']) REGISTRY[`event.trophy_${k}_${m}`] = sv(`event_trophy_${k}_${m}`, { near: 26 });
+  for (const f of ['basket', 'straw_sheaf', 'corn_string', 'persimmon_string', 'feast_table']) REGISTRY[`harvest.${f}`] = sv(`harvest_${f}`);
   // R4 구치소 (assets 67 jail-v1): the building by 관공서 (its sign the game's), the room, the cell and its door, the desk,
   // the benches, today's board; the warden on the named islanders' body, moved by the common motions
   const JV = '/assets/island/jail-v1';

@@ -7819,6 +7819,102 @@
       "lowSrc": "home58:02. Low/home_wallpaper_s4__sky_low.glb",
       "lowSha256": "60fa0ee009d9148a5436099bf8f11de527acf297388db4ad0bee64b0901a6ec0",
       "precompressed": true
+    },
+    {
+      "out": "season-v1/event_stall.glb",
+      "src": "season72:01. High/event_stall.glb",
+      "sha256": "72375dac77a1a5a04db1c8f7c1ebff2d4c859fc9cc331e26b53caa90ac553bd9",
+      "lowSrc": "season72:02. Low/event_stall_low.glb",
+      "lowSha256": "de67976c540ff5985a1401672c12f112d64ccb4a37b5d326b0a67c3a3f91b692",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/event_trophy_bug_bronze.glb",
+      "src": "season72:01. High/event_trophy_bug_bronze.glb",
+      "sha256": "a9cf84346f2800a305a10e131478263bc0bbea8ab81497b7ba04fb124d15610d",
+      "lowSrc": "season72:02. Low/event_trophy_bug_bronze_low.glb",
+      "lowSha256": "fb06cab29f73880f3a5fc5b1d45371adad3b7b45962d0ee9feb5fd1f1f9533d2",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/event_trophy_bug_gold.glb",
+      "src": "season72:01. High/event_trophy_bug_gold.glb",
+      "sha256": "b9e2b5266bccb7aacd1dcc68ef56318c64e66b42f5efb9344e9ecd70fb604635",
+      "lowSrc": "season72:02. Low/event_trophy_bug_gold_low.glb",
+      "lowSha256": "3f74d6654c40d3cfd31daca37a006bd2c3e22c4ebab672c7d78147898d69cbe6",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/event_trophy_bug_silver.glb",
+      "src": "season72:01. High/event_trophy_bug_silver.glb",
+      "sha256": "16f29254886a606e5632f2d65b17d96e3035eb7f989edddec2575b8f63ae94ac",
+      "lowSrc": "season72:02. Low/event_trophy_bug_silver_low.glb",
+      "lowSha256": "9eed34d164cabf891959ca4476e072f54c181ec5391b7b4a92683eba46b522a3",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/event_trophy_fish_bronze.glb",
+      "src": "season72:01. High/event_trophy_fish_bronze.glb",
+      "sha256": "be3d868d744bf34de337c56f2ed3202f01f1c5f1556b79eb4aef15d69b174c68",
+      "lowSrc": "season72:02. Low/event_trophy_fish_bronze_low.glb",
+      "lowSha256": "8456542126466623e52f4b2ba3169e2738d3ec71f12aecf05c27fbc751c8975d",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/event_trophy_fish_gold.glb",
+      "src": "season72:01. High/event_trophy_fish_gold.glb",
+      "sha256": "f11a3bb26693123f7581088564a9c049135263ed9b6f81a3635abe717a91887b",
+      "lowSrc": "season72:02. Low/event_trophy_fish_gold_low.glb",
+      "lowSha256": "11331ec6ddd9f0e519bcfa61b132b9a7382ae8428ef962a9337927e7d054a5f8",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/event_trophy_fish_silver.glb",
+      "src": "season72:01. High/event_trophy_fish_silver.glb",
+      "sha256": "7a952e06abb4d871279e6006cc3cfaf2fe937a496eb7aacf76f6a9f46aa97d3a",
+      "lowSrc": "season72:02. Low/event_trophy_fish_silver_low.glb",
+      "lowSha256": "3bcb1c04ca83845d4e5c6f588816390082aa6392fd4ef79c00ef71839e97b23c",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/harvest_basket.glb",
+      "src": "season72:01. High/harvest_basket.glb",
+      "sha256": "f9533b2df838ebc9986f2ef46ab228a8f713d0198d68ab37000172e57574b361",
+      "lowSrc": "season72:02. Low/harvest_basket_low.glb",
+      "lowSha256": "ade757ad7480dafd057c29411ae91d0adaa4090108ba8f93c09441f4b5426488",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/harvest_corn_string.glb",
+      "src": "season72:01. High/harvest_corn_string.glb",
+      "sha256": "eee4e18de96cafa5eb3fa7b739cd2f9e3b0390d2a5f3a462efb92f6751e0e2e2",
+      "lowSrc": "season72:02. Low/harvest_corn_string_low.glb",
+      "lowSha256": "3851eefe394e49493d5e8b72018516b748f0515b906c251c0b2934d44e651f17",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/harvest_feast_table.glb",
+      "src": "season72:01. High/harvest_feast_table.glb",
+      "sha256": "93efac4dc65b978665748af8495d7f392aeb3e284b72918f9cd91ab712d07101",
+      "lowSrc": "season72:02. Low/harvest_feast_table_low.glb",
+      "lowSha256": "fab347819c673011b8174b183d6693952403fae69dcea0a32fd286eca105a7f4",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/harvest_persimmon_string.glb",
+      "src": "season72:01. High/harvest_persimmon_string.glb",
+      "sha256": "e63964f3aaa7b02922fd474797609773a2f01e11b76f08e416702cbca069acf0",
+      "lowSrc": "season72:02. Low/harvest_persimmon_string_low.glb",
+      "lowSha256": "97c3ccc702a60051f18bebcf7a3a4bcb757ac0c673d6257ecfc2b8a117ff8986",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/harvest_straw_sheaf.glb",
+      "src": "season72:01. High/harvest_straw_sheaf.glb",
+      "sha256": "21c1e147d9ee3a79f6ab0cdc5210ac5cfe3e81484c5778246926cd034f6530d6",
+      "lowSrc": "season72:02. Low/harvest_straw_sheaf_low.glb",
+      "lowSha256": "60942fd6e0004ec358609f8d87c9e12b014e06245ab800705d384e58f4ee8062",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -7868,6 +7964,7 @@
     "ditto65": "65. Game Island ditto pet 2026-10-22",
     "npc52": "52. Game Island named npc refit 2026-10-18",
     "walker51": "51. Game Island resident looks 2026-10-23",
-    "jail67": "67. Game Island jail 2026-10-22"
+    "jail67": "67. Game Island jail 2026-10-22",
+    "season72": "72. Game Island season events 2026-10-25"
   }
 }
