@@ -2427,6 +2427,7 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
       const done = await pointStore.recordMissionMatch({
         userId: account, matchId: result.id, gameType: result.gameType, result: outcome.result, soleWinner: sole && outcome.result === 'win',
         clean: seats[i] !== resignedSeat, opponents: accounts.filter((other, j) => j !== i && other),
+        friendly: roomPolicy(room) === 'friendly', // (G-포인트: the same opponent counts twice a day at most)
       }, finishedAt);
       // v1.7.20: achievements read the match record just saved; checked even when the mission part was a repeat.
       const earned = await syncAchievements(outcome.id, account);

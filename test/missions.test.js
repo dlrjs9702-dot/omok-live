@@ -173,3 +173,16 @@ test('v1.7.34 마라톤 제거: 새로 뽑는 미션에는 없고, 이미 받은
   const done = applyMatch(doc, { matchId: 'm1', gameType: 'marathon', won: false, clean: true, opponents: [] });
   assert.ok(done.changed);
 });
+
+// G-포인트 (검토 2026-10-26): a friendly two-player game counts for the same opponent twice a day at most
+test('친선 판: 같은 상대와는 하루 2판까지만 미션·첫 승에 셈(내기·다른 상대는 그대로)', () => {
+  const doc = dayWith(['play3', 'win3', 'variety2']);
+  const friendly = (over) => applyMatch(doc, match({ friendly: true, result: 'loss', soleWinner: false, ...over }));
+  friendly(); friendly();
+  assert.equal(doc.counters.played, 2);
+  const third = friendly({ result: 'win', soleWinner: true });
+  assert.deepEqual([third.changed, third.capped, third.rewards, doc.counters.played, doc.counters.wins, doc.firstWin], [true, true, [], 2, 0, false]);
+  assert.equal(applyMatch(doc, match({ friendly: true, opponents: [C] })).capped, undefined, '다른 상대는 셈');
+  assert.equal(applyMatch(doc, match({ result: 'loss', soleWinner: false })).capped, undefined, '내기 판은 셈');
+  assert.equal(doc.counters.played, 4);
+});
