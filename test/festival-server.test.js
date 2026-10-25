@@ -23,7 +23,11 @@ test('수확제: 할 일마다 도장(하루 한도), 요리 심사, 마지막 �
   let v = (await req('/api/island/festival', a)).data; assert.equal(v.festival, null); assert.equal(v.next.id, 'harvest-2026');
   assert.equal((await req('/api/island/festival/harvest', a, {})).data.error, 'NO_FESTIVAL');
   // day 1: three harvests at the field (a vegetable and a stamp each), the fourth no; the cooking by the host (three things)
-  await clock('2026-11-20T12:00:00'); await stand({ x: F.x, z: F.z });
+  await clock('2026-11-20T12:00:00');
+  // its notice on the board, once
+  const notices = async () => { await req('/api/test/notices/due', null, {}); return (await req('/api/announcements', a)).data.items.filter((n) => n.title.startsWith('[행사] 수확제')); };
+  assert.deepEqual((await notices()).map((n) => n.title), ['[행사] 수확제 (11/20~11/26)']); assert.equal((await notices()).length, 1);
+  await stand({ x: F.x, z: F.z });
   for (let k = 1; k <= 3; k += 1) { const r = await req('/api/island/festival/harvest', a, {}); assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.festival.stamps, k); }
   assert.equal((await req('/api/island/festival/harvest', a, {})).data.error, 'TASK_DONE');
   const vegetables = async () => ((await req('/api/island/bag', a)).data.items.find((e) => e.itemId === 'harvest') || {}).qty || 0;
@@ -63,6 +67,8 @@ test('매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작
   const a = await enter(await issue('낚시상')); const b = await enter(await issue('둘째'));
   let now = Date.parse('2026-11-07T12:00:00+09:00'); const clock = (ms) => { now = ms; return req('/api/test/festival/clock', null, { at: ms }); };
   await clock(now);
+  const firstNotice = async () => { await req('/api/test/notices/due', null, {}); return (await req('/api/announcements', a)).data.items.filter((n) => n.title === '[대회] 매주 대회 시작').length; };
+  assert.equal(await firstNotice(), 1); assert.equal(await firstNotice(), 1); // (the first day's notice, once)
   const P = C.PLACES; const stand = (s, p) => req('/api/plaza/state', s, { x: p.x, z: p.z, yaw: 0, moving: false });
   const press = (seq, n) => seq.slice(0, n).map((dir, i) => ({ dir, t: i * 150 }));
   const catchOne = async (s, species) => { await stand(s, { x: T.PIER.x, z: T.PIER.z }); const c = (await req('/api/island/fish/start', s, {})).data; await req('/api/test/fish/bite', s, { species }); return (await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: press(c.seq, c.arrows) })).data; };

@@ -1864,7 +1864,18 @@ async function settleEventContests() {
   const now = festivalNow(); const override = await calendarOverride();
   for (const back of [0, 1, 2]) { const ms = now - back * IslandCalendar.DAY; const c = IslandCalendar.contestAt(ms, override); if (!c) continue; if (back === 0 && IslandCalendar.hourOf(now) < IslandCalendar.CONTEST.to && !override.contestAllDay) continue; await settleEventContest(c.day); }
 }
-setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); }, 60000).unref?.();
+// (the design's 「게시판에 행사 쪽지 자동」: a festival once it is on, and the weekly contests' first day -- one notice each,
+// marked before it is posted: a crash between the two loses that one notice, never posts it twice)
+async function noticeEvents() {
+  const now = festivalNow(); const override = await calendarOverride(); const md = (d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
+  const f = IslandCalendar.festivalAt(now, override); const c = IslandCalendar.contestAt(now, override); const notes = [];
+  if (f) notes.push([`festival:${f.id}`, `[행사] ${f.name} (${md(f.start)}~${md(f.end)})`, `${f.name} 기간이에요! 대청마당 남쪽 행사 주민에게서 할 일을 보고 도장을 모아, 옆 가판대에서 한정 물건·칭호로 바꿔요. 남은 도장은 행사가 끝나면 사라져요.`]);
+  if (c && c.day === IslandCalendar.CONTEST.first) notes.push(['weekly:first', '[대회] 매주 대회 시작', `토요일은 낚시 대회, 일요일은 곤충 대회(${c.from}~${c.to}시)! 대청마당 남쪽 행사 주민 곁에서 3분 판을 시작해요. 그날 최고 기록 1~3등에게 트로피·칭호·포인트, 토요일 낚시 1등은 영웅마루에 서요.`]);
+  let posted = false;
+  for (const [id, title, body] of notes) { if (await pointStore.worldValue(`eventNotice:${id}`)) continue; await pointStore.setWorldValue(`eventNotice:${id}`, nowMs()); await announcementStore.create(title, body, false); posted = true; }
+  if (posted) await broadcastAnnouncements().catch(() => {});
+}
+setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); }, 60000).unref?.();
 function contestNote(account, session, kind, value) {
   contestState().then((c) => {
     if (c.phase !== 'live' || c.kind !== kind || !Number.isFinite(value) || value <= 0) return;
@@ -6287,7 +6298,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); if (body.reset) { starShiftMs = 0; return sendJson(res, 200, { ok: true }); }
     starShiftMs = IslandStars.starOf(slot).at + 500 - t + (Number(body.plusMs) || 0); return sendJson(res, 200, { ok: true, id: IslandStars.starOf(slot).id });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices/due' && req.method === 'POST') { await postDueNotices(); return sendJson(res, 200, { ok: true }); } // (tests: not waiting 30 s)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices/due' && req.method === 'POST') { await postDueNotices(); await noticeEvents(); return sendJson(res, 200, { ok: true }); } // (tests: not waiting 30 s)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'reset'
     const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.weekContest(Math.min(nowMs(), A4_END - 7 * 86400000), cfg); // (from 11/7 A4 is off: its last week, 10/31)
     contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : 0;
