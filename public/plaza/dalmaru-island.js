@@ -430,7 +430,8 @@
     const rocks = []; seed = 0x40c5; // (3회차 8: on their own too, not after however many tufts were tried)
     for (let tries = 0; rocks.length < 160 && tries < 8000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const cd = D.coastDist(x, z);
-      if (cd > -1 && cd < 4 && !D.inBay(x, z) && !built(x, z) && !onBridge(x, z)) rocks.push({ x, z, s: 0.5 + rnd() * (D.ridgeAt(x, z) > 0.3 ? 1.6 : 0.8), r: rnd() * 6 });
+      // (6회차 1 「돌이 있을 필요 없는 곳에」: at the water only on the rocky shore; the sandy shore's go behind the beach, on the grass)
+      if (cd > -1 && cd < 12 && (D.ridgeAt(x, z) > 0.3 ? cd < 4 : cd > 6) && !D.inBay(x, z) && !built(x, z) && !onBridge(x, z)) rocks.push({ x, z, s: 0.5 + rnd() * (D.ridgeAt(x, z) > 0.3 ? 1.6 : 0.8), r: rnd() * 6 });
     }
     // what the train's lifts keep clear is taken out after the seeded scenery, so nothing else moves -- the weeds are
     // numbered by the tufts (island-weeds `w<i>`): the server and every screen must have the same ones
@@ -448,7 +449,7 @@
       if ([...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5)) continue;
       lampSpots.push({ x: lx, z: lz });
     } }
-    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts: tufts.filter((t) => !onBank(t, 0.5)), rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1 && cliffAt(r.x, r.z) >= 0.4 && walkDist(r.x, r.z) > 1) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1 「돌이 있을 필요 없는 곳에」: only on the rocky shore, none on the sand, at the water's edge or on a walk) */, posts: [], lampSpots };
+    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts: tufts.filter((t) => !onBank(t, 0.5)), rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free

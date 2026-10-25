@@ -3320,8 +3320,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (mySpace === 'furniture' && !best && furnitureState) { const s = FURN.placeAt(me.root.position.x, me.root.position.z); const d = s && furnitureState.items[s.id]; if (d) { const w = FURN.world(s.lx, s.lz); eventDoors[`furn:${s.id}`] = { x: w.x, z: w.z, name: d.sold ? '팔렸어요 · 내일 새 가구가 들어와요' : `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`, plain: d.sold }; best = `furn:${s.id}`; } }
     for (const k of Object.keys(eventDoors)) if (k.startsWith('tank:') || k.startsWith('frame:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
-    if (mySpace === 'home' && !best && homeHere?.mine) { // (묶음 4) the tank, insect case or frame by me
-      const { lx, lz } = HOME.local(homeHere.lot, me.root.position.x, me.root.position.z); let pick = null; let pd = 1.0;
+    // (6회차 B3: a seat picked above gives way to a tank I stand nearer -- the sofa's seats 1.12 m apart reached the tank beside it)
+    const seatDoor = best?.startsWith('seat:') ? doorOf(best) : null; const seatD = seatDoor ? Math.hypot(seatDoor.x - me.root.position.x, seatDoor.z - me.root.position.z) : null;
+    if (mySpace === 'home' && (!best || seatD !== null) && homeHere?.mine) { // (묶음 4) the tank, insect case or frame by me
+      const { lx, lz } = HOME.local(homeHere.lot, me.root.position.x, me.root.position.z); let pick = null; let pd = seatD !== null ? Math.min(1.0, seatD) : 1.0;
       for (const p of homeHere.home.pieces) { const shape = HOME.shapeOf(p.id); if (!HOME.TANKS[shape] && shape !== 'picture_frame') continue; const b = HOME.boxOf(p); const d = Math.hypot(Math.max(b.x0 - lx, 0, lx - b.x1), Math.max(b.z0 - lz, 0, lz - b.z1)); if (d < pd) { pd = d; pick = p; } }
       if (pick) { const shape = HOME.shapeOf(pick.id); const w = HOME.world(homeHere.lot, pick.x, pick.z); const key = `${shape === 'picture_frame' ? 'frame' : 'tank'}:${pick.uid}`; eventDoors[key] = { x: w.x, z: w.z, name: shape === 'picture_frame' ? '액자 · 기념사진 걸기' : shape === 'insect_case' ? '곤충 상자 · 넣고 꺼내기' : '수조 · 물고기 넣고 꺼내기' }; best = key; }
     }

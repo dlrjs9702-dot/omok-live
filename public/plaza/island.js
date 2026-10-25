@@ -753,7 +753,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // lists bake together exactly as one did
   // v1.10.32 해안 돌: about half the rocks on the beaches (not the cliffs) are a low cluster of shore stones (04 pack),
   // lying along the shoreline, in the same places -- nothing new to walk round
-  const shoreStones = (r) => cliffAt(r.x, r.z) < 0.4 && hash(r.x, r.z, 31) < 0.5;
+  const shoreStones = (r) => (T.dalmaru ? coastDist(r.x, r.z) < 4 : cliffAt(r.x, r.z) < 0.4) && hash(r.x, r.z, 31) < 0.5; // (달마루섬 6회차 1: the rocks at the water are the rocky shore's now)
   // 묶음 5: the purple crystal heap at three places (the inland rocks lowest by their hash), and some inland rocks angular
   const inland = rocks.filter((r) => !shoreStones(r)); const crystals = new Set(inland.slice().sort((a, b) => hash(a.x, a.z, 43) - hash(b.x, b.z, 43)).slice(0, 3));
   const ANGULAR_ROCKS = ['rock_lump', 'rock_small', 'rock_block'];
