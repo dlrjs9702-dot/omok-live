@@ -23,7 +23,7 @@ test('호감도 단계·오늘의 이야기 순수 규칙: 지난 단계, 질문
   const day = '2026-10-23'; for (let n = 0; n < Cast.WALKERS.length; n += 1) { const q = A.questionOf(n, day); assert.equal(q.answers.length, 3); assert.equal(A.answer(n, day, q.liked).delta, 2); }
   assert.equal(A.titleOf(A.titleId(0)).name, `${Cast.WALKERS[0].name}의 단짝`);
   const F = require('../public/plaza/island-furniture'); assert.ok(A.CLOSE_GIFT.every((id) => F.good(id)));
-  assert.equal(Cast.GREETS.length, 4); assert.equal(Cast.GREETS[0].length, 0);
+  for (let n = 0; n < 10; n += 1) { assert.equal(Cast.say(n, 'greet0').length, 0); for (const k of [1, 2, 3]) assert.equal(Cast.say(n, `greet${k}`).length, 1); } // (T: each greets in their own words, 처음 본 사이 not yet)
 });
 
 test('주민 호감도: 오늘의 이야기 하루 한 번, 단계 보상 한 번씩(포인트·가구·칭호), 기억 대사, 내 호감도 목록', async (t) => {

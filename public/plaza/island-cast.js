@@ -19,10 +19,8 @@
   // (R3 ⑤ 주민 사이의 관계) who gets on with whom -- an errand between two at odds patches it up a little (the server)
   const RELATIONS = Object.freeze([[0, 3, 'friend'], [2, 8, 'friend'], [4, 7, 'friend'], [1, 5, 'rival'], [6, 9, 'rival'], [3, 6, 'friend'], [5, 8, 'rival']]);
   const relationOf = (a, b) => RELATIONS.find(([x, y]) => (x === a && y === b) || (x === b && y === a))?.[2] || null;
-  // (R2 ① 먼저 말 걸기) what an islander says over their head when I pass by, by level -- 처음 본 사이: nothing yet
-  const GREETS = Object.freeze([[], ['안녕하세요, {me}님!', '{me}님, 오늘도 좋은 하루예요.', '어, {me}님이다!'],
-    ['{me}님! 마침 생각하고 있었어요.', '{me}님, 어디 가요? 잘 다녀와요!', '오늘 날씨 좋죠, {me}님?'],
-    ['{me}! 보고 싶었어요!', '{me}, 오늘도 같이 걸을래요?', '역시 {me}! 오늘도 반가워요!']]);
+  // (R2 ① 먼저 말 걸기) what an islander says over their head when I pass by, by level: say(n, `greet${level}`) -- 처음
+  // 본 사이 nothing yet (T 주민 말투: each in their own words, below)
   // (대화창 새 단장) each one's name tag colour, white letters on it (4.5:1 or more) -- 봄이 꽃분홍, 바다 할아버지 남색, 하람
   // 공책 초록, 두리 꿀색, 노을 할머니 노을빛, 오 탐정 먹색, 다온 빵 갈색, 바람이 바다 파랑, 이솔 밤하늘, 가람 파란 모자
   const TAG_COLORS = Object.freeze(['#b34d70', '#2f4d7a', '#4e7d4a', '#9c6508', '#b45330', '#4a4a4a', '#9a5b2c', '#2a7399', '#4b4f9e', '#2f6fb8']);
@@ -191,21 +189,163 @@
     const [x, y] = Math.floor(slot / 4) % 2 ? [b, a] : [a, b]; const k = ((slot % 4) + 4) % 4;
     if (k === 3 || !WALKERS[x] || !WALKERS[y]) return null;
     const who = k === 1 ? y : x;
-    return { who, text: CHATS[who][k].split('{you}').join(WALKERS[k === 1 ? x : y].name) };
+    return { who, text: withTail(CHATS[who][k].split('{you}').join(WALKERS[k === 1 ? x : y].name), who) };
   }
   const PHASES = ['morning', 'day', 'evening', 'night'];
   const hasFinal = (word) => { const c = String(word).charCodeAt(String(word).length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 !== 0; };
   const josa = (word, pair) => `${word}${hasFinal(word) ? pair[0] : pair[1]}`; // josa('봄이', '이가') -> 봄이가
-  const fill = (line, me) => line.split('{me}').join(me || '친구');
+  // {name} a word as it is, {name|A|B} with A after a final consonant, B after a vowel ({me|아|야}, {thing|이라고|라고})
+  const slot = (line, name, word) => line.replace(new RegExp(`\\{${name}(?:\\|([^|}]*)\\|([^}]*))?\\}`, 'g'), (_, a, b) => (a === undefined ? word : `${word}${hasFinal(word) ? a : b}`));
+  const fill = (line, me) => slot(line, 'me', me || '친구');
   const pick = (list, random) => list[Math.floor(random() * list.length) % list.length];
+
+  // T 주민 말투 (gamecenter-notes docs/resident-voice-design-20261026.md, 사용자 「사람 주민에 말버릇」): each walker speaks
+  // in their own register (말씨) -- the lines every walker shares (a greeting, an errand, a gift, ...) are written once
+  // for each register, never by changing endings -- with a few of their own over them, and their tic (말버릇) said once,
+  // at the end of what they say (not each sentence). 하람·바다 할아버지·노을 할머니·오 탐정·가람 carry theirs in their
+  // own endings (~랄까요… ~라네 ~구나 ~란 말이지 ~거든!); the five with a word at the end have `tail`.
+  // A key's value: alternatives -- each a line, or a run of lines said one after another.
+  const REG = {
+    yo: { // 해요체
+      greet1: ['안녕하세요, {me}님!', '{me}님, 오늘도 좋은 하루예요.', '어, {me}님이다! 반가워요.'],
+      greet2: ['{me}님! 마침 생각하고 있었어요.', '{me}님, 어디 가요? 잘 다녀와요!', '오늘 날씨 좋죠, {me}님?'],
+      greet3: ['{me}님! 보고 싶었어요!', '{me}님, 오늘도 같이 걸을래요?', '역시 {me}님이에요! 오늘도 반가워요.'],
+      why: ['빌려 간 책을 돌려받아야 하거든요.', '꼭 할 말이 있는데 어디 갔는지 모르겠어요.', '같이 산책하기로 했는데 안 보여요.', '맛있는 걸 나눠 주고 싶은데 안 보이네요.'],
+      ask_buy: [['오늘 {thing|이|가} 필요한데 잡화점에 갈 틈이 없어요.', '하나만 사다 줄래요? 물건값은 꼭 드릴게요!']],
+      ask_find: [['혹시 {who|을|를} 못 봤어요? {why}', '보면 제가 찾는다고 전해 주세요!']],
+      ask_deliver: [['이 {thing}, {who}에게 좀 전해 줄래요?', '제가 지금 바빠서요. 부탁해요!']],
+      hint: ['{who|은|는} 보통 {where} 근처에 있어요.'],
+      remind_buy: ['{thing}, 잡화점에 있을 거예요. 부탁해요!'], remind_find: ['{who|은|는} 아직 못 찾았어요? 섬 어딘가를 걷고 있을 거예요.'],
+      remind_find_where: ['{who|은|는} 아직 못 찾았어요? 보통 {where} 쪽에 있어요.'], remind_deliver: ['{thing}, {who}에게 아직 못 전했죠? 부탁해요!'],
+      got_buy: [['{thing|이|가} 딱 필요했어요! 사다 줘서 고마워요.', '물건값에 수고비까지 얹었어요.']],
+      got_deliver: [['{from|이|가} 보낸 {thing}요? 와, 고마워요!', '전해 준 사례예요. 받아 주세요.']],
+      found_me: [['{from|이|가} 저를 찾는다고요? 아, 깜빡했어요!', '알려 줘서 고마워요. {from}에게 곧 간다고 전해 줄래요?']],
+      found_back: [['{who|을|를} 찾아 줬군요! 정말 고마워요.', '이건 작은 사례예요.']],
+      giftLove: ['와, {name}! 제가 제일 좋아하는 거예요. 정말 고마워요!'], giftLike: ['{name} 고마워요! 잘 쓸게요.'], giftMeh: ['{name}… 마음만 받을게요. 고마워요.'],
+      answerLiked: ['와, 저도 그래요! 우리 잘 맞네요.'], answerMeh: ['오, 그것도 좋죠!'], answerDisliked: ['그렇군요… 저는 좀 달라요. 그래도 들려줘서 고마워요.'],
+      letter: ['{me}님, 오늘 날씨가 참 좋네요. 섬 어딘가에서 마주치면 인사해요!', '{me}님 덕분에 요즘 섬 생활이 즐거워요. 고마워요.', '{me}님, 다음에 만나면 재미있는 이야기 들려줄게요. 기대해요!', '오늘 {me}님 생각이 나서 몇 자 적어요. 늘 건강해요!', '{me}님, 우리 섬에 와 줘서 정말 기뻐요. 또 봐요!'],
+      hit: ['아야! 뭐 하는 거예요!', '잠자리채로 치면 어떡해요!', '나 곤충 아니에요!'],
+      levelUp1: ['이제 {me}님이랑 아는 사이예요!'], levelUp2: ['{me}님이랑 친해져서 정말 좋아요!'], levelUp3: ['{me}님은 이제 제 단짝이에요!'],
+      mem_errand: ['{when} 「{text}」 도와줘서 고마웠어요, {me}님!'], mem_errand_short: ['{when} 도와줘서 고마웠어요, {me}님!'], mem_answer: ['{when} 해 준 이야기, 계속 생각나요.'], mem_gift: ['{when} 준 {name}, 아직도 기분 좋아요!'],
+      answerAgain: ['오늘은 벌써 이야기 나눴어요. 내일 또 들려줘요!'], giftAgain: ['오늘은 벌써 선물을 받았어요. 마음만으로 충분해요!'], giftAsk: ['저한테 주려고요? 뭘까요?'], giftNone: ['가방에 줄 만한 게 없네요. 괜찮아요!'], errandNone: ['오늘은 괜찮아요. 마음만 받을게요!'], relRival: ['사실 {a|과|와} {b}, 요즘 좀 서먹했대요. 덕분에 사이가 풀렸어요!'], relFriend: ['둘은 오랜 친구라 더 기뻐할 거예요.'],
+    },
+    hage: { // 하게체 (노인·자칭 탐정)
+      greet1: ['허허, {me} 왔는가.', '{me}, 오늘도 좋은 하루 보내게.', '오, 반갑네. {me} 아닌가.'],
+      greet2: ['{me}, 마침 자네 생각을 하고 있었네.', '어디 가는 길인가, {me}? 조심히 다녀오게.', '오늘 바람 좋지 않은가, {me}?'],
+      greet3: ['{me}! 기다리고 있었다네.', '{me}, 오늘도 같이 좀 걷겠나?', '역시 {me}일세. 반갑구먼.'],
+      why: ['빌려 간 책을 돌려받아야 하거든.', '꼭 할 말이 있는데 어디 갔는지 모르겠구먼.', '같이 산책하기로 했는데 보이질 않네.', '맛있는 걸 나눠 주고 싶은데 안 보이는구먼.'],
+      ask_buy: [['오늘 {thing|이|가} 필요한데 잡화점에 갈 틈이 없구먼.', '하나만 사다 주겠나? 물건값은 꼭 치르겠네.']],
+      ask_find: [['혹시 {who|을|를} 못 봤나? {why}', '보거든 내가 찾는다고 전해 주게.']],
+      ask_deliver: [['이 {thing}, {who}에게 좀 전해 주겠나?', '내가 지금 바빠서 말일세. 부탁하네.']],
+      hint: ['{who|은|는} 보통 {where} 근처에 있다네.'],
+      remind_buy: ['{thing}, 잡화점에 있을 걸세. 부탁하네.'], remind_find: ['{who|을|를} 아직 못 찾았나? 섬 어딘가를 걷고 있을 걸세.'],
+      remind_find_where: ['{who|을|를} 아직 못 찾았나? 보통 {where} 쪽에 있다네.'], remind_deliver: ['{thing}, {who}에게 아직 못 전했나? 부탁하네.'],
+      got_buy: [['{thing|이|가} 딱 필요했다네! 사다 줘서 고맙구먼.', '물건값에 수고비까지 얹었네.']],
+      got_deliver: [['{from|이|가} 보낸 {thing|이라고|라고}? 허허, 고맙구먼.', '전해 준 사례일세. 받아 두게.']],
+      found_me: [['{from|이|가} 나를 찾는다고? 아, 깜빡했구먼!', '알려 줘서 고맙네. {from}에게 곧 간다고 전해 주겠나?']],
+      found_back: [['{who|을|를} 찾아 줬구먼! 정말 고맙네.', '이건 작은 사례일세.']],
+      giftLove: ['허허, {name}! 내가 제일 좋아하는 걸세. 정말 고맙네.'], giftLike: ['{name}, 고맙네. 잘 쓰겠네.'], giftMeh: ['{name}… 마음만 받겠네. 고맙구먼.'],
+      answerLiked: ['허허, 나도 그렇다네! 우리 잘 맞는구먼.'], answerMeh: ['오, 그것도 좋지.'], answerDisliked: ['그런가… 나는 좀 다르다네. 그래도 들려줘서 고맙네.'],
+      letter: ['{me}, 오늘 바람이 참 좋다네. 섬 어딘가에서 마주치면 인사나 하세.', '{me} 덕분에 요즘 섬 생활이 즐겁구먼. 고맙네.', '{me}, 다음에 만나면 옛날 얘기 하나 들려주지.', '오늘 문득 {me} 생각이 나서 몇 자 적네. 늘 건강하게.', '{me}, 우리 섬에 와 줘서 고맙네. 또 보세.'],
+      hit: ['아이쿠! 이게 무슨 짓인가!', '잠자리채로 치면 쓰나!', '내가 곤충으로 보이나!'],
+      levelUp1: ['허허, 이제 자네와 아는 사이일세.'], levelUp2: ['{me}, 자네와 이렇게 가까워질 줄 알았네.'], levelUp3: ['{me}, 이제 자네는 내 단짝일세.'],
+      mem_errand: ['{when} 「{text}」 도와줘서 고마웠네, {me}.'], mem_errand_short: ['{when} 도와줘서 고마웠네, {me}.'], mem_answer: ['{when} 해 준 이야기, 자꾸 생각나는구먼.'], mem_gift: ['{when} 준 {name}, 아직도 기분이 좋다네.'],
+      answerAgain: ['오늘은 벌써 이야기를 나눴구먼. 내일 또 들려주게.'], giftAgain: ['오늘은 벌써 선물을 받았다네. 마음만으로 충분하네.'], giftAsk: ['나한테 주려는 건가? 뭔가?'], giftNone: ['가방에 줄 만한 게 없구먼. 괜찮네.'], errandNone: ['오늘은 괜찮네. 마음만 받겠네.'], relRival: ['사실 {a|과|와} {b}, 요즘 좀 서먹했다네. 자네 덕에 사이가 풀렸구먼.'], relFriend: ['둘은 오랜 친구라 더 기뻐할 걸세.'],
+    },
+    grand: { // 할머니 말(해라체, 다정하게)
+      greet1: ['아이고, {me} 왔구나.', '{me}, 오늘도 좋은 하루 보내렴.', '어이구, 반갑다. 밥은 먹었니?'],
+      greet2: ['{me|아|야}, 마침 네 생각 하고 있었단다.', '어디 가니? 조심히 다녀오렴.', '오늘 날씨 참 좋지, 얘야?'],
+      greet3: ['우리 {me} 왔구나! 보고 싶었단다.', '{me|아|야}, 오늘도 같이 좀 걸을까?', '역시 우리 {me|이구나|구나}.'],
+      why: ['빌려 간 책을 돌려받아야 하거든.', '꼭 할 말이 있는데 어디 갔는지 모르겠구나.', '같이 산책하기로 했는데 안 보이는구나.', '맛있는 걸 나눠 주고 싶은데 안 보이는구나.'],
+      ask_buy: [['오늘 {thing|이|가} 필요한데 잡화점에 갈 틈이 없구나.', '하나만 사다 주겠니? 물건값은 꼭 줄게.']],
+      ask_find: [['혹시 {who|을|를} 못 봤니? {why}', '보거든 내가 찾는다고 전해 주렴.']],
+      ask_deliver: [['이 {thing}, {who}에게 좀 전해 주겠니?', '내가 지금 좀 바쁘구나. 부탁하마.']],
+      hint: ['{who|은|는} 보통 {where} 근처에 있단다.'],
+      remind_buy: ['{thing}, 잡화점에 있을 게다. 부탁하마.'], remind_find: ['{who|을|를} 아직 못 찾았니? 섬 어딘가를 걷고 있을 게다.'],
+      remind_find_where: ['{who|을|를} 아직 못 찾았니? 보통 {where} 쪽에 있단다.'], remind_deliver: ['{thing}, {who}에게 아직 못 전했니? 부탁하마.'],
+      got_buy: [['아이고, {thing|이|가} 딱 필요했단다! 사다 줘서 고맙구나.', '물건값에 수고비까지 얹었다.']],
+      got_deliver: [['{from|이|가} 보낸 {thing|이라고|라고}? 아이고, 고맙구나.', '전해 준 사례란다. 받아 두렴.']],
+      found_me: [['{from|이|가} 나를 찾는다고? 아이고, 깜빡했구나!', '알려 줘서 고맙다. {from}에게 곧 간다고 전해 주렴.']],
+      found_back: [['{who|을|를} 찾아 줬구나! 정말 고맙다, 얘야.', '이건 작은 사례란다.']],
+      giftLove: ['아이고, {name}! 내가 제일 좋아하는 거란다. 정말 고맙구나.'], giftLike: ['{name}, 고맙다. 잘 쓰마.'], giftMeh: ['{name}… 마음만 받으마. 고맙구나.'],
+      answerLiked: ['아이고, 나도 그렇단다! 우리 잘 맞는구나.'], answerMeh: ['오, 그것도 좋지.'], answerDisliked: ['그렇구나… 나는 좀 다르단다. 그래도 들려줘서 고맙다.'],
+      letter: ['{me|아|야}, 오늘 날씨가 참 좋구나. 섬 어딘가에서 만나면 인사하렴.', '{me} 덕분에 요즘 사는 게 즐겁단다. 고맙다.', '{me|아|야}, 다음에 만나면 옛날이야기 하나 해 주마.', '오늘 네 생각이 나서 몇 자 적는다. 밥 잘 챙겨 먹으렴.', '{me|아|야}, 우리 섬에 와 줘서 정말 고맙구나. 또 보자.'],
+      hit: ['아이고! 이게 무슨 짓이니!', '잠자리채로 치면 못쓴다!', '내가 곤충으로 보이니, 얘야!'],
+      levelUp1: ['이제 너랑 아는 사이구나.'], levelUp2: ['{me|아|야}, 우리 많이 가까워졌구나.'], levelUp3: ['{me|아|야}, 이제 너는 내 손주나 다름없단다.'],
+      mem_errand: ['{when} 「{text}」 도와줘서 고마웠다, {me|아|야}.'], mem_errand_short: ['{when} 도와줘서 고마웠다, {me|아|야}.'], mem_answer: ['{when} 해 준 이야기, 자꾸 생각나는구나.'], mem_gift: ['{when} 준 {name}, 아직도 기분이 좋단다.'],
+      answerAgain: ['오늘은 벌써 이야기 나눴잖니. 내일 또 들려주렴.'], giftAgain: ['오늘은 벌써 선물을 받았단다. 마음만으로 충분하구나.'], giftAsk: ['나한테 주려고? 뭘까?'], giftNone: ['가방에 줄 만한 게 없구나. 괜찮다.'], errandNone: ['오늘은 괜찮단다. 마음만 받으마.'], relRival: ['사실 {a|과|와} {b|이|가} 요즘 좀 서먹했단다. 네 덕에 사이가 풀렸구나.'], relFriend: ['둘은 오랜 친구라 더 기뻐할 게다.'],
+    },
+    kid: { // 꼬마 반말
+      greet1: ['{me} 대장! 안녕!', '어, {me}다! 오늘도 탐험 가자!', '{me}, 오늘 날씨 탐험하기 딱 좋거든!'],
+      greet2: ['{me} 대장! 마침 찾고 있었거든!', '{me}, 어디 가? 나도 같이 가자!', '오늘 바람 좋다! 저쪽 언덕 가 보자!'],
+      greet3: ['{me} 대장! 보고 싶었거든!', '{me}, 오늘도 같이 탐험 가자!', '역시 {me} 대장이 최고거든!'],
+      why: ['빌려 간 책을 돌려받아야 하거든!', '꼭 할 말이 있는데 어디 갔는지 모르겠어.', '같이 탐험하기로 했는데 안 보여!', '맛있는 거 나눠 주고 싶은데 안 보이거든.'],
+      ask_buy: [['오늘 {thing|이|가} 필요한데 잡화점 갈 시간이 없거든.', '하나만 사다 줄래? 돈은 꼭 줄게!']],
+      ask_find: [['혹시 {who|을|를} 못 봤어? {why}', '보면 내가 찾는다고 전해 줘!']],
+      ask_deliver: [['이 {thing}, {who}한테 좀 전해 줄래?', '나 지금 탐험 중이라 바쁘거든. 부탁해!']],
+      hint: ['{who|은|는} 보통 {where} 근처에 있거든.'],
+      remind_buy: ['{thing}, 잡화점에 있을 거야. 부탁해!'], remind_find: ['{who|을|를} 아직 못 찾았어? 섬 어딘가 걷고 있을 거야.'],
+      remind_find_where: ['{who|을|를} 아직 못 찾았어? 보통 {where} 쪽에 있거든.'], remind_deliver: ['{thing}, {who}한테 아직 못 전했어? 부탁해!'],
+      got_buy: [['{thing|이|가} 딱 필요했거든! 사다 줘서 고마워!', '물건값에 수고비도 얹었어!']],
+      got_deliver: [['{from|이|가} 보낸 {thing}? 와, 고마워!', '전해 준 사례야. 받아!']],
+      found_me: [['{from|이|가} 나를 찾는다고? 아, 깜빡했다!', '알려 줘서 고마워. {from}한테 곧 간다고 전해 줄래?']],
+      found_back: [['{who|을|를} 찾았구나! 진짜 고마워!', '이건 탐험대 사례야!']],
+      giftLove: ['와, {name}! 내가 제일 좋아하는 거거든! 진짜 고마워!'], giftLike: ['{name} 고마워! 잘 쓸게!'], giftMeh: ['{name}… 음, 마음만 받을게. 고마워!'],
+      answerLiked: ['와, 나도 그래! 우리 잘 맞거든!'], answerMeh: ['오, 그것도 좋아!'], answerDisliked: ['그렇구나… 나는 좀 달라. 그래도 말해 줘서 고마워!'],
+      letter: ['{me} 대장! 오늘 날씨 탐험하기 딱 좋았거든. 섬에서 만나면 인사하자!', '{me} 덕분에 요즘 탐험이 더 재밌어. 고마워!', '{me} 대장, 다음에 만나면 새로 찾은 길 알려 줄게. 기대해!', '오늘 {me} 생각이 나서 편지 썼어. 내일 같이 탐험 가자!', '{me} 대장, 우리 섬에 와 줘서 진짜 좋아. 또 보자!'],
+      hit: ['아야! 뭐 하는 거야!', '잠자리채로 치면 어떡해!', '나 곤충 아니거든!'],
+      levelUp1: ['이제 {me}도 우리 탐험대 대원이야!'], levelUp2: ['{me}, 우리 이제 친한 탐험 친구거든!'], levelUp3: ['{me} 대장, 이제 우리 단짝이야! 평생 같이 탐험 가자!'],
+      mem_errand: ['{when} 「{text}」 도와줘서 고마웠어, {me} 대장!'], mem_errand_short: ['{when} 도와줘서 고마웠어, {me} 대장!'], mem_answer: ['{when} 해 준 이야기, 계속 생각나거든.'], mem_gift: ['{when} 준 {name}, 아직도 기분 좋거든!'],
+      answerAgain: ['오늘은 벌써 얘기했거든! 내일 또 해 줘!'], giftAgain: ['오늘은 벌써 선물 받았거든! 마음만 받을게!'], giftAsk: ['나 주는 거야? 뭔데?'], giftNone: ['가방에 줄 만한 게 없네. 괜찮아!'], errandNone: ['오늘은 괜찮아! 마음만 받을게!'], relRival: ['사실 {a|이랑|랑} {b}, 요즘 좀 서먹했거든. 덕분에 화해했어!'], relFriend: ['둘은 오랜 친구라 더 좋아할 거야!'],
+    },
+  };
+  // by walker: register, the word at the end (tail), and their own lines over the register's (the design's table)
+  const VOICES = [
+    { reg: 'yo', tail: '꽃!', own: { greet1: ['와아, {me}님 왔다! 오늘도 반가워요.'], greet2: ['{me}님한테 어울리는 꽃을 생각하고 있었어요.'], greet3: ['{me}님! 오늘 제일 예쁜 꽃 드릴게요.'], giftLove: ['와아, {name}! 제가 제일 좋아하는 거예요. 꽃다발보다 좋아요!'], hit: ['아야! 꽃잎 다 떨어지겠어요!'] } }, // 봄이
+    { reg: 'hage', own: { greet1: ['허허, {me} 왔구먼. 오늘 바다가 잔잔하다네.'], greet3: ['{me}, 오늘은 바다 얘기 하나 해 주겠네.'], giftLove: ['허허, {name}! 바다 사나이가 제일 좋아하는 걸세. 고맙네.'], hit: ['철썩! …아니, 파도가 아니구먼! 아프다네!'], answerLiked: ['허허, 나도 그렇다네. 바다처럼 마음이 통하는구먼.'] } }, // 바다 할아버지
+    { reg: 'yo', own: { greet1: ['아, {me}님… 오늘 문장이 잘 써지는 날이랄까요…'], greet2: ['아, 저… {me}님 생각하면서 한 줄 썼달까요…'], greet3: ['{me}님이 오니까 이야기가 시작되는 느낌이랄까요…'], giftLove: ['아, 저… {name}, 제일 좋아하는 거예요. 소설에 꼭 쓸 거랄까요…'], giftLike: ['{name}… 고마워요. 잘 쓸 거랄까요…'], answerLiked: ['아, 저도요… 우리 꽤 잘 맞는달까요…'], hit: ['아, 아야… 원고 떨어뜨릴 뻔했달까요…'], levelUp1: ['아, 저… 이제 {me}님이랑 아는 사이랄까요…'], levelUp2: ['아, 저… {me}님이랑 많이 가까워졌달까요…'], levelUp3: ['{me}님은 제 이야기의 단짝이랄까요…'] } }, // 하람
+    { reg: 'yo', tail: '붕붕', own: { greet1: ['흐음~ {me}님, 꿀처럼 달달한 하루예요.'], greet2: ['{me}님 오니까 벌들이 조용해졌어요.'], giftLove: ['흐음~ {name}! 제가 제일 좋아하는 거예요. 꿀보다 달아요!'], hit: ['아야! 벌들이 놀라겠어요!'] } }, // 두리
+    { reg: 'grand', own: { greet1: ['아이고, {me} 왔구나. 밥은 먹었니, 얘야?'], greet2: ['{me|아|야}, 오늘은 다리 건너 쪽으로 걸어 보렴.'], greet3: ['우리 {me} 왔구나! 오늘도 얼굴이 좋구나, 얘야.'], giftLove: ['아이고, {name}! 내가 제일 좋아하는 거란다. 고맙구나, 얘야.'] } }, // 노을 할머니
+    { reg: 'hage', own: { greet1: ['흠… {me} 군, 여기 무언가 있다는 말이지.'], greet2: ['{me} 조수, 수상한 걸 봤나? 아직 없다는 말이지.'], greet3: ['{me}, 자네가 오면 사건이 풀린다는 말이지.'], giftLove: ['흠… {name}! 이건 내가 제일 좋아하는 거란 말이지. 고맙네.'], hit: ['사건이다! 탐정을 치다니, 이건 폭행 사건이란 말이지!'], answerLiked: ['흠, 나도 그렇다네. 우리 둘은 잘 맞는단 말이지.'], levelUp3: ['{me}, 이제 자네는 내 파트너란 말이지.'] } }, // 오 탐정
+    { reg: 'yo', tail: '빵!', own: { greet1: ['{me}님! 오늘도 따끈한 하루예요.'], greet2: ['{me}님, 빵 냄새 나죠? 방금 구웠어요.'], giftLove: ['와, {name}! 제가 제일 좋아하는 거예요. 갓 구운 빵만큼 좋아요!'], hit: ['아야! 반죽 떨어뜨릴 뻔했어요!'] } }, // 다온
+    { reg: 'yo', tail: '휙!', own: { greet1: ['{me}님 안녕! 지나갑니다.'], greet2: ['{me}님! 배달 가는 길이에요.'], giftLove: ['와, {name}! 제가 제일 좋아하는 거예요. 가방에 잘 넣을게요!'], hit: ['아야! 편지 떨어져요!'] } }, // 바람이
+    { reg: 'yo', tail: '반짝…', own: { greet1: ['하암… {me}님, 오늘 밤엔 별이 많을 거예요.'], greet2: ['{me}님… 하암, 반가워요.'], giftLove: ['와… {name}! 제가 제일 좋아하는 거예요. 별만큼 좋아요.'], hit: ['아야… 잠이 확 깼어요.'] } }, // 이솔
+    { reg: 'kid', own: { greet1: ['{me} 대장! 오늘은 저쪽 숲 탐험 가자!'], hit: ['아야! 대장한테 그러면 안 되거든!'] } }, // 가람
+  ];
+  // the tail once at the end: 「반가워요!」 -> 「반가워요 꽃!」, a question keeps its mark (「걸을래요 꽃?」); short calls go without
+  function withTail(text, n) {
+    const t = VOICES[n]?.tail; if (!t || String(text).length < 8 || String(text).endsWith(t)) return text;
+    const q = /\?\s*$/.test(text); const body = String(text).replace(/[\s.!?~…]+$/, '');
+    return q ? `${body} ${t.replace(/[!.…]+$/, '')}?` : `${body} ${t}`;
+  }
+  // what walker n says for `key` (or keys, said one after another): lines, their vars filled ({me} too when given), the
+  // tail at the very end -> [] when n or the key is unknown
+  function say(n, key, vars = {}, random = Math.random) {
+    const v = VOICES[n]; if (!v) return [];
+    const out = [];
+    for (const k of [].concat(key)) {
+      const alts = [...(v.own?.[k] || []), ...(REG[v.reg][k] || [])]; if (!alts.length) continue;
+      const chosen = pick(alts, random); out.push(...[].concat(chosen));
+    }
+    const filled = out.map((line) => Object.entries(vars).reduce((s, [name, word]) => (word == null ? s : slot(s, name, String(word))), line));
+    if (filled.length) filled[filled.length - 1] = withTail(filled[filled.length - 1], n);
+    return filled;
+  }
+  // the tail taken back off the last line (a line said after it carries it instead)
+  function untail(lines, n) {
+    const t = VOICES[n]?.tail; if (!t || !lines.length) return lines; const last = lines[lines.length - 1]; const w = t.replace(/[!.…]+$/, '');
+    const plain = last.endsWith(` ${t}`) ? `${last.slice(0, -t.length - 1)}.` : last.endsWith(` ${w}?`) ? `${last.slice(0, -w.length - 2)}?` : last;
+    return [...lines.slice(0, -1), plain];
+  }
+  const whyOf = (n, k) => REG[VOICES[n]?.reg || 'yo'].why[k] ?? REG.yo.why[k];
   // a walker's line for a talk with nothing to ask, by 호감도 level (sometimes the one for this time of day, or -- A-6 --
   // for what the island has today: `moods`, keys of MOODS)
   function walkerLine(n, random = Math.random, phase = 'day', level = 1, me = '', moods = []) {
     const c = WALKERS[n]; if (!c) return null;
     const mood = moods.filter((k) => MOODS[k]?.[n]);
-    if (mood.length && random() < 0.4) return MOODS[pick(mood, random)][n];
-    if ((phase === 'morning' || phase === 'night') && c[phase] && random() < 0.3) return c[phase];
-    return fill(pick(c.lines[Math.max(0, Math.min(3, level))], random), me);
+    if (mood.length && random() < 0.4) return withTail(MOODS[pick(mood, random)][n], n);
+    if ((phase === 'morning' || phase === 'night') && c[phase] && random() < 0.3) return withTail(c[phase], n);
+    return withTail(fill(pick(c.lines[Math.max(0, Math.min(3, level))], random), me), n);
   }
   function keeperLine(id, random = Math.random, level = 1, me = '') {
     const k = KEEPERS[id === 'photomemory' ? 'photographer' : id]; if (!k) return null;
@@ -232,5 +372,5 @@
     return out.length ? pick(out, random) : '요즘은 섬이 조용해요. 평화로운 게 제일이죠.';
   }
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { WALKERS, KEEPERS, LEVELS, GAIN, GREETS, RELATIONS, relationOf, PHASES, MOODS, CHATS, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill };
+  return { WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill, say, withTail, untail, whyOf };
 }));
