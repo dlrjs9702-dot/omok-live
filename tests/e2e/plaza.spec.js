@@ -1839,3 +1839,18 @@ test('역 승강기: 다른 사람이 타면 내 화면에서도 승강기로 �
   expect(Math.max(...seen.map((s) => s.y))).toBeGreaterThan(at.top - 0.5); // (up at the end)
   await expectNoScriptError(a.page); await a.context.close(); await b.context.close();
 });
+// 7회차 3 (사용자 「구치소를 어느 정도 파고들어갈 수 있어」): walking straight at the 구치소's side walls stops outside its
+// floor (assets 67: 9.8 x 7.4 m) -- 0.2 m and more, not between the circles inside it
+test('구치소 벽: 옆으로 걸어 들어가도 바닥 사각형 밖에서 멈춤', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  test.skip(!DAL, '달마루섬');
+  const a = await intoPlaza(browser, request, '벽밀기'); const { page } = a;
+  const J = await page.evaluate(() => window.IslandTerrain.SPOTS.jail);
+  for (const side of [-1, 1]) {
+    await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [J.x + side * 8, J.z + 0.8]);
+    await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [J.x, J.z + 0.8]);
+    await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(2500); await page.keyboard.up('ArrowUp');
+    const at = await state(page); expect(Math.abs(at.x - J.x) - 4.9, `${side < 0 ? '서' : '동'}쪽 벽`).toBeGreaterThan(0.2);
+  }
+  await expectNoScriptError(page); await a.context.close();
+});

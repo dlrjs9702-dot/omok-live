@@ -6631,7 +6631,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/affinity' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const points = await pointStore.affinityOf(account); const mem = (await pointStore.questDoc(account, 'resmem')).doc; const day = kstDate(nowMs());
-    return sendJson(res, 200, { ok: true, residents: IslandCast.WALKERS.map((c, n) => ({ n, points: points[n] || 0, level: IslandCast.levelOf(points[n] || 0), memory: IslandAffinity.memoryLine(mem, n, day) })) });
+    return sendJson(res, 200, { ok: true, residents: IslandCast.WALKERS.map((c, n) => ({ n, points: points[n] || 0, level: IslandCast.levelOf(points[n] || 0), memory: IslandAffinity.memoryLine(mem, n, day, true) })) }); // (the bubble's: short)
   }
   if (pathname === '/api/island/resident/talk' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;

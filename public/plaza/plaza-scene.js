@@ -230,11 +230,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const c0 = document.createElement('canvas').getContext('2d'); c0.font = font;
     const lines = []; let line = ''; let cut = false;
     for (const ch of String(text)) {
-      if (c0.measureText(line + ch).width > 420 && line) { lines.push(line); line = ''; if (lines.length === 2) { cut = true; break; } }
+      if (c0.measureText(line + ch).width > 420 && line) { lines.push(line); line = ''; if (lines.length === 3) { cut = true; break; } }
       line += ch;
     }
     if (!cut && line) lines.push(line);
-    if (cut) lines[1] = `${lines[1].slice(0, -1)}…`; // two lines at most
+    if (cut) lines[2] = `${lines[2].slice(0, -1)}…`; // three lines at most (7회차 2: about 30 letters -- the islanders' bubble lines are kept that short)
     const width = Math.min(480, Math.max(...lines.map((l) => c0.measureText(l).width)) + 56);
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 60 + lines.length * 50;
     const c = canvas.getContext('2d'); const left = (512 - width) / 2; const bodyH = canvas.height - 26;
@@ -550,6 +550,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         for (let lz = -d / 2 + r * 0.85; lz <= d / 2 - r * 0.85 + 1e-6; lz += Math.max(0.1, Math.min(1.7, d - r * 1.7))) solids.push({ ...at(cx + lx, cz + lz), r });
       }
     };
+    // v1.10.45: the grid above leaves gaps a character slips through (circles 1.7 apart), so a box's edges are walled round
+    // too with circles that overlap -- 0.5 m ones every 0.5 m, 0.3 in: reaching 0.2 m past the edge
+    const edgeSolids = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
     if (spot.kind === 'hall') { // v1.10.1 게임관: the island's landmark -- a columned hall with a dome and two towers
       depth = 10; const w = 15; const h = 6.2;
       const wall = mat(spot.wall); const trim = mat(0xfff6e6); const roofM = mat(spot.roof); const gold = mat(0xf6c945, { metalness: 0.5, roughness: 0.35 });
@@ -594,7 +597,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.BoxGeometry(1.4, 2.3, 0.1), mat(0x3b3f45), 0, 1.15, 3.75, visual); // the door
       sign(facility.name, root, 7.2);
       const plaque = new THREE.Group(); plaque.rotation.y = Math.PI; plaque.add(boardText(facility.name, 2.5, 0.62, 3.75, -3.85)); root.add(plaque); // (the board over the door, assets 67: 2.6 x 0.7 m at 3.75 m, its face 3.84 m out -- the model turned half round)
-      boxSolids(0, 0, 9.8, 7.4, 0.9);
+      boxSolids(0, 0, 9.8, 7.4, 0.9); edgeSolids(0, 0, 9.8, 7.4); // (7회차 3 「구치소를 파고들어갈 수 있어」: the walls between the inner circles -- its floor's edge all round, 0.2 m out; the door's steps outside it)
     } else if (spot.kind === 'tower') { // v1.10.1 등반 도전: a tall stone tower on the hill, a landmark from anywhere on the island
       depth = 6.4;
       const stone = mat(0xd8d0c2); const band = mat(0xb8ae9e); const roofM = mat(0x6f8fd8);
@@ -624,10 +627,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.SphereGeometry(1.4, 16, 10, 0, TAU, 0, Math.PI / 2), mat(0x5f8f7f), 0, 0.5 + h + 2.8, -0.6, visual);
       sign(facility.name, root, 12.6);
       boxSolids(0, -0.6, w, 10, 1.4); boxSolids(0, 0, 16.2, 12.6, 0.8); // the hall, and its terrace (the steps are the way up)
-      // v1.10.45: the grid above left gaps a character could slip through (0.8 circles 1.7 apart), so the terrace and the
-      // steps are also walled round their edges with circles that overlap (one never gets past the foot of the steps)
-      const edge = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
-      edge(0, 0, 16.2, 12.6); edge(0, 6.85, 6, 1.1);
+      edgeSolids(0, 0, 16.2, 12.6); edgeSolids(0, 6.85, 6, 1.1);
     } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'mall') { // (v1.10.92 mall: the 백화점, 24 x 14 m)
       // v1.10.13: one merged build per facility (island.js `building`): a level body on a stone plinth, a real pitched
       // or hip roof lined up with the walls (the old roof was a square cone squashed along its diagonal -- it looked
