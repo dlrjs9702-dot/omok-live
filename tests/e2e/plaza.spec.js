@@ -940,11 +940,13 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:desk');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
+  await expect(page.locator('#islandPlaceDialog.counterMode .counterSay')).toContainText('정산해 드려요'); // (창 3단계: the clerk's words in a speech bubble)
   await page.locator('#islandPlaceSubmit').click();
   await expect(page.locator('#islandPlaceStatus')).toContainText('+14,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000); // v1.10.35 단가: 쓰레기 1,000 × 4 + 지갑 10,000
   await page.locator('#islandPlaceCloseBtn').click();
+  await expect(page.locator('#islandPlaceDialog .counterSay')).toHaveCount(0); await expect(page.locator('#islandPlaceDialog')).not.toHaveClass(/counterMode/);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().z - window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil').z)).toBeGreaterThan(0.5); // (stood up, back into the hall -- not behind the desk)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (the stand-up motion done)
   // (달마루섬 5단계) the fourth window, 개명 신청: the 작명소's window from its chair
@@ -1362,8 +1364,10 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
     await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); return page.locator('#plazaHint').textContent();
   }, { timeout: 40000, intervals: [1500] }).toMatch(/^입질! 화살표 \d+개를 순서대로$/); // (3회차 4: the arrows pull it in)
   await expect.poll(seen, { timeout: 5000 }).toBe('fish:reel');
-  expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
   await page.keyboard.press('Space'); expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('bite'); // (SPACE no longer pulls)
+  // (CI #298: the server's bite last, the arrows pressed right after it -- a page round trip between them took the
+  // mackerel's arrow time on a slow runner)
+  expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
   expect(await pressFishArrows(page)).toBeGreaterThanOrEqual(4);
   await expect.poll(seen, { timeout: 8000 }).not.toBe('fish:reel'); // past the reel there (the catch -- a moment's pose a slow page may miss -- or done); the bag below is the server's own catch
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);

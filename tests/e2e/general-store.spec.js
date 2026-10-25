@@ -17,6 +17,7 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
   await press();
   const card = page.locator('#goodCard');
   await expect(card).toContainText('낚시할 때 자동으로');
+  await expect(page.locator('#plazaDialog')).toHaveClass(/shopMode/); // (창 3단계: a price tag on the shop's shelf)
   const before = (await get(request, '/api/points', token)).data.balance;
   await card.getByRole('button', { name: /^5개/ }).click();
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'bait')?.qty || 0).toBe(5);
