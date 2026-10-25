@@ -1702,7 +1702,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!guide) return; const t = guide.target; const p = me.root.position;
     const dx = t ? t.x - p.x : 0; const dz = t ? t.z - p.z : 0; const d = Math.hypot(dx, dz);
     guide.arrow.visible = Boolean(t) && d > 3 && !photoMode; if (!guide.arrow.visible) return;
-    const x = p.x + (dx / d) * 1.6; const z = p.z + (dz / d) * 1.6; guide.arrow.position.set(x, heightAt(x, z) + 0.05, z); guide.arrow.rotation.y = Math.atan2(-dx, -dz); // (its front, -Z, toward the place)
+    const x = p.x + (dx / d) * 1.6; const z = p.z + (dz / d) * 1.6; guide.arrow.position.set(x, Math.max(heightAt(x, z), p.y) + 0.06, z); /* (5회차 9 「바닥에 뭔가 파고들어가 있어」: on 대청마당's raised paving the ground under it put the arrow into the stone -- at least my own floor) */ guide.arrow.rotation.y = Math.atan2(-dx, -dz); // (its front, -Z, toward the place)
   }
   // 묶음 5 보이는 곤충 (docs/insects-visible-20261020.md, assets 62 insects-v1): the server's insects where they live, each
   // moving its own way about its spot on the server's clock (so every screen sees much the same) -- butterflies and
