@@ -434,8 +434,8 @@
   // shop windows and awnings, and a new 기록관 in place of the small house (its size on its spot, dalmaru-island)
   const IV = '/assets/island/identity-v1';
   for (const f of ['games_roof', 'games_banner', 'games_marquee', 'store_window', 'store_awning']) REGISTRY[f.replace('_', '.')] = { url: `${IV}/${f}.glb`, low: { url: `${IV}/${f}_low.glb` }, near: 90 };
-  // (no winter roof snow yet: the hall is one material, 'primary' -- roofSnow finds a roof by a material named roof)
-  REGISTRY['facility.records'] = { url: `${IV}/records_hall.glb`, low: { url: `${IV}/records_hall_low.glb` }, rotationY: Math.PI, near: 70 };
+  // (winter roof snow: the hall's roof its own material, 'roof' -- roofSnow finds a roof by that name)
+  REGISTRY['facility.records'] = { url: `${IV}/records_hall.glb`, low: { url: `${IV}/records_hall_low.glb` }, rotationY: Math.PI, near: 70, snow: true };
   // R4 구치소 (assets 67 jail-v1): the building by 관공서 (its sign the game's), the room, the cell and its door, the desk,
   // the benches, today's board; the warden on the named islanders' body, moved by the common motions
   const JV = '/assets/island/jail-v1';
