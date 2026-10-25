@@ -1895,7 +1895,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? openFestival('tasks') : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2627,9 +2627,42 @@
   // window from the host (the tasks, the cooking, my stamps) or the stall (its limited goods for stamps), and the tasks done
   // where they are (the farm's harvest, the feast round the table)
   let festivalView = null; let festivalBusy = false;
+  let weekView = null;
   async function refreshFestival() {
     if (!document.body.classList.contains('plazaMode')) return;
-    try { festivalView = await api('/api/island/festival'); plaza.controller?.setFestival?.(festivalView); } catch {}
+    try { [festivalView, weekView] = await Promise.all([api('/api/island/festival'), api('/api/island/contest')]); plaza.controller?.setFestival?.({ ...festivalView, contest: weekView.contest }); weekTick(); } catch {}
+  }
+  // E1 매주 대회: a round's three minutes counted down at the screen's top; its end told with the day's standing
+  let weekTimer = null; let weekEnd = 0;
+  function weekTick() {
+    const r = weekView?.round;
+    if (r && r.left > 0) { weekEnd = Date.now() + r.left; if (!weekTimer) weekTimer = setInterval(weekCountdown, 500); weekCountdown(); }
+  }
+  async function weekCountdown() {
+    let box = document.getElementById('weekTimer'); if (!box) { box = document.createElement('div'); box.id = 'weekTimer'; box.className = 'weekTimer'; box.setAttribute('role', 'status'); document.body.append(box); }
+    const left = Math.max(0, weekEnd - Date.now()); const r = weekView?.round;
+    box.textContent = `${r?.kind === 'bug' ? '🦋 곤충' : '🎣 낚시'} 대회 · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')} · ${r?.score || 0}점`; box.hidden = false;
+    if (left > 0) { if (Date.now() % 5000 < 500) api('/api/island/contest').then((v) => { weekView = v; }).catch(() => {}); return; }
+    clearInterval(weekTimer); weekTimer = null; box.hidden = true;
+    try { weekView = await api('/api/island/contest'); const m = weekView.mine; showToast(`대회 끝! ${weekView.ended?.score ?? r?.score ?? 0}점${m ? ` · 오늘 최고 ${m.best}점 (${m.rank}위)` : ''}`, 5000); } catch {}
+  }
+  async function openWeekContest() {
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const card = el('section', 'card festivalCard'); card.id = 'contestCard'; openPlazaWindow('매주 대회', [card]); plazaDialog.classList.add('boardMode');
+    try { weekView = await api('/api/island/contest'); } catch (error) { card.append(el('p', 'emptyState', error.message)); return; }
+    const c = weekView.contest; const last = weekView.last;
+    card.append(el('h3', '', c ? `오늘은 ${c.name} · ${c.from}~${c.to}시` : '대회는 토요일 낚시·일요일 곤충, 10~22시예요'));
+    if (c) card.append(el('p', 'smallMuted', `3분 동안 ${c.kind === 'fish' ? '낚은 물고기' : '잡은 곤충'}의 값으로 점수를 매겨요. 여러 번 해도 그날 최고 점수가 기록되고, 밤 10시에 1~3등이 트로피·칭호·포인트를 받아요.`));
+    if (c?.open) {
+      const go = el('button', 'primary', weekView.round ? '대회 중이에요' : '3분 대회 시작'); go.type = 'button'; go.disabled = Boolean(weekView.round);
+      go.addEventListener('click', async () => {
+        try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); const r = await api('/api/island/contest/start', { method: 'POST', body: '{}' }); plazaDialog.close?.(); showToast(`${r.name} 시작! 3분${r.gift ? ` · 참가 선물 ${r.gift}` : ''}${r.stamp ? ` · 도장 +${r.stamp}` : ''}`, 4000); weekView = await api('/api/island/contest'); weekTick(); } catch (error) { showToast(error.message); }
+      });
+      card.append(go);
+    }
+    if (weekView.top.length) { const ol = el('ol', 'festivalTasks'); for (const t of weekView.top) ol.append(el('li', '', `${t.rank}위 ${t.name} · ${t.score}점`)); card.append(el('strong', '', '오늘 순위'), ol); }
+    if (weekView.mine) card.append(el('p', '', `내 기록 · ${weekView.mine.best}점 (${weekView.mine.rank}위)`));
+    if (last?.top?.length) card.append(el('p', 'smallMuted', `지난 ${last.name}(${last.day.slice(5).replace('-', '/')}) · ${last.top.map((t) => `${t.rank}위 ${t.name} ${t.score}점`).join(' · ')}`));
   }
   setInterval(refreshFestival, 60000);
   async function festivalPost(action, body = {}) {
@@ -2655,12 +2688,13 @@
       const f = festivalView.festival;
       if (!f) { card.replaceChildren(el('p', 'emptyState', festivalView.next ? `다음 행사 「${festivalView.next.name}」는 ${festivalView.next.start.slice(5).replace('-', '월 ')}일에 시작해요.` : '지금은 행사가 없어요.')); return; }
       const head = el('div', 'festivalHead'); head.append(el('h3', '', `${f.name} · ${f.start.slice(5).replace('-', '/')}~${f.end.slice(5).replace('-', '/')}`), el('strong', 'festivalStamps', `도장 ${f.stamps}개`));
-      const tabs = el('div', 'festivalTabs'); for (const [id, name] of [['tasks', '할 일'], ['cook', '요리 대회'], ['shop', '가판대']]) { const b = el('button', which === id ? 'primary tiny' : 'secondary tiny', name); b.type = 'button'; b.dataset.tab = id; b.addEventListener('click', () => draw(id)); tabs.append(b); }
+      const tabs = el('div', 'festivalTabs'); if (weekView?.contest) { const b = el('button', 'secondary tiny', weekView.contest.name); b.type = 'button'; b.addEventListener('click', () => openWeekContest()); tabs.append(b); } // (a contest day in the festival)
+      for (const [id, name] of [['tasks', '할 일'], ['cook', '요리 대회'], ['shop', '가판대']]) { const b = el('button', which === id ? 'primary tiny' : 'secondary tiny', name); b.type = 'button'; b.dataset.tab = id; b.addEventListener('click', () => draw(id)); tabs.append(b); }
       const body = el('div', 'festivalBody');
       if (which === 'tasks') {
         body.append(el('p', 'smallMuted', `「${f.say}」 도장은 이 행사 가판대에서만 쓰고, 행사가 끝나면 사라져요${f.daysLeft <= 1 ? ' — 곧 끝나요!' : ''}.`));
         const list = el('ul', 'festivalTasks');
-        for (const t of f.tasks) list.append(el('li', t.today >= t.perDay ? 'done' : '', `${t.name} · 도장 ${t.stamps}개 · 오늘 ${t.today}/${t.perDay}${t.id === 'feast' ? ' (마지막 날 저녁 6~10시, 잔칫상 둘레)' : t.id === 'harvest' ? ' (밭에서 SPACE)' : ' (요리 대회 칸에서)'}`));
+        for (const t of f.tasks) list.append(el('li', t.today >= t.perDay ? 'done' : '', `${t.name} · 도장 ${t.stamps}개 · 오늘 ${t.today}/${t.perDay}${t.id === 'feast' ? ' (마지막 날 저녁 6~10시, 잔칫상 둘레)' : t.id === 'harvest' ? ' (밭에서 SPACE)' : t.id === 'contest' ? ' (토·일 대회 날, 여기서 대회 시작)' : ' (요리 대회 칸에서)'}`));
         body.append(list);
       } else if (which === 'cook') {
         const bag = (await api('/api/island/bag').catch(() => ({ items: [] }))).items || [];

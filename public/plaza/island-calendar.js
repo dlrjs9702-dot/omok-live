@@ -31,6 +31,7 @@
         harvest: { name: '밭 수확', stamps: 1, perDay: 3 },
         cook: { name: '요리 대회', stamps: 2, perDay: 1 },
         feast: { name: '주민 잔치', stamps: 3, perDay: 1, lastDayFrom: 18, lastDayTo: 22 }, // (the last day's evening, by the feast table)
+        contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 }, // (a contest day in the festival: a round started)
       }),
       shop: Object.freeze([['harvest_basket', 3], ['straw_sheaf', 3], ['corn_string', 4], ['persimmon_string', 4], ['feast_table', 8], ['title_harvest', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
     }),

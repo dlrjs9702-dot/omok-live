@@ -1817,8 +1817,54 @@ async function ownedEventTitles(account) { return ((await pointStore.questDoc(ac
 const eventTitleGive = (account, id) => pointStore.questApply(account, 'eventTitles', (doc) => ((doc.titles || []).includes(id) ? null : { doc: { ...doc, titles: [...(doc.titles || []), id] } }));
 let contestKindTest = null; // (tests: the week's event held at one kind)
 const contestKindHeld = (c) => (c && contestKindTest ? Object.assign(c, { kind: contestKindTest, name: IslandContest.KINDS[contestKindTest].name, how: IslandContest.KINDS[contestKindTest].how, unit: IslandContest.KINDS[contestKindTest].unit }) : c);
-async function contestState() { return contestKindHeld(IslandContest.phaseAt(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
-async function contestEnded() { return contestKindHeld(IslandContest.lastEnded(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
+// (사용자 2026-10-25 A안: from 11/7 the weekly contests are E1's -- A4 is off from then; its last result and statue stay
+// until E1's first Saturday winner takes the niche)
+const A4_END = Date.parse('2026-11-07T00:00:00+09:00');
+async function contestState() { const c = contestKindHeld(IslandContest.phaseAt(contestNow(), (await pointStore.worldValue('contest'))?.config)); return c.start >= A4_END ? { ...c, phase: 'off' } : c; }
+async function contestEnded() { const c = contestKindHeld(IslandContest.lastEnded(contestNow(), (await pointStore.worldValue('contest'))?.config)); return c && c.start < A4_END ? c : null; }
+// E1 매주 대회 (docs/season-events-design-20261025.md, A안): Saturday 낚시·Sunday 곤충, 10:00-22:00 -- each a three-minute
+// round started at the host; what is caught in it scores (its price in hundreds), the day's best of each counts; after
+// 22:00 the day's three best: a trophy, a title and points (경제 값 contest:1-3), Saturday's 1st the 영웅마루 statue.
+// ponytail: a round under way lives in memory (a restart drops it -- start again); the day's bests are kept
+const eventRounds = new Map(); // account -> { kind, day, start, end, score, name }
+function eventContestScore(account, kind, value) { const r = eventRounds.get(account); if (r && r.kind === kind && festivalNow() < r.end && value > 0) r.score += value; }
+async function eventRoundClose(account) {
+  const r = eventRounds.get(account); if (!r || festivalNow() < r.end) return r || null;
+  eventRounds.delete(account);
+  await worldEdit(async () => { const key = `eventContest:${r.day}`; const doc = (await pointStore.worldValue(key)) || { kind: r.kind, best: {} }; const was = doc.best[account]; if (!was || r.score > was.score) { doc.best[account] = { score: r.score, at: r.end, name: r.name }; await pointStore.setWorldValue(key, doc); } });
+  return { ...r, done: true };
+}
+const eventRankOf = (doc) => IslandCalendar.rankOf(Object.entries(doc?.best || {}).map(([account, b]) => ({ account, ...b })));
+async function settleEventContest(day) {
+  if (await pointStore.worldValue(`eventContestResult:${day}`)) return;
+  for (const account of [...eventRounds.keys()]) if (eventRounds.get(account).day === day) { const r = eventRounds.get(account); r.end = Math.min(r.end, festivalNow()); await eventRoundClose(account); }
+  const doc = await pointStore.worldValue(`eventContest:${day}`); const ranked = eventRankOf(doc).filter((r) => r.score > 0).slice(0, 3); const kind = doc?.kind || IslandCalendar.contestAt(Date.parse(`${day}T12:00:00+09:00`), await calendarOverride())?.kind;
+  const paid = [];
+  for (const [i, r] of ranked.entries()) {
+    const rank = i + 1; const name = IslandCalendar.CONTEST.names[kind];
+    const out = await pointStore.claimEvent({ eventId: `econtest_${day.replace(/-/g, '')}`, userId: r.account, amount: Economy.value(`contest:${rank}`), title: `${name} ${rank}등` }); if (out.applied) paid.push(r.account);
+    await eventTitleGive(r.account, `title_contest_${kind}_${rank}`);
+    const good = IslandCalendar.TROPHY[kind][i]; const claim = `econtest:${day}:${r.account}`;
+    await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${r.account}`)) || []; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${r.account}`, [...owned, { uid: crypto.randomUUID(), id: good, at: nowMs(), price: 0, claim }]); });
+  }
+  if (paid.length) notifyPointsChanged(paid);
+  const top = ranked.map((r, i) => ({ rank: i + 1, name: r.name, score: r.score }));
+  await pointStore.setWorldValue(`eventContestResult:${day}`, { day, kind, top, entrants: Object.keys(doc?.best || {}).length });
+  await pointStore.setWorldValue('eventContestLast', { day, kind, name: IslandCalendar.CONTEST.names[kind], top });
+  if (kind === 'fish' && ranked[0]) { // (A안: 영웅마루's contest niche is Saturday's 낚시 1st)
+    const al = avatarLookOf(equippedSkinCache.get(ranked[0].account) || (await pointStore.skinState(ranked[0].account)).equipped);
+    const winner = { name: ranked[0].name, look: al.look, title: al.title, score: ranked[0].score };
+    await pointStore.setWorldValue('contestResult', { id: `e1_${day}`, kind, name: '낚시 대회', unit: '점', top, entrants: Object.keys(doc.best).length, rewarded: true, winner });
+    contestWinnerStatue = { ...winner, label: '낚시 대회' };
+    for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } }
+  }
+}
+// every minute: a contest day past its 22:00 (or gone by) is settled once
+async function settleEventContests() {
+  const now = festivalNow(); const override = await calendarOverride();
+  for (const back of [0, 1, 2]) { const ms = now - back * IslandCalendar.DAY; const c = IslandCalendar.contestAt(ms, override); if (!c) continue; if (back === 0 && IslandCalendar.hourOf(now) < IslandCalendar.CONTEST.to && !override.contestAllDay) continue; await settleEventContest(c.day); }
+}
+setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); }, 60000).unref?.();
 function contestNote(account, session, kind, value) {
   contestState().then((c) => {
     if (c.phase !== 'live' || c.kind !== kind || !Number.isFinite(value) || value <= 0) return;
@@ -5924,7 +5970,7 @@ async function requestHandler(req, res) {
     const dex = outcome.dex;
     const f = IslandFishing.SPECIES[c.species];
     c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag };
-    if (outcome.applied) { islandProgress('fish', account, 1); contestNote(account, session, 'fish', f.price); } // (A4: a contest catch)
+    if (outcome.applied) { islandProgress('fish', account, 1); contestNote(account, session, 'fish', f.price); eventContestScore(account, 'fish', Math.round(f.price / 100)); } // (A4: a contest catch; E1: a round's)
     questBagNow(account, outcome.bag);
     return sendJson(res, 200, c.done);
   }
@@ -5960,6 +6006,7 @@ async function requestHandler(req, res) {
       const s = IslandInsects.SPECIES[b.species];
       const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag };
       given = true; insectCaught.set(id, { account, result }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag);
+      if (outcome.applied !== false) eventContestScore(account, 'bug', Math.round(s.price / 100)); // (E1: a round's catch)
       return sendJson(res, 200, result);
     } finally { if (!given) insectGone.delete(id); }
   }
@@ -6242,7 +6289,7 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices/due' && req.method === 'POST') { await postDueNotices(); return sendJson(res, 200, { ok: true }); } // (tests: not waiting 30 s)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'reset'
-    const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.weekContest(nowMs(), cfg);
+    const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.weekContest(Math.min(nowMs(), A4_END - 7 * 86400000), cfg); // (from 11/7 A4 is off: its last week, 10/31)
     contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : 0;
     if (body.to === 'live' && (await pointStore.worldValue('contestResult'))?.id === k.id) { await pointStore.setWorldValue('contestResult', null); contestBoard = { id: null, rows: new Map() }; } // (the real clock may have closed this week's contest already, empty)
     contestKindTest = body.to === 'reset' ? null : IslandContest.KINDS[body.kind] ? body.kind : contestKindTest;
@@ -6506,6 +6553,31 @@ async function requestHandler(req, res) {
     }
     return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
   }
+  // E1 매주 대회: today's contest (open now or not), my round under way, the day's top 5 and my best, the last day's result
+  if (pathname === '/api/island/contest' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const now = festivalNow(); const c = IslandCalendar.contestAt(now, await calendarOverride());
+    const r = await eventRoundClose(account); const round = r && !r.done ? { kind: r.kind, left: Math.max(0, r.end - now), score: r.score } : null;
+    const doc = c ? await pointStore.worldValue(`eventContest:${c.day}`) : null; const ranked = eventRankOf(doc);
+    const mine = ranked.findIndex((x) => x.account === account);
+    return sendJson(res, 200, { ok: true, contest: c, round, ended: r?.done ? { score: r.score } : null, top: ranked.slice(0, 5).map((x, i) => ({ rank: i + 1, name: x.name, score: x.score })), mine: mine >= 0 ? { rank: mine + 1, best: ranked[mine].score } : null, last: (await pointStore.worldValue('eventContestLast')) || null, roundMs: IslandCalendar.CONTEST.roundMs });
+  }
+  // a round: three minutes from now, at the host, while the day's contest is open (a new one once the last is over); the
+  // first of the day leaves a small thank-you in the bag (미끼) -- and a stamp when a festival is on
+  if (pathname === '/api/island/contest/start' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const now = festivalNow(); const override = await calendarOverride(); const c = IslandCalendar.contestAt(now, override);
+    if (!c || !c.open) return sendError(res, 409, 'CONTEST_CLOSED', '지금은 대회 시간이 아니에요. (토 낚시·일 곤충, 10~22시)');
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); const P = IslandCalendar.PLACES;
+    if (!at || Math.hypot(at.x - P.host.x, at.z - P.host.z) > P.REACH + 1) return sendError(res, 409, 'TOO_FAR', '행사 주민 곁에서 시작해 주세요.');
+    const was = await eventRoundClose(account); if (was && !was.done) return sendError(res, 409, 'ROUND_ON', '이미 대회 중이에요.');
+    eventRounds.set(account, { kind: c.kind, day: c.day, start: now, end: now + IslandCalendar.CONTEST.roundMs, score: 0, name: String(session.label || '게스트') });
+    const gift = await pointStore.islandGive({ userId: account, claimId: `contestjoin:${c.day}:${account}`, itemId: 'bait', qty: 1, meta: null }, nowMs()).catch(() => null);
+    const fest = IslandCalendar.festivalAt(now, override); let stamp = null; // (a festival on: the contest's stamp, its task)
+    if (fest?.tasks.contest) { const out = await pointStore.questApply(account, `fest:${fest.id}`, (doc) => { const a = IslandFestival.award(fest, doc, 'contest', now); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); if (!out?.error) stamp = out.added; }
+    return sendJson(res, 200, { ok: true, kind: c.kind, name: c.name, endsIn: IslandCalendar.CONTEST.roundMs, gift: gift?.applied ? '낚시 미끼' : null, stamp });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/settle' && req.method === 'POST') { const body = await parseJson(req); await settleEventContest(String(body.day)); return sendJson(res, 200, { ok: true, result: await pointStore.worldValue(`eventContestResult:${body.day}`) }); }
   if (pathname === '/api/admin/calendar' && req.method === 'GET') { if (!requireAdmin(req, res)) return; return sendJson(res, 200, { ok: true, override: await calendarOverride(), festivals: IslandCalendar.FESTIVALS.map((f) => ({ id: f.id, name: f.name, start: f.start, end: f.end })) }); }
   if (pathname === '/api/admin/calendar' && req.method === 'POST') { // 관리자: a festival switched off or its days moved ({ [id]: { off, start, end } }); the contests' forced days
     if (!requireAdmin(req, res)) return; const body = await parseJson(req); const ok = /^\d{4}-\d\d-\d\d$/;

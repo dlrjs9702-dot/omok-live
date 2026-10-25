@@ -1030,7 +1030,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         if (king) c.armR.rotation.x = -1.1; else c.armR.rotation.z = 2.4; c.stoneStatue = true; c.bornAt = performance.now(); c.statueClip = king?.clip; c.statueAt = king?.at;
         scene.add(c.root); statueRoots.push(c.root); statueChars.push(c); dressUp(c, st.look || {});
         if (king?.rod) { c.wantsRod = true; assets.hold(c, 'fishing.rod', 0, { key: 'rod' }); } // (baked with it once it is in the hand)
-        const text = king ? `${weekLabel(st.week)}${king.name} ${st.name}` : st.contest ? `🏆 주말 섬 대회 우승 ${st.name}` : `${weekLabel(statueWeek)}기부 ${st.rank}위 ${st.name}`;
+        const text = king ? `${weekLabel(st.week)}${king.name} ${st.name}` : st.contest ? `🏆 ${st.label || '주말 섬 대회'} 우승 ${st.name}` /* (E1: 토요일 낚시 대회) */ : `${weekLabel(statueWeek)}기부 ${st.rank}위 ${st.name}`;
         const plate = plaque(text, spot.x + Math.sin(spot.yawToCentre) * 1.6, heightAt(spot.x, spot.z) + 0.9, spot.z + Math.cos(spot.yawToCentre) * 1.6, spot.yawToCentre, 0.7); scene.add(plate); statueRoots.push(plate);
         if (carved && !before.has(id(st))) carveDust(spot);
       });
@@ -2102,9 +2102,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // host, the stall's goods, the farm's festival harvest, the feast on the last evening (app.js asks /api/island/festival)
   let festival = null;
   function setFestival(view) {
-    const Cal = globalThis.IslandCalendar; const fest = view?.festival || null; const P = Cal?.PLACES;
+    const Cal = globalThis.IslandCalendar; const fest = view?.festival || null; const contest = view?.contest || null; const P = Cal?.PLACES; // (E1: a festival, or a contest day without one: the host and the stall all the same)
     for (const k of ['fest:host', 'fest:stall', 'fest:harvest', 'fest:feast']) delete eventDoors[k];
-    if (!fest || !P) { if (festival) { festival.root.visible = false; festival.on = null; for (const s of festival.rings) s.r = 0; } return; }
+    if ((!fest && !contest) || !P) { if (festival) { festival.root.visible = false; festival.on = null; for (const s of festival.rings) s.r = 0; } return; }
     if (!festival) {
       const root = new THREE.Group(); scene.add(root);
       const place = (id, x, z, yaw, fallback, y = heightAt(x, z)) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; root.add(g); g.add(fallback); assets.attach(id, g, fallback); return g; };
@@ -2120,15 +2120,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       void S;
       // walked round while shown (their circles shrink to nothing when the festival is over)
       const rings = [[P.stall.x, P.stall.z, 1.3], [P.host.x, P.host.z, 0.45], [P.feast.x, P.feast.z, 0.8]].map(([x, z, r]) => ({ x, z, r: 0, on: r, festival: true })); solids.push(...rings);
-      festival = { root, stall, host, decor, feast, rings, sign: null, on: null };
+      festival = { root, stall, host, decor: [...decor, feast], feast, rings, sign: null, on: null };
     }
-    festival.root.visible = true; for (const s of festival.rings) s.r = s.on;
-    if (festival.on !== fest.id) { // (its name on the stall's board: carved letters, read from in front -- the 간판 법칙)
+    festival.root.visible = true; for (const s of festival.rings) s.r = s === festival.rings[2] && !fest ? 0 : s.on; for (const d of festival.decor) d.visible = Boolean(fest); // (the harvest's decor and table only in its festival)
+    const id = fest ? fest.id : `contest:${contest.kind}`; if (festival.on !== id) { // (its name on the stall's board: carved letters, read from in front -- the 간판 법칙)
       if (festival.sign) { festival.stall.remove(festival.sign); festival.sign.material.map?.dispose(); festival.sign.material.dispose(); festival.sign.geometry.dispose(); }
-      festival.sign = boardText(`🌾 ${fest.name}`, 1.4, 0.36, 2.62, 0.295); festival.stall.add(festival.sign); festival.on = fest.id;
+      festival.sign = boardText(fest ? `🌾 ${fest.name}` : `${contest.kind === 'fish' ? '🎣' : '🦋'} ${contest.name}`, 1.4, 0.36, 2.62, 0.295); festival.stall.add(festival.sign); festival.on = id;
     }
     const ahead = (p, d, sign) => ({ x: p.x + sign * Math.sin(p.yaw) * d, z: p.z + sign * Math.cos(p.yaw) * d }); // (a character's front is its +Z, the stall model's its -Z)
-    eventDoors['fest:host'] = { ...ahead(P.host, 1.1, 1), name: `${fest.host}과 이야기` };
+    eventDoors['fest:host'] = { ...ahead(P.host, 1.1, 1), name: fest ? `${fest.host}과 이야기` : `${contest.name} · 주민과 이야기` };
+    if (!fest) return;
     eventDoors['fest:stall'] = { ...ahead(P.stall, 1.6, -1), name: `${fest.name} 가판대` };
     const F = globalThis.IslandTerrain.FARM; const harvest = fest.tasks?.find((t) => t.id === 'harvest');
     if (harvest && harvest.today < harvest.perDay) eventDoors['fest:harvest'] = { x: F.x, z: F.z, name: `${fest.name} · 밭 수확 (${harvest.today}/${harvest.perDay})`, resource: true };
