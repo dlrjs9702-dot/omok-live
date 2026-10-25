@@ -482,6 +482,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // A-7: the winter festival's things on the plaza are walked round while they are out
   for (const [x, z, r] of [[-8, -6, 0.6], [-9.7, -6.5, 0.4], [8, 5.5, 1.1], [-9, 5.8, 0.2], [9, -6, 0.2], [-9, -7.8, 0.7], [9, 7, 0.9], [8, 4, 0.35], [9.1, 4.2, 0.35], [7.4, 5.3, 0.35]]) solids.push({ x: PLAZA_C.x + x, z: PLAZA_C.z + z, r, off: () => !winterOn });
 
+  // (간판 ④, 검토 「파사드 유리를 반투명으로」) the 백화점 facade's glass see-through -- the model is one vertex-coloured mesh, so
+  // its glass is told by its colour (0.3, 0.35, 0.4): there alpha 0.35, the rest as it was (night glow kept); a copy of
+  // the material, drawn with the see-through things. Only the facade (a mesh 25 m and more across), not what stands by it
+  const GLASS = 'distance(vColor.rgb, vec3(0.3, 0.35, 0.4)) < 0.05';
+  function seeThroughGlass(root) {
+    root.traverse((o) => {
+      if (!o.isMesh || o.material.userData.seeThrough) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox; const sx = new THREE.Vector3(); o.getWorldScale(sx); if ((b.max.x - b.min.x) * sx.x < 25) return;
+      const m = o.material.clone(); const prev = o.material.onBeforeCompile; m.transparent = true; m.userData.seeThrough = true;
+      m.onBeforeCompile = (shader, renderer) => { prev?.call(m, shader, renderer); shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>\n#ifdef USE_COLOR\nif (${GLASS}) diffuseColor.a *= 0.35;\n#endif`); };
+      m.customProgramCacheKey = () => 'facade-glass'; o.material = m;
+    });
+  }
   // 간판 (gamecenter-notes docs/signboards-design-20261025.md, 사용자 「띄워 놓은 이름을 앞에 간판을 다는 방식으로」, assets 69):
   // a name is written on a board standing before the place -- read from the front only, nothing floating over a building.
   // FACE: each sign model's text spot in its own frame (front -Z): [x, y, width, height, z]
@@ -595,9 +608,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.BoxGeometry(F.w, 14, F.d), mat(facility.id === 'store' ? 0xd9c9ad : 0xf2ede4), 0, 7, F.d / 2, visual);
       mesh(new THREE.BoxGeometry(4, 5, 0.1), mat(0x8a5a3b), 0, 2.5, F.d + 0.05, visual); // the door
       facilitySign('stand', 5, F.d + 2.6);
-      // (간판 ④ 「가까이선 유리 벽만 보임」: shop windows behind the 백화점's glass, an awning over each -- its glass about 2.6 m
-      // out of the cliff, behind the pillars at 4)
-      if (facility.id === 'store') for (const wx of [-12, -7.5, 7.5, 12]) { deck('store.window', wx, 0, 1.6); deck('store.awning', wx, 3.1, 2.6); }
+      // (간판 ④ 「가까이선 유리 벽만 보임」: the 백화점's glass made see-through (seeThroughGlass, when its model comes) and shop
+      // windows behind it, their fronts 0.3 m inside, an awning over each on the glass, a warm back wall behind -- the glass
+      // 0.65-1.08 m out of the cliff, two floors high (its vertex colour 0.3, 0.35, 0.4))
+      if (facility.id === 'store') {
+        for (const wx of [-12, -7.5, 7.5, 12]) { deck('store.window', wx, 0, -0.35); deck('store.awning', wx, 3.1, 1.1); }
+        mesh(new THREE.BoxGeometry(27.4, 7.6, 0.1), mat(0xe9dcc4), 0, 4.35, 0.1, root); // (the shop inside, seen through)
+      }
       boxSolids(0, F.d / 2, F.w, F.d, 1.1);
     } else if (spot.kind === 'jail') { // R4 구치소 (assets 67 jail.exterior: 9.8 x 7.4 m, 6.7 high; its sign the game's)
       depth = 7.4;
@@ -660,7 +677,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, visual);
       }
       const sized = spot.size; // (assets 75 기록관: its own footprint, from `back` behind the spot to `front` before it)
-      if (sized) { const [sw, sd] = sized; const cz = (spot.front - spot.back) / 2; facilitySign('stand', sw / 2 + 1.6, spot.front + 0.8); boxSolids(0, cz, sw, sd, 1); edgeSolids(0, cz, sw, sd); }
+      if (sized) {
+        const [sw, sd] = sized; const cz = (spot.front - spot.back) / 2; facilitySign('stand', sw / 2 + 1.6, spot.front + 0.8); boxSolids(0, cz, sw, sd, 1); edgeSolids(0, cz, sw, sd);
+        const plate = boardText(facility.name, 1.4, 0.4, 3.45, 4.527); plate.rotation.y = 0; root.add(plate); // (its porch board, assets 75 FACE z -4.525 -- the model turned half round: out at +4.525)
+      }
       else if (big) facilitySign('stand', 5, depth / 2 + 2.4); else facilitySign('post', w / 2 + 0.7, depth / 2 + 0.8);
       if (sized) { /* (walled above) */ } else if (big) boxSolids(0, 0, w, depth, 2.2); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
       footing(root, w + 0.6, depth + 0.6);
@@ -768,7 +788,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       solids.push({ ...at(0, 0.1), r: 0.95 }, { ...at(0, -0.75), r: 0.45 });
       npcs.push(npc);
     }
-    assets.attach(`facility.${facility.id}`, root, visual, spot.kind === 'mapboard' ? (entry) => mapFace?.(entry) : null);
+    assets.attach(`facility.${facility.id}`, root, visual, spot.kind === 'mapboard' ? (entry) => mapFace?.(entry) : facility.id === 'store' ? (entry) => entry && seeThroughGlass(root) : null);
     if (!facility.decor) doors[facility.id] = { ...globalThis.IslandTerrain.facilityDoor(facility.id), name: facility.name };
     // v1.10.38: October's pumpkins either side of a building's door (the hall's on its terrace)
     const hwRy = root.rotation.y + Math.PI;
