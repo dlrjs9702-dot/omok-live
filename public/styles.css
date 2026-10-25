@@ -2100,6 +2100,11 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .weedBoardList h3{margin:0 0 4px;font-size:.9rem}.weedBoardList ol{list-style:none;margin:0;padding:0;display:grid;gap:3px}
 .weedBoardList li{display:flex;gap:8px;align-items:center;padding:4px 8px;border-radius:8px;background:rgba(148,163,184,.12)}.weedBoardList li span:nth-child(2){flex:1}
 .weedBoardList li.mine{outline:2px solid #60a5fa}
+/* E1 계절 행사: the host's and the stall's window */
+.festivalCard{display:grid;gap:8px;padding:12px 14px}.festivalHead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.festivalHead h3{margin:0;font-size:1rem}
+.festivalStamps{padding:2px 10px;border-radius:999px;background:rgba(234,179,8,.18)}.festivalTabs{display:flex;gap:6px;flex-wrap:wrap}.festivalBody{display:grid;gap:6px}
+.festivalTasks,.festivalShop{list-style:none;margin:0;padding:0;display:grid;gap:5px}.festivalTasks li,.festivalShop li{padding:5px 9px;border-radius:8px;background:rgba(148,163,184,.12)}
+.festivalTasks li.done{opacity:.6}.festivalShop li{display:flex;justify-content:space-between;align-items:center;gap:8px}.festivalShop li.owned{opacity:.7}.festivalPick{max-width:100%}.festivalSay{font-weight:700}
 /* v1.10.90 assets 38: game card pictures, the today frame, item pictures */
 .gameArt img{width:64px;height:64px;display:block}
 .gamehallToday{background:url("/assets/gamehall/today-frame-left.svg") left center/auto 100% no-repeat,url("/assets/gamehall/today-frame-right.svg") right center/auto 100% no-repeat,linear-gradient(135deg,var(--g1),var(--g2))}

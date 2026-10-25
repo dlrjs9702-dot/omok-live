@@ -1768,3 +1768,31 @@ test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보�
   await expect.poll(()=>cell.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
   await expectNoScriptError(page);await a.context.close();
 });
+
+// E1 계절 행사 (docs/season-events-design-20261025.md): a festival on -- its stall (its name on the board) and host on
+// 대청마당's south side; the host's window (tasks, my stamps), the farm's festival harvest (a stamp), the stall's goods
+test('계절 행사: 수확제 기간에 대청마당 가판대·행사 주민, 주민 창(할 일·도장), 밭 수확 도장, 가판대 창', async ({ browser, request, isMobile }) => {
+  test.setTimeout(150000);
+  test.skip(!DAL, '달마루섬');
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-21T12:00:00+09:00') })).status).toBe(200);
+  try {
+    const a = await intoPlaza(browser, request, isMobile ? '수확제m' : '수확제'); const { page } = a;
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival()?.on), { timeout: 20000 }).toBe('harvest-2026');
+    expect(await page.evaluate(() => window.PlazaDebug().festival().sign)).toBe('🌾 수확제');
+    const P = await page.evaluate(() => window.IslandCalendar.PLACES);
+    // the host: the festival's window -- the tasks and my stamps
+    await page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.1, z + Math.cos(yaw) * 1.1), [P.host.x, P.host.z, P.host.yaw]);
+    expect(await spaceOn(page, 'fest:host', isMobile)).toBeTruthy();
+    const card = page.locator('#festivalCard'); await expect(card).toContainText('수확제'); await expect(card).toContainText('밭 수확'); await expect(card.locator('.festivalStamps')).toHaveText('도장 0개');
+    await page.locator('#plazaCloseBtn').click();
+    // the farm: the festival's harvest, a stamp
+    const F = T.FARM; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [F.x, F.z - 1]);
+    const answer = page.waitForResponse((r) => r.url().includes('/api/island/festival/harvest'));
+    expect(await spaceOn(page, 'fest:harvest', isMobile)).toBeTruthy(); expect((await answer).status()).toBe(200);
+    // the stall: its goods, the stamp counted
+    await page.evaluate(([x, z, yaw]) => window.PlazaWarp(x - Math.sin(yaw) * 1.6, z - Math.cos(yaw) * 1.6), [P.stall.x, P.stall.z, P.stall.yaw]);
+    expect(await spaceOn(page, 'fest:stall', isMobile)).toBeTruthy();
+    await expect(card.locator('.festivalStamps')).toHaveText('도장 1개'); await expect(card.locator('.festivalShop li')).toHaveCount(6);
+    await expectNoScriptError(page); await a.context.close();
+  } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
+});

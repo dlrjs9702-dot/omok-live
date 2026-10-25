@@ -48,7 +48,7 @@
 
   // where an event stands on 대청마당 (its south side, clear of the disc, the channels and the gardens): the stall (its sign
   // read from its -Z, turned to face the disc), its host beside it -- the festival's and the contests' -- and the feast table
-  const PLACES = Object.freeze({ stall: Object.freeze({ x: 12, z: -104, yaw: Math.PI }), host: Object.freeze({ x: 9.4, z: -102.6, yaw: Math.PI * 0.85 }), feast: Object.freeze({ x: 0, z: -98, yaw: 0 }), REACH: 2.6, FEAST_R: 6 });
+  const PLACES = Object.freeze({ stall: Object.freeze({ x: 12, z: -104, yaw: Math.PI }), host: Object.freeze({ x: 9.4, z: -102.6, yaw: -0.47 }) /* (toward the disc) */, feast: Object.freeze({ x: 0, z: -98, yaw: 0 }), REACH: 2.6, FEAST_R: 6 });
   // a festival's days with the administrator's override ({ [id]: { off, start, end } })
   function festivalDays(f, override = {}) { const o = override[f.id] || {}; return { start: o.start || f.start, end: o.end || f.end, off: Boolean(o.off) }; }
   // the festival on at `ms` (its days moved or switched off by the override), or null
