@@ -868,6 +868,25 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   for (const who of [a, b]) await who.context.close();
 });
 
+// 5회차 B2 7 (사용자 「낚시왕과 제초왕의 동상도」): the week's kings in two of 영웅마루's empty niches, carved in their colours,
+// a plaque 「제 N주 낚시왕 ○○」; a week without one keeps 「곧 새겨질 자리」 (the list as the server sends it)
+test('영웅마루 왕 동상: 낚시왕·제초왕이 빈 벽감 둘에, 명판 「제 N주 …왕 ○○」, 왕이 없으면 곧 새겨질 자리', async ({ browser, request }) => {
+  test.skip(!DAL, '영웅마루는 달마루섬');
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '왕동상');
+  const show = (list) => a.page.evaluate((l) => window.PlazaDebug().showStatues(l, '2026-10-19'), list);
+  const look = () => a.page.evaluate(() => window.PlazaDebug().statueLook());
+  await show([{ king: 'fishking', week: '2026-10-19', name: '낚시꾼', look: {} }, { king: 'weedking', week: '2026-10-19', name: '김매기', look: {} }]);
+  expect(await a.page.evaluate(() => window.PlazaDebug().statues)).toEqual([{ king: 'fishking', name: '낚시꾼' }, { king: 'weedking', name: '김매기' }]);
+  expect((await look()).plates.map((p) => p.text)).toEqual(['제 43주 낚시왕 낚시꾼', '제 43주 제초왕 김매기']);
+  expect((await look()).emptySigns.slice(3)).toEqual([false, false, true, true]);
+  await expect.poll(async () => Math.min(...(await look()).colors), { timeout: 15000 }).toBeGreaterThan(1); // (carved: one stone each)
+  await show([]);
+  expect((await look()).emptySigns.slice(3)).toEqual([true, true, true, true]);
+  await expectNoScriptError(a.page);
+  await a.context.close();
+});
+
 // v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
 test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
   test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */

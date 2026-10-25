@@ -1001,7 +1001,8 @@ async function refreshDonation(now = nowMs()) {
   }
 }
 let contestWinnerStatue = null; // A4: the last contest's winner (kept with its result; read once at start and on settling)
-const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: [...donationCache.statues, ...(contestWinnerStatue ? [{ contest: true, ...contestWinnerStatue }] : [])] });
+const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: [...donationCache.statues, ...(contestWinnerStatue ? [{ contest: true, ...contestWinnerStatue }] : []), ...kingStatues()] });
+const kingStatues = (now = nowMs()) => Object.entries(weeklyCache).filter(([, c]) => c.statue && c.week === previousWeek(climbWeekOf(now))).map(([id, c]) => ({ king: id, week: c.week, ...c.statue })); // (낚시왕 · 제초왕)
 function isHoguking(account, now = nowMs()) {
   return Boolean(account) && donationCache.week === previousWeek(climbWeekOf(now)) && donationCache.hoguking === account;
 }
@@ -1123,9 +1124,16 @@ async function refreshWeeklyTitles(now = nowMs()) {
   for (const id of Object.keys(WEEKLY_TITLES)) {
     const r = await pointStore.settlementOf(`${id}_week:${week}`); const holder = r?.holder ?? r?.fishking ?? null;
     if (weeklyCache[id].week === week && weeklyCache[id].holder === holder) continue;
-    weeklyCache[id] = { week, holder }; changed = true;
+    weeklyCache[id] = { week, holder, statue: await kingStatue(holder, r) }; changed = true;
   }
-  if (changed) refreshTaxLooks(); // name tags follow at once
+  if (changed) { refreshTaxLooks(); for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } } // name tags follow at once; and 영웅마루's kings
+}
+// 5회차 B2 7 (사용자 「낚시왕과 제초왕의 동상도」): the week's king stands in an empty niche of 영웅마루 in the look they wear
+// when the week is read (a restart reads it again)
+async function kingStatue(holder, r) {
+  if (!holder) return null;
+  const { look, title } = avatarLookOf(equippedSkinCache.get(holder) || (await pointStore.skinState(holder)).equipped);
+  return { name: r?.ranking?.[0]?.name || '게스트', look, title };
 }
 const holdsWeekly = (id, account, now = nowMs()) => Boolean(account) && weeklyCache[id].week === previousWeek(climbWeekOf(now)) && weeklyCache[id].holder === account;
 const weeklyTitleOf = (skinId) => Object.entries(WEEKLY_TITLES).find(([, d]) => d.title === skinId) || null; // -> [id, def]
@@ -6302,7 +6310,7 @@ async function requestHandler(req, res) {
     const hogukingName = (await pointStore.donationWeekResult(previousWeek(week)))?.ranking?.[0]?.name || null;
     return sendJson(res, 200, { ok: true, week, myTotal: mine?.total || 0, myRank: mine?.rank || null,
       ranking: ranking.slice(0, 5).map(({ name, total, rank, userId }) => ({ name, total, rank, me: userId === account })),
-      statues: donationCache.statues, statuesWeek: donationCache.statuesWeek, hoguking: hogukingName, isHoguking: isHoguking(account, now),
+      statues: statueSnapshot().statues, statuesWeek: donationCache.statuesWeek, /* (all of 영웅마루's: the plaza's list is replaced by this one) */ hoguking: hogukingName, isHoguking: isHoguking(account, now),
       balance: pointStore.cachedBalance(account) });
   }
   if (pathname === '/api/donation' && req.method === 'POST') {
@@ -6354,7 +6362,7 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fishking/settle' && req.method === 'POST') { // v1.10.89
     const body = await parseJson(req); const now = Number(body.now) || nowMs();
     await settleWeeklyTitles(now);
-    if (body.asCurrent) { for (const id of Object.keys(WEEKLY_TITLES)) { const r = await pointStore.settlementOf(`${id}_week:${previousWeek(climbWeekOf(now))}`); weeklyCache[id] = { week: previousWeek(climbWeekOf(nowMs())), holder: r?.holder || null }; } refreshTaxLooks(); } // (tests: that week as if it had just closed)
+    if (body.asCurrent) { for (const id of Object.keys(WEEKLY_TITLES)) { const r = await pointStore.settlementOf(`${id}_week:${previousWeek(climbWeekOf(now))}`); weeklyCache[id] = { week: previousWeek(climbWeekOf(nowMs())), holder: r?.holder || null, statue: await kingStatue(r?.holder || null, r) }; } refreshTaxLooks(); for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } } // (tests: that week as if it had just closed)
     return sendJson(res, 200, { ok: true, fishking: weeklyCache.fishking, weedking: weeklyCache.weedking });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/settle' && req.method === 'POST') {
