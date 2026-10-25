@@ -89,6 +89,12 @@ const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, S
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
 const IslandPaths = require('./public/plaza/island-paths.js'); const GroundSpeed = require('./public/plaza/ground-speed.js'); // (5회차 6: the ground's speed)
+// ... by the ground maps' own cover (forest floor, sand), built at the speed grid once -- as the ground shows it
+const groundCover = (() => {
+  if (!IslandTerrain.dalmaru) return null;
+  const n = Math.ceil(IslandTerrain.GROUND.size / GroundSpeed.CELL); const x0 = -IslandTerrain.GROUND.size / 2; let a = null;
+  return (x, z) => { a ||= require('./tools/maps/ground-cover').buildCoverMaps(IslandTerrain, n).a; const i = Math.floor((x - x0) / GroundSpeed.CELL); const j = Math.floor((z - x0) / GroundSpeed.CELL); if (i < 0 || j < 0 || i >= n || j >= n) return null; const k = (j * n + i) * 3; return { forest: a[k] / 255, sand: a[k + 2] / 255 }; };
+})();
 const { poseTime } = require('./lib/plaza-pose-time');
 const IslandTrain = require('./public/plaza/island-train.js'); // v1.10.47 관광열차
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
@@ -4732,7 +4738,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
       // (Codex 검토 #8) m/s since the last pose, walking (a warp is not a run): by the sender's clock when both poses have
       // one (poses bunched on the way would look faster), else by arrival
-      bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) / GroundSpeed.factorAt(IslandTerrain, spot.x, spot.z, IslandPaths) : 0; })(), // (5회차 6: as fast as the ground lets one -- a walk on a path is no run)
+      bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) / GroundSpeed.factorAt(IslandTerrain, spot.x, spot.z, IslandPaths, groundCover) : 0; })(), // (5회차 6: as fast as the ground lets one -- a walk on a path is no run)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       home: homeInside.has(session.token) ? ((l) => (l && floorOf(session.token) === 2 ? `${l}:2` : l || null))(homeCache.get(homeInside.get(session.token))?.lot) : null, /* (R8: the 2층 is `<lot>:2` -- one sees the people on the same floor) */ // (묶음 4: which house, by its lot -- one sees the people in the same one)
@@ -7554,7 +7560,7 @@ async function main() {
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
-  setImmediate(() => GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths)); // (5회차 6: the ground's grid built once now, not in someone's first pose)
+  setImmediate(() => GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths, groundCover)); // (5회차 6: the ground's grid built once now, not in someone's first pose)
 }
 
 main().catch((err) => {

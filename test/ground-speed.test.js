@@ -26,3 +26,17 @@ test('땅 속도: 길·대청마당 빠르게, 숲·덤불·모래사장 느리�
   let open = 0; for (let x0 = -150; x0 < 150; x0 += 7) for (let z0 = -150; z0 < 150; z0 += 7) if (T.dalmaru.coastDist(x0, z0) > 10 && f(x0, z0) === 1) open += 1;
   assert.ok(open > 50, `풀밭이 대부분 그대로 (${open})`);
 });
+
+test('땅 속도(검토): 땅 지도의 숲 바닥·모래가 칠해진 곳이 느린 곳 — 보이는 땅 = 느려지는 땅', () => {
+  const { buildCoverMaps } = require('../tools/maps/ground-cover');
+  const n = Math.ceil(T.GROUND.size / G.CELL); const x0 = -T.GROUND.size / 2; const a = buildCoverMaps(T, n).a;
+  const cover = (x, z) => { const i = Math.floor((x - x0) / G.CELL); const j = Math.floor((z - x0) / G.CELL); if (i < 0 || j < 0 || i >= n || j >= n) return null; const k = (j * n + i) * 3; return { forest: a[k] / 255, sand: a[k + 2] / 255 }; };
+  let forest = 0; let sand = 0; let wrong = 0;
+  for (let j = 0; j < n; j += 1) for (let i = 0; i < n; i += 1) {
+    const x = x0 + (i + 0.5) * G.CELL; const z = x0 + (j + 0.5) * G.CELL; const c = cover(x, z); const f = G.factorAt(T, x, z, Paths, cover);
+    if (f === G.FAST) continue; // (a walk over all)
+    if (c.forest > 0.5) { forest += 1; if (f !== G.SLOW) wrong += 1; }
+    if (c.sand > 0.5) { sand += 1; if (f !== G.SLOW) wrong += 1; }
+  }
+  assert.ok(forest > 100 && sand > 100, `숲 ${forest}, 모래 ${sand}`); assert.equal(wrong, 0);
+});

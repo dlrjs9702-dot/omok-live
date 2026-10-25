@@ -253,6 +253,15 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
   // the ground is made of are the ground's own colour there: nothing laid over it to float, sink or flicker.
   const mapTex = (name) => { const t = keep(new THREE.TextureLoader().load(window.GameBoot?.assetUrl?.(`/assets/island/ground-v2/${name}.png`) ?? `/assets/island/ground-v2/${name}.png`)); t.flipY = false; t.colorSpace = THREE.NoColorSpace; return t; };
   const maps = PAINTED ? { pathA: mapTex('path-a'), pathB: mapTex('path-b'), coverA: mapTex('cover-a'), coverB: mapTex('cover-b'), shore: mapTex('shore') } : null;
+  // (5회차 6, 검토: how fast one goes reads the cover the ground shows -- cover-a's forest floor (R) and sand (B), read once
+  // from the loaded picture; null until then)
+  let coverPixels = null;
+  const coverAt = (x, z) => { const s = T.GROUND.size; const n = coverPixels.n; const i = Math.floor(((x + s / 2) / s) * n); const j = Math.floor(((z + s / 2) / s) * n); if (i < 0 || j < 0 || i >= n || j >= n) return null; const k = (j * n + i) * 4; return { forest: coverPixels.d[k] / 255, sand: coverPixels.d[k + 2] / 255 }; };
+  const groundCover = () => {
+    if (coverPixels) return coverAt; const img = maps?.coverA?.image; if (!img?.width) return null;
+    try { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0); coverPixels = { n: img.width, d: g.getImageData(0, 0, img.width, img.height).data }; } catch { return null; }
+    return coverAt;
+  };
   // 파도 치는 바닷가 (gamecenter-notes docs/shore-waves-design-20261025.md, 시범 검토 1~3): on every sand beach the sea runs
   // up the sand and back -- by the shore map's distance from the sea's edge, so a steep beach gets the same 1.5-2.5 m run as a
   // flat one; a thin teal film over the sand, lighter at its front; a lace of foam (40 cm, a scalloped front, holes in it)
@@ -1123,5 +1132,5 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
 
   function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { groundCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

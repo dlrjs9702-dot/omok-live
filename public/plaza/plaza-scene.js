@@ -3223,7 +3223,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const len = Math.hypot(ix, iz); ix /= len; iz /= len;
       const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // keys are relative to the view
       const wx = ix * cos + iz * sin; const wz = -ix * sin + iz * cos;
-      if (grab) stepGrab(dt, wx, wz); else { const v = paceSpeed() * (mySpace === 'island' ? globalThis.GroundSpeed?.factorAt(globalThis.IslandTerrain, me.root.position.x, me.root.position.z) ?? 1 : 1); // (5회차 6: faster on a walk, slower in the woods)
+      if (grab) stepGrab(dt, wx, wz); else { const v = paceSpeed() * (mySpace === 'island' ? globalThis.GroundSpeed?.factorAt(globalThis.IslandTerrain, me.root.position.x, me.root.position.z, undefined, island.groundCover?.()) ?? 1 : 1); // (5회차 6: faster on a walk, slower in the woods)
         tryMove(me.root.position.x + wx * v * dt, me.root.position.z + wz * v * dt);
         me.targetYaw = Math.atan2(wx, wz); }
     } else if (grab) { stepGrab(dt, 0, 0);
