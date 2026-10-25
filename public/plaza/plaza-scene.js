@@ -3136,6 +3136,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const SEA = { boat: [80, 160], gulls: [45, 100], dolphins: [70, 140], splash: [35, 80] };
   const seaNext = Object.fromEntries(Object.entries(SEA).map(([k, [a, b]]) => [k, 30 + Math.random() * (b - a) + a / 2]));
   const seaActive = new Map(); let seaLast = -Infinity; let seaPool = null; const seaShown = {};
+  const GULL_FRONT = Math.PI; // (6회차 8 「갈매기가 뒤로 날아」: the gull model's beak is its -z -- its beak's vertices z 0..0.13 of 1)
   const seaFree = () => seaActive.size < 2 && clock - seaLast > 12;
   function seaHolders() {
     if (seaPool) return seaPool;
@@ -3192,7 +3193,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         for (const b of birds) {
           const u = s.t * SPEED - L - b.back; const sway = Math.sin(s.t * 0.7 + b.ph);
           b.h.position.set(c.x + dir.x * u + dir.z * b.side, b.y + Math.sin(s.t * 0.45 + b.ph) * 0.7, c.z + dir.z * u - dir.x * b.side); // rising and gliding down
-          b.h.rotation.set(Math.sin(s.t * 0.45 + b.ph + 1.2) * 0.12, Math.atan2(dir.x, dir.z) + sway * 0.12, sway * 0.2); // its front +z along the way, banking a little
+          b.h.rotation.set(Math.sin(s.t * 0.45 + b.ph + 1.2) * 0.12, Math.atan2(dir.x, dir.z) + GULL_FRONT + sway * 0.12, sway * 0.2); // its front along the way, banking a little
         }
       }, end() { for (const b of birds) b.h.visible = false; } });
     } else if (kind === 'dolphins') { // two or three leaping one after another
@@ -3207,7 +3208,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           if (!inAir) continue;
           const along = (k + u) * RUN; const y = SEA_Y - 0.5 + Math.sin(u * Math.PI) * 1.9;
           d.h.position.set(at.x + fwd.x * along - fwd.z * d.side, y, at.z + fwd.z * along + fwd.x * d.side);
-          d.h.rotation.set(-Math.cos(u * Math.PI) * 0.9, heading, 0); // nose up going out, down going in
+          d.h.rotation.set(Math.cos(u * Math.PI) * 0.9, heading + Math.PI, 0, 'YXZ'); // nose up going out, down going in (6회차 8: its head is the model's -z too -- it leapt tail first; the pitch round its own side)
           const edge = u < 0.08 ? k * 2 + 1 : u > 0.92 ? k * 2 + 2 : 0; // a splash going out and coming back in
           if (edge && edge > d.splashed) { d.splashed = edge; assets.once('sea.splash', { parent: scene, x: d.h.position.x, y: SEA_Y, z: d.h.position.z }); }
         }
