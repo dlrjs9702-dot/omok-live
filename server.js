@@ -6554,7 +6554,7 @@ async function requestHandler(req, res) {
     return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
   }
   // E1 매주 대회: today's contest (open now or not), my round under way, the day's top 5 and my best, the last day's result
-  if (pathname === '/api/island/contest' && req.method === 'GET') {
+  if (pathname === '/api/island/weekly' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const now = festivalNow(); const c = IslandCalendar.contestAt(now, await calendarOverride());
     const r = await eventRoundClose(account); const round = r && !r.done ? { kind: r.kind, left: Math.max(0, r.end - now), score: r.score } : null;
@@ -6564,7 +6564,7 @@ async function requestHandler(req, res) {
   }
   // a round: three minutes from now, at the host, while the day's contest is open (a new one once the last is over); the
   // first of the day leaves a small thank-you in the bag (미끼) -- and a stamp when a festival is on
-  if (pathname === '/api/island/contest/start' && req.method === 'POST') {
+  if (pathname === '/api/island/weekly/start' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const now = festivalNow(); const override = await calendarOverride(); const c = IslandCalendar.contestAt(now, override);
     if (!c || !c.open) return sendError(res, 409, 'CONTEST_CLOSED', '지금은 대회 시간이 아니에요. (토 낚시·일 곤충, 10~22시)');
@@ -6577,7 +6577,7 @@ async function requestHandler(req, res) {
     if (fest?.tasks.contest) { const out = await pointStore.questApply(account, `fest:${fest.id}`, (doc) => { const a = IslandFestival.award(fest, doc, 'contest', now); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); if (!out?.error) stamp = out.added; }
     return sendJson(res, 200, { ok: true, kind: c.kind, name: c.name, endsIn: IslandCalendar.CONTEST.roundMs, gift: gift?.applied ? '낚시 미끼' : null, stamp });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/settle' && req.method === 'POST') { const body = await parseJson(req); await settleEventContest(String(body.day)); return sendJson(res, 200, { ok: true, result: await pointStore.worldValue(`eventContestResult:${body.day}`) }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/weekly/settle' && req.method === 'POST') { const body = await parseJson(req); await settleEventContest(String(body.day)); return sendJson(res, 200, { ok: true, result: await pointStore.worldValue(`eventContestResult:${body.day}`) }); }
   if (pathname === '/api/admin/calendar' && req.method === 'GET') { if (!requireAdmin(req, res)) return; return sendJson(res, 200, { ok: true, override: await calendarOverride(), festivals: IslandCalendar.FESTIVALS.map((f) => ({ id: f.id, name: f.name, start: f.start, end: f.end })) }); }
   if (pathname === '/api/admin/calendar' && req.method === 'POST') { // 관리자: a festival switched off or its days moved ({ [id]: { off, start, end } }); the contests' forced days
     if (!requireAdmin(req, res)) return; const body = await parseJson(req); const ok = /^\d{4}-\d\d-\d\d$/;

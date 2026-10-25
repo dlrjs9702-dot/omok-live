@@ -59,7 +59,7 @@ test('수확제: 할 일마다 도장(하루 한도), 요리 심사, 마지막 �
 
 test('매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작, 판 안의 물고기만 점수, 그날 최고 기록·순위, 밤 정산(트로피·칭호·포인트, 토 낚시 1등 영웅마루), 시간 밖은 닫힘', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'contest-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
-  const { req, issue, enter, logs } = await boot(t, dir);
+  const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('낚시상')); const b = await enter(await issue('둘째'));
   let now = Date.parse('2026-11-07T12:00:00+09:00'); const clock = (ms) => { now = ms; return req('/api/test/festival/clock', null, { at: ms }); };
   await clock(now);
@@ -68,26 +68,26 @@ test('매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작
   const catchOne = async (s, species) => { await stand(s, { x: T.PIER.x, z: T.PIER.z }); const c = (await req('/api/island/fish/start', s, {})).data; await req('/api/test/fish/bite', s, { species }); return (await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: press(c.seq, c.arrows) })).data; };
   for (const s of [a, b]) await req('/api/test/island/give', s, { itemId: 'fishing_rod', qty: 1 });
   assert.equal((await catchOne(a, 'anchovy')).species, 'anchovy'); // (before a round: no score)
-  assert.equal((await req('/api/island/contest/start', a, {})).data.error, 'TOO_FAR');
-  await stand(a, P.host); const started = await req('/api/island/contest/start', a, {}); assert.equal(started.status, 200, JSON.stringify(started.data)); assert.equal(started.data.gift, '낚시 미끼');
-  assert.equal((await req('/api/island/contest/start', a, {})).data.error, 'ROUND_ON');
+  assert.equal((await req('/api/island/weekly/start', a, {})).data.error, 'TOO_FAR');
+  await stand(a, P.host); const started = await req('/api/island/weekly/start', a, {}); assert.equal(started.status, 200, JSON.stringify(started.data)); assert.equal(started.data.gift, '낚시 미끼');
+  assert.equal((await req('/api/island/weekly/start', a, {})).data.error, 'ROUND_ON');
   await catchOne(a, 'octopus'); await catchOne(a, 'anchovy');
-  const during = (await req('/api/island/contest', a)).data; assert.ok(during.round.score > 0 && during.round.left > 0, JSON.stringify(during));
+  const during = (await req('/api/island/weekly', a)).data; assert.ok(during.round.score > 0 && during.round.left > 0, JSON.stringify(during));
   await clock(now + 4 * 60 * 1000); await catchOne(a, 'giant_tuna'); // (after the three minutes: not counted)
-  const after = (await req('/api/island/contest', a)).data; assert.equal(after.round, null); assert.equal(after.mine.best, during.round.score); assert.equal(after.mine.rank, 1);
-  await stand(b, P.host); await req('/api/island/contest/start', b, {}); await catchOne(b, 'anchovy'); await clock(now + 4 * 60 * 1000);
-  const top = (await req('/api/island/contest', b)).data.top; assert.deepEqual(top.map((x) => x.name), ['낚시상', '둘째']);
+  const after = (await req('/api/island/weekly', a)).data; assert.equal(after.round, null); assert.equal(after.mine.best, during.round.score); assert.equal(after.mine.rank, 1);
+  await stand(b, P.host); await req('/api/island/weekly/start', b, {}); await catchOne(b, 'anchovy'); await clock(now + 4 * 60 * 1000);
+  const top = (await req('/api/island/weekly', b)).data.top; assert.deepEqual(top.map((x) => x.name), ['낚시상', '둘째']);
   // closed outside its hours and on a weekday
-  await clock(Date.parse('2026-11-07T23:00:00+09:00')); await stand(a, P.host); assert.equal((await req('/api/island/contest/start', a, {})).data.error, 'CONTEST_CLOSED');
-  await clock(Date.parse('2026-11-09T12:00:00+09:00')); assert.equal((await req('/api/island/contest/start', a, {})).data.error, 'CONTEST_CLOSED');
+  await clock(Date.parse('2026-11-07T23:00:00+09:00')); await stand(a, P.host); assert.equal((await req('/api/island/weekly/start', a, {})).data.error, 'CONTEST_CLOSED');
+  await clock(Date.parse('2026-11-09T12:00:00+09:00')); assert.equal((await req('/api/island/weekly/start', a, {})).data.error, 'CONTEST_CLOSED');
   // the night's settlement: 1st and 2nd -- points, title, trophy; Saturday's 1st on 영웅마루
   const before = (await req('/api/points', a)).data.balance;
-  const settledRes = await req('/api/test/contest/settle', null, { day: '2026-11-07' }); const settled = settledRes.data.result; assert.ok(settled, JSON.stringify(settledRes) + logs().slice(-1500)); assert.deepEqual(settled.top.map((x) => [x.rank, x.name]), [[1, '낚시상'], [2, '둘째']]);
+  const settledRes = await req('/api/test/weekly/settle', null, { day: '2026-11-07' }); const settled = settledRes.data.result; assert.ok(settled, JSON.stringify(settledRes)); assert.deepEqual(settled.top.map((x) => [x.rank, x.name]), [[1, '낚시상'], [2, '둘째']]);
   assert.equal((await req('/api/points', a)).data.balance, before + 10000);
   assert.ok((await req('/api/skins', a)).data.dexTitles.some((x) => x.id === 'title_contest_fish_1'));
   assert.deepEqual((await req('/api/island/furniture/mine', a)).data.pieces.map((p) => p.id), ['trophy_fish__gold']);
   assert.deepEqual((await req('/api/island/furniture/mine', b)).data.pieces.map((p) => p.id), ['trophy_fish__silver']);
   const statues = (await req('/api/donation', a)).data.statues; assert.ok(statues.some((s) => s.contest && s.name === '낚시상' && s.label === '낚시 대회'), JSON.stringify(statues));
-  await req('/api/test/contest/settle', null, { day: '2026-11-07' }); assert.equal((await req('/api/points', a)).data.balance, before + 10000, '정산은 한 번');
+  await req('/api/test/weekly/settle', null, { day: '2026-11-07' }); assert.equal((await req('/api/points', a)).data.balance, before + 10000, '정산은 한 번');
   await clock(0);
 });

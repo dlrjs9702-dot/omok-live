@@ -389,6 +389,8 @@
           <form id="contestForm" class="joinForm islandTimeForm"><label for="contestDay">주말 섬 대회</label><select id="contestDay"><option value="0">일</option><option value="1">월</option><option value="2">화</option><option value="3">수</option><option value="4">목</option><option value="5">금</option><option value="6">토</option></select><input id="contestTime" type="time" value="20:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><button class="secondary" type="submit">적용</button></form>
           <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
           <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
+          <!-- E1 행사 달력: a festival switched off or its days moved (서울 날짜) -->
+          <details id="calendarBox" class="economyBox"><summary>행사 달력</summary><p class="lookMeta">행사를 끄거나 기간을 옮길 수 있어요(서울 날짜). 빈칸은 원래 날짜. 매주 대회는 토 낚시·일 곤충 10~22시.</p><div id="calendarTable"></div><button id="calendarSave" class="primary" type="button">저장</button></details>
           <!-- v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②) -->
           <details id="economyBox" class="economyBox"><summary>경제 값 관리</summary><p class="lookMeta">값을 바꾸고 「저장」을 누르면 확인 뒤 바로 적용됩니다. 빈칸은 기본값.</p><div id="economyTable"></div><button id="economySave" class="primary" type="button">저장</button><h4>변경 이력</h4><ol id="economyHistory"></ol></details>
           <h3 class="keySectionTitle">가입 신청</h3>

@@ -2630,7 +2630,17 @@
   let weekView = null;
   async function refreshFestival() {
     if (!document.body.classList.contains('plazaMode')) return;
-    try { [festivalView, weekView] = await Promise.all([api('/api/island/festival'), api('/api/island/contest')]); plaza.controller?.setFestival?.({ ...festivalView, contest: weekView.contest }); weekTick(); } catch {}
+    try { [festivalView, weekView] = await Promise.all([api('/api/island/festival'), api('/api/island/weekly')]); plaza.controller?.setFestival?.({ ...festivalView, contest: weekView.contest }); weekTick(); festivalNote(); } catch {}
+  }
+  // a festival or a contest day: told once a day on coming to the island (this device), the last day with its stamps' warning
+  function festivalNote() {
+    const f = festivalView?.festival; const c = weekView?.contest; if (!f && !c?.open) return;
+    const key = `${new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)}:${f?.id || ''}:${c?.kind || ''}`;
+    try { if (localStorage.getItem('gc.festivalNote') === key) return; localStorage.setItem('gc.festivalNote', key); } catch {}
+    const parts = [];
+    if (f) parts.push(`🌾 ${f.name} 중이에요! 대청마당 남쪽 행사 주민을 찾아가요${f.lastDay ? ' · 오늘이 마지막 날, 남은 도장은 오늘 써요' : ''}`);
+    if (c?.open) parts.push(`${c.kind === 'fish' ? '🎣' : '🦋'} 오늘은 ${c.name}(${c.from}~${c.to}시)`);
+    showToast(parts.join(' · '), 6000);
   }
   // E1 매주 대회: a round's three minutes counted down at the screen's top; its end told with the day's standing
   let weekTimer = null; let weekEnd = 0;
@@ -2639,24 +2649,24 @@
     if (r && r.left > 0) { weekEnd = Date.now() + r.left; if (!weekTimer) weekTimer = setInterval(weekCountdown, 500); weekCountdown(); }
   }
   async function weekCountdown() {
-    let box = document.getElementById('weekTimer'); if (!box) { box = document.createElement('div'); box.id = 'weekTimer'; box.className = 'weekTimer'; box.setAttribute('role', 'status'); document.body.append(box); }
+    let box = document.getElementById('contestTimer'); if (!box) { box = document.createElement('div'); box.id = 'contestTimer'; box.className = 'contestTimer'; box.setAttribute('role', 'status'); document.body.append(box); }
     const left = Math.max(0, weekEnd - Date.now()); const r = weekView?.round;
     box.textContent = `${r?.kind === 'bug' ? '🦋 곤충' : '🎣 낚시'} 대회 · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')} · ${r?.score || 0}점`; box.hidden = false;
-    if (left > 0) { if (Date.now() % 5000 < 500) api('/api/island/contest').then((v) => { weekView = v; }).catch(() => {}); return; }
+    if (left > 0) { if (Date.now() % 5000 < 500) api('/api/island/weekly').then((v) => { weekView = v; }).catch(() => {}); return; }
     clearInterval(weekTimer); weekTimer = null; box.hidden = true;
-    try { weekView = await api('/api/island/contest'); const m = weekView.mine; showToast(`대회 끝! ${weekView.ended?.score ?? r?.score ?? 0}점${m ? ` · 오늘 최고 ${m.best}점 (${m.rank}위)` : ''}`, 5000); } catch {}
+    try { weekView = await api('/api/island/weekly'); const m = weekView.mine; showToast(`대회 끝! ${weekView.ended?.score ?? r?.score ?? 0}점${m ? ` · 오늘 최고 ${m.best}점 (${m.rank}위)` : ''}`, 5000); } catch {}
   }
   async function openWeekContest() {
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const card = el('section', 'card festivalCard'); card.id = 'contestCard'; openPlazaWindow('매주 대회', [card]); plazaDialog.classList.add('boardMode');
-    try { weekView = await api('/api/island/contest'); } catch (error) { card.append(el('p', 'emptyState', error.message)); return; }
+    try { weekView = await api('/api/island/weekly'); } catch (error) { card.append(el('p', 'emptyState', error.message)); return; }
     const c = weekView.contest; const last = weekView.last;
     card.append(el('h3', '', c ? `오늘은 ${c.name} · ${c.from}~${c.to}시` : '대회는 토요일 낚시·일요일 곤충, 10~22시예요'));
     if (c) card.append(el('p', 'smallMuted', `3분 동안 ${c.kind === 'fish' ? '낚은 물고기' : '잡은 곤충'}의 값으로 점수를 매겨요. 여러 번 해도 그날 최고 점수가 기록되고, 밤 10시에 1~3등이 트로피·칭호·포인트를 받아요.`));
     if (c?.open) {
       const go = el('button', 'primary', weekView.round ? '대회 중이에요' : '3분 대회 시작'); go.type = 'button'; go.disabled = Boolean(weekView.round);
       go.addEventListener('click', async () => {
-        try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); const r = await api('/api/island/contest/start', { method: 'POST', body: '{}' }); plazaDialog.close?.(); showToast(`${r.name} 시작! 3분${r.gift ? ` · 참가 선물 ${r.gift}` : ''}${r.stamp ? ` · 도장 +${r.stamp}` : ''}`, 4000); weekView = await api('/api/island/contest'); weekTick(); } catch (error) { showToast(error.message); }
+        try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); const r = await api('/api/island/weekly/start', { method: 'POST', body: '{}' }); plazaDialog.close?.(); showToast(`${r.name} 시작! 3분${r.gift ? ` · 참가 선물 ${r.gift}` : ''}${r.stamp ? ` · 도장 +${r.stamp}` : ''}`, 4000); weekView = { ...(weekView || {}), round: { kind: r.kind, left: r.endsIn, score: 0 } }; weekTick(); /* (counted from the start's answer at once; the next ask brings the score) */ } catch (error) { showToast(error.message); }
       });
       card.append(go);
     }
@@ -3360,6 +3370,23 @@
       if (v !== null && (!Number.isSafeInteger(v) || v < d.min || v > d.max)) { showToast(`${d.label}: ${d.min.toLocaleString('ko-KR')}~${d.max.toLocaleString('ko-KR')} 사이로 적어 주세요.`, 4000); input.focus(); return; }
       const want = v === d.def ? null : v; if (want !== (d.changed ? d.value : null)) changes[d.key] = want; } // (the default itself: no override)
     saveEconomy(changes);
+  });
+  // E1 행사 달력 (관리자): each festival's days (moved or as made) and an off switch
+  function drawCalendar(data) {
+    const table = byId('calendarTable'); if (!table) return;
+    table.replaceChildren(...data.festivals.map((f) => {
+      const o = data.override?.[f.id] || {}; const row = document.createElement('div'); row.className = 'economyRow'; row.dataset.festival = f.id;
+      const name = document.createElement('span'); name.textContent = `${f.name} (원래 ${f.start} ~ ${f.end})`;
+      const mk = (cls, value, label) => { const i = document.createElement('input'); i.type = 'date'; i.className = cls; i.value = value || ''; i.setAttribute('aria-label', `${f.name} ${label}`); return i; };
+      const off = document.createElement('label'); const box = document.createElement('input'); box.type = 'checkbox'; box.className = 'calOff'; box.checked = Boolean(o.off); off.append(box, ' 끄기');
+      row.append(name, mk('calStart', o.start, '시작일'), mk('calEnd', o.end, '끝날'), off); return row;
+    }));
+  }
+  byId('calendarBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/calendar').then(drawCalendar).catch((error) => showToast(error.message)); });
+  byId('calendarSave')?.addEventListener('click', async () => {
+    const override = {}; for (const row of document.querySelectorAll('#calendarTable [data-festival]')) { const start = row.querySelector('.calStart').value; const end = row.querySelector('.calEnd').value; const off = row.querySelector('.calOff').checked; if (start || end || off) override[row.dataset.festival] = { ...(start ? { start } : {}), ...(end ? { end } : {}), off }; }
+    if (!window.confirm('행사 달력을 저장할까요? 섬에 바로 적용됩니다.')) return;
+    try { await api('/api/admin/calendar', { method: 'POST', body: JSON.stringify({ override }) }); drawCalendar(await api('/api/admin/calendar')); showToast('행사 달력을 저장했습니다.'); } catch (error) { showToast(error.message, 4000); }
   });
   byId('economyBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy').then(drawEconomy).catch((error) => showToast(error.message)); });
   // v1.10.90 운영 스위치: read when the admin panel shows, each box saved as it changes
