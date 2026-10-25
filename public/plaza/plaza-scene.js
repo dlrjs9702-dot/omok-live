@@ -2090,6 +2090,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1.34, 0.6), new THREE.MeshBasicMaterial({ map: texture, transparent: true }));
     face.position.set(0, 1.29, -0.0995); face.rotation.y = Math.PI; sign.add(face);
+    eventDoors['farm:board'] = { x: F.sign.x, z: F.sign.z - 1.2, name: '밭 안내판 읽기' }; // (6회차 7 「게시판을 읽을 수 있게 해」: before its face, SPACE opens it -- app.js)
     farm = { fields, canvas, texture, stage: -1, names: null };
     setFarm({ stage: 0, names: [] });
     return farm;
@@ -2155,7 +2156,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (stage === 3 && !view?.harvested) eventDoors['farm:harvest'] = { x: F.x, z: F.z, name: '밭 · 수확', resource: true }; else delete eventDoors['farm:harvest'];
     const key = names.join('|'); if (f.names === key) return; f.names = key;
     const ctx = f.canvas.getContext('2d'); ctx.clearRect(0, 0, 512, 228);
-    ctx.fillStyle = '#4a3020'; ctx.textAlign = 'center'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('이번 주 밭을 지켜 준 사람들', 256, 46);
+    ctx.fillStyle = '#4a3020'; ctx.textAlign = 'center'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('🥕 농부의 밭 · 이번 주 도와준 사람', 256, 46, 492);
     ctx.font = '28px sans-serif';
     const lines = names.length ? [names.slice(0, 4).join(' · '), names.slice(4).join(' · ')].filter(Boolean) : ['아직 없어요 — 농부를 도와주세요!'];
     lines.forEach((line, i) => ctx.fillText(line, 256, 110 + i * 46, 492));

@@ -1895,7 +1895,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() :id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCatalog() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2606,6 +2606,22 @@
       showToast(error.message);
       if (error.data?.error === 'HARVESTED') api('/api/island/farm').then((v) => plaza.controller?.setFarm?.({ ...v, harvested: true })).catch(() => {});
     } finally { harvestBusy = false; }
+  }
+  // 6회차 7 「게시판을 읽을 수 있게 해」: the farm's sign read up close -- this week's field (it grows with each helper of the
+  // farmer, three to harvest), who helped, and what to do
+  async function openFarmBoard() {
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const card = el('section', 'card farmBoardCard'); card.id = 'farmBoardCard'; card.append(el('p', 'emptyState', '불러오는 중입니다.'));
+    openPlazaWindow('농부의 밭', [card]); plazaDialog.classList.add('boardMode');
+    try {
+      const v = await api('/api/island/farm'); const stage = Math.max(0, Math.min(3, Number(v.stage) || 0));
+      const STAGES = ['아직 빈 밭이에요', '싹이 났어요', '쑥쑥 자라는 중이에요', '다 자랐어요 — 수확할 수 있어요'];
+      card.replaceChildren(
+        el('h3', '', `이번 주 밭 · ${STAGES[stage]}`),
+        el('p', '', v.names?.length ? `도와준 사람 · ${v.names.join(' · ')}` : '이번 주에는 아직 도와준 사람이 없어요.'),
+        el('p', 'smallMuted', stage < 3 ? `농부를 도와줄 때마다 밭이 자라요(${stage}/3). 세 사람이 도우면 수확할 수 있어요.` : v.harvested ? '이번 주 수확을 했어요. 다음 주 월요일에 새 밭이 시작돼요.' : '밭 가운데에서 SPACE로 수확해요(한 주에 한 번). 채소는 상인에게 팔 수 있어요.'),
+      );
+    } catch (error) { card.replaceChildren(el('p', 'emptyState', error.message)); }
   }
   async function pullWeed(key) {
     const id = key.slice('weed:'.length);
