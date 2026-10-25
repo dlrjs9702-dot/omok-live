@@ -2270,6 +2270,46 @@
       "lowSha256": "20fe8a0f1d98a208411282ce1e80524f472949a6634f5908fbd904623f01b477"
     },
     {
+      "out": "signs-v1/sign_plaque.glb",
+      "src": "signs69:01. High/sign_plaque.glb",
+      "sha256": "d415b07216cfea71122d68b54d257ca47cb5a6df5f48702f846a91b9b1938818",
+      "lowSrc": "signs69:02. Low/sign_plaque_low.glb",
+      "lowSha256": "4fc78d38ee413a4cb510b3392e6dc57cd15e4e7ee9dc6bc4c715911bda4955c0",
+      "precompressed": true
+    },
+    {
+      "out": "signs-v1/sign_post.glb",
+      "src": "signs69:01. High/sign_post.glb",
+      "sha256": "3b739fffdcf63429791418afeab50ccd2a6bb91ca06185f755a2751c0af11ed0",
+      "lowSrc": "signs69:02. Low/sign_post_low.glb",
+      "lowSha256": "3e0862e2eb2814dc5063c311fa9e14b35b1b589aadb51944b8074efad7f0edce",
+      "precompressed": true
+    },
+    {
+      "out": "signs-v1/sign_stand.glb",
+      "src": "signs69:01. High/sign_stand.glb",
+      "sha256": "a2aaa97ffb962c02bd773f8bcf9662a26bcda187418324ab227897e5d7b84b69",
+      "lowSrc": "signs69:02. Low/sign_stand_low.glb",
+      "lowSha256": "5d5a73db4e32aae90afec417ad6e7a2c4d10ec479b11ca2c01b2299dd25467bb",
+      "precompressed": true
+    },
+    {
+      "out": "signs-v1/sign_station.glb",
+      "src": "signs69:01. High/sign_station.glb",
+      "sha256": "feb5281e20f2b3780e2fee944fe09d11dc8e6b458f34b3aa95af51ef49c95c31",
+      "lowSrc": "signs69:02. Low/sign_station_low.glb",
+      "lowSha256": "f5feaaad49910dc5b4aa56498192006b0804d25d1d492c9222f0c1425c7f13a4",
+      "precompressed": true
+    },
+    {
+      "out": "signs-v1/sign_wall.glb",
+      "src": "signs69:01. High/sign_wall.glb",
+      "sha256": "77f8b31d6456af9b3f623b2ca15dc5c02ef022719de60d56563888cb9d4ea792",
+      "lowSrc": "signs69:02. Low/sign_wall_low.glb",
+      "lowSha256": "c1c83993085c00d49e27feb8f55e9803c71a50ff5a0cc5be884c686121c8b4f9",
+      "precompressed": true
+    },
+    {
       "out": "townhall-v2/townhall_marble.glb",
       "src": "overhaul:refined/16. Game Island mayor and townhall 2026-10-07/01. Townhall/01. High/townhall_marble_high.glb",
       "sha256": "4668b2542323612db9e9648f972c41ee3b96d343a6c359d0713b567d2819742d",

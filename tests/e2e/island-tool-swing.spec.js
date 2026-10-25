@@ -52,7 +52,9 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
   await expect.poll(async () => {
     const all = await page.evaluate(() => window.PlazaDebug().wanderersAt());
     if (!all.length) { await page.evaluate(async () => { const w = window.PlazaDebug().wanderersAt(true)[0]; if (w) await window.PlazaWarp(w.x, w.z + 3); }); return 'no islander'; } // (R3: in the evening and at night they gather elsewhere -- go to them)
-    const m = all[tries++ % all.length]; // (by a door, the door comes first: the next one)
+    // (CI #307: one walking off during the 0.45 s swing is a miss, as it should be -- one standing still is struck)
+    const still = all.filter((w) => !w.moving); if (!still.length) return 'all walking';
+    const m = still[tries++ % still.length]; // (by a door, the door comes first: the next one)
     for (let k = 0; k < 12; k += 1) {
       const x = m.x + Math.cos(k / 2) * 0.9; const z = m.z + Math.sin(k / 2) * 0.9; if (!T.walkable(x, z)) continue;
       await page.evaluate(async ([x, z, mx, mz]) => { await window.PlazaWarp(x, z); window.PlazaDebug().faceTo(mx, mz); }, [x, z, m.x, m.z]); break;

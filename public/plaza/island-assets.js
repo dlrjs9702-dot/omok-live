@@ -426,6 +426,10 @@
   REGISTRY['event.stall'] = sv('event_stall');
   for (const k of ['fish', 'bug']) for (const m of ['gold', 'silver', 'bronze']) REGISTRY[`event.trophy_${k}_${m}`] = sv(`event_trophy_${k}_${m}`, { near: 26 });
   for (const f of ['basket', 'straw_sheaf', 'corn_string', 'persimmon_string', 'feast_table']) REGISTRY[`harvest.${f}`] = sv(`harvest_${f}`);
+  // 간판 (assets 69 signs-v1, docs/signboards-design-20261025.md): the boards places' names are written on (plaza-scene signboard
+  // -- the text on each one's FACE); no letters in the models
+  const SG = '/assets/island/signs-v1';
+  for (const k of ['stand', 'post', 'wall', 'station', 'plaque']) REGISTRY[`sign.${k}`] = { url: `${SG}/sign_${k}.glb`, low: { url: `${SG}/sign_${k}_low.glb` }, near: 45 };
   // R4 구치소 (assets 67 jail-v1): the building by 관공서 (its sign the game's), the room, the cell and its door, the desk,
   // the benches, today's board; the warden on the named islanders' body, moved by the common motions
   const JV = '/assets/island/jail-v1';
