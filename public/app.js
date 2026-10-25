@@ -3375,10 +3375,10 @@
   function drawCalendar(data) {
     const table = byId('calendarTable'); if (!table) return;
     table.replaceChildren(...data.festivals.map((f) => {
-      const o = data.override?.[f.id] || {}; const row = document.createElement('div'); row.className = 'economyRow'; row.dataset.festival = f.id;
+      const o = data.override?.[f.id] || {}; const row = document.createElement('div'); row.className = 'economyRow calendarRow'; row.dataset.festival = f.id;
       const name = document.createElement('span'); name.textContent = `${f.name} (원래 ${f.start} ~ ${f.end})`;
       const mk = (cls, value, label) => { const i = document.createElement('input'); i.type = 'date'; i.className = cls; i.value = value || ''; i.setAttribute('aria-label', `${f.name} ${label}`); return i; };
-      const off = document.createElement('label'); const box = document.createElement('input'); box.type = 'checkbox'; box.className = 'calOff'; box.checked = Boolean(o.off); off.append(box, ' 끄기');
+      const off = document.createElement('label'); off.className = 'calOffLabel'; const box = document.createElement('input'); box.type = 'checkbox'; box.className = 'calOff'; box.checked = Boolean(o.off); off.append(box, ' 끄기');
       row.append(name, mk('calStart', o.start, '시작일'), mk('calEnd', o.end, '끝날'), off); return row;
     }));
   }
