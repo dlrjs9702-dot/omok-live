@@ -192,7 +192,12 @@
     // Beyond the deck's end, on the same side of the track: neither shaft nor upper walkway crosses a carriage.
     const k = DAL ? DAL_STOPS[station].lift * 5.5 : station === 'B' ? -5.5 : 5.5; const x = p.x + Math.sin(p.yaw) * k; const z = p.z + Math.cos(p.yaw) * k;
     if (DAL && !STATIONS[station].entry) { const r = Math.hypot(x, z); STATIONS[station].entry = [x - (x / r) * 7, z - (z / r) * 7]; } // (달마루섬: the way in 7 m inland of the lift)
-    return { x, z, y: T.heightAt(...STATIONS[station].entry) };
+    // (문제 기록 5회차 4 「역 에셋이 굴곡진 곳에서 땅을 파고들거나 떠」: never under the ground its 2.4 m base stands on -- the
+  // highest of it and the way in -- and `low`, the lowest ground under the base and the walkway in, for the scene's stone plinth)
+  const [ex, ez] = STATIONS[station].entry; let y = T.heightAt(ex, ez); let low = y;
+  for (const dx of [-1.3, 0, 1.3]) for (const dz of [-1.3, 0, 1.3]) { const h = T.heightAt(x + dx, z + dz); y = Math.max(y, h); low = Math.min(low, h); }
+  for (let k = 1; k < 8; k += 1) low = Math.min(low, T.heightAt(ex + ((x - ex) * k) / 8, ez + ((z - ez) * k) / 8));
+  return { x, z, y, low };
   }
   // Distance from the centre to the deck's near edge along the approach direction.
   function platformEdgeDistance(p, x, z) {

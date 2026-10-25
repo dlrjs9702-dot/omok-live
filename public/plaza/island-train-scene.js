@@ -5,7 +5,7 @@ import { part, mergeColored } from './island.js';
 
 const T = globalThis.IslandTerrain; const R = globalThis.IslandTrain;
 const G = { box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 10) };
-const FRAME = 0xeef2ea; const SAGE = 0x9db8a4; const DECK = 0xd9cfbf; const TEAL = 0x6fc3c0;
+const FRAME = 0xeef2ea; const SAGE = 0x9db8a4; const DECK = 0xd9cfbf; const TEAL = 0x6fc3c0; const PLINTH = 0xa89f90; // (5회차 4: the stone under a lift and its walkway)
 
 export function trainScene({ scene, assets, solids, vcMat, sign }) {
   const group = new THREE.Group(); group.name = 'train'; scene.add(group);
@@ -55,14 +55,16 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
     // Low access pier passes under the raised rail; the upper walkway stays on the door side.
     const [ex, ez] = st.entry; const accessLength = Math.hypot(lx - ex, lz - ez);
     const access = new THREE.Group(); access.position.set((ex + lx) / 2, ground, (ez + lz) / 2); access.rotation.y = Math.atan2(lx - ex, lz - ez); group.add(access);
-    const ag = mergeColored([part(G.box, DECK, 0, -.1, 0, { sx: 1.8, sy: .2, sz: accessLength }),
+    // (5회차 4: a stone plinth under the walkway, down into the lowest ground under it -- no air under it on a slope)
+    const drop = ground - lift.low + 0.3;
+    const ag = mergeColored([part(G.box, DECK, 0, -.1, 0, { sx: 1.8, sy: .2, sz: accessLength }), part(G.box, PLINTH, 0, -0.2 - drop / 2, 0, { sx: 1.7, sy: drop, sz: accessLength }),
       ...[-.85, .85].map(x => part(G.box, FRAME, x, .5, 0, { sx: .06, sy: .06, sz: accessLength }))]); made.push(ag); access.add(new THREE.Mesh(ag, vcMat));
     const top = Math.max(...plats.map((p) => p.y)) + 2.6;
     const cx = plats.reduce((a, p) => a + p.x, 0) / plats.length; const cz = plats.reduce((a, p) => a + p.z, 0) / plats.length;
     const d = Math.hypot(cx - lx, cz - lz) || 1; const ux = (cx - lx) / d; const uz = (cz - lz) / d;
     const holder = new THREE.Group(); holder.position.set(lx, ground, lz); holder.rotation.y = Math.atan2(ux, uz); group.add(holder);
     const H = top - ground;
-    const parts = [part(G.box, SAGE, 0, 0.1, 0, { sx: 2.4, sy: 0.2, sz: 2.4 }), part(G.box, FRAME, 0, H, 0, { sx: 2.5, sy: 0.18, sz: 2.5 }),
+    const parts = [part(G.box, SAGE, 0, 0.1, 0, { sx: 2.4, sy: 0.2, sz: 2.4 }), part(G.box, PLINTH, 0, -drop / 2, 0, { sx: 2.6, sy: drop, sz: 2.6 }) /* (5회차 4: its stone plinth) */, part(G.box, FRAME, 0, H, 0, { sx: 2.5, sy: 0.18, sz: 2.5 }),
       ...[[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]].map(([x, z]) => part(G.box, FRAME, x, H / 2, z, { sx: 0.14, sy: H, sz: 0.14 }))];
     // the walkways, level with each platform: from the lift out to the platform's near side (in the lift's own frame)
     const c = Math.cos(holder.rotation.y); const s = Math.sin(holder.rotation.y);

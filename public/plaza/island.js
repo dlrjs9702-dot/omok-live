@@ -252,6 +252,10 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
   // meet, the gravel round 대청마당), cover-a/b (forest floor, bare earth, sand / rock, darker grass, clover). A walk and what
   // the ground is made of are the ground's own colour there: nothing laid over it to float, sink or flicker.
   const mapTex = (name) => { const t = keep(new THREE.TextureLoader().load(window.GameBoot?.assetUrl?.(`/assets/island/ground-v2/${name}.png`) ?? `/assets/island/ground-v2/${name}.png`)); t.flipY = false; t.colorSpace = THREE.NoColorSpace; return t; };
+  // (5회차 3: 대청마당's 박석 tile -- the same picture as its paving, for the walks that meet it; x, half width, d0, d1)
+  const plazaTile = PAINTED && T.dalmaru ? keep(new THREE.TextureLoader().load(`/assets/island/plaza-v1/plaza_pave${software ? '_low' : ''}.webp`)) : null;
+  if (plazaTile) { plazaTile.wrapS = plazaTile.wrapT = THREE.RepeatWrapping; plazaTile.colorSpace = THREE.SRGBColorSpace; }
+  const plazaBox = new THREE.Vector4(T.dalmaru?.PLAZA.x ?? 0, plazaTile ? T.dalmaru.PLAZA.hw : 0, T.dalmaru?.PLAZA.d0 ?? 0, T.dalmaru?.PLAZA.d1 ?? 0);
   const maps = PAINTED ? { pathA: mapTex('path-a'), pathB: mapTex('path-b'), coverA: mapTex('cover-a'), coverB: mapTex('cover-b'), shore: mapTex('shore') } : null;
   // (5회차 6, 검토: how fast one goes reads the cover the ground shows -- cover-a's forest floor (R) and sand (B), read once
   // from the loaded picture; null until then)
@@ -335,6 +339,11 @@ float vj = smoothstep(0.0, 0.09, sqrt(d2) - sqrt(d1)); float vh = fract(sin(dot(
 h = mix(h, vh, jn); joint = mix(joint, vj, jn);
 }
 pc *= (0.9 + 0.14 * h) * mix(0.7, 1.0, joint);
+// (문제 기록 5회차 3 「길과 광장이 너무 달라 보여」: a town walk near 대청마당 is laid in its own 박석 -- the plaza's tile, on
+// the plaza's grid -- fading to the walk's flagstones from 4 m to 12 m out)
+float pd = max(max(abs(vGroundXZ.x - uPlazaC.x) - uPlazaC.y, uPlazaC.z - vGroundXZ.y), vGroundXZ.y - uPlazaC.w);
+float wp = uPlazaC.y > 0.0 ? 1.0 - smoothstep(4.0, 12.0, pd) : 0.0;
+if (wp > 0.0) pc = mix(pc, texture2D(tPlaza, vec2(vGroundXZ.x - (uPlazaC.x - uPlazaC.y), uPlazaC.w - vGroundXZ.y) / 6.0).rgb, wp);
 }
 if (uGrain > 0.0 && uCheap < 0.5) pc *= mix(vec3(1.0), texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, uGrain * (pm.a > 0.9 ? 0.35 : 0.9));
 diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
@@ -344,7 +353,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
         uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
-        ...(maps ? { tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB }, tShore: { value: maps.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
+        ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: plazaBox }, tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB }, tShore: { value: maps.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
         uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0x9c8a74) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
         uSand: { value: new THREE.Color(0xf1dfae) }, uWet: { value: new THREE.Color(0xd8c48f) }, uClover: { value: new THREE.Color(0x7fb35a) } });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -352,7 +361,7 @@ attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ; varying fl
 vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz; vWorldY = (modelMatrix * vec4(transformed, 1.0)).y;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; uniform float uCheap; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
-uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea;' : ''}
+uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPlaza; uniform vec4 uPlazaC; uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea;' : ''}
 uniform vec3 uForest; uniform vec3 uEarth; uniform vec3 uGravel; uniform vec3 uRock; uniform vec3 uSand; uniform vec3 uWet; uniform vec3 uClover;`).replace('#include <color_fragment>', `#include <color_fragment>
 vec2 gw = vGround; float gWet = 0.0; // (the grass and the sand share, for the grains: the vertex's, or the cover map's; how wet: 파도)${paintCover(path)}
 if (uGrain > 0.0) {

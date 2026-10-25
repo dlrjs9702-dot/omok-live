@@ -20,14 +20,19 @@ function buildShoreMap(T, res = 1024) {
   // (the sea only: a lake, a river or a pond under the sea's height is fresh water -- calm, no wash -- 검토: 거울호수에 파도)
   const sea = new Uint8Array(n); for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) { const k = j * res + i; sea[k] = h[k] < SEA && T.coastDist(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell) < 2 ? 1 : 0; }
   const land = dist((k) => !sea[k]); const water = dist((k) => sea[k]);
-  const built = [...(T.WATERFRONT?.rails || []).map((r) => [r.x, r.z, 3]), ...(T.PIER ? [[T.PIER.x, T.PIER.z, (T.PIER.half || 8) + 2]] : []), ...(T.DOCK?.rects || []).map((r) => [r.x, r.z, (r.half || 3) + 2])];
+  const built = [...(T.WATERFRONT?.rails || []).map((r) => [r.x, r.z, 4]), ...(T.PIER ? [[T.PIER.x, T.PIER.z, (T.PIER.half || 8) + 2]] : []), ...(T.DOCK?.rects || []).map((r) => [r.x, r.z, (r.half || 3) + 2])];
+  // (문제 기록 5회차, 물가 거리: the wash ran over the street's paving between its rails -- a painted walk by the sea is
+  // built shore too, to its edge and a metre more: no wash over it, as the design's 인공 물가)
+  const walks = T.dalmaru ? require('../../public/plaza/island-paths').paintedWalks(T).curves : [];
+  const segDist = (px, pz, ax, az, bx, bz) => { const dx = bx - ax; const dz = bz - az; const l = dx * dx + dz * dz || 1; const u = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l)); return Math.hypot(px - ax - u * dx, pz - az - u * dz); };
+  const onWalk = (x, z) => walks.some((w) => { for (let s = 1; s < w.pts.length; s += 1) if (segDist(x, z, w.pts[s - 1][0], w.pts[s - 1][1], w.pts[s][0], w.pts[s][1]) <= w.w / 2 + 1) return true; return false; });
   const out = new Uint8Array(n * 3);
   for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) {
     const k = j * res + i; const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell;
     const sd = (sea[k] ? -water[k] : land[k]) * cell; // (metres: + on land)
     out[k * 3] = Math.round((Math.max(-1, Math.min(1, sd / RANGE)) * 0.5 + 0.5) * 255);
     out[k * 3 + 1] = sea[k] ? Math.round(Math.max(0, Math.min(1, (SEA - h[k]) / 3)) * 255) : 0;
-    out[k * 3 + 2] = Math.abs(sd) > RANGE ? 0 : built.some(([bx, bz, r]) => Math.hypot(bx - x, bz - z) < r) ? 64 : T.cliffAt(x, z) > 0.4 ? 128 : 255;
+    out[k * 3 + 2] = Math.abs(sd) > RANGE ? 0 : built.some(([bx, bz, r]) => Math.hypot(bx - x, bz - z) < r) || (sd > -2 && onWalk(x, z)) ? 64 : T.cliffAt(x, z) > 0.4 ? 128 : 255;
   }
   return out;
 }

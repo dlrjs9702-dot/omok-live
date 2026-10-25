@@ -120,6 +120,9 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   assert.equal((await R()('/api/skins/title', winner, { skinId: 'title_weedking' })).data.avatar.title, '제초왕');
   const hall = (await R()('/api/island/titles', winner)).data.titles.find((x) => x.id === 'weedking');
   assert.deepEqual([hall.name, hall.entries.length, hall.entries[0].mine], ['제초왕', 1, true]);
+  // 5회차 B2 7: and stands in 영웅마루 (the plaza's statue list), in their look, with the week on its plaque
+  const kings = (await R()('/api/donation', winner)).data.statues.filter((s) => s.king);
+  assert.deepEqual(kings.map((s) => [s.king, s.name, Boolean(s.look), /^\d{4}-\d\d-\d\d$/.test(s.week)]), [['weedking', winner === sa ? '뽑는가' : '뽑는나', true, true]]);
   // a restart: the pulled weed stays pulled; then a midnight passed while the server was off: it grows back somewhere new
   await server.stop();
   const file = path.join(dir, 'points.json');
