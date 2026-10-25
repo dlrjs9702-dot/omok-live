@@ -1066,6 +1066,24 @@ async function residentLetter(account, label, now) {
   // (Codex 검토 P3) one a day for the account, whoever the closest is by then (the closest changing the same day: no second)
   await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => String(l.id).startsWith('resident-') && String(l.id).endsWith(`-${day}`)) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
 }
+// 주민세 고지서: each unpaid bill a letter in my 우체통, from the 관공서 (its own stamp) -- once a bill (its id the bill's day)
+const taxMd = (day) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
+async function taxLetters(account, now) {
+  const { bills } = await pointStore.taxBills(account); if (!bills.length) return;
+  await pointStore.questApply(account, 'mail', (d) => {
+    let letters = d.letters || []; let added = false;
+    for (const b of bills) if (!letters.some((l) => l.id === `tax-${b.day}`)) { letters = Together.withLetter(letters, { id: `tax-${b.day}`, from: 'office', fromName: '관공서', text: `주민세 고지서 · ${taxMd(b.day)}분 · ${b.amount.toLocaleString('ko-KR')}P · ${taxMd(b.due)}까지 관공서 세금 창구에서 내 주세요. 기한이 지나면 체납이 돼요.`, itemId: null, itemName: null, at: now, read: false }, now); added = true; }
+    return added ? { doc: { ...d, letters } } : null;
+  });
+}
+// ... and the day before a bill's last day, a note on the island once (the day's first pose): 「내일까지예요」
+const taxNoted = new Map(); // account -> the day it was looked at
+async function taxNoteOf(account, now = nowMs()) {
+  const day = kstDate(now); if (taxNoted.get(account) === day) return null; taxNoted.set(account, day);
+  const tomorrow = kstDate(Date.parse(`${day}T12:00:00+09:00`) + 86400000);
+  const due = (await pointStore.taxBills(account)).bills.filter((b) => b.due === tomorrow); if (!due.length) return null;
+  return `주민세 고지서 ${due.reduce((n, b) => n + b.amount, 0).toLocaleString('ko-KR')}P · 내일(${taxMd(tomorrow)})까지예요 · 관공서 세금 창구`;
+}
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
 const WEEKLY_TITLES = {
@@ -3713,7 +3731,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.153' });
+    return sendJson(res, 200, { ok: true, version: '1.10.154' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4729,7 +4747,8 @@ async function requestHandler(req, res) {
     const corrected = !ride && !held && (spot.x !== wanted.x || spot.z !== wanted.z);
     const quests = questEntries(account); // v1.10.37 연계 퀘스트
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
-    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    const taxNote = await taxNoteOf(account); // (주민세 고지서: a bill whose last day is tomorrow -- said once that day)
+    return sendJson(res, 200, { ok: true, taxNote, id: session.plazaId, x: spot.x, z: spot.z, corrected, jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -5353,6 +5372,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const now = nowMs();
     await residentLetter(account, String(session.label || ''), now); // (R3 ⑥)
+    await taxLetters(account, now); // (주민세 고지서)
     const letters = Together.freshLetters((await pointStore.questDoc(account, 'mail')).doc.letters, now);
     const sent = (await pointStore.questDoc(account, 'mailSent')).doc; const t = Together.seoul(now);
     const people = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt && `guest:${k.id}` !== account).map((k) => ({ id: k.id, label: k.label }));
@@ -5462,9 +5482,11 @@ async function requestHandler(req, res) {
     const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.bank.lx, R.bank.lz);
     if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8) return sendError(res, 409, 'TOO_FAR', '관공서 안 예금 창구에서 이용해 주세요.');
     const account = pointAccountForSession(session);
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ...(await pointStore.bankView(account, nowMs())) });
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ...(await pointStore.bankView(account, nowMs())), taxAuto: (await pointStore.taxBills(account)).auto });
     if (!checkRateLimit(`bank:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
+    // (주민세 고지서: 자동이체 -- on, the day's tax is taken at midnight as before and what it cannot is billed; off by default)
+    if (typeof body.taxAuto === 'boolean') return sendJson(res, 200, { ok: true, taxAuto: (await pointStore.taxAuto(account, body.taxAuto)).auto });
     const amount = Number(body.amount);
     if (!Number.isSafeInteger(amount) || amount === 0 || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '금액을 확인해 주세요.');
     const out = await pointStore.bankMove(account, amount, body.requestId, nowMs());
@@ -5478,13 +5500,19 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const account = pointAccountForSession(session);
-    if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); return sendJson(res, 200, { ok: true, debt: taxDebt.get(account) || 0, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
+    if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); const b = await pointStore.taxBills(account); return sendJson(res, 200, { ok: true, debt: b.debt, bills: b.bills, auto: b.auto, today: kstDate(nowMs()), dueDays: PointStore.TAX_DUE_DAYS, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
     const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.tax.lx, R.tax.lz);
     const jailed = jailInmates.has(session.token); // (R4: or 「지금 세금 내기」 from the cell)
     if (!jailed && (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8)) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
     const body = await parseJson(req);
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    const out = await pointStore.taxPay(account, body.requestId, nowMs());
+    // (주민세 고지서: at the window, the bills -- all, or the days asked -- and the 체납 too, whole or not at all; the cell's
+    // 「지금 세금 내기」 pays the 체납 as before, as much as there is)
+    const bills = !jailed && (body.all === true || Array.isArray(body.days) || body.debt === true);
+    const days = Array.isArray(body.days) ? body.days.filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0, 40) : null;
+    const out = bills ? await pointStore.taxBillPay(account, body.requestId, nowMs(), { days: body.all === true ? null : days || [], debt: body.all === true || body.debt === true }) : await pointStore.taxPay(account, body.requestId, nowMs());
+    if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '지갑과 예금을 합쳐도 모자라요. 나눠서는 낼 수 없어요.', { debt: out.debt, bills: out.bills });
+    if (out.reason === 'none') return sendError(res, 409, 'NOTHING_TO_PAY', '낼 고지서가 없어요.', { debt: out.debt, bills: out.bills });
     taxDebt.set(account, out.debt);
     if (jailed && !(out.debt > 0)) jailFree(session.token); // all paid: the cell opens (some: the essay still)
     if (out.applied) { notifyPointsChanged([account]); refreshTaxLooks(); }
@@ -7515,7 +7543,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.153 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.154 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

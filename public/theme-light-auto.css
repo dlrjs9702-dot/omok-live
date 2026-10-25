@@ -1245,3 +1245,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .plazaDialog.shopMode:has(.plazaDialogBody>.goodCard) .plazaDialogBody{background:linear-gradient(to top,#7a5232 0 3px,#b98a5a 3px 12px,transparent 12px)}
 :root[data-theme="light"] .plazaDialog.shopMode .petPrice{color:var(--isle-soft)}
 :root[data-theme="light"] #donationDialog .donationForm{background:var(--isle-paper);border:1px solid var(--isle-line);box-shadow:0 3px 0 rgba(0,0,0,.25)}
+:root[data-theme="light"] .taxBill{background:#f7efe1;border:1px solid #e2d4bd}
+:root[data-theme="light"] .taxBill small{color:#7a6650}
+:root[data-theme="light"] .taxBill.overdue{border-color:#ef4444}
+:root[data-theme="light"] .bankTaxAuto small{color:#7a6650}
+:root[data-theme="light"] .recordsDialog.counterMode .taxBill{background:#fffdf6;border:1px solid var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] .recordsDialog.counterMode .taxBill small,:root[data-theme="light"] .recordsDialog.counterMode .bankTaxAuto small{color:var(--isle-soft)}
+:root[data-theme="light"] .recordsDialog.counterMode .taxBill.overdue{border:2px solid #c0453a}
+:root[data-theme="light"] .recordsDialog.counterMode .bankTaxAuto{color:var(--isle-ink)}
