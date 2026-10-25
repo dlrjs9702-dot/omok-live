@@ -2588,3 +2588,5 @@ body.plazaMode .toast::before{content:"";position:absolute;left:50%;top:-8px;wid
 #islandTaxPay{margin:10px 16px 0;width:calc(100% - 32px);min-height:44px}
 .bankTaxAuto{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-weight:700}.bankTaxAuto input{width:20px;height:20px}.bankTaxAuto small{flex:1 0 100%;font-weight:400;font-size:.76rem;color:#94a3b8}
 .recordsDialog.counterMode .taxBill{background:#fffdf6;border:1px solid var(--isle-line);color:var(--isle-ink)}.recordsDialog.counterMode .taxBill small,.recordsDialog.counterMode .bankTaxAuto small{color:var(--isle-soft)}.recordsDialog.counterMode .taxBill.overdue{border:2px solid #c0453a}
+.mailStamp.office{width:46px;font-size:.6rem;letter-spacing:-.04em}
+.recordsDialog.counterMode .bankTaxAuto{color:var(--isle-ink)}.bankTaxAuto input{accent-color:#9c5f14}

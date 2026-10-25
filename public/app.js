@@ -3480,7 +3480,7 @@
   const COUNTER_OPEN = { 'room:desk': () => openIslandPlace('office'), 'room:tax': () => openTax(), 'room:bank': () => openBank(), 'room:rename': () => openNaming() }; // (달마루섬 5단계: 개명 신청 = the 작명소)
   const counterDialogs = { 'room:desk': islandPlaceDialog, 'room:tax': taxDialog, 'room:bank': bankDialog, 'room:rename': document.getElementById('namingDialog') };
   // (창 3단계: the clerk's words in a speech bubble over the window's paper, its 접수 stamp box by the title)
-  const COUNTER_SAY = { 'room:desk': '어서 오세요. 주운 물건은 여기서 정산해 드려요.', 'room:tax': '세금 창구예요. 밀린 세금은 여기서 내시면 돼요.', 'room:bank': '예금 창구예요. 맡기시면 매일 자정에 이자가 붙어요.', 'room:rename': '개명 신청이요? 새 이름을 적어 주세요.' };
+  const COUNTER_SAY = { 'room:desk': '어서 오세요. 주운 물건은 여기서 정산해 드려요.', 'room:tax': '세금 창구예요. 우체통으로 간 고지서는 여기서 내시면 돼요.', 'room:bank': '예금 창구예요. 맡기시면 매일 자정에 이자가 붙어요.', 'room:rename': '개명 신청이요? 새 이름을 적어 주세요.' };
   for (const [door, dialog] of Object.entries(counterDialogs)) dialog.addEventListener('close', () => { dialog.classList.remove('counterMode'); dialog.querySelector('.counterSay')?.remove(); if (counterSeat?.door === door && !dialog.open) { counterSeat = null; plaza.controller?.talkCamera?.(false); plaza.controller?.standUp?.(); } });
   async function sitDown(seat) {
     try {
@@ -3639,7 +3639,7 @@
       const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
       const office = l.from === 'office'; // (주민세 고지서: from the 관공서, its own stamp, no reply)
       const head = el('div', 'mailHead'); const who = el('strong', '', islander || office ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
-      { const stamp = el('span', 'mailStamp', office ? '관공서' : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? '#8f2f24' : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
+      { const stamp = el('span', `mailStamp${office ? ' office' : ''}`, office ? '관공서' : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? '#8f2f24' : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
       head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
