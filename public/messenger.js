@@ -26,8 +26,13 @@
 
   const app = byId('mApp'); const loginForm = byId('mLogin'); const list = byId('messengerRoomList'); const box = byId('messengerMessages'); const pick = byId('messengerPick');
   let state = { rooms: [], people: [], me: '' }; let current = null; let last = 0; let msgs = []; let readsKey = ''; let picking = null; let timers = [];
+  // (Codex 검토 2차 #4) a login's generation: on the login screen the last one's rooms and lines are gone, and an answer
+  // to its requests coming late is dropped -- on a shared PC the next person sees nothing of them
+  let gen = 0;
   function showLogin(message = '') {
     for (const t of timers) clearInterval(t); timers = []; wantStream(false);
+    gen += 1; state = { rooms: [], people: [], me: '' }; current = null; last = 0; msgs = []; readsKey = '';
+    box.replaceChildren(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); document.title = '아일랜드 메신저';
     app.classList.add('hidden'); loginForm.classList.remove('hidden'); byId('mLoginStatus').textContent = message;
     for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices']) byId(id).classList.add('hidden');
   }
@@ -52,7 +57,7 @@
     const unread = unreadOf(state.rooms); document.title = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
     if (navigator.setAppBadge) (unread ? navigator.setAppBadge(unread) : navigator.clearAppBadge()).catch(() => {}); // (the app icon's count, where it can)
   }
-  async function refresh() { try { state = await api('/api/messenger'); renderRooms(); return true; } catch (err) { fail(err); return false; } }
+  async function refresh() { const g = gen; try { const data = await api('/api/messenger'); if (g !== gen) return false; state = data; renderRooms(); return true; } catch (err) { if (g === gen) fail(err); return false; } }
   function line(msg, same) { // `same`: the same person just before -- the name once (카톡)
     if (msg.system) { const p = document.createElement('p'); p.className = 'messengerSystem'; p.textContent = msg.text; return p; }
     const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
@@ -97,19 +102,23 @@
     byId('messengerPinBtn').textContent = current.pinned ? '고정 해제' : '고정';
   }
   async function pull() {
-    if (!current) return; const id = current.id;
+    if (!current) return; const id = current.id; const g = gen;
+    // (Codex 검토 2차 #6) the lines of the last 6 minutes asked again: one unsent since (5 minutes at most) shows as deleted
+    const recent = msgs.find((msg) => !msg.system && !msg.deleted && Date.now() - Date.parse(msg.at) < 6 * 60 * 1000);
+    const from = recent ? Math.min(last, recent.seq - 1) : last;
     try {
-      const data = await api(`/api/messenger/rooms/${id}/messages?after=${last}`);
-      if (current?.id !== id) return;
+      const data = await api(`/api/messenger/rooms/${id}/messages?after=${from}`);
+      if (current?.id !== id || g !== gen) return;
       const firstPage = !last; current = data.room; showHead();
       const fresh = data.messages.filter((msg) => msg.seq > last);
+      let gone = false; for (const msg of data.messages) { const had = msg.deleted && msgs.find((x) => x.seq === msg.seq && !x.deleted); if (had) { had.text = ''; had.deleted = true; gone = true; } }
       const key = JSON.stringify([current.reads, current.members]);
-      if (!firstPage && !fresh.length && key === readsKey) return;
+      if (!firstPage && !fresh.length && !gone && key === readsKey) return;
       const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
       msgs.push(...fresh); if (fresh.length) last = fresh.at(-1).seq; readsKey = key;
       render();
       if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) box.scrollTop = box.scrollHeight;
-    } catch (err) { if (err.status === 404) { current = null; app.classList.remove('inRoom'); refresh(); } else fail(err); }
+    } catch (err) { if (g !== gen) return; if (err.status === 404) { current = null; app.classList.remove('inRoom'); refresh(); } else fail(err); }
   }
   function moreButton() { // 100 at a time from the top, the view held where it was
     const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny messengerMore'; b.textContent = '이전 대화 더 보기';
@@ -176,14 +185,13 @@
     const name = current && window.prompt('새 방 이름 (20자)', current.name); if (!name) return;
     try { await api(`/api/messenger/rooms/${current.id}/name`, { name }); pull(); refresh(); } catch (err) { fail(err); }
   });
-  byId('messengerPinBtn').addEventListener('click', async () => {
-    if (!current) return;
-    try { current = (await api(`/api/messenger/rooms/${current.id}/pin`, { on: !current.pinned })).room; showHead(); refresh(); } catch (err) { fail(err); }
-  });
-  byId('messengerMuteBtn').addEventListener('click', async () => {
-    if (!current) return;
-    try { current = (await api(`/api/messenger/rooms/${current.id}/mute`, { on: !current.muted })).room; showHead(); refresh(); } catch (err) { fail(err); }
-  });
+  // (Codex 검토 2차 #5) a pin or mute answered after I moved to another room changes only the list, never the room I am in
+  async function roomSwitch(what, on) {
+    if (!current) return; const id = current.id; const g = gen;
+    try { const { room } = await api(`/api/messenger/rooms/${id}/${what}`, { on }); if (g !== gen) return; if (current?.id === id) { current = room; showHead(); } refresh(); } catch (err) { if (g === gen) fail(err); }
+  }
+  byId('messengerPinBtn').addEventListener('click', () => roomSwitch('pin', !current?.pinned));
+  byId('messengerMuteBtn').addEventListener('click', () => roomSwitch('mute', !current?.muted));
   byId('messengerBackBtn').addEventListener('click', () => { current = null; app.classList.remove('inRoom'); refresh(); });
   byId('messengerLeaveBtn').addEventListener('click', async () => { // 창 닫기 ≠ 나가기: only this button (with the warning) takes me out
     if (!current || !window.confirm(`「${current.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`)) return;
@@ -254,6 +262,7 @@
     } catch (err) { showToast(err.message || '알림을 켜지 못했어요.', 4000); }
   });
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
+  { const sel = byId('mTheme'); sel.value = window.MessengerTheme?.get() || 'light'; sel.addEventListener('change', () => window.MessengerTheme?.set(sel.value)); } // (어두운 화면: messenger-theme.js)
   let installPrompt = null;
   window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; byId('mInstallBtn').classList.remove('hidden'); });
   byId('mInstallBtn').addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; byId('mInstallBtn').classList.add('hidden'); });

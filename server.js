@@ -4679,9 +4679,12 @@ async function requestHandler(req, res) {
     // R4 구치소: a visit's first pose -- one owing the tax (not passed today) starts in the cell
     // (Codex 검토 #4: left the island while an await ran -- `left` -- a late pose brings nothing back, the cell neither)
     const left = () => sessions.get(session.token) !== session || getCurrentRoom(session) || generation !== (session.plazaGeneration || 0);
-    if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token) && await jailable(session, account)) {
+    // (Codex 검토 2차 #3: whatever the answer -- one not owing either left while it was asked, and the rooms below are not to be
+    // put back for them)
+    if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token)) {
+      const owes = await jailable(session, account);
       if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
-      freeSeat(session.token); jailInside.add(session.token); jailInmates.add(session.token);
+      if (owes) { freeSeat(session.token); jailInside.add(session.token); jailInmates.add(session.token); }
     }
     // (사용자 제보 2026-10-25, 휴대폰: the visit dropped while I stood inside -- the stream gone a while, the phone put away --
     // a first pose from inside a room puts me back in it: the 백화점's floors, the open-to-all rooms off the island, and the

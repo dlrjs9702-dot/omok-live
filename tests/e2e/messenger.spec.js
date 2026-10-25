@@ -63,6 +63,11 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await d.locator('#messengerInput').press('Enter');
   await expect(m.locator('#messengerMessages .chatMessage:not(.mine)')).toHaveText(/김치찌개/, { timeout: 2500 }); // at once by the stream
   await expect(m.locator('#messengerMessages .messengerReadCount')).toHaveCount(0); // dad read it: the 「1」 is gone
+  // (Codex 검토 2차 #6) a line unsent after the other side got it shows as deleted there too
+  await m.locator('#messengerInput').fill('잘못 보냄'); await m.locator('#messengerInput').press('Enter');
+  await expect(d.locator('#messengerMessages .chatMessage', { hasText: '잘못 보냄' })).toHaveCount(1);
+  m.once('dialog', (x) => x.accept()); await m.locator('#messengerMessages .chatMessage.mine', { hasText: '잘못 보냄' }).locator('.messengerUnsend').click();
+  await expect(d.locator('#messengerMessages .chatMessageText.deleted')).toHaveText('삭제된 메시지입니다', { timeout: 8000 });
   // 1:1: named after the other; 나가기 only with the warning
   if (await d.locator('#messengerBackBtn').isVisible()) await d.locator('#messengerBackBtn').click(); // a phone shows one side
   await d.locator('#messengerDmBtn').click();
@@ -76,8 +81,53 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   expect(warned).toContain('나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다');
   await expect(d.locator('#messengerRoomName')).toHaveText(mom.nickname); // dismissed: still in
   for (const page of [m, d]) { const box = await page.locator('#mApp').boundingBox(); const vw = page.viewportSize().width; expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(vw); } // fits a phone too
-  // logged out on the page: the device's login ends with it
+  // (Codex 검토 2차 #5) a pin answered late, after I went to another room: the room I am in stays
+  const toList = async () => { if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click(); };
+  await m.route('**/pin', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+  await m.locator('#messengerPinBtn').click(); await toList();
+  await m.locator('#messengerRoomList button', { hasText: dad.nickname }).click(); await expect(m.locator('#messengerRoomName')).toHaveText(dad.nickname);
+  await m.waitForTimeout(2500); await expect(m.locator('#messengerRoomName')).toHaveText(dad.nickname);
+  await expect(m.locator('#messengerRoomList button', { hasText: '우리집' })).toContainText('📌'); // (the list has it)
+  await m.unroute('**/pin');
+  // logged out on the page: the device's login ends with it (Codex 검토 2차 #4: and nothing of it stays on the page)
   await m.locator('#mLogoutBtn').click(); await expect(m.locator('#mLogin')).toBeVisible();
+  await expect(m.locator('#messengerRoomList li')).toHaveCount(0); await expect(m.locator('#messengerMessages > *')).toHaveCount(0); await expect(m).toHaveTitle('아일랜드 메신저');
   await m.reload(); await expect(m.locator('#mLogin')).toBeVisible();
+  // (사용자 「섬 앱에서 누르면 크롬으로 열려」) in the installed app (display-mode standalone): no blank window -- the messenger
+  // itself in a small window, once; pressed again, the same one brought forward
+  await dad.context.addInitScript(() => {
+    const real = window.matchMedia.bind(window); window.matchMedia = (q) => (q === '(display-mode: standalone)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q));
+    window.__opens = []; const open = window.open.bind(window); window.open = (...args) => { window.__opens.push(args); return open(...args); };
+  });
+  const appHome = await dad.context.newPage(); await appHome.goto('/'); await expect(appHome.locator('#accountMessengerBtn')).toBeVisible({ timeout: 30000 });
+  await appHome.locator('#accountMessengerBtn').click(); await appHome.waitForTimeout(800); await appHome.locator('#accountMessengerBtn').click(); await appHome.waitForTimeout(800);
+  expect(await appHome.evaluate(() => window.__opens)).toEqual([['/messenger', 'gc-messenger', 'popup,width=440,height=780']]);
   for (const p of [mom, dad, kid]) await p.context.close();
+});
+
+// (사용자 2026-10-25 「메신저도 어두운 색으로 고를 수 있게」) 화면: 밝게 (first) / 어둡게 / 기기 설정 따르기 -- kept on the device,
+// the installed window's bar too, body text 4.5:1 or more on both
+test('메신저 어두운 화면: 처음 밝게, 어둡게 고르면 새로고침해도 유지, 기기 설정 따르기, 명암비', async ({ page }) => {
+  test.setTimeout(60000);
+  await page.goto('/messenger'); await expect(page.locator('#mLogin')).toBeVisible({ timeout: 30000 });
+  const theme = () => page.evaluate(() => [document.documentElement.dataset.mtheme, document.querySelector('meta[name="theme-color"]').content]);
+  // the worst contrast of the page's body text: the login's labels and title, a line of mine and of another's
+  const worst = () => page.evaluate(() => {
+    const box = document.getElementById('messengerMessages'); document.getElementById('mApp').classList.remove('hidden');
+    box.innerHTML = '<div class="chatMessage"><div class="chatMessageBody"><div class="chatMessageText">가나다</div></div></div><div class="chatMessage mine"><div class="chatMessageBody"><div class="chatMessageText">라마바</div></div></div>';
+    const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number); const lum = ([r, g, b]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const bg = (el) => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c.length === 3 || c[3] > 0) return c.slice(0, 3); } return [255, 255, 255]; };
+    const ratio = (el) => { const a = lum(rgb(getComputedStyle(el).color)); const b = lum(bg(el)); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
+    const out = Math.min(...[...document.querySelectorAll('#mLogin label, .mTitle, .chatMessageText')].map(ratio));
+    box.replaceChildren(); document.getElementById('mApp').classList.add('hidden'); return out;
+  });
+  expect(await theme()).toEqual(['light', '#fff6e3']); expect(await page.locator('#mTheme').inputValue()).toBe('light');
+  expect(await worst()).toBeGreaterThanOrEqual(4.5);
+  await page.locator('#mTheme').selectOption('dark');
+  expect(await theme()).toEqual(['dark', '#2a231e']); expect(await worst()).toBeGreaterThanOrEqual(4.5);
+  await page.reload(); await expect(page.locator('#mLogin')).toBeVisible();
+  expect(await theme()).toEqual(['dark', '#2a231e']); expect(await page.locator('#mTheme').inputValue()).toBe('dark');
+  await page.locator('#mTheme').selectOption('system');
+  await page.emulateMedia({ colorScheme: 'dark' }); await expect.poll(theme).toEqual(['dark', '#2a231e']);
+  await page.emulateMedia({ colorScheme: 'light' }); await expect.poll(theme).toEqual(['light', '#fff6e3']);
 });
