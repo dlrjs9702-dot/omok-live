@@ -1196,7 +1196,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const ride = p.ride && Number.isInteger(p.ride.id) && Number.isInteger(p.ride.seat) && R.TRAINS.some((t) => t.id === p.ride.id) && R.SEATS[p.ride.seat] ? { id: p.ride.id, seat: p.ride.seat } : null;
       if (ride && !o.ride) { o.c.anim?.loop?.('rideLook') || o.c.anim?.loop?.('sitIdle'); o.c.noTuck = true; o.c.tailTucked = true; o.c.tuckTail?.(true); }
       if (!ride && o.ride) { o.c.noTuck = false; o.c.anim?.release?.(); o.c.tailTucked = false; o.c.tuckTail?.(false); }
-      o.ride = ride; o.platform = p.platform || null; o.space = p.space || 'island'; o.home = p.home || null; // v1.10.84 (묶음 4: which house)
+      // (v1.10.160: onto a station's platform or off it -- not from or onto the train -- the lift ride drawn, as mine, from where
+      // they were drawn; the first sight of them is where they are)
+      const plat = p.platform || null;
+      if (o.platform !== undefined && !ride && !o.ride && (plat?.station || null) !== (o.platform?.station || null)) {
+        const station = plat?.station || o.platform.station; const q = plat ? R.platformClamp(plat.line, plat.station, p.x, p.z) : { x: p.x, y: heightAt(p.x, p.z), z: p.z };
+        o.liftRide = liftRideOf(station, o.c.root.position.clone(), q);
+      }
+      o.ride = ride; o.platform = plat; o.space = p.space || 'island'; o.home = p.home || null; // v1.10.84 (묶음 4: which house)
       o.pet = p.pet || null; // B 47 반려동물
       o.bike = ['mint', 'red', 'sky', 'butter'].includes(p.bike) && (p.space || 'island') === 'island' ? p.bike : null; o.space = p.space || 'island'; // (자전거)
     }
@@ -1251,6 +1258,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         if(t>=1.48) assets.letGo(o.c,'fruit');
       }
       if (o.act === 'sit') { const s = SEATS.find((x) => x.id === o.seat); if (s) { p.x = s.x; p.z = s.z; p.y = (s.y ?? heightAt(s.x, s.z)) + SEAT_LIFT; o.c.targetYaw = s.yaw; } } // v1.10.44 (B 44: a room seat has its floor)
+      if (o.liftRide) { const r = o.liftRide; const u = liftPath(r, p); if (liftRide?.station !== r.station) train.liftAt?.(r.station, p.y); /* (its car with them; mine first when I ride it) */ if (u === 1) o.liftRide = null; animate(o.c, dt, u < 0.2 || u > 0.8, 1.5); continue; }
       if (o.platform && !o.ride) { const q = R.platformClamp(o.platform.line, o.platform.station, p.x, p.z); p.set(q.x, q.y, q.z); animate(o.c, dt, f.speed > .4, f.speed); continue; }
       if (o.ride) { const q = R.seatAt(o.ride.id, o.ride.seat, trainNow()); p.set(q.x, q.y, q.z); o.c.root.rotation.y = q.yaw; o.c.targetYaw = q.yaw; animate(o.c, dt, false, 0); continue; } // v1.10.47
       animate(o.c, dt, o.act !== 'sit' && f.speed > 0.4, o.act === 'sit' ? 0 : f.speed);
@@ -3589,7 +3597,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       talkResident: (n) => { const o = wanderers.find((w) => w.n === n); if (!o) return false; const at = residentPose(n, Date.now() + serverOffset); const x = at.x + 1.1; const z = at.z; /* (by where the server has them -- a slow screen draws a walker behind) */ me.root.position.set(x, heightAt(x, z), z); correction = null; lastTalk = { id: `resident:${n}`, x: o.w.x, z: o.w.z }; onInteract?.(`resident:${n}`); return true; },
       tryOn: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), actLocked: actLocked(), emote: (k) => emote(k), standUpNow: () => standUp(), time: () => ({ mode: timeMode, phase }), setTime: (m) => setTimeMode(m), setMotionMode,setWeather: (k) => setWeather(k), teleport: (x, z) => { me.root.position.set(x, spaceFloor(x, z), z); /* (3회차 21: in a room, its floor) */ correction = null; trainChangedAt = Date.now(); placeCamera(true); bikeCheck(); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, residentReservations:residentStates.map(s=>({...s,hold:s.hold?{...s.hold}:null})), eventResidents:[...eventObjs].filter(([,o])=>o.resident!=null).map(([key,o])=>({key,n:o.resident,x:o.npc.root.position.x,z:o.npc.root.position.z,leaving:Boolean(o.leaving),reused:wanderers.some(w=>w.c===o.npc)})), placeWanderer:(n,x,z)=>{const o=wanderers.find(o=>o.n===n); if(o) Object.assign(o.w,{x,z,route:null,routeTo:null});}, wanderers: wanderers.map(({ n, c, w }) => ({ n,held:Boolean(w.pose.held), x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, zoom: zoomDist, zoomRange: [ZOOM_MIN, ZOOM_MAX], setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
-      camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r), rise: heightAt(camera.position.x, camera.position.z) - me.root.position.y }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r), rise: heightAt(camera.position.x, camera.position.z) - me.root.position.y }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, y: o.c.root.position.y, lifting: Boolean(o.liftRide),tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas, view) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z }, view);
@@ -3643,18 +3651,23 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop(); actLock = 0;
     const station = platform?.station || prev?.station || result.stop;
     const target = platform ? R.platformSpot(platform.line, platform.station, platform.slot) : { x: result.x, y: heightAt(result.x, result.z), z: result.z };
-    const from = me.root.position.clone(); const lift = R.liftOf(station);
-    liftRide = { station, from, to: target, lift, start: Date.now(), ms: Math.abs(from.y - target.y) > 1 ? 1800 : 450 };
+    liftRide = liftRideOf(station, me.root.position.clone(), target);
     keys.clear(); correction = null; me.anim?.release?.();
   }
+  // the lift's way, mine and theirs (v1.10.160 「다른 사람은 순간이동」): to the lift, up or down in it, out to the spot -- a
+  // short step (a small height) straight there; returns how far along (1: there)
+  function liftPath(r, pos) {
+    const u = Math.min(1, (Date.now() - r.start) / r.ms); const target = new THREE.Vector3(r.to.x, r.to.y, r.to.z);
+    if (r.ms < 1000) pos.lerpVectors(r.from, target, u);
+    else if (u < 0.2) pos.lerpVectors(r.from, new THREE.Vector3(r.lift.x, r.from.y, r.lift.z), u / 0.2);
+    else if (u < 0.8) pos.set(r.lift.x, THREE.MathUtils.lerp(r.from.y, r.to.y, (u - 0.2) / 0.6), r.lift.z);
+    else pos.lerpVectors(new THREE.Vector3(r.lift.x, r.to.y, r.lift.z), target, (u - 0.8) / 0.2);
+    return u;
+  }
+  const liftRideOf = (station, from, to) => ({ station, from, to, lift: R.liftOf(station), start: Date.now(), ms: Math.abs(from.y - to.y) > 1 ? 1800 : 450 });
   function stepPlatform() {
     if (liftRide) {
-      const r = liftRide; const u = Math.min(1, (Date.now() - r.start) / r.ms);
-      const target = new THREE.Vector3(r.to.x, r.to.y, r.to.z);
-      if (r.ms < 1000) me.root.position.lerpVectors(r.from, target, u);
-      else if (u < 0.2) me.root.position.lerpVectors(r.from, new THREE.Vector3(r.lift.x, r.from.y, r.lift.z), u / 0.2);
-      else if (u < 0.8) me.root.position.set(r.lift.x, THREE.MathUtils.lerp(r.from.y, r.to.y, (u - 0.2) / 0.6), r.lift.z);
-      else me.root.position.lerpVectors(new THREE.Vector3(r.lift.x, r.to.y, r.lift.z), target, (u - 0.8) / 0.2);
+      const r = liftRide; const u = liftPath(r, me.root.position);
       train.liftAt?.(r.station, me.root.position.y); if (u === 1) liftRide = null;
     } else if (platform && !riding) {
       const q = R.platformClamp(platform.line, platform.station, me.root.position.x, me.root.position.z); me.root.position.set(q.x, q.y, q.z);

@@ -1816,3 +1816,26 @@ test('매주 대회: 토요일 낚시 대회 날 가판대·주민, 주민 창�
     await expectNoScriptError(page); await a.context.close();
   } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
 });
+// v1.10.160 (사용자 「다른 사람이 승강기 탈 때 바로 위로 순간이동해 보여」): someone going up a station's lift is seen riding it
+// on another's screen -- their height through the middle for the ride's 1.8 s, the lift's car with them
+test('역 승강기: 다른 사람이 타면 내 화면에서도 승강기로 올라가는 모습(순간이동 아님), 칸도 같이', async ({ browser, request }) => {
+  test.setTimeout(150000);
+  const a = await intoPlaza(browser, request, '승강기손님'); const b = await intoPlaza(browser, request, '승강기구경');
+  const S = await a.page.evaluate(() => Object.keys(window.IslandTrain.STATIONS)[0]);
+  const at = await a.page.evaluate((S) => ({ spot: window.IslandTrain.stationOf(S).spot, lift: window.IslandTrain.liftOf(S), top: window.IslandTrain.PLATFORMS.find((p) => p.station === S).y }), S);
+  await b.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [at.spot.x + 2, at.spot.z + 2]);
+  await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [at.spot.x, at.spot.z]);
+  await expect(a.page.locator('#trainMainBtn')).toHaveText('승강장 올라가기', { timeout: 15000 });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 30000 }).toBeTruthy(); const aId = await a.page.evaluate(() => window.PlazaDebug().myId);
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().others.some((o) => o.id === id), aId), { timeout: 15000 }).toBe(true);
+  // B watches A every 50 ms while A presses
+  const watch = b.page.evaluate(([S, id]) => new Promise((done) => { const out = []; const t0 = performance.now(); const tick = () => { const d = window.PlazaDebug(); const o = d.others.find((p) => p.id === id); out.push({ y: o?.y, lifting: o?.lifting, cabin: d.train().cabins[S] }); if (performance.now() - t0 > 6000) done(out); else setTimeout(tick, 50); }; tick(); }), [S, aId]);
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe(S);
+  const seen = await watch; const mid = (y) => y > at.lift.y + 1 && y < at.top - 1;
+  expect(seen.some((s) => s.lifting), JSON.stringify(seen.slice(0, 5))).toBe(true);
+  expect(seen.filter((s) => mid(s.y)).length, 'A의 높이가 중간을 지나감').toBeGreaterThan(3);
+  expect(seen.some((s) => mid(s.cabin)), '칸이 같이 움직임').toBe(true);
+  expect(Math.max(...seen.map((s) => s.y))).toBeGreaterThan(at.top - 0.5); // (up at the end)
+  await expectNoScriptError(a.page); await a.context.close(); await b.context.close();
+});
