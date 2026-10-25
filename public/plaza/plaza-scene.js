@@ -595,8 +595,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.BoxGeometry(F.w, 14, F.d), mat(facility.id === 'store' ? 0xd9c9ad : 0xf2ede4), 0, 7, F.d / 2, visual);
       mesh(new THREE.BoxGeometry(4, 5, 0.1), mat(0x8a5a3b), 0, 2.5, F.d + 0.05, visual); // the door
       facilitySign('stand', 5, F.d + 2.6);
-      // (간판 ④ 「가까이선 유리 벽만 보임」: shop windows behind the 백화점's glass, an awning over each -- its glass 4 m out)
-      if (facility.id === 'store') for (const wx of [-12, -7.5, 7.5, 12]) { deck('store.window', wx, 0, 3.0); deck('store.awning', wx, 3.1, 4.0); }
+      // (간판 ④ 「가까이선 유리 벽만 보임」: shop windows behind the 백화점's glass, an awning over each -- its glass about 2.6 m
+      // out of the cliff, behind the pillars at 4)
+      if (facility.id === 'store') for (const wx of [-12, -7.5, 7.5, 12]) { deck('store.window', wx, 0, 1.6); deck('store.awning', wx, 3.1, 2.6); }
       boxSolids(0, F.d / 2, F.w, F.d, 1.1);
     } else if (spot.kind === 'jail') { // R4 구치소 (assets 67 jail.exterior: 9.8 x 7.4 m, 6.7 high; its sign the game's)
       depth = 7.4;
