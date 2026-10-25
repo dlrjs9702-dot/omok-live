@@ -1738,6 +1738,10 @@
 
   new MutationObserver(() => { if (stickEditing() && !stickEditable()) setStickEditing(false); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   byId('stickEditBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); setStickEditing(true); });
+  // 문제 기록 5회차 1: 「섬 화질」 -- 자동 (steps down when slow, up again when fast) or fixed, kept on this device
+  const qualityMode = () => { try { const v = localStorage.getItem('gc.quality'); return ['0', '1', '2'].includes(v) ? v : 'auto'; } catch { return 'auto'; } };
+  byId('qualitySelect').value = qualityMode();
+  byId('qualitySelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.quality', event.target.value); } catch {} plaza.controller?.setQualityMode?.(event.target.value); });
   byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
   byId('stickResetBtn').addEventListener('click', () => { for (const c of Object.values(CONTROLS)) { c.place = null; applyCtl(c); saveCtl(c); } selectCtl(ctlSel); });
   stickSizeInput.addEventListener('input', () => { const c = CONTROLS[ctlSel]; c.place = clampCtl(c, { ...currentCtl(c), size: Number(stickSizeInput.value) }); applyCtl(c); saveCtl(c); });
@@ -1900,6 +1904,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
+      plaza.controller.setQualityMode?.(qualityMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -3110,13 +3115,15 @@
     const name = document.createElement('strong'); name.textContent = `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P`;
     const what = document.createElement('p'); what.className = 'lookMeta'; what.textContent = GOOD_USE[g.use] || '';
     const row = document.createElement('div'); row.className = 'goodBuy';
-    for (const qty of [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = qty === 1 ? 'primary' : 'secondary'; b.textContent = `${qty}개 · ${Number(g.price * qty).toLocaleString('ko-KR')}P`; b.dataset.qty = qty;
+    const once = ['tool', 'bike'].includes(g.use); // (5회차 10-①: a tool is bought once -- one, and 「가지고 있어요」 while one is in the bag)
+    for (const qty of once ? [1] : [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = qty === 1 ? 'primary' : 'secondary'; b.textContent = `${qty}개 · ${Number(g.price * qty).toLocaleString('ko-KR')}P`; b.dataset.qty = qty;
       b.addEventListener('click', async () => {
         if (goodBusy) return; goodBusy = true;
         try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/store/buy', { method: 'POST', body: JSON.stringify({ itemId: id, qty, requestId: crypto.randomUUID() }) }); showToast(`🛍️ ${g.name} ${qty}개를 가방에 넣었어요.`); loadPoints(); if (id.startsWith('bike_')) refreshBikes(); }
         catch (error) { showToast(error.message, 4000); } finally { goodBusy = false; }
       }); row.append(b); }
     goodCard.replaceChildren(img, name, what, row);
+    if (once) api('/api/island/bag').then((b) => { if ((b.items || []).some((e) => e.itemId === id && e.qty > 0)) { const own = row.querySelector('button'); own.disabled = true; own.textContent = '가지고 있어요'; } }).catch(() => {});
     openPlazaWindow('잡화점', [goodCard]); plazaDialog.classList.add('shopMode');
   }
   // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
@@ -3137,12 +3144,7 @@
   function showBank(v) {
     bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
     byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
-    if (typeof v.taxAuto === 'boolean') byId('bankTaxAuto').checked = v.taxAuto; // (주민세 자동이체: the GET's, kept across a move)
   }
-  byId('bankTaxAuto').addEventListener('change', async (event) => {
-    const on = event.target.checked;
-    try { const r = await api('/api/island/bank', { method: 'POST', body: JSON.stringify({ taxAuto: on }) }); event.target.checked = r.taxAuto; byId('bankStatus').textContent = r.taxAuto ? '주민세 자동이체를 켰어요. 매일 자정 지갑 → 예금 순으로 내고, 모자라면 고지서가 와요.' : '주민세 자동이체를 껐어요. 고지서가 우체통으로 와요.'; } catch (error) { event.target.checked = !on; byId('bankStatus').textContent = error.message; }
-  });
   async function openBank() {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -5398,7 +5400,7 @@
     if (item.reason === 'daily_attendance') return '출석체크';
     if (item.reason === 'bank_deposit') return '예금 맡기기'; // v1.10.85
     if (item.reason === 'bank_withdraw') return '예금 찾기';
-    if (item.reason === 'resident_tax') return '주민세 자동이체'; // v1.10.86 (고지서: only 자동이체 takes it at midnight)
+    if (item.reason === 'resident_tax') return '주민세'; // v1.10.86 (taken at midnight until v1.10.154's 고지서)
     if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
     if (item.reason === 'outfit_retire_refund') return '변신 옷 정리 환불'; // (2026-10-21)
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92

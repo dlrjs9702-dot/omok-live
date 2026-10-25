@@ -2,9 +2,9 @@ const { test, expect } = require('@playwright/test');
 const { shopper, get, post, spaceOn, expectNoScriptError } = require('./skin-support');
 
 // 주민세 고지서 (gamecenter-notes docs/tax-bill-design-20261025.md, 사용자 「고지서 + 창구 납부」): the day's bill comes to the
-// 우체통 as a letter from the 관공서 (nothing taken); at the 세금 창구 the unpaid bills, 「모두 내기」 pays them; at the 예금
-// 창구 자동이체 is off until turned on. PC and phone.
-test('주민세 고지서: 우체통 편지, 세금 창구 「모두 내기」, 예금 창구 자동이체', async ({ browser, request, isMobile }) => {
+// 우체통 as a letter from the 관공서 (nothing taken); at the 세금 창구 the unpaid bills, 「모두 내기」 pays them; no 자동이체
+// at the 예금 창구 (사용자 2026-10-25). PC and phone.
+test('주민세 고지서: 우체통 편지, 세금 창구 「모두 내기」, 자동이체 없음', async ({ browser, request, isMobile }) => {
   test.setTimeout(240000);
   const who = await shopper(browser, request, isMobile ? '고지서m' : '고지서', 500000, 'female'); const { page, token } = who;
   const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
@@ -35,11 +35,9 @@ test('주민세 고지서: 우체통 편지, 세금 창구 「모두 내기」, 
   expect((await get(request, '/api/points', token)).data.balance).toBe(before - bill.amount);
   await page.keyboard.press('Escape'); await expect(page.locator('#taxDialog')).toBeHidden();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked), { timeout: 10000 }).toBe(false);
-  // 자동이체: off, turned on
+  // no 자동이체 at the 예금 창구
   await sitAt('room:bank', '#bankDialog');
-  const auto = page.locator('#bankTaxAuto'); await expect(auto).not.toBeChecked();
-  await auto.check(); await expect(page.locator('#bankStatus')).toContainText('자동이체를 켰어요');
-  expect((await get(request, '/api/island/tax', token)).data.auto).toBe(true);
+  await expect(page.locator('#bankDialog')).not.toContainText('자동이체');
   if (process.env.ZZ_OUT) await page.screenshot({ path: `${process.env.ZZ_OUT}-${isMobile ? 'm' : 'p'}-bank.png` });
   await expectNoScriptError(page); await who.context.close();
 });

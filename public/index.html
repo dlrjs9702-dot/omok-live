@@ -1215,7 +1215,6 @@
       <div class="bankButtons"><button type="submit" class="primary" data-bank="in">맡기기</button><button type="button" class="secondary" data-bank="out">찾기</button></div>
       <div class="bankButtons"><button type="button" class="ghost" data-bank="allIn">전부 맡기기</button><button type="button" class="ghost" data-bank="allOut">전부 찾기</button></div>
     </form>
-    <label class="bankTaxAuto"><input id="bankTaxAuto" type="checkbox" /> 주민세 자동이체 <small>켜면 매일 자정 지갑 → 예금 순으로 내요 · 모자라면 고지서</small></label>
     <p id="bankStatus" class="smallMuted" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="missionDialog" class="recordsDialog missionDialog" aria-labelledby="missionDialogTitle">
@@ -1272,6 +1271,7 @@
           <label><input type="radio" name="gcTheme" value="light"> 밝게</label>
           <label><input type="radio" name="gcTheme" value="system"> 기기 설정</label>
         </div>
+        <label class="gameMenuQuality">섬 화질 <select id="qualitySelect" aria-label="섬 화질"><option value="auto">자동</option><option value="2">높음</option><option value="1">보통</option><option value="0">낮음</option></select></label>
         <button id="fullscreenBtn" type="button" class="ghost hidden" aria-pressed="false">전체화면</button>
         <button id="stickEditBtn" type="button" class="ghost hidden">조작 배치 (위치·크기)</button>
         <p id="homeAppHint" class="homeAppHint hidden">전체화면처럼 쓰려면: Safari 아래 공유 버튼 → 「홈 화면에 추가」. 홈 화면의 섬 아이콘으로 열면 주소창 없이 꽉 찬 화면이 됩니다.</p>
@@ -1358,6 +1358,7 @@
   <script src="/plaza/island-map.js"></script>
   <script src="/plaza/island-terrain.js"></script>
   <script src="/plaza/island-paths.js"></script>
+  <script src="/plaza/ground-speed.js"></script>
   <script src="/plaza/dalmaru-terrain.js"></script>
   <script src="/plaza/dalmaru-island.js"></script><!-- 달마루섬 미리보기: replaces IslandTerrain before the island scripts read it -->
   <script src="/plaza/island-train.js"></script>
