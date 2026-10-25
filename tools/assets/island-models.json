@@ -174,13 +174,6 @@
       "lowSha256": "927aac6faac539a48dd0489a717bc6bd5a61e2898756574d193f8735b8aadeea"
     },
     {
-      "out": "additions-v1/facilities/records.glb",
-      "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/03. Facilities/records.glb",
-      "sha256": "03b527c1c16bfbf13f7d663c5b0605e371b849d7ce1655d727925b1915ca3cef",
-      "lowSrc": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/05. Low LOD/03. Facilities/records.glb",
-      "lowSha256": "33b6ba933a4dbf7ef16309bdf5183e6c410cefe49f315b6e48d89c7e468e3566"
-    },
-    {
       "out": "additions-v1/facilities/shop.glb",
       "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/03. Facilities/shop.glb",
       "sha256": "6979c774f6decff29d0fd1270fc748e648835fd152c7e38fed3f779c5d99a87f",
@@ -1142,6 +1135,54 @@
       "sha256": "a2bf673ba9aa5988b2e37a6b176d6025457fea7c045eef204cc8de0a58737911",
       "lowSrc": "overhaul:refined/04. Game Island gaps 2026-10-05/04. Surface layers/02. Low/layer_winter_sparse_low.glb",
       "lowSha256": "a95d66cfc8661fc1ad8b162c7fb30beb0f7d65112c594f752745a7cdfddbe95d"
+    },
+    {
+      "out": "identity-v1/games_banner.glb",
+      "src": "identity75:01. High/games_banner.glb",
+      "sha256": "c2727896041ea1b34e1937cd3f2e4591ae66dd9f3739a198a78bff5bea89b0e9",
+      "lowSrc": "identity75:02. Low/games_banner_low.glb",
+      "lowSha256": "317de086b5e923ef28963913001de0957ee650aff72073a554e19d92b7adc43a",
+      "precompressed": true
+    },
+    {
+      "out": "identity-v1/games_marquee.glb",
+      "src": "identity75:01. High/games_marquee.glb",
+      "sha256": "62256afd52f0797e1a303f7b699cdbf0c3ec17a2dc0b3403c9705bc91219a0c9",
+      "lowSrc": "identity75:02. Low/games_marquee_low.glb",
+      "lowSha256": "33c6d36b6618f58a5dd86fb2d721f0c48e97773f177cecb9e7153f4419c63937",
+      "precompressed": true
+    },
+    {
+      "out": "identity-v1/games_roof.glb",
+      "src": "identity75:01. High/games_roof.glb",
+      "sha256": "c954256a1d481e079d38a5314d91aa6c033f79fba2efda7779108db97e5d55da",
+      "lowSrc": "identity75:02. Low/games_roof_low.glb",
+      "lowSha256": "1f6d644bcfc5dd595a9e061ae6af2910903e8eb8847e9b323cfdb56bef2f1825",
+      "precompressed": true
+    },
+    {
+      "out": "identity-v1/records_hall.glb",
+      "src": "identity75:01. High/records_hall.glb",
+      "sha256": "38ffbba5a7e761871c396986d266a19c18eb1c0239e4e5abe8b0bcaebd3440f3",
+      "lowSrc": "identity75:02. Low/records_hall_low.glb",
+      "lowSha256": "a84ee4d5c741aab3114dab7112431bec2bfa4d007274dfeec770546345edaedf",
+      "precompressed": true
+    },
+    {
+      "out": "identity-v1/store_awning.glb",
+      "src": "identity75:01. High/store_awning.glb",
+      "sha256": "c49e078692b610286db4f49332d22b2fb69c2345a6d177949f72876725c9f93d",
+      "lowSrc": "identity75:02. Low/store_awning_low.glb",
+      "lowSha256": "d56e8bca806fd6e656d584531645d195d25b858059e804a821ad5800b245e9ec",
+      "precompressed": true
+    },
+    {
+      "out": "identity-v1/store_window.glb",
+      "src": "identity75:01. High/store_window.glb",
+      "sha256": "61d765dcb9dc5ce74f0e12119b31a9ff0798e14c32f2b0dca4a588bd79b1700e",
+      "lowSrc": "identity75:02. Low/store_window_low.glb",
+      "lowSha256": "10027005ea1d3b75053ab05e43120617b18ea0d959beba219f127fe4acdebaa3",
+      "precompressed": true
     },
     {
       "out": "seasonal-v2/autumn/bench_autumn_v1.glb",

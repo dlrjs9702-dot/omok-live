@@ -34,7 +34,7 @@
   const spot = (p, kind, extra) => ({ x: p.x, z: p.z, face: p.face, kind, ...extra });
   const SPOTS = {
     games: { ...PL.gamehall, face: [PL.gamehall.x - 16, PL.gamehall.z], kind: 'hall', wall: 0xffe3b3, roof: 0xf08a6b }, // 대청마당 동쪽 바로 옆
-    records: spot(PL.records, 'house', { wall: 0xf3e2ff, roof: 0x9b7fd6 }), missions: spot(PL.missions, 'board', { tint: 0x8fd18a }),
+    records: spot(PL.records, 'house', { wall: 0xf3e2ff, roof: 0x9b7fd6, size: [7, 8.7], front: 5.85, back: 2.85 /* (assets 75 records.hall -- 간판 ④ 「작은 일반 집」: 7 m across, 8.7 m deep with its porch steps, from 2.85 behind its spot to 5.85 before it) */ }), missions: spot(PL.missions, 'board', { tint: 0x8fd18a }),
     store: { ...facade(PL.facadeMall), kind: 'facade' }, townhall: { ...facade(PL.facadeTownhall), kind: 'facade' },
     board: { ...row(0), kind: 'board' }, map: { ...row(1), kind: 'mapboard' }, attendance: { ...row(4), kind: 'npc' }, donate: { ...row(2), kind: 'donation' },
     chat: spot(PL.chat, 'gazebo'), climb: spot(PL.climb, 'tower'), admin: spot(PL.admin, 'office', { wall: 0xe4e7ec, roof: 0x7b8794 }),
@@ -43,8 +43,8 @@
   const FACADE = { w: 30, d: 4.6 }; // (assets 55 facade.*: 30 wide, 4.6 out from the cliff)
   function facilityDoor(id) {
     const s = SPOTS[id]; if (!s) return null;
-    const depth = { hall: 10, tower: 6.4, house: 2.7, office: 2.7, board: 0.3, donation: 0.9, mapboard: 0.3, gazebo: 2.4, npc: 0.9, stall: 1.3, desk: 1.2, facade: FACADE.d, jail: 7.4 }[s.kind];
-    const distance = s.kind === 'facade' ? FACADE.d + 1.6 : Math.max(1.4, depth / 2 + 1.3) + (s.kind === 'hall' ? 2.6 : 0);
+    const depth = s.size?.[1] ?? { hall: 10, tower: 6.4, house: 2.7, office: 2.7, board: 0.3, donation: 0.9, mapboard: 0.3, gazebo: 2.4, npc: 0.9, stall: 1.3, desk: 1.2, facade: FACADE.d, jail: 7.4 }[s.kind];
+    const distance = s.front != null ? s.front + 1.1 : s.kind === 'facade' ? FACADE.d + 1.6 : Math.max(1.4, depth / 2 + 1.3) + (s.kind === 'hall' ? 2.6 : 0);
     const dx = s.face[0] - s.x; const dz = s.face[1] - s.z; const l = Math.hypot(dx, dz) || 1;
     return { x: s.x + (dx / l) * distance, z: s.z + (dz / l) * distance };
   }
@@ -159,7 +159,7 @@
   }
   const laneH = COTTAGES.reduce((a, c) => a + D.landHeight(c.x, c.z), 0) / COTTAGES.length; // (이웃골: the houses' pads one level, so the yards between them stay flat)
   const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], ...FARM.yard.plots.map(([x, z]) => [x, z, 6]) /* (3회차 15: the farm's plots level) */, [townhallWorld(0, 11.5).x, townhallWorld(0, 11.5).z, 10] /* (관공서 앞마당, level under its marble) */, ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
-    ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5]),
+    ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.size ? Math.max(s.front ?? 0, ...s.size.map((v) => v / 2)) + 0.6 : s.kind === 'tower' ? 4.5 : 3.5]),
     ...HOME_LOTS.map((l) => [l.x, l.z, 7.2, 0.9]) /* (2회차 15: each lot level, its big house by the shore too) */,
     ...Object.keys(D.TRAIN.stops).map(stationPad).filter(Boolean)]
     .map(([x, z, r, h]) => ({ x, z, r, h: h ?? D.landHeight(x, z) }));
