@@ -1781,7 +1781,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // (문제 기록 3회차 22 「낚싯대·잠자리채를 들면 손에 장착, 상호작용 키로 휘두르기」, assets 66) the tool in my hand, taken
   // from the bag: the 잠자리채 swings at SPACE (NetSwing 0.8 s; at 56 % the net is down about 1 m ahead -- what is then in
   // a 1.5 m fan before me is caught, or an islander struck), the 낚싯대 is the one I fish with
-  const TOOL_HOLD = { bugnet: ['together.tool_bugnet', { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: [0, 0, -0.95] }], fishing_rod: ['fishing.rod', { key: 'rod' }] };
+  const TOOL_HOLD = { bugnet: ['together.tool_bugnet', { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: [-0.8, 0, 0.2] }], /* (6회차 9 「너무 옆으로 들고 움직여, 앞으로」: hand to net head, in the body's frame, walking [-0.9 side, 0.28 up, -0.34 back] -> about [0.1, 0.63, 0.75] -- forward and up) */ fishing_rod: ['fishing.rod', { key: 'rod' }] };
   const SWING_REACH = 1.5; const SWING_FAN = Math.PI / 3; const SWING_HIT_MS = 450; const SWING_MS = 800;
   let heldTool = null; let swingUntil = 0; let lastSwing = null;
   function showTool() {
