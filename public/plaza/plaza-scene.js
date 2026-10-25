@@ -1781,7 +1781,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // (문제 기록 3회차 22 「낚싯대·잠자리채를 들면 손에 장착, 상호작용 키로 휘두르기」, assets 66) the tool in my hand, taken
   // from the bag: the 잠자리채 swings at SPACE (NetSwing 0.8 s; at 56 % the net is down about 1 m ahead -- what is then in
   // a 1.5 m fan before me is caught, or an islander struck), the 낚싯대 is the one I fish with
-  const TOOL_HOLD = { bugnet: ['together.tool_bugnet', { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: [0, 0, -0.95] }], fishing_rod: ['fishing.rod', { key: 'rod' }] };
+  const TOOL_HOLD = { bugnet: ['together.tool_bugnet', { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: [-0.8, 0, 0.2] }], /* (6회차 9 「너무 옆으로 들고 움직여, 앞으로」: hand to net head, in the body's frame, walking [-0.9 side, 0.28 up, -0.34 back] -> about [0.1, 0.63, 0.75] -- forward and up) */ fishing_rod: ['fishing.rod', { key: 'rod' }] };
   const SWING_REACH = 1.5; const SWING_FAN = Math.PI / 3; const SWING_HIT_MS = 450; const SWING_MS = 800;
   let heldTool = null; let swingUntil = 0; let lastSwing = null;
   function showTool() {
@@ -2090,6 +2090,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1.34, 0.6), new THREE.MeshBasicMaterial({ map: texture, transparent: true }));
     face.position.set(0, 1.29, -0.0995); face.rotation.y = Math.PI; sign.add(face);
+    eventDoors['farm:board'] = { x: F.sign.x, z: F.sign.z - 1.2, name: '밭 안내판 읽기' }; // (6회차 7 「게시판을 읽을 수 있게 해」: before its face, SPACE opens it -- app.js)
     farm = { fields, canvas, texture, stage: -1, names: null };
     setFarm({ stage: 0, names: [] });
     return farm;
@@ -2155,7 +2156,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (stage === 3 && !view?.harvested) eventDoors['farm:harvest'] = { x: F.x, z: F.z, name: '밭 · 수확', resource: true }; else delete eventDoors['farm:harvest'];
     const key = names.join('|'); if (f.names === key) return; f.names = key;
     const ctx = f.canvas.getContext('2d'); ctx.clearRect(0, 0, 512, 228);
-    ctx.fillStyle = '#4a3020'; ctx.textAlign = 'center'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('이번 주 밭을 지켜 준 사람들', 256, 46);
+    ctx.fillStyle = '#4a3020'; ctx.textAlign = 'center'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('🥕 농부의 밭 · 이번 주 도와준 사람', 256, 46, 492);
     ctx.font = '28px sans-serif';
     const lines = names.length ? [names.slice(0, 4).join(' · '), names.slice(4).join(' · ')].filter(Boolean) : ['아직 없어요 — 농부를 도와주세요!'];
     lines.forEach((line, i) => ctx.fillText(line, 256, 110 + i * 46, 492));
@@ -3135,6 +3136,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const SEA = { boat: [80, 160], gulls: [45, 100], dolphins: [70, 140], splash: [35, 80] };
   const seaNext = Object.fromEntries(Object.entries(SEA).map(([k, [a, b]]) => [k, 30 + Math.random() * (b - a) + a / 2]));
   const seaActive = new Map(); let seaLast = -Infinity; let seaPool = null; const seaShown = {};
+  const GULL_FRONT = Math.PI; // (6회차 8 「갈매기가 뒤로 날아」: the gull model's beak is its -z -- its beak's vertices z 0..0.13 of 1)
   const seaFree = () => seaActive.size < 2 && clock - seaLast > 12;
   function seaHolders() {
     if (seaPool) return seaPool;
@@ -3191,7 +3193,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         for (const b of birds) {
           const u = s.t * SPEED - L - b.back; const sway = Math.sin(s.t * 0.7 + b.ph);
           b.h.position.set(c.x + dir.x * u + dir.z * b.side, b.y + Math.sin(s.t * 0.45 + b.ph) * 0.7, c.z + dir.z * u - dir.x * b.side); // rising and gliding down
-          b.h.rotation.set(Math.sin(s.t * 0.45 + b.ph + 1.2) * 0.12, Math.atan2(dir.x, dir.z) + sway * 0.12, sway * 0.2); // its front +z along the way, banking a little
+          b.h.rotation.set(Math.sin(s.t * 0.45 + b.ph + 1.2) * 0.12, Math.atan2(dir.x, dir.z) + GULL_FRONT + sway * 0.12, sway * 0.2); // its front along the way, banking a little
         }
       }, end() { for (const b of birds) b.h.visible = false; } });
     } else if (kind === 'dolphins') { // two or three leaping one after another
@@ -3206,7 +3208,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           if (!inAir) continue;
           const along = (k + u) * RUN; const y = SEA_Y - 0.5 + Math.sin(u * Math.PI) * 1.9;
           d.h.position.set(at.x + fwd.x * along - fwd.z * d.side, y, at.z + fwd.z * along + fwd.x * d.side);
-          d.h.rotation.set(-Math.cos(u * Math.PI) * 0.9, heading, 0); // nose up going out, down going in
+          d.h.rotation.set(Math.cos(u * Math.PI) * 0.9, heading + Math.PI, 0, 'YXZ'); // nose up going out, down going in (6회차 8: its head is the model's -z too -- it leapt tail first; the pitch round its own side)
           const edge = u < 0.08 ? k * 2 + 1 : u > 0.92 ? k * 2 + 2 : 0; // a splash going out and coming back in
           if (edge && edge > d.splashed) { d.splashed = edge; assets.once('sea.splash', { parent: scene, x: d.h.position.x, y: SEA_Y, z: d.h.position.z }); }
         }
@@ -3318,8 +3320,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (mySpace === 'furniture' && !best && furnitureState) { const s = FURN.placeAt(me.root.position.x, me.root.position.z); const d = s && furnitureState.items[s.id]; if (d) { const w = FURN.world(s.lx, s.lz); eventDoors[`furn:${s.id}`] = { x: w.x, z: w.z, name: d.sold ? '팔렸어요 · 내일 새 가구가 들어와요' : `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`, plain: d.sold }; best = `furn:${s.id}`; } }
     for (const k of Object.keys(eventDoors)) if (k.startsWith('tank:') || k.startsWith('frame:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
-    if (mySpace === 'home' && !best && homeHere?.mine) { // (묶음 4) the tank, insect case or frame by me
-      const { lx, lz } = HOME.local(homeHere.lot, me.root.position.x, me.root.position.z); let pick = null; let pd = 1.0;
+    // (6회차 B3: a seat picked above gives way to a tank I stand nearer -- the sofa's seats 1.12 m apart reached the tank beside it)
+    const seatDoor = best?.startsWith('seat:') ? doorOf(best) : null; const seatD = seatDoor ? Math.hypot(seatDoor.x - me.root.position.x, seatDoor.z - me.root.position.z) : null;
+    if (mySpace === 'home' && (!best || seatD !== null) && homeHere?.mine) { // (묶음 4) the tank, insect case or frame by me
+      const { lx, lz } = HOME.local(homeHere.lot, me.root.position.x, me.root.position.z); let pick = null; let pd = seatD !== null ? Math.min(1.0, seatD) : 1.0;
       for (const p of homeHere.home.pieces) { const shape = HOME.shapeOf(p.id); if (!HOME.TANKS[shape] && shape !== 'picture_frame') continue; const b = HOME.boxOf(p); const d = Math.hypot(Math.max(b.x0 - lx, 0, lx - b.x1), Math.max(b.z0 - lz, 0, lz - b.z1)); if (d < pd) { pd = d; pick = p; } }
       if (pick) { const shape = HOME.shapeOf(pick.id); const w = HOME.world(homeHere.lot, pick.x, pick.z); const key = `${shape === 'picture_frame' ? 'frame' : 'tank'}:${pick.uid}`; eventDoors[key] = { x: w.x, z: w.z, name: shape === 'picture_frame' ? '액자 · 기념사진 걸기' : shape === 'insect_case' ? '곤충 상자 · 넣고 꺼내기' : '수조 · 물고기 넣고 꺼내기' }; best = key; }
     }

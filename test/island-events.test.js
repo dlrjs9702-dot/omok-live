@@ -17,6 +17,7 @@ test('생활 자원: 15개 제한 없이 모든 종류·20개 나무, 지형/길
     for(const e of list) if(!e.npc) {
       assert.ok(T.walkable(e.x,e.z)); assert.ok(T.walkDist(e.x,e.z)>=0.35);
       assert.ok(!T.inTownhall(e.x,e.z,3));
+      for(const l of T.HOME_LOTS||[]) assert.ok(Math.hypot(e.x-l.x,e.z-l.z)>7.9,'툇마루섬 집터 밖(6회차 5)');
       for(const solid of T.natureSolids()) assert.ok(Math.hypot(e.x-solid.x,e.z-solid.z)>solid.r+0.45,'player approach clear');
       if(e.type==='beach_trash') assert.ok(T.coastDist(e.x,e.z)<8);
       if(['herb','mushroom'].includes(e.type)) assert.ok(T.nature().trees.some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6));
@@ -82,6 +83,16 @@ test('공용 이벤트: 플레이어에게는 가까운 것만 알린다', () =>
   const near = ev.nearby(0, 0, 'guest:a');
   assert.ok(near.length < all.length + 1);
   for (const v of near) assert.ok(Math.hypot(v.x, v.z) <= NEAR);
+});
+
+// 6회차 5 「집 아래에 물건이 구현돼서 집을 수가 없어」: a lost thing never lies on a 툇마루섬 house lot (before: ~1 in 3)
+test('분실물 자리: 툇마루섬 집터에는 놓이지 않는다', () => {
+  let n = 0;
+  for (let seed = 1; seed <= 20; seed += 1) {
+    const ev = createIslandEvents({ random: seeded(seed), now: () => Date.parse('2026-10-25T12:00:00+09:00') });
+    for (let k = 0; k < 15; k += 1) { const e = ev.spawnLost(); if (!e) continue; n += 1; for (const l of T.HOME_LOTS || []) assert.ok(Math.hypot(e.x - l.x, e.z - l.z) > 7.9, `${e.x},${e.z}`); }
+  }
+  assert.ok(n > 100, `${n}`);
 });
 
 // v1.10.32 운반: a lost thing I carry is mine to see wherever I am (its owner's place, for the map), and the account's

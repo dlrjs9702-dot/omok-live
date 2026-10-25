@@ -70,7 +70,7 @@
   const HUNG = new Set(['picture_frame', 'wall_clock', 'curtain_window', 'wall_shelf']); // (their backs on a wall, at the height made)
   const FLAT = new Set(['rug_round']); // (under the rest)
   // where one sits (assets 57 manifest seats, model local: x, height, z) -- 'lie' and 'floor' sit too for now
-  const SEATS = { window_seat: [[0, 0.5, 0]], armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.45, 0.46, -0.12], [0.45, 0.46, -0.12]], stool: [[0, 0.51, 0]], bed: [[0, 0.55, 0]], bunk_bed: [[0, 0.5, 0]] }; // (3회차 3: the beds' heights as their models' mattresses)
+  const SEATS = { window_seat: [[0, 0.5, 0]], armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.56, 0.46, -0.12], [0.56, 0.46, -0.12]] /* (6회차 4 「같이 앉으면 머리가 뚫려」: 0.9 m apart the two big heads met -- 1.12, still on its cushions) */, stool: [[0, 0.51, 0]], bed: [[0, 0.55, 0]], bunk_bed: [[0, 0.5, 0]] }; // (3회차 3: the beds' heights as their models' mattresses)
   // the tanks (assets 57 manifest swim): where fish swim (model local), how many, the biggest size they take, how small fish show
   const TANKS = {
     fish_bowl: { min: [-0.1, 0.88, -0.1], max: [0.1, 1.08, 0.1], slots: 1, biggest: 'small', fishScale: 0.5 },

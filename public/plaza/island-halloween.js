@@ -101,17 +101,21 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   for (const [kind,x,z,ry] of T.HALLOWEEN_EXTRAS) fit(kind,x,z,ry);
   fit('cauldron', T.POND.x + T.POND.r + 1.8, T.POND.z, Math.PI / 2);
   // strings: lights from lamp to lamp round the plaza, bunting between each walk's neighbouring lamps
-  const string = (kind, a, b, ya, yb) => {
+  // (sy: the string's height scale -- its sag and what hangs from it)
+  const string = (kind, a, b, ya, yb, sy = 1) => {
     const dx = b.x - a.x; const dz = b.z - a.z; const L = Math.hypot(dx, dz); const segs = Math.max(1, Math.round(L / 4)); const ry = Math.atan2(-dz, dx);
     for (let k = 0; k < segs; k += 1) {
       const t = k / segs; const len = L / segs; const y0 = ya + (yb - ya) * t; const y1 = ya + (yb - ya) * ((k + 1) / segs);
       const rot = new THREE.Matrix4().makeRotationY(ry).multiply(new THREE.Matrix4().makeRotationZ(Math.atan2(y1 - y0, len)));
-      place[kind].push(new THREE.Matrix4().makeTranslation(a.x + dx * t, y0, a.z + dz * t).multiply(rot).multiply(new THREE.Matrix4().makeScale(Math.hypot(len, y1 - y0) / 4, 1, 1)));
+      place[kind].push(new THREE.Matrix4().makeTranslation(a.x + dx * t, y0, a.z + dz * t).multiply(rot).multiply(new THREE.Matrix4().makeScale(Math.hypot(len, y1 - y0) / 4, sy, 1)));
     }
   };
+  // 6회차 2 「전구가 너무 낮아」: from the lamps' tops (they hung at 2.35 m, the bulbs down to about 1.9 m -- a head's height),
+  // a shallower sag: the lowest bulb 3.0 - 0.6 x (0.4 sag + 0.17 bulb) = about 2.66 m
+  const LIGHTS_Y = 3.0; const LIGHTS_SAG = 0.6;
   const ring = [...plazaLamps].sort((a, b) => Math.atan2(a.z - PC.z, a.x - PC.x) - Math.atan2(b.z - PC.z, b.x - PC.x));
-  ring.forEach((a, i) => { const b = ring[(i + 1) % ring.length]; if (Math.hypot(b.x - a.x, b.z - a.z) < 19) string('lights', a, b, PH + 2.35, PH + 2.35); });
-  for (const l of plazaLamps) { const d = Math.hypot(l.x - PC.x, l.z - PC.z); string('lights', l, { x: PC.x + ((l.x - PC.x) / d) * 3.1, z: PC.z + ((l.z - PC.z) / d) * 3.1 }, PH + 2.35, PH + 2.2); } // and down to the pedestal's rim
+  ring.forEach((a, i) => { const b = ring[(i + 1) % ring.length]; if (Math.hypot(b.x - a.x, b.z - a.z) < 19) string('lights', a, b, PH + LIGHTS_Y, PH + LIGHTS_Y, LIGHTS_SAG); });
+  for (const l of plazaLamps) { const d = Math.hypot(l.x - PC.x, l.z - PC.z); string('lights', l, { x: PC.x + ((l.x - PC.x) / d) * 3.1, z: PC.z + ((l.z - PC.z) / d) * 3.1 }, PH + LIGHTS_Y, PH + LIGHTS_Y - 0.05, LIGHTS_SAG); } // and to the pedestal's rim
   const walkLamps = T.nature().lampSpots;
   for (let i = 0; i + 1 < walkLamps.length; i += 1) { const a = walkLamps[i]; const b = walkLamps[i + 1]; const L = Math.hypot(b.x - a.x, b.z - a.z); if (L > 6 && L < 14) string('bunting', a, b, heightAt(a.x, a.z) + 2.1, heightAt(b.x, b.z) + 2.1); }
 
