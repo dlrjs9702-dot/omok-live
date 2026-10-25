@@ -218,7 +218,7 @@
       remind_buy: ['{thing}, 잡화점에 있을 거예요. 부탁해요!'], remind_find: ['{who|은|는} 아직 못 찾았어요? 섬 어딘가를 걷고 있을 거예요.'],
       remind_find_where: ['{who|은|는} 아직 못 찾았어요? 보통 {where} 쪽에 있어요.'], remind_deliver: ['{thing}, {who}에게 아직 못 전했죠? 부탁해요!'],
       got_buy: [['{thing|이|가} 딱 필요했어요! 사다 줘서 고마워요.', '물건값에 수고비까지 얹었어요.']],
-      got_deliver: [['{from|이|가} 보낸 {thing}요? 와, 고마워요!', '전해 준 사례예요. 받아 주세요.']],
+      got_deliver: [['{from|이|가} 보낸 {thing|이요|요}? 와, 고마워요!', '전해 준 사례예요. 받아 주세요.']],
       found_me: [['{from|이|가} 저를 찾는다고요? 아, 깜빡했어요!', '알려 줘서 고마워요. {from}에게 곧 간다고 전해 줄래요?']],
       found_back: [['{who|을|를} 찾아 줬군요! 정말 고마워요.', '이건 작은 사례예요.']],
       giftLove: ['와, {name}! 제가 제일 좋아하는 거예요. 정말 고마워요!'], giftLike: ['{name} 고마워요! 잘 쓸게요.'], giftMeh: ['{name}… 마음만 받을게요. 고마워요.'],
@@ -299,6 +299,44 @@
       answerAgain: ['오늘은 벌써 얘기했거든! 내일 또 해 줘!'], giftAgain: ['오늘은 벌써 선물 받았거든! 마음만 받을게!'], giftAsk: ['나 주는 거야? 뭔데?'], giftNone: ['가방에 줄 만한 게 없네. 괜찮아!'], errandNone: ['오늘은 괜찮아! 마음만 받을게!'], relRival: ['사실 {a|이랑|랑} {b}, 요즘 좀 서먹했거든. 덕분에 화해했어!'], relFriend: ['둘은 오랜 친구라 더 좋아할 거야!'],
     },
   };
+  // T2 (검토: 「오 탐정이 바다 할아버지와 같은 하게체 문장이라 ~란 말이지가 없어」): the detective's own register, 하게체 with
+  // his case-file talk where it shows
+  REG.det = { ...REG.hage,
+    why: ['빌려 간 책을 돌려받아야 하거든.', '꼭 할 말이 있는데 행방이 묘연하단 말이지.', '같이 산책하기로 했는데 보이질 않네.', '나눠 줄 게 있는데 어디 숨었는지 모르겠군.'],
+    ask_buy: [['오늘 {thing|이|가} 필요한데, 잡화점에 갈 틈이 없단 말이지.', '하나 사다 주게. 물건값은 확실히 치르겠네.']],
+    ask_find: [['혹시 {who|을|를} 못 봤나? {why}', '보거든 내가 찾는다고 전해 주게.']],
+    ask_deliver: [['이 {thing}, {who}에게 전해 주게.', '내가 지금 잠복 중이란 말이지.']],
+    hint: ['{who|은|는} 보통 {where} 근처에 나타난단 말이지.'],
+    remind_buy: ['{thing}, 잡화점에 있을 거란 말이지.'], remind_find: ['{who|을|를} 아직 못 찾았나? 섬 어딘가에 숨어 있단 말이지.'],
+    remind_find_where: ['{who|을|를} 아직 못 찾았나? 보통 {where} 쪽에 나타난단 말이지.'], remind_deliver: ['{thing}, {who}에게 아직 못 전했나? 서두르게.'],
+    got_buy: [['{thing|이|가} 딱 필요했단 말이지! 고맙네.', '물건값에 수고비까지 얹었네.']],
+    got_deliver: [['{from|이|가} 보낸 {thing|이라고|라고}? 흠, 고맙네.', '전해 준 사례일세.']],
+    found_me: [['{from|이|가} 나를 찾는다고? 흠… 수사에 빠져 깜빡했단 말이지!', '알려 줘서 고맙네. {from}에게 곧 간다고 전해 주게.']],
+    found_back: [['{who|을|를} 찾아냈군! 훌륭한 수사란 말이지.', '이건 수고비일세.']],
+    giftLike: ['{name}, 고맙네. 잘 쓰겠단 말이지.'], giftMeh: ['{name}… 마음만 받겠단 말이지.'], giftAgain: ['오늘은 이미 증거품… 아니, 선물을 받았단 말이지.'],
+    giftAsk: ['흠, 나에게 주는 건가? 무엇이지?'], giftNone: ['가방에 줄 만한 게 없군. 괜찮네.'],
+    answerMeh: ['흠, 그것도 일리가 있단 말이지.'], answerDisliked: ['흠… 내 추리와는 다르군. 그래도 들려줘서 고맙네.'], answerAgain: ['오늘 조사는 끝났단 말이지. 내일 또 듣지.'],
+    errandNone: ['오늘은 의뢰가 없단 말이지.'], relRival: ['사실 {a|과|와} {b}, 요즘 서먹했단 말이지. 자네 덕에 사건 해결일세.'], relFriend: ['둘은 오랜 친구란 말이지. 더 기뻐할 걸세.'],
+    letter: ['{me}, 오늘 섬은 평화롭단 말이지. 마주치면 인사하게.', '{me} 조수 덕에 요즘 수사가 즐겁단 말이지. 고맙네.', '{me}, 다음에 만나면 새 사건 이야기를 들려주지.', '오늘 수첩을 보다 {me} 이름이 보여서 몇 자 적네.', '{me}, 우리 섬에 와 준 건 행운이란 말이지. 또 보세.'],
+    levelUp1: ['흠, 이제 자네와 아는 사이란 말이지.'], levelUp2: ['{me}, 자네를 내 조수로 임명하겠단 말이지.'],
+    mem_errand: ['{when} 「{text}」 도와줘서 고마웠네, {me}.'], mem_errand_short: ['{when} 도와줘서 고마웠단 말이지, {me}.'], mem_answer: ['{when} 해 준 이야기, 수첩에 적어 뒀단 말이지.'], mem_gift: ['{when} 준 {name}, 증거품처럼 잘 보관 중이란 말이지.'],
+  };
+  // T2 (검토: 「심부름 부탁은 해요체 여섯이 본문이 똑같고 끝 말버릇만 달라」): each walker's own word before or after the lines
+  // seen most -- an ask (before), thanks for an errand done, an ordinary gift, a level reached (after), a letter (its first
+  // line) -- so no two say them alike
+  const FLAVOR = [
+    { ask: '꽃 배달 사이에 부탁 하나만요!', thanks: '고마운 마음, 꽃 한 송이에 담았어요!', gift: '꽃병 옆에 둘게요!', level: '기념으로 꽃 한 송이 드릴게요!', letter: '꽃집에서 쓰는 편지예요.' }, // 봄이
+    { ask: '허허, 늙은 선장 부탁 하나 들어주겠나.', thanks: '허허, 자네는 믿을 만한 선원이구먼.', gift: '선실에 잘 두겠네.', level: '허허, 기분 좋은 날이구먼.', letter: '바닷바람 맞으며 몇 자 적네.' }, // 바다 할아버지
+    { ask: '아, 저… 부탁이 하나 있달까요…', thanks: '고마운 마음을 한 줄로 쓰기가 어렵달까요…', gift: '책상 위에 둘게요… 영감이 올 것 같달까요.', level: '오늘 일기에 쓸 거랄까요…', letter: '아, 편지는 처음 써 보는 거랄까요…' }, // 하람
+    { ask: '흐음~ 벌들 돌보느라 바빠서요.', thanks: '꿀 한 숟가락만큼 고마워요!', gift: '벌집 옆에 둘게요!', level: '벌들도 축하해요!', letter: '꿀단지 옆에서 쓰는 편지예요.' }, // 두리
+    { ask: '얘야, 이 할미 부탁 하나 들어주련?', thanks: '아이고, 착하기도 하지.', gift: '귀하게 쓰마.', level: '오래오래 보자꾸나.', letter: '할미가 몇 자 적는다.' }, // 노을 할머니
+    { ask: '흠… 의뢰가 하나 있단 말이지.', thanks: '사건 해결이란 말이지. 훌륭하네.', gift: '증거품처럼 잘 보관하겠단 말이지.', level: '내 수첩에 적어 두겠단 말이지.', letter: '탐정 사무소에서 보내는 편지란 말이지.' }, // 오 탐정
+    { ask: '반죽 부풀 동안만 부탁할게요!', thanks: '다음에 갓 구운 빵으로 갚을게요!', gift: '빵 재료로 써 볼까요?', level: '축하 빵 구울게요!', letter: '밀가루 묻은 손으로 써요.' }, // 다온
+    { ask: '배달 경로에 하나만 넣어 줄래요?', thanks: '배달보다 빨랐어요!', gift: '가방에 쏙 넣을게요!', level: '섬 지도에 표시해 둘게요!', letter: '이건 제가 직접 배달하는 편지예요!' }, // 바람이
+    { ask: '하암… 부탁 하나 해도 돼요?', thanks: '오늘 밤 별한테 자랑할래요.', gift: '망원경 옆에 둘게요.', level: '오늘 밤 별에 소원 빌게요.', letter: '별빛 아래서 쓰는 편지예요.' }, // 이솔
+    { ask: '대원! 탐험 임무다!', thanks: '임무 완료! 역시 대원이야!', gift: '탐험 가방에 넣을 거야!', level: '탐험대 만세!', letter: '탐험대장이 보내는 편지!' }, // 가람
+  ];
+  const FLAVOR_OF = { ask_buy: ['ask', 0], ask_find: ['ask', 0], ask_deliver: ['ask', 0], got_buy: ['thanks', 1], got_deliver: ['thanks', 1], found_back: ['thanks', 1], giftLike: ['gift', 1], levelUp1: ['level', 1], levelUp2: ['level', 1], levelUp3: ['level', 1], letter: ['letter', 0] };
   // by walker: register, the word at the end (tail), and their own lines over the register's (the design's table)
   const VOICES = [
     { reg: 'yo', tail: '꽃!', own: { greet1: ['와아, {me}님 왔다! 오늘도 반가워요.'], greet2: ['{me}님한테 어울리는 꽃을 생각하고 있었어요.'], greet3: ['{me}님! 오늘 제일 예쁜 꽃 드릴게요.'], giftLove: ['와아, {name}! 제가 제일 좋아하는 거예요. 꽃다발보다 좋아요!'], hit: ['아야! 꽃잎 다 떨어지겠어요!'] } }, // 봄이
@@ -306,7 +344,7 @@
     { reg: 'yo', own: { greet1: ['아, {me}님… 오늘 문장이 잘 써지는 날이랄까요…'], greet2: ['아, 저… {me}님 생각하면서 한 줄 썼달까요…'], greet3: ['{me}님이 오니까 이야기가 시작되는 느낌이랄까요…'], giftLove: ['아, 저… {name}, 제일 좋아하는 거예요. 소설에 꼭 쓸 거랄까요…'], giftLike: ['{name}… 고마워요. 잘 쓸 거랄까요…'], answerLiked: ['아, 저도요… 우리 꽤 잘 맞는달까요…'], hit: ['아, 아야… 원고 떨어뜨릴 뻔했달까요…'], levelUp1: ['아, 저… 이제 {me}님이랑 아는 사이랄까요…'], levelUp2: ['아, 저… {me}님이랑 많이 가까워졌달까요…'], levelUp3: ['{me}님은 제 이야기의 단짝이랄까요…'] } }, // 하람
     { reg: 'yo', tail: '붕붕', own: { greet1: ['흐음~ {me}님, 꿀처럼 달달한 하루예요.'], greet2: ['{me}님 오니까 벌들이 조용해졌어요.'], giftLove: ['흐음~ {name}! 제가 제일 좋아하는 거예요. 꿀보다 달아요!'], hit: ['아야! 벌들이 놀라겠어요!'] } }, // 두리
     { reg: 'grand', own: { greet1: ['아이고, {me} 왔구나. 밥은 먹었니, 얘야?'], greet2: ['{me|아|야}, 오늘은 다리 건너 쪽으로 걸어 보렴.'], greet3: ['우리 {me} 왔구나! 오늘도 얼굴이 좋구나, 얘야.'], giftLove: ['아이고, {name}! 내가 제일 좋아하는 거란다. 고맙구나, 얘야.'] } }, // 노을 할머니
-    { reg: 'hage', own: { greet1: ['흠… {me} 군, 여기 무언가 있다는 말이지.'], greet2: ['{me} 조수, 수상한 걸 봤나? 아직 없다는 말이지.'], greet3: ['{me}, 자네가 오면 사건이 풀린다는 말이지.'], giftLove: ['흠… {name}! 이건 내가 제일 좋아하는 거란 말이지. 고맙네.'], hit: ['사건이다! 탐정을 치다니, 이건 폭행 사건이란 말이지!'], answerLiked: ['흠, 나도 그렇다네. 우리 둘은 잘 맞는단 말이지.'], levelUp3: ['{me}, 이제 자네는 내 파트너란 말이지.'] } }, // 오 탐정
+    { reg: 'det', own: { greet1: ['흠… {me} 군, 여기 무언가 있다는 말이지.'], greet2: ['{me} 조수, 수상한 걸 봤나? 아직 없다는 말이지.'], greet3: ['{me}, 자네가 오면 사건이 풀린다는 말이지.'], giftLove: ['흠… {name}! 이건 내가 제일 좋아하는 거란 말이지. 고맙네.'], hit: ['사건이다! 탐정을 치다니, 이건 폭행 사건이란 말이지!'], answerLiked: ['흠, 나도 그렇다네. 우리 둘은 잘 맞는단 말이지.'], levelUp3: ['{me}, 이제 자네는 내 파트너란 말이지.'] } }, // 오 탐정
     { reg: 'yo', tail: '빵!', own: { greet1: ['{me}님! 오늘도 따끈한 하루예요.'], greet2: ['{me}님, 빵 냄새 나죠? 방금 구웠어요.'], giftLove: ['와, {name}! 제가 제일 좋아하는 거예요. 갓 구운 빵만큼 좋아요!'], hit: ['아야! 반죽 떨어뜨릴 뻔했어요!'] } }, // 다온
     { reg: 'yo', tail: '휙!', own: { greet1: ['{me}님 안녕! 지나갑니다.'], greet2: ['{me}님! 배달 가는 길이에요.'], giftLove: ['와, {name}! 제가 제일 좋아하는 거예요. 가방에 잘 넣을게요!'], hit: ['아야! 편지 떨어져요!'] } }, // 바람이
     { reg: 'yo', tail: '반짝…', own: { greet1: ['하암… {me}님, 오늘 밤엔 별이 많을 거예요.'], greet2: ['{me}님… 하암, 반가워요.'], giftLove: ['와… {name}! 제가 제일 좋아하는 거예요. 별만큼 좋아요.'], hit: ['아야… 잠이 확 깼어요.'] } }, // 이솔
@@ -325,7 +363,8 @@
     const out = [];
     for (const k of [].concat(key)) {
       const alts = [...(v.own?.[k] || []), ...(REG[v.reg][k] || [])]; if (!alts.length) continue;
-      const chosen = pick(alts, random); out.push(...[].concat(chosen));
+      const chosen = [].concat(pick(alts, random)); const [group, after] = FLAVOR_OF[k] || []; const own = group && FLAVOR[n]?.[group]; // (T2: their own word with it)
+      out.push(...(own ? (after ? [...chosen, own] : [own, ...chosen]) : chosen));
     }
     const filled = out.map((line) => Object.entries(vars).reduce((s, [name, word]) => (word == null ? s : slot(s, name, String(word))), line));
     if (filled.length) filled[filled.length - 1] = withTail(filled[filled.length - 1], n);
