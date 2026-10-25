@@ -22,8 +22,7 @@
   const DOCK = [3.24, -0.55, 0]; // the carriage's root in its platform's frame (the platform on the carriage's left)
   // a line's `side`: the doors' side of the way it runs (-1 left, the model as made; +1 right: the view line's stations are
   // on its right, so its carriage is drawn mirrored across its length -- doors, seats and all)
-  const DAL_STOPS = DAL ? { E: { name: '달끝역', a: (DAL.TRAIN.stations.east * 180) / Math.PI, r: 179, y: 14, lift: 1 }, I: { name: '툇마루역', a: 90, r: 175.5, y: 12, lift: 1 },
-    W: { name: '초승역', a: (DAL.TRAIN.stations.west * 180) / Math.PI, r: 179, y: 14, lift: -1 }, N: { name: '영웅마루역', a: 270, r: 165, y: 27, lift: 1 } } : null;
+  const DAL_STOPS = DAL ? Object.fromEntries(Object.entries({ E: '달끝역', I: '툇마루역', W: '초승역', N: '영웅마루역' }).map(([id, name]) => [id, { name, ...DAL.TRAIN.stops[id] }])) : null; // (v1.10.160: the stops' numbers in dalmaru-terrain, the ground levelled by them)
   const STATIONS = DAL ? Object.fromEntries(Object.entries(DAL_STOPS).map(([id, s]) => [id, { name: s.name }])) : { B: { name: '동해안역', entry: [99.78, -8.73] }, D: { name: '남서해안역', entry: [-83.1, 69.73] } };
   const LINES = {
     tour: { name: '관광 열차', side: DAL ? 1 : -1, order: DAL ? ['E', 'I', 'W', 'N'] : ['B', 'D'], trains: [{ id: 1, offset: 0 }, { id: 2, offset: 60 }, { id: 3, offset: 120 }, { id: 4, offset: 180 }] }, // (달마루섬: the platforms on the island's side)

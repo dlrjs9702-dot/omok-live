@@ -147,10 +147,21 @@
 
   // ---- the ground: dalmaru-terrain's, levelled under what stands and filled where the stairs meet the ridge ----
   const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
+  // (v1.10.160 역 터, 사용자 「땅 다지기」 -- not 156's lift raised to the highest ground on a stone plinth): each station's lift
+  // (its 2.4 m base) and the walkway to its way in, 1.5 m more all round, levelled at the middle height of the ground under
+  // them; the pads' 5 m bank meets the ground round it
+  function stationPad(id) {
+    const L = D.TRAIN.liftAt(id); const [ex, ez] = L.entry; const hs = [];
+    for (const dx of [-1.2, 0, 1.2]) for (const dz of [-1.2, 0, 1.2]) hs.push(D.landHeight(L.x + dx, L.z + dz));
+    for (let k = 1; k <= 8; k += 1) hs.push(D.landHeight(L.x + ((ex - L.x) * k) / 8, L.z + ((ez - L.z) * k) / 8));
+    hs.sort((a, b) => a - b); if (hs.at(-1) - hs[0] <= 0.05) return null; // (툇마루역: level already, the lots' ground)
+    return [(L.x + ex) / 2, (L.z + ez) / 2, Math.hypot(ex - L.x, ez - L.z) / 2 + 1.2 + 1.5, hs[hs.length >> 1]];
+  }
   const laneH = COTTAGES.reduce((a, c) => a + D.landHeight(c.x, c.z), 0) / COTTAGES.length; // (이웃골: the houses' pads one level, so the yards between them stay flat)
   const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], ...FARM.yard.plots.map(([x, z]) => [x, z, 6]) /* (3회차 15: the farm's plots level) */, [townhallWorld(0, 11.5).x, townhallWorld(0, 11.5).z, 10] /* (관공서 앞마당, level under its marble) */, ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
     ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5]),
-    ...HOME_LOTS.map((l) => [l.x, l.z, 7.2, 0.9]) /* (2회차 15: each lot level, its big house by the shore too) */]
+    ...HOME_LOTS.map((l) => [l.x, l.z, 7.2, 0.9]) /* (2회차 15: each lot level, its big house by the shore too) */,
+    ...Object.keys(D.TRAIN.stops).map(stationPad).filter(Boolean)]
     .map(([x, z, r, h]) => ({ x, z, r, h: h ?? D.landHeight(x, z) }));
   // 능선 계단 (assets 55 stairs.ridge): three flights of 7 m (9.52 m each) and two 3 m landings along the chord from its
   // foot to its top, against the cliff (its treads 0.2-3.2 m out from it)
