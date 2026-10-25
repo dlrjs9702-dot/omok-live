@@ -304,7 +304,7 @@ vec2 guv = (vGroundXZ - uPathBox.xy) / uPathBox.z; vec3 ca = texture2D(tCoverA, 
 float nz = (texture2D(tGrass, vGroundXZ / 9.0).r / 0.611 - 1.0) * 0.45 + (texture2D(tSand, vGroundXZ / 2.3).r / 0.701 - 1.0) * 0.18; // (검토 2차 2·3: the grain pictures' own randomness, coarse and fine -- a product of waves made a lattice)
 vec3 grass = diffuseColor.rgb; float snow = smoothstep(0.45, 0.7, min(grass.r, min(grass.g, grass.b)));
 #define KIND(w) smoothstep(0.24, 0.72, (w) + nz)
-float wet = smoothstep(${(SEA_PLANE_Y + 0.45).toFixed(2)}, ${(SEA_PLANE_Y + 0.08).toFixed(2)}, vWorldY);
+float wet = 1.0 - smoothstep(${(SEA_PLANE_Y + 0.08).toFixed(2)}, ${(SEA_PLANE_Y + 0.45).toFixed(2)}, vWorldY); // (Codex 검토 2차: edges low to high -- reversed is undefined in GLSL)
 vec3 col = mix(grass, grass * vec3(0.87, 0.93, 0.84), KIND(cb.g) * (1.0 - 0.6 * snow));
 col = mix(col, mix(uForest, grass, 0.75 * snow), KIND(ca.r) * 0.85);
 float speck = step(0.9, fract(sin(dot(floor(vGroundXZ * 5.0), vec2(12.9898, 78.233))) * 43758.5453));
@@ -314,7 +314,7 @@ col = mix(col, mix(uGravel, grass, 0.7 * snow), KIND(gravel));
 col = mix(col, mix(uRock, grass, 0.65 * snow), KIND(cb.r)); // (검토 2차 1: snow on the slopes too, a little less on the rock)
 col = mix(col, mix(mix(uSand, uWet, wet), grass, 0.6 * snow * (1.0 - wet)), smoothstep(0.4, 0.58, ca.b + 0.7 * nz)); // (검토 3차 1: the sand's edge a little crisper)
 #ifndef FLAT_SHADED
-col *= 1.0 - 0.22 * smoothstep(0.97, 0.82, (vec4(normalize(vNormal), 0.0) * viewMatrix).y); // (동산 검토: a bank's face a little in its own shade, so the steps read)
+col *= 1.0 - 0.22 * (1.0 - smoothstep(0.82, 0.97, (vec4(normalize(vNormal), 0.0) * viewMatrix).y)); // (동산 검토: a bank's face a little in its own shade, so the steps read)
 #endif
 diffuseColor.rgb = col; gw = vec2(1.0 - max(max(KIND(ca.g), KIND(cb.r)), max(KIND(gravel), KIND(ca.b))), KIND(ca.b));
 }`);

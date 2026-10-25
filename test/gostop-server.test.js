@@ -24,6 +24,7 @@ async function startServer(dataDir, port, preload) {
     try { if ((await fetch(`http://127.0.0.1:${port}/health`)).ok) return proc; } catch {}
     await new Promise(resolve => setTimeout(resolve, 100));
   }
+  proc.kill('SIGTERM'); // (2026-10-25: one that never came up was left running -- its piped output held the whole test run open for hours)
   throw new Error(`server failed: ${output}`);
 }
 

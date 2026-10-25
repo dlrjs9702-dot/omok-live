@@ -13,12 +13,14 @@
   <link rel="apple-touch-icon" href="/icons/messenger-192.png" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/messenger.css" />
+  <script src="/messenger-theme.js"></script>
 </head>
 <body class="messengerPage">
   <main class="mPage">
     <header class="mTop isle-paper">
       <strong class="mTitle">아일랜드 메신저</strong>
       <span class="mTopActions">
+        <label class="mThemePick">화면 <select id="mTheme" aria-label="화면 밝기"><option value="light">밝게</option><option value="dark">어둡게</option><option value="system">기기 설정 따르기</option></select></label>
         <button id="mInstallBtn" type="button" class="secondary tiny hidden">앱으로 설치</button>
         <button id="mPushBtn" type="button" class="secondary tiny hidden">알림 켜기</button>
         <button id="mDevicesBtn" type="button" class="ghost tiny hidden" aria-expanded="false" aria-controls="mDevices">로그인된 기기</button>

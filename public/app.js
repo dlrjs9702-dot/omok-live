@@ -1531,7 +1531,7 @@
         cell.setAttribute('aria-label', `${day}일${done.has(day) ? ' 출석' : ''}`); grid.append(cell);
       }
       const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(50000).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
-      btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); openAttendanceCard(true); });
+      btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); if (plazaDialog.open && plazaDialog.classList.contains('stampMode')) openAttendanceCard(true); }); // (Codex 검토 2차: closed or another window opened meanwhile -- not opened again)
       attendanceCard.replaceChildren(head, grid, btn);
     } catch (error) { attendanceCard.replaceChildren(el('p', 'emptyState', error.message)); }
   }
@@ -11534,9 +11534,18 @@
   const messenger = (() => {
     const msgBtn = byId('accountMessengerBtn'); const tab = byId('islandMessengerTab'); let on = false;
     const unreadOf = (rooms) => rooms.reduce((n, r) => n + (r.muted ? 0 : r.unread), 0);
+    // (사용자 2026-10-25 「섬 앱에서 누르면 크롬으로 열려」: the blank window used to find an open one is outside the installed
+    // app's scope, so the app handed it to the browser -- in the app, no blank one: the messenger itself in a small window,
+    // the one opened kept and brought forward)
+    const asApp = () => ['standalone', 'window-controls-overlay', 'minimal-ui'].some((m) => window.matchMedia?.(`(display-mode: ${m})`).matches) || navigator.standalone === true;
+    let opened = null;
     function open() { // (an open messenger window comes to the front as it is; a new one gets this tab's login with it)
-      let w = window.open('', 'gc-messenger');
-      try { if (!w || w.location.href === 'about:blank') w = window.open('/messenger', 'gc-messenger'); } catch { w = window.open('/messenger', 'gc-messenger'); }
+      let w;
+      if (asApp()) w = opened && !opened.closed ? opened : (opened = window.open('/messenger', 'gc-messenger', 'popup,width=440,height=780'));
+      else {
+        w = window.open('', 'gc-messenger');
+        try { if (!w || w.location.href === 'about:blank') w = window.open('/messenger', 'gc-messenger'); } catch { w = window.open('/messenger', 'gc-messenger'); }
+      }
       w?.focus(); try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {}
     }
     msgBtn.addEventListener('click', open); tab.addEventListener('click', open);

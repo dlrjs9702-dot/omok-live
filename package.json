@@ -1,6 +1,6 @@
 {
   "name": "omok-live",
-  "version": "1.10.156",
+  "version": "1.10.157",
   "private": true,
   "description": "입장 파일 + 공용 방/채팅 + 오목/오델로 기반 실시간 보드게임 서버",
   "main": "server.js",
@@ -11,7 +11,8 @@
     "test": "node --test --test-timeout=120000 --test-force-exit",
     "test:e2e": "node scripts/run-playwright.js",
     "test:e2e:ui": "node scripts/run-playwright.js --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:all": "npm test -- --test-concurrency=1 && npm run test:e2e"
   },
   "engines": {
     "node": ">=20"

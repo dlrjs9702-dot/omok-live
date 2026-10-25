@@ -87,4 +87,17 @@ test('R3: 선물 하루 한 번(좋아함 +3·싫어함 0·보통 +1, 가방에�
   assert.equal(((await req('/api/island/bag', a)).data.items.find((e) => e.itemId === 'fish_goby') || {}).qty, 1);
   const twice = await talk({ topic: 'gift', itemId: 'fish_goby' }); assert.match(twice.data.say[0], /벌써/); assert.equal(twice.data.affinity.points, 4);
   assert.match((await req('/api/island/affinity', a)).data.residents[n].memory, /망둥어/);
+  // (Codex 검토 2차 #7) the item taken, then the 호감도 failing: the retry finishes that gift -- choosing another item takes
+  // nothing more and pays that gift's 호감도, not the other's
+  const m = 2; const talk2 = async (body) => { for (let i = 0; i < 6; i += 1) { const w = Npcs.residentAt(m, Date.now(), null); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n: m, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  await req('/api/test/island/give', a, { itemId: 'fish_mackerel', qty: 1 });
+  const qty = async (id) => ((await req('/api/island/bag', a)).data.items.find((e) => e.itemId === id) || {}).qty || 0;
+  const pointsBefore = (await talk2({})).data.affinity.points;
+  await req('/api/test/affinity/fail-once', a, {});
+  assert.equal((await talk2({ topic: 'gift', itemId: 'fish_goby' })).status, 500);
+  assert.equal(await qty('fish_goby'), 0, '망둥어는 빠짐');
+  const retried = await talk2({ topic: 'gift', itemId: 'fish_mackerel' }); assert.equal(retried.status, 200, JSON.stringify(retried.data));
+  assert.equal(await qty('fish_mackerel'), 1, '다른 물건은 그대로');
+  assert.equal(retried.data.affinity.points, pointsBefore + A.giftReact(m, 'fish_goby', '망둥어').delta, '그 선물(망둥어)의 호감도');
+  assert.match((await talk2({ topic: 'gift', itemId: 'fish_mackerel' })).data.say[0], /벌써/);
 });

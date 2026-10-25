@@ -239,6 +239,11 @@ let assetPackVersion = '';
 
 function nowIso() { return new Date().toISOString(); }
 function nowMs() { return Date.now(); }
+// (Codex 검토 2차) gzip only when the browser takes it: `gzip;q=0` is a no
+function acceptsGzip(req) {
+  const q = {}; for (const part of String(req?.headers?.['accept-encoding'] || '').split(',')) { const [name, ...params] = part.trim().split(';'); const m = params.map((p) => /^\s*q=([\d.]+)\s*$/.exec(p)).find(Boolean); if (name) q[name.trim().toLowerCase()] = m ? Number(m[1]) : 1; }
+  return ('gzip' in q ? q.gzip : q['*'] ?? 0) > 0; // (gzip named wins over *)
+}
 function clientIp(req) {
   const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
   return forwarded || req.socket.remoteAddress || 'unknown';
@@ -384,7 +389,7 @@ async function serveVendor(req, res, pathname) {
       throw err;
     }
   }
-  const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  const gzip = acceptsGzip(req);
   const body = gzip ? entry.gz : entry.raw;
   res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.js'], 'Content-Length': body.length, ...cache, Vary: 'Accept-Encoding',
     ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
@@ -408,7 +413,7 @@ async function serveHwatu(req, res, relative) {
     }
     hwatuCache.set(relative, entry);
   }
-  const gzip = /\bgzip\b/.test(String(req?.headers?.['accept-encoding'] || ''));
+  const gzip = acceptsGzip(req);
   const body = gzip ? entry.gz : entry.raw;
   res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.svg'], 'Content-Length': body.length, 'Cache-Control': 'public, max-age=604800', Vary: 'Accept-Encoding',
     ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
@@ -424,7 +429,7 @@ function serveNpcGrid(req, res) {
   if (!npcGrid) { const raw = Buffer.from(IslandNpcs.packGrid()); npcGrid = { raw, gz: require('node:zlib').gzipSync(raw, { level: 9 }), etag: `"${crypto.createHash('sha1').update(raw).digest('hex').slice(0, 16)}"` }; }
   const cache = { 'Cache-Control': 'no-cache', ETag: npcGrid.etag };
   if (notModified(req, res, cache)) return;
-  const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  const gzip = acceptsGzip(req);
   const body = gzip ? npcGrid.gz : npcGrid.raw;
   res.writeHead(200, securityHeaders({ 'Content-Type': 'application/octet-stream', 'Content-Length': body.length, ...cache, Vary: 'Accept-Encoding', ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
   res.end(body);
@@ -763,7 +768,9 @@ async function issueDevice(keyId, name) {
   await worldEdit(async () => {
     const list = (await devicesNow()); const mine = list.filter((d) => d.keyId === keyId).sort((a, b) => a.at - b.at);
     const drop = new Set(mine.slice(0, Math.max(0, mine.length - DEVICES_MAX + 1)).map((d) => d.id));
-    await pointStore.setWorldValue('messengerDevices', [...list.filter((d) => !drop.has(d.id)), { id: crypto.randomUUID(), keyId, hash: deviceHash(token), name: String(name || '').slice(0, 40), at: nowMs(), exp: nowMs() + DEVICE_TTL_MS }]);
+    const kept = list.filter((d) => !drop.has(d.id)); const ids = new Set(kept.map((d) => d.id));
+    await pointStore.setWorldValue('messengerDevices', [...kept, { id: crypto.randomUUID(), keyId, hash: deviceHash(token), name: String(name || '').slice(0, 40), at: nowMs(), exp: nowMs() + DEVICE_TTL_MS }]);
+    await pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => ids.has(s.device))); // (Codex 검토 2차 #1: the 11th's pushed-out and the run-out ones' notices go too)
   });
   return token;
 }
@@ -779,7 +786,10 @@ const dropDevices = (keep) => worldEdit(async () => {
 const vapid = WebPush.vapidFromEnv(); const testPushes = [];
 async function pushNew(room, from, fromLabel, text) {
   const { to, payload } = WebPush.pushFor(room, from, fromLabel, text, new Set(messengerStreams.keys()));
-  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId)); if (!subs.length) return;
+  // (Codex 검토 2차 #1) only a device still logged in, of the same account: one run out (60 days), pushed out or logged out
+  // is told nothing (its subscription may outlive it in the store)
+  const live = new Map((await devicesNow()).map((d) => [d.id, d.keyId]));
+  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device) === s.keyId); if (!subs.length) return;
   const unread = new Map(await Promise.all(to.map(async (id) => [id, (await messengerStore.roomsOf(id)).reduce((n, r) => n + (r.muted.includes(id) ? 0 : Math.max(0, r.seq - (r.reads[id] || 0))), 0)])));
   const gone = [];
   for (const s of subs) {
@@ -1320,6 +1330,7 @@ async function jailTyped(session, text) {
   return { passed: true, say: IslandCast.keeperLine('warden', Math.random, level, String(session.label || '')) };
 }
 // (Codex 검토 #7) a day's mark on an islander (오늘의 이야기 'asked', 선물 'gifted') taken back when what it stood for failed
+let giftAffinityFails = false; // (tests only: /api/test/affinity/fail-once)
 const unmarkResmem = (account, key, n, day) => pointStore.questApply(account, 'resmem', (doc) => (doc?.[key]?.[n] === day ? { doc: { ...doc, [key]: { ...doc[key], [n]: null } } } : null)).catch(() => {});
 function jailFree(token) { if (jailInmates.delete(token)) jailFreed.add(token); jailEssays.delete(token); plazaDirty = true; }
 // B 47 생일: whose birthday it is today (not hidden), read from every account's 'birthday' doc -- again each Seoul day
@@ -3746,7 +3757,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.156' });
+    return sendJson(res, 200, { ok: true, version: '1.10.157' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3887,7 +3898,7 @@ async function requestHandler(req, res) {
     if (pathname === '/api/messenger/push' && req.method === 'POST') {
       if (!acct.device) return sendError(res, 409, 'DEVICE_NEEDED', '알림은 「이 기기에서 로그인 유지」로 로그인한 기기에서만 켤 수 있습니다.');
       const body = await parseJson(req); const sub = { endpoint: String(body.endpoint || ''), p256dh: String(body.p256dh || ''), auth: String(body.auth || '') };
-      if (!/^https:\/\//.test(sub.endpoint) || sub.endpoint.length > 1000 || Buffer.from(sub.p256dh, 'base64url').length !== 65 || Buffer.from(sub.auth, 'base64url').length !== 16) return sendError(res, 400, 'BAD_SUBSCRIPTION', '알림 등록 정보가 올바르지 않습니다.');
+      if (!WebPush.allowedEndpoint(sub.endpoint) || sub.endpoint.length > 1000 || Buffer.from(sub.p256dh, 'base64url').length !== 65 || Buffer.from(sub.auth, 'base64url').length !== 16) return sendError(res, 400, 'BAD_SUBSCRIPTION', '알림 등록 정보가 올바르지 않습니다.');
       await worldEdit(async () => pointStore.setWorldValue('messengerPush', [...((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== acct.device && s.endpoint !== sub.endpoint), { ...sub, keyId: key.id, device: acct.device, at: nowMs() }]));
       return sendJson(res, 200, { ok: true });
     }
@@ -4003,6 +4014,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return worldEdit(async () => { const h = await homeOf(account); if (h?.upgradeDay) { const next = { ...h, upgradeDay: '2000-01-01' }; await saveHome(account, next); broadcastIsland('homes', { lot: h.lot }); } return sendJson(res, 200, { ok: true }); });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity/fail-once' && req.method === 'POST') { giftAffinityFails = true; return sendJson(res, 200, { ok: true }); } // (Codex 검토 2차 #7: the next gift's 호감도 fails)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity' && req.method === 'POST') { // R2: 호감도 added as a talk would (the levels reached pay)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: Number(body.n), delta: Number(body.delta) }]);
@@ -4674,9 +4686,12 @@ async function requestHandler(req, res) {
     // R4 구치소: a visit's first pose -- one owing the tax (not passed today) starts in the cell
     // (Codex 검토 #4: left the island while an await ran -- `left` -- a late pose brings nothing back, the cell neither)
     const left = () => sessions.get(session.token) !== session || getCurrentRoom(session) || generation !== (session.plazaGeneration || 0);
-    if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token) && await jailable(session, account)) {
+    // (Codex 검토 2차 #3: whatever the answer -- one not owing either left while it was asked, and the rooms below are not to be
+    // put back for them)
+    if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token)) {
+      const owes = await jailable(session, account);
       if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
-      freeSeat(session.token); jailInside.add(session.token); jailInmates.add(session.token);
+      if (owes) { freeSeat(session.token); jailInside.add(session.token); jailInmates.add(session.token); }
     }
     // (사용자 제보 2026-10-25, 휴대폰: the visit dropped while I stood inside -- the stream gone a while, the phone put away --
     // a first pose from inside a room puts me back in it: the 백화점's floors, the open-to-all rooms off the island, and the
@@ -6527,22 +6542,35 @@ async function requestHandler(req, res) {
     if (topic === 'gift') {
       const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView(before[n] || 0), ...extra });
       const already = ['오늘은 벌써 선물을 받았어요. 마음만으로 충분해요!'];
-      if ((await pointStore.questDoc(account, 'resmem')).doc?.gifted?.[n] === day) return sendTalk(view(already));
+      const mem = (await pointStore.questDoc(account, 'resmem')).doc;
+      if (mem?.gifted?.[n] === day) return sendTalk(view(already));
+      // (Codex 검토 2차 #7) a gift whose item was taken but whose 호감도 failed: the retry finishes that gift -- that item, no
+      // second one taken -- whatever is chosen this time (the same request id must never pay for another item)
+      const owed = mem?.giftUsed?.[n]?.day === day ? mem.giftUsed[n] : null;
       const items = ((await pointStore.islandBag(account)).items || []).filter((e) => IslandAffinity.GIFTABLE(e.itemId)).map((e) => ({ itemId: e.itemId, name: IslandItems.ITEMS[e.itemId]?.name || e.itemId }));
-      if (body.itemId == null) return sendTalk(view([items.length ? '저한테 주려고요? 뭘까요?' : '가방에 줄 만한 게 없네요. 괜찮아요!'], { gifts: [...new Map(items.map((e) => [e.itemId, e])).values()].slice(0, 8) }));
-      const item = items.find((e) => e.itemId === String(body.itemId)); if (!item) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+      if (body.itemId == null && !owed) return sendTalk(view([items.length ? '저한테 주려고요? 뭘까요?' : '가방에 줄 만한 게 없네요. 괜찮아요!'], { gifts: [...new Map(items.map((e) => [e.itemId, e])).values()].slice(0, 8) }));
+      const item = owed ? { itemId: owed.itemId, name: IslandItems.ITEMS[owed.itemId]?.name || owed.itemId } : items.find((e) => e.itemId === String(body.itemId)); if (!item) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
       const react = IslandAffinity.giftReact(n, item.itemId, item.name);
       let fresh = false;
       await pointStore.questApply(account, 'resmem', (doc) => { if (doc?.gifted?.[n] === day) return { doc }; fresh = true; return { doc: { ...IslandAffinity.remember(doc, n, 'gift', item.name, day), gifted: { ...(doc?.gifted || {}), [n]: day } } }; });
       if (!fresh) return sendTalk(view(already));
       // (Codex 검토 #7) the item not taken (gone meanwhile) or the 호감도 failing: the day's mark is taken back -- the gift can
       // be given again (an item taken and then a failed 호감도 is the one way to lose it, and the chance comes back)
-      let used; let after;
+      let used; let after; let taken = Boolean(owed);
       try {
-        used = await pointStore.islandUse({ userId: account, requestId: `resgift-${n}-${day}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: item.itemId, resident: true });
-        if (used && used.applied === false && used.reason) { await unmarkResmem(account, 'gifted', n, day); return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.'); }
+        if (!owed) {
+          used = await pointStore.islandUse({ userId: account, requestId: `resgift-${n}-${day}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: item.itemId, resident: true });
+          if (used && used.applied === false && used.reason) { await unmarkResmem(account, 'gifted', n, day); return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.'); }
+          taken = true;
+        }
+        if (giftAffinityFails) { giftAffinityFails = false; throw new Error('test: 호감도 저장 실패'); }
         after = react.delta ? await pointStore.affinityAdd(account, day, [{ n, delta: react.delta }]) : await pointStore.affinityOf(account);
-      } catch (error) { await unmarkResmem(account, 'gifted', n, day); throw error; }
+      } catch (error) {
+        if (taken) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, gifted: { ...(doc?.gifted || {}), [n]: null }, giftUsed: { ...(doc?.giftUsed || {}), [n]: { day, itemId: item.itemId } } } })).catch(() => {});
+        else await unmarkResmem(account, 'gifted', n, day);
+        throw error;
+      }
+      if (owed) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, giftUsed: { ...(doc?.giftUsed || {}), [n]: null } } })).catch(() => {});
       return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after), ...(used?.bag ? { bag: used.bag } : {}) }));
     }
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
@@ -7562,7 +7590,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.156 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.157 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
