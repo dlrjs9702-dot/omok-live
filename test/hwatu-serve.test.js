@@ -36,6 +36,9 @@ test('공개 화투 그림은 압축·장기 캐시로 내려가고, 카드 이�
   assert.equal(plain.enc, 'gzip');
   assert.ok(plain.body.length < raw.length / 2, '압축되어 원본의 절반 미만');
   assert.deepEqual(zlib.gunzipSync(plain.body), raw);
+  // (Codex 검토 2차) what the browser takes: q=0 is a no, * counts unless gzip is named
+  const encOf = (accept) => new Promise((resolve, reject) => require('node:http').get(`${base}/hwatu/m08-gwang.svg`, { headers: { 'Accept-Encoding': accept } }, (res) => { res.resume(); resolve(res.headers['content-encoding'] || ''); }).on('error', reject));
+  for (const [accept, enc] of [['gzip;q=0', ''], ['gzip;q=0, *', ''], ['br, *;q=0.5', 'gzip'], ['GZIP;q=0.8', 'gzip'], ['identity', ''], ['', '']]) assert.equal(await encOf(accept), enc, accept);
   for (const bad of ['/hwatu/LICENSE.md', '/hwatu/../server.js', '/hwatu/M08-GWANG.svg', '/hwatu/none.svg']) {
     assert.notEqual((await fetch(base + bad)).status, 200, bad);
   }

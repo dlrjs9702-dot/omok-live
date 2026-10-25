@@ -239,6 +239,11 @@ let assetPackVersion = '';
 
 function nowIso() { return new Date().toISOString(); }
 function nowMs() { return Date.now(); }
+// (Codex 검토 2차) gzip only when the browser takes it: `gzip;q=0` is a no
+function acceptsGzip(req) {
+  const q = {}; for (const part of String(req?.headers?.['accept-encoding'] || '').split(',')) { const [name, ...params] = part.trim().split(';'); const m = params.map((p) => /^\s*q=([\d.]+)\s*$/.exec(p)).find(Boolean); if (name) q[name.trim().toLowerCase()] = m ? Number(m[1]) : 1; }
+  return ('gzip' in q ? q.gzip : q['*'] ?? 0) > 0; // (gzip named wins over *)
+}
 function clientIp(req) {
   const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
   return forwarded || req.socket.remoteAddress || 'unknown';
@@ -384,7 +389,7 @@ async function serveVendor(req, res, pathname) {
       throw err;
     }
   }
-  const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  const gzip = acceptsGzip(req);
   const body = gzip ? entry.gz : entry.raw;
   res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.js'], 'Content-Length': body.length, ...cache, Vary: 'Accept-Encoding',
     ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
@@ -408,7 +413,7 @@ async function serveHwatu(req, res, relative) {
     }
     hwatuCache.set(relative, entry);
   }
-  const gzip = /\bgzip\b/.test(String(req?.headers?.['accept-encoding'] || ''));
+  const gzip = acceptsGzip(req);
   const body = gzip ? entry.gz : entry.raw;
   res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.svg'], 'Content-Length': body.length, 'Cache-Control': 'public, max-age=604800', Vary: 'Accept-Encoding',
     ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
@@ -424,7 +429,7 @@ function serveNpcGrid(req, res) {
   if (!npcGrid) { const raw = Buffer.from(IslandNpcs.packGrid()); npcGrid = { raw, gz: require('node:zlib').gzipSync(raw, { level: 9 }), etag: `"${crypto.createHash('sha1').update(raw).digest('hex').slice(0, 16)}"` }; }
   const cache = { 'Cache-Control': 'no-cache', ETag: npcGrid.etag };
   if (notModified(req, res, cache)) return;
-  const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  const gzip = acceptsGzip(req);
   const body = gzip ? npcGrid.gz : npcGrid.raw;
   res.writeHead(200, securityHeaders({ 'Content-Type': 'application/octet-stream', 'Content-Length': body.length, ...cache, Vary: 'Accept-Encoding', ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
   res.end(body);

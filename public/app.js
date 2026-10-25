@@ -1531,7 +1531,7 @@
         cell.setAttribute('aria-label', `${day}일${done.has(day) ? ' 출석' : ''}`); grid.append(cell);
       }
       const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(50000).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
-      btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); openAttendanceCard(true); });
+      btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); if (plazaDialog.open && plazaDialog.classList.contains('stampMode')) openAttendanceCard(true); }); // (Codex 검토 2차: closed or another window opened meanwhile -- not opened again)
       attendanceCard.replaceChildren(head, grid, btn);
     } catch (error) { attendanceCard.replaceChildren(el('p', 'emptyState', error.message)); }
   }
