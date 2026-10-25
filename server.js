@@ -1325,6 +1325,7 @@ async function jailTyped(session, text) {
   return { passed: true, say: IslandCast.keeperLine('warden', Math.random, level, String(session.label || '')) };
 }
 // (Codex 검토 #7) a day's mark on an islander (오늘의 이야기 'asked', 선물 'gifted') taken back when what it stood for failed
+let giftAffinityFails = false; // (tests only: /api/test/affinity/fail-once)
 const unmarkResmem = (account, key, n, day) => pointStore.questApply(account, 'resmem', (doc) => (doc?.[key]?.[n] === day ? { doc: { ...doc, [key]: { ...doc[key], [n]: null } } } : null)).catch(() => {});
 function jailFree(token) { if (jailInmates.delete(token)) jailFreed.add(token); jailEssays.delete(token); plazaDirty = true; }
 // B 47 생일: whose birthday it is today (not hidden), read from every account's 'birthday' doc -- again each Seoul day
@@ -4008,6 +4009,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return worldEdit(async () => { const h = await homeOf(account); if (h?.upgradeDay) { const next = { ...h, upgradeDay: '2000-01-01' }; await saveHome(account, next); broadcastIsland('homes', { lot: h.lot }); } return sendJson(res, 200, { ok: true }); });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity/fail-once' && req.method === 'POST') { giftAffinityFails = true; return sendJson(res, 200, { ok: true }); } // (Codex 검토 2차 #7: the next gift's 호감도 fails)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity' && req.method === 'POST') { // R2: 호감도 added as a talk would (the levels reached pay)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: Number(body.n), delta: Number(body.delta) }]);
@@ -6535,22 +6537,35 @@ async function requestHandler(req, res) {
     if (topic === 'gift') {
       const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView(before[n] || 0), ...extra });
       const already = ['오늘은 벌써 선물을 받았어요. 마음만으로 충분해요!'];
-      if ((await pointStore.questDoc(account, 'resmem')).doc?.gifted?.[n] === day) return sendTalk(view(already));
+      const mem = (await pointStore.questDoc(account, 'resmem')).doc;
+      if (mem?.gifted?.[n] === day) return sendTalk(view(already));
+      // (Codex 검토 2차 #7) a gift whose item was taken but whose 호감도 failed: the retry finishes that gift -- that item, no
+      // second one taken -- whatever is chosen this time (the same request id must never pay for another item)
+      const owed = mem?.giftUsed?.[n]?.day === day ? mem.giftUsed[n] : null;
       const items = ((await pointStore.islandBag(account)).items || []).filter((e) => IslandAffinity.GIFTABLE(e.itemId)).map((e) => ({ itemId: e.itemId, name: IslandItems.ITEMS[e.itemId]?.name || e.itemId }));
-      if (body.itemId == null) return sendTalk(view([items.length ? '저한테 주려고요? 뭘까요?' : '가방에 줄 만한 게 없네요. 괜찮아요!'], { gifts: [...new Map(items.map((e) => [e.itemId, e])).values()].slice(0, 8) }));
-      const item = items.find((e) => e.itemId === String(body.itemId)); if (!item) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+      if (body.itemId == null && !owed) return sendTalk(view([items.length ? '저한테 주려고요? 뭘까요?' : '가방에 줄 만한 게 없네요. 괜찮아요!'], { gifts: [...new Map(items.map((e) => [e.itemId, e])).values()].slice(0, 8) }));
+      const item = owed ? { itemId: owed.itemId, name: IslandItems.ITEMS[owed.itemId]?.name || owed.itemId } : items.find((e) => e.itemId === String(body.itemId)); if (!item) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
       const react = IslandAffinity.giftReact(n, item.itemId, item.name);
       let fresh = false;
       await pointStore.questApply(account, 'resmem', (doc) => { if (doc?.gifted?.[n] === day) return { doc }; fresh = true; return { doc: { ...IslandAffinity.remember(doc, n, 'gift', item.name, day), gifted: { ...(doc?.gifted || {}), [n]: day } } }; });
       if (!fresh) return sendTalk(view(already));
       // (Codex 검토 #7) the item not taken (gone meanwhile) or the 호감도 failing: the day's mark is taken back -- the gift can
       // be given again (an item taken and then a failed 호감도 is the one way to lose it, and the chance comes back)
-      let used; let after;
+      let used; let after; let taken = Boolean(owed);
       try {
-        used = await pointStore.islandUse({ userId: account, requestId: `resgift-${n}-${day}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: item.itemId, resident: true });
-        if (used && used.applied === false && used.reason) { await unmarkResmem(account, 'gifted', n, day); return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.'); }
+        if (!owed) {
+          used = await pointStore.islandUse({ userId: account, requestId: `resgift-${n}-${day}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: item.itemId, resident: true });
+          if (used && used.applied === false && used.reason) { await unmarkResmem(account, 'gifted', n, day); return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.'); }
+          taken = true;
+        }
+        if (giftAffinityFails) { giftAffinityFails = false; throw new Error('test: 호감도 저장 실패'); }
         after = react.delta ? await pointStore.affinityAdd(account, day, [{ n, delta: react.delta }]) : await pointStore.affinityOf(account);
-      } catch (error) { await unmarkResmem(account, 'gifted', n, day); throw error; }
+      } catch (error) {
+        if (taken) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, gifted: { ...(doc?.gifted || {}), [n]: null }, giftUsed: { ...(doc?.giftUsed || {}), [n]: { day, itemId: item.itemId } } } })).catch(() => {});
+        else await unmarkResmem(account, 'gifted', n, day);
+        throw error;
+      }
+      if (owed) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, giftUsed: { ...(doc?.giftUsed || {}), [n]: null } } })).catch(() => {});
       return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after), ...(used?.bag ? { bag: used.bag } : {}) }));
     }
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
