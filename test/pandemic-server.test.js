@@ -92,14 +92,15 @@ test('팬데믹 API: 3인 시작, 더미 순서 비공개, 차례 밖 행동 거
   assert.ok([200, 204].includes(leave.status) || leave.status < 500);
 });
 
-test('팬데믹은 협력 게임: 승리하면 모두 승, 패배(승자 없음)하면 모두 패로 전적이 만들어지고 참가 포인트는 승자 없음으로 정산된다', () => {
+test('팬데믹은 협력 게임(G-포인트): 이겨도 져도 포인트·전적 없음', () => {
   const { buildMatchResult, winningSeats } = require('../lib/match-result');
+  const { pointPolicy } = require('../lib/games');
   const room = (game) => ({ id: 'room-1', gameType: 'pandemic', players: { 1: 't1', 2: 't2', 3: null, 4: null },
     participants: { t1: { guestKeyId: 'g-1' }, t2: { guestKeyId: 'g-2' } }, game });
-  const won = buildMatchResult(room({ status: 'finished', winner: ['1', '2'], round: 1, seatOrder: ['1', '2'] }));
-  assert.deepEqual(won.outcomes.map(o => o.result), ['win', 'win']);
-  const lost = room({ status: 'finished', winner: [], round: 2, seatOrder: ['1', '2'] });
-  assert.deepEqual(buildMatchResult(lost).outcomes.map(o => o.result), ['loss', 'loss']);
-  assert.deepEqual(winningSeats(lost), [], '승자가 없으면 참가 포인트 풀은 소각');
-  assert.deepEqual(winningSeats(room({ status: 'finished', winner: ['1', '2'], round: 1, seatOrder: ['1', '2'] })), ['1', '2']);
+  assert.equal(pointPolicy('pandemic'), 'none');
+  for (const winner of [['1', '2'], []]) {
+    const r = room({ status: 'finished', winner, round: 1, seatOrder: ['1', '2'] });
+    assert.equal(buildMatchResult(r), null);
+    assert.deepEqual(winningSeats(r), []);
+  }
 });

@@ -25,7 +25,8 @@ test('registered adapter has game-center metadata, seat order and expected publi
   assert.equal(JSON.stringify(game.publicState(state)).includes('비밀-비행기'), false);
 });
 
-test('two round results map cumulative winning seats to permanent records, including ties', () => {
+// (G-포인트: a party game -- the engine still names its winners, but no permanent record is made of them)
+test('two round results give cumulative winning seats, including ties (no permanent record)', () => {
   const state = start('individual', 2, ['1', '2']);
   game.setSecret(state, '1', '첫 문제');
   game.submitGuess(state, '2', '첫 문제');
@@ -45,19 +46,13 @@ test('two round results map cumulative winning seats to permanent records, inclu
       'token-two': { recordId: 'player-two' },
     },
   };
-  const record = buildMatchResult(room, '2026-09-23T00:00:00.000Z');
-  assert.equal(record.gameType, 'twentyquestions');
-  assert.equal(record.id, 'twenty-test-room:1');
-  assert.deepEqual(record.outcomes, [
-    { id: 'player-one', result: 'win' },
-    { id: 'player-two', result: 'win' },
-  ]);
+  assert.equal(buildMatchResult(room, '2026-09-23T00:00:00.000Z'), null);
   game.reset(state);
   assert.equal(state.status, 'selecting');
   assert.equal(state.round, 2);
 });
 
-test('a voided final round preserves prior scores and permanent match winners', () => {
+test('a voided final round preserves prior scores and match winners', () => {
   const state = start('individual', 2, ['1', '2', '3']);
   game.setSecret(state, '1', '첫 문제');
   game.submitGuess(state, '2', '첫 문제');
@@ -76,14 +71,10 @@ test('a voided final round preserves prior scores and permanent match winners', 
     players: { '1': 'a', '2': 'b', '3': 'c' },
     participants: { a: { recordId: 'a-id' }, b: { recordId: 'b-id' }, c: { recordId: 'c-id' } },
   };
-  assert.deepEqual(buildMatchResult(room).outcomes, [
-    { id: 'a-id', result: 'loss' },
-    { id: 'b-id', result: 'win' },
-    { id: 'c-id', result: 'loss' },
-  ]);
+  assert.equal(buildMatchResult(room), null);
 });
 
-test('cooperative final result includes all successful challengers in match history', () => {
+test('cooperative final result includes all successful challengers as winners', () => {
   const state = start('cooperative', 1);
   game.setSecret(state, '1', '비행기');
   game.submitGuess(state, '2', '비행기');
@@ -95,9 +86,5 @@ test('cooperative final result includes all successful challengers in match hist
     players: { '1': 'a', '2': 'b', '3': 'c' },
     participants: { a: { recordId: 'a-id' }, b: { recordId: 'b-id' }, c: { recordId: 'c-id' } },
   };
-  assert.deepEqual(buildMatchResult(room).outcomes, [
-    { id: 'a-id', result: 'loss' },
-    { id: 'b-id', result: 'win' },
-    { id: 'c-id', result: 'win' },
-  ]);
+  assert.equal(buildMatchResult(room), null);
 });

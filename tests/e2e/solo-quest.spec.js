@@ -24,7 +24,7 @@ test('지뢰찾기: 로비 「지뢰찾기」 → 난이도·판, 오른쪽 클�
   await page.locator('[data-game-mode="single"]').click(); // v1.10.63: 지뢰찾기 is under 싱글게임
   await page.locator('#soloMinesBtn').click();
   await expect(page.locator('#minesDialog')).toBeVisible();
-  await expect(page.locator('#minesLevels button')).toHaveText(['초급 2,000P', '중급 4,000P', '고급 8,000P']);
+  await expect(page.locator('#minesLevels button')).toHaveText(['초급', '중급', '고급']);
   await expect(page.locator('#minesBoard .minesCell')).toHaveCount(81);
   const cell = (i) => page.locator(`#minesBoard .minesCell[data-i="${i}"]`);
   await cell(40).click();
@@ -42,9 +42,9 @@ test('지뢰찾기: 로비 「지뢰찾기」 → 난이도·판, 오른쪽 클�
     if (/클리어/.test(await page.locator('#minesStatus').textContent())) break;
   }
   await expect(page.locator('#minesStatus')).toContainText('클리어');
-  await expect(page.locator('#minesStatus')).toContainText('+2,000P');
+  await expect(page.locator('#minesStatus')).toContainText('클리어');
   await expect(page.locator('#minesBest')).toContainText('최고');
-  expect((await get(request, '/api/points', token)).data.balance).toBe(before + 2000);
+  expect((await get(request, '/api/points', token)).data.balance).toBe(before); // (G-포인트: no points)
   await page.locator('#minesCloseBtn').click();
   await expectNoScriptError(page);
   await a.context.close();

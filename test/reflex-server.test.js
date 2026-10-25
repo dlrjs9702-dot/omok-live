@@ -67,14 +67,14 @@ test('순발력 기록: PostgreSQL 저장소 — 같은 동작', async (t) => {
   await storeBehaves(store);
 });
 
-test('순발력 API: 판을 열고 한 번만 보고, 너무 빠르거나 적으면 0P, 잘못된 점수 거부', async (t) => {
+test('순발력 API: 판을 열고 한 번만 보고, 포인트 없이 기록만(G-포인트), 잘못된 점수 거부', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'reflex-server-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('순발력')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;
   const info = (await req('/api/solo/reflex', sa)).data;
-  assert.deepEqual([info.points.hard, info.cap, info.today], [2000, 20000, 0]);
+  assert.deepEqual([info.points, info.cap, info.today], [undefined, undefined, undefined]);
   assert.deepEqual(Object.keys(info.records), ['whack', 'reaction', 'colorfind', 'numbers', 'rhythm', 'stairs']);
   assert.equal((await req('/api/solo/reflex/start', sa, { game: 'whack', level: 'huge' })).status, 400);
   const round = async (game, level, ageMs) => {
@@ -90,8 +90,8 @@ test('순발력 API: 판을 열고 한 번만 보고, 너무 빠르거나 적으
   assert.equal((await req('/api/solo/reflex/finish', sa, { id: fake, score: 1e9 })).status, 400);
   const real = await round('whack', 'hard', 31000);
   const done = (await req('/api/solo/reflex/finish', sa, { id: real, score: 500 })).data;
-  assert.deepEqual([done.verdict, done.points, done.best, done.today], ['ok', 2000, 500, 2000]);
-  assert.equal(await balance(), start + 2000);
+  assert.deepEqual([done.verdict, done.points, done.best], ['ok', undefined, 500]);
+  assert.equal(await balance(), start);
   assert.equal((await req('/api/solo/reflex/finish', sa, { id: real, score: 900 })).status, 409, '한 번만');
   const lazy = await round('colorfind', 'easy', 61000);
   assert.deepEqual([(await req('/api/solo/reflex/finish', sa, { id: lazy, score: 2 })).data.verdict], ['low']);
@@ -99,6 +99,6 @@ test('순발력 API: 판을 열고 한 번만 보고, 너무 빠르거나 적으
   const mine = await round('reaction', 'normal', 20000);
   assert.equal((await req('/api/solo/reflex/finish', other, { id: mine, score: 250 })).status, 409, '남의 판');
   const after = (await req('/api/solo/reflex', sa)).data;
-  assert.equal(after.today, 2000);
+  assert.equal(await balance(), start);
   assert.deepEqual(after.records.whack, { hard: { best: 500, clears: 2 } });
 });

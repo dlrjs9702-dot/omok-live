@@ -2150,7 +2150,7 @@
   }
   function renderMines() {
     const levels = document.getElementById('minesLevels'); levels.replaceChildren();
-    for (const l of mines.levels) { const b = document.createElement('button'); b.type = 'button'; b.dataset.level = l.id; b.className = l.id === mines.level ? 'secondary' : 'ghost'; b.textContent = `${l.label} ${l.points.toLocaleString('ko-KR')}P`; levels.append(b); }
+    for (const l of mines.levels) { const b = document.createElement('button'); b.type = 'button'; b.dataset.level = l.id; b.className = l.id === mines.level ? 'secondary' : 'ghost'; b.textContent = l.label; levels.append(b); }
     const v = mines.view; const best = mines.records?.[mines.level]?.best;
     document.getElementById('minesBest').textContent = best ? `최고 ${clockText(best)}` : '';
     if (!v) { minesBoard.replaceChildren(); return; }
@@ -2181,8 +2181,8 @@
       mines.view = data.view; mines.shownAt = Date.now();
       if (data.view.status === 'won') {
         const r = data.result;
-        if (r) { mines.records[mines.level] = { best: r.best, clears: r.clears }; if (r.points) loadPoints(); }
-        minesStatus.textContent = `클리어 ${clockText(data.view.ms)}${r?.newBest ? ' · 최고 기록' : ''}${r?.points ? ` · +${r.points.toLocaleString('ko-KR')}P` : ''}`;
+        if (r) mines.records[mines.level] = { best: r.best, clears: r.clears };
+        minesStatus.textContent = `클리어 ${clockText(data.view.ms)}${r?.newBest ? ' · 최고 기록' : ''}`;
       } else if (data.view.status === 'lost') minesStatus.textContent = '펑! 난이도를 눌러 다시 시작';
       renderMines();
     } catch (error) { showToast(error.message); if (error.status === 409) { mines.id = null; mines.view = null; renderMines(); } }
@@ -4508,10 +4508,17 @@
   // v1.10.72 게임방 AI 자리: offered for 오목 1vs1 · 사목 · 오델로 (an AI room is private practice: no points, no record)
   // (looked up each time: selectGame may run before this point at start-up)
   const roomAiLevel = () => (document.getElementById('roomAiChoices').classList.contains('hidden') ? '' : document.querySelector('input[name="roomAi"]:checked')?.value || '');
+  // G-포인트: 「내기 1,000P」 for a game against each other with a person (the server's pointPolicy 'entry' games); the rest
+  // settle their own way (고스톱) or have no points (party, co-op, 잿빛 원정)
+  // (inside the function, not a const beside it: selectGame may run before this point at start-up)
+  const roomStakes = () => !document.getElementById('roomStakesChoices').classList.contains('hidden') && document.querySelector('input[name="roomStakes"]:checked')?.value === '1';
   function syncRoomAiChoices() {
-    document.getElementById('roomAiChoices').classList.toggle('hidden', !(['connect4', 'othello'].includes(selectedGameType) || (selectedGameType === 'omok' && omokMode() === '1v1')));
+    const ai = document.getElementById('roomAiChoices');
+    ai.classList.toggle('hidden', !(['connect4', 'othello'].includes(selectedGameType) || (selectedGameType === 'omok' && omokMode() === '1v1')));
+    const withAi = !ai.classList.contains('hidden') && Boolean(document.querySelector('input[name="roomAi"]:checked')?.value);
+    document.getElementById('roomStakesChoices').classList.toggle('hidden', ['gostop', 'rpg', 'pictionary', 'liar', 'twentyquestions', 'pandemic'].includes(selectedGameType) || withAi);
   }
-  for (const radio of document.querySelectorAll('input[name="omokMode"]')) radio.addEventListener('change', syncRoomAiChoices);
+  for (const radio of document.querySelectorAll('input[name="omokMode"], input[name="roomAi"]')) radio.addEventListener('change', syncRoomAiChoices);
   async function createRoom() {
     try {
       const ai = roomAiLevel();
@@ -4524,6 +4531,7 @@
         ...(selectedGameType === 'baseball' ? { digitCount } : {}),
         ...(selectedGameType === 'gostop' ? { pointsPerScore: Number(document.querySelector('input[name="gostopStake"]:checked')?.value || 100) } : {}),
         ...(ai ? { ai } : {}),
+        ...(roomStakes() ? { stakes: true } : {}),
       }) });
       roomTitleInput.value = '';
       enterRoomState(data.state);
@@ -4593,7 +4601,7 @@
       const name = document.createElement('strong');
       name.textContent = room.title || `${room.host || '방장'}의 ${displayedGame}방`;
       const info = document.createElement('small');
-      info.textContent = `선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
+      info.textContent = `선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명${room.stakes ? ' · 내기 1,000P' : ''}`; // (G-포인트)
       main.append(head, name, info);
       const enter = document.createElement('button');
       enter.type = 'button';
@@ -7732,9 +7740,10 @@
     roomPointBadge.classList.toggle('hidden', myPoints === null || myPoints === undefined);
     if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
     // v1.7.3: the room's point rule beside my balance (server-provided, never computed here).
-    const pointRule = state.points?.policy === 'entry' ? `참가 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P · 승자 ${100 - state.points.burnPercent}%`
+    const pointRule = state.points?.policy === 'entry' ? `내기 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P · 승자 ${100 - state.points.burnPercent}%`
       : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각`
-      : state.points?.policy === 'practice' ? 'AI 연습 · 포인트·전적 없음' : ''; // v1.10.72
+      : state.points?.policy === 'practice' ? 'AI 연습 · 포인트·전적 없음' // v1.10.72
+      : state.points?.policy === 'friendly' ? '친선 · 포인트 없음' : state.points?.policy === 'none' ? '포인트·전적 없음' : ''; // (G-포인트)
     roomPointRule.classList.toggle('hidden', !pointRule);
     roomPointRule.textContent = pointRule;
     roomPointRule.title = state.points?.policy === 'entry'

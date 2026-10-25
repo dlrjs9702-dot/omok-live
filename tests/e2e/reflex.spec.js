@@ -2,8 +2,8 @@ const { test, expect } = require('@playwright/test');
 const { get, post, shopper, expectNoScriptError } = require('./skin-support');
 
 // v1.10.68 순발력 게임 (한판마당 자료): 싱글게임 → 「순발력 게임」 → 다섯 게임 목록 → 반응속도 다섯 라운드를 실제로 하고
-// 결과·포인트, 판 중간에 그만두면 보고하지 않음, 나가면 아일랜드로. PC(마우스·Esc)와 휴대폰(터치) 모두.
-test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → 뒤로', async ({ browser, request, isMobile }) => {
+// 결과·최고 기록(G-포인트: 포인트 없음), 판 중간에 그만두면 보고하지 않음, 나가면 아일랜드로. PC(마우스·Esc)와 휴대폰(터치) 모두.
+test('순발력 게임: 목록 → 반응속도 완주 → 결과·최고 기록(포인트 없음) → 뒤로', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const a = await shopper(browser, request, '번개손');
   const { page, token } = a;
@@ -11,11 +11,11 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → �
   await page.locator('#soloReflexBtn').click();
   await expect(page.locator('#reflexView')).toBeVisible();
   await expect(page.locator('.reflexCard strong')).toHaveText(['두더지 잡기', '반응속도', '다른 색 찾기', '숫자 터치', '비트 탭', '하늘 계단']);
-  await expect(page.locator('.reflexToday')).toHaveText('오늘 받은 포인트 0P / 20,000P');
+  await expect(page.locator('.reflexToday')).toHaveText('내 최고 기록이 남아요');
 
   // a round left in the middle: back to the game, nothing reported
   await page.locator('.reflexCard', { hasText: '두더지 잡기' }).click();
-  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움 · 1,000P', '보통 · 1,500P', '어려움 · 2,000P']);
+  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움', '보통', '어려움']);
   await page.locator('.reflexGo').click();
   await expect(page.locator('#hud')).toBeVisible();
   await page.locator('#reflexQuitBtn').click();
@@ -41,11 +41,11 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → �
   }
   await expect(page.locator('#reflexResult')).toBeVisible();
   await expect(page.locator('.reflexScore')).toHaveText(/^\d+ms$/);
-  await expect(page.locator('.reflexPaid')).toContainText('+1,500P');
-  expect((await get(request, '/api/points', token)).data.balance).toBe(before + 1500);
+  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
+  expect((await get(request, '/api/points', token)).data.balance).toBe(before);
 
   await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();
-  await expect(page.locator('.reflexToday')).toHaveText('오늘 받은 포인트 1,500P / 20,000P');
+  await expect(page.locator('.reflexToday')).toHaveText('내 최고 기록이 남아요');
   if (isMobile) await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
   else await page.keyboard.press('Escape');
   await expect(page.locator('#reflexView')).toBeHidden();
@@ -54,15 +54,15 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → �
 });
 
 // R7 하늘 계단 (IDEAS #future-stair-dash): two buttons -- PC ← →, a phone the screen's halves -- climb 35 steps the right
-// way, then the wrong way is a slip: the round ends with its steps, and the server pays it (보통 2,500P, 30 steps and up,
-// no faster than ten steps a second)
-test('하늘 계단: 두 버튼으로 35계단 → 헛디딤 → 결과·+2,500P', async ({ browser, request, isMobile }) => {
+// way, then the wrong way is a slip: the round ends with its steps, and the server keeps it (G-포인트: no points; no
+// faster than ten steps a second)
+test('하늘 계단: 두 버튼으로 35계단 → 헛디딤 → 결과·최고 기록', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const a = await shopper(browser, request, isMobile ? '계단손m' : '계단손'); const { page, token } = a;
   await page.locator('[data-game-mode="single"]').click();
   await page.locator('#soloReflexBtn').click();
   await page.locator('.reflexCard', { hasText: '하늘 계단' }).click();
-  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움 · 1,500P', '보통 · 2,500P', '어려움 · 4,000P']); // (사용자 2026-10-25, 경제 값 solo:stairs)
+  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움', '보통', '어려움']);
   const before = (await get(request, '/api/points', token)).data.balance;
   await page.locator('.reflexGo').click();
   await expect(page.locator('#hud')).toBeVisible();
@@ -77,8 +77,8 @@ test('하늘 계단: 두 버튼으로 35계단 → 헛디딤 → 결과·+2,500P
   await press(-(await peek()).next); // the wrong way
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 }).catch(async (error) => { error.message += `\n${JSON.stringify(await page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return { state: E.state, peek: E.game?.peek?.(), t: E.t }; }))} ${errs.slice(0, 3).join(' | ')}`; throw error; });
   await expect(page.locator('.reflexScore')).toHaveText(/^35/);
-  await expect(page.locator('.reflexPaid')).toContainText('+2,500P');
-  expect((await get(request, '/api/points', token)).data.balance).toBe(before + 2500);
+  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
+  expect((await get(request, '/api/points', token)).data.balance).toBe(before);
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -97,7 +97,7 @@ test('퍼즐: 스도쿠 오늘의 문제를 키보드로 풀면 서버가 정답
   await expect(page.locator('.reflexCard strong')).toHaveText(['스도쿠', '네모로직', '다리 잇기', '회로 연결']);
   await page.locator('.reflexCard', { hasText: '스도쿠' }).click();
   await expect(page.locator('.reflexModes .reflexLevel[aria-checked="true"]')).toHaveText('오늘의 문제');
-  await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel').first()).toHaveText('쉬움 · 2,000P');
+  await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel').first()).toHaveText('쉬움');
   // v1.10.70 (Codex review): the first send fails -- the solved board stays in this account's 보낼 기록함 and goes again
   let blocked = false;
   await page.route('**/api/solo/puzzle/finish', (route) => { if (blocked) return route.continue(); blocked = true; return route.abort(); });
@@ -162,7 +162,7 @@ test('카드 게임: 스파이더를 끝까지 두면 서버가 다시 두어 �
   await page.locator('#soloCardsBtn').click();
   await expect(page.locator('.reflexCard strong')).toHaveText(['카드놀이', '프리셀', '스파이더 카드놀이']);
   await page.locator('.reflexCard', { hasText: '카드놀이' }).first().click();
-  await expect(page.locator('.reflexLevel')).toHaveText(['1장 넘기기 · 2,000P', '3장 넘기기 · 4,000P']);
+  await expect(page.locator('.reflexLevel')).toHaveText(['1장 넘기기', '3장 넘기기']);
   await page.locator('.reflexHead button', { hasText: '목록' }).click();
   await page.locator('.reflexCard', { hasText: '스파이더' }).click();
   let won = false;
@@ -198,7 +198,7 @@ test('카드 게임: 스파이더를 끝까지 두면 서버가 다시 두어 �
   }
   expect(won).toBe(true);
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.reflexPaid')).toHaveText(/이번 판은 포인트가 없어요/);
+  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
   expect((await get(request, '/api/solo/cards', token)).data.records.spider.easy.clears).toBe(1);
   await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();
   await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
@@ -246,7 +246,7 @@ test('카드놀이: 게임이 스스로 마무리한 판도 서버가 다시 두
   }
   expect(won).toBe(true);
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.reflexPaid')).toHaveText(/이번 판은 포인트가 없어요/);
+  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
   expect((await get(request, '/api/solo/cards', token)).data.records.klondike.easy.clears).toBe(1);
   await expectNoScriptError(page);
   await a.context.close();
@@ -261,7 +261,7 @@ test('AI 대전: 오목을 두면 AI가 받아 두고, 연습이라 서버로 �
   await page.locator('[data-game-mode="single"]').click();
   await page.locator('#soloAiBtn').click();
   await expect(page.locator('.reflexCard strong')).toHaveText(['오목', '사목', '오델로']);
-  await expect(page.locator('.reflexToday')).toHaveText('연습 · 포인트 없음');
+  await expect(page.locator('.reflexToday')).toHaveText('연습 · 기록 없음');
   await page.locator('.reflexCard', { hasText: '오목' }).click();
   await expect(page.locator('.reflexModes').first().locator('.reflexLevel')).toHaveText(['렌주룰', '3수 교환 · 5수 2타']);
   await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel')).toHaveText(['AI 쉬움', 'AI 보통', 'AI 어려움']);

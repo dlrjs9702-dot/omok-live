@@ -75,8 +75,6 @@ const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
-// a 순발력 round's pay by level -- 하늘 계단's own (R7, 사용자 2026-10-25: the economy table's solo:stairs), the rest shared
-const reflexPoints = (game, level) => (game === 'stairs' ? Economy.value(`solo:stairs:${level}`) : Reflex.POINTS[level]);
 require('./lib/island-items').setPriceHook(Economy.priceOf);
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
@@ -832,6 +830,7 @@ function publicRoomSummary(room) {
   return {
     id: room.id, gameType: room.gameType, gameName: engine?.name || '게임',
     title: room.title || null,
+    stakes: roomPolicy(room) === 'entry', // (G-포인트: a 「내기 1,000P」 room)
     host: host.label || '방장',
     playerCount: isNumberedSeatGame(room) ? seatsFor(room).filter(seat => room.players[seat]).length
       : Number(Boolean(room.players.black)) + Number(Boolean(room.players.white)),
@@ -1751,6 +1750,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     visibility,
     gameType: gameEngine.id,
     title: options.title || '',
+    stakes: Boolean(options.stakes), // G-포인트: 「내기 1,000P」 (roomPolicy)
     createdAt: t,
     updatedAt: t,
     hostSessionToken: hostSession.token,
@@ -2215,14 +2215,22 @@ function publicParticipants(room) {
     .sort((a, b) => Number(b.isHost) - Number(a.isHost) || a.label.localeCompare(b.label, 'ko'));
 }
 
+// G-포인트 (gamehall-audit-20261025 「갈래별로 나눠 빼기」): a game that pays the common entry is friendly (no points; its
+// win, loss and ranking kept) unless the room was made with 「내기 1,000P」 on (room.stakes); 고스톱 settles as before, the
+// party and co-op games have none (lib/games `points: 'none'`), an AI room is practice
+function roomPolicy(room) {
+  if (room.ai) return 'practice';
+  const policy = pointPolicy(room.gameType);
+  return policy === 'entry' && !room.stakes ? 'friendly' : policy;
+}
 function publicRoom(room) {
   const live = uniqueLiveTokens(room.id);
   const gameEngine = getGame(room.gameType) || getGame('omok');
   return {
     // v1.7.3: the room's point rule and this game's entry state (no balances, no account ids).
     // v1.10.72: an AI room is free practice (Codex review: it showed the entry rule it does not charge)
-    points: { policy: room.ai ? 'practice' : pointPolicy(room.gameType), entryFee: !room.ai && pointPolicy(room.gameType) === 'entry' ? ENTRY_FEE : 0,
-      burnPercent: room.ai ? 0 : pointPolicy(room.gameType) === 'entry' ? ENTRY_BURN_PERCENT : pointPolicy(room.gameType) === 'settlement' ? SETTLEMENT_BURN_PERCENT : 0,
+    points: { policy: roomPolicy(room), entryFee: roomPolicy(room) === 'entry' ? ENTRY_FEE : 0,
+      burnPercent: roomPolicy(room) === 'entry' ? ENTRY_BURN_PERCENT : roomPolicy(room) === 'settlement' ? SETTLEMENT_BURN_PERCENT : 0,
       entry: room.entry ? { n: room.entry.n, status: room.entry.status, fee: room.entry.fee, pool: room.entry.pool, players: room.entry.participants.length,
         each: room.entry.each ?? null, winners: room.entry.winnerCount ?? null, burned: room.entry.burned ?? null } : null },
     visibility: room.visibility,
@@ -2651,7 +2659,7 @@ async function applyGostopSettlement(room, match) {
 // system could not finish the game. Every step has its own store id, so retries, duplicate
 // finishes and reconnects can never charge, pay or refund twice.
 function entrySnapshot(room) {
-  if (room.ai || pointPolicy(room.gameType) !== 'entry' || room.game.status !== 'selecting') return null; // v1.10.72: AI rooms take no entry
+  if (roomPolicy(room) !== 'entry' || room.game.status !== 'selecting') return null; // v1.10.72: AI rooms take no entry (G-포인트: nor friendly ones)
   return {
     game: structuredClone(room.game),
     choices: Object.fromEntries(Object.entries(room.participants).map(([token, p]) => [token, p.choice])),
@@ -5645,13 +5653,15 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, paid: result.paid, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
   }
   // v1.10.31 잡초: every weed out now ([id, x, z]); start / finish pulling one
-  // v1.10.37 혼자 하는 게임 — 지뢰찾기 (IDEAS 「솔로 게임」): the board is the server's; a clear pays by level once per game,
-  // nothing for a clear faster than a person could (the level's minMs), no daily limit (경제 기준 통합)
+  // v1.10.37 혼자 하는 게임 — 지뢰찾기 (IDEAS 「솔로 게임」): the board is the server's; a clear is a record (best time and
+  // clears by level).
+  // G-포인트 (gamehall-audit-20261025 「갈래별로 나눠 빼기」): the solo games pay nothing a round any more -- my best and the
+  // day's puzzle only; points come from the island (the islanders' errands use these games)
   if (pathname === '/api/solo/minesweeper' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
     const g = soloGames.get(session.token);
-    return sendJson(res, 200, { ok: true, levels: Object.entries(Minesweeper.LEVELS).map(([id, l]) => ({ id, label: l.label, w: l.w, h: l.h, mines: l.mines, points: Economy.value(`solo:minesweeper:${id}`) })),
+    return sendJson(res, 200, { ok: true, levels: Object.entries(Minesweeper.LEVELS).map(([id, l]) => ({ id, label: l.label, w: l.w, h: l.h, mines: l.mines })),
       records: (await pointStore.soloRecords(pointAccountForSession(session))).minesweeper || {}, game: g ? { id: g.id, view: g.engine.view() } : null });
   }
   if ((pathname === '/api/solo/minesweeper/new' || pathname === '/api/solo/minesweeper/act') && req.method === 'POST') {
@@ -5674,11 +5684,9 @@ async function requestHandler(req, res) {
     if (view.status === 'won' && !g.paid) {
       g.paid = true;
       const L = Minesweeper.LEVELS[g.level];
-      const points = view.ms >= L.minMs ? Economy.value(`solo:minesweeper:${g.level}`) : 0; // (v1.10.91: the administrator's value)
       const account = pointAccountForSession(session);
-      const out = await pointStore.soloClear({ userId: account, gameId: g.id, game: 'minesweeper', level: g.level, ms: view.ms, points, title: `지뢰찾기 ${L.label}` });
-      result = { points: out.points, best: out.best, clears: out.clears, newBest: out.newBest, balance: out.balance ?? out.balanceAfter };
-      if (out.points) notifyPointsChanged([account]);
+      const out = await pointStore.soloClear({ userId: account, gameId: g.id, game: 'minesweeper', level: g.level, ms: view.ms, points: 0, title: `지뢰찾기 ${L.label}` });
+      result = { best: out.best, clears: out.clears, newBest: out.newBest };
     }
     return sendJson(res, 200, { ok: true, view, result });
   }
@@ -5689,7 +5697,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session);
     const records = await pointStore.soloRecords(account);
-    return sendJson(res, 200, { ok: true, points: Reflex.POINTS, gamePoints: { stairs: Object.fromEntries(Object.keys(Reflex.LEVELS).map((l) => [l, reflexPoints('stairs', l)])) }, cap: Reflex.DAILY_CAP, today: await pointStore.soloDailyPaid(account, kstDate(nowMs())),
+    return sendJson(res, 200, { ok: true,
       records: Object.fromEntries(Object.keys(Reflex.GAMES).map((id) => [id, records[id] || {}])) });
   }
   if ((pathname === '/api/solo/reflex/start' || pathname === '/api/solo/reflex/finish') && req.method === 'POST') {
@@ -5714,13 +5722,11 @@ async function requestHandler(req, res) {
     const verdict = Reflex.judge(run.game, run.level, score, now - run.at);
     if (verdict === 'score') return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
     const G = Reflex.GAMES[run.game];
-    const out = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher,
-      points: verdict === 'ok' ? reflexPoints(run.game, run.level) : 0, daily: { day: kstDate(now), cap: Reflex.DAILY_CAP },
+    const out = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher, points: 0,
       title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name });
-    if (out.points) notifyPointsChanged([account]);
-    if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a paid round counts
+    if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a round good enough counts
     if (verdict === 'ok' && run.game === 'whack') contestNote(account, session, 'whack', score); // (A4: a contest round)
-    return sendJson(res, 200, { ok: true, verdict, points: out.points, best: out.best, newBest: out.newBest, today: out.today, cap: Reflex.DAILY_CAP, balance: out.balance ?? out.balanceAfter });
+    return sendJson(res, 200, { ok: true, verdict, best: out.best, newBest: out.newBest });
   }
   // v1.10.69 오늘의 문제 (lib/puzzle-daily.js): the page says when it opens the day's puzzle (kept from the first time, so a
   // puzzle left and resumed still counts its whole time) and sends the solved board; the first right answer of the game,
@@ -5732,7 +5738,7 @@ async function requestHandler(req, res) {
     // uid (v1.10.70, Codex review): a name for this account's puzzle progress kept in the browser, so two accounts on one
     // browser never share a day's puzzle (says nothing about the account)
     const uid = crypto.createHash('sha256').update(`puzzle-uid|${pointAccountForSession(session)}`).digest('hex').slice(0, 16);
-    return sendJson(res, 200, { ok: true, uid, points: PuzzleDaily.POINTS, date: kstDate(nowMs()),
+    return sendJson(res, 200, { ok: true, uid, date: kstDate(nowMs()),
       records: Object.fromEntries(Object.keys(PuzzleDaily.GAMES).map((id) => [id, records[id] || {}])) });
   }
   if ((pathname === '/api/solo/puzzle/start' || pathname === '/api/solo/puzzle/finish') && req.method === 'POST') {
@@ -5760,11 +5766,10 @@ async function requestHandler(req, res) {
     const startedAt = puzzleStarts.get(`${account}|${game}|${level}|${date}`); // unknown after a restart: the time it claims decides
     const fast = score < PuzzleDaily.MIN_MS[level] || (startedAt !== undefined && now - startedAt < PuzzleDaily.MIN_MS[level]);
     const claim = puzzleClaim(account, game, level, date);
-    const out = await pointStore.soloClear({ userId: account, gameId: `pz-${claim}`, game, level, ms: score, points: fast ? 0 : PuzzleDaily.POINTS[level],
+    const out = await pointStore.soloClear({ userId: account, gameId: `pz-${claim}`, game, level, ms: score, points: 0,
       title: `${PuzzleDaily.GAMES[game]} ${PuzzleDaily.LEVELS[level]} 오늘의 문제` });
-    if (out.applied && out.points) notifyPointsChanged([account]);
     islandProgress(`minigame:${game}`, account, 1); // A2b 마을 주민 부탁: a right answer of the day counts
-    return sendJson(res, 200, { ok: true, already: !out.applied, fast, points: out.applied ? out.points : 0, best: out.best, newBest: Boolean(out.applied && out.newBest) });
+    return sendJson(res, 200, { ok: true, already: !out.applied, fast, best: out.best, newBest: Boolean(out.applied && out.newBest) });
   }
   // v1.10.70 카드 게임 (lib/cards.js): the server deals (the round's seed) and pays a clear only after playing its action
   // log again with the page's own game code; a time record is the server's own (from the deal to the report -- the page's
@@ -5774,8 +5779,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session);
     const records = await pointStore.soloRecords(account);
-    return sendJson(res, 200, { ok: true, points: Object.fromEntries(Object.entries(Cards.GAMES).map(([id, g]) => [id, g.points])), cap: Cards.DAILY_CAP,
-      today: await pointStore.soloDailyPaid(account, `cards:${kstDate(nowMs())}`), records: Object.fromEntries(Object.keys(Cards.GAMES).map((id) => [id, records[id] || {}])) });
+    return sendJson(res, 200, { ok: true, records:Object.fromEntries(Object.keys(Cards.GAMES).map((id) => [id, records[id] || {}])) });
   }
   if ((pathname === '/api/solo/cards/start' || pathname === '/api/solo/cards/finish') && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -5805,10 +5809,8 @@ async function requestHandler(req, res) {
     const score = G.higher ? out.score : elapsed; // spider: the replay's own score; the others: the server's clock
     if (!Number.isSafeInteger(score) || score < 0) return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
     const fast = elapsed < Cards.MIN_MS;
-    const paid = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher,
-      points: fast ? 0 : G.points[run.level], daily: { day: `cards:${kstDate(now)}`, cap: Cards.DAILY_CAP }, title: `${G.name} ${G.levels[run.level]}` });
-    if (paid.points) notifyPointsChanged([account]);
-    return sendJson(res, 200, { ok: true, fast, score, points: paid.points, best: paid.best, newBest: paid.newBest, today: paid.today, cap: Cards.DAILY_CAP });
+    const kept = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher, points: 0, title: `${G.name} ${G.levels[run.level]}` });
+    return sendJson(res, 200, { ok: true, fast, score, best: kept.best, newBest: kept.newBest });
   }
   // v1.10.61 두 세계 영웅전 (/herosurv/, a Godot build we host as is): the game's own online leaderboard API, answered
   // here so its 명예의 전당 lists game-center accounts by nickname. The page adds the session header to the game's calls;
@@ -7484,7 +7486,10 @@ async function requestHandler(req, res) {
     // v1.10.72 게임방 AI 자리: 오목·사목·오델로 with the server playing the other seat (a private practice room)
     const aiLevel = body.ai == null || body.ai === '' ? null : String(body.ai);
     if (aiLevel && (!RoomAi.GAMES.has(gameType) || !Object.hasOwn(RoomAi.LEVELS, aiLevel))) return sendError(res, 400, 'BAD_AI', 'AI와 둘 수 없는 게임입니다.');
-    const room = makeRoom(session, gameType, aiLevel ? 'private' : visibility, { title, digitCount, pointsPerScore });
+    // G-포인트: the host may turn on 「내기 1,000P」 for a game that would pay the common entry (otherwise friendly)
+    const stakes = body.stakes === true;
+    if (stakes && (aiLevel || pointPolicy(gameType) !== 'entry')) return sendError(res, 400, 'BAD_STAKES', '내기를 걸 수 없는 게임입니다.');
+    const room = makeRoom(session, gameType, aiLevel ? 'private' : visibility, { title, digitCount, pointsPerScore, stakes });
     if (aiLevel) seatRoomAi(room, aiLevel);
     rooms.set(room.id, room);
     session.currentRoomId = room.id;

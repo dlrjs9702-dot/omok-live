@@ -26,14 +26,14 @@ test('카드 재생: 이긴 판은 같은 점수로 다시 이기고, 규칙에 
   assert.equal((await Cards.replay({ game: 'klondike', level: 'hard', seed: 7, log: 'f;f;u;f' })).won, false);
 });
 
-test('카드 API: 서버가 나눈 판만, 한 번만, 다시 재생해 이긴 판에 지급·빠르면 0P', async (t) => {
+test('카드 API: 서버가 나눈 판만, 한 번만, 다시 재생해 이긴 판만 기록(G-포인트: 포인트 없음)', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cards-server-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('카드손')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;
   const info = (await req('/api/solo/cards', sa)).data;
-  assert.deepEqual([info.points.spider.hard, info.points.klondike.hard, info.cap, info.today], [10000, 4000, 30000, 0]);
+  assert.deepEqual([info.points, info.cap, info.today], [undefined, undefined, undefined]);
   assert.equal((await req('/api/solo/cards/start', sa, { game: 'klondike', level: 'normal' })).status, 400, '클론다이크는 쉬움·어려움뿐');
   const w = await won;
   const round = async (ageMs) => {
@@ -48,11 +48,11 @@ test('카드 API: 서버가 나눈 판만, 한 번만, 다시 재생해 이긴 �
   assert.equal((await req('/api/solo/cards/finish', sa, { id: unfinished, ms: 1, log: w.log })).status, 409, '보고는 한 번');
   const quick = await round(0);
   const q = (await req('/api/solo/cards/finish', sa, { id: quick, ms: 1, log: w.log })).data;
-  assert.deepEqual([q.fast, q.points, q.score], [true, 0, w.score]);
+  assert.deepEqual([q.fast, q.points, q.score], [true, undefined, w.score]);
   const real = await round(600000);
   const r = (await req('/api/solo/cards/finish', sa, { id: real, ms: 1, log: w.log })).data;
-  assert.deepEqual([r.fast, r.points, r.score, r.today], [false, 3000, w.score, 3000]);
-  assert.equal(await balance(), start + 3000);
+  assert.deepEqual([r.fast, r.points, r.score], [false, undefined, w.score]);
+  assert.equal(await balance(), start);
   assert.deepEqual((await req('/api/solo/cards', sa)).data.records.spider, { easy: { best: w.score, clears: 2 } });
 });
 
@@ -84,5 +84,5 @@ test('카드 API: 시간 기록은 서버 시계(보낸 시간 무시), 3시간 
   const fair = await round(120000);
   const out = (await req('/api/solo/cards/finish', sa, { id: fair, ms: 0, log: r.log })).data;
   assert.ok(out.score >= 120000 && out.score < 130000, String(out.score));
-  assert.equal(out.points, 2000);
+  assert.equal(out.fast, false);
 });

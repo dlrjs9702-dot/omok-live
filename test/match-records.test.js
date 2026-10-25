@@ -24,9 +24,8 @@ test('every game resolves final outcomes from the engine, never spectators or cl
     assert.deepEqual(buildMatchResult(room(type, null, 'draw')).outcomes.map(x => x.result), ['draw','draw']);
   }
   assert.deepEqual(buildMatchResult(room('omok2v2','black')).outcomes.map(x => x.result), ['win','loss','win','loss']);
-  for (const type of ['liar','pictionary','oldmaid']) {
-    assert.deepEqual(buildMatchResult(room(type,['1','3'])).outcomes.map(x => x.result), ['win','loss','win']);
-  }
+  assert.deepEqual(buildMatchResult(room('oldmaid',['1','3'])).outcomes.map(x => x.result), ['win','loss','win']);
+  for (const type of ['liar','pictionary']) assert.equal(buildMatchResult(room(type,['1','3'])), null); // G-포인트: party games keep no record
   assert.deepEqual(buildMatchResult(room('bingo','2')).outcomes.map(x => x.result), ['loss','win','loss']);
   assert.equal(buildMatchResult(room('baseball',null,'playing')), null);
   assert.throws(() => buildMatchResult(room('omok',null)), /winner/);

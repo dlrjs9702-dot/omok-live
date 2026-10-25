@@ -1,6 +1,6 @@
 // v1.10.68 순발력 게임 (한판마당 자료 02 + 공통 엔진 00, js/ 아래는 원본 그대로): the game list, a game's levels and
 // how-to, a round on the engine's canvas and its result. The server opens each round and judges the score once it ends
-// (server.js /api/solo/reflex, lib/reflex.js); points by level up to the day's cap. Esc: a round → the game, the game →
+// (server.js /api/solo/reflex, lib/reflex.js); my best by level (G-포인트: no points -- they come from the island). Esc: a round → the game, the game →
 // the list, the list → the island. Sound is on unless turned off here (kept on this device, js/store.js).
 // v1.10.69 퍼즐 (한판마당 자료 01): the same screens for the four logic puzzles. 오늘의 문제 (the same puzzle for everyone
 // per Seoul date and level) sends its solved board, and the server pays the day's first right answer once
@@ -71,7 +71,6 @@ function noteActions(g) {
 }
 const LEVEL_NAMES = { easy: '쉬움', normal: '보통', hard: '어려움' };
 const KEYS = { reaction: 'Space · Enter', rhythm: 'D F J K' }; // the games' own keys on a PC
-const won = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
 
 export function mount({ api, onBack, pieceSkin = null }) {
   const view = document.getElementById('reflexView');
@@ -92,7 +91,6 @@ export function mount({ api, onBack, pieceSkin = null }) {
   const modeOf = (g) => (launch?.place === 'quest' && optionsOf(g).mode ? 'daily' : optionsOf(g).mode ?? null); // the puzzles: 오늘의 문제 (daily) or 새 문제 (A2b: a quest's round is always the daily)
   const remember = (key, value) => { levels[key] = value; try { localStorage.setItem('gc.reflexLevels', JSON.stringify(levels)); } catch {} };
   const bestOf = (g) => info?.records?.[g.id]?.[levelOf(g)]?.best ?? null;
-  const pointsOf = (g, level) => (set === SETS.cards ? info?.points?.[g.id]?.[level] : info?.gamePoints?.[g.id]?.[level] ?? info?.points?.[level]) ?? 0; // (R7: 하늘 계단 its own)
 
   function head(title, back) {
     const top = el('div', 'reflexHead');
@@ -103,10 +101,8 @@ export function mount({ api, onBack, pieceSkin = null }) {
     top.append(sound);
     return top;
   }
-  function todayLine() {
-    if (set === SETS.puzzle) return el('p', 'reflexToday', '오늘의 문제는 처음 푼 한 번만 포인트');
-    if ((set === SETS.cards && !info) || set === SETS.ai) return el('p', 'reflexToday', set === SETS.ai ? '연습 · 포인트 없음' : '');
-    return el('p', 'reflexToday', info ? `오늘 받은 포인트 ${won(info.today)} / ${won(info.cap)}` : '');
+  function todayLine() { // (G-포인트: no points a round -- my best is kept)
+    return el('p', 'reflexToday', set === SETS.ai ? '연습 · 기록 없음' : set === SETS.puzzle ? '오늘의 문제는 처음 푼 기록이 남아요' : '내 최고 기록이 남아요');
   }
 
   function showList() {
@@ -136,8 +132,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       const pick = el('div', 'reflexLevels'); pick.setAttribute('role', 'radiogroup'); pick.setAttribute('aria-label', g.mode === 'versus' ? 'AI 난이도' : g.levelTitle || '난이도');
       for (const id of g.levelIds || ['easy', 'normal', 'hard']) {
         const label = g.mode === 'versus' ? `AI ${LEVEL_NAMES[id]}` : LEVEL_NAMES[id];
-        const paid = set !== SETS.ai && (set !== SETS.puzzle || modeOf(g) === 'daily'); // practice pays nothing
-        const b = button('reflexLevel', paid ? `${g.levelNames?.[id] || label} · ${won(pointsOf(g, id))}` : g.levelNames?.[id] || label, () => { remember(g.id, id); showGame(g); });
+        const b = button('reflexLevel', g.levelNames?.[id] || label, () => { remember(g.id, id); showGame(g); });
         b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(levelOf(g) === id));
         pick.append(b);
       }
@@ -151,7 +146,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
         box.append(modes);
       }
       box.append(pick);
-    } else box.append(el('p', 'reflexPoints', `완주 ${won(info?.points?.normal ?? 0)}`));
+    }
     const best = bestOf(g);
     if (set !== SETS.ai) box.append(el('p', 'reflexBest', best == null ? '아직 기록 없음' : `내 최고 ${fmtScore(best, g.unit)}`));
     const status = el('p', 'reflexStatus'); status.setAttribute('role', 'alert');
@@ -213,13 +208,9 @@ export function mount({ api, onBack, pieceSkin = null }) {
     if (set === SETS.ai) return; // practice: not sent
     try {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
-      if (info) { (info.records[g.id] ||= {})[level] = { best: out.best }; info.today = out.today ?? info.today; }
-      const parts = [];
-      if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }
-      if (out.points) parts.push(`+${won(out.points)}`);
-      else if (out.verdict === 'ok') parts.push('오늘 받을 포인트를 다 받았어요');
-      else if (out.verdict === 'low') parts.push('포인트는 기록이 조금 더 좋아야 받아요');
-      line.textContent = parts.join(' · ') || `최고 ${fmtScore(out.best, g.unit)}`;
+      if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
+      if (out.newBest) sfx.best();
+      line.textContent = out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`;
     } catch (error) { line.textContent = error.message; }
   }
 
@@ -231,12 +222,8 @@ export function mount({ api, onBack, pieceSkin = null }) {
       const out = await api('/api/solo/puzzle/finish', { method: 'POST', body: JSON.stringify({ game: g.id, level, score, proof }) });
       if (rec) dropRecord(Stats.uid, rec.rid);
       if (info && out.best != null) (info.records[g.id] ||= {})[level] = { best: out.best };
-      const parts = [];
-      if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }
-      if (out.points) parts.push(`+${won(out.points)}`);
-      else if (out.already) parts.push('오늘의 문제는 이미 기록했어요');
-      else parts.push('이번 기록은 포인트가 없어요');
-      line.textContent = parts.join(' · ');
+      if (out.newBest) sfx.best();
+      line.textContent = out.newBest ? '최고 기록!' : out.already ? '오늘의 문제는 이미 기록했어요' : '기록했어요';
     } catch (error) {
       if (rec && settled(error)) dropRecord(Stats.uid, rec.rid);
       line.textContent = settled(error) ? error.message : '기록을 보내지 못했어요 · 퍼즐을 다시 열면 다시 보내요';
@@ -249,16 +236,13 @@ export function mount({ api, onBack, pieceSkin = null }) {
     }
   }
 
-  async function sendCards(g, level, id, log, line) { // a cleared deal: the server plays it again before it pays
+  async function sendCards(g, level, id, log, line) { // a cleared deal: the server plays it again before it keeps it
     if (log.length > LOG_MAX) { line.textContent = '너무 긴 판이라 기록하지 못했어요'; return; }
     try {
       const out = await api('/api/solo/cards/finish', { method: 'POST', body: JSON.stringify({ id, log: log.join(';') }) });
-      if (info) { (info.records[g.id] ||= {})[level] = { best: out.best }; info.today = out.today ?? info.today; }
-      const parts = [];
-      if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }
-      if (out.points) parts.push(`+${won(out.points)}`);
-      else parts.push(out.fast ? '이번 판은 포인트가 없어요' : '오늘 받을 포인트를 다 받았어요');
-      line.textContent = parts.join(' · ');
+      if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
+      if (out.newBest) sfx.best();
+      line.textContent = out.newBest ? '최고 기록!' : '기록했어요';
     } catch (error) { line.textContent = error.message; }
   }
 
