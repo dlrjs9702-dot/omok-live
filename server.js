@@ -763,7 +763,9 @@ async function issueDevice(keyId, name) {
   await worldEdit(async () => {
     const list = (await devicesNow()); const mine = list.filter((d) => d.keyId === keyId).sort((a, b) => a.at - b.at);
     const drop = new Set(mine.slice(0, Math.max(0, mine.length - DEVICES_MAX + 1)).map((d) => d.id));
-    await pointStore.setWorldValue('messengerDevices', [...list.filter((d) => !drop.has(d.id)), { id: crypto.randomUUID(), keyId, hash: deviceHash(token), name: String(name || '').slice(0, 40), at: nowMs(), exp: nowMs() + DEVICE_TTL_MS }]);
+    const kept = list.filter((d) => !drop.has(d.id)); const ids = new Set(kept.map((d) => d.id));
+    await pointStore.setWorldValue('messengerDevices', [...kept, { id: crypto.randomUUID(), keyId, hash: deviceHash(token), name: String(name || '').slice(0, 40), at: nowMs(), exp: nowMs() + DEVICE_TTL_MS }]);
+    await pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => ids.has(s.device))); // (Codex 검토 2차 #1: the 11th's pushed-out and the run-out ones' notices go too)
   });
   return token;
 }
@@ -779,7 +781,10 @@ const dropDevices = (keep) => worldEdit(async () => {
 const vapid = WebPush.vapidFromEnv(); const testPushes = [];
 async function pushNew(room, from, fromLabel, text) {
   const { to, payload } = WebPush.pushFor(room, from, fromLabel, text, new Set(messengerStreams.keys()));
-  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId)); if (!subs.length) return;
+  // (Codex 검토 2차 #1) only a device still logged in, of the same account: one run out (60 days), pushed out or logged out
+  // is told nothing (its subscription may outlive it in the store)
+  const live = new Map((await devicesNow()).map((d) => [d.id, d.keyId]));
+  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device) === s.keyId); if (!subs.length) return;
   const unread = new Map(await Promise.all(to.map(async (id) => [id, (await messengerStore.roomsOf(id)).reduce((n, r) => n + (r.muted.includes(id) ? 0 : Math.max(0, r.seq - (r.reads[id] || 0))), 0)])));
   const gone = [];
   for (const s of subs) {
@@ -3887,7 +3892,7 @@ async function requestHandler(req, res) {
     if (pathname === '/api/messenger/push' && req.method === 'POST') {
       if (!acct.device) return sendError(res, 409, 'DEVICE_NEEDED', '알림은 「이 기기에서 로그인 유지」로 로그인한 기기에서만 켤 수 있습니다.');
       const body = await parseJson(req); const sub = { endpoint: String(body.endpoint || ''), p256dh: String(body.p256dh || ''), auth: String(body.auth || '') };
-      if (!/^https:\/\//.test(sub.endpoint) || sub.endpoint.length > 1000 || Buffer.from(sub.p256dh, 'base64url').length !== 65 || Buffer.from(sub.auth, 'base64url').length !== 16) return sendError(res, 400, 'BAD_SUBSCRIPTION', '알림 등록 정보가 올바르지 않습니다.');
+      if (!WebPush.allowedEndpoint(sub.endpoint) || sub.endpoint.length > 1000 || Buffer.from(sub.p256dh, 'base64url').length !== 65 || Buffer.from(sub.auth, 'base64url').length !== 16) return sendError(res, 400, 'BAD_SUBSCRIPTION', '알림 등록 정보가 올바르지 않습니다.');
       await worldEdit(async () => pointStore.setWorldValue('messengerPush', [...((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== acct.device && s.endpoint !== sub.endpoint), { ...sub, keyId: key.id, device: acct.device, at: nowMs() }]));
       return sendJson(res, 200, { ok: true });
     }

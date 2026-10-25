@@ -9,7 +9,7 @@ const P = require('../lib/web-push');
 // the browser's side: its key pair and secret, and RFC 8291 decryption
 function browser() {
   const ecdh = crypto.createECDH('prime256v1'); ecdh.generateKeys(); const auth = crypto.randomBytes(16);
-  return { ecdh, sub: { endpoint: 'https://push.example.net/send/abc', p256dh: ecdh.getPublicKey().toString('base64url'), auth: auth.toString('base64url') }, auth };
+  return { ecdh, sub: { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', p256dh: ecdh.getPublicKey().toString('base64url'), auth: auth.toString('base64url') }, auth };
 }
 function decrypt(body, { ecdh, auth }) {
   const salt = body.subarray(0, 16); const idlen = body[20]; const as = body.subarray(21, 21 + idlen); const data = body.subarray(21 + idlen);
@@ -31,7 +31,7 @@ test('웹 푸시: 받는 기기 키로 풀리고, VAPID 서명은 공개 키로 
   const keys = P.generateKeys(); const vapid = P.vapidFromEnv({ VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, VAPID_SUBJECT: 'mailto:a@b.c' });
   const header = P.vapidHeader(b.sub.endpoint, vapid, 1000);
   const [, jwt, k] = header.match(/^vapid t=([^,]+), k=(.+)$/); assert.equal(k, keys.publicKey);
-  const [h, c, s] = jwt.split('.'); assert.deepEqual(JSON.parse(Buffer.from(c, 'base64url')), { aud: 'https://push.example.net', exp: 1000 + 12 * 3600, sub: 'mailto:a@b.c' });
+  const [h, c, s] = jwt.split('.'); assert.deepEqual(JSON.parse(Buffer.from(c, 'base64url')), { aud: 'https://fcm.googleapis.com', exp: 1000 + 12 * 3600, sub: 'mailto:a@b.c' });
   const pub = Buffer.from(keys.publicKey, 'base64url');
   const key = crypto.createPublicKey({ format: 'jwk', key: { kty: 'EC', crv: 'P-256', x: pub.subarray(1, 33).toString('base64url'), y: pub.subarray(33).toString('base64url') } });
   assert.ok(crypto.verify('sha256', Buffer.from(`${h}.${c}`), { key, dsaEncoding: 'ieee-p1363' }, Buffer.from(s, 'base64url')));
@@ -40,6 +40,12 @@ test('웹 푸시: 받는 기기 키로 풀리고, VAPID 서명은 공개 키로 
   let seen = null; const status = await P.send(b.sub, { title: 't', body: 'b' }, vapid, { fetchImpl: async (url, init) => { seen = { url, init }; return { status: 201 }; } });
   assert.equal(status, 201); assert.equal(seen.url, b.sub.endpoint); assert.equal(seen.init.headers['Content-Encoding'], 'aes128gcm'); assert.match(seen.init.headers.Authorization, /^vapid t=/);
   assert.deepEqual(JSON.parse(decrypt(seen.init.body, b)), { title: 't', body: 'b' });
+  // (Codex 검토 2차 #2) no redirect followed, a time limit, the answer's body let go; an address not a push service's: not asked
+  assert.equal(seen.init.redirect, 'manual'); assert.ok(seen.init.signal instanceof AbortSignal);
+  let cancelled = false; await P.send(b.sub, {}, vapid, { fetchImpl: async () => ({ status: 201, body: { cancel: async () => { cancelled = true; } } }) }); assert.ok(cancelled);
+  let asked = false; assert.equal(await P.send({ ...b.sub, endpoint: 'https://10.0.0.5/x' }, {}, vapid, { fetchImpl: async () => { asked = true; return { status: 201 }; } }), 410); assert.equal(asked, false);
+  for (const ok of ['https://fcm.googleapis.com/fcm/send/x', 'https://updates.push.services.mozilla.com/wpush/v2/x', 'https://wns2-par02p.notify.windows.com/w/?token=x', 'https://web.push.apple.com/x']) assert.ok(P.allowedEndpoint(ok), ok);
+  for (const no of ['https://push.example.net/x', 'https://fcm.googleapis.com.evil.net/x', 'https://evilnotify.windows.com/x', 'https://fcm.googleapis.com:444/x', 'http://fcm.googleapis.com/x', 'nonsense']) assert.ok(!P.allowedEndpoint(no), no);
 });
 
 test('웹 푸시 암호화: RFC 8291 부록 A의 예와 바이트까지 같음', () => {
