@@ -88,6 +88,7 @@ const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도�
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
+const IslandPaths = require('./public/plaza/island-paths.js'); const GroundSpeed = require('./public/plaza/ground-speed.js'); // (5회차 6: the ground's speed)
 const { poseTime } = require('./lib/plaza-pose-time');
 const IslandTrain = require('./public/plaza/island-train.js'); // v1.10.47 관광열차
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
@@ -4731,7 +4732,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
       // (Codex 검토 #8) m/s since the last pose, walking (a warp is not a run): by the sender's clock when both poses have
       // one (poses bunched on the way would look faster), else by arrival
-      bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) : 0; })(),
+      bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) / GroundSpeed.factorAt(IslandTerrain, spot.x, spot.z, IslandPaths) : 0; })(), // (5회차 6: as fast as the ground lets one -- a walk on a path is no run)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       home: homeInside.has(session.token) ? ((l) => (l && floorOf(session.token) === 2 ? `${l}:2` : l || null))(homeCache.get(homeInside.get(session.token))?.lot) : null, /* (R8: the 2층 is `<lot>:2` -- one sees the people on the same floor) */ // (묶음 4: which house, by its lot -- one sees the people in the same one)
@@ -5447,6 +5448,12 @@ async function requestHandler(req, res) {
     if (s.soon || !IslandItems.ITEMS[s.id]?.good) return sendError(res, 409, 'NOT_ON_SALE', '아직 팔지 않는 물건입니다.');
     const qty = Number(body.qty); if (![1, 5, 10].includes(qty)) return sendError(res, 400, 'BAD_QTY', '수량을 확인해 주세요.');
     const account = pointAccountForSession(session);
+    // (문제 기록 5회차 10-①: a tool -- 낚싯대, 잠자리채, a bike -- is bought once: one, and not while one is in the bag)
+    // ponytail: checked before the buy, two requests at the same instant could both pass; a store-side guard if it matters
+    if (IslandItems.ONCE_USES.includes(IslandItems.ITEMS[s.id].use)) {
+      if (qty !== 1) return sendError(res, 400, 'BAD_QTY', '하나만 살 수 있어요.');
+      if (((await pointStore.islandBag(account, [])).items || []).some((e) => e.itemId === s.id && e.qty > 0)) return sendError(res, 409, 'ALREADY_HAVE', '이미 가지고 있어요.');
+    }
     let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`) }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
     if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
@@ -7547,6 +7554,7 @@ async function main() {
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
+  setImmediate(() => GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths)); // (5회차 6: the ground's grid built once now, not in someone's first pose)
 }
 
 main().catch((err) => {

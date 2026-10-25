@@ -246,7 +246,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
     return { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), edge: t('ground.grass_soil_edge_mask', false, true) };
   })();
   const GRAIN = 0.5; // how strongly the grains show
-  const grainOn = { value: software ? 0 : GRAIN }; // (none on a software renderer: SwiftShader, llvmpipe -- no GPU) // (0 on the lowest quality tier: a slow device -- or a software renderer -- skips the samples)
+  const grainOn = { value: software ? 0 : GRAIN }; const cheapOn = { value: 0 }; // (none on a software renderer: SwiftShader, llvmpipe -- no GPU) // (0 on the lowest quality tier: a slow device -- or a software renderer -- skips the samples)
   // 섬 땅 지도 그림 (path-paint·terrain-paint 설계, 사용자 「그림 파일로 가자」): the ground's maps, made by
   // tools/maps/build-ground-maps.js and read here -- path-a (inside a walk's edge, its course), path-b (its tier, where walks
   // meet, the gravel round 대청마당), cover-a/b (forest floor, bare earth, sand / rock, darker grass, clover). A walk and what
@@ -327,13 +327,13 @@ h = mix(h, vh, jn); joint = mix(joint, vj, jn);
 }
 pc *= (0.9 + 0.14 * h) * mix(0.7, 1.0, joint);
 }
-if (uGrain > 0.0) pc *= mix(vec3(1.0), texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, uGrain * (pm.a > 0.9 ? 0.35 : 0.9));
+if (uGrain > 0.0 && uCheap < 0.5) pc *= mix(vec3(1.0), texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, uGrain * (pm.a > 0.9 ? 0.35 : 0.9));
 diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
 }
 }`);
   const grained = (material, path) => {
     material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn,
+      Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
         uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
         ...(maps ? { tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB }, tShore: { value: maps.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
         uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0x9c8a74) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
@@ -342,7 +342,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
 attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;`).replace('#include <begin_vertex>', `#include <begin_vertex>
 vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz; vWorldY = (modelMatrix * vec4(transformed, 1.0)).y;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
-uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
+uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; uniform float uCheap; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
 uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea;' : ''}
 uniform vec3 uForest; uniform vec3 uEarth; uniform vec3 uGravel; uniform vec3 uRock; uniform vec3 uSand; uniform vec3 uWet; uniform vec3 uClover;`).replace('#include <color_fragment>', `#include <color_fragment>
 vec2 gw = vGround; float gWet = 0.0; // (the grass and the sand share, for the grains: the vertex's, or the cover map's; how wet: 파도)${paintCover(path)}
@@ -352,7 +352,8 @@ float gCover = texture2D(tEdge, vGround).a; // the path: x along it, y across (1
 diffuseColor.rgb *= mix(vec3(1.0), mix(texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, gGrass, gCover), uGrain);
 diffuseColor.a *= 1.0 - 0.85 * gCover * step(0.001, vGround.y); // the island's grass shows through in tufts
 }` : `
-vec3 gGrain = mix(mix(vec3(1.0), gGrass, gw.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, gw.y);
+vec3 gGrain = mix(vec3(1.0), gGrass, 0.6); // (5회차 1: the lowest tier keeps this one grain -- one sample -- not a flat colour)
+if (uCheap < 0.5) gGrain = mix(mix(vec3(1.0), gGrass, gw.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, gw.y);
 diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
 }`}${paintPath(path)}${shoreWash(path)}`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.28, gWet);'); // (파도: wet sand shines)
     };
@@ -983,7 +984,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     lay(low.fern, 'ground.fern', coverLow); lay(low.shrub, 'ground.shrub', coverLow); lay(low.flowers, 'ground.flowers', coverLow);
     coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length };
   }
-  const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; grainOn.value = tier >= 1 && !software ? GRAIN : 0; }; // (B 48: the grain from tier 1)
+  const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; grainOn.value = software ? 0 : GRAIN; cheapOn.value = tier >= 1 ? 0 : 1; }; // (B 48: the grain from tier 1; 5회차 1: tier 0 one cheap grain)
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
 
   // v1.10.29 원경 (섬 밖 원경 결정 2026-10-05): far land, mountain ridges, a peak, a glacier and ice floes out at sea, well

@@ -1738,6 +1738,10 @@
 
   new MutationObserver(() => { if (stickEditing() && !stickEditable()) setStickEditing(false); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   byId('stickEditBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); setStickEditing(true); });
+  // 문제 기록 5회차 1: 「섬 화질」 -- 자동 (steps down when slow, up again when fast) or fixed, kept on this device
+  const qualityMode = () => { try { const v = localStorage.getItem('gc.quality'); return ['0', '1', '2'].includes(v) ? v : 'auto'; } catch { return 'auto'; } };
+  byId('qualitySelect').value = qualityMode();
+  byId('qualitySelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.quality', event.target.value); } catch {} plaza.controller?.setQualityMode?.(event.target.value); });
   byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
   byId('stickResetBtn').addEventListener('click', () => { for (const c of Object.values(CONTROLS)) { c.place = null; applyCtl(c); saveCtl(c); } selectCtl(ctlSel); });
   stickSizeInput.addEventListener('input', () => { const c = CONTROLS[ctlSel]; c.place = clampCtl(c, { ...currentCtl(c), size: Number(stickSizeInput.value) }); applyCtl(c); saveCtl(c); });
@@ -1900,6 +1904,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
+      plaza.controller.setQualityMode?.(qualityMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -3110,13 +3115,15 @@
     const name = document.createElement('strong'); name.textContent = `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P`;
     const what = document.createElement('p'); what.className = 'lookMeta'; what.textContent = GOOD_USE[g.use] || '';
     const row = document.createElement('div'); row.className = 'goodBuy';
-    for (const qty of [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = qty === 1 ? 'primary' : 'secondary'; b.textContent = `${qty}개 · ${Number(g.price * qty).toLocaleString('ko-KR')}P`; b.dataset.qty = qty;
+    const once = ['tool', 'bike'].includes(g.use); // (5회차 10-①: a tool is bought once -- one, and 「가지고 있어요」 while one is in the bag)
+    for (const qty of once ? [1] : [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = qty === 1 ? 'primary' : 'secondary'; b.textContent = `${qty}개 · ${Number(g.price * qty).toLocaleString('ko-KR')}P`; b.dataset.qty = qty;
       b.addEventListener('click', async () => {
         if (goodBusy) return; goodBusy = true;
         try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/store/buy', { method: 'POST', body: JSON.stringify({ itemId: id, qty, requestId: crypto.randomUUID() }) }); showToast(`🛍️ ${g.name} ${qty}개를 가방에 넣었어요.`); loadPoints(); if (id.startsWith('bike_')) refreshBikes(); }
         catch (error) { showToast(error.message, 4000); } finally { goodBusy = false; }
       }); row.append(b); }
     goodCard.replaceChildren(img, name, what, row);
+    if (once) api('/api/island/bag').then((b) => { if ((b.items || []).some((e) => e.itemId === id && e.qty > 0)) { const own = row.querySelector('button'); own.disabled = true; own.textContent = '가지고 있어요'; } }).catch(() => {});
     openPlazaWindow('잡화점', [goodCard]); plazaDialog.classList.add('shopMode');
   }
   // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
