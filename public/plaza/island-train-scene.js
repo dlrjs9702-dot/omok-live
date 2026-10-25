@@ -7,7 +7,7 @@ const T = globalThis.IslandTerrain; const R = globalThis.IslandTrain;
 const G = { box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 10) };
 const FRAME = 0xeef2ea; const SAGE = 0x9db8a4; const DECK = 0xd9cfbf; const TEAL = 0x6fc3c0; const PLINTH = 0xa89f90; // (5회차 4: the stone under a lift and its walkway)
 
-export function trainScene({ scene, assets, solids, vcMat, sign }) {
+export function trainScene({ scene, assets, solids, vcMat, signboard }) {
   const group = new THREE.Group(); group.name = 'train'; scene.add(group);
   const made = [];
   const glass = new THREE.MeshStandardMaterial({ color: 0xd6f3f1, transparent: true, opacity: 0.3, roughness: 0.08, metalness: 0, depthWrite: false }); made.push(glass);
@@ -81,7 +81,9 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
     const shaft = new THREE.Mesh(G.box, glass); shaft.scale.set(2.2, H - 0.2, 2.2); shaft.position.y = H / 2; holder.add(shaft);
     const cabin = new THREE.Group(); holder.add(cabin);
     const cg = mergeColored([part(G.box, DECK, 0, 0.08, 0, { sx: 2, sy: 0.16, sz: 2 }), part(G.box, FRAME, 0, 2.4, 0, { sx: 2, sy: 0.08, sz: 2 })]); made.push(cg); cabin.add(new THREE.Mesh(cg, vcMat));
-    sign?.(st.name, holder, H + 1.1);
+    // (간판, assets 69 sign.station: beside the walk at the way in, facing whoever comes from inland -- not over the lift)
+    { const dx = ex - lx; const dz = ez - lz; const l = Math.hypot(dx, dz) || 1; const sx = ex - (dz / l) * 1.8; const sz = ez + (dx / l) * 1.8; const yaw = Math.atan2(-dx / l, -dz / l);
+      signboard?.('station', st.name, scene, sx, T.heightAt(sx, sz), sz, yaw); for (const k of [-1.2, 1.2]) solids.push({ x: sx + Math.cos(yaw) * k, z: sz - Math.sin(yaw) * k, r: 0.3 }); }
     if (T.walkable(lx, lz)) solids.push({ x: lx, z: lz, r: 1.45 });
     return { id, x: lx, z: lz, top, ground, cabin };
   });
