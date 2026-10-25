@@ -46,6 +46,9 @@
   const CONTEST = Object.freeze({ first: '2026-11-07', from: 10, to: 22, roundMs: 3 * 60 * 1000, kinds: Object.freeze({ 6: 'fish', 0: 'bug' }), names: Object.freeze({ fish: '낚시 대회', bug: '곤충 대회' }) });
   const TROPHY = Object.freeze({ fish: ['trophy_fish__gold', 'trophy_fish__silver', 'trophy_fish__bronze'], bug: ['trophy_bug__gold', 'trophy_bug__silver', 'trophy_bug__bronze'] });
 
+  // where an event stands on 대청마당 (its south side, clear of the disc, the channels and the gardens): the stall (its sign
+  // read from its -Z, turned to face the disc), its host beside it -- the festival's and the contests' -- and the feast table
+  const PLACES = Object.freeze({ stall: Object.freeze({ x: 12, z: -104, yaw: Math.PI }), host: Object.freeze({ x: 9.4, z: -102.6, yaw: Math.PI * 0.85 }), feast: Object.freeze({ x: 0, z: -98, yaw: 0 }), REACH: 2.6, FEAST_R: 6 });
   // a festival's days with the administrator's override ({ [id]: { off, start, end } })
   function festivalDays(f, override = {}) { const o = override[f.id] || {}; return { start: o.start || f.start, end: o.end || f.end, off: Boolean(o.off) }; }
   // the festival on at `ms` (its days moved or switched off by the override), or null
@@ -76,5 +79,5 @@
   // the day's ranking from each account's best score: [{ account, score, at }] -> sorted, the earlier first on a tie
   const rankOf = (rows) => rows.slice().sort((a, b) => b.score - a.score || a.at - b.at || String(a.account).localeCompare(String(b.account)));
 
-  return { KST, DAY, dayOf, hourOf, weekdayOf, addDays, GOODS, FESTIVALS, TITLES, titleOf, CONTEST, TROPHY, festivalDays, festivalAt, nextFestival, contestAt, taskOpen, rankOf };
+  return { KST, DAY, dayOf, hourOf, weekdayOf, addDays, GOODS, FESTIVALS, TITLES, titleOf, CONTEST, TROPHY, PLACES, festivalDays, festivalAt, nextFestival, contestAt, taskOpen, rankOf };
 }));
