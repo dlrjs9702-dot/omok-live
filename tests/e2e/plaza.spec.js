@@ -1834,7 +1834,8 @@ test('역 승강기: 다른 사람이 타면 내 화면에서도 승강기로 �
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe(S);
   const seen = await watch; const mid = (y) => y > at.lift.y + 1 && y < at.top - 1;
   expect(seen.some((s) => s.lifting), JSON.stringify(seen.slice(0, 5))).toBe(true);
-  expect(seen.filter((s) => mid(s.y)).length, 'A의 높이가 중간을 지나감').toBeGreaterThan(3);
+  // (CI #306: a slow runner draws a few frames in the ride -- 3 of them in its middle; a jump has none: two different heights there is the ride)
+  expect(new Set(seen.filter((s) => mid(s.y)).map((s) => s.y.toFixed(2))).size, 'A의 높이가 중간을 지나감').toBeGreaterThanOrEqual(2);
   expect(seen.some((s) => mid(s.cabin)), '칸이 같이 움직임').toBe(true);
   expect(Math.max(...seen.map((s) => s.y))).toBeGreaterThan(at.top - 0.5); // (up at the end)
   await expectNoScriptError(a.page); await a.context.close(); await b.context.close();
