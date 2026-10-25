@@ -23,9 +23,11 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
     expect(Math.hypot(...t.hoop.map((v, k) => v - t.head[k])), `${how}: 고리와 머리`).toBeGreaterThan(0.75); expect(Math.abs(d[0] / n), `${how}: 옆`).toBeLessThan(0.6); expect(d[2] / n, `${how}: 앞`).toBeGreaterThan(0.6); };
   await page.waitForTimeout(500); await carried('서기');
   if (!isMobile) { await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(600); await carried('걷기'); await page.keyboard.up('ArrowUp'); }
-  const arc = await page.evaluate(() => new Promise((done) => { const d = window.PlazaDebug(); const ahead = []; d.swingNow(); const t0 = performance.now(); const tick = () => { ahead.push(d.toolTip().hoop[2]); if (performance.now() - t0 < 1000) requestAnimationFrame(tick); else done(Math.max(...ahead) - Math.min(...ahead)); }; requestAnimationFrame(tick); }));
-  expect(arc, '휘두르는 고리가 앞뒤로 그리는 폭').toBeGreaterThan(1.5);
-  await page.waitForTimeout(600);
+  // (CI #306: the hoop's sweep counted frame by frame missed its ends on a slow runner -- the hand's angle instead: turned to
+  // NetSwing's own while it swings, back to carrying after)
+  const turned = await page.evaluate(() => new Promise((done) => { const d = window.PlazaDebug(); let most = 0; d.swingNow(); const t0 = performance.now(); const tick = () => { most = Math.max(most, d.toolTip().turn); if (performance.now() - t0 < 800) requestAnimationFrame(tick); else done(most); }; requestAnimationFrame(tick); }));
+  expect(turned, '휘두를 때 손 안 각도(들 때와의 차)').toBeGreaterThan(1.2);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().toolTip().turn), { timeout: 5000 }).toBeLessThan(0.05);
   // an insect (where it is drawn now -- flying, crawling or on a trunk): stepped up to under a metre off, facing it, SPACE
   // -- caught (the server's answer 200); it may have moved off in the swing: again
   const by = (x0, z0, r) => { for (let k = 0; k < 12; k += 1) { const x = x0 + Math.cos(k / 2) * r; const z = z0 + Math.sin(k / 2) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.3)) return { x, z }; } return null; };

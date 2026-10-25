@@ -1836,7 +1836,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const r = me.root.rotation.y; const at = (w) => { const d = w.clone().sub(me.root.position); return [+(-d.x * Math.cos(r) + d.z * Math.sin(r)).toFixed(2), +d.y.toFixed(2), +(d.x * Math.sin(r) + d.z * Math.cos(r)).toFixed(2)]; };
     const bone = (re) => { let b = null; me.assetRoot?.traverse((x) => { if (x.isBone && re.test(x.name)) b = x; }); return b ? b.getWorldPosition(new THREE.Vector3()) : null; };
     const hand = bone(/^Hand\.?R$/); const head = bone(/^Head$/);
-    return { hoop: at(o.userData.tip.clone().applyMatrix4(o.matrixWorld)), hand: hand && at(hand), head: head && at(head) };
+    return { hoop: at(o.userData.tip.clone().applyMatrix4(o.matrixWorld)), hand: hand && at(hand), head: head && at(head), turn: +o.quaternion.angleTo(netTurn.carry).toFixed(3) }; // (turn: off the carrying angle, radians)
   }
   // an islander struck: knocked back a little (HitReact 0.7 s), then cross (Angry, about 2 s, a cross word over the head),
   // standing where it was struck, facing me -- then on their way again (stepWanderers)
