@@ -32,19 +32,19 @@ test('심부름: 하루 세 개(같은 날 같음, 부탁하는 사람 다름), 
   const list = [find, give]; const done = new Set(); let st = {};
   assert.deepEqual(E.marks(list, st, done), { 0: 'new', 2: 'new' });
   assert.equal(E.talk(list, st, done, 1), null); // nothing asked yet: their own words
-  let r = E.talk(list, st, done, 0); st = r.stages; assert.equal(r.took, find); assert.match(r.say[0], /바다 할아버지를 못 봤어요/);
+  let r = E.talk(list, st, done, 0); st = r.stages; assert.equal(r.took, find); assert.match(r.say.join(' '), /바다 할아버지를 못 봤어요/); // (T2: their own word first)
   assert.deepEqual(E.track(list, st, done).map((t) => t.to), [1]);
   r = E.talk(list, st, done, 0); assert.match(r.say[0], /아직 못 찾았어요/); assert.equal(r.pay, null); // a reminder
   r = E.talk(list, st, done, 1); st = r.stages; assert.equal(r.pay, null); assert.match(r.say[0], /봄이가 (저|나)를 찾는다고/); // (T: in the walker's own words)
   assert.equal(E.marks(list, st, done)[0], 'ready');
   r = E.talk(list, st, done, 0); st = r.stages; assert.equal(r.pay, find); done.add(find.id);
-  r = E.talk(list, st, done, 2); st = r.stages; assert.match(r.say[0], /편지, 두리에게/);
+  r = E.talk(list, st, done, 2); st = r.stages; assert.match(r.say.join(' '), /편지, 두리에게/);
   r = E.talk(list, st, done, 3); assert.equal(r.pay, give); assert.match(r.say[0], /하람이 보낸 편지요/); done.add(give.id); st = r.stages;
   assert.equal(E.talk(list, st, done, 0), null); assert.equal(E.talk(list, st, done, 2), null); // both done: their own words again
   assert.deepEqual(E.marks(list, st, done), {}); assert.deepEqual(E.track(list, st, done), []);
   // a store errand: asked, the star only once the good is in the bag, then it is taken and paid
   const buy = { id: 'errand_x_2', kind: 'buy', from: 6, to: 6, reward: 1500, good: 'milk', thing: '우유' };
-  r = E.talk([buy], {}, done, 6); assert.match(r.say[0], /우유가 필요한데/); st = r.stages;
+  r = E.talk([buy], {}, done, 6); assert.match(r.say.join(' '), /우유가 필요한데/); st = r.stages;
   assert.deepEqual(E.marks([buy], st, done), {}); assert.equal(E.talk([buy], st, done, 6).pay, null);
   assert.deepEqual(E.marks([buy], st, done, new Set(['milk'])), { 6: 'ready' });
   r = E.talk([buy], st, done, 6, new Set(['milk'])); assert.equal(r.take, 'milk'); assert.equal(r.pay, buy);

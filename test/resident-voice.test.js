@@ -34,6 +34,14 @@ test('주민 말투: 10명 × 같이 쓰는 대사 전부, 말버릇은 끝에 �
   // the five with a word at the end say it; a question keeps its mark
   assert.match(Cast.say(0, 'greet1', {}, () => 0)[0], / 꽃!$/); assert.match(Cast.withTail('오늘도 같이 걸을래요?', 0), / 꽃\?$/);
   assert.deepEqual(Cast.untail([Cast.withTail('정말 고마워요!', 3)], 3), ['정말 고마워요.']);
+  // T2 (검토): the lines seen most, said by all ten -- ten different things (not one text with only the end word changed);
+  // the detective says his 「~란 말이지」, 하람 her 「~랄까요」 in an errand too
+  for (const key of ['ask_buy', 'ask_find', 'ask_deliver', 'got_buy', 'got_deliver', 'found_back', 'giftLike', 'levelUp1', 'levelUp2', 'levelUp3', 'letter']) {
+    const said = Array.from({ length: 10 }, (_, n) => Cast.say(n, key, VARS, () => 0).map((l) => Cast.untail([l], n)[0]).join(' ').replace(/[\s.!?~…]+$/, ''));
+    assert.equal(new Set(said).size, 10, `${key}: ${said.join(' / ')}`);
+  }
+  assert.match(Cast.say(5, 'ask_deliver', VARS, () => 0).join(' '), /란 말이지/); assert.match(Cast.say(2, 'ask_buy', VARS, () => 0).join(' '), /달까요/);
+  assert.equal(Cast.say(0, 'got_deliver', { from: '봄이', thing: '우산' }, () => 0)[0], '봄이가 보낸 우산이요? 와, 고마워요!');
   // the same doing, two walkers: different words (e2e of the design: greet, gift)
   assert.notEqual(Cast.say(1, 'giftLike', VARS, () => 0)[0], Cast.say(9, 'giftLike', VARS, () => 0)[0]);
   assert.notEqual(Affinity.giftReact(0, 'herb', '약초').say, Affinity.giftReact(4, 'herb', '약초').say);
