@@ -124,14 +124,17 @@ module.exports.expectNoScriptError = expectNoScriptError;
 // (3회차 4) the bite's arrows, pressed in order: the arrow keys (a PC) or the four buttons (a phone)
 async function pressFishArrows(page, isMobile = false) {
   const box = page.locator('#fishArrows'); await box.waitFor({ state: 'visible', timeout: 15000 });
-  const dirs = await box.locator('.fishArrowSeq span').evaluateAll((spans) => spans.map((s) => s.dataset.dir));
   const KEY = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
   // (pressed in the page at once -- CI #278: a phone's clicks waited for the box coming in to stand still, a PC's key presses
   // a round trip each on the slow runner, and the bite's time ran out between them -- the server's, which a test that
-  // turns the bite into another fish times by that fish, not the count shown. The buttons answer a click, the keys a keydown)
-  if (isMobile) await box.evaluate((el, dirs) => { for (const dir of dirs) el.querySelector(`.fishArrowPad button[data-dir=${dir}]`).click(); }, dirs);
-  else await page.evaluate(([dirs, KEY]) => { for (const dir of dirs) window.dispatchEvent(new KeyboardEvent('keydown', { code: KEY[dir], key: KEY[dir], bubbles: true })); }, [dirs, KEY]);
-  return dirs.length;
+  // turns the bite into another fish times by that fish, not the count shown. The buttons answer a click, the keys a keydown.
+  // CI #298: the arrows read and pressed in the same page call -- one round trip less inside the bite's time)
+  return page.evaluate(([isMobile, KEY]) => {
+    const el = document.getElementById('fishArrows'); const dirs = [...el.querySelectorAll('.fishArrowSeq span')].map((s) => s.dataset.dir);
+    if (isMobile) for (const dir of dirs) el.querySelector(`.fishArrowPad button[data-dir=${dir}]`).click();
+    else for (const dir of dirs) window.dispatchEvent(new KeyboardEvent('keydown', { code: KEY[dir], key: KEY[dir], bubbles: true }));
+    return dirs.length;
+  }, [isMobile, KEY]);
 }
 async function spaceOn(page, prefix, isMobile = false) {
   return page.evaluate(([prefix, isMobile]) => {
