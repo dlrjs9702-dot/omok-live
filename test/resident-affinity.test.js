@@ -14,6 +14,9 @@ const { boot } = require('../test-support/test-server');
 // (R3 ③: the islanders walk the round of the island's time of day -- here as the server has it, Seoul's hour)
 const seoulPhase = (ms) => { const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; };
 Npcs.setPhaseOf(seoulPhase);
+// (CI #298: a metre east of an islander was no place to stand that moment -- the server kept me where I was, TOO_FAR six
+// times; each try stands on another side of them)
+const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, -0.7]];
 
 test('호감도 단계·오늘의 이야기 순수 규칙: 지난 단계, 질문 세 답, 좋아하는 답 +2, 단짝 칭호, 친한 사이 가구', () => {
   assert.deepEqual(A.crossed(4, 15), [1, 2]); assert.deepEqual(A.crossed(29, 30), [3]);
