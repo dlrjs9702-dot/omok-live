@@ -2581,12 +2581,10 @@ body.plazaMode .toast::before{content:"";position:absolute;left:50%;top:-8px;wid
 .plazaDialog.shopMode .petTagText .isle-tag{margin-left:4px;padding:1px 8px;font-size:.66rem;vertical-align:2px}
 .plazaDialog.shopMode .petPrice{color:var(--isle-soft);font-size:.85rem;font-weight:700}
 #donationDialog .donationForm{padding:12px;background:var(--isle-paper);border:1px solid var(--isle-line);border-radius:8px;box-shadow:0 3px 0 rgba(0,0,0,.25)}
-/* 주민세 고지서: the unpaid bills at the 세금 창구 (the 체납 on top), 자동이체 at the 예금 창구 */
+/* 주민세 고지서: the unpaid bills at the 세금 창구 (the 체납 on top) */
 .taxBillList{display:grid;gap:6px;margin-top:8px}
 .taxBill{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:#0f172a;border:1px solid #273449;font-size:.88rem}
 .taxBill small{display:block;font-size:.74rem;color:#94a3b8}.taxBill.overdue{border-color:#ef4444}
 #islandTaxPay{margin:10px 16px 0;width:calc(100% - 32px);min-height:44px}
-.bankTaxAuto{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-weight:700}.bankTaxAuto input{width:20px;height:20px}.bankTaxAuto small{flex:1 0 100%;font-weight:400;font-size:.76rem;color:#94a3b8}
-.recordsDialog.counterMode .taxBill{background:#fffdf6;border:1px solid var(--isle-line);color:var(--isle-ink)}.recordsDialog.counterMode .taxBill small,.recordsDialog.counterMode .bankTaxAuto small{color:var(--isle-soft)}.recordsDialog.counterMode .taxBill.overdue{border:2px solid #c0453a}
+.recordsDialog.counterMode .taxBill{background:#fffdf6;border:1px solid var(--isle-line);color:var(--isle-ink)}.recordsDialog.counterMode .taxBill small{color:var(--isle-soft)}.recordsDialog.counterMode .taxBill.overdue{border:2px solid #c0453a}
 .mailStamp.office{width:46px;font-size:.6rem;letter-spacing:-.04em}
-.recordsDialog.counterMode .bankTaxAuto{color:var(--isle-ink)}.bankTaxAuto input{accent-color:#9c5f14}

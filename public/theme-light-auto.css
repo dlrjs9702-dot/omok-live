@@ -1248,8 +1248,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .taxBill{background:#f7efe1;border:1px solid #e2d4bd}
 :root[data-theme="light"] .taxBill small{color:#7a6650}
 :root[data-theme="light"] .taxBill.overdue{border-color:#ef4444}
-:root[data-theme="light"] .bankTaxAuto small{color:#7a6650}
 :root[data-theme="light"] .recordsDialog.counterMode .taxBill{background:#fffdf6;border:1px solid var(--isle-line);color:var(--isle-ink)}
-:root[data-theme="light"] .recordsDialog.counterMode .taxBill small,:root[data-theme="light"] .recordsDialog.counterMode .bankTaxAuto small{color:var(--isle-soft)}
+:root[data-theme="light"] .recordsDialog.counterMode .taxBill small{color:var(--isle-soft)}
 :root[data-theme="light"] .recordsDialog.counterMode .taxBill.overdue{border:2px solid #c0453a}
-:root[data-theme="light"] .recordsDialog.counterMode .bankTaxAuto{color:var(--isle-ink)}

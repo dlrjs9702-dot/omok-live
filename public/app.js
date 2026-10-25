@@ -3144,12 +3144,7 @@
   function showBank(v) {
     bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
     byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
-    if (typeof v.taxAuto === 'boolean') byId('bankTaxAuto').checked = v.taxAuto; // (주민세 자동이체: the GET's, kept across a move)
   }
-  byId('bankTaxAuto').addEventListener('change', async (event) => {
-    const on = event.target.checked;
-    try { const r = await api('/api/island/bank', { method: 'POST', body: JSON.stringify({ taxAuto: on }) }); event.target.checked = r.taxAuto; byId('bankStatus').textContent = r.taxAuto ? '주민세 자동이체를 켰어요. 매일 자정 지갑 → 예금 순으로 내고, 모자라면 고지서가 와요.' : '주민세 자동이체를 껐어요. 고지서가 우체통으로 와요.'; } catch (error) { event.target.checked = !on; byId('bankStatus').textContent = error.message; }
-  });
   async function openBank() {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -5405,7 +5400,7 @@
     if (item.reason === 'daily_attendance') return '출석체크';
     if (item.reason === 'bank_deposit') return '예금 맡기기'; // v1.10.85
     if (item.reason === 'bank_withdraw') return '예금 찾기';
-    if (item.reason === 'resident_tax') return '주민세 자동이체'; // v1.10.86 (고지서: only 자동이체 takes it at midnight)
+    if (item.reason === 'resident_tax') return '주민세'; // v1.10.86 (taken at midnight until v1.10.154's 고지서)
     if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
     if (item.reason === 'outfit_retire_refund') return '변신 옷 정리 환불'; // (2026-10-21)
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92

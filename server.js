@@ -5495,11 +5495,9 @@ async function requestHandler(req, res) {
     const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.bank.lx, R.bank.lz);
     if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8) return sendError(res, 409, 'TOO_FAR', '관공서 안 예금 창구에서 이용해 주세요.');
     const account = pointAccountForSession(session);
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ...(await pointStore.bankView(account, nowMs())), taxAuto: (await pointStore.taxBills(account)).auto });
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ...(await pointStore.bankView(account, nowMs())) });
     if (!checkRateLimit(`bank:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
-    // (주민세 고지서: 자동이체 -- on, the day's tax is taken at midnight as before and what it cannot is billed; off by default)
-    if (typeof body.taxAuto === 'boolean') return sendJson(res, 200, { ok: true, taxAuto: (await pointStore.taxAuto(account, body.taxAuto)).auto });
     const amount = Number(body.amount);
     if (!Number.isSafeInteger(amount) || amount === 0 || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '금액을 확인해 주세요.');
     const out = await pointStore.bankMove(account, amount, body.requestId, nowMs());
@@ -5513,7 +5511,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const account = pointAccountForSession(session);
-    if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); const b = await pointStore.taxBills(account); return sendJson(res, 200, { ok: true, debt: b.debt, bills: b.bills, auto: b.auto, today: kstDate(nowMs()), dueDays: PointStore.TAX_DUE_DAYS, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
+    if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); const b = await pointStore.taxBills(account); return sendJson(res, 200, { ok: true, debt: b.debt, bills: b.bills, today: kstDate(nowMs()), dueDays: PointStore.TAX_DUE_DAYS, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
     const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.tax.lx, R.tax.lz);
     const jailed = jailInmates.has(session.token); // (R4: or 「지금 세금 내기」 from the cell)
     if (!jailed && (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8)) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
