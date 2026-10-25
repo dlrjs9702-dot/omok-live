@@ -1051,7 +1051,8 @@ function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch
 // R2 호감도 = 보상: the levels an account reached with the walking islanders (points `before` -> `after`), each paid once
 // per account and islander (claim ids) -- 아는 사이 points, 친한 사이 points and their piece into my 가구 창고, 단짝 their
 // title (worn from 내 정보). -> the lines to tell the player
-async function affinityStages(account, before, after) {
+async function affinityStages(account, before, after, label = '') {
+  const word = (n, level) => ` 「${IslandCast.fill(IslandCast.say(n, `levelUp${level}`)[0] || '', label)}」`; // (T: their own word with it)
   const notes = [];
   for (const [k, pts] of Object.entries(after || {})) {
     const n = Number(k); const c = IslandCast.WALKERS[n]; if (!c) continue;
@@ -1062,7 +1063,7 @@ async function affinityStages(account, before, after) {
     if (!fresh.size && (before?.[k] || 0) === pts) continue;
     for (const level of IslandAffinity.crossed(0, pts)) {
       const name = IslandCast.LEVELS[level].name;
-      if (level === 3) { if (fresh.has(level)) notes.push(`${IslandCast.josa(c.name, '과와')} ${name}이 됐어요! 칭호 「${IslandAffinity.titleOf(IslandAffinity.titleId(n)).name}」을 쓸 수 있어요.`); continue; }
+      if (level === 3) { if (fresh.has(level)) notes.push(`${IslandCast.josa(c.name, '과와')} ${name}이 됐어요! 칭호 「${IslandAffinity.titleOf(IslandAffinity.titleId(n)).name}」을 쓸 수 있어요.${word(n, level)}`); continue; }
       const out = await pointStore.claimEvent({ eventId: `affinity_${n}_${level}`, userId: account, amount: Economy.value(level === 1 ? 'affinity:known' : 'affinity:close'), title: `호감도 · ${c.name} ${name}` });
       if (out.applied) notifyPointsChanged([account]);
       let gift = '';
@@ -1071,7 +1072,7 @@ async function affinityStages(account, before, after) {
         if (g) await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (!owned.some((p) => p.claim === claim)) { await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id, at: nowMs(), price: 0, claim }]); given = true; } });
         if (given) gift = ` · 선물 「${g.name}」(가구 창고)`;
       }
-      if (out.applied || gift) notes.push(`${IslandCast.josa(c.name, '과와')} ${name}!${out.applied ? ` +${Number(out.amount).toLocaleString('ko-KR')}P` : ''}${gift}`);
+      if (out.applied || gift) notes.push(`${IslandCast.josa(c.name, '과와')} ${name}!${out.applied ? ` +${Number(out.amount).toLocaleString('ko-KR')}P` : ''}${gift}${word(n, level)}`);
     }
   }
   return notes;
@@ -4084,7 +4085,7 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity' && req.method === 'POST') { // R2: 호감도 added as a talk would (the levels reached pay)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: Number(body.n), delta: Number(body.delta) }]);
-    return sendJson(res, 200, { ok: true, points: after[Number(body.n)] || 0, stages: await affinityStages(account, before, after) });
+    return sendJson(res, 200, { ok: true, points: after[Number(body.n)] || 0, stages: await affinityStages(account, before, after, String(session.label || '')) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/furniture' && req.method === 'POST') { // 묶음 4: pieces straight into my 가구 창고
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
@@ -6672,8 +6673,8 @@ async function requestHandler(req, res) {
         const errands = IslandErrands.errandsOf(day); const stages = errandStages.get(`${day}|${account}`) || {};
         const mine = errands.find((e) => stages[e.id] === 1 && e.kind !== 'buy' && e.to !== n) || errands.find((e) => stages[e.id] === 2 && e.from !== n);
         const other = mine ? (stages[mine.id] === 2 ? mine.from : mine.to) : (n + 1 + Math.floor(Math.random() * (IslandCast.WALKERS.length - 1))) % IslandCast.WALKERS.length;
-        say = [IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
-          plants: (await pointStore.islandPlants()).length, winter, halloween, hint: { n: other, where: IslandNpcs.hangout(other), errand: Boolean(mine) } })];
+        say = [IslandCast.withTail(IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
+          plants: (await pointStore.islandPlants()).length, winter, halloween, hint: { n: other, where: IslandNpcs.hangout(other), errand: Boolean(mine) } }), n)];
       }
       return sendTalk({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView((await pointStore.affinityOf(account))[n] || 0) });
     }
@@ -6681,7 +6682,7 @@ async function requestHandler(req, res) {
     // one they don't 0, the other +1; remembered, and a level reached pays (affinityStages)
     if (topic === 'ask' || topic === 'answer') {
       const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, ...extra });
-      if ((await pointStore.questDoc(account, 'resmem')).doc?.asked?.[n] === day) return sendTalk(view(['오늘은 벌써 이야기 나눴어요. 내일 또 들려줘요!'], { affinity: affinityView(before[n] || 0) }));
+      if ((await pointStore.questDoc(account, 'resmem')).doc?.asked?.[n] === day) return sendTalk(view(IslandCast.say(n, 'answerAgain'), { affinity: affinityView(before[n] || 0) }));
       if (topic === 'ask') { const q = IslandAffinity.questionOf(n, day); return sendTalk(view([q.q], { question: { answers: q.answers }, affinity: affinityView(before[n] || 0) })); }
       const a = IslandAffinity.answer(n, day, Number(body.choice)); if (!a) return sendError(res, 400, 'BAD_CHOICE', '잘못된 요청입니다.');
       let fresh = false;
@@ -6691,20 +6692,20 @@ async function requestHandler(req, res) {
       let after;
       try { after = fresh && a.delta ? await pointStore.affinityAdd(account, day, [{ n, delta: a.delta }]) : await pointStore.affinityOf(account); }
       catch (error) { if (fresh) await unmarkResmem(account, 'asked', n, day); throw error; }
-      return sendTalk(view(fresh ? [a.say] : ['오늘은 벌써 이야기 나눴어요. 내일 또 들려줘요!'], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after) }));
+      return sendTalk(view(fresh ? [a.say] : IslandCast.say(n, 'answerAgain'), { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, String(session.label || '')) }));
     }
     // R3 ⑥ 선물: one thing from my bag a day each (fish, insects, the island's finds) -- what they like +3, what they don't
     // 0 (said kindly), anything else +1; asked without an item: what I could give
     if (topic === 'gift') {
       const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView(before[n] || 0), ...extra });
-      const already = ['오늘은 벌써 선물을 받았어요. 마음만으로 충분해요!'];
+      const already = IslandCast.say(n, 'giftAgain'); // (T 주민 말투: in their own words)
       const mem = (await pointStore.questDoc(account, 'resmem')).doc;
       if (mem?.gifted?.[n] === day) return sendTalk(view(already));
       // (Codex 검토 2차 #7) a gift whose item was taken but whose 호감도 failed: the retry finishes that gift -- that item, no
       // second one taken -- whatever is chosen this time (the same request id must never pay for another item)
       const owed = mem?.giftUsed?.[n]?.day === day ? mem.giftUsed[n] : null;
       const items = ((await pointStore.islandBag(account)).items || []).filter((e) => IslandAffinity.GIFTABLE(e.itemId)).map((e) => ({ itemId: e.itemId, name: IslandItems.ITEMS[e.itemId]?.name || e.itemId }));
-      if (body.itemId == null && !owed) return sendTalk(view([items.length ? '저한테 주려고요? 뭘까요?' : '가방에 줄 만한 게 없네요. 괜찮아요!'], { gifts: [...new Map(items.map((e) => [e.itemId, e])).values()].slice(0, 8) }));
+      if (body.itemId == null && !owed) return sendTalk(view(IslandCast.say(n, items.length ? 'giftAsk' : 'giftNone'), { gifts: [...new Map(items.map((e) => [e.itemId, e])).values()].slice(0, 8) }));
       const item = owed ? { itemId: owed.itemId, name: IslandItems.ITEMS[owed.itemId]?.name || owed.itemId } : items.find((e) => e.itemId === String(body.itemId)); if (!item) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
       const react = IslandAffinity.giftReact(n, item.itemId, item.name);
       let fresh = false;
@@ -6727,7 +6728,7 @@ async function requestHandler(req, res) {
         throw error;
       }
       if (owed) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, giftUsed: { ...(doc?.giftUsed || {}), [n]: null } } })).catch(() => {});
-      return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after), ...(used?.bag ? { bag: used.bag } : {}) }));
+      return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, String(session.label || '')), ...(used?.bag ? { bag: used.bag } : {}) }));
     }
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
@@ -6749,17 +6750,17 @@ async function requestHandler(req, res) {
           reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : []));
           // (R3 ⑤ 관계: an errand between two at odds patches it up -- both a little warmer to me; between friends, a word more)
           const rel = r.pay.to !== r.pay.from ? IslandCast.relationOf(r.pay.from, r.pay.to) : null;
-          if (rel === 'rival') { gains.push({ n: r.pay.from, delta: 1 }, { n: r.pay.to, delta: 1 }); r = { ...r, say: [...r.say, `사실 ${IslandCast.josa(IslandCast.WALKERS[r.pay.from].name, '과와')} ${IslandCast.WALKERS[r.pay.to].name}, 요즘 좀 서먹했대요. 덕분에 사이가 풀렸어요!`] }; }
-          else if (rel === 'friend') r = { ...r, say: [...r.say, '둘은 오랜 친구라 더 기뻐할 거예요.'] };
+          if (rel === 'rival') { gains.push({ n: r.pay.from, delta: 1 }, { n: r.pay.to, delta: 1 }); r = { ...r, say: [...IslandCast.untail(r.say, n), ...IslandCast.say(n, 'relRival', { a: IslandCast.WALKERS[r.pay.from].name, b: IslandCast.WALKERS[r.pay.to].name })] }; }
+          else if (rel === 'friend') r = { ...r, say: [...IslandCast.untail(r.say, n), ...IslandCast.say(n, 'relFriend')] };
           const what = IslandErrands.title(r.pay); await pointStore.questApply(account, 'resmem', (doc) => ({ doc: [...new Set([r.pay.from, r.pay.to])].reduce((d, m) => IslandAffinity.remember(d, m, 'errand', what, day), doc || {}) })); // (R2 ② 기억)
         }
       }
     }
     // (R2 ② 기억하는 주민: now and then, the last thing done together)
     const memory = !r && topic === null && level >= 1 && Math.random() < 0.35 ? IslandAffinity.memoryLine((await pointStore.questDoc(account, 'resmem')).doc, n, day) : null;
-    const say = r ? r.say : topic === 'errand' ? ['오늘은 괜찮아요. 마음만 받을게요!'] : [memory ? IslandCast.fill(memory, String(session.label || '')) : IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
+    const say = r ? r.say : topic === 'errand' ? IslandCast.say(n, 'errandNone') : [memory ? IslandCast.fill(memory, String(session.label || '')) : IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
     const after = await pointStore.affinityAdd(account, day, gains); const points = after[n] || 0; // (daily: the first talk of the day only, whatever is chosen)
-    return sendTalk({ ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, affinity: affinityView(points), stages: await affinityStages(account, before, after), ...(await errandView(account)) });
+    return sendTalk({ ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, affinity: affinityView(points), stages: await affinityStages(account, before, after, String(session.label || '')), ...(await errandView(account)) });
   }
   // A4 날씨: the island's weather now (the same for everyone) and when it changes; the administrator may hold it
   if (pathname === '/api/island/weather' && req.method === 'GET') {

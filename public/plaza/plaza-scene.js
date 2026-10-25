@@ -1848,7 +1848,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function residentHit(n) {
     const r = wanderers.find((x) => x.n === n); if (!r) return; const { c } = r; const m = me.root.position;
     c.hitUntil = performance.now() + 2700; c.hitYaw = Math.atan2(m.x - c.root.position.x, m.z - c.root.position.z);
-    c.anim?.play('hitReact'); say(c, ANGRY_WORDS[Math.floor(Math.random() * ANGRY_WORDS.length)]);
+    c.anim?.play('hitReact'); say(c, globalThis.IslandCast?.say?.(n, 'hit')[0] || ANGRY_WORDS[Math.floor(Math.random() * ANGRY_WORDS.length)]); // (T: cross in their own words)
     const hitN = (c.hitN = (c.hitN || 0) + 1); // (Codex 검토 P3: a second hit's anger is let go by its own timer, not the first's)
     setTimeout(() => { if (c.hitN === hitN && c.hitUntil > performance.now()) c.anim?.loop?.('angry'); }, 700);
     setTimeout(() => { if (c.hitN !== hitN) return; c.anim?.release?.(); c.rejoin = 0.6; }, 2700);
@@ -2845,8 +2845,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const a = affinity.get(w.n); if (!a || a.level < 1 || mySpace !== 'island' || c.talkYaw != null || c.chatYaw != null || c.bubble || c.hitUntil > now) return;
     if (now - lastGreet < 20000 || now - (greeted.get(w.n) || -Infinity) < 600000 || Math.hypot(w.x - m.x, w.z - m.z) > 4) return;
     greeted.set(w.n, now); lastGreet = now;
-    const C = globalThis.IslandCast; const lines = C?.GREETS?.[Math.min(3, a.level)] || [];
-    const line = a.memory || lines[Math.floor(Math.random() * lines.length)]; if (!line) return;
+    const C = globalThis.IslandCast;
+    const line = a.memory || C?.say?.(w.n, `greet${Math.min(3, a.level)}`)[0]; if (!line) return; // (T 주민 말투: in their own words)
     a.memory = null; say(c, C.fill(line, myName));
     if (a.level >= 2) c.anim?.play('greet');
   }

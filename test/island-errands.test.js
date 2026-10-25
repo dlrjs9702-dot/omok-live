@@ -8,11 +8,11 @@ test('주민: 열 명 모두 이름·설정·대사, 이야기 주민도 대사,
   assert.equal(Cast.WALKERS.length, 10);
   for (const c of Cast.WALKERS) { assert.ok(c.name && c.role && c.about); assert.equal(c.lines.length, 4); for (const l of c.lines) assert.ok(l.length >= 3); assert.ok(Cast.walkerLine(c.n, () => 0.9, 'day')); }
   assert.equal(new Set(Cast.WALKERS.map((c) => c.name)).size, 10);
-  assert.equal(Cast.walkerLine(0, () => 0, 'night'), Cast.WALKERS[0].night);
+  assert.equal(Cast.walkerLine(0, () => 0, 'night'), Cast.withTail(Cast.WALKERS[0].night, 0)); // (T: 봄이's 「꽃!」 at the end)
   for (const id of ['granny', 'fisher', 'photographer', 'photomemory', 'farmer', 'kid']) { assert.ok(Cast.keeperLine(id, () => 0)); assert.ok(Cast.keeperN(id) >= 10); }
   // 호감도 4단계: levels by points, each its own lines, the player's name in the close ones
   assert.deepEqual([0, 4, 5, 14, 15, 29, 30, 999].map(Cast.levelOf), [0, 0, 1, 1, 2, 2, 3, 3]);
-  assert.equal(Cast.walkerLine(0, () => 0.99, 'day', 0), Cast.WALKERS[0].lines[0][2]);
+  assert.equal(Cast.walkerLine(0, () => 0.99, 'day', 0), Cast.withTail(Cast.WALKERS[0].lines[0][2], 0));
   assert.match(Cast.walkerLine(0, () => 0.5, 'day', 3, '모모'), /모모/); assert.doesNotMatch(Cast.walkerLine(0, () => 0.5, 'day', 3, '모모'), /{me}/);
   for (const c of Cast.WALKERS) for (const l of c.lines.flat()) assert.ok(!/{(?!me})/.test(l), l);
   assert.deepEqual([Cast.josa('다온', '이가'), Cast.josa('봄이', '이가'), Cast.josa('가람', '을를'), Cast.josa('두리', '을를')], ['다온이', '봄이가', '가람을', '두리를']);
@@ -35,7 +35,7 @@ test('심부름: 하루 세 개(같은 날 같음, 부탁하는 사람 다름), 
   let r = E.talk(list, st, done, 0); st = r.stages; assert.equal(r.took, find); assert.match(r.say[0], /바다 할아버지를 못 봤어요/);
   assert.deepEqual(E.track(list, st, done).map((t) => t.to), [1]);
   r = E.talk(list, st, done, 0); assert.match(r.say[0], /아직 못 찾았어요/); assert.equal(r.pay, null); // a reminder
-  r = E.talk(list, st, done, 1); st = r.stages; assert.equal(r.pay, null); assert.match(r.say[0], /봄이가 저를 찾는다고요/);
+  r = E.talk(list, st, done, 1); st = r.stages; assert.equal(r.pay, null); assert.match(r.say[0], /봄이가 (저|나)를 찾는다고/); // (T: in the walker's own words)
   assert.equal(E.marks(list, st, done)[0], 'ready');
   r = E.talk(list, st, done, 0); st = r.stages; assert.equal(r.pay, find); done.add(find.id);
   r = E.talk(list, st, done, 2); st = r.stages; assert.match(r.say[0], /편지, 두리에게/);
@@ -90,7 +90,7 @@ test('A-6 주민끼리 수다·섬 소문·상황 대사', () => {
   assert.match(Cast.rumor({ weather: 'clear', hint: { n: 3, where: '섬 북쪽 언덕', errand: true } }, () => 0.9), /^두리는 요즘 섬 북쪽 언덕 근처/);
   assert.match(Cast.rumor({ contest: { phase: 'live', name: '낚시 대회' } }, () => 0), /낚시 대회/);
   for (const k of Object.keys(Cast.MOODS)) assert.equal(Cast.MOODS[k].length, 10);
-  assert.equal(Cast.walkerLine(0, () => 0, 'day', 1, '', ['rain']), Cast.MOODS.rain[0]);
+  assert.equal(Cast.walkerLine(0, () => 0, 'day', 1, '', ['rain']), Cast.withTail(Cast.MOODS.rain[0], 0));
 });
 
 // 묶음 1 멀리 심부름 (residents-talk-hills-20261018.md 4): the one to find or bring to lives far from the asker (one of the
