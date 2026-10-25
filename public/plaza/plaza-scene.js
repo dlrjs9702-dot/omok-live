@@ -671,7 +671,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // v1.10.13: one merged build per facility (island.js `building`): a level body on a stone plinth, a real pitched
       // or hip roof lined up with the walls (the old roof was a square cone squashed along its diagonal -- it looked
       // crooked), framed door and windows; each facility its own silhouette. Footprint and door are unchanged.
-      const big = spot.kind === 'mall'; const w = big ? 23.6 : 3.2; const h = big ? 8 : 2.4; depth = big ? 13.6 : 2.7;
+      // (assets 75 기록관: a `size`d spot -- its stand-in as big as what blocks, centred between `back` and `front`)
+      const big = spot.kind === 'mall'; const sized = spot.size; const w = big ? 23.6 : sized ? sized[0] : 3.2; const h = big ? 8 : 2.4; depth = big ? 13.6 : sized ? sized[1] : 2.7;
       const looks = {
         shop: { roof: 'front', rise: 1.35, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], planters: true },
         avatar: { roof: 'gable', rise: 1.05, chimney: 0.9, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], shutters: 0xe87a9e },
@@ -680,7 +681,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         townhall: { roof: 'hip', rise: 1.0, windows: [[-1.12, 0.6], [1.12, 0.6], [-0.6, 0.55, 'l'], [0.6, 0.55, 'l'], [-0.6, 0.55, 'r'], [0.6, 0.55, 'r']], lamp: true },
       };
       const bodyMesh = new THREE.Mesh(building({ w, d: depth, h, wall: spot.wall, roofColor: spot.roof, ...looks[facility.id] }), vcMat);
-      bodyMesh.castShadow = true; bodyMesh.receiveShadow = true; visual.add(bodyMesh);
+      bodyMesh.castShadow = true; bodyMesh.receiveShadow = true; visual.add(bodyMesh); if (sized) bodyMesh.position.z = (spot.front - spot.back) / 2;
       if (spot.kind === 'townhall') { // v1.10.10 관공서: two columns by the door and a flag on the roof
         for (const px of [-0.75, 0.75]) mesh(new THREE.CylinderGeometry(0.12, 0.14, h * 0.9, 12), mat(0xfffaf0), px, h * 0.45, depth / 2 + 0.25, visual);
         mesh(new THREE.BoxGeometry(2.0, 0.14, 0.6), mat(0xfffaf0), 0, h * 0.92, depth / 2 + 0.2, visual);
@@ -691,14 +692,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.5, 0, visual);
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, visual);
       }
-      const sized = spot.size; // (assets 75 기록관: its own footprint, from `back` behind the spot to `front` before it)
-      if (sized) {
+      if (sized) { // (its own footprint, from `back` behind the spot to `front` before it)
         const [sw, sd] = sized; const cz = (spot.front - spot.back) / 2; facilitySign('stand', sw / 2 + 1.6, spot.front + 0.8); boxSolids(0, cz, sw, sd, 1); edgeSolids(0, cz, sw, sd);
         const plate = boardText(facility.name, 1.4, 0.4, 3.45, 4.527); plate.rotation.y = 0; root.add(plate); // (its porch board, assets 75 FACE z -4.525 -- the model turned half round: out at +4.525)
       }
       else if (big) facilitySign('stand', 5, depth / 2 + 2.4); else facilitySign('post', w / 2 + 0.7, depth / 2 + 0.8);
       if (sized) { /* (walled above) */ } else if (big) boxSolids(0, 0, w, depth, 2.2); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
-      footing(root, w + 0.6, depth + 0.6);
+      if (!sized) footing(root, w + 0.6, depth + 0.6); // (a sized one stands on its own plinth)
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
       for (const px of [-1.25, 1.25]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 10), mat(0x8a5a3b), px, 1.3, 0, visual);
