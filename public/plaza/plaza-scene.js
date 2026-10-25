@@ -2041,8 +2041,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     };
     // Account-local scenery follows the same weekly server document as the existing stories.
     const T = globalThis.IslandTerrain;
-    questScenes = { empty: holder('quest.flowerbed_empty', 8, 39), bloom: holder('quest.flowerbed_bloom', 8, 39),
-      frame: holder('quest.photo_frame', 7, 39), boat: holder('sea.boat', T.PIER.x + 4, T.PIER.z + T.PIER.half + 5, -0.6), departure: null, departurePending: false };
+    // (5회차 8: on 달마루섬 the flower bed in the gardener's garden, her watering can by it, the frame by the photographer --
+    // they stood at the old island's spots)
+    const Q = T.dalmaru?.PLACES.quests; const bed = Q ? { x: Q.gardener.x - 2.2, z: Q.gardener.z + 0.9 } : { x: 8, z: 39 }; const frame = Q ? { x: Q.photographer.x + 1.6, z: Q.photographer.z + 0.6 } : { x: 7, z: 39 };
+    if (Q) holder('quest.watering_can', bed.x + 1.3, bed.z - 0.7);
+    questScenes = { empty: holder('quest.flowerbed_empty', bed.x, bed.z), bloom: holder('quest.flowerbed_bloom', bed.x, bed.z),
+      frame: holder('quest.photo_frame', frame.x, frame.z), boat: holder('sea.boat', T.PIER.x + 4, T.PIER.z + T.PIER.half + 5, -0.6), departure: null, departurePending: false };
     questScenes.bloom.visible = false; questScenes.frame.visible = false; questScenes.boat.visible = false;
     return questScenes;
   }
