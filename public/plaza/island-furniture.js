@@ -43,7 +43,15 @@
     const [name, zone, rarity, kind = 'floor'] = SHAPES[shape];
     return Object.freeze({ id: `${shape}__${variant}`, shape, variant, name: `${name} (${COLOR[variant]})`, zone, rarity, kind, model: `furn.${shape}__${variant}` });
   })));
-  const byId = new Map(GOODS.map((g) => [g.id, g]));
+  // E1 계절 행사 (assets 72): pieces only an event gives -- a festival stall's for stamps, a contest's trophies -- never on the
+  // shop's display, kept and placed like the rest
+  const EVENT_GOODS = Object.freeze([
+    ['trophy_fish', 'gold', '낚시 대회 금 트로피', 'event.trophy_fish_gold'], ['trophy_fish', 'silver', '낚시 대회 은 트로피', 'event.trophy_fish_silver'], ['trophy_fish', 'bronze', '낚시 대회 동 트로피', 'event.trophy_fish_bronze'],
+    ['trophy_bug', 'gold', '곤충 대회 금 트로피', 'event.trophy_bug_gold'], ['trophy_bug', 'silver', '곤충 대회 은 트로피', 'event.trophy_bug_silver'], ['trophy_bug', 'bronze', '곤충 대회 동 트로피', 'event.trophy_bug_bronze'],
+    ['harvest_basket', 'plain', '수확 바구니', 'harvest.basket'], ['straw_sheaf', 'plain', '볏단 장식', 'harvest.straw_sheaf'], ['corn_string', 'plain', '옥수수 걸이', 'harvest.corn_string', 'wall'],
+    ['persimmon_string', 'plain', '곶감 걸이', 'harvest.persimmon_string', 'wall'], ['feast_table', 'plain', '잔칫상', 'harvest.feast_table'],
+  ].map(([shape, variant, name, model, kind = 'floor']) => Object.freeze({ id: `${shape}__${variant}`, shape, variant, name, zone: 'event', rarity: 'event', kind, model, event: true })));
+  const byId = new Map([...GOODS, ...EVENT_GOODS].map((g) => [g.id, g]));
   // always on sale, no end to them (and not counted in a day's three)
   const BASE = Object.freeze(['stool__oak', 'floor_cushion__red', 'plant_pot__terracotta', 'dining_chair__oak']);
 
@@ -105,5 +113,5 @@
     for (const s of [...SLOTS, ...BASE_SLOTS]) { const d = Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0); if (d < bd) { bd = d; best = s; } }
     return best;
   }
-  return { SHAPES, COLOR, RARITY, GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
+  return { SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
 }));
