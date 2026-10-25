@@ -421,13 +421,13 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // colour a couple of metres down (by the time of day: blue by day, navy-violet in the evening, deep navy at night); lines
   // of ripple coming in to the beach; the faintest ripple everywhere, its glints making a path of the sun (orange in the
   // evening) or the moon on the water
-  const seaDeep = { value: new THREE.Color(0x3aa0d0) }; const seaGlow = { value: new THREE.Color(0xfff2d0) }; const sunDir = { value: new THREE.Vector3(-0.4, 0.8, 0.35) }; const seaSelf = { value: 0 }; const seaLines = { value: 1 }; const seaClear = { value: 0.45 }; let seaSun = null;
+  const seaDeep = { value: new THREE.Color(0x3aa0d0) }; const seaGlow = { value: new THREE.Color(0xfff2d0) }; const sunDir = { value: new THREE.Vector3(-0.4, 0.8, 0.35) }; const seaSelf = { value: 0 }; const seaLines = { value: 1 }; const seaClear = { value: 0.45 }; let seaSun = null; const seaRipple = { value: 1 }; let seaLinesOn = 1; // (움직임 줄이기: the lines and the glinting ripple off -- see step)
   if (maps) {
     sea.material = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, transparent: true })); // (its own: mat() hands out shared ones)
     sea.material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uClear: seaClear, tNoise: { value: groundTex.grass } });
+      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uRipple: seaRipple, uClear: seaClear, tNoise: { value: groundTex.grass } });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vSeaXZ;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeaXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uClear; uniform sampler2D tNoise; varying vec2 vSeaXZ;')
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uRipple; uniform float uClear; uniform sampler2D tNoise; varying vec2 vSeaXZ;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 vec2 suv = (vSeaXZ - uPathBox.xy) / uPathBox.z; vec3 sh = (suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) ? texture2D(tShore, suv).rgb : vec3(0.0, 1.0, 0.0);
 float sd = (sh.r * 2.0 - 1.0) * ${SHORE_RANGE.toFixed(1)}; float shallow = 1.0 - smoothstep(0.0, 0.7, sh.g); // (0..2.1 m)
@@ -437,7 +437,7 @@ float lines = pow(0.5 + 0.5 * sin(sd * 1.3 + uShoreTime * 1.5 + 0.8 * sin(vSeaXZ
 diffuseColor.rgb += 0.16 * lines * vec3(0.9, 1.0, 1.0);`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 { vec2 p = vSeaXZ; float t = uShoreTime;
-vec2 slope = 0.035 * vec2(cos(p.x * 0.9 + p.y * 0.4 + t * 1.1), cos(p.y * 1.1 - p.x * 0.3 + t * 0.9)) + 0.02 * vec2(cos(p.x * 2.3 - p.y * 1.7 - t * 1.7), cos(p.y * 2.6 + p.x * 1.2 + t * 1.4));
+vec2 slope = uRipple * 0.035 * vec2(cos(p.x * 0.9 + p.y * 0.4 + t * 1.1), cos(p.y * 1.1 - p.x * 0.3 + t * 0.9)) + uRipple * 0.02 * vec2(cos(p.x * 2.3 - p.y * 1.7 - t * 1.7), cos(p.y * 2.6 + p.x * 1.2 + t * 1.4));
 normal = normalize(normal + (viewMatrix * vec4(-slope.x, 0.0, -slope.y, 0.0)).xyz); }`)
         .replace('#include <lights_fragment_begin>', `{ vec3 r = reflect(normalize(-vViewPosition), normal); vec3 s = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
 totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseColor.rgb * uSelfLit; } // (the evening's and night's sea keeps its own colour under the dim warm light)
@@ -447,7 +447,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   }
   // the time of day's sea (plaza-scene: when the light changes) -- and the sun it follows
   const SEA_PHASE = { morning: [0x4aa8d2, 0x78d6cc, 0xffe2b8], day: [0x3aa0d0, 0x6fd8d0, 0xfff2d0], evening: [0x334180, 0x1f7480, 0xff8a3c, 0.3, 0.45], /* (검토 3차 2: a step lighter, the shallows a deep teal -- more of its own light, so the warm dusk does not turn it olive) */ night: [0x101b3a, 0x1b4352, 0x9fb8ff, 0.15, 0.3] };
-  function setSeaPhase(phase, sun) { const c = SEA_PHASE[phase] || SEA_PHASE.day; seaDeep.value.set(c[0]); seaShallow.value.set(c[1]); seaGlow.value.set(c[2]); seaSelf.value = c[3] || 0; seaLines.value = c[4] ?? 1; seaClear.value = phase === 'evening' || phase === 'night' ? 0.78 : 0.45; /* (the sand under it lit by the dusk read olive) */ seaSun = sun || null; }
+  function setSeaPhase(phase, sun) { const c = SEA_PHASE[phase] || SEA_PHASE.day; seaDeep.value.set(c[0]); seaShallow.value.set(c[1]); seaGlow.value.set(c[2]); seaSelf.value = c[3] || 0; seaLinesOn = c[4] ?? 1; seaClear.value = phase === 'evening' || phase === 'night' ? 0.78 : 0.45; /* (the sand under it lit by the dusk read olive) */ seaSun = sun || null; }
   const pond = new THREE.Mesh(keep(new THREE.CircleGeometry(POND.r + 0.6, 40)), pondWater);
   pond.rotation.x = -Math.PI / 2; pond.position.set(POND.x, land(POND.x, POND.z) - 0.45, POND.z); scene.add(pond);
   const ribbon = (pts, width, yOf, material, lift = 0) => { // a flat strip along a line, following the ground
@@ -1139,7 +1139,11 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     return { turn, shown };
   }
 
-  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+  function step(clock, lessMotion = false) {
+    // (움직임 줄이기: the water never stops -- half as fast, a swell twice as long -- only the flicker goes: the ripple lines and
+    // the glinting wobble of the sea; 사용자 「파도가 전혀 안 움직여」, a device with reduced motion had it all still)
+    if (lessMotion) clock *= 0.5; seaLines.value = lessMotion ? 0 : seaLinesOn; seaRipple.value = lessMotion ? 0 : 1;
+    flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }
