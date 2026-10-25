@@ -196,6 +196,17 @@
       station: { x: -88.3, z: 143.9 }, stonesBank: { x: -99, z: 36 }, kid: { x: -8, z: -64 }, pumpkin: { x: 0, z: -78.5 } },
   };
   const TRAIN = { r: 194, /* (묶음 5: out from the widened ridge coast, ~177) */ stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
+  // (v1.10.160 역 터, 사용자 「땅 다지기」: each stop -- its angle (°), the platform's distance from the centre, its height over the
+  // sea, the lift at its end ahead (+1) or behind (-1); island-train runs the line by them, dalmaru-island levels the ground under
+  // each lift and its way in. liftAt: the platform 3.24 m in from the line (island-train DOCK), the lift 5.5 m past its middle,
+  // the way in 7 m inland of the lift -- test/station-ground checks it against island-train's own)
+  const toDeg = (t) => (t * 180) / Math.PI;
+  TRAIN.stops = { E: { a: toDeg(TRAIN.stations.east), r: 179, y: 14, lift: 1 }, I: { a: 90, r: 175.5, y: 12, lift: 1 }, W: { a: toDeg(TRAIN.stations.west), r: 179, y: 14, lift: -1 }, N: { a: 270, r: 165, y: 27, lift: 1 } };
+  TRAIN.liftAt = (id) => {
+    const s = TRAIN.stops[id]; const t = (s.a * Math.PI) / 180; const pr = s.r - 3.24;
+    const x = pr * Math.cos(t) + s.lift * 5.5 * Math.sin(t); const z = pr * Math.sin(t) - s.lift * 5.5 * Math.cos(t); const r = Math.hypot(x, z);
+    return { x, z, entry: [x - (x / r) * 7, z - (z / r) * 7] };
+  };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };
 
   return { CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,

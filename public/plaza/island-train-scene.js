@@ -55,8 +55,9 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
     // Low access pier passes under the raised rail; the upper walkway stays on the door side.
     const [ex, ez] = st.entry; const accessLength = Math.hypot(lx - ex, lz - ez);
     const access = new THREE.Group(); access.position.set((ex + lx) / 2, ground, (ez + lz) / 2); access.rotation.y = Math.atan2(lx - ex, lz - ez); group.add(access);
-    // (5회차 4: a stone plinth under the walkway, down into the lowest ground under it -- no air under it on a slope)
-    const drop = ground - lift.low + 0.3;
+    // (5회차 4: a stone plinth under the walkway, down into the lowest ground under it -- no air under it on a slope; v1.10.160
+    // 「땅 다지기」: the ground under it levelled, so a hand's breadth)
+    const drop = ground - lift.low + 0.15;
     const ag = mergeColored([part(G.box, DECK, 0, -.1, 0, { sx: 1.8, sy: .2, sz: accessLength }), part(G.box, PLINTH, 0, -0.2 - drop / 2, 0, { sx: 1.7, sy: drop, sz: accessLength }),
       ...[-.85, .85].map(x => part(G.box, FRAME, x, .5, 0, { sx: .06, sy: .06, sz: accessLength }))]); made.push(ag); access.add(new THREE.Mesh(ag, vcMat));
     const top = Math.max(...plats.map((p) => p.y)) + 2.6;
@@ -131,5 +132,5 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
     }
   }
   const dispose = () => { for (const rec of trains) for (const a of rec.actions || []) a.mixer.stopAllAction(); for (const x of made) x.dispose(); scene.remove(group); };
-  return { group, step, dispose, liftAt: (id, y) => { const lift = lifts.find((l) => l.id === id); if (lift) lift.cabin.position.y = Math.max(0, y - lift.ground); }, debug: () => ({ pillars: pillarAt.length, platforms: R.PLATFORMS.length, lifts: lifts.length, cars: trains.map((t) => ({ id: t.id, x: +t.h.position.x.toFixed(1), y: +t.h.position.y.toFixed(1), z: +t.h.position.z.toFixed(1), model: Boolean(t.mixer), mixers: (t.actions || []).length, wheels: t.wheels.length, opened: t.opened })) }) };
+  return { group, step, dispose, liftAt: (id, y) => { const lift = lifts.find((l) => l.id === id); if (lift) lift.cabin.position.y = Math.max(0, y - lift.ground); }, debug: () => ({ pillars: pillarAt.length, platforms: R.PLATFORMS.length, lifts: lifts.length, cabins: Object.fromEntries(lifts.map((l) => [l.id, +(l.cabin.position.y + l.ground).toFixed(2)])),cars: trains.map((t) => ({ id: t.id, x: +t.h.position.x.toFixed(1), y: +t.h.position.y.toFixed(1), z: +t.h.position.z.toFixed(1), model: Boolean(t.mixer), mixers: (t.actions || []).length, wheels: t.wheels.length, opened: t.opened })) }) };
 }

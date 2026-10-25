@@ -1742,6 +1742,10 @@
   const qualityMode = () => { try { const v = localStorage.getItem('gc.quality'); return ['0', '1', '2'].includes(v) ? v : 'auto'; } catch { return 'auto'; } };
   byId('qualitySelect').value = qualityMode();
   byId('qualitySelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.quality', event.target.value); } catch {} plaza.controller?.setQualityMode?.(event.target.value); });
+  // 사용자 「파도가 전혀 안 움직여」: 「움직임 줄이기」 -- the device's setting (default), or on/off whatever it says, kept on this device
+  const motionMode = () => { try { const v = localStorage.getItem('gc.lessMotion'); return v === 'on' || v === 'off' ? v : 'auto'; } catch { return 'auto'; } };
+  byId('motionSelect').value = motionMode();
+  byId('motionSelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.lessMotion', event.target.value); } catch {} plaza.controller?.setMotionMode?.(event.target.value); });
   byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
   byId('stickResetBtn').addEventListener('click', () => { for (const c of Object.values(CONTROLS)) { c.place = null; applyCtl(c); saveCtl(c); } selectCtl(ctlSel); });
   stickSizeInput.addEventListener('input', () => { const c = CONTROLS[ctlSel]; c.place = clampCtl(c, { ...currentCtl(c), size: Number(stickSizeInput.value) }); applyCtl(c); saveCtl(c); });
@@ -1904,7 +1908,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
-      plaza.controller.setQualityMode?.(qualityMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
+      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }

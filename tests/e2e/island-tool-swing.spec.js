@@ -15,6 +15,19 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
   await page.keyboard.press('KeyI');
   await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe('bugnet');
+  // (사용자 2026-10-26 「채 머리가 얼굴을 파고들고 휘두르기가 작아」) carried low and ahead -- the hoop well off the head, ahead,
+  // not out to the side (6회차 9) -- standing and walking; swung with the clip's own angle: a wide arc again
+  await page.evaluate(() => window.PlazaWarp(30, 0));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().toolTip()), { timeout: 20000 }).not.toBeNull();
+  const carried = async (how) => { const t = await page.evaluate(() => window.PlazaDebug().toolTip()); const d = t.hoop.map((v, k) => v - t.hand[k]); const n = Math.hypot(...d);
+    expect(Math.hypot(...t.hoop.map((v, k) => v - t.head[k])), `${how}: 고리와 머리`).toBeGreaterThan(0.75); expect(Math.abs(d[0] / n), `${how}: 옆`).toBeLessThan(0.6); expect(d[2] / n, `${how}: 앞`).toBeGreaterThan(0.6); };
+  await page.waitForTimeout(500); await carried('서기');
+  if (!isMobile) { await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(600); await carried('걷기'); await page.keyboard.up('ArrowUp'); }
+  // (CI #306: the hoop's sweep counted frame by frame missed its ends on a slow runner -- the hand's angle instead: turned to
+  // NetSwing's own while it swings, back to carrying after)
+  const turned = await page.evaluate(() => new Promise((done) => { const d = window.PlazaDebug(); let most = 0; d.swingNow(); const t0 = performance.now(); const tick = () => { most = Math.max(most, d.toolTip().turn); if (performance.now() - t0 < 800) requestAnimationFrame(tick); else done(most); }; requestAnimationFrame(tick); }));
+  expect(turned, '휘두를 때 손 안 각도(들 때와의 차)').toBeGreaterThan(1.2);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().toolTip().turn), { timeout: 5000 }).toBeLessThan(0.05);
   // an insect (where it is drawn now -- flying, crawling or on a trunk): stepped up to under a metre off, facing it, SPACE
   // -- caught (the server's answer 200); it may have moved off in the swing: again
   const by = (x0, z0, r) => { for (let k = 0; k < 12; k += 1) { const x = x0 + Math.cos(k / 2) * r; const z = z0 + Math.sin(k / 2) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.3)) return { x, z }; } return null; };
@@ -44,7 +57,11 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
       const x = m.x + Math.cos(k / 2) * 0.9; const z = m.z + Math.sin(k / 2) * 0.9; if (!T.walkable(x, z)) continue;
       await page.evaluate(async ([x, z, mx, mz]) => { await window.PlazaWarp(x, z); window.PlazaDebug().faceTo(mx, mz); }, [x, z, m.x, m.z]); break;
     }
-    await page.waitForTimeout(200);
+    // (CI, #305: a walking islander was a step off by the swing on a slow runner -- 'missed' for a minute, twice; as with the
+    // insects: where it is now, just before the swing)
+    const now = await page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderersAt(true).find((o) => o.n === n); return w && { ...w, d: Math.hypot(w.x - d.x, w.z - d.z) }; }, m.n);
+    if (!now || now.d > 1.3) return 'moved off'; // (out of reach: the next try)
+    await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [now.x, now.z]);
     if (!(await spaceOn(page, 'tool:swing', isMobile))) return 'no swing';
     await page.waitForTimeout(700);
     return (await page.evaluate(() => window.PlazaDebug().struck()))[0]?.bubble ? 'struck' : 'missed';

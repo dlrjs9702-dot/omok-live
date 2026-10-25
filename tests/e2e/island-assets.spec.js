@@ -295,10 +295,18 @@ test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', asy
     const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality };
   });
   await a.page.emulateMedia({ reducedMotion: 'reduce' });
+  // (사용자 「파도가 전혀 안 움직여」: the water never stops, only slower -- the ripple lines and the glinting wobble off)
   await expect.poll(async () => {
     const { environment } = await sample();
-    return { stillWater: environment.water.flow.every(v => v === 0), bodyScale: environment.ambient.bodyScale };
-  }).toEqual({ stillWater: true, bodyScale: 1 });
+    return { calmWater: environment.water.lines === 0 && environment.water.ripple === 0, bodyScale: environment.ambient.bodyScale };
+  }).toEqual({ calmWater: true, bodyScale: 1 });
+  const shore = (await sample()).environment.water.shore;
+  await expect.poll(async () => (await sample()).environment.water.shore).toBeGreaterThan(shore + 0.2);
+  // the menu's 「끔」 over the device's setting: lines and ripple back
+  await a.page.evaluate(() => window.PlazaDebug().setMotionMode('off'));
+  await expect.poll(async () => (await sample()).environment.water.ripple).toBe(1);
+  await a.page.evaluate(() => window.PlazaDebug().setMotionMode('auto'));
+  await expect.poll(async () => (await sample()).environment.water.ripple).toBe(0);
   const before = await a.page.evaluate(() => {
     const d = window.PlazaDebug(); d.holdQuality(2); d.holdQuality(null);
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange'));
@@ -307,7 +315,7 @@ test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', asy
   await a.page.clock.install();
   for (let i = 0; i < 4; i++) await a.page.clock.fastForward(1000);
   const after = await sample(); expect(after.quality).toBe(2);
-  expect(after.environment.water).toEqual(before.water); expect(after.environment.ambient).toEqual(before.ambient);
+  expect(after.environment.ambient).toEqual(before.ambient); // (not the water: it keeps moving, slowly, with 움직임 줄이기 too)
   await a.page.evaluate(() => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
   await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
 });
