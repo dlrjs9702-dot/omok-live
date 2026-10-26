@@ -3467,8 +3467,8 @@
     } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
   }
   // (문제 기록 3회차 4 「낚시 미니게임: 입질 때 화살표」) at the bite, arrows to press in order (4~12, more the rarer the
-  // fish) before the bar runs out: the arrow keys on a PC, the four buttons on a phone; a wrong one only shakes, the last
-  // one pulls it in. Out of time, the scene lets it go (the bite's end).
+  // fish) before the bar runs out: the arrow keys on a PC, the four buttons on a phone; a wrong one shakes the row red and
+  // starts it over (「틀렸어요! 처음부터」), the last one pulls it in. Out of time, the scene lets it go (the bite's end).
   const FISH_DIRS = ['up', 'right', 'down', 'left']; const FISH_KEYS = { ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down', ArrowLeft: 'left' };
   const fishArrowsBox = byId('fishArrows'); let fishGame = null;
   function fishArrowsStart(n, ms) {
@@ -3484,7 +3484,10 @@
   function fishArrow(dir) {
     if (!fishGame || fishBusy) return;
     fishGame.presses.push({ dir, t: Math.round(performance.now() - fishGame.shownAt) });
-    if (fishGame.seq[fishGame.at] !== dir) { fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); return; }
+    if (fishGame.seq[fishGame.at] !== dir) { // (사용자 지시 10/26: a wrong arrow starts it over -- that press the first again if it is the first one; the server judges the same)
+      fishGame.at = dir === fishGame.seq[0] ? 1 : 0; fishArrowMark();
+      fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); return;
+    }
     fishGame.at += 1; fishArrowMark();
     if (fishGame.at === fishGame.seq.length) { const { presses } = fishGame; fishArrowsEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; }); }
   }

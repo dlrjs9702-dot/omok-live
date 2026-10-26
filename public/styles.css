@@ -1784,6 +1784,13 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .fishArrowTime i{display:block;height:100%;width:100%;background:#4caf6a}
 .fishArrows.wrong{animation:fishWrong .25s}
 @keyframes fishWrong{25%{transform:translateX(calc(-50% - 8px))}75%{transform:translateX(calc(-50% + 8px))}}
+/* (사용자 지시 10/26: a wrong arrow starts it over -- the row flashes red, then all grey again, and a short word) */
+.fishArrows.wrong .fishArrowSeq span{animation:fishRed .45s}
+@keyframes fishRed{0%,40%{background:#e05a4f;color:#fff}}
+.fishArrowNote{display:none;margin:0;font-weight:900;color:#c0392b}
+.fishArrows.wrong .fishArrowNote{display:block;animation:fishNote 1.4s forwards}
+@keyframes fishNote{0%,70%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.fishArrows.wrong{animation:none}}
 .fishArrowPad{display:none;gap:10px}
 .fishArrowPad button{width:56px;height:56px;border-radius:14px;font-size:1.5rem;font-weight:950}
 @media (pointer:coarse){.fishArrowPad{display:flex}}

@@ -43,6 +43,13 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
   assert.equal(F.judge({ biteAt: 10_000, species: 'anchovy' }, 10_000 + 9900), 'late');
   assert.deepEqual(F.titlesFor(3), []); assert.deepEqual(F.titlesFor(F.DEX.length).map((t) => t.id), ['dex_title_1', 'dex_title_2', 'dex_title_3', 'dex_title_4']);
   assert.deepEqual(F.titlesFor(18).map((t) => t.id), ['dex_title_1', 'dex_title_2', 'dex_title_3'], '도감 완성은 예전 18개 그대로(이미 받은 사람 유지)');
+  // (사용자 지시 10/26) a wrong arrow starts it over: the whole row again from the first, in its time
+  const fish = { arrowN: 4, seq: ['up', 'right', 'down', 'left', 'up', 'up', 'up', 'up', 'up', 'up', 'up', 'up'] };
+  const at = (dirs, step = 100) => dirs.map((dir, i) => ({ dir, t: i * step }));
+  assert.equal(F.judgeArrows(fish, at(['up', 'right', 'left', 'up', 'right', 'down', 'left'])), 'ok', '틀림 뒤 처음부터 맞게');
+  assert.equal(F.judgeArrows(fish, at(['up', 'right', 'left', 'down', 'left'])), 'wrong', '틀림 뒤 남은 것만');
+  assert.equal(F.judgeArrows(fish, at(['up', 'right', 'up', 'right', 'down', 'left'])), 'ok', '틀린 것이 첫 화살표면 거기서 1');
+  assert.equal(F.judgeArrows(fish, at(['up', 'right', 'left', 'up', 'right', 'down', 'left'], 1000)), 'late', '시간 넘김');
 });
 
 test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도감에 한 번, 이르면 실패, 어부에게 판매, 도감 칭호', async (t) => {
@@ -58,7 +65,7 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   const early = (await req('/api/island/fish/start', sa, {})).data; assert.ok(early.biteIn >= 5000 && early.biteIn <= 10000);
   assert.equal((await req('/api/island/fish/finish', sa, { fishId: early.fishId })).data.error, 'FISH_EARLY');
   // (Codex 검토 #1) the arrows are the server's: the cast's twelve, the fish's first n pressed in order within their time --
-  // a wrong one between only shakes; never finished, or finished after the bar: away
+  // a wrong one starts it over (사용자 지시 10/26); never finished, or finished after the bar: away
   const press = (seq, n = 12, step = 150) => seq.slice(0, n).map((dir, i) => ({ dir, t: i * step }));
   const wrongWay = { up: 'down', down: 'up', left: 'right', right: 'left' };
   // (as many as the cast told the page -- `arrows`; the test bite may change the fish, never that count)
@@ -70,8 +77,8 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   const slow = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: 'anchovy' });
   assert.equal((await req('/api/island/fish/finish', sa, { fishId: slow.fishId, presses: press(slow.seq, slow.arrows, 2000) })).data.error, 'FISH_LATE', '시간 초과');
   const shaky = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: 'anchovy' });
-  const withSlip = [{ dir: wrongWay[shaky.seq[0]], t: 50 }, ...press(shaky.seq, shaky.arrows).map((p) => ({ ...p, t: p.t + 100 }))]; // (a wrong one first: a shake)
-  assert.equal((await req('/api/island/fish/finish', sa, { fishId: shaky.fishId, presses: withSlip })).data.species, 'anchovy', '틀린 것 하나는 흔들림만');
+  const withSlip = [{ dir: wrongWay[shaky.seq[0]], t: 50 }, ...press(shaky.seq, shaky.arrows).map((p) => ({ ...p, t: p.t + 100 }))]; // (a wrong one first, then the whole row)
+  assert.equal((await req('/api/island/fish/finish', sa, { fishId: shaky.fishId, presses: withSlip })).data.species, 'anchovy', '틀린 뒤 처음부터 다 누르면 잡힘');
   const cast = (await req('/api/island/fish/start', sa, {})).data;
   await req('/api/test/fish/bite', sa, { species: 'octopus' });
   const concurrent = await Promise.all(Array.from({ length: 4 }, () => req('/api/island/fish/finish', sa, { fishId: cast.fishId, presses: press(cast.seq) })));
