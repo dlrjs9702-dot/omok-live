@@ -31,6 +31,7 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await page.setViewportSize({ width: w, height: h });
     const black = await login(page);
     await page.evaluate((game) => document.querySelector(`[data-game="${game}"]`).click(), game);
+    await page.evaluate(() => document.querySelector('input[name="roomStakes"][value="1"]').click()); // (G-포인트: a 내기 room -- its result shows the points)
     const [res] = await Promise.all([
       page.waitForResponse((r) => r.url().endsWith('/api/rooms') && r.request().method() === 'POST'),
       page.locator('#createRoomBtn').click(),
