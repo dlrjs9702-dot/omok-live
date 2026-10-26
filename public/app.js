@@ -2868,7 +2868,7 @@
       say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
       button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
     } else say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`;
-    lostCard.replaceChildren(say, row); openTalk('구치소장');
+    lostCard.replaceChildren(say, row); openTalk('김우성 구치소장'); // (사용자 2026-10-26: his name)
   }
   async function startEssay() {
     const gen = essayGen;
