@@ -1042,6 +1042,12 @@ function isHoguking(account, now = nowMs()) {
 // v1.10.91 주민 심부름: where each account is in today's errands (memory; what was paid stays paid in the store)
 // ponytail: in memory, a restart forgets an errand under way (ask again); keep it in the store if that ever matters
 const errandStages = new Map(); // `<day>|<account>` -> { [errand id]: stage }
+// an errand's pay: its kind's and the way's (경제 값), a 친한 asker's a little more, a 단짝's more again (R2), a store
+// errand its good's price on top -- what the offer shows and what the end pays (`before`: my 호감도 with each islander)
+function errandPay(e, before) {
+  const asker = IslandCast.levelOf(before[e.from] || 0); const pct = asker >= 3 ? Economy.value('affinity:bestieErrand') : asker >= 2 ? Economy.value('affinity:closeErrand') : 100;
+  return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0);
+}
 async function errandView(account) {
   const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day);
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
@@ -3848,7 +3854,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.167' });
+    return sendJson(res, 200, { ok: true, version: '1.10.168' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6261,7 +6267,8 @@ async function requestHandler(req, res) {
       // A2b: a puzzle step is today's 오늘의 문제 -- already solved today (in the game hall), it counts at once
       const puzzleDone = async () => { const d = (await questState(account)).doc[story]; const s = IslandQuests.STORIES[story].steps[d?.step]; if (!d?.taken || d.done || !s?.puzzle || d.count >= 1 || !(await puzzleSolved(account, s.game, s.level))) return false; await islandProgress(`minigame:${s.game}`, account, 1); return true; };
       await puzzleDone();
-      const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos); return r.error ? r : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; },IslandQuests.scopeOf(story));
+      // (Q 부탁 받기: a story not under way is offered -- nothing kept -- until 「할게요!」 sends accept)
+      const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos, nowMs(), body.accept === true); return r.error ? r : r.offer ? null : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; },IslandQuests.scopeOf(story));
       if (out?.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       if (out?.error) return sendError(res, 409, 'QUEST_BUSY', '잠시 후 다시 말을 걸어 주세요.');
       const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, pos); // nothing changed: what they say now
@@ -6275,7 +6282,13 @@ async function requestHandler(req, res) {
       // v1.10.80: a game step now under way -- which round to open ([도와줄게요] in the talk)
       const cur = (await questState(account)).doc[story]; const stepNow = IslandQuests.STORIES[story].steps[cur?.step];
       const minigame = cur?.taken && !cur.done && stepNow?.kind === 'minigame' && !(cur.count >= 1) ? { game: stepNow.game, level: stepNow.level, ...(stepNow.puzzle ? { goal: null, puzzle: true } : stepNow.ai ? { goal: null, ai: true } : { goal: stepNow.need }) } : null;
-      return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: solvedToday ? `${r.say} …어? 오늘 문제는 벌써 풀었네요! 다시 말을 걸어 주세요.` : r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
+      // (Q) the offer's note -- the story, its first thing to do, what that step pays -- and a step handed in: its card
+      // (a step's end a small stamp, the story's end a big one)
+      const S = IslandQuests.STORIES[story];
+      const ask = S.steps[r.step]; const need = ask && !['visit', 'minigame'].includes(ask.kind) ? ask.need : 1;
+      const offer = r.offer ? { story, title: S.name, label: `${ask.label}${need > 1 ? ` ${need}개` : ''}`, reward: ask.reward, until: S.fixed ? null : '이번 주 안에' } : null;
+      const finished = r.paid ? { title: `${S.name} · ${S.steps[r.step].label}`, reward: r.reward || 0, step: r.step + 1, steps: S.steps.length, whole: Boolean(r.done) } : null;
+      return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, offer, finished, accepted: Boolean(r.accepted), fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: solvedToday ? `${r.say} …어? 오늘 문제는 벌써 풀었네요! 다시 말을 걸어 주세요.` : r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
@@ -6632,6 +6645,25 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     return sendJson(res, 200, { ok: true, ...(await errandView(pointAccountForSession(session))) });
   }
+  // (Q 할 일 카드 「그만둘래요」) an errand under way let go: its asker offers it again (nothing paid, nothing kept)
+  if (pathname === '/api/island/errand/drop' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day);
+    const next = IslandErrands.drop(errands, errandStages.get(key) || {}, new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))), String((await parseJson(req)).id || ''));
+    if (!next) return sendError(res, 409, 'ERRAND_GONE', '그만둘 수 있는 부탁이 아니에요.');
+    errandStages.set(key, next);
+    return sendJson(res, 200, { ok: true, ...(await errandView(account)) });
+  }
+  // (Q 「그만둘래요」) a story step under way let go: the islander asks it again (what was paid stays paid)
+  if (pathname === '/api/island/quest/drop' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const story = String((await parseJson(req)).story || '');
+    if (!IslandQuests.STORIES[story]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const out = await questApply(account, (doc) => { const next = IslandQuests.drop(doc, story); return next ? { doc: next, reward: 0 } : null; }, IslandQuests.scopeOf(story));
+    if (!out?.doc) return sendError(res, 409, 'QUEST_GONE', '그만둘 수 있는 부탁이 아니에요.');
+    const quests = questEntries(account);
+    return sendJson(res, 200, { ok: true, track: quests.track, events: quests.entries });
+  }
   // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): anyone walking by, held for the talk on every screen while its
   // window is open (keep: the window's renewal, bye: closed; a walk-off past TALK_FAR lets go), then the choices --
   // topic 'how' (their story), 'rumor' (the island today), 'errand' (the day's errand). The first talk of the day +1.
@@ -6659,7 +6691,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/resident/talk' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
-    if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+    if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift', 'accept', 'decline'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
     const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
     const state = islandEvents.residents()[n]; const who = talkKey(session);
     if (state?.hold && state.hold.eventId !== who) {
@@ -6754,6 +6786,16 @@ async function requestHandler(req, res) {
     }
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
+    // Q 부탁 받기 (docs/quest-accept-complete-20261026.md): 「할게요!」 starts the offered errand; 「다음에요」 keeps nothing
+    // (asked again today) -- each answered in the asker's own words
+    if (topic === 'accept' || topic === 'decline') {
+      const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say, reward: 0, choices: true, affinity: affinityView(before[n] || 0), ...extra });
+      if (topic === 'decline') return sendTalk(view(IslandCast.say(n, 'errandLater'), { errand: false }));
+      const a = IslandErrands.accept(errands, errandStages.get(key) || {}, done, n, String(body.errand || ''));
+      if (!a) return sendError(res, 409, 'ERRAND_GONE', '지금은 받을 수 없는 부탁이에요.');
+      errandStages.set(key, a.stages);
+      return sendTalk(view(a.say, { errand: true, accepted: { id: a.took.id, title: IslandErrands.title(a.took) }, ...(await errandView(account)) }));
+    }
     const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId)); // v1.10.92: what I carry, for a 'buy' errand
     // (Codex review: the bought thing is handed over before the reward is kept -- a thing already handed over for an
     // unpaid errand counts as carried, so the next talk pays it; its hand-over id is the same, so it is never taken twice)
@@ -6766,8 +6808,7 @@ async function requestHandler(req, res) {
       errandStages.set(key, r.stages);
       if (r.pay) {
         // (R2: an errand for a 친한 asker pays a little more, a 단짝's more again -- the day's three errands are the cap)
-        const asker = IslandCast.levelOf(before[r.pay.from] || 0); const pct = asker >= 3 ? Economy.value('affinity:bestieErrand') : asker >= 2 ? Economy.value('affinity:closeErrand') : 100;
-        const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Math.round((Economy.value(`errand:${r.pay.kind}`) + Economy.value('errand:far') * (r.pay.far || 0)) * pct / 100) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` });
+        const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: errandPay(r.pay, before), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` });
         if (out.applied) {
           reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : []));
           // (R3 ⑤ 관계: an errand between two at odds patches it up -- both a little warmer to me; between friends, a word more)
@@ -6782,7 +6823,11 @@ async function requestHandler(req, res) {
     const memory = !r && topic === null && level >= 1 && Math.random() < 0.35 ? IslandAffinity.memoryLine((await pointStore.questDoc(account, 'resmem')).doc, n, day) : null;
     const say = r ? r.say : topic === 'errand' ? IslandCast.say(n, 'errandNone') : [memory ? IslandCast.fill(memory, String(session.label || '')) : IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
     const after = await pointStore.affinityAdd(account, day, gains); const points = after[n] || 0; // (daily: the first talk of the day only, whatever is chosen)
-    return sendTalk({ ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, affinity: affinityView(points), stages: await affinityStages(account, before, after, String(session.label || '')), ...(await errandView(account)) });
+    // (Q) an errand offered: its note -- what, where they are usually seen, what it pays, today only
+    const offer = r?.offer ? { id: r.offer.id, title: IslandErrands.title(r.offer), where: r.offer.where || null, reward: errandPay(r.offer, before), until: '오늘 안에' } : null;
+    // (Q 끝내기) a paid one's card: what came of it -- the points and the 호감도 with each
+    const finished = r?.pay && reward ? { title: IslandErrands.title(r.pay), reward, gains: [...new Map(gains.filter((g) => !g.daily).map((g) => [g.n, { name: IslandCast.WALKERS[g.n].name, delta: (after[g.n] || 0) - (before[g.n] || 0) }])).values()].filter((g) => g.delta > 0) } : null;
+    return sendTalk({ ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, offer, finished, affinity: affinityView(points), stages: await affinityStages(account, before, after, String(session.label || '')), ...(await errandView(account)) });
   }
   // A4 날씨: the island's weather now (the same for everyone) and when it changes; the administrator may hold it
   if (pathname === '/api/island/weather' && req.method === 'GET') {
@@ -7780,7 +7825,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.167 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.168 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

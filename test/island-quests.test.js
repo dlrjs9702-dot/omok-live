@@ -28,7 +28,8 @@ test('연계 퀘스트: 말 걸기 → 진행 → 보고(보상·다음 부탁) 
   let doc = {};
   assert.equal(Q.talk(doc, 'granny', [], { x: 40, z: 40 }).error, 'TOO_FAR');
   assert.equal(Q.markOf('granny', doc.granny || { step: 0, taken: false, count: 0, done: false }, []), 'new');
-  let r = Q.talk(doc, 'granny', [], at('granny')); doc = r.doc;
+  assert.deepEqual([Q.talk(doc, 'granny', [], at('granny')).offer, Q.talk(doc, 'granny', [], at('granny')).doc], [true, doc], 'Q: 말만 걸면 부탁(쪽지)만, 시작은 「할게요」');
+  let r = Q.talk(doc, 'granny', [], at('granny'), Date.now(), true); doc = r.doc;
   assert.match(r.say, /잡초 20포기/); assert.equal(r.reward, 0);
   assert.equal(Q.markOf('granny', doc.granny, []), null);
   assert.deepEqual(Q.trackOf('granny', doc.granny, []), { story: 'granny', name: '정원사 할머니', label: '잡초', count: 0, need: 20, ready: false, to: null });
@@ -64,7 +65,7 @@ async function storeFlow(store) {
   const start = (await store.getAccount(U)).balance;
   const week = '2026-10-05';
   const pay = (fn) => (doc, bag) => { const out = fn(doc, bag); return out && !out.error ? { ...out, payKey: `quest:${week}:${U}:granny:${out.step}` } : out; };
-  await store.questApply(U, week, pay((doc, bag) => Q.talk(doc, 'granny', bag, at('granny'))));
+  await store.questApply(U, week, pay((doc, bag) => Q.talk(doc, 'granny', bag, at('granny'), Date.now(), true))); // (Q: 「할게요!」)
   for (let i = 0; i < 20; i += 1) await store.questApply(U, week, (doc) => { const next = Q.note(doc, 'weed'); return next ? { doc: next, reward: 0 } : null; });
   const paid = await store.questApply(U, week, pay((doc, bag) => Q.talk(doc, 'granny', bag, at('granny'))));
   assert.equal(paid.reward, 2000);
@@ -107,7 +108,7 @@ test('할로윈 꼬마: 10월(서울)에만 말을 걸 수 있고, 사탕 주머
   const oct = Date.parse('2026-10-31T23:30:00+09:00'); const nov = Date.parse('2026-11-01T00:10:00+09:00');
   assert.equal(Q.isOpen('kid', oct), true); assert.equal(Q.isOpen('kid', nov), false); assert.equal(Q.isOpen('granny', nov), true);
   assert.equal(Q.talk({}, 'kid', [], at('kid'), nov).error, 'NO_STORY');
-  let doc = Q.talk({}, 'kid', [], at('kid'), oct).doc;
+  let doc = Q.talk({}, 'kid', [], at('kid'), oct, true).doc;
   const bag = [{ entryId: 'a', itemId: 'candy', qty: 3 }];
   assert.equal(Q.markOf('kid', doc.kid, bag), 'ready');
   let r = Q.talk(doc, 'kid', bag, at('kid'), oct); doc = r.doc;
@@ -148,7 +149,7 @@ test('사진 부탁 → 곤충·물고기 부탁: 진행 중이던 옛 사진 �
   assert.equal(Q.note(old, 'at', { x: 0, z: 0, now, scope: 'fixed' }), null);
   assert.deepEqual(Q.STORIES.photomemory.steps.map((s) => [s.kind, s.item]), [['give', 'insect_grasshopper'], ['give', 'fish_crucian_carp']]);
   assert.deepEqual(Q.STORIES.photographer.steps.map((s) => s.item), ['insect_ladybird', 'fish_goby']);
-  const taken = Q.talk({}, 'photomemory', [], at('photomemory'), now).doc; assert.equal(Q.storyState(taken, 'photomemory').done, false);
+  const taken = Q.talk({}, 'photomemory', [], at('photomemory'), now, true).doc; assert.equal(Q.storyState(taken, 'photomemory').done, false);
   const bag = [{ itemId: 'insect_grasshopper', qty: 1 }];
   const r = Q.talk(taken, 'photomemory', bag, at('photomemory'), now); assert.equal(r.reward, 3000); assert.deepEqual(r.take, { itemId: 'insect_grasshopper', qty: 1 });
   assert.equal(Q.storyState(r.doc, 'photomemory').done, false); assert.equal(Q.storyState(r.doc, 'photomemory').step, 1);
@@ -163,7 +164,7 @@ async function fixedFlow(store, rollback=false) {
   const bag=await store.islandBag(U); const start=(await store.getAccount(U)).balance;
   // (3회차 17: what the photographer asks for -- an insect, then a fish -- caught and in the bag; the bag then full)
   for(const s of Q.STORIES[id].steps) await store.islandGive({userId:U,claimId:`fixed-${s.item}`,itemId:s.item,qty:1});
-  const pay=(doc,items)=>{const out=Q.talk(doc,id,items,at(id),now);return {...out,payKey:`quest:fixed:${U}:${id}:${out.step}`};};
+  const pay=(doc,items)=>{const out=Q.talk(doc,id,items,at(id),now,true);return {...out,payKey:`quest:fixed:${U}:${id}:${out.step}`};};
   await store.questApply(U,'fixed',pay);
   await store.questApply(U,'fixed',pay); // the insect handed over
   if(rollback) {

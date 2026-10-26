@@ -1740,6 +1740,7 @@ test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지
   await expect(page.locator('#plazaDialogTitle')).toHaveText('첫 섬 나들이');
   await expect(page.locator('#plazaDialog')).toContainText('메뚜기'); // (3회차 17: 「곤충·물고기 부탁」 -- the insect first)
   await page.locator('#plazaDialog button').filter({hasText:'할게요'}).click();
+  await page.locator('#plazaDialog button').filter({hasText:'확인'}).click(); await expect(page.locator('#plazaDialog')).toBeHidden(); // (Q: taken -- the ask again, closed)
   await expect.poll(()=>page.evaluate((pg)=>{const d=window.PlazaDebug();return {mark:d.quests().find(q=>q.id==='questphotomemory')?.mark,position:d.markers.some(m=>Math.abs(m.x-pg.x)<.01&&Math.abs(m.z-pg.z)<.01)};},PG)).toEqual({mark:null,position:true});
   expect((await post(request,'/api/test/island/give',a.token,{itemId:'insect_grasshopper',qty:1})).status).toBe(200); // (caught)
   await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().quests().find(q=>q.id==='questphotomemory')?.mark)).toBe('ready');
@@ -1755,7 +1756,7 @@ test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보�
   const a=await intoPlaza(browser,request,'첫나들이기록'),{page}=a;
   const Q=require('../../lib/island-quests'),story=Q.STORIES.photomemory;
   const stand=async(p)=>{await page.evaluate(([x,z])=>window.PlazaWarp(x,z),[p.x,p.z]);await post(request,'/api/plaza/state',a.token,{x:p.x,z:p.z,yaw:0});};
-  const talk=()=>post(request,'/api/island/event',a.token,{id:'questphotomemory'});
+  const talk=()=>post(request,'/api/island/event',a.token,{id:'questphotomemory',accept:true}); // (Q: taken with 「할게요!」)
   await stand({x:story.at.x+.8,z:story.at.z});expect((await talk()).status).toBe(200);
   for(const [i,step] of story.steps.entries()) { // (3회차 17: the insect, then the fish, caught and handed over)
     expect((await post(request,'/api/test/island/give',a.token,{itemId:step.item,qty:1})).status).toBe(200);
@@ -1830,13 +1831,16 @@ test('역 승강기: 다른 사람이 타면 내 화면에서도 승강기로 �
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 30000 }).toBeTruthy(); const aId = await a.page.evaluate(() => window.PlazaDebug().myId);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().others.some((o) => o.id === id), aId), { timeout: 15000 }).toBe(true);
   // B watches A every 50 ms while A presses
-  const watch = b.page.evaluate(([S, id]) => new Promise((done) => { const out = []; const t0 = performance.now(); const tick = () => { const d = window.PlazaDebug(); const o = d.others.find((p) => p.id === id); out.push({ y: o?.y, lifting: o?.lifting, cabin: d.train().cabins[S] }); if (performance.now() - t0 > 6000) done(out); else setTimeout(tick, 50); }; tick(); }), [S, aId]);
+  const watch = b.page.evaluate(([S, id]) => new Promise((done) => { const out = []; const t0 = performance.now(); const tick = () => { const d = window.PlazaDebug(); const o = d.others.find((p) => p.id === id); out.push({ y: o?.y, lifting: o?.lifting, ride: o?.ride, cabin: d.train().cabins[S] }); if (performance.now() - t0 > 6000) done(out); else setTimeout(tick, 50); }; tick(); }), [S, aId]);
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe(S);
   const seen = await watch; const mid = (y) => y > at.lift.y + 1 && y < at.top - 1;
   expect(seen.some((s) => s.lifting), JSON.stringify(seen.slice(0, 5))).toBe(true);
-  // (CI #306: a slow runner draws a few frames in the ride -- 3 of them in its middle; a jump has none: two different heights there is the ride)
-  expect(new Set(seen.filter((s) => mid(s.y)).map((s) => s.y.toFixed(2))).size, 'A의 높이가 중간을 지나감').toBeGreaterThanOrEqual(2);
+  // (CI #306, #311, #313: a slow runner drew 0~1 frames in the ride's middle -- the ride itself is read: a jump has none, a
+  // ride lasts its 1.8 s and passes the middle heights going up)
+  const ride = seen.find((s) => s.ride)?.ride;
+  expect(ride?.ms, JSON.stringify(seen.slice(0, 5))).toBeGreaterThanOrEqual(1000);
+  expect(ride.ys.every((y, i) => mid(y) && (i === 0 || y > ride.ys[i - 1])), `A의 높이가 중간을 지나감 ${JSON.stringify(ride.ys)}`).toBe(true);
   expect(seen.some((s) => mid(s.cabin)), '칸이 같이 움직임').toBe(true);
   expect(Math.max(...seen.map((s) => s.y))).toBeGreaterThan(at.top - 0.5); // (up at the end)
   await expectNoScriptError(a.page); await a.context.close(); await b.context.close();

@@ -3442,7 +3442,7 @@
     const meta = document.createElement('p'); meta.className = 'lookMeta';
     const doneText=data.fixed?'이야기 끝':'이번 주 이야기 끝';
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
-    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '확인'; /* (Q: taking it on is 「할게요!」 on the ask's note -- this only closes) */ ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
     // v1.10.80 농부 부탁: a game step opens its round right here (GameLaunch, back to the island after); a paid round at the
     // goal is the step done -- then a word with the farmer hands it in
@@ -3460,8 +3460,43 @@
     }); return [b]; })() : [];
     if (game.length) ok.className = 'ghost';
     if (data.story === 'farmer') refreshFarm();
+    if (data.finished) showDoneCard(data.finished); // (Q 끝내기: a step's end a small stamp, the story's a big one)
+    if (data.offer) { // (Q 부탁 받기: their ask with its note -- 「할게요!」 starts it, 「다음에요」 keeps nothing)
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'primary'; yes.textContent = '할게요!';
+      yes.addEventListener('click', async () => {
+        yes.disabled = true;
+        try { const r = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id: `quest${data.story}`, accept: true }) }); showIslandEvents(r.events || islandEventsNear); showQuestTracker(r.track || []); openQuestTalk(r); }
+        catch (error) { showToast(error.message); plazaDialog.close(); }
+      });
+      const later = document.createElement('button'); later.type = 'button'; later.className = 'ghost'; later.textContent = '다음에요'; later.addEventListener('click', () => plazaDialog.close());
+      lostCard.replaceChildren(line, offerNote(data.offer), yes, later);
+      openTalk(data.name, false); return;
+    }
     lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ...game, ok, ...sell);
     openTalk(data.name, !data.waiting); // a step taken, paid or ended; only "how is it going" stays over the shoulder
+  }
+  // Q 부탁 받기·끝내기 (gamecenter-notes docs/quest-accept-complete-20261026.md): an ask's note -- what, where, what it pays,
+  // until when -- on paper; and the end's card in the middle, the red 「완료」 stamp pressed on and what came of it (a story's
+  // step a small stamp, the story or an errand a big one; still under 움직임 줄이기)
+  const fmtPts = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
+  function offerNote(o) {
+    const card = document.createElement('div'); card.className = 'isle-paper questNote';
+    const head = document.createElement('strong'); head.textContent = `📜 ${o.title}`; card.append(head);
+    for (const text of [o.label && `할 일 · ${o.label}`, o.where && `어디 · 보통 ${o.where} 쪽에 있어요`, o.reward && `받는 것 · +${fmtPts(o.reward)} · 호감도`, o.until && `기한 · ${o.until}`].filter(Boolean)) { const p = document.createElement('p'); p.textContent = text; card.append(p); }
+    return card;
+  }
+  function showDoneCard(f) {
+    const step = f.whole === false; // (a story's step, not its end)
+    document.querySelector('.questDone')?.remove();
+    const card = document.createElement('div'); card.className = `isle-paper questDone${step ? ' small' : ''}${motionMode() === 'on' ? ' still' : ''}`; card.setAttribute('role', 'status'); // (움직임 줄이기 켬: the stamp without its press)
+    const title = document.createElement('strong'); title.textContent = step ? `${f.step}단계 끝!` : f.whole ? '이야기 끝!' : '부탁 완료!';
+    const stamp = document.createElement('span'); stamp.className = 'questStamp'; stamp.textContent = step ? `${f.step}단계` : '완료';
+    const what = document.createElement('p'); what.className = 'questDoneWhat'; what.textContent = f.title;
+    const got = document.createElement('ul'); got.className = 'questDoneGot';
+    for (const text of [f.reward && `+${fmtPts(f.reward)}`, ...(f.gains || []).map((g) => `${g.name} 호감도 +${g.delta}`)].filter(Boolean)) { const li = document.createElement('li'); li.textContent = text; got.append(li); }
+    card.append(stamp, title, what, got);
+    const close = () => card.remove(); card.addEventListener('click', close); setTimeout(close, 3600);
+    (byId('plazaStage') || document.body).append(card);
   }
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
   // in the bag (and the 도감), too early or too late it got away. The scene shows the cast, the bite and the catch.
@@ -3859,11 +3894,34 @@
   }
   const questTracker = document.getElementById('questTracker');
   let questTrack = []; let errandTrack = []; // v1.10.91: the day's errands under way share the tracker
+  // (Q 할 일 카드, docs/quest-accept-complete-20261026.md ②) what I am doing, on paper, three at most: who asked, the thing
+  // to do and how far (0/1); the moment a story's step is done its line turns ✓ 「○○에게 돌아가 말해요」 (and a short note);
+  // a line pressed opens it -- its thing to do and 「그만둘래요」 (asked once more)
+  let questReady = null; let questOpen = null; // (null: not read yet -- what is ready when I come in is no news)
   function showQuestTracker(list = questTrack) {
     questTrack = list;
-    const lines = [...list.map((t) => (t.ready ? `${t.name} · 완료 ✓ 보고하기` : `${t.name} · ${t.label}${t.need > 1 ? ` ${t.count}/${t.need}` : ''}`)), ...errandTrack.map((e) => `심부름 · ${e.label}`)];
-    questTracker.replaceChildren(...lines.map((text) => { const p = document.createElement('p'); p.textContent = text; return p; }));
-    questTracker.classList.toggle('hidden', !lines.length);
+    const items = [...list.map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? `✓ ${t.name}에게 돌아가 말해요` : t.label, count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
+      ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title }))].slice(0, 3);
+    if (questReady) for (const t of list) if (t.ready && !questReady.has(t.story)) showToast(`✓ ${t.name}에게 돌아가 말해요`, 4000);
+    questReady = new Set(list.filter((t) => t.ready).map((t) => t.story));
+    questTracker.replaceChildren(...items.map((it) => {
+      const line = document.createElement('button'); line.type = 'button'; line.className = `questLine${it.ready ? ' ready' : ''}`; line.dataset.key = it.key;
+      const who = document.createElement('b'); who.textContent = it.who; const what = document.createElement('span'); what.textContent = it.text; line.append(who, what);
+      if (it.count) { const c = document.createElement('small'); c.textContent = it.count; line.append(c); }
+      line.addEventListener('click', () => { questOpen = questOpen === it.key ? null : it.key; showQuestTracker(); });
+      if (questOpen !== it.key) return line;
+      const box = document.createElement('div'); box.className = 'questLineOpen'; box.append(line);
+      const stop = document.createElement('button'); stop.type = 'button'; stop.className = 'ghost tiny'; stop.textContent = '그만둘래요';
+      stop.addEventListener('click', async () => {
+        if (!confirm(`「${it.title || it.text}」 그만둘까요? 다시 말을 걸면 또 부탁해요.`)) return;
+        try {
+          if (it.drop.story) { const r = await api('/api/island/quest/drop', { method: 'POST', body: JSON.stringify(it.drop) }); showIslandEvents(r.events || islandEventsNear); questOpen = null; showQuestTracker(r.track || []); }
+          else { questOpen = null; showErrands(await api('/api/island/errand/drop', { method: 'POST', body: JSON.stringify(it.drop) })); }
+        } catch (error) { showToast(error.message); }
+      });
+      box.append(stop); return box;
+    }));
+    questTracker.classList.toggle('hidden', !items.length);
   }
   // v1.10.91 주민 대화·심부름: any islander standing by me talks -- their own words, or the day's errand (asked, a thing
   // brought, someone found); the stars over their heads and the tracker follow the server's view
@@ -3900,9 +3958,12 @@
       b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : topic === 'talk' ? (fill(talkToday(TALK_TOPICS, data.today)), list.querySelector('button')?.focus()) : topic === 'back' ? (fill(talkToday(TALK_CHOICES, data.today)), list.querySelector('button')?.focus()) : askResident(data.n, topic, choice)));
       return b;
     }));
-    // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them
-    fill(data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : talkToday(TALK_CHOICES, data.today));
-    lostCard.replaceChildren(...lines, meta, list);
+    // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them;
+    // (Q 부탁 받기) an errand asked: its note and 「할게요!」 / 「다음에요」
+    fill(data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : talkToday(TALK_CHOICES, data.today));
+    lostCard.replaceChildren(...lines, ...(data.offer ? [offerNote(data.offer)] : []), meta, list);
+    if (data.finished) showDoneCard(data.finished); // (Q 끝내기)
+    if (data.accepted) showToast(`📜 할 일에 넣었어요 · ${data.accepted.title}`);
     openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor);
     if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
     if (data.affinity) plaza.controller?.setAffinity?.([{ n: data.n, points: data.affinity.points, level: data.affinity.level }]);
@@ -3916,7 +3977,7 @@
   }
   async function askResident(n, topic, choice = null) {
     if (residentBusy) return; residentBusy = true;
-    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
+    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : topic === 'accept' ? { errand: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
     catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; }
   }
   async function talkResident(n) {

@@ -100,10 +100,13 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await page.evaluate(() => document.getElementById('plazaDialog').dispatchEvent(new Event('close')));
   await expect(page.locator('#plazaDialog .lostRequest')).toBeVisible();
   await expect(page.locator('#plazaDialog')).toContainText('잡초 20포기');
-  await page.locator('#plazaDialog .lostRequest button, #plazaDialog button.primary').first().click();
-  await expect(page.locator('#questTracker')).toHaveText('정원사 할머니 · 잡초 0/20', { timeout: 10000 });
+  // (Q 부탁 받기: the ask's note and 「할게요!」 -- then it is on the task card)
+  await expect(page.locator('#plazaDialog .questNote')).toContainText('할 일 · 잡초 20개');
+  await page.locator('#plazaDialog').getByRole('button', { name: '할게요!' }).click();
+  await expect(page.locator('#questTracker .questLine')).toHaveText(/정원사 할머니.*잡초.*0\/20/, { timeout: 10000 });
+  await page.locator('#plazaDialog').getByRole('button', { name: '확인' }).click();
   await post(request, '/api/test/quest/note', token, { what: 'weed', qty: 20 });
-  await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
+  await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().find((q) => q.id === 'questgranny').mark), { timeout: 10000 }).toBe('ready');
   await talk();
   await Promise.all([expect(page.locator('#plazaDialog')).toContainText('+2,000P'),expect(page.locator('#plazaDialog')).toContainText('열매 5개')]);
@@ -114,7 +117,7 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await expect(page.locator('#plazaDialog')).toContainText('강가에 꽃');
   await page.keyboard.press('Escape');
   await move(a,{...require('../../lib/island-quests').STORIES.granny.steps.find((st)=>st.kind==='visit').spot}); // (the riverside flowers, either island)
-  await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
+  await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await talk();
   await expect(page.locator('#plazaDialog')).toContainText('정원이 환해졌');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'bloom', frame: true });
@@ -131,7 +134,7 @@ test('연계 퀘스트: 할머니 결과는 계정별·재접속 유지, 멀리 
     expect((await post(request,'/api/plaza/leave',token,{})).status).toBe(200);
     expect((await post(request,'/api/plaza/state',token,{...at,yaw:0,moving:false})).status).toBe(200);
   };
-  const report=async()=>{const r=await post(request,'/api/island/event',token,{id:'questgranny'});expect(r.status).toBe(200);return r.data;};
+  const report=async()=>{const r=await post(request,'/api/island/event',token,{id:'questgranny',accept:true});expect(r.status).toBe(200);return r.data;};
   await place(story.at);await report();
   expect((await post(request,'/api/test/quest/note',token,{what:'weed',qty:20})).status).toBe(200);await report();
   expect((await post(request,'/api/test/island/give',token,{itemId:'berry',qty:5})).status).toBe(200);await report();
@@ -168,20 +171,21 @@ test('어부 결과 장면: 기존 주간 이야기 완료 대화를 닫은 후 
   await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); return d.others.filter((o) => Math.hypot(o.x - d.x, o.z - d.z) < 3).length; }), { timeout: 30000 }).toBe(0);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('해안 쓰레기 5개');
-  await page.locator('#plazaDialog .lostRequest button, #plazaDialog button.primary').first().click(); // closes the talk
+  await page.locator('#plazaDialog').getByRole('button', { name: '할게요!' }).click(); // (Q: taken on)
+  await page.locator('#plazaDialog').getByRole('button', { name: '확인' }).click(); // closes the talk
   await expect(page.locator('#plazaDialog')).toBeHidden(); // (an Esc now would open the menu, v1.10.63)
   await post(request, '/api/test/quest/note', token, { what: 'beach_trash', qty: 5 });
-  await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
+  await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('버섯 3개');
   await page.keyboard.press('Escape');
   await post(request, '/api/test/island/give', token, { itemId: 'mushroom', qty: 3 });
-  await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
+  await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('출항');
   await page.keyboard.press('Escape');
   await page.evaluate((p) => window.PlazaDebug().teleport(p.x, p.z), require('../../lib/island-quests').STORIES.fisher.steps.find((st) => st.kind === 'visit').spot); // (the pier's end, either island)
-  await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
+  await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await page.evaluate(() => window.PlazaDebug().place('ev:quest_npc:questfisher'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 10000 }).toBe('ev:quest_npc:questfisher');
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');

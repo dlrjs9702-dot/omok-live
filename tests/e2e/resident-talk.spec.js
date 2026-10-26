@@ -88,16 +88,24 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   // typed out after it)
   await lines(); await expect(page.locator('.lostRequestLine').filter({ hasText: /전해 줄래|전해 주겠|전해 주게|못 봤|사다 줄래|사다 주겠|사다 주게|필요한데|아직 못/ }).first()).toBeVisible();
   await expect(page.locator('#plazaDialog .lookMeta')).toContainText(/처음 본 사이 ♥/); // 호감도 (the first talk of the day +1)
+  // (Q 부탁 받기: the ask's note -- what, what it pays, today -- and 「할게요!」 / 「다음에요」; nothing started by talking)
+  await expect(page.locator('#plazaDialog .questNote')).toContainText('오늘 안에');
+  expect((await get(request, '/api/island/errands', token)).data.track).toHaveLength(0);
+  await expect(choices).toHaveText(['할게요!', '다음에요']);
+  await choose('1');
+  await expect(page.locator('#questTracker .questLine')).toHaveCount(1);
   await close();
   const track = (await get(request, '/api/island/errands', token)).data.track;
   expect(track).toHaveLength(1);
   await expect(page.locator('#questTracker')).toContainText('심부름');
   if (track[0].to === askers[0]) { await expectNoScriptError(page); return; } // (a store errand: the good is general-store's test)
-  // the one it is for (and, for someone to find, back to the asker): paid once
+  // the one it is for (and, for someone to find, back to the asker): paid once -- 「부탁 완료!」 with its stamp
+  await page.evaluate(() => { window.__doneSeen = false; new MutationObserver(() => { if (document.querySelector('.questDone .questStamp')) window.__doneSeen = true; }).observe(document.body, { childList: true, subtree: true }); });
   await talkTo(track[0].to); await close();
   let now = (await get(request, '/api/island/errands', token)).data;
   if (now.done === 0) { await talkTo(now.track[0].to); await close(); now = (await get(request, '/api/island/errands', token)).data; }
   expect(now.done).toBe(1);
+  expect(await page.evaluate(() => window.__doneSeen)).toBe(true);
   expect((await get(request, '/api/points', token)).data.balance - before).toBe(track[0].reward); // (the errand's own pay: its kind and how far apart -- 묶음 1 errand:far)
   await expectNoScriptError(page);
   await who.context.close(); await other.context.close();

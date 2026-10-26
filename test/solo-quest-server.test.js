@@ -59,7 +59,9 @@ test('연계 퀘스트 서버: 말 걸기·진행·보고 보상 한 번·가방
   assert.deepEqual([npc.x, npc.z, npc.mark, npc.verb], [g.x, g.z, 'new', '말 걸기'], '멀리서도 지도에 보인다');
   assert.equal((await req('/api/island/event', sa, { id: 'questgranny' })).status, 409, '멀면 거절');
   await stand(g.x + 1, g.z);
-  const first = (await req('/api/island/event', sa, { id: 'questgranny' })).data;
+  const offered = (await req('/api/island/event', sa, { id: 'questgranny' })).data; // (Q: talking only offers it -- its note, nothing started)
+  assert.deepEqual([Boolean(offered.offer), offered.offer?.title, offered.track.length], [true, offered.name, 0]);
+  const first = (await req('/api/island/event', sa, { id: 'questgranny', accept: true })).data;
   assert.equal(first.action, 'quest'); assert.match(first.say, /잡초 20포기/); assert.equal(first.reward, 0);
   assert.deepEqual(first.track.map((x) => [x.story, x.count, x.need]), [['granny', 0, 20]]);
   const start = await balance();
@@ -93,7 +95,7 @@ test('고정 사진가 서버: 근접·서버 활동/방문·최초 보상·기�
   const server=await boot(t,dir),key=await server.issue('사진이야기'),token=await server.enter(key),{req}=server;
   const balance=async()=> (await req('/api/points',token)).data.balance;
   const stand=(x,z)=>req('/api/plaza/state',token,{x,z,yaw:0});
-  const talk=()=>req('/api/island/event',token,{id:'questphotomemory'}),at=Q.STORIES.photomemory.at;
+  const talk=()=>req('/api/island/event',token,{id:'questphotomemory',accept:true}), /* (Q) */at=Q.STORIES.photomemory.at;
   await stand(0,20);await new Promise(r=>setTimeout(r,300));
   const initial=(await stand(0,20)).data;
   assert.equal(initial.events.filter(e=>['photographer','photomemory'].includes(e.story)).length,1);
