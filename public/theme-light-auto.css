@@ -900,7 +900,18 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .minesCell.n6{color:#0f766e}
 :root[data-theme="light"] .minesCell.n7{color:#fffaf1}
 :root[data-theme="light"] .minesCell.n8{color:#6b7280}
-:root[data-theme="light"] .questTracker p{background:rgba(247,239,225,.62);color:#8a5a00}
+:root[data-theme="light"] .questLine{border:1px solid var(--isle-line);background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 4px 12px rgba(74,56,40,.18)}
+:root[data-theme="light"] .questLine b{color:var(--isle-soft)}
+:root[data-theme="light"] .questLine small{color:var(--isle-soft)}
+:root[data-theme="light"] .questLine.ready{border-color:#6aa84f;background:#f1f8e6}
+:root[data-theme="light"] .questLine.ready span{color:#2f6b25}
+:root[data-theme="light"] .questLineOpen{background:var(--isle-paper);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .questLineOpen .questLine{box-shadow:none}
+:root[data-theme="light"] .questLineOpen .ghost{color:var(--isle-soft)}
+:root[data-theme="light"] .questNote p{color:var(--isle-soft)}
+:root[data-theme="light"] .questDoneWhat{color:var(--isle-soft)}
+:root[data-theme="light"] .questDoneGot{color:var(--isle-ink)}
+:root[data-theme="light"] .questStamp{border:3px solid #c0392b;color:#c0392b}
 :root[data-theme="light"] .islandDexCell{background:rgba(255, 255, 255, 0.06)}
 :root[data-theme="light"] .photoCount{color:#fff}
 :root[data-theme="light"] #islandDexBtn.selected,:root[data-theme="light"] #islandPhotoBtn.selected{outline:2px solid #23806f}
