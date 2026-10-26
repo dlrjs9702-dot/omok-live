@@ -35,6 +35,16 @@ async function step(request, tokens, { go = false } = {}) {
   else if (phase === 'gukjin') await call(request, '/api/room/gostop-gukjin', tok, { asPi: false });
   return true;
 }
+// a hand that is under way: a deal can end the hand at once (총통 -- four of a month dealt), then the next hand, seats again
+async function dealPlaying(request, tokens) {
+  for (let tries = 0; tries < 5; tries += 1) {
+    expect((await call(request, '/api/room/start-gostop', tokens[0], {})).status).toBe(200);
+    if ((await call(request, '/api/room', tokens[0], null, 'get')).data.state.game.status === 'playing') return;
+    await expect.poll(async () => (await call(request, '/api/room/next-round', tokens[0], {})).status).toBe(200); // (once the hand is recorded)
+    for (let i = 0; i < tokens.length; i += 1) await call(request, '/api/room/choose-role', tokens[i], { choice: String(i + 1) });
+  }
+  throw new Error('다섯 번 나눠도 판이 시작되지 않음');
+}
 const bottom = async (page, sel) => { const b = await page.locator(sel).first().boundingBox(); return b ? b.y + b.height : null; };
 
 for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
@@ -48,7 +58,7 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
     await call(request, '/api/rooms/join', tokens[1], { code });
     for (let i = 0; i < 2; i += 1) await call(request, '/api/room/choose-role', tokens[i], { choice: String(i + 1) });
     const { page } = me; await page.reload();
-    expect((await call(request, '/api/room/start-gostop', tokens[0], {})).status).toBe(200);
+    await dealPlaying(request, tokens);
     await expect(page.locator('#gostopHand .hwatu').first()).toBeVisible();
     const check = async (when) => {
       await page.waitForTimeout(900); await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
@@ -61,8 +71,10 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
     // G2-3: a pointed hand card lights its month on the floor; on a touch phone the first tap only points
     const g0 = (await call(request, '/api/room', tokens[0], null, 'get')).data.state.game;
     if (g0.turn === '1' && g0.phase === 'play') {
-      const card = page.locator('#gostopHand .hwatu.actionableTarget:not(.gostopToFloor)').first();
-      if (await card.count()) {
+      // (a month held once: three of a month offer 흔들기 first, and the second tap would open that choice, not play)
+      const single = await page.locator('#gostopHand .hwatu').evaluateAll((els) => { const m = (el) => el.className.match(/month-(\d+)/)?.[1]; const n = {}; els.forEach((el) => { n[m(el)] = (n[m(el)] || 0) + 1; }); return els.findIndex((el) => el.matches('.actionableTarget:not(.gostopToFloor)') && n[m(el)] === 1); });
+      const card = page.locator('#gostopHand .hwatu').nth(Math.max(single, 0));
+      if (single >= 0) {
         const month = (await card.getAttribute('class')).match(/month-(\d+)/)[1];
         const matches = page.locator(`#gostopFloor .hwatu.month-${month}:not(.bonus)`);
         if (w < 640) {
