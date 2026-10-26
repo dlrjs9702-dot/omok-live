@@ -1774,6 +1774,7 @@ body.plazaMode .gameMenuThemes input { accent-color: var(--isle-tag); }
 .gameMenuSettings { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: #0f172a; border: 1px solid #273449; }
 .gameMenuSettings h3 { margin: 0; font-size: .9rem; color: #cbd5e1; }
 .gameMenuThemes { display: flex; gap: 6px; flex-wrap: wrap; }
+.gameMenuSound { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: .88rem; cursor: pointer; } /* (G-틀③ 게임 효과음) */
 .gameMenuThemes label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border-radius: 10px; border: 1px solid #334155; cursor: pointer; font-weight: 800; font-size: .86rem; white-space: nowrap; }
 .gameMenuThemes label:has(input:checked) { border-color: #60a5fa; background: rgba(96, 165, 250, .14); }
 .gameMenuThemes label:has(input:focus-visible) { outline: 2px solid #60a5fa; outline-offset: 2px; }

@@ -1287,6 +1287,7 @@
           <label><input type="radio" name="gcTheme" value="system"> 기기 설정</label>
         </div>
         <label class="gameMenuQuality">섬 화질 <select id="qualitySelect" aria-label="섬 화질"><option value="auto">자동</option><option value="2">높음</option><option value="1">보통</option><option value="0">낮음</option></select></label>
+        <label class="gameMenuSound"><input id="roomSoundToggle" type="checkbox" checked /> 게임 효과음 (게임방·한판마당)</label>
         <label class="gameMenuQuality">움직임 줄이기 <select id="motionSelect" aria-label="움직임 줄이기"><option value="auto">기기 설정 따르기</option><option value="on">켬</option><option value="off">끔</option></select></label>
         <button id="fullscreenBtn" type="button" class="ghost hidden" aria-pressed="false">전체화면</button>
         <button id="stickEditBtn" type="button" class="ghost hidden">조작 배치 (위치·크기)</button>
@@ -1399,6 +1400,7 @@
   <script src="/pandemic-ui.js"></script>
   <script src="/game-guides.js"></script>
   <script src="/gamehall-catalog.js"></script>
+<script src="/room-sound.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
