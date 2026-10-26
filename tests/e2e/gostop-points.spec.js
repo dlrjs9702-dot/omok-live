@@ -87,13 +87,13 @@ test.describe('포인트와 고스톱·맞고', () => {
 
     // 1~3) 로비 포인트·출석·중복 차단.
     await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
-    await expect(a.page.locator('#attendanceBtn')).toHaveText('오늘 출석 +50,000P');
+    await expect(a.page.locator('#attendanceBtn')).toHaveText('오늘 출석 +30,000P'); // (경제 점검 ⑥-C)
     await a.page.evaluate(() => document.getElementById('attendanceBtn').click()); // v1.9.7: 출석은 출석 NPC가 이 버튼 동작을 부른다
-    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 150,000P');
+    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 130,000P');
     await expect(a.page.locator('#attendanceBtn')).toHaveText('오늘 출석 완료');
     await expect(a.page.locator('#attendanceBtn')).toBeDisabled();
     expect((await api(request, '/api/points/attendance', a.token, {})).data.granted).toBe(false);
-    expect((await api(request, '/api/points', a.token, undefined, 'GET')).data.balance).toBe(150_000);
+    expect((await api(request, '/api/points', a.token, undefined, 'GET')).data.balance).toBe(130_000);
 
     // 4~5) 2인 맞고 방 생성 + 점당 포인트 선택(생성 시 50P, 방에서 10P로 변경).
     await a.page.locator('[data-game="gostop"]').click();
@@ -207,7 +207,7 @@ test.describe('포인트와 고스톱·맞고', () => {
     const [balanceA, balanceB] = await Promise.all([a, b].map(async view => (await api(request, '/api/points', view.token, undefined, 'GET')).data.balance));
     // v1.7.3: 실제 이동액의 10%는 소각(승자 90%), 뻑 보너스도 같다.
     const burned = previousBurn + burnOf(g);
-    expect(balanceA + balanceB).toBe(250_000 - burned);
+    expect(balanceA + balanceB).toBe(230_000 - burned); // (100,000 each and a's attendance, 30,000)
     const paid = g.settlement.transfers.reduce((sum, item) => sum + item.paid, 0);
     expect(paid).toBeGreaterThan(0);
     await expect(a.page.locator('#gostopResult')).toContainText(`${paid.toLocaleString('ko-KR')}P`);
