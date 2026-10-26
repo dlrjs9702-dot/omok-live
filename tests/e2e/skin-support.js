@@ -122,19 +122,26 @@ module.exports.expectNoScriptError = expectNoScriptError;
 // runner): an islander walking by took the SPACE (운반·전달 「줍기」 at plaza.spec 1179, 앉기·인사 「인사」), a pet walked off
 // out of reach, a sector's spot gave way to the next. false: something else is nearest.
 // (3회차 4) the bite's arrows, pressed in order: the arrow keys (a PC) or the four buttons (a phone)
-async function pressFishArrows(page, isMobile = false) {
+// slip (사용자 지시 10/26 「틀리면 처음부터」): two right, one wrong first -- then { n, reset (no arrow left done), note } after
+// the whole row pressed again
+async function pressFishArrows(page, isMobile = false, slip = false) {
   const box = page.locator('#fishArrows'); await box.waitFor({ state: 'visible', timeout: 15000 });
   const KEY = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
   // (pressed in the page at once -- CI #278: a phone's clicks waited for the box coming in to stand still, a PC's key presses
   // a round trip each on the slow runner, and the bite's time ran out between them -- the server's, which a test that
   // turns the bite into another fish times by that fish, not the count shown. The buttons answer a click, the keys a keydown.
   // CI #298: the arrows read and pressed in the same page call -- one round trip less inside the bite's time)
-  return page.evaluate(([isMobile, KEY]) => {
+  return page.evaluate(([isMobile, KEY, slip]) => {
     const el = document.getElementById('fishArrows'); const dirs = [...el.querySelectorAll('.fishArrowSeq span')].map((s) => s.dataset.dir);
-    if (isMobile) for (const dir of dirs) el.querySelector(`.fishArrowPad button[data-dir=${dir}]`).click();
-    else for (const dir of dirs) window.dispatchEvent(new KeyboardEvent('keydown', { code: KEY[dir], key: KEY[dir], bubbles: true }));
-    return dirs.length;
-  }, [isMobile, KEY]);
+    const press = (dir) => { if (isMobile) el.querySelector(`.fishArrowPad button[data-dir=${dir}]`).click(); else window.dispatchEvent(new KeyboardEvent('keydown', { code: KEY[dir], key: KEY[dir], bubbles: true })); };
+    let reset = null; let note = null;
+    if (slip) {
+      press(dirs[0]); press(dirs[1]); press(['up', 'right', 'down', 'left'].find((d) => d !== dirs[2] && d !== dirs[0]));
+      reset = el.querySelectorAll('.fishArrowSeq span.done').length === 0; note = getComputedStyle(el.querySelector('.fishArrowNote')).display !== 'none';
+    }
+    for (const dir of dirs) press(dir);
+    return slip ? { n: dirs.length, reset, note } : dirs.length;
+  }, [isMobile, KEY, slip]);
 }
 async function spaceOn(page, prefix, isMobile = false) {
   return page.evaluate(([prefix, isMobile]) => {

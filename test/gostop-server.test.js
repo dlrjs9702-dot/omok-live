@@ -81,7 +81,7 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   const claims = await Promise.all([1, 2, 3].map(() => req('/api/points/attendance', a.session, {})));
   assert.equal(claims.filter(item => item.data.granted).length, 1);
   points = await req('/api/points', a.session, undefined, 'GET');
-  assert.deepEqual([points.data.balance, points.data.attendance.claimed], [150_000, true]);
+  assert.deepEqual([points.data.balance, points.data.attendance.claimed], [130_000, true]); // (경제 점검 ⑥-C: 출석 30,000)
   assert.equal((await req('/api/points', null, undefined, 'GET')).status, 401);
 
   // 2) 입장파일 재발급·닉네임 변경 후에도 같은 포인트(재지급 없음).
@@ -90,7 +90,7 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   a.session = await enter(reissued.data.html);
   assert.equal((await req(`/api/admin/keys/${a.keyId}/rename`, admin, { label: '건2' })).status, 200);
   a.session = await enter((await req(`/api/admin/keys/${a.keyId}/reissue`, admin, {})).data.html);
-  assert.equal((await req('/api/points', a.session, undefined, 'GET')).data.balance, 150_000);
+  assert.equal((await req('/api/points', a.session, undefined, 'GET')).data.balance, 130_000);
 
   // 3) 방 생성·점당 선택(방장만)·시작.
   const created = await req('/api/rooms', a.session, { gameType: 'gostop' });
@@ -106,7 +106,7 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal((await req('/api/room/set-gostop-stake', a.session, { pointsPerScore: 50 })).status, 200);
   await req('/api/points', b.session, undefined, 'GET');
   const pregame = (await req('/api/room', a.session, undefined, 'GET')).data.state;
-  assert.deepEqual(pregame.game.lobbyPoints['1'], { balance: 150_000, eligible: true });
+  assert.deepEqual(pregame.game.lobbyPoints['1'], { balance: 130_000, eligible: true });
   assert.deepEqual(pregame.game.lobbyPoints['2'], { balance: 100_000, eligible: true });
   assert.equal((await req('/api/room/start-gostop', b.session, {})).status, 403);
   let started = await req('/api/room/start-gostop', a.session, {});

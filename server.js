@@ -105,6 +105,14 @@ const { evaluate: evaluateAchievements, achievementView, achievementToasts } = r
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, NICKNAME_FEE, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const PointStore = require('./lib/point-store'); // v1.10.86 주민세 constants
+const { attendanceStreak, attendanceAmount } = PointStore;
+// (경제 점검 ⑥-C) what attending pays today (the day's, and the streak's extra on a 7th day in a row), the days attended,
+// and the streak so far (through today once stamped, else through yesterday)
+async function attendanceTerms(account, now = nowMs()) {
+  const dates = new Set(await pointStore.attendanceDates(account)); const today = kstDate(now);
+  const yesterday = kstDate(now - 86400000);
+  return { dates, pay: attendanceAmount(attendanceStreak(new Set([...dates, today]), today)), streak: attendanceStreak(dates, dates.has(today) ? today : yesterday) };
+}
 const SkinCatalog = require('./lib/skins'); // v1.10.90 IP_SKIN_IDS / IP_ON
 const releaseAnnouncements = require('./lib/release-announcements');
 const { classifyBrowser, parseSecChUa } = require('./public/browser-gate.js'); // v1.10.14 Chrome-only, shared with the page
@@ -965,11 +973,17 @@ async function refreshChampions(now = nowMs()) {
   const ids = new Set(result?.champions || []);
   const names = (result?.ranking || []).filter((row) => ids.has(row.userId)).map((row) => row.name);
   const changed = championCache.week !== week || [...ids].sort().join() !== [...championCache.ids].sort().join();
-  championCache = { week, ids, names };
+  // 경제 점검 ⑥-B (사용자 2026-10-25): the week's 1st climber stands in 영웅마루 too (등반왕, as 낚시왕·제초왕) -- the first
+  // of a shared 1st, in the look worn when the week is read
+  const first = (result?.ranking || []).find((row) => row.rank === 1 && ids.has(row.userId));
+  const statue = first ? await kingStatue(first.userId, { ranking: [first] }) : null;
+  const statueChanged = JSON.stringify(statue) !== JSON.stringify(championCache.statue ?? null);
+  championCache = { week, ids, names, statue };
   if (changed) { // name tags in the plaza follow at once
     for (const entry of plazaPresence.values()) entry.champion = ids.has(entry.account);
     plazaDirty = true;
   }
+  if (changed || statueChanged) for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } }
 }
 // v1.10.5 기부 동상 (IDEAS 「기부 동상」): a week of donations is closed once after it ends (startup, every minute, and
 // when the donation window opens). Its 1st and 2nd are kept as statues -- their look as it was when the week closed --
@@ -1013,7 +1027,8 @@ async function refreshDonation(now = nowMs()) {
 }
 let contestWinnerStatue = null; // A4: the last contest's winner (kept with its result; read once at start and on settling)
 const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: [...donationCache.statues, ...(contestWinnerStatue ? [{ contest: true, ...contestWinnerStatue }] : []), ...kingStatues()] });
-const kingStatues = (now = nowMs()) => Object.entries(weeklyCache).filter(([, c]) => c.statue && c.week === previousWeek(climbWeekOf(now))).map(([id, c]) => ({ king: id, week: c.week, ...c.statue })); // (낚시왕 · 제초왕)
+const kingStatues = (now = nowMs()) => [...Object.entries(weeklyCache).filter(([, c]) => c.statue && c.week === previousWeek(climbWeekOf(now))).map(([id, c]) => ({ king: id, week: c.week, ...c.statue })), // (낚시왕 · 제초왕)
+  ...(championCache.statue && championCache.week === previousWeek(climbWeekOf(now)) ? [{ king: 'climbking', week: championCache.week, ...championCache.statue }] : [])]; // (등반왕)
 function isHoguking(account, now = nowMs()) {
   return Boolean(account) && donationCache.week === previousWeek(climbWeekOf(now)) && donationCache.hoguking === account;
 }
@@ -3833,7 +3848,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.165' });
+    return sendJson(res, 200, { ok: true, version: '1.10.166' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4191,7 +4206,7 @@ async function requestHandler(req, res) {
     const userId = pointAccountForSession(session);
     const account = await pointStore.getAccount(userId);
     const recentGostopSettlements = await pointStore.recentSettlements(userId, 'gostop', 5);
-    return sendJson(res, 200, { ok: true, ...account, attendanceAmount: 50_000, recentGostopSettlements });
+    return sendJson(res, 200, { ok: true, ...account, attendanceAmount: (await attendanceTerms(userId)).pay, recentGostopSettlements });
   }
 
   // v1.7.0: the caller's own ledger, read-only. The account always comes from the session; nothing in the
@@ -4212,11 +4227,15 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, balance, ...page });
   }
 
-  // (창 2단계 출석 도장 카드) this month's days attended (Seoul), today and the month's length -- the card's stamps
+  // (창 2단계 출석 도장 카드) this month's days attended (Seoul), today and the month's length -- the card's stamps; 경제
+  // 점검 ⑥-C: the days that made 7, 14, ... in a row (a big stamp) and what attending pays today
   if (pathname === '/api/points/attendance/month' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const terms = await attendanceTerms(account);
     const today = kstDate(nowMs()); const month = today.slice(0, 7); const [y, m] = month.split('-').map(Number);
-    return sendJson(res, 200, { ok: true, month, today: Number(today.slice(8)), length: new Date(Date.UTC(y, m, 0)).getUTCDate(), firstWeekday: new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), days: await pointStore.attendanceDays(pointAccountForSession(session), month) });
+    const days = await pointStore.attendanceDays(account, month);
+    const big = days.filter((d) => { const s = attendanceStreak(terms.dates, `${month}-${String(d).padStart(2, '0')}`); return s > 0 && s % 7 === 0; });
+    return sendJson(res, 200, { ok: true, month, today: Number(today.slice(8)), length: new Date(Date.UTC(y, m, 0)).getUTCDate(), firstWeekday: new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), days, big, pay: terms.pay, streak: terms.streak });
   }
   if (pathname === '/api/points/attendance' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -5590,15 +5609,15 @@ async function requestHandler(req, res) {
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: entering ? 'townhall' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
   }
-  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): at the 예금 window inside the 민원실 -- the wallet and the deposit (4% a day,
-  // lib/point-store.js bankAccrue), and putting in or taking out any amount (once per request id)
+  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): at the 예금 window inside the 민원실 -- the wallet and the deposit (its
+  // interest by tiers, lib/point-store.js bankInterest), and putting in or taking out any amount (once per request id)
   if (pathname === '/api/island/bank' && (req.method === 'GET' || req.method === 'POST')) {
     const session = requireSession(req, res);
     if (!session) return;
     const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.bank.lx, R.bank.lz);
     if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8) return sendError(res, 409, 'TOO_FAR', '관공서 안 예금 창구에서 이용해 주세요.');
     const account = pointAccountForSession(session);
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ...(await pointStore.bankView(account, nowMs())) });
+    if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); return sendJson(res, 200, { ok: true, ...v, ...PointStore.bankTerms(v.deposit) }); } // (경제 점검 ⑥-A: the tiers, tomorrow's interest)
     if (!checkRateLimit(`bank:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
     const amount = Number(body.amount);
@@ -5607,7 +5626,7 @@ async function requestHandler(req, res) {
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT', amount > 0 ? '지갑 포인트가 부족합니다.' : '예금이 부족합니다.', { balance: out.balance, deposit: out.deposit });
     if (out.reason === 'limit') return sendError(res, 409, 'BANK_LIMIT', '더 맡기거나 찾을 수 없는 금액입니다.', { balance: out.balance, deposit: out.deposit });
     if (out.applied) notifyPointsChanged([account]);
-    return sendJson(res, 200, { ok: true, ...out });
+    return sendJson(res, 200, { ok: true, ...out, ...PointStore.bankTerms(out.deposit) });
   }
   // v1.10.86 주민세: what I owe and today's estimate; paying it at the 세금 창구 inside the hall
   if (pathname === '/api/island/tax' && (req.method === 'GET' || req.method === 'POST')) {
@@ -6966,6 +6985,14 @@ async function requestHandler(req, res) {
     }
     return sendJson(res, 200, { ok: true, ...Economy.view(await pointStore.worldValue('economy')) });
   }
+  // 경제 점검 ⑥-E (economy-audit-20261025 E): the numbers behind the values -- points held, the last 14 days' in and out by
+  // reason, the ten holding most (their names; the page may hide them)
+  if (pathname === '/api/admin/economy/stats' && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return;
+    const stats = await pointStore.economyStats(14, nowMs());
+    const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label]));
+    return sendJson(res, 200, { ok: true, ...stats, top: stats.top.map(({ userId, ...r }, i) => ({ rank: i + 1, name: labels.get(userId) || (userId === 'admin' ? '관리자' : '게스트'), ...r })) });
+  }
   // 달마루섬 개편 (docs/dalmaru-implementation-20261019.md): which island a page shows -- the new one only for an
   // administrator while the preview switch is on (that page walks it on its own: it sends no positions); everyone else
   // the island they have
@@ -7753,7 +7780,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.165 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.166 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

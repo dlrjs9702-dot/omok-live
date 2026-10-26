@@ -39,7 +39,7 @@ test('등반: 창에서 시작, 키로 이동·점프, 고정 HUD, 발판에서 
   await expect(page.locator('#climbEndBtn')).toBeEnabled();
   await page.locator('#climbEndBtn').click();
   await expect(page.locator('#climbResultTitle')).toHaveText('300m 기록');
-  await expect(page.locator('#climbResultDetail')).toContainText('+1,000P');
+  await expect(page.locator('#climbResultDetail')).toContainText('+300P'); // (경제 점검 ⑥-B: 30,000 × (300 / 3000)²)
   await page.locator('#climbLobbyBtn').click();
   await expect(page.locator('#lobbyView')).toBeVisible();
   await page.evaluate(() => document.getElementById('climbBtn').click());

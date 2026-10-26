@@ -7,6 +7,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { JsonPointStore } = require('../lib/point-store');
 const { dailyClimbReward, competitionRanking, weeklyPrize, climbWeekOf } = require('../lib/climb');
+// (경제 점검 ⑥-B: the prizes and the day's top are the economy table's now, lowered -- test/economy-audit.test.js checks the
+// new ones; these rules -- the curve, the difference paid, ties, once only -- are checked at the values they were written with)
+require('../lib/economy').load({ values: { 'climb:week1': 1_000_000, 'climb:week2': 700_000, 'climb:week3': 500_000, 'climb:week4': 100_000, 'climb:dailyMax': 100_000 } });
 
 const at = (iso) => Date.parse(iso);
 async function store(t) {

@@ -1387,7 +1387,8 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   // (CI #298: the server's bite last, the arrows pressed right after it -- a page round trip between them took the
   // mackerel's arrow time on a slow runner)
   expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
-  expect(await pressFishArrows(page)).toBeGreaterThanOrEqual(4);
+  const slipped = await pressFishArrows(page, false, true); // (사용자 지시 10/26: a wrong arrow -- all grey again, 「틀렸어요! 처음부터」 -- then the whole row)
+  expect(slipped.n).toBeGreaterThanOrEqual(4); expect([slipped.reset, slipped.note]).toEqual([true, true]);
   await expect.poll(seen, { timeout: 8000 }).not.toBe('fish:reel'); // past the reel there (the catch -- a moment's pose a slow page may miss -- or done); the bag below is the server's own catch
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);

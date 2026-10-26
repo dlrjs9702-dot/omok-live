@@ -18,7 +18,7 @@
   const SECTORS = Object.freeze([
     { id: 'game', place: 'shop', name: '게임 스킨 상점', interact: [-12.3, -3.3], keeper: [-12.3, -6.1, Math.PI] },
     { id: 'clothes', place: 'avatar', name: '옷가게', interact: [-4.7, -3.3], keeper: [-4.7, -6.1, Math.PI] },
-    { id: 'hair', place: 'hair', name: '미용실', interact: [3.7, -3.6], keeper: [1.05, -5.35, Math.PI] },
+    { id: 'hair', place: 'hair', name: '미용실', interact: [3.7, -3.6], keeper: [1.05, -5.35, Math.atan2(3.7 - 1.05, -3.6 + 5.35) - Math.PI] }, // (사용자 제보 10/26: turned to where its customer stands, beside it -- the yaw is its back)
     { id: 'accessories', place: 'accessories', name: '소품 가게', interact: [9.9, -3.3], keeper: [9.9, -5.85, Math.PI] },
     { id: 'surgery', place: 'faces', name: '성형외과', interact: [-11.1, 4], keeper: [-11.1, 7.05, 0] },
     { id: 'dye', place: 'dye', name: '염색사', interact: [-3.7, 4.1], keeper: [-3.7, 6.75, 0] },

@@ -94,7 +94,7 @@ test('등반 서버: 입력으로만 움직이고, 안전하게 서서 끝내야
   await fx.req('/api/test/climb/place', a.session, { y: 300 });
   const ended = await fx.req('/api/climb/end', a.session, { altitude: 3000, delta: 999999 });
   assert.equal(ended.status, 200);
-  assert.deepEqual([ended.data.altitude, ended.data.delta], [300, 1000]);
+  assert.deepEqual([ended.data.altitude, ended.data.delta], [300, 300]); // (경제 점검 ⑥-B: 30,000 × (300/3000)²)
   assert.equal((await fx.req('/api/climb/end', a.session, {})).status, 409, '끝난 등반은 다시 끝낼 수 없다(중복 지급 없음)');
 
   // a climb that went higher but was abandoned is never recorded
@@ -108,9 +108,9 @@ test('등반 서버: 입력으로만 움직이고, 안전하게 서서 끝내야
   await fx.req('/api/test/climb/place', a.session, { y: 900 });
   await fx.req('/api/test/climb/place', a.session, { y: 600 });
   const fell = await fx.req('/api/climb/end', a.session, {});
-  assert.deepEqual([fell.data.altitude, fell.data.delta, fell.data.best], [600, 3000, 600], '최고점이 아니라 끝낸 높이');
+  assert.deepEqual([fell.data.altitude, fell.data.delta, fell.data.best], [600, 900, 600], '최고점이 아니라 끝낸 높이'); // (1,200 for the day, 300 paid before)
   const status = await fx.req('/api/climb', a.session);
-  assert.deepEqual(status.data.today, { best: 600, paid: 4000 });
+  assert.deepEqual(status.data.today, { best: 600, paid: 1200 });
   assert.deepEqual(status.data.ranking.top.map(r => [r.rank, r.best, r.me]), [[1, 600, true]]);
 });
 
@@ -155,11 +155,11 @@ test('주간 챔피언: 지난주 공동 1위 둘 다 챔피언, 3위는 아님,
   assert.equal((await hall(c)).find((x) => x.id === 'champion').entries[0].mine, false);
   assert.equal((await hall(c)).find((x) => x.id === 'hoguking').entries.length, 0);
   const after = async (who) => (await fx.req('/api/points', who.session)).data.balance;
-  assert.equal(await after(a) - before[a.label], 1_000_000);
-  assert.equal(await after(b) - before[b.label], 1_000_000);
-  assert.equal(await after(c) - before[c.label], 500_000, '1위·1위 다음은 3위');
+  assert.equal(await after(a) - before[a.label], 200_000); // (경제 점검 ⑥-B: 200,000 · 150,000 · 100,000)
+  assert.equal(await after(b) - before[b.label], 200_000);
+  assert.equal(await after(c) - before[c.label], 100_000, '1위·1위 다음은 3위');
   await fx.req('/api/test/climb/settle', null, {});
-  assert.equal(await after(a) - before[a.label], 1_000_000, '다시 결산해도 한 번만');
+  assert.equal(await after(a) - before[a.label], 200_000, '다시 결산해도 한 번만');
   assert.equal((await fx.req('/api/skins', a.session)).data.champion, true, '광장 이름표용 내 챔피언 상태');
   // a week later, last week's champions expire
   const nextWeek = await fx.req('/api/test/climb/settle', null, { now: Date.now() + 7 * 24 * 60 * 60 * 1000 });

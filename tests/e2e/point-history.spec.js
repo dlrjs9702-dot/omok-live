@@ -60,12 +60,12 @@ test.describe('내 정보 포인트 내역', () => {
 
     // 출석 → 잔액과 내역이 함께 최신화, 최신순.
     await page.evaluate(() => document.getElementById('attendanceBtn').click());
-    await expect(page.locator('#pointBalanceText')).toHaveText('보유 150,000P');
+    await expect(page.locator('#pointBalanceText')).toHaveText('보유 130,000P'); // (경제 점검 ⑥-C: 출석 30,000)
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText('출석체크');
     await expect(rows.first()).toContainText('오늘');
-    await expect(rows.first()).toContainText('+50,000P');
-    await expect(rows.first()).toContainText('100,000P → 150,000P');
+    await expect(rows.first()).toContainText('+30,000P');
+    await expect(rows.first()).toContainText('100,000P → 130,000P');
     await expect(rows.nth(1)).toContainText('신규 계정 지급');
 
     // 닫기 → 다시 열기: 같은 내용, 닫힌 동안에는 조회하지 않는다.

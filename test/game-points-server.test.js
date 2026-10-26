@@ -165,7 +165,7 @@ test('참가비 부족: 한 명이라도 1,000P 미만이면 시작하지 않고
   assert.equal((await fx.req('/api/room/choose-role', poor.session, { choice: 'white' })).status, 200);
   state = await fx.room(a);
   assert.equal(state.game.status, 'playing');
-  assert.deepEqual([await fx.balance(a), await fx.balance(poor)], [99_000, 49_999]);
+  assert.deepEqual([await fx.balance(a), await fx.balance(poor)], [99_000, 29_999]); // (출석 30,000)
 });
 
 test('다인·팀전: 동시 시작은 1회 차감, 4인 3승자 1,066P씩(잔여 소각), 2:2 승리팀 1,600P씩', { timeout: 60000 }, async t => {

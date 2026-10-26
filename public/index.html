@@ -96,13 +96,13 @@
 
     <section id="lobbyView" class="hidden">
       <div id="islandFacilityActions" class="hidden" aria-hidden="true">
-        <button id="attendanceBtn" type="button">오늘 출석 +50,000P</button>
+        <button id="attendanceBtn" type="button">오늘 출석 +30,000P</button>
         <button id="missionBtn" type="button" aria-haspopup="dialog" aria-controls="missionDialog">미션 0/3</button>
       </div>
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
-      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaRainbow" class="plazaRainbow" aria-hidden="true"></div><div id="contestBar" class="contestBar hidden" role="status" aria-live="polite"></div><div id="plazaStar" class="plazaStar hidden" aria-hidden="true"></div><button id="starWishBtn" type="button" class="primary starWishBtn hidden">🌠 소원 빌기</button><div id="trainControls" class="trainControls hidden"><button id="trainMainBtn" class="primary" type="button"></button><button id="trainMenuBtn" class="ghost hidden" type="button">승강장 메뉴</button></div><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="fishArrows" class="fishArrows hidden" aria-label="입질! 화살표를 순서대로"><div class="fishArrowSeq"></div><div class="fishArrowTime"><i></i></div><div class="fishArrowPad"><button type="button" data-dir="left" aria-label="왼쪽">←</button><button type="button" data-dir="up" aria-label="위">↑</button><button type="button" data-dir="down" aria-label="아래">↓</button><button type="button" data-dir="right" aria-label="오른쪽">→</button></div></div><div id="questTracker" class="questTracker hidden" role="status"></div>
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaRainbow" class="plazaRainbow" aria-hidden="true"></div><div id="contestBar" class="contestBar hidden" role="status" aria-live="polite"></div><div id="plazaStar" class="plazaStar hidden" aria-hidden="true"></div><button id="starWishBtn" type="button" class="primary starWishBtn hidden">🌠 소원 빌기</button><div id="trainControls" class="trainControls hidden"><button id="trainMainBtn" class="primary" type="button"></button><button id="trainMenuBtn" class="ghost hidden" type="button">승강장 메뉴</button></div><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="fishArrows" class="fishArrows hidden" aria-label="입질! 화살표를 순서대로"><div class="fishArrowSeq"></div><div class="fishArrowTime"><i></i></div><p class="fishArrowNote" role="status">틀렸어요! 처음부터</p><div class="fishArrowPad"><button type="button" data-dir="left" aria-label="왼쪽">←</button><button type="button" data-dir="up" aria-label="위">↑</button><button type="button" data-dir="down" aria-label="아래">↓</button><button type="button" data-dir="right" aria-label="오른쪽">→</button></div></div><div id="questTracker" class="questTracker hidden" role="status"></div>
         <div id="plazaError" class="plazaError hidden" role="alert"><strong>게임 아일랜드를 불러오지 못했습니다.</strong><button id="plazaRetry" class="secondary" type="button">다시 시도</button></div>
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <!-- v1.10.63: no account bar -- Esc (or this button, on a phone) opens the menu (#gameMenuDialog) -->
@@ -399,6 +399,8 @@
           <details id="calendarBox" class="economyBox"><summary>행사 달력</summary><p class="lookMeta">행사를 끄거나 기간을 옮길 수 있어요(서울 날짜). 빈칸은 원래 날짜. 매주 대회는 토 낚시·일 곤충 10~22시.</p><div id="calendarTable"></div><button id="calendarSave" class="primary" type="button">저장</button></details>
           <!-- v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②) -->
           <details id="economyBox" class="economyBox"><summary>경제 값 관리</summary><p class="lookMeta">값을 바꾸고 「저장」을 누르면 확인 뒤 바로 적용됩니다. 빈칸은 기본값.</p><div id="economyTable"></div><button id="economySave" class="primary" type="button">저장</button><h4>변경 이력</h4><ol id="economyHistory"></ol></details>
+          <!-- 경제 점검 ⑥-E: the numbers behind the values -->
+          <details id="economyStatsBox" class="economyBox"><summary>경제 통계</summary><p class="lookMeta">지금 가진 포인트(지갑+예금)와 최근 14일 사유별 들어옴·나감(서울 날짜), 많이 가진 10명. 예금 이자는 내역에 없고 예금 합에만 보여요.</p><label class="lookMeta"><input type="checkbox" id="economyStatsMask" checked /> 이름 가리기</label><div id="economyStats"></div></details>
           <h3 class="keySectionTitle">가입 신청</h3>
           <div id="signupList" class="keyList"></div>
           <h3 class="keySectionTitle">활성 입장 파일</h3>
@@ -1217,7 +1219,7 @@
   <dialog id="bankDialog" class="recordsDialog bankDialog" aria-labelledby="bankTitle">
     <div class="recordsDialogHead"><h2 id="bankTitle">예금 창구</h2><button id="bankCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="bankSums"><div><small>지갑</small><strong id="bankWallet">-</strong></div><div><small>예금</small><strong id="bankDeposit">-</strong></div></div>
-    <p class="smallMuted" id="bankRate">예금에는 매일 자정(한국 시간) 하루 4% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요).</p>
+    <p class="smallMuted" id="bankRate">예금에는 매일 자정(한국 시간) 구간별 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요).</p>
     <form id="bankForm" class="bankForm" autocomplete="off">
       <input id="bankAmount" type="number" inputmode="numeric" min="1" step="1" placeholder="금액 (P)" aria-label="금액" />
       <div class="bankButtons"><button type="submit" class="primary" data-bank="in">맡기기</button><button type="button" class="secondary" data-bank="out">찾기</button></div>

@@ -1521,16 +1521,17 @@
     attendanceCard.replaceChildren(el('p', 'emptyState', '불러오는 중입니다.'));
     if (!plazaDialog.open || !plazaDialog.classList.contains('stampMode')) { openPlazaWindow('출석 도장', [attendanceCard]); plazaDialog.classList.add('stampMode'); }
     try {
-      const d = await api('/api/points/attendance/month'); const [, mm] = d.month.split('-'); const done = new Set(d.days);
+      const d = await api('/api/points/attendance/month'); const [, mm] = d.month.split('-'); const done = new Set(d.days); const big = new Set(d.big || []); // (경제 점검 ⑥-C: a 7th day in a row -- the big stamp)
       const head = el('div', 'stampHead'); head.append(el('strong', '', `${Number(mm)}월 출석 도장`), el('span', 'stampCount', `${d.days.length}일 / ${d.length}일`));
       const grid = el('div', 'stampGrid'); for (const w of ['일', '월', '화', '수', '목', '금', '토']) grid.append(el('span', 'stampWeekday', w));
       for (let k = 0; k < d.firstWeekday; k += 1) grid.append(el('span', 'stampBlank'));
       for (let day = 1; day <= d.length; day += 1) {
-        const cell = el('span', `stampDay${done.has(day) ? ' stamped' : ''}${day === d.today ? ' today' : ''}${day > d.today ? ' later' : ''}${stampedNow && day === d.today ? ' justNow' : ''}`);
-        cell.append(el('span', 'stampNum', String(day))); if (done.has(day)) cell.append(el('span', 'stampInk', '참 잘했어요'));
+        const cell = el('span', `stampDay${done.has(day) ? ' stamped' : ''}${big.has(day) ? ' big' : ''}${day === d.today ? ' today' : ''}${day > d.today ? ' later' : ''}${stampedNow && day === d.today ? ' justNow' : ''}`);
+        cell.append(el('span', 'stampNum', String(day))); if (done.has(day)) cell.append(el('span', 'stampInk', big.has(day) ? '일주일 개근!' : '참 잘했어요'));
         cell.setAttribute('aria-label', `${day}일${done.has(day) ? ' 출석' : ''}`); grid.append(cell);
       }
-      const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(50000).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
+      const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(d.pay).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
+      head.append(el('span', 'stampStreak', `연속 ${d.streak}일 · 7일마다 큰 도장`));
       btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); if (plazaDialog.open && plazaDialog.classList.contains('stampMode')) openAttendanceCard(true); }); // (Codex 검토 2차: closed or another window opened meanwhile -- not opened again)
       attendanceCard.replaceChildren(head, grid, btn);
     } catch (error) { attendanceCard.replaceChildren(el('p', 'emptyState', error.message)); }
@@ -3258,13 +3259,15 @@
       closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
     } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
   }
-  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, 4% a day added at each Seoul midnight;
+  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, interest by tiers added at each Seoul midnight;
   // anything in or out at any time (the server checks I am at the window, and pays each request once)
   const bankDialog = byId('bankDialog'); let bankNow = null; let bankBusy = false;
   const fmtP = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
   function showBank(v) {
     bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
-    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
+    // (경제 점검 ⑥-A: the interest by tiers -- the server's tiers and tomorrow's interest)
+    const tiers = (v.tiers || []).map((t, i, all) => (t.upTo == null ? `그 위 ${t.percent}%` : `${i ? `${fmtP(all[i - 1].upTo)}~` : ''}${fmtP(t.upTo)}까지 ${t.percent}%`)).join(' · ');
+    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 구간별 이자가 붙습니다 — ${tiers}(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(v.tomorrow ?? 0)}`;
   }
   async function openBank() {
     try {
@@ -3393,6 +3396,24 @@
     try { await api('/api/admin/calendar', { method: 'POST', body: JSON.stringify({ override }) }); drawCalendar(await api('/api/admin/calendar')); showToast('행사 달력을 저장했습니다.'); } catch (error) { showToast(error.message, 4000); }
   });
   byId('economyBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy').then(drawEconomy).catch((error) => showToast(error.message)); });
+  // 경제 점검 ⑥-E (관리자 「경제」 통계): the points held, the last 14 days' in and out (each day, and by reason), the ten
+  // holding most -- their names hidden unless asked (the first letter only)
+  let economyStatsNow = null;
+  function drawEconomyStats(s = economyStatsNow) {
+    economyStatsNow = s; const box = byId('economyStats'); if (!box || !s) return;
+    const P = (n) => `${Number(n).toLocaleString('ko-KR')}P`; const mask = byId('economyStatsMask').checked;
+    const el = (tag, text) => { const e = document.createElement(tag); if (text != null) e.textContent = text; return e; };
+    const table = (head, rows) => { const t = el('table'); t.className = 'economyStatsTable'; const tr = el('tr'); for (const h of head) tr.append(el('th', h)); t.append(tr); for (const r of rows) { const row = el('tr'); for (const c of r) row.append(el('td', c)); t.append(row); } return t; };
+    const days = [...new Set(s.flows.map((f) => f.day))]; const reasons = [...new Set(s.flows.map((f) => f.reason))];
+    const of = (list) => [list.reduce((n, f) => n + f.in, 0), list.reduce((n, f) => n + f.out, 0)];
+    box.replaceChildren(
+      el('p', `전체 ${P(s.wallets + s.deposits)} · 지갑 ${P(s.wallets)} · 예금 ${P(s.deposits)} · 계정 ${s.accounts}개`),
+      el('h4', '날짜별 (최근 14일)'), table(['날짜', '들어옴', '나감', '차이'], days.map((d) => { const [i, o] = of(s.flows.filter((f) => f.day === d)); return [d, P(i), P(o), P(i - o)]; })),
+      el('h4', '사유별 (14일 합)'), table(['사유', '들어옴', '나감'], reasons.map((r) => [r, ...of(s.flows.filter((f) => f.reason === r))]).sort((a, b) => (b[1] + b[2]) - (a[1] + a[2])).map(([r, i, o]) => [pointHistoryTitle({ reason: r }) || r, P(i), P(o)])),
+      el('h4', '많이 가진 10명'), table(['순위', '이름', '지갑', '예금', '합'], s.top.map((t) => [String(t.rank), mask ? `${[...t.name][0] || ''}${'*'.repeat(Math.max(1, [...t.name].length - 1))}` : t.name, P(t.balance), P(t.deposit), P(t.total)])));
+  }
+  byId('economyStatsBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy/stats').then(drawEconomyStats).catch((error) => showToast(error.message)); });
+  byId('economyStatsMask')?.addEventListener('change', () => drawEconomyStats());
   // v1.10.90 운영 스위치: read when the admin panel shows, each box saved as it changes
   const opsBox = byId('opsSwitches');
   const drawSwitches = (sw) => { for (const c of opsBox?.querySelectorAll('input[data-switch]') || []) c.checked = sw[c.dataset.switch] !== false; };
@@ -3467,8 +3488,8 @@
     } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
   }
   // (문제 기록 3회차 4 「낚시 미니게임: 입질 때 화살표」) at the bite, arrows to press in order (4~12, more the rarer the
-  // fish) before the bar runs out: the arrow keys on a PC, the four buttons on a phone; a wrong one only shakes, the last
-  // one pulls it in. Out of time, the scene lets it go (the bite's end).
+  // fish) before the bar runs out: the arrow keys on a PC, the four buttons on a phone; a wrong one shakes the row red and
+  // starts it over (「틀렸어요! 처음부터」), the last one pulls it in. Out of time, the scene lets it go (the bite's end).
   const FISH_DIRS = ['up', 'right', 'down', 'left']; const FISH_KEYS = { ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down', ArrowLeft: 'left' };
   const fishArrowsBox = byId('fishArrows'); let fishGame = null;
   function fishArrowsStart(n, ms) {
@@ -3484,7 +3505,10 @@
   function fishArrow(dir) {
     if (!fishGame || fishBusy) return;
     fishGame.presses.push({ dir, t: Math.round(performance.now() - fishGame.shownAt) });
-    if (fishGame.seq[fishGame.at] !== dir) { fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); return; }
+    if (fishGame.seq[fishGame.at] !== dir) { // (사용자 지시 10/26: a wrong arrow starts it over -- that press the first again if it is the first one; the server judges the same)
+      fishGame.at = dir === fishGame.seq[0] ? 1 : 0; fishArrowMark();
+      fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); return;
+    }
     fishGame.at += 1; fishArrowMark();
     if (fishGame.at === fishGame.seq.length) { const { presses } = fishGame; fishArrowsEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; }); }
   }
