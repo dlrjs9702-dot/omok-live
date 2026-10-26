@@ -19,7 +19,7 @@ test('농부 부탁: 두더지 잡기 200점 판으로 단계 완료, 공동 밭
     const sa = await server.enter(await server.issue(label)); assert.ok(sa, server.logs());
     const stand = (x, z) => req('/api/plaza/state', sa, { x, z, yaw: 0 });
     await stand(f.x + 1, f.z); await new Promise((r) => setTimeout(r, 300)); await stand(f.x + 1, f.z);
-    const talk = () => req('/api/island/event', sa, { id: 'questfarmer' });
+    const talk = () => req('/api/island/event', sa, { id: 'questfarmer', accept: true }); // (Q: 「할게요!」 -- the first talk only offers)
     const round = async (score, ageMs = 31000) => {
       const id = (await req('/api/solo/reflex/start', sa, { game: 'whack', level: 'easy' })).data.id;
       if (ageMs) await req('/api/test/reflex/age', sa, { id, ageMs });

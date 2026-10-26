@@ -101,3 +101,28 @@ test('R3: 선물 하루 한 번(좋아함 +3·싫어함 0·보통 +1, 가방에�
   assert.equal(retried.data.affinity.points, pointsBefore + A.giftReact(m, 'fish_goby', '망둥어').delta, '그 선물(망둥어)의 호감도');
   assert.match((await talk2({ topic: 'gift', itemId: 'fish_mackerel' })).data.say[0], /벌써/);
 });
+
+// Q 부탁 받기 (gamecenter-notes docs/quest-accept-complete-20261026.md): talking to today's asker only offers the errand (its
+// note: what, where, what it pays, today), 「다음에요」 keeps nothing, 「할게요!」 starts it (the tracker), 「그만둘래요」 lets it go
+test('심부름 받기: 말 걸면 쪽지만, 다음에요는 기록 없음, 할게요로 시작, 그만두면 다시 부탁', async (t) => {
+  const E = require('../lib/island-errands');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'errand-accept-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('심부름꾼'));
+  await req('/api/test/island/free-residents', a, {});
+  const e = E.errandsOf(new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10))[0]; const n = e.from;
+  const talk = async (body) => { for (let i = 0; i < 6; i += 1) { const w = Npcs.residentAt(n, Date.now(), null); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  const offered = (await talk({})).data; // (the talk begun -- by the asker, the errand first)
+  assert.equal(offered.offer?.id, e.id, JSON.stringify(offered)); assert.equal(offered.offer.title, E.title(e)); assert.ok(offered.offer.reward > 0); assert.equal(offered.offer.until, '오늘 안에');
+  assert.equal(offered.track.length, 0, '말만 걸어서는 시작 안 함');
+  const later = (await talk({ topic: 'decline' })).data; assert.equal(later.say.length > 0, true);
+  assert.equal((await req('/api/island/errands', a)).data.track.length, 0, '다음에요: 기록 없음');
+  assert.equal((await talk({ topic: 'errand' })).data.offer?.id, e.id, '다시 말 걸면 다시 부탁');
+  assert.equal((await talk({ topic: 'accept', errand: 'errand_nope' })).status, 409);
+  const took = (await talk({ topic: 'accept', errand: e.id })).data;
+  assert.deepEqual([took.accepted.id, took.track.map((x) => x.id)], [e.id, [e.id]]);
+  assert.equal((await talk({ topic: 'accept', errand: e.id })).status, 409, '두 번 받지 않음');
+  const dropped = (await req('/api/island/errand/drop', a, { id: e.id })).data; assert.equal(dropped.track.length, 0);
+  assert.equal((await req('/api/island/errand/drop', a, { id: e.id })).status, 409);
+  assert.equal((await talk({ topic: 'errand' })).data.offer?.id, e.id, '그만둔 부탁은 다시 부탁');
+});

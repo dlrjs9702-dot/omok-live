@@ -22,7 +22,7 @@ test('전기 담당 부탁: 오늘의 회로 연결 쉬움을 풀면 단계 완�
     const stand = () => req('/api/plaza/state', sa, { x: at.x + 1, z: at.z, yaw: 0 });
     await stand(); await new Promise((r) => setTimeout(r, 300)); await stand();
     const solve = () => req('/api/solo/puzzle/finish', sa, { game: 'circuit', level: 'easy', score: 60000, proof: { date, sol, v: 1 } });
-    return { sa, talk: () => req('/api/island/event', sa, { id: 'questelectrician' }), solve };
+    return { sa, talk: () => req('/api/island/event', sa, { id: 'questelectrician', accept: true }), /* (Q: 「할게요!」) */ solve };
   };
   const a = await helper('회로도움');
   const asked = (await a.talk()).data;

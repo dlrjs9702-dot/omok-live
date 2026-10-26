@@ -149,7 +149,7 @@ test('사진 부탁 → 곤충·물고기 부탁: 진행 중이던 옛 사진 �
   assert.equal(Q.note(old, 'at', { x: 0, z: 0, now, scope: 'fixed' }), null);
   assert.deepEqual(Q.STORIES.photomemory.steps.map((s) => [s.kind, s.item]), [['give', 'insect_grasshopper'], ['give', 'fish_crucian_carp']]);
   assert.deepEqual(Q.STORIES.photographer.steps.map((s) => s.item), ['insect_ladybird', 'fish_goby']);
-  const taken = Q.talk({}, 'photomemory', [], at('photomemory'), now).doc; assert.equal(Q.storyState(taken, 'photomemory').done, false);
+  const taken = Q.talk({}, 'photomemory', [], at('photomemory'), now, true).doc; assert.equal(Q.storyState(taken, 'photomemory').done, false);
   const bag = [{ itemId: 'insect_grasshopper', qty: 1 }];
   const r = Q.talk(taken, 'photomemory', bag, at('photomemory'), now); assert.equal(r.reward, 3000); assert.deepEqual(r.take, { itemId: 'insect_grasshopper', qty: 1 });
   assert.equal(Q.storyState(r.doc, 'photomemory').done, false); assert.equal(Q.storyState(r.doc, 'photomemory').step, 1);
@@ -164,7 +164,7 @@ async function fixedFlow(store, rollback=false) {
   const bag=await store.islandBag(U); const start=(await store.getAccount(U)).balance;
   // (3회차 17: what the photographer asks for -- an insect, then a fish -- caught and in the bag; the bag then full)
   for(const s of Q.STORIES[id].steps) await store.islandGive({userId:U,claimId:`fixed-${s.item}`,itemId:s.item,qty:1});
-  const pay=(doc,items)=>{const out=Q.talk(doc,id,items,at(id),now);return {...out,payKey:`quest:fixed:${U}:${id}:${out.step}`};};
+  const pay=(doc,items)=>{const out=Q.talk(doc,id,items,at(id),now,true);return {...out,payKey:`quest:fixed:${U}:${id}:${out.step}`};};
   await store.questApply(U,'fixed',pay);
   await store.questApply(U,'fixed',pay); // the insect handed over
   if(rollback) {
