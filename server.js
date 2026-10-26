@@ -3860,7 +3860,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.182' });
+    return sendJson(res, 200, { ok: true, version: '1.10.183' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4645,6 +4645,18 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, refunded: await refundOrphanEntries('orphan-sweep') });
   }
 
+  // (G-게임별 도둑잡기, test only) the last stand of a two-player hand: seat 1 holds the joker and a 5, seat 2 the other 5, seat 1 draws
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/oldmaid-last-stand' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const room = getCurrentRoom(session);
+    if (!room || !isOldMaid(room) || room.game.status !== 'playing' || findSeat(room, session.token) !== '1' || !room.game.hands?.['2']) return sendError(res, 409, 'NOT_OLDMAID_HAND', '도둑잡기 2인 판이 아닙니다.');
+    Object.assign(room.game, { hands: { 1: [{ id: 'joker', suit: '', rank: 'JOKER' }, { id: '♠-5', suit: '♠', rank: '5' }], 2: [{ id: '♥-5', suit: '♥', rank: '5' }] }, seatOrder: ['1', '2'], turn: '1', target: '2' });
+    room.game.revision = (room.game.revision || 0) + 1;
+    touchRoom(room);
+    broadcast(room);
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/gostop-fixture' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -7843,7 +7855,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.182 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.183 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

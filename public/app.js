@@ -7153,7 +7153,8 @@
     const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats().seats.has(String(seat)));
     statusText.classList.toggle('selfActHeadline', mine);
     // (G-게임별: on a phone my own name dropped from my turn's line -- 「내 차례 · 숫자 추측」 in one line, as 고스톱's)
-    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${isMobileLayout() ? statusText.textContent.replace(/^[^·]*\(나\) · /, '') : statusText.textContent}`;
+    // (도둑잡기 검토: and on any screen 「내 차례 · 누구님 차례 · …」 says it twice -- the second 「…님 차례 · 」 dropped)
+    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${statusText.textContent.replace(isMobileLayout() ? /^[^·]*(\(나\)|님 차례) · / : /^[^·]*님 차례 · /, '')}`;
     const text = recentNarration();
     recentActionLine.classList.toggle('hidden', !text);
     if (text) {
@@ -7767,7 +7768,7 @@
     const t = state?.turnTimer; clearInterval(turnRingTimer); turnRingTimer = null;
     if (!t || !document.body.classList.contains('roomPlaying')) return;
     // (G-게임별 다빈치: no seat cards while a hand is played -- the ring on that seat's rack label)
-    const card = [seatCardOf(t.seat), document.querySelector(`#davinciHands .davinciHand[data-owner="${t.seat}"] > strong`)].find((c) => c?.offsetParent);
+    const card = [seatCardOf(t.seat), document.querySelector(`#davinciHands .davinciHand[data-owner="${t.seat}"] > strong`), document.querySelector(`#oldmaidSeats .oldmaidSeat[data-seat="${t.seat}"] .oldmaidSeatInfo`), String(t.seat) === String(seat) ? document.querySelector('#oldmaidPanel .oldmaidMyHeader h3') : null].find((c) => c?.offsetParent);
     if (!card) return;
     turnRingClock = Date.now() - Number(t.serverNow || Date.now());
     const ring = document.createElement('span'); ring.className = 'turnRing'; ring.setAttribute('role', 'timer'); const text = document.createElement('b'); ring.append(text); card.append(ring);
@@ -8046,6 +8047,7 @@
     } else if (oldmaid) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작'
         : g.status === 'finished' ? (g.endReason === 'resign' ? '도둑잡기 종료' : `${state.players[g.loser]?.label || '조커 보유자'}님 패배`)
+        : isMobileLayout() ? (g.turn === seat ? '카드 한 장 뽑기' : g.target === seat ? '상대가 내 카드를 뽑는 중' : `${state.players[g.turn]?.label || '플레이어'}님이 뽑는 중`) // (도둑잡기 검토: a phone's line short, one line)
         : `${state.players[g.turn]?.label || '플레이어'}님 차례 · ${state.players[g.target]?.label || '상대'}님 카드 뽑기`);
     } else if (liar) {
       const speaker = g.currentSpeaker ? `${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}님` : '';
@@ -8195,10 +8197,10 @@
     if (halli) renderHalli();
     gostopPanel.classList.toggle('hidden', !gostop);
     // v1.8.5: a table game (고스톱·맞고) uses a wider page on PC so the table, not the web panels, is the centre.
-    document.body.classList.toggle('tableGameRoom', gostop || davinci);
+    document.body.classList.toggle('tableGameRoom', gostop || davinci || oldmaid);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
-    // (G-게임별 다빈치: its racks round the table are the name plates too)
-    document.body.classList.toggle('tableGamePlaying', (gostop || davinci) && g.status !== 'selecting');
+    // (G-게임별 다빈치·도둑잡기: its racks / seats round the table are the name plates too)
+    document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid) && g.status !== 'selecting');
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
@@ -9237,6 +9239,7 @@
   // face gets data-cardId so oldmaidGlowAndRemovePair() can find the exact DOM elements to animate.
   function oldmaidRenderMyHandFaces(hand) {
     oldmaidMyHand.replaceChildren();
+    oldmaidMyHand.style.setProperty('--n', String(Math.max(1, hand.length))); // (도둑잡기 검토: one row, overlapped to fit -- styles.css)
     for (const card of hand) {
       const red = card.suit === '♥' || card.suit === '♦';
       const face = document.createElement('span');
@@ -9377,6 +9380,7 @@
       info.className = 'oldmaidSeatInfo';
       const nameSpan = document.createElement('span');
       nameSpan.textContent = label(number);
+      info.appendChild(oldmaidFace(number)); // (G-게임별: the seat's tag the name plate, with the island face)
       info.appendChild(nameSpan);
       if (g.status !== 'selecting') {
         const countSpan = document.createElement('span');
@@ -9395,16 +9399,20 @@
         info.appendChild(badge);
       }
       seatEl.appendChild(info);
+      // (G-게임별: what to do, over the hand to draw from -- outside the card-drawing block, which writes no text at all)
+      if (count > 0 && seat && g.status === 'playing' && g.turn === seat && g.target === number && !g.paused) seatEl.appendChild(Object.assign(document.createElement('small'), { className: 'oldmaidHint', textContent: '한 장을 눌러 뽑아요' }));
 
       {
         if (count > 0) {
           const cards = document.createElement('div');
           cards.className = 'oldmaidSeatCards';
+          cards.style.setProperty('--n', String(count)); // (G-게임별: the hand held as a fan)
           const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
           for (let cardIndex = 0; cardIndex < count; cardIndex += 1) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
+            button.style.setProperty('--i', String(cardIndex));
             if (seatSkin?.back) SLO.h.style(button, seatSkin.back);
             if (canDraw && !g.paused) button.classList.add('actionableTarget');
             button.disabled = !canDraw;
@@ -9450,6 +9458,27 @@
     if (!g.history?.length) oldmaidHistory.textContent = '아직 카드를 뽑지 않았습니다.';
 
     oldmaidRunEffects(g);
+    // G-게임별 도둑잡기: my hand's heading with my face; the last stand (two hands left, three cards or fewer -- the joker is
+    // among them) the table pulses; the turn's ring back on its name plate after the seats were redrawn
+    const myHead = oldmaidPanel.querySelector('.oldmaidMyHeader h3'); myHead.querySelector('.seatFace')?.remove(); if (seat && rosterSeats.includes(seat)) myHead.prepend(oldmaidFace(seat));
+    const holding = rosterSeats.filter((s) => (g.counts?.[s] ?? 0) > 0);
+    oldmaidPanel.classList.toggle('lastStand', g.status === 'playing' && holding.length === 2 && holding.reduce((n, s) => n + g.counts[s], 0) <= 3);
+    renderTurnRing();
+    // (도둑잡기 검토: a board note or a toast over the other's fan hid the card to draw -- below the seats, above my hand)
+    requestAnimationFrame(() => { // (the seats themselves -- their grid has an empty row below -- and 「조커는 누구에게?」 under them in the last stand)
+      const bottoms = [...oldmaidSeatsEl.querySelectorAll('.oldmaidSeat')].map((el) => el.getBoundingClientRect().bottom).filter((b) => b > 0);
+      // (a box round the note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
+      // beside it is measured, so the top given is the screen's)
+      const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
+      if (!bottoms.length) return; const y = Math.max(...bottoms) + (oldmaidPanel.classList.contains('lastStand') ? 44 : 10);
+      document.body.style.setProperty('--oldmaidNoteTop', `${Math.round(y - originOf(document.querySelector('.boardNote')))}px`);
+      document.body.style.setProperty('--oldmaidToastTop', `${Math.round(y - originOf(document.getElementById('toast')))}px`);
+    });
+  }
+  function oldmaidFace(number) {
+    const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true');
+    const look = state.players?.[number]?.face; if (look?.skin) f.style.setProperty('--skin', look.skin); if (look?.hair) f.style.setProperty('--hair', look.hair);
+    return f;
   }
 
   // One-shot decorative flourishes, all derived from state the server already confirmed
@@ -9457,6 +9486,7 @@
   // skip if effects are off or the relevant seat element isn't on screen.
   function oldmaidRunEffects(g) {
     const history = g.history || [];
+    if (history.length - oldmaidLastHistoryLen === 1 && history.at(-1).pairs > 0) window.RoomSound?.play('right'); // (G-게임별: a pair thrown -- 딩동; one new draw only, not a reload's whole history)
     if (!oldmaidEffectsActive()) {
       oldmaidLastHistoryLen = history.length;
       for (const number of g.seatOrder || []) if ((g.counts?.[number] ?? 1) === 0) oldmaidSeenEscaped.add(number);
@@ -9646,7 +9676,7 @@
     try {
       const data = await roomAction('draw-oldmaid', { targetSeat, index, expectedRevision: g.revision });
       if (oldmaidEffectsActive()) {
-        const afterHand = state.me?.myOldMaidHand || [];
+        let afterHand = state.me?.myOldMaidHand || [];
         const afterIds = new Set(afterHand.map(card => card.id));
         // The server tells us exactly which card was drawn -- required because a draw that
         // immediately completes a pair removes that same card from the hand again before this
@@ -9676,6 +9706,7 @@
           }
           if (completesPair) {
             await oldmaidGlowAndRemovePair(removedCards);
+            afterHand = state.me?.myOldMaidHand || afterHand; // (도둑잡기 검토: the hand as it is now -- one drawn from me during the glow already gone, not the one just after my draw)
             oldmaidRenderMyHandFaces(afterHand);
           }
           if (drawnCard.rank === 'JOKER') oldmaidShowJokerTension();
