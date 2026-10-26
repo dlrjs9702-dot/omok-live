@@ -2219,6 +2219,8 @@ body.roomPlaying .toast{top:calc(30vh + 52px);bottom:auto;pointer-events:none} /
   body.roomPlaying .roomBar button{min-height:40px;padding:6px 9px;font-size:.85rem}
   body.roomPlaying .player,body.roomPlaying .teamPlayer,body.roomPlaying .player>div,body.roomPlaying .teamPlayer>div{min-width:0}
   body.roomPlaying .player small,body.roomPlaying .teamPlayer small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.roomPlaying .boardNote{top:25vh;max-width:70vw;font-size:.8rem;padding:6px 12px}
+  body.roomPlaying .toast{top:calc(25vh + 40px);max-width:70vw;font-size:.82rem;padding:8px 12px} /* (the board's upper quarter, not its middle) */
 }
 body.roomPlaying #turnNotifyBtn{font-size:0;padding:6px 10px}body.roomPlaying #turnNotifyBtn::before{content:"🔕";font-size:1rem}body.roomPlaying #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
 .boardNote{position:fixed;left:50%;top:30vh;transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100% - 24px));margin:0;padding:8px 18px;border-radius:999px;background:rgba(15,23,42,.94);border:1px solid #475569;color:#f8fafc;font-weight:800;font-size:.9rem;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;animation:boardNoteIn .2s ease-out}
