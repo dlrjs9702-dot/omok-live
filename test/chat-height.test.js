@@ -113,11 +113,12 @@ test('the chat overlay repositions the same chat panel over the game instead of 
 // including these two, collapsing it by default would hide controls a host needs just to start
 // the game -- so no game defaults to collapsed anymore. v1.6.58 split the single collapse
 // preference into two independent ones (chat vs. 게임 진행), both still defaulting to open.
+// (G-틀① 몰입 화면: and both fold while a hand is played -- the game's actions go under the board then, A3 G1-3)
 test('neither panel defaults to collapsed, since every game now needs #gameActionsPanel there', () => {
   const app = read('public/app.js');
   assert.doesNotMatch(app, /function wideBoardGame\(\)/);
-  assert.match(app, /function chatShouldCollapse\(\) \{ return chatCollapsedPref === true; \}/);
-  assert.match(app, /function gameInfoShouldCollapse\(\) \{ return gameInfoCollapsedPref === true; \}/);
+  assert.match(app, /function chatShouldCollapse\(\) \{ return chatCollapsedPref === true \|\| document\.body\.classList\.contains\('roomPlaying'\); \}/);
+  assert.match(app, /function gameInfoShouldCollapse\(\) \{ return gameInfoCollapsedPref === true \|\| document\.body\.classList\.contains\('roomPlaying'\); \}/);
   // A user's manual collapse/expand choice still overrides the (now-uniform) default, per panel.
   assert.match(app, /chatCollapsedPref = !chatShouldCollapse\(\);/);
   assert.match(app, /localStorage\.setItem\(CHAT_COLLAPSE_KEY/);
