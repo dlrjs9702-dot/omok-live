@@ -1,7 +1,11 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { bankInterest, bankAccrue, bankTerms, attendanceStreak, attendanceAmount } = require('../lib/point-store');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const { bankInterest, bankAccrue, bankTerms, attendanceStreak, attendanceAmount, JsonPointStore, PostgresPointStore } = require('../lib/point-store');
+const { testDatabase } = require('../test-support/pg-database');
 const { weeklyPrize, dailyClimbReward } = require('../lib/climb');
 
 // 경제 점검 ⑥ (gamecenter-notes docs/economy-audit-20261025.md, 사용자 2026-10-25): the deposit's interest by tiers, the
@@ -18,6 +22,28 @@ test('예금 구간 이자: 50만까지 3%, 500만까지 1.5%, 그 위 0.5% — 
 test('등반 상: 주간 20만·15만·10만·4~20위 3만, 하루 최대 3만(같은 곡선)', () => {
   assert.deepEqual([1, 2, 3, 4, 20, 21].map(weeklyPrize), [200_000, 150_000, 100_000, 30_000, 30_000, 0]);
   assert.deepEqual([3000, 1500, 0].map(dailyClimbReward), [30_000, 7500, 0]);
+});
+
+// ⑥-C/⑥-E through the stores: a 7th day in a row pays the extra, and the 관리자 「경제」 numbers -- JSON and PostgreSQL alike
+async function storeBehaves(store) {
+  const U = 'guest:00000000-0000-4000-8000-0000000000e1'; const day = (d) => Date.parse(`2026-11-${String(d).padStart(2, '0')}T12:00:00+09:00`);
+  const paid = []; for (let d = 1; d <= 8; d += 1) paid.push((await store.claimAttendance(U, day(d))).amount);
+  assert.deepEqual(paid, [30_000, 30_000, 30_000, 30_000, 30_000, 30_000, 50_000, 30_000]);
+  assert.equal((await store.attendanceDates(U)).length, 8);
+  await store.bankMove(U, 100_000, 'econ-in-0001', day(8));
+  const s = await store.economyStats(14, day(8));
+  assert.deepEqual([s.wallets, s.deposits], [100_000 + 260_000 - 100_000, 100_000]);
+  const att = s.flows.filter((f) => f.reason === 'daily_attendance');
+  assert.equal(att.reduce((n, f) => n + f.in, 0), 260_000); assert.ok(s.flows.some((f) => f.reason === 'bank_deposit' && f.out === 100_000));
+  assert.deepEqual([s.top[0].userId, s.top[0].total], [U, 360_000]);
+}
+test('출석 연속·경제 통계: JSON·PostgreSQL 같은 동작', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'econ-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const json = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 100_000 }); await json.init();
+  await storeBehaves(json);
+  const database = await testDatabase(); t.after(() => database.stop());
+  const pg = new PostgresPointStore(database.url, { initialGrant: 100_000 }); t.after(() => pg.pool.end()); await pg.init();
+  await storeBehaves(pg);
 });
 
 test('출석: 하루 3만, 7일·14일 연속인 날은 2만 더', () => {

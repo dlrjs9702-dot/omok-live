@@ -3396,6 +3396,24 @@
     try { await api('/api/admin/calendar', { method: 'POST', body: JSON.stringify({ override }) }); drawCalendar(await api('/api/admin/calendar')); showToast('행사 달력을 저장했습니다.'); } catch (error) { showToast(error.message, 4000); }
   });
   byId('economyBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy').then(drawEconomy).catch((error) => showToast(error.message)); });
+  // 경제 점검 ⑥-E (관리자 「경제」 통계): the points held, the last 14 days' in and out (each day, and by reason), the ten
+  // holding most -- their names hidden unless asked (the first letter only)
+  let economyStatsNow = null;
+  function drawEconomyStats(s = economyStatsNow) {
+    economyStatsNow = s; const box = byId('economyStats'); if (!box || !s) return;
+    const P = (n) => `${Number(n).toLocaleString('ko-KR')}P`; const mask = byId('economyStatsMask').checked;
+    const el = (tag, text) => { const e = document.createElement(tag); if (text != null) e.textContent = text; return e; };
+    const table = (head, rows) => { const t = el('table'); t.className = 'economyStatsTable'; const tr = el('tr'); for (const h of head) tr.append(el('th', h)); t.append(tr); for (const r of rows) { const row = el('tr'); for (const c of r) row.append(el('td', c)); t.append(row); } return t; };
+    const days = [...new Set(s.flows.map((f) => f.day))]; const reasons = [...new Set(s.flows.map((f) => f.reason))];
+    const of = (list) => [list.reduce((n, f) => n + f.in, 0), list.reduce((n, f) => n + f.out, 0)];
+    box.replaceChildren(
+      el('p', `전체 ${P(s.wallets + s.deposits)} · 지갑 ${P(s.wallets)} · 예금 ${P(s.deposits)} · 계정 ${s.accounts}개`),
+      el('h4', '날짜별 (최근 14일)'), table(['날짜', '들어옴', '나감', '차이'], days.map((d) => { const [i, o] = of(s.flows.filter((f) => f.day === d)); return [d, P(i), P(o), P(i - o)]; })),
+      el('h4', '사유별 (14일 합)'), table(['사유', '들어옴', '나감'], reasons.map((r) => [r, ...of(s.flows.filter((f) => f.reason === r))]).sort((a, b) => (b[1] + b[2]) - (a[1] + a[2])).map(([r, i, o]) => [pointHistoryTitle({ reason: r }) || r, P(i), P(o)])),
+      el('h4', '많이 가진 10명'), table(['순위', '이름', '지갑', '예금', '합'], s.top.map((t) => [String(t.rank), mask ? `${[...t.name][0] || ''}${'*'.repeat(Math.max(1, [...t.name].length - 1))}` : t.name, P(t.balance), P(t.deposit), P(t.total)])));
+  }
+  byId('economyStatsBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy/stats').then(drawEconomyStats).catch((error) => showToast(error.message)); });
+  byId('economyStatsMask')?.addEventListener('change', () => drawEconomyStats());
   // v1.10.90 운영 스위치: read when the admin panel shows, each box saved as it changes
   const opsBox = byId('opsSwitches');
   const drawSwitches = (sw) => { for (const c of opsBox?.querySelectorAll('input[data-switch]') || []) c.checked = sw[c.dataset.switch] !== false; };

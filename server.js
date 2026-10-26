@@ -6985,6 +6985,14 @@ async function requestHandler(req, res) {
     }
     return sendJson(res, 200, { ok: true, ...Economy.view(await pointStore.worldValue('economy')) });
   }
+  // 경제 점검 ⑥-E (economy-audit-20261025 E): the numbers behind the values -- points held, the last 14 days' in and out by
+  // reason, the ten holding most (their names; the page may hide them)
+  if (pathname === '/api/admin/economy/stats' && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return;
+    const stats = await pointStore.economyStats(14, nowMs());
+    const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label]));
+    return sendJson(res, 200, { ok: true, ...stats, top: stats.top.map(({ userId, ...r }, i) => ({ rank: i + 1, name: labels.get(userId) || (userId === 'admin' ? '관리자' : '게스트'), ...r })) });
+  }
   // 달마루섬 개편 (docs/dalmaru-implementation-20261019.md): which island a page shows -- the new one only for an
   // administrator while the preview switch is on (that page walks it on its own: it sends no positions); everyone else
   // the island they have
