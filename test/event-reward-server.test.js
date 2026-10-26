@@ -232,7 +232,7 @@ test('다른 포인트 기능은 그대로: 출석 +50,000P, 관리자 지급, �
   await fx.req(`/api/events/${event.id}/claim`, me.session, {});
   const grant = await fx.req(`/api/admin/keys/${me.id}/points`, fx.admin, { requestId: crypto.randomUUID(), amount: 10_000, category: 'event' });
   assert.equal(grant.status, 200);
-  assert.equal(await fx.balance(me), start + 50_000 + REWARD + 10_000);
+  assert.equal(await fx.balance(me), start + 30_000 + REWARD + 10_000); // (경제 점검 ⑥-C: 출석 30,000)
   const reasons = (await fx.req('/api/points/history?limit=10', me.session)).data.items.map(item => item.reason);
   for (const reason of ['daily_attendance', 'event_reward', 'admin_grant']) assert.ok(reasons.includes(reason), reason);
 });

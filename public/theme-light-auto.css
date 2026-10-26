@@ -927,6 +927,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .fishArrowSeq span.now{background:#f08a3c;color:#fff}
 :root[data-theme="light"] .fishArrowTime{background:#e6d8c2}
 :root[data-theme="light"] .fishArrowTime i{background:#4caf6a}
+:root[data-theme="light"] .fishArrowNote{color:#c0392b}
 :root[data-theme="light"] .plazaDialog.editMode::backdrop{background:transparent}
 :root[data-theme="light"] .plazaDialog.talkMode::after{background:var(--isle-paper);border-left:1px solid var(--isle-line);border-top:1px solid var(--isle-line)}
 :root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead h2{background:var(--talk-tag,var(--isle-tag));color:#fff;box-shadow:0 2px 6px rgba(74,56,40,.25)}
@@ -1177,6 +1178,10 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .stampDay.today{border-color:#c98a1e}
 :root[data-theme="light"] .stampNum{color:var(--isle-soft)}
 :root[data-theme="light"] .stampDay.stamped{border:2px solid #c0392b;background:#fff0ea}
+:root[data-theme="light"] .economyStatsTable th,:root[data-theme="light"] .economyStatsTable td{border-bottom:1px solid var(--line, #ddd)}
+:root[data-theme="light"] .stampDay.big{border:3px solid #c98a1e;background:#fff3cf}
+:root[data-theme="light"] .stampDay.big .stampInk{color:#a0590b}
+:root[data-theme="light"] .stampStreak{color:var(--isle-soft)}
 :root[data-theme="light"] .stampInk{color:#c0392b}
 :root[data-theme="light"] .plazaDialog.mailMode{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .plazaDialog.mailMode .recordsDialogHead{background:none;border-bottom:1px solid var(--isle-line);color:var(--isle-ink)}

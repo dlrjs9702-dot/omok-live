@@ -63,9 +63,9 @@ test('로비 포인트 내역 API: 본인 조회·정렬·페이지·격리·읽
     const { status, data } = await api('/api/points/history', a);
     assert.equal(status, 200);
     assert.deepEqual(data.items.map(item => [item.reason, item.delta, item.balanceBefore, item.balanceAfter]),
-      [['daily_attendance', 50_000, 100_000, 150_000], ['initial_grant', 100_000, 0, 100_000]]);
+      [['daily_attendance', 30_000, 100_000, 130_000], ['initial_grant', 100_000, 0, 100_000]]); // (경제 점검 ⑥-C: 출석 30,000)
     assert.equal(data.hasMore, false);
-    assert.equal(data.balance, 150_000);
+    assert.equal(data.balance, 130_000);
     assert.equal(data.items[0].balanceAfter, (await api('/api/points', a)).data.balance, '최신 balanceAfter가 서버 잔액과 일치');
     const text = JSON.stringify(data);
     assert.equal(/guest:|idempotency|userId|initial:|attendance:/.test(text), false, '내부 식별자 미노출');
