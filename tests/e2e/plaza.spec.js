@@ -1740,6 +1740,7 @@ test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지
   await expect(page.locator('#plazaDialogTitle')).toHaveText('첫 섬 나들이');
   await expect(page.locator('#plazaDialog')).toContainText('메뚜기'); // (3회차 17: 「곤충·물고기 부탁」 -- the insect first)
   await page.locator('#plazaDialog button').filter({hasText:'할게요'}).click();
+  await page.locator('#plazaDialog button').filter({hasText:'확인'}).click(); await expect(page.locator('#plazaDialog')).toBeHidden(); // (Q: taken -- the ask again, closed)
   await expect.poll(()=>page.evaluate((pg)=>{const d=window.PlazaDebug();return {mark:d.quests().find(q=>q.id==='questphotomemory')?.mark,position:d.markers.some(m=>Math.abs(m.x-pg.x)<.01&&Math.abs(m.z-pg.z)<.01)};},PG)).toEqual({mark:null,position:true});
   expect((await post(request,'/api/test/island/give',a.token,{itemId:'insect_grasshopper',qty:1})).status).toBe(200); // (caught)
   await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().quests().find(q=>q.id==='questphotomemory')?.mark)).toBe('ready');
@@ -1755,7 +1756,7 @@ test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보�
   const a=await intoPlaza(browser,request,'첫나들이기록'),{page}=a;
   const Q=require('../../lib/island-quests'),story=Q.STORIES.photomemory;
   const stand=async(p)=>{await page.evaluate(([x,z])=>window.PlazaWarp(x,z),[p.x,p.z]);await post(request,'/api/plaza/state',a.token,{x:p.x,z:p.z,yaw:0});};
-  const talk=()=>post(request,'/api/island/event',a.token,{id:'questphotomemory'});
+  const talk=()=>post(request,'/api/island/event',a.token,{id:'questphotomemory',accept:true}); // (Q: taken with 「할게요!」)
   await stand({x:story.at.x+.8,z:story.at.z});expect((await talk()).status).toBe(200);
   for(const [i,step] of story.steps.entries()) { // (3회차 17: the insect, then the fish, caught and handed over)
     expect((await post(request,'/api/test/island/give',a.token,{itemId:step.item,qty:1})).status).toBe(200);
