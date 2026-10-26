@@ -1055,6 +1055,10 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .halliPanel #halliStatus.gamePanelHead{color:#f8fafc}
 :root[data-theme="light"] .messengerRoomList button[aria-current="true"]{outline:2px solid #23806f}
 :root[data-theme="light"] .messengerUnread{background:#ef4444;color:#fff}
+:root[data-theme="light"] .messengerMoreMenu{border:1px solid #d6c3a5;background:#f7efe1;box-shadow:0 10px 26px rgba(0,0,0,.45)}
+:root[data-theme="light"] .messengerMoreMenu button{border:0;background:none;color:#3d3024}
+:root[data-theme="light"] .messengerMoreMenu button:hover,:root[data-theme="light"] .messengerMoreMenu button:focus-visible{background:#f3e9d8}
+:root[data-theme="light"] .messengerMoreMenu .messengerLeave{color:#f87171;border-top:1px solid #f3e9d8}
 :root[data-theme="light"] .islandCtl{background:rgba(255, 246, 227, .78);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 4px 12px rgba(74, 56, 40, .3)}
 :root[data-theme="light"] .islandActBtn{background:rgba(255, 246, 227, .9);border:2px solid var(--isle-tag)}
 :root[data-theme="light"] .islandBikeBtn[aria-pressed="true"]{background:#f0dcb6;box-shadow:0 0 0 3px rgba(16, 150, 100, .7)}

@@ -2058,7 +2058,13 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .messengerRoomList button[aria-current="true"]{outline:2px solid #60a5fa}
 .messengerUnread{min-width:1.4em;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:.72rem;text-align:center}
 .messengerRoom{display:flex;flex-direction:column;gap:6px;min-height:0}
-.messengerRoomHead{display:flex;align-items:center;gap:6px}.messengerRoomHead strong{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.messengerRoomHead{position:relative;display:flex;align-items:center;gap:6px}.messengerRoomHead strong{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* I8-3: the room's ⋯ menu -- 초대·이름 바꾸기·고정·알림·방 나가기 (red, with its warning) under the head's right end */
+.messengerMore{font-size:1.1rem;line-height:1;padding:4px 10px}
+.messengerMoreMenu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:grid;min-width:150px;padding:4px;border:1px solid #334155;border-radius:10px;background:#0f172a;box-shadow:0 10px 26px rgba(0,0,0,.45)}
+.messengerMoreMenu button{justify-content:flex-start;text-align:left;padding:9px 12px;border:0;border-radius:7px;background:none;color:#e2e8f0;font-weight:700}
+.messengerMoreMenu button:hover,.messengerMoreMenu button:focus-visible{background:#1e293b}
+.messengerMoreMenu .messengerLeave{color:#f87171;border-top:1px solid #1e293b;border-radius:0 0 7px 7px;margin-top:2px}
 .messengerRoom p{margin:0}
 .messengerMessages{min-height:0}
 .messengerForm{display:flex;gap:6px}.messengerForm input{flex:1;min-width:0}
@@ -2132,7 +2138,7 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .messengerRoomMain{display:flex;flex-direction:column;min-width:0;flex:1}.messengerRoomMain strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .messengerPreview{font-size:.78rem;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .messengerRoomSide{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:.72rem;flex:none}
-.messengerRoomHead{flex-wrap:wrap}
+.messengerRoomHead{flex-wrap:nowrap} /* (I8-3: three things in the head now -- one line) */
 .messengerRoomList{grid-template-columns:minmax(0,1fr)}.messengerRoomList button{min-width:0}
 .messengerSystem,.messengerDay{text-align:center;font-size:.76rem;opacity:.75;margin:6px auto!important}
 .messengerDay{border-radius:999px;background:rgba(127,127,127,.15);padding:2px 10px;width:max-content;max-width:100%}

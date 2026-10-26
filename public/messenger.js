@@ -192,9 +192,17 @@
     if (!current) return; const id = current.id; const g = gen;
     try { const { room } = await api(`/api/messenger/rooms/${id}/${what}`, { on }); if (g !== gen) return; if (current?.id === id) { current = room; showHead(); } refresh(); } catch (err) { if (g === gen) fail(err); }
   }
+  // I8-3 (문제 기록 8회차 3: 「‹ 목록」 옆 「나가기」가 목록으로 가는 건지 헷갈려): the head is 「‹ 목록 · 방 이름 · ⋯」 -- 초대·이름·고정·
+  // 알림·방 나가기 in the ⋯ menu; a choice, a click outside or Esc closes it
+  const more = byId('messengerMoreBtn'); const moreMenu = byId('messengerMoreMenu');
+  const showMore = (on) => { moreMenu.classList.toggle('hidden', !on); more.setAttribute('aria-expanded', String(on)); };
+  more.addEventListener('click', (event) => { event.stopPropagation(); showMore(moreMenu.classList.contains('hidden')); });
+  moreMenu.addEventListener('click', () => showMore(false));
+  document.addEventListener('click', (event) => { if (!moreMenu.contains(event.target)) showMore(false); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') showMore(false); });
   byId('messengerPinBtn').addEventListener('click', () => roomSwitch('pin', !current?.pinned));
   byId('messengerMuteBtn').addEventListener('click', () => roomSwitch('mute', !current?.muted));
-  byId('messengerBackBtn').addEventListener('click', () => { current = null; app.classList.remove('inRoom'); refresh(); });
+  byId('messengerBackBtn').addEventListener('click', () => { showMore(false); current = null; app.classList.remove('inRoom'); refresh(); });
   byId('messengerLeaveBtn').addEventListener('click', async () => { // 창 닫기 ≠ 나가기: only this button (with the warning) takes me out
     if (!current || !window.confirm(`「${current.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`)) return;
     try { await api(`/api/messenger/rooms/${current.id}/leave`, {}); current = null; app.classList.remove('inRoom'); box.replaceChildren(); refresh(); } catch (err) { fail(err); }
