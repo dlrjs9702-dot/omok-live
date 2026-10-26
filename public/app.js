@@ -7072,11 +7072,21 @@
     return { seats: new Set(seats), paused: Boolean(g.paused) };
   }
 
+  // G-틀② 이름표 판 둘레: while a hand is played my name card sits under the board, the others above it (the board between
+  // us, as at a table) -- the two-colour games and 2vs2 오목; a table game's own seats (고스톱, 다빈치 …) stay for G-게임별
+  const mySeatSpot = document.getElementById('mySeatSpot');
+  const seatCardOf = (s) => (/^(black|white)$/.test(s) ? document.getElementById(`${s}Player`) : document.querySelector(`#teamPlayers [data-seat="${s}"], #mySeatSpot [data-seat="${s}"]`));
+  function placeMySeat() {
+    const playing = document.body.classList.contains('roomPlaying');
+    const mine = playing && seat ? (/^(black|white)$/.test(seat) ? (standardPlayers.classList.contains('hidden') ? null : seatCardOf(seat)) : teamPlayers.querySelector(`.teamPlayer[data-seat="${seat}"]:not(.bingoSeat)`)) : null;
+    for (const c of [...mySeatSpot.children]) if (c !== mine) { if (c === blackPlayer) standardPlayers.prepend(c); else if (c === whitePlayer) standardPlayers.append(c); else c.remove(); }
+    if (mine && mine.parentElement !== mySeatSpot) mySeatSpot.append(mine);
+  }
   function renderCurrentActor() {
     const { seats, paused } = currentActorSeats();
     const cards = [
       ['black', blackPlayer], ['white', whitePlayer],
-      ...[...teamPlayers.children].map(card => [card.dataset.seat, card]),
+      ...[...teamPlayers.children, ...mySeatSpot.querySelectorAll('.teamPlayer')].map(card => [card.dataset.seat, card]),
     ];
     for (const [seatId, card] of cards) {
       if (!card) continue;
@@ -7305,14 +7315,19 @@
   }
 
   function setPlayerCard(el, color, player) {
-    el.querySelector('strong').textContent = seatKo(color);
+    // (G-틀② 이름표: the name first, its seat and whether it is here under it)
+    el.querySelector('strong').textContent = player ? (player.label || '게스트') : seatKo(color);
     const small = el.querySelector('small');
     el.classList.toggle('occupied', Boolean(player));
     el.classList.toggle('disconnected', Boolean(player && !player.connected));
     if (!player) small.textContent = '선택 가능';
-    else small.textContent = `${player.label || '게스트'} · ${player.connected ? '접속 중' : '연결 끊김'}`;
+    else small.textContent = `${seatKo(color)} · ${player.connected ? '접속 중' : '연결 끊김'}`;
     el.classList.toggle('mySeat', seat === color);
     seatFace(el, player);
+    // (G-틀② 이름표의 게임 숫자: 윷 완주·점과 상자 상자·오델로 돌 -- the score the game keeps for this seat)
+    el.querySelector('.seatNum')?.remove();
+    const score = state?.game?.scores?.[color]; const unit = { yut: '완주', dots: '상자', othello: '돌' }[state?.gameType];
+    if (player && unit && Number.isFinite(Number(score))) { const n = document.createElement('b'); n.className = 'seatNum'; n.textContent = `${unit} ${score}`; el.append(n); }
   }
   // A3 G1-5: a small island face (skin and hair colour) and the worn title on a name card
   function seatFace(card, player) {
@@ -7585,7 +7600,7 @@
   function chatBubble(row) {
     if (!row?.text || !document.body.classList.contains('roomPlaying')) return;
     const who = Object.entries(state?.players || {}).find(([, p]) => p && p.label && p.label === row.label); if (!who) return;
-    const card = /^(black|white)$/.test(who[0]) ? document.getElementById(`${who[0]}Player`) : teamPlayers.querySelector(`[data-seat="${who[0]}"]`); if (!card?.offsetParent) return;
+    const card = seatCardOf(who[0]); if (!card?.offsetParent) return;
     card.querySelector('.seatBubble')?.remove();
     const b = document.createElement('span'); b.className = 'seatBubble'; b.textContent = String(row.text).slice(0, 40); card.append(b); setTimeout(() => b.remove(), 4000);
   }
@@ -7669,13 +7684,13 @@
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = on ? topActions : floatHome; if (b.parentElement !== home) (on ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
-    fitBoard(); renderTurnRing();
+    placeMySeat(); fitBoard(); renderTurnRing();
     const boardKey = `${state?.gameType}:${state?.game?.round}:${state?.game?.moveCount}`; if (boardKey !== touchPickKey) { touchPickKey = boardKey; touchPick = null; } // (Codex review: a first tap holds for this board only)
   }
   function fitBoard() {
     const wrap = canvasWrap; wrap.style.maxWidth = '';
     if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
-    const below = [...document.querySelectorAll('#yutControls, .boardCard > .diceYutSection, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    const below = [...document.querySelectorAll('#mySeatSpot, #yutControls, .boardCard > .diceYutSection, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
     const top = wrap.getBoundingClientRect().top + window.scrollY;
     wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - 12))}px`;
   }
@@ -7687,7 +7702,7 @@
     document.querySelectorAll('.turnRing').forEach((r) => r.remove());
     const t = state?.turnTimer; clearInterval(turnRingTimer); turnRingTimer = null;
     if (!t || !document.body.classList.contains('roomPlaying')) return;
-    const card = /^(black|white)$/.test(t.seat) ? document.getElementById(`${t.seat}Player`) : teamPlayers.querySelector(`[data-seat="${t.seat}"]`);
+    const card = seatCardOf(t.seat);
     if (!card || !card.offsetParent) return;
     turnRingClock = Date.now() - Number(t.serverNow || Date.now());
     const ring = document.createElement('span'); ring.className = 'turnRing'; ring.setAttribute('role', 'timer'); const text = document.createElement('b'); ring.append(text); card.append(ring);
