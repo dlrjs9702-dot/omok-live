@@ -1012,6 +1012,7 @@
     if (stamp) { // (ⓔ review: pressed down like a seal, a little askew; the toast and the board note go to the top meanwhile)
       const tilt = `rotate(${Math.round(Math.random() * 10 - 6)}deg)`;
       el.animate([{ opacity: 0, transform: `translate(-50%,0) ${tilt} scale(1.3)` }, { opacity: 1, transform: `translate(-50%,0) ${tilt} scale(1)` }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
+      const bar = document.querySelector('header.roomBar')?.getBoundingClientRect(); document.body.style.setProperty('--stampToastTop', `${Math.max(8, (bar?.bottom || 0) + 8)}px`); /* (just under the top bar, not over its buttons) */
       document.body.classList.add('gostopStamping'); clearTimeout(stampTimer); stampTimer = setTimeout(() => document.body.classList.remove('gostopStamping'), 1800);
     } else el.animate(BADGE_IN[kind] || [{ opacity: 0, transform: 'translate(-50%, 6px) scale(.9)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }], { duration: kind === 'ttadak' || kind === 'shake' ? 420 : 260, easing: 'ease-out', fill: 'forwards' });
     setTimeout(() => el.remove(), stamp ? 1800 : 1150);
