@@ -41,3 +41,45 @@
 - **낚시 화살표(v167)**: 화살표가 떠 있는 동안만 `islandFishing`으로 조이스틱과 버튼을 숨기고, 끝나면(`fishArrowsEnd`) 되돌린다.
 - **주민 길찾기(v169 `pathTo`)**: 길이 없으면 바로 순간이동하고 `route:null`로 둔다. `routeTarget`은 `route`가 있을 때만 불린다.
 - **고스톱 서버 규칙**: 이 범위에서는 서버 쪽에 테스트용 `wide-floor` 판만 더해졌다(`NODE_ENV==='test'`에서만). 판 진행, 결과 계산, 3인 판, 재접속 코드는 바뀌지 않았다.
+
+---
+
+# 추가 범위 (v179~184)
+
+- **범위**: `9ac6a80d`(v1.10.178) → `dcfd550c`(v1.10.184, 검토 시점 `origin/main`). 커밋 6개(v179 고스톱ⓓ+주민 대화 고침 둘 · v180 고스톱ⓔ · v181 고스톱ⓕ · v182 다빈치 코드 · v183 도둑잡기 · v184 I8).
+- **방법**: 처음과 같다. 범위의 diff와 커밋별 diff를 읽고, 부탁받은 곳은 바뀌지 않은 주변 코드까지 따라가 확인했다. 고스톱·다빈치·도둑잡기 서버 엔진의 상태 보내기(`publicState`·`handFor`), 메신저 나가기 API, 주민 붙잡기(`lib/island-residents.js`)의 지연 계산이다. 줄 번호는 v184 기준이다.
+- **결과**: **P1 0 · P2 0 · P3 3**
+
+## P1
+
+없음.
+
+## P2
+
+없음.
+
+## P3 (작음)
+
+| # | 어디(파일:줄, 함수) | 문제(어떤 상황에서 무엇이 잘못되나) | 고치는 안 | 확신 |
+|---|---|---|---|---|
+| P3-7 | `public/app.js:9489` `oldmaidRunEffects` (v183 짝 소리) + `lib/games/oldmaid.js:177-178` | 서버는 도둑잡기 `history`를 **최근 30개까지만** 남긴다(`history.length > 30`이면 `shift`). 그래서 31번째로 뽑을 때부터 `history.length`가 30에 멈춘다. 이번에 넣은 짝 소리(`history.length - oldmaidLastHistoryLen === 1`)는 그때부터 다시 울리지 않는다. 같은 길이 비교를 쓰는 기존 한 장씩 효과(`:9500` `history.length > oldmaidLastHistoryLen`)도 함께 멈춘다. 4인 판이나 조커가 오래 오가는 판에서는 30번을 넘기 쉽다. | 길이 대신 서버의 `g.moveCount`(뽑을 때마다 +1, 상한 없음)로 새로 뽑았는지 판단한다. 새 기록은 `history.slice(-(moveCount - 지난 moveCount))`로 꺼낸다. | 확인 |
+| P3-8 | `public/app.js:4026` `talkResident` `await residentBye` (v179 작별 기다림) | 새 대화는 앞 대화의 「잘 가요」(bye) 요청이 끝나기를 기다리는데, `api()`에는 시간 제한이 없다. 휴대폰 네트워크가 불안해서 bye 요청이 응답 없이 걸려 있으면, 그동안 `residentBusy`가 켜진 채라 **어느 주민에게도 말을 걸 수 없다**. 다른 주민에게 말을 걸 때도 기다린다. | `await Promise.race([residentBye, new Promise((r) => setTimeout(r, 1500))])`처럼 짧게만 기다린다. 아니면 같은 주민(`n`)일 때만 기다린다. | 추정 (네트워크가 걸릴 때만) |
+| P3-9 | `public/gostop-ui.js:470-476` 결과 점수표 `chip` (v181) | 줄을 **마지막 띄어쓰기**에서 나눠 왼쪽은 무엇, 오른쪽은 숫자로 쓴다. 그런데 총통·3뻑·스톱으로 끝난 판의 첫 줄 `「총통 7점 고정」`은 왼쪽이 「총통 7점」, 굵은 숫자 칸이 「고정」이 된다. 점수표 오른쪽 칸에 점수 대신 「고정」이 보인다(보기만 틀림. 계산과 정산은 서버라 영향 없음). | `chip(what, figure)` 두 인자로 받는다. 이 줄은 `chip(reasonText, \`${r.base}점 고정\`)`으로 넘긴다. | 확인 |
+
+## 참고: 1차에서 채택한 것 중 v184에 아직 없는 것
+
+- **1차 P2-1**(「한 판 더」가 실패해도 잠김): `public/app.js:1430-1432`가 v178 때와 같다.
+- **1차 P2-2**(iPhone 소리 잠금 해제): `public/room-sound.js`에 첫 터치 잠금 해제가 아직 없다. v180·v182·v183에서 고스톱 도장·「고!」, 다빈치 맞힘·틀림, 도둑잡기 짝 소리가 더해져 이 소리들도 같은 영향을 받는다.
+
+## 추가 범위에서 본 뒤 문제 없다고 뺀 것
+
+- **고스톱 점수·3인 판·결과 정산**: v179~181은 화면(gostop-ui.js·CSS)만 바꿨다. 서버의 점수 계산, 박, 3인 판, 포인트 정산 코드는 바뀌지 않았다. 새 「합계」 줄은 서버가 준 `r.score`를 그대로 보여 주고, 3인 판의 진 사람 줄은 `r.losers`를 모두 돈다. 「승」 도장은 `state.me.seat === r.winner`일 때만 붙는다.
+- **다빈치 숨은 타일**: `lib/games/davinci.js` `publicState`가 남의 비공개 타일은 `{id, color, revealed}`만 보내고 `number`를 뺀다. 뽑은 타일도 `drawn: {color}`만 보낸다. 타일 `id`는 `crypto.randomUUID()`라 숫자를 알 수 없다. `history`·`lastGuess`의 `number`는 누군가 외친 추측 숫자라 원래 공개다. 화면에서 이번에 바꾼 것(이름표 얼굴, 안내 문구, 탁자 위 「여기서 멈추기」, 소리)은 받은 상태만 쓴다. 들어오거나 다시 접속할 때는 `davinciBaselinePending`가 지난 추측의 소리를 막는다.
+- **도둑잡기 숨은 패**: `publicState`는 자리별 장수(`counts`)만 보낸다. 내 패는 `handFor`로 내 `me`에만 들어가고, 뽑은 카드(`drawnOldMaidCard`)는 뽑은 사람의 응답에만 들어간다. 화면은 남의 패를 뒷면 장수만큼만 그린다. 새 테스트 API `/api/test/oldmaid-last-stand`는 `NODE_ENV==='test'`에서만 열린다.
+- **주민 대화 back 시간 처리(v179 `talk(n, who, yaw, backMs)`)**: `backMs`는 서버가 고른 `[0,1500,3000,4500]` 중 하나다(클라이언트 값이 아님). 그래도 `TALK_BACK_MAX` 5초로 한 번 더 막는다. 붙잡을 때 `startedAt`을 그만큼 앞당기고, 놓을 때 `delays += releaseAt - startedAt`라서 놓인 뒤 위치가 붙잡은 자리에서 끊김 없이 이어진다(다른 화면에서는 최대 몇 걸음 뒤로 돌아가 보일 뿐). `TALK_MAX`도 같은 시작점으로 센다. 이미 붙잡은 주민을 다시 잡을(갱신) 때는 `backMs`를 쓰지 않는다.
+- **주민 동네(v184 `island-npcs.js` I8-2)**: 서버(`lib/island-residents.js`가 같은 파일을 `require`)와 화면이 같은 순서(k=0..9)로 시간대별 경로를 한꺼번에 만든다. 그래서 누가 먼저 물어도 같은 경로가 나오고, 서버와 화면의 주민 위치가 어긋나지 않는다.
+- **메신저 나가기 권한**: v184는 버튼을 「⋯」 메뉴로 옮겼을 뿐이다. 서버 `/api/messenger/rooms/:id/leave`는 그대로 `room.members.includes(key.id)`가 아니면 404를 주고, 자기 키만 뺀다. 메뉴는 고르거나, 바깥을 누르거나, Esc를 누르면 닫히고, 「‹ 목록」도 메뉴를 닫는다.
+- **휴대폰 시작 버튼 복사(v182 `syncMobileStart`)**: 숨겨지지 않았고 눌 수 있는(`disabled` 아님) `*StartBtn`만 따라 한다. 시작 버튼은 모두 방장이 아니면 숨기거나 끄므로(`gostopStartBtn` hidden, `twentyHostSetup` hidden, 나머지 `disabled = !isHost…`) 방장이 아닌 사람에게는 나타나지 않는다. 시작 권한은 서버가 다시 검사한다. 버튼들은 탭으로 숨겨지는 `.sidePane` 안에 있지 않다.
+- **도둑잡기 손패 다시 그리기(v183 `afterHand`)**: 짝이 빛나는 동안 남이 내 카드를 뽑아 가도, 지금 상태의 손패로 다시 그린다.
+- **XSS**: 범위 안에서 새로 생긴 `innerHTML`이 없다. 이름표 얼굴, 안내 문구, 점수표 줄은 모두 `textContent`를 쓰고, 얼굴 색은 `style.setProperty`로만 넣는다.
+- **승강장 깜빡임(I8-1)**, **간판 줄이기(I8-4)**: 3D 그리기만 바꿨고 서버나 게임 규칙과는 관계없다.
