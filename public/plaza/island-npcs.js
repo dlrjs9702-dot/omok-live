@@ -403,7 +403,10 @@
     function pathTo(w, x, z) {
       const cells = new Map(); const at = (id) => { if (!cells.has(id)) cells.set(id, blockedCell(centre(id % N, Math.floor(id / N)))); return cells.get(id); };
       const pts = findPath({ x: w.x, z: w.z }, { x, z }, at) || findPath({ x: w.x, z: w.z }, { x, z });
-      w.route = pts ? pts.slice(1) : [{ x, z }]; w.routeTo = `${x},${z}`; w.routeCheck = { t: 0, d: Infinity };
+      // (CI #315: no walking way at all -- parts of the grid that never meet, a river between -- a straight walk stopped on
+      // the bank for good: there at once instead, as a screen that was paused puts them)
+      if (!pts) { [w.x, w.z] = [x, z]; resyncs += 1; }
+      w.route = pts ? pts.slice(1) : null; w.routeTo = `${x},${z}`; w.routeCheck = { t: 0, d: Infinity };
     }
     // along the route: the next corner, passed once close to it
     function routeTarget(w) {
