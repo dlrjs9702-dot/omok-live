@@ -2363,7 +2363,9 @@ body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n){transform:rotate(
 }
 /* G-고스톱ⓔ 큰 순간은 크게 (같은 주문서 5): 뻑·쪽·따닥·판쓸이·폭탄·흔들기·고·스톱 a big stamp in the floor's middle (badge(),
    with a sound); each 고 a small stamp piled beside the name */
-.fxBadge.stamp{padding:8px 22px;border-radius:12px;font-size:2rem;letter-spacing:.06em;box-shadow:0 0 0 3px rgba(255,255,255,.85),0 10px 30px rgba(0,0,0,.55);text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.fxBadge.stamp{--ink:#b3261e;padding:6px 20px;border:4px solid var(--ink);border-radius:12px;background:rgba(255,253,246,.9);color:var(--ink);font-size:2rem;letter-spacing:.06em;box-shadow:0 10px 28px rgba(0,0,0,.5);text-shadow:none} /* (ⓔ review: a seal like the result's 「승」 and the 「1고」 tag -- ink border and letters on pale paper; 고 the 고 button's green, 스톱 its orange) */
+.fxBadge.stamp.fx-go{--ink:#15803d}.fxBadge.stamp.fx-stop{--ink:#c2410c}
+body.roomPlaying.gostopStamping .toast,body.roomPlaying.gostopStamping .boardNote{top:max(8px,env(safe-area-inset-top))}
 .fxBadge.stamp.fx-go,.fxBadge.stamp.fx-stop,.fxBadge.stamp.fx-bomb,.fxBadge.stamp.fx-sweep,.fxBadge.stamp.fx-grand{font-size:2.5rem}
 @media(max-width:640px){.fxBadge.stamp{font-size:1.5rem;padding:6px 16px}.fxBadge.stamp.fx-go,.fxBadge.stamp.fx-stop,.fxBadge.stamp.fx-bomb,.fxBadge.stamp.fx-sweep,.fxBadge.stamp.fx-grand{font-size:1.8rem}}
 .goTag{display:inline-block;margin-left:6px;padding:0 5px;border:2px solid #b91c1c;border-radius:5px;background:#fff7ed;color:#b91c1c;font-size:.72rem;font-weight:950;line-height:1.35;transform:rotate(-8deg)}

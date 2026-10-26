@@ -416,6 +416,11 @@ test.describe('고스톱·맞고 자체 화투·실물감 연출 (v1.7.4)', () =
       from = await show(page, room, SCENARIOS[name]());
       await expect(page.locator(`#gostopFxLayer .fxBadge.fx-${fx}`), name).toBeAttached({ timeout: 6000 });
       if (fx !== 'kong') await expect(page.locator(`#gostopFxLayer .fxBadge.fx-${fx}`).first(), name).toHaveClass(/\bstamp\b/); // (G-고스톱ⓔ: the big moments a big stamp)
+      if (name === 'bomb') { // (ⓔ review: 피 뺏기 under the 폭탄! stamp, not over its edge)
+        await expect(page.locator('#gostopFxLayer .fxBadge.fx-steal')).toBeAttached(); await page.waitForTimeout(300);
+        const [a, b] = await Promise.all(['.fxBadge.stamp', '.fxBadge.fx-steal'].map(s => page.locator(`#gostopFxLayer ${s}`).first().boundingBox()));
+        expect(b.y, '피 뺏기는 도장 아래').toBeGreaterThanOrEqual(a.y + a.height);
+      }
       await shot(`2x-special-${name}`);
       await settle(page);
       const special = (await entries(page, from)).filter(e => e.k === 'special');

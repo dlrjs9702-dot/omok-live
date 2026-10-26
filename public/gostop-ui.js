@@ -996,6 +996,7 @@
   // G-고스톱ⓔ 큰 순간은 크게 (gamecenter-notes docs/gamehall-audit-20261025.md 「고스톱·맞고」 5): these as a big stamp in the
   // floor's middle, held longer, with a sound (specialFx)
   const STAMPS = new Set(['ppeok', 'jappeok', 'jjok', 'ttadak', 'sweep', 'bomb', 'shake', 'go', 'stop', 'grand']);
+  let stampTimer = null;
   function badge(run, text, seat, kind = 'plain', row = 0) {
     const anchor = plain(rectOf($('gostopFloor')));
     if (!anchor) return;
@@ -1004,11 +1005,15 @@
     el.className = `fxBadge fx-${kind}${stamp ? ' stamp' : ''}`;
     el.textContent = text;
     el.style.left = `${anchor.left + anchor.width / 2}px`;
-    el.style.top = `${anchor.top + anchor.height / 2 - (stamp ? 30 : 14) + row * 56}px`; /* (every row from the middle down: 피 뺏기 under the stamp, not on it) */
+    el.style.top = `${anchor.top + anchor.height / 2 - (stamp ? 32 : 14) + row * 72}px`; /* (every row from the middle down: 피 뺏기 under the stamp, not on it) */
     layer().append(el);
     run.temps.add(el);
     run.labels.add(el);
-    el.animate(BADGE_IN[kind] || [{ opacity: 0, transform: 'translate(-50%, 6px) scale(.9)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }], { duration: kind === 'ttadak' || kind === 'shake' ? 420 : 260, easing: 'ease-out', fill: 'forwards' });
+    if (stamp) { // (ⓔ review: pressed down like a seal, a little askew; the toast and the board note go to the top meanwhile)
+      const tilt = `rotate(${Math.round(Math.random() * 10 - 6)}deg)`;
+      el.animate([{ opacity: 0, transform: `translate(-50%,0) ${tilt} scale(1.3)` }, { opacity: 1, transform: `translate(-50%,0) ${tilt} scale(1)` }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
+      document.body.classList.add('gostopStamping'); clearTimeout(stampTimer); stampTimer = setTimeout(() => document.body.classList.remove('gostopStamping'), 1800);
+    } else el.animate(BADGE_IN[kind] || [{ opacity: 0, transform: 'translate(-50%, 6px) scale(.9)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }], { duration: kind === 'ttadak' || kind === 'shake' ? 420 : 260, easing: 'ease-out', fill: 'forwards' });
     setTimeout(() => el.remove(), stamp ? 1800 : 1150);
   }
 
