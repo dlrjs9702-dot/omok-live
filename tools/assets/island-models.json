@@ -1163,9 +1163,9 @@
     {
       "out": "identity-v1/records_hall.glb",
       "src": "identity75:01. High/records_hall.glb",
-      "sha256": "38ffbba5a7e761871c396986d266a19c18eb1c0239e4e5abe8b0bcaebd3440f3",
+      "sha256": "b3535c8b251dcb2cfbdad8d938693bff2baaaaf6a6147146472ec6a9077688aa",
       "lowSrc": "identity75:02. Low/records_hall_low.glb",
-      "lowSha256": "a84ee4d5c741aab3114dab7112431bec2bfa4d007274dfeec770546345edaedf",
+      "lowSha256": "6fcf2f5ec2a0c939a51597477e0155935308d4f2073a7bad9656f1782bf80ef1",
       "precompressed": true
     },
     {
@@ -7999,6 +7999,7 @@
     }
   ],
   "sources": {
+    "identity75": "75. Game Island building identity 2026-10-26",
     "v2": "01. Game Island assets 2026-10-05/02. Finished assets",
     "additions": "02. Game Island additions 2026-10-05/02. Finished assets",
     "gaps": "04. Game Island gaps 2026-10-05",

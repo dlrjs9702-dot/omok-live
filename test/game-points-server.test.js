@@ -63,8 +63,9 @@ async function boot(t, dataDir) {
   return { req, enter, guest, balance, room, admin, stop, base, logs: () => logs };
 }
 
-async function openRoom(fx, gameType, host, others) {
-  const created = await fx.req('/api/rooms', host.session, { gameType });
+// (G-포인트: a game against each other is friendly unless made with 「내기 1,000P」 -- these rooms bet; 고스톱 settles)
+async function openRoom(fx, gameType, host, others, stakes = gameType !== 'gostop') {
+  const created = await fx.req('/api/rooms', host.session, { gameType, ...(stakes ? { stakes: true } : {}) });
   assert.equal(created.status, 201);
   const code = created.data.state.me.roomCode;
   for (const person of others) assert.equal((await fx.req('/api/rooms/join', person.session, { code })).status, 200);
@@ -117,6 +118,27 @@ test('일반 게임(오델로): 시작 때 1,000P씩, 승자 1,600P(20% 소각),
   assert.equal((await fx.req('/api/room/end-game', a.session, {})).status, 200);
   await fx.room(a);
   assert.deepEqual([await fx.balance(a), await fx.balance(b)], [101_200, 98_000], '떠난 사람 환불 없음');
+});
+
+test('G-포인트: 겨루는 판은 기본 친선(차감·지급 없음, 전적은 남음), 파티·협동은 포인트·전적 없음, 내기는 겨루는 판만', { timeout: 60000 }, async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const fx = await boot(t, dir);
+  const [a, b, c] = [await fx.guest('친선흑'), await fx.guest('친선백'), await fx.guest('파티')];
+  await openRoom(fx, 'othello', a, [b], false);
+  assert.equal((await fx.req('/api/room/choose-role', a.session, { choice: 'black' })).status, 200);
+  assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 200);
+  let state = await fx.room(a);
+  assert.deepEqual([state.game.status, state.points.policy, state.points.entryFee, state.points.entry], ['playing', 'friendly', 0, null]);
+  await fx.req('/api/room/resign', b.session, {});
+  await fx.room(a);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [100_000, 100_000], '친선: 포인트 그대로');
+  const records = (await fx.req('/api/records/me', a.session)).data;
+  assert.equal(records.total?.wins ?? records.wins, 1, `친선도 전적은 남음 ${JSON.stringify(records).slice(0, 300)}`);
+  for (const p of [a, b]) await fx.req('/api/room/leave', p.session, {});
+  assert.equal((await fx.req('/api/rooms', c.session, { gameType: 'pictionary', stakes: true })).status, 400, '파티 게임엔 내기 없음');
+  assert.equal((await fx.req('/api/rooms', c.session, { gameType: 'gostop', stakes: true })).status, 400, '고스톱은 점당 정산');
+  assert.equal((await fx.req('/api/rooms', c.session, { gameType: 'pictionary' })).data.state.points.policy, 'none');
 });
 
 test('참가비 부족: 한 명이라도 1,000P 미만이면 시작하지 않고(자리 유지·아무도 차감 안 됨) 충전 후 시작된다', { timeout: 60000 }, async t => {

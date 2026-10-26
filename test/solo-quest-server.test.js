@@ -9,15 +9,15 @@ const { boot } = require('../test-support/test-server');
 const Q = require('../lib/island-quests');
 
 // v1.10.37 혼자 하는 게임 · 연계 퀘스트 (서버): a minesweeper board lives on the server (no mines in what is sent), a clear
-// pays its level once (nothing for a clear faster than a person could), records keep the best time; the islanders' story
+// is kept once, records keep the best time (G-포인트: no points); the islanders' story
 // moves on what the server noted, pays each step once, takes the asked things from the bag, and sends the map and tracker.
-test('지뢰찾기 서버: 지뢰는 보내지 않음, 클리어 보상 한 번, 너무 빠르면 0P, 최고 기록', async (t) => {
+test('지뢰찾기 서버: 지뢰는 보내지 않음, 클리어 기록 한 번, 포인트 없음, 최고 기록', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'solo-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('혼자')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;
   const info = (await req('/api/solo/minesweeper', sa)).data;
-  assert.deepEqual(info.levels.map((l) => [l.id, l.points]), [['beginner', 2000], ['intermediate', 4000], ['expert', 8000]]);
+  assert.deepEqual(info.levels.map((l) => [l.id, l.points]), [['beginner', undefined], ['intermediate', undefined], ['expert', undefined]]);
   assert.equal(info.game, null);
   assert.equal((await req('/api/solo/minesweeper/new', sa, { level: 'huge' })).status, 400);
   const play = async (ageMs) => {
@@ -34,18 +34,16 @@ test('지뢰찾기 서버: 지뢰는 보내지 않음, 클리어 보상 한 번,
   const start = await balance();
   const quick = await play(0);
   assert.equal(quick.last.view.status, 'won');
-  assert.equal(quick.last.result.points, 0, '사람이 못 할 만큼 빠르면 포인트 없음');
-  assert.equal(await balance(), start);
+  assert.equal(quick.last.result.points, undefined);
   const real = await play(60_000);
-  assert.equal(real.last.result.points, 2000);
-  assert.equal(await balance(), start + 2000);
+  assert.equal(real.last.result.newBest !== undefined, true);
   assert.equal((await req('/api/solo/minesweeper/act', sa, { id: real.g.id, action: 'open', x: 0, y: 0 })).data.result, null, '한 번만');
-  assert.equal(await balance(), start + 2000);
+  assert.equal(await balance(), start, 'G-포인트: 판마다 주는 포인트 없음');
   const records = (await req('/api/solo/minesweeper', sa)).data.records;
   assert.equal(records.beginner.clears, 2); assert.ok(records.beginner.best < 60_000);
   assert.equal((await req('/api/solo/minesweeper/act', sa, { id: 'other-game-id', action: 'open', x: 0, y: 0 })).status, 409);
   const history = JSON.stringify((await req('/api/points/history', sa)).data);
-  assert.ok(history.includes('solo_game'));
+  assert.ok(!history.includes('solo_game'));
 });
 
 test('연계 퀘스트 서버: 말 걸기·진행·보고 보상 한 번·가방에서 가져감·지도 표시·멀면 거절', async (t) => {

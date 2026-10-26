@@ -33,6 +33,7 @@ test('상대가 기권해 판이 끝나면, 직접 조작하지 않은 사람의
   const start = await balance(a);
 
   await a.page.locator('[data-game="omok"]').click();
+  await a.page.locator('input[name="roomStakes"][value="1"]').check(); // (G-포인트: friendly unless the host bets)
   const [created] = await Promise.all([
     a.page.waitForResponse(res => res.url().endsWith('/api/rooms') && res.request().method() === 'POST'),
     a.page.locator('#createRoomBtn').click(),

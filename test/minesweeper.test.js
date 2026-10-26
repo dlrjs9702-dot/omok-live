@@ -7,8 +7,8 @@ const { LEVELS, createGame } = require('../lib/minesweeper');
 // the end; flags, chords, a win once every safe cell is open, a loss on a mine; nothing moves after the end.
 function seeded(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
 
-test('지뢰찾기: 표준 판 크기와 보상, 첫 칸 주변은 안전, 지뢰 위치는 끝나기 전엔 보이지 않는다', () => {
-  assert.deepEqual(Object.entries(LEVELS).map(([k, l]) => [k, l.w, l.h, l.mines, l.points]), [['beginner', 9, 9, 10, 2000], ['intermediate', 16, 16, 40, 4000], ['expert', 30, 16, 99, 8000]]);
+test('지뢰찾기: 표준 판 크기, 첫 칸 주변은 안전, 지뢰 위치는 끝나기 전엔 보이지 않는다', () => {
+  assert.deepEqual(Object.entries(LEVELS).map(([k, l]) => [k, l.w, l.h, l.mines]), [['beginner', 9, 9, 10], ['intermediate', 16, 16, 40], ['expert', 30, 16, 99]]);
   for (let s = 1; s <= 30; s += 1) {
     const g = createGame('expert', { random: seeded(s) });
     assert.equal(g.act('open', 4, 4), true);

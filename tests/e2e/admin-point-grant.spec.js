@@ -72,7 +72,7 @@ test('관리자 포인트 지급 대화상자 → 확인 → 1회 지급, 사용
   expect((await api(request, '/api/points', target.token, undefined, 'GET')).data.balance).toBe(150_000);
 
   // 일반 게임 한 판(참가 1,000P → 승리 보상 1,600P)도 같은 내역에 보인다.
-  const created = await api(request, '/api/rooms', target.token, { gameType: 'othello' });
+  const created = await api(request, '/api/rooms', target.token, { gameType: 'othello', stakes: true }); // (G-포인트: a 내기 room)
   await api(request, '/api/rooms/join', rival.token, { code: created.data.state.me.roomCode });
   await api(request, '/api/room/choose-role', target.token, { choice: 'black' });
   await api(request, '/api/room/choose-role', rival.token, { choice: 'white' });

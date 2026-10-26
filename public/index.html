@@ -313,6 +313,12 @@
             <label><input type="radio" name="gostopStake" value="50" /> 50P</label>
             <label><input type="radio" name="gostopStake" value="100" checked /> 100P</label>
           </fieldset>
+          <!-- G-포인트: a game against each other is friendly (no points; win and loss kept) unless the host bets -->
+          <fieldset id="roomStakesChoices" class="baseballDigitChoices hidden" aria-label="포인트">
+            <legend>포인트</legend>
+            <label><input type="radio" name="roomStakes" value="" checked /> 친선 <small>포인트 없음</small></label>
+            <label><input type="radio" name="roomStakes" value="1" /> 내기 1,000P <small>이긴 쪽이 80%</small></label>
+          </fieldset>
           <button id="createRoomBtn" class="primary big">방 만들기</button>
           <div class="divider"><span>또는 방 참가</span></div>
           <form id="joinRoomForm" class="joinForm">
