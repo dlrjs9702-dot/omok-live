@@ -2416,6 +2416,14 @@ body.roomPlaying .oldmaidSeatCards .oldmaidCard.selectable:hover:not(:disabled),
 .oldmaidPanel.lastStand .oldmaidSeats::before{content:'조커는 누구에게?';grid-column:1/-1;justify-self:center;padding:3px 12px;border-radius:999px;background:#7f1d1d;color:#fecaca;font-weight:900;font-size:.85rem;letter-spacing:.04em}
 @keyframes oldmaidLastStand{from{box-shadow:inset 0 0 0 2px rgba(239,68,68,.2),0 0 0 rgba(239,68,68,0)}to{box-shadow:inset 0 0 40px rgba(239,68,68,.35),0 0 24px rgba(239,68,68,.45)}}
 @media(prefers-reduced-motion:reduce){.oldmaidPanel.lastStand{animation:none;box-shadow:inset 0 0 0 3px rgba(239,68,68,.6)}}
+/* (도둑잡기 검토) my hand on the table itself, centred, in one row however many: each card over the last as much as it takes
+   (--n set by app.js); on a PC the cards and the other's fan larger */
+body.roomPlaying .oldmaidHandDock{background:none}
+body.roomPlaying .oldmaidMyHandCards{flex-wrap:nowrap;justify-content:center;gap:0;background:none;border:0;padding:8px 4px}
+body.roomPlaying .oldmaidMyHandCards .oldmaidCard{--cw:80px;flex:0 0 var(--cw);width:var(--cw);height:calc(var(--cw) * 1.35);font-size:1.35rem}
+body.roomPlaying .oldmaidMyHandCards .oldmaidCard+.oldmaidCard{margin-left:min(6px,calc((100% - var(--cw) * var(--n)) / (var(--n) - 1)))}
+@media(min-width:881px){body.roomPlaying .oldmaidSeatCards .oldmaidCard{width:66px;height:92px}body.roomPlaying .oldmaidSeatCards .oldmaidCard+.oldmaidCard{margin-left:-40px}}
+@media(max-width:640px){body.roomPlaying .oldmaidMyHandCards .oldmaidCard{--cw:49px;font-size:1rem}}
 @media(max-width:640px){body.roomPlaying .oldmaidSeats{grid-template-columns:minmax(0,1fr);grid-template-areas:"north" "east" "west"}body.roomPlaying .oldmaidSeatCards .oldmaidCard{width:40px;height:56px}body.roomPlaying .oldmaidSeatCards .oldmaidCard+.oldmaidCard{margin-left:-24px}}
 /* G-고스톱ⓓ 상대가 앉아 있게 (같은 주문서 4): the name tag with the island face, the hand's backs fanned (a played card
    leaves from the fan's middle), the count beside it never cut; 뻑 a small pill over its month */

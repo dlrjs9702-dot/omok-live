@@ -8,6 +8,7 @@ test('도둑잡기 판: 자리 카드 비킴·이름표 얼굴·상대 부채꼴
   test.setTimeout(120000);
   const a = await shopper(browser, request, isMobile ? '도둑판m' : '도둑판');
   const b = await shopper(browser, request, isMobile ? '도둑상대m' : '도둑상대');
+  if (isMobile) for (const who of [a, b]) await who.page.setViewportSize({ width: 393, height: 851 }); // (shopper's pages are 1280 wide: a phone's size for the phone run)
   const call = (who, route, data) => post(request, route, who.token, data);
   const created = await call(a, '/api/rooms', { gameType: 'oldmaid' });
   expect((await call(b, '/api/rooms/join', { code: created.data.state.me.roomCode })).status).toBe(200);
@@ -35,5 +36,13 @@ test('도둑잡기 판: 자리 카드 비킴·이름표 얼굴·상대 부채꼴
   await expect.poll(async () => ((await get(request, '/api/room', a.token)).data.state.game.history || []).length).toBe(1);
   const last = (await get(request, '/api/room', a.token)).data.state.game.history.at(-1);
   if (last.pairs > 0) await expect.poll(() => drawer.page.evaluate(() => window.RoomSound.played().includes('right'))).toBe(true);
+  // my hand one row on the table (no wrapping), the phone's line short
+  const tops = await a.page.locator('#oldmaidMyHand .oldmaidCard').evaluateAll((els) => [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().top)))]);
+  expect(tops.length).toBe(1);
+  if (isMobile) await expect(a.page.locator('#statusText')).not.toContainText('님 차례 ·');
+  // the last stand (two hands, three cards -- the joker among them): the table pulses, 「조커는 누구에게?」
+  expect((await call(a, '/api/test/oldmaid-last-stand', {})).status).toBe(200);
+  for (const who of [a, b]) await expect(who.page.locator('#oldmaidPanel')).toHaveClass(/lastStand/);
+  if (process.env.ZZ_OUT) for (const [who, n] of [[a, 'me'], [b, 'other']]) { await who.page.waitForTimeout(700); await who.page.screenshot({ path: `${process.env.ZZ_OUT}/oldmaid-laststand-${isMobile ? 'phone' : 'pc'}-${n}.png` }); }
   for (const who of [a, b]) await who.context.close();
 });

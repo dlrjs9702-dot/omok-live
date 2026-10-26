@@ -4645,6 +4645,18 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, refunded: await refundOrphanEntries('orphan-sweep') });
   }
 
+  // (G-게임별 도둑잡기, test only) the last stand of a two-player hand: seat 1 holds the joker and a 5, seat 2 the other 5, seat 1 draws
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/oldmaid-last-stand' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const room = getCurrentRoom(session);
+    if (!room || !isOldMaid(room) || room.game.status !== 'playing' || findSeat(room, session.token) !== '1' || !room.game.hands?.['2']) return sendError(res, 409, 'NOT_OLDMAID_HAND', '도둑잡기 2인 판이 아닙니다.');
+    Object.assign(room.game, { hands: { 1: [{ id: 'joker', suit: '', rank: 'JOKER' }, { id: '♠-5', suit: '♠', rank: '5' }], 2: [{ id: '♥-5', suit: '♥', rank: '5' }] }, seatOrder: ['1', '2'], turn: '1', target: '2' });
+    room.game.revision = (room.game.revision || 0) + 1;
+    touchRoom(room);
+    broadcast(room);
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/gostop-fixture' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;

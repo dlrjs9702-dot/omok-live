@@ -8046,6 +8046,7 @@
     } else if (oldmaid) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작'
         : g.status === 'finished' ? (g.endReason === 'resign' ? '도둑잡기 종료' : `${state.players[g.loser]?.label || '조커 보유자'}님 패배`)
+        : isMobileLayout() ? (g.turn === seat ? '카드 한 장 뽑기' : g.target === seat ? '상대가 내 카드를 뽑는 중' : `${state.players[g.turn]?.label || '플레이어'}님이 뽑는 중`) // (도둑잡기 검토: a phone's line short, one line)
         : `${state.players[g.turn]?.label || '플레이어'}님 차례 · ${state.players[g.target]?.label || '상대'}님 카드 뽑기`);
     } else if (liar) {
       const speaker = g.currentSpeaker ? `${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}님` : '';
@@ -9237,6 +9238,7 @@
   // face gets data-cardId so oldmaidGlowAndRemovePair() can find the exact DOM elements to animate.
   function oldmaidRenderMyHandFaces(hand) {
     oldmaidMyHand.replaceChildren();
+    oldmaidMyHand.style.setProperty('--n', String(Math.max(1, hand.length))); // (도둑잡기 검토: one row, overlapped to fit -- styles.css)
     for (const card of hand) {
       const red = card.suit === '♥' || card.suit === '♦';
       const face = document.createElement('span');
