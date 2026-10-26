@@ -52,10 +52,22 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
       await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(300);
       const t = await page.locator('#yutThrowBtn').boundingBox(); expect(t.y + t.height).toBeLessThanOrEqual(h + 1);
       await expect(page.locator('#blackPlayer .turnRing, .teamPlayer .turnRing')).toHaveCount(1);
+      // (G-틀①: the panel the sticks lived in is folded -- the throw shows over the board, then steps out of the way)
+      await page.locator('#yutThrowBtn').click(); await expect(page.locator('#diceYutSection')).toHaveClass(/throwing/);
+      const sticks = await page.locator('#diceYutSection').boundingBox(); expect(sticks.y >= 0 && sticks.y + sticks.height <= h).toBe(true);
+      await expect(page.locator('#diceYutSection')).not.toHaveClass(/throwing/, { timeout: 8000 });
       expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
       await expect(page.locator('#gameInfoPanel #gameActionsPanel')).toHaveCount(1); // back in the side panel
       return;
     }
+    // G-틀① 몰입 화면: the side panels folded (the board takes the screen), 기권 in ☰, a thin bar, a new system line a moment
+    // over the board (someone came in to watch)
+    if (w > 880) { await expect(page.locator('.gameLayout')).toHaveClass(/sideCollapsed/); await expect(page.locator('#chatPanel')).toBeHidden(); }
+    await expect(page.locator('#roomPointRule')).toBeHidden(); await expect(page.locator('#resignBtn')).toBeHidden();
+    await page.locator('#roomMenuBtn').click(); await expect(page.locator('#menuResignBtn')).toBeVisible(); await page.locator('#gameMenuCloseBtn').click();
+    const watcher = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+    expect((await api(request, '/api/rooms/join', watcher, { code })).status).toBe(200);
+    await expect(page.locator('#boardNote')).toContainText('입장');
     // my clock round my card (the black seat moves first), then the other's after my move
     await expect(page.locator('#blackPlayer .turnRing b')).toHaveText(/^\d:\d\d$/);
     expect((await api(request, '/api/room/move', black, { x: 7, y: 7 })).status).toBe(200);
@@ -76,6 +88,7 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect(page.locator('.seatBubble')).toHaveText('좋은 수!');
     expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
     await expect(page.locator('body')).not.toHaveClass(/roomPlaying/);
+    if (w > 880) await expect(page.locator('#chatPanel')).toBeVisible(); // (G-틀①: the hand over, the panels back)
     // G1-7: the result on the board with the way on
     await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
     await expect(page.locator('#boardOverlay .resultPoints')).toContainText('P');

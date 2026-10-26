@@ -1098,6 +1098,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .economyBox fieldset{border:0}
 :root[data-theme="light"] .tfRow{border:1px solid rgba(179,156,124,.3)}
 :root[data-theme="light"] .tfRow.chosen{border-color:#8b5cf6;background:rgba(139,92,246,.08)}
+:root[data-theme="light"] .boardNote{background:rgba(247,239,225,.94);border:1px solid #c9b394;color:#33281d;box-shadow:0 8px 24px rgba(0,0,0,.45)}
 :root[data-theme="light"] .topActions .chatFloatBtn{box-shadow:none}
 :root[data-theme="light"] .turnRing{background:conic-gradient(#34d399 calc(var(--p,1)*360deg),rgba(179,156,124,.25) 0)}
 :root[data-theme="light"] .turnRing::before{background:#f7efe1}
