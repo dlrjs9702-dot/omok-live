@@ -2207,8 +2207,21 @@ body.roomPlaying #statusText{font-size:1.02rem;margin:0}
 body.roomPlaying #resignBtn{display:none} /* (in ☰ while a hand is played: 「기권」) */
 body.roomPlaying .boardCard>.diceYutSection{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:30;width:min(420px,calc(100vw - 32px));pointer-events:none;opacity:0;transition:opacity .2s} /* (the panel folded: the throw over the board, only while it is thrown) */
 body.roomPlaying .boardCard>.diceYutSection.throwing{opacity:1}
+/* (G-틀① 검토) the turn's line says whose turn: beside it only my clock (no second 「내 차례」, no timeout words); a toast over
+   the board, under the note, not over the quick words; on a phone the bar is one line and a seat's status one line */
+body.roomPlaying #myActionTimerLabel,body.roomPlaying #myActionTimerResult{display:none}
+body.roomPlaying .toast{top:calc(30vh + 52px);bottom:auto;pointer-events:none} /* (over the board: a move goes through it) */
+@media(max-width:640px){
+  body.roomPlaying .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
+  body.roomPlaying .roomBarTitle{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:6px}
+  body.roomPlaying #roomGameLogo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.95rem}
+  body.roomPlaying .roomBar .topActions{flex:0 0 auto;flex-wrap:nowrap;gap:4px}
+  body.roomPlaying .roomBar button{min-height:40px;padding:6px 9px;font-size:.85rem}
+  body.roomPlaying .player,body.roomPlaying .teamPlayer,body.roomPlaying .player>div,body.roomPlaying .teamPlayer>div{min-width:0}
+  body.roomPlaying .player small,body.roomPlaying .teamPlayer small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
 body.roomPlaying #turnNotifyBtn{font-size:0;padding:6px 10px}body.roomPlaying #turnNotifyBtn::before{content:"🔕";font-size:1rem}body.roomPlaying #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
-.boardNote{position:fixed;left:50%;top:max(70px,9vh);transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100% - 24px));margin:0;padding:8px 18px;border-radius:999px;background:rgba(15,23,42,.94);border:1px solid #475569;color:#f8fafc;font-weight:800;font-size:.9rem;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;animation:boardNoteIn .2s ease-out}
+.boardNote{position:fixed;left:50%;top:30vh;transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100% - 24px));margin:0;padding:8px 18px;border-radius:999px;background:rgba(15,23,42,.94);border:1px solid #475569;color:#f8fafc;font-weight:800;font-size:.9rem;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;animation:boardNoteIn .2s ease-out}
 .boardNote.hidden{display:none}
 @keyframes boardNoteIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.boardNote{animation:none}}
