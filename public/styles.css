@@ -2334,6 +2334,7 @@ body.hwatuNames .hwatu.hasArt .hwatuBadge{left:auto;right:2px;bottom:2px;padding
 @media(max-width:640px){
   body.roomPlaying .gostopFelt{--hh:min(clamp(54px,10vh,80px),calc((100vw - 84px) / 4.2))} /* (ten cards, each over the last by .3 and no gap: 4.1 card heights wide) */
   body.roomPlaying .gostopFelt .gostopHand{gap:0}
+  body.roomPlaying .gostopFelt .gostopSpeedBtn{top:-12px;bottom:auto;right:14px;opacity:1} /* (on the felt's frame, not on the hand's last card) */
   body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 4px} /* (the felt now the screen's width: four months a row, not six squeezed) */
   #leaveRoomBtn{white-space:nowrap}
   body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.3)}

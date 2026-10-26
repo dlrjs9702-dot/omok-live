@@ -8016,7 +8016,7 @@
         : g.phase === 'intermission' ? `잿빛 원정 · ${roomInfo} · 성장 정비` : `잿빛 원정 · ${roomInfo} 전투 중`;
     } else if (isGostopGame()) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '고스톱 · 맞고 · 방장 시작 대기' : g.status === 'draw' ? '나가리' : g.status === 'finished' ? `${g.mode === 'matgo' ? '맞고' : '고스톱'} 종료`
-        : `${state.players[g.turn]?.label || '참가자'}님 · ${g.phase === 'go-stop' ? '고/스톱 선택' : g.phase === 'gukjin' ? '국진 선택' : g.phase?.startsWith('choose') ? '먹을 패 선택' : '패를 낼 차례'}`);
+        : `${g.turn === seat && isMobileLayout() ? '' : `${state.players[g.turn]?.label || '참가자'}님 · `}${g.phase === 'go-stop' ? '고/스톱 선택' : g.phase === 'gukjin' ? '국진 선택' : g.phase?.startsWith('choose') ? '먹을 패 선택' : '패를 낼 차례'}`);
     } else if (halli) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '할리갈리 · 방장 시작 대기' : g.status === 'finished' ? '할리갈리 종료' : `${actorName(g.turn)} 카드 뒤집기 차례`);
     } else if (pandemic) {
