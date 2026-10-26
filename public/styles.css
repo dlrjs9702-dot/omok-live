@@ -2383,6 +2383,7 @@ body.roomPlaying #davinciStatus,body.roomPlaying #davinciPanel>.davinciActions{d
 .davinciHand>strong .seatFace{width:24px;height:24px;flex:0 0 auto}
 .davinciPileCount{bottom:auto;top:50%;transform:translate(-50%,-50%);z-index:2;padding:0 7px;border-radius:999px;background:rgba(0,0,0,.62)}
 .davinciTableStop{flex-basis:auto;margin:4px auto 0;min-height:40px;font-weight:900}
+@media(max-width:640px){body.roomMode:not(.roomPlaying) .toast{top:var(--roomBarBottom,76px);bottom:auto}} /* (다빈치 검토: before a hand a phone's toast under the bar, not over the room's words) */
 /* (다빈치 검토) the turn's ring on its rack label; the tiles I may pick glow on the table too (the table's own shadow had hidden
    it); a small note on the rack to guess at; the drawn tile's words short and on one line; on a PC the tiles 1.4 times */
 .davinciHand>strong{position:relative}

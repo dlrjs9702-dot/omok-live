@@ -7732,7 +7732,10 @@
       chatOverlayOpen = false; gameInfoOverlayOpen = false; applyChatLayout(); applyGameInfoLayout(); // (G-틀①: the panels fold for the hand, back after)
       menuResignBtn.classList.toggle('hidden', !on);
     }
-    const inBar = on || document.body.classList.contains('roomResult'); // (G-틀④ 검토: and while a hand's result stands -- never over 다음 판 on a phone)
+    // (G-틀④ 검토: and while a hand's result stands -- never over 다음 판 on a phone; G-게임별 다빈치 검토: and before a hand too --
+    // never over the room's words while seats are chosen: in the room the round buttons are always in the bar)
+    const inBar = on || !roomView.classList.contains('hidden');
+    const roomBar = document.querySelector('header.roomBar'); if (roomBar) document.body.style.setProperty('--roomBarBottom', `${Math.max(8, roomBar.offsetTop + roomBar.offsetHeight + 8)}px`); /* (a phone's toast just under it, before a hand) */
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
@@ -10197,6 +10200,7 @@
     const selectedTarget = focus?.seat === seat && g.hands[focus.target]?.some(tile => tile.id === focus.tileId && !tile.revealed);
     davinciGuessBtn.disabled = !(active && !davinciSelectionPending && !davinciGuessPending && ['guess', 'continue'].includes(g.phase) && selectedTarget);
     davinciStopBtn.classList.toggle('hidden', !(active && g.phase === 'continue'));
+    davinciGuessBtn.closest('.davinciActions').classList.toggle('hidden', g.status !== 'playing'); // (다빈치 검토: no 「추측할 숫자」 row before a hand)
     setActionable(davinciGuessBtn, !davinciGuessBtn.disabled && !g.paused, 'primary');
     davinciStopBtn.disabled = davinciSelectionPending || davinciGuessPending;
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderDavinciFocusLine(focus));
