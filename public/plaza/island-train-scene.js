@@ -58,7 +58,7 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
     // (5회차 4: a stone plinth under the walkway, down into the lowest ground under it -- no air under it on a slope; v1.10.160
     // 「땅 다지기」: the ground under it levelled, so a hand's breadth)
     const drop = ground - lift.low + 0.15;
-    const ag = mergeColored([part(G.box, DECK, 0, -.1, 0, { sx: 1.8, sy: .2, sz: accessLength }), part(G.box, PLINTH, 0, -0.2 - drop / 2, 0, { sx: 1.7, sy: drop, sz: accessLength }),
+    const ag = mergeColored([part(G.box, DECK, 0, R.ACCESS_DECK - .1, 0, { sx: 1.8, sy: .2, sz: accessLength }) /* (I8-1: its top over the levelled ground, not on it) */, part(G.box, PLINTH, 0, -0.2 - drop / 2, 0, { sx: 1.7, sy: drop, sz: accessLength }),
       ...[-.85, .85].map(x => part(G.box, FRAME, x, .5, 0, { sx: .06, sy: .06, sz: accessLength }))]); made.push(ag); access.add(new THREE.Mesh(ag, vcMat));
     const top = Math.max(...plats.map((p) => p.y)) + 2.6;
     const cx = plats.reduce((a, p) => a + p.x, 0) / plats.length; const cz = plats.reduce((a, p) => a + p.z, 0) / plats.length;

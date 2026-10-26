@@ -242,5 +242,8 @@
     return T.segDist(x,z,...st.entry,lift.x,lift.z)<1+radius || Math.hypot(x-lift.x,z-lift.z)<1.5+radius;
   }));
   T.addTreeBlock((x, z) => liftSites.some(p => Math.hypot(p.x-x,p.z-z)<2.5) || Object.values(LINES).some(({ route: r }) => { for (let i = 0; i < r.S.length; i += 2) { if (Math.abs(r.xs[i] - x) > 5 || Math.abs(r.zs[i] - z) > 5) continue; if (Math.hypot(r.xs[i] - x, r.zs[i] - z) < 5 && r.ys[i] - T.heightAt(x, z) < 11) return true; } return false; }));
-  return { CYCLE, TRAVEL, DWELL, SURFACE, CLEAR, SEATS, CAR, DOCK, SEA, STATIONS, LINES, TRAINS, PLATFORMS, PILLARS, platformSpot, platformClamp, platformEdgeDistance, liftOf, pointAt, trainAt, timetableAt, createTraffic, setService, carOf, seatAt, docked, nextAt, stationOf: (id) => STATIONS[id] ? { id, ...STATIONS[id], spot: { x: STATIONS[id].entry[0], z: STATIONS[id].entry[1] } } : null };
+  // (I8-1, 문제 기록 8회차 1 「승강장 아래 땅이 깜빡거려」: the walk in to the lift lay on the ground v1.10.160 levelled to its very
+  // height -- the two drawn in turn. Its deck stands this much over the station's ground: more than the levelling's 5 cm)
+  const ACCESS_DECK = 0.06;
+  return { ACCESS_DECK, CYCLE, TRAVEL, DWELL, SURFACE, CLEAR, SEATS, CAR, DOCK, SEA, STATIONS, LINES, TRAINS, PLATFORMS, PILLARS, platformSpot, platformClamp, platformEdgeDistance, liftOf, pointAt, trainAt, timetableAt, createTraffic, setService, carOf, seatAt, docked, nextAt, stationOf: (id) => STATIONS[id] ? { id, ...STATIONS[id], spot: { x: STATIONS[id].entry[0], z: STATIONS[id].entry[1] } } : null };
 }));
