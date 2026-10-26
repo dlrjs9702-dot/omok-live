@@ -96,7 +96,8 @@ test.describe('잿빛 원정', () => {
     await expect(me.page.locator('.rpgSlot').nth(1).locator('.cdText')).not.toHaveText('', { timeout: 3000 });
     expect(await me.page.evaluate(() => window.scrollY)).toBe(scroll);
 
-    // Typing in chat: arrow keys stay with the input.
+    // Typing in chat: arrow keys stay with the input. (G-틀①: while a hand is played the chat is folded -- 💬 opens it)
+    await me.page.locator('#chatFloatBtn').click();
     await me.page.locator('#chatInput').click();
     const before = await mySnap(me.page);
     await me.page.keyboard.down('ArrowLeft');

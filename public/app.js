@@ -680,8 +680,10 @@
   // them -- now that #gameActionsPanel (start/roll/buy/build buttons etc.) lives inside
   // #gameInfoPanel, collapsing it by default would hide controls a host needs just to start the
   // game. The user can still collapse it manually as before.
-  function chatShouldCollapse() { return chatCollapsedPref === true; }
-  function gameInfoShouldCollapse() { return gameInfoCollapsedPref === true; }
+  // G-틀① 몰입 화면 (gamecenter-notes docs/gamehall-audit-20261025.md): while a hand is played both side panels fold away
+  // -- the board takes the screen; 💬·🎮 in the top bar open them over it
+  function chatShouldCollapse() { return chatCollapsedPref === true || document.body.classList.contains('roomPlaying'); }
+  function gameInfoShouldCollapse() { return gameInfoCollapsedPref === true || document.body.classList.contains('roomPlaying'); }
 
   // v1.6.59: a browser only ever allows ONE native Document Picture-in-Picture window open at a
   // time (system-wide, not per-tab) -- so v1.6.58's two independent PIP buttons still fought each
@@ -1120,9 +1122,12 @@
   // v1.9.9: a tumble belongs to the room it started in. Entering a room bumps tumbleGen (resetRoomAnimationState), so an
   // unfinished throw/roll stops: no more frames on the old elements, no onDone into the new room's state.
   let tumbleGen = 0;
+  let diceThrowTimer = null;
   function animateTumble(els, spins, buildFrame, finalTransforms, { duration = 700, settleMs = 420, decorate, onDone } = {}) {
     const gen = tumbleGen;
     els.forEach(el => el.classList.remove('settling'));
+    // (G-틀①: while a hand is played the throw shows over the board -- for the throw and a moment after, then out of the way)
+    diceYutSection.classList.add('throwing'); clearTimeout(diceThrowTimer); diceThrowTimer = setTimeout(() => diceYutSection.classList.remove('throwing'), duration + settleMs + 1400);
     const settle = (withTransition) => {
       els.forEach((el, i) => {
         if (decorate) decorate(el, i);
@@ -1833,6 +1838,8 @@
   // v1.10.63 게임방: the same menu, with 게임 선택으로 돌아가기 on top (the room's own buttons stay in its top bar)
   const menuLeaveRoomBtn = byId('menuLeaveRoomBtn');
   menuLeaveRoomBtn.addEventListener('click', () => { gameMenuDialog.close(); leaveRoomBtn.click(); });
+  const menuResignBtn = byId('menuResignBtn'); // (G-틀①: while a hand is played 기권 is in ☰ -- the panel it sits in is folded)
+  menuResignBtn.addEventListener('click', () => { gameMenuDialog.close(); resignBtn.click(); });
   window.addEventListener('keydown', (event) => {
     if (event.isComposing || event.repeat || event.defaultPrevented) return;
     const t = event.target;
@@ -6762,7 +6769,7 @@
   }
 
   function enterRoomState(next) {
-    bubbleSeen = null; // (A3 G1-6: a room just entered shows no old line as a bubble)
+    bubbleSeen = null; systemSeen = null; // (A3 G1-6: a room just entered shows no old line as a bubble -- nor, G-틀①, an old note)
     closeEventDialogForRoom();
     stopPresenceRefresh();
     stopLobbyStream();
@@ -7582,6 +7589,12 @@
     card.querySelector('.seatBubble')?.remove();
     const b = document.createElement('span'); b.className = 'seatBubble'; b.textContent = String(row.text).slice(0, 40); card.append(b); setTimeout(() => b.remove(), 4000);
   }
+  // G-틀① 시스템 기록은 판 위 쪽지: the folded panel's newest system line shows a moment over the board while a hand is played
+  let systemSeen = null; let boardNoteTimer = null;
+  function boardNote(text) {
+    const note = byId('boardNote'); if (!text || !document.body.classList.contains('roomPlaying')) return;
+    note.textContent = String(text).slice(0, 80); note.classList.remove('hidden'); clearTimeout(boardNoteTimer); boardNoteTimer = setTimeout(() => note.classList.add('hidden'), 3000);
+  }
   function renderChat() {
     const lockMessage = state ? chatLockMessage() : '';
     const locked = Boolean(lockMessage);
@@ -7606,6 +7619,9 @@
     roomChatAnnouncer.update(chatRows, state?.me?.chatId || '');
     const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.chatId || '');
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
+    const newestSystem = systemRows.length ? Number(systemRows[systemRows.length - 1].id) || 0 : 0;
+    if (systemSeen !== null && newestSystem > systemSeen) boardNote(systemRows[systemRows.length - 1].text); // (G-틀①)
+    systemSeen = newestSystem;
     lastRenderedChatIds = chatRows.map(row => row.id);
     if (bubbleSeen !== null && newestId > bubbleSeen) chatBubble(chatRows[chatRows.length - 1]); // A3 G1-6 (a line newer than the last view)
     bubbleSeen = newestId;
@@ -7641,18 +7657,25 @@
   // the board while a hand is played (ids kept -- keys and tests lean on them); a mark keeps their place in the panel
   const actionsPanel = document.getElementById('gameActionsPanel'); const actionsMark = document.createComment('gameActionsPanel'); actionsPanel.before(actionsMark);
   const boardActionsSpot = document.getElementById('quickChat');
+  // (G-틀①: the panel folds while a hand is played -- the yut sticks' and the dice's throw goes under the board with the actions)
+  const diceSection = document.getElementById('diceYutSection'); const diceMark = document.createComment('diceYutSection'); diceSection.before(diceMark);
   function setRoomPlaying(on) {
     on = Boolean(on) && !roomView.classList.contains('hidden');
-    if (on !== document.body.classList.contains('roomPlaying')) { document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); } }
+    if (on !== document.body.classList.contains('roomPlaying')) {
+      document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); }
+      chatOverlayOpen = false; gameInfoOverlayOpen = false; applyChatLayout(); applyGameInfoLayout(); // (G-틀①: the panels fold for the hand, back after)
+      menuResignBtn.classList.toggle('hidden', !on);
+    }
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = on ? topActions : floatHome; if (b.parentElement !== home) (on ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
+    if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
     fitBoard(); renderTurnRing();
     const boardKey = `${state?.gameType}:${state?.game?.round}:${state?.game?.moveCount}`; if (boardKey !== touchPickKey) { touchPickKey = boardKey; touchPick = null; } // (Codex review: a first tap holds for this board only)
   }
   function fitBoard() {
     const wrap = canvasWrap; wrap.style.maxWidth = '';
     if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
-    const below = [...document.querySelectorAll('#yutControls, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    const below = [...document.querySelectorAll('#yutControls, .boardCard > .diceYutSection, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
     const top = wrap.getBoundingClientRect().top + window.scrollY;
     wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - 12))}px`;
   }

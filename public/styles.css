@@ -2199,6 +2199,19 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 /* A3 G1-1 게임방 공통 틀 — 판 진행 중 한 화면: the room's info behind ⓘ, no empty seats, the board within the screen */
 .roomInfoBtn{display:none;min-width:32px;padding:4px 8px;font-size:1rem;line-height:1}
 body.roomPlaying .roomInfoBtn{display:inline-flex}
+/* G-틀① 몰입 화면 (gamecenter-notes docs/gamehall-audit-20261025.md): a thin bar (‹ 게임관 · the game · 🔔 💬 🎮 ☰), one small line
+   above the board for whose turn, the side panels folded (app.js), the system's newest line a moment over the board */
+body.roomPlaying #roomIdentityLabel,body.roomPlaying .roomBar .pointBadge,body.roomPlaying #newRoomBtn,body.roomPlaying #seatLabel,body.roomPlaying #recentActionLine{display:none!important}
+body.roomPlaying .roomBar{padding-top:6px;padding-bottom:6px;min-height:0}
+body.roomPlaying #statusText{font-size:1.02rem;margin:0}
+body.roomPlaying #resignBtn{display:none} /* (in ☰ while a hand is played: 「기권」) */
+body.roomPlaying .boardCard>.diceYutSection{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:30;width:min(420px,calc(100vw - 32px));pointer-events:none;opacity:0;transition:opacity .2s} /* (the panel folded: the throw over the board, only while it is thrown) */
+body.roomPlaying .boardCard>.diceYutSection.throwing{opacity:1}
+body.roomPlaying #turnNotifyBtn{font-size:0;padding:6px 10px}body.roomPlaying #turnNotifyBtn::before{content:"🔕";font-size:1rem}body.roomPlaying #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
+.boardNote{position:fixed;left:50%;top:max(70px,9vh);transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100% - 24px));margin:0;padding:8px 18px;border-radius:999px;background:rgba(15,23,42,.94);border:1px solid #475569;color:#f8fafc;font-weight:800;font-size:.9rem;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;animation:boardNoteIn .2s ease-out}
+.boardNote.hidden{display:none}
+@keyframes boardNoteIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.boardNote{animation:none}}
 body.roomPlaying:not(.roomInfoOpen) .roomInfoArea{display:none}
 body.roomPlaying .player:not(.occupied),body.roomPlaying .teamPlayer.emptySeat{display:none}
 body.roomPlaying .players,body.roomPlaying .teamPlayers{margin-bottom:8px}
