@@ -2328,9 +2328,25 @@ body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top
    「1월」 「피」 bands only with ☰ 「패 이름 보기」 (small tags in the corners); the cards bigger where the folded panels left
    room; the felt never wider than the screen (a phone's hand fitted to its width) */
 body.roomPlaying .gostopFelt{grid-template-columns:minmax(0,1fr);max-width:100%}
+/* G-고스톱ⓑ 따 온 패는 쌓인 더미로 (같은 주문서 3): no text boxes -- each kind a stack laid on the felt, the count in a circle,
+   「광 1장!」 only when one more card scores; an empty kind a faint dashed place; the caption kept for screen readers */
+body.roomPlaying .gostopFelt .gostopPile{position:relative;background:transparent;border:0;padding:10px 4px 2px;overflow:visible}
+body.roomPlaying .gostopFelt .gostopPile>small{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body.roomPlaying .gostopFelt .gostopPile.emptyPile{opacity:1}
+body.roomPlaying .gostopFelt .gostopPileCards:empty{width:calc(var(--mh) * .68);height:var(--mh);border:1px dashed rgba(255,255,255,.22);border-radius:4px}
+body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:calc(var(--mh) * -.55)}
+.pileCount{position:absolute;left:0;top:0;z-index:3;min-width:20px;height:20px;padding:0 5px;display:grid;place-items:center;border-radius:999px;background:#fde68a;color:#3d2f22;font-size:.72rem;font-weight:950;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+.pileNear{position:absolute;left:24px;top:-2px;z-index:3;padding:1px 6px;border-radius:999px;background:#b3261e;color:#fff;font-style:normal;font-size:.68rem;font-weight:900;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+body.roomPlaying .gostopFelt .gostopSets{color:#fde68a;font-size:.74rem}
+/* (ⓑ review: the go/stop choice over every card on the felt, the felt's cards not pressable under it; 고 green, 스톱 orange, full colour) */
+body.roomPlaying .gostopFelt .gostopDecisionPanel{z-index:60}
+body.roomPlaying .gostopFelt:has(.gostopDecisionPanel) .hwatu:not(.gostopDecisionPanel .hwatu){pointer-events:none}
+.gostopDecisionButtons .gostopGoButton{border-color:#4ade80!important;background:#15803d!important;color:#fff!important}
+.gostopDecisionButtons .gostopStopButton{border-color:#fdba74!important;background:#c2410c!important;color:#fff!important}
+.gostopDecisionButtons button:disabled{opacity:.9;filter:none}
 body:not(.hwatuNames) .hwatu.hasArt .hwatuMonth,body:not(.hwatuNames) .hwatu.hasArt .hwatuBadge{display:none}
 body.hwatuNames .hwatu.hasArt .hwatuBadge{left:auto;right:2px;bottom:2px;padding:0 3px;border-radius:4px}
-@media(min-width:881px){body.roomPlaying .gostopFelt{--hh:clamp(64px,13vh,140px);--fh:clamp(52px,11vh,124px)}}
+@media(min-width:881px){body.roomPlaying .gostopFelt{--hh:clamp(64px,13vh,140px);--fh:clamp(52px,11vh,124px);--mh:clamp(34px,6.4vh,70px)}} /* (ⓑ: the taken stacks bigger too) */
 @media(max-width:640px){
   body.roomPlaying .gostopFelt{--hh:min(clamp(54px,10vh,80px),calc((100vw - 84px) / 4.2))} /* (ten cards, each over the last by .3 and no gap: 4.1 card heights wide) */
   body.roomPlaying .gostopFelt .gostopHand{gap:0}

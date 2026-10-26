@@ -166,6 +166,10 @@
       col.classList.toggle('emptyPile', !actualCards);
       if (kind === 'pi') cap.title = '피 숫자는 점수 계산상 개수입니다. 쌍피·쓰리피는 2피·3피로 계산됩니다.';
       col.append(cap);
+      // (G-고스톱ⓑ 따 온 패는 쌓인 더미로: on the felt the caption is for screen readers -- a number in a circle on the stack, and
+      // only when one more card scores, 「광 1장!」 over it)
+      if (actualCards) { const n = document.createElement('b'); n.className = 'pileCount'; n.setAttribute('aria-hidden', 'true'); n.textContent = String(count); col.append(n); }
+      if (from && count === from - 1) { const near = document.createElement('em'); near.className = 'pileNear'; near.setAttribute('aria-hidden', 'true'); near.textContent = `${title} 1${kind === 'pi' ? '' : '장'}!`; col.append(near); }
       const row = document.createElement('div'); row.className = 'gostopPileCards';
       for (const id of groups[kind]) row.append(cardEl(id, { size: 'mini', track: true, classes: recent.has(id) && g.lastEvent?.seat === seat ? ' recentActionTarget' : '' }));
       col.append(row);
@@ -175,12 +179,13 @@
     box.append(pile);
     // A3 G2-4: the sets under way (홍단·청단·초단·고도리 n/3) and the 박 risk -- the server decides 박 at the end; this only warns
     const setOf = g.scoreFrom?.set || 3; const sets = [];
-    for (const [key, name] of [['hong', '홍단'], ['cheong', '청단'], ['cho', '초단']]) { const n = groups.ribbon.filter((id) => info(id).dan === key).length; if (n && n < setOf) sets.push(`${name} ${n}/${setOf}`); }
-    const go = groups.animal.filter((id) => info(id).godori).length; if (go && go < setOf) sets.push(`고도리 ${go}/${setOf}`);
+    // (G-고스톱ⓑ: a set only once one card is missing -- 「홍단 1장!」; till then the stack says enough)
+    for (const [key, name] of [['hong', '홍단'], ['cheong', '청단'], ['cho', '초단']]) { const n = groups.ribbon.filter((id) => info(id).dan === key).length; if (n === setOf - 1) sets.push(`${name} 1장!`); }
+    const go = groups.animal.filter((id) => info(id).godori).length; if (go === setOf - 1) sets.push('고도리 1장!');
     const risks = [];
     if (g.status === 'playing' && g.pibakMax && info2.counts.pi >= 1 && info2.counts.pi <= g.pibakMax) risks.push('피박 위험');
     if (g.status === 'playing' && !groups.gwang.length && Object.entries(g.seats).some(([s, o]) => s !== seat && groupCaptured(o.captured).gwang.length >= (g.scoreFrom?.gwang || 3))) risks.push('광박 위험');
-    if (sets.length || risks.length) { const line = document.createElement('small'); line.className = 'gostopSets'; line.textContent = [...sets, ...risks.map((r) => `⚠ ${r}`)].join(' · '); line.title = '박은 판이 끝날 때 서버가 정합니다. 여기서는 위험 안내만 합니다.'; head.append(line); } // (in the name row: no row of its own)
+    if (sets.length || risks.length) { const line = document.createElement('small'); line.className = 'gostopSets'; line.textContent = [...sets, ...risks.map((r) => `⚠${r.replace(' 위험', '')}`)].join(' · '); /* (ⓑ: the risk as a small mark by the name) */ line.title = '박은 판이 끝날 때 서버가 정합니다. 여기서는 위험 안내만 합니다.'; head.append(line); } // (in the name row: no row of its own)
     if (info2.items?.length || info2.goCount || info2.factors?.length) {
       const detail = document.createElement('details');
       detail.className = 'gostopScoreDetails';
