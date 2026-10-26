@@ -15,8 +15,14 @@ test('주민세 고지서: 우체통 편지, 세금 창구 「모두 내기」, 
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
   // the 우체통: a letter from the 관공서, its own stamp
-  await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('mailbox')); await page.waitForTimeout(700); return spaceOn(page, 'mailbox', isMobile); }, { timeout: 30000 }).toBe(true);
+  // (main after #324, phone: the hint tapped and no window -- pressed again until the letter is there)
   const letter = page.locator('#plazaDialog .mailLetter', { hasText: '주민세 고지서' });
+  await expect.poll(async () => {
+    if (await letter.count()) return true;
+    await page.evaluate(() => window.PlazaDebug().place('mailbox')); await page.waitForTimeout(700);
+    if (await spaceOn(page, 'mailbox', isMobile)) await page.waitForTimeout(1500);
+    return (await letter.count()) > 0;
+  }, { timeout: 45000 }).toBe(true);
   await expect(letter).toContainText('관공서'); await expect(letter.locator('.mailStamp')).toHaveText('관공서'); await expect(letter.locator('button', { hasText: '답장' })).toBeHidden();
   if (process.env.ZZ_OUT) await page.screenshot({ path: `${process.env.ZZ_OUT}-${isMobile ? 'm' : 'p'}-mail.png` });
   await page.locator('#plazaCloseBtn').click();

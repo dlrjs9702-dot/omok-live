@@ -3975,10 +3975,13 @@
   const talkToday = (list, today) => list.filter(([topic]) => !today || !((topic === 'errand' && !today.errand) || (topic === 'gift' && today.gifted) || (topic === 'ask' && today.asked)));
   // R2: my 호감도 with each islander (their greeting as I pass by -- the scene), again after each talk
   async function refreshAffinity() { try { const d = await api('/api/island/affinity'); plaza.controller?.setAffinity?.(d.residents); } catch {} }
+  // (CI 2026-10-27: a talk again straight after -- the bye and the new talk went together; the server taking the bye second
+  // let the new talk go, its keep then 409 and the window shut. The next talk waits for the bye)
+  let residentBye = null;
   function endResidentTalk() {
     const t = residentTalk; residentTalk = null; if (!t) return;
     clearInterval(t.timer);
-    api('/api/island/resident/bye', { method: 'POST', body: JSON.stringify({ n: t.n }) }).then((d) => plaza.controller?.setResidents?.(d.residents)).catch(() => {});
+    residentBye = api('/api/island/resident/bye', { method: 'POST', body: JSON.stringify({ n: t.n }) }).then((d) => plaza.controller?.setResidents?.(d.residents)).catch(() => {});
   }
   plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) endResidentTalk(); });
   function showResidentTalk(data, first) {
@@ -4020,7 +4023,7 @@
     if (residentBusy) return; residentBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      endResidentTalk();
+      endResidentTalk(); await residentBye;
       showResidentTalk(await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n }) }), true);
     } catch (error) { showToast(error.message); } finally { residentBusy = false; }
   }
