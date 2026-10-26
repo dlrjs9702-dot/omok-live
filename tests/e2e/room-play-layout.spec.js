@@ -109,6 +109,10 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
     await expect(page.locator('#boardOverlay .resultPoints')).toHaveText(/^\+[\d,]+P$/); // (G-틀④: one big figure, the breakdown on its title)
     await expect(page.locator('#blackPlayer')).toHaveClass(/seatWinner/); await expect(page.locator('#whitePlayer')).not.toHaveClass(/seatWinner/); // (the winner crowned)
+    // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 hidden; pressed, it says it waits; the bar stays thin)
+    await expect(page.locator('#nextRoundBtn')).toBeHidden(); await expect(page.locator('#sideNextRoundBtn')).toBeHidden(); await expect(page.locator('#roomPointRule')).toBeHidden();
+    await page.locator('#boardOverlay .resultActions button', { hasText: '한 판 더' }).click();
+    await expect(page.locator('#boardOverlay .resultActions button').first()).toHaveText('준비 완료 · 기다리는 중');
     expect(errors).toEqual([]);
   });
 }

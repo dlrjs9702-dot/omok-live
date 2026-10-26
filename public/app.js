@@ -1416,6 +1416,7 @@
   }
 
   // A3 G1-7 결과 창 공통: the points this hand moved for me (the server's entry settlement) and [한 판 더]·[게임관으로]
+  let nextAskedFor = null; // (the room and hand I asked to play again)
   function resultOverlayExtras(outcome) {
     const e = state.points?.entry;
     // (G-틀④: only a stakes hand has a points line -- one big +/− figure; how it came (the entry, the share) on its title)
@@ -1425,7 +1426,10 @@
       line.title = outcome === 'win' && e.each ? `참가 ${Number(e.fee).toLocaleString('ko-KR')}P → 받은 ${Number(e.each).toLocaleString('ko-KR')}P` : `참가 ${Number(e.fee).toLocaleString('ko-KR')}P`;
       if (line.textContent) boardOverlay.append(line); }
     const row = document.createElement('span'); row.className = 'resultActions';
-    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = '한 판 더'; again.addEventListener('click', () => nextRoundBtn.click());
+    // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 is hidden under it; once pressed it says it is waiting)
+    const asked = nextAskedFor === `${state.me?.roomCode}:${state.game?.round}`;
+    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = asked ? '준비 완료 · 기다리는 중' : '한 판 더'; again.disabled = asked;
+    again.addEventListener('click', () => { nextAskedFor = `${state.me?.roomCode}:${state.game?.round}`; again.textContent = '준비 완료 · 기다리는 중'; again.disabled = true; nextRoundBtn.click(); });
     const out = document.createElement('button'); out.type = 'button'; out.className = 'ghost'; out.textContent = '게임관으로'; out.addEventListener('click', () => document.getElementById('leaveRoomBtn').click());
     row.append(again, out); boardOverlay.append(row);
   }
@@ -1460,7 +1464,7 @@
     document.getElementById('gamehallView').classList.toggle('hidden', name !== 'gamehall'); // v1.10.73 게임관
     if (name !== 'gamehall' && document.getElementById('gameSheet').open) document.getElementById('gameSheet').close();
     if (name !== 'reflex') reflexGames?.stop();
-    if (name !== 'room') { document.body.classList.remove('tableGameRoom', 'tableGamePlaying'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
+    if (name !== 'room') { document.body.classList.remove('tableGameRoom', 'tableGamePlaying', 'roomResult'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
     syncPlaza(name);
   }
 
@@ -7719,7 +7723,8 @@
       chatOverlayOpen = false; gameInfoOverlayOpen = false; applyChatLayout(); applyGameInfoLayout(); // (G-틀①: the panels fold for the hand, back after)
       menuResignBtn.classList.toggle('hidden', !on);
     }
-    for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = on ? topActions : floatHome; if (b.parentElement !== home) (on ? topActions.prepend(b) : floatHome.append(b)); }
+    const inBar = on || document.body.classList.contains('roomResult'); // (G-틀④ 검토: and while a hand's result stands -- never over 다음 판 on a phone)
+    for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
     placeMySeat(); fitBoard(); renderTurnRing();
@@ -8171,6 +8176,7 @@
     document.body.classList.toggle('tableGameRoom', gostop);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     document.body.classList.toggle('tableGamePlaying', gostop && g.status !== 'selecting');
+    document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
     if (gostop) window.GostopUI.render(state);

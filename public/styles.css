@@ -2272,6 +2272,19 @@ body.roomPlaying .quickChat{display:flex}
 .boardOverlay.resultWin .resultActions button,.boardOverlay.resultLoss .resultActions button{min-height:48px;padding:12px 26px;font-size:1.05rem;font-weight:900;white-space:nowrap}
 @media(max-width:640px){.boardOverlay.resultWin .resultActions button,.boardOverlay.resultLoss .resultActions button{padding:10px 16px}.boardOverlay.resultWin,.boardOverlay.resultLoss{padding:18px 18px 14px}}
 .boardOverlay.resultWin .resultActions .ghost,.boardOverlay.resultLoss .resultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
+/* (G-틀④ 검토) over a result the bar stays as thin as in the hand (the points are on the card), 「☰ 메뉴」 never wraps, and the
+   card's 「한 판 더」 is the one button for the next hand */
+#roomMenuBtn{white-space:nowrap}
+body.roomResult #roomIdentityLabel,body.roomResult .roomBar .pointBadge{display:none!important}
+body:has(#boardOverlay:not(.hidden) .resultActions) :is(#nextRoundBtn,#sideNextRoundBtn){display:none!important}
+@media(max-width:640px){
+  body.roomResult .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
+  body.roomResult .roomBarTitle{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:6px}
+  body.roomResult #roomGameLogo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.95rem}
+  body.roomResult .roomBar .topActions{flex:0 0 auto;flex-wrap:nowrap;gap:4px}
+  body.roomResult .roomBar button{min-height:40px;padding:6px 9px;font-size:.85rem}
+  body.roomResult #newRoomBtn{display:none}
+}
 .seatWinner{position:relative;box-shadow:0 0 0 2px #facc15,0 0 22px rgba(250,204,21,.45)!important}
 .seatWinner::after{content:"👑";position:absolute;left:10px;top:-14px;font-size:1.3rem;line-height:1;pointer-events:none}
 @media(max-width:640px){body.roomPlaying .quickChat{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}body.roomPlaying .quickChat button{flex:0 0 auto}.turnRing{width:36px;height:36px;right:6px}.turnRing b{font-size:.62rem}.player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:46px}.versus.versusScore{font-size:1rem}}
