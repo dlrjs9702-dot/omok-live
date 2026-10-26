@@ -7153,7 +7153,7 @@
     const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats().seats.has(String(seat)));
     statusText.classList.toggle('selfActHeadline', mine);
     // (G-게임별: on a phone my own name dropped from my turn's line -- 「내 차례 · 숫자 추측」 in one line, as 고스톱's)
-    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${isMobileLayout() ? statusText.textContent.replace(/^[^·]*\(나\) · /, '') : statusText.textContent}`;
+    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${isMobileLayout() ? statusText.textContent.replace(/^[^·]*(\(나\)|님 차례) · /, '') : statusText.textContent}`;
     const text = recentNarration();
     recentActionLine.classList.toggle('hidden', !text);
     if (text) {
@@ -7767,7 +7767,7 @@
     const t = state?.turnTimer; clearInterval(turnRingTimer); turnRingTimer = null;
     if (!t || !document.body.classList.contains('roomPlaying')) return;
     // (G-게임별 다빈치: no seat cards while a hand is played -- the ring on that seat's rack label)
-    const card = [seatCardOf(t.seat), document.querySelector(`#davinciHands .davinciHand[data-owner="${t.seat}"] > strong`)].find((c) => c?.offsetParent);
+    const card = [seatCardOf(t.seat), document.querySelector(`#davinciHands .davinciHand[data-owner="${t.seat}"] > strong`), document.querySelector(`#oldmaidSeats .oldmaidSeat[data-seat="${t.seat}"] .oldmaidSeatInfo`), String(t.seat) === String(seat) ? document.querySelector('#oldmaidPanel .oldmaidMyHeader h3') : null].find((c) => c?.offsetParent);
     if (!card) return;
     turnRingClock = Date.now() - Number(t.serverNow || Date.now());
     const ring = document.createElement('span'); ring.className = 'turnRing'; ring.setAttribute('role', 'timer'); const text = document.createElement('b'); ring.append(text); card.append(ring);
@@ -8195,10 +8195,10 @@
     if (halli) renderHalli();
     gostopPanel.classList.toggle('hidden', !gostop);
     // v1.8.5: a table game (고스톱·맞고) uses a wider page on PC so the table, not the web panels, is the centre.
-    document.body.classList.toggle('tableGameRoom', gostop || davinci);
+    document.body.classList.toggle('tableGameRoom', gostop || davinci || oldmaid);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
-    // (G-게임별 다빈치: its racks round the table are the name plates too)
-    document.body.classList.toggle('tableGamePlaying', (gostop || davinci) && g.status !== 'selecting');
+    // (G-게임별 다빈치·도둑잡기: its racks / seats round the table are the name plates too)
+    document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid) && g.status !== 'selecting');
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
@@ -9377,6 +9377,7 @@
       info.className = 'oldmaidSeatInfo';
       const nameSpan = document.createElement('span');
       nameSpan.textContent = label(number);
+      info.appendChild(oldmaidFace(number)); // (G-게임별: the seat's tag the name plate, with the island face)
       info.appendChild(nameSpan);
       if (g.status !== 'selecting') {
         const countSpan = document.createElement('span');
@@ -9400,11 +9401,14 @@
         if (count > 0) {
           const cards = document.createElement('div');
           cards.className = 'oldmaidSeatCards';
+          cards.style.setProperty('--n', String(count)); // (G-게임별: the hand held as a fan)
           const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
+          if (canDraw && !g.paused) { const hint = document.createElement('small'); hint.className = 'oldmaidHint'; hint.textContent = '한 장을 눌러 뽑아요'; seatEl.appendChild(hint); }
           for (let cardIndex = 0; cardIndex < count; cardIndex += 1) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
+            button.style.setProperty('--i', String(cardIndex));
             if (seatSkin?.back) SLO.h.style(button, seatSkin.back);
             if (canDraw && !g.paused) button.classList.add('actionableTarget');
             button.disabled = !canDraw;
@@ -9450,6 +9454,17 @@
     if (!g.history?.length) oldmaidHistory.textContent = '아직 카드를 뽑지 않았습니다.';
 
     oldmaidRunEffects(g);
+    // G-게임별 도둑잡기: my hand's heading with my face; the last stand (two hands left, three cards or fewer -- the joker is
+    // among them) the table pulses; the turn's ring back on its name plate after the seats were redrawn
+    const myHead = oldmaidPanel.querySelector('.oldmaidMyHeader h3'); myHead.querySelector('.seatFace')?.remove(); if (seat && rosterSeats.includes(seat)) myHead.prepend(oldmaidFace(seat));
+    const holding = rosterSeats.filter((s) => (g.counts?.[s] ?? 0) > 0);
+    oldmaidPanel.classList.toggle('lastStand', g.status === 'playing' && holding.length === 2 && holding.reduce((n, s) => n + g.counts[s], 0) <= 3);
+    renderTurnRing();
+  }
+  function oldmaidFace(number) {
+    const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true');
+    const look = state.players?.[number]?.face; if (look?.skin) f.style.setProperty('--skin', look.skin); if (look?.hair) f.style.setProperty('--hair', look.hair);
+    return f;
   }
 
   // One-shot decorative flourishes, all derived from state the server already confirmed
@@ -9457,6 +9472,7 @@
   // skip if effects are off or the relevant seat element isn't on screen.
   function oldmaidRunEffects(g) {
     const history = g.history || [];
+    if (history.length - oldmaidLastHistoryLen === 1 && history.at(-1).pairs > 0) window.RoomSound?.play('right'); // (G-게임별: a pair thrown -- 딩동; one new draw only, not a reload's whole history)
     if (!oldmaidEffectsActive()) {
       oldmaidLastHistoryLen = history.length;
       for (const number of g.seatOrder || []) if ((g.counts?.[number] ?? 1) === 0) oldmaidSeenEscaped.add(number);
