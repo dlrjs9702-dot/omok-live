@@ -850,6 +850,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .islandChatTab{background:rgba(247,239,225,.82);color:#33281d;border:1px solid #d6c3a5}
 :root[data-theme="light"] .islandChatTab.unread::after{background:#f87171}
 :root[data-theme="light"] .islandChatPanel{background:rgba(15,23,42,var(--island-chat-alpha));border:1px solid rgba(51,65,85,var(--island-chat-alpha));color:#e5e7eb}
+:root[data-theme="light"] .islandChatGrip{border-right:3px solid rgba(179,156,124,.8);border-bottom:3px solid rgba(179,156,124,.8)}
 :root[data-theme="light"] .islandChatAlpha{color:#7a6650}
 :root[data-theme="light"] .islandChatMessages{background:transparent!important}
 :root[data-theme="light"] .islandChatForm input{background:rgba(247,239,225,.92);color:#33281d;border:1px solid #23806f;box-shadow:0 0 0 3px rgba(35,128,111,.25)}
