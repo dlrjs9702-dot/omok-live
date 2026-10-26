@@ -17,6 +17,8 @@ test('역 터: 승강기·들어가는 길 아래 평평(땅과 0.05 m 안), 둑
     const under = []; for (const dx of [-1.2, 0, 1.2]) for (const dz of [-1.2, 0, 1.2]) under.push([lift.x + dx, lift.z + dz]);
     for (let k = 0; k <= 8; k += 1) under.push([lift.x + ((ex - lift.x) * k) / 8, lift.z + ((ez - lift.z) * k) / 8]);
     const off = Math.max(...under.map(([x, z]) => Math.abs(T.heightAt(x, z) - lift.y))); if (off > 0.05) problems.push(`${id}: 바닥과 땅 ${off.toFixed(2)} m`);
+    // (I8-1 「승강장 아래 땅 깜빡임」) the walk in's deck over the ground everywhere under it, by 2 cm at least -- never level with it
+    const walk = under.slice(9).map(([x, z]) => T.heightAt(x, z)); const gap = lift.y + R.ACCESS_DECK - Math.max(...walk); if (gap < 0.02) problems.push(`${id}: 들어가는 길 판이 땅과 ${gap.toFixed(3)} m`);
     if (lift.y - lift.low > 0.05) problems.push(`${id}: 기단 ${(lift.y - lift.low).toFixed(2)} m`);
     // its pad (none where the ground was level already): walkable where it moves the ground (the beach's own fall to the sea at
     // its rim is the beach's),

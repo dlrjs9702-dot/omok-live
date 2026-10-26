@@ -40,3 +40,11 @@ html[data-mtheme="dark"] .mApp .chatMessageText{background:#352c25;color:#f1e6d2
 html[data-mtheme="dark"] .mApp .chatMessage.mine .chatMessageText{background:#8a5a14;border-color:#a8741f;color:#fff6e3}
 html[data-mtheme="dark"] .messengerPage input[type="text"],html[data-mtheme="dark"] .messengerPage input[type="password"]{background:#352c25;color:var(--isle-ink)}
 html[data-mtheme="dark"] .mApp .messengerUnsend{color:#cdbba2}
+/* I8-3: the room's ⋯ menu on the messenger's own paper (밝게 / 어둡게) -- 방 나가기 in red */
+.mApp .messengerMoreMenu{background:#fffaf0;border:1px solid var(--isle-line);box-shadow:0 10px 26px rgba(74,56,40,.22)}
+.mApp .messengerMoreMenu button{color:var(--isle-ink);background:none}
+.mApp .messengerMoreMenu button:hover,.mApp .messengerMoreMenu button:focus-visible{background:#f6ead2}
+.mApp .messengerMoreMenu .messengerLeave{color:#b3261e;border-top-color:var(--isle-line)}
+html[data-mtheme="dark"] .mApp .messengerMoreMenu{background:#352c25}
+html[data-mtheme="dark"] .mApp .messengerMoreMenu button:hover,html[data-mtheme="dark"] .mApp .messengerMoreMenu button:focus-visible{background:#43382f}
+html[data-mtheme="dark"] .mApp .messengerMoreMenu .messengerLeave{color:#f87171}

@@ -54,10 +54,12 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
     const all = await page.evaluate(() => window.PlazaDebug().wanderersAt());
     if (!all.length) { await page.evaluate(async () => { const w = window.PlazaDebug().wanderersAt(true)[0]; if (w) await window.PlazaWarp(w.x, w.z + 3); }); return 'no islander'; } // (R3: in the evening and at night they gather elsewhere -- go to them)
     // (CI #307: one walking off during the 0.45 s swing is a miss, as it should be -- one standing still is struck)
-    // (main after #324: an islander who had lost something stood by its 「lost_owner」 event, SPACE went to that, never the
-    // swing, every try -- those within an island event's reach (lib/island-events REACH 3) are left out, as the insects')
+    // (main after #324: an islander who had lost something was its 「lost_owner」 event, SPACE went to that, never the
+    // swing, every try -- those within an island event's reach (lib/island-events REACH 3) are left out, as the insects';
+    // #330: and the event's own islanders (held for it, away from the event's spot) too)
     const events = (await get(request, '/api/test/island/events', a.token)).data.events || [];
-    const still = all.filter((w) => !w.moving && events.every((e) => Math.hypot(e.x - w.x, e.z - w.z) > 3.2)); if (!still.length) return 'all walking or by an event';
+    const busy = await page.evaluate(() => { const d = window.PlazaDebug(); return [...d.eventResidents.map((e) => e.n), ...d.residentReservations.filter((s) => s.hold).map((s) => s.n)]; });
+    const still = all.filter((w) => !w.moving && !busy.includes(w.n) && events.every((e) => Math.hypot(e.x - w.x, e.z - w.z) > 3.2)); if (!still.length) return 'all walking or by an event';
     const m = still[tries++ % still.length]; // (by a door, the door comes first: the next one)
     for (let k = 0; k < 12; k += 1) {
       const x = m.x + Math.cos(k / 2) * 0.9; const z = m.z + Math.sin(k / 2) * 0.9; if (!T.walkable(x, z)) continue;

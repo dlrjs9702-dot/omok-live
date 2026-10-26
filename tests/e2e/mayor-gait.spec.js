@@ -19,4 +19,5 @@ test('관공서 시장: 허락 뒤 비켜설 때 걸음이 끊기지 않는다(�
   const gaits = await page.evaluate(() => new Promise((done) => { const out = []; const t0 = performance.now(); const f = () => { const t = window.PlazaDebug().townhall(); out.push(`${t.gait}@${t.mayorAt.x},${t.mayorAt.z}`); if (performance.now() - t0 < 15000) requestAnimationFrame(f); else done(out); }; requestAnimationFrame(f); }));
   let flips = 0; for (let i = 1; i < gaits.length; i += 1) if (gaits[i].split('@')[0] !== gaits[i - 1].split('@')[0]) flips += 1;
   expect(flips).toBeLessThan(8);
+  await a.context.close(); // (CI #330: a page left open draws the island for the rest of the worker's run)
 });

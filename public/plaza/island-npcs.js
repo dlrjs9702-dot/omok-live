@@ -209,7 +209,7 @@
   // keep every rule of the round (never straight back, the closing leg like any other, a real path), starting afresh
   // from another first stop when it runs out (the same seed: the same round everywhere)
   const far = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-  function dalmaruRoute(rnd, places) {
+  function dalmaruRoute(rnd, places, strict = false) { // (strict: null when no whole round fits these places -- I8-2 tries a wider neighbourhood)
     let best = null;
     for (let attempt = 0; attempt < 60; attempt += 1) {
       const want = 5 + Math.floor(rnd() * 3); const route = [places[Math.floor(rnd() * places.length)]];
@@ -225,27 +225,53 @@
       if (route.length === want) return route;
       if (!best || route.length > best.length) best = route;
     }
-    return best;
+    return strict ? null : best;
   }
-  // (R3 ③ 주민의 하루) the round by the island's time of day -- 아침 by the water, 낮 as ever, 저녁 round the gazebo and
-  // 알림마루, 밤 in the village -- the stopping places within 70 m of that part of the day's spot (all of them if too few).
+  // (R3 ③ 주민의 하루) a round for each time of the island's day (I8-2: in their own neighbourhood, an outing once a day).
   // `phaseOf(ms)`: the island's time of day then, given by the server and each screen alike (setPhaseOf), so every one of
   // them has each islander in the same place; at a change of the time of day they are on their next round at once
   let phaseOf = () => 'day';
   const setPhaseOf = (fn) => { phaseOf = typeof fn === 'function' ? fn : () => 'day'; };
-  const PHASE_SPOT = { morning: () => T.PIER || T.dalmaru?.PLACES?.pier, evening: () => T.SPOTS?.chat, night: () => T.dalmaru?.PLACES?.village || T.VILLAGE };
-  function phasePlaces(phase) {
-    const all = stopPlaces(); const spot = PHASE_SPOT[phase]?.(); if (!spot || !Number.isFinite(spot.x)) return all;
-    const near = all.filter((p) => Math.hypot(p.x - spot.x, p.z - spot.z) <= 70); return near.length >= 8 ? near : all;
+  // (I8-2, 문제 기록 8회차 2 「주민들이 몰려있어, 섬 전체에 고르게 퍼지게 해줘」: 아침 every round was by the pier -- all ten in one heap
+  // by the pier and the station.) Each islander has a neighbourhood of their own -- ten homes spread over the island's stops
+  // (the farthest stop from those taken, each in turn) -- and walks the stops within 50 m of it; once a day an outing to
+  // another's neighbourhood, 낮·밤 home. A phase's rounds are made together, in order: a stop in two rounds already is left to
+  // the others (unless that leaves too few)
+  const NEIGHBOURHOODS = [50, 70, 95]; const SHARED = 2;
+  let homes = null;
+  function homeStops() {
+    if (homes) return homes;
+    const all = stopPlaces(); if (!all.length) return (homes = []);
+    const c = { x: PC.x, z: PC.z }; homes = [all.reduce((b, p) => (far(p, c) < far(b, c) ? p : b))];
+    while (homes.length < Math.min(COUNT, all.length)) homes.push(all.reduce((b, p) => (Math.min(...homes.map((h) => far(h, p))) > Math.min(...homes.map((h) => far(h, b))) ? p : b)));
+    return homes;
   }
-  // One islander's round: legs between stopping places and the time each part takes. Cached.
+  // (the outing: of an 아침 the even ones, of an 저녁 the odd ones, to the neighbourhood three homes on -- a visit, never
+  // a crowd: no neighbourhood has more than its own and one guest)
+  const OUTING = { morning: 0, evening: 1 };
+  function placesFor(n, phase, used, radius) {
+    const all = stopPlaces(); if (!Number.isFinite(radius)) return all;
+    const hs = homeStops(); if (!hs.length) return all;
+    const centre = hs[(OUTING[phase] === n % 2 ? n + 3 : n) % hs.length];
+    const near = all.filter((p) => far(p, centre) <= radius);
+    const free = used ? near.filter((p) => (used.get(p) || 0) < SHARED) : near; return free.length >= 6 ? free : near;
+  }
+  // One islander's round: legs between stopping places and the time each part takes. Cached; the ten of a part of the day
+  // made together (in order, whoever is asked first), so each sees which stops the ones before them took
   const rounds = new Map();
   function round(n, phase = 'day') {
     const key = phase === 'day' ? n : `${n}:${phase}`; if (rounds.has(key)) return rounds.get(key);
+    if (n < COUNT) { const used = new Map(); for (let k = 0; k < COUNT; k += 1) makeRound(k, phase, used); return rounds.get(key); }
+    return makeRound(n, phase, null);
+  }
+  function makeRound(n, phase, used) {
+    const key = phase === 'day' ? n : `${n}:${phase}`; if (rounds.has(key)) return rounds.get(key);
     const rnd = seeded(0x5eed1 + n * 7919 + ({ day: 0, morning: 101, evening: 202, night: 303 }[phase] || 0));
-    const places = phasePlaces(phase);
+    let places = placesFor(n, phase, used, Infinity);
     const speed = 1.25 + rnd() * 0.5;
-    const route = DAL ? dalmaruRoute(rnd, places) : [places[Math.floor(rnd() * places.length)]];
+    let route = null; // (달마루섬: their own neighbourhood, a wider one when no whole round fits it, the whole island last)
+    if (DAL) for (const radius of [...NEIGHBOURHOODS, Infinity]) { places = placesFor(n, phase, used, radius); route = dalmaruRoute(rnd, places, Number.isFinite(radius)); if (route) break; }
+    else route = [places[Math.floor(rnd() * places.length)]];
     for (let guard = 0; !DAL && route.length < 5 + Math.floor(rnd() * 3) && guard < 400; guard += 1) {
       const last = route[route.length - 1]; const before = route[route.length - 2];
       const next = places[Math.floor(rnd() * places.length)];
@@ -279,6 +305,7 @@
     const look = LOOKS[n % LOOKS.length];
     const r = { period: t, parts, speed, look: { shirt: look[0], hair: look[1], skin: look[2], hat: look[3] }, phase: rnd() * t };
     rounds.set(key, r);
+    if (used) for (const p of route) used.set(p, (used.get(p) || 0) + 1);
     return r;
   }
   // Where islander n is at server time `ms`: { x, z, yaw, moving } (on that time of day's round)

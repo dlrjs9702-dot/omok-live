@@ -281,7 +281,7 @@ test('친구: 거절은 알리지 않음, 끊으면 양쪽에서, 50명까지, �
 // the server's (the same checks as placing it)
 test('내 집 가구 직접 옮기기: 길게 눌러 잡고 부드럽게 밀기, 돌리거나 놓을 때 칸·벽에 맞춰 서버에', async ({ browser, request, isMobile }) => {
   test.setTimeout(400000);
-  const { a, page, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'g' : 'h');
+  const { a, b, page, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'g' : 'h');
   { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
   await through(page, 'townhall', '관공서 들어가기', 'townhall');
   const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.owner === null).id;
@@ -310,4 +310,7 @@ test('내 집 가구 직접 옮기기: 길게 눌러 잡고 부드럽게 밀기,
   expect([moved.x, moved.z].every((v) => Math.abs(v * 4 - Math.round(v * 4)) < 1e-6 || Math.abs(Math.abs(v) + 0.42 - 5.85) < 1e-6 || Math.abs(Math.abs(v) + 0.95 - 5.85) < 1e-6)).toBe(true); // (on a step or flush with a wall)
   await hold(100); await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab())).toBe(null);
   void yaw; await expectNoScriptError(page);
+  // (CI #330: both pages were left open -- two islands drawing for the rest of the worker's run, slowing the next specs, and
+  // a later failure's screenshot and snapshot were this house, not that spec's own page)
+  await a.context.close(); await b.context.close();
 });

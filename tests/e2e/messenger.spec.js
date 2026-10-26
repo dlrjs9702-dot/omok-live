@@ -77,6 +77,12 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await expect(d.locator('#messengerInviteBtn')).toBeHidden();
   let warned = '';
   d.once('dialog', (x) => { warned = x.message(); x.dismiss(); });
+  // I8-3: the head is 「‹ 목록 · 방 이름 · ⋯」 -- 방 나가기 (red) only in the ⋯ menu, which a click outside closes
+  await expect(d.locator('#messengerLeaveBtn')).toBeHidden();
+  await d.locator('#messengerMoreBtn').click(); await expect(d.locator('#messengerMoreMenu')).toBeVisible();
+  await d.locator('#messengerRoomName').click(); await expect(d.locator('#messengerMoreMenu')).toBeHidden();
+  await d.locator('#messengerMoreBtn').click();
+  await expect(d.locator('#messengerLeaveBtn')).toHaveText('방 나가기');
   await d.locator('#messengerLeaveBtn').click();
   expect(warned).toContain('나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다');
   await expect(d.locator('#messengerRoomName')).toHaveText(mom.nickname); // dismissed: still in
@@ -84,7 +90,7 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // (Codex 검토 2차 #5) a pin answered late, after I went to another room: the room I am in stays
   const toList = async () => { if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click(); };
   await m.route('**/pin', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
-  await m.locator('#messengerPinBtn').click(); await toList();
+  await m.locator('#messengerMoreBtn').click(); await m.locator('#messengerPinBtn').click(); await toList();
   await m.locator('#messengerRoomList button', { hasText: dad.nickname }).click(); await expect(m.locator('#messengerRoomName')).toHaveText(dad.nickname);
   await m.waitForTimeout(2500); await expect(m.locator('#messengerRoomName')).toHaveText(dad.nickname);
   await expect(m.locator('#messengerRoomList button', { hasText: '우리집' })).toContainText('📌'); // (the list has it)
