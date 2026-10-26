@@ -2276,6 +2276,10 @@ body.roomPlaying .quickChat{display:flex}
    card's 「한 판 더」 is the one button for the next hand */
 #roomMenuBtn{white-space:nowrap}
 body.roomResult #roomIdentityLabel,body.roomResult .roomBar .pointBadge{display:none!important}
+/* (G-고스톱ⓕ 검토) on a PC too the bar over a result as thin as in the hand: no 새 방, the turn alert a bell */
+body.roomResult #newRoomBtn{display:none!important}
+body.roomResult .roomBar{padding-top:6px;padding-bottom:6px;min-height:0}
+body.roomResult #turnNotifyBtn{font-size:0;padding:6px 10px}body.roomResult #turnNotifyBtn::before{content:"🔕";font-size:1rem}body.roomResult #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
 body:has(#boardOverlay:not(.hidden) .resultActions) :is(#nextRoundBtn,#sideNextRoundBtn){display:none!important}
 @media(max-width:640px){
   body.roomResult .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
@@ -2294,71 +2298,71 @@ body.roomPlaying .gameLayout:not(.sideWide){--side-w:280px}
    the screen height, every capture pile is one overlapped row, the floor keeps month slots in two rows, and the go/stop
    choice is a window over the table -- so the table holds from the first card to the late hand on PC and phone */
 body.roomPlaying.tableGameRoom:not(.roomInfoOpen) .gostopPanel>.gostopHead,body.roomPlaying.tableGameRoom:not(.roomInfoOpen) .gostopPanel>.gostopPointHistory{display:none}
-body.roomPlaying .gostopFelt{--hh:clamp(58px,11.5vh,124px);--fh:clamp(46px,9.7vh,112px);--mh:clamp(26px,4.4vh,53px);gap:6px;padding:8px 12px 8px;border-width:8px}
-body.roomPlaying .gostopFelt .hwatu-hand{height:var(--hh);width:calc(var(--hh) * .68)}
-body.roomPlaying .gostopFelt .hwatu-normal{height:var(--fh);width:calc(var(--fh) * .68)}
-body.roomPlaying .gostopFelt .hwatu-mini{height:var(--mh);width:calc(var(--mh) * .68)}
-body.roomPlaying .gostopFelt .gostopSeat{padding:5px 8px;gap:4px;row-gap:3px}
-body.roomPlaying .gostopFelt .gostopSeat>details,body.roomPlaying .gostopFelt .gostopEstimate{display:none}
-body.roomPlaying .gostopFelt .gostopCaptured{gap:6px}
-body.roomPlaying .gostopFelt .gostopPile{padding:2px 4px;min-width:0;overflow:hidden}
-body.roomPlaying .gostopFelt .gostopPileCards{flex-wrap:nowrap;overflow:hidden;min-height:var(--mh)}
-body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini{flex:0 0 auto}
-body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:calc(var(--mh) * -.42)}
-body.roomPlaying .gostopFelt .gostopTable{min-height:0;padding:4px 10px;gap:2px 12px}
-body.roomPlaying .gostopFelt .gostopEvent{min-height:20px;font-size:.88rem}
-body.roomPlaying .gostopFelt .gostopFloor{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:auto;gap:4px 8px;justify-items:center}
-body.roomPlaying .gostopFelt .gostopFloorGroup{padding:1px}
-body.roomPlaying .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * -.22)}
-body.roomPlaying .gostopFelt .gostopHand{padding:4px 6px;gap:6px;flex-wrap:nowrap}
+body:is(.roomPlaying,.roomResult) .gostopFelt{--hh:clamp(58px,11.5vh,124px);--fh:clamp(46px,9.7vh,112px);--mh:clamp(26px,4.4vh,53px);gap:6px;padding:8px 12px 8px;border-width:8px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .hwatu-hand{height:var(--hh);width:calc(var(--hh) * .68)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .hwatu-normal{height:var(--fh);width:calc(var(--fh) * .68)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .hwatu-mini{height:var(--mh);width:calc(var(--mh) * .68)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeat{padding:5px 8px;gap:4px;row-gap:3px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeat>details,body:is(.roomPlaying,.roomResult) .gostopFelt .gostopEstimate{display:none}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopCaptured{gap:6px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPile{padding:2px 4px;min-width:0;overflow:hidden}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPileCards{flex-wrap:nowrap;overflow:hidden;min-height:var(--mh)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPileCards .hwatu-mini{flex:0 0 auto}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:calc(var(--mh) * -.42)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopTable{min-height:0;padding:4px 10px;gap:2px 12px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopEvent{min-height:20px;font-size:.88rem}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloor{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:auto;gap:4px 8px;justify-items:center}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloorGroup{padding:1px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * -.22)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopHand{padding:4px 6px;gap:6px;flex-wrap:nowrap}
 /* G2-2: the go/stop choice over the table's middle */
-body.roomPlaying .gostopFelt .gostopActions{min-height:0}
-body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;width:min(520px,calc(100% - 24px));box-shadow:0 18px 50px rgba(0,0,0,.6)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopActions{min-height:0}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;width:min(520px,calc(100% - 24px));box-shadow:0 18px 50px rgba(0,0,0,.6)}
 @media(max-width:640px){
-  body.roomPlaying .gostopFelt{--hh:clamp(54px,10vh,80px);--fh:clamp(38px,6.6vh,60px);--mh:clamp(22px,3.6vh,34px);padding:5px 4px;border-width:5px;border-radius:16px}
-  body.roomPlaying .gostopFelt .gostopCaptured{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
-  body.roomPlaying .gostopFelt .gostopPile small{font-size:.62rem}
-  body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(6,minmax(0,1fr));gap:2px 2px}
-  body.roomPlaying .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr) auto;padding:2px 4px}
-  body.roomPlaying .gostopFelt .gostopHand{justify-content:center}
-  body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.22)}
-  body.roomPlaying .gostopFelt .gostopSeatHead{font-size:.8rem}
+  body:is(.roomPlaying,.roomResult) .gostopFelt{--hh:clamp(54px,10vh,80px);--fh:clamp(38px,6.6vh,60px);--mh:clamp(22px,3.6vh,34px);padding:5px 4px;border-width:5px;border-radius:16px}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopCaptured{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPile small{font-size:.62rem}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloor{grid-template-columns:repeat(6,minmax(0,1fr));gap:2px 2px}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr) auto;padding:2px 4px}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopHand{justify-content:center}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.22)}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead{font-size:.8rem}
 }
 /* G-고스톱ⓐ 화투를 진짜 화투처럼 (gamecenter-notes docs/gamehall-audit-20261025.md 「고스톱·맞고」 1): the pictures alone -- the
    「1월」 「피」 bands only with ☰ 「패 이름 보기」 (small tags in the corners); the cards bigger where the folded panels left
    room; the felt never wider than the screen (a phone's hand fitted to its width) */
-body.roomPlaying .gostopFelt{grid-template-columns:minmax(0,1fr);max-width:100%}
+body:is(.roomPlaying,.roomResult) .gostopFelt{grid-template-columns:minmax(0,1fr);max-width:100%}
 /* G-고스톱ⓑ 따 온 패는 쌓인 더미로 (같은 주문서 3): no text boxes -- each kind a stack laid on the felt, the count in a circle,
    「광 1장!」 only when one more card scores; an empty kind a faint dashed place; the caption kept for screen readers */
-body.roomPlaying .gostopFelt .gostopPile{position:relative;background:transparent;border:0;padding:10px 4px 2px;overflow:visible}
-body.roomPlaying .gostopFelt .gostopPile>small{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-body.roomPlaying .gostopFelt .gostopPile.emptyPile{opacity:1}
-body.roomPlaying .gostopFelt .gostopPileCards:empty{width:calc(var(--mh) * .68);height:var(--mh);border:1px dashed rgba(255,255,255,.22);border-radius:4px}
-body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:calc(var(--mh) * -.55)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPile{position:relative;background:transparent;border:0;padding:10px 4px 2px;overflow:visible}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPile>small{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPile.emptyPile{opacity:1}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPileCards:empty{width:calc(var(--mh) * .68);height:var(--mh);border:1px dashed rgba(255,255,255,.22);border-radius:4px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:calc(var(--mh) * -.55)}
 .pileCount{position:absolute;left:0;top:0;z-index:3;min-width:20px;height:20px;padding:0 5px;display:grid;place-items:center;border-radius:999px;background:#fde68a;color:#3d2f22;font-size:.72rem;font-weight:950;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 .pileNear{position:absolute;left:24px;top:-2px;z-index:3;padding:1px 6px;border-radius:999px;background:#b3261e;color:#fff;font-style:normal;font-size:.68rem;font-weight:900;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.45)}
-body.roomPlaying .gostopFelt .gostopSets{color:#fde68a;font-size:.74rem}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSets{color:#fde68a;font-size:.74rem}
 /* (ⓑ review: the go/stop choice over every card on the felt, the felt's cards not pressable under it; 고 green, 스톱 orange, full colour) */
-body.roomPlaying .gostopFelt .gostopDecisionPanel{z-index:60}
-body.roomPlaying .gostopFelt:has(.gostopDecisionPanel) .hwatu:not(.gostopDecisionPanel .hwatu){pointer-events:none}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDecisionPanel{z-index:60}
+body:is(.roomPlaying,.roomResult) .gostopFelt:has(.gostopDecisionPanel) .hwatu:not(.gostopDecisionPanel .hwatu){pointer-events:none}
 .gostopDecisionButtons .gostopGoButton{border-color:#4ade80!important;background:#15803d!important;color:#fff!important}
 .gostopDecisionButtons .gostopStopButton{border-color:#fdba74!important;background:#c2410c!important;color:#fff!important}
 .gostopDecisionButtons button:disabled{opacity:.9;filter:none}
 /* G-고스톱ⓒ 바닥은 판 가운데 산을 둘러싸게 (같은 주문서 2): the floor and the deck share one grid cell -- the deck in its
    middle, the months set left and right of the floor's empty middle column (renderFloor), each a little askew;
    a flipped card already flies from the deck (anchors.deck), so now from the middle */
-body.roomPlaying .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr)}
-body.roomPlaying .gostopFelt .gostopFloor,body.roomPlaying .gostopFelt .gostopDeck{grid-column:1;grid-row:2}
-body.roomPlaying .gostopFelt .gostopDeck{place-self:center;z-index:1;position:relative}
-body.roomPlaying .gostopFelt .gostopDeck small{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);padding:0 6px;border-radius:999px;background:rgba(0,0,0,.62);font-size:.72rem;white-space:nowrap} /* (ⓒ review: the count on the deck, not under it among the months) */
-body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(3,minmax(0,1fr)) calc(var(--fh) * .9) repeat(3,minmax(0,1fr));align-items:center}
-body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n+1){transform:rotate(-3deg)}
-body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n+2){transform:rotate(2deg) translateY(3px)}
-body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n){transform:rotate(-1deg) translateY(-2px)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloor,body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDeck{grid-column:1;grid-row:2}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDeck{place-self:center;z-index:1;position:relative}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDeck small{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);padding:0 6px;border-radius:999px;background:rgba(0,0,0,.62);font-size:.72rem;white-space:nowrap} /* (ⓒ review: the count on the deck, not under it among the months) */
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloor{grid-template-columns:repeat(3,minmax(0,1fr)) calc(var(--fh) * .9) repeat(3,minmax(0,1fr));align-items:center}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloorGroup:nth-of-type(3n+1){transform:rotate(-3deg)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloorGroup:nth-of-type(3n+2){transform:rotate(2deg) translateY(3px)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloorGroup:nth-of-type(3n){transform:rotate(-1deg) translateY(-2px)}
 @media(max-width:640px){
-  body.roomPlaying .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr)}
-  body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(2,minmax(0,1fr)) calc(var(--fh) * .9) repeat(2,minmax(0,1fr))}
-  body.roomPlaying .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * .68 * -.65)} /* (ⓒ review: a month's cards two-thirds over each other -- eight months in two columns a side) */
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr)}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloor{grid-template-columns:repeat(2,minmax(0,1fr)) calc(var(--fh) * .9) repeat(2,minmax(0,1fr))}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * .68 * -.65)} /* (ⓒ review: a month's cards two-thirds over each other -- eight months in two columns a side) */
   .pileNear{left:21px;padding:0 4px;font-size:.6rem} /* (ⓑ review: clear of the next stack's count) */
 }
 /* G-고스톱ⓔ 큰 순간은 크게 (같은 주문서 5): 뻑·쪽·따닥·판쓸이·폭탄·흔들기·고·스톱 a big stamp in the floor's middle (badge(),
@@ -2373,34 +2377,34 @@ body.roomPlaying.gostopStamping .toast,body.roomPlaying.gostopStamping .boardNot
 .goTag+.goTag+.goTag{transform:rotate(-4deg)}
 /* G-고스톱ⓓ 상대가 앉아 있게 (같은 주문서 4): the name tag with the island face, the hand's backs fanned (a played card
    leaves from the fan's middle), the count beside it never cut; 뻑 a small pill over its month */
-body.roomPlaying .gostopFelt .gostopSeatHead{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
-body.roomPlaying .gostopFelt .gostopSeatHead>strong{min-width:0;overflow:hidden;text-overflow:ellipsis}
-body.roomPlaying .gostopFelt .gostopSeatHead>:not(strong){flex:0 0 auto}
-body.roomPlaying .gostopFelt .gostopSeatHead .seatFace{width:24px;height:24px}
-body.roomPlaying .gostopFelt .gostopBacks{padding:4px 4px 0 10px}
-body.roomPlaying .gostopFelt .gostopBacks .hwatuBack{transform-origin:50% 110%;transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * 5deg))}
-body.roomPlaying .gostopFelt .gostopBacks .hwatu-tiny+.hwatu-tiny{margin-left:-19px}
-body.roomPlaying .gostopFelt .gostopBacks small{margin-left:24px;padding:1px 7px;border-radius:999px;background:rgba(0,0,0,.35);color:#e2e8f0;font-weight:800}
-body.roomPlaying .gostopFelt .gostopFloorGroup{position:relative}
-body.roomPlaying .gostopFelt .ppeokTag{bottom:auto;top:-9px;left:50%;transform:translateX(-50%);z-index:2;padding:1px 7px;border-radius:999px;background:#b3261e;color:#fff;font-size:.68rem;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead>strong{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead>:not(strong){flex:0 0 auto}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead .seatFace{width:24px;height:24px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks{padding:4px 4px 0 10px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks .hwatuBack{transform-origin:50% 110%;transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * 5deg))}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks .hwatu-tiny+.hwatu-tiny{margin-left:-19px}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks small{margin-left:24px;padding:1px 7px;border-radius:999px;background:rgba(0,0,0,.35);color:#e2e8f0;font-weight:800}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloorGroup{position:relative}
+body:is(.roomPlaying,.roomResult) .gostopFelt .ppeokTag{bottom:auto;top:-9px;left:50%;transform:translateX(-50%);z-index:2;padding:1px 7px;border-radius:999px;background:#b3261e;color:#fff;font-size:.68rem;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 @media(max-width:640px){
-  body.roomPlaying .gostopFelt{padding-top:14px} /* (the speed pill on the frame clear of the other's fan) */
-  body.roomPlaying .gostopFelt .gostopSeatHead .seatFace{width:20px;height:20px}
-  body.roomPlaying .gostopFelt .gostopBacks .hwatu-tiny{width:22px;height:34px}
-  body.roomPlaying .gostopFelt .gostopBacks .hwatu-tiny+.hwatu-tiny{margin-left:-16px}
-  body.roomPlaying .gostopFelt .gostopBacks .hwatuBack{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * 4deg))}
-  body.roomPlaying .gostopFelt .gostopBacks small{margin-left:14px;padding:0 5px;font-size:.66rem}
+  body:is(.roomPlaying,.roomResult) .gostopFelt{padding-top:14px} /* (the speed pill on the frame clear of the other's fan) */
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead .seatFace{width:20px;height:20px}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks .hwatu-tiny{width:22px;height:34px}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks .hwatu-tiny+.hwatu-tiny{margin-left:-16px}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks .hwatuBack{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * 4deg))}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks small{margin-left:14px;padding:0 5px;font-size:.66rem}
 }
 body:not(.hwatuNames) .hwatu.hasArt .hwatuMonth,body:not(.hwatuNames) .hwatu.hasArt .hwatuBadge{display:none}
 body.hwatuNames .hwatu.hasArt .hwatuBadge{left:auto;right:2px;bottom:2px;padding:0 3px;border-radius:4px}
-@media(min-width:881px){body.roomPlaying .gostopFelt{--hh:clamp(64px,13vh,140px);--fh:clamp(52px,11vh,124px);--mh:clamp(34px,6.4vh,70px)}} /* (ⓑ: the taken stacks bigger too) */
+@media(min-width:881px){body:is(.roomPlaying,.roomResult) .gostopFelt{--hh:clamp(64px,13vh,140px);--fh:clamp(52px,11vh,124px);--mh:clamp(34px,6.4vh,70px)}} /* (ⓑ: the taken stacks bigger too) */
 @media(max-width:640px){
-  body.roomPlaying .gostopFelt{--hh:min(clamp(54px,10vh,80px),calc((100vw - 84px) / 4.2))} /* (ten cards, each over the last by .3 and no gap: 4.1 card heights wide) */
-  body.roomPlaying .gostopFelt .gostopHand{gap:0}
-  body.roomPlaying .gostopFelt .gostopSpeedBtn{top:-12px;bottom:auto;right:14px;opacity:1} /* (on the felt's frame, not on the hand's last card) */
-  body.roomPlaying .gostopFelt .gostopFloor{gap:6px 4px} /* (the felt now the screen's width: four months a row round the deck -- ⓒ) */
+  body:is(.roomPlaying,.roomResult) .gostopFelt{--hh:min(clamp(54px,10vh,80px),calc((100vw - 84px) / 4.2))} /* (ten cards, each over the last by .3 and no gap: 4.1 card heights wide) */
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopHand{gap:0}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSpeedBtn{top:-12px;bottom:auto;right:14px;opacity:1} /* (on the felt's frame, not on the hand's last card) */
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopFloor{gap:6px 4px} /* (the felt now the screen's width: four months a row round the deck -- ⓒ) */
   #leaveRoomBtn{white-space:nowrap}
-  body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.3)}
+  body:is(.roomPlaying,.roomResult) .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.3)}
 }
 /* A3 G2-3: the floor cards a pointed hand card would take, the pointed (first-tapped) card raised, a card that would go to the floor */
 .gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;outline-offset:1px;box-shadow:0 0 16px rgba(250,204,21,.75)}
@@ -2480,9 +2484,9 @@ body:not(.roomMode)>.gostopResult{display:none}
 @media (prefers-reduced-motion: reduce){.plazaStar.fall{animation:none;opacity:1}}
 @media(max-width:640px){body.roomPlaying #yutHint{display:none}}
 .gostopSeatHead .gostopSets{display:inline;margin-left:8px}
-body.roomPlaying .gostopFelt .gostopSeat{grid-template-columns:minmax(0,1fr) auto}
-body.roomPlaying .gostopFelt .gostopSeatHead{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body.roomPlaying .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeat{grid-template-columns:minmax(0,1fr) auto}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}
 /* A4 주말 섬 대회: the bar over the island view */
 .contestBar{position:absolute;left:50%;top:16px;transform:translateX(-50%) rotate(1deg);z-index:6;max-width:calc(100% - 200px);padding:10px 16px 8px;font-weight:800;font-size:.86rem;text-align:center;pointer-events:none} /* (U: an .isle-tape note -- it wraps, the tape not cut off) */
 @media(max-width:640px){.contestBar{top:56px;max-width:calc(100% - 24px);font-size:.76rem}}

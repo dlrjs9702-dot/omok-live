@@ -1120,19 +1120,19 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .boardOverlay .resultPoints.minus{color:#b3261e!important}
 :root[data-theme="light"] .boardOverlay.resultWin .resultActions .ghost,:root[data-theme="light"] .boardOverlay.resultLoss .resultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
 :root[data-theme="light"] .seatWinner{box-shadow:0 0 0 2px #facc15,0 0 22px rgba(250,204,21,.45)!important}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopDecisionPanel{box-shadow:0 18px 50px rgba(0,0,0,.6)}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopPile{background:transparent;border:0}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopPileCards:empty{border:1px dashed rgba(255,255,255,.22)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDecisionPanel{box-shadow:0 18px 50px rgba(0,0,0,.6)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPile{background:transparent;border:0}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPileCards:empty{border:1px dashed rgba(255,255,255,.22)}
 :root[data-theme="light"] .pileCount{background:#fde68a;color:#3d2f22;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 :root[data-theme="light"] .pileNear{background:#b3261e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopSets{color:#fde68a}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSets{color:#fde68a}
 :root[data-theme="light"] .gostopDecisionButtons .gostopGoButton{border-color:#4ade80!important;background:#15803d!important;color:#fff!important}
 :root[data-theme="light"] .gostopDecisionButtons .gostopStopButton{border-color:#fdba74!important;background:#c2410c!important;color:#fff!important}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopDeck small{background:rgba(0,0,0,.62)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDeck small{background:rgba(0,0,0,.62)}
 :root[data-theme="light"] .fxBadge.stamp{border:4px solid var(--ink);background:rgba(255,253,246,.9);color:var(--ink);box-shadow:0 10px 28px rgba(0,0,0,.5)}
 :root[data-theme="light"] .goTag{border:2px solid #b91c1c;background:#fff7ed;color:#b91c1c}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopBacks small{background:rgba(0,0,0,.35);color:#e2e8f0}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .ppeokTag{background:#b3261e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks small{background:rgba(0,0,0,.35);color:#e2e8f0}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .ppeokTag{background:#b3261e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 :root[data-theme="light"] .gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;box-shadow:0 0 16px rgba(250,204,21,.75)}
 :root[data-theme="light"] .gostopFelt .gostopHand .hwatu.gostopArmed{outline:3px solid #facc15}
 :root[data-theme="light"] .gostopFelt .gostopHand .hwatu.gostopToFloor::after{background:rgba(15,23,42,.8);color:#e2e8f0}
