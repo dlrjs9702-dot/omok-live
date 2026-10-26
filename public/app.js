@@ -9396,6 +9396,8 @@
         info.appendChild(badge);
       }
       seatEl.appendChild(info);
+      // (G-게임별: what to do, over the hand to draw from -- outside the card-drawing block, which writes no text at all)
+      if (count > 0 && seat && g.status === 'playing' && g.turn === seat && g.target === number && !g.paused) seatEl.appendChild(Object.assign(document.createElement('small'), { className: 'oldmaidHint', textContent: '한 장을 눌러 뽑아요' }));
 
       {
         if (count > 0) {
@@ -9403,7 +9405,6 @@
           cards.className = 'oldmaidSeatCards';
           cards.style.setProperty('--n', String(count)); // (G-게임별: the hand held as a fan)
           const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
-          if (canDraw && !g.paused) { const hint = document.createElement('small'); hint.className = 'oldmaidHint'; hint.textContent = '한 장을 눌러 뽑아요'; seatEl.appendChild(hint); }
           for (let cardIndex = 0; cardIndex < count; cardIndex += 1) {
             const button = document.createElement('button');
             button.type = 'button';
