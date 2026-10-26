@@ -112,7 +112,9 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 hidden; pressed, it says it waits; the bar stays thin)
     await expect(page.locator('#nextRoundBtn')).toBeHidden(); await expect(page.locator('#sideNextRoundBtn')).toBeHidden(); await expect(page.locator('#roomPointRule')).toBeHidden();
     await page.locator('#boardOverlay .resultActions button', { hasText: '한 판 더' }).click();
-    await expect(page.locator('#boardOverlay .resultActions button').first()).toHaveText('준비 완료 · 기다리는 중');
+    // (pressed, it waits for the other -- or, where every hand picks its seats again, the room is straight back at the choosing)
+    await expect.poll(async () => (await page.locator('#boardOverlay .resultActions button').first().textContent({ timeout: 500 }).catch(() => null))
+      || (await (await request.get('/api/room', { headers: { 'X-Session-Token': white } })).json()).state?.game?.status).toMatch(/^(준비 완료 · 기다리는 중|selecting)$/);
     expect(errors).toEqual([]);
   });
 }
