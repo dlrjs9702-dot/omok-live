@@ -213,3 +213,41 @@ test('모바일 조작 배치: 오른손 상호작용·걷기·뛰기 기본 배
   const back = await box('#islandActBtn');
   expect(Math.abs(back.x - act.x)).toBeLessThan(2); expect(Math.round(back.width)).toBe(Math.round(act.width));
 });
+
+// F② 채팅 창 옮기기·크기 (gamecenter-notes docs/fish-pad-chat-box-20261026.md): with a finger -- the grip sizes it, the head
+// moves it, as it was after a reload, never off the island, 「↺ 기본 자리」 puts it back
+test('모바일 채팅 창: 손가락으로 모서리 크기·머리 옮기기, 새로고침 뒤 그대로, 화면 밖 못 나감, 기본 자리', async ({ page, request }) => {
+  test.setTimeout(90000);
+  const admin = (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  const issued = (await post(request, '/api/admin/keys', admin, { label: '채팅창손가락' })).data;
+  await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
+  await post(request, '/api/avatar/gender', JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token, { gender: 'female' });
+  await page.locator('#lobbyView').waitFor({ state: 'visible' });
+  await page.evaluate(() => {
+    localStorage.removeItem('gc.testClassic');
+    localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
+  });
+  await page.reload();
+  const running = () => expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
+  await running();
+  const panel = page.locator('#islandChatPanel'); const box = () => panel.boundingBox();
+  const open = async () => { await page.locator('#islandChatTab').tap(); await expect(panel).toBeVisible(); };
+  const cdp = await page.context().newCDPSession(page);
+  const drag = async (sel, dx, dy) => { const r = await page.locator(sel).boundingBox(); const x = r.x + r.width / 2; const y = r.y + r.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 3 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx / 2, y: y + dy / 2, id: 3 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx, y: y + dy, id: 3 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); };
+  const near = (p, q) => ['x', 'y', 'width', 'height'].every((k) => Math.abs(p[k] - q[k]) < 3);
+  await open(); const home = await box();
+  await drag('#islandChatGrip', -100, -30); // (smaller first: it starts the island's width)
+  const sized = await box(); expect([Math.round(home.width - sized.width), Math.round(home.height - sized.height)]).toEqual([100, 30]);
+  await drag('#islandChatHead strong', 50, 60);
+  const moved = await box(); expect(near(moved, { ...sized, x: sized.x + 50, y: sized.y + 60 }), JSON.stringify([sized, moved])).toBe(true);
+  await page.reload(); await running();
+  await open(); expect(near(await box(), moved), JSON.stringify([moved, await box()])).toBe(true);
+  await drag('#islandChatHead strong', 900, 1500); // (held on the island)
+  const stage = await page.locator('#plazaStage').boundingBox(); const corner = await box();
+  expect([Math.round(stage.x + stage.width - corner.x - corner.width), Math.round(stage.y + stage.height - corner.y - corner.height)]).toEqual([0, 0]);
+  await page.locator('#islandChatHome').tap(); expect(near(await box(), home)).toBe(true);
+});

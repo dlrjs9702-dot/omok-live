@@ -7378,8 +7378,47 @@
     }
     islandBubbleSeen = Math.max(islandBubbleSeen, newest);
   }
+  // F② 채팅 창 옮기기·크기 (gamecenter-notes docs/fish-pad-chat-box-20261026.md): the head drags it, the corner grip sizes
+  // it (mouse and finger alike), kept on the island (220×140 to 90%); each device keeps its own (gc.islandChatBox, as
+  // fractions of the island so a turned screen fits again), the input line under it (over it near the bottom)
+  let chatBox = null; try { const b = JSON.parse(localStorage.getItem('gc.islandChatBox') || 'null'); if (['x', 'y', 'w', 'h'].every((k) => Number.isFinite(b?.[k]))) chatBox = b; } catch {}
+  function fitChatBox(b) {
+    const W = plazaStage.clientWidth; const H = plazaStage.clientHeight; if (!W || !H) return null;
+    const w = Math.min(Math.max(b.w * W, 220), W * 0.9); const h = Math.min(Math.max(b.h * H, 140), H * 0.9);
+    return { x: Math.min(Math.max(b.x * W, 0), W - w), y: Math.min(Math.max(b.y * H, 0), H - h), w, h, W, H };
+  }
+  function applyChatBox() {
+    const p = islandChatPanel.style; const f = islandChatForm.style; const at = chatBox && fitChatBox(chatBox);
+    if (!at) { for (const k of ['left', 'top', 'width', 'height']) p[k] = ''; for (const k of ['left', 'top', 'bottom', 'width', 'transform']) f[k] = ''; return; }
+    Object.assign(p, { left: `${at.x}px`, top: `${at.y}px`, width: `${at.w}px`, height: `${at.h}px` });
+    const below = at.y + at.h + 6; const formH = 48;
+    Object.assign(f, { left: `${at.x}px`, top: `${below + formH <= at.H ? below : Math.max(0, at.y - formH - 6)}px`, bottom: 'auto', width: `${at.w}px`, transform: 'none' });
+  }
+  const chatBoxNow = () => { const r = islandChatPanel.getBoundingClientRect(); const s = plazaStage.getBoundingClientRect(); return { x: (r.left - s.left) / s.width, y: (r.top - s.top) / s.height, w: r.width / s.width, h: r.height / s.height }; };
+  function chatBoxDrag(handle, mode) {
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button > 0 || (mode === 'move' && event.target.closest('button, input, label'))) return;
+      event.preventDefault(); const start = chatBoxNow(); const s = plazaStage.getBoundingClientRect(); const x0 = event.clientX; const y0 = event.clientY;
+      handle.setPointerCapture?.(event.pointerId);
+      const move = (e) => {
+        const dx = (e.clientX - x0) / s.width; const dy = (e.clientY - y0) / s.height;
+        chatBox = mode === 'move' ? { ...start, x: start.x + dx, y: start.y + dy } : { ...start, w: Math.min(start.w + dx, 1 - start.x), h: Math.min(start.h + dy, 1 - start.y) };
+        applyChatBox();
+      };
+      const up = () => {
+        for (const [type, fn] of [['pointermove', move], ['pointerup', up], ['pointercancel', up]]) handle.removeEventListener(type, fn);
+        const at = chatBox && fitChatBox(chatBox); if (!at) return;
+        chatBox = { x: at.x / at.W, y: at.y / at.H, w: at.w / at.W, h: at.h / at.H }; // (kept as it shows: on the island)
+        try { localStorage.setItem('gc.islandChatBox', JSON.stringify(chatBox)); } catch {}
+      };
+      handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
+    });
+  }
+  chatBoxDrag(document.getElementById('islandChatHead'), 'move'); chatBoxDrag(document.getElementById('islandChatGrip'), 'size');
+  document.getElementById('islandChatHome').addEventListener('click', () => { chatBox = null; try { localStorage.removeItem('gc.islandChatBox'); } catch {} applyChatBox(); });
+  window.addEventListener('resize', applyChatBox);
   function setIslandChatPanel(open) {
-    islandChatPanel.classList.toggle('hidden', !open);
+    islandChatPanel.classList.toggle('hidden', !open); if (open) applyChatBox();
     islandChatTab.setAttribute('aria-expanded', String(open));
     if (open) { islandChatTab.classList.remove('unread'); islandChatMessages.scrollTop = islandChatMessages.scrollHeight; }
   }
@@ -7398,7 +7437,7 @@
     if (event.key !== 'Enter' || event.isComposing || event.repeat || !document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]')) return;
     if (event.target !== document.body && event.target !== plazaStage) return; // a focused field or button keeps its own Enter
     event.preventDefault();
-    islandChatForm.classList.remove('hidden'); islandChatInput.focus();
+    applyChatBox(); islandChatForm.classList.remove('hidden'); islandChatInput.focus();
   });
   islandChatInput.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); closeIslandChatInput(); } });
   islandChatInput.addEventListener('blur', () => { if (!islandChatInput.value.trim()) islandChatForm.classList.add('hidden'); });

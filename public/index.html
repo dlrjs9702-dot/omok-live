@@ -123,8 +123,9 @@
         <!-- v1.10.67 조이스틱 조정: drag the stick to move it, the slider sizes it (kept on this device) -->
         <div id="stickEditBar" class="stickEditBar hidden" role="group" aria-label="조작 버튼 위치·크기 조정"><span id="stickEditHint">조작 버튼을 끌어서 옮기고, 누른 버튼의 크기를 바꾸세요 · 조이스틱</span><label>크기 <input id="stickSizeInput" type="range" min="80" max="180" step="2" /></label><button id="stickResetBtn" class="ghost tiny" type="button">기본값</button><button id="stickDoneBtn" class="primary tiny" type="button">완료</button></div>
         <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
-          <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
+          <div id="islandChatHead" class="islandChatHead" title="끌어서 옮기기"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatHome" type="button" class="ghost tiny" title="채팅 창을 기본 자리·크기로">↺ 기본 자리</button><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
           <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
+          <span id="islandChatGrip" class="islandChatGrip" title="끌어서 크기 바꾸기" aria-hidden="true"></span>
         </section>
         <form id="islandChatForm" class="islandChatForm hidden"><input id="islandChatInput" type="text" maxlength="300" autocomplete="off" placeholder="Enter 전송 · Esc 취소" aria-label="채팅 입력" /></form>
       </section>

@@ -1583,7 +1583,9 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .islandChatTab{position:absolute;left:14px;top:14px;z-index:3;padding:7px 14px;border-radius:999px;background:rgba(15,23,42,.82);color:#f8fafc;font-weight:850;border:1px solid #334155}
 .islandChatTab.unread::after{content:'';display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:#f87171;vertical-align:middle}
 .islandChatPanel{--island-chat-alpha:.8;position:absolute;left:14px;top:58px;z-index:3;width:min(360px,40%);height:min(46%,420px);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:rgba(15,23,42,var(--island-chat-alpha));border:1px solid rgba(51,65,85,var(--island-chat-alpha));color:#e5e7eb}
-.islandChatHead{display:flex;align-items:center;gap:8px}.islandChatHead strong{font-size:.86rem}.islandChatAlpha{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:.72rem;color:#94a3b8}.islandChatAlpha input{width:84px}
+.islandChatHead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;cursor:move;touch-action:none;user-select:none}.islandChatHead strong{font-size:.86rem}.islandChatHead button,.islandChatHead input{cursor:pointer}
+.islandChatGrip{position:absolute;right:3px;bottom:3px;width:20px;height:20px;cursor:nwse-resize;touch-action:none;border-right:3px solid rgba(148,163,184,.8);border-bottom:3px solid rgba(148,163,184,.8);border-bottom-right-radius:10px}
+body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:.72rem;color:#94a3b8}.islandChatAlpha input{width:84px}
 .islandChatMessages{flex:1;min-height:0;overflow:auto;background:transparent!important}
 .islandChatForm{position:absolute;left:50%;bottom:64px;z-index:3;width:min(520px,70%);transform:translateX(-50%)}.islandChatForm input{width:100%;padding:11px 14px;border-radius:14px;background:rgba(15,23,42,.92);color:#f8fafc;border:1px solid #60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
 .plazaStage:focus-visible{box-shadow:0 0 0 3px #60a5fa,0 24px 70px rgba(0,0,0,.28)}

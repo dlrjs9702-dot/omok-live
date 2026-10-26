@@ -579,6 +579,30 @@ test('게임 아일랜드 채팅: Enter 입력·전송, 내 말풍선과 다른 
   for (const who of [a, b]) await who.context.close();
 });
 
+// F② 채팅 창 옮기기·크기 (gamecenter-notes docs/fish-pad-chat-box-20261026.md): the head drags it, the corner grip sizes it
+// (PC and phone alike), as it was after a reload, never off the island, 「↺ 기본 자리」 puts it back
+test('게임 아일랜드 채팅 창: 머리로 옮기고 모서리로 크기, 새로고침 뒤 그대로, 화면 밖 못 나감, 기본 자리', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '채팅창옮김'); const { page } = a;
+  const panel = page.locator('#islandChatPanel'); const box = () => panel.boundingBox();
+  const open = async () => { await page.locator('#islandChatTab').click(); await expect(panel).toBeVisible(); };
+  const drag = async (sel, dx, dy) => { const r = await page.locator(sel).boundingBox(); const x = r.x + r.width / 2; const y = r.y + r.height / 2; await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + dx / 2, y + dy / 2); await page.mouse.move(x + dx, y + dy); await page.mouse.up(); };
+  const near = (p, q) => ['x', 'y', 'width', 'height'].every((k) => Math.abs(p[k] - q[k]) < 3);
+  await open(); const home = await box();
+  await drag('#islandChatGrip', -120, -20); // (smaller first: on a phone it starts the island's width)
+  const sized = await box(); expect([Math.round(home.width - sized.width), Math.round(home.height - sized.height)]).toEqual([120, 20]);
+  await drag('#islandChatHead strong', 60, 40);
+  const moved = await box(); expect(near(moved, { ...sized, x: sized.x + 60, y: sized.y + 40 }), JSON.stringify([sized, moved])).toBe(true);
+  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  await open(); expect(near(await box(), moved), JSON.stringify([moved, await box()])).toBe(true);
+  await drag('#islandChatHead strong', -2000, -2000); // (held on the island)
+  const stage = await page.locator('#plazaStage').boundingBox(); const corner = await box();
+  expect([Math.round(corner.x - stage.x), Math.round(corner.y - stage.y)]).toEqual([0, 0]);
+  await page.locator('#islandChatHome').click(); expect(near(await box(), home)).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('gc.islandChatBox'))).toBe(null);
+  await expectNoScriptError(page); await a.context.close();
+});
+
 // v1.10.2 시점 회전: dragging on the island turns the camera around me, ↑ then walks into the screen (the new view's
 // forward), a drag that ends over a facility does not open it, and a plain click still does.
 test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화면 기준, 끌기는 시설을 열지 않고 클릭은 연다', async ({ browser, request }) => {
