@@ -8181,9 +8181,10 @@
     if (halli) renderHalli();
     gostopPanel.classList.toggle('hidden', !gostop);
     // v1.8.5: a table game (고스톱·맞고) uses a wider page on PC so the table, not the web panels, is the centre.
-    document.body.classList.toggle('tableGameRoom', gostop);
+    document.body.classList.toggle('tableGameRoom', gostop || davinci);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
-    document.body.classList.toggle('tableGamePlaying', gostop && g.status !== 'selecting');
+    // (G-게임별 다빈치: its racks round the table are the name plates too)
+    document.body.classList.toggle('tableGamePlaying', (gostop || davinci) && g.status !== 'selecting');
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
@@ -9848,6 +9849,7 @@
     const key = davinciFeedbackKey(feedback);
     if (key !== davinciGuessFeedbackKey) {
       davinciGuessFeedbackKey = key;
+      window.RoomSound?.play(feedback.correct ? 'right' : 'wrong'); // (G-게임별: 딩 or 둥 with the tile's answer)
       davinciGuessFeedbackUntil = Date.now() + DAVINCI_GUESS_FEEDBACK_MS;
       if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
       davinciGuessFeedbackTimer = setTimeout(() => {
@@ -9943,6 +9945,10 @@
       note.className = 'davinciCenterNote';
       note.textContent = g.turn === seat ? '정답! 계속 추리하거나 멈추세요' : `${state.players[g.turn]?.label || g.turn + '번'}님 정답 · 계속할지 고르는 중`;
       center.append(note);
+      if (g.turn === seat) { // (G-게임별: 멈추기 on the table -- the row under it is folded while a hand is played)
+        const stop = document.createElement('button'); stop.type = 'button'; stop.className = 'davinciTableStop secondary'; stop.textContent = '여기서 멈추기';
+        stop.disabled = davinciSelectionPending || davinciGuessPending; stop.addEventListener('click', () => davinciStopBtn.click()); center.append(stop);
+      }
     }
     return center;
   }
@@ -10091,6 +10097,7 @@
       const label = document.createElement('strong');
       const hiddenLeft = tiles.filter(tile => !tile.revealed).length;
       label.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}${g.status === 'playing' ? ` · 남은 비공개 ${hiddenLeft}장` : ''}${hiddenLeft === 0 && g.status !== 'selecting' ? ' · 탈락' : ''}`;
+      { const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true'); const look = state.players[owner]?.face; if (look?.skin) f.style.setProperty('--skin', look.skin); if (look?.hair) f.style.setProperty('--hair', look.hair); label.prepend(f); } // (G-게임별: the rack's label the name plate, with the island face)
       group.setAttribute('aria-label', `${ownerLabel}의 타일${isTargeting ? ' · 현재 추리 중' : ''}${isTargetOwner ? ' · 현재 추리 대상' : ''}`);
       group.append(label);
       const rack = document.createElement('div');

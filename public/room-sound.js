@@ -39,6 +39,8 @@
     lose: () => [64, 60, 55, 48].forEach((n, i) => tone({ f: NOTE(n), dur: 0.22, vol: 0.13, at: i * 0.11 })),
     end: () => [64, 64].forEach((n, i) => tone({ f: NOTE(n), dur: 0.16, vol: 0.13, type: 'triangle', at: i * 0.14 })),
     stamp: () => { tone({ f: 120, f2: 55, dur: 0.22, vol: 0.32 }); noise({ dur: 0.12, vol: 0.3, from: 1800, to: 300 }); }, // (G-고스톱ⓔ 쾅: 뻑·쪽·따닥·판쓸이·폭탄·흔들기·스톱)
+    right: () => [76, 83].forEach((n, i) => tone({ f: NOTE(n), dur: 0.2, vol: 0.14, at: i * 0.07 })), // (G-게임별 다빈치 맞힘: 딩동 up)
+    wrong: () => tone({ f: 196, f2: 150, dur: 0.28, vol: 0.18, type: 'triangle' }), // (틀림: a low 둥)
     go: () => [67, 74].forEach((n, i) => tone({ f: NOTE(n), dur: 0.18, vol: 0.18, type: 'triangle', at: i * 0.1 })), // (고!: two notes up)
   };
   let played = []; // (tests: what was asked to sound, while on)
