@@ -7152,7 +7152,8 @@
     const g = state?.game;
     const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats().seats.has(String(seat)));
     statusText.classList.toggle('selfActHeadline', mine);
-    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${statusText.textContent}`;
+    // (G-게임별: on a phone my own name dropped from my turn's line -- 「내 차례 · 숫자 추측」 in one line, as 고스톱's)
+    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${isMobileLayout() ? statusText.textContent.replace(/^[^·]*\(나\) · /, '') : statusText.textContent}`;
     const text = recentNarration();
     recentActionLine.classList.toggle('hidden', !text);
     if (text) {
@@ -7746,6 +7747,15 @@
     wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - 12))}px`;
   }
   window.addEventListener('resize', () => fitBoard());
+  // (G-게임별 다빈치 검토) on a phone the side panel is an overlay behind 🎮, and the start of 다빈치·도둑잡기·할리갈리… is in it:
+  // the live start button mirrored under the board, so a host on a phone sees how to begin
+  const mobileStartBtn = document.getElementById('mobileStartBtn'); let mobileStartTarget = null;
+  mobileStartBtn.addEventListener('click', () => mobileStartTarget?.click());
+  function syncMobileStart() {
+    mobileStartTarget = isMobileLayout() && !roomView.classList.contains('hidden') ? [...gameInfoPanel.querySelectorAll('button[id$="StartBtn"]')].find((b) => !b.closest('.hidden') && !b.disabled) || null : null;
+    mobileStartBtn.classList.toggle('hidden', !mobileStartTarget);
+    if (mobileStartTarget) mobileStartBtn.textContent = mobileStartTarget.textContent;
+  }
   // A3 G1-4 차례 시간 고리: the turn seat's clock (the server's public turnTimer) round that seat's name card, for everyone,
   // on PC and phone; the last 10 seconds red
   let turnRingClock = 0; let turnRingTimer = null;
@@ -7753,8 +7763,9 @@
     document.querySelectorAll('.turnRing').forEach((r) => r.remove());
     const t = state?.turnTimer; clearInterval(turnRingTimer); turnRingTimer = null;
     if (!t || !document.body.classList.contains('roomPlaying')) return;
-    const card = seatCardOf(t.seat);
-    if (!card || !card.offsetParent) return;
+    // (G-게임별 다빈치: no seat cards while a hand is played -- the ring on that seat's rack label)
+    const card = [seatCardOf(t.seat), document.querySelector(`#davinciHands .davinciHand[data-owner="${t.seat}"] > strong`)].find((c) => c?.offsetParent);
+    if (!card) return;
     turnRingClock = Date.now() - Number(t.serverNow || Date.now());
     const ring = document.createElement('span'); ring.className = 'turnRing'; ring.setAttribute('role', 'timer'); const text = document.createElement('b'); ring.append(text); card.append(ring);
     const total = Math.max(1000, t.deadlineAt - Number(t.serverNow || Date.now()));
@@ -8188,6 +8199,7 @@
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
+    requestAnimationFrame(syncMobileStart);
     if (gostop) window.GostopUI.render(state);
     rpgPanel.classList.toggle('hidden', !rpg);
     if (rpg) rpgRender(state); else rpgUnmount();
@@ -9935,9 +9947,10 @@
       value.textContent = mineDrawn ? String(mineDrawn.number) : '?';
       tile.append(value);
       tile.setAttribute('aria-label', mineDrawn ? `이번에 뽑은 내 비공개 타일 ${mineDrawn.number}` : `${state.players[g.turn]?.label || g.turn + '번'}님이 뽑은 ${g.drawn.color === 'black' ? '흑' : '백'} 타일`);
-      const caption = document.createElement('small');
-      caption.textContent = mineDrawn ? '내가 뽑은 타일 · 틀리면 공개됩니다' : `${state.players[g.turn]?.label || g.turn + '번'}님이 뽑은 타일`;
+      const caption = document.createElement('small'); // (G-게임별: short, never wrapped -- who drew it; mine with 「틀리면 공개」 under)
+      caption.textContent = mineDrawn ? '내가 뽑은 타일' : '상대가 뽑은 타일';
       slot.append(tile, caption);
+      if (mineDrawn) { const sub = document.createElement('small'); sub.className = 'davinciDrawnNote'; sub.textContent = '틀리면 공개'; slot.append(sub); }
       center.append(slot);
     } else davinciLastDrawKey = null;
     if (g.status === 'playing' && g.phase === 'continue') {
@@ -10100,6 +10113,9 @@
       { const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true'); const look = state.players[owner]?.face; if (look?.skin) f.style.setProperty('--skin', look.skin); if (look?.hair) f.style.setProperty('--hair', look.hair); label.prepend(f); } // (G-게임별: the rack's label the name plate, with the island face)
       group.setAttribute('aria-label', `${ownerLabel}의 타일${isTargeting ? ' · 현재 추리 중' : ''}${isTargetOwner ? ' · 현재 추리 대상' : ''}`);
       group.append(label);
+      if (active && g.phase === 'guess' && owner !== seat && !g.paused && tiles.some(tile => !tile.revealed) && focus?.seat !== seat) { // (G-게임별: what to do, on the rack to do it on)
+        const hint = document.createElement('small'); hint.className = 'davinciHint'; hint.textContent = '상대 타일을 눌러 숫자를 맞혀요'; group.append(hint);
+      }
       const rack = document.createElement('div');
       rack.className = 'davinciRack';
       group.append(rack);
@@ -10185,6 +10201,7 @@
     davinciStopBtn.disabled = davinciSelectionPending || davinciGuessPending;
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderDavinciFocusLine(focus));
     else renderDavinciFocusLine(focus);
+    renderTurnRing(); // (the racks were just redrawn: the turn's ring back on its label)
   }
 
   function drawBoard() {
