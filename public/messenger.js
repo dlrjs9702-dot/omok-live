@@ -107,7 +107,9 @@
     const recent = msgs.find((msg) => !msg.system && !msg.deleted && Date.now() - Date.parse(msg.at) < 6 * 60 * 1000);
     const from = recent ? Math.min(last, recent.seq - 1) : last;
     try {
-      const data = await api(`/api/messenger/rooms/${id}/messages?after=${from}`);
+      let data = await api(`/api/messenger/rooms/${id}/messages?after=${from}`);
+      // (C3 ②: a busy room filled the page (100) with the asked-again lines -- the new ones asked for on their own)
+      if (from < last && data.messages.length >= 100) { const more = await api(`/api/messenger/rooms/${id}/messages?after=${last}`); data = { ...more, messages: [...data.messages.filter((msg) => msg.seq <= last), ...more.messages] }; }
       if (current?.id !== id || g !== gen) return;
       const firstPage = !last; current = data.room; showHead();
       const fresh = data.messages.filter((msg) => msg.seq > last);

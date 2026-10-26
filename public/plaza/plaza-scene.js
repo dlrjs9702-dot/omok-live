@@ -1059,7 +1059,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     statueWeek = week;
     const all = Array.isArray(list) ? list : [];
     const next = [...all.filter((s) => s && !s.contest && !s.king && (s.rank === 1 || s.rank === 2)).slice(0, 2), ...all.filter((s) => s?.contest).slice(0, 1), ...Object.keys(KING).map((k) => all.find((s) => s?.king === k)).filter(Boolean)]; // (A4: and the contest's winner; B2: the kings)
-    const key = JSON.stringify([week, next.map(({ rank, name, look, title, king, week: w }) => [rank, name, look, title, king, w])]);
+    const key = JSON.stringify([week, next.map(({ rank, name, look, title, king, week: w, label }) => [rank, name, look, title, king, w, label])]); // (C3 ⑩: and the plate's contest name)
     if (key === statueKey) return;
     const id = (s) => JSON.stringify([s.rank, s.name, s.contest, s.king]);
     const carved = NICHES && statueKey !== '[]' ? true : null; const before = new Set(statueList.map(id));
