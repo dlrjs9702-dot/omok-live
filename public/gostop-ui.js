@@ -147,7 +147,8 @@
       const hand = document.createElement('div');
       hand.className = 'gostopBacks';
       hand.style.setProperty('--n', info2.handCount); /* (ⓓ: the backs fanned, each turned by its place) */
-      for (let i = 0; i < info2.handCount; i += 1) { const b = backEl('tiny', seatSkin); b.style.setProperty('--i', i); hand.append(b); }
+      for (let i = 0; i < info2.handCount; i += 1) hand.append(backEl('tiny', seatSkin));
+      [...hand.children].forEach((b, i) => b.style.setProperty('--i', i)); /* (only backs so far: each one's place in the fan) */
       anchors.backs.set(seat, hand);
       const count = document.createElement('small'); count.textContent = `손패 ${info2.handCount}장${info2.bombFlips ? ` · 폭탄 뒤집기 ${info2.bombFlips}` : ''}`;
       hand.append(count);
