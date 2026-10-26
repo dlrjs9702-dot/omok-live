@@ -107,7 +107,8 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect.poll(() => page.evaluate(() => window.RoomSound.played().at(-1))).toBe('win'); // (G-틀③: the other resigned -- my win)
     // G1-7: the result on the board with the way on
     await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
-    await expect(page.locator('#boardOverlay .resultPoints')).toContainText('P');
+    await expect(page.locator('#boardOverlay .resultPoints')).toHaveText(/^\+[\d,]+P$/); // (G-틀④: one big figure, the breakdown on its title)
+    await expect(page.locator('#blackPlayer')).toHaveClass(/seatWinner/); await expect(page.locator('#whitePlayer')).not.toHaveClass(/seatWinner/); // (the winner crowned)
     expect(errors).toEqual([]);
   });
 }

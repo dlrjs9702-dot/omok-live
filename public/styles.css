@@ -2259,6 +2259,21 @@ body.roomPlaying .quickChat{display:flex}
 .seatBubble{position:absolute;left:12px;bottom:calc(100% + 4px);z-index:5;max-width:220px;padding:5px 10px;border-radius:12px;background:#f8fafc;color:#0f172a;font-size:.8rem;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .boardOverlay .resultPoints{display:block;margin-top:6px;font-size:.9rem;color:#fde68a}
 .boardOverlay .resultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;pointer-events:auto}
+/* G-틀④ 결과는 판 위 장면: a sheet of hanji on the board -- a red 「승」 seal on a win, the score counted up, one big +/− points
+   figure on a stakes hand, [한 판 더]·[게임관으로] big; the winner's name plate crowned */
+.boardOverlay.resultWin,.boardOverlay.resultLoss{position:absolute;background:radial-gradient(circle at 18% 12%,rgba(255,255,255,.6),transparent 42%),repeating-linear-gradient(112deg,rgba(150,120,80,.07) 0 2px,transparent 2px 8px),#f4ecd8;color:#3d2f22;border:1px solid #d6c39f;border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.55);animation:none;padding:22px 30px 18px}
+.boardOverlay.resultWin{border-color:#d9a520;box-shadow:0 0 0 3px rgba(217,165,32,.35),0 18px 50px rgba(0,0,0,.55)}
+.boardOverlay.resultWin::after{content:"승";position:absolute;right:-12px;top:-14px;width:44px;height:44px;display:grid;place-items:center;border:3px solid #b3261e;border-radius:10px;color:#b3261e;background:rgba(255,253,246,.9);font-weight:950;font-size:1.3rem;transform:rotate(-12deg)}
+.boardOverlay.resultWin strong{color:#8a5a12}.boardOverlay.resultLoss strong{color:#5a4632}
+.boardOverlay.resultWin span,.boardOverlay.resultLoss span{color:#5a4632}
+.boardOverlay .resultScore{display:block;margin-top:8px;font-size:1.05rem;font-weight:900;color:#3d2f22!important;font-variant-numeric:tabular-nums}
+.boardOverlay.resultWin .resultPoints,.boardOverlay.resultLoss .resultPoints{margin-top:8px;font-size:1.7rem;font-weight:950;color:#1f7a3a!important}
+.boardOverlay .resultPoints.minus{color:#b3261e!important}
+.boardOverlay.resultWin .resultActions button,.boardOverlay.resultLoss .resultActions button{min-height:48px;padding:12px 26px;font-size:1.05rem;font-weight:900;white-space:nowrap}
+@media(max-width:640px){.boardOverlay.resultWin .resultActions button,.boardOverlay.resultLoss .resultActions button{padding:10px 16px}.boardOverlay.resultWin,.boardOverlay.resultLoss{padding:18px 18px 14px}}
+.boardOverlay.resultWin .resultActions .ghost,.boardOverlay.resultLoss .resultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
+.seatWinner{position:relative;box-shadow:0 0 0 2px #facc15,0 0 22px rgba(250,204,21,.45)!important}
+.seatWinner::after{content:"👑";position:absolute;left:10px;top:-14px;font-size:1.3rem;line-height:1;pointer-events:none}
 @media(max-width:640px){body.roomPlaying .quickChat{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}body.roomPlaying .quickChat button{flex:0 0 auto}.turnRing{width:36px;height:36px;right:6px}.turnRing b{font-size:.62rem}.player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:46px}.versus.versusScore{font-size:1rem}}
 /* G1-6: the side panels narrow while a hand is played (unless 넓게 was chosen) */
 body.roomPlaying .gameLayout:not(.sideWide){--side-w:280px}

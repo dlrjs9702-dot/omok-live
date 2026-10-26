@@ -1418,8 +1418,11 @@
   // A3 G1-7 결과 창 공통: the points this hand moved for me (the server's entry settlement) and [한 판 더]·[게임관으로]
   function resultOverlayExtras(outcome) {
     const e = state.points?.entry;
+    // (G-틀④: only a stakes hand has a points line -- one big +/− figure; how it came (the entry, the share) on its title)
     if (e && e.status === 'settled' && Number(e.fee)) { const line = document.createElement('span'); line.className = 'resultPoints';
-      line.textContent = outcome === 'win' && e.each ? `참가 ${Number(e.fee).toLocaleString('ko-KR')}P → +${Number(e.each).toLocaleString('ko-KR')}P` : outcome === 'win' ? '' : `참가 ${Number(e.fee).toLocaleString('ko-KR')}P`;
+      line.textContent = outcome === 'win' && e.each ? `+${Number(e.each).toLocaleString('ko-KR')}P` : outcome === 'win' ? '' : `−${Number(e.fee).toLocaleString('ko-KR')}P`;
+      line.classList.toggle('minus', outcome !== 'win');
+      line.title = outcome === 'win' && e.each ? `참가 ${Number(e.fee).toLocaleString('ko-KR')}P → 받은 ${Number(e.each).toLocaleString('ko-KR')}P` : `참가 ${Number(e.fee).toLocaleString('ko-KR')}P`;
       if (line.textContent) boardOverlay.append(line); }
     const row = document.createElement('span'); row.className = 'resultActions';
     const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = '한 판 더'; again.addEventListener('click', () => nextRoundBtn.click());
@@ -1433,6 +1436,13 @@
     heading.textContent = win ? '🏆 승리!' : '패배';
     detail.textContent = resultCopy(outcome, game);
     boardOverlay.replaceChildren(heading, detail);
+    // (G-틀④ 점수가 하나씩: a game that keeps a score per side -- 오델로 돌, 윷 완주, 점과 상자 -- counts it up on the result)
+    const sc = game?.scores; const unit = { othello: '돌', yut: '완주', dots: '상자' }[state?.gameType];
+    if (unit && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white))) {
+      const row = document.createElement('span'); row.className = 'resultScore'; boardOverlay.append(row);
+      const to = { black: Number(sc.black), white: Number(sc.white) }; const draw = (k) => { row.textContent = `${seatKo('black')} ${unit} ${Math.round(to.black * k)} · ${seatKo('white')} ${unit} ${Math.round(to.white * k)}`; };
+      if (reducedMotionActive()) draw(1); else { const t0 = performance.now(); const step = (t) => { const k = Math.min(1, (t - t0) / 900); draw(k); if (k < 1 && row.isConnected) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+    }
     boardOverlay.classList.remove('resultWin', 'resultLoss');
     boardOverlay.classList.add(win ? 'resultWin' : 'resultLoss');
   }
@@ -7693,6 +7703,15 @@
     else if (now.status === 'playing' && now.mine && !was.mine) S.play('turn');
     if (was.status === 'playing' && ['finished', 'draw'].includes(now.status)) { const o = seat ? resultOutcome(g, seat, state.gameType) : null; S.play(o === 'win' ? 'win' : o === 'loss' ? 'lose' : 'end'); }
   }
+  // G-틀④ 결과는 판 위 장면: the winner's name plate is crowned and lit while the result stands (a team: its colour's cards)
+  function markWinners(g) {
+    document.querySelectorAll('.seatWinner').forEach((c) => c.classList.remove('seatWinner'));
+    if (g.status !== 'finished') return;
+    for (const w of [].concat(g.winners?.length ? g.winners : g.winner || []).map(String)) {
+      seatCardOf(w)?.classList.add('seatWinner');
+      if (/^(black|white)$/.test(w)) document.querySelectorAll(`#teamPlayers .teamPlayer.${w}, #mySeatSpot .teamPlayer.${w}`).forEach((c) => c.classList.add('seatWinner'));
+    }
+  }
   function setRoomPlaying(on) {
     on = Boolean(on) && !roomView.classList.contains('hidden');
     if (on !== document.body.classList.contains('roomPlaying')) {
@@ -8153,7 +8172,7 @@
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     document.body.classList.toggle('tableGamePlaying', gostop && g.status !== 'selecting');
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
-    roomSounds(g);
+    roomSounds(g); markWinners(g);
     if (gostop) window.GostopUI.render(state);
     rpgPanel.classList.toggle('hidden', !rpg);
     if (rpg) rpgRender(state); else rpgUnmount();
