@@ -3498,9 +3498,10 @@
     const row = fishArrowsBox.querySelector('.fishArrowSeq');
     row.replaceChildren(...fishGame.seq.map((dir) => { const s = document.createElement('span'); s.dataset.dir = dir; return s; }));
     fishArrowsBox.classList.remove('hidden', 'wrong'); fishArrowMark(); // (shown first: a hidden bar runs no transition)
+    document.body.classList.add('islandFishing'); // (F 사용자 아이폰 제보: the stick and the phone's buttons sat over the arrows -- out of the way while they show)
     const bar = fishArrowsBox.querySelector('.fishArrowTime i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${ms}ms linear`; bar.style.width = '0%';
   }
-  function fishArrowsEnd() { fishGame = null; fishArrowsBox.classList.add('hidden'); }
+  function fishArrowsEnd() { fishGame = null; fishArrowsBox.classList.add('hidden'); document.body.classList.remove('islandFishing'); }
   function fishArrowMark() { [...fishArrowsBox.querySelectorAll('.fishArrowSeq span')].forEach((s, k) => { s.classList.toggle('done', k < fishGame.at); s.classList.toggle('now', k === fishGame.at); }); }
   function fishArrow(dir) {
     if (!fishGame || fishBusy) return;

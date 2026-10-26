@@ -35,11 +35,19 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; const T = window.IslandTerrain; return T.dalmaru ? T.dalmaru.isWater(b.x, b.z) && T.dalmaru.coastDist(b.x, b.z) >= 0 : T.streamDist(b.x, b.z) < T.STREAM_HALF; })).toBe(true); // (달마루섬: inland water -- a river, 거울호수 or a pool) the float is on the stream
   await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); // (a long bite on the page; the server's just before the pull -- see plaza.spec)
   await expect(page.locator('#plazaHint')).toHaveText(/순서대로$/);
+  if (isMobile) { // (F 사용자 아이폰 제보: the stick and the phone's buttons sat over the arrows -- each arrow's centre is its own button now)
+    await expect(page.locator('#fishArrows .fishArrowPad button')).toHaveCount(4);
+    if (process.env.ZZ_OUT) await page.screenshot({ path: `${process.env.ZZ_OUT}/fish-arrows-phone.png` });
+    const hits = await page.evaluate(() => [...document.querySelectorAll('#fishArrows .fishArrowPad button')].map((b) => { const r = b.getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === b; }));
+    expect(hits).toEqual([true, true, true, true]);
+    await expect(page.locator('#islandStick')).toBeHidden();
+  }
   expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);
   await pressFishArrows(page, isMobile); // (3회차 4: the bite's arrows)
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_catfish')?.qty || 0, { timeout: 10000 }).toBe(1)
     .catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')}`; throw error; }); // (CI #293 once on a phone: which -- late or wrong -- to find why)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // the catch played out (the 13 new models: test/island-asset-pipeline)
+  if (isMobile) await expect(page.locator('#islandStick')).toBeVisible(); // (the stick back once the arrows are gone)
   await expectNoScriptError(page);
   await who.context.close();
 });
