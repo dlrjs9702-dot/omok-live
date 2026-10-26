@@ -344,6 +344,11 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     const months = await a.page.locator('#gostopFloor .hwatuMonth').allTextContents();
     for (let month = 1; month <= 12; month += 1) expect(months).toContain(month + '월');
     await expect(a.page.locator('#gostopFloor .month-3 .hwatuMonth')).toHaveCount(2);
+    // (G-고스톱ⓐ: the pictures alone by default -- ☰ 「화투 패 이름 보기」 shows the month and kind as small tags)
+    await expect(a.page.locator('#gostopFloor .hwatu.hasArt .hwatuMonth').first()).toBeHidden();
+    await a.page.locator('#roomMenuBtn').click(); await a.page.locator('#hwatuNamesToggle').check(); await a.page.locator('#gameMenuCloseBtn').click();
+    await expect(a.page.locator('#gostopFloor .hwatu.hasArt .hwatuMonth').first()).toBeVisible();
+    await expect(a.page.locator('#gostopFloor .hwatu.hasArt .hwatuBadge').first()).toBeVisible();
     await expect(a.page.locator('#gostopMine .pile-gwang > small')).toHaveText('광 1 · 3장부터'); // (A3 G2-4: until it scores, how many it takes)
     await expect(a.page.locator('#gostopMine .pile-animal > small')).toHaveText('열끗 1 · 5장부터');
     await expect(a.page.locator('#gostopMine .pile-ribbon > small')).toHaveText('띠 1 · 5장부터');

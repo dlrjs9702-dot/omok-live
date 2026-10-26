@@ -1859,6 +1859,11 @@
   const roomSoundToggle = byId('roomSoundToggle');
   const syncSoundToggle = () => { roomSoundToggle.checked = window.RoomSound?.isOn() ?? true; };
   syncSoundToggle(); gameMenuDialog.addEventListener('toggle', syncSoundToggle);
+  // G-고스톱ⓐ 화투 패 이름 보기: off by default (the pictures alone); on, the month and kind as small corner tags -- this device's
+  const hwatuNamesToggle = byId('hwatuNamesToggle');
+  const setHwatuNames = (on) => { document.body.classList.toggle('hwatuNames', on); hwatuNamesToggle.checked = on; };
+  try { setHwatuNames(localStorage.getItem('gc.hwatuNames') === '1'); } catch { setHwatuNames(false); }
+  hwatuNamesToggle.addEventListener('change', () => { setHwatuNames(hwatuNamesToggle.checked); try { localStorage.setItem('gc.hwatuNames', hwatuNamesToggle.checked ? '1' : '0'); } catch {} });
   roomSoundToggle.addEventListener('change', () => { window.RoomSound?.setOn(roomSoundToggle.checked); if (roomSoundToggle.checked) window.RoomSound?.play('turn'); });
   window.addEventListener('keydown', (event) => {
     if (event.isComposing || event.repeat || event.defaultPrevented) return;
