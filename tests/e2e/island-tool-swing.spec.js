@@ -49,6 +49,7 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
   }, { timeout: 60000, intervals: [500] }).toBe(200).catch((error) => { error.message += `\nlast: ${last}\nanswers: ${answers.join(' | ')}`; throw error; });
   await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [T.SPAWN.x, T.SPAWN.z]); await page.waitForTimeout(1000); // (back among the islanders)
   // an islander right in front: struck -- HitReact, then cross words over the head
+  const swingTries = [];
   await expect.poll(async () => {
     const all = await page.evaluate(() => window.PlazaDebug().wanderersAt());
     if (!all.length) { await page.evaluate(async () => { const w = window.PlazaDebug().wanderersAt(true)[0]; if (w) await window.PlazaWarp(w.x, w.z + 3); }); return 'no islander'; } // (R3: in the evening and at night they gather elsewhere -- go to them)
@@ -67,12 +68,12 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
     // (CI #315: a slow runner's 0.45 s swing ended after a fixed 0.7 s wait -- the swing itself is waited for (its own
     // start time), then the cross word of the one it met; what it met is told when it misses)
     const before = await page.evaluate(() => window.PlazaDebug().lastSwing()?.t ?? null);
-    if (!(await spaceOn(page, 'tool:swing', isMobile))) return 'no swing';
+    if (!(await spaceOn(page, 'tool:swing', isMobile))) { const near = await page.evaluate(() => window.PlazaDebug().near); swingTries.push(`no swing (near ${near}, n${m.n} ${now.d.toFixed(2)} m)`); return 'no swing'; } // (CI #318: twice 60 s of this -- what took the SPACE is kept)
     let swing = null; await expect.poll(async () => { swing = await page.evaluate(() => window.PlazaDebug().lastSwing()); return swing?.t ?? null; }, { timeout: 10000 }).not.toBe(before);
     if (swing.hit?.resident == null) return `missed ${JSON.stringify(swing)}`;
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().struck())).some((s) => s.n === swing.hit.resident && s.bubble), { timeout: 5000 }).toBe(true);
     return 'struck';
-  }, { timeout: 60000, intervals: [1000] }).toBe('struck');
+  }, { timeout: 60000, intervals: [1000] }).toBe('struck').catch((error) => { error.message += `\ntries: ${swingTries.slice(-8).join(' | ')}`; throw error; });
   // put away: no swing
   await page.keyboard.press('KeyI'); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe(null);
