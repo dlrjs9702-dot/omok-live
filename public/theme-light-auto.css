@@ -1120,25 +1120,38 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .boardOverlay .resultPoints.minus{color:#b3261e!important}
 :root[data-theme="light"] .boardOverlay.resultWin .resultActions .ghost,:root[data-theme="light"] .boardOverlay.resultLoss .resultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
 :root[data-theme="light"] .seatWinner{box-shadow:0 0 0 2px #facc15,0 0 22px rgba(250,204,21,.45)!important}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopDecisionPanel{box-shadow:0 18px 50px rgba(0,0,0,.6)}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopPile{background:transparent;border:0}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopPileCards:empty{border:1px dashed rgba(255,255,255,.22)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDecisionPanel{box-shadow:0 18px 50px rgba(0,0,0,.6)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPile{background:transparent;border:0}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopPileCards:empty{border:1px dashed rgba(255,255,255,.22)}
 :root[data-theme="light"] .pileCount{background:#fde68a;color:#3d2f22;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 :root[data-theme="light"] .pileNear{background:#b3261e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopSets{color:#fde68a}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSets{color:#fde68a}
 :root[data-theme="light"] .gostopDecisionButtons .gostopGoButton{border-color:#4ade80!important;background:#15803d!important;color:#fff!important}
 :root[data-theme="light"] .gostopDecisionButtons .gostopStopButton{border-color:#fdba74!important;background:#c2410c!important;color:#fff!important}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopDeck small{background:rgba(0,0,0,.62)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDeck small{background:rgba(0,0,0,.62)}
 :root[data-theme="light"] .fxBadge.stamp{border:4px solid var(--ink);background:rgba(255,253,246,.9);color:var(--ink);box-shadow:0 10px 28px rgba(0,0,0,.5)}
 :root[data-theme="light"] .goTag{border:2px solid #b91c1c;background:#fff7ed;color:#b91c1c}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopBacks small{background:rgba(0,0,0,.35);color:#e2e8f0}
-:root[data-theme="light"] body.roomPlaying .gostopFelt .ppeokTag{background:#b3261e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks small{background:rgba(0,0,0,.35);color:#e2e8f0}
+:root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .ppeokTag{background:#b3261e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 :root[data-theme="light"] .gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;box-shadow:0 0 16px rgba(250,204,21,.75)}
 :root[data-theme="light"] .gostopFelt .gostopHand .hwatu.gostopArmed{outline:3px solid #facc15}
 :root[data-theme="light"] .gostopFelt .gostopHand .hwatu.gostopToFloor::after{background:rgba(15,23,42,.8);color:#e2e8f0}
 :root[data-theme="light"] .hwatuBack{background:radial-gradient(circle at 50% 50%,#fde68a 0 9%,transparent 10%),conic-gradient(from 45deg at 50% 50%,#7f1d1d 0 25%,#991b1b 0 50%,#7f1d1d 0 75%,#991b1b 0) 50% 50%/34% 24%,#8b1414;border:1px solid #3f0808;box-shadow:inset 0 0 0 2px #8b1414,inset 0 0 0 3.5px #fcd9a8,inset 0 0 0 5px #8b1414}
 :root[data-theme="light"] .hwatu-tiny.hwatuBack{box-shadow:inset 0 0 0 1.5px #fcd9a8}
 :root[data-theme="light"] body.roomMode>.gostopResult:not(.hidden):not(.closed){box-shadow:0 18px 50px rgba(0,0,0,.6)}
+:root[data-theme="light"] body.roomMode>.gostopResult{border:1px solid #d6c39f;color:#3d2f22;background:radial-gradient(circle at 18% 12%,rgba(255,255,255,.6),transparent 42%),repeating-linear-gradient(112deg,rgba(150,120,80,.07) 0 2px,transparent 2px 8px),#f4ecd8}
+:root[data-theme="light"] body.roomMode>.gostopResult>strong{color:#8a5a12}
+:root[data-theme="light"] body.roomMode>.gostopResult p,:root[data-theme="light"] body.roomMode>.gostopResult small{color:#5a4632}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopChip{border:0;border-bottom:1px dotted #c9b48a;background:none;color:#3d2f22}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopChip.muted{color:#6b5a45}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopChip.total{border-top:2px solid #3d2f22;border-bottom:0}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopLoserLine{background:rgba(61,47,34,.07)}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopLoserLine b{color:#b3261e}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopWinLine{color:#1f7a3a!important}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopLoserLine small,:root[data-theme="light"] body.roomMode>.gostopResult .gostopWinLine small{color:#6b5a45}
+:root[data-theme="light"] body.roomMode>.gostopResult.mineWin{border-color:#d9a520;box-shadow:0 0 0 3px rgba(217,165,32,.35),0 18px 50px rgba(0,0,0,.55)}
+:root[data-theme="light"] body.roomMode>.gostopResult.mineWin::after{border:3px solid #b3261e;color:#b3261e;background:rgba(255,253,246,.9)}
+:root[data-theme="light"] body.roomMode>.gostopResult .gostopResultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
 :root[data-theme="light"] .gostopSets{color:#fde68a}
 :root[data-theme="light"] .seatFace{background:radial-gradient(circle at 36% 58%,#1f2937 0 2.2px,transparent 2.6px),radial-gradient(circle at 64% 58%,#1f2937 0 2.2px,transparent 2.6px),linear-gradient(180deg,var(--hair,#4a3426) 0 34%,var(--skin,#f6d3b3) 34%);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
 :root[data-theme="light"] .seatTitle{color:#fcd34d}

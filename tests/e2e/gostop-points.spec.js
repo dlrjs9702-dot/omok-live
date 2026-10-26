@@ -140,7 +140,7 @@ test.describe('포인트와 고스톱·맞고', () => {
         for (const card of mine.me.myGostopHand) if (!revealed.has(card.id)) expect(spectator).not.toContain(`"${card.id}"`);
       }
       previousBurn += burnOf(state.game);
-      await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
+      await a.page.locator('#gostopResult .gostopResultActions button.primary:visible, #nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
       await a.page.locator('#gostopStartBtn').click();
       state = await roomState(request, a.token);
     }
@@ -198,7 +198,7 @@ test.describe('포인트와 고스톱·맞고', () => {
       }
       previousBurn += burnOf(state.game);
       // 나가리 등으로 끝났으면 다음 판을 열고 다시 시작한다.
-      await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
+      await a.page.locator('#gostopResult .gostopResultActions button.primary:visible, #nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
       await a.page.locator('#gostopStartBtn').click();
     }
     expect(settledRound, '고/스톱이 나오는 판을 만들지 못함').toBeTruthy();
@@ -214,7 +214,7 @@ test.describe('포인트와 고스톱·맞고', () => {
     await expect(a.page.locator('#roomPointBadge')).toHaveText(`내 포인트 ${balanceA.toLocaleString('ko-KR')}P`);
 
     // 14) 다음 판: 준비 → 다시 시작, 정산은 반복되지 않는다.
-    await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
+    await a.page.locator('#gostopResult .gostopResultActions button.primary:visible, #nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
     await expect(a.page.locator('#gostopStartBtn')).toBeVisible();
     expect((await api(request, '/api/points', a.token, undefined, 'GET')).data.balance).toBe(balanceA);
     await a.page.locator('#gostopStartBtn').click();

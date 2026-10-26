@@ -417,7 +417,7 @@
     if (box.parentElement !== document.body) document.body.append(box); // (A3 G2-5: a window over the screen -- the table's frame has a transform)
     box.replaceChildren();
     const r = g.result;
-    box.classList.remove('staged');
+    box.classList.remove('staged', 'mineWin');
     if (!r || !['finished', 'draw'].includes(g.status)) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
     // v1.7.4: the first time this result is shown (and once it is settled), its lines appear in order.
@@ -463,15 +463,21 @@
 
     const flow = document.createElement('div');
     flow.className = 'gostopCalc gostopSettlementFlow';
+    // G-고스톱ⓕ 결과 점수표 (gamecenter-notes docs/gamehall-audit-20261025.md 「고스톱·맞고」 6): each line a row of the sheet --
+    // what on the left, its figure on the right (the text itself unchanged: 「광 3점」)
     const chip = (text, extra = '') => {
       const el = document.createElement('span');
       el.className = `gostopChip${extra}`;
-      el.textContent = text;
+      const at = text.lastIndexOf(' ');
+      const what = document.createElement('span'); what.textContent = text.slice(0, at);
+      const figure = document.createElement('b'); figure.textContent = text.slice(at + 1);
+      el.append(what, ' ', figure);
       flow.append(el);
     };
     chip(r.instant ? `${reasonText} ${r.base}점 고정` : `기본 ${r.base}점`);
     if (r.items?.length && !r.instant) for (const item of r.items) chip(`${ITEM_LABEL[item.key] || item.key} ${item.points}점`, ' muted'); // (A3 G2-5: one line per part)
     if (r.goCount) chip(`${r.goCount}고 +${r.goCount}점`);
+    if (!r.instant && r.score !== r.base) chip(`합계 ${r.score}점`, ' total');
     const commonFactors = orderedFactors(r.losers?.[0]?.factors).filter(item => !BAK_KEYS.has(item.key));
     for (const item of commonFactors) chip(factorText(item));
     chip(`점당 ${r.pointsPerScore}P`);
@@ -489,9 +495,9 @@
       total += amount;
       credited += paid ? (paid.credited ?? paid.paid) : amount;
       burned += paid?.burned || 0;
-      line.textContent = `${label(state, loser.seat)} → -${fmt(amount)} · ${r.score}점${factors ? ` · ${factors}` : ''} × ${r.pointsPerScore}P = ${fmt(loser.amount)}`
+      sheetLine(line, `${label(state, loser.seat)} → -${fmt(amount)}`, ` · ${r.score}점${factors ? ` · ${factors}` : ''} × ${r.pointsPerScore}P = ${fmt(loser.amount)}`
         + (paid?.capped ? ` · 계산 ${fmt(loser.amount)} → 실제 ${fmt(paid.paid)} (보유 포인트 한도 적용)` : '')
-        + balanceNote(loser.seat);
+        + balanceNote(loser.seat));
       box.append(line);
     }
     let stage = 0;
@@ -500,12 +506,14 @@
     win.className = 'gostopWinLine';
     win.style.setProperty('--stage', String(stage));
     // v1.7.3: the winner receives the real transfer minus the burned share (10%, rounded down).
-    win.textContent = settled
-      ? `${label(state, r.winner)} → +${fmt(credited)}${burned ? ` (이동 ${fmt(total)} 중 ${g.settlement.burnPercent || 10}% ${fmt(burned)} 소각)` : ''}${balanceNote(r.winner)}`
-      : '포인트 정산 처리 중…';
+    if (settled) sheetLine(win, `${label(state, r.winner)} → +${fmt(credited)}`, `${burned ? ` (이동 ${fmt(total)} 중 ${g.settlement.burnPercent || 10}% ${fmt(burned)} 소각)` : ''}${balanceNote(r.winner)}`);
+    else win.textContent = '포인트 정산 처리 중…';
     box.append(win);
+    if (state.me?.seat === r.winner) box.classList.add('mineWin'); // (ⓕ: the 「승」 seal on the winner's own sheet, as on the other rooms' result)
     resultButtons(box);
   }
+  // (ⓕ: a payment line -- who and how much in bold, how it came in small under it; the whole text as before)
+  function sheetLine(el, head, rest) { const b = document.createElement('b'); b.textContent = head; el.append(b); if (rest) { const s = document.createElement('small'); s.textContent = rest; el.append(s); } }
   // A3 G2-5 결과 창: the result is a window over the table with the way on; [판 보기] closes it to look at the last table
   let resultClosedKey = null; let resultKey = null;
   function resultButtons(box) {
