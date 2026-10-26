@@ -264,7 +264,7 @@ test.describe('고스톱·맞고 1차 UX 및 화투판 시각화 (v1.6.92)', () 
     const goScenario = scenario(goGame, '1', g => gostop.decide(g, '1', 'go'));
     from = await show(page, room, goScenario);
     await settle(page);
-    await expect(page.locator('#gostopMine .gostopStats')).toContainText('1고');
+    await expect(page.locator('#gostopMine .gostopStats .goTag')).toHaveText(['1고']); // (G-고스톱ⓔ: the 고 a stamp beside the name)
     await expect(page.locator('#gostopMine .gostopEstimate')).toHaveText(/^\d+점 · 1고 · ×2 · 예상 [\d,]+P$/);
 
     // 44) 점수 성립: 홍단 완성 시 띠 묶음을 짧게 강조.
@@ -415,12 +415,19 @@ test.describe('고스톱·맞고 자체 화투·실물감 연출 (v1.7.4)', () =
     for (const [name, fx, floorFx] of specials) {
       from = await show(page, room, SCENARIOS[name]());
       await expect(page.locator(`#gostopFxLayer .fxBadge.fx-${fx}`), name).toBeAttached({ timeout: 6000 });
+      if (fx !== 'kong') await expect(page.locator(`#gostopFxLayer .fxBadge.fx-${fx}`).first(), name).toHaveClass(/\bstamp\b/); // (G-고스톱ⓔ: the big moments a big stamp)
+      if (name === 'bomb') { // (ⓔ review: 피 뺏기 under the 폭탄! stamp, not over its edge)
+        await expect(page.locator('#gostopFxLayer .fxBadge.fx-steal')).toBeAttached(); await page.waitForTimeout(300);
+        const [a, b] = await Promise.all(['.fxBadge.stamp', '.fxBadge.fx-steal'].map(s => page.locator(`#gostopFxLayer ${s}`).first().boundingBox()));
+        expect(b.y, '피 뺏기는 도장 아래').toBeGreaterThanOrEqual(a.y + a.height);
+      }
       await shot(`2x-special-${name}`);
       await settle(page);
       const special = (await entries(page, from)).filter(e => e.k === 'special');
       expect(special.map(e => e.fx), name).toContain(fx);
       if (floorFx) expect(special.find(e => e.fx === fx).floor, name).toBe(floorFx);
     }
+    expect(await page.evaluate(() => window.RoomSound.played().filter(k => k === 'stamp').length)).toBeGreaterThanOrEqual(6); // (ⓔ: 쾅 with each, 콩알탄 aside)
     const colours = await page.evaluate(() => {
       const layer = document.getElementById('gostopFxLayer');
       return ['ppeok', 'bomb', 'sweep', 'jjok', 'ttadak', 'go', 'stop'].map(kind => {
