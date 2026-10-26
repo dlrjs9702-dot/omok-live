@@ -1067,7 +1067,7 @@
   try { oldmaidEffectsOn = localStorage.getItem('oldmaidEffects') !== 'off'; } catch {}
   let oldmaidDrawBusy = false;
   let oldmaidPeekArmed = false;
-  let oldmaidLastHistoryLen = 0;
+  let oldmaidLastMoves = 0; // (C4 P3-7: the draws seen -- moveCount, the history is only the last 30)
   let oldmaidSeenEscaped = new Set();
   let oldmaidSeenFinishedKey = null;
   let oldmaidKnownRound = null;
@@ -1417,6 +1417,7 @@
 
   // A3 G1-7 결과 창 공통: the points this hand moved for me (the server's entry settlement) and [한 판 더]·[게임관으로]
   let nextAskedFor = null; // (the room and hand I asked to play again)
+  let resultCountedFor = null; // (C4 P3-3: the result whose score has counted up -- a card drawn again shows the end at once)
   function resultOverlayExtras(outcome) {
     const e = state.points?.entry;
     // (G-틀④: only a stakes hand has a points line -- one big +/− figure; how it came (the entry, the share) on its title)
@@ -1429,7 +1430,10 @@
     // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 is hidden under it; once pressed it says it is waiting)
     const asked = nextAskedFor === `${state.me?.roomCode}:${state.game?.round}`;
     const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = asked ? '준비 완료 · 기다리는 중' : '한 판 더'; again.disabled = asked;
-    again.addEventListener('click', () => { nextAskedFor = `${state.me?.roomCode}:${state.game?.round}`; again.textContent = '준비 완료 · 기다리는 중'; again.disabled = true; nextRoundBtn.click(); });
+    again.addEventListener('click', async () => { const key = `${state.me?.roomCode}:${state.game?.round}`; nextAskedFor = key; again.textContent = '준비 완료 · 기다리는 중'; again.disabled = true;
+      if (await roomAction('next-round')) return;
+      if (nextAskedFor === key) nextAskedFor = null; /* (C4 P2-1: the ask failed -- the card's button again, the one under it is hidden) */
+      for (const b of new Set([again, ...boardOverlay.querySelectorAll('.resultActions .primary')])) { b.textContent = '한 판 더'; b.disabled = false; } });
     const out = document.createElement('button'); out.type = 'button'; out.className = 'ghost'; out.textContent = '게임관으로'; out.addEventListener('click', () => document.getElementById('leaveRoomBtn').click());
     row.append(again, out); boardOverlay.append(row);
   }
@@ -1445,7 +1449,8 @@
     if (unit && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white))) {
       const row = document.createElement('span'); row.className = 'resultScore'; boardOverlay.append(row);
       const to = { black: Number(sc.black), white: Number(sc.white) }; const draw = (k) => { row.textContent = `${seatKo('black')} ${unit} ${Math.round(to.black * k)} · ${seatKo('white')} ${unit} ${Math.round(to.white * k)}`; };
-      if (reducedMotionActive()) draw(1); else { const t0 = performance.now(); const step = (t) => { const k = Math.min(1, (t - t0) / 900); draw(k); if (k < 1 && row.isConnected) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+      const key = `${state.me?.roomCode}:${game?.round}:${to.black}:${to.white}`; const counted = resultCountedFor === key; resultCountedFor = key;
+      if (counted || reducedMotionActive()) draw(1); else { const t0 = performance.now(); const step = (t) => { const k = Math.min(1, (t - t0) / 900); draw(k); if (k < 1 && row.isConnected) requestAnimationFrame(step); }; requestAnimationFrame(step); }
     }
     boardOverlay.classList.remove('resultWin', 'resultLoss');
     boardOverlay.classList.add(win ? 'resultWin' : 'resultLoss');
@@ -3471,6 +3476,7 @@
   });
   function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
   setInterval(refreshFarm, 15000);
+  let questTalkGen = 0; plazaDialog.addEventListener('close', () => { questTalkGen += 1; });
   function openQuestTalk(data) {
     plaza.controller?.emote?.(data.done && data.reward ? 'clap' : 'nod');
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
@@ -3499,9 +3505,9 @@
     if (data.offer) { // (Q 부탁 받기: their ask with its note -- 「할게요!」 starts it, 「다음에요」 keeps nothing)
       const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'primary'; yes.textContent = '할게요!';
       yes.addEventListener('click', async () => {
-        yes.disabled = true;
-        try { const r = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id: `quest${data.story}`, accept: true }) }); showIslandEvents(r.events || islandEventsNear); showQuestTracker(r.track || []); openQuestTalk(r); }
-        catch (error) { showToast(error.message); plazaDialog.close(); }
+        yes.disabled = true; const gen = questTalkGen; const live = () => plazaDialog.open && gen === questTalkGen; // (C4 P3-2: closed or another window since -- the late answer does not cover it)
+        try { const r = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id: `quest${data.story}`, accept: true }) }); showIslandEvents(r.events || islandEventsNear); showQuestTracker(r.track || []); if (live()) openQuestTalk(r); }
+        catch (error) { showToast(error.message); if (live()) plazaDialog.close(); }
       });
       const later = document.createElement('button'); later.type = 'button'; later.className = 'ghost'; later.textContent = '다음에요'; later.addEventListener('click', () => plazaDialog.close());
       lostCard.replaceChildren(line, offerNote(data.offer), yes, later);
@@ -3932,10 +3938,11 @@
   // (Q 할 일 카드, docs/quest-accept-complete-20261026.md ②) what I am doing, on paper, three at most: who asked, the thing
   // to do and how far (0/1); the moment a story's step is done its line turns ✓ 「○○에게 돌아가 말해요」 (and a short note);
   // a line pressed opens it -- its thing to do and 「그만둘래요」 (asked once more)
+  // (C4 P3-6: with an errand under way a story gives it one of the three lines)
   let questReady = null; let questOpen = null; // (null: not read yet -- what is ready when I come in is no news)
   function showQuestTracker(list = questTrack) {
     questTrack = list;
-    const items = [...list.map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, /* (the name is the line's own column) */ count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
+    const items = [...list.slice(0, errandTrack.length ? 2 : 3).map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, /* (the name is the line's own column) */ count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
       ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title }))].slice(0, 3);
     if (questReady) for (const t of list) if (t.ready && !questReady.has(t.story)) showToast(`✓ ${t.name}에게 돌아가 말해요`, 4000);
     questReady = new Set(list.filter((t) => t.ready).map((t) => t.story));
@@ -4023,7 +4030,7 @@
     if (residentBusy) return; residentBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      endResidentTalk(); await residentBye;
+      endResidentTalk(); await Promise.race([residentBye, new Promise((r) => { setTimeout(r, 1500); })]); // (C4 P3-8: a stuck bye -- not every talk shut)
       showResidentTalk(await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n }) }), true);
     } catch (error) { showToast(error.message); } finally { residentBusy = false; }
   }
@@ -7731,8 +7738,8 @@
     if (on !== document.body.classList.contains('roomPlaying')) {
       document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); }
       chatOverlayOpen = false; gameInfoOverlayOpen = false; applyChatLayout(); applyGameInfoLayout(); // (G-틀①: the panels fold for the hand, back after)
-      menuResignBtn.classList.toggle('hidden', !on);
     }
+    menuResignBtn.classList.toggle('hidden', !on || resignBtn.classList.contains('hidden')); // (C4 P3-4: not a watcher's, nor when 기권 cannot be pressed)
     // (G-틀④ 검토: and while a hand's result stands -- never over 다음 판 on a phone; G-게임별 다빈치 검토: and before a hand too --
     // never over the room's words while seats are chosen: in the room the round buttons are always in the bar)
     const inBar = on || !roomView.classList.contains('hidden');
@@ -9283,7 +9290,7 @@
       oldmaidKnownRound = g.round;
       oldmaidSeenEscaped = new Set();
       oldmaidSeenFinishedKey = null;
-      oldmaidLastHistoryLen = 0;
+      oldmaidLastMoves = 0;
       oldmaidPeekArmed = false;
     }
 
@@ -9485,10 +9492,10 @@
   // (history entries, counts, status/loser) -- never a source of truth, and always safe to
   // skip if effects are off or the relevant seat element isn't on screen.
   function oldmaidRunEffects(g) {
-    const history = g.history || [];
-    if (history.length - oldmaidLastHistoryLen === 1 && history.at(-1).pairs > 0) window.RoomSound?.play('right'); // (G-게임별: a pair thrown -- 딩동; one new draw only, not a reload's whole history)
+    const history = g.history || []; const moves = Number(g.moveCount) || 0; const fresh = moves > oldmaidLastMoves ? history.slice(-(moves - oldmaidLastMoves)) : [];
+    if (moves - oldmaidLastMoves === 1 && history.at(-1)?.pairs > 0) window.RoomSound?.play('right'); // (G-게임별: a pair thrown -- 딩동; one new draw only, not a reload's whole history)
     if (!oldmaidEffectsActive()) {
-      oldmaidLastHistoryLen = history.length;
+      oldmaidLastMoves = moves;
       for (const number of g.seatOrder || []) if ((g.counts?.[number] ?? 1) === 0) oldmaidSeenEscaped.add(number);
       if (g.status === 'finished') oldmaidSeenFinishedKey = `${g.round}:${g.loser}`;
       return;
@@ -9497,13 +9504,13 @@
     // they escape, and a winner's legend `win` over the panel when the game ends.
     const skinOf = (number) => window.SkinLooks.def(state.players?.[number]?.skin);
     const playOn = (el, draw, ms, pad) => { if (el && draw) requestAnimationFrame(() => window.SkinLooks.h.playFx(el, draw, ms, pad)); };
-    if (history.length > oldmaidLastHistoryLen) {
-      for (const entry of history.slice(oldmaidLastHistoryLen)) {
+    if (fresh.length) {
+      for (const entry of fresh) {
         if (entry.pairs > 0) oldmaidShowPairEffect(entry.actor, entry.pairs);
         playOn(oldmaidFindSeatEl(entry.target), skinOf(entry.actor)?.fx, 800, 40);
       }
     }
-    oldmaidLastHistoryLen = history.length;
+    oldmaidLastMoves = moves;
 
     for (const number of g.seatOrder || []) {
       const emptied = (g.counts?.[number] ?? 1) === 0 && !(g.status === 'finished' && number === g.loser);

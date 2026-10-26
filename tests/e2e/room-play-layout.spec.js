@@ -111,6 +111,10 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect(page.locator('#blackPlayer')).toHaveClass(/seatWinner/); await expect(page.locator('#whitePlayer')).not.toHaveClass(/seatWinner/); // (the winner crowned)
     // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 hidden; pressed, it says it waits; the bar stays thin)
     await expect(page.locator('#nextRoundBtn')).toBeHidden(); await expect(page.locator('#sideNextRoundBtn')).toBeHidden(); await expect(page.locator('#roomPointRule')).toBeHidden();
+    // (C4 P2-1: the ask failing -- a phone's line down, a record not saved -- the card's button is on again)
+    await page.route('**/api/room/next-round', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'RECORD_FAILED', message: '잠시 뒤 다시 눌러 주세요.' }) }), { times: 1 });
+    await page.locator('#boardOverlay .resultActions button', { hasText: '한 판 더' }).click();
+    await expect(page.locator('#boardOverlay .resultActions button.primary')).toHaveText('한 판 더'); await expect(page.locator('#boardOverlay .resultActions button.primary')).toBeEnabled();
     await page.locator('#boardOverlay .resultActions button', { hasText: '한 판 더' }).click();
     // (pressed, it waits for the other -- or, where every hand picks its seats again, the room is straight back at the choosing)
     await expect.poll(async () => (await page.locator('#boardOverlay .resultActions button').first().textContent({ timeout: 500 }).catch(() => null))

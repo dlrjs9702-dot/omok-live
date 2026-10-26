@@ -28,6 +28,15 @@
     f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + dur); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     s.connect(f).connect(g).connect(out); s.start(t); s.stop(t + dur);
   }
+  // (C4 P2-2: iPhone Safari lets a context sound only if it is resumed inside a touch's handler -- the first touch or key
+  // makes it and plays a silent buffer, sound on or off; the sounds themselves come after a server's answer)
+  const UNLOCK = ['pointerdown', 'touchend', 'keydown'];
+  function unlock() {
+    const a = ctx(); if (!a) return;
+    try { const s = a.createBufferSource(); s.buffer = a.createBuffer(1, 1, a.sampleRate); s.connect(a.destination); s.start(0); } catch {}
+    if (a.state === 'running') UNLOCK.forEach((t) => document.removeEventListener(t, unlock, true));
+  }
+  UNLOCK.forEach((t) => document.addEventListener(t, unlock, true));
   const NOTE = (n) => 440 * 2 ** ((n - 69) / 12);
   const SOUNDS = {
     stone: () => { noise({ dur: 0.05, vol: 0.35, from: 2600, to: 900 }); tone({ f: 340, f2: 220, dur: 0.07, vol: 0.18, type: 'triangle' }); }, // (탁: a stone on wood)

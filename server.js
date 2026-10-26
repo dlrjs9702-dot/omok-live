@@ -6603,13 +6603,17 @@ async function requestHandler(req, res) {
       // (given to the host, as a gift to an islander; C3 ①: every thing must really be taken -- one sold or used since the
       // check gives back those taken and no stamps)
       const nonce = crypto.randomUUID().replace(/-/g, ''); const taken = [];
+      const giveBack = async () => { for (const [j, back] of taken.entries()) await pointStore.islandGive({ userId: account, claimId: `cookback-${nonce}-${j}`, itemId: back, qty: 1, meta: null, quiet: true }, nowMs()); };
       for (const [k, id] of items.entries()) {
         const use = await pointStore.islandUse({ userId: account, requestId: `cook-${nonce}-${k}`, itemId: id, resident: true });
         if (use.applied) { taken.push(id); continue; }
-        for (const [j, back] of taken.entries()) await pointStore.islandGive({ userId: account, claimId: `cookback-${nonce}-${j}`, itemId: back, qty: 1, meta: null, quiet: true }, nowMs());
-        return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 재료가 있어요.');
+        await giveBack(); return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 재료가 있어요.');
       }
-      const r = await stamp('cook'); return sendStamp(r, { score: judged.score, say: judged.say, bag: (await pointStore.islandBag(account)).items });
+      // (C4 P3-1: two cooks at once from two tabs both pass the day's check -- the one not stamped, or a stamp that failed to
+      // save, gives its things back)
+      let r; try { r = await stamp('cook'); } catch (error) { await giveBack(); throw error; }
+      if (r.error) await giveBack();
+      return sendStamp(r, { score: judged.score, say: judged.say, bag: (await pointStore.islandBag(account)).items });
     }
     if (action === 'feast') { // 주민 잔치: the last day's evening, round the feast table
       if (!near(P.feast, P.FEAST_R)) return sendError(res, 409, 'TOO_FAR', '잔칫상 둘레로 와 주세요.');
