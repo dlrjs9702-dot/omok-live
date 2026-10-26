@@ -2324,6 +2324,22 @@ body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top
   body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.22)}
   body.roomPlaying .gostopFelt .gostopSeatHead{font-size:.8rem}
 }
+/* G-고스톱ⓐ 화투를 진짜 화투처럼 (gamecenter-notes docs/gamehall-audit-20261025.md 「고스톱·맞고」 1): the pictures alone -- the
+   「1월」 「피」 bands only with ☰ 「패 이름 보기」 (small tags in the corners); the cards bigger where the folded panels left
+   room; the felt never wider than the screen (a phone's hand fitted to its width) */
+body.roomPlaying .gostopFelt{grid-template-columns:minmax(0,1fr);max-width:100%}
+body:not(.hwatuNames) .hwatu.hasArt .hwatuMonth,body:not(.hwatuNames) .hwatu.hasArt .hwatuBadge{display:none}
+body.hwatuNames .hwatu.hasArt .hwatuBadge{left:auto;right:2px;bottom:2px;padding:0 3px;border-radius:4px}
+@media(min-width:881px){body.roomPlaying .gostopFelt{--hh:clamp(64px,13vh,140px);--fh:clamp(52px,11vh,124px)}}
+@media(max-width:640px){
+  body.roomPlaying .gostopFelt{--hh:min(clamp(54px,10vh,80px),calc((100vw - 84px) / 4.2))} /* (ten cards, each over the last by .3 and no gap: 4.1 card heights wide) */
+  body.roomPlaying .gostopFelt .gostopHand{gap:0}
+  body.roomPlaying .gostopFelt .gostopSpeedBtn{top:-12px;bottom:auto;right:14px;opacity:1} /* (on the felt's frame, not on the hand's last card) */
+  body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 4px} /* (the felt now the screen's width: four months a row, not six squeezed) */
+  #leaveRoomBtn{white-space:nowrap}
+  body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.3)}
+  body.roomPlaying .gostopFelt .gostopSeat>.gostopBacks{max-width:44vw;overflow:hidden}
+}
 /* A3 G2-3: the floor cards a pointed hand card would take, the pointed (first-tapped) card raised, a card that would go to the floor */
 .gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;outline-offset:1px;box-shadow:0 0 16px rgba(250,204,21,.75)}
 .gostopFelt .gostopHand .hwatu.gostopArmed{transform:translateY(-12px);outline:3px solid #facc15;z-index:2}
