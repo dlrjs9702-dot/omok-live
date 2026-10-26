@@ -9,15 +9,15 @@ const { testDatabase } = require('../test-support/pg-database');
 const { boot } = require('../test-support/test-server');
 const T = require('../public/plaza/island-terrain');
 
-// v1.10.85 관공서 예금 창구 (사용자 2026-10-17): 4% a day, compounding at each Seoul midnight, no cap, in and out freely,
-// no loans; the wallet and the deposit kept apart; each request once.
-test('예금 이자: 자정마다 4% 복리, 같은 날은 그대로, 안전한 수 범위에서 멈춤', () => {
+// v1.10.85 관공서 예금 창구 (사용자 2026-10-17): interest at each Seoul midnight, compounding, in and out freely, no loans;
+// the wallet and the deposit kept apart; each request once. 경제 점검 ⑥-A: by tiers -- these amounts all in the first, 3%.
+test('예금 이자: 자정마다 복리(첫 구간 3%), 같은 날은 그대로, 안전한 수 범위에서 멈춤', () => {
   assert.equal(bankAccrue(100000, '2026-10-17', '2026-10-17'), 100000);
-  assert.equal(bankAccrue(100000, '2026-10-16', '2026-10-17'), 104000);
-  assert.equal(bankAccrue(100000, '2026-10-15', '2026-10-17'), 108160);
-  assert.equal(bankAccrue(10, '2026-10-16', '2026-10-17'), 10); // 0.4P rounds down
+  assert.equal(bankAccrue(100000, '2026-10-16', '2026-10-17'), 103000);
+  assert.equal(bankAccrue(100000, '2026-10-15', '2026-10-17'), 106090);
+  assert.equal(bankAccrue(10, '2026-10-16', '2026-10-17'), 10); // 0.3P rounds down
   assert.equal(bankAccrue(0, '2026-01-01', '2026-10-17'), 0);
-  assert.equal(bankAccrue(1e15, '2026-01-01', '2027-01-01'), Number.MAX_SAFE_INTEGER);
+  assert.equal(bankAccrue(1e15, '2026-01-01', '2028-01-01'), Number.MAX_SAFE_INTEGER);
   assert.equal(bankAccrue(100000, '2026-10-17', '2026-10-30', '2026-10-17'), bankAccrue(100000, '2026-10-17', '2026-10-23'), '마지막 접속 뒤 7번째 자정부터 없음');
   assert.equal(bankAccrue(100000, '2026-10-24', '2026-10-30', '2026-10-17'), 100000);
 });
@@ -25,19 +25,19 @@ test('예금 이자: 자정마다 4% 복리, 같은 날은 그대로, 안전한 
 async function storeBehaves(store) {
   const U = 'guest:00000000-0000-4000-8000-0000000000b1';
   const day1 = Date.parse('2026-10-17T12:00:00+09:00'); const day3 = Date.parse('2026-10-19T09:00:00+09:00');
-  assert.deepEqual(await store.bankView(U, day1), { balance: 100000, deposit: 0, rate: 0.04 });
+  assert.deepEqual(await store.bankView(U, day1), { balance: 100000, deposit: 0 });
   assert.equal((await store.bankMove(U, 150000, 'req-in-0001', day1)).reason, 'insufficient');
-  assert.deepEqual(await store.bankMove(U, 60000, 'req-in-0002', day1), { applied: true, balance: 40000, deposit: 60000, rate: 0.04 });
+  assert.deepEqual(await store.bankMove(U, 60000, 'req-in-0002', day1), { applied: true, balance: 40000, deposit: 60000 });
   assert.equal((await store.bankMove(U, 60000, 'req-in-0002', day1)).applied, false, '같은 요청은 한 번');
-  assert.deepEqual(await store.bankView(U, day1), { balance: 40000, deposit: 60000, rate: 0.04 });
-  assert.deepEqual(await store.bankView(U, day3), { balance: 40000, deposit: 64896, rate: 0.04 }); // 60000 → 62400 → 64896
+  assert.deepEqual(await store.bankView(U, day1), { balance: 40000, deposit: 60000 });
+  assert.deepEqual(await store.bankView(U, day3), { balance: 40000, deposit: 63654 }); // 60000 → 61800 → 63654
   assert.equal((await store.bankMove(U, -70000, 'req-out-0001', day3)).reason, 'insufficient');
-  assert.deepEqual(await store.bankMove(U, -64896, 'req-out-0002', day3), { applied: true, balance: 104896, deposit: 0, rate: 0.04 });
-  assert.equal((await store.getAccount(U)).balance, 104896);
+  assert.deepEqual(await store.bankMove(U, -63654, 'req-out-0002', day3), { applied: true, balance: 103654, deposit: 0 });
+  assert.equal((await store.getAccount(U)).balance, 103654);
   // (사용자 2026-10-18) 7일 이상 안 들어오면 이자 없음: away 10 days pays the 6 midnights before the 7th; back in, it pays again
   const W = 'guest:00000000-0000-4000-8000-0000000000b2'; const at = (d) => Date.parse(`2026-11-${d}T12:00:00+09:00`);
   await store.noteVisit(W, at(10)); await store.bankMove(W, 100000, 'req-in-0003', at(10));
-  assert.equal((await store.bankView(W, at(13))).deposit, 112486, '3일: 그대로 붙음');
+  assert.equal((await store.bankView(W, at(13))).deposit, 109272, '3일: 그대로 붙음');
   assert.equal((await store.bankView(W, at(20))).deposit, bankAccrue(100000, '2026-11-10', '2026-11-16'), '10일 비움: 6일치만');
   await store.noteVisit(W, at(20)); assert.equal((await store.bankView(W, at(21))).deposit, bankAccrue(100000, '2026-11-10', '2026-11-17'), '돌아오면 다음 자정부터 다시');
 }
@@ -65,7 +65,7 @@ test('예금 API: 관공서 안 예금 창구에서만, 맡기기·찾기·포�
   assert.equal((await req('/api/island/bank', a)).data.error, 'TOO_FAR', '민원 창구 쪽 끝은 멀다');
   await stand(bank.x, bank.z);
   const view = (await req('/api/island/bank', a)).data;
-  assert.equal(view.deposit, 0); assert.equal(view.rate, 0.04);
+  assert.equal(view.deposit, 0); assert.deepEqual([view.tiers[0].percent, view.tomorrow], [3, 0]); // (경제 점검 ⑥-A: the tiers and tomorrow's)
   assert.equal((await req('/api/island/bank', a, { amount: 1.5, requestId: 'bank-bad-01' })).status, 400);
   const put = (await req('/api/island/bank', a, { amount: 30000, requestId: 'bank-in-0001' })).data;
   assert.deepEqual([put.applied, put.balance, put.deposit], [true, view.balance - 30000, 30000]);
@@ -84,9 +84,9 @@ test('예금 경계: 늦게 온 전날 요청이 기준일을 되돌리지 않�
   const U = 'guest:00000000-0000-4000-8000-0000000000b2';
   const d1 = Date.parse('2026-10-17T23:59:00+09:00'); const d2 = Date.parse('2026-10-18T00:01:00+09:00');
   await store.bankMove(U, 10000, 'edge-in-0001', d1);
-  assert.equal((await store.bankView(U, d2)).deposit, 10400);
+  assert.equal((await store.bankView(U, d2)).deposit, 10300);
   await store.bankMove(U, 1, 'edge-in-late', d1); // arrives late, dated the day before
-  assert.equal((await store.bankView(U, d2)).deposit, 10401, '그 자정 이자를 다시 세지 않음');
+  assert.equal((await store.bankView(U, d2)).deposit, 10301, '그 자정 이자를 다시 세지 않음');
   store.data.accounts[U].deposit = Number.MAX_SAFE_INTEGER - 1;
   const r = await store.bankMove(U, 5, 'edge-in-0002', d2);
   assert.deepEqual([r.applied, r.reason], [false, 'limit']);

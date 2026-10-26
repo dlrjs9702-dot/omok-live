@@ -2505,6 +2505,9 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .stampNum{font-size:.8rem;font-weight:700;color:var(--isle-soft)}
 .stampDay.stamped{border:2px solid #c0392b;background:#fff0ea}
 .stampDay.stamped .stampNum{opacity:.35}
+/* (경제 점검 ⑥-C: a 7th day in a row -- a bigger, gold-rimmed stamp; the streak under the month) */
+.stampDay.big{border:3px solid #c98a1e;background:#fff3cf;transform:scale(1.08)}.stampDay.big .stampInk{color:#a0590b;font-size:.55rem}
+.stampStreak{flex-basis:100%;color:var(--isle-soft);font-size:.8rem;font-weight:700}.stampHead{flex-wrap:wrap}
 .stampInk{position:absolute;inset:0;display:grid;place-items:center;font-size:.5rem;font-weight:900;color:#c0392b;letter-spacing:-.02em;line-height:1.05;text-align:center;transform:rotate(-14deg);padding:3px}
 .stampDay.justNow .stampInk{animation:stampPress .45s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes stampPress{from{transform:rotate(-14deg) scale(2.2);opacity:0}to{transform:rotate(-14deg) scale(1);opacity:1}}

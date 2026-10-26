@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { JsonPointStore, PostgresPointStore, kstDate, capTransfers, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT, DAILY_ATTENDANCE } = require('../lib/point-store');
+const { JsonPointStore, PostgresPointStore, kstDate, capTransfers, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT, attendanceStreak, attendanceAmount } = require('../lib/point-store');
+const DAILY_ATTENDANCE = 30_000; // (경제 점검 ⑥-C: the economy table's, lowered from 50,000)
 const INITIAL_GRANT = 100_000; // v1.10.35: production starts at 0P; these stores are given the old opening balance
 const { testDatabase } = require('../test-support/pg-database');
 

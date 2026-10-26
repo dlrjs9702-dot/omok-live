@@ -981,7 +981,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return `제 ${1 + Math.round((t - w1) / (7 * 864e5))}주 `;
   };
   // 5회차 B2 7: the week's 낚시왕 and 제초왕 in the two 7 m niches either side of the contest's, rod in hand / pulling a weed
-  const KING = { fishking: { niche: 3, name: '낚시왕', clip: 'fishWait', rod: true }, weedking: { niche: 4, name: '제초왕', clip: 'gather', at: 1.2 } }; // (the weed up, standing: crouched, only the head showed over the plaque)
+  // (경제 점검 ⑥-B: the week's 1st climber, 등반왕, in the next empty 7 m niche)
+  const KING = { fishking: { niche: 3, name: '낚시왕', clip: 'fishWait', rod: true }, weedking: { niche: 4, name: '제초왕', clip: 'gather', at: 1.2 }, climbking: { niche: 5, name: '등반왕' } }; // (the weed up, standing: crouched, only the head showed over the plaque)
   const nicheOf = (st) => (st.king ? KING[st.king]?.niche : st.contest ? 2 : st.rank - 1);
   function bakeStone(c) { // the frozen model as one mesh in its root's frame
     c.root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(c.root.matrixWorld).invert(); const m = new THREE.Matrix4(); const v = new THREE.Vector3(); const col = new THREE.Color(); const geos = [];

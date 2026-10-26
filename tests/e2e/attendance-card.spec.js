@@ -17,7 +17,8 @@ test('출석 도장 카드: 이번 달 칸, 오늘 출석하면 도장이 찍히
   await expect(card.locator('.stampDay.today.stamped .stampInk')).toBeVisible();
   await expect(card.locator('.stampBtn')).toBeDisabled(); await expect(card.locator('.stampCount')).toContainText('1일');
   if (process.env.ZZ_OUT) await page.screenshot({ path: `${process.env.ZZ_OUT}-${isMobile ? 'm' : 'p'}-attendance-stamped.png` });
-  expect((await get(request, '/api/points', token)).data.balance - before).toBe(50000);
+  expect((await get(request, '/api/points', token)).data.balance - before).toBe(30000); // (경제 점검 ⑥-C: the day's 30,000 -- a first day, no streak)
+  await expect(card.locator('.stampStreak')).toContainText('연속 1일');
   const box = await page.locator('#plazaDialog').boundingBox(); const vp = page.viewportSize(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(vp.width); // (fits a phone)
   await expectNoScriptError(page);
   await who.context.close();

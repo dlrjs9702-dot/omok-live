@@ -1521,16 +1521,17 @@
     attendanceCard.replaceChildren(el('p', 'emptyState', '불러오는 중입니다.'));
     if (!plazaDialog.open || !plazaDialog.classList.contains('stampMode')) { openPlazaWindow('출석 도장', [attendanceCard]); plazaDialog.classList.add('stampMode'); }
     try {
-      const d = await api('/api/points/attendance/month'); const [, mm] = d.month.split('-'); const done = new Set(d.days);
+      const d = await api('/api/points/attendance/month'); const [, mm] = d.month.split('-'); const done = new Set(d.days); const big = new Set(d.big || []); // (경제 점검 ⑥-C: a 7th day in a row -- the big stamp)
       const head = el('div', 'stampHead'); head.append(el('strong', '', `${Number(mm)}월 출석 도장`), el('span', 'stampCount', `${d.days.length}일 / ${d.length}일`));
       const grid = el('div', 'stampGrid'); for (const w of ['일', '월', '화', '수', '목', '금', '토']) grid.append(el('span', 'stampWeekday', w));
       for (let k = 0; k < d.firstWeekday; k += 1) grid.append(el('span', 'stampBlank'));
       for (let day = 1; day <= d.length; day += 1) {
-        const cell = el('span', `stampDay${done.has(day) ? ' stamped' : ''}${day === d.today ? ' today' : ''}${day > d.today ? ' later' : ''}${stampedNow && day === d.today ? ' justNow' : ''}`);
-        cell.append(el('span', 'stampNum', String(day))); if (done.has(day)) cell.append(el('span', 'stampInk', '참 잘했어요'));
+        const cell = el('span', `stampDay${done.has(day) ? ' stamped' : ''}${big.has(day) ? ' big' : ''}${day === d.today ? ' today' : ''}${day > d.today ? ' later' : ''}${stampedNow && day === d.today ? ' justNow' : ''}`);
+        cell.append(el('span', 'stampNum', String(day))); if (done.has(day)) cell.append(el('span', 'stampInk', big.has(day) ? '일주일 개근!' : '참 잘했어요'));
         cell.setAttribute('aria-label', `${day}일${done.has(day) ? ' 출석' : ''}`); grid.append(cell);
       }
-      const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(50000).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
+      const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(d.pay).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
+      head.append(el('span', 'stampStreak', `연속 ${d.streak}일 · 7일마다 큰 도장`));
       btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); if (plazaDialog.open && plazaDialog.classList.contains('stampMode')) openAttendanceCard(true); }); // (Codex 검토 2차: closed or another window opened meanwhile -- not opened again)
       attendanceCard.replaceChildren(head, grid, btn);
     } catch (error) { attendanceCard.replaceChildren(el('p', 'emptyState', error.message)); }
@@ -3258,13 +3259,15 @@
       closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
     } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
   }
-  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, 4% a day added at each Seoul midnight;
+  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, interest by tiers added at each Seoul midnight;
   // anything in or out at any time (the server checks I am at the window, and pays each request once)
   const bankDialog = byId('bankDialog'); let bankNow = null; let bankBusy = false;
   const fmtP = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
   function showBank(v) {
     bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
-    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
+    // (경제 점검 ⑥-A: the interest by tiers -- the server's tiers and tomorrow's interest)
+    const tiers = (v.tiers || []).map((t, i, all) => (t.upTo == null ? `그 위 ${t.percent}%` : `${i ? `${fmtP(all[i - 1].upTo)}~` : ''}${fmtP(t.upTo)}까지 ${t.percent}%`)).join(' · ');
+    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 구간별 이자가 붙습니다 — ${tiers}(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(v.tomorrow ?? 0)}`;
   }
   async function openBank() {
     try {
