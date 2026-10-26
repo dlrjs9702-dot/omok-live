@@ -38,6 +38,8 @@
     win: () => [60, 64, 67, 72, 76].forEach((n, i) => tone({ f: NOTE(n), dur: 0.22, vol: 0.15, type: 'triangle', at: i * 0.08 })),
     lose: () => [64, 60, 55, 48].forEach((n, i) => tone({ f: NOTE(n), dur: 0.22, vol: 0.13, at: i * 0.11 })),
     end: () => [64, 64].forEach((n, i) => tone({ f: NOTE(n), dur: 0.16, vol: 0.13, type: 'triangle', at: i * 0.14 })),
+    stamp: () => { tone({ f: 120, f2: 55, dur: 0.22, vol: 0.32 }); noise({ dur: 0.12, vol: 0.3, from: 1800, to: 300 }); }, // (G-고스톱ⓔ 쾅: 뻑·쪽·따닥·판쓸이·폭탄·흔들기·스톱)
+    go: () => [67, 74].forEach((n, i) => tone({ f: NOTE(n), dur: 0.18, vol: 0.18, type: 'triangle', at: i * 0.1 })), // (고!: two notes up)
   };
   let played = []; // (tests: what was asked to sound, while on)
   function play(kind) { if (!isOn() || !SOUNDS[kind] || document.hidden) return false; played = [...played.slice(-19), kind]; try { SOUNDS[kind](); } catch {} return true; }

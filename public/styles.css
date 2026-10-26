@@ -2361,6 +2361,14 @@ body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n){transform:rotate(
   body.roomPlaying .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * .68 * -.65)} /* (ⓒ review: a month's cards two-thirds over each other -- eight months in two columns a side) */
   .pileNear{left:21px;padding:0 4px;font-size:.6rem} /* (ⓑ review: clear of the next stack's count) */
 }
+/* G-고스톱ⓔ 큰 순간은 크게 (같은 주문서 5): 뻑·쪽·따닥·판쓸이·폭탄·흔들기·고·스톱 a big stamp in the floor's middle (badge(),
+   with a sound); each 고 a small stamp piled beside the name */
+.fxBadge.stamp{padding:8px 22px;border-radius:12px;font-size:2rem;letter-spacing:.06em;box-shadow:0 0 0 3px rgba(255,255,255,.85),0 10px 30px rgba(0,0,0,.55);text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.fxBadge.stamp.fx-go,.fxBadge.stamp.fx-stop,.fxBadge.stamp.fx-bomb,.fxBadge.stamp.fx-sweep,.fxBadge.stamp.fx-grand{font-size:2.5rem}
+@media(max-width:640px){.fxBadge.stamp{font-size:1.5rem;padding:6px 16px}.fxBadge.stamp.fx-go,.fxBadge.stamp.fx-stop,.fxBadge.stamp.fx-bomb,.fxBadge.stamp.fx-sweep,.fxBadge.stamp.fx-grand{font-size:1.8rem}}
+.goTag{display:inline-block;margin-left:6px;padding:0 5px;border:2px solid #b91c1c;border-radius:5px;background:#fff7ed;color:#b91c1c;font-size:.72rem;font-weight:950;line-height:1.35;transform:rotate(-8deg)}
+.goTag+.goTag{margin-left:-10px;transform:rotate(6deg)}
+.goTag+.goTag+.goTag{transform:rotate(-4deg)}
 /* G-고스톱ⓓ 상대가 앉아 있게 (같은 주문서 4): the name tag with the island face, the hand's backs fanned (a played card
    leaves from the fan's middle), the count beside it never cut; 뻑 a small pill over its month */
 body.roomPlaying .gostopFelt .gostopSeatHead{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}

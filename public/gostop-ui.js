@@ -124,12 +124,13 @@
     const stats = document.createElement('span');
     stats.className = 'gostopStats';
     const bits = [`${info2.scoreWithGo ?? info2.score}점`];
-    if (info2.goCount) bits.push(`${info2.goCount}고`);
     if (info2.shakes) bits.push(`흔들기 ${info2.shakes}`);
     if (info2.bombs) bits.push(`폭탄 ${info2.bombs}`);
     if (info2.ppeok) bits.push(`뻑 ${info2.ppeok}`);
     if (info2.multiplier > 1) bits.push(`×${info2.multiplier}`);
     stats.textContent = bits.join(' · ');
+    // G-고스톱ⓔ: each 고 a small stamp piled beside the name (1고, 2고, …: the newest on top)
+    for (let i = 1; i <= (info2.goCount || 0); i += 1) { const t = document.createElement('b'); t.className = 'goTag'; t.textContent = `${i}고`; stats.append(t); }
     anchors.stats.set(seat, stats);
     // G-고스톱ⓓ: the island face on the name tag (the same .seatFace as the other rooms' name cards)
     const face = document.createElement('span'); face.className = 'seatFace'; face.setAttribute('aria-hidden', 'true');
@@ -992,19 +993,23 @@
     stop: [{ transform: 'translate(-50%,0) scale(1.8) rotate(10deg)', opacity: 0 }, { transform: 'translate(-50%,0) scale(1) rotate(-4deg)', opacity: 1 }],
     grand: [{ transform: 'translate(-50%,0) scale(.4) rotate(-14deg)', opacity: 0 }, { transform: 'translate(-50%,0) scale(1.3) rotate(4deg)', opacity: 1, offset: 0.6 }, { transform: 'translate(-50%,0) scale(1) rotate(0)', opacity: 1 }],
   };
+  // G-고스톱ⓔ 큰 순간은 크게 (gamecenter-notes docs/gamehall-audit-20261025.md 「고스톱·맞고」 5): these as a big stamp in the
+  // floor's middle, held longer, with a sound (specialFx)
+  const STAMPS = new Set(['ppeok', 'jappeok', 'jjok', 'ttadak', 'sweep', 'bomb', 'shake', 'go', 'stop', 'grand']);
   function badge(run, text, seat, kind = 'plain', row = 0) {
     const anchor = plain(rectOf($('gostopFloor')));
     if (!anchor) return;
+    const stamp = STAMPS.has(kind);
     const el = document.createElement('div');
-    el.className = `fxBadge fx-${kind}`;
+    el.className = `fxBadge fx-${kind}${stamp ? ' stamp' : ''}`;
     el.textContent = text;
     el.style.left = `${anchor.left + anchor.width / 2}px`;
-    el.style.top = `${anchor.top + 8 + row * 34}px`;
+    el.style.top = `${anchor.top + anchor.height / 2 - (stamp ? 30 : 14) + row * 56}px`; /* (every row from the middle down: 피 뺏기 under the stamp, not on it) */
     layer().append(el);
     run.temps.add(el);
     run.labels.add(el);
     el.animate(BADGE_IN[kind] || [{ opacity: 0, transform: 'translate(-50%, 6px) scale(.9)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }], { duration: kind === 'ttadak' || kind === 'shake' ? 420 : 260, easing: 'ease-out', fill: 'forwards' });
-    setTimeout(() => el.remove(), 1150);
+    setTimeout(() => el.remove(), stamp ? 1800 : 1150);
   }
 
   // A short effect on the table itself for the specials that change the table.
@@ -1031,6 +1036,7 @@
 
   function specialFx(run, tag, row, ev, state) {
     const kind = SPECIAL_FX[tag] || 'plain';
+    if (row === 0 && STAMPS.has(kind)) window.RoomSound?.play(kind === 'go' ? 'go' : 'stamp'); // (ⓔ: one sound for the event's first big moment)
     const goCount = tag === 'go' ? state.game.seats?.[ev.seat]?.goCount : null;
     badge(run, tag === 'go' && goCount ? `${goCount}고!` : TAGS[tag] || tag, ev.seat, kind, row);
     const floor = ['ppeok', 'sweep', 'bomb', 'kong', 'jjok', 'ttadak', 'grand'].includes(kind) ? (kind === 'grand' ? 'bomb' : kind) : null;
