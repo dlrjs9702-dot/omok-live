@@ -43,6 +43,9 @@ test('도둑잡기 판: 자리 카드 비킴·이름표 얼굴·상대 부채꼴
   // the last stand (two hands, three cards -- the joker among them): the table pulses, 「조커는 누구에게?」
   expect((await call(a, '/api/test/oldmaid-last-stand', {})).status).toBe(200);
   for (const who of [a, b]) await expect(who.page.locator('#oldmaidPanel')).toHaveClass(/lastStand/);
+  // (검토: a board note never over the other's fan -- under the seats and 「조커는 누구에게?」)
+  const noteAt = await a.page.evaluate(() => { const n = document.querySelector('.boardNote'); const seatBottom = Math.max(...[...document.querySelectorAll('#oldmaidSeats .oldmaidSeat')].map((e) => e.getBoundingClientRect().bottom)); return n && n.getBoundingClientRect().height ? n.getBoundingClientRect().top - seatBottom : null; });
+  if (noteAt !== null) expect(noteAt).toBeGreaterThanOrEqual(0);
   if (process.env.ZZ_OUT) for (const [who, n] of [[a, 'me'], [b, 'other']]) { await who.page.waitForTimeout(700); await who.page.screenshot({ path: `${process.env.ZZ_OUT}/oldmaid-laststand-${isMobile ? 'phone' : 'pc'}-${n}.png` }); }
   for (const who of [a, b]) await who.context.close();
 });

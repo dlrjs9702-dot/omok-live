@@ -7153,7 +7153,8 @@
     const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats().seats.has(String(seat)));
     statusText.classList.toggle('selfActHeadline', mine);
     // (G-게임별: on a phone my own name dropped from my turn's line -- 「내 차례 · 숫자 추측」 in one line, as 고스톱's)
-    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${isMobileLayout() ? statusText.textContent.replace(/^[^·]*(\(나\)|님 차례) · /, '') : statusText.textContent}`;
+    // (도둑잡기 검토: and on any screen 「내 차례 · 누구님 차례 · …」 says it twice -- the second 「…님 차례 · 」 dropped)
+    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${statusText.textContent.replace(isMobileLayout() ? /^[^·]*(\(나\)|님 차례) · / : /^[^·]*님 차례 · /, '')}`;
     const text = recentNarration();
     recentActionLine.classList.toggle('hidden', !text);
     if (text) {
@@ -9463,6 +9464,16 @@
     const holding = rosterSeats.filter((s) => (g.counts?.[s] ?? 0) > 0);
     oldmaidPanel.classList.toggle('lastStand', g.status === 'playing' && holding.length === 2 && holding.reduce((n, s) => n + g.counts[s], 0) <= 3);
     renderTurnRing();
+    // (도둑잡기 검토: a board note or a toast over the other's fan hid the card to draw -- below the seats, above my hand)
+    requestAnimationFrame(() => { // (the seats themselves -- their grid has an empty row below -- and 「조커는 누구에게?」 under them in the last stand)
+      const bottoms = [...oldmaidSeatsEl.querySelectorAll('.oldmaidSeat')].map((el) => el.getBoundingClientRect().bottom).filter((b) => b > 0);
+      // (a box round the note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
+      // beside it is measured, so the top given is the screen's)
+      const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
+      if (!bottoms.length) return; const y = Math.max(...bottoms) + (oldmaidPanel.classList.contains('lastStand') ? 44 : 10);
+      document.body.style.setProperty('--oldmaidNoteTop', `${Math.round(y - originOf(document.querySelector('.boardNote')))}px`);
+      document.body.style.setProperty('--oldmaidToastTop', `${Math.round(y - originOf(document.getElementById('toast')))}px`);
+    });
   }
   function oldmaidFace(number) {
     const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true');
@@ -9665,7 +9676,7 @@
     try {
       const data = await roomAction('draw-oldmaid', { targetSeat, index, expectedRevision: g.revision });
       if (oldmaidEffectsActive()) {
-        const afterHand = state.me?.myOldMaidHand || [];
+        let afterHand = state.me?.myOldMaidHand || [];
         const afterIds = new Set(afterHand.map(card => card.id));
         // The server tells us exactly which card was drawn -- required because a draw that
         // immediately completes a pair removes that same card from the hand again before this
@@ -9695,6 +9706,7 @@
           }
           if (completesPair) {
             await oldmaidGlowAndRemovePair(removedCards);
+            afterHand = state.me?.myOldMaidHand || afterHand; // (도둑잡기 검토: the hand as it is now -- one drawn from me during the glow already gone, not the one just after my draw)
             oldmaidRenderMyHandFaces(afterHand);
           }
           if (drawnCard.rank === 'JOKER') oldmaidShowJokerTension();

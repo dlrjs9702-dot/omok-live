@@ -2419,6 +2419,9 @@ body.roomPlaying .oldmaidSeatCards .oldmaidCard.selectable:hover:not(:disabled),
 /* (도둑잡기 검토) my hand on the table itself, centred, in one row however many: each card over the last as much as it takes
    (--n set by app.js); on a PC the cards and the other's fan larger */
 body.roomPlaying .oldmaidHandDock{background:none}
+body.roomPlaying:has(#oldmaidPanel:not(.hidden)) .boardNote{top:var(--oldmaidNoteTop,22vh)}body.roomPlaying:has(#oldmaidPanel:not(.hidden)) .toast{top:var(--oldmaidToastTop,22vh)} /* (검토: never over the fan to draw from) */
+body.roomPlaying .oldmaidMyHeader{align-items:center;flex-wrap:nowrap;margin-bottom:4px}
+body.roomPlaying #oldmaidShuffleBtn{min-height:34px;padding:4px 12px;font-size:.82rem} /* (검토: small, in the heading's line -- not over the hand) */
 body.roomPlaying .oldmaidMyHandCards{flex-wrap:nowrap;justify-content:center;gap:0;background:none;border:0;padding:8px 4px}
 body.roomPlaying .oldmaidMyHandCards .oldmaidCard{--cw:80px;flex:0 0 var(--cw);width:var(--cw);height:calc(var(--cw) * 1.35);font-size:1.35rem}
 body.roomPlaying .oldmaidMyHandCards .oldmaidCard+.oldmaidCard{margin-left:min(6px,calc((100% - var(--cw) * var(--n)) / (var(--n) - 1)))}
