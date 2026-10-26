@@ -1131,7 +1131,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     ctx.beginPath(); ctx.moveTo(c, c - size * 0.075); ctx.lineTo(c - size * 0.045, c + size * 0.04); ctx.lineTo(c + size * 0.045, c + size * 0.04); ctx.closePath();
     ctx.fillStyle = '#e8443c'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
     ctx.restore();
-    ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,250,240,.95)'; ctx.stroke();
+    // (U 섬 화면 종이: a thick paper rim with a thin brown line, as the island's notes)
+    ctx.beginPath(); ctx.arc(c, c, c - 4, 0, TAU); ctx.lineWidth = 7; ctx.strokeStyle = '#fff6e3'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(c, c, c - 1, 0, TAU); ctx.lineWidth = 1.5; ctx.strokeStyle = '#8a6a4a'; ctx.stroke();
     const north = -Math.PI / 2 + turn; const nx = c + Math.cos(north) * (c - 13); const nz = c + Math.sin(north) * (c - 13); // north on the rim
     ctx.beginPath(); ctx.arc(nx, nz, 10, 0, TAU); ctx.fillStyle = 'rgba(255,250,240,.95)'; ctx.fill();
     ctx.font = `900 ${Math.round(size / 13)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; ctx.fillStyle = '#b3261e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { post, get, shopper, buyAndEquip, expectNoScriptError, spaceOn, pressFishArrows } = require('./skin-support');
+const { paperLooks } = require('./island-paper');
 
 // 게임 아일랜드: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈춘다.
 // v1.9.7부터 일반 사용자에게 기존 로비 전환 UI는 없고, 계정 메뉴는 관리자 창(관리자만)·내 정보·접속 종료만 둔다. PC 전용.
@@ -600,6 +601,23 @@ test('게임 아일랜드 채팅 창: 머리로 옮기고 모서리로 크기, �
   expect([Math.round(corner.x - stage.x), Math.round(corner.y - stage.y)]).toEqual([0, 0]);
   await page.locator('#islandChatHome').click(); expect(near(await box(), home)).toBe(true);
   expect(await page.evaluate(() => localStorage.getItem('gc.islandChatBox'))).toBe(null);
+  await expectNoScriptError(page); await a.context.close();
+});
+
+// U 섬 화면 테두리도 종이 (gamecenter-notes docs/island-hud-paper-20261026.md): the island's buttons and notes are paper,
+// their text 4.5:1 or better; the chat panel too (its see-through kept)
+test('섬 화면 종이: 메뉴·채팅·가방·사진·대회 띠·안내·승강장·소원·꾸미기 단추가 종이색, 글자 대비 4.5 이상', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const a = await intoPlaza(browser, request, '종이화면'); const { page } = a;
+  const looks = await paperLooks(page, ['gameMenuBtn', 'islandChatTab', 'islandBagTab', 'islandPhotoTab', 'contestBar', 'plazaHint', 'starWishBtn', 'trainMainBtn', 'homeEditBtn']);
+  for (const l of looks) { expect(l.paper, JSON.stringify(l)).toBe(true); expect(l.contrast, JSON.stringify(l)).toBeGreaterThanOrEqual(4.5); }
+  // (the pictures before 「채팅」·「가방」 widen them: neighbours never overlap)
+  for (const [l, r] of [['#gameMenuBtn', '#islandChatTab'], ['#islandBagTab', '#islandPhotoTab']]) { const a1 = await page.locator(l).boundingBox(); const b1 = await page.locator(r).boundingBox(); expect(a1.x + a1.width, `${l} ${r}`).toBeLessThanOrEqual(b1.x); }
+  await page.evaluate(() => document.getElementById('islandMessengerTab').classList.remove('hidden'));
+  { const a1 = await page.locator('#islandChatTab').boundingBox(); const b1 = await page.locator('#islandMessengerTab').boundingBox(); expect(a1.x + a1.width).toBeLessThanOrEqual(b1.x); }
+  await page.evaluate(() => document.getElementById('islandMessengerTab').classList.add('hidden'));
+  await page.locator('#islandChatTab').click();
+  expect((await page.locator('#islandChatPanel').evaluate((el) => getComputedStyle(el).backgroundColor)).replace(/\s/g, '')).toMatch(/^rgba\(255,246,227,/);
   await expectNoScriptError(page); await a.context.close();
 });
 

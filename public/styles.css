@@ -1580,17 +1580,23 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .recordsDialog.donationDialog{width:min(92vw,460px)}.donationMine{margin:4px 0 10px;font-weight:850;color:#fde68a}
 .donationRanking{display:grid;gap:6px;margin-bottom:8px}.donationRow{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;border-radius:12px;background:#0f172a;border:1px solid #263246;font-size:.86rem}.donationRow.me{border-color:#60a5fa}
 .donationForm{display:grid;gap:8px;margin-top:10px}.donationForm input{padding:10px 12px;border-radius:12px;background:#0f172a;color:#f8fafc;border:1px solid #334155}.donationQuick{display:flex;gap:6px}
-.islandChatTab{position:absolute;left:14px;top:14px;z-index:3;padding:7px 14px;border-radius:999px;background:rgba(15,23,42,.82);color:#f8fafc;font-weight:850;border:1px solid #334155}
+.islandChatTab{position:absolute;left:14px;top:14px;z-index:3;padding:7px 14px;border-radius:999px} /* (U: its paper is .isle-pill, its picture before it) */
+#islandChatTab::before{content:"💬 "}#islandMessengerTab::before{content:"✉ "}#islandBagTab::before{content:"👜 "}#islandPhotoTab::before{content:"📷 "}
 .islandChatTab.unread::after{content:'';display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:#f87171;vertical-align:middle}
-.islandChatPanel{--island-chat-alpha:.8;position:absolute;left:14px;top:58px;z-index:3;width:min(360px,40%);height:min(46%,420px);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:rgba(15,23,42,var(--island-chat-alpha));border:1px solid rgba(51,65,85,var(--island-chat-alpha));color:#e5e7eb}
+.islandChatPanel{--island-chat-alpha:.8;position:absolute;left:14px;top:58px;z-index:3;width:min(360px,40%);height:min(46%,420px);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:rgba(255,246,227,var(--island-chat-alpha));border:1px solid rgba(217,195,160,var(--island-chat-alpha));color:var(--isle-ink);box-shadow:0 8px 22px rgba(74,56,40,calc(var(--island-chat-alpha) * .3))} /* (U: paper, its see-through kept) */
+.islandChatPanel .islandChatHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+.islandChatPanel .chatMessageHead strong,.islandChatPanel .chatMessageBody time{color:var(--isle-soft)}
+.islandChatPanel .chatMessageText{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+.islandChatPanel .chatMessage.mine .chatMessageText{background:#f0dcb6;border-color:#d4b98c}
+.islandChatPanel .chatMessage.system{color:var(--isle-soft)}
 .islandChatHead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;cursor:move;touch-action:none;user-select:none}.islandChatHead strong{font-size:.86rem}.islandChatHead button,.islandChatHead input{cursor:pointer}
-.islandChatGrip{position:absolute;right:3px;bottom:3px;width:20px;height:20px;cursor:nwse-resize;touch-action:none;border-right:3px solid rgba(148,163,184,.8);border-bottom:3px solid rgba(148,163,184,.8);border-bottom-right-radius:10px}
-body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:.72rem;color:#94a3b8}.islandChatAlpha input{width:84px}
+.islandChatGrip{position:absolute;right:3px;bottom:3px;width:20px;height:20px;cursor:nwse-resize;touch-action:none;border-right:3px solid var(--isle-tag);border-bottom:3px solid var(--isle-tag);border-bottom-right-radius:10px}
+body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:.72rem;color:var(--isle-soft)}.islandChatAlpha input{width:84px}
 .islandChatMessages{flex:1;min-height:0;overflow:auto;background:transparent!important}
-.islandChatForm{position:absolute;left:50%;bottom:64px;z-index:3;width:min(520px,70%);transform:translateX(-50%)}.islandChatForm input{width:100%;padding:11px 14px;border-radius:14px;background:rgba(15,23,42,.92);color:#f8fafc;border:1px solid #60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+.islandChatForm{position:absolute;left:50%;bottom:64px;z-index:3;width:min(520px,70%);transform:translateX(-50%)}.islandChatForm input{width:100%;padding:11px 14px;border-radius:14px;background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-tag);box-shadow:0 0 0 3px rgba(138,106,74,.25)}.islandChatForm input::placeholder{color:var(--isle-soft)}
 .plazaStage:focus-visible{box-shadow:0 0 0 3px #60a5fa,0 24px 70px rgba(0,0,0,.28)}
 .plazaStage canvas.plazaCanvas{display:block;width:100%;height:100%}
-.plazaHint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:rgba(255,250,240,.95);border:3px solid #8a6a4a;color:#4a3828;font-weight:950;font-size:1.1rem;letter-spacing:.03em;box-shadow:0 8px 24px rgba(74,56,40,.28);pointer-events:none;white-space:nowrap}
+.plazaHint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%) rotate(-1deg);padding:12px 22px 10px;font-weight:950;font-size:1.1rem;letter-spacing:.03em;pointer-events:none;white-space:nowrap} /* (U: an .isle-tape note) */
 .plazaStage .lobbyInvitations{position:absolute;z-index:2;top:14px;right:14px;width:min(380px,40%)}
 .recordsDialog.plazaDialog{width:min(1120px,94vw);max-height:90vh}
 .plazaDialogBody{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));align-items:start}
@@ -1712,19 +1718,22 @@ body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint
 .islandPhotoCell b { font-size: 2.4rem; line-height: 56px; }
 .islandPhotoCell.unfound b { filter: grayscale(1); opacity: 0.35; }
 #islandDexBtn.selected, #islandPhotoBtn.selected { outline: 2px solid #60a5fa; }
-.islandPhotoTab { top: auto; bottom: 14px; left: 86px; }
+.islandPhotoTab { top: auto; bottom: 14px; left: 116px; } /* (U: after 「👜 가방」 with its picture) */
+/* (U: a phone's bottom row keeps its places -- the hint's pill sits between -- so 가방·사진 without their pictures there) */
+body.touchIsland #islandBagTab::before, body.touchIsland #islandPhotoTab::before { content: none; }
+body.touchIsland .islandPhotoTab { left: 86px; }
 
 /* v1.10.48: visible train actions, beside the keyboard hint. */
 .trainControls{position:absolute;z-index:5;left:50%;bottom:82px;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap}
-.trainControls .primary{background:#2563eb;color:#f8fafc;font-size:1rem;padding:13px 22px;box-shadow:0 4px 16px rgba(0,0,0,.28)}
+.trainControls button{font-size:1rem;padding:13px 22px}
 body:has(#plazaDialog[open]) .trainControls,body.photoMode .trainControls{display:none}
 
 .skinTitle.selected{background:#1e293b;color:#f8fafc;outline:2px solid #60a5fa;outline-offset:1px}
 
 .lookFaceThumb{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none}
 /* v1.10.62 모바일 아일랜드: on a touch-only screen a stick to walk (bottom left, above 가방·사진) and the hint as the action button (= Space) bottom right, both under a thumb */
-.islandStick { display: none; position: absolute; left: 14px; bottom: 70px; z-index: 3; width: 120px; height: 120px; border-radius: 50%; background: rgba(15, 23, 42, .45); border: 1px solid rgba(148, 163, 184, .45); touch-action: none; }
-.islandStick span { position: absolute; left: 50%; top: 50%; width: var(--stick-knob, 52px); height: var(--stick-knob, 52px); transform-origin: center; translate: -50% -50%; border-radius: 50%; background: rgba(248, 250, 252, .85); box-shadow: 0 4px 12px rgba(0, 0, 0, .35); pointer-events: none; }
+.islandStick { display: none; position: absolute; left: 14px; bottom: 70px; z-index: 3; width: 120px; height: 120px; border-radius: 50%; background: rgba(255, 246, 227, .7); border: 1px solid var(--isle-line); box-shadow: 0 4px 12px rgba(74, 56, 40, .25); touch-action: none; } /* (U: paper, see-through) */
+.islandStick span { position: absolute; left: 50%; top: 50%; width: var(--stick-knob, 52px); height: var(--stick-knob, 52px); transform-origin: center; translate: -50% -50%; border-radius: 50%; background: rgba(138, 106, 74, .85); border: 2px solid var(--isle-paper); box-shadow: 0 4px 12px rgba(0, 0, 0, .35); pointer-events: none; }
 body.touchIsland .islandStick { display: block; }
 body.touchIsland .plazaHint { pointer-events: auto; cursor: pointer; z-index: 3; left: auto; right: 14px; bottom: 70px; transform: none; max-width: calc(100% - 170px); overflow: hidden; text-overflow: ellipsis; }
 body.photoMode .islandStick { visibility: hidden !important; }
@@ -1744,9 +1753,22 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 
 /* v1.10.63 메뉴: the ☰ button where the 채팅 tab was (the tab moves right), and the menu window (Esc) */
 #islandChatTab { left: 62px; }
-.islandMessengerTab { left: 132px; } /* 메신저 단독 창: opens its own window */
+.islandMessengerTab { left: 164px; } /* 메신저 단독 창: opens its own window */
 .gameMenuBtn { padding: 7px 12px; }
 .gameMenuDialog { width: min(360px, 92vw); }
+/* (U: on the island the menu is paper too -- the game hall keeps its own look) */
+body.plazaMode .gameMenuDialog { background: var(--isle-paper); color: var(--isle-ink); border: 1px solid var(--isle-line); box-shadow: 0 10px 28px rgba(74, 56, 40, .3); }
+body.plazaMode .gameMenuDialog .recordsDialogHead { background: none; color: var(--isle-ink); border-bottom: 1px dashed var(--isle-line); }
+body.plazaMode .gameMenuDialog h2, body.plazaMode .gameMenuDialog h3, body.plazaMode .gameMenuDialog label { color: var(--isle-ink); }
+body.plazaMode .gameMenuDialog .ghost, body.plazaMode .gameMenuDialog .secondary { background: #fffaf0; color: var(--isle-ink); border: 1px solid var(--isle-line); }
+body.plazaMode .gameMenuDialog .ghost:hover, body.plazaMode .gameMenuDialog .secondary:hover { background: var(--isle-hover); }
+body.plazaMode .gameMenuDialog select { background: #fffdf6; color: var(--isle-ink); border: 1px solid var(--isle-line); }
+body.plazaMode .gameMenuDialog .homeAppHint { color: var(--isle-soft); }
+body.plazaMode .gameMenuSettings { background: #fffaf0; border-color: var(--isle-line); }
+body.plazaMode .gameMenuSettings h3 { color: var(--isle-ink); }
+body.plazaMode .gameMenuThemes label { border-color: var(--isle-line); background: #fffdf6; }
+body.plazaMode .gameMenuThemes label:has(input:checked) { border-color: var(--isle-tag); background: #f0dcb6; }
+body.plazaMode .gameMenuThemes input { accent-color: var(--isle-tag); }
 .gameMenuList { display: grid; gap: 10px; }
 .gameMenuList > button { width: 100%; }
 .gameMenuSettings { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: #0f172a; border: 1px solid #273449; }
@@ -1784,6 +1806,13 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
    windows follow in 2·3단계) */
 :root{--isle-paper:#fff6e3;--isle-ink:#5a4632;--isle-line:#d9c3a0;--isle-soft:#7d6852;--isle-tag:#8a6a4a;--isle-hover:#f7e7c6}
 .isle-paper{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:22px;box-shadow:0 10px 28px rgba(74,56,40,.22)}
+/* U 섬 화면 테두리도 종이 (gamecenter-notes docs/island-hud-paper-20261026.md): the 「잡초 +1」 note is the measure --
+   .isle-pill a button always there (paper pill, pressed 1px in), .isle-tape a note that comes and goes (masking tape on
+   top, tilted a touch) */
+.isle-pill{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:999px;box-shadow:0 4px 12px rgba(74,56,40,.25);font-weight:850}
+.isle-pill:hover{background:var(--isle-hover)}.isle-pill:active{transform:translateY(1px);background:#f0dcb6;box-shadow:0 2px 6px rgba(74,56,40,.25)}
+.isle-tape{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:4px;box-shadow:0 8px 18px rgba(60,40,20,.3)}
+.isle-tape::before{content:"";position:absolute;left:50%;top:-8px;width:64px;height:16px;margin-left:-32px;background:rgba(242,181,68,.55);transform:rotate(3deg);pointer-events:none}
 .isle-tag{display:inline-block;padding:4px 14px;border-radius:999px;background:var(--talk-tag,var(--isle-tag));color:#fff;font-weight:800}
 .isle-choice{display:block;width:100%;min-height:44px;text-align:left;padding:8px 14px;border-radius:14px;border:1px solid var(--isle-line);background:#fffaf0;color:var(--isle-ink);font-weight:700}
 @keyframes islePop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
@@ -1795,7 +1824,7 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
    arrows above them, and while they show the stick, 걷기·뛰기·상호작용·돌리기 and the bite's hint step aside) */
 body.islandFishing .islandStick,body.islandFishing .islandCtl{visibility:hidden !important;pointer-events:none}
 body.islandFishing .plazaHint{display:none}
-.fishArrows{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:5;display:grid;gap:10px;justify-items:center;padding:14px 18px;border-radius:18px;background:rgba(255,250,240,.95);border:3px solid #8a6a4a;box-shadow:0 8px 24px rgba(74,56,40,.28);max-width:calc(100% - 24px)}
+.fishArrows{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:5;display:grid;gap:10px;justify-items:center;padding:14px 18px;border-radius:18px;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 10px 28px rgba(74,56,40,.28);max-width:calc(100% - 24px)}
 .fishArrows.hidden{display:none}
 .fishArrowSeq{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 .fishArrowSeq span{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#efe3cf;color:#4a3828;font-weight:950;font-size:1.3rem}
@@ -1814,7 +1843,7 @@ body.islandFishing .plazaHint{display:none}
 @keyframes fishNote{0%,70%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.fishArrows.wrong{animation:none}}
 .fishArrowPad{display:none;gap:10px}
-.fishArrowPad button{width:56px;height:56px;border-radius:14px;font-size:1.5rem;font-weight:950}
+.fishArrowPad button{width:56px;height:56px;border-radius:14px;font-size:1.5rem;font-weight:950;background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 2px 0 var(--isle-line)}.fishArrowPad button:active{transform:translateY(1px);background:#f0dcb6;box-shadow:none}
 @media (pointer:coarse){.fishArrowPad{display:flex}}
 .plazaDialog.mapMode{width:96vw;max-height:96dvh}
 .plazaDialog.mapMode .islandMapCard canvas{width:100%;height:calc(96dvh - 120px);max-height:none;touch-action:none;cursor:grab}
@@ -1875,10 +1904,11 @@ body.islandFishing .plazaHint{display:none}
 /* v1.10.67 조이스틱 위치·크기: while adjusting, the stick is outlined and a bar at the top sizes it (app.js applyStick sets
    its place and size inline, kept per device) */
 body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; cursor: move; }
-.stickEditBar { position: absolute; z-index: 6; top: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; width: min(94%, 440px); padding: 8px 10px; border-radius: 14px; background: rgba(15, 23, 42, .92); border: 1px solid #334155; color: #e2e8f0; font-size: .82rem; font-weight: 800; }
-.stickEditBar span { flex: 1 0 100%; text-align: center; color: #fde68a; }
+.stickEditBar { position: absolute; z-index: 6; top: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; width: min(94%, 440px); padding: 8px 10px; border-radius: 14px; background: var(--isle-paper); border: 1px solid var(--isle-line); color: var(--isle-ink); box-shadow: 0 8px 22px rgba(74, 56, 40, .25); font-size: .82rem; font-weight: 800; }
+.stickEditBar span { flex: 1 0 100%; text-align: center; color: var(--isle-ink); }
+.stickEditBar .ghost { background: #fffaf0; color: var(--isle-ink); border: 1px solid var(--isle-line); }
 .stickEditBar label { display: flex; align-items: center; gap: 6px; flex: 1; }
-.stickEditBar input[type=range] { flex: 1; accent-color: #facc15; }
+.stickEditBar input[type=range] { flex: 1; accent-color: var(--isle-tag); }
 
 /* v1.10.68 순발력 게임 (public/reflex): a portrait game frame over the whole screen, centred on a PC. It stays dark in both
    themes, like the games' own canvases (colours here are outside tools/theme-light.js's palette on purpose) */
@@ -2043,17 +2073,17 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 
 /* v1.10.84 조작 배치: on a touch screen the right hand has 상호작용 · 걷기 · 뛰기 (the left the stick); each can be moved and
    sized (메뉴 → 조작 배치), kept on this device. Defaults: 상호작용 biggest, bottom right; 걷기 above it, 뛰기 to its left. */
-.islandCtl { display: none; position: absolute; z-index: 3; align-items: center; justify-content: center; border-radius: 50%; padding: 0; background: rgba(15, 23, 42, .55); color: #f8fafc; border: 1px solid rgba(148, 163, 184, .5); font-size: .78rem; font-weight: 900; line-height: 1.1; touch-action: none; user-select: none; -webkit-user-select: none; }
+.islandCtl { display: none; position: absolute; z-index: 3; align-items: center; justify-content: center; border-radius: 50%; padding: 0; background: rgba(255, 246, 227, .78); color: var(--isle-ink); border: 1px solid var(--isle-line); box-shadow: 0 4px 12px rgba(74, 56, 40, .3); font-size: .78rem; font-weight: 900; line-height: 1.1; touch-action: none; user-select: none; -webkit-user-select: none; }
 body.touchIsland .islandCtl { display: flex; }
-.islandActBtn { right: 18px; bottom: 70px; width: 78px; height: 78px; background: rgba(37, 99, 235, .72); border-color: rgba(191, 219, 254, .7); font-size: .82rem; }
+.islandActBtn { right: 18px; bottom: 70px; width: 78px; height: 78px; background: rgba(255, 246, 227, .9); border: 2px solid var(--isle-tag); font-size: .82rem; } /* (U: paper -- the main one a stronger edge) */
 .islandWalkBtn { right: 30px; bottom: 160px; width: 58px; height: 58px; }
 .islandRunBtn { right: 108px; bottom: 66px; width: 58px; height: 58px; }
 .islandBikeBtn { right: 108px; bottom: 140px; width: 58px; height: 58px; font-size: 1.4rem; } /* 자전거 */
-.islandBikeBtn[aria-pressed="true"] { background: rgba(16, 185, 129, .75); }
+.islandBikeBtn[aria-pressed="true"] { background: #f0dcb6; box-shadow: 0 0 0 3px rgba(16, 150, 100, .7); } /* (U: on -- darker paper and a ring) */
 body.touchIsland .islandCtl.islandBikeBtn.hidden { display: none; }
-.islandTurnBtn { right: 108px; bottom: 210px; width: 58px; height: 58px; font-size: .85rem; background: rgba(37, 99, 235, .7); } /* 2회차 11: 잡은 가구 돌리기 */
+.islandTurnBtn { right: 108px; bottom: 210px; width: 58px; height: 58px; font-size: .85rem; } /* 2회차 11: 잡은 가구 돌리기 */
 body.touchIsland .islandCtl.islandTurnBtn.hidden { display: none; }
-.islandRunBtn.on, .islandRunBtn:active { background: rgba(220, 38, 38, .75); }
+.islandRunBtn.on, .islandRunBtn:active { background: #f0dcb6; box-shadow: 0 0 0 3px rgba(200, 50, 40, .7); }
 body.photoMode .islandCtl { visibility: hidden !important; }
 body.stickEdit .islandCtl { outline: 2px dashed #facc15; outline-offset: 3px; cursor: move; }
 body.stickEdit .ctlSelected { outline: 3px solid #facc15 !important; }
@@ -2289,7 +2319,7 @@ body.roomPlaying .gostopFelt .gostopSeat{grid-template-columns:minmax(0,1fr) aut
 body.roomPlaying .gostopFelt .gostopSeatHead{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.roomPlaying .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}
 /* A4 주말 섬 대회: the bar over the island view */
-.contestBar{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:6;max-width:calc(100% - 200px);padding:6px 14px;border-radius:999px;background:rgba(15,23,42,.82);color:#fde68a;font-weight:800;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none}
+.contestBar{position:absolute;left:50%;top:16px;transform:translateX(-50%) rotate(1deg);z-index:6;max-width:calc(100% - 200px);padding:10px 16px 8px;font-weight:800;font-size:.86rem;text-align:center;pointer-events:none} /* (U: an .isle-tape note -- it wraps, the tape not cut off) */
 @media(max-width:640px){.contestBar{top:56px;max-width:calc(100% - 24px);font-size:.76rem}}
 /* A5 공지 예약 */
 .noticeQueue{display:grid;gap:4px;margin:6px 0}.noticeQueueRow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:#fde68a}
@@ -2388,7 +2418,7 @@ body.herosurvOpen { overflow: hidden; }
 .homeLots .selected,.homeChoice .selected{outline:2px solid #60a5fa}
 .homeChoice .goodBuy{flex-wrap:wrap;gap:6px}
 .homeEditPad{display:grid;grid-template-columns:repeat(5,minmax(44px,1fr));gap:6px}
-.homeEditBtn{position:absolute;z-index:3;top:12px;right:12px;padding:8px 16px;border-radius:999px;background:rgba(37,99,235,.8);color:#fff;border:1px solid rgba(191,219,254,.7)}
+.homeEditBtn{position:absolute;z-index:3;top:12px;right:12px;padding:8px 16px} /* (U: .isle-pill) */
 .homeEditBtn.hidden{display:none}
 /* 묶음 2 가구 창고: the piece in 3D above, the list under it */
 .furnitureStorage{display:grid;gap:8px}
