@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { post } = require('./skin-support');
+const { paperLooks } = require('./island-paper');
 
 // v1.10.62 모바일 아일랜드 (IDEAS 2026-10-11): on a touch-only phone the island opens (no classic lobby), a stick walks,
 // the hint near a facility is the button that does what Space does, and the chat tab opens the input. 모바일 전용.
@@ -250,4 +251,9 @@ test('모바일 채팅 창: 손가락으로 모서리 크기·머리 옮기기, 
   const stage = await page.locator('#plazaStage').boundingBox(); const corner = await box();
   expect([Math.round(stage.x + stage.width - corner.x - corner.width), Math.round(stage.y + stage.height - corner.y - corner.height)]).toEqual([0, 0]);
   await page.locator('#islandChatHome').tap(); expect(near(await box(), home)).toBe(true);
+  // U 섬 화면 종이 (docs/island-hud-paper-20261026.md): the phone's buttons and controls are paper, their text 4.5:1 or better
+  const looks = await paperLooks(page, ['gameMenuBtn', 'islandChatTab', 'islandBagTab', 'islandPhotoTab', 'plazaHint', 'islandActBtn', 'islandWalkBtn', 'islandRunBtn', 'islandStick']);
+  for (const l of looks) { expect(l.paper, JSON.stringify(l)).toBe(true); if (l.id !== 'islandStick') expect(l.contrast, JSON.stringify(l)).toBeGreaterThanOrEqual(4.5); }
+  for (const id of ['#islandActBtn', '#islandWalkBtn', '#islandRunBtn']) { const b = await page.locator(id).boundingBox(); expect(Math.min(b.width, b.height), id).toBeGreaterThanOrEqual(44); }
+  { const b1 = await page.locator('#islandBagTab').boundingBox(); const p1 = await page.locator('#islandPhotoTab').boundingBox(); expect(b1.x + b1.width).toBeLessThanOrEqual(p1.x); } // (neighbours apart)
 });

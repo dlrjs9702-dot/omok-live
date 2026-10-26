@@ -102,22 +102,22 @@
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
-      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaRainbow" class="plazaRainbow" aria-hidden="true"></div><div id="contestBar" class="contestBar hidden" role="status" aria-live="polite"></div><div id="plazaStar" class="plazaStar hidden" aria-hidden="true"></div><button id="starWishBtn" type="button" class="primary starWishBtn hidden">🌠 소원 빌기</button><div id="trainControls" class="trainControls hidden"><button id="trainMainBtn" class="primary" type="button"></button><button id="trainMenuBtn" class="ghost hidden" type="button">승강장 메뉴</button></div><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="fishArrows" class="fishArrows hidden" aria-label="입질! 화살표를 순서대로"><div class="fishArrowSeq"></div><div class="fishArrowTime"><i></i></div><p class="fishArrowNote" role="status">틀렸어요! 처음부터</p><div class="fishArrowPad"><button type="button" data-dir="left" aria-label="왼쪽">←</button><button type="button" data-dir="up" aria-label="위">↑</button><button type="button" data-dir="down" aria-label="아래">↓</button><button type="button" data-dir="right" aria-label="오른쪽">→</button></div></div><div id="questTracker" class="questTracker hidden" role="status"></div>
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaRainbow" class="plazaRainbow" aria-hidden="true"></div><div id="contestBar" class="contestBar isle-tape hidden" role="status" aria-live="polite"></div><div id="plazaStar" class="plazaStar hidden" aria-hidden="true"></div><button id="starWishBtn" type="button" class="isle-pill starWishBtn hidden">🌠 소원 빌기</button><div id="trainControls" class="trainControls hidden"><button id="trainMainBtn" class="isle-pill" type="button"></button><button id="trainMenuBtn" class="isle-pill hidden" type="button">승강장 메뉴</button></div><div id="plazaHint" class="plazaHint isle-tape hidden" role="status"></div><div id="fishArrows" class="fishArrows hidden" aria-label="입질! 화살표를 순서대로"><div class="fishArrowSeq"></div><div class="fishArrowTime"><i></i></div><p class="fishArrowNote" role="status">틀렸어요! 처음부터</p><div class="fishArrowPad"><button type="button" data-dir="left" aria-label="왼쪽">←</button><button type="button" data-dir="up" aria-label="위">↑</button><button type="button" data-dir="down" aria-label="아래">↓</button><button type="button" data-dir="right" aria-label="오른쪽">→</button></div></div><div id="questTracker" class="questTracker hidden" role="status"></div>
         <div id="plazaError" class="plazaError hidden" role="alert"><strong>게임 아일랜드를 불러오지 못했습니다.</strong><button id="plazaRetry" class="secondary" type="button">다시 시도</button></div>
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <!-- v1.10.63: no account bar -- Esc (or this button, on a phone) opens the menu (#gameMenuDialog) -->
-        <button id="gameMenuBtn" type="button" class="islandChatTab gameMenuBtn" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴 (Esc)">☰</button>
-        <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
-        <button id="islandMessengerTab" class="islandChatTab islandMessengerTab hidden" type="button" title="새 창으로 열려요">메신저</button><!-- 메신저 단독 창: its own window (/messenger) -->
-        <button id="islandBagTab" class="islandChatTab islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
-        <button id="islandPhotoTab" class="islandChatTab islandPhotoTab" type="button">사진</button>
+        <button id="gameMenuBtn" type="button" class="islandChatTab isle-pill gameMenuBtn" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴 (Esc)">☰</button>
+        <button id="islandChatTab" class="islandChatTab isle-pill" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
+        <button id="islandMessengerTab" class="islandChatTab isle-pill islandMessengerTab hidden" type="button" title="새 창으로 열려요">메신저</button><!-- 메신저 단독 창: its own window (/messenger) -->
+        <button id="islandBagTab" class="islandChatTab isle-pill islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
+        <button id="islandPhotoTab" class="islandChatTab isle-pill islandPhotoTab" type="button">사진</button>
         <div id="islandStick" class="islandStick" aria-hidden="true"><span></span></div>
         <!-- v1.10.79 이동 3단계: tapped = 느리게/보통 걷기, held = 뛰기 (Shift on a PC) -->
         <!-- v1.10.84 조작 배치: the right hand -- 상호작용 (= SPACE), 걷기 (느리게/보통), 뛰기 (누르는 동안) -- each moved and sized like the stick -->
         <button id="islandActBtn" class="islandCtl islandActBtn" type="button" aria-label="상호작용 (SPACE)">상호<br>작용</button>
         <button id="islandWalkBtn" class="islandCtl islandWalkBtn" type="button" aria-label="걸음 바꾸기 (느리게·보통)">걷기</button>
         <button id="islandRunBtn" class="islandCtl islandRunBtn" type="button" aria-label="누르고 있는 동안 뛰기">뛰기</button>
-        <button id="homeEditBtn" class="homeEditBtn hidden" type="button">꾸미기</button>
+        <button id="homeEditBtn" class="homeEditBtn isle-pill hidden" type="button">꾸미기</button>
         <button id="islandTurnBtn" class="islandCtl islandTurnBtn hidden" type="button" aria-label="잡은 가구 돌리기 (R)">돌리기</button>
         <button id="islandBikeBtn" class="islandCtl islandBikeBtn hidden" type="button" aria-label="자전거 타기·내리기 (B)" aria-pressed="false">🚲</button>
         <!-- v1.10.67 조이스틱 조정: drag the stick to move it, the slider sizes it (kept on this device) -->
