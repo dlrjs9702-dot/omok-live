@@ -131,7 +131,10 @@
     if (info2.multiplier > 1) bits.push(`×${info2.multiplier}`);
     stats.textContent = bits.join(' · ');
     anchors.stats.set(seat, stats);
-    head.append(name, stats);
+    // G-고스톱ⓓ: the island face on the name tag (the same .seatFace as the other rooms' name cards)
+    const face = document.createElement('span'); face.className = 'seatFace'; face.setAttribute('aria-hidden', 'true');
+    const look = state.players?.[seat]?.face; if (look?.skin) face.style.setProperty('--skin', look.skin); if (look?.hair) face.style.setProperty('--hair', look.hair);
+    head.append(face, name, stats);
     if (g.status === 'playing' && info2.score > 0) {
       // Always-visible compact line: "8점 · 2고 · ×4 · 예상 3,200P" (박 is only known at the end).
       const estimate = document.createElement('small');
@@ -143,7 +146,9 @@
     if (!mine) {
       const hand = document.createElement('div');
       hand.className = 'gostopBacks';
+      hand.style.setProperty('--n', info2.handCount); /* (ⓓ: the backs fanned, each turned by its place) */
       for (let i = 0; i < info2.handCount; i += 1) hand.append(backEl('tiny', seatSkin));
+      [...hand.children].forEach((b, i) => b.style.setProperty('--i', i)); /* (only backs so far: each one's place in the fan) */
       anchors.backs.set(seat, hand);
       const count = document.createElement('small'); count.textContent = `손패 ${info2.handCount}장${info2.bombFlips ? ` · 폭탄 뒤집기 ${info2.bombFlips}` : ''}`;
       hand.append(count);
@@ -828,7 +833,7 @@
   const finalRect = id => plain(rectOf(elementsById.get(id)));
   function backsRect(before, seat, i) {
     const r = before.backs.get(seat) || plain(rectOf(anchors.backs.get(seat)));
-    return r ? { left: r.left + i * 10, top: r.top - 20, width: BASE_W, height: BASE_H } : null;
+    return r ? { left: r.left + r.width / 2 - BASE_W / 2 + i * 10, top: r.top - 20, width: BASE_W, height: BASE_H } : null; /* (ⓓ: from the fan's middle) */
   }
 
   async function doStep(run, step, next, me, before) {

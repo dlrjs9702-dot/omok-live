@@ -65,6 +65,9 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
       for (const sel of ['#gostopOpponents', '#gostopFloor', '#gostopMine', '#gostopHand']) {
         const b = await bottom(page, sel); expect(b, `${when} ${sel}`).not.toBeNull(); expect(b, `${when} ${sel} 화면 안`).toBeLessThanOrEqual(h + 1);
       }
+      // G-고스톱ⓓ: the other's hand count beside the fan is whole (not cut to 「손패 1」) and the speed pill clear of the fan
+      const cut = await page.evaluate(() => { const s = document.querySelector('#gostopOpponents .gostopBacks small'), seat = s?.closest('.gostopSeat'); if (!s) return 'none'; const r = s.getBoundingClientRect(), q = seat.getBoundingClientRect(); const fan = [...document.querySelectorAll('#gostopOpponents .gostopBacks .hwatuBack')].map(el => el.getBoundingClientRect()); const pill = document.querySelector('.gostopSpeedBtn')?.getBoundingClientRect(); const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; return [r.right <= q.right + 1 && s.scrollWidth <= s.clientWidth + 1, !fan.some(f => hit(f, r)), !pill || !fan.some(f => hit(f, pill))].join(); });
+      expect(cut, `${when} 상대 손패 수·속도 알약`).toBe('true,true,true');
       if (process.env.GOSTOP_SHOTS) await page.screenshot({ path: `${process.env.GOSTOP_SHOTS}/gostop-${w}-${when}.png` });
     };
     await check('start');

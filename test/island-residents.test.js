@@ -90,3 +90,15 @@ test('A-6 주민 대화 붙잡기: 창이 열린 동안 멈춤(갱신), 닫거�
   const t0 = t; for (; t < t0 + TALK_MAX + TALK_LEASE; t += 5000) r.keep(4, 'talk:a');
   assert.equal(r.snapshot()[4].hold, null); // never past TALK_MAX
 });
+
+test('주민 대화: 느린 화면이 몇 초 전 자리에서 붙잡으면 그 자리에 멈추고, 놓으면 그 자리에서 이어 걷는다', () => {
+  let t = 1_000_000;
+  const r = createIslandResidents({ now: () => t, random: () => 0 });
+  const seen = Npcs.at(5, t - 3000); // (where the talker's screen had them 3 s ago)
+  r.talk(5, 'talk:a', 0, 3000);
+  const h = r.snapshot()[5].hold; assert.ok(Math.hypot(h.x - seen.x, h.z - seen.z) < 1e-9);
+  t += 10_000; r.release('talk:a');
+  const s = r.snapshot()[5]; assert.equal(s.delay, 13_000);
+  const p = Npcs.residentAt(5, t, s); assert.ok(Math.hypot(p.x - seen.x, p.z - seen.z) < 1e-9); // on from there
+  r.talk(6, 'talk:b', 0, 60_000); assert.equal(r.snapshot()[6].hold.x, Npcs.at(6, t - 5000).x); // (never more than 5 s back)
+});

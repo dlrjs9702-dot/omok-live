@@ -2361,6 +2361,26 @@ body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n){transform:rotate(
   body.roomPlaying .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * .68 * -.65)} /* (ⓒ review: a month's cards two-thirds over each other -- eight months in two columns a side) */
   .pileNear{left:21px;padding:0 4px;font-size:.6rem} /* (ⓑ review: clear of the next stack's count) */
 }
+/* G-고스톱ⓓ 상대가 앉아 있게 (같은 주문서 4): the name tag with the island face, the hand's backs fanned (a played card
+   leaves from the fan's middle), the count beside it never cut; 뻑 a small pill over its month */
+body.roomPlaying .gostopFelt .gostopSeatHead{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
+body.roomPlaying .gostopFelt .gostopSeatHead>strong{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body.roomPlaying .gostopFelt .gostopSeatHead>:not(strong){flex:0 0 auto}
+body.roomPlaying .gostopFelt .gostopSeatHead .seatFace{width:24px;height:24px}
+body.roomPlaying .gostopFelt .gostopBacks{padding:4px 4px 0 10px}
+body.roomPlaying .gostopFelt .gostopBacks .hwatuBack{transform-origin:50% 110%;transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * 5deg))}
+body.roomPlaying .gostopFelt .gostopBacks .hwatu-tiny+.hwatu-tiny{margin-left:-19px}
+body.roomPlaying .gostopFelt .gostopBacks small{margin-left:24px;padding:1px 7px;border-radius:999px;background:rgba(0,0,0,.35);color:#e2e8f0;font-weight:800}
+body.roomPlaying .gostopFelt .gostopFloorGroup{position:relative}
+body.roomPlaying .gostopFelt .ppeokTag{bottom:auto;top:-9px;left:50%;transform:translateX(-50%);z-index:2;padding:1px 7px;border-radius:999px;background:#b3261e;color:#fff;font-size:.68rem;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+@media(max-width:640px){
+  body.roomPlaying .gostopFelt{padding-top:14px} /* (the speed pill on the frame clear of the other's fan) */
+  body.roomPlaying .gostopFelt .gostopSeatHead .seatFace{width:20px;height:20px}
+  body.roomPlaying .gostopFelt .gostopBacks .hwatu-tiny{width:22px;height:34px}
+  body.roomPlaying .gostopFelt .gostopBacks .hwatu-tiny+.hwatu-tiny{margin-left:-16px}
+  body.roomPlaying .gostopFelt .gostopBacks .hwatuBack{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * 4deg))}
+  body.roomPlaying .gostopFelt .gostopBacks small{margin-left:14px;padding:0 5px;font-size:.66rem}
+}
 body:not(.hwatuNames) .hwatu.hasArt .hwatuMonth,body:not(.hwatuNames) .hwatu.hasArt .hwatuBadge{display:none}
 body.hwatuNames .hwatu.hasArt .hwatuBadge{left:auto;right:2px;bottom:2px;padding:0 3px;border-radius:4px}
 @media(min-width:881px){body.roomPlaying .gostopFelt{--hh:clamp(64px,13vh,140px);--fh:clamp(52px,11vh,124px);--mh:clamp(34px,6.4vh,70px)}} /* (ⓑ: the taken stacks bigger too) */
@@ -2371,7 +2391,6 @@ body.hwatuNames .hwatu.hasArt .hwatuBadge{left:auto;right:2px;bottom:2px;padding
   body.roomPlaying .gostopFelt .gostopFloor{gap:6px 4px} /* (the felt now the screen's width: four months a row round the deck -- ⓒ) */
   #leaveRoomBtn{white-space:nowrap}
   body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.3)}
-  body.roomPlaying .gostopFelt .gostopSeat>.gostopBacks{max-width:44vw;overflow:hidden}
 }
 /* A3 G2-3: the floor cards a pointed hand card would take, the pointed (first-tapped) card raised, a card that would go to the floor */
 .gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;outline-offset:1px;box-shadow:0 0 16px rgba(250,204,21,.75)}

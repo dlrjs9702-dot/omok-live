@@ -47,7 +47,12 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   // (CI #278: a flyer went out of the swing's fan in the 450 ms before the net comes down on the slow runner, every try --
   // the crawlers and those on a trunk first, as island-tool-swing, and another one after a miss)
   const slow = (b) => (/^dragonfly/.test(b.species) ? 2 : /^butterfly|firefly/.test(b.species) ? 1 : 0);
+  // (CI #325: the page's frames seconds long -- the catch's answer (200) came after a try's 5 s wait, the next try then went
+  // for another insect, every try: an answer from the page is kept whenever it comes)
+  const answers = []; page.on('response', (r) => { if (r.url().includes('/api/island/insect/catch')) answers.push(r); });
   await expect.poll(async () => {
+    const late = answers.find((r) => r.status() === 200);
+    if (late) { caught = JSON.parse(await late.text()); target = { ...target, id: late.request().postDataJSON()?.id || caught.id }; return 200; }
     events = await eventsNow();
     const now = await insectsNow(); const t = now.find((o) => o.id === target.id);
     if (missed || slow(target) > 0) { const next = pick([...now].sort((p, q) => slow(p) - slow(q)), missed ? target.id : null); if (next) target = next; missed = false; }

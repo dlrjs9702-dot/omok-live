@@ -3860,7 +3860,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.178' });
+    return sendJson(res, 200, { ok: true, version: '1.10.179' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6717,11 +6717,11 @@ async function requestHandler(req, res) {
       return sendError(res, 409, 'RESIDENT_BUSY', other ? `지금은 ${other.name || '다른 분'}님과 이야기 중이에요.` : '지금은 다른 일로 바빠 보여요.');
     }
     if (topic && !state?.hold) return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.'); // (a choice only inside a talk still held)
-    const at = IslandNpcs.residentAt(n, nowMs(), state);
     // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
     const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
-    if (!pos || ![0, 1500, 3000, 4500].some((back) => reach(IslandNpcs.residentAt(n, nowMs() - back, state)))) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
-    if (!state?.hold) { islandEvents.residentTalk(n, who, Math.atan2(pos.x - at.x, pos.z - at.z)); residentsChanged(); }
+    const back = pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
+    if (back === undefined) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    if (!state?.hold) { const seen = IslandNpcs.residentAt(n, nowMs() - back, state); islandEvents.residentTalk(n, who, Math.atan2(pos.x - seen.x, pos.z - seen.z), back); residentsChanged(); } // (held where I reached them)
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
     const c = IslandCast.WALKERS[n]; const before = await pointStore.affinityOf(account); const level = IslandCast.levelOf(before[n] || 0); // (the words go by the level before this talk)
     const now = nowMs(); const phase = islandPhase((await pointStore.worldValue('time'))?.mode, now);
@@ -7843,7 +7843,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.178 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.179 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
