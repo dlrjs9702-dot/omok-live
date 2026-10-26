@@ -101,8 +101,9 @@ test('오델로: 새로고침 뒤 같은 좌석·판·차례, 관전자 유지, 
   state = await roomState(request, b.token);
   expect(state.game.status).toBe('finished');
   expect(state.me.seat).toBe('white');
-  await expect(b.page.locator('#sideNextRoundBtn')).toBeVisible(); // 데스크톱 재대결 버튼
-  await b.page.locator('#sideNextRoundBtn').click();
+  const again = b.page.locator('#boardOverlay .resultActions button', { hasText: '한 판 더' }); // 재대결은 결과 창의 「한 판 더」(G-틀④: 그동안 옆 칸 버튼은 숨김)
+  await expect(again).toBeVisible();
+  await again.click();
   await expect.poll(async () => (await roomState(request, a.token)).game.status).toBe('selecting');
   await expect(b.page.locator('#myActionTimer')).toBeHidden();
   for (const view of [a, b, watcher]) expect(view.errors).toEqual([]);
