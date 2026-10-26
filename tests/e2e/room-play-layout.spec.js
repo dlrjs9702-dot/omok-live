@@ -68,6 +68,11 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     const watcher = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
     expect((await api(request, '/api/rooms/join', watcher, { code })).status).toBe(200);
     await expect(page.locator('#boardNote')).toContainText('입장');
+    // G-틀② 이름표 판 둘레: my card (black) under the board, the other's above it, the name first
+    await expect(page.locator('#mySeatSpot #blackPlayer')).toHaveCount(1);
+    const [them, board, me] = await Promise.all(['#whitePlayer', '#canvasWrap', '#blackPlayer'].map((s) => page.locator(s).boundingBox()));
+    expect(them.y + them.height <= board.y + 1 && board.y + board.height <= me.y + 1, JSON.stringify([them, board, me])).toBe(true);
+    await expect(page.locator('#whitePlayer strong')).not.toHaveText('백');
     // my clock round my card (the black seat moves first), then the other's after my move
     await expect(page.locator('#blackPlayer .turnRing b')).toHaveText(/^\d:\d\d$/);
     expect((await api(request, '/api/room/move', black, { x: 7, y: 7 })).status).toBe(200);
@@ -89,6 +94,7 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
     await expect(page.locator('body')).not.toHaveClass(/roomPlaying/);
     if (w > 880) await expect(page.locator('#chatPanel')).toBeVisible(); // (G-틀①: the hand over, the panels back)
+    await expect(page.locator('#standardPlayers #blackPlayer')).toHaveCount(1); // (G-틀②: and my card back in the row)
     // G1-7: the result on the board with the way on
     await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
     await expect(page.locator('#boardOverlay .resultPoints')).toContainText('P');

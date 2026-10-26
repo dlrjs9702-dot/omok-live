@@ -2211,6 +2211,13 @@ body.roomPlaying .boardCard>.diceYutSection.throwing{opacity:1}
    the board, under the note, not over the quick words; on a phone the bar is one line and a seat's status one line */
 body.roomPlaying #myActionTimerLabel,body.roomPlaying #myActionTimerResult{display:none}
 body.roomPlaying .toast{top:calc(22vh + 48px);bottom:auto;max-width:min(440px,60vw);font-size:.88rem;padding:9px 16px;pointer-events:none} /* (over the board's upper part, small: a move goes through it) */
+/* G-틀② 이름표 판 둘레: mine under the board, the others above it; a game's own number on the card */
+.mySeatSpot{display:none}
+body.roomPlaying .mySeatSpot:not(:empty){display:flex;justify-content:center;margin:8px 0 4px}
+.mySeatSpot>.player,.mySeatSpot>.teamPlayer{width:min(520px,100%)}
+body.roomPlaying #standardPlayers .versus{display:none}
+body.roomPlaying #standardPlayers{display:flex;justify-content:center;gap:10px}body.roomPlaying #standardPlayers>.player{width:min(520px,100%)}
+.seatNum{margin-left:auto;padding:3px 9px;border-radius:999px;background:rgba(15,23,42,.6);border:1px solid #475569;color:#fde68a;font-size:.78rem;font-weight:900;white-space:nowrap}
 @media(max-width:640px){
   body.roomPlaying .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
   body.roomPlaying .roomBarTitle{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:6px}
