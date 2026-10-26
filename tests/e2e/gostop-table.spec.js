@@ -58,6 +58,12 @@ for (const count of [2, 3]) {
     expect(handCard.width).toBeGreaterThanOrEqual(80); // 손패는 클릭하기 편할 만큼 크다(기존 58px)
     const floorCard = await box(page, '#gostopFloor .hwatu');
     expect(floorCard.width).toBeGreaterThanOrEqual(70); // 바닥패도 테이블에 맞게 크다(기존 46px)
+    // G-고스톱ⓒ: 산은 바닥 한가운데, 바닥패는 그 둘레(산과 겹치지 않음)
+    const pile = await box(page, '#gostopDeck .deckPile');
+    expect(Math.abs(pile.x + pile.width / 2 - (floor.x + floor.width / 2))).toBeLessThan(floor.width * 0.04);
+    expect(pile.y + pile.height / 2).toBeGreaterThan(floor.y); expect(pile.y + pile.height / 2).toBeLessThan(floor.y + floor.height);
+    const floorCards = await page.locator('#gostopFloor .hwatu').evaluateAll(els => els.map(el => el.getBoundingClientRect()).map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })));
+    expect(floorCards.filter(r => r.x < pile.x + pile.width && r.x + r.width > pile.x && r.y < pile.y + pile.height && r.y + r.height > pile.y)).toHaveLength(0);
     expect(felt.width).toBeGreaterThan(1000); // 넓은 PC 화면에서는 테이블이 주인공
     const handBottom = (await box(page, '#gostopHand')).y + (await box(page, '#gostopHand')).height;
     expect(handBottom).toBeLessThanOrEqual(1080); // 손패까지 한 화면
