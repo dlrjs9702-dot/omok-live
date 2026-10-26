@@ -1867,7 +1867,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       let best = null; let bd = Infinity;
       for (const [, h] of insectShown) { if (h.flee) continue; const d = inFan(h.c.root.position.x, h.c.root.position.z, SWING_REACH + INSECT_HALF); if (d < bd) { bd = d; best = { insect: h.b.id }; } } // (3회차 1: met by its body's edge)
       if (!best) for (const { n, c, w } of wanderers) { if (!c.root.visible) continue; const d = inFan(w.x, w.z); if (d < bd) { bd = d; best = { resident: n }; } }
-      const m = me.root.position; lastSwing = { x: +m.x.toFixed(2), z: +m.z.toFixed(2), yaw: +me.root.rotation.y.toFixed(2), hit: best, near: [...insectShown].map(([id, h]) => ({ id, dx: +(h.c.root.position.x - m.x).toFixed(2), dz: +(h.c.root.position.z - m.z).toFixed(2) })).filter((o) => Math.hypot(o.dx, o.dz) < 4) }; // (the debug's)
+      const m = me.root.position; lastSwing = { t: Math.round(now), x: +m.x.toFixed(2), z: +m.z.toFixed(2), yaw: +me.root.rotation.y.toFixed(2), hit: best, near: [...insectShown].map(([id, h]) => ({ id, dx: +(h.c.root.position.x - m.x).toFixed(2), dz: +(h.c.root.position.z - m.z).toFixed(2) })).filter((o) => Math.hypot(o.dx, o.dz) < 4) }; // (the debug's)
       done(best);
     }, SWING_HIT_MS));
   }
