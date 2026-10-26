@@ -3442,7 +3442,7 @@
     const meta = document.createElement('p'); meta.className = 'lookMeta';
     const doneText=data.fixed?'이야기 끝':'이번 주 이야기 끝';
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
-    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '확인'; /* (Q: taking it on is 「할게요!」 on the ask's note -- this only closes) */ ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
     // v1.10.80 농부 부탁: a game step opens its round right here (GameLaunch, back to the island after); a paid round at the
     // goal is the step done -- then a word with the farmer hands it in

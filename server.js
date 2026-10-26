@@ -6285,7 +6285,8 @@ async function requestHandler(req, res) {
       // (Q) the offer's note -- the story, its first thing to do, what that step pays -- and a step handed in: its card
       // (a step's end a small stamp, the story's end a big one)
       const S = IslandQuests.STORIES[story];
-      const offer = r.offer ? { story, title: S.name, label: S.steps[r.step].label, reward: S.steps[r.step].reward, until: S.fixed ? null : '이번 주 안에' } : null;
+      const ask = S.steps[r.step]; const need = ask && !['visit', 'minigame'].includes(ask.kind) ? ask.need : 1;
+      const offer = r.offer ? { story, title: S.name, label: `${ask.label}${need > 1 ? ` ${need}개` : ''}`, reward: ask.reward, until: S.fixed ? null : '이번 주 안에' } : null;
       const finished = r.paid ? { title: `${S.name} · ${S.steps[r.step].label}`, reward: r.reward || 0, step: r.step + 1, steps: S.steps.length, whole: Boolean(r.done) } : null;
       return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, offer, finished, accepted: Boolean(r.accepted), fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: solvedToday ? `${r.say} …어? 오늘 문제는 벌써 풀었네요! 다시 말을 걸어 주세요.` : r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });

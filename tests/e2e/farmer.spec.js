@@ -27,6 +27,10 @@ test('농부: 말 걸기 → 도와줄게요 → 두더지 잡기, 밭·팻말·
   await page.locator('#plazaStage').focus();
   await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('두더지', { timeout: 15000 }); // the talk's answer (a busy runner)
+  // (Q 부탁 받기: the ask's note -- what, what it pays -- and 「할게요!」 / 「다음에요」; it starts with 할게요)
+  await expect(page.locator('#plazaDialog .questNote')).toContainText('받는 것');
+  await page.locator('#plazaDialog').getByRole('button', { name: '할게요!' }).click();
+  await expect(page.locator('#questTracker .questLine')).toHaveCount(1);
   await page.locator('#plazaDialog').getByRole('button', { name: '도와줄게요' }).click();
   await expect(page.locator('#reflexView')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#plazaDialog')).toBeHidden();
@@ -38,7 +42,7 @@ test('농부: 말 걸기 → 도와줄게요 → 두더지 잡기, 밭·팻말·
   // another helper hands the game step in: the field grows on this screen too, the name on the sign
   const other = await shopper(browser, request, '먼저도움');
   await post(request, '/api/plaza/state', other.token, { x: at.x + 1, z: at.z, yaw: 0 });
-  await post(request, '/api/island/event', other.token, { id: 'questfarmer' });
+  await post(request, '/api/island/event', other.token, { id: 'questfarmer', accept: true });
   await post(request, '/api/test/quest/note', other.token, { what: 'minigame:whack', qty: 250 });
   expect((await post(request, '/api/island/event', other.token, { id: 'questfarmer' })).data.reward).toBe(3000);
   await expect.poll(async () => (await request.get('/api/island/farm', { headers: { 'X-Session-Token': token } })).json(), { timeout: 10000 }).toMatchObject({ stage: 1, names: ['먼저도움'] });
