@@ -54,6 +54,7 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
       await expect(page.locator('#blackPlayer .turnRing, .teamPlayer .turnRing')).toHaveCount(1);
       // (G-틀①: the panel the sticks lived in is folded -- the throw shows over the board, then steps out of the way)
       await page.locator('#yutThrowBtn').click(); await expect(page.locator('#diceYutSection')).toHaveClass(/throwing/);
+      expect(await page.evaluate(() => window.RoomSound.played())).toContain('yut'); // (G-틀③: the sticks falling)
       const sticks = await page.locator('#diceYutSection').boundingBox(); expect(sticks.y >= 0 && sticks.y + sticks.height <= h).toBe(true);
       await expect(page.locator('#diceYutSection')).not.toHaveClass(/throwing/, { timeout: 8000 });
       expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
@@ -78,6 +79,14 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     expect((await api(request, '/api/room/move', black, { x: 7, y: 7 })).status).toBe(200);
     await expect(page.locator('#whitePlayer .turnRing')).toBeVisible();
     await expect(page.locator('#blackPlayer .turnRing')).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.RoomSound.played())).toContain('stone'); // (G-틀③: the stone set down)
+    // (G-틀③: ☰ 게임 효과음 off -- the other's stone is quiet; on again)
+    await page.locator('#roomMenuBtn').click(); await page.locator('#roomSoundToggle').uncheck(); await page.locator('#gameMenuCloseBtn').click();
+    const heard = (await page.evaluate(() => window.RoomSound.played())).length;
+    expect((await api(request, '/api/room/move', white, { x: 8, y: 8 })).status).toBe(200);
+    await expect(page.locator('#blackPlayer .turnRing')).toBeVisible();
+    expect((await page.evaluate(() => window.RoomSound.played())).length).toBe(heard);
+    await page.locator('#roomMenuBtn').click(); await page.locator('#roomSoundToggle').check(); await page.locator('#gameMenuCloseBtn').click();
     // the board within the screen (scrolled to the top), and the floating buttons off it
     await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(300);
     const box = await page.locator('#canvasWrap').boundingBox();
@@ -95,6 +104,7 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect(page.locator('body')).not.toHaveClass(/roomPlaying/);
     if (w > 880) await expect(page.locator('#chatPanel')).toBeVisible(); // (G-틀①: the hand over, the panels back)
     await expect(page.locator('#standardPlayers #blackPlayer')).toHaveCount(1); // (G-틀②: and my card back in the row)
+    await expect.poll(() => page.evaluate(() => window.RoomSound.played().at(-1))).toBe('win'); // (G-틀③: the other resigned -- my win)
     // G1-7: the result on the board with the way on
     await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
     await expect(page.locator('#boardOverlay .resultPoints')).toContainText('P');

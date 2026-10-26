@@ -1204,6 +1204,7 @@
   // stick's rotateY snapped to 0 (front up) or 180deg (back up) to match the server's confirmed
   // "backs" pattern -- face content never changes, so it can't drift from the real result.
   function animateYutThrow(stickEls, backFlags, { duration = 780, onDone } = {}) {
+    window.RoomSound?.play('yut'); // (G-틀③: the sticks falling)
     // Each stick gets its own spin rate/axis-mix AND its own bounce timing/height jitter
     // (bouncePhase/bounceScale) so all 4 sticks visibly move differently instead of tumbling as one
     // identical, repetitive unit.
@@ -1840,6 +1841,11 @@
   menuLeaveRoomBtn.addEventListener('click', () => { gameMenuDialog.close(); leaveRoomBtn.click(); });
   const menuResignBtn = byId('menuResignBtn'); // (G-틀①: while a hand is played 기권 is in ☰ -- the panel it sits in is folded)
   menuResignBtn.addEventListener('click', () => { gameMenuDialog.close(); resignBtn.click(); });
+  // G-틀③ 게임 효과음: on by default, one setting with 한판마당 (gc.settings.sound) -- read again whenever the menu opens
+  const roomSoundToggle = byId('roomSoundToggle');
+  const syncSoundToggle = () => { roomSoundToggle.checked = window.RoomSound?.isOn() ?? true; };
+  syncSoundToggle(); gameMenuDialog.addEventListener('toggle', syncSoundToggle);
+  roomSoundToggle.addEventListener('change', () => { window.RoomSound?.setOn(roomSoundToggle.checked); if (roomSoundToggle.checked) window.RoomSound?.play('turn'); });
   window.addEventListener('keydown', (event) => {
     if (event.isComposing || event.repeat || event.defaultPrevented) return;
     const t = event.target;
@@ -7674,6 +7680,19 @@
   const boardActionsSpot = document.getElementById('quickChat');
   // (G-틀①: the panel folds while a hand is played -- the yut sticks' and the dice's throw goes under the board with the actions)
   const diceSection = document.getElementById('diceYutSection'); const diceMark = document.createComment('diceYutSection'); diceSection.before(diceMark);
+  // G-틀③ 게임방 소리 (room-sound.js): a move made -- a stone in the stone games, a card in the others (the yut sticks sound
+  // as they are thrown) --, my turn come, the hand over (my win or loss, or just its end). The first view of a room is quiet.
+  const STONE_GAMES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
+  let soundSeen = null;
+  function roomSounds(g) {
+    const now = { room: state?.me?.roomCode || state?.roomId || null, moves: Number(g.moveCount) || 0, round: g.round || 0, status: g.status, mine: Boolean(seat && currentActorSeats().seats.has(String(seat))), bell: g.lastBell ? `${g.lastBell.flipId}:${g.lastBell.at}` : null };
+    const was = soundSeen; soundSeen = now; const S = window.RoomSound;
+    if (!S || !was || was.room !== now.room || was.round !== now.round) return;
+    if (now.bell && now.bell !== was.bell) S.play('bell'); // (할리갈리: someone rang it)
+    else if (now.status === 'playing' && now.moves > was.moves && state.gameType !== 'yut') S.play(STONE_GAMES.has(state.gameType) ? 'stone' : 'card');
+    else if (now.status === 'playing' && now.mine && !was.mine) S.play('turn');
+    if (was.status === 'playing' && ['finished', 'draw'].includes(now.status)) { const o = seat ? resultOutcome(g, seat, state.gameType) : null; S.play(o === 'win' ? 'win' : o === 'loss' ? 'lose' : 'end'); }
+  }
   function setRoomPlaying(on) {
     on = Boolean(on) && !roomView.classList.contains('hidden');
     if (on !== document.body.classList.contains('roomPlaying')) {
@@ -8134,6 +8153,7 @@
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     document.body.classList.toggle('tableGamePlaying', gostop && g.status !== 'selecting');
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
+    roomSounds(g);
     if (gostop) window.GostopUI.render(state);
     rpgPanel.classList.toggle('hidden', !rpg);
     if (rpg) rpgRender(state); else rpgUnmount();
