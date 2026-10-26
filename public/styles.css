@@ -2349,7 +2349,8 @@ body.roomPlaying .gostopFelt:has(.gostopDecisionPanel) .hwatu:not(.gostopDecisio
    a flipped card already flies from the deck (anchors.deck), so now from the middle */
 body.roomPlaying .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr)}
 body.roomPlaying .gostopFelt .gostopFloor,body.roomPlaying .gostopFelt .gostopDeck{grid-column:1;grid-row:2}
-body.roomPlaying .gostopFelt .gostopDeck{place-self:center;z-index:1}
+body.roomPlaying .gostopFelt .gostopDeck{place-self:center;z-index:1;position:relative}
+body.roomPlaying .gostopFelt .gostopDeck small{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);padding:0 6px;border-radius:999px;background:rgba(0,0,0,.62);font-size:.72rem;white-space:nowrap} /* (ⓒ review: the count on the deck, not under it among the months) */
 body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(3,minmax(0,1fr)) calc(var(--fh) * .9) repeat(3,minmax(0,1fr));align-items:center}
 body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n+1){transform:rotate(-3deg)}
 body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n+2){transform:rotate(2deg) translateY(3px)}
@@ -2357,6 +2358,7 @@ body.roomPlaying .gostopFelt .gostopFloorGroup:nth-of-type(3n){transform:rotate(
 @media(max-width:640px){
   body.roomPlaying .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr)}
   body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(2,minmax(0,1fr)) calc(var(--fh) * .9) repeat(2,minmax(0,1fr))}
+  body.roomPlaying .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * .68 * -.65)} /* (ⓒ review: a month's cards two-thirds over each other -- eight months in two columns a side) */
   .pileNear{left:21px;padding:0 4px;font-size:.6rem} /* (ⓑ review: clear of the next stack's count) */
 }
 body:not(.hwatuNames) .hwatu.hasArt .hwatuMonth,body:not(.hwatuNames) .hwatu.hasArt .hwatuBadge{display:none}
