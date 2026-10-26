@@ -2423,6 +2423,28 @@ body.hwatuNames .hwatu.hasArt .hwatuBadge{left:auto;right:2px;bottom:2px;padding
 body.roomMode>.gostopResult:not(.hidden):not(.closed){position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 .gostopResult.closed{display:none}
 .gostopResult .gostopSettlementFlow{display:flex;flex-wrap:wrap;gap:6px}
+/* G-고스톱ⓕ 결과 점수표 (같은 주문서 6, G-틀④의 한지): the result a score sheet on hanji -- the parts one row each (what left,
+   figure right), the 고, the total, the multipliers and the point rate; then each payer in bold red with the reckoning small
+   under it, the winner's take big in green; a 「승」 seal on the winner's own sheet */
+body.roomMode>.gostopResult{position:relative;gap:8px;padding:20px 26px 16px;border:1px solid #d6c39f;border-radius:10px;color:#3d2f22;background:radial-gradient(circle at 18% 12%,rgba(255,255,255,.6),transparent 42%),repeating-linear-gradient(112deg,rgba(150,120,80,.07) 0 2px,transparent 2px 8px),#f4ecd8}
+body.roomMode>.gostopResult>strong{color:#8a5a12;font-size:1.2rem}
+body.roomMode>.gostopResult p,body.roomMode>.gostopResult small{color:#5a4632}
+body.roomMode>.gostopResult .gostopSettlementFlow{display:grid;gap:0}
+body.roomMode>.gostopResult .gostopChip{display:flex;justify-content:space-between;gap:12px;padding:4px 2px;border:0;border-bottom:1px dotted #c9b48a;border-radius:0;background:none;color:#3d2f22;font-size:.95rem}
+body.roomMode>.gostopResult .gostopChip.muted{padding-left:16px;color:#6b5a45;font-weight:700}
+body.roomMode>.gostopResult .gostopChip.total{border-top:2px solid #3d2f22;border-bottom:0;font-weight:950}
+body.roomMode>.gostopResult .gostopSettlementFlow .gostopChip+.gostopChip::before{content:none}
+body.roomMode>.gostopResult .gostopLoserLine{display:grid;gap:2px;padding:7px 10px;border-radius:8px;background:rgba(61,47,34,.07)}
+body.roomMode>.gostopResult .gostopLoserLine b{color:#b3261e;font-size:1.15rem}
+body.roomMode>.gostopResult .gostopWinLine{display:grid;gap:2px;color:#1f7a3a!important}
+body.roomMode>.gostopResult .gostopWinLine b{font-size:1.6rem;font-weight:950}
+body.roomMode>.gostopResult .gostopLoserLine small,body.roomMode>.gostopResult .gostopWinLine small{font-size:.78rem;font-weight:650;color:#6b5a45}
+body.roomMode>.gostopResult.mineWin>strong{min-height:46px;padding-right:58px} /* (the seal beside the title, clear of the first row's figure) */
+body:has(>.gostopResult:not(.hidden):not(.closed)) :is(#nextRoundBtn,#sideNextRoundBtn){display:none!important} /* (as G-틀④: the sheet's 「한 판 더」 the one) */
+body.roomMode>.gostopResult.mineWin{border-color:#d9a520;box-shadow:0 0 0 3px rgba(217,165,32,.35),0 18px 50px rgba(0,0,0,.55)}
+body.roomMode>.gostopResult.mineWin::after{content:"승";position:absolute;right:14px;top:12px;width:44px;height:44px;display:grid;place-items:center;border:3px solid #b3261e;border-radius:10px;color:#b3261e;background:rgba(255,253,246,.9);font-weight:950;font-size:1.3rem;transform:rotate(-12deg)}
+body.roomMode>.gostopResult .gostopResultActions button{min-height:46px;padding:10px 22px;font-weight:900}
+body.roomMode>.gostopResult .gostopResultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
 .gostopResultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
 body:not(.roomMode)>.gostopResult{display:none}
 /* A3 G2-4: what a pile still needs, an empty pile faint, the sets under way and the 박 risk */

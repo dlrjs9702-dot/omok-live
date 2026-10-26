@@ -295,6 +295,12 @@ test.describe('고스톱·맞고 1차 UX 및 화투판 시각화 (v1.6.92)', () 
     await expect(result.locator('.gostopLoserLine').nth(0)).toContainText('잔액 6,200P → 0P');
     await expect(result.locator('.gostopWinLine')).toContainText(`나 → +${(6200 + l3.amount).toLocaleString('ko-KR')}P`);
     await expect(result.locator('.gostopWinLine')).toContainText('잔액 100,000P →');
+    // G-고스톱ⓕ 점수표: 합계 줄, 낸 사람은 굵은 「이름 → -P」 아래 작은 계산, 이긴 내 창에 「승」
+    await expect(result.locator('.gostopChip.total')).toHaveText(`합계 ${endGame.result.score}점`);
+    await expect(result.locator('.gostopLoserLine > b').nth(0)).toHaveText(/ → -6,200P$/);
+    await expect(result.locator('.gostopWinLine > b')).toHaveText(`나 → +${(6200 + l3.amount).toLocaleString('ko-KR')}P`);
+    await expect(result).toHaveClass(/mineWin/);
+    await expect(page.locator('#nextRoundBtn')).toBeHidden(); await expect(page.locator('#sideNextRoundBtn')).toBeHidden(); // (the sheet's 「한 판 더」 the one)
     await result.screenshot({ path: testInfo.outputPath('09-result.png') });
     await me.context.close();
   });

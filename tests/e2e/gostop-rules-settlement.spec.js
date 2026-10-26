@@ -147,7 +147,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
         decided = await roomState(request, a.token);
         break;
       }
-      await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
+      await a.page.locator('#gostopResult .gostopResultActions button.primary:visible, #nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
     }
     expect(decided, '고/스톱 판을 만들지 못함').toBeTruthy();
     const g = decided.game;
@@ -208,7 +208,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     expect(await Promise.all([a, b].map(view => balance(request, view.token)))).toEqual([before[0] + net[1], before[1] + net[2]]);
     // 재접속만으로는 배수가 초기화되지 않는다.
     await reopen(b);
-    await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
+    await a.page.locator('#gostopResult .gostopResultActions button.primary:visible, #nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
     await expect(a.page.locator('#gostopSetupNote')).toContainText('나가리 ×2 이월');
     await a.page.locator('#gostopStartBtn').click();
     await expect.poll(async () => (await roomState(request, a.token)).game.status).not.toBe('selecting');
