@@ -12,9 +12,9 @@ async function api(request, route, token, body) {
   const response = await request.post(route, { headers: { 'X-Forwarded-For': uip(), ...(token ? { 'X-Session-Token': token } : {}) }, data: body ?? {} });
   return { status: response.status(), data: await response.json().catch(() => ({})) };
 }
-async function guest(browser, request, admin, label) {
+async function guest(browser, request, admin, label, viewport = { width: 1920, height: 1080 }) {
   const { data } = await api(request, '/api/admin/keys', admin, { label });
-  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uip() });
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(data.html)]);
@@ -58,9 +58,42 @@ for (const count of [2, 3]) {
     expect(handCard.width).toBeGreaterThanOrEqual(80); // 손패는 클릭하기 편할 만큼 크다(기존 58px)
     const floorCard = await box(page, '#gostopFloor .hwatu');
     expect(floorCard.width).toBeGreaterThanOrEqual(70); // 바닥패도 테이블에 맞게 크다(기존 46px)
+    // G-고스톱ⓒ: 산은 바닥 한가운데, 바닥패는 그 둘레(산과 겹치지 않음)
+    const pile = await box(page, '#gostopDeck .deckPile');
+    expect(Math.abs(pile.x + pile.width / 2 - (floor.x + floor.width / 2))).toBeLessThan(floor.width * 0.04);
+    expect(pile.y + pile.height / 2).toBeGreaterThan(floor.y); expect(pile.y + pile.height / 2).toBeLessThan(floor.y + floor.height);
+    const floorCards = await page.locator('#gostopFloor .hwatu').evaluateAll(els => els.map(el => el.getBoundingClientRect()).map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })));
+    expect(floorCards.filter(r => r.x < pile.x + pile.width && r.x + r.width > pile.x && r.y < pile.y + pile.height && r.y + r.height > pile.y)).toHaveLength(0);
     expect(felt.width).toBeGreaterThan(1000); // 넓은 PC 화면에서는 테이블이 주인공
     const handBottom = (await box(page, '#gostopHand')).y + (await box(page, '#gostopHand')).height;
     expect(handBottom).toBeLessThanOrEqual(1080); // 손패까지 한 화면
+    for (const p of people) await p.context.close();
+  });
+}
+
+// G-고스톱ⓒ 검토: 바닥 8묶음(4묶음은 2장)이어도 묶음끼리, 묶음과 산(「산 N장」 포함)이 겹치지 않는다 -- 폰 393과 PC
+for (const viewport of [{ width: 393, height: 851 }, { width: 1920, height: 1080 }]) {
+  test(`맞고 ${viewport.width}: 바닥 8묶음도 묶음끼리·산과 겹치지 않는다`, async ({ browser, request }) => {
+    const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+    const people = [await guest(browser, request, admin, '나', viewport), await guest(browser, request, admin, '상대')];
+    const code = (await api(request, '/api/rooms', people[0].token, { gameType: 'gostop' })).data.state.me.roomCode;
+    await api(request, '/api/rooms/join', people[1].token, { code });
+    for (let i = 0; i < 2; i += 1) await api(request, '/api/room/choose-role', people[i].token, { choice: String(i + 1) });
+    const page = people[0].page;
+    await page.reload();
+    expect((await api(request, '/api/room/start-gostop', people[0].token, {})).status).toBe(200);
+    await expect(page.locator('#gostopHand .hwatu').first()).toBeVisible();
+    expect((await api(request, '/api/test/gostop-fixture', people[0].token, { fixture: 'wide-floor' })).status).toBe(200);
+    await expect(page.locator('#gostopFloor .gostopFloorGroup')).toHaveCount(8);
+    await page.waitForTimeout(1500);
+    const boxes = await page.evaluate(() => {
+      const rect = (els) => { const rs = els.map(el => el.getBoundingClientRect()); return { left: Math.min(...rs.map(r => r.left)), top: Math.min(...rs.map(r => r.top)), right: Math.max(...rs.map(r => r.right)), bottom: Math.max(...rs.map(r => r.bottom)) }; };
+      return { groups: [...document.querySelectorAll('#gostopFloor .gostopFloorGroup')].map(g => rect([...g.querySelectorAll('.hwatu')])), deck: rect([...document.querySelectorAll('#gostopDeck > *')]) };
+    });
+    const hit = (a, b) => a.left < b.right - 3 && a.right > b.left + 3 && a.top < b.bottom - 3 && a.bottom > b.top + 3; // (3px: the months' slight tilt)
+    const clashes = [];
+    boxes.groups.forEach((g, i) => { if (hit(g, boxes.deck)) clashes.push(`${i}↔산`); boxes.groups.forEach((o, j) => { if (j > i && hit(g, o)) clashes.push(`${i}↔${j}`); }); });
+    expect(clashes).toEqual([]);
     for (const p of people) await p.context.close();
   });
 }

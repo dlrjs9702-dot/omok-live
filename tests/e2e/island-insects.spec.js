@@ -20,7 +20,11 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   const insectsNow = async () => (await get(request, '/api/island/insects', a.token)).data.list || [];
   // a free spot by an insect (on the ground, off the trees) with every other insect half a metre farther than it -- so
   // SPACE reaches that one (CI 3차: a snail crawling by the 매미 took it for 40 s, run 39699233302)
-  const by = (list, t, rs = [1.2, 1.5, 1.8]) => { for (const r of rs) for (let k = 0; k < 12; k += 1) { const x = t.x + Math.cos(k / 2) * r; const z = t.z + Math.sin(k / 2) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.5) && list.every((o) => o.id === t.id || Math.hypot(o.x - x, o.z - z) > r + 0.5)) return { x, z }; } return null; };
+  // (CI #324: in October a 사탕 주머니 on the grass by the spot took SPACE -- 「사탕 주머니 · 줍기」, never the swing, every try:
+  // the island's events, read fresh each try, kept out of the server's reach (lib/island-events REACH 3) of the spot too)
+  let events = [];
+  const eventsNow = async () => (await get(request, '/api/test/island/events', a.token)).data.events || [];
+  const by = (list, t, rs = [1.2, 1.5, 1.8]) => { for (const r of rs) for (let k = 0; k < 12; k += 1) { const x = t.x + Math.cos(k / 2) * r; const z = t.z + Math.sin(k / 2) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 0.5 && !T.natureSolids().some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.5) && list.every((o) => o.id === t.id || Math.hypot(o.x - x, o.z - z) > r + 0.5) && events.every((e) => Math.hypot(e.x - x, e.z - z) > 3.2)) return { x, z }; } return null; };
   const pick = (list, not = null) => { const t = list.find((o) => o.id !== not && by(list, o)); return t && { ...t, spot: by(list, t) }; };
   // the same insects on both screens (the server's layout, as it is now)
   expect((await insectsNow()).length).toBeGreaterThan(3); expect((await get(request, '/api/island/insects', a.token)).data.next).toBeGreaterThan(0);
@@ -44,6 +48,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   // the crawlers and those on a trunk first, as island-tool-swing, and another one after a miss)
   const slow = (b) => (/^dragonfly/.test(b.species) ? 2 : /^butterfly|firefly/.test(b.species) ? 1 : 0);
   await expect.poll(async () => {
+    events = await eventsNow();
     const now = await insectsNow(); const t = now.find((o) => o.id === target.id);
     if (missed || slow(target) > 0) { const next = pick([...now].sort((p, q) => slow(p) - slow(q)), missed ? target.id : null); if (next) target = next; missed = false; }
     else if (!t || !by(now, t)) { const next = pick(now); if (!next) return (last = 'no insect with a spot'); last = `${target.id} ${t ? 'no spot' : 'gone'} -> ${next.id}`; target = next; }

@@ -1128,6 +1128,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.roomPlaying .gostopFelt .gostopSets{color:#fde68a}
 :root[data-theme="light"] .gostopDecisionButtons .gostopGoButton{border-color:#4ade80!important;background:#15803d!important;color:#fff!important}
 :root[data-theme="light"] .gostopDecisionButtons .gostopStopButton{border-color:#fdba74!important;background:#c2410c!important;color:#fff!important}
+:root[data-theme="light"] body.roomPlaying .gostopFelt .gostopDeck small{background:rgba(0,0,0,.62)}
 :root[data-theme="light"] .gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;box-shadow:0 0 16px rgba(250,204,21,.75)}
 :root[data-theme="light"] .gostopFelt .gostopHand .hwatu.gostopArmed{outline:3px solid #facc15}
 :root[data-theme="light"] .gostopFelt .gostopHand .hwatu.gostopToFloor::after{background:rgba(15,23,42,.8);color:#e2e8f0}

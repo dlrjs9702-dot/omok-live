@@ -258,6 +258,10 @@
         floor.append(holder);
       }
     }
+    // G-고스톱ⓒ: half the months left of the deck, half right, each side filled from the deck outward (the felt's grid
+    // keeps its middle column for the deck; outside the room's felt the floor is a plain row and ignores this)
+    const groups = [...floor.children], per = matchMedia('(max-width:640px)').matches ? 2 : 3, left = Math.ceil(groups.length / 2);
+    groups.forEach((el, i) => { const k = i < left ? i : i - left; el.style.gridRow = String(Math.floor(k / per) + 1); el.style.gridColumn = String(i < left ? per - (k % per) : per + 2 + (k % per)); });
     const deck = $('gostopDeck');
     deck.replaceChildren();
     if (g.status === 'playing' || g.deckCount) {

@@ -2519,7 +2519,7 @@ function pointAccountForSeat(room, seat) {
 }
 
 function setGostopTestFixture(room, fixture) {
-  if (process.env.NODE_ENV !== 'test' || !isGostop(room) || !['choose-floor', 'go-stop', 'gukjin', 'first-ppeok', 'go-bak'].includes(fixture)) return false;
+  if (process.env.NODE_ENV !== 'test' || !isGostop(room) || !['choose-floor', 'go-stop', 'gukjin', 'first-ppeok', 'go-bak', 'wide-floor'].includes(fixture)) return false;
   const game = getGame('gostop').create();
   const seats = ['first-ppeok', 'go-bak'].includes(fixture) ? ['1', '2', '3'].filter(seat => room.players[seat]) : ['1', '2'];
   const zeros = () => Object.fromEntries(seats.map(seat => [seat, 0]));
@@ -2535,7 +2535,11 @@ function setGostopTestFixture(room, fixture) {
     gukjin: Object.fromEntries(seats.map(seat => [seat, null])),
     ctx: null, lastEvent: null, eventSeq: 0, moveCount: 0, winner: null, result: null, endReason: null, settlement: null,
   });
-  if (fixture === 'choose-floor') {
+  if (fixture === 'wide-floor') { // (G-고스톱ⓒ: eight months on the floor, six of them pairs side by side -- the floor round the deck at its fullest)
+    game.floor = ['m01-pi1', 'm01-pi2', 'm02-pi1', 'm02-pi2', 'm03-pi1', 'm03-pi2', 'm04-pi1', 'm04-pi2', 'm05-pi1', 'm05-pi2', 'm06-pi1', 'm06-pi2', 'm07-pi1', 'm08-pi1'];
+    game.hands = { 1: ['m09-pi1', 'm10-pi1', 'm11-gwang'], 2: ['m09-pi2', 'm10-pi2', 'm12-gwang'] };
+    game.deck = ['m07-pi2', 'm08-pi2', 'm01-ribbon', 'm02-ribbon'];
+  } else if (fixture === 'choose-floor') {
     game.phase = 'choose-floor';
     game.floor = ['m03-gwang', 'm03-ribbon', 'm06-pi1'];
     game.ctx = {
@@ -3856,7 +3860,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.177' });
+    return sendJson(res, 200, { ok: true, version: '1.10.178' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -7839,7 +7843,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.177 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.178 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
