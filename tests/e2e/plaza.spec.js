@@ -1911,8 +1911,8 @@ test('간판: 건물마다 문 6 m 안에 이름 간판(밖을 봄), 작은 시�
   const { signs, doors, spots, stations } = await page.evaluate(() => { const d = window.PlazaDebug(); const T = window.IslandTerrain; const R = window.IslandTrain;
     return { signs: d.signboards(), doors: Object.entries(d.doors).filter(([id]) => T.SPOTS[id] && id !== 'jail').map(([id, o]) => ({ id, x: o.x, z: o.z, name: o.name })), spots: T.SPOTS, stations: Object.values(R.STATIONS).map((s) => ({ name: s.name, x: s.entry[0], z: s.entry[1] })) }; });
   const missing = [];
-  // (I8-4, 사용자 「간판은 건물에만」: 게시판·안내 지도·기부함·정자·출석대 have none -- their shape says what they are)
-  const SMALL = ['board', 'donation', 'mapboard', 'gazebo', 'npc'];
+  // (I8-4, 사용자 「간판은 건물에만」: 게시판·안내 지도·기부함·정자·출석대·노점·작명소 책상 have none -- their shape says what they are)
+  const SMALL = ['board', 'donation', 'mapboard', 'gazebo', 'npc', 'stall', 'desk'];
   const smallSigned = doors.filter((o) => SMALL.includes(spots[o.id].kind) && signs.some((g) => g.text === o.name && Math.hypot(g.x - o.x, g.z - o.z) < 6)).map((o) => o.id);
   expect(smallSigned).toEqual([]); expect(doors.some((o) => SMALL.includes(spots[o.id].kind))).toBe(true);
   for (const o of doors.filter((d) => !SMALL.includes(spots[d.id].kind))) {

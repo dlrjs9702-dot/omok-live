@@ -515,7 +515,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // FACE: each sign model's text spot in its own frame (front -Z): [x, y, width, height, z]
   const textures = []; const signboards = [];
   // (I8-4, 문제 기록 8회차 4) boards on buildings only: these small places go without one -- their own shape says it
-  const SIGNLESS_KINDS = new Set(['board', 'donation', 'mapboard', 'gazebo', 'npc']);
+  const SIGNLESS_KINDS = new Set(['board', 'donation', 'mapboard', 'gazebo', 'npc', 'stall', 'desk']); // (검토: the 노점 and the 작명소's desk aren't buildings either -- their look and 「SPACE · …」 tell them)
   const SIGN_FACE = { stand: [0, 1.45, 2.24, 0.7, -0.05], post: [0.05, 1.6, 1.08, 0.44, -0.035], wall: [0, 0, 2.36, 0.52, -0.09], station: [0, 2.2, 2.56, 0.5, -0.045], plaque: [0, 0.72, 0.6, 0.27, -0.045] };
   function signboard(kind, text, parent, x, y, z, yaw) {
     const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; parent.add(g);
@@ -586,8 +586,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // on the ground there; its legs walked round
     // (간판 ④, assets 75) a piece that tells the place by its shape, in this facility's frame (its front -Z turned out)
     const deck = (id, lx, y, lz) => { const g = new THREE.Group(); g.position.set(lx, y, lz); g.rotation.y = Math.PI; root.add(g); const f = new THREE.Group(); g.add(f); assets.attach(id, g, f); return g; };
-    // (I8-4, 사용자 「간판은 집이나 랜드마크, 관공서 같은 건물에만」: the small ones -- 게시판·안내 지도·기부함·정자·출석대 -- tell
-    // what they are by their shape, no board; SIGNLESS_KINDS)
+    // (I8-4, 사용자 「간판은 집이나 랜드마크, 관공서 같은 건물에만」: the small ones -- 게시판·안내 지도·기부함·정자·출석대·노점·작명소
+    // 책상 -- tell what they are by their shape, no board; SIGNLESS_KINDS)
     const facilitySign = (kind, lx, lz) => { if (SIGNLESS_KINDS.has(spot.kind)) return; const w = at(lx, lz); signboard(kind, facility.name, root, lx, heightAt(w.x, w.z) - root.position.y, lz, Math.PI); for (const ox of kind === 'stand' ? [-1.25, 1.25] : [0]) solids.push({ ...at(lx + ox, lz), r: 0.3 }); };
     const edgeSolids = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
     if (spot.kind === 'hall') { // v1.10.1 게임관: the island's landmark -- a columned hall with a dome and two towers
