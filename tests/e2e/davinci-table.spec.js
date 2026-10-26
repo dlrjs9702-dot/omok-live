@@ -140,6 +140,13 @@ test('다빈치 코드 테이블: 내 자리 아래·상대 둘러앉음·더미
   // A wrong guess reveals the drawn tile into the guesser's rack for everyone to see.
   for (const view of views) await expect(view.page.locator(`#davinciHands .davinciHand[data-owner="${turn}"] .davinciTile.revealed`)).toHaveCount(1);
   await b.page.locator('#davinciPanel').screenshot({ path: testInfo.outputPath('03-memo.png') });
+  // G-게임별: the answer heard (둥 for a miss), the seat cards off the table, each rack's name plate with a face, the number row folded
+  await expect.poll(() => actor.page.evaluate(() => window.RoomSound.played().includes('wrong'))).toBe(true);
+  for (const view of views) {
+    await expect(view.page.locator('#teamPlayers')).toBeHidden();
+    await expect(view.page.locator('#davinciHands .davinciHand > strong .seatFace')).toHaveCount(3);
+    await expect(view.page.locator('#davinciPanel > .davinciActions')).toBeHidden();
+  }
   await expect.poll(async () => (await roomState(request, a.token)).game.turn, { message: '오답 뒤 차례가 넘어감' }).not.toBe(turn);
 
   // Correct guess by the next player through the same pad: the tile is revealed and they may continue.
@@ -156,6 +163,8 @@ test('다빈치 코드 테이블: 내 자리 아래·상대 둘러앉음·더미
   state = await roomState(request, a.token);
   expect(state.game.turn).toBe(nextTurn);
   expect(state.game.phase).toBe('continue');
+  await expect.poll(() => guesser.page.evaluate(() => window.RoomSound.played().includes('right'))).toBe(true); // (딩동)
+  await expect(guesser.page.locator('#davinciHands .davinciTableStop')).toBeVisible(); // (멈추기 on the table)
 
   // v1.9.8: coming back (reload = reconnect) shows the table as it is -- the drawn tile, the last guess and its answer
   // are not played again as new events. The next real event still animates.

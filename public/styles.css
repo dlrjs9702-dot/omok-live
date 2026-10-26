@@ -2375,6 +2375,28 @@ body.roomPlaying.gostopStamping .toast,body.roomPlaying.gostopStamping .boardNot
 .goTag{display:inline-block;margin-left:6px;padding:0 5px;border:2px solid #b91c1c;border-radius:5px;background:#fff7ed;color:#b91c1c;font-size:.72rem;font-weight:950;line-height:1.35;transform:rotate(-8deg)}
 .goTag+.goTag{margin-left:-10px;transform:rotate(6deg)}
 .goTag+.goTag+.goTag{transform:rotate(-4deg)}
+/* G-게임별 다빈치 (gamecenter-notes docs/gamehall-audit-20261025.md 「다른 게임」): the seat cards off the table (tableGamePlaying),
+   each rack's label the name plate with the island face; the status box and the number row under the table folded while a
+   hand is played (the number pad by the tile does it, 멈추기 on the table); the pile's count on the pile */
+body.roomPlaying #davinciStatus,body.roomPlaying #davinciPanel>.davinciActions{display:none}
+.davinciHand>strong{display:inline-flex;align-items:center;gap:6px}
+.davinciHand>strong .seatFace{width:24px;height:24px;flex:0 0 auto}
+.davinciPileCount{bottom:auto;top:50%;transform:translate(-50%,-50%);z-index:2;padding:0 7px;border-radius:999px;background:rgba(0,0,0,.62)}
+.davinciTableStop{flex-basis:auto;margin:4px auto 0;min-height:40px;font-weight:900}
+@media(max-width:640px){body.roomMode:not(.roomPlaying) .toast{top:var(--roomBarBottom,76px);bottom:auto}} /* (다빈치 검토: before a hand a phone's toast under the bar, not over the room's words) */
+/* (다빈치 검토) the turn's ring on its rack label; the tiles I may pick glow on the table too (the table's own shadow had hidden
+   it); a small note on the rack to guess at; the drawn tile's words short and on one line; on a PC the tiles 1.4 times */
+.davinciHand>strong{position:relative}
+.davinciHand>strong .turnRing{position:relative;top:auto;right:auto;transform:none;width:32px;height:32px;margin-left:4px;flex:0 0 auto}
+.davinciHand>strong .turnRing b{font-size:.6rem}
+.davinciTable .davinciTile.actionableTarget{border-color:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.9),0 0 16px rgba(52,211,153,.5),0 .32rem 0 rgba(0,0,0,.38)}
+.davinciHint{display:block;margin:2px auto 0;width:max-content;padding:2px 10px;border-radius:999px;background:rgba(6,78,59,.92);color:#d1fae5;font-weight:800;font-size:.76rem;white-space:nowrap}
+.davinciDrawnSlot small{white-space:nowrap;max-width:none}
+.davinciDrawnSlot .davinciDrawnNote{margin-top:-.25rem;color:#fde68a;font-weight:700;font-size:.66rem;opacity:.85}
+@media(min-width:881px){
+  body.roomPlaying .davinciTable .davinciTile{flex-basis:4.6rem;width:4.6rem;height:6.8rem;font-size:2.15rem}
+  body.roomPlaying .davinciTable .pos-left .davinciTile,body.roomPlaying .davinciTable .pos-right .davinciTile{flex-basis:3.55rem;width:3.55rem;height:5.4rem;font-size:1.65rem}
+}
 /* G-고스톱ⓓ 상대가 앉아 있게 (같은 주문서 4): the name tag with the island face, the hand's backs fanned (a played card
    leaves from the fan's middle), the count beside it never cut; 뻑 a small pill over its month */
 body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}

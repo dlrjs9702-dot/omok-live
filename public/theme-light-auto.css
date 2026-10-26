@@ -1131,6 +1131,10 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopDeck small{background:rgba(0,0,0,.62)}
 :root[data-theme="light"] .fxBadge.stamp{border:4px solid var(--ink);background:rgba(255,253,246,.9);color:var(--ink);box-shadow:0 10px 28px rgba(0,0,0,.5)}
 :root[data-theme="light"] .goTag{border:2px solid #b91c1c;background:#fff7ed;color:#b91c1c}
+:root[data-theme="light"] .davinciPileCount{background:rgba(0,0,0,.62)}
+:root[data-theme="light"] .davinciTable .davinciTile.actionableTarget{border-color:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.9),0 0 16px rgba(52,211,153,.5),0 .32rem 0 rgba(0,0,0,.38)}
+:root[data-theme="light"] .davinciHint{background:rgba(6,78,59,.92);color:#d1fae5}
+:root[data-theme="light"] .davinciDrawnSlot .davinciDrawnNote{color:#fde68a}
 :root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks small{background:rgba(0,0,0,.35);color:#e2e8f0}
 :root[data-theme="light"] body:is(.roomPlaying,.roomResult) .gostopFelt .ppeokTag{background:#b3261e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 :root[data-theme="light"] .gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;box-shadow:0 0 16px rgba(250,204,21,.75)}
