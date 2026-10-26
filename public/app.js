@@ -3444,7 +3444,7 @@
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
     const meta = document.createElement('p'); meta.className = 'lookMeta';
     const doneText=data.fixed?'이야기 끝':'이번 주 이야기 끝';
-    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
+    meta.textContent = data.reward && !data.finished ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : ''; // (U: a step's pay is on its done card -- the bubble keeps their words)
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '확인'; /* (Q: taking it on is 「할게요!」 on the ask's note -- this only closes) */ ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
     // v1.10.80 농부 부탁: a game step opens its round right here (GameLaunch, back to the island after); a paid round at the
@@ -3903,7 +3903,7 @@
   let questReady = null; let questOpen = null; // (null: not read yet -- what is ready when I come in is no news)
   function showQuestTracker(list = questTrack) {
     questTrack = list;
-    const items = [...list.map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? `✓ ${t.name}에게 돌아가 말해요` : t.label, count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
+    const items = [...list.map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, /* (the name is the line's own column) */ count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
       ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title }))].slice(0, 3);
     if (questReady) for (const t of list) if (t.ready && !questReady.has(t.story)) showToast(`✓ ${t.name}에게 돌아가 말해요`, 4000);
     questReady = new Set(list.filter((t) => t.ready).map((t) => t.story));

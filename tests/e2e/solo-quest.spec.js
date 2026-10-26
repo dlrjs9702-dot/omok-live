@@ -109,7 +109,8 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().find((q) => q.id === 'questgranny').mark), { timeout: 10000 }).toBe('ready');
   await talk();
-  await Promise.all([expect(page.locator('#plazaDialog')).toContainText('+2,000P'),expect(page.locator('#plazaDialog')).toContainText('열매 5개')]);
+  await Promise.all([expect(page.locator('.questDone')).toContainText('+2,000P'),expect(page.locator('#plazaDialog')).toContainText('열매 5개')]); // (the pay on the done card, their words in the bubble)
+  await expect(page.locator('#plazaDialog')).not.toContainText('+2,000P');
   // v1.10.49: only the account whose server story is done sees the flowerbed bloom.
   await page.keyboard.press('Escape');
   expect((await post(request, '/api/test/island/give', token, { itemId: 'berry', qty: 5 })).status).toBe(200);
