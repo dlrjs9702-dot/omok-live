@@ -2210,7 +2210,7 @@ body.roomPlaying .boardCard>.diceYutSection.throwing{opacity:1}
 /* (G-틀① 검토) the turn's line says whose turn: beside it only my clock (no second 「내 차례」, no timeout words); a toast over
    the board, under the note, not over the quick words; on a phone the bar is one line and a seat's status one line */
 body.roomPlaying #myActionTimerLabel,body.roomPlaying #myActionTimerResult{display:none}
-body.roomPlaying .toast{top:calc(30vh + 52px);bottom:auto;pointer-events:none} /* (over the board: a move goes through it) */
+body.roomPlaying .toast{top:calc(22vh + 48px);bottom:auto;max-width:min(440px,60vw);font-size:.88rem;padding:9px 16px;pointer-events:none} /* (over the board's upper part, small: a move goes through it) */
 @media(max-width:640px){
   body.roomPlaying .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
   body.roomPlaying .roomBarTitle{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:6px}
@@ -2223,7 +2223,7 @@ body.roomPlaying .toast{top:calc(30vh + 52px);bottom:auto;pointer-events:none} /
   body.roomPlaying .toast{top:calc(25vh + 40px);max-width:70vw;font-size:.82rem;padding:8px 12px} /* (the board's upper quarter, not its middle) */
 }
 body.roomPlaying #turnNotifyBtn{font-size:0;padding:6px 10px}body.roomPlaying #turnNotifyBtn::before{content:"🔕";font-size:1rem}body.roomPlaying #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
-.boardNote{position:fixed;left:50%;top:30vh;transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100% - 24px));margin:0;padding:8px 18px;border-radius:999px;background:rgba(15,23,42,.94);border:1px solid #475569;color:#f8fafc;font-weight:800;font-size:.9rem;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;animation:boardNoteIn .2s ease-out}
+.boardNote{position:fixed;left:50%;top:22vh;transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100% - 24px));margin:0;padding:8px 18px;border-radius:999px;background:rgba(15,23,42,.94);border:1px solid #475569;color:#f8fafc;font-weight:800;font-size:.9rem;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;animation:boardNoteIn .2s ease-out}
 .boardNote.hidden{display:none}
 @keyframes boardNoteIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.boardNote{animation:none}}
