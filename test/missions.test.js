@@ -182,6 +182,9 @@ test('친선 판: 같은 상대와는 하루 2판까지만 미션·첫 승에 �
   assert.equal(doc.counters.played, 2);
   const third = friendly({ result: 'win', soleWinner: true });
   assert.deepEqual([third.changed, third.capped, third.rewards, doc.counters.played, doc.counters.wins, doc.firstWin], [true, true, [], 2, 0, false]);
+  // (C3 ⑤) the same capped game seen again: still capped, so the store leaves the week alone
+  const again = applyMatch(doc, match({ matchId: doc.capped[0], friendly: true, result: 'win', soleWinner: true }));
+  assert.deepEqual([again.changed, again.capped], [false, true]);
   assert.equal(applyMatch(doc, match({ friendly: true, opponents: [C] })).capped, undefined, '다른 상대는 셈');
   assert.equal(applyMatch(doc, match({ result: 'loss', soleWinner: false })).capped, undefined, '내기 판은 셈');
   assert.equal(doc.counters.played, 4);

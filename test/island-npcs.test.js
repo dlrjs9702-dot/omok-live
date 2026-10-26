@@ -133,4 +133,11 @@ test('주민 길 격자: 조금씩 만들어도 한 번에 만든 것과 같고,
   const [p, q] = [...parts.values()]; const N = Math.sqrt(a.blocked.length); const E = (N * 1.5) / 2; const at = (id) => ({ x: -E + ((id % N) + 0.5) * 1.5, z: -E + (Math.floor(id / N) + 0.5) * 1.5 });
   const t0 = performance.now(); assert.equal(A.findPath(at(p), at(q)), null); assert.ok(performance.now() - t0 < 50);
   assert.deepEqual(A.round(3, 'morning'), B.round(3, 'morning'));
+  // (CI #315) an islander held at a place in another part (a river between, no way round): there at once, not stuck on the
+  // bank re-planning nothing every 1.5 s
+  const to = at(q); let held = false;
+  const walkers = A.createWalkers({ walkable: T.walkable, solidsNear: () => [], poseAt: () => (held ? { x: to.x, z: to.z, yaw: 0, moving: false, held: true } : { ...at(p), yaw: 0, moving: false }) });
+  const w = walkers.add(0, 0); held = true;
+  for (let ms = 100; ms <= 3000; ms += 100) walkers.step(ms, 0.1);
+  assert.deepEqual([w.x, w.z, w.arrived, walkers.resyncs()], [to.x, to.z, true, 1]);
 });

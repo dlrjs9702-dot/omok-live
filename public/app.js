@@ -2698,8 +2698,11 @@
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const card = el('section', 'card festivalCard'); card.id = 'festivalCard';
     openPlazaWindow('행사', [card]); plazaDialog.classList.add('boardMode');
+    let drawn = 0; // (C3 ⑨: tabs switched fast -- only the last one asked for draws)
     const draw = async (which) => {
-      try { festivalView = await api('/api/island/festival'); plaza.controller?.setFestival?.(festivalView); } catch (error) { card.replaceChildren(el('p', 'emptyState', error.message)); return; }
+      const mine = ++drawn;
+      try { festivalView = await api('/api/island/festival'); plaza.controller?.setFestival?.(festivalView); } catch (error) { if (mine === drawn) card.replaceChildren(el('p', 'emptyState', error.message)); return; }
+      if (mine !== drawn) return;
       const f = festivalView.festival;
       if (!f) { card.replaceChildren(el('p', 'emptyState', festivalView.next ? `다음 행사 「${festivalView.next.name}」는 ${festivalView.next.start.slice(5).replace('-', '월 ')}일에 시작해요.` : '지금은 행사가 없어요.')); return; }
       const head = el('div', 'festivalHead'); head.append(el('h3', '', `${f.name} · ${f.start.slice(5).replace('-', '/')}~${f.end.slice(5).replace('-', '/')}`), el('strong', 'festivalStamps', `도장 ${f.stamps}개`));
@@ -2712,7 +2715,7 @@
         for (const t of f.tasks) list.append(el('li', t.today >= t.perDay ? 'done' : '', `${t.name} · 도장 ${t.stamps}개 · 오늘 ${t.today}/${t.perDay}${t.id === 'feast' ? ' (마지막 날 저녁 6~10시, 잔칫상 둘레)' : t.id === 'harvest' ? ' (밭에서 SPACE)' : t.id === 'contest' ? ' (토·일 대회 날, 여기서 대회 시작)' : ' (요리 대회 칸에서)'}`));
         body.append(list);
       } else if (which === 'cook') {
-        const bag = (await api('/api/island/bag').catch(() => ({ items: [] }))).items || [];
+        const bag = (await api('/api/island/bag').catch(() => ({ items: [] }))).items || []; if (mine !== drawn) return;
         const ok = bag.filter((e) => ['harvest', 'berry', 'mushroom', 'herb'].includes(e.itemId) || /^fish_/.test(e.itemId));
         body.append(el('p', 'smallMuted', '가방의 먹을 것 세 가지로 요리를 내면 심사해요(하루 한 번, 도장 2개). 재료는 써요.'));
         const picks = [0, 1, 2].map(() => { const s = el('select', 'festivalPick'); s.append(new Option('재료 고르기', '')); for (const e of ok) s.append(new Option(`${e.name} (${e.qty})`, e.itemId)); return s; });

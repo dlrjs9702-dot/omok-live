@@ -86,8 +86,10 @@ test('매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작
   // closed outside its hours and on a weekday
   await clock(Date.parse('2026-11-07T23:00:00+09:00')); await stand(a, P.host); assert.equal((await req('/api/island/weekly/start', a, {})).data.error, 'CONTEST_CLOSED');
   await clock(Date.parse('2026-11-09T12:00:00+09:00')); assert.equal((await req('/api/island/weekly/start', a, {})).data.error, 'CONTEST_CLOSED');
-  // the night's settlement: 1st and 2nd -- points, title, trophy; Saturday's 1st on 영웅마루
+  // the night's settlement: 1st and 2nd -- points, title, trophy; Saturday's 1st on 영웅마루 -- settled by the minute's
+  // check even when the server slept from Saturday night to Tuesday (C3 ③)
   const before = (await req('/api/points', a)).data.balance;
+  await clock(Date.parse('2026-11-10T12:00:00+09:00')); await req('/api/test/weekly/settle', null, { all: true });
   const settledRes = await req('/api/test/weekly/settle', null, { day: '2026-11-07' }); const settled = settledRes.data.result; assert.ok(settled, JSON.stringify(settledRes)); assert.deepEqual(settled.top.map((x) => [x.rank, x.name]), [[1, '낚시상'], [2, '둘째']]);
   assert.equal((await req('/api/points', a)).data.balance, before + 10000);
   assert.ok((await req('/api/skins', a)).data.dexTitles.some((x) => x.id === 'title_contest_fish_1'));

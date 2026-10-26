@@ -64,9 +64,14 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
     const now = await page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderersAt(true).find((o) => o.n === n); return w && { ...w, d: Math.hypot(w.x - d.x, w.z - d.z) }; }, m.n);
     if (!now || now.d > 1.3) return 'moved off'; // (out of reach: the next try)
     await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [now.x, now.z]);
+    // (CI #315: a slow runner's 0.45 s swing ended after a fixed 0.7 s wait -- the swing itself is waited for (its own
+    // start time), then the cross word of the one it met; what it met is told when it misses)
+    const before = await page.evaluate(() => window.PlazaDebug().lastSwing()?.t ?? null);
     if (!(await spaceOn(page, 'tool:swing', isMobile))) return 'no swing';
-    await page.waitForTimeout(700);
-    return (await page.evaluate(() => window.PlazaDebug().struck()))[0]?.bubble ? 'struck' : 'missed';
+    let swing = null; await expect.poll(async () => { swing = await page.evaluate(() => window.PlazaDebug().lastSwing()); return swing?.t ?? null; }, { timeout: 10000 }).not.toBe(before);
+    if (swing.hit?.resident == null) return `missed ${JSON.stringify(swing)}`;
+    await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().struck())).some((s) => s.n === swing.hit.resident && s.bubble), { timeout: 5000 }).toBe(true);
+    return 'struck';
   }, { timeout: 60000, intervals: [1000] }).toBe('struck');
   // put away: no swing
   await page.keyboard.press('KeyI'); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click();
