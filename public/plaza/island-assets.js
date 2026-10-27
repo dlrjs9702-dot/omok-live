@@ -392,6 +392,8 @@
   const dal = (file, extra = {}) => ({ url: `${DAL}/${file}.glb`, low: { url: `${DAL}/${file}_low.glb` }, rotationY: Math.PI, near: 90, ...extra });
   for (const f of ['bridge_yunseul', 'lighthouse_choseung', 'pier_dalkkeut', 'dock_boat', 'stairs_ridge', 'rail_waterfront', 'lamp_waterfront', 'bench_waterfront', 'niche_hero']) REGISTRY[`dalmaru.${f}`] = dal(f);
   for (const f of ['facade_townhall', 'facade_mall']) REGISTRY[`dalmaru.${f}`] = dal(f, { near: 140 });
+  // (v1.10.190, assets 81: their Low lost the deck's top -- floor-low.test.js; the High alone until a new Low comes)
+  for (const f of ['pier_dalkkeut', 'dock_boat']) REGISTRY[`dalmaru.${f}`].low = null;
   // 묶음 1 대청마당 바닥 (assets 59): the disc (its crescent to the cliff: the file's -Z is north, not turned), ring, kerbs,
   // channels; the gardens in four seasons (each its zone's)
   const PV = '/assets/island/plaza-v1';

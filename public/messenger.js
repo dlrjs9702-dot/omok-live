@@ -32,13 +32,18 @@
   function showLogin(message = '') {
     for (const t of timers) clearInterval(t); timers = []; wantStream(false);
     gen += 1; state = { rooms: [], people: [], me: '' }; current = null; last = 0; msgs = []; readsKey = '';
-    box.replaceChildren(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); document.title = '아일랜드 메신저';
+    box.replaceChildren(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); baseTitle = '아일랜드 메신저'; blink.seen(); document.title = baseTitle;
     app.classList.add('hidden'); loginForm.classList.remove('hidden'); byId('mLoginStatus').textContent = message;
     for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices']) byId(id).classList.add('hidden');
   }
   const fail = (err) => { if (err.status === 401) { accountToken.set(''); deviceToken.set(''); showLogin('다시 로그인해 주세요.'); } else if (err.status === 403) showLogin(err.message); else showToast(err.message, 4000); };
   const when = (at) => { const d = new Date(at); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); };
-  const unreadOf = (rooms) => rooms.reduce((n, r) => n + (r.muted ? 0 : r.unread), 0);
+  // v1.10.190: the app icon's count and the title blinking while away (public/messenger-alert.js, as the game window's)
+  const { unreadOf } = window.MessengerAlert; let baseTitle = '아일랜드 메신저';
+  const blink = window.MessengerAlert.titleBlink(() => { document.title = blink.text(baseTitle); });
+  const away = () => document.visibilityState === 'hidden' || !document.hasFocus();
+  const looking = () => { if (!away()) blink.seen(); };
+  document.addEventListener('visibilitychange', looking); window.addEventListener('focus', looking);
   function renderRooms() {
     list.replaceChildren(...state.rooms.map((room) => {
       const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost';
@@ -54,8 +59,9 @@
       b.setAttribute('aria-current', String(room.id === current?.id)); b.addEventListener('click', () => openRoom(room)); li.append(b); return li;
     }));
     if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
-    const unread = unreadOf(state.rooms); document.title = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
-    if (navigator.setAppBadge) (unread ? navigator.setAppBadge(unread) : navigator.clearAppBadge()).catch(() => {}); // (the app icon's count, where it can)
+    const unread = unreadOf(state.rooms); baseTitle = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
+    document.title = blink.text(baseTitle); blink.update(unread, away());
+    window.MessengerAlert.setBadge(navigator, unread);
   }
   async function refresh() { const g = gen; try { const data = await api('/api/messenger'); if (g !== gen) return false; state = data; renderRooms(); return true; } catch (err) { if (g === gen) fail(err); return false; } }
   function line(msg, same) { // `same`: the same person just before -- the name once (카톡)
@@ -73,15 +79,36 @@
       meta.append(n);
     }
     const time = document.createElement('time'); time.textContent = new Date(msg.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); meta.append(time);
-    if (msg.from === state.me && !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000) { // mine, within 5 minutes, for everyone
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerUnsend'; del.textContent = '삭제'; del.setAttribute('aria-label', '이 메시지 삭제');
-      del.addEventListener('click', async () => {
-        if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
-        try { await api(`/api/messenger/rooms/${current.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
-      });
-      meta.append(del);
-    }
+    if (msg.from === state.me && !msg.deleted && canUnsend(msg)) bubbleMenuOn(text, msg); // mine, within 5 minutes, for everyone
     row.append(text, meta); item.append(row); return item;
+  }
+  // v1.10.190 말풍선 메뉴 (사용자: no 「삭제」 word under my line): a right click on the PC, a 0.5 s press on a phone (a
+  // keyboard: the menu key on the focused line) opens a small menu by it -- 삭제, asked once; outside it or Esc closes it
+  const canUnsend = (msg) => !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000;
+  let bubbleMenu = null;
+  const closeBubbleMenu = () => { bubbleMenu?.remove(); bubbleMenu = null; };
+  document.addEventListener('pointerdown', (e) => { if (bubbleMenu && !bubbleMenu.contains(e.target)) closeBubbleMenu(); }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && bubbleMenu) closeBubbleMenu(); });
+  function openBubbleMenu(bubble, msg, x, y) {
+    closeBubbleMenu(); if (!canUnsend(msg)) return;
+    const menu = document.createElement('div'); menu.className = 'messengerMoreMenu messengerBubbleMenu'; menu.setAttribute('role', 'menu');
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerBubbleDelete'; del.setAttribute('role', 'menuitem'); del.textContent = '삭제';
+    del.addEventListener('click', async () => {
+      closeBubbleMenu(); if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
+      try { await api(`/api/messenger/rooms/${current.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
+    });
+    menu.append(del); app.append(menu); bubbleMenu = menu;
+    if (!x && !y) { const r = bubble.getBoundingClientRect(); x = r.left; y = r.bottom; } // (the menu key: by the line)
+    const w = menu.offsetWidth; const h = menu.offsetHeight;
+    menu.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`; menu.style.top = `${Math.max(8, Math.min(y, innerHeight - h - 8))}px`;
+    del.focus();
+  }
+  function bubbleMenuOn(bubble, msg) {
+    bubble.classList.add('hasMenu'); bubble.tabIndex = 0; bubble.setAttribute('aria-haspopup', 'menu');
+    bubble.addEventListener('contextmenu', (e) => { if (!canUnsend(msg)) return; e.preventDefault(); openBubbleMenu(bubble, msg, e.clientX, e.clientY); });
+    let press = null; const cancel = () => { clearTimeout(press); press = null; };
+    bubble.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') return; cancel(); const { clientX: x, clientY: y } = e; press = setTimeout(() => { press = null; openBubbleMenu(bubble, msg, x, y); }, 500); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) bubble.addEventListener(ev, cancel);
   }
   function render() {
     const nodes = []; let prev = null; let prevDay = '';

@@ -7196,8 +7196,9 @@
   let turnNotifyPref = false;
   try { turnNotifyPref = localStorage.getItem(TURN_NOTIFY_KEY) === '1'; } catch {}
 
+  const messengerBlink = window.MessengerAlert.titleBlink(() => applyDocumentTitle()); // v1.10.190: a new message while away
   function applyDocumentTitle() {
-    const next = turnAlertActive ? `${TURN_ALERT_PREFIX}${baseDocumentTitle}` : baseDocumentTitle;
+    const next = messengerBlink.text(turnAlertActive ? `${TURN_ALERT_PREFIX}${baseDocumentTitle}` : baseDocumentTitle);
     if (document.title !== next) document.title = next;
   }
 
@@ -11932,6 +11933,8 @@
   let setupTicket = document.body.dataset.setup || '';
   const accountToken = { get: () => { try { return sessionStorage.getItem(ACCOUNT_KEY) || ''; } catch { return ''; } },
     set: (t) => { try { if (t) sessionStorage.setItem(ACCOUNT_KEY, t); else sessionStorage.removeItem(ACCOUNT_KEY); } catch {} } };
+  // v1.10.190: an entry file only logs in (body data-account) -- 내 계정 here, the island by 「게임 접속」
+  if (document.body.dataset.account) { accountToken.set(document.body.dataset.account); history.replaceState(null, '', '/'); }
   const say = (text, bad = false) => { accountMessage.textContent = text; accountMessage.classList.toggle('bad', bad); };
   const accountApi = (path, body, method = 'POST') => api(path, { method, headers: { 'X-Account-Token': accountToken.get() }, ...(body ? { body: JSON.stringify(body) } : {}) });
   let accountPane = '';
@@ -11951,7 +11954,7 @@
     showAccountPane('account');
   }
   async function openAccountGate() { // the gate is shown: which part of it
-    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 이제 아이디와 비밀번호로도 로그인합니다. 설정해야 입장할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.`; showAccountPane('setup'); return; }
+    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 이제 아이디와 비밀번호로도 로그인합니다. 설정해야 로그인할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.`; showAccountPane('setup'); return; }
     if (!accountToken.get()) { if (accountPane !== 'login' && accountPane !== 'signup') showAccountPane('login'); return; } // the tab in use stays
     try { showAccount((await accountApi('/api/account/me', null, 'GET')).account); }
     catch { accountToken.set(''); showAccountPane('login'); }
@@ -11994,7 +11997,7 @@
     if (byId('setupPasswordInput').value !== byId('setupPasswordConfirm').value) { say('비밀번호 확인이 일치하지 않습니다.', true); return; }
     try {
       const data = await api('/api/account/setup', { method: 'POST', body: JSON.stringify({ ticket: setupTicket, loginId: byId('setupIdInput').value, password: byId('setupPasswordInput').value }) });
-      setupTicket = ''; accountToken.set(data.accountToken); enterWithAccount();
+      setupTicket = ''; accountToken.set(data.accountToken); say(''); showAccount(data.account); history.replaceState(null, '', '/');
     } catch (err) { say(err.message, true); }
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
@@ -12004,7 +12007,7 @@
   // and the island's) with what is unread, opening that window (the same one again), and the island's small notice.
   const messenger = (() => {
     const msgBtn = byId('accountMessengerBtn'); const tab = byId('islandMessengerTab'); let on = false;
-    const unreadOf = (rooms) => rooms.reduce((n, r) => n + (r.muted ? 0 : r.unread), 0);
+    const { unreadOf } = window.MessengerAlert;
     // (사용자 2026-10-25 「섬 앱에서 누르면 크롬으로 열려」: the blank window used to find an open one is outside the installed
     // app's scope, so the app handed it to the browser -- in the app, no blank one: the messenger itself in a small window,
     // the one opened kept and brought forward)
@@ -12027,6 +12030,7 @@
         const unread = unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms); const n = unread > 99 ? '99+' : unread;
         msgBtn.textContent = unread ? `메신저 · 새 메시지 ${n}` : '메신저'; tab.textContent = unread ? `메신저 ${n}` : '메신저';
         for (const b of [msgBtn, tab]) b.classList.toggle('hasUnread', unread > 0);
+        window.MessengerAlert.setBadge(navigator, unread); messengerBlink.update(unread, pageInBackground()); // (v1.10.190: the app icon's count, as the messenger window's)
       } catch {}
     }
     setInterval(badge, 30000);
@@ -12408,7 +12412,7 @@
   });
 
   // v1.6.85: coming back to this tab (or its window regaining focus) ends a pending turn alert.
-  const endTurnAlertIfLooking = () => { if (!pageInBackground()) clearTurnAlert(); };
+  const endTurnAlertIfLooking = () => { if (!pageInBackground()) { clearTurnAlert(); messengerBlink.seen(); } };
   document.addEventListener('visibilitychange', endTurnAlertIfLooking);
   window.addEventListener('focus', endTurnAlertIfLooking);
   turnNotifyBtn?.addEventListener('click', () => { toggleTurnNotify(); });

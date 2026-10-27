@@ -5305,10 +5305,8 @@
     },
     {
       "out": "dalmaru-v1/dock_boat.glb",
-      "src": "dalmaru55:01. High/dock_boat.glb",
-      "sha256": "2ae423ffddf39f72d5547a0c63ddc1dbb183850752819bb8ff55befcc03b2721",
-      "lowSrc": "dalmaru55:02. Low/dock_boat_low.glb",
-      "lowSha256": "4c1302dd363eae12dba2e951b42cd80f908892a3904237d8a902320b70c1398a",
+      "src": "dock81:01. High/dock_boat.glb",
+      "sha256": "83f4cdbd73809ec757f27f009e5c5056411ccf76f313af7542dd872380a9496d",
       "precompressed": true
     },
     {
@@ -5353,10 +5351,8 @@
     },
     {
       "out": "dalmaru-v1/pier_dalkkeut.glb",
-      "src": "dalmaru55:01. High/pier_dalkkeut.glb",
-      "sha256": "c698beec719738379b2405c6288ac34e44b7067b3e8f4093a46a9986496eef39",
-      "lowSrc": "dalmaru55:02. Low/pier_dalkkeut_low.glb",
-      "lowSha256": "f02092efe5ef35c4d4af232954411b775c8df0721941be9342d80c7179dc3654",
+      "src": "dock81:01. High/pier_dalkkeut.glb",
+      "sha256": "39cfa05f4face3dd4893c8e5f763d71450d81eb79a005224b0e12ce2fe2f0442",
       "precompressed": true
     },
     {
@@ -8047,6 +8043,7 @@
     "npc52": "52. Game Island named npc refit 2026-10-18",
     "walker51": "51. Game Island resident looks 2026-10-23",
     "jail67": "67. Game Island jail 2026-10-22",
-    "season72": "72. Game Island season events 2026-10-25"
+    "season72": "72. Game Island season events 2026-10-25",
+    "dock81": "81. Game Island dock pilings 2026-10-27"
   }
 }

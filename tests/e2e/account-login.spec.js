@@ -72,12 +72,26 @@ test('아이디 없는 입장 파일 계정: 아이디·비밀번호 설정 뒤�
   await expect(page.locator('#accountMessage')).toContainText('사용할 수 있는 아이디');
   await page.locator('#setupPasswordInput').fill('filepass1');
   await page.locator('#setupPasswordConfirm').fill('filepass2');
-  await page.getByRole('button', { name: '설정하고 입장' }).click();
+  await page.getByRole('button', { name: '설정하고 로그인' }).click();
   await expect(page.locator('#accountMessage')).toHaveText('비밀번호 확인이 일치하지 않습니다.');
   await page.locator('#setupPasswordConfirm').fill('filepass1');
-  await page.getByRole('button', { name: '설정하고 입장' }).click();
+  await page.getByRole('button', { name: '설정하고 로그인' }).click();
+  await expect(page.locator('#accountPanel')).toBeVisible(); // v1.10.190: 내 계정 first, the island by 「게임 접속」
+  await expect(page.locator('#accountSub')).toHaveText(`아이디 ${id}`);
+  await page.getByRole('button', { name: '게임 접속' }).click();
   await expect(page.locator('#lobbyView')).toBeVisible({ timeout: 15000 });
   const keys = (await api(request, '/api/admin/keys', admin)).data.keys;
   expect(keys.find((k) => k.id === issued.key.id).loginId).toBe(id);
+  // v1.10.190: the same file again elsewhere, while that one plays -- 내 계정 (no 「이미 사용 중」 yet); 「게임 접속」 is where it is checked
+  const other = await browser.newContext(); const page2 = await other.newPage();
+  await page2.setExtraHTTPHeaders({ 'X-Forwarded-For': ip() });
+  await page2.setContent(issued.html);
+  await expect(page2.locator('#accountPanel')).toBeVisible({ timeout: 15000 });
+  await expect(page2.locator('#accountSub')).toHaveText(`아이디 ${id}`);
+  await expect(page2.locator('#lobbyView')).toBeHidden();
+  expect(new URL(page2.url()).pathname).toBe('/');
+  await page2.getByRole('button', { name: '게임 접속' }).click();
+  await expect(page2.locator('body')).toContainText('이미 사용 중');
   await context.close();
+  await other.close();
 });

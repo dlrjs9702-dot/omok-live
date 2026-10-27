@@ -9,7 +9,7 @@
   <title>아일랜드</title>
   <!-- v1.10.66 홈 화면 앱: 「홈 화면에 추가」(Android 「앱 설치」)로 섬 아이콘이 생기고, 그 아이콘으로 열면 주소창 없이 열린다 -->
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="icon" href="/icons/island.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="/theme-light-auto.css" />
   <link rel="stylesheet" href="/theme-light.css" />
 </head>
-<body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__" data-setup="__SETUP_TICKET__" data-browsers="__BROWSERS__">
+<body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__" data-setup="__SETUP_TICKET__" data-account="__ACCOUNT_TOKEN__" data-browsers="__BROWSERS__">
   <main class="shell">
     <section id="gateView" class="gate card">
       <div class="brandMark" aria-hidden="true"><span></span><span></span></div>
@@ -76,14 +76,14 @@
       </section>
       <form id="accountSetupForm" class="stackForm accountForm hidden" aria-labelledby="accountSetupTitle">
         <h2 id="accountSetupTitle">아이디·비밀번호 설정</h2>
-        <p id="accountSetupLead" class="smallMuted">이제 아이디와 비밀번호로도 로그인합니다. 설정해야 입장할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.</p>
+        <p id="accountSetupLead" class="smallMuted">이제 아이디와 비밀번호로도 로그인합니다. 설정해야 로그인할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.</p>
         <label for="setupIdInput">아이디 <small>(영문 소문자·숫자·_ 4~20자)</small></label>
         <div class="accountIdRow"><input id="setupIdInput" autocomplete="username" maxlength="20" required /><button id="setupCheckBtn" class="ghost" type="button">중복 확인</button></div>
         <label for="setupPasswordInput">비밀번호 <small>(8자 이상)</small></label>
         <input id="setupPasswordInput" type="password" autocomplete="new-password" maxlength="64" required />
         <label for="setupPasswordConfirm">비밀번호 확인</label>
         <input id="setupPasswordConfirm" type="password" autocomplete="new-password" maxlength="64" required />
-        <button class="primary big" type="submit">설정하고 입장</button>
+        <button class="primary big" type="submit">설정하고 로그인</button>
       </form>
       <p id="accountMessage" class="accountMessage" role="status" aria-live="polite"></p>
       <form id="accountEntryForm" class="hidden" method="post" action="/guest-entry"><input type="hidden" name="account" id="accountEntryToken" /></form>
@@ -1358,6 +1358,7 @@
   <script src="/game-boot.js"></script>
   <script src="/session-lock.js"></script>
   <script src="/recent-action.js"></script>
+  <script src="/messenger-alert.js"></script>
   <script src="/skin-looks.js"></script>
   <script src="/skin-art-omok.js"></script>
   <script src="/skin-art-connect4.js"></script>

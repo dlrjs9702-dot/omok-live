@@ -18,7 +18,7 @@ body.messengerPage{margin:0;min-height:100dvh;background:#f4ead6;color:var(--isl
 .mApp .chatMessageText{background:#fff;color:#2f2418;border:1px solid var(--isle-line)}
 .mApp .chatMessage.mine .chatMessageText{background:#ffe7a8;border-color:#f0cf7a}
 .mApp .chatMessageHead strong{color:var(--isle-soft)}
-.mApp .smallMuted,.mApp time,.mApp .messengerUnsend{color:var(--isle-soft)}
+.mApp .smallMuted,.mApp time{color:var(--isle-soft)}
 .messengerPage .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 .messengerPage .secondary{background:var(--isle-tag);color:#fff;border-color:transparent}
 .messengerPage .primary{background:#c98a1e;color:#fff;border-color:transparent}
@@ -39,7 +39,6 @@ html[data-mtheme="dark"] .mApp .messengerMessages{background:#231d19}
 html[data-mtheme="dark"] .mApp .chatMessageText{background:#352c25;color:#f1e6d2}
 html[data-mtheme="dark"] .mApp .chatMessage.mine .chatMessageText{background:#8a5a14;border-color:#a8741f;color:#fff6e3}
 html[data-mtheme="dark"] .messengerPage input[type="text"],html[data-mtheme="dark"] .messengerPage input[type="password"]{background:#352c25;color:var(--isle-ink)}
-html[data-mtheme="dark"] .mApp .messengerUnsend{color:#cdbba2}
 /* I8-3: the room's ⋯ menu on the messenger's own paper (밝게 / 어둡게) -- 방 나가기 in red */
 .mApp .messengerMoreMenu{background:#fffaf0;border:1px solid var(--isle-line);box-shadow:0 10px 26px rgba(74,56,40,.22)}
 .mApp .messengerMoreMenu button{color:var(--isle-ink);background:none}
@@ -48,3 +47,8 @@ html[data-mtheme="dark"] .mApp .messengerUnsend{color:#cdbba2}
 html[data-mtheme="dark"] .mApp .messengerMoreMenu{background:#352c25}
 html[data-mtheme="dark"] .mApp .messengerMoreMenu button:hover,html[data-mtheme="dark"] .mApp .messengerMoreMenu button:focus-visible{background:#43382f}
 html[data-mtheme="dark"] .mApp .messengerMoreMenu .messengerLeave{color:#f87171}
+/* v1.10.190 말풍선 메뉴: by the pointer (a right click, a long press); my line keeps the phone's own select/callout away */
+.mApp .messengerBubbleMenu{position:fixed;right:auto;top:auto;min-width:110px;z-index:40}
+.mApp .messengerBubbleMenu .messengerBubbleDelete{color:#b3261e}
+html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color:#f87171}
+.mApp .chatMessageText.hasMenu{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
