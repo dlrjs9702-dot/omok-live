@@ -9759,6 +9759,7 @@
   }
 
   let halliThemeApplied = null;
+  const halliNarrow = matchMedia('(max-width:640px)'); const halliTouch = matchMedia('(hover: none) and (pointer: coarse)');
   function renderHalli() {
     const g = state.game;
     const playerName = (number) => state.players[number]?.label || `${number}번`;
@@ -9844,12 +9845,12 @@
         face.append(heading, visuals);
       } else {
         face.className = 'halliEmptyFace';
-        face.textContent = '아직 공개한 카드 없음';
+        face.textContent = halliNarrow.matches ? '카드 없음' : '아직 공개한 카드 없음'; // (G-게임별 v187 검토: a phone's narrow pile)
       }
       const count = document.createElement('small');
       count.className = 'halliCardCounts';
       if (plotSkin?.text) SLH.h.style(count, { color: plotSkin.text.color, textShadow: 'none' });
-      count.textContent = `뒷면 ${g.pileCounts?.[owner] || 0}장 · 앞면 ${g.faceCounts?.[owner] || 0}장`;
+      count.textContent = halliNarrow.matches ? `뒷 ${g.pileCounts?.[owner] || 0} · 앞 ${g.faceCounts?.[owner] || 0}` : `뒷면 ${g.pileCounts?.[owner] || 0}장 · 앞면 ${g.faceCounts?.[owner] || 0}장`;
       card.append(name, face, count);
       halliCards.append(card);
     }
@@ -9863,7 +9864,7 @@
     halliTransferResult.classList.toggle('success', Boolean(g.lastBell?.correct));
     halliTransferResult.classList.toggle('penalty', Boolean(g.lastBell && !g.lastBell.correct));
     if (!g.lastBell) {
-      halliLastBell.textContent = '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.';
+      halliLastBell.textContent = halliTouch.matches ? '종을 눌러 치세요.' : '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.'; // (a touch screen has no space bar)
     } else {
       const bell = g.lastBell;
       const moves = bell.transfers || [];
