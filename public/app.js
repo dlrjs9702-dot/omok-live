@@ -7157,7 +7157,8 @@
 
   function renderHeadlineContext() {
     const g = state?.game;
-    const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats().seats.has(String(seat)));
+    // (G-게임별 윷 검토: not the held mover -- after my 빽도's auto-pass the line is already the other's turn)
+    const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats({ holdAnimations: false }).seats.has(String(seat)));
     statusText.classList.toggle('selfActHeadline', mine);
     // (G-게임별: on a phone my own name dropped from my turn's line -- 「내 차례 · 숫자 추측」 in one line, as 고스톱's)
     // (도둑잡기 검토: and on any screen 「내 차례 · 누구님 차례 · …」 says it twice -- the second 「…님 차례 · 」 dropped)
@@ -7672,7 +7673,8 @@
     const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.chatId || '');
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     const newestSystem = systemRows.length ? Number(systemRows[systemRows.length - 1].id) || 0 : 0;
-    if (systemSeen !== null && newestSystem > systemSeen) boardNote(systemRows[systemRows.length - 1].text); // (G-틀①)
+    const newestText = systemRows[systemRows.length - 1]?.text || '';
+    if (systemSeen !== null && newestSystem > systemSeen && !(state?.gameType === 'yut' && /님이 \S+[을를] 던졌습니다\.$/.test(newestText))) boardNote(newestText); // (G-틀①; G-게임별 윷 검토: a throw is told by its big card)
     systemSeen = newestSystem;
     lastRenderedChatIds = chatRows.map(row => row.id);
     if (bubbleSeen !== null && newestId > bubbleSeen) chatBubble(chatRows[chatRows.length - 1]); // A3 G1-6 (a line newer than the last view)
@@ -10324,6 +10326,7 @@
   }
   const YUT_HOME_TOKEN_NODE = 0; // the start corner: board pieces never rest there (laps end on finishLine)
   const YUT_TARGET_RADIUS = 26;
+  let yutFingerTimer = null;
 
   // v1.6.83: every legal move as ONE on-board selection target, laid out with the very same
   // yutNodePosition()/yutStackOffsets() geometry drawPieceStack() paints with, so what is drawn and
@@ -10602,9 +10605,11 @@
         ctx.stroke();
         ctx.restore();
         // (G-게임별 윷: 「이 말」 -- a big finger over it, pointing down; on the top row under it, pointing up)
-        const up = target.y < 120; ctx.save(); ctx.font = '46px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = up ? 'top' : 'bottom';
-        ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 6; ctx.fillText(up ? '👆' : '👇', (target.x1 + target.x2) / 2, up ? target.y + YUT_TARGET_RADIUS : target.y - YUT_TARGET_RADIUS); ctx.restore();
+        const up = target.y < 140; const nod = reducedMotionActive() ? 0 : Math.sin(performance.now() / 170) * 6; const gap = YUT_TARGET_RADIUS + 8 + nod;
+        ctx.save(); ctx.font = '64px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = up ? 'top' : 'bottom';
+        ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 8; ctx.fillText(up ? '👆' : '👇', (target.x1 + target.x2) / 2, up ? target.y + gap : target.y - gap); ctx.restore();
       }
+      if (!reducedMotionActive() && !yutFingerTimer) yutFingerTimer = setTimeout(() => { yutFingerTimer = null; if (state?.gameType === 'yut' && document.body.classList.contains('roomPlaying')) drawYutBoard(); }, 50); // (the finger nods while there is a piece to pick)
     }
     if (!animatingIds && yutRecentIds.size) {
       for (const { position, pieces } of grouped.values()) {

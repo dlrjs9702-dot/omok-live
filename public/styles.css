@@ -2900,7 +2900,8 @@ body.roomPlaying .boardCard .yutActionRow{justify-content:center}
 body.roomPlaying .boardCard #yutThrowBtn{min-width:min(300px,100%);min-height:50px;font-size:1.05rem;border-radius:999px}
 @media(max-width:640px){body.roomPlaying #boardScroll:has(>.diceYutSection){flex-direction:column;gap:8px}#boardScroll>.diceYutSection{flex:none;align-self:stretch;padding:4px 10px 6px}#boardScroll>.diceYutSection .diceYutStage{height:62px;--diceYutScale:.55}}
 .yutCall{position:absolute;left:50%;top:50%;z-index:6;display:flex;flex-direction:column;align-items:center;padding:8px 26px 8px;border-radius:18px;background:rgba(255,251,235,.95);border:3px solid #92400e;color:#7c2d12;box-shadow:0 10px 30px rgba(0,0,0,.35);pointer-events:none;transform:translate(-50%,-50%);animation:yutCall 1.7s ease forwards}
-.yutCall b{font-size:clamp(40px,11vw,76px);line-height:1.05;font-weight:900;letter-spacing:.04em}
+.yutCall b{font-size:clamp(36px,10vw,76px);line-height:1.05;font-weight:900;letter-spacing:.04em;white-space:nowrap}
+.yutCall small{white-space:nowrap}
 .yutCall small{font-size:.95rem;font-weight:800}
 .yutCall.again{border-color:#b91c1c;color:#b91c1c}
 .yutCall.back{border-color:#334155;color:#334155}
