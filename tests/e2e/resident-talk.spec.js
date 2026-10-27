@@ -106,7 +106,10 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   if (now.done === 0) { await talkTo(now.track[0].to); await close(); now = (await get(request, '/api/island/errands', token)).data; }
   expect(now.done).toBe(1);
   expect(await page.evaluate(() => window.__doneSeen)).toBe(true);
-  expect((await get(request, '/api/points', token)).data.balance - before).toBe(track[0].reward); // (the errand's own pay: its kind and how far apart -- 묶음 1 errand:far)
+  // (2026-10-28: the day's errand took its asker to 아는 사이 -- that level's own pay came with it; a fresh account: each level once)
+  const def = (key) => require('../../lib/economy').DEFS.find((d) => d.key === key).def;
+  const levelPay = (await get(request, '/api/island/affinity', token)).data.residents.reduce((sum, r) => sum + (r.level >= 1 ? def('affinity:known') : 0) + (r.level >= 2 ? def('affinity:close') : 0), 0);
+  expect((await get(request, '/api/points', token)).data.balance - before).toBe(track[0].reward + levelPay); // (the errand's own pay: its kind and how far apart -- 묶음 1 errand:far)
   await expectNoScriptError(page);
   await who.context.close(); await other.context.close();
 });
