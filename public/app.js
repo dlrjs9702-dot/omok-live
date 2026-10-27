@@ -7722,7 +7722,7 @@
     const was = soundSeen; soundSeen = now; const S = window.RoomSound;
     if (!S || !was || was.room !== now.room || was.round !== now.round) return;
     if (now.bell && now.bell !== was.bell) S.play('bell'); // (할리갈리: someone rang it)
-    else if (now.status === 'playing' && now.moves > was.moves && state.gameType !== 'yut') S.play(STONE_GAMES.has(state.gameType) ? 'stone' : 'card');
+    else if (now.status === 'playing' && now.moves > was.moves && state.gameType !== 'yut') S.playPlan ? S.playPlan(S.landPlan(state.gameType, g.lastMove, reducedMotionActive())) : S.play(STONE_GAMES.has(state.gameType) ? 'stone' : 'card'); // (G-게임별 v187: as the stone lands)
     else if (now.status === 'playing' && now.mine && !was.mine) S.play('turn');
     if (was.status === 'playing' && ['finished', 'draw'].includes(now.status)) { const o = seat ? resultOutcome(g, seat, state.gameType) : null; S.play(o === 'win' ? 'win' : o === 'loss' ? 'lose' : 'end'); }
   }
@@ -8177,7 +8177,7 @@
       yutHoverTargetKey = null;
     }
     bingoPanel.classList.toggle('hidden', !bingo);
-    bingoSetupRow.classList.toggle('hidden', !bingo);
+    bingoSetupRow.classList.toggle('hidden', !bingo || g.status === 'playing'); // (G-게임별 v187: the settings are for before a hand)
     if (bingo) renderBingo();
     cityControls.classList.toggle('hidden', !city);
     cityActionPanel.classList.toggle('hidden', !city);

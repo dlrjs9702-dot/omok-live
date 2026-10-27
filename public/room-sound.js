@@ -50,9 +50,22 @@
     stamp: () => { tone({ f: 120, f2: 55, dur: 0.22, vol: 0.32 }); noise({ dur: 0.12, vol: 0.3, from: 1800, to: 300 }); }, // (G-고스톱ⓔ 쾅: 뻑·쪽·따닥·판쓸이·폭탄·흔들기·스톱)
     right: () => [76, 83].forEach((n, i) => tone({ f: NOTE(n), dur: 0.2, vol: 0.14, at: i * 0.07 })), // (G-게임별 다빈치 맞힘: 딩동 up)
     wrong: () => tone({ f: 196, f2: 150, dur: 0.28, vol: 0.18, type: 'triangle' }), // (틀림: a low 둥)
+    flip: (i = 0) => { noise({ dur: 0.035, vol: 0.22, from: 4200, to: 1600 }); tone({ f: 880 + Math.min(i, 12) * 70, dur: 0.045, vol: 0.08, type: 'triangle' }); }, // (G-게임별 v187 오델로 착: a disc turned -- a little higher each)
     go: () => [67, 74].forEach((n, i) => tone({ f: NOTE(n), dur: 0.18, vol: 0.18, type: 'triangle', at: i * 0.1 })), // (고!: two notes up)
   };
   let played = []; // (tests: what was asked to sound, while on)
-  function play(kind) { if (!isOn() || !SOUNDS[kind] || document.hidden) return false; played = [...played.slice(-19), kind]; try { SOUNDS[kind](); } catch {} return true; }
-  window.RoomSound = { play, isOn, setOn, played: () => played.slice() };
+  function play(kind, arg) { if (!isOn() || !SOUNDS[kind] || document.hidden) return false; played = [...played.slice(-19), kind]; try { SOUNDS[kind](arg); } catch {} return true; }
+  // (G-게임별 v187) when a move's sounds fall, in ms after it comes in -- the board's own motion (app.js drawOmokBoard 300 ms
+  // set-down, drawConnect4Board 260 + 70 per row fall, drawOthelloBoard 260 ms drop and each flip edge-on at 200 + 66 + 110 n):
+  // [[ms, kind, arg]]; reduced motion draws it at once, so one sound at once
+  const STONES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
+  function landPlan(game, last, reduced = false) {
+    if (!STONES.has(game)) return [[0, 'card']];
+    if (reduced || !last || game === 'dots') return [[0, 'stone']];
+    if (game === 'connect4') return [[240 + 70 * (Number(last.y) || 0), 'stone']];
+    if (game === 'othello') return [[240, 'stone'], ...(last.flippedCells || []).map((_, i) => [266 + 110 * i, 'flip', i])];
+    return [[260, 'stone']];
+  }
+  function playPlan(plan) { for (const [ms, kind, arg] of plan) if (ms > 0) setTimeout(() => play(kind, arg), ms); else play(kind, arg); }
+  window.RoomSound = { play, isOn, setOn, landPlan, playPlan, played: () => played.slice() };
 })();
