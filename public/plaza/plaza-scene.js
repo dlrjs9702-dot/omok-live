@@ -1652,7 +1652,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function stepGather(dt) {
     if (!gather) return;
-    if (isBlocked() && !(gather.kind === 'sit' && sitting?.seat.counter)) { endGather(false); return; } // (A-7: a window's chair keeps me seated while its window is open)
+    if (isBlocked() && gather.kind !== 'sit') { endGather(false); return; } // (A-7: a window's chair keeps me seated while its window is open; 사용자 2026-10-27 「의자에 앉았다가 채팅 치려고 엔터 치면 일어나」: any seat -- sitting is standing still, a chat or a window is no reason to get up; an arrow, a move, a warp still do)
     if (gather.waitServer && me.anim && me.anim.state !== gather.anim) me.anim.play(gather.anim,{ms:gather.ms,hold:true,elapsed:gather.t});
     if (gather.pending) return;
     gather.t = gather.waitServer ? (performance.now()-gather.startedAt)/1000 : gather.t+dt;
@@ -1934,7 +1934,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function stepPets() {
     const now = performance.now(); const dt = Math.min(0.5, (now - (petClock || now)) / 1000); petClock = now; // (real time: a slow or hidden frame does not leave it behind)
     const want = new Map([['me', myPet], ...[...others].map(([id, o]) => [id, o.pet])]);
-    for (const [key, p] of pets) { const w = want.get(key); if (!w || w.kind !== p.kind || w.name !== p.name || (w.coat || null) !== p.coat) { p.c.dispose(); pets.delete(key); } }
+    for (const [key, p] of pets) {
+      const w = want.get(key);
+      // (펫 깜빡임: another's pet through a moment of none -- a server just up -- while they are still here: kept 3 s, then gone)
+      if (!w && key !== 'me' && others.has(key) && now - (p.goneAt ||= now) < 3000) { want.set(key, p.want); continue; }
+      p.goneAt = 0;
+      if (!w || w.kind !== p.kind || w.name !== p.name || (w.coat || null) !== p.coat) { p.c.dispose(); pets.delete(key); } else p.want = w;
+    }
     for (const [key, w] of want) {
       const owner = key === 'me' ? me : others.get(key)?.c; if (!w || !owner?.root) continue;
       let p = pets.get(key);

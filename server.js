@@ -1293,6 +1293,17 @@ const MALL_FLOORS = { 1: { R: IslandStore, space: 'store' }, 2: { R: IslandFurni
 async function petshopDay() { const day = kstDate(nowMs()); const st = (await pointStore.worldValue('petshop')) || {}; return st.day === day ? { day, sold: st.sold || {}, buys: st.buys || {} } : { day, sold: {}, buys: {} }; }
 const petPrice = (kind) => { const c = IslandPetShop.catalogOf(kind); return Economy.value(!c ? `good:pet_${kind}` : kind === 'ditto' ? 'pet:ditto' : c.ip ? 'pet:transform_ip' : 'pet:transform_animal'); }; // (3회차 21: the counter's by its kind)
 const petView = (p) => (p && IslandPetShop.known(p.kind) ? { kind: p.kind, coat: IslandPetShop.coatOf(p.kind, p.coat), name: String(p.name || '').slice(0, 10) } : null);
+// (펫 깜빡임, 사용자 2026-10-27 「펫이 자꾸 한번씩 없어지는데」) the walking pet for a pose: read once and kept. After a restart the
+// cache is empty -- the first pose waits for the read rather than going out with none (every deploy hid every pet), any known
+// kind (펫샵's ditto·변신 pets were left out until chosen again); a failed read keeps what the presence had, tried again in 5 s
+const petReadFailedAt = new Map();
+async function petFor(account, token) {
+  if (petOf.has(account)) return petOf.get(account);
+  const was = plazaPresence.get(token)?.pet ?? null;
+  if (nowMs() - (petReadFailedAt.get(account) || 0) < 5000) return was;
+  try { const { doc } = await pointStore.questDoc(account, 'pet'); if (!petOf.has(account)) petOf.set(account, petView(doc)); petReadFailedAt.delete(account); return petOf.get(account); }
+  catch { petReadFailedAt.set(account, nowMs()); return was; }
+}
 // my pets: those adopted at the 펫샵 (world 'pets:<account>', each its coat and name) and those bought before at the 잡화점 (in the bag, the first coat)
 async function myPets(account) {
   const adopted = ((await pointStore.worldValue(`pets:${account}`)) || []).map((p) => ({ uid: p.uid, kind: p.kind, coat: p.coat, name: p.name, from: 'petshop' }));
@@ -4646,6 +4657,7 @@ async function requestHandler(req, res) {
   }
 
   // (G-게임별 도둑잡기, test only) the last stand of a two-player hand: seat 1 holds the joker and a 5, seat 2 the other 5, seat 1 draws
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/plaza-snapshot' && req.method === 'GET') return sendJson(res, 200, plazaSnapshot());
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/oldmaid-last-stand' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -4873,13 +4885,13 @@ async function requestHandler(req, res) {
     }
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
-    if (!petOf.has(account)) { petOf.set(account, null); pointStore.questDoc(account, 'pet').then(({ doc }) => { if (PET_KINDS.includes(doc.kind)) { petOf.set(account, petView(doc)); plazaDirty = true; } }).catch(() => petOf.delete(account)); }
+    const pet = await petFor(account, session.token);
     const bike = BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !jailInside.has(session.token) && !ride && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null; // (자전거: theirs, out on the island)
     if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.'); // (Codex 검토 #4, after the last await)
     const held = heldNewer(); // (after the last await: where I am stays, answered as it is)
     if (held) spot = { x: held.x, z: held.z };
     else plazaPresence.set(session.token, {
-      pet: petOf.get(account) || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      pet: pet || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
       // (Codex 검토 #8) m/s since the last pose, walking (a warp is not a run): by the sender's clock when both poses have

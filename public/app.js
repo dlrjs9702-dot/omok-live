@@ -2454,7 +2454,7 @@
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
   }
   // B 47 반려동물: one of mine walks with me (a name asked the first time), everyone sees it
-  let myPet = null;
+  let myPet = null; let myPetGoneAt = 0;
   async function choosePet(kind) {
     let name = myPet?.kind === kind ? myPet.name : '';
     if (kind && !name) name = (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') || '').trim().slice(0, 10);
@@ -4263,7 +4263,11 @@
       .catch(() => {}).finally(() => { if (plazaStateRequest === abort) { plazaStateRequest = null; plazaSending = false; } });
   }
   function showPlazaPlayers() {
-    const meNow = plazaPlayers.find((p) => p.id === plazaMyId); if (meNow && JSON.stringify(meNow.pet || null) !== JSON.stringify(myPet)) { myPet = meNow.pet || null; plaza.controller?.setMyPet?.(myPet); } // B 47 (my pet, as the server has it)
+    const meNow = plazaPlayers.find((p) => p.id === plazaMyId); // B 47 (my pet, as the server has it)
+    if (meNow && JSON.stringify(meNow.pet || null) !== JSON.stringify(myPet)) {
+      // (펫 깜빡임: a none in a snapshot or two -- a server just up -- is not my pet gone; 3 s of it is: put home elsewhere)
+      if (!meNow.pet && myPet && Date.now() - (myPetGoneAt ||= Date.now()) < 3000) {} else { myPetGoneAt = 0; myPet = meNow.pet || null; plaza.controller?.setMyPet?.(myPet); }
+    } else myPetGoneAt = 0;
     plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId));
     const mine = plazaPlayers.find((p) => p.id === plazaMyId); // the server says when my champion mark starts or ends (v1.9.5)
     if (mine && Boolean(mine.champion) !== plazaChampion) { plazaChampion = Boolean(mine.champion); applyPlazaAvatar(); }
