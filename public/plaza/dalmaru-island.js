@@ -248,10 +248,12 @@
   const pierY = Math.max(SEA, D.ground(PL.pier.x, PL.pier.z)) - 0.5; // (its deck a step over the beach at its root)
   const PIER = { x: PL.pier.x + PIER_DIR[0] * 10, z: PL.pier.z + PIER_DIR[1] * 10, ux: PIER_DIR[0], uz: PIER_DIR[1], half: 10, w: 3.6, deck: pierY + 0.69, root: { x: PL.pier.x, z: PL.pier.z, y: pierY, yaw: Math.atan2(PIER_DIR[0], PIER_DIR[1]) } }; // (its front, the far end, out to sea)
   // (dock.boat: a 12 x 3 m float, its gangway 4.2 m back to the shore -- the model's -Z, here north)
-  // (문제 기록 5회차 2 「하늘에 떠 있어」: at y 0 its deck stood 0.75 m over the sea -- a float rides low: 0.4 m)
+  // (문제 기록 5회차 2 「하늘에 떠 있어」: at y 0 its deck stood 0.75 m over the sea -- a float rides low: 0.4 m; v1.10.190 assets
+  // 81: on piles down to the sand, its gangway level)
   const DOCK_Y = -0.35;
   const DOCK = { x: PL.dock.x, z: PL.dock.z - 2, root: { x: PL.dock.x, z: PL.dock.z - 2, y: DOCK_Y, yaw: 0 },
-    rects: [{ x: PL.dock.x, z: PL.dock.z - 2, ux: 1, uz: 0, half: 6, w: 3, deck: 0.15 + DOCK_Y }, { x: PL.dock.x, z: PL.dock.z - 5.6, ux: 0, uz: 1, half: 2.3, w: 1.6, deck: 0.3 + DOCK_Y }] };
+    rects: [{ x: PL.dock.x, z: PL.dock.z - 2, ux: 1, uz: 0, half: 6, w: 3, deck: 0.15 + DOCK_Y }, { x: PL.dock.x, z: PL.dock.z - 5.6, ux: 0, uz: 1, half: 2.3, w: 1.6, deck: 0.3 + DOCK_Y },
+      { x: PL.dock.x, z: PL.dock.z - 8.1, ux: 0, uz: 1, half: 0.22, w: 1.8, deck: 0.03 + DOCK_Y }] }; // (v1.10.190, assets 81: the stone steps off the gangway's land end, world z -4.6)
   const onDock = (x, z, grow = 0) => DOCK.rects.find((r) => inRect(r, x, z, grow));
   const inRect = (r, x, z, grow = 0) => { const dx = x - r.x; const dz = z - r.z; return Math.abs(dx * r.ux + dz * r.uz) <= r.half + grow && Math.abs(-dx * r.uz + dz * r.ux) <= r.w / 2 + grow; };
 
