@@ -72,7 +72,7 @@ test('계정 API: 가입 신청 → 승인 대기 → 승인 → 로그인 → �
   const entry = async (form) => {
     const res = await fetch(base + '/guest-entry', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(form).toString() });
     const html = await res.text();
-    return { status: res.status, session: html.match(/data-session="([^"]+)"/)?.[1] || '', setup: html.match(/data-setup="([^"]*)"/)?.[1] || '' };
+    return { status: res.status, session: html.match(/data-session="([^"]+)"/)?.[1] || '', setup: html.match(/data-setup="([^"]*)"/)?.[1] || '', account: html.match(/data-account="([^"]*)"/)?.[1] || '' };
   };
   const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken;
 
@@ -142,11 +142,17 @@ test('계정 API: 가입 신청 → 승인 대기 → 승인 → 로그인 → �
   const played = await entry({ account: set.data.accountToken });
   assert.ok(played.session);
   await release(played.session);
-  const again = await entry({ token: guest.key }); // the file still works, now without the setup
-  assert.ok(again.session);
+  // v1.10.190: the file still works, now only logging in -- 내 계정, the island by 「게임 접속」, one place at a time checked there
+  const again = await entry({ token: guest.key });
+  assert.equal(again.status, 200); assert.equal(again.session, ''); assert.equal(again.setup, '');
+  assert.equal((await call('/api/account/me', undefined, again.account)).data.account.loginId, 'file_guest');
+  const inGame = await entry({ account: again.account }); assert.ok(inGame.session);
+  const whilePlaying = await entry({ token: guest.key }); // (the file opened elsewhere while in the game: 내 계정 still, no 「이미 사용 중」)
+  assert.equal(whilePlaying.status, 200); assert.ok(whilePlaying.account);
+  assert.equal((await entry({ account: whilePlaying.account })).status, 409);
   // a new file from 내 계정 ends the session of the old one (Codex)
   assert.equal((await call('/api/account/entry-file', {}, set.data.accountToken)).status, 200);
-  assert.equal((await req('/api/session', again.session)).data.authenticated, false);
+  assert.equal((await req('/api/session', inGame.session)).data.authenticated, false);
 
   // a setup begun with a file the administrator then reissued is over (Codex)
   const late = await issue('늦은손님');

@@ -11932,6 +11932,8 @@
   let setupTicket = document.body.dataset.setup || '';
   const accountToken = { get: () => { try { return sessionStorage.getItem(ACCOUNT_KEY) || ''; } catch { return ''; } },
     set: (t) => { try { if (t) sessionStorage.setItem(ACCOUNT_KEY, t); else sessionStorage.removeItem(ACCOUNT_KEY); } catch {} } };
+  // v1.10.190: an entry file only logs in (body data-account) -- 내 계정 here, the island by 「게임 접속」
+  if (document.body.dataset.account) { accountToken.set(document.body.dataset.account); history.replaceState(null, '', '/'); }
   const say = (text, bad = false) => { accountMessage.textContent = text; accountMessage.classList.toggle('bad', bad); };
   const accountApi = (path, body, method = 'POST') => api(path, { method, headers: { 'X-Account-Token': accountToken.get() }, ...(body ? { body: JSON.stringify(body) } : {}) });
   let accountPane = '';
@@ -11951,7 +11953,7 @@
     showAccountPane('account');
   }
   async function openAccountGate() { // the gate is shown: which part of it
-    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 이제 아이디와 비밀번호로도 로그인합니다. 설정해야 입장할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.`; showAccountPane('setup'); return; }
+    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 이제 아이디와 비밀번호로도 로그인합니다. 설정해야 로그인할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.`; showAccountPane('setup'); return; }
     if (!accountToken.get()) { if (accountPane !== 'login' && accountPane !== 'signup') showAccountPane('login'); return; } // the tab in use stays
     try { showAccount((await accountApi('/api/account/me', null, 'GET')).account); }
     catch { accountToken.set(''); showAccountPane('login'); }
@@ -11994,7 +11996,7 @@
     if (byId('setupPasswordInput').value !== byId('setupPasswordConfirm').value) { say('비밀번호 확인이 일치하지 않습니다.', true); return; }
     try {
       const data = await api('/api/account/setup', { method: 'POST', body: JSON.stringify({ ticket: setupTicket, loginId: byId('setupIdInput').value, password: byId('setupPasswordInput').value }) });
-      setupTicket = ''; accountToken.set(data.accountToken); enterWithAccount();
+      setupTicket = ''; accountToken.set(data.accountToken); say(''); showAccount(data.account); history.replaceState(null, '', '/');
     } catch (err) { say(err.message, true); }
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's

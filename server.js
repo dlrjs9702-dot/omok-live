@@ -310,6 +310,7 @@ function sendIndex(res, bootstrap = {}) {
     .replace('__SESSION_ROLE__', escapeAttr(bootstrap.role || ''))
     .replace('__SESSION_LABEL__', escapeAttr(bootstrap.label || ''))
     .replace('__SETUP_TICKET__', escapeAttr(bootstrap.setupTicket || ''))
+    .replace('__ACCOUNT_TOKEN__', escapeAttr(bootstrap.accountToken || ''))
     .replace('__BROWSERS__', escapeAttr(ALLOWED_BROWSERS.join(' ')))
     .replace('__ASSET_MANIFEST__', () => (assetCacheEnabled ? assetManifestJson.on : assetManifestJson.off));
   res.writeHead(200, securityHeaders({
@@ -672,8 +673,8 @@ const MESSENGER_ROOM_MAX = 30; const MESSENGER_ROOMS_MAX = 20; const MESSENGER_T
 const SETUP_TTL_MS = 15 * 60 * 1000;
 const accountTokens = new Map(); // token -> { keyId, exp }
 const setupTickets = new Map(); // ticket -> { keyId, exp }
-const setupNotRequired = process.env.NODE_ENV === 'test'; // tests enter by files; a test turns the setup on per key
-const setupRequiredKeys = new Set();
+const setupNotRequired = process.env.NODE_ENV === 'test'; // tests enter by files straight in; a test turns a key to the live way
+const liveEntryKeys = new Set(); // (tests: keys whose file goes as on the live server -- the setup first, then login only)
 function issueTicket(map, keyId, ttl) {
   const now = nowMs();
   for (const [t, row] of map) if (row.exp < now) map.delete(t);
@@ -3931,7 +3932,7 @@ async function requestHandler(req, res) {
     const row = await accessStore.setLogin(ticket.keyId, loginId, await hashPassword(body.password));
     if (row === false) return sendError(res, 409, 'LOGIN_ID_TAKEN', '이미 사용 중인 아이디입니다.');
     if (!row) return sendError(res, 409, 'ALREADY_SET', '이미 아이디가 설정된 계정입니다. 로그인해 주세요.');
-    setupTickets.delete(String(body.ticket)); setupRequiredKeys.delete(row.id);
+    setupTickets.delete(String(body.ticket));
     return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, row.id, ACCOUNT_TTL_MS), account: await accountOut(row) });
   }
   if (pathname.startsWith('/api/account/') && ['me', 'password', 'entry-file', 'logout'].includes(pathname.slice(13))) {
@@ -4144,7 +4145,7 @@ async function requestHandler(req, res) {
     return worldEdit(async () => { const f = await friendsOf(account); const list = [...f.list]; for (let i = 0; list.length < Number(body.n); i += 1) list.push(`guest:00000000-0000-4000-8000-${String(i).padStart(12, '0')}`); await saveFriends(account, { ...f, list }); return sendJson(res, 200, { ok: true, n: list.length }); });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/account-setup' && req.method === 'POST') {
-    const body = await parseJson(req); setupRequiredKeys.add(String(body.keyId || ''));
+    const body = await parseJson(req); liveEntryKeys.add(String(body.keyId || ''));
     return sendJson(res, 200, { ok: true });
   }
 
@@ -4165,7 +4166,9 @@ async function requestHandler(req, res) {
       key = await accessStore.validateAndRecord(token);
       if (!key) return sendSimpleHtml(res, 403, '입장 거부', '이 입장 파일은 유효하지 않거나 권한이 취소되었습니다.');
       // an account with no login id sets one first (no skipping); the file goes on working after
-      if (!key.loginId && (!setupNotRequired || setupRequiredKeys.has(key.id))) return sendIndex(res, { setupTicket: issueTicket(setupTickets, key.id, SETUP_TTL_MS), label: key.label });
+      if (!key.loginId && (!setupNotRequired || liveEntryKeys.has(key.id))) return sendIndex(res, { setupTicket: issueTicket(setupTickets, key.id, SETUP_TTL_MS), label: key.label });
+      // v1.10.190: the file only logs in -- 내 계정, the island by its 「게임 접속」 (where one place at a time is checked)
+      if (key.loginId && (!setupNotRequired || liveEntryKeys.has(key.id))) return sendIndex(res, { accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), label: key.label });
     }
     if (guestKeyInUse(key.id)) {
       return sendSimpleHtml(
