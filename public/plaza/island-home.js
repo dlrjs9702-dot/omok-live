@@ -159,9 +159,12 @@
   // (y: the scene lifts a seat 0.28 and SitIdle's seat of the body is 0.26 above the root -- so the root 0.54 under the
   // seat's top, as on a plaza bench; 3회차 3 「소파 위에 떠 있어」: it was 0.45, 9 cm up)
   const SIT_BELOW = 0.54;
+  // v1.10.189: backless seats -- sat on facing the way I faced (45° steps), turned there with ←/→ or ↺↻
+  const ANY_DIR = new Set(['stool', 'floor_cushion']);
   function seatsOf(lot, p) {
     const list = SEATS[shapeOf(p.id)] || []; const a = (p.rot * Math.PI) / 2;
-    return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a }; /* (yaw: the piece's front, the room turned half round) */ });
+    const anyDir = ANY_DIR.has(shapeOf(p.id));
+    return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
   return { LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf };
 }));

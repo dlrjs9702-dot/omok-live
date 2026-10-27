@@ -41,6 +41,9 @@ test('내 집: 앉을 자리는 가구를 따라 돌고, 서 있는 자리는 �
   const seats = H.seatsOf(lot, sofa); assert.equal(seats.length, 2);
   for (const s of seats) { const { lx, lz } = H.local(lot, s.x, s.z); assert.ok(Math.abs(lx - 1) < 0.2 && Math.abs(lz - 1) < 0.65, `${lx},${lz}`); } // (6회차 4: the two 1.12 m apart)
   const [p, q2] = seats; assert.ok(Math.hypot(p.x - q2.x, p.z - q2.z) > 1.05, '머리가 겹치지 않을 간격');
+  // v1.10.189: only the backless ones are sat on any way
+  assert.ok(seats.every((s) => s.anyDir === false));
+  for (const id of ['stool__oak', 'floor_cushion__mint']) assert.ok(H.seatsOf(lot, { uid: 'x', id, x: 0, z: 0, rot: 0 }).every((s) => s.anyDir === true), id);
   const w = H.world(lot, 1, 1); const q = H.clamp(lot, w.x, w.z, [sofa]); const { lx, lz } = H.local(lot, q.x, q.z); const b = H.boxOf(sofa);
   assert.ok(lx < b.x0 - 0.29 || lx > b.x1 + 0.29 || lz < b.z0 - 0.29 || lz > b.z1 + 0.29);
 });
