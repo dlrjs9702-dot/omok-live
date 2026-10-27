@@ -7,7 +7,7 @@ const path = require('node:path');
 const { boot } = require('../test-support/test-server');
 
 // v1.10.66 홈 화면 앱: the page names a manifest (standalone, the island icons) and iPhone's icon; the server sends the
-// manifest as a manifest and every icon it lists as a PNG
+// manifest as a manifest and every icon it lists as a PNG; v1.10.190 달마루섬 and the tab's favicon.ico (16, 32, 48)
 test('홈 화면 앱: manifest와 섬 아이콘을 내보내고 첫 화면이 그것을 가리킨다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'home-app-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
@@ -29,4 +29,8 @@ test('홈 화면 앱: manifest와 섬 아이콘을 내보내고 첫 화면이 �
     const bytes = Buffer.from(await icon.arrayBuffer());
     assert.equal(bytes.subarray(1, 4).toString(), 'PNG', src);
   }
+  assert.match(page, /<link rel="icon" href="\/favicon\.ico"/);
+  const ico = Buffer.from(await (await fetch(base + '/favicon.ico')).arrayBuffer());
+  assert.deepEqual([ico.readUInt16LE(2), ico.readUInt16LE(4)], [1, 3]); // (an icon, three images)
+  assert.deepEqual([0, 1, 2].map((k) => ico[6 + 16 * k]).sort((a, b) => a - b), [16, 32, 48]);
 });
