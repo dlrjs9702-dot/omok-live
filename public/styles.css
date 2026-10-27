@@ -2887,3 +2887,24 @@ body.plazaMode .toast::before{content:"";position:absolute;left:50%;top:-8px;wid
 #islandTaxPay{margin:10px 16px 0;width:calc(100% - 32px);min-height:44px}
 .recordsDialog.counterMode .taxBill{background:#fffdf6;border:1px solid var(--isle-line);color:var(--isle-ink)}.recordsDialog.counterMode .taxBill small{color:var(--isle-soft)}.recordsDialog.counterMode .taxBill.overdue{border:2px solid #c0453a}
 .mailStamp.office{width:46px;font-size:.6rem;letter-spacing:-.04em}
+/* G-게임별 윷 (gamecenter-notes docs/gamehall-audit-20261025.md): a straw mat beside the board the sticks are thrown on (a
+   tap on it throws), a phone's under the board; the throw's name big on the board a moment; the 「최근 결과」 box folded */
+body.roomPlaying #yutControls{display:none}
+body.roomPlaying #boardScroll:has(>.diceYutSection){display:flex;align-items:center;justify-content:center;gap:16px;overflow:visible}
+body.roomPlaying #boardScroll:has(>.diceYutSection)>.canvasWrap{flex:1 1 auto;min-width:0;margin-left:0;margin-right:0}
+#boardScroll>.diceYutSection{flex:0 0 clamp(170px,20vw,240px);padding:14px 10px 10px;border-radius:20px;background:repeating-linear-gradient(90deg,rgba(120,80,30,.18) 0 3px,transparent 3px 9px),repeating-linear-gradient(0deg,rgba(120,80,30,.14) 0 3px,transparent 3px 9px),linear-gradient(160deg,#ead198,#cfa860);border:3px solid #9a6b2f;box-shadow:inset 0 0 0 4px rgba(255,240,200,.35),0 8px 20px rgba(0,0,0,.3)}
+#boardScroll>.diceYutSection .diceYutStage{height:130px;min-height:0;gap:10px;--diceYutScale:.85}
+#boardScroll>.diceYutSection .diceYutResult{margin:0;text-align:center;font-weight:900;color:#5b3412}
+#boardScroll>.diceYutSection.canThrow{cursor:pointer;border-color:#047857;box-shadow:inset 0 0 0 4px rgba(255,240,200,.35),0 0 0 3px rgba(52,211,153,.7),0 8px 20px rgba(0,0,0,.3)}
+body.roomPlaying .boardCard .yutActionRow{justify-content:center}
+body.roomPlaying .boardCard #yutThrowBtn{min-width:min(300px,100%);min-height:50px;font-size:1.05rem;border-radius:999px}
+@media(max-width:640px){body.roomPlaying #boardScroll:has(>.diceYutSection){flex-direction:column;gap:8px}#boardScroll>.diceYutSection{flex:none;align-self:stretch;padding:4px 10px 6px}#boardScroll>.diceYutSection .diceYutStage{height:62px;--diceYutScale:.55}}
+.yutCall{position:absolute;left:50%;top:50%;z-index:6;display:flex;flex-direction:column;align-items:center;padding:8px 26px 8px;border-radius:18px;background:rgba(255,251,235,.95);border:3px solid #92400e;color:#7c2d12;box-shadow:0 10px 30px rgba(0,0,0,.35);pointer-events:none;transform:translate(-50%,-50%);animation:yutCall 1.7s ease forwards}
+.yutCall b{font-size:clamp(36px,10vw,76px);line-height:1.05;font-weight:900;letter-spacing:.04em;white-space:nowrap}
+.yutCall small{white-space:nowrap}
+.yutCall small{font-size:.95rem;font-weight:800}
+.yutCall.again{border-color:#b91c1c;color:#b91c1c}
+.yutCall.back{border-color:#334155;color:#334155}
+@keyframes yutCall{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}24%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+@media(prefers-reduced-motion:reduce){.yutCall{animation:yutCallFade 1.7s linear forwards}}
+@keyframes yutCallFade{0%,80%{opacity:1}100%{opacity:0}}

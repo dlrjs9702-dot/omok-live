@@ -7157,7 +7157,8 @@
 
   function renderHeadlineContext() {
     const g = state?.game;
-    const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats().seats.has(String(seat)));
+    // (G-게임별 윷 검토: not the held mover -- after my 빽도's auto-pass the line is already the other's turn)
+    const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats({ holdAnimations: false }).seats.has(String(seat)));
     statusText.classList.toggle('selfActHeadline', mine);
     // (G-게임별: on a phone my own name dropped from my turn's line -- 「내 차례 · 숫자 추측」 in one line, as 고스톱's)
     // (도둑잡기 검토: and on any screen 「내 차례 · 누구님 차례 · …」 says it twice -- the second 「…님 차례 · 」 dropped)
@@ -7672,7 +7673,8 @@
     const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.chatId || '');
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     const newestSystem = systemRows.length ? Number(systemRows[systemRows.length - 1].id) || 0 : 0;
-    if (systemSeen !== null && newestSystem > systemSeen) boardNote(systemRows[systemRows.length - 1].text); // (G-틀①)
+    const newestText = systemRows[systemRows.length - 1]?.text || '';
+    if (systemSeen !== null && newestSystem > systemSeen && !(state?.gameType === 'yut' && /님이 \S+[을를] 던졌습니다\.$/.test(newestText))) boardNote(newestText); // (G-틀①; G-게임별 윷 검토: a throw is told by its big card)
     systemSeen = newestSystem;
     lastRenderedChatIds = chatRows.map(row => row.id);
     if (bubbleSeen !== null && newestId > bubbleSeen) chatBubble(chatRows[chatRows.length - 1]); // A3 G1-6 (a line newer than the last view)
@@ -7746,7 +7748,9 @@
     const roomBar = document.querySelector('header.roomBar'); if (roomBar) document.body.style.setProperty('--roomBarBottom', `${Math.max(8, roomBar.offsetTop + roomBar.offsetHeight + 8)}px`); /* (a phone's toast just under it, before a hand) */
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
-    if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
+    // (G-게임별 윷: a yut hand throws on a straw mat beside the board -- a phone's under it -- not over the board)
+    if (on && state?.gameType === 'yut') { if (diceSection.previousElementSibling !== canvasWrap) canvasWrap.after(diceSection); }
+    else if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
     placeMySeat(); fitBoard(); renderTurnRing();
     const boardKey = `${state?.gameType}:${state?.game?.round}:${state?.game?.moveCount}`; if (boardKey !== touchPickKey) { touchPickKey = boardKey; touchPick = null; } // (Codex review: a first tap holds for this board only)
   }
@@ -7754,8 +7758,9 @@
     const wrap = canvasWrap; wrap.style.maxWidth = '';
     if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
     const below = [...document.querySelectorAll('#mySeatSpot, #yutControls, .boardCard > .diceYutSection, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    const mat = document.querySelector('#boardScroll > .diceYutSection'); const stacked = mat?.offsetParent && getComputedStyle(mat.parentElement).flexDirection === 'column'; // (윷 멍석: under the board on a phone)
     const top = wrap.getBoundingClientRect().top + window.scrollY;
-    wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - 12))}px`;
+    wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - (stacked ? mat.offsetHeight + 8 : 0) - 12))}px`;
   }
   window.addEventListener('resize', () => fitBoard());
   // (G-게임별 다빈치 검토) on a phone the side panel is an overlay behind 🎮, and the start of 다빈치·도둑잡기·할리갈리… is in it:
@@ -8374,6 +8379,16 @@
     baseballPrevStatus = g.status;
   }
 
+  // G-게임별 윷 (gamecenter-notes docs/gamehall-audit-20261025.md 「윷놀이」): the throw's name big on the board a moment --
+  // 윷·모 with 「한 번 더」 -- for everyone, as the sticks settle
+  function yutCall(t) {
+    if (!t?.name) return;
+    canvasWrap.querySelector('.yutCall')?.remove();
+    const el = document.createElement('div'); el.className = `yutCall${t.steps >= 4 ? ' again' : t.steps < 0 ? ' back' : ''}`; el.setAttribute('aria-hidden', 'true');
+    const big = document.createElement('b'); big.textContent = `${t.name}!`;
+    const small = document.createElement('small'); small.textContent = `${yutStepsLabel(t.steps)}${t.steps >= 4 ? ' · 한 번 더' : ''}`;
+    el.append(big, small); canvasWrap.append(el); setTimeout(() => el.remove(), 1700);
+  }
   function yutStepsLabel(steps) {
     return steps < 0 ? `${Math.abs(steps)}칸 후진` : `${steps}칸`;
   }
@@ -8387,7 +8402,8 @@
     yutLastThrow.textContent = g.lastThrow
       ? `최근 결과: ${g.lastThrow.name} · ${yutStepsLabel(g.lastThrow.steps)}`
       : '아직 던진 윷이 없습니다';
-    diceYutResult.textContent = yutLastThrow.textContent;
+    diceYutResult.textContent = g.lastThrow ? `${g.lastThrow.name} · ${yutStepsLabel(g.lastThrow.steps)}` : '멍석을 눌러 던져요'; // (G-게임별 윷: on the mat -- the 「최근 결과」 box is folded while a hand is played)
+    diceYutSection.classList.toggle('canThrow', !yutThrowBtn.disabled);
     const throwKey = g.lastThrow ? `${g.lastThrow.at}:${g.lastThrow.color}:${g.lastThrow.backs}:${g.lastThrow.name}` : null;
     // Same reconnect-safe pattern as Land King's dice: yutThrowTrackingStarted (not a null check on
     // the key alone) tells a genuinely new throw apart from a stale one inherited on first render.
@@ -8403,10 +8419,10 @@
       }
       yutLastThrowFlags = flags;
       yutSticks.forEach((el, i) => el.classList.toggle('backdoMark', g.lastThrow.name === '빽도' && flags[i]));
-      yutThrowAnimating = true;
+      yutThrowAnimating = true; const thrown = g.lastThrow; diceYutResult.textContent = '…'; // (not told before the sticks fall)
       animateYutThrow(yutSticks, flags, {
         // v1.6.82: also repaint the board so the movable-piece marks appear once the throw settles.
-        onDone: () => { yutThrowAnimating = false; renderYut(); if (state?.gameType === 'yut') drawYutBoard(); },
+        onDone: () => { yutThrowAnimating = false; renderYut(); if (state?.gameType === 'yut') { drawYutBoard(); yutCall(thrown); } },
       });
     } else if (!yutThrowAnimating) {
       // v1.6.55: the dice/yut panel is now a small always-visible panel above chat instead of a
@@ -9472,15 +9488,21 @@
     oldmaidPanel.classList.toggle('lastStand', g.status === 'playing' && holding.length === 2 && holding.reduce((n, s) => n + g.counts[s], 0) <= 3);
     renderTurnRing();
     // (도둑잡기 검토: a board note or a toast over the other's fan hid the card to draw -- below the seats, above my hand)
-    requestAnimationFrame(() => { // (the seats themselves -- their grid has an empty row below -- and 「조커는 누구에게?」 under them in the last stand)
-      const bottoms = [...oldmaidSeatsEl.querySelectorAll('.oldmaidSeat')].map((el) => el.getBoundingClientRect().bottom).filter((b) => b > 0);
-      // (a box round the note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
-      // beside it is measured, so the top given is the screen's)
-      const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
-      if (!bottoms.length) return; const y = Math.max(...bottoms) + (oldmaidPanel.classList.contains('lastStand') ? 44 : 10);
-      document.body.style.setProperty('--oldmaidNoteTop', `${Math.round(y - originOf(document.querySelector('.boardNote')))}px`);
-      document.body.style.setProperty('--oldmaidToastTop', `${Math.round(y - originOf(document.getElementById('toast')))}px`);
-    });
+    placeOldmaidNotes(); requestAnimationFrame(placeOldmaidNotes); // (and once the rest of the room is drawn)
+  }
+  // (CI 흔들림 뿌리: measured in the next frame the note stood a frame where the last stand had moved the seats -- now at once,
+  // and again whenever the seats change size later: a font come in, the fan settled)
+  const oldmaidNoteWatch = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { if (!oldmaidPanel.classList.contains('hidden')) placeOldmaidNotes(); }) : null;
+  oldmaidNoteWatch?.observe(oldmaidSeatsEl);
+  function placeOldmaidNotes() {
+    // (the seats themselves -- their grid has an empty row below -- and 「조커는 누구에게?」 under them in the last stand)
+    const bottoms = [...oldmaidSeatsEl.querySelectorAll('.oldmaidSeat')].map((el) => el.getBoundingClientRect().bottom).filter((b) => b > 0);
+    // (a box round the note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
+    // beside it is measured, so the top given is the screen's)
+    const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
+    if (!bottoms.length) return; const y = Math.max(...bottoms) + (oldmaidPanel.classList.contains('lastStand') ? 44 : 10);
+    document.body.style.setProperty('--oldmaidNoteTop', `${Math.round(y - originOf(document.querySelector('.boardNote')))}px`);
+    document.body.style.setProperty('--oldmaidToastTop', `${Math.round(y - originOf(document.getElementById('toast')))}px`);
   }
   function oldmaidFace(number) {
     const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true');
@@ -10304,6 +10326,7 @@
   }
   const YUT_HOME_TOKEN_NODE = 0; // the start corner: board pieces never rest there (laps end on finishLine)
   const YUT_TARGET_RADIUS = 26;
+  let yutFingerTimer = null;
 
   // v1.6.83: every legal move as ONE on-board selection target, laid out with the very same
   // yutNodePosition()/yutStackOffsets() geometry drawPieceStack() paints with, so what is drawn and
@@ -10581,7 +10604,12 @@
         yutCapsule(target.x1, target.x2, target.y, emphasised ? YUT_TARGET_RADIUS + 2 : YUT_TARGET_RADIUS);
         ctx.stroke();
         ctx.restore();
+        // (G-게임별 윷: 「이 말」 -- a big finger over it, pointing down; on the top row under it, pointing up)
+        const up = target.y < 140; const nod = reducedMotionActive() ? 0 : Math.sin(performance.now() / 170) * 6; const gap = YUT_TARGET_RADIUS + 8 + nod;
+        ctx.save(); ctx.font = '64px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = up ? 'top' : 'bottom';
+        ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 8; ctx.fillText(up ? '👆' : '👇', (target.x1 + target.x2) / 2, up ? target.y + gap : target.y - gap); ctx.restore();
       }
+      if (!reducedMotionActive() && !yutFingerTimer) yutFingerTimer = setTimeout(() => { yutFingerTimer = null; if (state?.gameType === 'yut' && document.body.classList.contains('roomPlaying')) drawYutBoard(); }, 50); // (the finger nods while there is a piece to pick)
     }
     if (!animatingIds && yutRecentIds.size) {
       for (const { position, pieces } of grouped.values()) {
@@ -12097,6 +12125,7 @@
   chatForm.addEventListener('submit', sendChat);
   baseballSecretForm.addEventListener('submit', (event) => sendBaseballAction(event, 'set-secret', baseballSecretInput, 'secret'));
   baseballGuessForm.addEventListener('submit', (event) => sendBaseballAction(event, 'guess', baseballGuessInput, 'guess'));
+  diceYutSection.addEventListener('click', () => { if (state?.gameType === 'yut' && diceYutSection.classList.contains('canThrow') && !yutThrowBtn.disabled) yutThrowBtn.click(); }); // (G-게임별 윷: a tap on the mat throws)
   yutThrowBtn.addEventListener('click', async () => {
     yutThrowBtn.disabled = true;
     await roomAction('throw-yut');
