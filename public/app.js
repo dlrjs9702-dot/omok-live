@@ -7713,6 +7713,7 @@
   const boardActionsSpot = document.getElementById('quickChat');
   // (G-틀①: the panel folds while a hand is played -- the yut sticks' and the dice's throw goes under the board with the actions)
   const diceSection = document.getElementById('diceYutSection'); const diceMark = document.createComment('diceYutSection'); diceSection.before(diceMark);
+  const guessMark = document.createComment('baseballGuessForm'); baseballGuessForm.before(guessMark);
   // G-틀③ 게임방 소리 (room-sound.js): a move made -- a stone in the stone games, a card in the others (the yut sticks sound
   // as they are thrown) --, my turn come, the hand over (my win or loss, or just its end). The first view of a room is quiet.
   const STONE_GAMES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
@@ -7749,6 +7750,8 @@
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     // (G-게임별 윷: a yut hand throws on a straw mat beside the board -- a phone's under it -- not over the board)
+    // (G-게임별 v187: 숫자야구's guess right under my secret, above the record -- on a PC within the screen; its home is the actions panel)
+    const guessSpot = document.querySelector('#baseballPanel .baseballHistoryHead'); if (on && state?.gameType === 'baseball' && guessSpot) { if (guessSpot.previousElementSibling !== baseballGuessForm) guessSpot.before(baseballGuessForm); } else if (guessMark.nextSibling !== baseballGuessForm) guessMark.after(baseballGuessForm);
     if (on && state?.gameType === 'yut') { if (diceSection.previousElementSibling !== canvasWrap) canvasWrap.after(diceSection); }
     else if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
     placeMySeat(); fitBoard(); renderTurnRing();
