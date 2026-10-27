@@ -92,7 +92,7 @@
   function openBubbleMenu(bubble, msg, x, y) {
     closeBubbleMenu(); if (!canUnsend(msg)) return;
     const menu = document.createElement('div'); menu.className = 'messengerMoreMenu messengerBubbleMenu'; menu.setAttribute('role', 'menu');
-    const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerLeave'; del.setAttribute('role', 'menuitem'); del.textContent = '삭제';
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerBubbleDelete'; del.setAttribute('role', 'menuitem'); del.textContent = '삭제';
     del.addEventListener('click', async () => {
       closeBubbleMenu(); if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
       try { await api(`/api/messenger/rooms/${current.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }

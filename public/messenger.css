@@ -49,4 +49,6 @@ html[data-mtheme="dark"] .mApp .messengerMoreMenu button:hover,html[data-mtheme=
 html[data-mtheme="dark"] .mApp .messengerMoreMenu .messengerLeave{color:#f87171}
 /* v1.10.190 말풍선 메뉴: by the pointer (a right click, a long press); my line keeps the phone's own select/callout away */
 .mApp .messengerBubbleMenu{position:fixed;right:auto;top:auto;min-width:110px;z-index:40}
+.mApp .messengerBubbleMenu .messengerBubbleDelete{color:#b3261e}
+html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color:#f87171}
 .mApp .chatMessageText.hasMenu{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
