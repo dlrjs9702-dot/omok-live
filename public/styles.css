@@ -2091,6 +2091,10 @@ body.touchIsland .islandCtl { display: flex; }
 body.touchIsland .islandCtl.islandBikeBtn.hidden { display: none; }
 .islandTurnBtn { right: 108px; bottom: 210px; width: 58px; height: 58px; font-size: .85rem; } /* 2회차 11: 잡은 가구 돌리기 */
 body.touchIsland .islandCtl.islandTurnBtn.hidden { display: none; }
+.islandSeatBtn { bottom: 230px; width: 46px; height: 46px; font-size: 1.3rem; } /* v1.10.189: 스툴·방석 돌기, above 걷기 */
+.seatLeftBtn { right: 90px; } .seatRightBtn { right: 36px; }
+@media (max-height: 500px) { .islandSeatBtn { bottom: 200px; } }
+body.touchIsland .islandCtl.islandSeatBtn.hidden { display: none; }
 .islandRunBtn.on, .islandRunBtn:active { background: #f0dcb6; box-shadow: 0 0 0 3px rgba(200, 50, 40, .7); }
 body.photoMode .islandCtl { visibility: hidden !important; }
 body.stickEdit .islandCtl { outline: 2px dashed #facc15; outline-offset: 3px; cursor: move; }

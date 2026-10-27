@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, adminToken, uniqueIp, standAt, expectNoScriptError } = require('./skin-support');
+const { shopper, post, get, adminToken, uniqueIp, standAt, expectNoScriptError, spaceOn } = require('./skin-support');
 
 // 묶음 4 내 집 + 친구 (gamecenter-notes docs/my-home-20261020.md, docs/friends-20261020.md): a house from the 관공서's
 // 민원 창구 on 툇마루섬, in by its door, 꾸미기 (placed, turned, moved, put back -- green or red before it goes), a tank's
@@ -312,5 +312,56 @@ test('내 집 가구 직접 옮기기: 길게 눌러 잡고 부드럽게 밀기,
   void yaw; await expectNoScriptError(page);
   // (CI #330: both pages were left open -- two islands drawing for the rest of the worker's run, slowing the next specs, and
   // a later failure's screenshot and snapshot were this house, not that spec's own page)
+  await a.context.close(); await b.context.close();
+});
+
+// v1.10.189 등받이 없는 자리: a stool is sat on facing the way I faced (45° steps) -- from two sides, two ways; ← / → (the
+// phone's ↺ ↻) turn me 45° still seated, and the visitor's screen turns me too; ↑ stands me up
+test('스툴: 바라보던 방향으로 앉고, ←/→(폰 ↺↻)로 45° 돌며 다른 화면도 같은 방향, ↑로 일어남', async ({ browser, request, isMobile }) => {
+  test.setTimeout(400000);
+  const { a, b, page, through } = await twoPlayers(browser, request, isMobile, isMobile ? 's' : 't');
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
+  await through(page, 'townhall', '관공서 들어가기', 'townhall');
+  const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.owner === null).id;
+  expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'red' })).status).toBe(200);
+  const [stool] = (await post(request, '/api/test/home/furniture', a.token, { ids: ['stool__oak'] })).data.pieces;
+  await through(page, 'room:exit', '나가기', 'island');
+  await through(page, `home:${lot}`, '내 집 들어가기', 'home');
+  expect((await post(request, '/api/home/place', a.token, { uid: stool.uid, x: 0, z: 0, rot: 0 })).status).toBe(200);
+  await through(page, 'home:exit', '나가기', 'island'); await through(page, `home:${lot}`, '내 집 들어가기', 'home');
+  await through(b.page, `home:${lot}`, '집 구경하기', 'home');
+  const same = (p, q) => Math.abs(Math.atan2(Math.sin(p - q), Math.cos(p - q))) < 0.03;
+  const act = () => page.evaluate(() => window.PlazaDebug().act());
+  const seen = () => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit') || null);
+  const sitFrom = async (lx, lz) => { // from (lx, lz) in the room, facing the stool
+    const face = () => page.evaluate(([lx, lz]) => { const H = window.IslandHome; const d = window.PlazaDebug(); const lotO = H.lotById(d.home().lot); const w = H.world(lotO, lx, lz); const c = H.world(lotO, 0, 0); d.teleport(w.x, w.z); const y = Math.atan2(c.x - w.x, c.z - w.z); d.faceYaw(y); return y; }, [lx, lz]);
+    let yaw = 0;
+    await expect.poll(async () => {
+      if ((await act()).sitting) return true; yaw = await face(); await page.waitForTimeout(300);
+      if (!(await spaceOn(page, 'seat:', isMobile))) return false;
+      await page.waitForTimeout(800); return (await act()).sitting;
+    }, { timeout: 30000, intervals: [500] }).toBe(true);
+    return yaw;
+  };
+  const front = await sitFrom(0, -1);
+  const first = (await act()).seatYaw; expect(same(first, front)).toBe(true); // (the way I faced -- not the stool's own front)
+  await expect.poll(async () => { const o = await seen(); return Boolean(o && same(o.yaw, first)); }, { timeout: 15000 }).toBe(true);
+  if (isMobile) { await expect(page.locator('#seatLeftBtn')).toBeVisible(); await page.locator('#seatLeftBtn').tap(); }
+  else { await page.locator('#plazaStage').focus(); await page.keyboard.press('ArrowLeft'); }
+  const turned = (await act()); expect(turned.sitting).toBe(true); expect(same(turned.seatYaw, first + Math.PI / 4)).toBe(true);
+  await expect.poll(async () => same((await act()).yaw, first + Math.PI / 4), { timeout: 5000 }).toBe(true); // (turned round on it)
+  await expect.poll(async () => { const o = await seen(); return Boolean(o && same(o.yaw, first + Math.PI / 4)); }, { timeout: 15000 }).toBe(true);
+  if (isMobile) await page.locator('#seatRightBtn').tap(); else await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(300); expect((await act()).sitting).toBe(true); expect(same((await act()).seatYaw, first)).toBe(true);
+  // ↑ stands me up (the turn buttons go)
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  await expect.poll(async () => (await act()).sitting, { timeout: 10000 }).toBe(false);
+  if (isMobile) await expect(page.locator('#seatLeftBtn')).toBeHidden();
+  await page.waitForTimeout(1500); // (the stand-up motion's hold)
+  // from the side: sat on facing that way, a quarter round from the first
+  const side = await sitFrom(-1, 0);
+  const second = (await act()).seatYaw; expect(same(second, side)).toBe(true); expect(same(second, first)).toBe(false);
+  await expect.poll(async () => { const o = await seen(); return Boolean(o && same(o.yaw, second)); }, { timeout: 15000 }).toBe(true);
+  await expectNoScriptError(page);
   await a.context.close(); await b.context.close();
 });

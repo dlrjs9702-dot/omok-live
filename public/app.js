@@ -2506,7 +2506,10 @@
   // 2회차 11 가구 직접 옮기기: each step the scene takes is kept by the server; refused, the piece goes back to where it was
   const turnBtn = byId('islandTurnBtn');
   turnBtn.addEventListener('click', () => { const why = plaza.controller?.grabTurn?.(); if (why) showToast(why); plazaStage.focus({ preventScroll: true }); });
+  const seatBtns = [[byId('seatLeftBtn'), 1], [byId('seatRightBtn'), -1]];
+  for (const [btn, dir] of seatBtns) btn.addEventListener('click', () => { plaza.controller?.seatTurn?.(dir); plazaStage.focus({ preventScroll: true }); });
   function wireHomeMoves() {
+    plaza.controller?.onSeatTurn?.((on) => { for (const [btn] of seatBtns) btn.classList.toggle('hidden', !on); }); // v1.10.189
     plaza.controller?.onGrab?.((on) => { turnBtn.classList.toggle('hidden', !on); if (on) showToast(touchIsland ? '앞뒤로 밀고 당겨요 · 돌리기 단추로 돌려요 · 상호작용으로 놓아요' : '↑↓ 밀고 당기기 · R 돌리기 · SPACE 놓기'); });
     // (Codex 검토 #9) one save at a time, in order -- answers (and the server's writes) never cross; while one is on its
     // way only each piece's latest step waits to go
