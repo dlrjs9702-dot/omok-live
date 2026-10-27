@@ -85,15 +85,19 @@ for (const viewport of [{ width: 393, height: 851 }, { width: 1920, height: 1080
     await expect(page.locator('#gostopHand .hwatu').first()).toBeVisible();
     expect((await api(request, '/api/test/gostop-fixture', people[0].token, { fixture: 'wide-floor' })).status).toBe(200);
     await expect(page.locator('#gostopFloor .gostopFloorGroup')).toHaveCount(8);
-    await page.waitForTimeout(1500);
-    const boxes = await page.evaluate(() => {
-      const rect = (els) => { const rs = els.map(el => el.getBoundingClientRect()); return { left: Math.min(...rs.map(r => r.left)), top: Math.min(...rs.map(r => r.top)), right: Math.max(...rs.map(r => r.right)), bottom: Math.max(...rs.map(r => r.bottom)) }; };
-      return { groups: [...document.querySelectorAll('#gostopFloor .gostopFloorGroup')].map(g => rect([...g.querySelectorAll('.hwatu')])), deck: rect([...document.querySelectorAll('#gostopDeck > *')]) };
-    });
-    const hit = (a, b) => a.left < b.right - 3 && a.right > b.left + 3 && a.top < b.bottom - 3 && a.bottom > b.top + 3; // (3px: the months' slight tilt)
-    const clashes = [];
-    boxes.groups.forEach((g, i) => { if (hit(g, boxes.deck)) clashes.push(`${i}↔산`); boxes.groups.forEach((o, j) => { if (j > i && hit(g, o)) clashes.push(`${i}↔${j}`); }); });
-    expect(clashes).toEqual([]);
+    // (C4 P3-5: and the phone turned -- across 640 the floor is laid again at once, no move needed)
+    for (const size of viewport.width < 640 ? [null, { width: viewport.height, height: viewport.width }] : [null]) {
+      if (size) await page.setViewportSize(size);
+      await page.waitForTimeout(1500);
+      const boxes = await page.evaluate(() => {
+        const rect = (els) => { const rs = els.map(el => el.getBoundingClientRect()); return { left: Math.min(...rs.map(r => r.left)), top: Math.min(...rs.map(r => r.top)), right: Math.max(...rs.map(r => r.right)), bottom: Math.max(...rs.map(r => r.bottom)) }; };
+        return { groups: [...document.querySelectorAll('#gostopFloor .gostopFloorGroup')].map(g => rect([...g.querySelectorAll('.hwatu')])), deck: rect([...document.querySelectorAll('#gostopDeck > *')]) };
+      });
+      const hit = (a, b) => a.left < b.right - 3 && a.right > b.left + 3 && a.top < b.bottom - 3 && a.bottom > b.top + 3; // (3px: the months' slight tilt)
+      const clashes = [];
+      boxes.groups.forEach((g, i) => { if (hit(g, boxes.deck)) clashes.push(`${i}↔산`); boxes.groups.forEach((o, j) => { if (j > i && hit(g, o)) clashes.push(`${i}↔${j}`); }); });
+      expect(clashes, JSON.stringify(size)).toEqual([]);
+    }
     for (const p of people) await p.context.close();
   });
 }

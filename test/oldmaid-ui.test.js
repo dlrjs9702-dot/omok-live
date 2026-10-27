@@ -103,7 +103,9 @@ test('the draw flight animation and pair/escape effects are purely cosmetic and 
   assert.match(app, /function oldmaidFlyDrawnCard\(originRect, card, destRect\)/);
   assert.match(app, /function oldmaidRunEffects\(g\)/);
   // effects are derived from a diff against already-applied server state (g.history / counts), not from the request itself
-  assert.match(app, /if \(history\.length > oldmaidLastHistoryLen\)/);
+  // (C4 P3-7: new draws by moveCount -- the server keeps only the last 30)
+  assert.match(app, /const fresh = moves > oldmaidLastMoves \? history\.slice\(-\(moves - oldmaidLastMoves\)\) : \[\];/);
+  assert.match(app, /if \(fresh\.length\)/);
 });
 
 // v1.6.43: the draw flyer used to start optimistically on click and always show the card back; it

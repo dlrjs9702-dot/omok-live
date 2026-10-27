@@ -50,11 +50,12 @@
   const label = (state, seat) => state.players?.[seat]?.label || `${seat}번`;
   const BAK_KEYS = new Set(['pibak', 'gwangbak', 'meongbak', 'gobak']);
   const factorOrder = key => ({ go: 1, shake: 2, bomb: 3, pibak: 4, gwangbak: 4, meongbak: 4, gobak: 4, nagari: 5 }[key] || 9);
-  function factorText(item) {
+  function factorParts(item) {
     const name = item.key === 'go' ? `${item.count}고` : (FACTOR_LABEL[item.key] || item.key);
     const repeat = item.count > 1 && item.key !== 'go' ? ` ${item.count}회` : '';
-    return `${name}${repeat} ×${item.multiplier}`;
+    return [`${name}${repeat}`, `×${item.multiplier}`];
   }
+  const factorText = (item) => factorParts(item).join(' ');
   const orderedFactors = factors => [...(factors || [])].sort((a, b) => factorOrder(a.key) - factorOrder(b.key));
 
   function cardEl(id, { size = 'normal', classes = '', button = false, track = false } = {}) {
@@ -222,6 +223,13 @@
     return box;
   }
 
+  // (C4 P3-5: and again when a phone turns or a window crosses 640 -- the felt's columns change with it at once)
+  const narrow = matchMedia('(max-width:640px)');
+  function layFloor() {
+    const groups = [...$('gostopFloor').children], per = narrow.matches ? 2 : 3, left = Math.ceil(groups.length / 2);
+    groups.forEach((el, i) => { const k = i < left ? i : i - left; el.style.gridRow = String(Math.floor(k / per) + 1); el.style.gridColumn = String(i < left ? per - (k % per) : per + 2 + (k % per)); });
+  }
+  narrow.addEventListener('change', () => { if ($('gostopFloor')) layFloor(); });
   function renderFloor(state, recentApi) {
     const g = state.game;
     const floor = $('gostopFloor');
@@ -266,8 +274,7 @@
     }
     // G-고스톱ⓒ: half the months left of the deck, half right, each side filled from the deck outward (the felt's grid
     // keeps its middle column for the deck; outside the room's felt the floor is a plain row and ignores this)
-    const groups = [...floor.children], per = matchMedia('(max-width:640px)').matches ? 2 : 3, left = Math.ceil(groups.length / 2);
-    groups.forEach((el, i) => { const k = i < left ? i : i - left; el.style.gridRow = String(Math.floor(k / per) + 1); el.style.gridColumn = String(i < left ? per - (k % per) : per + 2 + (k % per)); });
+    layFloor();
     const deck = $('gostopDeck');
     deck.replaceChildren();
     if (g.status === 'playing' || g.deckCount) {
@@ -465,22 +472,21 @@
     flow.className = 'gostopCalc gostopSettlementFlow';
     // G-고스톱ⓕ 결과 점수표 (gamecenter-notes docs/gamehall-audit-20261025.md 「고스톱·맞고」 6): each line a row of the sheet --
     // what on the left, its figure on the right (the text itself unchanged: 「광 3점」)
-    const chip = (text, extra = '') => {
+    const chip = (whatText, figureText, extra = '') => { // (C4 P3-9: the two given apart)
       const el = document.createElement('span');
       el.className = `gostopChip${extra}`;
-      const at = text.lastIndexOf(' ');
-      const what = document.createElement('span'); what.textContent = text.slice(0, at);
-      const figure = document.createElement('b'); figure.textContent = text.slice(at + 1);
+      const what = document.createElement('span'); what.textContent = whatText;
+      const figure = document.createElement('b'); figure.textContent = figureText;
       el.append(what, ' ', figure);
       flow.append(el);
     };
-    chip(r.instant ? `${reasonText} ${r.base}점 고정` : `기본 ${r.base}점`);
-    if (r.items?.length && !r.instant) for (const item of r.items) chip(`${ITEM_LABEL[item.key] || item.key} ${item.points}점`, ' muted'); // (A3 G2-5: one line per part)
-    if (r.goCount) chip(`${r.goCount}고 +${r.goCount}점`);
-    if (!r.instant && r.score !== r.base) chip(`합계 ${r.score}점`, ' total');
+    if (r.instant) chip(`${reasonText} 고정`, `${r.base}점`); else chip('기본', `${r.base}점`);
+    if (r.items?.length && !r.instant) for (const item of r.items) chip(ITEM_LABEL[item.key] || item.key, `${item.points}점`, ' muted'); // (A3 G2-5: one line per part)
+    if (r.goCount) chip(`${r.goCount}고`, `+${r.goCount}점`);
+    if (!r.instant && r.score !== r.base) chip('합계', `${r.score}점`, ' total');
     const commonFactors = orderedFactors(r.losers?.[0]?.factors).filter(item => !BAK_KEYS.has(item.key));
-    for (const item of commonFactors) chip(factorText(item));
-    chip(`점당 ${r.pointsPerScore}P`);
+    for (const item of commonFactors) chip(...factorParts(item));
+    chip('점당', `${r.pointsPerScore}P`);
     box.append(flow);
 
     let total = 0;

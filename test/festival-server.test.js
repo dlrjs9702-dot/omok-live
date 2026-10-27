@@ -61,6 +61,23 @@ test('수확제: 할 일마다 도장(하루 한도), 요리 심사, 마지막 �
   await req('/api/admin/calendar', admin, { override: { 'harvest-2026': { off: true } } }); assert.equal((await req('/api/island/festival', a)).data.festival, null);
 });
 
+// C4 P3-1: two cooks at once (two tabs) -- one stamped, the other's things given back
+test('수확제 요리: 동시에 두 번 내도 재료는 한 벌만 쓰임', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'festival-cook-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const { req, issue, enter } = await boot(t, dir);
+  const a = await enter(await issue('요리두번'));
+  const clock = (s) => req('/api/test/festival/clock', null, { at: Date.parse(`${s}+09:00`) });
+  const stand = (p) => req('/api/plaza/state', a, { x: p.x, z: p.z, yaw: 0, moving: false });
+  const F = T.FARM; const P = C.PLACES;
+  for (const day of ['2026-11-20', '2026-11-21']) { await clock(`${day}T12:00:00`); await stand({ x: F.x, z: F.z }); for (let k = 0; k < 3; k += 1) await req('/api/island/festival/harvest', a, {}); }
+  const vegetables = async () => ((await req('/api/island/bag', a)).data.items.find((e) => e.itemId === 'harvest') || {}).qty || 0;
+  assert.equal(await vegetables(), 6);
+  await stand(P.host);
+  const both = await Promise.all([0, 1].map(() => req('/api/island/festival/cook', a, { items: ['harvest', 'harvest', 'harvest'] })));
+  assert.deepEqual(both.map((r) => r.status).sort(), [200, 409], JSON.stringify(both.map((r) => r.data)));
+  assert.equal(await vegetables(), 3);
+});
+
 test('매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작, 판 안의 물고기만 점수, 그날 최고 기록·순위, 밤 정산(트로피·칭호·포인트, 토 낚시 1등 영웅마루), 시간 밖은 닫힘', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'contest-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const { req, issue, enter } = await boot(t, dir);
