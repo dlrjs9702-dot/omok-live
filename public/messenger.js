@@ -32,13 +32,18 @@
   function showLogin(message = '') {
     for (const t of timers) clearInterval(t); timers = []; wantStream(false);
     gen += 1; state = { rooms: [], people: [], me: '' }; current = null; last = 0; msgs = []; readsKey = '';
-    box.replaceChildren(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); document.title = '아일랜드 메신저';
+    box.replaceChildren(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); baseTitle = '아일랜드 메신저'; blink.seen(); document.title = baseTitle;
     app.classList.add('hidden'); loginForm.classList.remove('hidden'); byId('mLoginStatus').textContent = message;
     for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices']) byId(id).classList.add('hidden');
   }
   const fail = (err) => { if (err.status === 401) { accountToken.set(''); deviceToken.set(''); showLogin('다시 로그인해 주세요.'); } else if (err.status === 403) showLogin(err.message); else showToast(err.message, 4000); };
   const when = (at) => { const d = new Date(at); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); };
-  const unreadOf = (rooms) => rooms.reduce((n, r) => n + (r.muted ? 0 : r.unread), 0);
+  // v1.10.190: the app icon's count and the title blinking while away (public/messenger-alert.js, as the game window's)
+  const { unreadOf } = window.MessengerAlert; let baseTitle = '아일랜드 메신저';
+  const blink = window.MessengerAlert.titleBlink(() => { document.title = blink.text(baseTitle); });
+  const away = () => document.visibilityState === 'hidden' || !document.hasFocus();
+  const looking = () => { if (!away()) blink.seen(); };
+  document.addEventListener('visibilitychange', looking); window.addEventListener('focus', looking);
   function renderRooms() {
     list.replaceChildren(...state.rooms.map((room) => {
       const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost';
@@ -54,8 +59,9 @@
       b.setAttribute('aria-current', String(room.id === current?.id)); b.addEventListener('click', () => openRoom(room)); li.append(b); return li;
     }));
     if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
-    const unread = unreadOf(state.rooms); document.title = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
-    if (navigator.setAppBadge) (unread ? navigator.setAppBadge(unread) : navigator.clearAppBadge()).catch(() => {}); // (the app icon's count, where it can)
+    const unread = unreadOf(state.rooms); baseTitle = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
+    document.title = blink.text(baseTitle); blink.update(unread, away());
+    window.MessengerAlert.setBadge(navigator, unread);
   }
   async function refresh() { const g = gen; try { const data = await api('/api/messenger'); if (g !== gen) return false; state = data; renderRooms(); return true; } catch (err) { if (g === gen) fail(err); return false; } }
   function line(msg, same) { // `same`: the same person just before -- the name once (카톡)

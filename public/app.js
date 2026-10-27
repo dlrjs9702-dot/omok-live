@@ -7196,8 +7196,9 @@
   let turnNotifyPref = false;
   try { turnNotifyPref = localStorage.getItem(TURN_NOTIFY_KEY) === '1'; } catch {}
 
+  const messengerBlink = window.MessengerAlert.titleBlink(() => applyDocumentTitle()); // v1.10.190: a new message while away
   function applyDocumentTitle() {
-    const next = turnAlertActive ? `${TURN_ALERT_PREFIX}${baseDocumentTitle}` : baseDocumentTitle;
+    const next = messengerBlink.text(turnAlertActive ? `${TURN_ALERT_PREFIX}${baseDocumentTitle}` : baseDocumentTitle);
     if (document.title !== next) document.title = next;
   }
 
@@ -12006,7 +12007,7 @@
   // and the island's) with what is unread, opening that window (the same one again), and the island's small notice.
   const messenger = (() => {
     const msgBtn = byId('accountMessengerBtn'); const tab = byId('islandMessengerTab'); let on = false;
-    const unreadOf = (rooms) => rooms.reduce((n, r) => n + (r.muted ? 0 : r.unread), 0);
+    const { unreadOf } = window.MessengerAlert;
     // (사용자 2026-10-25 「섬 앱에서 누르면 크롬으로 열려」: the blank window used to find an open one is outside the installed
     // app's scope, so the app handed it to the browser -- in the app, no blank one: the messenger itself in a small window,
     // the one opened kept and brought forward)
@@ -12029,6 +12030,7 @@
         const unread = unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms); const n = unread > 99 ? '99+' : unread;
         msgBtn.textContent = unread ? `메신저 · 새 메시지 ${n}` : '메신저'; tab.textContent = unread ? `메신저 ${n}` : '메신저';
         for (const b of [msgBtn, tab]) b.classList.toggle('hasUnread', unread > 0);
+        window.MessengerAlert.setBadge(navigator, unread); messengerBlink.update(unread, pageInBackground()); // (v1.10.190: the app icon's count, as the messenger window's)
       } catch {}
     }
     setInterval(badge, 30000);
@@ -12410,7 +12412,7 @@
   });
 
   // v1.6.85: coming back to this tab (or its window regaining focus) ends a pending turn alert.
-  const endTurnAlertIfLooking = () => { if (!pageInBackground()) clearTurnAlert(); };
+  const endTurnAlertIfLooking = () => { if (!pageInBackground()) { clearTurnAlert(); messengerBlink.seen(); } };
   document.addEventListener('visibilitychange', endTurnAlertIfLooking);
   window.addEventListener('focus', endTurnAlertIfLooking);
   turnNotifyBtn?.addEventListener('click', () => { toggleTurnNotify(); });

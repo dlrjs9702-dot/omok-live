@@ -59,6 +59,13 @@ test('메신저 기기 로그인 유지·알림: 메신저만, 비밀번호·허
   let pushes = await pushesNow(2);
   assert.deepEqual(pushes.map((x) => x.endpoint).sort(), [`${P}mum`, `${P}tot`]);
   assert.deepEqual(pushes[0].payload, { title: '우리집', body: '아빠: 저녁 먹자', room: room.id, unread: 2 }); // (the invite line + this one)
+  // v1.10.190 배지: one count everywhere -- the game window (account) and the messenger window (device) count as the push;
+  // read in one, both count less
+  const { unreadOf } = require('../public/messenger-alert.js');
+  const bothWindows = () => Promise.all([{ account: m.accountToken }, dev].map(async (a) => unreadOf((await call('/api/messenger', undefined, a)).data.rooms)));
+  assert.deepEqual(await bothWindows(), [2, 2]);
+  await call(`/api/messenger/rooms/${room.id}/messages`, undefined, dev);
+  assert.deepEqual(await bothWindows(), [0, 0]);
   await call(`/api/messenger/rooms/${room.id}/mute`, { on: true }, { device: k.deviceToken });
   // someone looking at the messenger now (a stream open) is not told either
   const ctl = new AbortController(); const stream = await fetch(`${base}/api/messenger/stream`, { headers: { 'X-Messenger-Device': m.deviceToken }, signal: ctl.signal });
