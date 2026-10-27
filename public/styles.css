@@ -2908,3 +2908,13 @@ body.roomPlaying .boardCard #yutThrowBtn{min-width:min(300px,100%);min-height:50
 @keyframes yutCall{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}24%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
 @media(prefers-reduced-motion:reduce){.yutCall{animation:yutCallFade 1.7s linear forwards}}
 @keyframes yutCallFade{0%,80%{opacity:1}100%{opacity:0}}
+/* G-게임별 v187 (gamecenter-notes docs/gamehall-audit-20261025.md): the hand's input under the board at the thumb -- 할리갈리's
+   flip big and in the middle, its bell bigger; 빙고's two lines one row; 숫자야구's guess above the record (index.html) */
+body.roomPlaying .halliActions{justify-content:center;margin:.7rem 0}
+body.roomPlaying #halliFlipBtn{min-width:min(300px,100%);min-height:50px;font-size:1.05rem;border-radius:999px}
+body.roomPlaying .halliTable .halliCards{column-gap:8.4rem}
+body.roomPlaying .halliTable .halliBell{width:7.5rem;height:7.5rem;font-size:1.15rem}
+@media(max-width:640px){body.roomPlaying .halliTable .halliCards{column-gap:.6rem}body.roomPlaying .halliTable .halliBell{position:relative;left:auto;top:auto;transform:none;display:flex;align-items:center;justify-content:center;margin:10px auto 0;width:5.6rem;height:5.6rem;font-size:1rem}} /* (v187 검토: a phone's bell under the piles, over none of them) */
+body.roomPlaying .bingoInfoGrid{grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+body.roomPlaying .bingoInfoGrid>div{padding:6px 10px}
+body.roomPlaying .baseballPanel .baseballForm{margin:8px 0 12px}

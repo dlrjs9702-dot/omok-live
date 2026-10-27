@@ -7713,6 +7713,7 @@
   const boardActionsSpot = document.getElementById('quickChat');
   // (G-틀①: the panel folds while a hand is played -- the yut sticks' and the dice's throw goes under the board with the actions)
   const diceSection = document.getElementById('diceYutSection'); const diceMark = document.createComment('diceYutSection'); diceSection.before(diceMark);
+  const guessMark = document.createComment('baseballGuessForm'); baseballGuessForm.before(guessMark);
   // G-틀③ 게임방 소리 (room-sound.js): a move made -- a stone in the stone games, a card in the others (the yut sticks sound
   // as they are thrown) --, my turn come, the hand over (my win or loss, or just its end). The first view of a room is quiet.
   const STONE_GAMES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
@@ -7722,7 +7723,7 @@
     const was = soundSeen; soundSeen = now; const S = window.RoomSound;
     if (!S || !was || was.room !== now.room || was.round !== now.round) return;
     if (now.bell && now.bell !== was.bell) S.play('bell'); // (할리갈리: someone rang it)
-    else if (now.status === 'playing' && now.moves > was.moves && state.gameType !== 'yut') S.play(STONE_GAMES.has(state.gameType) ? 'stone' : 'card');
+    else if (now.status === 'playing' && now.moves > was.moves && state.gameType !== 'yut') S.playPlan ? S.playPlan(S.landPlan(state.gameType, g.lastMove, reducedMotionActive())) : S.play(STONE_GAMES.has(state.gameType) ? 'stone' : 'card'); // (G-게임별 v187: as the stone lands)
     else if (now.status === 'playing' && now.mine && !was.mine) S.play('turn');
     if (was.status === 'playing' && ['finished', 'draw'].includes(now.status)) { const o = seat ? resultOutcome(g, seat, state.gameType) : null; S.play(o === 'win' ? 'win' : o === 'loss' ? 'lose' : 'end'); }
   }
@@ -7749,6 +7750,8 @@
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     // (G-게임별 윷: a yut hand throws on a straw mat beside the board -- a phone's under it -- not over the board)
+    // (G-게임별 v187: 숫자야구's guess right under my secret, above the record -- on a PC within the screen; its home is the actions panel)
+    const guessSpot = document.querySelector('#baseballPanel .baseballHistoryHead'); if (on && state?.gameType === 'baseball' && guessSpot) { if (guessSpot.previousElementSibling !== baseballGuessForm) guessSpot.before(baseballGuessForm); } else if (guessMark.nextSibling !== baseballGuessForm) guessMark.after(baseballGuessForm);
     if (on && state?.gameType === 'yut') { if (diceSection.previousElementSibling !== canvasWrap) canvasWrap.after(diceSection); }
     else if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
     placeMySeat(); fitBoard(); renderTurnRing();
@@ -8177,7 +8180,7 @@
       yutHoverTargetKey = null;
     }
     bingoPanel.classList.toggle('hidden', !bingo);
-    bingoSetupRow.classList.toggle('hidden', !bingo);
+    bingoSetupRow.classList.toggle('hidden', !bingo || g.status === 'playing'); // (G-게임별 v187: the settings are for before a hand)
     if (bingo) renderBingo();
     cityControls.classList.toggle('hidden', !city);
     cityActionPanel.classList.toggle('hidden', !city);
@@ -9759,6 +9762,7 @@
   }
 
   let halliThemeApplied = null;
+  const halliNarrow = matchMedia('(max-width:640px)'); const halliTouch = matchMedia('(hover: none) and (pointer: coarse)');
   function renderHalli() {
     const g = state.game;
     const playerName = (number) => state.players[number]?.label || `${number}번`;
@@ -9844,12 +9848,12 @@
         face.append(heading, visuals);
       } else {
         face.className = 'halliEmptyFace';
-        face.textContent = '아직 공개한 카드 없음';
+        face.textContent = halliNarrow.matches ? '카드 없음' : '아직 공개한 카드 없음'; // (G-게임별 v187 검토: a phone's narrow pile)
       }
       const count = document.createElement('small');
       count.className = 'halliCardCounts';
       if (plotSkin?.text) SLH.h.style(count, { color: plotSkin.text.color, textShadow: 'none' });
-      count.textContent = `뒷면 ${g.pileCounts?.[owner] || 0}장 · 앞면 ${g.faceCounts?.[owner] || 0}장`;
+      count.textContent = halliNarrow.matches ? `뒷 ${g.pileCounts?.[owner] || 0} · 앞 ${g.faceCounts?.[owner] || 0}` : `뒷면 ${g.pileCounts?.[owner] || 0}장 · 앞면 ${g.faceCounts?.[owner] || 0}장`;
       card.append(name, face, count);
       halliCards.append(card);
     }
@@ -9863,7 +9867,7 @@
     halliTransferResult.classList.toggle('success', Boolean(g.lastBell?.correct));
     halliTransferResult.classList.toggle('penalty', Boolean(g.lastBell && !g.lastBell.correct));
     if (!g.lastBell) {
-      halliLastBell.textContent = '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.';
+      halliLastBell.textContent = halliTouch.matches ? '종을 눌러 치세요.' : '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.'; // (a touch screen has no space bar)
     } else {
       const bell = g.lastBell;
       const moves = bell.transfers || [];

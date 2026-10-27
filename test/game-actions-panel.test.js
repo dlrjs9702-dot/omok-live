@@ -128,8 +128,11 @@ test('every relocated control has its own explicit hidden-toggle so it disappear
     ['liarSetupRow', '!liar'], ['liarHintForm', '!liar'], ['liarGuessForm', '!liar'],
   ];
   for (const [id, cond] of pairs) {
-    const re = new RegExp(`${id}\\.classList\\.toggle\\('hidden', ${cond.replace('!', '!')}\\)`);
-    assert.match(app, re, `${id} should have classList.toggle('hidden', ${cond})`);
+    // (v187: 빙고's settings row also folds while a hand is played -- `!bingo || …`)
+    const re = new RegExp(`${id}\\.classList\\.toggle\\('hidden', ${cond.replace('!', '!')}(\\)| \\|\\| )`);
+    // (CI v187: not assert.match -- a miss put the whole app.js in the report, and Node 20's TAP reporter never finished
+    // writing it: the unit job sat silent 45 minutes instead of failing)
+    assert.ok(re.test(app), `${id} should have classList.toggle('hidden', ${cond})`);
   }
   // cityActionPanel already had its own independent toggle before the move (it was never nested
   // inside another hidden-toggled panel), so it needs no new toggle -- just confirm it's intact.
