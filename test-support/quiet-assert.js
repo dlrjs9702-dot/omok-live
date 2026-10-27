@@ -8,7 +8,10 @@ const assert = require('node:assert');
 
 const LONG = 2000;
 const short = (s) => `${s.slice(0, 300)}… (${s.length.toLocaleString('en-US')} chars)`;
-for (const target of new Set([assert, assert.strict])) {
+// Only assert.strict (what every test requires): Node 20's match tells match from doesNotMatch by comparing itself
+// with `assert.match` -- the main export's must stay the original, or every match turns into its opposite (CI v188 try).
+{
+  const target = assert.strict;
   for (const name of ['match', 'doesNotMatch']) {
     const original = target[name];
     target[name] = function quietMatch(actual, expected, message) {
