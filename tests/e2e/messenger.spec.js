@@ -66,7 +66,13 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // (Codex 검토 2차 #6) a line unsent after the other side got it shows as deleted there too
   await m.locator('#messengerInput').fill('잘못 보냄'); await m.locator('#messengerInput').press('Enter');
   await expect(d.locator('#messengerMessages .chatMessage', { hasText: '잘못 보냄' })).toHaveCount(1);
-  m.once('dialog', (x) => x.accept()); await m.locator('#messengerMessages .chatMessage.mine', { hasText: '잘못 보냄' }).locator('.messengerUnsend').click();
+  // v1.10.190 말풍선 메뉴: no 「삭제」 word; PC a right click, a phone a 0.5 s press -- Esc or outside closes it, 삭제 asks once
+  const wrong = m.locator('#messengerMessages .chatMessage.mine .chatMessageText', { hasText: '잘못 보냄' });
+  await expect(m.locator('#messengerMessages .chatMessage.mine', { hasText: '잘못 보냄' })).not.toContainText('삭제');
+  const openMenu = async () => { if (info.project.name.includes('mobile')) { await wrong.dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true }); await m.waitForTimeout(700); await wrong.dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true }); } else await wrong.click({ button: 'right' }); await expect(m.locator('.messengerBubbleMenu')).toBeVisible(); };
+  await openMenu(); await m.keyboard.press('Escape'); await expect(m.locator('.messengerBubbleMenu')).toHaveCount(0);
+  await openMenu(); await m.locator('#messengerRoomName').click(); await expect(m.locator('.messengerBubbleMenu')).toHaveCount(0);
+  await openMenu(); m.once('dialog', (x) => x.accept()); await m.locator('.messengerBubbleMenu').getByRole('menuitem', { name: '삭제' }).click();
   await expect(d.locator('#messengerMessages .chatMessageText.deleted')).toHaveText('삭제된 메시지입니다', { timeout: 8000 });
   // 1:1: named after the other; 나가기 only with the warning
   if (await d.locator('#messengerBackBtn').isVisible()) await d.locator('#messengerBackBtn').click(); // a phone shows one side
