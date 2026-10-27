@@ -1,5 +1,5 @@
 'use strict';
-// 묶음 2-2 펫샵 (gamecenter-notes docs/pet-shop-20261020.md): the 백화점's 3rd floor by the lift, eight pets a day walking
+// 묶음 2-2 펫샵 (gamecenter-notes docs/pet-shop-20261020.md): the 백화점's 3rd floor by the lift, ten pets a day (v1.10.191) walking
 // their rounds in the yard (the same everywhere: the server knows where each is), one taken by the first who asks
 // (by it), one a day each, named, it walks with me in its coat; the pets bought before at the 잡화점 stay mine.
 const test = require('node:test');
@@ -12,11 +12,12 @@ const S = require('../public/plaza/island-store');
 const P = require('../public/plaza/island-petshop');
 const { boot } = require('../test-support/test-server');
 
-test('펫샵 하루: 여덟 마리(종류·무늬 겹침 없음, 종류마다 둘 이상), 모두 놀이 마당 안을 돈다', () => {
+test('펫샵 하루: 열 마리(기본 종류마다 둘·무늬 다름 + 특별 넷), 모두 놀이 마당 안을 돈다', () => {
   for (const day of ['2026-10-20', '2026-10-21', '2026-12-31']) {
-    const d = P.displayOf(day); assert.equal(d.length, 8);
-    assert.equal(new Set(d.map((p) => `${p.kind}:${p.coat}`)).size, 8);
-    for (const kind of Object.keys(P.KINDS)) assert.ok(d.filter((p) => p.kind === kind).length >= 2, `${day} ${kind}`);
+    const d = P.displayOf(day); assert.equal(d.length, 10);
+    assert.equal(new Set(d.map((p) => `${p.kind}:${p.coat}`)).size, 10);
+    for (const kind of Object.keys(P.KINDS)) assert.equal(d.filter((p) => p.kind === kind).length, 2, `${day} ${kind}`);
+    assert.equal(d.filter((p) => P.catalogOf(p.kind) && p.coat === null).length, 4, day);
     for (const p of d) for (let t = 0; t < 900; t += 7) {
       const q = P.local(...Object.values(P.petAt(day, p.slot, t * 1000)).slice(0, 2)); assert.ok(Math.abs(q.lx - P.PEN.lx) < P.PEN.w / 2 && Math.abs(q.lz - P.PEN.lz) < P.PEN.d / 2, `${day} ${p.slot} ${t}`);
     }
@@ -36,7 +37,7 @@ test('펫샵: 승강기 3층, 곁에서만·먼저 온 한 명만·하루 한 �
     await req('/api/plaza/state', token, { ...S.world(...S.LIFT.stand), yaw: 0, moving: false });
     assert.equal((await req('/api/island/lift', token, { to: 3 })).data.space, 'petshop');
   }
-  const shop = (await req('/api/island/petshop', a)).data; assert.equal(shop.pets.length, 8); assert.ok(shop.pets.every((p) => p.price > 0 && !p.sold));
+  const shop = (await req('/api/island/petshop', a)).data; assert.equal(shop.pets.length, 10); assert.ok(shop.pets.every((p) => p.price > 0 && !p.sold));
   const pet = shop.pets[0];
   const by = async (token) => { const w = P.petAt(shop.day, pet.slot, Date.now()); await req('/api/plaza/state', token, { x: w.x + 0.6, z: w.z, yaw: 0, moving: false }); };
   // far from it: no

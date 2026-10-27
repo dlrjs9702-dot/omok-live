@@ -5307,6 +5307,8 @@
       "out": "dalmaru-v1/dock_boat.glb",
       "src": "dock81:01. High/dock_boat.glb",
       "sha256": "83f4cdbd73809ec757f27f009e5c5056411ccf76f313af7542dd872380a9496d",
+      "lowSrc": "dock81:02. Low/dock_boat_low.glb",
+      "lowSha256": "7d310dafef694ac0ad67efd9ca3726bf3108de896a6a3133660336c3bf8ec6c6",
       "precompressed": true
     },
     {
@@ -5353,6 +5355,8 @@
       "out": "dalmaru-v1/pier_dalkkeut.glb",
       "src": "dock81:01. High/pier_dalkkeut.glb",
       "sha256": "39cfa05f4face3dd4893c8e5f763d71450d81eb79a005224b0e12ce2fe2f0442",
+      "lowSrc": "dock81:02. Low/pier_dalkkeut_low.glb",
+      "lowSha256": "60f147a5cf534e80b8e58f6e92e9e0a923ce064fe68c1a143b44f37cf3fd8702",
       "precompressed": true
     },
     {
