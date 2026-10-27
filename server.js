@@ -3613,7 +3613,7 @@ async function handleRoomAction(req, res, action, session) {
     const engine = getGame('yut');
     const verdict = engine.throwYut(room.game, seat, nowIso());
     if (!verdict.legal) return sendError(res, 409, 'INVALID_YUT_THROW', engine.moveError(verdict.reason));
-    appendSystemMessage(room, `${session.label || '플레이어'}님이 ${verdict.name}을(를) 던졌습니다.`);
+    appendSystemMessage(room, `${session.label || '플레이어'}님이 ${verdict.name}${/[걸윷]$/.test(verdict.name) ? '을' : '를'} 던졌습니다.`); // (G-게임별 윷: 「개를」·「윷을」, not 「개을(를)」)
   }
 
   if (action === 'move-yut') {

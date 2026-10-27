@@ -53,7 +53,12 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
       const t = await page.locator('#yutThrowBtn').boundingBox(); expect(t.y + t.height).toBeLessThanOrEqual(h + 1);
       await expect(page.locator('#blackPlayer .turnRing, .teamPlayer .turnRing')).toHaveCount(1);
       // (G-틀①: the panel the sticks lived in is folded -- the throw shows over the board, then steps out of the way)
+      // (G-게임별 윷: the sticks on a straw mat beside the board -- a phone's under it --, the 「최근 결과」 box folded)
+      await expect(page.locator('#boardScroll > #diceYutSection')).toBeVisible(); await expect(page.locator('#yutControls')).toBeHidden();
+      const [mat, wrapBox] = await Promise.all([page.locator('#diceYutSection').boundingBox(), page.locator('#canvasWrap').boundingBox()]);
+      expect(w > 640 ? mat.x >= wrapBox.x + wrapBox.width - 1 : mat.y >= wrapBox.y + wrapBox.height - 1, JSON.stringify([mat, wrapBox])).toBe(true);
       await page.locator('#yutThrowBtn').click(); await expect(page.locator('#diceYutSection')).toHaveClass(/throwing/);
+      await expect(page.locator('#canvasWrap .yutCall b')).toHaveText(/^(도|개|걸|윷|모|빽도)!$/, { timeout: 8000 }); // (the throw's name big on the board)
       expect(await page.evaluate(() => window.RoomSound.played())).toContain('yut'); // (G-틀③: the sticks falling)
       const sticks = await page.locator('#diceYutSection').boundingBox(); expect(sticks.y >= 0 && sticks.y + sticks.height <= h).toBe(true);
       await expect(page.locator('#diceYutSection')).not.toHaveClass(/throwing/, { timeout: 8000 });
