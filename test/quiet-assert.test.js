@@ -11,5 +11,9 @@ test('긴 문자열: match·doesNotMatch는 그대로, 놓치면 짧게 보고',
   assert.match('short needle', /needle/); assert.doesNotMatch('short', /needle/);
   assert.throws(() => assert.match(big, /haystack/), (e) => e instanceof assert.AssertionError && e.message.length < 600 && /10,006 chars/.test(e.message) && String(e.actual).length < 600);
   assert.throws(() => assert.doesNotMatch(big, /needle/), (e) => e instanceof assert.AssertionError && e.message.length < 600);
-  assert.throws(() => assert.match('short', /needle/), assert.AssertionError);
+  // (short strings: the very same error as the unwrapped assert -- the main export is left as it is)
+  const plain = require('node:assert');
+  const sameAs = (call) => (e) => { try { call(plain); } catch (o) { return e instanceof assert.AssertionError && e.message === o.message && e.actual === o.actual; } return false; };
+  assert.throws(() => assert.match('short', /needle/), sameAs((a) => a.match('short', /needle/)));
+  assert.throws(() => assert.doesNotMatch('short needle', /needle/), sameAs((a) => a.doesNotMatch('short needle', /needle/)));
 });
