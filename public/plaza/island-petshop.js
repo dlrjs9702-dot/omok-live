@@ -27,12 +27,14 @@
   const local = (x, z) => ({ lx: ROOM.x - x, lz: ROOM.z - z });
   const inRoom = (x, z, pad = 0) => Math.abs(x - ROOM.x) <= ROOM.w / 2 + pad && Math.abs(z - ROOM.z) <= ROOM.d / 2 + pad;
   const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (2회차 8: before its door)
-  // the play yard (assets 60 petshop.playpen, 10 x 8 m, its 2 m gate at its front, local -Z): the pets keep inside it
-  const PEN = Object.freeze({ lx: 2, lz: 1.5, w: 10, d: 8, gate: 2 });
+  // the play yard (assets 60 petshop.playpen, 10 x 8 m, its 2 m gate at its front, local -Z): the pets keep inside it;
+  // v1.10.191 (사용자 「마당은 더 크게」, ten in it) the pen drawn 1.5 times as wide and deep -- its gate 3 m with it
+  const PEN_SCALE = 1.5;
+  const PEN = Object.freeze({ lx: 1.5, lz: 1.5, w: 10 * PEN_SCALE, d: 8 * PEN_SCALE, gate: 2 * PEN_SCALE, scale: PEN_SCALE });
   const PROPS = Object.freeze([ // what stands (room-local): id, x, z, yaw, its footprint w x d (walked round)
-    ['petshop.cat_tower__beige', 5.6, 4.4, 0, 1.2, 1.2], ['petshop.cat_tower__grey', -1.6, 4.4, 0, 1.2, 1.2], ['petshop.bird_perch', 6.2, -1.2, 0, 0.8, 0.8],
-    ['petshop.pet_bed__pink', -2, -0.8, 0, 0, 0], ['petshop.pet_bed__blue', 0.2, 4.6, 0, 0, 0], ['petshop.pet_bed__brown', 3.4, 4.6, 0, 0, 0],
-    ['petshop.food_bowls', -2.2, 2, 0, 0, 0], ['petshop.toys', 2, 1, 0, 0, 0],
+    ['petshop.cat_tower__beige', 6.9, 5.85, 0, 1.2, 1.2], ['petshop.cat_tower__grey', -3.9, 5.85, 0, 1.2, 1.2], ['petshop.bird_perch', 7.8, -2.55, 0, 0.8, 0.8],
+    ['petshop.pet_bed__pink', -4.5, -1.95, 0, 0, 0], ['petshop.pet_bed__blue', -1.2, 6.15, 0, 0, 0], ['petshop.pet_bed__brown', 3.6, 6.15, 0, 0, 0],
+    ['petshop.food_bowls', -4.8, 2.25, 0, 0, 0], ['petshop.toys', 1.5, 0.75, 0, 0, 0], // (v1.10.191: spread as the pen, 1.5 times from its middle)
     ['petshop.counter', 11.5, -2.5, 0, 1.9, 0.8], ['petshop.sign', 0, 9.8, 0, 0, 0],
   ].map(([id, x, z, yaw, w, d]) => Object.freeze({ id, x, z, yaw, w, d })));
   const COUNTER_KEEPER = Object.freeze([11.5, -1.6, 0]);

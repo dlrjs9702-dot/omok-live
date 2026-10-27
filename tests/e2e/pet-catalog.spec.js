@@ -16,6 +16,10 @@ test('펫샵 특별 펫: 점원은 마당을 안내, 마당의 특별 펫을 데
   // ten in the yard (the other run on this server may have taken some), every one its name over it
   await expect.poll(() => page.evaluate(() => (window.PlazaDebug().petshopTags() || []).length), { timeout: 15000 }).toBeGreaterThanOrEqual(8);
   expect(await page.evaluate(() => window.PlazaDebug().petshopTags().every((p) => p.tag && p.shown))).toBe(true);
+  // (총괄 검토: only the nearest three within 3.5 m show theirs) -- by the yard's middle, some lit and never more than three
+  await page.evaluate(() => { const P = window.IslandPetShop; const w = P.world(P.PEN.lx, P.PEN.lz); window.PlazaDebug().teleport(w.x, w.z); });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().petshopTags().filter((p) => p.lit).length), { timeout: 10000 }).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.PlazaDebug().petshopTags().filter((p) => p.lit).length)).toBeLessThanOrEqual(3);
   const specials = await page.evaluate(() => { const P = window.IslandPetShop; const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); return P.displayOf(day).filter((p) => P.catalogOf(p.kind)).map((p) => ({ slot: p.slot, kind: p.kind, name: P.nameOf(p.kind) })); });
   expect(specials.length).toBe(4);
   // the counter: SPACE (the phone: the hint) -- the keeper's word, today's specials named; nothing on sale
