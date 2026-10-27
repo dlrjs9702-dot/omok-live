@@ -1686,6 +1686,12 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().look.hat)).toBe('avatar_hat_1');
   expect(await a.page.evaluate(() => window.PlazaDebug().act())).toMatchObject({ sitting: true, tail: true });
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find(o => o.act === 'sit')?.seat)).toBe(seat.id);
+  // (사용자 2026-10-27: Enter to chat while seated -- still seated after the line is sent; a window opened too)
+  await a.page.keyboard.press('Enter'); await expect(a.page.locator('#islandChatInput')).toBeFocused();
+  await a.page.waitForTimeout(400); expect((await a.page.evaluate(() => window.PlazaDebug().act())).sitting).toBe(true);
+  await a.page.keyboard.type('앉아서 한마디'); await a.page.keyboard.press('Enter');
+  await expect(a.page.locator('#islandChatInput')).not.toBeFocused(); await a.page.waitForTimeout(400);
+  expect((await a.page.evaluate(() => window.PlazaDebug().act())).sitting).toBe(true);
   // an arrow stands me up and frees the seat on both screens
   await a.page.keyboard.down('ArrowUp'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowUp');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
