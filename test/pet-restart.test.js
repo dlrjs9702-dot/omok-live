@@ -9,6 +9,7 @@ const os = require('node:os');
 const path = require('node:path');
 const T = require('../public/plaza/island-terrain.js');
 const S = require('../public/plaza/island-store');
+const P = require('../public/plaza/island-petshop');
 const { boot } = require('../test-support/test-server');
 
 test('서버가 다시 뜬 직후 첫 자세 전송에서도 데리고 다니는 펫이 보인다(펫샵 메타몽 포함)', async (t) => {
@@ -21,7 +22,10 @@ test('서버가 다시 뜬 직후 첫 자세 전송에서도 데리고 다니는
   assert.equal((await first.req('/api/island/store/enter', a, {})).status, 200);
   await first.req('/api/plaza/state', a, { ...S.world(...S.LIFT.stand), yaw: 0, moving: false });
   assert.equal((await first.req('/api/island/lift', a, { to: 3 })).data.space, 'petshop');
-  const bought = await first.req('/api/island/petshop/buy', a, { kind: 'ditto', name: '말랑' });
+  // (v1.10.191: a special one -- today's in the yard)
+  const shop = (await first.req('/api/island/petshop', a)).data; const sp = shop.pets.find((p) => p.special);
+  const w = P.petAt(shop.day, sp.slot, Date.now()); await first.req('/api/plaza/state', a, { x: w.x + 0.6, z: w.z, yaw: 0, moving: false });
+  const bought = await first.req('/api/island/petshop/adopt', a, { slot: sp.slot, name: '말랑' });
   assert.equal(bought.status, 200, JSON.stringify(bought.data));
   await first.stop();
 
@@ -30,5 +34,5 @@ test('서버가 다시 뜬 직후 첫 자세 전송에서도 데리고 다니는
   await again.req('/api/plaza/state', b, { ...T.facilityDoor('store'), yaw: 0, moving: false });
   const shown = (await again.req('/api/test/plaza-snapshot')).data.players;
   assert.equal(shown.length, 1);
-  assert.deepEqual(shown[0].pet, { kind: 'ditto', coat: null, name: '말랑' });
+  assert.deepEqual(shown[0].pet, { kind: sp.kind, coat: null, name: '말랑' });
 });

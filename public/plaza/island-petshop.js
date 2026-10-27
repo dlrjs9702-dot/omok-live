@@ -1,6 +1,6 @@
 // 묶음 2-2 펫샵 (gamecenter-notes docs/pet-shop-20261020.md, 사용자 2026-10-20 「펫샵을 따로 두기, 3층에. 돌아다니는 펫을
-// 선택해서 데려가는 거」): the 백화점's 3rd floor -- eight pets a day (kind x coat, assets 60) walking about a fenced play
-// yard, the same for everyone and where each is at a moment the same on every screen and the server (petAt: their
+// 선택해서 데려가는 거」): the 백화점's 3rd floor -- ten pets a day (v1.10.191, docs/petshop-yard-unify-20261027.md: six of
+// kind x coat, assets 60, and four specials -- 메타몽 and the transformations, sold at the counter before) walking about a fenced play yard, the same for everyone and where each is at a moment the same on every screen and the server (petAt: their
 // rounds are worked out from the day); walk to one, SPACE, name it, it follows -- gone for everyone till the next day.
 // The room is its own far off the island, like the 2nd floor. Browser and server.
 (function (root, factory) {
@@ -12,9 +12,9 @@
   const COATS = Object.freeze({ puppy: ['tan', 'white', 'black', 'choco'], kitten: ['grey', 'cheese', 'black', 'white'], bird: ['green', 'yellow', 'blue', 'pink'] }); // (first: the coat they had before)
   const COAT_NAME = Object.freeze({ tan: '갈색', white: '흰색', black: '검정', choco: '초코', grey: '고등어', cheese: '치즈', green: '초록', yellow: '노랑', blue: '파랑', pink: '분홍' });
   const coatOf = (kind, coat) => (COATS[kind]?.includes(coat) ? coat : COATS[kind]?.[0] || null);
-  // (문제 기록 3회차 21, 사용자 결정 10/22 「펫샵에서 따로 판매」 + 메타몽) at the counter, always on sale apart from the yard: each
-  // transformation small (`tf_<id>`, the IP characters too -- whoever owns the transformation or not) and 메타몽; one of each.
-  // An IP one (`ip`) is never given away. They walk with their owner as the others do, one coat each.
+  // (문제 기록 3회차 21 + 메타몽) the special ones: each transformation small (`tf_<id>`, the IP characters too) and 메타몽; one
+  // of each kind a person. An IP one (`ip`) is never given away. They walk with their owner as the others do, one coat each.
+  // (v1.10.191 사용자 「모든 펫을 동일하게 하루하루 랜덤으로 풀어놓고」: on sale at the counter no more -- four a day in the yard)
   // (built on first use: on the page the transformations' script comes after this one)
   let catalogList = null;
   const catalog = () => catalogList ||= Object.freeze([{ kind: 'ditto', name: '메타몽', ip: true }, ...((typeof module === 'object' && module.exports ? require('./character-transformations.js') : globalThis.CharacterTransformations)?.characters || [])
@@ -41,15 +41,18 @@
     { x: PEN.lx - (PEN.w + PEN.gate) / 4, z: PEN.lz - PEN.d / 2, w: (PEN.w - PEN.gate) / 2, d: 0.2 }, { x: PEN.lx + (PEN.w + PEN.gate) / 4, z: PEN.lz - PEN.d / 2, w: (PEN.w - PEN.gate) / 2, d: 0.2 },
     ...PROPS.filter((p) => p.w).map((p) => ({ x: p.x, z: p.z, w: p.w, d: p.d })), { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
   ].map((f) => Object.freeze(f)));
-  const COUNT = 8; const SPEED = 0.7; const REACH = 1.8;
+  const COUNT = 10; const SPECIALS = 4; const SPEED = 0.7; const REACH = 1.8;
   const seeded = (text) => { let s = 2166136261; for (const ch of text) s = Math.imul(s ^ ch.charCodeAt(0), 16777619) >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; };
-  // the day's eight: distinct kind x coat, each kind at least twice
+  const shuffle = (list, rnd) => { for (let i = list.length - 1; i > 0; i -= 1) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; } return list; };
+  // the specials in one shuffled ring, four a day on round it: any six days in a row show all 23 (24 places), none twice a day
+  let ring = null;
+  const specialRing = () => ring ||= shuffle(catalog().map((p) => p.kind), seeded('petshop:specials'));
+  // the day's ten: each kind twice in two coats, then the day's four specials (no coat)
   function displayOf(day) {
-    const rnd = seeded(`petshop:${day}`); const all = Object.entries(COATS).flatMap(([kind, coats]) => coats.map((coat) => ({ kind, coat })));
-    for (let i = all.length - 1; i > 0; i -= 1) { const j = Math.floor(rnd() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; }
-    const pick = Object.keys(COATS).flatMap((kind) => all.filter((p) => p.kind === kind).slice(0, 2));
-    for (const p of all) if (pick.length < COUNT && !pick.includes(p)) pick.push(p);
-    return pick.map((p, i) => Object.freeze({ slot: `pet${i}`, ...p }));
+    const rnd = seeded(`petshop:${day}`); const n = Math.round(Date.parse(`${day}T00:00:00Z`) / 86400000) || 0; const r = specialRing();
+    const basic = Object.entries(COATS).flatMap(([kind, coats]) => shuffle([...coats], rnd).slice(0, 2).map((coat) => ({ kind, coat })));
+    const special = Array.from({ length: SPECIALS }, (_, k) => ({ kind: r[(((n * SPECIALS + k) % r.length) + r.length) % r.length], coat: null }));
+    return [...basic, ...special].map((p, i) => Object.freeze({ slot: `pet${i}`, ...p }));
   }
   // a pet's round in the yard for a day: walk to the next of six spots, stop there a few seconds, on and round
   const rounds = new Map();
@@ -92,5 +95,5 @@
     }
     return world(lx, lz);
   }
-  return { KINDS, COATS, COAT_NAME, coatOf, nameOf, catalog, catalogOf, known, ROOM, LIFT, PEN, PROPS, COUNTER_KEEPER, FIXTURES, COUNT, REACH, world, local, inRoom, clamp, displayOf, petAt };
+  return { KINDS, COATS, COAT_NAME, coatOf, nameOf, catalog, catalogOf, known, ROOM, LIFT, PEN, PROPS, COUNTER_KEEPER, FIXTURES, COUNT, SPECIALS, REACH, world, local, inRoom, clamp, displayOf, petAt };
 }));

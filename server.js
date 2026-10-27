@@ -5301,37 +5301,17 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, friends: false, asked: true });
     });
   }
-  // 묶음 2-2 펫샵: the day's eight (and who is already taken), my adoptions today
+  // 묶음 2-2 펫샵: the day's ten (and who is already taken), my adoptions today; v1.10.191 a special one I have already: owned
   if (pathname === '/api/island/petshop' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const st = await petshopDay(); const account = pointAccountForSession(session);
-    const owned = new Set(((await pointStore.worldValue(`pets:${account}`)) || []).map((p) => p.kind)); // (3회차 21: the counter's, one of each)
-    return sendJson(res, 200, { ok: true, day: st.day, perDay: 1, mine: st.buys[account] || 0, pets: IslandPetShop.displayOf(st.day).map((p) => ({ ...p, name: IslandPetShop.nameOf(p.kind, p.coat), price: petPrice(p.kind), sold: Boolean(st.sold[p.slot]) })),
-      catalog: IslandPetShop.catalog().map((p) => ({ kind: p.kind, name: p.name, ip: p.ip, price: petPrice(p.kind), owned: owned.has(p.kind) })) });
+    const owned = new Set(((await pointStore.worldValue(`pets:${account}`)) || []).map((p) => p.kind)); // (3회차 21: the specials, one of each)
+    return sendJson(res, 200, { ok: true, day: st.day, perDay: 1, mine: st.buys[account] || 0, pets: IslandPetShop.displayOf(st.day).map((p) => { const sp = IslandPetShop.catalogOf(p.kind); return { ...p, name: IslandPetShop.nameOf(p.kind, p.coat), price: petPrice(p.kind), sold: Boolean(st.sold[p.slot]), ...(sp ? { special: true, ip: sp.ip, owned: owned.has(p.kind) } : {}) }; }) });
   }
-  // (문제 기록 3회차 21) one from the counter's catalog -- a transformation small or 메타몽 -- at the counter, one of each kind;
-  // named, it walks with me at once (as one from the yard)
+  // (문제 기록 3회차 21) the counter's catalog -- gone in v1.10.191 (all in the yard): an old screen's call is turned away
   if (pathname === '/api/island/petshop/buy' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
-    const body = await parseJson(req); const at = plazaPresence.get(session.token); const account = pointAccountForSession(session);
-    if (!at || !petshopInside.has(session.token)) return sendError(res, 409, 'TOO_FAR', '펫샵에서 다시 시도해 주세요.');
-    const item = IslandPetShop.catalogOf(String(body.kind || '')); if (!item) return sendError(res, 400, 'BAD_PET', '반려동물을 확인해 주세요.');
-    const name = String(body.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 10);
-    return worldEdit(async () => {
-      const owned = (await pointStore.worldValue(`pets:${account}`)) || [];
-      if (owned.some((p) => p.kind === item.kind)) return sendError(res, 409, 'ALREADY_OWNED', '이미 데리고 있는 친구예요.');
-      if (owned.length >= 30) return sendError(res, 409, 'TOO_MANY_PETS', '반려동물이 너무 많아요.');
-      const claimId = `petshop:catalog:${item.kind}:${account}`;
-      let out; try { out = await pointStore.charge({ userId: account, claimId, price: petPrice(item.kind), title: `펫샵 · ${item.name}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
-      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
-      const mine = { uid: crypto.randomUUID(), kind: item.kind, coat: null, name, at: nowMs(), claim: claimId };
-      await pointStore.setWorldValue(`pets:${account}`, [...owned, mine]);
-      await pointStore.questApply(account, 'pet', () => ({ doc: { kind: mine.kind, coat: null, name: mine.name, uid: mine.uid } }));
-      petOf.set(account, petView(mine));
-      for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
-      plazaDirty = true; if (out.applied) notifyPointsChanged([account]);
-      return sendJson(res, 200, { ok: true, pet: petOf.get(account), balance: out.balance ?? null });
-    });
+    return sendError(res, 410, 'CATALOG_CLOSED', '오늘 아이들은 마당에 있어요. 마음에 드는 아이에게 다가가 보세요.');
   }
   // a pet taken home: by it in the yard (where it is now -- its round is the server's too), the first one only, one a
   // day each; named, it walks with me at once and is gone from everyone's yard till tomorrow
@@ -5347,8 +5327,9 @@ async function requestHandler(req, res) {
       const near = Array.from({ length: 31 }, (_, k) => IslandPetShop.petAt(st.day, pet.slot, nowMs() - k * 500)).some((w) => Math.hypot(at.x - w.x, at.z - w.z) <= IslandPetShop.REACH + 1.4);
       if (!near) return sendError(res, 409, 'TOO_FAR', '반려동물 가까이 가서 다시 시도해 주세요.');
       if (st.sold[pet.slot]) return sendError(res, 409, 'SOLD', '방금 다른 분이 데려갔어요. 내일 새 친구들이 와요.');
-      if ((st.buys[account] || 0) >= 1) return sendError(res, 429, 'PET_DAY_LIMIT', '반려동물은 하루 한 마리만 데려갈 수 있어요.');
       const owned = (await pointStore.worldValue(`pets:${account}`)) || [];
+      if (IslandPetShop.catalogOf(pet.kind) && owned.some((p) => p.kind === pet.kind)) return sendError(res, 409, 'ALREADY_OWNED', '이미 함께 살아요.'); // (a special: one of each)
+      if ((st.buys[account] || 0) >= 1) return sendError(res, 429, 'PET_DAY_LIMIT', '반려동물은 하루 한 마리만 데려갈 수 있어요.');
       if (owned.length >= 30) return sendError(res, 409, 'TOO_MANY_PETS', '반려동물이 너무 많아요.');
       const claimId = `petshop:${st.day}:${pet.slot}:${account}`;
       let out; try { out = await pointStore.charge({ userId: account, claimId, price: petPrice(pet.kind), title: `펫샵 · ${IslandPetShop.nameOf(pet.kind, pet.coat)}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
