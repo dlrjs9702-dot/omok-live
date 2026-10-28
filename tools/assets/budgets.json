@@ -523,6 +523,36 @@
     "home-v1/home_manor2__brown_low.glb": {
       "triangles": 9000,
       "reason": "R8 내 집 4단계 외관 Low (assets 58 상한 9,000)"
+    },
+    "story-v1/story_lighthouse_hatch.glb": {
+      "nodes": 4,
+      "reason": "S2 assets 80: named parts kept (door / lid, letter) -- the hatch keeps its nodes in the game (keepNodes)",
+      "meshes": 2
+    },
+    "story-v1/story_lighthouse_hatch_low.glb": {
+      "nodes": 4,
+      "reason": "S2 assets 80: named parts kept (door / lid, letter) -- the hatch keeps its nodes in the game (keepNodes)",
+      "meshes": 2
+    },
+    "story-v1/story_lantern_box.glb": {
+      "nodes": 6,
+      "reason": "S2 assets 80: named parts kept (door / lid, letter) -- the hatch keeps its nodes in the game (keepNodes)",
+      "meshes": 3
+    },
+    "story-v1/story_lantern_box_low.glb": {
+      "nodes": 6,
+      "reason": "S2 assets 80: named parts kept (door / lid, letter) -- the hatch keeps its nodes in the game (keepNodes)",
+      "meshes": 3
+    },
+    "story-v1/furniture_choseung_lantern.glb": {
+      "nodes": 2,
+      "reason": "S2 assets 80: named parts kept (door / lid, letter) -- the hatch keeps its nodes in the game (keepNodes)",
+      "meshes": 1
+    },
+    "story-v1/furniture_choseung_lantern_low.glb": {
+      "nodes": 2,
+      "reason": "S2 assets 80: named parts kept (door / lid, letter) -- the hatch keeps its nodes in the game (keepNodes)",
+      "meshes": 1
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

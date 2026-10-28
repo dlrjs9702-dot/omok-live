@@ -49,7 +49,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     return hazedOf.get(key);
   }
   function instance(gltf, entry) {
-    const flat = !gltf.animations?.length && partsOf(gltf);
+    const flat = !entry.keepNodes && !gltf.animations?.length && partsOf(gltf); // (S2: `keepNodes` -- a model with a part that moves, its nodes kept)
     if (flat && flat.length === 1 && flat[0].material.vertexColors) {
       const mesh = new THREE.Mesh(flat[0].geometry, entry.haze ? hazed(flat[0].material, entry.haze) : flat[0].material);
       mesh.applyMatrix4(flat[0].matrix); // its place in the model (a quantized model's dequantizing scale too)

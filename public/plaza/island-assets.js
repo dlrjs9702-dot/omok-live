@@ -391,6 +391,7 @@
   const DAL = '/assets/island/dalmaru-v1';
   const dal = (file, extra = {}) => ({ url: `${DAL}/${file}.glb`, low: { url: `${DAL}/${file}_low.glb` }, rotationY: Math.PI, near: 90, ...extra });
   for (const f of ['bridge_yunseul', 'lighthouse_choseung', 'pier_dalkkeut', 'dock_boat', 'stairs_ridge', 'rail_waterfront', 'lamp_waterfront', 'bench_waterfront', 'niche_hero']) REGISTRY[`dalmaru.${f}`] = dal(f);
+  REGISTRY['dalmaru.lighthouse_choseung'].keepNodes = true; // (S2: its lamp's `glow` its own -- the night beat)
   for (const f of ['facade_townhall', 'facade_mall']) REGISTRY[`dalmaru.${f}`] = dal(f, { near: 140 });
   // 묶음 1 대청마당 바닥 (assets 59): the disc (its crescent to the cliff: the file's -Z is north, not turned), ring, kerbs,
   // channels; the gardens in four seasons (each its zone's)
@@ -429,7 +430,7 @@
   // S2 섬 이야기 (assets 80 story-v1): the little door under 초승등대 (with the lighthouse's origin and turn; its `door` turns on
   // its hinge), the small box at its foot, the 「초승 등불」 lamp (a house piece, given once)
   const STORY = '/assets/island/story-v1';
-  REGISTRY['story.lighthouse_hatch'] = { url: `${STORY}/story_lighthouse_hatch.glb`, low: { url: `${STORY}/story_lighthouse_hatch_low.glb` }, rotationY: Math.PI, near: 60 };
+  REGISTRY['story.lighthouse_hatch'] = { url: `${STORY}/story_lighthouse_hatch.glb`, low: { url: `${STORY}/story_lighthouse_hatch_low.glb` }, rotationY: Math.PI, near: 60, keepNodes: true };
   REGISTRY['story.lantern_box'] = { url: `${STORY}/story_lantern_box.glb`, low: { url: `${STORY}/story_lantern_box_low.glb` }, near: 30 };
   REGISTRY['story.choseung_lantern'] = { url: `${STORY}/furniture_choseung_lantern.glb`, low: { url: `${STORY}/furniture_choseung_lantern_low.glb` }, near: 26 };
   // 간판 (assets 69 signs-v1, docs/signboards-design-20261025.md): the boards places' names are written on (plaza-scene signboard

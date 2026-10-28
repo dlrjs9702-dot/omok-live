@@ -1950,6 +1950,7 @@
       plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
+      refreshStory(true); // (S1·S2: the 할 일 line, the little door -- the island up before plazaMode is set)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -4062,7 +4063,7 @@
     plaza.controller?.setStory?.(storyView); // (S2)
     if (view.fresh?.length) showToast('📖 이야기 책에 새 행사 이야기가 생겼어요', 5000);
   }
-  function refreshStory() { if (document.body.classList.contains('plazaMode')) api('/api/island/story').then(showStory).catch(() => {}); }
+  function refreshStory(force = false) { if (force || document.body.classList.contains('plazaMode')) api('/api/island/story').then(showStory).catch(() => {}); }
   setInterval(() => {
     const t = storyTrack; const p = t && !t.ready && t.to && document.body.classList.contains('plazaMode') ? plaza.controller?.pose?.() : null;
     if (!p || Date.now() - storyLook < 3000) return;
@@ -4103,6 +4104,7 @@
   }
   // the last chapter (오 탐정's 「결론 듣기」): its six papers; the door opens with the second, the lamp and the title with the fourth
   function showFinal(scenes) {
+    if (plazaDialog.open) plazaDialog.close(); // (총괄 검토: nothing behind the paper -- the talk ends with it)
     showPaper(scenes.map((sc) => ({ head: `마지막 장 · ${sc.title}`, lines: sc.note, words: sc.words, sign: sc.by != null ? globalThis.IslandCast?.callOf(sc.by) : null })), (k) => {
       if (k === 1) plaza.controller?.setStory?.({ ...(storyView || {}), hatch: true, final: true });
       if (k === 3) showToast('🏮 「초승 등불」이 가구 창고에 들어왔어요 · 칭호 「등대의 이웃」', 6000);
