@@ -64,6 +64,8 @@
     form('twentySecretForm', 'twenty-secret', 'twentySecretInput', 'secret');
     form('twentyQuestionForm', 'twenty-question', 'twentyQuestionInput', 'question');
     form('twentyGuessForm', 'twenty-guess', 'twentyGuessInput', 'guess');
+    // (v1.10.197 검토: one input on my turn -- 「질문」 asks it, 「정답」 gives it as my answer)
+    $('twentyAskGuessBtn').addEventListener('click', () => { const value = $('twentyQuestionInput').value.trim(); if (value) handle('twenty-guess', { guess: value }, 'twentyQuestionInput'); });
     $('twentyStartBtn').addEventListener('click', () => handle('twenty-start', {
       mode: $('twentyModeSelect').value,
       totalRounds: Number($('twentyRoundsSelect').value),
@@ -140,7 +142,7 @@
     hidden('twentyHostSetup', !(waiting && host));
     hidden('twentySecretForm', !(playing && phase === 'secret' && drawer));
     hidden('twentyQuestionForm', !(playing && phase === 'asking' && myTurn));
-    hidden('twentyGuessForm', !(playing && (phase === 'asking' || phase === 'final-guesses') && myTurn));
+    hidden('twentyGuessForm', !(playing && phase === 'final-guesses' && myTurn)); // (asking: the question's input has 「정답」 too)
     hidden('twentyAnswerBox', !(playing && phase === 'answering' && drawer));
     hidden('twentyJudgeBox', !(playing && phase === 'judging' && drawer));
     hidden('twentyNextBtn', !(g.status === 'round-ended' && host));
@@ -150,7 +152,7 @@
     if (actionable) {
       actionable.set($('twentySecretInput'), playing && phase === 'secret' && drawer);
       actionable.set($('twentyQuestionInput'), playing && phase === 'asking' && myTurn);
-      actionable.set($('twentyGuessInput'), playing && (phase === 'asking' || phase === 'final-guesses') && myTurn);
+      actionable.set($('twentyGuessInput'), playing && phase === 'final-guesses' && myTurn);
       actionable.set($('twentyAnswerBox'), playing && phase === 'answering' && drawer && !busy, 'area');
       actionable.set($('twentyJudgeBox'), playing && phase === 'judging' && drawer && !busy, 'area');
     }
@@ -193,7 +195,7 @@
       : g.status === 'finished' ? '전체 게임 종료 · 누적 점수를 확인하세요.'
       : phaseText[phase] || '진행 중');
     setText('twentyMySecret', drawer && state.me?.myTwentySecret && playing
-      ? `내 정답: ${state.me.myTwentySecret} (다른 참가자에게는 비공개)` : '정답은 라운드 종료 전까지 출제자에게만 공개됩니다.');
+      ? `🔒 내 정답: ${state.me.myTwentySecret} · 나만 봐요` : '🔒 정답은 출제자만 봐요'); // (v1.10.197 검토: a small note)
     hidden('twentyPendingCard', !g.pendingQuestion);
     $('twentyPendingQuestion').replaceChildren(...(g.pendingQuestion
       ? [tag('Q'), textSpan(`${nameFor(state, g.pendingQuestion.seat)}님: ${g.pendingQuestion.text}`)] : []));
@@ -223,7 +225,10 @@
       label.textContent = `${nameFor(state, player)}${player === g.drawerSeat && g.status === 'playing' ? ' · 출제자' : ''}`;
       const score = document.createElement('strong');
       score.textContent = `${g.scores?.[player] || 0}점`;
-      line.append(label, score);
+      const face = document.createElement('span'); face.className = 'seatFace'; face.setAttribute('aria-hidden', 'true'); const look = state.players?.[player]?.face; // (v1.10.197: the plate's island face)
+      if (look?.skin) face.style.setProperty('--skin', look.skin); if (look?.hair) face.style.setProperty('--hair', look.hair);
+      line.classList.toggle('isTurn', player === g.turnSeat);
+      line.append(face, label, score);
       scoreboard.appendChild(line);
     }
     // Answered questions come from the server in the order they were answered; show them as Q+A pairs,

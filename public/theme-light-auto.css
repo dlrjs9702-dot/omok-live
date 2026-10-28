@@ -1408,3 +1408,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .islandBagFoot .islandBagPoints{background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink)}
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagFoot .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagFoot .ghost.selected{background:#f0dcb6;border-color:var(--isle-tag);outline:none}
+:root[data-theme="light"] body.roomPlaying.partyGame :is(.pictionaryScoreRow.isDrawer,.liarScoreRow.isTurn,.twentyScore.isTurn){box-shadow:0 0 0 2px #fbbf24}
+:root[data-theme="light"] .liarVoteBtn.selected{outline:3px solid #fbbf24}
+:root[data-theme="light"] body.roomPlaying.partyGame #gameActionsPanel{background:linear-gradient(to top,#f4ede0 70%,rgba(11,18,32,0))}

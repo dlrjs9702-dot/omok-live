@@ -3045,3 +3045,48 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 @media (prefers-reduced-motion:reduce){#islandBagDialog.bagPouch,#islandBagDialog.bagPouch .bagMenu{animation:none}#islandBagDialog.bagPouch .islandBagSlot.held{transform:none}}
 /* (총괄 검토: a phone 4 a row -- 32 slots are 8 rows: past a phone's height, the slots scroll in the pouch) */
 @media (max-width:640px),(pointer:coarse){#islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){max-height:min(56dvh,560px);overflow-y:auto;padding:4px 2px}}
+/* v1.10.197 파티 공통 틀 (gamecenter-notes docs/gamehall-audit-20261025.md 「다른 게임」, 총괄 검토): while a hand of 그림 맞히기·라이어·
+   스무고개 is played the seat cards are off the table (tableGamePlaying, the shared rule); the scores fold to one row of name
+   plates -- the island face, the name, the points --, the one whose turn it is lit; 그림판 within one screen (its 3:2 kept, the
+   strokes' share of it unchanged); the inputs under the board (the actions panel's spot) */
+body.roomPlaying.partyGame :is(.pictionaryScoreboard,.liarScoreboard,.twentyScoreboard){display:flex;flex-wrap:wrap;gap:6px}
+body.roomPlaying.partyGame :is(.pictionaryScoreRow,.liarScoreRow,.twentyScore){flex:0 1 auto;display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;font-size:.82rem;min-height:36px}
+body.roomPlaying.partyGame :is(.pictionaryScoreRow,.liarScoreRow,.twentyScore) .seatFace{width:28px;height:28px;flex:0 0 auto}
+body.roomPlaying.partyGame :is(.pictionaryScoreRow.isDrawer,.liarScoreRow.isTurn,.twentyScore.isTurn){box-shadow:0 0 0 2px #fbbf24}
+body.roomPlaying.partyGame .pictionaryTeamTotals{flex-basis:100%;border-radius:10px}
+body.roomPlaying.partyGame .twentyPanel>h4:first-of-type{display:none}
+/* 그림판: as wide as fits under the bar, the words and tools and over the input (a phone's too) */
+body.roomPlaying.partyGame .pictionaryCanvasWrap{width:min(100%,calc((100dvh - var(--pictionaryChrome,440px)) * 1.5));margin-left:auto;margin-right:auto}
+@media (max-width:640px){body.roomPlaying.partyGame .pictionaryCanvasWrap{--pictionaryChrome:330px}}
+body.roomPlaying.partyGame .pictionaryRuleNote{margin:4px 0 0;font-size:.78rem}
+/* 라이어 지목: a plate picked, then 「○○님 지목」 */
+.liarVoteBtn{display:inline-flex;align-items:center;gap:6px}
+.liarVoteBtn .seatFace{width:26px;height:26px}
+.liarVoteBtn.selected{outline:3px solid #fbbf24;outline-offset:1px}
+.liarVoteConfirm{flex-basis:100%;min-height:46px;margin-top:6px}
+/* 스무고개's answers at the thumb: big */
+body.roomPlaying #twentyActionPanel>#twentyAnswerBox .twentyAnswerButtons button{min-height:48px;flex:1 1 0;font-size:1rem}
+body.roomPlaying #twentyActionPanel>#twentyAnswerBox .twentyAnswerButtons{display:flex;gap:8px}
+/* (총괄 검토: 스무고개's answers, 라이어's hint, 그림 맞히기's guess at the thumb -- the inputs stay at the screen's foot while the board scrolls) */
+body.roomPlaying.partyGame #gameActionsPanel{position:sticky;bottom:0;z-index:6;padding-bottom:max(8px,env(safe-area-inset-bottom));background:linear-gradient(to top,#0b1220 70%,rgba(11,18,32,0))}
+body.roomPlaying.partyGame #liarSetupRow{display:none} /* (판 수: chosen before a hand) */
+/* (v1.10.197 총괄 검토) the toast under the bar; the board's head one line (round · chips · clock), nothing the bar already says;
+   the word and the tools one line; 스무고개's notes small, its input one; room at the foot for the thumb's inputs */
+body.roomPlaying.partyGame .toast{top:var(--roomBarBottom,76px)}
+body.roomPlaying.partyGame .pictionaryWho,body.roomPlaying.partyGame .twentyHeading>h3,body.roomPlaying.partyGame #twentyStatus{display:none}
+body.roomPlaying.partyGame .pictionaryHead{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+body.roomPlaying.partyGame .pictionaryHead>#pictionaryDrawerLabel{flex:0 0 auto}
+body.roomPlaying.partyGame .pictionaryHead>.pictionaryHints{flex:1 1 auto;min-width:0;margin:0;flex-wrap:nowrap;overflow:hidden}
+.pictionaryTimer{white-space:nowrap}
+body.roomPlaying.partyGame #pictionaryDrawTools{flex-wrap:wrap;align-items:center}
+body.roomPlaying.partyGame #pictionaryDrawTools>.pictionaryWordBox{margin:0 6px 0 0;padding:4px 12px}
+body.roomPlaying.partyGame #twentyMySecret{margin:0;padding:4px 10px;font-size:.8rem;border-radius:999px;justify-self:start}
+body.roomPlaying.partyGame #twentyQuestionForm{grid-template-columns:1fr auto auto;display:grid;align-items:center;gap:6px}
+body.roomPlaying.partyGame #twentyQuestionForm>label{grid-column:1/-1;font-size:.8rem}
+body.roomPlaying.partyGame #twentyQuestionForm>button{min-height:44px;padding:0 16px}
+body.roomPlaying.partyGame :is(#pictionaryPanel,#liarPanel,#twentyPanel){padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+body.roomPlaying.partyGame .boardNote{top:var(--roomBarBottom,76px)} /* (the system's notes too: under the bar) */
+/* (라이어 투표 검토: the plates at the top, under my word -- never cut at the screen's foot behind the hints) */
+body.roomPlaying.partyGame #liarPanel{display:flex;flex-direction:column}
+body.roomPlaying.partyGame #liarPanel>#liarRoleBox{order:-2}
+body.roomPlaying.partyGame #liarPanel>#liarScoreboard{order:-1;margin-bottom:6px}
