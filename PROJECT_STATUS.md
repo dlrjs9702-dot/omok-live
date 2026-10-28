@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.201 S2 섬 이야기 장면
+
+- 섬 일지(기록관 창): 앞쪽 셋·쪽 1~4·쪽 5~8(노을 3장 뒤)·빠진 쪽. 읽은 쪽 story.read log:N.
+- 조각 7: 일지 1~8쪽 다 읽음 + 가람 3장 + 등대 8 m 안 「살펴보기」 → 문 발치 상자에서 빠진 쪽(한 번). 문은 잠긴 채, 마지막 장에서 처음 열림. 기록관 열쇠는 글로만.
+- 마지막 장(오 탐정 「결론 듣기」, 수사판 8 + 노을 단짝): 쪽지 여섯(안 A 그대로), 가구 「초승 등불」 + 칭호 「등대의 이웃」 한 번(doc.gifted 뒤 건너뜀). 쪽지가 열리면 대화 창 닫힘.
+- 전하기 받는 쪽 대사 다섯(S2 정함). 수사판 = 이야기 책 초승등대 탭(기록관 문양 도장, 글 옆).
+- 에셋 80(story-v1): 등대 아래 문(keepNodes, 문 조각), 문 발치 상자, 가구 초승 등불. 등대도 keepNodes(glow). 밤 깜빡임 달·마·루 / 마친 사람은 어·서·와, 꼭대기 빛 번짐 스프라이트. 움직임 줄이기면 은은히 켬.
+- 섬에 들어올 때 이야기 상태를 바로 불러옴.
+
 ## v1.10.200 S1 섬 이야기 틀
 
 - 데이터 public/plaza/island-story.js: 주민 10명 × 3장(notes story/pilot·residents 그대로), 초승등대 조각 여덟, 행사 이야기 셋. 할 일 곳은 섬 AREAS·기록관 문·윤슬다리·초승등대·서쪽 곶·달끝나루·윤슬만 바닷가(밤: 해송 3·이솔 3), 전하기·여쭙기는 그 주민에게 말 걸기(대사 found_me — S2에서 글).
@@ -25,9 +34,3 @@
 - 폰 팬데믹: 지도 55dvh, 보기를 칸 모양에 맞춤(세로 칸은 전체 높이·옆으로 이동), 처음엔 내 말 도시 가운데, 작은 지도 폭 25% 오른쪽 위, 카드 띠 지도 아래, 시작 칸 sticky. PC 도시 이름 겹침 9곳 옮김.
 - 파티: 스무고개 카테고리 작은 표, 폰 쪽지는 라운드 줄 아래(쪽지 띄울 때 잼, .boardCard blur 기준 빼기), 폰 답 단추 한 줄, 폰 라이어 투표 칸 sticky.
 - server.js 옛 주석 8곳 실제 버전으로, 출시 때는 /health·listen 두 줄만.
-
-## v1.10.198 C5 Codex 4차 고침
-
-- P2-1 공지 날짜: v1.10.95~197 publishedAt을 main 병합 시각(UTC, package.json이 그 버전이 된 커밋)으로, 같으면 +1분. 그 앞 v1.10.77~94는 v95보다 늦은 것만 실제 병합 시각(없으면 다음 것 -1분)으로. 앞으로 새 공지는 실제 시각.
-- P2-2 가방 폰 꾹: 든 칸의 손 뗌 click 무시, 다시 그려도 든 칸 유지. e2e는 실제 순서(pointerdown → 0.4초 → pointerup → click → 다른 칸).
-- P3: 요리 대회 차감 중 예외도 giveBack, errand/drop은 await 뒤에 단계 읽기, point-store 모든 bagView에 계정 칸 수(slotsOf), moveBagSlot 최신 응답만, 행사 창 draw는 차례 검사 뒤 반영, 메신저 말풍선 메뉴는 연 방에 묶고 방 바꾸면 닫힘.
