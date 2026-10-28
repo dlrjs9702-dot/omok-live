@@ -65,7 +65,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const typingNow = () => page.evaluate(() => ({ typing: Boolean(document.querySelector('.lostRequestLine.typing')), choices: getComputedStyle(document.querySelector('#plazaDialog .talkChoices')).display }));
   const seen = await typingNow(); if (seen.typing) expect(seen.choices).toBe('none');
   await page.keyboard.press('Space'); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
-  await expect(page.locator('.lostRequestLine').first()).toHaveText(/^[^「」]+$/); // (v1.10.193 대화창 2차: no 「 」 round it)
+  await expect(page.locator('.lostRequestLine').first()).not.toHaveText(/^「[\s\S]*」$/); // (v1.10.194 대화창 2차: no 「 」 round it -- a 「낚시 대회」 inside it stays)
   await lines(); await expect(choices).toHaveText(TOP);
   // (R2 ④) their question of the day: three answers in place of the choices; one answered, the choices back -- and that
   // one gone from the topics for today

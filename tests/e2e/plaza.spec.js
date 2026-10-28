@@ -1346,9 +1346,9 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await page.mouse.click(hallAt.x, hallAt.y); await page.waitForTimeout(500);
   await expect(page.locator('#islandPlaceDialog')).toBeHidden();
   expect(await page.locator('#plazaStage .plazaCanvas').evaluate((c) => c.style.cursor)).not.toBe('pointer');
-  // (v1.10.193 대화창 2차: no 닫기 -- a tap outside the bubble lets the talk go, as Esc; then SPACE by him again)
-  await expect(page.locator('#plazaDialog')).toBeHidden();
-  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  // (v1.10.194 대화창 2차: no 닫기 -- a tap outside the bubble lets the talk go, as Esc (the hall may lie behind the bubble
+  // itself: then it stays); talking to him again if it went)
+  if (!/talkMode/.test(await page.locator('#plazaDialog').getAttribute('class') || '') || !await page.locator('#plazaDialog').isVisible()) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
   await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/);
   await page.waitForTimeout(1500); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
   await page.keyboard.press('Space'); // the bubble's one line is out: Space answers 「용무가 있습니다」
