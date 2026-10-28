@@ -32,7 +32,7 @@ test('연계 퀘스트: 말 걸기 → 진행 → 보고(보상·다음 부탁) 
   let r = Q.talk(doc, 'granny', [], at('granny'), Date.now(), true); doc = r.doc;
   assert.match(r.say, /잡초 20포기/); assert.equal(r.reward, 0);
   assert.equal(Q.markOf('granny', doc.granny, []), null);
-  assert.deepEqual(Q.trackOf('granny', doc.granny, []), { story: 'granny', name: '정원사 할머니', label: '잡초', count: 0, need: 20, ready: false, to: null });
+  assert.deepEqual(Q.trackOf('granny', doc.granny, []), { story: 'granny', name: '꽃님', label: '잡초', count: 0, need: 20, ready: false, to: null });
   assert.equal(Q.note(doc, 'beach_trash'), null, '다른 활동은 세지 않는다');
   for (let i = 0; i < 25; i += 1) doc = Q.note(doc, 'weed') || doc;
   assert.equal(doc.granny.count, 20);

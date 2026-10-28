@@ -1163,9 +1163,10 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   await expect(lines.nth(1)).toBeVisible();
   await expect(dialog).toBeVisible(); // that Space was the next line, not the answer
   expect(await page.evaluate(() => window.PlazaDebug().talkView)).toMatchObject({ shot: true });
-  // v1.10.64: the arrows reach 닫기 too (the answers, then 닫기, round again)
+  // the arrows go round the answers (v1.10.193 대화창 2차: no 닫기 on the bubble -- Esc, 잘 가요 or a tap outside)
+  await expect(page.locator('#plazaCloseBtn')).toBeHidden();
   await page.keyboard.press('ArrowUp');
-  await expect(page.locator('#plazaCloseBtn')).toBeFocused();
+  await expect(page.locator('.lostRequest button').last()).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('.lostRequest button').first()).toBeFocused();
   await page.waitForTimeout(900);
@@ -1345,7 +1346,11 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await page.mouse.click(hallAt.x, hallAt.y); await page.waitForTimeout(500);
   await expect(page.locator('#islandPlaceDialog')).toBeHidden();
   expect(await page.locator('#plazaStage .plazaCanvas').evaluate((c) => c.style.cursor)).not.toBe('pointer');
-  await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/); // still talking to him (v1.10.63: the speech bubble)
+  // (v1.10.194 대화창 2차: no 닫기 -- a tap outside the bubble lets the talk go, as Esc (the hall may lie behind the bubble
+  // itself: then it stays); talking to him again if it went)
+  if (!/talkMode/.test(await page.locator('#plazaDialog').getAttribute('class') || '') || !await page.locator('#plazaDialog').isVisible()) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
+  await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/);
+  await page.waitForTimeout(1500); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
   await page.keyboard.press('Space'); // the bubble's one line is out: Space answers 「용무가 있습니다」
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
   // 문제 기록 8: the gate stays shut while he is still on his way aside; no October pumpkin on his walk

@@ -93,7 +93,7 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await talk(true); // already standing here: still verify the selected NPC, focused stage and actual server reply
   await Promise.all([
     expect(page.locator('#plazaDialog')).toBeVisible({ timeout: 10000 }),
-    expect(page.locator('#plazaDialog')).toContainText('정원사 할머니'),
+    expect(page.locator('#plazaDialog')).toContainText('꽃님'),
     expect(page.locator('#plazaDialog')).toContainText('잡초 20포기'),
   ]);
   // A previous close task can arrive after the next dialogue has already opened.
@@ -103,7 +103,7 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   // (Q 부탁 받기: the ask's note and 「할게요!」 -- then it is on the task card)
   await expect(page.locator('#plazaDialog .questNote')).toContainText('할 일 · 잡초 20개');
   await page.locator('#plazaDialog').getByRole('button', { name: '할게요!' }).click();
-  await expect(page.locator('#questTracker .questLine')).toHaveText(/정원사 할머니.*잡초.*0\/20/, { timeout: 10000 });
+  await expect(page.locator('#questTracker .questLine')).toHaveText(/꽃님.*잡초.*0\/20/, { timeout: 10000 });
   await page.locator('#plazaDialog').getByRole('button', { name: '확인' }).click();
   await post(request, '/api/test/quest/note', token, { what: 'weed', qty: 20 });
   await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });

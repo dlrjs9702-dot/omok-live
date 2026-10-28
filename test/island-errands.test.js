@@ -32,7 +32,7 @@ test('심부름: 하루 세 개(같은 날 같음, 부탁하는 사람 다름), 
   const list = [find, give]; const done = new Set(); let st = {};
   assert.deepEqual(E.marks(list, st, done), { 0: 'new', 2: 'new' });
   assert.equal(E.talk(list, st, done, 1), null); // nothing asked yet: their own words
-  let r = E.talk(list, st, done, 0); assert.deepEqual([r.offer, r.stages, r.took], [find, st, null]); assert.match(r.say.join(' '), /바다 할아버지를 못 봤어요/); // (T2: their own word first; Q: only offered)
+  let r = E.talk(list, st, done, 0); assert.deepEqual([r.offer, r.stages, r.took], [find, st, null]); assert.match(r.say.join(' '), /해송 할아버지를 못 봤어요/); // (T2: their own word first; Q: only offered)
   assert.deepEqual(E.track(list, st, done), [], '「다음에요」: nothing kept');
   assert.equal(E.accept(list, st, done, 2, find.id), null, '남의 부탁은 못 받음');
   r = E.accept(list, st, done, 0, find.id); st = r.stages; assert.equal(r.took, find); assert.equal(E.accept(list, st, done, 0, find.id), null, '두 번은 아님');

@@ -65,7 +65,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const typingNow = () => page.evaluate(() => ({ typing: Boolean(document.querySelector('.lostRequestLine.typing')), choices: getComputedStyle(document.querySelector('#plazaDialog .talkChoices')).display }));
   const seen = await typingNow(); if (seen.typing) expect(seen.choices).toBe('none');
   await page.keyboard.press('Space'); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
-  await expect(page.locator('.lostRequestLine').first()).toHaveText(/^「.+」$/);
+  await expect(page.locator('.lostRequestLine').first()).not.toHaveText(/^「[\s\S]*」$/); // (v1.10.194 대화창 2차: no 「 」 round it -- a 「낚시 대회」 inside it stays)
   await lines(); await expect(choices).toHaveText(TOP);
   // (R2 ④) their question of the day: three answers in place of the choices; one answered, the choices back -- and that
   // one gone from the topics for today
@@ -87,7 +87,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   // (asked -- or, a slow runner having talked twice, reminded; T: in any walker's register; T2: their own word first, the ask
   // typed out after it)
   await lines(); await expect(page.locator('.lostRequestLine').filter({ hasText: /전해 줄래|전해 주겠|전해 주게|못 봤|사다 줄래|사다 주겠|사다 주게|필요한데|아직 못/ }).first()).toBeVisible();
-  await expect(page.locator('#plazaDialog .lookMeta')).toContainText(/처음 본 사이 ♥/); // 호감도 (the first talk of the day +1)
+  await expect(page.locator('#plazaDialogTitle')).toHaveAttribute('data-hearts', '♥'); // 호감도 (the first talk of the day +1; v1.10.193 2차: the hearts by the name)
   // (Q 부탁 받기: the ask's note -- what, what it pays, today -- and 「할게요!」 / 「다음에요」; nothing started by talking)
   await expect(page.locator('#plazaDialog .questNote')).toContainText('오늘 안에');
   expect((await get(request, '/api/island/errands', token)).data.track).toHaveLength(0);

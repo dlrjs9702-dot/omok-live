@@ -32,7 +32,7 @@
       ['{me}님 오셨어요? 마침 보고 싶었어요!', '{me}님한테 어울리는 꽃을 생각해 봤는데, 해바라기 같아요.', '사장님 몰래 제일 예쁜 꽃 한 송이 챙겨 뒀어요. 나중에 줄게요!'],
       ['{me}님은 제 섬 친구 1호예요. 정말이에요!', '{me}님 이름으로 꽃 이름을 지어 보고 싶어요. 「{me}꽃」 어때요?', '힘든 날엔 꽃집에 와요. 제일 좋은 향기로 기운 나게 해 줄게요.']],
       morning: '좋은 아침이에요! 꽃들이 막 기지개를 켜는 시간이에요.', night: '밤엔 꽃들도 자요. 쉿, 조용히 걸어 주세요.' },
-    { name: '바다 할아버지', role: '은퇴한 선장', about: '먼 바다를 오래 다니다 섬에 정착했다. 하얀 선장 모자가 자랑.', lines: [
+    { name: '해송', call: '해송 할아버지', role: '은퇴한 선장', about: '먼 바다를 오래 다니다 섬에 정착했다. 하얀 선장 모자가 자랑.', lines: [
       ['음? 처음 보는 얼굴이구먼. 난 바다를 오래 다닌 늙은 선장이라네.', '바닷바람 맞으러 왔나? 좋지.', '섬 생활은 천천히 해도 된다네.'],
       ['젊을 땐 고래 등에 손을 얹어 본 적도 있지. 정말이라니까.', '바람 냄새를 맡아 보게. 내일은 날이 좋겠어.', '낚시는 기다림이야. 서두르면 물고기가 먼저 알아.', '항구 어부는 내 옛 선원의 아들이라네.', '등대 불빛만 보면 아직도 가슴이 뛰어.'],
       ['{me}, 자네는 바다 사나이 기질이 있어. 내 눈은 못 속이지.', '자네한테만 말하는데, 등대 너머에 큰 물고기가 산다네.', '{me}랑 얘기하면 배 위에 있던 시절이 떠올라.'],
@@ -50,13 +50,13 @@
       ['{me}님이 오면 벌들도 조용해져요. 신기하죠?', '이번 꿀 첫 병은 {me}님 몫으로 빼 뒀어요.', '{me}님, 벌들한테 이름 붙이는 거 도와줄래요?'],
       ['여왕벌 이름을 {me}로 지었어요. 허락 안 받았지만요!', '{me}님은 꿀보다 달콤한 친구예요. 헤헤.', '언덕 위 벌집 자리, {me}님한테만 알려 줄게요.']],
       morning: '벌들이 일하러 나가는 시간이에요. 부지런하죠?', night: '벌들은 벌써 집에 들어갔어요. 저도 곧 가야죠.' },
-    { name: '노을 할머니', role: '산책을 좋아하는 할머니', about: '하루에 섬을 두 바퀴씩 걷는다. 섬 소식은 다 안다.', lines: [
+    { name: '노을', call: '노을 할머니', role: '산책을 좋아하는 할머니', about: '하루에 섬을 두 바퀴씩 걷는다. 섬 소식은 다 안다.', lines: [
       ['어이구, 처음 보는 젊은이네. 나는 노을이라고 해.', '이 섬은 걷기 좋은 곳이야. 천천히 둘러봐.', '어디서 왔누?'],
-      ['젊은이, 오늘도 걷고 있구먼. 걷는 게 최고야.', '저기 다리 건너 풍경이 참 고와. 가 봤나?', '내 나이 되면 매일 같은 길도 새로워 보인다네.', '이장님이 요즘 관공서 일로 바쁘시더라고.', '밥은 먹고 다니는 게지?'],
+      ['젊은이, 오늘도 걷고 있구먼. 걷는 게 최고야.', '저기 다리 건너 풍경이 참 고와. 가 봤나?', '내 나이 되면 매일 같은 길도 새로워 보인다네.', '시장님이 요즘 관공서 일로 바쁘시더라고.', '밥은 먹고 다니는 게지?'],
       ['{me}야, 왔구나! 오늘은 같이 좀 걸을까?', '우리 {me}는 볼 때마다 얼굴이 좋아지네.', '{me} 주려고 사탕 하나 챙겨 왔지. 자, 받아.'],
       ['{me}야, 너는 내 손주 같아. 고맙다, 자주 와 줘서.', '섬 소식은 다 알아도, {me} 소식이 제일 궁금하단다.', '내가 걷는 길마다 {me}랑 같이 걸은 기억이 있어. 좋구나.']],
       morning: '아침 공기가 보약이야. 깊이 들이마셔 봐.', night: '해 졌으면 일찍 들어가. 밤길 조심하고.' },
-    { name: '오 탐정', role: '동네 탐정(자칭)', about: '검은 모자를 쓰고 섬의 작은 사건을 수사한다. 의뢰는 아직 없다.', lines: [
+    { name: '누리', call: '오 탐정', role: '동네 탐정(자칭)', about: '검은 모자를 쓰고 섬의 작은 사건을 수사한다. 의뢰는 아직 없다.', lines: [
       ['멈춰! …아, 용의자가 아니군. 나는 오 탐정이다.', '처음 보는 얼굴이군. 수상한데… 농담이야.', '사건이 생기면 날 찾게.'],
       ['수상해… 분실물이 왜 자꾸 풀밭에서 나오는 거지?', '탐정의 기본은 관찰이야. 자네 신발에 흙이 묻었군. 잡초를 뽑았나?', '이 섬엔 아직 풀리지 않은 비밀이 있어. 내가 꼭 밝혀낸다.', '사건 의뢰는 언제든 환영이야. 수수료는… 나중에 얘기하지.', '어젯밤 광장에서 이상한 불빛을 봤어. 아, 가로등이었나.'],
       ['{me}, 자네를 조수로 임명하지. 거절은 안 받네.', '{me} 조수, 오늘의 수사 보고를 하겠네. …아직 없네.', '자네 덕에 분실물 사건 몇 개가 풀렸지. 훌륭해, {me}.'],
@@ -96,7 +96,7 @@
       ['{me}는 내 정원의 수호천사야.', '내 정원 제일 좋은 자리에 {me} 이름표를 꽂아 뒀단다.']] }),
     fisher: Object.freeze({ n: 11, role: '어부', lines: [
       ['처음 뵙네요. 항구 어부예요.', '배 근처는 미끄러우니 조심하세요.'],
-      ['오늘 물때가 좋아요. 한번 던져 보세요!', '바다 할아버지는 제 아버지와 같은 배를 타셨대요.', '바다가 깨끗해야 고기도 돌아와요.'],
+      ['오늘 물때가 좋아요. 한번 던져 보세요!', '해송 할아버지는 제 아버지와 같은 배를 타셨대요.', '바다가 깨끗해야 고기도 돌아와요.'],
       ['{me}님, 오늘 잡힌 것 중에 제일 큰 놈 보여 줄게요!', '{me}님 덕분에 항구가 깨끗해졌어요.'],
       ['다음 배 이름은 「{me}호」로 할까 봐요.', '{me}님은 이 항구의 명예 선원이에요.']] }),
     photographer: Object.freeze({ n: 12, role: '관광객 사진가', lines: [
@@ -189,10 +189,13 @@
     const [x, y] = Math.floor(slot / 4) % 2 ? [b, a] : [a, b]; const k = ((slot % 4) + 4) % 4;
     if (k === 3 || !WALKERS[x] || !WALKERS[y]) return null;
     const who = k === 1 ? y : x;
-    return { who, text: withTail(CHATS[who][k].split('{you}').join(WALKERS[k === 1 ? x : y].name), who) };
+    return { who, text: withTail(CHATS[who][k].split('{you}').join(callOf(k === 1 ? x : y)), who) };
   }
   const PHASES = ['morning', 'day', 'evening', 'night'];
   const hasFinal = (word) => { const c = String(word).charCodeAt(String(word).length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 !== 0; };
+  // v1.10.193 주민 이름 (사용자 확정, 설정집 2-1): the tag, the notes and the cards say the name only; when the islanders
+  // speak of one another it is how they call them -- 「해송 할아버지」「노을 할머니」「오 탐정」 (their call), else the name
+  const callOf = (n) => WALKERS[n]?.call || WALKERS[n]?.name || '';
   const josa = (word, pair) => `${word}${hasFinal(word) ? pair[0] : pair[1]}`; // josa('봄이', '이가') -> 봄이가
   // {name} a word as it is, {name|A|B} with A after a final consonant, B after a vowel ({me|아|야}, {thing|이라고|라고})
   const slot = (line, name, word) => line.replace(new RegExp(`\\{${name}(?:\\|([^|}]*)\\|([^}]*))?\\}`, 'g'), (_, a, b) => (a === undefined ? word : `${word}${hasFinal(word) ? a : b}`));
@@ -406,10 +409,10 @@
     if (Number.isFinite(ctx.plants)) out.push(ctx.plants > 0 ? `섬 사람들이 심은 꽃·나무가 벌써 ${ctx.plants}그루래요.` : '잡화점 씨앗을 땅에 심으면 꽃이 핀대요. 아직 아무도 안 심었대요.');
     if (ctx.winter) out.push('광장에 겨울 축제가 열렸대요. 트리 보러 가요!');
     if (ctx.halloween) out.push('할로윈이라 섬 곳곳에 호박이 놓였대요. 꼬마들이 사탕을 찾아다녀요.');
-    const h = ctx.hint && WALKERS[ctx.hint.n] ? `${josa(WALKERS[ctx.hint.n].name, '은는')} 요즘 ${ctx.hint.where} 근처에서 자주 보인대요.` : null;
+    const h = ctx.hint && WALKERS[ctx.hint.n] ? `${josa(callOf(ctx.hint.n), '은는')} 요즘 ${ctx.hint.where} 근처에서 자주 보인대요.` : null;
     if (h && (ctx.hint.errand || !out.length || random() < 0.35)) return h;
     return out.length ? pick(out, random) : '요즘은 섬이 조용해요. 평화로운 게 제일이죠.';
   }
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill, say, withTail, untail, whyOf };
+  return { callOf, WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill, say, withTail, untail, whyOf };
 }));
