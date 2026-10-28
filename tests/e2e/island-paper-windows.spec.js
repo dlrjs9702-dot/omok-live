@@ -36,7 +36,7 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
   }
   await closeAll();
   // the pets: a face each; taken along from the bag with a name asked on paper -- 「함께 다니는 중」
-  await page.locator('#islandBagTab').click(); await page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
+  await page.locator('#islandBagTab').click(); await page.locator('.islandBagSlot[data-item="pet_puppy"]').click(); await page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
   await expect(page.locator('#nameAskDialog')).toBeVisible();
   expect((await look('#nameAskDialog')).bg).toBe(paper);
   await page.locator('#nameAskInput').fill('누렁'); await page.locator('#nameAskOk').click(); await expect(page.locator('#nameAskDialog')).toBeHidden();

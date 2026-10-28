@@ -76,6 +76,9 @@ const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스�
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
 require('./lib/island-items').setPriceHook(Economy.priceOf);
+// v1.10.195 가방 늘리기: each account's bag size (world 'bagSlots': { account: 24 | 32 }), kept here for the stores' adds
+const bagSlots = new Map();
+require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
@@ -3872,7 +3875,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.194' });
+    return sendJson(res, 200, { ok: true, version: '1.10.195' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4167,7 +4170,7 @@ async function requestHandler(req, res) {
       if (!key) return sendSimpleHtml(res, 403, '입장 거부', '이 입장 파일은 유효하지 않거나 권한이 취소되었습니다.');
       // an account with no login id sets one first (no skipping); the file goes on working after
       if (!key.loginId && (!setupNotRequired || liveEntryKeys.has(key.id))) return sendIndex(res, { setupTicket: issueTicket(setupTickets, key.id, SETUP_TTL_MS), label: key.label });
-      // v1.10.194: the file only logs in -- 내 계정, the island by its 「게임 접속」 (where one place at a time is checked)
+      // v1.10.195: the file only logs in -- 내 계정, the island by its 「게임 접속」 (where one place at a time is checked)
       if (key.loginId && (!setupNotRequired || liveEntryKeys.has(key.id))) return sendIndex(res, { accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), label: key.label });
     }
     if (guestKeyInUse(key.id)) {
@@ -5004,7 +5007,29 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/bag' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(pointAccountForSession(session), islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP });
+    const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) } });
+  }
+  // v1.10.195 가방 내 순서: the order I set (every entry once: from another screen in between -- 'stale', the bag back) or 정리
+  if (pathname === '/api/island/bag/order' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
+    let out; try { out = await pointStore.islandBagOrder({ userId: pointAccountForSession(session), ...(body.sort === true ? { sort: true } : { ids: body.ids }) }); } catch { return sendError(res, 400, 'BAD_ORDER', '가방 순서를 확인해 주세요.'); }
+    return sendJson(res, out.applied ? 200 : 409, { ok: out.applied, ...(out.applied ? {} : { error: 'STALE_ORDER', message: '가방이 바뀌었어요. 다시 옮겨 주세요.' }), bag: out.bag });
+  }
+  // v1.10.195 가방 늘리기: at the 잡화점 (in the 백화점), 16 -> 24 -> 32, paid once each (the claim), for good
+  if (pathname === '/api/island/bag/grow' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (!storeInside.has(session.token) || furnitureInside.has(session.token) || petshopInside.has(session.token)) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 늘릴 수 있어요.');
+    return worldEdit(async () => {
+      const now = IslandItems.slotsOf(account); const to = IslandItems.BAG_GROW.find((n) => n > now);
+      if (!to) return sendError(res, 409, 'BAG_TOP', '가방이 이미 가장 커요.');
+      const claimId = `bag:${to}:${account}`;
+      let out; try { out = await pointStore.charge({ userId: account, claimId, price: Economy.value(`bag:${to}`), title: `잡화점 · 가방 ${to}칸` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      await pointStore.setWorldValue('bagSlots', { ...((await pointStore.worldValue('bagSlots')) || {}), [account]: to }); bagSlots.set(account, to);
+      if (out.applied) notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, slots: to, next: IslandItems.BAG_GROW.find((n) => n > to) || null, balance: out.balance ?? null });
+    });
   }
   // v1.10.84 관공서 실내: SPACE at the hall's door (in the yard, past the mayor) goes in; at the room's door, out to the
   // hall's door. The server moves the position itself, so a pose can never put anyone in or out.
@@ -5248,7 +5273,7 @@ async function requestHandler(req, res) {
       }
       const f = fishes.find((x) => x.fid === String(body.take)); if (!f) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); // (already taken out)
       const out = await pointStore.islandGive({ userId: account, claimId: claim, itemId: f.itemId, qty: 1, quiet: true }, nowMs());
-      if (!out.applied && out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
+      if (!out.applied && out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요. 잡화점에서 가방을 늘릴 수 있어요.');
       const next = { ...h, tanks: { ...h.tanks, [tank.uid]: fishes.filter((x) => x.fid !== f.fid) } }; await saveHome(account, next);
       return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
     });
@@ -5301,14 +5326,14 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, friends: false, asked: true });
     });
   }
-  // 묶음 2-2 펫샵: the day's ten (and who is already taken), my adoptions today; v1.10.194 a special one I have already: owned
+  // 묶음 2-2 펫샵: the day's ten (and who is already taken), my adoptions today; v1.10.195 a special one I have already: owned
   if (pathname === '/api/island/petshop' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const st = await petshopDay(); const account = pointAccountForSession(session);
     const owned = new Set(((await pointStore.worldValue(`pets:${account}`)) || []).map((p) => p.kind)); // (3회차 21: the specials, one of each)
     return sendJson(res, 200, { ok: true, day: st.day, perDay: 1, mine: st.buys[account] || 0, pets: IslandPetShop.displayOf(st.day).map((p) => { const sp = IslandPetShop.catalogOf(p.kind); return { ...p, name: IslandPetShop.nameOf(p.kind, p.coat), price: petPrice(p.kind), sold: Boolean(st.sold[p.slot]), ...(sp ? { special: true, ip: sp.ip, owned: owned.has(p.kind) } : {}) }; }) });
   }
-  // (문제 기록 3회차 21) the counter's catalog -- gone in v1.10.194 (all in the yard): an old screen's call is turned away
+  // (문제 기록 3회차 21) the counter's catalog -- gone in v1.10.195 (all in the yard): an old screen's call is turned away
   if (pathname === '/api/island/petshop/buy' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     return sendError(res, 410, 'CATALOG_CLOSED', '오늘 아이들은 마당에 있어요. 마음에 드는 아이에게 다가가 보세요.');
@@ -5604,7 +5629,7 @@ async function requestHandler(req, res) {
     }
     let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`) }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
-    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
     if (out.applied) notifyPointsChanged([account]); bikesOf.delete(account); /* (자전거: a new one rides at once) */
     return sendJson(res, 200, { ok: true, itemId: s.id, qty, bag: out.bag, balance: out.balance ?? null });
   }
@@ -5969,7 +5994,7 @@ async function requestHandler(req, res) {
     if (weed && !near(weed)) { weedPulls.delete(session.token); return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.'); }
     const account = pointAccountForSession(session);
     const outcome = await pointStore.islandPullWeed({ userId: account, requestId: body.requestId, weedId }, now);
-    if (outcome.reason === 'full') { weedPulls.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
+    if (outcome.reason === 'full') { weedPulls.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.'); }
     if (outcome.reason === 'gone' || !weed) { weedPulls.delete(session.token); broadcastIsland('islandWeed', { gone: [weedId] }); return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.'); }
     const result = { ok: true, weedId, bag: outcome.bag, bonus: outcome.bonus || 0, balance: outcome.balance ?? null };
     weedPulls.set(session.token, { ...pull, requestId: body.requestId, result }); collectionPose(session.token);
@@ -6020,7 +6045,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     const itemId = `fish_${c.species}`;
     const outcome = await pointStore.islandGive({ userId: account, claimId: `fish:${c.id}`, itemId, qty: 1, meta: null, dexEntry: itemId }, nowMs());
-    if (outcome.reason === 'full') { fishCasts.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
+    if (outcome.reason === 'full') { fishCasts.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.'); }
     const dex = outcome.dex;
     const f = IslandFishing.SPECIES[c.species];
     c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag };
@@ -6056,7 +6081,7 @@ async function requestHandler(req, res) {
     try {
       const itemId = `insect_${b.species}`;
       const outcome = await pointStore.islandGive({ userId: account, claimId: `insect:${id}`, itemId, qty: 1, meta: null, dexEntry: itemId }, nowMs());
-      if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+      if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
       const s = IslandInsects.SPECIES[b.species];
       const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag };
       given = true; insectCaught.set(id, { account, result }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag);
@@ -6320,7 +6345,7 @@ async function requestHandler(req, res) {
     if (outcome.reason) {
       resourcePulls.delete(session.token);
       islandEvents.settle(claimed, false, account);
-      if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+      if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
       if (outcome.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
       return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
     }
@@ -6559,7 +6584,7 @@ async function requestHandler(req, res) {
     if (farm.stage < 3) return sendError(res, 409, 'FARM_NOT_GROWN', '아직 수확할 때가 아니에요. 농부를 도와 밭을 키워 주세요.');
     const account = pointAccountForSession(session);
     const out = await pointStore.islandGive({ userId: account, claimId: `harvest:${week}:${account}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
-    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
     if (!out.applied) return sendError(res, 409, 'HARVESTED', '이번 주 수확은 이미 했어요. 다음 주에 다시 와 주세요.');
     return sendJson(res, 200, { ok: true, bag: out.bag });
   }
@@ -6586,7 +6611,7 @@ async function requestHandler(req, res) {
       const F = IslandTerrain.FARM; if (!at || (at.space || 'island') !== 'island' || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있어요.');
       const count = ((await pointStore.questDoc(account, key)).doc?.days?.[day]?.harvest || 0); if (count >= fest.tasks.harvest.perDay) return sendError(res, 409, 'TASK_DONE', fail.TASK_DONE);
       const out = await pointStore.islandGive({ userId: account, claimId: `festharvest:${fest.id}:${day}:${account}:${count + 1}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
-      if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+      if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
       return sendStamp(await stamp('harvest'), { bag: out.bag });
     }
     if (action === 'cook') { // 요리 대회: three things from the bag, by the host -- judged, taken, two stamps (once a day)
@@ -7777,6 +7802,7 @@ async function main() {
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
+  for (const [account, n] of Object.entries((await pointStore.worldValue('bagSlots')) || {})) bagSlots.set(account, n); // v1.10.195
   // v1.10.91 변신 따로 판매 A안: the set owners get their transformation (idempotent; new owners of a whole set after this buy it)
   if (!(await pointStore.worldValue('transformGrant'))) {
     const sets = SkinCatalog.SKINS.filter((s) => s.slot === 'transform').map((s) => ({ tf: s.id, items: require('./public/plaza/character-transformations.js').find(s.transform).items }));
@@ -7855,7 +7881,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.194 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.195 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

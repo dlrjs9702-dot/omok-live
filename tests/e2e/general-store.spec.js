@@ -48,7 +48,8 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   await b.page.evaluate(() => { window.__zzSeen = false; const d = window.PlazaDebug(); window.__zzWatch = setInterval(() => { if (d.othersActs().some((o) => o.act === 'show:firework')) window.__zzSeen = true; }, 100); }); // (CI: one PlazaDebug() takes ~2 s, the show 6 s -- watch with one debug object)
   await a.page.bringToFront(); // (a background page sends its acts late -- CI)
   await a.page.locator('#islandBagTab').click();
-  await a.page.locator('.islandBagSlot[data-item="firework"]').getByRole('button', { name: '쓰기' }).click();
+  await a.page.locator('.islandBagSlot[data-item="firework"]').click(); // (v1.10.195: the slot picked, its bubble)
+  await a.page.locator('.islandBagSlot[data-item="firework"]').getByRole('menuitem', { name: '쓰기' }).click();
   // (CI 2026-10-19: on the GitHub runner the other screen's sight of it fails though it holds locally and on SwiftShader --
   // main fails it too; kept as a note there, a failure everywhere else, until it is understood)
   const seen = await expect.poll(() => b.page.evaluate(() => window.__zzSeen), { timeout: 30000 }).toBe(true).then(() => true, (error) => { if (!process.env.CI) throw error; return false; });

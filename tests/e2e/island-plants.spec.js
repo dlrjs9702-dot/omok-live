@@ -33,7 +33,8 @@ test('심기: 꽃씨를 심으면 둘 다 보이고, 비료는 한 번, 광장·
   expect((await get(request, '/api/island/plants', b.token)).data.plants.find((p) => p.id === id)).toMatchObject({ kind: 'flower', color: 'pink', stage: 0, mine: false });
   // fertilizer from the bag onto the plant by me, once
   await a.page.locator('#islandBagTab').click();
-  await a.page.locator('.islandBagSlot[data-item="fertilizer"]').getByRole('button', { name: '비료 주기' }).click();
+  await a.page.locator('.islandBagSlot[data-item="fertilizer"]').click(); // (v1.10.195: the slot picked, its bubble)
+  await a.page.locator('.islandBagSlot[data-item="fertilizer"]').getByRole('menuitem', { name: '비료 주기' }).click();
   await expect(a.page.locator('#toast')).toContainText('비료를 줬어요');
   expect((await get(request, '/api/island/plants', a.token)).data.plants.find((p) => p.id === id).fertilized).toBe(true);
   expect((await call('/api/island/fertilize', { plantId: id })).status).toBe(409);

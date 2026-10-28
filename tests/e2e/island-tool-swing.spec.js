@@ -13,6 +13,7 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'bugnet', qty: 1 })).status).toBe(200);
   // from the bag: 들기
   await page.keyboard.press('KeyI');
+  await page.locator('.islandBagSlot:is([data-item="bugnet"],[data-item="fishing_rod"])').first().click(); // (v1.10.195: the slot picked, its bubble)
   await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe('bugnet');
   // (사용자 2026-10-26 「채 머리가 얼굴을 파고들고 휘두르기가 작아」) carried low and ahead -- the hoop well off the head, ahead,
@@ -80,7 +81,7 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
     return 'struck';
   }, { timeout: 60000, intervals: [1000] }).toBe('struck').catch((error) => { error.message += `\ntries: ${swingTries.slice(-8).join(' | ')}`; throw error; });
   // put away: no swing
-  await page.keyboard.press('KeyI'); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click();
+  await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot.inHand').click(); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe(null);
   await expectNoScriptError(page); await a.context.close();
 });

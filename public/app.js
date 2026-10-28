@@ -2434,24 +2434,70 @@
     if (!src) return document.createTextNode(item.icon);
     const img = document.createElement('img'); img.className = 'itemIcon'; img.src = src; img.alt = ''; img.width = 32; img.height = 32; return img;
   }
+  // v1.10.195 가방 개편 (docs/bag-redesign-20261027.md): round slots, a picture and its count; picked (a click, a tap, Enter)
+  // its name under the pouch and, when it can do something, a small bubble of those; my own order -- dragged (PC), held
+  // 0.4 s then tapped where (a phone), Shift+arrows (keys) -- kept on the server; 정리 sorts it
+  let bagNow = null; let bagPicked = null; let bagHeld = null;
+  const bagCols = () => (matchMedia('(max-width: 640px), (pointer: coarse)').matches ? 4 : 8); // (총괄 검토: a phone 4 a row -- 16, 24, 32 fill their rows)
+  function bagActions(item) {
+    const out = [];
+    if (PLANT_GOODS[item.itemId]) out.push([PLANT_GOODS[item.itemId], () => plantGood(item.itemId)]); // B 45
+    if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; out.push([walking ? '집에 두기' : '데리고 다니기', () => choosePet(walking ? null : kind)]); }
+    if (TOOL_TIPS[item.itemId]) out.push([heldTool === item.itemId ? '넣기' : '들기', () => holdTool(item.itemId)]); // (3회차 22: in hand)
+    if (SHOW_GOODS.has(item.itemId)) out.push(['쓰기', () => useGood(item.itemId)]);
+    return out;
+  }
+  function pickBagSlot(i) {
+    bagPicked = bagPicked === i ? null : i; const item = bagNow?.items[bagPicked];
+    for (const [k, s] of [...document.getElementById('islandBagGrid').children].entries()) { s.classList.toggle('picked', k === bagPicked); s.querySelector('.bagMenu')?.remove(); }
+    const at = item && ISLAND_PLACES[item.at]; byId('islandBagInfo').textContent = item ? `${item.name}${item.qty > 1 ? ` ×${item.qty}` : ''}${at ? ` · ${at.title}에서 ${at.verb}` : ''}` : '';
+    const acts = item ? bagActions(item) : []; if (!acts.length) return;
+    const menu = document.createElement('div'); menu.className = `bagMenu${bagPicked < bagCols() ? ' below' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
+    for (const [label, run] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b); }
+    document.getElementById('islandBagGrid').children[bagPicked].append(menu);
+  }
+  async function moveBagSlot(from, to) { // onto a thing: they swap; onto an empty slot: to the end
+    if (!bagNow || from === to || !bagNow.items[from]) return;
+    const items = bagNow.items.slice(); const target = Math.min(to, items.length - 1);
+    if (to < items.length) [items[from], items[target]] = [items[target], items[from]]; else items.push(items.splice(from, 1)[0]);
+    const before = bagNow; bagPicked = null; drawIslandBag({ ...bagNow, items }); // (at once; the server's answer after)
+    try { drawIslandBag((await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ ids: items.map((e) => e.entryId) }) })).bag); }
+    catch (error) { showToast(error.message); drawIslandBag(error.data?.bag || before); }
+  }
   function drawIslandBag(bag) {
-    const grid = document.getElementById('islandBagGrid'); grid.replaceChildren();
+    bagNow = bag; bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren();
     for (let i = 0; i < (bag.slots || 16); i += 1) {
       const item = bag.items[i]; const slot = document.createElement('div');
-      slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem');
+      slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
       if (item) {
-        slot.title = item.name; slot.setAttribute('aria-label', `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId;
-        const name = document.createElement('span'); name.textContent = item.name;
+        slot.title = item.name; slot.setAttribute('aria-label', `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = true;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
-        slot.append(itemIcon(item), name, qty);
-        if (PLANT_GOODS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = PLANT_GOODS[item.itemId]; use.addEventListener('click', () => plantGood(item.itemId)); slot.append(use); } // B 45
-        if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = walking ? '집에 두기' : '데리고 다니기'; use.addEventListener('click', () => choosePet(walking ? null : kind)); slot.append(use); } // B 47
-        if (TOOL_TIPS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = heldTool === item.itemId ? '넣기' : '들기'; use.addEventListener('click', () => holdTool(item.itemId)); slot.append(use); } // (3회차 22: in hand)
-        if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
-      } else slot.setAttribute('aria-label', '빈 칸');
+        slot.append(itemIcon(item), qty);
+        if (TOOL_TIPS[item.itemId] && heldTool === item.itemId) slot.classList.add('inHand');
+      } else { slot.setAttribute('aria-label', '빈 칸'); slot.classList.add('empty'); }
+      slot.addEventListener('click', () => { if (bagHeld != null) { const from = bagHeld; bagHeld = null; moveBagSlot(from, i); return; } if (item) pickBagSlot(i); });
+      slot.addEventListener('keydown', (event) => {
+        if (event.target !== slot) return; // (a key on its bubble's button is the button's)
+        const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -bagCols(), ArrowDown: bagCols() }[event.key];
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); slot.click(); return; }
+        if (step == null) return; event.preventDefault(); const to = Math.max(0, Math.min(grid.children.length - 1, i + step));
+        if (event.shiftKey && item) { moveBagSlot(i, to).then(() => grid.children[Math.min(to, bagNow.items.length - 1)]?.focus()); return; }
+        grid.children[to]?.focus();
+      });
+      if (item) {
+        slot.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/plain', String(i)); event.dataTransfer.effectAllowed = 'move'; });
+        let hold = 0; // (a phone: held 0.4 s, it is picked up -- the next slot tapped is where it goes)
+        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; slot.classList.add('held'); byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
+        for (const type of ['pointerup', 'pointercancel', 'pointerleave']) slot.addEventListener(type, () => clearTimeout(hold));
+      }
+      slot.addEventListener('dragover', (event) => { event.preventDefault(); slot.classList.add('dropAt'); });
+      slot.addEventListener('dragleave', () => slot.classList.remove('dropAt'));
+      slot.addEventListener('drop', (event) => { event.preventDefault(); slot.classList.remove('dropAt'); const from = Number(event.dataTransfer.getData('text/plain')); if (Number.isInteger(from)) moveBagSlot(from, i); });
       grid.append(slot);
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
+    byId('islandBagPoints').textContent = pointBalanceText.textContent || '';
+    if (bagPicked != null && bag.items[bagPicked]) { const k = bagPicked; bagPicked = null; pickBagSlot(k); } else { bagPicked = null; byId('islandBagInfo').textContent = ''; }
   }
   // v1.10.192 a name asked on paper (the browser's prompt before): resolves to the words, or null when let go
   const nameAskDialog = document.getElementById('nameAskDialog'); const nameAskInput = document.getElementById('nameAskInput'); let nameAskDone = null;
@@ -2541,7 +2587,7 @@
   async function refreshBikes() { try { showBikes(await api('/api/island/bag')); } catch {} }
   bikeBtn.addEventListener('click', () => { plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); });
   async function openIslandBag() {
-    showDex(false);
+    showDex(false); bagPicked = null; // (v1.10.195: opened afresh, nothing picked)
     if (!islandBagDialog.open) islandBagDialog.showModal();
     try { const bag = await api('/api/island/bag'); drawIslandBag(bag); showBikes(bag); } catch (error) { showToast(error.message); }
   }
@@ -2617,7 +2663,18 @@
       else islandPlaceSubmit.disabled = false; // a lost answer: the same request is sent again
     }
   });
-  document.getElementById('islandBagTab').addEventListener('click', () => openIslandBag());
+  document.getElementById('islandBagTab').addEventListener('click', () => (islandBagDialog.open ? islandBagDialog.close() : openIslandBag())); // (v1.10.195: the bag again shuts it)
+  islandBagDialog.addEventListener('click', (event) => { // (v1.10.195: a click outside the pouch shuts it)
+    if (event.target !== islandBagDialog) return; const r = islandBagDialog.getBoundingClientRect();
+    if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) islandBagDialog.close();
+  });
+  let bagSortAsk = 0; // 정리: asked once (「지금 순서를 바꿀까요?」), then sorted on the server
+  byId('islandBagSort').addEventListener('click', async () => {
+    const b = byId('islandBagSort');
+    if (Date.now() - bagSortAsk > 4000) { bagSortAsk = Date.now(); b.textContent = '순서를 바꿀까요?'; setTimeout(() => { if (Date.now() - bagSortAsk >= 4000) b.textContent = '정리'; }, 4100); return; }
+    bagSortAsk = 0; b.textContent = '정리';
+    try { drawIslandBag((await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) })).bag); } catch (error) { showToast(error.message); }
+  });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
@@ -3272,7 +3329,15 @@
   function storeKeeperTalk() {
     const lines = ['「어서 오세요! 백화점 잡화 코너예요.」', '「진열된 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
-    lostCard.replaceChildren(...lines, ok); openTalk('잡화점 주인');
+    // (v1.10.195 가방 늘리기: 16 -> 24 -> 32 here, once each, for good)
+    const grow = document.createElement('button'); grow.type = 'button'; grow.className = 'ghost hidden'; grow.id = 'bagGrowBtn';
+    api('/api/island/bag').then((bag) => { if (!bag.grow) return; grow.textContent = `가방 늘리기 · ${bag.grow.slots}칸 ${Number(bag.grow.price).toLocaleString('ko-KR')}P`; grow.classList.remove('hidden'); }).catch(() => {});
+    grow.addEventListener('click', async () => {
+      grow.disabled = true;
+      try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); }
+      catch (error) { showToast(error.message, 4000); grow.disabled = false; }
+    });
+    lostCard.replaceChildren(...lines, ok, grow); openTalk('잡화점 주인');
   }
   const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';
   let goodBusy = false;
