@@ -157,6 +157,7 @@
   }
 
   // ---- the table around the map ------------------------------------------------------------------------------
+  let moreOpen = false;
   function renderHud() {
     const g = state.game; const box = $('pandemicHud'); box.replaceChildren();
     const chip = (cls, text, title) => { const c = h('span', `pdChip ${cls || ''}`, text); if (title) c.title = title; return c; };
@@ -171,13 +172,28 @@
     const cures = h('span', 'pdTrack'); cures.append(h('b', '', '치료제'));
     for (const color of ['blue', 'yellow', 'black', 'red']) { const s = g.cures?.[color]; const c = h('i', `pdCure ${s || ''}`, s === 'eradicated' ? '근절' : s ? '개발' : '—'); c.style.setProperty('--c', COLOR[color]); c.title = `${COLOR_KO[color]}: ${s === 'eradicated' ? '근절됨' : s ? '치료제 개발' : '아직'} · 남은 큐브 ${g.supply?.[color]}`; cures.append(c); }
     box.append(cures);
-    box.append(chip('', `큐브 공급 ${['blue', 'yellow', 'black', 'red'].map(c => `${COLOR_KO[c]} ${g.supply[c]}`).join(' · ')}`));
-    box.append(chip('', `플레이어 더미 ${g.playerDeckCount}장 · 전염 ${g.epidemicsTotal - g.epidemicsDrawn}장 남음`, '카드 순서는 아무도 모릅니다'), chip('', `감염 더미 ${g.infectionDeckCount}장`));
+    // (v1.10.199 총괄 검토: 확산·감염률·치료제 always; the piles, discards and cubes folded -- opened by a tap)
+    const more = h('details', 'pdMore'); more.open = moreOpen; more.addEventListener('toggle', () => { moreOpen = more.open; });
+    more.append(h('summary', 'pdChip link', `더미 ${g.playerDeckCount} · 큐브`)); box.append(more);
+    const body = h('div', 'pdMoreBody'); more.append(body); const into = (...els) => body.append(...els); // (a details's own content box is no flex: its chips in one)
+    into(chip('', `큐브 공급 ${['blue', 'yellow', 'black', 'red'].map(c => `${COLOR_KO[c]} ${g.supply[c]}`).join(' · ')}`));
+    into(chip('', `플레이어 더미 ${g.playerDeckCount}장 · 전염 ${g.epidemicsTotal - g.epidemicsDrawn}장 남음`, '카드 순서는 아무도 모릅니다'), chip('', `감염 더미 ${g.infectionDeckCount}장`));
     const piles = h('button', 'pdChip link', `감염 버림 ${g.infectionDiscard?.length || 0}`); piles.type = 'button'; piles.onclick = () => showPile('감염 카드 버림 더미', (state.game.infectionDiscard || []).map(cityName));
     const pp = h('button', 'pdChip link', `플레이어 버림 ${g.playerDiscard?.length || 0}`); pp.type = 'button'; pp.onclick = () => showPile('플레이어 카드 버림 더미', (state.game.playerDiscard || []).map(cardName));
-    box.append(piles, pp);
+    into(piles, pp);
+    renderSeats();
     if (g.quietNight) box.append(chip('quiet', '조용한 하룻밤 예약'));
     for (const [id, n] of Object.entries({})) void id, n;
+  }
+  // (v1.10.199 공통 틀: the seat cards off the table -- one row of plates over the map: face, name, role, cards in hand; the turn lit)
+  function renderSeats() {
+    let row = $('pandemicSeats'); if (!row) { row = h('div', 'pandemicSeats'); row.id = 'pandemicSeats'; $('pandemicHud').before(row); }
+    const g = state.game; row.replaceChildren();
+    for (const s of Object.keys(g.roles || {}).sort()) {
+      const p = h('span', `pdSeat${s === g.turn ? ' turn' : ''}${s === mySeat() ? ' me' : ''}`); p.style.setProperty('--seat', SEAT_COLOR[s] || '#94a3b8');
+      const face = h('span', 'seatFace'); face.setAttribute('aria-hidden', 'true'); const look = state.players?.[s]?.face; if (look?.skin) face.style.setProperty('--skin', look.skin); if (look?.hair) face.style.setProperty('--hair', look.hair);
+      p.append(face, h('b', '', label(s)), h('small', '', `${ROLE_KO[g.roles[s]] || ''} · ${(g.hands?.[s] || []).length}장`)); row.append(p);
+    }
   }
   function showPile(title, names) {
     const menu = $('pandemicMenu'); menu.replaceChildren(h('strong', '', title), h('p', 'pdSmall', names.length ? names.join(', ') : '비어 있습니다.'));

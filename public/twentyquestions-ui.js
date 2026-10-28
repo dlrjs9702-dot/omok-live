@@ -178,7 +178,8 @@
         recommendationBox.appendChild(button);
       }
     }
-    setText('twentyCategory', g.category ? `🎲 이번 카테고리: ${g.category}` : '방장이 모드와 라운드를 정한 뒤 시작합니다.');
+    setText('twentyCategory', g.category ? `카테고리 ${g.category}` : '방장이 모드와 라운드를 정한 뒤 시작합니다.'); // (v1.10.199 검토: a small tag on the head's line, as 그림 맞히기's)
+    if (g.category && $('twentyCategory').parentElement !== $('twentyProgress').parentElement) $('twentyProgress').after($('twentyCategory'));
     setText('twentyProgress', `라운드 ${g.roundNumber || 0}/${g.totalRounds || '미설정'} · 질문/정답 기회 ${g.questionsUsed || 0}/20 · ${g.mode === 'cooperative' ? '협동전' : '개인전'}`);
     const drawerLabel = g.drawerSeat ? nameFor(state, g.drawerSeat) : '미정';
     const currentLabel = g.turnSeat ? nameFor(state, g.turnSeat) : '대기 중';
