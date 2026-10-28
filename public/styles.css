@@ -2975,3 +2975,10 @@ body.plazaMode .isle-sheet:not([class*="Mode"]){color-scheme:light}
 /* (the same in every sheet: a box and its words on one line -- 생일 숨기기, 화면 사진 같이) */
 body.plazaMode .isle-sheet:not([class*="Mode"]) label:has(>input[type="checkbox"]){display:inline-flex;align-items:center;gap:6px}
 body.plazaMode .isle-sheet:not([class*="Mode"]) label>input[type="checkbox"]{width:auto;min-width:0;margin:0;flex:0 0 auto}
+/* (총괄 검토) the bag's buttons on one line in a phone's narrow slot */
+#islandBagDialog .islandBagSlot button{white-space:nowrap;font-size:.68rem;padding:3px 6px}
+/* (총괄 검토) 내 정보's preview: a paper frame, no words over the picture, all of it in the window */
+body.plazaMode .isle-sheet:not([class*="Mode"]) .skinTryOn{background:#fffaf0;border:1px solid var(--isle-line);box-shadow:none}
+body.plazaMode .isle-sheet:not([class*="Mode"]) .dressNote{display:none}
+body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:min(30vh,240px);max-height:none}
+#islandBagDialog .islandBagSlot:has(button) small{top:4px;bottom:auto} /* (its count up by its name, off the button) */

@@ -1375,3 +1375,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .photoBar button.secondary{background:var(--isle-btn);color:#fff;border-color:transparent}
 :root[data-theme="light"] #islandBagDialog .islandBagSlot button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] #islandBagDialog .islandBagSlot button:hover{background:var(--isle-hover)}
+:root[data-theme="light"] body.plazaMode .isle-sheet:not([class*="Mode"]) .skinTryOn{background:#fffaf0;border:1px solid var(--isle-line);box-shadow:none}

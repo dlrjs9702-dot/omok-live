@@ -86,10 +86,10 @@ test.describe('포인트와 고스톱·맞고', () => {
     for (const view of [a, b, c]) view.page.on('pageerror', error => errors.push(error.message));
 
     // 1~3) 로비 포인트·출석·중복 차단.
-    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+    await expect(a.page.locator('#pointBalanceText')).toHaveText('100,000P');
     await expect(a.page.locator('#attendanceBtn')).toHaveText('오늘 출석 +30,000P'); // (경제 점검 ⑥-C)
     await a.page.evaluate(() => document.getElementById('attendanceBtn').click()); // v1.9.7: 출석은 출석 NPC가 이 버튼 동작을 부른다
-    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 130,000P');
+    await expect(a.page.locator('#pointBalanceText')).toHaveText('130,000P');
     await expect(a.page.locator('#attendanceBtn')).toHaveText('오늘 출석 완료');
     await expect(a.page.locator('#attendanceBtn')).toBeDisabled();
     expect((await api(request, '/api/points/attendance', a.token, {})).data.granted).toBe(false);

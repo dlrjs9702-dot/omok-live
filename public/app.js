@@ -5643,7 +5643,7 @@
   function renderPoints(account) {
     if (!account) return;
     pointWallet.classList.remove('hidden');
-    pointBalanceText.textContent = `보유 ${Number(account.balance || 0).toLocaleString('ko-KR')}P`;
+    pointBalanceText.textContent = `${Number(account.balance || 0).toLocaleString('ko-KR')}P`; // (v1.10.192 총괄 검토: 「보유 포인트」 says it -- not 「보유」 twice)
     const claimed = Boolean(account.attendance?.claimed);
     attendanceBtn.textContent = claimed ? '오늘 출석 완료' : `오늘 출석 +${Number(account.attendanceAmount || 50000).toLocaleString('ko-KR')}P`;
     attendanceBtn.disabled = claimed;
