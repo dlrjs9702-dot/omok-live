@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.198 C5 Codex 4차 고침
+
+- P2-1 공지 날짜: v1.10.95~197 publishedAt을 main 병합 시각(UTC, package.json이 그 버전이 된 커밋)으로, 같으면 +1분. 그 앞 v1.10.77~94는 v95보다 늦은 것만 실제 병합 시각(없으면 다음 것 -1분)으로. 앞으로 새 공지는 실제 시각.
+- P2-2 가방 폰 꾹: 든 칸의 손 뗌 click 무시, 다시 그려도 든 칸 유지. e2e는 실제 순서(pointerdown → 0.4초 → pointerup → click → 다른 칸).
+- P3: 요리 대회 차감 중 예외도 giveBack, errand/drop은 await 뒤에 단계 읽기, point-store 모든 bagView에 계정 칸 수(slotsOf), moveBagSlot 최신 응답만, 행사 창 draw는 차례 검사 뒤 반영, 메신저 말풍선 메뉴는 연 방에 묶고 방 바꾸면 닫힘.
+
 ## v1.10.197 파티 공통 틀 — 그림 맞히기·라이어·스무고개
 
 - tableGameRoom·tableGamePlaying에 세 게임(+ partyGame): 판 중 자리 카드 비킴, 점수는 한 줄 얼굴 이름표(차례 노란 테두리), 입력 줄 판 아래 sticky(safe-area), 토스트·쪽지는 위 띠 아래(--roomBarBottom), 맞힘·틀림 소리(그림 roundAwards, 라이어 결과 내 편, 스무고개 guessHistory).
@@ -26,10 +32,3 @@
 - 마루: 대화 중 걸음 멈추고 대화 카메라 쪽으로 돌아섬(`yard.talk(at)`, debug `townhall().talking`), 끝나면 문으로·비켜섬. v194 시장 전용 카메라 없앰(원인: strict 뒤 되돌아 걷는 방향이 얼굴 방향을 덮음).
 - 주민·마루·펫샵 창구 대화 카메라 옆 3.4 m·위 2.9 m. 벽 가까운 백화점 창구는 예전 구도(넓히면 벽 속).
 - e2e plaza 시장 정문: 대화 중 talking true → 허가 뒤 false.
-
-## v1.10.195 가방 개편
-
-- 구름 주머니(대화창 구름 부품)·동그라미 칸 PC 8 / 폰(터치) 4칸(32칸이면 칸이 주머니 안에서 스크롤)·빈칸 점·그림+개수만·고르면 아래 이름 줄·할 수 있는 것만 말풍선 메뉴(첫 줄은 아래로)·든 도구 진한 테두리·아래 줄 도감·반려동물·기념사진·포인트. 닫기: Esc·바깥·가방 단추.
-- 내 순서: 끌기(PC)·0.4초 꾹 → 칸 탭(폰)·Shift+방향키, 물건 위면 자리 바꿈·빈칸이면 맨 뒤. `POST /api/island/bag/order` {ids}|{sort}, 다른 화면에서 바뀐 뒤면 409 STALE_ORDER. 정리: 도구→물고기→곤충→재료→기타. JSON·PG `islandBagOrder`.
-- 가방 늘리기 16→24→32(경제 값 bag:24·bag:32), 잡화점 주인 대화, `POST /api/island/bag/grow`(1층에서만, claim bag:<n>:<계정>), world bagSlots → `IslandItems.setSlotsHook`, 모든 addToBag가 계정 크기(선물은 받는 사람). 가득 참 안내에 「잡화점에서 가방을 늘릴 수 있어요」.
-- 뺀 것: 메뉴의 선물하기·버리기, 빈칸 자리 그대로 두기(저장 형식 변경 필요).

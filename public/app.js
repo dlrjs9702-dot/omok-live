@@ -2439,7 +2439,7 @@
   // v1.10.195 가방 개편 (docs/bag-redesign-20261027.md): round slots, a picture and its count; picked (a click, a tap, Enter)
   // its name under the pouch and, when it can do something, a small bubble of those; my own order -- dragged (PC), held
   // 0.4 s then tapped where (a phone), Shift+arrows (keys) -- kept on the server; 정리 sorts it
-  let bagNow = null; let bagPicked = null; let bagHeld = null;
+  let bagNow = null; let bagPicked = null; let bagHeld = null; let bagMoveSeq = 0;
   const bagCols = () => (matchMedia('(max-width: 640px), (pointer: coarse)').matches ? 4 : 8); // (총괄 검토: a phone 4 a row -- 16, 24, 32 fill their rows)
   function bagActions(item) {
     const out = [];
@@ -2462,12 +2462,13 @@
     if (!bagNow || from === to || !bagNow.items[from]) return;
     const items = bagNow.items.slice(); const target = Math.min(to, items.length - 1);
     if (to < items.length) [items[from], items[target]] = [items[target], items[from]]; else items.push(items.splice(from, 1)[0]);
-    const before = bagNow; bagPicked = null; drawIslandBag({ ...bagNow, items }); // (at once; the server's answer after)
-    try { drawIslandBag((await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ ids: items.map((e) => e.entryId) }) })).bag); }
-    catch (error) { showToast(error.message); drawIslandBag(error.data?.bag || before); }
+    const before = bagNow; bagPicked = null; bagHeld = null; drawIslandBag({ ...bagNow, items }); // (at once; the server's answer after)
+    const mine = ++bagMoveSeq; // (C5 Codex 4차 P3-4: two moves fast -- only the latest one's answer is drawn)
+    try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ ids: items.map((e) => e.entryId) }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); }
+    catch (error) { if (mine !== bagMoveSeq) return; showToast(error.message); drawIslandBag(error.data?.bag || before); }
   }
   function drawIslandBag(bag) {
-    bagNow = bag; bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren();
+    bagNow = bag; if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
     for (let i = 0; i < (bag.slots || 16); i += 1) {
       const item = bag.items[i]; const slot = document.createElement('div');
       slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
@@ -2477,7 +2478,8 @@
         slot.append(itemIcon(item), qty);
         if (TOOL_TIPS[item.itemId] && heldTool === item.itemId) slot.classList.add('inHand');
       } else { slot.setAttribute('aria-label', '빈 칸'); slot.classList.add('empty'); }
-      slot.addEventListener('click', () => { if (bagHeld != null) { const from = bagHeld; bagHeld = null; moveBagSlot(from, i); return; } if (item) pickBagSlot(i); });
+      if (bagHeld === i) slot.classList.add('held');
+      slot.addEventListener('click', () => { if (bagHeld === i) return; /* (C5 Codex 4차 P2-2: the finger lifted from the one held -- its own click, not a drop) */ if (bagHeld != null) { const from = bagHeld; bagHeld = null; moveBagSlot(from, i); return; } if (item) pickBagSlot(i); });
       slot.addEventListener('keydown', (event) => {
         if (event.target !== slot) return; // (a key on its bubble's button is the button's)
         const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -bagCols(), ArrowDown: bagCols() }[event.key];
@@ -2811,8 +2813,8 @@
     let drawn = 0; // (C3 ⑨: tabs switched fast -- only the last one asked for draws)
     const draw = async (which) => {
       const mine = ++drawn;
-      try { festivalView = await api('/api/island/festival'); plaza.controller?.setFestival?.(festivalView); } catch (error) { if (mine === drawn) card.replaceChildren(el('p', 'emptyState', error.message)); return; }
-      if (mine !== drawn) return;
+      let view; try { view = await api('/api/island/festival'); } catch (error) { if (mine === drawn) card.replaceChildren(el('p', 'emptyState', error.message)); return; }
+      if (mine !== drawn) return; festivalView = view; plaza.controller?.setFestival?.(festivalView); // (C5 Codex 4차 P3-5: a late answer never over a newer one)
       const f = festivalView.festival;
       if (!f) { card.replaceChildren(el('p', 'emptyState', festivalView.next ? `다음 행사 「${festivalView.next.name}」는 ${festivalView.next.start.slice(5).replace('-', '월 ')}일에 시작해요.` : '지금은 행사가 없어요.')); return; }
       const head = el('div', 'festivalHead'); head.append(el('h3', '', `${f.name} · ${f.start.slice(5).replace('-', '/')}~${f.end.slice(5).replace('-', '/')}`), el('strong', 'festivalStamps', `도장 ${f.stamps}개`));
