@@ -1385,3 +1385,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button{border:0;background:transparent}
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible){background:transparent;outline:none;border:0}
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible)::before{color:var(--talk-tag,var(--isle-tag))}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices:not(:has(button:is(:hover,:focus))) button:first-child::before{color:var(--talk-tag,var(--isle-tag))}

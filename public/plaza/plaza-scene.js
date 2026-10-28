@@ -3155,13 +3155,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const ux = dx / len; const uz = dz / len; const rx = uz; const rz = -ux; // toward them, and to my right
     const ty = spaceFloor(t.x, t.z); // (v1.10.191: a room's floor -- the island's ground under the 펫샵 aimed the camera 1 m low, my head over the keeper's face)
     let c; let look;
+    if (t.id === 'mayor' && !t.shot) { // (v1.10.194 총괄 검토: 마루 stands close in his gate, my head over his face -- from further back, right and high, aimed at his head: over mine)
+      const cx = p.x - ux * 3.6 + rx * 4.4; const cz = p.z - uz * 3.6 + rz * 4.4;
+      return { want: new THREE.Vector3(cx, camFloor(cx, cz, p.y, p.y + 4.2), cz), look: new THREE.Vector3(t.x, ty + 1.3, t.z) };
+    }
     if (t.shot) { // the moment itself: wider, from further behind and to the side -- both of us, their face toward me
       c = { x: p.x - ux * 3.4 + rx * 2.6, z: p.z - uz * 3.4 + rz * 2.6, y: p.y + 2.9 };
       look = new THREE.Vector3((p.x + t.x * 2) / 3, (p.y + ty * 2) / 3 + 0.9, (p.z + t.z * 2) / 3); // faces above the bubble
     } else { // behind me, past my right shoulder: their face and upper body in the picture, my head at the side
       // (v1.10.191 총괄 검토: the 펫샵 keeper stands 1.6 m off, my head over its face -- from higher and further aside there)
-      const side = t.id === 'petshop:counter' ? 3.4 : 2.4; // ponytail: the one counter seen covered; the others' if they are too
-      c = { x: p.x - ux * 2.7 + rx * side, z: p.z - uz * 2.7 + rz * side, y: p.y + (t.id === 'petshop:counter' ? 2.9 : 2.3) };
+      const wide = t.id === 'petshop:counter'; const side = wide ? 3.4 : 2.4; // ponytail: the one counter seen covered; the others' if they are too
+      c = { x: p.x - ux * 2.7 + rx * side, z: p.z - uz * 2.7 + rz * side, y: p.y + (wide ? 2.9 : 2.3) };
       look = new THREE.Vector3(t.x - rx * 0.5, ty + 1.0, t.z - rz * 0.5); // aimed low: their face sits above the speech bubble
     }
     return { want: new THREE.Vector3(c.x, camFloor(c.x, c.z, p.y, c.y), c.z), look };
@@ -3188,6 +3192,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const lookY = p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4);
     const look = new THREE.Vector3(p.x - sin * 2.4, cameraSkyAim(lookY, p.y + Math.sin(elev) * camDist, want.y, lift), p.z - cos * 2.4);
     if (talkView) { const v = talkPose(p); want.copy(v.want); look.copy(v.look); }
+    { const on = !talkView; if (me.tag) me.tag.visible = on; for (const o of others.values()) if (o.c.tag) o.c.tag.visible = on; for (const pt of pets.values()) if (pt.tag) pt.tag.visible = on; if (yard.mayor.tag) yard.mayor.tag.visible = on; } // (v1.10.194 총괄 검토: while talking no name tags over heads -- mine and theirs, the pets' -- in the picture)
     if (editView && mySpace === 'home' && homeHere) { // (3회차 5: 꾸미기 -- the whole room from above, turned with the camera)
       const st = HOME.stageOf(homeHere.home.stage); const c = HOME.world(homeHere.lot, 0, 0); const d = Math.max(st.w, st.d) * 1.6; const e = 1.05;
       want.set(c.x + sin * Math.cos(e) * d, HOME.ROOM.y + Math.sin(e) * d, c.z + cos * Math.cos(e) * d); look.set(c.x, HOME.ROOM.y, c.z);

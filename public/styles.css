@@ -3004,3 +3004,8 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible)::before{content:"▶";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--talk-tag,var(--isle-tag))}
 @media(max-width:520px){.plazaDialog.talkMode{padding:26px 16px 12px}}
 @media(prefers-reduced-motion:reduce){.plazaDialog.talkMode{animation:none}}
+/* (v1.10.194 총괄 검토) the first answer chosen to start with (bold, ▶) till the keys or a finger are on another; the cloud's
+   lower bumps kept on a phone's screen (its edge and safe area) */
+.plazaDialog.talkMode .lostRequest .talkChoices:not(:has(button:is(:hover,:focus))) button:first-child{font-weight:800}
+.plazaDialog.talkMode .lostRequest .talkChoices:not(:has(button:is(:hover,:focus))) button:first-child::before{content:"▶";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--talk-tag,var(--isle-tag))}
+.plazaDialog.talkMode{margin-bottom:max(32px,calc(env(safe-area-inset-bottom) + 18px))}

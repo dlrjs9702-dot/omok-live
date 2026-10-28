@@ -129,7 +129,7 @@ totalEmissiveRadiance *= vColor.rgb * vColor.rgb * marbleMask;
   const mayor = makeCharacter(spec); mayor.animNames = { idle: 'GuardIdle' }; mayor.noTuck = true;
   mayor.root.position.set(gate.x, heightAt(gate.x, gate.z), gate.z); mayor.root.rotation.y = ry; scene.add(mayor.root);
   dressUp(mayor, { gender: 'male', hair: 'avatar_hair_8', outfit: 'npc_outfit_suit', shoes: 'avatar_shoes_5', dye: { avatar_shoes_5: '#1f2a44' } }, spec);
-  mayor.tag = makeTag('마루', null); // (v1.10.193: the mayor's name -- 「시장님」 in what is said) mayor.root.add(mayor.tag); fitTag(mayor);
+  mayor.tag = makeTag('마루', null); /* (v1.10.194: the mayor's name -- 「시장님」 in what is said) */ mayor.root.add(mayor.tag); fitTag(mayor);
   const gateSolid = { x: gate.x, z: gate.z, r: 1.7, gate: true }; solids.push(gateSolid); // open to whoever has his leave
   let pass = false; let bowed = false; let lineAt = 0; let leg = 1; let litAgo = 0; let aside0 = false; // aside0: he is all the way aside
   const setPass = (on) => { if (on && !pass) mayor.anim?.play('usher'); if (Boolean(on) !== pass) leg = 0; pass = Boolean(on); };
