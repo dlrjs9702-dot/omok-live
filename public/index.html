@@ -1094,7 +1094,7 @@
     <section id="recordsHeadToHead" class="recordsHeadToHead hidden" aria-live="polite"><h3>나와의 상대 전적</h3><p id="h2hSummary" class="recordsSummary"></p><label for="h2hGame">게임별 상대 전적</label><select id="h2hGame"><option value="all">전체 게임</option></select><p id="h2hDetail" class="recordsDetail"></p></section>
   </dialog>
   <!-- v1.10.71 게임별 랭킹 (한판마당 자료 03 공식): a game, this week or all time, top 20 and my place -->
-  <dialog id="rankingDialog" class="recordsDialog rankingDialog" aria-labelledby="rankingTitle">
+  <dialog id="rankingDialog" class="recordsDialog rankingDialog isle-sheet" aria-labelledby="rankingTitle">
     <div class="recordsDialogHead"><h2 id="rankingTitle">랭킹</h2><button id="rankingCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="rankingControls">
       <select id="rankingGame" aria-label="게임"></select>
@@ -1104,7 +1104,7 @@
     <ol id="rankingList" class="rankingList" aria-live="polite"></ol>
     <p id="rankingMe" class="rankingMe"></p>
   </dialog>
-  <dialog id="myInfoDialog" class="recordsDialog myInfoDialog" aria-labelledby="myInfoTitle">
+  <dialog id="myInfoDialog" class="recordsDialog myInfoDialog isle-sheet" aria-labelledby="myInfoTitle">
     <div class="recordsDialogHead"><h2 id="myInfoTitle">내 정보</h2><button id="myInfoCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <small id="identityLabel" class="hidden"></small>
     <section id="pointWallet" class="myInfoSection myInfoWallet hidden" aria-label="보유 포인트">
@@ -1149,7 +1149,7 @@
     <p id="genderStatus" class="skinShopStatus" role="status"></p>
     <button id="genderConfirmBtn" type="button" class="secondary" disabled>확정</button>
   </dialog>
-  <dialog id="donationDialog" class="recordsDialog donationDialog" aria-labelledby="donationTitle">
+  <dialog id="donationDialog" class="recordsDialog donationDialog isle-sheet" aria-labelledby="donationTitle">
     <div class="recordsDialogHead"><h2 id="donationTitle">기부</h2><span id="donationBalance" class="skinShopBalance"></span><button id="donationCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <p id="donationMine" class="donationMine"></p>
     <div id="donationRanking" class="donationRanking" role="list" aria-label="이번 주 기부 순위"></div>
@@ -1176,14 +1176,14 @@
     <div id="islandBagGrid" class="islandBagGrid" role="list" aria-label="가방"></div>
     <div id="islandDexGrid" class="islandBagGrid islandDexGrid hidden" role="list" aria-label="도감"></div>
   </dialog>
-  <dialog id="islandPlaceDialog" class="recordsDialog islandBagDialog" aria-labelledby="islandPlaceTitle">
+  <dialog id="islandPlaceDialog" class="recordsDialog islandBagDialog isle-sheet" aria-labelledby="islandPlaceTitle">
     <div class="recordsDialogHead"><h2 id="islandPlaceTitle"></h2><button id="islandPlaceCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div id="islandPlaceList" class="islandPlaceList" role="list"></div>
     <button id="islandPlaceSubmit" type="button" class="secondary"></button>
     <button id="homeApplyBtn" type="button" class="primary hidden">내 집 신청</button>
     <p id="islandPlaceStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
   </dialog>
-  <dialog id="namingDialog" class="recordsDialog namingDialog" aria-labelledby="namingTitle">
+  <dialog id="namingDialog" class="recordsDialog namingDialog isle-sheet" aria-labelledby="namingTitle">
     <div class="recordsDialogHead"><h2 id="namingTitle">개명소</h2><span id="namingPrice" class="skinShopBalance"></span><button id="namingCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <p id="namingCurrent" class="donationMine"></p>
     <form id="namingForm" class="donationForm">
@@ -1199,7 +1199,7 @@
     <div id="skinShopTryOn" class="skinTryOn hidden" aria-live="polite"></div>
     <div id="skinShopBody" class="skinShopBody"></div>
   </dialog>
-  <dialog id="climbDialog" class="recordsDialog climbDialog" aria-labelledby="climbDialogTitle">
+  <dialog id="climbDialog" class="recordsDialog climbDialog isle-sheet" aria-labelledby="climbDialogTitle">
     <div class="recordsDialogHead"><h2 id="climbDialogTitle">등반 도전</h2><button id="climbCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="climbSummary">
       <div><small>오늘 최고</small><strong id="climbTodayBest">-</strong><small id="climbTodayPaid"></small></div>
@@ -1211,12 +1211,12 @@
     <ol id="climbRanking" class="climbRanking"></ol>
     <p id="climbDialogStatus" class="smallMuted" role="status"></p>
   </dialog>
-  <dialog id="plazaDialog" class="recordsDialog plazaDialog" aria-labelledby="plazaDialogTitle">
+  <dialog id="plazaDialog" class="recordsDialog plazaDialog isle-sheet" aria-labelledby="plazaDialogTitle">
     <div class="recordsDialogHead"><h2 id="plazaDialogTitle"></h2><button id="plazaCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div id="plazaDialogBody" class="plazaDialogBody"></div>
   </dialog>
   <!-- v1.10.86 관공서 세금 창구 (app.js openTax) -->
-  <dialog id="taxDialog" class="recordsDialog taxDialog" aria-labelledby="taxTitle">
+  <dialog id="taxDialog" class="recordsDialog taxDialog isle-sheet" aria-labelledby="taxTitle">
     <div class="recordsDialogHead"><h2 id="taxTitle">세금 창구</h2><button id="taxCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div id="islandTaxRow" class="islandTaxRow"><p id="islandTaxText"></p></div>
     <div id="taxBillList" class="taxBillList" role="list" aria-label="미납 고지서"></div>
@@ -1224,7 +1224,7 @@
     <p id="taxStatus" class="smallMuted" role="status" aria-live="polite"></p>
   </dialog>
   <!-- v1.10.85 관공서 예금 창구 (app.js openBank) -->
-  <dialog id="bankDialog" class="recordsDialog bankDialog" aria-labelledby="bankTitle">
+  <dialog id="bankDialog" class="recordsDialog bankDialog isle-sheet" aria-labelledby="bankTitle">
     <div class="recordsDialogHead"><h2 id="bankTitle">예금 창구</h2><button id="bankCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="bankSums"><div><small>지갑</small><strong id="bankWallet">-</strong></div><div><small>예금</small><strong id="bankDeposit">-</strong></div></div>
     <p class="smallMuted" id="bankRate">예금에는 매일 자정(한국 시간) 구간별 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요).</p>
@@ -1235,7 +1235,7 @@
     </form>
     <p id="bankStatus" class="smallMuted" role="status" aria-live="polite"></p>
   </dialog>
-  <dialog id="missionDialog" class="recordsDialog missionDialog" aria-labelledby="missionDialogTitle">
+  <dialog id="missionDialog" class="recordsDialog missionDialog isle-sheet" aria-labelledby="missionDialogTitle">
     <div class="recordsDialogHead"><h2 id="missionDialogTitle">미션</h2><button id="missionCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="missionTabs" role="tablist" aria-label="미션 종류">
       <button type="button" role="tab" class="missionTab" id="missionTabToday" aria-selected="true" aria-controls="missionPanelToday">오늘</button>
@@ -1261,7 +1261,16 @@
     </section>
   </dialog>
   <!-- 관리자 「문제 기록」: over whatever is on screen -->
-  <dialog id="issueDialog" class="recordsDialog issueDialog" aria-labelledby="issueTitle">
+  <!-- v1.10.192 a name asked on paper (the pets' -- the browser's own prompt before) -->
+  <dialog id="nameAskDialog" class="recordsDialog nameAskDialog isle-sheet" aria-labelledby="nameAskTitle">
+    <div class="recordsDialogHead"><h2 id="nameAskTitle">이름</h2><button id="nameAskCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <form id="nameAskForm" class="nameAskForm" method="dialog">
+      <input id="nameAskInput" type="text" maxlength="10" autocomplete="off" aria-labelledby="nameAskTitle" />
+      <p id="nameAskNote" class="smallMuted"></p>
+      <div class="nameAskButtons"><button id="nameAskOk" type="submit" class="primary" value="ok">확인</button><button id="nameAskCancel" type="button" class="ghost">취소</button></div>
+    </form>
+  </dialog>
+  <dialog id="issueDialog" class="recordsDialog issueDialog isle-sheet" aria-labelledby="issueTitle">
     <div class="recordsDialogHead"><h2 id="issueTitle">문제 기록</h2><button id="issueCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <form id="issueForm" class="issueForm">
       <textarea id="issueText" maxlength="1000" rows="4" placeholder="무엇이 문제인가요? (Ctrl+Enter 저장)" aria-label="내용" required></textarea>
@@ -1273,7 +1282,7 @@
     </form>
     <details id="issueMine" class="issueMine hidden"><summary>내가 쓴 기록</summary><div id="issueMineList" class="issueMineList" role="list"></div></details>
   </dialog>
-  <dialog id="gameMenuDialog" class="recordsDialog gameMenuDialog" aria-labelledby="gameMenuTitle">
+  <dialog id="gameMenuDialog" class="recordsDialog gameMenuDialog isle-sheet" aria-labelledby="gameMenuTitle">
     <div class="recordsDialogHead"><h2 id="gameMenuTitle">메뉴</h2><button id="gameMenuCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="gameMenuList">
       <button id="menuLeaveRoomBtn" type="button" class="secondary hidden">게임관으로 돌아가기</button>
@@ -1285,9 +1294,10 @@
       <button id="myHomeBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">내 집</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">
         <h3 id="gameMenuSettingsTitle">환경설정</h3>
-        <div class="gameMenuThemes" role="radiogroup" aria-label="화면 테마">
-          <label><input type="radio" name="gcTheme" value="dark"> 어둡게</label>
+        <span class="gameMenuThemesLabel" id="gameMenuThemesLabel">게임관 화면:</span><!-- v1.10.192 (사용자) what the theme is for: the game hall's screens -->
+        <div class="gameMenuThemes" role="radiogroup" aria-labelledby="gameMenuThemesLabel">
           <label><input type="radio" name="gcTheme" value="light"> 밝게</label>
+          <label><input type="radio" name="gcTheme" value="dark"> 어둡게</label>
           <label><input type="radio" name="gcTheme" value="system"> 기기 설정</label>
         </div>
         <label class="gameMenuQuality">섬 화질 <select id="qualitySelect" aria-label="섬 화질"><option value="auto">자동</option><option value="2">높음</option><option value="1">보통</option><option value="0">낮음</option></select></label>
@@ -1301,7 +1311,7 @@
       <button id="logoutBtn" type="button" class="danger">접속 종료</button>
     </div>
   </dialog>
-  <dialog id="logoutDialog" class="logoutDialog" aria-labelledby="logoutDialogTitle" aria-describedby="logoutDialogMessage">
+  <dialog id="logoutDialog" class="logoutDialog isle-sheet" aria-labelledby="logoutDialogTitle" aria-describedby="logoutDialogMessage">
     <h2 id="logoutDialogTitle">접속 종료</h2>
     <p id="logoutDialogMessage">접속을 종료하시겠습니까? 다시 이용하려면 로그인하거나 입장 파일을 여세요.</p>
     <div class="logoutDialogActions"><button id="logoutCancelBtn" class="ghost" type="button">취소</button><button id="logoutConfirmBtn" class="primary" type="button">접속 종료</button></div>

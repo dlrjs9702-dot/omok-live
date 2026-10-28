@@ -36,9 +36,12 @@ test('펫샵: 승강기 3층, 돌아다니는 반려동물 곁에서 SPACE → �
   await expect(page.locator('#myPets .myPetRow.walking')).toContainText(`몽이 · ${label}`);
   // 문제 기록 2회차 10: its name over it as the players', and changed here later (the nickname rule)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')?.tag)).toBe(true);
-  page.once('dialog', (d) => d.accept('bad!name')); await page.locator('#myPets .myPetRow.walking button', { hasText: '이름 바꾸기' }).click();
+  // (v1.10.192: asked on paper -- the face before it, 「함께 다니는 중」 on it)
+  await expect(page.locator('#myPets .myPetRow.walking .petFace')).toBeVisible(); await expect(page.locator('#myPets .myPetRow.walking .walkingTag')).toHaveText('함께 다니는 중');
+  const rename = async (name) => { await page.locator('#myPets .myPetRow.walking button', { hasText: '이름 바꾸기' }).click(); await expect(page.locator('#nameAskDialog')).toBeVisible(); await page.locator('#nameAskInput').fill(name); await page.locator('#nameAskOk').click(); await expect(page.locator('#nameAskDialog')).toBeHidden(); };
+  await rename('bad!name');
   await expect.poll(() => page.locator('#myPets .myPetRow.walking').textContent()).toContain('몽이');
-  page.once('dialog', (d) => d.accept('구름이')); await page.locator('#myPets .myPetRow.walking button', { hasText: '이름 바꾸기' }).click();
+  await rename('구름이');
   await expect(page.locator('#myPets .myPetRow.walking')).toContainText(`구름이 · ${label}`);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')?.name)).toBe('구름이');
   await page.locator('#plazaCloseBtn').click();

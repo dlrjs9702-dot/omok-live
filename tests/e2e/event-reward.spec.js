@@ -52,7 +52,7 @@ test('미수령 사용자는 로비 진입 시 이벤트 모달이 자동으로 
 
   await page.locator('#eventDialogCloseBtn').click();
   await expect(dialog).toBeHidden();
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P'); // 닫기 ≠ 수령
+  await expect(page.locator('#pointBalanceText')).toHaveText('100,000P'); // 닫기 ≠ 수령
   await expect(page.locator('#resultEffect')).toBeHidden();
 
   // 아직 미수령이므로 다시 들어오면(새로고침) 서버 기준으로 다시 뜬다.
@@ -76,7 +76,7 @@ test('받기: 연타해도 요청 1회, 서버 성공 뒤 폭죽·+100,000P, 잔
   await expect(page.locator('#resultMessage')).toHaveText('연가 기념 포인트를 받았습니다!');
   await expect(page.locator('#resultParticles b')).toHaveCount(6); // 여러 곳의 폭죽
   expect(await page.locator('#resultParticles b span').count()).toBeGreaterThanOrEqual(60);
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('200,000P');
   expect(claims.length).toBe(1);
 
   await expect(effect).toBeHidden({ timeout: 6000 }); // 약 3초 뒤 사라진다
@@ -89,7 +89,7 @@ test('받기: 연타해도 요청 1회, 서버 성공 뒤 폭죽·+100,000P, 잔
   const eventsChecked = page.waitForResponse(res => new URL(res.url()).pathname === '/api/events');
   await page.reload();
   await eventsChecked;
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('200,000P');
   // v1.7.21: 수령 뒤에도 입장마다 배너는 열리고, 받기 버튼만 비활성이다(재수령 불가).
   await expect(page.locator('#eventDialog')).toBeVisible();
   await expect(page.locator('#eventDialogClaimBtn')).toBeDisabled();
@@ -138,7 +138,7 @@ test('동작 줄이기: 폭죽 없이도 +100,000P와 문구는 보이고 지급
   await expect(page.locator('#resultTitle')).toHaveText('+100,000P');
   await expect(page.locator('#resultMessage')).toBeVisible();
   await expect(page.locator('#resultParticles')).toBeHidden(); // 대량 파티클 생략
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('200,000P');
   await context.close();
 });
 
@@ -151,12 +151,12 @@ test('서버 오류면 성공 연출 없이 오류를 알리고 다시 시도할
   await expect(page.locator('#eventDialog')).toBeVisible();
   await expect(page.locator('#eventDialogClaimBtn')).toBeEnabled();
   await expect(page.locator('#resultEffect')).toBeHidden(); // 폭죽은 실제 성공 응답 뒤에만
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('100,000P');
 
   await page.unroute('**/api/events/*/claim'); // 복구되면 같은 창에서 정상 수령
   await page.locator('#eventDialogClaimBtn').click();
   await expect(page.locator('#resultTitle')).toHaveText('+100,000P');
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('200,000P');
   await context.close();
 });
 
@@ -229,7 +229,7 @@ test('안내 이벤트: 접속하면 열리고 포인트 표시 없이 확인으
   await expect(page.locator('#eventDialogCloseBtn')).toBeHidden();
   await page.locator('#eventDialogClaimBtn').click();
   await expect(dialog).toBeHidden();
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('100,000P');
   await expect(page.locator('#resultEffect')).toBeHidden();
   await context.close();
 });

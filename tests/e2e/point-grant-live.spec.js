@@ -16,7 +16,7 @@ test('로비에 있는 사용자는 관리자 지급 즉시 잔액과 열린 포
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('100,000P');
   await page.keyboard.press('Escape'); await page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴 // v1.9.7: 포인트 내역은 내 정보 안
   await page.locator('#pointHistoryBtn').click();
   const rows = page.locator('.pointHistoryRow');
@@ -30,7 +30,7 @@ test('로비에 있는 사용자는 관리자 지급 즉시 잔액과 열린 포
     data: { requestId: crypto.randomUUID(), amount: 30_000, category: 'event' },
   });
   expect(granted.status()).toBe(200);
-  await expect(page.locator('#pointBalanceText')).toHaveText('보유 130,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('130,000P');
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toContainText('+30,000P');
   await expect(rows.first()).toContainText('100,000P → 130,000P');

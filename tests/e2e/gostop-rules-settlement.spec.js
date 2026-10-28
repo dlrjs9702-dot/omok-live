@@ -284,7 +284,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     expect(JSON.stringify(pa.recentGostopSettlements)).not.toContain('guest:');
 
     // The other player did not send the finish request; their open page must refresh from SSE.
-    await expect(b.page.locator('#pointBalanceText')).toHaveText(`보유 ${pb.balance.toLocaleString('ko-KR')}P`);
+    await expect(b.page.locator('#pointBalanceText')).toHaveText(`${pb.balance.toLocaleString('ko-KR')}P`);
     await b.page.locator('#gostopPointHistory summary').click();
     await expect(b.page.locator('#gostopPointHistoryList')).toContainText(
       `${pb.recentGostopSettlements[0].delta.toLocaleString('ko-KR')}P`);
@@ -305,8 +305,8 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     const fixture = await api(request, '/api/test/gostop-fixture', a.token, { fixture: 'first-ppeok' });
     expect(fixture.status).toBe(200);
     expect((await api(request, '/api/room/gostop-play', a.token, { cardId: 'm05-pi1' })).status).toBe(200);
-    await expect(b.page.locator('#pointBalanceText')).toHaveText('보유 99,300P');
-    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 100,630P'); // v1.7.3: 700P 중 10% 소각
+    await expect(b.page.locator('#pointBalanceText')).toHaveText('99,300P');
+    await expect(a.page.locator('#pointBalanceText')).toHaveText('100,630P'); // v1.7.3: 700P 중 10% 소각
     await expect(watcher.page.locator('#gostopEvent')).toContainText('첫뻑 보너스');
     expect((await api(request, '/api/points', watcher.token, undefined, 'GET')).data.recentGostopSettlements).toEqual([]);
     await b.page.locator('#roomInfoBtn').click(); // (A3 G2-1: the settlement history is behind ⓘ while a hand is played)

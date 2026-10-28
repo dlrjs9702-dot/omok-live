@@ -35,7 +35,7 @@ test.describe('내 정보 포인트 내역', () => {
     page.on('pageerror', error => errors.push(error.message));
     await page.keyboard.press('Escape'); await page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
     await expect(page.locator('#myInfoDialog')).toBeVisible();
-    await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+    await expect(page.locator('#pointBalanceText')).toHaveText('100,000P');
     const panel = page.locator('#pointHistoryPanel');
     await expect(panel).toBeHidden();
 
@@ -60,7 +60,7 @@ test.describe('내 정보 포인트 내역', () => {
 
     // 출석 → 잔액과 내역이 함께 최신화, 최신순.
     await page.evaluate(() => document.getElementById('attendanceBtn').click());
-    await expect(page.locator('#pointBalanceText')).toHaveText('보유 130,000P'); // (경제 점검 ⑥-C: 출석 30,000)
+    await expect(page.locator('#pointBalanceText')).toHaveText('130,000P'); // (경제 점검 ⑥-C: 출석 30,000)
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText('출석체크');
     await expect(rows.first()).toContainText('오늘');

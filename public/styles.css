@@ -2915,3 +2915,70 @@ body.roomPlaying .halliTable .halliBell{width:7.5rem;height:7.5rem;font-size:1.1
 body.roomPlaying .bingoInfoGrid{grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
 body.roomPlaying .bingoInfoGrid>div{padding:6px 10px}
 body.roomPlaying .baseballPanel .baseballForm{margin:8px 0 12px}
+/* v1.10.192 U2 메뉴 안 창도 종이 (gamecenter-notes docs/island-hud-paper-20261026.md, 사용자 「내 정보·문제 기록·가구 창고 등 UI
+   통일」): on the island a window -- the ☰'s, the bag's pets, a facility's -- is one paper sheet (.isle-sheet): the paper, its ink
+   and one line, its head the title and ✕, paper tabs and pill buttons. A window of its own kind (talk, shop, board, mail, stamp,
+   map, edit -- and the admin's) keeps its own: any class with "Mode". The game hall, the messenger and the login keep theirs. */
+body.plazaMode .isle-sheet:not([class*="Mode"]){background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 10px 28px rgba(74,56,40,.3)}
+body.plazaMode .isle-sheet:not([class*="Mode"])::backdrop{background:rgba(40,28,16,.25)}
+body.plazaMode .isle-sheet:not([class*="Mode"])>.recordsDialogHead,body.plazaMode .isle-sheet:not([class*="Mode"])>h2:first-child{background:#fffaf0;color:var(--isle-ink);border-bottom:1px dashed var(--isle-line)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(h2,h3,h4,strong,label,summary,legend){color:var(--isle-ink)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(p,small,.smallMuted,.lookMeta,.skinMeta,.myInfoLabel){color:var(--isle-soft)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) .skinShopStatus{color:#9a3412}
+/* the head's close: ✕ (its name stays 「닫기」) */
+body.plazaMode .isle-sheet:not([class*="Mode"])>.recordsDialogHead>button:last-child{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;font-size:0;background:transparent;border:1px solid var(--isle-line);color:var(--isle-ink)}
+body.plazaMode .isle-sheet:not([class*="Mode"])>.recordsDialogHead>button:last-child::after{content:"✕";font-size:1rem;font-weight:800}
+body.plazaMode .isle-sheet:not([class*="Mode"])>.recordsDialogHead>button:last-child:hover{background:var(--isle-hover)}
+/* pills: the plain ones paper, the one to press brown */
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(button.ghost,button.secondary,.skinTab,.furniturePiece){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(button.ghost,button.secondary,.skinTab,.furniturePiece):hover{background:var(--isle-hover)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(button.primary,button[type="submit"]:not(.ghost):not(.secondary)){background:var(--isle-btn);color:#fff;border:1px solid transparent}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(.skinTab[aria-selected="true"],.furniturePiece.selected,button.selected){background:#f0dcb6;border-color:var(--isle-tag);outline:none}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(input,textarea)::placeholder{color:#a08b72}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(input[type="checkbox"],input[type="radio"]){accent-color:var(--isle-tag)}
+/* what sat on dark boxes: paper cards */
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(.skinCard,.myPetRow,.pointHistoryRow,.issueItem,.dressBar,.bankSums>div,.islandTaxRow,.taxBill,.missionItem,.rankingList>li,.climbRanking>li,.donationRanking>*,.islandPlaceRow){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(.myInfoSection,.pointHistoryPanel){border-color:var(--isle-line)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(.pointBalance,.bankSums strong,.climbSummary strong,.islandTaxRow p){color:var(--isle-btn)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) :is(.pointHistoryRow .top,.skinCard .skinName){color:var(--isle-ink)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) .pointHistoryRow .delta.gain{color:#166534}
+body.plazaMode .isle-sheet:not([class*="Mode"]) .pointHistoryRow .delta.loss{color:#9b2c1f}
+body.plazaMode .isle-sheet:not([class*="Mode"]) .skinCard.equipped{border-color:var(--isle-tag);box-shadow:0 0 0 1px var(--isle-tag)}
+/* 내 반려동물 (사용자): its face before each, 「함께 다니는 중」 on the one walking */
+.myPetRow .petFace{flex:0 0 auto;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#f8eedb;border:1px solid var(--isle-line);font-size:1.25rem}
+.myPetRow>span:not(.petFace){flex:1;min-width:0}
+.myPetRow .walkingTag{flex:0 0 auto;padding:2px 9px;border-radius:999px;background:#f2b544;color:#4a3015;font-size:.72rem;font-weight:800;transform:rotate(-2deg)}
+body.plazaMode .isle-sheet:not([class*="Mode"]) .myPetRow.walking{border-color:var(--isle-tag);background:#fdf0d4}
+/* the name asked on paper */
+.nameAskDialog{width:min(92vw,360px)}
+.nameAskForm{display:grid;gap:8px}
+.nameAskButtons{display:flex;justify-content:flex-end;gap:8px}
+/* the photo mode's bar: paper pills */
+body.plazaMode .photoBar button{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 3px 10px rgba(74,56,40,.3)}
+body.plazaMode .photoBar button.secondary{background:var(--isle-btn);color:#fff;border-color:transparent}
+/* the ☰'s theme: 「게임관 화면:」 before its three */
+.gameMenuThemesLabel{font-size:.85rem;font-weight:700}
+/* the bag's own buttons (데리고 다니기·들기·쓰기): paper pills on its paper */
+#islandBagDialog .islandBagSlot button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+#islandBagDialog .islandBagSlot button:hover{background:var(--isle-hover)}
+/* the bag's close too: ✕ */
+#islandBagCloseBtn{width:30px;min-width:30px;height:30px;padding:0;border-radius:50%;font-size:0}
+#islandBagCloseBtn::after{content:"✕";font-size:.95rem;font-weight:800}
+/* (총괄 검토) the ☰'s settings: a box right before its words on one line; a circle filled only when chosen (the paper's own
+   light controls, not the dark UI's) */
+body.plazaMode .isle-sheet:not([class*="Mode"]){color-scheme:light}
+.gameMenuSound{justify-content:flex-start;text-align:left}
+.gameMenuSound input{flex:0 0 auto;width:auto;min-width:0;margin:0}
+/* (총괄 검토) 내 반려동물 as wide as the bag */
+.recordsDialog.plazaDialog:has(>.plazaDialogBody>#myPets){width:min(92vw,440px)}
+/* (the same in every sheet: a box and its words on one line -- 생일 숨기기, 화면 사진 같이) */
+body.plazaMode .isle-sheet:not([class*="Mode"]) label:has(>input[type="checkbox"]){display:inline-flex;align-items:center;gap:6px}
+body.plazaMode .isle-sheet:not([class*="Mode"]) label>input[type="checkbox"]{width:auto;min-width:0;margin:0;flex:0 0 auto}
+/* (총괄 검토) the bag's buttons on one line in a phone's narrow slot */
+#islandBagDialog .islandBagSlot button{white-space:nowrap;font-size:.68rem;padding:3px 6px}
+/* (총괄 검토) 내 정보's preview: a paper frame, no words over the picture, all of it in the window */
+body.plazaMode .isle-sheet:not([class*="Mode"]) .skinTryOn{background:#fffaf0;border:1px solid var(--isle-line);box-shadow:none}
+body.plazaMode .isle-sheet:not([class*="Mode"]) .dressNote{display:none}
+body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:min(30vh,240px);max-height:none}
+#islandBagDialog .islandBagSlot:has(button) small{top:4px;bottom:auto} /* (its count up by its name, off the button) */
