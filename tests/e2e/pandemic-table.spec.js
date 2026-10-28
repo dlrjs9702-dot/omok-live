@@ -24,6 +24,15 @@ test('팬데믹 판: 자리 카드 비킴·지도 위 얼굴 이름표·상태 �
   await expect(a.page.locator('#pandemicSeats .pdSeat .seatFace')).toHaveCount(3);
   await expect(a.page.locator('#pandemicSeats .pdSeat.turn')).toHaveCount(1);
   await expect(a.page.locator('#pandemicSeats .pdSeat').first()).toContainText(/\d장/);
+  if (isMobile) { // (검토: the map at least half the screen, the plates one row, the small map a quarter of it, the cards under it)
+    const box = async (sel) => a.page.locator(sel).boundingBox();
+    const map = await box('#pandemicMap'); const mini = await box('#pandemicMini'); const dock = await box('#pandemicCardDock');
+    expect(map.height).toBeGreaterThanOrEqual(a.page.viewportSize().height * 0.5);
+    expect(mini.width).toBeLessThanOrEqual(map.width * 0.3);
+    expect(dock.y).toBeGreaterThanOrEqual(map.y + map.height - 1);
+    const tops = await a.page.locator('#pandemicSeats .pdSeat').evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(1);
+  }
   // always: 확산·감염률·치료제; folded: the piles -- opened by a tap
   for (const word of ['확산', '감염률', '치료제']) await expect(a.page.locator('#pandemicHud > .pdTrack', { hasText: word })).toBeVisible();
   const more = a.page.locator('#pandemicHud .pdMore');

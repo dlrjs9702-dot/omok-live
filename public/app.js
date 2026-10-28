@@ -7723,8 +7723,13 @@
   }
   // G-틀① 시스템 기록은 판 위 쪽지: the folded panel's newest system line shows a moment over the board while a hand is played
   let systemSeen = null; let boardNoteTimer = null;
+  // (a box round a fixed note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
+  // beside it is measured, so the top given is the screen's)
+  const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
   function boardNote(text) {
     const note = byId('boardNote'); if (!text || !document.body.classList.contains('roomPlaying')) return;
+    const round = !byId('twentyPanel').classList.contains('hidden') && byId('twentyProgress'); // (v1.10.199 검토, 폰 스무고개: in the slot under the round line)
+    if (round) note.style.setProperty('--twentyNoteTop', `${Math.round(round.getBoundingClientRect().bottom + 4 - originOf(note))}px`);
     note.textContent = String(text).slice(0, 80); note.classList.remove('hidden'); clearTimeout(boardNoteTimer); boardNoteTimer = setTimeout(() => note.classList.add('hidden'), 3000);
   }
   function renderChat() {
@@ -9595,9 +9600,6 @@
   function placeOldmaidNotes() {
     // (the seats themselves -- their grid has an empty row below -- and 「조커는 누구에게?」 under them in the last stand)
     const bottoms = [...oldmaidSeatsEl.querySelectorAll('.oldmaidSeat')].map((el) => el.getBoundingClientRect().bottom).filter((b) => b > 0);
-    // (a box round the note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
-    // beside it is measured, so the top given is the screen's)
-    const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
     if (!bottoms.length) return; const y = Math.max(...bottoms) + (oldmaidPanel.classList.contains('lastStand') ? 44 : 10);
     document.body.style.setProperty('--oldmaidNoteTop', `${Math.round(y - originOf(document.querySelector('.boardNote')))}px`);
     document.body.style.setProperty('--oldmaidToastTop', `${Math.round(y - originOf(document.getElementById('toast')))}px`);

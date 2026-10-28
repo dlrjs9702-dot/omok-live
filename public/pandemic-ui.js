@@ -35,6 +35,9 @@
   let pawnEls = new Map();
   let hot = []; // [{ city, until }] places something just happened (for the minimap)
   let lastRoom = null;
+  // (v1.10.199 검토: names that ran into a neighbour -- set above or beside their dot; the rest under it)
+  const LABEL_AT = { stpetersburg: [0, -19, 'middle'], montreal: [0, -19, 'middle'], newyork: [18, 4, 'start'], chicago: [-18, 4, 'end'], washington: [18, 4, 'start'], santiago: [-18, 4, 'end'], buenosaires: [18, 4, 'start'], karachi: [-14, 27, 'middle'], shanghai: [-18, 4, 'end'] };
+  let lastFocus = null; // (a hand's first sight: my pawn in the middle -- on a phone's tall map the rest is a pan away)
 
   const el = (tag, attrs = {}, ...kids) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); for (const k of kids) if (k) e.append(k); return e; };
   const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
@@ -66,7 +69,8 @@
     for (const c of M.cities) {
       const g = el('g', { class: 'pdCity', 'data-city': c.id, transform: `translate(${c.x},${c.y})`, tabindex: '0', role: 'button', 'aria-label': c.name });
       g.append(el('title', {}), el('circle', { r: 17, class: 'pdHit' }), el('circle', { r: 10, class: 'pdDot', fill: COLOR[c.color] }), el('circle', { r: 15, class: 'pdRing' }));
-      const t = el('text', { class: 'pdName', y: 26, 'text-anchor': 'middle' }); t.textContent = c.name; g.append(t);
+      const [dx, dy, anchor] = LABEL_AT[c.id] || [0, 26, 'middle'];
+      const t = el('text', { class: 'pdName', x: dx, y: dy, 'text-anchor': anchor }); t.textContent = c.name; g.append(t);
       $('pdCities').append(g); cityEls.set(c.id, g);
       g.addEventListener('click', (ev) => { ev.stopPropagation(); onCity(c.id, ev); });
       g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onCity(c.id, ev); } });
@@ -84,8 +88,13 @@
     mini.onpointerdown = (ev) => { mini.setPointerCapture(ev.pointerId); move(ev); mini.onpointermove = move; };
     mini.onpointerup = mini.onpointercancel = () => { mini.onpointermove = null; };
   }
+  // the part of the map in sight, shaped like the map box: a phone's tall box shows the full height and pans sideways (PC: the map's own shape)
+  function span() {
+    const r = $('pandemicMap').getBoundingClientRect(); const a = r.width && r.height ? r.height / r.width : M.height / M.width;
+    return a > M.height / M.width ? [M.height / a / view.k, M.height / view.k] : [M.width / view.k, (M.width * a) / view.k];
+  }
   function applyView() {
-    const w = M.width / view.k; const h2 = M.height / view.k;
+    const [w, h2] = span();
     view.cx = Math.max(w / 2, Math.min(M.width - w / 2, view.cx)); view.cy = Math.max(h2 / 2, Math.min(M.height - h2 / 2, view.cy));
     const x = view.cx - w / 2; const y = view.cy - h2 / 2;
     $('pandemicMap').setAttribute('viewBox', `${x} ${y} ${w} ${h2}`);
@@ -96,17 +105,17 @@
     svg.onwheel = (ev) => {
       ev.preventDefault();
       const r = svg.getBoundingClientRect(); const fx = (ev.clientX - r.left) / r.width; const fy = (ev.clientY - r.top) / r.height;
-      const w = M.width / view.k; const h2 = M.height / view.k;
+      const [w, h2] = span();
       const px = view.cx - w / 2 + fx * w; const py = view.cy - h2 / 2 + fy * h2;
       view.k = Math.max(1, Math.min(6, view.k * (ev.deltaY < 0 ? 1.18 : 1 / 1.18)));
-      const nw = M.width / view.k; const nh = M.height / view.k;
+      const [nw, nh] = span();
       view.cx = px - fx * nw + nw / 2; view.cy = py - fy * nh + nh / 2; applyView();
     };
     let drag = null;
     svg.onpointerdown = (ev) => { if (ev.target.closest('.pdCity')) return; drag = { x: ev.clientX, y: ev.clientY, cx: view.cx, cy: view.cy }; svg.setPointerCapture(ev.pointerId); svg.classList.add('dragging'); };
     svg.onpointermove = (ev) => {
       if (!drag) return; const r = svg.getBoundingClientRect();
-      view.cx = drag.cx - ((ev.clientX - drag.x) / r.width) * (M.width / view.k); view.cy = drag.cy - ((ev.clientY - drag.y) / r.height) * (M.height / view.k); applyView();
+      const [w, h2] = span(); view.cx = drag.cx - ((ev.clientX - drag.x) / r.width) * w; view.cy = drag.cy - ((ev.clientY - drag.y) / r.height) * h2; applyView();
     };
     svg.onpointerup = svg.onpointercancel = () => { drag = null; svg.classList.remove('dragging'); };
   }
@@ -449,6 +458,8 @@
     const g = state.game; const started = g.status !== 'selecting';
     $('pandemicHud').classList.toggle('hidden', !started); $('pandemicMapWrap').classList.toggle('pdIdle', !started);
     if (started) { renderHud(); drawBoard(); }
+    if (started && lastFocus !== room) { lastFocus = room; const at = CITY[g.pawns?.[mySeat() || g.seatOrder?.[0]]]; if (at) { view.cx = at.x; view.cy = at.y; } }
+    applyView(); // (the box may have changed shape since: shown, turned)
     if (!$('pandemicActions')) { const a = h('div', 'pandemicActions'); a.id = 'pandemicActions'; $('pandemicMapWrap').after(a); }
     if (started) { if (!mySeat() || g.pending?.type !== 'discard') {} renderActions(); renderDock(); renderLog(); playEvents(); }
     else { $('pandemicActions').replaceChildren(); $('pandemicCardDock').replaceChildren(); $('pandemicLog').replaceChildren(); }
@@ -463,6 +474,7 @@
     $('pandemicStartBtn').addEventListener('click', async () => { if (busy) return; busy = true; try { await submit('start-pandemic', {}); } finally { busy = false; if (state) render(state); } });
     $('pandemicDifficulty').addEventListener('change', () => submit('set-pandemic', { difficulty: $('pandemicDifficulty').value }));
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && mode) { mode = null; closeMenu(); if (state) { drawHighlights(); renderActions(); } } });
+    window.addEventListener('resize', () => { if (cityEls) applyView(); });
   }
   window.PandemicUI = { init, render, state: null };
 }());

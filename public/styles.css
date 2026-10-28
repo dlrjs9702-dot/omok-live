@@ -3106,7 +3106,7 @@ body.roomPlaying.partyGame #liarPanel>#liarScoreboard{order:-1;margin-bottom:6px
    라이어's hints shorter while voting (the 지목 button in sight); the answer box's words off its edge */
 body.roomPlaying.partyGame #twentyCategory{display:inline-flex;align-items:center;margin:0;padding:3px 10px;border-radius:999px;font-size:.8rem;background:rgba(30,64,175,.6)}
 body.roomPlaying.partyGame .twentyHeading{flex-wrap:wrap;gap:6px 10px}
-@media (max-width:640px){body.roomPlaying.partyGame:has(#twentyPanel:not(.hidden)) :is(.toast,.boardNote){top:10px}} /* (fixed within .boardCard -- its blur makes it the frame: over the turn line, never the board's first row) */
+@media (max-width:640px){body.roomPlaying.partyGame:has(#twentyPanel:not(.hidden)) .toast{top:10px} body.roomPlaying.partyGame:has(#twentyPanel:not(.hidden)) .boardNote{top:var(--twentyNoteTop,10px);max-width:92vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.76rem;padding:4px 12px} body.roomPlaying.partyGame #twentyPanel #twentyCategory{margin-top:30px}} /* (fixed within .boardCard -- its blur makes it the frame: over the turn line, never the board's first row) */
 body.roomPlaying.partyGame #liarPanel:has(#liarVoteBox:not(.hidden)) #liarHintLog{max-height:32dvh;overflow:auto}
 @media (max-width:640px){body.roomPlaying #twentyActionPanel>#twentyAnswerBox .twentyAnswerButtons button{min-width:0;padding:6px 4px;white-space:nowrap;font-size:.92rem} body.roomPlaying.partyGame #liarVoteBox:not(.hidden){position:sticky;bottom:8px;z-index:6;background:rgba(15,23,42,.97);box-shadow:0 -6px 18px rgba(0,0,0,.35)}} /* (one line each; the vote and 「○○님 지목」 kept in sight at the screen's foot) */
 body.roomPlaying #twentyActionPanel>#twentyAnswerBox{padding:10px 12px}
@@ -3121,5 +3121,14 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
   body.pandemicGame .pdSeat{font-size:.72rem;min-height:30px;padding-right:8px}
   body.pandemicGame .pdSeat .seatFace{width:22px;height:22px}
   body.pandemicGame .pandemicSeats{gap:4px}
+  /* (검토: the map at least half the screen -- the plates one row, the small map a quarter of its width up top, the cards under it) */
+  body.pandemicGame .pandemicSeats{flex-wrap:nowrap;margin-bottom:6px}
+  body.pandemicGame .pdSeat{flex:1 1 0;min-width:0;display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:5px;align-items:center;border-radius:12px;padding:3px 6px 3px 3px;line-height:1.15}
+  body.pandemicGame .pdSeat .seatFace{grid-row:span 2}
+  body.pandemicGame .pdSeat :is(b,small){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  body.pandemicGame .pandemicMapWrap{aspect-ratio:auto;display:flex;flex-direction:column}
+  body.pandemicGame .pandemicMap{flex:0 0 auto;height:55dvh}
+  body.pandemicGame .pandemicMini{top:26px;right:6px;bottom:auto;width:25%}
+  body.pandemicGame .pandemicCardDock{position:static}
 }
 .pdMoreBody{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
