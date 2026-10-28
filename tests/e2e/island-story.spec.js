@@ -57,7 +57,7 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   await close();
   // the book: the bag's 「이야기」
   await page.locator('#islandBagTab').click(); await page.locator('#islandStoryBtn').click();
-  const book = page.locator('#storyBookDialog'); await expect(book).toBeVisible();
+  const book = page.locator('#storyBookDialog'); await expect(book).toBeVisible(); await expect(page.locator('#islandBagDialog')).toBeHidden(); // (nothing behind the book)
   const spring = book.locator('.storyResident').first(); await expect(spring.locator('summary small')).toHaveText('1/3');
   await spring.locator('summary').click();
   await expect(spring.locator('.storyChapter').first()).toContainText('이름을 부르면서 인사하는 거요');
@@ -70,7 +70,7 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   await book.locator('#storyBookClose').click();
   // 오 탐정: 「수사판 보기」 -- the book at 초승등대
   await talkTo(5); await lines(); await choices.filter({ hasText: '수사판 보기' }).click();
-  await expect(book).toBeVisible(); await expect(book.locator('[data-tab="lighthouse"]')).toHaveClass(/selected/);
+  await expect(book).toBeVisible(); await expect(book.locator('[data-tab="lighthouse"]')).toHaveClass(/selected/); await expect(dialog).toBeHidden(); // (the talk ended under it)
   await expectNoScriptError(page);
   await who.context.close();
 });

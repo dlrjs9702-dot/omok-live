@@ -4119,7 +4119,10 @@
       if (!out.length) out.push(el('p', 'smallMuted', '아직 받은 행사 이야기가 없어요. 행사가 열리면 여기에 이야기가 생겨요.'));
     }
     byId('storyBookBody').replaceChildren(...out);
-    if (!byId('storyBookDialog').open) byId('storyBookDialog').showModal();
+    if (!byId('storyBookDialog').open) { // (총괄 검토: no bag, talk or 기록관 window behind the book -- a talk ends here)
+      for (const d of [byId('islandBagDialog'), plazaDialog]) if (d.open) d.close();
+      byId('storyBookDialog').showModal();
+    }
   }
   byId('storyBookClose').addEventListener('click', () => byId('storyBookDialog').close());
   byId('islandStoryBtn').addEventListener('click', () => openStoryBook());
