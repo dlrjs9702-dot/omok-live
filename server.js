@@ -1098,10 +1098,17 @@ async function storyGrantEvents(account) {
   if (fresh.length) await storyApply(account, (d) => ({ doc: { ...d, read: [...new Set([...(d.read || []), ...fresh])] } }));
   return fresh;
 }
+// S2 마지막 장: the lamp (my 가구 창고, its claim once) and the title (once); asking again gives nothing twice
+async function storyFinalGifts(account) {
+  const claim = `story:lantern:${account}`;
+  await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id: IslandStory.LANTERN, at: nowMs(), price: 0, claim }]); });
+  await eventTitleGive(account, IslandStory.TITLE);
+  await storyApply(account, (d) => (d.gifted ? null : { doc: { ...d, gifted: true } })); // (both in: later looks skip this)
+}
 // what the book and the tracker read: my chapters, the one under way, the pieces, the festival stories I have
 async function storyView(account) {
   const doc = await storyDoc(account);
-  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, IslandCast.callOf), pieces: IslandStory.piecesOf(doc.chapters), read: doc.read || [] };
+  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, IslandCast.callOf), pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
 }
 // (R3 ③ 주민의 하루: the islanders walk that time of day's round -- the time held by the administrator, kept here as it changes)
 let walkerTimeMode = 'auto';
@@ -3917,7 +3924,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.200' });
+    return sendJson(res, 200, { ok: true, version: '1.10.201' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6743,7 +6750,28 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/story' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const fresh = await storyGrantEvents(account);
+    if ((await storyDoc(account)).final && !(await storyDoc(account)).gifted) await storyFinalGifts(account); // (S2: a gift that did not save the first time, made good -- each once)
     return sendJson(res, 200, { ok: true, fresh, me: String(session.label || ''), ...(await storyView(account)) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/story' && req.method === 'POST') { // (S2 tests: my story doc as given; my furniture store back)
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    if (body.doc) await storyApply(account, () => ({ doc: body.doc }));
+    return sendJson(res, 200, { ok: true, doc: await storyDoc(account), furniture: (await pointStore.worldValue(`furniture:${account}`)) || [], titles: await ownedEventTitles(account) });
+  }
+  if (pathname === '/api/island/story/log' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const k = Number((await parseJson(req)).page); const doc = await storyDoc(account);
+    if (!Number.isInteger(k) || !IslandStory.logOpen(k, doc.chapters)) return sendError(res, 409, 'PAGE_SHUT', '아직 읽을 수 없는 쪽이에요.');
+    await storyApply(account, (d) => ((d.read || []).includes(`log:${k}`) ? null : { doc: { ...d, read: [...(d.read || []), `log:${k}`] } }));
+    return sendJson(res, 200, { ok: true, page: IslandStory.LOG.pages[k - 1], ...(await storyView(account)) });
+  }
+  if (pathname === '/api/island/story/inspect' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const pos = plazaPresence.get(session.token); const L = IslandTerrain.dalmaru?.PLACES?.lighthouse;
+    if (!pos || !L || (pos.space || 'island') !== 'island' || Math.hypot(pos.x - L.x, pos.z - L.z) > 8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const out = await storyApply(account, (d) => (IslandStory.missingDue(d) ? { doc: { ...d, read: [...(d.read || []), 'log:missing'] } } : null));
+    if (!out?.doc) return sendJson(res, 200, { ok: true, found: null, ...(await storyView(account)) }); // (the door: still locked, nothing new by it)
+    return sendJson(res, 200, { ok: true, found: IslandStory.LOG.missing, ...(await storyView(account)) });
   }
   if (pathname === '/api/island/story/drop' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
@@ -6801,7 +6829,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/resident/talk' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
-    if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift', 'accept', 'decline', 'story', 'storyYes', 'storyNo'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+    if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift', 'accept', 'decline', 'story', 'storyYes', 'storyNo', 'final'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
     const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
     const state = islandEvents.residents()[n]; const who = talkKey(session);
     if (state?.hold && state.hold.eventId !== who) {
@@ -6828,11 +6856,23 @@ async function requestHandler(req, res) {
     const sendTalk = async (view) => {
       const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day);
       const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
-      return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${day}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level) } });
+      return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${day}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
     };
     // S1 이야기 부탁: their next chapter offered once my 호감도 has reached it (「할게요!」 starts it -- one on the island at a
     // time, 「다음에요」 keeps nothing), the islander it sends me to (that step done), back to them: their thanks and the story
     // note -- the chapter done, a little warmer
+    // S2 마지막 장: 오 탐정's conclusion -- the scenes on paper (the door opens, the letter, the lamp and the title, 하람's
+    // dedication, that night); once
+    if (topic === 'final') {
+      const me = String(session.label || ''); const doc = await storyDoc(account);
+      if (n !== 5 || !IslandStory.finalOpen(doc, IslandCast.levelOf(before[4] || 0))) return sendError(res, 409, 'STORY_GONE', '아직 결론을 낼 때가 아니란 말이지.');
+      const out = await storyApply(account, (d) => (d.final ? null : { doc: { ...d, final: nowMs() } }));
+      if (!out?.doc) return sendError(res, 409, 'STORY_GONE', '이미 끝난 이야기예요.');
+      await storyFinalGifts(account);
+      const fill = (l) => IslandCast.fill(l, me);
+      const scenes = IslandStory.FINAL.map((sc) => ({ title: sc.title, note: sc.note.map(fill), words: sc.words.map((w) => ({ n: w.n, lines: w.lines.map(fill) })), by: sc.by ?? null }));
+      return sendTalk({ ok: true, n, name: c.name, role: c.role, say: [fill(IslandStory.FINAL[0].words[0].lines[0])], reward: 0, choices: true, affinity: affinityView(before[n] || 0), finalScenes: scenes, story: await storyView(account) });
+    }
     if (topic === 'story' || topic === 'storyYes' || topic === 'storyNo') {
       const me = String(session.label || ''); const doc = await storyDoc(account); const st = IslandStory.talkState(doc, n, level);
       const view = (say, extra = {}) => ({ ok: true, n, name: c.name, role: c.role, say: say.map((l) => IslandCast.fill(l, me)), reward: 0, choices: true, affinity: affinityView(before[n] || 0), ...extra });
@@ -6849,7 +6889,7 @@ async function requestHandler(req, res) {
       }
       if (st === 'visit') {
         const asker = doc.cur.n; await storyApply(account, (d) => (d.cur?.n === asker && !d.cur.reached ? { doc: { ...d, cur: { ...d.cur, reached: true } } } : null));
-        return sendTalk(view(IslandCast.say(n, 'found_me', { from: IslandCast.callOf(asker) }), { story: await storyView(account) }));
+        return sendTalk(view(IslandStory.RECEIVE[`${asker},${doc.cur.c}`] || IslandCast.say(n, 'found_me', { from: IslandCast.callOf(asker) }), { story: await storyView(account) })); // (S2 정함: their own lines)
       }
       if (st === 'hand') {
         const { c: k } = doc.cur; const ch = IslandStory.RESIDENTS[n][k];
@@ -7967,7 +8007,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.200 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.201 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

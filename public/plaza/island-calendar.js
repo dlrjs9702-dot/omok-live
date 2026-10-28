@@ -39,6 +39,7 @@
   // titles the events give (worn like the others; owned once given)
   const TITLES = Object.freeze({
     title_event_harvest: { name: '풍년' },
+    title_story_lighthouse: { name: '등대의 이웃' }, // (S2 섬 이야기: the last chapter's)
     ...Object.fromEntries(['fish', 'bug'].flatMap((k) => [1, 2, 3].map((r) => [`title_contest_${k}_${r}`, { name: `${k === 'fish' ? '낚시' : '곤충'} 대회 ${['금', '은', '동'][r - 1]}상` }]))),
   });
   const titleOf = (id) => (TITLES[id] ? { id, ...TITLES[id] } : null);

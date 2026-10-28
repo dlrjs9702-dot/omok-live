@@ -21,9 +21,11 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   const close = async () => { await expect.poll(async () => { if (await talking()) await page.keyboard.press('Escape'); await page.waitForTimeout(400); return talking(); }, { timeout: 20000 }).toBe(false); };
   const shot = async (name) => { if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-${name}-${isMobile ? 'phone' : 'pc'}.png` }); };
   const choices = page.locator('#plazaDialog .talkChoices button');
+  // (a day's errand of theirs is asked first -- 「오늘 안에」 on its note: 「다음에요」, then the talk's own choices)
+  const skipErrand = async () => { if (await page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).count()) { await choices.filter({ hasText: '다음에요' }).click(); await lines(); } };
   // 아는 사이 봄이: 「이야기 들려줘요」 first
   await post(request, '/api/test/affinity', token, { n: 0, delta: 5 });
-  await talkTo(0); await lines();
+  await talkTo(0); await lines(); await skipErrand();
   await expect(choices.first()).toHaveText('이야기 들려줘요');
   await choices.first().click(); await lines();
   await expect(page.locator('#plazaDialog .questNote')).toContainText('꽃 이름 맞히기 놀이');
@@ -45,7 +47,7 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   await page.evaluate(async () => { const P = window.IslandTerrain.AREAS.plaza; await window.PlazaWarp(P.x + 4, P.z + 6); });
   await expect(page.locator('#questTracker .questLine.ready', { hasText: '돌아가 말해요' })).toBeVisible({ timeout: 30000 });
   // back to 봄이: 「다녀왔어요」 → the note
-  await talkTo(0); await lines();
+  await talkTo(0); await lines(); await skipErrand();
   await expect(choices.first()).toHaveText('다녀왔어요');
   await choices.first().click();
   const note = page.locator('#storyNoteDialog');
@@ -69,7 +71,7 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   await shot('6events');
   await book.locator('#storyBookClose').click();
   // 오 탐정: 「수사판 보기」 -- the book at 초승등대
-  await talkTo(5); await lines(); await choices.filter({ hasText: '수사판 보기' }).click();
+  await talkTo(5); await lines(); await skipErrand(); await choices.filter({ hasText: '수사판 보기' }).click();
   await expect(book).toBeVisible(); await expect(book.locator('[data-tab="lighthouse"]')).toHaveClass(/selected/); await expect(dialog).toBeHidden(); // (the talk ended under it)
   await expectNoScriptError(page);
   await who.context.close();

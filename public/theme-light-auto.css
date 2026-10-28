@@ -1423,3 +1423,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .storyFace{color:#fff}
 :root[data-theme="light"] .storyChapter{border-top:1px dashed var(--isle-line)}
 :root[data-theme="light"] .storyPieceCell{border:1px solid var(--isle-line)}
+:root[data-theme="light"] .storyInspect{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 8px 22px rgba(74,56,40,.3)}
+:root[data-theme="light"] .storyNoteBody .storyWord{color:var(--isle-ink)!important}
+:root[data-theme="light"] .storyBoard .storyPieceCell{background:#fffaf0}
+:root[data-theme="light"] .storyBoard .storyPieceCell.found{border-color:var(--isle-tag)}
+:root[data-theme="light"] .storyLogBlank{border-bottom:1px dashed var(--isle-line)}
+:root[data-theme="light"] .storyLogPage{border-bottom:1px dashed var(--isle-line)}

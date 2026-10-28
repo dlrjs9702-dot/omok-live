@@ -3154,4 +3154,17 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
 .storyPieceCell{border:1px solid var(--isle-line);border-radius:10px;padding:6px 8px;font-size:.85rem}
 .storyPieceCell p{margin:2px 0 0}
 .storyPieceCell.locked{opacity:.6;border-style:dashed}
-.storyShelf{width:100%;margin-bottom:8px}
+.storyShelf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.storyShelf button{flex:1 1 140px}
+/* S2: the 「살펴보기」 by the lighthouse, the words after a paper, its 다음, the board (stamped cells), the log */
+.storyInspect{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:30;padding:10px 18px;border-radius:999px;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);font-weight:800;box-shadow:0 8px 22px rgba(74,56,40,.3)}
+.storyInspect.hidden{display:none}
+.storyNoteBody .storyWord{color:var(--isle-ink)!important;font-weight:600}
+.storyNext{justify-self:end;margin-top:8px}
+.storyBoard .storyPieceCell{position:relative;background:#fffaf0}
+.storyBoard .storyPieceCell.found{border-color:var(--isle-tag);padding-right:44px} /* (총괄 검토: the stamp beside the words, never on them) */
+.storyStamp{position:absolute;right:6px;top:6px;opacity:.85;transform:rotate(-12deg)}
+.storyLogBlank{margin:0;padding:6px 2px;border-bottom:1px dashed var(--isle-line);opacity:.7}
+.storyLogPage{border-bottom:1px dashed var(--isle-line);padding:6px 2px}
+.storyLogPage summary{cursor:pointer;font-weight:700}
+.storyLogPage p{margin:4px 0 0;line-height:1.6}
+.storyLogPage.locked summary{opacity:.6;cursor:default}

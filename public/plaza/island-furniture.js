@@ -50,6 +50,7 @@
     ['trophy_bug', 'gold', '곤충 대회 금 트로피', 'event.trophy_bug_gold'], ['trophy_bug', 'silver', '곤충 대회 은 트로피', 'event.trophy_bug_silver'], ['trophy_bug', 'bronze', '곤충 대회 동 트로피', 'event.trophy_bug_bronze'],
     ['harvest_basket', 'plain', '수확 바구니', 'harvest.basket'], ['straw_sheaf', 'plain', '볏단 장식', 'harvest.straw_sheaf'], ['corn_string', 'plain', '옥수수 걸이', 'harvest.corn_string', 'wall'],
     ['persimmon_string', 'plain', '곶감 걸이', 'harvest.persimmon_string', 'wall'], ['feast_table', 'plain', '잔칫상', 'harvest.feast_table'],
+    ['choseung_lantern', 'plain', '초승 등불', 'story.choseung_lantern'], // (S2: the last chapter's lamp)
   ].map(([shape, variant, name, model, kind = 'floor']) => Object.freeze({ id: `${shape}__${variant}`, shape, variant, name, zone: 'event', rarity: 'event', kind, model, event: true })));
   const byId = new Map([...GOODS, ...EVENT_GOODS].map((g) => [g.id, g]));
   // always on sale, no end to them (and not counted in a day's three)

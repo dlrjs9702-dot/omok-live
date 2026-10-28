@@ -7996,6 +7996,27 @@
       "lowSrc": "season72:02. Low/harvest_straw_sheaf_low.glb",
       "lowSha256": "60942fd6e0004ec358609f8d87c9e12b014e06245ab800705d384e58f4ee8062",
       "precompressed": true
+    },
+    {
+      "out": "story-v1/story_lighthouse_hatch.glb",
+      "src": "story80:01. High/story_lighthouse_hatch.glb",
+      "sha256": "d960be689ea19ef7209e34edd471efb0c129cf28daf2b0143f01657878b79372",
+      "lowSrc": "story80:02. Low/story_lighthouse_hatch_low.glb",
+      "lowSha256": "b283ad227ebcecc410b502c70fb4994ccf747689c551a9f8afc59739dd36dc8c"
+    },
+    {
+      "out": "story-v1/story_lantern_box.glb",
+      "src": "story80:01. High/story_lantern_box.glb",
+      "sha256": "7e1180818973f69f062c113f863a3db61fe9a7c9f304d625e274d809b10ed904",
+      "lowSrc": "story80:02. Low/story_lantern_box_low.glb",
+      "lowSha256": "71066bd9d2ee16bb7497b46e4034c1391624a52f896e8aea28840baf9a2b56f0"
+    },
+    {
+      "out": "story-v1/furniture_choseung_lantern.glb",
+      "src": "story80:01. High/furniture_choseung_lantern.glb",
+      "sha256": "2497f5cbfef543e02640240edced358a5c34cfac0431ef4d19420f6f25681b57",
+      "lowSrc": "story80:02. Low/furniture_choseung_lantern_low.glb",
+      "lowSha256": "5706eb98f6c1c1219e25c565fff6fc1abc0876814ee0a2c70f10e312da8446f7"
     }
   ],
   "sources": {
@@ -8048,6 +8069,7 @@
     "walker51": "51. Game Island resident looks 2026-10-23",
     "jail67": "67. Game Island jail 2026-10-22",
     "season72": "72. Game Island season events 2026-10-25",
-    "dock81": "81. Game Island dock pilings 2026-10-27"
+    "dock81": "81. Game Island dock pilings 2026-10-27",
+    "story80": "80. Game Island story 2026-10-27"
   }
 }
