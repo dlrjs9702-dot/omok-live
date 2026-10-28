@@ -1178,7 +1178,7 @@
     <div id="islandBagGrid" class="islandBagGrid" role="list" aria-label="가방"></div>
     <div id="islandDexGrid" class="islandBagGrid islandDexGrid hidden" role="list" aria-label="도감"></div>
     <p id="islandBagInfo" class="islandBagInfo" aria-live="polite"></p>
-    <div class="islandBagFoot"><button id="islandDexBtn" type="button" class="ghost tiny">도감</button><button id="myPetsBtn" type="button" class="ghost tiny">반려동물</button><button id="islandPhotoBtn" type="button" class="ghost tiny">기념사진</button><span id="islandBagPoints" class="islandBagPoints"></span></div>
+    <div class="islandBagFoot"><button id="islandDexBtn" type="button" class="ghost tiny">도감</button><button id="myPetsBtn" type="button" class="ghost tiny">반려동물</button><button id="islandPhotoBtn" type="button" class="ghost tiny">기념사진</button><button id="islandStoryBtn" type="button" class="ghost tiny">이야기</button><span id="islandBagPoints" class="islandBagPoints"></span></div>
   </dialog>
   <dialog id="islandPlaceDialog" class="recordsDialog islandBagDialog isle-sheet" aria-labelledby="islandPlaceTitle">
     <div class="recordsDialogHead"><h2 id="islandPlaceTitle"></h2><button id="islandPlaceCloseBtn" type="button" class="ghost tiny">닫기</button></div>
@@ -1226,6 +1226,16 @@
     <div id="taxBillList" class="taxBillList" role="list" aria-label="미납 고지서"></div>
     <button id="islandTaxPay" type="button" class="primary hidden">모두 내기</button>
     <p id="taxStatus" class="smallMuted" role="status" aria-live="polite"></p>
+  </dialog>
+  <!-- S1 섬 이야기 (app.js): a chapter's story note when it ends, and the book of the stories had (the bag's 「이야기」, the 기록관) -->
+  <dialog id="storyNoteDialog" class="recordsDialog storyNoteDialog isle-sheet" aria-labelledby="storyNoteTitle">
+    <div class="recordsDialogHead"><h2 id="storyNoteTitle">이야기 쪽지</h2><button id="storyNoteClose" type="button" class="ghost tiny">닫기</button></div>
+    <div id="storyNoteBody" class="storyNoteBody"></div>
+  </dialog>
+  <dialog id="storyBookDialog" class="recordsDialog storyBookDialog isle-sheet" aria-labelledby="storyBookTitle">
+    <div class="recordsDialogHead"><h2 id="storyBookTitle">이야기 책</h2><button id="storyBookClose" type="button" class="ghost tiny">닫기</button></div>
+    <div id="storyBookTabs" class="storyBookTabs" role="tablist" aria-label="이야기 책 장"></div>
+    <div id="storyBookBody" class="storyBookBody"></div>
   </dialog>
   <!-- v1.10.85 관공서 예금 창구 (app.js openBank) -->
   <dialog id="bankDialog" class="recordsDialog bankDialog isle-sheet" aria-labelledby="bankTitle">
@@ -1402,6 +1412,7 @@
   <script src="/plaza/island-home.js"></script>
   <script src="/plaza/island-npcs.js"></script>
   <script src="/plaza/island-cast.js"></script>
+  <script src="/plaza/island-story.js"></script>
   <script src="/plaza/island-store.js"></script>
   <script src="/plaza/island-furniture.js"></script>
   <script src="/plaza/island-petshop.js"></script>

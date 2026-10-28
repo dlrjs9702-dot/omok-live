@@ -1417,4 +1417,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 @media (max-width:640px){:root[data-theme="light"] body.pandemicGame:not(.roomPlaying) #pandemicSetup:not(.hidden){background:linear-gradient(to top,#0b1220 75%,rgba(11,18,32,0))}
 }:root[data-theme="light"] body.roomPlaying.partyGame #twentyCategory{background:rgba(35,128,111,.6)}
 @media (max-width:640px){:root[data-theme="light"] body.roomPlaying.partyGame #liarVoteBox:not(.hidden){background:rgba(247,239,225,.97);box-shadow:0 -6px 18px rgba(0,0,0,.35)}
-}
+}:root[data-theme="light"] .storyPiece{border:1px dashed var(--isle-line);color:var(--isle-btn)!important}
+:root[data-theme="light"] .storyBookTabs button.selected{background:var(--isle-hover);border-color:var(--isle-tag)}
+:root[data-theme="light"] .storyResident{border:1px solid var(--isle-line)}
+:root[data-theme="light"] .storyFace{color:#fff}
+:root[data-theme="light"] .storyChapter{border-top:1px dashed var(--isle-line)}
+:root[data-theme="light"] .storyPieceCell{border:1px solid var(--isle-line)}

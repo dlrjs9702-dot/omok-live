@@ -3132,3 +3132,26 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
   body.pandemicGame .pandemicCardDock{position:static}
 }
 .pdMoreBody{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+/* S1 섬 이야기: the story note (a letter on the paper sheet) and the book (three tabs, the islanders folded, the eight pieces) */
+.storyNoteDialog,.storyBookDialog{width:min(520px,calc(100vw - 24px))}
+.storyNoteBody{display:grid;gap:6px;padding:14px 18px 18px;line-height:1.65}
+.storyNoteBody h3{margin:0 0 4px;font-size:1.05rem}
+.storyNoteBody p{margin:0}
+.storyNoteBody .storySign{text-align:right;margin-top:6px;font-weight:700}
+.storyPiece{margin-top:8px!important;padding:6px 10px;border:1px dashed var(--isle-line);border-radius:10px;font-weight:700;color:var(--isle-btn)!important}
+.storyBookTabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 0}
+.storyBookTabs button.selected{background:var(--isle-hover);border-color:var(--isle-tag);font-weight:800}
+.storyBookBody{display:grid;gap:8px;padding:10px 14px 16px;max-height:min(68dvh,640px);overflow:auto}
+.storyResident{border:1px solid var(--isle-line);border-radius:12px;padding:6px 10px}
+.storyResident summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}
+.storyResident summary small{margin-left:auto}
+.storyFace{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;font-weight:800;font-size:.85rem;flex:0 0 auto}
+.storyChapter{padding:6px 2px;border-top:1px dashed var(--isle-line);line-height:1.6}
+.storyChapter h4{margin:4px 0}
+.storyChapter p{margin:0}
+.storyChapter.locked h4{opacity:.6}
+.storyPieces{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.storyPieceCell{border:1px solid var(--isle-line);border-radius:10px;padding:6px 8px;font-size:.85rem}
+.storyPieceCell p{margin:2px 0 0}
+.storyPieceCell.locked{opacity:.6;border-style:dashed}
+.storyShelf{width:100%;margin-bottom:8px}
