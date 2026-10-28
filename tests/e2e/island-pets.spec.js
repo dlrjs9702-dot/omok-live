@@ -15,9 +15,10 @@ test('반려동물: 가방에서 데리고 다니면 이름과 함께 따라오�
   }
   expect((await post(request, '/api/island/pet', a.token, { kind: 'puppy', name: '바둑이' })).status).toBe(409); // (not in the bag)
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'pet_puppy', qty: 1 })).status).toBe(200);
-  // from the bag's button, with a name
-  a.page.once('dialog', (d) => d.accept('바둑이'));
-  await a.page.keyboard.press('KeyI'); const chosen = a.page.waitForResponse((r) => r.url().includes('/api/island/pet')); await a.page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
+  // from the bag's button, with a name (v1.10.192: asked on paper)
+  await a.page.keyboard.press('KeyI'); await a.page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
+  await expect(a.page.locator('#nameAskDialog')).toBeVisible(); await a.page.locator('#nameAskInput').fill('바둑이');
+  const chosen = a.page.waitForResponse((r) => r.url().includes('/api/island/pet')); await a.page.locator('#nameAskOk').click();
   const res = await chosen; expect(res.status(), await res.text()).toBe(200);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')), { timeout: 30000 }).toMatchObject({ kind: 'puppy', name: '바둑이', loaded: true });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().myId), { timeout: 30000 }).toBeTruthy(); // (CI 2차: the server's join reply first)

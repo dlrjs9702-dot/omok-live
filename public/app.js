@@ -1531,7 +1531,7 @@
     { id: 'jail', name: '구치소', open: () => jailDoor(true) }, // R4 구치소 반성문
     { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
     { id: 'map', name: '안내 지도', open: () => openIslandMap() }, // v1.10.0
-    { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
+    { id: 'admin', name: '관리실', admin: true, open: () => { openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]); plazaDialog.classList.add('adminMode'); } }, // (v1.10.192: the admin's keeps its own look)
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
   // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): on the plaza board under the notices, folded until opened --
@@ -1662,7 +1662,7 @@
     canvas.addEventListener('pointerup', lift); canvas.addEventListener('pointercancel', lift);
   }
   function openPlazaWindow(title, nodes) {
-    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode', 'shopMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
+    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode', 'shopMode', 'adminMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
     // the earlier one's content in it; whatever is not part of this window goes back home first)
@@ -1952,7 +1952,7 @@
   }
   adminWindowBtn.addEventListener('click', () => {
     if (sessionRole !== 'admin') return;
-    openPlazaWindow('관리자 창', [adminPresencePanel, adminPanel]);
+    openPlazaWindow('관리자 창', [adminPresencePanel, adminPanel]); plazaDialog.classList.add('adminMode'); // (v1.10.192: not paper)
   });
   // v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③): a folded card in the 관리자 창; the viewer module loads on opening
   let inspectorCard = null; let inspector = null;
@@ -2453,11 +2453,22 @@
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
   }
+  // v1.10.192 a name asked on paper (the browser's prompt before): resolves to the words, or null when let go
+  const nameAskDialog = document.getElementById('nameAskDialog'); const nameAskInput = document.getElementById('nameAskInput'); let nameAskDone = null;
+  function askName(title, value = '', note = '') {
+    nameAskDone?.(null); document.getElementById('nameAskTitle').textContent = title; document.getElementById('nameAskNote').textContent = note; nameAskInput.value = value;
+    return new Promise((resolve) => { nameAskDone = (v) => { nameAskDone = null; if (nameAskDialog.open) nameAskDialog.close(); resolve(v); }; nameAskDialog.showModal(); nameAskInput.focus(); nameAskInput.select(); });
+  }
+  document.getElementById('nameAskForm').addEventListener('submit', (event) => { event.preventDefault(); nameAskDone?.(nameAskInput.value); });
+  for (const id of ['nameAskCancel', 'nameAskCloseBtn']) document.getElementById(id).addEventListener('click', () => nameAskDone?.(null));
+  nameAskDialog.addEventListener('close', () => nameAskDone?.(null));
+  // (the pets' faces: the bag's own pictures, a character's a star)
+  const PET_FACE = { puppy: '🐶', kitten: '🐱', bird: '🐦', 'tf_animal-cat': '🐱', 'tf_animal-dog': '🐶', 'tf_animal-sheep': '🐑', 'tf_animal-rabbit': '🐰', 'tf_animal-bear': '🐻', 'tf_animal-panda': '🐼', 'tf_animal-fox': '🦊', 'tf_animal-hamster': '🐹', 'tf_animal-pig': '🐷', 'tf_animal-cow': '🐮' };
   // B 47 반려동물: one of mine walks with me (a name asked the first time), everyone sees it
   let myPet = null; let myPetGoneAt = 0;
   async function choosePet(kind) {
     let name = myPet?.kind === kind ? myPet.name : '';
-    if (kind && !name) name = (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') || '').trim().slice(0, 10);
+    if (kind && !name) { const asked = await askName('이름 짓기', '', '10자까지, 비워 두어도 돼요'); if (asked === null) return; name = asked.trim().slice(0, 10); }
     try { const r = await api('/api/island/pet', { method: 'POST', body: JSON.stringify({ kind, name }) }); myPet = r.pet; plaza.controller?.setMyPet?.(myPet); islandBagDialog.close(); showToast(myPet ? `${myPet.name || '반려동물'}와(과) 함께 다녀요.` : '반려동물을 집에 두었어요.'); } catch (error) { showToast(error.message); }
   }
   // 묶음 5 보이는 곤충: the island's insects from the server (again when the next 10 minutes' layout comes; one caught or
@@ -2997,11 +3008,13 @@
     const names = window.IslandPetShop;
     const rows = list.map((p) => {
       const row = document.createElement('div'); row.className = `myPetRow${p.walking ? ' walking' : ''}`; row.setAttribute('role', 'listitem');
+      const face = document.createElement('span'); face.className = 'petFace'; face.setAttribute('aria-hidden', 'true'); face.textContent = PET_FACE[p.kind] || '✨'; // (v1.10.192 사용자: its face before it)
       const label = document.createElement('span'); label.textContent = `${p.name ? `${p.name} · ` : ''}${names?.nameOf(p.kind, p.coat) || p.kind}`;
+      const tag = document.createElement('span'); tag.className = 'walkingTag'; tag.textContent = '함께 다니는 중'; tag.hidden = !p.walking;
       const b = document.createElement('button'); b.type = 'button'; b.className = p.walking ? 'ghost tiny' : 'primary tiny'; b.textContent = p.walking ? '집에 두기' : '데리고 다니기';
       b.addEventListener('click', async () => {
         try {
-          const name = p.from === 'bag' && !p.walking ? (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') || '').trim().slice(0, 10) : '';
+          let name = ''; if (p.from === 'bag' && !p.walking) { const asked = await askName('이름 짓기', '', '10자까지, 비워 두어도 돼요'); if (asked === null) return; name = asked.trim().slice(0, 10); }
           const r = await api('/api/island/pet', { method: 'POST', body: JSON.stringify(p.walking ? { kind: null } : { uid: p.uid, name }) });
           myPet = r.pet; plaza.controller?.setMyPet?.(myPet); showToast(myPet ? `${myPet.name || '반려동물'}와(과) 함께 다녀요.` : '반려동물을 집에 두었어요.'); openMyPets();
         } catch (error) { showToast(error.message); }
@@ -3010,10 +3023,10 @@
       const rename = document.createElement('button'); rename.type = 'button'; rename.className = 'ghost tiny'; rename.textContent = '이름 바꾸기';
       rename.hidden = p.from === 'bag' && !p.walking;
       rename.addEventListener('click', async () => {
-        const name = (window.prompt('새 이름 (한글·숫자·공백, 10자까지)', p.name || '') || '').trim(); if (!name) return;
+        const name = ((await askName('이름 바꾸기', p.name || '', '한글·숫자·공백, 10자까지')) || '').trim(); if (!name) return;
         try { const r = await api('/api/island/pet/name', { method: 'POST', body: JSON.stringify({ uid: p.uid, name }) }); if (r.pet) { myPet = r.pet; plaza.controller?.setMyPet?.(myPet); } showToast(`이름을 「${r.name}」(으)로 바꿨어요.`); openMyPets(); } catch (error) { showToast(error.message); }
       });
-      row.append(label, rename, b); return row;
+      row.append(face, label, tag, rename, b); return row;
     });
     const empty = document.createElement('p'); empty.className = 'lookMeta'; empty.textContent = '아직 반려동물이 없어요. 백화점 3층 펫샵에 가 보세요.';
     petsBox.replaceChildren(...(rows.length ? rows : [empty]));
