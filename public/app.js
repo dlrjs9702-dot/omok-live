@@ -4016,9 +4016,10 @@
   // (S1 섬 이야기: the chapter under way takes a line too -- the errand's line still kept)
   let questReady = null; let questOpen = null; // (null: not read yet -- what is ready when I come in is no news)
   let storyTrack = null; let storyReady = null;
+  const storyLine = (t) => (t.task.includes(t.where.replace(/ · 밤에$/, '')) ? `${t.task}${/ · 밤에$/.test(t.where) ? ' · 밤에' : ''}` : `${t.task} · ${t.where}`); // (where only when the task does not say it)
   function showQuestTracker(list = questTrack) {
     questTrack = list;
-    const story = storyTrack ? [{ key: `s:${storyTrack.n}:${storyTrack.c}`, who: globalThis.IslandCast?.callOf(storyTrack.n) || '이야기', text: storyTrack.ready ? '✓ 돌아가 말해요' : `${storyTrack.task} · ${storyTrack.where}`, count: '', ready: storyTrack.ready, drop: { chapter: true }, title: storyTrack.title }] : [];
+    const story = storyTrack ? [{ key: `s:${storyTrack.n}:${storyTrack.c}`, who: globalThis.IslandCast?.callOf(storyTrack.n) || '이야기', text: storyTrack.ready ? '✓ 돌아가 말해요' : storyLine(storyTrack), count: '', ready: storyTrack.ready, drop: { chapter: true }, title: storyTrack.title }] : [];
     const items = [...list.slice(0, Math.max(0, 3 - (errandTrack.length ? 1 : 0) - story.length)).map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, /* (the name is the line's own column) */ count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
       ...story, ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title }))].slice(0, 3);
     if (storyTrack?.ready && storyReady === false) showToast(`✓ ${globalThis.IslandCast?.callOf(storyTrack.n) || ''}에게 돌아가 말해요`, 4000);
@@ -4122,13 +4123,15 @@
   }
   byId('storyBookClose').addEventListener('click', () => byId('storyBookDialog').close());
   byId('islandStoryBtn').addEventListener('click', () => openStoryBook());
-  function storyShelf() { const b = document.createElement('button'); b.type = 'button'; b.className = 'storyShelf'; b.textContent = '📖 책장 · 이야기 책'; b.addEventListener('click', () => openStoryBook()); return b; }
+  function storyShelf() { const b = document.createElement('button'); b.type = 'button'; b.className = 'storyShelf'; b.textContent = '📖 이야기 책'; b.addEventListener('click', () => openStoryBook()); return b; }
   // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): whoever walks by talks; the server holds them on every screen
   // while this window is open (renewed every few seconds, let go when it closes), and after their words come the choices
   let residentBusy = false; let residentTalk = null; // { n, timer } while a talk is open
   // (대화창 새 단장: four at most -- 「이야기해요」 opens the talk topics in the same bubble; only what can be done today)
   const TALK_CHOICES = [['story', '이야기'], ['talk', '이야기해요'], ['errand', '부탁할 거 있어요?'], ['gift', '선물해요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물 · S1 이야기 부탁)
   const STORY_CHOICE = { offer: '이야기 들려줘요', visit: '부탁받고 왔어요', hand: '다녀왔어요' };
+  // (S1: 오 탐정's 수사판 -- the book's 초승등대 page, before 「잘 가요」)
+  const withBoard = (list, n) => (n === 5 ? [...list.filter(([t]) => t !== 'bye'), ['board', '수사판 보기'], ...list.filter(([t]) => t === 'bye')] : list);
   const TALK_TOPICS = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['ask', '이야기 나눠요'], ['back', '← 돌아가기']];
   const talkToday = (list, today) => list.filter(([topic]) => !(topic === 'story' && !today?.story) && (!today || !((topic === 'errand' && !today.errand) || (topic === 'gift' && today.gifted) || (topic === 'ask' && today.asked))))
     .map(([topic, label]) => [topic, topic === 'story' ? STORY_CHOICE[today.story] || label : label]);
@@ -4152,13 +4155,13 @@
     const list = document.createElement('div'); list.className = 'talkChoices';
     const fill = (choices) => list.replaceChildren(...choices.map(([topic, label, choice]) => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
-      b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : topic === 'talk' ? (fill(talkToday(TALK_TOPICS, data.today)), list.querySelector('button')?.focus()) : topic === 'back' ? (fill(talkToday(TALK_CHOICES, data.today)), list.querySelector('button')?.focus()) : askResident(data.n, topic, choice)));
+      b.addEventListener('click', () => (topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'talk' ? (fill(talkToday(TALK_TOPICS, data.today)), list.querySelector('button')?.focus()) : topic === 'back' ? (fill(withBoard(talkToday(TALK_CHOICES, data.today), data.n)), list.querySelector('button')?.focus()) : askResident(data.n, topic, choice)));
       return b;
     }));
     // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them;
     // (Q 부탁 받기) an errand asked: its note and 「할게요!」 / 「다음에요」
-    fill(data.storyOffer ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : talkToday(TALK_CHOICES, data.today));
-    lostCard.replaceChildren(...lines, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer ? [offerNote({ title: data.storyOffer.title, label: `${data.storyOffer.task} · ${data.storyOffer.where}` })] : []), meta, list);
+    fill(data.storyOffer ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : withBoard(talkToday(TALK_CHOICES, data.today), data.n));
+    lostCard.replaceChildren(...lines, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer ? [offerNote({ title: data.storyOffer.title, label: storyLine(data.storyOffer) })] : []), meta, list);
     if (data.story) showStory(data.story);
     if (data.storyAccepted) showToast(`📖 할 일에 넣었어요 · ${data.storyAccepted.title}`);
     if (data.storyNote) openStoryNote(data.storyNote);
