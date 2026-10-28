@@ -162,7 +162,8 @@
   // v1.10.46 TAIL_TUCK: seated, what is behind z0 comes in to `k` of its depth and up by `lift` of it -- the longest tail
   // (0.92 behind the hips seated) ends 0.38 behind, short of a bench's back (0.40 behind a seated character's hips)
   const TAIL_TUCK = { kind: 'tuck', z0: 0.15, k: 0.3, lift: 0.7 };
-  const FIT = { band: 0.06, gap: 0.015, chest: { x: 0.16, y0: 0.86, y1: 1.06 }, pendantZ: -0.2, capeZ: 0.15, back: 0.36, tailX: 0.45 };
+  // v1.10.202 79 소품 맞춤: refitted pendants hang 0.14~0.17 in front (no longer 0.2+), so the push-out starts at -0.13
+  const FIT = { band: 0.06, gap: 0.015, chest: { x: 0.16, y0: 0.86, y1: 1.06 }, pendantZ: -0.13, capeZ: 0.15, back: 0.36, tailX: 0.45 };
   function fitWardrobe(parts) {
     const out = Object.fromEntries(parts.map((p) => [p.id, { ops: [], hide: [] }]));
     const of = (slots) => parts.filter((p) => slots.includes(p.fit?.slot));
