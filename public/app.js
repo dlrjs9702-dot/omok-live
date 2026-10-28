@@ -347,7 +347,7 @@
   const liarHintLog = document.getElementById('liarHintLog');
   const liarHintForm = document.getElementById('liarHintForm');
   const liarHintInput = document.getElementById('liarHintInput');
-  const liarVoteBox = document.getElementById('liarVoteBox');
+  const liarVoteBox = document.getElementById('liarVoteBox'); let liarVotePick = null; // (v1.10.197: picked, not yet voted)
   const liarGuessForm = document.getElementById('liarGuessForm');
   const liarGuessInput = document.getElementById('liarGuessInput');
   const liarResult = document.getElementById('liarResult');
@@ -7789,17 +7789,22 @@
   // (G-틀①: the panel folds while a hand is played -- the yut sticks' and the dice's throw goes under the board with the actions)
   const diceSection = document.getElementById('diceYutSection'); const diceMark = document.createComment('diceYutSection'); diceSection.before(diceMark);
   const guessMark = document.createComment('baseballGuessForm'); baseballGuessForm.before(guessMark);
+  const twentyAnswerBox = document.getElementById('twentyAnswerBox'); const twentyAnswerMark = document.createComment('twentyAnswerBox'); twentyAnswerBox.before(twentyAnswerMark); // (v1.10.197)
   // G-틀③ 게임방 소리 (room-sound.js): a move made -- a stone in the stone games, a card in the others (the yut sticks sound
   // as they are thrown) --, my turn come, the hand over (my win or loss, or just its end). The first view of a room is quiet.
   const STONE_GAMES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
   let soundSeen = null;
   function roomSounds(g) {
-    const now = { room: state?.me?.roomCode || state?.roomId || null, moves: Number(g.moveCount) || 0, round: g.round || 0, status: g.status, mine: Boolean(seat && currentActorSeats().seats.has(String(seat))), bell: g.lastBell ? `${g.lastBell.flipId}:${g.lastBell.at}` : null };
+    const now = { awards: (g.roundAwards || []).length, liarDone: (g.results || []).length, guesses: (g.guessHistory || []).length, room: state?.me?.roomCode || state?.roomId || null, moves: Number(g.moveCount) || 0, round: g.round || 0, status: g.status, mine: Boolean(seat && currentActorSeats().seats.has(String(seat))), bell: g.lastBell ? `${g.lastBell.flipId}:${g.lastBell.at}` : null };
     const was = soundSeen; soundSeen = now; const S = window.RoomSound;
     if (!S || !was || was.room !== now.room || was.round !== now.round) return;
     if (now.bell && now.bell !== was.bell) S.play('bell'); // (할리갈리: someone rang it)
     else if (now.status === 'playing' && now.moves > was.moves && state.gameType !== 'yut') S.playPlan ? S.playPlan(S.landPlan(state.gameType, g.lastMove, reducedMotionActive())) : S.play(STONE_GAMES.has(state.gameType) ? 'stone' : 'card'); // (G-게임별 v187: as the stone lands)
     else if (now.status === 'playing' && now.mine && !was.mine) S.play('turn');
+    // (v1.10.197 파티: 맞힘·틀림 -- a picture guessed, a liar round's side, a 스무고개 guess)
+    if (now.awards > was.awards) S.play('right');
+    if (now.liarDone > was.liarDone) { const r = g.lastResult; const mine = g.role === 'liar' ? 'liar' : 'citizen'; S.play(!seat || !r ? 'end' : r.winningSide === mine ? 'right' : 'wrong'); }
+    if (now.guesses > was.guesses) S.play(g.guessHistory.at(-1)?.correct ? 'right' : 'wrong');
     if (was.status === 'playing' && ['finished', 'draw'].includes(now.status)) { const o = seat ? resultOutcome(g, seat, state.gameType) : null; S.play(o === 'win' ? 'win' : o === 'loss' ? 'lose' : 'end'); }
   }
   // G-틀④ 결과는 판 위 장면: the winner's name plate is crowned and lit while the result stands (a team: its colour's cards)
@@ -7827,6 +7832,8 @@
     // (G-게임별 윷: a yut hand throws on a straw mat beside the board -- a phone's under it -- not over the board)
     // (G-게임별 v187: 숫자야구's guess right under my secret, above the record -- on a PC within the screen; its home is the actions panel)
     const guessSpot = document.querySelector('#baseballPanel .baseballHistoryHead'); if (on && state?.gameType === 'baseball' && guessSpot) { if (guessSpot.previousElementSibling !== baseballGuessForm) guessSpot.before(baseballGuessForm); } else if (guessMark.nextSibling !== baseballGuessForm) guessMark.after(baseballGuessForm);
+    // (v1.10.197 총괄 검토: 스무고개's 예 / 아니오 / 정답 at the thumb, under the board with the other inputs; its home after)
+    if (on && state?.gameType === 'twentyquestions') { const home = document.getElementById('twentyActionPanel'); if (twentyAnswerBox.parentElement !== home) home.prepend(twentyAnswerBox); } else if (twentyAnswerMark.nextSibling !== twentyAnswerBox) twentyAnswerMark.after(twentyAnswerBox);
     if (on && state?.gameType === 'yut') { if (diceSection.previousElementSibling !== canvasWrap) canvasWrap.after(diceSection); }
     else if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
     placeMySeat(); fitBoard(); renderTurnRing();
@@ -8287,10 +8294,11 @@
     if (halli) renderHalli();
     gostopPanel.classList.toggle('hidden', !gostop);
     // v1.8.5: a table game (고스톱·맞고) uses a wider page on PC so the table, not the web panels, is the centre.
-    document.body.classList.toggle('tableGameRoom', gostop || davinci || oldmaid);
+    document.body.classList.toggle('tableGameRoom', gostop || davinci || oldmaid || pictionary || liar || twenty); // (v1.10.197 파티: the same frame)
+    document.body.classList.toggle('partyGame', pictionary || liar || twenty);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     // (G-게임별 다빈치·도둑잡기: its racks / seats round the table are the name plates too)
-    document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid) && g.status !== 'selecting');
+    document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid || pictionary || liar || twenty) && g.status !== 'selecting');
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
@@ -9174,7 +9182,7 @@
       name.textContent = `${pictionaryName(s)}${pictionaryTeamTag(g, s)}${drawing ? ' · 그리는 중' : awards[s] ? ` · 정답 +${awards[s].points}` : ''}`;
       const score = document.createElement('strong');
       score.textContent = `${g.scores?.[s] || 0}점`;
-      row.append(name, score);
+      row.append(oldmaidFace(s), name, score); // (v1.10.197: the plate's island face)
       pictionaryScoreboard.appendChild(row);
     }
 
@@ -9249,7 +9257,7 @@
     setActionable(liarHintInput, canHint && !g.paused);
 
     liarVoteBox.replaceChildren();
-    const voting = ['vote','revote'].includes(g.phase);
+    const voting = ['vote','revote'].includes(g.phase); if (!voting || g.myVoted) liarVotePick = null;
     liarVoteBox.classList.toggle('hidden', !voting);
     if (voting) {
       const note = document.createElement('p');
@@ -9260,9 +9268,14 @@
         if (target === seat) continue;
         const button = document.createElement('button');
         button.type = 'button'; button.className = 'ghost liarVoteBtn' + actionableClasses(actionWindowOpen(g));
-        button.textContent = state.players[target]?.label || `${target}번`;
-        button.addEventListener('click', () => roomAction('liar-vote', { target, expectedPhaseId: g.phaseId }));
+        button.dataset.target = target; button.append(oldmaidFace(target), state.players[target]?.label || `${target}번`); button.classList.toggle('selected', liarVotePick === target);
+        button.addEventListener('click', () => { liarVotePick = liarVotePick === target ? null : target; renderLiar(); });
         liarVoteBox.appendChild(button);
+      }
+      if (seat && !g.myVoted && liarVotePick && (g.voteTargets || []).includes(liarVotePick)) { // (v1.10.197: the one picked, once more to vote)
+        const sure = document.createElement('button'); sure.type = 'button'; sure.className = 'primary liarVoteConfirm'; sure.textContent = `${state.players[liarVotePick]?.label || `${liarVotePick}번`}님 지목`;
+        const target = liarVotePick; sure.addEventListener('click', () => { liarVotePick = null; roomAction('liar-vote', { target, expectedPhaseId: g.phaseId }); });
+        liarVoteBox.appendChild(sure);
       }
     }
 
@@ -9319,10 +9332,10 @@
     liarScoreboard.replaceChildren();
     const seats = g.players?.length ? g.players : occupied;
     for (const s of [...seats].sort((a,b) => (g.scores?.[b] || 0) - (g.scores?.[a] || 0))) {
-      const row = document.createElement('div'); row.className = `liarScoreRow${s === seat ? ' isMe' : ''}`;
+      const row = document.createElement('div'); row.className = `liarScoreRow${s === seat ? ' isMe' : ''}${s === g.currentSpeaker && /hint/i.test(g.phase || '') ? ' isTurn' : ''}`;
       const name = document.createElement('span'); name.textContent = state.players[s]?.label || `${s}번`;
       const score = document.createElement('strong'); score.textContent = `${g.scores?.[s] || 0}점`;
-      row.append(name, score); liarScoreboard.appendChild(row);
+      row.append(oldmaidFace(s), name, score); liarScoreboard.appendChild(row); // (v1.10.197: the plate's island face)
     }
   }
 

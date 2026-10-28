@@ -223,7 +223,10 @@
       label.textContent = `${nameFor(state, player)}${player === g.drawerSeat && g.status === 'playing' ? ' · 출제자' : ''}`;
       const score = document.createElement('strong');
       score.textContent = `${g.scores?.[player] || 0}점`;
-      line.append(label, score);
+      const face = document.createElement('span'); face.className = 'seatFace'; face.setAttribute('aria-hidden', 'true'); const look = state.players?.[player]?.face; // (v1.10.197: the plate's island face)
+      if (look?.skin) face.style.setProperty('--skin', look.skin); if (look?.hair) face.style.setProperty('--hair', look.hair);
+      line.classList.toggle('isTurn', player === g.turnSeat);
+      line.append(face, label, score);
       scoreboard.appendChild(line);
     }
     // Answered questions come from the server in the order they were answered; show them as Q+A pairs,
