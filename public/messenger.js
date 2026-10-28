@@ -90,12 +90,12 @@
   document.addEventListener('pointerdown', (e) => { if (bubbleMenu && !bubbleMenu.contains(e.target)) closeBubbleMenu(); }, true);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && bubbleMenu) closeBubbleMenu(); });
   function openBubbleMenu(bubble, msg, x, y) {
-    closeBubbleMenu(); if (!canUnsend(msg)) return;
+    closeBubbleMenu(); if (!canUnsend(msg)) return; const room = current; // (C5 Codex 4차 P3-6: the room it was opened in)
     const menu = document.createElement('div'); menu.className = 'messengerMoreMenu messengerBubbleMenu'; menu.setAttribute('role', 'menu');
     const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerBubbleDelete'; del.setAttribute('role', 'menuitem'); del.textContent = '삭제';
     del.addEventListener('click', async () => {
       closeBubbleMenu(); if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
-      try { await api(`/api/messenger/rooms/${current.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
+      if (current !== room) return; try { await api(`/api/messenger/rooms/${room.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
     });
     menu.append(del); app.append(menu); bubbleMenu = menu;
     if (!x && !y) { const r = bubble.getBoundingClientRect(); x = r.left; y = r.bottom; } // (the menu key: by the line)
@@ -186,7 +186,7 @@
     if (streamWanted) setTimeout(openStream, 5000);
   }
   function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
-  function openRoom(room) { current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
+  function openRoom(room) { closeBubbleMenu(); current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
   function showPick(mode) { // 'new' | 'invite' | 'dm'
     picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
     byId('messengerPickTitle').textContent = mode === 'new' ? '새 대화방' : mode === 'dm' ? '1:1 대화' : `「${current.name}」에 초대`;

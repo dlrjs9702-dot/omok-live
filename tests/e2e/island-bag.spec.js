@@ -37,6 +37,8 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
     await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true });
     await page.waitForTimeout(600); await expect(page.locator('.islandBagSlot.held')).toHaveCount(1);
     await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
+    await page.locator('.islandBagSlot').nth(0).dispatchEvent('click'); // (C5 Codex 4차 P2-2: the finger lifted -- its own click; still held)
+    await expect(page.locator('.islandBagSlot.held')).toHaveCount(1);
     await page.locator('.islandBagSlot').nth(10).click();
     await expect.poll(order).toEqual([...now.slice(1), now[0]]);
   }
