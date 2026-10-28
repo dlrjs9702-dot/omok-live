@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.193 민원 창구 집 넓히기 고침
+
+- 민원 창구 「집 넓히기」 단추가 v117 기준(오두막만)으로 남아 작은 집부터 「내 집」·꺼짐 → 작은 집→큰 집, 큰 집→2층 큰 집을 화면에서 못 함. 기준을 `IslandHome.TOP_STAGE`(4)로: 그보다 낮으면 「집 넓히기」·켜짐, 4면 「내 집」·꺼짐(서버 /api/home/upgrade·openHomeApply는 원래 4까지).
+- e2e my-home 「민원 창구 집 넓히기」(PC·폰): 작은 집·큰 집에서 단추 켜짐 → 공사 시작, 2층 큰 집에서 꺼짐. 고치기 전 코드에선 「내 집」으로 실패 확인.
+
 ## v1.10.192 U2 메뉴 안 창도 종이·게임관 화면·내 반려동물
 
 - 종이 창 한 벌 `.isle-sheet`(`body.plazaMode`): 종이 바탕·갈색 글자·선, 머리 제목 + ✕(이름 「닫기」), 종이 알약·입력·체크, 어두운 줄·카드는 종이 카드, `color-scheme: light`. ☰·내 정보·문제 기록·접속 종료·이름 짓기·plaza 기본 창·관공서 정산·세금·예금·개명소·기부·미션·랭킹·등반. 클래스에 `Mode`가 있는 창(대화·가게·게시판·우체통·도장·지도·꾸미기·관리자 `adminMode`)은 제 모양.
@@ -28,11 +33,3 @@
 - 마당 펫 머리 위 이름표(특별은 이름, 기본은 「강아지 (갈색)」), 가까이 가면 값(안내). 변신 펫도 마당에서 걷는 모습.
 - 우리 1.5배(10 × 8 → 15 × 12 m, 문 3 m), 소품도 1.5배로 펼침. 이름표는 3.5 m 안 가까운 3마리만, 대화 중 숨김. 대화 카메라는 방 바닥 높이를 겨눔, 펫샵 창구는 더 높이·옆에서.
 - 에셋 81 Low 고침 등록: dock_boat_low·pier_dalkkeut_low(lowSrc·lowSha256), `low = null` 줄 없앰, floor-low 통과.
-
-## v1.10.190 입장 파일 로그인·앱 아이콘·메신저 배지·말풍선 메뉴·데크 말뚝
-
-- 입장 파일은 로그인만: 아이디 있는 계정의 파일 → 내 계정 화면, 섬은 「게임 접속」. 「이미 사용 중」은 게임 접속 때만. 아이디 설정 뒤에도 내 계정(「설정하고 로그인」). 시험 모드는 파일로 바로 입장, `/api/test/account-setup` 키만 운영처럼.
-- 앱 아이콘: 게임에서 찍은 달마루섬 위 모습(`tools/assets/app-icon-shot.jpg`, `tools/make-app-icons.js`) — 192·512·apple·maskable, `public/favicon.ico` 16/32/48. island.svg 없앰.
-- 메신저 배지: `public/messenger-alert.js` 하나 — 게임 창·메신저 창·messenger-sw.js가 같은 값(알림 끈 방 뺀 서버 안 읽은 합계), 0일 때만 지움. 창마다 안 보일 때 새 글이면 제목 1초마다 「● 새 메시지 (n)」.
-- 메신저 말풍선: 「삭제」 글자 없음 — PC 오른쪽 클릭·폰 0.5초 꾹(키보드 메뉴 키) 작은 메뉴, 바깥·Esc 닫힘.
-- 에셋 81: dock_boat·pier_dalkkeut High(말뚝·가로 보·물 띠·돌계단), DOCK.rects에 계단 칸. 81 Low는 갑판 윗면이 빠져 등록 안 함(다시 주문 중).

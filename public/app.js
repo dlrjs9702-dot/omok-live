@@ -2596,7 +2596,7 @@
   document.getElementById('islandTaxPay').addEventListener('click', () => payTax({ all: true }));
   async function openIslandPlace(place) {
     islandPlace = place; islandPlaceStatus.textContent = ''; byId('homeApplyBtn').classList.toggle('hidden', place !== 'office'); // (묶음 4: the 민원 창구 takes the house too)
-    if (place === 'office') refreshHomes().then(() => { const m = homesState?.mine; const b = byId('homeApplyBtn'); b.textContent = !m ? '내 집 신청' : m.upgradeDay ? '집 넓히는 중 · 내일 완성' : (m.stage || 2) < 2 ? '집 넓히기' : '내 집'; b.disabled = Boolean(m && (m.upgradeDay || (m.stage || 2) >= 2)); }); // (묶음 4-2)
+    if (place === 'office') refreshHomes().then(() => { const m = homesState?.mine; const b = byId('homeApplyBtn'); b.textContent = !m ? '내 집 신청' : m.upgradeDay ? '집 넓히는 중 · 내일 완성' : (m.stage || 2) < window.IslandHome.TOP_STAGE ? '집 넓히기' : '내 집'; b.disabled = Boolean(m && (m.upgradeDay || (m.stage || 2) >= window.IslandHome.TOP_STAGE)); }); // (묶음 4-2; v1.10.193 사용자 「2층 큰 집을 사려는데 살 곳이 없어」: up to the 2층 큰 집, not the 작은 집 only)
     document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
     if (!islandPlaceDialog.open) islandPlaceDialog.showModal();
     try { drawIslandPlace(await api('/api/island/bag')); } catch (error) { islandPlaceStatus.textContent = error.message; }

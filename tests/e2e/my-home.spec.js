@@ -365,3 +365,35 @@ test('스툴: 바라보던 방향으로 앉고, ←/→(폰 ↺↻)로 45° 돌�
   await expectNoScriptError(page);
   await a.context.close(); await b.context.close();
 });
+
+// v1.10.193 (사용자 「2층 큰 집을 사려는데 살 곳이 없어」): the 민원 창구's button grew a house only from the 오두막 -- from
+// the 작은 집 it said 「내 집」, off; now 「집 넓히기」 up to the 2층 큰 집 (IslandHome.TOP_STAGE), 「내 집」 and off only there
+test('민원 창구 집 넓히기: 작은 집·큰 집에서도 「집 넓히기」가 켜지고 공사가 시작되며, 2층 큰 집에서만 꺼진다', async ({ browser, request, isMobile }) => {
+  test.setTimeout(400000);
+  const { a, b, page, press, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'um' : 'up');
+  await b.context.close();
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
+  await through(page, 'townhall', '관공서 들어가기', 'townhall');
+  const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => !l.owner).id;
+  expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'blue' })).status).toBe(200);
+  expect((await post(request, '/api/home/upgrade', a.token, {})).status).toBe(200); await post(request, '/api/test/home/next-day', a.token, {}); // (the 오두막 a 작은 집)
+  const stage = async () => (await get(request, '/api/home', a.token)).data.mine.stage;
+  expect(await stage()).toBe(2);
+  const counter = async () => { // the 민원 창구, afresh
+    await page.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+    await expect.poll(async () => { await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil'); window.PlazaDebug().teleport(c.x, c.z + 1.1); }); await page.waitForTimeout(400); if (!await page.locator('#homeApplyBtn').isVisible()) await press(); return page.locator('#homeApplyBtn').isVisible(); }, { timeout: 30000, intervals: [600] }).toBe(true);
+  };
+  for (const from of [2, 3]) { // the 작은 집 and the 큰 집: 「집 넓히기」, on, and the work begun
+    await counter();
+    await expect(page.locator('#homeApplyBtn')).toHaveText('집 넓히기'); await expect(page.locator('#homeApplyBtn')).toBeEnabled();
+    await page.locator('#homeApplyBtn').click();
+    await page.locator('#homeCard button', { hasText: '넓히기' }).click();
+    await expect.poll(async () => (await get(request, '/api/home', a.token)).data.mine.upgradeDay, { timeout: 15000 }).toBeTruthy();
+    await post(request, '/api/test/home/next-day', a.token, {});
+    expect(await stage()).toBe(from + 1);
+  }
+  await counter(); // the 2층 큰 집: as big as it gets
+  await expect(page.locator('#homeApplyBtn')).toHaveText('내 집'); await expect(page.locator('#homeApplyBtn')).toBeDisabled();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
