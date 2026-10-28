@@ -3009,3 +3009,35 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 .plazaDialog.talkMode .lostRequest .talkChoices:not(:has(button:is(:hover,:focus))) button:first-child{font-weight:800}
 .plazaDialog.talkMode .lostRequest .talkChoices:not(:has(button:is(:hover,:focus))) button:first-child::before{content:"▶";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--talk-tag,var(--isle-tag))}
 .plazaDialog.talkMode{margin-bottom:max(32px,calc(env(safe-area-inset-bottom) + 18px))}
+/* v1.10.195 가방 개편 (docs/bag-redesign-20261027.md): the cloud pouch (the talk's cloud: bumps over and under), no brown head
+   band; round slots 8 a row (a phone 5, 44px and more), an empty one a faint dot; a picked one ringed, the tool in hand
+   ringed darker; its actions a small bubble over it; its name under the pouch; 도감·반려동물·기념사진 and my points at its foot */
+#islandBagDialog.bagPouch{width:min(560px,calc(100vw - 24px));padding:20px 22px 16px;border:0;border-radius:36px;outline:0;background:var(--isle-paper);overflow:visible;filter:drop-shadow(0 0 .7px #b49a74) drop-shadow(0 0 .7px #b49a74) drop-shadow(0 10px 18px rgba(74,56,40,.3));animation:talkPop .26s cubic-bezier(.3,1.6,.5,1)}
+#islandBagDialog.bagPouch::before{content:"";position:absolute;left:30px;right:30px;top:-12px;bottom:-12px;z-index:-1;pointer-events:none;background:radial-gradient(closest-side,var(--isle-paper) 96%,transparent) 0 0/56px 34px repeat-x,radial-gradient(closest-side,var(--isle-paper) 96%,transparent) 28px 100%/56px 34px repeat-x}
+#islandBagDialog.bagPouch::backdrop{background:rgba(40,28,16,.18)}
+#islandBagDialog.bagPouch>.recordsDialogHead{position:static;margin:0 0 8px;padding:0;background:none;border:0;border-radius:0;color:var(--isle-ink);gap:8px}
+#islandBagDialog.bagPouch>.recordsDialogHead h2{color:var(--isle-ink);font-size:1.15rem;margin-right:auto}
+#islandBagDialog.bagPouch>.recordsDialogHead .skinShopBalance{color:var(--isle-soft);font-size:.85rem}
+#islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){grid-template-columns:repeat(8,minmax(44px,1fr));gap:8px;margin:0}
+#islandBagDialog.bagPouch .islandBagSlot{aspect-ratio:1;min-width:44px;display:grid;place-items:center;border-radius:50%;border:2px solid #e6d3b3;background:#f8eedb;box-shadow:inset 0 3px 6px -3px rgba(110,71,40,.3);cursor:pointer;font-size:1.4rem;position:relative;touch-action:manipulation}
+#islandBagDialog.bagPouch .islandBagSlot .itemIcon{width:70%;height:70%;object-fit:contain;pointer-events:none}
+#islandBagDialog.bagPouch .islandBagSlot small{position:absolute;right:-2px;bottom:-2px;top:auto;padding:0 5px;border-radius:999px;background:var(--isle-paper);border:1px solid var(--isle-line);font-size:.68rem;font-weight:800;line-height:1.4}
+#islandBagDialog.bagPouch .islandBagSlot small:empty{display:none}
+#islandBagDialog.bagPouch .islandBagSlot.empty{cursor:default;border-style:dashed;border-color:#ead9bd;background:radial-gradient(circle,#e6d3b3 0 3px,transparent 4px) #fbf4e4;box-shadow:none}
+#islandBagDialog.bagPouch .islandBagSlot:focus-visible{outline:3px solid var(--isle-tag);outline-offset:2px}
+#islandBagDialog.bagPouch .islandBagSlot.picked{border-color:var(--isle-tag);background:#fdf0d4}
+#islandBagDialog.bagPouch .islandBagSlot.inHand{border:3px solid #7a4a1c}
+#islandBagDialog.bagPouch .islandBagSlot.held{transform:scale(1.12);box-shadow:0 6px 14px rgba(74,56,40,.35)}
+#islandBagDialog.bagPouch .islandBagSlot.dropAt{border-color:#f2b544;background:#fff3cf}
+#islandBagDialog.bagPouch .bagMenu{position:absolute;z-index:6;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);display:grid;gap:2px;min-width:112px;padding:6px;border-radius:18px;background:var(--isle-paper);filter:drop-shadow(0 0 .7px #b49a74) drop-shadow(0 0 .7px #b49a74) drop-shadow(0 6px 10px rgba(74,56,40,.25));animation:islePop .16s ease-out}
+#islandBagDialog.bagPouch .bagMenu::after{content:"";position:absolute;left:calc(50% - 7px);bottom:-6px;width:14px;height:14px;background:var(--isle-paper);transform:rotate(45deg)}
+#islandBagDialog.bagPouch .islandBagSlot .bagMenu button{display:block;width:100%;min-height:36px;margin:0;padding:6px 12px;border:0;border-radius:12px;background:transparent;color:var(--isle-ink);font-size:.9rem;font-weight:700;white-space:nowrap;text-align:left}
+#islandBagDialog.bagPouch .islandBagSlot .bagMenu button:is(:hover,:focus-visible){background:var(--isle-hover);outline:none}
+.islandBagInfo{min-height:1.5em;margin:10px 0 4px;text-align:center;color:var(--isle-ink);font-weight:700;font-size:.92rem}
+.islandBagFoot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.islandBagFoot .islandBagPoints{margin-left:auto;padding:4px 12px 4px 30px;border-radius:999px;background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink);font-weight:800;font-size:.85rem}
+.islandBagFoot .islandBagPoints:empty{display:none}
+#islandBagDialog.bagPouch .islandBagFoot .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+#islandBagDialog.bagPouch .islandBagFoot .ghost.selected{background:#f0dcb6;border-color:var(--isle-tag);outline:none}
+@media (max-width:640px),(pointer:coarse){#islandBagDialog.bagPouch{padding:18px 14px 14px;width:min(420px,calc(100vw - 24px))}#islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){grid-template-columns:repeat(5,minmax(44px,1fr))}}
+@media (prefers-reduced-motion:reduce){#islandBagDialog.bagPouch,#islandBagDialog.bagPouch .bagMenu{animation:none}#islandBagDialog.bagPouch .islandBagSlot.held{transform:none}}
