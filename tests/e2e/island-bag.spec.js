@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, intoMall, spaceOn, expectNoScriptError } = require('./skin-support');
 
-// v1.10.195 가방 개편 (gamecenter-notes docs/bag-redesign-20261027.md): a cloud pouch of round slots (8 a row, a phone 5), a
+// v1.10.195 가방 개편 (gamecenter-notes docs/bag-redesign-20261027.md): a cloud pouch of round slots (8 a row, a phone 4), a
 // thing picked shows its name under it and its actions in a small bubble; my own order -- dragged (PC), held then tapped
 // (a phone), Shift+arrows -- kept on the server; 정리; 가방 늘리기 at the 잡화점's keeper; the bag again or a click outside
 // shuts it. PC and phone.
@@ -16,7 +16,7 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   const order = async () => (await get(request, '/api/island/bag', token)).data.items.map((e) => e.itemId);
   await tab(); const bag = page.locator('#islandBagDialog'); await expect(bag).toBeVisible();
   // the pouch: 8 (5) a row, round, empty ones too; no 「닫기」 word
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('islandBagGrid')).gridTemplateColumns.split(' ').length)).toBe(isMobile ? 5 : 8);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('islandBagGrid')).gridTemplateColumns.split(' ').length)).toBe(isMobile ? 4 : 8);
   await expect(page.locator('.islandBagSlot')).toHaveCount(16); await expect(page.locator('.islandBagSlot.empty')).toHaveCount(12);
   expect(await page.locator('.islandBagSlot').first().evaluate((e) => getComputedStyle(e).borderRadius)).toBe('50%');
   await expect(page.locator('.islandBagSlot span')).toHaveCount(0); // (the picture and count only)

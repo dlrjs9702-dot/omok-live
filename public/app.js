@@ -2438,7 +2438,7 @@
   // its name under the pouch and, when it can do something, a small bubble of those; my own order -- dragged (PC), held
   // 0.4 s then tapped where (a phone), Shift+arrows (keys) -- kept on the server; 정리 sorts it
   let bagNow = null; let bagPicked = null; let bagHeld = null;
-  const bagCols = () => (matchMedia('(max-width: 640px), (pointer: coarse)').matches ? 5 : 8);
+  const bagCols = () => (matchMedia('(max-width: 640px), (pointer: coarse)').matches ? 4 : 8); // (총괄 검토: a phone 4 a row -- 16, 24, 32 fill their rows)
   function bagActions(item) {
     const out = [];
     if (PLANT_GOODS[item.itemId]) out.push([PLANT_GOODS[item.itemId], () => plantGood(item.itemId)]); // B 45
@@ -2452,7 +2452,7 @@
     for (const [k, s] of [...document.getElementById('islandBagGrid').children].entries()) { s.classList.toggle('picked', k === bagPicked); s.querySelector('.bagMenu')?.remove(); }
     const at = item && ISLAND_PLACES[item.at]; byId('islandBagInfo').textContent = item ? `${item.name}${item.qty > 1 ? ` ×${item.qty}` : ''}${at ? ` · ${at.title}에서 ${at.verb}` : ''}` : '';
     const acts = item ? bagActions(item) : []; if (!acts.length) return;
-    const menu = document.createElement('div'); menu.className = 'bagMenu'; menu.setAttribute('role', 'menu');
+    const menu = document.createElement('div'); menu.className = `bagMenu${bagPicked < bagCols() ? ' below' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
     for (const [label, run] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b); }
     document.getElementById('islandBagGrid').children[bagPicked].append(menu);
   }

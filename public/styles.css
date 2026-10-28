@@ -3030,6 +3030,8 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 #islandBagDialog.bagPouch .islandBagSlot.held{transform:scale(1.12);box-shadow:0 6px 14px rgba(74,56,40,.35)}
 #islandBagDialog.bagPouch .islandBagSlot.dropAt{border-color:#f2b544;background:#fff3cf}
 #islandBagDialog.bagPouch .bagMenu{position:absolute;z-index:6;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);display:grid;gap:2px;min-width:112px;padding:6px;border-radius:18px;background:var(--isle-paper);filter:drop-shadow(0 0 .7px #b49a74) drop-shadow(0 0 .7px #b49a74) drop-shadow(0 6px 10px rgba(74,56,40,.25));animation:islePop .16s ease-out}
+#islandBagDialog.bagPouch .bagMenu.below{bottom:auto;top:calc(100% + 10px)}
+#islandBagDialog.bagPouch .bagMenu.below::after{bottom:auto;top:-6px}
 #islandBagDialog.bagPouch .bagMenu::after{content:"";position:absolute;left:calc(50% - 7px);bottom:-6px;width:14px;height:14px;background:var(--isle-paper);transform:rotate(45deg)}
 #islandBagDialog.bagPouch .islandBagSlot .bagMenu button{display:block;width:100%;min-height:36px;margin:0;padding:6px 12px;border:0;border-radius:12px;background:transparent;color:var(--isle-ink);font-size:.9rem;font-weight:700;white-space:nowrap;text-align:left}
 #islandBagDialog.bagPouch .islandBagSlot .bagMenu button:is(:hover,:focus-visible){background:var(--isle-hover);outline:none}
@@ -3039,5 +3041,7 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 .islandBagFoot .islandBagPoints:empty{display:none}
 #islandBagDialog.bagPouch .islandBagFoot .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 #islandBagDialog.bagPouch .islandBagFoot .ghost.selected{background:#f0dcb6;border-color:var(--isle-tag);outline:none}
-@media (max-width:640px),(pointer:coarse){#islandBagDialog.bagPouch{padding:18px 14px 14px;width:min(420px,calc(100vw - 24px))}#islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){grid-template-columns:repeat(5,minmax(44px,1fr))}}
+@media (max-width:640px),(pointer:coarse){#islandBagDialog.bagPouch{padding:18px 14px 14px;width:min(420px,calc(100vw - 24px))}#islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){grid-template-columns:repeat(4,minmax(44px,1fr))}}
 @media (prefers-reduced-motion:reduce){#islandBagDialog.bagPouch,#islandBagDialog.bagPouch .bagMenu{animation:none}#islandBagDialog.bagPouch .islandBagSlot.held{transform:none}}
+/* (총괄 검토: a phone 4 a row -- 32 slots are 8 rows: past a phone's height, the slots scroll in the pouch) */
+@media (max-width:640px),(pointer:coarse){#islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){max-height:min(56dvh,560px);overflow-y:auto;padding:4px 2px}}
