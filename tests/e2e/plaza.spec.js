@@ -1351,8 +1351,10 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   if (!/talkMode/.test(await page.locator('#plazaDialog').getAttribute('class') || '') || !await page.locator('#plazaDialog').isVisible()) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
   await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/);
   await page.waitForTimeout(1500); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
+  expect(await page.evaluate(() => window.PlazaDebug().townhall().talking)).toBe(true); // (v1.10.196: 마루 stops and turns to the picture while talked to)
   await page.keyboard.press('Space'); // the bubble's one line is out: Space answers 「용무가 있습니다」
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().talking)).toBe(false); // (the talk over: back to his gate's way)
   // 문제 기록 8: the gate stays shut while he is still on his way aside; no October pumpkin on his walk
   expect(await page.evaluate(() => window.PlazaDebug().townhall().solidOpen)).toBe(false);
   expect(await page.evaluate(() => { const t = window.PlazaDebug().townhall(); const pts = [t.gate, t.mid, t.aside]; const near = (p) => pts.some((q, i) => { const r = pts[i + 1]; if (!r) return false; const dx = r.x - q.x; const dz = r.z - q.z; const k = Math.max(0, Math.min(1, ((p.x - q.x) * dx + (p.z - q.z) * dz) / (dx * dx + dz * dz))); return Math.hypot(p.x - q.x - dx * k, p.z - q.z - dz * k) < 0.8; }); return window.PlazaDebug().halloween.decor().pumpkins?.filter(near).length ?? 0; })).toBe(0);
