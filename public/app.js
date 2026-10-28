@@ -7723,8 +7723,13 @@
   }
   // G-틀① 시스템 기록은 판 위 쪽지: the folded panel's newest system line shows a moment over the board while a hand is played
   let systemSeen = null; let boardNoteTimer = null;
+  // (a box round a fixed note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
+  // beside it is measured, so the top given is the screen's)
+  const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
   function boardNote(text) {
     const note = byId('boardNote'); if (!text || !document.body.classList.contains('roomPlaying')) return;
+    const round = !byId('twentyPanel').classList.contains('hidden') && byId('twentyProgress'); // (v1.10.199 검토, 폰 스무고개: in the slot under the round line)
+    if (round) note.style.setProperty('--twentyNoteTop', `${Math.round(round.getBoundingClientRect().bottom + 4 - originOf(note))}px`);
     note.textContent = String(text).slice(0, 80); note.classList.remove('hidden'); clearTimeout(boardNoteTimer); boardNoteTimer = setTimeout(() => note.classList.add('hidden'), 3000);
   }
   function renderChat() {
@@ -7799,7 +7804,7 @@
   const STONE_GAMES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
   let soundSeen = null;
   function roomSounds(g) {
-    const now = { awards: (g.roundAwards || []).length, liarDone: (g.results || []).length, guesses: (g.guessHistory || []).length, room: state?.me?.roomCode || state?.roomId || null, moves: Number(g.moveCount) || 0, round: g.round || 0, status: g.status, mine: Boolean(seat && currentActorSeats().seats.has(String(seat))), bell: g.lastBell ? `${g.lastBell.flipId}:${g.lastBell.at}` : null };
+    const now = { cures: Object.values(g.cures || {}).filter(Boolean).length, outbreaks: Number(g.outbreaks) || 0, awards: (g.roundAwards || []).length, liarDone: (g.results || []).length, guesses: (g.guessHistory || []).length, room: state?.me?.roomCode || state?.roomId || null, moves: Number(g.moveCount) || 0, round: g.round || 0, status: g.status, mine: Boolean(seat && currentActorSeats().seats.has(String(seat))), bell: g.lastBell ? `${g.lastBell.flipId}:${g.lastBell.at}` : null };
     const was = soundSeen; soundSeen = now; const S = window.RoomSound;
     if (!S || !was || was.room !== now.room || was.round !== now.round) return;
     if (now.bell && now.bell !== was.bell) S.play('bell'); // (할리갈리: someone rang it)
@@ -7807,6 +7812,7 @@
     else if (now.status === 'playing' && now.mine && !was.mine) S.play('turn');
     // (v1.10.197 파티: 맞힘·틀림 -- a picture guessed, a liar round's side, a 스무고개 guess)
     if (now.awards > was.awards) S.play('right');
+    if (now.cures > was.cures) S.play('right'); if (now.outbreaks > was.outbreaks) S.play('wrong'); // (v1.10.199 팬데믹: a cure found, an outbreak)
     if (now.liarDone > was.liarDone) { const r = g.lastResult; const mine = g.role === 'liar' ? 'liar' : 'citizen'; S.play(!seat || !r ? 'end' : r.winningSide === mine ? 'right' : 'wrong'); }
     if (now.guesses > was.guesses) S.play(g.guessHistory.at(-1)?.correct ? 'right' : 'wrong');
     if (was.status === 'playing' && ['finished', 'draw'].includes(now.status)) { const o = seat ? resultOutcome(g, seat, state.gameType) : null; S.play(o === 'win' ? 'win' : o === 'loss' ? 'lose' : 'end'); }
@@ -8298,11 +8304,12 @@
     if (halli) renderHalli();
     gostopPanel.classList.toggle('hidden', !gostop);
     // v1.8.5: a table game (고스톱·맞고) uses a wider page on PC so the table, not the web panels, is the centre.
-    document.body.classList.toggle('tableGameRoom', gostop || davinci || oldmaid || pictionary || liar || twenty); // (v1.10.197 파티: the same frame)
+    document.body.classList.toggle('tableGameRoom', gostop || davinci || oldmaid || pictionary || liar || twenty || pandemic); // (v1.10.197 파티, v1.10.199 팬데믹: the same frame)
     document.body.classList.toggle('partyGame', pictionary || liar || twenty);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     // (G-게임별 다빈치·도둑잡기: its racks / seats round the table are the name plates too)
-    document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid || pictionary || liar || twenty) && g.status !== 'selecting');
+    document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid || pictionary || liar || twenty || pandemic) && g.status !== 'selecting');
+    document.body.classList.toggle('pandemicGame', pandemic);
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
@@ -9593,9 +9600,6 @@
   function placeOldmaidNotes() {
     // (the seats themselves -- their grid has an empty row below -- and 「조커는 누구에게?」 under them in the last stand)
     const bottoms = [...oldmaidSeatsEl.querySelectorAll('.oldmaidSeat')].map((el) => el.getBoundingClientRect().bottom).filter((b) => b > 0);
-    // (a box round the note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
-    // beside it is measured, so the top given is the screen's)
-    const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
     if (!bottoms.length) return; const y = Math.max(...bottoms) + (oldmaidPanel.classList.contains('lastStand') ? 44 : 10);
     document.body.style.setProperty('--oldmaidNoteTop', `${Math.round(y - originOf(document.querySelector('.boardNote')))}px`);
     document.body.style.setProperty('--oldmaidToastTop', `${Math.round(y - originOf(document.getElementById('toast')))}px`);

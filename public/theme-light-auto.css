@@ -1411,3 +1411,10 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.roomPlaying.partyGame :is(.pictionaryScoreRow.isDrawer,.liarScoreRow.isTurn,.twentyScore.isTurn){box-shadow:0 0 0 2px #fbbf24}
 :root[data-theme="light"] .liarVoteBtn.selected{outline:3px solid #fbbf24}
 :root[data-theme="light"] body.roomPlaying.partyGame #gameActionsPanel{background:linear-gradient(to top,#f4ede0 70%,rgba(11,18,32,0))}
+:root[data-theme="light"] .pdSeat{border:2px solid var(--seat);background:#f7efe1}
+:root[data-theme="light"] .pdSeat small{color:#7a6650}
+:root[data-theme="light"] .pdSeat.turn{box-shadow:0 0 0 3px #fbbf24}
+@media (max-width:640px){:root[data-theme="light"] body.pandemicGame:not(.roomPlaying) #pandemicSetup:not(.hidden){background:linear-gradient(to top,#0b1220 75%,rgba(11,18,32,0))}
+}:root[data-theme="light"] body.roomPlaying.partyGame #twentyCategory{background:rgba(35,128,111,.6)}
+@media (max-width:640px){:root[data-theme="light"] body.roomPlaying.partyGame #liarVoteBox:not(.hidden){background:rgba(247,239,225,.97);box-shadow:0 -6px 18px rgba(0,0,0,.35)}
+}
