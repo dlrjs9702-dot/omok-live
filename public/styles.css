@@ -3161,7 +3161,7 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
 .storyNoteBody .storyWord{color:var(--isle-ink)!important;font-weight:600}
 .storyNext{justify-self:end;margin-top:8px}
 .storyBoard .storyPieceCell{position:relative;background:#fffaf0}
-.storyBoard .storyPieceCell.found{border-color:var(--isle-tag)}
+.storyBoard .storyPieceCell.found{border-color:var(--isle-tag);padding-right:44px} /* (총괄 검토: the stamp beside the words, never on them) */
 .storyStamp{position:absolute;right:6px;top:6px;opacity:.85;transform:rotate(-12deg)}
 .storyLogBlank{margin:0;padding:6px 2px;border-bottom:1px dashed var(--isle-line);opacity:.7}
 .storyLogPage{border-bottom:1px dashed var(--isle-line);padding:6px 2px}

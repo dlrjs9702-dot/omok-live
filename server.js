@@ -1103,6 +1103,7 @@ async function storyFinalGifts(account) {
   const claim = `story:lantern:${account}`;
   await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id: IslandStory.LANTERN, at: nowMs(), price: 0, claim }]); });
   await eventTitleGive(account, IslandStory.TITLE);
+  await storyApply(account, (d) => (d.gifted ? null : { doc: { ...d, gifted: true } })); // (both in: later looks skip this)
 }
 // what the book and the tracker read: my chapters, the one under way, the pieces, the festival stories I have
 async function storyView(account) {
@@ -6749,7 +6750,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/story' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const fresh = await storyGrantEvents(account);
-    if ((await storyDoc(account)).final) await storyFinalGifts(account); // (S2: a gift that did not save the first time, made good -- each once)
+    if ((await storyDoc(account)).final && !(await storyDoc(account)).gifted) await storyFinalGifts(account); // (S2: a gift that did not save the first time, made good -- each once)
     return sendJson(res, 200, { ok: true, fresh, me: String(session.label || ''), ...(await storyView(account)) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/story' && req.method === 'POST') { // (S2 tests: my story doc as given; my furniture store back)

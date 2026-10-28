@@ -69,10 +69,11 @@ test('섬 이야기 장면: 섬 일지 → 등대 아래 문 살펴보기(빠진
   if (process.env.ZZ_SHOT) { // (the lighthouse at night: the lamp's beat)
     const admin = await adminToken(request); const set = (mode) => request.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode } });
     await set('night'); await page.waitForTimeout(4000);
-    await page.evaluate(async () => { const L = window.IslandTerrain.dalmaru.PLACES.lighthouse; await window.PlazaWarp(L.x, L.z - 34); window.PlazaDebug().faceTo(L.x, L.z); window.PlazaDebug().setCamYaw(Math.PI); });
+    await page.evaluate(async () => { const L = window.IslandTerrain.dalmaru.PLACES.lighthouse; await window.PlazaWarp(-40, L.z - 4); window.PlazaDebug().faceTo(L.x, L.z); window.PlazaDebug().setCamYaw(Math.PI / 2); window.PlazaDebug().setCamPitch(-0.3); }); // (총괄 검토: from 윤슬다리, the camera tilted up as a player drags it -- the lamp in sight)
     const lamp = new Set(); for (let k = 0; k < 12; k += 1) { lamp.add(await page.evaluate(() => window.PlazaDebug().storyDebug().lamp)); await page.waitForTimeout(250); }
     expect([...lamp].sort()).toEqual([0.15, 2.4]); // (its beat: on and off at night)
-    await shot('7night'); await set('auto');
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().storyDebug().halo), { intervals: [50] }).toBeGreaterThan(0.5); await page.screenshot({ path: `${process.env.ZZ_SHOT}-7night-${isMobile ? 'phone' : 'pc'}.png` }); // (the moment it is on)
+    await set('auto');
   }
   await expectNoScriptError(page);
   await who.context.close();
