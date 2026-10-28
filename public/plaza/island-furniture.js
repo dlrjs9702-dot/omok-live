@@ -51,6 +51,8 @@
     ['harvest_basket', 'plain', '수확 바구니', 'harvest.basket'], ['straw_sheaf', 'plain', '볏단 장식', 'harvest.straw_sheaf'], ['corn_string', 'plain', '옥수수 걸이', 'harvest.corn_string', 'wall'],
     ['persimmon_string', 'plain', '곶감 걸이', 'harvest.persimmon_string', 'wall'], ['feast_table', 'plain', '잔칫상', 'harvest.feast_table'],
     ['choseung_lantern', 'plain', '초승 등불', 'story.choseung_lantern'], // (S2: the last chapter's lamp)
+    ['xmas_tree_small', 'plain', '크리스마스 트리', 'xmas.tree_small'], ['xmas_fireplace', 'plain', '벽난로', 'xmas.fireplace'], ['xmas_snow_globe', 'plain', '스노볼', 'xmas.snow_globe'], // (X1 크리스마스, assets 76)
+    ['xmas_stocking', 'plain', '양말 걸이', 'xmas.stocking', 'wall'], ['xmas_gingerbread_house', 'plain', '과자 집', 'xmas.gingerbread_house'],
   ].map(([shape, variant, name, model, kind = 'floor']) => Object.freeze({ id: `${shape}__${variant}`, shape, variant, name, zone: 'event', rarity: 'event', kind, model, event: true })));
   const byId = new Map([...GOODS, ...EVENT_GOODS].map((g) => [g.id, g]));
   // always on sale, no end to them (and not counted in a day's three)

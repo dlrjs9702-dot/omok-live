@@ -8017,6 +8017,142 @@
       "sha256": "2497f5cbfef543e02640240edced358a5c34cfac0431ef4d19420f6f25681b57",
       "lowSrc": "story80:02. Low/furniture_choseung_lantern_low.glb",
       "lowSha256": "5706eb98f6c1c1219e25c565fff6fc1abc0876814ee0a2c70f10e312da8446f7"
+    },
+    {
+      "out": "xmas-v1/xmas_tree_small.glb",
+      "src": "xmas76:01. High/xmas_tree_small.glb",
+      "sha256": "4142582cd5a0dfc65a927d02857e2b4d49d3abcde289bc085e66749179d83e6b",
+      "lowSrc": "xmas76:02. Low/xmas_tree_small_low.glb",
+      "lowSha256": "382d3947ee0653643eb14f45ff3fc686117c039cc38bcecd7546e1a78c8bf74e",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/xmas_fireplace.glb",
+      "src": "xmas76:01. High/xmas_fireplace.glb",
+      "sha256": "b99b5b5843519907211d4bfbdead0e6c80bff82a12bd8dd14cd15d54246963ff",
+      "lowSrc": "xmas76:02. Low/xmas_fireplace_low.glb",
+      "lowSha256": "685ac652de75caa803f81961fbb2675f4569ebe77c5fab6b1d3c5b7300d4aefd",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/xmas_snow_globe.glb",
+      "src": "xmas76:01. High/xmas_snow_globe.glb",
+      "sha256": "bcb70a87d9d1ce3cd96fb4dc233c49a08c8efd8ca50c52e8bf066fd03692665e",
+      "lowSrc": "xmas76:02. Low/xmas_snow_globe_low.glb",
+      "lowSha256": "a9d23356d75bccebdd0ef0b3a5a23887ef592bae0e86438216bd09dede7205eb",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/xmas_stocking.glb",
+      "src": "xmas76:01. High/xmas_stocking.glb",
+      "sha256": "faf665e73d440e37424ef06b60cbf67ed031086a3aa6d322bcb4d2f800050e2a",
+      "lowSrc": "xmas76:02. Low/xmas_stocking_low.glb",
+      "lowSha256": "4bfd02100b56173ae73ead9ad29a395b3bcbc5a54f7b61ce78fe5f7270b092a5",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/xmas_gingerbread_house.glb",
+      "src": "xmas76:01. High/xmas_gingerbread_house.glb",
+      "sha256": "a1913772aaed4bcd45708a2d89c5c1e29aba471e79b424b255bd41ecfae6a479",
+      "lowSrc": "xmas76:02. Low/xmas_gingerbread_house_low.glb",
+      "lowSha256": "b96d49f4cc6503b82295e21769553e1aa7ebfee78ad755ab8727998f794031c7",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/xmas_stall_dress.glb",
+      "src": "xmas76:01. High/xmas_stall_dress.glb",
+      "sha256": "e9b341e5479c5b5eb641f99f0b119fd1dfa436bcf74e498a6ec3fba20fc3db78",
+      "lowSrc": "xmas76:02. Low/xmas_stall_dress_low.glb",
+      "lowSha256": "02c3726e1c11c01cb7727de0a759e0661d47f6d315df065a3da97b4b3798c830",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/xmas_gift_sack.glb",
+      "src": "xmas76:01. High/xmas_gift_sack.glb",
+      "sha256": "160da262bfdce71484f42f40a851187d32203bd64132d47982d8bca2eb592297",
+      "lowSrc": "xmas76:02. Low/xmas_gift_sack_low.glb",
+      "lowSha256": "0ebe5c36d5b8748b4c10d1a9048161a9479b5d5f39a91432bfb84fb3c7058076",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/snow_ball.glb",
+      "src": "xmas76:01. High/snow_ball.glb",
+      "sha256": "f1c6038080731cad4c830c85346d9e8e258c8b24713a765c08524ceebeb9710a",
+      "lowSrc": "xmas76:02. Low/snow_ball_low.glb",
+      "lowSha256": "4a789f59c40d3821093e488c28ce0d66b120c180236d4576bb4d091cda409fd9",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/snowman_part_carrot.glb",
+      "src": "xmas76:01. High/snowman_part_carrot.glb",
+      "sha256": "fae80560388b78fe0cfd0aec1117ce8000d636d002f5066cb2f9d630f396d823",
+      "lowSrc": "xmas76:02. Low/snowman_part_carrot_low.glb",
+      "lowSha256": "f4b01a5bcc567f01dbf40251470d9a7e6ca6e9b9642543ae06218db363818a0d",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/snowman_part_coal.glb",
+      "src": "xmas76:01. High/snowman_part_coal.glb",
+      "sha256": "4d61db5db5f597a579c9431aa3a5f5e66d7e04f352f6b9297a7f63b473621ad9",
+      "lowSrc": "xmas76:02. Low/snowman_part_coal_low.glb",
+      "lowSha256": "6fc12a1616e398ae25bd131c4783de8f585ea1e0733760b19158b96fc8d84954",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/snowman_part_twig.glb",
+      "src": "xmas76:01. High/snowman_part_twig.glb",
+      "sha256": "29256add9278b7de8d26a61a83778fae58b9c9d4bb6f58157c530286d7c82314",
+      "lowSrc": "xmas76:02. Low/snowman_part_twig_low.glb",
+      "lowSha256": "b30a4d309d33463667284185df5be87716d7cb24cc6b0a50f715768a158e6194",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/snowman_part_bucket.glb",
+      "src": "xmas76:01. High/snowman_part_bucket.glb",
+      "sha256": "e00a2f7f33f9809369e8f8448c69b459786f59550eb620adb6a52af716873389",
+      "lowSrc": "xmas76:02. Low/snowman_part_bucket_low.glb",
+      "lowSha256": "bcbadf00d8c43dce5401f1f3667dbac38d0aa4a45216d4326dfa413f9985898f",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/snowman_part_scarf.glb",
+      "src": "xmas76:01. High/snowman_part_scarf.glb",
+      "sha256": "825989ae47eb6c61a27c6c056cf2c897a9d6dba1805c641d18f5f62985ff02e2",
+      "lowSrc": "xmas76:02. Low/snowman_part_scarf_low.glb",
+      "lowSha256": "0f234df280aa1ea7f3589b9b21273f41c0327d66172337ca243e2bf670684cdb",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/newyear_countdown_board.glb",
+      "src": "xmas76:01. High/newyear_countdown_board.glb",
+      "sha256": "fe16d6e445a2fe225f74663f5e5979760186351cc182107b46643ab22c0b21b6",
+      "lowSrc": "xmas76:02. Low/newyear_countdown_board_low.glb",
+      "lowSha256": "dcf0140b96e195f5a11395afa3b26fe7ccad0826d21c76a970718cfe7d381ff1",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v1/newyear_firework_launcher.glb",
+      "src": "xmas76:01. High/newyear_firework_launcher.glb",
+      "sha256": "d9a56102676c567d3f6921bf3f4bbd302389b5ca4d52d9ef0c631d3887a04496",
+      "lowSrc": "xmas76:02. Low/newyear_firework_launcher_low.glb",
+      "lowSha256": "a8b49e46687694def8fd9ff474fc662ffe009eca3d1ab44cc04514937bb6a091",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-winter/wear_hat_earmuffs.glb",
+      "src": "xmas77:01. High/wear_hat_earmuffs.glb",
+      "sha256": "a7cec33ffed658a87fde71e0e85a743e4cc0f141a2c379c3934783c77004535f",
+      "lowSrc": "xmas77:02. Low/wear_hat_earmuffs_low.glb",
+      "lowSha256": "a949e0cf5beafb8262a423289e8135f5b19fb75a923dc6581e1b9910f1ef02be",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-winter/wear_outfit_xmas_sweater.glb",
+      "src": "slim78:01. High/wear_outfit_xmas_sweater.glb",
+      "sha256": "5752635c03e6e6b9b231f9382da2990251bbb70f578a6623c75127cf77e2b4a4",
+      "lowSrc": "slim78:02. Low/wear_outfit_xmas_sweater_low.glb",
+      "lowSha256": "6371f642d801a873f2446090fb58662814ed310d24e2966e4e228b194e12afcb",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -8071,6 +8207,9 @@
     "season72": "72. Game Island season events 2026-10-25",
     "dock81": "81. Game Island dock pilings 2026-10-27",
     "story80": "80. Game Island story 2026-10-27",
-    "refit79": "79. Game Island accessory refit pilot 2026-10-27"
+    "refit79": "79. Game Island accessory refit pilot 2026-10-27",
+    "xmas76": "76. Game Island christmas 2026-10-27",
+    "xmas77": "77. Game Island christmas wear 2026-10-27",
+    "slim78": "78. Game Island codex slim test 2026-10-27"
   }
 }

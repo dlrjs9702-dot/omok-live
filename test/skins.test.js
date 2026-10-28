@@ -38,7 +38,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   // v1.10.35 경제 기준(통합): one price list for all of them, the older 16 too (일반 50,000 / 고급 100,000 / 희귀 200,000 /
   // 전설 400,000); the older 16 keep their ids
   const avatar = SKINS.filter(s => s.family === 'avatar' && s.slot !== 'transform'); // (v1.10.91: the transformations below)
-  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 12 + 1 - 22, 27 + 16 + 12 + 2 - 22, 13 + 8 + 5 + 1 - 5, 23 + 17 + 7 - 17, 23 + 17 + 5 + 1 - 15, 23 + 18 + 7 + 1 - 17] /* v1.10.92 + 포차코 의상·머리장식·꼬리·목걸이; B 46 + 겨울 의상·모자 둘·망토·부츠·목도리 */); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
+  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 12 + 1 - 22 + 1, 27 + 16 + 12 + 2 - 22 + 1, 13 + 8 + 5 + 1 - 5, 23 + 17 + 7 - 17, 23 + 17 + 5 + 1 - 15, 23 + 18 + 7 + 1 - 17] /* v1.10.92 + 포차코 의상·머리장식·꼬리·목걸이; B 46 + 겨울 의상·모자 둘·망토·부츠·목도리; X1 + 스웨터·귀마개 */); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
   // v1.10.74: every character skin names its owner and is never common; IP_SKINS=off leaves all 44 out (lib/skins.js)
   // 변신 옷 정리 (2026-10-21): the parts of each transformation (IP 48, animals 50) are no longer sold or worn
   assert.equal(avatar.filter(s => s.ip).length, 0); assert.equal(SKINS.filter(s => s.ip).length, 12 + 33); // 22 character game pairs + 11 themes, 12 transformations
@@ -60,7 +60,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(fresh.length, 63);
   for (const s of fresh) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => fresh.filter(s => s.tier === t).length), [20, 21, 17, 5]);
-  assert.deepEqual(avatar.filter(s => s.id.startsWith('avatar_winter_')).map(s => [s.slot, s.price]), [['hat', 100000], ['outfit', 200000], ['necklace', 50000], ['shoes', 50000], ['cape', 100000], ['hat', 100000]]); // B 46 겨울 의상
+  assert.deepEqual(avatar.filter(s => s.id.startsWith('avatar_winter_')).map(s => [s.slot, s.price]), [['hat', 100000], ['outfit', 200000], ['necklace', 50000], ['shoes', 50000], ['cape', 100000], ['hat', 100000], ['outfit', 200000], ['hat', 100000]]); // B 46 겨울 의상 (+ X1 크리스마스 스웨터·귀마개)
   for (const s of avatar.filter(x => x.id.startsWith('avatar_x2_') || x.ip)) assert.equal(s.price, PRICE[s.tier], s.id); // v1.10.74: the same prices by tier
   assert.equal(new Set(fresh.map(s => s.name)).size, 63);
   assert.equal(fresh.filter(s => s.tier === 'rare').every(s => s.tierLabel === '희귀'), true);

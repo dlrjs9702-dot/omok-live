@@ -236,6 +236,8 @@
   const WINTER_ITEMS = Object.freeze([
     ['hat', 'premium', '산타 모자', 'wear_hat_santa'], ['outfit', 'rare', '산타 옷', 'wear_outfit_santa'], ['necklace', 'common', '털 목도리', 'wear_necklace_fur'],
     ['shoes', 'common', '털 부츠', 'wear_shoes_fur'], ['cape', 'premium', '눈꽃 망토', 'wear_cape_snowflake'], ['hat', 'premium', '루돌프 머리띠', 'wear_hat_reindeer'],
+    // X1 크리스마스 (the sweater from assets 78 -- made on the slim body --, the earmuffs from 77): on sale before the festival too
+    ['outfit', 'rare', '크리스마스 스웨터', 'wear_outfit_xmas_sweater'], ['hat', 'premium', '털 귀마개', 'wear_hat_earmuffs'],
   ]);
   return { X2_ITEMS, IP_ITEMS, IP_GAME, WINTER_ITEMS };
 }));
