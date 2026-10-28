@@ -6843,7 +6843,7 @@ async function requestHandler(req, res) {
           reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : []));
           // (R3 ⑤ 관계: an errand between two at odds patches it up -- both a little warmer to me; between friends, a word more)
           const rel = r.pay.to !== r.pay.from ? IslandCast.relationOf(r.pay.from, r.pay.to) : null;
-          if (rel === 'rival') { gains.push({ n: r.pay.from, delta: 1 }, { n: r.pay.to, delta: 1 }); r = { ...r, say: [...IslandCast.untail(r.say, n), ...IslandCast.say(n, 'relRival', { a: IslandCast.WALKERS[r.pay.from].name, b: IslandCast.WALKERS[r.pay.to].name })] }; }
+          if (rel === 'rival') { gains.push({ n: r.pay.from, delta: 1 }, { n: r.pay.to, delta: 1 }); r = { ...r, say: [...IslandCast.untail(r.say, n), ...IslandCast.say(n, 'relRival', { a: IslandCast.callOf(r.pay.from), b: IslandCast.callOf(r.pay.to) })] }; }
           else if (rel === 'friend') r = { ...r, say: [...IslandCast.untail(r.say, n), ...IslandCast.say(n, 'relFriend')] };
           const what = IslandErrands.title(r.pay); await pointStore.questApply(account, 'resmem', (doc) => ({ doc: [...new Set([r.pay.from, r.pay.to])].reduce((d, m) => IslandAffinity.remember(d, m, 'errand', what, day), doc || {}) })); // (R2 ② 기억)
         }

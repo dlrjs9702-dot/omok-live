@@ -2982,3 +2982,25 @@ body.plazaMode .isle-sheet:not([class*="Mode"]) .skinTryOn{background:#fffaf0;bo
 body.plazaMode .isle-sheet:not([class*="Mode"]) .dressNote{display:none}
 body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:min(30vh,240px);max-height:none}
 #islandBagDialog .islandBagSlot:has(button) small{top:4px;bottom:auto} /* (its count up by its name, off the button) */
+/* v1.10.193 대화창 2차 (gamecenter-notes docs/dialogue-box-redesign-20261025.md 「2차」, 사용자 「대화창 1~6 넣어」): bigger
+   rounder words, a cloud of a bubble that pops up, the name tag big and tilted over its corner with the hearts by it, no
+   「닫기」 on it (Esc, 잘 가요, a tap outside), no line of job and closeness, the choices one balloon with ▶ on the one
+   chosen. Every talk -- islanders, keepers, the warden, the 펫샵, the NPCs -- shares it. */
+.plazaDialog.talkMode{border:0;border-radius:36px;box-shadow:none;filter:drop-shadow(0 0 .7px #b49a74) drop-shadow(0 0 .7px #b49a74) drop-shadow(0 9px 16px rgba(74,56,40,.28));padding:30px 28px 16px;animation:talkPop .26s cubic-bezier(.3,1.6,.5,1)}
+.plazaDialog.talkMode::before{content:"";position:absolute;left:30px;right:30px;top:-12px;bottom:-12px;z-index:-1;pointer-events:none;background:radial-gradient(closest-side,var(--isle-paper) 96%,transparent) 0 0/56px 34px repeat-x,radial-gradient(closest-side,var(--isle-paper) 96%,transparent) 28px 100%/56px 34px repeat-x}
+.plazaDialog.talkMode::after{border:0}
+@keyframes talkPop{0%{opacity:0;transform:translateY(10px) scale(.92)}100%{opacity:1;transform:none}}
+.plazaDialog.talkMode .lostRequestLine,.plazaDialog.talkMode .lookMeta:not(.talkMeta){font-size:clamp(1.05rem,.92rem + .55vw,1.375rem);font-weight:500;line-height:1.65;letter-spacing:.01em}
+.plazaDialog.talkMode .plazaDialogBody{min-height:3.4em}
+.plazaDialog.talkMode .recordsDialogHead h2{top:-20px;left:18px;padding:6px 18px;font-size:1.08rem;transform:rotate(-5deg);transform-origin:left bottom;border-radius:14px}
+.plazaDialog.talkMode .recordsDialogHead h2[data-hearts]:not([data-hearts=""])::after{content:attr(data-hearts);margin-left:8px;font-size:.78rem;letter-spacing:1px;color:#ffe1e6}
+.plazaDialog.talkMode .recordsDialogHead .ghost{display:none}
+/* the choices: one balloon, a plain list; the one the keys or a finger are on bold with ▶ (the number keys still choose) */
+.plazaDialog.talkMode .talkChoices{gap:0;padding:8px 6px;border:0;border-radius:24px;filter:drop-shadow(0 0 .7px #b49a74) drop-shadow(0 0 .7px #b49a74);box-shadow:0 8px 20px rgba(74,56,40,.2)}
+.plazaDialog.talkMode .talkChoices::after{border:0}
+.plazaDialog.talkMode .lostRequest .talkChoices button{border:0;background:transparent;border-radius:12px;padding:8px 14px 8px 30px;font-size:1.02rem;font-weight:500;position:relative}
+.plazaDialog.talkMode .talkChoices button::before{content:"";counter-increment:choice}
+.plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible){background:transparent;font-weight:800;outline:none;border:0}
+.plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible)::before{content:"▶";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--talk-tag,var(--isle-tag))}
+@media(max-width:520px){.plazaDialog.talkMode{padding:26px 16px 12px}}
+@media(prefers-reduced-motion:reduce){.plazaDialog.talkMode{animation:none}}

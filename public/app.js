@@ -2422,7 +2422,7 @@
   const islandPlaceSubmit = document.getElementById('islandPlaceSubmit');
   const islandPlaceStatus = document.getElementById('islandPlaceStatus');
   let islandPlace = null; let islandPlaceRequest = null;
-  const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' }, fisher: { title: '어부', verb: '판매' } }; // v1.10.42 어부: fish
+  const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' }, fisher: { title: '물결', verb: '판매' } }; // (v1.10.193: the 어부's name) // v1.10.42 어부: fish
   // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
   // old emoji) -- the bag and the sale lists; toasts keep the emoji
   const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
@@ -2825,9 +2825,12 @@
   }
   function talkNext() { if (finishTyping()) return true; const pending = lostCard.querySelector('.talkPending'); if (!pending) return false; pending.classList.remove('talkPending'); typeLine(pending); return true; }
   plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) finishTyping(); });
-  function openTalk(name, shot = false, tag = '') {
+  function openTalk(name, shot = false, tag = '', hearts = '') {
     lostCard.classList.remove('hidden');
-    openPlazaWindow(name, [lostCard]);
+    // (v1.10.193 대화창 2차, 사용자: no 「 」 round what is said -- a line quoted whole, its quotes off; a quote inside stays)
+    const whole = (t) => { let d = 0; for (const ch of t) { d += ch === '「' ? 1 : ch === '」' ? -1 : 0; if (d < 0) return false; } return d === 0; }; // (a 「낚시 대회」 inside it kept)
+    for (const line of lostCard.querySelectorAll('.lostRequestLine')) { const m = /^「([\s\S]*)」$/.exec(line.textContent.trim()); if (m && whole(m[1])) line.textContent = m[1]; }
+    openPlazaWindow(name, [lostCard]); plazaDialogTitle.dataset.hearts = hearts; // (2차: how close, small hearts by the name)
     plazaDialog.classList.add('talkMode'); plazaDialog.style.setProperty('--talk-tag', tag || 'var(--isle-tag)');
     plaza.controller?.talkCamera?.(shot ? 'shot' : 'talk');
     lostCard.querySelectorAll('.lostRequestLine').forEach((line, i) => line.classList.toggle('talkPending', i > 0));
@@ -2835,6 +2838,11 @@
     lostCard.tabIndex = -1; lostCard.focus({ preventScroll: true }); // the bubble, not an answer: the Space that opened it
     // is still going up, and on a focused answer that would press it
   }
+  // (v1.10.193 대화창 2차: no 닫기 on it -- a tap outside the bubble lets it go, as Esc)
+  plazaDialog.addEventListener('click', (event) => {
+    if (event.target !== plazaDialog || !plazaDialog.classList.contains('talkMode')) return;
+    const r = plazaDialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) plazaDialog.close();
+  });
   plazaDialog.addEventListener('click', (event) => { // a tap on the bubble (not an answer): the line at once, then the next
     if (plazaDialog.classList.contains('talkMode') && !event.target.closest('button')) talkNext();
   });
@@ -2851,8 +2859,8 @@
       return; // a focused answer (or 닫기) is pressed by the browser
     }
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
-    if (step) { // the answers, then 닫기 (v1.10.64: 닫기 by the arrows too, not only by Tab)
-      const ring = [...buttons, byId('plazaCloseBtn')];
+    if (step) { // the answers round (v1.10.193 2차: no 닫기 on the bubble -- Esc, 잘 가요 or a tap outside)
+      const ring = buttons;
       event.preventDefault(); const at = ring.indexOf(event.target); ring[at < 0 ? (step > 0 ? 0 : ring.length - 1) : (at + step + ring.length) % ring.length].focus(); return;
     }
     if (/^[1-9]$/.test(event.key) && buttons[Number(event.key) - 1]) { event.preventDefault(); buttons[Number(event.key) - 1].click(); }
@@ -2912,7 +2920,7 @@
       say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
       button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
     } else say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`;
-    lostCard.replaceChildren(say, row); openTalk('김우성 구치소장'); // (사용자 2026-10-26: his name)
+    lostCard.replaceChildren(say, row); openTalk('김우성'); // (사용자 2026-10-26: his name)
   }
   async function startEssay() {
     const gen = essayGen;
@@ -3928,7 +3936,7 @@
       } catch (error) { showToast(error.message); ok.disabled = false; }
     });
     lostCard.replaceChildren(line, ok);
-    openTalk('시장');
+    openTalk('마루'); // (v1.10.193 주민 이름: the mayor)
   }
   const questTracker = document.getElementById('questTracker');
   let questTrack = []; let errandTrack = []; // v1.10.91: the day's errands under way share the tracker
@@ -3991,9 +3999,9 @@
   function showResidentTalk(data, first) {
     showErrands(data);
     const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
-    const meta = document.createElement('p'); meta.className = 'lookMeta talkMeta'; const hearts = data.affinity ? `${data.affinity.name} ` : ''; // v1.10.91 호감도 (대화창 새 단장: a small line of its own)
-    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${hearts ? ` · ${hearts}` : ''}` : `${data.role}${hearts ? ` · ${hearts}` : ''}`;
-    if (data.affinity) { const h = document.createElement('span'); h.className = 'talkHearts'; h.textContent = '♥'.repeat(data.affinity.level + 1); meta.append(h); }
+    // (v1.10.193 대화창 2차: no line of their job and closeness -- the hearts by the name; a reward still says itself)
+    const meta = document.createElement('p'); meta.className = 'lookMeta talkMeta'; meta.hidden = !data.reward;
+    if (data.reward) meta.textContent = `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료`;
     const list = document.createElement('div'); list.className = 'talkChoices';
     const fill = (choices) => list.replaceChildren(...choices.map(([topic, label, choice]) => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
@@ -4006,7 +4014,7 @@
     lostCard.replaceChildren(...lines, ...(data.offer ? [offerNote(data.offer)] : []), meta, list);
     if (data.finished) showDoneCard(data.finished); // (Q 끝내기)
     if (data.accepted) showToast(`📜 할 일에 넣었어요 · ${data.accepted.title}`);
-    openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor);
+    openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor, data.affinity ? '♥'.repeat(data.affinity.level + 1) : '');
     if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
     if (data.affinity) plaza.controller?.setAffinity?.([{ n: data.n, points: data.affinity.points, level: data.affinity.level }]);
     for (const note of data.stages || []) { showToast(`💛 ${note}`, 6000); loadPoints(); } // (R2: a level reached)

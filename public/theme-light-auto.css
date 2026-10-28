@@ -1376,3 +1376,12 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #islandBagDialog .islandBagSlot button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] #islandBagDialog .islandBagSlot button:hover{background:var(--isle-hover)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:not([class*="Mode"]) .skinTryOn{background:#fffaf0;border:1px solid var(--isle-line);box-shadow:none}
+:root[data-theme="light"] .plazaDialog.talkMode{border:0;box-shadow:none}
+:root[data-theme="light"] .plazaDialog.talkMode::before{background:radial-gradient(closest-side,var(--isle-paper) 96%,transparent) 0 0/56px 34px repeat-x,radial-gradient(closest-side,var(--isle-paper) 96%,transparent) 28px 100%/56px 34px repeat-x}
+:root[data-theme="light"] .plazaDialog.talkMode::after{border:0}
+:root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead h2[data-hearts]:not([data-hearts=""])::after{color:#ffe1e6}
+:root[data-theme="light"] .plazaDialog.talkMode .talkChoices{border:0;box-shadow:0 8px 20px rgba(74,56,40,.2)}
+:root[data-theme="light"] .plazaDialog.talkMode .talkChoices::after{border:0}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button{border:0;background:transparent}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible){background:transparent;outline:none;border:0}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible)::before{color:var(--talk-tag,var(--isle-tag))}
