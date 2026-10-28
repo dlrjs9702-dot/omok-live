@@ -212,6 +212,8 @@
   const pictionaryDrawerLabel = document.getElementById('pictionaryDrawerLabel');
   const pictionaryTimer = document.getElementById('pictionaryTimer');
   const pictionaryWordBox = document.getElementById('pictionaryWordBox');
+  // (v1.10.197 검토: one line each -- the round, its chips and the clock; the word and the tools)
+  document.getElementById('pictionaryTimer').before(document.getElementById('pictionaryHints')); document.getElementById('pictionaryDrawTools').prepend(pictionaryWordBox);
   const pictionaryWord = document.getElementById('pictionaryWord');
   const pictionaryRoundResult = document.getElementById('pictionaryRoundResult');
   const pictionaryDrawTools = document.getElementById('pictionaryDrawTools');
@@ -9065,7 +9067,8 @@
           : '그림 맞히기 종료')
         : g.phase === 'reveal'
           ? `${g.roundNumber}/${g.totalRounds}라운드 결과`
-          : `${g.roundNumber}/${g.totalRounds}라운드 · ${isDrawer ? '내가 그리는 중' : `${pictionaryName(g.drawerSeat)}${pictionaryTeamTag(g, g.drawerSeat)} 님이 그리는 중`}`;
+          : `${g.roundNumber}/${g.totalRounds}라운드`;
+    if (g.status === 'playing' && g.phase !== 'reveal') { const who = document.createElement('span'); who.className = 'pictionaryWho'; who.textContent = ` · ${isDrawer ? '내가 그리는 중' : `${pictionaryName(g.drawerSeat)}${pictionaryTeamTag(g, g.drawerSeat)} 님이 그리는 중`}`; pictionaryDrawerLabel.append(who); } // (v1.10.197 검토: the bar says who -- not twice on the board)
     const timerEndsAt = g.phase === 'drawing' ? g.roundEndsAt : g.phase === 'reveal' ? g.revealEndsAt : null;
     const pictionaryTimerDuplicated = g.phase === 'drawing' && !g.firstCorrectAt && desktopActionTimerOwns('pictionary');
     pictionaryTimer.classList.toggle('hidden', !timerEndsAt || pictionaryTimerDuplicated);

@@ -3070,3 +3070,23 @@ body.roomPlaying #twentyActionPanel>#twentyAnswerBox .twentyAnswerButtons{displa
 /* (총괄 검토: 스무고개's answers, 라이어's hint, 그림 맞히기's guess at the thumb -- the inputs stay at the screen's foot while the board scrolls) */
 body.roomPlaying.partyGame #gameActionsPanel{position:sticky;bottom:0;z-index:6;padding-bottom:max(8px,env(safe-area-inset-bottom));background:linear-gradient(to top,#0b1220 70%,rgba(11,18,32,0))}
 body.roomPlaying.partyGame #liarSetupRow{display:none} /* (판 수: chosen before a hand) */
+/* (v1.10.197 총괄 검토) the toast under the bar; the board's head one line (round · chips · clock), nothing the bar already says;
+   the word and the tools one line; 스무고개's notes small, its input one; room at the foot for the thumb's inputs */
+body.roomPlaying.partyGame .toast{top:var(--roomBarBottom,76px)}
+body.roomPlaying.partyGame .pictionaryWho,body.roomPlaying.partyGame .twentyHeading>h3,body.roomPlaying.partyGame #twentyStatus{display:none}
+body.roomPlaying.partyGame .pictionaryHead{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+body.roomPlaying.partyGame .pictionaryHead>#pictionaryDrawerLabel{flex:0 0 auto}
+body.roomPlaying.partyGame .pictionaryHead>.pictionaryHints{flex:1 1 auto;min-width:0;margin:0;flex-wrap:nowrap;overflow:hidden}
+.pictionaryTimer{white-space:nowrap}
+body.roomPlaying.partyGame #pictionaryDrawTools{flex-wrap:wrap;align-items:center}
+body.roomPlaying.partyGame #pictionaryDrawTools>.pictionaryWordBox{margin:0 6px 0 0;padding:4px 12px}
+body.roomPlaying.partyGame #twentyMySecret{margin:0;padding:4px 10px;font-size:.8rem;border-radius:999px;justify-self:start}
+body.roomPlaying.partyGame #twentyQuestionForm{grid-template-columns:1fr auto auto;display:grid;align-items:center;gap:6px}
+body.roomPlaying.partyGame #twentyQuestionForm>label{grid-column:1/-1;font-size:.8rem}
+body.roomPlaying.partyGame #twentyQuestionForm>button{min-height:44px;padding:0 16px}
+body.roomPlaying.partyGame :is(#pictionaryPanel,#liarPanel,#twentyPanel){padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+body.roomPlaying.partyGame .boardNote{top:var(--roomBarBottom,76px)} /* (the system's notes too: under the bar) */
+/* (라이어 투표 검토: the plates at the top, under my word -- never cut at the screen's foot behind the hints) */
+body.roomPlaying.partyGame #liarPanel{display:flex;flex-direction:column}
+body.roomPlaying.partyGame #liarPanel>#liarRoleBox{order:-2}
+body.roomPlaying.partyGame #liarPanel>#liarScoreboard{order:-1;margin-bottom:6px}
