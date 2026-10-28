@@ -426,6 +426,12 @@
   REGISTRY['event.stall'] = sv('event_stall');
   for (const k of ['fish', 'bug']) for (const m of ['gold', 'silver', 'bronze']) REGISTRY[`event.trophy_${k}_${m}`] = sv(`event_trophy_${k}_${m}`, { near: 26 });
   for (const f of ['basket', 'straw_sheaf', 'corn_string', 'persimmon_string', 'feast_table']) REGISTRY[`harvest.${f}`] = sv(`harvest_${f}`);
+  // S2 섬 이야기 (assets 80 story-v1): the little door under 초승등대 (with the lighthouse's origin and turn; its `door` turns on
+  // its hinge), the small box at its foot, the 「초승 등불」 lamp (a house piece, given once)
+  const STORY = '/assets/island/story-v1';
+  REGISTRY['story.lighthouse_hatch'] = { url: `${STORY}/story_lighthouse_hatch.glb`, low: { url: `${STORY}/story_lighthouse_hatch_low.glb` }, rotationY: Math.PI, near: 60 };
+  REGISTRY['story.lantern_box'] = { url: `${STORY}/story_lantern_box.glb`, low: { url: `${STORY}/story_lantern_box_low.glb` }, near: 30 };
+  REGISTRY['story.choseung_lantern'] = { url: `${STORY}/furniture_choseung_lantern.glb`, low: { url: `${STORY}/furniture_choseung_lantern_low.glb` }, near: 26 };
   // 간판 (assets 69 signs-v1, docs/signboards-design-20261025.md): the boards places' names are written on (plaza-scene signboard
   // -- the text on each one's FACE); no letters in the models
   const SG = '/assets/island/signs-v1';

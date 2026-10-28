@@ -4059,6 +4059,7 @@
   let storyView = null; let storyLook = 0;
   function showStory(view) {
     if (!view) return; storyView = { ...(storyView || {}), ...view }; storyTrack = view.track || null; showQuestTracker();
+    plaza.controller?.setStory?.(storyView); // (S2)
     if (view.fresh?.length) showToast('📖 이야기 책에 새 행사 이야기가 생겼어요', 5000);
   }
   function refreshStory() { if (document.body.classList.contains('plazaMode')) api('/api/island/story').then(showStory).catch(() => {}); }
@@ -4069,6 +4070,60 @@
     if (place && Math.hypot(p.x - place.x, p.z - place.z) <= place.r) { storyLook = Date.now(); setTimeout(refreshStory, 1200); } // (after the server has my step there)
   }, 1000);
   const storyFill = (line, me) => String(line).split('{me}').join(me || '');
+  // S2: by 초승등대 (its little door found) a 「살펴보기」 -- the locked door, the box at its foot (the missing page, once
+  // every log page is read)
+  const inspectBtn = document.createElement('button'); inspectBtn.type = 'button'; inspectBtn.id = 'storyInspectBtn'; inspectBtn.className = 'storyInspect hidden'; inspectBtn.textContent = '🔍 등대 아래 문 살펴보기';
+  document.body.append(inspectBtn);
+  setInterval(() => {
+    const L = globalThis.IslandTerrain?.dalmaru?.PLACES?.lighthouse; const p = storyView?.hatch && L && document.body.classList.contains('plazaMode') ? plaza.controller?.pose?.() : null;
+    inspectBtn.classList.toggle('hidden', !(p && Math.hypot(p.x - L.x, p.z - L.z) <= 7));
+  }, 700);
+  inspectBtn.addEventListener('click', async () => {
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const r = await api('/api/island/story/inspect', { method: 'POST', body: '{}' }); showStory(r);
+      if (r.found) showPaper([{ head: `섬 일지 · 빠진 쪽 · ${r.found.title}`, lines: r.found.lines, piece: 7 }]);
+      else showToast(storyView?.final ? '문은 열려 있어요. 등불은 이제 내가 맡았어요.' : '문은 굳게 잠겨 있어요. 열쇠 구멍 옆에 기록관 문양이 있어요. 발치에 작은 상자가 하나 놓여 있어요.', 5000);
+    } catch (error) { showToast(error.message); }
+  });
+  // a paper (or a run of them, 「다음」 between): its head, its lines, the words after it (who says them), a signature, a piece
+  function showPaper(pages, onPage = null) {
+    const S = globalThis.IslandStory; const C = globalThis.IslandCast; let k = 0;
+    const draw = () => {
+      const pg = pages[k]; const out = [];
+      const head = document.createElement('h3'); head.textContent = pg.head; out.push(head);
+      for (const t of pg.lines || []) { const p = document.createElement('p'); p.textContent = t; out.push(p); }
+      for (const w of pg.words || []) for (const t of w.lines) { const p = document.createElement('p'); p.className = 'storyWord'; p.textContent = `${C?.callOf(w.n) || ''}: 「${t}」`; out.push(p); }
+      if (pg.sign != null) { const p = document.createElement('p'); p.className = 'storySign'; p.textContent = `— ${pg.sign}`; out.push(p); }
+      if (pg.piece && S) { const p = document.createElement('p'); p.className = 'storyPiece'; p.textContent = `★ 초승등대 조각 ${pg.piece} · ${S.PIECES[pg.piece - 1].name}`; out.push(p); }
+      if (k < pages.length - 1) { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary storyNext'; b.textContent = `다음 ▸ (${k + 1}/${pages.length})`; b.addEventListener('click', () => { k += 1; draw(); }); out.push(b); }
+      byId('storyNoteBody').replaceChildren(...out); onPage?.(k);
+    };
+    draw(); if (!byId('storyNoteDialog').open) byId('storyNoteDialog').showModal();
+  }
+  // the last chapter (오 탐정's 「결론 듣기」): its six papers; the door opens with the second, the lamp and the title with the fourth
+  function showFinal(scenes) {
+    showPaper(scenes.map((sc) => ({ head: `마지막 장 · ${sc.title}`, lines: sc.note, words: sc.words, sign: sc.by != null ? globalThis.IslandCast?.callOf(sc.by) : null })), (k) => {
+      if (k === 1) plaza.controller?.setStory?.({ ...(storyView || {}), hatch: true, final: true });
+      if (k === 3) showToast('🏮 「초승 등불」이 가구 창고에 들어왔어요 · 칭호 「등대의 이웃」', 6000);
+    });
+  }
+  // 기록관 「섬 일지」: the blank front pages, 쪽 1~8 (5~8 after 노을 할머니's 3장), the missing page once found -- a page opened is read
+  async function openStoryLog() {
+    try { showStory(await api('/api/island/story')); } catch (error) { showToast(error.message); return; }
+    const S = globalThis.IslandStory; const v = storyView || {}; const read = new Set(v.read || []); const out = [];
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    for (let k = 0; k < S.LOG.front; k += 1) out.push(el('p', 'storyLogBlank', '(앞쪽은 비어 있다)'));
+    S.LOG.pages.forEach((pg, i) => {
+      const k = i + 1; const open = S.logOpen(k, v.chapters); const box = el('details', `storyLogPage${open ? '' : ' locked'}`);
+      box.append(el('summary', null, open ? `쪽 ${k} · ${pg.title}${read.has(`log:${k}`) ? '' : ' ●'}` : `쪽 ${k} · (아직 읽을 수 없어요)`));
+      if (open) { for (const t of pg.lines) box.append(el('p', null, t)); box.addEventListener('toggle', () => { if (box.open && !read.has(`log:${k}`)) api('/api/island/story/log', { method: 'POST', body: JSON.stringify({ page: k }) }).then((r) => { read.add(`log:${k}`); showStory(r); box.querySelector('summary').textContent = `쪽 ${k} · ${pg.title}`; }).catch(() => {}); }); }
+      out.push(box);
+    });
+    if (read.has('log:missing')) { const box = el('details', 'storyLogPage'); box.append(el('summary', null, `빠진 쪽 · ${S.LOG.missing.title}`), ...S.LOG.missing.lines.map((t) => el('p', null, t))); out.push(box); }
+    byId('storyBookTitle').textContent = '섬 일지'; byId('storyBookTabs').replaceChildren(); byId('storyBookBody').replaceChildren(...out);
+    if (!byId('storyBookDialog').open) { for (const d of [byId('islandBagDialog'), plazaDialog]) if (d.open) d.close(); byId('storyBookDialog').showModal(); }
+  }
   // the note a chapter ends with: its title, the islander's words, their name under them, the piece of the lighthouse it holds
   function openStoryNote(note) {
     const body = byId('storyNoteBody'); const S = globalThis.IslandStory;
@@ -4085,7 +4140,7 @@
   let storyTab = 'residents';
   async function openStoryBook(tab = storyTab) {
     try { showStory(await api('/api/island/story')); } catch (error) { showToast(error.message); return; }
-    storyTab = tab; const S = globalThis.IslandStory; const C = globalThis.IslandCast; const v = storyView || {};
+    storyTab = tab; const S = globalThis.IslandStory; const C = globalThis.IslandCast; const v = storyView || {}; byId('storyBookTitle').textContent = '이야기 책';
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     byId('storyBookTabs').replaceChildren(...[['residents', '주민 이야기'], ['lighthouse', '초승등대'], ['events', '행사 이야기']].map(([id, label]) => {
       const b = el('button', `ghost tiny${id === tab ? ' selected' : ''}`, label); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(id === tab)); b.dataset.tab = id;
@@ -4106,9 +4161,18 @@
         out.push(box);
       });
     } else if (tab === 'lighthouse') {
-      const have = new Set(v.pieces || []); const grid = el('div', 'storyPieces');
-      S.PIECES.forEach((p, i) => { const cell = el('div', `storyPieceCell${have.has(i + 1) ? '' : ' locked'}`); cell.append(el('b', null, `${i + 1}. ${have.has(i + 1) ? p.name : '???'}`), ...(have.has(i + 1) ? [el('p', null, p.line)] : [])); grid.append(cell); });
-      out.push(el('p', 'smallMuted', '조각 여덟을 모으면 등대의 이야기가 이어져요.'), grid, el('h4', null, '섬 일지 · ???'), el('h4', null, '마지막 장 · ???'));
+      const have = new Set(v.pieces || []); const grid = el('div', 'storyPieces storyBoard');
+      S.PIECES.forEach((p, i) => { const cell = el('div', `storyPieceCell${have.has(i + 1) ? ' found' : ' locked'}`); cell.append(el('b', null, `${i + 1}. ${have.has(i + 1) ? p.name : '???'}`), ...(have.has(i + 1) ? [el('p', null, p.line), Object.assign(el('img', 'storyStamp'), { src: '/assets/island/story-v1/emblem.png', alt: '', width: 34, height: 34 })] : [])); grid.append(cell); });
+      out.push(el('p', 'smallMuted', `오 탐정의 수사판 · 조각 ${have.size}/8`), grid);
+      const read = new Set(v.read || []); const pages = S.LOG.pages.map((pg, i) => [i + 1, pg]).filter(([k]) => read.has(`log:${k}`));
+      const log = el('details', 'storyResident'); log.append(el('summary', null, `섬 일지 · ${pages.length}/8쪽${read.has('log:missing') ? ' · 빠진 쪽' : ''}`));
+      for (const [k, pg] of pages) log.append(el('h4', null, `쪽 ${k} · ${pg.title}`), ...pg.lines.map((t) => el('p', null, t)));
+      if (read.has('log:missing')) log.append(el('h4', null, `빠진 쪽 · ${S.LOG.missing.title}`), ...S.LOG.missing.lines.map((t) => el('p', null, t)));
+      out.push(log);
+      if (v.final) { const fin = el('details', 'storyResident'); fin.append(el('summary', null, '마지막 장 · 초승 등불'));
+        for (const sc of S.FINAL) fin.append(el('h4', null, sc.title), ...sc.note.map((t) => el('p', null, storyFill(t, v.me))), ...sc.words.flatMap((w) => w.lines.map((t) => el('p', 'storyWord', `${C.callOf(w.n)}: 「${storyFill(t, v.me)}」`))));
+        out.push(fin); }
+      else out.push(el('h4', null, '마지막 장 · ???'));
     } else {
       const fests = globalThis.IslandCalendar?.FESTIVALS || [];
       for (const id of v.read || []) {
@@ -4126,7 +4190,11 @@
   }
   byId('storyBookClose').addEventListener('click', () => byId('storyBookDialog').close());
   byId('islandStoryBtn').addEventListener('click', () => openStoryBook());
-  function storyShelf() { const b = document.createElement('button'); b.type = 'button'; b.className = 'storyShelf'; b.textContent = '📖 이야기 책'; b.addEventListener('click', () => openStoryBook()); return b; }
+  function storyShelf() {
+    const row = document.createElement('div'); row.className = 'storyShelf';
+    for (const [label, open] of [['📖 이야기 책', () => openStoryBook()], ['📜 섬 일지', () => openStoryLog()]]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', open); row.append(b); }
+    return row;
+  }
   // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): whoever walks by talks; the server holds them on every screen
   // while this window is open (renewed every few seconds, let go when it closes), and after their words come the choices
   let residentBusy = false; let residentTalk = null; // { n, timer } while a talk is open
@@ -4134,7 +4202,7 @@
   const TALK_CHOICES = [['story', '이야기'], ['talk', '이야기해요'], ['errand', '부탁할 거 있어요?'], ['gift', '선물해요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물 · S1 이야기 부탁)
   const STORY_CHOICE = { offer: '이야기 들려줘요', visit: '부탁받고 왔어요', hand: '다녀왔어요' };
   // (S1: 오 탐정's 수사판 -- the book's 초승등대 page, before 「잘 가요」)
-  const withBoard = (list, n) => (n === 5 ? [...list.filter(([t]) => t !== 'bye'), ['board', '수사판 보기'], ...list.filter(([t]) => t === 'bye')] : list);
+  const withBoard = (list, n, today) => (n === 5 ? [...(today?.final ? [['final', '결론 듣기']] : []), ...list.filter(([t]) => t !== 'bye'), ['board', '수사판 보기'], ...list.filter(([t]) => t === 'bye')] : list);
   const TALK_TOPICS = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['ask', '이야기 나눠요'], ['back', '← 돌아가기']];
   const talkToday = (list, today) => list.filter(([topic]) => !(topic === 'story' && !today?.story) && (!today || !((topic === 'errand' && !today.errand) || (topic === 'gift' && today.gifted) || (topic === 'ask' && today.asked))))
     .map(([topic, label]) => [topic, topic === 'story' ? STORY_CHOICE[today.story] || label : label]);
@@ -4158,16 +4226,17 @@
     const list = document.createElement('div'); list.className = 'talkChoices';
     const fill = (choices) => list.replaceChildren(...choices.map(([topic, label, choice]) => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
-      b.addEventListener('click', () => (topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'talk' ? (fill(talkToday(TALK_TOPICS, data.today)), list.querySelector('button')?.focus()) : topic === 'back' ? (fill(withBoard(talkToday(TALK_CHOICES, data.today), data.n)), list.querySelector('button')?.focus()) : askResident(data.n, topic, choice)));
+      b.addEventListener('click', () => (topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'talk' ? (fill(talkToday(TALK_TOPICS, data.today)), list.querySelector('button')?.focus()) : topic === 'back' ? (fill(withBoard(talkToday(TALK_CHOICES, data.today), data.n, data.today)), list.querySelector('button')?.focus()) : askResident(data.n, topic, choice)));
       return b;
     }));
     // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them;
     // (Q 부탁 받기) an errand asked: its note and 「할게요!」 / 「다음에요」
-    fill(data.storyOffer ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : withBoard(talkToday(TALK_CHOICES, data.today), data.n));
+    fill(data.storyOffer ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : withBoard(talkToday(TALK_CHOICES, data.today), data.n, data.today));
     lostCard.replaceChildren(...lines, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer ? [offerNote({ title: data.storyOffer.title, label: storyLine(data.storyOffer) })] : []), meta, list);
     if (data.story) showStory(data.story);
     if (data.storyAccepted) showToast(`📖 할 일에 넣었어요 · ${data.storyAccepted.title}`);
     if (data.storyNote) openStoryNote(data.storyNote);
+    if (data.finalScenes) showFinal(data.finalScenes);
     if (data.finished) showDoneCard(data.finished); // (Q 끝내기)
     if (data.accepted) showToast(`📜 할 일에 넣었어요 · ${data.accepted.title}`);
     openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor, data.affinity ? '♥'.repeat(data.affinity.level + 1) : '');

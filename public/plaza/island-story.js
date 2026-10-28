@@ -156,12 +156,56 @@
     if (current || !RESIDENTS[n]) return null; const c = Number(chapters?.[n]) || 0;
     return c < 3 && level >= LEVEL_OF_CHAPTER[c] ? c : null;
   }
-  // the pieces I hold (numbers 1..8): from the chapters done (7 comes with the log -- S2)
-  function piecesOf(chapters, extra = []) {
-    const out = new Set(extra);
+  // the pieces I hold (numbers 1..8): from the chapters done, 7 from the log's missing page
+  function piecesOf(chapters, read = []) {
+    const out = new Set((read || []).includes('log:missing') ? [7] : []);
     RESIDENTS.forEach((chs, n) => chs.forEach((ch, c) => { if (ch.piece && (Number(chapters?.[n]) || 0) > c) out.add(ch.piece); }));
     return [...out].sort((a, b) => a - b);
   }
+  // S2 이야기 장면 (notes story/residents-20261027.md 「섬 일지」·「마지막 장」 안 A·「S2 정함」, words as written):
+  // 기록관 「섬 일지」 -- three blank front pages, 쪽 1~4 from the start, 쪽 5~8 after 노을 할머니's 3장, the missing page
+  // (piece 7) in the small box at the foot of the locked door under the lighthouse, once every page has been read
+  const LOG = Object.freeze({ front: 3, pages: [
+    { title: '봄 끝, 바람 한 점 없음', lines: ['오늘도 빵이 올라왔다. 바구니 속에 손수건이 한 장 접혀 있었다. 빵을 싼 것이려니 하고 펴 보니 작은 꽃이 수놓여 있었다.', '돌려보낼 때 무엇을 넣을까 하다가 어제 주운 소라 껍데기를 넣었다.'] },
+    { title: '여름 초입, 흐림', lines: ['배가 지나간다. 이름은 몰라도 닻줄 감은 모양은 눈에 익다. 불을 켤 일 없어도 창가에 서서 오래 보았다.', '내가 이 자리에 선 것을 바다는 알까. 알 필요는 없고, 보는 것으로 충분하다.'] },
+    { title: '한여름 밤, 별 많음', lines: ['우리 아이를 데리고 꼭대기 난간에 올랐다. 별이 쏟아질 듯해서 아이가 입을 벌리고 서 있었다.', '「별은 낮에도 거기 있어?」 하고 묻기에 「그렇다더라」 했더니 「그럼 안 보이는 건 나쁜 거야?」 하고 또 물었다. 대답을 못 하고 머리만 쓰다듬었다.'] },
+    { title: '가을 어귀, 서늘함', lines: ['등대 앞 하얀 꽃이 올해도 폈다. 이 꽃 씨앗은 누가 뿌렸을까. 바람일 수도 있고 누군가의 소원일 수도 있다.', '우리 아이가 꽃 한 송이를 꺾으려다 말고 「얘는 여기 있고 싶은가 봐」 했다. 나도 그렇게 생각한다.'] },
+    { title: '가을 깊음, 달 밝음', lines: ['오늘 밤 이상한 일이 있었다. 꺼진 등불이 한 번 켜졌다. 아래층에서 불빛이 벽을 스치는 것을 보고 알았다.', '올라갔을 때는 이미 식어 있었다. 아무에게도 말하지 않았다. 일지에만 남긴다.'] },
+    { title: '늦가을, 마른바람', lines: ['빛이 어떻게 스스로 켜졌을까 며칠 생각했다. 해가 오래 비추면 렌즈 쪽이 뜨거워지는 것은 안다. 그것만으로는 어림없지만.', '마당 해시계 그림자가 어느 한 점을 지날 때 달이 마침 창에 들어오면 어떨까. 두 가지가 겹치는 날이 있을 터이다.'] },
+    { title: '겨울, 서리 두꺼움', lines: ['밤마다 렌즈 뒤 거울 각도를 조금씩 바꾸어 본다. 틀리면 도로 돌려놓는다.', '우리 아이가 곁에서 「아빠, 이번엔 켜질 것 같아?」 하고 묻는다. 「글쎄, 그건 달이 정할 일이지.」'] },
+    { title: '겨울 끝, 눈 녹음', lines: ['우리 아이와 달끝나루에서 돌아오는 길에 아이가 말했다. 「이 섬에 아무도 안 오면 등대 불은 누구를 위해 켜져?」', '내가 한참 대답을 못 했는데, 아이가 먼저 「그래도 켜져 있으면 좋겠다」고 했다.'] },
+  ], missing: { title: '이른 봄, 첫 새싹', lines: ['새 이웃이 오면 이 등불이 먼저 반겨 주었으면 한다. 사람이 켜지 않아도 되게 해시계와 달빛이 서로 맞물리도록 해 두었다. 누군가 이 섬에 처음 발을 들인 날이 곧 불이 켜지는 날이다.', '오래 걸릴 수도 있고 내가 보지 못할 수도 있다. 그래도 괜찮다. 이웃을 기다리는 일은 기다리는 동안에도 따뜻하다.', '이 쪽은 일지에서 떼어 문 아래 상자에 넣는다. 열쇠는 기록관에 둔다.', '우리 아이야, 그날이 오면 네가 먼저 알아볼 것이다.'] } });
+  const logOpen = (k, chapters) => (k >= 1 && k <= 4) || (k >= 5 && k <= 8 && (Number(chapters?.[4]) || 0) >= 3);
+  const logAllRead = (read) => [1, 2, 3, 4, 5, 6, 7, 8].every((k) => (read || []).includes(`log:${k}`));
+  const hatchShown = (chapters) => (Number(chapters?.[9]) || 0) >= 3; // (가람's 3장 found the little door)
+  // the missing page: at the lighthouse, the door found, every log page read, not had yet
+  const missingDue = (doc) => hatchShown(doc?.chapters) && logAllRead(doc?.read) && !(doc?.read || []).includes('log:missing');
+  // 마지막 장 (오 탐정's board full + 단짝 with 노을 할머니): six scenes, each a paper note and the words after it; the
+  // door opens (first time) with the second, the lantern and 「등대의 이웃」 with the fourth
+  const FINAL = Object.freeze([
+    { title: '수사판의 결론', note: [], words: [{ n: 5, lines: ['수사판이 다 찼군. 결론을 말하겠네, {me} 조수.', '범인은 없다. 등대는 자네가 이사 온 날부터 깜빡였다는 말이지.', '나머지는 노을 할머니께 가 보게. 문 앞에서 기다리시네.'] }] },
+    { title: '등대 아래 문', note: ['해 질 녘, {me}는 노을 할머니와 바람이를 따라 초승등대 아래로 갔어요.', '가람이 찾아낸 작은 문에 기록관 열쇠를 꽂자 철컥, 소리가 났어요.', '작은 등불 하나와 봉투 한 통이 나란히 놓여 있었어요.'], words: [{ n: 7, lines: ['{me}님, 열렸어요! 안에 뭐가 있어요! 휙!'] }, { n: 4, lines: ['아버지가 쓰시던 등불이구나. 아직 따뜻한 것 같지 않니?'] }] },
+    { title: '다음 이웃에게', note: ['새 이웃이 왔구나. 어서 오렴.', '이 섬엔 이제 등대지기가 없단다.', '그래서 등대에 작은 장치를 달아 두었어.', '새 이웃이 섬에 오면 달빛이 장치를 깨워 불을 켜 줄 거란다.', '그러니 이 불은 네가 온 걸 반기는 불이야.', '등불 하나를 두고 가니, 곁에 두고 아껴 주렴.', '그리고 언젠가 또 새 이웃이 오면, 이 등불을 건네 주렴.', '— 마지막 등대지기가'], words: [{ n: 4, lines: ['이 글씨… 바람이가 들고 다닌 편지 겉봉이랑 똑같구나.', '우리 아버지 글씨란다. 늦게 도착했을 뿐이구나.'] }, { n: 7, lines: ['제 편지도 등대지기님 거였어요! 휙!'] }] },
+    { title: '등불을 맡기며', note: [], words: [{ n: 4, lines: ['{me}야, 아버지가 기다리던 이웃이 {me}였구나.', '이 등불은 이제 {me}가 맡아 주렴. 나중에 새 이웃이 오면, 건네주고.'] }] },
+    { title: '하람의 헌사', note: ['{me}님, 소설 끝을 썼어요. 「초승등대의 편지」의 마지막 줄은 이거예요.', '「등대는 낯선 이웃에게 처음으로 말했다. 어서 와.」', '책 맨 앞에는 「{me}에게」라고 적었어요.', '끝까지 써 본 건 처음이에요. 이 섬이 쓰게 해 줬달까요…'], words: [], by: 2 },
+    { title: '그날 밤', note: ['밤이 되자 초승등대가 깜빡이기 시작했어요. 짧게, 길게, 짧게.', '이솔은 공책을 펴고 박자를 따라 적었어요.', '「달 · 마 · 루」가 아니었어요. 「어 · 서 · 와」였어요.', '그때 바다 건너, 툇마루섬 너머에서 작은 불빛이 한 번 깜빡였어요.'], words: [{ n: 8, lines: ['…방금 저 멀리서도 한 번, 깜빡했어요. 반짝…'] }] },
+  ]);
+  const finalOpen = (doc, level4) => piecesOf(doc?.chapters, doc?.read).length === 8 && level4 >= 3 && !doc?.final;
+  const LANTERN = 'choseung_lantern__plain'; const TITLE = 'title_story_lighthouse';
+  // (S2 정함) the islander a 「전하기·여쭙기」 chapter sends me to: their own two lines (asker n, chapter c)
+  const RECEIVE = Object.freeze({
+    '4,0': ['노을 할머니 사탕이요? 피곤이 싹 날아가요! 휙!', '할머니께 고맙다고 꼭 전해 주세요!'],
+    '7,1': ['아이고, 바람이랑 같이 왔구나. 무겁지 않았니?', '옛 편지는 천천히 보자꾸나. 고맙다, {me}야.'],
+    '0,2': ['달맞이 은방울 말이냐… 그 꽃은 등대 앞에서만 피었지.', '한참 잊고 있었구나. 조금만 생각해 보마.'],
+    '3,1': ['두리네 꿀이에요? 마침 딱 모자랐어요! 빵!', '꿀빵 금방 구울게요. 맛보고 가요, {me}님!'],
+    '6,1': ['빵? 나 아니거든! …한 개만 먹었거든!', '근데 진짜 맛있었다고 다온한테 말해 줘!'],
+  });
+  // 초승등대 at night: a bar of shorts and longs (2~4), a rest between bars, a long rest after three -- 「달·마·루」 until the
+  // last chapter, 「어·서·와」 after it on my screen (ms: on, off, on, off …; one round)
+  const BLINK = Object.freeze({
+    dalmaru: [250, 250, 750, 250, 250, 900, 750, 250, 250, 250, 750, 900, 750, 250, 250, 250, 750, 250, 250, 2600],
+    welcome: [750, 250, 750, 250, 250, 900, 250, 250, 250, 250, 750, 250, 250, 900, 250, 250, 750, 250, 750, 2600],
+  });
   // where a chapter's 가 보기 is (the island terrain T: its areas, the 기록관 door, the bridge, the lighthouse cape, the
   // pier's foot, the bay's beach) and how near counts -- the same on the server and the map
   const PLACE = Object.freeze({
@@ -191,5 +235,5 @@
     const where = ch.go.talk != null ? `${callOf(ch.go.talk)}에게 말 걸기` : `${spot?.label || ''}${ch.go.night ? ' · 밤에' : ''}`;
     return { n: cur.n, c: cur.c, title: ch.title, task: ch.task, where, ready: Boolean(cur.reached), to: cur.reached ? null : spot && { x: spot.x, z: spot.z } };
   }
-  return { RESIDENTS, PIECES, EVENTS, LEVEL_OF_CHAPTER, PLACE, eventKind, offerOf, piecesOf, spotOf, chapterOf, talkState, trackOf };
+  return { LOG, FINAL, RECEIVE, BLINK, LANTERN, TITLE, logOpen, logAllRead, hatchShown, missingDue, finalOpen, RESIDENTS, PIECES, EVENTS, LEVEL_OF_CHAPTER, PLACE, eventKind, offerOf, piecesOf, spotOf, chapterOf, talkState, trackOf };
 }));

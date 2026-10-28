@@ -91,3 +91,55 @@ test('이야기 부탁: 단계 → 제안·할게요, 한 번에 하나, 곳에 
   await clock('2026-11-28T12:00:00'); assert.deepEqual((await story()).fresh, ['harvest-2026:end']);
   assert.deepEqual((await story()).read, ['harvest-2026:start', 'harvest-2026:end']);
 });
+
+test('S2 장면 규칙: 섬 일지 열림·빠진 쪽(조각 7), 마지막 장 조건, 받는 쪽 대사, 깜빡임 두 박자', () => {
+  assert.equal(S.LOG.pages.length, 8); assert.ok(S.LOG.missing.lines.length >= 3);
+  assert.ok(S.logOpen(1, {}) && S.logOpen(4, {}) && !S.logOpen(5, { 4: 2 }) && S.logOpen(8, { 4: 3 }) && !S.logOpen(9, { 4: 3 }));
+  const read = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => `log:${k}`);
+  assert.equal(S.missingDue({ chapters: { 9: 3 }, read }), true); assert.equal(S.missingDue({ chapters: { 9: 2 }, read }), false); assert.equal(S.missingDue({ chapters: { 9: 3 }, read: read.slice(1) }), false);
+  assert.equal(S.missingDue({ chapters: { 9: 3 }, read: [...read, 'log:missing'] }), false);
+  const done = Object.fromEntries([...Array(10).keys()].map((n) => [n, 3]));
+  assert.deepEqual(S.piecesOf(done, ['log:missing']), [1, 2, 3, 4, 5, 6, 7, 8]); assert.equal(S.piecesOf(done, []).length, 7);
+  assert.equal(S.finalOpen({ chapters: done, read: ['log:missing'] }, 3), true); assert.equal(S.finalOpen({ chapters: done, read: ['log:missing'] }, 2), false); assert.equal(S.finalOpen({ chapters: done, read: [] }, 3), false);
+  assert.equal(S.finalOpen({ chapters: done, read: ['log:missing'], final: 1 }, 3), false);
+  assert.equal(S.FINAL.length, 6); assert.ok(S.FINAL[2].note.some((l) => l.includes('마지막 등대지기')));
+  assert.deepEqual(Object.keys(S.RECEIVE).sort(), ['0,2', '3,1', '4,0', '6,1', '7,1']);
+  for (const [k, v] of Object.entries(S.RECEIVE)) { const [n, c] = k.split(',').map(Number); assert.ok(S.RESIDENTS[n][c].go.talk != null, k); assert.equal(v.length, 2); }
+  // the beat: 2~4 marks a bar (short / long), rests between bars, a long rest after three; the two not the same
+  const bars = (beat) => { const out = [[]]; for (let i = 0; i < beat.length; i += 2) { out[out.length - 1].push(beat[i] > 500 ? '-' : '.'); if (beat[i + 1] > 500 && i + 2 < beat.length) out.push([]); } return out.map((b) => b.join('')); };
+  for (const k of ['dalmaru', 'welcome']) { const b = bars(S.BLINK[k]); assert.equal(b.length, 3, k); for (const bar of b) assert.ok(bar.length >= 2 && bar.length <= 4 && /\./.test(bar) && /-/.test(bar), `${k} ${bar}`); assert.ok(S.BLINK[k].at(-1) >= 2000); }
+  assert.notDeepEqual(bars(S.BLINK.dalmaru), bars(S.BLINK.welcome)); assert.notEqual(bars(S.BLINK.dalmaru)[0], bars(S.BLINK.welcome)[0]);
+});
+
+test('S2 서버: 섬 일지 쪽 읽기(닫힌 쪽 막힘), 등대 문 살펴보기 → 빠진 쪽 한 번(문은 잠김), 결론 듣기 → 쪽지 여섯·등불·칭호 한 번', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story2-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('등대이웃'));
+  await req('/api/test/island/free-residents', a, {});
+  const story = async () => (await req('/api/island/story', a)).data;
+  // the log: 1~4 open, 5 shut until 노을 할머니 3장
+  assert.equal((await req('/api/island/story/log', a, { page: 5 })).data.error, 'PAGE_SHUT');
+  assert.equal((await req('/api/island/story/log', a, { page: 1 })).status, 200);
+  const done = Object.fromEntries([...Array(10).keys()].map((n) => [String(n), 3]));
+  await req('/api/test/story', a, { doc: { chapters: done, read: ['log:1'] } });
+  for (let k = 2; k <= 7; k += 1) assert.equal((await req('/api/island/story/log', a, { page: k })).status, 200);
+  // by the lighthouse: too far / not every page yet / then the missing page, once (the door still locked)
+  const L = T.dalmaru.PLACES.lighthouse;
+  await req('/api/plaza/state', a, { x: 0, z: -60, yaw: 0, moving: false }); assert.equal((await req('/api/island/story/inspect', a, {})).data.error, 'TOO_FAR');
+  const by = async () => { for (const [dx, dz] of [[5, 0], [-5, 0], [0, 5], [0, -5], [4, 4]]) { const r = await req('/api/plaza/state', a, { x: L.x + dx, z: L.z + dz, yaw: 0, moving: false }); if (Math.hypot(r.data.x - L.x, r.data.z - L.z) <= 8) return; } throw new Error('never by the lighthouse'); };
+  await by(); assert.equal((await req('/api/island/story/inspect', a, {})).data.found, null);
+  await req('/api/island/story/log', a, { page: 8 });
+  const found = await req('/api/island/story/inspect', a, {}); assert.equal(found.data.found.title, S.LOG.missing.title); assert.ok(found.data.pieces.includes(7)); assert.equal(found.data.final, false);
+  assert.equal((await req('/api/island/story/inspect', a, {})).data.found, null);
+  // 오 탐정: 「결론 듣기」 only with 노을 할머니 단짝; then six papers, the lamp and the title once
+  const talk = async (n, body = {}) => { for (const [dx, dz] of SIDES) { const w = Npcs.residentAt(n, Date.now(), null); await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  assert.equal((await talk(5)).data.today.final, false); await req('/api/island/resident/bye', a, { n: 5 });
+  for (let k = 0; k < 3; k += 1) await req('/api/test/affinity', a, { n: 4, delta: 10 }); // (단짝: 30)
+  assert.equal((await talk(5)).data.today.final, true);
+  const fin = await req('/api/island/resident/talk', a, { n: 5, topic: 'final' }); assert.equal(fin.status, 200, JSON.stringify(fin.data));
+  assert.equal(fin.data.finalScenes.length, 6); assert.ok(fin.data.finalScenes.flatMap((sc) => sc.note).join('').includes('등대이웃')); assert.equal(fin.data.story.final, true);
+  assert.equal((await req('/api/island/resident/talk', a, { n: 5, topic: 'final' })).data.error, 'STORY_GONE');
+  await story(); await story(); // (the gifts made good again: still once)
+  const mine = (await req('/api/test/story', a, {})).data;
+  assert.equal(mine.furniture.filter((p) => p.id === S.LANTERN).length, 1); assert.deepEqual(mine.titles, [S.TITLE]);
+});
