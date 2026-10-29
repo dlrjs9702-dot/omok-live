@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.204 X2 크리스마스 행사
+
+- island-calendar christmas-2026(12/19~25): 선물 배달 1×3, 눈사람 3×1, 성탄 저녁 모임 6(12/25 18~22시 광장 트리 9 m), 대회 1 — 7일 다 하면 도장 50 / 가판대 37(트리 8·벽난로 8·스노볼 4·양말 걸이 3·과자 집 4·칭호 「메리 크리스마스」 10). PLACES tree·GATHER_R·snow(−18, −99, 10×7).
+- lib/island-festival: 선물 takeGift/giveGift(받을 주민·포장 doc, IslandNpcs.walking() 하나), 눈사람 rollStart/rollEnd/finishSnowman(크기는 서버 자기 시계 0.35~1.1 m, roll 자리에서 3 m 넘게 움직여야, 꾸밈 하나 이상), award가 doc의 다른 값을 지킴.
+- 화면: 가판대 덧씌움·선물 자루·산타 차림 행사 주민, 눈밭(눈 한 겹·팻말·지도), 굴리는 눈덩이, 꾸미기 창(빈 채로 시작·종이 칩), 그날 눈사람 최근 12개(남의 것 Low), 주민 대화의 선물 건네기, 행사마다 장식·탭 종이색.
+- 섬 채팅 입력줄: 채팅 창이 닫혀 있으면 아래 가운데(창을 따라가는 건 열려 있을 때만).
+- e2e island-xmas-festival(PC·폰), festival-server 크리스마스. 사진 notes img/xmas-festival-game.
+
 ## v1.10.203 X1 크리스마스 에셋 붙이기
 
 - 76 열다섯(xmas-v1): REGISTRY xmas.* 일곱(집 가구 다섯·가판대 덧씌움·선물 자루), snow.ball, snowman.part.* 다섯, newyear.countdown_board·firework_launcher — 광장 배치는 X2.
@@ -25,12 +33,3 @@
 - 50번(slim50)에서 오던 목걸이·신발 중 79에 같은 이름이 있는 것을 79 판으로(High 63 · Low 62, 소스 refit79, SHA 갱신). 79의 동물 목걸이·신발 20개는 게임 파일이 없어 안 붙임(동물 변신은 native/animal-*.glb).
 - asset-pipeline.js FIT.pendantZ −0.2 → −0.13: 맞춘 펜던트(몸 앞 0.14~0.17)도 두꺼운 옷 위에서 밀어내기가 닿음.
 - e2e island-refit79(PC·폰): 세일러 + 별 목걸이 + 부츠 → 목걸이 shift.
-
-## v1.10.201 S2 섬 이야기 장면
-
-- 섬 일지(기록관 창): 앞쪽 셋·쪽 1~4·쪽 5~8(노을 3장 뒤)·빠진 쪽. 읽은 쪽 story.read log:N.
-- 조각 7: 일지 1~8쪽 다 읽음 + 가람 3장 + 등대 8 m 안 「살펴보기」 → 문 발치 상자에서 빠진 쪽(한 번). 문은 잠긴 채, 마지막 장에서 처음 열림. 기록관 열쇠는 글로만.
-- 마지막 장(오 탐정 「결론 듣기」, 수사판 8 + 노을 단짝): 쪽지 여섯(안 A 그대로), 가구 「초승 등불」 + 칭호 「등대의 이웃」 한 번(doc.gifted 뒤 건너뜀). 쪽지가 열리면 대화 창 닫힘.
-- 전하기 받는 쪽 대사 다섯(S2 정함). 수사판 = 이야기 책 초승등대 탭(기록관 문양 도장, 글 옆).
-- 에셋 80(story-v1): 등대 아래 문(keepNodes, 문 조각), 문 발치 상자, 가구 초승 등불. 등대도 keepNodes(glow). 밤 깜빡임 달·마·루 / 마친 사람은 어·서·와, 꼭대기 빛 번짐 스프라이트. 움직임 줄이기면 은은히 켬.
-- 섬에 들어올 때 이야기 상태를 바로 불러옴.
