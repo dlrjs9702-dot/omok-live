@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.205 Q2 앞 묶음
+
+- 대화 창 저절로 닫힘(섬 이야기 e2e CI #349·#350 원인): 붙잡기 임대가 끝나거나 늦은 작별이 풀어도 곁이면 keep·topic이 다시 붙잡음, 끝은 busy·far일 때만 까닭 글과 함께. 도구 휘두르기는 누를 때 겨눈 주민 한 발 여유. playwright actionTimeout.
+- 관광객 사진 부탁 B안: 방문객이 기념사진 명소 안(photoPlace)에 섬, 말 걸기 → 포즈, 사진 모드 셔터(관광객이 틀 안·12 m) → 서버 asked·2초·같은 명소·12 m → 6,000P.
+- 할 일 카드 넷 이상이면 「+n개 더 · 전체 보기」 종이 칩 → 「내 할 일」 창(이야기·주민 부탁·심부름, 창에서 그만두기). 화면의 주민은 이름만(누리).
+- 섬 채팅 단추: 새 채팅은 색만(점 없음, 폭 그대로).
+- 해안 쓰레기 여덟 중 둘은 늘 윤슬만 가운데 해변.
+- e2e island-photo-request·island-quest-list·resident-talk-gone(PC·폰). 사진 notes img/q2-interact.
+
 ## v1.10.204 X2 크리스마스 행사
 
 - island-calendar christmas-2026(12/19~25): 선물 배달 1×3, 눈사람 3×1, 성탄 저녁 모임 6(12/25 18~22시 광장 트리 9 m), 대회 1 — 7일 다 하면 도장 50 / 가판대 37(트리 8·벽난로 8·스노볼 4·양말 걸이 3·과자 집 4·칭호 「메리 크리스마스」 10). PLACES tree·GATHER_R·snow(−18, −99, 10×7).
@@ -27,9 +36,3 @@
 - 집 가구 다섯은 island-furniture EVENT_GOODS __plain(가구점 진열 없음, 크리스마스 도장 가게 몫), island-home SIZE(76 README 값), 양말 걸이 HUNG.
 - 옷 둘은 skins-x2 WINTER_ITEMS(코인 상점 늘 판매): 크리스마스 스웨터(78 판, 희귀, baked), 털 귀마개(77 판, 고급, 머리카락 cover 없음).
 - e2e island-xmas-assets(PC·폰): 옷 입기, 오두막에 가구 다섯 놓기. 사진 notes img/xmas-assets-game.
-
-## v1.10.202 79 소품 맞춤
-
-- 50번(slim50)에서 오던 목걸이·신발 중 79에 같은 이름이 있는 것을 79 판으로(High 63 · Low 62, 소스 refit79, SHA 갱신). 79의 동물 목걸이·신발 20개는 게임 파일이 없어 안 붙임(동물 변신은 native/animal-*.glb).
-- asset-pipeline.js FIT.pendantZ −0.2 → −0.13: 맞춘 펜던트(몸 앞 0.14~0.17)도 두꺼운 옷 위에서 밀어내기가 닿음.
-- e2e island-refit79(PC·폰): 세일러 + 별 목걸이 + 부츠 → 목걸이 shift.
