@@ -20,7 +20,7 @@ test('카운트다운: 23시 판 분:초 → 마지막 10초 → 0시 불꽃·�
     await clock('2026-12-31T23:00:00');
     await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
     await look(); await expect.poll(async () => (await cd())?.phase, { timeout: 30000 }).toBe('clock');
-    expect((await cd()).text).toBe('clock:60:00'); await shot('2300');
+    expect((await cd()).text).toMatch(/^clock:(60:00|59:[0-5]\d)$/); /* (the page's clock runs on from the server's 23:00) */ await shot('2300');
     // 23:59:50 running on: the last ten seconds big, then the new year -- fireworks, and round the board the title
     await clock('2026-12-31T23:59:50', true);
     await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
