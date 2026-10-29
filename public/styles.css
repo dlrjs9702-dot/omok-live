@@ -1723,7 +1723,8 @@ body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint
 /* (U: a phone's bottom row keeps its places -- the hint's pill sits between -- so 가방·사진 without their pictures there) */
 body.touchIsland #islandBagTab::before, body.touchIsland #islandPhotoTab::before { content: none; }
 body.touchIsland .islandPhotoTab { left: 86px; }
-body.touchIsland .islandViewTab { left: 156px; }
+body.touchIsland .islandViewTab { top: 14px; bottom: auto; left: 172px; } /* (V1 CI: on a phone the bottom row is the hint's -- up beside 「💬 채팅」) */
+body.touchIsland #islandMessengerTab:not(.hidden) ~ #islandViewTab { left: 278px; }
 
 /* v1.10.48: visible train actions, beside the keyboard hint. */
 .trainControls{position:absolute;z-index:5;left:50%;bottom:82px;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap}

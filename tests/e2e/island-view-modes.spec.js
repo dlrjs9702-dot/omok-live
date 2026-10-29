@@ -29,10 +29,10 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
   // a talk in the first: face to face -- the view turned to them (no talk camera), my body still hidden; closed, the first on
   const dialog = page.locator('#plazaDialog'); const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
   await expect.poll(async () => {
-    if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async () => { const w = window.PlazaDebug().wanderers[1]; if (w) { await window.PlazaWarp(w.x + 1.3, w.z); window.PlazaDebug().talkResident(w.n); } }); await page.waitForTimeout(900); }
+    if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async () => { const w = window.PlazaDebug().wanderers.find((o) => o.n === 1); if (w) { await window.PlazaWarp(w.x + 1.3, w.z); window.PlazaDebug().talkResident(w.n); } }); await page.waitForTimeout(900); }
     return talking();
   }, { timeout: 120000, intervals: [300] }).toBe(true);
-  await expect.poll(async () => { const v = await view(); const at = await page.evaluate(() => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => Math.hypot(o.x - d.x, o.z - d.z) < 3); return w && { dx: w.x - d.x, dz: w.z - d.z }; }); if (!at) return 9; const want = Math.atan2(-at.dx, -at.dz); return Math.abs(Math.atan2(Math.sin(v.yaw - want), Math.cos(v.yaw - want))); }, { timeout: 10000 }).toBeLessThan(0.2);
+  await expect.poll(async () => { const v = await view(); const at = await page.evaluate(() => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => o.n === 1); /* (the one talked to) */ return w && { dx: w.x - d.x, dz: w.z - d.z }; }); if (!at) return 9; const want = Math.atan2(-at.dx, -at.dz); return Math.abs(Math.atan2(Math.sin(v.yaw - want), Math.cos(v.yaw - want))); }, { timeout: 10000 }).toBeLessThan(0.2);
   expect(await view()).toMatchObject({ mode: 'first', body: false, fov: 64 });
   await shot('talk-first');
   await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false); expect(await view()).toMatchObject({ mode: 'first', fov: 75 });
