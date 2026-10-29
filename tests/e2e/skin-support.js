@@ -214,3 +214,11 @@ async function standAt(request, who, x, z) {
   throw new Error(`could not stand at ${x}, ${z}: ${JSON.stringify(last)}`);
 }
 module.exports.standAt = standAt;
+// (206, CI #349~#351 「섬 이야기」 click 60 s: a talk's lines are typed out one by one; a helper that pressed Space only while
+// some were pending at that instant left the rest hidden when the card filled a moment later -- its choices then never
+// showed. Pressed till none is pending or typing)
+async function revealTalk(page) {
+  const pending = page.locator('#plazaDialog .lostRequestLine.talkPending, #plazaDialog .lostRequestLine.typing');
+  await expect.poll(async () => { const n = await pending.count(); if (n) await page.keyboard.press('Space'); return n; }, { timeout: 30000, intervals: [150] }).toBe(0);
+}
+module.exports.revealTalk = revealTalk;

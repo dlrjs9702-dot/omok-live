@@ -27,7 +27,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
     if (!process.env.CI) expect(await page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe(`resident:${n}`); // the talk camera (사용자 2026-10-18: every talk) -- (CI: a slow screen draws the walker behind, too far for the camera)
   };
   // (대화창 새 단장: the words typed out -- Space shows a line at once, then the next)
-  const lines = async () => { for (let k = 0; k < 8 && await page.locator('.lostRequestLine.talkPending, .lostRequestLine.typing').count(); k += 1) await page.keyboard.press('Space'); };
+  const lines = () => require('./skin-support').revealTalk(page);
   const choose = async (key, all = true) => { await Promise.all([page.waitForResponse((r) => r.url().includes('/api/island/resident/talk')), page.keyboard.press(key)]); if (all) await lines(); };
   // (a talk asked twice on a slow runner may answer after the first Escape and open again: Escape until it stays shut)
   const close = async () => { await expect.poll(async () => { if (await talking()) await page.keyboard.press('Escape'); await page.waitForTimeout(400); return talking(); }, { timeout: 20000 }).toBe(false); };
