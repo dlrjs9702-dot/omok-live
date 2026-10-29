@@ -1431,6 +1431,8 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await b.page.evaluate((p) => window.PlazaWarp(p.x, p.z), pierAt(DAL ? 4 : 10, DAL ? 1 : 2.5));
   const seen = () => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act?.startsWith('fish:'))?.act || null);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
+  await expect(page.locator('#plazaHint')).toHaveText('가방에서 낚싯대를 들면 낚시할 수 있어요', { timeout: 10000 }); // (206 Q2 5: not in hand, no cast)
+  await require('./skin-support').holdTool(page, 'fishing_rod');
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 낚시', { timeout: 10000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.phase), { timeout: 10000 }).toMatch(/cast|wait/);

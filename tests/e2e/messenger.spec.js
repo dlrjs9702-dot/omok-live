@@ -101,6 +101,14 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await m.waitForTimeout(2500); await expect(m.locator('#messengerRoomName')).toHaveText(dad.nickname);
   await expect(m.locator('#messengerRoomList button', { hasText: '우리집' })).toContainText('📌'); // (the list has it)
   await m.unroute('**/pin');
+  // (Q2 사용자 사진 「Illegal invocation」: a new line while this window is not looked at -- the title blinks 「● 새 메시지」, no
+  // error note; the blink's default timers were called as an object's methods, which Chrome refuses)
+  await toList(); await m.locator('#messengerRoomList button', { hasText: '우리집' }).click(); await expect(m.locator('#messengerRoomName')).toHaveText('우리집'); // (another room: dad's line unread)
+  await m.evaluate(() => { document.hasFocus = () => false; });
+  await d.locator('#messengerInput').fill('자?'); await d.locator('#messengerInput').press('Enter');
+  await expect(m).toHaveTitle(/● 새 메시지/, { timeout: 10000 });
+  await expect(m.locator('#mToast, .toast').filter({ hasText: 'Illegal' })).toHaveCount(0);
+  await m.evaluate(() => { delete document.hasFocus; window.dispatchEvent(new Event('focus')); });
   // logged out on the page: the device's login ends with it (Codex 검토 2차 #4: and nothing of it stays on the page)
   await m.locator('#mLogoutBtn').click(); await expect(m.locator('#mLogin')).toBeVisible();
   await expect(m.locator('#messengerRoomList li')).toHaveCount(0); await expect(m.locator('#messengerMessages > *')).toHaveCount(0); await expect(m).toHaveTitle('아일랜드 메신저');

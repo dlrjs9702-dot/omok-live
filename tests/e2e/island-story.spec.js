@@ -17,7 +17,7 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
       return talking();
     }, { timeout: 120000, intervals: [300] }).toBe(true);
   };
-  const lines = async () => { for (let k = 0; k < 8 && await page.locator('.lostRequestLine.talkPending, .lostRequestLine.typing').count(); k += 1) await page.keyboard.press('Space'); };
+  const lines = () => require('./skin-support').revealTalk(page);
   const close = async () => { await expect.poll(async () => { if (await talking()) await page.keyboard.press('Escape'); await page.waitForTimeout(400); return talking(); }, { timeout: 20000 }).toBe(false); };
   const shot = async (name) => { if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-${name}-${isMobile ? 'phone' : 'pc'}.png` }); };
   const choices = page.locator('#plazaDialog .talkChoices button');

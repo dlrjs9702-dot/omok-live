@@ -214,3 +214,19 @@ async function standAt(request, who, x, z) {
   throw new Error(`could not stand at ${x}, ${z}: ${JSON.stringify(last)}`);
 }
 module.exports.standAt = standAt;
+// (206, CI #349~#351 「섬 이야기」 click 60 s: a talk's lines are typed out one by one; a helper that pressed Space only while
+// some were pending at that instant left the rest hidden when the card filled a moment later -- its choices then never
+// showed. Pressed till none is pending or typing)
+async function revealTalk(page) {
+  const pending = page.locator('#plazaDialog .lostRequestLine.talkPending, #plazaDialog .lostRequestLine.typing');
+  await expect.poll(async () => { const n = await pending.count(); if (n) await page.keyboard.press('Space'); return n; }, { timeout: 30000, intervals: [150] }).toBe(0);
+}
+module.exports.revealTalk = revealTalk;
+// (206 Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」: a tool is used in hand only) the bag's 「들기」 on it -- in hand
+async function holdTool(page, itemId) {
+  await page.keyboard.press('KeyI');
+  await page.locator(`.islandBagSlot[data-item="${itemId}"]`).first().click();
+  await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe(itemId);
+}
+module.exports.holdTool = holdTool;

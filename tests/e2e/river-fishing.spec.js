@@ -10,6 +10,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   expect((await post(request, '/api/test/island/give', token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (낚싯대는 잡화점에서)
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
+  await require('./skin-support').holdTool(page, 'fishing_rod'); // (206 Q2 5: the rod in hand to cast)
   const weeds = (await get(request, '/api/island/weeds', token)).data.weeds || [];
   // (CI #298 on a phone: a 매미 on the bank took the prompt -- an insect's, like a weed's, comes before fishing; the server's
   // layout of the next 10 minutes)

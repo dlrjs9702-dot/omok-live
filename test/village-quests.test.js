@@ -30,7 +30,7 @@ test('마을 주민: 화가·역무원·거리 악단은 매주, 미니게임 �
     assert.equal(step.game, game); assert.equal(step.level, 'easy'); assert.ok(step.puzzle);
     assert.equal(Q.note(d, 'minigame:sudoku', { qty: 1, now }), null); d = Q.note(d, `minigame:${game}`, { qty: 1, now }); assert.equal(d[id].count, 1);
     d = Q.talk(d, id, [], at, now).doc; assert.equal(d[id].step, 1);
-    d = Q.note(d, 'at', { x: look.x, z: look.z, now }); assert.equal(d[id].count, 1, id + ' 둘러보기');
+    assert.equal(Q.note(d, 'at', { x: look.x, z: look.z, now }), null, id + ' 서 있기만'); d = require('../test-support/visit-task')(Q, d, id, now); assert.equal(d[id].count, 1, id + ' 둘러보기(작은 할 일)');
   }
   for (const v of T.villageSolids()) assert.ok(T.walkable(v.x, v.z));
   // A2c: the grandpa -- a win over the room AI (오목, then 오델로); the other game does not count
