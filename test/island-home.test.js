@@ -101,3 +101,29 @@ test('내 집 가구: 0.25 m 칸이나 벽에 딱 붙은 자리, 미끄러진 �
   assert.deepEqual(H.snapPos({ ...sofa, x: 1.13, z: 1.38 }, 2), { x: 1.25, z: 1.5 });
   assert.deepEqual(H.snapPos({ ...sofa, rot: 1, x: 9 }, 2), { x: st.hx - d / 2, z: 0 }); // (turned: its depth along x)
 });
+
+// 207 집 꾸미기 (gamecenter-notes docs/home-tabletop-20261029.md 1, 사용자 「곤충상자 같은 작은 건 책상 위에 올릴 수 있게」):
+// a small thing all inside a desk's top stands on it (its top's height, 0.05 m places), half over its edge is the floor's rule
+// (an overlap), two on one top not on each other, a desk with things on it not moved; the floor as before
+test('집 꾸미기: 작은 물건은 책상·탁자 위에, 걸치면 바닥 규칙, 위끼리 안 겹침, 위에 있으면 책상 못 옮김', () => {
+  const desk = { uid: 'd', id: 'desk__oak', x: 1, z: 2, rot: 0 }; // (1.2 x 0.63: x 0.4~1.6, z 1.685~2.315)
+  const box = { uid: 'i', id: 'insect_case__oak', x: 0.75, z: 2, rot: 1 }; // (0.34 x 0.6 turned: x 0.58~0.92, z 1.7~2.3)
+  assert.equal(H.placeError(box, [desk]), null, '책상 안 곤충 상자');
+  assert.equal(H.supportOf(box, [desk])?.uid, 'd'); assert.equal(H.liftOf(box, [desk]), H.TOPS.desk); assert.ok(H.TOPS.desk > 0.7 && H.TOPS.desk < 0.85, '모델 윗면');
+  assert.match(H.placeError({ ...box, x: 0.73 }, [desk]), /자리/, '위에서는 0.05 칸');
+  assert.equal(H.placeError({ ...box, x: 1.15 }, [desk]), null, '0.05 칸 어디나');
+  const half = { ...box, x: 0.25 }; assert.equal(H.supportOf(half, [desk]), null); assert.match(H.placeError(half, [desk]), /다른 가구와 겹쳐요/, '반쯤 걸침 → 바닥 규칙');
+  const globe = { uid: 'g', id: 'xmas_snow_globe__plain', x: 0.8, z: 2, rot: 0 };
+  assert.match(H.placeError(globe, [desk, box]), /위에 놓인 다른 물건과 겹쳐요/, '같은 책상 위 둘 겹침');
+  assert.equal(H.placeError({ ...globe, x: 1.3 }, [desk, box]), null, '같은 책상 위 나란히');
+  assert.deepEqual(H.heldOn(desk, [box, { ...globe, x: 1.3 }]).map((p) => p.uid), ['i', 'g'], '책상 위에 있는 것');
+  assert.equal(H.placeError({ uid: 's', id: 'sofa__mint', x: 3, z: 2, rot: 0 }, [desk, box]), null, '바닥 규칙 그대로');
+  assert.match(H.placeError({ ...desk, uid: 'd2', x: 1.25 }, [desk]), /겹쳐요/, '책상끼리는 겹침');
+  assert.equal(H.placeError(desk, [box]), null, '제자리 책상: 위의 것은 걸리지 않음'); assert.match(H.placeError({ ...desk, x: 0.25 }, [box]), /겹쳐요/, '조금 옮기면 걸친 물건과 겹침');
+  assert.equal(H.supportOf({ uid: 'r', id: 'sofa__mint', x: 1, z: 2, rot: 0 }, [desk]), null, '큰 가구는 안 올라감');
+  assert.equal(H.supportOf({ uid: 'n', id: 'radio__red', x: 1, z: 2, rot: 0 }, [{ ...desk, id: 'nightstand__oak' }]), null, '협탁은 위가 평평하지 않아 뺌');
+  // on a top the arrows' snap: the nearest 0.05 place, kept on it
+  assert.deepEqual(H.snapPos({ ...box, x: 0.6123, z: 2.01 }, 2, [desk]), { x: 0.6, z: 2 });
+  // a house grown: the desk first, what is on it after
+  const grown = H.grownPieces([box, desk], 3); assert.deepEqual(grown.back, []); assert.equal(H.supportOf(grown.pieces.find((p) => p.uid === 'i'), grown.pieces)?.uid, 'd');
+});

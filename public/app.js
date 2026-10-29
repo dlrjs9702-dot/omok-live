@@ -3324,8 +3324,16 @@
     const list = document.createElement('div'); list.className = 'furnitureList'; list.setAttribute('role', 'list');
     const status = line(pieces.length ? '놓을 가구를 고르세요.' : '가구 창고가 비어 있어요. 백화점 2층 가구점에 가 보세요.'); status.setAttribute('role', 'status');
     const pad = document.createElement('div'); pad.className = 'homeEditPad';
-    const show = () => { const why = homeEditing ? plaza.controller?.homeGhost?.(homeEditing) : null; if (homeEditing) status.textContent = `${homeEditing.name} · ${why || '여기에 놓을 수 있어요'}`; for (const b of pad.querySelectorAll('button')) b.disabled = !homeEditing; put.disabled = !homeEditing || Boolean(why); back.disabled = !homeEditing || !placed.has(homeEditing.uid); };
-    const move = (dx, dz) => { if (!homeEditing) return; const q = H.snapPos({ ...homeEditing, x: homeEditing.x + dx, z: homeEditing.z + dz }, homeInside.home.stage); homeEditing.x = q.x; homeEditing.z = q.z; show(); }; // (3회차 6: up against a wall too)
+    const others = () => homeInside.home.pieces.filter((p) => p.uid !== homeEditing?.uid);
+    // (207: a desk with things on it stays where it is -- moved, turned or put away only once they are off)
+    const stuck = () => { const was = homeEditing && placed.get(homeEditing.uid); return Boolean(was && H.heldOn(was, others()).length); };
+    const show = () => {
+      const held = stuck(); const was = homeEditing && placed.get(homeEditing.uid); const moved = held && (was.x !== homeEditing.x || was.z !== homeEditing.z || was.rot !== homeEditing.rot);
+      const why = homeEditing ? (moved ? '위에 놓인 물건을 먼저 치워 주세요.' : null) || plaza.controller?.homeGhost?.(homeEditing) : null; if (moved) plaza.controller?.homeGhost?.(homeEditing);
+      if (homeEditing) status.textContent = `${homeEditing.name} · ${why || (held ? '위에 물건이 있어요' : H.supportOf(homeEditing, others()) ? '위에 올려 놓을 수 있어요' : '여기에 놓을 수 있어요')}`;
+      for (const b of pad.querySelectorAll('button')) b.disabled = !homeEditing; put.disabled = !homeEditing || Boolean(why); back.disabled = !homeEditing || !placed.has(homeEditing.uid) || held;
+    };
+    const move = (dx, dz) => { if (!homeEditing) return; const step = H.supportOf(homeEditing, others()) ? 0.05 : 0.25; /* (207: on a top by 0.05 m) */ const q = H.snapPos({ ...homeEditing, x: homeEditing.x + dx * step, z: homeEditing.z + dz * step }, homeInside.home.stage, others()); homeEditing.x = q.x; homeEditing.z = q.z; show(); }; // (3회차 6: up against a wall too)
     for (const p of pieces) {
       const b = btn(`${p.name}${placed.has(p.uid) ? ' · 놓음' : ''}`, 'ghost furniturePiece');
       b.dataset.uid = p.uid; b.setAttribute('role', 'listitem');
@@ -3338,8 +3346,8 @@
       list.append(b);
     }
     const arrows = [['←', 1, 0], ['↑', 0, 1], ['↓', 0, -1], ['→', -1, 0]]; // (the room is seen from its doorway: my left is its +x)
-    for (const [label, dx, dz] of arrows) { const b = btn(label, 'ghost', () => move(dx * 0.25, dz * 0.25)); b.setAttribute('aria-label', { '←': '왼쪽으로', '↑': '안쪽으로', '↓': '앞쪽으로', '→': '오른쪽으로' }[label]); pad.append(b); }
-    pad.append(btn('돌리기', 'ghost', () => { if (homeEditing) { homeEditing.rot = (homeEditing.rot + 1) % 4; show(); } }));
+    for (const [label, dx, dz] of arrows) { const b = btn(label, 'ghost', () => move(dx, dz)); b.setAttribute('aria-label', { '←': '왼쪽으로', '↑': '안쪽으로', '↓': '앞쪽으로', '→': '오른쪽으로' }[label]); pad.append(b); }
+    { const turn = btn('↻ 돌리기', 'ghost homeEditTurn', () => { if (homeEditing) { homeEditing.rot = (homeEditing.rot + 1) % 4; show(); } }); turn.setAttribute('aria-label', '돌리기'); pad.append(turn); } // (207: one line, not 돌/리/기)
     const send = async (body, done) => {
       if (homeBusy) return; homeBusy = true;
       try { const r = await api('/api/home/place', { method: 'POST', body: JSON.stringify(body) }); showHome({ ...homeInside, home: r.home }); homeEditing = null; showToast(done); openHomeEdit(); }

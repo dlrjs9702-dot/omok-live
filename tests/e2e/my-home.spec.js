@@ -397,3 +397,61 @@ test('민원 창구 집 넓히기: 작은 집·큰 집에서도 「집 넓히기
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// 207 집 꾸미기 (gamecenter-notes docs/home-tabletop-20261029.md, 사용자 「곤충상자 같은 작은 건 책상 위에 올릴 수 있게 해」):
+// the insect case and the snow globe on a desk (drawn at its top), the radio on the coffee table; the two not on each
+// other; the desk with things on it not moved or put away (the window says so) -- once they are off it moves. The window
+// on the island's paper, 「↻ 돌리기」 on one line. PC and phone.
+test('집 꾸미기: 작은 물건은 책상·탁자 위에, 위에 있으면 책상 못 옮김, 꾸미기 창 종이', async ({ browser, request, isMobile }) => {
+  test.setTimeout(400000);
+  const { a, page, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'k' : 'l');
+  if (process.env.SHOT_DIR) { await page.evaluate(() => localStorage.removeItem('gc.testIslandAssets')); await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); } // (the photos: the real models)
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
+  await through(page, 'townhall', '관공서 들어가기', 'townhall');
+  const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.owner === null).id;
+  expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'green' })).status).toBe(200);
+  try { // (the lot given back at the end, passed or not: twelve for every test of a run)
+  const [desk, box, globe, table, radio] = (await post(request, '/api/test/home/furniture', a.token, { ids: ['desk__oak', 'insect_case__oak', 'xmas_snow_globe__plain', 'coffee_table__oak', 'radio__red'] })).data.pieces.map((p) => p.uid);
+  await through(page, 'room:exit', '나가기', 'island');
+  await through(page, `home:${lot}`, '내 집 들어가기', 'home');
+  const place = (uid, x, z, rot = 0) => post(request, '/api/home/place', a.token, { uid, x, z, rot });
+  expect((await place(desk, 0, 2)).status).toBe(200); expect((await place(table, -2.5, 2)).status).toBe(200);
+  // on the desk: the case (turned), the globe beside it -- not on it; the radio on the table
+  expect((await place(box, -0.3, 2, 1)).status).toBe(200);
+  const over = await place(globe, -0.25, 2); expect(over.data.error).toBe('BAD_PLACE'); expect(over.data.message).toContain('위에 놓인 다른 물건과 겹쳐요');
+  expect((await place(globe, 0.3, 2.05)).status).toBe(200); expect((await place(radio, -2.5, 2)).status).toBe(200);
+  // the desk with things on it: not moved, turned or put away
+  for (const body of [{ uid: desk, x: 0.5, z: 2, rot: 0 }, { uid: desk, x: 0, z: 2, rot: 1 }, { uid: desk, remove: true }]) { const r = await post(request, '/api/home/place', a.token, body); expect(r.data.error).toBe('HOLDS_THINGS'); expect(r.data.message).toBe('위에 놓인 물건을 먼저 치워 주세요.'); }
+  await through(page, 'home:exit', '나가기', 'island'); await through(page, `home:${lot}`, '내 집 들어가기', 'home'); // (in again: the room as the server has it)
+  const H = require('../../public/plaza/island-home.js');
+  await expect.poll(() => page.evaluate((uid) => window.PlazaDebug().pieceY(uid), box), { timeout: 15000 }).toBeCloseTo(0.04 + H.TOPS.desk, 3);
+  expect(await page.evaluate((uid) => window.PlazaDebug().pieceY(uid), globe)).toBeCloseTo(0.04 + H.TOPS.desk, 3);
+  expect(await page.evaluate((uid) => window.PlazaDebug().pieceY(uid), radio)).toBeCloseTo(0.04 + H.TOPS.coffee_table, 3);
+  if (process.env.SHOT_DIR) { // (from the room's front, the desk and the table ahead -- the real models for the photo)
+    await page.evaluate((lot) => { const Hm = window.IslandHome; const d = window.PlazaDebug(); const o = Hm.lotById(lot); const w = Hm.world(o, -1.2, 0.2); const c = Hm.world(o, -1.2, 2); d.teleport(w.x, w.z); const y = Math.atan2(c.x - w.x, c.z - w.z); d.faceYaw(y); d.setCamYaw(y + Math.PI); }, lot);
+    await page.waitForTimeout(6000); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-home-tabletop.png` });
+  }
+  // the window: the desk chosen -- 「위에 물건이 있어요」, not to the 창고; moved a step -- 「먼저 치워 주세요」, not placed
+  const edit = page.locator('#homeEdit'); const status = edit.locator('[role="status"]');
+  await page.locator('#homeEditBtn').click(); await expect(edit).toBeVisible();
+  await edit.locator(`.furniturePiece[data-uid="${desk}"]`).click(); await expect(status).toContainText('위에 물건이 있어요');
+  await expect(edit.getByRole('button', { name: '창고로 넣기' })).toBeDisabled();
+  const turn = edit.getByRole('button', { name: '돌리기', exact: true }); await expect(turn).toHaveText('↻ 돌리기');
+  const { height, line } = await turn.evaluate((el) => ({ height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) || 20 })); expect(height).toBeLessThan(line * 2 + 24); // (one line)
+  const paper = await edit.evaluate((el) => getComputedStyle(el.closest('dialog')).backgroundColor); expect(paper).not.toBe('rgb(15, 23, 42)'); // (not the old navy)
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-home-edit-paper.png` });
+  await edit.getByRole('button', { name: '오른쪽으로' }).click(); await expect(status).toContainText('위에 놓인 물건을 먼저 치워 주세요');
+  await expect(edit.getByRole('button', { name: '놓기', exact: true })).toBeDisabled();
+  // the case, chosen: moved on the desk by 0.05 m
+  await edit.locator(`.furniturePiece[data-uid="${box}"]`).click(); await expect(status).toContainText('위에 올려 놓을 수 있어요');
+  await edit.getByRole('button', { name: '오른쪽으로' }).click(); await expect(status).toContainText('위에 올려 놓을 수 있어요'); // (along the desk: the room's -x)
+  await edit.getByRole('button', { name: '놓기', exact: true }).click(); await expect(edit).toBeVisible();
+  await expect.poll(async () => (await get(request, '/api/home', a.token)).data.mine.pieces.find((p) => p.uid === box)?.x).toBeCloseTo(-0.35, 3);
+  await page.locator('#plazaCloseBtn').click();
+  // both off the desk (to the 창고): now it moves
+  for (const uid of [box, globe]) expect((await post(request, '/api/home/place', a.token, { uid, remove: true })).status).toBe(200);
+  expect((await place(desk, 0.5, 2)).status).toBe(200);
+  await expectNoScriptError(page);
+  } finally { await post(request, '/api/test/home/release', a.token, {}); }
+  await a.context.close();
+});

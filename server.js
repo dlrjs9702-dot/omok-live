@@ -4189,6 +4189,10 @@ async function requestHandler(req, res) {
     const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: Number(body.n), delta: Number(body.delta) }]);
     return sendJson(res, 200, { ok: true, points: after[Number(body.n)] || 0, stages: await affinityStages(account, before, after, String(session.label || '')) });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/release' && req.method === 'POST') { // (207 tests: the lot given back -- the twelve shared by every test of a run)
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    return worldEdit(async () => { const h = await homeOf(account); const lots = await homeLots(); if (h?.lot && lots[h.lot] === account) { const { [h.lot]: _gone, ...rest } = lots; await pointStore.setWorldValue('homeLots', rest); } await pointStore.setWorldValue(`home:${account}`, null); homeCache.delete(account); return sendJson(res, 200, { ok: true }); });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/furniture' && req.method === 'POST') { // 묶음 4: pieces straight into my 가구 창고
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     const ids = (Array.isArray(body.ids) ? body.ids : []).filter((id) => IslandFurniture.good(id));
@@ -5270,6 +5274,8 @@ async function requestHandler(req, res) {
       const h = await homeOf(account); const owned = (await pointStore.worldValue(`furniture:${account}`)) || [];
       const piece = owned.find((p) => p.uid === String(body.uid)); if (!piece) return sendError(res, 404, 'NOT_MINE', '내 가구가 아니에요.');
       const others = h.pieces.filter((p) => p.uid !== piece.uid);
+      const was = h.pieces.find((p) => p.uid === piece.uid); // (207: a desk with things on it stays as it is -- moved together later)
+      if (was && IslandHome.heldOn(was, others.filter((o) => IslandHome.onFloor(o, was.floor === 2 ? 2 : 1))).length && (body.remove || Number(body.x) !== was.x || Number(body.z) !== was.z || Number(body.rot) !== was.rot || floorOf(session.token) !== (was.floor === 2 ? 2 : 1))) return sendError(res, 409, 'HOLDS_THINGS', '위에 놓인 물건을 먼저 치워 주세요.');
       if (body.remove) {
         if ((h.tanks[piece.uid] || []).length) return sendError(res, 409, 'TANK_FULL', '수조의 물고기를 먼저 꺼내 주세요.');
         const next = { ...h, pieces: others }; delete next.tanks[piece.uid]; await saveHome(account, next); return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
