@@ -232,3 +232,23 @@ test('주민 예약: 플레이어가 선점한 대기 위치는 고르지 않고
   assert.ok(ev.residents().every(s=>!s.hold));
   people=[];ev.expire();assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,1,'자리가 비면 다음 조회에서 복구');
 });
+
+// Q2 해안 쓰레기 (gamecenter-notes docs/interact-quests-20261029.md 4, 사용자 「중앙 만 옆 해변엔 안 나와?」 → 「더 자주 나오게」):
+// of the beach's eight, two always on 윤슬만's middle beach (the bay's rim, -120°~-60° round (0, BAY_Z)) -- at the first fill
+// and when one picked there grows again
+test('해안 쓰레기: 여덟 중 둘은 늘 윤슬만 가운데 해변(채울 때·주워서 다시 생길 때)', () => {
+  const T = require('../public/plaza/island-terrain.js');
+  if (!T.dalmaru) return;
+  const inBay = (p) => { const a = (Math.atan2(p.z - T.dalmaru.BAY_Z, p.x) * 180) / Math.PI; return a >= -120 && a <= -60; };
+  for (let seed = 1; seed <= 6; seed += 1) {
+    let t = Date.parse('2026-11-08T12:00:00+09:00'); const ev = createIslandEvents({ random: seeded(seed), now: () => t });
+    const beach = () => [...ev.events.values()].filter((e) => e.type === 'beach_trash');
+    assert.equal(beach().length, RESOURCE_COUNTS.beach_trash, `seed ${seed}`); assert.equal(beach().filter(inBay).length, 2, `seed ${seed} 처음`);
+    for (let round = 0; round < 3; round += 1) { // (the bay's picked, then grown again: still two there)
+      const e = beach().find((x) => inBay(x) && x.state === 'open'); const c = ev.claim(e.id, 'a', e); ev.settle(c, true, 'a');
+      t += REGEN_MS.beach_trash + 1000; ev.expire();
+      assert.equal(beach().filter((x) => x.state === 'open').length, RESOURCE_COUNTS.beach_trash, `seed ${seed} round ${round}`);
+      assert.equal(beach().filter(inBay).length, 2, `seed ${seed} round ${round}`);
+    }
+  }
+});
