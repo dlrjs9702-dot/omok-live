@@ -15,6 +15,7 @@ test('주민이 먼저 말 걸기: 아는 사이 주민 곁을 지나면 머리 
   await page.evaluate((list) => window.PlazaDebug().setAffinity(list), mine); // (as the page hears it after a talk)
   // by the stranger: nothing; by the one I know: their greeting
   const passBy = (n) => expect.poll(async () => {
+    await post(request, '/api/test/island/free-residents', token, {}); // (CI #351 「held: true」: a new island event took this islander after the first freeing -- free again each try)
     await page.evaluate((list) => window.PlazaDebug().setAffinity(list), mine); // (the page's own first read may land after)
     await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 2, w.z); }, n);
     await page.waitForTimeout(700);
