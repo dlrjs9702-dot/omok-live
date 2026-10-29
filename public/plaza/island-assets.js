@@ -437,6 +437,10 @@
   REGISTRY['snow.ball'] = xv('snow_ball');
   for (const f of ['carrot', 'coal', 'twig', 'bucket', 'scarf']) REGISTRY[`snowman.part.${f}`] = xv(`snowman_part_${f}`, { near: 26 });
   for (const f of ['countdown_board', 'firework_launcher']) REGISTRY[`newyear.${f}`] = xv(`newyear_${f}`, { near: 60 });
+  // X2: others' snowmen on the Low files only (twelve on the field), and the gift carried in a hand (B 46's boxes, smaller)
+  REGISTRY['snow.ball_low'] = { url: `${XV}/snow_ball_low.glb` };
+  for (const f of ['carrot', 'coal', 'twig', 'bucket', 'scarf']) REGISTRY[`snowman.part.${f}_low`] = { url: `${XV}/snowman_part_${f}_low.glb` };
+  for (const c of ['red', 'green', 'blue']) REGISTRY[`xmas.gift_hand_${c}`] = { ...REGISTRY[`winter.gift_box_${c}`], scale: 0.55 }; // (0.3 m in the hands)
   // S2 섬 이야기 (assets 80 story-v1): the little door under 초승등대 (with the lighthouse's origin and turn; its `door` turns on
   // its hinge), the small box at its foot, the 「초승 등불」 lamp (a house piece, given once)
   const STORY = '/assets/island/story-v1';

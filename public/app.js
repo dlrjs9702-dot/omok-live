@@ -1939,7 +1939,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2756,7 +2756,7 @@
     const key = `${new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)}:${f?.id || ''}:${c?.kind || ''}`;
     try { if (localStorage.getItem('gc.festivalNote') === key) return; localStorage.setItem('gc.festivalNote', key); } catch {}
     const parts = [];
-    if (f) parts.push(`🌾 ${f.name} 중이에요! 대청마당 남쪽 행사 주민을 찾아가요${f.lastDay ? ' · 오늘이 마지막 날, 남은 도장은 오늘 써요' : ''}`);
+    if (f) parts.push(`${f.id.startsWith('christmas') ? '🎄' : '🌾'} ${f.name} 중이에요! 대청마당 남쪽 행사 주민을 찾아가요${f.lastDay ? ' · 오늘이 마지막 날, 남은 도장은 오늘 써요' : ''}`);
     if (c?.open) parts.push(`${c.kind === 'fish' ? '🎣' : '🦋'} 오늘은 ${c.name}(${c.from}~${c.to}시)`);
     showToast(parts.join(' · '), 6000);
   }
@@ -2798,7 +2798,7 @@
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api(`/api/island/festival/${action}`, { method: 'POST', body: JSON.stringify(body) });
-      if (r.festival) { festivalView = { ...(festivalView || {}), festival: r.festival }; plaza.controller?.setFestival?.(festivalView); }
+      if (r.festival) { festivalView = { ...(festivalView || {}), festival: r.festival, ...(r.snowmen ? { snowmen: r.snowmen } : {}) }; plaza.controller?.setFestival?.({ ...festivalView, contest: weekView?.contest }); }
       return r;
     } catch (error) { showToast(error.message); return null; } finally { festivalBusy = false; }
   }
@@ -2806,6 +2806,31 @@
     const r = await festivalPost(action); if (!r) return;
     plaza.controller?.playMine?.(action === 'harvest' ? 'pickup' : 'cheer');
     showToast(`${action === 'harvest' ? '🌾 밭 채소 +1 · ' : '🎉 '}도장 +${r.added} (모은 도장 ${r.festival.stamps})`);
+  }
+  // X2 크리스마스: a gift from the sack (for whom, where they are about now); the snow field's three steps -- roll, set down
+  // (three times), dress -- the server sizing each ball by its own clock
+  async function festivalGift() {
+    const r = await festivalPost('gift', { step: 'take' }); if (!r) return;
+    plaza.controller?.playMine?.('pickup'); showToast(`🎁 ${r.gift.name}에게 갖다주세요 · 지금 ${r.gift.where} 쪽에 있어요`, 6000);
+  }
+  async function festivalSnow() {
+    const snow = festivalView?.festival?.snow;
+    if (snow?.rolling) { const r = await festivalPost('snowman', { step: 'drop' }); if (r) showToast(`☃️ 눈덩이 ${r.festival.snow?.balls.length || 0}/3 · 지름 ${r.size} m${(r.festival.snow?.balls.length || 0) >= 3 ? ' — 이제 꾸며요!' : ''}`); return; }
+    if ((snow?.balls?.length || 0) >= 3) { openSnowmanDress(); return; }
+    const r = await festivalPost('snowman', { step: 'roll' }); if (r) showToast('☃️ 걸어 다니며 굴려요 — 오래 굴릴수록 커져요. 다시 SPACE로 내려놓기', 5000);
+  }
+  function openSnowmanDress() {
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const card = el('section', 'card festivalCard'); card.id = 'snowmanCard'; openPlazaWindow('눈사람 꾸미기', [card]); plazaDialog.classList.add('boardMode');
+    const picks = {}; const row = (key, label, most) => { const s = el('select', 'festivalPick'); s.dataset.part = key; for (let k = 0; k <= most; k += 1) s.append(new Option(most === 1 ? (k ? '붙이기' : '안 붙이기') : `${k}개`, String(k))); s.value = String(most); picks[key] = s; const l = el('label', 'snowPart', label); l.append(s); return l; };
+    const go = el('button', 'primary', '다 만들었어요'); go.type = 'button';
+    go.addEventListener('click', async () => {
+      const parts = Object.fromEntries(Object.entries(picks).map(([k, s]) => [k, Number(s.value)]));
+      const r = await festivalPost('snowman', { step: 'finish', parts }); if (!r) return;
+      plaza.controller?.playMine?.('cheer'); plazaDialog.close(); showToast(`☃️ 「${r.say}」 ${r.score}점 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`, 6000);
+    });
+    card.append(el('p', 'smallMuted', '쌓은 눈사람을 꾸며요. 많이 꾸밀수록, 위로 갈수록 알맞게 작아질수록 점수가 높아요(하루 한 번, 도장 3개).'),
+      row('carrot', '당근 코', 1), row('coal', '숯 (눈 둘·단추 셋)', 5), row('twig', '나뭇가지 팔', 2), row('bucket', '양동이 모자', 1), row('scarf', '목도리', 1), go);
   }
   async function openFestival(tab = 'tasks') {
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -2820,12 +2845,12 @@
       if (!f) { card.replaceChildren(el('p', 'emptyState', festivalView.next ? `다음 행사 「${festivalView.next.name}」는 ${festivalView.next.start.slice(5).replace('-', '월 ')}일에 시작해요.` : '지금은 행사가 없어요.')); return; }
       const head = el('div', 'festivalHead'); head.append(el('h3', '', `${f.name} · ${f.start.slice(5).replace('-', '/')}~${f.end.slice(5).replace('-', '/')}`), el('strong', 'festivalStamps', `도장 ${f.stamps}개`));
       const tabs = el('div', 'festivalTabs'); if (weekView?.contest) { const b = el('button', 'secondary tiny', weekView.contest.name); b.type = 'button'; b.addEventListener('click', () => openWeekContest()); tabs.append(b); } // (a contest day in the festival)
-      for (const [id, name] of [['tasks', '할 일'], ['cook', '요리 대회'], ['shop', '가판대']]) { const b = el('button', which === id ? 'primary tiny' : 'secondary tiny', name); b.type = 'button'; b.dataset.tab = id; b.addEventListener('click', () => draw(id)); tabs.append(b); }
+      for (const [id, name] of [['tasks', '할 일'], ...(f.tasks.some((t) => t.id === 'cook') ? [['cook', '요리 대회']] : []), ['shop', '가판대']]) { const b = el('button', which === id ? 'primary tiny' : 'secondary tiny', name); b.type = 'button'; b.dataset.tab = id; b.addEventListener('click', () => draw(id)); tabs.append(b); }
       const body = el('div', 'festivalBody');
       if (which === 'tasks') {
         body.append(el('p', 'smallMuted', `「${f.say}」 도장은 이 행사 가판대에서만 쓰고, 행사가 끝나면 사라져요${f.daysLeft <= 1 ? ' — 곧 끝나요!' : ''}.`));
         const list = el('ul', 'festivalTasks');
-        for (const t of f.tasks) list.append(el('li', t.today >= t.perDay ? 'done' : '', `${t.name} · 도장 ${t.stamps}개 · 오늘 ${t.today}/${t.perDay}${t.id === 'feast' ? ' (마지막 날 저녁 6~10시, 잔칫상 둘레)' : t.id === 'harvest' ? ' (밭에서 SPACE)' : t.id === 'contest' ? ' (토·일 대회 날, 여기서 대회 시작)' : ' (요리 대회 칸에서)'}`));
+        for (const t of f.tasks) list.append(el('li', t.today >= t.perDay ? 'done' : '', `${t.name} · 도장 ${t.stamps}개 · 오늘 ${t.today}/${t.perDay}${t.id === 'feast' ? ' (마지막 날 저녁 6~10시, 잔칫상 둘레)' : t.id === 'harvest' ? ' (밭에서 SPACE)' : t.id === 'gift' ? ' (행사 주민 곁 선물 자루에서 받아, 적힌 이웃에게)' : t.id === 'snowman' ? ' (대청마당 남서쪽 눈밭에서 굴리고 쌓고 꾸미기)' : t.id === 'gather' ? ' (마지막 날 저녁 6~10시, 광장 트리 곁)' : t.id === 'contest' ? ' (토·일 대회 날, 여기서 대회 시작)' : ' (요리 대회 칸에서)'}`));
         body.append(list);
       } else if (which === 'cook') {
         const bag = (await api('/api/island/bag').catch(() => ({ items: [] }))).items || []; if (mine !== drawn) return;
@@ -4234,6 +4259,11 @@
     // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them;
     // (Q 부탁 받기) an errand asked: its note and 「할게요!」 / 「다음에요」
     fill(data.storyOffer ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : withBoard(talkToday(TALK_CHOICES, data.today), data.n, data.today));
+    if (festivalView?.festival?.gift?.n === data.n && !data.offer && !data.question && !data.storyOffer) { // (X2 선물 배달: the gift I carry is theirs)
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'xmasGift'; b.textContent = '🎁 선물 배달 왔어요';
+      b.addEventListener('click', async () => { const r = await festivalPost('gift', { step: 'give', n: data.n }); if (!r) return; plaza.controller?.emote?.('clap'); showToast(`🎁 ${r.name}에게 선물을 건넸어요 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`); plazaDialog.close(); });
+      list.prepend(b);
+    }
     lostCard.replaceChildren(...lines, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer ? [offerNote({ title: data.storyOffer.title, label: storyLine(data.storyOffer) })] : []), meta, list);
     if (data.story) showStory(data.story);
     if (data.storyAccepted) showToast(`📖 할 일에 넣었어요 · ${data.storyAccepted.title}`);

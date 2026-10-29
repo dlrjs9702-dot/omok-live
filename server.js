@@ -1900,6 +1900,8 @@ let calendarCache = null; let festivalClock = null;
 async function calendarOverride() { if (!calendarCache) calendarCache = (await pointStore.worldValue('calendar')) || {}; return calendarCache; }
 const festivalNow = () => (process.env.NODE_ENV === 'test' && festivalClock ? festivalClock : nowMs());
 async function ownedEventTitles(account) { return ((await pointStore.questDoc(account, 'eventTitles')).doc?.titles || []).filter((id) => IslandCalendar.titleOf(id)); }
+// X2: the day's snowmen as a page sees them -- whose is not told, only which is mine
+const snowmenFor = (account, list) => (list || []).map(({ account: who, ...sm }) => ({ ...sm, mine: who === account }));
 const eventTitleGive = (account, id) => pointStore.questApply(account, 'eventTitles', (doc) => ((doc.titles || []).includes(id) ? null : { doc: { ...doc, titles: [...(doc.titles || []), id] } }));
 let contestKindTest = null; // (tests: the week's event held at one kind)
 const contestKindHeld = (c) => (c && contestKindTest ? Object.assign(c, { kind: contestKindTest, name: IslandContest.KINDS[contestKindTest].name, how: IslandContest.KINDS[contestKindTest].how, unit: IslandContest.KINDS[contestKindTest].unit }) : c);
@@ -6644,7 +6646,8 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const now = festivalNow(); const override = await calendarOverride();
     const fest = IslandCalendar.festivalAt(now, override); const next = fest ? null : IslandCalendar.nextFestival(now, override);
-    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES });
+    const snowmen = fest?.tasks.snowman ? snowmenFor(account, await pointStore.worldValue(`snowmen:${fest.id}:${IslandCalendar.dayOf(now)}`)) : null; // (X2: the day's snowmen on the field)
+    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, snowmen, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES });
   }
   if (pathname.startsWith('/api/island/festival/') && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
@@ -6654,7 +6657,7 @@ async function requestHandler(req, res) {
     const action = pathname.slice('/api/island/festival/'.length); const body = await parseJson(req); const key = `fest:${fest.id}`; const day = IslandCalendar.dayOf(now);
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); const P = IslandCalendar.PLACES;
     const near = (p, r) => Boolean(at) && (at.space || 'island') === 'island' && Math.hypot(at.x - p.x, at.z - p.z) <= r;
-    const fail = { BAD_TASK: '알 수 없는 할 일이에요.', TASK_CLOSED: '지금은 할 수 없는 일이에요.', TASK_DONE: '오늘은 이만큼이면 충분해요. 내일 또 와 주세요!', BAD_GOOD: '그런 물건은 없어요.', OWNED: '이미 받은 물건이에요.', NOT_ENOUGH: '도장이 모자라요.' };
+    const fail = { BAD_TASK: '알 수 없는 할 일이에요.', TASK_CLOSED: '지금은 할 수 없는 일이에요.', TASK_DONE: '오늘은 이만큼이면 충분해요. 내일 또 와 주세요!', BAD_GOOD: '그런 물건은 없어요.', OWNED: '이미 받은 물건이에요.', NOT_ENOUGH: '도장이 모자라요.', GIFT_HELD: '들고 있는 선물부터 배달해 주세요.', NO_GIFT: '먼저 행사 주민에게서 선물을 받아 와요.', WRONG_RESIDENT: '이 선물은 다른 이웃 몫이에요.', NO_RESIDENT: '지금은 선물 받을 이웃이 없어요.', NOT_ROLLING: '먼저 눈덩이를 굴려 주세요.', TOO_SHORT: '조금 더 굴려 주세요.', SNOW_STACKED: '눈덩이 셋을 다 쌓았어요. 꾸며 주세요!', SNOW_NOT_STACKED: '눈덩이 셋을 먼저 굴려 쌓아 주세요.' };
     const stamp = async (task) => { const r = await pointStore.questApply(account, key, (doc) => { const a = IslandFestival.award(fest, doc, task, now); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); return r?.error ? { error: r.error } : { added: r.added, view: IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now) }; };
     const sendStamp = (r, extra = {}) => (r.error ? sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.') : sendJson(res, 200, { ok: true, added: r.added, festival: r.view, ...extra }));
     if (action === 'harvest') { // 밭 수확: at the farm's field, a vegetable and a stamp (three a day)
@@ -6685,6 +6688,40 @@ async function requestHandler(req, res) {
       let r; try { r = await stamp('cook'); } catch (error) { await giveBack(); throw error; }
       if (r.error) await giveBack();
       return sendStamp(r, { score: judged.score, say: judged.say, bag: (await pointStore.islandBag(account)).items });
+    }
+    const view = async () => IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now);
+    const apply = async (fn) => pointStore.questApply(account, key, (doc) => { const r = fn(doc); return r.error ? { error: r.error } : r; });
+    if (action === 'gift' && fest.tasks.gift) { // X2 선물 배달: take one from the host's sack, hand it to the islander it is for
+      if (body.step === 'take') {
+        if (!near(P.host, P.REACH + 1)) return sendError(res, 409, 'TOO_FAR', '행사 주민 곁에서 선물을 받아요.');
+        const r = await apply((doc) => IslandFestival.takeGift(fest, doc, now, IslandNpcs.walking(now)));
+        if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.');
+        return sendJson(res, 200, { ok: true, gift: { ...r.gift, name: IslandCast.WALKERS[r.gift.n].name, where: IslandNpcs.hangout(r.gift.n) }, festival: await view() });
+      }
+      const n = Number(body.n); const pos = plazaPresence.get(session.token); const state = islandEvents.residents()[n];
+      if (!Number.isInteger(n) || !IslandCast.WALKERS[n]) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+      // (as a talk: by them now or a few seconds back, a slow screen drawing them behind their round; held, where they stand)
+      const reach = (p) => pos && (pos.space || 'island') === 'island' && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? 6 : 4);
+      if (![0, 1500, 3000, 4500].some((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state)))) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      const r = await apply((doc) => IslandFestival.giveGift(fest, doc, n, now));
+      if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.');
+      return sendJson(res, 200, { ok: true, added: r.added, name: IslandCast.WALKERS[n].name, festival: await view() });
+    }
+    if (action === 'snowman' && fest.tasks.snowman) { // X2 눈사람 만들기: roll (from), set down (the ball's size by the server's clock), dress
+      const S = P.snow; const inField = Boolean(at) && (at.space || 'island') === 'island' && Math.abs(at.x - S.x) <= S.w / 2 + 1 && Math.abs(at.z - S.z) <= S.d / 2 + 1;
+      if (body.step !== 'finish' && !inField) return sendError(res, 409, 'TOO_FAR', '눈밭 안에서 굴려 주세요.');
+      if (body.step === 'roll') { const r = await apply((doc) => IslandFestival.rollStart(fest, doc, now, nowMs())); if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.'); return sendJson(res, 200, { ok: true, festival: await view() }); }
+      if (body.step === 'drop') { const r = await apply((doc) => IslandFestival.rollEnd(doc, nowMs())); if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.'); return sendJson(res, 200, { ok: true, size: r.size, festival: await view() }); }
+      if (body.step !== 'finish') return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+      if (!near(S, Math.hypot(S.w, S.d) / 2 + 3)) return sendError(res, 409, 'TOO_FAR', '눈밭에서 꾸며 주세요.');
+      const r = await apply((doc) => IslandFestival.finishSnowman(fest, doc, body.parts, now)); if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.');
+      const dayKey = `snowmen:${fest.id}:${day}`; // (the day's on the field for everyone, the latest 12 -- each in the next of 12 places)
+      await worldEdit(async () => { const list = (await pointStore.worldValue(dayKey)) || []; const made = list.length ? list[list.length - 1].made + 1 : 0; await pointStore.setWorldValue(dayKey, [...list, { ...r.snowman, account, name: String(session.label || '게스트'), made, slot: made % 12, at: now }].slice(-12)); });
+      return sendJson(res, 200, { ok: true, added: r.added, score: r.snowman.score, say: r.say, festival: await view(), snowmen: snowmenFor(account, await pointStore.worldValue(dayKey)) });
+    }
+    if (action === 'gather' && fest.tasks.gather) { // X2 성탄 저녁 모임: the last day's evening, round the plaza's tree
+      if (!near(P.tree, P.GATHER_R)) return sendError(res, 409, 'TOO_FAR', '광장 트리 곁으로 와 주세요.');
+      return sendStamp(await stamp('gather'));
     }
     if (action === 'feast') { // 주민 잔치: the last day's evening, round the feast table
       if (!near(P.feast, P.FEAST_R)) return sendError(res, 409, 'TOO_FAR', '잔칫상 둘레로 와 주세요.');
