@@ -3636,11 +3636,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < bestD) { best = id; bestD = d; }
     }
+    const atDoor = best && bestD < 1 ? best : null; // (206 CI: in the evening an islander stood in the 관공서 doorway -- SPACE talked, never went in)
     for (const [id, door] of Object.entries(eventDoors)) { // v1.10.11: an event right by me comes first
       if (id === 'tool:stow') continue; // (206 총괄 검토: the stow note stands where I am -- picked as the nearest, it flickered off every other frame)
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < (door.resource ? WEED_REACH : EVENT_REACH) && d < bestD + 1) { best = id; bestD = d - 1; }
     }
+    if (atDoor && /^(resident|player):/.test(best || '')) best = atDoor; // (in a doorway the door; someone passing is talked to a step off it)
     // (묶음 3: a weed beside someone to talk to -- the one I face is talked to first; the weed is pulled facing it)
     const facing = (x, z) => { const m = me.root.position; const d = Math.hypot(x - m.x, z - m.z) || 1; return ((x - m.x) * Math.sin(me.root.rotation.y) + (z - m.z) * Math.cos(me.root.rotation.y)) / d > 0.5; };
     if (best && eventDoors[best]?.resource) for (const [id, door] of Object.entries(eventDoors)) if (!door.resource && !door.plain && door.name?.startsWith('말 걸기') && Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z) < EVENT_REACH && facing(door.x, door.z)) { best = id; break; }
