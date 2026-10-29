@@ -1582,7 +1582,7 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .donationForm{display:grid;gap:8px;margin-top:10px}.donationForm input{padding:10px 12px;border-radius:12px;background:#0f172a;color:#f8fafc;border:1px solid #334155}.donationQuick{display:flex;gap:6px}
 .islandChatTab{position:absolute;left:14px;top:14px;z-index:3;padding:7px 14px;border-radius:999px} /* (U: its paper is .isle-pill, its picture before it) */
 #islandChatTab::before{content:"💬 "}#islandMessengerTab::before{content:"✉ "}#islandBagTab::before{content:"👜 "}#islandPhotoTab::before{content:"📷 "}
-.islandChatTab.unread::after{content:'';display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:#f87171;vertical-align:middle}
+/* (Q2 사용자 「채팅 아이콘이 커지면서 메신저와 살짝 겹치고 있어. 색만 바뀌게」: no dot -- its size kept, its colour the news) */
 .islandChatPanel{--island-chat-alpha:.8;position:absolute;left:14px;top:58px;z-index:3;width:min(360px,40%);height:min(46%,420px);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:rgba(255,246,227,var(--island-chat-alpha));border:1px solid rgba(217,195,160,var(--island-chat-alpha));color:var(--isle-ink);box-shadow:0 8px 22px rgba(74,56,40,calc(var(--island-chat-alpha) * .3))} /* (U: paper, its see-through kept) */
 .islandChatPanel .islandChatHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 .islandChatPanel .chatMessageHead strong,.islandChatPanel .chatMessageBody time{color:var(--isle-soft)}
@@ -1811,7 +1811,7 @@ body.plazaMode .gameMenuThemes input { accent-color: var(--isle-tag); }
    .isle-pill a button always there (paper pill, pressed 1px in), .isle-tape a note that comes and goes (masking tape on
    top, tilted a touch) */
 .isle-pill{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:999px;box-shadow:0 4px 12px rgba(74,56,40,.25);font-weight:850}
-.isle-pill:hover{background:var(--isle-hover)}.isle-pill:active{transform:translateY(1px);background:#f0dcb6;box-shadow:0 2px 6px rgba(74,56,40,.25)}
+.isle-pill:hover{background:var(--isle-hover)}.isle-pill:active{transform:translateY(1px);background:#f0dcb6;box-shadow:0 2px 6px rgba(74,56,40,.25)}.isle-pill.islandChatTab.unread{background:var(--isle-tag);color:#fff;border-color:var(--isle-tag)}
 .isle-tape{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:4px;box-shadow:0 8px 18px rgba(60,40,20,.3)}
 .isle-tape::before{content:"";position:absolute;left:50%;top:-8px;width:64px;height:16px;margin-left:-32px;background:rgba(242,181,68,.55);transform:rotate(3deg);pointer-events:none}
 .isle-tag{display:inline-block;padding:4px 14px;border-radius:999px;background:var(--talk-tag,var(--isle-tag));color:#fff;font-weight:800}
