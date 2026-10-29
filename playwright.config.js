@@ -40,6 +40,9 @@ module.exports = defineConfig({
     // 기존 DOM을 사용하고, plaza.spec은 그 플래그를 지운 뒤 실제 게임 아일랜드를 검증한다.
     storageState: { cookies: [], origins: [{ origin: baseURL, localStorage: [{ name: 'gc.testClassic', value: '1' }] }] },
     trace: 'on-first-retry',
+    // (Q2, CI #349·#350: a click on a talk choice whose window had just shut waited for the whole 10-minute test -- a step
+    // held up fails on its own line now, with what it waited for)
+    actionTimeout: process.env.CI ? 30_000 : 15_000,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },

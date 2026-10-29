@@ -1893,10 +1893,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function netSwing() {
     const now = performance.now(); if (heldTool !== 'bugnet' || now < swingUntil || gather || fishing || sitting) return Promise.resolve(null);
     swingUntil = now + SWING_MS; me.anim?.play('netSwing');
+    // (Q2, CI #350 「missed, near []」: an islander squarely before me as I swing, walked a step on in the swing's 0.45 s, was
+    // missed -- a hit I saw land; the one aimed at when SPACE went still counts within a step more)
+    let aimed = null; let ad = Infinity; for (const { n, c, w } of wanderers) { if (!c.root.visible) continue; const d = inFan(w.x, w.z); if (d < ad) { ad = d; aimed = n; } }
     return new Promise((done) => setTimeout(() => {
       let best = null; let bd = Infinity;
       for (const [, h] of insectShown) { if (h.flee) continue; const d = inFan(h.c.root.position.x, h.c.root.position.z, SWING_REACH + INSECT_HALF); if (d < bd) { bd = d; best = { insect: h.b.id }; } } // (3회차 1: met by its body's edge)
       if (!best) for (const { n, c, w } of wanderers) { if (!c.root.visible) continue; const d = inFan(w.x, w.z); if (d < bd) { bd = d; best = { resident: n }; } }
+      if (!best && aimed !== null) { const w = wanderers.find((o) => o.n === aimed)?.w; const m = me.root.position; if (w && Math.hypot(w.x - m.x, w.z - m.z) <= SWING_REACH + 0.8) best = { resident: aimed }; }
       const m = me.root.position; lastSwing = { t: Math.round(now), x: +m.x.toFixed(2), z: +m.z.toFixed(2), yaw: +me.root.rotation.y.toFixed(2), hit: best, near: [...insectShown].map(([id, h]) => ({ id, dx: +(h.c.root.position.x - m.x).toFixed(2), dz: +(h.c.root.position.z - m.z).toFixed(2) })).filter((o) => Math.hypot(o.dx, o.dz) < 4) }; // (the debug's)
       done(best);
     }, SWING_HIT_MS));

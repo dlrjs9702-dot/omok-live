@@ -4282,7 +4282,7 @@
     if (first) {
       residentTalk = { n: data.n, timer: setInterval(() => {
         if (!plazaDialog.open || !plazaDialog.classList.contains('talkMode') || lostCard.classList.contains('hidden')) { endResidentTalk(); return; }
-        api('/api/island/resident/keep', { method: 'POST', body: JSON.stringify({ n: data.n }) }).catch((error) => { if (error.status === 409 && residentTalk?.n === data.n) plazaDialog.close(); });
+        api('/api/island/resident/keep', { method: 'POST', body: JSON.stringify({ n: data.n }) }).catch((error) => { if (error.status === 409 && residentTalk?.n === data.n) { showToast(error.message); plazaDialog.close(); } }); // (Q2: over only when I walked off or they were taken -- said why)
       }, 4000) };
     }
   }

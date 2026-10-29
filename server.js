@@ -6850,12 +6850,20 @@ async function requestHandler(req, res) {
     const n = Number((await parseJson(req)).n); const who = talkKey(session);
     const mine = islandEvents.residentTalking(who) === n; // (Codex review: a late bye or keep of an earlier talk leaves a newer one alone)
     if (pathname.endsWith('/bye')) { if (mine && islandEvents.residentBye(who)) residentsChanged(); return sendJson(res, 200, { ok: true, residents: islandEvents.residents() }); }
-    const pos = plazaPresence.get(session.token); const hold = islandEvents.residents()[n]?.hold;
-    if (!pos || !hold || hold.eventId !== who || Math.hypot(pos.x - hold.x, pos.z - hold.z) > TALK_FAR || !islandEvents.residentKeep(n, who)) {
-      if (mine && islandEvents.residentBye(who)) residentsChanged();
-      return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.');
-    }
-    return sendJson(res, 200, { ok: true });
+    // (Q2 「대화 창 저절로 닫힘」 again, CI #349·#350: a hold let go while I still stand by them -- its lease run out between
+    // renewals on a slow screen, or a late bye of an earlier talk with the same islander -- was 「대화가 끝났어요」 and the
+    // window shut; now held again where they are when no one else has them and I am by them. Over only when I walked off
+    // or someone else is talking to them -- and told which)
+    const pos = plazaPresence.get(session.token); const state = islandEvents.residents()[n]; const hold = state?.hold;
+    const over = (why) => { if (mine && islandEvents.residentBye(who)) residentsChanged(); const name = IslandCast.WALKERS[n]?.name || '주민'; return sendError(res, 409, 'TALK_OVER', why === 'busy' ? `${IslandCast.josa(name, '이가')} 다른 일로 가 봐야 한대요.` : `${IslandCast.josa(name, '이가')} 가 버렸어요.`, { reason: why }); };
+    if (!pos || (pos.space || 'island') !== 'island' || !IslandCast.WALKERS[n]) return over('far');
+    if (hold && hold.eventId === who && Math.hypot(pos.x - hold.x, pos.z - hold.z) <= TALK_FAR && islandEvents.residentKeep(n, who)) return sendJson(res, 200, { ok: true });
+    if (hold && hold.eventId !== who) return over('busy');
+    // (mine but let go: where it holds them; else where they walked, now or a few seconds back -- as the talk's own reach)
+    const at = (ms) => (hold ? hold : IslandNpcs.residentAt(n, nowMs() - ms, state)); const back = [0, 1500, 3000, 4500].find((ms) => Math.hypot(pos.x - at(ms).x, pos.z - at(ms).z) <= TALK_FAR);
+    if (back === undefined) return over('far');
+    const p = at(back); if (islandEvents.residentTalk(n, who, Math.atan2(pos.x - p.x, pos.z - p.z), hold ? 0 : back)?.busy) return over('busy');
+    residentsChanged(); return sendJson(res, 200, { ok: true, again: true });
   }
   // R2 ① 먼저 말 걸기: my 호감도 with each walking islander and the last thing done together (for their greeting as I pass)
   if (pathname === '/api/island/affinity' && req.method === 'GET') {
@@ -6873,7 +6881,8 @@ async function requestHandler(req, res) {
       const other = state.hold.eventId.startsWith('talk:') ? [...plazaPresence.values()].find((p) => `talk:${p.id}` === state.hold.eventId) : null;
       return sendError(res, 409, 'RESIDENT_BUSY', other ? `지금은 ${other.name || '다른 분'}님과 이야기 중이에요.` : '지금은 다른 일로 바빠 보여요.');
     }
-    if (topic && !state?.hold) return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.'); // (a choice only inside a talk still held)
+    // (Q2: a choice made while the hold had lapsed -- a slow screen's renewal late -- holds them again if I am still by them, as
+    // a new talk would; one walked off from is the reach check's below)
     // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
     const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
     const back = pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
