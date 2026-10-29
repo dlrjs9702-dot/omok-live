@@ -318,6 +318,7 @@
     const { dye, ...fit } = X2_FIT(slot); const key = file.slice(5);
     REGISTRY[`wear.winter_${key}`] = { url: `${CH}/wear-winter/${file}.glb`, low: { url: `${CH}/wear-winter/${file}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_winter_${key}`] = `wear.winter_${key}`;
   }
+  if (REGISTRY['wear.winter_hat_earmuffs']) delete REGISTRY['wear.winter_hat_earmuffs'].fit.cover; // (X1: an open band -- the hair stays, bun and all, assets 77)
   if (REGISTRY['wear.winter_outfit_santa']) REGISTRY['wear.winter_outfit_santa'].body = { url: `${CH}/wear-winter/body_winter_fitted.glb`, lowUrl: `${CH}/wear-winter/body_winter_fitted_low.glb` };
   // v1.10.91 변신 의상실 (assets 42): the booth with its mirror, and its keeper (the common rig)
   REGISTRY['character.transformer'] = { url: `${CH}/npc_transformer.glb`, low: { url: `${CH}/npc_transformer_low.glb` }, rotationY: Math.PI, motions: true };
@@ -427,6 +428,15 @@
   REGISTRY['event.stall'] = sv('event_stall');
   for (const k of ['fish', 'bug']) for (const m of ['gold', 'silver', 'bronze']) REGISTRY[`event.trophy_${k}_${m}`] = sv(`event_trophy_${k}_${m}`, { near: 26 });
   for (const f of ['basket', 'straw_sheaf', 'corn_string', 'persimmon_string', 'feast_table']) REGISTRY[`harvest.${f}`] = sv(`harvest_${f}`);
+  // X1 크리스마스·연말 (assets 76 xmas-v1): the five house pieces, the stall's dress (laid over event.stall, same origin), the
+  // gift sack, the snowball (scaled as it rolls) and the snowman's parts (origin = where each sticks), the countdown board and
+  // the firework launcher -- placed by the festival (X2)
+  const XV = '/assets/island/xmas-v1';
+  const xv = (file, extra = {}) => ({ url: `${XV}/${file}.glb`, low: { url: `${XV}/${file}_low.glb` }, near: 50, ...extra });
+  for (const f of ['tree_small', 'fireplace', 'snow_globe', 'stocking', 'gingerbread_house', 'stall_dress', 'gift_sack']) REGISTRY[`xmas.${f}`] = xv(`xmas_${f}`);
+  REGISTRY['snow.ball'] = xv('snow_ball');
+  for (const f of ['carrot', 'coal', 'twig', 'bucket', 'scarf']) REGISTRY[`snowman.part.${f}`] = xv(`snowman_part_${f}`, { near: 26 });
+  for (const f of ['countdown_board', 'firework_launcher']) REGISTRY[`newyear.${f}`] = xv(`newyear_${f}`, { near: 60 });
   // S2 섬 이야기 (assets 80 story-v1): the little door under 초승등대 (with the lighthouse's origin and turn; its `door` turns on
   // its hinge), the small box at its foot, the 「초승 등불」 lamp (a house piece, given once)
   const STORY = '/assets/island/story-v1';

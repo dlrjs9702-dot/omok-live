@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.203 X1 크리스마스 에셋 붙이기
+
+- 76 열다섯(xmas-v1): REGISTRY xmas.* 일곱(집 가구 다섯·가판대 덧씌움·선물 자루), snow.ball, snowman.part.* 다섯, newyear.countdown_board·firework_launcher — 광장 배치는 X2.
+- 집 가구 다섯은 island-furniture EVENT_GOODS __plain(가구점 진열 없음, 크리스마스 도장 가게 몫), island-home SIZE(76 README 값), 양말 걸이 HUNG.
+- 옷 둘은 skins-x2 WINTER_ITEMS(코인 상점 늘 판매): 크리스마스 스웨터(78 판, 희귀, baked), 털 귀마개(77 판, 고급, 머리카락 cover 없음).
+- e2e island-xmas-assets(PC·폰): 옷 입기, 오두막에 가구 다섯 놓기. 사진 notes img/xmas-assets-game.
+
 ## v1.10.202 79 소품 맞춤
 
 - 50번(slim50)에서 오던 목걸이·신발 중 79에 같은 이름이 있는 것을 79 판으로(High 63 · Low 62, 소스 refit79, SHA 갱신). 79의 동물 목걸이·신발 20개는 게임 파일이 없어 안 붙임(동물 변신은 native/animal-*.glb).
@@ -27,9 +34,3 @@
 - 전하기 받는 쪽 대사 다섯(S2 정함). 수사판 = 이야기 책 초승등대 탭(기록관 문양 도장, 글 옆).
 - 에셋 80(story-v1): 등대 아래 문(keepNodes, 문 조각), 문 발치 상자, 가구 초승 등불. 등대도 keepNodes(glow). 밤 깜빡임 달·마·루 / 마친 사람은 어·서·와, 꼭대기 빛 번짐 스프라이트. 움직임 줄이기면 은은히 켬.
 - 섬에 들어올 때 이야기 상태를 바로 불러옴.
-
-## v1.10.200 S1 섬 이야기 틀
-
-- 데이터 public/plaza/island-story.js: 주민 10명 × 3장(notes story/pilot·residents 그대로), 초승등대 조각 여덟, 행사 이야기 셋. 할 일 곳은 섬 AREAS·기록관 문·윤슬다리·초승등대·서쪽 곶·달끝나루·윤슬만 바닷가(밤: 해송 3·이솔 3), 전하기·여쭙기는 그 주민에게 말 걸기(대사 found_me — S2에서 글).
-- 계정 문서 story { chapters, cur { n, c, reached }, read }: 호감도 단계(아는/친한/단짝)로 장 열림, 섬에서 한 번에 하나, 도착은 서버가 받은 위치로, 부탁한 주민에게 돌아가면 쪽지 + 호감도 +2. 보상 포인트 없음(설정집).
-- 화면: 대화 맨 앞 선택지(이야기 들려줘요/부탁받고 왔어요/다녀왔어요), 오 탐정 「수사판 보기」, 할 일 카드 이야기 줄 + 심부름 줄, 쪽지 창, 이야기 책(가방 「이야기」·기록관 창): 주민 이야기 / 초승등대(섬 일지·마지막 장은 S2) / 행사 이야기(행사 중 시작, 끝난 뒤 도장 1개 이상이면 끝). 책을 열면 가방·대화 창은 닫힘.
