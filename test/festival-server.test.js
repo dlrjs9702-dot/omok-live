@@ -138,10 +138,11 @@ test('크리스마스: 선물 배달(받는 이웃 곁에서만), 눈사람(서�
   const { n } = took.data.gift; assert.ok(took.data.gift.name && took.data.gift.where && ['red', 'green', 'blue'].includes(took.data.gift.box));
   assert.equal((await req('/api/island/festival/gift', a, { step: 'take' })).data.error, 'GIFT_HELD');
   assert.equal((await req('/api/island/festival', a)).data.festival.gift.n, n); // (kept: a reload draws it in my hands again)
-  const by = async (k) => { await stand(N.residentAt(k, Date.now())); };
+  // (by a walking islander: where they are now, again until the server has me by them -- a busy runner's step lags)
+  const byThen = async (k, body) => { let r = null; for (let i = 0; i < 20; i += 1) { await stand(N.residentAt(k, Date.now())); r = await req('/api/island/festival/gift', a, body); if (r.data.error !== 'TOO_FAR') return r; await wait(250); } return r; };
   assert.equal((await req('/api/island/festival/gift', a, { step: 'give', n })).data.error, 'TOO_FAR');
-  const other = (n + 1) % N.COUNT; await by(other); assert.equal((await req('/api/island/festival/gift', a, { step: 'give', n: other })).data.error, 'WRONG_RESIDENT');
-  await by(n); const gave = await req('/api/island/festival/gift', a, { step: 'give', n }); assert.equal(gave.status, 200, JSON.stringify(gave.data));
+  const other = (n + 1) % N.COUNT; assert.equal((await byThen(other, { step: 'give', n: other })).data.error, 'WRONG_RESIDENT');
+  const gave = await byThen(n, { step: 'give', n }); assert.equal(gave.status, 200, JSON.stringify(gave.data));
   assert.equal(gave.data.added, 1); assert.equal(gave.data.festival.stamps, 1); assert.equal(gave.data.festival.gift, null);
   // 눈사람: rolled only on the field, each ball as big as the server's clock says, three stacked biggest first, dressed
   await stand(P.host); assert.equal((await req('/api/island/festival/snowman', a, { step: 'roll' })).data.error, 'TOO_FAR');
