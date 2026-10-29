@@ -1581,7 +1581,7 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .donationRanking{display:grid;gap:6px;margin-bottom:8px}.donationRow{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;border-radius:12px;background:#0f172a;border:1px solid #263246;font-size:.86rem}.donationRow.me{border-color:#60a5fa}
 .donationForm{display:grid;gap:8px;margin-top:10px}.donationForm input{padding:10px 12px;border-radius:12px;background:#0f172a;color:#f8fafc;border:1px solid #334155}.donationQuick{display:flex;gap:6px}
 .islandChatTab{position:absolute;left:14px;top:14px;z-index:3;padding:7px 14px;border-radius:999px} /* (U: its paper is .isle-pill, its picture before it) */
-#islandChatTab::before{content:"💬 "}#islandMessengerTab::before{content:"✉ "}#islandBagTab::before{content:"👜 "}#islandPhotoTab::before{content:"📷 "}
+#islandChatTab::before{content:"💬 "}#islandMessengerTab::before{content:"✉ "}#islandBagTab::before{content:"👜 "}#islandPhotoTab::before{content:"📷 "}#islandViewTab::before{content:"👁 "}
 /* (Q2 사용자 「채팅 아이콘이 커지면서 메신저와 살짝 겹치고 있어. 색만 바뀌게」: no dot -- its size kept, its colour the news) */
 .islandChatPanel{--island-chat-alpha:.8;position:absolute;left:14px;top:58px;z-index:3;width:min(360px,40%);height:min(46%,420px);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:rgba(255,246,227,var(--island-chat-alpha));border:1px solid rgba(217,195,160,var(--island-chat-alpha));color:var(--isle-ink);box-shadow:0 8px 22px rgba(74,56,40,calc(var(--island-chat-alpha) * .3))} /* (U: paper, its see-through kept) */
 .islandChatPanel .islandChatHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
@@ -1719,9 +1719,12 @@ body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint
 .islandPhotoCell.unfound b { filter: grayscale(1); opacity: 0.35; }
 #islandDexBtn.selected, #islandPhotoBtn.selected { outline: 2px solid #60a5fa; }
 .islandPhotoTab { top: auto; bottom: 14px; left: 116px; } /* (U: after 「👜 가방」 with its picture) */
+.islandViewTab { top: auto; bottom: 14px; left: 224px; } /* (V1: 「👁 시점」 after 「📷 사진」 -- the same on a phone) */
 /* (U: a phone's bottom row keeps its places -- the hint's pill sits between -- so 가방·사진 without their pictures there) */
 body.touchIsland #islandBagTab::before, body.touchIsland #islandPhotoTab::before { content: none; }
 body.touchIsland .islandPhotoTab { left: 86px; }
+body.touchIsland .islandViewTab { top: 14px; bottom: auto; left: 172px; } /* (V1 CI: on a phone the bottom row is the hint's -- up beside 「💬 채팅」) */
+body.touchIsland #islandMessengerTab:not(.hidden) ~ #islandViewTab { left: 278px; }
 
 /* v1.10.48: visible train actions, beside the keyboard hint. */
 .trainControls{position:absolute;z-index:5;left:50%;bottom:82px;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap}

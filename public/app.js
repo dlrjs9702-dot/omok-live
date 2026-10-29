@@ -2571,6 +2571,7 @@
   const seatBtns = [[byId('seatLeftBtn'), 1], [byId('seatRightBtn'), -1]];
   for (const [btn, dir] of seatBtns) btn.addEventListener('click', () => { plaza.controller?.seatTurn?.(dir); plazaStage.focus({ preventScroll: true }); });
   function wireHomeMoves() {
+    plaza.controller?.onViewChange?.((mode) => { showToast(mode === 'later' ? '👁 이곳은 곧 1인칭으로 볼 수 있어요' : mode === 'first' ? '👁 1인칭 — 끌어서 둘러봐요 (V로 바꾸기)' : '👁 3인칭 (V로 바꾸기)', 2000); if (mode === 'later') return; document.getElementById('islandViewTab')?.setAttribute('aria-pressed', String(mode === 'first')); }); // (V1)
     plaza.controller?.onSeatTurn?.((on) => { for (const [btn] of seatBtns) btn.classList.toggle('hidden', !on); }); // v1.10.189
     plaza.controller?.onGrab?.((on) => { turnBtn.classList.toggle('hidden', !on); if (on) showToast(touchIsland ? '앞뒤로 밀고 당겨요 · 돌리기 단추로 돌려요 · 상호작용으로 놓아요' : '↑↓ 밀고 당기기 · R 돌리기 · SPACE 놓기'); });
     // (Codex 검토 #9) one save at a time, in order -- answers (and the server's writes) never cross; while one is on its
@@ -3825,6 +3826,7 @@
     } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); if (!now) shot.controller.photoPose?.(false); } }
   }
   document.getElementById('islandPhotoTab').addEventListener('click', () => enterPhoto());
+  const viewTab = document.getElementById('islandViewTab'); viewTab.addEventListener('click', () => plaza.controller?.toggleView?.()); // (V1 시점: 밖·안 따로 기억)
   document.getElementById('photoShootBtn').addEventListener('click', () => takePhoto());
   document.getElementById('photoNowBtn').addEventListener('click', () => takePhoto({ now: true }));
   document.getElementById('photoCloseBtn').addEventListener('click', () => leavePhoto());

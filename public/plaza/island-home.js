@@ -79,6 +79,7 @@
   // have no clear top. Moved on a top by 0.05 m
   const SMALL = new Set(['insect_case', 'radio', 'moon_lamp', 'shell_lamp', 'mini_lighthouse', 'choseung_lantern', 'trophy_fish', 'trophy_bug', 'xmas_snow_globe', 'xmas_gingerbread_house']);
   const TOPS = { desk: 0.765, dresser: 0.85, coffee_table: 0.45, dining_table: 0.78, counter: 0.89, soban: 0.34 };
+  const TOP_SIZE = { insect_case: [0.36, 0.24] }; // (V1, assets 86: on a top the 곤충 상자 is the small tabletop one -- its own footprint there)
   // where one sits (assets 57 manifest seats, model local: x, height, z) -- 'lie' and 'floor' sit too for now
   const SEATS = { window_seat: [[0, 0.5, 0]], armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.56, 0.46, -0.12], [0.56, 0.46, -0.12]] /* (6회차 4 「같이 앉으면 머리가 뚫려」: 0.9 m apart the two big heads met -- 1.12, still on its cushions) */, stool: [[0, 0.51, 0]], bed: [[0, 0.55, 0]], bunk_bed: [[0, 0.5, 0]] }; // (3회차 3: the beds' heights as their models' mattresses)
   // the tanks (assets 57 manifest swim): where fish swim (model local), how many, the biggest size they take, how small fish show
@@ -89,6 +90,7 @@
     aquarium_pillar: { min: [-0.6, 0.6, -0.6], max: [0.6, 2.25, 0.6], slots: 8, biggest: 'medium', fishScale: 0.85, cylinder: true },
     aquarium_wall: { min: [-1.75, 0.45, -0.4], max: [1.75, 2.2, 0.4], slots: 12, biggest: 'large', fishScale: 1 },
     insect_case: { min: [-0.12, 0.3, -0.05], max: [0.12, 0.5, 0.05], slots: 1, insects: true }, // (곤충 상자: one insect, sitting)
+    insect_case_desk: { min: [-0.04, 0.12, -0.005], max: [0.04, 0.15, 0.005], slots: 1, insects: true }, // (assets 86: the tabletop one's perch -- drawn on a top, the same piece)
   };
   // the twelve insects (lib/island-insects.js, bag items insect_<id>)
   const INSECTS = new Set(['butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_blue', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail'].map((s) => `insect_${s}`));
@@ -107,9 +109,10 @@
   const overlap = (a, b) => a.x0 < b.x1 - 1e-6 && b.x0 < a.x1 - 1e-6 && a.z0 < b.z1 - 1e-6 && b.z0 < a.z1 - 1e-6;
   const within = (a, b) => a.x0 >= b.x0 - 1e-6 && a.x1 <= b.x1 + 1e-6 && a.z0 >= b.z0 - 1e-6 && a.z1 <= b.z1 + 1e-6;
   // the piece a small thing stands on (null: the floor), and what stands on a piece -- by place alone, nothing saved for it
-  const supportOf = (p, others = []) => { const b = SMALL.has(shapeOf(p.id)) && boxOf(p); return (b && others.find((o) => o.uid !== p.uid && TOPS[shapeOf(o.id)] && within(b, boxOf(o)))) || null; };
+  const topBox = (p) => { const t = TOP_SIZE[shapeOf(p.id)]; if (!t) return boxOf(p); const [w, d] = p.rot % 2 ? [t[1], t[0]] : t; return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2 }; };
+  const supportOf = (p, others = []) => { const b = SMALL.has(shapeOf(p.id)) && topBox(p); return (b && others.find((o) => o.uid !== p.uid && TOPS[shapeOf(o.id)] && within(b, boxOf(o)))) || null; };
   const liftOf = (p, others = []) => { const t = supportOf(p, others); return t ? TOPS[shapeOf(t.id)] : 0; };
-  const heldOn = (t, pieces = []) => (TOPS[shapeOf(t.id)] ? pieces.filter((o) => o.uid !== t.uid && SMALL.has(shapeOf(o.id)) && within(boxOf(o), boxOf(t))) : []);
+  const heldOn = (t, pieces = []) => (TOPS[shapeOf(t.id)] ? pieces.filter((o) => o.uid !== t.uid && SMALL.has(shapeOf(o.id)) && within(topBox(o), boxOf(t))) : []);
   // the back of a piece (its +Z, as made) points to: rot 0 -> +z (the back wall), 1 -> -x... (a quarter turn each)
   const backDir = (rot) => [[0, 1], [1, 0], [0, -1], [-1, 0]][((rot % 4) + 4) % 4];
   // -> null when it may stand there, else why not (Korean, for the page)
@@ -124,7 +127,7 @@
     const top = supportOf(p, others); // (207: on a desk -- any 0.05 m place on it, clear of the other things on that top)
     if (top) {
       if (!free && !(onStep(p.x * 5) && onStep(p.z * 5))) return '자리를 확인해 주세요.';
-      return heldOn(top, others).some((o) => o.uid !== p.uid && overlap(b, boxOf(o))) ? '위에 놓인 다른 물건과 겹쳐요.' : null;
+      return heldOn(top, others).some((o) => o.uid !== p.uid && overlap(topBox(p), topBox(o))) ? '위에 놓인 다른 물건과 겹쳐요.' : null;
     }
     if (!free && !((onStep(p.x) || flushOn(p.x, (b.x1 - b.x0) / 2, HX)) && (onStep(p.z) || flushOn(p.z, (b.z1 - b.z0) / 2, HZ)))) return '자리를 확인해 주세요.';
     if (b.x0 < -HX - 1e-6 || b.x1 > HX + 1e-6 || b.z0 < -HZ - 1e-6 || b.z1 > HZ + 1e-6) return '방 밖으로 나가요.';
@@ -141,10 +144,10 @@
   // the place nearest p that placeError takes: its step, or against a wall when that is within a step (3회차 6)
   function snapPos(p, stage = 2, others = []) {
     const s = SIZE[shapeOf(p.id)]; if (!s) return { x: p.x, z: p.z }; const st = stageOf(stage);
-    const [w, d] = p.rot % 2 ? [s[1], s[0]] : [s[0], s[1]];
-    const top = supportOf(p, others); if (top) { const t = boxOf(top); const near = (v, lo, hi) => Math.min(Math.floor(hi * 20 + 1e-6) / 20, Math.max(Math.ceil(lo * 20 - 1e-6) / 20, Math.round(v * 20) / 20)); return { x: near(p.x, t.x0 + w / 2, t.x1 - w / 2), z: near(p.z, t.z0 + d / 2, t.z1 - d / 2) }; }
+    const [w0, d0] = p.rot % 2 ? [s[1], s[0]] : [s[0], s[1]];
+    const top = supportOf(p, others); if (top) { const t = boxOf(top); const ts = TOP_SIZE[shapeOf(p.id)]; const [w, d] = ts ? (p.rot % 2 ? [ts[1], ts[0]] : ts) : [w0, d0]; const near = (v, lo, hi) => Math.min(Math.floor(hi * 20 + 1e-6) / 20, Math.max(Math.ceil(lo * 20 - 1e-6) / 20, Math.round(v * 20) / 20)); return { x: near(p.x, t.x0 + w / 2, t.x1 - w / 2), z: near(p.z, t.z0 + d / 2, t.z1 - d / 2) }; }
     const one = (v, half, H) => { const hi = H - half; const q = Math.min(hi, Math.max(-hi, Math.round(v * 4) / 4)); return [q, hi, -hi].filter((c) => c === q || Math.abs(c - v) < 0.25).sort((a, b) => Math.abs(a - v) - Math.abs(b - v))[0]; };
-    return { x: one(p.x, w / 2, st.hx), z: one(p.z, d / 2, st.hz) };
+    return { x: one(p.x, w0 / 2, st.hx), z: one(p.z, d0 / 2, st.hz) };
   }
   // where one may stand inside: in the walls, out of the floor pieces (0.3 m round them)
   function clamp(lot, x, z, pieces = [], stage = 2) {
@@ -185,5 +188,5 @@
     const anyDir = ANY_DIR.has(shapeOf(p.id));
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, supportOf, liftOf, heldOn };
+  return { LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn };
 }));

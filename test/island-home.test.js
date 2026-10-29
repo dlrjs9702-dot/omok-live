@@ -122,6 +122,10 @@ test('집 꾸미기: 작은 물건은 책상·탁자 위에, 걸치면 바닥 �
   assert.equal(H.placeError(desk, [box]), null, '제자리 책상: 위의 것은 걸리지 않음'); assert.match(H.placeError({ ...desk, x: 0.25 }, [box]), /겹쳐요/, '조금 옮기면 걸친 물건과 겹침');
   assert.equal(H.supportOf({ uid: 'r', id: 'sofa__mint', x: 1, z: 2, rot: 0 }, [desk]), null, '큰 가구는 안 올라감');
   assert.equal(H.supportOf({ uid: 'n', id: 'radio__red', x: 1, z: 2, rot: 0 }, [{ ...desk, id: 'nightstand__oak' }]), null, '협탁은 위가 평평하지 않아 뺌');
+  // V1 (assets 86): on a top the 곤충 상자 is the small tabletop one -- its own footprint decides (0.36 x 0.24), the floor one's not
+  const small = { uid: 'c2', id: 'insect_case__walnut', x: 0.6, z: 2, rot: 0 }; // (0.42~0.78 on the desk; the floor one's 0.6 would stick out)
+  assert.equal(H.supportOf(small, [desk])?.uid, 'd', '탁상형 크기로 위'); assert.equal(H.placeError(small, [desk]), null);
+  assert.deepEqual(H.topBox(small), { x0: 0.42, x1: 0.78, z0: 1.88, z1: 2.12 }); assert.ok(H.TANKS.insect_case_desk.insects);
   // on a top the arrows' snap: the nearest 0.05 place, kept on it
   assert.deepEqual(H.snapPos({ ...box, x: 0.6123, z: 2.01 }, 2, [desk]), { x: 0.6, z: 2 });
   // a house grown: the desk first, what is on it after

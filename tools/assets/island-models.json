@@ -6120,6 +6120,22 @@
       "precompressed": true
     },
     {
+      "out": "furniture-v1/furn_insect_case_desk__oak.glb",
+      "src": "insectdesk86:01. High/furn_insect_case_desk__oak.glb",
+      "sha256": "1e33d929545f423cb5f06503a0a3b39358d509dc748cb44af38e259257e18f62",
+      "lowSrc": "insectdesk86:02. Low/furn_insect_case_desk__oak_low.glb",
+      "lowSha256": "99dc258ecee2d3a1135ccd07d2777647dff9e19c775bdbab80617c0325f8b20d",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_insect_case_desk__walnut.glb",
+      "src": "insectdesk86:01. High/furn_insect_case_desk__walnut.glb",
+      "sha256": "0f3d6f99666066b9a2675bd3203a574a6673b0a570a7615607dd7d8afe0e2f14",
+      "lowSrc": "insectdesk86:02. Low/furn_insect_case_desk__walnut_low.glb",
+      "lowSha256": "2a3460d60e891ae35ffe0fe4c1e2a1bb78e1dfa51dd3a9103dded48c47bcac8c",
+      "precompressed": true
+    },
+    {
       "out": "furniture-v1/furn_mini_lighthouse__classic.glb",
       "src": "furniture57:01. High/furn_mini_lighthouse__classic.glb",
       "sha256": "3c29543a9eae1ebb8f8bfd66c31043fa55dbd1a84f5fb673a14547f5d0a20b9c",
@@ -8210,6 +8226,7 @@
     "refit79": "79. Game Island accessory refit pilot 2026-10-27",
     "xmas76": "76. Game Island christmas 2026-10-27",
     "xmas77": "77. Game Island christmas wear 2026-10-27",
-    "slim78": "78. Game Island codex slim test 2026-10-27"
+    "slim78": "78. Game Island codex slim test 2026-10-27",
+    "insectdesk86": "86. Game Island insect case desk 2026-10-29"
   }
 }

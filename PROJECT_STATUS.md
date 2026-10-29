@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.208 V1 시점 — 1인칭·3인칭(밖·집)
+
+- 시점 틀: 밖 3인칭·집 안 1인칭 기본, 「👁 시점」·V, 밖·안 따로 기억(gc.view.out/in). 다른 실내는 V2 전까지 3인칭 + 「곧」. 시험은 gc.testRealView 없으면 3인칭.
+- 1인칭: 체형 눈높이, 몸 숨김, 75°, near 0.05, 흔들림 없음, PC WASD·끌기, 폰 오른쪽 반 끌기. 방에 들어오면 방 쪽. 이름표 가까이서 커지지 않음.
+- 1인칭 대화: 60° 안 상대, 눈높이(Head 뼈)·머리부터 어깨 45 %·얼굴 위쪽 1/3, 64°, 대화 중 보조광. 문 1 m 우선 그대로.
+- 집 안 1인칭: 벽지 윗선 위 같은 색 띠·나무 띠, 천장 3.8 m(큰 집 4.0 m).
+- 탁상형 곤충 상자(에셋 86): 받치는 가구 위면 탁상형 모델·자리, 위에서 0.36 x 0.24.
+- 시험 흔들림: 관광객 사진(작은 명소), 주민 대화 닫힘 문구. 1인칭 저장 시 시작 오류 고침.
+- e2e island-view-modes·island-view-talk(PC·폰). 사진 notes img/view-modes.
+
 ## v1.10.207 집 꾸미기 — 작은 물건 위에 올리기·꾸미기 창 종이
 
 - island-home SMALL(곤충 상자·라디오·달/조개 램프·작은 등대·청사초롱·트로피 둘·스노볼·과자집) → TOPS(책상 0.765·서랍장 0.85·낮은 탁자 0.45·식탁 0.78·조리대 0.89·소반 0.34, 모델 실제 윗면을 광선으로 잼) 하나의 발자국 안이면 그 위, 0.05 m 칸, 같은 윗면끼리 안 겹침, 걸치면 바닥 규칙. 협탁·장난감 상자·TV장·잔칫상은 윗면이 평평하지 않아 뺌.
@@ -26,12 +36,3 @@
 - 도구 들기 규칙: 낚싯대를 들어야 낚시(아니면 안내), 든 동안 잡초·열매·앉기 안 됨(「도구를 넣으면 주울/앉을 수 있어요」, 깜빡임 고침), 주민·문은 됨.
 - 메신저 제목 깜빡임 Illegal invocation(감싼 기본 타이머). 시험 도우미 revealTalk.
 - e2e island-visit-tasks·island-tool-rules(PC·폰), solo-quest 갱신. 사진 notes img/q2-visit.
-
-## v1.10.205 Q2 앞 묶음
-
-- 대화 창 저절로 닫힘(섬 이야기 e2e CI #349·#350 원인): 붙잡기 임대가 끝나거나 늦은 작별이 풀어도 곁이면 keep·topic이 다시 붙잡음, 끝은 busy·far일 때만 까닭 글과 함께. 도구 휘두르기는 누를 때 겨눈 주민 한 발 여유. playwright actionTimeout.
-- 관광객 사진 부탁 B안: 방문객이 기념사진 명소 안(photoPlace)에 섬, 말 걸기 → 포즈, 사진 모드 셔터(관광객이 틀 안·12 m) → 서버 asked·2초·같은 명소·12 m → 6,000P.
-- 할 일 카드 넷 이상이면 「+n개 더 · 전체 보기」 종이 칩 → 「내 할 일」 창(이야기·주민 부탁·심부름, 창에서 그만두기). 화면의 주민은 이름만(누리).
-- 섬 채팅 단추: 새 채팅은 색만(점 없음, 폭 그대로).
-- 해안 쓰레기 여덟 중 둘은 늘 윤슬만 가운데 해변.
-- e2e island-photo-request·island-quest-list·resident-talk-gone(PC·폰). 사진 notes img/q2-interact.

@@ -12,8 +12,12 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×,
   const who = await shopper(browser, request, isMobile ? '사진사m' : '사진사', 0, 'female'); const { page, token } = who;
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
-  let ev = null; // (a visitor stood in a photo spot)
-  await expect.poll(async () => { ev = (await post(request, '/api/test/island/photo', null, {})).data.event; return Boolean(ev); }, { timeout: 120000, intervals: [2000] }).toBe(true);
+  // (a visitor stood in a photo spot -- one with room in it to stand 8.5~11.5 m off: the 「out of the frame」 check below needs
+  // the camera, 6 m behind me at the nearest, between us. CI #353 mobile-3: in the 부두 끝·관공서 정문 spots there was none,
+  // the test stood 1.6 m off and the camera saw them)
+  const farFrom = (e) => { const sp = Fishing.photoSpotAt(e.x, e.z); if (!sp) return null; for (let d = 8.5; d <= 11.5; d += 0.5) for (let k = 0; k < 24; k += 1) { const a = (k / 24) * Math.PI * 2; const p = { x: e.x + Math.sin(a) * d, z: e.z + Math.cos(a) * d }; if (T.walkable(p.x, p.z) && Fishing.photoSpotAt(p.x, p.z)?.id === sp.id) return p; } return null; };
+  let ev = null;
+  await expect.poll(async () => { ev = (await post(request, '/api/test/island/photo', null, {})).data.event; return Boolean(ev && farFrom(ev)); }, { timeout: 180000, intervals: [2000] }).toBe(true);
   const spot = Fishing.photoSpotAt(ev.x, ev.z); expect(spot).toBeTruthy();
   const balance = async () => (await get(request, '/api/points', token)).data.balance;
   const before = await balance();
@@ -29,7 +33,7 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×,
   const shoot = async () => { await page.locator('#islandPhotoTab').click(); await expect(page.locator('#photoNowBtn')).toBeVisible(); await page.evaluate(() => { HTMLAnchorElement.prototype.click = () => {}; }); await page.locator('#photoNowBtn').click(); };
   const leave = async () => { if (await page.locator('#photoCloseBtn').isVisible()) await page.locator('#photoCloseBtn').click(); };
   // the tourist out of the frame (the camera drawn in between us, looking away from them): not in the picture -- from 8.5~11.5 m off, in the same spot
-  const stand = (() => { for (let d = 8.5; d <= 11.5; d += 0.5) for (let k = 0; k < 24; k += 1) { const a = (k / 24) * Math.PI * 2; const p = { x: ev.x + Math.sin(a) * d, z: ev.z + Math.cos(a) * d }; if (T.walkable(p.x, p.z) && Fishing.photoSpotAt(p.x, p.z)?.id === spot.id) return p; } return by; })();
+  const stand = farFrom(ev);
   await standAt(request, who, stand.x, stand.z);
   await page.locator('#plazaStage').focus(); for (let i = 0; i < 4; i += 1) await page.keyboard.press('KeyQ'); // (drawn in)
   await page.evaluate(([tx, tz]) => { const d = window.PlazaDebug(); d.faceTo(d.x + (d.x - tx), d.z + (d.z - tz)); d.setCamYaw(Math.atan2(tx - d.x, tz - d.z)); }, [ev.x, ev.z]); await page.waitForTimeout(800);
