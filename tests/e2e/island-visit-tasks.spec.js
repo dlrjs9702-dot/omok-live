@@ -5,7 +5,7 @@ const { shopper, post, expectNoScriptError } = require('./skin-support');
 // where it is, not walking in -- the flowers (the colour asked, on the card too; a wrong one 「다시 볼까요?」), the mural's
 // three in turn (the middle first 「다시 볼까요?」), the pier (the boat out of sight). The things there only while asked
 // (✨). PC and phone. (The crossing and the train's minutes: their stories are not in the tests' week -- units cover them.)
-test('구경 C안: 꽃 색 찾기·벽화 차례로·부두 배웅, 걸어 들어가기만으론 안 끝남', async ({ browser, request, isMobile }) => {
+test('구경 C안: 꽃 색 찾기·벽화 차례로·부두 배웅·허수아비, 걸어 들어가기만으론 안 끝남', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 300000 : 180000);
   const who = await shopper(browser, request, isMobile ? '구경할일m' : '구경할일', 0, 'female'); const { page, token } = who;
   const track = (await post(request, '/api/test/quest/take', token, { stories: ['granny', 'painter', 'fisher'], visit: true })).data.track;
@@ -36,8 +36,15 @@ test('구경 C안: 꽃 색 찾기·벽화 차례로·부두 배웅, 걸어 들�
   const pi = task('fisher');
   await goTo(pi.at, '배웅하기'); await page.waitForTimeout(1500); await expect(card.locator('.questLine', { hasText: '배웅' })).toHaveCount(1);
   await press(); await expect(toast).toContainText('손 흔들어요');
-  if (process.env.SHOT_DIR) { await page.waitForTimeout(2500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-visit-pier.png` }); }
+  if (process.env.SHOT_DIR) { await page.evaluate(() => { const P = window.IslandTerrain.PIER; window.PlazaDebug().setCamYaw(Math.atan2(-P.ux, -P.uz)); }); await page.waitForTimeout(2200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-visit-pier.png` }); } // (the boat leaving, some 2.5 s in, seen out to sea)
   await expect(toast).toContainText('✓ 돌아가 말해요', { timeout: 15000 });
   await expect(card.locator('.questLine', { hasText: '배웅' })).toHaveCount(0);
+  // the scarecrow: the fallen one lies there to be found; the standing one is not it, the fallen one stood up is
+  const sc = (await post(request, '/api/test/quest/take', token, { stories: ['farmer'], visit: true })).data.track.find((t) => t.story === 'farmer').task;
+  const other = (sc.shown + 1) % sc.spots.length;
+  await expect.poll(async () => { await page.evaluate((q) => window.PlazaWarp(q.x, q.z), sc.spots[sc.shown]); return hint.textContent(); }, { timeout: 30000 }).toContain('허수아비 · 세우기');
+  if (process.env.SHOT_DIR) { await page.evaluate((q) => { const d = window.PlazaDebug(); d.teleport(q.x + 1.8, q.z + 4.5); d.setCamYaw(0); }, sc.spots[sc.shown]); await page.waitForTimeout(2500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-visit-scarecrow.png` }); } // (a step off, its side to me)
+  await goTo(sc.spots[other], '허수아비 · 살펴보기'); await press(); await expect(toast).toHaveText('다시 볼까요?');
+  await goTo(sc.spots[sc.shown], '허수아비 · 세우기'); await press(); await expect(toast).toContainText('✓ 돌아가 말해요');
   await expectNoScriptError(page); await who.context.close();
 });

@@ -2344,7 +2344,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return new Promise((done) => {
       const fx = new THREE.Group(); scene.add(fx); const t0 = performance.now(); const run = { t0, fx, hits: 0, last: -1e9 };
       run.end = (ok) => { if (v.run !== run) return; v.run = null; scene.remove(fx); done(ok); };
-      if (t.id === 'pier') { const P = globalThis.IslandTerrain.PIER; const hull = new THREE.Group(); mesh(new THREE.BoxGeometry(1.1, 0.45, 2.6), mat(0x9a5b34), 0, 0.2, 0, hull); mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 5), mat(0xeeeeee), 0, 1.1, 0, hull); const boat = thing(fx, 'sea.boat', t.at.x + P.ux * 3, t.at.z + P.uz * 3, Math.atan2(P.ux, P.uz), hull); boat.position.y = Math.max(boat.position.y, -0.6); /* (on the sea, the island's boat) */ run.boat = boat; run.dir = { x: P.ux, z: P.uz }; me.anim?.play?.('greet'); }
+      if (t.id === 'pier') { const P = globalThis.IslandTerrain.PIER; const boat = thing(fx, 'sea.boat', t.at.x + P.ux * 4, t.at.z + P.uz * 4, Math.atan2(P.ux, P.uz)); boat.position.y = Math.max(boat.position.y, -0.6); /* (the island's own boat -- the fisher's -- on the sea; dalmaru.dock_boat is the float with its gangway, not a boat) */ run.boat = boat; run.dir = { x: P.ux, z: P.uz }; me.anim?.play?.('greet'); }
       if (t.id === 'busk') { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.07, 8, 32), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.4 })); ring.position.set(t.at.x, heightAt(t.at.x, t.at.z) + 2.6, t.at.z); fx.add(ring); run.ring = ring; }
       if (t.id === 'lamp') { const glow = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.15 })); glow.position.set(t.at.x, heightAt(t.at.x, t.at.z) + 3.6, t.at.z); fx.add(glow); run.glow = glow; run.bright = 1500 + Math.random() * 1500; }
       v.run = run;
@@ -2361,7 +2361,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function stepVisits() {
     for (const v of visits.values()) { const r = v.run; if (!r) continue; const t = v.task; const m = me.root.position; const now = performance.now() - r.t0;
       const from = t.from || t.at; const away = Math.hypot(m.x - from.x, m.z - from.z);
-      if (t.id === 'pier') { const d = 3 + now / 1000 * 2.2; r.boat.position.set(t.at.x + r.dir.x * d, r.boat.position.y, t.at.z + r.dir.z * d); if (away > t.r + 1) r.end(false); else if (now >= 6000) r.end(true); }
+      if (t.id === 'pier') { const d = 4 + now / 1000 * 1.3; /* (slowly: some 8 m in the six seconds) */ r.boat.position.set(t.at.x + r.dir.x * d, r.boat.position.y, t.at.z + r.dir.z * d); if (away > t.r + 1) r.end(false); else if (now >= 6000) r.end(true); }
       else if (t.id === 'busk') { const on = (now % 1100) < 380; r.ring.material.opacity = on ? 0.95 : 0.25; r.ring.scale.setScalar(on ? 1.25 : 1); if (away > t.r + 1) r.end(false); else if (r.hits >= 3 && now >= 3000) r.end(true); }
       else if (v.task.id === 'lamp') { const bright = now >= r.bright && now < r.bright + 900; r.glow.material.opacity = bright ? 1 : (Math.sin(now / 45) > 0.3 ? 0.55 : 0.12); r.glow.scale.setScalar(bright ? 1.8 : 1); if (now >= r.bright + 900 && !r.caught) { r.t0 = performance.now(); r.bright = 1500 + Math.random() * 1500; } if (r.caught && now >= 2000) r.end(true); else if (away > t.r + 1) r.end(false); }
       else if (t.type === 'cross') { if (Math.hypot(m.x - t.to.x, m.z - t.to.z) <= t.r - 0.3 && now >= t.minMs) r.end(true); else if (away > 25 || now > 90000) r.end(false); }
@@ -3637,6 +3637,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (d < bestD) { best = id; bestD = d; }
     }
     for (const [id, door] of Object.entries(eventDoors)) { // v1.10.11: an event right by me comes first
+      if (id === 'tool:stow') continue; // (206 총괄 검토: the stow note stands where I am -- picked as the nearest, it flickered off every other frame)
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < (door.resource ? WEED_REACH : EVENT_REACH) && d < bestD + 1) { best = id; bestD = d - 1; }
     }

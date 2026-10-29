@@ -31,6 +31,7 @@ test('도구 들기 규칙: 낚싯대를 들어야 낚시, 든 동안 잡초·�
   const free = weeds.map(([, x, z]) => ({ x, z })).find((w) => T.walkable(w.x + 0.6, w.z) && T.walkDist(w.x, w.z) > 1.5) || { x: weeds[0][1], z: weeds[0][2] };
   await page.evaluate((w) => window.PlazaWarp(w.x + 0.6, w.z), free);
   await expect(hint).toHaveText('도구를 넣으면 주울 수 있어요', { timeout: 10000 });
+  expect(await page.evaluate(() => new Promise((ok) => { const h = document.getElementById('plazaHint'); let off = 0; let n = 0; const t = setInterval(() => { if (h.classList.contains('hidden') || !h.textContent.includes('도구를 넣으면')) off += 1; if (++n >= 30) { clearInterval(t); ok(off); } }, 25); }))).toBe(0); // (206 총괄 검토: it stays up -- it flickered off every other frame)
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-stow-hint.png` });
   const berry = ((await get(request, '/api/test/island/events', token)).data.events || []).find((e) => e.type === 'berry' && e.state === 'open'); // (a fruit tree: the same)
   if (berry) { await page.evaluate((p) => window.PlazaWarp(p.x, p.z), berry); await expect(hint).toHaveText('도구를 넣으면 주울 수 있어요', { timeout: 10000 }); await page.evaluate((w) => window.PlazaWarp(w.x + 0.6, w.z), free); }
