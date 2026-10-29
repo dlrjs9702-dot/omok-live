@@ -6382,9 +6382,12 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, offer, finished, accepted: Boolean(r.accepted), fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: solvedToday ? `${r.say} …어? 오늘 문제는 벌써 풀었네요! 다시 말을 걸어 주세요.` : r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }
-    const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
+    const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true, shot: body.shot === true });
     if (claimed.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const PHOTO_FAIL = { PHOTO_FAR: '관광객이 사진에 들어오게 가까이(12 m 안)에서 찍어 주세요.', NOT_ASKED: '먼저 관광객에게 말을 걸어 주세요.', TOO_SOON: '관광객이 포즈를 잡는 중이에요. 잠깐만요!', OFF_SPOT: '관광객이 있는 명소 안에서 찍어 주세요.' }; // (Q2 사진 부탁)
+    if (PHOTO_FAIL[claimed.error]) return sendError(res, 409, claimed.error, PHOTO_FAIL[claimed.error]);
     if (claimed.error) { resourcePulls.delete(session.token); return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.'); }
+    if (claimed.action === 'photoAsk') { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return sendJson(res, 200, { ok: true, action: 'photoAsk', id, spot: claimed.spot, events: at ? islandEvents.nearby(at.x, at.z, account) : [] }); } // (Q2: asked -- the shot is the photo mode's)
     if (claimed.action === 'talk') { // v1.10.34: the owner's request -- where the thing lies, for my map; nothing paid
       const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
@@ -6437,8 +6440,8 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
     broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/lost' && req.method === 'POST') {
-    const e = islandEvents.spawnLost();
+  if (process.env.NODE_ENV === 'test' && (pathname === '/api/test/island/lost' || pathname === '/api/test/island/photo') && req.method === 'POST') { // (Q2: the tourist too -- the page asks again till an islander is in a photo spot)
+    const e = islandEvents.spawnLost(pathname.endsWith('/photo') ? 'photo' : 'lost');
     return sendJson(res, 200, { ok: Boolean(e), event: e && { id: e.id, x: e.x, z: e.z, npc: e.npc } });
   }
   // (휴대폰 「가까이」: my lobby stream cut from the server's side, as a phone's network drops it -- the page reconnects)

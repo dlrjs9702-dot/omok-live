@@ -192,23 +192,33 @@ test('주민 이벤트: 같은 주민 ID·대기 위치를 모두에게 보내�
   assert.equal(ev.nearby(next.npc.x,next.npc.z,'a').some(v=>v.id===next.id),false);
 });
 
-test('주민 이벤트: 사진 부탁도 기존10명 예약을 쓰고 서버 재시작은 새 이벤트만 만든다', () => {
-  const now=()=>Date.parse('2026-10-08T12:00:00+09:00');
+// Q2 사진 부탁 B안 (gamecenter-notes docs/interact-quests-20261029.md 1): the tourist stands in a photo spot; a word (asked) and
+// then a shot from that spot, 2 s on, within 12 m pays -- not a word alone, not before asking, not from outside the spot
+test('주민 이벤트: 사진 부탁은 명소 안 기존10명 예약, 말 걸기 → 2초 뒤 같은 명소에서 찍어야 돈, 서버 재시작은 새 이벤트만', () => {
+  const Fishing=require('../lib/island-fishing');
+  let t=Date.parse('2026-10-08T12:00:00+09:00'); const now=()=>t;
   let found=false;
-  for(let seed=1;seed<20&&!found;seed++) {
-    const ev=createIslandEvents({random:seeded(seed),now});
+  for(let k=0;k<200&&!found;k++) {
+    t+=37000; const ev=createIslandEvents({random:seeded(k+1),now});
     const e=[...ev.events.values()].find(v=>v.type==='photo');
     if(!e) continue;
     found=true;
-    const a=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id);
-    const b=ev.nearby(e.x,e.z,'b').find(v=>v.id===e.id);
-    assert.deepEqual(a,b); assert.equal(a.resident,e.resident);
+    const spot=Fishing.photoSpotAt(e.x,e.z); assert.ok(spot,'명소 안'); assert.equal(e.spot,spot.id);
+    const a=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id); const b=ev.nearby(e.x,e.z,'b').find(v=>v.id===e.id);
+    assert.deepEqual(a,b); assert.equal(a.resident,e.resident); assert.equal(a.asked,false); assert.equal(a.verb,'말 걸기');
     assert.equal(ev.residents()[e.resident].hold.eventId,e.id);
-    const claim=ev.claim(e.id,'a',e);
-    assert.equal(ev.claim(e.id,'b',e).error,'GONE');
+    assert.equal(ev.claim(e.id,'a',e,{shot:true}).error,'NOT_ASKED'); // (a shot before a word)
+    assert.equal(ev.claim(e.id,'a',e).action,'photoAsk'); assert.equal(ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id).asked,true); assert.equal(ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id).verb,null);
+    assert.equal(ev.claim(e.id,'a',e,{shot:true}).error,'TOO_SOON'); t+=2100;
+    const far={x:e.x+30,z:e.z}; assert.equal(ev.claim(e.id,'a',far,{shot:true}).error,'PHOTO_FAR');
+    const out=[1,2,3,4,5,6,7,8,9,10,11].map(d=>[{x:e.x+d,z:e.z},{x:e.x-d,z:e.z},{x:e.x,z:e.z+d},{x:e.x,z:e.z-d}]).flat().find(p=>Fishing.photoSpotAt(p.x,p.z)?.id!==spot.id);
+    if(out) assert.equal(ev.claim(e.id,'a',out,{shot:true}).error,'OFF_SPOT'); // (12 m off but outside the spot)
+    assert.equal(ev.claim(e.id,'b',e).action,'photoAsk'); // (another asks too, each their own)
+    const claim=ev.claim(e.id,'a',e,{shot:true}); assert.equal(claim.action,'points'); assert.equal(claim.points,6000);
+    assert.equal(ev.claim(e.id,'b',e,{shot:true}).error,'GONE');
     ev.settle(claim,true,'a');
     assert.notEqual(ev.residents()[e.resident].hold?.eventId,e.id);
-    const restart=createIslandEvents({random:seeded(seed),now});
+    const restart=createIslandEvents({random:seeded(k+1),now});
     assert.ok(restart.residents().every(r=>r.hold?.eventId!==e.id));
   }
   assert.ok(found,'실제 사진 이벤트 검증');

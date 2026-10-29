@@ -3768,9 +3768,12 @@
       }
       const p = shot.controller.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p), signal: shot.abort.signal }).catch(() => {});
       if (!current()) return;
+      const tourist = shot.controller.photoTarget?.(); // (Q2 사진 부탁: one I asked -- in the frame, then the server's own checks)
+      if (tourist && !tourist.inFrame) showToast('📸 관광객이 사진에 안 들어왔어요. 관광객이 화면에 나오게 다시 찍어 주세요.', 5000);
+      else if (tourist) { try { const r = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id: tourist.id, shot: true }), signal: shot.abort.signal }); showIslandEvents(r.events || islandEventsNear); showToast(`📸 관광객: 「고마워요! 잘 나왔네요」 +${Number(r.points || 0).toLocaleString('ko-KR')}P`, 5000); loadPoints(); } catch (error) { if (error.name !== 'AbortError') showToast(error.message, 5000); } if (!current()) return; }
       const data = await api('/api/island/photo', { method: 'POST', body: '{}', signal: shot.abort.signal }).catch(() => null);
       if (!current()) return;
-      showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
+      if (!tourist) showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
     } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); if (!now) shot.controller.photoPose?.(false); } }
   }
   document.getElementById('islandPhotoTab').addEventListener('click', () => enterPhoto());
@@ -4324,6 +4327,7 @@
       plaza.controller?.setResidents?.(data.residents);
       if (ev) { completed=true; plaza.controller?.finishGather?.(true); }
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
+      if (data.action === 'photoAsk') { showIslandEvents(data.events || islandEventsNear); plaza.controller?.photoAsk?.(id); showToast(`📸 「여기서 저 좀 찍어 주세요!」 · 「사진」으로 관광객이 나오게 찍어요${data.spot ? ` (${data.spot} 안에서)` : ''}`, 7000); return; } // (Q2 사진 부탁 B안)
       if (data.action === 'quest') {
         showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []);
         if (departureController === plaza.controller && data.story === 'fisher' && data.done && data.reward) { questDepartureDialog = departureController; departureDialog = true; }
