@@ -12,7 +12,7 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×,
   const who = await shopper(browser, request, isMobile ? '사진사m' : '사진사', 0, 'female'); const { page, token } = who;
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
-  let ev = null; // (an islander in a photo spot just now: asked again till one is)
+  let ev = null; // (a visitor stood in a photo spot)
   await expect.poll(async () => { ev = (await post(request, '/api/test/island/photo', null, {})).data.event; return Boolean(ev); }, { timeout: 120000, intervals: [2000] }).toBe(true);
   const spot = Fishing.photoSpotAt(ev.x, ev.z); expect(spot).toBeTruthy();
   const balance = async () => (await get(request, '/api/points', token)).data.balance;
@@ -42,7 +42,7 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×,
   // facing them from the spot: in the picture -- paid, the request over
   await standAt(request, who, stand.x, stand.z);
   await page.evaluate(([tx, tz]) => { const d = window.PlazaDebug(); d.faceTo(tx, tz); d.setCamYaw(Math.atan2(d.x - tx, d.z - tz)); }, [ev.x, ev.z]);
-  if (process.env.SHOT_DIR) { await page.waitForTimeout(600); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-in.png` }); }
+  if (process.env.SHOT_DIR) { await expect(page.locator('#toast')).toBeHidden({ timeout: 10000 }); await page.waitForTimeout(600); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-in.png` }); } // (the last try's note gone first)
   await shoot(); await expect(page.locator('#toast')).toContainText('잘 나왔네요', { timeout: 15000 });
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-done.png` });
   await leave(); expect(await balance()).toBe(before + 6000);
