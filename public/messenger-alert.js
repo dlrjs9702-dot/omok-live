@@ -14,7 +14,7 @@
     Promise.resolve(n > 0 ? nav.setAppBadge(n) : nav.clearAppBadge()).catch(() => {});
   }
   // `apply()` redraws the window's title (asking text(base)); the first count is only where it starts (a reload blinks not)
-  function titleBlink(apply, { every = 1000, timers = { setInterval, clearInterval } } = {}) {
+  function titleBlink(apply, { every = 1000, timers = { setInterval: (f, ms) => setInterval(f, ms), clearInterval: (t) => clearInterval(t) } } = {}) { // (Q2 사용자 사진 「Illegal invocation」: the bare built-ins called as timers.setInterval -- this the object, which Chrome refuses)
     let n = null; let lit = false; let timer = null;
     const stop = () => { if (timer == null && !lit) return; timers.clearInterval(timer); timer = null; lit = false; apply(); };
     return {

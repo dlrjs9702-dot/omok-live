@@ -29,3 +29,17 @@ test('메신저 제목 깜빡임: 창이 안 보일 때 새 글이면 1초마다
   blink.update(0, true); assert.equal(blink.blinking, false); // (read elsewhere: all read)
   blink.update(120, true); assert.equal(title, '● 새 메시지 (99+)');
 });
+
+// Q2 사용자 사진 「Illegal invocation」: the default timers (no `timers` given -- the windows' own use) called as methods of an
+// object, `this` that object -- Chrome refuses it and the blinking (and the messenger's refresh round it) broke; a stand-in
+// as strict as Chrome about `this`
+test('메신저 제목 깜빡임: 기본 타이머는 this 없이 부름(Chrome Illegal invocation)', () => {
+  const real = { si: globalThis.setInterval, ci: globalThis.clearInterval }; let tick = null;
+  const strict = (fn) => function (...args) { if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation'); return fn(...args); };
+  globalThis.setInterval = strict((f) => { tick = f; return 7; }); globalThis.clearInterval = strict(() => { tick = null; });
+  try {
+    let title = ''; const blink = MA.titleBlink(() => { title = blink.text('아일랜드'); });
+    blink.update(1, true); blink.update(2, true); assert.equal(blink.blinking, true); assert.equal(title, '● 새 메시지 (2)');
+    tick(); assert.equal(title, '아일랜드'); blink.seen(); assert.equal(blink.blinking, false); assert.equal(tick, null);
+  } finally { globalThis.setInterval = real.si; globalThis.clearInterval = real.ci; }
+});
