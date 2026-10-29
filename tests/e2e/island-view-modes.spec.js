@@ -26,6 +26,16 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     const b = await page.evaluate(() => [window.PlazaDebug().x, window.PlazaDebug().z]); const moved = Math.hypot(b[0] - a[0], b[1] - a[1]);
     expect(moved).toBeGreaterThan(0.3); expect(((b[0] - a[0]) * -Math.sin(yaw) + (b[1] - a[1]) * -Math.cos(yaw)) / moved).toBeGreaterThan(0.9);
   }
+  // a talk in the first: face to face -- the view turned to them (no talk camera), my body still hidden; closed, the first on
+  const dialog = page.locator('#plazaDialog'); const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
+  await expect.poll(async () => {
+    if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async () => { const w = window.PlazaDebug().wanderers[1]; if (w) { await window.PlazaWarp(w.x + 1.3, w.z); window.PlazaDebug().talkResident(w.n); } }); await page.waitForTimeout(900); }
+    return talking();
+  }, { timeout: 120000, intervals: [300] }).toBe(true);
+  await expect.poll(async () => { const v = await view(); const at = await page.evaluate(() => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => Math.hypot(o.x - d.x, o.z - d.z) < 3); return w && { dx: w.x - d.x, dz: w.z - d.z }; }); if (!at) return 9; const want = Math.atan2(-at.dx, -at.dz); return Math.abs(Math.atan2(Math.sin(v.yaw - want), Math.cos(v.yaw - want))); }, { timeout: 10000 }).toBeLessThan(0.2);
+  expect(await view()).toMatchObject({ mode: 'first', body: false, fov: 64 });
+  await shot('talk-first');
+  await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false); expect(await view()).toMatchObject({ mode: 'first', fov: 75 });
   // the 관공서: the third till V2 (「곧」); my house: the first by default, the third chosen there kept for indoors
   const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, who, th.x, th.z);
   const space = () => page.evaluate(() => window.PlazaDebug().space);
@@ -47,8 +57,16 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     expect(await view()).toMatchObject({ side: 'out', mode: 'first' }); // (outside's own choice)
     await enter(`home:${lot}`, 'home');
     await expect.poll(async () => (await view())).toMatchObject({ side: 'in', mode: 'first', body: false });
+    // (a desk with a snow globe, a coffee table with the radio -- in again: the room as the server has it)
+    const [desk, globe, table, radio] = (await post(request, '/api/test/home/furniture', who.token, { ids: ['desk__oak', 'xmas_snow_globe__plain', 'coffee_table__oak', 'radio__red'] })).data.pieces.map((p) => p.uid);
+    for (const [uid, x, z] of [[desk, -1.5, 2.5], [globe, -1.5, 2.5], [table, 1.5, 2.5], [radio, 1.5, 2.5]]) expect((await post(request, '/api/home/place', who.token, { uid, x, z, rot: 0 })).status).toBe(200);
+    await enter('home:exit', 'island'); await enter(`home:${lot}`, 'home');
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().lid()?.visible)).toBe(true); // (the ceiling, the walls up to it)
     await shot('home-first');
+    if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().setCamYaw?.(window.PlazaDebug().view().yaw)); for (const h of [3.6, 4.0]) { await page.evaluate((h) => window.PlazaDebug().lid(h), h); await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(d.view().yaw); }); await shot(`home-ceil-${h}`); } await page.evaluate(() => window.PlazaDebug().lid(null)); }
     await toggle(); await expect.poll(async () => (await view()).mode).toBe('third');
+    expect(await page.evaluate(() => window.PlazaDebug().lid()?.visible)).toBe(false); // (the third as before)
+    await shot('home-third');
     await enter('home:exit', 'island');
     expect(await view()).toMatchObject({ side: 'out', mode: 'first' });
     await toggle(); await expect.poll(async () => (await view()).mode).toBe('third');
