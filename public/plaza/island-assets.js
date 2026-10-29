@@ -319,7 +319,7 @@
     REGISTRY[`wear.winter_${key}`] = { url: `${CH}/wear-winter/${file}.glb`, low: { url: `${CH}/wear-winter/${file}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_winter_${key}`] = `wear.winter_${key}`;
   }
   if (REGISTRY['wear.winter_hat_earmuffs']) delete REGISTRY['wear.winter_hat_earmuffs'].fit.cover; // (X1: an open band -- the hair stays, bun and all, assets 77)
-  if (REGISTRY['wear.winter_outfit_santa']) REGISTRY['wear.winter_outfit_santa'].body ={ url: `${CH}/wear-winter/body_winter_fitted.glb`, lowUrl: `${CH}/wear-winter/body_winter_fitted_low.glb` };
+  if (REGISTRY['wear.winter_outfit_santa']) REGISTRY['wear.winter_outfit_santa'].body = { url: `${CH}/wear-winter/body_winter_fitted.glb`, lowUrl: `${CH}/wear-winter/body_winter_fitted_low.glb` };
   // v1.10.91 변신 의상실 (assets 42): the booth with its mirror, and its keeper (the common rig)
   REGISTRY['character.transformer'] = { url: `${CH}/npc_transformer.glb`, low: { url: `${CH}/npc_transformer_low.glb` }, rotationY: Math.PI, motions: true };
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
