@@ -5,9 +5,9 @@ const T = require('../../public/plaza/island-terrain.js');
 
 // Q2 사진 부탁 B안 (gamecenter-notes docs/interact-quests-20261029.md 1, 사용자 「B안으로 가자」): the tourist stands in a photo
 // spot; a shot before a word pays nothing; a word -- 「여기서 저 좀 찍어 주세요!」, posing -- then a shot with them out of the
-// frame (my back to them) is 「안 들어왔어요」, one from outside the spot is refused, one facing them from the spot pays 6,000P
+// frame (here: the camera drawn in between us, looking away) is 「안 들어왔어요」, one from outside the spot is refused, one facing them from the spot pays 6,000P
 // and the request ends. PC and phone.
-test('관광객 사진 부탁: 말 안 걸고 ×, 등 돌리고 ×, 명소 밖 ×, 마주 보고 찍으면 6,000P', async ({ browser, request, isMobile }) => {
+test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×, 명소 밖 ×, 틀 안에 들게 찍으면 6,000P', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 400000 : 240000);
   const who = await shopper(browser, request, isMobile ? '사진사m' : '사진사', 0, 'female'); const { page, token } = who;
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); });
@@ -28,7 +28,7 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 등 돌리고 ×, 명소 밖 �
   await page.waitForTimeout(2200); // (the pose: 2 s)
   const shoot = async () => { await page.locator('#islandPhotoTab').click(); await expect(page.locator('#photoNowBtn')).toBeVisible(); await page.evaluate(() => { HTMLAnchorElement.prototype.click = () => {}; }); await page.locator('#photoNowBtn').click(); };
   const leave = async () => { if (await page.locator('#photoCloseBtn').isVisible()) await page.locator('#photoCloseBtn').click(); };
-  // my back to them, the camera drawn in behind me (between us): not in the picture -- from 8.5~11.5 m off, in the same spot
+  // the tourist out of the frame (the camera drawn in between us, looking away from them): not in the picture -- from 8.5~11.5 m off, in the same spot
   const stand = (() => { for (let d = 8.5; d <= 11.5; d += 0.5) for (let k = 0; k < 24; k += 1) { const a = (k / 24) * Math.PI * 2; const p = { x: ev.x + Math.sin(a) * d, z: ev.z + Math.cos(a) * d }; if (T.walkable(p.x, p.z) && Fishing.photoSpotAt(p.x, p.z)?.id === spot.id) return p; } return by; })();
   await standAt(request, who, stand.x, stand.z);
   await page.locator('#plazaStage').focus(); for (let i = 0; i < 4; i += 1) await page.keyboard.press('KeyQ'); // (drawn in)
