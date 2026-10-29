@@ -847,7 +847,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .donationRow{background:#f7efe1;border:1px solid #e2d4bd}
 :root[data-theme="light"] .donationRow.me{border-color:#23806f}
 :root[data-theme="light"] .donationForm input{background:#f7efe1;color:#33281d;border:1px solid #d6c3a5}
-:root[data-theme="light"] .islandChatTab.unread::after{background:#f87171}
 :root[data-theme="light"] .islandChatPanel{background:rgba(255,246,227,var(--island-chat-alpha));border:1px solid rgba(217,195,160,var(--island-chat-alpha));color:var(--isle-ink);box-shadow:0 8px 22px rgba(74,56,40,calc(var(--island-chat-alpha) * .3))}
 :root[data-theme="light"] .islandChatPanel .islandChatHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .islandChatPanel .chatMessageHead strong,:root[data-theme="light"] .islandChatPanel .chatMessageBody time{color:var(--isle-soft)}
@@ -947,6 +946,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .isle-pill{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 4px 12px rgba(74,56,40,.25)}
 :root[data-theme="light"] .isle-pill:hover{background:var(--isle-hover)}
 :root[data-theme="light"] .isle-pill:active{background:#f0dcb6;box-shadow:0 2px 6px rgba(74,56,40,.25)}
+:root[data-theme="light"] .isle-pill.islandChatTab.unread{background:var(--isle-tag);color:#fff;border-color:var(--isle-tag)}
 :root[data-theme="light"] .isle-tape{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 8px 18px rgba(60,40,20,.3)}
 :root[data-theme="light"] .isle-tape::before{background:rgba(242,181,68,.55)}
 :root[data-theme="light"] .isle-tag{background:var(--talk-tag,var(--isle-tag));color:#fff}
@@ -1090,6 +1090,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .weedBoardList li.mine{outline:2px solid #23806f}
 :root[data-theme="light"] .contestTimer{background:rgba(17,24,39,.82);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 :root[data-theme="light"] .festivalStamps{background:rgba(234,179,8,.18)}
+:root[data-theme="light"] .questMore{border:1px solid var(--isle-line);background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 2px 6px rgba(74,56,40,.2)}
 :root[data-theme="light"] .festivalTab,:root[data-theme="light"] .snowPart{background:#fff6e3;color:#4a3420;border:1px solid #c9a46f}
 :root[data-theme="light"] .festivalTab[aria-pressed="true"],:root[data-theme="light"] .snowPart[aria-pressed="true"]{background:var(--isle-tag);color:#fff;border-color:var(--isle-tag)}
 :root[data-theme="light"] .festivalTasks li,:root[data-theme="light"] .festivalShop li{background:rgba(179,156,124,.12)}

@@ -192,23 +192,32 @@ test('주민 이벤트: 같은 주민 ID·대기 위치를 모두에게 보내�
   assert.equal(ev.nearby(next.npc.x,next.npc.z,'a').some(v=>v.id===next.id),false);
 });
 
-test('주민 이벤트: 사진 부탁도 기존10명 예약을 쓰고 서버 재시작은 새 이벤트만 만든다', () => {
-  const now=()=>Date.parse('2026-10-08T12:00:00+09:00');
+// Q2 사진 부탁 B안 (gamecenter-notes docs/interact-quests-20261029.md 1): the tourist stands in a photo spot; a word (asked) and
+// then a shot from that spot, 2 s on, within 12 m pays -- not a word alone, not before asking, not from outside the spot
+test('주민 이벤트: 사진 부탁은 명소 안의 방문객(주민 예약 없음), 말 걸기 → 2초 뒤 같은 명소에서 찍어야 돈, 서버 재시작은 새 이벤트만', () => {
+  const Fishing=require('../lib/island-fishing');
+  let t=Date.parse('2026-10-08T12:00:00+09:00'); const now=()=>t;
   let found=false;
-  for(let seed=1;seed<20&&!found;seed++) {
-    const ev=createIslandEvents({random:seeded(seed),now});
+  for(let k=0;k<200&&!found;k++) {
+    t+=37000; const ev=createIslandEvents({random:seeded(k+1),now});
     const e=[...ev.events.values()].find(v=>v.type==='photo');
     if(!e) continue;
     found=true;
-    const a=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id);
-    const b=ev.nearby(e.x,e.z,'b').find(v=>v.id===e.id);
-    assert.deepEqual(a,b); assert.equal(a.resident,e.resident);
-    assert.equal(ev.residents()[e.resident].hold.eventId,e.id);
-    const claim=ev.claim(e.id,'a',e);
-    assert.equal(ev.claim(e.id,'b',e).error,'GONE');
+    const spot=Fishing.photoSpotAt(e.x,e.z); assert.ok(spot,'명소 안'); assert.equal(e.spot,spot.id);
+    const a=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id); const b=ev.nearby(e.x,e.z,'b').find(v=>v.id===e.id);
+    assert.deepEqual(a,b); assert.equal(a.resident,e.resident); assert.equal(a.asked,false); assert.equal(a.verb,'말 걸기');
+    assert.equal(e.resident,undefined); assert.ok(ev.residents().every(r=>r.hold?.eventId!==e.id)); // (총괄 #351: a visitor, no islander held)
+    assert.equal(ev.claim(e.id,'a',e,{shot:true}).error,'NOT_ASKED'); // (a shot before a word)
+    assert.equal(ev.claim(e.id,'a',e).action,'photoAsk'); assert.equal(ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id).asked,true); assert.equal(ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id).verb,null);
+    assert.equal(ev.claim(e.id,'a',e,{shot:true}).error,'TOO_SOON'); t+=2100;
+    const far={x:e.x+30,z:e.z}; assert.equal(ev.claim(e.id,'a',far,{shot:true}).error,'PHOTO_FAR');
+    const out=[1,2,3,4,5,6,7,8,9,10,11].map(d=>[{x:e.x+d,z:e.z},{x:e.x-d,z:e.z},{x:e.x,z:e.z+d},{x:e.x,z:e.z-d}]).flat().find(p=>Fishing.photoSpotAt(p.x,p.z)?.id!==spot.id);
+    if(out) assert.equal(ev.claim(e.id,'a',out,{shot:true}).error,'OFF_SPOT'); // (12 m off but outside the spot)
+    assert.equal(ev.claim(e.id,'b',e).action,'photoAsk'); // (another asks too, each their own)
+    const claim=ev.claim(e.id,'a',e,{shot:true}); assert.equal(claim.action,'points'); assert.equal(claim.points,6000);
+    assert.equal(ev.claim(e.id,'b',e,{shot:true}).error,'GONE');
     ev.settle(claim,true,'a');
-    assert.notEqual(ev.residents()[e.resident].hold?.eventId,e.id);
-    const restart=createIslandEvents({random:seeded(seed),now});
+    const restart=createIslandEvents({random:seeded(k+1),now});
     assert.ok(restart.residents().every(r=>r.hold?.eventId!==e.id));
   }
   assert.ok(found,'실제 사진 이벤트 검증');
@@ -218,7 +227,27 @@ test('주민 예약: 플레이어가 선점한 대기 위치는 고르지 않고
   const N=require('../public/plaza/island-npcs');const time=Date.parse('2026-10-08T12:00:00+09:00');
   let people=Array.from({length:N.COUNT},(_,n)=>N.at(n,time));
   const ev=createIslandEvents({random:seeded(7),now:()=>time,occupied:()=>people});
-  assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,0,'플레이어가 서 있는 주민 대기점을 피한다');
+  assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc&&e.resident!=null).length,0,'플레이어가 서 있는 주민 대기점을 피한다'); // (Q2: the tourist a visitor, holding no islander)
   assert.ok(ev.residents().every(s=>!s.hold));
   people=[];ev.expire();assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,1,'자리가 비면 다음 조회에서 복구');
+});
+
+// Q2 해안 쓰레기 (gamecenter-notes docs/interact-quests-20261029.md 4, 사용자 「중앙 만 옆 해변엔 안 나와?」 → 「더 자주 나오게」):
+// of the beach's eight, two always on 윤슬만's middle beach (the bay's rim, -120°~-60° round (0, BAY_Z)) -- at the first fill
+// and when one picked there grows again
+test('해안 쓰레기: 여덟 중 둘은 늘 윤슬만 가운데 해변(채울 때·주워서 다시 생길 때)', () => {
+  const T = require('../public/plaza/island-terrain.js');
+  if (!T.dalmaru) return;
+  const inBay = (p) => { const a = (Math.atan2(p.z - T.dalmaru.BAY_Z, p.x) * 180) / Math.PI; return a >= -120 && a <= -60; };
+  for (let seed = 1; seed <= 6; seed += 1) {
+    let t = Date.parse('2026-11-08T12:00:00+09:00'); const ev = createIslandEvents({ random: seeded(seed), now: () => t });
+    const beach = () => [...ev.events.values()].filter((e) => e.type === 'beach_trash');
+    assert.equal(beach().length, RESOURCE_COUNTS.beach_trash, `seed ${seed}`); assert.equal(beach().filter(inBay).length, 2, `seed ${seed} 처음`);
+    for (let round = 0; round < 3; round += 1) { // (the bay's picked, then grown again: still two there)
+      const e = beach().find((x) => inBay(x) && x.state === 'open'); const c = ev.claim(e.id, 'a', e); ev.settle(c, true, 'a');
+      t += REGEN_MS.beach_trash + 1000; ev.expire();
+      assert.equal(beach().filter((x) => x.state === 'open').length, RESOURCE_COUNTS.beach_trash, `seed ${seed} round ${round}`);
+      assert.equal(beach().filter(inBay).length, 2, `seed ${seed} round ${round}`);
+    }
+  }
 });

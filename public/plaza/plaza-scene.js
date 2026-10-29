@@ -1893,10 +1893,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function netSwing() {
     const now = performance.now(); if (heldTool !== 'bugnet' || now < swingUntil || gather || fishing || sitting) return Promise.resolve(null);
     swingUntil = now + SWING_MS; me.anim?.play('netSwing');
+    // (Q2, CI #350 「missed, near []」: an islander squarely before me as I swing, walked a step on in the swing's 0.45 s, was
+    // missed -- a hit I saw land; the one aimed at when SPACE went still counts within a step more)
+    let aimed = null; let ad = Infinity; for (const { n, c, w } of wanderers) { if (!c.root.visible) continue; const d = inFan(w.x, w.z); if (d < ad) { ad = d; aimed = n; } }
     return new Promise((done) => setTimeout(() => {
       let best = null; let bd = Infinity;
       for (const [, h] of insectShown) { if (h.flee) continue; const d = inFan(h.c.root.position.x, h.c.root.position.z, SWING_REACH + INSECT_HALF); if (d < bd) { bd = d; best = { insect: h.b.id }; } } // (3회차 1: met by its body's edge)
       if (!best) for (const { n, c, w } of wanderers) { if (!c.root.visible) continue; const d = inFan(w.x, w.z); if (d < bd) { bd = d; best = { resident: n }; } }
+      if (!best && aimed !== null) { const w = wanderers.find((o) => o.n === aimed)?.w; const m = me.root.position; if (w && Math.hypot(w.x - m.x, w.z - m.z) <= SWING_REACH + 0.8) best = { resident: aimed }; }
       const m = me.root.position; lastSwing = { t: Math.round(now), x: +m.x.toFixed(2), z: +m.z.toFixed(2), yaw: +me.root.rotation.y.toFixed(2), hit: best, near: [...insectShown].map(([id, h]) => ({ id, dx: +(h.c.root.position.x - m.x).toFixed(2), dz: +(h.c.root.position.z - m.z).toFixed(2) })).filter((o) => Math.hypot(o.dx, o.dz) < 4) }; // (the debug's)
       done(best);
     }, SWING_HIT_MS));
@@ -2894,6 +2898,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         eventObjs.set(key, { root, npc, resident });
       }
       if (ev.verb) eventDoors[key] = { x: ev.x, z: ev.z, name: ev.resource ? `${ev.name} · ${ev.verb}` : ev.verb, resource: ev.resource, tree: ev.tree }; else delete eventDoors[key];
+      if (ev.kind === 'photo' && ev.asked && !eventObjs.get(key)?.posing) setTimeout(() => photoAsk(ev.id)); // (Q2: asked before a reload -- posing again)
       const o = eventObjs.get(key);
       o.root.userData.facility = ev.verb ? key : null;
       if(o.resident != null) o.npc.root.userData.facility=ev.verb?key:null;
@@ -2924,6 +2929,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     mapMarkers = [...eventObjs.keys()].filter((key) => (key.startsWith('ev:quest_npc:') ? (eventObjs.get(key).mark || eventObjs.get(key).requested) : (key.startsWith('ev:photo:') || key.startsWith('ev:lost_owner:')) && eventDoors[key] || key.startsWith('ev:lost_item:') || key.startsWith('ev:quest_spot:'))).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }))
       .concat(carriedOwner ? [carriedOwner] : []); // whose it is: where to take it
     minimapAt = 0;
+  }
+  // Q2 사진 부탁 B안: the tourist I asked poses (a wave now and then) till the shot; the shot counts only with them in my
+  // camera's frame (its frustum, 12 m) -- what the server cannot see, the page checks before it asks
+  function photoAsk(id) { const o = eventObjs.get(`ev:photo:${id}`); if (!o?.npc) return; o.posing = performance.now(); const pose = () => { if (!eventObjs.has(`ev:photo:${id}`) || performance.now() - o.posing > 60000) return; o.npc.anim?.play('greet'); o.poseTimer = setTimeout(pose, 2600); }; clearTimeout(o.poseTimer); pose(); }
+  const frustum = new THREE.Frustum(); const projM = new THREE.Matrix4();
+  function photoTarget() {
+    camera.updateMatrixWorld(); projM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); frustum.setFromProjectionMatrix(projM);
+    for (const [key, o] of eventObjs) {
+      if (!key.startsWith('ev:photo:') || !o.posing || !o.npc) continue;
+      const p = new THREE.Vector3(); o.npc.root.getWorldPosition(p); const near = Math.hypot(p.x - me.root.position.x, p.z - me.root.position.z) <= 12;
+      const body = [0.4, 1.0, 1.5].map((h) => p.clone().setY(p.y + h)); // (feet, middle, head: any of them in the picture)
+      return { id: key.slice('ev:photo:'.length), inFrame: near && body.some((q) => frustum.containsPoint(q)) };
+    }
+    return null;
   }
   const doorOf = (id) => doors[id] || eventDoors[id];
 
@@ -3968,7 +3987,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setFestival, snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setFestival, photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,

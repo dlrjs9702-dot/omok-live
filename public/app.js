@@ -2492,7 +2492,7 @@
       if (item) {
         slot.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/plain', String(i)); event.dataTransfer.effectAllowed = 'move'; });
         let hold = 0; // (a phone: held 0.4 s, it is picked up -- the next slot tapped is where it goes)
-        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; slot.classList.add('held'); byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
+        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; grid.children[i]?.classList.add('held'); /* (CI #351: a late answer drew the bag again meanwhile -- the slot shown now, not the one pressed) */ byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
         for (const type of ['pointerup', 'pointercancel', 'pointerleave']) slot.addEventListener(type, () => clearTimeout(hold));
       }
       slot.addEventListener('dragover', (event) => { event.preventDefault(); slot.classList.add('dropAt'); });
@@ -2678,7 +2678,8 @@
     const b = byId('islandBagSort');
     if (Date.now() - bagSortAsk > 4000) { bagSortAsk = Date.now(); b.textContent = '순서를 바꿀까요?'; setTimeout(() => { if (Date.now() - bagSortAsk >= 4000) b.textContent = '정리'; }, 4100); return; }
     bagSortAsk = 0; b.textContent = '정리';
-    try { drawIslandBag((await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) })).bag); } catch (error) { showToast(error.message); }
+    const mine = ++bagMoveSeq; // (CI #351: a move's late answer drew the old order over the sorted one -- the latest asked wins)
+    try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); } catch (error) { if (mine === bagMoveSeq) showToast(error.message); }
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
@@ -3768,9 +3769,12 @@
       }
       const p = shot.controller.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p), signal: shot.abort.signal }).catch(() => {});
       if (!current()) return;
+      const tourist = shot.controller.photoTarget?.(); // (Q2 사진 부탁: one I asked -- in the frame, then the server's own checks)
+      if (tourist && !tourist.inFrame) showToast('📸 관광객이 사진에 안 들어왔어요. 관광객이 화면에 나오게 다시 찍어 주세요.', 5000);
+      else if (tourist) { try { const r = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id: tourist.id, shot: true }), signal: shot.abort.signal }); showIslandEvents(r.events || islandEventsNear); showToast(`📸 관광객: 「고마워요! 잘 나왔네요」 +${Number(r.points || 0).toLocaleString('ko-KR')}P`, 5000); loadPoints(); } catch (error) { if (error.name !== 'AbortError') showToast(error.message, 5000); } if (!current()) return; }
       const data = await api('/api/island/photo', { method: 'POST', body: '{}', signal: shot.abort.signal }).catch(() => null);
       if (!current()) return;
-      showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
+      if (!tourist) showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
     } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); if (!now) shot.controller.photoPose?.(false); } }
   }
   document.getElementById('islandPhotoTab').addEventListener('click', () => enterPhoto());
@@ -4049,33 +4053,51 @@
   const storyLine = (t) => (t.task.includes(t.where.replace(/ · 밤에$/, '')) ? `${t.task}${/ · 밤에$/.test(t.where) ? ' · 밤에' : ''}` : `${t.task} · ${t.where}`); // (where only when the task does not say it)
   function showQuestTracker(list = questTrack) {
     questTrack = list;
-    const story = storyTrack ? [{ key: `s:${storyTrack.n}:${storyTrack.c}`, who: globalThis.IslandCast?.callOf(storyTrack.n) || '이야기', text: storyTrack.ready ? '✓ 돌아가 말해요' : storyLine(storyTrack), count: '', ready: storyTrack.ready, drop: { chapter: true }, title: storyTrack.title }] : [];
+    const story = storyTrack ? [{ key: `s:${storyTrack.n}:${storyTrack.c}`, who: globalThis.IslandCast?.WALKERS[storyTrack.n]?.name || '이야기', /* (Q2 사용자 「할 일에 오탐정이라고 나와」: the name, as on the tag) */ text: storyTrack.ready ? '✓ 돌아가 말해요' : storyLine(storyTrack), count: '', ready: storyTrack.ready, drop: { chapter: true }, title: storyTrack.title }] : [];
     const items = [...list.slice(0, Math.max(0, 3 - (errandTrack.length ? 1 : 0) - story.length)).map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, /* (the name is the line's own column) */ count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
       ...story, ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title }))].slice(0, 3);
-    if (storyTrack?.ready && storyReady === false) showToast(`✓ ${globalThis.IslandCast?.callOf(storyTrack.n) || ''}에게 돌아가 말해요`, 4000);
+    if (storyTrack?.ready && storyReady === false) showToast(`✓ ${globalThis.IslandCast?.WALKERS[storyTrack.n]?.name || ''}에게 돌아가 말해요`, 4000);
     storyReady = storyTrack ? storyTrack.ready : null;
     if (questReady) for (const t of list) if (t.ready && !questReady.has(t.story)) showToast(`✓ ${t.name}에게 돌아가 말해요`, 4000);
     questReady = new Set(list.filter((t) => t.ready).map((t) => t.story));
-    questTracker.replaceChildren(...items.map((it) => {
-      const line = document.createElement('button'); line.type = 'button'; line.className = `questLine${it.ready ? ' ready' : ''}`; line.dataset.key = it.key;
-      const who = document.createElement('b'); who.textContent = it.who; const what = document.createElement('span'); what.textContent = it.text; line.append(who, what);
-      if (it.count) { const c = document.createElement('small'); c.textContent = it.count; line.append(c); }
-      line.addEventListener('click', () => { questOpen = questOpen === it.key ? null : it.key; showQuestTracker(); });
-      if (questOpen !== it.key) return line;
-      const box = document.createElement('div'); box.className = 'questLineOpen'; box.append(line);
-      const stop = document.createElement('button'); stop.type = 'button'; stop.className = 'ghost tiny'; stop.textContent = '그만둘래요';
-      stop.addEventListener('click', async () => {
-        if (!confirm(`「${it.title || it.text}」 그만둘까요? 다시 말을 걸면 또 부탁해요.`)) return;
-        try {
-          if (it.drop.chapter) { questOpen = null; showStory(await api('/api/island/story/drop', { method: 'POST', body: '{}' })); }
-          else if (it.drop.story) { const r = await api('/api/island/quest/drop', { method: 'POST', body: JSON.stringify(it.drop) }); showIslandEvents(r.events || islandEventsNear); questOpen = null; showQuestTracker(r.track || []); }
-          else { questOpen = null; showErrands(await api('/api/island/errand/drop', { method: 'POST', body: JSON.stringify(it.drop) })); }
-        } catch (error) { showToast(error.message); }
-      });
-      box.append(stop); return box;
-    }));
+    // (Q2 사용자 「내 할 일이 지금 3가지만 … 나머지 전체를 조회할 수 있는 칸」: every one, grouped, in 「내 할 일」)
+    const all = [...story.map((it) => ({ ...it, group: '이야기' })), ...list.map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, count: t.need > 1 ? `${t.count}/${t.need}` : '', ready: t.ready, drop: { story: t.story }, title: t.title, group: '주민 부탁' })),
+      ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title, group: '심부름' }))];
+    const more = all.length - items.length;
+    // (Q2, CI #351: every place update drew the card again -- a button replaced under the finger, never still to press; drawn
+    // only when what it shows changed)
+    const sig = JSON.stringify([all.map((it) => [it.key, it.who, it.text, it.count, it.ready]), items.length, questOpen]); questAll = all;
+    if (sig === questSig) return; questSig = sig; if (document.getElementById('questListCard')) drawQuestList();
+    questTracker.replaceChildren(...items.map((it) => questRow(it, () => showQuestTracker())), ...(more > 0 ? [Object.assign(document.createElement('button'), { type: 'button', className: 'questMore', textContent: `+${more}개 더 · 전체 보기`, onclick: () => openQuestList() })] : []));
     questTracker.classList.toggle('hidden', !items.length);
   }
+  let questAll = []; let questSig = '';
+  // one line of the card or the window: who, what, how far; pressed, its 「그만둘래요」 (the same for both)
+  function questRow(it, redraw) {
+    const line = document.createElement('button'); line.type = 'button'; line.className = `questLine${it.ready ? ' ready' : ''}`; line.dataset.key = it.key;
+    const who = document.createElement('b'); who.textContent = it.who; const what = document.createElement('span'); what.textContent = it.text; line.append(who, what);
+    if (it.count) { const c = document.createElement('small'); c.textContent = it.count; line.append(c); }
+    line.addEventListener('click', () => { questOpen = questOpen === it.key ? null : it.key; redraw(); });
+    if (questOpen !== it.key) return line;
+    const box = document.createElement('div'); box.className = 'questLineOpen'; box.append(line);
+    if (it.title && it.title !== it.text) { const d = document.createElement('p'); d.className = 'smallMuted questLineWhat'; d.textContent = it.title; box.append(d); }
+    const stop = document.createElement('button'); stop.type = 'button'; stop.className = 'ghost tiny'; stop.textContent = '그만둘래요';
+    stop.addEventListener('click', () => dropQuest(it)); box.append(stop); return box;
+  }
+  async function dropQuest(it) {
+    if (!confirm(`「${it.title || it.text}」 그만둘까요? 다시 말을 걸면 또 부탁해요.`)) return;
+    try {
+      if (it.drop.chapter) { questOpen = null; showStory(await api('/api/island/story/drop', { method: 'POST', body: '{}' })); }
+      else if (it.drop.story) { const r = await api('/api/island/quest/drop', { method: 'POST', body: JSON.stringify(it.drop) }); showIslandEvents(r.events || islandEventsNear); questOpen = null; showQuestTracker(r.track || []); }
+      else { questOpen = null; showErrands(await api('/api/island/errand/drop', { method: 'POST', body: JSON.stringify(it.drop) })); }
+    } catch (error) { showToast(error.message); }
+  }
+  function drawQuestList() {
+    const card = document.getElementById('questListCard'); if (!card) return;
+    const groups = ['이야기', '주민 부탁', '심부름'].map((g) => [g, questAll.filter((it) => it.group === g)]).filter(([, l]) => l.length);
+    card.replaceChildren(...(groups.length ? groups.flatMap(([g, l]) => { const h = document.createElement('h4'); h.textContent = g; const box = document.createElement('div'); box.className = 'questListGroup'; box.append(...l.map((it) => questRow(it, drawQuestList))); return [h, box]; }) : [Object.assign(document.createElement('p'), { className: 'emptyState', textContent: '지금 할 일이 없어요.' })]));
+  }
+  function openQuestList() { const card = document.createElement('section'); card.className = 'card questListCard'; card.id = 'questListCard'; openPlazaWindow('내 할 일', [card]); plazaDialog.classList.add('boardMode'); drawQuestList(); }
   // v1.10.91 주민 대화·심부름: any islander standing by me talks -- their own words, or the day's errand (asked, a thing
   // brought, someone found); the stars over their heads and the tracker follow the server's view
   function showErrands(view) {
@@ -4123,7 +4145,7 @@
       const pg = pages[k]; const out = [];
       const head = document.createElement('h3'); head.textContent = pg.head; out.push(head);
       for (const t of pg.lines || []) { const p = document.createElement('p'); p.textContent = t; out.push(p); }
-      for (const w of pg.words || []) for (const t of w.lines) { const p = document.createElement('p'); p.className = 'storyWord'; p.textContent = `${C?.callOf(w.n) || ''}: 「${t}」`; out.push(p); }
+      for (const w of pg.words || []) for (const t of w.lines) { const p = document.createElement('p'); p.className = 'storyWord'; p.textContent = `${C?.WALKERS[w.n]?.name || ''}: 「${t}」`; out.push(p); }
       if (pg.sign != null) { const p = document.createElement('p'); p.className = 'storySign'; p.textContent = `— ${pg.sign}`; out.push(p); }
       if (pg.piece && S) { const p = document.createElement('p'); p.className = 'storyPiece'; p.textContent = `★ 초승등대 조각 ${pg.piece} · ${S.PIECES[pg.piece - 1].name}`; out.push(p); }
       if (k < pages.length - 1) { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary storyNext'; b.textContent = `다음 ▸ (${k + 1}/${pages.length})`; b.addEventListener('click', () => { k += 1; draw(); }); out.push(b); }
@@ -4182,7 +4204,7 @@
       S.RESIDENTS.forEach((chs, n) => {
         const done = Number(v.chapters?.[n]) || 0; const box = el('details', 'storyResident'); const sum = el('summary');
         const face = el('span', 'storyFace', (C.WALKERS[n].name || '?').slice(0, 1)); face.style.background = C.WALKERS[n].tagColor || '#64748b';
-        sum.append(face, el('b', null, C.callOf(n)), el('small', null, `${done}/3`)); box.append(sum);
+        sum.append(face, el('b', null, C.WALKERS[n]?.name || ''), el('small', null, `${done}/3`)); box.append(sum);
         chs.forEach((ch, c) => {
           const page = el('div', `storyChapter${c < done ? '' : ' locked'}`);
           if (c < done) page.append(el('h4', null, `${c + 1}장 · ${ch.title}`), ...ch.note.map((t) => el('p', null, storyFill(t, v.me))));
@@ -4201,7 +4223,7 @@
       if (read.has('log:missing')) log.append(el('h4', null, `빠진 쪽 · ${S.LOG.missing.title}`), ...S.LOG.missing.lines.map((t) => el('p', null, t)));
       out.push(log);
       if (v.final) { const fin = el('details', 'storyResident'); fin.append(el('summary', null, '마지막 장 · 초승 등불'));
-        for (const sc of S.FINAL) fin.append(el('h4', null, sc.title), ...sc.note.map((t) => el('p', null, storyFill(t, v.me))), ...sc.words.flatMap((w) => w.lines.map((t) => el('p', 'storyWord', `${C.callOf(w.n)}: 「${storyFill(t, v.me)}」`))));
+        for (const sc of S.FINAL) fin.append(el('h4', null, sc.title), ...sc.note.map((t) => el('p', null, storyFill(t, v.me))), ...sc.words.flatMap((w) => w.lines.map((t) => el('p', 'storyWord', `${C.WALKERS[w.n]?.name || ''}: 「${storyFill(t, v.me)}」`))));
         out.push(fin); }
       else out.push(el('h4', null, '마지막 장 · ???'));
     } else {
@@ -4275,14 +4297,16 @@
     if (data.finalScenes) showFinal(data.finalScenes);
     if (data.finished) showDoneCard(data.finished); // (Q 끝내기)
     if (data.accepted) showToast(`📜 할 일에 넣었어요 · ${data.accepted.title}`);
-    openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor, data.affinity ? '♥'.repeat(data.affinity.level + 1) : '');
+    // (Q2: the last chapter's paper ends the talk (showFinal) -- not opened again under it; the talk's hold, now kept while I
+    // stand by, no longer shut it a moment later)
+    if (!data.finalScenes) openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor, data.affinity ? '♥'.repeat(data.affinity.level + 1) : '');
     if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
     if (data.affinity) plaza.controller?.setAffinity?.([{ n: data.n, points: data.affinity.points, level: data.affinity.level }]);
     for (const note of data.stages || []) { showToast(`💛 ${note}`, 6000); loadPoints(); } // (R2: a level reached)
-    if (first) {
+    if (first && !data.finalScenes) {
       residentTalk = { n: data.n, timer: setInterval(() => {
         if (!plazaDialog.open || !plazaDialog.classList.contains('talkMode') || lostCard.classList.contains('hidden')) { endResidentTalk(); return; }
-        api('/api/island/resident/keep', { method: 'POST', body: JSON.stringify({ n: data.n }) }).catch((error) => { if (error.status === 409 && residentTalk?.n === data.n) plazaDialog.close(); });
+        api('/api/island/resident/keep', { method: 'POST', body: JSON.stringify({ n: data.n }) }).catch((error) => { if (error.status === 409 && residentTalk?.n === data.n) { showToast(error.message); plazaDialog.close(); } }); // (Q2: over only when I walked off or they were taken -- said why)
       }, 4000) };
     }
   }
@@ -4324,6 +4348,7 @@
       plaza.controller?.setResidents?.(data.residents);
       if (ev) { completed=true; plaza.controller?.finishGather?.(true); }
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
+      if (data.action === 'photoAsk') { showIslandEvents(data.events || islandEventsNear); plaza.controller?.photoAsk?.(id); showToast(`📸 「여기서 저 좀 찍어 주세요!」 · 「사진」으로 관광객이 나오게 찍어요${data.spot ? ` (${data.spot} 안에서)` : ''}`, 7000); return; } // (Q2 사진 부탁 B안)
       if (data.action === 'quest') {
         showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []);
         if (departureController === plaza.controller && data.story === 'fisher' && data.done && data.reward) { questDepartureDialog = departureController; departureDialog = true; }

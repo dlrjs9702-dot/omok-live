@@ -1108,7 +1108,7 @@ async function storyFinalGifts(account) {
 // what the book and the tracker read: my chapters, the one under way, the pieces, the festival stories I have
 async function storyView(account) {
   const doc = await storyDoc(account);
-  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, IslandCast.callOf), pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
+  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */, pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
 }
 // (R3 ③ 주민의 하루: the islanders walk that time of day's round -- the time held by the administrator, kept here as it changes)
 let walkerTimeMode = 'auto';
@@ -3926,7 +3926,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.204' });
+    return sendJson(res, 200, { ok: true, version: '1.10.205' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6002,6 +6002,11 @@ async function requestHandler(req, res) {
     run.at -= Number(body.ageMs) || 0;
     return sendJson(res, 200, { ok: true });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/take' && req.method === 'POST') { // (Q2 tests: these stories' first steps taken -- the 할 일 card's many lines)
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) await questApply(account, (doc) => ({ doc: { ...doc, [id]: { step: 0, taken: true, count: 0, v: 2 } }, reward: 0 }), IslandQuests.scopeOf(id));
+    return sendJson(res, 200, { ok: true, track: questEntries(account).track });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/note' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -6382,9 +6387,12 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, offer, finished, accepted: Boolean(r.accepted), fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: solvedToday ? `${r.say} …어? 오늘 문제는 벌써 풀었네요! 다시 말을 걸어 주세요.` : r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }
-    const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
+    const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true, shot: body.shot === true });
     if (claimed.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const PHOTO_FAIL = { PHOTO_FAR: '관광객이 사진에 들어오게 가까이(12 m 안)에서 찍어 주세요.', NOT_ASKED: '먼저 관광객에게 말을 걸어 주세요.', TOO_SOON: '관광객이 포즈를 잡는 중이에요. 잠깐만요!', OFF_SPOT: '관광객이 있는 명소 안에서 찍어 주세요.' }; // (Q2 사진 부탁)
+    if (PHOTO_FAIL[claimed.error]) return sendError(res, 409, claimed.error, PHOTO_FAIL[claimed.error]);
     if (claimed.error) { resourcePulls.delete(session.token); return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.'); }
+    if (claimed.action === 'photoAsk') { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return sendJson(res, 200, { ok: true, action: 'photoAsk', id, spot: claimed.spot, events: at ? islandEvents.nearby(at.x, at.z, account) : [] }); } // (Q2: asked -- the shot is the photo mode's)
     if (claimed.action === 'talk') { // v1.10.34: the owner's request -- where the thing lies, for my map; nothing paid
       const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
@@ -6437,8 +6445,8 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
     broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/lost' && req.method === 'POST') {
-    const e = islandEvents.spawnLost();
+  if (process.env.NODE_ENV === 'test' && (pathname === '/api/test/island/lost' || pathname === '/api/test/island/photo') && req.method === 'POST') { // (Q2: the tourist too -- the page asks again till an islander is in a photo spot)
+    const e = islandEvents.spawnLost(pathname.endsWith('/photo') ? 'photo' : 'lost');
     return sendJson(res, 200, { ok: Boolean(e), event: e && { id: e.id, x: e.x, z: e.z, npc: e.npc } });
   }
   // (휴대폰 「가까이」: my lobby stream cut from the server's side, as a phone's network drops it -- the page reconnects)
@@ -6850,12 +6858,20 @@ async function requestHandler(req, res) {
     const n = Number((await parseJson(req)).n); const who = talkKey(session);
     const mine = islandEvents.residentTalking(who) === n; // (Codex review: a late bye or keep of an earlier talk leaves a newer one alone)
     if (pathname.endsWith('/bye')) { if (mine && islandEvents.residentBye(who)) residentsChanged(); return sendJson(res, 200, { ok: true, residents: islandEvents.residents() }); }
-    const pos = plazaPresence.get(session.token); const hold = islandEvents.residents()[n]?.hold;
-    if (!pos || !hold || hold.eventId !== who || Math.hypot(pos.x - hold.x, pos.z - hold.z) > TALK_FAR || !islandEvents.residentKeep(n, who)) {
-      if (mine && islandEvents.residentBye(who)) residentsChanged();
-      return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.');
-    }
-    return sendJson(res, 200, { ok: true });
+    // (Q2 「대화 창 저절로 닫힘」 again, CI #349·#350: a hold let go while I still stand by them -- its lease run out between
+    // renewals on a slow screen, or a late bye of an earlier talk with the same islander -- was 「대화가 끝났어요」 and the
+    // window shut; now held again where they are when no one else has them and I am by them. Over only when I walked off
+    // or someone else is talking to them -- and told which)
+    const pos = plazaPresence.get(session.token); const state = islandEvents.residents()[n]; const hold = state?.hold;
+    const over = (why) => { if (mine && islandEvents.residentBye(who)) residentsChanged(); const name = IslandCast.WALKERS[n]?.name || '주민'; return sendError(res, 409, 'TALK_OVER', why === 'busy' ? `${IslandCast.josa(name, '이가')} 다른 일로 가 봐야 한대요.` : `${IslandCast.josa(name, '이가')} 가 버렸어요.`, { reason: why }); };
+    if (!pos || (pos.space || 'island') !== 'island' || !IslandCast.WALKERS[n]) return over('far');
+    if (hold && hold.eventId === who && Math.hypot(pos.x - hold.x, pos.z - hold.z) <= TALK_FAR && islandEvents.residentKeep(n, who)) return sendJson(res, 200, { ok: true });
+    if (hold && hold.eventId !== who) return over('busy');
+    // (mine but let go: where it holds them; else where they walked, now or a few seconds back -- as the talk's own reach)
+    const at = (ms) => (hold ? hold : IslandNpcs.residentAt(n, nowMs() - ms, state)); const back = [0, 1500, 3000, 4500].find((ms) => Math.hypot(pos.x - at(ms).x, pos.z - at(ms).z) <= TALK_FAR);
+    if (back === undefined) return over('far');
+    const p = at(back); if (islandEvents.residentTalk(n, who, Math.atan2(pos.x - p.x, pos.z - p.z), hold ? 0 : back)?.busy) return over('busy');
+    residentsChanged(); return sendJson(res, 200, { ok: true, again: true });
   }
   // R2 ① 먼저 말 걸기: my 호감도 with each walking islander and the last thing done together (for their greeting as I pass)
   if (pathname === '/api/island/affinity' && req.method === 'GET') {
@@ -6873,7 +6889,8 @@ async function requestHandler(req, res) {
       const other = state.hold.eventId.startsWith('talk:') ? [...plazaPresence.values()].find((p) => `talk:${p.id}` === state.hold.eventId) : null;
       return sendError(res, 409, 'RESIDENT_BUSY', other ? `지금은 ${other.name || '다른 분'}님과 이야기 중이에요.` : '지금은 다른 일로 바빠 보여요.');
     }
-    if (topic && !state?.hold) return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.'); // (a choice only inside a talk still held)
+    // (Q2: a choice made while the hold had lapsed -- a slow screen's renewal late -- holds them again if I am still by them, as
+    // a new talk would; one walked off from is the reach check's below)
     // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
     const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
     const back = pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
@@ -6921,7 +6938,7 @@ async function requestHandler(req, res) {
         return sendTalk(view(IslandCast.say(n, 'errandYes'), { storyAccepted: { title: IslandStory.RESIDENTS[n][ch].title }, story: await storyView(account) }));
       }
       if (st === 'offer') {
-        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, IslandCast.callOf);
+        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
         return sendTalk(view(ch.offer, { storyOffer: { title: ch.title, task: ch.task, where: t.where } }));
       }
       if (st === 'visit') {
@@ -8044,7 +8061,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.204 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.205 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

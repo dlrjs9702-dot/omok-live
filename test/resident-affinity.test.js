@@ -18,6 +18,10 @@ Npcs.setPhaseOf(seoulPhase);
 // times; each try stands on another side of them)
 const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, -0.7]];
 
+// (CI #351 「never by them」: where an islander is by the server's own count -- each hold paused their round (its delay), which
+// residentAt(…, null) left out; the place answer carries the server's state)
+async function serverAt(req, who, n) { const guess = Npcs.residentAt(n, Date.now(), null); const st = (await req('/api/plaza/state', who, { x: guess.x, z: guess.z, yaw: 0, moving: false })).data.residents?.[n] || null; return Npcs.residentAt(n, Date.now(), st); }
+
 test('호감도 단계·오늘의 이야기 순수 규칙: 지난 단계, 질문 세 답, 좋아하는 답 +2, 단짝 칭호, 친한 사이 가구', () => {
   assert.deepEqual(A.crossed(4, 15), [1, 2]); assert.deepEqual(A.crossed(29, 30), [3]);
   const day = '2026-10-23'; for (let n = 0; n < Cast.WALKERS.length; n += 1) { const q = A.questionOf(n, day); assert.equal(q.answers.length, 3); assert.equal(A.answer(n, day, q.liked).delta, 2); }
@@ -31,7 +35,7 @@ test('주민 호감도: 오늘의 이야기 하루 한 번, 단계 보상 한 �
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('단짝후보'));
   await req('/api/test/island/free-residents', a, {});
-  const n = 2; const by = async (i) => { const w = Npcs.residentAt(n, Date.now(), null); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); };
+  const n = 2; const by = async (i) => { const w = await serverAt(req, a, n); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); };
   const talk = async (body) => { for (let i = 0; i < 6; i += 1) { await by(i); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
   const balance = async () => (await req('/api/skins', a)).data.balance;
   const first = await talk({}); assert.equal(first.status, 200, JSON.stringify(first.data)); assert.equal(first.data.affinity.points, 1);
@@ -77,7 +81,7 @@ test('R3: 선물 하루 한 번(좋아함 +3·싫어함 0·보통 +1, 가방에�
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('선물주기'));
   await req('/api/test/island/free-residents', a, {});
-  const n = 1; const by = async (i) => { const w = Npcs.residentAt(n, Date.now(), null); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); };
+  const n = 1; const by = async (i) => { const w = await serverAt(req, a, n); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); };
   const talk = async (body) => { for (let i = 0; i < 6; i += 1) { await by(i); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
   assert.equal((await talk({})).status, 200);
   assert.deepEqual((await talk({ topic: 'gift' })).data.gifts, []);
@@ -89,7 +93,7 @@ test('R3: 선물 하루 한 번(좋아함 +3·싫어함 0·보통 +1, 가방에�
   assert.match((await req('/api/island/affinity', a)).data.residents[n].memory, /망둥어/);
   // (Codex 검토 2차 #7) the item taken, then the 호감도 failing: the retry finishes that gift -- choosing another item takes
   // nothing more and pays that gift's 호감도, not the other's
-  const m = 2; const talk2 = async (body) => { for (let i = 0; i < 6; i += 1) { const w = Npcs.residentAt(m, Date.now(), null); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n: m, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  const m = 2; const talk2 = async (body) => { for (let i = 0; i < 6; i += 1) { const w = await serverAt(req, a, m); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n: m, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
   await req('/api/test/island/give', a, { itemId: 'fish_mackerel', qty: 1 });
   const qty = async (id) => ((await req('/api/island/bag', a)).data.items.find((e) => e.itemId === id) || {}).qty || 0;
   const pointsBefore = (await talk2({})).data.affinity.points;
@@ -111,7 +115,7 @@ test('심부름 받기: 말 걸면 쪽지만, 다음에요는 기록 없음, 할
   const a = await server.enter(await server.issue('심부름꾼'));
   await req('/api/test/island/free-residents', a, {});
   const e = E.errandsOf(new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10))[0]; const n = e.from;
-  const talk = async (body) => { for (let i = 0; i < 6; i += 1) { const w = Npcs.residentAt(n, Date.now(), null); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  const talk = async (body) => { for (let i = 0; i < 6; i += 1) { const w = await serverAt(req, a, n); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
   const offered = (await talk({})).data; // (the talk begun -- by the asker, the errand first)
   assert.equal(offered.offer?.id, e.id, JSON.stringify(offered)); assert.equal(offered.offer.title, E.title(e)); assert.ok(offered.offer.reward > 0); assert.equal(offered.offer.until, '오늘 안에');
   assert.equal(offered.track.length, 0, '말만 걸어서는 시작 안 함');
