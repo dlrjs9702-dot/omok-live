@@ -3617,7 +3617,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (best && !doorOf(best)) best = null;
     // (3회차 22) the net in hand: SPACE swings it -- over a weed, by an islander or a seat too (a door still comes first);
     // a bug by me without it in hand: how to catch it
-    if (mySpace === 'island' && heldTool === 'bugnet' && (!best || best === weedKey) && !gather && !fishing) { const m = me.root.position; const h = nearInsect(); eventDoors['tool:swing'] = { x: m.x, z: m.z, name: h ? `휘두르기 · ${h.b.name}` : '휘두르기' }; best = 'tool:swing'; }
+    // (Q2 5, 사용자 「장착한 동안은 다른 상호작용(잡초채집, 열매채집 등)이 안되게」: with a tool in hand nothing is picked up and no
+    // seat taken -- a door, an islander, a counter, my tank still are)
+    const handsFull = (id) => { const d = eventDoors[id]; return Boolean(d?.resource) || id.startsWith('weed:') || id.startsWith('ev:lost_item:') || Boolean(d?.sit); };
+    if (mySpace === 'island' && heldTool === 'bugnet' && (!best || best === weedKey || handsFull(best)) && !gather && !fishing) { const m = me.root.position; const h = nearInsect(); eventDoors['tool:swing'] = { x: m.x, z: m.z, name: h ? `휘두르기 · ${h.b.name}` : '휘두르기' }; best = 'tool:swing'; }
     else if (mySpace === 'island' && !best && !gather && !fishing) { const h = nearInsect(); if (h) { const p = h.c.root.position; eventDoors[`insect:${h.b.id}`] = { x: p.x, z: p.z, name: `${h.b.name} · ${insectNet ? '가방에서 잠자리채를 들면 잡을 수 있어요' : '잠자리채가 있으면 잡을 수 있어요'}`, plain: true }; best = `insect:${h.b.id}`; } }
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
@@ -3631,7 +3634,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const m = me.root.position; let seat = null; let sd = 1.6;
       for (const s of SEATS) { const d = Math.hypot(s.x - m.x, s.z - m.z); if (d < sd && !takenSeats.has(s.id)) { seat = s; sd = d; } }
       const busyCounter = !seat && SEATS.find((s) => s.counter && takenSeats.has(s.id) && Math.hypot(s.x - m.x, s.z - m.z) < 1.6); // (A-7)
-      if (seat) { eventDoors[`seat:${seat.id}`] = { x: seat.x, z: seat.z, name: seat.counter ? `앉아서 ${seat.name} 업무` : '앉기' }; best = `seat:${seat.id}`; }
+      if (seat) { eventDoors[`seat:${seat.id}`] = { x: seat.x, z: seat.z, name: seat.counter ? `앉아서 ${seat.name} 업무` : '앉기', sit: !seat.counter }; best = `seat:${seat.id}`; }
       else if (busyCounter) { eventDoors[`seat:${busyCounter.id}`] = { x: busyCounter.x, z: busyCounter.z, name: '다른 분이 업무 중이에요', plain: true }; best = `seat:${busyCounter.id}`; }
       else {
         let who = null; let wd = 2.2;
@@ -3639,10 +3642,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         if (who) { eventDoors[`player:${who[0]}`] = { x: who[1].c.root.position.x, z: who[1].c.root.position.z, name: '인사' }; best = `player:${who[0]}`; }
       }
     }
-    // v1.10.42 낚시: by the water with nothing else near -- SPACE casts; while fishing it pulls in (or stops before the bite)
+    if (heldTool && best && !fishing && handsFull(best)) { const m = me.root.position; eventDoors['tool:stow'] = { x: m.x, z: m.z, name: doorOf(best)?.sit ? '도구를 넣으면 앉을 수 있어요' : '도구를 넣으면 주울 수 있어요', plain: true }; best = 'tool:stow'; } else delete eventDoors['tool:stow'];
+    // v1.10.42 낚시: by the water with nothing else near -- SPACE casts; while fishing it pulls in (or stops before the bite);
+    // (Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」) the rod in hand to cast -- else how
     if (fishing || (!best && !gather && mySpace === 'island' && globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z))) {
       const w = fishing ? fishing.water : waterFrom(me.root.position.x, me.root.position.z);
-      if (w) { eventDoors['fish:spot'] = fishing?.phase === 'bite' ? { x: w.x, z: w.z, name: `입질! 화살표 ${fishing.arrows}개를 순서대로`, plain: true } /* (3회차 4: the arrows pull it in) */ : { x: w.x, z: w.z, name: fishing ? '그만하기' : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
+      if (w && !fishing && heldTool !== 'fishing_rod') { eventDoors['fish:spot'] = { x: w.x, z: w.z, name: '가방에서 낚싯대를 들면 낚시할 수 있어요', plain: true }; best = 'fish:spot'; }
+      else if (w) { eventDoors['fish:spot'] = fishing?.phase === 'bite' ? { x: w.x, z: w.z, name: `입질! 화살표 ${fishing.arrows}개를 순서대로`, plain: true } /* (3회차 4: the arrows pull it in) */ : { x: w.x, z: w.z, name: fishing ? '그만하기' : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
     } else delete eventDoors['fish:spot'];
     // (2회차 11: holding a piece, the hint says how to let go and turn it -- not the seat or tank in front)
     if (grab) { eventDoors['grab:hold'] = { x: me.root.position.x, z: me.root.position.z, name: grab.blocked ? `${grab.blocked} · 놓기` : '가구 놓기 · R 돌리기' }; best = 'grab:hold'; } else delete eventDoors['grab:hold'];
