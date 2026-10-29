@@ -18,7 +18,9 @@ test('주민 대화: 남이 그 주민과 이야기하게 되면 까닭을 알�
   // my hold let go (as a late bye would) and the other player talking to them now
   await post(request, '/api/island/resident/bye', token, { n });
   await expect.poll(async () => { const at = await page.evaluate(() => [window.PlazaDebug().x, window.PlazaDebug().z]); await post(request, '/api/plaza/state', b.token, { x: at[0] + 0.8, z: at[1] + 0.8, yaw: 0, moving: false }); return (await post(request, '/api/island/resident/talk', b.token, { n })).status; }, { timeout: 30000 }).toBe(200);
-  await expect(page.locator('#toast')).toContainText('다른 일로 가 봐야 한대요', { timeout: 15000 });
+  // (the reason either way: the renewal's 「다른 일로 가 봐야 한대요」, or -- CI #353 mobile-3, a slow phone -- my own talk request
+  // reaching the server after theirs: 「지금은 ○○님과 이야기 중이에요」)
+  await expect(page.locator('#toast')).toContainText(/다른 일로 가 봐야 한대요|님과 이야기 중이에요/, { timeout: 15000 });
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-gone.png` });
   await expect.poll(talking, { timeout: 10000 }).toBe(false);
   await expectNoScriptError(page); await who.context.close(); await b.context.close();
