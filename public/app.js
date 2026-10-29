@@ -2492,7 +2492,7 @@
       if (item) {
         slot.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/plain', String(i)); event.dataTransfer.effectAllowed = 'move'; });
         let hold = 0; // (a phone: held 0.4 s, it is picked up -- the next slot tapped is where it goes)
-        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; slot.classList.add('held'); byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
+        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; grid.children[i]?.classList.add('held'); /* (CI #351: a late answer drew the bag again meanwhile -- the slot shown now, not the one pressed) */ byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
         for (const type of ['pointerup', 'pointercancel', 'pointerleave']) slot.addEventListener(type, () => clearTimeout(hold));
       }
       slot.addEventListener('dragover', (event) => { event.preventDefault(); slot.classList.add('dropAt'); });
@@ -2678,7 +2678,8 @@
     const b = byId('islandBagSort');
     if (Date.now() - bagSortAsk > 4000) { bagSortAsk = Date.now(); b.textContent = '순서를 바꿀까요?'; setTimeout(() => { if (Date.now() - bagSortAsk >= 4000) b.textContent = '정리'; }, 4100); return; }
     bagSortAsk = 0; b.textContent = '정리';
-    try { drawIslandBag((await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) })).bag); } catch (error) { showToast(error.message); }
+    const mine = ++bagMoveSeq; // (CI #351: a move's late answer drew the old order over the sorted one -- the latest asked wins)
+    try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); } catch (error) { if (mine === bagMoveSeq) showToast(error.message); }
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
