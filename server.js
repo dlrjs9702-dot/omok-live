@@ -1091,8 +1091,8 @@ async function storyGrantEvents(account) {
   const want = [];
   for (const f of IslandCalendar.FESTIVALS) {
     const d = IslandCalendar.festivalDays(f, override); if (d.off || !IslandStory.EVENTS[IslandStory.eventKind(f.id)]) continue;
-    if (day >= d.start && day <= d.end) want.push(`${f.id}:start`);
-    else if (day > d.end && ((await pointStore.questDoc(account, `fest:${f.id}`)).doc?.stamps || 0) > 0) want.push(`${f.id}:start`, `${f.id}:end`);
+    if (IslandCalendar.festivalOn(f, d, now)) want.push(`${f.id}:start`); // (X2 카운트다운: by the hour -- its end story from 1/1 01:00)
+    else if (IslandCalendar.festivalOver(f, d, now) && ((await pointStore.questDoc(account, `fest:${f.id}`)).doc?.stamps || 0) > 0) want.push(`${f.id}:start`, `${f.id}:end`);
   }
   const have = new Set((await storyDoc(account)).read || []); const fresh = want.filter((id) => !have.has(id));
   if (fresh.length) await storyApply(account, (d) => ({ doc: { ...d, read: [...new Set([...(d.read || []), ...fresh])] } }));
@@ -1898,7 +1898,7 @@ let contestBoard = { id: null, rows: new Map() }; let contestPhase = null;
 // hold it) and the titles an event gave (owned for good, worn like the others)
 let calendarCache = null; let festivalClock = null;
 async function calendarOverride() { if (!calendarCache) calendarCache = (await pointStore.worldValue('calendar')) || {}; return calendarCache; }
-const festivalNow = () => (process.env.NODE_ENV === 'test' && festivalClock ? festivalClock : nowMs());
+const festivalNow = () => (process.env.NODE_ENV === 'test' && festivalClock ? festivalClock.at + (festivalClock.tick ? nowMs() - festivalClock.set : 0) : nowMs());
 async function ownedEventTitles(account) { return ((await pointStore.questDoc(account, 'eventTitles')).doc?.titles || []).filter((id) => IslandCalendar.titleOf(id)); }
 // X2: the day's snowmen as a page sees them -- whose is not told, only which is mine
 const snowmenFor = (account, list) => (list || []).map(({ account: who, ...sm }) => ({ ...sm, mine: who === account }));
@@ -6661,7 +6661,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const now = festivalNow(); const override = await calendarOverride();
     const fest = IslandCalendar.festivalAt(now, override); const next = fest ? null : IslandCalendar.nextFestival(now, override);
     const snowmen = fest?.tasks.snowman ? snowmenFor(account, await pointStore.worldValue(`snowmen:${fest.id}:${IslandCalendar.dayOf(now)}`)) : null; // (X2: the day's snowmen on the field)
-    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, snowmen, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES });
+    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, snowmen, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES, now }); // (X2 카운트다운: the board's seconds by the server's clock)
   }
   if (pathname.startsWith('/api/island/festival/') && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
@@ -6737,6 +6737,11 @@ async function requestHandler(req, res) {
       if (!near(P.tree, P.GATHER_R)) return sendError(res, 409, 'TOO_FAR', '광장 트리 곁으로 와 주세요.');
       return sendStamp(await stamp('gather'));
     }
+    if (action === 'midnight' && fest.tasks.midnight) { // X2 카운트다운: round the board from 0:00 to 0:10 -- the title 「해피 뉴 이어」 and a stamp (it opens the end story)
+      if (!near(P.board, P.COUNT_R)) return sendError(res, 409, 'TOO_FAR', '대청마당 카운트다운 판 둘레로 와 주세요.');
+      const r = await stamp('midnight'); if (!r.error) await eventTitleGive(account, fest.tasks.midnight.title);
+      return sendStamp(r, { title: r.error ? null : IslandCalendar.titleOf(fest.tasks.midnight.title) });
+    }
     if (action === 'feast') { // 주민 잔치: the last day's evening, round the feast table
       if (!near(P.feast, P.FEAST_R)) return sendError(res, 409, 'TOO_FAR', '잔칫상 둘레로 와 주세요.');
       return sendStamp(await stamp('feast'));
@@ -6789,7 +6794,7 @@ async function requestHandler(req, res) {
     await pointStore.setWorldValue('calendar', override); calendarCache = override;
     return sendJson(res, 200, { ok: true, override });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/festival/clock' && req.method === 'POST') { const body = await parseJson(req); festivalClock = Number(body.at) || null; return sendJson(res, 200, { ok: true }); } // (tests: the festival's own clock)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/festival/clock' && req.method === 'POST') { const body = await parseJson(req); festivalClock = Number(body.at) ? { at: Number(body.at), set: nowMs(), tick: Boolean(body.tick) } : null; return sendJson(res, 200, { ok: true }); } // (tests: the festival's own clock -- held, or running on from there: X2 카운트다운's last seconds)
   // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,
   // the island's totals), yesterday's island pull count and today's weeds, yesterday's two best hand-ins (named as they
   // were when the day closed, kept once), this week's hand-ins and last week's 제초왕. Names only, never an account id.
