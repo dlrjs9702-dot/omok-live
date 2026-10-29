@@ -4063,11 +4063,14 @@
     const all = [...story.map((it) => ({ ...it, group: '이야기' })), ...list.map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, count: t.need > 1 ? `${t.count}/${t.need}` : '', ready: t.ready, drop: { story: t.story }, title: t.title, group: '주민 부탁' })),
       ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title, group: '심부름' }))];
     const more = all.length - items.length;
+    // (Q2, CI #351: every place update drew the card again -- a button replaced under the finger, never still to press; drawn
+    // only when what it shows changed)
+    const sig = JSON.stringify([all.map((it) => [it.key, it.who, it.text, it.count, it.ready]), items.length, questOpen]); questAll = all;
+    if (sig === questSig) return; questSig = sig; if (document.getElementById('questListCard')) drawQuestList();
     questTracker.replaceChildren(...items.map((it) => questRow(it, () => showQuestTracker())), ...(more > 0 ? [Object.assign(document.createElement('button'), { type: 'button', className: 'questMore', textContent: `+${more}개 더 · 전체 보기`, onclick: () => openQuestList() })] : []));
     questTracker.classList.toggle('hidden', !items.length);
-    questAll = all; if (document.getElementById('questListCard')) drawQuestList();
   }
-  let questAll = [];
+  let questAll = []; let questSig = '';
   // one line of the card or the window: who, what, how far; pressed, its 「그만둘래요」 (the same for both)
   function questRow(it, redraw) {
     const line = document.createElement('button'); line.type = 'button'; line.className = `questLine${it.ready ? ' ready' : ''}`; line.dataset.key = it.key;
@@ -4293,11 +4296,13 @@
     if (data.finalScenes) showFinal(data.finalScenes);
     if (data.finished) showDoneCard(data.finished); // (Q 끝내기)
     if (data.accepted) showToast(`📜 할 일에 넣었어요 · ${data.accepted.title}`);
-    openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor, data.affinity ? '♥'.repeat(data.affinity.level + 1) : '');
+    // (Q2: the last chapter's paper ends the talk (showFinal) -- not opened again under it; the talk's hold, now kept while I
+    // stand by, no longer shut it a moment later)
+    if (!data.finalScenes) openTalk(data.name, Boolean(data.reward), globalThis.IslandCast?.WALKERS[data.n]?.tagColor, data.affinity ? '♥'.repeat(data.affinity.level + 1) : '');
     if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
     if (data.affinity) plaza.controller?.setAffinity?.([{ n: data.n, points: data.affinity.points, level: data.affinity.level }]);
     for (const note of data.stages || []) { showToast(`💛 ${note}`, 6000); loadPoints(); } // (R2: a level reached)
-    if (first) {
+    if (first && !data.finalScenes) {
       residentTalk = { n: data.n, timer: setInterval(() => {
         if (!plazaDialog.open || !plazaDialog.classList.contains('talkMode') || lostCard.classList.contains('hidden')) { endResidentTalk(); return; }
         api('/api/island/resident/keep', { method: 'POST', body: JSON.stringify({ n: data.n }) }).catch((error) => { if (error.status === 409 && residentTalk?.n === data.n) { showToast(error.message); plazaDialog.close(); } }); // (Q2: over only when I walked off or they were taken -- said why)

@@ -42,7 +42,7 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
     // (Q2, CI #349·#350: a click on a talk choice whose window had just shut waited for the whole 10-minute test -- a step
     // held up fails on its own line now, with what it waited for)
-    actionTimeout: process.env.CI ? 30_000 : 15_000,
+    actionTimeout: process.env.CI ? 60_000 : 15_000, // (CI #351: a talk's lines typed out on a slow runner took past 30 s before its choices showed)
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
