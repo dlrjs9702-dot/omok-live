@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.206 구경 C안 + 도구 들기 규칙
+
+- 구경 C안: 열한 곳 모두 그 자리의 작은 할 일(걸어 들어가기만으론 안 끝남). 꽃 색 찾기(물은 색은 카드에도)·쓰러진 허수아비 세우기·벽화 차례로·다음 열차 분(±1)·부두 배웅(sea.boat 천천히)·박자 박수 3·가로등 잡기·징검돌 건너기·책 수레 책·큰 호박 세 번·사탕 바구니 → 꽃님 댁 문. lib/island-quests TASK·drawPick·visitAct, 서버 /api/island/visit, 고르기 답은 받을 때 doc에(트랙엔 보기만), 타이밍은 화면 판단·서버는 시작 뒤 시간·자리. 옛 count 1 인정.
+- 도구 들기 규칙: 낚싯대를 들어야 낚시(아니면 안내), 든 동안 잡초·열매·앉기 안 됨(「도구를 넣으면 주울/앉을 수 있어요」, 깜빡임 고침), 주민·문은 됨.
+- 메신저 제목 깜빡임 Illegal invocation(감싼 기본 타이머). 시험 도우미 revealTalk.
+- e2e island-visit-tasks·island-tool-rules(PC·폰), solo-quest 갱신. 사진 notes img/q2-visit.
+
 ## v1.10.205 Q2 앞 묶음
 
 - 대화 창 저절로 닫힘(섬 이야기 e2e CI #349·#350 원인): 붙잡기 임대가 끝나거나 늦은 작별이 풀어도 곁이면 keep·topic이 다시 붙잡음, 끝은 busy·far일 때만 까닭 글과 함께. 도구 휘두르기는 누를 때 겨눈 주민 한 발 여유. playwright actionTimeout.
@@ -29,10 +36,3 @@
 - 화면: 가판대 덧씌움·선물 자루·산타 차림 행사 주민, 눈밭(눈 한 겹·팻말·지도), 굴리는 눈덩이, 꾸미기 창(빈 채로 시작·종이 칩), 그날 눈사람 최근 12개(남의 것 Low), 주민 대화의 선물 건네기, 행사마다 장식·탭 종이색.
 - 섬 채팅 입력줄: 채팅 창이 닫혀 있으면 아래 가운데(창을 따라가는 건 열려 있을 때만).
 - e2e island-xmas-festival(PC·폰), festival-server 크리스마스. 사진 notes img/xmas-festival-game.
-
-## v1.10.203 X1 크리스마스 에셋 붙이기
-
-- 76 열다섯(xmas-v1): REGISTRY xmas.* 일곱(집 가구 다섯·가판대 덧씌움·선물 자루), snow.ball, snowman.part.* 다섯, newyear.countdown_board·firework_launcher — 광장 배치는 X2.
-- 집 가구 다섯은 island-furniture EVENT_GOODS __plain(가구점 진열 없음, 크리스마스 도장 가게 몫), island-home SIZE(76 README 값), 양말 걸이 HUNG.
-- 옷 둘은 skins-x2 WINTER_ITEMS(코인 상점 늘 판매): 크리스마스 스웨터(78 판, 희귀, baked), 털 귀마개(77 판, 고급, 머리카락 cover 없음).
-- e2e island-xmas-assets(PC·폰): 옷 입기, 오두막에 가구 다섯 놓기. 사진 notes img/xmas-assets-game.
