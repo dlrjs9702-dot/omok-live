@@ -6004,7 +6004,7 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/take' && req.method === 'POST') { // (Q2 tests: these stories' first steps taken -- the 할 일 card's many lines)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
-    for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) await questApply(account, (doc) => ({ doc: { ...doc, [id]: { step: 0, taken: true, count: 0, v: 2 } }, reward: 0 }), IslandQuests.scopeOf(id));
+    for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) { const steps = IslandQuests.STORIES[id].steps; const k = body.visit ? Math.max(0, steps.findIndex((x) => x.task)) : 0; const pick = body.visit ? IslandQuests.drawPick(steps[k]) : null; /* (206: at its visit, the pick drawn) */ await questApply(account, (doc) => ({ doc: { ...doc, [id]: { step: k, taken: true, count: 0, v: 2, ...(pick ? { pick } : {}) } }, reward: 0 }), IslandQuests.scopeOf(id)); }
     return sendJson(res, 200, { ok: true, track: questEntries(account).track });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/note' && req.method === 'POST') {
@@ -6838,6 +6838,20 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, ...(await errandView(account)) });
   }
   // (Q 「그만둘래요」) a story step under way let go: the islander asks it again (what was paid stays paid)
+  // 206 구경 C안 (gamecenter-notes docs/interact-quests-20261029.md 2-1): a visit's small task, one act at a time where I stand --
+  // the pick checked against the one drawn when the step was taken, a timing by the server's clock, the train by its timetable
+  if (pathname === '/api/island/visit' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (!checkRateLimit(`island-visit:${session.token}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); const id = String(body.story || ''); if (!IslandQuests.STORIES[id]) return sendError(res, 400, 'BAD_STORY', '잘못된 요청입니다.');
+    const pos = plazaPresence.get(session.token); const at = pos && (pos.space || 'island') === 'island' ? pos : null;
+    const trainIn = (stop, ms) => { const soon = Object.values(IslandTrain.nextAt(stop, ms)).filter((v) => v != null); return soon.length ? Math.ceil(Math.min(...soon) / 60) : null; };
+    const out = await questApply(account, (doc, bag) => { const r = IslandQuests.visitAct(doc, id, String(body.act || ''), body, at, nowMs(), bag, { trainIn }); return r.error ? r : { ...r, reward: 0 }; }, IslandQuests.scopeOf(id));
+    const fail = { TOO_FAR: '가까이 가서 다시 해 봐요.', VISIT_WRONG: '다시 볼까요?', VISIT_TOO_SOON: '조금만 더요!', VISIT_NOT_STARTED: '처음부터 다시 해 봐요.', NO_CANDY: '사탕이 없어요.', VISIT_DONE: '벌써 다 했어요. 돌아가 말해요.', NO_TASK: '지금 할 일이 아니에요.', MISSING: '사탕이 없어요.' };
+    if (!out || out.error) { const code = out?.error || 'NO_TASK'; return sendError(res, 409, code, fail[code] || '할 수 없어요.'); }
+    const quests = questEntries(account); // (the card's ✓ comes with the track)
+    return sendJson(res, 200, { ok: true, done: Boolean(out.done), say: out.say || null, run: out.doc?.[id]?.run || null, track: quests.track, events: quests.entries });
+  }
   if (pathname === '/api/island/quest/drop' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const story = String((await parseJson(req)).story || '');

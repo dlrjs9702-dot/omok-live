@@ -46,11 +46,11 @@ test('연계 퀘스트: 말 걸기 → 진행 → 보고(보상·다음 부탁) 
   bag[0].qty = 6;
   r = Q.talk(doc, 'granny', bag, at('granny')); doc = r.doc;
   assert.deepEqual([r.reward, r.take], [3000, { itemId: 'berry', qty: 5 }]);
-  // a place to visit: on the map, counted when standing there
+  // a place to visit: on the map; (206 구경 C안) not by standing there -- by its small task there
   const visit = Q.STORIES.granny.steps[2].spot;
   assert.deepEqual(Q.trackOf('granny', doc.granny, []).to, visit);
-  assert.equal(Q.note(doc, 'at', { x: visit.x + 10, z: visit.z }), null);
-  doc = Q.note(doc, 'at', { x: visit.x + 1, z: visit.z });
+  assert.equal(Q.note(doc, 'at', { x: visit.x + 1, z: visit.z }), null, '서 있기만으로는 안 끝남');
+  doc = require('../test-support/visit-task')(Q, doc, 'granny');
   assert.deepEqual(Q.trackOf('granny', doc.granny, []).to, at('granny'), '다 했으면 주민에게');
   r = Q.talk(doc, 'granny', [], at('granny')); doc = r.doc;
   assert.deepEqual([r.reward, r.done], [2000 + 15000, true]);
@@ -115,8 +115,9 @@ test('할로윈 꼬마: 10월(서울)에만 말을 걸 수 있고, 사탕 주머
   assert.deepEqual([r.reward, r.take], [3000, { itemId: 'candy', qty: 3 }]);
   const [pumpkin, granny] = [Q.STORIES.kid.steps[1].spot, Q.STORIES.kid.steps[2].spot]; // (광장 큰 호박, 할머니 댁 -- either island)
   assert.equal(Q.note(doc, 'at', { ...pumpkin, now: nov }), null, '11월에는 진행되지 않음');
-  doc = Q.note(doc, 'at', { ...pumpkin, now: oct }); doc = Q.talk(doc, 'kid', [], at('kid'), oct).doc;
-  doc = Q.note(doc, 'at', { ...granny, now: oct }); r = Q.talk(doc, 'kid', [], at('kid'), oct);
+  const doVisit = require('../test-support/visit-task'); void granny;
+  doc = doVisit(Q, doc, 'kid', oct); doc = Q.talk(doc, 'kid', [], at('kid'), oct).doc;
+  doc = doVisit(Q, doc, 'kid', oct); r = Q.talk(doc, 'kid', [], at('kid'), oct);
   assert.deepEqual([r.reward, r.done], [17000, true]);
 });
 

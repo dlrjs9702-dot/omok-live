@@ -79,7 +79,9 @@ test('연계 퀘스트 서버: 말 걸기·진행·보고 보상 한 번·가방
   const spot = Q.STORIES.granny.steps[2].spot;
   const before = (await stand(g.x + 1, g.z)).data;
   assert.ok(before.events.some((e) => e.kind === 'quest_spot' && e.x === spot.x && e.z === spot.z));
-  await stand(spot.x, spot.z); await new Promise((r) => setTimeout(r, 300)); await stand(spot.x, spot.z);
+  await stand(spot.x, spot.z); await new Promise((r) => setTimeout(r, 300)); await stand(spot.x, spot.z); // (206 구경 C안: standing there is not it --)
+  let smelt = false; for (const [i, p] of Q.TASK.flowers.spots.entries()) { if (smelt) break; await stand(p.x, p.z); await new Promise((r) => setTimeout(r, 300)); await stand(p.x, p.z); smelt = (await req('/api/island/visit', sa, { story: 'granny', act: 'choose', choice: i })).data.done === true; }
+  assert.ok(smelt, '물은 색의 꽃 냄새를 맡아야 끝');
   await stand(g.x + 1, g.z);
   const last = (await req('/api/island/event', sa, { id: 'questgranny' })).data;
   assert.deepEqual([last.reward, last.done], [2000 + 15000, true]);

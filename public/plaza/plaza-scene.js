@@ -2296,6 +2296,77 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const balls = xmas?.snow?.balls || []; if (balls.length !== 3) return; const P = globalThis.IslandCalendar.PLACES; const p = xmas.mineAt;
     xmas.mine.clear(); const m = snowmanModel(balls, parts || {}); m.position.set(p.x, heightAt(p.x, p.z), p.z); m.rotation.y = Math.atan2(P.tree.x - p.x, P.tree.z - p.z) + Math.PI; xmas.mine.add(m);
   }
+  // 206 구경 C안 (gamecenter-notes docs/interact-quests-20261029.md 2-1): a visit's small task where it is -- its things set out
+  // only while the step is under way (lib/island-quests trackOf's task: places, the options, never a pick's answer but the
+  // fallen scarecrow's, seen), a ✨ over each and a SPACE by each (visit:<story>:<act>:<i>); the timings run here (the boat
+  // leaving, the beat's ring, the lamp's flicker, the crossing), the server only their time and place
+  const visits = new Map(); // story -> { key, root, run }
+  const COLOR_HEX = { red: 0xe04848, yellow: 0xf2c94c, white: 0xf5f5f0, pink: 0xf48fb1, purple: 0x9b6bd6 };
+  const COLOR_KO = { red: '빨간', yellow: '노란', white: '하얀', pink: '분홍', purple: '보라' };
+  const sparkle = (parent, x, z, y = 1.6) => { const t = makeTag('✨', null); t.position.set(x, heightAt(x, z) + y, z); t.scale.multiplyScalar(0.95); parent.add(t); return t; };
+  const thing = (parent, id, x, z, yaw = 0, fallback = null, scale = 1) => { const g = new THREE.Group(); g.position.set(x, heightAt(x, z), z); g.rotation.y = yaw; g.scale.setScalar(scale); parent.add(g); const fb = fallback || new THREE.Group(); g.add(fb); assets.attach(id, g, fb); return g; };
+  function setVisitTasks(list) {
+    const seen = new Set();
+    for (const t of Array.isArray(list) ? list : []) {
+      const task = t.task; if (!task) continue; seen.add(t.story);
+      const key = JSON.stringify([task.type, task.options, task.shown, task.run?.k || 0, Boolean(task.run?.basket)]); const had = visits.get(t.story);
+      if (had?.key === key) continue; if (had) { scene.remove(had.root); }
+      const root = new THREE.Group(); scene.add(root); const v = { key, root, task, story: t.story, run: had?.run || null }; visits.set(t.story, v);
+      if (task.type === 'pick' && task.spots && task.options) task.spots.forEach((p, i) => { // (the flowers: one clump of each colour)
+        for (let k = 0; k < 5; k += 1) { const a = k * 1.3; const fb = new THREE.Group(); mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 5), mat(0x4f8a3c), 0, 0.22, 0, fb); mesh(new THREE.SphereGeometry(0.17, 8, 6), mat(COLOR_HEX[task.options[i]] || 0xffffff), 0, 0.5, 0, fb); thing(root, `plant.flower_stage3_${task.options[i]}`, p.x + Math.sin(a) * 0.45 * (k ? 1 : 0), p.z + Math.cos(a) * 0.45 * (k ? 1 : 0), a, fb); }
+        sparkle(root, p.x, p.z, 1.1);
+      });
+      else if (task.type === 'pick' && task.spots) task.spots.forEach((p, i) => { // (the scarecrows: the fallen one on its side)
+        const fb = new THREE.Group(); mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 6), mat(0x8b6b4a), 0, 0.9, 0, fb); mesh(new THREE.BoxGeometry(1.1, 0.08, 0.08), mat(0x8b6b4a), 0, 1.3, 0, fb); mesh(new THREE.SphereGeometry(0.2, 8, 6), mat(0xe8d39a), 0, 1.75, 0, fb);
+        const g = thing(root, 'farm.scarecrow', p.x, p.z, 0.4 * i, fb); if (i === task.shown) { g.rotation.z = Math.PI / 2; g.position.y += 0.25; } sparkle(root, p.x, p.z, i === task.shown ? 1 : 2.3);
+      });
+      else if (task.type === 'order') task.spots.forEach((p) => sparkle(root, p.x, p.z, 1.4));
+      else if (task.type === 'candy') { const bk = new THREE.Group(); mesh(new THREE.CylinderGeometry(0.28, 0.2, 0.3, 10), mat(0xc08a4a), 0, 0.15, 0, bk); thing(root, 'halloween.candyBasket', task.basket.x, task.basket.z, 0, bk, 1.4); sparkle(root, task.run?.basket ? task.door.x : task.basket.x, task.run?.basket ? task.door.z : task.basket.z, 1.4); }
+      else { const p = task.at || task.from; sparkle(root, p.x, p.z, task.type === 'timed' ? 2.2 : 1.6); }
+    }
+    for (const [story, v] of visits) if (!seen.has(story)) { scene.remove(v.root); v.run?.end?.(false); visits.delete(story); }
+    for (const k of Object.keys(eventDoors)) if (k.startsWith('visit:')) delete eventDoors[k];
+    for (const v of visits.values()) { // the SPACEs by the things (what each does, never which is right)
+      const t = v.task; const d = (act, i, p, name) => { eventDoors[`visit:${v.story}:${act}:${i}`] = { x: p.x, z: p.z, name }; };
+      if (t.type === 'pick' && t.spots) t.spots.forEach((p, i) => d('choose', i, p, t.options ? `${COLOR_KO[t.options[i]] || ''} 꽃 · 냄새 맡기` : `허수아비 · ${i === t.shown ? '세우기' : '살펴보기'}`));
+      else if (t.type === 'pick') d('choose', 0, t.at, '책 수레 · 책 찾기');
+      else if (t.type === 'train') d('choose', 0, t.at, '역 이름판 · 다음 열차 세기');
+      else if (t.type === 'timed') d('start', 0, t.at, t.id === 'pier' ? '부두 끝 · 배웅하기' : t.id === 'busk' ? '무대 앞 · 박자 맞춰 박수' : '가로등 · 지켜보기');
+      else if (t.type === 'cross') d('start', 0, t.from, '징검돌 · 건너기 시작');
+      else if (t.type === 'order') t.spots.forEach((p, i) => d('tap', i, p, '벽화 · 가까이 보기'));
+      else if (t.type === 'knock') d('tap', 0, t.at, `큰 호박 · 두드리기 (${t.run?.k || 0}/${t.times})`);
+      else if (t.type === 'candy') { if (t.run?.basket) d('door', 0, t.door, '꽃님 댁 · 문 두드리기'); else d('basket', 0, t.basket, '바구니 · 사탕 넣기'); }
+    }
+  }
+  // a timing run here: resolves true when it is done as asked (then the server's 「finish」), false when given up or walked off
+  function visitRun(story) {
+    const v = visits.get(story); if (!v) return Promise.resolve(false); const t = v.task; v.run?.end?.(false);
+    return new Promise((done) => {
+      const fx = new THREE.Group(); scene.add(fx); const t0 = performance.now(); const run = { t0, fx, hits: 0, last: -1e9 };
+      run.end = (ok) => { if (v.run !== run) return; v.run = null; scene.remove(fx); done(ok); };
+      if (t.id === 'pier') { const P = globalThis.IslandTerrain.PIER; const hull = new THREE.Group(); mesh(new THREE.BoxGeometry(1.1, 0.45, 2.6), mat(0x9a5b34), 0, 0.2, 0, hull); mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 5), mat(0xeeeeee), 0, 1.1, 0, hull); const boat = thing(fx, 'sea.boat', t.at.x + P.ux * 3, t.at.z + P.uz * 3, Math.atan2(P.ux, P.uz), hull); boat.position.y = Math.max(boat.position.y, -0.6); /* (on the sea, the island's boat) */ run.boat = boat; run.dir = { x: P.ux, z: P.uz }; me.anim?.play?.('greet'); }
+      if (t.id === 'busk') { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.07, 8, 32), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.4 })); ring.position.set(t.at.x, heightAt(t.at.x, t.at.z) + 2.6, t.at.z); fx.add(ring); run.ring = ring; }
+      if (t.id === 'lamp') { const glow = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.15 })); glow.position.set(t.at.x, heightAt(t.at.x, t.at.z) + 3.6, t.at.z); fx.add(glow); run.glow = glow; run.bright = 1500 + Math.random() * 1500; }
+      v.run = run;
+    });
+  }
+  // SPACE while a timing runs: a clap on the beat, the lamp caught bright -- what the screen judges
+  function visitPress() {
+    for (const v of visits.values()) { const r = v.run; if (!r) continue; const t = v.task; const now = performance.now() - r.t0;
+      if (t.id === 'busk') { const on = (now % 1100) < 380; if (on && now - r.last > 500) { r.hits += 1; r.last = now; me.anim?.play?.('clap'); } else if (!on) r.hits = 0; return { hits: r.hits, of: 3 }; }
+      if (v.task.id === 'lamp') { const bright = now >= r.bright && now < r.bright + 900; if (bright) { r.caught = true; return { caught: true }; } r.t0 = performance.now(); r.bright = 1500 + Math.random() * 1500; return { caught: false }; } }
+    return null;
+  }
+  const visitBusy = () => [...visits.values()].some((v) => v.run);
+  function stepVisits() {
+    for (const v of visits.values()) { const r = v.run; if (!r) continue; const t = v.task; const m = me.root.position; const now = performance.now() - r.t0;
+      const from = t.from || t.at; const away = Math.hypot(m.x - from.x, m.z - from.z);
+      if (t.id === 'pier') { const d = 3 + now / 1000 * 2.2; r.boat.position.set(t.at.x + r.dir.x * d, r.boat.position.y, t.at.z + r.dir.z * d); if (away > t.r + 1) r.end(false); else if (now >= 6000) r.end(true); }
+      else if (t.id === 'busk') { const on = (now % 1100) < 380; r.ring.material.opacity = on ? 0.95 : 0.25; r.ring.scale.setScalar(on ? 1.25 : 1); if (away > t.r + 1) r.end(false); else if (r.hits >= 3 && now >= 3000) r.end(true); }
+      else if (v.task.id === 'lamp') { const bright = now >= r.bright && now < r.bright + 900; r.glow.material.opacity = bright ? 1 : (Math.sin(now / 45) > 0.3 ? 0.55 : 0.12); r.glow.scale.setScalar(bright ? 1.8 : 1); if (now >= r.bright + 900 && !r.caught) { r.t0 = performance.now(); r.bright = 1500 + Math.random() * 1500; } if (r.caught && now >= 2000) r.end(true); else if (away > t.r + 1) r.end(false); }
+      else if (t.type === 'cross') { if (Math.hypot(m.x - t.to.x, m.z - t.to.z) <= t.r - 0.3 && now >= t.minMs) r.end(true); else if (away > 25 || now > 90000) r.end(false); }
+    }
+  }
   // each frame: the snow field's SPACE follows me on it (roll, set down, dress); my ball grows as it rolls, before me
   function stepSnow() {
     delete eventDoors['fest:snow']; if (!xmas?.field.visible || !xmas.snowOpen) { if (xmas) xmas.ball.visible = false; return; }
@@ -3558,7 +3629,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npc.wasClose = close;
       animate(npc, dt, false);
     }
-    stepGuideArrow(); stepSnow(); stepInsects(dt, moving); stepPets(); stepPetshop(); stepHome(dt); stepJail(performance.now()); // B 47, 묶음 2-2, 묶음 4, R4
+    stepGuideArrow(); stepSnow(); stepVisits(); stepInsects(dt, moving); stepPets(); stepPetshop(); stepHome(dt); stepJail(performance.now()); // B 47, 묶음 2-2, 묶음 4, R4
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
     for (const [id, door] of Object.entries(doors)) {
@@ -3993,7 +4064,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setFestival, photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setFestival, setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,

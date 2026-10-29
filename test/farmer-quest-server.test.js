@@ -40,7 +40,7 @@ test('농부 부탁: 두더지 잡기 200점 판으로 단계 완료, 공동 밭
   await a.round(230);
   await new Promise((r) => setTimeout(r, 200));
   const paid = (await a.talk()).data;
-  assert.equal(paid.reward, 3000); assert.match(paid.say, /둘러봐/); assert.equal(paid.minigame, null);
+  assert.equal(paid.reward, 3000); assert.match(paid.say, /허수아비/); assert.equal(paid.minigame, null);
   assert.deepEqual((await req('/api/island/farm', a.sa)).data, { ok: true, stage: 1, names: ['농부도움'], village: { mural: 0, busk: false, lamps: 0, stones: 0, books: false }, harvested: false });
   const T = require('../public/plaza/island-terrain.js'); const field = (s) => req('/api/plaza/state', s, { x: T.FARM.x, z: T.FARM.z, yaw: 0 });
   await field(a.sa); await new Promise((r) => setTimeout(r, 300)); await field(a.sa);

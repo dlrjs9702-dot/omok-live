@@ -115,9 +115,13 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await page.keyboard.press('Escape');
   expect((await post(request, '/api/test/island/give', token, { itemId: 'berry', qty: 5 })).status).toBe(200);
   await talk();
-  await expect(page.locator('#plazaDialog')).toContainText('강가에 꽃');
+  await expect(page.locator('#plazaDialog')).toContainText(/강가에 \S+ 꽃이 피었다/); // (206: the colour asked)
   await page.keyboard.press('Escape');
-  await move(a,{...require('../../lib/island-quests').STORIES.granny.steps.find((st)=>st.kind==='visit').spot}); // (the riverside flowers, either island)
+  for (const p of require('../../lib/island-quests').TASK.flowers.spots) { // (206 구경 C안: the colour asked, smelt -- not walking in)
+    await move(a,{...p}); await expect(page.locator('#plazaHint')).toContainText('꽃 · 냄새', { timeout: 10000 });
+    await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); await page.waitForTimeout(1200);
+    if ((await page.locator('#questTracker').textContent()).includes('돌아가 말해요')) break;
+  }
   await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await talk();
   await expect(page.locator('#plazaDialog')).toContainText('정원이 환해졌');
@@ -139,7 +143,8 @@ test('연계 퀘스트: 할머니 결과는 계정별·재접속 유지, 멀리 
   await place(story.at);await report();
   expect((await post(request,'/api/test/quest/note',token,{what:'weed',qty:20})).status).toBe(200);await report();
   expect((await post(request,'/api/test/island/give',token,{itemId:'berry',qty:5})).status).toBe(200);await report();
-  await place(story.steps[2].spot);await place(story.at);expect(await report()).toMatchObject({story:'granny',done:true});
+  for (const [i,p] of require('../../lib/island-quests').TASK.flowers.spots.entries()) { await place(p); if ((await post(request,'/api/island/visit',token,{story:'granny',act:'choose',choice:i})).data.done) break; } // (206: the asked colour)
+  await place(story.at);expect(await report()).toMatchObject({story:'granny',done:true});
   await islandPage(page);
   await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().questScenes()),{timeout:15000}).toMatchObject({flower:'bloom',frame:true});
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
@@ -186,6 +191,8 @@ test('어부 결과 장면: 기존 주간 이야기 완료 대화를 닫은 후 
   await expect(page.locator('#plazaDialog')).toContainText('출항');
   await page.keyboard.press('Escape');
   await page.evaluate((p) => window.PlazaDebug().teleport(p.x, p.z), require('../../lib/island-quests').STORIES.fisher.steps.find((st) => st.kind === 'visit').spot); // (the pier's end, either island)
+  await expect(page.locator('#plazaHint')).toContainText('배웅하기', { timeout: 10000 }); // (206 구경 C안: the wave till the boat is out, not standing there)
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#questTracker')).toContainText('돌아가 말해요', { timeout: 15000 });
   await page.evaluate(() => window.PlazaDebug().place('ev:quest_npc:questfisher'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 10000 }).toBe('ev:quest_npc:questfisher');
