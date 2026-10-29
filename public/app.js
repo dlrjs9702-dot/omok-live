@@ -7688,6 +7688,8 @@
     const p = islandChatPanel.style; const f = islandChatForm.style; const at = chatBox && fitChatBox(chatBox);
     if (!at) { for (const k of ['left', 'top', 'width', 'height']) p[k] = ''; for (const k of ['left', 'top', 'bottom', 'width', 'transform']) f[k] = ''; return; }
     Object.assign(p, { left: `${at.x}px`, top: `${at.y}px`, width: `${at.w}px`, height: `${at.h}px` });
+    // (사용자 영상 2026-10-29: the window shut, the line kept to where it would be -- mid-screen; it follows only an open window)
+    if (islandChatPanel.classList.contains('hidden')) { for (const k of ['left', 'top', 'bottom', 'width', 'transform']) f[k] = ''; return; }
     const below = at.y + at.h + 6; const formH = 48;
     Object.assign(f, { left: `${at.x}px`, top: `${below + formH <= at.H ? below : Math.max(0, at.y - formH - 6)}px`, bottom: 'auto', width: `${at.w}px`, transform: 'none' });
   }
@@ -7715,7 +7717,7 @@
   document.getElementById('islandChatHome').addEventListener('click', () => { chatBox = null; try { localStorage.removeItem('gc.islandChatBox'); } catch {} applyChatBox(); });
   window.addEventListener('resize', applyChatBox);
   function setIslandChatPanel(open) {
-    islandChatPanel.classList.toggle('hidden', !open); if (open) applyChatBox();
+    islandChatPanel.classList.toggle('hidden', !open); applyChatBox();
     islandChatTab.setAttribute('aria-expanded', String(open));
     if (open) { islandChatTab.classList.remove('unread'); islandChatMessages.scrollTop = islandChatMessages.scrollHeight; }
   }

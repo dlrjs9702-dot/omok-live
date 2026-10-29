@@ -582,7 +582,7 @@ test('게임 아일랜드 채팅: Enter 입력·전송, 내 말풍선과 다른 
 
 // F② 채팅 창 옮기기·크기 (gamecenter-notes docs/fish-pad-chat-box-20261026.md): the head drags it, the corner grip sizes it
 // (PC and phone alike), as it was after a reload, never off the island, 「↺ 기본 자리」 puts it back
-test('게임 아일랜드 채팅 창: 머리로 옮기고 모서리로 크기, 새로고침 뒤 그대로, 화면 밖 못 나감, 기본 자리', async ({ browser, request }) => {
+test('게임 아일랜드 채팅 창: 머리로 옮기고 모서리로 크기, 새로고침 뒤 그대로, 화면 밖 못 나감, 기본 자리', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '채팅창옮김'); const { page } = a;
   const panel = page.locator('#islandChatPanel'); const box = () => panel.boundingBox();
@@ -596,6 +596,20 @@ test('게임 아일랜드 채팅 창: 머리로 옮기고 모서리로 크기, �
   const moved = await box(); expect(near(moved, { ...sized, x: sized.x + 60, y: sized.y + 40 }), JSON.stringify([sized, moved])).toBe(true);
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   await open(); expect(near(await box(), moved), JSON.stringify([moved, await box()])).toBe(true);
+  // (사용자 PC 영상 2026-10-29: the window moved and kept, then shut -- Enter put the input line where the window's foot would
+  // be, mid-screen; it follows the window only while it is open, else its own place, the bottom's middle)
+  if (!isMobile) {
+    const form = page.locator('#islandChatForm'); const stage = await page.locator('#plazaStage').boundingBox();
+    await page.locator('#islandChatTab').click(); await expect(panel).toBeHidden();
+    await page.locator('#plazaStage').focus(); await page.keyboard.press('Enter'); await expect(form).toBeVisible();
+    const shut = await form.boundingBox(); expect(Math.abs(shut.x + shut.width / 2 - (stage.x + stage.width / 2)), JSON.stringify([shut, stage])).toBeLessThan(3); expect(shut.y + shut.height).toBeGreaterThan(stage.y + stage.height - 120);
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/chat-input-shut.png` });
+    await page.keyboard.press('Escape'); await expect(form).toBeHidden();
+    await open(); await page.locator('#plazaStage').focus(); await page.keyboard.press('Enter'); await expect(form).toBeVisible();
+    const under = await form.boundingBox(); const at = await box(); expect(Math.abs(under.y - (at.y + at.height + 6)), JSON.stringify([under, at])).toBeLessThan(3); expect(Math.abs(under.x - at.x)).toBeLessThan(3);
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/chat-input-open.png` });
+    await page.keyboard.press('Escape'); await expect(form).toBeHidden();
+  }
   await drag('#islandChatHead strong', -2000, -2000); // (held on the island)
   const stage = await page.locator('#plazaStage').boundingBox(); const corner = await box();
   expect([Math.round(corner.x - stage.x), Math.round(corner.y - stage.y)]).toEqual([0, 0]);
