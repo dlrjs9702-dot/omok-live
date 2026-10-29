@@ -27,14 +27,14 @@ test('카운트다운: 23시 판 분:초 → 마지막 10초 → 0시 불꽃·�
     await look(); await expect.poll(async () => (await cd())?.phase, { timeout: 15000 }).toBe('last');
     await shot('last');
     await expect.poll(async () => (await cd())?.phase, { timeout: 20000 }).toBe('new');
+    if (process.env.SHOT_DIR) { await page.waitForTimeout(2400); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-countdown-fireworks.png` }); } // (0:00:02~3 -- the volley bursting)
     await expect.poll(async () => (await cd())?.sparks || 0, { timeout: 10000 }).toBeGreaterThan(0);
     const st = await cd(); expect(st.sparks).toBeLessThanOrEqual(st.cap); expect(st.cap).toBe(isMobile ? 200 : 600); expect(st.near).toBe(true);
     await expect(page.locator('#toast')).toContainText('해피 뉴 이어', { timeout: 15000 });
-    await shot('fireworks');
     // the first person: the board and the sparks in my eyes
     if (isMobile) await page.locator('#islandViewTab').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyV'); }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().view().mode)).toBe('first');
-    await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(Math.atan2(5, 10)); }); await page.waitForTimeout(400);
+    await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(Math.atan2(5, 10)); d.setCamPitch(-0.5); }); await page.waitForTimeout(400); /* (looking up, as the midnight did) */
     expect((await cd()).sparks).toBeGreaterThan(0); await shot('fireworks-first');
     await expectNoScriptError(page);
   } finally { await clock(null); await night('auto'); await who.context.close(); }
