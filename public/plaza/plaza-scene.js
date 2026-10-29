@@ -1470,6 +1470,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (event.key === 'Shift') { if (!event.repeat) { shifts.add(event.code); paceDown(); } return; } // (Codex: either Shift, until both are up)
     if (event.key === 'Escape' && actLocked()) actLock = 0; // v1.10.89: Esc lets a motion's hold go too (Codex review)
     if (event.key === 'Escape' && gather?.waitServer) { endGather(false); event.preventDefault(); return; }
+    if (event.code === 'KeyV' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); toggleView(); return; } // (V1: 「👁 시점」)
+    if (FP_WALK[event.code] && fpNow() && !event.ctrlKey && !event.metaKey && !event.altKey) { keys.add(FP_WALK[event.code]); event.preventDefault(); return; } // (V1: the first -- W/A/S/D walk)
     // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk
     if (CAM_KEYS.has(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) { camKeys.add(event.code); event.preventDefault(); return; }
     // 문제 기록 9: Q nearer, E further -- a wheel notch's step, kept the same way (gc.islandZoom); held, it goes on
@@ -1481,7 +1483,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!event.repeat) actDown(); // (2회차 11: held before a piece of my house it grabs it -- actUp on the key's release)
     }
   };
-  const onKeyUp = (event) => { if (event.code === 'Space') actUp(); keys.delete(event.key); camKeys.delete(event.code); if (event.key === 'Shift') { shifts.delete(event.code); if (!shifts.size) paceUp(); } };
+  const onKeyUp = (event) => { if (event.code === 'Space') actUp(); keys.delete(event.key); if (FP_WALK[event.code]) keys.delete(FP_WALK[event.code]); camKeys.delete(event.code); if (event.key === 'Shift') { shifts.delete(event.code); if (!shifts.size) paceUp(); } };
   const onBlur = () => { keys.clear(); camKeys.clear(); paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); };
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -1501,6 +1503,32 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.2 시점 회전: dragging with the left button turns the camera around my character (a press that hardly moves
   // stays a click on a facility). The arrow keys follow the view, so ↑ always walks into the screen.
   let camYaw = 0; let drag = null; let dragged = false;
+  // V1 시점 (gamecenter-notes docs/view-modes-20261029.md): out on the island the third person (this camera) unless the first
+  // is chosen, indoors the first unless the third -- each side chosen apart, kept on this device (gc.view.out / gc.view.in).
+  // The first: at my eyes, my own body hidden, 75°, no bob; W/A/S/D walk (the view turns by dragging -- on a phone the right
+  // half of the screen, slower). The special cameras (a 3rd person talk, fishing, a seat, the 꾸미기 view, a counter) keep
+  // theirs and come back to the chosen view after. Tests keep the third unless gc.testRealView.
+  const VIEW_KEY = { out: 'gc.view.out', in: 'gc.view.in' }; const viewPick = { out: 'third', in: 'first' };
+  try { for (const k of ['out', 'in']) { const v = localStorage.getItem(VIEW_KEY[k]); if (v === 'first' || v === 'third') viewPick[k] = v; else if (navigator.webdriver && !localStorage.getItem('gc.testRealView')) viewPick[k] = 'third'; } } catch {}
+  const viewSide = () => (mySpace === 'island' ? 'out' : 'in');
+  const FP_PLACES = new Set(['island', 'home']); // (V1: out and in my house; the other rooms get their ceilings in V2 -- till then the third)
+  const fpNow = () => FP_PLACES.has(mySpace) && viewPick[viewSide()] === 'first' && !overview && !editView && !fishing && !sitting && !riding && !liftRide;
+  let onView = null; let viewSideWas = null;
+  function toggleView() {
+    if (!FP_PLACES.has(mySpace)) { onView?.('later'); return 'third'; }
+    const side = viewSide(); viewPick[side] = viewPick[side] === 'first' ? 'third' : 'first';
+    try { localStorage.setItem(VIEW_KEY[side], viewPick[side]); } catch {}
+    pitchGoal = 0; camPitch = 0; onView?.(viewPick[side]); return viewPick[side];
+  }
+  const FP_WALK = { KeyW: 'ArrowUp', KeyA: 'ArrowLeft', KeyS: 'ArrowDown', KeyD: 'ArrowRight' };
+  const FP_PITCH = (60 * Math.PI) / 180; const FP_FOV = 75; const FP_TALK_FOV = 64; const FP_CONE = Math.cos(Math.PI / 6); // (the talk: a little drawn in; what SPACE talks to: within 60° of the screen's middle)
+  let eyeAt = { t: -Infinity, h: 1.2 }; const eyeBox = new THREE.Box3(); const partBox = new THREE.Box3();
+  function eyeHeight() { // (my body's own height -- the 꼬마 lower -- read now and then: its meshes, not the name tag)
+    if (clock - eyeAt.t < 2) return eyeAt.h;
+    eyeBox.makeEmpty(); me.root.updateMatrixWorld(true);
+    me.root.traverse((o) => { if (!o.isMesh || o.isSprite || !o.geometry) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); partBox.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); eyeBox.union(partBox); });
+    const top = eyeBox.isEmpty() ? 1.5 : eyeBox.max.y - me.root.position.y; eyeAt = { t: clock, h: Math.max(0.8, Math.min(2.2, top * 0.8)) }; return eyeAt.h;
+  }
   const DRAG_START = 5; const DRAG_TURN = 0.008; // pixels before a press becomes a drag, radians per pixel
   // v1.10.21 카메라 회전 확장 (IDEAS 2026-10-05): the camera turns round my character (yaw) and tilts a little (pitch)
   // -- mouse drag and W/A/S/D move one shared goal, and what is drawn eases toward it, so switching between them never
@@ -1513,7 +1541,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const PITCH_MAX = (15 * Math.PI) / 180; const SKY_MAX = (45 * Math.PI) / 180; const DRAG_PITCH = 0.004; // radians per pixel up or down
   const YAW_SPEED = 1.9; const PITCH_SPEED = 0.55; const CAM_RAMP = 0.25; // radians per second at full speed
   let camPitch = 0; let yawGoal = 0; let pitchGoal = 0; let camHeld = 0; let camDt = 0;
-  const clampPitch = (v) => Math.max(-SKY_MAX, Math.min(PITCH_MAX, v)); // - toward the sky, + from higher up
+  const clampPitch = (v) => (fpNow() ? Math.max(-FP_PITCH, Math.min(FP_PITCH, v)) : Math.max(-SKY_MAX, Math.min(PITCH_MAX, v))); // - toward the sky, + from higher up (V1 the first: up and down as far as 60°)
   function turnCamera(dt) {
     if (camKeys.size && !isBlocked()) {
       camHeld = Math.min(CAM_RAMP, camHeld + dt); const speed = 0.35 + (0.65 * camHeld) / CAM_RAMP;
@@ -1536,7 +1564,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       pinch.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (pinch.size === 2) { pinchFrom = { span: pinchSpan(), zoom: zoomDist }; drag = null; dragged = true; return; }
     }
-    if (event.button !== 0 || pinch.size > 1) return; drag = { x: event.clientX, y: event.clientY, id: event.pointerId }; dragged = false;
+    if (event.button !== 0 || pinch.size > 1) return;
+    const touch = event.pointerType === 'touch'; if (touch && fpNow()) { const r = host.getBoundingClientRect(); if (event.clientX - r.left < r.width / 2) return; } // (V1: the left half is the stick's)
+    drag = { x: event.clientX, y: event.clientY, id: event.pointerId, k: touch && fpNow() ? 0.55 : 1 }; dragged = false;
   };
   const onClick = (event) => { if (dragged) { dragged = false; return; } if (isBlocked()) return; const id = facilityAt(event); if (id) interact(id); };
   const onMove = (event) => {
@@ -1548,8 +1578,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const dx = event.clientX - drag.x;
       if (!dragged && Math.hypot(dx, event.clientY - drag.y) >= DRAG_START) { dragged = true; renderer.domElement.setPointerCapture?.(event.pointerId); }
       if (dragged) {
-        yawGoal -= (event.clientX - (drag.lastX ?? drag.x)) * DRAG_TURN; drag.lastX = event.clientX;
-        pitchGoal = clampPitch(pitchGoal + (event.clientY - (drag.lastY ?? drag.y)) * DRAG_PITCH); drag.lastY = event.clientY; // dragging up: toward the sky
+        yawGoal -= (event.clientX - (drag.lastX ?? drag.x)) * DRAG_TURN * drag.k; drag.lastX = event.clientX;
+        pitchGoal = clampPitch(pitchGoal + (event.clientY - (drag.lastY ?? drag.y)) * DRAG_PITCH * (fpNow() ? 2 * drag.k : 1)); drag.lastY = event.clientY; // dragging up: toward the sky
         renderer.domElement.style.cursor = 'grabbing'; return;
       }
     }
@@ -3393,14 +3423,31 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const want = new THREE.Vector3(c.x, camFloor(c.x, c.z, p.y, orbitY), c.z); // v1.10.0: follow the player across the island
     const lookY = p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4);
     const look = new THREE.Vector3(p.x - sin * 2.4, cameraSkyAim(lookY, p.y + Math.sin(elev) * camDist, want.y, lift), p.z - cos * 2.4);
-    if (talkView) { const v = talkPose(p); want.copy(v.want); look.copy(v.look); }
+    const fp = fpNow(); const fpTalk = fp && talkView?.step && !talkView.shot; // (V1: a talk face to face in the first; a shot keeps its camera)
+    if (fp) {
+      const eye = p.y + eyeHeight();
+      if (fpTalk) { // (turned to their face over ~0.3 s -- at once with less motion -- the look held while the window is open)
+        const fig = talkFigure(talkView.id); const q = fig ? fig.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(talkView.x, p.y, talkView.z);
+        const dx = q.x - p.x; const dz = q.z - p.z; const d = Math.max(0.3, Math.hypot(dx, dz));
+        yawGoal = camYaw + Math.atan2(Math.sin(Math.atan2(-dx, -dz) - camYaw), Math.cos(Math.atan2(-dx, -dz) - camYaw)); pitchGoal = clampPitch(-Math.atan2(q.y + eyeHeight() * 0.95 - eye, d));
+      }
+      const v = -camPitch; want.set(p.x, eye, p.z); look.set(p.x - sin * Math.cos(v) * 4, eye + Math.sin(v) * 4, p.z - cos * Math.cos(v) * 4);
+    }
+    if (talkView && !fpTalk) { const v = talkPose(p); want.copy(v.want); look.copy(v.look); }
+    me.root.visible = !fp; // (V1: my own body not in my eyes -- the others see it)
+    { const fov = fp ? (fpTalk ? FP_TALK_FOV : FP_FOV) : 42; const near = fp ? 0.05 : 0.1; if (camera.fov !== fov || camera.near !== near) { camera.fov = fov; camera.near = near; camera.updateProjectionMatrix(); } } // (near: the walls and pieces never cut at my eyes)
+    for (const c of [...[...others.values()].map((o) => o.c), ...wanderers.map((w) => w.c)]) { // (V1: a name tag close by in the first no bigger than at 4 m)
+      const t = c?.tag; if (!t) continue;
+      if (!fp) { if (t.userData.fpBase) { t.scale.copy(t.userData.fpBase); delete t.userData.fpBase; } continue; }
+      t.userData.fpBase ||= t.scale.clone(); const k = Math.max(0.3, Math.min(1, c.root.position.distanceTo(p) / 4)); t.scale.copy(t.userData.fpBase).multiplyScalar(k);
+    }
     { const on = !talkView; if (me.tag) me.tag.visible = on; for (const o of others.values()) if (o.c.tag) o.c.tag.visible = on; for (const pt of pets.values()) if (pt.tag) pt.tag.visible = on; if (yard.mayor.tag) yard.mayor.tag.visible = on; } // (v1.10.194 총괄 검토: while talking no name tags over heads -- mine and theirs, the pets' -- in the picture)
     if (editView && mySpace === 'home' && homeHere) { // (3회차 5: 꾸미기 -- the whole room from above, turned with the camera)
       const st = HOME.stageOf(homeHere.home.stage); const c = HOME.world(homeHere.lot, 0, 0); const d = Math.max(st.w, st.d) * 1.6; const e = 1.05;
       want.set(c.x + sin * Math.cos(e) * d, HOME.ROOM.y + Math.sin(e) * d, c.z + cos * Math.cos(e) * d); look.set(c.x, HOME.ROOM.y, c.z);
     }
-    if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, cameraEase(0.08, camDt)); camLook.lerp(look, cameraEase(0.1, camDt)); }
-    camPos.y = camFloor(camPos.x, camPos.z, p.y, camPos.y); // easing never dips it into a gentle slope either
+    if (snap || fp) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, cameraEase(0.08, camDt)); camLook.lerp(look, cameraEase(0.1, camDt)); } // (V1: the first at my eyes, no lag, no bob)
+    if (!fp) camPos.y = camFloor(camPos.x, camPos.z, p.y, camPos.y); // easing never dips it into a gentle slope either
     camera.position.copy(camPos); camera.lookAt(camLook);
     fadeInWay(p);
   }
@@ -3597,6 +3644,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (stick) { ix += stick.x; iz += stick.y; }
     } else if (isBlocked()) keys.clear();
     turnCamera(camDt); // v1.10.21
+    if (viewSide() !== viewSideWas) { viewSideWas = viewSide(); pitchGoal = 0; camPitch = 0; } // (V1: in or out -- level again)
+    if (fpNow() && !talkView) me.targetYaw = camYaw + Math.PI; // (V1: the first -- facing where I look)
     const moving = ix !== 0 || iz !== 0;
     if (moving) {
       const len = Math.hypot(ix, iz); ix /= len; iz /= len;
@@ -3604,12 +3653,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const wx = ix * cos + iz * sin; const wz = -ix * sin + iz * cos;
       if (grab) stepGrab(dt, wx, wz); else { const v = paceSpeed() * (mySpace === 'island' ? globalThis.GroundSpeed?.factorAt(globalThis.IslandTerrain, me.root.position.x, me.root.position.z, undefined, island.speedCover?.()) ?? 1 : 1); // (5회차 6: faster on a walk, slower in the woods)
         tryMove(me.root.position.x + wx * v * dt, me.root.position.z + wz * v * dt);
-        me.targetYaw = Math.atan2(wx, wz); }
+        me.targetYaw = fpNow() ? camYaw + Math.PI : Math.atan2(wx, wz); }
     } else if (grab) { stepGrab(dt, 0, 0);
     } else if (talkView?.step) { // (사용자 2026-10-12) standing right against them, I step back to a talking distance so the
       // camera behind me sees their face past my head (still within reach of the talk: EVENT_REACH 1.9)
       const p = me.root.position; const d = Math.hypot(talkView.x - p.x, talkView.z - p.z);
-      if (d > 0.01 && d < TALK_GAP - 0.02) { const s = Math.min(TALK_GAP - d, 2.2 * dt) / d; tryMove(p.x - (talkView.x - p.x) * s, p.z - (talkView.z - p.z) * s); }
+      const gap = fpNow() ? 1.2 : TALK_GAP; // (V1: face to face, a little closer -- not a head filling the screen)
+      if (d > 0.01 && d < gap - 0.02) { const s = Math.min(gap - d, 2.2 * dt) / d; tryMove(p.x - (talkView.x - p.x) * s, p.z - (talkView.z - p.z) * s); }
     }
     stepPlatform(); stepRide(); stepQuestScenes(dt); stepGrabHold(); stepTool();
     bikeCheck();
@@ -3640,8 +3690,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (d < bestD) { best = id; bestD = d; }
     }
     const atDoor = best && bestD < 1 ? best : null; // (206 CI: in the evening an islander stood in the 관공서 doorway -- SPACE talked, never went in)
+    const lookDir = fpNow() ? { x: -Math.sin(camYaw), z: -Math.cos(camYaw) } : null; // (V1: the first -- someone to talk to is the one I look at)
     for (const [id, door] of Object.entries(eventDoors)) { // v1.10.11: an event right by me comes first
-      if (id === 'tool:stow') continue; // (206 총괄 검토: the stow note stands where I am -- picked as the nearest, it flickered off every other frame)
+      if (id === 'tool:stow') continue;
+      if (lookDir && (/^(resident|player):/.test(id) || id.startsWith('ev:quest_npc:') || door.name?.startsWith('말 걸기'))) { const dx = door.x - me.root.position.x; const dz = door.z - me.root.position.z; if ((dx * lookDir.x + dz * lookDir.z) / (Math.hypot(dx, dz) || 1) < FP_CONE) continue; } // (206 총괄 검토: the stow note stands where I am -- picked as the nearest, it flickered off every other frame)
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < (door.resource ? WEED_REACH : EVENT_REACH) && d < bestD + 1) { best = id; bestD = d - 1; }
     }
@@ -3911,7 +3963,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { storyDebug: () => ({ hatch: Boolean(beacon.hatch?.visible), door: beacon.hatch?.getObjectByName('door')?.rotation.y ?? null, glows: beacon.glows.length, lamp: beacon.glows[0]?.emissiveIntensity ?? null, halo: beacon.halo?.material.opacity ?? null }), jail: () => ({ inmate: jailInmate, line: wardenLine?.text || null, door: jail ? Math.round(jail.door.rotation.y * 100) / 100 : null }), pieceY: (uid) => homeRoomV?.pieces.get(uid)?.root.position.y ?? null, /* (207: on a top) */ home: () => (homeHere ? { lot: homeHere.lot.id, floor: homeHere.floor, stage:homeHere.home.stage || 2, room: homeRoomV?.layers.room?.key || null, pieces: homeRoomV ? [...homeRoomV.pieces.keys()] : [], fish: homeRoomV ? [...homeRoomV.pieces.values()].reduce((n, v) => n + v.swim.length, 0) : 0, pets: homeRoomV?.pets.length || 0, seats: SEATS.filter((s) => String(s.id).startsWith('home:')).length } : null), homes: () => Object.fromEntries([...homesShown].map(([k, v]) => [k, v.key])), draws, covered, grab: () => (grab ? { uid: grab.uid, axis: grab.axis, off: +grab.off.toFixed(3), blocked: grab.blocked, clip: me.anim?.held || null } : null), grabCandidate: () => grabCandidate()?.uid || null, mapCheck, cycling, speedNow: () => paceSpeed(), faceYaw: (y) => { me.root.rotation.y = y; me.targetYaw = y; }, bikeWheels: () => (me.bike ? [me.bike.front, me.bike.rear].map((w) => { const q = w.getWorldPosition(new THREE.Vector3()); return +(q.y - BIKE.wheelR - heightAt(q.x, q.z)).toFixed(3); }) : null), bikes: () => bikes, othersBikes: () => Object.fromEntries([...others].map(([id, o]) => [id, o.bike || null])), petshop: () => (petshop ? [...petshop.pets.keys()] : null), petshopTags: () => (petshop ? [...petshop.pets].map(([slot, h]) => ({ slot, kind: h.kind, tag: Boolean(h.tag?.parent), lit: Boolean(h.tag?.visible), shown: h.c.root.visible })) : null), furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), carveStatues: (list, week) => { if (list) { statueKey = '[]'; statueList = []; setStatues(list, week); } return statueChars.map((c) => ({ stone: Boolean(c.stone), x: c.root.position.x, z: c.root.position.z })); }, blocksAt: (x, z) => solidsNear(x, z).filter(blocksNow).some((o) => Math.hypot(o.x - x, o.z - z) < o.r), hwAt: () => { const o = solids.find((s) => s.hw && !solids.some((t) => t !== s && !t.hw && Math.hypot(t.x - s.x, t.z - s.z) < t.r + s.r)); return o ? { x: o.x, z: o.z, decorOn } : null; }, contestPlinth: () => contestPlinth.visible, /* A-7 */ x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, quietQuality: (ms) => { quietUntil = performance.now() + ms; }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); correction = null; trainChangedAt = Date.now(); /* (a correction sent from before the jump is stale -- one from the spawn's crowd pulled a loaded test back to the guide) */ placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name, king }) => (king ? { king, name } : { rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), plants: () => [...plants.values()].map(({ data, key }) => ({ id: data.id, stage: data.stage, key })), islandLook: () => ({ seasonHold, decorMode, winter: winterOn, fountain: fountain.visible }), insects: () => [...insectShown].map(([id, h]) => ({ id, species: h.b.species, x: h.c.root.position.x, z: h.c.root.position.z, flee: Boolean(h.flee), model: Boolean(h.c.mixer) })), insectList: () => insectList.map((b) => b.id), insectsDrawn: () => [...insectShown].filter(([, h]) => !h.flee).map(([id, h]) => ({ id, species: h.b.species, x: +h.c.root.position.x.toFixed(2), z: +h.c.root.position.z.toFixed(2) })), faceTo: (x, z) => { const p = me.root.position; me.root.rotation.y = me.targetYaw = Math.atan2(x - p.x, z - p.z); },heldTool: () => heldTool, lastSwing: () => lastSwing, toolTip, counterFacing: () => { buildRoom(); buildStore(); buildPetshop(); buildFurniture(); buildJail(); /* (each keeper: the angle between where it faces and where its customer stands, and its home yaw's from its body, degrees) */
+    return { storyDebug: () => ({ hatch: Boolean(beacon.hatch?.visible), door: beacon.hatch?.getObjectByName('door')?.rotation.y ?? null, glows: beacon.glows.length, lamp: beacon.glows[0]?.emissiveIntensity ?? null, halo: beacon.halo?.material.opacity ?? null }), jail: () => ({ inmate: jailInmate, line: wardenLine?.text || null, door: jail ? Math.round(jail.door.rotation.y * 100) / 100 : null }), pieceY: (uid) => homeRoomV?.pieces.get(uid)?.root.position.y ?? null, view: () => ({ mode: fpNow() ? 'first' : 'third', side: viewSide(), pick: { ...viewPick }, eye: +(camera.position.y - me.root.position.y).toFixed(2), fov: camera.fov, body: me.root.visible, yaw: camYaw, pitch: camPitch }), /* (V1) */ /* (207: on a top) */ home: () => (homeHere ? { lot: homeHere.lot.id, floor: homeHere.floor, stage:homeHere.home.stage || 2, room: homeRoomV?.layers.room?.key || null, pieces: homeRoomV ? [...homeRoomV.pieces.keys()] : [], fish: homeRoomV ? [...homeRoomV.pieces.values()].reduce((n, v) => n + v.swim.length, 0) : 0, pets: homeRoomV?.pets.length || 0, seats: SEATS.filter((s) => String(s.id).startsWith('home:')).length } : null), homes: () => Object.fromEntries([...homesShown].map(([k, v]) => [k, v.key])), draws, covered, grab: () => (grab ? { uid: grab.uid, axis: grab.axis, off: +grab.off.toFixed(3), blocked: grab.blocked, clip: me.anim?.held || null } : null), grabCandidate: () => grabCandidate()?.uid || null, mapCheck, cycling, speedNow: () => paceSpeed(), faceYaw: (y) => { me.root.rotation.y = y; me.targetYaw = y; }, bikeWheels: () => (me.bike ? [me.bike.front, me.bike.rear].map((w) => { const q = w.getWorldPosition(new THREE.Vector3()); return +(q.y - BIKE.wheelR - heightAt(q.x, q.z)).toFixed(3); }) : null), bikes: () => bikes, othersBikes: () => Object.fromEntries([...others].map(([id, o]) => [id, o.bike || null])), petshop: () => (petshop ? [...petshop.pets.keys()] : null), petshopTags: () => (petshop ? [...petshop.pets].map(([slot, h]) => ({ slot, kind: h.kind, tag: Boolean(h.tag?.parent), lit: Boolean(h.tag?.visible), shown: h.c.root.visible })) : null), furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), carveStatues: (list, week) => { if (list) { statueKey = '[]'; statueList = []; setStatues(list, week); } return statueChars.map((c) => ({ stone: Boolean(c.stone), x: c.root.position.x, z: c.root.position.z })); }, blocksAt: (x, z) => solidsNear(x, z).filter(blocksNow).some((o) => Math.hypot(o.x - x, o.z - z) < o.r), hwAt: () => { const o = solids.find((s) => s.hw && !solids.some((t) => t !== s && !t.hw && Math.hypot(t.x - s.x, t.z - s.z) < t.r + s.r)); return o ? { x: o.x, z: o.z, decorOn } : null; }, contestPlinth: () => contestPlinth.visible, /* A-7 */ x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, quietQuality: (ms) => { quietUntil = performance.now() + ms; }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); correction = null; trainChangedAt = Date.now(); /* (a correction sent from before the jump is stale -- one from the spawn's crowd pulled a loaded test back to the guide) */ placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name, king }) => (king ? { king, name } : { rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), plants: () => [...plants.values()].map(({ data, key }) => ({ id: data.id, stage: data.stage, key })), islandLook: () => ({ seasonHold, decorMode, winter: winterOn, fountain: fountain.visible }), insects: () => [...insectShown].map(([id, h]) => ({ id, species: h.b.species, x: h.c.root.position.x, z: h.c.root.position.z, flee: Boolean(h.flee), model: Boolean(h.c.mixer) })), insectList: () => insectList.map((b) => b.id), insectsDrawn: () => [...insectShown].filter(([, h]) => !h.flee).map(([id, h]) => ({ id, species: h.b.species, x: +h.c.root.position.x.toFixed(2), z: +h.c.root.position.z.toFixed(2) })), faceTo: (x, z) => { const p = me.root.position; me.root.rotation.y = me.targetYaw = Math.atan2(x - p.x, z - p.z); },heldTool: () => heldTool, lastSwing: () => lastSwing, toolTip, counterFacing: () => { buildRoom(); buildStore(); buildPetshop(); buildFurniture(); buildJail(); /* (each keeper: the angle between where it faces and where its customer stands, and its home yaw's from its body, degrees) */
       return counterKeepers.map(({ id, k, spot }) => { const p = k.root.getWorldPosition(new THREE.Vector3()); const s = spot(); const f = k.root.getWorldDirection(new THREE.Vector3()); const off = k.home.yaw - worldYaw(k.root);
         return { id, angle: Math.round(THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp((f.x * (s.x - p.x) + f.z * (s.z - p.z)) / (Math.hypot(f.x, f.z) * Math.hypot(s.x - p.x, s.z - p.z) || 1), -1, 1)))), home: Math.round(THREE.MathUtils.radToDeg(Math.abs(Math.atan2(Math.sin(off), Math.cos(off))))) }; }); },
 
@@ -4070,7 +4122,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setFestival, setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, setFestival, setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
