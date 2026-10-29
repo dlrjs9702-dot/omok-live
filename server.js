@@ -1108,7 +1108,7 @@ async function storyFinalGifts(account) {
 // what the book and the tracker read: my chapters, the one under way, the pieces, the festival stories I have
 async function storyView(account) {
   const doc = await storyDoc(account);
-  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, IslandCast.callOf), pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
+  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */, pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
 }
 // (R3 ③ 주민의 하루: the islanders walk that time of day's round -- the time held by the administrator, kept here as it changes)
 let walkerTimeMode = 'auto';
@@ -6002,6 +6002,11 @@ async function requestHandler(req, res) {
     run.at -= Number(body.ageMs) || 0;
     return sendJson(res, 200, { ok: true });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/take' && req.method === 'POST') { // (Q2 tests: these stories' first steps taken -- the 할 일 card's many lines)
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) await questApply(account, (doc) => ({ doc: { ...doc, [id]: { step: 0, taken: true, count: 0, v: 2 } }, reward: 0 }), IslandQuests.scopeOf(id));
+    return sendJson(res, 200, { ok: true, track: questEntries(account).track });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/note' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -6933,7 +6938,7 @@ async function requestHandler(req, res) {
         return sendTalk(view(IslandCast.say(n, 'errandYes'), { storyAccepted: { title: IslandStory.RESIDENTS[n][ch].title }, story: await storyView(account) }));
       }
       if (st === 'offer') {
-        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, IslandCast.callOf);
+        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
         return sendTalk(view(ch.offer, { storyOffer: { title: ch.title, task: ch.task, where: t.where } }));
       }
       if (st === 'visit') {
