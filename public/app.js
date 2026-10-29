@@ -2811,7 +2811,7 @@
   // (three times), dress -- the server sizing each ball by its own clock
   async function festivalGift() {
     const r = await festivalPost('gift', { step: 'take' }); if (!r) return;
-    plaza.controller?.playMine?.('pickup'); showToast(`🎁 ${r.gift.name}에게 갖다주세요 · 지금 ${r.gift.where} 쪽에 있어요`, 6000);
+    plaza.controller?.playMine?.('pickup'); showToast(`🎁 ${r.gift.name}에게 갖다주세요 · 지금 ${r.gift.where}에 있어요`, 6000);
   }
   async function festivalSnow() {
     const snow = festivalView?.festival?.snow;
@@ -2822,15 +2822,19 @@
   function openSnowmanDress() {
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const card = el('section', 'card festivalCard'); card.id = 'snowmanCard'; openPlazaWindow('눈사람 꾸미기', [card]); plazaDialog.classList.add('boardMode');
-    const picks = {}; const row = (key, label, most) => { const s = el('select', 'festivalPick'); s.dataset.part = key; for (let k = 0; k <= most; k += 1) s.append(new Option(most === 1 ? (k ? '붙이기' : '안 붙이기') : `${k}개`, String(k))); s.value = String(most); picks[key] = s; const l = el('label', 'snowPart', label); l.append(s); return l; };
-    const go = el('button', 'primary', '다 만들었어요'); go.type = 'button';
+    const parts = {}; const go = el('button', 'primary', '다 만들었어요'); go.type = 'button'; go.disabled = true;
+    const chips = el('div', 'snowParts'); const chip = (key, label, most) => { // (a press puts one on; past the most, all off again)
+      const b = el('button', 'tiny snowPart'); b.type = 'button'; b.dataset.part = key;
+      const draw = () => { const n = parts[key] || 0; b.textContent = most === 1 ? `${label}${n ? ' ✓' : ''}` : `${label} ${n}/${most}`; b.setAttribute('aria-pressed', String(n > 0)); };
+      b.addEventListener('click', () => { parts[key] = ((parts[key] || 0) + 1) % (most + 1); draw(); go.disabled = !Object.values(parts).some(Boolean); plaza.controller?.snowDress?.(parts); });
+      draw(); return b;
+    };
+    chips.append(chip('carrot', '당근 코', 1), chip('coal', '숯', 5), chip('twig', '나뭇가지 팔', 2), chip('bucket', '양동이 모자', 1), chip('scarf', '목도리', 1));
     go.addEventListener('click', async () => {
-      const parts = Object.fromEntries(Object.entries(picks).map(([k, s]) => [k, Number(s.value)]));
       const r = await festivalPost('snowman', { step: 'finish', parts }); if (!r) return;
       plaza.controller?.playMine?.('cheer'); plazaDialog.close(); showToast(`☃️ 「${r.say}」 ${r.score}점 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`, 6000);
     });
-    card.append(el('p', 'smallMuted', '쌓은 눈사람을 꾸며요. 많이 꾸밀수록, 위로 갈수록 알맞게 작아질수록 점수가 높아요(하루 한 번, 도장 3개).'),
-      row('carrot', '당근 코', 1), row('coal', '숯 (눈 둘·단추 셋)', 5), row('twig', '나뭇가지 팔', 2), row('bucket', '양동이 모자', 1), row('scarf', '목도리', 1), go);
+    card.append(el('p', 'smallMuted', '하나씩 눌러 붙여요(숯은 눈 둘·단추 셋). 많이 꾸밀수록, 위로 갈수록 알맞게 작아질수록 점수가 높아요(하루 한 번, 도장 3개).'), chips, go);
   }
   async function openFestival(tab = 'tasks') {
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -2845,7 +2849,7 @@
       if (!f) { card.replaceChildren(el('p', 'emptyState', festivalView.next ? `다음 행사 「${festivalView.next.name}」는 ${festivalView.next.start.slice(5).replace('-', '월 ')}일에 시작해요.` : '지금은 행사가 없어요.')); return; }
       const head = el('div', 'festivalHead'); head.append(el('h3', '', `${f.name} · ${f.start.slice(5).replace('-', '/')}~${f.end.slice(5).replace('-', '/')}`), el('strong', 'festivalStamps', `도장 ${f.stamps}개`));
       const tabs = el('div', 'festivalTabs'); if (weekView?.contest) { const b = el('button', 'secondary tiny', weekView.contest.name); b.type = 'button'; b.addEventListener('click', () => openWeekContest()); tabs.append(b); } // (a contest day in the festival)
-      for (const [id, name] of [['tasks', '할 일'], ...(f.tasks.some((t) => t.id === 'cook') ? [['cook', '요리 대회']] : []), ['shop', '가판대']]) { const b = el('button', which === id ? 'primary tiny' : 'secondary tiny', name); b.type = 'button'; b.dataset.tab = id; b.addEventListener('click', () => draw(id)); tabs.append(b); }
+      for (const [id, name] of [['tasks', '할 일'], ...(f.tasks.some((t) => t.id === 'cook') ? [['cook', '요리 대회']] : []), ['shop', '가판대']]) { const b = el('button', 'tiny festivalTab', name); b.type = 'button'; b.dataset.tab = id; b.setAttribute('aria-pressed', String(which === id)); b.addEventListener('click', () => draw(id)); tabs.append(b); }
       const body = el('div', 'festivalBody');
       if (which === 'tasks') {
         body.append(el('p', 'smallMuted', `「${f.say}」 도장은 이 행사 가판대에서만 쓰고, 행사가 끝나면 사라져요${f.daysLeft <= 1 ? ' — 곧 끝나요!' : ''}.`));
@@ -4259,7 +4263,7 @@
     // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them;
     // (Q 부탁 받기) an errand asked: its note and 「할게요!」 / 「다음에요」
     fill(data.storyOffer ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : withBoard(talkToday(TALK_CHOICES, data.today), data.n, data.today));
-    if (festivalView?.festival?.gift?.n === data.n && !data.offer && !data.question && !data.storyOffer) { // (X2 선물 배달: the gift I carry is theirs)
+    if (festivalView?.festival?.gift?.n === data.n) { // (X2 선물 배달: the gift I carry is theirs -- before whatever else they ask)
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'xmasGift'; b.textContent = '🎁 선물 배달 왔어요';
       b.addEventListener('click', async () => { const r = await festivalPost('gift', { step: 'give', n: data.n }); if (!r) return; plaza.controller?.emote?.('clap'); showToast(`🎁 ${r.name}에게 선물을 건넸어요 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`); plazaDialog.close(); });
       list.prepend(b);

@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, adminToken, spaceOn, expectNoScriptError } = require('./skin-support');
+const { shopper, post, get, adminToken, spaceOn, standAt, expectNoScriptError } = require('./skin-support');
 
 // X2 크리스마스 (gamecenter-notes docs/asset-proposal-christmas-20261027.md): in its days the stall wears its dress and the
 // host's sack stands by; a gift from the sack goes in my hands and to the islander named on it (in their talk); the snow
@@ -63,22 +63,30 @@ test('크리스마스 행사: 가판대 덧씌움·선물 자루, 선물 받아 
       const issued = (await post(request, '/api/admin/keys', admin, { label: `눈사람${k}` })).data; const key = issued.html.match(/name="token" value="([^"]+)"/)[1];
       const res = await request.post('/guest-entry', { headers: { 'X-Forwarded-For': `10.9.${k}.${Math.floor(Math.random() * 200) + 1}`, 'Content-Type': 'application/x-www-form-urlencoded' }, data: `token=${encodeURIComponent(key)}` });
       const t = (await res.text()).match(/data-session="([^"]+)"/)[1];
-      await post(request, '/api/plaza/state', t, { x: S.x - 2 + k, z: S.z, yaw: 0, moving: false });
-      for (let b = 0; b < 3; b += 1) { await post(request, '/api/island/festival/snowman', t, { step: 'roll' }); await new Promise((r) => { setTimeout(r, 1700 + (2 - b) * 1500 + k * 400); }); await post(request, '/api/island/festival/snowman', t, { step: 'drop' }); }
+      const z = S.z - 2.5 + k * 2.5; const walk = async (x0, x1) => { for (let i = 0; i <= 6; i += 1) { await post(request, '/api/plaza/state', t, { x: x0 + ((x1 - x0) * i) / 6, z, yaw: x1 > x0 ? Math.PI / 2 : -Math.PI / 2, moving: i < 6 }); await new Promise((r) => { setTimeout(r, 250); }); } }; // (steps: a jump is corrected)
+      await walk(S.x - 3.5, S.x - 3.5);
+      for (let b = 0; b < 3; b += 1) { const [x0, x1] = b % 2 ? [S.x + 1, S.x - 3.5] : [S.x - 3.5, S.x + 1]; await post(request, '/api/island/festival/snowman', t, { step: 'roll' }); await walk(x0, x1); await new Promise((r) => { setTimeout(r, (2 - b) * 1500 + k * 400); }); const dropped = await post(request, '/api/island/festival/snowman', t, { step: 'drop' }); expect(dropped.status, JSON.stringify(dropped.data)).toBe(200); }
       expect((await post(request, '/api/island/festival/snowman', t, { step: 'finish', parts: { carrot: 1, coal: 2 + k, twig: k, bucket: k > 0 ? 1 : 0, scarf: k === 2 ? 1 : 0 } })).status).toBe(200);
     }));
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [S.x + 2, S.z + S.d / 2 - 1]);
     const snowStep = async (step) => { const r = page.waitForResponse((x) => x.url().includes('/api/island/festival/snowman')); await expect.poll(() => spaceOn(page, 'fest:snow', isMobile), { timeout: 15000 }).toBe(true); const res = await r; expect(res.status(), `${step}: ${await res.text()}`).toBe(200); };
-    for (let b = 0; b < 3; b += 1) {
+    for (let b = 0; b < 3; b += 1) { // (rolled about: set down 4 m or more from where it started -- the server's 3 m)
+      await standAt(request, who, S.x + (b % 2 ? 2.5 : -2.5), S.z);
       await snowStep('roll'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival().xmas?.rolling)).toBe(true);
       if (isMobile) await page.waitForTimeout(2200 + (2 - b) * 1500); else { await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyA'); await page.waitForTimeout(2200 + (2 - b) * 1500); await page.keyboard.up('KeyA'); }
       if (b === 0) await shoot(page, 'snow-rolling', 1000, 800);
+      await standAt(request, who, S.x + (b % 2 ? -2.5 : 2.5), S.z + 1);
       await snowStep('drop');
     }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival().xmas?.mine.split(',').length), { timeout: 10000 }).toBe(3);
     await expect.poll(() => spaceOn(page, 'fest:snow', isMobile), { timeout: 15000 }).toBe(true);
-    const card = page.locator('#snowmanCard'); await expect(card).toBeVisible(); if (DIR) await page.screenshot({ path: `${DIR}/${test.info().project.name}-snow-dress.png` });
-    const done = page.waitForResponse((r) => r.url().includes('/api/island/festival/snowman')); await card.getByRole('button', { name: '다 만들었어요' }).click(); expect((await done).status()).toBe(200);
+    const card = page.locator('#snowmanCard'); await expect(card).toBeVisible(); const finish = card.getByRole('button', { name: '다 만들었어요' });
+    await expect(finish).toBeDisabled(); await expect(card.locator('.snowPart[aria-pressed="true"]')).toHaveCount(0); // (bare at first: nothing done, nothing to hand in)
+    if (DIR) await page.screenshot({ path: `${DIR}/${test.info().project.name}-snow-dress-bare.png` });
+    for (const p of ['carrot', 'coal', 'coal', 'bucket', 'scarf']) await card.locator(`.snowPart[data-part="${p}"]`).click();
+    await expect(card.locator('.snowPart[data-part="coal"]')).toHaveText('숯 2/5'); await expect(finish).toBeEnabled();
+    if (DIR) await page.screenshot({ path: `${DIR}/${test.info().project.name}-snow-dress.png` });
+    const done = page.waitForResponse((r) => r.url().includes('/api/island/festival/snowman')); await finish.click(); expect((await done).status()).toBe(200);
     await expect(page.locator('#toast')).toContainText('도장 +3');
     const day = (await get(request, '/api/island/festival', token)).data.snowmen; expect(day.filter((m) => m.mine)).toHaveLength(1); // (the day's field, the other screens' too: the server's list, mine in it)
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival().xmas?.snowmen.length), { timeout: 15000 }).toBe(day.length);
@@ -89,7 +97,7 @@ test('크리스마스 행사: 가판대 덧씌움·선물 자루, 선물 받아 
     // the stall: the six goods; the last evening: the gathering by the plaza's tree (6)
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [front(P.stall, 1.6).x, front(P.stall, 1.6).z]);
     await expect.poll(() => spaceOn(page, 'fest:stall', isMobile), { timeout: 15000 }).toBe(true);
-    const shop = page.locator('#festivalCard'); await expect(shop.locator('.festivalShop li')).toHaveCount(6); await expect(shop).toContainText('크리스마스 트리');
+    const shop = page.locator('#festivalCard'); await expect(shop.locator('.festivalShop li')).toHaveCount(6); await expect(shop.locator('.festivalTab[aria-pressed="true"]')).toHaveText('가판대'); await expect(shop).toContainText('크리스마스 트리');
     if (DIR) await page.screenshot({ path: `${DIR}/${test.info().project.name}-stall-shop.png` });
     await page.locator('#plazaCloseBtn').click();
     expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-12-25T19:00:00+09:00') })).status).toBe(200);

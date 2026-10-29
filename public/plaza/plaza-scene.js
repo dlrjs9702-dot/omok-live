@@ -530,12 +530,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const minimap = document.createElement('canvas'); minimap.className = 'islandMinimap'; minimap.width = 176; minimap.height = 176;
   minimap.setAttribute('role', 'img'); minimap.setAttribute('aria-label', '미니맵');
   host.append(minimap);
-  let minimapAt = 0; let minimapTurn = 0; let minimapShown = 0; let mapMarkers = []; // markers: the events near me (v1.10.11)
+  let minimapAt = 0; let minimapTurn = 0; let minimapShown = 0; let mapMarkers = []; let festMarks = []; // (X2: the snow field) // markers: the events near me (v1.10.11)
   function refreshMinimap(now) {
     if (now - minimapAt < 120) return;
     minimapAt = now;
     const places = Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && (!id.startsWith('home:') || d.mine)).map(([, d]) => ({ x: d.x, z: d.z, name: d.mapName || d.name })); // (v1.10.84: the map says 관공서, the hint 관공서 들어가기)
-    ({ turn: minimapTurn, shown: minimapShown } = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, mapMarkers));
+    ({ turn: minimapTurn, shown: minimapShown } = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, festMarks.length ? mapMarkers.concat(festMarks) : mapMarkers));
   }
 
   // The map board's picture (redrawn as I walk; the window version draws into the caller's canvas).
@@ -2253,12 +2253,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const sackAt = { x: P.host.x - 1.2, z: P.host.z + 0.5 }; const sack = new THREE.Group(); sack.position.set(sackAt.x, heightAt(sackAt.x, sackAt.z), sackAt.z); sack.rotation.y = P.host.yaw; scene.add(sack);
       const fb = new THREE.Group(); mesh(new THREE.SphereGeometry(0.4, 10, 8), mat(0xb3262e), 0, 0.4, 0, fb); sack.add(fb); assets.attach('xmas.gift_sack', sack, fb);
       const field = new THREE.Group(); scene.add(field); const mine = new THREE.Group(); scene.add(mine); const ball = new THREE.Group(); scene.add(ball);
+      { // (총괄 검토: where to roll -- a snow cover over the field's paving and 「☃️ 눈밭」 by its front)
+        const S = P.snow; const shape = new THREE.Shape(); const N = 72; // (a rounded rectangle, its edge gently uneven)
+        for (let k = 0; k < N; k += 1) { const a = (k / N) * Math.PI * 2; const c = Math.cos(a); const s = Math.sin(a); const r = 1 / ((Math.abs(c) / (S.w / 2)) ** 4 + (Math.abs(s) / (S.d / 2)) ** 4) ** 0.25; const j = 0.96 + 0.04 * Math.sin(k * 0.9) + 0.02 * Math.sin(k * 2.3); const x = c * r * j; const y = s * r * j; if (k) shape.lineTo(x, y); else shape.moveTo(x, y); }
+        const cover = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshLambertMaterial({ color: 0xf6f8fb })); cover.rotation.x = -Math.PI / 2; cover.position.set(S.x, heightAt(S.x, S.z) + 0.09, S.z); /* (over the paving's slabs, which stand 0.035 up and more) */ cover.receiveShadow = true; field.add(cover);
+        signboard('stand', '☃️ 눈밭', field, S.x - S.w / 2 - 0.4, heightAt(S.x - S.w / 2, S.z + S.d / 2), S.z + S.d / 2 + 0.4, 0); // (at its front corner: the snowmen in sight)
+      }
       const fbb = new THREE.Group(); mesh(new THREE.SphereGeometry(0.5, 12, 8), mat(0xf4f6f8), 0, 0.5, 0, fbb); ball.add(fbb); assets.attach('snow.ball', ball, fbb); ball.visible = false;
       xmas = { dress, sack, sackAt, field, mine, mineKey: '', mineAt: null, ball, rollFrom: 0, men: new Map(), gift: '', snow: null, snowOpen: false };
       solids.push({ x: sackAt.x, z: sackAt.z, r: 0.45, festival: true });
     }
     if (!xmas) return;
-    for (const g of [xmas.dress, xmas.sack, xmas.field, xmas.mine]) g.visible = on;
+    for (const g of [xmas.dress, xmas.sack, xmas.field, xmas.mine]) g.visible = on; festMarks = on ? [{ x: P.snow.x, z: P.snow.z }] : []; minimapAt = 0;
     const box = on && fest.gift ? fest.gift.box : ''; // (my gift: in my hand till it is handed over)
     if (box !== xmas.gift) { xmas.gift = box; if (box) assets.hold(me, `xmas.gift_hand_${box}`, 0, { key: 'gift', at: [0, -0.05, 0.12] }); else assets.letGo(me, 'gift'); }
     const snowTask = on ? fest.tasks.find((t) => t.id === 'snowman') : null; xmas.snowOpen = Boolean(snowTask && snowTask.today < snowTask.perDay); xmas.snow = on ? fest.snow : null;
@@ -2281,6 +2287,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (giftTask && !fest.gift && giftTask.today < giftTask.perDay) eventDoors['fest:sack'] = { x: xmas.sackAt.x + Math.sin(P.host.yaw) * 0.9, z: xmas.sackAt.z + Math.cos(P.host.yaw) * 0.9, name: `${fest.name} · 선물 받기 (${giftTask.today}/${giftTask.perDay})` };
     const gather = on ? fest.tasks.find((t) => t.id === 'gather') : null;
     if (gather?.open && gather.today < gather.perDay) eventDoors['fest:gather'] = { x: P.tree.x, z: P.tree.z - 7.5, name: `${fest.name} · 성탄 저녁 모임에 함께하기` };
+  }
+  function snowDress(parts) {
+    const balls = xmas?.snow?.balls || []; if (balls.length !== 3) return; const P = globalThis.IslandCalendar.PLACES; const p = xmas.mineAt;
+    xmas.mine.clear(); const m = snowmanModel(balls, parts || {}); m.position.set(p.x, heightAt(p.x, p.z), p.z); m.rotation.y = Math.atan2(P.tree.x - p.x, P.tree.z - p.z) + Math.PI; xmas.mine.add(m);
   }
   // each frame: the snow field's SPACE follows me on it (roll, set down, dress); my ball grows as it rolls, before me
   function stepSnow() {
@@ -2321,6 +2331,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     setXmas(fest, view?.snowmen);
     const id = fest ? fest.id : `contest:${contest.kind}`; if (festival.on !== id) { // (its name on the stall's board: carved letters, read from in front -- the 간판 법칙)
       if (festival.sign) { festival.stall.remove(festival.sign); festival.sign.material.map?.dispose(); festival.sign.material.dispose(); festival.sign.geometry.dispose(); }
+      const santa = Boolean(fest?.id.startsWith('christmas'));
+      dressUp(festival.host, santa ? { gender: 'female', hat: 'avatar_winter_hat_santa', outfit: 'avatar_winter_outfit_santa' } : { gender: 'female', hat: 'avatar_hat_1' }, { shirt: 0xd9822b, hair: 0x4a3326, skin: 0xffe0c4, hat: 0xe2c27a });
       festival.sign = boardText(fest ? `${fest.id.startsWith('christmas') ? '🎄' : '🌾'} ${fest.name}` : `${contest.kind === 'fish' ? '🎣' : '🦋'} ${contest.name}`, 1.4, 0.36, 2.62, 0.295); festival.stall.add(festival.sign); festival.on = id;
     }
     const ahead = (p, d, sign) => ({ x: p.x + sign * Math.sin(p.yaw) * d, z: p.z + sign * Math.cos(p.yaw) * d }); // (a character's front is its +Z, the stall model's its -Z)
@@ -3956,7 +3968,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setFestival, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setFestival, snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,

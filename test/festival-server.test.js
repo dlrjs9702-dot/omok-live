@@ -147,13 +147,15 @@ test('크리스마스: 선물 배달(받는 이웃 곁에서만), 눈사람(서�
   await stand(P.host); assert.equal((await req('/api/island/festival/snowman', a, { step: 'roll' })).data.error, 'TOO_FAR');
   await stand({ x: S.x, z: S.z }); assert.equal((await req('/api/island/festival/snowman', a, { step: 'finish', parts: {} })).data.error, 'SNOW_NOT_STACKED');
   assert.equal((await req('/api/island/festival/snowman', a, { step: 'drop' })).data.error, 'NOT_ROLLING');
-  for (let k = 0; k < 3; k += 1) {
-    assert.equal((await req('/api/island/festival/snowman', a, { step: 'roll', scale: 9 })).status, 200);
+  for (let k = 0; k < 3; k += 1) { // (rolled: 3 m at least from where it started -- not grown standing still)
+    await stand({ x: S.x - 3.5, z: S.z }); assert.equal((await req('/api/island/festival/snowman', a, { step: 'roll', scale: 9 })).status, 200);
     if (k === 0) assert.equal((await req('/api/island/festival/snowman', a, { step: 'drop' })).data.error, 'TOO_SHORT');
-    await wait(1600 + k * 300); const d = await req('/api/island/festival/snowman', a, { step: 'drop', size: 9 }); assert.equal(d.status, 200, JSON.stringify(d.data));
+    await wait(1600 + k * 300); if (k === 0) assert.equal((await req('/api/island/festival/snowman', a, { step: 'drop' })).data.error, 'NOT_ROLLED');
+    await stand({ x: S.x + 1, z: S.z }); const d = await req('/api/island/festival/snowman', a, { step: 'drop', size: 9 }); assert.equal(d.status, 200, JSON.stringify(d.data));
     assert.ok(d.data.size >= 0.35 && d.data.size < 0.7, `${d.data.size}`); // (what the screen says is not taken)
   }
   assert.equal((await req('/api/island/festival/snowman', a, { step: 'roll' })).data.error, 'SNOW_STACKED');
+  assert.equal((await req('/api/island/festival/snowman', a, { step: 'finish', parts: {} })).data.error, 'SNOW_BARE'); // (dressed by me: one thing at least)
   const made = await req('/api/island/festival/snowman', a, { step: 'finish', parts: { carrot: 1, coal: 5, twig: 2, bucket: 1, scarf: 1 } }); assert.equal(made.status, 200, JSON.stringify(made.data));
   assert.equal(made.data.added, 3); assert.equal(made.data.festival.stamps, 4); assert.ok(made.data.score > 0 && made.data.say);
   assert.deepEqual(made.data.snowmen.map((m) => [m.name, m.mine, m.slot, m.balls.length, m.parts.coal]), [['산타돕기', true, 0, 3, 5]]);
