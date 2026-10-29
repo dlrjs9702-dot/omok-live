@@ -19,8 +19,10 @@ test('주민 대화: 붙잡기가 풀려도 곁에 있으면 다시 붙잡고, �
   const stand = (p, who = a) => req('/api/plaza/state', who, { x: p.x, z: p.z, yaw: 0, moving: false });
   const wait = (ms) => new Promise((r) => { setTimeout(r, ms); });
   await req('/api/test/island/free-residents', a, {});
+  // (CI #351 「never by them」: where they are by the server's own count -- each hold paused their round; the place answer carries it)
+  const serverAt = async (k, who = a) => { const st = (await req('/api/island/resident/bye', who, { n: -1 })).data.residents?.[k] || null; return N.residentAt(k, Date.now(), st); }; // (a bye of no one: the server's state, nothing moved)
   const n = 3; let talk = null;
-  for (let i = 0; i < 20 && talk?.status !== 200; i += 1) { await stand(N.residentAt(n, Date.now())); talk = await req('/api/island/resident/talk', a, { n }); if (talk.status !== 200) await wait(250); }
+  for (let i = 0; i < 20 && talk?.status !== 200; i += 1) { await stand(await serverAt(n)); talk = await req('/api/island/resident/talk', a, { n }); if (talk.status !== 200) await wait(250); }
   assert.equal(talk.status, 200, JSON.stringify(talk.data));
   // a late bye (an earlier talk's) lets the hold go -- the renewal takes it again, I am still by them
   assert.equal((await req('/api/island/resident/bye', a, { n })).status, 200);
@@ -28,7 +30,7 @@ test('주민 대화: 붙잡기가 풀려도 곁에 있으면 다시 붙잡고, �
   assert.deepEqual(await req('/api/island/resident/keep', a, { n }).then((r) => [r.status, r.data.again]), [200, undefined]); // (held: kept as before)
   // someone else talking to them meanwhile: over, said why
   assert.equal((await req('/api/island/resident/bye', a, { n })).status, 200);
-  let other = null; for (let i = 0; i < 20 && other?.status !== 200; i += 1) { await stand(N.residentAt(n, Date.now()), b); other = await req('/api/island/resident/talk', b, { n }); if (other.status !== 200) await wait(250); }
+  let other = null; for (let i = 0; i < 20 && other?.status !== 200; i += 1) { await stand(await serverAt(n, b), b); other = await req('/api/island/resident/talk', b, { n }); if (other.status !== 200) await wait(250); }
   assert.equal(other.status, 200, JSON.stringify(other.data));
   const busy = await req('/api/island/resident/keep', a, { n }); assert.equal(busy.status, 409); assert.equal(busy.data.reason, 'busy'); assert.match(busy.data.message, new RegExp(Cast.WALKERS[n].name));
   await req('/api/island/resident/bye', b, { n });
