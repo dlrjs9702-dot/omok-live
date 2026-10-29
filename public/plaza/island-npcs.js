@@ -521,5 +521,8 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  // the islanders walking about the island now (X2 선물 배달 picks from these) -- all of them for now; 주민 근무표 changes
+  // only this when some keep a shop part of the day
+  const walking = () => Array.from({ length: COUNT }, (_, n) => n);
+  return { COUNT, WALKER, round, at, residentAt, walking, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

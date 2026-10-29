@@ -22,6 +22,13 @@
     persimmon_string: { name: '곶감 걸이', kind: 'furniture', good: 'persimmon_string__plain' },
     feast_table: { name: '잔칫상', kind: 'furniture', good: 'feast_table__plain' },
     title_harvest: { name: '칭호 「풍년」', kind: 'title', title: 'title_event_harvest' },
+    // X2 크리스마스 (assets 76): the house pieces and the title for the Christmas stamps
+    xmas_tree_small: { name: '크리스마스 트리', kind: 'furniture', good: 'xmas_tree_small__plain' },
+    xmas_fireplace: { name: '벽난로', kind: 'furniture', good: 'xmas_fireplace__plain' },
+    xmas_snow_globe: { name: '스노볼', kind: 'furniture', good: 'xmas_snow_globe__plain' },
+    xmas_stocking: { name: '양말 걸이', kind: 'furniture', good: 'xmas_stocking__plain' },
+    xmas_gingerbread_house: { name: '과자 집', kind: 'furniture', good: 'xmas_gingerbread_house__plain' },
+    title_christmas: { name: '칭호 「메리 크리스마스」', kind: 'title', title: 'title_event_christmas' },
   });
   const FESTIVALS = Object.freeze([
     Object.freeze({
@@ -35,10 +42,23 @@
       }),
       shop: Object.freeze([['harvest_basket', 3], ['straw_sheaf', 3], ['corn_string', 4], ['persimmon_string', 4], ['feast_table', 8], ['title_harvest', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
     }),
+    // X2 (사용자 2026-10-27 「둘로 나눠」, 「모을 수 있는 도장 50개로 넉넉하게」): seven days, 50 stamps to be had for the stall's 37
+    Object.freeze({
+      id: 'christmas-2026', name: '크리스마스', start: '2026-12-19', end: '2026-12-25',
+      host: '크리스마스 주민', say: '메리 크리스마스! 이웃들에게 선물을 배달하고, 눈사람도 만들고, 성탄 저녁엔 트리 곁에 모여요.',
+      tasks: Object.freeze({
+        gift: { name: '선물 배달', stamps: 1, perDay: 3 }, // (a gift from the host's sack to the islander named on it)
+        snowman: { name: '눈사람 만들기', stamps: 3, perDay: 1 }, // (three balls rolled on the snow field, stacked and dressed)
+        gather: { name: '성탄 저녁 모임', stamps: 6, perDay: 1, lastDayFrom: 18, lastDayTo: 22 }, // (the last day's evening, by the plaza's tree)
+        contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 },
+      }),
+      shop: Object.freeze([['xmas_tree_small', 8], ['xmas_fireplace', 8], ['xmas_snow_globe', 4], ['xmas_stocking', 3], ['xmas_gingerbread_house', 4], ['title_christmas', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
+    }),
   ]);
   // titles the events give (worn like the others; owned once given)
   const TITLES = Object.freeze({
     title_event_harvest: { name: '풍년' },
+    title_event_christmas: { name: '메리 크리스마스' },
     title_story_lighthouse: { name: '등대의 이웃' }, // (S2 섬 이야기: the last chapter's)
     ...Object.fromEntries(['fish', 'bug'].flatMap((k) => [1, 2, 3].map((r) => [`title_contest_${k}_${r}`, { name: `${k === 'fish' ? '낚시' : '곤충'} 대회 ${['금', '은', '동'][r - 1]}상` }]))),
   });
@@ -50,7 +70,10 @@
 
   // where an event stands on 대청마당 (its south side, clear of the disc, the channels and the gardens): the stall (its sign
   // read from its -Z, turned to face the disc), its host beside it -- the festival's and the contests' -- and the feast table
-  const PLACES = Object.freeze({ stall: Object.freeze({ x: 12, z: -104, yaw: Math.PI }), host: Object.freeze({ x: 9.4, z: -102.6, yaw: -0.47 }) /* (toward the disc) */, feast: Object.freeze({ x: 0, z: -98, yaw: 0 }), REACH: 2.6, FEAST_R: 6 });
+  const PLACES = Object.freeze({ stall: Object.freeze({ x: 12, z: -104, yaw: Math.PI }), host: Object.freeze({ x: 9.4, z: -102.6, yaw: -0.47 }) /* (toward the disc) */, feast: Object.freeze({ x: 0, z: -98, yaw: 0 }), REACH: 2.6, FEAST_R: 6,
+    // X2 크리스마스: the plaza's tree (B 46, on the disc) for the evening gathering, and the snow field (its south-west paving,
+    // clear of the gardens and seats) where the snowmen are rolled and the day's stand
+    tree: Object.freeze({ x: 0, z: -84 }), GATHER_R: 9, snow: Object.freeze({ x: -18, z: -99, w: 10, d: 7 }) });
   // a festival's days with the administrator's override ({ [id]: { off, start, end } })
   function festivalDays(f, override = {}) { const o = override[f.id] || {}; return { start: o.start || f.start, end: o.end || f.end, off: Boolean(o.off) }; }
   // the festival on at `ms` (its days moved or switched off by the override), or null
