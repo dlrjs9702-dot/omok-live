@@ -58,8 +58,8 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     await enter(`home:${lot}`, 'home');
     await expect.poll(async () => (await view())).toMatchObject({ side: 'in', mode: 'first', body: false });
     // (a desk with a snow globe, a coffee table with the radio -- in again: the room as the server has it)
-    const [desk, globe, table, radio] = (await post(request, '/api/test/home/furniture', who.token, { ids: ['desk__oak', 'xmas_snow_globe__plain', 'coffee_table__oak', 'radio__red'] })).data.pieces.map((p) => p.uid);
-    for (const [uid, x, z] of [[desk, -1.5, 2.5], [globe, -1.5, 2.5], [table, 1.5, 2.5], [radio, 1.5, 2.5]]) expect((await post(request, '/api/home/place', who.token, { uid, x, z, rot: 0 })).status).toBe(200);
+    const [desk, globe, table, radio, box] = (await post(request, '/api/test/home/furniture', who.token, { ids: ['desk__oak', 'xmas_snow_globe__plain', 'coffee_table__oak', 'radio__red', 'insect_case__oak'] })).data.pieces.map((p) => p.uid);
+    for (const [uid, x, z] of [[desk, -1.5, 2.5], [globe, -1.85, 2.5], [box, -1.3, 2.5], [table, 1.5, 2.5], [radio, 1.5, 2.5]]) /* (assets 86: the tabletop 곤충 상자 on the desk) */ expect((await post(request, '/api/home/place', who.token, { uid, x, z, rot: 0 })).status).toBe(200);
     await enter('home:exit', 'island'); await enter(`home:${lot}`, 'home');
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().lid()?.visible)).toBe(true); // (the ceiling, the walls up to it)
     await shot('home-first');

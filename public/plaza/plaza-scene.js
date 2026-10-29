@@ -2733,10 +2733,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   const swimTo = (T, bottom) => { if (T.cylinder) { const r = Math.sqrt(Math.random()) * (T.max[0] - T.min[0]) * 0.45; const a = Math.random() * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * r, bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), Math.sin(a) * r); } return new THREE.Vector3(T.min[0] + Math.random() * (T.max[0] - T.min[0]), bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), T.min[2] + Math.random() * (T.max[2] - T.min[2])); };
   function drawPiece(p, ghost = false) {
-    const shape = HOME.shapeOf(p.id); const good = globalThis.IslandFurniture?.good(p.id); const s = HOME.SIZE[shape] || [1, 1, 1]; const T = HOME.TANKS[shape];
+    const shape = HOME.shapeOf(p.id); const good = globalThis.IslandFurniture?.good(p.id); const onTop = shape === 'insect_case' && HOME.supportOf(p, homeHere.home.pieces); // (V1, assets 86: on a top the tabletop case)
+    const s = onTop ? [0.36, 0.24, 0.28] : HOME.SIZE[shape] || [1, 1, 1]; const T = HOME.TANKS[onTop ? 'insect_case_desk' : shape];
     const root = new THREE.Group(); const at = hungAt(p); root.position.set(at.x, 0.04 + HOME.liftOf(p, homeHere.home.pieces), at.z); /* (207: on a desk's top -- what is in it up with it) */ root.rotation.y = (p.rot * Math.PI) / 2; homeRoomV.group.add(root);
     const f = new THREE.Group(); root.add(f); mesh(new THREE.BoxGeometry(s[0], s[2], s[1]), mat(0xc9a77c), 0, s[2] / 2, 0, f);
-    if (good) assets.attach(good.model, root, f);
+    if (good) assets.attach(onTop ? good.model.replace('furn.insect_case__', 'furn.insect_case_desk__') : good.model, root, f);
     const v = { root, key: ghost ? '' : pieceKey(p), swim: [], bubbles: [] };
     if (shape === 'picture_frame' && p.photo) { // a photo card in the frame: the place and 「기념사진」 (the shot itself stays on the PC)
       const c = document.createElement('canvas'); c.width = 256; c.height = 200; const x = c.getContext('2d'); const sky = x.createLinearGradient(0, 0, 0, 200); sky.addColorStop(0, '#9fd3f0'); sky.addColorStop(1, '#f6e7c8'); x.fillStyle = sky; x.fillRect(0, 0, 256, 200);

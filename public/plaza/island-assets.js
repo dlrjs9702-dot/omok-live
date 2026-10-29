@@ -409,6 +409,7 @@
   // to one face looking down, so from a camera far from the room's middle the floor was gone; FLAT_LOW_LOST in the test)
   const FLOOR = { low: null };
   for (const g of FURN?.GOODS || []) REGISTRY[g.model] = fv(`furn_${g.id}`);
+  for (const c of ['oak', 'walnut']) REGISTRY[`furn.insect_case_desk__${c}`] = fv(`furn_insect_case_desk__${c}`); // (assets 86: the same 곤충 상자 on a desk's top -- no legs, 0.36 x 0.24 x 0.28 m; not a good of its own)
   for (const f of ['plinth_l', 'plinth_s', 'price_stand', 'sold_sign', 'checkout']) REGISTRY[`shop.${f}`] = fv(`shop_${f}`, { shadows: false });
   for (const zone of ['living', 'bedroom', 'kitchen', 'garden']) REGISTRY[`shop.rug_zone__${zone}`] = fv(`shop_rug_zone__${zone}`, { shadows: false, ...FLOOR });
   for (const f of ['floor2', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60, ...(f === 'floor2' ? FLOOR : {}) });
