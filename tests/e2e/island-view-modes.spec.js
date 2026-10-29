@@ -64,6 +64,9 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().lid()?.visible)).toBe(true); // (the ceiling, the walls up to it)
     await shot('home-first');
     if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().setCamYaw?.(window.PlazaDebug().view().yaw)); for (const h of [3.6, 4.0]) { await page.evaluate((h) => window.PlazaDebug().lid(h), h); await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(d.view().yaw); }); await shot(`home-ceil-${h}`); } await page.evaluate(() => window.PlazaDebug().lid(null)); }
+    // 꾸미기: the room from above while it is open, the first again when closed
+    await page.locator('#homeEditBtn').click(); await expect(page.locator('#homeEdit')).toBeVisible(); await expect.poll(async () => (await view()).mode).toBe('third');
+    await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(async () => (await view()).mode).toBe('first');
     await toggle(); await expect.poll(async () => (await view()).mode).toBe('third');
     expect(await page.evaluate(() => window.PlazaDebug().lid()?.visible)).toBe(false); // (the third as before)
     await shot('home-third');
