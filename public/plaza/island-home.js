@@ -73,6 +73,12 @@
     xmas_tree_small: [0.88, 0.9, 1.6], xmas_fireplace: [1.45, 0.65, 1.22], xmas_snow_globe: [0.29, 0.3, 0.36], xmas_stocking: [0.63, 0.08, 0.5], xmas_gingerbread_house: [0.5, 0.5, 0.37] };
   const HUNG = new Set(['picture_frame', 'wall_clock', 'curtain_window', 'wall_shelf', 'corn_string', 'persimmon_string', 'xmas_stocking']); // (their backs on a wall, at the height made)
   const FLAT = new Set(['rug_round']); // (under the rest)
+  // 207 집 꾸미기 (gamecenter-notes docs/home-tabletop-20261029.md 1): a small thing whose footprint is all inside one of these
+  // stands on its top -- the height its model's top really is (rays down over its middle, 2 cm: not the size's height, a
+  // vase or a lip stands above some); the nightstand (its lamp), toy box (toys), TV stand (the TV) and feast table (dishes)
+  // have no clear top. Moved on a top by 0.05 m
+  const SMALL = new Set(['insect_case', 'radio', 'moon_lamp', 'shell_lamp', 'mini_lighthouse', 'choseung_lantern', 'trophy_fish', 'trophy_bug', 'xmas_snow_globe', 'xmas_gingerbread_house']);
+  const TOPS = { desk: 0.765, dresser: 0.85, coffee_table: 0.45, dining_table: 0.78, counter: 0.89, soban: 0.34 };
   // where one sits (assets 57 manifest seats, model local: x, height, z) -- 'lie' and 'floor' sit too for now
   const SEATS = { window_seat: [[0, 0.5, 0]], armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.56, 0.46, -0.12], [0.56, 0.46, -0.12]] /* (6회차 4 「같이 앉으면 머리가 뚫려」: 0.9 m apart the two big heads met -- 1.12, still on its cushions) */, stool: [[0, 0.51, 0]], bed: [[0, 0.55, 0]], bunk_bed: [[0, 0.5, 0]] }; // (3회차 3: the beds' heights as their models' mattresses)
   // the tanks (assets 57 manifest swim): where fish swim (model local), how many, the biggest size they take, how small fish show
@@ -99,6 +105,11 @@
     return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2 };
   }
   const overlap = (a, b) => a.x0 < b.x1 - 1e-6 && b.x0 < a.x1 - 1e-6 && a.z0 < b.z1 - 1e-6 && b.z0 < a.z1 - 1e-6;
+  const within = (a, b) => a.x0 >= b.x0 - 1e-6 && a.x1 <= b.x1 + 1e-6 && a.z0 >= b.z0 - 1e-6 && a.z1 <= b.z1 + 1e-6;
+  // the piece a small thing stands on (null: the floor), and what stands on a piece -- by place alone, nothing saved for it
+  const supportOf = (p, others = []) => { const b = SMALL.has(shapeOf(p.id)) && boxOf(p); return (b && others.find((o) => o.uid !== p.uid && TOPS[shapeOf(o.id)] && within(b, boxOf(o)))) || null; };
+  const liftOf = (p, others = []) => { const t = supportOf(p, others); return t ? TOPS[shapeOf(t.id)] : 0; };
+  const heldOn = (t, pieces = []) => (TOPS[shapeOf(t.id)] ? pieces.filter((o) => o.uid !== t.uid && SMALL.has(shapeOf(o.id)) && within(boxOf(o), boxOf(t))) : []);
   // the back of a piece (its +Z, as made) points to: rot 0 -> +z (the back wall), 1 -> -x... (a quarter turn each)
   const backDir = (rot) => [[0, 1], [1, 0], [0, -1], [-1, 0]][((rot % 4) + 4) % 4];
   // -> null when it may stand there, else why not (Korean, for the page)
@@ -110,6 +121,11 @@
     const shape = shapeOf(p.id); if (!SIZE[shape]) return '놓을 수 없는 가구예요.';
     if (![0, 1, 2, 3].includes(p.rot) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return '자리를 확인해 주세요.';
     const b = boxOf(p); const st = stageOf(stage); const HX = st.hx; const HZ = st.hz;
+    const top = supportOf(p, others); // (207: on a desk -- any 0.05 m place on it, clear of the other things on that top)
+    if (top) {
+      if (!free && !(onStep(p.x * 5) && onStep(p.z * 5))) return '자리를 확인해 주세요.';
+      return heldOn(top, others).some((o) => o.uid !== p.uid && overlap(b, boxOf(o))) ? '위에 놓인 다른 물건과 겹쳐요.' : null;
+    }
     if (!free && !((onStep(p.x) || flushOn(p.x, (b.x1 - b.x0) / 2, HX)) && (onStep(p.z) || flushOn(p.z, (b.z1 - b.z0) / 2, HZ)))) return '자리를 확인해 주세요.';
     if (b.x0 < -HX - 1e-6 || b.x1 > HX + 1e-6 || b.z0 < -HZ - 1e-6 || b.z1 > HZ + 1e-6) return '방 밖으로 나가요.';
     if (st.fixed.some((w) => overlap(b, w))) return '방의 벽이나 창가 의자와 겹쳐요.';
@@ -120,12 +136,13 @@
     }
     if (overlap(b, doorwayOf(stage))) return '문 앞은 비워 두세요.';
     if (FLAT.has(shape)) return null; // (a rug goes under the rest)
-    return others.some((o) => !HUNG.has(shapeOf(o.id)) && !FLAT.has(shapeOf(o.id)) && overlap(b, boxOf(o))) ? '다른 가구와 겹쳐요.' : null;
+    return others.some((o) => !HUNG.has(shapeOf(o.id)) && !FLAT.has(shapeOf(o.id)) && !supportOf(o, [...others, p]) && overlap(b, boxOf(o))) ? '다른 가구와 겹쳐요.' : null; // (what stands on a top -- this one's too -- is not in the way)
   }
   // the place nearest p that placeError takes: its step, or against a wall when that is within a step (3회차 6)
-  function snapPos(p, stage = 2) {
+  function snapPos(p, stage = 2, others = []) {
     const s = SIZE[shapeOf(p.id)]; if (!s) return { x: p.x, z: p.z }; const st = stageOf(stage);
     const [w, d] = p.rot % 2 ? [s[1], s[0]] : [s[0], s[1]];
+    const top = supportOf(p, others); if (top) { const t = boxOf(top); const near = (v, lo, hi) => Math.min(Math.floor(hi * 20 + 1e-6) / 20, Math.max(Math.ceil(lo * 20 - 1e-6) / 20, Math.round(v * 20) / 20)); return { x: near(p.x, t.x0 + w / 2, t.x1 - w / 2), z: near(p.z, t.z0 + d / 2, t.z1 - d / 2) }; }
     const one = (v, half, H) => { const hi = H - half; const q = Math.min(hi, Math.max(-hi, Math.round(v * 4) / 4)); return [q, hi, -hi].filter((c) => c === q || Math.abs(c - v) < 0.25).sort((a, b) => Math.abs(a - v) - Math.abs(b - v))[0]; };
     return { x: one(p.x, w / 2, st.hx), z: one(p.z, d / 2, st.hz) };
   }
@@ -148,7 +165,7 @@
   // that no longer fits (none should) goes back to the 가구 창고 -> { pieces, back: [uid] }
   function grownPieces(pieces, stage) {
     const { hx: HX, hz: HZ } = stageOf(stage); const out = []; const back = [];
-    for (const p of pieces) {
+    for (const p of [...pieces.filter((x) => !SMALL.has(shapeOf(x.id))), ...pieces.filter((x) => SMALL.has(shapeOf(x.id)))]) { // (207: what stands on a top after it)
       const shape = shapeOf(p.id); const s = SIZE[shape]; let q = { ...p };
       if (HUNG.has(shape) && s) { const [bx, bz] = backDir(p.rot); const d = s[1]; const snap = (v) => Math.round(v * 4) / 4; q = bz === 1 ? { ...q, z: snap(HZ - d / 2) } : bx === 1 ? { ...q, x: snap(HX - d / 2) } : bx === -1 ? { ...q, x: snap(-HX + d / 2) } : q; }
       if (placeError(q, out, stage) && !TANKS[shape]) back.push(p.uid); else out.push(q); // (a tank stays, with its fish, even in the 큰 집's half wall -- moved by its owner)
@@ -168,5 +185,5 @@
     const anyDir = ANY_DIR.has(shapeOf(p.id));
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf };
+  return { LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, supportOf, liftOf, heldOn };
 }));
