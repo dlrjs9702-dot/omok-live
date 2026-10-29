@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.207 집 꾸미기 — 작은 물건 위에 올리기·꾸미기 창 종이
+
+- island-home SMALL(곤충 상자·라디오·달/조개 램프·작은 등대·청사초롱·트로피 둘·스노볼·과자집) → TOPS(책상 0.765·서랍장 0.85·낮은 탁자 0.45·식탁 0.78·조리대 0.89·소반 0.34, 모델 실제 윗면을 광선으로 잼) 하나의 발자국 안이면 그 위, 0.05 m 칸, 같은 윗면끼리 안 겹침, 걸치면 바닥 규칙. 협탁·장난감 상자·TV장·잔칫상은 윗면이 평평하지 않아 뺌.
+- 위에 물건 있는 가구: 옮기기·돌리기·창고 막음(서버 HOLDS_THINGS·꾸미기 창·잡고 밀기) 「위에 놓인 물건을 먼저 치워 주세요」. 저장은 자리로 판단, 집 넓힐 때 받치는 가구 먼저.
+- 꾸미기 창: 섬 창 종이, 고른 칸 진한 갈색, 「↻ 돌리기」 한 줄.
+- 시험: 단위 island-home, e2e my-home(PC·폰) + 시험용 /api/test/home/release. 사진 notes img/home-tabletop. 탁상형 곤충 상자(주문 86)는 다음 묶음.
+
 ## v1.10.206 구경 C안 + 도구 들기 규칙
 
 - 구경 C안: 열한 곳 모두 그 자리의 작은 할 일(걸어 들어가기만으론 안 끝남). 꽃 색 찾기(물은 색은 카드에도)·쓰러진 허수아비 세우기·벽화 차례로·다음 열차 분(±1)·부두 배웅(sea.boat 천천히)·박자 박수 3·가로등 잡기·징검돌 건너기·책 수레 책·큰 호박 세 번·사탕 바구니 → 꽃님 댁 문. lib/island-quests TASK·drawPick·visitAct, 서버 /api/island/visit, 고르기 답은 받을 때 doc에(트랙엔 보기만), 타이밍은 화면 판단·서버는 시작 뒤 시간·자리. 옛 count 1 인정.
@@ -28,11 +35,3 @@
 - 섬 채팅 단추: 새 채팅은 색만(점 없음, 폭 그대로).
 - 해안 쓰레기 여덟 중 둘은 늘 윤슬만 가운데 해변.
 - e2e island-photo-request·island-quest-list·resident-talk-gone(PC·폰). 사진 notes img/q2-interact.
-
-## v1.10.204 X2 크리스마스 행사
-
-- island-calendar christmas-2026(12/19~25): 선물 배달 1×3, 눈사람 3×1, 성탄 저녁 모임 6(12/25 18~22시 광장 트리 9 m), 대회 1 — 7일 다 하면 도장 50 / 가판대 37(트리 8·벽난로 8·스노볼 4·양말 걸이 3·과자 집 4·칭호 「메리 크리스마스」 10). PLACES tree·GATHER_R·snow(−18, −99, 10×7).
-- lib/island-festival: 선물 takeGift/giveGift(받을 주민·포장 doc, IslandNpcs.walking() 하나), 눈사람 rollStart/rollEnd/finishSnowman(크기는 서버 자기 시계 0.35~1.1 m, roll 자리에서 3 m 넘게 움직여야, 꾸밈 하나 이상), award가 doc의 다른 값을 지킴.
-- 화면: 가판대 덧씌움·선물 자루·산타 차림 행사 주민, 눈밭(눈 한 겹·팻말·지도), 굴리는 눈덩이, 꾸미기 창(빈 채로 시작·종이 칩), 그날 눈사람 최근 12개(남의 것 Low), 주민 대화의 선물 건네기, 행사마다 장식·탭 종이색.
-- 섬 채팅 입력줄: 채팅 창이 닫혀 있으면 아래 가운데(창을 따라가는 건 열려 있을 때만).
-- e2e island-xmas-festival(PC·폰), festival-server 크리스마스. 사진 notes img/xmas-festival-game.
