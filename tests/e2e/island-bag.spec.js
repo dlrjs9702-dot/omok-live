@@ -42,9 +42,15 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
     await page.locator('.islandBagSlot').nth(10).click();
     await expect.poll(order).toEqual([...now.slice(1), now[0]]);
   }
+  if (isMobile) { // (Codex 검토 5차 P3-1) one held by a finger as 정리 comes: let go -- its slot names another thing after
+    await page.waitForTimeout(800); await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true });
+    await page.waitForTimeout(600); await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
+    await expect(page.locator('.islandBagSlot.held')).toHaveCount(1);
+  }
   // 정리: asked once, then tools, fish, materials, the rest
   await page.locator('#islandBagSort').click(); await expect(page.locator('#islandBagSort')).toHaveText('순서를 바꿀까요?');
   await page.locator('#islandBagSort').click(); await expect.poll(order).toEqual(['bugnet', 'fish_goby', 'weed', 'bread']);
+  if (isMobile) { await expect(page.locator('.islandBagSlot.held')).toHaveCount(0); await page.locator('.islandBagSlot').nth(10).click(); await page.waitForTimeout(800); expect(await order()).toEqual(['bugnet', 'fish_goby', 'weed', 'bread']); } // (a tap after: nothing moved)
   // the bag again: shut; a click outside: shut
   await tab(); await expect(bag).toBeHidden();
   await tab(); await expect(bag).toBeVisible(); await page.mouse.click(5, 5); await expect(bag).toBeHidden();

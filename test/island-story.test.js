@@ -80,7 +80,10 @@ test('이야기 부탁: 단계 → 제안·할게요, 한 번에 하나, 곳에 
   await req('/api/island/resident/talk', a, { n: 4, topic: 'storyYes' }); await bye(4);
   assert.equal((await talk(7)).data.today.story, 'visit');
   const visited = await req('/api/island/resident/talk', a, { n: 7, topic: 'story' }); assert.equal(visited.data.story.track.ready, true); await bye(7);
-  await talk(4); assert.equal((await req('/api/island/resident/talk', a, { n: 4, topic: 'story' })).data.storyNote.n, 4); await bye(4);
+  // (Codex 검토 5차 P3-4 ③) the chapter's end saved, its 호감도's save failed: the next talk pays it
+  await talk(4); await req('/api/test/store/fail', null, { method: 'affinityAdd' }); assert.notEqual((await req('/api/island/resident/talk', a, { n: 4, topic: 'story' })).status, 200);
+  assert.equal((await story()).chapters[4], 1); await bye(4);
+  assert.equal((await talk(4)).data.affinity.points, 5 + 1 + 2, '다음 말 걸기에 마저'); await bye(4);
   // 그만둘래요: 이솔's 1장 taken, let go -- offered again
   await talk(8); await req('/api/island/resident/talk', a, { n: 8, topic: 'story' }); await req('/api/island/resident/talk', a, { n: 8, topic: 'storyYes' }); await bye(8);
   assert.ok((await story()).track); assert.equal((await req('/api/island/story/drop', a, {})).data.track, null);

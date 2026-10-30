@@ -159,7 +159,10 @@ test('크리스마스: 선물 배달(받는 이웃 곁에서만), 눈사람(서�
   }
   assert.equal((await req('/api/island/festival/snowman', a, { step: 'roll' })).data.error, 'SNOW_STACKED');
   assert.equal((await req('/api/island/festival/snowman', a, { step: 'finish', parts: {} })).data.error, 'SNOW_BARE'); // (dressed by me: one thing at least)
-  const made = await req('/api/island/festival/snowman', a, { step: 'finish', parts: { carrot: 1, coal: 5, twig: 2, bucket: 1, scarf: 1 } }); assert.equal(made.status, 200, JSON.stringify(made.data));
+  // (Codex 검토 5차 P3-4 ②) the field's save fails once: finished in my doc, put up on the next 「finish」 (no stamps again)
+  await req('/api/test/store/fail', null, { method: 'setWorldValue' });
+  assert.notEqual((await req('/api/island/festival/snowman', a, { step: 'finish', parts: { carrot: 1, coal: 5, twig: 2, bucket: 1, scarf: 1 } })).status, 200);
+  const made = await req('/api/island/festival/snowman', a, { step: 'finish', parts: {} }); assert.equal(made.status, 200, JSON.stringify(made.data));
   assert.equal(made.data.added, 3); assert.equal(made.data.festival.stamps, 4); assert.ok(made.data.score > 0 && made.data.say);
   assert.deepEqual(made.data.snowmen.map((m) => [m.name, m.mine, m.slot, m.balls.length, m.parts.coal]), [['산타돕기', true, 0, 3, 5]]);
   const seen = (await req('/api/island/festival', b)).data.snowmen; assert.deepEqual(seen.map((m) => [m.name, m.mine]), [['산타돕기', false]]); assert.equal(seen[0].account, undefined);

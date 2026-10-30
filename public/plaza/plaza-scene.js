@@ -112,6 +112,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!mats.has(key)) mats.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...extra }));
     return mats.get(key);
   };
+  // (Codex 검토 5차 P3-6) what was made for one thing -- its geometry, a material not one of the shared mat()s -- let go with it
+  const disposeOwn = (root) => root?.traverse((o) => { if (!o.isMesh) return; o.geometry.dispose(); const shared = new Set(mats.values()); for (const m of [].concat(o.material)) if (!shared.has(m)) m.dispose(); });
   const mesh = (geometry, material, x = 0, y = 0, z = 0, parent = scene) => {
     const m = new THREE.Mesh(geometry, material);
     m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
@@ -2472,7 +2474,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const v = visits.get(story); if (!v) return Promise.resolve(false); const t = v.task; v.run?.end?.(false);
     return new Promise((done) => {
       const fx = new THREE.Group(); scene.add(fx); const t0 = performance.now(); const run = { t0, fx, hits: 0, last: -1e9 };
-      run.end = (ok) => { if (v.run !== run) return; v.run = null; scene.remove(fx); done(ok); };
+      run.end = (ok) => { if (v.run !== run) return; v.run = null; scene.remove(fx); disposeOwn(run.ring); disposeOwn(run.glow); done(ok); }; // (the boat is the asset cache's)
       if (t.id === 'pier') { const P = globalThis.IslandTerrain.PIER; const boat = thing(fx, 'sea.boat', t.at.x + P.ux * 4, t.at.z + P.uz * 4, Math.atan2(P.ux, P.uz)); boat.position.y = Math.max(boat.position.y, -0.6); /* (the island's own boat -- the fisher's -- on the sea; dalmaru.dock_boat is the float with its gangway, not a boat) */ run.boat = boat; run.dir = { x: P.ux, z: P.uz }; me.anim?.play?.('greet'); }
       if (t.id === 'busk') { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.07, 8, 32), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.4 })); ring.position.set(t.at.x, heightAt(t.at.x, t.at.z) + 2.6, t.at.z); fx.add(ring); run.ring = ring; }
       if (t.id === 'lamp') { const glow = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.15 })); glow.position.set(t.at.x, heightAt(t.at.x, t.at.z) + 3.6, t.at.z); fx.add(glow); run.glow = glow; run.bright = 1500 + Math.random() * 1500; }
@@ -2860,7 +2862,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let lidOverride = null; // (tests: the photos at another height)
   function homeLid(st, wall) {
     const R = homeRoomV; const top = st.tile === '_s3' ? 3.29 : 2.89; const ceil = lidOverride ?? (st.tile === '_s3' ? 4.0 : 3.8);
-    const key = `${st.w}x${st.d}:${wall}:${ceil}`; if (R.lid?.userData.key === key) return; R.lid?.removeFromParent();
+    const key = `${st.w}x${st.d}:${wall}:${ceil}`; if (R.lid?.userData.key === key) return; R.lid?.removeFromParent(); disposeOwn(R.lid);
     const g = new THREE.Group(); g.userData.key = key; g.visible = false; R.group.add(g); R.lid = g;
     const hx = st.w / 2 - 0.05; const hz = st.d / 2 - 0.05; const band = ceil - top + 0.02; const wm = mat(LID_WALL[wall] || LID_WALL.cream); const rail = mat(0x9a7652);
     for (const [w, d, x, z] of [[st.w, 0.12, 0, hz], [st.w, 0.12, 0, -hz], [0.12, st.d, hx, 0], [0.12, st.d, -hx, 0]]) {
@@ -3212,13 +3214,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const frustum = new THREE.Frustum(); const projM = new THREE.Matrix4();
   function photoTarget() {
     camera.updateMatrixWorld(); projM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); frustum.setFromProjectionMatrix(projM);
+    let first = null; // (Codex 검토 5차 P3-7: two posing -- the one in the picture, whichever; 「안 들어왔어요」 only when none is)
     for (const [key, o] of eventObjs) {
       if (!key.startsWith('ev:photo:') || !o.posing || !o.npc) continue;
       const p = new THREE.Vector3(); o.npc.root.getWorldPosition(p); const near = Math.hypot(p.x - me.root.position.x, p.z - me.root.position.z) <= 12;
       const body = [0.4, 1.0, 1.5].map((h) => p.clone().setY(p.y + h)); // (feet, middle, head: any of them in the picture)
-      return { id: key.slice('ev:photo:'.length), inFrame: near && body.some((q) => frustum.containsPoint(q)) };
+      const t = { id: key.slice('ev:photo:'.length), inFrame: near && body.some((q) => frustum.containsPoint(q)) };
+      if (t.inFrame) return t; first ||= t;
     }
-    return null;
+    return first;
   }
   const doorOf = (id) => doors[id] || eventDoors[id];
 

@@ -68,6 +68,12 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   await book.locator('[data-tab="lighthouse"]').click(); await expect(book.locator('.storyPieceCell')).toHaveCount(8); await expect(book.locator('.storyPieceCell.locked')).toHaveCount(8);
   await shot('5pieces');
   await book.locator('[data-tab="events"]').click(); await expect(book.locator('.storyBookBody')).toContainText('아직 받은 행사 이야기가 없어요');
+  // (Codex 검토 5차 P3-5) two tabs fast, the first one's answer late: the last one asked stays
+  let late = true; await page.route('**/api/island/story', async (route) => { if (late) { late = false; await new Promise((r) => setTimeout(r, 1500)); } await route.continue(); });
+  await book.locator('[data-tab="residents"]').click(); await book.locator('[data-tab="lighthouse"]').click();
+  await expect(book.locator('.storyPieceCell')).toHaveCount(8); await page.waitForTimeout(2000);
+  await expect(book.locator('[data-tab="lighthouse"]')).toHaveAttribute('aria-selected', 'true'); await expect(book.locator('.storyPieceCell')).toHaveCount(8);
+  await page.unroute('**/api/island/story');
   await shot('6events');
   await book.locator('#storyBookClose').click();
   // 오 탐정: 「수사판 보기」 -- the book at 초승등대

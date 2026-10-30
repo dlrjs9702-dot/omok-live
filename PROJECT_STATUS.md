@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.214 주민 근무표 B — 주민 말씨 + Codex 검토 5차 고침
+
+- island-cast RESIDENTS 27명 한 목록(걷는 10 + 자리 17: 이야기 주민 원래 번호, 마루 23·단비 24·한솔 25·새롬 26), WALKERS·KEEPERS·VOICES·FLAVOR·MOODS·CHATS는 여기서. voices 최종본(story/voices-20261029)을 스크립트로 옮김. REG rumor_* 14·q0~q5 + 새 말씨 goeun·cheori·garak·hao·hasyo(10 말씨 × 60 키). rumor(ctx, random, n)·questionLine(n, k)로 섬 소문·이야기 나눠요가 말한 주민 말씨로. say: own 키는 자기 말만. 김우성 통과 말은 passLine 그대로. shop·duty는 데이터만(C에서 씀).
+- Codex 검토 5차(docs/codex-review-5-20261031.md): P2-1 메신저 새 방 첫 메시지 팝업, P2-2 알림 구독 옮기기(새 것 뒤에 옛 것 해지, 「알림 끄기」는 이 기기 구독까지), P3-1 가방 정리 때 든 칸 놓기, P3-2 pull peek 요청마다, P3-3 storyDoc 첫 읽기 경쟁, P3-4 저장 실패 반쪽(카운트다운 칭호·눈사람 unshown·이야기 장 unpaid), P3-5 창 세대 closeIfStill·이야기 책 마지막 탭, P3-6 방문 효과·천장 dispose, P3-7 사진 대상 화면 안 먼저.
+- 시험: 단위 resident-voice(27명 × 60 키·어미 다름)·countdown·festival·island-story(시험 전용 /api/test/store/fail로 저장 실패 넣음), e2e resident-register(새)·messenger 셋·bag·story·view-modes(PC·폰).
+
 ## v1.10.213 주민 근무표 A — 주민 모습
 
 - 에셋 88: 주민 27명의 근무·평상 모델(34 모습 × High/Low), 기존 걷는 주민 10명 교체(다리·손). island-assets RESIDENT_LOOKS·RESIDENT_AT·residentLook(post). 자리마다 그 주민: 퀘스트 주민(이야기별), 관공서 창구 셋(단비 0.28 m 발판), 시장 마루(island-townhall), 교도관 우성. dressResident가 headTop·resident 표시.
@@ -24,12 +30,3 @@
 
 - 메신저 6절(사용자 「최소화 해 놓아도 읽은걸로 처리되고 있는데」): GET messages에 `peek=1`이면 서버가 읽음을 건드리지 않음. 창을 안 보고 있을 때(hidden·!hasFocus) pull()이 peek, 창으로 돌아오면(focus·visibilitychange) 열린 방을 보통으로 한 번 다시 불러 그때 읽음 + 안 읽은 수 다시.
 - 시험: 단위 messenger(peek이면 reads 그대로), e2e messenger(창 숨김 → 상대 글 → 보낸 쪽 「1」·내 안 읽은 수 1 그대로 → 창 보임 → 읽음, 고치기 전 코드로는 실패 확인).
-
-## v1.10.211 백화점 개편 A안
-
-- 4층: 1 잡화·생활(mall.floor1, 계산대 하나·판매 바구니=노점, 물건 29개 그대로), 2 옷·꾸미기(새 방 island-fashion.js x220, 옷가게·소품 가게·변신 의상실, 꾸미기 거울 의자 둘 — 앉으면 머리·염색·얼굴, 셋째 「거울이 다 찼어요」, 마네킹 B 넷), 3 가구(받침 세로 줄 2 m, 계산대 f3), 4 옥상 펫샵(roof.floor·하늘, 마당 14×10, 승강기 집, 계산대 f4). 에셋 82 mall-v2 27개.
-- 승강기 네 층, 층마다 방 자리 그대로(옛 저장 위치는 새 층). 층을 옮기면 떠난 층 방은 그리지 않음.
-- 1인칭: 실내 세 층 천장·벽·앞 벽, 옥상은 하늘.
-- 게임 스킨은 게임관 「스킨」 탭(위치 검사 없음). 거울 자리의 머리·염색·얼굴은 그 의자에 앉은 사람만(서버).
-- 메신저: badge-96 흰 실루엣·icon-192, 재연결 중 팝업 없음, messenger.html은 아일랜드 manifest.
-- 시험: 단위 mall-floors(걸어서 닿음·2 m 길·승강기·거울·옛 자리), e2e mall-floors(PC·폰, 사진 notes img/mall-revamp-live).
