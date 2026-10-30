@@ -21,6 +21,8 @@ test('백화점 4층: 승강기 네 층, 층마다 계산대, 2층 거울 앉으
     await page.evaluate((n) => { const d = window.PlazaDebug(); const l = d.doors[`lift:${n}`]; d.teleport(l.x, l.z); }, n);
     await expect(hint).toContainText(`${n}층 ${name}`);
     await look(R, 0, -6.5); await shot(`f${n}`);
+    if (n === 4) for (const [k, yaw] of [Math.PI / 2, Math.PI, -Math.PI / 2].entries()) { await look(R, 0, 0, yaw); await shot(`f4-round${k + 1}`); } // (총괄 검토: the roof all round -- the sky and its rails only)
+    if (n === 4) expect(await page.evaluate(() => window.PlazaDebug().mallShown())).toEqual(['petshop']);
     if (n !== 4) { await first(true); await page.evaluate(() => window.PlazaDebug().setCamPitch?.(0.12)); await shot(`f${n}-first`); expect((await page.evaluate(() => window.PlazaDebug().view())).mode).toBe('first'); await first(false); }
   }
   // the 2nd floor's mirror: sat, the 꾸미기 window -- hair, colour and face
