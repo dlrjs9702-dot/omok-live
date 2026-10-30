@@ -29,6 +29,10 @@ test('주민 성능 측정: 광장 프레임·draw call·메모리·High/Low', a
       requestAnimationFrame(step);
     }));
   }
+  // far ones Low, near one High: by a walking islander, then 60 m off
+  const lod = async (near) => { await page.evaluate((near) => { const d = window.PlazaDebug(); const w = d.wanderers[0]; d.teleport(w.x + (near ? 1.5 : 60), w.z); }, near); await page.waitForTimeout(1500); return page.evaluate(() => window.PlazaDebug().wearLod()); };
+  out.lod = { near: await lod(true), far: await lod(false) };
+  expect(out.lod.near.high).toBeGreaterThan(out.lod.far.high); // (the one beside me High, gone Low again away)
   console.log(`PERF ${test.info().project.name} ${process.env.PERF_TAG || ''} ${JSON.stringify(out)}`);
   await who.context.close();
 });
