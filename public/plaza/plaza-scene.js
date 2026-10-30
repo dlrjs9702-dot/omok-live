@@ -1356,6 +1356,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const plan = globalThis.IslandAssets?.wardrobeOf?.(look, spec ? { tint: { shirt: hexOf(spec.shirt), hair: hexOf(spec.hair) }, hat: spec.hat ? hexOf(spec.hat) : null } : {});
     if (plan) assets.wear(c, plan);
   }
+  // v1.10.213 주민 근무표 A: a post's islander in their own model (assets 84·83·88 -- no wardrobe over it, as the warden's), their
+  // height for the tag and the bubble; false when the post has no islander yet (its old look stays)
+  function dressResident(c, post, fallback = []) {
+    const look = globalThis.IslandAssets?.residentLook?.(post); if (!look) return false;
+    assets.dress([look.model, ...fallback, 'character.npc'], c); c.headTop = look.headTop; c.resident = look.resident; if (c.tag) fitTag(c); return true;
+  }
   function makeCharacter({ shirt, hair, skin, hat = null, look = {} }) {
     const root = new THREE.Group();
     const body = new THREE.Group(); root.add(body);
@@ -2625,7 +2631,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const clerks = L.desks.map((d) => {
       put(`townhall3.desk_${d.id === 'rename' ? 'civil' : d.id}`, d.lx, /* (개명 신청: the 민원 desk's model again) */ 0, d.lz, Math.PI, (f) => mesh(new THREE.BoxGeometry(3.4, 1.05, 1.1), mat(0xd9d4c8), 0, 0.525, 0, f));
       const c = makeCharacter({ shirt: SHIRT[d.id], hair: 0x2b2b2b, skin: 0xffdcbc }); c.root.position.set(d.lx, 0, d.keeper); g.add(c.root);
-      assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] });
+      if (dressResident(c, `clerk:${d.id}`, [`character.clerk_${d.id}`])) { if (d.id === 'civil') { c.root.position.y = 0.28; mesh(new THREE.BoxGeometry(1.2, 0.28, 0.9), mat(0xb9ad98), d.lx, 0.14, d.keeper, g); } } /* (v1.10.213: 단비 on a low step behind the 민원 desk -- 84 검토) */
+      else { assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] }); }
       const id = d.id === 'civil' ? 'room:desk' : `room:${d.id}`; const chair = globalThis.IslandTerrain.COUNTERS.find((x) => x.id === d.id);
       counterKeepers.push({ id: `townhall:${d.id}`, k: c, spot: () => roomAt(chair.lx, chair.lz) });
       return Object.assign(c, { home: { x: ROOM.x + d.lx, z: ROOM.z + d.keeper, yaw: worldYaw(c.root), id } });
@@ -3052,7 +3059,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const door = put('jail.cell_door', C.door.lx, 0, C.door.lz, 0, (f) => mesh(new THREE.BoxGeometry(C.door.w, 2.58, 0.06), iron, C.door.w / 2, 1.29, 0, f));
     for (const p of JAIL.PROPS) { const root = put(p.id, p.x, 0, p.z, p.yaw, (f) => mesh(new THREE.BoxGeometry(p.id === 'jail.board' ? 1.5 : 1.8, p.id === 'jail.board' ? 1.95 : 0.8, p.id === 'jail.board' ? 0.1 : 0.6), mat(0x8a6a48), 0, p.id === 'jail.board' ? 0.98 : 0.4, 0, f)); if (p.id === 'jail.board') root.add(boardText('오늘의 반성문', 1.2, 0.3, 1.75, -0.07)); }
     const w = makeCharacter({ shirt: 0x4b5320, hair: 0x2b2b2b, skin: 0xffdcbc }); w.root.position.set(JAIL.WARDEN.lx, 0, JAIL.WARDEN.lz); w.root.rotation.y = JAIL.WARDEN.yaw; g.add(w.root);
-    assets.dress(['character.warden', 'character.npc'], w); // (his own model, as the 역무원's -- no wardrobe over it)
+    if (!dressResident(w, 'warden', ['character.warden'])) assets.dress(['character.warden', 'character.npc'], w); // (his own model, as the 역무원's -- no wardrobe over it; v1.10.213 김우성's)
     const at = JAIL.world(JAIL.WARDEN.lx, JAIL.WARDEN.lz); w.home = { x: at.x, z: at.z, yaw: worldYaw(w.root), id: 'jail:warden' };
     counterKeepers.push({ id: 'jail:warden', k: w, spot: () => JAIL.world(JAIL.TALK.lx, JAIL.TALK.lz) });
     for (const [lx, lz] of [[-4, -2], [3, -2], [0, 3]]) { const light = new THREE.PointLight(0xffe7bc, 12, 14, 1.2); light.position.set(lx, 3.2, lz); g.add(light); }
@@ -3136,13 +3143,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           const [look, spec] = QUEST_LOOKS[ev.story] || [{gender:'female',outfit:'avatar_outfit_16',hat:'avatar_hat_1'},{shirt:0xffd166,hair:0x2b2b2b,skin:0xffdcbc,hat:0xff8a5c}];
           npc = makeCharacter(spec); root.rotation.y = Math.atan2(PLAZA_C.x - ev.x, PLAZA_C.z - ev.z); // (facing 대청마당, not the old island's middle)
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key };
-          if (ev.story === 'farmer') { assets.dress(['character.farmer'], npc); assets.hold(npc, 'farm.mallet', 0, { key: 'questTool', at: [0, -0.18, -0.025] }); prepareFarm(); } // v1.10.80 his own model, the mallet in hand
+          if (dressResident(npc, ev.story)) { if (ev.story === 'farmer') prepareFarm(); } /* (v1.10.213: the islander of that story -- the model holds its own hoe, camera, flute...) */
+          else if (ev.story === 'farmer') { assets.dress(['character.farmer'], npc); assets.hold(npc, 'farm.mallet', 0, { key: 'questTool', at: [0, -0.18, -0.025] }); prepareFarm(); } // v1.10.80 his own model, the mallet in hand
           else if (['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'grandpa'].includes(ev.story)) { assets.dress([`character.${ev.story === 'grandpa' ? 'gazebo_grandpa' : ev.story}`, 'character.npc'], npc); if (ev.story === 'busker') assets.hold(npc, 'village.guitar', 0, { key: 'questTool', at: [0, -0.505, 0] }); prepareVillage(); } // v1.10.93 assets 39
           else dressUp(npc, look, spec);
-          if (ev.story === 'kid') { npc.root.scale.setScalar(0.72); assets.hold(npc, 'halloween.candyBasket', 0, { key: 'basket' }); } // a child, the candy basket in hand
-          if (ev.story === 'granny') assets.hold(npc, 'quest.watering_can', 0, { key: 'questTool' });
-          if (['photographer','photomemory'].includes(ev.story)) assets.hold(npc,'quest.camera_bag',0,{key:'questTool',bone:'Chest',at:[0.28,-0.5,-0.12],proc:[0.28,0.65,0.1]});
-          if (ev.story === 'fisher') assets.hold(npc, 'quest.fishing_rod', 0, { key: 'questTool' });
+          if (ev.story === 'kid' && !npc.resident) { npc.root.scale.setScalar(0.72); assets.hold(npc, 'halloween.candyBasket', 0, { key: 'basket' }); } // a child, the candy basket in hand
+          if (ev.story === 'granny' && !npc.resident) assets.hold(npc, 'quest.watering_can', 0, { key: 'questTool' });
+          if (['photographer','photomemory'].includes(ev.story) && !npc.resident) assets.hold(npc,'quest.camera_bag',0,{key:'questTool',bone:'Chest',at:[0.28,-0.5,-0.12],proc:[0.28,0.65,0.1]});
+          if (ev.story === 'fisher' && !npc.resident) assets.hold(npc, 'quest.fishing_rod', 0, { key: 'questTool' });
           npcs.push(npc);
         } else if (ev.kind === 'quest_spot') { // where a step asks me to go: only on the map
         } else if (ev.kind === 'photo' || ev.kind === 'lost_owner') { // a visitor: a tourist with a camera, or someone who lost something
