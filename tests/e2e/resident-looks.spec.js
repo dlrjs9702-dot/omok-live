@@ -36,10 +36,15 @@ test('주민 모습: 자리마다 그 주민 모델, 서 있기·대화 가까�
       await shot(`talk-${d.resident}`);
       await page.evaluate(() => document.getElementById('plazaDialog')?.close()); await page.waitForTimeout(500);
     }
-    // the ten walking: each followed for a moment
+    // the ten walking: each followed for a moment, the camera drawn in (Q); three talked to up close
+    await page.locator('#plazaStage').focus(); for (let k = 0; k < 4; k += 1) await page.keyboard.press('KeyQ');
     for (const n of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
-      await page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => o.n === n); if (w) { d.teleport(w.x + 2.4, w.z + 2.4); d.setCamYaw(Math.atan2(2.4, 2.4)); d.setCamPitch?.(0.05); } }, n);
+      await page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => o.n === n); if (w) { d.teleport(w.x + 1.6, w.z + 1.6); d.setCamYaw(Math.atan2(1.6, 1.6) - 0.3); d.setCamPitch?.(0.05); } }, n);
       await shot(`walk-${n}`);
+      if ([4, 5, 9].includes(n)) { // (노을 할머니, 오 탐정, 가람)
+        await expect.poll(async () => { if (await talking()) return true; await page.evaluate((n) => window.PlazaDebug().talkResident(n), n); await page.waitForTimeout(1500); return talking(); }, { timeout: 20000 }).toBe(true).catch(() => {});
+        await shot(`walktalk-${n}`); await page.evaluate(() => document.getElementById('plazaDialog')?.close()); await page.waitForTimeout(500);
+      }
     }
   } finally { await set('time', 'auto'); await set('weather', 'auto'); }
   await expectNoScriptError(page); await who.context.close();
