@@ -54,11 +54,21 @@
       }),
       shop: Object.freeze([['xmas_tree_small', 8], ['xmas_fireplace', 8], ['xmas_snow_globe', 4], ['xmas_stocking', 3], ['xmas_gingerbread_house', 4], ['title_christmas', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
     }),
+    // X2 카운트다운 (gamecenter-notes docs/asset-proposal-christmas-20261027.md 「X2 행사 결정」): the year's last night, 18:00 to
+    // 01:00 -- the board on 대청마당 and its launchers; at midnight the fireworks, and whoever is round the board from 0:00 to
+    // 0:10 gets the title and a stamp (no stall: the stamp opens the festival's end story -- island-story.js EVENTS.countdown)
+    Object.freeze({
+      id: 'countdown-2026', name: '연말 카운트다운', start: '2026-12-31', end: '2027-01-01', fromHour: 18, toHour: 1,
+      host: '카운트다운 주민', say: '한 해의 마지막 밤이에요! 0시에 대청마당 카운트다운 판 앞에 모여요 — 칭호 「해피 뉴 이어」.',
+      tasks: Object.freeze({ midnight: { name: '0시 대청마당', stamps: 1, perDay: 1, midnight: true, title: 'title_event_newyear' } }),
+      shop: Object.freeze([]),
+    }),
   ]);
   // titles the events give (worn like the others; owned once given)
   const TITLES = Object.freeze({
     title_event_harvest: { name: '풍년' },
     title_event_christmas: { name: '메리 크리스마스' },
+    title_event_newyear: { name: '해피 뉴 이어' }, // (X2 카운트다운: round the board at midnight)
     title_story_lighthouse: { name: '등대의 이웃' }, // (S2 섬 이야기: the last chapter's)
     ...Object.fromEntries(['fish', 'bug'].flatMap((k) => [1, 2, 3].map((r) => [`title_contest_${k}_${r}`, { name: `${k === 'fish' ? '낚시' : '곤충'} 대회 ${['금', '은', '동'][r - 1]}상` }]))),
   });
@@ -73,13 +83,19 @@
   const PLACES = Object.freeze({ stall: Object.freeze({ x: 12, z: -104, yaw: Math.PI }), host: Object.freeze({ x: 9.4, z: -102.6, yaw: -0.47 }) /* (toward the disc) */, feast: Object.freeze({ x: 0, z: -98, yaw: 0 }), REACH: 2.6, FEAST_R: 6,
     // X2 크리스마스: the plaza's tree (B 46, on the disc) for the evening gathering, and the snow field (its south-west paving,
     // clear of the gardens and seats) where the snowmen are rolled and the day's stand
-    tree: Object.freeze({ x: 0, z: -84 }), GATHER_R: 9, snow: Object.freeze({ x: -18, z: -99, w: 10, d: 7 }) });
+    tree: Object.freeze({ x: 0, z: -84 }), GATHER_R: 9, snow: Object.freeze({ x: -18, z: -99, w: 10, d: 7 }),
+    // X2 카운트다운: the board where the feast table stood, read from the disc; its two launchers either side; the circle round it
+    board: Object.freeze({ x: 0, z: -98, yaw: Math.PI }), launchers: Object.freeze([Object.freeze({ x: -6, z: -98.5 }), Object.freeze({ x: 6, z: -98.5 })]), COUNT_R: 12 });
   // a festival's days with the administrator's override ({ [id]: { off, start, end } })
   function festivalDays(f, override = {}) { const o = override[f.id] || {}; return { start: o.start || f.start, end: o.end || f.end, off: Boolean(o.off) }; }
+  const kstAt = (day, h = 0) => Date.parse(`${day}T${String(h).padStart(2, '0')}:00:00+09:00`);
+  // on at `ms`: its days -- or, one by the hour, from its first day's hour to its last day's -- and over after them
+  const festivalOn = (f, d, ms) => (f.fromHour == null ? dayOf(ms) >= d.start && dayOf(ms) <= d.end : ms >= kstAt(d.start, f.fromHour) && ms < kstAt(d.end, f.toHour));
+  const festivalOver = (f, d, ms) => (f.fromHour == null ? dayOf(ms) > d.end : ms >= kstAt(d.end, f.toHour));
   // the festival on at `ms` (its days moved or switched off by the override), or null
   function festivalAt(ms, override = {}) {
     const day = dayOf(ms);
-    for (const f of FESTIVALS) { const d = festivalDays(f, override); if (!d.off && day >= d.start && day <= d.end) return { ...f, start: d.start, end: d.end, lastDay: day === d.end, daysLeft: Math.round((Date.parse(`${d.end}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / DAY) }; }
+    for (const f of FESTIVALS) { const d = festivalDays(f, override); if (!d.off && festivalOn(f, d, ms)) return { ...f, start: d.start, end: d.end, lastDay: day === d.end, daysLeft: Math.round((Date.parse(`${d.end}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / DAY) }; }
     return null;
   }
   // the next festival from `ms` on (for 「곧」 notes), or null
@@ -98,11 +114,21 @@
   // a festival task allowed now (the feast only on the last day's evening)
   function taskOpen(fest, task, ms) {
     const t = fest?.tasks?.[task]; if (!t) return false;
+    if (t.midnight) { const z = kstAt(fest.end); return ms >= z && ms < z + 10 * 60 * 1000; } // (X2: the new year's first ten minutes)
     if (t.lastDayFrom === undefined) return true;
     const h = hourOf(ms); return dayOf(ms) === fest.end && h >= t.lastDayFrom && h < t.lastDayTo;
+  }
+  // X2 카운트다운: the board's words -- before 23:00 the years, from 23:00 the minutes and seconds to midnight, the last ten
+  // seconds one big number, from midnight the new year
+  function countdownText(ms, fest) {
+    const z = kstAt(fest.end); const left = z - ms; const from = Number(fest.start.slice(0, 4)); const to = Number(fest.end.slice(0, 4));
+    if (left <= 0) return { phase: 'new', text: String(to), sub: '새해 복 많이 받으세요' };
+    if (left <= 10000) return { phase: 'last', text: String(Math.ceil(left / 1000)), sub: '' };
+    if (left <= 60 * 60 * 1000) { const sec = Math.ceil(left / 1000); return { phase: 'clock', text: `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`, sub: `${to}년까지` }; }
+    return { phase: 'wait', text: `${from} → ${to}`, sub: '23시부터 카운트다운' };
   }
   // the day's ranking from each account's best score: [{ account, score, at }] -> sorted, the earlier first on a tie
   const rankOf = (rows) => rows.slice().sort((a, b) => b.score - a.score || a.at - b.at || String(a.account).localeCompare(String(b.account)));
 
-  return { KST, DAY, dayOf, hourOf, weekdayOf, addDays, GOODS, FESTIVALS, TITLES, titleOf, CONTEST, TROPHY, PLACES, festivalDays, festivalAt, nextFestival, contestAt, taskOpen, rankOf };
+  return { KST, DAY, dayOf, hourOf, weekdayOf, addDays, GOODS, FESTIVALS, TITLES, titleOf, CONTEST, TROPHY, PLACES, festivalDays, festivalAt, festivalOn, festivalOver, nextFestival, contestAt, taskOpen, rankOf, countdownText, kstAt };
 }));

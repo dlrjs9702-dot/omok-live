@@ -2843,6 +2843,16 @@
     }
     await visitPost(story, act, { choice: Number(i) });
   }
+  // X2 카운트다운: in the new year's first ten minutes round the board -- the title and the festival's stamp, once (the page
+  // asks; the server checks the time and the place)
+  let midnightAsked = 0;
+  async function midnightCheck() {
+    const st = plaza.controller?.countdownState?.(); const task = festivalView?.festival?.tasks?.find((t) => t.id === 'midnight');
+    if (!st?.inWindow || !st.near || !task || task.today > 0 || festivalBusy || Date.now() - midnightAsked < 5000) return;
+    midnightAsked = Date.now(); const r = await festivalPost('midnight'); if (!r) return;
+    plaza.controller?.playMine?.('cheer'); showToast(`🎆 새해 복 많이 받으세요! 칭호 「${r.title?.name || '해피 뉴 이어'}」를 받았어요`, 6000);
+  }
+  setInterval(() => { midnightCheck().catch(() => {}); }, 2000);
   async function festivalTask(action) {
     const r = await festivalPost(action); if (!r) return;
     plaza.controller?.playMine?.(action === 'harvest' ? 'pickup' : 'cheer');
@@ -2888,11 +2898,15 @@
       if (mine !== drawn) return; festivalView = view; plaza.controller?.setFestival?.(festivalView); // (C5 Codex 4차 P3-5: a late answer never over a newer one)
       const f = festivalView.festival;
       if (!f) { card.replaceChildren(el('p', 'emptyState', festivalView.next ? `다음 행사 「${festivalView.next.name}」는 ${festivalView.next.start.slice(5).replace('-', '월 ')}일에 시작해요.` : '지금은 행사가 없어요.')); return; }
-      const head = el('div', 'festivalHead'); head.append(el('h3', '', `${f.name} · ${f.start.slice(5).replace('-', '/')}~${f.end.slice(5).replace('-', '/')}`), el('strong', 'festivalStamps', `도장 ${f.stamps}개`));
+      const stall = f.shop.length > 0; // (X2 카운트다운: no stall -- its stamp opens the end story, the card says only where to be)
+      const head = el('div', 'festivalHead'); head.append(el('h3', '', stall ? `${f.name} · ${f.start.slice(5).replace('-', '/')}~${f.end.slice(5).replace('-', '/')}` : `${f.name} · 12/31 저녁 6시~1/1 새벽 1시`), ...(stall ? [el('strong', 'festivalStamps', `도장 ${f.stamps}개`)] : []));
       const tabs = el('div', 'festivalTabs'); if (weekView?.contest) { const b = el('button', 'secondary tiny', weekView.contest.name); b.type = 'button'; b.addEventListener('click', () => openWeekContest()); tabs.append(b); } // (a contest day in the festival)
-      for (const [id, name] of [['tasks', '할 일'], ...(f.tasks.some((t) => t.id === 'cook') ? [['cook', '요리 대회']] : []), ['shop', '가판대']]) { const b = el('button', 'tiny festivalTab', name); b.type = 'button'; b.dataset.tab = id; b.setAttribute('aria-pressed', String(which === id)); b.addEventListener('click', () => draw(id)); tabs.append(b); }
+      for (const [id, name] of [['tasks', '할 일'], ...(f.tasks.some((t) => t.id === 'cook') ? [['cook', '요리 대회']] : []), ...(stall ? [['shop', '가판대']] : [])]) { const b = el('button', 'tiny festivalTab', name); b.type = 'button'; b.dataset.tab = id; b.setAttribute('aria-pressed', String(which === id)); b.addEventListener('click', () => draw(id)); tabs.append(b); }
       const body = el('div', 'festivalBody');
-      if (which === 'tasks') {
+      if (which === 'tasks' && !stall) {
+        const done = f.tasks.find((t) => t.id === 'midnight')?.today > 0;
+        body.append(el('p', 'smallMuted', `「${f.say}」`), el('p', done ? 'festivalDone' : '', done ? '🎆 칭호 「해피 뉴 이어」를 받았어요. 새해 복 많이 받으세요!' : '0시부터 10분 동안 대청마당 카운트다운 판 둘레에 있으면 칭호 「해피 뉴 이어」를 받아요.'));
+      } else if (which === 'tasks') {
         body.append(el('p', 'smallMuted', `「${f.say}」 도장은 이 행사 가판대에서만 쓰고, 행사가 끝나면 사라져요${f.daysLeft <= 1 ? ' — 곧 끝나요!' : ''}.`));
         const list = el('ul', 'festivalTasks');
         for (const t of f.tasks) list.append(el('li', t.today >= t.perDay ? 'done' : '', `${t.name} · 도장 ${t.stamps}개 · 오늘 ${t.today}/${t.perDay}${t.id === 'feast' ? ' (마지막 날 저녁 6~10시, 잔칫상 둘레)' : t.id === 'harvest' ? ' (밭에서 SPACE)' : t.id === 'gift' ? ' (행사 주민 곁 선물 자루에서 받아, 적힌 이웃에게)' : t.id === 'snowman' ? ' (대청마당 남서쪽 눈밭에서 굴리고 쌓고 꾸미기)' : t.id === 'gather' ? ' (마지막 날 저녁 6~10시, 광장 트리 곁)' : t.id === 'contest' ? ' (토·일 대회 날, 여기서 대회 시작)' : ' (요리 대회 칸에서)'}`));

@@ -16,7 +16,7 @@ test('1인칭 대화 구도: 눈높이·머리부터 어깨·얼굴은 위쪽 1/
     await expect.poll(async () => { const a = await page.evaluate(() => window.PlazaDebug().talkAim()); return a && a.eyeY > 0.12 && a.eyeY < 0.6 && a.topY < 0.98 && Math.abs(a.x) < 0.2; }, { timeout: 15000 }).toBe(true);
     const a = await page.evaluate(() => window.PlazaDebug().talkAim()); expect(a.fill).toBeGreaterThan(0); expect(a.dist).toBeGreaterThan(1.1);
     if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-${name}.png` }); }
-    await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false);
+    await expect.poll(async () => { if (await talking()) await page.evaluate(() => document.getElementById('plazaDialog').close()); return talking(); }, { timeout: 15000 }).toBe(false); /* (CI: a late talk request opened it again -- closed again) */
     expect((await page.evaluate(() => window.PlazaDebug().talkAim()))).toBe(null); expect((await page.evaluate(() => window.PlazaDebug().view())).fov).toBe(75);
   };
   for (const [n, name] of [[1, 'haesong'], [9, 'garam']]) {
@@ -26,6 +26,14 @@ test('1인칭 대화 구도: 눈높이·머리부터 어깨·얼굴은 위쪽 1/
     }, { timeout: 120000, intervals: [300] }).toBe(true);
     await framed(name);
   }
+  // (#355 CI: 가람 caught walking settled on the server's spot after the talk began -- the step back stopped short at 1.0 m)
+  // one caught walking: stepped back from where they end up standing, to the framing's distance
+  await expect.poll(async () => {
+    if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async () => { const w = window.PlazaDebug().wanderers.find((o) => o.speed > 0 && !o.held); if (w) { await window.PlazaWarp(w.x + 1.0, w.z); window.PlazaDebug().talkResident(w.n); } }); await page.waitForTimeout(900); }
+    return talking();
+  }, { timeout: 120000, intervals: [300] }).toBe(true);
+  await expect.poll(async () => { const a = await page.evaluate(() => window.PlazaDebug().talkAim()); return a && a.dist >= a.gap - 0.05; }, { timeout: 15000 }).toBe(true);
+  await expect.poll(async () => { if (await talking()) await page.evaluate(() => document.getElementById('plazaDialog').close()); return talking(); }, { timeout: 15000 }).toBe(false);
   // 바위 (the builder, a quest islander in the village) when he stands there this week
   const builder = await page.evaluate(() => Boolean(window.PlazaDebug().doors?.['ev:quest_npc:questbuilder'] || null));
   if (builder) {

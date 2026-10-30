@@ -1384,6 +1384,11 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   const inside = await page.evaluate(() => { const d = window.PlazaDebug(); return [d.x, d.z]; });
   expect(await page.evaluate(([x, z]) => window.IslandTerrain.inTownhallYard(x, z), inside)).toBe(true);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서 들어가기');
+  // (#355 CI, 09:19 KST: a lost thing's owner held in the doorway said 「말 걸기」 -- in a doorway the door, whoever waits there)
+  await expect.poll(async () => (await post(request, '/api/test/island/lost', a.token, { at: { x: inside[0], z: inside[1] } })).data.ok, { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().events.some((k) => k.startsWith('ev:lost_owner:'))), { timeout: 15000 }).toBe(true);
+  await page.waitForTimeout(300); await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서 들어가기');
+  await post(request, '/api/test/island/free-residents', a.token, {});
   // v1.10.45: walking at the hall from the yard stops at the foot of the steps and along the terrace's front, never into it
   // The lowest sky view must also clear the yard walls, pillars and lamps, while retaining the 4m distance floor.
   for (const [lx, lz] of [[0, 11], [-7, 13], [7, 13], [0, 17]]) {

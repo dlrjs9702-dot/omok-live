@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.209 X2 카운트다운
+
+- countdown-2026: 12/31 18:00~1/1 01:00 KST(달력 시간 창 fromHour/toHour, 날짜 넘김). 판(newyear.countdown_board) (0, −98)·발사대 둘(±6 m).
+- 판 글 서버 시계(festival GET now): 23시 전 「2026 → 2027」, 23시부터 분:초, 마지막 10초 큰 숫자, 0시 「2027」.
+- 0시 불꽃: 올라가는 줄기·판 위 12~18 m 3~5 m 터짐·떨어지는 꼬리·빛 번짐, 금·빨강·초록·흰색, 첫 3초 6발 뒤 0.7~1초마다 3분, 입자 PC 600 / 폰 200, 움직임 줄이기면 빛만. 0시에 판 곁이면 카메라 한 번 하늘로.
+- 0:00~0:10 판 12 m 둘레: 칭호 「해피 뉴 이어」 + 도장 1(가게 없음) → 01:00 뒤 끝 이야기(도장 있는 계정만).
+- 시험 시계 tick. 단위 countdown, e2e island-countdown(PC·폰). 사진 notes img/countdown.
+
 ## v1.10.208 V1 시점 — 1인칭·3인칭(밖·집)
 
 - 시점 틀: 밖 3인칭·집 안 1인칭 기본, 「👁 시점」·V, 밖·안 따로 기억(gc.view.out/in). 다른 실내는 V2 전까지 3인칭 + 「곧」. 시험은 gc.testRealView 없으면 3인칭.
@@ -29,10 +37,3 @@
 - 위에 물건 있는 가구: 옮기기·돌리기·창고 막음(서버 HOLDS_THINGS·꾸미기 창·잡고 밀기) 「위에 놓인 물건을 먼저 치워 주세요」. 저장은 자리로 판단, 집 넓힐 때 받치는 가구 먼저.
 - 꾸미기 창: 섬 창 종이, 고른 칸 진한 갈색, 「↻ 돌리기」 한 줄.
 - 시험: 단위 island-home, e2e my-home(PC·폰) + 시험용 /api/test/home/release. 사진 notes img/home-tabletop. 탁상형 곤충 상자(주문 86)는 다음 묶음.
-
-## v1.10.206 구경 C안 + 도구 들기 규칙
-
-- 구경 C안: 열한 곳 모두 그 자리의 작은 할 일(걸어 들어가기만으론 안 끝남). 꽃 색 찾기(물은 색은 카드에도)·쓰러진 허수아비 세우기·벽화 차례로·다음 열차 분(±1)·부두 배웅(sea.boat 천천히)·박자 박수 3·가로등 잡기·징검돌 건너기·책 수레 책·큰 호박 세 번·사탕 바구니 → 꽃님 댁 문. lib/island-quests TASK·drawPick·visitAct, 서버 /api/island/visit, 고르기 답은 받을 때 doc에(트랙엔 보기만), 타이밍은 화면 판단·서버는 시작 뒤 시간·자리. 옛 count 1 인정.
-- 도구 들기 규칙: 낚싯대를 들어야 낚시(아니면 안내), 든 동안 잡초·열매·앉기 안 됨(「도구를 넣으면 주울/앉을 수 있어요」, 깜빡임 고침), 주민·문은 됨.
-- 메신저 제목 깜빡임 Illegal invocation(감싼 기본 타이머). 시험 도우미 revealTalk.
-- e2e island-visit-tasks·island-tool-rules(PC·폰), solo-quest 갱신. 사진 notes img/q2-visit.
