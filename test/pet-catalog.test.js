@@ -38,7 +38,7 @@ test('펫샵 특별 펫: 창구 판매는 거절, 마당에서 데려가고, 이
     await req('/api/plaza/state', token, { ...T.facilityDoor('store'), yaw: 0, moving: false });
     assert.equal((await req('/api/island/store/enter', token, {})).status, 200);
     await req('/api/plaza/state', token, { ...S.world(...S.LIFT.stand), yaw: 0, moving: false });
-    assert.equal((await req('/api/island/lift', token, { to: 3 })).data.space, 'petshop');
+    assert.equal((await req('/api/island/lift', token, { to: 4 })).data.space, 'petshop');
     return token;
   };
   let a = await upstairs(server, keys[0]);

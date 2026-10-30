@@ -30,8 +30,10 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   assert.deepEqual(ids.sort(), ['accessories', 'admin', 'attendance', 'avatar', 'board', 'climb', 'donate', 'dye', 'faces', 'games', 'hair', 'jail', 'map', 'missions', 'naming', 'records', 'shop', 'store', 'townhall', 'trader', 'transform']); // v1.10.92 잡화점 // v1.10.91 변신 의상실 // R4 구치소
   const terrain = read('public/plaza/island-terrain.js'); // v1.10.7: the facility spots moved with the island's shape
   const mall = require('../public/plaza/island-store'); // v1.10.92 백화점: the shops are its sectors (inside), not island lots
-  for (const id of ids) if (!mall.sectorOf(id) && !require('../public/plaza/island-terrain').SPOTS[id]) assert.match(terrain, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
-  assert.deepEqual(mall.SECTORS.map((s) => s.place).filter((p) => !p.startsWith('mall:')).sort(), ['accessories', 'avatar', 'dye', 'faces', 'hair', 'shop', 'transform']);
+  const floor2 = require('../public/plaza/island-fashion'); // v1.10.211 백화점 개편 A안: the clothes up on the 2nd floor, hair, colour and face at its mirrors, the game skins in the game hall
+  for (const id of ids) if (!mall.sectorOf(id) && !floor2.sectorOf(id) && !floor2.MIRROR_PLACES.includes(id) && id !== 'shop' && !require('../public/plaza/island-terrain').SPOTS[id]) assert.match(terrain, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
+  assert.deepEqual(mall.SECTORS.map((s) => s.place).sort(), ['mall:stall', 'mall:store']);
+  assert.deepEqual([...floor2.SECTORS.map((s) => s.place), ...floor2.MIRROR_PLACES].sort(), ['accessories', 'avatar', 'dye', 'faces', 'hair', 'transform']);
   // (창 2단계: 출석 opens the stamp card, which pays through the same claimAttendance as the start screen's button)
   assert.match(app.match(/async function openAttendanceCard[\s\S]*?\r?\n  \}\r?\n/)[0], /claimAttendance\(\)/, '출석 도장 카드는 같은 출석 지급');
   for (const target of ['openSkinShop', 'missionBtn', 'openAttendanceCard', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'openGamehall']) { // v1.10.73: the game hall is its own screen

@@ -13,7 +13,7 @@ test('펫샵: 승강기 3층, 돌아다니는 반려동물 곁에서 SPACE → �
   // (CI 3차: the lift and the pet read and pressed at once -- the PC parts holding this spec failed 8 of 43 times on 10/20~21;
   // a pet walks off between a read prompt and a press)
   await expect.poll(async () => { if (await page.locator('#liftCard').isVisible()) return true; await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['lift:1']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); await spaceOn(page, 'lift:1', isMobile); await page.waitForTimeout(500); return page.locator('#liftCard').isVisible(); }, { timeout: 30000, intervals: [300] }).toBe(true);
-  await page.locator('#liftCard button[data-floor="3"]').click();
+  await page.locator('#liftCard button[data-floor="4"]').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('petshop');
   await expect.poll(() => page.evaluate(() => (window.PlazaDebug().petshop() || []).length), { timeout: 15000 }).toBeGreaterThanOrEqual(7); // (8 a day; the other run on this server may have taken one)
   const before = await page.evaluate(() => window.PlazaDebug().petshop().length);

@@ -2342,6 +2342,7 @@
     };
     for (const [id, name] of HALL.CATEGORIES) chip(id, name, HALL.GAMES.filter((g) => HALL.inCategory(g, id) && (id === 'all' || !g.soon)).length);
     chip('rooms', '공개방', (lobbyState.rooms || []).length);
+    { const b = hallEl('button', 'gamehallChip'); b.type = 'button'; b.dataset.cat = 'skins'; b.append('스킨'); b.addEventListener('click', () => openSkinShop('game')); hallChips.append(b); } // (v1.10.211 백화점 개편 A안: the game skin shop here, no keeper)
     hallGrid.classList.toggle('hidden', hallCat === 'rooms'); hallRooms.classList.toggle('hidden', hallCat !== 'rooms');
     if (hallCat === 'rooms') { hallBorrow(publicRoomsCardEl, hallRooms); hallBorrow(joinRoomForm, hallRooms); return; }
     hallGrid.replaceChildren();
@@ -3112,7 +3113,7 @@
     try { furnitureState = await api('/api/island/furniture'); plaza.controller?.setFurniture?.(furnitureState); } catch {}
   }
   // 묶음 2·2-2: the 백화점's lift -- which floor (the one I am on not among them)
-  const FLOORS = { 1: '1층 · 백화점', 2: '2층 · 가구점', 3: '3층 · 펫샵' };
+  const FLOORS = { 1: '1층 · 잡화·생활', 2: '2층 · 옷·꾸미기', 3: '3층 · 가구', 4: '4층 · 옥상 펫샵' }; // (v1.10.211 백화점 개편 A안)
   const liftCard = document.createElement('div'); liftCard.className = 'goodCard liftCard'; liftCard.id = 'liftCard';
   function openLift(here) {
     const row = document.createElement('div'); row.className = 'goodBuy';
@@ -3124,7 +3125,7 @@
     if (furnitureBusy) return; furnitureBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      if (to === 2) await refreshFurniture(); if (to === 3) await refreshPetshop();
+      if (to === 3) await refreshFurniture(); if (to === 4) await refreshPetshop();
       const r = await api('/api/island/lift', { method: 'POST', body: JSON.stringify({ to }) });
       closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z);
     } catch (error) { showToast(error.message); } finally { furnitureBusy = false; }
@@ -3899,11 +3900,22 @@
   // (창 3단계: the clerk's words in a speech bubble over the window's paper, its 접수 stamp box by the title)
   const COUNTER_SAY = { 'room:desk': '어서 오세요. 주운 물건은 여기서 정산해 드려요.', 'room:tax': '세금 창구예요. 우체통으로 간 고지서는 여기서 내시면 돼요.', 'room:bank': '예금 창구예요. 맡기시면 매일 자정에 이자가 붙어요.', 'room:rename': '개명 신청이요? 새 이름을 적어 주세요.' };
   for (const [door, dialog] of Object.entries(counterDialogs)) dialog.addEventListener('close', () => { dialog.classList.remove('counterMode'); dialog.querySelector('.counterSay')?.remove(); if (counterSeat?.door === door && !dialog.open) { counterSeat = null; plaza.controller?.talkCamera?.(false); plaza.controller?.standUp?.(); } });
+  // v1.10.211 백화점 개편 A안 (docs/mall-revamp-20261027.md 2층): before a 꾸미기 mirror, sat -- hair, colour and face from one
+  // window (each its shop's window as before, the prices as they were); stood up, the mirror is free for the next
+  function openMirror() {
+    const row = document.createElement('div'); row.className = 'goodBuy';
+    for (const [label, open] of [['머리 모양', () => openSkinShop('avatar:hair')], ['염색', () => openLookShop('dye')], ['얼굴', () => openLookShop('surgery')]]) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.addEventListener('click', () => { plazaDialog.close(); open(); }); row.append(b);
+    }
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '거울 앞에 앉았어요. 무엇을 바꿀까요?';
+    const card = document.createElement('div'); card.className = 'mirrorCard'; card.append(note, row); openPlazaWindow('꾸미기 거울', [card]);
+  }
   async function sitDown(seat) {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       await api('/api/island/sit', { method: 'POST', body: JSON.stringify({ seat }) });
       plaza.controller?.sit?.(seat);
+      if (globalThis.IslandFashion?.SEATS.some((x) => x.id === seat)) { await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller?.pose?.()) }).catch(() => {}); openMirror(); return; } // (v1.10.211: a 꾸미기 mirror's chair)
       const door = globalThis.IslandTerrain?.plazaProps().seats.find((x) => x.id === seat)?.door;
       if (door && COUNTER_OPEN[door]) {
         await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller?.pose?.()) }).catch(() => {}); // (seated: where the server checks the counter)
@@ -4724,12 +4736,14 @@
         place = skinShopMode === 'transform' ? 'transform' : skinShopMode === 'avatar:outfit' ? 'avatar' : skinShopMode === 'avatar:hair' ? 'hair' : skinShopMode === 'avatar:hat' ? 'accessories' : 'shop';
         headers['X-Island-Facility'] = place;
       }
-      if (place) {
+      // (v1.10.211 백화점 개편 A안: hair, colour and face sat at a 꾸미기 mirror, the game skins in the game hall -- no spot of their own; the server checks)
+      const sat = plaza.controller?.pose?.(); const free = place === 'shop' || (['hair', 'dye', 'faces'].includes(place) && sat?.act === 'sit' && String(sat.seat || '').startsWith('v-mirror'));
+      if (place && !free) {
         if (!(place === 'naming' && counterSeat?.door === 'room:rename') && !plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.'); // (seated at 개명 신청: the server checks the window)
         const pose = plaza.controller.pose();
         await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) });
         if (!plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.');
-      }
+      } else if (place && plaza.controller?.pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller.pose()) }); // (where the server checks)
     }
     if (requestToken) headers['X-Session-Token'] = requestToken;
     if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';

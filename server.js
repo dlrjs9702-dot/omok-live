@@ -85,7 +85,8 @@ const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보�
 const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
 const IslandFurniture = require('./public/plaza/island-furniture'); // 묶음 2 가구점 (백화점 2층)
-const IslandPetShop = require('./public/plaza/island-petshop'); // 묶음 2-2 펫샵 (백화점 3층)
+const IslandPetShop = require('./public/plaza/island-petshop'); // 묶음 2-2 펫샵 (백화점 4층 옥상, v1.10.211)
+const IslandFashion = require('./public/plaza/island-fashion'); // 백화점 개편 A안 (v1.10.211): 2층 옷·꾸미기
 const IslandJail = require('./public/plaza/island-jail'); // R4 구치소
 const IslandHome = require('./public/plaza/island-home'); // 묶음 4 내 집
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
@@ -1302,7 +1303,8 @@ let plazaDirty = false;
 const townhallInside = new Set();
 const storeInside = new Set(); // v1.10.92 잡화점: who is in the store's room (the same rules as the 민원실)
 const furnitureInside = new Set(); // 묶음 2 가구점: who is up on the 2nd floor (still in the store: storeInside too)
-const petshopInside = new Set(); // 묶음 2-2 펫샵: who is up on the 3rd floor (in the store too)
+const petshopInside = new Set(); // 묶음 2-2 펫샵: who is up on the roof, the 4th floor (in the store too)
+const fashionInside = new Set(); // v1.10.211 백화점 개편 A안: who is on the 2nd floor, 옷·꾸미기 (in the store too)
 // 묶음 4 내 집 (docs/my-home-20261020.md): each account's house (world 'home:<account>': lot, roof, floor, wall, visit,
 // pieces placed from the 가구 창고, the fish in each tank), who owns which lot (world 'homeLots'), who is inside whose
 // house (token -> owner account). Kept in memory as read (every change goes through worldEdit and here).
@@ -1342,8 +1344,16 @@ async function bikeColors(account) {
   bikesOf.set(account, { at: nowMs(), colors }); return colors;
 }
 // the floor I am on in the 백화점, its room's way of standing, and where its lift is
-const mallFloor = (token) => (!storeInside.has(token) ? 0 : petshopInside.has(token) ? 3 : furnitureInside.has(token) ? 2 : 1);
-const MALL_FLOORS = { 1: { R: IslandStore, space: 'store' }, 2: { R: IslandFurniture, space: 'furniture' }, 3: { R: IslandPetShop, space: 'petshop' } };
+// v1.10.211 백화점 개편 A안: 1 잡화·생활, 2 옷·꾸미기, 3 가구, 4 옥상 펫샵 (each floor's room where it was: a pose kept from before lands on its floor)
+const mallFloor = (token) => (!storeInside.has(token) ? 0 : petshopInside.has(token) ? 4 : furnitureInside.has(token) ? 3 : fashionInside.has(token) ? 2 : 1);
+const MALL_FLOORS = { 1: { R: IslandStore, space: 'store' }, 2: { R: IslandFashion, space: 'fashion', set: fashionInside }, 3: { R: IslandFurniture, space: 'furniture', set: furnitureInside }, 4: { R: IslandPetShop, space: 'petshop', set: petshopInside } };
+// a shop's spot in the 백화점 (its floor's room) -- and the 꾸미기 mirrors': the chair I sit on
+const mallSector = (place) => IslandStore.sectorOf(place) || IslandFashion.sectorOf(place) || (IslandFashion.MIRROR_PLACES.includes(place) ? { mirror: true } : null);
+function mallSectorPoint(place, token) {
+  if (!IslandFashion.MIRROR_PLACES.includes(place)) return IslandStore.sectorPoint(place) || (fashionInside.has(token) ? IslandFashion.sectorPoint(place) : null);
+  const seat = fashionInside.has(token) ? IslandFashion.SEATS.find((x) => seatTaken.get(x.id) === token) : null; // (sat at a mirror)
+  return seat ? { x: seat.x, z: seat.z } : null;
+}
 // 펫샵: the day's eight and who took which (world 'petshop': { day, sold: { slot: account }, buys: { account: n } })
 async function petshopDay() { const day = kstDate(nowMs()); const st = (await pointStore.worldValue('petshop')) || {}; return st.day === day ? { day, sold: st.sold || {}, buys: st.buys || {} } : { day, sold: {}, buys: {} }; }
 const petPrice = (kind) => { const c = IslandPetShop.catalogOf(kind); return Economy.value(!c ? `good:pet_${kind}` : kind === 'ditto' ? 'pet:ditto' : c.ip ? 'pet:transform_ip' : 'pet:transform_animal'); }; // (3회차 21: the counter's by its kind)
@@ -1518,11 +1528,11 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
 // where I was and how far from the place, how old that pose was, and whether my lobby stream was open
 function nearLog(session, what, at, target) {
-  const t = session.token; const space = jailInside.has(t) ? 'jail' : homeInside.has(t) ? 'home' : townhallInside.has(t) ? 'townhall' : petshopInside.has(t) ? 'petshop' : furnitureInside.has(t) ? 'furniture' : storeInside.has(t) ? 'store' : 'island';
+  const t = session.token; const space = jailInside.has(t) ? 'jail' : homeInside.has(t) ? 'home' : townhallInside.has(t) ? 'townhall' : petshopInside.has(t) ? 'petshop' : furnitureInside.has(t) ? 'furniture' : fashionInside.has(t) ? 'fashion' : storeInside.has(t) ? 'store' : 'island';
   const r = (v) => Math.round(v * 100) / 100;
   console.log(`[near] ${what} space=${space} at=${at ? `${r(at.x)},${r(at.z)}` : 'none'} target=${target ? `${r(target.x)},${r(target.z)}` : 'none'} dist=${at && target ? r(Math.hypot(at.x - target.x, at.z - target.z)) : '-'} poseAge=${at ? nowMs() - at.at : '-'}ms stream=${[...lobbyStreams].some((e) => e.sessionToken === t)}`);
 }
@@ -1728,7 +1738,7 @@ function plazaSafeSpot(x, z) {
 const townhallPass = new Set(); const townhallStrict = new Set(); // session tokens
 const fishCasts = new Map(); // v1.10.42 낚시: session token -> { id, species, biteAt, at, done }
 // v1.10.44 앉기·이모트 (IDEAS ④): who sits where (first come), and the acts a pose may carry
-const SEATS = new Map(IslandTerrain.plazaProps().seats.map((s) => [s.id, s]));
+const SEATS = new Map([...IslandTerrain.plazaProps().seats, ...IslandFashion.SEATS].map((s) => [s.id, s])); // (v1.10.211: the 꾸미기 mirrors' two chairs)
 const seatTaken = new Map(); // seat id -> session token
 const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow']);
 // v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
@@ -3922,8 +3932,8 @@ async function requestHandler(req, res) {
       const place = placeActions[pathname] || (!['/api/skins/buy', '/api/skins/gift'].includes(pathname) && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
       // v1.10.92 백화점: the shops are its sectors -- inside, at that sector's spot
       // (달마루섬 5단계: the 작명소's business at the 민원실's 개명 신청 window too)
-      const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : place === 'naming' && townhallInside.has(session.token) ? IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.rename.lx, IslandTerrain.TOWNHALL_ROOM.rename.lz) : IslandTerrain.facilityDoor(place);
-      if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      const door = mallSector(place) ? (storeInside.has(session.token) ? mallSectorPoint(place, session.token) : null) : place === 'naming' && townhallInside.has(session.token) ? IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.rename.lx, IslandTerrain.TOWNHALL_ROOM.rename.lz) : IslandTerrain.facilityDoor(place);
+      if (place !== 'shop' /* (v1.10.211 백화점 개편 A안: the game skins in the game hall's 「스킨」 tab -- wherever one is) */ && (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     }
   }
 
@@ -4899,6 +4909,7 @@ async function requestHandler(req, res) {
       const bx = Number(body.x); const bz = Number(body.z);
       if (IslandPetShop.inRoom(bx, bz, 0)) { storeInside.add(session.token); petshopInside.add(session.token); }
       else if (IslandFurniture.inRoom(bx, bz, 0)) { storeInside.add(session.token); furnitureInside.add(session.token); }
+      else if (IslandFashion.inRoom(bx, bz, 0)) { storeInside.add(session.token); fashionInside.add(session.token); }
       else if (IslandStore.inStore(bx, bz, 0)) storeInside.add(session.token);
       else if (IslandTerrain.inRoom(bx, bz, 0) && passesGate(session)) townhallInside.add(session.token);
     }
@@ -4920,6 +4931,11 @@ async function requestHandler(req, res) {
       const here = plazaPresence.get(session.token);
       spot = IslandPetShop.inRoom(Number(body.x), Number(body.z), 2) || !here ? IslandPetShop.clamp(body.x, body.z) : { x: here.x, z: here.z };
       Object.assign(wanted, IslandPetShop.clamp(body.x, body.z));
+      plazaLastPos.set(session.token, IslandTerrain.facilityDoor('store'));
+    } else if (fashionInside.has(session.token)) { // v1.10.211 2층 옷·꾸미기 (as the other floors)
+      const here = plazaPresence.get(session.token);
+      spot = IslandFashion.inRoom(Number(body.x), Number(body.z), 2) || !here ? IslandFashion.clamp(body.x, body.z) : { x: here.x, z: here.z };
+      Object.assign(wanted, IslandFashion.clamp(body.x, body.z));
       plazaLastPos.set(session.token, IslandTerrain.facilityDoor('store'));
     } else if (furnitureInside.has(session.token)) { // 묶음 2 가구점 (as the 1st floor)
       const here = plazaPresence.get(session.token);
@@ -4964,7 +4980,7 @@ async function requestHandler(req, res) {
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       home: homeInside.has(session.token) ? ((l) => (l && floorOf(session.token) === 2 ? `${l}:2` : l || null))(homeCache.get(homeInside.get(session.token))?.lot) : null, /* (R8: the 2층 is `<lot>:2` -- one sees the people on the same floor) */ // (묶음 4: which house, by its lot -- one sees the people in the same one)
-      space: jailInside.has(session.token) ? 'jail' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
+      space: jailInside.has(session.token) ? 'jail' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : fashionInside.has(session.token) ? 'fashion' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
         const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
@@ -5078,7 +5094,7 @@ async function requestHandler(req, res) {
   // v1.10.195 가방 늘리기: at the 잡화점 (in the 백화점), 16 -> 24 -> 32, paid once each (the claim), for good
   if (pathname === '/api/island/bag/grow' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
-    if (!storeInside.has(session.token) || furnitureInside.has(session.token) || petshopInside.has(session.token)) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 늘릴 수 있어요.');
+    if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 늘릴 수 있어요.');
     return worldEdit(async () => {
       const now = IslandItems.slotsOf(account); const to = IslandItems.BAG_GROW.find((n) => n > now);
       if (!to) return sendError(res, 409, 'BAG_TOP', '가방이 이미 가장 커요.');
@@ -5156,15 +5172,14 @@ async function requestHandler(req, res) {
     const e = jailEssays.get(session.token); if (body.expire === true && e) e.until = nowMs() - 1;
     return sendJson(res, 200, { ok: true });
   }
-  // 묶음 2·2-2: the 백화점's lift -- from in front of the floor's own to the floor asked (1층 백화점, 2층 가구점, 3층 펫샵)
+  // 묶음 2·2-2: the 백화점's lift -- from in front of the floor's own to the floor asked (v1.10.211: 1층 잡화·생활, 2층 옷·꾸미기, 3층 가구, 4층 옥상 펫샵)
   if (pathname === '/api/island/lift' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const at = plazaPresence.get(session.token); const body = await parseJson(req); const to = Number(body.to); const here = mallFloor(session.token);
     const from = MALL_FLOORS[here] && MALL_FLOORS[here].R.world(...MALL_FLOORS[here].R.LIFT.stand);
     if (!MALL_FLOORS[to] || to === here) return sendError(res, 400, 'BAD_FLOOR', '층을 확인해 주세요.');
     if (!at || !from || Math.hypot(at.x - from.x, at.z - from.z) > 2.6) { nearLog(session, `lift ${here}->${to}`, at, from); return sendError(res, 409, 'TOO_FAR', '승강기 앞에서 다시 시도해 주세요.'); }
-    furnitureInside.delete(session.token); petshopInside.delete(session.token);
-    if (to === 2) furnitureInside.add(session.token); if (to === 3) petshopInside.add(session.token);
+    for (const f of Object.values(MALL_FLOORS)) f.set?.delete(session.token); MALL_FLOORS[to].set?.add(session.token); freeSeat(session.token);
     const { R, space } = MALL_FLOORS[to]; const spot = R.world(...R.LIFT.stand);
     plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space, moving: false, at: nowMs(), act: null, seat: null });
     plazaDirty = true;

@@ -12,7 +12,7 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
   const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
   await require('./skin-support').intoMall(page, null, isMobile);
   // the bait on the left shelf: stand in front of it
-  await require('./skin-support').standInMall(page, 10.455, 6.5, '낚시 미끼 · 300P');
+  await require('./skin-support').standForGood(page, 'bait', '낚시 미끼 · 300P');
   await page.screenshot({ path: testInfo.outputPath('store-inside.png') });
   await press();
   const card = page.locator('#goodCard');
@@ -24,7 +24,7 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
   expect((await get(request, '/api/points', token)).data.balance).toBe(before - 1500);
   await page.keyboard.press('Escape');
   // (B 45: the seeds are on sale now)
-  await require('./skin-support').standInMall(page, 9.2, 6.5, '꽃씨');
+  await require('./skin-support').standForGood(page, 'seed_flower_red', '꽃씨');
   await require('./skin-support').standInMall(page, 0, -9.1, '나가기');
   await press();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('island');

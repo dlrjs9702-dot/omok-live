@@ -36,9 +36,9 @@ test('가구점: 승강기로 2층, 먼저 산 한 명만(다음 사람은 포�
   const up = async (token) => {
     await req('/api/plaza/state', token, { ...T.facilityDoor('store'), yaw: 0, moving: false });
     assert.equal((await req('/api/island/store/enter', token, {})).status, 200);
-    assert.equal((await req('/api/island/lift', token, { to: 2 })).data.error, 'TOO_FAR', '승강기 앞에서만');
+    assert.equal((await req('/api/island/lift', token, { to: 3 })).data.error, 'TOO_FAR', '승강기 앞에서만');
     await req('/api/plaza/state', token, { ...S.world(...S.LIFT.stand), yaw: 0, moving: false });
-    const went = await req('/api/island/lift', token, { to: 2 }); assert.equal(went.data.space, 'furniture', JSON.stringify(went.data));
+    const went = await req('/api/island/lift', token, { to: 3 }); assert.equal(went.data.space, 'furniture', JSON.stringify(went.data));
     const pose = await req('/api/plaza/state', token, { ...F.world(...F.LIFT.stand), yaw: 0, moving: false }); assert.ok(F.inRoom(pose.data.x, pose.data.z), JSON.stringify(pose.data));
   };
   for (const token of [a, b]) { await req('/api/test/points-credit', token, { amount: 200000 }); await up(token); }

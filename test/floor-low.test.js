@@ -36,5 +36,5 @@ test('Low로 바뀌어도 넓은 바닥이 사라지지 않는다 (가구점·�
     const low = await upArea(entry.low.url); if (low < high * 0.67) lost.push(`${id} ${high.toFixed(0)}->${low.toFixed(0)}m2`);
   }
   assert.deepEqual(lost, []); assert.ok(wide > 5, `wide models checked: ${wide}`);
-  for (const id of ['mall.floor2', 'petshop.floor3', 'shop.rug_zone__living', 'home.floor_tiles__mint', 'home.floor_boards_s3__oak']) assert.equal(assets.REGISTRY[id].low, null, id);
+  for (const id of ['mall.floor2', 'petshop.floor3', 'shop.rug_zone__living', 'home.floor_tiles__mint', 'home.floor_boards_s3__oak', 'mall.floor1', 'roof.floor', 'roof.pet_yard']) assert.equal(assets.REGISTRY[id].low, null, id); // (v1.10.211 the 1st floor and the roof)
 });

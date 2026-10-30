@@ -350,7 +350,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     sun.color.set(L.sun); sun.intensity = L.sunI;
     island.setSeaPhase?.(phase, sun); // (파도: the sea's own colours by the time of day, the sun's or moon's path on it)
     if (wet) { const grey = new THREE.Color(0x6b7785); scene.background.lerp(grey, 0.45); scene.fog.color.lerp(grey, 0.45); hemi.intensity *= 0.66; sun.intensity *= 0.4; } // A4 날씨: a grey, dim rainy sky
-    if (indoors) { scene.background.set(0x000000); scene.fog.color.set(0x000000); } // (문제 기록 3회차 18 「밖은 그냥 검은 화면으로」)
+    if (indoors && !openSky) { scene.background.set(0x000000); scene.fog.color.set(0x000000); } // (문제 기록 3회차 18 「밖은 그냥 검은 화면으로」; v1.10.211 the roof: the sky)
     candle.intensity = halloweenOn ? (dark ? 38 : 12) : 0;
     assets.setNight(dark);
     // v1.10.38: in October every lamp glows orange; the lamps are lit from the evening on
@@ -364,7 +364,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // (bugs 9, 사용자 2026-10-19 「실내에서 눈이나 비가 와」) indoors -- the 민원실, the 백화점, and any room to come (달마루섬's
   // cliff fronts, my house): every space but the island, set in one place (setSpace) -- no rain, snow, falling leaves,
   // rainbow or rainy sky in there
-  let indoors = false;
+  let indoors = false; let openSky = false;
   function setWeather(kind) { if (!['clear', 'rain', 'rainbow'].includes(kind) || kind === weatherKind) return; weatherKind = kind; lightKey = null; halloweenCheckedAt = -Infinity; }
   function prepareWeather() {
     if (weatherFx) return weatherFx;
@@ -1294,7 +1294,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (platform) { const q = R.platformClamp(platform.line, platform.station, x, z); me.root.position.set(q.x, q.y, q.z); correction = null; return; }
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); if (d > 0.3) { me.root.position.set(q.x, ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.84
-    if (mySpace === 'store' || mySpace === 'furniture' || mySpace === 'petshop' || mySpace === 'home' || mySpace === 'jail') { const R = mySpace === 'store' ? STORE : mySpace === 'furniture' ? FURN : mySpace === 'petshop' ? PETS : mySpace === 'jail' ? jailRoom : homeRoom; const q = R.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, R.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92, 묶음 2
+    if (mallRoom(mySpace) || mySpace === 'home' || mySpace === 'jail') { const R = mallRoom(mySpace) || (mySpace === 'jail' ? jailRoom : homeRoom); const q = R.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, R.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92, 묶음 2
     if (d > 0.3) { me.root.position.set(x, heightAt(x, z), z); correction = null; } // the server's word, at once (a short hop)
     else if (d > 0.05) correction = { x, z };
   }
@@ -1325,7 +1325,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         p.x = m.x + ux * keep; p.z = m.z + uz * keep; f.nudge(p.x, p.z);
       }
       o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
-      p.y = o.space === 'townhall' ? ROOM.y : o.space === 'store' ? STORE.ROOM.y : o.space === 'furniture' ? FURN.ROOM.y : o.space === 'petshop' ? PETS.ROOM.y : o.space === 'home' ? HOME.ROOM.y : o.space === 'jail' ? JAIL.ROOM.y : heightAt(p.x, p.z);
+      p.y = o.space === 'townhall' ? ROOM.y : mallRoom(o.space) ? mallRoom(o.space).ROOM.y : o.space === 'home' ? HOME.ROOM.y : o.space === 'jail' ? JAIL.ROOM.y : heightAt(p.x, p.z);
       o.c.root.visible = o.space === mySpace && (mySpace !== 'home' || o.home === (homeHere?.lot ? `${homeHere.lot.id}${homeHere.floor === 2 ? ':2' : ''}` : null)); /* (R8: the same floor) */ // v1.10.84: the 민원실 and the island never show each other (묶음 4: nor two houses)
       // facing: the way they are drawn walking, and the server's facing once they stand
       o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
@@ -1511,7 +1511,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const VIEW_KEY = { out: 'gc.view.out', in: 'gc.view.in' }; const viewPick = { out: 'third', in: 'first' };
   try { for (const k of ['out', 'in']) { const v = localStorage.getItem(VIEW_KEY[k]); if (v === 'first' || v === 'third') viewPick[k] = v; else if (navigator.webdriver && !localStorage.getItem('gc.testRealView')) viewPick[k] = 'third'; } } catch {}
   const viewSide = () => (mySpace === 'island' ? 'out' : 'in');
-  const FP_PLACES = new Set(['island', 'home']); // (V1: out and in my house; the other rooms get their ceilings in V2 -- till then the third)
+  const FP_PLACES = new Set(['island', 'home', 'store', 'fashion', 'furniture', 'petshop']); // (V1: out and in my house; v1.10.211 the 백화점's four floors, their ceilings with them -- the other rooms in V2)
   let viewReady = false; // (the states below are declared further on -- read from the first frame on: a first chosen before, at start, threw)
   const fpNow = () => viewReady && FP_PLACES.has(mySpace) && viewPick[viewSide()] === 'first' && !overview && !editView && !fishing && !sitting && !riding && !liftRide;
   let onView = null; let viewSideWas = null;
@@ -2643,55 +2643,99 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.92 잡화점 (IslandStore, assets 41): its room far off the island like the 민원실 -- the keeper behind the counter,
   // the goods where the manifest stands them; SPACE by a good buys it (the price on the prompt), by the door goes out
   const STORE = globalThis.IslandStore; let store = null; let goodsPrices = {};
+  // v1.10.211 백화점 개편 A안: the four floors' rooms by their space (1 store, 2 fashion, 3 furniture, 4 the roof's petshop)
+  const mallRoom = (space) => ({ store: STORE, fashion: FASH, furniture: FURN, petshop: PETS })[space] || null;
+  const FASH = globalThis.IslandFashion; let fashion = null;
   function buildStore() {
     if (store) return store;
     const g = new THREE.Group(); g.position.set(STORE.ROOM.x, STORE.ROOM.y, STORE.ROOM.z); g.rotation.y = Math.PI; scene.add(g); // (turned half round: its door toward the camera)
     mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
-    const shell = new THREE.Group(); g.add(shell); const fallback = new THREE.Group(); shell.add(fallback);
-    mesh(new THREE.BoxGeometry(STORE.ROOM.w, 0.2, STORE.ROOM.d), mat(0xeadfc8), 0, -0.1, 0, fallback);
-    for (const f of STORE.FIXTURES) mesh(new THREE.BoxGeometry(f.w, 1.0, f.d), mat(0xc9955c), f.x, 0.5, f.z, fallback);
-    assets.attach('mall.interior', shell, fallback);
+    const put = mallPut(g);
+    // v1.10.211 백화점 개편 A안 (assets 82): the 1st floor, 잡화·생활 -- its room with its rugs, lamps and pots, the 오늘의 물건
+    // table, the gondolas, the wall shelf, the tool wall, one counter and the sell baskets by it
+    put('mall.floor1', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(STORE.ROOM.w, 0.2, STORE.ROOM.d), mat(0xeadfc8), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(STORE.ROOM.w, 4, 0.3), mat(0xf6ecd4), 0, 2, STORE.ROOM.d / 2, f); });
+    for (const p of STORE.PROPS) if (p.id) put(p.id, p.x, 0, p.at, p.yaw, (f) => mesh(new THREE.BoxGeometry(Math.max(p.w, 0.1), 1.0, Math.max(p.d, 0.1)), mat(0xc9955c), 0, 0.5, p.z - p.at, f));
     for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.14, 0.18, 0.1), mat(0xd8c3a0), 0, 0.09, 0, v); at.add(v); assets.attach(`good.${s.id}`, at, v); }
-    // a keeper in every sector (the 잡화 keeper and the 변신 keeper their own models, the rest the shop keepers' look)
-    const SHIRTS = { game: 0x6aa9e8, clothes: 0xe87a9e, hair: 0xd98b5f, accessories: 0xc9a14a, surgery: 0x5fa39a, dye: 0x9b7fd6, transform: 0x5b3f8f, store: 0xf3e6c8, stall: 0x6bbf73 };
-    const keepers = STORE.SECTORS.map((s, i) => {
-      const k = makeCharacter({ shirt: SHIRTS[s.id], hair: [0x3d2b1f, 0x6b4a2b, 0x2b2b2b][i % 3], skin: 0xffdcbc });
+    // the counter's keeper (the 잡화점's own look)
+    const keepers = STORE.SECTORS.filter((s) => s.keeper).map((s) => {
+      const k = makeCharacter({ shirt: 0xf3e6c8, hair: 0x3d2b1f, skin: 0xffdcbc });
       k.root.position.set(s.keeper[0], 0, s.keeper[1]); k.root.rotation.y = s.keeper[2] + Math.PI; g.add(k.root);
-      assets.dress([s.id === 'store' ? 'character.storekeeper' : s.id === 'transform' ? 'character.transformer' : 'character.npc'], k); dressUp(k, { gender: i % 2 ? 'female' : 'male' }, { shirt: SHIRTS[s.id] });
-      if (s.stall) { const root = new THREE.Group(); root.position.set(s.stall[0], 0, s.stall[1]); root.rotation.y = -Math.PI / 2; g.add(root); const v = new THREE.Group(); root.add(v); mesh(new THREE.BoxGeometry(2.0, 0.9, 0.8), mat(0xb07a4f), 0, 0.45, 0.1, v); assets.attach('facility.trader', root, v); } // (the island's stall model, its front toward the hall)
+      assets.dress(['character.storekeeper'], k); dressUp(k, { gender: 'male' }, { shirt: 0xf3e6c8 });
       const w = STORE.world(s.keeper[0], s.keeper[1]); k.home = { x: w.x, z: w.z, yaw: worldYaw(k.root), id: s.place }; counterKeepers.push({ id: `store:${s.id}`, k, spot: () => STORE.world(s.interact[0], s.interact[1]) }); return k;
     });
+    signboard('stand', '잡화·생활', g, 3.4, 0, -7.6, 0); // (간판: the floor's name by the door, assets 69 sign.stand)
     for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
-    liftAt(g, STORE.LIFT); // (묶음 2: up to the 가구점)
-    store = { group: g, keepers }; npcs.push(...keepers);
+    liftAt(g, STORE.LIFT);
+    const lid = roomLid(g, STORE.ROOM, 0xf6ecd4, STORE.ROOM.exit.lx);
+    store = { group: g, keepers, lid }; npcs.push(...keepers);
     return store;
+  }
+  // v1.10.211: a piece of a floor at its room-local spot (its stand-in drawn until the model comes)
+  const mallPut = (g) => (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
+  // V1/V2 시점 (docs/view-modes-20261029.md 순서 6, 사용자 「새 층을 만들 때 1인칭도 처음부터」): a floor's ceiling and its walls up to
+  // it, and its front wall (with the way out where there is one) -- the rooms are made for the camera from above, open at the
+  // top and low at the front; shown in the first only
+  function roomLid(g, R, color, doorLx = null) {
+    const lid = new THREE.Group(); lid.visible = false; g.add(lid); const H = 4.4; const wallMat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+    const plane = (w, h, x, y, z, rx, ry, m = wallMat) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m); p.position.set(x, y, z); p.rotation.set(rx, ry, 0); lid.add(p); return p; };
+    plane(R.w, R.d, 0, H, 0, Math.PI / 2, 0, new THREE.MeshBasicMaterial({ color: 0xf1eadb, side: THREE.DoubleSide })); // (the ceiling: its own cream, not the sky's tint)
+    plane(R.w, H, 0, H / 2, R.d / 2 + 0.02, 0, Math.PI); plane(R.d, H, -R.w / 2 - 0.02, H / 2, 0, 0, Math.PI / 2); plane(R.d, H, R.w / 2 + 0.02, H / 2, 0, 0, -Math.PI / 2);
+    plane(R.w, H, 0, H / 2, -R.d / 2 - 0.02, 0, 0); // (the front)
+    if (doorLx != null) plane(1.8, 2.4, doorLx, 1.2, -R.d / 2 + 0.01, 0, 0, new THREE.MeshLambertMaterial({ color: 0x6b5340 })); // (the way out)
+    return lid;
+  }
+  // v1.10.211 백화점 개편 A안: the 2nd floor, 옷·꾸미기 (IslandFashion; assets 60's room, assets 82's wear.*) -- the racks, the
+  // case and the costume rail open their shops; the two 꾸미기 mirrors' chairs open hair, colour and face (a seat each)
+  function buildFashion() {
+    if (fashion) return fashion;
+    const g = new THREE.Group(); g.position.set(FASH.ROOM.x, FASH.ROOM.y, FASH.ROOM.z); g.rotation.y = Math.PI; scene.add(g);
+    mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
+    const put = mallPut(g);
+    put('petshop.floor3', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(FASH.ROOM.w, 0.2, FASH.ROOM.d), mat(0xf3e6e2), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(FASH.ROOM.w, 4, 0.3), mat(0xf4dcd4), 0, 2, FASH.ROOM.d / 2, f); });
+    for (const p of FASH.PROPS) put(p.id, p.x, 0, p.at, p.yaw, (f) => mesh(new THREE.BoxGeometry(p.w, 1.4, p.d), mat(0xe2b8a8), 0, 0.7, p.z - p.at, f));
+    const k = makeCharacter({ shirt: 0xe87a9e, hair: 0x6b4a2b, skin: 0xffdcbc }); const [kx, kz, ky] = FASH.COUNTER.keeper; k.root.position.set(kx, 0, kz); k.root.rotation.y = ky + Math.PI; g.add(k.root);
+    k.home = { ...FASH.world(kx, kz), yaw: worldYaw(k.root), id: 'fashion:counter' }; counterKeepers.push({ id: 'fashion', k, spot: () => FASH.world(...FASH.COUNTER.customer) });
+    assets.dress(['character.npc'], k); dressUp(k, { gender: 'female' }, { shirt: 0xe87a9e });
+    signboard('wall', '2층 옷·꾸미기', g, 0, 3.1, FASH.ROOM.d / 2 - 0.2, 0);
+    for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
+    liftAt(g, FASH.LIFT);
+    // 마네킹 B (assets 82 README): the game's body on each stage's two spots, all of it one mannequin colour (no hair, no face),
+    // wearing the shop's clothes -- standing still in the first frame of its idle
+    const mannequins = []; const OUTFITS = ['avatar_outfit_6', 'avatar_outfit_14', 'avatar_outfit_3', 'avatar_outfit_10']; /* (casual, dress, hanbok, explorer) */
+    for (const [n, [lx, lz]] of [[-5.55, -8.9], [-4.45, -8.9], [4.45, -8.9], [5.55, -8.9]].entries()) {
+      const m = makeCharacter({ shirt: 0xeee4d4, hair: 0xeee4d4, skin: 0xeee4d4 }); m.root.position.set(lx, 0.15, lz); m.root.rotation.y = 0; g.add(m.root); /* (facing into the room) */
+      const plan = globalThis.IslandAssets?.wardrobeOf?.({ gender: n % 2 ? 'female' : 'male', outfit: OUTFITS[n], skinColor: '#eee4d4' });
+      if (plan) assets.wear(m, { ...plan, parts: plan.parts.filter((id) => !/^wear\.(hair|face)/.test(id)) });
+      mannequins.push(m);
+    }
+    const lid = roomLid(g, FASH.ROOM, 0xf4dcd4);
+    fashion = { group: g, keeper: k, lid, mannequins }; npcs.push(k);
+    return fashion;
   }
   doors['store:exit'] = { ...STORE.world(STORE.ROOM.exit.lx, STORE.ROOM.exit.lz), name: '나가기' };
   // 묶음 2 가구점 (IslandFurniture, assets 57): the 2nd floor, its own room far off like the 1st (turned half round the
   // same way) -- four zones on their rugs, a plinth for each of the day's pieces with its price, what hangs on the back
   // wall, the wide place for a wall tank, the always-on-sale ones by the counter; the lift on each floor between them
   const FURN = globalThis.IslandFurniture; let furniture = null; let furnitureState = null;
-  function liftAt(g, L) { const root = new THREE.Group(); root.position.set(L.lx, 0, L.lz); root.rotation.y = L.yaw; g.add(root); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(2.1, 3.2, 1.9), mat(0xb8b2a6), 0, 1.6, -0.95, v); root.add(v); assets.attach('mall.elevator', root, v); }
+  function liftAt(g, L) { if (L.house) return; { const p = new THREE.Group(); p.position.set(L.lx + 1.91, 0, L.lz - 0.8); p.rotation.y = -Math.PI / 2; g.add(p); assets.attach('mall.lift_panel', p, new THREE.Group()); } /* (v1.10.211: the floors' buttons beside its door) */ const root = new THREE.Group(); root.position.set(L.lx, 0, L.lz); root.rotation.y = L.yaw; g.add(root); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(2.1, 3.2, 1.9), mat(0xb8b2a6), 0, 1.6, -0.95, v); root.add(v); assets.attach('mall.elevator', root, v); }
   const PETS = globalThis.IslandPetShop; let petshop = null; let petshopState = null;
-  doors['lift:1'] = { ...STORE.world(...STORE.LIFT.stand), name: '승강기 · 2층 가구점 · 3층 펫샵' };
-  doors['lift:2'] = { ...FURN.world(...FURN.LIFT.stand), name: '승강기 · 1층 · 3층 펫샵' };
-  doors['lift:3'] = { ...PETS.world(...PETS.LIFT.stand), name: '승강기 · 1층 · 2층 가구점' };
+  // v1.10.211 백화점 개편 A안: four floors, each lift's hint the floor's own name
+  for (const [n, R] of [[1, STORE], [2, FASH], [3, FURN], [4, PETS]]) doors[`lift:${n}`] = { ...R.world(...R.LIFT.stand), name: `승강기 · 지금 ${n}층 ${STORE.FLOORS[n]}` };
   // 묶음 2-2 펫샵 (IslandPetShop, assets 60): the 3rd floor, its fenced yard and what stands, the ten pets of the day
   // walking the rounds IslandPetShop works out (the server's too) -- one taken is gone from the yard
   function buildPetshop() {
     if (petshop) return petshop;
     const g = new THREE.Group(); g.position.set(PETS.ROOM.x, PETS.ROOM.y, PETS.ROOM.z); g.rotation.y = Math.PI; scene.add(g);
-    mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
     const put = (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
-    put('petshop.floor3', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(PETS.ROOM.w, 0.2, PETS.ROOM.d), mat(0xe8f1ea), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(PETS.ROOM.w, 4, 0.3), mat(0xcfe8dc), 0, 2, PETS.ROOM.d / 2, f); });
-    put('petshop.playpen', PETS.PEN.lx, 0, PETS.PEN.lz, 0, (f) => mesh(new THREE.BoxGeometry(PETS.PEN.w / PETS.PEN.scale, 0.03, PETS.PEN.d / PETS.PEN.scale), mat(0x9fcf8a), 0, 0.015, 0, f)).scale.set(PETS.PEN.scale, 1, PETS.PEN.scale); // (v1.10.191: 1.5 times its 10 x 8 m)
-    for (const p of PETS.PROPS) { if (p.id === 'petshop.sign') signboard('wall', '펫샵', g, p.x, 3.1, p.z, p.yaw); else put(p.id, p.x, 0, p.z, p.yaw, p.w ? (f) => mesh(new THREE.BoxGeometry(p.w, 1, p.d), mat(0xd9c3a0), 0, 0.5, 0, f) : null); } // (간판: the floor's name on a wall board)
+    // v1.10.211 백화점 개편 A안: up on the roof (assets 82 roof.*) -- its garden floor under the sky, the yard 14 x 10, the lift's house
+    put('roof.floor', 0, 0, 0, 0, (f) => mesh(new THREE.BoxGeometry(PETS.ROOM.w, 0.2, PETS.ROOM.d), mat(0xcfe3c0), 0, -0.1, 0, f));
+    put('roof.pet_yard', PETS.PEN.lx, 0, PETS.PEN.lz, 0, (f) => mesh(new THREE.BoxGeometry(PETS.PEN.w, 0.03, PETS.PEN.d), mat(0x9fcf8a), 0, 0.015, 0, f));
+    for (const p of PETS.PROPS) { if (p.id === 'petshop.sign') signboard('stand', '옥상 펫샵', g, -8.6, 0, -2.6, -Math.PI / 2); else put(p.id, p.x, 0, p.z, p.yaw, p.w ? (f) => mesh(new THREE.BoxGeometry(p.w, 1, p.d), mat(0xd9c3a0), 0, 0.5, 0, f) : null); } // (간판: the floor's name on a wall board)
     // (사용자 제보 10/26 「점원이 뒤를 봄」: a keeper's data yaw is its back, as the 잡화점's sectors -- + half a turn faces the counter)
     const k = makeCharacter({ shirt: 0x5fa39a, hair: 0x6b4a2b, skin: 0xffdcbc }); const [kx, kz, ky] = PETS.COUNTER_KEEPER; k.root.position.set(kx, 0, kz); k.root.rotation.y = ky + Math.PI; g.add(k.root);
-    k.home = { ...PETS.world(kx, kz), yaw: worldYaw(k.root), id: 'petshop:counter' }; counterKeepers.push({ id: 'petshop', k, spot: () => PETS.world(kx, kz - 1.6) });
+    k.home = { ...PETS.world(kx, kz), yaw: worldYaw(k.root), id: 'petshop:counter' }; counterKeepers.push({ id: 'petshop', k, spot: () => PETS.world(kx, kz - 2.3) }); // (v1.10.211: before the counter, its customer spot)
     assets.dress(['character.npc'], k); dressUp(k, { gender: 'male' }, { shirt: 0x5fa39a });
     liftAt(g, PETS.LIFT);
-    for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
     petshop = { group: g, pets: new Map(), keeper: k }; npcs.push(k); /* (v1.10.191: a keeper to talk to -- the talk camera finds it among them, as the 잡화점's) */
     if (petshopState) setPetshop(petshopState);
     return petshop;
@@ -2707,6 +2751,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       petshop.pets.set(slot, { c, kind: p.kind, coat: p.coat, day: state.day, tag });
     }
   }
+  function stepFashion() { // (the mannequins: once its model is on, the idle's first frame -- then still)
+    if (!fashion || mySpace !== 'fashion') return;
+    for (const m of fashion.mannequins) if (m.anim && !m.posed) { m.anim.update(0.05, 0, { reduceIdle: true }); m.posed = true; }
+  }
   function stepPetshop() { // each where its round has it now (the server's clock), walking or standing
     if (!petshop || mySpace !== 'petshop' || !petshopState) return; const ms = Date.now() + serverOffset; const now = performance.now(); const dt = Math.min(0.5, (now - (petshop.clock || now)) / 1000); petshop.clock = now;
     for (const [slot, h] of petshop.pets) { const q = PETS.petAt(petshopState.day, slot, ms); h.c.root.position.set(q.x, PETS.ROOM.y, q.z); h.c.root.rotation.y = q.yaw + (h.c.yawOffset || 0); h.c.play(q.moving ? 'Walk' : 'Idle'); h.c.step?.(dt); } // (v1.10.191 a special: a transformation small walks by its step)
@@ -2720,21 +2768,21 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
     const put = (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
     put('mall.floor2', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(FURN.ROOM.w, 0.2, FURN.ROOM.d), mat(0xd9c3a0), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(FURN.ROOM.w, 4, 0.3), mat(0xf2ede4), 0, 2, FURN.ROOM.d / 2, f); });
-    for (const [zone, [x, z]] of Object.entries(FURN.ZONES)) put(`shop.rug_zone__${zone}`, x, 0, z + 0.35, 0, (f) => mesh(new THREE.BoxGeometry(4, 0.02, 4), mat(0xe6d6b8), 0, 0.01, 0, f));
+    for (const sl of FURN.SLOTS) if (sl.kind === 'floor') put(`shop.rug_zone__${sl.zone}`, sl.lx, 0, sl.lz, 0, (f) => mesh(new THREE.BoxGeometry(4, 0.02, 4), mat(0xe6d6b8), 0, 0.01, 0, f)); // (v1.10.211: one under each plinth, assets 82 README)
     const plinths = {};
     for (const s of [...FURN.SLOTS, ...FURN.BASE_SLOTS]) {
       if (s.plinth === false) { plinths[s.id] = { root: put('shop.price_stand', s.lx, 1.0, s.lz - 0.9, 0), top: 0 }; continue; }
       const small = Boolean(s.good); put(small ? 'shop.plinth_s' : 'shop.plinth_l', s.lx, 0, s.lz, 0, (f) => mesh(new THREE.BoxGeometry(small ? 1.2 : 2.4, 0.14, small ? 1.2 : 2.4), mat(0xcfc4b0), 0, 0.07, 0, f));
       plinths[s.id] = { root: put('shop.price_stand', s.lx, 0.14, s.lz - (small ? 0.5 : 1.1), 0), top: 0.14 };
     }
-    put('shop.checkout', FURN.CHECKOUT.lx, 0, FURN.CHECKOUT.lz, FURN.CHECKOUT.yaw, (f) => mesh(new THREE.BoxGeometry(1.9, 1.0, 0.7), mat(0xb07a4f), 0, 0.5, 0, f));
+    put('mall.counter__f3', FURN.CHECKOUT.lx, 0, FURN.CHECKOUT.lz, FURN.CHECKOUT.yaw, (f) => mesh(new THREE.BoxGeometry(2.3, 1.0, 0.85), mat(0xb07a4f), 0, 0.5, 0, f)); // (v1.10.211: the floors' counters one family)
     const k = makeCharacter({ shirt: 0x8a6a48, hair: 0x3d2b1f, skin: 0xffdcbc }); const [kx, kz, ky] = FURN.CHECKOUT.keeper; k.root.position.set(kx, 0, kz); k.root.rotation.y = ky + Math.PI; g.add(k.root); // (its back the data yaw, as the pet shop's)
     k.home = { ...FURN.world(kx, kz), yaw: worldYaw(k.root), id: 'furniture:checkout' }; counterKeepers.push({ id: 'furniture', k, spot: () => FURN.world(FURN.CHECKOUT.lx, FURN.CHECKOUT.lz - 1) });
     assets.dress(['character.npc'], k); dressUp(k, { gender: 'female' }, { shirt: 0x8a6a48 });
     liftAt(g, FURN.LIFT);
-    signboard('wall', '가구점', g, 0, 3.1, FURN.ROOM.d / 2 - 0.2, 0); // (간판: the floor's name on a wall board)
+    signboard('wall', '3층 가구', g, 0, 3.1, FURN.ROOM.d / 2 - 0.2, 0); // (간판: the floor's name on a wall board)
     for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
-    furniture = { group: g, plinths, shown: {}, put, keeper: k };
+    furniture = { group: g, plinths, shown: {}, put, keeper: k, lid: roomLid(g, FURN.ROOM, 0xf2ede4) };
     if (furnitureState) setFurniture(furnitureState);
     return furniture;
   }
@@ -2979,6 +3027,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // each sector's spot carries its old facility id (the shop's window and the server's place check stay the same)
   for (const s of STORE.SECTORS) doors[s.place] = { ...STORE.world(s.interact[0], s.interact[1]), name: s.name };
+  for (const s of FASH.SECTORS) doors[s.place] = { ...FASH.world(s.interact[0], s.interact[1]), name: s.name }; // (v1.10.211 2층: the racks, the costume rail, the case)
   if (doors.store) { doors.store.mapName = '백화점'; doors.store.name = '백화점 들어가기'; }
   function setGoodsPrices(prices) { goodsPrices = { ...(prices || {}) }; }
   // R4 구치소 (IslandJail, assets 67): its room far off like the 백화점's (turned half round) -- the cell at the back, its
@@ -3027,18 +3076,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   doors['jail:board'] = { ...JAIL.world(-5.6, -0.5), name: '오늘의 반성문' };
   if (doors.jail) { doors.jail.mapName = '구치소'; doors.jail.name = '구치소 들어가기'; }
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
-    mySpace = ['townhall', 'store', 'furniture', 'petshop', 'home', 'jail'].includes(space) ? space : 'island'; quiet(); // (5회차 1: a room's load is not a slow PC)
+    mySpace = ['townhall', 'store', 'fashion', 'furniture', 'petshop', 'home', 'jail'].includes(space) ? space : 'island'; quiet(); // (5회차 1: a room's load is not a slow PC)
     if (mySpace === 'home') buildHomeRoom(); else if (homeHere) setHome(null); // (묶음 4: out of a house, its pets go)
-    indoors = mySpace !== 'island'; lightKey = null; halloweenCheckedAt = -Infinity; // (bugs 9: the weather stays outside; 3회차 18: the black or the sky at once, not up to 5 s later)
+    indoors = mySpace !== 'island'; openSky = mySpace === 'petshop'; lightKey = null; /* (v1.10.211: the roof under the sky) */ halloweenCheckedAt = -Infinity; // (bugs 9: the weather stays outside; 3회차 18: the black or the sky at once, not up to 5 s later)
     if (mySpace === 'townhall') buildRoom();
     if (mySpace === 'store') buildStore();
+    if (mySpace === 'fashion') buildFashion();
     if (mySpace === 'furniture') buildFurniture();
     if (mySpace === 'petshop') buildPetshop();
     if (mySpace === 'jail') buildJail(); else wardenSay(null);
     if (petshop) for (const h of petshop.pets.values()) h.c.root.visible = mySpace === 'petshop'; // (the yard's pets stand in the world: only on the 3rd floor)
     // the island is not drawn while I am inside (IDEAS: no terrain, trees or sea in the room) -- only what is drawn now
     // is put away, and comes back as it was; the lights stay (they light the room too), people show by their space
-    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); const here = mySpace === 'store' ? store.group : mySpace === 'furniture' ? furniture.group : mySpace === 'petshop' ? petshop.group : mySpace === 'home' ? homeRoomV.group : mySpace === 'jail' ? jail.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
+    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); const here = mySpace === 'store' ? store.group : mySpace === 'fashion' ? fashion.group : mySpace === 'furniture' ? furniture.group : mySpace === 'petshop' ? petshop.group : mySpace === 'home' ? homeRoomV.group : mySpace === 'jail' ? jail.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
     if (mySpace !== 'island' && roomHidden.length) { for (const r of [room, store, furniture, petshop, homeRoomV, jail]) if (r) r.group.visible = r.group === ({ store, furniture, petshop, townhall: room, home: homeRoomV, jail })[mySpace]?.group; } // (from floor to floor: the one I am on)
     if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; if (furniture) furniture.group.visible = true; if (petshop) petshop.group.visible = true; if (homeRoomV) homeRoomV.group.visible = true; if (jail) jail.group.visible = true; }
     keys.clear(); me.root.position.set(x, spaceFloor(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y; if (mySpace !== 'island' && fpNow()) { camYaw = yawGoal = me.targetYaw - Math.PI; camPitch = pitchGoal = 0; } /* (V1: in the first, in through the door looking into the room) */
@@ -3054,7 +3104,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
   }
   // the floor where I stand in the space I am in (a room's own, the island's ground outside)
-  const spaceFloor = (x, z) => (mySpace === 'townhall' ? ROOM.y : mySpace === 'store' ? STORE.ROOM.y : mySpace === 'furniture' ? FURN.ROOM.y : mySpace === 'petshop' ? PETS.ROOM.y : mySpace === 'home' ? HOME.ROOM.y : mySpace === 'jail' ? JAIL.ROOM.y : heightAt(x, z));
+  const spaceFloor = (x, z) => (mySpace === 'townhall' ? ROOM.y : mallRoom(mySpace) ? mallRoom(mySpace).ROOM.y : mySpace === 'home' ? HOME.ROOM.y : mySpace === 'jail' ? JAIL.ROOM.y : heightAt(x, z));
   function stepQuestScenes(dt) {
     if (!questScenes || questScenes.departure === null) return;
     questScenes.departure += dt;
@@ -3421,7 +3471,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const p = me.root.position;
     if (platform) { const q = R.platformClamp(platform.line, platform.station, nx, nz); p.set(q.x, q.y, q.z); return; }
     if (mySpace === 'townhall') { [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = globalThis.IslandTerrain.roomClamp(nx, nz); p.set(q.x, ROOM.y, q.z); return; } // v1.10.84
-    if (mySpace === 'store' || mySpace === 'furniture' || mySpace === 'petshop' || mySpace === 'home' || mySpace === 'jail') { const R = mySpace === 'store' ? STORE : mySpace === 'furniture' ? FURN : mySpace === 'petshop' ? PETS : mySpace === 'jail' ? jailRoom : homeRoom; [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = R.clamp(nx, nz); p.set(q.x, R.ROOM.y, q.z); return; } // v1.10.92, 묶음 2
+    if (mallRoom(mySpace) || mySpace === 'home' || mySpace === 'jail') { const R = mallRoom(mySpace) || (mySpace === 'jail' ? jailRoom : homeRoom); [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = R.clamp(nx, nz); p.set(q.x, R.ROOM.y, q.z); return; } // v1.10.92, 묶음 2
     [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
     [nx, nz] = pushOut(nx, nz);
     if (!walkable(nx, nz)) { // the sea, a stream, the pond or a cliff edge: slide along it if one axis still works
@@ -3560,6 +3610,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (talkView && !fpTalk) { const v = talkPose(p); want.copy(v.want); look.copy(v.look); }
     me.root.visible = !fp; // (V1: my own body not in my eyes -- the others see it)
     if (homeRoomV?.lid) homeRoomV.lid.visible = fp && mySpace === 'home'; // (V1: the ceiling and the walls up to it -- the first only)
+    for (const [space, r] of [['store', store], ['fashion', fashion], ['furniture', furniture]]) if (r?.lid) r.lid.visible = fp && mySpace === space;
     { const fov = fp ? (fpTalk ? FP_TALK_FOV : FP_FOV) : 42; const near = fp ? 0.05 : 0.1; if (camera.fov !== fov || camera.near !== near) { camera.fov = fov; camera.near = near; camera.updateProjectionMatrix(); } } // (near: the walls and pieces never cut at my eyes)
     for (const c of [...[...others.values()].map((o) => o.c), ...wanderers.map((w) => w.c)]) { // (V1: a name tag close by in the first no bigger than at 4 m)
       const t = c?.tag; if (!t) continue;
@@ -3808,7 +3859,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npc.wasClose = close;
       animate(npc, dt, false);
     }
-    stepGuideArrow(); stepSnow(); stepVisits(); stepCountdown(dt); stepInsects(dt, moving); stepPets(); stepPetshop(); stepHome(dt); stepJail(performance.now()); // B 47, 묶음 2-2, 묶음 4, R4
+    stepGuideArrow(); stepSnow(); stepVisits(); stepCountdown(dt); stepInsects(dt, moving); stepPets(); stepPetshop(); stepFashion(); stepHome(dt); stepJail(performance.now()); // B 47, 묶음 2-2, 묶음 4, R4
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
     for (const [id, door] of Object.entries(doors)) {
@@ -3857,7 +3908,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const k of Object.keys(eventDoors)) if (k.startsWith('furn:') || k.startsWith('adopt:') || k === 'petshop:counter' || k === 'jail:warden') delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
     if (mySpace === 'petshop' && !best && petshopState && petshop) { const m = me.root.position; let pick = null; let pd = PETS.REACH; for (const [slot, h] of petshop.pets) { const d = Math.hypot(h.c.root.position.x - m.x, h.c.root.position.z - m.z); if (d < pd) { pd = d; pick = slot; } } const p = pick && petshopState.pets.find((x) => x.slot === pick); if (p) { const h = petshop.pets.get(pick).c.root.position; eventDoors[`adopt:${pick}`] = { x: h.x, z: h.z, name: `${p.name} · ${Number(p.price).toLocaleString('ko-KR')}P` }; best = `adopt:${pick}`; } }
-    if (mySpace === 'petshop' && !best) { const m = me.root.position; const w = PETS.world(PETS.COUNTER_KEEPER[0], PETS.COUNTER_KEEPER[1] - 1.6); if (Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['petshop:counter'] = { x: w.x, z: w.z, name: '펫샵 점원' }; best = 'petshop:counter'; } } // (v1.10.191: the keeper tells where today's are -- nothing on sale)
+    if (mySpace === 'petshop' && !best) { const m = me.root.position; const w = PETS.world(PETS.COUNTER_KEEPER[0], PETS.COUNTER_KEEPER[1] - 2.3); if (Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['petshop:counter'] = { x: w.x, z: w.z, name: '펫샵 점원' }; best = 'petshop:counter'; } } // (v1.10.191: the keeper tells where today's are -- nothing on sale)
     if (mySpace === 'jail' && !best) { const m = me.root.position; const w = JAIL.world(JAIL.TALK.lx, JAIL.TALK.lz); if (jailInmate === true || Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['jail:warden'] = { x: jailInmate === true ? m.x : w.x, z: jailInmate === true ? m.z : w.z, name: jailInmate === true ? '김우성 구치소장 · 반성문' : '김우성 구치소장' }; /* (사용자 2026-10-26: his name) */ best = 'jail:warden'; } } // (R4: from anywhere in the cell)
     if (mySpace === 'furniture' && !best && furnitureState) { const s = FURN.placeAt(me.root.position.x, me.root.position.z); const d = s && furnitureState.items[s.id]; if (d) { const w = FURN.world(s.lx, s.lz); eventDoors[`furn:${s.id}`] = { x: w.x, z: w.z, name: d.sold ? '팔렸어요 · 내일 새 가구가 들어와요' : `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`, plain: d.sold }; best = `furn:${s.id}`; } }
     for (const k of Object.keys(eventDoors)) if (k.startsWith('tank:') || k.startsWith('frame:')) delete eventDoors[k];
@@ -3890,8 +3941,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const m = me.root.position; let seat = null; let sd = 1.6;
       for (const s of SEATS) { const d = Math.hypot(s.x - m.x, s.z - m.z); if (d < sd && !takenSeats.has(s.id)) { seat = s; sd = d; } }
       const busyCounter = !seat && SEATS.find((s) => s.counter && takenSeats.has(s.id) && Math.hypot(s.x - m.x, s.z - m.z) < 1.6); // (A-7)
-      if (seat) { eventDoors[`seat:${seat.id}`] = { x: seat.x, z: seat.z, name: seat.counter ? `앉아서 ${seat.name} 업무` : '앉기', sit: !seat.counter }; best = `seat:${seat.id}`; }
-      else if (busyCounter) { eventDoors[`seat:${busyCounter.id}`] = { x: busyCounter.x, z: busyCounter.z, name: '다른 분이 업무 중이에요', plain: true }; best = `seat:${busyCounter.id}`; }
+      if (seat) { eventDoors[`seat:${seat.id}`] = { x: seat.x, z: seat.z, name: seat.counter ? seat.hint || `앉아서 ${seat.name} 업무` : '앉기', sit: !seat.counter }; best = `seat:${seat.id}`; }
+      else if (busyCounter) { eventDoors[`seat:${busyCounter.id}`] = { x: busyCounter.x, z: busyCounter.z, name: busyCounter.door === 'mirror' ? '거울이 다 찼어요' : '다른 분이 업무 중이에요', plain: true }; best = `seat:${busyCounter.id}`; }
       else {
         let who = null; let wd = 2.2;
         for (const [id, o] of others) { const d = Math.hypot(o.c.root.position.x - m.x, o.c.root.position.z - m.z); if (d < wd) { who = [id, o]; wd = d; } }
@@ -4116,7 +4167,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const fishingNow = () => (fishing ? fishing.phase : null); // v1.10.42
   // v1.10.44 앉기·이모트 (IDEAS ④): a seat on a plaza bench (the server keeps who sits), a wave or a cheer -- each sent with
   // my pose (act, a count telling a new wave from the last), played on everyone's screen with the same clips
-  const SEATS = [...globalThis.IslandTerrain.plazaProps().seats]; // (묶음 4: a house's seats join while I am in it)
+  const SEATS = [...globalThis.IslandTerrain.plazaProps().seats, ...(globalThis.IslandFashion?.SEATS || [])]; // (묶음 4: a house's seats join while I am in it; v1.10.211 the 꾸미기 mirrors' two chairs)
   // v1.10.46: SEATS 0.18 ahead of the bench's middle (island-terrain): a cape (0.41 behind the hips at most) clears its back
   // v1.10.45: SitIdle has the hips 0.38 up and the seat of the body 0.26 up; the bench's seat (at its 0.85 size) is 0.54
   // up -- lifted by the difference, I sit on it instead of in it
@@ -4202,9 +4253,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const back = sitting0?.from && Math.hypot(sitting0.from.x - s.x, sitting0.from.z - s.z) < 2.2 ? sitting0.from : null;
     const step = s.counter ? -1.0 : 1.0; let x = back ? back.x : s.x + Math.sin(sitting0.yaw) * step; let z = back ? back.z : s.z + Math.cos(sitting0.yaw) * step; let y; // (a window's chair: back, away from the desk)
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); x = q.x; z = q.z; y = ROOM.y; }
-    else if (mySpace === 'store') { const q = STORE.clamp(x, z); x = q.x; z = q.z; y = STORE.ROOM.y; }
-    else if (mySpace === 'furniture') { const q = FURN.clamp(x, z); x = q.x; z = q.z; y = FURN.ROOM.y; }
-    else if (mySpace === 'petshop') { const q = PETS.clamp(x, z); x = q.x; z = q.z; y = PETS.ROOM.y; }
+    else if (mallRoom(mySpace)) { const R = mallRoom(mySpace); const q = R.clamp(x, z); x = q.x; z = q.z; y = R.ROOM.y; } /* (v1.10.211: the four floors) */
     else if (mySpace === 'home') { const q = homeRoom.clamp(x, z); x = q.x; z = q.z; y = HOME.ROOM.y; }
     else if (mySpace === 'jail') { const q = jailRoom.clamp(x, z); x = q.x; z = q.z; y = JAIL.ROOM.y; }
     else y = heightAt(x, z);

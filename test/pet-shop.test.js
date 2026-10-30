@@ -35,7 +35,7 @@ test('펫샵: 승강기 3층, 곁에서만·먼저 온 한 명만·하루 한 �
     await req('/api/plaza/state', token, { ...T.facilityDoor('store'), yaw: 0, moving: false });
     assert.equal((await req('/api/island/store/enter', token, {})).status, 200);
     await req('/api/plaza/state', token, { ...S.world(...S.LIFT.stand), yaw: 0, moving: false });
-    assert.equal((await req('/api/island/lift', token, { to: 3 })).data.space, 'petshop');
+    assert.equal((await req('/api/island/lift', token, { to: 4 })).data.space, 'petshop');
   }
   const shop = (await req('/api/island/petshop', a)).data; assert.equal(shop.pets.length, 10); assert.ok(shop.pets.every((p) => p.price > 0 && !p.sold));
   const pet = shop.pets[0];
