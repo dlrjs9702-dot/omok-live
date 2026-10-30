@@ -128,7 +128,9 @@ totalEmissiveRadiance *= vColor.rgb * vColor.rgb * marbleMask;
   const spec = { shirt: 0x1f2a44, hair: 0x2b2b2b, skin: 0xffdcbc };
   const mayor = makeCharacter(spec); mayor.animNames = { idle: 'GuardIdle' }; mayor.noTuck = true;
   mayor.root.position.set(gate.x, heightAt(gate.x, gate.z), gate.z); mayor.root.rotation.y = ry; scene.add(mayor.root);
-  dressUp(mayor, { gender: 'male', hair: 'avatar_hair_8', outfit: 'npc_outfit_suit', shoes: 'avatar_shoes_5', dye: { avatar_shoes_5: '#1f2a44' } }, spec);
+  // v1.10.213 주민 근무표 A: 마루 in his own model (assets 84·88, his bell in hand) -- the old suit if it is not there
+  const own = globalThis.IslandAssets?.residentLook?.('mayor');
+  if (own) { assets.dress([own.model, 'character.npc'], mayor); mayor.headTop = own.headTop; mayor.resident = own.resident; } else dressUp(mayor, { gender: 'male', hair: 'avatar_hair_8', outfit: 'npc_outfit_suit', shoes: 'avatar_shoes_5', dye: { avatar_shoes_5: '#1f2a44' } }, spec);
   mayor.tag = makeTag('마루', null); /* (v1.10.194: the mayor's name -- 「시장님」 in what is said) */ mayor.root.add(mayor.tag); fitTag(mayor);
   const gateSolid = { x: gate.x, z: gate.z, r: 1.7, gate: true }; solids.push(gateSolid); // open to whoever has his leave
   let talkAt = null; // (v1.10.196 총괄 검토: while one talks to him he stops where he is and turns to the picture)

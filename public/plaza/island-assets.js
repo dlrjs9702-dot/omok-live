@@ -332,6 +332,16 @@
   // game metres (the speech bubble over it); lean: the upper body forward, degrees (the README's -- drawn only)
   const WALKER_LOOKS = Object.freeze([['bomi', 2.75, 0], ['sea_grandpa', 2.18, 5], ['haram', 2.16, 1], ['duri', 2.25, 2], ['noeul_granny', 2.08, 8], ['detective_oh', 2.31, 2], ['daon', 2.54, 1], ['barami', 2.2, 3], ['isol', 2.17, 2], ['garam', 1.65, 1]]
     .map(([id, headTop, lean]) => Object.freeze({ id, headTop, lean, model: `character.walker.${id}` })));
+  // v1.10.213 주민 근무표 A (assets 84·83, legs and hands assets 88): the other 17 islanders -- 14 named, 3 civil servants --
+  // each in two looks, at work (`_work`) and on a day off (`_off`), on the common rig like the ten (`baked`, their own
+  // gameScale; 콩이 0.45). headTop: the top of the model (its bounds) at that scale, for the name tag and the bubble.
+  const RESIDENT_LOOKS = Object.freeze([['bandi_off', 0.73, 1.72], ['bandi_work', 0.73, 1.72], ['bawi_off', 1.28, 2.81], ['bawi_work', 1.28, 2.72], ['bitna_off', 1.18, 2.73], ['bitna_work', 1.18, 3.00], ['cheori_off', 0.82, 1.64], ['cheori_work', 0.82, 1.80], ['garak_off', 1.22, 3.48], ['garak_work', 1.22, 3.48], ['goeun_off', 0.88, 2.08], ['goeun_work', 0.88, 2.08], ['handeul_off', 1.3, 2.99], ['handeul_work', 1.3, 2.99], ['hangyeol_off', 0.78, 1.70], ['hangyeol_work', 0.78, 1.67], ['kkotnim_off', 0.62, 1.33], ['kkotnim_work', 0.62, 1.33], ['kongi_off', 0.45, 0.98], ['kongi_work', 0.45, 0.98], ['maru_off', 1.02, 2.43], ['maru_work', 1.02, 2.26], ['mulgyeol_off', 0.96, 2.11], ['mulgyeol_work', 0.96, 2.11], ['neuti_off', 0.8, 2.04], ['neuti_work', 0.8, 2.04], ['useong_off', 1.15, 2.47], ['useong_work', 1.15, 2.52], ['danbi_off', 0.82, 1.57], ['danbi_work', 0.82, 1.57], ['hansol_off', 0.95, 2.24], ['hansol_work', 0.95, 2.24], ['saerom_off', 1.12, 2.86], ['saerom_work', 1.12, 2.86]]
+    .map(([id, scale, headTop]) => Object.freeze({ id, resident: id.replace(/_(work|off)$/, ''), scale, headTop, model: `character.walker.${id}` })));
+  for (const r of RESIDENT_LOOKS) REGISTRY[r.model] = { url: `${CH}/npc_walker_${r.id}.glb`, low: { url: `${CH}/npc_walker_${r.id}_low.glb` }, rotationY: Math.PI, motions: true, baked: true, ...(r.scale !== 1 ? { scale: r.scale } : {}) };
+  // who stands where today (until the roster, v1.10.215): the quest islanders by their story, the 관공서's desks, the gate, the jail
+  const RESIDENT_AT = Object.freeze({ photographer: 'bitna', photomemory: 'bitna', granny: 'kkotnim', fisher: 'mulgyeol', farmer: 'handeul', painter: 'goeun', stationmaster: 'cheori', busker: 'garak', electrician: 'bandi', builder: 'bawi', librarian: 'hangyeol', grandpa: 'neuti', kid: 'kongi',
+    'clerk:civil': 'danbi', 'clerk:tax': 'hansol', 'clerk:bank': 'saerom', mayor: 'maru', warden: 'useong' });
+  const residentLook = (post, kind = 'work') => RESIDENT_AT[post] ? RESIDENT_LOOKS.find((r) => r.id === `${RESIDENT_AT[post]}_${kind}`) || null : null;
   for (const w of WALKER_LOOKS) REGISTRY[w.model] = { url: `${CH}/npc_walker_${w.id}.glb`, low: { url: `${CH}/npc_walker_${w.id}_low.glb` }, rotationY: Math.PI, motions: true, baked: true, ...(w.id === 'garam' ? { scale: 0.75 } : {}) };
   const village = (file, extra = {}) => ({ url: `/assets/island/village-v1/${file}.glb`, low: { url: `/assets/island/village-v1/${file}_low.glb` }, near: 50, ...extra });
   for (const s of [0, 1, 2, 3]) { REGISTRY[`village.mural.${s}`] = village(`mural_stage${s}`); REGISTRY[`village.stepstones.${s}`] = village(`stepstones_stage${s}`); }
@@ -517,5 +527,5 @@
     if (typeof e.url === 'string' && /\/characters\/wear(-winter)?\//.test(e.url) && !HEAD.test(e.url)) e.baked = true;
     if (e.body && !HEAD.test(e.body.url)) e.body.baked = true;
   }
-  return { REGISTRY, WARDROBE, LOOK_SLOTS, WALKER_LOOKS, wardrobeOf };
+  return { REGISTRY, WARDROBE, LOOK_SLOTS, WALKER_LOOKS, RESIDENT_LOOKS, RESIDENT_AT, residentLook, wardrobeOf };
 });

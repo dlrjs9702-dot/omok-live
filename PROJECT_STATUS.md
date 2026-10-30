@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.213 주민 근무표 A — 주민 모습
+
+- 에셋 88: 주민 27명의 근무·평상 모델(34 모습 × High/Low), 기존 걷는 주민 10명 교체(다리·손). island-assets RESIDENT_LOOKS·RESIDENT_AT·residentLook(post). 자리마다 그 주민: 퀘스트 주민(이야기별), 관공서 창구 셋(단비 0.28 m 발판), 시장 마루(island-townhall), 교도관 우성. dressResident가 headTop·resident 표시.
+- 대화 카메라(총괄 검토 「내 머리가 주민을 가려요」): 내 오른쪽 4.2 m·뒤 1.5 m·내 머리 높이, 주민 키와 거리로 겨눔 — 머리 위쪽, 허리는 대화 카드 위. 큰 주민(가락 3.5 m)은 더 멀리. 퀘스트 주민은 자기 모델 기준(옆 가로등 제외). 펫샵 계산대는 전처럼.
+- 성능(전·후 3번씩): 프레임 PC +5~11%·폰 +8%(흔들림 안), draw call −8%, 텍스처 −25%, 먼 주민 Low 확인(wearLod).
+- 시험: e2e resident-looks(자리마다 모델, 대화 구도 talkFrame3 — 머리·허리·내 머리 옆), resident-perf(PERF=1), island-assets 제외 목록·단위 파이프라인 34 id. 디버그 wearLod·residentPosts·talkFrame3·seesWalker.
+
 ## v1.10.212 메신저 최소화 중 읽음 고침
 
 - 메신저 6절(사용자 「최소화 해 놓아도 읽은걸로 처리되고 있는데」): GET messages에 `peek=1`이면 서버가 읽음을 건드리지 않음. 창을 안 보고 있을 때(hidden·!hasFocus) pull()이 peek, 창으로 돌아오면(focus·visibilitychange) 열린 방을 보통으로 한 번 다시 불러 그때 읽음 + 안 읽은 수 다시.
@@ -26,12 +33,3 @@
 - 게임 스킨은 게임관 「스킨」 탭(위치 검사 없음). 거울 자리의 머리·염색·얼굴은 그 의자에 앉은 사람만(서버).
 - 메신저: badge-96 흰 실루엣·icon-192, 재연결 중 팝업 없음, messenger.html은 아일랜드 manifest.
 - 시험: 단위 mall-floors(걸어서 닿음·2 m 길·승강기·거울·옛 자리), e2e mall-floors(PC·폰, 사진 notes img/mall-revamp-live).
-
-## v1.10.210 메신저 알림·1인칭 키
-
-- 메신저 입구: 계정·기기 열쇠가 같은 계정이면 기기를 붙임 → 아일랜드에서 연 메신저 창도 알림 켜기(DEVICE_NEEDED 고침).
-- push는 기기마다: 메신저 스트림에 device 기록, 그 기기에서 열려 있는 기기만 뺌(PC 창이 열려 있어도 폰엔 push).
-- 창이 열려 있어도 안 보고 있으면(hidden·!hasFocus) 페이지가 push와 같은 모양·tag로 알림, 꺼 둔 방·내 글(방 목록 last.mine) 제외.
-- 배지: 일꾼 배지는 그 scope 안의 앱에만 붙어 push·알림 누르기를 앱의 sw.js(scope /)로 옮김, 옛 /messenger 구독은 페이지가 옮김, 캐시가 꺼져도 구독이 있으면 sw.js 남김, messenger-sw.js 지움.
-- 1인칭 키: 방향키 걷기(↑↓ 보는 쪽, ←→ 옆걸음), W/A/S/D 시점(FP_WALK 지움).
-- 시험: 단위 messenger-device(같은 계정 200·계정만 409·다른 계정 기기 409·PC 스트림+폰 구독 → 폰만), e2e messenger(안 볼 때 팝업), island-view-modes(1인칭 키).

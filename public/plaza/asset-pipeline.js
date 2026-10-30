@@ -358,6 +358,7 @@
       ambient: (parent) => call('ambient', [parent]),
       tick: (dt, x, z, reduceMotion = false) => { if (impl) impl.tick(dt, x, z, reduceMotion); },
       release: (character) => { if (impl) impl.release(character); },
+      wearLodCounts: () => impl?.wearLodCounts?.() || null, // (v1.10.213: the characters with a Low file -- High near, Low farther)
       dispose() { disposed = true; queue.length = 0; impl?.dispose(); },
       debug: () => ({ registered: ids, loader: impl ? 'ready' : failed ? 'failed' : ids.length ? 'loading' : 'none', day, ...(impl?.debug() || {}) }),
     };
