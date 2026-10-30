@@ -4121,7 +4121,8 @@ async function requestHandler(req, res) {
       const after = Math.max(0, Math.floor(Number(url.searchParams.get('after')) || 0));
       const before = Math.max(0, Math.floor(Number(url.searchParams.get('before')) || 0)); // v1.10.87 이전 대화
       const messages = await (before ? messengerStore.older(room.id, before) : messengerStore.messages(room.id, after));
-      if (!before) { // v1.10.88 읽음: looking at the room reads it (kept on the server, so every device agrees)
+      // (메신저 6절, v1.10.212: `peek` -- the window open but not looked at, minimised or behind another: the lines, not read)
+      if (!before && url.searchParams.get('peek') !== '1') { // v1.10.88 읽음: looking at the room reads it (kept on the server, so every device agrees)
         const upTo = messages.length ? messages.at(-1).seq : room.seq; // only what was handed over (past 100 unread, the rest next time -- Codex review)
         await messengerStore.setRead(room.id, key.id, upTo); room.reads[key.id] = Math.max(room.reads[key.id] || 0, upTo);
       }

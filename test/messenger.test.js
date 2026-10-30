@@ -139,6 +139,9 @@ test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·�
   // v1.10.88 읽음 (server): mom has read up to her own line 2, dad all 3 by looking
   let momList = (await call('/api/messenger', undefined, mom.token)).data.rooms[0];
   assert.deepEqual([momList.unread, momList.reads[mom.id], momList.reads[dad.id], momList.last.label], [1, 2, 3, '아빠']);
+  // (메신저 6절, v1.10.212) peek -- the window open but not looked at: the lines, the reads as they were
+  assert.deepEqual((await call(`/api/messenger/rooms/${room.id}/messages?after=2&peek=1`, undefined, mom.token)).data.messages.map((m) => m.seq), [3]);
+  momList = (await call('/api/messenger', undefined, mom.token)).data.rooms[0]; assert.deepEqual([momList.unread, momList.reads[mom.id]], [1, 2]);
   assert.deepEqual((await call(`/api/messenger/rooms/${room.id}/messages?after=2`, undefined, mom.token)).data.messages.map((m) => m.seq), [3]);
   assert.equal((await call('/api/messenger', undefined, mom.token)).data.rooms[0].unread, 0); // read on another call too (any device)
   // rename (group), mute (mine only)
