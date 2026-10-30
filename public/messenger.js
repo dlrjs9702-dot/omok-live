@@ -65,15 +65,17 @@
     document.title = blink.text(baseTitle); blink.update(unread, away());
     window.MessengerAlert.setBadge(navigator, unread);
   }
-  async function refresh() { const g = gen; try { const data = await api('/api/messenger'); if (g !== gen) return false; const before = state; state = data; renderRooms(); popNew(before.rooms, data.rooms); return true; } catch (err) { if (g === gen) fail(err); return false; } }
+  async function refresh() { const g = gen; try { const data = await api('/api/messenger'); if (g !== gen) return false; const before = state; state = data; renderRooms(); if (synced === g) popNew(before.rooms, data.rooms); synced = g; return true; } catch (err) { if (g === gen) fail(err); return false; } }
   // (메신저 3절 3) the window open but not looked at (minimised, another window in front): the notice the push would be --
   // same look, same tag (one notice a room), never for a muted room or my own line; the server pushes this device no more
   // while it is open here (3절 4)
+  // (Codex 검토 5차 P2-1: the list after this login's first one -- a room not in it before is new, its first line a notice too)
+  let synced = -1;
   function popNew(was, now) {
-    if (!pushOn || !pushReg || !streamUp || !away() || !was.length || Notification.permission !== 'granted') return; // (the stream down -- a few seconds reconnecting -- the server pushes this device: one notice, one sound)
+    if (!pushOn || !pushReg || !streamUp || !away() || Notification.permission !== 'granted') return; // (the stream down -- a few seconds reconnecting -- the server pushes this device: one notice, one sound)
     const seen = new Map(was.map((r) => [r.id, r.seq]));
     for (const r of now) {
-      if (r.muted || !r.last || r.last.system || r.last.mine || !(r.seq > (seen.get(r.id) ?? r.seq))) continue;
+      if (r.muted || !r.last || r.last.system || r.last.mine || !(r.seq > (seen.get(r.id) ?? 0))) continue;
       const title = r.kind === 'dm' ? r.last.label : r.name; const body = (r.kind === 'dm' ? r.last.text : `${r.last.label}: ${r.last.text}`).slice(0, 120);
       pushReg.showNotification(title, { body, tag: r.id, renotify: true, icon: '/icons/icon-192.png', badge: '/icons/badge-96.png', data: { room: r.id } }).catch(() => {});
     }
@@ -148,10 +150,10 @@
     const recent = msgs.find((msg) => !msg.system && !msg.deleted && Date.now() - Date.parse(msg.at) < 6 * 60 * 1000);
     const from = recent ? Math.min(last, recent.seq - 1) : last;
     try {
-      const peek = away() ? '&peek=1' : ''; // (메신저 6절: not looked at -- the lines only, not read; read when I am back)
-      let data = await api(`/api/messenger/rooms/${id}/messages?after=${from}${peek}`);
+      const peek = () => (away() ? '&peek=1' : ''); // (메신저 6절: not looked at -- the lines only, not read; read when I am back. Codex 검토 5차 P3-2: asked each request)
+      let data = await api(`/api/messenger/rooms/${id}/messages?after=${from}${peek()}`);
       // (C3 ②: a busy room filled the page (100) with the asked-again lines -- the new ones asked for on their own)
-      if (from < last && data.messages.length >= 100) { const more = await api(`/api/messenger/rooms/${id}/messages?after=${last}${peek}`); data = { ...more, messages: [...data.messages.filter((msg) => msg.seq <= last), ...more.messages] }; }
+      if (from < last && data.messages.length >= 100) { const more = await api(`/api/messenger/rooms/${id}/messages?after=${last}${peek()}`); data = { ...more, messages: [...data.messages.filter((msg) => msg.seq <= last), ...more.messages] }; }
       if (current?.id !== id || g !== gen) return;
       const firstPage = !last; current = data.room; showHead();
       const fresh = data.messages.filter((msg) => msg.seq > last);
@@ -301,10 +303,15 @@
       // inside its scope -- the old /messenger worker's never reached the island app's icon. Its subscription moves over.
       pushReg = await navigator.serviceWorker.register('/sw.js');
       const old = (await navigator.serviceWorker.getRegistrations()).find((r) => new URL(r.scope).pathname === '/messenger');
-      let moved = null; if (old) { moved = await old.pushManager.getSubscription().catch(() => null); await moved?.unsubscribe().catch(() => {}); await old.unregister().catch(() => {}); }
       const { key, on } = await api('/api/messenger/push'); if (!key) return;
-      pushOn = on && Notification.permission === 'granted';
-      if (moved && pushOn) { await subscribe(key); }
+      const granted = Notification.permission === 'granted';
+      // (Codex 검토 5차 P2-2) the old one let go only once the new one and its record stand -- a failed move keeps the old,
+      // tried again next time
+      const moved = old ? await old.pushManager.getSubscription().catch(() => null) : null;
+      const kept = moved && on && granted && !(await subscribe(key).then(() => true, () => false));
+      if (old && !kept) { await moved?.unsubscribe().catch(() => {}); await old.unregister().catch(() => {}); }
+      // 「알림 끄기」 only when the server has it on and this device holds a subscription
+      pushOn = on && granted && Boolean(await pushReg.pushManager.getSubscription().catch(() => null));
       btn.dataset.key = key; btn.textContent = pushOn ? '알림 끄기' : '알림 켜기'; btn.classList.remove('hidden');
     } catch {}
   }

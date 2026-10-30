@@ -66,6 +66,12 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     for (const [uid, x, z] of [[desk, -1.5, 2.5], [globe, -1.85, 2.5], [box, -1.3, 2.5], [table, 1.5, 2.5], [radio, 1.5, 2.5]]) /* (assets 86: the tabletop 곤충 상자 on the desk) */ expect((await post(request, '/api/home/place', who.token, { uid, x, z, rot: 0 })).status).toBe(200);
     await enter('home:exit', 'island'); await enter(`home:${lot}`, 'home');
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().lid()?.visible)).toBe(true); // (the ceiling, the walls up to it)
+    { // (Codex 검토 5차 P3-6) the ceiling built again and again: its old pieces let go -- the GPU's count stays
+      const geos = () => page.evaluate(() => window.PlazaDebug().render?.geometries);
+      await page.evaluate(() => window.PlazaDebug().lid(3.6)); await page.waitForTimeout(500); const before = await geos();
+      for (let k = 0; k < 6; k += 1) { await page.evaluate((h) => window.PlazaDebug().lid(h), k % 2 ? 3.6 : 4.0); await page.waitForTimeout(300); }
+      await page.evaluate(() => window.PlazaDebug().lid(null)); await page.waitForTimeout(500); expect(await geos()).toBeLessThanOrEqual(before + 4);
+    }
     await shot('home-first');
     if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().setCamYaw?.(window.PlazaDebug().view().yaw)); for (const h of [3.6, 4.0]) { await page.evaluate((h) => window.PlazaDebug().lid(h), h); await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(d.view().yaw); }); await shot(`home-ceil-${h}`); } await page.evaluate(() => window.PlazaDebug().lid(null)); }
     // 꾸미기: the room from above while it is open, the first again when closed

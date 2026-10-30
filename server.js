@@ -1069,8 +1069,15 @@ function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mo
 // read: [festival story ids] } -- kept in the store, a copy here so a walk past the place asked for is seen at once
 const storyDocs = new Map(); // account -> doc
 async function storyDoc(account) {
-  if (!storyDocs.has(account)) storyDocs.set(account, (await pointStore.questDoc(account, 'story')).doc || {});
+  if (!storyDocs.has(account)) { const doc = (await pointStore.questDoc(account, 'story')).doc || {}; if (!storyDocs.has(account)) storyDocs.set(account, doc); } // (Codex 검토 5차 P3-3: a storyApply while this first read was out put the newer one -- kept)
   return storyDocs.get(account);
+}
+// (Codex 검토 5차 P3-4 ③) a chapter's 호감도 still owed (its end saved, the pay not): paid now -> the points after, or null
+async function storyPay(account, day) {
+  const due = (await storyDoc(account)).unpaid || []; if (!due.length) return null;
+  const after = await pointStore.affinityAdd(account, day, due.map((n) => ({ n, delta: IslandCast.GAIN.story })));
+  await storyApply(account, (d) => ({ doc: { ...d, unpaid: (d.unpaid || []).filter((n) => !due.includes(n)) } }));
+  return after;
 }
 async function storyApply(account, fn) {
   const out = await pointStore.questApply(account, 'story', (doc) => fn(doc || {}));
@@ -6467,6 +6474,11 @@ async function requestHandler(req, res) {
     const c = await contestState(); if (c.phase === 'done') await settleContest(c); contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id });
     return sendJson(res, 200, { ok: true, phase: c.phase, kind: c.kind, id: c.id });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/store/fail' && req.method === 'POST') { // (Codex 검토 5차 P3-4: a save failing half way -- the store's `method` throws once, after `skip` calls)
+    const { method, skip = 0 } = await parseJson(req); const real = pointStore[method]; if (typeof real !== 'function') return sendError(res, 400, 'BAD_REQUEST', '없는 저장소 함수예요.');
+    let left = Number(skip) || 0; pointStore[method] = async (...args) => { if (left > 0) { left -= 1; return real.apply(pointStore, args); } pointStore[method] = real; throw new Error('test store failure'); };
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
     broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
@@ -6749,8 +6761,10 @@ async function requestHandler(req, res) {
       if (body.step !== 'finish') return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (!near(S, Math.hypot(S.w, S.d) / 2 + 3)) return sendError(res, 409, 'TOO_FAR', '눈밭에서 꾸며 주세요.');
       const r = await apply((doc) => IslandFestival.finishSnowman(fest, doc, body.parts, now)); if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.');
+      // (Codex 검토 5차 P3-4 ②: finished in my doc first, then put on the field -- a field save that fails leaves it to the next 「finish」)
       const dayKey = `snowmen:${fest.id}:${day}`; // (the day's on the field for everyone, the latest 12 -- each in the next of 12 places)
       await worldEdit(async () => { const list = (await pointStore.worldValue(dayKey)) || []; const made = list.length ? list[list.length - 1].made + 1 : 0; await pointStore.setWorldValue(dayKey, [...list, { ...r.snowman, account, name: String(session.label || '게스트'), made, slot: made % 12, at: now }].slice(-12)); });
+      await apply((doc) => IslandFestival.snowmanShown(doc));
       return sendJson(res, 200, { ok: true, added: r.added, score: r.snowman.score, say: r.say, festival: await view(), snowmen: snowmenFor(account, await pointStore.worldValue(dayKey)) });
     }
     if (action === 'gather' && fest.tasks.gather) { // X2 성탄 저녁 모임: the last day's evening, round the plaza's tree
@@ -6759,7 +6773,7 @@ async function requestHandler(req, res) {
     }
     if (action === 'midnight' && fest.tasks.midnight) { // X2 카운트다운: round the board from 0:00 to 0:10 -- the title 「해피 뉴 이어」 and a stamp (it opens the end story)
       if (!near(P.board, P.COUNT_R)) return sendError(res, 409, 'TOO_FAR', '대청마당 카운트다운 판 둘레로 와 주세요.');
-      const r = await stamp('midnight'); if (!r.error) await eventTitleGive(account, fest.tasks.midnight.title);
+      const r = await stamp('midnight'); if (!r.error || r.error === 'TASK_DONE') await eventTitleGive(account, fest.tasks.midnight.title); // (Codex 검토 5차 P3-4 ①: the stamp saved, the title's save failed -- asked again, the title; the title once whatever)
       return sendStamp(r, { title: r.error ? null : IslandCalendar.titleOf(fest.tasks.midnight.title) });
     }
     if (action === 'feast') { // 주민 잔치: the last day's evening, round the feast table
@@ -6942,6 +6956,7 @@ async function requestHandler(req, res) {
     if (back === undefined) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (!state?.hold) { const seen = IslandNpcs.residentAt(n, nowMs() - back, state); islandEvents.residentTalk(n, who, Math.atan2(pos.x - seen.x, pos.z - seen.z), back); residentsChanged(); } // (held where I reached them)
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
+    await storyPay(account, day).catch(() => {}); // (Codex 검토 5차 P3-4 ③: a chapter's 호감도 owed from before -- paid with this talk)
     const c = IslandCast.WALKERS[n]; const before = await pointStore.affinityOf(account); const level = IslandCast.levelOf(before[n] || 0); // (the words go by the level before this talk)
     const now = nowMs(); const phase = islandPhase((await pointStore.worldValue('time'))?.mode, now);
     const weather = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode || 'auto').kind;
@@ -6992,9 +7007,9 @@ async function requestHandler(req, res) {
       }
       if (st === 'hand') {
         const { c: k } = doc.cur; const ch = IslandStory.RESIDENTS[n][k];
-        const out = await storyApply(account, (d) => (d.cur?.n === n && d.cur.c === k && d.cur.reached ? { doc: { ...d, chapters: { ...(d.chapters || {}), [n]: k + 1 }, cur: null } } : null));
+        const out = await storyApply(account, (d) => (d.cur?.n === n && d.cur.c === k && d.cur.reached ? { doc: { ...d, chapters: { ...(d.chapters || {}), [n]: k + 1 }, cur: null, unpaid: [...(d.unpaid || []), n] } } : null));
         if (!out?.doc) return sendError(res, 409, 'STORY_GONE', '이미 끝난 이야기예요.');
-        const after = await pointStore.affinityAdd(account, day, [{ n, delta: IslandCast.GAIN.story }]);
+        const after = await storyPay(account, day) || before;
         return sendTalk(view([ch.done], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, me), story: await storyView(account),
           storyNote: { n, c: k, title: ch.title, note: ch.note.map((l) => IslandCast.fill(l, me)), piece: ch.piece } }));
       }

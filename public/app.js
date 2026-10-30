@@ -1663,7 +1663,12 @@
     const lift = (e) => { pointers.delete(e.pointerId); pinch = null; };
     canvas.addEventListener('pointerup', lift); canvas.addEventListener('pointercancel', lift);
   }
+  // (Codex 검토 5차 P3-5) each window opened its own number: a reply that closes its window closes only that one -- not
+  // another opened while it was on its way
+  let plazaWindowGen = 0;
+  const closeIfStill = (gen) => { if (gen === plazaWindowGen) plazaDialog.close(); };
   function openPlazaWindow(title, nodes) {
+    plazaWindowGen += 1;
     plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode', 'shopMode', 'adminMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
@@ -2683,7 +2688,7 @@
   byId('islandBagSort').addEventListener('click', async (event) => {
     const b = byId('islandBagSort');
     if (bagSortAsk == null || event.timeStamp - bagSortAsk > BAG_SORT_ASK_MS) { const at = event.timeStamp; bagSortAsk = at; b.textContent = '순서를 바꿀까요?'; setTimeout(() => { if (bagSortAsk === at) bagSortReset(); }, BAG_SORT_ASK_MS + 100); return; }
-    bagSortReset();
+    bagSortReset(); bagHeld = null; bagPicked = null; byId('islandBagGrid').querySelector('.held')?.classList.remove('held'); // (Codex 검토 5차 P3-1: the slot held by a finger names another thing once sorted -- let go)
     const mine = ++bagMoveSeq; // (CI #351: a move's late answer drew the old order over the sorted one -- the latest asked wins)
     try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); } catch (error) { if (mine === bagMoveSeq) showToast(error.message); }
   });
@@ -2832,13 +2837,13 @@
     }
     if (act === 'choose' && t.type === 'pick' && !t.spots) { // (the book: which of the cart's)
       const card = el('section', 'card visitCard'); card.append(el('p', '', '수레에서 부탁받은 책을 골라 꽂아요.'));
-      const row = el('div', 'visitChoices'); (t.options || []).forEach((name, k) => { const b = el('button', 'isle-pill', name); b.type = 'button'; b.addEventListener('click', async () => { if (await visitPost(story, 'choose', { choice: k })) plazaDialog.close(); }); row.append(b); });
+      const row = el('div', 'visitChoices'); (t.options || []).forEach((name, k) => { const b = el('button', 'isle-pill', name); b.type = 'button'; b.addEventListener('click', async () => { const gen = plazaWindowGen; if (await visitPost(story, 'choose', { choice: k })) closeIfStill(gen); }); row.append(b); });
       card.append(row); openPlazaWindow('책 수레', [card]); return;
     }
     if (act === 'choose' && t.type === 'train') { // (the next train: read on the board, said in minutes)
       const card = el('section', 'card visitCard'); card.append(el('p', '', '역 이름판을 보고, 다음 열차가 몇 분 뒤에 오는지 적어요.'));
       const input = el('input', 'visitMinutes'); input.type = 'number'; input.min = '0'; input.max = '99'; input.inputMode = 'numeric'; input.setAttribute('aria-label', '몇 분 뒤');
-      const ok = el('button', 'isle-pill', '붙이기'); ok.type = 'button'; ok.addEventListener('click', async () => { const n = Number(input.value); if (!Number.isFinite(n) || input.value === '') return showToast('몇 분인지 적어요.'); if (await visitPost(story, 'choose', { choice: n })) plazaDialog.close(); });
+      const ok = el('button', 'isle-pill', '붙이기'); ok.type = 'button'; ok.addEventListener('click', async () => { const n = Number(input.value); if (!Number.isFinite(n) || input.value === '') return showToast('몇 분인지 적어요.'); const gen = plazaWindowGen; if (await visitPost(story, 'choose', { choice: n })) closeIfStill(gen); });
       const row = el('div', 'visitChoices'); row.append(input, el('span', '', '분 뒤'), ok); card.append(row); openPlazaWindow('열차 시간표', [card]); input.focus(); return;
     }
     if (act === 'start') {
@@ -2888,8 +2893,8 @@
     };
     chips.append(chip('carrot', '당근 코', 1), chip('coal', '숯', 5), chip('twig', '나뭇가지 팔', 2), chip('bucket', '양동이 모자', 1), chip('scarf', '목도리', 1));
     go.addEventListener('click', async () => {
-      const r = await festivalPost('snowman', { step: 'finish', parts }); if (!r) return;
-      plaza.controller?.playMine?.('cheer'); plazaDialog.close(); showToast(`☃️ 「${r.say}」 ${r.score}점 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`, 6000);
+      const gen = plazaWindowGen; const r = await festivalPost('snowman', { step: 'finish', parts }); if (!r) return;
+      plaza.controller?.playMine?.('cheer'); closeIfStill(gen); showToast(`☃️ 「${r.say}」 ${r.score}점 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`, 6000);
     });
     card.append(el('p', 'smallMuted', '하나씩 눌러 붙여요(숯은 눈 둘·단추 셋). 많이 꾸밀수록, 위로 갈수록 알맞게 작아질수록 점수가 높아요(하루 한 번, 도장 3개).'), chips, go);
   }
@@ -4271,8 +4276,10 @@
   // 이야기 책 (the bag's 「이야기」, the 기록관): the islanders' chapters (open ones in full, the rest 「???」), the lighthouse's
   // eight pieces (the log and the last chapter come with S2), the festival stories I have
   let storyTab = 'residents';
+  let storyAsked = 0; // (Codex 검토 5차 P3-5: tabs switched fast -- only the last one asked for draws)
   async function openStoryBook(tab = storyTab) {
-    try { showStory(await api('/api/island/story')); } catch (error) { showToast(error.message); return; }
+    const mine = ++storyAsked;
+    try { const got = await api('/api/island/story'); if (mine !== storyAsked) return; showStory(got); } catch (error) { if (mine === storyAsked) showToast(error.message); return; }
     storyTab = tab; const S = globalThis.IslandStory; const C = globalThis.IslandCast; const v = storyView || {}; byId('storyBookTitle').textContent = '이야기 책';
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     byId('storyBookTabs').replaceChildren(...[['residents', '주민 이야기'], ['lighthouse', '초승등대'], ['events', '행사 이야기']].map(([id, label]) => {

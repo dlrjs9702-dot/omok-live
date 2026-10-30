@@ -49,6 +49,11 @@ test('카운트다운 서버: 0시 둘레만 칭호·도장 1(한 번), 23:59:59
   assert.equal((await claim(b)).data.error, 'TOO_FAR', '둘레 밖');
   const got = await claim(a); assert.equal(got.status, 200, JSON.stringify(got.data)); assert.equal(got.data.added, 1); assert.equal(got.data.title.name, '해피 뉴 이어');
   assert.equal((await claim(a)).data.error, 'TASK_DONE', '한 번');
+  // (Codex 검토 5차 P3-4 ①) the stamp saved, the title's save failed: asked again -- 「이미」 for the stamp, the title given
+  const c = await enter(await issue('칭호늦게')); await stand(c, { x: B.x - 2, z: B.z + 3 });
+  await req('/api/test/store/fail', null, { method: 'questApply', skip: 1 }); assert.notEqual((await claim(c)).status, 200);
+  assert.ok(!(await req('/api/skins', c)).data.dexTitles.some((x) => x.id === 'title_event_newyear'), '칭호 저장 실패');
+  assert.equal((await claim(c)).data.error, 'TASK_DONE'); assert.ok((await req('/api/skins', c)).data.dexTitles.some((x) => x.id === 'title_event_newyear'), '다시 하면 칭호');
   assert.ok((await req('/api/skins', a)).data.dexTitles.some((x) => x.id === 'title_event_newyear'), '칭호 받음');
   assert.equal((await req('/api/skins/title', a, { skinId: 'title_event_newyear' })).data.avatar.title, '해피 뉴 이어');
   await stand(b, { x: B.x + 2, z: B.z + 3 }); await clock('2027-01-01T00:10:00'); assert.equal((await claim(b)).data.error, 'TASK_CLOSED', '0:10 뒤');

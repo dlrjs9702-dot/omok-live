@@ -173,6 +173,7 @@ test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하�
   const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
   await context.addInitScript(() => { /* (the notices it shows, kept to read; "not looked at" at the test's word) */
     Object.defineProperty(Notification, 'permission', { get: () => 'granted' }); window.__shown = []; ServiceWorkerRegistration.prototype.showNotification = function (title, options) { window.__shown.push({ title, ...options }); return Promise.resolve(); };
+    PushManager.prototype.getSubscription = function () { return Promise.resolve({ endpoint: 'https://push.test/x', unsubscribe: () => Promise.resolve(true) }); }; /* (this device subscribed: 「알림 끄기」 needs it -- Codex 검토 5차 P2-2) */
     const hasFocus = Document.prototype.hasFocus; Document.prototype.hasFocus = function () { return window.__away ? false : hasFocus.call(this); };
   });
   await context.route('**/api/messenger/push', (route) => (route.request().method() === 'GET' ? route.fulfill({ json: { ok: true, key: 'BKey', on: true } }) : route.continue())); // (this device's notices on: the push service itself is not reached under tests)
@@ -197,6 +198,48 @@ test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하�
   await say(dad, other, '조용히'); await say(mom, room, '응 갈게');
   await expect(m.locator('#messengerRoomList')).toContainText('응 갈게'); await m.waitForTimeout(800);
   expect((await shown()).length).toBe(1);
+  // (Codex 검토 5차 P2-1) a room first seen with its first line in it -- a new room's invitation, a new 1:1: its notice too
+  // (the list held back while the room and its line are made, so they come in one list)
+  let hold = true; await m.route(/\/api\/messenger(\?.*)?$/, async (route) => { while (hold) await new Promise((r) => setTimeout(r, 100)); await route.continue(); });
+  const fresh = (await api(request, '/api/messenger/rooms', { account: dad.account, body: { name: '새방', members: [mom.id] } })).data.room;
+  await say(dad, fresh, '첫 인사'); hold = false;
+  await expect.poll(async () => (await shown()).filter((s) => s.tag === fresh.id), { timeout: 15000 }).toEqual([{ title: '새방', body: `${dad.nickname}: 첫 인사`, tag: fresh.id, room: fresh.id }]);
+  await context.close();
+});
+
+// (Codex 검토 5차 P2-2) the old /messenger worker's subscription moves to the app's: let go only once the new one and its
+// record stand -- a failed move keeps the old (tried again next time); 「알림 끄기」 only with the server's on and this
+// device's subscription
+test('메신저 알림 옮기기: 새 구독이 실패하면 옛 구독 그대로·「알림 켜기」, 성공하면 옛 것 해지·「알림 끄기」', async ({ browser, request }, info) => {
+  test.setTimeout(120000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const loginId = `q_${stamp}`.slice(0, 20);
+  await api(request, '/api/account/signup', { body: { realName: 'q', loginId, password: 'secret123', nickname: `옮김${(Date.now() + info.project.name.length) % 100000}` } });
+  const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+  await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+  const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+  await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+  const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+  await context.addInitScript(() => { /* (an old /messenger worker with a subscription; this device's new one fails until the test says) */
+    Object.defineProperty(Notification, 'permission', { get: () => 'granted' });
+    const ok = () => sessionStorage.getItem('subOk') === '1'; let sub = null;
+    PushManager.prototype.getSubscription = function () { return Promise.resolve(sub); };
+    PushManager.prototype.subscribe = function () { if (!ok()) return Promise.reject(new Error('no push service')); sub = { endpoint: 'https://push.test/new', toJSON: () => ({ endpoint: 'https://push.test/new', keys: { p256dh: 'p', auth: 'a' } }), unsubscribe: () => Promise.resolve(true) }; return Promise.resolve(sub); };
+    const real = navigator.serviceWorker.getRegistrations.bind(navigator.serviceWorker);
+    const old = { scope: `${location.origin}/messenger`, pushManager: { getSubscription: () => Promise.resolve({ unsubscribe: () => { sessionStorage.setItem('oldGone', '1'); return Promise.resolve(true); } }) }, unregister: () => { sessionStorage.setItem('oldUnreg', '1'); return Promise.resolve(true); } };
+    navigator.serviceWorker.getRegistrations = async () => (sessionStorage.getItem('oldUnreg') ? real() : [...await real(), old]);
+  });
+  await context.route('**/api/messenger/push', (route) => (route.request().method() === 'GET' ? route.fulfill({ json: { ok: true, key: 'BKey', on: true } }) : route.fulfill({ json: { ok: true } })));
+  const m = await context.newPage(); await m.goto('/messenger');
+  await m.locator('#mLoginId').fill(loginId); await m.locator('#mLoginPw').fill('secret123');
+  await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click(); await expect(m.locator('#mApp')).toBeVisible();
+  const gone = () => m.evaluate(() => [sessionStorage.getItem('oldGone'), sessionStorage.getItem('oldUnreg')]);
+  // the new one fails: the old kept, and the button says the device has no notices
+  await expect(m.locator('#mPushBtn')).toHaveText('알림 켜기'); expect(await gone()).toEqual([null, null]);
+  // next time it works: the new one first, then the old let go
+  await m.evaluate(() => sessionStorage.setItem('subOk', '1')); await m.reload();
+  await expect(m.locator('#mPushBtn')).toHaveText('알림 끄기'); expect(await gone()).toEqual(['1', '1']);
   await context.close();
 });
 
@@ -238,5 +281,18 @@ test('메신저 창을 안 보고 있으면 읽음 처리 안 함: 보낸 쪽 �
   await m.evaluate(() => { window.__away = false; window.dispatchEvent(new Event('focus')); });
   await expect.poll(async () => (await dadRoom()).reads[mom.id], { timeout: 10000 }).toBe(sent.seq);
   expect(await momUnread()).toBe(0);
+  // (Codex 검토 5차 P3-2) a busy room's two pages: the window turned away between them -- the second asked as not looked at
+  // (the first page answered full -- 100 lines -- as a busy room's; the server lets 6 lines in 5 s, too slow to fill one)
+  const asked = []; let turned = false;
+  await m.route(/\/api\/messenger\/rooms\/[^/]+\/messages\?/, async (route) => {
+    asked.push(route.request().url());
+    if (turned) return route.continue();
+    turned = true; const real = await (await route.fetch()).json();
+    await m.evaluate(() => { window.__away = true; }); // (the first page's request out, then the window turned away)
+    return route.fulfill({ json: { ...real, messages: Array.from({ length: 100 }, () => real.messages[0]) } });
+  });
+  await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: dad.account, body: { text: '마지막 줄' } });
+  await expect.poll(() => asked.length, { timeout: 15000 }).toBeGreaterThanOrEqual(2);
+  expect(asked[0]).not.toContain('peek=1'); expect(asked[1]).toContain('peek=1');
   await context.close();
 });
