@@ -23,6 +23,28 @@ self.addEventListener('activate', event => event.waitUntil(self.clients.claim())
 // since the game only starts in a controlled page
 self.addEventListener('message', event => { if (event.data === 'claim') event.waitUntil(self.clients.claim()); });
 
+// v1.10.210 메신저 알림 (gamecenter-notes docs/messenger-app-push-20261030.md 3절): the messenger's push and its tap, here in
+// the app's own worker -- an icon badge set by a worker reaches only the apps inside its scope, so the old /messenger
+// worker's never reached the island app's icon. A tap brings the messenger window forward on that room, else opens it.
+if (typeof importScripts === 'function') importScripts('/messenger-alert.js');
+self.addEventListener('push', event => {
+  let d = {}; try { d = event.data?.json() || {}; } catch {}
+  event.waitUntil((async () => {
+    if (Number.isFinite(d.unread)) self.MessengerAlert?.setBadge(self.navigator, d.unread);
+    await self.registration.showNotification(d.title || '아일랜드 메신저', { body: d.body || '새 메시지가 왔어요.', tag: d.room || 'messenger', renotify: true, icon: '/icons/messenger-192.png', badge: '/icons/messenger-192.png', data: { room: d.room || null } });
+  })());
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close(); const room = event.notification.data?.room;
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const open = wins.find(w => new URL(w.url).pathname === '/messenger');
+    if (open) { await open.focus(); open.postMessage({ room }); return; }
+    await self.clients.openWindow(`/messenger${room ? `?room=${encodeURIComponent(room)}` : ''}`);
+  })());
+});
+const pushKept = async () => Boolean(await self.registration.pushManager?.getSubscription().catch(() => null)); // (the cache off: a messenger notice still wanted keeps the worker)
+
 async function checkServer() {
   let response;
   try { response = await fetch('/asset-cache.json', { cache: 'no-store' }); } catch { return; }
@@ -32,7 +54,7 @@ async function checkServer() {
     if (body?.enabled !== false) return;
   }
   for (const name of await caches.keys()) if (name.startsWith(PREFIX)) await caches.delete(name);
-  await self.registration.unregister();
+  if (!await pushKept()) await self.registration.unregister();
 }
 
 async function activeCache() {

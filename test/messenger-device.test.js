@@ -45,12 +45,16 @@ test('메신저 기기 로그인 유지·알림: 메신저만, 비밀번호·허
   const P = 'https://fcm.googleapis.com/fcm/send/';
   const sub = { endpoint: `${P}mum`, p256dh: Buffer.concat([Buffer.from([4]), crypto.randomBytes(64)]).toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') };
   assert.equal((await call('/api/messenger/push', sub, { account: m.accountToken })).data.error, 'DEVICE_NEEDED');
+  // (메신저 1절) the messenger opened from the game sends both keys: the same account's device counts
+  assert.equal((await call('/api/messenger/push', sub, { account: m.accountToken, device: m.deviceToken })).status, 200);
+  assert.equal((await call('/api/messenger/push', undefined, { account: m.accountToken, device: m.deviceToken })).data.on, true);
   assert.equal((await call('/api/messenger/push', { ...sub, auth: 'x' }, dev)).data.error, 'BAD_SUBSCRIPTION');
   // (Codex 검토 2차 #2) only the browsers' push services: no other https address, an inside one, another port or a login
   for (const endpoint of ['https://push.example.net/send/mum', 'https://10.0.0.5/x', 'https://localhost/x', 'https://fcm.googleapis.com:8443/x', 'https://u:p@fcm.googleapis.com/x', 'https://fcm.googleapis.com.evil.net/x', 'http://fcm.googleapis.com/x']) assert.equal((await call('/api/messenger/push', { ...sub, endpoint }, dev)).data.error, 'BAD_SUBSCRIPTION', endpoint);
   assert.equal((await call('/api/messenger/push', sub, dev)).status, 200);
   assert.equal((await call('/api/messenger/push', undefined, dev)).data.on, true);
   const p = await login(pop); const popSub = { ...sub, endpoint: `${P}pop` }; await call('/api/messenger/push', popSub, { device: p.deviceToken });
+  assert.equal((await call('/api/messenger/push', { ...sub, endpoint: `${P}mixed` }, { account: m.accountToken, device: p.deviceToken })).data.error, 'DEVICE_NEEDED'); // (another account's device: not mine)
   const k = await login(tot); await call('/api/messenger/push', { ...sub, endpoint: `${P}tot` }, { device: k.deviceToken });
   // a room of three: pop writes -- mum and tot told (not pop); tot mutes it -- only mum
   const room = (await call('/api/messenger/rooms', { name: '우리집', members: [mum.id, tot.id] }, { device: p.deviceToken })).data.room;
@@ -67,13 +71,16 @@ test('메신저 기기 로그인 유지·알림: 메신저만, 비밀번호·허
   await call(`/api/messenger/rooms/${room.id}/messages`, undefined, dev);
   assert.deepEqual(await bothWindows(), [0, 0]);
   await call(`/api/messenger/rooms/${room.id}/mute`, { on: true }, { device: k.deviceToken });
-  // someone looking at the messenger now (a stream open) is not told either
-  const ctl = new AbortController(); const stream = await fetch(`${base}/api/messenger/stream`, { headers: { 'X-Messenger-Device': m.deviceToken }, signal: ctl.signal });
+  // (메신저 3절 4, 사용자 「폰에도 보내」) each device on its own: the messenger open on mum's PC (a stream) -- the PC is not
+  // pushed (its page shows the notice), her phone is
+  const phone = await login(mum); await call('/api/messenger/push', { ...sub, endpoint: `${P}mum-phone` }, { device: phone.deviceToken });
+  const ctl = new AbortController(); const stream = await fetch(`${base}/api/messenger/stream`, { headers: { 'X-Account-Token': m.accountToken, 'X-Messenger-Device': m.deviceToken }, signal: ctl.signal });
   await call(`/api/messenger/rooms/${room.id}/messages`, { text: '빨리 와' }, { device: p.deviceToken });
-  await new Promise((r) => setTimeout(r, 300)); assert.deepEqual(await pushesNow(0), []); // (nothing for the one looking)
+  pushes = await pushesNow(1); await new Promise((r) => setTimeout(r, 300)); pushes = pushes.concat(await pushesNow(0));
+  assert.deepEqual(pushes.map((x) => x.endpoint), [`${P}mum-phone`]);
   ctl.abort(); await stream.body?.cancel().catch(() => {}); await new Promise((r) => setTimeout(r, 200));
   await call(`/api/messenger/rooms/${room.id}/messages`, { text: '다 식어' }, { device: p.deviceToken });
-  pushes = await pushesNow(1); assert.deepEqual(pushes.map((x) => x.to), [mum.id]);
+  pushes = await pushesNow(2); assert.deepEqual(pushes.map((x) => x.endpoint).sort(), [`${P}mum`, `${P}mum-phone`]);
   // ending: a new password ends mum's devices (and their subscription); the permission taken away ends pop's; tot's logout its own
   assert.equal((await call('/api/account/password', { current: 'secret123', next: 'secret456' }, { account: m.accountToken })).status, 200);
   assert.equal((await call('/api/messenger', undefined, dev)).status, 401);
