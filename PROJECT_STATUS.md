@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.210 메신저 알림·1인칭 키
+
+- 메신저 입구: 계정·기기 열쇠가 같은 계정이면 기기를 붙임 → 아일랜드에서 연 메신저 창도 알림 켜기(DEVICE_NEEDED 고침).
+- push는 기기마다: 메신저 스트림에 device 기록, 그 기기에서 열려 있는 기기만 뺌(PC 창이 열려 있어도 폰엔 push).
+- 창이 열려 있어도 안 보고 있으면(hidden·!hasFocus) 페이지가 push와 같은 모양·tag로 알림, 꺼 둔 방·내 글(방 목록 last.mine) 제외.
+- 배지: 일꾼 배지는 그 scope 안의 앱에만 붙어 push·알림 누르기를 앱의 sw.js(scope /)로 옮김, 옛 /messenger 구독은 페이지가 옮김, 캐시가 꺼져도 구독이 있으면 sw.js 남김, messenger-sw.js 지움.
+- 1인칭 키: 방향키 걷기(↑↓ 보는 쪽, ←→ 옆걸음), W/A/S/D 시점(FP_WALK 지움).
+- 시험: 단위 messenger-device(같은 계정 200·계정만 409·다른 계정 기기 409·PC 스트림+폰 구독 → 폰만), e2e messenger(안 볼 때 팝업), island-view-modes(1인칭 키).
+
 ## v1.10.209 X2 카운트다운
 
 - countdown-2026: 12/31 18:00~1/1 01:00 KST(달력 시간 창 fromHour/toHour, 날짜 넘김). 판(newyear.countdown_board) (0, −98)·발사대 둘(±6 m).
@@ -30,10 +39,3 @@
 - 탁상형 곤충 상자(에셋 86): 받치는 가구 위면 탁상형 모델·자리, 위에서 0.36 x 0.24.
 - 시험 흔들림: 관광객 사진(작은 명소), 주민 대화 닫힘 문구. 1인칭 저장 시 시작 오류 고침.
 - e2e island-view-modes·island-view-talk(PC·폰). 사진 notes img/view-modes.
-
-## v1.10.207 집 꾸미기 — 작은 물건 위에 올리기·꾸미기 창 종이
-
-- island-home SMALL(곤충 상자·라디오·달/조개 램프·작은 등대·청사초롱·트로피 둘·스노볼·과자집) → TOPS(책상 0.765·서랍장 0.85·낮은 탁자 0.45·식탁 0.78·조리대 0.89·소반 0.34, 모델 실제 윗면을 광선으로 잼) 하나의 발자국 안이면 그 위, 0.05 m 칸, 같은 윗면끼리 안 겹침, 걸치면 바닥 규칙. 협탁·장난감 상자·TV장·잔칫상은 윗면이 평평하지 않아 뺌.
-- 위에 물건 있는 가구: 옮기기·돌리기·창고 막음(서버 HOLDS_THINGS·꾸미기 창·잡고 밀기) 「위에 놓인 물건을 먼저 치워 주세요」. 저장은 자리로 판단, 집 넓힐 때 받치는 가구 먼저.
-- 꾸미기 창: 섬 창 종이, 고른 칸 진한 갈색, 「↻ 돌리기」 한 줄.
-- 시험: 단위 island-home, e2e my-home(PC·폰) + 시험용 /api/test/home/release. 사진 notes img/home-tabletop. 탁상형 곤충 상자(주문 86)는 다음 묶음.
