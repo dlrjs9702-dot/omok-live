@@ -1426,7 +1426,7 @@ async function jailTyped(session, text) {
   const level = await affinityLevelOf(account, JAIL_WARDEN);
   await pointStore.questApply(account, 'jail', (d) => (d.day === day ? null : { doc: { day } }));
   await pointStore.affinityAdd(account, day, [{ n: JAIL_WARDEN, delta: IslandCast.GAIN.story }]); // (Codex 검토 #6, 해당 없음: the warden is a keeper -- the level rewards are the walking islanders' only)
-  return { passed: true, say: IslandCast.keeperLine('warden', Math.random, level, String(session.label || '')) };
+  return { passed: true, say: IslandCast.passLine(Math.random, level, String(session.label || '')) };
 }
 // (Codex 검토 #7) a day's mark on an islander (오늘의 이야기 'asked', 선물 'gifted') taken back when what it stood for failed
 let giftAffinityFails = false; // (tests only: /api/test/affinity/fail-once)
@@ -7007,8 +7007,8 @@ async function requestHandler(req, res) {
         const errands = IslandErrands.errandsOf(day); const stages = errandStages.get(`${day}|${account}`) || {};
         const mine = errands.find((e) => stages[e.id] === 1 && e.kind !== 'buy' && e.to !== n) || errands.find((e) => stages[e.id] === 2 && e.from !== n);
         const other = mine ? (stages[mine.id] === 2 ? mine.from : mine.to) : (n + 1 + Math.floor(Math.random() * (IslandCast.WALKERS.length - 1))) % IslandCast.WALKERS.length;
-        say = [IslandCast.withTail(IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
-          plants: (await pointStore.islandPlants()).length, winter, halloween, hint: { n: other, where: IslandNpcs.hangout(other), errand: Boolean(mine) } }), n)];
+        say = [IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
+          plants: (await pointStore.islandPlants()).length, winter, halloween, hint: { n: other, where: IslandNpcs.hangout(other), errand: Boolean(mine) } }, Math.random, n)]; // (B: in their own register)
       }
       return sendTalk({ ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView((await pointStore.affinityOf(account))[n] || 0) });
     }

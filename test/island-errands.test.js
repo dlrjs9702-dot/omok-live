@@ -14,7 +14,7 @@ test('주민: 열 명 모두 이름·설정·대사, 이야기 주민도 대사,
   assert.deepEqual([0, 4, 5, 14, 15, 29, 30, 999].map(Cast.levelOf), [0, 0, 1, 1, 2, 2, 3, 3]);
   assert.equal(Cast.walkerLine(0, () => 0.99, 'day', 0), Cast.withTail(Cast.WALKERS[0].lines[0][2], 0));
   assert.match(Cast.walkerLine(0, () => 0.5, 'day', 3, '모모'), /모모/); assert.doesNotMatch(Cast.walkerLine(0, () => 0.5, 'day', 3, '모모'), /{me}/);
-  for (const c of Cast.WALKERS) for (const l of c.lines.flat()) assert.ok(!/{(?!me})/.test(l), l);
+  for (const c of Cast.WALKERS) for (const l of c.lines.flat()) assert.ok(!/{(?!me[}|])/.test(l), l);
   assert.deepEqual([Cast.josa('다온', '이가'), Cast.josa('봄이', '이가'), Cast.josa('가람', '을를'), Cast.josa('두리', '을를')], ['다온이', '봄이가', '가람을', '두리를']);
 });
 
