@@ -236,7 +236,7 @@
     try {
       for (const registration of await navigator.serviceWorker.getRegistrations()) {
         const script = (registration.active || registration.waiting || registration.installing)?.scriptURL;
-        if (script && new URL(script).pathname === '/sw.js') await registration.unregister();
+        if (script && new URL(script).pathname === '/sw.js' && !await registration.pushManager?.getSubscription().catch(() => null)) await registration.unregister(); // (v1.10.210: kept while it carries the messenger's notices)
       }
     } catch {}
     try { for (const name of await caches.keys()) if (name.startsWith(PREFIX)) await caches.delete(name); } catch {}

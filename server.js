@@ -759,7 +759,7 @@ const { writeUnlessBacklogged } = require('./lib/sse-backpressure');
 
 // A5 메신저 실시간 받기: each permitted account's open streams; a change in a room is told to its members at once
 // (only the room's id -- the page asks for the lines as before, with the same checks)
-const messengerStreams = new Map(); // key id -> Set<res>
+const messengerStreams = new Map(); // key id -> Set<res> (res.device: the device it is open on, when known)
 async function pokeRoom(roomId, also = []) {
   const room = await messengerStore.room(roomId).catch(() => null);
   for (const id of new Set([...(room?.members || []), ...also])) for (const res of messengerStreams.get(id) || []) { try { sseWrite(res, 'msg', { room: roomId }); } catch {} }
@@ -798,11 +798,13 @@ const dropDevices = (keep) => worldEdit(async () => {
 // tests nothing is sent: what would be is kept for the test to read.
 const vapid = WebPush.vapidFromEnv(); const testPushes = [];
 async function pushNew(room, from, fromLabel, text) {
-  const { to, payload } = WebPush.pushFor(room, from, fromLabel, text, new Set(messengerStreams.keys()));
+  const { to, payload } = WebPush.pushFor(room, from, fromLabel, text);
+  // (메신저 3절 4, 사용자 「폰에도 보내」: each device on its own -- the one with the messenger open now shows it itself, the others are pushed)
+  const looking = new Set([...messengerStreams.values()].flatMap((set) => [...set].map((r) => r.device).filter(Boolean)));
   // (Codex 검토 2차 #1) only a device still logged in, of the same account: one run out (60 days), pushed out or logged out
   // is told nothing (its subscription may outlive it in the store)
   const live = new Map((await devicesNow()).map((d) => [d.id, d.keyId]));
-  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device) === s.keyId); if (!subs.length) return;
+  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device) === s.keyId && !looking.has(s.device)); if (!subs.length) return;
   const unread = new Map(await Promise.all(to.map(async (id) => [id, (await messengerStore.roomsOf(id)).reduce((n, r) => n + (r.muted.includes(id) ? 0 : Math.max(0, r.seq - (r.reads[id] || 0))), 0)])));
   const gone = [];
   for (const s of subs) {
@@ -3926,7 +3928,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.209' });
+    return sendJson(res, 200, { ok: true, version: '1.10.210' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4022,7 +4024,8 @@ async function requestHandler(req, res) {
   // members. The page asks again every few seconds while it is open (no stream on the start page).
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/pushes' && req.method === 'GET') return sendJson(res, 200, { ok: true, pushes: testPushes.splice(0) }); // (메신저 ③: what would have been sent)
   if (pathname === '/api/messenger' || pathname.startsWith('/api/messenger/')) {
-    const acct = accountOf(req) || await deviceOf(req); // (메신저 ④: a device kept logged in reaches these calls only)
+    const signed = accountOf(req); const kept = await deviceOf(req); // (메신저 ④: a device kept logged in reaches these calls only)
+    const acct = signed ? (kept?.keyId === signed.keyId ? { ...signed, device: kept.device } : signed) : kept; // (메신저 1절: the messenger opened from the game sends both -- the same account's device counts)
     const key = acct && await accessStore.get(acct.keyId);
     if (!key || key.revokedAt || key.pendingAt) return sendError(res, 401, 'ACCOUNT_AUTH', '로그인이 필요합니다.');
     const allowed = new Set(await messengerStore.allowedIds());
@@ -4037,13 +4040,13 @@ async function requestHandler(req, res) {
     const view = (room) => ({ id: room.id, kind: room.kind, name: room.kind === 'dm' ? nameOf(room.pair.find((id) => id !== key.id) || key.id) : room.name,
       seq: room.seq, lastAt: room.lastAt, unread: Math.max(0, room.seq - (room.reads[key.id] || 0)), muted: room.muted.includes(key.id), pinned: (room.pinned || []).includes(key.id),
       reads: Object.fromEntries(room.members.map((id) => [id, room.reads[id] || 0])),
-      last: room.last && { text: room.last.text || (room.last.system ? '' : '삭제된 메시지입니다'), at: room.last.at, system: Boolean(room.last.system), label: nameOf(room.last.from) },
+      last: room.last && { text: room.last.text || (room.last.system ? '' : '삭제된 메시지입니다'), at: room.last.at, system: Boolean(room.last.system), label: nameOf(room.last.from), mine: room.last.from === key.id },
       members: room.members.map((id) => ({ id, label: nameOf(id), active: allowed.has(id) && labelOf.has(id) })) });
     const say = async (room, text) => { const msg = await messengerStore.post(room.id, key.id, text, true); if (msg) await messengerStore.setRead(room.id, key.id, msg.seq); pokeRoom(room.id); };
     if (pathname === '/api/messenger/stream' && req.method === 'GET') { // A5: held open; 'msg' with a room id when it changes
       res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
       res.write(': open\n\n');
-      const set = messengerStreams.get(key.id) || new Set(); if (set.size >= 4) { const oldest = set.values().next().value; set.delete(oldest); try { oldest.end(); } catch {} } set.add(res); messengerStreams.set(key.id, set);
+      const set = messengerStreams.get(key.id) || new Set(); if (set.size >= 4) { const oldest = set.values().next().value; set.delete(oldest); try { oldest.end(); } catch {} } res.device = acct.device || null; set.add(res); messengerStreams.set(key.id, set);
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
       req.on('close', () => { clearInterval(ping); set.delete(res); if (!set.size) messengerStreams.delete(key.id); });
       return;
@@ -8087,7 +8090,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.209 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.210 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

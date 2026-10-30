@@ -2674,15 +2674,20 @@
     if (event.target !== islandBagDialog) return; const r = islandBagDialog.getBoundingClientRect();
     if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) islandBagDialog.close();
   });
-  let bagSortAsk = 0; // 정리: asked once (「지금 순서를 바꿀까요?」), then sorted on the server
-  byId('islandBagSort').addEventListener('click', async () => {
+  // 정리: asked once (「지금 순서를 바꿀까요?」), then sorted on the server. (v1.10.210 CI, the island raining: on a busy page
+  // the two clicks came 5 s apart and the second only asked again -- the question now stands 8 s, counted by when each
+  // click was made; the bag shut lets it go)
+  const BAG_SORT_ASK_MS = 8000; let bagSortAsk = null;
+  const bagSortReset = () => { bagSortAsk = null; byId('islandBagSort').textContent = '정리'; };
+  byId('islandBagSort').addEventListener('click', async (event) => {
     const b = byId('islandBagSort');
-    if (Date.now() - bagSortAsk > 4000) { bagSortAsk = Date.now(); b.textContent = '순서를 바꿀까요?'; setTimeout(() => { if (Date.now() - bagSortAsk >= 4000) b.textContent = '정리'; }, 4100); return; }
-    bagSortAsk = 0; b.textContent = '정리';
+    if (bagSortAsk == null || event.timeStamp - bagSortAsk > BAG_SORT_ASK_MS) { const at = event.timeStamp; bagSortAsk = at; b.textContent = '순서를 바꿀까요?'; setTimeout(() => { if (bagSortAsk === at) bagSortReset(); }, BAG_SORT_ASK_MS + 100); return; }
+    bagSortReset();
     const mine = ++bagMoveSeq; // (CI #351: a move's late answer drew the old order over the sorted one -- the latest asked wins)
     try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); } catch (error) { if (mine === bagMoveSeq) showToast(error.message); }
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
+  islandBagDialog.addEventListener('close', bagSortReset);
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
   byId('homeApplyBtn').addEventListener('click', () => openHomeApply()); // 묶음 4 내 집 신청

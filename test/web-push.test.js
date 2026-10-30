@@ -55,9 +55,9 @@ test('웹 푸시 암호화: RFC 8291 부록 A의 예와 바이트까지 같음',
   assert.equal(body.toString('base64url'), 'DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN');
 });
 
-test('웹 푸시 받는 사람: 보낸 사람·알림 끈 사람·지금 메신저를 보고 있는 사람은 빼고, 1:1은 보낸 사람 이름이 제목', () => {
+test('웹 푸시 받는 사람: 보낸 사람·알림 끈 사람은 빼고, 1:1은 보낸 사람 이름이 제목', () => {
   const group = { id: 'r1', kind: 'group', name: '가족방', members: ['a', 'b', 'c', 'd'], muted: ['c'] };
-  assert.deepEqual(P.pushFor(group, 'a', '엄마', '저녁 먹자', new Set(['d'])), { to: ['b'], payload: { title: '가족방', body: '엄마: 저녁 먹자', room: 'r1' } });
+  assert.deepEqual(P.pushFor(group, 'a', '엄마', '저녁 먹자'), { to: ['b', 'd'], payload: { title: '가족방', body: '엄마: 저녁 먹자', room: 'r1' } });
   const dm = { id: 'r2', kind: 'dm', name: '', members: ['a', 'b'], muted: [] };
   assert.deepEqual(P.pushFor(dm, 'b', '아빠', 'x'.repeat(200)).payload, { title: '아빠', body: 'x'.repeat(120), room: 'r2' });
 });

@@ -151,3 +151,51 @@ test('메신저 어두운 화면: 처음 밝게, 어둡게 고르면 새로고�
   await page.emulateMedia({ colorScheme: 'dark' }); await expect.poll(theme).toEqual(['dark', '#2a231e']);
   await page.emulateMedia({ colorScheme: 'light' }); await expect.poll(theme).toEqual(['light', '#fff6e3']);
 });
+
+// v1.10.210 메신저 3절 3 (gamecenter-notes docs/messenger-app-push-20261030.md): the messenger window open but not looked at
+// (minimised, another window in front) shows the notice the push would be -- one a room (its tag), never a muted room's or
+// my own line, nothing while I look at it. The page's own: the server pushes this device no more while it is open (3절 4).
+test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하나, 보고 있으면·꺼 둔 방·내 글은 없음', async ({ browser, request }, info) => {
+  test.setTimeout(120000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const make = async (tag, nick) => {
+    const loginId = `p${tag}_${stamp}`.slice(0, 20); const nickname = `${nick}${(Date.now() + info.project.name.length) % 100000}`;
+    await api(request, '/api/account/signup', { body: { realName: tag, loginId, password: 'secret123', nickname } });
+    const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+    await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+    const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+    await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+    const account = (await api(request, '/api/account/login', { body: { loginId, password: 'secret123' } })).data.accountToken;
+    return { id, loginId, nickname, account };
+  };
+  const mom = await make('a', '엄마'); const dad = await make('b', '아빠');
+  const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+  await context.addInitScript(() => { /* (the notices it shows, kept to read; "not looked at" at the test's word) */
+    Object.defineProperty(Notification, 'permission', { get: () => 'granted' }); window.__shown = []; ServiceWorkerRegistration.prototype.showNotification = function (title, options) { window.__shown.push({ title, ...options }); return Promise.resolve(); };
+    const hasFocus = Document.prototype.hasFocus; Document.prototype.hasFocus = function () { return window.__away ? false : hasFocus.call(this); };
+  });
+  await context.route('**/api/messenger/push', (route) => (route.request().method() === 'GET' ? route.fulfill({ json: { ok: true, key: 'BKey', on: true } }) : route.continue())); // (this device's notices on: the push service itself is not reached under tests)
+  const m = await context.newPage(); await m.goto('/messenger');
+  await m.locator('#mLoginId').fill(mom.loginId); await m.locator('#mLoginPw').fill('secret123');
+  await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click();
+  await expect(m.locator('#mApp')).toBeVisible(); await expect(m.locator('#mPushBtn')).toHaveText('알림 끄기');
+  const room = (await api(request, '/api/messenger/rooms', { account: dad.account, body: { name: '우리집', members: [mom.id] } })).data.room;
+  const other = (await api(request, '/api/messenger/rooms', { account: dad.account, body: { name: '조용방', members: [mom.id] } })).data.room;
+  await expect(m.locator('#messengerRoomList li')).toHaveCount(2);
+  const say = (who, r, text) => api(request, `/api/messenger/rooms/${r.id}/messages`, { account: who.account, body: { text } });
+  const shown = () => m.evaluate(() => window.__shown.map(({ title, body, tag, data }) => ({ title, body, tag, room: data?.room })));
+  // looking at it: nothing
+  await say(dad, room, '보고 있지?'); await expect(m.locator('#messengerRoomList')).toContainText('보고 있지?'); await m.waitForTimeout(500);
+  expect(await shown()).toEqual([]);
+  // not looked at: the notice, as the push's
+  await m.evaluate(() => { window.__away = true; });
+  await say(dad, room, '저녁 먹자');
+  await expect.poll(shown, { timeout: 15000 }).toEqual([{ title: '우리집', body: `${dad.nickname}: 저녁 먹자`, tag: room.id, room: room.id }]);
+  // a muted room, and my own line: nothing
+  await api(request, `/api/messenger/rooms/${other.id}/mute`, { account: mom.account, body: { on: true } });
+  await say(dad, other, '조용히'); await say(mom, room, '응 갈게');
+  await expect(m.locator('#messengerRoomList')).toContainText('응 갈게'); await m.waitForTimeout(800);
+  expect((await shown()).length).toBe(1);
+  await context.close();
+});

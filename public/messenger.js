@@ -63,7 +63,19 @@
     document.title = blink.text(baseTitle); blink.update(unread, away());
     window.MessengerAlert.setBadge(navigator, unread);
   }
-  async function refresh() { const g = gen; try { const data = await api('/api/messenger'); if (g !== gen) return false; state = data; renderRooms(); return true; } catch (err) { if (g === gen) fail(err); return false; } }
+  async function refresh() { const g = gen; try { const data = await api('/api/messenger'); if (g !== gen) return false; const before = state; state = data; renderRooms(); popNew(before.rooms, data.rooms); return true; } catch (err) { if (g === gen) fail(err); return false; } }
+  // (메신저 3절 3) the window open but not looked at (minimised, another window in front): the notice the push would be --
+  // same look, same tag (one notice a room), never for a muted room or my own line; the server pushes this device no more
+  // while it is open here (3절 4)
+  function popNew(was, now) {
+    if (!pushOn || !pushReg || !away() || !was.length || Notification.permission !== 'granted') return;
+    const seen = new Map(was.map((r) => [r.id, r.seq]));
+    for (const r of now) {
+      if (r.muted || !r.last || r.last.system || r.last.mine || !(r.seq > (seen.get(r.id) ?? r.seq))) continue;
+      const title = r.kind === 'dm' ? r.last.label : r.name; const body = (r.kind === 'dm' ? r.last.text : `${r.last.label}: ${r.last.text}`).slice(0, 120);
+      pushReg.showNotification(title, { body, tag: r.id, renotify: true, icon: '/icons/messenger-192.png', badge: '/icons/messenger-192.png', data: { room: r.id } }).catch(() => {});
+    }
+  }
   function line(msg, same) { // `same`: the same person just before -- the name once (카톡)
     if (msg.system) { const p = document.createElement('p'); p.className = 'messengerSystem'; p.textContent = msg.text; return p; }
     const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
@@ -276,25 +288,35 @@
   byId('mDropOthers').addEventListener('click', async () => { try { await api('/api/messenger/devices/drop', { all: true }); byId('mDevices').classList.add('hidden'); showToast('다른 기기의 로그인을 모두 끊었어요.'); } catch (err) { fail(err); } });
 
   // ---- ③ 알림 (Web Push, this page's own worker) and ② 앱으로 설치 ----
-  let pushReg = null;
+  let pushReg = null; let pushOn = false;
   const keyBytes = (b64) => { const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (b64.length % 4)) % 4)); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
   async function setupPush() {
     const btn = byId('mPushBtn');
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !deviceToken.get()) return;
     try {
-      pushReg = await navigator.serviceWorker.register('/messenger-sw.js', { scope: '/messenger' });
+      // (메신저 3절 2) the app's own worker (sw.js, scope /) takes the push: an icon badge set by a worker reaches only the apps
+      // inside its scope -- the old /messenger worker's never reached the island app's icon. Its subscription moves over.
+      pushReg = await navigator.serviceWorker.register('/sw.js');
+      const old = (await navigator.serviceWorker.getRegistrations()).find((r) => new URL(r.scope).pathname === '/messenger');
+      let moved = null; if (old) { moved = await old.pushManager.getSubscription().catch(() => null); await moved?.unsubscribe().catch(() => {}); await old.unregister().catch(() => {}); }
       const { key, on } = await api('/api/messenger/push'); if (!key) return;
-      btn.dataset.key = key; btn.textContent = on && Notification.permission === 'granted' ? '알림 끄기' : '알림 켜기'; btn.classList.remove('hidden');
+      pushOn = on && Notification.permission === 'granted';
+      if (moved && pushOn) { await subscribe(key); }
+      btn.dataset.key = key; btn.textContent = pushOn ? '알림 끄기' : '알림 켜기'; btn.classList.remove('hidden');
     } catch {}
   }
-  async function pushOff() { const sub = await pushReg?.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); await api('/api/messenger/push/off', {}); }
+  async function pushOff() { const sub = await pushReg?.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); await api('/api/messenger/push/off', {}); pushOn = false; }
+  async function subscribe(key) {
+    await navigator.serviceWorker.ready;
+    const sub = (await pushReg.pushManager.getSubscription()) || await pushReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+    const j = sub.toJSON(); await api('/api/messenger/push', { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }); pushOn = true;
+  }
   byId('mPushBtn').addEventListener('click', async () => {
     const btn = byId('mPushBtn');
     try {
       if (btn.textContent === '알림 끄기') { await pushOff(); btn.textContent = '알림 켜기'; showToast('이 기기의 알림을 껐어요.'); return; }
       if (await Notification.requestPermission() !== 'granted') { showToast('브라우저에서 알림이 막혀 있어요. 사이트 설정에서 허용해 주세요.', 5000); return; }
-      const sub = (await pushReg.pushManager.getSubscription()) || await pushReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(btn.dataset.key) });
-      const j = sub.toJSON(); await api('/api/messenger/push', { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+      await subscribe(btn.dataset.key);
       btn.textContent = '알림 끄기'; showToast('창을 닫아도 새 메시지를 알려 드려요.');
     } catch (err) { showToast(err.message || '알림을 켜지 못했어요.', 4000); }
   });
