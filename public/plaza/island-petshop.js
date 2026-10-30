@@ -1,3 +1,6 @@
+// 백화점 개편 A안 (v1.10.211): now up on the roof, the 4th floor -- a garden under the sky (assets 82 roof.floor), the yard
+// wider (roof.pet_yard 14 x 10, its 2 m gate at its front), the lift's own small house, the counter assets 82's
+// mall.counter__f4.
 // 묶음 2-2 펫샵 (gamecenter-notes docs/pet-shop-20261020.md, 사용자 2026-10-20 「펫샵을 따로 두기, 3층에. 돌아다니는 펫을
 // 선택해서 데려가는 거」): the 백화점's 3rd floor -- ten pets a day (v1.10.191, docs/petshop-yard-unify-20261027.md: six of
 // kind x coat, assets 60, and four specials -- 메타몽 and the transformations, sold at the counter before) walking about a fenced play yard, the same for everyone and where each is at a moment the same on every screen and the server (petAt: their
@@ -26,22 +29,22 @@
   const world = (lx, lz) => ({ x: Math.round((ROOM.x - lx) * 100) / 100, z: Math.round((ROOM.z - lz) * 100) / 100 });
   const local = (x, z) => ({ lx: ROOM.x - x, lz: ROOM.z - z });
   const inRoom = (x, z, pad = 0) => Math.abs(x - ROOM.x) <= ROOM.w / 2 + pad && Math.abs(z - ROOM.z) <= ROOM.d / 2 + pad;
-  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (2회차 8: before its door)
-  // the play yard (assets 60 petshop.playpen, 10 x 8 m, its 2 m gate at its front, local -Z): the pets keep inside it;
-  // v1.10.191 (사용자 「마당은 더 크게」, ten in it) the pen drawn 1.5 times as wide and deep -- its gate 3 m with it
-  const PEN_SCALE = 1.5;
-  const PEN = Object.freeze({ lx: 1.5, lz: 1.5, w: 10 * PEN_SCALE, d: 8 * PEN_SCALE, gate: 2 * PEN_SCALE, scale: PEN_SCALE });
-  const PROPS = Object.freeze([ // what stands (room-local): id, x, z, yaw, its footprint w x d (walked round)
-    ['petshop.cat_tower__beige', 6.9, 5.85, 0, 1.2, 1.2], ['petshop.cat_tower__grey', -3.9, 5.85, 0, 1.2, 1.2], ['petshop.bird_perch', 7.8, -2.55, 0, 0.8, 0.8],
-    ['petshop.pet_bed__pink', -4.5, -1.95, 0, 0, 0], ['petshop.pet_bed__blue', -1.2, 6.15, 0, 0, 0], ['petshop.pet_bed__brown', 3.6, 6.15, 0, 0, 0],
-    ['petshop.food_bowls', -4.8, 2.25, 0, 0, 0], ['petshop.toys', 1.5, 0.75, 0, 0, 0], // (v1.10.191: spread as the pen, 1.5 times from its middle)
-    ['petshop.counter', 11.5, -2.5, 0, 1.9, 0.8], ['petshop.sign', 0, 9.8, 0, 0, 0],
+  const LIFT = Object.freeze({ lx: -13.4, lz: 0, yaw: 0, stand: Object.freeze([-10.9, 0]), house: true }); // (roof.lift_house: its door toward +x, its `stand` anchor 2.5 m off)
+  // the play yard (assets 82 roof.pet_yard, 14 x 10 m, its 2 m gate at its front, local -Z): the pets keep inside it
+  const PEN = Object.freeze({ lx: 1, lz: 1, w: 14, d: 10, gate: 2, scale: 1 });
+  const PROPS = Object.freeze([ // what stands (room-local): id, x, z, yaw, its footprint w x d (walked round) -- assets 82 README
+    ['petshop.cat_tower__beige', 7, 4.2, 0, 1.2, 1.2], ['petshop.cat_tower__grey', -4, 4.2, 0, 1.2, 1.2], ['petshop.bird_perch', 6.6, -1.6, 0, 0.8, 0.8],
+    ['roof.yard_tree', 1, 3.4, 0, 0.6, 0.6], ['petshop.pet_bed__pink', -4.2, -1.8, 0, 0, 0], ['petshop.pet_bed__blue', -1.2, 4.9, 0, 0, 0], ['petshop.pet_bed__brown', 3.8, 4.9, 0, 0, 0],
+    ['petshop.food_bowls', -4.6, 1.6, 0, 0, 0], ['petshop.toys', 2.2, -0.6, 0, 0, 0],
+    ['mall.counter__f4', 11.6, -5.6, 0, 2.3, 0.85], ['roof.shade', 12.4, 4.5, 0, 1.2, 1.2], ['roof.lift_house', -13.4, 0, 0, 3.4, 3.4], ['mall.lift_panel', -11.87, -0.95, -Math.PI / 2, 0, 0],
+    ['roof.flowerbed_long__6', -6, 9.3, 0, 6.06, 0.86], ['roof.flowerbed_long__6', 6, 9.3, 0, 6.06, 0.86], ['roof.flowerbed_long__4', 14.3, -1, Math.PI / 2, 0.86, 4.06], ['roof.flowerbed_long__4', -9, -9.2, 0, 4.06, 0.86],
+    ['furn.garden_bench__oak', -4, -7.6, Math.PI, 1.6, 0.6], ['furn.garden_bench__oak', 6, -7.6, Math.PI, 1.6, 0.6], ['petshop.sign', 0, 9.8, 0, 0, 0],
   ].map(([id, x, z, yaw, w, d]) => Object.freeze({ id, x, z, yaw, w, d })));
-  const COUNTER_KEEPER = Object.freeze([11.5, -1.6, 0]);
+  const COUNTER_KEEPER = Object.freeze([11.6, -4.6, 0]); // (the counter's `keeper` anchor, 1 m behind it)
   const FIXTURES = Object.freeze([ // the yard's fence (its gate open), what stands, the lift
     { x: PEN.lx, z: PEN.lz + PEN.d / 2, w: PEN.w, d: 0.2 }, { x: PEN.lx - PEN.w / 2, z: PEN.lz, w: 0.2, d: PEN.d }, { x: PEN.lx + PEN.w / 2, z: PEN.lz, w: 0.2, d: PEN.d },
     { x: PEN.lx - (PEN.w + PEN.gate) / 4, z: PEN.lz - PEN.d / 2, w: (PEN.w - PEN.gate) / 2, d: 0.2 }, { x: PEN.lx + (PEN.w + PEN.gate) / 4, z: PEN.lz - PEN.d / 2, w: (PEN.w - PEN.gate) / 2, d: 0.2 },
-    ...PROPS.filter((p) => p.w).map((p) => ({ x: p.x, z: p.z, w: p.w, d: p.d })), { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
+    ...PROPS.filter((p) => p.w).map((p) => ({ x: p.x, z: p.z, w: p.w, d: p.d })), // (the lift's house among them)
   ].map((f) => Object.freeze(f)));
   const COUNT = 10; const SPECIALS = 4; const SPEED = 0.7; const REACH = 1.8;
   const seeded = (text) => { let s = 2166136261; for (const ch of text) s = Math.imul(s ^ ch.charCodeAt(0), 16777619) >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; };

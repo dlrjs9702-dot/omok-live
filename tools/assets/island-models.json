@@ -4392,22 +4392,6 @@
       "precompressed": true
     },
     {
-      "out": "mall-v1/mall_exterior.glb",
-      "src": "mall43:High/mall_exterior.glb",
-      "sha256": "e99ae32d2456e0dce414d356d7a0fd3d6bd0702a7558297270e043555c977355",
-      "lowSrc": "mall43:Low/mall_exterior_low.glb",
-      "lowSha256": "514552e0fa9b5c40c4d78eeacc4ef7117cc9e75e0cd5e789b6c01be2aaec186c",
-      "precompressed": true
-    },
-    {
-      "out": "mall-v1/mall_interior.glb",
-      "src": "mall43:High/mall_interior.glb",
-      "sha256": "802bf791729cdd63759782196a4bf686ccbea691008dc2f6a32dee0fd1affe1d",
-      "lowSrc": "mall43:Low/mall_interior_low.glb",
-      "lowSha256": "b8892534a1e1a116259eaf5ce7f7602f3b3e626e4f99b1b210b9ee4423db51f7",
-      "precompressed": true
-    },
-    {
       "out": "characters/npc_painter.glb",
       "src": "npc52:01. High/npc_painter.glb",
       "sha256": "8aab8aa160d2ce69cdfdb00d20ee0cf8b4c23add48b3dcb92d6cd67618ad477d",
@@ -8169,6 +8153,210 @@
       "lowSrc": "slim78:02. Low/wear_outfit_xmas_sweater_low.glb",
       "lowSha256": "6371f642d801a873f2446090fb58662814ed310d24e2966e4e228b194e12afcb",
       "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_counter__f1.glb",
+      "src": "mall82:01. High/mall_counter__f1.glb",
+      "sha256": "04064c677a8078eebc8cdda3898501a536a69211da50af8668ef0628a7ac6356",
+      "lowSrc": "mall82:02. Low/mall_counter__f1_low.glb",
+      "lowSha256": "3bb10027968ef87b58de67ce9a553db3f0ac9eaf28448fc900e30064cbdd2944",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_counter__f2.glb",
+      "src": "mall82:01. High/mall_counter__f2.glb",
+      "sha256": "96d1090faf63b187e9a062f7908daf2acb9ca79ebd4da50ac0a08905d07634de",
+      "lowSrc": "mall82:02. Low/mall_counter__f2_low.glb",
+      "lowSha256": "252539236218acf8724b0854b44c33199ac05d86f99c15ac91c1dd583e43e289",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_counter__f3.glb",
+      "src": "mall82:01. High/mall_counter__f3.glb",
+      "sha256": "830af6fa31f453eab0ba2e0935d63b54c37b464b46ed203d204e18af27f734f8",
+      "lowSrc": "mall82:02. Low/mall_counter__f3_low.glb",
+      "lowSha256": "cb9a0c329154722c0384ddd45f888075152a9a6010fd6e095618bcef781fead9",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_counter__f4.glb",
+      "src": "mall82:01. High/mall_counter__f4.glb",
+      "sha256": "878adf40631c584c1e4b789ad346169de4f5a72a07a866e6f4c006cf78b3a96a",
+      "lowSrc": "mall82:02. Low/mall_counter__f4_low.glb",
+      "lowSha256": "a42ea292b642525e2dafe8ceb61d8baba78e95057f0276f3380d2cdd13931a5c",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_exterior4.glb",
+      "src": "mall82:01. High/mall_exterior4.glb",
+      "sha256": "a5e5cfbe7bfcd3ccad9e88f0f8d08638256ec1ba5cbe1877f3814b80c16020f1",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_floor1.glb",
+      "src": "mall82:01. High/mall_floor1.glb",
+      "sha256": "27a1c3fedd9f7276fca7e296e98608fc167098337f4010451d2ab89743a5dd2d",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_gondola.glb",
+      "src": "mall82:01. High/mall_gondola.glb",
+      "sha256": "822c251b90cd18bcfc938c4dbcd5ea2d0aa1350f2a2977da593ae91d8b40014c",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_lift_panel.glb",
+      "src": "mall82:01. High/mall_lift_panel.glb",
+      "sha256": "7b707f6342cb09032500d16836d177aec5d65b9f1b57b5f9c9ce96b380edfbbc",
+      "lowSrc": "mall82:02. Low/mall_lift_panel_low.glb",
+      "lowSha256": "03949efc374652b8760c0be09d465cbad63553df80f52bee7f82b8582900a9cf",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_sell_basket.glb",
+      "src": "mall82:01. High/mall_sell_basket.glb",
+      "sha256": "568841d90d13371a691cd5623596dbe7ce0539c9a49906a46a07af018c32d555",
+      "lowSrc": "mall82:02. Low/mall_sell_basket_low.glb",
+      "lowSha256": "5bf7ddf68f8f7fff66f94ac266cffa8a28416c348bfb1333445dad7576f55788",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_today_table.glb",
+      "src": "mall82:01. High/mall_today_table.glb",
+      "sha256": "619058df10efa2e1362636247607ff3f98e402d591763da1c6cb562eaabbf806",
+      "lowSrc": "mall82:02. Low/mall_today_table_low.glb",
+      "lowSha256": "37c7a367d2f7bc824f47ba0716bd818dff3f4c78893bc4d2f19d5060ae77847d",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_tool_wall.glb",
+      "src": "mall82:01. High/mall_tool_wall.glb",
+      "sha256": "19fd3069df7047561e0989725e6017b091c5b7af8311dd88a2881b20a24eccfb",
+      "lowSrc": "mall82:02. Low/mall_tool_wall_low.glb",
+      "lowSha256": "c36306971ac60570227f54a5de13af26a05a013e5bcbd61d023a1e7897efbea3",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/mall_wall_shelf.glb",
+      "src": "mall82:01. High/mall_wall_shelf.glb",
+      "sha256": "537868a5ba578313e37546f3683700df0b0f074ab8d12073eb2f7a9ae673d648",
+      "lowSrc": "mall82:02. Low/mall_wall_shelf_low.glb",
+      "lowSha256": "38ba43779de349db05e15bd8dfed918fd28055758c70b4f4040904a87a92d656",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/roof_floor.glb",
+      "src": "mall82:01. High/roof_floor.glb",
+      "sha256": "1530ac43f3a331d63c936125e6123d6cffac0f11f9800e8056168201d5caca5f",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/roof_flowerbed_long__4.glb",
+      "src": "mall82:01. High/roof_flowerbed_long__4.glb",
+      "sha256": "c172cde646778cc2cbb8bffdd0e7eac903d823152349885f52149c68a00765d5",
+      "lowSrc": "mall82:02. Low/roof_flowerbed_long__4_low.glb",
+      "lowSha256": "a86f8a1a86c5f4601dedbf9b323f5ca0526f1c19b33c220a80adc4b6b40bf607",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/roof_flowerbed_long__6.glb",
+      "src": "mall82:01. High/roof_flowerbed_long__6.glb",
+      "sha256": "dd3335efcef57d3f6b608a9a5b5b22f88ab7f1b63ab22fe2fd06402ceb38e6db",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/roof_lift_house.glb",
+      "src": "mall82:01. High/roof_lift_house.glb",
+      "sha256": "38b16de3020ff0ceb8646a2d70afd1490fa701c9f133a0ff2b535b883995833f",
+      "lowSrc": "mall82:02. Low/roof_lift_house_low.glb",
+      "lowSha256": "ad7f5e4e39ea4dd20a311435f42f055b7d96a0fc4fac9950c9c5e492c79c18d4",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/roof_pet_yard.glb",
+      "src": "mall82:01. High/roof_pet_yard.glb",
+      "sha256": "b84b8c289e37a1e80e622bd368b625c778c99abdf8888e959170015cdb2bcc1f",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/roof_shade.glb",
+      "src": "mall82:01. High/roof_shade.glb",
+      "sha256": "7b6d1c757f42cc8a342c59db4746d4ab02ec89270256d05414a20cfa6647a5f4",
+      "lowSrc": "mall82:02. Low/roof_shade_low.glb",
+      "lowSha256": "5fa83ba7858e9aafb7136afe4082b90002761f52d5e7d9bd3334851238238d00",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/roof_yard_tree.glb",
+      "src": "mall82:01. High/roof_yard_tree.glb",
+      "sha256": "68441256739d375a98f5d59344f0d63f219be7bfcf8ef327d3df1b067679f3c3",
+      "lowSrc": "mall82:02. Low/roof_yard_tree_low.glb",
+      "lowSha256": "d2669c81a644e24e546cf3fe03375254a5f7aabd41980cbfd37986468933707f",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_acc_case.glb",
+      "src": "mall82:01. High/wear_acc_case.glb",
+      "sha256": "a1d513d5502adddea3625ebf60cc595ebcdf627f28859510cd475bf14cabd991",
+      "lowSrc": "mall82:02. Low/wear_acc_case_low.glb",
+      "lowSha256": "b2b07e08712b9df6ee2983a9943400cc5a475df9a10b596200facef831bba274",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_display_shelf.glb",
+      "src": "mall82:01. High/wear_display_shelf.glb",
+      "sha256": "e8d640e5619158df409f7fc7805dd35dee24fc8177e9eca486fa7d9d20476449",
+      "lowSrc": "mall82:02. Low/wear_display_shelf_low.glb",
+      "lowSha256": "0833e1b5290fdd0d6d57f30b13f611da92135c49be9a8584cabcf5efd58f4f44",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_fitting_room.glb",
+      "src": "mall82:01. High/wear_fitting_room.glb",
+      "sha256": "d7d246b73f85f2bc33e91656e69a06b627699c4a01f6d41561ca202626d0398f",
+      "lowSrc": "mall82:02. Low/wear_fitting_room_low.glb",
+      "lowSha256": "f1b5bb29ad73cccc54982e6bdf2cf3a546a11492d0fd348b4276891a3e912baa",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_mannequin_stage.glb",
+      "src": "mall82:01. High/wear_mannequin_stage.glb",
+      "sha256": "c97dfa1eda55f37e32983670302b207cf7059f43b64fcc046df0c32ecef6bc6b",
+      "lowSrc": "mall82:02. Low/wear_mannequin_stage_low.glb",
+      "lowSha256": "cf2085da9e7f67707e6d22a41572b816ce7f48209a6ae69a970775a83ee210c8",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_rack_round.glb",
+      "src": "mall82:01. High/wear_rack_round.glb",
+      "sha256": "d8b4f97ddd504760243ba6499f85a77e550fd09ddbe61da3ace8c72529e59dbd",
+      "lowSrc": "mall82:02. Low/wear_rack_round_low.glb",
+      "lowSha256": "f5f38907d95927577d41266d92bfba162fb44b11f8ab66a8d77e08a99db0674f",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_rack_straight__costume.glb",
+      "src": "mall82:01. High/wear_rack_straight__costume.glb",
+      "sha256": "7f82f1e779a32d76f096f0690672f2a178a3a5846f0dd55acad3e8ae79cb92be",
+      "lowSrc": "mall82:02. Low/wear_rack_straight__costume_low.glb",
+      "lowSha256": "7e6a8a3a29ec65365eabf1e960d4dedf7b8639f7fea9d293dc7d9cf7e56b51ed",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_rack_straight__plain.glb",
+      "src": "mall82:01. High/wear_rack_straight__plain.glb",
+      "sha256": "729fd8f590c9a9fe5c43ea0ddcafd64a18998660b68d904ed20b20cb638a31a3",
+      "lowSrc": "mall82:02. Low/wear_rack_straight__plain_low.glb",
+      "lowSha256": "a753a1354b7bc2acfe2b695ce45ac1f8c8074fb9f048f9d02e1e424e76456f75",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v2/wear_vanity.glb",
+      "src": "mall82:01. High/wear_vanity.glb",
+      "sha256": "92d9225842406ae2584f70ae6797b1c49a518e96c4e465b71c45e2156d62d8e7",
+      "lowSrc": "mall82:02. Low/wear_vanity_low.glb",
+      "lowSha256": "294236e6ef268955e7c35f9d05fbc7830f53413674a8a97bddc9ced431c72e25",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -8227,6 +8415,7 @@
     "xmas76": "76. Game Island christmas 2026-10-27",
     "xmas77": "77. Game Island christmas wear 2026-10-27",
     "slim78": "78. Game Island codex slim test 2026-10-27",
-    "insectdesk86": "86. Game Island insect case desk 2026-10-29"
+    "insectdesk86": "86. Game Island insect case desk 2026-10-29",
+    "mall82": "82. Game Island mall revamp 2026-10-27"
   }
 }

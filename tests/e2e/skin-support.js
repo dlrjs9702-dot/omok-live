@@ -160,22 +160,50 @@ async function standInMall(page, lx, lz, text) {
   await expect.poll(async () => { await page.evaluate(([lx, lz]) => { const w = window.IslandStore.world(lx, lz); window.PlazaDebug().teleport(w.x, w.z); }, [lx, lz]); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [200] }).toContain(text);
 }
 module.exports.standInMall = standInMall;
+// v1.10.211 백화점 개편 A안: the lift from the floor I am on to floor `to` (1 잡화·생활, 2 옷·꾸미기, 3 가구, 4 옥상 펫샵)
+async function liftTo(page, to, isMobile = false) {
+  const floorOf = () => page.evaluate(() => ({ store: 1, fashion: 2, furniture: 3, petshop: 4 })[window.PlazaDebug().space] || 0);
+  if (await floorOf() === to) return;
+  await expect.poll(async () => {
+    if (await page.locator('#liftCard').isVisible()) return true;
+    await page.evaluate((n) => { const d = window.PlazaDebug(); const l = d.doors[`lift:${n}`]; d.teleport(l.x, l.z); }, await floorOf()); await page.waitForTimeout(500);
+    await spaceOn(page, 'lift:', isMobile); await page.waitForTimeout(500); return page.locator('#liftCard').isVisible();
+  }, { timeout: 30000, intervals: [300] }).toBe(true);
+  await page.locator(`#liftCard button[data-floor="${to}"]`).click(); await page.mouse.move(2, 2); // (the pointer off the floor buttons: a window opening under it would show a hovered item)
+  await expect.poll(floorOf, { timeout: 15000 }).toBe(to);
+}
+module.exports.liftTo = liftTo;
+// v1.10.211: a good's spot on the 1st floor (IslandStore.standFor) until its prompt shows
+async function standForGood(page, id, text) {
+  await expect.poll(async () => { await page.evaluate((id) => { const w = window.IslandStore.standFor(id); window.PlazaDebug().teleport(w.x, w.z); }, id); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [200] }).toContain(text);
+}
+module.exports.standForGood = standForGood;
 // v1.10.92 백화점: the shop street's shops are its sectors -- in through its door (SPACE, or a tap on the hint on a
-// phone), then standing at the sector's spot (`place`: the shop's facility id) with its prompt showing
+// phone), then standing at the sector's spot (`place`: the shop's facility id) with its prompt showing. v1.10.211: the
+// clothes, the case and the costumes up on the 2nd floor (the lift); hair, colour and face at its 꾸미기 mirrors -- sat at
+// one, the window's button for it (`press` sits and picks it)
+const MIRROR_BUTTON = { hair: '머리 모양', dye: '염색', faces: '얼굴' };
 async function intoMall(page, place = null, isMobile = false) {
   const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
   // (on a busy runner the server may set me back from a first teleport, or not have my place yet when I press: to the
   // door and in again until I am inside)
-  for (let tries = 0; tries < 4 && await page.evaluate(() => window.PlazaDebug().space) !== 'store'; tries += 1) {
+  const MALL = ['store', 'fashion', 'furniture', 'petshop']; // (v1.10.211: already on one of its floors -- in)
+  if (await page.evaluate(() => Boolean(window.PlazaDebug()?.act().sitting))) { await page.keyboard.press('Escape').catch(() => {}); await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowDown'); await page.waitForTimeout(300); await page.keyboard.up('ArrowDown'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false); } // (sat at a mirror: up first)
+  for (let tries = 0; tries < 4 && !MALL.includes(await page.evaluate(() => window.PlazaDebug().space)); tries += 1) {
     // (a slow entry from the last try may land me inside meanwhile: then no more door -- placed at it from inside, I would
     // stand at the room's wall with no prompt)
-    const inside = () => page.evaluate(() => window.PlazaDebug().space === 'store');
+    const inside = () => page.evaluate((MALL) => MALL.includes(window.PlazaDebug().space), MALL);
     await expect.poll(async () => { if (await inside()) return '백화점 들어가기'; await page.evaluate(() => window.PlazaDebug().place('store')); await page.waitForTimeout(600); return (await inside()) ? '백화점 들어가기' : page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('백화점 들어가기');
     if (await inside()) break;
     await spaceOn(page, 'store', isMobile); // (CI 3차: the door read and pressed at once)
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 10000 }).toBe('store').catch(() => {});
   }
-  expect(await page.evaluate(() => window.PlazaDebug().space)).toBe('store');
+  expect(MALL).toContain(await page.evaluate(() => window.PlazaDebug().space));
+  if (place) await liftTo(page, await page.evaluate((place) => (window.IslandFashion.sectorOf(place) || window.IslandFashion.MIRROR_PLACES.includes(place) ? 2 : 1), place), isMobile); // (the shop's floor)
+  if (MIRROR_BUTTON[place]) { // (a mirror's chair: its prompt, then SPACE sits and the 꾸미기 window's button)
+    await expect.poll(async () => { await page.evaluate(() => { const s = window.IslandFashion.SEATS[0]; window.PlazaDebug().teleport(s.x, s.z + 0.9); }); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [200] }).toContain('앉아서 꾸미기');
+    return async () => { await press(); await page.locator('.mirrorCard button', { hasText: MIRROR_BUTTON[place] }).click(); };
+  }
   if (place) {
     // (the walk-in may still place me at the door after a first teleport on a slow runner: again until the prompt is the sector's)
     const name = await page.evaluate((place) => window.PlazaDebug().doors[place].name, place);

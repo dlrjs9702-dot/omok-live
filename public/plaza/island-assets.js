@@ -383,8 +383,7 @@
   // (10 x 8 m, its door at local -Z; plaza-scene turns it half round), its keeper (the common rig) and the 23 goods on the shelves
   const ST = '/assets/island/store-v1';
   const st = (file, extra = {}) => ({ url: `${ST}/${file}.glb`, low: { url: `${ST}/${file}_low.glb` }, ...extra });
-  REGISTRY['facility.store'] = { url: '/assets/island/mall-v1/mall_exterior.glb', low: { url: '/assets/island/mall-v1/mall_exterior_low.glb' }, near: 140, rotationY: Math.PI }; // v1.10.92 백화점 (assets 43)
-  REGISTRY['mall.interior'] = { url: '/assets/island/mall-v1/mall_interior.glb', low: { url: '/assets/island/mall-v1/mall_interior_low.glb' } };
+  REGISTRY['facility.store'] = { url: '/assets/island/mall-v2/mall_exterior4.glb', low: null, near: 140, rotationY: Math.PI }; /* (its Low lost the roof garden -- test/floor-low) */ // v1.10.92 백화점 (assets 43); v1.10.211 4층 (assets 82 mall.exterior4, the same footprint)
   REGISTRY['character.storekeeper'] = { url: `${CH}/npc_storekeeper.glb`, low: { url: `${CH}/npc_storekeeper_low.glb` }, rotationY: Math.PI, motions: true };
   for (const id of ['bait', 'bait_premium', 'seed_flower_red', 'seed_flower_yellow', 'seed_flower_white', 'seed_flower_pink', 'seed_flower_purple', 'sapling', 'fertilizer', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge']) REGISTRY[`good.${id}`] = st(id, { shadows: false });
   // 달마루섬 2단계 (assets 55, Claude Code's Blender build): the structures that stand once -- front -Z in the files, turned
@@ -421,6 +420,14 @@
   for (const [kind, coats] of Object.entries(PETS)) for (const coat of coats.split(' ')) REGISTRY[`pet.${kind}__${coat}`] = ps(`pet_${kind}__${coat}`);
   for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60, ...(f === 'floor3' ? FLOOR : {}) });
   REGISTRY['mall.elevator'] = ps('petshop_elevator3', { near: 60 });
+  // v1.10.211 백화점 개편 A안 (assets 82 mall-v2): the 1st floor's room and its pieces, the floors' counters and the lift's
+  // buttons, the 2nd floor's racks, cases and mirrors (assets 82's wear.* as mall.wear_*: the wear.* ids are the characters'
+  // parts), the roof's garden (a floor one stands on keeps its High, as the others)
+  const MV = '/assets/island/mall-v2';
+  const mv = (file, extra = {}) => ({ url: `${MV}/${file}.glb`, low: { url: `${MV}/${file}_low.glb` }, near: 60, ...extra });
+  for (const f of ['floor1', 'today_table', 'gondola', 'wall_shelf', 'tool_wall', 'sell_basket', 'lift_panel', 'counter__f1', 'counter__f2', 'counter__f3', 'counter__f4']) REGISTRY[`mall.${f}`] = mv(`mall_${f}`, f === 'floor1' || f === 'gondola' ? FLOOR : {}); // (the gondola's shelves gone in its Low too)
+  for (const f of ['rack_straight__plain', 'rack_straight__costume', 'rack_round', 'mannequin_stage', 'display_shelf', 'acc_case', 'fitting_room', 'vanity']) REGISTRY[`mall.wear_${f}`] = mv(`wear_${f}`);
+  for (const f of ['floor', 'lift_house', 'pet_yard', 'yard_tree', 'shade', 'flowerbed_long__6', 'flowerbed_long__4']) REGISTRY[`roof.${f}`] = mv(`roof_${f}`, f === 'floor' || f === 'pet_yard' || f === 'flowerbed_long__6' ? FLOOR : {});
   REGISTRY['together.pet_ditto'] = ps('pet_ditto'); // (3회차 21 메타몽, assets 65: one coat, Idle·Walk·Sit like the others)
   // E1 계절 행사 (assets 72 season-v1): the festival stall, the harvest festival's goods (also its decor round 대청마당) and
   // the contests' trophies (furniture once won)

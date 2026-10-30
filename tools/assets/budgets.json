@@ -553,6 +553,246 @@
       "nodes": 2,
       "reason": "S2 assets 80: named parts kept (door / lid, letter) -- the hatch keeps its nodes in the game (keepNodes)",
       "meshes": 1
+    },
+    "mall-v2/mall_counter__f1.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_counter__f1_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_counter__f2.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_counter__f2_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_counter__f3.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_counter__f3_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_counter__f4.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_counter__f4_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_exterior4.glb": {
+      "nodes": 4,
+      "meshes": 2,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_floor1.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_gondola.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_lift_panel.glb": {
+      "nodes": 10,
+      "meshes": 5,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_lift_panel_low.glb": {
+      "nodes": 10,
+      "meshes": 5,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_sell_basket.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_sell_basket_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_today_table.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_today_table_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_tool_wall.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_tool_wall_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_wall_shelf.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/mall_wall_shelf_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_floor.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_flowerbed_long__4.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_flowerbed_long__4_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_flowerbed_long__6.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_lift_house.glb": {
+      "nodes": 6,
+      "meshes": 3,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_lift_house_low.glb": {
+      "nodes": 6,
+      "meshes": 3,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_pet_yard.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_shade.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_shade_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_yard_tree.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/roof_yard_tree_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_acc_case.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_acc_case_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_display_shelf.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_display_shelf_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_fitting_room.glb": {
+      "nodes": 6,
+      "meshes": 3,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_fitting_room_low.glb": {
+      "nodes": 6,
+      "meshes": 3,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_mannequin_stage.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_mannequin_stage_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_rack_round.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_rack_round_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_rack_straight__costume.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_rack_straight__costume_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_rack_straight__plain.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_rack_straight__plain_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_vanity.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
+    },
+    "mall-v2/wear_vanity_low.glb": {
+      "nodes": 2,
+      "meshes": 1,
+      "reason": "v1.10.211 assets 82: gltfpack -km -kn keeps the named nodes (README 규격) -- the root, and the lift panel buttons, the lift house doors, the fitting room curtains, the exterior sign"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

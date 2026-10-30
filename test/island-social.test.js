@@ -28,13 +28,17 @@ test('섬 시설: 원거리 지급·구매는 거부하고 가까운 출석과 �
   // v1.10.92 백화점: the 옷가게 is its sector -- in at its door, then at the sector's spot
   const mallDoor = T.facilityDoor('store'); await req('/api/plaza/state', token, { ...mallDoor, yaw: 0, moving: false });
   assert.equal((await req('/api/island/store/enter', token, {})).status, 200);
-  const shop = require('../public/plaza/island-store').sectorPoint('avatar');
-  await req('/api/plaza/state', token, { ...shop, yaw: 0, moving: false });
+  // (v1.10.211 백화점 개편 A안: the 옷 up on the 2nd floor -- by the lift)
+  const S = require('../public/plaza/island-store'); const F = require('../public/plaza/island-fashion');
+  await req('/api/plaza/state', token, { ...S.world(...S.LIFT.stand), yaw: 0, moving: false });
+  assert.equal((await req('/api/island/lift', token, { to: 2 })).data.space, 'fashion');
+  await req('/api/plaza/state', token, { ...F.sectorPoint('avatar'), yaw: 0, moving: false });
   assert.equal((await req('/api/skins/buy', token, { skinId: 'avatar_x2_outfit_tea_master' })).status, 200, '가까운 옷가게에서 기존 구매가 정상 실행된다');
   // (달마루섬 5단계) the 9th sector, 노점: the trader's buy-back there, not from the 옷가게
   await req('/api/test/island/give', token, { itemId: 'herb', qty: 2 });
   assert.equal((await req('/api/island/sell', token, { place: 'merchant', requestId: 'mall-sell-0001' })).data.error, 'TOO_FAR');
-  await req('/api/plaza/state', token, { ...require('../public/plaza/island-store').sectorPoint('mall:stall'), yaw: 0, moving: false });
+  await req('/api/plaza/state', token, { ...F.world(...F.LIFT.stand), yaw: 0, moving: false }); assert.equal((await req('/api/island/lift', token, { to: 1 })).data.space, 'store'); // (down to the 1st floor's sell basket)
+  await req('/api/plaza/state', token, { ...S.sectorPoint('mall:stall'), yaw: 0, moving: false });
   const sold = await req('/api/island/sell', token, { place: 'merchant', requestId: 'mall-sell-0002' });
   assert.equal(sold.status, 200, JSON.stringify(sold.data));
 });

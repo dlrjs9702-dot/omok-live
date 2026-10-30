@@ -21,7 +21,7 @@ test('서버가 다시 뜬 직후 첫 자세 전송에서도 데리고 다니는
   await first.req('/api/plaza/state', a, { ...T.facilityDoor('store'), yaw: 0, moving: false });
   assert.equal((await first.req('/api/island/store/enter', a, {})).status, 200);
   await first.req('/api/plaza/state', a, { ...S.world(...S.LIFT.stand), yaw: 0, moving: false });
-  assert.equal((await first.req('/api/island/lift', a, { to: 3 })).data.space, 'petshop');
+  assert.equal((await first.req('/api/island/lift', a, { to: 4 })).data.space, 'petshop');
   // (v1.10.191: a special one -- today's in the yard)
   const shop = (await first.req('/api/island/petshop', a)).data; const sp = shop.pets.find((p) => p.special);
   const w = P.petAt(shop.day, sp.slot, Date.now()); await first.req('/api/plaza/state', a, { x: w.x + 0.6, z: w.z, yaw: 0, moving: false });

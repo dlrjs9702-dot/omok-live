@@ -1,3 +1,5 @@
+// 백화점 개편 A안 (v1.10.211): now the 3rd floor -- each zone a column of three plinths 2 m apart (assets 82 README 「3층 새
+// 좌표」), the counter assets 82's mall.counter__f3.
 // 묶음 2 가구점 (gamecenter-notes docs/furniture-shop-20261019.md, 사용자 확정 2026-10-19): the 백화점's second floor --
 // furniture standing on the floor (assets 57: 48 shapes, each in 2-4 colours = 145 goods), a different display every day
 // (Seoul 00:00, the same for everyone), one sold is gone for everyone until the next day's display; a few plain goods
@@ -64,19 +66,19 @@
   const local = (x, z) => ({ lx: ROOM.x - x, lz: ROOM.z - z });
   const inRoom = (x, z, pad = 0) => Math.abs(x - ROOM.x) <= ROOM.w / 2 + pad && Math.abs(z - ROOM.z) <= ROOM.d / 2 + pad;
   // the lift on the left wall of each floor (assets 57 mall.elevator, its back on the wall, its front into the room)
-  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (2층; 1층's in island-store.js)
-  const ZONES = Object.freeze({ living: [-6.5, -4.4], bedroom: [-6.5, 4.6], kitchen: [3.5, -4.4], garden: [3.5, 4.6] });
+  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (3층; 1층's in island-store.js)
+  const ZONES = Object.freeze({ living: [-6.2, -1.6], bedroom: [-1.8, -1.6], kitchen: [2.6, -1.6], garden: [7.0, -1.6] });
   // the display: 3 plinths a zone, 3 places on the back wall for what hangs, 1 wide one for a wall tank (or a big piece)
   const SLOTS = Object.freeze([
-    ...Object.entries(ZONES).flatMap(([zone, [x, z]]) => [[-2.2, -1.2], [2.2, -1.2], [0, 1.9]].map(([dx, dz], i) => ({ id: `${zone}${i}`, zone, kind: 'floor', lx: x + dx, lz: z + dz, yaw: 0 }))),
+    ...Object.entries(ZONES).flatMap(([zone, [x, z]]) => [[0, -4.4], [0, 0], [0, 4.4]].map(([dx, dz], i) => ({ id: `${zone}${i}`, zone, kind: 'floor', lx: x + dx, lz: z + dz, yaw: 0 }))),
     ...[-6.5, -2.5, 1.5].map((x, i) => ({ id: `wall${i}`, zone: 'wall', kind: 'wall', lx: x, lz: 9.82, yaw: 0, plinth: false })),
     { id: 'wide0', zone: 'wall', kind: 'wide', lx: 8.6, lz: 9.82 - 0.76, yaw: 0, plinth: false },
   ].map((s) => Object.freeze(s)));
-  const BASE_SLOTS = Object.freeze(BASE.map((id, i) => Object.freeze({ id: `base${i}`, good: id, lx: 9.6 + i * 1.3, lz: -6.2, yaw: 0 })));
-  const CHECKOUT = Object.freeze({ lx: 12.2, lz: -1.5, yaw: 0, keeper: Object.freeze([12.2, -0.6, 0]) });
+  const BASE_SLOTS = Object.freeze(BASE.map((id, i) => Object.freeze({ id: `base${i}`, good: id, lx: [11.5, 13.7, 11.5, 13.7][i], lz: [-6.8, -6.8, -8.8, -8.8][i], yaw: 0 })));
+  const CHECKOUT = Object.freeze({ lx: 11.8, lz: -1.5, yaw: 0, keeper: Object.freeze([11.8, -0.6, 0]) });
   const FIXTURES = Object.freeze([ // what is walked round (x, z centre, w, d): the plinths, the counter, the lift
     ...SLOTS.filter((s) => s.plinth !== false).map((s) => ({ x: s.lx, z: s.lz, w: 2.4, d: 2.4 })),
-    { x: 8.6, z: 9.1, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 1.9, d: 0.7 }, { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
+    { x: 8.6, z: 9.1, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 2.3, d: 0.85 }, { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
     ...BASE_SLOTS.map((s) => ({ x: s.lx, z: s.lz, w: 1.2, d: 1.2 })),
   ].map((f) => Object.freeze(f)));
   const REACH = 2.1; // a piece within this of me (to its plinth's middle) is the one SPACE buys

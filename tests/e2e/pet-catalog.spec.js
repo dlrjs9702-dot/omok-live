@@ -11,7 +11,7 @@ test('펫샵 특별 펫: 점원은 마당을 안내, 마당의 특별 펫을 데
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   await intoMall(page, null, isMobile);
   await expect.poll(async () => { if (await page.locator('#liftCard').isVisible()) return true; await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['lift:1']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); await spaceOn(page, 'lift:1', isMobile); await page.waitForTimeout(500); return page.locator('#liftCard').isVisible(); }, { timeout: 30000, intervals: [300] }).toBe(true);
-  await page.locator('#liftCard button[data-floor="3"]').click();
+  await page.locator('#liftCard button[data-floor="4"]').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('petshop');
   // ten in the yard (the other run on this server may have taken some), every one its name over it
   await expect.poll(() => page.evaluate(() => (window.PlazaDebug().petshopTags() || []).length), { timeout: 15000 }).toBeGreaterThanOrEqual(8);

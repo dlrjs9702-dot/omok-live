@@ -31,7 +31,7 @@ self.addEventListener('push', event => {
   let d = {}; try { d = event.data?.json() || {}; } catch {}
   event.waitUntil((async () => {
     if (Number.isFinite(d.unread)) self.MessengerAlert?.setBadge(self.navigator, d.unread);
-    await self.registration.showNotification(d.title || '아일랜드 메신저', { body: d.body || '새 메시지가 왔어요.', tag: d.room || 'messenger', renotify: true, icon: '/icons/messenger-192.png', badge: '/icons/messenger-192.png', data: { room: d.room || null } });
+    await self.registration.showNotification(d.title || '아일랜드 메신저', { body: d.body || '새 메시지가 왔어요.', tag: d.room || 'messenger', renotify: true, icon: '/icons/icon-192.png', badge: '/icons/badge-96.png', data: { room: d.room || null } });
   })());
 });
 self.addEventListener('notificationclick', event => {
