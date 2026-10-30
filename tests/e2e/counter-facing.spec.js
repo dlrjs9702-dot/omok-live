@@ -11,7 +11,7 @@ test('창구 점원: 모두 손님 서는 쪽을 본다(30° 안)', async ({ bro
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running).catch(() => false), { timeout: 90000 }).toBe(true);
   const keepers = await page.evaluate(() => window.PlazaDebug().counterFacing());
-  expect(keepers.map((k) => k.id)).toEqual(expect.arrayContaining(['petshop', 'furniture', 'store:store', 'store:game', 'store:stall', 'townhall:civil', 'townhall:bank', 'jail:warden']));
+  expect(keepers.map((k) => k.id)).toEqual(expect.arrayContaining(['petshop', 'furniture', 'fashion', 'store:store', 'townhall:civil', 'townhall:bank', 'jail:warden'] /* (v1.10.211 백화점 개편 A안: one counter a floor -- 2층 옷·꾸미기's too) */));
   expect(keepers.filter((k) => k.angle >= 30 || k.home > 3)).toEqual([]);
   await expectNoScriptError(page);
   await a.context.close();
