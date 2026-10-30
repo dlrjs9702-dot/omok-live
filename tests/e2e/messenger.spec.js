@@ -199,3 +199,44 @@ test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하�
   expect((await shown()).length).toBe(1);
   await context.close();
 });
+
+// v1.10.212 메신저 6절 (사용자 「메신저를 최소화 해 놓아도 알림은 오는데 읽은걸로 처리되고 있는데」): the room open but the window
+// not looked at (minimised, behind another) -- the new line shows, but is not read: the sender's 「1」 stays, my unread
+// count 1; back at the window, read then.
+test('메신저 창을 안 보고 있으면 읽음 처리 안 함: 보낸 쪽 「1」 그대로, 창으로 돌아오면 읽음', async ({ browser, request }, info) => {
+  test.setTimeout(120000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const make = async (tag, nick) => {
+    const loginId = `k${tag}_${stamp}`.slice(0, 20); const nickname = `${nick}${(Date.now() + info.project.name.length) % 100000}`;
+    await api(request, '/api/account/signup', { body: { realName: tag, loginId, password: 'secret123', nickname } });
+    const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+    await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+    const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+    await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+    const account = (await api(request, '/api/account/login', { body: { loginId, password: 'secret123' } })).data.accountToken;
+    return { id, loginId, nickname, account };
+  };
+  const mom = await make('a', '엄마'); const dad = await make('b', '아빠');
+  const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+  await context.addInitScript(() => { const hasFocus = Document.prototype.hasFocus; Document.prototype.hasFocus = function () { return window.__away ? false : hasFocus.call(this); }; }); // ("not looked at" at the test's word)
+  const m = await context.newPage(); await m.goto('/messenger');
+  await m.locator('#mLoginId').fill(mom.loginId); await m.locator('#mLoginPw').fill('secret123');
+  await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click(); await expect(m.locator('#mApp')).toBeVisible();
+  const room = (await api(request, '/api/messenger/rooms', { account: dad.account, body: { name: '우리집', members: [mom.id] } })).data.room;
+  await m.locator('#messengerRoomList button', { hasText: '우리집' }).click(); await expect(m.locator('#messengerRoomName')).toHaveText('우리집');
+  const dadRoom = async () => (await api(request, '/api/messenger', { account: dad.account })).data.rooms.find((r) => r.id === room.id);
+  const momUnread = async () => (await api(request, '/api/messenger', { account: mom.account })).data.rooms.find((r) => r.id === room.id).unread;
+  // not looked at: the line shows in the open room, not read
+  await m.evaluate(() => { window.__away = true; });
+  const sent = (await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: dad.account, body: { text: '창 숨겼지?' } })).data.message;
+  await expect(m.locator('#messengerMessages')).toContainText('창 숨겼지?');
+  await m.waitForTimeout(800);
+  expect((await dadRoom()).reads[mom.id]).toBeLessThan(sent.seq); // (the sender's 「1」 stays)
+  expect(await momUnread()).toBe(1);
+  // back at the window: read
+  await m.evaluate(() => { window.__away = false; window.dispatchEvent(new Event('focus')); });
+  await expect.poll(async () => (await dadRoom()).reads[mom.id], { timeout: 10000 }).toBe(sent.seq);
+  expect(await momUnread()).toBe(0);
+  await context.close();
+});

@@ -42,7 +42,9 @@
   const { unreadOf } = window.MessengerAlert; let baseTitle = '아일랜드 메신저';
   const blink = window.MessengerAlert.titleBlink(() => { document.title = blink.text(baseTitle); });
   const away = () => document.visibilityState === 'hidden' || !document.hasFocus();
-  const looking = () => { if (!away()) blink.seen(); };
+  // (메신저 6절, v1.10.212 사용자 「최소화 해 놓아도 읽은걸로 처리되고 있는데」) back to the window: the open room asked once as
+  // looking -- read then, the unread counts with it
+  const looking = () => { if (away()) return; blink.seen(); if (current) pull().then(() => refresh()); };
   document.addEventListener('visibilitychange', looking); window.addEventListener('focus', looking);
   function renderRooms() {
     list.replaceChildren(...state.rooms.map((room) => {
@@ -146,9 +148,10 @@
     const recent = msgs.find((msg) => !msg.system && !msg.deleted && Date.now() - Date.parse(msg.at) < 6 * 60 * 1000);
     const from = recent ? Math.min(last, recent.seq - 1) : last;
     try {
-      let data = await api(`/api/messenger/rooms/${id}/messages?after=${from}`);
+      const peek = away() ? '&peek=1' : ''; // (메신저 6절: not looked at -- the lines only, not read; read when I am back)
+      let data = await api(`/api/messenger/rooms/${id}/messages?after=${from}${peek}`);
       // (C3 ②: a busy room filled the page (100) with the asked-again lines -- the new ones asked for on their own)
-      if (from < last && data.messages.length >= 100) { const more = await api(`/api/messenger/rooms/${id}/messages?after=${last}`); data = { ...more, messages: [...data.messages.filter((msg) => msg.seq <= last), ...more.messages] }; }
+      if (from < last && data.messages.length >= 100) { const more = await api(`/api/messenger/rooms/${id}/messages?after=${last}${peek}`); data = { ...more, messages: [...data.messages.filter((msg) => msg.seq <= last), ...more.messages] }; }
       if (current?.id !== id || g !== gen) return;
       const firstPage = !last; current = data.room; showHead();
       const fresh = data.messages.filter((msg) => msg.seq > last);
