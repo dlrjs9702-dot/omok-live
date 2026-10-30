@@ -6453,6 +6453,7 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && (pathname === '/api/test/island/lost' || pathname === '/api/test/island/photo') && req.method === 'POST') { // (Q2: the tourist too -- the page asks again till an islander is in a photo spot)
     const e = islandEvents.spawnLost(pathname.endsWith('/photo') ? 'photo' : 'lost');
+    const at = (await parseJson(req)).at; if (e && Number.isFinite(at?.x) && Number.isFinite(at?.z)) { e.npc.x = at.x; e.npc.z = at.z; } /* (#355: the owner waiting in a doorway) */
     return sendJson(res, 200, { ok: Boolean(e), event: e && { id: e.id, x: e.x, z: e.z, npc: e.npc } });
   }
   // (휴대폰 「가까이」: my lobby stream cut from the server's side, as a phone's network drops it -- the page reconnects)

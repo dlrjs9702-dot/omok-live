@@ -3478,6 +3478,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (t.walker) delete t.walker.talkYaw;
     else if (!t.o.leaving) { t.o.root.rotation.y = t.yaw; if (t.o.npc.home) t.o.npc.home.yaw = t.homeYaw; }
   }
+  const talkAt = new THREE.Vector3();
   function talkCamera(mode) {
     talkView = null; untalk();
     const t = lastTalk; const p = me.root.position;
@@ -3782,6 +3783,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     } else if (grab) { stepGrab(dt, 0, 0);
     } else if (talkView?.step) { // (사용자 2026-10-12) standing right against them, I step back to a talking distance so the
       // camera behind me sees their face past my head (still within reach of the talk: EVENT_REACH 1.9)
+      const fig = talkFigure(talkView.id); if (fig) { const q = fig.getWorldPosition(talkAt); talkView.x = q.x; talkView.z = q.z; } /* (#355 CI: a walker held after the talk began settles on the server's spot -- the step back from where they stand now, not from where the talk caught them) */
       const p = me.root.position; const d = Math.hypot(talkView.x - p.x, talkView.z - p.z);
       const gap = fpNow() ? talkView.fpGap || 1.2 : TALK_GAP; // (V1: face to face -- as far as the framing wants, 1.2 m at the least)
       if (d > 0.01 && d < gap - 0.02) { const s = Math.min(gap - d, 2.2 * dt) / d; tryMove(p.x - (talkView.x - p.x) * s, p.z - (talkView.z - p.z) * s); }
@@ -3816,13 +3818,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     const atDoor = best && bestD < 1 ? best : null; // (206 CI: in the evening an islander stood in the 관공서 doorway -- SPACE talked, never went in)
     const lookDir = fpNow() ? { x: -Math.sin(camYaw), z: -Math.cos(camYaw) } : null; // (V1: the first -- someone to talk to is the one I look at)
+    const talkish = (id, door) => /^(resident|player):/.test(id) || id.startsWith('ev:quest_npc:') || Boolean(door?.name?.startsWith('말 걸기')); // (an islander, a lost thing's owner, the tourist)
     for (const [id, door] of Object.entries(eventDoors)) { // v1.10.11: an event right by me comes first
       if (id === 'tool:stow') continue;
-      if (lookDir && (/^(resident|player):/.test(id) || id.startsWith('ev:quest_npc:') || door.name?.startsWith('말 걸기'))) { const dx = door.x - me.root.position.x; const dz = door.z - me.root.position.z; if ((dx * lookDir.x + dz * lookDir.z) / (Math.hypot(dx, dz) || 1) < FP_CONE) continue; } // (206 총괄 검토: the stow note stands where I am -- picked as the nearest, it flickered off every other frame)
+      if (lookDir && talkish(id, door)) { const dx = door.x - me.root.position.x; const dz = door.z - me.root.position.z; if ((dx * lookDir.x + dz * lookDir.z) / (Math.hypot(dx, dz) || 1) < FP_CONE) continue; } // (206 총괄 검토: the stow note stands where I am -- picked as the nearest, it flickered off every other frame)
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < (door.resource ? WEED_REACH : EVENT_REACH) && d < bestD + 1) { best = id; bestD = d - 1; }
     }
-    if (atDoor && /^(resident|player):/.test(best || '')) best = atDoor; // (in a doorway the door; someone passing is talked to a step off it)
+    if (atDoor && best !== atDoor && (talkish(best, eventDoors[best]) || eventDoors[best]?.resource)) best = atDoor; // (in a doorway the door; someone there -- #355 CI: a lost thing's owner held in the 관공서 doorway, 「말 걸기」 -- or a thing lying there is had a step off it)
     // (묶음 3: a weed beside someone to talk to -- the one I face is talked to first; the weed is pulled facing it)
     const facing = (x, z) => { const m = me.root.position; const d = Math.hypot(x - m.x, z - m.z) || 1; return ((x - m.x) * Math.sin(me.root.rotation.y) + (z - m.z) * Math.cos(me.root.rotation.y)) / d > 0.5; };
     if (best && eventDoors[best]?.resource) for (const [id, door] of Object.entries(eventDoors)) if (!door.resource && !door.plain && door.name?.startsWith('말 걸기') && Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z) < EVENT_REACH && facing(door.x, door.z)) { best = id; break; }
