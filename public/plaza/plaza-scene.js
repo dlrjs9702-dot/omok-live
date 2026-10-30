@@ -1471,8 +1471,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (event.key === 'Escape' && actLocked()) actLock = 0; // v1.10.89: Esc lets a motion's hold go too (Codex review)
     if (event.key === 'Escape' && gather?.waitServer) { endGather(false); event.preventDefault(); return; }
     if (event.code === 'KeyV' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); toggleView(); return; } // (V1: 「👁 시점」)
-    if (FP_WALK[event.code] && fpNow() && !event.ctrlKey && !event.metaKey && !event.altKey) { keys.add(FP_WALK[event.code]); fpWalking.add(event.code); event.preventDefault(); return; } // (V1: the first -- W/A/S/D walk)
-    // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk
+    // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk -- in the
+    // first person too (v1.10.210, 사용자 「3인칭이 방향키가 걷기 wasd가 카메라 전환인데 맞추는게」: ↑↓ where I look, ←→ a side step)
     if (CAM_KEYS.has(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) { camKeys.add(event.code); event.preventDefault(); return; }
     // 문제 기록 9: Q nearer, E further -- a wheel notch's step, kept the same way (gc.islandZoom); held, it goes on
     if ((event.code === 'KeyQ' || event.code === 'KeyE') && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); setZoom(zoomDist * Math.exp((event.code === 'KeyQ' ? -100 : 100) * 0.0012)); return; }
@@ -1483,7 +1483,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!event.repeat) actDown(); // (2회차 11: held before a piece of my house it grabs it -- actUp on the key's release)
     }
   };
-  const onKeyUp = (event) => { if (event.code === 'Space') actUp(); keys.delete(event.key); if (fpWalking.delete(event.code)) keys.delete(FP_WALK[event.code]); camKeys.delete(event.code); if (event.key === 'Shift') { shifts.delete(event.code); if (!shifts.size) paceUp(); } };
+  const onKeyUp = (event) => { if (event.code === 'Space') actUp(); keys.delete(event.key); camKeys.delete(event.code); if (event.key === 'Shift') { shifts.delete(event.code); if (!shifts.size) paceUp(); } };
   const onBlur = () => { keys.clear(); camKeys.clear(); paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); };
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -1521,7 +1521,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     try { localStorage.setItem(VIEW_KEY[side], viewPick[side]); } catch {}
     pitchGoal = 0; camPitch = 0; onView?.(viewPick[side]); return viewPick[side];
   }
-  const FP_WALK = { KeyW: 'ArrowUp', KeyA: 'ArrowLeft', KeyS: 'ArrowDown', KeyD: 'ArrowRight' }; const fpWalking = new Set(); // (only what W/A/S/D themselves put down is let go with them -- CI: D's release let go of a held →)
   const FP_PITCH = (60 * Math.PI) / 180; const FP_FOV = 75; const FP_TALK_FOV = 64; const FP_CONE = Math.cos(Math.PI / 6); // (the talk: a little drawn in; what SPACE talks to: within 60° of the screen's middle)
   let eyeAt = { t: -Infinity, h: 1.2 }; const eyeBox = new THREE.Box3(); const partBox = new THREE.Box3();
   function figureFrame(root) { // (V1 총괄 검토: a talk framed by who they are -- their eyes and their head's top)
