@@ -68,12 +68,12 @@
   // same look, same tag (one notice a room), never for a muted room or my own line; the server pushes this device no more
   // while it is open here (3절 4)
   function popNew(was, now) {
-    if (!pushOn || !pushReg || !away() || !was.length || Notification.permission !== 'granted') return;
+    if (!pushOn || !pushReg || !streamUp || !away() || !was.length || Notification.permission !== 'granted') return; // (the stream down -- a few seconds reconnecting -- the server pushes this device: one notice, one sound)
     const seen = new Map(was.map((r) => [r.id, r.seq]));
     for (const r of now) {
       if (r.muted || !r.last || r.last.system || r.last.mine || !(r.seq > (seen.get(r.id) ?? r.seq))) continue;
       const title = r.kind === 'dm' ? r.last.label : r.name; const body = (r.kind === 'dm' ? r.last.text : `${r.last.label}: ${r.last.text}`).slice(0, 120);
-      pushReg.showNotification(title, { body, tag: r.id, renotify: true, icon: '/icons/messenger-192.png', badge: '/icons/messenger-192.png', data: { room: r.id } }).catch(() => {});
+      pushReg.showNotification(title, { body, tag: r.id, renotify: true, icon: '/icons/icon-192.png', badge: '/icons/badge-96.png', data: { room: r.id } }).catch(() => {});
     }
   }
   function line(msg, same) { // `same`: the same person just before -- the name once (카톡)
@@ -287,7 +287,7 @@
   });
   byId('mDropOthers').addEventListener('click', async () => { try { await api('/api/messenger/devices/drop', { all: true }); byId('mDevices').classList.add('hidden'); showToast('다른 기기의 로그인을 모두 끊었어요.'); } catch (err) { fail(err); } });
 
-  // ---- ③ 알림 (Web Push, this page's own worker) and ② 앱으로 설치 ----
+  // ---- ③ 알림 (Web Push, the app's worker) ----
   let pushReg = null; let pushOn = false;
   const keyBytes = (b64) => { const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (b64.length % 4)) % 4)); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
   async function setupPush() {
@@ -322,11 +322,6 @@
   });
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
   { const sel = byId('mTheme'); sel.value = window.MessengerTheme?.get() || 'light'; sel.addEventListener('change', () => window.MessengerTheme?.set(sel.value)); } // (어두운 화면: messenger-theme.js)
-  let installPrompt = null;
-  window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; byId('mInstallBtn').classList.remove('hidden'); });
-  byId('mInstallBtn').addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; byId('mInstallBtn').classList.add('hidden'); });
-  window.addEventListener('appinstalled', () => byId('mInstallBtn').classList.add('hidden'));
-  if (/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone) byId('mIosHint').classList.remove('hidden');
   // (the game's window opens this one with its login: a new login there reaches an open messenger too)
   try { new BroadcastChannel('gc-messenger').addEventListener('message', (event) => { if (event.data?.account && !accountToken.get() && !deviceToken.get()) { accountToken.set(event.data.account); start(); } }); } catch {}
   start();
