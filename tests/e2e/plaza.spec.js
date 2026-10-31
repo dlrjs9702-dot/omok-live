@@ -1434,6 +1434,9 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   const b = await intoPlaza(browser, request, '구경꾼'); // v1.10.89 원격 낚시: someone close by sees it
   await b.page.evaluate((p) => window.PlazaWarp(p.x, p.z), pierAt(DAL ? 4 : 10, DAL ? 1 : 2.5));
   const seen = () => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act?.startsWith('fish:'))?.act || null);
+  // (CI #361·#362: every pose the watcher saw, sampled on its page -- the reel checked after the catch, not waited for between
+  // the arrows' showing and the presses: the arrows' time runs from their showing, 4.3 s for a common fish)
+  await b.page.evaluate(() => { window.__fishSeen = new Set(); setInterval(() => { const act = window.PlazaDebug().othersActs().find((o) => o.act?.startsWith('fish:'))?.act; if (act) window.__fishSeen.add(act); }, 100); });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
   await expect(page.locator('#plazaHint')).toHaveText('가방에서 낚싯대를 들면 낚시할 수 있어요', { timeout: 10000 }); // (206 Q2 5: not in hand, no cast)
   await require('./skin-support').holdTool(page, 'fishing_rod');
@@ -1451,13 +1454,13 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
     if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); return 'cast again'; }
     await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); return page.locator('#plazaHint').textContent();
   }, { timeout: 40000, intervals: [1500] }).toMatch(/^입질! 화살표 \d+개를 순서대로$/); // (3회차 4: the arrows pull it in)
-  await expect.poll(seen, { timeout: 5000 }).toBe('fish:reel');
   await page.keyboard.press('Space'); expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('bite'); // (SPACE no longer pulls)
   // (CI #298: the server's bite last, the arrows pressed right after it -- a page round trip between them took the
   // mackerel's arrow time on a slow runner)
   expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
   const slipped = await pressFishArrows(page, false, true); // (사용자 지시 10/26: a wrong arrow -- all grey again, 「틀렸어요! 처음부터」 -- then the whole row)
   expect(slipped.n).toBeGreaterThanOrEqual(4); expect([slipped.reset, slipped.note]).toEqual([true, true]);
+  await expect.poll(() => b.page.evaluate(() => window.__fishSeen.has('fish:reel')), { timeout: 8000 }).toBe(true); // (the watcher saw the reel)
   await expect.poll(seen, { timeout: 8000 }).not.toBe('fish:reel'); // past the reel there (the catch -- a moment's pose a slow page may miss -- or done); the bag below is the server's own catch
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
