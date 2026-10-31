@@ -59,5 +59,12 @@
   }
   // where islander n works on `day`: a post id, or null (walking)
   function postOf(n, day) { const { posts } = rosterOf(day); for (const [id, w] of Object.entries(posts)) if (w === n || (Array.isArray(w) && w.includes(n))) return id; return null; }
-  return { POSTS, CIVIL, FIXED, HOSTS, MAX_WEEK, MAX_RUN, rosterOf, postOf };
+  // C1 (총괄 2026-10-31 ②): a rotating post's islander is talked to at its counter that day -- a walker does not walk, a story
+  // islander's 부탁 is taken there too
+  const POST_IDS = POSTS.map((p) => p.id);
+  const counterOf = (n, day) => { const p = postOf(n, day); return POST_IDS.includes(p) ? p : null; };
+  // C1 ③: the 관공서's desks by their islander; the resting one's work taken at the desk beside it
+  const DESK = Object.freeze({ 24: 'civil', 25: 'tax', 26: 'bank' }); const COVER = Object.freeze({ civil: 'tax', tax: 'bank', bank: 'tax' });
+  const deskRest = (day) => { const rest = DESK[rosterOf(day).resting]; return { rest, by: COVER[rest] }; };
+  return { POSTS, CIVIL, FIXED, HOSTS, MAX_WEEK, MAX_RUN, DESK, COVER, rosterOf, postOf, counterOf, deskRest };
 }));

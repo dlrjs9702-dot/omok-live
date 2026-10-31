@@ -1523,7 +1523,7 @@
     { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
     { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [storyShelf(), byId('myRecordsCard')]) }, // (S1: the 기록관's bookshelf -- 이야기 책)
-    { id: 'board', name: '게시판', open: () => { openPlazaWindow('게시판', [byId('announcementsCard'), titleHall()]); plazaDialog.classList.add('boardMode'); } }, // (창 2단계: a cork board) // v1.10.89 + 칭호 명예의 전당
+    { id: 'board', name: '게시판', open: () => { openPlazaWindow('게시판', [rosterNote(), byId('announcementsCard'), titleHall()].filter(Boolean)); plazaDialog.classList.add('boardMode'); } }, // (v1.10.215: 오늘의 근무표 first) // (창 2단계: a cork board) // v1.10.89 + 칭호 명예의 전당
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
     { id: 'attendance', name: '출석', open: () => openAttendanceCard() }, // (창 2단계: a stamp card)
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
@@ -1560,7 +1560,9 @@
       const claimed = done.has(d.today); const btn = el('button', 'primary stampBtn', claimed ? '오늘 출석 완료' : `오늘 출석하기 +${Number(d.pay).toLocaleString('ko-KR')}P`); btn.type = 'button'; btn.disabled = claimed;
       head.append(el('span', 'stampStreak', `연속 ${d.streak}일 · 7일마다 큰 도장`));
       btn.addEventListener('click', async () => { btn.disabled = true; await claimAttendance(); if (plazaDialog.open && plazaDialog.classList.contains('stampMode')) openAttendanceCard(true); }); // (Codex 검토 2차: closed or another window opened meanwhile -- not opened again)
-      attendanceCard.replaceChildren(head, grid, btn);
+      const k = postKeeper('plaza'); const by = k ? el('div', 'postKeeperRow') : null; // (v1.10.215: the day's 출석 도우미)
+      if (by) { by.append(el('span', 'lookMeta', `${k.name} · ${k.hello}`), ...postButtons(k, null)); }
+      attendanceCard.replaceChildren(...(by ? [by] : []), head, grid, btn);
     } catch (error) { attendanceCard.replaceChildren(el('p', 'emptyState', error.message)); }
   }
   // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): today's pull and hand-in rankings (top 10 and mine), yesterday's
@@ -1944,7 +1946,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」') : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1955,6 +1957,7 @@
       plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
+      refreshRoster(); // (v1.10.215: today's table on)
       refreshStory(true); // (S1·S2: the 할 일 line, the little door -- the island up before plazaMode is set)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -3162,9 +3165,10 @@
   // the counter's keeper (v1.10.191: nothing on sale -- all in the yard): where they are, and today's special ones
   async function openPetCounter() {
     await refreshPetshop(); const sp = (petshopState?.pets || []).filter((p) => p.special);
-    const lines = ['「오늘 아이들은 마당에 있어요. 마음에 드는 아이에게 다가가 보세요.」', ...(sp.length ? [`「오늘은 특별한 친구도 왔어요 — ${sp.map((p) => (p.sold ? `${p.name}(데려감)` : p.name)).join(' · ')}」`] : [])].map((t) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = t; return p; });
+    const k = postKeeper('roof'); // (v1.10.215: the day's 꽃님·봄이·가람)
+    const lines = [...(k ? [k.hello] : []), '「오늘 아이들은 마당에 있어요. 마음에 드는 아이에게 다가가 보세요.」', ...(sp.length ? [`「오늘은 특별한 친구도 왔어요 — ${sp.map((p) => (p.sold ? `${p.name}(데려감)` : p.name)).join(' · ')}」`] : [])].map((t) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = t; return p; });
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
-    lostCard.replaceChildren(...lines, ok); openTalk('펫샵 점원');
+    lostCard.replaceChildren(...lines, ...postButtons(k, ok)); openTalk(k ? `${k.name} · 펫샵` : '펫샵 점원');
   }
   // my pets (the 펫샵's, each its coat and name, and those bought before at the 잡화점): which walks with me
   const petsBox = document.createElement('div'); petsBox.className = 'myPets'; petsBox.id = 'myPets';
@@ -3434,8 +3438,43 @@
     if (f.allowed && !f.friends.length && !f.incoming.length) nodes.push(line('섬에서 다른 사람에게 다가가 SPACE → 「친구 신청」을 해 보세요.', 'smallMuted'));
     friendsSection.replaceChildren(...nodes);
   }
+  // v1.10.215 주민 근무표 C1 (gamecenter-notes docs/resident-roster-c-plan-20261031.md): a counter's islander today -- their own
+  // hello (island-cast `shop`), the shop as before, and 「이야기해요」: a walker's talk (호감도 theirs), a story islander's 부탁 as at
+  // their own place; 「둘러볼게요」 their goodbye
+  const pickLine = (list) => (list?.length ? list[Math.floor(Math.random() * list.length)] : '');
+  function postKeeper(post) {
+    const r = plaza.controller?.roster?.(); const n = r?.posts[post]; const C = window.IslandCast; const c = n == null ? null : C?.RESIDENTS[n]; if (!c) return null;
+    const quest = n >= C.WALKERS.length ? plaza.controller?.postQuest?.(post) : null;
+    const talk = n < C.WALKERS.length || quest ? () => { plazaDialog.close(); if (quest) solveIslandEvent(quest); else talkResident(n); } : null;
+    return { n, name: c.name, hello: pickLine(c.shop?.hello), bye: pickLine(c.shop?.bye), talk };
+  }
+  function postButtons(k, ok) { // ok: 「둘러볼게요」 (their goodbye on it); and 「이야기해요」
+    if (ok && k?.bye) ok.addEventListener('click', () => showToast(`${k.name}: ${k.bye}`, 3000));
+    const out = ok ? [ok] : []; if (!k?.talk) return out;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost postTalkBtn'; b.textContent = '이야기해요'; b.addEventListener('click', k.talk); return [...out, b];
+  }
+  const talkLine = (t) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = t; return p; };
+  function postTalk(post, place, hint) { // (the 2nd and 3rd floors: their counters talk too)
+    const k = postKeeper(post); if (!k) return;
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
+    lostCard.replaceChildren(talkLine(k.hello), talkLine(hint), ...postButtons(k, ok)); openTalk(`${k.name} · ${place}`);
+  }
+  // the board's 「오늘의 근무표」: who keeps each post today (the same table as the server's)
+  function rosterNote() {
+    const r = plaza.controller?.roster?.(); const R = window.IslandRoster; const C = window.IslandCast; if (!r || !R || !C) return null;
+    const who = (n) => C.RESIDENTS[n]?.name || '';
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const { rest, by } = R.deskRest(r.day); const DESK = { civil: '민원', tax: '세금', bank: '예금' };
+    const rows = [...R.POSTS.map((p) => [p.name, who(r.posts[p.id])]),
+      ['관공서 창구', `${r.posts.civil.map((n) => `${who(n)}(${DESK[R.DESK[n]]})`).join(' · ')} — 오늘 쉬는 ${who(r.resting)}의 ${DESK[rest]} 일은 ${DESK[by]} 창구에서`],
+      ['달마루역', who(r.posts.station)], ['관공서 문 · 구치소 · 정자 · 밭', [r.posts.gate, r.posts.jail, r.posts.pavilion, r.posts.farm].map(who).join(' · ')]];
+    const card = el('section', 'card noticeCard rosterCard'); card.setAttribute('aria-label', '오늘의 근무표');
+    const list = el('ul', 'titleHallList'); for (const [place, name] of rows) { const li = el('li', 'titleHallRow'); li.append(el('span', '', place), el('strong', '', name)); list.append(li); }
+    const [, m, d] = r.day.split('-'); card.append(el('p', 'titleHallHead', `📋 오늘의 근무표 · ${Number(m)}월 ${Number(d)}일`), list); return card;
+  }
   function storeKeeperTalk() {
-    const lines = ['「어서 오세요! 백화점 잡화 코너예요.」', '「진열된 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
+    const k = postKeeper('mall1'); // (v1.10.215: the day's 물결·다온·두리)
+    const lines = [k ? k.hello : '「어서 오세요! 백화점 잡화 코너예요.」', '「진열된 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
     // (v1.10.195 가방 늘리기: 16 -> 24 -> 32 here, once each, for good)
     const grow = document.createElement('button'); grow.type = 'button'; grow.className = 'ghost hidden'; grow.id = 'bagGrowBtn';
@@ -3445,7 +3484,7 @@
       try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); }
       catch (error) { showToast(error.message, 4000); grow.disabled = false; }
     });
-    lostCard.replaceChildren(...lines, ok, grow); openTalk('잡화점 주인');
+    lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
   }
   const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';
   let goodBusy = false;
@@ -3915,6 +3954,13 @@
     const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '거울 앞에 앉았어요. 무엇을 바꿀까요?';
     const card = document.createElement('div'); card.className = 'mirrorCard'; card.append(note, row); openPlazaWindow('꾸미기 거울', [card]);
   }
+  // a window's business, seated at `seat`'s window (the camera on its clerk) -- `door`'s own, or the resting desk's beside it
+  async function counterOpen(door, seatDoor, before = '') {
+    counterSeat = { door }; plaza.controller?.counterCamera?.(seatDoor);
+    const dialog = counterDialogs[door]; const say = document.createElement('p'); say.className = 'counterSay'; say.textContent = before + COUNTER_SAY[door];
+    dialog.querySelector('.counterSay')?.remove(); dialog.querySelector('.recordsDialogHead').after(say); dialog.classList.add('counterMode');
+    await COUNTER_OPEN[door]();
+  }
   async function sitDown(seat) {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -3924,10 +3970,17 @@
       const door = globalThis.IslandTerrain?.plazaProps().seats.find((x) => x.id === seat)?.door;
       if (door && COUNTER_OPEN[door]) {
         await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller?.pose?.()) }).catch(() => {}); // (seated: where the server checks the counter)
-        counterSeat = { door }; plaza.controller?.counterCamera?.(door);
-        const dialog = counterDialogs[door]; const say = document.createElement('p'); say.className = 'counterSay'; say.textContent = COUNTER_SAY[door];
-        dialog.querySelector('.counterSay')?.remove(); dialog.querySelector('.recordsDialogHead').after(say); dialog.classList.add('counterMode');
-        await COUNTER_OPEN[door]();
+        // (v1.10.215 근무표 C1, 총괄 ③: today's resting desk -- its clerk away, its work at the desk beside it)
+        const r = plaza.controller?.roster?.(); const dr = r && window.IslandRoster ? window.IslandRoster.deskRest(r.day) : null;
+        const DOOR = { civil: 'room:desk', tax: 'room:tax', bank: 'room:bank' }; const nameOf = (d) => globalThis.IslandTerrain.COUNTERS.find((c) => c.id === d)?.name || '';
+        if (dr && door === DOOR[dr.rest]) { showToast(`오늘 ${nameOf(dr.rest)}는 쉬어요. 옆 ${nameOf(dr.by)}에서 같이 받아요.`, 4000); api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}); plaza.controller?.standUp?.(); return; }
+        if (dr && door === DOOR[dr.by]) {
+          const row = document.createElement('div'); row.className = 'goodBuy';
+          for (const [label, to] of [[nameOf(dr.by), door], [nameOf(dr.rest), DOOR[dr.rest]]]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.addEventListener('click', () => { plazaDialog.close(); counterOpen(to, door, to !== door ? `오늘은 ${nameOf(dr.rest)} 일도 여기서 받아요. ` : '').catch((error) => showToast(error.message)); }); row.append(b); }
+          const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = `오늘은 ${nameOf(dr.rest)}가 쉬는 날이라 여기서 같이 받아요. 어떤 일로 오셨어요?`;
+          const card = document.createElement('div'); card.className = 'mirrorCard'; card.append(note, row); openPlazaWindow(nameOf(dr.by), [card]); return;
+        }
+        await counterOpen(door, door);
       }
     } catch (error) { for (const d of Object.values(counterDialogs)) if (!d.open) { d.classList.remove('counterMode'); d.querySelector('.counterSay')?.remove(); } showToast(error.message); }
   }
@@ -4347,6 +4400,7 @@
   const talkToday = (list, today) => list.filter(([topic]) => !(topic === 'story' && !today?.story) && (!today || !((topic === 'errand' && !today.errand) || (topic === 'gift' && today.gifted) || (topic === 'ask' && today.asked))))
     .map(([topic, label]) => [topic, topic === 'story' ? STORY_CHOICE[today.story] || label : label]);
   // R2: my 호감도 with each islander (their greeting as I pass by -- the scene), again after each talk
+  async function refreshRoster() { try { plaza.controller?.setRoster?.((await api('/api/island/roster')).day); } catch {} } // (v1.10.215 근무표: on, or not on a tests' server)
   async function refreshAffinity() { try { const d = await api('/api/island/affinity'); plaza.controller?.setAffinity?.(d.residents); } catch {} }
   // (CI 2026-10-27: a talk again straight after -- the bye and the new talk went together; the server taking the bye second
   // let the new talk go, its keep then 409 and the window shut. The next talk waits for the bye)

@@ -32,6 +32,22 @@ test('근무표: 1년 — 자리마다 매일 그 자리 사람, 한 사람 하�
   assert.equal(R.postOf(23, '2026-11-02'), 'gate'); assert.equal(R.postOf(20, '2026-11-02'), null); // (마루 at the gate; 한결 walks till the 기록관)
 });
 
+test('근무표 C1: 계산대 주민(걷는·이야기 주민 모두), 관공서 쉬는 창구와 그 일을 맡는 옆 창구, 일요일 철이 부탁 닫힘', () => {
+  const R = fresh();
+  for (let d = '2026-11-01'; d < '2026-12-31'; d = Calendar.addDays(d, 1)) {
+    const r = R.rosterOf(d);
+    for (const p of R.POSTS) assert.equal(R.counterOf(r.posts[p.id], d), p.id, `${d} ${p.id}`);
+    for (const n of [...r.posts.civil, r.posts.gate, r.posts.jail, r.posts.station, 20]) assert.equal(R.counterOf(n, d), null, `${d} ${n}`);
+    const { rest, by } = R.deskRest(d); assert.equal(rest, R.DESK[r.resting]); assert.ok(r.posts.civil.map((n) => R.DESK[n]).includes(by), `${d}: ${by} 근무 중`);
+  }
+  process.env.ISLAND_QUEST_WEEK = '4'; delete require.cache[require.resolve('../lib/island-quests')]; const Q = require('../lib/island-quests'); // (철이's week)
+  try {
+    assert.equal(Q.isOpen('stationmaster', Date.parse('2026-11-01T12:00:00+09:00')), false); // a Sunday: 반디 at the station
+    assert.equal(Q.isOpen('stationmaster', Date.parse('2026-11-02T00:30:00+09:00')), true); // Monday: 철이 again
+    assert.equal(R.rosterOf('2026-11-01').posts.station, 18);
+  } finally { delete process.env.ISLAND_QUEST_WEEK; }
+});
+
 test('근무표: 같은 날 같은 표 — 날을 거꾸로 물어도, 처음부터 물어도', () => {
   const a = fresh(); const late = a.rosterOf('2027-03-15'); const early = a.rosterOf('2026-11-09');
   const b = fresh(); assert.deepEqual(b.rosterOf('2026-11-09'), early); assert.deepEqual(b.rosterOf('2027-03-15'), late);
