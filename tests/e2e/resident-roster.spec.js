@@ -67,6 +67,11 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await expect(dialog).toContainText('할게요', { timeout: 30000 });
     await shot(page, 'walk-quest');
     await shut();
+    // C2 (photo): one of the 17 out walking in their day-off look -- the resting clerk
+    if (process.env.SHOT_DIR) {
+      const rest = r.resting; const w = (await page.evaluate(() => window.PlazaDebug().wanderersAt(true))).find((o) => o.n === rest);
+      if (w) { await page.evaluate((w) => { const p = window.PlazaDebug(); p.teleport(w.x + 2.6, w.z + 3.4); p.setCamYaw(Math.atan2(2.6, 3.4) - 0.3); }, w); await shot(page, 'walk-off', 2500); }
+    }
     // C2: 철이 at the station (a weekday, his 부탁 not this week) -- talked to there
     await expect.poll(async () => { if (await page.locator('#plazaDialogTitle').textContent().then((t) => t.includes('철이 · 달마루역')) && await dialog.isVisible()) return true; await page.evaluate(() => { const at = window.IslandTerrain.VILLAGE.stationmaster; window.PlazaDebug().teleport(at.x + 1.2, at.z + 1.2); }); await page.waitForTimeout(700); await spaceOn(page, 'station:keeper', isMobile); await page.waitForTimeout(900); return false; }, { timeout: 40000 }).toBe(true);
     await shot(page, 'station');
