@@ -36,11 +36,12 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     expect(d.desks).toEqual(['civil', 'tax', 'bank'].map((k) => ({ desk: k, shown: k !== rest, sign: k === rest })));
     // the board: 「오늘의 근무표」 first
     const dialog = page.locator('#plazaDialog');
+    const shut = () => expect.poll(async () => { if (await dialog.isVisible()) await page.keyboard.press('Escape'); await page.waitForTimeout(400); return dialog.isVisible(); }, { timeout: 20000 }).toBe(false); // (a talk shows no 닫기: Escape till it stays shut)
     await expect.poll(async () => { if (await dialog.locator('.rosterCard').isVisible()) return true; await page.evaluate(() => window.PlazaDebug().place('board')); await page.waitForTimeout(600); await spaceOn(page, 'board', isMobile); await page.waitForTimeout(800); return dialog.locator('.rosterCard').isVisible(); }, { timeout: 30000 }).toBe(true);
     for (const p of R.POSTS) await expect(dialog.locator('.rosterRow', { hasText: p.name })).toContainText(name(r.posts[p.id]));
     await expect(dialog.locator('.rosterRow', { hasText: '달마루역' })).toContainText(name(r.posts.station));
     await shot(page, 'board', 600);
-    await page.locator('#plazaCloseBtn').click();
+    await shut();
     // the 출석 stand: the day's helper, 「이야기해요」 their talk
     await expect.poll(async () => { if (await dialog.locator('.postKeeperRow').isVisible()) return true; await page.evaluate(() => window.PlazaDebug().place('attendance')); await page.waitForTimeout(600); await spaceOn(page, 'attendance', isMobile); await page.waitForTimeout(800); return dialog.locator('.postKeeperRow').isVisible(); }, { timeout: 30000 }).toBe(true);
     await expect(dialog.locator('.postKeeperRow')).toContainText(name(r.posts.plaza));
@@ -48,7 +49,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await dialog.locator('.postKeeperRow .postTalkBtn').click();
     await expect(page.locator('#plazaDialogTitle')).toContainText(name(r.posts.plaza), { timeout: 30000 }); await revealTalk(page);
     await shot(page, 'attendance-talk');
-    await page.locator('#plazaCloseBtn').click();
+    await shut();
     // the 1st floor's counter: 물결's hello, his 부탁 there
     await intoMall(page, null, isMobile);
     await expect.poll(async () => { if (await dialog.locator('.postTalkBtn').isVisible()) return true; await page.evaluate(() => { const p = window.PlazaDebug(); const k = p.doors['mall:store']; p.teleport(k.x, k.z); }); await page.waitForTimeout(600); await spaceOn(page, 'mall:store', isMobile); await page.waitForTimeout(800); return dialog.locator('.postTalkBtn').isVisible(); }, { timeout: 30000 }).toBe(true);
@@ -58,13 +59,13 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await dialog.locator('.postTalkBtn').click(); await revealTalk(page);
     await expect(dialog).toContainText('할게요', { timeout: 30000 }); // (his 부탁 offered, as at the harbour)
     await shot(page, 'mall1-quest');
-    await page.locator('#plazaCloseBtn').click();
+    await shut();
     // the 2nd floor's counter talks too
     await liftTo(page, 2, isMobile);
     await expect.poll(async () => { if (await page.locator('#plazaDialogTitle').textContent().then((t) => t.includes('옷·꾸미기')) && await dialog.isVisible()) return true; await page.evaluate(() => { const F = window.IslandFashion; const w = F.world(...F.COUNTER.customer); window.PlazaDebug().teleport(w.x, w.z); }); await page.waitForTimeout(600); await spaceOn(page, 'fashion:counter', isMobile); await page.waitForTimeout(800); return false; }, { timeout: 30000 }).toBe(true);
     await expect(page.locator('#plazaDialogTitle')).toContainText(`${name(r.posts.mall2)} · 옷·꾸미기`);
     await shot(page, 'mall2-hello');
-    await page.locator('#plazaCloseBtn').click();
+    await shut();
     // the 관공서: the resting desk empty, 「오늘은 쉬어요」 over it (photo)
     if (process.env.SHOT_DIR) {
       await liftTo(page, 1, isMobile);
