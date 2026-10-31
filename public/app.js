@@ -3469,8 +3469,8 @@
       ['관공서 창구', `${r.posts.civil.map((n) => `${who(n)}(${DESK[R.DESK[n]]})`).join(' · ')} — 오늘 쉬는 ${who(r.resting)}의 ${DESK[rest]} 일은 ${DESK[by]} 창구에서`],
       ['달마루역', who(r.posts.station)], ['관공서 문 · 구치소 · 정자 · 밭', [r.posts.gate, r.posts.jail, r.posts.pavilion, r.posts.farm].map(who).join(' · ')]];
     const card = el('section', 'card noticeCard rosterCard'); card.setAttribute('aria-label', '오늘의 근무표');
-    const list = el('ul', 'titleHallList'); for (const [place, name] of rows) { const li = el('li', 'titleHallRow'); li.append(el('span', '', place), el('strong', '', name)); list.append(li); }
-    const [, m, d] = r.day.split('-'); card.append(el('p', 'titleHallHead', `📋 오늘의 근무표 · ${Number(m)}월 ${Number(d)}일`), list); return card;
+    const list = el('ul', 'rosterList'); for (const [place, name] of rows) { const li = el('li', 'rosterRow'); li.append(el('span', '', place), el('strong', '', name)); list.append(li); }
+    const [, m, d] = r.day.split('-'); card.append(el('p', 'rosterHead', `📋 오늘의 근무표 · ${Number(m)}월 ${Number(d)}일`), list); return card;
   }
   function storeKeeperTalk() {
     const k = postKeeper('mall1'); // (v1.10.215: the day's 물결·다온·두리)
