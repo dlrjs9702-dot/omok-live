@@ -1081,6 +1081,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .skinChip.selected{background:#23806f;color:#fff;border-color:#23806f}
 :root[data-theme="light"] .skinTryOn{background:#f3e9d8;box-shadow:0 6px 16px rgba(0,0,0,.35)}
 :root[data-theme="light"] .skinTryOn canvas{background:radial-gradient(circle at 50% 40%,#e0f2fe,#7cbfb1)}
+:root[data-theme="light"] .rosterRow{background:rgba(179,156,124,.12)}
 :root[data-theme="light"] .titleHallRow{background:rgba(179,156,124,.12)}
 :root[data-theme="light"] .titleHallRow.current{outline:2px solid #f59e0b}
 :root[data-theme="light"] .titleHallRow.mine strong{color:#1f6f60}

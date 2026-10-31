@@ -2163,6 +2163,7 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .skinTryOnBtn{margin-top:4px}
 @media (max-width:560px){.skinTryOn canvas{width:132px;height:165px}}
 /* v1.10.89 칭호 명예의 전당 */
+.rosterCard{margin-bottom:10px}.rosterHead{margin:0 0 6px;font-weight:800}.rosterList{list-style:none;margin:0;padding:0;display:grid;gap:4px}.rosterRow{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:8px;background:rgba(148,163,184,.12)}.rosterRow span{flex:1;min-width:0}.rosterRow strong{max-width:64%;text-align:right;overflow-wrap:anywhere}.postKeeperRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}.postKeeperRow .lookMeta{flex:1;min-width:0;margin:0} /* v1.10.215 근무표 */
 .titleHallCard{margin-top:10px}.titleHallPanel{display:grid;gap:6px;padding:8px 2px}.titleHallPanel.hidden{display:none}.titleHallPanel p{margin:0}
 .titleHallHead{font-weight:800}
 .titleHallList{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:46vh;overflow-y:auto}

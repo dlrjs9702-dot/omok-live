@@ -80,6 +80,7 @@ require('./lib/island-items').setPriceHook(Economy.priceOf);
 const bagSlots = new Map();
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
+const IslandRoster = require('./public/plaza/island-roster'); // v1.10.215 주민 근무표
 const IslandStory = require('./public/plaza/island-story'); // S1 섬 이야기
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
@@ -1565,7 +1566,13 @@ plazaTicker.unref?.();
 // v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
 // the events near them (with each pose answer), so no screen holds the whole island's list; when one is solved every
 // screen is told at once to drop it (the lobby stream), and a new one appears elsewhere.
-const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform) });
+// v1.10.215 주민 근무표 C1: today's table (by Seoul's date, as every screen counts it -- /api/island/roster says which day, or
+// none: the tests' server keeps it off till /api/test/roster turns it on, a walker at a counter would leave their talks)
+let rosterOn = process.env.NODE_ENV !== 'test'; let rosterPin = null; // (pin: a test's day)
+const rosterDay = () => (rosterOn ? rosterPin || kstDate(nowMs()) : null);
+const counterToday = (n) => { const d = rosterDay(); return d ? IslandRoster.counterOf(n, d) : null; };
+const deskToday = () => { const d = rosterDay(); return d ? IslandRoster.deskRest(d) : { rest: null, by: null }; };
+const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform), working: (n) => counterToday(n) != null }); // (v1.10.215: a walker at a counter today is no event's)
 function broadcastIslandRemoved(ids) {
   if (!ids.length) return;
   for (const entry of [...lobbyStreams]) {
@@ -1671,6 +1678,29 @@ function islandProgress(kind, account, qty, where = null) { // (A2b: a promise -
 }
 // the islanders with a story, for the map and the 「SPACE · 말 걸기」 (always sent: they stand still), and the place the
 // step I am on points to
+// v1.10.215 주민 근무표 C1: a rotating post's counter (where its customer stands) and its floor; by it -- talking to that day's
+// islander. The 관공서's desks: a resting one's work at the desk beside it (총괄 ③)
+const POST_AT = { mall1: ['store', () => IslandStore.sectorPoint('mall:store')], mall2: ['fashion', () => IslandFashion.world(...IslandFashion.COUNTER.customer)], mall3: ['furniture', () => IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1)], roof: ['petshop', () => IslandPetShop.world(IslandPetShop.COUNTER_KEEPER[0], IslandPetShop.COUNTER_KEEPER[1] - 2.3)], plaza: ['island', () => IslandTerrain.facilityDoor('attendance')] };
+const atPost = (pos, post) => { const p = POST_AT[post]; const w = p?.[1](); return Boolean(pos && w && (pos.space || 'island') === p[0] && Math.hypot(pos.x - w.x, pos.z - w.z) <= 3); };
+function atDesk(session, at, desk) { // desk: 'civil' | 'tax' | 'bank'
+  const R = IslandTerrain.TOWNHALL_ROOM; const near = (d) => { const w = IslandTerrain.roomWorld(R[d === 'civil' ? 'desk' : d].lx, R[d === 'civil' ? 'desk' : d].lz); return Math.hypot(at.x - w.x, at.z - w.z) <= 1.8; };
+  if (!townhallInside.has(session.token) || !at) return false;
+  const { rest, by } = deskToday();
+  return desk === rest ? near(by) : near(desk);
+}
+// a story islander's place today: at a counter (the 부탁 taken there), on a Sunday 반디 at the station (총괄 ④: 철이's closed)
+function questPlace(id) {
+  const n = IslandCast.keeperN(id); const post = n == null ? null : counterToday(n); const day = rosterDay();
+  if (post) return { post };
+  if (id === 'electrician' && day && IslandRoster.postOf(18, day) === 'station') return { at: IslandQuests.STORIES.stationmaster.at };
+  return { at: IslandQuests.STORIES[id].at };
+}
+// where a talk with a story islander counts from: by them today (at their counter: as if by their own place)
+function questTalkPos(id, pos) {
+  const p = questPlace(id); if (p.post) return atPost(pos, p.post) ? IslandQuests.STORIES[id].at : null;
+  if (!pos || (pos.space || 'island') !== 'island' || Math.hypot(pos.x - p.at.x, pos.z - p.at.z) > IslandQuests.TALK_R) return null;
+  return IslandQuests.STORIES[id].at;
+}
 function questEntries(account) {
   const st = questCache.get(account); if (!st || st.week !== questWeek()) { questState(account).catch(() => {}); return { entries: [], track: [] }; }
   questBagFresh(st, account);
@@ -1679,7 +1709,8 @@ function questEntries(account) {
     const story=IslandQuests.STORIES[id];
     if (!IslandQuests.isOpen(id, nowMs())) continue; // v1.10.39: the Halloween kid only in October
     const s = IslandQuests.storyState(st.doc, id); // (3회차 17: an old photo request under way counts as done)
-    entries.push({ id: `quest${id}`, kind: 'quest_npc', x: story.at.x, z: story.at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name, done: Boolean(s.done), requested: Boolean(s.taken && !s.done) });
+    const place = questPlace(id); const at = place.at || story.at; // (C1: at a counter -- the island's spot stays, empty: `post`)
+    entries.push({ id: `quest${id}`, kind: 'quest_npc', x: at.x, z: at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name, done: Boolean(s.done), requested: Boolean(s.taken && !s.done), ...(place.post ? { post: place.post } : {}) });
     const t = IslandQuests.trackOf(id, s, st.bag);
     if (t) { track.push(t); if (t.to && !t.ready) entries.push({ id: `questspot${id}`, kind: 'quest_spot', x: t.to.x, z: t.to.z, verb: null }); }
   }
@@ -3945,7 +3976,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.214' });
+    return sendJson(res, 200, { ok: true, version: '1.10.215' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5743,8 +5774,8 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/bank' && (req.method === 'GET' || req.method === 'POST')) {
     const session = requireSession(req, res);
     if (!session) return;
-    const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.bank.lx, R.bank.lz);
-    if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8) return sendError(res, 409, 'TOO_FAR', '관공서 안 예금 창구에서 이용해 주세요.');
+    const at = plazaPresence.get(session.token);
+    if (!atDesk(session, at, 'bank')) return sendError(res, 409, 'TOO_FAR', '관공서 안 예금 창구에서 이용해 주세요.');
     const account = pointAccountForSession(session);
     if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); return sendJson(res, 200, { ok: true, ...v, ...PointStore.bankTerms(v.deposit) }); } // (경제 점검 ⑥-A: the tiers, tomorrow's interest)
     if (!checkRateLimit(`bank:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
@@ -5763,9 +5794,9 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session);
     if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); const b = await pointStore.taxBills(account); return sendJson(res, 200, { ok: true, debt: b.debt, bills: b.bills, today: kstDate(nowMs()), dueDays: PointStore.TAX_DUE_DAYS, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
-    const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.tax.lx, R.tax.lz);
+    const at = plazaPresence.get(session.token);
     const jailed = jailInmates.has(session.token); // (R4: or 「지금 세금 내기」 from the cell)
-    if (!jailed && (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8)) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
+    if (!jailed && !atDesk(session, at, 'tax')) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
     const body = await parseJson(req);
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     // (주민세 고지서: at the window, the bills -- all, or the days asked -- and the 체납 too, whole or not at all; the cell's
@@ -5789,7 +5820,7 @@ async function requestHandler(req, res) {
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader || null; // (달마루섬: none -- the 백화점's 노점) v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
-    const atCounter = place === 'office' && townhallInside.has(session.token) && at && (() => { const d = IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.desk.lx, IslandTerrain.TOWNHALL_ROOM.desk.lz); return Math.hypot(at.x - d.x, at.z - d.z) <= 1.8; })(); // v1.10.84 (v1.10.86: 1.8 m, each window its own)
+    const atCounter = place === 'office' && atDesk(session, at, 'civil'); // v1.10.84 (v1.10.86: 1.8 m, each window its own)
     const atStall = place === 'merchant' && storeInside.has(session.token) && at && (() => { const d = IslandStore.sectorPoint('mall:stall'); return Math.hypot(at.x - d.x, at.z - d.z) < 2.4; })(); // (달마루섬 5단계: the 백화점's 노점)
     if (!atCounter && !atStall && (!at || !spot || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
@@ -6389,6 +6420,7 @@ async function requestHandler(req, res) {
     } else if (isResource) return sendError(res,409,'COLLECT_NOT_STARTED','채집을 시작해 주세요.');
     if (id.startsWith('quest') && IslandQuests.isOpen(id.slice(5), nowMs())) { // v1.10.37 연계 퀘스트: talking to the islander
       const story = id.slice(5); const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+      const talkPos = questTalkPos(story, pos); // (C1: by them today -- at their counter, or 반디 at the station on a Sunday)
       const week = IslandQuests.scopeOf(story)==='fixed'?'fixed':questWeek();
       const st=await questState(account);
       if(!IslandQuests.visibleStories(st.doc,nowMs()).includes(story)) return sendError(res,409,'QUEST_BUSY','지금은 받을 수 없는 부탁입니다.');
@@ -6396,10 +6428,10 @@ async function requestHandler(req, res) {
       const puzzleDone = async () => { const d = (await questState(account)).doc[story]; const s = IslandQuests.STORIES[story].steps[d?.step]; if (!d?.taken || d.done || !s?.puzzle || d.count >= 1 || !(await puzzleSolved(account, s.game, s.level))) return false; await islandProgress(`minigame:${s.game}`, account, 1); return true; };
       await puzzleDone();
       // (Q 부탁 받기: a story not under way is offered -- nothing kept -- until 「할게요!」 sends accept)
-      const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos, nowMs(), body.accept === true); return r.error ? r : r.offer ? null : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; },IslandQuests.scopeOf(story));
+      const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, talkPos, nowMs(), body.accept === true); return r.error ? r : r.offer ? null : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; },IslandQuests.scopeOf(story));
       if (out?.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       if (out?.error) return sendError(res, 409, 'QUEST_BUSY', '잠시 후 다시 말을 걸어 주세요.');
-      const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, pos); // nothing changed: what they say now
+      const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, talkPos); // nothing changed: what they say now
       if (r.reward) notifyPointsChanged([account]);
       const solvedToday = await puzzleDone(); // (a step just taken)
       const keeperN = IslandCast.keeperN(story); let keeperLevel = 1; // v1.10.91 호감도: a talk a day, a story step
@@ -6868,6 +6900,8 @@ async function requestHandler(req, res) {
     await storyApply(account, (d) => (d.cur ? { doc: { ...d, cur: null } } : null));
     return sendJson(res, 200, { ok: true, ...(await storyView(account)) });
   }
+  if (pathname === '/api/island/roster' && req.method === 'GET') return sendJson(res, 200, { ok: true, day: rosterDay() }); // (v1.10.215 근무표)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/roster' && req.method === 'POST') { const b = await parseJson(req); rosterOn = b.on === true; rosterPin = typeof b.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.day) ? b.day : null; return sendJson(res, 200, { ok: true, day: rosterDay() }); }
   if (pathname === '/api/island/errands' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     return sendJson(res, 200, { ok: true, ...(await errandView(pointAccountForSession(session))) });
@@ -6923,6 +6957,8 @@ async function requestHandler(req, res) {
     // or someone else is talking to them -- and told which)
     const pos = plazaPresence.get(session.token); const state = islandEvents.residents()[n]; const hold = state?.hold;
     const over = (why) => { if (mine && islandEvents.residentBye(who)) residentsChanged(); const name = IslandCast.WALKERS[n]?.name || '주민'; return sendError(res, 409, 'TALK_OVER', why === 'busy' ? `${IslandCast.josa(name, '이가')} 다른 일로 가 봐야 한대요.` : `${IslandCast.josa(name, '이가')} 가 버렸어요.`, { reason: why }); };
+    const post = IslandCast.WALKERS[n] ? counterToday(n) : null; // (v1.10.215 근무표 C1: at their counter today)
+    if (post) return atPost(pos, post) ? sendJson(res, 200, { ok: true }) : over('far');
     if (!pos || (pos.space || 'island') !== 'island' || !IslandCast.WALKERS[n]) return over('far');
     if (hold && hold.eventId === who && Math.hypot(pos.x - hold.x, pos.z - hold.z) <= TALK_FAR && islandEvents.residentKeep(n, who)) return sendJson(res, 200, { ok: true });
     if (hold && hold.eventId !== who) return over('busy');
@@ -6952,9 +6988,10 @@ async function requestHandler(req, res) {
     // a new talk would; one walked off from is the reach check's below)
     // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
     const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
-    const back = pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
+    const post = counterToday(n); // (v1.10.215 근무표 C1: at their counter today -- talked to there, no walk to hold)
+    const back = post ? (atPost(pos, post) ? 0 : undefined) : pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
     if (back === undefined) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
-    if (!state?.hold) { const seen = IslandNpcs.residentAt(n, nowMs() - back, state); islandEvents.residentTalk(n, who, Math.atan2(pos.x - seen.x, pos.z - seen.z), back); residentsChanged(); } // (held where I reached them)
+    if (!post && !state?.hold) { const seen = IslandNpcs.residentAt(n, nowMs() - back, state); islandEvents.residentTalk(n, who, Math.atan2(pos.x - seen.x, pos.z - seen.z), back); residentsChanged(); } // (held where I reached them)
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
     await storyPay(account, day).catch(() => {}); // (Codex 검토 5차 P3-4 ③: a chapter's 호감도 owed from before -- paid with this talk)
     const c = IslandCast.WALKERS[n]; const before = await pointStore.affinityOf(account); const level = IslandCast.levelOf(before[n] || 0); // (the words go by the level before this talk)
@@ -8121,7 +8158,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.214 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.215 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
