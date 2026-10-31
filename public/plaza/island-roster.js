@@ -66,5 +66,8 @@
   // C1 ③: the 관공서's desks by their islander; the resting one's work taken at the desk beside it
   const DESK = Object.freeze({ 24: 'civil', 25: 'tax', 26: 'bank' }); const COVER = Object.freeze({ civil: 'tax', tax: 'bank', bank: 'tax' });
   const deskRest = (day) => { const rest = DESK[rosterOf(day).resting]; return { rest, by: COVER[rest] }; };
-  return { POSTS, CIVIL, FIXED, HOSTS, MAX_WEEK, MAX_RUN, DESK, COVER, rosterOf, postOf, counterOf, deskRest };
+  // C2 (v1.10.216): who walks the island that day -- everyone not at a post (the resting clerk too, 철이 on a Sunday);
+  // 콩이 in October at his Halloween spot
+  const walks = (n, day) => postOf(n, day) == null && !(n === 14 && day.slice(5, 7) === '10');
+  return { POSTS, CIVIL, FIXED, HOSTS, MAX_WEEK, MAX_RUN, DESK, COVER, rosterOf, postOf, counterOf, deskRest, walks };
 }));

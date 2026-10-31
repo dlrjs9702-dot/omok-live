@@ -53,3 +53,39 @@ test('근무표 C1 서버: 계산대 주민은 계산대에서, 이야기 주민
   await req('/api/test/roster', a, { on: false });
   await stand(bank); const back = await req('/api/island/bank', a); assert.equal(back.status, 200, JSON.stringify(back.data));
 });
+
+// C2 (v1.10.216, 총괄 C2 ① 가): on a day the table has 물결 walking, his 부탁 comes from him where he walks (by him, not at the
+// harbour); one of the 17 walking that day talks; the station's keeper (철이 of a weekday) talks at the station
+test('근무표 C2 서버: 걷는 이야기 주민에게서 부탁, 17명도 걸으며 대화, 역 근무 주민은 역에서 대화', async (t) => {
+  const N = require('../public/plaza/island-npcs');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'roster-c2-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const { req, issue, enter } = await boot(t, dir);
+  const a = await enter(await issue('걷는부탁'));
+  const stand = (p) => req('/api/plaza/state', a, { x: p.x, z: p.z, yaw: 0, moving: false });
+  const wait = (ms) => new Promise((r) => { setTimeout(r, ms); });
+  // a weekday 물결 walks; that day's resting clerk walks too
+  let day = Calendar.dayOf(Date.now());
+  for (let k = 0; k < 200 && !(R.walks(11, day) && new Date(`${day}T00:00:00Z`).getUTCDay() !== 0); k += 1) day = Calendar.addDays(day, 1);
+  assert.ok(R.walks(11, day), day); const rest = R.rosterOf(day).resting; assert.ok(R.walks(rest, day));
+  await req('/api/test/roster', a, { on: true, day });
+  const serverAt = async (k) => { const st = (await req('/api/island/resident/bye', a, { n: -1 })).data.residents?.[k] || null; return N.residentAt(k, Date.now(), st); };
+  // 물결's 부탁: by him where he walks -- an offer, the entry with him
+  const entry = async () => (await req('/api/island/event', a, { id: 'questfisher' })).data;
+  let offer = null; for (let i = 0; i < 20 && offer?.action !== 'quest'; i += 1) { await stand(await serverAt(11)); offer = await entry(); if (offer.action !== 'quest') await wait(250); }
+  assert.equal(offer.action, 'quest', JSON.stringify(offer)); assert.equal(offer.offer?.story, 'fisher');
+  assert.equal(offer.events.find((e) => e.id === 'questfisher')?.walker, 11);
+  // far from him: not taken
+  const him = await serverAt(11); await stand({ x: him.x + 30, z: him.z }); assert.equal((await entry()).error, 'TOO_FAR');
+  // the resting clerk, walking: talked to where they walk
+  let talk = null; for (let i = 0; i < 20 && talk?.status !== 200; i += 1) { await stand(await serverAt(rest)); talk = await req('/api/island/resident/talk', a, { n: rest }); if (talk.status !== 200) await wait(250); }
+  assert.equal(talk.status, 200, JSON.stringify(talk.data)); assert.equal(talk.data.name, require('../public/plaza/island-cast').RESIDENTS[rest].name);
+  await req('/api/island/resident/bye', a, { n: rest });
+  // 철이 at the station of a weekday: talked to there, not elsewhere
+  const station = Quests.STORIES.stationmaster.at;
+  await stand({ x: station.x + 20, z: station.z }); assert.equal((await req('/api/island/resident/talk', a, { n: 16 })).data.error, 'TOO_FAR');
+  await stand(station); const cheori = await req('/api/island/resident/talk', a, { n: 16 }); assert.equal(cheori.status, 200, JSON.stringify(cheori.data));
+  await req('/api/island/resident/bye', a, { n: 16 });
+  // off: the 17 do not talk where they walk
+  await req('/api/test/roster', a, { on: false });
+  await stand(await serverAt(rest)); assert.equal((await req('/api/island/resident/talk', a, { n: rest })).status, 400);
+});

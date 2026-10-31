@@ -51,7 +51,7 @@ test('주민 호감도: 오늘의 이야기 하루 한 번, 단계 보상 한 �
   const again = await talk({ topic: 'answer', choice: liked }); assert.equal(again.data.affinity.points, 5); assert.match(again.data.say[0], /벌써/);
   assert.equal((await talk({ topic: 'ask' })).data.question, undefined);
   // remembered: their greeting knows it
-  const mine = (await req('/api/island/affinity', a)).data.residents; assert.equal(mine.length, Cast.WALKERS.length);
+  const mine = (await req('/api/island/affinity', a)).data.residents; assert.equal(mine.length, Cast.RESIDENTS.length); // (v1.10.216: all 27)
   assert.deepEqual([mine[n].level, mine[n].points], [1, 5]); assert.match(mine[n].memory, /이야기/);
   // 친한 사이 (15): points and their piece in my 가구 창고, once
   const close = await req('/api/test/affinity', a, { n, delta: 10 }); assert.match(close.data.stages[0], /친한 사이! \+5,000P · 선물 「/);

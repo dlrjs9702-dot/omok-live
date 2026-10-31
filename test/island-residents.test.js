@@ -14,7 +14,7 @@ test('주민 예약: 동일 주민/이벤트/위치는 공용이며 중복 예�
   assert.equal(b.n, 1);
   const first = r.snapshot(); first[0].hold.x += 999; first[0].delay += 999;
   const second = r.snapshot();
-  assert.equal(second.length, 10);
+  assert.equal(second.length, Npcs.COUNT); // (v1.10.216: all 27 -- those not walking that day never held, below)
   assert.equal(second[0].hold.x, a.x);
   assert.equal(second[0].delay, 0);
   t += 20_000;
@@ -55,7 +55,7 @@ test('주민 예약: 실제 전달 동안 대기하고 늦은 조회도 정확�
   assert.deepEqual(Npcs.residentAt(0,t,r.snapshot()[0]), Npcs.at(0,t-7100));
 });
 
-test('주민 예약: 안전 위치의 기존10명만 사용하고 가용 주민이 없으면 기다린다', () => {
+test('주민 예약: 안전 위치의 그날 걷는 주민만 사용하고(근무표 꺼짐: 기존 10명) 가용 주민이 없으면 기다린다', () => {
   const r = createIslandResidents({ now: () => 1_000_000, random: () => 0, isSafe: () => false });
   assert.equal(r.reserve('event-a'), null);
   assert.ok(r.snapshot().every(s => s.hold === null));
@@ -63,7 +63,7 @@ test('주민 예약: 안전 위치의 기존10명만 사용하고 가용 주민�
   // routes, so it is looked for, not fixed)
   let at = 1_000_000; const apart = (t) => { const ps = Array.from({ length: 10 }, (_, n) => Npcs.at(n, t)); return ps.every((p, i) => ps.every((q, j) => j <= i || Math.hypot(p.x - q.x, p.z - q.z) >= Npcs.WALKER.SEP)); };
   while (!apart(at)) at += 1000;
-  const all = createIslandResidents({ now: () => at, random: () => 0 });
+  const all = createIslandResidents({ now: () => at, random: () => 0, working: (n) => n >= 10 }); // (v1.10.216: the server's `working` with the table off -- the ten walk)
   const owners = Array.from({ length: 10 }, (_,i) => all.reserve(`event-${i}`).n);
   assert.equal(new Set(owners).size, 10);
   assert.equal(all.reserve('event-10'), null);

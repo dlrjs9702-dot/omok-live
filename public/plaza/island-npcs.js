@@ -11,7 +11,7 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.IslandNpcs = api;
 }(typeof self !== 'undefined' ? self : this, (T) => {
-  const COUNT = 10; // IDEAS: about 10
+  const COUNT = 27; // v1.10.216 근무표 C2: every islander (island-cast RESIDENTS) -- those at a post that day not walking (island-roster walks)
   // 달마루섬 (5단계): the bigger island's grid; where one may stand is the island's own walkable (rivers, the lake, the
   // cliffs, the stairs), the cliff fronts are rectangles, the structures' circles shared with the scene
   const DAL = T.MAP === 'dalmaru'; const PC = T.PLAZA_C || { x: 0, z: 0 };

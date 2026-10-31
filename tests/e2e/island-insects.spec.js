@@ -65,7 +65,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     const close = by(now.map((o) => (o.id === target.id ? here : o)), here, [0.8]) || by([here], here, [0.6, 0.8, 1.0]); // (another insect near: the swing takes the nearest in its fan -- the answer says which)
     if (!close) { missed = true; return (last = `${target.id} no spot near the drawn insect`); } // (CI #298: that one, every try for 40 s -- another one next)
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [close.x, close.z]);
-    const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 5000 }).catch(() => null);
+    const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 10000 }) /* (CI #362: a slow runner's page took ~4.5 s from SPACE to the catch) */.catch(() => null);
     await page.evaluate((id) => { const d = window.PlazaDebug(); const b = d.insectsDrawn().find((q) => q.id === id); if (b) d.faceTo(b.x, b.z); }, target.id);
     if (!(await spaceOn(page, 'tool:swing', isMobile))) { last = await page.locator('#plazaHint').textContent(); return last; }
     const r = await answer; const text = r ? await r.text().catch(() => '') : ''; last = r ? `${r.status()} ${text}` : `no answer ${target.species} ${JSON.stringify(await page.evaluate(() => window.PlazaDebug().lastSwing()))}`; missed = !r;

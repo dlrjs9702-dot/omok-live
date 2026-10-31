@@ -18,7 +18,7 @@ const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); ret
 // CI 3차 후속: up, and its islanders out -- just after `running` the page works out the islanders' route grid in one task
 // (island-npcs.js buildGrid: 1.5 s on a fast PC, past 8 s on a slow one) and nothing else runs meanwhile, a check's
 // page.evaluate included: a 8 s check right after a reload never got to read anything (첫 접속 성별, 광장 챔피언)
-const islandSettled = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return Boolean(d?.running) && d.wanderers.length === window.IslandNpcs.COUNT; });
+const islandSettled = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return Boolean(d?.running) && d.wanderers.length === window.IslandCast.WALKERS.length; }); // (v1.10.216: the rounds are 27, a tests' server -- the table off -- has the ten out)
 
 // These tests check movement, sync, collision and the island's rules, not its 3D models (tests/e2e/island-assets.spec.js
 // does that): every registered model is switched off, so each page draws the light procedural island. On a CI runner
@@ -1455,7 +1455,7 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await page.keyboard.press('Space'); expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('bite'); // (SPACE no longer pulls)
   // (CI #298: the server's bite last, the arrows pressed right after it -- a page round trip between them took the
   // mackerel's arrow time on a slow runner)
-  expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
+  expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel', slack: 20000 })).data.ok).toBe(true); // (CI #361·#362: the arrows' time runs from their showing -- 4.3 s for a common fish -- and a slow runner's page took ~0.9 s a step to the presses: a test's cast given room; the time itself is island-fishing's unit test)
   const slipped = await pressFishArrows(page, false, true); // (사용자 지시 10/26: a wrong arrow -- all grey again, 「틀렸어요! 처음부터」 -- then the whole row)
   expect(slipped.n).toBeGreaterThanOrEqual(4); expect([slipped.reset, slipped.note]).toEqual([true, true]);
   await expect.poll(seen, { timeout: 8000 }).not.toBe('fish:reel'); // past the reel there (the catch -- a moment's pose a slow page may miss -- or done); the bag below is the server's own catch
