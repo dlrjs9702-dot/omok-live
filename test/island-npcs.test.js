@@ -7,8 +7,8 @@ const P = require('../public/plaza/island-npcs.js');
 // v1.10.12 배회 NPC: about 10 islanders on rounds worked out from fixed seeds -- the same on every screen and the
 // server -- that stay on standable ground clear of buildings and trees, never turn straight back, stop for a while
 // away from doors, and never jump.
-test('배회 NPC: 10명, 같은 시각이면 같은 자리, 설 수 있는 곳만, 순간이동 없음', () => {
-  assert.equal(P.COUNT, 10);
+test('배회 NPC: 27명(v1.10.216 근무표 C2: 주민 모두), 같은 시각이면 같은 자리, 설 수 있는 곳만, 순간이동 없음', () => {
+  assert.equal(P.COUNT, 27);
   for (let n = 0; n < P.COUNT; n += 1) {
     const r = P.round(n);
     assert.ok(r.period > 30 && Number.isFinite(r.period));
@@ -25,24 +25,29 @@ test('배회 NPC: 10명, 같은 시각이면 같은 자리, 설 수 있는 곳�
   }
 });
 
-// I8-2 (문제 기록 8회차 2 「주민들이 몰려있어」): every part of the day, an hour of it every 15 s -- never more than three
-// islanders within 8 m of one; and their homes spread over the island's four quarters
-test('주민 고르게: 하루 어느 때든 반경 8 m 안 최대 3명, 동네가 섬 네 구역에 퍼짐', () => {
+// I8-2 (문제 기록 8회차 2 「주민들이 몰려있어」): every part of the day, an hour of it every 30 s, on a week's days (C2: those
+// walking that day, island-roster walks -- about 15) -- never more than three islanders standing within 8 m of one (two
+// passing by besides at most: four in all); and their homes spread over the island's four quarters
+test('주민 고르게: 일주일 그날 걷는 주민, 반경 8 m 안 서 있는 사람 최대 3명(지나가는 사람까지 4명), 동네가 섬 네 구역에 퍼짐', () => {
+  const R = require('../public/plaza/island-roster.js'); const Calendar = require('../public/plaza/island-calendar.js');
   try {
     for (const phase of ['day', 'morning', 'evening', 'night']) {
-      P.setPhaseOf(() => phase); let worst = 0; let when = 0;
-      for (let ms = 0; ms <= 3600 * 1000; ms += 15000) {
-        const ps = Array.from({ length: P.COUNT }, (_, n) => P.at(n, ms));
-        for (const p of ps) { const k = ps.filter((q) => Math.hypot(q.x - p.x, q.z - p.z) <= 8).length; if (k > worst) { worst = k; when = ms; } }
+      P.setPhaseOf(() => phase); let worst = 0; let standing = 0; let when = '';
+      for (let d = '2026-11-02'; d < '2026-11-09'; d = Calendar.addDays(d, 1)) {
+        const set = Array.from({ length: P.COUNT }, (_, n) => n).filter((n) => R.walks(n, d));
+        for (let ms = 0; ms <= 3600 * 1000; ms += 30000) {
+          const ps = set.map((n) => P.at(n, ms));
+          for (const p of ps) { const near = ps.filter((q) => Math.hypot(q.x - p.x, q.z - p.z) <= 8); const k = near.filter((q) => !q.moving).length; if (near.length > worst || k > standing) when = `${d} ${ms / 1000}s`; worst = Math.max(worst, near.length); standing = Math.max(standing, k); }
+        }
       }
-      assert.ok(worst <= 3, `${phase}: ${when / 1000}s에 반경 8m ${worst}명`);
+      assert.ok(standing <= 3 && worst <= 4, `${phase}: ${when} 반경 8m 서 있는 ${standing}명·모두 ${worst}명`);
     }
   } finally { P.setPhaseOf(() => 'day'); }
   const stops = P.stopPlaces(); const mid = (vs) => vs.slice().sort((a, b) => a - b)[Math.floor(vs.length / 2)]; // (the island's quarters by where its walks are)
   const mx = mid(stops.map((p) => p.x)); const mz = mid(stops.map((p) => p.z));
   const quarter = (p) => (p.x >= mx ? 1 : 0) + (p.z >= mz ? 2 : 0);
   const per = [0, 0, 0, 0]; for (let n = 0; n < P.COUNT; n += 1) per[quarter(P.homeOf(n))] += 1;
-  assert.ok(per.every((c) => c >= 1 && c <= 4), `구역별 동네 ${per}`);
+  assert.ok(per.every((c) => c >= 3 && c <= 10), `구역별 동네 ${per}`); // (27 homes)
 });
 
 // (주민 길 격자를 서버에서) the grid packed in 2 bits a cell, taken by another screen: the same grid and the same rounds,

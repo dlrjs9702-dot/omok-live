@@ -344,7 +344,7 @@
   const residentLook = (post, kind = 'work') => RESIDENT_AT[post] ? RESIDENT_LOOKS.find((r) => r.id === `${RESIDENT_AT[post]}_${kind}`) || null : null;
   // v1.10.215 주민 근무표: islander n (island-cast RESIDENTS) at a post -- one of the ten in their own model, the others at work
   const RESIDENT_IDS = Object.freeze(['kkotnim', 'mulgyeol', 'bitna', 'handeul', 'kongi', 'goeun', 'cheori', 'garak', 'bandi', 'bawi', 'hangyeol', 'neuti', 'useong', 'maru', 'danbi', 'hansol', 'saerom']); // (10..26)
-  const lookOf = (n) => (n < WALKER_LOOKS.length ? { ...WALKER_LOOKS[n], resident: WALKER_LOOKS[n].id } : RESIDENT_LOOKS.find((r) => r.id === `${RESIDENT_IDS[n - WALKER_LOOKS.length]}_work`) || null);
+  const lookOf = (n, kind = 'work') => (n < WALKER_LOOKS.length ? { ...WALKER_LOOKS[n], resident: WALKER_LOOKS[n].id } : RESIDENT_LOOKS.find((r) => r.id === `${RESIDENT_IDS[n - WALKER_LOOKS.length]}_${kind}`) || null); /* (C2: walking -- 'off') */
   for (const w of WALKER_LOOKS) REGISTRY[w.model] = { url: `${CH}/npc_walker_${w.id}.glb`, low: { url: `${CH}/npc_walker_${w.id}_low.glb` }, rotationY: Math.PI, motions: true, baked: true, ...(w.id === 'garam' ? { scale: 0.75 } : {}) };
   const village = (file, extra = {}) => ({ url: `/assets/island/village-v1/${file}.glb`, low: { url: `/assets/island/village-v1/${file}_low.glb` }, near: 50, ...extra });
   for (const s of [0, 1, 2, 3]) { REGISTRY[`village.mural.${s}`] = village(`mural_stage${s}`); REGISTRY[`village.stepstones.${s}`] = village(`stepstones_stage${s}`); }

@@ -1077,7 +1077,7 @@ REG.hasyo = {
   // a walker's line for a talk with nothing to ask, by 호감도 level (sometimes the one for this time of day, or -- A-6 --
   // for what the island has today: `moods`, keys of MOODS)
   function walkerLine(n, random = Math.random, phase = 'day', level = 1, me = '', moods = []) {
-    const c = WALKERS[n]; if (!c) return null;
+    const c = RESIDENTS[n]; if (!c) return null; // (v1.10.216: any of the 27)
     const mood = moods.filter((k) => MOODS[k]?.[n]);
     if (mood.length && random() < 0.4) return withTail(MOODS[pick(mood, random)][n], n);
     if ((phase === 'morning' || phase === 'night') && c[phase] && random() < 0.3) return withTail(c[phase], n);

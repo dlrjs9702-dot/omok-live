@@ -1370,6 +1370,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // not walking, the 관공서's resting desk empty with its sign; looked at again every few seconds (a day turned while playing)
   const rosterToday = () => { const C = globalThis.IslandCalendar; const d = rosterOn && C && C.addDays(C.dayOf(Date.now() + serverOffset), rosterShift); return d && globalThis.IslandRoster ? globalThis.IslandRoster.rosterOf(d) : null; };
   const atCounter = (n) => Boolean(roster) && globalThis.IslandRoster.counterOf(n, roster.day) != null;
+  const walksNow = (n) => (roster ? globalThis.IslandRoster.walks(n, roster.day) : n < (globalThis.IslandCast?.WALKERS.length ?? 10)); // (C2 v1.10.216: everyone not at a post)
   function dressPost(c, post) {
     posted.set(post, c); const n = (roster ||= rosterToday())?.posts[post]; const look = n == null ? null : globalThis.IslandAssets?.lookOf?.(n);
     if (!look || c.postN === n) return Boolean(look);
@@ -1383,10 +1384,25 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const c of room.clerks) if (c.desk) { c.root.visible = c.desk !== rest; if (c.restSign) c.restSign.visible = c.desk === rest; }
   }
   function setRoster(day) { const C = globalThis.IslandCalendar; rosterOn = Boolean(day && C); rosterShift = rosterOn ? Math.round((Date.parse(day) - Date.parse(C.dayOf(Date.now() + serverOffset))) / 86400000) : 0; rosterCheck = 0; }
+  // C2 (총괄 C1 검토 1): the station's keeper of the day (철이, on a Sunday 반디) at the station whenever no story islander
+  // stands there for a 부탁 (철이's week but a Sunday, or another week) -- talked to as one at a counter
+  let stationKeeper = null;
+  function setStation() {
+    const at = globalThis.IslandTerrain.VILLAGE?.stationmaster; if (!at) return;
+    const n = roster?.posts.station; const taken = [...eventObjs].some(([k, o]) => k.startsWith('ev:quest_npc:') && o.npc?.root.visible && Math.hypot(o.root.position.x - at.x, o.root.position.z - at.z) < 3);
+    const show = n != null && !taken;
+    if (show && !stationKeeper) {
+      const c = makeCharacter({ shirt: 0x34507e, hair: 0x3d2b1f, skin: 0xffdcbc }); c.root.position.set(at.x, heightAt(at.x, at.z), at.z); c.root.rotation.y = Math.atan2(PLAZA_C.x - at.x, PLAZA_C.z - at.z); scene.add(c.root);
+      c.home = { x: at.x, z: at.z, yaw: c.root.rotation.y, id: 'station:keeper' }; stationKeeper = c; npcs.push(c);
+    }
+    if (!stationKeeper) return;
+    stationKeeper.root.visible = show;
+    if (show) { dressPost(stationKeeper, 'station'); doors['station:keeper'] = { x: at.x, z: at.z, name: `${postName('station')} · 말 걸기` }; } else delete doors['station:keeper'];
+  }
   function stepRoster(dt) {
     if ((rosterCheck -= dt) > 0) return; rosterCheck = 5;
     const r = rosterToday(); if (!r) { roster = null; return; } const turned = r.day !== roster?.day; roster = r;
-    for (const [post, c] of posted) if (turned || c.postN == null) dressPost(c, post); /* (the plaza's keeper: its first) */ if (turned) setDesks();
+    for (const [post, c] of posted) if (turned || c.postN == null) dressPost(c, post); /* (the plaza's keeper: its first) */ if (turned) { setDesks(); addWanderers(); setStation(); } /* (C2: the day's walkers out, the station's keeper) */
   }
   function makeCharacter({ shirt, hair, skin, hat = null, look = {} }) {
     const root = new THREE.Group();
@@ -3206,7 +3222,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       o.root.userData.facility = ev.verb ? key : null;
       if(o.resident != null) o.npc.root.userData.facility=ev.verb?key:null;
       if (ev.kind === 'quest_npc') { // (v1.10.215 근무표 C1: at a counter today -- not here; 반디 on a Sunday at the station)
-        o.post = ev.post || null; o.npc.root.visible = !o.post; if (o.post) { delete eventDoors[key]; o.root.userData.facility = null; }
+        o.post = ev.post || null; o.walker = Number.isInteger(ev.walker) ? ev.walker : null; o.npc.root.visible = !o.post && o.walker == null; if (o.post || o.walker != null) { delete eventDoors[key]; o.root.userData.facility = null; } /* (C2: walking -- 부탁 from them) */
         if (o.root.position.x !== ev.x || o.root.position.z !== ev.z) { o.root.position.set(ev.x, heightAt(ev.x, ev.z), ev.z); if (o.npc.home) Object.assign(o.npc.home, { x: ev.x, z: ev.z }); }
       }
       if (o.root.userData.fruit) o.root.userData.fruit.visible = ev.available !== false;
@@ -3233,6 +3249,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const [key, o] of eventObjs) if (!seen.has(key) && !o.leaving) removeEvent(key, o); // one being handed its thing goes after
     if (!returning.size) setCarry(me, carried?.id || null);
     carriedOwner = carried ? { x: carried.x, z: carried.z } : null;
+    questMarks(); setStation(); // (C2: a walking story islander's mark over them; the station's keeper when no 부탁 stands there)
     mapMarkers = [...eventObjs.keys()].filter((key) => (key.startsWith('ev:quest_npc:') ? !eventObjs.get(key).post && (eventObjs.get(key).mark || eventObjs.get(key).requested) : (key.startsWith('ev:photo:') || key.startsWith('ev:lost_owner:')) && eventDoors[key] || key.startsWith('ev:lost_item:') || key.startsWith('ev:quest_spot:'))).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }))
       .concat(carriedOwner ? [carriedOwner] : []); // whose it is: where to take it
     minimapAt = 0;
@@ -3300,19 +3317,36 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     // v1.10.16: walked through the scene's own collision circles and ground (the route grid is only the long plan)
     walkers = IslandNpcs.createWalkers({ walkable, solidsNear, poseAt:residentPose });
+    addWanderers();
+    setEvents(lastResidentEvents);
+  }
+  // C2 (v1.10.216): one more islander out walking -- each the first day they walk (the table can turn on, or a day turn,
+  // after the island is drawn); the ten in their own models, the 17 in their day-off look (assets 84·83 `_off`)
+  function addWanderers() {
+    if (!walkers) return;
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
+      if (!walksNow(n) || wanderers.some((o) => o.n === n)) continue;
       const r = IslandNpcs.round(n);
       const c = makeCharacter(r.look); c.groundedWalk = true;
       // starts where its round has it now, not at the origin walking over to it
       const w = walkers.add(n, Date.now() + serverOffset);
       c.root.position.set(w.x, heightAt(w.x, w.z), w.z);
       // (F3, assets 51: each their own model -- no wardrobe over it, as the warden's; their own height for the bubble)
-      const own = globalThis.IslandAssets?.WALKER_LOOKS?.[n];
+      const own = globalThis.IslandAssets?.lookOf?.(n, 'off') || globalThis.IslandAssets?.WALKER_LOOKS?.[n];
       scene.add(c.root);
-      if (own) { assets.dress([own.model, 'character.islander'], c); c.headTop = own.headTop; c.modelLean = (own.lean * Math.PI) / 180; } else { assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look); }
+      if (own) { assets.dress([own.model, 'character.islander'], c); c.headTop = own.headTop; c.modelLean = ((own.lean || 0) * Math.PI) / 180; } else { assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look); }
       wanderers.push({ n, c, w });
     }
     setEvents(lastResidentEvents);
+  }
+  // C2: the mark of a walking story islander's 부탁 (new 「!」, ready 「✓」) over the walker, as it was over them at their place
+  function questMarks() {
+    for (const { n, c } of wanderers) {
+      const o = [...eventObjs].find(([k, x]) => k.startsWith('ev:quest_npc:') && x.walker === n)?.[1]; const want = o?.mark || null;
+      if (c.questMark === want) continue;
+      c.questMark = want; disposeTag(c.tag); c.tag = null;
+      if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.root.add(c.tag); fitTag(c); }
+    }
   }
   function stepWanderers(dt) {
     if (!walkers) { startWanderers(); return; }
@@ -3328,7 +3362,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (c.hitUntil > nowMs) { c.targetYaw = c.hitYaw; c.lookAt = null; animate(c, dt, false, 0); continue; } // (3회차 22: struck by a net, where it was struck)
       if (c.rejoin > 0) { c.rejoin -= dt; const k = Math.min(1, dt / Math.max(dt, c.rejoin)); const p = c.root.position; p.x += (w.x - p.x) * k; p.z += (w.z - p.z) * k; p.y = heightAt(p.x, p.z); } // (then back to its shared walk)
       else c.root.position.set(w.x, heightAt(w.x, w.z), w.z); // the exact ground (slopes, bridge decks) every frame
-      c.root.visible = Math.hypot(w.x - m.x, w.z - m.z) < 85 && !atCounter(w.n); // (v1.10.215: at their counter today)
+      c.root.visible = Math.hypot(w.x - m.x, w.z - m.z) < 85 && walksNow(w.n); // (v1.10.215: at their counter today; C2: anyone at a post)
       if (!c.root.visible) continue;
       if (w.pose.held) {
         const hold=residentStates[w.n]?.hold;
@@ -3991,7 +4025,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if ((!best || eventDoors[best]?.resource) && !gather && !fishing) { // v1.10.91 주민 대화: an islander by me (not one an event holds) talks -- A-6: walking too
       const m = me.root.position; let who = null; let wd = 2.2; const overWeed = Boolean(best); // (묶음 3: over a weed only the one I face)
       for (const { n, c, w } of wanderers) { if ((w.pose.held && !residentStates[n]?.hold?.eventId?.startsWith('talk:')) || !c.root.visible) continue; /* (in someone else's talk: the server says with whom) */ const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd && (!overWeed || facing(w.x, w.z))) { who = { n, w }; wd = d; } }
-      if (who) { eventDoors[`resident:${who.n}`] = { x: who.w.x, z: who.w.z, name: `말 걸기 · ${globalThis.IslandCast?.WALKERS[who.n]?.name || '주민'}` }; best = `resident:${who.n}`; }
+      if (who) { eventDoors[`resident:${who.n}`] = { x: who.w.x, z: who.w.z, name: `말 걸기 · ${globalThis.IslandCast?.RESIDENTS[who.n]?.name || '주민'}` }; best = `resident:${who.n}`; }
     }
     if (!best && !gather && !fishing) {
       const m = me.root.position; let seat = null; let sd = 1.6;
@@ -4357,6 +4391,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), setFestival, setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, counterCamera, roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+    canInteract, holdQuestDeparture, talkCamera, counterCamera, roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }
