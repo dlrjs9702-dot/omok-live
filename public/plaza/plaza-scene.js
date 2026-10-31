@@ -3343,9 +3343,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function questMarks() {
     for (const { n, c } of wanderers) {
       const o = [...eventObjs].find(([k, x]) => k.startsWith('ev:quest_npc:') && x.walker === n)?.[1]; const want = o?.mark || null;
-      if (c.questMark === want) continue;
-      c.questMark = want; disposeTag(c.tag); c.tag = null;
-      if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.root.add(c.tag); fitTag(c); }
+      if ((c.questMark ?? null) === want) continue;
+      c.questMark = want; disposeTag(c.questTag); c.questTag = null; // (its own mark -- a walker borrowed for a lost thing keeps that star on c.tag)
+      if (want) { c.questTag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.questTag.position.y = (c.headTop || 2) + TAG_GAP + (c.tag ? 0.5 : 0); c.root.add(c.questTag); }
     }
   }
   function stepWanderers(dt) {

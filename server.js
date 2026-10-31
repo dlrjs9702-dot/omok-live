@@ -6259,7 +6259,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const c = fishCasts.get(session.token); const body = await parseJson(req);
-    if (c) { c.biteAt = nowMs(); if (typeof body.species === 'string' && IslandFishing.SPECIES[body.species]) c.species = body.species; }
+    if (c) { c.biteAt = nowMs(); if (typeof body.species === 'string' && IslandFishing.SPECIES[body.species]) c.species = body.species; if (Number.isFinite(body.slack)) c.slack = Math.max(0, Math.min(60000, body.slack)); } // (slack: a slow test runner's room for the arrows)
     return sendJson(res, 200, { ok: Boolean(c) });
   }
   // v1.10.44 앉기: a free seat right by me is mine until I stand (or leave the island)
