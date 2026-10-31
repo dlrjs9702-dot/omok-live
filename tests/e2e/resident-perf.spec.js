@@ -5,9 +5,11 @@ const { shopper } = require('./skin-support');
 // islanders are seen, the real models, then a few seconds of frames -- frame time, draw calls, triangles, memory, how
 // many islanders are near and how many of their models show the High. Only when PERF=1 (a measurement, not a check):
 //   PERF=1 npx playwright test tests/e2e/resident-perf.spec.js --workers=1
+// (v1.10.216 근무표 C2: ROSTER=1 -- the table on, that day's walkers out (about 15 of the 27); without it the ten)
 test('주민 성능 측정: 광장 프레임·draw call·메모리·High/Low', async ({ browser, request, isMobile }) => {
   test.skip(!process.env.PERF, 'PERF=1 only');
   test.setTimeout(240000);
+  if (process.env.ROSTER) { await request.post('/api/test/roster', { data: { on: true } }); test.info().annotations.push({ type: 'roster', description: 'on' }); }
   const who = await shopper(browser, request, isMobile ? '측정m' : '측정', 0, 'female'); const { page } = who;
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
@@ -35,4 +37,5 @@ test('주민 성능 측정: 광장 프레임·draw call·메모리·High/Low', a
   expect(out.lod.near.high).toBeGreaterThan(out.lod.far.high); // (the one beside me High, gone Low again away)
   console.log(`PERF ${test.info().project.name} ${process.env.PERF_TAG || ''} ${JSON.stringify(out)}`);
   await who.context.close();
+  if (process.env.ROSTER) await request.post('/api/test/roster', { data: { on: false } });
 });

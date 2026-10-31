@@ -6783,18 +6783,18 @@ async function requestHandler(req, res) {
     if (action === 'gift' && fest.tasks.gift) { // X2 선물 배달: take one from the host's sack, hand it to the islander it is for
       if (body.step === 'take') {
         if (!near(P.host, P.REACH + 1)) return sendError(res, 409, 'TOO_FAR', '행사 주민 곁에서 선물을 받아요.');
-        const r = await apply((doc) => IslandFestival.takeGift(fest, doc, now, IslandNpcs.walking(now)));
+        const r = await apply((doc) => IslandFestival.takeGift(fest, doc, now, IslandNpcs.walking(now).filter((n) => walksToday(n))));
         if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.');
-        return sendJson(res, 200, { ok: true, gift: { ...r.gift, name: IslandCast.WALKERS[r.gift.n].name, where: IslandNpcs.hangout(r.gift.n) }, festival: await view() });
+        return sendJson(res, 200, { ok: true, gift: { ...r.gift, name: IslandCast.RESIDENTS[r.gift.n].name, where: IslandNpcs.hangout(r.gift.n) }, festival: await view() });
       }
       const n = Number(body.n); const pos = plazaPresence.get(session.token); const state = islandEvents.residents()[n];
-      if (!Number.isInteger(n) || !IslandCast.WALKERS[n]) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+      if (!Number.isInteger(n) || !IslandCast.RESIDENTS[n]) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
       // (as a talk: by them now or a few seconds back, a slow screen drawing them behind their round; held, where they stand)
       const reach = (p) => pos && (pos.space || 'island') === 'island' && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? 6 : 4);
       if (![0, 1500, 3000, 4500].some((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state)))) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       const r = await apply((doc) => IslandFestival.giveGift(fest, doc, n, now));
       if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.');
-      return sendJson(res, 200, { ok: true, added: r.added, name: IslandCast.WALKERS[n].name, festival: await view() });
+      return sendJson(res, 200, { ok: true, added: r.added, name: IslandCast.RESIDENTS[n].name, festival: await view() });
     }
     if (action === 'snowman' && fest.tasks.snowman) { // X2 눈사람 만들기: roll (from), set down (the ball's size by the server's clock), dress
       const S = P.snow; const inField = Boolean(at) && (at.space || 'island') === 'island' && Math.abs(at.x - S.x) <= S.w / 2 + 1 && Math.abs(at.z - S.z) <= S.d / 2 + 1;
