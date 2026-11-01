@@ -14,7 +14,9 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
   const b = await shopper(browser, request, `구경꾼${tag}`, 0, 'male');
   const again = async (fn) => { for (let k = 0; ; k += 1) { try { return await fn(); } catch (error) { if (k >= 2 || !/ECONNRESET|socket hang up/.test(String(error?.message))) throw error; } } };
   const admin = await again(() => adminToken(request)); const time = (mode) => again(() => request.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode } }));
-  for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.setItem('gc.view.out', 'third'); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true); }
+  // (the real models only for the photos, SHOT_DIR -- otherwise the island in boxes, far quicker on a slow runner: CI 25 min)
+  const real = Boolean(process.env.SHOT_DIR);
+  for (const who of [a, b]) { await who.page.evaluate((real) => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.view.out', 'third'); if (real) localStorage.setItem('gc.testRealView', '1'); else localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, real); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true); }
   const press = async (p = page) => { if (isMobile) await p.locator('#plazaHint').tap(); else { await p.locator('#plazaStage').focus(); await p.keyboard.press('Space'); } };
   const shot = async (name, p = page, wait = 1500) => { if (!process.env.SHOT_DIR) return; await p.waitForTimeout(wait); await p.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-${name}.png` }); };
   const goTo = async (p, door, text) => expect.poll(async () => { await p.evaluate((id) => { const d = window.PlazaDebug(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); else d.place(id); }, door); await p.waitForTimeout(500); return p.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain(text);
@@ -73,7 +75,12 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     const placeAt = async (uid, lx, lz, rot = 0) => {
       await edit.locator(`.furniturePiece[data-uid="${uid}"]`).click();
       if (!way) { way = {}; for (const k of ARROWS) { const [x0, z0] = await at(); await tap(k); const [x1, z1] = await at(); way[k] = [x1 - x0, z1 - z0]; } }
-      for (let n = 0; n < 200; n += 1) { const [x, z] = await at(); if (Math.abs(x - lx) < 1e-6 && Math.abs(z - lz) < 1e-6) break; const k = ARROWS.find((k) => (way[k][0] && Math.sign(way[k][0]) === Math.sign(lx - x) && Math.abs(lx - x) > 1e-6) || (way[k][1] && Math.sign(way[k][1]) === Math.sign(lz - z) && Math.abs(lz - z) > 1e-6)); await tap(k); }
+      // (the taps for each axis in one call, not a round trip each)
+      for (let pass = 0; pass < 3; pass += 1) {
+        const [x, z] = await at();
+        for (const [axis, d] of [[0, lx - x], [1, lz - z]]) { const n = Math.round(Math.abs(d) / 0.25); const k = ARROWS.find((k) => way[k][axis] && Math.sign(way[k][axis]) === Math.sign(d)); if (n && k) await edit.getByRole('button', { name: k, exact: true }).evaluate((el, n) => { for (let i = 0; i < n; i += 1) el.click(); }, n); }
+        const [x1, z1] = await at(); if (Math.abs(x1 - lx) < 1e-6 && Math.abs(z1 - lz) < 1e-6) break;
+      }
       for (let r = (await at())[2]; r !== rot; r = (r + 1) % 4) await tap('돌리기');
       await expect(status).not.toContainText('밖이에요'); await edit.getByRole('button', { name: '놓기', exact: true }).click();
       await expect.poll(async () => ((await get(request, '/api/home', a.token)).data.lots.find((l) => l.id === lot).yard || []).some((p) => p.uid === uid && p.x === lx && p.z === lz), { timeout: 15000 }).toBe(true);
