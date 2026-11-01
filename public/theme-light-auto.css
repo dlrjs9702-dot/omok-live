@@ -1443,3 +1443,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .toolGauge{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .donationProject{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .donationProject small{color:var(--isle-soft)}
+:root[data-theme="light"] .voteChoice.mine{border-color:#5fa04e}

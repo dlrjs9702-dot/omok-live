@@ -62,3 +62,43 @@ test('심부름은 공사 날 갈고리 없이 뽑음: 같은 날 사업이 낮�
     assert.equal(R.walks(19, day), false); assert.equal(R.postOf(19, day), 'works');
   } finally { R.setWorks(() => false); }
 });
+
+test('섬 가꾸기 투표(223): 첫 두 사업 뒤 마루 시장이 셋까지 내놓고 하루 투표 → 다음 날 가장 많은 표(같으면 앞), 다리·전망대(224)는 아직 빠짐', () => {
+  const goal = (id) => P.byId(id).goal; let s = P.fresh(); s.cur = null;
+  s.open = ['fountain', 'flower_path'].map((id) => ({ id, day: '2026-11-03', top: [], names: [] }));
+  s = P.roll(s, '2026-11-10', goal); let v = P.view(s, goal, 'a');
+  assert.deepEqual(v.vote.choices.map((c) => c.id), ['promenade', 'night_lights'], '224 것은 아직 표에 없음');
+  assert.equal(P.vote(s, 'a', 'bridge', '2026-11-10', goal), null, '표에 없는 것');
+  s = P.vote(s, 'a', 'night_lights', '2026-11-10', goal); s = P.vote(s, 'b', 'promenade', '2026-11-10', goal); s = P.vote(s, 'b', 'night_lights', '2026-11-10', goal); // (b changed their mind)
+  v = P.view(s, goal, 'b'); assert.deepEqual([v.vote.choices.map((c) => c.votes), v.vote.mine], [[0, 2], 'night_lights']);
+  s = P.give(s, { userId: 'c', name: '다', amount: 300000 }, '2026-11-10', goal); assert.equal(s.saved, 300000, '투표 날 기부는 적립');
+  s = P.roll(s, '2026-11-11', goal); v = P.view(s, goal);
+  assert.deepEqual([v.vote, v.cur.id, v.cur.raised], [null, 'night_lights', 300000], '다음 날 이긴 것 시작, 적립 넣음');
+  // a tie (none cast): the first on the list
+  let t = P.fresh(); t.cur = null; t.open = ['fountain', 'flower_path'].map((id) => ({ id, day: 'x', top: [], names: [] })); t = P.roll(t, '2026-11-20', goal); t = P.roll(t, '2026-11-21', goal);
+  assert.equal(t.cur, 'promenade');
+  // one left: begun at once, no vote
+  let u = P.fresh(); u.cur = null; u.open = ['fountain', 'flower_path', 'promenade'].map((id) => ({ id, day: 'x', top: [], names: [] })); u = P.roll(u, '2026-11-20', goal);
+  assert.deepEqual([u.cur, u.vote ?? null], ['night_lights', null]);
+  assert.ok(P.PROMENADE.length >= 6 && P.PROMENADE_SEATS.length === P.PROMENADE.length && P.STRINGS.length >= 3 && P.UPLIGHTS.length === 7);
+});
+
+test('섬 가꾸기 투표·민원 창구 서버: 정문에서만 한 표, 바꿀 수 있음, 창구 밖에서는 못 보탬, 물가 거리 벤치는 열린 뒤에만', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projects-vote-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('투표미'));
+  await req('/api/test/projects', a, { reset: true }); await req('/api/test/projects', a, { open: ['fountain', 'flower_path'] });
+  let v = (await req('/api/island/projects', a)).data; assert.deepEqual(v.vote.choices.map((c) => c.id), ['promenade', 'night_lights']);
+  const T = require('../public/plaza/island-terrain'); const gate = T.townhallWorld(0, T.TOWNHALL.yard.z1 + 1.4);
+  await req('/api/plaza/state', a, { x: gate.x + 10, z: gate.z, yaw: 0, moving: false });
+  assert.equal((await req('/api/island/projects/vote', a, { id: 'promenade' })).data.error, 'TOO_FAR');
+  await req('/api/plaza/state', a, { x: gate.x, z: gate.z + 0.5, yaw: 0, moving: false });
+  assert.equal((await req('/api/island/projects/vote', a, { id: 'promenade' })).status, 200);
+  v = (await req('/api/island/projects/vote', a, { id: 'night_lights' })).data; assert.deepEqual([v.vote.mine, v.vote.choices.map((c) => c.votes)], ['night_lights', [0, 1]], '한 사람 한 표, 바꿈');
+  assert.equal((await req('/api/island/projects/vote', a, { id: 'bridge' })).data.error, 'NO_VOTE');
+  assert.equal((await req('/api/island/projects/give', a, { amount: 1000, requestId: 'desk-00000001' })).data.error, 'TOO_FAR', '민원 창구 앞에서만');
+  const seat = P.PROMENADE_SEATS[0]; await req('/api/plaza/state', a, { x: seat.x, z: seat.z, yaw: 0, moving: false });
+  assert.equal((await req('/api/island/sit', a, { seat: seat.id })).status, 400, '열리기 전 벤치는 없음');
+  await req('/api/test/projects', a, { open: 'promenade' }); await req('/api/island/projects', a);
+  assert.equal((await req('/api/island/sit', a, { seat: seat.id })).status, 200, '열린 뒤 앉기');
+});
