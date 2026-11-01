@@ -14,6 +14,7 @@ test('할 일 전체 보기·카드 이름·채팅 단추 색만', async ({ brow
   for (const p of [page, b.page]) await expect.poll(() => p.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   page.on('dialog', (d) => d.accept());
   // four asks: the card three and the rest behind a line
+  process.env.ISLAND_QUEST_WEEK ??= '0'; // (the server's week -- playwright.config pins it -- not today's: a new week left 철이 off the server's list)
   const Q = require('../../lib/island-quests'); const n = (await post(request, '/api/test/quest/take', token, { stories: Q.visibleStories(Date.now()) })).data.track.length; expect(n).toBeGreaterThanOrEqual(4); // (this week's asks, all taken)
   const card = page.locator('#questTracker');
   await expect.poll(async () => { await page.evaluate(() => window.PlazaWarp(window.PlazaDebug().x + 0.5, window.PlazaDebug().z)); return card.locator('.questLine').count(); }, { timeout: 30000 }).toBe(3);
