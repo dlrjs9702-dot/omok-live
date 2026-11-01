@@ -3687,7 +3687,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // stepping back only from a person standing loose on the island (a gate or a counter keeps its own spot and reach)
     talkView = { id: t.id, x: at.x, z: at.z, shot: mode === 'shot', step: Boolean(figure) && (eventObjs.has(t.id) || t.id.startsWith('player:') || t.id.startsWith('resident:')) };
     me.targetYaw = Math.atan2(at.x - p.x, at.z - p.z);
-    const toMe = Math.atan2(p.x - at.x, p.z - at.z);
     const o = eventObjs.get(t.id);
     const walker = t.id.startsWith('resident:') ? wanderers.find((w) => w.n === Number(t.id.slice(9)))?.c : null; // v1.10.91
     if (t.id === 'mayor') yard.talk(talkPose(p).want); // (v1.10.196 총괄 검토: 마루 turns from his gate to the picture -- his face, not his side)
