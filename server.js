@@ -1058,7 +1058,7 @@ function errandPay(e, before) {
   return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0);
 }
 async function errandView(account) {
-  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day);
+  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day, walksToday);
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
   const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
@@ -1139,7 +1139,7 @@ async function affinityStages(account, before, after, label = '') {
   const word = (n, level) => ` 「${IslandCast.fill(IslandCast.say(n, `levelUp${level}`)[0] || '', label)}」`; // (T: their own word with it)
   const notes = [];
   for (const [k, pts] of Object.entries(after || {})) {
-    const n = Number(k); const c = IslandCast.WALKERS[n]; if (!c) continue;
+    const n = Number(k); const c = IslandCast.RESIDENTS[n]; if (!c) continue; // (v1.10.220: all 27 -- a close gift only where one is made)
     // (Codex 검토 #5·#6) every level reached with the islanders whose points changed, not only the ones just crossed: a level
     // paid whose piece did not save, or one reached by a way that never asked here, is made good the next time -- each
     // grant is claimed once (the points by event id, the piece by its claim), so asking again gives nothing twice
@@ -1164,10 +1164,10 @@ async function affinityStages(account, before, after, label = '') {
 const affinityLevelOf = async (account, n) => IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0);
 // R3 ⑥ 편지: the islander I am closest to (친한 사이 and on) writes a line a day into my 우체통 -- once (its id the day's)
 async function residentLetter(account, label, now) {
-  const day = kstDate(now); const close = Object.entries(await pointStore.affinityOf(account)).filter(([k, p]) => IslandCast.WALKERS[Number(k)] && IslandCast.levelOf(p) >= 2).sort((a, b) => b[1] - a[1]);
+  const day = kstDate(now); const close = Object.entries(await pointStore.affinityOf(account)).filter(([k, p]) => IslandCast.RESIDENTS[Number(k)] && IslandCast.levelOf(p) >= 2) /* (v1.10.220: all 27 write -- their own letters) */.sort((a, b) => b[1] - a[1]);
   if (!close.length) return;
   const n = Number(close[0][0]); const id = `resident-${n}-${day}`;
-  const letter = { id, from: `resident:${n}`, fromName: IslandCast.WALKERS[n].name, text: IslandCast.fill(IslandAffinity.letterOf(n, day), label), itemId: null, itemName: null, at: now, read: false };
+  const letter = { id, from: `resident:${n}`, fromName: IslandCast.RESIDENTS[n].name, text: IslandCast.fill(IslandAffinity.letterOf(n, day), label), itemId: null, itemName: null, at: now, read: false };
   // (Codex 검토 P3) one a day for the account, whoever the closest is by then (the closest changing the same day: no second)
   await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => String(l.id).startsWith('resident-') && String(l.id).endsWith(`-${day}`)) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
 }
@@ -3987,7 +3987,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.219' });
+    return sendJson(res, 200, { ok: true, version: '1.10.220' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6920,7 +6920,7 @@ async function requestHandler(req, res) {
   // (Q 할 일 카드 「그만둘래요」) an errand under way let go: its asker offers it again (nothing paid, nothing kept)
   if (pathname === '/api/island/errand/drop' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
-    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day);
+    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day, walksToday);
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const id = String((await parseJson(req)).id || ''); // (C5 Codex 4차 P3-2: both awaited before the stages are read -- no write between lost)
     const next = IslandErrands.drop(errands, errandStages.get(key) || {}, done, id);
     if (!next) return sendError(res, 409, 'ERRAND_GONE', '그만둘 수 있는 부탁이 아니에요.');
@@ -7016,7 +7016,7 @@ async function requestHandler(req, res) {
     const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
     // (대화창 새 단장: the choices are only what can be done today -- the day's story and gift not yet, an errand to do with them)
     const sendTalk = async (view) => {
-      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day);
+      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day, walksToday);
       const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
       return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${day}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
     };
@@ -7067,7 +7067,7 @@ async function requestHandler(req, res) {
       let say;
       if (topic === 'how') say = [IslandCast.walkerLine(n, Math.random, 'day', level, String(session.label || ''))];
       else {
-        const errands = IslandErrands.errandsOf(day); const stages = errandStages.get(`${day}|${account}`) || {};
+        const errands = IslandErrands.errandsOf(day, walksToday); const stages = errandStages.get(`${day}|${account}`) || {};
         const mine = errands.find((e) => stages[e.id] === 1 && e.kind !== 'buy' && e.to !== n) || errands.find((e) => stages[e.id] === 2 && e.from !== n);
         const other = mine ? (stages[mine.id] === 2 ? mine.from : mine.to) : (n + 1 + Math.floor(Math.random() * (IslandCast.WALKERS.length - 1))) % IslandCast.WALKERS.length;
         say = [IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
@@ -7127,7 +7127,7 @@ async function requestHandler(req, res) {
       if (owed) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, giftUsed: { ...(doc?.giftUsed || {}), [n]: null } } })).catch(() => {});
       return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, String(session.label || '')), ...(used?.bag ? { bag: used.bag } : {}) }));
     }
-    const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
+    const errands = IslandErrands.errandsOf(day, walksToday); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     // Q 부탁 받기 (docs/quest-accept-complete-20261026.md): 「할게요!」 starts the offered errand; 「다음에요」 keeps nothing
     // (asked again today) -- each answered in the asker's own words
@@ -7169,7 +7169,7 @@ async function requestHandler(req, res) {
     // (Q) an errand offered: its note -- what, where they are usually seen, what it pays, today only
     const offer = r?.offer ? { id: r.offer.id, title: IslandErrands.title(r.offer), where: r.offer.where || null, reward: errandPay(r.offer, before), until: '오늘 안에' } : null;
     // (Q 끝내기) a paid one's card: what came of it -- the points and the 호감도 with each
-    const finished = r?.pay && reward ? { title: IslandErrands.title(r.pay), reward, gains: [...new Map(gains.filter((g) => !g.daily).map((g) => [g.n, { name: IslandCast.WALKERS[g.n].name, delta: (after[g.n] || 0) - (before[g.n] || 0) }])).values()].filter((g) => g.delta > 0) } : null;
+    const finished = r?.pay && reward ? { title: IslandErrands.title(r.pay), reward, gains: [...new Map(gains.filter((g) => !g.daily).map((g) => [g.n, { name: IslandCast.RESIDENTS[g.n].name, /* (v1.10.220: an errand's asker any of the 27) */ delta: (after[g.n] || 0) - (before[g.n] || 0) }])).values()].filter((g) => g.delta > 0) } : null;
     return sendTalk({ ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, offer, finished, affinity: affinityView(points), stages: await affinityStages(account, before, after, String(session.label || '')), ...(await errandView(account)) });
   }
   // A4 날씨: the island's weather now (the same for everyone) and when it changes; the administrator may hold it
@@ -8169,7 +8169,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.219 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.220 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
