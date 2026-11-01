@@ -17,7 +17,7 @@ test('1인칭 대화 구도: 눈높이·머리부터 어깨·얼굴은 위쪽 1/
     const a = await page.evaluate(() => window.PlazaDebug().talkAim()); expect(a.fill).toBeGreaterThan(0); expect(a.dist).toBeGreaterThan(1.1);
     if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-${name}.png` }); }
     await expect.poll(async () => { if (await talking()) await page.evaluate(() => document.getElementById('plazaDialog').close()); return talking(); }, { timeout: 15000 }).toBe(false); /* (CI: a late talk request opened it again -- closed again) */
-    expect((await page.evaluate(() => window.PlazaDebug().talkAim()))).toBe(null); expect((await page.evaluate(() => window.PlazaDebug().view())).fov).toBe(75);
+    expect((await page.evaluate(() => window.PlazaDebug().talkAim()))).toBe(null); expect((await page.evaluate(() => window.PlazaDebug().view())).fov).toBe(70);
   };
   for (const [n, name] of [[1, 'haesong'], [9, 'garam']]) {
     await expect.poll(async () => {

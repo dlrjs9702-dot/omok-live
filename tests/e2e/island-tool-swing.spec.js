@@ -23,7 +23,7 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
   const carried = async (how) => { const t = await page.evaluate(() => window.PlazaDebug().toolTip()); const d = t.hoop.map((v, k) => v - t.hand[k]); const n = Math.hypot(...d);
     expect(Math.hypot(...t.hoop.map((v, k) => v - t.head[k])), `${how}: 고리와 머리`).toBeGreaterThan(0.75); expect(Math.abs(d[0] / n), `${how}: 옆`).toBeLessThan(0.6); expect(d[2] / n, `${how}: 앞`).toBeGreaterThan(0.6); };
   await page.waitForTimeout(500); await carried('서기');
-  if (!isMobile) { await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(600); await carried('걷기'); await page.keyboard.up('ArrowUp'); }
+  if (!isMobile) { await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyW'); await page.waitForTimeout(600); await carried('걷기'); await page.keyboard.up('KeyW'); }
   // (CI #306: the hoop's sweep counted frame by frame missed its ends on a slow runner -- the hand's angle instead: turned to
   // NetSwing's own while it swings, back to carrying after)
   const turned = await page.evaluate(() => new Promise((done) => { const d = window.PlazaDebug(); let most = 0; d.swingNow(); const t0 = performance.now(); const tick = () => { most = Math.max(most, d.toolTip().turn); if (performance.now() - t0 < 800) requestAnimationFrame(tick); else done(most); }; requestAnimationFrame(tick); }));

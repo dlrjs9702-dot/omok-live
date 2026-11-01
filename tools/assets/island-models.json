@@ -7659,10 +7659,10 @@
     },
     {
       "out": "characters/npc_walker_haram.glb",
-      "src": "residents88:01. High/npc_walker_haram.glb",
-      "sha256": "43434abc1a9dab477da7b6c0f4260de83a3a97b6cbf93352e9742ce7c3ecf32b",
-      "lowSrc": "residents88:02. Low/npc_walker_haram_low.glb",
-      "lowSha256": "3b98f3472afc2fd7253792fbafd0a17e6fd418f48b86d3fa8627f744572fdd9f",
+      "src": "arms89:01. High/npc_walker_haram.glb",
+      "sha256": "f416bf1a400f75df765d513bd8b1b821216738f3b1b9aed944542f60eabec570",
+      "lowSrc": "arms89:02. Low/npc_walker_haram_low.glb",
+      "lowSha256": "2cf0d4eec670403c3b1ed5c77643d22f52f97b92aadbfa9a43e27cf0c545b47e",
       "precompressed": true
     },
     {
@@ -7715,10 +7715,10 @@
     },
     {
       "out": "characters/npc_walker_garam.glb",
-      "src": "residents88:01. High/npc_walker_garam.glb",
-      "sha256": "6d9099131b799aacaead28191dc57a9dcc27a9e9fbbf57442aac440e6ca2749f",
-      "lowSrc": "residents88:02. Low/npc_walker_garam_low.glb",
-      "lowSha256": "e0b76cd4b7b8cba2a51b320a445ccde6407330574998e06fbb418b6cbd84aab8",
+      "src": "arms89:01. High/npc_walker_garam.glb",
+      "sha256": "82f6a2861243545c51faab584f918fcd5bf7b481f8f6f3b8f07d4c71d9214af8",
+      "lowSrc": "arms89:02. Low/npc_walker_garam_low.glb",
+      "lowSha256": "2757b5ba91be4c352439d3ebd3b9364beb4337683017d7bbb6f48d840cf8f480",
       "precompressed": true
     },
     {
@@ -8440,18 +8440,18 @@
     },
     {
       "out": "characters/npc_walker_goeun_off.glb",
-      "src": "residents88:01. High/npc_walker_goeun_off.glb",
-      "sha256": "122a0841c546ca22fc6056eb451af0627c6dfc0cf5779f6696bd038283f5c1be",
-      "lowSrc": "residents88:02. Low/npc_walker_goeun_off_low.glb",
-      "lowSha256": "85f8659f06dcd09bfdce8afccdd1a39a014fca521a3ba4a6689dbd45fbbf7788",
+      "src": "arms89:01. High/npc_walker_goeun_off.glb",
+      "sha256": "fae6ba04b810f3bf9b3cdcf2dd14d37407ab7636c64bb3bb4eba807abba98360",
+      "lowSrc": "arms89:02. Low/npc_walker_goeun_off_low.glb",
+      "lowSha256": "7c8d5554da9d2a4662f5dc474abf10cbc8101694a31b1daaaa9425582740f64a",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_goeun_work.glb",
-      "src": "residents88:01. High/npc_walker_goeun_work.glb",
-      "sha256": "82ed80298bbeb8db9787263015b2022e2437fab1aa80d8464e473b6cd3c1b77d",
-      "lowSrc": "residents88:02. Low/npc_walker_goeun_work_low.glb",
-      "lowSha256": "cb15dbd56be7b71e65c401ee9e0600af156d0a115e074a2e6f0cf77608fa701b",
+      "src": "arms89:01. High/npc_walker_goeun_work.glb",
+      "sha256": "7a6d445959c83ac2eccb647bc8164d8520c8b42c12f3a57f6ee90afc66199032",
+      "lowSrc": "arms89:02. Low/npc_walker_goeun_work_low.glb",
+      "lowSha256": "8194d6ff85940368ffa4d9cc6ecd85655d415df0d14c461ca999939e4b751bc5",
       "precompressed": true
     },
     {
@@ -8488,34 +8488,34 @@
     },
     {
       "out": "characters/npc_walker_kkotnim_off.glb",
-      "src": "residents88:01. High/npc_walker_kkotnim_off.glb",
-      "sha256": "3e3d5cfb53ecd6acc566afcccd3f057abf85e9080fc686abfe28ea9edfc41916",
-      "lowSrc": "residents88:02. Low/npc_walker_kkotnim_off_low.glb",
-      "lowSha256": "d6e201dfe5bb1aa315826001a59829a01e58aabab62f933381f777723d547b0d",
+      "src": "arms90:01. High/npc_walker_kkotnim_off.glb",
+      "sha256": "3df07747aeee8ecf5fb84038d637c5655eb4bdeb303d8d5e7e3cd52404a2c08a",
+      "lowSrc": "arms90:02. Low/npc_walker_kkotnim_off_low.glb",
+      "lowSha256": "bb3503b3074e0b6e413c15711e748a0abca2379c0b7f6b58ebc8de74f5c2c349",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_kkotnim_work.glb",
-      "src": "residents88:01. High/npc_walker_kkotnim_work.glb",
-      "sha256": "14c637e732be38d1c22220e5b2b51ec6ae9fae8f7abc7ec4d68fc3296bdabe38",
-      "lowSrc": "residents88:02. Low/npc_walker_kkotnim_work_low.glb",
-      "lowSha256": "66e845da41f30d0f59ed5f36f57fd46ae7c5ca0634573161a0ec03c048ec3c2b",
+      "src": "arms90:01. High/npc_walker_kkotnim_work.glb",
+      "sha256": "643230b314c90fb048ea020c1fa75ddca8028365806a82d5313411e37fe8ee8c",
+      "lowSrc": "arms90:02. Low/npc_walker_kkotnim_work_low.glb",
+      "lowSha256": "367ee832fc6623a5ac518d8175ca42a8eac5eef1c51fdb3fede2adeb55cd0a8f",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_kongi_off.glb",
-      "src": "residents88:01. High/npc_walker_kongi_off.glb",
-      "sha256": "3cadce61dd264891065eaa733e946fc411093ff298c462e387a60d877fb99fb7",
-      "lowSrc": "residents88:02. Low/npc_walker_kongi_off_low.glb",
-      "lowSha256": "966386c0809f4029a29ead3d2eef43384c3504e15a857a64ff9c983011800449",
+      "src": "arms90:01. High/npc_walker_kongi_off.glb",
+      "sha256": "201dc80dbf9b205dacde670efc7969eeae32f38efeecabfce61c27266e9d4f1e",
+      "lowSrc": "arms90:02. Low/npc_walker_kongi_off_low.glb",
+      "lowSha256": "53d543b50823ad53ce2e0335774f70ebc769bf78177fd3b4c4156cb3bdc0c7a6",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_kongi_work.glb",
-      "src": "residents88:01. High/npc_walker_kongi_work.glb",
-      "sha256": "8b633626d4e2f8fd866ae766814c7ffa65c8649fdb3a97fe050ac963635adaeb",
-      "lowSrc": "residents88:02. Low/npc_walker_kongi_work_low.glb",
-      "lowSha256": "9c7a9fb67478fb3a8ee00c0dc263f16c6471fe639aaecb8f374b598b4f5e3922",
+      "src": "arms90:01. High/npc_walker_kongi_work.glb",
+      "sha256": "867cda908dae8ee95f73895be7f80f42659c3b465da79eda34bdb6979a548f0e",
+      "lowSrc": "arms90:02. Low/npc_walker_kongi_work_low.glb",
+      "lowSha256": "986d8ea1662667a2c45dd12d6b71fbc7eeb7ba0d199ccc6f563ecad6ff1d5a0b",
       "precompressed": true
     },
     {
@@ -8689,6 +8689,8 @@
     "slim78": "78. Game Island codex slim test 2026-10-27",
     "insectdesk86": "86. Game Island insect case desk 2026-10-29",
     "mall82": "82. Game Island mall revamp 2026-10-27",
-    "residents88": "88. Game Island residents legs all 27 2026-10-30"
+    "residents88": "88. Game Island residents legs all 27 2026-10-30",
+    "arms89": "89. Game Island goeun face arms 2026-10-31",
+    "arms90": "90. Game Island kkotnim kongi arms 2026-10-31"
   }
 }

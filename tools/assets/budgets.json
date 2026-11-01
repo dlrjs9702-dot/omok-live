@@ -413,14 +413,14 @@
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_haram.glb": {
-      "triangles": 31990,
-      "sourceSha256": "43434abc1a9dab477da7b6c0f4260de83a3a97b6cbf93352e9742ce7c3ecf32b",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 28228,
+      "sourceSha256": "f416bf1a400f75df765d513bd8b1b821216738f3b1b9aed944542f60eabec570",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_haram_low.glb": {
-      "triangles": 9847,
-      "sourceSha256": "3b98f3472afc2fd7253792fbafd0a17e6fd418f48b86d3fa8627f744572fdd9f",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 8813,
+      "sourceSha256": "2cf0d4eec670403c3b1ed5c77643d22f52f97b92aadbfa9a43e27cf0c545b47e",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_duri.glb": {
       "triangles": 31992,
@@ -483,14 +483,14 @@
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_garam.glb": {
-      "triangles": 16482,
-      "sourceSha256": "6d9099131b799aacaead28191dc57a9dcc27a9e9fbbf57442aac440e6ca2749f",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 17154,
+      "sourceSha256": "82f6a2861243545c51faab584f918fcd5bf7b481f8f6f3b8f07d4c71d9214af8",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_garam_low.glb": {
-      "triangles": 6368,
-      "sourceSha256": "e0b76cd4b7b8cba2a51b320a445ccde6407330574998e06fbb418b6cbd84aab8",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 6488,
+      "sourceSha256": "2757b5ba91be4c352439d3ebd3b9364beb4337683017d7bbb6f48d840cf8f480",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "home-v1/home_manor2__red.glb": {
       "triangles": 20000,
@@ -895,24 +895,24 @@
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_goeun_off.glb": {
-      "triangles": 29471,
-      "sourceSha256": "122a0841c546ca22fc6056eb451af0627c6dfc0cf5779f6696bd038283f5c1be",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 30696,
+      "sourceSha256": "fae6ba04b810f3bf9b3cdcf2dd14d37407ab7636c64bb3bb4eba807abba98360",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_goeun_off_low.glb": {
-      "triangles": 9717,
-      "sourceSha256": "85f8659f06dcd09bfdce8afccdd1a39a014fca521a3ba4a6689dbd45fbbf7788",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 9811,
+      "sourceSha256": "7c8d5554da9d2a4662f5dc474abf10cbc8101694a31b1daaaa9425582740f64a",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_goeun_work.glb": {
-      "triangles": 30319,
-      "sourceSha256": "82ed80298bbeb8db9787263015b2022e2437fab1aa80d8464e473b6cd3c1b77d",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 31903,
+      "sourceSha256": "7a6d445959c83ac2eccb647bc8164d8520c8b42c12f3a57f6ee90afc66199032",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_goeun_work_low.glb": {
-      "triangles": 9816,
-      "sourceSha256": "cb15dbd56be7b71e65c401ee9e0600af156d0a115e074a2e6f0cf77608fa701b",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 9909,
+      "sourceSha256": "8194d6ff85940368ffa4d9cc6ecd85655d415df0d14c461ca999939e4b751bc5",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_handeul_off.glb": {
       "triangles": 25236,
@@ -955,44 +955,44 @@
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_kkotnim_off.glb": {
-      "triangles": 30907,
-      "sourceSha256": "3e3d5cfb53ecd6acc566afcccd3f057abf85e9080fc686abfe28ea9edfc41916",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 30525,
+      "sourceSha256": "3df07747aeee8ecf5fb84038d637c5655eb4bdeb303d8d5e7e3cd52404a2c08a",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_kkotnim_off_low.glb": {
-      "triangles": 9984,
-      "sourceSha256": "d6e201dfe5bb1aa315826001a59829a01e58aabab62f933381f777723d547b0d",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 9910,
+      "sourceSha256": "bb3503b3074e0b6e413c15711e748a0abca2379c0b7f6b58ebc8de74f5c2c349",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_kkotnim_work.glb": {
-      "triangles": 30898,
-      "sourceSha256": "14c637e732be38d1c22220e5b2b51ec6ae9fae8f7abc7ec4d68fc3296bdabe38",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 30530,
+      "sourceSha256": "643230b314c90fb048ea020c1fa75ddca8028365806a82d5313411e37fe8ee8c",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_kkotnim_work_low.glb": {
-      "triangles": 9840,
-      "sourceSha256": "66e845da41f30d0f59ed5f36f57fd46ae7c5ca0634573161a0ec03c048ec3c2b",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 9818,
+      "sourceSha256": "367ee832fc6623a5ac518d8175ca42a8eac5eef1c51fdb3fede2adeb55cd0a8f",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_kongi_off.glb": {
-      "triangles": 30761,
-      "sourceSha256": "3cadce61dd264891065eaa733e946fc411093ff298c462e387a60d877fb99fb7",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 29331,
+      "sourceSha256": "201dc80dbf9b205dacde670efc7969eeae32f38efeecabfce61c27266e9d4f1e",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_kongi_off_low.glb": {
-      "triangles": 9541,
-      "sourceSha256": "966386c0809f4029a29ead3d2eef43384c3504e15a857a64ff9c983011800449",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 9017,
+      "sourceSha256": "53d543b50823ad53ce2e0335774f70ebc769bf78177fd3b4c4156cb3bdc0c7a6",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_kongi_work.glb": {
-      "triangles": 31015,
-      "sourceSha256": "8b633626d4e2f8fd866ae766814c7ffa65c8649fdb3a97fe050ac963635adaeb",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 29689,
+      "sourceSha256": "867cda908dae8ee95f73895be7f80f42659c3b465da79eda34bdb6979a548f0e",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_kongi_work_low.glb": {
-      "triangles": 9557,
-      "sourceSha256": "9c7a9fb67478fb3a8ee00c0dc263f16c6471fe639aaecb8f374b598b4f5e3922",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 9145,
+      "sourceSha256": "986d8ea1662667a2c45dd12d6b71fbc7eeb7ba0d199ccc6f563ecad6ff1d5a0b",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged"
     },
     "characters/npc_walker_maru_off.glb": {
       "triangles": 22859,

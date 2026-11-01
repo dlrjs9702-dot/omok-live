@@ -17,17 +17,17 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
   expect(await view()).toMatchObject({ mode: 'third', side: 'out', body: true });
   await shot('out-third');
   await toggle(); await expect.poll(async () => (await view()).mode).toBe('first');
-  const fp = await view(); expect(fp.body).toBe(false); expect(fp.fov).toBe(75); expect(fp.eye).toBeGreaterThan(0.8); expect(fp.eye).toBeLessThan(2);
+  const fp = await view(); expect(fp.body).toBe(false); expect(fp.fov).toBe(70); expect(fp.eye).toBeGreaterThan(0.8); expect(fp.eye).toBeLessThan(2);
   await expect(page.locator('#toast')).toContainText('1인칭');
   await shot('out-first');
   if (!isMobile) { // (v1.10.210, as the third: the arrows walk -- ↑ where I look, → a side step, the look kept; W/A/S/D turn the look)
     const at = () => page.evaluate(() => [window.PlazaDebug().x, window.PlazaDebug().z]); const hold = async (key) => { await page.locator('#plazaStage').focus(); await page.keyboard.down(key); await page.waitForTimeout(700); await page.keyboard.up(key); await page.waitForTimeout(300); };
-    let a = await at(); const { yaw } = await view(); await hold('ArrowUp');
+    let a = await at(); const { yaw } = await view(); await hold('KeyW');
     let b = await at(); let moved = Math.hypot(b[0] - a[0], b[1] - a[1]);
     expect(moved).toBeGreaterThan(0.3); expect(((b[0] - a[0]) * -Math.sin(yaw) + (b[1] - a[1]) * -Math.cos(yaw)) / moved).toBeGreaterThan(0.9);
-    a = b; await hold('ArrowRight'); b = await at(); moved = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    a = b; await hold('KeyD'); b = await at(); moved = Math.hypot(b[0] - a[0], b[1] - a[1]);
     expect(moved).toBeGreaterThan(0.3); expect(((b[0] - a[0]) * Math.cos(yaw) + (b[1] - a[1]) * -Math.sin(yaw)) / moved).toBeGreaterThan(0.9); expect(Math.abs((await view()).yaw - yaw)).toBeLessThan(0.02);
-    a = b; await hold('KeyD'); b = await at();
+    a = b; await hold('ArrowRight'); b = await at();
     expect(Math.hypot(b[0] - a[0], b[1] - a[1])).toBeLessThan(0.05); expect(Math.abs((await view()).yaw - yaw)).toBeGreaterThan(0.3); // (D: the look turns, I stay)
   }
   // a talk in the first: face to face -- the view turned to them (no talk camera), my body still hidden; closed, the first on
@@ -39,7 +39,7 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
   await expect.poll(async () => Math.abs((await page.evaluate(() => window.PlazaDebug().talkAim()))?.x ?? 9), { timeout: 10000 }).toBeLessThan(0.2); /* (their eyes in the middle of the screen -- the figure drawn, not the walker's reckoned spot: v1.10.210 local phone run, one held while walking drawn a step behind) */
   expect(await view()).toMatchObject({ mode: 'first', body: false, fov: 64 });
   await shot('talk-first');
-  await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false); expect(await view()).toMatchObject({ mode: 'first', fov: 75 });
+  await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false); expect(await view()).toMatchObject({ mode: 'first', fov: 70 });
   // the 관공서: the third till V2 (「곧」); my house: the first by default, the third chosen there kept for indoors
   const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, who, th.x, th.z);
   const space = () => page.evaluate(() => window.PlazaDebug().space);
