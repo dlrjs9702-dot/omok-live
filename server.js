@@ -1621,8 +1621,13 @@ async function projectsNow() {
   return worldEdit(async () => {
     const before = (await pointStore.worldValue('projects')) || null; const s = IslandProjects.roll(before, projectsDay(), projectGoal);
     if (JSON.stringify(s) !== JSON.stringify(before)) { await pointStore.setWorldValue('projects', s); if (before) broadcastIsland('projects', IslandProjects.view(s, projectGoal)); }
-    projectsState = s; return s;
+    projectsState = s; projectTerrain(s); return s;
   });
+}
+// v1.10.224: an open bridge is walked on (the terrain's bridge rule -- the page adds it the same way)
+function projectTerrain(s) {
+  const open = Boolean(s?.open?.some((o) => o.id === 'bridge')); const i = IslandTerrain.bridges.findIndex((b) => b.project === 'bridge');
+  if (open && i < 0) IslandTerrain.bridges.push(IslandProjects.bridgeEntry(IslandTerrain)); else if (!open && i >= 0) IslandTerrain.bridges.splice(i, 1); // (총괄 224 검토: a tests' reset takes it away again)
 }
 async function projectGive(account, name, amount) {
   return worldEdit(async () => {
@@ -4014,7 +4019,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.223' });
+    return sendJson(res, 200, { ok: true, version: '1.10.224' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6672,7 +6677,7 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/projects' && req.method === 'POST') { // (the amounts and the next day: tests only -- no button for the administrator)
     const body = await parseJson(req);
-    if (body.reset) { projectsDayShift = 0; await worldEdit(() => pointStore.setWorldValue('projects', null)); projectsState = null; }
+    if (body.reset) { projectsDayShift = 0; await worldEdit(() => pointStore.setWorldValue('projects', null)); projectsState = null; projectTerrain(null); }
     if (body.nextDay) projectsDayShift += 1;
     if (body.open) await worldEdit(async () => { const s = IslandProjects.roll((await pointStore.worldValue('projects')) || null, projectsDay(), projectGoal); for (const id of [].concat(body.open)) if (!s.open.some((o) => o.id === id)) s.open.push({ id, day: projectsDay(), top: [], names: [] }); if (s.cur && [].concat(body.open).includes(s.cur)) { s.cur = null; s.raised = 0; s.donors = {}; } await pointStore.setWorldValue('projects', s); }); // (a project open at once: the photos, the later ones' tests)
     const s = await projectsNow(); return sendJson(res, 200, { ok: true, day: projectsDay(), state: s });
@@ -8247,7 +8252,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.223 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.224 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

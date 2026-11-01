@@ -127,6 +127,9 @@
     { tier: 'trail', w: 2.4, pts: [[-70, -8], [-80, 1.5], [-86, 3.5], [-92, 2.5], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
     { tier: 'trail', w: 2.4, pts: [[-122, -6], [-131, 12], [-133, 32], [-127.5, 37.5], [-124.25, 41], [-124.25, 45.8]] }, // → the farm (its farmer) -- (5회차 5 「길이랑 터 있는 곳이랑 안 맞아」: straight into the gate's middle, not the fence's corner)
     { tier: 'walk', w: 2.8, pts: [[42, -54], [46, -49], [66, -46], [88, -30], [104, -6], [116, 12], [112, 34], [100, 46], [96, 60]] }, // 잔치마루: the contest square, the museum
+    // (v1.10.224 섬 가꾸기 동쪽 강 새 다리: off 잔치마루's walk to 은하내's mouth -- stopping on the bank, the bridge itself the
+    // project's; over it a step onto 강 어귀 낚시터, the little rise between the river and the sea)
+    { tier: 'walk', w: 2.8, pts: [[115.2, 9.3], [132, 2], [148, -5], [159, -10.1]] }, { tier: 'trail', w: 2, pts: [[163.7, -20], [163.9, -21.8]] },
     // (묶음 1 섬 길 정리: every place on a walk -- the doors the walks passed by, 툇마루역 round 툇마루섬's pond, and the
     // ridge: from the stairs' top along 달마루 능선 (its flat crest, r 138) to 영웅마루역's lift, a lookout on the way)
     { tier: 'trail', w: 2.4, pts: [[-80.5, 1.2], [-81, -3.5], [-84.5, -8.6], doorPt('chat')] }, // → the gazebo (묶음 5: round its east side to its door)

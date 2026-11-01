@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.224 섬 가꾸기 3 (강 어귀 다리·낚시터·전망대·투광등 빛)
+
+- 새 다리: 은하내 어귀(161.4, −15), 열리면 지형 다리 규칙(projectTerrain — 서버·화면, reset 때 뺌). 길: walk 13 → 다리 48 m + 건너편 2 m(ground-v2 다시 만듦, 저절로 다리 없음).
+- 강 어귀 낚시터: 건너편 둔덕(바다·강), fish:mouth SPACE 낚시·미니맵 이름, 열리기 전 못 감.
+- 능선 전망대(−43, −136): 뒤 계단 SPACE → 망원경(서쪽 먼 바위산).
+- 투광등 밤 빛 기둥·바닥 빛(가산, 불투명도 낮게).
+- 시험: island-projects 단위·dalmaru-paths 다리 잇기·island-events 열 명 고정, e2e island-projects-3(새).
+
 ## v1.10.223 섬 가꾸기 2 (투표·민원 창구·물가 거리·야경 조명)
 
 - 투표: 분수·꽃길 뒤 마루 시장(정문) 대화에 다음 사업 셋까지 하루 투표(한 표·바꿈), 다음 날 최다(같으면 앞) 시작·적립 넣음, 하나 남으면 바로. 다리·전망대 soon(224 전까지 표 밖).
@@ -29,11 +37,3 @@
 - 열림: 새 분수(옛 자리), 꽃길(walk 9 양옆 화단 8 + 봄 벚나무, 길머리 7 m 비움), 명판(sign.plaque, SPACE: 보탠 사람).
 - 간판 글자(boardText): 그린 크기로 재서 판 안에, 두 줄.
 - 에셋 71 projects-v1 8개 연결. 시험: island-projects 단위·e2e(새).
-
-## v1.10.221 도구 닳기
-
-- 낚싯대·잠자리채 칸마다 하나(unique), 남은 횟수 meta.uses(없으면 가득: 30, 튼튼한 것 80). 잡기 판정 때 islandGive(wear)가 같은 claim 안에서 가장 낡은 것 1 — 놓침·허공·놀람은 안 줄어듦, 0이면 빠짐. 자전거 안 닳음.
-- 잡화점 튼튼한 낚싯대·잠자리채 3,800P(good:*_sturdy), 도구 벽 다음 고리·같은 모델·금테.
-- 종류마다 3개까지(TOOL_MAX) — 사기 거래 안에서 셈(JSON·PG), 자전거는 한 대.
-- 화면: 가방 막대, 든 도구 횟수(PC 오른쪽 아래·폰 왼쪽 위), 5회 쪽지, 0 「툭!」 조각.
-- 시험: store-tools·wearTool·낚시·곤충 단위, e2e tool-wear(새, PC·폰).
