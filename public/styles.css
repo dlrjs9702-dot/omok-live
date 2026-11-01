@@ -3185,3 +3185,8 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
 .toolGauge.hidden{display:none}
 span.goodIcon{display:grid;place-items:center;font-size:3.4rem;line-height:1}
 body.touchIsland .toolGauge{right:auto;left:16px;bottom:auto;top:68px} /* (the phone: clear of the run and act buttons) */
+/* v1.10.222 섬 가꾸기: the 기부함's project -- what fills, a bar, mine and the savings */
+.donationProject{display:grid;gap:6px;margin:8px 0;padding:10px 12px;border-radius:14px;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+.donationProject .toolUses{position:relative;left:auto;right:auto;bottom:auto;height:9px}
+.donationProject small{color:var(--isle-soft);font-weight:700}
+.donationProject.hidden,.donationProject .hidden{display:none}

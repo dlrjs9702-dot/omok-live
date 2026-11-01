@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.222 섬 가꾸기 사업 1 (틀·기부함·분수·꽃길)
+
+- public/plaza/island-projects.js(서버·화면 같이): 순서 고정 분수 → 꽃길(223 투표), 목표 경제 값 project:<id>(1,000,000 / 1,500,000), 상태 worldValue 'projects', 서울 날짜로 넘김(시작·1분마다·요청).
+- 기부: 처음 적용 때만 사업에 더함, 넘친 돈·공사 날·사업 없을 때 적립 → 다음 사업에. 기부함 막대. 시험 API /api/test/projects만.
+- 공사 날: project.works 울타리·안내판(두 줄), 바위 근무표 'works'(IslandRoster.setWorks, 3층 해송), 보통 대화에 「영차!」 줄. 심부름은 공사 갈고리 없는 근무표(walks plain)로.
+- 열림: 새 분수(옛 자리), 꽃길(walk 9 양옆 화단 8 + 봄 벚나무, 길머리 7 m 비움), 명판(sign.plaque, SPACE: 보탠 사람).
+- 간판 글자(boardText): 그린 크기로 재서 판 안에, 두 줄.
+- 에셋 71 projects-v1 8개 연결. 시험: island-projects 단위·e2e(새).
+
 ## v1.10.221 도구 닳기
 
 - 낚싯대·잠자리채 칸마다 하나(unique), 남은 횟수 meta.uses(없으면 가득: 30, 튼튼한 것 80). 잡기 판정 때 islandGive(wear)가 같은 claim 안에서 가장 낡은 것 1 — 놓침·허공·놀람은 안 줄어듦, 0이면 빠짐. 자전거 안 닳음.
@@ -27,11 +36,3 @@
 - 심부름: errandsOf(day, walksToday) — 그날 걷는 주민끼리, 넘기지 않으면 예전 열 명(결과 같음).
 - 27명으로: 호감도 단계 보상·단짝 칭호(titleOf)·주민 편지(residentLetter)·심부름 사례 이름·callOf. 친한 사이 가구는 10명분만.
 - 시험: resident-likes-letters.test(새), likes-letters-photo.spec(사진 전용).
-
-## v1.10.219 대화 자리 잡기 + 역 철이
-
-- 대화 카메라: 섬에서 시선에 나무·덤불·가로등(natureSolids)이 걸치면 내 왼쪽 → 양쪽 가까이(0.6배) 중 먼저 트인 자리(대화마다 한 번, talkSide). 주민 바로 뒤 나무(마지막 8 %)는 벽 아님.
-- 키 작은 주민(2.1 m 아래): k = max(0.6, top/2.1)로 카메라 가깝고 낮게(y 1.9×k), 겨누는 점을 나에게서 조금 더 비켜 — 콩이 머리 화면 위쪽. 2.1 m·2.6 m 넘는 주민은 전과 같음.
-- 먼 주민: 대화가 1.9 m보다 멀리서 잡히면 1.6 m(1인칭 fpGap)까지 걸어감(걷기 동작).
-- 역 철이(근무표 지킴이·부탁 철이): 광장 대신 옆 길을 봄(facePath).
-- 시험: talk-spot.spec(새, PC·폰).

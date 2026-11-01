@@ -51,14 +51,18 @@
     if (!last || s.day > last.day) last = s;
     return s;
   }
-  // the day's table -> { day, posts: { mall1..plaza: n, civil: [n, n], station: n, gate, jail, pavilion, farm }, resting: n, off: [n] }
-  function rosterOf(day) {
+  // v1.10.222 섬 가꾸기: a works day (the server's word -- a project filled that day, not the date alone: setWorks) 바위 stands by
+  // the works fence, his 3rd floor kept by 해송 that day
+  const WORKS = 19; let worksOn = () => false; const setWorks = (fn) => { worksOn = typeof fn === 'function' ? fn : () => false; };
+  // the day's table -> { day, posts: { mall1..plaza: n, civil: [n, n], station: n, gate, jail, pavilion, farm, works? }, resting: n, off: [n] }
+  function rosterOf(day, plain = false) { // (plain: without the works day -- the day's errands are drawn from it, not changed when a project fills at noon)
     const r = rotating(day); const rest = CIVIL[((dayNum(day) % 3) + 3) % 3];
     const posts = { ...r.at, civil: CIVIL.filter((n) => n !== rest), station: weekday(day) === 0 ? 18 : 16, ...FIXED };
+    if (!plain && worksOn(day)) { posts.works = WORKS; if (posts.mall3 === WORKS) posts.mall3 = 1; }
     return { day, posts, resting: rest };
   }
   // where islander n works on `day`: a post id, or null (walking)
-  function postOf(n, day) { const { posts } = rosterOf(day); for (const [id, w] of Object.entries(posts)) if (w === n || (Array.isArray(w) && w.includes(n))) return id; return null; }
+  function postOf(n, day, plain = false) { const { posts } = rosterOf(day, plain); for (const [id, w] of Object.entries(posts)) if (w === n || (Array.isArray(w) && w.includes(n))) return id; return null; }
   // C1 (총괄 2026-10-31 ②): a rotating post's islander is talked to at its counter that day -- a walker does not walk, a story
   // islander's 부탁 is taken there too
   const POST_IDS = POSTS.map((p) => p.id);
@@ -68,6 +72,6 @@
   const deskRest = (day) => { const rest = DESK[rosterOf(day).resting]; return { rest, by: COVER[rest] }; };
   // C2 (v1.10.216): who walks the island that day -- everyone not at a post (the resting clerk too, 철이 on a Sunday);
   // 콩이 in October at his Halloween spot
-  const walks = (n, day) => postOf(n, day) == null && !(n === 14 && day.slice(5, 7) === '10');
-  return { POSTS, CIVIL, FIXED, HOSTS, MAX_WEEK, MAX_RUN, DESK, COVER, rosterOf, postOf, counterOf, deskRest, walks };
+  const walks = (n, day, plain = false) => postOf(n, day, plain) == null && !(n === 14 && day.slice(5, 7) === '10');
+  return { POSTS, CIVIL, FIXED, HOSTS, MAX_WEEK, MAX_RUN, DESK, COVER, setWorks, rosterOf, postOf, counterOf, deskRest, walks };
 }));

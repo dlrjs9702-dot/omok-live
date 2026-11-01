@@ -81,6 +81,7 @@ const bagSlots = new Map();
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandRoster = require('./public/plaza/island-roster'); // v1.10.215 주민 근무표
+const IslandProjects = require('./public/plaza/island-projects'); // v1.10.222 섬 가꾸기 사업
 const IslandStory = require('./public/plaza/island-story'); // S1 섬 이야기
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
@@ -1058,7 +1059,7 @@ function errandPay(e, before) {
   return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0);
 }
 async function errandView(account) {
-  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day, walksToday);
+  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day, errandWalkers);
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
   const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
@@ -1244,6 +1245,7 @@ const climbWeekTicker = setInterval(() => {
   settleDonationWeeks(); // v1.10.5: closes last week's donations (Monday 00:00) and swaps the statues (00:30)
   settleWeeklyTitles(); // v1.10.89 낚시왕 · v1.10.90 제초왕
   settleClimbWeeks();
+  projectsNow().catch(() => {}); // v1.10.222: a new day -- yesterday's works open (everyone told), 바위's post by it
 }, 60 * 1000);
 climbWeekTicker.unref?.();
 
@@ -1574,9 +1576,14 @@ const counterToday = (n) => { const d = rosterDay(); return d ? IslandRoster.cou
 const deskToday = () => { const d = rosterDay(); return d ? IslandRoster.deskRest(d) : { rest: null, by: null }; };
 // C2 (v1.10.216): every islander not at a post walks (the table off: the ten as before); one walking or at a counter talks
 const walksToday = (n) => { const d = rosterDay(); return d ? IslandRoster.walks(n, d) : n < IslandCast.WALKERS.length; };
+// (v1.10.222 총괄 검토 3: the day's errands drawn from the roster without a works day -- a project filling at noon changes no errand;
+// 바위 at the works fence talks there all the same)
+const errandWalkers = (n) => { const d = rosterDay(); return d ? IslandRoster.walks(n, d, true) : n < IslandCast.WALKERS.length; };
 // the station's keeper today (철이, on a Sunday 반디 -- 총괄 C1 검토 1): talked to at the station, as one at a counter
 const stationToday = (n) => { const d = rosterDay(); return d && IslandRoster.postOf(n, d) === 'station' ? 'station' : null; };
-const postToday = (n) => counterToday(n) ?? stationToday(n);
+// v1.10.222 섬 가꾸기: a works day 바위 at the works fence (the roster's own hook, set from the projects' state below)
+const worksToday = (n) => { const d = rosterDay(); return d && IslandRoster.postOf(n, d) === 'works' ? 'works' : null; };
+const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n);
 const talkable = (n) => Number.isInteger(n) && Boolean(IslandCast.RESIDENTS[n]) && (walksToday(n) || postToday(n) != null);
 const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
 function broadcastIslandRemoved(ids) {
@@ -1604,6 +1611,25 @@ function collectionPose(token,pull=null) {
 }
 const resourcePulls = new Map();
 const weedPulls = new Map(); // session token -> { weedId, at, requestId, result }
+// v1.10.222 섬 가꾸기 사업 (public/plaza/island-projects.js): the island's state (worldValue 'projects'), rolled to today (yesterday's works
+// open, the next begun) when asked; a 기부 into it. Its goals are 경제 값 (project:<id>). The roster reads its works day.
+let projectsState = null; let projectsDayShift = 0; // (tests: /api/test/projects next-day)
+const projectGoal = (id) => Economy.value(`project:${id}`);
+const projectsDay = () => { const d = kstDate(nowMs()); return projectsDayShift ? new Date(Date.parse(`${d}T00:00:00Z`) + projectsDayShift * 86400000).toISOString().slice(0, 10) : d; };
+IslandRoster.setWorks((day) => projectsState?.works?.day === day);
+async function projectsNow() {
+  return worldEdit(async () => {
+    const before = (await pointStore.worldValue('projects')) || null; const s = IslandProjects.roll(before, projectsDay(), projectGoal);
+    if (JSON.stringify(s) !== JSON.stringify(before)) { await pointStore.setWorldValue('projects', s); if (before) broadcastIsland('projects', IslandProjects.view(s, projectGoal)); }
+    projectsState = s; return s;
+  });
+}
+async function projectGive(account, name, amount) {
+  return worldEdit(async () => {
+    const s = IslandProjects.give((await pointStore.worldValue('projects')) || null, { userId: account, name, amount }, projectsDay(), projectGoal);
+    await pointStore.setWorldValue('projects', s); projectsState = s; broadcastIsland('projects', IslandProjects.view(s, projectGoal)); return s;
+  });
+}
 function broadcastIsland(type, data) { for (const entry of [...lobbyStreams]) { try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } } }
 async function weedState(now = nowMs()) {
   let state = await pointStore.islandWeeds();
@@ -1687,6 +1713,7 @@ function islandProgress(kind, account, qty, where = null) { // (A2b: a promise -
 // v1.10.215 주민 근무표 C1: a rotating post's counter (where its customer stands) and its floor; by it -- talking to that day's
 // islander. The 관공서's desks: a resting one's work at the desk beside it (총괄 ③)
 const POST_AT = { mall1: ['store', () => IslandStore.sectorPoint('mall:store')], mall2: ['fashion', () => IslandFashion.world(...IslandFashion.COUNTER.customer)], mall3: ['furniture', () => IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1)], roof: ['petshop', () => IslandPetShop.world(IslandPetShop.COUNTER_KEEPER[0], IslandPetShop.COUNTER_KEEPER[1] - 2.3)], plaza: ['island', () => IslandTerrain.facilityDoor('attendance')], station: ['island', () => IslandQuests.STORIES.stationmaster.at] };
+POST_AT.works = ['island', () => { const w = projectsState?.works; return w ? IslandProjects.SITES[w.id]?.keeper || null : null; }]; // (v1.10.222)
 const atPost = (pos, post) => { const p = POST_AT[post]; const w = p?.[1](); return Boolean(pos && w && (pos.space || 'island') === p[0] && Math.hypot(pos.x - w.x, pos.z - w.z) <= 3); };
 function atDesk(session, at, desk) { // desk: 'civil' | 'tax' | 'bank'
   const R = IslandTerrain.TOWNHALL_ROOM; const near = (d) => { const w = IslandTerrain.roomWorld(R[d === 'civil' ? 'desk' : d].lx, R[d === 'civil' ? 'desk' : d].lz); return Math.hypot(at.x - w.x, at.z - w.z) <= 1.8; };
@@ -3987,7 +4014,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.221' });
+    return sendJson(res, 200, { ok: true, version: '1.10.222' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6603,6 +6630,22 @@ async function requestHandler(req, res) {
     });
   }
   // v1.10.5 기부: this week's ranking and my total, the statues on show, this week's 호구왕; giving burns the points.
+  // v1.10.222 섬 가꾸기 사업: what is filling, saved, at its works, open (mine: what I gave to the one filling); a plaque's names
+  if (pathname === '/api/island/projects' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, ...IslandProjects.view(await projectsNow(), projectGoal, pointAccountForSession(session)) });
+  }
+  if (pathname === '/api/island/projects/plaque' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    const o = (await projectsNow()).open.find((x) => x.id === url.searchParams.get('id')); if (!o) return sendError(res, 404, 'NOT_OPEN', '아직 열리지 않았어요.');
+    return sendJson(res, 200, { ok: true, id: o.id, name: IslandProjects.byId(o.id)?.name || o.id, day: o.day, top: o.top, names: o.names });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/projects' && req.method === 'POST') { // (the amounts and the next day: tests only -- no button for the administrator)
+    const body = await parseJson(req);
+    if (body.reset) { projectsDayShift = 0; await worldEdit(() => pointStore.setWorldValue('projects', null)); projectsState = null; }
+    if (body.nextDay) projectsDayShift += 1;
+    const s = await projectsNow(); return sendJson(res, 200, { ok: true, day: projectsDay(), state: s });
+  }
   if (pathname === '/api/donation' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -6630,6 +6673,7 @@ async function requestHandler(req, res) {
     const result = await pointStore.donate({ userId: account, requestId: body.requestId, amount, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')) }, now);
     if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
     notifyPointsChanged([account]);
+    if (result.applied) await projectGive(account, String(session.label || '섬 사람'), amount).catch((error) => console.error('섬 가꾸기 기부 반영 실패:', error.message)); // (v1.10.222: the game name only)
     return sendJson(res, 200, { ok: true, total: result.total, amount: result.amount, balance: result.balance ?? result.balanceAfter });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/donation/record' && req.method === 'POST') {
@@ -6922,7 +6966,7 @@ async function requestHandler(req, res) {
   // (Q 할 일 카드 「그만둘래요」) an errand under way let go: its asker offers it again (nothing paid, nothing kept)
   if (pathname === '/api/island/errand/drop' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
-    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day, walksToday);
+    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day, errandWalkers);
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const id = String((await parseJson(req)).id || ''); // (C5 Codex 4차 P3-2: both awaited before the stages are read -- no write between lost)
     const next = IslandErrands.drop(errands, errandStages.get(key) || {}, done, id);
     if (!next) return sendError(res, 409, 'ERRAND_GONE', '그만둘 수 있는 부탁이 아니에요.');
@@ -7018,7 +7062,7 @@ async function requestHandler(req, res) {
     const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
     // (대화창 새 단장: the choices are only what can be done today -- the day's story and gift not yet, an errand to do with them)
     const sendTalk = async (view) => {
-      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day, walksToday);
+      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day, errandWalkers);
       const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
       return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${day}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
     };
@@ -7069,7 +7113,7 @@ async function requestHandler(req, res) {
       let say;
       if (topic === 'how') say = [IslandCast.walkerLine(n, Math.random, 'day', level, String(session.label || ''))];
       else {
-        const errands = IslandErrands.errandsOf(day, walksToday); const stages = errandStages.get(`${day}|${account}`) || {};
+        const errands = IslandErrands.errandsOf(day, errandWalkers); const stages = errandStages.get(`${day}|${account}`) || {};
         const mine = errands.find((e) => stages[e.id] === 1 && e.kind !== 'buy' && e.to !== n) || errands.find((e) => stages[e.id] === 2 && e.from !== n);
         const other = mine ? (stages[mine.id] === 2 ? mine.from : mine.to) : (n + 1 + Math.floor(Math.random() * (IslandCast.WALKERS.length - 1))) % IslandCast.WALKERS.length;
         say = [IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
@@ -7129,7 +7173,7 @@ async function requestHandler(req, res) {
       if (owed) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, giftUsed: { ...(doc?.giftUsed || {}), [n]: null } } })).catch(() => {});
       return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, String(session.label || '')), ...(used?.bag ? { bag: used.bag } : {}) }));
     }
-    const errands = IslandErrands.errandsOf(day, walksToday); const key = `${day}|${account}`;
+    const errands = IslandErrands.errandsOf(day, errandWalkers); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     // Q 부탁 받기 (docs/quest-accept-complete-20261026.md): 「할게요!」 starts the offered errand; 「다음에요」 keeps nothing
     // (asked again today) -- each answered in the asker's own words
@@ -8092,6 +8136,7 @@ async function main() {
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
+  await projectsNow().catch((error) => console.error('섬 가꾸기 상태 읽기 실패:', error.message)); // v1.10.222 (after the goals are known)
   for (const [account, n] of Object.entries((await pointStore.worldValue('bagSlots')) || {})) bagSlots.set(account, n); // v1.10.195
   // v1.10.91 변신 따로 판매 A안: the set owners get their transformation (idempotent; new owners of a whole set after this buy it)
   if (!(await pointStore.worldValue('transformGrant'))) {
@@ -8171,7 +8216,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.221 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.222 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

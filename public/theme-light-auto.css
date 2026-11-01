@@ -1441,3 +1441,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #islandBagDialog .islandBagSlot.sturdy{box-shadow:0 0 0 3px #d9a632 inset}
 :root[data-theme="light"] .goodIcon.sturdy{box-shadow:0 0 0 3px #d9a632}
 :root[data-theme="light"] .toolGauge{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .donationProject{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .donationProject small{color:var(--isle-soft)}
