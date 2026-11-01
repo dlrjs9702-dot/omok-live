@@ -1429,7 +1429,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       projectPiece('project.blossom', g, s.x, s.z, s.yaw, null);
       for (const k of [-1.1, 0, 1.1]) solids.push({ x: s.x + Math.sin(s.yaw) * k, z: s.z + Math.cos(s.yaw) * k, r: 0.5 }); // (its length: three small rings)
     }
-    const at = site.plaque; 
+    const at = site.plaque;
     signboard('plaque', `함께 만든 ${p.thing}`, g, at.x, heightAt(at.x, at.z), at.z, at.yaw); // (명판: small, its words on it; SPACE -- 「섬 사람들이 함께 만든 …」, who gave)
     doors[`plaque:${id}`] = { x: at.x, z: at.z, name: `${p.thing} 명판 · 보탠 사람` };
     return g;
