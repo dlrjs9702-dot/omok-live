@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.225 마당 꾸미기 (3층 「마당」 진열대·내 마당·마당 넓히기·2층 큰 집 막기)
+
+- public/plaza/island-yard.js(서버·화면 같이): 집 모델 바닥+처마 둘레 마당 칸 — 처음 2.5 m·넓히기 4 m·6 m(땅 닿는 데까지), 집·현관→길 1.4 m·섬 길·물가·비탈·이웃 쪽·나무·덤불·가로등·툇마루역 승강기 뺌. 0.25 m 칸·90° 돌리기·겹침 막음(울타리는 끝 기둥만), 개수 24/40/60.
+- 3층 「마당」 진열대 12칸(경제 값 yard:<모양>), 가구 창고 가구·마당 칸, 집 안↔마당 섞기 서버가 막음. /api/home/yard(내 마당에 서서), /api/home/yard/grow(민원실, yard:price_2·3 = 100,000·200,000, 바로), 단계는 worldValue yard:<계정>(집터 풀어도 남음). 집 넓히면 걸린 물건 창고로+관공서 쪽지.
+- 장면: 모양마다 인스턴스 한 묶음(Low 멀리), 막는 원은 걷기 격자에(아치 양 기둥만, 디딤돌 안 막힘), 벤치 두 자리, 석등·정원등 nightGlow. 2층 큰 집(4단계)도 큰 집 원으로 막힘.
+- 에셋 70(yard-v1 12개). 시험: island-yard 단위, e2e yard(PC·폰, 실제 모델은 SHOT_DIR 때만, 프레임 비교 한 줄).
+
 ## v1.10.224 섬 가꾸기 3 (강 어귀 다리·낚시터·전망대·투광등 빛)
 
 - 새 다리: 은하내 어귀(161.4, −15), 열리면 지형 다리 규칙(projectTerrain — 서버·화면, reset 때 뺌). 길: walk 13 → 다리 48 m + 건너편 2 m(ground-v2 다시 만듦, 저절로 다리 없음).
@@ -28,12 +35,3 @@
 - 물가 거리: walk 1 땅 쪽 12 m마다 가로등+벤치 9, 벤치 pm-<k> 열린 뒤 앉기(서버 확인).
 - 야경 조명: walk 0 위 전구 줄 4, 분수 4·등대 3 투광등. 등록부 nightGlow(project.*) → 로더가 glow 재질을 밤에만 켬.
 - 시험: island-projects 단위(투표·서버), e2e island-projects-2(새).
-
-## v1.10.222 섬 가꾸기 사업 1 (틀·기부함·분수·꽃길)
-
-- public/plaza/island-projects.js(서버·화면 같이): 순서 고정 분수 → 꽃길(223 투표), 목표 경제 값 project:<id>(1,000,000 / 1,500,000), 상태 worldValue 'projects', 서울 날짜로 넘김(시작·1분마다·요청).
-- 기부: 처음 적용 때만 사업에 더함, 넘친 돈·공사 날·사업 없을 때 적립 → 다음 사업에. 기부함 막대. 시험 API /api/test/projects만.
-- 공사 날: project.works 울타리·안내판(두 줄), 바위 근무표 'works'(IslandRoster.setWorks, 3층 해송), 보통 대화에 「영차!」 줄. 심부름은 공사 갈고리 없는 근무표(walks plain)로.
-- 열림: 새 분수(옛 자리), 꽃길(walk 9 양옆 화단 8 + 봄 벚나무, 길머리 7 m 비움), 명판(sign.plaque, SPACE: 보탠 사람).
-- 간판 글자(boardText): 그린 크기로 재서 판 안에, 두 줄.
-- 에셋 71 projects-v1 8개 연결. 시험: island-projects 단위·e2e(새).
