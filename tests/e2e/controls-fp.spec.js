@@ -9,8 +9,17 @@ const { shopper, adminToken, intoMall, liftTo, expectNoScriptError } = require('
 test('조작·1인칭: W/A/S/D 걷기·방향키 시점·마우스 보기·감도·창 열면 풀림, 1인칭 70°·눈높이', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.SHOT_DIR ? 400000 : 240000);
   const who = await shopper(browser, request, isMobile ? '조작구경m' : '조작구경', 0, 'female'); const { page } = who;
-  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.setItem('gc.view.out', 'first'); localStorage.setItem('gc.view.in', 'first'); });
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.setItem('gc.view.out', 'first'); localStorage.setItem('gc.view.in', 'first'); localStorage.setItem('gc.testControlsNotice', '1'); });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
+  // (총괄 검토) the keys swapped: told once on a PC -- not on a phone, not again after
+  const notice = page.locator('#plazaDialog .controlsNotice');
+  if (isMobile) { await page.waitForTimeout(1500); await expect(notice).toHaveCount(0); }
+  else {
+    await expect(notice).toBeVisible({ timeout: 20000 }); await expect(notice).toContainText('W·A·S·D'); await expect(page.locator('#plazaDialogTitle')).toHaveText('조작이 바뀌었어요');
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-controls-notice.png` });
+    await notice.getByRole('button', { name: '알겠어요' }).click(); await expect(notice).toBeHidden();
+    await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true); await page.waitForTimeout(1500); await expect(notice).toHaveCount(0);
+  }
   const admin = await adminToken(request); const set = (what, mode) => request.post(`/api/admin/island/${what}`, { headers: { 'X-Session-Token': admin }, data: { mode } });
   const shot = async (name, wait = 1500) => { if (!process.env.SHOT_DIR) return; await page.waitForTimeout(wait); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-${process.env.BEFORE ? 'before' : 'after'}-${name}.png` }); };
   const view = () => page.evaluate(() => window.PlazaDebug().view());

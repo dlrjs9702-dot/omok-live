@@ -1961,6 +1961,7 @@
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); // (v1.10.215: today's table on)
+      showControlsNotice(); // (v1.10.217: the keys swapped -- told once on a PC)
       plaza.controller?.setLockTip?.(() => showToast('🖱 마우스로 둘러봐요 · Esc로 풀기 · 걷기는 W/A/S/D, 방향키는 시점', 5000)); // (v1.10.217: the first lock, once on this device)
       refreshStory(true); // (S1·S2: the 할 일 line, the little door -- the island up before plazaMode is set)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
@@ -4403,6 +4404,18 @@
   const talkToday = (list, today) => list.filter(([topic]) => !(topic === 'story' && !today?.story) && (!today || !((topic === 'errand' && !today.errand) || (topic === 'gift' && today.gifted) || (topic === 'ask' && today.asked))))
     .map(([topic, label]) => [topic, topic === 'story' ? STORY_CHOICE[today.story] || label : label]);
   // R2: my 호감도 with each islander (their greeting as I pass by -- the scene), again after each talk
+  // v1.10.217 조작 개편 (총괄 검토 「클릭 안 하는 PC 사용자는 방향키가 갑자기 시점이 된 걸 몰라요」): a PC's first time on the island
+  // since -- the walking and view keys swapped, told once (kept on this device); not on a phone (its stick is as it was); a
+  // test only when it asks (gc.testControlsNotice)
+  function showControlsNotice() {
+    try { if (localStorage.getItem('gc.controlsNotice') === '217' || (navigator.webdriver && !localStorage.getItem('gc.testControlsNotice'))) return; } catch { return; }
+    if (document.body.classList.contains('touchIsland') || matchMedia('(pointer: coarse)').matches) return;
+    try { localStorage.setItem('gc.controlsNotice', '217'); } catch {}
+    const card = document.createElement('div'); card.className = 'mirrorCard controlsNotice';
+    for (const t of ['걷기는 W·A·S·D, 시점은 방향키(←↑↓→)로 바뀌었어요.', '섬을 한 번 클릭하면 마우스로 둘러봐요. Esc를 누르면 풀려요.', '마우스 감도는 ☰ 메뉴에서 바꿀 수 있어요.']) { const p = document.createElement('p'); p.className = 'lookMeta'; p.textContent = t; card.append(p); }
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '알겠어요'; ok.addEventListener('click', () => plazaDialog.close()); card.append(ok);
+    openPlazaWindow('조작이 바뀌었어요', [card]);
+  }
   async function refreshRoster() { try { plaza.controller?.setRoster?.((await api('/api/island/roster')).day); } catch {} } // (v1.10.215 근무표: on, or not on a tests' server)
   async function refreshAffinity() { try { const d = await api('/api/island/affinity'); plaza.controller?.setAffinity?.(d.residents); } catch {} }
   // (CI 2026-10-27: a talk again straight after -- the bye and the new talk went together; the server taking the bye second
