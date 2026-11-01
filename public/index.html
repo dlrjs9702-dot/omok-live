@@ -119,6 +119,7 @@
         <button id="islandWalkBtn" class="islandCtl islandWalkBtn" type="button" aria-label="걸음 바꾸기 (느리게·보통)">걷기</button>
         <button id="islandRunBtn" class="islandCtl islandRunBtn" type="button" aria-label="누르고 있는 동안 뛰기">뛰기</button>
         <button id="homeEditBtn" class="homeEditBtn isle-pill hidden" type="button">꾸미기</button>
+        <button id="yardEditBtn" class="homeEditBtn isle-pill hidden" type="button" title="마당 꾸미기 (Y)">마당 꾸미기</button><!-- v1.10.225: in my yard on the island -->
         <button id="islandTurnBtn" class="islandCtl islandTurnBtn hidden" type="button" aria-label="잡은 가구 돌리기 (R)">돌리기</button>
         <!-- v1.10.189: on a stool or cushion, turn 45° (← / → on a PC) -->
         <button id="seatLeftBtn" class="islandCtl islandSeatBtn seatLeftBtn hidden" type="button" aria-label="앉은 채 왼쪽으로 돌기 (←)">↺</button>
@@ -1187,6 +1188,7 @@
     <div id="islandPlaceList" class="islandPlaceList" role="list"></div>
     <button id="islandPlaceSubmit" type="button" class="secondary"></button>
     <button id="homeApplyBtn" type="button" class="primary hidden">내 집 신청</button>
+    <button id="yardGrowBtn" type="button" class="secondary hidden">마당 넓히기</button><!-- v1.10.225 -->
     <div id="projectGive" class="donationProject hidden" role="group" aria-label="섬 가꾸기에 보태기"><b></b><i class="toolUses"></i><small></small><div class="projectGiveRow"><input id="projectGiveAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="보탤 포인트" aria-label="보탤 포인트" /><button id="projectGiveBtn" type="button" class="secondary">보태기</button></div></div><!-- v1.10.223 민원 창구에서 섬 가꾸기 -->
     <p id="islandPlaceStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
   </dialog>
@@ -1415,6 +1417,7 @@
   <script src="/plaza/dalmaru-island.js"></script><!-- 달마루섬 미리보기: replaces IslandTerrain before the island scripts read it -->
   <script src="/plaza/island-train.js"></script>
   <script src="/plaza/island-home.js"></script>
+  <script src="/plaza/island-yard.js"></script><!-- v1.10.225 마당 꾸미기 -->
   <script src="/plaza/island-npcs.js"></script>
   <script src="/plaza/island-cast.js"></script>
   <script src="/plaza/island-story.js"></script>

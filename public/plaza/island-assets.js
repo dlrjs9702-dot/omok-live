@@ -369,6 +369,9 @@
   // v1.10.222 섬 가꾸기 사업 (assets 71 projects-v1): the six works and the works fence, each as project.<file> (shown once a project
   // is at its works or open)
   for (const f of ['bridge_stone', 'flower_planter', 'promenade', 'lookout', 'string_lights', 'uplight', 'works', 'fountain']) REGISTRY[`project.${f}`] = { url: `/assets/island/projects-v1/${f}.glb`, low: { url: `/assets/island/projects-v1/${f}_low.glb` }, near: 45, nightGlow: true }; // (v1.10.223: their lamps and bulbs lit at night only)
+  // v1.10.225 마당 꾸미기 (assets 70 yard-v1): the yard's twelve, yard.<shape> (instanced over the lots, Low far off; the two
+  // lamps' glow lit at night only)
+  for (const f of ['fence_wood', 'fence_stone', 'fence_flower', 'stepping_stones', 'garden_light', 'birdhouse', 'flowerbed', 'planter_box', 'mailbox', 'bench', 'lantern_stone', 'arch']) REGISTRY[`yard.${f}`] = { url: `/assets/island/yard-v1/${f}.glb`, low: { url: `/assets/island/yard-v1/${f}_low.glb` }, near: 30, nightGlow: true };
   REGISTRY['project.blossom'] = { url: `${BASE}/spring/nature/tree_v2_spring.glb`, low: { url: `${BASE}/spring/nature/tree_v2_spring_low.glb` }, scale: 0.55, near: 35 }; // (the flower path's trees: in bloom whatever the season)
   REGISTRY['good.bugnet'] = { ...REGISTRY['together.tool_bugnet'], scale: 0.55 }; // (on the store's table, laid small)
   REGISTRY['good.fishing_rod'] = { ...REGISTRY['fishing.rod'], scale: 0.55 }; // (the rod one fishes with, on the table)

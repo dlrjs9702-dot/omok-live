@@ -15,8 +15,8 @@ test('가구점: 승강기로 2층, 진열된 가구 앞 SPACE로 사면 팔림 
   await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['lift:1']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('승강기');
   await press(); await page.locator('#liftCard button[data-floor="3"]').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('furniture');
-  // the day's sixteen and the four always on sale, each on its place
-  await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().furniture() || {}).length), { timeout: 15000 }).toBe(20);
+  // the day's sixteen and the four always on sale, each on its place (and the yard's twelve)
+  await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().furniture() || {}).length), { timeout: 15000 }).toBe(32); // (v1.10.225: and the 「마당」 shelf's 12)
   // by a plinth (the living room's first, on the phone the kitchen's second): its name and price; bought, it is sold here and in the storage
   const slot = isMobile ? 'kitchen1' : 'living0'; // (one server for both runs: each its own piece)
   const W = await page.evaluate((id) => { const F = window.IslandFurniture; const s = F.SLOTS.find((x) => x.id === id); const w = F.world(s.lx, s.lz); return F.clamp(w.x, w.z); }, slot);
