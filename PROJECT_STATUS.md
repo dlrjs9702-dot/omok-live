@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.223 섬 가꾸기 2 (투표·민원 창구·물가 거리·야경 조명)
+
+- 투표: 분수·꽃길 뒤 마루 시장(정문) 대화에 다음 사업 셋까지 하루 투표(한 표·바꿈), 다음 날 최다(같으면 앞) 시작·적립 넣음, 하나 남으면 바로. 다리·전망대 soon(224 전까지 표 밖).
+- 민원 창구 「섬 가꾸기에 보태기」: donate와 같은 길 + 사업, atDesk civil.
+- 물가 거리: walk 1 땅 쪽 12 m마다 가로등+벤치 9, 벤치 pm-<k> 열린 뒤 앉기(서버 확인).
+- 야경 조명: walk 0 위 전구 줄 4, 분수 4·등대 3 투광등. 등록부 nightGlow(project.*) → 로더가 glow 재질을 밤에만 켬.
+- 시험: island-projects 단위(투표·서버), e2e island-projects-2(새).
+
 ## v1.10.222 섬 가꾸기 사업 1 (틀·기부함·분수·꽃길)
 
 - public/plaza/island-projects.js(서버·화면 같이): 순서 고정 분수 → 꽃길(223 투표), 목표 경제 값 project:<id>(1,000,000 / 1,500,000), 상태 worldValue 'projects', 서울 날짜로 넘김(시작·1분마다·요청).
@@ -29,10 +37,3 @@
 - 종류마다 3개까지(TOOL_MAX) — 사기 거래 안에서 셈(JSON·PG), 자전거는 한 대.
 - 화면: 가방 막대, 든 도구 횟수(PC 오른쪽 아래·폰 왼쪽 위), 5회 쪽지, 0 「툭!」 조각.
 - 시험: store-tools·wearTool·낚시·곤충 단위, e2e tool-wear(새, PC·폰).
-
-## v1.10.220 새 주민 17명 좋아하는 것·8명 편지·심부름 그날 걷는 주민
-
-- LIKES 10~26(27개, 로드 때 RESIDENTS 수 확인), giftReact 기본 분기 지움. own.letter: 반디·바위·한결·김우성·마루·단비·한솔·새롬 5개씩(notes docs/resident-likes-letters-17-20261101.md).
-- 심부름: errandsOf(day, walksToday) — 그날 걷는 주민끼리, 넘기지 않으면 예전 열 명(결과 같음).
-- 27명으로: 호감도 단계 보상·단짝 칭호(titleOf)·주민 편지(residentLetter)·심부름 사례 이름·callOf. 친한 사이 가구는 10명분만.
-- 시험: resident-likes-letters.test(새), likes-letters-photo.spec(사진 전용).
