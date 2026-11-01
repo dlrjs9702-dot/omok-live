@@ -40,4 +40,3 @@ test('사진: 1인칭 집 책상 앞 눈높이', async ({ browser, request, isMo
     await page.waitForTimeout(6000); await page.screenshot({ path: `${process.env.SHOT_DIR}/${tag()}-home-desk.png` });
   } finally { await post(request, '/api/home/leave', a.token, {}).catch(() => {}); await post(request, '/api/test/home/release', a.token, { lot }).catch(() => {}); }
 });
-
