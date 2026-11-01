@@ -895,7 +895,7 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   for (const f of ways) expect(Math.hypot(f.dir.x, f.dir.z)).toBeCloseTo(1, 3);
   await page.evaluate(() => window.PlazaDebug().halloween.launchBats({ x: 250, z: 250 }));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().batsLow), { timeout: 15000 }).toBe(15);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().map((q) => q.id)), { timeout: 30000 }).toContain('questkid'); // the costumed kid's request (October)
+  if (new Date(Date.now() + 9 * 3600000).getUTCMonth() === 9) await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().map((q) => q.id)), { timeout: 30000 }).toContain('questkid'); // the costumed kid's request (October -- the server's month; the decor above is set by hand any month)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
   await page.evaluate(() => { window.PlazaDebug().halloween.set(false); window.PlazaDebug().setTime('day'); });

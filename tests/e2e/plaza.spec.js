@@ -721,14 +721,14 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   const afterA = await cam(); expect(afterA.yaw).toBeGreaterThan(0.3);
   await page.waitForTimeout(400);
   expect(Math.abs((await cam()).yaw - afterA.yaw)).toBeLessThan(0.02); // released: no more turning
-  await hold('d', 600); await page.waitForTimeout(300);
+  await hold('ArrowRight', 600); await page.waitForTimeout(300);
   expect((await cam()).yaw).toBeLessThan(afterA.yaw - 0.3);
 
   // v1.10.40: W looks up toward the sky, never past 45°; S looks down from higher up, never past 15°
-  await hold('w', 2500); await page.waitForTimeout(300);
+  await hold('ArrowUp', 2500); await page.waitForTimeout(300);
   const up = await cam(); expect(up.pitch).toBeLessThan(-sky + 0.01); expect(up.pitch).toBeGreaterThanOrEqual(-sky - 1e-9);
   expect(up.camera.clear).toBeGreaterThan(0.9); // looking at the sky the camera is still above the ground
-  await hold('s', 4000); await page.waitForTimeout(300);
+  await hold('ArrowDown', 4000); await page.waitForTimeout(300);
   const down = await cam(); expect(down.pitch).toBeGreaterThan(max - 0.01); expect(down.pitch).toBeLessThanOrEqual(max + 1e-9);
 
   // the mouse moves the same view: dragging up looks up from where the keys left it, with no jump
@@ -773,7 +773,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toBeVisible();
   const open = await cam();
-  await hold('d', 500); await hold('w', 500); await page.waitForTimeout(200);
+  await hold('ArrowRight', 500); await hold('ArrowUp', 500); await page.waitForTimeout(200);
   const still = await cam(); expect(Math.abs(still.yaw - open.yaw)).toBeLessThan(0.02); expect(Math.abs(still.pitch - open.pitch)).toBeLessThan(0.02);
   await page.keyboard.press('Escape');
   await expect(page.locator('#skinShopDialog')).toBeHidden();
