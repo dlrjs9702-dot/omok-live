@@ -3987,7 +3987,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.220' });
+    return sendJson(res, 200, { ok: true, version: '1.10.221' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5542,7 +5542,7 @@ async function requestHandler(req, res) {
   }
   if (pathname === '/api/island/store' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
-    return sendJson(res, 200, { ok: true, goods: IslandStore.SHELF.map((s) => { const def = IslandItems.ITEMS[s.id]; return { id: s.id, name: def?.name || ({ seed_flower_red: '빨강 꽃씨', seed_flower_yellow: '노랑 꽃씨', seed_flower_white: '흰 꽃씨', seed_flower_pink: '분홍 꽃씨', seed_flower_purple: '보라 꽃씨', sapling: '묘목', fertilizer: '비료' })[s.id] || s.id, price: def?.good && !s.soon ? Economy.value(`good:${s.id}`) : 0, use: def?.use || null }; }) });
+    return sendJson(res, 200, { ok: true, goods: IslandStore.SHELF.map((s) => { const def = IslandItems.ITEMS[s.id]; return { id: s.id, name: def?.name || ({ seed_flower_red: '빨강 꽃씨', seed_flower_yellow: '노랑 꽃씨', seed_flower_white: '흰 꽃씨', seed_flower_pink: '분홍 꽃씨', seed_flower_purple: '보라 꽃씨', sapling: '묘목', fertilizer: '비료' })[s.id] || s.id, price: def?.good && !s.soon ? Economy.value(`good:${s.id}`) : 0, use: def?.use || null, icon: def?.icon || null }; }) });
   }
   // B 47 생일: mine (set, hidden, how many cheered this year), today's birthdays; my own birthday pays its gift once a year
   if (pathname === '/api/island/birthday' && req.method === 'GET') {
@@ -5751,9 +5751,11 @@ async function requestHandler(req, res) {
     // ponytail: checked before the buy, two requests at the same instant could both pass; a store-side guard if it matters
     if (IslandItems.ONCE_USES.includes(IslandItems.ITEMS[s.id].use)) {
       if (qty !== 1) return sendError(res, 400, 'BAD_QTY', '하나만 살 수 있어요.');
-      if (((await pointStore.islandBag(account, [])).items || []).some((e) => e.itemId === s.id && e.qty > 0)) return sendError(res, 409, 'ALREADY_HAVE', '이미 가지고 있어요.');
+      // (v1.10.221 도구 닳기: a rod or a net -- up to three of a kind, counted inside the buy itself (two at once: one); a bike once)
+      if (!IslandItems.TOOL_KIND[s.id] && ((await pointStore.islandBag(account, [])).items || []).some((e) => e.itemId === s.id && e.qty > 0)) return sendError(res, 409, 'ALREADY_HAVE', '이미 가지고 있어요.');
     }
     let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`) }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+    if (out.reason === 'max') return sendError(res, 409, 'TOOL_MAX', `${IslandItems.TOOL_KIND[s.id] === 'bugnet' ? '잠자리채' : '낚싯대'}는 ${IslandItems.TOOL_MAX}개까지 가질 수 있어요.`);
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
     if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
     if (out.applied) notifyPointsChanged([account]); bikesOf.delete(account); /* (자전거: a new one rides at once) */
@@ -6150,7 +6152,7 @@ async function requestHandler(req, res) {
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     // v1.10.92 잡화점 미끼: a bait in the bag goes on this cast by itself (the better one first)
     const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
-    if (!bag.some((e) => e.itemId === 'fishing_rod')) return sendError(res, 409, 'NO_ROD', '낚싯대가 필요해요. 잡화점에서 살 수 있어요.'); // (사용자 2026-10-18)
+    if (!IslandItems.toolCount(bag, 'fishing_rod')) return sendError(res, 409, 'NO_ROD', '낚싯대가 필요해요. 잡화점에서 살 수 있어요.'); // (사용자 2026-10-18)
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
@@ -6175,11 +6177,11 @@ async function requestHandler(req, res) {
     if (!at || Math.hypot(at.x - c.at.x, at.z - c.at.z) > IslandFishing.MOVE_R) { fishCasts.delete(session.token); return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.'); }
     const account = pointAccountForSession(session);
     const itemId = `fish_${c.species}`;
-    const outcome = await pointStore.islandGive({ userId: account, claimId: `fish:${c.id}`, itemId, qty: 1, meta: null, dexEntry: itemId }, nowMs());
+    const outcome = await pointStore.islandGive({ userId: account, claimId: `fish:${c.id}`, itemId, qty: 1, meta: null, dexEntry: itemId, wear: 'fishing_rod' }, nowMs()); // (v1.10.221: the rod worn by a real catch only)
     if (outcome.reason === 'full') { fishCasts.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.'); }
     const dex = outcome.dex;
     const f = IslandFishing.SPECIES[c.species];
-    c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag };
+    c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag, tool: outcome.worn || null };
     if (outcome.applied) { islandProgress('fish', account, 1); contestNote(account, session, 'fish', f.price); eventContestScore(account, 'fish', Math.round(f.price / 100)); } // (A4: a contest catch; E1: a round's)
     questBagNow(account, outcome.bag);
     return sendJson(res, 200, c.done);
@@ -6199,7 +6201,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-bug:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const account = pointAccountForSession(session); const id = String((await parseJson(req)).id || '');
     const done = insectCaught.get(id); if (done?.account === account) return sendJson(res, 200, done.result);
-    if (!((await pointStore.islandBag(account)).items || []).some((e) => e.itemId === 'bugnet')) return sendError(res, 409, 'NO_BUGNET', '잠자리채가 필요해요. 잡화점에서 살 수 있어요.');
+    if (!IslandItems.toolCount((await pointStore.islandBag(account)).items || [], 'bugnet')) return sendError(res, 409, 'NO_BUGNET', '잠자리채가 필요해요. 잡화점에서 살 수 있어요.');
     const b = (await insectsNow(nowMs())).list.find((x) => x.id === id);
     if (!b || insectGone.has(id)) return sendError(res, 409, 'BUG_GONE', '놓쳤어요. 다른 곤충을 찾아보세요.');
     const at = plazaPresence.get(session.token);
@@ -6211,10 +6213,10 @@ async function requestHandler(req, res) {
     insectGone.add(id); let given = false;
     try {
       const itemId = `insect_${b.species}`;
-      const outcome = await pointStore.islandGive({ userId: account, claimId: `insect:${id}`, itemId, qty: 1, meta: null, dexEntry: itemId }, nowMs());
+      const outcome = await pointStore.islandGive({ userId: account, claimId: `insect:${id}`, itemId, qty: 1, meta: null, dexEntry: itemId, wear: 'bugnet' }, nowMs()); // (v1.10.221: the net worn by a catch)
       if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
       const s = IslandInsects.SPECIES[b.species];
-      const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag };
+      const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag, tool: outcome.worn || null };
       given = true; insectCaught.set(id, { account, result }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag);
       if (outcome.applied !== false) eventContestScore(account, 'bug', Math.round(s.price / 100)); // (E1: a round's catch)
       return sendJson(res, 200, result);
@@ -8169,7 +8171,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.220 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.221 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

@@ -51,8 +51,9 @@
     ...['fertilizer', 'bait', 'bait_premium'].map((id, k) => [id, gondola(4.6, 'b', k + 1)]),
     ...['milk', 'bread', 'bulb', 'paint', 'nail_box', 'guitar_string'].map((id, k) => [id, gondola(7.7, 'a', k)]),
     ['fishing_rod', on(-8.0, 9.98, 0, [-2, 1.86, -0.2])], ['bugnet', on(-8.0, 9.98, 0, [-1.2, 1.86, -0.2])], // (hook0 the rod, hook1 the net -- B 47)
+    ['fishing_rod_sturdy', on(-8.0, 9.98, 0, [-0.4, 1.86, -0.2]), 'fishing_rod'], ['bugnet_sturdy', on(-8.0, 9.98, 0, [0.4, 1.86, -0.2]), 'bugnet'], // (v1.10.221: the sturdy ones on the next hooks, the same look)
     ['bike_mint', [-9.35, 0, -6]], ['bike_red', [-8.45, 0, -6]], ['bike_sky', [-7.55, 0, -6]], ['bike_butter', [-6.65, 0, -6]], // (자전거: by the door)
-  ].map(([id, at]) => Object.freeze({ id, at: Object.freeze(at), yaw: 0, soon: false }))); // (B 45: the seeds, the sapling and fertilizer on sale)
+  ].map(([id, at, look]) => Object.freeze({ id, at: Object.freeze(at), yaw: 0, soon: false, look: look || id }))); // (B 45: the seeds, the sapling and fertilizer on sale)
   const REACH = 1.5; // a good within this of me (on the floor plan) is the one SPACE buys (v1.10.211: the tool wall's hooks and the table's back row, 1.2-1.5 off where one stands)
   // 묶음 2 가구점: the lift on the left wall (assets 57 mall.elevator, its back on the wall) -- SPACE in front of it goes up
   const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (stand: before its door, 2회차 8)
