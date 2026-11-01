@@ -12,11 +12,12 @@ test('길 끝: 허공에서 끝나는 길 없음 (다른 길·마당·문·다�
   const near = (x, z, list, r) => list.some((p) => Math.hypot(p.x - x, p.z - z) < r);
   const doors = Object.keys(T.SPOTS).map((id) => T.facilityDoor(id)).filter(Boolean);
   const homeDoors = T.HOME_LOTS.map((l) => ({ x: l.x - Math.sin(l.yaw) * 4.6, z: l.z - Math.cos(l.yaw) * 4.6 }));
-  const bridgeEnds = T.bridges.flatMap((b) => [{ x: b.x - b.ux * b.half, z: b.z - b.uz * b.half }, { x: b.x + b.ux * b.half, z: b.z + b.uz * b.half }]);
+  const PB = require('../public/plaza/island-projects').BRIDGE; // (v1.10.224 섬 가꾸기 동쪽 강 새 다리: its ends, kept for it before it opens; 강 어귀 낚시터 across it)
+  const bridgeEnds = [...T.bridges, PB].flatMap((b) => [{ x: b.x - b.ux * b.half, z: b.z - b.uz * b.half }, { x: b.x + b.ux * b.half, z: b.z + b.uz * b.half }]);
   const S = T.STAIRS; const stairs = [0, S.len].map((u) => ({ x: S.x + S.ux * u + S.nx * 1.7, z: S.z + S.uz * u + S.nz * 1.7 }));
   const stations = Object.values(R.STATIONS).map((s) => ({ x: s.entry[0], z: s.entry[1] }));
   const places = []; const walkIn = (o) => { if (!o || typeof o !== 'object') return; if (Number.isFinite(o.x) && Number.isFinite(o.z)) places.push(o); else Object.values(o).forEach(walkIn); };
-  walkIn(T.dalmaru.PLACES); walkIn(T.SPOTS); walkIn(T.WATERFRONT);
+  walkIn(T.dalmaru.PLACES); walkIn(T.SPOTS); walkIn(T.WATERFRONT); places.push(require('../public/plaza/island-projects').FISHING_SPOT);
   const loose = [];
   T.walkCurves.forEach((w, wi) => {
     for (const [x, z] of [w.pts[0], w.pts[w.pts.length - 1]]) {
