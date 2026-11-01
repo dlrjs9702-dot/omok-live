@@ -1782,6 +1782,9 @@
   // v1.10.217 포인터 잠금: how far a mouse move turns the view (kept on this device)
   try { byId('mouseSensInput').value = String(Math.max(0.3, Math.min(3, Number(localStorage.getItem('gc.mouseSens')) || 1))); } catch {}
   byId('mouseSensInput').addEventListener('input', (event) => { try { localStorage.setItem('gc.mouseSens', event.target.value); } catch {} plaza.controller?.setMouseSens?.(event.target.value); });
+  // v1.10.218 B4: the first person's walking bob (on unless turned off here; kept on this device)
+  try { byId('walkBobToggle').checked = localStorage.getItem('gc.walkBob') !== 'off'; } catch {}
+  byId('walkBobToggle').addEventListener('change', (event) => { try { localStorage.setItem('gc.walkBob', event.target.checked ? 'on' : 'off'); } catch {} plaza.controller?.setWalkBob?.(event.target.checked); });
   byId('motionSelect').value = motionMode();
   byId('motionSelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.lessMotion', event.target.value); } catch {} plaza.controller?.setMotionMode?.(event.target.value); });
   byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
