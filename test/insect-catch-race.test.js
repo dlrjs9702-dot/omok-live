@@ -21,6 +21,7 @@ test('곤충 동시 잡기: 두 계정이 같은 곤충을 동시에 잡으면 �
     const won = replies.map((r, i) => (r.status === 200 ? i % 2 : null)).filter((x) => x !== null);
     assert.equal(new Set(won).size, 1, `${bug.id}: ${replies.map((r) => `${r.status} ${r.data.error || ''}`).join(' / ')}`);
     for (const r of replies) if (r.status !== 200) assert.equal(r.data.error, 'BUG_GONE');
+    for (const r of replies) if (r.status === 200) assert.equal(r.data.tool?.uses, 29, 'v1.10.221: the net worn once');
     const bags = await Promise.all(pair.map(async (s) => ((await req('/api/island/bag', s)).data.items || []).filter((e) => e.itemId.startsWith('insect_')).reduce((n, e) => n + e.qty, 0)));
     assert.deepEqual(bags.sort(), [0, 1], `${bug.id}: 한 사람만 가방에`);
   }
@@ -33,5 +34,6 @@ test('곤충 동시 잡기: 두 계정이 같은 곤충을 동시에 잡으면 �
   await req('/api/plaza/state', runner, { x: bug.x, z: bug.z, yaw: 0, moving: true }); // (0.9 m in about 0.12 s: a run)
   const ran = await req('/api/island/insect/catch', runner, { id: bug.id });
   assert.deepEqual([ran.status, ran.data.error], [409, 'BUG_SCARED']);
+  assert.equal(((await req('/api/island/bag', runner)).data.items || []).find((e) => e.tool === 'bugnet').uses, 30, 'v1.10.221: a miss wears nothing');
   assert.ok(!(await req('/api/island/insects', first)).data.list.some((x) => x.id === bug.id), '달아남');
 });

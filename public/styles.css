@@ -3174,3 +3174,14 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
 .storyLogPage summary{cursor:pointer;font-weight:700}
 .storyLogPage p{margin:4px 0 0;line-height:1.6}
 .storyLogPage.locked summary{opacity:.6;cursor:default}
+/* v1.10.221 도구 닳기: a tool's catches left -- a bar in its bag slot and, held, on the screen; the sturdy one ringed in gold */
+.toolUses{position:absolute;left:14%;right:14%;bottom:7px;height:5px;border-radius:3px;background:rgba(90,70,50,.25);overflow:hidden;font-style:normal}
+.toolUses::before{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--left,1)*100%);background:#5fa04e;border-radius:3px}
+.toolUses.low::before{background:#d9534f}
+#islandBagDialog .islandBagSlot.sturdy{box-shadow:0 0 0 3px #d9a632 inset}
+.goodIcon.sturdy{border-radius:12px;box-shadow:0 0 0 3px #d9a632}
+.toolGauge{position:absolute;right:16px;bottom:84px;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);font-weight:800;font-size:.9rem}
+.toolGauge .toolUses{position:relative;left:auto;right:auto;bottom:auto;width:64px;height:7px}
+.toolGauge.hidden{display:none}
+span.goodIcon{display:grid;place-items:center;font-size:3.4rem;line-height:1}
+body.touchIsland .toolGauge{right:auto;left:16px;bottom:auto;top:68px} /* (the phone: clear of the run and act buttons) */
