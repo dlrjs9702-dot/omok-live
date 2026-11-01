@@ -8,8 +8,11 @@ const P = require('../../public/plaza/island-projects.js');
 test('섬 가꾸기 3: 새 다리 건너기, 전망대 망원경, 밤 투광등 빛', async ({ browser, request, isMobile }) => {
   test.setTimeout(300000);
   const a = await shopper(browser, request, isMobile ? '다리미m' : '다리미', 0, 'female'); const { page } = a;
-  const tp = (body) => post(request, '/api/test/projects', a.token, body);
-  const admin = await adminToken(request); const time = (mode) => request.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode } });
+  // (CI: a long walk between two calls -- the server had closed the idle connection the next one was sent on, ECONNRESET, and the
+  // island stayed at night for the tests after: each call tried again on that)
+  const again = async (fn) => { for (let k = 0; ; k += 1) { try { return await fn(); } catch (error) { if (k >= 2 || !/ECONNRESET|socket hang up/.test(String(error?.message))) throw error; } } };
+  const tp = (body) => again(() => post(request, '/api/test/projects', a.token, body));
+  const admin = await again(() => adminToken(request)); const time = (mode) => again(() => request.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode } }));
   await tp({ reset: true }); await tp({ open: ['fountain', 'flower_path', 'promenade', 'night_lights', 'bridge', 'lookout'] });
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.setItem('gc.view.out', 'third'); }); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
