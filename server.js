@@ -81,6 +81,7 @@ const bagSlots = new Map();
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandRoster = require('./public/plaza/island-roster'); // v1.10.215 주민 근무표
+const IslandProjects = require('./public/plaza/island-projects'); // v1.10.222 섬 가꾸기 사업
 const IslandStory = require('./public/plaza/island-story'); // S1 섬 이야기
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
@@ -1244,6 +1245,7 @@ const climbWeekTicker = setInterval(() => {
   settleDonationWeeks(); // v1.10.5: closes last week's donations (Monday 00:00) and swaps the statues (00:30)
   settleWeeklyTitles(); // v1.10.89 낚시왕 · v1.10.90 제초왕
   settleClimbWeeks();
+  projectsNow().catch(() => {}); // v1.10.222: a new day -- yesterday's works open (everyone told), 바위's post by it
 }, 60 * 1000);
 climbWeekTicker.unref?.();
 
@@ -1576,7 +1578,9 @@ const deskToday = () => { const d = rosterDay(); return d ? IslandRoster.deskRes
 const walksToday = (n) => { const d = rosterDay(); return d ? IslandRoster.walks(n, d) : n < IslandCast.WALKERS.length; };
 // the station's keeper today (철이, on a Sunday 반디 -- 총괄 C1 검토 1): talked to at the station, as one at a counter
 const stationToday = (n) => { const d = rosterDay(); return d && IslandRoster.postOf(n, d) === 'station' ? 'station' : null; };
-const postToday = (n) => counterToday(n) ?? stationToday(n);
+// v1.10.222 섬 가꾸기: a works day 바위 at the works fence (the roster's own hook, set from the projects' state below)
+const worksToday = (n) => { const d = rosterDay(); return d && IslandRoster.postOf(n, d) === 'works' ? 'works' : null; };
+const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n);
 const talkable = (n) => Number.isInteger(n) && Boolean(IslandCast.RESIDENTS[n]) && (walksToday(n) || postToday(n) != null);
 const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
 function broadcastIslandRemoved(ids) {
@@ -1604,6 +1608,25 @@ function collectionPose(token,pull=null) {
 }
 const resourcePulls = new Map();
 const weedPulls = new Map(); // session token -> { weedId, at, requestId, result }
+// v1.10.222 섬 가꾸기 사업 (public/plaza/island-projects.js): the island's state (worldValue 'projects'), rolled to today (yesterday's works
+// open, the next begun) when asked; a 기부 into it. Its goals are 경제 값 (project:<id>). The roster reads its works day.
+let projectsState = null; let projectsDayShift = 0; // (tests: /api/test/projects next-day)
+const projectGoal = (id) => Economy.value(`project:${id}`);
+const projectsDay = () => { const d = kstDate(nowMs()); return projectsDayShift ? new Date(Date.parse(`${d}T00:00:00Z`) + projectsDayShift * 86400000).toISOString().slice(0, 10) : d; };
+IslandRoster.setWorks((day) => projectsState?.works?.day === day);
+async function projectsNow() {
+  return worldEdit(async () => {
+    const before = (await pointStore.worldValue('projects')) || null; const s = IslandProjects.roll(before, projectsDay(), projectGoal);
+    if (JSON.stringify(s) !== JSON.stringify(before)) { await pointStore.setWorldValue('projects', s); if (before) broadcastIsland('projects', IslandProjects.view(s, projectGoal)); }
+    projectsState = s; return s;
+  });
+}
+async function projectGive(account, name, amount) {
+  return worldEdit(async () => {
+    const s = IslandProjects.give((await pointStore.worldValue('projects')) || null, { userId: account, name, amount }, projectsDay(), projectGoal);
+    await pointStore.setWorldValue('projects', s); projectsState = s; broadcastIsland('projects', IslandProjects.view(s, projectGoal)); return s;
+  });
+}
 function broadcastIsland(type, data) { for (const entry of [...lobbyStreams]) { try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } } }
 async function weedState(now = nowMs()) {
   let state = await pointStore.islandWeeds();
@@ -1687,6 +1710,7 @@ function islandProgress(kind, account, qty, where = null) { // (A2b: a promise -
 // v1.10.215 주민 근무표 C1: a rotating post's counter (where its customer stands) and its floor; by it -- talking to that day's
 // islander. The 관공서's desks: a resting one's work at the desk beside it (총괄 ③)
 const POST_AT = { mall1: ['store', () => IslandStore.sectorPoint('mall:store')], mall2: ['fashion', () => IslandFashion.world(...IslandFashion.COUNTER.customer)], mall3: ['furniture', () => IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1)], roof: ['petshop', () => IslandPetShop.world(IslandPetShop.COUNTER_KEEPER[0], IslandPetShop.COUNTER_KEEPER[1] - 2.3)], plaza: ['island', () => IslandTerrain.facilityDoor('attendance')], station: ['island', () => IslandQuests.STORIES.stationmaster.at] };
+POST_AT.works = ['island', () => { const w = projectsState?.works; return w ? IslandProjects.SITES[w.id]?.keeper || null : null; }]; // (v1.10.222)
 const atPost = (pos, post) => { const p = POST_AT[post]; const w = p?.[1](); return Boolean(pos && w && (pos.space || 'island') === p[0] && Math.hypot(pos.x - w.x, pos.z - w.z) <= 3); };
 function atDesk(session, at, desk) { // desk: 'civil' | 'tax' | 'bank'
   const R = IslandTerrain.TOWNHALL_ROOM; const near = (d) => { const w = IslandTerrain.roomWorld(R[d === 'civil' ? 'desk' : d].lx, R[d === 'civil' ? 'desk' : d].lz); return Math.hypot(at.x - w.x, at.z - w.z) <= 1.8; };
@@ -6601,6 +6625,22 @@ async function requestHandler(req, res) {
     });
   }
   // v1.10.5 기부: this week's ranking and my total, the statues on show, this week's 호구왕; giving burns the points.
+  // v1.10.222 섬 가꾸기 사업: what is filling, saved, at its works, open (mine: what I gave to the one filling); a plaque's names
+  if (pathname === '/api/island/projects' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, ...IslandProjects.view(await projectsNow(), projectGoal, pointAccountForSession(session)) });
+  }
+  if (pathname === '/api/island/projects/plaque' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    const o = (await projectsNow()).open.find((x) => x.id === url.searchParams.get('id')); if (!o) return sendError(res, 404, 'NOT_OPEN', '아직 열리지 않았어요.');
+    return sendJson(res, 200, { ok: true, id: o.id, name: IslandProjects.byId(o.id)?.name || o.id, day: o.day, top: o.top, names: o.names });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/projects' && req.method === 'POST') { // (the amounts and the next day: tests only -- no button for the administrator)
+    const body = await parseJson(req);
+    if (body.reset) { projectsDayShift = 0; await worldEdit(() => pointStore.setWorldValue('projects', null)); projectsState = null; }
+    if (body.nextDay) projectsDayShift += 1;
+    const s = await projectsNow(); return sendJson(res, 200, { ok: true, day: projectsDay(), state: s });
+  }
   if (pathname === '/api/donation' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -6628,6 +6668,7 @@ async function requestHandler(req, res) {
     const result = await pointStore.donate({ userId: account, requestId: body.requestId, amount, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')) }, now);
     if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
     notifyPointsChanged([account]);
+    if (result.applied) await projectGive(account, String(session.label || '섬 사람'), amount).catch((error) => console.error('섬 가꾸기 기부 반영 실패:', error.message)); // (v1.10.222: the game name only)
     return sendJson(res, 200, { ok: true, total: result.total, amount: result.amount, balance: result.balance ?? result.balanceAfter });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/donation/record' && req.method === 'POST') {
@@ -8090,6 +8131,7 @@ async function main() {
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
+  await projectsNow().catch((error) => console.error('섬 가꾸기 상태 읽기 실패:', error.message)); // v1.10.222 (after the goals are known)
   for (const [account, n] of Object.entries((await pointStore.worldValue('bagSlots')) || {})) bagSlots.set(account, n); // v1.10.195
   // v1.10.91 변신 따로 판매 A안: the set owners get their transformation (idempotent; new owners of a whole set after this buy it)
   if (!(await pointStore.worldValue('transformGrant'))) {

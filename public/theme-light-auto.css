@@ -1435,3 +1435,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .storyBoard .storyPieceCell.found{border-color:var(--isle-tag)}
 :root[data-theme="light"] .storyLogBlank{border-bottom:1px dashed var(--isle-line)}
 :root[data-theme="light"] .storyLogPage{border-bottom:1px dashed var(--isle-line)}
+:root[data-theme="light"] .donationProject{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .donationProject small{color:var(--isle-soft)}

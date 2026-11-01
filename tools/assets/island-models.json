@@ -8629,6 +8629,70 @@
       "lowSrc": "residents88:02. Low/npc_walker_saerom_work_low.glb",
       "lowSha256": "5d67eea9d60a16a4878de57d0c6eacd1ce8ff7ce6504fedca010f2c533b94a72",
       "precompressed": true
+    },
+    {
+      "out": "projects-v1/bridge_stone.glb",
+      "src": "projects71:01. High/project_bridge_stone.glb",
+      "sha256": "50f724bc48f73532ef6238e4d200722099f6310f269850adea39cbacdc90f13a",
+      "lowSrc": "projects71:02. Low/project_bridge_stone_low.glb",
+      "lowSha256": "b4c7986a2dce1288c2ac4d35d577f5e77d02339a79aa3bdb5a734c720a1f8437",
+      "precompressed": true
+    },
+    {
+      "out": "projects-v1/flower_planter.glb",
+      "src": "projects71:01. High/project_flower_planter.glb",
+      "sha256": "ec7f1d82d85719e444c5ce725bcae6a2dba0425a3d294edd2e724d3523be65da",
+      "lowSrc": "projects71:02. Low/project_flower_planter_low.glb",
+      "lowSha256": "aeeb86e6fe279c24647390dad4a5936ae03310a8602c36c4b5866cb9beca8fb2",
+      "precompressed": true
+    },
+    {
+      "out": "projects-v1/promenade.glb",
+      "src": "projects71:01. High/project_promenade.glb",
+      "sha256": "fd73276bec0eed69ad3023a9e495f7f101c059530987278faa0f33a7f4f862d2",
+      "lowSrc": "projects71:02. Low/project_promenade_low.glb",
+      "lowSha256": "76c2b176174e48b42d35548b330138b9e037a5cfa4931a14dbdce8caa7907415",
+      "precompressed": true
+    },
+    {
+      "out": "projects-v1/lookout.glb",
+      "src": "projects71:01. High/project_lookout.glb",
+      "sha256": "0e8290fb0419572d70244ff291a3ca4cbedd909906db31904153def4c4872eda",
+      "lowSrc": "projects71:02. Low/project_lookout_low.glb",
+      "lowSha256": "9951f1b0a500974b3426f34163cd0c677d434894a91eb9f31ff45f9d921cfffc",
+      "precompressed": true
+    },
+    {
+      "out": "projects-v1/string_lights.glb",
+      "src": "projects71:01. High/project_string_lights.glb",
+      "sha256": "13ca81d47e5999927d9e0ce0e667ede969423497a71805517d7225c37a24d251",
+      "lowSrc": "projects71:02. Low/project_string_lights_low.glb",
+      "lowSha256": "cefe06ebf222ea67e1401148db011955839cb1234ffedf54a32f02d1cea7d183",
+      "precompressed": true
+    },
+    {
+      "out": "projects-v1/uplight.glb",
+      "src": "projects71:01. High/project_uplight.glb",
+      "sha256": "5cfafaeba573269704daaeeeb79cb467d90bb1d289cbf2c25860ae7d238a78a0",
+      "lowSrc": "projects71:02. Low/project_uplight_low.glb",
+      "lowSha256": "2d7f45fff8fcc1e478cb2d067e368ff6ae9d85b2a7f5b432c4be2f70800a8b42",
+      "precompressed": true
+    },
+    {
+      "out": "projects-v1/works.glb",
+      "src": "projects71:01. High/project_works.glb",
+      "sha256": "96489a444e1086b06cf9fe92d0ba473513ccdb4ba822bfb1ed1dca768174e678",
+      "lowSrc": "projects71:02. Low/project_works_low.glb",
+      "lowSha256": "4fb914597280eef5d292004fb3b908c61254bc36f09a2c54a6b1d4d728385e1e",
+      "precompressed": true
+    },
+    {
+      "out": "projects-v1/fountain.glb",
+      "src": "projects71:01. High/project_fountain.glb",
+      "sha256": "abe3e0e42ec661161b979bbf1171384d280120a1dbb6662e86e5749065c87d97",
+      "lowSrc": "projects71:02. Low/project_fountain_low.glb",
+      "lowSha256": "c1dd0fdb953d60f321124df7a7b251b8435dddc64bae018023ef2b4a222dc6f0",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -8691,6 +8755,7 @@
     "mall82": "82. Game Island mall revamp 2026-10-27",
     "residents88": "88. Game Island residents legs all 27 2026-10-30",
     "arms89": "89. Game Island goeun face arms 2026-10-31",
-    "arms90": "90. Game Island kkotnim kongi arms 2026-10-31"
+    "arms90": "90. Game Island kkotnim kongi arms 2026-10-31",
+    "projects71": "71. Game Island island projects 2026-10-25"
   }
 }
