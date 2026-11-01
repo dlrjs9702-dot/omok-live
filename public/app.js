@@ -1952,7 +1952,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」') : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -3270,6 +3270,45 @@
     openPlazaWindow('가구 창고', [storageBox]);
     if (pieces.length) show(pieces[0], list.firstElementChild);
   }
+  // v1.10.226 가구 리폼 (docs/furniture-reform-20261102.md): at the 3층 counter -- a piece of mine (in the 가구 창고 or
+  // placed, 「놓임」), its shape's colours (the one it is 「지금」), each shown turning in 3D, then 「바꾸기」 for a price
+  const reformBox = document.createElement('div'); reformBox.className = 'furnitureStorage reformBox'; reformBox.id = 'reformBox';
+  let reformBusy = false;
+  async function openReform(uid = null) {
+    const F = window.IslandFurniture; let all = []; try { all = (await api('/api/island/furniture/mine')).pieces; await refreshHomes(); } catch (error) { showToast(error.message); return; }
+    const placed = new Set((homesState?.mine?.pieces || []).map((p) => p.uid)); const price = Number(furnitureState?.reform || 3000);
+    const pieces = all.filter((p) => F.reformColors(p.id).length);
+    const canvas = document.createElement('canvas'); canvas.className = 'dressCanvas furnitureCanvas';
+    const cap = document.createElement('p'); cap.className = 'lookMeta'; cap.setAttribute('role', 'status');
+    const list = document.createElement('div'); list.className = 'furnitureList'; list.setAttribute('role', 'list');
+    const chips = document.createElement('div'); chips.className = 'goodBuy reformColors'; chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', '색');
+    const go = btn(`바꾸기 · ${price.toLocaleString('ko-KR')}P`, 'primary reformGo'); go.disabled = true;
+    let pick = null; let to = null;
+    const preview = (g) => { cap.textContent = `${g.name}${g.id === pick.id ? ' · 지금' : ''}`; plaza.controller?.tryOn?.(canvas, { model: g.model }); };
+    const choose = (p, b) => {
+      pick = p; to = null; go.disabled = true; for (const x of list.children) x.classList.toggle('selected', x === b);
+      chips.replaceChildren(...F.reformColors(p.id).map((g) => {
+        const c = btn(`${F.COLOR[g.variant] || g.variant}${g.id === p.id ? ' · 지금' : ''}`, g.id === p.id ? 'ghost tiny current' : 'ghost tiny'); c.dataset.to = g.id; c.disabled = g.id === p.id;
+        c.addEventListener('pointerenter', () => preview(g)); c.addEventListener('focus', () => preview(g));
+        c.addEventListener('click', () => { to = g.id; go.disabled = false; for (const x of chips.children) x.classList.toggle('selected', x === c); preview(g); });
+        return c;
+      }));
+      preview(F.good(p.id));
+    };
+    for (const p of pieces) { const b = btn(`${p.name}${placed.has(p.uid) ? ' · 놓임' : ''}`, 'ghost furniturePiece'); b.dataset.uid = p.uid; b.setAttribute('role', 'listitem'); b.addEventListener('click', () => choose(p, b)); list.append(b); }
+    go.addEventListener('click', async () => {
+      if (reformBusy || !pick || !to) return; reformBusy = true; go.disabled = true;
+      try {
+        const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {});
+        const r = await api('/api/island/furniture/reform', { method: 'POST', body: JSON.stringify({ uid: pick.uid, to, requestId: crypto.randomUUID() }) });
+        showToast(`${r.name}(으)로 바꿨어요`, 4000); loadPoints(); reformBusy = false; openReform(pick.uid); return;
+      } catch (error) { cap.textContent = error.message; } finally { reformBusy = false; go.disabled = !to; }
+    });
+    const note = line(pieces.length ? `색을 바꿀 가구를 고르세요 · 한 번에 ${price.toLocaleString('ko-KR')}P · 놓인 가구는 그 자리 그대로` : '색을 바꿀 수 있는 가구가 없어요. 행사 가구·마당 물건·한 색뿐인 가구는 바꿀 수 없어요.');
+    reformBox.replaceChildren(canvas, cap, note, list, chips, go);
+    openPlazaWindow('가구 리폼', [reformBox]);
+    const first = (uid && [...list.children].find((b) => b.dataset.uid === uid)) || list.firstElementChild; if (first) first.click();
+  }
   // ---- 묶음 4 내 집 (docs/my-home-20261020.md) ----
   // the lots (whose house, its roof) on the island; in by a house's door (the owner always, others as the owner lets
   // them), out by the room's doorway; inside, my own: 꾸미기 (a piece from the 가구 창고 moved on 0.25 m steps, turned,
@@ -3553,10 +3592,10 @@
     const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost postTalkBtn'; b.textContent = '이야기해요'; b.addEventListener('click', k.talk); return [...out, b];
   }
   const talkLine = (t) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = t; return p; };
-  function postTalk(post, place, hint) { // (the 2nd and 3rd floors: their counters talk too)
+  function postTalk(post, place, hint, extra = []) { // (the 2nd and 3rd floors: their counters talk too)
     const k = postKeeper(post); if (!k) return;
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
-    lostCard.replaceChildren(talkLine(k.hello), talkLine(hint), ...postButtons(k, ok)); openTalk(`${k.name} · ${place}`);
+    lostCard.replaceChildren(talkLine(k.hello), talkLine(hint), ...extra, ...postButtons(k, ok)); openTalk(`${k.name} · ${place}`);
   }
   // the board's 「오늘의 근무표」: who keeps each post today (the same table as the server's)
   function rosterNote() {
@@ -7518,6 +7557,7 @@
     if (event === 'projects') { refreshProjects(); return; } // v1.10.222 섬 가꾸기: filled, saved, at its works, open
     if (event === 'insects') { plaza.controller?.insectsGone?.(parsed.gone); return; } // 묶음 5: one caught or sent off somewhere
     if (event === 'homes') { refreshHomes(); return; } // 묶음 4: a house new somewhere, or its roof
+    if (event === 'homeInside') { if (homeInside && homeInside.home?.lot === parsed.lot && !homeInside.mine) api('/api/home/inside').then((r) => { if (homeInside?.home?.lot === parsed.lot) showHome(r, true); }).catch(() => {}); return; } // v1.10.226: the house I visit changed (a piece placed, a colour)
     if (event === 'friends') { showToast(parsed.kind === 'request' ? `${parsed.name || '이웃'}님이 친구 신청을 했어요 · 내 정보 「친구」에서 수락할 수 있어요` : '친구 신청이 받아들여졌어요', 5000); if (myInfoDialog.open) renderFriends(); return; } // 묶음 4 친구
     if (event === 'furniture') { if (plaza.controller?.space?.() === 'furniture') refreshFurniture(); else furnitureState = null; return; } // 묶음 2: a piece sold somewhere
     if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }

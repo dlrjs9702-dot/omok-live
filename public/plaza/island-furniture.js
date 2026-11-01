@@ -125,5 +125,9 @@
     for (const s of [...SLOTS, ...BASE_SLOTS, ...YARD_SLOTS]) { const d = Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0); if (d < bd) { bd = d; best = s; } }
     return best;
   }
-  return { SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, YARD_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, YARD_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
+  // v1.10.226 가구 리폼 (docs/furniture-reform-20261102.md): a shop piece made another of its shape's colours -- the
+  // colours a piece may take (its own first), none for an event piece, a yard piece or a shape in one colour only
+  const reformColors = (id) => { const g = byId.get(id); if (!g || g.event || g.yard) return []; const list = GOODS.filter((x) => x.shape === g.shape); return list.length > 1 ? list : []; };
+  const reformTo = (from, to) => { const g = byId.get(to); return Boolean(g) && from !== to && reformColors(from).includes(g); };
+  return { reformColors, reformTo, SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, YARD_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, YARD_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
 }));
