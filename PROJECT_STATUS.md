@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.220 새 주민 17명 좋아하는 것·8명 편지·심부름 그날 걷는 주민
+
+- LIKES 10~26(27개, 로드 때 RESIDENTS 수 확인), giftReact 기본 분기 지움. own.letter: 반디·바위·한결·김우성·마루·단비·한솔·새롬 5개씩(notes docs/resident-likes-letters-17-20261101.md).
+- 심부름: errandsOf(day, walksToday) — 그날 걷는 주민끼리, 넘기지 않으면 예전 열 명(결과 같음).
+- 27명으로: 호감도 단계 보상·단짝 칭호(titleOf)·주민 편지(residentLetter)·심부름 사례 이름·callOf. 친한 사이 가구는 10명분만.
+- 시험: resident-likes-letters.test(새), likes-letters-photo.spec(사진 전용).
+
 ## v1.10.219 대화 자리 잡기 + 역 철이
 
 - 대화 카메라: 섬에서 시선에 나무·덤불·가로등(natureSolids)이 걸치면 내 왼쪽 → 양쪽 가까이(0.6배) 중 먼저 트인 자리(대화마다 한 번, talkSide). 주민 바로 뒤 나무(마지막 8 %)는 벽 아님.
@@ -28,10 +35,3 @@
 - B5 1인칭 든 도구: 몸이 든 잠자리채·낚싯대를 화면 오른쪽 아래에 다시 그림(손뼈 기준 반쯤 따라 움직임, 휘두르기 포함) + 주먹 구.
 - B6 SPACE 대상: 1인칭에서 대상 바닥에 얇은 고리(내 자리 대상·안내뿐인 것 제외).
 - 시험: fp-polish.spec(새, PC·폰), talk-facing-photo.spec(사진 전용).
-
-## v1.10.217 조작·1인칭 개편(A + B1~3) + 에셋 89·90
-
-- 걷기 W/A/S/D(event.code, 한글 입력 상태도), 시점 방향키(입질 중엔 낚시 화살표만). 클릭하면 포인터 잠금 → 마우스 시점(1인칭 가운데 점, 잠긴 클릭은 시점만), 창·대화·꾸미기·사진·앉기·입력칸·포커스 잃음이면 풀림, ☰ 마우스 감도(gc.mouseSens). PC 첫 입장 한 번 「조작이 바뀌었어요」(gc.controlsNotice, 폰 없음), 가이드 문구도.
-- 1인칭: 눈높이 = 머리뼈 + 0.02 m(광장 1.77 → 1.4 m, 사용자 「1.4로 가자」), 시야각 75 → 70°, 위 75°·아래 70°.
-- 에셋 89(고은 얼굴·팔, 하람 얼굴, 가람 팔)·90(꽃님·콩이 팔) 바꿔 끼움 — 해시·삼각형 예산만.
-- 시험: e2e 걷기 키 W/A/S/D로(11개 파일), controls-fp(새: 걷기·방향키 시점·마우스 보기 lookBy·한계·감도·잠금 풀림·알림), fp-desk-photo(사진 전용).
