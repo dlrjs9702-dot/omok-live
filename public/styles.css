@@ -3190,3 +3190,6 @@ body.touchIsland .toolGauge{right:auto;left:16px;bottom:auto;top:68px} /* (the p
 .donationProject .toolUses{position:relative;left:auto;right:auto;bottom:auto;height:9px}
 .donationProject small{color:var(--isle-soft);font-weight:700}
 .donationProject.hidden,.donationProject .hidden{display:none}
+/* v1.10.223 섬 가꾸기: 민원 창구에서 보태기, the mayor's vote */
+.projectGiveRow{display:flex;gap:8px}.projectGiveRow input{flex:1;min-width:0}
+.voteChoice{display:block;width:100%;margin-top:6px;text-align:left}.voteChoice.mine{border-color:#5fa04e;font-weight:800}

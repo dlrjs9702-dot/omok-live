@@ -2682,7 +2682,7 @@
   }
   document.getElementById('islandTaxPay').addEventListener('click', () => payTax({ all: true }));
   async function openIslandPlace(place) {
-    islandPlace = place; islandPlaceStatus.textContent = ''; byId('homeApplyBtn').classList.toggle('hidden', place !== 'office'); // (묶음 4: the 민원 창구 takes the house too)
+    islandPlace = place; islandPlaceStatus.textContent = ''; byId('homeApplyBtn').classList.toggle('hidden', place !== 'office'); byId('projectGive').classList.toggle('hidden', place !== 'office'); if (place === 'office') refreshProjects().then(() => showDonationProject(byId('projectGive'))); // (v1.10.223) // (묶음 4: the 민원 창구 takes the house too)
     if (place === 'office') refreshHomes().then(() => { const m = homesState?.mine; const b = byId('homeApplyBtn'); b.textContent = !m ? '내 집 신청' : m.upgradeDay ? '집 넓히는 중 · 내일 완성' : (m.stage || 2) < window.IslandHome.TOP_STAGE ? '집 넓히기' : '내 집'; b.disabled = Boolean(m && (m.upgradeDay || (m.stage || 2) >= window.IslandHome.TOP_STAGE)); }); // (묶음 4-2; v1.10.193 사용자 「2층 큰 집을 사려는데 살 곳이 없어」: up to the 2층 큰 집, not the 작은 집 only)
     document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
     if (!islandPlaceDialog.open) islandPlaceDialog.showModal();
@@ -4190,7 +4190,8 @@
     try { const data = await api('/api/island/invite', { method: 'POST', body: JSON.stringify({ plazaId: to.id }) }); showToast(`${data.to || '상대'}님에게 대전 초대를 보냈습니다.`); } catch (error) { showToast(error.message, 4200); }
   }
   // v1.10.41 관공서 정문 시장: one formal line and one button; his leave lasts this visit (the server keeps it)
-  function openMayor() {
+  async function openMayor() {
+    await refreshProjects(); // (v1.10.223: today's vote as it stands)
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${plaza.controller?.mayorLine?.() || '무슨 용무로 오셨소?'}」`;
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '용무가 있습니다';
     ok.addEventListener('click', async () => {
@@ -4201,7 +4202,19 @@
         plaza.controller?.setTownhallPass?.(Boolean(data.townhallPass)); plazaDialog.close();
       } catch (error) { showToast(error.message); ok.disabled = false; }
     });
-    lostCard.replaceChildren(line, ok);
+    const vote = projectsView?.vote; const parts = [line, ok];
+    if (vote) { // (v1.10.223 섬 가꾸기: today's vote -- one each, changed until the day ends; tomorrow the most chosen begins)
+      parts.push(talkLine('「섬 가꾸기, 다음에는 무엇을 할지 오늘 하루 골라 주시오. 내일 가장 많이 고른 것을 시작하겠소.」'));
+      for (const c of vote.choices) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = `ghost voteChoice${vote.mine === c.id ? ' mine' : ''}`; b.dataset.project = c.id;
+        b.textContent = `${vote.mine === c.id ? '✓ ' : ''}${c.name} · ${c.votes}표`;
+        b.addEventListener('click', async () => {
+          try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); projectsView = await api('/api/island/projects/vote', { method: 'POST', body: JSON.stringify({ id: c.id }) }); showToast(`🗳️ ${c.name}에 한 표를 넣었어요.`); openMayor(); } catch (error) { showToast(error.message); }
+        });
+        parts.push(b);
+      }
+    }
+    lostCard.replaceChildren(...parts);
     openTalk('마루'); // (v1.10.193 주민 이름: the mayor)
   }
   const questTracker = document.getElementById('questTracker');
@@ -4440,13 +4453,26 @@
   // v1.10.222 섬 가꾸기 사업: what is filling (the 기부함's bar), at its works, open -- the scene draws it; asked again when it changes
   let projectsView = null;
   async function refreshProjects() { try { projectsView = await api('/api/island/projects'); plaza.controller?.setProjects?.(projectsView); showDonationProject(); } catch {} }
-  function showDonationProject() {
-    const box = document.getElementById('donationProject'); const v = projectsView; box.classList.toggle('hidden', !v); if (!v) return;
+  function showDonationProject(box = document.getElementById('donationProject')) {
+    const v = projectsView; box.classList.toggle('hidden', !v); if (!v) return;
     const [title, bar, note] = box.children; const c = v.cur;
     title.textContent = c ? `🌱 섬 가꾸기 · ${c.name}` : v.works ? `🚧 섬 가꾸기 · ${v.works.name} 공사 중 — 내일 열려요` : '🌱 섬 가꾸기 · 다음 사업 준비 중';
     bar.classList.toggle('hidden', !c); if (c) bar.style.setProperty('--left', String(Math.min(1, c.raised / c.goal)));
-    note.textContent = c ? `${pts(c.raised)} / ${pts(c.goal)}${c.mine ? ` · 내가 보탠 ${pts(c.mine)}` : ''}${v.saved ? ` · 적립 ${pts(v.saved)}` : ''}` : `기부는 다음 사업에 적립돼요 · 적립 ${pts(v.saved)}`;
+    note.textContent = c ? `${pts(c.raised)} / ${pts(c.goal)}${c.mine ? ` · 내가 보탠 ${pts(c.mine)}` : ''}${v.saved ? ` · 적립 ${pts(v.saved)}` : ''}` : `${v.vote ? '관공서 정문의 마루 시장에게 다음 사업을 골라 주세요 · ' : ''}기부는 다음 사업에 적립돼요 · 적립 ${pts(v.saved)}`;
+    if (box.id === 'donationProject') { const g = document.getElementById('projectGive'); if (islandPlace === 'office' && islandPlaceDialog.open) showDonationProject(g); }
   }
+  // v1.10.223 민원 창구에서 보태기: as at the 기부함 (this week's ranking too, gone), into the project
+  let projectGiveRequest = null;
+  byId('projectGiveBtn').addEventListener('click', async () => {
+    const amount = Math.floor(Number(byId('projectGiveAmount').value)); if (!Number.isSafeInteger(amount) || amount < 1) { islandPlaceStatus.textContent = '보탤 포인트를 입력해 주세요.'; return; }
+    if (projectGiveRequest?.amount !== amount) projectGiveRequest = { amount, id: crypto.randomUUID() };
+    byId('projectGiveBtn').disabled = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      projectsView = await api('/api/island/projects/give', { method: 'POST', body: JSON.stringify({ amount, requestId: projectGiveRequest.id }) }); projectGiveRequest = null;
+      islandPlaceStatus.textContent = `🌱 섬 가꾸기에 ${pts(amount)} 보탰어요.`; byId('projectGiveAmount').value = ''; showDonationProject(byId('projectGive')); plaza.controller?.setProjects?.(projectsView); loadPoints();
+    } catch (error) { islandPlaceStatus.textContent = error.message; } finally { byId('projectGiveBtn').disabled = false; }
+  });
   async function openPlaque(id) {
     try {
       const d = await api(`/api/island/projects/plaque?id=${encodeURIComponent(id)}`);

@@ -6362,6 +6362,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     let seat = SEATS.get(String(body.seat || ''));
     if (!seat && String(body.seat || '').startsWith('home:') && homeInside.has(session.token)) { const raw = await homeOf(homeInside.get(session.token)); const lot = homeLotOn(raw, floorOf(session.token)); seat = lot ? IslandHome.allSeatsOf(lot, homeAs(session.token, raw)).find((s) => s.id === body.seat) : null; } // (R8: the seats on my floor) // (묶음 4: a house's sofa, bed...)
+    if (!seat && projectsState?.open?.some((o) => o.id === 'promenade')) seat = IslandProjects.PROMENADE_SEATS.find((s) => s.id === String(body.seat || '')) || null; // (v1.10.223 물가 거리)
     if (!seat) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - seat.x, at.z - seat.z) > 2.8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
@@ -6640,10 +6641,40 @@ async function requestHandler(req, res) {
     const o = (await projectsNow()).open.find((x) => x.id === url.searchParams.get('id')); if (!o) return sendError(res, 404, 'NOT_OPEN', '아직 열리지 않았어요.');
     return sendJson(res, 200, { ok: true, id: o.id, name: IslandProjects.byId(o.id)?.name || o.id, day: o.day, top: o.top, names: o.names });
   }
+  // v1.10.223 섬 가꾸기: today's vote -- one ballot each (changed until the day ends), asked of the mayor at the 관공서 gate
+  if (pathname === '/api/island/projects/vote' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!checkRateLimit(`island-vote:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    if (!at || Math.hypot(at.x - TOWNHALL_GATE_OUT.x, at.z - TOWNHALL_GATE_OUT.z) > 3.5) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const id = String((await parseJson(req)).id || ''); const account = pointAccountForSession(session);
+    const s = await worldEdit(async () => {
+      const next = IslandProjects.vote((await pointStore.worldValue('projects')) || null, account, id, projectsDay(), projectGoal); if (!next) return null;
+      await pointStore.setWorldValue('projects', next); projectsState = next; return next;
+    });
+    if (!s) return sendError(res, 409, 'NO_VOTE', '오늘은 고를 수 있는 사업이 없어요.');
+    broadcastIsland('projects', IslandProjects.view(s, projectGoal));
+    return sendJson(res, 200, { ok: true, ...IslandProjects.view(s, projectGoal, account) });
+  }
+  // v1.10.223 섬 가꾸기: given at the 관공서's 민원 창구 -- a 기부 as at the box (this week's ranking, gone), into the project
+  if (pathname === '/api/island/projects/give' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (!checkRateLimit(`donation:${account}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    if (!atDesk(session, plazaPresence.get(session.token) || plazaLastPos.get(session.token), 'civil')) return sendError(res, 409, 'TOO_FAR', '민원 창구 앞에서 보탤 수 있어요.');
+    const body = await parseJson(req); const amount = Number(body.amount);
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > DONATION_MAX) return sendError(res, 400, 'BAD_AMOUNT', '보탤 포인트를 입력해 주세요.');
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const name = String(session.label || '섬 사람'); const result = await pointStore.donate({ userId: account, requestId: body.requestId, amount, name }, nowMs());
+    if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
+    notifyPointsChanged([account]);
+    if (result.applied) await projectGive(account, name, amount).catch((error) => console.error('섬 가꾸기 기부 반영 실패:', error.message));
+    return sendJson(res, 200, { ok: true, amount, balance: result.balance ?? result.balanceAfter, ...IslandProjects.view(await projectsNow(), projectGoal, account) });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/projects' && req.method === 'POST') { // (the amounts and the next day: tests only -- no button for the administrator)
     const body = await parseJson(req);
     if (body.reset) { projectsDayShift = 0; await worldEdit(() => pointStore.setWorldValue('projects', null)); projectsState = null; }
     if (body.nextDay) projectsDayShift += 1;
+    if (body.open) await worldEdit(async () => { const s = IslandProjects.roll((await pointStore.worldValue('projects')) || null, projectsDay(), projectGoal); for (const id of [].concat(body.open)) if (!s.open.some((o) => o.id === id)) s.open.push({ id, day: projectsDay(), top: [], names: [] }); if (s.cur && [].concat(body.open).includes(s.cur)) { s.cur = null; s.raised = 0; s.donors = {}; } await pointStore.setWorldValue('projects', s); }); // (a project open at once: the photos, the later ones' tests)
     const s = await projectsNow(); return sendJson(res, 200, { ok: true, day: projectsDay(), state: s });
   }
   if (pathname === '/api/donation' && req.method === 'GET') {

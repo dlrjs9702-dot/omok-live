@@ -49,6 +49,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     return hazedOf.get(key);
   }
   function instance(gltf, entry) {
+    if (entry.nightGlow) nightGlowFiles.add(gltf); // (v1.10.223: its `glow` parts lit at night, as windows)
     const flat = !entry.keepNodes && !gltf.animations?.length && partsOf(gltf); // (S2: `keepNodes` -- a model with a part that moves, its nodes kept)
     if (flat && flat.length === 1 && flat[0].material.vertexColors) {
       const mesh = new THREE.Mesh(flat[0].geometry, entry.haze ? hazed(flat[0].material, entry.haze) : flat[0].material);
@@ -226,7 +227,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // (checked with a real quantized tree: it filled the screen). Meshes on one node (the pipeline's output: one mesh,
   // a primitive per colour) merge as they are and keep their index; meshes on different nodes are first turned into
   // plain floats and moved into the model's space. Worked out once per file.
-  const partsCache = new WeakMap();
+  const partsCache = new WeakMap(); const nightGlowFiles = new WeakSet(); // (v1.10.223: files whose `glow` material lights at night -- the island projects' lamps)
   const TEXTURE_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap'];
   const identity = new THREE.Matrix4();
   // every attribute as plain floats (quantized and normalized values read back as what they mean)
@@ -257,7 +258,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         }
         for (const name of Object.keys(g.attributes)) if (!['position', 'normal'].includes(name)) g.deleteAttribute(name);
         g.setAttribute('color', new THREE.BufferAttribute(colour, 3));
-        g.setAttribute('glow', new THREE.BufferAttribute(new Float32Array(count).fill(m.material.name === 'glass' ? 1 : 0), 1)); // v1.10.36: a window, lit at night
+        g.setAttribute('glow', new THREE.BufferAttribute(new Float32Array(count).fill(m.material.name === 'glass' || (m.material.name === 'glow' && nightGlowFiles.has(gltf)) ? 1 : 0), 1)); // v1.10.36: a window, lit at night
         return g;
       };
       const build = (bake) => meshes.map((m) => {
