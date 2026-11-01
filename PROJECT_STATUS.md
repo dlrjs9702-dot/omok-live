@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.218 1인칭 다듬기(B4~6) + 대화 때 주민 방향
+
+- 대화 방향: 3인칭 대화 카메라가 내 오른쪽 4.2 m(v1.10.213)라 작은 주민이 옆·등을 보였음 → 나와 대화 카메라의 가운데를 향해 돎, 1인칭 대화는 나를 정면으로. resident-looks에 faceSeen > 0.6.
+- B4 걸음 흔들림(걷기 0.022·뛰기 0.045 m, 서기·앉기·타기·움직임 줄이기 0), ☰ 「1인칭 걸음 흔들림」(gc.walkBob).
+- B5 1인칭 든 도구: 몸이 든 잠자리채·낚싯대를 화면 오른쪽 아래에 다시 그림(손뼈 기준 반쯤 따라 움직임, 휘두르기 포함) + 주먹 구.
+- B6 SPACE 대상: 1인칭에서 대상 바닥에 얇은 고리(내 자리 대상·안내뿐인 것 제외).
+- 시험: fp-polish.spec(새, PC·폰), talk-facing-photo.spec(사진 전용).
+
 ## v1.10.217 조작·1인칭 개편(A + B1~3) + 에셋 89·90
 
 - 걷기 W/A/S/D(event.code, 한글 입력 상태도), 시점 방향키(입질 중엔 낚시 화살표만). 클릭하면 포인터 잠금 → 마우스 시점(1인칭 가운데 점, 잠긴 클릭은 시점만), 창·대화·꾸미기·사진·앉기·입력칸·포커스 잃음이면 풀림, ☰ 마우스 감도(gc.mouseSens). PC 첫 입장 한 번 「조작이 바뀌었어요」(gc.controlsNotice, 폰 없음), 가이드 문구도.
@@ -26,10 +34,3 @@
 - 이야기 주민이 걷는 날: 퀘스트 항목 walker, 섬 자리 비고 「!·✓」가 그 사람 위로, 대화 첫 줄 「📜 부탁」(questTalkPos: 곁 6 m). 계산대 「이야기해요」도 그 주민 대화.
 - 27명 모두 대화(talkable: 걷거나 계산대·역), 17명 선물 기본 반응(LIKES 없음), 호감도 목록 27, 이벤트는 그날 걷는 주민만, 크리스마스 선물 배달도 걷는 주민 중에서. 역 근무 주민(철이/일요일 반디)이 역에 서고 「일요일은 반디가 역을 봐요」 안내.
 - 시험: island-npcs(27명·그날 걷는 주민 모이기), island-residents, resident-affinity, island-roster-server C2, e2e resident-roster(PC·폰). 성능 PERF·ROSTER=1.
-
-## v1.10.215 주민 근무표 C1 — 근무표와 근무지
-
-- public/plaza/island-roster.js(서버·화면 같이, 서울 날짜만으로 같은 표): 자리마다 그날 한 사람, 주 4일·같은 자리 연속 3일 이하, 행사 진행 주민 빠짐. counterOf(계산대 근무)·deskRest(쉬는 창구와 옆 창구).
-- 백화점 1~3층·옥상 계산대와 광장 출석 도우미에 그날 주민 모델(IslandAssets.lookOf). 말 걸면 shop.hello + 가게 창 + 「이야기해요」(걷는 주민 대화 / 이야기 주민 부탁). 2·3층 계산대 말 걸기 새로. 근무 날 걷는 주민은 섬에서 빠지고 이벤트도 안 맡음, 대화는 계산대에서(atPost). 이야기 주민 근무 날엔 섬 자리 비고 계산대에서 부탁(questTalkPos).
-- 관공서 쉬는 창구(「오늘은 쉬어요」), 그 일은 옆 창구(atDesk). 일요일 역 반디, 철이 부탁 닫힘(isOpen). 광장 게시판 「오늘의 근무표」.
-- 시험 서버는 근무표 꺼짐 — /api/test/roster {on, day}. 시험: 단위 island-roster·island-roster-server(새), e2e resident-roster(새, PC·폰).
