@@ -33,7 +33,7 @@ test('섬 가꾸기: 기부함 막대, 다 모이면 공사(울타리·안내판
     const k = P.SITES.fountain.keeper; await page.evaluate(([x, z]) => { const g = window.PlazaDebug(); g.teleport(x + 0.6, z + 2.2); g.setCamYaw(0.25); g.setCamPitch?.(0.12); }, [k.x, k.z]);
     await shot('works');
     await expect(page.locator('#plazaHint')).toContainText('바위', { timeout: 10000 }); await expect.poll(() => spaceOn(page, 'works:keeper', isMobile), { timeout: 10000 }).toBe(true); await revealTalk(page);
-    await expect(page.locator('#plazaDialog')).toContainText('내일이면 분수가 열려요'); await shot('works-talk', 600);
+    await expect(page.locator('#plazaDialog')).toContainText('내일이면 분수가 열려요'); await expect(page.locator('#plazaDialog')).not.toContainText('둘러볼게요'); await expect(page.locator('#plazaDialog')).not.toContainText('{me}'); /* (총괄 222 검토 1: their own talk, no shop) */ await shot('works-talk', 600);
     await page.keyboard.press('Escape');
   } finally { await request.post('/api/test/roster', { data: { on: false } }); }
   // the next day: open -- the new fountain, its sign; SPACE at it: who gave

@@ -1054,8 +1054,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // letters on a board's face (its -Z), w x h at height y, the face at z -- a canvas texture, unlit by the back
   function boardText(text, w, h, y, z, [ground, ink] = ['#efe4cc', '#4a3a2a']) {
     const font = '800 72px Pretendard, "Malgun Gothic", system-ui, sans-serif'; const canvas = document.createElement('canvas'); canvas.width = Math.round((256 * w) / h); canvas.height = 256;
-    const c = canvas.getContext('2d'); c.fillStyle = ground; c.fillRect(0, 0, canvas.width, canvas.height); c.fillStyle = ink; c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle';
-    const fit = Math.min(1, (canvas.width * 0.9) / c.measureText(text).width); c.font = font.replace('72px', `${Math.floor(72 * fit) * 2}px`); c.fillText(text, canvas.width / 2, canvas.height / 2 + 6);
+    const c = canvas.getContext('2d'); c.fillStyle = ground; c.fillRect(0, 0, canvas.width, canvas.height); c.fillStyle = ink; c.textAlign = 'center'; c.textBaseline = 'middle';
+    // (v1.10.222 총괄 검토 2: measured at the size it is drawn -- a long name stays inside its board; '\n': two lines)
+    const lines = String(text).split('\n'); let size = Math.min(144, Math.floor(220 / lines.length)); c.font = font.replace('72px', `${size}px`);
+    const widest = Math.max(...lines.map((l) => c.measureText(l).width)); size = Math.floor(size * Math.min(1, (canvas.width * 0.9) / widest)); c.font = font.replace('72px', `${size}px`);
+    lines.forEach((l, k) => c.fillText(l, canvas.width / 2, canvas.height / 2 + 6 + (k - (lines.length - 1) / 2) * size * 1.1));
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; textures.push(texture);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 })); face.position.set(0, y, z); face.rotation.y = Math.PI; face.userData.boardText = text; return face;
   }
@@ -1417,7 +1420,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const g = new THREE.Group(); scene.add(g);
     if (kind === 'works') {
       for (const f of site.fence) projectPiece('project.works', g, f.x, f.z, f.yaw, (v) => mesh(new THREE.BoxGeometry(3, 0.9, 0.1), mat(0xe8a33a), 0, 0.45, 0, v));
-      const s = site.sign; signboard('stand', `${p.short} 공사 중 · 내일 열려요`, g, s.x, heightAt(s.x, s.z), s.z, s.yaw);
+      const s = site.sign; signboard('stand', `${p.short} 공사 중\n내일 열려요`, g, s.x, heightAt(s.x, s.z), s.z, s.yaw);
       return g;
     }
     if (id === 'fountain') { // (in the fountain's own group: the 할로윈 pumpkin and the winter tree still take its place in their season)

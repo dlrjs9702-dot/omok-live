@@ -51,3 +51,14 @@ test('섬 가꾸기 서버: 기부 → 사업, 같은 요청 두 번은 한 번,
   const plaque = (await req('/api/island/projects/plaque?id=fountain', a)).data; assert.deepEqual([plaque.top, plaque.names], [['보태미'], ['보태미']]);
   assert.equal((await req('/api/island/projects/plaque?id=flower_path', a)).status, 404);
 });
+
+test('심부름은 공사 날 갈고리 없이 뽑음: 같은 날 사업이 낮에 다 모여도 그날 심부름 그대로 (총괄 222 검토 3)', () => {
+  const E = require('../lib/island-errands'); const day = '2026-11-05';
+  R.setWorks(() => false); const before = JSON.stringify(E.errandsOf(day, (n) => R.walks(n, day, true)));
+  R.setWorks((d) => d === day);
+  try {
+    assert.notEqual(JSON.stringify(E.errandsOf(day, (n) => R.walks(n, day))), before, '(공사 날 근무표로 뽑으면 바뀌었을 날)');
+    assert.equal(JSON.stringify(E.errandsOf(day, (n) => R.walks(n, day, true))), before);
+    assert.equal(R.walks(19, day), false); assert.equal(R.postOf(19, day), 'works');
+  } finally { R.setWorks(() => false); }
+});

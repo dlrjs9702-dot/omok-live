@@ -1059,7 +1059,7 @@ function errandPay(e, before) {
   return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0);
 }
 async function errandView(account) {
-  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day, walksToday);
+  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day, errandWalkers);
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
   const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
@@ -1576,6 +1576,9 @@ const counterToday = (n) => { const d = rosterDay(); return d ? IslandRoster.cou
 const deskToday = () => { const d = rosterDay(); return d ? IslandRoster.deskRest(d) : { rest: null, by: null }; };
 // C2 (v1.10.216): every islander not at a post walks (the table off: the ten as before); one walking or at a counter talks
 const walksToday = (n) => { const d = rosterDay(); return d ? IslandRoster.walks(n, d) : n < IslandCast.WALKERS.length; };
+// (v1.10.222 총괄 검토 3: the day's errands drawn from the roster without a works day -- a project filling at noon changes no errand;
+// 바위 at the works fence talks there all the same)
+const errandWalkers = (n) => { const d = rosterDay(); return d ? IslandRoster.walks(n, d, true) : n < IslandCast.WALKERS.length; };
 // the station's keeper today (철이, on a Sunday 반디 -- 총괄 C1 검토 1): talked to at the station, as one at a counter
 const stationToday = (n) => { const d = rosterDay(); return d && IslandRoster.postOf(n, d) === 'station' ? 'station' : null; };
 // v1.10.222 섬 가꾸기: a works day 바위 at the works fence (the roster's own hook, set from the projects' state below)
@@ -6963,7 +6966,7 @@ async function requestHandler(req, res) {
   // (Q 할 일 카드 「그만둘래요」) an errand under way let go: its asker offers it again (nothing paid, nothing kept)
   if (pathname === '/api/island/errand/drop' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
-    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day, walksToday);
+    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day, errandWalkers);
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const id = String((await parseJson(req)).id || ''); // (C5 Codex 4차 P3-2: both awaited before the stages are read -- no write between lost)
     const next = IslandErrands.drop(errands, errandStages.get(key) || {}, done, id);
     if (!next) return sendError(res, 409, 'ERRAND_GONE', '그만둘 수 있는 부탁이 아니에요.');
@@ -7059,7 +7062,7 @@ async function requestHandler(req, res) {
     const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
     // (대화창 새 단장: the choices are only what can be done today -- the day's story and gift not yet, an errand to do with them)
     const sendTalk = async (view) => {
-      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day, walksToday);
+      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day, errandWalkers);
       const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
       return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${day}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
     };
@@ -7110,7 +7113,7 @@ async function requestHandler(req, res) {
       let say;
       if (topic === 'how') say = [IslandCast.walkerLine(n, Math.random, 'day', level, String(session.label || ''))];
       else {
-        const errands = IslandErrands.errandsOf(day, walksToday); const stages = errandStages.get(`${day}|${account}`) || {};
+        const errands = IslandErrands.errandsOf(day, errandWalkers); const stages = errandStages.get(`${day}|${account}`) || {};
         const mine = errands.find((e) => stages[e.id] === 1 && e.kind !== 'buy' && e.to !== n) || errands.find((e) => stages[e.id] === 2 && e.from !== n);
         const other = mine ? (stages[mine.id] === 2 ? mine.from : mine.to) : (n + 1 + Math.floor(Math.random() * (IslandCast.WALKERS.length - 1))) % IslandCast.WALKERS.length;
         say = [IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
@@ -7170,7 +7173,7 @@ async function requestHandler(req, res) {
       if (owed) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, giftUsed: { ...(doc?.giftUsed || {}), [n]: null } } })).catch(() => {});
       return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, String(session.label || '')), ...(used?.bag ? { bag: used.bag } : {}) }));
     }
-    const errands = IslandErrands.errandsOf(day, walksToday); const key = `${day}|${account}`;
+    const errands = IslandErrands.errandsOf(day, errandWalkers); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     // Q 부탁 받기 (docs/quest-accept-complete-20261026.md): 「할게요!」 starts the offered errand; 「다음에요」 keeps nothing
     // (asked again today) -- each answered in the asker's own words
