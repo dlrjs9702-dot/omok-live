@@ -3193,3 +3193,7 @@ body.touchIsland .toolGauge{right:auto;left:16px;bottom:auto;top:68px} /* (the p
 /* v1.10.223 섬 가꾸기: 민원 창구에서 보태기, the mayor's vote */
 .projectGiveRow{display:flex;gap:8px}.projectGiveRow input{flex:1;min-width:0}
 .voteChoice{display:block;width:100%;margin-top:6px;text-align:left}.voteChoice.mine{border-color:#5fa04e;font-weight:800}
+/* v1.10.224 능선 전망대: the telescope's round frame */
+.scopeFrame{position:absolute;inset:0;z-index:6;pointer-events:none;background:radial-gradient(circle at 50% 50%,transparent 0 34vmin,rgba(8,10,14,.92) 35vmin)}
+.scopeFrame button{position:absolute;right:16px;bottom:16px;pointer-events:auto}
+.scopeFrame.hidden{display:none}

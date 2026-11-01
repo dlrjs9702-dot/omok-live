@@ -67,10 +67,10 @@ test('섬 가꾸기 투표(223): 첫 두 사업 뒤 마루 시장이 셋까지 �
   const goal = (id) => P.byId(id).goal; let s = P.fresh(); s.cur = null;
   s.open = ['fountain', 'flower_path'].map((id) => ({ id, day: '2026-11-03', top: [], names: [] }));
   s = P.roll(s, '2026-11-10', goal); let v = P.view(s, goal, 'a');
-  assert.deepEqual(v.vote.choices.map((c) => c.id), ['promenade', 'night_lights'], '224 것은 아직 표에 없음');
-  assert.equal(P.vote(s, 'a', 'bridge', '2026-11-10', goal), null, '표에 없는 것');
+  assert.deepEqual(v.vote.choices.map((c) => c.id), ['promenade', 'night_lights', 'bridge'], '셋까지 (224: 다리·전망대도)');
+  assert.equal(P.vote(s, 'a', 'lookout', '2026-11-10', goal), null, '표에 없는 것(넷째)');
   s = P.vote(s, 'a', 'night_lights', '2026-11-10', goal); s = P.vote(s, 'b', 'promenade', '2026-11-10', goal); s = P.vote(s, 'b', 'night_lights', '2026-11-10', goal); // (b changed their mind)
-  v = P.view(s, goal, 'b'); assert.deepEqual([v.vote.choices.map((c) => c.votes), v.vote.mine], [[0, 2], 'night_lights']);
+  v = P.view(s, goal, 'b'); assert.deepEqual([v.vote.choices.map((c) => c.votes), v.vote.mine], [[0, 2, 0], 'night_lights']);
   s = P.give(s, { userId: 'c', name: '다', amount: 300000 }, '2026-11-10', goal); assert.equal(s.saved, 300000, '투표 날 기부는 적립');
   s = P.roll(s, '2026-11-11', goal); v = P.view(s, goal);
   assert.deepEqual([v.vote, v.cur.id, v.cur.raised], [null, 'night_lights', 300000], '다음 날 이긴 것 시작, 적립 넣음');
@@ -78,8 +78,8 @@ test('섬 가꾸기 투표(223): 첫 두 사업 뒤 마루 시장이 셋까지 �
   let t = P.fresh(); t.cur = null; t.open = ['fountain', 'flower_path'].map((id) => ({ id, day: 'x', top: [], names: [] })); t = P.roll(t, '2026-11-20', goal); t = P.roll(t, '2026-11-21', goal);
   assert.equal(t.cur, 'promenade');
   // one left: begun at once, no vote
-  let u = P.fresh(); u.cur = null; u.open = ['fountain', 'flower_path', 'promenade'].map((id) => ({ id, day: 'x', top: [], names: [] })); u = P.roll(u, '2026-11-20', goal);
-  assert.deepEqual([u.cur, u.vote ?? null], ['night_lights', null]);
+  let u = P.fresh(); u.cur = null; u.open = ['fountain', 'flower_path', 'promenade', 'night_lights', 'bridge'].map((id) => ({ id, day: 'x', top: [], names: [] })); u = P.roll(u, '2026-11-20', goal);
+  assert.deepEqual([u.cur, u.vote ?? null], ['lookout', null]);
   assert.ok(P.PROMENADE.length >= 6 && P.PROMENADE_SEATS.length === P.PROMENADE.length && P.STRINGS.length >= 3 && P.UPLIGHTS.length === 7);
 });
 
@@ -88,17 +88,46 @@ test('섬 가꾸기 투표·민원 창구 서버: 정문에서만 한 표, 바�
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('투표미'));
   await req('/api/test/projects', a, { reset: true }); await req('/api/test/projects', a, { open: ['fountain', 'flower_path'] });
-  let v = (await req('/api/island/projects', a)).data; assert.deepEqual(v.vote.choices.map((c) => c.id), ['promenade', 'night_lights']);
+  let v = (await req('/api/island/projects', a)).data; assert.deepEqual(v.vote.choices.map((c) => c.id), ['promenade', 'night_lights', 'bridge']);
   const T = require('../public/plaza/island-terrain'); const gate = T.townhallWorld(0, T.TOWNHALL.yard.z1 + 1.4);
   await req('/api/plaza/state', a, { x: gate.x + 10, z: gate.z, yaw: 0, moving: false });
   assert.equal((await req('/api/island/projects/vote', a, { id: 'promenade' })).data.error, 'TOO_FAR');
   await req('/api/plaza/state', a, { x: gate.x, z: gate.z + 0.5, yaw: 0, moving: false });
   assert.equal((await req('/api/island/projects/vote', a, { id: 'promenade' })).status, 200);
-  v = (await req('/api/island/projects/vote', a, { id: 'night_lights' })).data; assert.deepEqual([v.vote.mine, v.vote.choices.map((c) => c.votes)], ['night_lights', [0, 1]], '한 사람 한 표, 바꿈');
-  assert.equal((await req('/api/island/projects/vote', a, { id: 'bridge' })).data.error, 'NO_VOTE');
+  v = (await req('/api/island/projects/vote', a, { id: 'night_lights' })).data; assert.deepEqual([v.vote.mine, v.vote.choices.map((c) => c.votes)], ['night_lights', [0, 1, 0]], '한 사람 한 표, 바꿈');
+  assert.equal((await req('/api/island/projects/vote', a, { id: 'lookout' })).data.error, 'NO_VOTE');
   assert.equal((await req('/api/island/projects/give', a, { amount: 1000, requestId: 'desk-00000001' })).data.error, 'TOO_FAR', '민원 창구 앞에서만');
   const seat = P.PROMENADE_SEATS[0]; await req('/api/plaza/state', a, { x: seat.x, z: seat.z, yaw: 0, moving: false });
   assert.equal((await req('/api/island/sit', a, { seat: seat.id })).status, 400, '열리기 전 벤치는 없음');
   await req('/api/test/projects', a, { open: 'promenade' }); await req('/api/island/projects', a);
   assert.equal((await req('/api/island/sit', a, { seat: seat.id })).status, 200, '열린 뒤 앉기');
+});
+
+test('새 다리(224): 열리면 지형의 다리 규칙으로 강 위를 걸음, 가운데 1.1 m 높이', () => {
+  const T = require('../public/plaza/island-terrain'); const B = P.BRIDGE; assert.equal(T.walkable(B.x, B.z), false, '전엔 물');
+  const e = P.bridgeEntry(T); T.bridges.push(e);
+  try {
+    assert.equal(T.walkable(B.x, B.z), true); assert.ok(Math.abs(T.heightAt(B.x, B.z) - (e.base + 0.43 + B.rise)) < 0.01);
+    assert.ok(Math.abs(T.heightAt(B.x - B.half + 0.1, B.z) - T.heightAt(B.x - B.half - 0.6, B.z)) < 0.35, '한쪽 끝이 둑과 이어짐');
+  } finally { T.bridges.splice(T.bridges.indexOf(e), 1); }
+});
+
+test('강 어귀 다리(224): 잔치마루 길에서 다리까지 길, 다리 열리기 전엔 낚시터 둔덕에 못 가고 열리면 감, 둔덕 가장자리는 낚시 물', () => {
+  const T = require('../public/plaza/island-terrain'); const B = P.BRIDGE; const S = P.FISHING_SPOT;
+  const X0 = 90, X1 = 175, Z0 = -40, Z1 = 20; const W = X1 - X0 + 1;
+  const reach = () => { // (8 ways, a metre a step: as one walks)
+    const ok = (x, z) => x >= X0 && x <= X1 && z >= Z0 && z <= Z1 && T.walkable(x, z); const seen = new Set([`116,9`]); const q = [[116, 9]];
+    while (q.length) { const [x, z] = q.pop(); for (let dx = -1; dx <= 1; dx += 1) for (let dz = -1; dz <= 1; dz += 1) { const k = `${x + dx},${z + dz}`; if (!seen.has(k) && ok(x + dx, z + dz)) { seen.add(k); q.push([x + dx, z + dz]); } } }
+    return seen.has(`${Math.round(S.x)},${Math.round(S.z)}`);
+  };
+  assert.ok(W > 0);
+  const walk = T.walkCurves.find((w) => Math.hypot(w.pts[0][0] - 115.2, w.pts[0][1] - 9.3) < 0.5); assert.ok(walk, '다리로 가는 길'); assert.equal(walk.w, 2.8);
+  const end = walk.pts[walk.pts.length - 1]; assert.ok(Math.hypot(end[0] - (B.x + B.ux * B.half), end[1] - (B.z + B.uz * B.half)) < 2.5, '길 끝이 다리 남쪽 끝');
+  assert.equal(T.bridges.filter((b) => !b.project).length, 4, '길이 강을 건너지 않음: 저절로 생기는 다리 없음');
+  assert.equal(reach(), false, '열리기 전엔 둔덕에 못 감');
+  const e = P.bridgeEntry(T); T.bridges.push(e);
+  try { assert.equal(reach(), true, '열리면 다리로 건너감'); } finally { T.bridges.splice(T.bridges.indexOf(e), 1); }
+  assert.ok(T.canFish(S.x, S.z) || T.canFish(S.x, S.z + 0.6), '낚시터에서 낚시');
+  for (const k of ['sign', 'keeper', 'plaque']) assert.ok(T.walkable(P.SITES.bridge[k].x, P.SITES.bridge[k].z), k);
+  assert.ok(Math.hypot(P.SITES.bridge.plaque.x - S.x, P.SITES.bridge.plaque.z - S.z) > 8, '명판과 낚시터 SPACE가 겹치지 않음');
 });

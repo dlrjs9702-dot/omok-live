@@ -15,8 +15,8 @@
     // v1.10.223: after these two the mayor puts up to three to a day's vote (`soon`: 224's, not on the ballot yet)
     Object.freeze({ id: 'promenade', name: '물가 거리 가로등과 벤치', short: '물가 거리', thing: '물가 거리', goal: 2000000 }),
     Object.freeze({ id: 'night_lights', name: '섬 야경 조명', short: '야경 조명', thing: '야경 조명', goal: 2500000 }),
-    Object.freeze({ id: 'bridge', name: '동쪽 강 새 다리', short: '새 다리', thing: '새 다리', goal: 3000000, soon: true }),
-    Object.freeze({ id: 'lookout', name: '능선 전망대', short: '전망대', thing: '전망대', goal: 2500000, soon: true }),
+    Object.freeze({ id: 'bridge', name: '동쪽 강 새 다리', short: '새 다리', thing: '새 다리', goal: 3000000 }), // (v1.10.224)
+    Object.freeze({ id: 'lookout', name: '능선 전망대', short: '전망대', thing: '전망대', goal: 2500000 }), // (v1.10.224)
   ]);
   const ORDER = Object.freeze(['fountain', 'flower_path']); // (the first two in order; then the vote)
   const VOTE_MAX = 3;
@@ -124,11 +124,27 @@
     ...[0, 1, 2].map((k) => ({ x: L.x + Math.sin(k * 2.1) * 4.2, z: L.z + Math.cos(k * 2.1) * 4.2, yaw: k * 2.1 + Math.PI }))].map((u) => Object.freeze({ x: +u.x.toFixed(2), z: +u.z.toFixed(2), yaw: +u.yaw.toFixed(3) })));
   const besideUnit = (u, d) => ({ x: +(u.x + Math.sin(u.yaw) * d).toFixed(2), z: +(u.z + Math.cos(u.yaw) * d).toFixed(2), yaw: u.yaw });
   const pm = PROMENADE[Math.floor(PROMENADE.length / 2)] || { x: 0, z: -4, yaw: 0 }; const st = STRINGS[0] || { x: 0, z: -48, yaw: 0 };
-  const more = {
+  const more = { /* (let: 224 adds to it) */
     promenade: Object.freeze({ fence: Object.freeze([pm, PROMENADE[Math.floor(PROMENADE.length / 2) + 1] || pm].map((u) => Object.freeze({ ...u }))), sign: Object.freeze(besideUnit(pm, -2.2)), keeper: Object.freeze(besideUnit(pm, -3.4)), plaque: Object.freeze(besideUnit(PROMENADE[0] || pm, -1.6)) }),
     night_lights: Object.freeze({ fence: Object.freeze([Object.freeze({ x: st.x + 2.6, z: st.z, yaw: Math.PI / 2 }), Object.freeze({ x: st.x - 2.6, z: st.z, yaw: Math.PI / 2 })]), sign: Object.freeze({ x: st.x + 3.4, z: st.z + 1.6, yaw: Math.PI }), keeper: Object.freeze({ x: st.x - 3.4, z: st.z + 1.6, yaw: 0 }), plaque: Object.freeze({ x: st.x + 2.6, z: st.z - 1.2, yaw: Math.PI }) }),
   };
+  // v1.10.224 동쪽 강 새 다리 (총괄 2026-11-01 「A 강 어귀」): over 은하내's mouth, the one place its banks are low and level (up the
+  // river it runs in a gorge); a walk from 잔치마루's walk to its south end, across it 강 어귀 낚시터 -- the little rise between
+  // the river and the sea, reached only by it (its edges the sea's and the river's fishing water). 10 m, its middle 1.1 m up
+  // (the terrain's own bridge rule once open)
+  const BRIDGE = Object.freeze({ x: 161.4, z: -15, ux: -0.414, uz: 0.91, half: 5, w: 2.6, rise: 1.1, yaw: -0.427 });
+  const FISHING_SPOT = Object.freeze({ x: 163.9, z: -21.6, name: '강 어귀 낚시터' });
+  const bridgeEntry = (T) => { const e0 = T.heightAt(BRIDGE.x - BRIDGE.ux * BRIDGE.half, BRIDGE.z - BRIDGE.uz * BRIDGE.half); const e1 = T.heightAt(BRIDGE.x + BRIDGE.ux * BRIDGE.half, BRIDGE.z + BRIDGE.uz * BRIDGE.half); const ends = Math.max(e0, e1);
+    return { x: BRIDGE.x, z: BRIDGE.z, ux: BRIDGE.ux, uz: BRIDGE.uz, half: BRIDGE.half, w: BRIDGE.w, arch: BRIDGE.rise, base: ends - 0.43 + 0.04, get deck() { return this.base + 0.43; }, project: 'bridge' }; }; // (the 윤슬다리's arch rule: its top 0.43 over base)
+  // v1.10.224 능선 전망대: on the ridge top beside the ridge walk (walk 35), well off the railway and 영웅마루역; its front (the coin
+  // telescope) to the west -- the rugged far ridge out at sea; one climbs at its back (SPACE there: through the telescope)
+  const LOOKOUT = Object.freeze({ x: -43, z: -136, yaw: Math.PI / 2, door: Object.freeze({ x: -40.2, z: -136 }), aim: Object.freeze({ x: -305, y: 22, z: -115 }) });
+  const at = (t, v, turn) => Object.freeze({ x: +(BRIDGE.x + BRIDGE.ux * t + BRIDGE.uz * v).toFixed(2), z: +(BRIDGE.z + BRIDGE.uz * t - BRIDGE.ux * v).toFixed(2), yaw: +(BRIDGE.yaw + turn).toFixed(3) }); // (along it t, across it v)
+  more.bridge = Object.freeze({ fence: Object.freeze([at(-BRIDGE.half - 0.6, 0, Math.PI / 2), at(BRIDGE.half + 0.6, 0, Math.PI / 2)]),
+    sign: at(BRIDGE.half + 2.4, 2.4, 0), keeper: at(BRIDGE.half + 2.4, -2.4, 0), plaque: at(BRIDGE.half + 1.6, 2.0, 0) }); // (all on its near bank, the walk's side)
+  more.lookout = Object.freeze({ fence: Object.freeze([0, 1, 2, 3].map((k) => { const a = (k / 4) * Math.PI * 2 + Math.PI / 4; return Object.freeze({ x: +(LOOKOUT.x + Math.sin(a) * 3.4).toFixed(2), z: +(LOOKOUT.z + Math.cos(a) * 3.4).toFixed(2), yaw: +(a + Math.PI / 2).toFixed(3) }); })),
+    sign: Object.freeze({ x: LOOKOUT.x + 4.4, z: LOOKOUT.z + 2.2, yaw: -Math.PI / 2 }), keeper: Object.freeze({ x: LOOKOUT.x + 4.2, z: LOOKOUT.z - 2.4, yaw: Math.PI / 2 }), plaque: Object.freeze({ x: LOOKOUT.x + 3.4, z: LOOKOUT.z + 1.6, yaw: -Math.PI / 2 }) }); // (its back to the walk: east)
   const ALL_SITES = Object.freeze({ ...SITES, ...more });
   const WORKS_N = 19; // 바위: on a works day at its fence, not walking (gamecenter-notes docs/resident-roster-20261027.md 「섬 공사 있는 날」)
-  return { PROJECTS, ORDER, VOTE_MAX, byId, fresh, roll, give, vote, view, nextDay, PLANTERS, PROMENADE, PROMENADE_SEATS, STRINGS, UPLIGHTS, SITES: ALL_SITES, WORKS_N };
+  return { BRIDGE, FISHING_SPOT, bridgeEntry, LOOKOUT, PROJECTS, ORDER, VOTE_MAX, byId, fresh, roll, give, vote, view, nextDay, PLANTERS, PROMENADE, PROMENADE_SEATS, STRINGS, UPLIGHTS, SITES: ALL_SITES, WORKS_N };
 }));

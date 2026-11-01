@@ -162,7 +162,7 @@ test('할로윈 화면: 10월 내내 켜지고 11월 1일 0시(서울)에 꺼진
 
 test('주민 이벤트: 같은 주민 ID·대기 위치를 모두에게 보내며 지급 실패/반환/만료도 예약과 일치한다', () => {
   let time=Date.parse('2026-10-08T12:00:00+09:00');
-  const ev=createIslandEvents({random:seeded(19),now:()=>time});
+  const ev=createIslandEvents({random:seeded(19),now:()=>time,working:(n)=>n>=10}); // (as the server without its roster: the ten walk)
   const e=ev.spawnLost(); assert.ok(e);
   assert.ok(Number.isInteger(e.resident) && e.resident>=0 && e.resident<10);
   const ownerA=ev.nearby(e.npc.x,e.npc.z,'a').find(v=>v.id===e.id&&v.kind==='lost_owner');

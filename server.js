@@ -1621,9 +1621,11 @@ async function projectsNow() {
   return worldEdit(async () => {
     const before = (await pointStore.worldValue('projects')) || null; const s = IslandProjects.roll(before, projectsDay(), projectGoal);
     if (JSON.stringify(s) !== JSON.stringify(before)) { await pointStore.setWorldValue('projects', s); if (before) broadcastIsland('projects', IslandProjects.view(s, projectGoal)); }
-    projectsState = s; return s;
+    projectsState = s; projectTerrain(s); return s;
   });
 }
+// v1.10.224: an open bridge is walked on (the terrain's bridge rule -- the page adds it the same way)
+function projectTerrain(s) { if (s?.open?.some((o) => o.id === 'bridge') && !IslandTerrain.bridges.some((b) => b.project === 'bridge')) IslandTerrain.bridges.push(IslandProjects.bridgeEntry(IslandTerrain)); }
 async function projectGive(account, name, amount) {
   return worldEdit(async () => {
     const s = IslandProjects.give((await pointStore.worldValue('projects')) || null, { userId: account, name, amount }, projectsDay(), projectGoal);

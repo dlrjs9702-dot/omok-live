@@ -22,6 +22,9 @@ function network() {
   const S = T.STAIRS; const foot = { x: S.x + S.nx * 1.7, z: S.z + S.nz * 1.7 }; const top = { x: S.x + S.ux * S.len + S.nx * 1.7, z: S.z + S.uz * S.len + S.nz * 1.7 };
   const at = (p) => W.map((w, i) => (near(p, w, 3) ? i : -1)).filter((i) => i >= 0);
   for (const i of at(foot)) for (const j of at(top)) parent[find(i)] = find(j);
+  // (v1.10.224 섬 가꾸기 동쪽 강 새 다리: its walks join over it -- built once the project is open, its ends kept clear till then)
+  const PB = require('../public/plaza/island-projects.js').BRIDGE; const pbEnd = (s) => ({ x: PB.x + PB.ux * PB.half * s, z: PB.z + PB.uz * PB.half * s });
+  for (const i of at(pbEnd(1))) for (const j of at(pbEnd(-1))) parent[find(i)] = find(j);
   const plazaRoots = new Set(W.map((w, i) => (w.pts.some(([x, z]) => inPlaza(x, z)) ? find(i) : -1)).filter((r) => r >= 0));
   const linked = (i) => plazaRoots.has(find(i));
   return { W, inPlaza, linked };
@@ -41,6 +44,7 @@ function places() {
   const L = PL.lighthouse; const lw = [-88, 140]; const ll = Math.hypot(lw[0] - L.x, lw[1] - L.z); out.push(['초승등대', { x: L.x + ((lw[0] - L.x) / ll) * 4.5, z: L.z + ((lw[1] - L.z) / ll) * 4.5 }]);
   out.push(['달끝나루 부두', T.PIER.root], ['배 타는 곳', { x: T.DOCK.rects[1].x, z: T.DOCK.rects[1].z - T.DOCK.rects[1].half }]);
   out.push(['농부 밭', T.FARM.farmer]);
+  { const Pj = require('../public/plaza/island-projects.js'); const PB = Pj.BRIDGE; for (const s of [-1, 1]) out.push([`새 다리 ${s < 0 ? '건너편' : '앞'}`, { x: PB.x + PB.ux * PB.half * s, z: PB.z + PB.uz * PB.half * s }]); out.push(['강 어귀 낚시터', Pj.FISHING_SPOT]); } // (v1.10.224)
   // (묶음 3) the village's minigame residents where they stand
   for (const k of ['painter', 'busker', 'stationmaster', 'electrician', 'builder', 'librarian', 'grandpa']) if (T.VILLAGE?.[k]) out.push([`주민:${k}`, T.VILLAGE[k]]);
   for (const lot of require('../public/plaza/island-home.js').LOTS) for (const st of [1, 2, 3]) out.push([`집터:${lot.id}:${st}단계`, require('../public/plaza/island-home.js').doorOf(lot, st)]); // (묶음 4; 4-2: each stage's door)

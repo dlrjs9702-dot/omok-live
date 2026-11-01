@@ -19,7 +19,7 @@ test('섬 가꾸기 2: 마루 시장 투표, 민원 창구 보태기, 물가 거
     await time('day');
     // the mayor: today's vote -- a ballot, then changed
     await page.evaluate(() => window.PlazaDebug().place('mayor')); await expect.poll(() => spaceOn(page, 'mayor', isMobile), { timeout: 10000 }).toBe(true); await revealTalk(page);
-    const choices = page.locator('#plazaDialog .voteChoice'); await expect(choices).toHaveCount(2);
+    const choices = page.locator('#plazaDialog .voteChoice'); await expect(choices).toHaveCount(3); /* (224: 새 다리 on it too) */
     await choices.filter({ hasText: '물가 거리' }).click(); await expect(choices.filter({ hasText: '물가 거리' })).toHaveClass(/mine/); await expect(choices.filter({ hasText: '물가 거리' })).toContainText('1표');
     await shot('vote', 600);
     await page.locator('#plazaDialog button', { hasText: '용무가 있습니다' }).click(); // (the gate's pass: in to the 민원 창구)
