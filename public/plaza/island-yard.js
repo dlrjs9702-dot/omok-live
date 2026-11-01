@@ -124,8 +124,17 @@
       }
     }
     const fence = ITEMS[shape].fence;
-    for (const o of others) { if (o.uid === p.uid) continue; if (fence && ITEMS[shapeOf(o.id)]?.fence) continue; if (overlap(b, footBox(o))) return '다른 물건과 겹쳐요.'; }
+    for (const o of others) { if (o.uid === p.uid) continue; if (fence && ITEMS[shapeOf(o.id)]?.fence && postsOnly(p, o)) continue; if (overlap(b, footBox(o))) return '다른 물건과 겹쳐요.'; }
     return null;
+  }
+  // two fences that meet only at an end post (총괄 225 검토): in a line, overlapping 0.1 m at most; at a corner, the
+  // overlap no longer than the other's depth and at an end of each -- never one on another, nor half way along
+  function postsOnly(a, b) {
+    const A = footBox(a); const B = footBox(b); const lo = [Math.max(A[0], B[0]), Math.max(A[2], B[2])]; const hi = [Math.min(A[1], B[1]), Math.min(A[3], B[3])];
+    if (hi[0] - lo[0] <= 1e-6 || hi[1] - lo[1] <= 1e-6) return true; // (only touching)
+    const ok = (p, box, room) => { const k = p.rot % 2 ? 1 : 0; const len = hi[k] - lo[k]; return len <= room + 1e-6 && (lo[k] <= box[k * 2] + 1e-6 || hi[k] >= box[k * 2 + 1] - 1e-6); };
+    if (a.rot % 2 === b.rot % 2) return ok(a, A, 0.1) && ok(b, B, 0.1);
+    return ok(a, A, ITEMS[shapeOf(b.id)].foot[1]) && ok(b, B, ITEMS[shapeOf(a.id)].foot[1]);
   }
   // the pieces that no longer fit (a bigger house, say) -- they go back to the 가구 창고
   const misfits = (items, lot, stage, level) => items.filter((p, i) => placeError(p, items.slice(0, i), lot, stage, level));

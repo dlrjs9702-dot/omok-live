@@ -31,6 +31,14 @@ test('마당 규칙: 칸 안/밖·집·현관 길·겹침·울타리 기둥 맞�
   // overlapping: no -- but fences end to end and at a corner share their posts
   const fa = { uid: 'fa', id: id('fence_wood'), x: -4, z: 1, rot: 0 }; const fb = { uid: 'fb', id: id('fence_stone'), x: -4.5, z: 1.5, rot: 1 };
   assert.equal(Y.placeError(fb, [fa], lot, 1, 1), null, '울타리끼리 모서리');
+  // (총괄 225 검토: end posts only -- not one on another, nor half along)
+  const g = { uid: 'g', id: id('fence_wood'), x: 0, z: 4, rot: 0 };
+  assert.equal(Y.placeError({ ...g, uid: 'g2', x: 1 }, [g], lot, 1, 1), null, '1 m 이어 붙이기');
+  assert.equal(Y.placeError({ ...g, uid: 'g2' }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '같은 자리 둘');
+  assert.equal(Y.placeError({ ...g, uid: 'g2', x: 0.5 }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '반 칸 엇갈림');
+  assert.equal(Y.placeError({ ...g, uid: 'g2', z: 4.25 }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '나란히 포갬');
+  assert.equal(Y.placeError({ ...g, uid: 'g3', rot: 1, x: 0, z: 4.5 }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '가운데를 가로지름');
+  assert.equal(Y.placeError({ ...g, uid: 'g4', rot: 1, x: 0.5, z: 4.5 }, [g], lot, 1, 1), null, '90° 모서리');
   assert.equal(Y.placeError({ ...bench, x: -4, z: 1, rot: 0 }, [fa], lot, 1, 1), '다른 물건과 겹쳐요.');
   assert.equal(Y.placeError({ uid: 'x', id: 'sofa__mint', x: -5, z: 0, rot: 0 }, [], lot, 1, 1), '마당 물건이 아니에요.');
   // the way in, its walk and the neighbours': never in a yard, whatever the level

@@ -54,7 +54,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     await outOfMall(page);
     // a house from the 민원 창구 (a free lot); 「마당 넓히기」 shows once there is one
     await toDesk(); await expect(page.locator('#yardGrowBtn')).toBeHidden();
-    await page.locator('#homeApplyBtn').click(); const free = page.locator('#homeCard .homeLots button:not([disabled])').first(); lot = await free.getAttribute('data-lot'); await free.click();
+    await page.locator('#homeApplyBtn').click(); const open = page.locator(`#homeCard .homeLots button[data-lot="${isMobile ? 'lot8' : 'lot7'}"]:not([disabled])`); /* (총괄 225 검토: an open lot for the photos, not lot 1 under the station) */ const free = (await open.count()) ? open : page.locator('#homeCard .homeLots button:not([disabled])').first(); lot = await free.getAttribute('data-lot'); await free.click();
     await page.locator('#homeCard button', { hasText: '신청하기' }).click(); await expect(page.locator('#homeCard')).toBeHidden({ timeout: 15000 });
     await through(page, 'room:exit', '나가기', 'island');
     const L = Y.lotById(lot); const pieces = (await post(request, '/api/test/home/furniture', a.token, { ids: ['fence_wood', 'fence_wood', 'fence_wood', 'bench', 'lantern_stone', 'garden_light', 'flowerbed', 'fence_stone'].map(Y.goodId) })).data.pieces;
@@ -81,7 +81,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     };
     const by = (shape) => pieces.filter((p) => p.id === Y.goodId(shape));
     const fences = by('fence_wood'); for (const [k, f] of fences.entries()) await placeAt(f.uid, -4.25, -0.5 + k, 1); // (end to end along the side: their posts shared)
-    await placeAt(by('bench')[0].uid, -1, 4, 2); await placeAt(by('lantern_stone')[0].uid, 1.5, 4); await placeAt(by('garden_light')[0].uid, -2.5, 4.25);
+    await placeAt(by('bench')[0].uid, -3, -3.75, 0); /* (in the front yard, facing the walk) */ await placeAt(by('lantern_stone')[0].uid, 1.5, 4); await placeAt(by('garden_light')[0].uid, -2.5, 4.25);
     const arch = (await get(request, '/api/island/furniture/mine', a.token)).data.pieces.find((p) => p.id === Y.goodId('arch')); await placeAt(arch.uid, 4.25, 0, 1);
     await page.locator('#plazaCloseBtn').click();
     // seen in 3D: the batches, what blocks (the arch's middle free, its posts not), the bench's seats
@@ -90,10 +90,10 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     expect(await page.evaluate(([x, z]) => window.PlazaDebug().solidAt(x, z, 0.25), [mid.x, mid.z])).toBe(false);
     expect(await page.evaluate(([x, z]) => window.PlazaDebug().solidAt(x, z, 0), [archPost.x, archPost.z])).toBe(true);
     const fenceMid = Y.world(L, -4.25, 0); expect(await page.evaluate(([x, z]) => window.PlazaDebug().solidAt(x, z, 0), [fenceMid.x, fenceMid.z])).toBe(true);
-    await stand(4.25, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI * 0.8); await shot('yard-day');
+    await stand(0.75, -8.5); await page.evaluate((yaw) => { const d = window.PlazaDebug(); d.setCamYaw(yaw); d.setCamPitch?.(0.35); }, L.yaw + Math.PI); await shot('yard-day');
     const seat = (await page.evaluate(() => window.PlazaDebug().yards().seats))[0]; await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [seat.x, seat.z]);
     await expect.poll(() => spaceOn(page, `seat:${seat.id}`, isMobile), { timeout: 10000 }).toBe(true);
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting), { timeout: 10000 }).toBeTruthy(); await shot('yard-bench');
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting), { timeout: 10000 }).toBeTruthy(); await page.evaluate((yaw) => { const d = window.PlazaDebug(); d.setCamYaw(yaw); d.setCamPitch?.(0.2); }, L.yaw + Math.PI * 1.1); await shot('yard-bench');
     await page.evaluate(() => window.PlazaDebug().standUpNow()); await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBeFalsy();
     // another player: the same yard, no 「마당 꾸미기」
     await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().yards().lots.find((l) => l.id === id)?.n, lot), { timeout: 20000 }).toBe(7);
