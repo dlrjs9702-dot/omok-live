@@ -20,12 +20,12 @@ test('이동 3단계(Shift 탭·홀드)와 운동복 전용 몸', async ({ brows
   const walkFor = async (ms, shift = false) => {
     const a = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
     if (shift) await page.keyboard.down('Shift');
-    await page.keyboard.down('ArrowUp');
+    await page.keyboard.down('KeyW');
     let clip = null; await page.waitForTimeout(ms * 0.7); clip = await page.evaluate(() => window.PlazaDebug().gait);
     await page.waitForTimeout(ms * 0.3);
-    await page.keyboard.up('ArrowUp'); if (shift) await page.keyboard.up('Shift');
+    await page.keyboard.up('KeyW'); if (shift) await page.keyboard.up('Shift');
     const b = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
-    await page.keyboard.press('ArrowDown'); // turn back so the next walk has room
+    await page.keyboard.press('KeyS'); // turn back so the next walk has room
     return { d: Math.hypot(b.x - a.x, b.z - a.z), clip };
   };
   expect(await page.evaluate(() => window.PlazaDebug().pace)).toBe('walk');

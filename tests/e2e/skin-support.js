@@ -188,7 +188,7 @@ async function intoMall(page, place = null, isMobile = false) {
   // (on a busy runner the server may set me back from a first teleport, or not have my place yet when I press: to the
   // door and in again until I am inside)
   const MALL = ['store', 'fashion', 'furniture', 'petshop']; // (v1.10.211: already on one of its floors -- in)
-  if (await page.evaluate(() => Boolean(window.PlazaDebug()?.act().sitting))) { await page.keyboard.press('Escape').catch(() => {}); await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowDown'); await page.waitForTimeout(300); await page.keyboard.up('ArrowDown'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false); } // (sat at a mirror: up first)
+  if (await page.evaluate(() => Boolean(window.PlazaDebug()?.act().sitting))) { await page.keyboard.press('Escape').catch(() => {}); await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyS'); await page.waitForTimeout(300); await page.keyboard.up('KeyS'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false); } // (sat at a mirror: up first)
   for (let tries = 0; tries < 4 && !MALL.includes(await page.evaluate(() => window.PlazaDebug().space)); tries += 1) {
     // (a slow entry from the last try may land me inside meanwhile: then no more door -- placed at it from inside, I would
     // stand at the room's wall with no prompt)

@@ -57,9 +57,9 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   }
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some(w => w.transformation === 'mymelody')), { timeout: 30000 }).toBe(true);
   const start = await a.page.evaluate(() => window.PlazaDebug().z);
-  await a.page.keyboard.down('ArrowUp');
+  await a.page.keyboard.down('KeyW');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().gait)).toBe('walk');
-  await a.page.keyboard.up('ArrowUp');
+  await a.page.keyboard.up('KeyW');
   expect(await a.page.evaluate(() => window.PlazaDebug().z)).toBeLessThan(start);
   await a.page.evaluate(() => window.PlazaDebug().holdQuality(0));
   await b.page.evaluate(async (p) => { await window.PlazaWarp(p.x + 65, p.z + 65); }, require('../../public/plaza/island-terrain.js').PLAZA_C || { x: 0, z: 0 }); // (far off, either island)
@@ -75,9 +75,9 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   expect(await a.page.evaluate(() => window.PlazaDebug().act().clip)).toMatch(/SitDown|SitIdle/); // both are valid phases of the seated animation
   await a.page.screenshot({ path: testInfo.outputPath('kuromi-seated.png') });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (CI 2차: the sit-down motion over -- an arrow during it went nowhere)
-  await a.page.keyboard.down('ArrowUp');
+  await a.page.keyboard.down('KeyW');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
-  await a.page.keyboard.up('ArrowUp');
+  await a.page.keyboard.up('KeyW');
   expect(seat.id).toBeTruthy();
   await expectNoScriptError(a.page);await a.context.close();expect(errors).toEqual([]);
 });

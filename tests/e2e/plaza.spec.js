@@ -160,9 +160,9 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
 
   // Arrow keys move the character.
   const start = await state(page);
-  await page.keyboard.down('ArrowUp'); // held until it has walked (a busy machine renders few frames)
+  await page.keyboard.down('KeyW'); // held until it has walked (a busy machine renders few frames)
   await expect.poll(async () => start.z - (await state(page)).z, { timeout: 10000 }).toBeGreaterThan(0.3);
-  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('KeyW');
 
   // At the game hall: its 「스킨」 tab opens the game skin shop (v1.10.211 백화점 개편 A안: no longer in the 백화점, no keeper)
   await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('games')); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('게임관');
@@ -172,15 +172,15 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   await expect(page.locator('#skinShopTitle')).toHaveText('게임 스킨 상점');
   await expect(page.locator('#skinShopDialog').getByRole('tab', { name: '광장 아바타' })).toHaveCount(0); // character skins: the shop next door
   const before = await state(page);
-  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(300); await page.keyboard.up('ArrowLeft');
+  await page.keyboard.down('KeyA'); await page.waitForTimeout(300); await page.keyboard.up('KeyA');
   const during = await state(page);
   expect(Math.hypot(during.x - before.x, during.z - before.z)).toBeLessThan(0.01); // no walking while a window is open
   await page.keyboard.press('Escape');
   await expect(page.locator('#skinShopDialog')).toBeHidden();
   await page.keyboard.press('Escape'); await expect.poll(() => page.evaluate(() => document.body.classList.contains('plazaMode'))).toBe(true); // (v1.10.211: Esc again leaves the game hall, back on the island)
-  await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowDown'); // back to walking right away
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyS'); // back to walking right away
   await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - during.x, now.z - during.z); }, { timeout: 10000 }).toBeGreaterThan(0.2);
-  await page.keyboard.up('ArrowDown');
+  await page.keyboard.up('KeyS');
 
   // A click on a facility runs the same action: the board opens the notices in a window, closing puts them back.
   await page.evaluate(() => window.PlazaDebug().place('board'));
@@ -372,9 +372,9 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
     };
     requestAnimationFrame(tick);
   }), aId);
-  await a.page.keyboard.down('ArrowDown'); // held until a has walked a few steps (a slow runner draws few frames)
+  await a.page.keyboard.down('KeyS'); // held until a has walked a few steps (a slow runner draws few frames)
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().z), { timeout: 15000 }).toBeGreaterThan(LANE.z + 2);
-  await a.page.keyboard.up('ArrowDown');
+  await a.page.keyboard.up('KeyS');
   await a.page.waitForTimeout(300);
   const end = await a.page.evaluate(() => window.PlazaDebug().z);
   await b.page.evaluate((z) => { window.__walkEnd = z; window.__walkDone = true; }, end);
@@ -481,7 +481,7 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   // 1) head-on: A walks straight at B and stops at the contact, never inside
   await tp(b, 0, 10); await tp(a, 0, 8.2);
   await settleR(a, bId, 0, 10);
-  await a.page.keyboard.down('ArrowDown'); await a.page.waitForTimeout(1200); await a.page.keyboard.up('ArrowDown');
+  await a.page.keyboard.down('KeyS'); await a.page.waitForTimeout(1200); await a.page.keyboard.up('KeyS');
   let pa = await meR(a);
   expect(Math.hypot(pa.x, pa.z - 10)).toBeGreaterThan(0.86);
   expect(pa.z).toBeLessThan(10);
@@ -489,9 +489,9 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   // 2) at an angle: A slides along B and gets past, never closer than the contact
   await tp(a, -0.35, 8.4);
   let closest = 99;
-  await a.page.keyboard.down('ArrowDown'); await a.page.keyboard.down('ArrowRight');
+  await a.page.keyboard.down('KeyS'); await a.page.keyboard.down('KeyD');
   for (let i = 0; i < 16; i += 1) { await a.page.waitForTimeout(60); pa = await meR(a); closest = Math.min(closest, Math.hypot(pa.x, pa.z - 10)); }
-  await a.page.keyboard.up('ArrowDown'); await a.page.keyboard.up('ArrowRight');
+  await a.page.keyboard.up('KeyS'); await a.page.keyboard.up('KeyD');
   expect(closest).toBeGreaterThan(0.86);
   expect(pa.z).toBeGreaterThan(10.2); // got past B's side
   expect(pa.x).toBeGreaterThan(0.6);
@@ -499,7 +499,7 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   // 3) both at once, toward each other: no passing through, no jumps
   await tp(a, 0, 8.4); await tp(b, 0, 10.8);
   await settleR(a, bId, 0, 10.8); await settleR(b, aId, 0, 8.4);
-  await a.page.keyboard.down('ArrowDown'); await b.page.keyboard.down('ArrowUp');
+  await a.page.keyboard.down('KeyS'); await b.page.keyboard.down('KeyW');
   // what each player sees: my character against the other one as drawn on my screen
   const onScreen = async (who, id) => { const [m, o] = [await me(who), await seen(who, id)]; return o ? Math.hypot(m.x - o.x, m.z - o.z) : 99; };
   let prevA = await meR(a); let prevB = await meR(b); let biggestStep = 0; let nearestSeen = 99;
@@ -510,7 +510,7 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
     nearestSeen = Math.min(nearestSeen, await onScreen(a, bId), await onScreen(b, aId));
     prevA = na; prevB = nb;
   }
-  await a.page.keyboard.up('ArrowDown'); await b.page.keyboard.up('ArrowUp');
+  await a.page.keyboard.up('KeyS'); await b.page.keyboard.up('KeyW');
   expect(prevA.z).toBeLessThan(prevB.z); // nobody passed through
   expect(nearestSeen).toBeGreaterThan(0.45); // never drawn inside each other (a glide may briefly close the gap while the server settles)
   expect(biggestStep).toBeLessThan(1.2); // no teleporting back and forth
@@ -559,9 +559,9 @@ test('게임 아일랜드 채팅: Enter 입력·전송, 내 말풍선과 다른 
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().bubble), { timeout: 8000 }).toBe('안녕하세요 섬 친구들');
   await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.bubble, aId), { timeout: 8000 }).toBe('안녕하세요 섬 친구들');
   // walking works again right after sending
-  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('KeyW');
   await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - during.x, now.z - during.z); }, { timeout: 8000 }).toBeGreaterThan(0.2);
-  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('KeyW');
   // Esc cancels without sending
   await page.keyboard.press('Enter'); await page.keyboard.type('보내지 않을 말'); await page.keyboard.press('Escape');
   await expect(page.locator('#islandChatForm')).toBeHidden();
@@ -658,9 +658,9 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
   await expect(page.locator('#skinShopDialog')).toBeHidden();
   // ↑ walks away from the camera: along (-sin yaw, -cos yaw)
   const from = await state(page);
-  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('KeyW');
   await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - from.x, now.z - from.z); }, { timeout: 10000 }).toBeGreaterThan(0.6);
-  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('KeyW');
   const to = await state(page);
   const dx = to.x - from.x; const dz = to.z - from.z; const len = Math.hypot(dx, dz);
   expect((dx * -Math.sin(yaw) + dz * -Math.cos(yaw)) / len).toBeGreaterThan(0.9);
@@ -716,7 +716,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   for (let i = 0; i < 40 && (await zoomNow()) < zoom0; i += 1) await page.mouse.wheel(0, 30); // back near the default for the rest
 
   // A turns like dragging left (yaw up), D the other way; on release it stops
-  await hold('a', 600);
+  await hold('ArrowLeft', 600);
   await page.waitForTimeout(300);
   const afterA = await cam(); expect(afterA.yaw).toBeGreaterThan(0.3);
   await page.waitForTimeout(400);
@@ -745,14 +745,14 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   // and the keys go on from there: sampled while A turns, the view only ever moves on from the dragged angle (the
   // keys' old angle is 0.64 back the other way) and the tilt stays where the drag left it
   let prev = dragged;
-  await page.keyboard.down('a');
+  await page.keyboard.down('ArrowLeft');
   for (let k = 0; k < 8; k += 1) {
     await page.waitForTimeout(60); const now = await cam();
     expect(now.yaw).toBeGreaterThanOrEqual(prev.yaw - 0.01); // no jump back to an old angle
     expect(Math.abs(now.pitch - dragged.pitch)).toBeLessThan(0.02);
     prev = now;
   }
-  await page.keyboard.up('a');
+  await page.keyboard.up('ArrowLeft');
   expect(prev.yaw).toBeGreaterThan(dragged.yaw);
 
   // typing a chat message: W/A/S/D are letters, not camera keys
@@ -781,9 +781,9 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   // the arrows still walk
   const from = await state(page);
   await page.locator('#plazaStage').focus();
-  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('KeyW');
   await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - from.x, now.z - from.z); }, { timeout: 10000 }).toBeGreaterThan(0.5);
-  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('KeyW');
 
   // all round the island at the lowest tilt: above gentle ground (문제 기록 7: a cliff or the ridge behind is seen through, the
   // camera not lifted over it); nothing turns see-through out here any more (문제 기록 2회차 1)
@@ -827,7 +827,7 @@ test('첫 접속 성별 선택: 처음 한 번만 묻고, 내 캐릭터·다른 
   let settled = await state(page); // (CI 2차: first still -- a just-started island may still be gliding to its spot on a slow runner)
   await expect.poll(async () => { const now = await state(page); const d = Math.hypot(now.x - settled.x, now.z - settled.z); settled = now; return d; }, { timeout: 15000, intervals: [500] }).toBeLessThan(0.005);
   const before = await state(page);
-  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW');
   expect(Math.hypot((await state(page)).x - before.x, (await state(page)).z - before.z)).toBeLessThan(0.01);
   await page.locator('.genderChoice[data-gender="female"]').click();
   await page.locator('#genderConfirmBtn').click();
@@ -954,14 +954,14 @@ test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열�
   await page.keyboard.press('Space');
   await expect(page.locator('#climbDialog')).toBeVisible();
   const before = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
-  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(300); await page.keyboard.up('ArrowLeft');
+  await page.keyboard.down('KeyA'); await page.waitForTimeout(300); await page.keyboard.up('KeyA');
   const during = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
   expect(Math.hypot(during.x - before.x, during.z - before.z)).toBeLessThan(0.01);
   await page.keyboard.press('Escape');
   await expect(page.locator('#climbDialog')).toBeHidden();
-  await page.keyboard.down('ArrowDown');
+  await page.keyboard.down('KeyS');
   await expect.poll(async () => { const d = await page.evaluate(() => window.PlazaDebug()); return Math.hypot(d.x - during.x, d.z - during.z); }, { timeout: 10000 }).toBeGreaterThan(0.2);
-  await page.keyboard.up('ArrowDown');
+  await page.keyboard.up('KeyS');
   // a click on the gate does the same
   await page.evaluate(() => window.PlazaDebug().place('climb'));
   await page.waitForTimeout(300);
@@ -1270,7 +1270,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   await expect.poll(async () => { if ((await page.evaluate(() => window.PlazaDebug().carry)).mine === lost.id) return true; await spaceOn(page, `ev:lost_item:${lost.id}`); await page.waitForTimeout(1000); return (await page.evaluate(() => window.PlazaDebug().carry)).mine === lost.id; }, { timeout: 30000, intervals: [500] }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 15000 }).toMatchObject({ mine: lost.id, arms: true, held: true });
   // walking with it
-  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(700); await page.keyboard.up('ArrowUp');
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(700); await page.keyboard.up('KeyW');
   expect(await page.evaluate(() => window.PlazaDebug().carry)).toMatchObject({ mine: lost.id, arms: true, held: true });
   // someone else nearby sees it in my hands
   const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
@@ -1322,9 +1322,9 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().gather?.kind), { timeout: 5000 }).toBe('weed');
   const from = await state(page); const yaw0 = await page.evaluate(() => window.PlazaDebug().camYaw);
-  await page.keyboard.down('ArrowUp'); await page.keyboard.down('a'); await page.waitForTimeout(400);
+  await page.keyboard.down('KeyW'); await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(400);
   const held = await state(page); const yaw1 = await page.evaluate(() => window.PlazaDebug().camYaw);
-  await page.keyboard.up('ArrowUp'); await page.keyboard.up('a');
+  await page.keyboard.up('KeyW'); await page.keyboard.up('ArrowLeft');
   expect(Math.hypot(held.x - from.x, held.z - from.z)).toBeLessThan(0.05); // not a step
   expect(yaw1).toBeGreaterThan(yaw0 + 0.1); // the camera turned
   releaseFinish();
@@ -1410,10 +1410,10 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
     // seldom got to the front, so this was seldom tried; drawn faster since this PR it does. Where it stops depends on
     // where along the front's circles it slides: 0.638-0.657 m inside z1 measured (CI 6.6929 three times, run 39724207329;
     // locally 6.702-6.712) -- the old bound 0.65 lay inside that; 0.70 still fails any walk into the hall)
-    await page.keyboard.down('ArrowUp');
+    await page.keyboard.down('KeyW');
     let last = null;
     await expect.poll(async () => { const now = await page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandTerrain.townhallLocal(d.x, d.z); }); const still = last && Math.hypot(now.lx - last.lx, now.lz - last.lz) < 0.002; last = now; return still; }, { timeout: 15000, intervals: [500] }).toBe(true);
-    await page.keyboard.up('ArrowUp');
+    await page.keyboard.up('KeyW');
     const at = await page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandTerrain.townhallLocal(d.x, d.z); });
     expect(at.lz, `${lx}: ${JSON.stringify(at)}`).toBeGreaterThan(DAL ? T.TOWNHALL.body.z1 - 0.7 : Math.abs(at.lx) < 3.3 ? 7.4 : 6.3);
   }
@@ -1442,7 +1442,7 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.phase), { timeout: 10000 }).toMatch(/cast|wait/);
   await expect.poll(seen, { timeout: 10000 }).toMatch(/^fish:(cast|wait)$/);
   const from = await state(page);
-  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW');
   const still = await state(page); expect(Math.hypot(still.x - from.x, still.z - from.z)).toBeLessThan(0.05); // fishing holds me in place
   // (a long bite on the page, the server's bite just before the pull: one PlazaDebug() call alone took ~2 s on CI, past
   // the server's 2.2 s window)
@@ -1481,7 +1481,7 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
   await expect(page.locator('#photoBar')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().photo().hidden)).toBeGreaterThan(0);
   const from = await state(page);
-  await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW');
   const still = await state(page); expect(Math.hypot(still.x - from.x, still.z - from.z)).toBeLessThan(0.05);
   const download = page.waitForEvent('download');
   await page.locator('#photoShootBtn').click();
@@ -1561,7 +1561,7 @@ test('기념사진 2버튼: 앉은 채 즉시 촬영(자세 유지·카운트다
   await page.locator('#photoShootBtn').click();
   await expect(page.locator('.toast')).toContainText('즉시 촬영');
   await expect(page.locator('#photoCount')).toBeHidden();
-  await page.keyboard.press('ArrowUp'); // the photo mode holds me: still seated
+  await page.keyboard.press('KeyW'); // the photo mode holds me: still seated
   expect(await page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
   await page.keyboard.press('Escape');
   await expect(page.locator('body')).not.toHaveClass(/photoMode/);
@@ -1598,7 +1598,7 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe(S0);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
   const beforeWalk = await state(a.page);
-  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('ArrowRight'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowRight');
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('KeyD'); await a.page.waitForTimeout(300); await a.page.keyboard.up('KeyD');
   const afterWalk = await state(a.page); expect(Math.hypot(afterWalk.x - beforeWalk.x, afterWalk.z - beforeWalk.z)).toBeGreaterThan(.2);
   // (CI 3차: the button watched on the page and pressed the moment it says so -- waiting for its text from here and then
   // clicking took the slow runner past the 4.6 s window; the trains keep their own time behind a held one, so the window
@@ -1720,7 +1720,7 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await expect(a.page.locator('#islandChatInput')).not.toBeFocused(); await a.page.waitForTimeout(400);
   expect((await a.page.evaluate(() => window.PlazaDebug().act())).sitting).toBe(true);
   // an arrow stands me up and frees the seat on both screens
-  await a.page.keyboard.down('ArrowUp'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowUp');
+  await a.page.keyboard.down('KeyW'); await a.page.waitForTimeout(300); await a.page.keyboard.up('KeyW');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
   await expect.poll(() => b.page.evaluate(() => Object.keys(window.PlazaDebug().takenSeats()).length), { timeout: 15000 }).toBe(0);
   // beside the other player: 인사 -- (CI 3차, run 39699233302: SPACE reached the 안내 주민 instead, who stands by the spawn
@@ -1929,7 +1929,7 @@ test('구치소 벽: 옆으로 걸어 들어가도 바닥 사각형 밖에서 �
   for (const side of [-1, 1]) {
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [J.x + side * 8, J.z + 0.8]);
     await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [J.x, J.z + 0.8]);
-    await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(2500); await page.keyboard.up('ArrowUp');
+    await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyW'); await page.waitForTimeout(2500); await page.keyboard.up('KeyW');
     const at = await state(page); expect(Math.abs(at.x - J.x) - 4.9, `${side < 0 ? '서' : '동'}쪽 벽`).toBeGreaterThan(0.2);
   }
   await expectNoScriptError(page); await a.context.close();

@@ -35,7 +35,7 @@ test('백화점 4층: 승강기 네 층, 층마다 계산대, 2층 거울 앉으
   await expect(page.locator('#skinShopTitle')).toHaveText('미용실');
   await page.locator('#skinShopCloseBtn').click(); void sit;
   // the game skins: the game hall's 「스킨」 tab (out of the 백화점, at the game hall)
-  await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowDown'); await page.waitForTimeout(300); await page.keyboard.up('ArrowDown'); /* (up from the chair: an arrow) */
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyS'); await page.waitForTimeout(300); await page.keyboard.up('KeyS'); /* (up from the chair: an arrow) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
   await liftTo(page, 1, isMobile);
   await require('./skin-support').outOfMall(page);

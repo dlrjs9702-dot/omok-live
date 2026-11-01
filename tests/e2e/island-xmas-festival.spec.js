@@ -73,7 +73,7 @@ test('크리스마스 행사: 가판대 덧씌움·선물 자루, 선물 받아 
     for (let b = 0; b < 3; b += 1) { // (rolled about: set down 4 m or more from where it started -- the server's 3 m)
       await standAt(request, who, S.x + (b % 2 ? 2.5 : -2.5), S.z);
       await snowStep('roll'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival().xmas?.rolling)).toBe(true);
-      if (isMobile) await page.waitForTimeout(2200 + (2 - b) * 1500); else { await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyA'); await page.waitForTimeout(2200 + (2 - b) * 1500); await page.keyboard.up('KeyA'); }
+      if (isMobile) await page.waitForTimeout(2200 + (2 - b) * 1500); else { await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(2200 + (2 - b) * 1500); await page.keyboard.up('ArrowLeft'); }
       if (b === 0) await shoot(page, 'snow-rolling', 1000, 800);
       await standAt(request, who, S.x + (b % 2 ? -2.5 : 2.5), S.z + 1);
       await snowStep('drop');

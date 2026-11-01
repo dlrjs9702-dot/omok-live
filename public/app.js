@@ -1779,6 +1779,9 @@
   byId('qualitySelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.quality', event.target.value); } catch {} plaza.controller?.setQualityMode?.(event.target.value); });
   // 사용자 「파도가 전혀 안 움직여」: 「움직임 줄이기」 -- the device's setting (default), or on/off whatever it says, kept on this device
   const motionMode = () => { try { const v = localStorage.getItem('gc.lessMotion'); return v === 'on' || v === 'off' ? v : 'auto'; } catch { return 'auto'; } };
+  // v1.10.217 포인터 잠금: how far a mouse move turns the view (kept on this device)
+  try { byId('mouseSensInput').value = String(Math.max(0.3, Math.min(3, Number(localStorage.getItem('gc.mouseSens')) || 1))); } catch {}
+  byId('mouseSensInput').addEventListener('input', (event) => { try { localStorage.setItem('gc.mouseSens', event.target.value); } catch {} plaza.controller?.setMouseSens?.(event.target.value); });
   byId('motionSelect').value = motionMode();
   byId('motionSelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.lessMotion', event.target.value); } catch {} plaza.controller?.setMotionMode?.(event.target.value); });
   byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
@@ -1958,6 +1961,7 @@
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); // (v1.10.215: today's table on)
+      plaza.controller?.setLockTip?.(() => showToast('🖱 마우스로 둘러봐요 · Esc로 풀기 · 걷기는 W/A/S/D, 방향키는 시점', 5000)); // (v1.10.217: the first lock, once on this device)
       refreshStory(true); // (S1·S2: the 할 일 line, the little door -- the island up before plazaMode is set)
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -4021,8 +4025,8 @@
   // line over the island for the step, the arrow toward its place, each step marked done where it happens in the game
   const touchNow = () => document.body.classList.contains('touchIsland');
   const GUIDE = {
-    move: { title: '걸어 보기', pc: '방향키(←↑↓→)를 눌러 걸어 보세요.', phone: '왼쪽 아래 조이스틱을 밀어서 걸어 보세요.' },
-    camera: { title: '화면 돌려 보기', pc: 'A·D 키(또는 마우스로 화면 끌기)로 화면을 돌려 보세요. W·S는 위아래로 봐요. Q는 가까이, E는 멀리 봐요(마우스 휠과 같아요).', phone: '조이스틱이 아닌 빈 화면을 손가락으로 끌어서 돌려 보세요.' },
+    move: { title: '걸어 보기', pc: 'W·A·S·D 키를 눌러 걸어 보세요. (v1.10.217부터 방향키는 시점이에요)', phone: '왼쪽 아래 조이스틱을 밀어서 걸어 보세요.' },
+    camera: { title: '화면 돌려 보기', pc: '방향키(←→)로 화면을 돌려 보세요. ↑↓는 위아래로 봐요. 섬을 한 번 클릭하면 마우스로 둘러봐요(Esc로 풀기). Q는 가까이, E는 멀리 봐요(마우스 휠과 같아요).', phone: '조이스틱이 아닌 빈 화면을 손가락으로 끌어서 돌려 보세요.' },
     talk: { title: '주민에게 말 걸기', pc: '화살표를 따라 광장의 안내 주민이나 걸어 다니는 주민 가까이 가서 Space를 누르세요.', phone: '주민 가까이 가서 오른쪽 아래 행동 버튼을 누르세요.' },
     weed: { title: '잡초 하나 뽑기', pc: '풀숲의 잡초 가까이 가서 Space를 1초쯤 누르고 있으세요.', phone: '잡초 가까이 가서 행동 버튼을 1초쯤 누르고 있으세요.' },
     deliver: { title: '관공서에 납품하기', pc: '화살표를 따라 관공서에 들어가 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.', phone: '화살표를 따라 관공서 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.' },

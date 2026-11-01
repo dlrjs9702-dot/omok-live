@@ -299,9 +299,9 @@ test('내 집 가구 직접 옮기기: 길게 눌러 잡고 부드럽게 밀기,
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab()?.uid)).toBe(sofa.uid); await expect(page.locator('#plazaHint')).toContainText('가구 놓기');
   const at = async () => (await get(request, '/api/home', a.token)).data.mine.pieces.find((p) => p.uid === sofa.uid);
   // (3회차 7: held, it slides with me -- between the steps too -- and the server is told only when it settles)
-  await page.keyboard.down('ArrowUp'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab()?.off ?? 0), { timeout: 15000 }).toBeGreaterThanOrEqual(0.6);
+  await page.keyboard.down('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab()?.off ?? 0), { timeout: 15000 }).toBeGreaterThanOrEqual(0.6);
   const offs = []; for (let k = 0; k < 6; k += 1) { offs.push(await page.evaluate(() => window.PlazaDebug().grab()?.off ?? 0)); await page.waitForTimeout(60); }
-  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('KeyW');
   expect(offs.some((v) => Math.abs(v * 4 - Math.round(v * 4)) > 0.05)).toBe(true); // (not in jumps: some place between the steps)
   expect(await at()).toMatchObject({ x: 0, z: 0 });
   if (isMobile) await page.locator('#islandTurnBtn').tap(); else await page.keyboard.press('KeyR'); // (turned: settled first, then turned)
@@ -347,14 +347,14 @@ test('스툴: 바라보던 방향으로 앉고, ←/→(폰 ↺↻)로 45° 돌�
   const first = (await act()).seatYaw; expect(same(first, front)).toBe(true); // (the way I faced -- not the stool's own front)
   await expect.poll(async () => { const o = await seen(); return Boolean(o && same(o.yaw, first)); }, { timeout: 15000 }).toBe(true);
   if (isMobile) { await expect(page.locator('#seatLeftBtn')).toBeVisible(); await page.locator('#seatLeftBtn').tap(); }
-  else { await page.locator('#plazaStage').focus(); await page.keyboard.press('ArrowLeft'); }
+  else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyA'); }
   const turned = (await act()); expect(turned.sitting).toBe(true); expect(same(turned.seatYaw, first + Math.PI / 4)).toBe(true);
   await expect.poll(async () => same((await act()).yaw, first + Math.PI / 4), { timeout: 5000 }).toBe(true); // (turned round on it)
   await expect.poll(async () => { const o = await seen(); return Boolean(o && same(o.yaw, first + Math.PI / 4)); }, { timeout: 15000 }).toBe(true);
-  if (isMobile) await page.locator('#seatRightBtn').tap(); else await page.keyboard.press('ArrowRight');
+  if (isMobile) await page.locator('#seatRightBtn').tap(); else await page.keyboard.press('KeyD');
   await page.waitForTimeout(300); expect((await act()).sitting).toBe(true); expect(same((await act()).seatYaw, first)).toBe(true);
   // ↑ stands me up (the turn buttons go)
-  await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW');
   await expect.poll(async () => (await act()).sitting, { timeout: 10000 }).toBe(false);
   if (isMobile) await expect(page.locator('#seatLeftBtn')).toBeHidden();
   await page.waitForTimeout(1500); // (the stand-up motion's hold)

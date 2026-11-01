@@ -75,13 +75,13 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   await b.page.evaluate(() => cancelAnimationFrame(window.__fruitReactionFrame));
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather?.pending),{timeout:10000}).toBe(true);
   const at=await a.page.evaluate(()=>{const d=window.PlazaDebug();return {x:d.x,z:d.z,yaw:d.camYaw};});
-  await a.page.keyboard.down('ArrowRight');await a.page.keyboard.down('KeyD');await a.page.waitForTimeout(250);await a.page.keyboard.up('KeyD');
+  await a.page.keyboard.down('KeyD');await a.page.keyboard.down('ArrowRight');await a.page.waitForTimeout(250);await a.page.keyboard.up('ArrowRight');
   const held=await a.page.evaluate(()=>{const d=window.PlazaDebug();return {x:d.x,z:d.z,yaw:d.camYaw,gait:d.gait};});
   expect(Math.hypot(at.x-held.x,at.z-held.z)).toBeLessThan(.05);expect(held.gait).toBe('pickFruit');expect(Math.abs(held.yaw-at.yaw)).toBeGreaterThan(.05);
   a.fixtureAt=null;release();
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather),{timeout:10000}).toBe(null);
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gait),{timeout:5000}).toBe('walk');
-  await expect.poll(()=>a.page.evaluate(p=>Math.hypot(window.PlazaDebug().x-p.x,window.PlazaDebug().z-p.z),at),{timeout:5000}).toBeGreaterThan(.2);await a.page.keyboard.up('ArrowRight');
+  await expect.poll(()=>a.page.evaluate(p=>Math.hypot(window.PlazaDebug().x-p.x,window.PlazaDebug().z-p.z),at),{timeout:5000}).toBeGreaterThan(.2);await a.page.keyboard.up('KeyD');
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key),{timeout:10000}).toBe(false);
   expect((await get(request,'/api/island/bag',a.token)).data.items.find(i=>i.itemId==='berry').qty).toBe(1);
   expect((await post(request,'/api/island/resource/start',a.token,{id:tree.id})).data.error).toBe('EVENT_GONE');
@@ -235,9 +235,9 @@ async function island(browser, request, label, registry, { failLoader = false } 
 // the island still plays: walking, a facility hint, Space opens its window
 async function stillPlays(page) {
   const before = await debug(page);
-  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('KeyW');
   await expect.poll(async () => before.z - (await debug(page)).z, { timeout: 10000 }).toBeGreaterThan(0.3);
-  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('KeyW');
   await page.evaluate(() => window.PlazaDebug().place('records')); // (v1.10.92: the shops are inside the 백화점 now)
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 전적관');
   await page.keyboard.press('Space');
@@ -328,10 +328,10 @@ test('동작 줄이기에서도 수동 시점과 이동 유지', async ({ browse
   await a.page.clock.install();
   await a.page.locator('#plazaStage').focus();
   const before = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, x: d.x, z: d.z }; });
-  await a.page.keyboard.down('KeyW'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('KeyW');
+  await a.page.keyboard.down('ArrowUp'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('ArrowUp');
   const camera = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, goal: d.pitchGoal }; });
   expect(camera.pitch).toBeLessThan(before.pitch); expect(camera.pitch).toBe(camera.goal);
-  await a.page.keyboard.down('ArrowUp'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('ArrowUp');
+  await a.page.keyboard.down('KeyW'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('KeyW');
   expect(await a.page.evaluate(p => { const d = window.PlazaDebug(); return Math.hypot(d.x - p.x, d.z - p.z); }, before)).toBeGreaterThan(0.2);
   await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
 });
@@ -400,9 +400,9 @@ test('등록 + 성공: 같은 모델은 여러 대상이 써도 한 번만 받�
   // my character: Idle standing, Walk while the arrow is held, back to Idle -- through the mixer, cross-faded
   const gait = () => page.evaluate(() => window.PlazaDebug().gait);
   await expect.poll(gait).toBe('idle');
-  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('KeyW');
   await expect.poll(gait).toBe('walk');
-  await page.keyboard.up('ArrowUp');
+  await page.keyboard.up('KeyW');
   await expect.poll(gait).toBe('idle');
   await stillPlays(page);
   expect(a.errors).toEqual([]);
@@ -828,7 +828,7 @@ test('조합 맞춤: 모자-헤어 덮기, 목걸이·망토 밀어내기, 꼬�
     const box = await page.locator('#plazaStage canvas.plazaCanvas').boundingBox();
     const clip = { x: box.x + box.width / 2 - 110, y: box.y + box.height / 2 - 40, width: 220, height: 260 };
     await page.screenshot({ path: `${process.env.SHOT_DIR}/combo-back.png`, clip });
-    await page.keyboard.down('KeyA'); await page.waitForTimeout(1650); await page.keyboard.up('KeyA'); await page.waitForTimeout(400);
+    await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(1650); await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(400);
     await page.screenshot({ path: `${process.env.SHOT_DIR}/combo-front.png`, clip });
   }
   // v1.10.32 운반 on the common character: the lost thing's model on the chest joint, the arms laid over
