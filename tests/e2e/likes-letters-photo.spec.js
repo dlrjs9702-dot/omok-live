@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, spaceOn } = require('./skin-support');
+const { shopper, post, spaceOn, revealTalk } = require('./skin-support');
 
 // v1.10.220 사진 (SHOT_DIR only; gamecenter-notes docs/resident-likes-letters-17-20261101.md): 반디·한솔 (walking on 2026-11-13)
 // given what they like in a talk, 김우성 (always at the jail) through the talk's answer (GIFT lines); then each close enough
@@ -19,17 +19,21 @@ test('사진: 반디·한솔·김우성 선물·편지', async ({ browser, reque
       const talking = () => page.evaluate(() => /talkMode/.test(document.getElementById('plazaDialog').className));
       if (n !== 22) {
         await expect.poll(async () => { if (await talking()) return true; await page.evaluate((k) => window.PlazaDebug().talkResident(k), n); await page.waitForTimeout(1500); return talking(); }, { timeout: 30000 }).toBe(true);
-        const choices = page.locator('#plazaDialog .talkChoices button'); await expect(choices.first()).toBeVisible({ timeout: 15000 });
-        await page.keyboard.press('Space').catch(() => {}); await choices.filter({ hasText: '선물해요' }).click();
+        const choices = page.locator('#plazaDialog .talkChoices button'); await revealTalk(page); await expect(choices.first()).toBeVisible({ timeout: 15000 });
+        if (await choices.filter({ hasText: '다음에요' }).count()) { /* (one of the day's askers: the errand first -- shot, then 다음에요) */
+          await page.screenshot({ path: `${process.env.SHOT_DIR}/${tag()}-errand-${n}.png` }); await choices.filter({ hasText: '다음에요' }).click(); await revealTalk(page);
+        }
+        await choices.filter({ hasText: '선물해요' }).click(); await revealTalk(page);
         await expect(choices.first()).toHaveAttribute('data-topic', 'gift', { timeout: 10000 }); await choices.first().click();
-        await page.waitForTimeout(2500); await page.keyboard.press('Space').catch(() => {}); await page.waitForTimeout(800);
+        await page.waitForTimeout(1500); await revealTalk(page); await page.waitForTimeout(600);
         await page.screenshot({ path: `${process.env.SHOT_DIR}/${tag()}-gift-${n}.png` });
         await page.keyboard.press('Escape'); await page.waitForTimeout(800);
       } else {
         const r = await post(request, '/api/island/resident/talk', who.token, { n, topic: 'gift', itemId: item });
         console.log(`GIFT ${tag()} ${n} ${r.status} ${JSON.stringify(r.data?.say || r.data?.message)} ${JSON.stringify(r.data?.affinity || null)}`);
       }
-      expect((await post(request, '/api/test/affinity', who.token, { n, delta: 20 })).status).toBe(200); // (친한 사이: 15+)
+      let st = null; for (let k = 0; k < 2; k += 1) { st = await post(request, '/api/test/affinity', who.token, { n, delta: 10 }); expect(st.status).toBe(200); } // (친한 사이: 15+, at most 10 a change)
+      console.log(`STAGES ${tag()} ${n} ${JSON.stringify(st.data.stages)}`); /* (총괄 220: a 10~26 islander's level rewards -- the points, the title at 단짝 later) */
       await page.evaluate(() => window.PlazaDebug().place('mailbox')); await page.waitForTimeout(800);
       await spaceOn(page, '', isMobile); await page.waitForTimeout(2500);
       const letter = page.locator('#plazaDialog').getByText(nm).first(); if (await letter.isVisible().catch(() => false)) { await letter.click().catch(() => {}); await page.waitForTimeout(1200); }
