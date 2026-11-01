@@ -1452,9 +1452,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // drawn light, added on, no real lamp)
       for (const u of P.UPLIGHTS) {
         const y = heightAt(u.x, u.z); const beam = new THREE.Group(); beam.position.set(u.x, y + 0.2, u.z); beam.rotation.y = u.yaw;
-        const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 0.12, 5.5, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe1a6, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 0.12, 5.5, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe1a6, transparent: true, opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
         cone.position.set(0, 2.6, 0.9); cone.rotation.x = 0.36; beam.add(cone); // (leaning in toward what it lights)
-        const pool = new THREE.Mesh(new THREE.CircleGeometry(1.1, 24), new THREE.MeshBasicMaterial({ color: 0xffd38a, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+        const pool = new THREE.Mesh(new THREE.CircleGeometry(1.1, 24), new THREE.MeshBasicMaterial({ color: 0xffd38a, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
         pool.rotation.x = -Math.PI / 2; pool.position.set(0, 0.03, 0.5); beam.add(pool);
         beam.visible = Boolean(night); g.add(beam); uplightBeams.push(beam);
       }

@@ -1625,7 +1625,10 @@ async function projectsNow() {
   });
 }
 // v1.10.224: an open bridge is walked on (the terrain's bridge rule -- the page adds it the same way)
-function projectTerrain(s) { if (s?.open?.some((o) => o.id === 'bridge') && !IslandTerrain.bridges.some((b) => b.project === 'bridge')) IslandTerrain.bridges.push(IslandProjects.bridgeEntry(IslandTerrain)); }
+function projectTerrain(s) {
+  const open = Boolean(s?.open?.some((o) => o.id === 'bridge')); const i = IslandTerrain.bridges.findIndex((b) => b.project === 'bridge');
+  if (open && i < 0) IslandTerrain.bridges.push(IslandProjects.bridgeEntry(IslandTerrain)); else if (!open && i >= 0) IslandTerrain.bridges.splice(i, 1); // (총괄 224 검토: a tests' reset takes it away again)
+}
 async function projectGive(account, name, amount) {
   return worldEdit(async () => {
     const s = IslandProjects.give((await pointStore.worldValue('projects')) || null, { userId: account, name, amount }, projectsDay(), projectGoal);
@@ -6674,7 +6677,7 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/projects' && req.method === 'POST') { // (the amounts and the next day: tests only -- no button for the administrator)
     const body = await parseJson(req);
-    if (body.reset) { projectsDayShift = 0; await worldEdit(() => pointStore.setWorldValue('projects', null)); projectsState = null; }
+    if (body.reset) { projectsDayShift = 0; await worldEdit(() => pointStore.setWorldValue('projects', null)); projectsState = null; projectTerrain(null); }
     if (body.nextDay) projectsDayShift += 1;
     if (body.open) await worldEdit(async () => { const s = IslandProjects.roll((await pointStore.worldValue('projects')) || null, projectsDay(), projectGoal); for (const id of [].concat(body.open)) if (!s.open.some((o) => o.id === id)) s.open.push({ id, day: projectsDay(), top: [], names: [] }); if (s.cur && [].concat(body.open).includes(s.cur)) { s.cur = null; s.raised = 0; s.donors = {}; } await pointStore.setWorldValue('projects', s); }); // (a project open at once: the photos, the later ones' tests)
     const s = await projectsNow(); return sendJson(res, 200, { ok: true, day: projectsDay(), state: s });
