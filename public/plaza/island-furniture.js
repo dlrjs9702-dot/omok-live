@@ -56,7 +56,12 @@
     ['xmas_tree_small', 'plain', '크리스마스 트리', 'xmas.tree_small'], ['xmas_fireplace', 'plain', '벽난로', 'xmas.fireplace'], ['xmas_snow_globe', 'plain', '스노볼', 'xmas.snow_globe'], // (X1 크리스마스, assets 76)
     ['xmas_stocking', 'plain', '양말 걸이', 'xmas.stocking', 'wall'], ['xmas_gingerbread_house', 'plain', '과자 집', 'xmas.gingerbread_house'],
   ].map(([shape, variant, name, model, kind = 'floor']) => Object.freeze({ id: `${shape}__${variant}`, shape, variant, name, zone: 'event', rarity: 'event', kind, model, event: true })));
-  const byId = new Map([...GOODS, ...EVENT_GOODS].map((g) => [g.id, g]));
+  // v1.10.225 마당 꾸미기 (assets 70 yard-v1): the yard's twelve, always on the 「마당」 shelf, kept in the 가구 창고 with the
+  // furniture but placed only outside (island-yard.js) -- priced by economy yard:<shape>
+  const YARD_GOODS = Object.freeze([['fence_wood', '나무 울타리'], ['fence_stone', '돌담'], ['fence_flower', '꽃 울타리'], ['stepping_stones', '디딤돌'], ['garden_light', '정원등'], ['birdhouse', '새집'],
+    ['flowerbed', '화단'], ['planter_box', '텃밭 상자'], ['mailbox', '우편함'], ['bench', '정원 벤치'], ['lantern_stone', '석등'], ['arch', '꽃 아치']]
+    .map(([shape, name]) => Object.freeze({ id: `yard_${shape}__plain`, shape: `yard_${shape}`, yardShape: shape, variant: 'plain', name, zone: 'yard', rarity: 'yard', kind: 'yard', model: `yard.${shape}`, yard: true })));
+  const byId = new Map([...GOODS, ...EVENT_GOODS, ...YARD_GOODS].map((g) => [g.id, g]));
   // always on sale, no end to them (and not counted in a day's three)
   const BASE = Object.freeze(['stool__oak', 'floor_cushion__red', 'plant_pot__terracotta', 'dining_chair__oak']);
 
@@ -75,11 +80,13 @@
     { id: 'wide0', zone: 'wall', kind: 'wide', lx: 8.6, lz: 9.82 - 0.76, yaw: 0, plinth: false },
   ].map((s) => Object.freeze(s)));
   const BASE_SLOTS = Object.freeze(BASE.map((id, i) => Object.freeze({ id: `base${i}`, good: id, lx: [11.5, 13.7, 11.5, 13.7][i], lz: [-6.8, -6.8, -8.8, -8.8][i], yaw: 0 })));
+  // the 「마당」 shelf: two rows of small plinths by the lift's wall, in front of it and behind (the way from the lift clear)
+  const YARD_SLOTS = Object.freeze(YARD_GOODS.map((g, i) => Object.freeze({ id: `yard${i}`, good: g.id, yard: true, lx: [-12.6, -10.0][i % 2], lz: [-8.6, -6.6, -4.6, 4.6, 6.6, 8.6][Math.floor(i / 2)], yaw: 0 })));
   const CHECKOUT = Object.freeze({ lx: 11.8, lz: -1.5, yaw: 0, keeper: Object.freeze([11.8, -0.6, 0]) });
   const FIXTURES = Object.freeze([ // what is walked round (x, z centre, w, d): the plinths, the counter, the lift
     ...SLOTS.filter((s) => s.plinth !== false).map((s) => ({ x: s.lx, z: s.lz, w: 2.4, d: 2.4 })),
     { x: 8.6, z: 9.1, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 2.3, d: 0.85 }, { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
-    ...BASE_SLOTS.map((s) => ({ x: s.lx, z: s.lz, w: 1.2, d: 1.2 })),
+    ...[...BASE_SLOTS, ...YARD_SLOTS].map((s) => ({ x: s.lx, z: s.lz, w: 1.2, d: 1.2 })),
   ].map((f) => Object.freeze(f)));
   const REACH = 2.1; // a piece within this of me (to its plinth's middle) is the one SPACE buys
 
@@ -115,8 +122,8 @@
   // the display place (or always-on-sale place) nearest me within reach
   function placeAt(x, z) {
     const { lx, lz } = local(x, z); let best = null; let bd = REACH;
-    for (const s of [...SLOTS, ...BASE_SLOTS]) { const d = Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0); if (d < bd) { bd = d; best = s; } }
+    for (const s of [...SLOTS, ...BASE_SLOTS, ...YARD_SLOTS]) { const d = Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0); if (d < bd) { bd = d; best = s; } }
     return best;
   }
-  return { SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
+  return { SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, YARD_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, YARD_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
 }));

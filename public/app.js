@@ -2683,6 +2683,7 @@
   document.getElementById('islandTaxPay').addEventListener('click', () => payTax({ all: true }));
   async function openIslandPlace(place) {
     islandPlace = place; islandPlaceStatus.textContent = ''; byId('homeApplyBtn').classList.toggle('hidden', place !== 'office'); byId('projectGive').classList.toggle('hidden', place !== 'office'); if (place === 'office') refreshProjects().then(() => showDonationProject(byId('projectGive'))); // (v1.10.223) // (묶음 4: the 민원 창구 takes the house too)
+    byId('yardGrowBtn').classList.add('hidden'); if (place === 'office') refreshHomes().then(() => { byId('yardGrowBtn').classList.toggle('hidden', !homesState?.mine); }); // (v1.10.225: once there is a house)
     if (place === 'office') refreshHomes().then(() => { const m = homesState?.mine; const b = byId('homeApplyBtn'); b.textContent = !m ? '내 집 신청' : m.upgradeDay ? '집 넓히는 중 · 내일 완성' : (m.stage || 2) < window.IslandHome.TOP_STAGE ? '집 넓히기' : '내 집'; b.disabled = Boolean(m && (m.upgradeDay || (m.stage || 2) >= window.IslandHome.TOP_STAGE)); }); // (묶음 4-2; v1.10.193 사용자 「2층 큰 집을 사려는데 살 곳이 없어」: up to the 2층 큰 집, not the 작은 집 only)
     document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
     if (!islandPlaceDialog.open) islandPlaceDialog.showModal();
@@ -2726,6 +2727,7 @@
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
   byId('homeApplyBtn').addEventListener('click', () => openHomeApply()); // 묶음 4 내 집 신청
+  byId('yardGrowBtn').addEventListener('click', () => openYardGrow()); // v1.10.225 마당 넓히기
   for (const d of [islandBagDialog, islandPlaceDialog]) d.addEventListener('close', () => { if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); });
   window.addEventListener('keydown', (event) => { // I opens the bag on the island
     if (event.code !== 'KeyI' || event.isComposing || event.repeat || !document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]')) return;
@@ -3228,13 +3230,13 @@
     islandBagDialog.close(); openPlazaWindow('내 반려동물', [petsBox]);
   }
   const furnitureCard = document.createElement('div'); furnitureCard.className = 'goodCard furnitureCard'; furnitureCard.id = 'furnitureCard';
-  const FURNITURE_RARITY = { common: '흔함', uncommon: '보통', rare: '드묾', base: '늘 파는 가구' };
+  const FURNITURE_RARITY = { common: '흔함', uncommon: '보통', rare: '드묾', base: '늘 파는 가구', yard: '마당' };
   function openFurniture(slot) {
-    const d = furnitureState && [...furnitureState.display, ...furnitureState.base].find((x) => x.slot === slot);
+    const d = furnitureState && [...furnitureState.display, ...furnitureState.base, ...(furnitureState.yard || [])].find((x) => x.slot === slot);
     if (!d || d.sold) { showToast('팔렸어요. 내일 새 가구가 들어와요.'); return; }
     const name = document.createElement('strong'); name.textContent = `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`;
     const what = document.createElement('p'); what.className = 'lookMeta';
-    what.textContent = d.rarity === 'base' ? '늘 파는 가구예요. 산 가구는 가구 창고에 들어가요.' : `${FURNITURE_RARITY[d.rarity]} · 하나뿐이에요 — 사면 다른 사람에게서도 사라지고 내일 새 가구가 들어와요. 오늘 ${furnitureState.mine}/${furnitureState.perDay}점 샀어요.`;
+    what.textContent = d.rarity === 'yard' ? '마당 물건이에요. 산 것은 가구 창고 「마당」 칸에 들어가고, 내 집 마당에서 「마당 꾸미기」로 놓아요.' : d.rarity === 'base' ? '늘 파는 가구예요. 산 가구는 가구 창고에 들어가요.' : `${FURNITURE_RARITY[d.rarity]} · 하나뿐이에요 — 사면 다른 사람에게서도 사라지고 내일 새 가구가 들어와요. 오늘 ${furnitureState.mine}/${furnitureState.perDay}점 샀어요.`;
     const row = document.createElement('div'); row.className = 'goodBuy';
     const buy = document.createElement('button'); buy.type = 'button'; buy.className = 'primary'; buy.textContent = '사기';
     buy.addEventListener('click', async () => {
@@ -3251,16 +3253,20 @@
   }
   // 가구 창고: what I bought, each turned round in 3D (the 꾸미기 창's preview) -- placed once 내 집 comes
   const storageBox = document.createElement('div'); storageBox.className = 'furnitureStorage'; storageBox.id = 'furnitureStorage';
-  async function openFurnitureStorage() {
-    let pieces = []; try { pieces = (await api('/api/island/furniture/mine')).pieces; } catch (error) { showToast(error.message); return; }
+  let storageTab = 'furniture'; // (v1.10.225: 가구 · 마당)
+  async function openFurnitureStorage(tab = storageTab) {
+    storageTab = tab; let all = []; try { all = (await api('/api/island/furniture/mine')).pieces; } catch (error) { showToast(error.message); return; }
+    const pieces = all.filter((p) => (p.rarity === 'yard') === (tab === 'yard'));
+    const tabs = document.createElement('div'); tabs.className = 'goodBuy storageTabs'; tabs.setAttribute('role', 'tablist');
+    for (const [id, label] of [['furniture', '가구'], ['yard', '마당']]) { const t = btn(`${label} ${all.filter((p) => (p.rarity === 'yard') === (id === 'yard')).length}`, id === tab ? 'primary tiny' : 'ghost tiny', () => openFurnitureStorage(id)); t.setAttribute('role', 'tab'); t.setAttribute('aria-selected', String(id === tab)); t.dataset.tab = id; tabs.append(t); }
     const canvas = document.createElement('canvas'); canvas.className = 'dressCanvas furnitureCanvas';
     const cap = document.createElement('p'); cap.className = 'lookMeta';
     const list = document.createElement('div'); list.className = 'furnitureList'; list.setAttribute('role', 'list');
     const show = (p, btn) => { for (const b of list.children) b.classList.toggle('selected', b === btn); cap.textContent = `${p.name} · ${FURNITURE_RARITY[p.rarity] || ''}`; plaza.controller?.tryOn?.(canvas, { model: p.model }); };
-    if (!pieces.length) cap.textContent = '아직 산 가구가 없어요. 백화점 2층 가구점에 가 보세요.';
+    if (!pieces.length) cap.textContent = tab === 'yard' ? '아직 산 마당 물건이 없어요. 백화점 3층 「마당」 진열대에 가 보세요.' : '아직 산 가구가 없어요. 백화점 3층 가구점에 가 보세요.';
     for (const p of pieces) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost furniturePiece'; b.setAttribute('role', 'listitem'); b.textContent = p.name; b.addEventListener('click', () => show(p, b)); list.append(b); }
-    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = `${pieces.length}점 · 내 집 안에서 「꾸미기」로 놓아요`;
-    storageBox.replaceChildren(canvas, cap, note, list);
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = tab === 'yard' ? `${pieces.length}개 · 내 집 마당에서 「마당 꾸미기」로 놓아요` : `${pieces.length}점 · 내 집 안에서 「꾸미기」로 놓아요`;
+    storageBox.replaceChildren(tabs, canvas, cap, note, list);
     openPlazaWindow('가구 창고', [storageBox]);
     if (pieces.length) show(pieces[0], list.firstElementChild);
   }
@@ -3375,7 +3381,7 @@
   let homeEditing = null;
   async function openHomeEdit() {
     if (!homeInside?.mine) return;
-    let pieces = []; try { pieces = (await api('/api/island/furniture/mine')).pieces; } catch (error) { showToast(error.message); return; }
+    let pieces = []; try { pieces = (await api('/api/island/furniture/mine')).pieces.filter((p) => p.rarity !== 'yard'); } catch (error) { showToast(error.message); return; } // (v1.10.225: a yard piece only outside)
     const H = window.IslandHome; const placed = new Map(homeInside.home.pieces.map((p) => [p.uid, p]));
     const list = document.createElement('div'); list.className = 'furnitureList'; list.setAttribute('role', 'list');
     const status = line(pieces.length ? '놓을 가구를 고르세요.' : '가구 창고가 비어 있어요. 백화점 2층 가구점에 가 보세요.'); status.setAttribute('role', 'status');
@@ -3418,6 +3424,74 @@
     // to its title with 접기, the camera over the whole room)
     homeEditing = null; openPlazaWindow('꾸미기', [editBox]); plazaDialog.classList.add('editMode'); plazaDialog.classList.remove('folded'); plaza.controller?.homeEditView?.(true); show();
     plazaDialog.addEventListener('close', () => { homeEditing = null; plaza.controller?.homeGhost?.(null); plaza.controller?.homeEditView?.(false); plazaDialog.classList.remove('editMode', 'folded'); }, { once: true });
+  }
+  // v1.10.225 마당 꾸미기 (docs/yard-20261102.md): standing in my yard on the island, 「마당 꾸미기」 (the button, or Y on a
+  // PC) -- a yard piece from the 가구 창고 moved on 0.25 m steps the way the arrows point on the screen, turned, placed or
+  // put back, shown where it would go (green or red) with the camera over the yard; the same rules on the server
+  const yardEditBtn = byId('yardEditBtn'); yardEditBtn.addEventListener('click', () => openYardEdit());
+  const myYardLot = () => { const m = homesState?.mine; const l = m && homesState.lots.find((x) => x.id === m.lot); return l ? { lot: window.IslandYard.lotById(l.id), stage: l.stage || 1, level: homesState.yardLevel || 1, yard: l.yard || [] } : null; };
+  const inMyYard = () => { const y = myYardLot(); const p = plaza.controller?.pose?.(); return Boolean(y && p && plaza.controller?.space?.() === 'island' && window.IslandYard.inYard(y.lot, y.stage, y.level, p.x, p.z)); };
+  setInterval(() => { const show = document.body.classList.contains('plazaMode') && !homeInside && inMyYard(); if (yardEditBtn.classList.contains('hidden') === show) yardEditBtn.classList.toggle('hidden', !show); }, 600);
+  window.addEventListener('keydown', (event) => {
+    if (event.code !== 'KeyY' || event.isComposing || event.repeat || event.ctrlKey || event.metaKey || event.altKey || !document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]') || (event.target !== document.body && event.target !== plazaStage)) return;
+    if (!inMyYard()) return; event.preventDefault(); openYardEdit();
+  });
+  const yardBox = document.createElement('div'); yardBox.className = 'homeEdit yardEdit'; yardBox.id = 'yardEdit';
+  let yardEditing = null; let yardBusy = false;
+  async function openYardEdit() {
+    const Y = window.IslandYard; let y = myYardLot(); if (!y) return;
+    let pieces = []; try { pieces = (await api('/api/island/furniture/mine')).pieces.filter((p) => p.rarity === 'yard'); } catch (error) { showToast(error.message); return; }
+    y = myYardLot(); const placed = new Map(y.yard.map((p) => [p.uid, p])); const cap = Y.limitOf(y.level);
+    const list = document.createElement('div'); list.className = 'furnitureList'; list.setAttribute('role', 'list');
+    const status = line(pieces.length ? '놓을 마당 물건을 고르세요.' : '마당 물건이 없어요. 백화점 3층 「마당」 진열대에 가 보세요.'); status.setAttribute('role', 'status');
+    const pad = document.createElement('div'); pad.className = 'homeEditPad';
+    const show = () => {
+      const why = yardEditing ? plaza.controller?.yardGhost?.(yardEditing) : null;
+      if (yardEditing) status.textContent = `${yardEditing.name} · ${why || '여기에 놓을 수 있어요'}`; status.dataset.at = yardEditing ? `${yardEditing.x},${yardEditing.z},${yardEditing.rot}` : ''; /* (where it is, lot-local: tests) */
+      for (const b of pad.querySelectorAll('button')) b.disabled = !yardEditing; put.disabled = !yardEditing || Boolean(why); back.disabled = !yardEditing || !placed.has(yardEditing.uid);
+    };
+    const move = (right, ahead) => { if (!yardEditing) return; const [dx, dz] = plaza.controller?.yardStep?.(right, ahead) || [0, 0]; yardEditing.x = Y.snap(yardEditing.x + dx); yardEditing.z = Y.snap(yardEditing.z + dz); show(); };
+    for (const p of pieces) {
+      const b = btn(`${p.name}${placed.has(p.uid) ? ' · 놓음' : ''}`, 'ghost furniturePiece'); b.dataset.uid = p.uid; b.setAttribute('role', 'listitem');
+      b.addEventListener('click', () => {
+        for (const x of list.children) x.classList.toggle('selected', x === b);
+        const at = placed.get(p.uid); const me = plaza.controller?.pose?.() || { x: y.lot.x, z: y.lot.z }; const here = Y.local(y.lot, me.x, me.z);
+        yardEditing = at ? { ...at, name: p.name } : { uid: p.uid, id: p.id, name: p.name, rot: 0, x: Y.snap(here.lx), z: Y.snap(here.lz) };
+        show();
+      });
+      list.append(b);
+    }
+    for (const [label, right, ahead, aria] of [['←', -1, 0, '왼쪽으로'], ['↑', 0, 1, '안쪽으로'], ['↓', 0, -1, '앞쪽으로'], ['→', 1, 0, '오른쪽으로']]) { const b = btn(label, 'ghost', () => move(right, ahead)); b.setAttribute('aria-label', aria); pad.append(b); }
+    { const turn = btn('↻ 돌리기', 'ghost homeEditTurn', () => { if (yardEditing) { yardEditing.rot = (yardEditing.rot + 1) % 4; show(); } }); turn.setAttribute('aria-label', '돌리기'); pad.append(turn); }
+    const send = async (body, done) => {
+      if (yardBusy) return; yardBusy = true;
+      try {
+        const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {});
+        await api('/api/home/yard', { method: 'POST', body: JSON.stringify(body) }); await refreshHomes(); yardEditing = null; showToast(done); openYardEdit();
+      } catch (error) { status.textContent = error.message; } finally { yardBusy = false; }
+    };
+    const put = btn('놓기', 'primary', () => yardEditing && send({ uid: yardEditing.uid, x: yardEditing.x, z: yardEditing.z, rot: yardEditing.rot }, `${yardEditing.name} — 놓았어요`));
+    const back = btn('창고로 넣기', 'secondary', () => yardEditing && send({ uid: yardEditing.uid, remove: true }, `${yardEditing.name} — 가구 창고로 넣었어요`));
+    const row = document.createElement('div'); row.className = 'goodBuy'; row.append(put, back);
+    const fold = btn('접기', 'ghost tiny homeEditFold', () => { const folded = plazaDialog.classList.toggle('folded'); fold.textContent = folded ? '펼치기' : '접기'; fold.setAttribute('aria-expanded', String(!folded)); }); fold.setAttribute('aria-expanded', 'true');
+    yardBox.replaceChildren(fold, status, pad, row, line(`마당 물건 ${y.yard.length}/${cap}개 · 울타리는 1 m 한 칸, 이어 놓으면 기둥이 맞아요`), list);
+    yardEditing = null; openPlazaWindow('마당 꾸미기', [yardBox]); plazaDialog.classList.add('editMode'); plazaDialog.classList.remove('folded'); plaza.controller?.yardEdit?.(y.lot.id); show();
+    plazaDialog.addEventListener('close', () => { yardEditing = null; plaza.controller?.yardEdit?.(null); plazaDialog.classList.remove('editMode', 'folded'); }, { once: true });
+  }
+  // the 민원 창구's 「마당 넓히기」: the room and how many pieces before and after, for every lot alike (총괄 2026-11-02)
+  async function openYardGrow() {
+    islandPlaceDialog.close(); await refreshHomes(); const Y = window.IslandYard; const y = myYardLot(); if (!y) { showToast('집이 있어야 마당을 넓힐 수 있어요.'); return; }
+    if (y.level >= Y.LEVELS) { homeCard.replaceChildren(line(`마당을 다 넓혔어요 · 지금 마당 ${Y.areaOf(y.lot, y.stage, y.level)} m² · 물건 ${Y.limitOf(y.level)}개까지`)); openPlazaWindow('마당 넓히기', [homeCard]); return; }
+    const a0 = Y.areaOf(y.lot, y.stage, y.level); const a1 = Y.areaOf(y.lot, y.stage, y.level + 1);
+    const go = btn(`넓히기 · ${Number(homesState.yardGrow).toLocaleString('ko-KR')}P`, 'primary', async () => {
+      if (homeBusy) return; homeBusy = true; go.disabled = true;
+      try { const r = await api('/api/home/yard/grow', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`마당을 넓혔어요! 물건 ${r.limit}개까지 놓을 수 있어요.`, 5000); await refreshHomes(); loadPoints(); }
+      catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; go.disabled = false; }
+    });
+    const nodes = [line(`지금 마당 ${a0} m² → 넓히면 ${a1} m²${a1 <= a0 ? '(땅은 그대로)' : ''} · 놓을 수 있는 물건 ${Y.limitOf(y.level)} → ${Y.limitOf(y.level + 1)}개`, 'lostRequestLine')];
+    if (a1 <= a0) nodes.push(line('이 집터는 땅이 더 넓어지지 않아요.'));
+    nodes.push(line('공사 없이 바로 넓어져요. 넓힌 마당은 집을 옮겨도 그대로예요.'), go);
+    homeCard.replaceChildren(...nodes); openPlazaWindow(`마당 넓히기 ${y.level}`, [homeCard]);
   }
   // a tank or the insect case: what is in it (꺼내기 -- back to the bag) and what of my bag fits (넣기)
   const tankBox = document.createElement('div'); tankBox.className = 'homeTank'; tankBox.id = 'homeTank';

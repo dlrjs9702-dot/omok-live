@@ -8693,6 +8693,102 @@
       "lowSrc": "projects71:02. Low/project_fountain_low.glb",
       "lowSha256": "c1dd0fdb953d60f321124df7a7b251b8435dddc64bae018023ef2b4a222dc6f0",
       "precompressed": true
+    },
+    {
+      "out": "yard-v1/fence_wood.glb",
+      "src": "yard70:01. High/yard_fence_wood.glb",
+      "sha256": "c2495385a86014e90226268d0c36555fc34ff42bf98c4099b6559de8645e74a1",
+      "lowSrc": "yard70:02. Low/yard_fence_wood_low.glb",
+      "lowSha256": "2d038190cee79ef9e149c330135af206738b0ec514a06895bbd16dc6567dc041",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/fence_stone.glb",
+      "src": "yard70:01. High/yard_fence_stone.glb",
+      "sha256": "39db8dd12bfd84437aa7071b151d84f06bbdc0e95f66e5227df0b9c2b2ad399d",
+      "lowSrc": "yard70:02. Low/yard_fence_stone_low.glb",
+      "lowSha256": "fc83ff48b09ebe5dbac8e3a1a4264e02e63397607607e9d685e04c3bd7c0e5e7",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/fence_flower.glb",
+      "src": "yard70:01. High/yard_fence_flower.glb",
+      "sha256": "8b24b54f68322ea519023d0e1f36f50e0cb181e8d666a0ba8bf2eb00edfb993e",
+      "lowSrc": "yard70:02. Low/yard_fence_flower_low.glb",
+      "lowSha256": "23c2d07370b6254365110e0025c98b803477afb2f6ff99e2a53f26a0b9ba71f4",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/stepping_stones.glb",
+      "src": "yard70:01. High/yard_stepping_stones.glb",
+      "sha256": "234120c14babd8ca397f9bf3acb18df0f9d26f8470289e96f234db91d73d2566",
+      "lowSrc": "yard70:02. Low/yard_stepping_stones_low.glb",
+      "lowSha256": "3b73899ddde4d64b6cbf1f11952ef5ff71f5002ee9bec06c13898a597ee2bedd",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/garden_light.glb",
+      "src": "yard70:01. High/yard_garden_light.glb",
+      "sha256": "30ed628905775c15c82fd5579b30fb15ad79b62c8a44499cf9e9325b16d1254a",
+      "lowSrc": "yard70:02. Low/yard_garden_light_low.glb",
+      "lowSha256": "7d36e8288672ff3427b47ae29ff7aaa22a6b66f9547d0228cc4ceb87d2937e9e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/birdhouse.glb",
+      "src": "yard70:01. High/yard_birdhouse.glb",
+      "sha256": "bd583a70d1df67c41bfe7e6dad4c92494d63f322595c7b49789826e087380a86",
+      "lowSrc": "yard70:02. Low/yard_birdhouse_low.glb",
+      "lowSha256": "2695f97ccebe5be4e2a8d542edc035906a5bb756be6460d1ce258a2ac9215ac1",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/flowerbed.glb",
+      "src": "yard70:01. High/yard_flowerbed.glb",
+      "sha256": "2a46dd996eda31f5891f0a5b515f28fe3398f2f8046f9ce28a0a141761a934cd",
+      "lowSrc": "yard70:02. Low/yard_flowerbed_low.glb",
+      "lowSha256": "589c984b2232c6e9564cae789011ee1921d010b07696f67e077f4ff07782eda1",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/planter_box.glb",
+      "src": "yard70:01. High/yard_planter_box.glb",
+      "sha256": "40fce2e351e8891c15bc2c80bd746778a42676a6b1cbfcdeda7e905d1125c83b",
+      "lowSrc": "yard70:02. Low/yard_planter_box_low.glb",
+      "lowSha256": "9964b280d54057a0fd2938567e4baf738969045bf83638e169c45a77d7138b62",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/mailbox.glb",
+      "src": "yard70:01. High/yard_mailbox.glb",
+      "sha256": "6b75a65699ee279d5544c82a371661d0c5fd21d7a41ec590396ef8aec99e2c18",
+      "lowSrc": "yard70:02. Low/yard_mailbox_low.glb",
+      "lowSha256": "1dd4758391b94fc9ee8ad89454334ba2f3e3408975780bf38d82f4b798b4828d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/bench.glb",
+      "src": "yard70:01. High/yard_bench.glb",
+      "sha256": "388f605177de5ba12dbab1f6249613d2f7412cf15aa3dbb440abcb9aa1a7d201",
+      "lowSrc": "yard70:02. Low/yard_bench_low.glb",
+      "lowSha256": "b4a6cd22db98d9b69d92ba697c541ab6f0ed36b4b4c1a760af8fe3a49f51b518",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/lantern_stone.glb",
+      "src": "yard70:01. High/yard_lantern_stone.glb",
+      "sha256": "e3d16e8ec934c9da1eacda78990578c3f423af61a326c382cff2da2f0dc4e746",
+      "lowSrc": "yard70:02. Low/yard_lantern_stone_low.glb",
+      "lowSha256": "d6c376c09b3399a7cbacaede7890c1460ca4fb4a5d248f839ed8bf03660d30d8",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/arch.glb",
+      "src": "yard70:01. High/yard_arch.glb",
+      "sha256": "d20dabec18a771e392e8069f4b12792f3678a50bb8557eff1f5b7912b51f7828",
+      "lowSrc": "yard70:02. Low/yard_arch_low.glb",
+      "lowSha256": "336d03391a603114d5340d3466f9c93db061aecb847db273b13f950932a28199",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -8756,6 +8852,7 @@
     "residents88": "88. Game Island residents legs all 27 2026-10-30",
     "arms89": "89. Game Island goeun face arms 2026-10-31",
     "arms90": "90. Game Island kkotnim kongi arms 2026-10-31",
-    "projects71": "71. Game Island island projects 2026-10-25"
+    "projects71": "71. Game Island island projects 2026-10-25",
+    "yard70": "70. Game Island yard items 2026-10-25"
   }
 }
