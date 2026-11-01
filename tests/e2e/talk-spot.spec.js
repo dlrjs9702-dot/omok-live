@@ -22,7 +22,7 @@ test('대화 자리 잡기: 나무 피하는 대화 카메라, 먼 주민에게 
     const st = (await d('residentPosts')).find((p) => p.id === 'station:keeper' || p.id === 'ev:quest_npc:queststationmaster');
     expect(T.walkDist(st.x + Math.sin(st.yaw) * 2, st.z + Math.cos(st.yaw) * 2), `철이 ${JSON.stringify(st)}`).toBeLessThan(0.5);
     if (process.env.SHOT_DIR) { /* (from the path, 3 m before it) */
-      await page.evaluate((s) => { const g = window.PlazaDebug(); g.teleport(s.x + Math.sin(s.yaw) * 3, s.z + Math.cos(s.yaw) * 3); g.setCamYaw(s.yaw + 0.25); g.setCamPitch?.(0.05); }, st); await page.locator('#plazaStage').focus(); for (let k = 0; k < 4; k += 1) await page.keyboard.press('KeyQ');
+      await page.evaluate((s) => { const g = window.PlazaDebug(); const px = Math.cos(s.yaw); const pz = -Math.sin(s.yaw); g.teleport(s.x + Math.sin(s.yaw) * 2.2 + px * 1.6, s.z + Math.cos(s.yaw) * 2.2 + pz * 1.6); g.setCamYaw(s.yaw - 0.35); /* (me a step aside, 총괄 219 검토) */ g.setCamPitch?.(0.05); }, st); await page.locator('#plazaStage').focus(); for (let k = 0; k < 4; k += 1) await page.keyboard.press('KeyQ');
       await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-station.png` });
     }
     // a walker talked to from further off: I end at about the talking distance (1.6 m)
@@ -31,7 +31,7 @@ test('대화 자리 잡기: 나무 피하는 대화 카메라, 먼 주민에게 
     for (const n of [11, 14]) {
       await expect.poll(async () => { if (await talking()) return true; await d('talkResident', n); await page.waitForTimeout(1500); return talking(); }, { timeout: 30000 }).toBe(true);
       await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().talkView))?.gap ?? 9, { timeout: 8000 }).toBeLessThan(2.0);
-      gaps.push((await page.evaluate(() => window.PlazaDebug().talkView)).gap);
+      await page.waitForTimeout(1500); gaps.push((await page.evaluate(() => window.PlazaDebug().talkView)).gap); /* (settled) */ const fr = await page.evaluate(() => window.PlazaDebug().talkFrame3()); if (n === 14) { expect(fr.head.y, '콩이 머리 화면 위쪽').toBeGreaterThan(0.35); expect(Math.abs(fr.waist.x)).toBeLessThan(0.6); }
       if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-${n}.png` }); }
       await page.keyboard.press('Escape'); await page.waitForTimeout(800);
     }

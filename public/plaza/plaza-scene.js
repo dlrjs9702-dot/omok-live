@@ -3740,10 +3740,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       else {
         // (v1.10.219 대화 자리 잡기, 총괄 218 검토 「물결 대화 카메라가 나무 기둥에 막혀요」: on the island a tree, bush or lamp across
         // the camera's line to them -- the other side of me, then nearer on either, the first one clear (chosen once a talk))
-        const k = Math.max(1, top / 2.6); const [s, f] = talkView.side ??= talkSide(p, t, ux, uz, rx, rz, k);
-        c = { x: p.x - ux * 1.5 * k * f + rx * 4.2 * k * f * s, z: p.z - uz * 1.5 * k * f + rz * 4.2 * k * f * s, y: p.y + 1.9 }; // (a tall one, 가락 3.5 m: further off)
+        // (v1.10.219 총괄 검토 「콩이가 작게, 내 몸이 크게 잡혀요」: a small one -- 콩이 0.98 m -- nearer and lower too, down to 0.6 of
+        // the way: their head as high in the picture as a grown one's)
+        const k = top > 2.6 ? top / 2.6 : Math.max(0.6, Math.min(1, top / 2.1)); /* (a grown one, 2.1 m, as before) */ const [s, f] = talkView.side ??= talkSide(p, t, ux, uz, rx, rz, k);
+        c = { x: p.x - ux * 1.5 * k * f + rx * 4.2 * k * f * s, z: p.z - uz * 1.5 * k * f + rz * 4.2 * k * f * s, y: p.y + 1.9 * Math.min(1, k) }; // (a tall one, 가락 3.5 m: further off)
         const h = Math.hypot(t.x - c.x, t.z - c.z) * 0.38; // (half the picture's height where they stand: tan 21°, the 42° view)
-        look = new THREE.Vector3(t.x - rx * 0.3 * s, ty + top * 0.75 - h * 0.45, t.z - rz * 0.3 * s); // (their head near the top, their waist above the middle -- the card below)
+        const off = 0.3 + (1 - Math.min(1, k)) * 1.2; /* (a small one: aimed further from me -- my body at the picture's edge) */
+        look = new THREE.Vector3(t.x - rx * off * s, ty + top * 0.75 - h * 0.45, t.z - rz * off * s); // (their head near the top, their waist above the middle -- the card below)
       }
     }
     return { want: new THREE.Vector3(c.x, camFloor(c.x, c.z, p.y, c.y), c.z), look };
