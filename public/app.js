@@ -2463,7 +2463,7 @@
     const out = [];
     if (PLANT_GOODS[item.itemId]) out.push([PLANT_GOODS[item.itemId], () => plantGood(item.itemId)]); // B 45
     if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; out.push([walking ? '집에 두기' : '데리고 다니기', () => choosePet(walking ? null : kind)]); }
-    if (TOOL_TIPS[item.itemId]) out.push([heldTool === item.itemId ? '넣기' : '들기', () => holdTool(item.itemId)]); // (3회차 22: in hand)
+    if (item.tool) out.push([heldTool === item.tool ? '넣기' : '들기', () => holdTool(item.tool)]); // (3회차 22: in hand -- v1.10.221: a sturdy one held as its kind)
     if (SHOW_GOODS.has(item.itemId)) out.push(['쓰기', () => useGood(item.itemId)]);
     return out;
   }
@@ -2491,10 +2491,11 @@
       const item = bag.items[i]; const slot = document.createElement('div');
       slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
       if (item) {
-        slot.title = item.name; slot.setAttribute('aria-label', `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = true;
+        slot.title = item.usesMax ? `${item.name} · ${item.uses}/${item.usesMax}회` : item.name; slot.setAttribute('aria-label', item.usesMax ? `${item.name} 남은 ${item.uses}회` : `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = true;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), qty);
-        if (TOOL_TIPS[item.itemId] && heldTool === item.itemId) slot.classList.add('inHand');
+        if (item.tool && heldTool === item.tool) slot.classList.add('inHand');
+        if (item.usesMax) { /* (v1.10.221 도구 닳기: its catches left, a bar; the sturdy one ringed) */ const bar = document.createElement('i'); bar.className = 'toolUses'; bar.style.setProperty('--left', String(item.uses / item.usesMax)); bar.classList.toggle('low', item.uses <= 5); slot.append(bar); slot.classList.toggle('sturdy', item.itemId.endsWith('_sturdy')); }
       } else { slot.setAttribute('aria-label', '빈 칸'); slot.classList.add('empty'); }
       if (bagHeld === i) slot.classList.add('held');
       slot.addEventListener('click', () => { if (bagHeld === i) return; /* (C5 Codex 4차 P2-2: the finger lifted from the one held -- its own click, not a drop) */ if (bagHeld != null) { const from = bagHeld; bagHeld = null; moveBagSlot(from, i); return; } if (item) pickBagSlot(i); });
@@ -2552,7 +2553,24 @@
   let heldTool = null;
   function holdTool(kind) {
     heldTool = heldTool === kind ? null : kind; plaza.controller?.setHeldTool?.(heldTool); islandBagDialog.close();
-    showToast(heldTool ? TOOL_TIPS[heldTool] : '가방에 넣었어요.', heldTool ? 5000 : 2000);
+    showToast(heldTool ? TOOL_TIPS[heldTool] : '가방에 넣었어요.', heldTool ? 5000 : 2000); showToolGauge();
+  }
+  // v1.10.221 도구 닳기 (gamecenter-notes docs/spending-sinks-20261025.md ③): the tool in hand -- the most worn of its kind, the
+  // one a catch wears -- its catches left on the screen (both views); 5 left a note, 0 「툭!」 and it is gone
+  let toolBag = null; const toolGauge = byId('toolGauge');
+  function showToolGauge(bag = toolBag) {
+    toolBag = bag || toolBag; const mine = (toolBag?.items || []).filter((e) => e.tool && e.tool === heldTool).sort((a, b) => a.uses - b.uses)[0];
+    toolGauge.classList.toggle('hidden', !mine); if (!mine) return;
+    toolGauge.replaceChildren(Object.assign(document.createElement('span'), { textContent: mine.icon }), Object.assign(document.createElement('i'), { className: `toolUses${mine.uses <= 5 ? ' low' : ''}` }), Object.assign(document.createElement('b'), { textContent: `${mine.uses}/${mine.usesMax}` }));
+    toolGauge.querySelector('i').style.setProperty('--left', String(mine.uses / mine.usesMax)); toolGauge.title = `${mine.name} 남은 ${mine.uses}회`;
+  }
+  function toolWorn(t, bag) {
+    if (bag) toolBag = bag; if (!t) { showToolGauge(); return; }
+    if (t.broke) {
+      plaza.controller?.toolBreak?.(); showToast(`툭! ${t.name}가 부러졌어요.`, 4000);
+      if (heldTool === t.kind && !(toolBag?.items || []).some((e) => e.tool === t.kind)) { heldTool = null; plaza.controller?.setHeldTool?.(null); }
+    } else if (t.uses === 5) showToast(`${t.name}가 많이 낡았어요. (5번 남음)`, 4000);
+    showToolGauge();
   }
   async function swingNet() {
     const hit = await plaza.controller?.netSwing?.(); if (!hit) return;
@@ -2562,7 +2580,7 @@
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api('/api/island/insect/catch', { method: 'POST', body: JSON.stringify({ id }) });
-      plaza.controller?.insectSwing?.(id); showToast(`${r.grade === 'rare' ? '🎉 ' : ''}${r.name} +1${r.firstTime ? ' · 도감 등록' : ''}`); if (r.bag) drawIslandBag(r.bag);
+      plaza.controller?.insectSwing?.(id); showToast(`${r.grade === 'rare' ? '🎉 ' : ''}${r.name} +1${r.firstTime ? ' · 도감 등록' : ''}`); if (r.bag) drawIslandBag(r.bag); toolWorn(r.tool, r.bag);
     } catch (error) { showToast(error.message); if (error.status === 409) plaza.controller?.insectsGone?.([id]); }
   }
   // B 45 꽃·나무 심기: a seed or the sapling into the ground where I stand; fertilizer onto the plant nearest me
@@ -2606,7 +2624,7 @@
     });
   }
   const bikeBtn = byId('islandBikeBtn');
-  const showBikes = (bag) => { const colors = (bag?.items || []).filter((e) => e.itemId.startsWith('bike_')).map((e) => e.itemId.slice(5)); plaza.controller?.setBikes?.(colors); bikeBtn.classList.toggle('hidden', !colors.length); plaza.controller?.setInsects?.(null, (bag?.items || []).some((e) => e.itemId === 'bugnet')); }; // (묶음 5: the net in the bag)
+  const showBikes = (bag) => { showToolGauge(bag); const colors = (bag?.items || []).filter((e) => e.itemId.startsWith('bike_')).map((e) => e.itemId.slice(5)); plaza.controller?.setBikes?.(colors); bikeBtn.classList.toggle('hidden', !colors.length); plaza.controller?.setInsects?.(null, (bag?.items || []).some((e) => e.tool === 'bugnet')); }; // (묶음 5: the net in the bag)
   async function refreshBikes() { try { showBikes(await api('/api/island/bag')); } catch {} }
   bikeBtn.addEventListener('click', () => { plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); });
   async function openIslandBag() {
@@ -3497,11 +3515,11 @@
   let goodBusy = false;
   function openGood(id) {
     const g = storeGoods.find((x) => x.id === id); if (!g || !g.price) { showToast('곧 판매할 물건이에요.'); return; }
-    const img = GOOD_ICONS.has(id) ? Object.assign(document.createElement('img'), { src: `/assets/items/goods/${id}.png`, alt: '', className: 'goodIcon' }) : Object.assign(document.createElement('span'), { textContent: '🚲', className: 'goodIcon' }); // (자전거: no picture of its own -- its mark)
+    const img = GOOD_ICONS.has(id) ? Object.assign(document.createElement('img'), { src: `/assets/items/goods/${id}.png`, alt: '', className: 'goodIcon' }) : Object.assign(document.createElement('span'), { textContent: g.icon || '🚲', className: `goodIcon${id.endsWith('_sturdy') ? ' sturdy' : ''}` }); /* (v1.10.221: a tool its own mark) */ // (자전거: no picture of its own -- its mark)
     const name = document.createElement('strong'); name.textContent = `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P`;
     const what = document.createElement('p'); what.className = 'lookMeta'; what.textContent = GOOD_USE[g.use] || '';
     const row = document.createElement('div'); row.className = 'goodBuy';
-    const once = ['tool', 'bike'].includes(g.use); // (5회차 10-①: a tool is bought once -- one, and 「가지고 있어요」 while one is in the bag)
+    const once = ['tool', 'bike'].includes(g.use); // (5회차 10-①: a tool is bought once -- one, and 「가지고 있어요」 while one is in the bag; v1.10.221 a rod or a net: three of a kind)
     for (const qty of once ? [1] : [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = qty === 1 ? 'primary' : 'secondary'; b.textContent = `${qty}개 · ${Number(g.price * qty).toLocaleString('ko-KR')}P`; b.dataset.qty = qty;
       b.addEventListener('click', async () => {
         if (goodBusy) return; goodBusy = true;
@@ -3509,7 +3527,7 @@
         catch (error) { showToast(error.message, 4000); } finally { goodBusy = false; }
       }); row.append(b); }
     goodCard.replaceChildren(img, name, what, row);
-    if (once) api('/api/island/bag').then((b) => { if ((b.items || []).some((e) => e.itemId === id && e.qty > 0)) { const own = row.querySelector('button'); own.disabled = true; own.textContent = '가지고 있어요'; } }).catch(() => {});
+    if (once) api('/api/island/bag').then((b) => { const kind = { fishing_rod: 1, fishing_rod_sturdy: 1, bugnet: 2, bugnet_sturdy: 2 }[id]; if (kind ? (b.items || []).filter((e) => ({ fishing_rod: 1, bugnet: 2 })[e.tool] === kind).length >= 3 : (b.items || []).some((e) => e.itemId === id && e.qty > 0)) { const own = row.querySelector('button'); own.disabled = true; own.textContent = '가지고 있어요'; } }).catch(() => {});
     openPlazaWindow('잡화점', [goodCard]); plazaDialog.classList.add('shopMode');
   }
   // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
@@ -3784,7 +3802,7 @@
     try {
       const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId, presses }) });
       plaza.controller?.fishResult?.(data.species);
-      showToast(`${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name} +1${data.firstTime ? ' · 도감 등록' : ''}`);
+      showToast(`${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name} +1${data.firstTime ? ' · 도감 등록' : ''}`); toolWorn(data.tool, data.bag);
     } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
   }
   // (문제 기록 3회차 4 「낚시 미니게임: 입질 때 화살표」) at the bite, arrows to press in order (4~12, more the rarer the

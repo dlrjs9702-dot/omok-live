@@ -85,6 +85,8 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   const got = concurrent[0].data;
   for (const reply of concurrent) { assert.equal(reply.status, 200); assert.deepEqual(reply.data, got, '동일 cast 동시 완료는 같은 답·도감 한 번'); }
   assert.deepEqual([got.species, got.name, got.firstTime], ['octopus', '문어', true]);
+  // (v1.10.221 도구 닳기) the misses above wore nothing; two catches (the anchovy after a slip, this one asked at once more than once), two uses
+  assert.deepEqual([got.tool?.uses, got.tool?.broke], [28, false]); assert.equal(((await req('/api/island/bag', sa)).data.items || []).find((e) => e.tool === 'fishing_rod').uses, 28);
   assert.deepEqual((await req('/api/island/fish/finish', sa, { fishId: cast.fishId, presses: press(cast.seq) })).data.species, 'octopus', '같은 답');
   const bag = (await req('/api/island/bag', sa)).data.items;
   assert.equal(bag.find((e) => e.itemId === 'fish_octopus')?.qty, 1, '한 마리만');

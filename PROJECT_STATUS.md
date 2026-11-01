@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.221 도구 닳기
+
+- 낚싯대·잠자리채 칸마다 하나(unique), 남은 횟수 meta.uses(없으면 가득: 30, 튼튼한 것 80). 잡기 판정 때 islandGive(wear)가 같은 claim 안에서 가장 낡은 것 1 — 놓침·허공·놀람은 안 줄어듦, 0이면 빠짐. 자전거 안 닳음.
+- 잡화점 튼튼한 낚싯대·잠자리채 3,800P(good:*_sturdy), 도구 벽 다음 고리·같은 모델·금테.
+- 종류마다 3개까지(TOOL_MAX) — 사기 거래 안에서 셈(JSON·PG), 자전거는 한 대.
+- 화면: 가방 막대, 든 도구 횟수(PC 오른쪽 아래·폰 왼쪽 위), 5회 쪽지, 0 「툭!」 조각.
+- 시험: store-tools·wearTool·낚시·곤충 단위, e2e tool-wear(새, PC·폰).
+
 ## v1.10.220 새 주민 17명 좋아하는 것·8명 편지·심부름 그날 걷는 주민
 
 - LIKES 10~26(27개, 로드 때 RESIDENTS 수 확인), giftReact 기본 분기 지움. own.letter: 반디·바위·한결·김우성·마루·단비·한솔·새롬 5개씩(notes docs/resident-likes-letters-17-20261101.md).
@@ -27,11 +35,3 @@
 - 먼 주민: 대화가 1.9 m보다 멀리서 잡히면 1.6 m(1인칭 fpGap)까지 걸어감(걷기 동작).
 - 역 철이(근무표 지킴이·부탁 철이): 광장 대신 옆 길을 봄(facePath).
 - 시험: talk-spot.spec(새, PC·폰).
-
-## v1.10.218 1인칭 다듬기(B4~6) + 대화 때 주민 방향
-
-- 대화 방향: 3인칭 대화 카메라가 내 오른쪽 4.2 m(v1.10.213)라 작은 주민이 옆·등을 보였음 → 나와 대화 카메라의 가운데를 향해 돎, 1인칭 대화는 나를 정면으로. resident-looks에 faceSeen > 0.6.
-- B4 걸음 흔들림(걷기 0.022·뛰기 0.045 m, 서기·앉기·타기·움직임 줄이기 0), ☰ 「1인칭 걸음 흔들림」(gc.walkBob).
-- B5 1인칭 든 도구: 몸이 든 잠자리채·낚싯대를 화면 오른쪽 아래에 다시 그림(손뼈 기준 반쯤 따라 움직임, 휘두르기 포함) + 주먹 구.
-- B6 SPACE 대상: 1인칭에서 대상 바닥에 얇은 고리(내 자리 대상·안내뿐인 것 제외).
-- 시험: fp-polish.spec(새, PC·폰), talk-facing-photo.spec(사진 전용).

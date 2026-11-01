@@ -1435,5 +1435,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .storyBoard .storyPieceCell.found{border-color:var(--isle-tag)}
 :root[data-theme="light"] .storyLogBlank{border-bottom:1px dashed var(--isle-line)}
 :root[data-theme="light"] .storyLogPage{border-bottom:1px dashed var(--isle-line)}
+:root[data-theme="light"] .toolUses{background:rgba(90,70,50,.25)}
+:root[data-theme="light"] .toolUses::before{background:#5fa04e}
+:root[data-theme="light"] .toolUses.low::before{background:#d9534f}
+:root[data-theme="light"] #islandBagDialog .islandBagSlot.sturdy{box-shadow:0 0 0 3px #d9a632 inset}
+:root[data-theme="light"] .goodIcon.sturdy{box-shadow:0 0 0 3px #d9a632}
+:root[data-theme="light"] .toolGauge{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .donationProject{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .donationProject small{color:var(--isle-soft)}
