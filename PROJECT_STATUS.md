@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.219 대화 자리 잡기 + 역 철이
+
+- 대화 카메라: 섬에서 시선에 나무·덤불·가로등(natureSolids)이 걸치면 내 왼쪽 → 양쪽 가까이(0.6배) 중 먼저 트인 자리(대화마다 한 번, talkSide). 주민 바로 뒤 나무(마지막 8 %)는 벽 아님.
+- 키 작은 주민(2.1 m 아래): k = max(0.6, top/2.1)로 카메라 가깝고 낮게(y 1.9×k), 겨누는 점을 나에게서 조금 더 비켜 — 콩이 머리 화면 위쪽. 2.1 m·2.6 m 넘는 주민은 전과 같음.
+- 먼 주민: 대화가 1.9 m보다 멀리서 잡히면 1.6 m(1인칭 fpGap)까지 걸어감(걷기 동작).
+- 역 철이(근무표 지킴이·부탁 철이): 광장 대신 옆 길을 봄(facePath).
+- 시험: talk-spot.spec(새, PC·폰).
+
 ## v1.10.218 1인칭 다듬기(B4~6) + 대화 때 주민 방향
 
 - 대화 방향: 3인칭 대화 카메라가 내 오른쪽 4.2 m(v1.10.213)라 작은 주민이 옆·등을 보였음 → 나와 대화 카메라의 가운데를 향해 돎, 1인칭 대화는 나를 정면으로. resident-looks에 faceSeen > 0.6.
@@ -27,10 +35,3 @@
 - 1인칭: 눈높이 = 머리뼈 + 0.02 m(광장 1.77 → 1.4 m, 사용자 「1.4로 가자」), 시야각 75 → 70°, 위 75°·아래 70°.
 - 에셋 89(고은 얼굴·팔, 하람 얼굴, 가람 팔)·90(꽃님·콩이 팔) 바꿔 끼움 — 해시·삼각형 예산만.
 - 시험: e2e 걷기 키 W/A/S/D로(11개 파일), controls-fp(새: 걷기·방향키 시점·마우스 보기 lookBy·한계·감도·잠금 풀림·알림), fp-desk-photo(사진 전용).
-
-## v1.10.216 주민 근무표 C2 — 27명이 걷기
-
-- IslandNpcs.COUNT 27(처음 10명 길 그대로), 그날 걷는 사람 = IslandRoster.walks(근무지에 안 선 모두; 10월 콩이 할로윈 자리). 화면은 그날 걷는 주민만 만들고 17명은 _off 모습.
-- 이야기 주민이 걷는 날: 퀘스트 항목 walker, 섬 자리 비고 「!·✓」가 그 사람 위로, 대화 첫 줄 「📜 부탁」(questTalkPos: 곁 6 m). 계산대 「이야기해요」도 그 주민 대화.
-- 27명 모두 대화(talkable: 걷거나 계산대·역), 17명 선물 기본 반응(LIKES 없음), 호감도 목록 27, 이벤트는 그날 걷는 주민만, 크리스마스 선물 배달도 걷는 주민 중에서. 역 근무 주민(철이/일요일 반디)이 역에 서고 「일요일은 반디가 역을 봐요」 안내.
-- 시험: island-npcs(27명·그날 걷는 주민 모이기), island-residents, resident-affinity, island-roster-server C2, e2e resident-roster(PC·폰). 성능 PERF·ROSTER=1.
