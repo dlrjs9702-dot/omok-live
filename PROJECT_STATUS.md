@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.217 조작·1인칭 개편(A + B1~3) + 에셋 89·90
+
+- 걷기 W/A/S/D(event.code, 한글 입력 상태도), 시점 방향키(입질 중엔 낚시 화살표만). 클릭하면 포인터 잠금 → 마우스 시점(1인칭 가운데 점, 잠긴 클릭은 시점만), 창·대화·꾸미기·사진·앉기·입력칸·포커스 잃음이면 풀림, ☰ 마우스 감도(gc.mouseSens). PC 첫 입장 한 번 「조작이 바뀌었어요」(gc.controlsNotice, 폰 없음), 가이드 문구도.
+- 1인칭: 눈높이 = 머리뼈 + 0.12 m(광장 1.77 → 1.5 m), 시야각 75 → 70°, 위 75°·아래 70°.
+- 에셋 89(고은 얼굴·팔, 하람 얼굴, 가람 팔)·90(꽃님·콩이 팔) 바꿔 끼움 — 해시·삼각형 예산만.
+- 시험: e2e 걷기 키 W/A/S/D로(11개 파일), controls-fp(새: 걷기·방향키 시점·마우스 보기 lookBy·한계·감도·잠금 풀림·알림), fp-desk-photo(사진 전용).
+
 ## v1.10.216 주민 근무표 C2 — 27명이 걷기
 
 - IslandNpcs.COUNT 27(처음 10명 길 그대로), 그날 걷는 사람 = IslandRoster.walks(근무지에 안 선 모두; 10월 콩이 할로윈 자리). 화면은 그날 걷는 주민만 만들고 17명은 _off 모습.
@@ -26,9 +33,3 @@
 - 백화점 1~3층·옥상 계산대와 광장 출석 도우미에 그날 주민 모델(IslandAssets.lookOf). 말 걸면 shop.hello + 가게 창 + 「이야기해요」(걷는 주민 대화 / 이야기 주민 부탁). 2·3층 계산대 말 걸기 새로. 근무 날 걷는 주민은 섬에서 빠지고 이벤트도 안 맡음, 대화는 계산대에서(atPost). 이야기 주민 근무 날엔 섬 자리 비고 계산대에서 부탁(questTalkPos).
 - 관공서 쉬는 창구(「오늘은 쉬어요」), 그 일은 옆 창구(atDesk). 일요일 역 반디, 철이 부탁 닫힘(isOpen). 광장 게시판 「오늘의 근무표」.
 - 시험 서버는 근무표 꺼짐 — /api/test/roster {on, day}. 시험: 단위 island-roster·island-roster-server(새), e2e resident-roster(새, PC·폰).
-
-## v1.10.214 주민 근무표 B — 주민 말씨 + Codex 검토 5차 고침
-
-- island-cast RESIDENTS 27명 한 목록(걷는 10 + 자리 17: 이야기 주민 원래 번호, 마루 23·단비 24·한솔 25·새롬 26), WALKERS·KEEPERS·VOICES·FLAVOR·MOODS·CHATS는 여기서. voices 최종본(story/voices-20261029)을 스크립트로 옮김. REG rumor_* 14·q0~q5 + 새 말씨 goeun·cheori·garak·hao·hasyo(10 말씨 × 60 키). rumor(ctx, random, n)·questionLine(n, k)로 섬 소문·이야기 나눠요가 말한 주민 말씨로. say: own 키는 자기 말만. 김우성 통과 말은 passLine 그대로. shop·duty는 데이터만(C에서 씀).
-- Codex 검토 5차(docs/codex-review-5-20261031.md): P2-1 메신저 새 방 첫 메시지 팝업, P2-2 알림 구독 옮기기(새 것 뒤에 옛 것 해지, 「알림 끄기」는 이 기기 구독까지), P3-1 가방 정리 때 든 칸 놓기, P3-2 pull peek 요청마다, P3-3 storyDoc 첫 읽기 경쟁, P3-4 저장 실패 반쪽(카운트다운 칭호·눈사람 unshown·이야기 장 unpaid), P3-5 창 세대 closeIfStill·이야기 책 마지막 탭, P3-6 방문 효과·천장 dispose, P3-7 사진 대상 화면 안 먼저.
-- 시험: 단위 resident-voice(27명 × 60 키·어미 다름)·countdown·festival·island-story(시험 전용 /api/test/store/fail로 저장 실패 넣음), e2e resident-register(새)·messenger 셋·bag·story·view-modes(PC·폰).
