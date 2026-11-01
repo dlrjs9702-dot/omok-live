@@ -30,6 +30,8 @@ test('주민 모습: 자리마다 그 주민 모델, 서 있기·대화 가까�
   if (!process.env.SHOT_DIR) {
     const near = posts.filter((p) => p.z > -300); let done = false;
     for (const d of near) { if (await talkTo(d)) { await framed(d.resident); done = true; break; } }
+    // (v1.10.218, 총괄 「대화 때 이야기 주민이 등을 보여요」: their face toward the talk's camera, not only toward me)
+    expect((await page.evaluate(() => window.PlazaDebug().faceSeen()))?.faceToCam).toBeGreaterThan(0.6);
     expect(done).toBe(true);
     await expectNoScriptError(page); await who.context.close(); return;
   }
