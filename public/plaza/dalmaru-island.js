@@ -32,6 +32,9 @@
   // what a house takes (the 6 x 5 m house and its steps, a little round it, and in front of its door -- island-home's
   // doorOf: 4.6 m toward the walk across the isle at z 140.5); trees and rocks may stand on the rest of the lot
   const onHouse = (x, z) => onLot(x, z, 1); // (v1.10.230: the whole fenced ground, not the house alone)
+  // (v1.10.230: where 툇마루섬's houses stood, four little gardens -- a flower bed, a bench either side facing it -- the grass round
+  // them left to grow; plazaProps lays them, the trees keep 4 m off)
+  const ISLE_GARDENS = Object.freeze([[-9, 116], [9, 116], [-27, 129], [27, 129]].map(([x, z]) => Object.freeze({ x, z })));
   const rad = (a) => (a * Math.PI) / 180;
   const inPlaza = (x, z, m = 0) => Math.abs(x - P.x) < P.hw + m && z > P.d0 - m && z < P.d1 + m;
   const yawTo = (x, z, f) => Math.atan2(x - f[0], z - f[1]); // a model whose front is -Z, turned so it looks at f
@@ -400,6 +403,7 @@
       for (const p of sides) benches.push({ ...p, r: 0.9, yaw: Math.atan2(-g.ox, -g.oz), rim: true }); // (facing in, away from the kerb)
       lamps.push({ x: g.x + g.ox * 1.6, z: g.z + g.oz * 1.6, r: 0.35 });
     }
+    for (const g of ISLE_GARDENS) { beds.push({ x: g.x, z: g.z, r: 1.1, i: beds.length }); for (const sx of [-2.6, 2.6]) benches.push({ x: g.x + sx, z: g.z, r: 0.9, yaw: Math.atan2(-sx, 0) }); } // (v1.10.230)
     const seats = benches.map((b, k) => { const ry = b.yaw; return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
     paving().gardens.forEach((g, k) => {
@@ -423,7 +427,7 @@
     if (natureCache) return natureCache;
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
     const R = D.R_OUT + 5;
-  const built = (x, z) => onHouse(x, z) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < (b.kind === 'facade' ? 18 : b.kind === 'hall' ? 13 : 7))
+  const built = (x, z) => onHouse(x, z) || ISLE_GARDENS.some((g) => Math.hypot(x - g.x, z - g.z) < 4) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < (b.kind === 'facade' ? 18 : b.kind === 'hall' ? 13 : 7))
       || PADS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + 1.5) || onStairs(x, z) || Math.hypot(x - TOP.x, z - TOP.z) < 6
       || Math.hypot(x - PL.lighthouse.x, z - PL.lighthouse.z) < 6 || Math.hypot(x - PL.pier.x, z - PL.pier.z) < 6 || Math.hypot(x - PL.dock.x, z - PL.dock.z) < 8
       || villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 2) || heroYard(x, z);
