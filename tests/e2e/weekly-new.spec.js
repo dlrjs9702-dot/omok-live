@@ -45,7 +45,9 @@ test('주간 신상: 옷가게 신상 10칸에서 사기, 숨긴 것 없음 → 
     if (process.env.SHOT_DIR) { // (the six and the plaque from their front corner, from above: the third-person view for it)
       await page.locator('#islandViewTab').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().view().mode)).toBe('third');
       await page.evaluate(() => { const F = window.IslandFurniture; const d = window.PlazaDebug(); const at = F.world(8.6, 1.0); const to = F.world(12.0, 4.6); d.teleport(at.x, at.z); d.faceTo(to.x, to.z); d.setCamYaw(Math.atan2(at.x - to.x, at.z - to.z)); d.setCamPitch(0.26); }); await shot(page, 'weekly-shelf', 2500);
-      await page.evaluate(([x, z]) => { const d = window.PlazaDebug(); d.setCamPitch(0); d.teleport(x, z); }, [W.x, W.z]); await page.locator('#islandViewTab').click(); await page.waitForTimeout(600);
+      await page.evaluate(() => window.PlazaDebug().setCamPitch(0)); await page.locator('#islandViewTab').click(); // (the plaque up close, first person)
+      await page.evaluate(() => { const F = window.IslandFurniture; const d = window.PlazaDebug(); const at = F.world(9.0, -1.6); const to = F.world(9.0, 0.6); d.teleport(at.x, at.z); d.faceTo(to.x, to.z); d.setCamYaw(Math.atan2(at.x - to.x, at.z - to.z)); d.setCamPitch(0.2); }); await shot(page, 'weekly-plaque', 2000);
+      await page.evaluate(([x, z]) => { const d = window.PlazaDebug(); d.setCamPitch(0); d.teleport(x, z); }, [W.x, W.z]); await page.waitForTimeout(600);
     }
     await press(); await expect(page.locator('#furnitureCard')).toContainText('이번 주 신상');
     await page.locator('#furnitureCard button', { hasText: '사기' }).click(); await expect(page.locator('#furnitureCard')).toBeHidden({ timeout: 15000 });
