@@ -1445,3 +1445,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .donationProject small{color:var(--isle-soft)}
 :root[data-theme="light"] .voteChoice.mine{border-color:#5fa04e}
 :root[data-theme="light"] .scopeFrame{background:radial-gradient(circle at 50% 50%,transparent 0 34vmin,rgba(8,10,14,.92) 35vmin)}
+:root[data-theme="light"] body.plazaMode .plazaDialog .myRecordsCard{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
+:root[data-theme="light"] body.plazaMode .plazaDialog .myRecordsCard :is(h2,strong,.recordsSummary,.recordsDetail){color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode .plazaDialog .myRecordsCard label{color:var(--isle-soft)}
+:root[data-theme="light"] body.plazaMode .plazaDialog .myRecordsCard select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] body.plazaMode :is(.plazaDialog .myRecordsCard,#recordsDialog) .recordsBadge{background:#fbefc8;color:#7a5410;border-color:#d4a72c}
+:root[data-theme="light"] body.plazaMode #recordsDialog :is(.card,.recordsProfile,.recordsResult,li){background:transparent;color:var(--isle-ink)}

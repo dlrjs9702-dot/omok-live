@@ -2984,7 +2984,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     put('mall.floor2', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(FURN.ROOM.w, 0.2, FURN.ROOM.d), mat(0xd9c3a0), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(FURN.ROOM.w, 4, 0.3), mat(0xf2ede4), 0, 2, FURN.ROOM.d / 2, f); });
     for (const sl of FURN.SLOTS) if (sl.kind === 'floor') put(`shop.rug_zone__${sl.zone}`, sl.lx, 0, sl.lz, 0, (f) => mesh(new THREE.BoxGeometry(4, 0.02, 4), mat(0xe6d6b8), 0, 0.01, 0, f)); // (v1.10.211: one under each plinth, assets 82 README)
     const plinths = {};
-    for (const s of [...FURN.SLOTS, ...FURN.BASE_SLOTS, ...FURN.YARD_SLOTS]) {
+    for (const s of [...FURN.SLOTS, ...FURN.BASE_SLOTS, ...FURN.YARD_SLOTS, ...FURN.WEEK_SLOTS]) {
       if (s.plinth === false) { plinths[s.id] = { root: put('shop.price_stand', s.lx, 1.0, s.lz - 0.9, 0), top: 0 }; continue; }
       const small = Boolean(s.good); put(small ? 'shop.plinth_s' : 'shop.plinth_l', s.lx, 0, s.lz, 0, (f) => mesh(new THREE.BoxGeometry(small ? 1.2 : 2.4, 0.14, small ? 1.2 : 2.4), mat(0xcfc4b0), 0, 0.07, 0, f));
       plinths[s.id] = { root: put('shop.price_stand', s.lx, 0.14, s.lz - (small ? 0.5 : 1.1), 0), top: 0.14 };
@@ -2995,7 +2995,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!dressPost(k, 'mall3')) { assets.dress(['character.npc'], k); dressUp(k, { gender: 'female' }, { shirt: 0x8a6a48 }); } // (v1.10.215: the day's 바위·해송)
     liftAt(g, FURN.LIFT);
     signboard('wall', '3층 가구', g, 0, 3.1, FURN.ROOM.d / 2 - 0.2, 0); // (간판: the floor's name on a wall board)
-    for (const [lz, yaw] of [[-3.5, 0], [3.5, Math.PI]]) signboard('plaque', '마당', g, -11.3, 0, lz, yaw); // (v1.10.225: the 「마당」 shelf either side of the way from the lift)
+    for (const [lz, yaw] of [[-3.5, 0], [3.5, Math.PI]]) signboard('plaque', '마당', g, -11.3, 0, lz, yaw);
+    signboard('plaque', '이번 주 신상', g, 12.0, 0, 0.4, 0); // (v1.10.227: the week's shelf, before its first row) // (v1.10.225: the 「마당」 shelf either side of the way from the lift)
     for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
     furniture = { group: g, plinths, shown: {}, put, keeper: k, lid: roomLid(g, FURN.ROOM, 0xf2ede4) };
     if (furnitureState) setFurniture(furnitureState);
@@ -3003,9 +3004,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // the day's display from the server (app.js): each place its piece -- or, sold, the 「다시 들어와요」 box -- and its price
   function setFurniture(state) {
-    furnitureState = state ? { ...state, items: Object.fromEntries([...(state.display || []), ...(state.base || []), ...(state.yard || [])].map((d) => [d.slot, d])) } : null;
+    furnitureState = state ? { ...state, items: Object.fromEntries([...(state.display || []), ...(state.base || []), ...(state.yard || []), ...(state.weekly || [])].map((d) => [d.slot, d])) } : null;
     if (!furniture || !furnitureState) return;
-    for (const s of [...FURN.SLOTS, ...FURN.BASE_SLOTS, ...FURN.YARD_SLOTS]) {
+    for (const s of [...FURN.SLOTS, ...FURN.BASE_SLOTS, ...FURN.YARD_SLOTS, ...FURN.WEEK_SLOTS]) {
       const d = furnitureState.items[s.id]; const key = d ? `${d.id}:${d.sold ? 'sold' : 'on'}` : ''; const was = furniture.shown[s.id];
       if (was?.key === key) continue;
       if (was) { was.root.removeFromParent(); was.tag?.removeFromParent(); }
@@ -3138,6 +3139,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return bz === 1 ? { x: p.x, z: hz - s[1] / 2 } : bx === 1 ? { x: hx - s[1] / 2, z: p.z } : bx === -1 ? { x: -hx + s[1] / 2, z: p.z } : { x: p.x, z: p.z };
   }
   const swimTo = (T, bottom) => { if (T.cylinder) { const r = Math.sqrt(Math.random()) * (T.max[0] - T.min[0]) * 0.45; const a = Math.random() * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * r, bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), Math.sin(a) * r); } return new THREE.Vector3(T.min[0] + Math.random() * (T.max[0] - T.min[0]), bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), T.min[2] + Math.random() * (T.max[2] - T.min[2])); };
+  // v1.10.227: a tuna in a big or pillar tank -- made small enough for the glass, swimming the tank's length (the pillar: round it)
+  const tunaTo = (T, from) => {
+    if (T.cylinder) { const a = (from ? Math.atan2(from.z, from.x) : Math.random() * Math.PI * 2) + 0.7; return new THREE.Vector3(Math.cos(a) * 0.25, T.min[1] + 0.3 + Math.random() * (T.max[1] - T.min[1] - 0.6), Math.sin(a) * 0.25); }
+    return new THREE.Vector3((from && from.x > 0 ? -1 : 1) * (0.3 + Math.random() * (T.max[0] - 0.65)), (T.min[1] + T.max[1]) / 2 + (Math.random() - 0.5) * 0.2, 0);
+  };
   function drawPiece(p, ghost = false) {
     const shape = HOME.shapeOf(p.id); const good = globalThis.IslandFurniture?.good(p.id); const onTop = shape === 'insect_case' && HOME.supportOf(p, homeHere.home.pieces); // (V1, assets 86: on a top the tabletop case)
     const s = onTop ? [0.36, 0.24, 0.28] : HOME.SIZE[shape] || [1, 1, 1]; const T = HOME.TANKS[onTop ? 'insect_case_desk' : shape];
@@ -3154,8 +3160,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const fish of ghost || !T ? [] : homeHere.home.tanks[p.uid] || []) {
       const fr = new THREE.Group(); root.add(fr); const fb = new THREE.Group(); fr.add(fb); mesh(new THREE.BoxGeometry(0.16, 0.06, 0.05), mat(0x9fb8c8), 0, 0, 0, fb);
       if (T.insects) { assets.attach(`together.${fish.itemId}`, fr, fb); fr.position.set(0, T.min[1], 0); continue; } // (the insect sits)
-      assets.attach(`fish.${fish.itemId.slice(5)}`, fr, fb); fr.scale.setScalar(T.fishScale || 1);
-      const bottom = HOME.BOTTOM.has(fish.itemId); fr.position.copy(swimTo(T, bottom)); v.swim.push({ root: fr, T, bottom, to: swimTo(T, bottom), speed: 0.12 + Math.random() * 0.12, phase: Math.random() * 6 });
+      const tuna = Boolean(HOME.FISH_ROOM[fish.itemId]) && T.biggest === 'medium'; // (v1.10.227)
+      assets.attach(`fish.${fish.itemId.slice(5)}`, fr, fb); fr.scale.setScalar(tuna ? (T.cylinder ? 0.45 : 0.55) : T.fishScale || 1);
+      const bottom = HOME.BOTTOM.has(fish.itemId); fr.position.copy(tuna ? tunaTo(T, null) : swimTo(T, bottom)); v.swim.push({ root: fr, T, bottom, tuna, to: tuna ? tunaTo(T, fr.position) : swimTo(T, bottom), speed: 0.12 + Math.random() * 0.12, phase: Math.random() * 6 });
     }
     if (T && !T.insects && !ghost) for (let k = 0; k < 4; k += 1) { const b = mesh(new THREE.SphereGeometry(0.025, 6, 4), mat(0xeaf6ff, { transparent: true, opacity: 0.6 }), T.min[0] * 0.6, T.min[1] + Math.random() * (T.max[1] - T.min[1]), 0, root); b.castShadow = false; v.bubbles.push(b); }
     return v;
@@ -3266,7 +3273,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (mySpace !== 'home' || !homeRoomV || !homeHere) return;
     for (const v of homeRoomV.pieces.values()) {
       for (const f of v.swim) {
-        const p = f.root.position; const d = p.distanceTo(f.to); if (d < 0.04) { f.to = swimTo(f.T, f.bottom); continue; }
+        const p = f.root.position; const d = p.distanceTo(f.to); if (d < 0.04) { f.to = f.tuna ? tunaTo(f.T, p) : swimTo(f.T, f.bottom); continue; }
         // (the head forward: a fish's front is -Z like every model -- 문제 기록 3회차 12 「뒤로만 움직여」; the tail's wag)
         p.lerp(f.to, Math.min(1, (f.speed * dt) / d)); f.root.rotation.y = Math.atan2(f.to.x - p.x, f.to.z - p.z) + Math.PI + Math.sin(clock * 9 + f.phase) * 0.18;
       }

@@ -38,7 +38,7 @@ test('백화점 네 층: 물건·가게·받침·거울·계산대 모두 승강
   { const w = W.world(...W.COUNTER.customer); assert.ok(f2(w.x, w.z), 'the 2nd floor counter'); }
   // 3층: each plinth (from where SPACE picks it), the counter
   const f3 = reachable(F);
-  for (const sl of [...F.SLOTS, ...F.BASE_SLOTS, ...F.YARD_SLOTS]) { // (v1.10.225: the 「마당」 shelf too)
+  for (const sl of [...F.SLOTS, ...F.BASE_SLOTS, ...F.YARD_SLOTS, ...F.WEEK_SLOTS]) { // (v1.10.225: the 「마당」 shelf too)
     let ok = false; for (let k = 0; k < 64 && !ok; k += 1) for (const r of [1.3, 1.6, 1.9]) { const w = F.world(sl.lx + Math.cos(k / 64 * Math.PI * 2) * r, sl.lz + Math.sin(k / 64 * Math.PI * 2) * r); if (f3(w.x, w.z) && F.placeAt(w.x, w.z)?.id === sl.id) { ok = true; break; } }
     assert.ok(ok, sl.id);
   }
