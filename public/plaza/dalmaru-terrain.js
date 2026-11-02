@@ -32,10 +32,16 @@
   // v1.10.230 울타리 마을 (gamecenter-notes docs/yard-fenced-20261102.md, 사용자 「섬을 더 넓히고 실제 울타리로 구분되는 땅을 마당
   // 으로」, 자리 A): new land south of 툇마루섬 past the train's ring -- a broad flat field (its corners rounded, its coast wavy as
   // the rest), and a grass neck from the isle down to it under the ring (no pillar on land: island-train stands them in the sea)
-  const VILLAGE = { x0: -154, x1: 170, z0: 199, z1: 275, r: 14 };
+  const VILLAGE = { x0: -154, x1: 170, z0: 199, z1: 281, r: 14 };
   const NECK = { x: -20, z0: 168, z1: 210, hw: 15 };
   const villageDist = (x, z) => { const qx = Math.abs(x - (VILLAGE.x0 + VILLAGE.x1) / 2) - (VILLAGE.x1 - VILLAGE.x0) / 2 + VILLAGE.r; const qz = Math.abs(z - (VILLAGE.z0 + VILLAGE.z1) / 2) - (VILLAGE.z1 - VILLAGE.z0) / 2 + VILLAGE.r; return Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0) - VILLAGE.r; }; // (< 0 inside)
   const neckDist = (x, z) => Math.hypot(x - NECK.x, z - Math.max(NECK.z0, Math.min(NECK.z1, z))) - NECK.hw;
+  // (총괄 검토: the coast in long bends, 80~110 m, each edge its own -- the north one shallow (the lots' backs 7 m clear of the
+  // beach), the south one deeper, a cove at the open east end; no short ripple: not a pie's crust)
+  const villageWob = (x, z) => {
+    const s = smooth(240, 262, z); const n = 1 - smooth(204, 222, z); const w = 1 - smooth(-140, -120, x); const e = smooth(140, 160, x);
+    return s * (4.5 * Math.sin(x * 0.058 + 0.8) - 7 * Math.exp(-(((x - 138) / 13) ** 2))) + n * 1.8 * Math.sin(x * 0.05 + 2) + w * 3.5 * Math.sin(z * 0.075 + 1.3) + e * 4 * Math.sin(z * 0.07 + 0.4);
+  };
   const smax = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.max(a, b) + (h * h * k) / 4; }; // (a soft union: the neck meets the isle and the field in a curve)
   const RIDGE = { a0: (184 * Math.PI) / 180, a1: (356 * Math.PI) / 180, inner: 128, top: 22 }; // 달마루 능선: angles round the north, the cliff's foot radius, the ridge's height
   const PLAZA = { x: 0, z: -84, hw: 44, d0: -112, d1: -52, h: 1.2 }; // 대청마당: a terrace before the cliff (half width, north and south edges)
@@ -62,9 +68,8 @@
     // (the village counts only where it could: its box's distance bounds it from above -- the wobble 2.3 and the soft union's 2.5
     // at most -- and the soft union is the isle itself once the village is 12 below it; the same answer, no seam, a third of the cost)
     const ox = Math.max(VILLAGE.x0 - x, 0, x - VILLAGE.x1); const oz = Math.max(NECK.z0 - NECK.hw - z, 0, z - VILLAGE.z1);
-    if (4.8 - Math.hypot(ox, oz) <= isle - 12) return Math.max(crescent, isle, cape);
-    const wob = 1.4 * Math.sin(x * 0.11 + 0.6) + 0.9 * Math.sin(x * 0.27 + z * 0.13);
-    const village = smax(-villageDist(x, z) + wob, -neckDist(x, z) + 0.6 * Math.sin(z * 0.3), 10);
+    if (11 - Math.hypot(ox, oz) <= isle - 12) return Math.max(crescent, isle, cape); // (the bends 8.5 at most, the soft union 2.5)
+    const village = smax(-villageDist(x, z) + villageWob(x, z), -neckDist(x, z) + 1.2 * Math.sin(z * 0.09), 10);
     return Math.max(crescent, smax(isle, village, 12), cape);
   }
   const inBay = (x, z) => Math.hypot(x, z - BAY_Z) < bayR(Math.atan2(z - BAY_Z, x)) && Math.hypot(x, z) < outerR(Math.atan2(z, x)) + 4 && z < TIP_Z;
