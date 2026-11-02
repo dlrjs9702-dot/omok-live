@@ -42,7 +42,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['lift:1']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('승강기');
     await press(); await page.locator('#liftCard button[data-floor="3"]').click();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('furniture');
-    await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().furniture() || {}).length), { timeout: 15000 }).toBe(32); // (16 + 4 + the yard's 12)
+    await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().furniture() || {}).length), { timeout: 15000 }).toBe(38); // (16 + 4 + the yard's 12 + the week's 6)
     const W = await page.evaluate(() => { const F = window.IslandFurniture; const s = F.YARD_SLOTS.find((x) => x.good === 'yard_arch__plain'); const w = F.world(s.lx, s.lz); return F.clamp(w.x, w.z); });
     await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [W.x, W.z]); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('꽃 아치');
     await page.evaluate(() => window.PlazaDebug().setCamYaw(-Math.PI / 2)); await shot('shop-shelf-view', page, 2500); await press(); await expect(page.locator('#furnitureCard')).toContainText('20,000P'); await expect(page.locator('#furnitureCard')).toContainText('마당 물건이에요');

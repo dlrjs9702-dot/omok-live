@@ -3230,13 +3230,15 @@
     islandBagDialog.close(); openPlazaWindow('내 반려동물', [petsBox]);
   }
   const furnitureCard = document.createElement('div'); furnitureCard.className = 'goodCard furnitureCard'; furnitureCard.id = 'furnitureCard';
-  const FURNITURE_RARITY = { common: '흔함', uncommon: '보통', rare: '드묾', base: '늘 파는 가구', yard: '마당' };
+  const FURNITURE_RARITY = { common: '흔함', uncommon: '보통', rare: '드묾', base: '늘 파는 가구', yard: '마당', week: '이번 주 신상' };
+  // v1.10.227 주간 신상: how long the week's things stay (to Monday 00:00 Seoul)
+  const weekLeft = (ends) => { const days = Math.max(0, Math.ceil((Number(ends) - Date.now()) / 86400000)); return days <= 1 ? '월요일 0시까지' : `월요일 0시까지 ${days}일`; };
   function openFurniture(slot) {
-    const d = furnitureState && [...furnitureState.display, ...furnitureState.base, ...(furnitureState.yard || [])].find((x) => x.slot === slot);
+    const d = furnitureState && [...furnitureState.display, ...furnitureState.base, ...(furnitureState.yard || []), ...(furnitureState.weekly || [])].find((x) => x.slot === slot);
     if (!d || d.sold) { showToast('팔렸어요. 내일 새 가구가 들어와요.'); return; }
     const name = document.createElement('strong'); name.textContent = `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`;
     const what = document.createElement('p'); what.className = 'lookMeta';
-    what.textContent = d.rarity === 'yard' ? '마당 물건이에요. 산 것은 가구 창고 「마당」 칸에 들어가고, 내 집 마당에서 「마당 꾸미기」로 놓아요.' : d.rarity === 'base' ? '늘 파는 가구예요. 산 가구는 가구 창고에 들어가요.' : `${FURNITURE_RARITY[d.rarity]} · 하나뿐이에요 — 사면 다른 사람에게서도 사라지고 내일 새 가구가 들어와요. 오늘 ${furnitureState.mine}/${furnitureState.perDay}점 샀어요.`;
+    what.textContent = d.rarity === 'week' ? `이번 주 신상 · 드묾 · ${weekLeft(furnitureState.weekEnds)} — 누구나 살 수 있고, 다음 월요일 0시에 바뀌어요. 오늘 ${furnitureState.mine}/${furnitureState.perDay}점 샀어요.` : d.rarity === 'yard' ? '마당 물건이에요. 산 것은 가구 창고 「마당」 칸에 들어가고, 내 집 마당에서 「마당 꾸미기」로 놓아요.' : d.rarity === 'base' ? '늘 파는 가구예요. 산 가구는 가구 창고에 들어가요.' : `${FURNITURE_RARITY[d.rarity]} · 하나뿐이에요 — 사면 다른 사람에게서도 사라지고 내일 새 가구가 들어와요. 오늘 ${furnitureState.mine}/${furnitureState.perDay}점 샀어요.`;
     const row = document.createElement('div'); row.className = 'goodBuy';
     const buy = document.createElement('button'); buy.type = 'button'; buy.className = 'primary'; buy.textContent = '사기';
     buy.addEventListener('click', async () => {
@@ -3549,7 +3551,7 @@
     const can = document.createElement('div'); can.className = 'giftList';
     for (const item of bag.items.filter((e) => H.fits(shape, e.itemId))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); }
     const what = T.insects ? '곤충' : '물고기';
-    tankBox.replaceChildren(line(`${inside.length}/${T.slots}마리${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
+    tankBox.replaceChildren(line(`${!T.insects && (inside.some((f) => H.FISH_ROOM[f.itemId]) || bag.items.some((e) => H.FISH_ROOM[e.itemId] && H.fits(shape, e.itemId))) ? `${H.tankUsed(inside)}/${T.slots}칸 · ${inside.length}마리 · 참치는 6칸` : `${inside.length}/${T.slots}마리`}${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
     openPlazaWindow(T.insects ? '곤충 상자' : '수조', [tankBox]);
   }
   // a frame: one of my 기념사진 (the places I took one) hung in it
@@ -4536,7 +4538,7 @@
   byId('islandStoryBtn').addEventListener('click', () => openStoryBook());
   function storyShelf() {
     const row = document.createElement('div'); row.className = 'storyShelf';
-    for (const [label, open] of [['📖 이야기 책', () => openStoryBook()], ['📜 섬 일지', () => openStoryLog()]]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', open); row.append(b); }
+    for (const [label, open] of [['📖 이야기 책', () => openStoryBook()], ['📜 섬 일지', () => openStoryLog()]]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; /* (v1.10.227: the island's pills) */ b.textContent = label; b.addEventListener('click', open); row.append(b); }
     return row;
   }
   // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): whoever walks by talks; the server holds them on every screen
@@ -7083,12 +7085,56 @@
       slotOnly = skinShopSlot;
       if (slots.length > 1) skinShopBody.append(slotTabsOf(family.skins.filter(skin => slots.includes(skin.slot)), slotOnly));
     }
-    const skinsHere = family.skins.filter(skin => !slotOnly || skin.slot === slotOnly);
+    const hiddenNow = new Set(skinShop.weekly?.hidden || []); // (v1.10.227: not this week's -- unless mine)
+    const skinsHere = family.skins.filter(skin => (!slotOnly || skin.slot === slotOnly) && !hiddenNow.has(skin.id));
     skinShopBody.append(skinFilterBar('shop', skinsHere, { own: true })); // v1.10.89 검색·등급·시리즈·보유
     const results = document.createElement('div'); results.className = 'skinResults'; skinShopBody.append(results);
+    const cardOf = (skin) => { // (v1.10.227: one card, for a tier's list and the week's row alike)
+      const owned = skinShop.owned.has(skin.id);
+      const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
+      const card = document.createElement('div');
+      card.className = `skinCard${equipped ? ' equipped' : ''}`;
+      // (bugs 11: no picture where my 3D look is beside the list -- one line each, and no canvas painted)
+      const noPic = family.family === 'avatar' && typeof plaza.controller?.tryOn === 'function';
+      const preview = noPic ? null : document.createElement('canvas');
+      if (preview) {
+        preview.width = 260; preview.height = 130;
+        preview.setAttribute('role', 'img');
+        preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+        window.SkinLooks?.paintPreview(preview, skin.id);
+      } else card.classList.add('noPic');
+      const name = document.createElement('span');
+      name.className = 'skinName';
+      name.textContent = skin.name;
+      const meta = document.createElement('span');
+      meta.className = 'skinMeta';
+      const tier = document.createElement('span'); tier.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74
+      const price = document.createElement('span'); price.textContent = owned ? '보유 중' : skinPrice(skin.price);
+      meta.append(tier, price);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.skin = skin.id;
+      button.disabled = transformationPending;
+      if (equipped) { button.className = 'ghost'; button.textContent = '장착 중 · 해제'; button.dataset.action = 'unequip'; button.dataset.slot = skin.slot; button.dataset.game = family.family; }
+      else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
+      else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
+      else { button.className = 'primary'; button.dataset.action = 'buy'; button.textContent = skinBuyArmed === skin.id ? `한 번 더 누르면 ${skinPrice(skin.price)} 결제` : `구매 ${skinPrice(skin.price)}`; }
+      card.append(...(preview ? [preview] : []), name, meta, button);
+      skinCardButtons(card, skin, 'shop', skinShop);
+      return card;
+    };
     const fill = () => {
       results.replaceChildren();
       const shown = filterSkins(skinsHere, skinFilters.shop, skinShop.owned);
+      // v1.10.227 주간 신상: the week's ten first (every slot), whatever the tab -- the rest of the rare and legend hidden
+      const week = family.family === 'avatar' ? skinShop.weekly : null;
+      if (week?.ids.length) {
+        const section = document.createElement('section'); section.className = 'skinFamily weeklyNew';
+        const heading = document.createElement('h3'); heading.textContent = `이번 주 신상 · ${weekLeft(week.ends)}`;
+        const grid = document.createElement('div'); grid.className = 'skinGrid';
+        for (const id of week.ids) { const skin = family.skins.find((x) => x.id === id); if (skin) grid.append(cardOf(skin)); }
+        section.append(heading, grid); results.append(section);
+      }
       skinShopBody.querySelector('.skinCount').textContent = `${shown.length}개`;
       if (!shown.length) { const p = document.createElement('p'); p.className = 'emptyState'; p.textContent = '조건에 맞는 스킨이 없습니다.'; results.append(p); }
       for (const tierKey of SKIN_TIER_ORDER) {
@@ -7100,40 +7146,7 @@
         heading.textContent = skins[0].tierLabel;
         const grid = document.createElement('div');
         grid.className = 'skinGrid';
-        for (const skin of skins) {
-          const owned = skinShop.owned.has(skin.id);
-          const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
-          const card = document.createElement('div');
-          card.className = `skinCard${equipped ? ' equipped' : ''}`;
-          // (bugs 11: no picture where my 3D look is beside the list -- one line each, and no canvas painted)
-          const noPic = family.family === 'avatar' && typeof plaza.controller?.tryOn === 'function';
-          const preview = noPic ? null : document.createElement('canvas');
-          if (preview) {
-            preview.width = 260; preview.height = 130;
-            preview.setAttribute('role', 'img');
-            preview.setAttribute('aria-label', `${skin.name} 미리보기`);
-            window.SkinLooks?.paintPreview(preview, skin.id);
-          } else card.classList.add('noPic');
-          const name = document.createElement('span');
-          name.className = 'skinName';
-          name.textContent = skin.name;
-          const meta = document.createElement('span');
-          meta.className = 'skinMeta';
-          const tier = document.createElement('span'); tier.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74
-          const price = document.createElement('span'); price.textContent = owned ? '보유 중' : skinPrice(skin.price);
-          meta.append(tier, price);
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.dataset.skin = skin.id;
-          button.disabled = transformationPending;
-          if (equipped) { button.className = 'ghost'; button.textContent = '장착 중 · 해제'; button.dataset.action = 'unequip'; button.dataset.slot = skin.slot; button.dataset.game = family.family; }
-          else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
-          else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
-          else { button.className = 'primary'; button.dataset.action = 'buy'; button.textContent = skinBuyArmed === skin.id ? `한 번 더 누르면 ${skinPrice(skin.price)} 결제` : `구매 ${skinPrice(skin.price)}`; }
-          card.append(...(preview ? [preview] : []), name, meta, button);
-          skinCardButtons(card, skin, 'shop', skinShop);
-          grid.append(card);
-        }
+        for (const skin of skins) grid.append(cardOf(skin));
         section.append(heading, grid);
         results.append(section);
       }
@@ -7173,7 +7186,7 @@
     try {
       const data = await api('/api/skins');
       if (epoch !== skinShopEpoch || mode !== skinShopMode || token !== sessionToken || !skinShopDialog.open) return;
-      skinShop = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, avatar: data.avatar, balance: data.balance, dexTitles: data.dexTitles || [] };
+      skinShop = { catalog: data.catalog, weekly: data.weekly || null, owned: new Set(data.owned), equipped: data.equipped, avatar: data.avatar, balance: data.balance, dexTitles: data.dexTitles || [] };
       renderSkinShop();
     } catch (error) {
       if (epoch === skinShopEpoch && token === sessionToken && skinShopDialog.open) skinShopStatus.textContent = `상점을 불러오지 못했습니다 · ${error.message}`;

@@ -3198,3 +3198,14 @@ body.touchIsland .toolGauge{right:auto;left:16px;bottom:auto;top:68px} /* (the p
 .scopeFrame{position:absolute;inset:0;z-index:6;pointer-events:none;background:radial-gradient(circle at 50% 50%,transparent 0 34vmin,rgba(8,10,14,.92) 35vmin)}
 .scopeFrame button{position:absolute;right:16px;bottom:16px;pointer-events:auto}
 .scopeFrame.hidden{display:none}
+/* v1.10.227 전적관 창 (사용자 사진 「통일감 개선」): the lobby's records card on the island's paper inside the island window -- the lobby keeps its own */
+body.plazaMode .plazaDialog .myRecordsCard{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
+body.plazaMode .plazaDialog .myRecordsCard :is(h2,strong,.recordsSummary,.recordsDetail){color:var(--isle-ink)}
+body.plazaMode .plazaDialog .myRecordsCard label{color:var(--isle-soft)}
+body.plazaMode .plazaDialog .myRecordsCard select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode :is(.plazaDialog .myRecordsCard,#recordsDialog) .recordsBadge{background:#fbefc8;color:#7a5410;border-color:#d4a72c}
+body.plazaMode #recordsDialog :is(.card,.recordsProfile,.recordsResult,li){background:transparent;color:var(--isle-ink)}
+/* (총괄 검토: the ranking window opened there -- island pills, the chosen one brown) */
+body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
+body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button[aria-checked="true"]{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)}
+body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}

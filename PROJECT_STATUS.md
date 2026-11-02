@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.227 주간 신상 (옷 10·가구 6 매주, 참치 6칸, 전적관 섬 종이)
+
+- 주: 월요일 0시(서울) 경계, IslandFurniture.weekOf/weekEndsAt(2026-11-02 = 0주). 서버 NEW_WEEK 또는 /api/test/new-week로 고정, 시험 서버는 고정했을 때만 주를 따름.
+- 옷: skins WEEKLY_POOL 46종(희귀·전설 avatar, IP·겨울·할로윈·변신 제외), weeklySkins(w) 10종(부위 둘·전설 둘까지·지난주와 안 겹침). 숨긴 것 사기·선물 409 NOT_THIS_WEEK(가진 것은 그대로·입기), 옷가게(avatar 구역)에서 이번 주 10종 모두 삼. 화면: 「이번 주 신상 · 남은 날」 줄.
+- 가구: WEEK_SLOTS 6칸(3층 계산대 오른쪽), weeklyOf(w) 드문 바닥 가구 6점(모양 안 겹침), 일일 진열은 드문 것 빼고(벽면 수조 넓은 칸만). 사기 claimId furniture:week:<requestId>, 매진 없음, 하루 수에 셈. 「이번 주 신상」 팻말은 진열대 앞 열린 모서리.
+- 게시판: weeklynew:<주> 「[이번 주 신상] 옷 10 · 가구 6」 주마다 한 번.
+- 참치: island-home FISH_ROOM 6칸, tankRoom — 큰·원기둥 수조 참치 1 + 2마리, 벽면 2마리(이미 든 건 그대로). 작은 수조에서는 작게 그려 유리 안.
+- 전적관: 섬에서 전적 카드·이야기 책/섬 일지·다른 플레이어 조회·랭킹 창(이번 주/전체 섬 단추, 고른 쪽 갈색)이 섬 종이, 로비는 그대로.
+- 시험: weekly-new 단위·e2e(PC·폰), general-store 인사 네 방향, my-home 수조 글자.
+
 ## v1.10.226 가구 리폼 (3층 계산대·같은 모양 다른 색·놓인 가구 그대로)
 
 - island-furniture reformColors/reformTo: 같은 모양의 있는 색만(행사·마당·한 색뿐 제외), 새 모델 없음.
@@ -27,11 +37,3 @@
 - 3층 「마당」 진열대 12칸(경제 값 yard:<모양>), 가구 창고 가구·마당 칸, 집 안↔마당 섞기 서버가 막음. /api/home/yard(내 마당에 서서), /api/home/yard/grow(민원실, yard:price_2·3 = 100,000·200,000, 바로), 단계는 worldValue yard:<계정>(집터 풀어도 남음). 집 넓히면 걸린 물건 창고로+관공서 쪽지.
 - 장면: 모양마다 인스턴스 한 묶음(Low 멀리), 막는 원은 걷기 격자에(아치 양 기둥만, 디딤돌 안 막힘), 벤치 두 자리, 석등·정원등 nightGlow. 2층 큰 집(4단계)도 큰 집 원으로 막힘.
 - 에셋 70(yard-v1 12개). 시험: island-yard 단위, e2e yard(PC·폰, 실제 모델은 SHOT_DIR 때만, 프레임 비교 한 줄).
-
-## v1.10.224 섬 가꾸기 3 (강 어귀 다리·낚시터·전망대·투광등 빛)
-
-- 새 다리: 은하내 어귀(161.4, −15), 열리면 지형 다리 규칙(projectTerrain — 서버·화면, reset 때 뺌). 길: walk 13 → 다리 48 m + 건너편 2 m(ground-v2 다시 만듦, 저절로 다리 없음).
-- 강 어귀 낚시터: 건너편 둔덕(바다·강), fish:mouth SPACE 낚시·미니맵 이름, 열리기 전 못 감.
-- 능선 전망대(−43, −136): 뒤 계단 SPACE → 망원경(서쪽 먼 바위산).
-- 투광등 밤 빛 기둥·바닥 빛(가산, 불투명도 낮게).
-- 시험: island-projects 단위·dalmaru-paths 다리 잇기·island-events 열 명 고정, e2e island-projects-3(새).

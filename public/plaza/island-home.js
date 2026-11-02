@@ -98,7 +98,13 @@
     fish_carp: 'medium', fish_catfish: 'medium', fish_cutlassfish: 'medium', fish_eel: 'medium', fish_flatfish: 'medium', fish_mandarin_fish: 'medium', fish_mullet: 'medium', fish_octopus: 'medium', fish_rockfish: 'medium', fish_sea_bass: 'medium', fish_stingray: 'medium', fish_giant_tuna: 'large' };
   const BOTTOM = new Set(['fish_octopus', 'fish_stingray', 'fish_flatfish']); // (they keep to the sand)
   const SIZE_RANK = { small: 1, medium: 2, large: 3 };
-  const fits = (tankShape, id) => { const t = TANKS[tankShape]; return Boolean(t && (t.insects ? INSECTS.has(id) : FISH_SIZE[id] && SIZE_RANK[FISH_SIZE[id]] <= SIZE_RANK[t.biggest])); };
+  // v1.10.227 (사용자 2026-11-02 「대신 여러마리 못넣게 참치가 자리를 많이차지하는걸로」): the giant tuna takes six of a tank's
+  // places -- in the big and pillar tanks too now (one, and two others), the wall tank two (one with more already keeps them)
+  const FISH_ROOM = { fish_giant_tuna: 6 };
+  const fishRoom = (id) => FISH_ROOM[id] || 1;
+  const tankUsed = (fishes = []) => fishes.reduce((n, f) => n + fishRoom(f.itemId), 0);
+  const fits = (tankShape, id) => { const t = TANKS[tankShape]; return Boolean(t && (t.insects ? INSECTS.has(id) : FISH_SIZE[id] && (SIZE_RANK[FISH_SIZE[id]] <= SIZE_RANK[t.biggest] || (FISH_ROOM[id] && t.biggest === 'medium')))); };
+  const tankRoom = (tankShape, fishes, id) => { const t = TANKS[tankShape]; return Boolean(t) && tankUsed(fishes) + fishRoom(id) <= t.slots; };
   const shapeOf = (goodId) => String(goodId || '').split('__')[0];
   // a placed piece's floor box (room-local): its footprint turned by rot quarters about (x, z)
   function boxOf(p) {
@@ -188,5 +194,5 @@
     const anyDir = ANY_DIR.has(shapeOf(p.id));
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn };
+  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn };
 }));

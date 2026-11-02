@@ -1346,6 +1346,16 @@ async function homeOf(account) {
 const homeStage = (h) => IslandHome.stageOf(h?.stage);
 async function saveHome(account, home) { await pointStore.setWorldValue(`home:${account}`, home); homeCache.set(account, home); }
 async function homeLots() { return (await pointStore.worldValue('homeLots')) || {}; }
+// v1.10.227 주간 신상: the week (Monday 00:00 Seoul) -- NEW_WEEK or a test's /api/test/new-week holds it; on the test server
+// the shops keep to the week only once a test holds one (the other tests buy whatever they need)
+let newWeekPin = process.env.NEW_WEEK != null && process.env.NEW_WEEK !== '' ? Number(process.env.NEW_WEEK) : null;
+const newWeek = () => (newWeekPin !== null ? newWeekPin : IslandFurniture.weekOf(nowMs()));
+const weeklyOn = () => process.env.NODE_ENV !== 'test' || newWeekPin !== null;
+const notThisWeek = (skin, owned) => weeklyOn() && SkinCatalog.WEEKLY_POOL.includes(skin.id) && !SkinCatalog.weeklySkins(newWeek()).includes(skin.id) && !owned;
+function weeklyView(owned) {
+  if (!weeklyOn()) return null; const ids = SkinCatalog.weeklySkins(newWeek());
+  return { week: newWeek(), ends: IslandFurniture.weekEndsAt(newWeekPin !== null ? IslandFurniture.weekOf(nowMs()) : newWeek()), ids, hidden: SkinCatalog.WEEKLY_POOL.filter((id) => !ids.includes(id) && !owned.has(id)) };
+}
 // v1.10.225 마당: how far an account's yard is made (1 at first) -- kept apart from the house, so a lot given up keeps it
 const yardLevels = new Map();
 async function yardLevelOf(account) { if (!yardLevels.has(account)) yardLevels.set(account, Number((await pointStore.worldValue(`yard:${account}`))?.level) || 1); return yardLevels.get(account); }
@@ -1402,6 +1412,7 @@ async function furnitureDay() { const day = kstDate(nowMs()); const st = (await 
 const furnitureView = (st, account) => ({ day: st.day, perDay: Economy.value('furniture:perDay'), reform: Economy.value('furniture:reform'), mine: st.buys[account] || 0,
   display: Object.entries(IslandFurniture.displayOf(st.day)).map(([slot, id]) => { const g = IslandFurniture.good(id); return { slot, id, name: g.name, rarity: g.rarity, price: Economy.value(`furniture:${g.rarity}`), sold: Boolean(st.sold[slot]) }; }),
   base: IslandFurniture.BASE_SLOTS.map((s) => { const g = IslandFurniture.good(s.good); return { slot: s.id, id: g.id, name: g.name, rarity: 'base', price: Economy.value('furniture:base'), sold: false }; }),
+  weekly: IslandFurniture.weeklyOf(newWeek()).map((id, i) => { const g = IslandFurniture.good(id); return { slot: IslandFurniture.WEEK_SLOTS[i].id, id, name: g.name, rarity: 'week', price: Economy.value('furniture:rare'), sold: false }; }), weekEnds: IslandFurniture.weekEndsAt(newWeek()), // (v1.10.227 이번 주 신상)
   yard: IslandFurniture.YARD_SLOTS.map((s) => { const g = IslandFurniture.good(s.good); return { slot: s.id, id: g.id, name: g.name, rarity: 'yard', price: Economy.value(`yard:${g.yardShape}`), sold: false }; }) }); // (v1.10.225 「마당」 진열대)
 // v1.10.86 주민세 (사용자 2026-10-17): every account pays each Seoul day 3% of what it has (wallet + deposit), at least
 // 20,000P (lib/point-store.js taxCollect); what it cannot pay is owed, up to 200,000P. Anyone owing is a 체납자: that title
@@ -2066,6 +2077,7 @@ async function noticeEvents() {
   const now = festivalNow(); const override = await calendarOverride(); const md = (d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
   const f = IslandCalendar.festivalAt(now, override); const c = IslandCalendar.contestAt(now, override); const notes = [];
   if (f) notes.push([`festival:${f.id}`, `[행사] ${f.name} (${md(f.start)}~${md(f.end)})`, `${f.name} 기간이에요! 대청마당 남쪽 행사 주민에게서 할 일을 보고 도장을 모아, 옆 가판대에서 한정 물건·칭호로 바꿔요. 남은 도장은 행사가 끝나면 사라져요.`]);
+  if (weeklyOn()) { const w = newWeek(); const clothes = SkinCatalog.weeklySkins(w).map((id) => skinById(id)?.name).filter(Boolean); const pieces = IslandFurniture.weeklyOf(w).map((id) => IslandFurniture.good(id).name); notes.push([`weeklynew:${w}`, '[이번 주 신상] 옷 10 · 가구 6', `월요일마다 바뀌어요. 백화점 2층 옷가게: ${clothes.join(', ')}. 3층 가구 「이번 주 신상」: ${pieces.join(', ')}. 다음 월요일 0시까지만 팔아요(이미 산 건 그대로).`]); } // (v1.10.227 주간 신상)
   if (c && c.day === IslandCalendar.CONTEST.first) notes.push(['weekly:first', '[대회] 매주 대회 시작', `토요일은 낚시 대회, 일요일은 곤충 대회(${c.from}~${c.to}시)! 대청마당 남쪽 행사 주민 곁에서 3분 판을 시작해요. 그날 최고 기록 1~3등에게 트로피·칭호·포인트, 토요일 낚시 1등은 영웅마루에 서요.`]);
   let posted = false;
   for (const [id, title, body] of notes) { if (await pointStore.worldValue(`eventNotice:${id}`)) continue; await pointStore.setWorldValue(`eventNotice:${id}`, nowMs()); await announcementStore.create(title, body, false); posted = true; }
@@ -4023,7 +4035,8 @@ async function requestHandler(req, res) {
       const avatar = skin?.game === 'avatar' || skin?.family === 'avatar' || body.game === 'avatar';
       const slot = skin?.slot || body.slot;
       const shopPlace = ['shop', 'avatar', 'hair', 'accessories', 'transform'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
-      const place = placeActions[pathname] || (!['/api/skins/buy', '/api/skins/gift'].includes(pathname) && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
+      const weekRow = skin && weeklyOn() && SkinCatalog.weeklySkins(newWeek()).includes(skin.id) && storeInside.has(session.token) && mallSectorPoint('avatar', session.token) && Math.hypot(at.x - mallSectorPoint('avatar', session.token).x, at.z - mallSectorPoint('avatar', session.token).z) < 2.4; // (v1.10.227: the week's ten from the 옷가게's 「이번 주 신상」 row, whatever their slot)
+      const place = placeActions[pathname] || (!['/api/skins/buy', '/api/skins/gift'].includes(pathname) && shopPlace) || (weekRow ? 'avatar' : avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
       // v1.10.92 백화점: the shops are its sectors -- inside, at that sector's spot
       // (달마루섬 5단계: the 작명소's business at the 민원실's 개명 신청 window too)
       const door = mallSector(place) ? (storeInside.has(session.token) ? mallSectorPoint(place, session.token) : null) : place === 'naming' && townhallInside.has(session.token) ? IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.rename.lx, IslandTerrain.TOWNHALL_ROOM.rename.lz) : IslandTerrain.facilityDoor(place);
@@ -4032,7 +4045,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.226' });
+    return sendJson(res, 200, { ok: true, version: '1.10.227' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4301,6 +4314,10 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return worldEdit(async () => { const h = await homeOf(account); const lots = await homeLots(); if (h?.lot && lots[h.lot] === account) { const { [h.lot]: _gone, ...rest } = lots; await pointStore.setWorldValue('homeLots', rest); } await pointStore.setWorldValue(`home:${account}`, null); homeCache.delete(account); return sendJson(res, 200, { ok: true }); });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/new-week' && req.method === 'POST') { // v1.10.227: the week held (a number), or let go (null)
+    const body = await parseJson(req); newWeekPin = Number.isInteger(body.week) ? body.week : null; noticeEvents().catch(() => {}); broadcastIsland('furniture', { week: newWeekPin });
+    return sendJson(res, 200, { ok: true, week: newWeek(), on: weeklyOn() });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/yard' && req.method === 'POST') { // v1.10.225: my yard's level set (1-3)
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const level = Math.min(IslandYard.LEVELS, Math.max(1, Number(body.level) || 1));
     return worldEdit(async () => { await setYardLevel(pointAccountForSession(session), level); return sendJson(res, 200, { ok: true, level }); });
@@ -4493,7 +4510,7 @@ async function requestHandler(req, res) {
     dexTitles.unshift(...heldWeeklyTitles(account)); // v1.10.89 낚시왕 · v1.10.90 제초왕 (this week)
     for (const [n, pts] of Object.entries(await pointStore.affinityOf(account))) if (IslandCast.levelOf(pts) >= 3) { const t = IslandAffinity.titleOf(IslandAffinity.titleId(n)); if (t) dexTitles.push({ id: t.id, name: t.name }); } // (R2: 단짝)
     for (const id of await ownedEventTitles(account)) dexTitles.push({ id, name: IslandCalendar.titleOf(id).name }); // (E1: 행사·대회)
-    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
+    return sendJson(res, 200, { ok: true, catalog: catalogView(), weekly: weeklyView(new Set(state.owned)), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
   }
 
   // v1.10.91 변신 의상실: every transformation on sale, mine or not, the one chosen and each one's body (current/native)
@@ -4513,6 +4530,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const skin = skinById(body.skinId);
     if (!skin) return sendError(res, 404, 'SKIN_NOT_FOUND', '판매 중인 스킨이 아닙니다.');
+    if (notThisWeek(skin, (await pointStore.skinState(account)).owned.includes(skin.id))) return sendError(res, 409, 'NOT_THIS_WEEK', '이번 주에는 팔지 않아요.'); // (v1.10.227: an owned one is a plain answer)
     const result = await pointStore.buySkin({ userId: account, skinId: skin.id, price: skin.price, title: `${skin.name} · ${skin.tierLabel}` });
     if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 부족합니다. ${skin.price.toLocaleString('ko-KR')}P가 필요합니다.`, { balance: result.balance, price: skin.price });
     if (result.applied) notifyPointsChanged([account]);
@@ -4535,6 +4553,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const skin = skinById(body.skinId); const requestId = String(body.requestId || '');
     if (!skin) return sendError(res, 404, 'SKIN_NOT_FOUND', '판매 중인 스킨이 아닙니다.');
     if (SkinCatalog.IP_SKIN_IDS.includes(skin.id) || skin.ip) return sendError(res, 403, 'NOT_GIFTABLE', 'IP 스킨은 선물할 수 없어요.'); // (they may be taken back and refunded later)
+    if (notThisWeek(skin, false)) return sendError(res, 409, 'NOT_THIS_WEEK', '이번 주에는 팔지 않아요.'); // (v1.10.227 주간 신상)
     if (!/^[A-Za-z0-9-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_GIFT', '다시 시도해 주세요.');
     const key = await accessStore.get(String(body.to || '')); const to = key ? `guest:${key.id}` : null;
     if (!key || key.revokedAt || key.pendingAt || to === account) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '받는 사람을 찾을 수 없습니다.');
@@ -5478,7 +5497,7 @@ async function requestHandler(req, res) {
         const itemId = String(body.put); if (!IslandHome.FISH_SIZE[itemId] && !IslandHome.INSECTS.has(itemId)) return sendError(res, 400, 'BAD_FISH', '물고기를 확인해 주세요.');
         if (fishes.some((f) => f.claim === claim)) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) });
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
-        if (fishes.length >= T.slots) return sendError(res, 409, 'TANK_FULL', T.insects ? '곤충 상자에는 한 마리만 넣어요.' : '수조가 가득 찼어요.');
+        if (!IslandHome.tankRoom(IslandHome.shapeOf(tank.id), fishes, itemId)) return sendError(res, 409, 'TANK_FULL', T.insects ? '곤충 상자에는 한 마리만 넣어요.' : IslandHome.FISH_ROOM[itemId] || fishes.some((f) => IslandHome.FISH_ROOM[f.itemId]) ? '참치는 자리를 많이 차지해서 더 못 넣어요.' : '수조가 가득 찼어요.'); // (v1.10.227: a tuna six places)
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
@@ -5602,23 +5621,23 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const at = plazaPresence.get(session.token);
     const place = at && furnitureInside.has(session.token) ? IslandFurniture.placeAt(at.x, at.z) : null;
     if (!place || place.id !== body.slot) return sendError(res, 409, 'TOO_FAR', '가구 가까이 가서 다시 시도해 주세요.');
-    const account = pointAccountForSession(session); const base = Boolean(place.good);
-    if (base && (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId))) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const account = pointAccountForSession(session); const base = Boolean(place.good); const weekly = place.weekly !== undefined; // (v1.10.227: the week's shelf -- never sold out, counted in the day's)
+    if ((base || weekly) && (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId))) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     return worldEdit(async () => {
-      const st = await furnitureDay(); const id = base ? place.good : IslandFurniture.displayOf(st.day)[place.id]; const g = IslandFurniture.good(id);
-      if (!base && st.sold[place.id]) return sendError(res, 409, 'SOLD', '방금 팔렸어요. 내일 새 가구가 들어와요.');
+      const st = await furnitureDay(); const id = base ? place.good : weekly ? IslandFurniture.weeklyOf(newWeek())[place.weekly] : IslandFurniture.displayOf(st.day)[place.id]; const g = IslandFurniture.good(id);
+      if (!base && !weekly && st.sold[place.id]) return sendError(res, 409, 'SOLD', '방금 팔렸어요. 내일 새 가구가 들어와요.');
       if (!base && (st.buys[account] || 0) >= Economy.value('furniture:perDay')) return sendError(res, 429, 'FURNITURE_DAY_LIMIT', `전시 가구는 하루 ${Economy.value('furniture:perDay')}점까지 살 수 있어요.`);
       const owned = (await pointStore.worldValue(`furniture:${account}`)) || [];
       if (owned.length >= 300) return sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.');
       const price = Economy.value(g.yard ? `yard:${g.yardShape}` : base ? 'furniture:base' : `furniture:${g.rarity}`); // (v1.10.225: a yard piece its own price)
-      const claimId = base ? `furniture:base:${body.requestId}` : `furniture:${st.day}:${place.id}:${account}`;
+      const claimId = base ? `furniture:base:${body.requestId}` : weekly ? `furniture:week:${body.requestId}` : `furniture:${st.day}:${place.id}:${account}`;
       let out; try { out = await pointStore.charge({ userId: account, claimId, price, title: `가구점 · ${g.name}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
-      if (!base) await pointStore.setWorldValue('furniture', { day: st.day, sold: { ...st.sold, [place.id]: account }, buys: { ...st.buys, [account]: (st.buys[account] || 0) + 1 } });
+      if (!base && out.applied) await pointStore.setWorldValue('furniture', { day: st.day, sold: weekly ? st.sold : { ...st.sold, [place.id]: account }, buys: { ...st.buys, [account]: (st.buys[account] || 0) + 1 } });
       const piece = { uid: crypto.randomUUID(), id, at: nowMs(), price, claim: claimId };
       if (!owned.some((p) => p.claim === claimId)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, piece]); // (a paid one tried again: kept once)
       if (out.applied) notifyPointsChanged([account]);
-      if (!base) broadcastIsland('furniture', { day: st.day, sold: place.id });
+      if (!base && !weekly) broadcastIsland('furniture', { day: st.day, sold: place.id });
       return sendJson(res, 200, { ok: true, piece, name: g.name, balance: out.balance ?? null });
     });
   }
@@ -8334,7 +8353,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.226 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.227 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

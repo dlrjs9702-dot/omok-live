@@ -82,20 +82,36 @@
   const BASE_SLOTS = Object.freeze(BASE.map((id, i) => Object.freeze({ id: `base${i}`, good: id, lx: [11.5, 13.7, 11.5, 13.7][i], lz: [-6.8, -6.8, -8.8, -8.8][i], yaw: 0 })));
   // the 「마당」 shelf: two rows of small plinths by the lift's wall, in front of it and behind (the way from the lift clear)
   const YARD_SLOTS = Object.freeze(YARD_GOODS.map((g, i) => Object.freeze({ id: `yard${i}`, good: g.id, yard: true, lx: [-12.6, -10.0][i % 2], lz: [-8.6, -6.6, -4.6, 4.6, 6.6, 8.6][Math.floor(i / 2)], yaw: 0 })));
+  // v1.10.227 주간 신상: the 「이번 주 신상」 shelf -- six plinths right of the counter, two across, three deep (the rare
+  // floor pieces, a week each)
+  const WEEK_SLOTS = Object.freeze([0, 1, 2, 3, 4, 5].map((i) => Object.freeze({ id: `week${i}`, weekly: i, kind: 'floor', lx: [10.6, 13.4][i % 2], lz: [2.0, 4.6, 7.2][Math.floor(i / 2)], yaw: 0 })));
   const CHECKOUT = Object.freeze({ lx: 11.8, lz: -1.5, yaw: 0, keeper: Object.freeze([11.8, -0.6, 0]) });
   const FIXTURES = Object.freeze([ // what is walked round (x, z centre, w, d): the plinths, the counter, the lift
     ...SLOTS.filter((s) => s.plinth !== false).map((s) => ({ x: s.lx, z: s.lz, w: 2.4, d: 2.4 })),
     { x: 8.6, z: 9.1, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 2.3, d: 0.85 }, { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
     ...[...BASE_SLOTS, ...YARD_SLOTS].map((s) => ({ x: s.lx, z: s.lz, w: 1.2, d: 1.2 })),
+    ...WEEK_SLOTS.map((s) => ({ x: s.lx, z: s.lz, w: 2.0, d: 2.0 })),
   ].map((f) => Object.freeze(f)));
   const REACH = 2.1; // a piece within this of me (to its plinth's middle) is the one SPACE buys
 
   // a day's display: each place its good -- the rarer ones less often, no shape twice -- the same everywhere for a day
   const seeded = (text) => { let s = 2166136261; for (const ch of text) s = Math.imul(s ^ ch.charCodeAt(0), 16777619) >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; };
+  // v1.10.227 주간 신상 (docs/weekly-new-20261102.md): a week runs from Monday 00:00 Seoul; week 0 the one from 2026-11-02 --
+  // the 옷가게's rare and legend look items and the 3층's rare pieces change with it, the same everywhere
+  const WEEK_START = Date.parse('2026-11-02T00:00:00+09:00'); const WEEK_MS = 7 * 86400000;
+  const weekOf = (ms) => Math.floor((ms - WEEK_START) / WEEK_MS);
+  const weekEndsAt = (week) => WEEK_START + (week + 1) * WEEK_MS;
+  // the week's six: rare floor pieces, no shape twice (the wall tank keeps its own wide place on the daily display)
+  const WEEK_SHAPES = [...new Set(GOODS.filter((g) => g.rarity === 'rare' && g.kind === 'floor').map((g) => g.shape))];
+  function weeklyOf(week) {
+    const rnd = seeded(`new:${week}`); const shapes = [...WEEK_SHAPES];
+    for (let i = shapes.length - 1; i > 0; i -= 1) { const j = Math.floor(rnd() * (i + 1)); [shapes[i], shapes[j]] = [shapes[j], shapes[i]]; }
+    return shapes.slice(0, WEEK_SLOTS.length).map((shape) => { const list = GOODS.filter((g) => g.shape === shape); return list[Math.floor(rnd() * list.length)].id; });
+  }
   function displayOf(day) {
     const rnd = seeded(`furniture:${day}`); const used = new Set(); const out = {};
     for (const slot of SLOTS) {
-      const fits = GOODS.filter((g) => !used.has(g.shape) && !BASE.includes(g.id) && (slot.kind === 'floor' ? g.kind === 'floor' && g.zone === slot.zone : slot.kind === 'wall' ? g.kind === 'wall' : g.kind === 'wide' || (g.kind === 'floor' && g.zone === 'living')));
+      const fits = GOODS.filter((g) => !used.has(g.shape) && !BASE.includes(g.id) && (g.rarity !== 'rare' || g.kind === 'wide') && (slot.kind === 'floor' ? g.kind === 'floor' && g.zone === slot.zone : slot.kind === 'wall' ? g.kind === 'wall' : g.kind === 'wide' || (g.kind === 'floor' && g.zone === 'living')));
       const pool = fits;
       const weight = (g) => WEIGHT[g.rarity] * (slot.kind === 'wide' && g.kind === 'wide' ? 5 : 1); // (the wall tank: about one day in eight)
       const total = pool.reduce((n, g) => n + weight(g), 0); let r = rnd() * total; let pick = pool[pool.length - 1];
@@ -122,12 +138,12 @@
   // the display place (or always-on-sale place) nearest me within reach
   function placeAt(x, z) {
     const { lx, lz } = local(x, z); let best = null; let bd = REACH;
-    for (const s of [...SLOTS, ...BASE_SLOTS, ...YARD_SLOTS]) { const d = Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0); if (d < bd) { bd = d; best = s; } }
+    for (const s of [...SLOTS, ...BASE_SLOTS, ...YARD_SLOTS, ...WEEK_SLOTS]) { const d = Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0); if (d < bd) { bd = d; best = s; } }
     return best;
   }
   // v1.10.226 가구 리폼 (docs/furniture-reform-20261102.md): a shop piece made another of its shape's colours -- the
   // colours a piece may take (its own first), none for an event piece, a yard piece or a shape in one colour only
   const reformColors = (id) => { const g = byId.get(id); if (!g || g.event || g.yard) return []; const list = GOODS.filter((x) => x.shape === g.shape); return list.length > 1 ? list : []; };
   const reformTo = (from, to) => { const g = byId.get(to); return Boolean(g) && from !== to && reformColors(from).includes(g); };
-  return { reformColors, reformTo, SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, YARD_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, YARD_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
+  return { WEEK_SLOTS, WEEK_SHAPES, weekOf, weekEndsAt, weeklyOf, seeded, reformColors, reformTo, SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, YARD_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, YARD_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
 }));
