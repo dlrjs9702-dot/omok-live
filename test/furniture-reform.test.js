@@ -51,6 +51,7 @@ test('가구 리폼 서버: 3층 계산대에서 3,000P, 같은 요청 두 번�
   for (const [uid, to, why] of [[sofa.uid, 'bed__sky', '다른 모양'], [sofa.uid, 'sofa__gold', '없는 색'], [sofa.uid, 'sofa__mint', '같은 색'], [trophy.uid, 'trophy_fish__silver', '행사']]) assert.equal((await reform(uid, to, `reform-bad-${why.length}0000`)).data.error, 'BAD_COLOR', why);
   let before = await balance(); const once = await reform(sofa.uid, 'sofa__navy', 'reform-sofa-00001'); assert.equal(once.status, 200, JSON.stringify(once.data));
   assert.equal((await reform(sofa.uid, 'sofa__navy', 'reform-sofa-00001')).status, 200); assert.equal(before - await balance(), 3000, '같은 요청 두 번 → 한 번만');
+  before = await balance(); assert.equal((await reform(sofa.uid, 'sofa__sage', 'reform-sofa-00001')).data.error, 'USED', '같은 requestId로 다른 색'); assert.equal((await reform(desk.uid, 'desk__white', 'reform-sofa-00001')).data.error, 'USED', '같은 requestId로 다른 조각'); assert.equal(await balance(), before, '잔액 그대로');
   assert.equal((await reform(tank.uid, 'fish_tank__white', 'reform-tank-00001')).status, 200); assert.equal((await reform(desk.uid, 'desk__walnut', 'reform-desk-00001')).status, 200);
   // the house: the same places and turns, the goby in the tank, the radio on the desk; the storage the new colours
   const h = (await req('/api/home', a)).data.mine; const at = (uid) => h.pieces.find((p) => p.uid === uid);

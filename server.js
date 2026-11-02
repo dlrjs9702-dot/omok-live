@@ -5638,6 +5638,7 @@ async function requestHandler(req, res) {
       if (!IslandFurniture.reformTo(piece.id, to)) return sendError(res, 409, 'BAD_COLOR', piece.id === to ? '지금 색이에요.' : '이 가구는 그 색으로 바꿀 수 없어요.');
       let out; try { out = await pointStore.charge({ userId: account, claimId: `furniture:reform:${body.requestId}`, price: Economy.value('furniture:reform'), title: `가구 리폼 · ${g.name}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      if (!out.applied && !out.reason) return sendError(res, 409, 'USED', '이미 처리된 요청이에요.'); // (총괄 226 검토: a paid request id sent again for another colour or piece -- not free)
       const next = { ...piece, id: to, reform: body.requestId };
       await pointStore.setWorldValue(`furniture:${account}`, owned.map((p) => (p.uid === piece.uid ? next : p)));
       const h = await homeOf(account);

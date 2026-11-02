@@ -2661,6 +2661,7 @@ body.herosurvOpen { overflow: hidden; }
 .furnitureStorage .furnitureCanvas{width:100%;height:min(42vh,320px);display:block;border-radius:12px}
 .furnitureList{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:34vh;overflow:auto}
 .furnitureList .furniturePiece.selected{outline:2px solid #34d399}
+.reformBox .furniturePiece{white-space:nowrap} /* (v1.10.226 총괄 검토: 「소파 (민트) · 놓임」 on one line) */
 body.plazaMode .plazaDialog.editMode .furnitureList .furniturePiece.selected{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)} /* (207: the island's paper, the one chosen dark brown) */
 .dressing .skinCard{content-visibility:auto;contain-intrinsic-size:auto 64px} /* (bugs 12: a long list lays out only what is in sight) */
 .dressing .skinCard.noPic{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name buy" "meta buy";padding:10px 12px}
