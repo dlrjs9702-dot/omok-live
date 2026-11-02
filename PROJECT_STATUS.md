@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.228 물결에게 팔기 (근무표가 켜진 섬에서 오늘 물결이 있는 곳)
+
+- 서버 /api/island/sell: fisher 거리 확인을 항구 8 m 대신 questTalkPos('fisher', at)로 — 말 걸기와 같은 기준(걷는 날 물결 옆, mall1 날 1층 계산대, 근무표 꺼지면 항구).
+- 원인: 운영은 근무표가 켜져 물결이 항구에 거의 없음, 시험 서버는 근무표가 꺼져 통과했음.
+- 시험: fisher-sell 단위(근무표 켜고 계산대 날·걷는 날·멀리서 TOO_FAR·끄면 항구).
+
 ## v1.10.227 주간 신상 (옷 10·가구 6 매주, 참치 6칸, 전적관 섬 종이)
 
 - 주: 월요일 0시(서울) 경계, IslandFurniture.weekOf/weekEndsAt(2026-11-02 = 0주). 서버 NEW_WEEK 또는 /api/test/new-week로 고정, 시험 서버는 고정했을 때만 주를 따름.
@@ -30,10 +36,3 @@
 - SSE homeInside: 집 안 손님이 집을 다시 받음(리폼·가구 놓기).
 - 화면: 계산대 대화 「가구 리폼」 → 내 가구(「놓임」) → 색 칸(「지금」)·3D 미리보기 → 「바꾸기」.
 - 시험: furniture-reform 단위·e2e(PC·폰, 근무표 켜고), island-tool-rules는 곤충 4 m 안 잡초 뺌.
-
-## v1.10.225 마당 꾸미기 (3층 「마당」 진열대·내 마당·마당 넓히기·2층 큰 집 막기)
-
-- public/plaza/island-yard.js(서버·화면 같이): 집 모델 바닥+처마 둘레 마당 칸 — 처음 2.5 m·넓히기 4 m·6 m(땅 닿는 데까지), 집·현관→길 1.4 m·섬 길·물가·비탈·이웃 쪽·나무·덤불·가로등·툇마루역 승강기 뺌. 0.25 m 칸·90° 돌리기·겹침 막음(울타리는 끝 기둥만), 개수 24/40/60.
-- 3층 「마당」 진열대 12칸(경제 값 yard:<모양>), 가구 창고 가구·마당 칸, 집 안↔마당 섞기 서버가 막음. /api/home/yard(내 마당에 서서), /api/home/yard/grow(민원실, yard:price_2·3 = 100,000·200,000, 바로), 단계는 worldValue yard:<계정>(집터 풀어도 남음). 집 넓히면 걸린 물건 창고로+관공서 쪽지.
-- 장면: 모양마다 인스턴스 한 묶음(Low 멀리), 막는 원은 걷기 격자에(아치 양 기둥만, 디딤돌 안 막힘), 벤치 두 자리, 석등·정원등 nightGlow. 2층 큰 집(4단계)도 큰 집 원으로 막힘.
-- 에셋 70(yard-v1 12개). 시험: island-yard 단위, e2e yard(PC·폰, 실제 모델은 SHOT_DIR 때만, 프레임 비교 한 줄).
