@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.230 울타리 마을 (집터 동네를 새 땅으로)
+
+- 땅: 툇마루섬 남쪽, 기차 고리 너머 새 땅(dalmaru-terrain VILLAGE x -154~170·z 199~281, 목 NECK x -20), coastDist에 soft union, 높이 0.9로 평평. 바닥 590 m·SEG 236, 구운 지도 1536.
+- 집터 16곳(한 길 STREET_Z 236 따라 북 8·남 8, 12곳에 기존 집). 마당 = 울타리 안(18×16 → 22×20 → 26×24), 울타리 조각·문 1.4 m·이름 팻말(주인 「내 집」, 남 「○○의 집」)·문기둥·최대 크기 모서리 말뚝.
+- 이사(server homeOf villageV 1): 집 안 그대로, 마당 물건은 가구 창고로, 관공서 쪽지 한 번, 게시판 알림 한 번. 새로 지은 집은 처음부터 villageV 1.
+- 옛 툇마루섬 집터 → 꽃밭 4곳·벤치 8. 표지 「울타리 마을 ↓」「울타리 마을」. 지도·미니맵 땅 그림 z 300까지.
+- 주민은 마을로 내려가는 목 길에서 멈추지 않음(서버 걸음과 어긋남). 잡초 범위 r 200, 서버 시작 바닥 계산 빠르게(ground-cover 먼 바다 건너뜀).
+- 시험: dalmaru-island 16곳, island-yard(울타리 안·새 집 쪽지 없음), yard·weekly-new e2e 마을 이동은 PlazaWarp.
+
 ## v1.10.229 1인칭 손 동작 (할 때만 보이는 내 손)
 
 - 공 주먹 → 손바닥·손가락·엄지 낮은 다각형 손(0.7배), 피부색 look.skinColor, 손목 소매는 윗옷 색(asset-loader c.sleeve).
@@ -25,13 +34,3 @@
 - 서버 /api/island/sell: fisher 거리 확인을 항구 8 m 대신 questTalkPos('fisher', at)로 — 말 걸기와 같은 기준(걷는 날 물결 옆, mall1 날 1층 계산대, 근무표 꺼지면 항구).
 - 원인: 운영은 근무표가 켜져 물결이 항구에 거의 없음, 시험 서버는 근무표가 꺼져 통과했음.
 - 시험: fisher-sell 단위(근무표 켜고 계산대 날·걷는 날·멀리서 TOO_FAR·끄면 항구).
-
-## v1.10.227 주간 신상 (옷 10·가구 6 매주, 참치 6칸, 전적관 섬 종이)
-
-- 주: 월요일 0시(서울) 경계, IslandFurniture.weekOf/weekEndsAt(2026-11-02 = 0주). 서버 NEW_WEEK 또는 /api/test/new-week로 고정, 시험 서버는 고정했을 때만 주를 따름.
-- 옷: skins WEEKLY_POOL 46종(희귀·전설 avatar, IP·겨울·할로윈·변신 제외), weeklySkins(w) 10종(부위 둘·전설 둘까지·지난주와 안 겹침). 숨긴 것 사기·선물 409 NOT_THIS_WEEK(가진 것은 그대로·입기), 옷가게(avatar 구역)에서 이번 주 10종 모두 삼. 화면: 「이번 주 신상 · 남은 날」 줄.
-- 가구: WEEK_SLOTS 6칸(3층 계산대 오른쪽), weeklyOf(w) 드문 바닥 가구 6점(모양 안 겹침), 일일 진열은 드문 것 빼고(벽면 수조 넓은 칸만). 사기 claimId furniture:week:<requestId>, 매진 없음, 하루 수에 셈. 「이번 주 신상」 팻말은 진열대 앞 열린 모서리.
-- 게시판: weeklynew:<주> 「[이번 주 신상] 옷 10 · 가구 6」 주마다 한 번.
-- 참치: island-home FISH_ROOM 6칸, tankRoom — 큰·원기둥 수조 참치 1 + 2마리, 벽면 2마리(이미 든 건 그대로). 작은 수조에서는 작게 그려 유리 안.
-- 전적관: 섬에서 전적 카드·이야기 책/섬 일지·다른 플레이어 조회·랭킹 창(이번 주/전체 섬 단추, 고른 쪽 갈색)이 섬 종이, 로비는 그대로.
-- 시험: weekly-new 단위·e2e(PC·폰), general-store 인사 네 방향, my-home 수조 글자.
