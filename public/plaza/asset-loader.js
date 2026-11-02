@@ -814,13 +814,15 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       object.updateMatrixWorld(true); object.traverse((o) => { if (o.isSkinnedMesh) { if (!body.baked) o.geometry = slimmedGeometry(o, base.entry.slim); o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } }); // (v1.10.93 체형)
       const lowBody = body.lowUrl ? byUrl.get(body.lowUrl) : null;
       if (lowBody) adopt(lowBody, null, low, null, false, body.baked);
+      let sleeve = null; // v1.10.228: the top's (or the outfit's) own colour, for the first person's cuff
       parts.forEach((p, i) => {
         const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
-        const tail = p.entry.fit?.slot === 'tail';
-        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : always, fit, tail, p.entry.baked); // a part without a Low file shows at every distance
+        const tail = p.entry.fit?.slot === 'tail'; const into = p.entry.lowUrl ? high : always; const from = into.length;
+        adopt(byUrl.get(p.entry.url), colors, into, fit, tail, p.entry.baked); // a part without a Low file shows at every distance
+        if (['outfit', 'top'].includes(p.entry.fit?.slot)) { const m = into.slice(from).flatMap((o) => [].concat(o.material)).find((x) => x.name !== 'skin' && x.color); if (m && (!sleeve || p.entry.fit.slot === 'outfit')) sleeve = `#${m.color.getHexString()}`; }
         if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail, p.entry.baked);
       });
-      c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
+      c.wearMats = mats; c.wornColors = worn; c.sleeve = sleeve; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
       const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds, rates: base.entry.rates }); // v1.10.41 c.animNames: a character's own idle (the mayor's GuardIdle)
       // (v1.10.79: the runtime arm tuck is gone -- the assets 36 clips hold the arms in themselves)

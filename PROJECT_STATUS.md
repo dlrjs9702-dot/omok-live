@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.229 1인칭 손 동작 (할 때만 보이는 내 손)
+
+- 공 주먹 → 손바닥·손가락·엄지 낮은 다각형 손(0.7배), 피부색 look.skinColor, 손목 소매는 윗옷 색(asset-loader c.sleeve).
+- 빈손은 할 때만(fpBusy): 잡초(0.62 s부터 잡초 든 손), 나무 열매(0.98 s부터 열매), SPACE 톡 0.38 s, 잃어버린 물건 건네기 0.9 s. 0.14 s에 올라오고 내려감, 몸 손 뼈 움직임 0.35배로 화면 안.
+- 손은 투명 패스 맨 나중·깊이 시험 없이 그려 나무 잎·가게 유리에 안 가림. 낚싯대·잠자리채 손도 같은 손.
+- 시험: e2e fp-hands(PC·폰, 당기기 0.66~1.3 s 모든 프레임 손+잡초, 피부색 둘, 3인칭 손 없음).
+
 ## v1.10.228 물결에게 팔기 (근무표가 켜진 섬에서 오늘 물결이 있는 곳)
 
 - 서버 /api/island/sell: fisher 거리 확인을 항구 8 m 대신 questTalkPos('fisher', at)로 — 말 걸기와 같은 기준(걷는 날 물결 옆, mall1 날 1층 계산대, 근무표 꺼지면 항구).
@@ -28,11 +35,3 @@
 - 참치: island-home FISH_ROOM 6칸, tankRoom — 큰·원기둥 수조 참치 1 + 2마리, 벽면 2마리(이미 든 건 그대로). 작은 수조에서는 작게 그려 유리 안.
 - 전적관: 섬에서 전적 카드·이야기 책/섬 일지·다른 플레이어 조회·랭킹 창(이번 주/전체 섬 단추, 고른 쪽 갈색)이 섬 종이, 로비는 그대로.
 - 시험: weekly-new 단위·e2e(PC·폰), general-store 인사 네 방향, my-home 수조 글자.
-
-## v1.10.226 가구 리폼 (3층 계산대·같은 모양 다른 색·놓인 가구 그대로)
-
-- island-furniture reformColors/reformTo: 같은 모양의 있는 색만(행사·마당·한 색뿐 제외), 새 모델 없음.
-- 서버 /api/island/furniture/reform(3층 계산대 3 m, worldEdit 안): 경제 값 furniture:reform 3,000P, claimId furniture:reform:<requestId> — 같은 요청 재전송은 ok, 이미 낸 requestId로 다른 색·조각은 USED. 가구 창고 id + 놓인 조각은 같은 uid·자리·방향(수조 물고기·위 물건 그대로, 2층 같음).
-- SSE homeInside: 집 안 손님이 집을 다시 받음(리폼·가구 놓기).
-- 화면: 계산대 대화 「가구 리폼」 → 내 가구(「놓임」) → 색 칸(「지금」)·3D 미리보기 → 「바꾸기」.
-- 시험: furniture-reform 단위·e2e(PC·폰, 근무표 켜고), island-tool-rules는 곤충 4 m 안 잡초 뺌.
