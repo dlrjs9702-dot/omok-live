@@ -28,6 +28,7 @@ test('근무표 C1 서버: 계산대 주민은 계산대에서, 이야기 주민
   assert.equal(R.rosterOf(day).posts.mall1, 11, day);
   assert.equal((await req('/api/test/roster', a, { on: true, day })).data.day, day);
   assert.equal((await req('/api/island/roster', a)).data.day, day);
+  await req('/api/test/island/free-residents', a, {}); // (an islander's own event -- a lost thing's owner -- may hold the stand's walker: RESIDENT_BUSY before the reach; CI 2026-11-02 #374)
   // the walker at the 광장 출석 stand: talked to there -- not where their walk would have them
   const w = R.rosterOf(day).posts.plaza; const stall = T.facilityDoor('attendance');
   await stand({ x: stall.x + 20, z: stall.z }); assert.equal((await req('/api/island/resident/talk', a, { n: w })).data.error, 'TOO_FAR');
