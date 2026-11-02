@@ -17,7 +17,11 @@ const Quests = require('../lib/island-quests');
 
 test('물결에게 팔기: 계산대 날은 1층 계산대에서, 걷는 날은 물결 옆에서, 멀면 TOO_FAR', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fisher-sell-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
-  const { req, issue, enter } = await boot(t, dir);
+  const { req: send, issue, enter, logs } = await boot(t, dir);
+  // (CI 2026-11-02: one request of the walking loop came back 'fetch failed' with nothing in the server's log -- a kept-alive
+  // socket closed as it was reused; once more, and the server's log if it is really gone)
+  const req = async (...args) => { try { return await send(...args); } catch (error) { await new Promise((r) => { setTimeout(r, 300); }); try { return await send(...args); } catch (again) { throw new Error(`${again.message} (${again.cause?.code || ''})
+${logs().slice(-3000)}`); } } };
   const a = await enter(await issue('물결손님'));
   const stand = (p) => req('/api/plaza/state', a, { x: p.x, z: p.z, yaw: 0, moving: false });
   const sell = async (k) => { await req('/api/test/island/give', a, { itemId: 'fish_goby', qty: 1 }); return req('/api/island/sell', a, { place: 'fisher', requestId: `fisher-sell-${k}-0000` }); };
