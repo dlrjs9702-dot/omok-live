@@ -1399,7 +1399,7 @@ async function myPets(account) {
 }
 // the day's display and what of it is sold (world 'furniture': { day, sold: { slot: account }, buys: { account: n } })
 async function furnitureDay() { const day = kstDate(nowMs()); const st = (await pointStore.worldValue('furniture')) || {}; return st.day === day ? { day, sold: st.sold || {}, buys: st.buys || {} } : { day, sold: {}, buys: {} }; }
-const furnitureView = (st, account) => ({ day: st.day, perDay: Economy.value('furniture:perDay'), mine: st.buys[account] || 0,
+const furnitureView = (st, account) => ({ day: st.day, perDay: Economy.value('furniture:perDay'), reform: Economy.value('furniture:reform'), mine: st.buys[account] || 0,
   display: Object.entries(IslandFurniture.displayOf(st.day)).map(([slot, id]) => { const g = IslandFurniture.good(id); return { slot, id, name: g.name, rarity: g.rarity, price: Economy.value(`furniture:${g.rarity}`), sold: Boolean(st.sold[slot]) }; }),
   base: IslandFurniture.BASE_SLOTS.map((s) => { const g = IslandFurniture.good(s.good); return { slot: s.id, id: g.id, name: g.name, rarity: 'base', price: Economy.value('furniture:base'), sold: false }; }),
   yard: IslandFurniture.YARD_SLOTS.map((s) => { const g = IslandFurniture.good(s.good); return { slot: s.id, id: g.id, name: g.name, rarity: 'yard', price: Economy.value(`yard:${g.yardShape}`), sold: false }; }) }); // (v1.10.225 「마당」 진열대)
@@ -4032,7 +4032,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.225' });
+    return sendJson(res, 200, { ok: true, version: '1.10.226' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5406,7 +5406,7 @@ async function requestHandler(req, res) {
       const cap = IslandHome.stageOf(st).pieces;
       if (!h.pieces.some((x) => x.uid === p.uid && IslandHome.onFloor(x, floor)) && here.length >= cap) return sendError(res, 409, 'TOO_MANY', `가구는 ${floor === 2 ? '2층에 ' : ''}${cap}점까지 놓을 수 있어요.`);
       const why = IslandHome.placeError(p, here, st); if (why) return sendError(res, 409, 'BAD_PLACE', why);
-      const next = { ...h, pieces: [...others, p] }; await saveHome(account, next); return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
+      const next = { ...h, pieces: [...others, p] }; await saveHome(account, next); broadcastIsland('homeInside', { lot: h.lot }); return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) }); // (v1.10.226: guests see it at once)
     });
   }
   // v1.10.225 마당 꾸미기: the owner, standing in their yard on the island -- a yard piece from the 가구 창고 placed (moved,
@@ -5620,6 +5620,31 @@ async function requestHandler(req, res) {
       if (out.applied) notifyPointsChanged([account]);
       if (!base) broadcastIsland('furniture', { day: st.day, sold: place.id });
       return sendJson(res, 200, { ok: true, piece, name: g.name, balance: out.balance ?? null });
+    });
+  }
+  // v1.10.226 가구 리폼: at the 3층 counter, a piece of mine (in the 가구 창고 or placed) made another colour of its shape --
+  // paid once a request; a placed one keeps its place, turn, a tank's fish and what stands on it (the same uid), and whoever
+  // is in that house sees it at once
+  if (pathname === '/api/island/furniture/reform' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const body = await parseJson(req); const at = plazaPresence.get(session.token); const counter = IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1);
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    if (!at || !furnitureInside.has(session.token) || Math.hypot(at.x - counter.x, at.z - counter.z) > 3) return sendError(res, 409, 'TOO_FAR', '3층 가구 계산대에서 해 주세요.');
+    return worldEdit(async () => {
+      const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const piece = owned.find((p) => p.uid === String(body.uid));
+      if (!piece) return sendError(res, 404, 'NOT_MINE', '내 가구가 아니에요.');
+      const to = String(body.to || ''); const g = IslandFurniture.good(to);
+      if (piece.id === to && piece.reform === body.requestId) return sendJson(res, 200, { ok: true, piece, name: g.name }); // (the same request again: done once)
+      if (!IslandFurniture.reformTo(piece.id, to)) return sendError(res, 409, 'BAD_COLOR', piece.id === to ? '지금 색이에요.' : '이 가구는 그 색으로 바꿀 수 없어요.');
+      let out; try { out = await pointStore.charge({ userId: account, claimId: `furniture:reform:${body.requestId}`, price: Economy.value('furniture:reform'), title: `가구 리폼 · ${g.name}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      if (!out.applied && !out.reason) return sendError(res, 409, 'USED', '이미 처리된 요청이에요.'); // (총괄 226 검토: a paid request id sent again for another colour or piece -- not free)
+      const next = { ...piece, id: to, reform: body.requestId };
+      await pointStore.setWorldValue(`furniture:${account}`, owned.map((p) => (p.uid === piece.uid ? next : p)));
+      const h = await homeOf(account);
+      if (h?.pieces.some((p) => p.uid === piece.uid)) { await saveHome(account, { ...h, pieces: h.pieces.map((p) => (p.uid === piece.uid ? { ...p, id: to } : p)) }); broadcastIsland('homeInside', { lot: h.lot }); }
+      if (out.applied) notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, piece: next, name: g.name, balance: out.balance ?? null });
     });
   }
   // my storage: what I bought, newest first
@@ -8309,7 +8334,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.225 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.226 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
