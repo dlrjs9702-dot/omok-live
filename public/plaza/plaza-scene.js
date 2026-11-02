@@ -2996,7 +2996,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     liftAt(g, FURN.LIFT);
     signboard('wall', '3층 가구', g, 0, 3.1, FURN.ROOM.d / 2 - 0.2, 0); // (간판: the floor's name on a wall board)
     for (const [lz, yaw] of [[-3.5, 0], [3.5, Math.PI]]) signboard('plaque', '마당', g, -11.3, 0, lz, yaw);
-    signboard('plaque', '이번 주 신상', g, 12.0, 0, 0.4, 0); // (v1.10.227: the week's shelf, before its first row) // (v1.10.225: the 「마당」 shelf either side of the way from the lift)
+    signboard('plaque', '이번 주 신상', g, 9.0, 0, 0.6, 0); // (v1.10.227: the week's shelf, at its open front corner -- 총괄 검토: behind the clerk it was hidden) // (v1.10.225: the 「마당」 shelf either side of the way from the lift)
     for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
     furniture = { group: g, plinths, shown: {}, put, keeper: k, lid: roomLid(g, FURN.ROOM, 0xf2ede4) };
     if (furnitureState) setFurniture(furnitureState);

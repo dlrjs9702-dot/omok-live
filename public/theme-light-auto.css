@@ -1451,3 +1451,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .plazaDialog .myRecordsCard select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] body.plazaMode :is(.plazaDialog .myRecordsCard,#recordsDialog) .recordsBadge{background:#fbefc8;color:#7a5410;border-color:#d4a72c}
 :root[data-theme="light"] body.plazaMode #recordsDialog :is(.card,.recordsProfile,.recordsResult,li){background:transparent;color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
+:root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button[aria-checked="true"]{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)}
+:root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
