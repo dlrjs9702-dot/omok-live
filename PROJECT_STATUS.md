@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.226 가구 리폼 (3층 계산대·같은 모양 다른 색·놓인 가구 그대로)
+
+- island-furniture reformColors/reformTo: 같은 모양의 있는 색만(행사·마당·한 색뿐 제외), 새 모델 없음.
+- 서버 /api/island/furniture/reform(3층 계산대 3 m, worldEdit 안): 경제 값 furniture:reform 3,000P, claimId furniture:reform:<requestId> — 같은 요청 재전송은 ok, 이미 낸 requestId로 다른 색·조각은 USED. 가구 창고 id + 놓인 조각은 같은 uid·자리·방향(수조 물고기·위 물건 그대로, 2층 같음).
+- SSE homeInside: 집 안 손님이 집을 다시 받음(리폼·가구 놓기).
+- 화면: 계산대 대화 「가구 리폼」 → 내 가구(「놓임」) → 색 칸(「지금」)·3D 미리보기 → 「바꾸기」.
+- 시험: furniture-reform 단위·e2e(PC·폰, 근무표 켜고), island-tool-rules는 곤충 4 m 안 잡초 뺌.
+
 ## v1.10.225 마당 꾸미기 (3층 「마당」 진열대·내 마당·마당 넓히기·2층 큰 집 막기)
 
 - public/plaza/island-yard.js(서버·화면 같이): 집 모델 바닥+처마 둘레 마당 칸 — 처음 2.5 m·넓히기 4 m·6 m(땅 닿는 데까지), 집·현관→길 1.4 m·섬 길·물가·비탈·이웃 쪽·나무·덤불·가로등·툇마루역 승강기 뺌. 0.25 m 칸·90° 돌리기·겹침 막음(울타리는 끝 기둥만), 개수 24/40/60.
@@ -27,11 +35,3 @@
 - 능선 전망대(−43, −136): 뒤 계단 SPACE → 망원경(서쪽 먼 바위산).
 - 투광등 밤 빛 기둥·바닥 빛(가산, 불투명도 낮게).
 - 시험: island-projects 단위·dalmaru-paths 다리 잇기·island-events 열 명 고정, e2e island-projects-3(새).
-
-## v1.10.223 섬 가꾸기 2 (투표·민원 창구·물가 거리·야경 조명)
-
-- 투표: 분수·꽃길 뒤 마루 시장(정문) 대화에 다음 사업 셋까지 하루 투표(한 표·바꿈), 다음 날 최다(같으면 앞) 시작·적립 넣음, 하나 남으면 바로. 다리·전망대 soon(224 전까지 표 밖).
-- 민원 창구 「섬 가꾸기에 보태기」: donate와 같은 길 + 사업, atDesk civil.
-- 물가 거리: walk 1 땅 쪽 12 m마다 가로등+벤치 9, 벤치 pm-<k> 열린 뒤 앉기(서버 확인).
-- 야경 조명: walk 0 위 전구 줄 4, 분수 4·등대 3 투광등. 등록부 nightGlow(project.*) → 로더가 glow 재질을 밤에만 켬.
-- 시험: island-projects 단위(투표·서버), e2e island-projects-2(새).
