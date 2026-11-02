@@ -967,6 +967,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     // 툇마루섬: the players' houses (묶음 4 내 집) -- the board at the way in says where one applies (assets: the notice board's look)
     const I = T.dalmaru.ISLE; const post = new THREE.Group(); mesh(new THREE.BoxGeometry(2.2, 1.2, 0.12), mat(0xe9d8b4), 0, 1.5, 0, post); for (const x of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(0.12, 1.6, 0.12), mat(0x8a6a48), x, 0.8, 0, post);
+    if (T.STREET_Z) { // (v1.10.230 울타리 마을: on the isle where the way down starts, and at the village's street where it comes in)
+      signboard('stand', '울타리 마을 ↓', scene, -23.5, heightAt(-23.5, 150), 150, 0);
+      signboard('stand', '울타리 마을', scene, -24.5, heightAt(-24.5, T.STREET_Z - 6), T.STREET_Z - 6, 0);
+    }
     piece('dalmaru.isle_sign', I.x - 4, heightAt(I.x - 4, I.z - 7.3), I.z - 7.3, 0, post); signboard('stand', '툇마루섬 · 집터는 관공서에서 신청', scene, I.x - 7.6, heightAt(I.x - 7.6, I.z - 7.3), I.z - 7.3, 0); // (2회차 15: beside the trunk walk, clear of the cross walk; 간판 beside the board)
     // 묶음 1 대청마당 바닥 (assets 59): the disc, ring and kerbs walked over, just above the paving (the kerbs one batch);
     // the channels and gardens walked round (dalmaru-island's pavingSolids)
@@ -3086,7 +3090,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const l of lots || []) {
       const lot = HOME.lotById(l.id); if (!lot) continue;
       yardsMoved = noteYard(l) || yardsMoved; // (v1.10.225: its yard, whatever else changed)
-      const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}:${l.stage}:${l.building}`; const was = homesShown.get(l.id); if (was?.key === key) continue;
+      const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}:${l.stage}:${l.building}`; const lv = l.yardLevel || 1; const was = homesShown.get(l.id); if (was?.key === key && was.lv === lv) continue; // (v1.10.230: its fence's level too)
       if (was) { was.root.removeFromParent(); occlusion.remove(was.root); const k = buildingRoots.indexOf(was.root); if (k >= 0) buildingRoots.splice(k, 1); }
       const root = new THREE.Group(); root.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); root.rotation.y = lot.yaw; homesGroup.add(root); // (the model's front, -Z, toward the walk)
       const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot, l.owner !== null ? HOME.stageOf(l.stage).n : 2); const who = l.owner || '이웃';
@@ -3106,7 +3110,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         assets.attach('home.lot_sign', root, f); signboard('plaque', '빈 집터', root, 0, 0, 1.0, Math.PI);
         doors[`home:${l.id}`] = { x: d.x, z: d.z, name: '빈 집터 · 관공서 민원 창구에서 신청해요', plain: true };
       }
-      homesShown.set(l.id, { key, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
+      // (v1.10.230 울타리 마을: by the gate, the owner's name on a post -- the gate 10 m before the house; the widest fence's corners
+      // staked while the yard is smaller, 「넓히면 여기까지」; the gate's two posts a little stouter)
+      { const [, , gz] = YARD.fenceOf(1); signboard('plaque', l.owner !== null ? (l.mine ? '내 집' : `${[...who].length > 8 ? `${[...who].slice(0, 7).join('')}…` : who}의 집`) : '빈 집터', root, YARD.GATE / 2 + 0.9, 0, gz - 0.4, 0);
+        for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), mat(0x8a6a48), sx * (YARD.GATE / 2 + 0.1), 0.6, gz, root);
+        const lv = l.owner !== null ? l.yardLevel || 1 : 1; if (lv < YARD.LEVELS) { const [x0, x1, , z1] = YARD.fenceOf(YARD.LEVELS); for (const [sx, sz] of [[x0, gz], [x1, gz], [x0, z1], [x1, z1]]) mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), mat(0xc9a77a), sx, 0.3, sz, root); } }
+      homesShown.set(l.id, { key, lv, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
     }
     if (yardsMoved) drawYards();
   }
@@ -3120,7 +3129,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const lot = YARD.lotById(l.id); const items = l.owner !== null ? l.yard || [] : []; const stage = l.owner !== null ? HOME.stageOf(l.stage).n : 1; const level = l.yardLevel || 1;
     const key = JSON.stringify([items, stage, level]); if (yardsShown.get(l.id)?.key === key) return false;
     yardsShown.set(l.id, { key, lot, stage, level, items });
-    setGridSolids(`yard:${l.id}`, items.flatMap((p) => YARD.solidsOf(lot, p)));
+    setGridSolids(`yard:${l.id}`, [...items.flatMap((p) => YARD.solidsOf(lot, p)), ...YARD.fenceSolids(lot, level)]); // (v1.10.230: its fence -- in only by the gate)
     for (let i = SEATS.length - 1; i >= 0; i -= 1) if (String(SEATS[i].id).startsWith(`yard:${l.id}:`)) SEATS.splice(i, 1);
     SEATS.push(...items.flatMap((p) => YARD.seatsOf(lot, p)));
     return true;
@@ -3133,6 +3142,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function drawYards() { // (all the batches again: a yard changes seldom, a few dozen pieces a lot)
     for (const cells of yardCells) { assets.unbatch(cells); for (const c of cells) { yardGroup.remove(c.procedural[0]); c.procedural[0].dispose(); } }
     yardCells = []; const by = new Map();
+    // (v1.10.230 울타리 마을: each lot's own fence at its level, the same pieces as a yard's wooden fence, stretched to fit)
+    for (const y of yardsShown.values()) for (const p of YARD.fencePieces(y.level)) { if (!by.has('fence_wood')) by.set('fence_wood', new Map()); const per = by.get('fence_wood'); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p).multiply(new THREE.Matrix4().makeScale(p.len, 1, 1))); }
     for (const y of yardsShown.values()) for (const p of y.items) { const shape = YARD.shapeOf(p.id); if (!shape) continue; if (!by.has(shape)) by.set(shape, new Map()); const per = by.get(shape); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p)); }
     for (const [shape, per] of by) {
       const [geo, m] = yardStandIn(shape);
@@ -4532,7 +4543,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
     }
     const reached = (x, z, near = 1.5) => { for (let i = Math.floor(x - near); i <= Math.ceil(x + near); i += 1) for (let j = Math.floor(z - near); j <= Math.ceil(z + near); j += 1) if (Math.abs(i) <= R && Math.abs(j) <= R && seen[idx(i, j)] === 1 && Math.hypot(i - x, j - z) <= near) return true; return false; };
-    const targets = [...Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && Math.hypot(d.x, d.z) < T.ISLAND_RADIUS).map(([id, d]) => [id, d.x, d.z]), ...COTTAGES.map((c, k) => [`house${k}`, c.x + (c.face[0] - c.x) * 0.45, c.z + (c.face[1] - c.z) * 0.45])];
+    const targets = [...Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && T.coastDist(d.x, d.z) > -20).map(([id, d]) => [id, d.x, d.z]) /* (v1.10.230: on the land -- the rooms lie far out at sea; the island's radius now reaches the jail's) */, ...COTTAGES.map((c, k) => [`house${k}`, c.x + (c.face[0] - c.x) * 0.45, c.z + (c.face[1] - c.z) * 0.45])];
     if (T.STRUCTURES) {
       const S = T.STRUCTURES; const st = T.STAIRS;
       targets.push(['lighthouse', S.lighthouse.x + 5, S.lighthouse.z - 1], ['pierEnd', T.PIER.x + T.PIER.ux * 8, T.PIER.z + T.PIER.uz * 8], ['dock', T.DOCK.x, T.DOCK.z], ['isle', T.dalmaru.ISLE.x, T.dalmaru.ISLE.z], ['stairsTop', st.x + st.ux * 34 + st.nx * 1.7, st.z + st.uz * 34 + st.nz * 1.7], ['ridge', st.x + st.ux * 35 - st.nx * 8, st.z + st.uz * 35 - st.nz * 8]);

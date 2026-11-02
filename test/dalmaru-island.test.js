@@ -74,7 +74,25 @@ test('관광열차 운행 따라잡기: 지금 시각·시험의 시계 옮기�
 // least 2 m in from where the beach starts to fall (7 m from the water)
 // (2회차 15 「집터가 길을 침범하고 집끼리도 겹쳐. 섬을 더 확장해서 정리해」: the isle wider toward 윤슬만; a 큰 집 with its veranda,
 // 6.5 m round, on each lot: 3 m off the shore all round, 2 m clear of the walks -- not its own door way -- and of each other)
-test('툇마루섬 집터: 12곳 모두 평평한 땅, 큰 집 둘레가 해안에서 3m·길과 서로 2m 이상', { skip }, () => {
+// v1.10.230 울타리 마을 (gamecenter-notes docs/yard-fenced-20261102.md): the sixteen lots past the ring -- each one's widest fence
+// (26 x 24, its front at the gate 10 m before the house) on flat ground, 7 m and more from the water, clear of every walk but its
+// own gate's way and the street before it, and 2 m and more from the next fence
+test('울타리 마을 집터: 16곳 모두 가장 넓힌 울타리까지 평평한 땅, 물가에서 7 m, 길 밖, 울타리끼리 2 m', { skip }, () => {
+  const Y = require('../public/plaza/island-yard.js'); const [x0, x1, z0, z1] = Y.fenceOf(Y.LEVELS); const bad = [];
+  assert.equal(T.HOME_LOTS.length, 16);
+  for (const l of Y.LOTS) {
+    for (let lx = x0; lx <= x1; lx += 1) for (let lz = z0; lz <= z1; lz += 1) {
+      const { x, z } = Y.world(l, lx, lz);
+      if (Math.abs(T.heightAt(x, z) - 0.9) > 0.05) { bad.push(`${l.id} flat ${lx},${lz}`); lx = lz = 99; continue; }
+      if (T.dalmaru.coastDist(x, z) < 7) { bad.push(`${l.id} shore`); lx = lz = 99; continue; }
+      if (Math.abs(lx) > 1.2 && lz > z0 + 0.5 && T.walkDist(x, z) < 0) { bad.push(`${l.id} walk ${lx},${lz}`); lx = lz = 99; }
+    }
+    for (const o of Y.LOTS) if (o !== l && Math.abs(o.z - l.z) < 1 && Math.abs(o.x - l.x) < (x1 - x0) + 2) bad.push(`${l.id}~${o.id}`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test('(옛) 툇마루섬 집터: 12곳 모두 평평한 땅, 큰 집 둘레가 해안에서 3m·길과 서로 2m 이상', { skip: true }, () => {
   const bad = []; const H = require('../public/plaza/island-home.js'); const R = 6.5;
   const seg = (px, pz, ax, az, bx, bz) => { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(px - ax - dx * t, pz - az - dz * t); };
   for (const l of H.LOTS) {

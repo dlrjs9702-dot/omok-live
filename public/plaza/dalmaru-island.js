@@ -16,11 +16,25 @@
   // its veranda, 6.5 m round) stands 2 m clear of every walk, way, the pond, the station way and the other lots: by the walk
   // across the isle, a walk north from it and the station way; yaw: the house's front (-Z) square to its walk,
   // the walks below lead from each door to it (worked out once: gamecenter-notes docs/issue-log-review-20261021-b.md 15)
-  const HOME_LOTS = Object.freeze([[-1.5, 172.5, -0.76], [19.5, 166.5, 0.73], [-1.5, 157, -2.24], [27, 150.5, 1.53], [-10, 108.5, -1.57], [-10, 123.5, -1.57], [10, 107.5, 1.57], [10, 122.5, 1.57], [-30.5, 150, -0.03], [-29, 130, 3.1], [28, 130, -3.09], [-15.5, 151.5, -0.07]].map(([x, z, yaw]) => Object.freeze({ x, z, yaw })));
-  const onLot = (x, z, pad = 0) => HOME_LOTS.some((l) => Math.abs(x - l.x) < 5 + pad && Math.abs(z - l.z) < 5 + pad);
+  // v1.10.230 울타리 마을 (gamecenter-notes docs/yard-fenced-20261102.md): the sixteen lots south of the ring, either side of the
+  // village's street (z 236) -- each its fence's front at the street (a 1.4 m gate's way to it), the house 10 m behind the gate,
+  // its front to the street; the fence goes back and out from the front as the yard is made bigger (island-yard FENCE).
+  // 1~12 the houses of 툇마루섬 moved in lot for lot, 13~16 (the east end) empty; the north row's gap is the way down from the isle
+  const STREET_Z = 236; const GATE_BACK = 10; // (the house's middle behind its gate)
+  const HOME_LOTS = Object.freeze([
+    ...[-126, -98, -70, -42, 14, 42].map((x) => ({ x, z: STREET_Z - 2.5 - 1.4 - GATE_BACK, yaw: Math.PI })),
+    ...[-98, -70, -42, -14, 14, 42].map((x) => ({ x, z: STREET_Z + 2.5 + 1.4 + GATE_BACK, yaw: 0 })),
+    ...[70, 98].map((x) => ({ x, z: STREET_Z - 2.5 - 1.4 - GATE_BACK, yaw: Math.PI })), ...[70, 98].map((x) => ({ x, z: STREET_Z + 2.5 + 1.4 + GATE_BACK, yaw: 0 })),
+  ].map((l) => Object.freeze(l)));
+  // the widest fence (26 x 24, lot-local: its front 10 m before the house, -z) and pad round it: nothing grows or stands in it
+  const lotLocal = (l, x, z) => { const c = Math.cos(l.yaw); const s = Math.sin(l.yaw); const dx = x - l.x; const dz = z - l.z; return [dx * c - dz * s, dx * s + dz * c]; };
+  const onLot = (x, z, pad = 0) => HOME_LOTS.some((l) => { const [lx, lz] = lotLocal(l, x, z); return Math.abs(lx) < 13 + pad && lz > -GATE_BACK - pad && lz < 14 + pad; });
   // what a house takes (the 6 x 5 m house and its steps, a little round it, and in front of its door -- island-home's
   // doorOf: 4.6 m toward the walk across the isle at z 140.5); trees and rocks may stand on the rest of the lot
-  const onHouse = (x, z) => HOME_LOTS.some((l) => { const a = l.yaw; const dx = l.x - Math.sin(a) * 6.9; const dz = l.z - Math.cos(a) * 6.9; return Math.hypot(x - l.x, z - l.z) < 6.2 || Math.hypot(x - dx, z - dz) < 2.5; }); // (묶음 4-2: room for the 큰 집, 11 x 10 m with its eaves, and its door 6.9 m out)
+  const onHouse = (x, z) => onLot(x, z, 1); // (v1.10.230: the whole fenced ground, not the house alone)
+  // (v1.10.230: where 툇마루섬's houses stood, four little gardens -- a flower bed, a bench either side facing it -- the grass round
+  // them left to grow; plazaProps lays them, the trees keep 4 m off)
+  const ISLE_GARDENS = Object.freeze([[-9, 116], [9, 116], [-27, 129], [27, 129]].map(([x, z]) => Object.freeze({ x, z })));
   const rad = (a) => (a * Math.PI) / 180;
   const inPlaza = (x, z, m = 0) => Math.abs(x - P.x) < P.hw + m && z > P.d0 - m && z < P.d1 + m;
   const yawTo = (x, z, f) => Math.atan2(x - f[0], z - f[1]); // a model whose front is -Z, turned so it looks at f
@@ -141,8 +155,10 @@
     // round touches 물가 거리 itself)
     { tier: 'trail', w: 2.4, pts: [[-87.1, 43.8], [-97.8, 37.8]] }, { tier: 'trail', w: 2.4, pts: [[-93.6, -0.3], [-94, -3.9]] },
     // (묶음 4 내 집: from each of 툇마루섬's twelve lots' door (island-home.js LOTS) to the walk across the isle, round the other houses)
-    { tier: 'walk', w: 2.4, pts: [[0, 141], [0, 124], [0, 107.3]] }, // (2회차 15: north from the walk across the isle into its widened part, four houses by it)
-    { tier: 'trail', w: 2, pts: [[1.7, 169.2], [4.5, 166.1]] }, { tier: 'trail', w: 2, pts: [[16.4, 163.1], [13.6, 159.9]] }, { tier: 'trail', w: 2, pts: [[2.1, 159.9], [5.4, 162.5]] }, { tier: 'trail', w: 2, pts: [[22.4, 150.3], [18.1, 150.1]] }, { tier: 'trail', w: 2, pts: [[-5.4, 108.5], [-0.9, 108.5]] }, { tier: 'trail', w: 2, pts: [[-5.4, 123.5], [-0.9, 123.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 107.5], [0.9, 107.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 122.5], [0.9, 122.5]] }, { tier: 'trail', w: 2, pts: [[-30.4, 145.4], [-30.2, 141.2]] }, { tier: 'trail', w: 2, pts: [[-29.2, 134.6], [-29.4, 138.8]] }, { tier: 'trail', w: 2, pts: [[28.2, 134.6], [28.4, 138.9]] }, { tier: 'trail', w: 2, pts: [[-15.2, 146.9], [-14.9, 142.6]] },
+    // (v1.10.230 울타리 마을: the way down from 툇마루섬 under the ring, the village's street, and each gate's way to its door)
+    { tier: 'walk', w: 3, pts: [[-20, 141.5], [-20, 175], [-20, 205], [-20, STREET_Z]] },
+    { tier: 'walk', w: 5, pts: [[-126, STREET_Z], [-20, STREET_Z], [98, STREET_Z]] }, // (from the west lot's gate to the east lot's: the open land past it, for later)
+    ...HOME_LOTS.map((l) => { const s = Math.cos(l.yaw); return { tier: 'trail', w: 1.4, pts: [[l.x, l.z - s * 6.9], [l.x, STREET_Z - s * 2.5]] }; }),
     { tier: 'walk', w: 2.8, pts: [stairsAt(35.6, 1.7), stairsAt(36, -1.5), stairsAt(36, -4.5), stairsAt(35.8, -6.4), po(STAIRS_TOP_DEG + 4, 138) /* (문제 기록 4회차: on the top's fill, not its edge, and toward the ridge from where the stairs now end -- 216° stayed when they moved) */, ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
@@ -291,7 +307,7 @@
     }
     return null;
   }
-  const SIZE = 380; const SEG = 152; const STEP = SIZE / SEG; const HALF = SIZE / 2; // the ground mesh: 2.5 m (step 1; the far rings come with the phone check)
+  const SIZE = 590; const SEG = 236; /* (v1.10.230: 380 -> 590 for the village south of the ring -- the same 2.5 m step, every point of the ground as before) */ const STEP = SIZE / SEG; const HALF = SIZE / 2; // the ground mesh: 2.5 m (step 1; the far rings come with the phone check)
   function meshGroundHeight(x, z) {
     const x0 = Math.floor((x + HALF) / STEP) * STEP - HALF; const z0 = Math.floor((z + HALF) / STEP) * STEP - HALF;
     const u = (x - x0) / STEP; const v = (z - z0) / STEP;
@@ -387,6 +403,7 @@
       for (const p of sides) benches.push({ ...p, r: 0.9, yaw: Math.atan2(-g.ox, -g.oz), rim: true }); // (facing in, away from the kerb)
       lamps.push({ x: g.x + g.ox * 1.6, z: g.z + g.oz * 1.6, r: 0.35 });
     }
+    for (const g of ISLE_GARDENS) { beds.push({ x: g.x, z: g.z, r: 1.1, i: beds.length }); for (const sx of [-2.6, 2.6]) benches.push({ x: g.x + sx, z: g.z, r: 0.9, yaw: Math.atan2(-sx, 0), garden: g }); } // (v1.10.230: facing its own bed)
     const seats = benches.map((b, k) => { const ry = b.yaw; return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
     paving().gardens.forEach((g, k) => {
@@ -410,7 +427,7 @@
     if (natureCache) return natureCache;
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
     const R = D.R_OUT + 5;
-  const built = (x, z) => onHouse(x, z) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < (b.kind === 'facade' ? 18 : b.kind === 'hall' ? 13 : 7))
+  const built = (x, z) => onHouse(x, z) || ISLE_GARDENS.some((g) => Math.hypot(x - g.x, z - g.z) < 4) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < (b.kind === 'facade' ? 18 : b.kind === 'hall' ? 13 : 7))
       || PADS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + 1.5) || onStairs(x, z) || Math.hypot(x - TOP.x, z - TOP.z) < 6
       || Math.hypot(x - PL.lighthouse.x, z - PL.lighthouse.z) < 6 || Math.hypot(x - PL.pier.x, z - PL.pier.z) < 6 || Math.hypot(x - PL.dock.x, z - PL.dock.z) < 8
       || villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 2) || heroYard(x, z);
@@ -511,12 +528,12 @@
   }
   return Object.freeze({
     ...C,
-    MAP: 'dalmaru', HOME_LOTS, onLot, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
+    MAP: 'dalmaru', HOME_LOTS, onLot, STREET_Z, GATE_BACK, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, settledSpot, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
-    fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 200, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
+    fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 330 /* (v1.10.230: the village's far corner, r 323) */, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,

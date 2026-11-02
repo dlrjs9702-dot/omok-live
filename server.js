@@ -1327,7 +1327,14 @@ const homeLotOn = (h, floor) => { const lot = IslandHome.lotById(h?.lot); return
 const homeAs = (token, h) => IslandHome.floorView(h, floorOf(token));
 async function homeOf(account) {
   if (!homeCache.has(account)) homeCache.set(account, (await pointStore.worldValue(`home:${account}`)) || null);
-  const h = homeCache.get(account);
+  let h = homeCache.get(account);
+  // v1.10.230 울타리 마을 이사 (gamecenter-notes docs/yard-fenced-20261102.md 4): each house moved with its lot to the village
+  // (lot n there, the inside as it was -- the house's own frame); the yard's things back to the 가구 창고 (the old yard's ground
+  // is not the fence's), the yard's level kept; once, and a note from the 관공서 once
+  if (h && (h.villageV || 0) < 1) {
+    const n = (h.yard || []).length; h = { ...h, yard: [], villageV: 1 }; homeCache.set(account, h); const now = nowMs();
+    await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === 'village-move') ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: 'village-move', from: 'office', fromName: '관공서', text: `새 울타리 마을로 이사했어요! ${n ? `마당 물건 ${n}개는 가구 창고에 넣어 뒀어요. ` : ''}울타리 안에서 마당 꾸미기로 다시 놓아 보세요.`, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {});
+  }
   // 묶음 4-2: made bigger the day after 「집 넓히기」 (from 00:00) -- the pieces where they stood, the hung ones onto the new
   // walls; held so here at once, saved with the next change of the house
   // (묶음 4-2 실내 크기, 2026-10-21: the rooms made bigger -- a house from before (roomV < 2) once: its hung pieces onto the
@@ -2077,6 +2084,7 @@ async function noticeEvents() {
   const now = festivalNow(); const override = await calendarOverride(); const md = (d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
   const f = IslandCalendar.festivalAt(now, override); const c = IslandCalendar.contestAt(now, override); const notes = [];
   if (f) notes.push([`festival:${f.id}`, `[행사] ${f.name} (${md(f.start)}~${md(f.end)})`, `${f.name} 기간이에요! 대청마당 남쪽 행사 주민에게서 할 일을 보고 도장을 모아, 옆 가판대에서 한정 물건·칭호로 바꿔요. 남은 도장은 행사가 끝나면 사라져요.`]);
+  if (IslandTerrain.STREET_Z) notes.push(['village:230', '[섬 소식] 울타리 마을이 생겼어요', '툇마루섬 남쪽, 기차 고리 너머에 새 땅이 생겼어요. 집들이 모두 울타리 마을로 이사했어요 — 울타리 안이 내 마당이에요. 새 집터 신청도 관공서에서 할 수 있어요.']); // (v1.10.230)
   if (weeklyOn()) { const w = newWeek(); const clothes = SkinCatalog.weeklySkins(w).map((id) => skinById(id)?.name).filter(Boolean); const pieces = IslandFurniture.weeklyOf(w).map((id) => IslandFurniture.good(id).name); notes.push([`weeklynew:${w}`, '[이번 주 신상] 옷 10 · 가구 6', `월요일마다 바뀌어요. 백화점 2층 옷가게: ${clothes.join(', ')}. 3층 가구 「이번 주 신상」: ${pieces.join(', ')}. 다음 월요일 0시까지만 팔아요(이미 산 건 그대로).`]); } // (v1.10.227 주간 신상)
   if (c && c.day === IslandCalendar.CONTEST.first) notes.push(['weekly:first', '[대회] 매주 대회 시작', `토요일은 낚시 대회, 일요일은 곤충 대회(${c.from}~${c.to}시)! 대청마당 남쪽 행사 주민 곁에서 3분 판을 시작해요. 그날 최고 기록 1~3등에게 트로피·칭호·포인트, 토요일 낚시 1등은 영웅마루에 서요.`]);
   let posted = false;
@@ -4045,7 +4053,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.229' });
+    return sendJson(res, 200, { ok: true, version: '1.10.230' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5327,7 +5335,7 @@ async function requestHandler(req, res) {
       if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
       await pointStore.setWorldValue('homeLots', { ...lots, [lot.id]: account });
-      const home = { lot: lot.id, stage: 1, roomV: 2, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() }; // (묶음 4-2: a 오두막 first)
+      const home = { lot: lot.id, stage: 1, roomV: 2, villageV: 1, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() }; // (묶음 4-2: a 오두막 first)
       await saveHome(account, home); notifyPointsChanged([account]); broadcastIsland('homes', { lot: lot.id });
       return sendJson(res, 200, { ok: true, home });
     });
@@ -8354,7 +8362,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.229 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.230 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

@@ -198,6 +198,7 @@
       const [x, z] = w.pts[i];
       const [ci, cj] = cellOf(x, z);
       if (!free(ci, cj) || Math.hypot(x, z) < T.PLAZA_R + 2) continue;
+      if (T.STREET_Z && z > 168 && Math.abs(x - (T.dalmaru?.NECK?.x ?? -20)) < 20) continue; // (v1.10.230: not down the way to the 울타리 마을 -- under the ring, past their grid; their rounds as before)
       if (Object.values(T.SPOTS).some((s) => Math.hypot(x - s.x, z - s.z) < 8)) continue;
       if (stops.some((p) => Math.hypot(p.x - x, p.z - z) < 6)) continue;
       stops.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100 });

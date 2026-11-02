@@ -17,7 +17,7 @@ const T = require('../public/plaza/island-terrain');
 
 const lot = Y.lotById('lot5'); const id = (shape) => Y.goodId(shape);
 
-test('마당 규칙: 칸 안/밖·집·현관 길·겹침·울타리 기둥 맞춤·0.25 m 칸, 넓히면 더 멀리', () => {
+test('마당 규칙: 울타리 안/밖·집·현관 길·겹침·울타리 기둥 맞춤·0.25 m 칸, 넓히면 울타리가 밖으로', () => { // (v1.10.230: the yard is inside the fence)
   const bench = { uid: 'b', id: id('bench'), x: -5, z: 0, rot: 1 };
   assert.equal(Y.placeError(bench, [], lot, 1, 1), null, '집 옆 처음 마당');
   assert.equal(Y.placeError({ ...bench, x: 0, z: 0 }, [], lot, 1, 1), '집에 너무 붙었어요.');
@@ -46,7 +46,7 @@ test('마당 규칙: 칸 안/밖·집·현관 길·겹침·울타리 기둥 맞�
     const b = Y.boxOf(l, st, 3);
     for (let lx = b[0]; lx < b[1]; lx += 0.5) for (let lz = b[2]; lz < b[3]; lz += 0.5) {
       if (!Y.usable(l, st, 3, lx, lz)) continue; const w = Y.world(l, Math.round(lx * 8) / 8, Math.round(lz * 8) / 8);
-      assert.ok(T.walkDist(w.x, w.z) >= 0.4 && !(Math.abs(lx) < Y.PATH && lz <= Y.FOOT[st][2]), `${l.id} ${st}단계 (${lx}, ${lz})`);
+      assert.ok(T.walkDist(w.x, w.z) >= 0 && !(Math.abs(lx) < Y.PATH && lz <= Y.FOOT[st][2]), `${l.id} ${st}단계 (${lx}, ${lz})`);
       assert.ok(!Y.LOTS.some((o) => o.id !== l.id && Math.hypot(w.x - o.x, w.z - o.z) < Math.hypot(w.x - l.x, w.z - l.z)), `${l.id}: 이웃 집터 쪽`);
     }
   }
@@ -71,6 +71,7 @@ test('마당 서버: 사기 → 마당에 놓기(개수 24·넓히기 40) · 집
   const door = T.facilityDoor('townhall'); await stand(door.x, door.z); assert.equal((await req('/api/island/townhall/enter', a, {})).status, 200);
   assert.equal((await req('/api/home/yard/grow', a, {})).data.error, 'NO_HOME', '집이 없으면 못 넓힘');
   const applied = await req('/api/home/apply', a, { lot: lot.id, roof: 'red' }); assert.equal(applied.status, 200, JSON.stringify(applied.data));
+  await req('/api/home', a); assert.ok(!(await req('/api/island/mail', a)).data.letters.some((l) => l.id === 'village-move'), '새로 지은 집엔 이사 쪽지 없음'); /* (v1.10.230: a new house is in the village already) */
   const ex = T.roomWorld(T.TOWNHALL_ROOM.exit.lx, T.TOWNHALL_ROOM.exit.lz); await stand(ex.x, ex.z); assert.equal((await req('/api/island/townhall/leave', a, {})).status, 200);
   // pieces straight into the 가구 창고 (the shop's own buying: island-furniture / e2e)
   const pieces = (await req('/api/test/home/furniture', a, { ids: [...Array(25)].map(() => id('fence_wood')).concat([id('bench'), 'sofa__mint']) })).data.pieces;

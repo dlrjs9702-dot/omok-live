@@ -7,8 +7,8 @@ const assert = require('node:assert/strict');
 const H = require('../public/plaza/island-home.js');
 const T = require('../public/plaza/island-terrain.js');
 
-test('내 집: 집터 12곳은 길·물 밖 평지, 문 앞은 걸을 수 있다', () => {
-  assert.equal(H.LOTS.length, 12);
+test('내 집: 울타리 마을 집터 16곳은 길·물 밖 평지, 문 앞은 걸을 수 있다', () => { // (v1.10.230)
+  assert.equal(H.LOTS.length, 16);
   for (const lot of H.LOTS) {
     const d = H.doorOf(lot);
     assert.ok(T.walkable(d.x, d.z), `${lot.id} 문 앞`);
