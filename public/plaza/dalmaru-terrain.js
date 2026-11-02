@@ -145,7 +145,7 @@
     const px = Math.max(0, Math.abs(x - PLAZA.x) - PLAZA.hw); const pz = Math.max(0, PLAZA.d0 - z, z - PLAZA.d1);
     const outP = Math.hypot(px, pz); if (outP < 8 && rg < 0.5) h = lerp(PLAZA.h, h, smooth(0, 8, outP));
     if (onIsle) h = lerp(0.9, h, smooth(ISLE.r - 2.5, ISLE.r + 4, isleDist(x, z))); // (2회차 15: flat nearer the shore -- the lots by it)
-    if (z > 160) { const v = Math.min(villageDist(x, z), neckDist(x, z)); if (v < 4) h = lerp(0.9, h, smooth(-12, 4, v)); } // (v1.10.230: the village's field and its neck flat, as the isle)
+    if (z > 160) { const v = Math.min(villageDist(x, z), neckDist(x, z)); if (v < 4) h = lerp(0.9, h, smooth(-7, 3, v)); } // (v1.10.230: the village's field and its neck flat, as the isle)
     // beaches: the last few metres to the water lie low (not under the ridge's sea cliffs)
     const beach = rg > 0.3 ? 1.2 : 7;
     if (cd < beach) h = lerp(SEA - 0.3, h, cd / beach);

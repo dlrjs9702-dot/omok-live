@@ -34,7 +34,10 @@
   const isYard = (id) => shapeOf(id) !== null;
   const LIMIT = Object.freeze([24, 40, 60]); // pieces a yard holds, by its level (1 at first, 2 and 3 made bigger)
   const LEVELS = LIMIT.length;
-  const MARGIN = Object.freeze([2.5, 4, 6]); // how far round the house each level reaches
+  // v1.10.230 울타리 마을 (gamecenter-notes docs/yard-fenced-20261102.md): the yard is inside the lot's fence -- 18 x 16 m at first,
+  // 22 x 20 and 26 x 24 made bigger (across x depth, the house in it), its front at the gate 10 m before the house, going back and
+  // out from there; a thing goes anywhere inside, clear of the house and the 1.4 m way from the door to the gate
+  const FENCE = Object.freeze([[18, 16], [22, 20], [26, 24]]); const GATE_BACK = T.GATE_BACK ?? 10; const POST = 0.3; // (inside the posts)
   // the house models' ground (home-v1 glb bounds, eaves and all) and 0.3 m round: [x0, x1, z0, z1]
   const FOOT = Object.freeze({ 1: [-2.95, 2.95, -3.0, 2.66], 2: [-3.8, 3.8, -4.0, 3.3], 3: [-5.65, 6.0, -6.48, 4.26], 4: [-5.65, 6.0, -6.48, 4.26] });
   const footOf = (stage) => FOOT[stage] || FOOT[2];
@@ -43,53 +46,24 @@
 
   const world = (lot, lx, lz) => { const c = Math.cos(lot.yaw); const s = Math.sin(lot.yaw); return { x: lot.x + lx * c + lz * s, z: lot.z - lx * s + lz * c }; };
   const local = (lot, x, z) => { const c = Math.cos(lot.yaw); const s = Math.sin(lot.yaw); const dx = x - lot.x; const dz = z - lot.z; return { lx: dx * c - dz * s, lz: dx * s + dz * c }; };
-  // the ground itself, lot-local (whatever the house): fine to put a thing on, or why not
-  let growing = null; // trees, bushes, lamps, the village's things near the lots (worked out once)
-  const near = (list) => list.filter((g) => LOTS.some((l) => Math.hypot(g.x - l.x, g.z - l.z) < 24));
-  const growth = () => (growing ||= near([...(T.natureSolids?.() || []), ...(T.structureSolids?.() || [])]));
-  let lifting = null; const lifts = () => (lifting ||= Object.keys(T.dalmaru?.TRAIN?.stops || {}).map((id) => T.dalmaru.TRAIN.liftAt(id)));
-  const segDist = (x, z, ax, az, bx, bz) => { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(x - ax - dx * t, z - az - dz * t); };
-  const grounds = new Map();
-  function groundOk(lot, lx, lz) {
-    lx = Math.round(lx * 8) / 8; lz = Math.round(lz * 8) / 8; // (on a 1/8 m grid: worked out once a point)
-    const key = `${lot.id}:${lx * 8}:${lz * 8}`; if (grounds.has(key)) return grounds.get(key);
-    const { x, z } = world(lot, lx, lz); const D = T.dalmaru; let ok = true;
-    if (!T.walkable(x, z) || (D && (D.riverDist(x, z) < 1.5 || D.lakeDist(x, z) < 1.5 || D.coastDist(x, z) < 2.5))) ok = false; // water
-    else if (T.walkDist(x, z) < 0.4) ok = false; // a walk
-    else { const h = T.heightAt(x, z); if (Math.max(Math.abs(T.heightAt(x + 0.5, z) - h), Math.abs(T.heightAt(x, z + 0.5) - h)) / 0.5 > 0.4) ok = false; } // too steep
-    if (ok) { const me = Math.hypot(x - lot.x, z - lot.z); if (LOTS.some((o) => o.id !== lot.id && Math.hypot(x - o.x, z - o.z) < me + 1)) ok = false; } // the neighbour's side
-    if (ok && (T.inTownhall?.(x, z, 1) || T.inVillage?.(x, z) || T.inPlaza?.(x, z, 1))) ok = false;
-    if (ok && growth().some((g) => Math.hypot(x - g.x, z - g.z) < g.r + 0.3)) ok = false; // what grows or stands there
-    if (ok && lifts().some((L) => Math.hypot(x - L.x, z - L.z) < 3.2 || segDist(x, z, L.x, L.z, L.entry[0], L.entry[1]) < 1.6)) ok = false; // a station's lift and the way to it (툇마루역, by lot 1)
-    grounds.set(key, ok); return ok;
-  }
   const inHouse = (stage, lx, lz) => { const f = footOf(stage); return lx > f[0] && lx < f[1] && lz > f[2] && lz < f[3]; };
-  const inPath = (stage, lx, lz) => Math.abs(lx) < PATH && lz <= footOf(stage)[2];
-  // how far each way from the house the ground goes on (a strip mostly fine), worked out once a lot and stage
-  const reaches = new Map();
-  function reachOf(lot, stage) {
-    const key = `${lot.id}:${stage}`; if (reaches.has(key)) return reaches.get(key);
-    const [x0, x1, z0, z1] = footOf(stage); const out = {};
-    const dirs = { back: [0, 1, x0, x1, z1], front: [0, -1, x0, x1, -z0], left: [-1, 0, z0, z1, -x0], right: [1, 0, z0, z1, x1] };
-    for (const [k, [ux, uz, a, b, start]] of Object.entries(dirs)) {
-      let r = start;
-      for (; r < start + MARGIN[LEVELS - 1]; r += STEP) {
-        let bad = 0; let n = 0;
-        for (let t = a; t <= b; t += 0.5) { if (k === 'front' && Math.abs(t) < 2) continue; n += 1; if (!groundOk(lot, ux ? ux * r : t, uz ? uz * r : t)) bad += 1; } // (the walk up to the door splits the front)
-        if (bad / n > 0.3) break;
-      }
-      out[k] = r - start;
-    }
-    reaches.set(key, out); return out;
+  const inPath = (stage, lx, lz) => Math.abs(lx) < PATH && lz <= footOf(stage)[2]; // (the door's way to the gate)
+  // the fence at a level, lot-local [x0, x1, z0, z1] (its posts' line), and the yard's box inside it
+  const fenceOf = (level) => { const [w, d] = FENCE[Math.min(LEVELS, Math.max(1, level)) - 1]; return [-w / 2, w / 2, -GATE_BACK, -GATE_BACK + d]; };
+  // the fence itself at a level, lot-local: 1 m wooden pieces (yard.fence_wood) along each side, each side's pieces stretched to
+  // fit it -- the front split by the 1.4 m gate -- {x, z, rot, len}; and its solids in the world
+  const GATE = 1.4;
+  function fencePieces(level) {
+    const [x0, x1, z0, z1] = fenceOf(level); const out = [];
+    const run = (a, b, at, rot) => { const n = Math.max(1, Math.round(b - a)); const len = (b - a) / n; for (let k = 0; k < n; k += 1) { const m = a + len * (k + 0.5); out.push(rot ? { x: at, z: m, rot: 1, len } : { x: m, z: at, rot: 0, len }); } };
+    run(x0, -GATE / 2, z0, 0); run(GATE / 2, x1, z0, 0); run(x0, x1, z1, 0); run(z0, z1, x0, 1); run(z0, z1, x1, 1);
+    return out;
   }
-  // the yard's box at a level: [x0, x1, z0, z1]
-  function boxOf(lot, stage, level) {
-    const [x0, x1, z0, z1] = footOf(stage); const r = reachOf(lot, stage); const m = MARGIN[Math.min(LEVELS, Math.max(1, level)) - 1];
-    return [x0 - Math.min(m, r.left), x1 + Math.min(m, r.right), z0 - Math.min(m, r.front), z1 + Math.min(m, r.back)];
-  }
+  const fenceSolids = (lot, level) => fencePieces(level).flatMap((p) => [-0.4, 0, 0.4].map((o) => { const lx = p.rot ? p.x : p.x + o * p.len; const lz = p.rot ? p.z + o * p.len : p.z; return { ...world(lot, lx, lz), r: 0.15 }; }));
+  function boxOf(lot, stage, level) { const [x0, x1, z0, z1] = fenceOf(level); return [x0 + POST, x1 - POST, z0 + POST, z1 - POST]; }
   function usable(lot, stage, level, lx, lz) {
     const b = boxOf(lot, stage, level);
-    return lx >= b[0] - 1e-6 && lx <= b[1] + 1e-6 && lz >= b[2] - 1e-6 && lz <= b[3] + 1e-6 && !inHouse(stage, lx, lz) && !inPath(stage, lx, lz) && groundOk(lot, lx, lz);
+    return lx >= b[0] - 1e-6 && lx <= b[1] + 1e-6 && lz >= b[2] - 1e-6 && lz <= b[3] + 1e-6 && !inHouse(stage, lx, lz) && !inPath(stage, lx, lz);
   }
   // the yard's room in m² (a 0.25 m grid), for the 관공서's 「넓히기」 line
   const areas = new Map();
@@ -143,5 +117,5 @@
   const snap = (v) => Math.round(v / STEP) * STEP;
   // is this spot (world) in the yard of that lot (its box at that level, a little round it): where 「마당 꾸미기」 shows
   function inYard(lot, stage, level, x, z, pad = 0.5) { const { lx, lz } = local(lot, x, z); const b = boxOf(lot, stage, level); return lx > b[0] - pad && lx < b[1] + pad && lz > b[2] - pad && lz < b[3] + pad && !inHouse(stage, lx, lz); }
-  return { ITEMS, SHAPES, LIMIT, LEVELS, MARGIN, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, groundOk, inHouse, inPath, reachOf, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard };
+  return { ITEMS, SHAPES, LIMIT, LEVELS, FENCE, fenceOf, GATE, fencePieces, fenceSolids, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, inHouse, inPath, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard };
 }));

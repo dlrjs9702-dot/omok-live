@@ -17,7 +17,7 @@ const T = require('../public/plaza/island-terrain');
 
 const lot = Y.lotById('lot5'); const id = (shape) => Y.goodId(shape);
 
-test('마당 규칙: 칸 안/밖·집·현관 길·겹침·울타리 기둥 맞춤·0.25 m 칸, 넓히면 더 멀리', () => {
+test('마당 규칙: 울타리 안/밖·집·현관 길·겹침·울타리 기둥 맞춤·0.25 m 칸, 넓히면 울타리가 밖으로', () => { // (v1.10.230: the yard is inside the fence)
   const bench = { uid: 'b', id: id('bench'), x: -5, z: 0, rot: 1 };
   assert.equal(Y.placeError(bench, [], lot, 1, 1), null, '집 옆 처음 마당');
   assert.equal(Y.placeError({ ...bench, x: 0, z: 0 }, [], lot, 1, 1), '집에 너무 붙었어요.');
@@ -46,7 +46,7 @@ test('마당 규칙: 칸 안/밖·집·현관 길·겹침·울타리 기둥 맞�
     const b = Y.boxOf(l, st, 3);
     for (let lx = b[0]; lx < b[1]; lx += 0.5) for (let lz = b[2]; lz < b[3]; lz += 0.5) {
       if (!Y.usable(l, st, 3, lx, lz)) continue; const w = Y.world(l, Math.round(lx * 8) / 8, Math.round(lz * 8) / 8);
-      assert.ok(T.walkDist(w.x, w.z) >= 0.4 && !(Math.abs(lx) < Y.PATH && lz <= Y.FOOT[st][2]), `${l.id} ${st}단계 (${lx}, ${lz})`);
+      assert.ok(T.walkDist(w.x, w.z) >= 0 && !(Math.abs(lx) < Y.PATH && lz <= Y.FOOT[st][2]), `${l.id} ${st}단계 (${lx}, ${lz})`);
       assert.ok(!Y.LOTS.some((o) => o.id !== l.id && Math.hypot(w.x - o.x, w.z - o.z) < Math.hypot(w.x - l.x, w.z - l.z)), `${l.id}: 이웃 집터 쪽`);
     }
   }
