@@ -3551,7 +3551,7 @@
     const can = document.createElement('div'); can.className = 'giftList';
     for (const item of bag.items.filter((e) => H.fits(shape, e.itemId))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); }
     const what = T.insects ? '곤충' : '물고기';
-    tankBox.replaceChildren(line(`${T.insects ? `${inside.length}/${T.slots}마리` : `${H.tankUsed(inside)}/${T.slots}칸 · ${inside.length}마리${inside.some((f) => H.FISH_ROOM[f.itemId]) || bag.items.some((e) => H.FISH_ROOM[e.itemId] && H.fits(shape, e.itemId)) ? ' · 참치는 6칸' : ''}`}${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
+    tankBox.replaceChildren(line(`${!T.insects && (inside.some((f) => H.FISH_ROOM[f.itemId]) || bag.items.some((e) => H.FISH_ROOM[e.itemId] && H.fits(shape, e.itemId))) ? `${H.tankUsed(inside)}/${T.slots}칸 · ${inside.length}마리 · 참치는 6칸` : `${inside.length}/${T.slots}마리`}${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
     openPlazaWindow(T.insects ? '곤충 상자' : '수조', [tankBox]);
   }
   // a frame: one of my 기념사진 (the places I took one) hung in it
