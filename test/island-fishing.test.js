@@ -16,12 +16,18 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
   // 대왕 참치 only in summer/autumn seas; a cast pays about 700~1,850P by table, about 1,100P on average
   const evs = []; const seen = new Set();
   for (const water of ['river', 'sea']) for (const season of ['spring', 'summer', 'autumn', 'winter']) {
-    const list = F.listFor(water, season); let ev = 0; const N = 20000;
-    for (let i = 0; i < N; i += 1) { const id = F.draw(rnd, { water, season }); assert.ok(list.includes(id), `${water} ${season} ${id}`); seen.add(id); ev += F.SPECIES[id].price; }
+    const list = F.listFor(water, season, false); let ev = 0; const N = 20000;
+    for (let i = 0; i < N; i += 1) { const id = F.draw(rnd, { water, season, night: false }); assert.ok(list.includes(id), `${water} ${season} ${id}`); seen.add(id); ev += F.SPECIES[id].price; }
     assert.ok(ev / N > 650 && ev / N < 1950, `${water} ${season} 기대값 ${ev / N}`); evs.push(ev / N);
     assert.equal(list.includes('giant_tuna'), water === 'sea' && ['summer', 'autumn'].includes(season));
   }
-  assert.equal(seen.size, 21); assert.equal(Object.keys(F.SPECIES).length, 21);
+  // (v1.10.231: 34 -- the night two only by night, the four of one water only there)
+  for (const id of ['squid', 'bagrid_catfish']) seen.add(id);
+  for (const [water, id] of [['bay', 'seahorse'], ['pool', 'masu_salmon'], ['lake', 'sturgeon']]) { assert.ok(['spring', 'summer', 'autumn', 'winter'].some((s) => F.listFor(water, s).includes(id)), id); seen.add(id); for (const w of ['sea', 'river', 'bay', 'lake', 'pool'].filter((x) => x !== water)) assert.ok(['spring', 'summer', 'autumn', 'winter'].every((s) => !F.listFor(w, s).includes(id)), `${id} ${w}`); }
+  assert.ok(!['spring', 'summer', 'autumn', 'winter'].some((s) => F.listFor('lake', s).includes('crayfish')), '가재는 호수 없음');
+  assert.equal(seen.size, 34); assert.equal(Object.keys(F.SPECIES).length, 34);
+  assert.ok(!F.listFor('sea', 'summer', false).includes('squid') && F.listFor('sea', 'summer', true).includes('squid'), '오징어는 밤에만');
+  assert.deepEqual([F.isNight(Date.parse('2026-11-03T12:00:00Z')), F.isNight(Date.parse('2026-11-03T03:00:00Z'))], [true, false], '서울 21시 밤, 12시 낮');
   const avg = evs.reduce((a, b) => a + b, 0) / evs.length; assert.ok(avg > 1000 && avg < 1400, `평균 ${avg}`);
   // (달마루섬 5단계) five waters: 윤슬만 the sea's without the open-water fish, 거울호수 the river's without the stream fish,
   // the waterfall pools the river's without the common ones -- every season something, a pool's cast worth more
@@ -78,13 +84,14 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   assert.equal((await req('/api/island/fish/finish', sa, { fishId: slow.fishId, presses: press(slow.seq, slow.arrows, 2000) })).data.error, 'FISH_LATE', '시간 초과');
   const shaky = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: 'anchovy' });
   const withSlip = [{ dir: wrongWay[shaky.seq[0]], t: 50 }, ...press(shaky.seq, shaky.arrows).map((p) => ({ ...p, t: p.t + 100 }))]; // (a wrong one first, then the whole row)
-  assert.equal((await req('/api/island/fish/finish', sa, { fishId: shaky.fishId, presses: withSlip })).data.species, 'anchovy', '틀린 뒤 처음부터 다 누르면 잡힘');
+  const caughtSizes = []; const slipped = (await req('/api/island/fish/finish', sa, { fishId: shaky.fishId, presses: withSlip })).data; caughtSizes.push(['anchovy', slipped.size]);
+  assert.equal(slipped.species, 'anchovy', '틀린 뒤 처음부터 다 누르면 잡힘');
   const cast = (await req('/api/island/fish/start', sa, {})).data;
   await req('/api/test/fish/bite', sa, { species: 'octopus' });
   const concurrent = await Promise.all(Array.from({ length: 4 }, () => req('/api/island/fish/finish', sa, { fishId: cast.fishId, presses: press(cast.seq) })));
   const got = concurrent[0].data;
   for (const reply of concurrent) { assert.equal(reply.status, 200); assert.deepEqual(reply.data, got, '동일 cast 동시 완료는 같은 답·도감 한 번'); }
-  assert.deepEqual([got.species, got.name, got.firstTime], ['octopus', '문어', true]);
+  assert.deepEqual([got.species, got.name, got.firstTime], ['octopus', '문어', true]); caughtSizes.push(['octopus', got.size]);
   // (v1.10.221 도구 닳기) the misses above wore nothing; two catches (the anchovy after a slip, this one asked at once more than once), two uses
   assert.deepEqual([got.tool?.uses, got.tool?.broke], [28, false]); assert.equal(((await req('/api/island/bag', sa)).data.items || []).find((e) => e.tool === 'fishing_rod').uses, 28);
   assert.deepEqual((await req('/api/island/fish/finish', sa, { fishId: cast.fishId, presses: press(cast.seq) })).data.species, 'octopus', '같은 답');
@@ -94,13 +101,13 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   const dex = (await req('/api/island/dex', sa)).data;
   assert.equal(dex.found, 2); assert.equal(dex.entries.find((e) => e.id === 'fish_octopus').count, 1);
   assert.equal((await req('/api/skins/title', sa, { skinId: 'dex_title_1' })).status, 409, '도감 4개 전에는 못 씀');
-  for (const sp of ['goby', 'mackerel']) { const c2 = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: sp }); assert.equal((await req('/api/island/fish/finish', sa, { fishId: c2.fishId, presses: press(c2.seq) })).data.species, sp); } // (멸치 above: four kinds)
+  for (const sp of ['goby', 'mackerel']) { const c2 = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: sp }); const r2 = (await req('/api/island/fish/finish', sa, { fishId: c2.fishId, presses: press(c2.seq) })).data; assert.equal(r2.species, sp); caughtSizes.push([sp, r2.size]); } // (멸치 above: four kinds)
   const worn = (await req('/api/skins/title', sa, { skinId: 'dex_title_1' })).data; assert.equal(worn.avatar.title, '섬 탐험가');
   const fisher = require('../lib/island-quests').STORIES.fisher.at;
   await at(fisher.x, fisher.z);
   const before = (await req('/api/points', sa)).data.balance;
   const sold = (await req('/api/island/sell', sa, { place: 'fisher', requestId: 'fish-sale-0001' })).data;
-  assert.equal(sold.paid, 4000 + 300 + 500 + 400); assert.equal((await req('/api/points', sa)).data.balance, before + sold.paid);
+  assert.equal(sold.paid, caughtSizes.reduce((n, [sp, cm]) => n + require('../lib/island-items').fishPrice(`fish_${sp}`, cm), 0), '크기대로 (v1.10.231)'); assert.equal((await req('/api/points', sa)).data.balance, before + sold.paid);
   // v1.10.89 낚시왕: the week of that sale closed -> its 1st holds 낚시왕 (worn in the title slot), once, on the hall
   assert.equal((await req('/api/skins/title', sa, { skinId: 'title_fishking' })).status, 409, '낚시왕 전에는 못 씀');
   const nextWeek = Date.now() + 7 * 24 * 60 * 60 * 1000;
