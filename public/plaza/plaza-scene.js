@@ -3090,7 +3090,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const l of lots || []) {
       const lot = HOME.lotById(l.id); if (!lot) continue;
       yardsMoved = noteYard(l) || yardsMoved; // (v1.10.225: its yard, whatever else changed)
-      const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}:${l.stage}:${l.building}:${l.yardLevel || 1}`; const was = homesShown.get(l.id); if (was?.key === key) continue;
+      const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}:${l.stage}:${l.building}`; const lv = l.yardLevel || 1; const was = homesShown.get(l.id); if (was?.key === key && was.lv === lv) continue; // (v1.10.230: its fence's level too)
       if (was) { was.root.removeFromParent(); occlusion.remove(was.root); const k = buildingRoots.indexOf(was.root); if (k >= 0) buildingRoots.splice(k, 1); }
       const root = new THREE.Group(); root.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); root.rotation.y = lot.yaw; homesGroup.add(root); // (the model's front, -Z, toward the walk)
       const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot, l.owner !== null ? HOME.stageOf(l.stage).n : 2); const who = l.owner || '이웃';
@@ -3115,7 +3115,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       { const [, , gz] = YARD.fenceOf(1); signboard('plaque', l.owner !== null ? (l.mine ? '내 집' : `${[...who].length > 8 ? `${[...who].slice(0, 7).join('')}…` : who}의 집`) : '빈 집터', root, YARD.GATE / 2 + 0.9, 0, gz - 0.4, 0);
         for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), mat(0x8a6a48), sx * (YARD.GATE / 2 + 0.1), 0.6, gz, root);
         const lv = l.owner !== null ? l.yardLevel || 1 : 1; if (lv < YARD.LEVELS) { const [x0, x1, , z1] = YARD.fenceOf(YARD.LEVELS); for (const [sx, sz] of [[x0, gz], [x1, gz], [x0, z1], [x1, z1]]) mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), mat(0xc9a77a), sx, 0.3, sz, root); } }
-      homesShown.set(l.id, { key, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
+      homesShown.set(l.id, { key, lv, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
     }
     if (yardsMoved) drawYards();
   }
@@ -4543,7 +4543,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
     }
     const reached = (x, z, near = 1.5) => { for (let i = Math.floor(x - near); i <= Math.ceil(x + near); i += 1) for (let j = Math.floor(z - near); j <= Math.ceil(z + near); j += 1) if (Math.abs(i) <= R && Math.abs(j) <= R && seen[idx(i, j)] === 1 && Math.hypot(i - x, j - z) <= near) return true; return false; };
-    const targets = [...Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && Math.hypot(d.x, d.z) < T.ISLAND_RADIUS).map(([id, d]) => [id, d.x, d.z]), ...COTTAGES.map((c, k) => [`house${k}`, c.x + (c.face[0] - c.x) * 0.45, c.z + (c.face[1] - c.z) * 0.45])];
+    const targets = [...Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && T.coastDist(d.x, d.z) > -20).map(([id, d]) => [id, d.x, d.z]) /* (v1.10.230: on the land -- the rooms lie far out at sea; the island's radius now reaches the jail's) */, ...COTTAGES.map((c, k) => [`house${k}`, c.x + (c.face[0] - c.x) * 0.45, c.z + (c.face[1] - c.z) * 0.45])];
     if (T.STRUCTURES) {
       const S = T.STRUCTURES; const st = T.STAIRS;
       targets.push(['lighthouse', S.lighthouse.x + 5, S.lighthouse.z - 1], ['pierEnd', T.PIER.x + T.PIER.ux * 8, T.PIER.z + T.PIER.uz * 8], ['dock', T.DOCK.x, T.DOCK.z], ['isle', T.dalmaru.ISLE.x, T.dalmaru.ISLE.z], ['stairsTop', st.x + st.ux * 34 + st.nx * 1.7, st.z + st.uz * 34 + st.nz * 1.7], ['ridge', st.x + st.ux * 35 - st.nx * 8, st.z + st.uz * 35 - st.nz * 8]);

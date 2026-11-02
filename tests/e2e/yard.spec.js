@@ -62,7 +62,10 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     const L = Y.lotById(lot); const pieces = (await post(request, '/api/test/home/furniture', a.token, { ids: ['fence_wood', 'fence_wood', 'fence_wood', 'bench', 'lantern_stone', 'garden_light', 'flowerbed', 'fence_stone'].map(Y.goodId) })).data.pieces;
     // the empty yard's frames (the line's first half)
     const stand = (lx, lz) => page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [Y.world(L, lx, lz).x, Y.world(L, lx, lz).z]);
-    await stand(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(6000); const empty = await frames(page);
+    // (v1.10.230 울타리 마을: from far off -- the 관공서, 350 m -- in by a warp: the server took the one long step for a stale pose and
+    // put me back at the hall's door, CI #376; the steps within the yard stay teleports)
+    const arrive = (lx, lz) => page.evaluate(([x, z]) => window.PlazaWarp(x, z), [Y.world(L, lx, lz).x, Y.world(L, lx, lz).z]);
+    await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(6000); const empty = await frames(page);
     // in my yard: 「마당 꾸미기」 (the button; on a PC Y too)
     await stand(-4.25, -2.25); await expect(page.locator('#yardEditBtn')).toBeVisible({ timeout: 10000 });
     if (isMobile) await page.locator('#yardEditBtn').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyY'); }
@@ -113,9 +116,9 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     const before = (await get(request, '/api/points', a.token)).data.balance; await card.locator('button', { hasText: '넓히기 · 100,000P' }).click();
     await expect(card).toBeHidden({ timeout: 15000 }); expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 100000);
     await through(page, 'room:exit', '나가기', 'island');
-    const side = (() => { for (let lz = 0; lz < 3; lz += 0.25) for (const lx of [-6.25, -6.5, 6.5, 6.75]) { const p = { uid: 'x', id: Y.goodId('fence_stone'), x: lx, z: lz, rot: 1 }; if (Y.placeError(p, [], L, 1, 1) && !Y.placeError(p, [], L, 1, 2)) return [lx, lz]; } return null; })();
+    const side = (() => { for (let lz = 0; lz < 3; lz += 0.25) for (const lx of [-9.25, -9.5, 9.25, 9.5]) { /* (v1.10.230: the fence 18 m across at first, 22 made bigger -- the strip between) */ const p = { uid: 'x', id: Y.goodId('fence_stone'), x: lx, z: lz, rot: 1 }; if (Y.placeError(p, [], L, 1, 1) && !Y.placeError(p, [], L, 1, 2)) return [lx, lz]; } return null; })();
     expect(side, '넓히기 1로 생긴 옆 칸').not.toBe(null);
-    await stand(side[0] > 0 ? 4.75 : -4.75, -2.25); await expect(page.locator('#yardEditBtn')).toBeVisible({ timeout: 10000 }); await page.locator('#yardEditBtn').click(); await expect(edit).toBeVisible();
+    await arrive(side[0] > 0 ? 4.75 : -4.75, -2.25); await expect(page.locator('#yardEditBtn')).toBeVisible({ timeout: 10000 }); await page.locator('#yardEditBtn').click(); await expect(edit).toBeVisible();
     way = null; await placeAt(by('fence_stone')[0].uid, side[0], side[1], 1); await page.locator('#plazaCloseBtn').click();
     // night: the stone lantern and the garden light lit (the loader's glow, as the windows)
     expect(await page.evaluate(() => window.IslandAssets.REGISTRY['yard.lantern_stone'].nightGlow)).toBe(true);
@@ -134,10 +137,10 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     expect(yard.length).toBe(60);
     await expect(page.locator('#yardEditBtn')).toBeVisible(); // (60 placed: the count the server lets)
     await expect.poll(() => page.evaluate((id) => window.PlazaDebug().yards().lots.find((l) => l.id === id)?.n, lot), { timeout: 20000 }).toBe(60);
-    await stand(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(6000); const full = await frames(page);
+    await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(6000); const full = await frames(page);
     await shot('yard-full');
     await time('night'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().projects().night), { timeout: 30000 }).toBe(true);
-    await stand(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await shot('yard-night', page, 2500);
+    await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await shot('yard-night', page, 2500);
     await time('day');
     console.log(`YARD-FPS ${test.info().project.name} 빈 마당 ${empty.avgMs} ms (${empty.fps} fps, draw ${empty.calls}) → 60개 ${full.avgMs} ms (${full.fps} fps, draw ${full.calls})`);
     test.info().annotations.push({ type: 'yard-fps', description: `${empty.avgMs} → ${full.avgMs} ms` });

@@ -619,7 +619,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const gazebo = d.assets.attaches.find((x) => x.ids.includes('facility.chat'));
   expect(gazebo.zone).toBeGreaterThanOrEqual(0);
   expect(gazebo.url).toContain(`/${gazebo.look}/gazebo_${gazebo.look}_v1.glb`);
-  for (const prop of d.assets.attaches.filter((x) => x.ids.includes('prop.bench') || x.ids.includes('prop.planter'))) {
+  for (const prop of d.assets.attaches.filter((x) => (x.ids.includes('prop.bench') || x.ids.includes('prop.planter')) && x.zone !== 3)) { // (v1.10.230: 툇마루섬's little gardens take the isle's season)
     expect(prop.zone).toBe(-1); expect(prop.look).toBe('summer'); // the neutral plaza
   }
   // v1.10.29: each flower colour its own model in every season; the bridges and yard fences take their zone's season

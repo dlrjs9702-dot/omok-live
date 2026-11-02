@@ -403,7 +403,7 @@
       for (const p of sides) benches.push({ ...p, r: 0.9, yaw: Math.atan2(-g.ox, -g.oz), rim: true }); // (facing in, away from the kerb)
       lamps.push({ x: g.x + g.ox * 1.6, z: g.z + g.oz * 1.6, r: 0.35 });
     }
-    for (const g of ISLE_GARDENS) { beds.push({ x: g.x, z: g.z, r: 1.1, i: beds.length }); for (const sx of [-2.6, 2.6]) benches.push({ x: g.x + sx, z: g.z, r: 0.9, yaw: Math.atan2(-sx, 0) }); } // (v1.10.230)
+    for (const g of ISLE_GARDENS) { beds.push({ x: g.x, z: g.z, r: 1.1, i: beds.length }); for (const sx of [-2.6, 2.6]) benches.push({ x: g.x + sx, z: g.z, r: 0.9, yaw: Math.atan2(-sx, 0), garden: g }); } // (v1.10.230: facing its own bed)
     const seats = benches.map((b, k) => { const ry = b.yaw; return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
     paving().gardens.forEach((g, k) => {
