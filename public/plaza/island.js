@@ -1066,8 +1066,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // (the 안내 지도 window: wheel, drag, pinch). The names stay one size however close, each above its dot -- below,
   // right or left of it when that is taken, left out when all are (closer in, there is room). Returns the scale and centre it drew at.
   function drawMap(ctx, w, h, me, view = {}) {
-    const zoom = view.zoom || 1; const cx = view.x || 0; const cz = view.z || 0; const u = Math.min(w, h);
-    const s = (u / (T.MAP === 'dalmaru' ? 380 : 236)) * zoom; /* (달마루섬: about twice across) */ const X = (x) => w / 2 + (x - cx) * s; const Z = (z) => h / 2 + (z - cz) * s;
+    const DAL = T.MAP === 'dalmaru'; const zoom = view.zoom || 1; const cx = view.x || 0; const cz = view.z ?? (DAL ? 45 : 0); const u = Math.min(w, h);
+    const s = (u / (DAL ? 470 : 236)) * zoom; /* (달마루섬: about twice across; v1.10.230 the 울타리 마을 south of the ring in it too -- 470 across, its middle 45 m south) */ const X = (x) => w / 2 + (x - cx) * s; const Z = (z) => h / 2 + (z - cz) * s;
     drawGround(ctx, w, h, X, Z, s);
     const font = (k) => `800 ${Math.round(u / k)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

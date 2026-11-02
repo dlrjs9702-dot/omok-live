@@ -29,6 +29,14 @@
   const isleDist = (x, z) => Math.hypot(x - ISLE.x, (z - ISLE.z) * (z < ISLE.z ? ISLE.r / ISLE.rn : 1));
   // the crescent's horns end in round capes (the bare tips are a point): 윤슬다리 lands on them, 초승등대 and 달끝나루 stand on them
   const CAPES = [{ x: -92, z: 140, r: 14 }, { x: 92, z: 140, r: 14 }];
+  // v1.10.230 울타리 마을 (gamecenter-notes docs/yard-fenced-20261102.md, 사용자 「섬을 더 넓히고 실제 울타리로 구분되는 땅을 마당
+  // 으로」, 자리 A): new land south of 툇마루섬 past the train's ring -- a broad flat field (its corners rounded, its coast wavy as
+  // the rest), and a grass neck from the isle down to it under the ring (no pillar on land: island-train stands them in the sea)
+  const VILLAGE = { x0: -154, x1: 170, z0: 199, z1: 275, r: 14 };
+  const NECK = { x: -20, z0: 168, z1: 210, hw: 15 };
+  const villageDist = (x, z) => { const qx = Math.abs(x - (VILLAGE.x0 + VILLAGE.x1) / 2) - (VILLAGE.x1 - VILLAGE.x0) / 2 + VILLAGE.r; const qz = Math.abs(z - (VILLAGE.z0 + VILLAGE.z1) / 2) - (VILLAGE.z1 - VILLAGE.z0) / 2 + VILLAGE.r; return Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0) - VILLAGE.r; }; // (< 0 inside)
+  const neckDist = (x, z) => Math.hypot(x - NECK.x, z - Math.max(NECK.z0, Math.min(NECK.z1, z))) - NECK.hw;
+  const smax = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.max(a, b) + (h * h * k) / 4; }; // (a soft union: the neck meets the isle and the field in a curve)
   const RIDGE = { a0: (184 * Math.PI) / 180, a1: (356 * Math.PI) / 180, inner: 128, top: 22 }; // 달마루 능선: angles round the north, the cliff's foot radius, the ridge's height
   const PLAZA = { x: 0, z: -84, hw: 44, d0: -112, d1: -52, h: 1.2 }; // 대청마당: a terrace before the cliff (half width, north and south edges)
   const SEA = -0.6;
@@ -51,7 +59,13 @@
     const crescent = Math.min(dOut, dBay);
     const isle = ISLE.r + 1.2 * Math.sin(5 * Math.atan2(z - ISLE.z, x) + 0.7) - isleDist(x, z);
     let cape = -Infinity; for (const c of CAPES) cape = Math.max(cape, c.r - Math.hypot(x - c.x, z - c.z)); // (a loop, not a list made per call)
-    return Math.max(crescent, isle, cape);
+    // (the village counts only where it could: its box's distance bounds it from above -- the wobble 2.3 and the soft union's 2.5
+    // at most -- and the soft union is the isle itself once the village is 12 below it; the same answer, no seam, a third of the cost)
+    const ox = Math.max(VILLAGE.x0 - x, 0, x - VILLAGE.x1); const oz = Math.max(NECK.z0 - NECK.hw - z, 0, z - VILLAGE.z1);
+    if (4.8 - Math.hypot(ox, oz) <= isle - 12) return Math.max(crescent, isle, cape);
+    const wob = 1.4 * Math.sin(x * 0.11 + 0.6) + 0.9 * Math.sin(x * 0.27 + z * 0.13);
+    const village = smax(-villageDist(x, z) + wob, -neckDist(x, z) + 0.6 * Math.sin(z * 0.3), 10);
+    return Math.max(crescent, smax(isle, village, 12), cape);
   }
   const inBay = (x, z) => Math.hypot(x, z - BAY_Z) < bayR(Math.atan2(z - BAY_Z, x)) && Math.hypot(x, z) < outerR(Math.atan2(z, x)) + 4 && z < TIP_Z;
 
@@ -126,6 +140,7 @@
     const px = Math.max(0, Math.abs(x - PLAZA.x) - PLAZA.hw); const pz = Math.max(0, PLAZA.d0 - z, z - PLAZA.d1);
     const outP = Math.hypot(px, pz); if (outP < 8 && rg < 0.5) h = lerp(PLAZA.h, h, smooth(0, 8, outP));
     if (onIsle) h = lerp(0.9, h, smooth(ISLE.r - 2.5, ISLE.r + 4, isleDist(x, z))); // (2회차 15: flat nearer the shore -- the lots by it)
+    if (z > 160) { const v = Math.min(villageDist(x, z), neckDist(x, z)); if (v < 4) h = lerp(0.9, h, smooth(-12, 4, v)); } // (v1.10.230: the village's field and its neck flat, as the isle)
     // beaches: the last few metres to the water lie low (not under the ridge's sea cliffs)
     const beach = rg > 0.3 ? 1.2 : 7;
     if (cd < beach) h = lerp(SEA - 0.3, h, cd / beach);
@@ -162,7 +177,7 @@
 
   // 계절 구역 4곳: 푸른숲골(서쪽 팔), 북쪽 가운데, 잔치마루(동쪽 팔), 툇마루섬
   function seasonZoneAt(x, z) {
-    if (isleDist(x, z) < ISLE.r + 6) return 3;
+    if (isleDist(x, z) < ISLE.r + 6 || (z > 160 && Math.min(villageDist(x, z), neckDist(x, z)) < 6)) return 3; // (v1.10.230: the village with the isle)
     const a = ((Math.atan2(z, x) % TAU) + TAU) % TAU; const deg = (a * 180) / Math.PI;
     return deg >= 115 && deg < 225 ? 0 : deg >= 225 && deg < 315 ? 1 : 2;
   }
@@ -209,6 +224,6 @@
   };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };
 
-  return { CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
+  return { VILLAGE, NECK, villageDist, neckDist, CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
     coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap };
 }));

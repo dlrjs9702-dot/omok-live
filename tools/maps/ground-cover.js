@@ -17,8 +17,12 @@ function noise(x, z) {
 function buildCoverMaps(T, res = 1024) {
   const size = T.GROUND.size; const x0 = -size / 2; const z0 = -size / 2; const cell = size / res; const n = res * res;
   const P = T.dalmaru.PLAZA; const plazaDist = (x, z) => Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1);
+  // (v1.10.230: the ground 590 m across -- the open sea, 16 m and more out, is sand everywhere and rock where a cliff's band
+  // runs over it; worked out at a glance, its height left alone. The same bytes as before, a quarter of the work)
+  const FAR = -16; const cdOf = new Float32Array(n);
+  for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) cdOf[j * res + i] = T.coastDist(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell);
   const h = new Float32Array(n);
-  for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) h[j * res + i] = T.meshGroundHeight(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell);
+  for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) if (cdOf[j * res + i] >= FAR - 4) h[j * res + i] = T.meshGroundHeight(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell);
   // trees in 8 m buckets (as island.js forestAt)
   const buckets = new Map(); for (const t of T.nature().trees) { const k = `${Math.floor(t.x / 8)},${Math.floor(t.z / 8)}`; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(t); }
   const forestAt = (x, z) => { let f = 0; const bx = Math.floor(x / 8); const bz = Math.floor(z / 8); for (let a = -1; a <= 1; a += 1) for (let b = -1; b <= 1; b += 1) for (const t of buckets.get(`${bx + a},${bz + b}`) || []) { const d = Math.hypot(t.x - x, t.z - z); if (d < 6) f += 1 - d / 6; } return Math.min(1, f / 2); };
@@ -37,6 +41,7 @@ function buildCoverMaps(T, res = 1024) {
   for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) {
     const k = j * res + i; const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell;
     if (plazaDist(x, z) < -0.3) continue; // (paved)
+    if (cdOf[k] < FAR) { put(a, k, 2, 1); if (T.cliffAt(x, z) > 0.4) put(b, k, 0, 1); continue; } // (the open sea)
     const hx = (h[j * res + Math.min(res - 1, i + 1)] - h[j * res + Math.max(0, i - 1)]) / (2 * cell); const hz = (h[Math.min(res - 1, j + 1) * res + i] - h[Math.max(0, j - 1) * res + i]) / (2 * cell);
     const slope = Math.hypot(hx, hz); const cd = T.coastDist(x, z); const cliff = T.cliffAt(x, z); const n1 = noise(x * 0.9, z * 0.9);
     const sand = cd < 9 && cliff < 0.5 ? smooth(8.5, 4, cd + (n1 - 0.5) * 1.6) : h[k] < SEA - 0.3 ? 1 : 0;

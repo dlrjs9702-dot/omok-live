@@ -12,7 +12,7 @@ const { buildCoverMaps } = require('./ground-cover.js');
 const { encodeRgb } = require('./png.js');
 const { buildShoreMap } = require('./shore.js');
 
-const RES = 1024;
+const RES = 1536; // (v1.10.230: the ground 590 m across -- 0.38 m a pixel, as 380 m over 1024)
 const OUT = path.join(__dirname, '..', '..', 'public', 'assets', 'island', 'ground-v2');
 function buildAll(res = RES) {
   const p = Paths.buildPathMaps(T, res); const c = buildCoverMaps(T, res);
