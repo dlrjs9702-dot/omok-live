@@ -5335,7 +5335,7 @@ async function requestHandler(req, res) {
       if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
       await pointStore.setWorldValue('homeLots', { ...lots, [lot.id]: account });
-      const home = { lot: lot.id, stage: 1, roomV: 2, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() }; // (묶음 4-2: a 오두막 first)
+      const home = { lot: lot.id, stage: 1, roomV: 2, villageV: 1, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() }; // (묶음 4-2: a 오두막 first)
       await saveHome(account, home); notifyPointsChanged([account]); broadcastIsland('homes', { lot: lot.id });
       return sendJson(res, 200, { ok: true, home });
     });

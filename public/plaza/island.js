@@ -1019,15 +1019,15 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.
   // 달마루섬 미리보기: the new island's map drawn once from its ground (1 dot per 2 m): sand by the sea, grass, the cliff
   // rock, fresh water -- then its walks, 대청마당 and bridges on top
-  let landImage = null;
+  let landImage = null; const LAND_NZ = 500;
   function dalmaruLand() {
     if (landImage) return landImage;
-    const D = T.dalmaru; const N = 400; const cv = document.createElement('canvas'); /* (창 2단계 검토: 1 m a pixel, drawn smoothed -- the coast no longer in steps) */ cv.width = N; cv.height = N; const g = cv.getContext('2d'); const img = g.createImageData(N, N);
+    const D = T.dalmaru; const N = 400; const NZ = LAND_NZ; const cv = document.createElement('canvas'); /* (창 2단계 검토: 1 m a pixel, drawn smoothed -- the coast no longer in steps; v1.10.230 down to z 300, the 울타리 마을 in it) */ cv.width = N; cv.height = NZ; const g = cv.getContext('2d'); const img = g.createImageData(N, NZ);
     const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
     const SEA_C = rgb(0x7fcbe9); const SAND = rgb(0xf1dfae); const GRASS = rgb(0x9fd67f); const ROCK = rgb(0xb7ad9e); const FRESH = rgb(0x5fb4e0);
     const cliffs = new Uint8Array(200 * 200); for (let j = 0; j < 200; j += 1) for (let i = 0; i < 200; i += 1) cliffs[j * 200 + i] = cliffAt(-200 + i * 2 + 1, -200 + j * 2 + 1) > 0.5 ? 1 : 0; // (the cliffs on the old 2 m grid: the costly part, as before)
-    const at = (x, z) => { const cd = D.coastDist(x, z); return cd < 0 ? SEA_C : D.isWater(x, z) ? FRESH : cliffs[Math.min(199, Math.floor((z + 200) / 2)) * 200 + Math.min(199, Math.floor((x + 200) / 2))] ? ROCK : cd < 4 ? SAND : GRASS; };
-    for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
+    const at = (x, z) => { const cd = D.coastDist(x, z); return cd < 0 ? SEA_C : D.isWater(x, z) ? FRESH : z < 200 && cliffs[Math.min(199, Math.floor((z + 200) / 2)) * 200 + Math.min(199, Math.floor((x + 200) / 2))] ? ROCK : cd < 4 ? SAND : GRASS; };
+    for (let j = 0; j < NZ; j += 1) for (let i = 0; i < N; i += 1) {
       img.data.set([...at(-200 + i + 0.5, -200 + j + 0.5), 255], (j * N + i) * 4);
     }
     g.putImageData(img, 0, 0); landImage = cv; return cv;
@@ -1035,7 +1035,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   function drawGround(ctx, w, h, X, Z, s) {
     ctx.fillStyle = '#7fcbe9'; ctx.fillRect(-2 * w, -2 * h, 5 * w, 5 * h); // the sea (wide enough for a turned minimap)
     if (T.MAP === 'dalmaru') {
-      ctx.imageSmoothingEnabled = true; ctx.drawImage(dalmaruLand(), X(-200), Z(-200), 400 * s, 400 * s);
+      ctx.imageSmoothingEnabled = true; ctx.drawImage(dalmaruLand(), X(-200), Z(-200), 400 * s, LAND_NZ * s);
       for (const wk of walkCurves) { ctx.beginPath(); wk.pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.strokeStyle = '#e8d2a2'; ctx.lineWidth = (wk.w + 1) * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); }
       const P = T.dalmaru.PLAZA; ctx.fillStyle = '#f3e6c8'; ctx.fillRect(X(P.x - P.hw), Z(P.d0), P.hw * 2 * s, (P.d1 - P.d0) * s); ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 2; ctx.strokeRect(X(P.x - P.hw), Z(P.d0), P.hw * 2 * s, (P.d1 - P.d0) * s);
       for (const b of bridges) { ctx.beginPath(); ctx.moveTo(X(b.x - b.ux * b.half), Z(b.z - b.uz * b.half)); ctx.lineTo(X(b.x + b.ux * b.half), Z(b.z + b.uz * b.half)); ctx.strokeStyle = '#b07a4f'; ctx.lineWidth = b.w * s; ctx.stroke(); }
