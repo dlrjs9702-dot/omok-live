@@ -57,8 +57,8 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   await b.page.evaluate(() => clearInterval(window.__zzWatch));
   // the gift: by the other player, 선물하기, bread
   const id = await a.page.evaluate(() => window.PlazaDebug().others[0].id);
-  await a.page.evaluate((id) => { const o = window.PlazaDebug().others.find((x) => x.id === id); window.PlazaDebug().teleport(o.x - 1, o.z); }, id);
-  await expect(a.page.locator('#plazaHint')).toContainText('인사', { timeout: 10000 });
+  // (a resident walking by took the prompt -- CI 2026-11-02: each side of them in turn until it is the greeting)
+  await expect.poll(async () => { const k = (await a.page.evaluate(() => (window.__zzSide = ((window.__zzSide || 0) + 1) % 4))); await a.page.evaluate(([id, k]) => { const o = window.PlazaDebug().others.find((x) => x.id === id); const [dx, dz] = [[-1, 0], [1, 0], [0, -1], [0, 1]][k]; window.PlazaDebug().teleport(o.x + dx, o.z + dz); }, [id, k]); await a.page.waitForTimeout(700); return a.page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('인사');
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await a.page.getByRole('button', { name: '선물하기' }).click();
   await a.page.locator('.giftList button', { hasText: '빵 봉투' }).click();
