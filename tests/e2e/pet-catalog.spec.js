@@ -41,10 +41,11 @@ test('펫샵 특별 펫: 점원은 마당을 안내, 마당의 특별 펫을 데
     if (await page.locator('#adoptCard').isVisible()) { if ((await page.locator('#adoptCard strong').textContent()).startsWith(sp.name)) return true; await page.locator('#adoptCard button', { hasText: '그만두기' }).click(); } // (another one by it: again)
     await page.evaluate((slot) => { const P = window.IslandPetShop; const d = window.PlazaDebug(); const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); const q = P.petAt(day, slot, Date.now()); d.teleport(q.x + 0.5, q.z); }, sp.slot);
     await page.waitForTimeout(300); await spaceOn(page, 'adopt:', isMobile); await page.waitForTimeout(500);
-    return page.locator('#adoptCard').isVisible();
+    return (await page.locator('#adoptCard').isVisible()) && (await page.locator('#adoptCard strong').textContent()).startsWith(sp.name); // (its card -- not any: a pet walking by is the nearest at the SPACE now and then; CI #375 adopted 「고양이 (치즈)」)
   }, { timeout: 30000, intervals: [300] }).toBe(true);
   const { kind } = sp;
   await page.locator('#adoptCard input.adoptName').fill('꼬마');
+  await expect(page.locator('#adoptCard strong')).toHaveText(new RegExp(`^${sp.name}`));
   await page.locator('#adoptCard button', { hasText: '데려가기' }).click();
   await expect(page.locator('#adoptCard')).toBeHidden({ timeout: 15000 });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')), { timeout: 15000 }).toMatchObject({ kind, name: '꼬마', tag: true });
