@@ -6,7 +6,8 @@ const T = require('../../public/plaza/island-terrain.js');
 // 보이게하려는거야」): in the first person an empty hand shows only while it does something -- a weed pulled (up, the weed in it
 // from the lift at 0.62 s, down when done), a berry picked, a door's SPACE (a short reach); the rod's grip is the same hand; my
 // own skin on it. The third person: nothing. PC and phone; SHOT_DIR the photos (the real models only then).
-const recordHand = (page, ms) => page.evaluate((ms) => new Promise((done) => { const seen = []; const t0 = performance.now(); const tick = () => { const h = window.PlazaDebug().fpHand(); seen.push({ t: Math.round(performance.now() - t0), shown: h.shown, up: h.up, held: h.held, pulse: h.pulse, fist: h.fist }); if (performance.now() - t0 < ms) requestAnimationFrame(tick); else done(seen); }; tick(); }), ms);
+// every frame of the hand from now till it has come up and gone down again (at most ms: a slow runner's server answers late)
+const recordHand = (page, ms) => page.evaluate((ms) => new Promise((done) => { const seen = []; const t0 = performance.now(); const tick = () => { const h = window.PlazaDebug().fpHand(); seen.push({ t: Math.round(performance.now() - t0), shown: h.shown, up: h.up, held: h.held, pulse: h.pulse, fist: h.fist }); if (performance.now() - t0 < ms && !(seen.some((x) => x.shown) && !h.shown)) requestAnimationFrame(tick); else done(seen); }; tick(); }), ms);
 async function firstPerson(who, view = 'first') {
   const real = Boolean(process.env.SHOT_DIR);
   await who.page.evaluate(([real, view]) => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testHalloween', 'off'); localStorage.setItem('gc.testRealView', '1'); localStorage.setItem('gc.view.out', view); localStorage.setItem('gc.view.in', view); if (!real) localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, [real, view]);
@@ -33,7 +34,7 @@ test('1인칭 손: 잡초 뽑기·열매 따기·문 SPACE 동안만 손, 잡초
   const pull = async (p, w, photos = null) => { // photos: 'full' (reach, pull) or one name (the reach)
     await p.evaluate((w) => { window.PlazaWarp(w.x, w.z); window.PlazaDebug().setCamPitch?.(0.35); }, w);
     await expect(p.locator('#plazaHint')).toHaveText(/잡초/, { timeout: 10000 });
-    const rec = recordHand(p, 5000); await press(p); // (long: a phone's screenshot holds the frames)
+    const rec = recordHand(p, 15000); await press(p);
     const raised = () => expect.poll(() => p.evaluate(() => window.PlazaDebug().fpHand().up), { timeout: 5000, intervals: [16] }).toBe(1); // (the pull begins once the server said so)
     if (photos && photos !== 'full') { await raised(); await shot(p, photos, 100); }
     if (photos === 'full') { await raised(); await shot(p, 'weed-reach', 100); await expect.poll(() => p.evaluate(() => window.PlazaDebug().fpHand().held), { timeout: 5000 }).toBe('weed'); await shot(p, 'weed-pull', 150); }
@@ -52,7 +53,7 @@ test('1인칭 손: 잡초 뽑기·열매 따기·문 SPACE 동안만 손, 잡초
   if (berry) {
     await page.evaluate((p) => { window.PlazaWarp(p.x, p.z); window.PlazaDebug().setCamPitch?.(-0.1); }, berry);
     await expect(hint).toContainText('열매', { timeout: 10000 });
-    const rec = recordHand(page, 4500); await press();
+    const rec = recordHand(page, 15000); await press();
     if (process.env.SHOT_DIR) { await expect.poll(() => page.evaluate(() => window.PlazaDebug().fpHand().held), { timeout: 5000, intervals: [16] }).toBe('item').then(() => shot(page, 'fruit'), () => {}); } // (the photo only: the record below is the check) // (the fruit in the hand from 0.98 s in)
     const seen = await rec; expect(seen.some((s) => s.shown), 'a hand at the berry').toBe(true); expect(seen.some((s) => s.held === 'item'), 'the fruit in it').toBe(true);
     await expect.poll(() => d('fpHand'), { timeout: 10000 }).toMatchObject({ shown: false });
@@ -61,7 +62,7 @@ test('1인칭 손: 잡초 뽑기·열매 따기·문 SPACE 동안만 손, 잡초
   await page.evaluate(() => { window.PlazaDebug().place('store'); window.PlazaDebug().setCamPitch?.(0); }); // (the 백화점's door: in, still the first person -- the reach seen over its 1층)
   await expect(hint).toContainText('백화점', { timeout: 10000 });
   { if (process.env.SHOT_DIR) await page.evaluate(() => window.PlazaDebug().fpTap(1600)); // (the photo: the 0.38 s reach held longer -- a phone's screenshot is slower than it)
-    const rec = recordHand(page, 2500); await press();
+    const rec = recordHand(page, 8000); await press();
     if (process.env.SHOT_DIR) { await expect.poll(() => page.evaluate(() => window.PlazaDebug().fpHand().up), { timeout: 3000, intervals: [16] }).toBe(1); await shot(page, 'door-tap'); await page.evaluate(() => window.PlazaDebug().fpTap(null)); }
     const seen = await rec; expect(seen.some((s) => s.pulse === 'tap' && s.shown), JSON.stringify(seen.slice(0, 8))).toBe(true); }
   await expect.poll(() => d('fpHand'), { timeout: 10000 }).toMatchObject({ shown: false });
