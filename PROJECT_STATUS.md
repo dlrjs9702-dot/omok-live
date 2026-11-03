@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.233 메신저 사진·도감 탭
+
+- 메신저 즉시 보내기(🕒 보내는 중, 실패 시 다시 보내기·지우기)와 사진 보내기(최대 10장, 1280 px JPEG, 한 장 2 MB, 키마다 서울 날짜로 하루 200장): 사진은 따로 올린 뒤 (방, seq)로 붙임. JSON은 messenger-photos 폴더, Postgres는 messenger_photos 표. 안 보낸 사진은 하루, 보낸 사진은 7일 뒤 bytes 비움, 보내기 취소하면 사진도. GET은 방 사람만, `private, max-age=3600`. 한 시간마다 방별 남은 사진 로그 `[messenger-photos]`.
+- 주말 대회 끔(CONTEST.on=false). 철이 퀘스트 2단계 역 표지판 (-88.3, 140.3). 철갑상어 0.45, 큰 물고기 1% 이하 시험.
+- 도감 탭(바다·민물·곤충·기념, 물은 TABLE에서), 찾은 것만, 창 안 스크롤, 도감·기념사진에서 「정리」 숨김.
+- 게임관 하늘 계단 그림(에셋 92)·깨진 그림 대신 그리기, 가락(에셋 94, headTop 2.55), 김우성 어깨(에셋 95). CI 시간표 재시도 빼기, yard.spec 안정화.
+- 시험: messenger-photo(단위·e2e), dex-tabs, station-quest(e2e PC/폰).
+
 ## v1.10.232 배치 도구
 
 - 꾸미기·마당 꾸미기 창 맨 위 「🖐 배치 도구」(docs/place-tool-20261103.md): 창이 아래 가구 줄로(안 놓은 것 먼저), 가리킨 바닥(탁자 윗면 먼저)으로 미리보기, 칸 맞춤(집 0.25 m·탁자 위 0.05 m·마당 YARD.STEP), 벽 가구 0.6 m 안 벽 붙이기, 놓인 가구 누르면 다시 들기.
@@ -30,12 +38,3 @@
 - 걷는 이야기 주민 떨림(검토 진단): 숨긴 quest 분신을 people·out 목록에서 뺌(npc.root.visible).
 - 덤: 집 대문 이름 팻말 1.5배·밝은 판·진한 갈색(긴 이름 두 줄), talk-spot e2e 말 걸기 전 free-residents.
 - 시험: museum-hall(단위·e2e PC/폰), island-fishing 34종·크기 값, island-insects 박물관 창구.
-
-## v1.10.230 울타리 마을 (집터 동네를 새 땅으로)
-
-- 땅: 툇마루섬 남쪽, 기차 고리 너머 새 땅(dalmaru-terrain VILLAGE x -154~170·z 199~281, 목 NECK x -20), coastDist에 soft union, 높이 0.9로 평평. 바닥 590 m·SEG 236, 구운 지도 1536.
-- 집터 16곳(한 길 STREET_Z 236 따라 북 8·남 8, 12곳에 기존 집). 마당 = 울타리 안(18×16 → 22×20 → 26×24), 울타리 조각·문 1.4 m·이름 팻말(주인 「내 집」, 남 「○○의 집」)·문기둥·최대 크기 모서리 말뚝.
-- 이사(server homeOf villageV 1): 집 안 그대로, 마당 물건은 가구 창고로, 관공서 쪽지 한 번, 게시판 알림 한 번. 새로 지은 집은 처음부터 villageV 1.
-- 옛 툇마루섬 집터 → 꽃밭 4곳·벤치 8. 표지 「울타리 마을 ↓」「울타리 마을」. 지도·미니맵 땅 그림 z 300까지.
-- 주민은 마을로 내려가는 목 길에서 멈추지 않음(서버 걸음과 어긋남). 잡초 범위 r 200, 서버 시작 바닥 계산 빠르게(ground-cover 먼 바다 건너뜀).
-- 시험: dalmaru-island 16곳, island-yard(울타리 안·새 집 쪽지 없음), yard·weekly-new e2e 마을 이동은 PlazaWarp.
