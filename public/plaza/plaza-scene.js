@@ -527,6 +527,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     mesh(new THREE.BoxGeometry(fw + 0.12, fh + 0.12, 0.08), mat(0x9c7a52), fx, fy, 0, v); if (kind !== 'wall') mesh(new THREE.BoxGeometry(0.1, fy, 0.1), mat(0x7a5a3a), fx, fy / 2, 0.06, v);
     assets.attach(`sign.${kind}`, g, v);
     const face = boardText(text, fw, fh, fy, fz - 0.002, look?.colors || (kind === 'station' ? ['#fbfaf6', '#2f3a44'] : ['#f4ead6', '#4a3828'])); face.position.x = fx; g.add(face);
+    if (look?.glow) { face.material.emissive.set(0xffffff); face.material.emissiveMap = face.material.map; face.material.emissiveIntensity = look.glow; } /* (the gate's: lit a little, light in the shade too) */
     g.userData.signboard = text; signboards.push(g); return g;
   }
 
@@ -3115,7 +3116,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
       // (v1.10.230 울타리 마을: by the gate, the owner's name on a post -- the gate 10 m before the house; the widest fence's corners
       // staked while the yard is smaller, 「넓히면 여기까지」; the gate's two posts a little stouter)
-      { const [, , gz] = YARD.fenceOf(1); const name = [...who].length > 8 ? `${[...who].slice(0, 7).join('')}…` : who; signboard('plaque', l.owner !== null ? (l.mine ? '내 집' : [...name].length > 3 ? `${name}의\n집` : `${name}의 집`) : '빈 집터', root, YARD.GATE / 2 + 0.9, 0, gz - 0.4, 0, { scale: 1.5, colors: ['#fffaf0', '#3b2410'] }); // (v1.10.231 총괄: a light board, dark-brown bold words, read from about 5 m -- half again as big, a long name on two lines)
+      { const [, , gz] = YARD.fenceOf(1); const name = [...who].length > 8 ? `${[...who].slice(0, 7).join('')}…` : who; signboard('plaque', l.owner !== null ? (l.mine ? '내 집' : [...name].length > 3 ? `${name}의\n집` : `${name}의 집`) : '빈 집터', root, YARD.GATE / 2 + 0.9, 0, gz - 0.4, 0, { scale: 1.5, colors: ['#fffaf0', '#3b2410'], glow: 0.45 }); // (v1.10.231 총괄: a light board, dark-brown bold words, read from about 5 m -- half again as big, a long name on two lines)
         for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), mat(0x8a6a48), sx * (YARD.GATE / 2 + 0.1), 0.6, gz, root);
         const lv = l.owner !== null ? l.yardLevel || 1 : 1; if (lv < YARD.LEVELS) { const [x0, x1, , z1] = YARD.fenceOf(YARD.LEVELS); for (const [sx, sz] of [[x0, gz], [x1, gz], [x0, z1], [x1, z1]]) mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), mat(0xc9a77a), sx, 0.3, sz, root); } }
       homesShown.set(l.id, { key, lv, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
