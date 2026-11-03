@@ -69,7 +69,9 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     // pressed in the room: picked up again; turned; placed
     await expect.poll(async () => { const s = await screen(want.x, want.z); if (isMobile) await page.touchscreen.tap(s.x, s.y); else await page.mouse.click(s.x, s.y); await page.waitForTimeout(300); return (await state()).held?.uid; }, { timeout: 15000 }).toBe(uid('sofa__mint'));
     if (isMobile) await page.locator('#placeBar button[aria-label="돌리기 (R)"]').click(); else await page.keyboard.press('KeyR');
-    expect((await state()).held.rot).toBe(1); await put();
+    expect((await state()).held.rot).toBe(1);
+    if (!isMobile) { const was = (await state()).held; await page.keyboard.press('KeyW'); expect((await state()).held).not.toMatchObject({ x: was.x, z: was.z }); await page.keyboard.press('KeyS'); expect((await state()).held).toMatchObject({ x: was.x, z: was.z }); } // (문제 기록 1103 10: W/S a place, as the arrows)
+    await put();
     await expect.poll(async () => (await inside()).find((p) => p.uid === uid('sofa__mint'))?.rot, { timeout: 15000 }).toBe(1);
     // a wall clock: red in the middle (no ✓), green and flush by the back wall
     await strip('wall_clock__oak').click(); await aim(0, 0); expect((await state()).why).toBeTruthy(); await expect(page.locator('#placeBar .placePut')).toBeDisabled(); await shot('place-red', 600);

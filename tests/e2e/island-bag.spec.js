@@ -24,9 +24,9 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await page.locator('.islandBagSlot[data-item="bread"]').click(); await expect(page.locator('#islandBagInfo')).toContainText('빵');
   await expect(page.locator('.bagMenu')).toHaveCount(0); // (bread does nothing in the bag)
   await page.locator('.islandBagSlot[data-item="bugnet"]').click(); await expect(page.locator('.islandBagSlot[data-item="bugnet"] .bagMenu [role="menuitem"]')).toHaveText(['들기']);
-  // Shift+→ (keys): the first one a place on
+  // Shift+D (keys, 문제 기록 1103 10: W/A/S/D as the arrows): the first one a place on
   const first = await order();
-  await page.locator('.islandBagSlot').first().focus(); await page.keyboard.press('Shift+ArrowRight');
+  await page.locator('.islandBagSlot').first().focus(); await page.keyboard.press('Shift+KeyD');
   await expect.poll(order).toEqual([first[1], first[0], ...first.slice(2)]);
   if (!isMobile) { // dragged onto another: they swap
     const now = await order();

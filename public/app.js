@@ -2504,7 +2504,7 @@
       slot.addEventListener('click', () => { if (bagHeld === i) return; /* (C5 Codex 4차 P2-2: the finger lifted from the one held -- its own click, not a drop) */ if (bagHeld != null) { const from = bagHeld; bagHeld = null; moveBagSlot(from, i); return; } if (item) pickBagSlot(i); });
       slot.addEventListener('keydown', (event) => {
         if (event.target !== slot) return; // (a key on its bubble's button is the button's)
-        const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -bagCols(), ArrowDown: bagCols() }[event.key];
+        const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -bagCols(), ArrowDown: bagCols() }[arrowKey(event)]; // (W/A/S/D too, Shift+ moves)
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); slot.click(); return; }
         if (step == null) return; event.preventDefault(); const to = Math.max(0, Math.min(grid.children.length - 1, i + step));
         if (event.shiftKey && item) { moveBagSlot(i, to).then(() => grid.children[Math.min(to, bagNow.items.length - 1)]?.focus()); return; }
@@ -2876,7 +2876,7 @@
       card.append(row); openPlazaWindow('책 수레', [card]); return;
     }
     if (act === 'choose' && t.type === 'train') { // (the next train: read on the board, said in minutes)
-      const card = el('section', 'card visitCard'); card.append(el('p', '', '역 이름판을 보고, 다음 열차가 몇 분 뒤에 오는지 적어요.'));
+      const card = el('section', 'card visitCard'); card.append(el('p', '', '역 이름판을 보고, 다음 열차가 몇 분 뒤에 오는지 적어요.'), el('p', 'smallMuted', '이름판 아래 도착 안내판을 보세요.'));
       const input = el('input', 'visitMinutes'); input.type = 'number'; input.min = '0'; input.max = '99'; input.inputMode = 'numeric'; input.setAttribute('aria-label', '몇 분 뒤');
       const ok = el('button', 'isle-pill', '붙이기'); ok.type = 'button'; ok.addEventListener('click', async () => { const n = Number(input.value); if (!Number.isFinite(n) || input.value === '') return showToast('몇 분인지 적어요.'); const gen = plazaWindowGen; if (await visitPost(story, 'choose', { choice: n })) closeIfStill(gen); });
       const row = el('div', 'visitChoices'); row.append(input, el('span', '', '분 뒤'), ok); card.append(row); openPlazaWindow('열차 시간표', [card]); input.focus(); return;
@@ -3050,7 +3050,7 @@
       if (!buttons.includes(event.target) && event.target !== byId('plazaCloseBtn')) { event.preventDefault(); if (lostCard.querySelector('.talkChoices')) buttons[0]?.focus(); else (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); } // (A-6: in the choices, Space first points at one)
       return; // a focused answer (or 닫기) is pressed by the browser
     }
-    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[arrowKey(event)];
     if (step) { // the answers round (v1.10.193 2차: no 닫기 on the bubble -- Esc, 잘 가요 or a tap outside)
       const ring = buttons;
       event.preventDefault(); const at = ring.indexOf(event.target); ring[at < 0 ? (step > 0 ? 0 : ring.length - 1) : (at + step + ring.length) % ring.length].focus(); return;
@@ -3624,7 +3624,7 @@
   }
   window.addEventListener('keydown', (event) => { // (a PC: R turns, Esc lets go -- or ends --, the arrows step one place)
     if (!placeOn || event.isComposing || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || '')) return;
-    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[event.key];
+    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[arrowKey(event)];
     if (event.code === 'KeyR') { event.preventDefault(); placeTurn(); } else if (event.key === 'Escape') { event.preventDefault(); placeDrop(); } else if (step) { event.preventDefault(); placeStep(...step); } else if (event.key === 'Enter') { event.preventDefault(); placePut(); }
   }, true);
   plazaStage.addEventListener('mousedown', (event) => { if (placeOn && event.button === 1) { event.preventDefault(); placeTurn(); } }); // (the wheel's click turns it)
@@ -4037,7 +4037,7 @@
   // (문제 기록 3회차 4 「낚시 미니게임: 입질 때 화살표」) at the bite, arrows to press in order (4~12, more the rarer the
   // fish) before the bar runs out: the arrow keys on a PC, the four buttons on a phone; a wrong one shakes the row red and
   // starts it over (「틀렸어요! 처음부터」), the last one pulls it in. Out of time, the scene lets it go (the bite's end).
-  const FISH_DIRS = ['up', 'right', 'down', 'left']; const FISH_KEYS = { ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down', ArrowLeft: 'left' };
+  const FISH_DIRS = ['up', 'right', 'down', 'left']; const FISH_KEYS = { ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down', ArrowLeft: 'left', KeyW: 'up', KeyD: 'right', KeyS: 'down', KeyA: 'left' }; // (문제 기록 1103 10: W/A/S/D too -- the walk's keys never let the line go)
   const fishArrowsBox = byId('fishArrows'); let fishGame = null;
   function fishArrowsStart(n, ms) {
     // (the server's arrows, the first n of its twelve; every press kept with its time, sent at the pull -- Codex 검토 #1)
@@ -5444,16 +5444,35 @@
   }
   for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.addEventListener('click', () => { gameTab.mode = tab.dataset.gameMode; showGameTab(); });
   for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.addEventListener('click', () => { gameTab.kind = tab.dataset.gameKind; showGameTab(); });
+  // (문제 기록 1103 10, 사용자 「선택창도 WASD로」) W/A/S/D as the arrows in every picker -- the physical keys, so a Korean input
+  // mode too; never in a text box, never with Ctrl/Alt/Cmd
+  function arrowKey(e) { const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '') || e.target?.isContentEditable; return (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && { KeyW: 'ArrowUp', KeyA: 'ArrowLeft', KeyS: 'ArrowDown', KeyD: 'ArrowRight' }[e.code]) || e.key; }
   // v1.10.63 keyboard in the game hall: arrow keys move among the buttons of one row of tabs, game cards or room cards;
   // Enter/Space press the focused one (native buttons), Tab still leaves the group
   const ARROW_GROUPS = '.gameTabs, .gamePicker, .soloGamesPanel, #publicRoomList, .gamehallChips, .gamehallGrid, .gameSheetActions'; // v1.10.73: the game hall's chips, cards and sheet buttons
   document.addEventListener('keydown', event => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    const key = arrowKey(event); const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[key];
     const group = step && event.target.closest?.(ARROW_GROUPS);
     if (!group || event.altKey || event.ctrlKey || event.metaKey || event.target.matches('input, textarea, select, summary')) return;
     const buttons = [...group.querySelectorAll('button:not(:disabled)')].filter(button => button.offsetParent);
     const at = buttons.indexOf(event.target);
-    if (at < 0 || buttons.length < 2) return;
+    if (at < 0) return;
+    // (문제 기록 1103 10, 사용자 2026-11-04 「위 아래로 자유롭게」) the cards and the rooms: up and down the row on the screen, the
+    // nearest in its column -- from the top row up to the chips; from the chips down to the first card
+    const vertical = key === 'ArrowUp' || key === 'ArrowDown';
+    if (vertical && group.matches('.gamehallChips')) {
+      if (key === 'ArrowDown') { const first = [...gamehallView.querySelectorAll('.gamehallGrid .gameCard, .gamehallRooms button:not(:disabled)')].find((b) => b.offsetParent); if (first) { event.preventDefault(); first.focus(); } }
+      return;
+    }
+    if (vertical && group.matches('.gamehallGrid, #publicRoomList')) {
+      event.preventDefault(); const down = key === 'ArrowDown'; const r = event.target.getBoundingClientRect(); const cx = r.left + r.width / 2;
+      const by = buttons.map((b) => [b, b.getBoundingClientRect()]).filter(([, q]) => (down ? q.top > r.top + 4 : q.top < r.top - 4));
+      if (!by.length) { if (!down && gamehallView.contains(group)) (hallChips.querySelector('[aria-selected="true"]') || hallChips.querySelector('button'))?.focus(); return; }
+      const top = down ? Math.min(...by.map(([, q]) => q.top)) : Math.max(...by.map(([, q]) => q.top));
+      const row = by.filter(([, q]) => Math.abs(q.top - top) < 4); const off = ([, q]) => Math.abs(q.left + q.width / 2 - cx);
+      row.sort((a, b) => off(a) - off(b))[0][0].focus(); return;
+    }
+    if (buttons.length < 2) return;
     event.preventDefault();
     buttons[(at + step + buttons.length) % buttons.length].focus();
   });

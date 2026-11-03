@@ -22,7 +22,9 @@ test('철이 2단계: 초승역 이름판 앞에서 「다음 열차 세기」�
   if (process.env.SHOT_DIR) { await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-station-board.png` }); }
   if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
   const input = page.locator('input.visitMinutes'); await expect(input).toBeVisible({ timeout: 10000 });
-  const minutes = await page.evaluate(() => { const soon = Object.values(window.IslandTrain.nextAt('W', Date.now())).filter((v) => v != null); return soon.length ? Math.ceil(Math.min(...soon) / 60) : 0; });
+  // (문제 기록 1103 8) read on the board under the name: 「다음 열차 · ○○선 N분 뒤」 (or 곧 도착)
+  const board = await page.evaluate(() => window.PlazaDebug().trainBoards().find((b) => b.id === 'W')?.text); expect(board).toMatch(/^다음 열차 · .+ (\d+분 뒤|곧 도착)$/);
+  const minutes = Number(board.match(/(\d+)분 뒤$/)?.[1] || 0);
   await input.fill(String(minutes)); await page.locator('.visitChoices button', { hasText: '붙이기' }).click();
   await expect(page.locator('#toast')).toContainText('시간표가 잘 붙었어요', { timeout: 10000 });
   // the lift's prompt at its door, as before
