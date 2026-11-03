@@ -2959,7 +2959,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     put('mall.floor1', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(STORE.ROOM.w, 0.2, STORE.ROOM.d), mat(0xeadfc8), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(STORE.ROOM.w, 4, 0.3), mat(0xf6ecd4), 0, 2, STORE.ROOM.d / 2, f); });
     for (const p of STORE.PROPS) if (p.id) put(p.id, p.x, 0, p.at, p.yaw, (f) => mesh(new THREE.BoxGeometry(Math.max(p.w, 0.1), 1.0, Math.max(p.d, 0.1)), mat(0xc9955c), 0, 0.5, p.z - p.at, f));
     for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.14, 0.18, 0.1), mat(0xd8c3a0), 0, 0.09, 0, v); at.add(v); assets.attach(`good.${s.look || s.id}`, at, v);
-      if (s.id.startsWith('bike_')) for (const w of [BIKE.front, BIKE.rear]) { const r = new THREE.Group(); r.position.set(w[0] * 0.55, w[1] * 0.55, w[2] * 0.55); r.scale.setScalar(0.55); at.add(r); assets.attach('bike.wheel', r, new THREE.Group()); } } // (문제 기록 1104 C 「자전거가 땅을 파고」: the frame alone lay on its mudguards -- its two wheels under it, as one ridden (the good's 0.55))
+      if (s.id.startsWith('bike_')) for (const w of [BIKE.front, BIKE.rear]) { const r = new THREE.Group(); r.position.set(...w); at.add(r); assets.attach('bike.wheel', r, new THREE.Group()); } } // (문제 기록 1104 C 「자전거가 땅을 파고」: the frame alone lay on its mudguards -- its two wheels under it, as big as one ridden)
     // the counter's keeper (the 잡화점's own look)
     const keepers = STORE.SECTORS.filter((s) => s.keeper).map((s) => {
       const k = makeCharacter({ shirt: 0xf3e6c8, hair: 0x3d2b1f, skin: 0xffdcbc });
@@ -3645,8 +3645,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // have been out of it once since coming in; not turned back in; not in a window, decorating, placing or seated.
   const DOORWAY = { w: 1.6, d: 1.2, near: 0.95, hold: 0.3 };
   function doorwayOf(space) {
-    if (space === 'townhall') return { id: 'room:exit', key: space, at: roomAt, ex: ROOM.exit, wall: ROOM.d / 2 - 0.1, out: 1, y: ROOM.y };
-    if (space === 'store') return { id: 'store:exit', key: space, at: STORE.world, ex: STORE.ROOM.exit, wall: STORE.ROOM.d / 2 - 0.1, out: -1, y: STORE.ROOM.y };
+    if (space === 'townhall') return { id: 'room:exit', key: space, at: roomAt, ex: ROOM.exit, wall: ROOM.d / 2 - 0.1, out: 1, y: ROOM.y, framed: true }; /* (framed: the model's own door frame -- 총괄 235 검토: no second one in it) */
+    if (space === 'store') return { id: 'store:exit', key: space, at: STORE.world, ex: STORE.ROOM.exit, wall: STORE.ROOM.d / 2 - 0.1, out: -1, y: STORE.ROOM.y, framed: true };
     if (space === 'jail') return { id: 'jail:exit', key: space, at: JAIL.world, ex: JAIL.ROOM.exit, wall: JAIL.ROOM.d / 2 - 0.1, out: -1, y: JAIL.ROOM.y, shut: jailInmate === true };
     if (space === 'museum') return { id: 'museum:exit', key: space, at: MUS.world, ex: MUS.ROOM.exit, wall: MUS.ROOM.d / 2 - 0.1, out: -1, y: MUS.ROOM.y };
     if (space === 'home' && homeHere?.floor === 1) { const st = HOME.stageOf(homeHere.home.stage); const lot = homeHere.lot; return { id: 'home:exit', key: `home:${lot.id}:${st.n}`, at: (lx, lz) => HOME.world(lot, lx, lz), ex: { lx: 0 }, wall: st.hz, out: -1, y: HOME.ROOM.y }; }
@@ -3662,10 +3662,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const cv = document.createElement('canvas'); cv.width = 16; cv.height = 128; const c = cv.getContext('2d'); const grad = c.createLinearGradient(0, 0, 0, 128); grad.addColorStop(0, '#efe0c0'); grad.addColorStop(1, '#5e4630'); c.fillStyle = grad; c.fillRect(0, 0, 16, 128);
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; textures.push(tex);
     const floor = mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }), 0, 0.03, D / 2, g); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; // (the mat: light by the way out, dark toward the room)
-    for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.16, 2.5, D), wood, sx * (W / 2 + 0.08), 1.25, D / 2, g);
-    mesh(new THREE.BoxGeometry(W + 0.32, 0.28, 0.16), wood, 0, 2.5 + 0.14, D, g);
+    if (!dw.framed) { for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.16, 2.5, D), wood, sx * (W / 2 + 0.08), 1.25, D / 2, g); mesh(new THREE.BoxGeometry(W + 0.32, 0.28, 0.16), wood, 0, 2.5 + 0.14, D, g); }
     const glow = mesh(new THREE.PlaneGeometry(W - 0.1, 2.4), new THREE.MeshBasicMaterial({ color: 0xfff1cf }), 0, 1.2, 0.04, g); glow.name = 'doorwayLight'; // (light from outside)
-    const sign = boardText('나가기', 0.84, 0.24, 2.64, D + 0.085, ['#2f6b4f', '#fdf8ee']); sign.rotation.y = 0; g.add(sign);
+    const sign = boardText('나가기', 0.84, 0.24, dw.framed ? 2.3 : 2.64, dw.framed ? 0.12 : D + 0.085, ['#2f6b4f', '#fdf8ee']); sign.rotation.y = 0; g.add(sign); // (in a model's frame: just inside its top)
     g.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     doorways.set(dw.key, g); return g;
   }
