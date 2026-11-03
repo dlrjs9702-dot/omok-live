@@ -1877,7 +1877,7 @@ test('계절 행사: 수확제 기간에 대청마당 가판대·행사 주민, 
 // host's window starts a three-minute round, counted down at the top of the screen
 test('매주 대회: 토요일 낚시 대회 날 가판대·주민, 주민 창에서 3분 판 시작, 남은 시간 표시', async ({ browser, request, isMobile }) => {
   test.setTimeout(150000);
-  test.skip(!DAL, '달마루섬');
+  test.skip(true, 'v1.10.233 매주 대회 꺼짐 -- 게임 대회로 돌아올 때 다시'); test.skip(!DAL, '달마루섬');
   expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-07T12:00:00+09:00') })).status).toBe(200);
   try {
     const a = await intoPlaza(browser, request, isMobile ? '대회판m' : '대회판'); const { page } = a;

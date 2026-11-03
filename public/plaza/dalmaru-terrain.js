@@ -213,7 +213,7 @@
     // October's fields (a scarecrow and a hay bale each), its brooms, hay and a cauldron by 거울호수 (island-halloween.js)
     halloween: { fields: [[-60, 20], [60, 20], [120, 40], [-8, 150], [-132, 30]], extras: [['broom', -112, -22, 0.6], ['broom', -96, 36, 2.1], ['hay', -122, 46, 1.2], ['cauldron', -82, -24, 1.57]] },
     quests: { photographer: { x: -12, z: -12 }, gardener: { x: -131, z: 40.2 } /* (문제 기록 5회차 8 「정원사 할머니도 너무 뜬금없는 곳에 서 있어」: in her own little garden by the farm's gate, off its trail -- plaza-scene puts her flower bed and watering can there) */, flowers: { x: -94, z: 44 }, fisher: { x: 84, z: 133 }, pierEnd: { x: 107, z: 165 },
-      station: { x: -88.3, z: 143.9 }, stonesBank: { x: -99, z: 36 }, kid: { x: -8, z: -64 }, pumpkin: { x: 0, z: -78.5 } },
+      station: { x: -88.3, z: 140.3 } /* (v1.10.233: 3.6 m off the lift's door -- its prompt took the 이름판's within 2.6 m, 철이's 2단계 never showed) */, stonesBank: { x: -99, z: 36 }, kid: { x: -8, z: -64 }, pumpkin: { x: 0, z: -78.5 } },
   };
   const TRAIN = { r: 194, /* (묶음 5: out from the widened ridge coast, ~177) */ stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
   // (v1.10.160 역 터, 사용자 「땅 다지기」: each stop -- its angle (°), the platform's distance from the centre, its height over the

@@ -6265,6 +6265,8 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/take' && req.method === 'POST') { // (Q2 tests: these stories' first steps taken -- the 할 일 card's many lines)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    if (typeof body.open === 'boolean') for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) IslandQuests.openForTest(id, body.open); // (v1.10.233: a story of another week -- 철이's -- open for a test, closed after)
+    if (body.open === false) return sendJson(res, 200, { ok: true });
     for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) { const steps = IslandQuests.STORIES[id].steps; const k = body.visit ? Math.max(0, steps.findIndex((x) => x.task)) : 0; const pick = body.visit ? IslandQuests.drawPick(steps[k]) : null; /* (206: at its visit, the pick drawn) */ await questApply(account, (doc) => ({ doc: { ...doc, [id]: { step: k, taken: true, count: 0, v: 2, ...(pick ? { pick } : {}) } }, reward: 0 }), IslandQuests.scopeOf(id)); }
     return sendJson(res, 200, { ok: true, track: questEntries(account).track });
   }
