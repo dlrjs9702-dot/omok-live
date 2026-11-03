@@ -3748,7 +3748,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // other players and event visitors are circles to give way to
     const people = [{ x: m.x, z: m.z, r: playerRadiusAt(m.x, m.z) }];
     for (const o of others.values()) people.push({ x: o.c.root.position.x, z: o.c.root.position.z, r: playerRadiusAt(o.c.root.position.x, o.c.root.position.z) });
-    for (const o of eventObjs.values()) if (o.npc && o.resident == null) people.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R });
+    for (const o of eventObjs.values()) if (o.npc && o.resident == null && o.npc.root.visible) people.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); /* (231 검토: not the hidden quest double of a walking islander -- it stood on the islander and pushed it about) */
     walkers.step(Date.now() + serverOffset, dt, people);
     const nowMs = performance.now();
     for (const { c, w } of wanderers) {
@@ -3851,7 +3851,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // function so a spatial grid can replace the plain loop if the plaza ever holds many people.
   function otherCircles() {
     const out = [];
-    for (const o of eventObjs.values()) if (o.npc && o.resident == null) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
+    for (const o of eventObjs.values()) if (o.npc && o.resident == null && o.npc.root.visible) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
     for (const { c, w } of wanderers) if (c.root.visible && playerRadiusAt(w.x, w.z) === PLAYER_R) out.push({ x: w.x, z: w.z, r: PLAYER_R }); // v1.10.12: and the islanders (never at a door: an islander passing by never blocks an entrance)
     for (const o of others.values()) {
       if (o.ride || o.platform) continue;
