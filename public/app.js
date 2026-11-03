@@ -2319,8 +2319,11 @@
   const hallEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   // v1.10.90 assets 38: every game's own card picture (128×128 SVG, cream/sky/gold over its gradient); the drawn icon only if it is missing
   const HALL_CARDS = new Set(HALL.GAMES.map((g) => g.id));
-  const gameArtHtml = (g) => (HALL_CARDS.has(g.id) ? `<img src="/assets/gamehall/cards/${g.id}.svg" alt="" width="64" height="64" decoding="async">`
-    : g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
+  const drawnArt = (g) => (g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
+  const gameArtHtml = (g) => (HALL_CARDS.has(g.id) ? `<img src="/assets/gamehall/cards/${g.id}.svg" alt="" width="64" height="64" decoding="async" data-game-art="${g.id}">` : drawnArt(g));
+  // v1.10.233 (사용자 「그림 없는 건 채워 넣고」): a card's picture that does not load -- the drawn icon in its place (the page's
+  // CSP allows no inline onerror: one listener, on the way down)
+  document.addEventListener('error', (event) => { const img = event.target; if (!(img instanceof HTMLImageElement) || !img.dataset.gameArt) return; const g = HALL.GAMES.find((x) => x.id === img.dataset.gameArt); if (g) img.outerHTML = drawnArt(g); }, true);
   const catName = (id) => HALL.CATEGORIES.find(([c]) => c === id)?.[1] || id;
   const paintColors = (node, g) => { node.style.setProperty('--g1', g.colors[0]); node.style.setProperty('--g2', g.colors[1]); };
   const roomsOf = (g) => (lobbyState.rooms || []).filter((r) => r.gameType === g.room || (g.room === 'omok' && r.gameType === 'omok2v2'));

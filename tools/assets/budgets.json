@@ -875,24 +875,24 @@
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_garak_off.glb": {
-      "triangles": 27431,
-      "sourceSha256": "ac7c24a2b40d3c31b4566f6ce9a8fe3870fa4f70cbf5b506d771f8dcecf8f5d6",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 31179,
+      "sourceSha256": "56efcbbf52ef9528721f666b03528107b854dd3c363b5b930d63d1ca402917ae",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms)"
     },
     "characters/npc_walker_garak_off_low.glb": {
-      "triangles": 8483,
-      "sourceSha256": "c59d3a63aa06a7d70d88006fa0bd47982cbddedb253ffd309da29ba55f4c665f",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 9505,
+      "sourceSha256": "11fddb7e745aa7da208f6425665519e1d6bf375affb9b68c911f86327d3df6de",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms)"
     },
     "characters/npc_walker_garak_work.glb": {
-      "triangles": 25340,
-      "sourceSha256": "2e1ea167bf5b4aec53030d7baa4bbe2de855c9e6f75ed9906dd55c6eb63a7d11",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 28732,
+      "sourceSha256": "14bd17d6f14bd9b98ce3d0f63323c516e274f700c938f66663ad2950116fc365",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms)"
     },
     "characters/npc_walker_garak_work_low.glb": {
-      "triangles": 8026,
-      "sourceSha256": "d624c8ae33d5cc590ec963b3972454808f758370b694455060f0a1132bdf3dcf",
-      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+      "triangles": 8474,
+      "sourceSha256": "f4f906a8109889e494847e8d4fd2fd91be1dbbcb8aea1cb02481836dd7ef7918",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms)"
     },
     "characters/npc_walker_goeun_off.glb": {
       "triangles": 30696,

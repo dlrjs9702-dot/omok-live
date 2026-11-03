@@ -2185,7 +2185,7 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .festivalTasks,.festivalShop{list-style:none;margin:0;padding:0;display:grid;gap:5px}.festivalTasks li,.festivalShop li{padding:5px 9px;border-radius:8px;background:rgba(148,163,184,.12)}
 .festivalTasks li.done{opacity:.6}.festivalShop li{display:flex;justify-content:space-between;align-items:center;gap:8px}.festivalShop li.owned{opacity:.7}.festivalPick{max-width:100%}.festivalSay{font-weight:700}
 /* v1.10.90 assets 38: game card pictures, the today frame, item pictures */
-.gameArt img{width:64px;height:64px;display:block}
+.gameArt img{width:100%;height:100%;display:block;object-fit:contain} /* (v1.10.233: its box's size -- 64 px in a 56 (48) box sat off to the lower right) */
 .gamehallToday{background:url("/assets/gamehall/today-frame-left.svg") left center/auto 100% no-repeat,url("/assets/gamehall/today-frame-right.svg") right center/auto 100% no-repeat,linear-gradient(135deg,var(--g1),var(--g2))}
 .itemIcon{width:32px;height:32px;vertical-align:middle;flex:none}
 .islandPlaceRow span{display:inline-flex;align-items:center;gap:4px}

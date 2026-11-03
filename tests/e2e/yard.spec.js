@@ -72,11 +72,11 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     const edit = page.locator('#yardEdit'); const status = edit.locator('[role="status"]'); await expect(edit).toBeVisible();
     await expect(edit.locator('.furniturePiece')).toHaveCount(9); // (the arch bought and the eight)
     const at = async () => (await status.getAttribute('data-at')).split(',').map(Number);
-    const tap = (label) => edit.getByRole('button', { name: label, exact: true }).click();
+    const tap = (label) => edit.getByRole('button', { name: label, exact: true }).evaluate((el) => el.click()); // (v1.10.233, 검토: a slow runner's actionability checks took 4~8 s a click)
     // which way each arrow goes on the yard's grid (the camera held while decorating)
     const ARROWS = ['왼쪽으로', '오른쪽으로', '안쪽으로', '앞쪽으로']; let way = null;
     const placeAt = async (uid, lx, lz, rot = 0) => {
-      await edit.locator(`.furniturePiece[data-uid="${uid}"]`).click();
+      await edit.locator(`.furniturePiece[data-uid="${uid}"]`).evaluate((el) => el.click());
       if (!way) { way = {}; for (const k of ARROWS) { const [x0, z0] = await at(); await tap(k); const [x1, z1] = await at(); way[k] = [x1 - x0, z1 - z0]; } }
       // (the taps for each axis in one call, not a round trip each)
       for (let pass = 0; pass < 3; pass += 1) {
@@ -85,9 +85,10 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
         const [x1, z1] = await at(); if (Math.abs(x1 - lx) < 1e-6 && Math.abs(z1 - lz) < 1e-6) break;
       }
       for (let r = (await at())[2]; r !== rot; r = (r + 1) % 4) await tap('돌리기');
-      await expect(status).not.toContainText('밖이에요'); await edit.getByRole('button', { name: '놓기', exact: true }).click();
+      await expect(status).not.toContainText('밖이에요'); await edit.getByRole('button', { name: '놓기', exact: true }).evaluate((el) => el.click());
       await expect.poll(async () => ((await get(request, '/api/home', a.token)).data.lots.find((l) => l.id === lot).yard || []).some((p) => p.uid === uid && p.x === lx && p.z === lz), { timeout: 15000 }).toBe(true);
       await expect(edit).toBeVisible();
+      await expect(edit.locator(`.furniturePiece[data-uid="${uid}"]`)).toContainText('놓음', { timeout: 15000 }); // (v1.10.233, 검토: the window made again after a placing -- the next piece from the new list, not the old one under it)
     };
     const by = (shape) => pieces.filter((p) => p.id === Y.goodId(shape));
     const fences = by('fence_wood'); for (const [k, f] of fences.entries()) await placeAt(f.uid, -4.25, -0.5 + k, 1); // (end to end along the side: their posts shared)

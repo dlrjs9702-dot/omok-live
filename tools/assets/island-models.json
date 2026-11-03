@@ -8424,18 +8424,18 @@
     },
     {
       "out": "characters/npc_walker_garak_off.glb",
-      "src": "residents88:01. High/npc_walker_garak_off.glb",
-      "sha256": "ac7c24a2b40d3c31b4566f6ce9a8fe3870fa4f70cbf5b506d771f8dcecf8f5d6",
-      "lowSrc": "residents88:02. Low/npc_walker_garak_off_low.glb",
-      "lowSha256": "c59d3a63aa06a7d70d88006fa0bd47982cbddedb253ffd309da29ba55f4c665f",
+      "src": "garak94:01. High/npc_walker_garak_off.glb",
+      "sha256": "56efcbbf52ef9528721f666b03528107b854dd3c363b5b930d63d1ca402917ae",
+      "lowSrc": "garak94:02. Low/npc_walker_garak_off_low.glb",
+      "lowSha256": "11fddb7e745aa7da208f6425665519e1d6bf375affb9b68c911f86327d3df6de",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_garak_work.glb",
-      "src": "residents88:01. High/npc_walker_garak_work.glb",
-      "sha256": "2e1ea167bf5b4aec53030d7baa4bbe2de855c9e6f75ed9906dd55c6eb63a7d11",
-      "lowSrc": "residents88:02. Low/npc_walker_garak_work_low.glb",
-      "lowSha256": "d624c8ae33d5cc590ec963b3972454808f758370b694455060f0a1132bdf3dcf",
+      "src": "garak94:01. High/npc_walker_garak_work.glb",
+      "sha256": "14bd17d6f14bd9b98ce3d0f63323c516e274f700c938f66663ad2950116fc365",
+      "lowSrc": "garak94:02. Low/npc_walker_garak_work_low.glb",
+      "lowSha256": "f4f906a8109889e494847e8d4fd2fd91be1dbbcb8aea1cb02481836dd7ef7918",
       "precompressed": true
     },
     {
@@ -9013,6 +9013,7 @@
     "projects71": "71. Game Island island projects 2026-10-25",
     "yard70": "70. Game Island yard items 2026-10-25",
     "museum74": "74. Game Island museum hall 2026-10-25",
-    "fishdex85": "85. Game Island fishing dex more 13 2026-10-29"
+    "fishdex85": "85. Game Island fishing dex more 13 2026-10-29",
+    "garak94": "94. Game Island garak reeds arms 2026-11-03"
   }
 }

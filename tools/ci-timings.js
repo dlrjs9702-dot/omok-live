@@ -2,7 +2,7 @@
 'use strict';
 // CI 2차 단축: refresh tools/ci-timings.json (each browser test's seconds, `<project> tests/e2e/<file>:<line>`) from a
 // CI run's green part logs -- `node tools/ci-timings.js <run id> [attempt]` (needs the gh CLI). The parts run one worker each, so
-// a test's time is from the result line before it (or the part's start) to its own; a retry adds to the first try.
+// a test's time is from the result line before it (or the part's start) to its own; a retry is left out (its trace doubles it).
 // Refresh now and then (tests move lines, new ones count 60 s until then): tools/ci-split.js reads the table.
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -20,6 +20,7 @@ for (const job of jobs) {
     const l = raw.replace(/\x1b\[[0-9;]*m/g, '');
     const ts = l.match(/(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+Z)/); if (!ts) continue; const t = Date.parse(ts[1]);
     if (/Running \d+ tests? using/.test(l)) { prev = t; continue; }
+    if (/\(retry #\d+\)/.test(l)) { prev = t; continue; } // (v1.10.233, 검토: a retry runs with its trace, twice as long -- the table is a first try's, not the two added)
     const m = l.match(/[✓✘-]\s+\d+ \[(chromium|mobile-chromium)\] › (tests\/e2e\/[^ ]+\.spec\.js:\d+):\d+ ›/);
     if (!m || prev === null) continue;
     const key = `${m[1]} ${m[2]}`; out[key] = Math.round(((out[key] || 0) + (t - prev) / 1000) * 10) / 10; prev = t;
