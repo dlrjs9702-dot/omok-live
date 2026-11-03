@@ -39,7 +39,13 @@ async function boot(t, dir) {
     const headers = { 'X-Forwarded-For': `10.66.${Math.floor(++ip / 200) % 200}.${ip % 200 + 1}` };
     if (token) headers['X-Session-Token'] = token;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    const res = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    const send = () => fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    // (v1.10.234 CI unit 「fetch failed」 in the resident talks, never here: a server gone says so with its log's end; one alive
+    // had a kept-alive socket shut under it -- the request never reached it, sent once more)
+    let res; try { res = await send(); } catch (error) {
+      if (child.exitCode !== null || child.signalCode) throw new Error(`test server exited (${child.exitCode ?? child.signalCode}) at ${route}: ${logs.slice(-1500)}`);
+      await sleep(200); res = await send().catch((again) => { throw new Error(`${again.message} (${again.cause?.code || again.cause?.message || ''}) at ${route}; server alive -- ${logs.slice(-800)}`); });
+    }
     return { status: res.status, data: await res.json().catch(() => ({})) };
   }
   const admin = (await req('/api/admin/login', null, { password: PASSWORD })).data.sessionToken;
