@@ -1,0 +1,82 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const { JsonMessengerStore, PostgresMessengerStore } = require('../lib/messenger-store');
+const { testDatabase } = require('../test-support/pg-database');
+const { boot } = require('../test-support/test-server');
+
+const JPEG = (n = 300) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);
+
+// v1.10.233 사진 보내기 (notes docs/messenger-speed-photo-20261103.md 5절): a photo up on its own, then a message takes it
+// (in order, once, the sender's and the room's only); the message's list shows them; 7 days on the bytes go and the
+// place says gone; one never taken goes after a day; unsent -- its photos go with it
+async function photosBehave(store) {
+  const room = await store.createRoom('사진방', 'a', ['b']);
+  const p1 = await store.addPhoto(room.id, 'a', JPEG(), 1280, 960); const p2 = await store.addPhoto(room.id, 'a', JPEG(), 960, 1280);
+  assert.equal(await store.photosFree(room.id, 'b', [p1]), false, '남의 사진');
+  assert.equal(await store.photosFree(room.id, 'a', [p1, p2]), true);
+  const msg = await store.post(room.id, 'a', '📷 사진'); assert.equal(await store.attachPhotos(room.id, 'a', msg.seq, [p2, p1]), true);
+  assert.equal(await store.photosFree(room.id, 'a', [p1]), false, '한 번만');
+  const [shown] = (await store.messages(room.id)).filter((m) => m.seq === msg.seq);
+  assert.deepEqual(shown.photos.map((p) => [p.id, p.w, p.h, p.gone]), [[p2, 960, 1280, false], [p1, 1280, 960, false]]);
+  assert.equal((await store.photoOf(p1)).bytes.length, JPEG().length); assert.equal((await store.photoOf(p1)).room, room.id);
+  assert.equal(await store.photosSince('a', Date.now() - 60000), 2); assert.equal(await store.photosSince('a', Date.now() + 60000), 0); assert.equal(await store.photosSince('b', 0), 0);
+  assert.deepEqual(await store.photoRooms(), [{ room: room.id, n: 2, size: 2 * JPEG().length }], '방마다 남은 사진');
+  const loose = await store.addPhoto(room.id, 'a', JPEG(), 10, 10);
+  await store.purgePhotos(Date.now() + 2 * 86400000); assert.equal(await store.photoOf(loose), null, '안 보낸 사진은 하루 뒤');
+  assert.ok((await store.photoOf(p1)).bytes, '7일 안');
+  await store.purgePhotos(Date.now() + 8 * 86400000); assert.equal((await store.photoOf(p1)).bytes, null, '7일 뒤');
+  assert.deepEqual((await store.messages(room.id)).find((m) => m.seq === msg.seq).photos.map((p) => p.gone), [true, true]);
+  const p3 = await store.addPhoto(room.id, 'a', JPEG(), 10, 10); const m2 = await store.post(room.id, 'a', '하나'); await store.attachPhotos(room.id, 'a', m2.seq, [p3]);
+  await store.unsend(room.id, m2.seq); assert.equal((await store.photoOf(p3)).bytes, null, '보내기 취소');
+}
+
+test('메신저 사진 저장소: JSON·PostgreSQL 같은 동작 (올리기·붙이기·7일·하루·보내기 취소)', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-photo-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const json = new JsonMessengerStore(path.join(dir, 'messenger.json')); await json.init(); await photosBehave(json);
+  const database = await testDatabase(); t.after(() => database.stop());
+  const pg = new PostgresMessengerStore(database.url); t.after(() => pg.pool.end()); await pg.init(); await pg.init(); await photosBehave(pg);
+});
+
+test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만이면 「📷 사진」, 그 방 사람만 열림·private 캐시, 7일 뒤 410', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-photo-api-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const { req, base } = await boot(t, dir); let ip = 0;
+  const call = async (route, body, account, raw = null) => {
+    const headers = { 'X-Forwarded-For': `10.79.${Math.floor(++ip / 200)}.${ip % 200 + 1}`, ...(account ? { 'X-Account-Token': account } : {}), ...(raw ? raw.headers : body !== undefined ? { 'Content-Type': 'application/json' } : {}) };
+    const res = await fetch(base + route, { method: raw || body !== undefined ? 'POST' : 'GET', headers, ...(raw ? { body: raw.body } : body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    const type = res.headers.get('content-type') || ''; return { status: res.status, headers: res.headers, data: type.includes('json') ? await res.json() : Buffer.from(await res.arrayBuffer()) };
+  };
+  const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken; const people = {};
+  for (const [loginId, nickname] of [['pa_1', '사진가'], ['pb_1', '받는이'], ['pc_1', '남']]) {
+    await call('/api/account/signup', { realName: nickname, loginId, password: 'secret123', nickname });
+    const signup = (await req('/api/admin/signups', admin)).data.signups.find((s) => s.loginId === loginId); await req(`/api/admin/signups/${signup.id}/approve`, admin, {});
+    const login = (await call('/api/account/login', { loginId, password: 'secret123' })).data;
+    people[loginId] = { token: login.accountToken, id: (await req('/api/admin/keys', admin)).data.keys.find((k) => k.loginId === loginId).id };
+    await req(`/api/admin/keys/${people[loginId].id}/messenger`, admin, { allowed: true });
+  }
+  const { pa_1: a, pb_1: b, pc_1: c } = people;
+  const room = (await call('/api/messenger/rooms', { name: '사진', members: [b.id] }, a.token)).data.room;
+  const up = (bytes, type = 'image/jpeg', who = a) => call(`/api/messenger/rooms/${room.id}/photos`, undefined, who.token, { headers: { 'Content-Type': type, 'X-Photo-W': '1280', 'X-Photo-H': '720' }, body: bytes });
+  assert.equal((await up(Buffer.from('not a jpeg'))).data.error, 'PHOTO_TYPE');
+  assert.equal((await up(JPEG(), 'image/png')).data.error, 'PHOTO_TYPE');
+  assert.equal((await up(JPEG(2 * 1024 * 1024 + 10))).status, 413, '2MB 넘음');
+  const ids = []; for (let k = 0; k < 3; k += 1) { const r = await up(JPEG(200 + k)); assert.equal(r.status, 201, JSON.stringify(r.data)); ids.push(r.data.id); }
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { photos: Array.from({ length: 11 }, () => ids[0]).map((x, k) => `${x.slice(0, -2)}${String(k).padStart(2, '0')}`) }, a.token)).data.error, 'BAD_PHOTOS', '11장');
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { photos: [ids[0]] }, b.token)).data.error, 'PHOTO_NOT_READY', '남의 사진으로');
+  const sent = (await call(`/api/messenger/rooms/${room.id}/messages`, { photos: ids }, a.token)).data.message;
+  assert.equal(sent.text, '📷 사진'); assert.deepEqual(sent.photos.map((p) => [p.id, p.w, p.h]), ids.map((id) => [id, 1280, 720]));
+  const seen = (await call(`/api/messenger/rooms/${room.id}/messages?after=0`, undefined, b.token)).data.messages.find((m) => m.seq === sent.seq);
+  assert.equal(seen.photos.length, 3); assert.equal((await call('/api/messenger', undefined, b.token)).data.rooms[0].last.text, '📷 사진');
+  const got = await call(`/api/messenger/photos/${ids[1]}`, undefined, b.token);
+  assert.equal(got.status, 200); assert.equal(got.headers.get('content-type'), 'image/jpeg'); assert.equal(got.headers.get('cache-control'), 'private, max-age=3600'); assert.equal(got.data.length, JPEG(201).length);
+  assert.equal((await call(`/api/messenger/photos/${ids[1]}`, undefined, c.token)).status, 404, '방 밖 사람');
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '설명 한 줄', photos: [ids[0]] }, a.token)).data.error, 'PHOTO_NOT_READY', '한 번만');
+  await req('/api/test/messenger/photo-day', null, { max: 4 }); assert.equal((await up(JPEG())).status, 201, '하루 4장째');
+  const over = await up(JPEG()); assert.equal(over.status, 429); assert.equal(over.data.error, 'PHOTO_DAY_LIMIT', '하루 상한'); await req('/api/test/messenger/photo-day', null, { max: 200 });
+  await req('/api/test/messenger/purge', null, { days: 8 });
+  assert.equal((await call(`/api/messenger/photos/${ids[1]}`, undefined, b.token)).status, 410, '7일 뒤');
+  assert.deepEqual((await call(`/api/messenger/rooms/${room.id}/messages?after=0`, undefined, b.token)).data.messages.find((m) => m.seq === sent.seq).photos.map((p) => p.gone), [true, true, true]);
+});

@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 128 128" fill="none"
+     stroke-linecap="round" stroke-linejoin="round">
+  <!-- Shared pack 38 ground shadow; the SVG canvas stays transparent. -->
+  <ellipse cx="64" cy="111" rx="43" ry="6"
+           fill="#10283f" opacity=".18"/>
+
+  <!-- The five rounded platforms follow the game's existing zigzag icon.
+       The full sky motif shares one gentle tilt; the ground shadow is level. -->
+  <g transform="rotate(-8 64 64)">
+    <!-- One low cloud supports the first step without obscuring its top. -->
+    <path d="M24 100
+             C18 100 14 104 16 108
+             C18 112 25 113 32 111
+             C38 116 48 116 55 112
+             C63 117 75 116 81 112
+             C90 115 103 113 108 108
+             C112 104 109 99 103 99
+             C100 91 88 90 82 96
+             C77 89 66 89 61 96
+             C53 89 41 91 37 98
+             C31 94 26 95 24 100Z"
+          fill="#d5f1ff"/>
+    <path d="M24 100
+             C29 95 35 98 38 101
+             C43 94 53 94 59 101
+             C65 95 74 95 79 101
+             C86 95 97 96 101 102
+             C94 107 86 107 80 105
+             C72 111 62 109 57 105
+             C50 110 39 109 34 105
+             C29 107 22 105 24 100Z"
+          fill="#fffaf2"/>
+    <path d="M24 109Q31 111 36 108
+             M61 111Q70 113 77 109
+             M89 109Q97 110 102 106"
+          stroke="#10283f" stroke-width="2" opacity=".12"/>
+
+    <!-- Bottom platform: a clear cream tread over a broad sky-blue edge. -->
+    <rect x="20" y="90" width="34" height="13" rx="5"
+          fill="#10283f" opacity=".16"/>
+    <rect x="20" y="88" width="34" height="13" rx="5"
+          fill="#d5f1ff"/>
+    <rect x="20" y="86" width="34" height="10" rx="5"
+          fill="#fffaf2"/>
+    <path d="M26 90H40" stroke="#ffe2a1" stroke-width="3"/>
+
+    <!-- Step two: the short gaps stay open at 56 and 48 pixels. -->
+    <rect x="42" y="73" width="34" height="13" rx="5"
+          fill="#10283f" opacity=".16"/>
+    <rect x="42" y="71" width="34" height="13" rx="5"
+          fill="#d5f1ff"/>
+    <rect x="42" y="69" width="34" height="10" rx="5"
+          fill="#fffaf2"/>
+    <path d="M48 73H62" stroke="#ffe2a1" stroke-width="3"/>
+
+    <!-- Step three: rightward before the upper pair turns back left. -->
+    <rect x="64" y="56" width="34" height="13" rx="5"
+          fill="#10283f" opacity=".16"/>
+    <rect x="64" y="54" width="34" height="13" rx="5"
+          fill="#d5f1ff"/>
+    <rect x="64" y="52" width="34" height="10" rx="5"
+          fill="#fffaf2"/>
+    <path d="M70 56H84" stroke="#ffe2a1" stroke-width="3"/>
+
+    <!-- Step four: an equally solid tread, not a fading distant tile. -->
+    <rect x="42" y="39" width="34" height="13" rx="5"
+          fill="#10283f" opacity=".16"/>
+    <rect x="42" y="37" width="34" height="13" rx="5"
+          fill="#d5f1ff"/>
+    <rect x="42" y="35" width="34" height="10" rx="5"
+          fill="#fffaf2"/>
+    <path d="M48 39H62" stroke="#ffe2a1" stroke-width="3"/>
+
+    <!-- Top platform and its small gold destination star. -->
+    <rect x="64" y="22" width="34" height="13" rx="5"
+          fill="#10283f" opacity=".16"/>
+    <rect x="64" y="20" width="34" height="13" rx="5"
+          fill="#d5f1ff"/>
+    <rect x="64" y="18" width="34" height="10" rx="5"
+          fill="#fffaf2"/>
+    <path d="M70 22H84" stroke="#ffe2a1" stroke-width="3"/>
+    <path d="M82 5.5L84.7 11L90.8 11.9
+             L86.4 16.1L87.4 22.1L82 19.3
+             L76.6 22.1L77.6 16.1L73.2 11.9L79.3 11Z"
+          fill="#ffe2a1"/>
+
+    <!-- A single broad jumping arrow leaves the staircase silhouette clear. -->
+    <path d="M24 77C12 69 16 57 28 51"
+          stroke="#fffaf2" stroke-width="5"/>
+    <path d="M24 45L37 48L31 61Z" fill="#ffe2a1"/>
+
+    <!-- Sparse rounded accents use the same cream / sky / gold inks. -->
+    <path d="M107 39Q109 44 114 46
+             Q109 48 107 53Q105 48 100 46Q105 44 107 39Z"
+          fill="#ffe2a1"/>
+    <circle cx="23" cy="28" r="3" fill="#d5f1ff"/>
+    <path d="M28 20L32 16" stroke="#fffaf2" stroke-width="3"/>
+  </g>
+</svg>

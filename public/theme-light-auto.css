@@ -1458,3 +1458,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .placeBar .placeStatus.bad{color:#b3261e}
 :root[data-theme="light"] .placeBar .placeActs button{box-shadow:0 3px 10px rgba(0,0,0,.18)}
 :root[data-theme="light"] .placeBar .placeStrip .placePiece.selected{background:var(--isle-btn,#8a5f3a);color:#fff;border-color:var(--isle-btn,#8a5f3a)}
+:root[data-theme="light"] #islandBagDialog .islandDexTab{border:1px solid #c4a77d;background:#fbf3e2;color:var(--isle-ink)}
+:root[data-theme="light"] #islandBagDialog .islandDexTab.selected{background:var(--isle-btn,#8a5f3a);border-color:var(--isle-btn,#8a5f3a);color:#fff}
+:root[data-theme="light"] #islandBagDialog .islandDexFound{color:var(--isle-ink)}

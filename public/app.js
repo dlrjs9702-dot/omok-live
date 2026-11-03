@@ -2319,8 +2319,11 @@
   const hallEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   // v1.10.90 assets 38: every game's own card picture (128×128 SVG, cream/sky/gold over its gradient); the drawn icon only if it is missing
   const HALL_CARDS = new Set(HALL.GAMES.map((g) => g.id));
-  const gameArtHtml = (g) => (HALL_CARDS.has(g.id) ? `<img src="/assets/gamehall/cards/${g.id}.svg" alt="" width="64" height="64" decoding="async">`
-    : g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
+  const drawnArt = (g) => (g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
+  const gameArtHtml = (g) => (HALL_CARDS.has(g.id) ? `<img src="/assets/gamehall/cards/${g.id}.svg" alt="" width="64" height="64" decoding="async" data-game-art="${g.id}">` : drawnArt(g));
+  // v1.10.233 (사용자 「그림 없는 건 채워 넣고」): a card's picture that does not load -- the drawn icon in its place (the page's
+  // CSP allows no inline onerror: one listener, on the way down)
+  document.addEventListener('error', (event) => { const img = event.target; if (!(img instanceof HTMLImageElement) || !img.dataset.gameArt) return; const g = HALL.GAMES.find((x) => x.id === img.dataset.gameArt); if (g) img.outerHTML = drawnArt(g); }, true);
   const catName = (id) => HALL.CATEGORIES.find(([c]) => c === id)?.[1] || id;
   const paintColors = (node, g) => { node.style.setProperty('--g1', g.colors[0]); node.style.setProperty('--g2', g.colors[1]); };
   const roomsOf = (g) => (lobbyState.rooms || []).filter((r) => r.gameType === g.room || (g.room === 'omok' && r.gameType === 'omok2v2'));
@@ -2518,7 +2521,7 @@
       slot.addEventListener('drop', (event) => { event.preventDefault(); slot.classList.remove('dropAt'); const from = Number(event.dataTransfer.getData('text/plain')); if (Number.isInteger(from)) moveBagSlot(from, i); });
       grid.append(slot);
     }
-    document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
+    if (byId('islandDexGrid').classList.contains('hidden')) document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`; // (v1.10.233: on the 도감's page its own count stays)
     byId('islandBagPoints').textContent = pointBalanceText.textContent || '';
     if (bagPicked != null && bag.items[bagPicked]) { const k = bagPicked; bagPicked = null; pickBagSlot(k); } else { bagPicked = null; byId('islandBagInfo').textContent = ''; }
   }
@@ -2724,6 +2727,7 @@
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   islandBagDialog.addEventListener('close', bagSortReset);
+  byId('islandDexFoundOnly').addEventListener('change', () => showDex('dex')); // (v1.10.233 「찾은 것만」)
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
   byId('homeApplyBtn').addEventListener('click', () => openHomeApply()); // 묶음 4 내 집 신청
@@ -4066,10 +4070,20 @@
     for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).classList.toggle('selected', on === page);
     document.getElementById('islandBagTitle').textContent = on === 'dex' ? '도감' : on === 'photo' ? '기념사진' : '가방';
     grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
+    byId('islandBagSort').classList.toggle('hidden', Boolean(on)); bagSortReset(); // (v1.10.233, 사용자: 「정리」 the bag's only -- in the 도감 it sorted the bag and the count went wrong)
+    byId('islandDexTabs').classList.toggle('hidden', on !== 'dex');
     if (!on) return;
     try {
       const data = await api('/api/island/dex');
-      const list = data.entries.filter((e) => (on === 'photo' ? e.kind === 'photo' : !e.keepsake));
+      // v1.10.233 도감 탭 (사용자): 바다 · 민물 · 곤충 · 기념 -- the fish by the tables' water (the server's), the insects, the
+      // finds and keepsakes; each its found/all; 「찾은 것만」; the tab last opened kept on this device; only the cells scroll
+      const TABS = [['sea', '바다', (e) => e.kind === 'fish' && e.water !== 'fresh'], ['fresh', '민물', (e) => e.kind === 'fish' && e.water === 'fresh'], ['insect', '곤충', (e) => e.kind === 'insect'], ['keep', '기념', (e) => e.kind === 'gather' || e.keepsake]];
+      let tab = 'sea'; try { tab = localStorage.getItem('gc.dexTab') || 'sea'; } catch {} if (!TABS.some(([k]) => k === tab)) tab = 'sea';
+      const foundOnly = byId('islandDexFoundOnly').checked;
+      if (on === 'dex') byId('islandDexTabs').querySelector('.islandDexTabRow').replaceChildren(...TABS.map(([k, label, has]) => { const all = data.entries.filter(has); const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.tab = k; b.setAttribute('aria-selected', String(k === tab)); b.className = `islandDexTab${k === tab ? ' selected' : ''}`; b.textContent = `${label} ${all.filter((e) => e.count).length}/${all.length}`; b.addEventListener('click', () => { try { localStorage.setItem('gc.dexTab', k); } catch {} showDex('dex'); }); return b; }));
+      const inTab = on === 'dex' ? TABS.find(([k]) => k === tab)[2] : () => true;
+      const list = on === 'photo' ? data.entries.filter((e) => e.kind === 'photo') : data.entries.filter(inTab).filter((e) => !foundOnly || e.count); // (the photo spots: the 기념사진 page's)
+      dex.scrollTop = 0;
       const spots = list.filter((e) => !e.keepsake); // v1.10.60: the count is of the photo spots; a story keepsake shows on the page but is not one of them
       document.getElementById('islandBagCount').textContent = on === 'photo' ? `${spots.filter((e) => e.count).length}/${spots.length}` : `${data.found}/${data.total}`;
       dex.replaceChildren(...list.map((e) => {

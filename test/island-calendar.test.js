@@ -15,7 +15,14 @@ test('행사 달력: 수확제는 서울 날짜 11/20 00:00 ~ 11/26 23:59, 마�
   assert.equal(C.festivalAt(at('2026-11-02T12:00:00'), { 'harvest-2026': { start: '2026-11-01', end: '2026-11-03' } }).end, '2026-11-03');
 });
 
-test('매주 대회: 11/7(토)부터 토 낚시·일 곤충, 10~22시만 열림, 그 전·평일은 없음, 관리자가 정한 날', () => {
+// v1.10.233: the weekend contests off -- 11/7 and 11/8 no contest, an admin's day neither
+test('매주 대회 꺼짐: 11/7(토)·11/8(일)·관리자가 정한 날 모두 대회 없음', () => {
+  for (const s of ['2026-11-07T12:00:00', '2026-11-08T15:00:00', '2026-11-14T12:00:00']) assert.equal(C.contestAt(at(s)), null, s);
+  assert.equal(C.contestAt(at('2026-11-04T15:00:00'), { contest: { '2026-11-04': 'bug' } }), null);
+  assert.equal(C.CONTEST.on, false);
+});
+
+test.skip('매주 대회: 11/7(토)부터 토 낚시·일 곤충, 10~22시만 열림, 그 전·평일은 없음, 관리자가 정한 날 (v1.10.233 꺼짐 -- 게임 대회로 돌아올 때 다시)', () => {
   assert.equal(C.contestAt(at('2026-10-31T12:00:00')), null); // (before the first)
   const sat = C.contestAt(at('2026-11-07T10:00:00')); assert.deepEqual([sat.kind, sat.open], ['fish', true]);
   assert.equal(C.contestAt(at('2026-11-07T09:59:00')).open, false); assert.equal(C.contestAt(at('2026-11-07T22:00:00')).open, false);

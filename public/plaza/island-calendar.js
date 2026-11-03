@@ -75,7 +75,9 @@
   const titleOf = (id) => (TITLES[id] ? { id, ...TITLES[id] } : null);
 
   // the weekly contests: Saturday 낚시, Sunday 곤충, 10:00-22:00 Seoul, from the first one (2026-11-07)
-  const CONTEST = Object.freeze({ first: '2026-11-07', from: 10, to: 22, roundMs: 3 * 60 * 1000, kinds: Object.freeze({ 6: 'fish', 0: 'bug' }), names: Object.freeze({ fish: '낚시 대회', bug: '곤충 대회' }) });
+  // v1.10.233 (사용자 2026-11-03, notes docs/issue-log-review-20261103.md 7-4): the weekend contests are off -- no day is a
+  // contest day (the admin's too); they come back as the island's game contests later (on: true then)
+  const CONTEST = Object.freeze({ on: false, first: '2026-11-07', from: 10, to: 22, roundMs: 3 * 60 * 1000, kinds: Object.freeze({ 6: 'fish', 0: 'bug' }), names: Object.freeze({ fish: '낚시 대회', bug: '곤충 대회' }) });
   const TROPHY = Object.freeze({ fish: ['trophy_fish__gold', 'trophy_fish__silver', 'trophy_fish__bronze'], bug: ['trophy_bug__gold', 'trophy_bug__silver', 'trophy_bug__bronze'] });
 
   // where an event stands on 대청마당 (its south side, clear of the disc, the channels and the gardens): the stall (its sign
@@ -106,6 +108,7 @@
   }
   // the contest of `ms`'s day (kind, its day, open now or not), or null; `override.contest` { day: kind } puts one on a day (tests, admin)
   function contestAt(ms, override = {}) {
+    if (!CONTEST.on) return null;
     const day = dayOf(ms); const forced = override.contest?.[day];
     const kind = forced || (day >= CONTEST.first ? CONTEST.kinds[weekdayOf(ms)] : null); if (!kind) return null;
     const h = hourOf(ms); const allDay = Boolean(override.contestAllDay);

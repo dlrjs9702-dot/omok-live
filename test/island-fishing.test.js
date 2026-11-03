@@ -26,6 +26,11 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
   for (const [water, id] of [['bay', 'seahorse'], ['pool', 'masu_salmon'], ['lake', 'sturgeon']]) { assert.ok(['spring', 'summer', 'autumn', 'winter'].some((s) => F.listFor(water, s).includes(id)), id); seen.add(id); for (const w of ['sea', 'river', 'bay', 'lake', 'pool'].filter((x) => x !== water)) assert.ok(['spring', 'summer', 'autumn', 'winter'].every((s) => !F.listFor(w, s).includes(id)), `${id} ${w}`); }
   assert.ok(!['spring', 'summer', 'autumn', 'winter'].some((s) => F.listFor('lake', s).includes('crayfish')), '가재는 호수 없음');
   assert.equal(seen.size, 34); assert.equal(Object.keys(F.SPECIES).length, 34);
+  // (사용자 2026-11-03) a big fish is 1% of a cast or less in every water and season, by day and by night (no bait, no rain)
+  for (const water of ['sea', 'bay', 'river', 'lake', 'pool']) for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const night of [false, true]) {
+    const list = F.listFor(water, season, night); const total = list.reduce((n, id) => n + F.SPECIES[id].weight, 0);
+    for (const id of list.filter((x) => F.SPECIES[x].grade === 'big')) assert.ok(F.SPECIES[id].weight / total <= 0.01, `${id} ${water} ${season} ${night ? '밤' : '낮'} ${(100 * F.SPECIES[id].weight / total).toFixed(2)}%`);
+  }
   assert.ok(!F.listFor('sea', 'summer', false).includes('squid') && F.listFor('sea', 'summer', true).includes('squid'), '오징어는 밤에만');
   assert.deepEqual([F.isNight(Date.parse('2026-11-03T12:00:00Z')), F.isNight(Date.parse('2026-11-03T03:00:00Z'))], [true, false], '서울 21시 밤, 12시 낮');
   const avg = evs.reduce((a, b) => a + b, 0) / evs.length; assert.ok(avg > 1000 && avg < 1400, `평균 ${avg}`);

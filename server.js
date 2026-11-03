@@ -490,6 +490,14 @@ async function readBody(req) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+// v1.10.233 메신저 사진: a photo's bytes, its own way in (the 48 KB of the JSON calls stays as it is)
+const PHOTO_MAX = 2 * 1024 * 1024;
+async function readRaw(req, max) {
+  let size = 0; const chunks = [];
+  for await (const chunk of req) { size += chunk.length; if (size > max) throw Object.assign(new Error('too large'), { status: 413 }); chunks.push(chunk); }
+  return Buffer.concat(chunks);
+}
+
 async function parseJson(req) {
   if (Object.hasOwn(req, 'islandParsedJson')) return req.islandParsedJson;
   const raw = await readBody(req);
@@ -680,6 +688,9 @@ function requestSessionRelease(token, page = '', sequence = 0) {
 // asks for the login again).
 const ACCOUNT_TTL_MS = 12 * 60 * 60 * 1000;
 const MESSENGER_ROOM_MAX = 30; const MESSENGER_ROOMS_MAX = 20; const MESSENGER_TEXT_MAX = 500; // v1.10.78 메신저
+let messengerSlowMs = 0; let messengerFailNext = false; // (tests: /api/test/messenger/slow)
+let MESSENGER_PHOTOS_DAY = 200; /* v1.10.233 총괄: a key's photos a Seoul day at most (the test route lowers it) */
+const MESSENGER_PHOTOS_MAX = 10; const MESSENGER_PHOTO_ONLY = '📷 사진'; // v1.10.233: a message's photos at most; a photo-only message's words (the list, the push)
 const SETUP_TTL_MS = 15 * 60 * 1000;
 const accountTokens = new Map(); // token -> { keyId, exp }
 const setupTickets = new Map(); // ticket -> { keyId, exp }
@@ -4070,7 +4081,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.232' });
+    return sendJson(res, 200, { ok: true, version: '1.10.233' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4165,6 +4176,9 @@ async function requestHandler(req, res) {
   // call checks the login and the permission here (a hidden button is not the check); a room is reached only by its
   // members. The page asks again every few seconds while it is open (no stream on the start page).
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/pushes' && req.method === 'GET') return sendJson(res, 200, { ok: true, pushes: testPushes.splice(0) }); // (메신저 ③: what would have been sent)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/photo-day' && req.method === 'POST') { const body = await parseJson(req); MESSENGER_PHOTOS_DAY = Number(body.max) || 200; return sendJson(res, 200, { ok: true, max: MESSENGER_PHOTOS_DAY }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/purge' && req.method === 'POST') { const body = await parseJson(req); return sendJson(res, 200, { ok: true, n: await messengerStore.purgePhotos(Date.now() + (Number(body.days) || 0) * 86400000) }); } // (v1.10.233: as if days had gone by)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/slow' && req.method === 'POST') { const body = await parseJson(req); messengerSlowMs = Math.max(0, Math.min(10000, Number(body.ms) || 0)); messengerFailNext = body.fail === true; return sendJson(res, 200, { ok: true }); } // (v1.10.233: a send held back, or the next one refused)
   if (pathname === '/api/messenger' || pathname.startsWith('/api/messenger/')) {
     const signed = accountOf(req); const kept = await deviceOf(req); // (메신저 ④: a device kept logged in reaches these calls only)
     const acct = signed ? (kept?.keyId === signed.keyId ? { ...signed, device: kept.device } : signed) : kept; // (메신저 1절: the messenger opened from the game sends both -- the same account's device counts)
@@ -4192,6 +4206,13 @@ async function requestHandler(req, res) {
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
       req.on('close', () => { clearInterval(ping); set.delete(res); if (!set.size) messengerStreams.delete(key.id); });
       return;
+    }
+    const photo = pathname.match(/^\/api\/messenger\/photos\/([0-9a-f-]{36})$/i);
+    if (photo && req.method === 'GET') { // v1.10.233: a photo -- for its room's members only (7 days, then gone)
+      const p = await messengerStore.photoOf(photo[1]); const r = p && await messengerStore.room(p.room);
+      if (!p || !r || !r.members.includes(key.id)) return sendError(res, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
+      if (!p.bytes) return sendError(res, 410, 'PHOTO_GONE', '7일이 지나 사라진 사진입니다.');
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': p.bytes.length, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' }); return res.end(p.bytes); // (an hour: an unsent photo leaves the others' browsers soon -- 총괄)
     }
     const names = (ids) => ids.map((id) => `${nameOf(id)}님`).join(', ');
     const invitees = (list) => { // other permitted accounts only
@@ -4246,7 +4267,7 @@ async function requestHandler(req, res) {
       if (joined.length && dm.seq) await say(dm, `${names(joined)}이 들어왔습니다.`); // back in after leaving: the old lines are there
       return sendJson(res, 200, { ok: true, room: view(await messengerStore.room(dm.id)) });
     }
-    const m = pathname.match(/^\/api\/messenger\/rooms\/([0-9a-f-]{36})\/(messages|members|leave|name|mute|pin|unsend)$/i);
+    const m = pathname.match(/^\/api\/messenger\/rooms\/([0-9a-f-]{36})\/(messages|members|leave|name|mute|pin|unsend|photos)$/i);
     const room = m && await messengerStore.room(m[1]);
     if (!room || !room.members.includes(key.id)) return sendError(res, 404, 'ROOM_NOT_FOUND', '대화방을 찾을 수 없습니다.');
     if (m[2] === 'messages' && req.method === 'GET') {
@@ -4260,17 +4281,35 @@ async function requestHandler(req, res) {
       }
       return sendJson(res, 200, { ok: true, room: view(room), messages: messages.map((x) => ({ ...x, label: nameOf(x.from), ...(!x.system && x.text === '' ? { deleted: true } : {}) })) });
     }
+    if (m[2] === 'photos' && req.method === 'POST') { // v1.10.233: one photo's JPEG bytes (shrunk on the page: 1280 px, 0.8) -- kept until a message takes it
+      if (!checkRateLimit('messenger-photo:' + key.id, 20, 10 * 1000)) return sendError(res, 429, 'PHOTO_RATE_LIMIT', '사진을 너무 빠르게 올리고 있습니다. 잠시 후 다시 해 주세요.');
+      if (!/^image\/jpeg\b/i.test(String(req.headers['content-type'] || ''))) return sendError(res, 415, 'PHOTO_TYPE', 'JPEG 사진만 올릴 수 있습니다.');
+      const dayStart = Math.floor((Date.now() + 9 * 3600000) / 86400000) * 86400000 - 9 * 3600000; // (00:00 Asia/Seoul)
+      if (await messengerStore.photosSince(key.id, dayStart) >= MESSENGER_PHOTOS_DAY) return sendError(res, 429, 'PHOTO_DAY_LIMIT', '오늘 올릴 수 있는 사진을 다 썼어요.');
+      let bytes; try { bytes = await readRaw(req, PHOTO_MAX); } catch (error) { return sendError(res, error.status === 413 ? 413 : 400, 'PHOTO_TOO_BIG', '사진은 한 장에 2MB까지 올릴 수 있습니다.'); }
+      if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) return sendError(res, 415, 'PHOTO_TYPE', 'JPEG 사진만 올릴 수 있습니다.');
+      const dim = (h) => Math.max(1, Math.min(4096, Math.floor(Number(req.headers[h]) || 1)));
+      return sendJson(res, 201, { ok: true, id: await messengerStore.addPhoto(room.id, key.id, bytes, dim('x-photo-w'), dim('x-photo-h')) });
+    }
     if (m[2] === 'messages' && req.method === 'POST') {
       if (!checkRateLimit('messenger-post:' + key.id, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
       const body = await parseJson(req);
-      const text = String(body.text || '').trim();
+      if (process.env.NODE_ENV === 'test') { if (messengerSlowMs) await new Promise((done) => { setTimeout(done, messengerSlowMs); }); if (messengerFailNext) { messengerFailNext = false; return sendError(res, 503, 'TEST_FAIL', '잠시 후 다시 보내 주세요.'); } }
+      const ids = Array.isArray(body.photos) ? [...new Set(body.photos.map(String))] : []; // (v1.10.233: the photos this message takes)
+      if (ids.length > MESSENGER_PHOTOS_MAX || !ids.every((id) => /^[0-9a-f-]{36}$/i.test(id))) return sendError(res, 400, 'BAD_PHOTOS', `사진은 한 번에 ${MESSENGER_PHOTOS_MAX}장까지 보낼 수 있습니다.`);
+      const text = String(body.text || '').trim() || (ids.length ? MESSENGER_PHOTO_ONLY : '');
       if (!text) return sendError(res, 400, 'EMPTY_CHAT', '메시지를 입력해 주세요.');
       if (text.length > MESSENGER_TEXT_MAX) return sendError(res, 400, 'CHAT_TOO_LONG', `메시지는 ${MESSENGER_TEXT_MAX}자까지 보낼 수 있습니다.`);
+      if (ids.length && !(await messengerStore.photosFree(room.id, key.id, ids))) return sendError(res, 409, 'PHOTO_NOT_READY', '사진을 다시 올려 주세요.');
       const sent = await messengerStore.post(room.id, key.id, text);
-      if (sent) await messengerStore.setRead(room.id, key.id, sent.seq); // my own line is read by me
+      if (sent && ids.length) await messengerStore.attachPhotos(room.id, key.id, sent.seq, ids);
+      const shown = sent && ids.length ? (await messengerStore.messages(room.id, sent.seq - 1, 1)).find((x) => x.seq === sent.seq) || sent : sent;
+      // (v1.10.233 보내기 빠르게, 5절 덤: the answer first -- my read and the others' news after it)
+      sendJson(res, 201, { ok: true, message: { ...shown, label: key.label } });
+      if (sent) await messengerStore.setRead(room.id, key.id, sent.seq).catch(() => {}); // my own line is read by me
       pokeRoom(room.id); // (A5: the members' pages take it at once)
       pushNew(room, key.id, key.label, text).catch((error) => console.warn('[messenger-push]', error.message)); // (③: and the others' shut windows)
-      return sendJson(res, 201, { ok: true, message: { ...sent, label: key.label } });
+      return;
     }
     if (m[2] === 'members' && req.method === 'POST') {
       const body = await parseJson(req);
@@ -6265,6 +6304,8 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/take' && req.method === 'POST') { // (Q2 tests: these stories' first steps taken -- the 할 일 card's many lines)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    if (typeof body.open === 'boolean') for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) IslandQuests.openForTest(id, body.open); // (v1.10.233: a story of another week -- 철이's -- open for a test, closed after)
+    if (body.open === false) return sendJson(res, 200, { ok: true });
     for (const id of Array.isArray(body.stories) ? body.stories : []) if (IslandQuests.STORIES[id]) { const steps = IslandQuests.STORIES[id].steps; const k = body.visit ? Math.max(0, steps.findIndex((x) => x.task)) : 0; const pick = body.visit ? IslandQuests.drawPick(steps[k]) : null; /* (206: at its visit, the pick drawn) */ await questApply(account, (doc) => ({ doc: { ...doc, [id]: { step: k, taken: true, count: 0, v: 2, ...(pick ? { pick } : {}) } }, reward: 0 }), IslandQuests.scopeOf(id)); }
     return sendJson(res, 200, { ok: true, track: questEntries(account).track });
   }
@@ -6734,7 +6775,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
-    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null }, nowMs()); bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
+    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null, ...(body.dex ? { dexEntry: String(body.itemId) } : {}) }, nowMs()); // (v1.10.233 dex: into the 도감 too) bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
     return sendJson(res, 200, { ok: true, ...result });
   }
 
@@ -8293,7 +8334,7 @@ async function requestHandler(req, res) {
     if (pathname === '/herosurv') { res.writeHead(301, securityHeaders({ Location: '/herosurv/' })); return res.end(); }
     if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
     // 메신저 단독 창 ①: its own light page (no game code) -- not behind the Chrome gate (no 3D: Safari's home-screen app too)
-    if (pathname === '/messenger') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(messengerTemplate), 'Cache-Control': 'no-store' })); return res.end(messengerTemplate); }
+    if (pathname === '/messenger') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(messengerTemplate), 'Cache-Control': 'no-store', 'Content-Security-Policy': securityHeaders()['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:") })); return res.end(messengerTemplate); } // (v1.10.233: its photos shown from the page's own blobs)
     // 달마루섬 5단계: the server's own island, told before the island's scripts load (island-map.js) -- a page on it never
     // loads twice to learn the map; on 지금 섬 nothing (the administrator's preview keeps its own way)
     if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end("self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n"); }
@@ -8319,6 +8360,7 @@ async function main() {
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   messengerStore = await createMessengerStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  setInterval(() => { messengerStore.purgePhotos().then(() => messengerStore.photoRooms()).then((rooms) => { if (rooms.length) console.log(`[messenger-photos] kept ${rooms.reduce((s, r) => s + r.size, 0) >> 20} MB in ${rooms.length} rooms; most: ${rooms.slice(0, 5).map((r) => `${String(r.room).slice(0, 8)} ${r.n}장 ${(r.size / 1048576).toFixed(1)} MB`).join(', ')}`); }).catch((error) => console.warn('[messenger-photos]', error.message)); }, 60 * 60 * 1000).unref(); // v1.10.233: photos 7 days, then gone (one never sent: a day)
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
@@ -8410,7 +8452,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.232 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.233 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

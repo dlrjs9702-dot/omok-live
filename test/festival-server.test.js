@@ -78,7 +78,7 @@ test('수확제 요리: 동시에 두 번 내도 재료는 한 벌만 쓰임', a
   assert.equal(await vegetables(), 3);
 });
 
-test('매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작, 판 안의 물고기만 점수, 그날 최고 기록·순위, 밤 정산(트로피·칭호·포인트, 토 낚시 1등 영웅마루), 시간 밖은 닫힘', async (t) => {
+test.skip('(v1.10.233 매주 대회 꺼짐 -- 게임 대회로 돌아올 때 다시) 매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작, 판 안의 물고기만 점수, 그날 최고 기록·순위, 밤 정산(트로피·칭호·포인트, 토 낚시 1등 영웅마루), 시간 밖은 닫힘', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'contest-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('낚시상')); const b = await enter(await issue('둘째'));
