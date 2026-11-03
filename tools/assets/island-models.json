@@ -8568,18 +8568,18 @@
     },
     {
       "out": "characters/npc_walker_useong_off.glb",
-      "src": "residents88:01. High/npc_walker_useong_off.glb",
-      "sha256": "30572321c25eaf079dd48847c8ce73e312eb07ec7d98ca402c8cc9196f2843b9",
-      "lowSrc": "residents88:02. Low/npc_walker_useong_off_low.glb",
-      "lowSha256": "cd3547e033e0729f82d06eeb64484c0690f26cb85a05941d86dff9320c8cadc3",
+      "src": "useong95:01. High/npc_walker_useong_off.glb",
+      "sha256": "ba54fda8b71f9d71fdb1d81c35f7c8029647f4078be8acf39bc0007f1bd6c57e",
+      "lowSrc": "useong95:02. Low/npc_walker_useong_off_low.glb",
+      "lowSha256": "c1fd3fe52ce8ff2a248e636c0fe8f3a92dbfb4b7226cc44b00f51f0363ebf9d0",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_useong_work.glb",
-      "src": "residents88:01. High/npc_walker_useong_work.glb",
-      "sha256": "f041da0c76460f666f093d1b3359568033810f9d7541b598a703188906dd7e20",
-      "lowSrc": "residents88:02. Low/npc_walker_useong_work_low.glb",
-      "lowSha256": "a631d961633d90e48b247bd334c98f2fe6af5194aaf8550bb10d758b4441442b",
+      "src": "useong95:01. High/npc_walker_useong_work.glb",
+      "sha256": "9937811d680a953024d02c3b20a68f2a41a98cce492cc1f572d83402d92966a1",
+      "lowSrc": "useong95:02. Low/npc_walker_useong_work_low.glb",
+      "lowSha256": "3639b0f52e0f04b91b38e16f6d84103403e95ee2ec4ad61ca741a82f3da32b62",
       "precompressed": true
     },
     {
@@ -9014,6 +9014,7 @@
     "yard70": "70. Game Island yard items 2026-10-25",
     "museum74": "74. Game Island museum hall 2026-10-25",
     "fishdex85": "85. Game Island fishing dex more 13 2026-10-29",
-    "garak94": "94. Game Island garak reeds arms 2026-11-03"
+    "garak94": "94. Game Island garak reeds arms 2026-11-03",
+    "useong95": "95. Game Island useong shoulders 2026-11-03"
   }
 }

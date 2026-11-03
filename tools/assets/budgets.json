@@ -1055,23 +1055,23 @@
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_useong_off.glb": {
-      "triangles": 24443,
-      "sourceSha256": "30572321c25eaf079dd48847c8ce73e312eb07ec7d98ca402c8cc9196f2843b9",
+      "triangles": 23875,
+      "sourceSha256": "ba54fda8b71f9d71fdb1d81c35f7c8029647f4078be8acf39bc0007f1bd6c57e",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_useong_off_low.glb": {
-      "triangles": 9877,
-      "sourceSha256": "cd3547e033e0729f82d06eeb64484c0690f26cb85a05941d86dff9320c8cadc3",
+      "triangles": 9417,
+      "sourceSha256": "c1fd3fe52ce8ff2a248e636c0fe8f3a92dbfb4b7226cc44b00f51f0363ebf9d0",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_useong_work.glb": {
-      "triangles": 23793,
-      "sourceSha256": "f041da0c76460f666f093d1b3359568033810f9d7541b598a703188906dd7e20",
+      "triangles": 23215,
+      "sourceSha256": "9937811d680a953024d02c3b20a68f2a41a98cce492cc1f572d83402d92966a1",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_useong_work_low.glb": {
-      "triangles": 9939,
-      "sourceSha256": "a631d961633d90e48b247bd334c98f2fe6af5194aaf8550bb10d758b4441442b",
+      "triangles": 9418,
+      "sourceSha256": "3639b0f52e0f04b91b38e16f6d84103403e95ee2ec4ad61ca741a82f3da32b62",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
     },
     "characters/npc_walker_danbi_off.glb": {

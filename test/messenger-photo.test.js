@@ -23,6 +23,8 @@ async function photosBehave(store) {
   const [shown] = (await store.messages(room.id)).filter((m) => m.seq === msg.seq);
   assert.deepEqual(shown.photos.map((p) => [p.id, p.w, p.h, p.gone]), [[p2, 960, 1280, false], [p1, 1280, 960, false]]);
   assert.equal((await store.photoOf(p1)).bytes.length, JPEG().length); assert.equal((await store.photoOf(p1)).room, room.id);
+  assert.equal(await store.photosSince('a', Date.now() - 60000), 2); assert.equal(await store.photosSince('a', Date.now() + 60000), 0); assert.equal(await store.photosSince('b', 0), 0);
+  assert.deepEqual(await store.photoRooms(), [{ room: room.id, n: 2, size: 2 * JPEG().length }], '방마다 남은 사진');
   const loose = await store.addPhoto(room.id, 'a', JPEG(), 10, 10);
   await store.purgePhotos(Date.now() + 2 * 86400000); assert.equal(await store.photoOf(loose), null, '안 보낸 사진은 하루 뒤');
   assert.ok((await store.photoOf(p1)).bytes, '7일 안');
@@ -69,9 +71,11 @@ test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만�
   const seen = (await call(`/api/messenger/rooms/${room.id}/messages?after=0`, undefined, b.token)).data.messages.find((m) => m.seq === sent.seq);
   assert.equal(seen.photos.length, 3); assert.equal((await call('/api/messenger', undefined, b.token)).data.rooms[0].last.text, '📷 사진');
   const got = await call(`/api/messenger/photos/${ids[1]}`, undefined, b.token);
-  assert.equal(got.status, 200); assert.equal(got.headers.get('content-type'), 'image/jpeg'); assert.match(got.headers.get('cache-control'), /^private/); assert.equal(got.data.length, JPEG(201).length);
+  assert.equal(got.status, 200); assert.equal(got.headers.get('content-type'), 'image/jpeg'); assert.equal(got.headers.get('cache-control'), 'private, max-age=3600'); assert.equal(got.data.length, JPEG(201).length);
   assert.equal((await call(`/api/messenger/photos/${ids[1]}`, undefined, c.token)).status, 404, '방 밖 사람');
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '설명 한 줄', photos: [ids[0]] }, a.token)).data.error, 'PHOTO_NOT_READY', '한 번만');
+  await req('/api/test/messenger/photo-day', null, { max: 4 }); assert.equal((await up(JPEG())).status, 201, '하루 4장째');
+  const over = await up(JPEG()); assert.equal(over.status, 429); assert.equal(over.data.error, 'PHOTO_DAY_LIMIT', '하루 상한'); await req('/api/test/messenger/photo-day', null, { max: 200 });
   await req('/api/test/messenger/purge', null, { days: 8 });
   assert.equal((await call(`/api/messenger/photos/${ids[1]}`, undefined, b.token)).status, 410, '7일 뒤');
   assert.deepEqual((await call(`/api/messenger/rooms/${room.id}/messages?after=0`, undefined, b.token)).data.messages.find((m) => m.seq === sent.seq).photos.map((p) => p.gone), [true, true, true]);

@@ -689,6 +689,7 @@ function requestSessionRelease(token, page = '', sequence = 0) {
 const ACCOUNT_TTL_MS = 12 * 60 * 60 * 1000;
 const MESSENGER_ROOM_MAX = 30; const MESSENGER_ROOMS_MAX = 20; const MESSENGER_TEXT_MAX = 500; // v1.10.78 메신저
 let messengerSlowMs = 0; let messengerFailNext = false; // (tests: /api/test/messenger/slow)
+let MESSENGER_PHOTOS_DAY = 200; /* v1.10.233 총괄: a key's photos a Seoul day at most (the test route lowers it) */
 const MESSENGER_PHOTOS_MAX = 10; const MESSENGER_PHOTO_ONLY = '📷 사진'; // v1.10.233: a message's photos at most; a photo-only message's words (the list, the push)
 const SETUP_TTL_MS = 15 * 60 * 1000;
 const accountTokens = new Map(); // token -> { keyId, exp }
@@ -4175,6 +4176,7 @@ async function requestHandler(req, res) {
   // call checks the login and the permission here (a hidden button is not the check); a room is reached only by its
   // members. The page asks again every few seconds while it is open (no stream on the start page).
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/pushes' && req.method === 'GET') return sendJson(res, 200, { ok: true, pushes: testPushes.splice(0) }); // (메신저 ③: what would have been sent)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/photo-day' && req.method === 'POST') { const body = await parseJson(req); MESSENGER_PHOTOS_DAY = Number(body.max) || 200; return sendJson(res, 200, { ok: true, max: MESSENGER_PHOTOS_DAY }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/purge' && req.method === 'POST') { const body = await parseJson(req); return sendJson(res, 200, { ok: true, n: await messengerStore.purgePhotos(Date.now() + (Number(body.days) || 0) * 86400000) }); } // (v1.10.233: as if days had gone by)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/slow' && req.method === 'POST') { const body = await parseJson(req); messengerSlowMs = Math.max(0, Math.min(10000, Number(body.ms) || 0)); messengerFailNext = body.fail === true; return sendJson(res, 200, { ok: true }); } // (v1.10.233: a send held back, or the next one refused)
   if (pathname === '/api/messenger' || pathname.startsWith('/api/messenger/')) {
@@ -4210,7 +4212,7 @@ async function requestHandler(req, res) {
       const p = await messengerStore.photoOf(photo[1]); const r = p && await messengerStore.room(p.room);
       if (!p || !r || !r.members.includes(key.id)) return sendError(res, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
       if (!p.bytes) return sendError(res, 410, 'PHOTO_GONE', '7일이 지나 사라진 사진입니다.');
-      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': p.bytes.length, 'Cache-Control': 'private, max-age=604800', 'X-Content-Type-Options': 'nosniff' }); return res.end(p.bytes);
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': p.bytes.length, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' }); return res.end(p.bytes); // (an hour: an unsent photo leaves the others' browsers soon -- 총괄)
     }
     const names = (ids) => ids.map((id) => `${nameOf(id)}님`).join(', ');
     const invitees = (list) => { // other permitted accounts only
@@ -4282,6 +4284,8 @@ async function requestHandler(req, res) {
     if (m[2] === 'photos' && req.method === 'POST') { // v1.10.233: one photo's JPEG bytes (shrunk on the page: 1280 px, 0.8) -- kept until a message takes it
       if (!checkRateLimit('messenger-photo:' + key.id, 20, 10 * 1000)) return sendError(res, 429, 'PHOTO_RATE_LIMIT', '사진을 너무 빠르게 올리고 있습니다. 잠시 후 다시 해 주세요.');
       if (!/^image\/jpeg\b/i.test(String(req.headers['content-type'] || ''))) return sendError(res, 415, 'PHOTO_TYPE', 'JPEG 사진만 올릴 수 있습니다.');
+      const dayStart = Math.floor((Date.now() + 9 * 3600000) / 86400000) * 86400000 - 9 * 3600000; // (00:00 Asia/Seoul)
+      if (await messengerStore.photosSince(key.id, dayStart) >= MESSENGER_PHOTOS_DAY) return sendError(res, 429, 'PHOTO_DAY_LIMIT', '오늘 올릴 수 있는 사진을 다 썼어요.');
       let bytes; try { bytes = await readRaw(req, PHOTO_MAX); } catch (error) { return sendError(res, error.status === 413 ? 413 : 400, 'PHOTO_TOO_BIG', '사진은 한 장에 2MB까지 올릴 수 있습니다.'); }
       if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) return sendError(res, 415, 'PHOTO_TYPE', 'JPEG 사진만 올릴 수 있습니다.');
       const dim = (h) => Math.max(1, Math.min(4096, Math.floor(Number(req.headers[h]) || 1)));
@@ -8356,7 +8360,7 @@ async function main() {
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   messengerStore = await createMessengerStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
-  setInterval(() => { messengerStore.purgePhotos().catch((error) => console.warn('[messenger-photos]', error.message)); }, 60 * 60 * 1000).unref(); // v1.10.233: photos 7 days, then gone (one never sent: a day)
+  setInterval(() => { messengerStore.purgePhotos().then(() => messengerStore.photoRooms()).then((rooms) => { if (rooms.length) console.log(`[messenger-photos] kept ${rooms.reduce((s, r) => s + r.size, 0) >> 20} MB in ${rooms.length} rooms; most: ${rooms.slice(0, 5).map((r) => `${String(r.room).slice(0, 8)} ${r.n}장 ${(r.size / 1048576).toFixed(1)} MB`).join(', ')}`); }).catch((error) => console.warn('[messenger-photos]', error.message)); }, 60 * 60 * 1000).unref(); // v1.10.233: photos 7 days, then gone (one never sent: a day)
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
