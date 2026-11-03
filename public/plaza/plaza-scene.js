@@ -4095,7 +4095,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   const TALK_SIDES = [[1, 1], [-1, 1], [1, 0.6], [-1, 0.6]];
   function talkSide(p, t, ux, uz, rx, rz, k) {
-    if (mySpace !== 'island') return TALK_SIDES[0];
+    if (mySpace !== 'island') { // (v1.10.234 총괄 #380 검토 「구치소 대화가 벽으로 꽉 막혀요」: 김우성's desk 3.8 m right of the room's middle -- 4.2 m to my right is past its wall; in a room, the first side that stays inside it)
+      const M = mallRoom(mySpace) || (mySpace === 'jail' ? JAIL : mySpace === 'museum' ? MUS : null); if (!M?.local) return TALK_SIDES[0];
+      const inside = ([s, f]) => { const q = M.local(p.x - ux * 1.5 * k * f + rx * 4.2 * k * f * s, p.z - uz * 1.5 * k * f + rz * 4.2 * k * f * s); return Math.abs(q.lx) <= M.ROOM.w / 2 - 0.3 && Math.abs(q.lz) <= M.ROOM.d / 2 - 0.3; };
+      return TALK_SIDES.find(inside) || TALK_SIDES[0];
+    }
     const solids = globalThis.IslandTerrain.natureSolids().filter((o) => Math.hypot(o.x - t.x, o.z - t.z) < 8 * k);
     const clear = ([s, f]) => { const cx = p.x - ux * 1.5 * k * f + rx * 4.2 * k * f * s; const cz = p.z - uz * 1.5 * k * f + rz * 4.2 * k * f * s; const dx = t.x - cx; const dz = t.z - cz; const len2 = dx * dx + dz * dz || 1;
       return solids.every((o) => { const u = Math.max(0, Math.min(1, ((o.x - cx) * dx + (o.z - cz) * dz) / len2)); return u > 0.92 || Math.hypot(cx + dx * u - o.x, cz + dz * u - o.z) > o.r + 0.15; }); }; /* (by them -- the last 8 % -- a tree behind them is no wall) */
