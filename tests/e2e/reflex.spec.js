@@ -69,7 +69,7 @@ test('하늘 계단: 두 버튼으로 35계단 → 헛디딤 → 결과·최고 
   const errs = []; page.on('pageerror', (e) => errs.push(String(e).slice(0, 300)));
   const peek = () => page.evaluate(async () => (await import('/reflex/js/engine.js')).E.game?.peek?.());
   const stage = page.locator('#stage'); const box = await stage.boundingBox();
-  const press = async (dir) => { if (isMobile) await stage.tap({ position: { x: dir < 0 ? box.width * 0.2 : box.width * 0.8, y: box.height * 0.6 } }); else await page.keyboard.press(dir < 0 ? 'ArrowLeft' : 'ArrowRight'); };
+  const press = async (dir) => { if (isMobile) await stage.tap({ force: true, position: { x: dir < 0 ? box.width * 0.2 : box.width * 0.8, y: box.height * 0.6 } }); /* (234 CI mobile-4: the canvas never holds still -- no wait for it) */ else await page.keyboard.press(dir < 0 ? 'ArrowLeft' : 'ArrowRight'); };
   await expect.poll(async () => (await peek())?.at, { timeout: 10000 }).toBe(0);
   for (let k = 0; k < 35; k += 1) { await press((await peek()).next); await page.waitForTimeout(130); } // (the server's ten steps a second)
   expect((await peek()).at).toBe(35);
