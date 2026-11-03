@@ -13,7 +13,7 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
   const tag = isMobile ? 'm' : 'p';
   const a = await shopper(browser, request, `배치${tag}`, 3000000, 'female'); const { page } = a;
   if (process.env.SHOT_DIR && isMobile) await page.setViewportSize({ width: 393, height: 851 }); // (총괄 232 검토: the photos on a phone held upright -- the bar's narrow layout)
-  await page.evaluate((real) => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.view.out', 'third'); if (real) localStorage.setItem('gc.testRealView', '1'); else localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, Boolean(process.env.SHOT_DIR));
+  await page.evaluate((real) => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.view.out', 'third'); if (real) { localStorage.setItem('gc.testRealView', '1'); localStorage.setItem('gc.view.in', 'third'); } else localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, Boolean(process.env.SHOT_DIR));
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
   const shot = async (name, wait = 1200) => { if (!process.env.SHOT_DIR) return; await page.waitForTimeout(wait); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-${name}.png` }); };
   const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
@@ -28,6 +28,7 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
   };
   const pieces = (await post(request, '/api/test/home/furniture', a.token, { ids: ['sofa__mint', 'desk__oak', 'radio__oak', 'wall_clock__oak', 'yard_bench__plain'] })).data.pieces;
   const uid = (id) => pieces.find((p) => p.id === id).uid;
+  await post(request, '/api/test/island/give', a.token, { itemId: 'pet_puppy', qty: 1 }); // (문제 기록 11-03 1: a puppy at home -- it walks facing the way it goes)
   let lot = null;
   try {
     // a house from the 민원 창구 (as my-home.spec)
@@ -41,6 +42,13 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     await expect.poll(() => page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toBeTruthy();
     await through(`home:${lot}`, '내 집 들어가기', 'home');
 
+    // (문제 기록 11-03 1) the puppy at home walks facing the way it goes (its front, after its model's turn, toward its step)
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().homePets().filter((p) => p.shown).length), { timeout: 15000 }).toBeGreaterThan(0); // (seen at once, not only after the first placing)
+    const facing = await page.evaluate(() => new Promise((done) => { const out = []; let last = null; const t0 = performance.now();
+      const tick = () => { const p = window.PlazaDebug().homePets()[0]; if (last && p.walking) { const dx = p.x - last.x; const dz = p.z - last.z; if (Math.hypot(dx, dz) > 0.02) { const want = Math.atan2(-dx, -dz) + p.off; out.push(Math.abs(Math.atan2(Math.sin(p.yaw - want), Math.cos(p.yaw - want)))); } } last = p;
+        if (performance.now() - t0 < 12000 && out.length < 6) setTimeout(tick, 250); else done(out); }; tick(); }));
+    expect(facing.length, '강아지가 걸음').toBeGreaterThan(0); expect(Math.max(...facing), '걷는 쪽을 봄').toBeLessThan(0.6);
+    if (process.env.SHOT_DIR && !isMobile) { for (const k of [0, 1, 2]) { const p = (await page.evaluate(() => window.PlazaDebug().homePets()))[0]; await page.evaluate(([x, z]) => window.PlazaDebug().overview(true, [x, window.IslandHome.ROOM.y + 2.6, z]), [p.x, p.z]); await shot(`home-pet-walk-${k}`, 700); } await page.evaluate(() => window.PlazaDebug().overview(false)); } // (from just above it: its head the way it goes)
     // the tool, from 꾸미기
     await page.locator('#homeEditBtn').click(); await page.locator('#homeEdit .placeToolBtn').click();
     await expect(page.locator('#placeBar')).toBeVisible(); await expect(page.locator('#plazaDialog')).toBeHidden();
