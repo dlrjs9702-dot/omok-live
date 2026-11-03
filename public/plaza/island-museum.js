@@ -32,15 +32,15 @@
   const SLOTS = Object.freeze(Object.fromEntries([...SEA.map((id, k) => [`fish_${id}`, { kind: 'tank', k }]), ...FRESH.map((id, k) => [`fish_${id}`, { kind: 'wall', k, ...WALLS[k] }]),
     ...INSECTS.map((id, k) => [`insect_${id}`, { kind: 'case', k, ...CASES[k] }])].map(([id, s]) => [id, Object.freeze(s)])));
   // the entrance hall: the curator behind his desk (facing the door), where one talks to him, the benches, the board
-  const DESK = Object.freeze({ lx: 0, lz: 5.0 });
-  const CURATOR = Object.freeze({ lx: 0, lz: 6.2, yaw: Math.PI });
-  const TALK = Object.freeze({ lx: 0, lz: 3.9 });
+  const DESK = Object.freeze({ lx: 0, lz: 1.6 }); // (in the open middle: the talk camera, 4 m to the side, clear of the columns)
+  const CURATOR = Object.freeze({ lx: 0, lz: 2.8, yaw: Math.PI });
+  const TALK = Object.freeze({ lx: 0, lz: 0.5 });
   const TALK_R = 2.2; // (the server's: a gift from here)
-  const BENCHES = Object.freeze([[-1.7, -1.2], [1.7, -1.2]].map(([lx, lz]) => Object.freeze({ lx, lz, yaw: 0 })));
+  const BENCHES = Object.freeze([[-1.7, -3.2], [1.7, -3.2]].map(([lx, lz]) => Object.freeze({ lx, lz, yaw: 0 })));
   const BOARD = Object.freeze({ lx: -3.1, lz: -5.2 });
   const FIXTURES = Object.freeze([ // what one walks round: x, z centre, w, d (room-local)
     ...[-2.6, 2.6].flatMap((x) => [-4.2, 4.2].map((z) => ({ x, z, w: 0.76, d: 0.76 }))) /* the columns */, ...[-4.5, 4.5].flatMap((x) => [-5.25, 5.25].map((z) => ({ x, z, w: 0.4, d: 5.5 }))) /* the wing walls by the arches */,
-    { x: 0, z: 5.6, w: 3.8, d: 2.4 } /* the desk and the curator */, ...BENCHES.map((b) => ({ x: b.lx, z: b.lz, w: 1.8, d: 0.5 })), { x: BOARD.lx, z: BOARD.lz, w: 1.3, d: 0.3 },
+    { x: DESK.lx, z: DESK.lz + 0.6, w: 3.8, d: 2.4 } /* the desk and the curator */, ...BENCHES.map((b) => ({ x: b.lx, z: b.lz, w: 1.8, d: 0.5 })), { x: BOARD.lx, z: BOARD.lz, w: 1.3, d: 0.3 },
     { x: TANK.lx, z: TANK.lz, w: 2.6, d: 6.2 }, { x: -11.55, z: 0, w: 0.9, d: 14 }, { x: -8, z: 7.55, w: 6, d: 0.9 }, { x: -8, z: -7.55, w: 6, d: 0.9 },
     { x: 8.4, z: 6.6, w: 7, d: 0.95 }, { x: 8.4, z: -6.6, w: 7, d: 0.95 }, { x: DOME.lx, z: DOME.lz, w: 3.1, d: 3.1 },
   ].map((f) => Object.freeze(f)));

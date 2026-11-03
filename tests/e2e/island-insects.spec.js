@@ -82,9 +82,12 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   expect((await post(request, '/api/island/insect/scare', a.token, { id: other.id })).status).toBe(200);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().insectList().includes(id), other.id), { timeout: 15000 }).toBe(false);
   expect((await post(request, '/api/island/insect/catch', a.token, { id: other.id })).data.error).toBe('BUG_GONE');
-  // 박물관: not away from its door; once per kind, with my name
+  // 박물관 (v1.10.231: in its hall, at the curator's desk -- the page left on the island, the server keeps me where it put me):
+  // not outside; once per kind, with my name
   expect((await post(request, '/api/island/museum/donate', a.token, { itemId })).status).toBe(409);
   const door = Together.museumDoor(T.MUSEUM); await standAt(request, a, door.x, door.z);
+  expect((await post(request, '/api/island/museum/enter', a.token, {})).status).toBe(200);
+  { const desk = require('../../public/plaza/island-museum.js'); const w = desk.world(desk.TALK.lx, desk.TALK.lz); await post(request, '/api/plaza/state', a.token, { x: w.x, z: w.z, yaw: 0, moving: false }); }
   expect((await post(request, '/api/island/museum/donate', a.token, { itemId: 'bugnet' })).status).toBe(400);
   const before = (await get(request, '/api/island/museum', a.token)).data.exhibits.find((x) => x.id === itemId).by; // (the island's museum: an earlier run may have given this kind)
   const given = await post(request, '/api/island/museum/donate', a.token, { itemId });
