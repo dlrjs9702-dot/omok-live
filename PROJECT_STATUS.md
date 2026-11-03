@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.234 주민 이야기 책 10~26
+
+- island-story.js RESIDENTS 10~26(notes docs/resident-stories-17-20261102.md 두 js 블록 그대로, 17명 × 3장). PLACE 새 곳 다섯: falls(마루폭포 꼭대기 물웅덩이 옆 능선 길), station(달마루역 들어가는 길), office(관공서 정문 앞), pavilion(느티 정자 앞), jail(구치소 문 앞) — 길 위, 문에서 4 m 넘게.
+- 이야기 이름은 IslandCast.RESIDENTS(27명; WALKERS는 앞 10명), 10~26 얼굴 색은 번호로. 밤 장(가락 2·3, 반디 1~3, 김우성 3)은 0~9와 같은 규칙.
+- 늘 제자리인 넷(IslandRoster.FIXED: 한들 밭·느티 정자·김우성 구치소·마루 관공서 문): server fixedPost·POST_AT(farm·pavilion·gate·jail), 그 자리 대화창 「이야기해요」(app.js fixedTalk) — 이야기 부탁·말 걸기 장.
+- 방 안 대화 카메라는 방 안에 남는 쪽(plaza-scene talkSide): 구치소 김우성 책상에서 카메라가 벽 밖이던 것.
+- 주민 20명 어깨·소맷부리(에셋 96a·96b, 64개), 모델 설정·예산 갱신.
+- 시험: island-story 단위(27명·모양·46자·꼬리말·새 곳·밤 장·고정 주민 대화), e2e story-17(PC·폰).
+
 ## v1.10.233 메신저 사진·도감 탭
 
 - 메신저 즉시 보내기(🕒 보내는 중, 실패 시 다시 보내기·지우기)와 사진 보내기(최대 10장, 1280 px JPEG, 한 장 2 MB, 키마다 서울 날짜로 하루 200장): 사진은 따로 올린 뒤 (방, seq)로 붙임. JSON은 messenger-photos 폴더, Postgres는 messenger_photos 표. 안 보낸 사진은 하루, 보낸 사진은 7일 뒤 bytes 비움, 보내기 취소하면 사진도. GET은 방 사람만, `private, max-age=3600`. 한 시간마다 방별 남은 사진 로그 `[messenger-photos]`.
@@ -28,13 +37,3 @@
 - 집과 마당 같은 도구(app.js openPlaceTool, 어댑터만 다름), 서버 변경 없음(/api/home/place, /api/home/yard). 공간이 바뀌거나 다른 창이 열리면 도구 닫힘(걷기 돌아옴).
 - 코드: IslandHome.aimAt·pieceAt, IslandYard.aimAt·pieceAt, plaza-scene placeTool·placePoint·placeScreen.
 - 시험: place-tool(단위·e2e PC/폰).
-
-## v1.10.231 M 박물관 전시관 + 물고기 크기
-
-- 전시관(public/plaza/island-museum.js, assets 74 museum-v1): 섬 밖 방 24×16 m(ROOM x 100·z -430), 박물관 문 → /api/island/museum/enter·leave. 큰 수조(바다 21)·벽 수조 13(강·호수·폭포)·곤충 진열장 12·나비 돔(나비·잠자리), 명판(크기·기증자, 빈 칸 「아직 기증받지 못했어요」), 관장(기증해요·전시 이야기), 안내판(전시 n/46, 목록). 기증은 관장 창구 2.2 m 안에서만. 폰 화질 0이면 큰 수조 8마리.
-- 물고기 크기(docs/fish-size-20261027.md): 서버가 잡을 때 cm(SIZES, 큰 끝 드묾, 평균 위치 0.35), 가방 meta.sizes(작은 것부터 팔기·선물·주기, 박물관은 가장 큰 것), 값 ×경제 값 fish:sizeMin 80~fish:sizeMax 130%(평균 같음), 낚시 쪽지 cm·내 최고, 도감 최고 크기·날(questDoc fishBest), 옛 물고기는 종류 가운데 값.
-- 박물관 바꿔 걸기: 더 큰 것만(같거나 작으면 NOT_BIGGER), 첫 기증(first)·지난 기록 셋(past), 바뀐 사람에게 쪽지. 곤충은 종류마다 한 번 그대로.
-- 물고기 13종 더(fish-additions-20261029, assets 85): 34종, 밤에만(오징어·동자개, 서울 20~05시), 해마 윤슬만·가재 강/폭포·산천어 폭포·철갑상어 호수만.
-- 걷는 이야기 주민 떨림(검토 진단): 숨긴 quest 분신을 people·out 목록에서 뺌(npc.root.visible).
-- 덤: 집 대문 이름 팻말 1.5배·밝은 판·진한 갈색(긴 이름 두 줄), talk-spot e2e 말 걸기 전 free-residents.
-- 시험: museum-hall(단위·e2e PC/폰), island-fishing 34종·크기 값, island-insects 박물관 창구.

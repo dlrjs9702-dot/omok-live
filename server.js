@@ -1134,7 +1134,7 @@ async function storyFinalGifts(account) {
 // what the book and the tracker read: my chapters, the one under way, the pieces, the festival stories I have
 async function storyView(account) {
   const doc = await storyDoc(account);
-  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */, pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
+  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, (n) => IslandCast.RESIDENTS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1; v1.10.234 all 27) */, pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
 }
 // (R3 ③ 주민의 하루: the islanders walk that time of day's round -- the time held by the administrator, kept here as it changes)
 let walkerTimeMode = 'auto';
@@ -1642,7 +1642,9 @@ const errandWalkers = (n) => { const d = rosterDay(); return d ? IslandRoster.wa
 const stationToday = (n) => { const d = rosterDay(); return d && IslandRoster.postOf(n, d) === 'station' ? 'station' : null; };
 // v1.10.222 섬 가꾸기: a works day 바위 at the works fence (the roster's own hook, set from the projects' state below)
 const worksToday = (n) => { const d = rosterDay(); return d && IslandRoster.postOf(n, d) === 'works' ? 'works' : null; };
-const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n);
+// v1.10.234 (17명 이야기): the four who never walk -- at their own place every day (talked to there, as at a counter)
+const fixedPost = (n) => Object.entries(IslandRoster.FIXED).find(([, m]) => m === n)?.[0] || null;
+const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n) ?? fixedPost(n);
 const talkable = (n) => Number.isInteger(n) && Boolean(IslandCast.RESIDENTS[n]) && (walksToday(n) || postToday(n) != null);
 const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
 function broadcastIslandRemoved(ids) {
@@ -1776,7 +1778,9 @@ function islandProgress(kind, account, qty, where = null) { // (A2b: a promise -
 // step I am on points to
 // v1.10.215 주민 근무표 C1: a rotating post's counter (where its customer stands) and its floor; by it -- talking to that day's
 // islander. The 관공서's desks: a resting one's work at the desk beside it (총괄 ③)
-const POST_AT = { mall1: ['store', () => IslandStore.sectorPoint('mall:store')], mall2: ['fashion', () => IslandFashion.world(...IslandFashion.COUNTER.customer)], mall3: ['furniture', () => IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1)], roof: ['petshop', () => IslandPetShop.world(IslandPetShop.COUNTER_KEEPER[0], IslandPetShop.COUNTER_KEEPER[1] - 2.3)], plaza: ['island', () => IslandTerrain.facilityDoor('attendance')], station: ['island', () => IslandQuests.STORIES.stationmaster.at] };
+const POST_AT = { mall1: ['store', () => IslandStore.sectorPoint('mall:store')], mall2: ['fashion', () => IslandFashion.world(...IslandFashion.COUNTER.customer)], mall3: ['furniture', () => IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1)], roof: ['petshop', () => IslandPetShop.world(IslandPetShop.COUNTER_KEEPER[0], IslandPetShop.COUNTER_KEEPER[1] - 2.3)], plaza: ['island', () => IslandTerrain.facilityDoor('attendance')], station: ['island', () => IslandQuests.STORIES.stationmaster.at],
+  /* v1.10.234 the four fixed (IslandRoster.FIXED): where one talks to them from -- 한들 and 느티 by their 부탁's spot, 마루 at the gate, 김우성 before his desk */
+  farm: ['island', () => IslandQuests.STORIES.farmer.at], pavilion: ['island', () => IslandQuests.STORIES.grandpa.at], gate: ['island', () => TOWNHALL_GATE_OUT], jail: ['jail', () => IslandJail.world(IslandJail.TALK.lx, IslandJail.TALK.lz)] };
 POST_AT.works = ['island', () => { const w = projectsState?.works; return w ? IslandProjects.SITES[w.id]?.keeper || null : null; }]; // (v1.10.222)
 const atPost = (pos, post) => { const p = POST_AT[post]; const w = p?.[1](); return Boolean(pos && w && (pos.space || 'island') === p[0] && Math.hypot(pos.x - w.x, pos.z - w.z) <= 3); };
 function atDesk(session, at, desk) { // desk: 'civil' | 'tax' | 'bank'
@@ -4081,7 +4085,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.233' });
+    return sendJson(res, 200, { ok: true, version: '1.10.234' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -7327,7 +7331,7 @@ async function requestHandler(req, res) {
         return sendTalk(view(IslandCast.say(n, 'errandYes'), { storyAccepted: { title: IslandStory.RESIDENTS[n][ch].title }, story: await storyView(account) }));
       }
       if (st === 'offer') {
-        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
+        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.RESIDENTS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
         return sendTalk(view(ch.offer, { storyOffer: { title: ch.title, task: ch.task, where: t.where } }));
       }
       if (st === 'visit') {
@@ -8452,7 +8456,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.233 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.234 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
