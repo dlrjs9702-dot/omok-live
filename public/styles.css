@@ -3224,7 +3224,7 @@ body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fff
 .placeBar .placePad{display:grid;grid-template-columns:repeat(4,48px);gap:6px}.placeBar .placePad.hidden{display:none}
 .placeBar .placeStrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x proximity}
 .placeBar .placeStrip .placePiece{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
-.placeBar .placeStrip .placePiece.selected{background:var(--isle-btn,#7a5230);color:#fff;border-color:var(--isle-btn,#7a5230)}
+.placeBar .placeStrip .placePiece.selected{background:var(--isle-btn,#8a5f3a);color:#fff;border-color:var(--isle-btn,#8a5f3a)}
 .placeBar .placeBack{justify-self:end}
 body.placing #islandStick,body.placing .islandCtl,body.placing #homeEditBtn,body.placing #yardEditBtn{display:none!important}
 @media (max-width:760px){.placeBar{left:0;right:0;bottom:0;translate:none;width:auto;border-radius:18px 18px 0 0;padding:8px 10px}.placeBar .placeActs{right:10px;top:-62px}.placeBar.holding .placeStrip,.placeBar.holding .placeBack{display:none}}
