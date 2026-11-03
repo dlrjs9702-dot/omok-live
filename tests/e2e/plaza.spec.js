@@ -631,6 +631,11 @@ test('섬 화면 종이: 메뉴·채팅·가방·사진·대회 띠·안내·승
   const a = await intoPlaza(browser, request, '종이화면'); const { page } = a;
   const looks = await paperLooks(page, ['gameMenuBtn', 'islandChatTab', 'islandBagTab', 'islandPhotoTab', 'contestBar', 'plazaHint', 'starWishBtn', 'trainMainBtn', 'homeEditBtn']);
   for (const l of looks) { expect(l.paper, JSON.stringify(l)).toBe(true); expect(l.contrast, JSON.stringify(l)).toBeGreaterThanOrEqual(4.5); }
+  // (문제 기록 1103 11) the 미션 window's tabs and rows paper too, not the old navy
+  await page.evaluate(() => document.getElementById('missionBtn').click()); await expect(page.locator('#missionDialog .missionRow').first()).toBeVisible();
+  const navy = await page.evaluate(() => ['.missionTab', '.missionRow'].map((s) => getComputedStyle(document.querySelector(`#missionDialog ${s}`)).backgroundColor.match(/\d+/g).slice(0, 3).map(Number)));
+  for (const [r, g, b] of navy) expect(r >= 235 && g >= 215 && b >= 175, String([r, g, b])).toBe(true); // (#fffaf0 or the chosen tab #f0dcb6)
+  await page.evaluate(() => document.getElementById('missionDialog').close());
   // (the pictures before 「채팅」·「가방」 widen them: neighbours never overlap)
   for (const [l, r] of [['#gameMenuBtn', '#islandChatTab'], ['#islandBagTab', '#islandPhotoTab']]) { const a1 = await page.locator(l).boundingBox(); const b1 = await page.locator(r).boundingBox(); expect(a1.x + a1.width, `${l} ${r}`).toBeLessThanOrEqual(b1.x); }
   await page.evaluate(() => document.getElementById('islandMessengerTab').classList.remove('hidden'));

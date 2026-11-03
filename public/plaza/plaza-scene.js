@@ -1668,7 +1668,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const viewSide = () => (mySpace === 'island' ? 'out' : 'in');
   const FP_PLACES = new Set(['island', 'home', 'store', 'fashion', 'furniture', 'petshop']); // (V1: out and in my house; v1.10.211 the 백화점's four floors, their ceilings with them -- the other rooms in V2)
   let viewReady = false; // (the states below are declared further on -- read from the first frame on: a first chosen before, at start, threw)
-  const fpNow = () => viewReady && FP_PLACES.has(mySpace) && viewPick[viewSide()] === 'first' && !overview && !editView && !fishing && !sitting && !riding && !liftRide;
+  const fpNow = () => viewReady && FP_PLACES.has(mySpace) && viewPick[viewSide()] === 'first' && !overview && !editView && !fishing && !riding && !liftRide; // (문제 기록 1103 3: seated, the first stays -- at the seated eyes, the head turned ±100° from the seat's way)
   let onView = null; let viewSideWas = null;
   function toggleView() {
     if (!FP_PLACES.has(mySpace)) { onView?.('later'); return 'third'; }
@@ -1677,7 +1677,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     pitchGoal = 0; camPitch = 0; onView?.(viewPick[side]); return viewPick[side];
   }
   const FP_UP = (75 * Math.PI) / 180; const FP_DOWN = (70 * Math.PI) / 180; const FP_FOV = 70; /* (v1.10.217 B2·B3: 75° -> 70°, up 75° and down 70°) */ const FP_TALK_FOV = 64; const FP_CONE = Math.cos(Math.PI / 6); // (the talk: a little drawn in; what SPACE talks to: within 60° of the screen's middle)
-  let eyeAt = { t: -Infinity, h: 1.2 }; const eyeBox = new THREE.Box3(); const partBox = new THREE.Box3();
+  let eyeAt = { t: -Infinity, h: 1.2 }; let satAt = -Infinity; let standEyeH = 1.4; const eyeBox = new THREE.Box3(); const partBox = new THREE.Box3();
   function figureFrame(root) { // (V1 총괄 검토: a talk framed by who they are -- their eyes and their head's top)
     const u = root.userData; if (u.fpFrame && clock - u.fpFrameAt < 3) return u.fpFrame;
     const y0 = root.getWorldPosition(new THREE.Vector3()).y; const shown = (o) => { for (let x = o; x && x !== root.parent; x = x.parent) if (!x.visible) return false; return true; };
@@ -1698,8 +1698,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     bobPhase += dt * (st === 'run' ? 11 : 8); return (Math.abs(Math.sin(bobPhase)) * 2 - 1) * bobAmp; // (a step's up and down: twice a stride)
   }
   const eyeV = new THREE.Vector3(); const EYE_ABOVE_HEAD = 0.02; /* (사용자 2026-11-01 「1.4로 가자」: the plaza's 1.5 -> 1.4 m) */
+  const SEAT_LOOK = (100 * Math.PI) / 180;
   function eyeHeight() { // (my body's own height -- the 꼬마 lower -- read now and then: its meshes, not the name tag)
-    if (clock - eyeAt.t < 2) return eyeAt.h;
+    if (clock - eyeAt.t < (sitting || clock - satAt < 2 ? 0.2 : 2)) return eyeAt.h; // (1103 3: seated, and just stood up -- the eyes follow the body down and up)
     eyeBox.makeEmpty(); me.root.updateMatrixWorld(true);
     me.root.traverse((o) => { if (!o.isMesh || o.isSprite || !o.geometry) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); partBox.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); eyeBox.union(partBox); });
     const top = eyeBox.isEmpty() ? 1.5 : eyeBox.max.y - me.root.position.y;
@@ -1707,7 +1708,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // little above it; a body without one (the drawn character) by its height, lower than before)
     let head = null; me.root.traverse((o) => { if (!head && o.isBone && /^Head$/.test(o.name)) head = o; });
     const eye = head ? head.getWorldPosition(eyeV).y - me.root.position.y + EYE_ABOVE_HEAD : top * 0.68;
-    eyeAt = { t: clock, h: Math.max(0.5, Math.min(2.0, eye)) }; return eyeAt.h;
+    const h = Math.max(0.5, Math.min(2.0, eye)); if (!sitting) standEyeH = h; /* (1103 3: seated, the eyes at most some 58% of standing -- a body drawn without a seated pose too) */
+    eyeAt = { t: clock, h: sitting ? Math.min(h, standEyeH * 0.58) : h }; return eyeAt.h;
   }
   const DRAG_START = 5; const DRAG_TURN = 0.008; // pixels before a press becomes a drag, radians per pixel
   // v1.10.21 카메라 회전 확장 (IDEAS 2026-10-05): the camera turns round my character (yaw) and tilts a little (pitch)
@@ -1732,6 +1734,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (camKeys.has('KeyS')) pitchGoal += PITCH_SPEED * speed * dt;
     } else { camHeld = 0; if (isBlocked()) camKeys.clear(); }
     pitchGoal = clampPitch(pitchGoal);
+    if (sitting && fpNow()) { const c = sitting.yaw - Math.PI; const d = Math.atan2(Math.sin(yawGoal - c), Math.cos(yawGoal - c)); yawGoal += Math.max(-SEAT_LOOK, Math.min(SEAT_LOOK, d)) - d; } // (1103 3: no looking through the chair's back)
     const ease = lessMotion?.matches ? 1 : 1 - Math.exp(-dt * 14);
     camYaw += (yawGoal - camYaw) * ease; camPitch = clampPitch(camPitch + (pitchGoal - camPitch) * ease);
   }
@@ -1762,7 +1765,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const LOOK_TURN = 0.0026; let mouseSens = 1; let onLockTip = null;
   try { mouseSens = Math.max(0.3, Math.min(3, Number(localStorage.getItem('gc.mouseSens')) || 1)); } catch {}
   const locked = () => document.pointerLockElement === renderer.domElement;
-  const lockOk = () => !isBlocked() && !talkView && !editView && !photoMode && !sitting && !isTyping(document.activeElement) && document.hasFocus();
+  const lockOk = () => !isBlocked() && !talkView && !editView && !photoMode && (!sitting || fpNow()) && !isTyping(document.activeElement) && document.hasFocus();
   function lockPointer() {
     try { const p = renderer.domElement.requestPointerLock?.(); p?.catch?.(() => {}); } catch {}
     let seen = false; try { seen = localStorage.getItem('gc.lockTip') === '1'; localStorage.setItem('gc.lockTip', '1'); } catch {}
@@ -4846,7 +4849,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const s = SEATS.find((x) => x.id === seatId); if (!s || gather || fishing) return false;
     if (!startGather({ kind: 'sit', ms: Infinity, anim: 'sitDown', onDone: () => standUp(false) })) return false;
     const yaw = s.anyDir ? snapYaw(me.root.rotation.y) : s.yaw; // v1.10.189: a stool or cushion -- the way I faced
-    sitting = { seat: s, yaw, t: 0, from: { x: me.root.position.x, z: me.root.position.z } };
+    sitting = { seat: s, yaw, t: 0, from: { x: me.root.position.x, z: me.root.position.z } }; satAt = clock;
+    if (fpNow()) { const c = yaw - Math.PI; yawGoal = camYaw + Math.atan2(Math.sin(c - camYaw), Math.cos(c - camYaw)); } // (1103 3: the first, looking the seat's way)
     me.root.position.set(s.x, (s.y ?? heightAt(s.x, s.z)) + SEAT_LIFT, s.z); me.root.rotation.y = yaw; me.targetYaw = yaw;
     me.anim?.loop?.('sitIdle'); me.tailTucked = true; me.tuckTail?.(true); myAct.act = 'sit'; myAct.seat = s.id;
     if (s.anyDir) onSeatTurn?.(true);
@@ -4859,7 +4863,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return true;
   }
   function standUp(release = true) {
-    if (!sitting) return; const s = sitting.seat; const sitting0 = sitting; sitting = null;
+    if (!sitting) return; const s = sitting.seat; const sitting0 = sitting; sitting = null; satAt = clock;
     myAct.act = null; myAct.seat = null; me.tailTucked = false; me.tuckTail?.(false); me.anim?.release?.(); if (s.anyDir) onSeatTurn?.(false);
     const reversed = Boolean(me.anim?.play('sitDown', { reverse: true })); lockForClip(reversed || me.anim?.play('standUp')); // (문제 기록 6: sitting down, backwards)
     // off the seat to where I came from (the side I sat down from; a step forward if that was far) -- A-7: indoors on the

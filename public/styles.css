@@ -2960,6 +2960,20 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .skinCard.equippe
 .myPetRow>span:not(.petFace){flex:1;min-width:0}
 .myPetRow .walkingTag{flex:0 0 auto;padding:2px 9px;border-radius:999px;background:#f2b544;color:#4a3015;font-size:.72rem;font-weight:800;transform:rotate(-2deg)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .myPetRow.walking{border-color:var(--isle-tag);background:#fdf0d4}
+/* (문제 기록 1103 11 「통일되지 않았어」) what each window made its own, left dark: paper tabs, rows and cards, the bars brown
+   (done green), the reward a deep amber; a game's board itself stays as it is, only round it paper */
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab,.skinChip){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab[aria-selected="true"],.skinChip.selected){background:#f0dcb6;color:var(--isle-ink);border-color:var(--isle-tag)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow,.achGroup,.gameGuideCase,.climbSummary>div){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode #minesDialog.isle-sheet :is(span,li):not(.minesBoard *){color:var(--isle-soft)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) input[type="range"]{background:transparent;border:0;accent-color:var(--isle-btn)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar{background:#efe2c6}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar i{background:var(--isle-btn)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow.done .bar i{background:#16a34a}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow .reward,.skinPrice){color:#9a5b00}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow .count,.skinCount,.skinShopBalance){color:var(--isle-soft)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinCard .skinName,.gameGuideCase :is(strong,span,li,h4)){color:var(--isle-ink)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .minesBoard{outline:6px solid #fffaf0}
 /* the name asked on paper */
 .nameAskDialog{width:min(92vw,360px)}
 .nameAskForm{display:grid;gap:8px}

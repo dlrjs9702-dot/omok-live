@@ -40,6 +40,24 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
   expect(await view()).toMatchObject({ mode: 'first', body: false, fov: 64 });
   await shot('talk-first');
   await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false); expect(await view()).toMatchObject({ mode: 'first', fov: 70 });
+  // (문제 기록 1103 3 「의자에 앉았을 때도 1인칭이 유지되게」) seated: the first kept, the eyes lower, the look held within ±100°
+  // of the seat's way; stood up, the first still
+  {
+    const standEye = (await view()).eye;
+    const seat = await page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !taken[s.id] && !s.anyDir && !s.counter && !String(s.id).includes(':') && !String(s.id).startsWith('pm-')); });
+    await page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
+    await expect(page.locator('#plazaHint')).toContainText('앉기', { timeout: 10000 });
+    if (isMobile) await page.locator('#plazaHint').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
+    await expect.poll(async () => (await view()).eye, { timeout: 8000 }).toBeLessThan(standEye - 0.2); expect((await view()).mode).toBe('first');
+    if (!isMobile) { await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(2500); await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(400); }
+    else await page.evaluate(() => window.PlazaDebug().setYaw?.(window.PlazaDebug().view().yaw + Math.PI));
+    const off = await page.evaluate((sy) => { const y = window.PlazaDebug().view().yaw; const c = sy - Math.PI; return Math.abs(Math.atan2(Math.sin(y - c), Math.cos(y - c))); }, seat.yaw);
+    expect(off).toBeLessThanOrEqual((100 * Math.PI) / 180 + 0.02);
+    await shot('sit-first');
+    await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
+    expect((await view()).mode).toBe('first');
+  }
   // the 관공서: the third till V2 (「곧」); my house: the first by default, the third chosen there kept for indoors
   const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, who, th.x, th.z);
   const space = () => page.evaluate(() => window.PlazaDebug().space);
