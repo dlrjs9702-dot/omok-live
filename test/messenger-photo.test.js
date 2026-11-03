@@ -32,6 +32,12 @@ async function photosBehave(store) {
   assert.deepEqual((await store.messages(room.id)).find((m) => m.seq === msg.seq).photos.map((p) => p.gone), [true, true]);
   const p3 = await store.addPhoto(room.id, 'a', JPEG(), 10, 10); const m2 = await store.post(room.id, 'a', '하나'); await store.attachPhotos(room.id, 'a', m2.seq, [p3]);
   await store.unsend(room.id, m2.seq); assert.equal((await store.photoOf(p3)).bytes, null, '보내기 취소');
+  // (Codex 6차 P3) one of them already taken: none taken, the free one still free; two messages at once: one takes it
+  const p4 = await store.addPhoto(room.id, 'a', JPEG(), 10, 10); const p5 = await store.addPhoto(room.id, 'a', JPEG(), 10, 10);
+  const m3 = await store.post(room.id, 'a', '셋'); const m4 = await store.post(room.id, 'a', '넷'); assert.equal(await store.attachPhotos(room.id, 'a', m3.seq, [p5]), true);
+  assert.equal(await store.attachPhotos(room.id, 'a', m4.seq, [p4, p5]), false); assert.equal(await store.photosFree(room.id, 'a', [p4]), true, '하나라도 못 붙이면 되돌림');
+  const both = await Promise.all([store.attachPhotos(room.id, 'a', m3.seq, [p4]), store.attachPhotos(room.id, 'a', m4.seq, [p4])]);
+  assert.deepEqual(both.filter(Boolean).length, 1, '동시에 둘이면 하나만');
 }
 
 test('메신저 사진 저장소: JSON·PostgreSQL 같은 동작 (올리기·붙이기·7일·하루·보내기 취소)', async (t) => {
@@ -75,7 +81,9 @@ test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만�
   assert.equal((await call(`/api/messenger/photos/${ids[1]}`, undefined, c.token)).status, 404, '방 밖 사람');
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '설명 한 줄', photos: [ids[0]] }, a.token)).data.error, 'PHOTO_NOT_READY', '한 번만');
   await req('/api/test/messenger/photo-day', null, { max: 4 }); assert.equal((await up(JPEG())).status, 201, '하루 4장째');
-  const over = await up(JPEG()); assert.equal(over.status, 429); assert.equal(over.data.error, 'PHOTO_DAY_LIMIT', '하루 상한'); await req('/api/test/messenger/photo-day', null, { max: 200 });
+  const over = await up(JPEG()); assert.equal(over.status, 429); assert.equal(over.data.error, 'PHOTO_DAY_LIMIT', '하루 상한');
+  await req('/api/test/messenger/photo-day', null, { max: 6 }); const three = await Promise.all([0, 1, 2].map(() => up(JPEG(400000))));
+  assert.deepEqual(three.map((r) => r.status).sort(), [201, 201, 429], '(Codex 6차 P3) 동시에 올려도 하루 상한'); await req('/api/test/messenger/photo-day', null, { max: 200 });
   await req('/api/test/messenger/purge', null, { days: 8 });
   assert.equal((await call(`/api/messenger/photos/${ids[1]}`, undefined, b.token)).status, 410, '7일 뒤');
   assert.deepEqual((await call(`/api/messenger/rooms/${room.id}/messages?after=0`, undefined, b.token)).data.messages.find((m) => m.seq === sent.seq).photos.map((p) => p.gone), [true, true, true]);

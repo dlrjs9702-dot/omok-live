@@ -53,9 +53,11 @@
     fill(s, day, goalOf);
     return s;
   }
-  // a 기부 of `amount` by userId (their game name): into the one filling, the rest (or all, with none) saved for the next
-  function give(state, { userId, name, amount }, day, goalOf) {
+  // a 기부 of `amount` by userId (their game name): into the one filling, the rest (or all, with none) saved for the next;
+  // a request (`req`) counts once -- sent again after the points were taken but this failed, it is put in then (Codex 6차 P3)
+  function give(state, { userId, name, amount, req }, day, goalOf) {
     const s = roll(state, day, goalOf);
+    if (req) { if ((s.reqs ||= []).includes(req)) return s; s.reqs.push(req); if (s.reqs.length > 300) s.reqs.splice(0, s.reqs.length - 300); }
     if (!s.cur) { s.saved += amount; return s; }
     const part = Math.min(amount, goalOf(s.cur) - s.raised); s.raised += part; s.saved += amount - part;
     const d = (s.donors[userId] ||= { name: name || '섬 사람', total: 0 }); d.name = name || d.name; d.total += part;

@@ -37,7 +37,12 @@ test('섬 가꾸기 서버: 기부 → 사업, 같은 요청 두 번은 한 번,
   const first = await give(400000, 1); assert.equal(first.status, 200, JSON.stringify(first.data));
   assert.equal((await give(400000, 1)).status, 200); // (the same request again: one gift)
   v = (await req('/api/island/projects', a)).data; assert.deepEqual([v.cur.raised, v.cur.mine], [400000, 400000]);
-  assert.equal((await give(700000, 2)).status, 200);
+  // (Codex 6차 P3) the points taken but the project not saved: the same request again puts it in, once
+  await req('/api/test/store/fail', a, { method: 'setWorldValue' }); assert.equal((await give(100000, 9)).status, 200);
+  assert.equal((await req('/api/island/projects', a)).data.cur.raised, 400000, '사업 저장 실패');
+  for (let i = 0; i < 2; i += 1) assert.equal((await give(100000, 9)).status, 200);
+  assert.equal((await req('/api/island/projects', a)).data.cur.raised, 500000, '다시 보내면 한 번 들어감');
+  assert.equal((await give(600000, 2)).status, 200);
   v = (await req('/api/island/projects', a)).data; assert.deepEqual([v.cur, v.works?.id, v.saved], [null, 'fountain', 100000]);
   // the works day: 바위 at the fence -- the roster on
   await req('/api/test/roster', null, { on: true, day: (await req('/api/test/projects', a, {})).data.day });
