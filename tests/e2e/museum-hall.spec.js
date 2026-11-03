@@ -11,7 +11,7 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
   test.setTimeout(240000);
   const a = await shopper(browser, request, isMobile ? '기증왕m' : '기증왕', 0, 'male'); const b = await shopper(browser, request, isMobile ? '구경꾼m' : '구경꾼', 0, 'female');
   for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
-  const { page } = a; page.on('dialog', (d) => d.accept()); // (a fish an earlier run gave: hung in its place after a yes)
+  const { page } = a;
   const fish = isMobile ? 'fish_eel' : 'fish_carp'; const size = Math.round((60 + (Date.now() % 100000) / 10000) * 10) / 10; // (bigger each run: the island's museum keeps the last)
   await post(request, '/api/test/island/give', a.token, { itemId: fish, qty: 1, meta: { size } });
   const door = Together.museumDoor(T.MUSEUM);
@@ -33,6 +33,7 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
   }, { timeout: 30000, intervals: [300] }).toBe(true);
   await page.locator('#curatorCard button', { hasText: '기증해요' }).click();
   await page.locator('#curatorCard button', { hasText: `${size} cm` }).click();
+  const swap = page.getByRole('button', { name: '바꿔 걸기', exact: true }); if (await swap.isVisible().catch(() => false)) await swap.click(); // (a fish an earlier run gave: asked in the card)
   await expect(page.locator('#toast')).toContainText(`${size} cm`, { timeout: 10000 });
   for (const who of [a, b]) { // (b in the hall: the island's event, asked again)
     await expect.poll(() => who.page.evaluate((id) => window.PlazaDebug().museum()?.slots[id], fish), { timeout: 15000 }).toMatchObject({ shown: true });

@@ -29,6 +29,13 @@ test('물고기 크기: 범위·드문 큰 끝, 가방 크기 목록, 작은 것
   assert.deepEqual(I.sizesOf({ itemId: 'fish_carp', qty: 2, meta: null }), [F.midSize('carp'), F.midSize('carp')], '옛 물고기는 가운데 값');
   const sale = I.sellAt(bag, 'fisher', 0);
   assert.equal(sale.paid, [40, 55, 70.5].reduce((n, cm) => n + I.fishPrice('fish_carp', cm), 0)); assert.ok(I.fishPrice('fish_carp', 70.5) > I.fishPrice('fish_carp', 40));
+  // (총괄 231 검토 1) a day's limit just about a big fish's price: what is left never grows, its sizes as many as it is
+  const fishOnly = I.addToBag(I.addToBag([], 'fish_carp', 2, 'y', { sizes: [88, 30] }), 'fish_anchovy', 3, 'z', { sizes: [14, 13, 12] });
+  for (const room of [I.ITEMS.fish_carp.price, I.ITEMS.fish_carp.price + 50, 400, 0]) {
+    const r = I.sellAt(fishOnly, 'fisher', 0, null, Date.now(), room);
+    for (const e of r.keep) { const was = fishOnly.find((x) => x.entryId === e.entryId); assert.ok(e.qty <= was.qty, `${room}: ${e.itemId} ${e.qty} > ${was.qty}`); assert.equal(I.sizesOf(e).length, e.qty); assert.equal(e.meta.sizes.length, e.qty); }
+    assert.ok(r.paid <= room, `${room}: paid ${r.paid}`); assert.equal(r.sold.reduce((n, x) => n + x.qty, 0) + r.keep.reduce((n, e) => n + e.qty, 0), 5, '모두 합해 그대로');
+  }
 });
 
 // the hall: in at the museum's door, the curator's desk the place to give; a fish shows the biggest given, a bigger one hung

@@ -4274,7 +4274,7 @@
     openPlazaWindow('섬 박물관 안내판', [box]);
   }
   const curatorCard = document.createElement('div'); curatorCard.className = 'talkActions'; curatorCard.id = 'curatorCard';
-  async function openCurator(view = 'menu') {
+  async function openCurator(view = 'menu', pick = null) {
     const [d, bag] = await Promise.all([refreshMuseum(), api('/api/island/bag').catch(() => null)]); if (!d || !bag) { showToast('관장과 이야기하지 못했어요.'); return; }
     const say = museumEl('p', 'lostRequestLine'); const row = curatorCard; row.replaceChildren();
     const button = (label, fn, kind = 'primary') => { const b = museumEl('button', kind, label); b.type = 'button'; b.addEventListener('click', fn); row.append(b); return b; };
@@ -4283,8 +4283,11 @@
       .filter(({ x, top }) => !x.by || (x.kind === 'fish' && top !== null && (!Number.isFinite(x.size) || top > x.size)));
     if (view === 'give') {
       say.textContent = kinds.length ? '어떤 걸 기증해 줄래요? 물고기는 가방에서 가장 큰 걸 받아요.' : '지금 가방엔 새로 걸 만한 게 없네요. 아직 없는 종류나, 전시 중인 것보다 큰 물고기를 가져와 주세요.';
-      for (const { x, top } of kinds) button(`🎁 ${x.name}${top ? ` ${top} cm` : ''}${x.by ? ' · 바꿔 걸기' : ''}`, () => giveMuseum(x, top), 'ghost');
+      for (const { x, top } of kinds) button(`🎁 ${x.name}${top ? ` ${top} cm` : ''}${x.by ? ' · 더 커요' : ''}`, () => (x.by && x.kind === 'fish' ? openCurator('swap', { x, top }) : giveMuseum(x, top)), 'ghost');
       button('돌아가기', () => openCurator(), 'secondary');
+    } else if (view === 'swap' && pick) { // (총괄 231 검토 5: asked in the card, the same on a phone)
+      say.textContent = `지금 전시 중인 ${Number.isFinite(pick.x.size) ? `${pick.x.size} cm` : '기록 없는'} ${pick.x.name}보다 커요 — ${pick.top} cm로 바꿔 걸까요?`;
+      button('바꿔 걸기', () => giveMuseum(pick.x, pick.top)); button('그만두기', () => openCurator('give'), 'secondary');
     } else if (view === 'talk') {
       const fish = d.exhibits.filter((x) => x.kind === 'fish'); const bugs = d.exhibits.filter((x) => x.kind === 'insect');
       const big = fish.filter((x) => Number.isFinite(x.size)).sort((a, b) => b.size - a.size)[0];
@@ -4297,7 +4300,6 @@
     lostCard.replaceChildren(say, row); openTalk('박물관 관장');
   }
   async function giveMuseum(x, top) {
-    if (x.by && x.kind === 'fish' && !window.confirm((`지금 전시 중인 ${Number.isFinite(x.size) ? `${x.size} cm` : '기록 없는'} ${x.name}보다 커요 — ${top} cm로 바꿔 걸까요?`))) return;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api('/api/island/museum/donate', { method: 'POST', body: JSON.stringify({ itemId: x.id }) });

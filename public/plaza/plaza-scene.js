@@ -3430,22 +3430,34 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (museum) return museum;
     const g = new THREE.Group(); g.position.set(MUS.ROOM.x, MUS.ROOM.y, MUS.ROOM.z); g.rotation.y = Math.PI; scene.add(g);
     mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
-    const put = (id, lx, y, lz, yaw, stand, parent = g) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; parent.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
+    const put = (id, lx, y, lz, yaw, stand, parent = g, onSwap = null) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; parent.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback, onSwap ? () => onSwap(root) : null); return root; };
+    // (총괄 231 검토 2·3) what is drawn above a height goes, on the room's own copy of a model's solid material (water and glass
+    // stay): the wing walls by the arches kept 1.2 m high (from the camera above they hid me), and the lids of the tanks and
+    // cases (from above the big tank was a table) -- the water's own top shows. test: GLSL on vCutW (world) and vCutL (room)
+    const cutAbove = (root, test, key) => root.traverse((o) => {
+      if (!o.isMesh || o.userData[key]) return; o.userData[key] = true;
+      o.material = [].concat(o.material).map((m) => { if (m.transparent) return m; const c = m.clone(); const before = m.onBeforeCompile;
+        c.onBeforeCompile = (sh, r) => { before?.call(c, sh, r); sh.uniforms.uMusRoom = { value: new THREE.Vector3(MUS.ROOM.x, MUS.ROOM.y, MUS.ROOM.z) };
+          sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vCutW;').replace('#include <project_vertex>', '#include <project_vertex>\nvCutW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+          sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vCutW;\nuniform vec3 uMusRoom;').replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\n{ vec3 vCutL = vec3(uMusRoom.x - vCutW.x, vCutW.y - uMusRoom.y, uMusRoom.z - vCutW.z); if (${test}) discard; }`); };
+        c.customProgramCacheKey = () => `${m.customProgramCacheKey?.() || ''}:${key}`; c.side = THREE.DoubleSide; return c; });
+      if (o.material.length === 1) o.material = o.material[0];
+    });
     const R = MUS.ROOM; const plaster = mat(0xefe6d6); const navy = mat(0x2f4a63); const water = new THREE.MeshStandardMaterial({ color: 0x8fd0e6, transparent: true, opacity: 0.32, depthWrite: false }); const glass = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false });
     const room = new THREE.Group(); g.add(room); const roomStandIn = new THREE.Group(); room.add(roomStandIn);
     mesh(new THREE.BoxGeometry(R.w, 0.2, R.d), mat(0xb98f62), 0, -0.1, 0, roomStandIn); mesh(new THREE.BoxGeometry(R.w, 4.2, 0.3), plaster, 0, 2.1, R.d / 2, roomStandIn); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 4.2, R.d), plaster, s * R.w / 2, 2.1, 0, roomStandIn);
     const front = new THREE.Plane(new THREE.Vector3(0, 0, -1), R.z + R.d / 2 - 0.2);
     const clipFront = () => room.traverse((o) => { if (!o.isMesh || o.userData.clipped) return; o.userData.clipped = true; o.material = [].concat(o.material).map((m) => { const c = m.clone(); c.onBeforeCompile = m.onBeforeCompile; c.customProgramCacheKey = () => `${m.customProgramCacheKey?.() || ''}:clipFront`; c.clippingPlanes = [front]; c.clipShadows = true; return c; }); if (o.material.length === 1) o.material = o.material[0]; });
-    assets.attach('museum.hall', room, roomStandIn, () => clipFront());
+    assets.attach('museum.hall', room, roomStandIn, () => { clipFront(); cutAbove(room, 'abs(abs(vCutL.x) - 4.5) < 0.3 && vCutL.y > 1.2', 'wingCut'); });
     const slots = new Map(); // itemId -> { plaque holder, its board size, the swimmer or the insect, where it moves }
     const plaqueAt = (parent, x, y, z, w, h) => { const p = new THREE.Group(); p.position.set(x, 0, 0); parent.add(p); return { p, w, h, y, z }; };
     // the big tank and its two rows of plaques (tank-local: its front -Z, its back turned round)
-    const T = MUS.TANK; const tank = put('museum.tank_big', T.lx, 0, T.lz, T.yaw, (f) => { mesh(new THREE.BoxGeometry(6.2, 0.5, 2.6), navy, 0, 0.25, 0, f); mesh(new THREE.BoxGeometry(5.9, 1.6, 2.3), water, 0, 1.42, 0, f); });
+    const T = MUS.TANK; const tank = put('museum.tank_big', T.lx, 0, T.lz, T.yaw, (f) => { mesh(new THREE.BoxGeometry(6.2, 0.5, 2.6), navy, 0, 0.25, 0, f); mesh(new THREE.BoxGeometry(5.9, 1.6, 2.3), water, 0, 1.42, 0, f); }, g, (r) => cutAbove(r, 'vCutL.y > 2.2', 'lidCut'));
     const rows = [-1, 1].map((side) => { const r = new THREE.Group(); r.rotation.y = side < 0 ? 0 : Math.PI; tank.add(r); return r; });
     MUS.SEA.forEach((sp, k) => { const at = MUS.tankPlaque(k); slots.set(`fish_${sp}`, { kind: 'tank', sp, k, plaque: plaqueAt(rows[at.side < 0 ? 0 : 1], at.x, 0.3, -1.33, 0.52, 0.22), parent: tank, box: T.swim }); });
     // the wall tanks, the cases, the dome
-    MUS.FRESH.forEach((sp, k) => { const s = MUS.WALLS[k]; const t = put('museum.tank_wall', s.lx, 0, s.lz, s.yaw, (f) => { mesh(new THREE.BoxGeometry(2, 0.7, 0.9), navy, 0, 0.35, 0, f); mesh(new THREE.BoxGeometry(1.85, 1.1, 0.75), water, 0, 1.33, 0, f); }); slots.set(`fish_${sp}`, { kind: 'wall', sp, k, plaque: plaqueAt(t, 0, 0.36, -0.48, 0.8, 0.22), parent: t, box: { x: 0.72, z: 0.18, y0: 0.95, y1: 1.65 } }); });
-    MUS.INSECTS.forEach((sp, k) => { const s = MUS.CASES[k]; const c = put('museum.insect_case', s.lx, 0, s.lz, s.yaw, (f) => { mesh(new THREE.BoxGeometry(0.9, 0.85, 0.9), mat(0x9c744c), 0, 0.425, 0, f); mesh(new THREE.BoxGeometry(0.84, 0.75, 0.84), glass, 0, 1.3, 0, f); }); slots.set(`insect_${sp}`, { kind: 'case', sp, k, plaque: plaqueAt(c, 0, 0.5, -0.48, 0.5, 0.18), parent: c }); });
+    MUS.FRESH.forEach((sp, k) => { const s = MUS.WALLS[k]; const t = put('museum.tank_wall', s.lx, 0, s.lz, s.yaw, (f) => { mesh(new THREE.BoxGeometry(2, 0.7, 0.9), navy, 0, 0.35, 0, f); mesh(new THREE.BoxGeometry(1.85, 1.1, 0.75), water, 0, 1.33, 0, f); }, g, (r) => cutAbove(r, 'vCutL.y > 1.875', 'lidCut')); slots.set(`fish_${sp}`, { kind: 'wall', sp, k, plaque: plaqueAt(t, 0, 0.36, -0.48, 0.8, 0.22), parent: t, box: { x: 0.72, z: 0.18, y0: 0.95, y1: 1.65 } }); });
+    MUS.INSECTS.forEach((sp, k) => { const s = MUS.CASES[k]; const c = put('museum.insect_case', s.lx, 0, s.lz, s.yaw, (f) => { mesh(new THREE.BoxGeometry(0.9, 0.85, 0.9), mat(0x9c744c), 0, 0.425, 0, f); mesh(new THREE.BoxGeometry(0.84, 0.75, 0.84), glass, 0, 1.3, 0, f); }, g, (r) => cutAbove(r, 'vCutL.y > 1.67', 'lidCut')); slots.set(`insect_${sp}`, { kind: 'case', sp, k, plaque: plaqueAt(c, 0, 0.5, -0.48, 0.5, 0.18), parent: c }); });
     const D = MUS.DOME; const dome = put('museum.butterfly_dome', D.lx, 0, D.lz, D.yaw, (f) => { mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.3, 24), plaster, 0, 0.15, 0, f); mesh(new THREE.SphereGeometry(1.5, 20, 10, 0, TAU, 0, Math.PI / 2), glass, 0, 0.32, 0, f); });
     const domePlaque = plaqueAt(dome, 0, 0.2, -1.6, 0.6, 0.2);
     // the hall: the curator's desk (its little board 「기증 창구」), two benches, the board by the door (전시 n/46)
@@ -3454,8 +3466,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const b of MUS.BENCHES) put('museum.bench', b.lx, 0, b.lz, b.yaw, (f) => mesh(new THREE.BoxGeometry(1.8, 0.5, 0.45), mat(0x8f3b34), 0, 0.25, 0, f));
     const board = new THREE.Group(); board.position.set(MUS.BOARD.lx, 0, MUS.BOARD.lz); g.add(board);
     mesh(new THREE.BoxGeometry(1.3, 1.0, 0.08), mat(0x7a5a3a), 0, 1.35, 0, board); mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), mat(0x7a5a3a), 0, 0.45, 0, board);
-    const curator = makeCharacter({ shirt: 0x5f7f4f, hair: 0xe6e3da, skin: 0xffdcbc }); curator.root.position.set(MUS.CURATOR.lx, 0, MUS.CURATOR.lz); curator.root.rotation.y = MUS.CURATOR.yaw; g.add(curator.root);
-    assets.dress(['character.npc'], curator); dressUp(curator, { gender: 'male' }, { shirt: 0x5f7f4f, hair: 0xe6e3da, skin: 0xffdcbc }); // (관장: an islander's clothes, green as a turtle's shell, white hair)
+    const curatorLook = { shirt: 0x5f7f4f, hair: 0x8f8a80, skin: 0xffdcbc, hat: 0x6b5a44 }; const curator = makeCharacter(curatorLook); curator.root.position.set(MUS.CURATOR.lx, 0, MUS.CURATOR.lz); curator.root.rotation.y = MUS.CURATOR.yaw; g.add(curator.root);
+    assets.dress(['character.npc'], curator); dressUp(curator, { gender: 'male' }, curatorLook); // (관장: an islander's clothes, green as a turtle's shell, grey hair under a brown hat)
     const at = MUS.world(MUS.CURATOR.lx, MUS.CURATOR.lz); curator.home = { x: at.x, z: at.z, yaw: worldYaw(curator.root), id: 'museum:curator' };
     counterKeepers.push({ id: 'museum:curator', k: curator, spot: () => MUS.world(MUS.TALK.lx, MUS.TALK.lz) }); npcs.push(curator);
     for (const [lx, lz] of [[-8, 0], [0, 0], [8, 0]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
