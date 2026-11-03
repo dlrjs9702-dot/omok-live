@@ -690,7 +690,7 @@ const ACCOUNT_TTL_MS = 12 * 60 * 60 * 1000;
 const MESSENGER_ROOM_MAX = 30; const MESSENGER_ROOMS_MAX = 20; const MESSENGER_TEXT_MAX = 500; // v1.10.78 메신저
 let messengerSlowMs = 0; let messengerFailNext = false; // (tests: /api/test/messenger/slow)
 let MESSENGER_PHOTOS_DAY = 200; /* v1.10.233 총괄: a key's photos a Seoul day at most (the test route lowers it) */
-const photoUploading = new Map(); /* (Codex 6차 P3: a key's photos on their way up count against the day too) */
+const photoUploading = new Map(); /* (Codex 6차 P3 · 235 검토: a key's uploads one after another -- the day's count read with none on its way up) */
 const MESSENGER_PHOTOS_MAX = 10; const MESSENGER_PHOTO_ONLY = '📷 사진'; // v1.10.233: a message's photos at most; a photo-only message's words (the list, the push)
 const SETUP_TTL_MS = 15 * 60 * 1000;
 const accountTokens = new Map(); // token -> { keyId, exp }
@@ -1693,7 +1693,7 @@ function projectTerrain(s) {
 }
 async function projectGive(account, name, amount, requestId) {
   return worldEdit(async () => {
-    const s = IslandProjects.give((await pointStore.worldValue('projects')) || null, { userId: account, name, amount, req: `${account}:${requestId}` }, projectsDay(), projectGoal);
+    const s = IslandProjects.give((await pointStore.worldValue('projects')) || null, { userId: account, name, amount, req: `${account}:${requestId}`, at: nowMs() }, projectsDay(), projectGoal);
     await pointStore.setWorldValue('projects', s); projectsState = s; broadcastIsland('projects', IslandProjects.view(s, projectGoal)); return s;
   });
 }
@@ -4290,14 +4290,15 @@ async function requestHandler(req, res) {
       if (!checkRateLimit('messenger-photo:' + key.id, 20, 10 * 1000)) return sendError(res, 429, 'PHOTO_RATE_LIMIT', '사진을 너무 빠르게 올리고 있습니다. 잠시 후 다시 해 주세요.');
       if (!/^image\/jpeg\b/i.test(String(req.headers['content-type'] || ''))) return sendError(res, 415, 'PHOTO_TYPE', 'JPEG 사진만 올릴 수 있습니다.');
       const dayStart = Math.floor((Date.now() + 9 * 3600000) / 86400000) * 86400000 - 9 * 3600000; // (00:00 Asia/Seoul)
-      if (await messengerStore.photosSince(key.id, dayStart) + (photoUploading.get(key.id) || 0) >= MESSENGER_PHOTOS_DAY) return sendError(res, 429, 'PHOTO_DAY_LIMIT', '오늘 올릴 수 있는 사진을 다 썼어요.');
-      photoUploading.set(key.id, (photoUploading.get(key.id) || 0) + 1);
+      const before = photoUploading.get(key.id) || Promise.resolve(); let done; const mine = new Promise((r) => { done = r; }); const turn = before.then(() => mine); photoUploading.set(key.id, turn);
+      await before;
       try {
+        if (await messengerStore.photosSince(key.id, dayStart) >= MESSENGER_PHOTOS_DAY) return sendError(res, 429, 'PHOTO_DAY_LIMIT', '오늘 올릴 수 있는 사진을 다 썼어요.');
         let bytes; try { bytes = await readRaw(req, PHOTO_MAX); } catch (error) { return sendError(res, error.status === 413 ? 413 : 400, 'PHOTO_TOO_BIG', '사진은 한 장에 2MB까지 올릴 수 있습니다.'); }
         if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) return sendError(res, 415, 'PHOTO_TYPE', 'JPEG 사진만 올릴 수 있습니다.');
         const dim = (h) => Math.max(1, Math.min(4096, Math.floor(Number(req.headers[h]) || 1)));
         return sendJson(res, 201, { ok: true, id: await messengerStore.addPhoto(room.id, key.id, bytes, dim('x-photo-w'), dim('x-photo-h')) });
-      } finally { const n = (photoUploading.get(key.id) || 1) - 1; if (n > 0) photoUploading.set(key.id, n); else photoUploading.delete(key.id); }
+      } finally { done(); if (photoUploading.get(key.id) === turn) photoUploading.delete(key.id); }
     }
     if (m[2] === 'messages' && req.method === 'POST') {
       if (!checkRateLimit('messenger-post:' + key.id, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
@@ -6879,7 +6880,7 @@ async function requestHandler(req, res) {
     const name = String(session.label || '섬 사람'); const result = await pointStore.donate({ userId: account, requestId: body.requestId, amount, name }, nowMs());
     if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
     notifyPointsChanged([account]);
-    await projectGive(account, name, result.amount || amount, body.requestId).catch((error) => console.error('섬 가꾸기 기부 반영 실패:', error.message)); // (asked again: put in only if the first time failed)
+    if (result.applied || nowMs() - Date.parse(result.at || 0) < 3600000) await projectGive(account, name, result.amount || amount, body.requestId).catch((error) => console.error('섬 가꾸기 기부 반영 실패:', error.message)); // (asked again within the hour: put in only if the first time failed)
     return sendJson(res, 200, { ok: true, amount, balance: result.balance ?? result.balanceAfter, ...IslandProjects.view(await projectsNow(), projectGoal, account) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/projects' && req.method === 'POST') { // (the amounts and the next day: tests only -- no button for the administrator)
@@ -6916,7 +6917,7 @@ async function requestHandler(req, res) {
     const result = await pointStore.donate({ userId: account, requestId: body.requestId, amount, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')) }, now);
     if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
     notifyPointsChanged([account]);
-    await projectGive(account, String(session.label || '섬 사람'), result.amount || amount, body.requestId).catch((error) => console.error('섬 가꾸기 기부 반영 실패:', error.message)); // (v1.10.222: the game name only; asked again: put in only if the first time failed)
+    if (result.applied || nowMs() - Date.parse(result.at || 0) < 3600000) await projectGive(account, String(session.label || '섬 사람'), result.amount || amount, body.requestId).catch((error) => console.error('섬 가꾸기 기부 반영 실패:', error.message)); // (v1.10.222: the game name only; asked again: put in only if the first time failed)
     return sendJson(res, 200, { ok: true, total: result.total, amount: result.amount, balance: result.balance ?? result.balanceAfter });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/donation/record' && req.method === 'POST') {
