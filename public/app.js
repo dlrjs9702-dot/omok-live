@@ -3111,7 +3111,7 @@
     if (s.inmate === true) {
       say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
       button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
-    } else say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`;
+    } else { say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`; if (s.inmate !== true) row.append(...fixedTalk(22)); } // (v1.10.234: his own talk too)
     lostCard.replaceChildren(say, row); openTalk('김우성'); // (사용자 2026-10-26: his name)
   }
   async function startEssay() {
@@ -3981,10 +3981,10 @@
         catch (error) { showToast(error.message); if (live()) plazaDialog.close(); }
       });
       const later = document.createElement('button'); later.type = 'button'; later.className = 'ghost'; later.textContent = '다음에요'; later.addEventListener('click', () => plazaDialog.close());
-      lostCard.replaceChildren(line, offerNote(data.offer), yes, later);
+      lostCard.replaceChildren(line, offerNote(data.offer), yes, later, ...fixedTalk(window.IslandCast?.keeperN?.(data.story))); // (v1.10.234: their own talk beside their ask)
       openTalk(data.name, false); return;
     }
-    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ...game, ok, ...sell);
+    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ...game, ok, ...sell, ...fixedTalk(window.IslandCast?.keeperN?.(data.story)));
     openTalk(data.name, !data.waiting); // a step taken, paid or ended; only "how is it going" stays over the shoulder
   }
   // Q 부탁 받기·끝내기 (gamecenter-notes docs/quest-accept-complete-20261026.md): an ask's note -- what, where, what it pays,
@@ -4479,6 +4479,12 @@
     if (!to || Date.now() - to.at > 5 * 60 * 1000) return;
     try { const data = await api('/api/island/invite', { method: 'POST', body: JSON.stringify({ plazaId: to.id }) }); showToast(`${data.to || '상대'}님에게 대전 초대를 보냈습니다.`); } catch (error) { showToast(error.message, 4200); }
   }
+  // v1.10.234 (17명 이야기): 한들 · 느티 · 김우성 · 마루 never walk -- 「이야기해요」 on their own talk opens theirs (호감도, 이야기
+  // 부탁, a chapter that sends one to them), as at a counter
+  function fixedTalk(n) {
+    if (!Object.values(window.IslandRoster?.FIXED || {}).includes(n)) return [];
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost postTalkBtn'; b.textContent = '이야기해요'; b.addEventListener('click', () => { plazaDialog.close(); talkResident(n); }); return [b];
+  }
   // v1.10.41 관공서 정문 시장: one formal line and one button; his leave lasts this visit (the server keeps it)
   async function openMayor() {
     await refreshProjects(); // (v1.10.223: today's vote as it stands)
@@ -4492,7 +4498,7 @@
         plaza.controller?.setTownhallPass?.(Boolean(data.townhallPass)); plazaDialog.close();
       } catch (error) { showToast(error.message); ok.disabled = false; }
     });
-    const vote = projectsView?.vote; const parts = [line, ok];
+    const vote = projectsView?.vote; const parts = [line, ok, ...fixedTalk(23)];
     if (vote) { // (v1.10.223 섬 가꾸기: today's vote -- one each, changed until the day ends; tomorrow the most chosen begins)
       parts.push(talkLine('「섬 가꾸기, 다음에는 무엇을 할지 오늘 하루 골라 주시오. 내일 가장 많이 고른 것을 시작하겠소.」'));
       for (const c of vote.choices) {
@@ -4671,7 +4677,7 @@
     if (tab === 'residents') {
       S.RESIDENTS.forEach((chs, n) => {
         const done = Number(v.chapters?.[n]) || 0; const box = el('details', 'storyResident'); const sum = el('summary');
-        const face = el('span', 'storyFace', (C.RESIDENTS[n]?.name || '?').slice(0, 1)); face.style.background = C.RESIDENTS[n]?.tagColor || '#64748b'; // (v1.10.234: all 27 -- WALKERS is the first ten)
+        const face = el('span', 'storyFace', (C.RESIDENTS[n]?.name || '?').slice(0, 1)); face.style.background = C.RESIDENTS[n]?.tagColor || `hsl(${(n * 47) % 360} 42% 42%)`; // (v1.10.234: all 27 -- WALKERS is the first ten; 10~26 have no tag colour: one of their own)
         sum.append(face, el('b', null, C.RESIDENTS[n]?.name || ''), el('small', null, `${done}/3`)); box.append(sum);
         chs.forEach((ch, c) => {
           const page = el('div', `storyChapter${c < done ? '' : ' locked'}`);

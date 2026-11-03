@@ -103,6 +103,12 @@ test('이야기 17명 서버: 밤 장은 밤에만 ✓, 10~26 주민 이름(말 
   assert.equal(second.data.storyOffer.where, '한들에게 말 걸기');
   await req('/api/island/resident/talk', a, { n: 10, topic: 'storyYes' }); await bye(10);
   assert.equal((await story()).track.where, '한들에게 말 걸기');
+  // 마루 never walks (IslandRoster.FIXED gate): talked to at the 관공서 gate -- his 1장 offered there; from afar not
+  await req('/api/island/story/drop', a, {}); await req('/api/test/affinity', a, { n: 23, delta: 5 });
+  const gate = T.townhallWorld(0, T.TOWNHALL.yard.z1 + 1.4); here = { x: gate.x + 0.5, z: gate.z }; await req('/api/plaza/state', a, { ...here, yaw: 0, moving: false });
+  const mayor = await req('/api/island/resident/talk', a, { n: 23 }); assert.equal(mayor.status, 200, JSON.stringify(mayor.data)); assert.equal(mayor.data.today.story, 'offer');
+  assert.equal((await req('/api/island/resident/talk', a, { n: 23, topic: 'story' })).data.storyOffer.where, '관공서'); await bye(23);
+  here = { x: gate.x + 12, z: gate.z }; await req('/api/plaza/state', a, { ...here, yaw: 0, moving: false }); assert.equal((await req('/api/island/resident/talk', a, { n: 23 })).data.error, 'TOO_FAR');
   await req('/api/test/roster', null, { on: false });
 });
 
