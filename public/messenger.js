@@ -85,7 +85,11 @@
     const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
     if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who); item.append(head); }
     const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); text.textContent = msg.deleted ? '삭제된 메시지입니다' : msg.text;
+    const grid = !msg.deleted && photoGrid(msg); if (grid) { text.classList.add('withPhotos'); if (msg.text === PHOTO_ONLY) text.replaceChildren(grid); else text.prepend(grid); } // (v1.10.233: photos, a grid)
+    if (msg.pending || msg.failed) item.classList.add(msg.failed ? 'failed' : 'pending');
     const meta = document.createElement('span'); meta.className = 'messengerMeta';
+    if (msg.pending) { const s = document.createElement('span'); s.className = 'messengerSending'; s.textContent = '🕒 보내는 중'; meta.append(s); row.append(text, meta); item.append(row); return item; }
+    if (msg.failed) { const s = document.createElement('span'); s.className = 'messengerFailed'; s.textContent = msg.failed; const again = document.createElement('button'); again.type = 'button'; again.className = 'ghost tiny'; again.textContent = '다시 보내기'; again.addEventListener('click', () => resend(msg)); const drop = document.createElement('button'); drop.type = 'button'; drop.className = 'ghost tiny'; drop.textContent = '지우기'; drop.addEventListener('click', () => dropPending(msg)); meta.append(s, again, drop); row.append(text, meta); item.append(row); return item; }
     // 안 읽은 사람 수 (카톡의 「1」): the members (still let in) besides the sender whose last read is before this line
     const waitingFor = current.members.filter((m) => m.active && m.id !== msg.from && (current.reads[m.id] || 0) < msg.seq);
     if (waitingFor.length) {
@@ -135,8 +139,109 @@
       nodes.push(line(msg, prev && !prev.system && prev.from === msg.from && day === prevDay));
       prev = msg; prevDay = day;
     }
+    for (const p of pend.filter((x) => x.room === current?.id)) { nodes.push(line(p, prev && !prev.system && prev.from === p.from)); prev = p; } // (v1.10.233: mine on their way)
     if (nodes.length) box.replaceChildren(...nodes); else box.innerHTML = '<p class="emptyState">첫 메시지를 보내 보세요.</p>';
   }
+  // ---- v1.10.233 보내기 빠르게 + 사진 (notes docs/messenger-speed-photo-20261103.md 2·5절) ----
+  // Enter: the box empty at once and my line drawn at once, pale with 「보내는 중」; the send's own answer makes it the
+  // server's (no second round trip); refused: 「다시 보내기 / 지우기」 on it and the words back in the box. One after
+  // another, in the order typed. Photos: the 📷 button (a phone's album, many at once), dropped on the chat or pasted
+  // (Ctrl+V) on a PC -- up to 10, shrunk here (1280 px, JPEG 0.8: no place data left in them), each taken out of the tray
+  // before sending; sent one by one (3/7), then the message that takes them; a grid in the bubble, pressed: large, turned
+  // through. Seven days on, each says it is gone.
+  const PHOTO_ONLY = '📷 사진'; const PHOTO_DAYS = 7; const TRAY_MAX = 10;
+  let pend = []; let sendChain = Promise.resolve(); let pseq = 0; let tray = [];
+  const photoUrls = new Map(); // a photo's id -> its blob url, or 'gone' (asked with my headers: an <img> could not send them)
+  const photoAsk = new Map();
+  function photoUrl(id) {
+    if (photoUrls.has(id)) return Promise.resolve(photoUrls.get(id)); if (photoAsk.has(id)) return photoAsk.get(id);
+    const ask = fetch(`/api/messenger/photos/${id}`, { headers: headers(), cache: 'default' }).then(async (res) => { const u = res.status === 410 || res.status === 404 ? 'gone' : res.ok ? URL.createObjectURL(await res.blob()) : null; if (u) photoUrls.set(id, u); return u; }).catch(() => null).finally(() => photoAsk.delete(id));
+    photoAsk.set(id, ask); return ask;
+  }
+  const photoGone = (msg, p) => p.gone || photoUrls.get(p.id) === 'gone' || Date.now() - Date.parse(msg.at) > PHOTO_DAYS * 86400000;
+  function photoGrid(msg) {
+    const list = msg.local || msg.photos || []; if (!list.length) return null;
+    const grid = document.createElement('div'); grid.className = `messengerPhotos n${Math.min(list.length, 3)}`;
+    list.forEach((p, k) => {
+      const tile = document.createElement('button'); tile.type = 'button'; tile.className = 'messengerPhoto';
+      if (!msg.local && photoGone(msg, p)) { tile.classList.add('gone'); tile.disabled = true; tile.textContent = '7일이 지나 사라진 사진'; grid.append(tile); return; }
+      const img = document.createElement('img'); img.alt = ''; img.decoding = 'async'; if (p.w && p.h) img.style.aspectRatio = `${p.w} / ${p.h}`; tile.append(img); tile.setAttribute('aria-label', `사진 ${k + 1}/${list.length} 크게 보기`);
+      if (msg.local) img.src = p.url; else photoUrl(p.id).then((u) => { if (u === 'gone') { tile.replaceChildren('7일이 지나 사라진 사진'); tile.classList.add('gone'); tile.disabled = true; } else if (u) img.src = u; });
+      tile.addEventListener('click', () => openViewer(msg, k)); grid.append(tile);
+    });
+    if (msg.pending && msg.local) { const prog = document.createElement('span'); prog.className = 'messengerPhotoProgress'; prog.textContent = `${msg.done || 0}/${list.length}`; grid.append(prog); }
+    return grid;
+  }
+  // the big view: one at a time, ← → (a swipe on a phone), Esc or ✕ to close
+  const viewer = byId('messengerViewer'); const viewerImg = byId('messengerViewerImg'); let viewing = null;
+  async function showViewer() { const { msg, k } = viewing; const list = msg.local || msg.photos; const p = list[k]; byId('messengerViewerCount').textContent = `${k + 1} / ${list.length}`; viewerImg.removeAttribute('src'); const u = msg.local ? p.url : await photoUrl(p.id); if (viewing?.msg === msg && viewing.k === k && u && u !== 'gone') viewerImg.src = u; }
+  function openViewer(msg, k) { viewing = { msg, k }; viewer.classList.remove('hidden'); showViewer(); byId('messengerViewerClose').focus(); }
+  const viewStep = (d) => { if (!viewing) return; const n = (viewing.msg.local || viewing.msg.photos).length; viewing.k = (viewing.k + d + n) % n; showViewer(); };
+  const closeViewer = () => { viewing = null; viewer.classList.add('hidden'); viewerImg.removeAttribute('src'); };
+  byId('messengerViewerClose').addEventListener('click', closeViewer); byId('messengerViewerPrev').addEventListener('click', () => viewStep(-1)); byId('messengerViewerNext').addEventListener('click', () => viewStep(1));
+  document.addEventListener('keydown', (e) => { if (!viewing) return; if (e.key === 'Escape') closeViewer(); else if (e.key === 'ArrowLeft') viewStep(-1); else if (e.key === 'ArrowRight') viewStep(1); });
+  { let sx = null; viewer.addEventListener('pointerdown', (e) => { sx = e.clientX; }); viewer.addEventListener('pointerup', (e) => { if (sx !== null && Math.abs(e.clientX - sx) > 50) viewStep(e.clientX < sx ? 1 : -1); sx = null; }); }
+  // the tray: shrunk here, before sending
+  async function shrink(file) {
+    let src = null; try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { src = await new Promise((done) => { const im = new Image(); const u = URL.createObjectURL(file); im.onload = () => done(im); im.onerror = () => done(null); im.src = u; }); }
+    if (!src) throw new Error('사진을 열지 못했어요.');
+    const W = src.width || src.naturalWidth; const H = src.height || src.naturalHeight; const k = Math.min(1, 1280 / Math.max(W, H)); const w = Math.max(1, Math.round(W * k)); const h = Math.max(1, Math.round(H * k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(src, 0, 0, w, h); src.close?.();
+    const blob = await new Promise((done) => { c.toBlob(done, 'image/jpeg', 0.8); }); if (!blob) throw new Error('사진을 줄이지 못했어요.');
+    return { blob, w, h, url: URL.createObjectURL(blob) };
+  }
+  const shots = byId('messengerShots');
+  function drawTray() {
+    shots.classList.toggle('hidden', !tray.length);
+    shots.replaceChildren(...tray.map((t, k) => { const d = document.createElement('div'); d.className = 'messengerShot'; const im = document.createElement('img'); im.src = t.url; im.alt = ''; const x = document.createElement('button'); x.type = 'button'; x.className = 'messengerShotDrop'; x.textContent = '✕'; x.setAttribute('aria-label', `사진 ${k + 1} 빼기`); x.addEventListener('click', () => { URL.revokeObjectURL(t.url); tray.splice(k, 1); drawTray(); }); d.append(im, x); return d; }), ...(tray.length ? [Object.assign(document.createElement('span'), { className: 'messengerShotNote', textContent: `${tray.length}/${TRAY_MAX}장 · 7일 동안 보관` })] : []));
+  }
+  async function addPhotos(files) {
+    const list = [...files].filter((f) => /^image\//.test(f.type)); if (!list.length || !current) return;
+    if (tray.length + list.length > TRAY_MAX) showToast(`한 번에 ${TRAY_MAX}장까지 보낼 수 있어요.`);
+    for (const f of list.slice(0, Math.max(0, TRAY_MAX - tray.length))) { try { tray.push(await shrink(f)); drawTray(); } catch (err) { showToast(err.message); } }
+  }
+  const pickInput = byId('messengerPhotoPick');
+  byId('messengerPhotoBtn').addEventListener('click', () => pickInput.click());
+  pickInput.addEventListener('change', () => { addPhotos(pickInput.files); pickInput.value = ''; });
+  byId('messengerInput').addEventListener('paste', (e) => { const files = [...(e.clipboardData?.files || [])]; if (files.some((f) => /^image\//.test(f.type))) { e.preventDefault(); addPhotos(files); } });
+  { const room = byId('messengerRoom'); let depth = 0; const has = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+    room.addEventListener('dragenter', (e) => { if (!has(e) || !current) return; e.preventDefault(); depth += 1; room.classList.add('dropping'); });
+    room.addEventListener('dragover', (e) => { if (has(e) && current) e.preventDefault(); });
+    room.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) room.classList.remove('dropping'); });
+    room.addEventListener('drop', (e) => { if (!has(e)) return; e.preventDefault(); depth = 0; room.classList.remove('dropping'); addPhotos(e.dataTransfer.files); }); }
+  // sending: drawn at once, the answer makes it the server's
+  async function upload(roomId, shot) {
+    const res = await fetch(`/api/messenger/rooms/${roomId}/photos`, { method: 'POST', cache: 'no-store', headers: { ...headers(), 'Content-Type': 'image/jpeg', 'X-Photo-W': String(shot.w), 'X-Photo-H': String(shot.h) }, body: shot.blob });
+    let data = {}; try { data = await res.json(); } catch {}
+    if (!res.ok) throw Object.assign(new Error(data.message || '사진을 올리지 못했습니다.'), { status: res.status, code: data.error }); return data.id;
+  }
+  function queueSend(text, photos = []) {
+    const me = current.members.find((m) => m.id === state.me);
+    const p = { pid: ++pseq, room: current.id, from: state.me, label: me?.label || '나', text: text || (photos.length ? PHOTO_ONLY : ''), at: new Date().toISOString(), pending: true, local: photos.length ? photos : null, ids: [], done: 0 };
+    pend.push(p); render(); box.scrollTop = box.scrollHeight;
+    sendChain = sendChain.then(() => sendOne(p));
+  }
+  async function sendOne(p) {
+    const g = gen;
+    try {
+      for (let k = p.ids.length; k < (p.local || []).length; k += 1) { p.ids.push(await upload(p.room, p.local[k])); p.done = k + 1; if (current?.id === p.room) render(); }
+      const data = await api(`/api/messenger/rooms/${p.room}/messages`, { text: p.local && p.text === PHOTO_ONLY ? '' : p.text, photos: p.ids });
+      if (g !== gen) return; pend = pend.filter((x) => x !== p);
+      if (data.message?.photos && p.local) data.message.photos.forEach((q, k) => { if (p.local[k]) photoUrls.set(q.id, p.local[k].url); }); // (mine: the shrunk ones already here)
+      if (current?.id === p.room && data.message && !msgs.some((x) => x.seq === data.message.seq)) {
+        msgs.push(data.message); msgs.sort((a, b) => a.seq - b.seq);
+        if (data.message.seq === last + 1) last = data.message.seq; else pull(); // (others' lines between: asked for, not skipped)
+      }
+      if (current?.id === p.room) { render(); box.scrollTop = box.scrollHeight; }
+    } catch (err) {
+      if (g !== gen) return; p.pending = false; p.failed = err.message || '보내지 못했어요.';
+      const input = byId('messengerInput'); if (!input.value && !p.local) input.value = p.text; // (the words back in the box)
+      if (current?.id === p.room) render(); if (err.status === 401 || err.status === 403) fail(err);
+    }
+  }
+  function resend(p) { p.failed = null; p.pending = true; const input = byId('messengerInput'); if (input.value === p.text) input.value = ''; render(); sendChain = sendChain.then(() => sendOne(p)); }
+  function dropPending(p) { pend = pend.filter((x) => x !== p); render(); }
+
   function showHead() {
     byId('messengerRoomName').textContent = current.name; byId('messengerMembers').textContent = current.members.map((m) => m.label).join(' · ');
     const group = current.kind !== 'dm';
@@ -156,12 +261,12 @@
       if (from < last && data.messages.length >= 100) { const more = await api(`/api/messenger/rooms/${id}/messages?after=${last}${peek()}`); data = { ...more, messages: [...data.messages.filter((msg) => msg.seq <= last), ...more.messages] }; }
       if (current?.id !== id || g !== gen) return;
       const firstPage = !last; current = data.room; showHead();
-      const fresh = data.messages.filter((msg) => msg.seq > last);
+      const fresh = data.messages.filter((msg) => msg.seq > last && !msgs.some((x) => x.seq === msg.seq)); // (v1.10.233: mine, from its own answer, not twice)
       let gone = false; for (const msg of data.messages) { const had = msg.deleted && msgs.find((x) => x.seq === msg.seq && !x.deleted); if (had) { had.text = ''; had.deleted = true; gone = true; } }
       const key = JSON.stringify([current.reads, current.members]);
       if (!firstPage && !fresh.length && !gone && key === readsKey) return;
       const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-      msgs.push(...fresh); if (fresh.length) last = fresh.at(-1).seq; readsKey = key;
+      msgs.push(...fresh); msgs.sort((a, b) => a.seq - b.seq); if (data.messages.length) last = Math.max(last, data.messages.at(-1).seq); readsKey = key;
       render();
       if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) box.scrollTop = box.scrollHeight;
     } catch (err) { if (g !== gen) return; if (err.status === 404) { current = null; app.classList.remove('inRoom'); refresh(); } else fail(err); }
@@ -203,7 +308,7 @@
     if (streamWanted) setTimeout(openStream, 5000);
   }
   function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
-  function openRoom(room) { closeBubbleMenu(); current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
+  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
   function showPick(mode) { // 'new' | 'invite' | 'dm'
     picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
     byId('messengerPickTitle').textContent = mode === 'new' ? '새 대화방' : mode === 'dm' ? '1:1 대화' : `「${current.name}」에 초대`;
@@ -252,8 +357,8 @@
     try { await api(`/api/messenger/rooms/${current.id}/leave`, {}); current = null; app.classList.remove('inRoom'); box.replaceChildren(); refresh(); } catch (err) { fail(err); }
   });
   byId('messengerForm').addEventListener('submit', async (event) => {
-    event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if (!text || !current) return;
-    try { await api(`/api/messenger/rooms/${current.id}/messages`, { text }); input.value = ''; pull(); } catch (err) { fail(err); }
+    event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if ((!text && !tray.length) || !current) return;
+    input.value = ''; const photos = tray; tray = []; drawTray(); queueSend(text, photos); // (v1.10.233: at once -- the answer confirms it)
   });
 
   // ---- 로그인 (④ 이 기기에서 로그인 유지) ----
