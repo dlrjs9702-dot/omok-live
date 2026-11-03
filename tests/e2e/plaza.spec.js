@@ -1430,7 +1430,14 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (사용자 2026-10-18: 낚싯대는 잡화점에서)
   // (the pier's far end: 지금 섬's runs south, 달끝나루 out from the east cape)
   const pierAt = (k, side) => (DAL ? { x: T.PIER.x + T.PIER.ux * k - T.PIER.uz * side, z: T.PIER.z + T.PIER.uz * k + T.PIER.ux * side } : { x: T.PIER.x + side, z: T.PIER.z + k });
-  await page.evaluate((p) => window.PlazaWarp(p.x, p.z), pierAt(DAL ? 7 : 9, 0));
+  // (234 CI chromium-3: the tourist of a 사진 부탁 stood at the pier's end -- its 「SPACE · 말 걸기」 over the fishing hint, both
+  // tries; the spot along the pier furthest from any tourist)
+  const tourists = (await (await request.get('/api/test/island/events')).json()).events.filter((e) => e.type === 'photo' && e.npc).map((e) => e.npc);
+  const spots = DAL ? [[7, 0], [7, -1.3], [7, 1.3], [9, 0], [9, -1.3], [9, 1.3], [5, -1.3], [3, -1.3]].map(([k, s]) => pierAt(k, s)) : [pierAt(9, 0)];
+  const watcher = pierAt(DAL ? 4 : 10, DAL ? 1 : 2.5); // (구경꾼's, below)
+  const far = (p) => Math.min(99, ...tourists.map((t) => Math.hypot(t.x - p.x, t.z - p.z)));
+  const fishAt = spots.find((p) => far(p) >= 4 && Math.hypot(p.x - watcher.x, p.z - watcher.z) >= 2.5) || spots.reduce((a, p) => (far(p) > far(a) ? p : a));
+  await page.evaluate((p) => window.PlazaWarp(p.x, p.z), fishAt);
   const b = await intoPlaza(browser, request, '구경꾼'); // v1.10.89 원격 낚시: someone close by sees it
   await b.page.evaluate((p) => window.PlazaWarp(p.x, p.z), pierAt(DAL ? 4 : 10, DAL ? 1 : 2.5));
   const seen = () => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act?.startsWith('fish:'))?.act || null);

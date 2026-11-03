@@ -65,7 +65,7 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
       if (S.label) await expect(note).toContainText(S.label);
       await shot(`offer-${n}-${c + 1}`);
       // 할게요 -- till the server has it under way (CI mobile-2: at 2.7 fps a click before the choices settled took nothing)
-      await expect.poll(async () => { if ((await get(request, '/api/island/story', token)).data.track?.title === S.title) return true; const yes = choices.filter({ hasText: '할게요!' }); if (await yes.isVisible().catch(() => false)) await yes.click().catch(() => {}); await page.waitForTimeout(800); return false; }, { timeout: 40000 }).toBe(true);
+      await expect.poll(async () => { if ((await get(request, '/api/island/story', token)).data.track?.title === S.title) return true; await lines().catch(() => {}); const yes = choices.filter({ hasText: '할게요!' }); if (await yes.isVisible().catch(() => false)) await yes.click().catch(() => {}); /* (its lines shown first: the buttons come after the last -- CI ▼ still up) */ await page.waitForTimeout(800); return false; }, { timeout: 90000 }).toBe(true);
       await lines(); await close();
       await expect(page.locator('#questTracker .questLine', { hasText: S.task })).toBeVisible({ timeout: 30000 });
       if (S.talk != null) { // (말 걸기 장: the one it sends me to -- 「부탁받고 왔어요」)
