@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.232 배치 도구
+
+- 꾸미기·마당 꾸미기 창 맨 위 「🖐 배치 도구」(docs/place-tool-20261103.md): 창이 아래 가구 줄로(안 놓은 것 먼저), 가리킨 바닥(탁자 윗면 먼저)으로 미리보기, 칸 맞춤(집 0.25 m·탁자 위 0.05 m·마당 YARD.STEP), 벽 가구 0.6 m 안 벽 붙이기, 놓인 가구 누르면 다시 들기.
+- PC 클릭·R·휠 클릭·Esc·오른쪽 클릭·오른쪽 끌기·방향키, 폰 끌기(손가락 60 px 위)·탭·✓ ↻ ✕·「⋯」 한 칸 단추. 세로 폰은 카메라를 멀리, 든 동안 가구 줄 접기.
+- 집과 마당 같은 도구(app.js openPlaceTool, 어댑터만 다름), 서버 변경 없음(/api/home/place, /api/home/yard). 공간이 바뀌거나 다른 창이 열리면 도구 닫힘(걷기 돌아옴).
+- 코드: IslandHome.aimAt·pieceAt, IslandYard.aimAt·pieceAt, plaza-scene placeTool·placePoint·placeScreen.
+- 시험: place-tool(단위·e2e PC/폰).
+
 ## v1.10.231 M 박물관 전시관 + 물고기 크기
 
 - 전시관(public/plaza/island-museum.js, assets 74 museum-v1): 섬 밖 방 24×16 m(ROOM x 100·z -430), 박물관 문 → /api/island/museum/enter·leave. 큰 수조(바다 21)·벽 수조 13(강·호수·폭포)·곤충 진열장 12·나비 돔(나비·잠자리), 명판(크기·기증자, 빈 칸 「아직 기증받지 못했어요」), 관장(기증해요·전시 이야기), 안내판(전시 n/46, 목록). 기증은 관장 창구 2.2 m 안에서만. 폰 화질 0이면 큰 수조 8마리.
@@ -31,10 +39,3 @@
 - 옛 툇마루섬 집터 → 꽃밭 4곳·벤치 8. 표지 「울타리 마을 ↓」「울타리 마을」. 지도·미니맵 땅 그림 z 300까지.
 - 주민은 마을로 내려가는 목 길에서 멈추지 않음(서버 걸음과 어긋남). 잡초 범위 r 200, 서버 시작 바닥 계산 빠르게(ground-cover 먼 바다 건너뜀).
 - 시험: dalmaru-island 16곳, island-yard(울타리 안·새 집 쪽지 없음), yard·weekly-new e2e 마을 이동은 PlazaWarp.
-
-## v1.10.229 1인칭 손 동작 (할 때만 보이는 내 손)
-
-- 공 주먹 → 손바닥·손가락·엄지 낮은 다각형 손(0.7배), 피부색 look.skinColor, 손목 소매는 윗옷 색(asset-loader c.sleeve).
-- 빈손은 할 때만(fpBusy): 잡초(0.62 s부터 잡초 든 손), 나무 열매(0.98 s부터 열매), SPACE 톡 0.38 s, 잃어버린 물건 건네기 0.9 s. 0.14 s에 올라오고 내려감, 몸 손 뼈 움직임 0.35배로 화면 안.
-- 손은 투명 패스 맨 나중·깊이 시험 없이 그려 나무 잎·가게 유리에 안 가림. 낚싯대·잠자리채 손도 같은 손.
-- 시험: e2e fp-hands(PC·폰, 당기기 0.66~1.3 s 모든 프레임 손+잡초, 피부색 둘, 3인칭 손 없음).

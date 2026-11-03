@@ -1454,3 +1454,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
 :root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button[aria-checked="true"]{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)}
 :root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .placeBar{background:var(--isle-paper,#fbf3e2);color:var(--isle-ink,#3a2a1a);border:1px solid var(--isle-line,#d8c6a4);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+:root[data-theme="light"] .placeBar .placeStatus.bad{color:#b3261e}
+:root[data-theme="light"] .placeBar .placeActs button{box-shadow:0 3px 10px rgba(0,0,0,.18)}
+:root[data-theme="light"] .placeBar .placeStrip .placePiece.selected{background:var(--isle-btn,#8a5f3a);color:#fff;border-color:var(--isle-btn,#8a5f3a)}

@@ -155,6 +155,23 @@
     const one = (v, half, H) => { const hi = H - half; const q = Math.min(hi, Math.max(-hi, Math.round(v * 4) / 4)); return [q, hi, -hi].filter((c) => c === q || Math.abs(c - v) < 0.25).sort((a, b) => Math.abs(a - v) - Math.abs(b - v))[0]; };
     return { x: one(p.x, w0 / 2, st.hx), z: one(p.z, d0 / 2, st.hz) };
   }
+  // v1.10.232 배치 도구 (docs/place-tool-20261103.md): a held piece aimed at a room-local point -- on its step (on a top by
+  // 0.05 m, as the arrows), a wall piece within 0.6 m of the back or a side wall turned with its back to it, flush on it
+  const WALL_REACH = 0.6;
+  function aimAt(p, lx, lz, stage = 2, others = []) {
+    const q = { ...p, x: Number(lx), z: Number(lz) }; const s = SIZE[shapeOf(p.id)]; if (!s || !Number.isFinite(q.x) || !Number.isFinite(q.z)) return q;
+    if (HUNG.has(shapeOf(p.id))) {
+      const st = stageOf(stage); const [d, rot] = [[st.hz - q.z, 0], [st.hx - q.x, 1], [q.x + st.hx, 3]].sort((a, b) => a[0] - b[0])[0]; // (the back wall, then +x, -x; the low front holds nothing)
+      if (d < WALL_REACH) { q.rot = rot; const [w, dd] = rot % 2 ? [s[1], s[0]] : [s[0], s[1]]; if (rot === 0) q.z = st.hz - dd / 2; else q.x = rot === 1 ? st.hx - w / 2 : -st.hx + w / 2; }
+    }
+    return { ...q, ...snapPos(q, stage, others) };
+  }
+  // the placed piece at a room-local point (a thing on a top before its top; a wall piece by its footprint against the wall)
+  function pieceAt(pieces, lx, lz) {
+    const inBox = (b) => b && lx >= b.x0 - 1e-6 && lx <= b.x1 + 1e-6 && lz >= b.z0 - 1e-6 && lz <= b.z1 + 1e-6;
+    const on = pieces.filter((p) => supportOf(p, pieces) && inBox(topBox(p)));
+    return on[0] || pieces.find((p) => !FLAT.has(shapeOf(p.id)) && inBox(boxOf(p))) || pieces.find((p) => inBox(boxOf(p))) || null; // (a rug last: what stands on it first)
+  }
   // where one may stand inside: in the walls, out of the floor pieces (0.3 m round them)
   function clamp(lot, x, z, pieces = [], stage = 2) {
     const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d); const st = stageOf(stage); const HX = st.hx; const HZ = st.hz;
@@ -194,5 +211,5 @@
     const anyDir = ANY_DIR.has(shapeOf(p.id));
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn };
+  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn, WALL_REACH, aimAt, pieceAt };
 }));

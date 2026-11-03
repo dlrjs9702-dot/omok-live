@@ -115,7 +115,10 @@
   const limitOf = (level) => LIMIT[Math.min(LEVELS, Math.max(1, level)) - 1];
   // a lot-local spot snapped to the steps
   const snap = (v) => Math.round(v / STEP) * STEP;
+  // v1.10.232 배치 도구: a held piece aimed at a lot-local point (its step), and the placed piece there -- as the house's
+  const aimAt = (p, lx, lz) => ({ ...p, x: snap(Number(lx)), z: snap(Number(lz)) });
+  const pieceAt = (items, lx, lz) => items.find((p) => { if (!ITEMS[shapeOf(p.id)]) return false; const [x0, x1, z0, z1] = footBox(p); return lx >= x0 - 1e-6 && lx <= x1 + 1e-6 && lz >= z0 - 1e-6 && lz <= z1 + 1e-6; }) || null;
   // is this spot (world) in the yard of that lot (its box at that level, a little round it): where 「마당 꾸미기」 shows
   function inYard(lot, stage, level, x, z, pad = 0.5) { const { lx, lz } = local(lot, x, z); const b = boxOf(lot, stage, level); return lx > b[0] - pad && lx < b[1] + pad && lz > b[2] - pad && lz < b[3] + pad && !inHouse(stage, lx, lz); }
-  return { ITEMS, SHAPES, LIMIT, LEVELS, FENCE, fenceOf, GATE, fencePieces, fenceSolids, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, inHouse, inPath, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard };
+  return { ITEMS, SHAPES, LIMIT, LEVELS, FENCE, fenceOf, GATE, fencePieces, fenceSolids, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, inHouse, inPath, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard, aimAt, pieceAt };
 }));

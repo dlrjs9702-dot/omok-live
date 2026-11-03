@@ -12,7 +12,8 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
   const a = await shopper(browser, request, isMobile ? '기증왕m' : '기증왕', 0, 'male'); const b = await shopper(browser, request, isMobile ? '구경꾼m' : '구경꾼', 0, 'female');
   for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
   const { page } = a;
-  const fish = isMobile ? 'fish_eel' : 'fish_carp'; const size = Math.round((60 + (Date.now() % 100000) / 10000) * 10) / 10; // (bigger each run: the island's museum keeps the last)
+  const fish = isMobile ? 'fish_eel' : 'fish_carp'; // (bigger than the one on show: the island's museum keeps an earlier try's -- CI 232: a size from the clock wrapped round and came out smaller)
+  const onShow = (await get(request, '/api/island/museum', a.token)).data.exhibits.find((x) => x.id === fish)?.size; const size = Math.round(((Number.isFinite(onShow) ? onShow : 60) + 0.7) * 10) / 10;
   await post(request, '/api/test/island/give', a.token, { itemId: fish, qty: 1, meta: { size } });
   const door = Together.museumDoor(T.MUSEUM);
   const goIn = async (who) => expect.poll(async () => {
@@ -37,13 +38,14 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
   await page.locator('#curatorCard button', { hasText: `${size} cm` }).click();
   const swap = page.getByRole('button', { name: '바꿔 걸기', exact: true }); if (await swap.isVisible().catch(() => false)) await swap.click(); // (a fish an earlier run gave: asked in the card)
   await expect(page.locator('#toast')).toContainText(`${size} cm`, { timeout: 10000 });
+  await expect(page.locator('#curatorCard button', { hasText: '기증해요' })).toBeVisible({ timeout: 15000 }); // (the card opens again after a gift -- let it, then close it: CI 232 closed it first and it came back over the way out)
   for (const who of [a, b]) { // (b in the hall: the island's event, asked again)
     await expect.poll(() => who.page.evaluate((id) => window.PlazaDebug().museum()?.slots[id], fish), { timeout: 15000 }).toMatchObject({ shown: true });
     expect((await who.page.evaluate((id) => window.PlazaDebug().museum().slots[id], fish)).plaque).toContain(`${size} cm\n${isMobile ? '기증왕m' : '기증왕'}님 기증`);
   }
   if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-${isMobile ? 'phone' : 'pc'}.png` });
   // out at the hall's door: back by the museum
-  await page.keyboard.press('Escape');
+  await expect.poll(async () => { if (await page.locator('#plazaDialog').isVisible()) await page.keyboard.press('Escape'); await page.waitForTimeout(300); return page.locator('#plazaDialog').isVisible(); }, { timeout: 15000 }).toBe(false);
   await expect.poll(async () => {
     if (await page.evaluate(() => window.PlazaDebug().space) === 'island') return 'island';
     await page.evaluate(() => { const d = window.PlazaDebug(); const e = d.doors['museum:exit']; d.teleport(e.x, e.z); });
