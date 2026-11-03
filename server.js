@@ -6771,7 +6771,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
-    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null }, nowMs()); bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
+    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null, ...(body.dex ? { dexEntry: String(body.itemId) } : {}) }, nowMs()); // (v1.10.233 dex: into the 도감 too) bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
     return sendJson(res, 200, { ok: true, ...result });
   }
 

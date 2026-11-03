@@ -3228,3 +3228,11 @@ body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fff
 .placeBar .placeBack{justify-self:end}
 body.placing #islandStick,body.placing .islandCtl,body.placing #homeEditBtn,body.placing #yardEditBtn{display:none!important}
 @media (max-width:760px){.placeBar{left:0;right:0;bottom:0;translate:none;width:auto;border-radius:18px 18px 0 0;padding:8px 10px}.placeBar .placeActs{right:10px;top:-62px}.placeBar.holding .placeStrip,.placeBar.holding .placeBack{display:none}}
+
+/* v1.10.233 도감: its tabs (바다 · 민물 · 곤충 · 기념) and 「찾은 것만」 under the head, fixed; only the cells scroll, in the window (PC and phone) */
+#islandBagDialog .islandDexTabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:4px 0 8px}#islandBagDialog .islandDexTabs.hidden{display:none}
+#islandBagDialog .islandDexTabRow{display:flex;flex-wrap:wrap;gap:6px}
+#islandBagDialog .islandDexTab{padding:5px 11px;border-radius:999px;border:1px solid #c4a77d;background:#fbf3e2;color:var(--isle-ink);font-size:.8rem;font-weight:700}
+#islandBagDialog .islandDexTab.selected{background:var(--isle-btn,#8a5f3a);border-color:var(--isle-btn,#8a5f3a);color:#fff}
+#islandBagDialog .islandDexFound{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--isle-ink)}
+#islandBagDialog .islandDexGrid{max-height:min(60dvh,560px);overflow-y:auto;padding:4px 2px}
