@@ -3572,6 +3572,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   doors['museum:exit'] = { ...MUS.world(MUS.ROOM.exit.lx, MUS.ROOM.exit.lz), name: '나가기' };
   doors['museum:board'] = { ...MUS.world(MUS.BOARD.lx, MUS.BOARD.lz - 0.9), name: '전시 안내판' };
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
+    if (placeAim) { const end = placeAim.onEnd; placeTool(null); end?.(); } // (총괄 232 검토: the 배치 도구 never outlives the place it was for)
     mySpace = ['townhall', 'store', 'fashion', 'furniture', 'petshop', 'home', 'jail', 'museum'].includes(space) ? space : 'island'; quiet(); // (5회차 1: a room's load is not a slow PC)
     if (mySpace === 'home') buildHomeRoom(); else if (homeHere) setHome(null); // (묶음 4: out of a house, its pets go)
     indoors = mySpace !== 'island'; openSky = mySpace === 'petshop'; lightKey = null; /* (v1.10.211: the roof under the sky) */ halloweenCheckedAt = -Infinity; // (bugs 9: the weather stays outside; 3회차 18: the black or the sky at once, not up to 5 s later)
@@ -4187,11 +4188,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     { const on = !talkView; if (me.tag) me.tag.visible = on; for (const o of others.values()) if (o.c.tag) o.c.tag.visible = on; for (const pt of pets.values()) if (pt.tag) pt.tag.visible = on; if (yard.mayor.tag) yard.mayor.tag.visible = on; } // (v1.10.194 총괄 검토: while talking no name tags over heads -- mine and theirs, the pets' -- in the picture)
     if (editView && mySpace === 'home' && homeHere) { // (3회차 5: 꾸미기 -- the whole room from above, turned with the camera)
-      const st = HOME.stageOf(homeHere.home.stage); const c = HOME.world(homeHere.lot, 0, 0); const d = Math.max(st.w, st.d) * 1.6; const e = 1.05;
+      const st = HOME.stageOf(homeHere.home.stage); const c = HOME.world(homeHere.lot, 0, 0); const d = Math.max(st.w, st.d) * 1.6 * Math.max(1, 0.9 / camera.aspect); const e = 1.05; // (v1.10.232: a phone held upright -- farther, the whole room across)
       want.set(c.x + sin * Math.cos(e) * d, HOME.ROOM.y + Math.sin(e) * d, c.z + cos * Math.cos(e) * d); look.set(c.x, HOME.ROOM.y, c.z);
     }
     if (editView && mySpace === 'island' && yardHere && yardsShown.get(yardHere)) { // (v1.10.225: 마당 꾸미기 -- the yard from above, turned with the camera)
-      const y = yardsShown.get(yardHere); const b = YARD.boxOf(y.lot, y.stage, y.level); const c = YARD.world(y.lot, (b[0] + b[1]) / 2, (b[2] + b[3]) / 2); const d = Math.max(b[1] - b[0], b[3] - b[2]) * 1.15; const e = 1.0; const h = heightAt(c.x, c.z);
+      const y = yardsShown.get(yardHere); const b = YARD.boxOf(y.lot, y.stage, y.level); const c = YARD.world(y.lot, (b[0] + b[1]) / 2, (b[2] + b[3]) / 2); const d = Math.max(b[1] - b[0], b[3] - b[2]) * 1.15 * Math.max(1, 0.9 / camera.aspect); const e = 1.0; const h = heightAt(c.x, c.z); // (v1.10.232: upright, farther)
       want.set(c.x + sin * Math.cos(e) * d, h + Math.sin(e) * d, c.z + cos * Math.cos(e) * d); look.set(c.x, h, c.z);
     }
     if (snap || fp) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, cameraEase(0.08, camDt)); camLook.lerp(look, cameraEase(0.1, camDt)); } // (V1: the first at my eyes, no lag, no bob)

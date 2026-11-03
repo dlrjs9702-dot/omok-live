@@ -3557,7 +3557,7 @@
     let pieces = []; try { pieces = (await api('/api/island/furniture/mine')).pieces.filter(a.filter); } catch (error) { showToast(error.message); return; }
     if (plazaDialog.open) await new Promise((done) => { plazaDialog.addEventListener('close', () => setTimeout(done, 0), { once: true }); plazaDialog.close(); }); // (the window's own close -- its camera off -- first)
     placeOn = { kind, a, held: null, pieces, why: null }; document.body.classList.add('placing'); a.view(true);
-    plaza.controller?.placeTool?.({ kind, onAim: placeAim, onClick: placeClick, onPress: (pt) => Boolean(placeOn?.held && a.under(placeOn.held, pt)), onCancel: () => placeDrop() });
+    plaza.controller?.placeTool?.({ kind, onAim: placeAim, onClick: placeClick, onPress: (pt) => Boolean(placeOn?.held && a.under(placeOn.held, pt)), onCancel: () => placeDrop(), onEnd: () => closePlaceTool(false) });
     drawPlaceBar();
   }
   function closePlaceTool(reopen = true) {
@@ -3573,6 +3573,7 @@
     const put = placeBar.querySelector('.placePut'); if (put) put.disabled = !h || Boolean(t.why);
     const back = placeBar.querySelector('.placeBack'); if (back) back.disabled = !h || !t.a.placed().some((x) => x.uid === h.uid) || t.a.stuck({ ...h, x: NaN });
     for (const c of placeBar.querySelectorAll('.placePiece')) c.classList.toggle('selected', Boolean(h) && c.dataset.uid === h.uid);
+    placeBar.classList.toggle('holding', Boolean(h)); // (a narrow screen: the strip folded while one is held)
   }
   function placeHold(p, pt = null) { // a piece in hand: where it stands now, else the floor at the middle of the view
     const t = placeOn; if (!t) return; const was = t.a.placed().find((x) => x.uid === p.uid);
@@ -3623,7 +3624,11 @@
     if (event.code === 'KeyR') { event.preventDefault(); placeTurn(); } else if (event.key === 'Escape') { event.preventDefault(); placeDrop(); } else if (step) { event.preventDefault(); placeStep(...step); } else if (event.key === 'Enter') { event.preventDefault(); placePut(); }
   }, true);
   plazaStage.addEventListener('mousedown', (event) => { if (placeOn && event.button === 1) { event.preventDefault(); placeTurn(); } }); // (the wheel's click turns it)
-  window.PlaceTool = { screen: (lx, lz, top = 0) => plaza.controller?.placeScreen?.(lx, lz, top) || null, state: () => (placeOn ? { kind: placeOn.kind, held: placeOn.held && { uid: placeOn.held.uid, x: placeOn.held.x, z: placeOn.held.z, rot: placeOn.held.rot }, why: placeOn.why } : null) }; // (tests)
+  setInterval(() => { // (총괄 232 검토: any window over it, the house left, out of my yard -- the tool ends, the walking back)
+    const t = placeOn; if (!t) return;
+    if (document.querySelector('dialog[open]') || (t.kind === 'home' ? !(homeInside?.mine && plaza.controller?.space?.() === 'home') : !inMyYard())) closePlaceTool(false);
+  }, 400);
+  window.PlaceTool = { spaceTo: (space) => { const p = plaza.controller?.pose?.(); if (p) plaza.controller?.setSpace?.(space, p.x, p.z); } /* (tests: as if the server moved me) */, screen: (lx, lz, top = 0) => plaza.controller?.placeScreen?.(lx, lz, top) || null, state: () => (placeOn ? { kind: placeOn.kind, held: placeOn.held && { uid: placeOn.held.uid, x: placeOn.held.x, z: placeOn.held.z, rot: placeOn.held.rot }, why: placeOn.why } : null) }; // (tests)
   // the 민원 창구's 「마당 넓히기」: the room and how many pieces before and after, for every lot alike (총괄 2026-11-02)
   async function openYardGrow() {
     islandPlaceDialog.close(); await refreshHomes(); const Y = window.IslandYard; const y = myYardLot(); if (!y) { showToast('집이 있어야 마당을 넓힐 수 있어요.'); return; }
