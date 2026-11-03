@@ -41,13 +41,13 @@
     2: Object.freeze({ n: 2, w: 12, d: 12, hx: 5.85, hz: 5.85, pieces: 45, fish: 20, house: 'house', room: 'room', tile: '', name: '작은 집', fixed: [], seats: [] }),
     3: Object.freeze({ n: 3, w: 16, d: 13, hx: 7.85, hz: 6.35, pieces: 70, fish: 30, house: 'manor', room: 'manor_room', tile: '_s3', name: '큰 집',
       // (home.manor_room: the half wall at x 2.67 with its arch |z| < 1.4 and two posts, the window seat on the back wall)
-      fixed: [{ x0: 2.55, x1: 2.79, z0: 1.25, z1: 6.5 }, { x0: 2.55, x1: 2.79, z0: -5.3, z1: -1.25 }, { x0: -4.0, x1: -1.2, z0: 5.9, z1: 6.5 }],
+      fixed: [{ x0: 2.55, x1: 2.79, z0: 1.25, z1: 6.5 }, { x0: 2.55, x1: 2.79, z0: -6.5, z1: -1.25 } /* (문제 기록 1103 2: drawn out to the front wall) */, { x0: -4.0, x1: -1.2, z0: 5.9, z1: 6.5 }],
       seats: [{ x: -2.6, z: 6.05 }] }),
     // R8 4단계 큰 집 2층 (assets 58 2026-10-25, docs/my-home-20261020.md): the 큰 집's 1층 with the stairs up at its front left
     // (home.stairs_in at STAIRS, its foot by the front wall), and the 2층 (`upper`, a room of its own: home.upper_room, the
     // same 16 x 13, walls 3.0 m, the stair hole front left, a window seat at the back, the balcony door in the middle front)
     4: Object.freeze({ n: 4, w: 16, d: 13, hx: 7.85, hz: 6.35, pieces: 70, fish: 40, house: 'manor2', room: 'manor_room', tile: '_s3', name: '2층 큰 집',
-      fixed: [{ x0: 2.55, x1: 2.79, z0: 1.25, z1: 6.5 }, { x0: 2.55, x1: 2.79, z0: -5.3, z1: -1.25 }, { x0: -4.0, x1: -1.2, z0: 5.9, z1: 6.5 }, { x0: -7.85, x1: -6.55, z0: -5.7, z1: -0.9 }], // (+ the stairs)
+      fixed: [{ x0: 2.55, x1: 2.79, z0: 1.25, z1: 6.5 }, { x0: 2.55, x1: 2.79, z0: -6.5, z1: -1.25 }, { x0: -4.0, x1: -1.2, z0: 5.9, z1: 6.5 }, { x0: -7.85, x1: -6.55, z0: -5.7, z1: -0.9 }], // (+ the stairs)
       seats: [{ x: -2.6, z: 6.05 }] }),
     upper: Object.freeze({ n: 4, upper: true, w: 16, d: 13, hx: 7.85, hz: 6.35, pieces: 50, fish: 40, house: 'manor2', room: 'upper_room', tile: '_s4', name: '2층',
       fixed: [{ x0: -8, x1: -6, z0: -6.5, z1: -1.5 }], seats: [{ x: 0, z: 6.08 }], entry: [-7, -0.95] }), // (the hole; one comes up behind it)
