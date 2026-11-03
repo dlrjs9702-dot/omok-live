@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.231 M 박물관 전시관 + 물고기 크기
+
+- 전시관(public/plaza/island-museum.js, assets 74 museum-v1): 섬 밖 방 24×16 m(ROOM x 100·z -430), 박물관 문 → /api/island/museum/enter·leave. 큰 수조(바다 21)·벽 수조 13(강·호수·폭포)·곤충 진열장 12·나비 돔(나비·잠자리), 명판(크기·기증자, 빈 칸 「아직 기증받지 못했어요」), 관장(기증해요·전시 이야기), 안내판(전시 n/46, 목록). 기증은 관장 창구 2.2 m 안에서만. 폰 화질 0이면 큰 수조 8마리.
+- 물고기 크기(docs/fish-size-20261027.md): 서버가 잡을 때 cm(SIZES, 큰 끝 드묾, 평균 위치 0.35), 가방 meta.sizes(작은 것부터 팔기·선물·주기, 박물관은 가장 큰 것), 값 ×경제 값 fish:sizeMin 80~fish:sizeMax 130%(평균 같음), 낚시 쪽지 cm·내 최고, 도감 최고 크기·날(questDoc fishBest), 옛 물고기는 종류 가운데 값.
+- 박물관 바꿔 걸기: 더 큰 것만(같거나 작으면 NOT_BIGGER), 첫 기증(first)·지난 기록 셋(past), 바뀐 사람에게 쪽지. 곤충은 종류마다 한 번 그대로.
+- 물고기 13종 더(fish-additions-20261029, assets 85): 34종, 밤에만(오징어·동자개, 서울 20~05시), 해마 윤슬만·가재 강/폭포·산천어 폭포·철갑상어 호수만.
+- 걷는 이야기 주민 떨림(검토 진단): 숨긴 quest 분신을 people·out 목록에서 뺌(npc.root.visible).
+- 덤: 집 대문 이름 팻말 1.5배·밝은 판·진한 갈색(긴 이름 두 줄), talk-spot e2e 말 걸기 전 free-residents.
+- 시험: museum-hall(단위·e2e PC/폰), island-fishing 34종·크기 값, island-insects 박물관 창구.
+
 ## v1.10.230 울타리 마을 (집터 동네를 새 땅으로)
 
 - 땅: 툇마루섬 남쪽, 기차 고리 너머 새 땅(dalmaru-terrain VILLAGE x -154~170·z 199~281, 목 NECK x -20), coastDist에 soft union, 높이 0.9로 평평. 바닥 590 m·SEG 236, 구운 지도 1536.
@@ -28,9 +38,3 @@
 - 빈손은 할 때만(fpBusy): 잡초(0.62 s부터 잡초 든 손), 나무 열매(0.98 s부터 열매), SPACE 톡 0.38 s, 잃어버린 물건 건네기 0.9 s. 0.14 s에 올라오고 내려감, 몸 손 뼈 움직임 0.35배로 화면 안.
 - 손은 투명 패스 맨 나중·깊이 시험 없이 그려 나무 잎·가게 유리에 안 가림. 낚싯대·잠자리채 손도 같은 손.
 - 시험: e2e fp-hands(PC·폰, 당기기 0.66~1.3 s 모든 프레임 손+잡초, 피부색 둘, 3인칭 손 없음).
-
-## v1.10.228 물결에게 팔기 (근무표가 켜진 섬에서 오늘 물결이 있는 곳)
-
-- 서버 /api/island/sell: fisher 거리 확인을 항구 8 m 대신 questTalkPos('fisher', at)로 — 말 걸기와 같은 기준(걷는 날 물결 옆, mall1 날 1층 계산대, 근무표 꺼지면 항구).
-- 원인: 운영은 근무표가 켜져 물결이 항구에 거의 없음, 시험 서버는 근무표가 꺼져 통과했음.
-- 시험: fisher-sell 단위(근무표 켜고 계산대 날·걷는 날·멀리서 TOO_FAR·끄면 항구).

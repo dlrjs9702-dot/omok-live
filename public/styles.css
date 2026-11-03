@@ -1710,6 +1710,7 @@ body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display
 .islandDexCell img { width: 56px; height: 56px; object-fit: contain; }
 .islandDexCell.unfound img { filter: brightness(0); opacity: 0.35; }
 .islandDexCell small { opacity: 0.7; min-height: 1em; }
+.islandDexCell small.dexBest { font-size: 0.68rem; opacity: 0.85; } /* v1.10.231 my best size */
 
 /* v1.10.43 기념사진 모드: the island alone -- the page around it hidden, two buttons and the countdown over it */
 body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint, body.photoMode #questTracker, body.photoMode canvas.islandMinimap, body.photoMode .islandChatPanel, body.photoMode .islandChatForm { visibility: hidden !important; }
@@ -2589,6 +2590,7 @@ body:not(.plazaMode) .guidePanel { display: none; }
 .museumList { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
 .museumItem { border: 1px solid var(--line, #33415a); border-radius: 8px; padding: 6px 8px; display: grid; gap: 2px; }
 .museumItem.empty { opacity: 0.55; }
+.museumItem .museumPast { font-size: 0.72rem; } /* v1.10.231 the last three before */
 
 /* 관리자 「문제 기록」 */
 .issueDialog { max-width: min(92vw, 520px); }

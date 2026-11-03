@@ -8789,6 +8789,164 @@
       "lowSrc": "yard70:02. Low/yard_arch_low.glb",
       "lowSha256": "336d03391a603114d5340d3466f9c93db061aecb847db273b13f950932a28199",
       "precompressed": true
+    },
+    {
+      "out": "museum-v1/museum_hall.glb",
+      "src": "museum74:01. High/museum_hall.glb",
+      "sha256": "12c5eac2f707f8b4ec5bd78bdd68043d2ac10e1d573fb856e08b4bf894e665df",
+      "precompressed": true
+    },
+    {
+      "out": "museum-v1/museum_tank_big.glb",
+      "src": "museum74:01. High/museum_tank_big.glb",
+      "sha256": "240d9376a4254afe0575b8406f0c08bb81ff3d3e899d2c3202864b51a10fe09d",
+      "lowSrc": "museum74:02. Low/museum_tank_big_low.glb",
+      "lowSha256": "9dac2d1e8d388ca07d86ce97e66f24cfd7e7b202a80ca757f2b74230e05a060a",
+      "precompressed": true
+    },
+    {
+      "out": "museum-v1/museum_tank_wall.glb",
+      "src": "museum74:01. High/museum_tank_wall.glb",
+      "sha256": "54aaf89f572497421a3b59e32912f71ba8e2506f518dae2530bf47b51b7ed021",
+      "lowSrc": "museum74:02. Low/museum_tank_wall_low.glb",
+      "lowSha256": "38e33a613ab0e28602fd25f5ffa2070f24109973f1d719a6a811c7e409c7a5f0",
+      "precompressed": true
+    },
+    {
+      "out": "museum-v1/museum_insect_case.glb",
+      "src": "museum74:01. High/museum_insect_case.glb",
+      "sha256": "0ad59e59d596df7ff0fe8f2d036eca9c1084d35494bc70cc65765f5b80e78406",
+      "lowSrc": "museum74:02. Low/museum_insect_case_low.glb",
+      "lowSha256": "5317af6866d78e109129ade175fbdf0022b7a790da61aef2d194dc223b438a2b",
+      "precompressed": true
+    },
+    {
+      "out": "museum-v1/museum_butterfly_dome.glb",
+      "src": "museum74:01. High/museum_butterfly_dome.glb",
+      "sha256": "5e081b514c77c6013c87e986815913c9e48fe9b9997498236012a1ab742e2b6f",
+      "lowSrc": "museum74:02. Low/museum_butterfly_dome_low.glb",
+      "lowSha256": "a5792b0fbd1a7a3ec62cc05ea63f7111046ed11b16dfe1d50617d1a5b2f8973d",
+      "precompressed": true
+    },
+    {
+      "out": "museum-v1/museum_curator_desk.glb",
+      "src": "museum74:01. High/museum_curator_desk.glb",
+      "sha256": "960052e3e8e8b90640fd01f02fb8cd9d2e1ac1a26e8661f753c00543a13f717c",
+      "lowSrc": "museum74:02. Low/museum_curator_desk_low.glb",
+      "lowSha256": "5ed399d48f2d3f32075c4d64a445c5233670e695128ff42c6678401e525c6db9",
+      "precompressed": true
+    },
+    {
+      "out": "museum-v1/museum_bench.glb",
+      "src": "museum74:01. High/museum_bench.glb",
+      "sha256": "c353f415ac3f1c62aba82a921458a1bb29b18fc8bc8d7c04760a1532f621526b",
+      "lowSrc": "museum74:02. Low/museum_bench_low.glb",
+      "lowSha256": "2ab5f370c10d72479d10cd98df215878fae4ce759cbdf666bc63de8f03f9b17f",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_yellowtail.glb",
+      "src": "fishdex85:High/fish_yellowtail.glb",
+      "sha256": "fbb7e1c3704078c2f5646fb3dca2561737dbb73edf00a927d888fc29910de46e",
+      "lowSrc": "fishdex85:Low/fish_yellowtail_low.glb",
+      "lowSha256": "88f7a7cdabbdb4783e3591b469e9092059fb6c0dbbcea91d464857c10a0facad",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_red_seabream.glb",
+      "src": "fishdex85:High/fish_red_seabream.glb",
+      "sha256": "bb17ea254d4f2fa37522fc525492eb42f663bfd9e492f664711bcc8ab0962bb0",
+      "lowSrc": "fishdex85:Low/fish_red_seabream_low.glb",
+      "lowSha256": "65266026a825488555395dc92f1ec05f7eff9d29686ea517a37e508e84b56b1b",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_horse_mackerel.glb",
+      "src": "fishdex85:High/fish_horse_mackerel.glb",
+      "sha256": "9bde16779c9faf9cd2a86175393ca6a9f90ebc74fb72e8518be01cac7bb57f33",
+      "lowSrc": "fishdex85:Low/fish_horse_mackerel_low.glb",
+      "lowSha256": "1ad70b04a9cd358484af421d28b9eb698d20c1bd0170642f625ddcf32e896077",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_filefish.glb",
+      "src": "fishdex85:High/fish_filefish.glb",
+      "sha256": "91003edb1defb334aa99d93fcb46c4c228e06c99bef6665d668ee2244b964d34",
+      "lowSrc": "fishdex85:Low/fish_filefish_low.glb",
+      "lowSha256": "7d527104f827f0d8ac7f51965415a11d38a9b1b3644090afa43a458d229719f8",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_cod.glb",
+      "src": "fishdex85:High/fish_cod.glb",
+      "sha256": "af907c32324900ab8ea697a2c278d45a9dce1793f71aff5c4900ddbf894767b7",
+      "lowSrc": "fishdex85:Low/fish_cod_low.glb",
+      "lowSha256": "6c0b388b99b8fdd453e483f01f0f41871ac9b342978c7506dc98b3bdd4ea344f",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_squid.glb",
+      "src": "fishdex85:High/fish_squid.glb",
+      "sha256": "b89a6829eebb396c79019873782ddc0780b177e20f17e64e6f53bec07b5a0066",
+      "lowSrc": "fishdex85:Low/fish_squid_low.glb",
+      "lowSha256": "a9812c95a02ca1eefcfce3d8e4004bd36f040c1814e431507ee873a9124c65c9",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_blue_crab.glb",
+      "src": "fishdex85:High/fish_blue_crab.glb",
+      "sha256": "d4d224dcd53650275be2c750d73cbfe40d64224040905806bd25b2ad4e09d6ed",
+      "lowSrc": "fishdex85:Low/fish_blue_crab_low.glb",
+      "lowSha256": "c99039ba6a37d029cb365a3019e3c5a997b1f97243b459dad714eb00b558adc9",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_seahorse.glb",
+      "src": "fishdex85:High/fish_seahorse.glb",
+      "sha256": "391d6045a2a42f32f2db918a2209c1c6e07395ff1217fecee4ff13be4bbe2fa9",
+      "lowSrc": "fishdex85:Low/fish_seahorse_low.glb",
+      "lowSha256": "43348f44d572c9ade1079c94c5af81789f88b029bce42328b97d8b4f85b782ba",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_crayfish.glb",
+      "src": "fishdex85:High/fish_crayfish.glb",
+      "sha256": "216705def4e70da5e8507a7b9b94bf95620a74d0d70be1847c0b661a45b63bfa",
+      "lowSrc": "fishdex85:Low/fish_crayfish_low.glb",
+      "lowSha256": "47b6a5d598d7d38b93d51a4fe0e24dd4fb92932096a18d94b27903ba1a9b9251",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_medaka.glb",
+      "src": "fishdex85:High/fish_medaka.glb",
+      "sha256": "90b0077ce2b2d554472714d5b1691ad3d48cc99460f98b6cf458f04dbe579c68",
+      "lowSrc": "fishdex85:Low/fish_medaka_low.glb",
+      "lowSha256": "b57a6e5b0f98174d4758caa63f5d4baa3e3e53ebdad637cdac93e37776fb2fb7",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_bagrid_catfish.glb",
+      "src": "fishdex85:High/fish_bagrid_catfish.glb",
+      "sha256": "897e087c799a5c1ac2ab0611df5621ac0ba0aa6197d16a0a0881cbe914fd722d",
+      "lowSrc": "fishdex85:Low/fish_bagrid_catfish_low.glb",
+      "lowSha256": "ef027292b3852f37988f92df812a018fcffcfc206221a00b5f04080936cdf269",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_masu_salmon.glb",
+      "src": "fishdex85:High/fish_masu_salmon.glb",
+      "sha256": "ac1d01f677178eb54c3da5bbdfe8be6e82e1c978760a83d84cf2e4efd01c202f",
+      "lowSrc": "fishdex85:Low/fish_masu_salmon_low.glb",
+      "lowSha256": "81b466034a91b7606e93a36c5e9173ed7d15df789e3904a96135a67c3cc49630",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_sturgeon.glb",
+      "src": "fishdex85:High/fish_sturgeon.glb",
+      "sha256": "f76c43ff373fd40e0a1043a2908b0978496a174e8c9279a9fc3efbeffddc4fe0",
+      "lowSrc": "fishdex85:Low/fish_sturgeon_low.glb",
+      "lowSha256": "26bc7e4c912dccef1d1d2c34e7be23017f62cb8286738c9dcb302b15b562ec66",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -8853,6 +9011,8 @@
     "arms89": "89. Game Island goeun face arms 2026-10-31",
     "arms90": "90. Game Island kkotnim kongi arms 2026-10-31",
     "projects71": "71. Game Island island projects 2026-10-25",
-    "yard70": "70. Game Island yard items 2026-10-25"
+    "yard70": "70. Game Island yard items 2026-10-25",
+    "museum74": "74. Game Island museum hall 2026-10-25",
+    "fishdex85": "85. Game Island fishing dex more 13 2026-10-29"
   }
 }

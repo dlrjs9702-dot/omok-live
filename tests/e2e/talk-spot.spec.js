@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, expectNoScriptError } = require('./skin-support');
+const { shopper, post, expectNoScriptError } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 
 // v1.10.219 대화 자리 잡기 (총괄 218 검토): a tree on the talk camera's line -- the camera goes to the other side; an islander
@@ -29,7 +29,7 @@ test('대화 자리 잡기: 나무 피하는 대화 카메라, 먼 주민에게 
     const talking = () => page.evaluate(() => /talkMode/.test(document.getElementById('plazaDialog').className));
     let gaps = [];
     for (const n of [11, 14]) {
-      await expect.poll(async () => { if (await talking()) return true; await d('talkResident', n); await page.waitForTimeout(1500); return talking(); }, { timeout: 30000 }).toBe(true);
+      await expect.poll(async () => { if (await talking()) return true; await post(request, '/api/test/island/free-residents', who.token, {}); /* (v1.10.231, 230 CI: an island NPC event held 11 -- RESIDENT_BUSY) */ await d('talkResident', n); await page.waitForTimeout(1500); return talking(); }, { timeout: 30000 }).toBe(true);
       await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().talkView))?.gap ?? 9, { timeout: 8000 }).toBeLessThan(2.0);
       await page.waitForTimeout(1500); gaps.push((await page.evaluate(() => window.PlazaDebug().talkView)).gap); /* (settled) */ const fr = await page.evaluate(() => window.PlazaDebug().talkFrame3()); if (n === 14) { expect(fr.head.y, '콩이 머리 화면 위쪽').toBeGreaterThan(0.35); expect(Math.abs(fr.waist.x)).toBeLessThan(0.6); }
       if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-${n}.png` }); }
