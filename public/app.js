@@ -4519,10 +4519,10 @@
   const storyLine = (t) => (t.task.includes(t.where.replace(/ · 밤에$/, '')) ? `${t.task}${/ · 밤에$/.test(t.where) ? ' · 밤에' : ''}` : `${t.task} · ${t.where}`); // (where only when the task does not say it)
   function showQuestTracker(list = questTrack) {
     questTrack = list; plaza.controller?.setVisitTasks?.(list); // (206: a visit's things where it is)
-    const story = storyTrack ? [{ key: `s:${storyTrack.n}:${storyTrack.c}`, who: globalThis.IslandCast?.WALKERS[storyTrack.n]?.name || '이야기', /* (Q2 사용자 「할 일에 오탐정이라고 나와」: the name, as on the tag) */ text: storyTrack.ready ? '✓ 돌아가 말해요' : storyLine(storyTrack), count: '', ready: storyTrack.ready, drop: { chapter: true }, title: storyTrack.title }] : [];
+    const story = storyTrack ? [{ key: `s:${storyTrack.n}:${storyTrack.c}`, who: globalThis.IslandCast?.RESIDENTS[storyTrack.n]?.name || '이야기', /* (Q2 사용자 「할 일에 오탐정이라고 나와」: the name, as on the tag) */ text: storyTrack.ready ? '✓ 돌아가 말해요' : storyLine(storyTrack), count: '', ready: storyTrack.ready, drop: { chapter: true }, title: storyTrack.title }] : [];
     const items = [...list.slice(0, Math.max(0, 3 - (errandTrack.length ? 1 : 0) - story.length)).map((t) => ({ key: `q:${t.story}`, who: t.name, text: t.ready ? '✓ 돌아가 말해요' : t.label, /* (the name is the line's own column) */ count: t.need > 1 && !t.ready ? `${t.count}/${t.need}` : t.ready ? '' : '0/1', ready: t.ready, drop: { story: t.story } })),
       ...story, ...errandTrack.map((e) => ({ key: `e:${e.id}`, who: '심부름', text: e.label, count: '', ready: false, drop: { id: e.id }, title: e.title }))].slice(0, 3);
-    if (storyTrack?.ready && storyReady === false) showToast(`✓ ${globalThis.IslandCast?.WALKERS[storyTrack.n]?.name || ''}에게 돌아가 말해요`, 4000);
+    if (storyTrack?.ready && storyReady === false) showToast(`✓ ${globalThis.IslandCast?.RESIDENTS[storyTrack.n]?.name || ''}에게 돌아가 말해요`, 4000);
     storyReady = storyTrack ? storyTrack.ready : null;
     if (questReady) for (const t of list) if (t.ready && !questReady.has(t.story)) showToast(`✓ ${t.name}에게 돌아가 말해요`, 4000);
     questReady = new Set(list.filter((t) => t.ready).map((t) => t.story));
@@ -4671,8 +4671,8 @@
     if (tab === 'residents') {
       S.RESIDENTS.forEach((chs, n) => {
         const done = Number(v.chapters?.[n]) || 0; const box = el('details', 'storyResident'); const sum = el('summary');
-        const face = el('span', 'storyFace', (C.WALKERS[n].name || '?').slice(0, 1)); face.style.background = C.WALKERS[n].tagColor || '#64748b';
-        sum.append(face, el('b', null, C.WALKERS[n]?.name || ''), el('small', null, `${done}/3`)); box.append(sum);
+        const face = el('span', 'storyFace', (C.RESIDENTS[n]?.name || '?').slice(0, 1)); face.style.background = C.RESIDENTS[n]?.tagColor || '#64748b'; // (v1.10.234: all 27 -- WALKERS is the first ten)
+        sum.append(face, el('b', null, C.RESIDENTS[n]?.name || ''), el('small', null, `${done}/3`)); box.append(sum);
         chs.forEach((ch, c) => {
           const page = el('div', `storyChapter${c < done ? '' : ' locked'}`);
           if (c < done) page.append(el('h4', null, `${c + 1}장 · ${ch.title}`), ...ch.note.map((t) => el('p', null, storyFill(t, v.me))));

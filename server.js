@@ -1134,7 +1134,7 @@ async function storyFinalGifts(account) {
 // what the book and the tracker read: my chapters, the one under way, the pieces, the festival stories I have
 async function storyView(account) {
   const doc = await storyDoc(account);
-  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */, pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
+  return { chapters: doc.chapters || {}, track: IslandStory.trackOf(doc, IslandTerrain, (n) => IslandCast.RESIDENTS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1; v1.10.234 all 27) */, pieces: IslandStory.piecesOf(doc.chapters, doc.read), read: doc.read || [], hatch: IslandStory.hatchShown(doc.chapters), final: Boolean(doc.final) };
 }
 // (R3 ③ 주민의 하루: the islanders walk that time of day's round -- the time held by the administrator, kept here as it changes)
 let walkerTimeMode = 'auto';
@@ -7327,7 +7327,7 @@ async function requestHandler(req, res) {
         return sendTalk(view(IslandCast.say(n, 'errandYes'), { storyAccepted: { title: IslandStory.RESIDENTS[n][ch].title }, story: await storyView(account) }));
       }
       if (st === 'offer') {
-        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.WALKERS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
+        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.RESIDENTS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
         return sendTalk(view(ch.offer, { storyOffer: { title: ch.title, task: ch.task, where: t.where } }));
       }
       if (st === 'visit') {
