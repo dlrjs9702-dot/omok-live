@@ -19,7 +19,12 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
     const lines = () => revealTalk(page);
     const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(600); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
     const close = async () => { await expect.poll(async () => { if (await dialog.isVisible()) await page.keyboard.press('Escape'); await page.waitForTimeout(400); return dialog.isVisible(); }, { timeout: 20000 }).toBe(false); };
-    const skipErrand = async () => { if (await page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).count()) { await choices.filter({ hasText: '다음에요' }).click(); await lines(); } };
+    // (a day's errand asked first: 「다음에요」 -- only a note on screen; CI mobile-2 counted a hidden one left from before and waited
+    // a minute for a button not there)
+    const skipErrand = async () => {
+      if (!(await page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).first().isVisible().catch(() => false))) return;
+      const later = choices.filter({ hasText: '다음에요' }); await later.waitFor({ state: 'visible', timeout: 20000 }).then(() => later.click(), () => {}); await lines();
+    };
     const space = () => page.evaluate(() => window.PlazaDebug().space);
     // talking to them: a walker where it walks; 김우성 before his desk in the 구치소; 마루 at the gate -- the last two by 「이야기해요」
     const walker = (n) => async () => {
@@ -59,8 +64,10 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
       const note = page.locator('#plazaDialog .questNote'); await expect(note).toContainText(S.title);
       if (S.label) await expect(note).toContainText(S.label);
       await shot(`offer-${n}-${c + 1}`);
-      await choices.filter({ hasText: '할게요!' }).click(); await lines(); await close();
-      await expect(page.locator('#questTracker .questLine', { hasText: S.task })).toBeVisible({ timeout: 15000 });
+      // 할게요 -- till the server has it under way (CI mobile-2: at 2.7 fps a click before the choices settled took nothing)
+      await expect.poll(async () => { if ((await get(request, '/api/island/story', token)).data.track?.title === S.title) return true; const yes = choices.filter({ hasText: '할게요!' }); if (await yes.isVisible().catch(() => false)) await yes.click().catch(() => {}); await page.waitForTimeout(800); return false; }, { timeout: 40000 }).toBe(true);
+      await lines(); await close();
+      await expect(page.locator('#questTracker .questLine', { hasText: S.task })).toBeVisible({ timeout: 30000 });
       if (S.talk != null) { // (말 걸기 장: the one it sends me to -- 「부탁받고 왔어요」)
         await go(); await lines(); await skipErrand(); await choices.filter({ hasText: '부탁받고 왔어요' }).click(); /* (a quest's 「📜 부탁」 may come first) */ await lines(); await close();
         await expect(page.locator('#questTracker .questLine.ready', { hasText: '돌아가 말해요' })).toBeVisible({ timeout: 30000 });
