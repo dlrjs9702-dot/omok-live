@@ -17,9 +17,11 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
   const door = Together.museumDoor(T.MUSEUM);
   const goIn = async (who) => expect.poll(async () => {
     if (await who.page.evaluate(() => window.PlazaDebug().space) === 'museum') return 'museum';
+    const d = await who.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+    if (Math.hypot(d.x - door.x, d.z - door.z) > 3) { await who.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [door.x, door.z]); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); } // (CI: a long way from the plaza -- a warp, as the yard's)
     await who.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [door.x, door.z]); await who.page.waitForTimeout(500); await spaceOn(who.page, 'museum', isMobile); await who.page.waitForTimeout(800);
     return who.page.evaluate(() => window.PlazaDebug().space);
-  }, { timeout: 30000, intervals: [300] }).toBe('museum');
+  }, { timeout: 90000, intervals: [300] }).toBe('museum');
   await goIn(b); await goIn(a);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().museum()?.board || ''), { timeout: 15000 }).toMatch(/전시 \d+\/46/);
   const empty = (await get(request, '/api/island/museum', a.token)).data.exhibits.find((x) => !x.by);
