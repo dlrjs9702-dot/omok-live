@@ -52,19 +52,20 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
   // (문제 기록 1103 8) under each name sign, a small board: when the next train comes, redrawn as the minute changes
   const boards = [];
   function arrivalBoard(sign, id) {
-    const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 128;
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; made.push(texture);
     const m = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, emissive: 0xffffff, emissiveMap: texture, emissiveIntensity: 0.35 }); made.push(m);
-    const back = new THREE.Mesh(G.box, new THREE.MeshStandardMaterial({ color: 0x2f3a44, roughness: 0.7 })); made.push(back.material); back.scale.set(2.1, 0.5, 0.06); back.position.set(0, 1.55, -0.02); sign.add(back);
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.4), m); made.push(face.geometry); face.position.set(0, 1.55, -0.055); face.rotation.y = Math.PI; sign.add(face);
+    const back = new THREE.Mesh(G.box, new THREE.MeshStandardMaterial({ color: 0x2f3a44, roughness: 0.7 })); made.push(back.material); back.scale.set(1.5, 0.8, 0.06); back.position.set(0, 1.4, -0.02); sign.add(back);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.7), m); made.push(face.geometry); face.position.set(0, 1.4, -0.055); face.rotation.y = Math.PI; sign.add(face);
     return { id, canvas, texture, face, text: '' };
   }
   function drawBoards(ms) {
     for (const b of boards) {
       const text = R.arrivalText(b.id, ms); if (text === b.text) continue; b.text = text; b.face.userData.boardText = text;
-      const c = b.canvas.getContext('2d'); c.fillStyle = '#1f2830'; c.fillRect(0, 0, 640, 128); c.fillStyle = '#ffd27a'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      let size = 64; c.font = `800 ${size}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; size = Math.floor(size * Math.min(1, 600 / c.measureText(text).width)); c.font = `800 ${size}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
-      c.fillText(text, 320, 68); b.texture.needsUpdate = true;
+      const c = b.canvas.getContext('2d'); c.fillStyle = '#1f2830'; c.fillRect(0, 0, 512, 256); c.textAlign = 'center'; c.textBaseline = 'middle'; const [head, rest = ''] = text.split(' · '); /* (two lines: 「다음 열차」 small, the line and its minutes big -- read from a few metres) */
+      const font = (px) => `800 ${px}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
+      c.fillStyle = '#c9d3da'; c.font = font(52); c.fillText(head, 256, 64);
+      let size = 84; c.font = font(size); size = Math.floor(size * Math.min(1, 480 / Math.max(1, c.measureText(rest).width))); c.fillStyle = '#ffd27a'; c.font = font(size); c.fillText(rest, 256, 170); b.texture.needsUpdate = true;
     }
   }
   const lifts = Object.entries(R.STATIONS).map(([id, st]) => {
