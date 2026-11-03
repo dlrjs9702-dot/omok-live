@@ -15,6 +15,9 @@ test('팬데믹 4인+관전: 예측·버리기·공중 수송 재접속과 결�
     for (let i = 0; i < 5; i++) {
       const issued = (await post(request, '/api/admin/keys', admin, { label: `pd-followup-${i}` })).data;
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      // (v1.10.234 CI chromium-12, 3 of 4 runs: five pages each drawing the 3D island on every reload -- one dropped out of the
+      // room and the test ran out of time. The room is what this test is about: the lobby without the island)
+      await context.addInitScript(() => { try { localStorage.setItem('gc.testClassic', '1'); } catch {} });
       const page = await context.newPage();
       await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
       const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
