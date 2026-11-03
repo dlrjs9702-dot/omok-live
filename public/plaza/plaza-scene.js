@@ -1606,7 +1606,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const isTyping = (el) => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
   const isBlocked = () => Boolean(blocked?.()) || !running;
   const onKeyDown = (event) => {
-    if (isBlocked() || isTyping(event.target)) return;
+    if (isBlocked() || isTyping(event.target) || placeAim) return; // (v1.10.232: the tool's keys are app.js's)
     if (event.code === 'Space' && event.target.closest?.('button')) return;
     // v1.10.217 조작 개편 (gamecenter-notes docs/controls-fp-revamp-20261030.md A, 사용자 「움직이는 걸 전부 asdw로 통일하고 카메라
     // 전환 방향키로」): W/A/S/D walk -- the physical keys, a Korean input mode too -- kept as the arrows they stand for; the
@@ -1736,13 +1736,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const onDown = (event) => {
     if (event.pointerType === 'touch') {
       pinch.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (pinch.size === 2) { pinchFrom = { span: pinchSpan(), zoom: zoomDist }; drag = null; dragged = true; return; }
+      if (pinch.size === 2) { pinchFrom = { span: pinchSpan(), zoom: zoomDist }; drag = null; dragged = true; placePress = null; return; }
     }
+    if (placeAim && placeDown(event)) return; // v1.10.232 배치 도구
     if (event.button !== 0 || pinch.size > 1) return;
     const touch = event.pointerType === 'touch'; if (touch && fpNow()) { const r = host.getBoundingClientRect(); if (event.clientX - r.left < r.width / 2) return; } // (V1: the left half is the stick's)
     drag = { x: event.clientX, y: event.clientY, id: event.pointerId, k: touch && fpNow() ? 0.55 : 1 }; dragged = false;
   };
   const onClick = (event) => {
+    if (placeAim) { dragged = false; return; } // (v1.10.232: the tool's own, on its pointer up)
     if (dragged) { dragged = false; return; } if (isBlocked() || locked()) return; // (locked: a click only looks -- SPACE does the rest)
     const id = facilityAt(event); if (id) { interact(id); return; }
     if (event.pointerType !== 'touch' && lockOk()) lockPointer();
@@ -1771,6 +1773,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       pinch.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (pinchFrom && pinch.size >= 2) { if (!isBlocked()) setZoom(pinchFrom.zoom * pinchFrom.span / pinchSpan()); return; }
     }
+    if (placeAim && placeMove(event)) return;
     if (drag && drag.id === event.pointerId && !isBlocked()) {
       const dx = event.clientX - drag.x;
       if (!dragged && Math.hypot(dx, event.clientY - drag.y) >= DRAG_START) { dragged = true; renderer.domElement.setPointerCapture?.(event.pointerId); }
@@ -1780,13 +1783,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         renderer.domElement.style.cursor = 'grabbing'; return;
       }
     }
-    renderer.domElement.style.cursor = !isBlocked() && canInteract(facilityAt(event)) ? 'pointer' : 'grab';
+    if (placeAim) return; renderer.domElement.style.cursor = !isBlocked() && canInteract(facilityAt(event)) ? 'pointer' : 'grab';
   };
   const onUp = (event) => {
+    if (placeAim && event.type === 'pointerup') placeUp(event); else if (event.type === 'pointercancel') placePress = null;
     if (pinch.delete(event.pointerId) && pinch.size < 2) pinchFrom = null;
     if (drag?.id === event.pointerId) { drag = null; renderer.domElement.style.cursor = 'grab'; }
   };
   renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+  renderer.domElement.addEventListener('contextmenu', (event) => { if (placeAim) event.preventDefault(); }); // (v1.10.232: the right button the tool's)
   renderer.domElement.addEventListener('pointerdown', onDown);
   renderer.domElement.addEventListener('pointerup', onUp);
   renderer.domElement.addEventListener('pointercancel', onUp);
@@ -3368,6 +3373,63 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const v = drawPiece(p, true); const mark = mesh(new THREE.BoxGeometry(b.x1 - b.x0, 0.03, b.z1 - b.z0), mat(why ? 0xe05050 : 0x4fbf6f, { transparent: true, opacity: 0.55 }), (b.x0 + b.x1) / 2, 0.06 + HOME.liftOf(p, homeHere.home.pieces), (b.z0 + b.z1) / 2, homeRoomV.group); mark.castShadow = false;
     homeGhostV = { root: v.root, mark, hid }; return why;
   }
+
+  // v1.10.232 배치 도구 (docs/place-tool-20261103.md): app.js's tool on -- the house's or my yard's camera from above, no
+  // walking; where the mouse or a finger points on the floor (or a table's top, nearest first) is told in room- or lot-local
+  // metres. A PC: the mouse moving aims, a left click acts, a right drag turns the view (a right click without one lets go).
+  // A phone: a finger down on the held piece drags it (aimed 60 px above the finger, out from under it), elsewhere it turns
+  // the view; a tap acts. The house and the yard alike -- only the floor and the grid differ (app.js).
+  let placeAim = null; // { kind: 'home' | 'yard', onAim(pt), onClick(pt, touch), onPress(pt) -> true: drag the held piece, onCancel() }
+  const placeRay = new THREE.Raycaster(); const placeNdc = new THREE.Vector2(); const placeV = new THREE.Vector3();
+  function placePoint(clientX, clientY) {
+    if (!placeAim) return null; const r = renderer.domElement.getBoundingClientRect();
+    placeNdc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1); placeRay.setFromCamera(placeNdc, camera);
+    const at = (y) => { const o = placeRay.ray.origin; const d = placeRay.ray.direction; if (Math.abs(d.y) < 1e-6) return null; const t = (y - o.y) / d.y; return t > 0 ? { t, w: placeRay.ray.at(t, new THREE.Vector3()) } : null; };
+    if (placeAim.kind === 'home') {
+      if (!homeRoomV || !homeHere) return null; const g = homeRoomV.group; const floor = g.localToWorld(placeV.set(0, 0, 0)).y;
+      const local = (w) => { const q = g.worldToLocal(w.clone()); return { lx: Math.round(q.x * 1000) / 1000, lz: Math.round(q.z * 1000) / 1000 }; };
+      let best = null; // (a table's top before the floor behind it)
+      for (const p of homeHere.home.pieces) { const h = HOME.TOPS[HOME.shapeOf(p.id)]; const b = h && HOME.boxOf(p); const hit = b && at(floor + h); if (!hit) continue; const q = local(hit.w); if (q.lx >= b.x0 && q.lx <= b.x1 && q.lz >= b.z0 && q.lz <= b.z1 && (!best || hit.t < best.t)) best = { t: hit.t, ...q, top: p.uid }; }
+      if (best) return { lx: best.lx, lz: best.lz, top: best.top };
+      const hit = at(floor); return hit ? { ...local(hit.w), top: null } : null;
+    }
+    const y = yardHere && yardsShown.get(yardHere); if (!y) return null;
+    const c = YARD.world(y.lot, 0, 0); const hit = at(heightAt(c.x, c.z)); if (!hit) return null; const q = YARD.local(y.lot, hit.w.x, hit.w.z);
+    return { lx: Math.round(q.lx * 1000) / 1000, lz: Math.round(q.lz * 1000) / 1000, top: null };
+  }
+  // tests: where a room- or lot-local point is on the screen (top: a table's height over the floor)
+  function placeScreen(lx, lz, top = 0) {
+    let w;
+    if (placeAim?.kind === 'home' || (!placeAim && mySpace === 'home')) { if (!homeRoomV) return null; w = homeRoomV.group.localToWorld(new THREE.Vector3(lx, top, lz)); }
+    else { const y = yardHere && yardsShown.get(yardHere); if (!y) return null; const p = YARD.world(y.lot, lx, lz); w = new THREE.Vector3(p.x, heightAt(p.x, p.z) + top, p.z); }
+    const v = w.project(camera); const r = renderer.domElement.getBoundingClientRect(); return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+  }
+  let placePress = null; // { id, x, y, held: dragging the held piece, touch, button, moved }
+  const PLACE_LIFT = 60; // (a finger's: aimed this far above it)
+  function placeDown(event) {
+    if (event.pointerType === 'touch' && pinch.size > 1) { placePress = null; return false; }
+    const touch = event.pointerType === 'touch'; const pt = placePoint(event.clientX, event.clientY);
+    const held = Boolean(touch && pt && placeAim.onPress?.(pt));
+    placePress = { id: event.pointerId, x: event.clientX, y: event.clientY, held, touch, button: event.button, moved: false };
+    if (held) { renderer.domElement.setPointerCapture?.(event.pointerId); return true; } // (it follows once the finger moves)
+    if (!touch && event.button === 2) { drag = { x: event.clientX, y: event.clientY, id: event.pointerId, k: 1 }; dragged = false; } // (the right button turns the view)
+    return !touch || false;
+  }
+  function placeMove(event) {
+    const pr = placePress && placePress.id === event.pointerId ? placePress : null;
+    if (pr && Math.hypot(event.clientX - pr.x, event.clientY - pr.y) >= DRAG_START) pr.moved = true;
+    if (pr?.held) { if (pr.moved) { const pt = placePoint(event.clientX, event.clientY - PLACE_LIFT); if (pt) placeAim.onAim?.(pt); } return true; }
+    if (event.pointerType !== 'touch' && !(event.buttons & 2)) { const pt = placePoint(event.clientX, event.clientY); if (pt) placeAim.onAim?.(pt); renderer.domElement.style.cursor = 'crosshair'; }
+    return false;
+  }
+  function placeUp(event) {
+    const pr = placePress && placePress.id === event.pointerId ? placePress : null; placePress = null; if (!pr) return;
+    if (pr.held && pr.moved) return; // (let go after a drag: it stays there; a tap on it is a tap)
+    if (pr.moved || dragged) return; // (a turn of the view)
+    if (!pr.touch && pr.button === 2) { placeAim.onCancel?.(); return; }
+    if (pr.touch || pr.button === 0) { const pt = placePoint(event.clientX, event.clientY); if (pt) placeAim.onClick?.(pt, pr.touch); }
+  }
+  function placeTool(opts) { placeAim = opts && (opts.kind === 'home' || opts.kind === 'yard') ? opts : null; placePress = null; keys.clear(); renderer.domElement.style.cursor = placeAim ? 'crosshair' : 'grab'; }
   // each sector's spot carries its old facility id (the shop's window and the server's place check stay the same)
   for (const s of STORE.SECTORS) doors[s.place] = { ...STORE.world(s.interact[0], s.interact[1]), name: s.name };
   for (const s of FASH.SECTORS) doors[s.place] = { ...FASH.world(s.interact[0], s.interact[1]), name: s.name }; // (v1.10.211 2층: the racks, the costume rail, the case)
@@ -4325,7 +4387,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     let ix = 0; let iz = 0;
     if (isBlocked()) actLock = 0;
     if (sitting && !photoMode && !isBlocked() && (stick || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].some((k) => keys.has(k)))) standUp(); // v1.10.44: an arrow stands me up
-    if (!isBlocked() && !gather && !actLocked() && !riding && !liftRide && !photoMode) { // v1.10.40: gathering holds me in place (the keys stay pressed for after); v1.10.47 so does the train
+    if (!isBlocked() && !placeAim && !gather && !actLocked() && !riding && !liftRide && !photoMode) { // (v1.10.232: no walking with the 배치 도구) v1.10.40: gathering holds me in place (the keys stay pressed for after); v1.10.47 so does the train
       if (keys.has('ArrowLeft')) ix -= 1; if (keys.has('ArrowRight')) ix += 1;
       if (keys.has('ArrowUp')) iz -= 1; if (keys.has('ArrowDown')) iz += 1;
       if (stick) { ix += stick.x; iz += stick.y; }
@@ -4824,7 +4886,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; editView = Boolean(lotId); if (!lotId) yardGhost(null); }, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), setFestival, setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
-    paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
+    paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

@@ -3211,3 +3211,20 @@ body.plazaMode #recordsDialog :is(.card,.recordsProfile,.recordsResult,li){backg
 body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
 body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button[aria-checked="true"]{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)}
 body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
+
+/* v1.10.232 배치 도구: the strip of pieces at the bottom of the 3D view (a PC: in the middle; a phone: the whole width), its
+   ✓ ↻ ✕ over it; the stick and the island's own buttons away while it is on */
+.placeBar{position:absolute;left:50%;bottom:12px;translate:-50% 0;z-index:30;width:min(720px,calc(100% - 24px));display:grid;gap:6px;padding:10px 12px;border-radius:18px;background:var(--isle-paper,#fbf3e2);color:var(--isle-ink,#3a2a1a);border:1px solid var(--isle-line,#d8c6a4);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.placeBar.hidden{display:none}
+.placeBar .placeHead{display:flex;align-items:center;gap:8px}.placeBar .placeTitle{margin:0;font-weight:800;flex:1}
+.placeBar .placeStatus{margin:0;font-size:.9rem;min-height:1.2em}.placeBar .placeStatus.bad{color:#b3261e}
+.placeBar .placeActs{position:absolute;right:12px;top:-58px;display:flex;gap:8px}
+.placeBar .placeActs button{min-width:52px;min-height:48px;border-radius:24px;font-size:1.1rem;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+.placeBar .placeActs .placePut{min-width:96px}
+.placeBar .placePad{display:grid;grid-template-columns:repeat(4,48px);gap:6px}.placeBar .placePad.hidden{display:none}
+.placeBar .placeStrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x proximity}
+.placeBar .placeStrip .placePiece{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
+.placeBar .placeStrip .placePiece.selected{background:var(--isle-btn,#7a5230);color:#fff;border-color:var(--isle-btn,#7a5230)}
+.placeBar .placeBack{justify-self:end}
+body.placing #islandStick,body.placing .islandCtl,body.placing #homeEditBtn,body.placing #yardEditBtn{display:none!important}
+@media (max-width:760px){.placeBar{left:0;right:0;bottom:0;translate:none;width:auto;border-radius:18px 18px 0 0}.placeBar .placeActs{right:10px;top:-62px}}

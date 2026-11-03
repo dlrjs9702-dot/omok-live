@@ -3460,7 +3460,8 @@
     const back = btn('창고로 넣기', 'secondary', () => homeEditing && send({ uid: homeEditing.uid, remove: true }, `${homeEditing.name} — 가구 창고로 넣었어요`));
     const row = document.createElement('div'); row.className = 'goodBuy'; row.append(put, back);
     const fold = btn('접기', 'ghost tiny homeEditFold', () => { const folded = plazaDialog.classList.toggle('folded'); fold.textContent = folded ? '펼치기' : '접기'; fold.setAttribute('aria-expanded', String(!folded)); }); fold.setAttribute('aria-expanded', 'true');
-    editBox.replaceChildren(fold, status, pad, row, line(`가구 ${homeInside.home.pieces.length}/${H.stageOf(homeInside.home.stage).pieces}점 · 벽 가구(액자·시계·커튼 창·선반)는 뒤가 벽에 닿게`), list);
+    const tool = btn('🖐 배치 도구', 'primary placeToolBtn', () => openPlaceTool('home')); // (v1.10.232: the 3D view itself)
+    editBox.replaceChildren(tool, fold, status, pad, row, line(`가구 ${homeInside.home.pieces.length}/${H.stageOf(homeInside.home.stage).pieces}점 · 벽 가구(액자·시계·커튼 창·선반)는 뒤가 벽에 닿게`), list);
     // (문제 기록 3회차 5 「창이 다 가려서 안 보여」: an edge strip -- the right side on a PC, the bottom on a phone -- folded
     // to its title with 접기, the camera over the whole room)
     homeEditing = null; openPlazaWindow('꾸미기', [editBox]); plazaDialog.classList.add('editMode'); plazaDialog.classList.remove('folded'); plaza.controller?.homeEditView?.(true); show();
@@ -3515,10 +3516,114 @@
     const back = btn('창고로 넣기', 'secondary', () => yardEditing && send({ uid: yardEditing.uid, remove: true }, `${yardEditing.name} — 가구 창고로 넣었어요`));
     const row = document.createElement('div'); row.className = 'goodBuy'; row.append(put, back);
     const fold = btn('접기', 'ghost tiny homeEditFold', () => { const folded = plazaDialog.classList.toggle('folded'); fold.textContent = folded ? '펼치기' : '접기'; fold.setAttribute('aria-expanded', String(!folded)); }); fold.setAttribute('aria-expanded', 'true');
-    yardBox.replaceChildren(fold, status, pad, row, line(`마당 물건 ${y.yard.length}/${cap}개 · 울타리는 1 m 한 칸, 이어 놓으면 기둥이 맞아요`), list);
+    const tool = btn('🖐 배치 도구', 'primary placeToolBtn', () => openPlaceTool('yard')); // (v1.10.232: the same tool as the house's)
+    yardBox.replaceChildren(tool, fold, status, pad, row, line(`마당 물건 ${y.yard.length}/${cap}개 · 울타리는 1 m 한 칸, 이어 놓으면 기둥이 맞아요`), list);
     yardEditing = null; openPlazaWindow('마당 꾸미기', [yardBox]); plazaDialog.classList.add('editMode'); plazaDialog.classList.remove('folded'); plaza.controller?.yardEdit?.(y.lot.id); show();
     plazaDialog.addEventListener('close', () => { yardEditing = null; plaza.controller?.yardEdit?.(null); plazaDialog.classList.remove('editMode', 'folded'); }, { once: true });
   }
+  // v1.10.232 배치 도구 (docs/place-tool-20261103.md, 사용자 「집과 마당이 같은 도구, 같은 조작」): from either 꾸미기 window,
+  // the 3D view itself -- the window gives way to a strip of pieces at the bottom; a piece taken from it (or a placed one
+  // pressed in the room or the yard) follows where the mouse or a finger points, on its grid (a table's top, a wall for a
+  // wall piece), green or red with why; placed with a click or ✓, turned with R or ↻, let go with Esc, ✕ or a right
+  // click. The same requests as the windows (/api/home/place, /api/home/yard): the server's rules as they are. The house
+  // and the yard differ only in their adapter: the grid, the placing rule, the request.
+  const placeBar = document.createElement('div'); placeBar.id = 'placeBar'; placeBar.className = 'placeBar hidden'; placeBar.setAttribute('role', 'toolbar'); placeBar.setAttribute('aria-label', '배치 도구'); plazaStage.append(placeBar);
+  let placeOn = null; // { kind, a: the adapter, held, pieces, why }
+  function placeAdapter(kind) {
+    if (kind === 'home') {
+      const H = window.IslandHome; const stage = () => homeInside.home.stage; const placed = () => homeInside.home.pieces;
+      const others = (p) => placed().filter((x) => x.uid !== p?.uid);
+      return { kind, title: '꾸미기', placed, filter: (p) => p.rarity !== 'yard', reopen: () => openHomeEdit(),
+        view: (on) => plaza.controller?.homeEditView?.(on), ghost: (p) => plaza.controller?.homeGhost?.(p) ?? null,
+        aim: (p, pt) => H.aimAt(p, pt.lx, pt.lz, stage(), others(p)), turn: (p) => ({ ...p, ...H.snapPos({ ...p, rot: (p.rot + 1) % 4 }, stage(), others(p)), rot: (p.rot + 1) % 4 }),
+        step: (p, right, ahead) => { const s = H.supportOf(p, others(p)) ? 0.05 : 0.25; return { ...p, ...H.snapPos({ ...p, x: p.x - right * s, z: p.z + ahead * s }, stage(), others(p)) }; }, // (the room seen from its doorway: my right is its -x)
+        pick: (pt) => H.pieceAt(placed(), pt.lx, pt.lz), stuck: (p) => { const was = placed().find((x) => x.uid === p.uid); return Boolean(was && H.heldOn(was, others(was)).length && (was.x !== p.x || was.z !== p.z || was.rot !== p.rot)); },
+        under: (p, pt) => { const b = H.boxOf(p); return Boolean(b) && pt.lx >= b.x0 - 0.4 && pt.lx <= b.x1 + 0.4 && pt.lz >= b.z0 - 0.4 && pt.lz <= b.z1 + 0.4; },
+        send: async (body) => { const r = await api('/api/home/place', { method: 'POST', body: JSON.stringify(body) }); showHome({ ...homeInside, home: r.home }); },
+        ok: () => Boolean(homeInside?.mine) };
+    }
+    const Y = window.IslandYard; const lotNow = () => myYardLot();
+    return { kind, title: '마당 꾸미기', placed: () => lotNow()?.yard || [], filter: (p) => p.rarity === 'yard', reopen: () => openYardEdit(),
+      view: (on) => plaza.controller?.yardEdit?.(on ? lotNow()?.lot.id : null), ghost: (p) => plaza.controller?.yardGhost?.(p) ?? null,
+      aim: (p, pt) => Y.aimAt(p, pt.lx, pt.lz), turn: (p) => ({ ...p, rot: (p.rot + 1) % 4 }),
+      step: (p, right, ahead) => { const [dx, dz] = plaza.controller?.yardStep?.(right, ahead) || [0, 0]; return { ...p, x: Y.snap(p.x + dx), z: Y.snap(p.z + dz) }; },
+      pick: (pt) => Y.pieceAt(lotNow()?.yard || [], pt.lx, pt.lz), stuck: () => false,
+      under: (p, pt) => Math.abs(pt.lx - p.x) <= 1.2 && Math.abs(pt.lz - p.z) <= 1.2,
+      send: async (body) => { const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {}); await api('/api/home/yard', { method: 'POST', body: JSON.stringify(body) }); await refreshHomes(); },
+      ok: () => Boolean(lotNow()) };
+  }
+  async function openPlaceTool(kind) {
+    const a = placeAdapter(kind); if (!a.ok()) return;
+    let pieces = []; try { pieces = (await api('/api/island/furniture/mine')).pieces.filter(a.filter); } catch (error) { showToast(error.message); return; }
+    if (plazaDialog.open) await new Promise((done) => { plazaDialog.addEventListener('close', () => setTimeout(done, 0), { once: true }); plazaDialog.close(); }); // (the window's own close -- its camera off -- first)
+    placeOn = { kind, a, held: null, pieces, why: null }; document.body.classList.add('placing'); a.view(true);
+    plaza.controller?.placeTool?.({ kind, onAim: placeAim, onClick: placeClick, onPress: (pt) => Boolean(placeOn?.held && a.under(placeOn.held, pt)), onCancel: () => placeDrop() });
+    drawPlaceBar();
+  }
+  function closePlaceTool(reopen = true) {
+    const t = placeOn; if (!t) return; placeOn = null;
+    t.a.ghost(null); plaza.controller?.placeTool?.(null); t.a.view(false); document.body.classList.remove('placing'); placeBar.classList.add('hidden'); placeBar.replaceChildren();
+    if (reopen) t.a.reopen();
+  }
+  function placeShow() {
+    const t = placeOn; if (!t) return; const h = t.held;
+    t.why = h ? (t.a.stuck(h) ? '위에 놓인 물건을 먼저 치워 주세요.' : null) || t.a.ghost(h) : (t.a.ghost(null), null);
+    const status = placeBar.querySelector('.placeStatus'); if (status) { status.textContent = h ? `${h.name} · ${t.why || '여기에 놓을 수 있어요'}` : '줄에서 가구를 고르거나, 놓인 가구를 눌러 들어요.'; status.dataset.at = h ? `${h.x},${h.z},${h.rot}` : ''; status.classList.toggle('bad', Boolean(h && t.why)); }
+    for (const b of placeBar.querySelectorAll('.placeHeld')) b.disabled = !h;
+    const put = placeBar.querySelector('.placePut'); if (put) put.disabled = !h || Boolean(t.why);
+    const back = placeBar.querySelector('.placeBack'); if (back) back.disabled = !h || !t.a.placed().some((x) => x.uid === h.uid) || t.a.stuck({ ...h, x: NaN });
+    for (const c of placeBar.querySelectorAll('.placePiece')) c.classList.toggle('selected', Boolean(h) && c.dataset.uid === h.uid);
+  }
+  function placeHold(p, pt = null) { // a piece in hand: where it stands now, else the floor at the middle of the view
+    const t = placeOn; if (!t) return; const was = t.a.placed().find((x) => x.uid === p.uid);
+    let held = was ? { ...was, name: p.name } : { uid: p.uid, id: p.id, name: p.name, rot: 0, x: 0, z: 0 };
+    if (!was) { const r = plazaStage.getBoundingClientRect(); const mid = pt || plaza.controller?.placePoint?.(r.left + r.width / 2, r.top + r.height * 0.55); held = mid ? t.a.aim(held, mid) : held; }
+    t.held = held; placeShow();
+  }
+  function placeAim(pt) { const t = placeOn; if (!t?.held || !pt) return; const next = t.a.aim(t.held, pt); if (next.x === t.held.x && next.z === t.held.z && next.rot === t.held.rot) return; t.held = next; placeShow(); }
+  function placeClick(pt, touch) {
+    const t = placeOn; if (!t) return;
+    if (t.held) { if (touch) placeAim(pt); else { placeAim(pt); placePut(); } return; } // (a finger's tap moves it; ✓ places)
+    const p = t.a.pick(pt); if (!p) return; const own = t.pieces.find((x) => x.uid === p.uid);
+    placeHold({ ...p, name: own?.name || p.name || '가구' });
+  }
+  function placeDrop() { const t = placeOn; if (!t) return; if (!t.held) { closePlaceTool(); return; } t.held = null; placeShow(); }
+  function placeTurn() { const t = placeOn; if (!t?.held) return; t.held = t.a.turn(t.held); placeShow(); }
+  function placeStep(right, ahead) { const t = placeOn; if (!t?.held) return; t.held = t.a.step(t.held, right, ahead); placeShow(); }
+  let placeBusy = false;
+  async function placeSend(body, done) {
+    const t = placeOn; if (!t || placeBusy) return; placeBusy = true;
+    try { await t.a.send(body); showToast(done); t.held = null; if (placeOn === t) drawPlaceBar(); }
+    catch (error) { const s = placeBar.querySelector('.placeStatus'); if (s) s.textContent = error.message; } finally { placeBusy = false; }
+  }
+  function placePut() { const h = placeOn?.held; if (!h || placeOn.why) return; placeSend({ uid: h.uid, x: h.x, z: h.z, rot: h.rot }, `${h.name} — 놓았어요`); }
+  function placeBack() { const h = placeOn?.held; if (!h) return; placeSend({ uid: h.uid, remove: true }, `${h.name} — 가구 창고로 넣었어요`); }
+  function drawPlaceBar() {
+    const t = placeOn; if (!t) return; const placedIds = new Set(t.a.placed().map((x) => x.uid));
+    const strip = document.createElement('div'); strip.className = 'placeStrip'; strip.setAttribute('role', 'list');
+    for (const p of [...t.pieces].sort((x, y) => Number(placedIds.has(x.uid)) - Number(placedIds.has(y.uid)))) { // (not yet placed first)
+      const c = btn(`${p.name}${placedIds.has(p.uid) ? ' · 놓음' : ''}`, 'ghost placePiece', () => placeHold(p)); c.dataset.uid = p.uid; c.setAttribute('role', 'listitem'); strip.append(c);
+    }
+    if (!t.pieces.length) strip.append(line(t.kind === 'home' ? '가구 창고가 비어 있어요.' : '마당 물건이 없어요.'));
+    const back = btn('창고로', 'secondary placeBack placeHeld', () => placeBack());
+    const status = line(''); status.className = 'placeStatus'; status.setAttribute('role', 'status');
+    const acts = document.createElement('div'); acts.className = 'placeActs';
+    const put = btn('✓ 놓기', 'primary placePut placeHeld', () => placePut()); const turn = btn('↻', 'ghost placeHeld', () => placeTurn()); turn.setAttribute('aria-label', '돌리기 (R)'); turn.title = '돌리기 (R)';
+    const drop = btn('✕', 'ghost placeHeld', () => placeDrop()); drop.setAttribute('aria-label', '내려놓기 (Esc)'); drop.title = '내려놓기 (Esc)';
+    const pad = document.createElement('div'); pad.className = 'placePad hidden';
+    for (const [label, right, ahead, aria] of [['←', -1, 0, '왼쪽으로'], ['↑', 0, 1, '안쪽으로'], ['↓', 0, -1, '앞쪽으로'], ['→', 1, 0, '오른쪽으로']]) { const b = btn(label, 'ghost placeHeld', () => placeStep(right, ahead)); b.setAttribute('aria-label', aria); pad.append(b); }
+    const fine = btn('⋯', 'ghost tiny placeFine', () => { pad.classList.toggle('hidden'); fine.setAttribute('aria-expanded', String(!pad.classList.contains('hidden'))); }); fine.setAttribute('aria-label', '한 칸씩 옮기기'); fine.setAttribute('aria-expanded', 'false');
+    const end = btn('끝내기', 'ghost tiny placeEnd', () => closePlaceTool());
+    acts.append(drop, turn, put); const head = document.createElement('div'); head.className = 'placeHead'; head.append(line(`🖐 배치 도구 · ${t.a.title}`, 'placeTitle'), fine, end);
+    placeBar.replaceChildren(head, status, pad, acts, strip, back); placeBar.classList.remove('hidden'); placeShow();
+  }
+  window.addEventListener('keydown', (event) => { // (a PC: R turns, Esc lets go -- or ends --, the arrows step one place)
+    if (!placeOn || event.isComposing || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || '')) return;
+    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[event.key];
+    if (event.code === 'KeyR') { event.preventDefault(); placeTurn(); } else if (event.key === 'Escape') { event.preventDefault(); placeDrop(); } else if (step) { event.preventDefault(); placeStep(...step); } else if (event.key === 'Enter') { event.preventDefault(); placePut(); }
+  }, true);
+  plazaStage.addEventListener('mousedown', (event) => { if (placeOn && event.button === 1) { event.preventDefault(); placeTurn(); } }); // (the wheel's click turns it)
+  window.PlaceTool = { screen: (lx, lz, top = 0) => plaza.controller?.placeScreen?.(lx, lz, top) || null, state: () => (placeOn ? { kind: placeOn.kind, held: placeOn.held && { uid: placeOn.held.uid, x: placeOn.held.x, z: placeOn.held.z, rot: placeOn.held.rot }, why: placeOn.why } : null) }; // (tests)
   // the 민원 창구's 「마당 넓히기」: the room and how many pieces before and after, for every lot alike (총괄 2026-11-02)
   async function openYardGrow() {
     islandPlaceDialog.close(); await refreshHomes(); const Y = window.IslandYard; const y = myYardLot(); if (!y) { showToast('집이 있어야 마당을 넓힐 수 있어요.'); return; }
