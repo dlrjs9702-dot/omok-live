@@ -2108,6 +2108,9 @@ body.stickEdit .ctlSelected { outline: 3px solid #facc15 !important; }
 @media (max-height: 500px) { .islandActBtn { bottom: 62px; width: 66px; height: 66px; } .islandWalkBtn { bottom: 136px; } .islandRunBtn { right: 94px; bottom: 58px; } }
 /* the hint is only a label now (the right hand has its own 상호작용): bottom centre, still tappable */
 body.touchIsland .plazaHint { left: 50%; right: auto; transform: translateX(-50%); bottom: 14px; max-width: calc(100% - 300px); }
+/* (총괄 236 검토 「안 한 글자만」) a phone held upright: the note after 가방·사진 to the right edge, two lines if it must -- read whole */
+@media (min-height: 501px) { body.touchIsland .plazaHint { left: 164px; right: 12px; transform: none; max-width: none; white-space: normal; text-align: center; text-overflow: clip; } }
+@media (max-height: 500px) { body.touchIsland .plazaStage.quickOn .plazaHint { bottom: 64px; } }
 
 /* v1.10.83 통합 UI 6~8 (IDEAS 통합 게임 UI 개편): the island's windows -- 게시판·미션·출석·상점·가방·내 정보·기록·랭킹·
    기부·작명·등반·메뉴·메신저 -- take the game hall's sheet (v1.10.73 .gameSheet): one rounded card, a two-colour head bar
@@ -3202,6 +3205,35 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
 .toolGauge{position:absolute;right:16px;bottom:84px;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);font-weight:800;font-size:.9rem}
 .toolGauge .toolUses{position:relative;left:auto;right:auto;bottom:auto;width:64px;height:7px}
 .toolGauge.hidden{display:none}
+/* v1.10.236 빠른 칸 (notes docs/quickbar-20261104.md): five round paper slots at the bottom's middle, the one in hand raised
+   and dark-ringed, an empty one only its faint ring, one used up greyed; on a phone above the stick and the buttons. In the
+   bag the same five under the pouch, where they are set and taken out */
+.quickRow{display:flex;gap:8px;align-items:center;justify-content:center}
+.quickBar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;padding:6px 10px;border-radius:999px;background:rgba(255,246,227,.82);border:1px solid var(--isle-line);box-shadow:0 4px 12px rgba(74,56,40,.25)}
+.quickBar.hidden{display:none}
+.quickSlot{position:relative;width:48px;height:48px;min-width:44px;padding:0;display:grid;place-items:center;border-radius:50%;background:#f8eedb;border:2px solid #e6d3b3;color:var(--isle-ink);font-size:1.3rem;box-shadow:inset 0 3px 6px -3px rgba(110,71,40,.3);transition:transform .12s}
+.quickSlot .itemIcon{width:30px;height:30px}
+.quickSlot>i{position:absolute;left:3px;top:1px;font-style:normal;font-size:.66rem;font-weight:900;color:var(--isle-soft)}
+.quickSlot>small{position:absolute;right:2px;bottom:0;font-size:.68rem;font-weight:900;color:var(--isle-ink)}
+.quickSlot.empty{background:transparent;border-style:dashed;box-shadow:none}
+.quickSlot.inHand{border-color:var(--isle-tag);border-width:3px;transform:translateY(-4px);background:#f0dcb6}
+.quickSlot.spent>img,.quickSlot.spent>span{opacity:.35}
+.quickSlot.waiting{animation:quickWait 1s ease-in-out infinite}
+.quickSlot.dropAt{border-color:var(--isle-tag)}
+@keyframes quickWait{50%{box-shadow:0 0 0 3px rgba(138,106,74,.45)}}
+.quickInBag{margin:6px 0 2px;display:grid;grid-template-columns:repeat(5,auto);justify-content:center;column-gap:6px;row-gap:2px}
+.quickInBag>b{grid-column:1/-1;text-align:center;font-size:.8rem;color:var(--isle-soft)} /* (총괄 236 검토: its name over the five, the five in one row on a phone too) */
+.quickInBag .bagMenu{top:auto;bottom:auto}
+body:not(.touchIsland) .plazaStage.quickOn .plazaHint{bottom:84px}
+@media (max-width: 1100px) { body:not(.touchIsland) .quickBar { bottom: 62px; } body:not(.touchIsland) .plazaStage.quickOn .plazaHint { bottom: 128px; } }
+/* (총괄 236 검토 「캐릭터를 가려요」) a phone held upright: a column at the right edge, over the 걷기 button -- clear of my
+   character in the middle, of the stick and of the minimap; held sideways (low): along the bottom between the stick and
+   the right hand's buttons, under my character */
+body.touchIsland .quickBar{left:auto;right:8px;bottom:226px;transform:none;flex-direction:column;padding:4px;gap:6px;border-radius:28px}
+@media (max-height: 500px) { body.touchIsland .quickBar { left: 50%; right: auto; bottom: 8px; transform: translateX(-50%); flex-direction: row; } }
+body.touchIsland .quickBar .quickSlot{width:44px;height:44px}
+body.touchIsland .quickSlot>i{display:none}
+body.photoMode .quickBar,body.islandFishing .quickBar,body:has(dialog[open]) .quickBar{visibility:hidden}
 span.goodIcon{display:grid;place-items:center;font-size:3.4rem;line-height:1}
 body.touchIsland .toolGauge{right:auto;left:16px;bottom:auto;top:68px} /* (the phone: clear of the run and act buttons) */
 /* v1.10.222 섬 가꾸기: the 기부함's project -- what fills, a bar, mine and the savings */
