@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, get, post, adminToken, spaceOn, standAt, expectNoScriptError } = require('./skin-support');
+const { shopper, get, post, adminToken, spaceOn, standAt, revealTalk, expectNoScriptError } = require('./skin-support');
 
 // A4 주말 섬 대회, v1.10.238 대회 천막 (문제 기록 1103 7 「중앙 광장에 주민이 대회용 천막을 쳐 놓고 거기서 입장하는 걸로」): the bar
 // says where (대청마당 대회 천막) and a tap points the way; the tent stands with 가락 before it; his 「참가하기」 opens the week's
@@ -34,17 +34,25 @@ test('섬 대회 천막: 띠가 천막을 가리키고, 가락에게 참가하�
     // the tent's keeper: 「참가하기」 -- the round at once, the contest's tag over it; ✕ back to the island
     const dialog = page.locator('#plazaDialog');
     const door = await page.evaluate(() => window.PlazaDebug().contestTent().door); await standAt(request, a, door.x, door.z); // (the server's own spot of me: by the tent)
-    await expect.poll(async () => {
-      if (await dialog.getByRole('button', { name: '참가하기' }).isVisible()) return true;
-      await page.evaluate(() => window.PlazaDebug().setCamYaw?.(-0.47 + Math.PI * 0.85)); await page.waitForTimeout(700); await spaceOn(page, 'contest:tent', isMobile); await page.waitForTimeout(900);
-      return dialog.getByRole('button', { name: '참가하기' }).isVisible();
+    const talkTill = (name) => expect.poll(async () => {
+      if (await dialog.getByRole('button', { name }).isVisible()) return true;
+      await page.evaluate(() => { const p = window.PlazaDebug(); const d = p.contestTent().door; p.teleport(d.x, d.z); p.setCamYaw?.(-0.47 + Math.PI); }); await page.waitForTimeout(700); /* (back by 가락 -- a photo may have taken me off) */ await spaceOn(page, 'contest:tent', isMobile); await page.waitForTimeout(900);
+      return dialog.getByRole('button', { name }).isVisible();
     }, { timeout: 40000 }).toBe(true);
+    await talkTill('참가하기');
     await expect(page.locator('#plazaDialogTitle')).toHaveText('섬 대회 · 가락'); await expect(dialog).toContainText('두더지 잡기 대회 중이에요');
-    await shot(page, 'talk', 600);
+    if (process.env.SHOT_DIR) await revealTalk(page); await shot(page, 'talk', 600);
     await dialog.getByRole('button', { name: '참가하기' }).click();
     await expect(page.locator('#reflexView')).toBeVisible({ timeout: 20000 }); await expect(page.locator('.reflexContestTag')).toContainText(/🏆 대회 · 남은 \d+:\d\d/); await expect(page.locator('.reflexContestTag')).toBeVisible(); // (the round started: the server took it as the tent's)
     await shot(page, 'round', 2500);
     await page.locator('#reflexQuitBtn').click(); await expect(page.locator('#reflexView')).toBeHidden({ timeout: 15000 });
+    if (process.env.SHOT_DIR) { // (총괄 238 검토 사진) a 카드놀이 contest's round: everyone's one deal, 「대회」 over it -- then back to 두더지
+      await post(request, '/api/test/contest/clock', a.token, { to: 'live', kind: 'klondike' }); await expect(bar).toContainText('카드놀이 대회', { timeout: 20000 });
+      await talkTill('참가하기'); await dialog.getByRole('button', { name: '참가하기' }).click();
+      await expect(page.locator('.reflexContestTag')).toBeVisible({ timeout: 20000 }); await shot(page, 'cards', 2500);
+      await page.locator('#reflexQuitBtn').click(); await expect(page.locator('#reflexView')).toBeHidden({ timeout: 15000 });
+      await post(request, '/api/test/contest/clock', a.token, { to: 'live', kind: 'whack' }); await expect(bar).toContainText('두더지 잡기 대회', { timeout: 20000 });
+    }
     // only the tent's rounds count: the game hall's is its own
     const free = (await post(request, '/api/solo/reflex/start', b.token, { game: 'whack', level: 'normal' })).data.id; await post(request, '/api/test/reflex/age', b.token, { id: free, ageMs: 31000 });
     expect((await post(request, '/api/solo/reflex/finish', b.token, { id: free, score: 900 })).data.contest).toBe(null);
@@ -69,6 +77,8 @@ test('섬 대회 천막: 띠가 천막을 가리키고, 가락에게 참가하�
     await expect.poll(() => page.evaluate((n) => window.PlazaDebug().statues.some((s) => s.name === n), NA), { timeout: 20000 }).toBe(true);
     await expect(bar).toContainText('우승', { timeout: 20000 });
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().contestTent()?.shown), { timeout: 20000 }).toBe(true); // (the results there for half an hour)
+    await talkTill('닫기'); await expect(dialog).toContainText(`1위 ${NA}`); await expect(dialog).toContainText('끝났어요'); // (after it: 1st~3rd from 가락)
+    if (process.env.SHOT_DIR) await revealTalk(page); await shot(page, 'after', 600);
     await expectNoScriptError(page);
   } finally {
     await post(request, '/api/test/contest/clock', a.token, { to: 'reset' });

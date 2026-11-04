@@ -47,6 +47,13 @@ test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 �
     assert.deepEqual((await round(a, 'reaction', 320, { contest: true })).contest, { score: 320, rank: 1 });
     assert.deepEqual((await round(b, 'reaction', 250, { contest: true })).contest, { score: 250, rank: 1 });
     assert.deepEqual((await round(a, 'reaction', 400, { contest: true })).contest, { score: 320, rank: 2 });
+    // (총괄 238 검토 1) settled into its own result: E1's settling (its Saturday 낚시 keeps `contestResult` and 영웅마루) and
+    // A4's again leave it as it is -- its winner on its own statue before the 게임관
+    assert.equal((await req('/api/test/contest/clock', a, { to: 'end' })).data.phase, 'done');
+    const last = (await req('/api/island/contest', a)).data.last; assert.equal(last.id, live.contest.id); assert.deepEqual(last.top.map((r) => r.name), ['대회이웃', '대회손님']);
+    await req('/api/test/weekly/settle', a, { day: Calendar.dayOf(Date.now()) }); await req('/api/test/weekly/settle', a, { all: true });
+    await req('/api/test/contest/clock', a, { to: 'end' });
+    assert.deepEqual((await req('/api/island/contest', a)).data.last, last);
   } finally { await req('/api/test/contest/clock', a, { to: 'reset' }); }
   // the contest over (the real clock: a Wednesday in the tests' week is not a contest): no contest round
   const off = (await req('/api/island/contest', a)).data.contest;

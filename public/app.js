@@ -3931,7 +3931,7 @@
       button('참가하기', () => joinContest(c, d.serverNow - Date.now()));
     } else {
       const L = d.last?.id === c.id ? d.last : null;
-      say.textContent = L ? (L.rewarded ? `${L.name}가 끝났어요! ${board(L.top)}. 모두 고마워요, 다음 주에 또 봐요.` : `${L.name}가 끝났어요. 참가자가 ${d.minEntrants || 2}명이 안 돼서 시상은 없어요.`) : `${c.name}가 끝났어요. 결과를 정리하고 있어요.`;
+      say.textContent = L ? (L.rewarded ? `${L.name}가 끝났어요! ${board(L.top)}. 상금 ${prize.replace(/\(.*\)$/, '')}을 드렸어요(참가한 ${L.entrants}명 모두). 다음 주에 또 봐요.` : `${L.name}가 끝났어요. 참가자가 ${d.minEntrants || 2}명이 안 돼서 시상은 없어요.`) : `${c.name}가 끝났어요. 결과를 정리하고 있어요.`;
     }
     button('닫기', () => plazaDialog.close(), c.phase === 'live' ? 'ghost' : 'primary');
     lostCard.replaceChildren(say, row); openTalk(`섬 대회 · ${globalThis.IslandCast?.RESIDENTS.find((r) => r.reg === 'garak')?.name || '가락'}`);

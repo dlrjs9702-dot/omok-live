@@ -1053,7 +1053,10 @@ async function refreshDonation(now = nowMs()) {
   }
 }
 let contestWinnerStatue = null; // A4: the last contest's winner (kept with its result; read once at start and on settling)
-const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: [...donationCache.statues, ...(contestWinnerStatue ? [{ contest: true, ...contestWinnerStatue }] : []), ...kingStatues()] });
+// (v1.10.238, 총괄 검토 1: the game contest's winner its own -- its result `soloContestResult`, its statue before the 게임관;
+// E1's Saturday 낚시 keeps `contestResult` and 영웅마루's niche)
+let soloContestStatue = null;
+const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: [...donationCache.statues, ...(contestWinnerStatue ? [{ contest: true, ...contestWinnerStatue }] : []), ...(soloContestStatue ? [{ solo: true, ...soloContestStatue }] : []), ...kingStatues()] });
 const kingStatues = (now = nowMs()) => [...Object.entries(weeklyCache).filter(([, c]) => c.statue && c.week === previousWeek(climbWeekOf(now))).map(([id, c]) => ({ king: id, week: c.week, ...c.statue })), // (낚시왕 · 제초왕)
   ...(championCache.statue && championCache.week === previousWeek(climbWeekOf(now)) ? [{ king: 'climbking', week: championCache.week, ...championCache.statue }] : [])]; // (등반왕)
 function isHoguking(account, now = nowMs()) {
@@ -2127,7 +2130,7 @@ async function noticeEvents() {
 setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); }, 60000).unref?.();
 async function contestNote(account, session, contestId, kind, value) {
   const c = await contestState();
-  if (c.phase !== 'live' || c.id !== contestId || c.kind !== kind || !Number.isFinite(value) || value < 0) return null;
+  if (c.phase !== 'live' || c.id !== contestId || c.kind !== kind || !Number.isFinite(value) || value < 0 || (c.higher && value <= 0)) return null; // (총괄 검토 2: a score round of 0 is no entry)
   if (contestBoard.id !== c.id || contestBoard.kind !== c.kind) contestBoard = { id: c.id, kind: c.kind, rows: new Map() }; // (one board a contest and its event)
   const row = contestBoard.rows.get(account) || { account, name: String(session.label || '게스트'), score: null, at: 0 };
   const score = IslandContest.merge(kind, row.score, value); if (score !== row.score) { row.score = score; row.at = contestNow(); }
@@ -2153,7 +2156,7 @@ async function contestRunOf(session, game) {
 const contestTop = (n) => IslandContest.rank([...contestBoard.rows.values()], contestBoard.kind).slice(0, n).map((r, i) => ({ rank: i + 1, name: r.name, score: r.score }));
 // after the end: rewards once (claimEvent ids per contest), the result kept, the winner on the plaza until the next
 async function settleContest(c) {
-  const done = await pointStore.worldValue('contestResult'); if (done?.id === c.id) return done;
+  const done = await pointStore.worldValue('soloContestResult'); if (done?.id === c.id) return done;
   const rows = contestBoard.id === c.id ? IslandContest.rank([...contestBoard.rows.values()], c.kind) : [];
   const rewarded = rows.length >= IslandContest.MIN_ENTRANTS; const paid = [];
   if (rewarded) for (const [i, r] of rows.entries()) {
@@ -2164,14 +2167,15 @@ async function settleContest(c) {
   if (paid.length) notifyPointsChanged(paid);
   const winner = rewarded && rows[0] ? (() => { const al = avatarLookOf(equippedSkinCache.get(rows[0].account) || {}); return { name: rows[0].name, look: al.look, title: al.title, score: rows[0].score }; })() : null;
   const result = { id: c.id, kind: c.kind, name: c.name, unit: c.unit, top: rows.slice(0, 3).map((r, i) => ({ rank: i + 1, name: r.name, score: r.score })), entrants: rows.length, rewarded, winner };
-  await pointStore.setWorldValue('contestResult', result); contestWinnerStatue = winner ? { name: winner.name, look: winner.look, title: winner.title, label: c.name } : contestWinnerStatue;
+  await pointStore.setWorldValue('soloContestResult', result); soloContestStatue = winner ? { name: winner.name, look: winner.look, title: winner.title, label: c.name } : soloContestStatue;
   if (winner) { for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } } // (the winner joins the statues)
   return result;
 }
 // every 15 s: the latest contest over is settled until it is (settleContest is once per id; a failed one is tried again
 // -- Codex review), and the phase turns are told to the island (the notice 10 min before, the start, the end)
 setInterval(() => { contestState().then(async (c) => {
-  if (contestWinnerStatue === null) { const r = await pointStore.worldValue('contestResult'); contestWinnerStatue = r?.winner ? { name: r.winner.name, look: r.winner.look, title: r.winner.title, label: r.name } : false; } // (after a restart)
+  if (contestWinnerStatue === null) { const r = await pointStore.worldValue('contestResult'); contestWinnerStatue = r?.winner ? { name: r.winner.name, look: r.winner.look, title: r.winner.title, label: r.name } : false; }
+  if (soloContestStatue === null) { const r = await pointStore.worldValue('soloContestResult'); soloContestStatue = r?.winner ? { name: r.winner.name, look: r.winner.look, title: r.winner.title, label: r.name } : false; } // (after a restart)
   const ended = await contestEnded(); if (ended) await settleContest(ended);
   if (c.phase === contestPhase) return; contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id }); }).catch((error) => console.error('섬 대회 정산 실패:', error.message)); }, 15000).unref?.();
 function seatRoomAi(room, level) {
@@ -6789,7 +6793,7 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'reset'
     const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.weekContest(nowMs(), cfg);
     contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : 0;
-    if (body.to === 'live' && (await pointStore.worldValue('contestResult'))?.id === k.id) { await pointStore.setWorldValue('contestResult', null); contestBoard = { id: null, rows: new Map() }; } // (the real clock may have closed this week's contest already, empty)
+    if (body.to === 'live' && (await pointStore.worldValue('soloContestResult'))?.id === k.id) { await pointStore.setWorldValue('soloContestResult', null); contestBoard = { id: null, rows: new Map() }; } // (the real clock may have closed this week's contest already, empty)
     contestKindTest = body.to === 'reset' ? null : IslandContest.KINDS[body.kind] ? body.kind : contestKindTest;
     const c = await contestState(); if (c.phase === 'done') await settleContest(c); contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id });
     return sendJson(res, 200, { ok: true, phase: c.phase, kind: c.kind, id: c.id });
@@ -7538,7 +7542,7 @@ async function requestHandler(req, res) {
     const live = contestBoard.id === c.id && contestBoard.kind === c.kind; const mine = live ? contestBoard.rows.get(account) : null;
     return sendJson(res, 200, { ok: true, contest: { id: c.id, kind: c.kind, name: c.name, how: c.how, unit: c.unit, phase: c.phase, start: c.start, end: c.end, tent: c.tent, game: c.game, set: c.set, level: c.level, higher: c.higher }, serverNow: contestNow(), rewards: IslandContest.REWARDS, minEntrants: IslandContest.MIN_ENTRANTS,
       top: live ? contestTop(5) : [], mine: mine ? { score: mine.score, rank: IslandContest.rank([...contestBoard.rows.values()], contestBoard.kind).indexOf(mine) + 1 } : null, entrants: live ? contestBoard.rows.size : 0,
-      last: await pointStore.worldValue('contestResult') });
+      last: await pointStore.worldValue('soloContestResult') });
   }
   if (pathname === '/api/island/contest/join' && req.method === 'POST') { // (v1.10.238 대회 천막: 「참가하기」)
     const session = requireSession(req, res); if (!session) return; const out = await contestJoin(session); if (out.error) return sendError(res, ...out.error);
