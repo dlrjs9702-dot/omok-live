@@ -72,7 +72,9 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await shot(page, 'attendance-guide', 600);
     await shut();
     // C2: 꽃님 walking -- her talk, her 부탁 in it (as at her garden)
-    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 40000 }).toBe(true);
+    // (CI #389 mobile-3, 2026-11-05 00:02 KST: the errands go by the real day, the table by `day` -- on a day 꽃님 also asks an
+    // errand her talk opens with its offer (「할게요!」), and her 부탁 shows only after it: taken, then her talk again)
+    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; const yes = dialog.getByRole('button', { name: '할게요!' }); if (await yes.isVisible()) { await yes.click(); await page.waitForTimeout(1200); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); } await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 40000 }).toBe(true);
     await expect(page.locator('#plazaDialogTitle')).toContainText('꽃님');
     await shot(page, 'walk-kkotnim');
     await dialog.locator('[data-topic="quest"]').click(); await revealTalk(page);
