@@ -7,15 +7,7 @@
   const themeMedia = window.matchMedia('(prefers-color-scheme: light)');
   let themeChoice = 'dark';
   try { const saved = localStorage.getItem('gc.theme'); if (THEMES.includes(saved)) themeChoice = saved; } catch {}
-  // v1.10.243 게임관 화면 (U1, 사용자 「밝은 화면도 만들어서 선택」): the hall's own 어둡게 / 밝게 on <html data-hall> -- the theme's
-  // until one is picked here or in the hall's ☰, then kept; the island keeps the theme whatever is picked
-  const HALLS = ['dark', 'light']; let hallChoice = null;
-  try { const saved = localStorage.getItem('gc.hallTheme'); if (HALLS.includes(saved)) hallChoice = saved; } catch {}
-  function applyTheme() {
-    const root = document.documentElement; root.dataset.theme = themeChoice === 'system' ? (themeMedia.matches ? 'light' : 'dark') : themeChoice;
-    root.dataset.hall = hallChoice || root.dataset.theme;
-    for (const radio of document.querySelectorAll('input[name="gcHall"]')) radio.checked = radio.value === root.dataset.hall;
-  }
+  function applyTheme() { document.documentElement.dataset.theme = themeChoice === 'system' ? (themeMedia.matches ? 'light' : 'dark') : themeChoice; }
   applyTheme();
   themeMedia.addEventListener('change', applyTheme);
   for (const radio of document.querySelectorAll('input[name="gcTheme"]')) {
@@ -26,10 +18,6 @@
       try { localStorage.setItem('gc.theme', themeChoice); } catch {}
     });
   }
-  for (const radio of document.querySelectorAll('input[name="gcHall"]')) radio.addEventListener('change', () => {
-    if (!radio.checked) return; hallChoice = radio.value; applyTheme();
-    try { localStorage.setItem('gc.hallTheme', hallChoice); } catch {}
-  });
 
   const gateView = document.getElementById('gateView');
   const lobbyView = document.getElementById('lobbyView');

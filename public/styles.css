@@ -3301,11 +3301,11 @@ body.placing .toast{top:16px;bottom:auto}
 #islandBagDialog .islandDexFound{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--isle-ink);white-space:nowrap}
 #islandBagDialog .islandDexGrid{max-height:min(60dvh,560px);overflow-y:auto;padding:4px 2px}
 /* v1.10.243 게임관 UI 통일 U1 (한판마당 기준, gamecenter-notes docs/gamehall-unify-hanpan-20261104.md): its colours as tokens -- the dark
-   set, and the light one (the light theme's cream, mint and brown) for <html data-hall="light"> (the hall's own 어둡게 / 밝게;
-   the island keeps the theme). Used inside the hall only (#gamehallView, #roomView, #reflexView, #gameSheet); a game's own
+   set, and the light one (the light theme's cream, mint and brown) by the theme (<html data-theme="light">: the 환경설정's
+   「게임관 화면:」 밝게 / 어둡게 / 기기 설정, 총괄 U1 답 B -- the island's paper windows as they are). Used inside the hall only (#gamehallView, #roomView, #reflexView, #gameSheet); a game's own
    colours stay --c1 / --c2 (the catalogue's), --c3 the darker. The same layout, sizes and motion in both. */
 :root{--hp-bg:#0B0C1A;--hp-bg2:#15172E;--hp-line:rgba(255,255,255,.08);--hp-face:rgba(255,255,255,.08);--hp-face-on:rgba(255,255,255,.2);--hp-glass:rgba(11,12,26,.5);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.55);--hp-t3:rgba(255,255,255,.35);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-draw:#FFCB57;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A;--hp-r-md:14px;--hp-r-lg:18px;--hp-r-xl:28px;--hp-spring:cubic-bezier(.2,.9,.3,1.3)}
-:root[data-hall="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#B97A00;--hp-win:#1F9E6B;--hp-draw:#B8860B;--hp-loss:#D6365A;--hp-blue:#23806F;--hp-on-c1:#FFFFFF}
+:root[data-theme="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#B97A00;--hp-win:#1F9E6B;--hp-draw:#B8860B;--hp-loss:#D6365A;--hp-blue:#23806F;--hp-on-c1:#FFFFFF}
 /* the three buttons (U1): .hpBtn 50px -- the main one in the game's colour (.hpBtn.go), the big call to act .hpBtn.cta 58px;
    .hpPill 34~40px round glass, on (.on / aria-pressed) a little brighter; .hpX the 40px round ✕ */
 .hpBtn{min-height:50px;padding:0 18px;border:0;border-radius:var(--hp-r-md);background:var(--hp-face);color:var(--hp-t1);font:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s,transform .12s}
