@@ -77,8 +77,7 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.phase), { timeout: 10000 }).toMatch(/cast|wait/);
     expect((await view()).mode).toBe('first');
-    expect(await page.evaluate(() => window.PlazaDebug().fpHeld().of)).toBe('rod'); // (the rod in my hand, the line from its tip)
-    if (process.env.SHOT_DIR) { await page.waitForTimeout(2500); await shot('fishing-wait'); }
+    if (process.env.SHOT_DIR) { expect(await page.evaluate(() => window.PlazaDebug().fpHeld().of)).toBe('rod'); await page.waitForTimeout(2500); await shot('fishing-wait'); } // (the models on: the rod in my hand, the line from its tip; off -- CI -- no model to hold)
     await expect.poll(async () => {
       if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); return 'cast again'; }
       await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); return page.locator('#plazaHint').textContent();
@@ -86,7 +85,7 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     expect((await view()).mode).toBe('first');
     expect((await post(request, '/api/test/fish/bite', who.token, { species: 'mackerel', slack: 20000 })).data.ok).toBe(true);
     await pressFishArrows(page, false);
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().fpHeld().of), { timeout: 8000, intervals: [100] }).toBe('catch'); // (the fish in my hand, held up as a tool is)
+    if (process.env.SHOT_DIR) await expect.poll(() => page.evaluate(() => window.PlazaDebug().fpHeld().of), { timeout: 8000, intervals: [100] }).toBe('catch'); // (the fish in my hand, held up as a tool is)
     if (process.env.SHOT_DIR) for (const k of [1, 2]) { await page.waitForTimeout(k === 1 ? 150 : 500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-view-fishing-catch-${k}.png` }); }
     await expect.poll(async () => ((await get(request, '/api/island/bag', who.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);

@@ -59,6 +59,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await expect.poll(async () => { if (await dialog.locator('.postKeeperRow').isVisible()) return true; await page.evaluate(() => window.PlazaDebug().place('attendance')); await page.waitForTimeout(600); await spaceOn(page, 'attendance', isMobile); await page.waitForTimeout(800); return dialog.locator('.postKeeperRow').isVisible(); }, { timeout: 30000 }).toBe(true);
     await expect(dialog.locator('.postKeeperRow')).toContainText(name(r.posts.plaza));
     await shot(page, 'attendance', 600);
+    await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); // (an islander's event may hold the stand's walker: RESIDENT_BUSY, no talk -- 237 local run)
     await dialog.locator('.postKeeperRow .postTalkBtn').click();
     await expect(page.locator('#plazaDialogTitle')).toContainText(name(r.posts.plaza), { timeout: 30000 }); await revealTalk(page);
     await shot(page, 'attendance-talk');
