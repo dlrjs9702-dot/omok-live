@@ -1304,6 +1304,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       o.ride = ride; o.platform = plat; o.space = p.space || 'island'; o.home = p.home || null; // v1.10.84 (묶음 4: which house)
       o.pet = p.pet || null; // B 47 반려동물
       o.bike = ['mint', 'red', 'sky', 'butter'].includes(p.bike) && (p.space || 'island') === 'island' ? p.bike : null; o.space = p.space || 'island'; // (자전거)
+      { const held = TOOL_HOLD[p.held] && !o.bike && !String(p.act || '').startsWith('fish:') ? p.held : null; /* (fishing: the cast's own rod) */ if (held !== (o.held ?? null)) { o.held = held; holdLook(o.c, held); } } // (v1.10.236: their tool or thing to use, in hand)
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); for (const [seat, who] of takenSeats) if (who === id) takenSeats.delete(seat); }
   }
@@ -1365,7 +1366,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // CI 3차 검토: t never goes back (the server keeps the newest pose by it) -- a better clock reading can move serverOffset back
   let poseT = 0; const poseClock = () => (poseT = Math.max(poseT + 1, Math.round(Date.now() + serverOffset)));
-  const pose = () => ({ t: Number.isFinite(clockRtt) ? poseClock() : undefined, x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: sitting ? sitting.yaw : me.root.rotation.y, moving: (keys.size > 0 || Boolean(stick)) && !isBlocked() && !riding && !liftRide, /* (5회차: the phone's stick walks too -- it said standing) */ act: myAct.act, actN: myAct.n, seat: myAct.seat, bike: cycling }); // v1.10.44 act, 자전거
+  const pose = () => ({ t: Number.isFinite(clockRtt) ? poseClock() : undefined, x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: sitting ? sitting.yaw : me.root.rotation.y, moving: (keys.size > 0 || Boolean(stick)) && !isBlocked() && !riding && !liftRide, /* (5회차: the phone's stick walks too -- it said standing) */ act: myAct.act, actN: myAct.n, seat: myAct.seat, bike: cycling, held: mySpace === 'island' && !cycling ? heldTool : null }); // (v1.10.236: what is in my hand) // v1.10.44 act, 자전거
 
   // v1.10.30 공통 캐릭터: put a character in the common-rig look (island-assets wardrobeOf -> asset-loader wear) --
   // a player by their look (gender, the items worn, face, dyes), a keeper, visitor or islander in its own colours
@@ -2120,12 +2121,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // -- carried low and ahead, the hoop at the waist before me; and NetSwing's own while it swings (assets 66 made the clip
   // for [0, 0, -0.95]: any other angle shrinks its arc) -- turned between in 0.1 s by stepTool)
   const NET_CARRY = [-1.4, 0.9, -0.6]; const NET_SWING = [0, 0, -0.95]; // (carried: hand to hoop about [0.5 right, 0.05 up, 0.85 ahead], the hoop 1.7 m off the head -- an angle grid, standing and walking)
-  const TOOL_HOLD = { bugnet: ['together.tool_bugnet', { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: NET_CARRY }], fishing_rod: ['fishing.rod', { key: 'rod' }] };
+  const TOOL_HOLD = { bugnet: ['together.tool_bugnet', { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: NET_CARRY }], fishing_rod: ['fishing.rod', { key: 'rod' }],
+    // (v1.10.236 빠른 칸, 사용자 「도구처럼 장착한 후에 상호작용키를 누르면 쓰는 걸로」) the things to use, in the hand as the 잡화점's (store41)
+    firework: ['good.firework', { key: 'good' }], balloon: ['good.balloon', { key: 'good', at: [0, -0.015, 0] }], bubbles: ['good.bubbles', { key: 'good' }] };
+  const HELD_GOODS = { firework: '폭죽', balloon: '풍선', bubbles: '비눗방울' };
+  function holdLook(c, kind) { assets.letGo(c, 'held'); const t = TOOL_HOLD[kind]; if (t) assets.hold(c, t[0], 0, { ...t[1], key: 'held' }); } // (someone else's: what is in their hand)
   const netTurn = { carry: new THREE.Quaternion().setFromEuler(new THREE.Euler(...NET_CARRY)), swing: new THREE.Quaternion().setFromEuler(new THREE.Euler(...NET_SWING)) };
   const SWING_REACH = 1.5; const SWING_FAN = Math.PI / 3; const SWING_HIT_MS = 450; const SWING_MS = 800;
   let heldTool = null; let swingUntil = 0; let lastSwing = null;
   function showTool() {
-    assets.letGo(me, 'bugnet'); if (!fishing) assets.letGo(me, 'rod');
+    assets.letGo(me, 'bugnet'); assets.letGo(me, 'good'); if (!fishing) assets.letGo(me, 'rod');
     const t = TOOL_HOLD[heldTool]; if (t && !(heldTool === 'fishing_rod' && fishing)) assets.hold(me, t[0], 0, t[1]);
   }
   function setHeldTool(kind) { heldTool = TOOL_HOLD[kind] ? kind : null; showTool(); }
@@ -3980,7 +3985,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (cycling) { cycling = null; onBike?.(false, null); } // (자전거: off to do it)
     if (!id.startsWith('weed:') && !eventDoors[id]?.resource) keys.clear();
     const door = doorOf(id);
-    if (id === 'tool:swing') { onInteract?.(id); return; } // (3회차 22: swung the way I face -- no turn, no hop)
+    if (id === 'tool:swing' || id === 'tool:use') { onInteract?.(id); return; } // (3회차 22: swung the way I face -- no turn, no hop; v1.10.236: a thing held, used)
     if (door) me.targetYaw = Math.atan2(door.x - me.root.position.x, door.z - me.root.position.z); // turn to face it
     lastTalk = door ? { id, x: door.x, z: door.z } : null; // who a talk that follows is with (talkCamera)
     me.hop = 1;
@@ -4619,6 +4624,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         if (who) { eventDoors[`player:${who[0]}`] = { x: who[1].c.root.position.x, z: who[1].c.root.position.z, name: '인사' }; best = `player:${who[0]}`; }
       }
     }
+    if (mySpace === 'island' && HELD_GOODS[heldTool] && !best && !gather && !fishing && !cycling) { const m = me.root.position; eventDoors['tool:use'] = { x: m.x, z: m.z, name: `${HELD_GOODS[heldTool]} 쓰기` }; best = 'tool:use'; } else if (best !== 'tool:use') delete eventDoors['tool:use']; // (v1.10.236: what is near first, as with the tools)
     if (heldTool && best && !fishing && handsFull(best)) { const m = me.root.position; eventDoors['tool:stow'] = { x: m.x, z: m.z, name: doorOf(best)?.sit ? '도구를 넣으면 앉을 수 있어요' : '도구를 넣으면 주울 수 있어요', plain: true }; best = 'tool:stow'; } else delete eventDoors['tool:stow'];
     // v1.10.42 낚시: by the water with nothing else near -- SPACE casts; while fishing it pulls in (or stops before the bite);
     // (Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」) the rod in hand to cast -- else how

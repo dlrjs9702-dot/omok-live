@@ -1454,6 +1454,14 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #islandBagDialog .islandBagSlot.sturdy{box-shadow:0 0 0 3px #d9a632 inset}
 :root[data-theme="light"] .goodIcon.sturdy{box-shadow:0 0 0 3px #d9a632}
 :root[data-theme="light"] .toolGauge{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] .quickBar{background:rgba(255,246,227,.82);border:1px solid var(--isle-line);box-shadow:0 4px 12px rgba(74,56,40,.25)}
+:root[data-theme="light"] .quickSlot{background:#f8eedb;border:2px solid #e6d3b3;color:var(--isle-ink);box-shadow:inset 0 3px 6px -3px rgba(110,71,40,.3)}
+:root[data-theme="light"] .quickSlot>i{color:var(--isle-soft)}
+:root[data-theme="light"] .quickSlot>small{color:var(--isle-ink)}
+:root[data-theme="light"] .quickSlot.empty{background:transparent;box-shadow:none}
+:root[data-theme="light"] .quickSlot.inHand{border-color:var(--isle-tag);background:#f0dcb6}
+:root[data-theme="light"] .quickSlot.dropAt{border-color:var(--isle-tag)}
+:root[data-theme="light"] .quickInBag>b{color:var(--isle-soft)}
 :root[data-theme="light"] .donationProject{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .donationProject small{color:var(--isle-soft)}
 :root[data-theme="light"] .voteChoice.mine{border-color:#5fa04e}

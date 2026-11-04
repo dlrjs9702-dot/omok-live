@@ -1952,7 +1952,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'tool:use' ? useHeld() : id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1960,7 +1960,7 @@
       plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
-      plaza.controller.setHeldTool?.(heldTool); // (3회차 22: the tool I held, in hand again)
+      plaza.controller.setHeldTool?.(heldTool); loadQuick(); // (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); refreshProjects(); // (v1.10.215: today's table on; v1.10.222 섬 가꾸기)
@@ -2467,7 +2467,8 @@
     if (PLANT_GOODS[item.itemId]) out.push([PLANT_GOODS[item.itemId], () => plantGood(item.itemId)]); // B 45
     if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; out.push([walking ? '집에 두기' : '데리고 다니기', () => choosePet(walking ? null : kind)]); }
     if (item.tool) out.push([heldTool === item.tool ? '넣기' : '들기', () => holdTool(item.tool)]); // (3회차 22: in hand -- v1.10.221: a sturdy one held as its kind)
-    if (SHOW_GOODS.has(item.itemId)) out.push(['쓰기', () => useGood(item.itemId)]);
+    if (SHOW_GOODS.has(item.itemId)) out.push([heldTool === item.itemId ? '넣기' : '들기', () => holdTool(item.itemId)]); // (v1.10.236 빠른 칸: held, then 상호작용 uses one -- 사용자 「도구처럼 장착한 후에」)
+    if (quickKind(item)) out.push(['빠른 칸에', () => { quickPick = quickKind(item); drawQuick(); showToast('아래 빠른 칸을 누르거나 1~5를 눌러요.', 2500); }]);
     return out;
   }
   function pickBagSlot(i) {
@@ -2489,7 +2490,7 @@
     catch (error) { if (mine !== bagMoveSeq) return; showToast(error.message); drawIslandBag(error.data?.bag || before); }
   }
   function drawIslandBag(bag) {
-    bagNow = bag; if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
+    bagNow = bag; quickItems = bag.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
     for (let i = 0; i < (bag.slots || 16); i += 1) {
       const item = bag.items[i]; const slot = document.createElement('div');
       slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
@@ -2497,7 +2498,7 @@
         slot.title = item.usesMax ? `${item.name} · ${item.uses}/${item.usesMax}회` : item.name; slot.setAttribute('aria-label', item.usesMax ? `${item.name} 남은 ${item.uses}회` : `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = true;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), qty);
-        if (item.tool && heldTool === item.tool) slot.classList.add('inHand');
+        if ((item.tool || item.itemId) === heldTool) slot.classList.add('inHand');
         if (item.usesMax) { /* (v1.10.221 도구 닳기: its catches left, a bar; the sturdy one ringed) */ const bar = document.createElement('i'); bar.className = 'toolUses'; bar.style.setProperty('--left', String(item.uses / item.usesMax)); bar.classList.toggle('low', item.uses <= 5); slot.append(bar); slot.classList.toggle('sturdy', item.itemId.endsWith('_sturdy')); }
       } else { slot.setAttribute('aria-label', '빈 칸'); slot.classList.add('empty'); }
       if (bagHeld === i) slot.classList.add('held');
@@ -2556,7 +2557,8 @@
   let heldTool = null;
   function holdTool(kind) {
     heldTool = heldTool === kind ? null : kind; plaza.controller?.setHeldTool?.(heldTool); islandBagDialog.close();
-    showToast(heldTool ? TOOL_TIPS[heldTool] : '가방에 넣었어요.', heldTool ? 5000 : 2000); showToolGauge();
+    const tip = heldTool && (TOOL_TIPS[heldTool] || `${QUICK_NAMES[heldTool]}${josa(QUICK_NAMES[heldTool], '을', '를')} 들었어요. SPACE(휴대폰은 상호작용)로 써요.`); // (v1.10.236: a thing to use, held)
+    showToast(heldTool ? tip : '가방에 넣었어요.', heldTool ? 5000 : 2000); showToolGauge(); drawQuick();
   }
   // v1.10.221 도구 닳기 (gamecenter-notes docs/spending-sinks-20261025.md ③): the tool in hand -- the most worn of its kind, the
   // one a catch wears -- its catches left on the screen (both views); 5 left a note, 0 「툭!」 and it is gone
@@ -2599,9 +2601,70 @@
   let plantsPoll = null;
   function refreshPlants() { clearTimeout(plantsPoll); if (!document.body.classList.contains('plazaMode')) return; api('/api/island/plants').then((d) => plaza.controller?.setPlants?.(d.plants)).catch(() => {}).finally(() => { plantsPoll = setTimeout(refreshPlants, 120000); }); }
   async function useGood(kind) {
-    try { const r = await api('/api/island/goods/use', { method: 'POST', body: JSON.stringify({ itemId: kind, requestId: crypto.randomUUID() }) }); if (islandBagDialog.open) islandBagDialog.close(); plaza.controller?.useShow?.(kind); if (r.bag) drawIslandBag(r.bag); }
-    catch (error) { showToast(error.message); }
+    try { const r = await api('/api/island/goods/use', { method: 'POST', body: JSON.stringify({ itemId: kind, requestId: crypto.randomUUID() }) }); if (islandBagDialog.open) islandBagDialog.close(); plaza.controller?.useShow?.(kind); if (r.bag) drawIslandBag(r.bag); return r; }
+    catch (error) { showToast(error.message); return null; }
   }
+  // v1.10.236 빠른 칸 (notes docs/quickbar-20261104.md, 사용자 「1,2,3,4 등 숫자에 아이템 빨리 장착」 「도구처럼 장착한 후에
+  // 상호작용키를 누르면 쓰는 걸로」): five slots -- a tool by its kind, a thing to use by its id -- kept on the server (the same
+  // on every screen). A number (a tap) holds that slot's, again puts it away; a thing to use in hand, SPACE (상호작용) uses one
+  // when nothing else is before me. Set from the bag: 「빠른 칸에」 then a slot (or 1~5); in the bag a slot's 「빼기」
+  const QUICK_NAMES = { bugnet: '잠자리채', fishing_rod: '낚싯대', firework: '폭죽', balloon: '풍선', bubbles: '비눗방울' };
+  const QUICK_EMOJI = { bugnet: '🥅', fishing_rod: '🎣', firework: '🎆', balloon: '🎈', bubbles: '🫧' };
+  let quickSlots = [null, null, null, null, null]; let quickPick = null; let quickItems = []; let quickMenu = null; // (quickPick: a kind from the bag waiting for its slot)
+  const quickBar = document.createElement('div'); quickBar.id = 'quickBar'; quickBar.className = 'quickRow quickBar hidden'; quickBar.setAttribute('role', 'toolbar'); quickBar.setAttribute('aria-label', '빠른 칸'); plazaStage.append(quickBar);
+  const quickKind = (item) => item?.tool || (SHOW_GOODS.has(item?.itemId) ? item.itemId : null);
+  const quickHave = (kind) => quickItems.filter((e) => quickKind(e) === kind).reduce((n, e) => n + (e.tool ? 1 : e.qty), 0);
+  const josa = (word, a, b) => { const c = word.charCodeAt(word.length - 1) - 0xac00; return c >= 0 && c % 28 ? a : b; }; // (받침: 이/가, 을/를)
+  function drawQuick() {
+    for (const row of [quickBar, byId('quickInBag')]) {
+      const inBag = row !== quickBar; const cells = quickSlots.map((kind, k) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'quickSlot'; b.dataset.k = String(k + 1); const n = kind ? quickHave(kind) : 0;
+        b.classList.toggle('empty', !kind); b.classList.toggle('inHand', Boolean(kind) && heldTool === kind); b.classList.toggle('spent', Boolean(kind) && n === 0); b.classList.toggle('waiting', inBag && quickPick != null);
+        b.setAttribute('aria-label', kind ? `${k + 1}번 · ${QUICK_NAMES[kind]}${SHOW_GOODS.has(kind) ? ` ${n}개` : ''}${heldTool === kind ? ' · 든 것' : ''}` : `${k + 1}번 · 빈 칸`);
+        const num = document.createElement('i'); num.textContent = String(k + 1); b.append(num);
+        if (kind) { const e = quickItems.find((x) => quickKind(x) === kind); b.append(itemIcon(e || { itemId: kind, icon: QUICK_EMOJI[kind] })); if (SHOW_GOODS.has(kind)) b.append(Object.assign(document.createElement('small'), { textContent: String(n) })); }
+        b.addEventListener('click', (event) => { event.stopPropagation(); if (inBag) quickInBag(k, b); else quickHold(k); });
+        if (inBag) { b.addEventListener('dragover', (event) => { event.preventDefault(); b.classList.add('dropAt'); }); b.addEventListener('dragleave', () => b.classList.remove('dropAt'));
+          b.addEventListener('drop', (event) => { event.preventDefault(); b.classList.remove('dropAt'); const kind2 = quickKind(bagNow?.items[Number(event.dataTransfer.getData('text/plain'))]); if (kind2) quickSet(k, kind2); else showToast('도구와 쓰는 것만 빠른 칸에 넣을 수 있어요.'); }); } // (PC: a bag slot dragged onto it)
+        return b;
+      });
+      row.replaceChildren(...(inBag ? [Object.assign(document.createElement('b'), { textContent: '빠른 칸' })] : []), ...cells);
+    }
+    const on = quickSlots.some(Boolean); quickBar.classList.toggle('hidden', !on); plazaStage.classList.toggle('quickOn', on);
+  }
+  async function quickSave(next) {
+    const was = quickSlots; quickSlots = next; drawQuick();
+    try { quickSlots = (await api('/api/island/quick', { method: 'POST', body: JSON.stringify({ slots: next }) })).slots; } catch (error) { quickSlots = was; showToast(error.message); }
+    drawQuick();
+  }
+  function quickSet(k, kind) { quickPick = null; const next = quickSlots.map((x) => (x === kind ? null : x)); next[k] = kind; quickSave(next); showToast(`${k + 1}번 칸에 ${QUICK_NAMES[kind]}${josa(QUICK_NAMES[kind], '을', '를')} 넣었어요.`, 2000); } // (one thing in one slot: from another, moved)
+  function quickInBag(k, b) { // (the bag open: a slot waiting takes the thing picked; else a full one offers 「빼기」)
+    quickMenu?.remove(); quickMenu = null;
+    if (quickPick) { quickSet(k, quickPick); return; }
+    if (!quickSlots[k]) { showToast('가방에서 도구나 쓰는 것을 고른 뒤 「빠른 칸에」를 눌러요.', 2500); return; }
+    const menu = document.createElement('div'); menu.className = 'bagMenu below'; menu.setAttribute('role', 'menu'); const out = document.createElement('button'); out.type = 'button'; out.setAttribute('role', 'menuitem'); out.textContent = '빼기';
+    out.addEventListener('click', (event) => { event.stopPropagation(); quickMenu?.remove(); quickMenu = null; quickSave(quickSlots.map((x, j) => (j === k ? null : x))); });
+    menu.append(out); b.append(menu); quickMenu = menu;
+  }
+  function quickHold(k) { // (a number or a tap: that slot's in hand -- again, put away)
+    const kind = quickSlots[k]; if (!kind) return;
+    if (heldTool !== kind && !quickHave(kind)) { const name = QUICK_NAMES[kind]; showToast(`${name}${josa(name, '이', '가')} 없어요. 잡화점에서 살 수 있어요.`, 2500); return; }
+    holdTool(kind);
+  }
+  async function useHeld() { // (상호작용 with a thing to use in hand: one of it, as the bag's 「쓰기」 was; the last one, out of the hand)
+    const kind = heldTool; if (!SHOW_GOODS.has(kind)) return; const r = await useGood(kind); if (!r) return;
+    if (!quickHave(kind)) { heldTool = null; plaza.controller?.setHeldTool?.(null); const name = QUICK_NAMES[kind]; showToast(`${name}${josa(name, '을', '를')} 다 썼어요.`, 2500); drawQuick(); }
+  }
+  function loadQuick() { Promise.all([api('/api/island/quick'), api('/api/island/bag')]).then(([q, bag]) => { quickSlots = q.slots; quickItems = bag.items || []; drawQuick(); }).catch(() => {}); }
+  document.addEventListener('keydown', (event) => { // 1~5 (the number row or the pad): on the island, not in a box to type in, no window but the bag
+    const m = /^(?:Digit|Numpad)([1-5])$/.exec(event.code); if (!m || event.ctrlKey || event.metaKey || event.altKey || event.repeat || !document.body.classList.contains('plazaMode')) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || '') || event.target?.isContentEditable) return;
+    const open = [...document.querySelectorAll('dialog[open]')]; if (open.some((d) => d !== islandBagDialog)) return; // (a talk: its own 1~9 answers)
+    const k = Number(m[1]) - 1; event.preventDefault();
+    if (islandBagDialog.open) { const kind = quickPick || quickKind(bagNow?.items[bagPicked]); if (kind) { quickSet(k, kind); return; } }
+    quickHold(k);
+  });
+
   // 자전거 (docs/bicycle-20261020.md): the colours in my bag go to the island (B or 🚲 rides one); the button only with a bike
   // 2회차 11 가구 직접 옮기기: each step the scene takes is kept by the server; refused, the piece goes back to where it was
   const turnBtn = byId('islandTurnBtn');
@@ -2726,7 +2789,7 @@
     try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); } catch (error) { if (mine === bagMoveSeq) showToast(error.message); }
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
-  islandBagDialog.addEventListener('close', bagSortReset);
+  islandBagDialog.addEventListener('close', () => { bagSortReset(); quickPick = null; quickMenu = null; drawQuick(); }); // (v1.10.236: a slot-to-be let go)
   byId('islandDexFoundOnly').addEventListener('change', () => showDex('dex')); // (v1.10.233 「찾은 것만」)
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
