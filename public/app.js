@@ -1954,7 +1954,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'tool:use' ? useHeld() : id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'tool:use' ? useHeld() : id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : id === 'contest:tent' ? openContestTent() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2292,7 +2292,7 @@
   // done, run } when the round ends ({ done: false } if left). From the game hall 「‹ 게임관」 comes back there; from a
   // quest, back to the island. Reward rules stay as they are (AI practice pays nothing; quests are not connected yet).
   async function playGame(game, opts = {}) {
-    const place = opts.place === 'quest' ? 'quest' : 'gamehall';
+    const place = ['quest', 'contest'].includes(opts.place) ? opts.place : 'gamehall'; // (v1.10.238: the tent's contest round, back to the island)
     if (!(await loadHanpan(() => (place === 'gamehall' ? openGamehall() : showView('lobby'))))) return { game, done: false };
     return reflexGames.play(game, { ...opts, place });
   }
@@ -3888,19 +3888,26 @@
   function refreshIslandWeather() { const seq = ++weatherSeq; api('/api/island/weather').then((d) => { if (seq === weatherSeq) showWeather(d); }).catch(() => {}); }
   // A4 주말 섬 대회: a bar over the island -- 10 minutes before (what and when), while it runs (the time left, the top 3
   // and me, every 10 s), and a while after (the winner); the server judges, the page only shows
-  let contestPoll = null; let contestTick = null; let contestSeen = null;
-  const contestScore = (c, n) => `${Number(n).toLocaleString('ko-KR')}${c.unit}`;
+  let contestPoll = null; let contestTick = null; let contestSeen = null; let contestArrow = false;
+  // (v1.10.238: a time in m:ss.s or s.ss초, a score with its unit)
+  const contestScore = (c, n) => (c.unit === 'ms' ? (n >= 60000 ? `${Math.floor(n / 60000)}:${((n % 60000) / 1000).toFixed(1).padStart(4, '0')}` : `${(n / 1000).toFixed(2)}초`) : `${Number(n).toLocaleString('ko-KR')}${c.unit}`);
+  const TENT_AT = '대청마당 대회 천막';
+  byId('contestBar')?.addEventListener('click', () => { // (문제 기록 1103 7 「이거 어디서 하는 거지?」: the way to the tent)
+    const K = globalThis.IslandCalendar?.PLACES?.keeper; if (!K || !byId('contestBar').classList.contains('tentLink')) return;
+    plaza.controller?.setGuideTarget?.({ x: K.x, z: K.z }); contestArrow = true; showToast(`화살표를 따라 ${TENT_AT}으로 가요`, 3500);
+  });
   function refreshContest() {
     clearTimeout(contestPoll); if (!document.body.classList.contains('plazaMode')) return;
     api('/api/island/contest').then((d) => {
       const c = d.contest; const bar = byId('contestBar'); const offset = d.serverNow - Date.now(); clearInterval(contestTick);
-      if (c.phase === 'live' && contestSeen !== c.id + ':live') { contestSeen = c.id + ':live'; showToast(`🏆 ${c.name} 시작! ${c.how}으로 겨뤄요.`, 5000); }
+      plaza.controller?.setContestTent?.(c.tent ? c : null); bar.classList.toggle('tentLink', Boolean(c.tent) && c.phase !== 'done'); // (v1.10.238 대회 천막)
+      if (c.phase === 'live' && contestSeen !== c.id + ':live') { contestSeen = c.id + ':live'; showToast(`🏆 ${c.name} 시작! ${TENT_AT}에서 참가해요.`, 5000); }
       const show = (text) => { bar.textContent = text; bar.classList.toggle('hidden', !text); };
       const clock = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
       const draw = () => {
         const now = Date.now() + offset;
-        if (c.phase === 'soon') show(`🏆 곧 ${c.name} · ${clock(c.start - now)} 뒤 시작 · ${c.how}`);
-        else if (c.phase === 'live') show(`🏆 ${c.name} · 남은 ${clock(c.end - now)} · ${d.top.length ? d.top.slice(0, 3).map((r) => `${r.rank}위 ${r.name} ${contestScore(c, r.score)}`).join(' · ') : '아직 기록 없음'}${d.mine ? ` · 나 ${d.mine.rank}위` : ''}`);
+        if (c.phase === 'soon') show(`🏆 곧 ${c.name} · ${clock(c.start - now)} 뒤 · ${TENT_AT}`);
+        else if (c.phase === 'live') show(`🏆 ${c.name} · 남은 ${clock(c.end - now)} · ${TENT_AT} · ${d.top.length ? d.top.slice(0, 3).map((r) => `${r.rank}위 ${r.name} ${contestScore(c, r.score)}`).join(' · ') : '아직 기록 없음'}${d.mine ? ` · 나 ${d.mine.rank}위` : ''}`);
         else if (d.last?.id === c.id && now - c.end < 30 * 60000) show(d.last.rewarded ? `🏆 ${d.last.name} 우승 ${d.last.top[0]?.name || ''} · ${contestScore(c, d.last.top[0]?.score || 0)}` : `🏆 ${d.last.name} 끝 · 참가자가 적어 시상은 없어요`);
         else show('');
       };
@@ -3908,9 +3915,37 @@
       contestPoll = setTimeout(refreshContest, c.phase === 'live' || c.phase === 'soon' ? 10000 : 60000);
     }).catch(() => { contestPoll = setTimeout(refreshContest, 60000); });
   }
+  const tentCard = document.createElement('div'); tentCard.className = 'talkActions'; tentCard.id = 'tentCard';
+  async function openContestTent() {
+    let d; try { d = await api('/api/island/contest'); } catch (error) { showToast(error.message); return; }
+    if (contestArrow) { plaza.controller?.setGuideTarget?.(null); contestArrow = false; } // (there: the arrow down)
+    const c = d.contest; const now = Date.now() + (d.serverNow - Date.now()); const mins = (ms) => Math.max(1, Math.ceil(ms / 60000));
+    const say = document.createElement('p'); say.className = 'lostRequestLine'; const row = tentCard; row.replaceChildren();
+    const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); return b; };
+    const R = d.rewards || {}; const prize = `1위 ${Number(R[1] || 0).toLocaleString('ko-KR')} · 2위 ${Number(R[2] || 0).toLocaleString('ko-KR')} · 3위 ${Number(R[3] || 0).toLocaleString('ko-KR')} · 참가 ${Number(R.join || 0).toLocaleString('ko-KR')}P(${d.minEntrants || 2}명 이상일 때)`;
+    const rule = `${c.how} · 몇 판이든 해도 가장 좋은 한 판으로 겨뤄요. 여기서 연 판만 대회 기록이 돼요.`;
+    const board = (top) => (top.length ? top.slice(0, 3).map((r) => `${r.rank}위 ${r.name} ${contestScore(c, r.score)}`).join(' · ') : '아직 기록이 없어요');
+    if (c.phase === 'soon') say.textContent = `곧 ${c.name}가 열려요! ${mins(c.start - now)}분 뒤 시작해요. ${rule} 상금은 ${prize}.`;
+    else if (c.phase === 'live') {
+      say.textContent = `${c.name} 중이에요 — 남은 ${mins(c.end - now)}분. ${rule} 지금 ${board(d.top)}${d.mine ? ` · 내 기록 ${contestScore(c, d.mine.score)} ${d.mine.rank}위` : ''}.`;
+      button('참가하기', () => joinContest(c, d.serverNow - Date.now()));
+    } else {
+      const L = d.last?.id === c.id ? d.last : null;
+      say.textContent = L ? (L.rewarded ? `${L.name}가 끝났어요! ${board(L.top)}. 모두 고마워요, 다음 주에 또 봐요.` : `${L.name}가 끝났어요. 참가자가 ${d.minEntrants || 2}명이 안 돼서 시상은 없어요.`) : `${c.name}가 끝났어요. 결과를 정리하고 있어요.`;
+    }
+    button('닫기', () => plazaDialog.close(), c.phase === 'live' ? 'ghost' : 'primary');
+    lostCard.replaceChildren(say, row); openTalk(`섬 대회 · ${globalThis.IslandCast?.RESIDENTS.find((r) => r.reg === 'garak')?.name || '가락'}`);
+  }
+  async function joinContest(c, offset) { // (the round where I stand: the server checks the tent)
+    plazaDialog.close();
+    const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+    let pass; try { pass = await api('/api/island/contest/join', { method: 'POST', body: '{}' }); } catch (error) { showToast(error.message, 4000); return; } // (the tent's pass, then the game screen)
+    await window.GameLaunch.play(pass.game, { level: pass.level, place: 'contest', contest: { end: pass.end, offset: pass.serverNow - Date.now() } });
+    setTimeout(refreshContest, 1500);
+  }
   byId('contestForm')?.addEventListener('submit', async (event) => { // A4 관리자: 대회 일정
     event.preventDefault(); const [hour, minute] = byId('contestTime').value.split(':').map(Number);
-    try { await api('/api/admin/contest', { method: 'POST', body: JSON.stringify({ day: Number(byId('contestDay').value), hour, minute, minutes: Number(byId('contestMinutes').value), enabled: byId('contestEnabled').checked }) }); showToast('주말 섬 대회 일정을 바꿨어요.'); } catch (error) { showToast(error.message, 4000); }
+    try { await api('/api/admin/contest', { method: 'POST', body: JSON.stringify({ day: Number(byId('contestDay').value), hour, minute, minutes: Number(byId('contestMinutes').value), enabled: byId('contestEnabled').checked, week: Number(byId('contestNextKind')?.dataset.week), kind: byId('contestNextKind')?.value }) }); showToast('주말 섬 대회 일정을 바꿨어요.'); } catch (error) { showToast(error.message, 4000); }
   });
   // A4 밤하늘 별똥별: the server says when the next star falls (the same moment for everyone); while it falls a streak
   // crosses the top of the view and 「소원 빌기」 shows; yesterday's wishes come back as a small gift on the first look
@@ -4005,7 +4040,7 @@
     const c = event.target.closest('input[data-switch]'); if (!c) return;
     try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); if (c.dataset.switch === 'dalmaruPreview') { try { if (c.checked) localStorage.setItem('gc.islandMap', 'dalmaru'); else localStorage.removeItem('gc.islandMap'); } catch {} setTimeout(() => location.reload(), 800); } } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
-  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c }) => { byId('contestDay').value = String(c.day); byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
+  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c, next, kinds }) => { const sel = byId('contestNextKind'); if (sel && next && kinds) { sel.replaceChildren(...Object.entries(kinds).map(([k, name]) => { const o = document.createElement('option'); o.value = k; o.textContent = `다음: ${name}`; return o; })); sel.value = next.kind; sel.dataset.week = String(next.week); } /* (v1.10.238: the next contest's game) */ byId('contestDay').value = String(c.day); byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
  api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
   for (const [form, select, path, label] of [['islandSeasonForm', 'islandSeasonSelect', '/api/admin/island/season', '계절 회전'], ['islandDecorForm', 'islandDecorSelect', '/api/admin/island/decor', '이벤트 장식']]) { // A5 관리자
     byId(form)?.addEventListener('submit', async (event) => { event.preventDefault(); const mode = byId(select).value; try { await api(path, { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`${label}: ${byId(select).selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); } });

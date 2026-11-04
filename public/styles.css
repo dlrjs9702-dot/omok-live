@@ -2563,6 +2563,9 @@ body:is(.roomPlaying,.roomResult) .gostopFelt .gostopBacks{flex-wrap:nowrap;whit
 /* A4 주말 섬 대회: the bar over the island view */
 .contestBar{position:absolute;left:50%;top:16px;transform:translateX(-50%) rotate(1deg);z-index:6;max-width:calc(100% - 200px);padding:10px 16px 8px;font-weight:800;font-size:.86rem;text-align:center;pointer-events:none} /* (U: an .isle-tape note -- it wraps, the tape not cut off) */
 @media(max-width:640px){.contestBar{top:56px;max-width:calc(100% - 24px);font-size:.76rem}}
+.contestBar.tentLink{pointer-events:auto;cursor:pointer} /* (v1.10.238: a tap points the way to the 대회 천막) */
+.reflexFrame .reflexContestTag{position:absolute;top:14px;left:64px;z-index:7;padding:7px 12px;border-radius:999px;background:rgba(20,22,44,.72);color:#ffd96b;font-weight:800;font-size:.84rem;pointer-events:none} /* (v1.10.238: a contest round) */
+.reflexFrame .reflexContestTag.hidden,.reflexFrame:not(.playing) .reflexContestTag{display:none} /* (over a round only: the menu's title says 대회) */
 /* A5 공지 예약 */
 .noticeQueue{display:grid;gap:4px;margin:6px 0}.noticeQueueRow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:#fde68a}
 
