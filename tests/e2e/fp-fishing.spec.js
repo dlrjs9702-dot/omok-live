@@ -32,7 +32,7 @@ test('1인칭 낚시: 1인칭에서 던지면 기다림·입질·잡기까지 1�
   expect(await view()).toBe('first'); // (the bite)
   expect((await post(request, '/api/test/fish/bite', token, { species: 'mackerel', slack: 20000 })).data.ok).toBe(true);
   await pressFishArrows(page, false);
-  if (process.env.SHOT_DIR) { await page.waitForTimeout(700); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-fp-fishing-catch.png` }); }
+  if (process.env.SHOT_DIR) for (const ms of [300, 700, 1100, 1600, 2200]) { await page.waitForTimeout(ms === 300 ? 300 : 450); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-fp-fishing-catch-${ms}.png` }); }
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   expect(await view()).toBe('first'); // (after it: the first still)

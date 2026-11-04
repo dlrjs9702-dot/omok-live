@@ -2968,7 +2968,7 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .myPetRow.walking
    (done green), the reward a deep amber; a game's board itself stays as it is, only round it paper */
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab,.skinChip){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab[aria-selected="true"],.skinChip.selected){background:#f0dcb6;color:var(--isle-ink);border-color:var(--isle-tag)}
-body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow,.achGroup,.gameGuideCase,.climbSummary>div){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow,.achGroup,.gameGuideCase,.climbSummary>div,.islandNotice){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 body.plazaMode #minesDialog.isle-sheet :is(span,li):not(.minesBoard *){color:var(--isle-soft)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) input[type="range"]{background:transparent;border:0;accent-color:var(--isle-btn)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar{background:#efe2c6}

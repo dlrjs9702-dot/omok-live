@@ -1380,7 +1380,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .myPetRow.walking{border-color:var(--isle-tag);background:#fdf0d4}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab,.skinChip){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab[aria-selected="true"],.skinChip.selected){background:#f0dcb6;color:var(--isle-ink);border-color:var(--isle-tag)}
-:root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow,.achGroup,.gameGuideCase,.climbSummary>div){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow,.achGroup,.gameGuideCase,.climbSummary>div,.islandNotice){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] body.plazaMode #minesDialog.isle-sheet :is(span,li):not(.minesBoard *){color:var(--isle-soft)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) input[type="range"]{background:transparent;border:0}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar{background:#efe2c6}
