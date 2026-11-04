@@ -15,11 +15,11 @@ test('안내 주민: 단계마다 큰 안내·화살표, 걷기·화면 돌리�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   expect((await get(request, '/api/island/guide', a.token)).data.active).toBe(false); // (not started by itself in tests)
   await expect(page.locator('#guidePanel')).toBeHidden();
-  expect((await page.evaluate(() => window.PlazaDebug().guide())).door).toBeTruthy(); // she stands there anyway
-  // talking to her: the topics and 「처음부터 다시 배우기」
-  const G = T.VILLAGE.guide; const door = { x: G.x - Math.sin(G.yaw) * 1.2, z: G.z - Math.cos(G.yaw) * 1.2 };
-  await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [door.x, door.z]); await page.waitForTimeout(600);
-  await page.keyboard.press('Space');
+  // (문제 기록 1103 9) no guide standing apart: the 출석대's keeper does it -- its stamp card's 「섬 안내」, the topics and 「처음부터 다시 배우기」
+  expect((await page.evaluate(() => window.PlazaDebug().guide())).door).toBeFalsy();
+  const G = T.facilityDoor('attendance'); const door = await page.evaluate(() => window.PlazaDebug().doors.attendance);
+  const toDesk = async () => { await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [door.x, door.z]); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('출석'); await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); };
+  await toDesk(); await page.getByRole('button', { name: '섬 안내' }).click();
   await expect(page.getByRole('button', { name: '처음부터 다시 배우기' })).toBeVisible({ timeout: 10000 });
   await page.getByRole('button', { name: '걸어 보기' }).click(); await expect(page.locator('.lostRequestLine')).toContainText('방향키');
   await page.getByRole('button', { name: '처음부터 다시 배우기' }).click();
@@ -32,10 +32,9 @@ test('안내 주민: 단계마다 큰 안내·화살표, 걷기·화면 돌리�
   // 3 말 걸기: the arrow toward her while far, gone by her; talking to her marks it
   await page.evaluate((p) => window.PlazaDebug().teleport(p.x - 20, p.z - 20), T.PLAZA_C || { x: 0, z: 0 }); await page.waitForTimeout(800);
   expect(await page.evaluate(() => window.PlazaDebug().guide())).toMatchObject({ arrow: true, target: { x: G.x, z: G.z } });
-  await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [door.x, door.z]); await page.waitForTimeout(600);
-  expect((await page.evaluate(() => window.PlazaDebug().guide())).arrow).toBe(false);
-  await page.keyboard.press('Space'); await expect(page.locator('#guidePanel')).toContainText('잡초 하나 뽑기', { timeout: 10000 });
-  await page.locator('.lostRequest').getByRole('button', { name: '닫기' }).click();
+  await toDesk(); expect((await page.evaluate(() => window.PlazaDebug().guide())).arrow).toBe(false);
+  await expect(page.locator('#guidePanel')).toContainText('잡초 하나 뽑기', { timeout: 10000 });
+  await page.evaluate(() => document.getElementById('plazaDialog').close());
   // a step out of order counts for nothing; the rest in order, the welcome once
   expect((await post(request, '/api/island/guide', a.token, { done: 'menu' })).data.step).toBe(3);
   let last = null; for (const kind of ['weed', 'deliver', 'games', 'menu']) last = (await post(request, '/api/island/guide', a.token, { done: kind })).data;

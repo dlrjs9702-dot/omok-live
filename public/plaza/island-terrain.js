@@ -367,7 +367,7 @@
     // B 47 함께하는 섬: the 우체통 on the plaza's east side, the birthday corner on its north-west (decorations only on the day)
     mailbox: Object.freeze({ x: 11, z: -6, yaw: toPlaza(11, -6), r: 0.5 }), guide: Object.freeze({ x: 7, z: 8, yaw: toPlaza(7, 8), r: 0.45 }), /* (the guide resident, east of the spawn, always there -- 7 m off it, so two players at the spawn greet each other) */ birthday: Object.freeze({ x: -9, z: 8.5, yaw: toPlaza(-9, 8.5) }),
   });
-  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide, MUSEUM];
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, /* (1103 9: no guide standing apart -- its spot open) */ MUSEUM];
   const inVillage = (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
   function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {

@@ -11,7 +11,8 @@ const Cast = require('../../public/plaza/island-cast');
 // talk); the 1st floor's counter: his hello and his 부탁 there; the 2nd floor's counter talks too; the 관공서's resting desk
 // empty with its sign. C2 (v1.10.216): that day's walkers out (the 17 in their day-off look), 꽃님 walking with her 부탁's
 // mark over her and her 부탁 from her talk, 철이 at the station of a weekday. The table is off on a tests' server -- on for
-// this test, off again after. With SHOT_DIR: photos.
+// this test, off again after. With SHOT_DIR: photos. (v1.10.237, 문제 기록 1103 9 「일하는 자리는 모두 근무표 주민이」: the guide's
+// work at the 출석대 -- its 「섬 안내」 under the keeper's name; 느티 at the 정자 every day; the 박물관's 관장 the day's)
 test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·부탁, 게시판 근무표, 관공서 쉬는 창구', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.SHOT_DIR ? 600000 : 300000);
   const fits = (d) => R.rosterOf(d).posts.mall1 === 11 && R.walks(10, d) && new Date(`${d}T00:00:00Z`).getUTCDay() !== 0; // (물결 at the 1st floor, 꽃님 walking, a weekday)
@@ -28,7 +29,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().roster().day), { timeout: 30000 }).toBe(day);
     await page.evaluate(() => window.PlazaDebug().counterFacing()); // (every room built: each its keeper)
     // each rotating post its islander, the model on
-    const want = { ...Object.fromEntries(R.POSTS.map((p) => [p.id, Assets.lookOf(r.posts[p.id]).resident])), station: Assets.lookOf(r.posts.station).resident }; // (C2: the station's keeper too)
+    const want = { ...Object.fromEntries(R.POSTS.filter((p) => p.id !== 'museum').map((p) => [p.id, Assets.lookOf(r.posts[p.id]).resident])), station: Assets.lookOf(r.posts.station).resident, pavilion: Assets.lookOf(r.posts.pavilion).resident }; // (C2: the station's keeper too; 237: the 정자's every day, the 박물관's built inside it -- by name there, below)
     await expect.poll(async () => Object.fromEntries(Object.entries((await page.evaluate(() => window.PlazaDebug().roster())).posts).map(([p, v]) => [p, v.model ? v.resident : null])), { timeout: 60000 }).toEqual(want);
     // a walker at a counter: not on the island; 물결 at his counter: his harbour spot empty; the resting desk's clerk away
     const d = await page.evaluate(() => window.PlazaDebug().roster());
@@ -58,9 +59,17 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await expect.poll(async () => { if (await dialog.locator('.postKeeperRow').isVisible()) return true; await page.evaluate(() => window.PlazaDebug().place('attendance')); await page.waitForTimeout(600); await spaceOn(page, 'attendance', isMobile); await page.waitForTimeout(800); return dialog.locator('.postKeeperRow').isVisible(); }, { timeout: 30000 }).toBe(true);
     await expect(dialog.locator('.postKeeperRow')).toContainText(name(r.posts.plaza));
     await shot(page, 'attendance', 600);
+    await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); // (an islander's event may hold the stand's walker: RESIDENT_BUSY, no talk -- 237 local run)
     await dialog.locator('.postKeeperRow .postTalkBtn').click();
     await expect(page.locator('#plazaDialogTitle')).toContainText(name(r.posts.plaza), { timeout: 30000 }); await revealTalk(page);
     await shot(page, 'attendance-talk');
+    await shut();
+    await expect.poll(async () => { if (await dialog.getByRole('button', { name: '섬 안내' }).isVisible()) return true; await page.evaluate(() => window.PlazaDebug().place('attendance')); await page.waitForTimeout(600); await spaceOn(page, 'attendance', isMobile); await page.waitForTimeout(800); return dialog.getByRole('button', { name: '섬 안내' }).isVisible(); }, { timeout: 30000 }).toBe(true);
+    await shot(page, 'attendance-guide-btn', 300);
+    await dialog.getByRole('button', { name: '섬 안내' }).click();
+    await expect(page.locator('#plazaDialogTitle')).toHaveText(`출석·안내 · ${name(r.posts.plaza)}`);
+    await expect(page.getByRole('button', { name: '처음부터 다시 배우기' })).toBeVisible();
+    await shot(page, 'attendance-guide', 600);
     await shut();
     // C2: 꽃님 walking -- her talk, her 부탁 in it (as at her garden)
     await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 40000 }).toBe(true);
@@ -79,6 +88,16 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await expect.poll(async () => { if (await page.locator('#plazaDialogTitle').textContent().then((t) => t.includes('철이 · 달마루역')) && await dialog.isVisible()) return true; await page.evaluate(() => { const at = window.IslandTerrain.VILLAGE.stationmaster; window.PlazaDebug().teleport(at.x + 1.2, at.z + 1.2); }); await page.waitForTimeout(700); await spaceOn(page, 'station:keeper', isMobile); await page.waitForTimeout(900); return false; }, { timeout: 40000 }).toBe(true);
     await shot(page, 'station');
     await shut();
+    // 느티 at the 정자 (the tests' 부탁 week not his: the day keeper)
+    const G = await page.evaluate(() => window.IslandTerrain.VILLAGE.grandpa);
+    await expect.poll(async () => { await page.evaluate(([x, z]) => { const p = window.PlazaDebug(); p.teleport(x, z); p.setCamYaw?.(Math.PI / 2); }, [G.x + 1.1, G.z]); await page.waitForTimeout(700); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [500] }).toContain(name(r.posts.pavilion));
+    if (process.env.SHOT_DIR) { await page.evaluate(([x, z]) => { const p = window.PlazaDebug(); p.teleport(x + 3, z + 1.6); p.setCamYaw?.(Math.atan2(3, 1.6) + 0.45); }, [G.x, G.z]); await shot(page, 'pavilion', 2000); } // (stood off: my figure not before his)
+    // the 박물관: its 관장 the day's, by name
+    for (let k = 0; k < 6 && await page.evaluate(() => window.PlazaDebug().space) !== 'museum'; k += 1) { await page.evaluate(() => { const d = window.PlazaDebug(); const w = d.doors.museum; if (w) d.teleport(w.x, w.z); else d.place('museum'); }); await page.waitForTimeout(700); await spaceOn(page, 'museum', isMobile); await page.waitForTimeout(1500); }
+    expect(await page.evaluate(() => window.PlazaDebug().space)).toBe('museum');
+    await expect.poll(async () => { await page.evaluate(() => { const M = window.IslandMuseum; const t = M.world(M.TALK.lx, M.TALK.lz); const c = M.world(M.CURATOR.lx, M.CURATOR.lz); const p = window.PlazaDebug(); p.teleport(t.x, t.z); p.setCamYaw?.(Math.atan2(t.x - c.x, t.z - c.z)); const g = document.getElementById('plazaDialog'); if (g.open) g.close(); }); /* (the 안내판 opens on the walk in) */ await page.waitForTimeout(700); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [500] }).toContain(`박물관 · ${name(r.posts.museum)} · 말 걸기`);
+    await shot(page, 'museum-curator');
+    await expect.poll(async () => { await page.evaluate(() => { const g = document.getElementById('plazaDialog'); if (g.open) g.close(); const p = window.PlazaDebug(); const k = p.doors['museum:exit']; p.teleport(k.x, k.z); }); /* (the 안내판 by the way out opens on the walk there) */ await page.waitForTimeout(600); await spaceOn(page, 'museum:exit', isMobile); await page.waitForTimeout(900); return page.evaluate(() => window.PlazaDebug().space); }, { timeout: 40000 }).toBe('island');
     // the 1st floor's counter: 물결's hello, his 부탁 there
     await intoMall(page, null, isMobile);
     await expect.poll(async () => { if (await dialog.locator('.postTalkBtn').isVisible()) return true; await page.evaluate(() => { const p = window.PlazaDebug(); const k = p.doors['mall:store']; p.teleport(k.x, k.z); }); await page.waitForTimeout(600); await spaceOn(page, 'mall:store', isMobile); await page.waitForTimeout(800); return dialog.locator('.postTalkBtn').isVisible(); }, { timeout: 30000 }).toBe(true);

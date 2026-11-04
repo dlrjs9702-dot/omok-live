@@ -134,7 +134,8 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   const after = await weeds(sa);
   // v1.10.90 / 잡초 2배: 1 pulled the day before (0~279) -> today's total is 3,360; of the 1,961 short of it at most
   // GROW_MAX (700) grow somewhere new tonight, the rest on the nights after
-  assert.equal(after.weeds.length, BASE - 1 + 700, '적게 뽑은 다음 날은 3,360포기를 향해 하룻밤 700포기');
+  const { GROW_MAX } = require('../lib/island-weeds'); // (1104 E: 700 -> 1,080 as the land grew)
+  assert.equal(after.weeds.length, BASE - 1 + GROW_MAX, '적게 뽑은 다음 날은 목표를 향해 하룻밤 GROW_MAX포기');
   assert.ok(!after.weeds.some(([w]) => w === id));
-  assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, 700);
+  assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, GROW_MAX);
 });

@@ -690,6 +690,8 @@ const ACCOUNT_TTL_MS = 12 * 60 * 60 * 1000;
 const MESSENGER_ROOM_MAX = 30; const MESSENGER_ROOMS_MAX = 20; const MESSENGER_TEXT_MAX = 500; // v1.10.78 메신저
 let messengerSlowMs = 0; let messengerFailNext = false; // (tests: /api/test/messenger/slow)
 let MESSENGER_PHOTOS_DAY = 200; /* v1.10.233 총괄: a key's photos a Seoul day at most (the test route lowers it) */
+const ISLAND_NOTICES = Object.freeze([ /* (문제 기록 1103 4) */ { id: 'trash-20261104', title: '📢 섬 소식', text: '섬에 이웃이 많이 늘어서 해안과 풀밭, 길가에 쓰레기가 부쩍 많아졌어요. 보이는 대로 주워 관공서 민원 창구에 가져가 주세요. 섬이 깨끗해지면 모두가 좋아해요!' }]);
+const testNotices = new Set(); /* (a tests' server: on per account, so a parallel test's first island has none) */
 const photoUploading = new Map(); /* (Codex 6차 P3 · 235 검토: a key's uploads one after another -- the day's count read with none on its way up) */
 const MESSENGER_PHOTOS_MAX = 10; const MESSENGER_PHOTO_ONLY = '📷 사진'; // v1.10.233: a message's photos at most; a photo-only message's words (the list, the push)
 const SETUP_TTL_MS = 15 * 60 * 1000;
@@ -1781,7 +1783,8 @@ function islandProgress(kind, account, qty, where = null) { // (A2b: a promise -
 // islander. The 관공서's desks: a resting one's work at the desk beside it (총괄 ③)
 const POST_AT = { mall1: ['store', () => IslandStore.sectorPoint('mall:store')], mall2: ['fashion', () => IslandFashion.world(...IslandFashion.COUNTER.customer)], mall3: ['furniture', () => IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1)], roof: ['petshop', () => IslandPetShop.world(IslandPetShop.COUNTER_KEEPER[0], IslandPetShop.COUNTER_KEEPER[1] - 2.3)], plaza: ['island', () => IslandTerrain.facilityDoor('attendance')], station: ['island', () => IslandQuests.STORIES.stationmaster.at],
   /* v1.10.234 the four fixed (IslandRoster.FIXED): where one talks to them from -- 한들 and 느티 by their 부탁's spot, 마루 at the gate, 김우성 before his desk */
-  farm: ['island', () => IslandQuests.STORIES.farmer.at], pavilion: ['island', () => IslandQuests.STORIES.grandpa.at], gate: ['island', () => TOWNHALL_GATE_OUT], jail: ['jail', () => IslandJail.world(IslandJail.TALK.lx, IslandJail.TALK.lz)] };
+  farm: ['island', () => IslandQuests.STORIES.farmer.at], pavilion: ['island', () => IslandQuests.STORIES.grandpa.at], gate: ['island', () => TOWNHALL_GATE_OUT], jail: ['jail', () => IslandJail.world(IslandJail.TALK.lx, IslandJail.TALK.lz)],
+  museum: ['museum', () => IslandMuseum.world(IslandMuseum.TALK.lx, IslandMuseum.TALK.lz)] /* (1103 9: the day's 관장 before the desk) */ };
 POST_AT.works = ['island', () => { const w = projectsState?.works; return w ? IslandProjects.SITES[w.id]?.keeper || null : null; }]; // (v1.10.222)
 const atPost = (pos, post) => { const p = POST_AT[post]; const w = p?.[1](); return Boolean(pos && w && (pos.space || 'island') === p[0] && Math.hypot(pos.x - w.x, pos.z - w.z) <= 3); };
 function atDesk(session, at, desk) { // desk: 'civil' | 'tax' | 'bank'
@@ -4086,7 +4089,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.236' });
+    return sendJson(res, 200, { ok: true, version: '1.10.237' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5282,6 +5285,14 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
     return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) } });
   }
+  // (문제 기록 1103 4) 한 번 공지: a note on the island once for each account (seen kept on the server -- not again on another
+  // device); the next one only a line here. Tests: off unless turned on (every test's first island would open it)
+  if (pathname === '/api/island/notices' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const key = `notices:${account}`;
+    if (req.method === 'POST') { const id = String((await parseJson(req)).id || ''); if (!ISLAND_NOTICES.some((n) => n.id === id)) return sendError(res, 400, 'BAD_NOTICE', '없는 공지예요.'); await worldEdit(async () => { const seen = (await pointStore.worldValue(key)) || []; if (!seen.includes(id)) await pointStore.setWorldValue(key, [...seen, id]); }); return sendJson(res, 200, { ok: true }); }
+    const seen = (await pointStore.worldValue(key)) || []; return sendJson(res, 200, { ok: true, notices: process.env.NODE_ENV === 'test' && !testNotices.has(account) ? [] : ISLAND_NOTICES.filter((n) => !seen.includes(n.id)) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices' && req.method === 'POST') { const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); if ((await parseJson(req)).on) testNotices.add(account); else testNotices.delete(account); return sendJson(res, 200, { ok: true }); }
   // v1.10.236 빠른 칸: my five slots, the same on every screen (IslandItems.quickSlots: the kinds, one each, five at most)
   if (pathname === '/api/island/quick' && (req.method === 'GET' || req.method === 'POST')) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
@@ -8468,7 +8479,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.236 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.237 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

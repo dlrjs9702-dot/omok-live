@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.237 문제 기록 ②-a + CI A·B안
+
+- 1103 4·1104 E: 쓰레기 해안 32·풀밭 28·윤슬만 8(넓이 비율 v1.10.50 대비 해안 ×3.44·풀밭 ×3.01 → 27.5·18, 사용자 최소가 큼), 풀밭 쓰레기 셋에 하나는 길 위·해안 쓰레기도 길 제외 풀림(다리·계단은 막음), 잡초 TARGET 2,800 → 4,300·GROW_MAX 700 → 1,080(v1.10.113 대비 걷는 땅 ×1.54). 공급 244,000 → 520,000P/h(경제 값으로 조절).
+- 1103 4 한 번 공지: /api/island/notices(계정별 seen, 시험은 /api/test/notices로 켤 때만), 섬 종이 창 「📢 섬 소식」 + 「알겠어요」.
+- 1103 9: 근무표 박물관 자리(한결·하람·이솔, POST_AT museum), 따로 서던 안내 주민 없음 — 출석대 근무자가 「섬 안내」(안내 단계 「말 걸기」는 출석대), 행사 주인은 HOSTS 주민 모습·「수확제 · 한들 · 말 걸기」, 느티는 부탁 주가 아니어도 매일 정자.
+- 1104 G: 1인칭에서 던진 낚시는 끝까지 1인칭(fpNow에서 !fishing 뺌), 던질 때 물 쪽 보기, 줄은 손에 든 대 끝에서 물 위 찌로, 잡은 물고기는 1인칭 손에 쥐고 눈앞 오른쪽 아래.
+- 덤: 풍선은 이름표 옆으로, quickbar 시험 개수 20.
+- CI A안: main push 실행 없음(workflow_dispatch·주 1회 schedule), 초안 PR은 part·모으는 검사 건너뜀, md·docs만 PR은 안 돎. B안: CI에서 재시도 2, ci-timings 236 초록으로 새로, PC 13 + 휴대폰 6.
+- B7: 새 spec 셋을 island-view-modes·resident-roster에 합침(섬 입장 안 늘림), 공지 본 것 저장은 단위 island-notice-server. Codex 검토는 10번에 한 번(240·250…) 규칙으로 docs/release.md·AGENTS.md·CLAUDE.md 고침.
+
 ## v1.10.236 빠른 칸
 
 - notes docs/quickbar-20261104.md: 다섯 칸(도구는 종류, 쓰는 것은 물건별), IslandItems.quickSlots(다섯 칸·도구와 쓰는 것만·한 물건 한 칸) + /api/island/quick(계정별 world 값 quick:<계정>).
@@ -35,12 +45,3 @@
 - 총괄 검토: 모델 문틀 있는 관공서·잡화점은 빛·매트·「나가기」판만, 구치소 벤치를 문간 정면에서 옆으로(2.6, -3.2), 전시 자전거는 탈 때 크기.
 - Codex 235 검토(astra high): 섬 가꾸기 다시 반영은 1시간 안·요청 기록 2시간, 사진 올리기는 계정마다 차례로.
 - 1104 A~D: 섬 표지판·명판 막힘, 펫 마당 문 0.9 m 높게, 전시 자전거 바퀴, 배웅 배는 땅 없는 바다 쪽으로(카메라도).
-
-## v1.10.234 주민 이야기 책 10~26
-
-- island-story.js RESIDENTS 10~26(notes docs/resident-stories-17-20261102.md 두 js 블록 그대로, 17명 × 3장). PLACE 새 곳 다섯: falls(마루폭포 꼭대기 물웅덩이 옆 능선 길), station(달마루역 들어가는 길), office(관공서 정문 앞), pavilion(느티 정자 앞), jail(구치소 문 앞) — 길 위, 문에서 4 m 넘게.
-- 이야기 이름은 IslandCast.RESIDENTS(27명; WALKERS는 앞 10명), 10~26 얼굴 색은 번호로. 밤 장(가락 2·3, 반디 1~3, 김우성 3)은 0~9와 같은 규칙.
-- 늘 제자리인 넷(IslandRoster.FIXED: 한들 밭·느티 정자·김우성 구치소·마루 관공서 문): server fixedPost·POST_AT(farm·pavilion·gate·jail), 그 자리 대화창 「이야기해요」(app.js fixedTalk) — 이야기 부탁·말 걸기 장.
-- 방 안 대화 카메라는 방 안에 남는 쪽(plaza-scene talkSide): 구치소 김우성 책상에서 카메라가 벽 밖이던 것.
-- 주민 20명 어깨·소맷부리(에셋 96a·96b, 64개), 모델 설정·예산 갱신.
-- 시험: island-story 단위(27명·모양·46자·꼬리말·새 곳·밤 장·고정 주민 대화), e2e story-17(PC·폰).

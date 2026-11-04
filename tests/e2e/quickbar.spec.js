@@ -8,7 +8,7 @@ const { shopper, post, expectNoScriptError } = require('./skin-support');
 test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 쓰기, 주민 앞은 대화 먼저, 새로고침 뒤에도 그대로', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 300000 : 200000);
   const who = await shopper(browser, request, isMobile ? '빠른칸m' : '빠른칸', 0, 'female'); const { page, token } = who;
-  for (const [itemId, qty] of [['bugnet', 1], ['firework', 5], ['balloon', 5]]) expect((await post(request, '/api/test/island/give', token, { itemId, qty })).status).toBe(200);
+  for (const [itemId, qty] of [['bugnet', 1], ['firework', 20], ['balloon', 20]]) expect((await post(request, '/api/test/island/give', token, { itemId, qty })).status).toBe(200);
   await page.evaluate((shots) => { localStorage.removeItem('gc.testClassic'); if (shots) localStorage.setItem('gc.testRealView', '1'); else localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, Boolean(process.env.SHOT_DIR));
   if (isMobile) await page.setViewportSize({ width: 360, height: 740 });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
@@ -30,14 +30,14 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
   await expect(page.locator('.islandBagSlot[data-item="firework"] .bagMenu [role="menuitem"]')).toHaveText(['들기', '빠른 칸에']); // (사용자 「도구처럼」: no 「쓰기」)
   await shot('bag-set');
   await page.locator('#islandBagCloseBtn').click(); await expect(bar).toBeVisible();
-  await expect(slot(2).locator('small')).toHaveText('5');
+  await expect(slot(2).locator('small')).toHaveText('20');
   // a number (a tap): in hand; another: changed; the same again: away
   const press = async (k) => { if (isMobile) await slot(k).tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press(`Digit${k}`); } };
   await press(1); await expect(slot(1)).toHaveClass(/inHand/);
   await press(isMobile ? 3 : 2); await expect(slot(isMobile ? 3 : 2)).toHaveClass(/inHand/); await expect(slot(1)).not.toHaveClass(/inHand/);
   await shot('held');
   // nothing before me: SPACE (상호작용) uses one
-  const kind = isMobile ? '풍선' : '폭죽'; const k = isMobile ? 3 : 2; const left = '4';
+  const kind = isMobile ? '풍선' : '폭죽'; const k = isMobile ? 3 : 2; const left = '19'; // (20 each: a slow runner's walker gone by may take a few presses -- 236 CI)
   await expect.poll(async () => {
     if ((await page.locator('#plazaHint').textContent()).includes(`${kind} 쓰기`)) return true;
     await page.evaluate(() => { const d = window.PlazaDebug(); const p = d.doors.games || Object.values(d.doors)[0]; d.teleport(p.x + 9 * (Math.random() - 0.5), p.z + 9 + 4 * Math.random()); }); await page.waitForTimeout(700);

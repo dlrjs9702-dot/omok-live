@@ -16,6 +16,7 @@
     Object.freeze({ id: 'mall3', name: '백화점 3층 가구', who: Object.freeze([19, 1]) }), // 바위 · 해송
     Object.freeze({ id: 'roof', name: '백화점 옥상 펫샵', who: Object.freeze([10, 0, 9]) }), // 꽃님 · 봄이 · 가람
     Object.freeze({ id: 'plaza', name: '광장 출석·안내', who: Object.freeze([4, 7, 5]) }), // 노을 · 바람이 · 누리
+    Object.freeze({ id: 'museum', name: '박물관 관장', who: Object.freeze([20, 2, 8]) }), // 한결 · 하람 · 이솔 (문제 기록 1103 9: the 기록관's people, its building not yet there)
   ]);
   const CIVIL = Object.freeze([24, 25, 26]); // 단비 (민원) · 한솔 (세금) · 새롬 (은행)
   const FIXED = Object.freeze({ gate: 23, jail: 22, pavilion: 21, farm: 13 }); // 마루 · 김우성 · 느티 · 한들
