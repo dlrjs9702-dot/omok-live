@@ -44,7 +44,7 @@ test('1인칭 손: 잡초 뽑기·열매 따기·문 SPACE 동안만 손, 잡초
   let w = await freeWeed(request, token); used.push(w.id);
   const weedSeen = await pull(page, w, 'full');
   const up = weedSeen.find((s) => s.shown); expect(up, 'a hand when the pull began').toBeTruthy(); // (the pull begins once the server said so)
-  const withWeed = weedSeen.find((s) => s.held === 'weed'); expect(withWeed, 'the weed in the hand').toBeTruthy(); expect(withWeed.t - up.t).toBeGreaterThanOrEqual(520); // (from the lift, 0.62 s in)
+  const withWeed = weedSeen.find((s) => s.held === 'weed'); expect(withWeed, 'the weed in the hand').toBeTruthy(); if (!process.env.SHOT_DIR) expect(withWeed.t - up.t).toBeGreaterThanOrEqual(520); // (from the lift, 0.62 s in; not timed with SHOT_DIR: the photo's canvas grab stalls frames -- 470~478 ms on main too, v1.10.241)
   expect(weedSeen.some((s) => s.shown && !s.held), 'the empty hand reaching first').toBe(true);
   const pulling = weedSeen.filter((s) => s.g !== null && s.g >= 0.66 && s.g <= 1.3); expect(pulling.length, 'frames of the pull').toBeGreaterThan(0); expect(pulling.filter((s) => !(s.shown && s.up === 1 && s.held === 'weed')), 'up with the weed, 0.62 ~ 1.4 s').toHaveLength(0);
   const offScreen = weedSeen.filter((s) => s.up === 1 && (Math.abs(s.fist[0]) > 0.95 || Math.abs(s.fist[1]) > 0.95)); expect(offScreen, JSON.stringify(offScreen.slice(0, 3))).toHaveLength(0); // (up: on the screen)
@@ -73,6 +73,10 @@ test('1인칭 손: 잡초 뽑기·열매 따기·문 SPACE 동안만 손, 잡초
     await page.evaluate(() => { window.PlazaWarp(30, 0); window.PlazaDebug().setCamPitch?.(0); });
     await holdTool(page, 'fishing_rod'); await expect.poll(async () => (await d('fpHand')).tool, { timeout: 20000 }).toBe(true);
     await shot(page, 'rod', 800);
+    for (const good of ['firework', 'bubbles']) { // (v1.10.241 Codex 10판 P2: a thing to use in the hand too, not only the net and the rod)
+      expect((await post(request, '/api/test/island/give', token, { itemId: good, qty: 1 })).status).toBe(200);
+      await holdTool(page, good); await expect.poll(async () => (await d('fpHand')).tool, { timeout: 20000 }).toBe(true); await shot(page, good, 800);
+    }
   }
   // my own skin: a dyed skin on the hand (the default first)
   expect((await d('fpHand')).skin).toBe('#ffe0c4');

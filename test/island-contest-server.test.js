@@ -55,13 +55,17 @@ test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 �
     await req('/api/test/contest/clock', a, { to: 'end' });
     assert.deepEqual((await req('/api/island/contest', a)).data.last, last);
   } finally { await req('/api/test/contest/clock', a, { to: 'reset' }); }
-  // the contest over (the real clock: a Wednesday in the tests' week is not a contest): no contest round
+  // the contest over (the real clock, unless it is 14:00 now): no contest round
   const off = (await req('/api/island/contest', a)).data.contest;
   if (off.phase !== 'live') assert.equal((await start(a, off.game, { contest: true })).data.error, 'CONTEST_CLOSED');
-  // the administrator: the next contest's game chosen (the turn otherwise), the games only
+  // the administrator: the next contest's game chosen (the turn otherwise), the games only; v1.10.241 매일 대회: no weekday,
+  // and only a contest not yet begun (Codex 10판 P3: an open or past one keeps its event)
   const g = (await req('/api/admin/contest', admin)).data; assert.ok(g.kinds.whack && !g.kinds.fish && !g.kinds.weed);
   const pick = g.next.kind === 'spider' ? 'stairs' : 'spider';
-  assert.equal((await req('/api/admin/contest', admin, { ...g.config, week: g.next.week, kind: pick })).status, 200);
+  assert.ok(Number.isInteger(g.next.day) && g.next.start > Date.now() && g.config.day === undefined);
+  assert.equal((await req('/api/admin/contest', admin, { ...g.config, day: g.next.day, kind: pick })).status, 200);
   assert.equal((await req('/api/admin/contest', admin)).data.next.kind, pick);
-  assert.equal((await req('/api/admin/contest', admin, { ...g.config, week: g.next.week, kind: 'fish' })).status, 200); assert.equal((await req('/api/admin/contest', admin)).data.next.kind, pick); // (낚시: not an event)
+  assert.equal((await req('/api/admin/contest', admin, { ...g.config, day: g.next.day, kind: 'fish' })).status, 400); assert.equal((await req('/api/admin/contest', admin)).data.next.kind, pick); // (낚시: not an event)
+  const started = await req('/api/admin/contest', admin, { ...g.config, day: g.next.day - 1, kind: pick }); assert.equal(started.status, 400); assert.equal(started.data.error, 'CONTEST_STARTED'); // (today's begun, or yesterday's)
+  assert.equal((await req('/api/admin/contest', admin, { ...g.config, hour: 25 })).status, 400); assert.equal((await req('/api/admin/contest', admin, { ...g.config, minutes: 45 })).data.config.minutes, 45); // (the time and length alone)
 });

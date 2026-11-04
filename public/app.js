@@ -2634,10 +2634,11 @@
     }
     const on = quickSlots.some(Boolean); quickBar.classList.toggle('hidden', !on); plazaStage.classList.toggle('quickOn', on);
   }
-  let quickSeq = 0; let quickChain = Promise.resolve();
+  let quickSeq = 0; let quickChain = Promise.resolve(); let quickSaved = null; // (the slots the server last took)
   function quickSave(next) { // (Codex 236 검토: one after another, the latest's answer the one shown -- an earlier late one never undoes it)
     const was = quickSlots; quickSlots = next; drawQuick(); const mine = ++quickSeq;
-    quickChain = quickChain.then(() => api('/api/island/quick', { method: 'POST', body: JSON.stringify({ slots: next }) })).then((r) => { if (mine === quickSeq) { quickSlots = r.slots; drawQuick(); } }, (error) => { if (mine === quickSeq) { quickSlots = was; drawQuick(); showToast(error.message); } });
+    /* (v1.10.241 Codex 10판 P3: a failure goes back to what the server took, not to the slots of a save that failed too) */
+    quickChain = quickChain.then(() => api('/api/island/quick', { method: 'POST', body: JSON.stringify({ slots: next }) })).then((r) => { quickSaved = r.slots; if (mine === quickSeq) { quickSlots = r.slots; drawQuick(); } }, (error) => { if (mine === quickSeq) { quickSlots = quickSaved || was; drawQuick(); showToast(error.message); } });
   }
   function quickSet(k, kind) { quickPick = null; const next = quickSlots.map((x) => (x === kind ? null : x)); next[k] = kind; quickSave(next); showToast(`${k + 1}번 칸에 ${QUICK_NAMES[kind]}${josa(QUICK_NAMES[kind], '을', '를')} 넣었어요.`, 2000); } // (one thing in one slot: from another, moved)
   function quickInBag(k, b) { // (the bag open: a slot waiting takes the thing picked; else a full one offers 「빼기」)
@@ -2665,7 +2666,7 @@
     const card = el('section', 'card visitCard islandNotice'); card.append(el('p', '', n.text)); const ok = el('button', 'primary', '알겠어요'); ok.type = 'button'; ok.addEventListener('click', () => plazaDialog.close()); card.append(ok);
     openPlazaWindow(n.title, [card]); plazaDialog.addEventListener('close', () => api('/api/island/notices', { method: 'POST', body: JSON.stringify({ id: n.id }) }).catch(() => {}), { once: true });
   }
-  function loadQuick() { Promise.all([api('/api/island/quick'), api('/api/island/bag')]).then(([q, bag]) => { quickSlots = q.slots; quickItems = bag.items || []; drawQuick(); }).catch(() => {}); }
+  function loadQuick() { const seq = quickSeq; Promise.all([api('/api/island/quick'), api('/api/island/bag')]).then(([q, bag]) => { if (seq === quickSeq) { quickSlots = q.slots; quickSaved = q.slots; } quickItems = bag.items || []; drawQuick(); }).catch(() => {}); /* (Codex 10판 P3: a load answered after a change keeps the change; the bag still taken) */ }
   document.addEventListener('keydown', (event) => { // 1~5 (the number row or the pad): on the island, not in a box to type in, no window but the bag
     const m = /^(?:Digit|Numpad)([1-5])$/.exec(event.code); if (!m || event.ctrlKey || event.metaKey || event.altKey || event.repeat || !document.body.classList.contains('plazaMode')) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || '') || event.target?.isContentEditable) return;
@@ -3894,7 +3895,7 @@
   }
   let weatherSeq = 0; // (a slower earlier read does not undo the administrator's change -- Codex review)
   function refreshIslandWeather() { const seq = ++weatherSeq; api('/api/island/weather').then((d) => { if (seq === weatherSeq) showWeather(d); }).catch(() => {}); }
-  // A4 주말 섬 대회: a bar over the island -- 10 minutes before (what and when), while it runs (the time left, the top 3
+  // A4 섬 대회 (v1.10.241 every day): a bar over the island -- 10 minutes before (what and when), while it runs (the time left, the top 3
   // and me, every 10 s), and a while after (the winner); the server judges, the page only shows
   let contestPoll = null; let contestTick = null; let contestSeen = null; let contestArrow = false;
   // (v1.10.238: a time in m:ss.s or s.ss초, a score with its unit)
@@ -3917,6 +3918,7 @@
         if (c.phase === 'soon') show(`🏆 곧 ${c.name} · ${clock(c.start - now)} 뒤 · ${TENT_AT}`);
         else if (c.phase === 'live') show(`🏆 ${c.name} · 남은 ${clock(c.end - now)} · ${TENT_AT} · ${d.top.length ? d.top.slice(0, 3).map((r) => `${r.rank}위 ${r.name} ${contestScore(c, r.score)}`).join(' · ') : '아직 기록 없음'}${d.mine ? ` · 나 ${d.mine.rank}위` : ''}`);
         else if (d.last?.id === c.id && now - c.end < 30 * 60000) show(d.last.rewarded ? `🏆 ${d.last.name} 우승 ${d.last.top[0]?.name || ''} · ${contestScore(c, d.last.top[0]?.score || 0)}` : `🏆 ${d.last.name} 끝 · 참가자가 적어 시상은 없어요`);
+        else if (d.next) { const K = 9 * 3600000; const at = d.next.start + K; const h = new Date(at); const when = Math.floor(at / 86400000) === Math.floor((now + K) / 86400000) ? '오늘' : '내일'; show(`🏆 ${when} ${String(h.getUTCHours()).padStart(2, '0')}:${String(h.getUTCMinutes()).padStart(2, '0')} · ${d.next.name}`); } /* (v1.10.241 매일 대회: the next one, Seoul time) */
         else show('');
       };
       draw(); if (c.phase === 'soon' || c.phase === 'live') contestTick = setInterval(draw, 1000);
@@ -3939,7 +3941,7 @@
       button('참가하기', () => joinContest(c, d.serverNow - Date.now()));
     } else {
       const L = d.last?.id === c.id ? d.last : null;
-      say.textContent = L ? (L.rewarded ? `${L.name}가 끝났어요! ${board(L.top)}. 상금 ${prize.replace(/\(.*\)$/, '')}을 드렸어요(참가한 ${L.entrants}명 모두). 다음 주에 또 봐요.` : `${L.name}가 끝났어요. 참가자가 ${d.minEntrants || 2}명이 안 돼서 시상은 없어요.`) : `${c.name}가 끝났어요. 결과를 정리하고 있어요.`;
+      say.textContent = L ? (L.rewarded ? `${L.name}가 끝났어요! ${board(L.top)}. 상금 ${prize.replace(/\(.*\)$/, '')}을 드렸어요(참가한 ${L.entrants}명 모두). 내일 또 봐요.` /* (v1.10.241: every day) */ : `${L.name}가 끝났어요. 참가자가 ${d.minEntrants || 2}명이 안 돼서 시상은 없어요.`) : `${c.name}가 끝났어요. 결과를 정리하고 있어요.`;
     }
     button('닫기', () => plazaDialog.close(), c.phase === 'live' ? 'ghost' : 'primary');
     lostCard.replaceChildren(say, row); openTalk(`섬 대회 · ${globalThis.IslandCast?.RESIDENTS.find((r) => r.reg === 'garak')?.name || '가락'}`);
@@ -3953,7 +3955,7 @@
   }
   byId('contestForm')?.addEventListener('submit', async (event) => { // A4 관리자: 대회 일정
     event.preventDefault(); const [hour, minute] = byId('contestTime').value.split(':').map(Number);
-    try { await api('/api/admin/contest', { method: 'POST', body: JSON.stringify({ day: Number(byId('contestDay').value), hour, minute, minutes: Number(byId('contestMinutes').value), enabled: byId('contestEnabled').checked, week: Number(byId('contestNextKind')?.dataset.week), kind: byId('contestNextKind')?.value }) }); showToast('주말 섬 대회 일정을 바꿨어요.'); } catch (error) { showToast(error.message, 4000); }
+    try { await api('/api/admin/contest', { method: 'POST', body: JSON.stringify({ hour, minute, minutes: Number(byId('contestMinutes').value), enabled: byId('contestEnabled').checked, ...(byId('contestNextKind')?.dataset.day ? { day: Number(byId('contestNextKind').dataset.day), kind: byId('contestNextKind').value } : {}) }) }); showToast('섬 대회 일정을 바꿨어요.'); /* (v1.10.241: every day; the event of the next one only, not yet begun) */ } catch (error) { showToast(error.message, 4000); }
   });
   // A4 밤하늘 별똥별: the server says when the next star falls (the same moment for everyone); while it falls a streak
   // crosses the top of the view and 「소원 빌기」 shows; yesterday's wishes come back as a small gift on the first look
@@ -4048,7 +4050,7 @@
     const c = event.target.closest('input[data-switch]'); if (!c) return;
     try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); if (c.dataset.switch === 'dalmaruPreview') { try { if (c.checked) localStorage.setItem('gc.islandMap', 'dalmaru'); else localStorage.removeItem('gc.islandMap'); } catch {} setTimeout(() => location.reload(), 800); } } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
-  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c, next, kinds }) => { const sel = byId('contestNextKind'); if (sel && next && kinds) { sel.replaceChildren(...Object.entries(kinds).map(([k, name]) => { const o = document.createElement('option'); o.value = k; o.textContent = `다음: ${name}`; return o; })); sel.value = next.kind; sel.dataset.week = String(next.week); } /* (v1.10.238: the next contest's game) */ byId('contestDay').value = String(c.day); byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
+  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c, next, kinds }) => { const sel = byId('contestNextKind'); if (sel && next && kinds) { sel.replaceChildren(...Object.entries(kinds).map(([k, name]) => { const o = document.createElement('option'); o.value = k; o.textContent = `다음: ${name}`; return o; })); sel.value = next.kind; sel.dataset.day = String(next.day); } /* (v1.10.238: the next contest's game) */ byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
  api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
   for (const [form, select, path, label] of [['islandSeasonForm', 'islandSeasonSelect', '/api/admin/island/season', '계절 회전'], ['islandDecorForm', 'islandDecorSelect', '/api/admin/island/decor', '이벤트 장식']]) { // A5 관리자
     byId(form)?.addEventListener('submit', async (event) => { event.preventDefault(); const mode = byId(select).value; try { await api(path, { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`${label}: ${byId(select).selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); } });
@@ -4416,7 +4418,9 @@
   const guidePanel = document.createElement('div'); guidePanel.id = 'guidePanel'; guidePanel.className = 'guidePanel hidden'; guidePanel.setAttribute('role', 'status'); document.body.append(guidePanel);
   function guideTargetOf(kind) {
     const T = globalThis.IslandTerrain; if (!T) return null;
-    if (kind === 'talk') return T.facilityDoor('attendance'); // (1103 9: the guide's work at the attendance desk) if (kind === 'deliver') return T.facilityDoor('townhall'); if (kind === 'games') return T.facilityDoor('games');
+    if (kind === 'talk') return T.facilityDoor('attendance'); /* (1103 9: the guide's work at the attendance desk) */
+    if (kind === 'deliver') return T.facilityDoor('townhall'); /* (v1.10.241 Codex 10판 P2: a mid-line `//` had cut these two off) */
+    if (kind === 'games') return T.facilityDoor('games');
     return null;
   }
   function showGuide(d) {
@@ -7893,7 +7897,7 @@
     if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }
     if (event === 'birthdayCheered') { showToast(`🎉 ${parsed.name}님이 생일을 축하해 줬어요 (올해 ${parsed.count}명)`, 5000); return; }
     if (event === 'mail') { showToast(`✉️ ${parsed.from}님에게서 편지가 왔어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); return; } // B 47 우체통
-    if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
+    if (event === 'contest') { refreshContest(); return; } // A4 섬 대회, every day (soon, start, end)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plazaStatuesWeek = parsed.week ?? plazaStatuesWeek; plaza.controller?.setStatues?.(plazaStatues, plazaStatuesWeek); return; } // v1.10.5

@@ -42,6 +42,15 @@ test('안내 주민: 단계마다 큰 안내·화살표, 걷기·화면 돌리�
   await post(request, '/api/island/guide', a.token, { restart: true });
   for (const kind of ['move', 'camera', 'talk', 'weed', 'deliver', 'games', 'menu']) last = (await post(request, '/api/island/guide', a.token, { done: kind })).data;
   expect([last.done, last.gift]).toEqual([true, 0]); // (the welcome was paid)
+  if (process.env.SHOT_DIR) { // (v1.10.241 Codex 10판 P2: the 납품 and 게임관 steps point at their doors -- a mid-line `//` had cut them off; photos)
+    await post(request, '/api/island/guide', a.token, { restart: true }); for (const kind of ['move', 'camera', 'talk']) await post(request, '/api/island/guide', a.token, { done: kind });
+    for (const [kind, id] of [['weed', 'townhall'], ['deliver', 'games']]) {
+      await post(request, '/api/island/guide', a.token, { done: kind }); await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+      const D = T.facilityDoor(id); await page.evaluate((p) => window.PlazaDebug().teleport(p.x - 20, p.z - 20), T.PLAZA_C || { x: 0, z: 0 });
+      await expect.poll(() => page.evaluate(() => window.PlazaDebug().guide()), { timeout: 15000 }).toMatchObject({ arrow: true, target: { x: D.x, z: D.z } });
+      await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/chromium-guide-${id}.png` });
+    }
+  }
   await expectNoScriptError(page);
   await a.context.close();
 });

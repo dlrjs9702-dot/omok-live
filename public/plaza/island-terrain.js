@@ -71,7 +71,7 @@
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
   const MUSEUM = Object.freeze({ x: 28, z: 34, yaw: Math.atan2(28 - 22.9, 34 - 24), r: 5 }); // (r: nothing grows within 5.8 m -- its door clear; solid at 4) // B 47 섬 박물관 (its door, -Z, toward the north-east walk; the outside only)
   const SOLO_STATUE = Object.freeze({ x: 45, z: -60 }); // (v1.10.238: the game contest's winner before the 게임관, north of its door -- the mission board south, 기록의 탑 before it)
-  const CONTEST_STATUE = Object.freeze({ x: -11, z: 0 }); // A4 주말 섬 대회 우승자 (west of the plaza, clear of its props; its new place comes with the 달마루섬 map)
+  const CONTEST_STATUE = Object.freeze({ x: -11, z: 0 }); // A4 섬 대회 우승자 (west of the plaza, clear of its props; its new place comes with the 달마루섬 map)
   const SPAWN = { x: 0, z: 8 };
   // v1.10.13 생활 마을: islanders' cottages on empty ground beside the walks -- a lane down to the harbour and two at the
   // far end of the shop street. Decoration only (no door to enter); each `style` picks a different build (plaza-scene).

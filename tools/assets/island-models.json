@@ -8947,6 +8947,22 @@
       "lowSrc": "fishdex85:Low/fish_sturgeon_low.glb",
       "lowSha256": "26bc7e4c912dccef1d1d2c34e7be23017f62cb8286738c9dcb302b15b562ec66",
       "precompressed": true
+    },
+    {
+      "out": "season-v1/contest_tent.glb",
+      "src": "tent100:01. High/contest_tent.glb",
+      "sha256": "21e7334ed2bd933afcc12819bfe139a3100b4413e86c3255b0a3bf3254a00df7",
+      "lowSrc": "tent100:02. Low/contest_tent_low.glb",
+      "lowSha256": "ae6131a116010fbbc1b4ade92b2d097c52eb7c43d374637b14a1ace917e5ae99",
+      "precompressed": true
+    },
+    {
+      "out": "season-v1/contest_sign.glb",
+      "src": "tent100:01. High/contest_sign.glb",
+      "sha256": "1bf0c91c3bf94fe77f86e3efe84526bf6772eeac5d4f8a0aa145fec1ee8581d3",
+      "lowSrc": "tent100:02. Low/contest_sign_low.glb",
+      "lowSha256": "29c2675dffd6ce2fa8ba733af386442c1a0f7d44ee71adff2000e489f5310c0d",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9017,6 +9033,7 @@
     "garak94": "94. Game Island garak reeds arms 2026-11-03",
     "useong95": "95. Game Island useong shoulders 2026-11-03",
     "sleeves96a": "96a. Game Island sleeves walkers 2026-11-03",
-    "sleeves96b": "96b. Game Island sleeves named 2026-11-03"
+    "sleeves96b": "96b. Game Island sleeves named 2026-11-03",
+    "tent100": "100. Game Island contest tent 2026-11-04"
   }
 }
