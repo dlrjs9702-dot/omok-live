@@ -54,7 +54,9 @@ const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
 // 묶음 5 보이는 곤충: the layout of each 10 minutes (lib/island-insects.js layout over the island's spots), those caught or
 // sent off since it came (gone for everyone till the next), who caught which (a request sent again answers the same)
 let insectSpots = null; const insectGone = new Set(); const insectCaught = new Map(); let insectKey = null; let insectList = []; let insectEpoch = -1;
+let insectHold = null; // (v1.10.239 3b: a test holds the insects' clock -- the layout, the night and the rain -- so a 4-minute test never crosses a new layout)
 async function insectsNow(now) {
+  if (process.env.NODE_ENV === 'test' && insectHold) now = insectHold;
   const epoch = Math.floor(now / IslandInsects.EPOCH_MS); insectSpots ||= IslandInsects.spotsOf(IslandTerrain);
   const held = (await pointStore.worldValue('season'))?.day; const mode = (await pointStore.worldValue('time'))?.mode || 'auto'; const hour = new Date(now + 9 * 3600000).getUTCHours();
   const night = mode === 'night' || (mode === 'auto' && (hour >= 20 || hour < 6)); const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain';
@@ -6466,10 +6468,11 @@ async function requestHandler(req, res) {
   // B 47 곤충 채집: a 잠자리채 in the bag, on the island's grass (not the plaza); the server picks what comes and when
   // 묶음 5 보이는 곤충 (docs/insects-visible-20261020.md): the island's insects now (the 10 minutes' layout, those caught or
   // sent off gone) -- and when the next layout comes
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/insects/hold' && req.method === 'POST') { insectHold = (await parseJson(req)).on ? nowMs() : null; return sendJson(res, 200, { ok: true, at: insectHold }); } // (v1.10.239 3b)
   if (pathname === '/api/island/insects' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const now = nowMs(); const { epoch, list } = await insectsNow(now);
-    return sendJson(res, 200, { ok: true, epoch, next: (epoch + 1) * IslandInsects.EPOCH_MS - now, list: list.filter((b) => !insectGone.has(b.id)).map((b) => ({ ...b, name: IslandInsects.SPECIES[b.species].name })) });
+    return sendJson(res, 200, { ok: true, epoch, next: (epoch + 1) * IslandInsects.EPOCH_MS - (insectHold || now), list: list.filter((b) => !insectGone.has(b.id)).map((b) => ({ ...b, name: IslandInsects.SPECIES[b.species].name })) });
   }
   // one walked up to, the 잠자리채 in the bag: into the bag and the 도감, gone for everyone (once: the same request again
   // answers the same)

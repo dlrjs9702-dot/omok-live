@@ -1628,6 +1628,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // Input: arrows move, Space interacts; both Space and a click on a facility call `interact`.
   // v1.10.62 모바일: a touch stick (app.js) walks like the arrows, relative to the view ({x, y}: right / toward me, -1..1)
   const keys = new Set(); let stick = null;
+  const tapped = new Set(); // (v1.10.239 3b: a walk key pressed since the last frame -- a tap down and up between two frames still stands me up; CI's 3 fps phone run lost them)
   const shifts = new Set(); let pace = 'walk'; let paceDownAt = 0; let paceRun = false; let paceTimer = 0;
   const paceDown = () => { if (paceDownAt) return; paceDownAt = performance.now(); clearTimeout(paceTimer); paceTimer = setTimeout(() => { if (paceDownAt) paceRun = true; }, RUN_HOLD_MS); };
   const paceUp = () => { if (!paceDownAt) return; if (!paceRun && !cycling) pace = pace === 'walk' ? 'slow' : 'walk'; /* (on a bike Shift only speeds up) */ shifts.clear(); paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); };
@@ -1691,7 +1692,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const mod = event.ctrlKey || event.metaKey || event.altKey; const walk = !mod && WALK_KEYS[event.code];
     if (fishing && event.key.startsWith('Arrow')) { event.preventDefault(); return; }
     if (walk && sitting?.seat.anyDir && !photoMode && (walk === 'ArrowLeft' || walk === 'ArrowRight')) { event.preventDefault(); if (!event.repeat) turnSeat(walk === 'ArrowLeft' ? 1 : -1); return; } // v1.10.189: turned, not stood up (A/D)
-    if (walk) { keys.add(walk); event.preventDefault(); return; }
+    if (walk) { keys.add(walk); tapped.add(walk); event.preventDefault(); return; }
     if (event.key === 'Shift') { if (!event.repeat) { shifts.add(event.code); paceDown(); } return; } // (Codex: either Shift, until both are up)
     if (event.key === 'Escape' && actLocked()) actLock = 0; // v1.10.89: Esc lets a motion's hold go too (Codex review)
     if (event.key === 'Escape' && gather?.waitServer) { endGather(false); event.preventDefault(); return; }
@@ -4553,7 +4554,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function step(dt) {
     let ix = 0; let iz = 0;
     if (isBlocked()) actLock = 0;
-    if (sitting && !photoMode && !isBlocked() && (stick || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].some((k) => keys.has(k)))) standUp(); // v1.10.44: an arrow stands me up
+    if (sitting && !photoMode && !isBlocked() && (stick || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].some((k) => keys.has(k) || tapped.has(k)))) standUp(); // v1.10.44: an arrow stands me up
+    tapped.clear();
     if (!isBlocked() && !placeAim && !gather && !actLocked() && !riding && !liftRide && !photoMode) { // (v1.10.232: no walking with the 배치 도구) v1.10.40: gathering holds me in place (the keys stay pressed for after); v1.10.47 so does the train
       if (keys.has('ArrowLeft')) ix -= 1; if (keys.has('ArrowRight')) ix += 1;
       if (keys.has('ArrowUp')) iz -= 1; if (keys.has('ArrowDown')) iz += 1;
