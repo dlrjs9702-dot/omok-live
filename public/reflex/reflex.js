@@ -17,6 +17,9 @@
 // later the island's quests share: play(game, { level, goal, place: 'gamehall' | 'quest' }) -> { game, level, score, done,
 // run } once the round ends (done: the goal reached; run: the server's round id, for a reflex or card round, to check it).
 // A quest round starts at once at its level; leaving it gives { done: false }.
+// v1.10.238 섬 대회 천막 (문제 기록 1103 7): place 'contest' -- opened by the tent's keeper, the round starts at once at the
+// contest's level and is sent as a contest round (the server checks the tent and the event); 「다시 하기」 stays one, a tag
+// 「🏆 대회 · 남은 m:ss」 over the round, the result line my contest record and rank.
 import { E, startGame, stopGame } from './js/engine.js';
 import { Settings, Stats } from './js/store.js';
 import { readQueue, dropRecord } from './js/outbox.js';
@@ -80,12 +83,19 @@ export function mount({ api, onBack, pieceSkin = null }) {
   let set = SETS.reflex; let info = null; let game = null; let runId = null; let shown = 'list'; let startSeq = 0;
   let direct = false; let questMode = false; let launch = null; // launch: { place, goal, level, resolve } of a play() call
   let runLevel = null; // the level the round was started at (kept for its result: Codex review)
+  let contestPlay = null; // (v1.10.238: { level, end, offset } while the tent's contest game is open)
+  const contestTag = document.createElement('div'); contestTag.className = 'reflexContestTag hidden'; frame.append(contestTag); let contestTimer = null;
+  function paintContest() {
+    clearInterval(contestTimer); contestTag.classList.toggle('hidden', !contestPlay); if (!contestPlay) return;
+    const draw = () => { const s = Math.max(0, Math.ceil((contestPlay.end - (Date.now() + contestPlay.offset)) / 1000)); contestTag.textContent = s > 0 ? `🏆 대회 · 남은 ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '🏆 대회 끝'; };
+    draw(); contestTimer = setInterval(draw, 1000);
+  }
   const levels = {}; // game id -> the level last played
   try { Object.assign(levels, JSON.parse(localStorage.getItem('gc.reflexLevels') || '{}')); } catch {}
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const button = (cls, text, onClick) => { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', onClick); return b; };
-  const levelOf = (g) => (launch?.level && launch.place === 'quest' ? launch.level : g.levels || g.mode === 'versus' ? levels[g.id] || g.defaultLevel || 'normal' : 'normal');
+  const levelOf = (g) => (contestPlay ? contestPlay.level : launch?.level && launch.place === 'quest' ? launch.level : g.levels || g.mode === 'versus' ? levels[g.id] || g.defaultLevel || 'normal' : 'normal');
   const optionOf = (g, o) => (o.items.some(([v]) => v === levels[`${g.id}.${o.id}`]) ? levels[`${g.id}.${o.id}`] : o.def);
   const optionsOf = (g) => Object.fromEntries((g.options || []).map((o) => [o.id, optionOf(g, o)]));
   const modeOf = (g) => (launch?.place === 'quest' && optionsOf(g).mode ? 'daily' : optionsOf(g).mode ?? null); // the puzzles: 오늘의 문제 (daily) or 새 문제 (A2b: a quest's round is always the daily)
@@ -94,7 +104,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
 
   function head(title, back) {
     const top = el('div', 'reflexHead');
-    top.append(direct ? button('ghost tiny', questMode ? '‹ 섬으로' : '‹ 게임관', goBack) : button('ghost tiny', back ? '‹ 목록' : '‹ 뒤로', back ? showList : goBack), el('strong', null, title));
+    top.append(direct ? button('ghost tiny', questMode ? '‹ 섬으로' : '‹ 게임관', goBack) : button('ghost tiny', back ? '‹ 목록' : '‹ 뒤로', back ? showList : goBack), el('strong', null, contestPlay ? `🏆 대회 · ${title}` : title));
     const sound = button('ghost tiny reflexSound', '', () => { Settings.toggle('sound'); paintSound(); });
     const paintSound = () => { const on = Settings.get('sound'); sound.textContent = on ? '🔊 효과음' : '🔇 효과음'; sound.setAttribute('aria-pressed', String(on)); };
     paintSound();
@@ -164,8 +174,9 @@ export function mount({ api, onBack, pieceSkin = null }) {
     let id = null; let seed = null;
     const skin = set === SETS.ai ? await pieceSkin?.(g.id) : null; // (A3 G3-2)
     try {
-      if (set === SETS.reflex) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) })).id;
-      else if (set === SETS.cards) ({ id, seed } = await api('/api/solo/cards/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) }));
+      const contest = contestPlay ? { contest: true } : {}; // (v1.10.238: the tent's round)
+      if (set === SETS.reflex) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) })).id;
+      else if (set === SETS.cards) ({ id, seed } = await api('/api/solo/cards/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) }));
       else if (mode === 'daily') await api('/api/solo/puzzle/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) });
     } catch (error) { if (seq === startSeq) status.textContent = error.message; return; }
     if (seq !== startSeq || view.classList.contains('hidden')) return;
@@ -210,7 +221,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
       if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
       if (out.newBest) sfx.best();
-      line.textContent = out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`;
+      line.textContent = contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`;
     } catch (error) { line.textContent = error.message; }
   }
 
@@ -236,13 +247,14 @@ export function mount({ api, onBack, pieceSkin = null }) {
     }
   }
 
+  const contestSaid = (out, g) => (out.contest ? `대회 기록 ${fmtScore(out.contest.score, g.unit)} · 지금 ${out.contest.rank}위` : '이 판은 대회 기록이 되지 않았어요');
   async function sendCards(g, level, id, log, line) { // a cleared deal: the server plays it again before it keeps it
     if (log.length > LOG_MAX) { line.textContent = '너무 긴 판이라 기록하지 못했어요'; return; }
     try {
       const out = await api('/api/solo/cards/finish', { method: 'POST', body: JSON.stringify({ id, log: log.join(';') }) });
       if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
       if (out.newBest) sfx.best();
-      line.textContent = out.newBest ? '최고 기록!' : '기록했어요';
+      line.textContent = contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : '기록했어요';
     } catch (error) { line.textContent = error.message; }
   }
 
@@ -252,7 +264,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     result.classList.add('hidden'); menu.classList.remove('hidden');
     showGame(game);
   }
-  function goBack() { stop(); settle({ game: game?.id ?? null, done: false }); onBack(); } // to choosing a game
+  function goBack() { stop(); contestPlay = null; paintContest(); settle({ game: game?.id ?? null, done: false }); onBack(); } // to choosing a game
   function settle(out) { const l = launch; if (!l) return; launch = null; l.resolve(out); }
   function stop() { stopGame(); runId = null; cardLog = null; startSeq += 1; frame.classList.remove('playing', 'wideFrame'); }
 
@@ -274,7 +286,8 @@ export function mount({ api, onBack, pieceSkin = null }) {
       set = SETS[which] || SETS.reflex; info = null;
       const one = set.games.find((g) => g.id === gameId); direct = Boolean(one);
       if (one) showGame(one); else showList();
-      const quest = one && launch?.place === 'quest'; // a quest's round: no choosing, it starts once the info is in
+      const quest = one && (launch?.place === 'quest' || launch?.place === 'contest'); // a quest's round: no choosing, it starts once the info is in (v1.10.238: the tent's too)
+      contestPlay = quest && launch.place === 'contest' ? { level: launch.level, end: launch.contest?.end ?? 0, offset: launch.contest?.offset ?? 0 } : null; paintContest();
       questMode = Boolean(quest); if (quest) showGame(one); // (v1.10.80: its way back says 섬으로)
       const go = () => start(one, menu.querySelector('.reflexStatus'));
       try { // the list is usable meanwhile: redraw only what still shows (Codex review)
@@ -289,11 +302,11 @@ export function mount({ api, onBack, pieceSkin = null }) {
     },
     stop,
     // the 게임 실행 규약 (above): which set holds the game, opened on it; the answer comes when its round ends
-    play(gameId, { level = null, goal = null, place = 'gamehall' } = {}) {
+    play(gameId, { level = null, goal = null, place = 'gamehall', contest = null } = {}) {
       const which = Object.keys(SETS).find((k) => SETS[k].games.some((g) => g.id === gameId));
       if (!which) return Promise.reject(new Error(`unknown game ${gameId}`));
       settle({ game: gameId, done: false }); // a play still waiting is over
-      return new Promise((resolve) => { launch = { place, goal, level, resolve }; this.open(which, gameId); });
+      return new Promise((resolve) => { launch = { place, goal, level, contest, resolve }; this.open(which, gameId); });
     },
   };
 }
