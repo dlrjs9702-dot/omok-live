@@ -7,8 +7,12 @@ const Together = require('../../lib/island-together');
 // the same ones for everyone; walked up to with a 잠자리채, SPACE (the phone: the hint) catches one into the bag and the
 // 도감 and it is gone on every screen; run at, it flies off for everyone; at the museum's door a kind is given once for
 // the whole island with my name. PC and phone.
+// (v1.10.240 3b) the insects' clock held for the test -- a new layout (every 10 minutes, at night or rain) never comes in
+// between a pick and its catch (CI: 「the insect gone on the other screen」 on a layout's turn); let go after, whatever the end
+test.afterEach(async ({ request }) => { await request.post('/api/test/insects/hold', { data: { on: false } }).catch(() => {}); });
 test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으면 가방·도감·다른 화면에서도 사라짐, 달아남, 박물관 기증', async ({ browser, request, isMobile }) => {
   test.setTimeout(240000);
+  expect((await request.post('/api/test/insects/hold', { data: { on: true } })).ok()).toBe(true);
   const a = await shopper(browser, request, isMobile ? '곤충박사m' : '곤충박사', 0, 'male');
   const b = await shopper(browser, request, isMobile ? '곤충구경m' : '곤충구경', 0, 'female');
   for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }

@@ -1872,6 +1872,7 @@ body.islandFishing .plazaHint{display:none}
 .plazaDialog.talkMode .lookMeta.talkMeta{font-size:.78rem;line-height:1.4;color:var(--isle-soft)}
 .talkHearts{margin-left:2px;color:#d9930f}
 .plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
+.plazaDialog.talkMode .lostRequest.talkWaiting .talkChoices{opacity:.6;pointer-events:none} /* (v1.10.240: an answer on its way) */
 .plazaDialog.talkMode .lostRequest button.ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}.plazaDialog.talkMode .lostRequest button.ghost:hover{background:var(--isle-hover)} /* (U: 「다음에요」·「물고기 팔기」 -- a paper second button) */
 .plazaDialog.talkMode .talkActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto}
 .lostRequestLine.talkPending{display:none}

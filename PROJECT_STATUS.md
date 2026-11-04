@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.240 3b: CI 흔들리는 시험 원인 고치기
+
+- CI 약 120번 실패 기록 집계. 가장 큰 흔들림 둘: island-story(66번, 선택지 뒤 revealTalk가 답 오기 전에 끝남 → 앱 talkWaiting + revealTalk가 기다림), resident-talk-gone(56번, 실제 결함: talkResident 409에 예전 대화 창이 남음 → 닫음).
+- tool-swing 각도에 닿을 때까지 측정, insects·tool-swing 곤충 시계 고정(/api/test/insects/hold, afterEach 해제), island-bag 폰 길게 누르기 들림 기다림, pandemic-followup reload 뒤 게임 상태 기다림(reloaded), tax-bill 폰 standAt, resident-talk 줄 89는 talkWaiting으로. plaza 낚시(234)·앉았다 W(239)는 이미 고침.
+- 로컬 --repeat-each=5: PC 35/35 + 낚시 5/5, 폰 30/30.
+
 ## v1.10.239 배치 도구 가리지 않게·단추 한 모양 + 1인칭 실내 앞벽
 
 - 배치 도구(place-tool 5절, 사용자 「배치시 말풍선이 아래 부분을 다 가리고 있어서 배치할 수가 없어」): body.placing에서 가방·사진·시점·채팅·메신저·☰·할 일 칩·미니맵·빠른 칸·대회 띠·힌트·남 이름표 숨김, 토스트 위 가운데. 판 두 모양 — 고르기(머리 한 줄 + 물건 줄), 들고 있기(상태 한 줄 + ✕ ↻ ⋯ 창고로(놓인 것만) ✓ 한 줄, ⋯이면 ←↑↓→가 막대 위). 단추는 모두 섬 종이 단추(44/48px, 모서리 14), ✓ 놓기만 갈색, 못 누르면 흐리게. 폰은 아이콘만(✓ 놓기만 글). 꾸미기 카메라는 판 높이만큼 view offset + 그만큼 뒤로(insetZoom) — 마당 앞 가장자리가 판 위에 보임.
@@ -27,13 +33,3 @@
 - 기록은 천막 출입증이 있는 대회 판만(reflex/cards start의 contest, finish에서 contestNote). 게임관 판은 평소 기록만. 띠: 「… · 대청마당 대회 천막」, 누르면 안내 화살표.
 - A4_END(11/7 끔) 없앰 — E1 매주 대회는 233에서 꺼져 있음. 총괄 검토: A4 결과·동상은 따로(soloContestResult, 게임관 앞 (45, −60) 받침대) — E1 contestResult·영웅마루와 안 부딪힘. 점수 종목 0점 안 받음. 천막 세움 간판·깃발 둘·금색 띠, 가락은 천막 앞, 지붕 밑 막음.
 - 설계와 다른 점: 지뢰찾기·퍼즐은 모두 같은 문제를 만드는 씨앗 판이 아직 없어 이번 종목에서 뺌(ponytail 표시). 천막 에셋은 주문 전이라 행사 노점 + 도형 지붕.
-
-## v1.10.237 문제 기록 ②-a + CI A·B안
-
-- 1103 4·1104 E: 쓰레기 해안 32·풀밭 28·윤슬만 8(넓이 비율 v1.10.50 대비 해안 ×3.44·풀밭 ×3.01 → 27.5·18, 사용자 최소가 큼), 풀밭 쓰레기 셋에 하나는 길 위·해안 쓰레기도 길 제외 풀림(다리·계단은 막음), 잡초 TARGET 2,800 → 4,300·GROW_MAX 700 → 1,080(v1.10.113 대비 걷는 땅 ×1.54). 공급 244,000 → 520,000P/h(경제 값으로 조절).
-- 1103 4 한 번 공지: /api/island/notices(계정별 seen, 시험은 /api/test/notices로 켤 때만), 섬 종이 창 「📢 섬 소식」 + 「알겠어요」.
-- 1103 9: 근무표 박물관 자리(한결·하람·이솔, POST_AT museum), 따로 서던 안내 주민 없음 — 출석대 근무자가 「섬 안내」(안내 단계 「말 걸기」는 출석대), 행사 주인은 HOSTS 주민 모습·「수확제 · 한들 · 말 걸기」, 느티는 부탁 주가 아니어도 매일 정자.
-- 1104 G: 1인칭에서 던진 낚시는 끝까지 1인칭(fpNow에서 !fishing 뺌), 던질 때 물 쪽 보기, 줄은 손에 든 대 끝에서 물 위 찌로, 잡은 물고기는 1인칭 손에 쥐고 눈앞 오른쪽 아래.
-- 덤: 풍선은 이름표 옆으로, quickbar 시험 개수 20.
-- CI A안: main push 실행 없음(workflow_dispatch·주 1회 schedule), 초안 PR은 part·모으는 검사 건너뜀, md·docs만 PR은 안 돎. B안: CI에서 재시도 2, ci-timings 236 초록으로 새로, PC 13 + 휴대폰 6.
-- B7: 새 spec 셋을 island-view-modes·resident-roster에 합침(섬 입장 안 늘림), 공지 본 것 저장은 단위 island-notice-server. Codex 검토는 10번에 한 번(240·250…) 규칙으로 docs/release.md·AGENTS.md·CLAUDE.md 고침.

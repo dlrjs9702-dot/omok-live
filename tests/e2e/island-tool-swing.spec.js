@@ -5,8 +5,10 @@ const T = require('../../public/plaza/island-terrain.js');
 // 문제 기록 3회차 22 「낚싯대·잠자리채를 들면 손에 장착, 상호작용 키로 휘두르기 — 앞에 곤충이 있으면 잡히고, 주민이 있으면 맞고
 // 화내게」: the net taken from the bag is in hand; SPACE (the phone: the hint) swings it -- a bug in front is caught into
 // the bag, an islander in front is struck (HitReact, then cross words over the head). PC and phone.
+test.afterEach(async ({ request }) => { await request.post('/api/test/insects/hold', { data: { on: false } }).catch(() => {}); }); // (v1.10.240 3b: the insects' clock held, as island-insects)
 test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 잡히고 앞의 주민은 맞고 화냄', async ({ browser, request, isMobile }) => {
   test.setTimeout(180000);
+  expect((await request.post('/api/test/insects/hold', { data: { on: true } })).ok()).toBe(true);
   const a = await shopper(browser, request, isMobile ? '채휘두름m' : '채휘두름', 0, 'male'); const { page } = a;
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testHalloween', 'off'); }); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running).catch(() => false), { timeout: 90000 }).toBe(true);
@@ -26,7 +28,7 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
   if (!isMobile) { await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyW'); await page.waitForTimeout(600); await carried('걷기'); await page.keyboard.up('KeyW'); }
   // (CI #306: the hoop's sweep counted frame by frame missed its ends on a slow runner -- the hand's angle instead: turned to
   // NetSwing's own while it swings, back to carrying after)
-  const turned = await page.evaluate(() => new Promise((done) => { const d = window.PlazaDebug(); let most = 0; d.swingNow(); const t0 = performance.now(); const tick = () => { most = Math.max(most, d.toolTip().turn); if (performance.now() - t0 < 800) requestAnimationFrame(tick); else done(most); }; requestAnimationFrame(tick); }));
+  const turned = await page.evaluate(() => new Promise((done) => { const d = window.PlazaDebug(); let most = 0; d.swingNow(); const t0 = performance.now(); const tick = () => { most = Math.max(most, d.toolTip().turn); if (most <= 1.2 && performance.now() - t0 < 6000) requestAnimationFrame(tick); else done(most); }; requestAnimationFrame(tick); })); /* (v1.10.240 3b: till the swing's angle is reached -- a slow runner's frames step the clip by its capped dt, so 800 ms of wall time could end before its middle) */
   expect(turned, '휘두를 때 손 안 각도(들 때와의 차)').toBeGreaterThan(1.2);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().toolTip().turn), { timeout: 5000 }).toBeLessThan(0.05);
   // an insect (where it is drawn now -- flying, crawling or on a trunk): stepped up to under a metre off, facing it, SPACE

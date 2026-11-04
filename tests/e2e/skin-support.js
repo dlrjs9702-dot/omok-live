@@ -247,7 +247,10 @@ module.exports.standAt = standAt;
 // showed. Pressed till none is pending or typing)
 async function revealTalk(page) {
   const pending = page.locator('#plazaDialog .lostRequestLine.talkPending, #plazaDialog .lostRequestLine.typing');
-  await expect.poll(async () => { const n = await pending.count(); if (n) await page.keyboard.press('Space'); return n; }, { timeout: 30000, intervals: [150] }).toBe(0);
+  // (v1.10.240 3b, island-story CI: a choice's answer arriving after the reveal had found nothing pending left its new lines
+  // -- and the next choices -- hidden for good; the card is marked while an answer is on its way: waited out first)
+  const waiting = page.locator('#plazaDialog .lostRequest.talkWaiting');
+  await expect.poll(async () => { if (await waiting.count()) return -1; const n = await pending.count(); if (n) await page.keyboard.press('Space'); return n; }, { timeout: 30000, intervals: [150] }).toBe(0);
 }
 module.exports.revealTalk = revealTalk;
 // (206 Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」: a tool is used in hand only) the bag's 「들기」 on it -- in hand
