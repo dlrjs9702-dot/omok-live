@@ -4950,19 +4950,19 @@
     }
   }
   async function askResident(n, topic, choice = null) {
-    if (residentBusy) return; residentBusy = true;
+    if (residentBusy) return; residentBusy = true; lostCard.classList.add('talkWaiting'); // (v1.10.240: an answer on its way -- the choices faded, not pressed twice)
     try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : topic === 'accept' ? { errand: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
-    catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; }
+    catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
   }
   async function talkResident(n, lead = null) { // (lead: a line of the place before their own words -- 바위 at the works)
     guideDone('talk'); // B 47 안내
-    if (residentBusy) return; residentBusy = true;
+    if (residentBusy) return; residentBusy = true; lostCard.classList.add('talkWaiting');
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       endResidentTalk(); await Promise.race([residentBye, new Promise((r) => { setTimeout(r, 1500); })]); // (C4 P3-8: a stuck bye -- not every talk shut)
       const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n }) }); if (lead && Array.isArray(data.say)) data.say = [lead, ...data.say];
       showResidentTalk(data, true);
-    } catch (error) { showToast(error.message); } finally { residentBusy = false; }
+    } catch (error) { showToast(error.message); if (error.status === 409 && plazaDialog.open && plazaDialog.classList.contains('talkMode')) plazaDialog.close(); /* (v1.10.240 3b: the resident taken meanwhile -- the old talk's window, its keep already ended, closed too) */ } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
   }
   let islandEventBusy = false;
   async function solveIslandEvent(key) {

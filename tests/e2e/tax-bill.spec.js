@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, get, post, spaceOn, expectNoScriptError } = require('./skin-support');
+const { shopper, get, post, spaceOn, standAt, expectNoScriptError } = require('./skin-support');
 
 // 주민세 고지서 (gamecenter-notes docs/tax-bill-design-20261025.md, 사용자 「고지서 + 창구 납부」): the day's bill comes to the
 // 우체통 as a letter from the 관공서 (nothing taken); at the 세금 창구 the unpaid bills, 「모두 내기」 pays them; no 자동이체
@@ -26,7 +26,9 @@ test('주민세 고지서: 우체통 편지, 세금 창구 「모두 내기」, 
   await expect(letter).toContainText('관공서'); await expect(letter.locator('.mailStamp')).toHaveText('관공서'); await expect(letter.locator('button', { hasText: '답장' })).toBeHidden();
   if (process.env.ZZ_OUT) await page.screenshot({ path: `${process.env.ZZ_OUT}-${isMobile ? 'm' : 'p'}-mail.png` });
   await page.locator('#plazaCloseBtn').click();
-  // the 관공서's windows: seated at each
+  // the 관공서's windows: seated at each (v1.10.240 3b: the server's own spot of me by its door first -- a teleport moves only the
+  // page, and the door asks the server where I am: a slow phone's state post had not caught up, 40 s of TOO_FAR)
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, who, th.x, th.z); }
   await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('townhall')); await page.waitForTimeout(700); await spaceOn(page, 'townhall', isMobile); await page.waitForTimeout(700); return page.evaluate(() => window.PlazaDebug().space); }, { timeout: 40000 }).toBe('townhall');
   const sitAt = async (door, dialog) => expect.poll(async () => {
     if (await page.locator(dialog).isVisible()) return true;

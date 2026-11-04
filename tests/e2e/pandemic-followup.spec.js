@@ -41,6 +41,9 @@ test('팬데믹 4인+관전: 예측·버리기·공중 수송 재접속과 결�
         await expectNoScriptError(w.page);
       }
     };
+    // (v1.10.240 3b: after a reload the room's state comes back slowly on a slow runner -- each check after one failed at its
+    // 5 s, a different one each time; waited for the game itself first)
+    const reloaded = async (w) => { await w.page.reload(); await expect.poll(() => w.page.evaluate(() => Boolean(window.PandemicUI?.state?.game)), { timeout: 30000 }).toBe(true); };
     await sync();
     await expect(watcher.page.locator('#pandemicMap .pdPawn')).toHaveCount(4);
     await expect(a.page.locator('#pandemicHud')).toContainText('큐브 공급');
@@ -50,11 +53,11 @@ test('팬데믹 4인+관전: 예측·버리기·공중 수송 재접속과 결�
     await a.page.getByRole('button', { name: '차례 넘기기', exact: true }).click();
     await expect(a.page.locator('.pdDockTab.on')).toContainText('과학자');
     await expect(a.page.locator('#pandemicHud')).toContainText('카드 획득');
-    await a.page.reload();
+    await reloaded(a);
     await expect(a.page.locator('.pdWarn')).toHaveText('버릴 카드를 누르세요.');
     await a.page.locator('#pandemicActions').getByRole('button', { name: '⚡ 예측', exact: true }).click();
     await expect(a.page.locator('.pdForecastRow')).toHaveCount(6);
-    await a.context.setOffline(true); await a.context.setOffline(false); await a.page.reload();
+    await a.context.setOffline(true); await a.context.setOffline(false); await reloaded(a);
     await expect(a.page.locator('#pandemicMenu')).toBeVisible();
     await expect(a.page.locator('.pdForecastRow')).toHaveCount(6);
     await expect(watcher.page.locator('.pdForecastRow')).toHaveCount(0);
@@ -73,7 +76,7 @@ test('팬데믹 4인+관전: 예측·버리기·공중 수송 재접속과 결�
     await a.page.locator('#pandemicMenu .pdMenuRow button').nth(1).click();
     await a.page.locator('.pdCity.target[data-city="tokyo"]').dispatchEvent('click');
     await expect(b.page.getByRole('button', { name: '동의', exact: true })).toBeVisible();
-    await b.page.reload();
+    await reloaded(b);
     await expect(b.page.locator('.teamPlayer.currentActor')).toHaveAttribute('data-seat', '2');
     await b.page.getByRole('button', { name: '동의', exact: true }).click();
     await expect.poll(async () => (await current()).game.pawns['2']).toBe('tokyo');
@@ -83,7 +86,7 @@ test('팬데믹 4인+관전: 예측·버리기·공중 수송 재접속과 결�
     expect((await post(request, '/api/room/resign', b.token, {})).status).toBe(200);
     await sync();
     for (const w of people) await expect(w.page.locator('#pandemicHud')).toContainText('함께 패배');
-    await a.page.reload(); await expect(a.page.locator('#pandemicHud')).toContainText('함께 패배');
+    await reloaded(a); await expect(a.page.locator('#pandemicHud')).toContainText('함께 패배');
     expect((await post(request, '/api/room/rematch', a.token, {})).status).toBe(200);
     for (const w of people) { await expect(w.page.locator('#pandemicSetup')).toBeVisible(); await expect(w.page.locator('#pandemicMenu')).toBeHidden(); }
   } finally {

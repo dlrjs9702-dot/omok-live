@@ -44,7 +44,7 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   }
   if (isMobile) { // (Codex 검토 5차 P3-1) one held by a finger as 정리 comes: let go -- its slot names another thing after
     await page.waitForTimeout(800); await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true });
-    await page.waitForTimeout(600); await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
+    await expect(page.locator('.islandBagSlot.held')).toHaveCount(1, { timeout: 10000 }); /* (v1.10.240 3b: the 0.4 s hold reached before the finger lifts -- a slow runner's timer came after a fixed 0.6 s) */ await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
     await expect(page.locator('.islandBagSlot.held')).toHaveCount(1);
   }
   // 정리: asked once, then tools, fish, materials, the rest
