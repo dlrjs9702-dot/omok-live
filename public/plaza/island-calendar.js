@@ -84,7 +84,7 @@
   // read from its -Z, turned to face the disc), its host beside it -- the festival's and the contests' -- and the feast table
   const PLACES = Object.freeze({ stall: Object.freeze({ x: 12, z: -104, yaw: Math.PI }), host: Object.freeze({ x: 9.4, z: -102.6, yaw: -0.47 }) /* (toward the disc) */, feast: Object.freeze({ x: 0, z: -98, yaw: 0 }), REACH: 2.6, FEAST_R: 6,
     // (v1.10.238 문제 기록 1103 7) the 섬 대회 tent beside the stall, its keeper 가락 before it, toward the disc
-    tent: Object.freeze({ x: 20.5, z: -104.2, yaw: Math.PI - 0.47 }), keeper: Object.freeze({ x: 19.81, z: -101.74, yaw: -0.47 }), /* (총괄 238 검토 3: the tent's front to the disc, 가락 before it) */
+    tent: Object.freeze({ x: 20.5, z: -104.2, yaw: Math.PI - 0.47 }), keeper: Object.freeze({ x: 19.46, z: -102.15, yaw: -0.47 }), /* (총괄 238 검토 3: the tent's front to the disc, 가락 before it; v1.10.241: at the model's `keeper`, 2.3 m before its middle) */
     // X2 크리스마스: the plaza's tree (B 46, on the disc) for the evening gathering, and the snow field (its south-west paving,
     // clear of the gardens and seats) where the snowmen are rolled and the day's stand
     tree: Object.freeze({ x: 0, z: -84 }), GATHER_R: 9, snow: Object.freeze({ x: -18, z: -99, w: 10, d: 7 }),

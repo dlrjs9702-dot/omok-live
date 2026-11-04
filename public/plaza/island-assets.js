@@ -455,6 +455,9 @@
   const SV = '/assets/island/season-v1';
   const sv = (file, extra = {}) => ({ url: `${SV}/${file}.glb`, low: { url: `${SV}/${file}_low.glb` }, near: 50, ...extra });
   REGISTRY['event.stall'] = sv('event_stall');
+  // (v1.10.241 assets 100) the 섬 대회 tent (front -Z, its 4 m square on the ground, `keeper` 2.3 m before it, `glow` lit at
+  // night) and its standing sign (the blank `sign_plate` the game writes on)
+  REGISTRY['event.contest_tent'] = sv('contest_tent', { nightGlow: true, keepNodes: true }); REGISTRY['event.contest_sign'] = sv('contest_sign', { near: 30, keepNodes: true }); /* (keepNodes: the flags sway, the plate is written on) */
   for (const k of ['fish', 'bug']) for (const m of ['gold', 'silver', 'bronze']) REGISTRY[`event.trophy_${k}_${m}`] = sv(`event_trophy_${k}_${m}`, { near: 26 });
   for (const f of ['basket', 'straw_sheaf', 'corn_string', 'persimmon_string', 'feast_table']) REGISTRY[`harvest.${f}`] = sv(`harvest_${f}`);
   // X1 크리스마스·연말 (assets 76 xmas-v1): the five house pieces, the stall's dress (laid over event.stall, same origin), the

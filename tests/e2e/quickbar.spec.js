@@ -71,5 +71,7 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
   // kept: the same five after a reload
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
   await expect(bar).toBeVisible(); for (const n of [1, 2, 3]) await expect(slot(n)).not.toHaveClass(/empty/); await expect(slot(4)).toHaveClass(/empty/);
+  // (v1.10.241 Codex 10판 P3) two saves both failing (held, then refused): back to the five the server took, not the first failed one's
+  await page.route('**/api/island/quick', async (r) => { if (r.request().method() !== 'POST') return r.continue(); await new Promise((res) => setTimeout(res, 3000)); return r.abort(); }); await tap(page.locator('#islandBagTab')); await toSlot('bugnet', 4); await toSlot('firework', 5); await expect.poll(() => page.locator('#quickInBag .quickSlot').evaluateAll((els) => els.map((e) => !e.classList.contains('empty'))), { timeout: 20000 }).toEqual([true, true, true, false, false]); await page.unroute('**/api/island/quick'); await page.locator('#islandBagCloseBtn').click();
   await expectNoScriptError(page); await who.context.close();
 });

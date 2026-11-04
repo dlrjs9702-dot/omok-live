@@ -1133,6 +1133,26 @@
       "triangles": 9056,
       "sourceSha256": "3c1151f7285b6cd753ff98e1d49757892a7d071835a84d7ec2691eec7e575772",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged"
+    },
+    "season-v1/contest_tent.glb": {
+      "meshes": 4,
+      "nodes": 12,
+      "reason": "v1.10.241 assets 100: gltfpack -km keeps the named parts the game uses (README 규격) -- the tent's flag_L / flag_R (swayed), keeper, glow; the sign's sign_plate (written on)"
+    },
+    "season-v1/contest_tent_low.glb": {
+      "meshes": 4,
+      "nodes": 12,
+      "reason": "v1.10.241 assets 100: gltfpack -km keeps the named parts the game uses (README 규격) -- the tent's flag_L / flag_R (swayed), keeper, glow; the sign's sign_plate (written on)"
+    },
+    "season-v1/contest_sign.glb": {
+      "meshes": 2,
+      "nodes": 5,
+      "reason": "v1.10.241 assets 100: gltfpack -km keeps the named parts the game uses (README 규격) -- the tent's flag_L / flag_R (swayed), keeper, glow; the sign's sign_plate (written on)"
+    },
+    "season-v1/contest_sign_low.glb": {
+      "meshes": 2,
+      "nodes": 5,
+      "reason": "v1.10.241 assets 100: gltfpack -km keeps the named parts the game uses (README 규격) -- the tent's flag_L / flag_R (swayed), keeper, glow; the sign's sign_plate (written on)"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

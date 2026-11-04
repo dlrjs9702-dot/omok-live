@@ -31,6 +31,7 @@ test('섬 대회 천막: 띠가 천막을 가리키고, 가락에게 참가하�
     await bar.click(); await expect(page.locator('#toast')).toContainText('화살표를 따라 대청마당 대회 천막');
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().contestTent()?.shown)).toBe(true);
     expect(await page.evaluate(() => window.PlazaDebug().contestTent())).toMatchObject({ name: '가락', sign: '🏆 섬 대회 · 두더지 잡기' });
+    if (process.env.SHOT_DIR) await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().contestTent(); return t.plate && t.flags === 2; }), { timeout: 30000 }).toBe(true); // (v1.10.241 assets 100: the models on -- the sign's plate written on, the two flags found)
     // the tent's keeper: 「참가하기」 -- the round at once, the contest's tag over it; ✕ back to the island
     const dialog = page.locator('#plazaDialog');
     const door = await page.evaluate(() => window.PlazaDebug().contestTent().door); await standAt(request, a, door.x, door.z); // (the server's own spot of me: by the tent)
