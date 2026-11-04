@@ -45,7 +45,7 @@ const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai');
 const IslandWeather = require('./lib/island-weather'); // A4 날씨
 const IslandStars = require('./lib/island-stars'); // A4 별똥별
-const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
+const IslandContest = require('./lib/island-contest'); // A4 섬 대회 (every day)
 const IslandCalendar = require('./public/plaza/island-calendar'); // E1 계절 행사 달력
 const IslandFestival = require('./lib/island-festival'); // E1 축제 도장
 const Together = require('./lib/island-together'); // B 47 생일·우체통
@@ -2038,7 +2038,7 @@ function publicTurnTimer(room) {
 }
 // A4 별똥별: tests may move the stars' clock (so a star falls now); otherwise the server clock
 let starShiftMs = 0; const starNow = (ms) => ms + starShiftMs;
-// A4 주말 섬 대회 (lib/island-contest.js): the live board in memory -- ponytail: a restart during the 30 minutes loses that
+// A4 섬 대회 (lib/island-contest.js, every day): the live board in memory -- ponytail: a restart during the 30 minutes loses that
 // contest's board (kept in the store only once settled); upgrade path: a contest_scores table if it matters
 // A5 공지 예약: every change to the queue goes one after another (adding, cancelling, posting -- Codex review); a due
 // notice is taken off only after it is posted (ponytail: a crash between the two posts it again; an id mark if it matters)
@@ -6793,9 +6793,9 @@ async function requestHandler(req, res) {
     starShiftMs = IslandStars.starOf(slot).at + 500 - t + (Number(body.plusMs) || 0); return sendJson(res, 200, { ok: true, id: IslandStars.starOf(slot).id });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices/due' && req.method === 'POST') { await postDueNotices(); await noticeEvents(); return sendJson(res, 200, { ok: true }); } // (tests: not waiting 30 s)
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'reset'
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'after' (its tent down: none on), 'reset'
     const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.dayContest(nowMs(), cfg); /* (today's) */
-    contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : 0;
+    contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : body.to === 'after' ? k.end + IslandContest.TENT_AFTER_MS + 60000 - nowMs() : 0;
     if (body.to === 'live' && (await pointStore.worldValue('soloContestResult'))?.id === k.id) { await pointStore.setWorldValue('soloContestResult', null); contestBoard = { id: null, rows: new Map() }; } // (the real clock may have closed today's contest already, empty)
     contestKindTest = body.to === 'reset' ? null : IslandContest.KINDS[body.kind] ? body.kind : contestKindTest;
     const c = await contestState(); if (c.phase === 'done') await settleContest(c); contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id });
@@ -7538,7 +7538,7 @@ async function requestHandler(req, res) {
     const out = await pointStore.questApply(pointAccountForSession(session), 'stars', (doc) => (doc.wished || []).includes(now.id) ? null : { doc: { ...doc, wished: [...(doc.wished || []), now.id].slice(-120) }, reward: 0 });
     return sendJson(res, 200, { ok: true, already: !out?.doc });
   }
-  // A4 주말 섬 대회: where the week's contest is (soon / live / done), the live top 5 and my record, the last result
+  // A4 섬 대회: where the day's contest is (soon / live / done), the live top 5 and my record, the last result
   if (pathname === '/api/island/contest' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const c = await contestState(); const account = pointAccountForSession(session);

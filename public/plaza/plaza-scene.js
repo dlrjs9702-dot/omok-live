@@ -1159,7 +1159,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       scene.add(c.root); statueRoots.push(c.root); statueChars.push(c); c.root.userData.building = true; buildingRoots.push(c.root);
       dressUp(c, st.look || {});
       const face = Math.atan2(walk[0] - spot.x, walk[1] - spot.z); // (toward the walk, as the statue)
-      const plate = plaque(st.contest || st.solo ? `🏆 ${st.label || '주말 섬 대회'} 우승 ${st.name}` : `${st.rank}위 ${st.name}`, spot.x + Math.sin(face) * 0.97, ph + 0.95, spot.z + Math.cos(face) * 0.97, face, 0.32); scene.add(plate); statueRoots.push(plate);
+      const plate = plaque(st.contest || st.solo ? `🏆 ${st.label || (st.solo ? '섬 대회' : '주말 섬 대회')} 우승 ${st.name}` /* (v1.10.241: the 섬 대회 every day) */ : `${st.rank}위 ${st.name}`, spot.x + Math.sin(face) * 0.97, ph + 0.95, spot.z + Math.cos(face) * 0.97, face, 0.32); scene.add(plate); statueRoots.push(plate);
     }
   }
 
@@ -2250,7 +2250,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   fpHand.traverse((o) => { o.castShadow = false; o.receiveShadow = false; });
   /* drawn over what is before my eyes (a tree's leaves at my face, a shop's glass): its own parts last, the cuff first and the fingers over the palm */
   for (const [k, o] of [fpPalm.children[3], fpPalm.children[0], fpPalm.children[2], fpPalm.children[1], ...fpWeed.children, ...fpFruit.children].entries()) { o.renderOrder = 1000 + k; if (o.material !== fpSkin && o.material !== fpCuff) o.material = o.material.clone(); o.material.depthTest = false; o.material.transparent = true; } /* (the weed's and the fruit's colours are shared ones: their own copies; in the see-through pass, last -- with no depth test there is no depth written, and a glass front drawn after would cover it) */
-  const FP_GRIP = new THREE.Vector3(0.22, -0.2, -0.45); const FP_TILT = { bugnet: new THREE.Matrix4().makeRotationX(0.5), fishing_rod: new THREE.Matrix4().makeRotationX(-0.45), catch: new THREE.Matrix4().makeRotationX(0.35) /* (1104 G: the fish raised a little toward the eyes) */ }; FP_TILT.firework = FP_TILT.catch; FP_TILT.bubbles = FP_TILT.catch; /* (v1.10.241: the stick and the wand held up, as the fish) */ /* (the rod leant forward) */ /* (the net tipped up from the body's low carry: the hoop in sight) */
+  const FP_GRIP = new THREE.Vector3(0.22, -0.2, -0.45); const FP_TILT = { bugnet: new THREE.Matrix4().makeRotationX(0.5), fishing_rod: new THREE.Matrix4().makeRotationX(-0.45), catch: new THREE.Matrix4().makeRotationX(0.35) /* (1104 G: the fish raised a little toward the eyes) */ }; FP_TILT.firework = FP_TILT.catch; FP_TILT.bubbles = FP_TILT.catch; const FP_GOOD = { firework: 0.4, bubbles: 0.28 }; /* (the jar wider than the sticks) */ /* (v1.10.241: the stick and the wand held up, as the fish) */ /* (the rod leant forward) */ /* (the net tipped up from the body's low carry: the hoop in sight) */
   const FP_REST = new THREE.Vector3(0.16, -0.17, -0.42); const FP_FREE = { x: [-0.1, 0.26], y: [-0.21, 0.04], z: [-0.6, -0.32] }; /* (the empty hand: where it rests, and the screen's part it keeps to -- 70° high at 0.42 m: 0.29 either way) */
   const FP_POSE = { free: new THREE.Euler(-0.55, 0, 0.25), tool: new THREE.Euler(0.15, 0.3, 1.35) }; /* (the empty hand its back to me, the fingers ahead and a little up; round a tool's handle, across it) */
   const fpM = { cam: new THREE.Matrix4(), bone: new THREE.Matrix4(), turn: new THREE.Matrix4().makeRotationY(Math.PI), grip: new THREE.Vector3(), ref: new THREE.Vector3(), from: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Quaternion(), s: new THREE.Vector3(), one: new THREE.Vector3(1, 1, 1), t: new THREE.Matrix4(), box: new THREE.Box3(), size: new THREE.Vector3() };
@@ -2289,7 +2289,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       fpM.bone.premultiply(fpM.t.makeTranslation(-fpM.grip.x, -fpM.grip.y, -fpM.grip.z)).premultiply(FP_TILT[tool === caught ? 'catch' : heldTool] || FP_TILT.fishing_rod);
       fpM.p.copy(fpM.grip).sub(fpM.ref).multiplyScalar(0.5).add(FP_GRIP); fpM.bone.premultiply(fpM.t.makeTranslation(fpM.p.x, fpM.p.y, fpM.p.z));
       fpM.bone.premultiply(fpM.cam);
-      fpTool.matrix.multiplyMatrices(fpM.bone, src.matrix);
+      fpTool.matrix.multiplyMatrices(fpM.bone, src.matrix); if (tool !== caught && FP_GOOD[heldTool]) fpTool.matrix.multiply(fpM.t.makeScale(FP_GOOD[heldTool], FP_GOOD[heldTool], FP_GOOD[heldTool])); /* (v1.10.241: a thing to use at a hand's size before the eyes -- its body size is for being seen from afar) */
       fpM.p.setFromMatrixPosition(fpM.bone);
     } else {
       if (fpTool) fpTool.visible = false;

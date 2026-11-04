@@ -7897,7 +7897,7 @@
     if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }
     if (event === 'birthdayCheered') { showToast(`🎉 ${parsed.name}님이 생일을 축하해 줬어요 (올해 ${parsed.count}명)`, 5000); return; }
     if (event === 'mail') { showToast(`✉️ ${parsed.from}님에게서 편지가 왔어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); return; } // B 47 우체통
-    if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
+    if (event === 'contest') { refreshContest(); return; } // A4 섬 대회, every day (soon, start, end)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plazaStatuesWeek = parsed.week ?? plazaStatuesWeek; plaza.controller?.setStatues?.(plazaStatues, plazaStatuesWeek); return; } // v1.10.5
