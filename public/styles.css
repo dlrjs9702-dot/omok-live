@@ -2108,6 +2108,9 @@ body.stickEdit .ctlSelected { outline: 3px solid #facc15 !important; }
 @media (max-height: 500px) { .islandActBtn { bottom: 62px; width: 66px; height: 66px; } .islandWalkBtn { bottom: 136px; } .islandRunBtn { right: 94px; bottom: 58px; } }
 /* the hint is only a label now (the right hand has its own 상호작용): bottom centre, still tappable */
 body.touchIsland .plazaHint { left: 50%; right: auto; transform: translateX(-50%); bottom: 14px; max-width: calc(100% - 300px); }
+/* (총괄 236 검토 「안 한 글자만」) a phone held upright: the note after 가방·사진 to the right edge, two lines if it must -- read whole */
+@media (min-height: 501px) { body.touchIsland .plazaHint { left: 164px; right: 12px; transform: none; max-width: none; white-space: normal; text-align: center; text-overflow: clip; } }
+@media (max-height: 500px) { body.touchIsland .plazaStage.quickOn .plazaHint { bottom: 64px; } }
 
 /* v1.10.83 통합 UI 6~8 (IDEAS 통합 게임 UI 개편): the island's windows -- 게시판·미션·출석·상점·가방·내 정보·기록·랭킹·
    기부·작명·등반·메뉴·메신저 -- take the game hall's sheet (v1.10.73 .gameSheet): one rounded card, a two-colour head bar
@@ -3218,12 +3221,16 @@ body.tableGamePlaying.pandemicGame #pandemicHud>.pdChip.turn{display:none} /* (t
 .quickSlot.waiting{animation:quickWait 1s ease-in-out infinite}
 .quickSlot.dropAt{border-color:var(--isle-tag)}
 @keyframes quickWait{50%{box-shadow:0 0 0 3px rgba(138,106,74,.45)}}
-.quickInBag{margin:6px 0 2px;flex-wrap:wrap}
-.quickInBag>b{font-size:.8rem;color:var(--isle-soft);margin-right:2px}
+.quickInBag{margin:6px 0 2px;display:grid;grid-template-columns:repeat(5,auto);justify-content:center;column-gap:6px;row-gap:2px}
+.quickInBag>b{grid-column:1/-1;text-align:center;font-size:.8rem;color:var(--isle-soft)} /* (총괄 236 검토: its name over the five, the five in one row on a phone too) */
 .quickInBag .bagMenu{top:auto;bottom:auto}
 body:not(.touchIsland) .plazaStage.quickOn .plazaHint{bottom:84px}
 @media (max-width: 1100px) { body:not(.touchIsland) .quickBar { bottom: 62px; } body:not(.touchIsland) .plazaStage.quickOn .plazaHint { bottom: 128px; } }
-body.touchIsland .quickBar{bottom:232px;padding:4px 8px;gap:6px}
+/* (총괄 236 검토 「캐릭터를 가려요」) a phone held upright: a column at the right edge, over the 걷기 button -- clear of my
+   character in the middle, of the stick and of the minimap; held sideways (low): along the bottom between the stick and
+   the right hand's buttons, under my character */
+body.touchIsland .quickBar{left:auto;right:8px;bottom:226px;transform:none;flex-direction:column;padding:4px;gap:6px;border-radius:28px}
+@media (max-height: 500px) { body.touchIsland .quickBar { left: 50%; right: auto; bottom: 8px; transform: translateX(-50%); flex-direction: row; } }
 body.touchIsland .quickBar .quickSlot{width:44px;height:44px}
 body.touchIsland .quickSlot>i{display:none}
 body.photoMode .quickBar,body.islandFishing .quickBar,body:has(dialog[open]) .quickBar{visibility:hidden}

@@ -2557,7 +2557,7 @@
   let heldTool = null;
   function holdTool(kind) {
     heldTool = heldTool === kind ? null : kind; plaza.controller?.setHeldTool?.(heldTool); islandBagDialog.close();
-    const tip = heldTool && (TOOL_TIPS[heldTool] || `${QUICK_NAMES[heldTool]}${josa(QUICK_NAMES[heldTool], '을', '를')} 들었어요. SPACE(휴대폰은 상호작용)로 써요.`); // (v1.10.236: a thing to use, held)
+    const tip = heldTool && (TOOL_TIPS[heldTool] || `${QUICK_NAMES[heldTool]}${josa(QUICK_NAMES[heldTool], '을', '를')} 들었어요. ${touchIsland ? '상호작용' : 'SPACE'}으로 써요.`); // (v1.10.236: a thing to use, held -- 총괄 검토: each device its own key)
     showToast(heldTool ? tip : '가방에 넣었어요.', heldTool ? 5000 : 2000); showToolGauge(); drawQuick();
   }
   // v1.10.221 도구 닳기 (gamecenter-notes docs/spending-sinks-20261025.md ③): the tool in hand -- the most worn of its kind, the

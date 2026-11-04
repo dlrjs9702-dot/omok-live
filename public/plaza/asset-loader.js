@@ -401,8 +401,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // character's right hand (handOver: a lost thing given back). One held thing per key; a character thrown away drops it.
   const boneOf = (c, pattern) => { let hit = null; c.assetRoot?.traverse((o) => { if (o.isBone && pattern.test(o.name)) hit = o; }); return hit; };
   function seat(c, rec) {
-    const bone = rec.bone === 'Chest' ? boneOf(c, /^Chest$/) : boneOf(c, /^Hand\.?R$/);
-    if (bone) {
+    const bone = rec.bone === 'Root' ? null : rec.bone === 'Chest' ? boneOf(c, /^Chest$/) : boneOf(c, /^Hand\.?R$/);
+    if (rec.bone === 'Root') { c.root.add(rec.object); rec.object.position.set(...(rec.proc || [0, 0, 0])); } // (v1.10.236: in the character's own frame, upright -- a 풍선 floating beside)
+    else if (bone) {
       let parent = bone, at = rec.at || [0, 0, 0];
       const rig = c.transformationRig;
       if (rig) {
@@ -423,13 +424,15 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     } // v1.10.42 rot: a fish held side-on
     else if (rec.bone === 'Chest') { c.root.add(rec.object); rec.object.position.set(...(rec.proc || [0, 0.65, 0.38])); }
     else { (c.armR || c.root).add(rec.object); rec.object.position.set(0, -0.5, 0.1); } // the procedural arm's end
+    if (rec.size) { rec.object.updateWorldMatrix(true, true); const d = new THREE.Box3().setFromObject(rec.object).getSize(new THREE.Vector3()); const m = Math.max(d.x, d.y, d.z); if (m > 1e-4) rec.object.scale.multiplyScalar(rec.size / m); }
   }
-  function hold(c, ids, ms = 900, { key = null, bone = 'Hand.R', at = null, rot = null, proc = null, stand = null } = {}) {
+  // (v1.10.236 빠른 칸, 총괄 검토 「손에 거의 안 보여요」: `size` -- its longest side that many metres in the world, whatever the bone's scale)
+  function hold(c, ids, ms = 900, { key = null, bone = 'Hand.R', at = null, rot = null, proc = null, stand = null, size = null } = {}) {
     const hit = P.pick(registry, ids, off, null); if (!hit) return;
     const token = {}; if (key) { letGo(c, key); (c.holding ||= {})[key] = { token, object: null }; }
     cache.get(hit.entry.url).then((gltf) => {
       if (disposed || !gltf || !c.root.parent || (key && c.holding?.[key]?.token !== token)) return;
-      const rec = { token, object: instance(gltf, hit.entry), bone, at, rot, proc };
+      const rec = { token, object: instance(gltf, hit.entry), bone, at, rot, proc, size };
       seat(c, rec); stand?.removeFromParent(); // the procedural stand-in gives way
       if (key) c.holding[key] = rec; else setTimeout(() => rec.object.removeFromParent(), ms);
     }).catch((error) => onError(hit.id, error));

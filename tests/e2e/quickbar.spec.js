@@ -8,7 +8,7 @@ const { shopper, post, expectNoScriptError } = require('./skin-support');
 test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 쓰기, 주민 앞은 대화 먼저, 새로고침 뒤에도 그대로', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 300000 : 200000);
   const who = await shopper(browser, request, isMobile ? '빠른칸m' : '빠른칸', 0, 'female'); const { page, token } = who;
-  for (const [itemId, qty] of [['bugnet', 1], ['firework', 3], ['balloon', 2]]) expect((await post(request, '/api/test/island/give', token, { itemId, qty })).status).toBe(200);
+  for (const [itemId, qty] of [['bugnet', 1], ['firework', 5], ['balloon', 5]]) expect((await post(request, '/api/test/island/give', token, { itemId, qty })).status).toBe(200);
   await page.evaluate((shots) => { localStorage.removeItem('gc.testClassic'); if (shots) localStorage.setItem('gc.testRealView', '1'); else localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, Boolean(process.env.SHOT_DIR));
   if (isMobile) await page.setViewportSize({ width: 360, height: 740 });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
@@ -18,6 +18,7 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
   await expect(bar).toBeHidden(); // (all five empty: only in the bag)
   // the bag: the five under the pouch; the 잠자리채 「빠른 칸에」 → 1번, the 폭죽 → 2 (the number), the 풍선 → 3번
   await tap(page.locator('#islandBagTab')); await expect(page.locator('#quickInBag .quickSlot')).toHaveCount(5); await shot('bag-empty');
+  expect(new Set(await page.locator('#quickInBag .quickSlot').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)))).size, '한 줄 다섯 칸').toBe(1);
   const toSlot = async (item, k, byKey = false) => {
     await tap(page.locator(`.islandBagSlot[data-item="${item}"]`)); await tap(page.locator(`.islandBagSlot[data-item="${item}"] .bagMenu [role="menuitem"]`, { hasText: '빠른 칸에' }));
     if (byKey) await page.keyboard.press(`Digit${k}`); else await tap(inBag(k));
@@ -29,14 +30,14 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
   await expect(page.locator('.islandBagSlot[data-item="firework"] .bagMenu [role="menuitem"]')).toHaveText(['들기', '빠른 칸에']); // (사용자 「도구처럼」: no 「쓰기」)
   await shot('bag-set');
   await page.locator('#islandBagCloseBtn').click(); await expect(bar).toBeVisible();
-  await expect(slot(2).locator('small')).toHaveText('3');
+  await expect(slot(2).locator('small')).toHaveText('5');
   // a number (a tap): in hand; another: changed; the same again: away
   const press = async (k) => { if (isMobile) await slot(k).tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press(`Digit${k}`); } };
   await press(1); await expect(slot(1)).toHaveClass(/inHand/);
   await press(isMobile ? 3 : 2); await expect(slot(isMobile ? 3 : 2)).toHaveClass(/inHand/); await expect(slot(1)).not.toHaveClass(/inHand/);
   await shot('held');
   // nothing before me: SPACE (상호작용) uses one
-  const kind = isMobile ? '풍선' : '폭죽'; const k = isMobile ? 3 : 2; const left = isMobile ? '1' : '2';
+  const kind = isMobile ? '풍선' : '폭죽'; const k = isMobile ? 3 : 2; const left = '4';
   await expect.poll(async () => {
     if ((await page.locator('#plazaHint').textContent()).includes(`${kind} 쓰기`)) return true;
     await page.evaluate(() => { const d = window.PlazaDebug(); const p = d.doors.games || Object.values(d.doors)[0]; d.teleport(p.x + 9 * (Math.random() - 0.5), p.z + 9 + 4 * Math.random()); }); await page.waitForTimeout(700);
@@ -46,21 +47,25 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
   await expect(slot(k).locator('small')).toHaveText(left, { timeout: 10000 }); await shot('used');
   // an islander before me: the talk first, the thing still in hand; in the talk 1 is the first answer, not a slot
   const dialog = page.locator('#plazaDialog'); const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
+  let before = null; // (the count just before the press that opened the talk: a walker gone by meanwhile, another press used one)
   await expect.poll(async () => {
     if (await talking()) return true;
     await post(request, '/api/test/island/free-residents', token, {});
     await page.evaluate(async () => { const w = window.PlazaDebug().wanderers.find((o) => o.n === 1); if (w) await window.PlazaWarp(w.x + 1.2, w.z); }); await page.waitForTimeout(500);
     if (!(await page.locator('#plazaHint').textContent()).includes('말 걸기')) return false; // (only before them: else SPACE would use another)
+    before = await slot(k).locator('small').textContent();
     if (isMobile) await page.locator('#islandActBtn').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
     await page.waitForTimeout(900); return talking();
   }, { timeout: 90000, intervals: [300] }).toBe(true);
-  await expect(slot(k).locator('small')).toHaveText(left); await expect(slot(k)).toHaveClass(/inHand/);
+  await expect(slot(k).locator('small')).toHaveText(before); await expect(slot(k)).toHaveClass(/inHand/);
   if (!isMobile) { await page.keyboard.press('Digit1'); await expect(slot(1)).not.toHaveClass(/inHand/); }
   await page.evaluate(() => document.getElementById('plazaDialog').close());
   // the phone at 360 px: five of 44 px, clear of the stick and the buttons
   if (isMobile) {
     const box = await bar.boundingBox(); for (let n = 1; n <= 5; n += 1) expect((await slot(n).boundingBox()).width).toBeGreaterThanOrEqual(44);
-    for (const id of ['#islandStick', '#islandActBtn', '#islandWalkBtn', '#islandRunBtn', '#islandBagTab']) { const o = await page.locator(id).boundingBox(); if (!o) continue; const apart = o.x >= box.x + box.width || o.x + o.width <= box.x || o.y >= box.y + box.height || o.y + o.height <= box.y; expect(apart, id).toBe(true); }
+    expect(box.x, '캐릭터(화면 가운데)를 가리지 않음').toBeGreaterThan(180 + 40); // (총괄 236 검토: a column at the right edge)
+    expect(await page.locator('#plazaHint').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true); // (the note read whole)
+    for (const id of ['#islandStick', '#islandActBtn', '#islandWalkBtn', '#islandRunBtn', '#islandBagTab', '#islandPhotoTab', '#plazaHint', 'canvas.islandMinimap']) { const o = await page.locator(id).boundingBox(); if (!o) continue; const apart = o.x >= box.x + box.width || o.x + o.width <= box.x || o.y >= box.y + box.height || o.y + o.height <= box.y; expect(apart, id).toBe(true); }
     expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(360);
   }
   // kept: the same five after a reload
