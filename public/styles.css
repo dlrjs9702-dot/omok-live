@@ -3324,4 +3324,50 @@ body.placing .toast{top:16px;bottom:auto}
 .hpPill.big{min-height:40px}
 .hpPill.on,.hpPill[aria-pressed="true"],.hpPill:has(input:checked){background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
 .hpPill input{position:absolute;opacity:0;pointer-events:none}
+/* v1.10.244 U2 게임방 HUD (한판마당): one line over the board while a hand is played -- the old bar and status row hidden then */
+.roomHud{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;padding:8px 4px 0;color:var(--hp-t1)}
+.roomHud[hidden]{display:none}
+.roomHudCenter{display:grid;justify-items:center;min-width:0;text-align:center}
+.roomHudLabel{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--hp-t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.roomHudBig{min-height:34px;font-size:34px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums}
+.roomHudSub{font-size:13px;font-weight:700;color:var(--hp-t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.roomHud.mine .roomHudSub{color:var(--hp-gold)}
+.roomHudRight{display:flex;align-items:center;gap:6px}
+.roomHudBar{grid-column:1/-1;justify-self:center;width:min(62%,300px);height:6px;border-radius:99px;background:var(--hp-face);overflow:hidden}
+.roomHudBar i{display:block;height:100%;width:0;border-radius:inherit;background:var(--c1,var(--hp-blue));transition:width .25s linear}
+.roomHudBar i.low{background:var(--hp-loss)}
+body.roomPlaying .roomBar,body.roomPlaying .boardCard>.statusRow{display:none!important} /* (U2: the HUD's line in their place) */
+.roomHudRight>button{position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:1.05rem;box-shadow:none}
+.roomHudRight>button.hidden{display:none}
+.roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
+.roomHudRight>#roomMenuBtn{font-size:0}.roomHudRight>#roomMenuBtn::before{content:"☰";font-size:1.1rem}
+body.roomPlaying .gameMenuList #turnNotifyBtn{font-size:inherit;padding:10px 14px}body.roomPlaying .gameMenuList #turnNotifyBtn::before{content:none}
+.gameMenuList #roomInfoBtn{font-size:inherit;padding:10px 14px}.gameMenuList #roomInfoBtn::after{content:" 방 정보"}
+/* v1.10.244 U2 이름표 알약: 34~40px, the face 32px (꾸미기가 보이게), the name · the game's number · m:ss right, the turn's pill lit
+   (흰 면 + --c1 2px); the old ring a figure and a thin bar */
+body.roomPlaying :is(.player,.teamPlayer){display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border:0;outline:0;border-radius:12px;background:var(--hp-face);background-image:none;box-shadow:none;color:var(--hp-t1)}
+body.roomPlaying :is(.player,.teamPlayer).on{background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+body.roomPlaying :is(.player,.teamPlayer) .seatFace{width:32px;height:32px;float:none;margin:0}
+body.roomPlaying :is(.player,.teamPlayer) :is(strong,small){display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.roomPlaying :is(.player,.teamPlayer) strong{font-size:14px;font-weight:800}body.roomPlaying :is(.player,.teamPlayer) small{font-size:11.5px;margin:0;color:var(--hp-t2)}
+body.roomPlaying :is(.player,.teamPlayer) .seatTitle{color:var(--hp-gold);font-size:10.5px}
+body.roomPlaying .teamPlayer{display:grid;grid-template-columns:32px minmax(0,1fr) auto;column-gap:8px;row-gap:0}
+body.roomPlaying .teamPlayer>.seatFace{grid-row:1/span 3}body.roomPlaying .teamPlayer>:is(strong,small){grid-column:2}
+body.roomPlaying :is(.player,.teamPlayer) :is(strong,small)::after{display:none}
+body.roomPlaying :is(.player,.teamPlayer):has(.turnRing){padding-right:12px}
+body.roomPlaying .turnRing{position:static;transform:none;width:auto;height:auto;margin-left:auto;background:none;grid-column:3;grid-row:1/span 3}
+body.roomPlaying .turnRing::before{inset:auto auto 3px 10px;width:calc((100% - 20px) * var(--p,1));height:2px;border-radius:2px;background:var(--c1,var(--hp-blue))}
+body.roomPlaying .turnRing.late::before{background:var(--hp-loss)}
+body.roomPlaying .turnRing b{font-size:13px;font-weight:800;color:var(--hp-t1)}body.roomPlaying .turnRing.late b{color:var(--hp-loss)}
+body.roomPlaying .seatNum{background:var(--hp-face);border:0;color:var(--hp-gold)}
+/* v1.10.244 U2 안내 배너: under the HUD, off the board (a full phone: over its top, see-through), 1.8 s */
+body.roomPlaying .boardNote{top:var(--noteTop,25vh);display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 18px;border-radius:99px;background:color-mix(in srgb,var(--hp-win) 20%,var(--hp-glass));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid color-mix(in srgb,var(--hp-win) 45%,transparent);color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+body.roomPlaying .boardNote.hidden{display:none}
+/* (U2 검토 #391: the light HUD buttons round on a darker face, the emoji icons dark grey -- 3:1 or more on it) */
+:root[data-theme="light"] .roomHud :is(.roomHudRight>button,.roomHudLeft>#leaveRoomBtn){background:rgba(61,47,32,.14)}
+:root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn){font-size:0}
+:root[data-theme="light"] .roomHudRight>#chatFloatBtn::before{content:"💬"}:root[data-theme="light"] .roomHudRight>#gameInfoFloatBtn::before{content:"🎮"}
+:root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}
+body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;color:var(--hp-win)}
+#chatPanel .quickChat{margin:6px 0}
 .hpX{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1);font:inherit;font-size:16px;font-weight:800;cursor:pointer}

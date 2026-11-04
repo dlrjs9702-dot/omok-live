@@ -309,7 +309,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     await expect(a.page.locator('#pointBalanceText')).toHaveText('100,630P'); // v1.7.3: 700P 중 10% 소각
     await expect(watcher.page.locator('#gostopEvent')).toContainText('첫뻑 보너스');
     expect((await api(request, '/api/points', watcher.token, undefined, 'GET')).data.recentGostopSettlements).toEqual([]);
-    await b.page.locator('#roomInfoBtn').click(); // (A3 G2-1: the settlement history is behind ⓘ while a hand is played)
+    if (await b.page.locator('#gameMenuDialog #roomInfoBtn').count()) await b.page.locator('#roomMenuBtn').click(); await b.page.locator('#roomInfoBtn').click(); // (A3 G2-1: the settlement history is behind ⓘ while a hand is played -- v1.10.244 U2: ⓘ in ☰)
     await b.page.locator('#gostopPointHistory summary').click();
     await expect(b.page.locator('#gostopPointHistoryList')).toContainText('-700P');
     for (const view of [a, b, watcher]) await view.context.close();

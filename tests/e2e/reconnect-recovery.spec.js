@@ -80,7 +80,7 @@ test('오델로: 새로고침 뒤 같은 좌석·판·차례, 관전자 유지, 
   expect(state.me.seat).toBe('white');
   expect(state.game.board).toEqual(before.game.board);
   expect(state.game.turn).toBe('white');
-  await expect(b.page.locator('#myActionTimer')).toBeVisible(); // 내 차례 시계가 복구됨
+  await expect(b.page.locator('#roomHud.mine #roomHudBig')).toHaveText(/^\d+$/); // 내 차례 시계가 복구됨 (v1.10.244 U2: the HUD's big number)
   await expect.poll(async () => (await roomState(request, a.token)).game.paused).toBe(false);
   // The refreshed page keeps getting live updates and can act.
   const reply = state.game.legalMoves?.[0];
@@ -202,7 +202,7 @@ test('스무고개: 질문 차례에 새로고침해도 입력 단계와 원래 
 
   await refresh(challenger, '#twentyPanel');
   await expect(challenger.page.locator('#twentyQuestionForm')).toBeVisible();
-  await expect(challenger.page.locator('#myActionTimer')).toBeVisible();
+  await expect(challenger.page.locator('#roomHud.mine #roomHudBig')).toHaveText(/^\d+$/); // (v1.10.244 U2: my clock is the HUD's big number)
   state = await roomState(request, challenger.token);
   expect(state.game.phase).toBe('asking');
   // Same server deadline, not a fresh 60 seconds from the reconnect.

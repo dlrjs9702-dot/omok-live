@@ -515,6 +515,12 @@
 
       <section class="gameLayout">
         <div class="boardCard card">
+          <div id="roomHud" class="roomHud" hidden><!-- v1.10.244 U2 (한판마당 HUD): the room's one line while a hand is played -->
+            <span id="roomHudLeft" class="roomHudLeft"></span><!-- (the room's ‹ 게임관 comes here as ✕) -->
+            <div class="roomHudCenter"><div id="roomHudLabel" class="roomHudLabel"></div><div id="roomHudBig" class="roomHudBig"></div><div id="roomHudSub" class="roomHudSub"></div></div>
+            <div id="roomHudRight" class="roomHudRight"><span id="roomHudPill" class="hpPill hidden"></span></div><!-- (the room's own 🎮 · 💬 · ☰ come here while a hand is played) -->
+            <div class="roomHudBar" aria-hidden="true"><i id="roomHudFill"></i></div>
+          </div>
           <p id="boardNote" class="boardNote hidden" aria-hidden="true"></p><!-- G-틀①: the newest system line a moment over the board (read out by the system panel's own live list) -->
           <div class="statusRow">
             <div>
@@ -802,10 +808,6 @@
             <h4>정답 제출 기록</h4><div id="twentyGuessLog" class="twentyGuessLog"></div>
           </section>
 
-          <!-- A3 G1-6 빠른 말: a few set words (sent as room chat) while a hand is played -->
-          <div id="quickChat" class="quickChat" role="group" aria-label="빠른 말">
-            <button type="button" class="ghost tiny">잘 부탁해요</button><button type="button" class="ghost tiny">좋은 수!</button><button type="button" class="ghost tiny">잠깐만요</button><button type="button" class="ghost tiny">고마워요</button><button type="button" class="ghost tiny">한 판 더?</button><button type="button" class="ghost tiny">👍</button><button type="button" class="ghost tiny">😮</button><button type="button" class="ghost tiny">😂</button>
-          </div>
           <div class="mobileActions">
             <button id="mobileStartBtn" type="button" class="primary hidden"></button>
             <button id="resignBtn" class="danger subtle">기권</button>
@@ -836,6 +838,10 @@
               <div id="chatMessages" class="chatMessages" role="group" aria-label="방 채팅 기록"></div>
               <button type="button" id="chatJumpBtn" class="chatJumpBtn hidden">새 메시지 · 맨 아래로</button>
               <p id="chatLockNotice" class="chatLockNotice hidden" role="status">힌트 진행 중에는 채팅할 수 없습니다.</p>
+              <!-- A3 G1-6 빠른 말: a few set words (sent as room chat) while a hand is played -- v1.10.244 U2: in 💬, off the board -->
+              <div id="quickChat" class="quickChat" role="group" aria-label="빠른 말">
+                <button type="button" class="hpPill">잘 부탁해요</button><button type="button" class="hpPill">좋은 수!</button><button type="button" class="hpPill">잠깐만요</button><button type="button" class="hpPill">고마워요</button><button type="button" class="hpPill">한 판 더?</button><button type="button" class="hpPill">👍</button><button type="button" class="hpPill">😮</button><button type="button" class="hpPill">😂</button>
+              </div>
               <form id="chatForm" class="chatForm">
                 <input id="chatInput" maxlength="300" autocomplete="off" placeholder="메시지 입력" aria-label="채팅 메시지" />
                 <button id="chatSendBtn" class="secondary" type="submit">전송</button>
