@@ -3339,6 +3339,7 @@ body.placing .toast{top:16px;bottom:auto}
 body.roomPlaying .roomBar,body.roomPlaying .boardCard>.statusRow{display:none!important} /* (U2: the HUD's line in their place) */
 .roomHudRight>button{position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:1.05rem;box-shadow:none}
 .roomHudRight>button.hidden{display:none}
+.roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
 .roomHudRight>#roomMenuBtn{font-size:0}.roomHudRight>#roomMenuBtn::before{content:"☰";font-size:1.1rem}
 body.roomPlaying .gameMenuList #turnNotifyBtn{font-size:inherit;padding:10px 14px}body.roomPlaying .gameMenuList #turnNotifyBtn::before{content:none}
 .gameMenuList #roomInfoBtn{font-size:inherit;padding:10px 14px}.gameMenuList #roomInfoBtn::after{content:" 방 정보"}

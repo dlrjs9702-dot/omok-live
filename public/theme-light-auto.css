@@ -1505,6 +1505,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .roomHudBar i{background:var(--c1,var(--hp-blue))}
 :root[data-theme="light"] .roomHudBar i.low{background:var(--hp-loss)}
 :root[data-theme="light"] .roomHudRight>button{border:0;background:var(--hp-face);color:var(--hp-t1);box-shadow:none}
+:root[data-theme="light"] .roomHudLeft>#leaveRoomBtn{border:0;background:var(--hp-face);color:var(--hp-t1);box-shadow:none}
 :root[data-theme="light"] body.roomPlaying :is(.player,.teamPlayer){border:0;outline:0;background:var(--hp-face);background-image:none;box-shadow:none;color:var(--hp-t1)}
 :root[data-theme="light"] body.roomPlaying :is(.player,.teamPlayer).on{background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
 :root[data-theme="light"] body.roomPlaying :is(.player,.teamPlayer) small{color:var(--hp-t2)}

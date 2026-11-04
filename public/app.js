@@ -8726,7 +8726,7 @@
   const boardActionsSpot = document.querySelector('.boardCard > .mobileActions'); // (the actions just above the room's buttons; v1.10.244 U2: 빠른 말 left for 💬)
   // v1.10.244 U2: while a hand is played the room's own 🎮 · 💬 · ☰ sit in the HUD (their ids kept), ⓘ and 🔔 in ☰; home after
   const hudRight = byId('roomHudRight'); const roomMenuBtnEl = byId('roomMenuBtn'); const menuList = document.querySelector('#gameMenuDialog .gameMenuList');
-  const infoHome = document.createComment('roomInfoBtn'); roomInfoBtn.before(infoHome);
+  const infoHome = document.createComment('roomInfoBtn'); roomInfoBtn.before(infoHome); const leaveHome = document.createComment('leaveRoomBtn'); leaveRoomBtn.before(leaveHome);
   // (G-틀①: the panel folds while a hand is played -- the yut sticks' and the dice's throw goes under the board with the actions)
   const diceSection = document.getElementById('diceYutSection'); const diceMark = document.createComment('diceYutSection'); diceSection.before(diceMark);
   const guessMark = document.createComment('baseballGuessForm'); baseballGuessForm.before(guessMark);
@@ -8769,9 +8769,9 @@
     // never over the room's words while seats are chosen: in the room the round buttons are always in the bar)
     const inBar = on || !roomView.classList.contains('hidden');
     const roomBar = document.querySelector('header.roomBar'); if (roomBar) document.body.style.setProperty('--roomBarBottom', `${Math.max(8, roomBar.offsetTop + roomBar.offsetHeight + 8)}px`); /* (a phone's toast just under it, before a hand) */
-    if (on) { if (roomMenuBtnEl.parentElement !== hudRight) hudRight.append(gameInfoFloatBtn, chatFloatBtn, roomMenuBtnEl); if (roomInfoBtn.parentElement !== menuList) menuList.prepend(roomInfoBtn, turnNotifyBtn); }
+    if (on) { if (leaveRoomBtn.parentElement !== byId('roomHudLeft')) byId('roomHudLeft').append(leaveRoomBtn); if (roomMenuBtnEl.parentElement !== hudRight) hudRight.append(gameInfoFloatBtn, chatFloatBtn, roomMenuBtnEl); if (roomInfoBtn.parentElement !== menuList) menuList.prepend(roomInfoBtn, turnNotifyBtn); }
     else {
-      if (roomMenuBtnEl.parentElement !== topActions) topActions.append(roomMenuBtnEl);
+      if (roomMenuBtnEl.parentElement !== topActions) topActions.append(roomMenuBtnEl); if (leaveHome.nextSibling !== leaveRoomBtn) leaveHome.after(leaveRoomBtn);
       if (roomInfoBtn.parentElement === menuList) { infoHome.after(roomInfoBtn); topActions.prepend(turnNotifyBtn); }
       for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
     }
@@ -13371,7 +13371,6 @@
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('myTurn', Boolean(timer));
   }
-  byId('roomHudLeave').addEventListener('click', () => leaveRoomBtn.click());
 
   setInterval(() => {
     if (state?.gameType !== 'pictionary' || pictionaryPanel.classList.contains('hidden')) return;
