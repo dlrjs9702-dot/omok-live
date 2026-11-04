@@ -337,7 +337,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await visit('avatar', '옷가게', 62 - 12 - 10 + 1); /* v1.10.92 + 포차코 의상; B 46 + 산타 옷; X1 + 크리스마스 스웨터; 2026-10-21 변신 옷 정리: IP 12·동물 10 옷 빠짐 */ // v1.10.74: +19 original and 11 character outfits
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await expect(dialog.locator('.skinTitle.selected')).toHaveAttribute('aria-pressed', 'true');
-  await expect(dialog.locator('.skinTitle.selected')).toHaveCSS('outline-color', 'rgb(96, 165, 250)');
+  await expect(dialog.locator('.skinTitle.selected')).toHaveCSS('border-color', 'rgb(138, 106, 74)'); // (문제 기록 1103 11: on the island the shop is paper -- the chosen one its tag line, not the blue ring)
   await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
   await expectNoScriptError(page);
