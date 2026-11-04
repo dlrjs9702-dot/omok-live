@@ -50,6 +50,7 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
     if (await talking()) return true;
     await post(request, '/api/test/island/free-residents', token, {});
     await page.evaluate(async () => { const w = window.PlazaDebug().wanderers.find((o) => o.n === 1); if (w) await window.PlazaWarp(w.x + 1.2, w.z); }); await page.waitForTimeout(500);
+    if (!(await page.locator('#plazaHint').textContent()).includes('말 걸기')) return false; // (only before them: else SPACE would use another)
     if (isMobile) await page.locator('#islandActBtn').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
     await page.waitForTimeout(900); return talking();
   }, { timeout: 90000, intervals: [300] }).toBe(true);

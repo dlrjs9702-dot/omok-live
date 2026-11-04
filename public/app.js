@@ -2632,10 +2632,10 @@
     }
     const on = quickSlots.some(Boolean); quickBar.classList.toggle('hidden', !on); plazaStage.classList.toggle('quickOn', on);
   }
-  async function quickSave(next) {
-    const was = quickSlots; quickSlots = next; drawQuick();
-    try { quickSlots = (await api('/api/island/quick', { method: 'POST', body: JSON.stringify({ slots: next }) })).slots; } catch (error) { quickSlots = was; showToast(error.message); }
-    drawQuick();
+  let quickSeq = 0; let quickChain = Promise.resolve();
+  function quickSave(next) { // (Codex 236 검토: one after another, the latest's answer the one shown -- an earlier late one never undoes it)
+    const was = quickSlots; quickSlots = next; drawQuick(); const mine = ++quickSeq;
+    quickChain = quickChain.then(() => api('/api/island/quick', { method: 'POST', body: JSON.stringify({ slots: next }) })).then((r) => { if (mine === quickSeq) { quickSlots = r.slots; drawQuick(); } }, (error) => { if (mine === quickSeq) { quickSlots = was; drawQuick(); showToast(error.message); } });
   }
   function quickSet(k, kind) { quickPick = null; const next = quickSlots.map((x) => (x === kind ? null : x)); next[k] = kind; quickSave(next); showToast(`${k + 1}번 칸에 ${QUICK_NAMES[kind]}${josa(QUICK_NAMES[kind], '을', '를')} 넣었어요.`, 2000); } // (one thing in one slot: from another, moved)
   function quickInBag(k, b) { // (the bag open: a slot waiting takes the thing picked; else a full one offers 「빼기」)
@@ -2653,7 +2653,7 @@
   }
   async function useHeld() { // (상호작용 with a thing to use in hand: one of it, as the bag's 「쓰기」 was; the last one, out of the hand)
     const kind = heldTool; if (!SHOW_GOODS.has(kind)) return; const r = await useGood(kind); if (!r) return;
-    if (!quickHave(kind)) { heldTool = null; plaza.controller?.setHeldTool?.(null); const name = QUICK_NAMES[kind]; showToast(`${name}${josa(name, '을', '를')} 다 썼어요.`, 2500); drawQuick(); }
+    if (heldTool === kind && !quickHave(kind)) { heldTool = null; plaza.controller?.setHeldTool?.(null); /* (Codex 236 검토: another taken up meanwhile stays) */ const name = QUICK_NAMES[kind]; showToast(`${name}${josa(name, '을', '를')} 다 썼어요.`, 2500); drawQuick(); }
   }
   function loadQuick() { Promise.all([api('/api/island/quick'), api('/api/island/bag')]).then(([q, bag]) => { quickSlots = q.slots; quickItems = bag.items || []; drawQuick(); }).catch(() => {}); }
   document.addEventListener('keydown', (event) => { // 1~5 (the number row or the pad): on the island, not in a box to type in, no window but the bag

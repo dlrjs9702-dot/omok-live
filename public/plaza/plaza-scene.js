@@ -4624,7 +4624,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         if (who) { eventDoors[`player:${who[0]}`] = { x: who[1].c.root.position.x, z: who[1].c.root.position.z, name: '인사' }; best = `player:${who[0]}`; }
       }
     }
-    if (mySpace === 'island' && HELD_GOODS[heldTool] && !best && !gather && !fishing && !cycling) { const m = me.root.position; eventDoors['tool:use'] = { x: m.x, z: m.z, name: `${HELD_GOODS[heldTool]} 쓰기` }; best = 'tool:use'; } else if (best !== 'tool:use') delete eventDoors['tool:use']; // (v1.10.236: what is near first, as with the tools)
+    if (mySpace === 'island' && HELD_GOODS[heldTool] && !best && !gather && !fishing && !cycling) { const m = me.root.position; eventDoors['tool:use'] = { x: m.x, z: m.z, name: `${HELD_GOODS[heldTool]} 쓰기` }; best = 'tool:use'; } else { delete eventDoors['tool:use']; if (best === 'tool:use') best = null; } // (v1.10.236: what is near first, as with the tools; Codex 236 검토: never a stale one)
     if (heldTool && best && !fishing && handsFull(best)) { const m = me.root.position; eventDoors['tool:stow'] = { x: m.x, z: m.z, name: doorOf(best)?.sit ? '도구를 넣으면 앉을 수 있어요' : '도구를 넣으면 주울 수 있어요', plain: true }; best = 'tool:stow'; } else delete eventDoors['tool:stow'];
     // v1.10.42 낚시: by the water with nothing else near -- SPACE casts; while fishing it pulls in (or stops before the bite);
     // (Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」) the rod in hand to cast -- else how
