@@ -89,7 +89,7 @@
     omokTable: prop(PL.omokTable, 1.4), grandpa: off(PL.omokTable, -0.1, 2.8),
     mailbox: prop(row(3), 0.5), guide: prop({ x: PL.spawn.x - 2, z: PL.spawn.z + 2, face: [PL.spawn.x, PL.spawn.z] }, 0.45), /* (the guide beside 첫 접속's spot) */ birthday: prop(PL.birthday, 0.3),
   });
-  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.buskBenches, VILLAGE.buskLamp, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide, MUSEUM];
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.buskBenches, VILLAGE.buskLamp, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, /* (1103 9: no guide standing apart -- its spot open) */ MUSEUM];
   const MUSEUM = Object.freeze({ ...PL.museum, yaw: yawTo(PL.museum.x, PL.museum.z, [100, 46]), r: 5 }); // (its door toward 잔치마루's walk)
   // (문제 기록 3회차 15 「밭이 뜬금없어, 풍경과 유리. 밭 넓히고 컨셉 확실히」) a farm yard round the quest field: three more
   // plots beside it (2 x 2, 2 m between), a fence round them with its gate where the trail comes in (north), a tool shed

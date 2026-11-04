@@ -1783,7 +1783,8 @@ function islandProgress(kind, account, qty, where = null) { // (A2b: a promise -
 // islander. The 관공서's desks: a resting one's work at the desk beside it (총괄 ③)
 const POST_AT = { mall1: ['store', () => IslandStore.sectorPoint('mall:store')], mall2: ['fashion', () => IslandFashion.world(...IslandFashion.COUNTER.customer)], mall3: ['furniture', () => IslandFurniture.world(IslandFurniture.CHECKOUT.lx, IslandFurniture.CHECKOUT.lz - 1)], roof: ['petshop', () => IslandPetShop.world(IslandPetShop.COUNTER_KEEPER[0], IslandPetShop.COUNTER_KEEPER[1] - 2.3)], plaza: ['island', () => IslandTerrain.facilityDoor('attendance')], station: ['island', () => IslandQuests.STORIES.stationmaster.at],
   /* v1.10.234 the four fixed (IslandRoster.FIXED): where one talks to them from -- 한들 and 느티 by their 부탁's spot, 마루 at the gate, 김우성 before his desk */
-  farm: ['island', () => IslandQuests.STORIES.farmer.at], pavilion: ['island', () => IslandQuests.STORIES.grandpa.at], gate: ['island', () => TOWNHALL_GATE_OUT], jail: ['jail', () => IslandJail.world(IslandJail.TALK.lx, IslandJail.TALK.lz)] };
+  farm: ['island', () => IslandQuests.STORIES.farmer.at], pavilion: ['island', () => IslandQuests.STORIES.grandpa.at], gate: ['island', () => TOWNHALL_GATE_OUT], jail: ['jail', () => IslandJail.world(IslandJail.TALK.lx, IslandJail.TALK.lz)],
+  museum: ['museum', () => IslandMuseum.world(IslandMuseum.TALK.lx, IslandMuseum.TALK.lz)] /* (1103 9: the day's 관장 before the desk) */ };
 POST_AT.works = ['island', () => { const w = projectsState?.works; return w ? IslandProjects.SITES[w.id]?.keeper || null : null; }]; // (v1.10.222)
 const atPost = (pos, post) => { const p = POST_AT[post]; const w = p?.[1](); return Boolean(pos && w && (pos.space || 'island') === p[0] && Math.hypot(pos.x - w.x, pos.z - w.z) <= 3); };
 function atDesk(session, at, desk) { // desk: 'civil' | 'tax' | 'bank'

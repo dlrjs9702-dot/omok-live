@@ -1424,6 +1424,21 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     stationKeeper.root.visible = show;
     if (show) { dressPost(stationKeeper, 'station'); doors['station:keeper'] = { x: at.x, z: at.z, name: `${postName('station')} · 말 걸기` }; } else delete doors['station:keeper'];
   }
+  // (문제 기록 1103 9) 느티 at the 정자 every day: his 부탁's week he is its figure (quest_npc); the other weeks this one
+  // (한들 at the farm is every week's already)
+  let pavilionKeeper = null;
+  function setPavilion() {
+    const at = globalThis.IslandTerrain.VILLAGE?.grandpa; if (!at) return;
+    const n = roster?.posts.pavilion; const taken = [...eventObjs].some(([k, o]) => k.startsWith('ev:quest_npc:') && o.npc?.root.visible && Math.hypot(o.root.position.x - at.x, o.root.position.z - at.z) < 3);
+    const show = n != null && !taken;
+    if (show && !pavilionKeeper) {
+      const c = makeCharacter({ shirt: 0x6b7f4f, hair: 0xd8d2c8, skin: 0xf3d2b0 }); c.root.position.set(at.x, heightAt(at.x, at.z), at.z); c.root.rotation.y = facePath(at.x, at.z); scene.add(c.root);
+      c.home = { x: at.x, z: at.z, yaw: c.root.rotation.y, id: 'pavilion:keeper' }; pavilionKeeper = c; npcs.push(c);
+    }
+    if (!pavilionKeeper) return;
+    pavilionKeeper.root.visible = show;
+    if (show) { dressPost(pavilionKeeper, 'pavilion'); doors['pavilion:keeper'] = { x: at.x, z: at.z, name: `${postName('pavilion')} · 말 걸기` }; } else delete doors['pavilion:keeper'];
+  }
   // v1.10.222 섬 가꾸기 사업 (island-projects.js): what is at its works -- the fence round it, the sign 「… 공사 중 · 내일 열려요」, 바위
   // by it (the roster's works post, talked to there) -- and what is open: the new fountain in the old one's place, the flower
   // path's planters each with a tree in bloom, a sign before each (SPACE: who gave). Built once each; an open one stays.
@@ -1505,7 +1520,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function stepRoster(dt) {
     if ((rosterCheck -= dt) > 0) return; rosterCheck = 5;
     const r = rosterToday(); if (!r) { roster = null; return; } const turned = r.day !== roster?.day; roster = r;
-    for (const [post, c] of posted) if (turned || c.postN == null) dressPost(c, post); /* (the plaza's keeper: its first) */ if (turned) { setDesks(); addWanderers(); setStation(); } setWorksKeeper(); /* (v1.10.222) */ /* (C2: the day's walkers out, the station's keeper) */
+    for (const [post, c] of posted) if (turned || c.postN == null) dressPost(c, post); /* (the plaza's keeper: its first) */ if (turned) { setDesks(); addWanderers(); setStation(); setPavilion(); } setWorksKeeper(); /* (v1.10.222) */ /* (C2: the day's walkers out, the station's keeper) */
   }
   function makeCharacter({ shirt, hair, skin, hat = null, look = {} }) {
     const root = new THREE.Group();
@@ -2036,11 +2051,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let guide = null;
   function prepareGuide() {
     if (guide) return guide;
-    const G = globalThis.IslandTerrain.VILLAGE.guide;
-    const c = makeCharacter({ shirt: 0x4f9d8a, hair: 0x5a3a28, skin: 0xffdcbc }); c.root.position.set(G.x, heightAt(G.x, G.z), G.z); c.root.rotation.y = G.yaw + Math.PI; scene.add(c.root);
-    assets.dress(['character.guide', 'character.npc'], c); dressUp(c, { gender: 'female' }, { shirt: 0x4f9d8a });
-    c.home = { x: G.x, z: G.z, yaw: G.yaw + Math.PI, id: 'guide' }; npcs.push(c);
-    eventDoors.guide = { x: G.x - Math.sin(G.yaw) * 1.2, z: G.z - Math.cos(G.yaw) * 1.2, name: '안내 주민' };
+    // (문제 기록 1103 9 「안내 주민은 현재 근무표에 안 맞는데」) the guide's work is the attendance desk's day keeper's now --
+    // no one stands apart for it; the arrow stays
+    const c = null;
     const arrow = new THREE.Group(); arrow.visible = false; scene.add(arrow);
     const fallback = new THREE.Group(); const cone = mesh(new THREE.ConeGeometry(0.25, 0.6, 12), mat(0xffd166), 0, 0.05, 0, fallback); cone.rotation.x = -Math.PI / 2; arrow.add(fallback); assets.attach('together.guide_arrow', arrow, fallback);
     guide = { c, arrow, target: null };
@@ -2846,12 +2859,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     setXmas(fest, view?.snowmen); setCountdown(fest, view);
     const id = fest ? fest.id : `contest:${contest.kind}`; if (festival.on !== id) { // (its name on the stall's board: carved letters, read from in front -- the 간판 법칙)
       if (festival.sign) { festival.stall.remove(festival.sign); festival.sign.material.map?.dispose(); festival.sign.material.dispose(); festival.sign.geometry.dispose(); }
-      const santa = Boolean(fest?.id.startsWith('christmas'));
-      dressUp(festival.host, santa ? { gender: 'female', hat: 'avatar_winter_hat_santa', outfit: 'avatar_winter_outfit_santa' } : { gender: 'female', hat: 'avatar_hat_1' }, { shirt: 0xd9822b, hair: 0x4a3326, skin: 0xffe0c4, hat: 0xe2c27a });
+      const santa = Boolean(fest?.id.startsWith('christmas')); const hostN = fest ? globalThis.IslandRoster?.HOSTS[fest.id.split('-')[0]] : null; const hostLook = hostN != null ? globalThis.IslandAssets?.lookOf?.(hostN) : null;
+      if (hostLook) { const h = festival.host; if (h.postN !== hostN) { if (h.assetRoot || h.assetPending) assets.release(h); assets.dress([hostLook.model, 'character.npc'], h); h.postN = hostN; h.headTop = hostLook.headTop; h.resident = hostLook.resident; h.root.userData.resident = hostLook.resident; fitTag(h); } } // (1103 9: 「수확제 · 한들」 -- the table rests them those days)
+      else dressUp(festival.host, santa ? { gender: 'female', hat: 'avatar_winter_hat_santa', outfit: 'avatar_winter_outfit_santa' } : { gender: 'female', hat: 'avatar_hat_1' }, { shirt: 0xd9822b, hair: 0x4a3326, skin: 0xffe0c4, hat: 0xe2c27a });
       festival.sign = boardText(fest ? `${fest.id.startsWith('christmas') ? '🎄' : '🌾'} ${fest.name}` : `${contest.kind === 'fish' ? '🎣' : '🦋'} ${contest.name}`, 1.4, 0.36, 2.62, 0.295); festival.stall.add(festival.sign); festival.on = id;
     }
     const ahead = (p, d, sign) => ({ x: p.x + sign * Math.sin(p.yaw) * d, z: p.z + sign * Math.cos(p.yaw) * d }); // (a character's front is its +Z, the stall model's its -Z)
-    eventDoors['fest:host'] = { ...ahead(P.host, 1.1, 1), name: fest ? `${fest.host}과 이야기` : `${contest.name} · 주민과 이야기` };
+    const hostName = fest ? globalThis.IslandCast?.RESIDENTS[globalThis.IslandRoster?.HOSTS[fest.id.split('-')[0]]]?.name : null; // (1103 9: the host by name)
+    eventDoors['fest:host'] = { ...ahead(P.host, 1.1, 1), name: fest ? (hostName ? `${fest.name} · ${hostName} · 말 걸기` : `${fest.host}과 이야기`) : `${contest.name} · 주민과 이야기` };
     if (!fest) return;
     if (fest.shop?.length) eventDoors['fest:stall'] = { ...ahead(P.stall, 1.6, -1), name: `${fest.name} 가판대` }; // (X2 카운트다운: no stall goods)
     const F = globalThis.IslandTerrain.FARM; const harvest = fest.tasks?.find((t) => t.id === 'harvest');
@@ -3581,7 +3596,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const board = new THREE.Group(); board.position.set(MUS.BOARD.lx, 0, MUS.BOARD.lz); g.add(board);
     mesh(new THREE.BoxGeometry(1.3, 1.0, 0.08), mat(0x7a5a3a), 0, 1.35, 0, board); mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), mat(0x7a5a3a), 0, 0.45, 0, board);
     const curatorLook = { shirt: 0x5f7f4f, hair: 0x8f8a80, skin: 0xffdcbc, hat: 0x6b5a44 }; const curator = makeCharacter(curatorLook); curator.root.position.set(MUS.CURATOR.lx, 0, MUS.CURATOR.lz); curator.root.rotation.y = MUS.CURATOR.yaw; g.add(curator.root);
-    assets.dress(['character.npc'], curator); dressUp(curator, { gender: 'male' }, curatorLook); // (관장: an islander's clothes, green as a turtle's shell, grey hair under a brown hat)
+    if (!dressPost(curator, 'museum')) { assets.dress(['character.npc'], curator); dressUp(curator, { gender: 'male' }, curatorLook); } // (1103 9: the day's 한결·하람·이솔; the table off, 관장: an islander's clothes)
     const at = MUS.world(MUS.CURATOR.lx, MUS.CURATOR.lz); curator.home = { x: at.x, z: at.z, yaw: worldYaw(curator.root), id: 'museum:curator' };
     counterKeepers.push({ id: 'museum:curator', k: curator, spot: () => MUS.world(MUS.TALK.lx, MUS.TALK.lz) }); npcs.push(curator);
     for (const [lx, lz] of [[-8, 0], [0, 0], [8, 0]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
@@ -3797,7 +3812,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const [key, o] of eventObjs) if (!seen.has(key) && !o.leaving) removeEvent(key, o); // one being handed its thing goes after
     if (!returning.size) setCarry(me, carried?.id || null);
     carriedOwner = carried ? { x: carried.x, z: carried.z } : null;
-    questMarks(); setStation(); // (C2: a walking story islander's mark over them; the station's keeper when no 부탁 stands there)
+    questMarks(); setStation(); setPavilion(); // (1103 9: 느티 daily) (C2: a walking story islander's mark over them; the station's keeper when no 부탁 stands there)
     mapMarkers = [...eventObjs.keys()].filter((key) => (key.startsWith('ev:quest_npc:') ? !eventObjs.get(key).post && (eventObjs.get(key).mark || eventObjs.get(key).requested) : (key.startsWith('ev:photo:') || key.startsWith('ev:lost_owner:')) && eventDoors[key] || key.startsWith('ev:lost_item:') || key.startsWith('ev:quest_spot:'))).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }))
       .concat(carriedOwner ? [carriedOwner] : []); // whose it is: where to take it
     minimapAt = 0;
@@ -4595,7 +4610,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors[id] = { x: w.x, z: w.z, name: `${postName(post)} · 말 걸기` }; best = id; }
     }
     if (mySpace === 'jail' && !best) { const m = me.root.position; const w = JAIL.world(JAIL.TALK.lx, JAIL.TALK.lz); if (jailInmate === true || Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['jail:warden'] = { x: jailInmate === true ? m.x : w.x, z: jailInmate === true ? m.z : w.z, name: jailInmate === true ? '김우성 구치소장 · 반성문' : '김우성 구치소장' }; /* (사용자 2026-10-26: his name) */ best = 'jail:warden'; } } // (R4: from anywhere in the cell)
-    if (mySpace === 'museum' && !best) { const m = me.root.position; const w = MUS.world(MUS.TALK.lx, MUS.TALK.lz); if (Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['museum:curator'] = { x: w.x, z: w.z, name: '박물관 관장 · 말 걸기' }; best = 'museum:curator'; } } // v1.10.231
+    if (mySpace === 'museum' && !best) { const m = me.root.position; const w = MUS.world(MUS.TALK.lx, MUS.TALK.lz); if (Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['museum:curator'] = { x: w.x, z: w.z, name: `${postName('museum') ? `박물관 · ${postName('museum')}` : '박물관 관장'} · 말 걸기` }; best = 'museum:curator'; } } // v1.10.231
     if (mySpace === 'furniture' && !best && furnitureState) { const s = FURN.placeAt(me.root.position.x, me.root.position.z); const d = s && furnitureState.items[s.id]; if (d) { const w = FURN.world(s.lx, s.lz); eventDoors[`furn:${s.id}`] = { x: w.x, z: w.z, name: d.sold ? '팔렸어요 · 내일 새 가구가 들어와요' : `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`, plain: d.sold }; best = `furn:${s.id}`; } }
     for (const k of Object.keys(eventDoors)) if (k.startsWith('tank:') || k.startsWith('frame:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
