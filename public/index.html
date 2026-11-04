@@ -426,10 +426,10 @@
          게임, my summary, category chips and one card per game (public/gamehall-catalog.js); a card opens its sheet -->
     <section id="gamehallView" class="gamehallView hidden" aria-label="게임관">
       <header class="gamehallBar">
-        <button id="gamehallBackBtn" type="button" class="ghost tiny">‹ 섬으로</button>
+        <button id="gamehallBackBtn" type="button" class="hpPill big">‹ 섬으로</button>
         <h1>게임관</h1>
-        <button id="gamehallSoundBtn" type="button" class="ghost tiny" aria-pressed="true">🔊 효과음</button>
-        <button id="gamehallMenuBtn" type="button" class="ghost tiny" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴">☰</button>
+        <button id="gamehallSoundBtn" type="button" class="hpPill big" aria-pressed="true">🔊 효과음</button>
+        <button id="gamehallMenuBtn" type="button" class="hpX" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴">☰</button>
       </header>
       <div class="gamehallBody">
         <button id="gamehallToday" type="button" class="gamehallToday"></button>
@@ -446,10 +446,12 @@
         <div class="gameSheetHead">
           <span id="gameSheetArt" class="gameArt"></span>
           <div><h2 id="gameSheetName"></h2><small id="gameSheetMeta"></small></div>
-          <button id="gameSheetClose" type="button" class="ghost tiny" aria-label="닫기">✕</button>
+          <button id="gameSheetClose" type="button" class="hpX" aria-label="닫기">✕</button>
         </div>
         <p id="gameSheetIntro" class="gameSheetIntro"></p>
         <ol id="gameSheetHow" class="gameSheetHow"></ol>
+        <div id="gameSheetChoices" class="gameSheetChoices hidden"></div><!-- v1.10.243 U1: the level and options here (the one start screen) -->
+        <p id="gameSheetBest" class="gameSheetBest hidden"></p>
         <div id="gameSheetActions" class="gameSheetActions"></div>
         <div id="gameSheetCreate" class="gameSheetCreate hidden"></div>
         <section id="gameSheetRoomsBox" class="gameSheetRooms hidden" aria-label="이 게임의 공개방"><h3>공개방</h3><div id="gameSheetRooms" class="publicRoomList"></div></section>

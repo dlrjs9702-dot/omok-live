@@ -2001,8 +2001,8 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .rankingMe{margin:8px 0 0;font-weight:800}
 /* v1.10.73 게임관 전면 개편 (DESIGN.md 「게임관·게임방」): the game hall's own screen in the shared palette; a game's two
    colours only on its card, banner and icon (--g1, --g2 from public/gamehall-catalog.js, white text on both) */
-.gamehallView{position:fixed;inset:0;z-index:30;overflow-y:auto;background:radial-gradient(circle at 15% 10%,#1f2937 0,#0b1220 42%,#050914 100%);color:#f8fafc}
-.gamehallBar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(15,23,42,.94);border-bottom:1px solid #263246}
+.gamehallView{position:fixed;inset:0;z-index:30;overflow-y:auto;background:radial-gradient(circle at 15% 10%,var(--hp-bg2) 0,var(--hp-bg) 46%);color:var(--hp-t1)} /* (v1.10.243 U1: the 한판마당 tokens) */
+.gamehallBar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--hp-glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--hp-line)}
 .gamehallBar h1{flex:1;margin:0;font-size:1.1rem;font-weight:900}
 .gamehallBody{width:min(100%,1180px);margin:0 auto;padding:12px 12px 28px;display:grid;gap:12px}
 .gamehallToday{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:22px;text-align:left;color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2));min-height:92px}
@@ -2013,36 +2013,40 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .gameArt{flex:none;width:56px;height:56px;border-radius:14px;background:rgba(0,0,0,.2);display:grid;place-items:center;color:#fff}
 .gameArt svg{width:42px;height:42px}
 .gamehallSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0}
-.gamehallSummary div{padding:10px;border-radius:12px;background:#0f172a;border:1px solid #273449;text-align:center}
-.gamehallSummary dt{font-size:.7rem;color:#94a3b8}
-.gamehallSummary dd{margin:2px 0 0;font-size:1.05rem;font-weight:900;font-variant-numeric:tabular-nums}
+.gamehallSummary div{padding:10px;border-radius:var(--hp-r-md);background:var(--hp-face);text-align:center}
+.gamehallSummary dt{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--hp-t2)}
+.gamehallSummary dd{margin:2px 0 0;font-size:1.25rem;font-weight:900;font-variant-numeric:tabular-nums}
 .gamehallChips{display:flex;gap:6px;overflow-x:auto;padding:2px;scrollbar-width:thin}
-.gamehallChip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:#0f172a;color:#cbd5e1;border:1px solid #334155;font-size:.8rem}
-.gamehallChip span{font-size:.68rem;color:#94a3b8}
-.gamehallChip[aria-selected="true"]{background:#f8fafc;color:#111827;border-color:#f8fafc}
-.gamehallChip[aria-selected="true"] span{color:#334155}
+.gamehallChip{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 14px;border-radius:99px;background:var(--hp-face);color:var(--hp-t1);border:0;font-size:13px;font-weight:800}
+.gamehallChip span{font-size:11px;color:var(--hp-t2)}
+.gamehallChip[aria-selected="true"]{background:var(--hp-t1);color:var(--hp-bg)}
+.gamehallChip[aria-selected="true"] span{color:var(--hp-bg);opacity:.7}
 .gamehallGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .gameCard{position:relative;display:grid;justify-items:start;align-content:start;gap:6px;min-height:150px;padding:14px;border-radius:22px;text-align:left;color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2))}
 .gameCard strong{font-size:1rem;font-weight:900}
 .gameCard small{font-size:.7rem;font-weight:700;color:#fff;line-height:1.35}
 .gameCard.soon{opacity:.7}
 .gameCardFlag{position:absolute;top:10px;right:10px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.35);font-style:normal;font-size:.66rem;font-weight:900}
-.gamehallToday:focus-visible,.gameCard:focus-visible,.gamehallChip:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+.gamehallToday:focus-visible,.gameCard:focus-visible,.gamehallChip:focus-visible,.hpBtn:focus-visible,.hpPill:focus-visible,.hpX:focus-visible{outline:3px solid var(--hp-blue);outline-offset:2px}
 .gamehallRooms{display:grid;gap:10px}
 .gamehallRooms .joinForm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.gameSheet{width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 32px);padding:0 0 16px;border:1px solid #334155;border-radius:22px;background:#111827;color:#f8fafc;overflow-y:auto}
-.gameSheet::backdrop{background:rgba(2,6,23,.6)}
+.gameSheet{--c1:var(--g1);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 32px);padding:0 0 16px;border:0;border-radius:var(--hp-r-xl);background:var(--hp-bg2);color:var(--hp-t1);overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)} /* (U1: its main button in the game's colour) */
+.gameSheet::backdrop{background:rgba(11,12,26,.6);backdrop-filter:blur(4px)}
 .gameSheetHead{display:flex;align-items:center;gap:12px;padding:14px 16px;color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2))}
 .gameSheetHead>div{flex:1;display:grid;gap:2px}
 .gameSheetHead h2{margin:0;font-size:1.2rem;font-weight:900}
 .gameSheetHead small{font-size:.74rem;font-weight:700;color:#fff}
-.gameSheetHead .ghost{background:rgba(0,0,0,.25);color:#fff;border-color:rgba(255,255,255,.35)}
+.gameSheetHead .hpX{background:rgba(0,0,0,.25);color:#fff;box-shadow:none}
 .gameSheet>:not(.gameSheetHead){margin-left:16px;margin-right:16px}
 .gameSheetIntro{margin-top:14px;margin-bottom:0;font-weight:800}
-.gameSheetHow{margin-top:8px;margin-bottom:0;padding-left:20px;display:grid;gap:4px;font-size:.84rem;line-height:1.45;color:#cbd5e1}
+.gameSheetHow{margin-top:8px;margin-bottom:0;padding-left:20px;display:grid;gap:4px;font-size:14px;line-height:1.45;color:var(--hp-t2)}
+.gameSheetChoices{display:grid;gap:8px;margin-top:14px} /* (U1: the level and options -- pills, the one start screen) */
+.gameSheetChoice{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.gameSheetChoice>small{flex-basis:100%;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--hp-t2)}
+.gameSheetBest{margin:10px 0 0;font-size:14px;font-weight:800;color:var(--hp-gold)}
 .gameSheetActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .gameSheetActions button{flex:1 1 120px}
-.gameSheetCreate{margin-top:12px;padding-top:12px;border-top:1px solid #273449}
+.gameSheetCreate{margin-top:12px;padding-top:12px;border-top:1px solid var(--hp-line)}
 .gameSheetCreate .divider,.gameSheetCreate .joinForm,.gameSheetCreate .selectedGameText{display:none}
 .gameSheetRooms{margin-top:14px}
 .gameSheetRooms h3{margin:0 0 6px;font-size:.84rem}

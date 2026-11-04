@@ -52,3 +52,18 @@ test('밝은 테마: 게임 그림·의도한 곳 밖에 변환 안 된 어두�
   const contrast = (a, b) => { const L = (h) => { const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }; const [x, y] = [L(a), L(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   for (const bg of [SURFACE['0e1729'], SURFACE['172033']]) for (const text of ['33281d', TEXT['94a3b8'], TEXT['93c5fd'], TEXT.e2e8f0]) assert.ok(contrast(bg, text) >= 4.5, `#${text} on #${bg}`);
 });
+
+// v1.10.243 게임관 UI 통일 U1: the game hall on the 한판마당 tokens -- the light set by the theme (not kept dark), the hall's own
+// rules on the tokens only, and its text readable on its light surface
+test('밝은 테마: 게임관은 --hp-* 밝은 한 벌을 쓰고 KEEP_DARK가 아니다', () => {
+  const css = fs.readFileSync(path.join(root, 'public', 'styles.css'), 'utf8');
+  const set = (sel) => { const line = css.split('\n').find((l) => l.startsWith(`${sel}{`) && l.includes('--hp-bg:')) || ''; return Object.fromEntries([...line.matchAll(/--(hp-[\w-]+):([^;}]+)/g)].map((m) => [m[1], m[2].trim()])); };
+  const dark = set(':root'); const light = set(':root[data-theme="light"]');
+  for (const k of ['hp-bg', 'hp-bg2', 'hp-t1', 'hp-t2', 'hp-face', 'hp-gold', 'hp-win', 'hp-loss', 'hp-blue']) { assert.ok(dark[k] && light[k], k); assert.notEqual(dark[k], light[k], k); }
+  for (const sel of ['.gamehallView', '.gameSheet', '.gamehallChip', '.hpBtn', '.hpPill']) assert.ok(!KEEP_DARK.test(sel) && !GAME_ART.test(sel), sel);
+  for (const sel of ['.gamehallView{', '.gameSheet{', '.gamehallSummary div{', '.gamehallChip{']) { const rule = css.slice(css.indexOf(`\n${sel}`)).split('}')[0]; assert.match(rule, /var\(--hp-/, sel); assert.doesNotMatch(rule.replace(/box-shadow:[^;]*/, ''), /#[0-9a-fA-F]{3,6}\b/, sel); }
+  const L = (h) => { const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const contrast = (a, b) => { const [x, y] = [L(a), L(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  assert.ok(contrast(light['hp-t1'].slice(1), light['hp-bg2'].slice(1)) >= 7); assert.ok(contrast(dark['hp-t1'].slice(1), dark['hp-bg2'].slice(1)) >= 7);
+  assert.ok(contrast(light['hp-gold'].slice(1), light['hp-bg2'].slice(1)) >= 3, 'gold on the light sheet');
+});
