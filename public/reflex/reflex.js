@@ -130,6 +130,16 @@ export function mount({ api, onBack, pieceSkin = null }) {
     menu.querySelector('.reflexCard')?.focus();
   }
 
+  // v1.10.243 U1: a game's choices as the game hall's sheet shows them -- the level (or the AI's) and each option, the one
+  // chosen marked; key 'level' or the option's id
+  function choicesOf(g) {
+    const out = [];
+    if (g.levels || g.mode === 'versus') out.push({ key: 'level', title: g.mode === 'versus' ? 'AI 난이도' : g.levelTitle || '난이도', value: levelOf(g), items: (g.levelIds || ['easy', 'normal', 'hard']).map((id) => [id, g.levelNames?.[id] || (g.mode === 'versus' ? `AI ${LEVEL_NAMES[id]}` : LEVEL_NAMES[id])]) });
+    for (const o of (g.levels || g.mode === 'versus') ? g.options || [] : []) out.push({ key: o.id, title: o.title, value: optionOf(g, o), items: o.items });
+    return out;
+  }
+  const gameById = (id) => Object.values(SETS).flatMap((s) => s.games).find((g) => g.id === id) || null;
+  const setOf = (g) => Object.values(SETS).find((s) => s.games.includes(g));
   function showGame(g) {
     shown = 'game'; game = g; startSeq += 1;
     const box = el('div', 'reflexGame');
@@ -178,7 +188,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       if (set === SETS.reflex) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) })).id;
       else if (set === SETS.cards) ({ id, seed } = await api('/api/solo/cards/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) }));
       else if (mode === 'daily') await api('/api/solo/puzzle/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) });
-    } catch (error) { if (seq === startSeq) status.textContent = error.message; return; }
+    } catch (error) { if (seq === startSeq) { status.textContent = error.message; menu.classList.remove('hidden'); } return; } /* (U1: started from the sheet -- the menu shows why) */
     if (seq !== startSeq || view.classList.contains('hidden')) return;
     runId = id; runLevel = level; shown = 'play'; game = g;
     frame.classList.toggle('wideFrame', set === SETS.cards || set === SETS.puzzle || g.id === 'stairs'); // A3 G4: the card games and puzzles use a PC's width (game.css); R7 하늘 계단 its sky too (PC·휴대폰 같게)
@@ -209,9 +219,9 @@ export function mount({ api, onBack, pieceSkin = null }) {
       for (const [k, v] of r.stats) { const s = el('div', 'reflexStat'); s.append(el('b', null, String(v)), el('span', null, k)); stats.append(s); }
       box.append(stats);
     }
-    const again = button('primary', '다시 하기', () => start(g, line));
+    const again = button('hpBtn go', '다시 하기', () => start(g, line));
     box.append(el('div', 'reflexActions'));
-    box.lastChild.append(again, button('ghost', direct ? (questMode ? '섬으로' : '게임관으로') : '다른 게임', () => { if (direct) { goBack(); return; } stopGame(); showList(); menu.classList.remove('hidden'); result.classList.add('hidden'); }));
+    box.lastChild.append(again, button('hpBtn', direct ? (questMode ? '섬으로' : '게임관으로') : '다른 게임', () => { if (direct) { goBack(); return; } stopGame(); showList(); menu.classList.remove('hidden'); result.classList.add('hidden'); }));
     result.replaceChildren(box); result.classList.remove('hidden');
     again.focus();
     if (set === SETS.puzzle) return r.proof && sendPuzzle(g, level, score, r.proof, line, r.rec);
@@ -259,7 +269,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
   }
 
   function quit() { // a round left before its end: not reported, so not paid
-    if (questMode) { goBack(); return; } // v1.10.80: a quest's round left -- straight back to the island
+    if (direct) { goBack(); return; } // v1.10.80: a quest's round left -- straight back to the island (v1.10.243 U1: the hall's too, to its sheet's hall)
     stopGame(); runId = null; frame.classList.remove('playing');
     result.classList.add('hidden'); menu.classList.remove('hidden');
     showGame(game);
@@ -274,7 +284,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     if (shown === 'play' && set === SETS.puzzle) return; // a puzzle's own Esc closes its hint (✕ leaves it)
     event.preventDefault();
     if (shown === 'play') quit();
-    else if (shown === 'result' && questMode) goBack();
+    else if (shown === 'result' && direct) goBack();
     else if (shown === 'result') { stopGame(); result.classList.add('hidden'); menu.classList.remove('hidden'); showGame(game); }
     else if (shown === 'game') { if (direct) goBack(); else showList(); }
     else goBack();
@@ -286,9 +296,11 @@ export function mount({ api, onBack, pieceSkin = null }) {
       set = SETS[which] || SETS.reflex; info = null;
       const one = set.games.find((g) => g.id === gameId); direct = Boolean(one);
       if (one) showGame(one); else showList();
-      const quest = one && (launch?.place === 'quest' || launch?.place === 'contest'); // a quest's round: no choosing, it starts once the info is in (v1.10.238: the tent's too)
+      // a play() on one game starts at once once the info is in -- a quest's or the tent's at its own level, the hall's at what its
+      // sheet chose (v1.10.243 U1: the sheet the one start screen; this menu stays for the classic lobby's lists)
+      const quest = Boolean(one && launch);
       contestPlay = quest && launch.place === 'contest' ? { level: launch.level, end: launch.contest?.end ?? 0, offset: launch.contest?.offset ?? 0 } : null; paintContest();
-      questMode = Boolean(quest); if (quest) showGame(one); // (v1.10.80: its way back says 섬으로)
+      questMode = quest && (launch.place === 'quest' || launch.place === 'contest'); if (quest) { showGame(one); menu.classList.add('hidden'); } // (v1.10.80: its way back says 섬으로)
       const go = () => start(one, menu.querySelector('.reflexStatus'));
       try { // the list is usable meanwhile: redraw only what still shows (Codex review)
         if (!set.info) { if (quest) go(); return; }
@@ -301,6 +313,14 @@ export function mount({ api, onBack, pieceSkin = null }) {
       } catch (error) { menu.append(el('p', 'reflexStatus', error.message)); if (quest) settle({ game: one.id, done: false }); }
     },
     stop,
+    // (U1) the sheet's: a game's choices, one picked, my best at the chosen level (null: none, or not a recorded game)
+    choices(gameId) { const g = gameById(gameId); return g ? choicesOf(g) : null; },
+    choose(gameId, key, value) { remember(key === 'level' ? gameId : `${gameId}.${key}`, value); },
+    async best(gameId) {
+      const g = gameById(gameId); const s = g && setOf(g); if (!s?.info) return null;
+      const got = await api(s.info); const b = got?.records?.[g.id]?.[levelOf(g)]?.best;
+      return b == null ? '아직 기록 없음' : `내 최고 ${fmtScore(b, g.unit)}`;
+    },
     // the 게임 실행 규약 (above): which set holds the game, opened on it; the answer comes when its round ends
     play(gameId, { level = null, goal = null, place = 'gamehall', contest = null } = {}) {
       const which = Object.keys(SETS).find((k) => SETS[k].games.some((g) => g.id === gameId));

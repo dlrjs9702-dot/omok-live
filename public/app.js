@@ -2276,10 +2276,15 @@
   // v1.10.70 카드 게임 · 「‹ 뒤로」 (사용자 2026-10-12): back to choosing a game -- on the island the 게임관 window opens again
   // (on its 싱글게임 tab, the one last shown), as when leaving a room
   let hanpanBack = () => showView('lobby'); // where the screen opened last goes back to
-  async function loadHanpan(onBack) {
+  // (v1.10.243 U1: the module alone, for the sheet's choices -- no screen change)
+  async function mountHanpan() {
     try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack(), pieceSkin: async (gameId) => { // A3 G3-2: my equipped 오목 돌 in the AI practice too
       if (gameId !== 'gomoku') return null; try { return (await api('/api/skins')).equipped?.omok?.piece || null; } catch { return null; } } }); }
     catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
+    return true;
+  }
+  async function loadHanpan(onBack) {
+    if (!(await mountHanpan())) return false;
     hanpanBack = () => { loadPoints(); onBack(); };
     showView('reflex');
     return true;
@@ -2394,25 +2399,44 @@
     byId('gameSheetIntro').textContent = g.credit ? `${g.intro} (${g.credit})` : g.intro; // (두 세계 영웅전: its maker, public/herosurv/NOTICE.md)
     byId('gameSheetHow').replaceChildren(...g.how.map((line) => hallEl('li', null, line)));
     const actions = byId('gameSheetActions'); actions.replaceChildren();
-    const act = (label, cls, fn) => { const b = hallEl('button', cls, label); b.type = 'button'; b.addEventListener('click', fn); actions.append(b); return b; };
+    const act = (label, cls, fn) => { const b = hallEl('button', `hpBtn ${cls}`, label); b.type = 'button'; b.addEventListener('click', fn); actions.append(b); return b; }; /* (U1: the hall's buttons) */
     const create = byId('gameSheetCreate'); create.classList.add('hidden');
     if (g.room) {
-      if (!g.soon) act('빠른 시작', 'primary', () => quickStart(g));
-      act('방 만들기', g.soon ? 'primary' : 'secondary', () => {
+      if (!g.soon) act('빠른 시작', 'go cta', () => quickStart(g));
+      act('방 만들기', g.soon ? 'go cta' : '', () => {
         selectGame(g.room); hallBorrow(document.querySelector('.roomCreatePane'), create); create.classList.remove('hidden');
         create.querySelector('input:checked, input, button')?.focus();
       });
     }
-    if (g.ai) act('AI 연습', 'ghost', () => { gameSheet.close(); playGame(g.ai); });
-    if (g.set) act('시작', 'primary', () => { gameSheet.close(); playGame(g.id); });
-    if (g.launch) act('시작', 'primary', () => { gameSheet.close(); if (g.launch === 'mines') openMines(); else byId('soloHerosurvBtn').click(); });
+    if (g.ai) act('AI 연습', '', () => { gameSheet.close(); playGame(g.ai); });
+    if (g.set) act('시작', 'go cta', () => { gameSheet.close(); playGame(g.id); });
+    if (g.launch) act('시작', 'go cta', () => { gameSheet.close(); if (g.launch === 'mines') openMines(); else byId('soloHerosurvBtn').click(); });
     byId('gameSheetRule').textContent = g.room ? gameRules[g.room] || '' : '';
     renderGameGuide(byId('gameSheetGuide'), g.room || (g.launch === 'mines' ? 'minesweeper' : g.id));
     const guide = byId('gameSheetGuideBox'); guide.open = false;
     guide.classList.toggle('hidden', !byId('gameSheetRule').textContent && !byId('gameSheetGuide').childElementCount);
     if (!gameSheet.open) gameSheet.showModal();
-    renderGamehallRooms();
+    renderGamehallRooms(); sheetChoices(g);
     actions.querySelector('button')?.focus();
+  }
+  // v1.10.243 U1 (한판마당: one sheet, 시작 opens the round at once): a solo game's level and options as pills, and my best at
+  // that level (a room game with AI 연습: that practice's) -- the round then starts at what is chosen here
+  async function sheetChoices(g) {
+    const box = byId('gameSheetChoices'); const bestLine = byId('gameSheetBest'); box.replaceChildren(); box.classList.add('hidden'); bestLine.classList.add('hidden');
+    const id = g.set ? g.id : g.ai; if (!id || !(await mountHanpan()) || sheetGame !== g) return;
+    const groups = reflexGames.choices(id); if (!groups) return;
+    for (const o of groups) {
+      const title = g.set ? o.title : `AI 연습 · ${o.title}`; /* (a room game's: its practice's, not the room's) */
+      const row = hallEl('div', 'gameSheetChoice'); row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', o.title); row.append(hallEl('small', null, title));
+      for (const [value, label] of o.items) {
+        const b = hallEl('button', 'hpPill big', label); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(o.value === value)); b.classList.toggle('on', o.value === value);
+        b.addEventListener('click', () => { reflexGames.choose(id, o.key, value); sheetChoices(g); }); row.append(b);
+      }
+      box.append(row);
+    }
+    box.classList.toggle('hidden', !groups.length);
+    const best = await reflexGames.best(id).catch(() => null); if (sheetGame !== g || best == null) return;
+    bestLine.textContent = best; bestLine.classList.remove('hidden');
   }
   // 빠른 시작: the first room of this game still taking players, otherwise a new public room with the usual settings
   async function quickStart(g) {
