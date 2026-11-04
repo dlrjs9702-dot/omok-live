@@ -83,6 +83,7 @@ require('./lib/island-items').setSizeHook(() => [Economy.value('fish:sizeMin'), 
 const bagSlots = new Map();
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
+const IslandDaily = require('./lib/island-daily'); // v1.10.242 주민 날마다 말
 const IslandRoster = require('./public/plaza/island-roster'); // v1.10.215 주민 근무표
 const IslandProjects = require('./public/plaza/island-projects'); // v1.10.222 섬 가꾸기 사업
 const IslandStory = require('./public/plaza/island-story'); // S1 섬 이야기
@@ -1890,6 +1891,9 @@ function plazaSafeSpot(x, z) {
 // everyone passes unless a test asks for the real rule (townhallStrict).
 const townhallPass = new Set(); const townhallStrict = new Set(); // session tokens
 const fishCasts = new Map(); // v1.10.42 낚시: session token -> { id, species, biteAt, at, done }
+// v1.10.242 주민 날마다 말: when I last caught a 희귀·대어 (account -> ms) and each islander's last daily line to me (`account|n`) --
+// ponytail: in memory, a restart forgets both (a 10-minute news, a no-repeat), a store when they must outlive one
+const bigCatchAt = new Map(); const dailyLast = new Map(); let dailyAlways = false; let dailySnow = false; // (tests: the day's line every time, its first; snow where one stands)
 // v1.10.44 앉기·이모트 (IDEAS ④): who sits where (first come), and the acts a pose may carry
 const SEATS = new Map([...IslandTerrain.plazaProps().seats, ...IslandFashion.SEATS].map((s) => [s.id, s])); // (v1.10.211: the 꾸미기 mirrors' two chairs)
 const seatTaken = new Map(); // seat id -> session token
@@ -6462,6 +6466,7 @@ async function requestHandler(req, res) {
     const best = Boolean(wrote?.doc) || seen?.cast === c.id;
     c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: IslandItems.fishPrice(itemId, c.size), size: c.size, best, firstTime: dex.first, bag: outcome.bag, tool: outcome.worn || null };
     if (outcome.applied) { islandProgress('fish', account, 1); eventContestScore(account, 'fish', Math.round(f.price / 100)); } // (E1: a round's)
+    if (outcome.applied && (f.grade === 'rare' || f.grade === 'big')) bigCatchAt.set(account, nowMs()); // (v1.10.242: the islanders hear of it for 10 minutes)
     questBagNow(account, outcome.bag);
     return sendJson(res, 200, c.done);
   }
@@ -6793,6 +6798,11 @@ async function requestHandler(req, res) {
     starShiftMs = IslandStars.starOf(slot).at + 500 - t + (Number(body.plusMs) || 0); return sendJson(res, 200, { ok: true, id: IslandStars.starOf(slot).id });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices/due' && req.method === 'POST') { await postDueNotices(); await noticeEvents(); return sendJson(res, 200, { ok: true }); } // (tests: not waiting 30 s)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/daily' && req.method === 'POST') { // (v1.10.242 tests and photos: the daily lines without their 35%, a big catch of mine just now)
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); dailyAlways = Boolean(body.always); dailySnow = Boolean(body.snow);
+    if (body.bigCatch) bigCatchAt.set(pointAccountForSession(session), nowMs()); else if (body.bigCatch === false) bigCatchAt.delete(pointAccountForSession(session));
+    return sendJson(res, 200, { ok: true, always: dailyAlways });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'after' (its tent down: none on), 'reset'
     const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.dayContest(nowMs(), cfg); /* (today's) */
     contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : body.to === 'after' ? k.end + IslandContest.TENT_AFTER_MS + 60000 - nowMs() : 0;
@@ -7493,9 +7503,22 @@ async function requestHandler(req, res) {
         }
       }
     }
+    // v1.10.242 주민 날마다 말 (lib/island-daily): something of mine first (once a day to each islander), else now and then the day's
+    // 섬 대회, snow where I stand, the season of my quarter; my last visit (the day I last talked to an islander) kept for 「오랜만이에요」
+    let daily = null;
+    if (!r && topic === null) {
+      const mem = (await pointStore.questDoc(account, 'resmem')).doc || {}; const v = mem.visit || {}; const prev = v.last === day ? v.prev : v.last;
+      const h = await homeOf(account).catch(() => null); const won = contest.phase === 'done' ? await pointStore.worldValue('soloContestResult') : null;
+      const season = pos ? IslandTerrain.seasonAt(pos.x, pos.z, now) : null; const snow = dailySnow || (weather === 'rain' && season === 'winter'); /* (as the island draws it: rain in the winter quarter is snow) */
+      if (snow && moods.includes('rain')) moods.splice(moods.indexOf('rain'), 1);
+      const key = `${account}|${n}`;
+      daily = IslandDaily.dailyLine(n, { told: mem.daily?.[n] === day, mine: { bigCatch: nowMs() - (bigCatchAt.get(account) || -Infinity) < 600000, newHome: Boolean(h && (kstDate(h.at || 0) === day || h.upgradeDay === day)), longAway: Boolean(prev) && Date.parse(day) - Date.parse(prev) > 3 * 86400000 }, contest: { phase: contest.phase, game: String(contest.name || '').replace(/ 대회$/, ''), winner: won?.id === contest.id ? won.winner?.name || null : null }, snow, season, me: String(session.label || ''), last: dailyAlways ? null : dailyLast.get(key) }, dailyAlways ? () => 0 : Math.random);
+      if (daily) dailyLast.set(key, daily.raw);
+      if (v.last !== day || daily?.mine) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, visit: doc.visit?.last === day ? doc.visit : { prev: doc.visit?.last || null, last: day }, ...(daily?.mine ? { daily: { ...(doc.daily || {}), [n]: day } } : {}) } })).catch(() => {});
+    }
     // (R2 ② 기억하는 주민: now and then, the last thing done together)
-    const memory = !r && topic === null && level >= 1 && Math.random() < 0.35 ? IslandAffinity.memoryLine((await pointStore.questDoc(account, 'resmem')).doc, n, day) : null;
-    const say = r ? r.say : topic === 'errand' ? IslandCast.say(n, 'errandNone') : [memory ? IslandCast.fill(memory, String(session.label || '')) : IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
+    const memory = !daily && !r && topic === null && level >= 1 && Math.random() < 0.35 ? IslandAffinity.memoryLine((await pointStore.questDoc(account, 'resmem')).doc, n, day) : null;
+    const say = r ? r.say : topic === 'errand' ? IslandCast.say(n, 'errandNone') : [daily ? daily.line : memory ? IslandCast.fill(memory, String(session.label || '')) : IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
     const after = await pointStore.affinityAdd(account, day, gains); const points = after[n] || 0; // (daily: the first talk of the day only, whatever is chosen)
     // (Q) an errand offered: its note -- what, where they are usually seen, what it pays, today only
     const offer = r?.offer ? { id: r.offer.id, title: IslandErrands.title(r.offer), where: r.offer.where || null, reward: errandPay(r.offer, before), until: '오늘 안에' } : null;
