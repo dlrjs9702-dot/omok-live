@@ -1960,7 +1960,7 @@
       plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
-      plaza.controller.setHeldTool?.(heldTool); loadQuick(); // (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
+      plaza.controller.setHeldTool?.(heldTool); loadQuick(); setTimeout(islandNoticeOnce, 1500); // (1103 4: a note once) (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); refreshProjects(); // (v1.10.215: today's table on; v1.10.222 섬 가꾸기)
@@ -2654,6 +2654,14 @@
   async function useHeld() { // (상호작용 with a thing to use in hand: one of it, as the bag's 「쓰기」 was; the last one, out of the hand)
     const kind = heldTool; if (!SHOW_GOODS.has(kind)) return; const r = await useGood(kind); if (!r) return;
     if (heldTool === kind && !quickHave(kind)) { heldTool = null; plaza.controller?.setHeldTool?.(null); /* (Codex 236 검토: another taken up meanwhile stays) */ const name = QUICK_NAMES[kind]; showToast(`${name}${josa(name, '을', '를')} 다 썼어요.`, 2500); drawQuick(); }
+  }
+  // (문제 기록 1103 4) 한 번 공지: the first not seen, on paper, once -- seen when it shuts (「알겠어요」 or let go)
+  async function islandNoticeOnce() {
+    if (!document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]')) return;
+    let n = null; try { n = (await api('/api/island/notices')).notices?.[0]; } catch {} if (!n || document.querySelector('dialog[open]')) return;
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const card = el('section', 'card visitCard islandNotice'); card.append(el('p', '', n.text)); const ok = el('button', 'primary', '알겠어요'); ok.type = 'button'; ok.addEventListener('click', () => plazaDialog.close()); card.append(ok);
+    openPlazaWindow(n.title, [card]); plazaDialog.addEventListener('close', () => api('/api/island/notices', { method: 'POST', body: JSON.stringify({ id: n.id }) }).catch(() => {}), { once: true });
   }
   function loadQuick() { Promise.all([api('/api/island/quick'), api('/api/island/bag')]).then(([q, bag]) => { quickSlots = q.slots; quickItems = bag.items || []; drawQuick(); }).catch(() => {}); }
   document.addEventListener('keydown', (event) => { // 1~5 (the number row or the pad): on the island, not in a box to type in, no window but the bag

@@ -690,6 +690,8 @@ const ACCOUNT_TTL_MS = 12 * 60 * 60 * 1000;
 const MESSENGER_ROOM_MAX = 30; const MESSENGER_ROOMS_MAX = 20; const MESSENGER_TEXT_MAX = 500; // v1.10.78 메신저
 let messengerSlowMs = 0; let messengerFailNext = false; // (tests: /api/test/messenger/slow)
 let MESSENGER_PHOTOS_DAY = 200; /* v1.10.233 총괄: a key's photos a Seoul day at most (the test route lowers it) */
+const ISLAND_NOTICES = Object.freeze([ /* (문제 기록 1103 4) */ { id: 'trash-20261104', title: '📢 섬 소식', text: '섬에 이웃이 많이 늘어서 해안과 풀밭, 길가에 쓰레기가 부쩍 많아졌어요. 보이는 대로 주워 관공서 민원 창구에 가져가 주세요. 섬이 깨끗해지면 모두가 좋아해요!' }]);
+let testNotices = false;
 const photoUploading = new Map(); /* (Codex 6차 P3 · 235 검토: a key's uploads one after another -- the day's count read with none on its way up) */
 const MESSENGER_PHOTOS_MAX = 10; const MESSENGER_PHOTO_ONLY = '📷 사진'; // v1.10.233: a message's photos at most; a photo-only message's words (the list, the push)
 const SETUP_TTL_MS = 15 * 60 * 1000;
@@ -5282,6 +5284,14 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
     return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) } });
   }
+  // (문제 기록 1103 4) 한 번 공지: a note on the island once for each account (seen kept on the server -- not again on another
+  // device); the next one only a line here. Tests: off unless turned on (every test's first island would open it)
+  if (pathname === '/api/island/notices' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const key = `notices:${account}`;
+    if (req.method === 'POST') { const id = String((await parseJson(req)).id || ''); if (!ISLAND_NOTICES.some((n) => n.id === id)) return sendError(res, 400, 'BAD_NOTICE', '없는 공지예요.'); await worldEdit(async () => { const seen = (await pointStore.worldValue(key)) || []; if (!seen.includes(id)) await pointStore.setWorldValue(key, [...seen, id]); }); return sendJson(res, 200, { ok: true }); }
+    const seen = (await pointStore.worldValue(key)) || []; return sendJson(res, 200, { ok: true, notices: process.env.NODE_ENV === 'test' && !testNotices ? [] : ISLAND_NOTICES.filter((n) => !seen.includes(n.id)) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices' && req.method === 'POST') { testNotices = Boolean((await parseJson(req)).on); return sendJson(res, 200, { ok: true }); }
   // v1.10.236 빠른 칸: my five slots, the same on every screen (IslandItems.quickSlots: the kinds, one each, five at most)
   if (pathname === '/api/island/quick' && (req.method === 'GET' || req.method === 'POST')) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);

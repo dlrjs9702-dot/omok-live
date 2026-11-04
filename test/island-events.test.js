@@ -15,7 +15,8 @@ test('생활 자원: 15개 제한 없이 모든 종류·20개 나무, 지형/길
     for(const [type,count] of Object.entries(RESOURCE_COUNTS)) assert.equal(list.filter(e=>e.type===type).length,count,type);
     assert.equal(list.filter(e=>TYPES[e.type].npc).length,1);
     for(const e of list) if(!e.npc) {
-      assert.ok(T.walkable(e.x,e.z)); assert.ok(T.walkDist(e.x,e.z)>=0.35);
+      assert.ok(T.walkable(e.x,e.z)); const trash=e.type.endsWith('_trash'); if(!trash) assert.ok(T.walkDist(e.x,e.z)>=0.35); // (1103 4: trash may lie on a walk)
+      if(trash) assert.ok(!T.onBridge?.(e.x,e.z) && !T.onStairs?.(e.x,e.z),'다리·계단 위엔 쓰레기 없음');
       assert.ok(!T.inTownhall(e.x,e.z,3));
       for(const l of T.HOME_LOTS||[]) assert.ok(Math.hypot(e.x-l.x,e.z-l.z)>7.9,'툇마루섬 집터 밖(6회차 5)');
       for(const solid of T.natureSolids()) assert.ok(Math.hypot(e.x-solid.x,e.z-solid.z)>solid.r+0.45,'player approach clear');
@@ -41,10 +42,18 @@ test('생활 자원: 한 사람만 획득, 실패 복원, 종류별 재생·세�
   const restart=createIslandEvents({random:seeded(7),now:()=>time});
   assert.ok([...restart.events.keys()].every(id=>!ev.events.has(id)),'restart claim IDs never reused');
 });
-test('생활 경제: 단가 유지·공용 재생 공급 244,000P/h 이하, 개인 일일 상한 없음', () => {
+test('쓰레기 길 위(1103 4): 해안·풀밭 쓰레기 일부는 길 위, 약재·버섯·동전·사탕은 여전히 길을 피함', () => {
+  let onWalk = 0;
+  for (const seed of [1, 2, 3, 4]) {
+    const ev = createIslandEvents({ random: seeded(seed), now: () => Date.parse('2026-10-08T12:00:00+09:00') });
+    for (const e of ev.events.values()) { if (e.npc) continue; if (e.type.endsWith('_trash')) { if (T.walkDist(e.x, e.z) < 0.35) onWalk += 1; } else if (['herb', 'mushroom', 'candy'].includes(e.type)) assert.ok(T.walkDist(e.x, e.z) >= 0.35, e.type); }
+  }
+  assert.ok(onWalk > 0, '길 위 쓰레기');
+});
+test('생활 경제: 단가 유지·공용 재생 공급 520,000P/h 이하, 개인 일일 상한 없음', () => { // (1103 4: trash 8·6 -> 32·28, +24·22 at 1,000P six an hour; the 경제 값 to turn it down)
   const I=require('../lib/island-items');let hourly=0;
   for(const [type,count] of Object.entries(RESOURCE_COUNTS)){const d=TYPES[type];hourly+=count*(d.points || I.priceOf(d.item))*(d.qty||1)*3600000/REGEN_MS[type];}
-  assert.equal(hourly,244000);assert.equal(I.DAILY_CAP,Infinity);
+  assert.equal(hourly,520000);assert.equal(I.DAILY_CAP,Infinity);
 });
 
 test('공용 이벤트: 분실물은 주운 사람만 주인에게 돌려주고, 돌려주면 끝난다', () => {
@@ -242,12 +251,12 @@ test('해안 쓰레기: 여덟 중 둘은 늘 윤슬만 가운데 해변(채울 
   for (let seed = 1; seed <= 6; seed += 1) {
     let t = Date.parse('2026-11-08T12:00:00+09:00'); const ev = createIslandEvents({ random: seeded(seed), now: () => t });
     const beach = () => [...ev.events.values()].filter((e) => e.type === 'beach_trash');
-    assert.equal(beach().length, RESOURCE_COUNTS.beach_trash, `seed ${seed}`); assert.equal(beach().filter(inBay).length, 2, `seed ${seed} 처음`);
+    assert.equal(beach().length, RESOURCE_COUNTS.beach_trash, `seed ${seed}`); assert.equal(beach().filter(inBay).length, 8, `seed ${seed} 처음`);
     for (let round = 0; round < 3; round += 1) { // (the bay's picked, then grown again: still two there)
       const e = beach().find((x) => inBay(x) && x.state === 'open'); const c = ev.claim(e.id, 'a', e); ev.settle(c, true, 'a');
       t += REGEN_MS.beach_trash + 1000; ev.expire();
       assert.equal(beach().filter((x) => x.state === 'open').length, RESOURCE_COUNTS.beach_trash, `seed ${seed} round ${round}`);
-      assert.equal(beach().filter(inBay).length, 2, `seed ${seed} round ${round}`);
+      assert.equal(beach().filter(inBay).length, 8, `seed ${seed} round ${round}`);
     }
   }
 });
