@@ -8654,11 +8654,21 @@
   // (a box round a fixed note -- a transform, a backdrop filter -- makes its `fixed` that box's: where a fixed top:0 lands
   // beside it is measured, so the top given is the screen's)
   const originOf = (el) => { if (!el?.parentElement) return 0; const p = document.createElement('i'); p.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden'; el.parentElement.append(p); const o = p.getBoundingClientRect().top; p.remove(); return o; };
+  function placeBoardNote(note) {
+    const hud = byId('roomHud'); let top = '';
+    if (!hud.hidden && !document.body.classList.contains('gostopStamping') && byId('oldmaidPanel').classList.contains('hidden')) { // (도둑잡기: its own spot under the seats and the fan, --oldmaidNoteTop)
+      const hb = hud.getBoundingClientRect().bottom; const near = [...document.querySelectorAll('#roomView :is(.player,.teamPlayer,#twentyProgress)')].map((el) => el.getBoundingClientRect()).filter((r) => r.height && r.top < hb + 200).map((r) => r.bottom);
+      top = `${Math.round(Math.max(hb, ...near) + 6 - originOf(note))}px`;
+    }
+    if (note.style.top !== top) note.style.top = top;
+  }
   function boardNote(text) {
     const note = byId('boardNote'); if (!text || !document.body.classList.contains('roomPlaying')) return;
     const round = !byId('twentyPanel').classList.contains('hidden') && byId('twentyProgress'); // (v1.10.199 검토, 폰 스무고개: in the slot under the round line)
     if (round) note.style.setProperty('--twentyNoteTop', `${Math.round(round.getBoundingClientRect().bottom + 4 - originOf(note))}px`);
-    const hud = byId('roomHud'); if (!hud.hidden) note.style.setProperty('--noteTop', `${Math.round(hud.getBoundingClientRect().bottom + 6 - originOf(note))}px`); // (U2: the banner under the HUD)
+    // (U2 검토 #391: under the HUD and every name plate near the top -- over the board's top a moment, never them; the old
+    // games' own spots (도둑잡기 fan, 스무고개 round line) are among the plates)
+    placeBoardNote(note);
     note.textContent = String(text).slice(0, 80); note.classList.remove('hidden'); clearTimeout(boardNoteTimer); boardNoteTimer = setTimeout(() => note.classList.add('hidden'), 1800);
   }
   function renderChat() {
@@ -13351,11 +13361,19 @@
   // v1.10.244 U2 게임방 HUD (한판마당: ✕ · 가운데 라벨 + 큰 숫자 · 오른쪽 알약, 아래 시간 막대; 사용자 결정 2 ☰ + 💬): while a hand is
   // played the room's one line over the board -- the game's name, my turn's seconds big (the turn's line under it), the moves,
   // the bar my turn's time left (pink under 10 s); the old bar and status row are hidden then (styles.css)
+  const OWN_PLATE_GAMES = new Set(['gostop', 'oldmaid', 'davinci', 'pictionary', 'liar', 'twentyquestions', 'pandemic']); // (their own seat plates and phases: G2·G3)
   const roomHud = byId('roomHud'); let hudTurn = null; let hudMine = false; // { deadlineAt, total }: the turn's whole time, from when its deadline came
   // (the big number off my turn: the game's own -- 오델로·윷·점과 상자 「2 : 2」, 맞고 my 「7점」)
   function hudScore(g) {
     const s = g?.scores; if (s && Number.isFinite(Number(s.black)) && Number.isFinite(Number(s.white))) return `${s.black} : ${s.white}`;
     const mine = seat && g?.seats?.[seat]; return state.gameType === 'gostop' && Number.isFinite(Number(mine?.score)) ? `${mine.score}점` : '';
+  }
+  // the turn line: 「내 차례 · 흑」 / 「상대 차례 · 백」 where one seat moves; else the status line without the players' names
+  function hudTurnLine() {
+    const { seats } = currentActorSeats(); const one = seats.size === 1 ? [...seats][0] : null;
+    if (one && !OWN_PLATE_GAMES.has(state.gameType)) return `${!seat ? '' : one === String(seat) ? '내 차례 · ' : '상대 차례 · '}${choiceKo(one)}${seat ? '' : ' 차례'}`;
+    let text = statusText.textContent; for (const p of Object.values(state.players || {})) if (p?.label) text = text.split(`${p.label}님`).join('');
+    return text.replace(/\(나\)/g, '').split(' · ').map((s) => s.trim()).filter((s) => s && s !== '차례').join(' · ');
   }
   function renderRoomHud() {
     const on = document.body.classList.contains('roomPlaying') && Boolean(state); roomHud.hidden = !on; if (!on) { hudTurn = null; hudMine = false; return; }
@@ -13365,11 +13383,13 @@
     const seated = Object.entries(state.players || {}).filter(([, p]) => p); const other = seated.length === 2 ? seated.find(([k]) => k !== String(seat))?.[1] : null;
     byId('roomHudLabel').textContent = [roomGameLogo.textContent, seated.length > 2 || !other ? (seated.length ? `${seated.length}명` : '') : other.label].filter(Boolean).join(' · ');
     byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : hudScore(state.game);
-    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) boardNote('내 차례예요'); hudMine = mine; // (U2: the turn told once, the pill lit)
-    byId('roomHudSub').textContent = statusText.textContent;
+    byId('roomHudSub').textContent = hudTurnLine(); // (U2 검토 #391: short -- the names are on the plates)
     const moves = state.game?.moveCount; const pill = byId('roomHudPill'); pill.textContent = STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
+    // (U2: the turn told once, the pill lit -- after the HUD is filled, so the banner is placed under its full height)
+    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) boardNote('내 차례예요'); hudMine = mine;
+    const note = byId('boardNote'); if (!note.classList.contains('hidden')) placeBoardNote(note); // (the plates may settle after it shows)
   }
 
   setInterval(() => {

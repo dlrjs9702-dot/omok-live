@@ -3363,6 +3363,11 @@ body.roomPlaying .seatNum{background:var(--hp-face);border:0;color:var(--hp-gold
 /* v1.10.244 U2 안내 배너: under the HUD, off the board (a full phone: over its top, see-through), 1.8 s */
 body.roomPlaying .boardNote{top:var(--noteTop,25vh);display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 18px;border-radius:99px;background:color-mix(in srgb,var(--hp-win) 20%,var(--hp-glass));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid color-mix(in srgb,var(--hp-win) 45%,transparent);color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 body.roomPlaying .boardNote.hidden{display:none}
+/* (U2 검토 #391: the light HUD buttons round on a darker face, the emoji icons dark grey -- 3:1 or more on it) */
+:root[data-theme="light"] .roomHud :is(.roomHudRight>button,.roomHudLeft>#leaveRoomBtn){background:rgba(61,47,32,.14)}
+:root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn){font-size:0}
+:root[data-theme="light"] .roomHudRight>#chatFloatBtn::before{content:"💬"}:root[data-theme="light"] .roomHudRight>#gameInfoFloatBtn::before{content:"🎮"}
+:root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}
 body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;color:var(--hp-win)}
 #chatPanel .quickChat{margin:6px 0}
 .hpX{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1);font:inherit;font-size:16px;font-weight:800;cursor:pointer}

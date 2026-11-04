@@ -151,7 +151,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
     test.setTimeout(240_000);
     const errors = []; page.on('pageerror', (e) => errors.push(e.message));
     await page.setViewportSize({ width: w, height: h });
-    const host = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken; const seen = {};
+    const host = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken; const seen = {}; let bannersSeen = 0;
     // (the page opens straight into each new room: the session put in the page, as the server does -- turn-alert.spec.js)
     await page.route('**/', async (route) => { if (route.request().resourceType() !== 'document') return route.continue(); const response = await route.fetch(); await route.fulfill({ response, body: (await response.text()).replace('data-session=""', `data-session="${host}"`) }); });
     for (const [game, seats, start] of ROOM_GAMES) {
@@ -162,6 +162,10 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       for (let i = 0; i < seats.length; i += 1) await call(i, '/api/room/choose-role', { choice: seats[i] });
       if (typeof start === 'string') await call(0, `/api/room/${start}`, {}); else if (start) await start(call);
       await page.goto('/'); await expect(page.locator('body'), game).toHaveClass(/roomPlaying/, { timeout: 15_000 }); await page.waitForTimeout(600);
+      // (검토 #391: the banner -- 「내 차례예요」 or a system line -- never over the HUD or a name plate while it shows)
+      const banner = await page.evaluate(() => { const n = document.querySelector('#boardNote'); if (!n || n.classList.contains('hidden') || !n.getBoundingClientRect().height) return null; const b = n.getBoundingClientRect();
+        return [...document.querySelectorAll('#roomHud, #roomView :is(.player,.teamPlayer)')].filter((el) => el.getBoundingClientRect().height).filter((el) => { const r = el.getBoundingClientRect(); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map((el) => el.id || el.className); });
+      if (banner) { expect(banner, `${game} 배너가 가림`).toEqual([]); bannersSeen += 1; }
       await expect(page.locator('.roomBar'), game).toBeHidden(); await expect(page.locator('.boardCard > .statusRow'), game).toBeHidden();
       await expect(page.locator('.roomHud:visible'), game).toHaveCount(1);
       await expect(page.locator('#roomHud #roomMenuBtn'), game).toBeVisible();
@@ -171,11 +175,15 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText() };
       if (process.env.SHOT_DIR) {
         await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });
-        if (['omok', 'othello', 'gostop'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
+        if (['omok', 'othello', 'gostop'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
+          console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor)); await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
       }
       for (const t of tokens) await api(request, '/api/room/leave', t, {});
     }
     console.log(JSON.stringify(seen, null, 1));
+    expect(bannersSeen, '배너를 본 게임 수').toBeGreaterThanOrEqual(5);
+    // (검토 #391: the turn line short -- no player names, 「내 차례 · 흑」)
+    expect(seen.omok.hud).toContain('내 차례 · 흑'); expect(seen.omok.hud).not.toContain('관리자님');
     expect(errors).toEqual([]);
   });
 }
