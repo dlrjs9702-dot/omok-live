@@ -1669,7 +1669,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const viewSide = () => (mySpace === 'island' ? 'out' : 'in');
   const FP_PLACES = new Set(['island', 'home', 'store', 'fashion', 'furniture', 'petshop']); // (V1: out and in my house; v1.10.211 the 백화점's four floors, their ceilings with them -- the other rooms in V2)
   let viewReady = false; // (the states below are declared further on -- read from the first frame on: a first chosen before, at start, threw)
-  const fpNow = () => viewReady && FP_PLACES.has(mySpace) && viewPick[viewSide()] === 'first' && !overview && !editView && !fishing && !riding && !liftRide; // (문제 기록 1103 3: seated, the first stays -- at the seated eyes, the head turned ±100° from the seat's way)
+  const fpNow = () => viewReady && FP_PLACES.has(mySpace) && viewPick[viewSide()] === 'first' && !overview && !editView && !riding && !liftRide; // (1104 G 「1인칭 낚시는 1인칭 그대로」: a cast in the first stays in it; 문제 기록 1103 3: seated, the first stays -- at the seated eyes, the head turned ±100° from the seat's way)
   let onView = null; let viewSideWas = null;
   function toggleView() {
     if (!FP_PLACES.has(mySpace)) { onView?.('later'); return 'third'; }
@@ -2124,7 +2124,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const TOOL_HOLD = { bugnet: ['together.tool_bugnet', { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: NET_CARRY }], fishing_rod: ['fishing.rod', { key: 'rod' }],
     // (v1.10.236 빠른 칸, 사용자 「도구처럼 장착한 후에 상호작용키를 누르면 쓰는 걸로」) the things to use, in the hand as the 잡화점's (store41)
     // (총괄 236 검토: big enough to tell from afar -- the 폭죽's stick and the 비눗방울 wand in the hand, the 풍선 at my side from the hand up over my head, always up)
-    firework: ['good.firework', { key: 'good', size: 0.85 }], balloon: ['good.balloon', { key: 'good', bone: 'Root', proc: [0.45, 1.1, 0], size: 1.6 }], bubbles: ['good.bubbles', { key: 'good', size: 0.7 }] };
+    firework: ['good.firework', { key: 'good', size: 0.85 }], balloon: ['good.balloon', { key: 'good', bone: 'Root', proc: [0.8, 1.0, 0], size: 1.55 }] /* (총괄 236 뒤: beside the name tag, not over it) */, bubbles: ['good.bubbles', { key: 'good', size: 0.7 }] };
   const HELD_GOODS = { firework: '폭죽', balloon: '풍선', bubbles: '비눗방울' };
   function holdLook(c, kind) { assets.letGo(c, 'held'); const t = TOOL_HOLD[kind]; if (t) assets.hold(c, t[0], 0, { ...t[1], key: 'held' }); } // (someone else's: what is in their hand)
   const netTurn = { carry: new THREE.Quaternion().setFromEuler(new THREE.Euler(...NET_CARRY)), swing: new THREE.Quaternion().setFromEuler(new THREE.Euler(...NET_SWING)) };
@@ -2184,6 +2184,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const c = o.clone(); c.position.set(0, 0, 0); c.rotation.set(0, 0, 0); c.scale.set(1, 1, 1); c.traverse((x) => { x.castShadow = false; if (x.material) { x.material = [].concat(x.material).map((m) => Object.assign(m.clone(), { depthTest: false, transparent: true })); if (x.material.length === 1) [x.material] = x.material; x.renderOrder = 1010; } }); // (over what is before my eyes, as the hand)
     fpM.box.setFromObject(c).getSize(fpM.size); const big = Math.max(fpM.size.x, fpM.size.y, fpM.size.z); if (big > 0) c.scale.setScalar(0.16 / big);
     return c;
+  }
+  // (1104 G) caught in the first person: the fish held up before my eyes while it is in my hand (the body's hand hidden)
+  let fpFish = null; let fpFishOf = null; const fpFwd = new THREE.Vector3(); const fpUpV = new THREE.Vector3();
+  function stepFpFish(on) {
+    const src = on ? me.holding?.catch?.object : null;
+    if (!src?.parent) { if (fpFish) { scene.remove(fpFish); fpFish = null; fpFishOf = null; } return; }
+    if (fpFishOf !== src) { if (fpFish) scene.remove(fpFish); src.updateWorldMatrix(true, false); fpFish = src.clone(); fpFish.traverse((o) => { o.castShadow = false; }); fpFish.scale.setFromMatrixScale(src.matrixWorld); scene.add(fpFish); fpFishOf = src; }
+    fpFwd.set(0, 0, -1).applyQuaternion(camera.quaternion); fpUpV.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    fpFish.position.copy(camera.position).addScaledVector(fpFwd, 0.8).addScaledVector(fpUpV, -0.1); fpFish.quaternion.copy(camera.quaternion); fpFish.rotateY(Math.PI / 2);
   }
   function stepFpHand(on, dt) {
     const held = on && !photoMode && heldTool ? me.holding?.[heldTool === 'bugnet' ? 'bugnet' : 'rod']?.object : null; const tool = held?.parent ? held : null;
@@ -2359,6 +2368,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, onBite, arrows, landed: false };
     fishAct('cast');
     me.noTuck = true; assets.hold(me, 'fishing.rod', 0, { key: 'rod' });
+    if (fpNow()) { const dx = water.x - me.root.position.x; const dz = water.z - me.root.position.z; yawGoal = camYaw + Math.atan2(Math.sin(Math.atan2(-dx, -dz) - camYaw), Math.cos(Math.atan2(-dx, -dz) - camYaw)); pitchGoal = clampPitch(0.3); } // (1104 G: the eyes on the water where the float lands)
     return true;
   }
   function fishStop(release = true) {
@@ -4292,7 +4302,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (snap || fp) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, cameraEase(0.08, camDt)); camLook.lerp(look, cameraEase(0.1, camDt)); } // (V1: the first at my eyes, no lag, no bob)
     if (!fp) camPos.y = camFloor(camPos.x, camPos.z, p.y, camPos.y); // easing never dips it into a gentle slope either
     camera.position.copy(camPos); camera.lookAt(camLook);
-    stepFpHand(fp && !fpTalk && !talkView, camDt); stepSnaps(camDt); /* (v1.10.218 B5; v1.10.221 툭!) */
+    stepFpHand(fp && !fpTalk && !talkView, camDt); stepFpFish(fp && !talkView); stepSnaps(camDt); /* (v1.10.218 B5; v1.10.221 툭!) */
     fadeInWay(p);
   }
   // v1.10.21: a building or house between the camera and me is drawn see-through, so no view loses my character --
