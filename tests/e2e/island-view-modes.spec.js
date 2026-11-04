@@ -1,18 +1,23 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, standAt, expectNoScriptError } = require('./skin-support');
+const { shopper, post, get, standAt, holdTool, pressFishArrows, expectNoScriptError } = require('./skin-support');
+const T = require('../../public/plaza/island-terrain.js'); const DAL = T.MAP === 'dalmaru';
 
 // V1 시점 (gamecenter-notes docs/view-modes-20261029.md, 사용자 「밖에선 3인칭이 기본에 1인칭을 선택할 수 있게. 집, 관공서
 // 등 집 안에선 1인칭이 기본에 3인칭을 선택할 수 있게」): out on the island the third by default -- 「👁 시점」 / V the first
 // (at my eyes, my body hidden, W walks where I look); indoors the first by default; the third chosen there is kept for
-// indoors, the outside's choice for outside. PC and phone.
+// indoors, the outside's choice for outside. PC and phone. (v1.10.237, B7: the one-time notice on this first island; the first
+// person's fishing, PC)
 test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 따로 기억', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 300000 : 180000);
   const who = await shopper(browser, request, isMobile ? '시점m' : '시점', 0, 'female'); const { page } = who;
   await page.evaluate((shots) => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.removeItem('gc.view.out'); localStorage.removeItem('gc.view.in'); if (!shots) localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, Boolean(process.env.SHOT_DIR));
+  expect((await post(request, '/api/test/notices', who.token, { on: true })).status).toBe(200); // (문제 기록 1103 4: the one-time 섬 소식 -- its seen kept: unit island-notice-server)
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   const view = () => page.evaluate(() => window.PlazaDebug().view());
-  const toggle = async () => { if (isMobile) await page.locator('#islandViewTab').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyV'); } };
   const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-view-${name}.png` }); } };
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('📢 섬 소식', { timeout: 15000 }); await shot('notice');
+  await page.locator('#plazaDialog').getByRole('button', { name: '알겠어요' }).click(); await expect(page.locator('#plazaDialog')).toBeHidden();
+  const toggle = async () => { if (isMobile) await page.locator('#islandViewTab').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyV'); } };
   // outside: the third, then the first -- at my eyes, my body hidden, 75°
   expect(await view()).toMatchObject({ mode: 'third', side: 'out', body: true });
   await shot('out-third');
@@ -56,6 +61,35 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     expect(off).toBeLessThanOrEqual((100 * Math.PI) / 180 + 0.02);
     await shot('sit-first');
     await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
+    expect((await view()).mode).toBe('first');
+  }
+  // (문제 기록 1104 G 「1인칭 시점에서 낚시 시작하면 1인칭으로 낚시 계속 이어지게 해」, PC -- the phone's arrows tapped, the same
+  // scene code) cast in the first: the first through the wait, the bite, the catch and after; the line from the rod in my hand
+  if (!isMobile) {
+    expect((await post(request, '/api/test/island/give', who.token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200);
+    const pierAt = (k, side) => (DAL ? { x: T.PIER.x + T.PIER.ux * k - T.PIER.uz * side, z: T.PIER.z + T.PIER.uz * k + T.PIER.ux * side } : { x: T.PIER.x + side, z: T.PIER.z + k });
+    const tourists = ((await get(request, '/api/test/island/events')).data.events || []).filter((e) => e.type === 'photo' && e.npc).map((e) => e.npc);
+    const spots = DAL ? [[7, 0], [7, -1.3], [7, 1.3], [9, 0], [5, -1.3]].map(([k, s]) => pierAt(k, s)) : [pierAt(9, 0)];
+    const fishAt = spots.find((p) => Math.min(99, ...tourists.map((t) => Math.hypot(t.x - p.x, t.z - p.z))) >= 4) || spots[0];
+    await page.evaluate((p) => window.PlazaWarp(p.x, p.z), fishAt);
+    await holdTool(page, 'fishing_rod');
+    await expect(page.locator('#plazaHint')).toHaveText('SPACE · 낚시', { timeout: 15000 });
+    await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.phase), { timeout: 10000 }).toMatch(/cast|wait/);
+    expect((await view()).mode).toBe('first');
+    expect(await page.evaluate(() => window.PlazaDebug().fpHeld().of)).toBe('rod'); // (the rod in my hand, the line from its tip)
+    if (process.env.SHOT_DIR) { await page.waitForTimeout(2500); await shot('fishing-wait'); }
+    await expect.poll(async () => {
+      if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); return 'cast again'; }
+      await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); return page.locator('#plazaHint').textContent();
+    }, { timeout: 40000, intervals: [1500] }).toMatch(/^입질! 화살표/);
+    expect((await view()).mode).toBe('first');
+    expect((await post(request, '/api/test/fish/bite', who.token, { species: 'mackerel', slack: 20000 })).data.ok).toBe(true);
+    await pressFishArrows(page, false);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().fpHeld().of), { timeout: 8000, intervals: [100] }).toBe('catch'); // (the fish in my hand, held up as a tool is)
+    if (process.env.SHOT_DIR) for (const k of [1, 2]) { await page.waitForTimeout(k === 1 ? 150 : 500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-view-fishing-catch-${k}.png` }); }
+    await expect.poll(async () => ((await get(request, '/api/island/bag', who.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
     expect((await view()).mode).toBe('first');
   }
   // the 관공서: the third till V2 (「곧」); my house: the first by default, the third chosen there kept for indoors
