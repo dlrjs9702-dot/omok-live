@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.242 주민 날마다 말 + 가락 대회 말
+
+- 1 lib/island-daily.js: 27명 × 10상황 × 2줄(총괄 글 묶음 확정본). 차례 내 일(대어 10분·새 집·트로피·오랜만 3일, 그날 그 주민 한 번) → 대회 → 눈(겨울 구역 비) → 계절(선 구역), 2~4는 35%. 조사 slot(), 같은 줄 연달아 안 나옴.
+- 2 public/plaza/contest-lines.js: 가락 종목별 전·중·후·참가 부족, 시상 1·2·3위 차례, 내일 대회(실제 시각), 참가 한 줄.
+- docs/release.md 12단계: 출시 확인 → 같은 턴에서 다음 묶음.
+
 ## v1.10.241 대회 천막 교체 + 매일 14시 대회 + Codex 10판 고침
 
 - 1 에셋 100: contest_tent(깃발 flag_L·R 흔들림, 밤 glow, keepNodes)·contest_sign(sign_plate에 종목 글씨, 광장 쪽). 가락은 모델 keeper 자리.
@@ -24,10 +30,3 @@
 - CI 약 120번 실패 기록 집계. 가장 큰 흔들림 둘: island-story(66번, 선택지 뒤 revealTalk가 답 오기 전에 끝남 → 앱 talkWaiting + revealTalk가 기다림), resident-talk-gone(56번, 실제 결함: talkResident 409에 예전 대화 창이 남음 → 닫음).
 - tool-swing 각도에 닿을 때까지 측정, insects·tool-swing 곤충 시계 고정(/api/test/insects/hold, afterEach 해제), island-bag 폰 길게 누르기 들림 기다림, pandemic-followup reload 뒤 게임 상태 기다림(reloaded), tax-bill 폰 standAt, resident-talk 줄 89는 talkWaiting으로. plaza 낚시(234)·앉았다 W(239)는 이미 고침.
 - 로컬 --repeat-each=5: PC 35/35 + 낚시 5/5, 폰 30/30.
-
-## v1.10.239 배치 도구 가리지 않게·단추 한 모양 + 1인칭 실내 앞벽
-
-- 배치 도구(place-tool 5절, 사용자 「배치시 말풍선이 아래 부분을 다 가리고 있어서 배치할 수가 없어」): body.placing에서 가방·사진·시점·채팅·메신저·☰·할 일 칩·미니맵·빠른 칸·대회 띠·힌트·남 이름표 숨김, 토스트 위 가운데. 판 두 모양 — 고르기(머리 한 줄 + 물건 줄), 들고 있기(상태 한 줄 + ✕ ↻ ⋯ 창고로(놓인 것만) ✓ 한 줄, ⋯이면 ←↑↓→가 막대 위). 단추는 모두 섬 종이 단추(44/48px, 모서리 14), ✓ 놓기만 갈색, 못 누르면 흐리게. 폰은 아이콘만(✓ 놓기만 글). 꾸미기 카메라는 판 높이만큼 view offset + 그만큼 뒤로(insetZoom) — 마당 앞 가장자리가 판 위에 보임.
-- 1인칭 실내 앞벽(사용자 「집 안쪽 칸 나누는 부분이 이상해」): 방 모델의 카메라 쪽(−Z) 앞벽이 3인칭용 낮은 벽이라 1인칭에서 낮은 벽 두 토막·문설주·밤·천장 띠가 보였음. homeLid(1인칭 전용)에 앞벽(낮은 벽 바로 뒤, 바닥~천장, 문간 비움, 인방, 양쪽 창)을 더함. 모든 집 단계·2층, 3인칭 그대로. 디버그 whatAt(화면 점의 방 메시).
-- 총괄 검토: 빨강일 때 이유 전부(PC 상태 두 줄, 폰 막대 위 종이 띠).
-- 3b 몫 먼저: 앉았을 때 걷기 키를 프레임 사이에 짧게 눌러도 일어남(tapped) — 폰 「앉았다 W로 일어나기」 흔들림 원인.
