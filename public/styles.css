@@ -3331,7 +3331,7 @@ body.placing .toast{top:16px;bottom:auto}
 .roomHudLabel{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--hp-t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .roomHudBig{min-height:34px;font-size:34px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums}
 .roomHudSub{font-size:13px;font-weight:700;color:var(--hp-t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.roomHud.myTurn .roomHudSub{color:var(--hp-gold)}
+.roomHud.mine .roomHudSub{color:var(--hp-gold)}
 .roomHudRight{display:flex;align-items:center;gap:6px}
 .roomHudBar{grid-column:1/-1;justify-self:center;width:min(62%,300px);height:6px;border-radius:99px;background:var(--hp-face);overflow:hidden}
 .roomHudBar i{display:block;height:100%;width:0;border-radius:inherit;background:var(--c1,var(--hp-blue));transition:width .25s linear}

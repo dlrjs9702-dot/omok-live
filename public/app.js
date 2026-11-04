@@ -13369,7 +13369,7 @@
     byId('roomHudSub').textContent = statusText.textContent;
     const moves = state.game?.moveCount; const pill = byId('roomHudPill'); pill.textContent = STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
-    roomHud.classList.toggle('myTurn', Boolean(timer));
+    roomHud.classList.toggle('mine', Boolean(timer));
   }
 
   setInterval(() => {

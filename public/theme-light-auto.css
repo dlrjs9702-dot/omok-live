@@ -1500,7 +1500,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .roomHud{color:var(--hp-t1)}
 :root[data-theme="light"] .roomHudLabel{color:var(--hp-t2)}
 :root[data-theme="light"] .roomHudSub{color:var(--hp-t2)}
-:root[data-theme="light"] .roomHud.myTurn .roomHudSub{color:var(--hp-gold)}
+:root[data-theme="light"] .roomHud.mine .roomHudSub{color:var(--hp-gold)}
 :root[data-theme="light"] .roomHudBar{background:var(--hp-face)}
 :root[data-theme="light"] .roomHudBar i{background:var(--c1,var(--hp-blue))}
 :root[data-theme="light"] .roomHudBar i.low{background:var(--hp-loss)}
