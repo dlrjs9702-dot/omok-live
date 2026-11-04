@@ -36,7 +36,7 @@ test('구경 C안: 꽃 색 찾기·벽화 차례로·부두 배웅·허수아비
   const pi = task('fisher');
   await goTo(pi.at, '배웅하기'); await page.waitForTimeout(1500); await expect(card.locator('.questLine', { hasText: '배웅' })).toHaveCount(1);
   await press(); await expect(toast).toContainText('손 흔들어요');
-  if (process.env.SHOT_DIR) { await page.evaluate(() => { const P = window.IslandTerrain.PIER; window.PlazaDebug().setCamYaw(Math.atan2(-P.ux, -P.uz)); }); await page.waitForTimeout(2200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-visit-pier.png` }); } // (the boat leaving, some 2.5 s in, seen out to sea)
+  if (process.env.SHOT_DIR) { for (const [k, ms] of [['start', 600], ['end', 4200]]) { await page.waitForTimeout(ms); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-visit-pier-${k}.png` }); } } // (1104 D: the boat turned out to the open sea, the camera after it -- at its start and near its end)
   await expect(toast).toContainText('✓ 돌아가 말해요', { timeout: 15000 });
   await expect(card.locator('.questLine', { hasText: '배웅' })).toHaveCount(0);
   // the scarecrow: the fallen one lies there to be found; the standing one is not it, the fallen one stood up is

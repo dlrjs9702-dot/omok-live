@@ -246,6 +246,13 @@ test('게임 아일랜드: 게임관 전용 화면 → 카드 → 상세 시트 
   await page.keyboard.press('ArrowLeft');
   await expect(hall.locator('.gamehallChip[data-cat="solo"]')).toBeFocused();
   await hall.locator('.gamehallChip[data-cat="all"]').click();
+  // (문제 기록 1103 10, 사용자 2026-11-04) W/A/S/D: S from the chips the first card, D the next, S the one below it, W back, W on the top row the chips
+  await page.keyboard.press('KeyS'); await expect(cards.first()).toBeFocused();
+  await page.keyboard.press('KeyD'); await expect(cards.nth(1)).toBeFocused();
+  const cols = await page.evaluate(() => { const c = [...document.querySelectorAll('#gamehallGrid .gameCard')]; const t = c[0].getBoundingClientRect().top; return c.filter((x) => Math.abs(x.getBoundingClientRect().top - t) < 4).length; });
+  await page.keyboard.press('KeyS'); await expect(cards.nth(1 + cols)).toBeFocused();
+  await page.keyboard.press('ArrowUp'); await expect(cards.nth(1)).toBeFocused();
+  await page.keyboard.press('KeyW'); await expect(hall.locator('.gamehallChip[data-cat="all"]')).toBeFocused();
   // the 오목 card: its sheet, 방 만들기 with 오목's own options only, the room
   await hall.locator('.gameCard[data-game="omok"]').click();
   const sheet = page.locator('#gameSheet');
@@ -330,7 +337,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await visit('avatar', '옷가게', 62 - 12 - 10 + 1); /* v1.10.92 + 포차코 의상; B 46 + 산타 옷; X1 + 크리스마스 스웨터; 2026-10-21 변신 옷 정리: IP 12·동물 10 옷 빠짐 */ // v1.10.74: +19 original and 11 character outfits
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await expect(dialog.locator('.skinTitle.selected')).toHaveAttribute('aria-pressed', 'true');
-  await expect(dialog.locator('.skinTitle.selected')).toHaveCSS('outline-color', 'rgb(96, 165, 250)');
+  await expect(dialog.locator('.skinTitle.selected')).toHaveCSS('border-color', 'rgb(138, 106, 74)'); // (문제 기록 1103 11: on the island the shop is paper -- the chosen one its tag line, not the blue ring)
   await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
   await expectNoScriptError(page);
@@ -624,6 +631,11 @@ test('섬 화면 종이: 메뉴·채팅·가방·사진·대회 띠·안내·승
   const a = await intoPlaza(browser, request, '종이화면'); const { page } = a;
   const looks = await paperLooks(page, ['gameMenuBtn', 'islandChatTab', 'islandBagTab', 'islandPhotoTab', 'contestBar', 'plazaHint', 'starWishBtn', 'trainMainBtn', 'homeEditBtn']);
   for (const l of looks) { expect(l.paper, JSON.stringify(l)).toBe(true); expect(l.contrast, JSON.stringify(l)).toBeGreaterThanOrEqual(4.5); }
+  // (문제 기록 1103 11) the 미션 window's tabs and rows paper too, not the old navy
+  await page.evaluate(() => document.getElementById('missionBtn').click()); await expect(page.locator('#missionDialog .missionRow').first()).toBeVisible();
+  const navy = await page.evaluate(() => ['.missionTab', '.missionRow'].map((s) => getComputedStyle(document.querySelector(`#missionDialog ${s}`)).backgroundColor.match(/\d+/g).slice(0, 3).map(Number)));
+  for (const [r, g, b] of navy) expect(r >= 235 && g >= 215 && b >= 175, String([r, g, b])).toBe(true); // (#fffaf0 or the chosen tab #f0dcb6)
+  await page.evaluate(() => document.getElementById('missionDialog').close());
   // (the pictures before 「채팅」·「가방」 widen them: neighbours never overlap)
   for (const [l, r] of [['#gameMenuBtn', '#islandChatTab'], ['#islandBagTab', '#islandPhotoTab']]) { const a1 = await page.locator(l).boundingBox(); const b1 = await page.locator(r).boundingBox(); expect(a1.x + a1.width, `${l} ${r}`).toBeLessThanOrEqual(b1.x); }
   await page.evaluate(() => document.getElementById('islandMessengerTab').classList.remove('hidden'));
@@ -1178,9 +1190,11 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   expect(await page.evaluate(() => window.PlazaDebug().talkView)).toMatchObject({ shot: true });
   // the arrows go round the answers (v1.10.193 대화창 2차: no 닫기 on the bubble -- Esc, 잘 가요 or a tap outside)
   await expect(page.locator('#plazaCloseBtn')).toBeHidden();
-  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('KeyW'); // (문제 기록 1103 10: W/S as the arrows -- and the character stays)
   await expect(page.locator('.lostRequest button').last()).toBeFocused();
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('KeyS');
+  await expect(page.locator('.lostRequest button').first()).toBeFocused();
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowUp');
   await expect(page.locator('.lostRequest button').first()).toBeFocused();
   await page.waitForTimeout(900);
   const during = await page.evaluate(() => window.PlazaDebug().camera);
@@ -1457,7 +1471,7 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await expect.poll(async () => {
     if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); return 'cast again'; }
     await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); return page.locator('#plazaHint').textContent();
-  }, { timeout: 40000, intervals: [1500] }).toMatch(/^입질! 화살표 \d+개를 순서대로$/); // (3회차 4: the arrows pull it in)
+  }, { timeout: 40000, intervals: [1500] }).toMatch(/^입질! 화살표 \d+개를 순서대로( \(WASD도 돼요\))?$/); // (3회차 4: the arrows pull it in; 1103 10: a PC's W/A/S/D said)
   await expect.poll(seen, { timeout: 5000 }).toBe('fish:reel');
   await page.keyboard.press('Space'); expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('bite'); // (SPACE no longer pulls)
   // (CI #298: the server's bite last, the arrows pressed right after it -- a page round trip between them took the

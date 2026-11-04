@@ -245,5 +245,13 @@
   // (I8-1, 문제 기록 8회차 1 「승강장 아래 땅이 깜빡거려」: the walk in to the lift lay on the ground v1.10.160 levelled to its very
   // height -- the two drawn in turn. Its deck stands this much over the station's ground: more than the levelling's 5 cm)
   const ACCESS_DECK = 0.06;
-  return { ACCESS_DECK, CYCLE, TRAVEL, DWELL, SURFACE, CLEAR, SEATS, CAR, DOCK, SEA, STATIONS, LINES, TRAINS, PLATFORMS, PILLARS, platformSpot, platformClamp, platformEdgeDistance, liftOf, pointAt, trainAt, timetableAt, createTraffic, setService, carOf, seatAt, docked, nextAt, stationOf: (id) => STATIONS[id] ? { id, ...STATIONS[id], spot: { x: STATIONS[id].entry[0], z: STATIONS[id].entry[1] } } : null };
+  // (문제 기록 1103 8) the board under a station's name: the next train in whole minutes, as the server counts them for
+  // 철이's 2단계 (up, under a minute 「곧 도착」); the platform's own note in minutes and seconds
+  const waitText = (sec) => (sec >= 60 ? `${Math.floor(sec / 60)}분 ${sec % 60}초` : `${sec}초`);
+  function arrivalText(stationId, ms) {
+    const soon = Object.entries(nextAt(stationId, ms)).filter(([, v]) => v != null).sort((a, b) => a[1] - b[1])[0];
+    if (!soon) return '다음 열차 · 대기';
+    return `다음 열차 · ${LINES[soon[0]].name} ${soon[1] < 60 ? '곧 도착' : `${Math.ceil(soon[1] / 60)}분 뒤`}`;
+  }
+  return { waitText, arrivalText, ACCESS_DECK, CYCLE, TRAVEL, DWELL, SURFACE, CLEAR, SEATS, CAR, DOCK, SEA, STATIONS, LINES, TRAINS, PLATFORMS, PILLARS, platformSpot, platformClamp, platformEdgeDistance, liftOf, pointAt, trainAt, timetableAt, createTraffic, setService, carOf, seatAt, docked, nextAt, stationOf: (id) => STATIONS[id] ? { id, ...STATIONS[id], spot: { x: STATIONS[id].entry[0], z: STATIONS[id].entry[1] } } : null };
 }));

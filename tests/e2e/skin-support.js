@@ -126,7 +126,7 @@ module.exports.expectNoScriptError = expectNoScriptError;
 // the whole row pressed again
 async function pressFishArrows(page, isMobile = false, slip = false) {
   const box = page.locator('#fishArrows'); await box.waitFor({ state: 'visible', timeout: 15000 });
-  const KEY = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
+  const KEY = slip ? { up: 'KeyW', right: 'KeyD', down: 'KeyS', left: 'KeyA' } /* (문제 기록 1103 10: the slip's row by W/A/S/D) */ : { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
   // (pressed in the page at once -- CI #278: a phone's clicks waited for the box coming in to stand still, a PC's key presses
   // a round trip each on the slow runner, and the bite's time ran out between them -- the server's, which a test that
   // turns the bite into another fish times by that fish, not the count shown. The buttons answer a click, the keys a keydown.

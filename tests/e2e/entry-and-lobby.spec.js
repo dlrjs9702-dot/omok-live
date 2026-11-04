@@ -102,7 +102,9 @@ test.describe('게임센터 입장과 로비', () => {
     await cards.nth(0).locator('button').focus();
     await page.keyboard.press('ArrowDown');
     await expect(cards.nth(1).locator('button')).toBeFocused();
-    await page.keyboard.press('ArrowDown'); // wraps around
+    await page.keyboard.press('KeyS'); // (문제 기록 1103 10: down the list on the screen -- the last stays; W/S as the arrows)
+    await expect(cards.nth(1).locator('button')).toBeFocused();
+    await page.keyboard.press('KeyW');
     await expect(cards.nth(0).locator('button')).toBeFocused();
 
     await page.locator('[data-game-mode="multi"]').focus();

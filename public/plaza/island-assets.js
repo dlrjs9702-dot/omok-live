@@ -500,7 +500,7 @@
   // 자전거 (assets 61 bike-v1): the frame in four colours, a wheel (front and back), the crank -- the game turns the last two;
   // in the 잡화점 a small one on the floor
   const BK = '/assets/island/bike-v1'; const bk = (file, extra = {}) => ({ url: `${BK}/${file}.glb`, low: { url: `${BK}/${file}_low.glb` }, near: 30, ...extra });
-  for (const c of ['mint', 'red', 'sky', 'butter']) { REGISTRY[`bike.frame__${c}`] = bk(`bike_frame__${c}`); REGISTRY[`good.bike_${c}`] = bk(`bike_frame__${c}`, { scale: 0.55, shadows: false }); }
+  for (const c of ['mint', 'red', 'sky', 'butter']) { REGISTRY[`bike.frame__${c}`] = bk(`bike_frame__${c}`); REGISTRY[`good.bike_${c}`] = bk(`bike_frame__${c}`, { shadows: false }); } /* (1104 C, 총괄 235 검토: on show as big as one ridden) */
   REGISTRY['bike.wheel'] = bk('bike_wheel'); REGISTRY['bike.crank'] = bk('bike_crank');
   // 묶음 4 내 집 (assets 58 home-v1): the house in its four roofs (front -Z), the room, its floors and wallpapers (laid in
   // the room, one at a time), the nameplate, an empty lot's sign

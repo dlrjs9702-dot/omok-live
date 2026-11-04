@@ -35,7 +35,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
   expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; const T = window.IslandTerrain; return T.dalmaru ? T.dalmaru.isWater(b.x, b.z) && T.dalmaru.coastDist(b.x, b.z) >= 0 : T.streamDist(b.x, b.z) < T.STREAM_HALF; })).toBe(true); // (달마루섬: inland water -- a river, 거울호수 or a pool) the float is on the stream
   await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); // (a long bite on the page; the server's just before the pull -- see plaza.spec)
-  await expect(page.locator('#plazaHint')).toHaveText(/순서대로$/);
+  await expect(page.locator('#plazaHint')).toHaveText(/순서대로( \(WASD도 돼요\))?$/); // (1103 10: a PC's W/A/S/D said)
   if (isMobile) { // (F 사용자 아이폰 제보: the stick and the phone's buttons sat over the arrows -- each arrow's centre is its own button now)
     await expect(page.locator('#fishArrows .fishArrowPad button')).toHaveCount(4);
     if (process.env.ZZ_OUT) await page.screenshot({ path: `${process.env.ZZ_OUT}/fish-arrows-phone.png` });

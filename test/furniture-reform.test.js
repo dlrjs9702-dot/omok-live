@@ -59,4 +59,11 @@ test('가구 리폼 서버: 3층 계산대에서 3,000P, 같은 요청 두 번�
   assert.equal(at(tank.uid).id, 'fish_tank__white'); assert.equal(h.tanks[tank.uid].length, 1, '수조 물고기 그대로');
   assert.equal(at(desk.uid).id, 'desk__walnut'); assert.equal(H.supportOf(at(radio.uid), h.pieces)?.uid, desk.uid, '책상 위 라디오 그대로');
   const mine = (await req('/api/island/furniture/mine', a)).data.pieces; assert.equal(mine.find((p) => p.uid === sofa.uid).id, 'sofa__navy');
+  // (Codex 6차 P3) the storage saved, the house not: the same request again puts the new colour in the house too, paid once
+  before = await balance(); await req('/api/test/store/fail', a, { method: 'setWorldValue', skip: 1 });
+  assert.notEqual((await reform(sofa.uid, 'sofa__sage', 'reform-sofa-00002')).status, 200, '집 저장 실패');
+  assert.equal((await req('/api/home', a)).data.mine.pieces.find((p) => p.uid === sofa.uid).id, 'sofa__navy');
+  assert.equal((await reform(sofa.uid, 'sofa__sage', 'reform-sofa-00002')).status, 200);
+  assert.equal((await req('/api/home', a)).data.mine.pieces.find((p) => p.uid === sofa.uid).id, 'sofa__sage', '다시 보내면 집도 새 색');
+  assert.equal(before - await balance(), 3000, '한 번만');
 });

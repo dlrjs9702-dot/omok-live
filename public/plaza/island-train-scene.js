@@ -49,6 +49,25 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
     assets.attach('train.platform', holder, visual);
   }
   // each station: a glass lift beside its entrance, as high as its highest platform, and a walkway from it to each platform
+  // (문제 기록 1103 8) under each name sign, a small board: when the next train comes, redrawn as the minute changes
+  const boards = [];
+  function arrivalBoard(sign, id) {
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; made.push(texture);
+    const m = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, emissive: 0xffffff, emissiveMap: texture, emissiveIntensity: 0.35 }); made.push(m);
+    const back = new THREE.Mesh(G.box, new THREE.MeshStandardMaterial({ color: 0x2f3a44, roughness: 0.7 })); made.push(back.material); back.scale.set(1.5, 0.8, 0.06); back.position.set(0, 1.4, -0.02); sign.add(back);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.7), m); made.push(face.geometry); face.position.set(0, 1.4, -0.055); face.rotation.y = Math.PI; sign.add(face);
+    return { id, canvas, texture, face, text: '' };
+  }
+  function drawBoards(ms) {
+    for (const b of boards) {
+      const text = R.arrivalText(b.id, ms); if (text === b.text) continue; b.text = text; b.face.userData.boardText = text;
+      const c = b.canvas.getContext('2d'); c.fillStyle = '#1f2830'; c.fillRect(0, 0, 512, 256); c.textAlign = 'center'; c.textBaseline = 'middle'; const [head, rest = ''] = text.split(' · '); /* (two lines: 「다음 열차」 small, the line and its minutes big -- read from a few metres) */
+      const font = (px) => `800 ${px}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
+      c.fillStyle = '#c9d3da'; c.font = font(52); c.fillText(head, 256, 64);
+      let size = 84; c.font = font(size); size = Math.floor(size * Math.min(1, 480 / Math.max(1, c.measureText(rest).width))); c.fillStyle = '#ffd27a'; c.font = font(size); c.fillText(rest, 256, 170); b.texture.needsUpdate = true;
+    }
+  }
   const lifts = Object.entries(R.STATIONS).map(([id, st]) => {
     const plats = R.PLATFORMS.filter((p) => p.station === id);
     const lift = R.liftOf(id); const lx = lift.x; const lz = lift.z; const ground = lift.y;
@@ -83,7 +102,7 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
     const cg = mergeColored([part(G.box, DECK, 0, 0.08, 0, { sx: 2, sy: 0.16, sz: 2 }), part(G.box, FRAME, 0, 2.4, 0, { sx: 2, sy: 0.08, sz: 2 })]); made.push(cg); cabin.add(new THREE.Mesh(cg, vcMat));
     // (간판, assets 69 sign.station: beside the walk at the way in, facing whoever comes from inland -- not over the lift)
     { const dx = ex - lx; const dz = ez - lz; const l = Math.hypot(dx, dz) || 1; const sx = ex - (dz / l) * 1.8; const sz = ez + (dx / l) * 1.8; const yaw = Math.atan2(-dx / l, -dz / l);
-      signboard?.('station', st.name, scene, sx, T.heightAt(sx, sz), sz, yaw); for (const k of [-1.2, 1.2]) solids.push({ x: sx + Math.cos(yaw) * k, z: sz - Math.sin(yaw) * k, r: 0.3 }); }
+      const sign = signboard?.('station', st.name, scene, sx, T.heightAt(sx, sz), sz, yaw); if (sign) boards.push(arrivalBoard(sign, id)); for (const k of [-1.2, 1.2]) solids.push({ x: sx + Math.cos(yaw) * k, z: sz - Math.sin(yaw) * k, r: 0.3 }); }
     if (T.walkable(lx, lz)) solids.push({ x: lx, z: lz, r: 1.45 });
     return { id, x: lx, z: lz, top, ground, cabin };
   });
@@ -121,9 +140,10 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
     return rec;
   });
 
-  let last = null;
+  let last = null; let boardAt = -Infinity;
   function step(ms) {
     const dt = last === null ? 0 : Math.min(0.2, Math.max(0, (ms - last) / 1000)); last = ms;
+    if (Math.abs(ms - boardAt) >= 1000) { boardAt = ms; drawBoards(ms); }
     for (const rec of trains) {
       const car = R.carOf(rec.id, ms);
       rec.h.position.set(car.x, car.y, car.z); rec.h.rotation.y = car.carYaw;
@@ -134,5 +154,5 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
     }
   }
   const dispose = () => { for (const rec of trains) for (const a of rec.actions || []) a.mixer.stopAllAction(); for (const x of made) x.dispose(); scene.remove(group); };
-  return { group, step, dispose, liftAt: (id, y) => { const lift = lifts.find((l) => l.id === id); if (lift) lift.cabin.position.y = Math.max(0, y - lift.ground); }, debug: () => ({ pillars: pillarAt.length, platforms: R.PLATFORMS.length, lifts: lifts.length, cabins: Object.fromEntries(lifts.map((l) => [l.id, +(l.cabin.position.y + l.ground).toFixed(2)])),cars: trains.map((t) => ({ id: t.id, x: +t.h.position.x.toFixed(1), y: +t.h.position.y.toFixed(1), z: +t.h.position.z.toFixed(1), model: Boolean(t.mixer), mixers: (t.actions || []).length, wheels: t.wheels.length, opened: t.opened })) }) };
+  return { group, step, dispose, boards: () => boards.map((b) => ({ id: b.id, text: b.text })), liftAt: (id, y) => { const lift = lifts.find((l) => l.id === id); if (lift) lift.cabin.position.y = Math.max(0, y - lift.ground); }, debug: () => ({ pillars: pillarAt.length, platforms: R.PLATFORMS.length, lifts: lifts.length, cabins: Object.fromEntries(lifts.map((l) => [l.id, +(l.cabin.position.y + l.ground).toFixed(2)])),cars: trains.map((t) => ({ id: t.id, x: +t.h.position.x.toFixed(1), y: +t.h.position.y.toFixed(1), z: +t.h.position.z.toFixed(1), model: Boolean(t.mixer), mixers: (t.actions || []).length, wheels: t.wheels.length, opened: t.opened })) }) };
 }

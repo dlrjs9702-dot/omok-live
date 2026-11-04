@@ -36,6 +36,10 @@ test('물고기 크기: 범위·드문 큰 끝, 가방 크기 목록, 작은 것
     for (const e of r.keep) { const was = fishOnly.find((x) => x.entryId === e.entryId); assert.ok(e.qty <= was.qty, `${room}: ${e.itemId} ${e.qty} > ${was.qty}`); assert.equal(I.sizesOf(e).length, e.qty); assert.equal(e.meta.sizes.length, e.qty); }
     assert.ok(r.paid <= room, `${room}: paid ${r.paid}`); assert.equal(r.sold.reduce((n, x) => n + x.qty, 0) + r.keep.reduce((n, e) => n + e.qty, 0), 5, '모두 합해 그대로');
   }
+  // (Codex 6차 P3) one species in two slots: the smallest of them all go first, the big ones kept in whichever slot they are
+  const two = [{ entryId: 'p', itemId: 'fish_carp', qty: 2, meta: { sizes: [90, 80] } }, { entryId: 'q', itemId: 'fish_carp', qty: 2, meta: { sizes: [35, 30] } }];
+  const r2 = I.sellAt(two, 'fisher', 0, null, Date.now(), I.fishPrice('fish_carp', 30) + I.fishPrice('fish_carp', 35));
+  assert.deepEqual([r2.sold[0].qty, r2.keep.map((e) => [e.entryId, I.sizesOf(e)])], [2, [['p', [90, 80]]]], '두 칸에서도 작은 것부터');
 });
 
 // the hall: in at the museum's door, the curator's desk the place to give; a fish shows the biggest given, a bigger one hung
