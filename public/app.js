@@ -3652,6 +3652,7 @@
     if (!h) { const pad = placeBar.querySelector('.placePad'); pad?.classList.add('hidden'); placeBar.querySelector('.placeFine')?.setAttribute('aria-expanded', 'false'); }
     for (const c of placeBar.querySelectorAll('.placePiece')) c.classList.toggle('selected', Boolean(h) && c.dataset.uid === h.uid);
     placeBar.classList.toggle('holding', Boolean(h)); // (v1.10.239 place-tool 5-2: held -- the one-line bar alone, PC and phone)
+    const why = placeBar.querySelector('.placeWhy'); if (why) { why.textContent = h && t.why ? `${h.name} · ${t.why}` : ''; why.classList.toggle('hidden', !(h && t.why)); } // (총괄 239 검토: why not, whole -- a phone's strip over the bar)
     requestAnimationFrame(() => { if (placeOn === t) plaza.controller?.placeInset?.(placeBar.offsetHeight + 12); }); // (5-3: the view's middle above the bar)
   }
   function placeHold(p, pt = null) { // a piece in hand: where it stands now, else the floor at the middle of the view
@@ -3699,7 +3700,8 @@
     const acts = document.createElement('div'); acts.className = 'placeActs'; acts.append(drop, turn, fine, back, put);
     const head = document.createElement('div'); head.className = 'placeHead'; head.append(line(`🖐 ${t.a.title}`, 'placeTitle'), end);
     const row = document.createElement('div'); row.className = 'placeRow'; row.append(status, acts);
-    placeBar.replaceChildren(head, strip, pad, row); placeBar.classList.remove('hidden'); placeShow();
+    const whyLine = document.createElement('p'); whyLine.className = 'placeWhy hidden'; whyLine.setAttribute('aria-hidden', 'true'); // (the status says it for a screen reader)
+    placeBar.replaceChildren(head, strip, pad, whyLine, row); placeBar.classList.remove('hidden'); placeShow();
   }
   window.addEventListener('keydown', (event) => { // (a PC: R turns, Esc lets go -- or ends --, the arrows step one place)
     if (!placeOn || event.isComposing || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || '')) return;

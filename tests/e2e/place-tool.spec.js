@@ -82,7 +82,8 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     await expect.poll(async () => (await inside()).find((p) => p.uid === uid('sofa__mint'))?.rot, { timeout: 15000 }).toBe(1);
     // a wall clock: red in the middle (no ✓), green and flush by the back wall
     await strip('wall_clock__oak').click(); await aim(0, 0); expect((await state()).why).toBeTruthy(); await expect(page.locator('#placeBar .placePut')).toBeDisabled(); await shot('place-red', 600);
-    const hz = H.stageOf(1).hz; await aim(-1, hz - 0.3); expect((await state()).why).toBe(null); expect((await state()).held.rot).toBe(0); await put();
+    if (isMobile) await expect(page.locator('#placeBar .placeWhy')).toContainText((await state()).why); // (총괄 239 검토: why not, whole -- over the bar on a phone)
+    const hz = H.stageOf(1).hz; await aim(-1, hz - 0.3); expect((await state()).why).toBe(null); await expect(page.locator('#placeBar .placeWhy')).toBeHidden(); expect((await state()).held.rot).toBe(0); await put();
     await expect.poll(async () => (await inside()).find((p) => p.uid === uid('wall_clock__oak'))?.z, { timeout: 15000 }).toBeCloseTo(hz - H.SIZE.wall_clock[1] / 2, 5);
     // a desk, then a radio on its top (the top pointed at)
     await strip('desk__oak').click(); await aim(-1.5, 1.0); await put();
