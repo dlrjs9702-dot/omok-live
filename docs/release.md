@@ -41,6 +41,7 @@
     - 운영 `https://omok-live.onrender.com/health`가 `{"ok":true,"version":"X.Y.Z"}`
     - 문서 PR은 배포 대신 Render에 건너뛰기(`commit_ignored`) 기록을 확인한다.
 11. **마무리**: 로컬 `main`을 pull하고 작업 브랜치를 `git branch -d`로 지운다(squash라 경고가 나와도 원격 병합 확인 후 삭제되면 정상). 비공개 `STATUS.md`의 항목을 `최근 완료` 맨 위로 옮기고(최신 3개만 유지, 넘치는 것은 `archive/STATUS-이력.md` 맨 위로) `진행 중`을 정리해 푸시한다. 이번 릴리스로 남은 일이 하나도 없게 된 비공개 `IDEAS.md` 절은 `archive/IDEAS-완료-이력.md`로 옮기고(일부만 끝난 절은 완료 표시만, 계속 유효한 규칙·경제 기준은 `reference/게임-규칙-경제.md`로), 옮긴 절을 가리키는 링크를 고친다.
+12. **다음 묶음**: 운영 `/health`로 출시를 확인하면 같은 턴에서 origin/main으로 다음 묶음 가지를 만들고 첫 작업까지 시작한다. 출시 보고는 그 뒤에 「X 시작했어요(가지 이름)」로 보낸다. 다음 묶음을 모르거나 막히면 멈추지 말고 총괄에게 물은 뒤 기다린다(사용자 「통과 배포되면 바로 이어서 시작해」).
 
 ## 출력
 - 병합된 `main` 커밋, Render 배포 ID·상태, 갱신된 `PROJECT_STATUS.md`·`STATUS.md`

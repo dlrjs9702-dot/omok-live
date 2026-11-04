@@ -80,7 +80,7 @@ test('섬 대회 천막: 띠가 천막을 가리키고, 가락에게 참가하�
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().contestTent()?.shown), { timeout: 20000 }).toBe(true); // (the results there for half an hour)
     await talkTill('닫기'); await expect(dialog).toContainText(`1위 ${NA}`); await expect(dialog).toContainText('끝났어요'); // (after it: 1st~3rd from 가락)
     if (process.env.SHOT_DIR) await revealTalk(page); await shot(page, 'after', 600);
-    await expect(dialog).toContainText('내일 또 봐요'); await page.evaluate(() => document.getElementById('plazaDialog').close());
+    await expect(dialog).toContainText(`${NA} 쪽`); await expect(dialog).toContainText(/내일 \d\d:\d\d · /); await page.evaluate(() => document.getElementById('plazaDialog').close()); // (v1.10.242 가락: the winner, the podium, tomorrow's)
     // (v1.10.241 매일 대회) none on: the bar tells tomorrow's, at its time
     await post(request, '/api/test/contest/clock', a.token, { to: 'after' }); await expect(bar).toContainText(/내일 \d\d:\d\d · .+ 대회/, { timeout: 20000 }); await shot(page, 'next', 300);
     await expectNoScriptError(page);

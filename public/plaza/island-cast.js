@@ -1122,5 +1122,5 @@ REG.hasyo = {
   // B 「이야기 나눠요」: the day's question k (lib/island-affinity QUESTIONS) in islander n's words
   const questionLine = (n, k) => say(n, `q${k}`, {}, () => 0)[0] || null;
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { callOf, RESIDENTS, WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, questionLine, chatLine, keeperLine, passLine, keeperN, josa, hasFinal, fill, say, withTail, untail, whyOf };
+  return { callOf, RESIDENTS, WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, questionLine, chatLine, keeperLine, passLine, keeperN, josa, hasFinal, fill, slot /* (v1.10.242: lib/island-daily fills its words) */, say, withTail, untail, whyOf };
 }));

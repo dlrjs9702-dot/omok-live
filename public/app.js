@@ -3930,26 +3930,31 @@
     let d; try { d = await api('/api/island/contest'); } catch (error) { showToast(error.message); return; }
     if (contestArrow) { plaza.controller?.setGuideTarget?.(null); contestArrow = false; } // (there: the arrow down)
     const c = d.contest; const now = Date.now() + (d.serverNow - Date.now()); const mins = (ms) => Math.max(1, Math.ceil(ms / 60000));
-    const say = document.createElement('p'); say.className = 'lostRequestLine'; const row = tentCard; row.replaceChildren();
+    const says = []; const sayLine = (text) => { if (!text) return; const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = text; says.push(p); }; const row = tentCard; row.replaceChildren(); /* (v1.10.242: his lines one after another) */
+    const G = globalThis.ContestLines; const his = (key, vars) => G?.say(c.kind, key, vars) || ''; const seoul = (ms) => { const t = new Date(ms + 9 * 3600000); return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`; };
+    const tomorrow = () => (d.next && G ? G.say(null, 'idle', { game: String(d.next.name || '').replace(/ 대회$/, '') }).replace('14:00', seoul(d.next.start)) : ''); /* (the next one, at its own time) */
     const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); return b; };
     const R = d.rewards || {}; const prize = `1위 ${Number(R[1] || 0).toLocaleString('ko-KR')} · 2위 ${Number(R[2] || 0).toLocaleString('ko-KR')} · 3위 ${Number(R[3] || 0).toLocaleString('ko-KR')} · 참가 ${Number(R.join || 0).toLocaleString('ko-KR')}P(${d.minEntrants || 2}명 이상일 때)`;
     const rule = `${c.how} · 몇 판이든 해도 가장 좋은 한 판으로 겨뤄요. 여기서 연 판만 대회 기록이 돼요.`;
     const board = (top) => (top.length ? top.slice(0, 3).map((r) => `${r.rank}위 ${r.name} ${contestScore(c, r.score)}`).join(' · ') : '아직 기록이 없어요');
-    if (c.phase === 'soon') say.textContent = `곧 ${c.name}가 열려요! ${mins(c.start - now)}분 뒤 시작해요. ${rule} 상금은 ${prize}.`;
+    if (c.phase === 'soon') { sayLine(his('soon')); sayLine(`곧 ${c.name}가 열려요! ${mins(c.start - now)}분 뒤 시작해요. ${rule} 상금은 ${prize}.`); }
     else if (c.phase === 'live') {
-      say.textContent = `${c.name} 중이에요 — 남은 ${mins(c.end - now)}분. ${rule} 지금 ${board(d.top)}${d.mine ? ` · 내 기록 ${contestScore(c, d.mine.score)} ${d.mine.rank}위` : ''}.`;
+      sayLine(his('live')); sayLine(`${c.name} 중이에요 — 남은 ${mins(c.end - now)}분. ${rule} 지금 ${board(d.top)}${d.mine ? ` · 내 기록 ${contestScore(c, d.mine.score)} ${d.mine.rank}위` : ''}.`);
       button('참가하기', () => joinContest(c, d.serverNow - Date.now()));
     } else {
       const L = d.last?.id === c.id ? d.last : null;
-      say.textContent = L ? (L.rewarded ? `${L.name}가 끝났어요! ${board(L.top)}. 상금 ${prize.replace(/\(.*\)$/, '')}을 드렸어요(참가한 ${L.entrants}명 모두). 내일 또 봐요.` /* (v1.10.241: every day) */ : `${L.name}가 끝났어요. 참가자가 ${d.minEntrants || 2}명이 안 돼서 시상은 없어요.`) : `${c.name}가 끝났어요. 결과를 정리하고 있어요.`;
+      if (L?.rewarded) { sayLine(`${L.name}가 끝났어요! ${board(L.top)}. 상금 ${prize.replace(/\(.*\)$/, '')}을 드렸어요(참가한 ${L.entrants}명 모두).`); sayLine(his('after', { winner: L.top[0]?.name || '' })); for (const r of L.top.slice(0, 3)) sayLine(G?.say(null, `podium${r.rank}`, { name: r.name })); sayLine(tomorrow()); } /* (the podium's three in turn, then tomorrow's) */
+      else if (L) { sayLine(`${L.name}가 끝났어요. 참가자가 ${d.minEntrants || 2}명이 안 돼서 시상은 없어요.`); sayLine(his('none')); sayLine(tomorrow()); }
+      else sayLine(`${c.name}가 끝났어요. 결과를 정리하고 있어요.`);
     }
     button('닫기', () => plazaDialog.close(), c.phase === 'live' ? 'ghost' : 'primary');
-    lostCard.replaceChildren(say, row); openTalk(`섬 대회 · ${globalThis.IslandCast?.RESIDENTS.find((r) => r.reg === 'garak')?.name || '가락'}`);
+    lostCard.replaceChildren(...says, row); openTalk(`섬 대회 · ${globalThis.IslandCast?.RESIDENTS.find((r) => r.reg === 'garak')?.name || '가락'}`);
   }
   async function joinContest(c, offset) { // (the round where I stand: the server checks the tent)
-    plazaDialog.close();
+    plazaDialog.close(); const joined = globalThis.ContestLines?.say(null, 'joined'); /* (v1.10.242: 가락's word as the round opens) */
     const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
     let pass; try { pass = await api('/api/island/contest/join', { method: 'POST', body: '{}' }); } catch (error) { showToast(error.message, 4000); return; } // (the tent's pass, then the game screen)
+    if (joined) showToast(`가락: ${joined}`, 3000);
     await window.GameLaunch.play(pass.game, { level: pass.level, place: 'contest', contest: { end: pass.end, offset: pass.serverNow - Date.now() } });
     setTimeout(refreshContest, 1500);
   }
