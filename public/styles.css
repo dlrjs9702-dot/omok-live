@@ -3324,4 +3324,17 @@ body.placing .toast{top:16px;bottom:auto}
 .hpPill.big{min-height:40px}
 .hpPill.on,.hpPill[aria-pressed="true"],.hpPill:has(input:checked){background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
 .hpPill input{position:absolute;opacity:0;pointer-events:none}
+/* v1.10.244 U2 게임방 HUD (한판마당): one line over the board while a hand is played -- the old bar and status row hidden then */
+.roomHud{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;padding:8px 4px 0;color:var(--hp-t1)}
+.roomHud[hidden]{display:none}
+.roomHudCenter{display:grid;justify-items:center;min-width:0;text-align:center}
+.roomHudLabel{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--hp-t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.roomHudBig{min-height:34px;font-size:34px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums}
+.roomHudSub{font-size:13px;font-weight:700;color:var(--hp-t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.roomHud.myTurn .roomHudSub{color:var(--hp-gold)}
+.roomHudRight{display:flex;align-items:center;gap:6px}
+.roomHudBar{grid-column:1/-1;justify-self:center;width:min(62%,300px);height:6px;border-radius:99px;background:var(--hp-face);overflow:hidden}
+.roomHudBar i{display:block;height:100%;width:0;border-radius:inherit;background:var(--c1,var(--hp-blue));transition:width .25s linear}
+.roomHudBar i.low{background:var(--hp-loss)}
+body.roomPlaying .roomBar,body.roomPlaying .boardCard>.statusRow{display:none!important} /* (U2: the HUD's line in their place) */
 .hpX{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1);font:inherit;font-size:16px;font-weight:800;cursor:pointer}

@@ -8774,7 +8774,7 @@
     if (on && state?.gameType === 'twentyquestions') { const home = document.getElementById('twentyActionPanel'); if (twentyAnswerBox.parentElement !== home) home.prepend(twentyAnswerBox); } else if (twentyAnswerMark.nextSibling !== twentyAnswerBox) twentyAnswerMark.after(twentyAnswerBox);
     if (on && state?.gameType === 'yut') { if (diceSection.previousElementSibling !== canvasWrap) canvasWrap.after(diceSection); }
     else if (on && diceSection.nextElementSibling !== actionsPanel) actionsPanel.before(diceSection); else if (!on && diceMark.nextSibling !== diceSection) diceMark.after(diceSection);
-    placeMySeat(); fitBoard(); renderTurnRing();
+    placeMySeat(); renderRoomHud(); fitBoard(); renderTurnRing(); /* (v1.10.244 U2: the HUD first -- the board fits under it) */
     const boardKey = `${state?.gameType}:${state?.game?.round}:${state?.game?.moveCount}`; if (boardKey !== touchPickKey) { touchPickKey = boardKey; touchPick = null; } // (Codex review: a first tap holds for this board only)
   }
   function fitBoard() {
@@ -13337,8 +13337,27 @@
     finally { button.disabled = false; }
   });
   setInterval(() => {
-    renderMyActionTimer();
+    renderMyActionTimer(); renderRoomHud();
   }, 250);
+  // v1.10.244 U2 게임방 HUD (한판마당: ✕ · 가운데 라벨 + 큰 숫자 · 오른쪽 알약, 아래 시간 막대; 사용자 결정 2 ☰ + 💬): while a hand is
+  // played the room's one line over the board -- the game's name, my turn's seconds big (the turn's line under it), the moves,
+  // the bar my turn's time left (pink under 10 s); the old bar and status row are hidden then (styles.css)
+  const roomHud = byId('roomHud'); let hudTurn = null; // { deadlineAt, total }: the turn's whole time, from when its deadline came
+  function renderRoomHud() {
+    const on = document.body.classList.contains('roomPlaying') && Boolean(state); roomHud.hidden = !on; if (!on) { hudTurn = null; return; }
+    const timer = state.me?.actionTimer; const serverNow = Date.now() - actionTimerClockOffset;
+    if (timer && hudTurn?.deadlineAt !== timer.deadlineAt) hudTurn = { deadlineAt: timer.deadlineAt, total: Math.max(1000, Number(timer.deadlineAt) - serverNow) }; else if (!timer) hudTurn = null;
+    const left = timer ? Math.max(0, Number(timer.deadlineAt) - serverNow) : 0;
+    byId('roomHudLabel').textContent = roomGameLogo.textContent;
+    byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : '';
+    byId('roomHudSub').textContent = statusText.textContent;
+    const moves = state.game?.moveCount; const pill = byId('roomHudPill'); pill.textContent = Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; pill.classList.toggle('hidden', !pill.textContent);
+    const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
+    roomHud.classList.toggle('myTurn', Boolean(timer));
+  }
+  byId('roomHudLeave').addEventListener('click', () => leaveRoomBtn.click());
+  byId('roomHudChat').addEventListener('click', () => chatFloatBtn.click());
+  byId('roomHudMenu').addEventListener('click', () => byId('roomMenuBtn').click());
 
   setInterval(() => {
     if (state?.gameType !== 'pictionary' || pictionaryPanel.classList.contains('hidden')) return;

@@ -515,6 +515,12 @@
 
       <section class="gameLayout">
         <div class="boardCard card">
+          <div id="roomHud" class="roomHud" hidden><!-- v1.10.244 U2 (한판마당 HUD): the room's one line while a hand is played -->
+            <button id="roomHudLeave" type="button" class="hpX" aria-label="나가기">✕</button>
+            <div class="roomHudCenter"><div id="roomHudLabel" class="roomHudLabel"></div><div id="roomHudBig" class="roomHudBig"></div><div id="roomHudSub" class="roomHudSub"></div></div>
+            <div class="roomHudRight"><span id="roomHudPill" class="hpPill hidden"></span><button id="roomHudChat" type="button" class="hpX" aria-label="채팅">💬</button><button id="roomHudMenu" type="button" class="hpX" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴 (Esc)">☰</button></div>
+            <div class="roomHudBar" aria-hidden="true"><i id="roomHudFill"></i></div>
+          </div>
           <p id="boardNote" class="boardNote hidden" aria-hidden="true"></p><!-- G-틀①: the newest system line a moment over the board (read out by the system panel's own live list) -->
           <div class="statusRow">
             <div>
