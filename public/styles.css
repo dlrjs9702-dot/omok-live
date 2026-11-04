@@ -3265,20 +3265,32 @@ body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fff
 
 /* v1.10.232 배치 도구: the strip of pieces at the bottom of the 3D view (a PC: in the middle; a phone: the whole width), its
    ✓ ↻ ✕ over it; the stick and the island's own buttons away while it is on */
-.placeBar{position:absolute;left:50%;bottom:12px;translate:-50% 0;z-index:30;width:min(720px,calc(100% - 24px));display:grid;gap:6px;padding:10px 12px;border-radius:18px;background:var(--isle-paper,#fbf3e2);color:var(--isle-ink,#3a2a1a);border:1px solid var(--isle-line,#d8c6a4);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.placeBar{position:absolute;left:50%;bottom:12px;translate:-50% 0;z-index:30;width:min(760px,calc(100% - 24px));display:grid;gap:8px;padding:10px 12px;border-radius:18px;background:var(--isle-paper,#fff6e3);color:var(--isle-ink,#5a4632);border:1px solid var(--isle-line,#d9c3a0);box-shadow:0 6px 18px rgba(0,0,0,.18)}
 .placeBar.hidden{display:none}
+/* (v1.10.239 place-tool 5-2: choosing -- the head line and the strip; holding -- the status and the buttons in one line) */
 .placeBar .placeHead{display:flex;align-items:center;gap:8px}.placeBar .placeTitle{margin:0;font-weight:800;flex:1}
-.placeBar .placeStatus{margin:0;font-size:.9rem;min-height:1.2em}.placeBar .placeStatus.bad{color:#b3261e}
-.placeBar .placeActs{position:absolute;right:12px;top:-58px;display:flex;gap:8px}
-.placeBar .placeActs button{min-width:52px;min-height:48px;border-radius:24px;font-size:1.1rem;box-shadow:0 3px 10px rgba(0,0,0,.18)}
-.placeBar .placeActs .placePut{min-width:96px}
-.placeBar .placePad{display:grid;grid-template-columns:repeat(4,48px);gap:6px}.placeBar .placePad.hidden{display:none}
+.placeBar .placeRow{display:flex;align-items:center;gap:8px;min-width:0}.placeBar:not(.holding) .placeRow{display:none}
+.placeBar.holding .placeHead,.placeBar.holding .placeStrip{display:none}
+.placeBar .placeStatus{margin:0;flex:1;min-width:0;font-size:.92rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.placeBar .placeStatus::before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;background:#3f9a52;vertical-align:1px}
+.placeBar .placeStatus.bad{color:#b3261e;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25}.placeBar .placeStatus.bad::before{background:#c8463c} /* (총괄 239 검토: why not, whole -- a PC's two lines) */
+.placeBar .placeWhy{display:none}
+.placeBar .placeActs{display:flex;gap:6px;flex:0 0 auto}
+.placeBar .placePad{position:absolute;right:12px;bottom:calc(100% + 8px);display:flex;gap:6px;padding:6px;border-radius:16px;background:var(--isle-paper,#fff6e3);border:1px solid var(--isle-line,#d9c3a0);box-shadow:0 4px 12px rgba(0,0,0,.14)}.placeBar .placePad.hidden{display:none}
 .placeBar .placeStrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x proximity}
 .placeBar .placeStrip .placePiece{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
-.placeBar .placeStrip .placePiece.selected{background:var(--isle-btn,#8a5f3a);color:#fff;border-color:var(--isle-btn,#8a5f3a)}
-.placeBar .placeBack{justify-self:end}
-body.placing #islandStick,body.placing .islandCtl,body.placing #homeEditBtn,body.placing #yardEditBtn{display:none!important}
-@media (max-width:760px){.placeBar{left:0;right:0;bottom:0;translate:none;width:auto;border-radius:18px 18px 0 0;padding:8px 10px}.placeBar .placeActs{right:10px;top:-62px}.placeBar.holding .placeStrip,.placeBar.holding .placeBack{display:none}}
+/* (5-4: one button -- the island's paper button; ✓ 놓기 the one brown; can't: faded, the same shape) */
+.placeBar .placeBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:44px;padding:0 14px;border-radius:14px;font:inherit;font-size:1rem;font-weight:800;background:var(--isle-paper,#fff6e3);color:var(--isle-ink,#5a4632);border:1px solid var(--isle-tag,#8a6a4a);box-shadow:none;cursor:pointer}
+.placeBar .placeBtn:hover{background:var(--isle-hover,#f7e7c6)}.placeBar .placeBtn .placeIc:empty{display:none}
+.placeBar .placeBtn.main{background:var(--isle-btn,#9c5f14);color:#fff;border-color:var(--isle-btn,#9c5f14)}.placeBar .placeBtn.main:hover{filter:brightness(.9)}
+.placeBar .placeBtn.placePiece.selected{background:var(--isle-btn,#9c5f14);color:#fff;border-color:var(--isle-btn,#9c5f14)}
+.placeBar .placeBtn:disabled{opacity:.45;cursor:default}.placeBar .placeBtn[hidden]{display:none}
+/* (5-1: placing, the placing alone -- the island's buttons, the chat and messenger, ☰, the errand chips, the minimap, the quick
+   bar away; a note at the top) */
+body.placing #islandStick,body.placing .islandCtl,body.placing #homeEditBtn,body.placing #yardEditBtn,body.placing #islandBagTab,body.placing #islandPhotoTab,body.placing #islandViewTab,body.placing #islandChatTab,body.placing #islandMessengerTab,body.placing #gameMenuBtn,body.placing #questTracker,body.placing .plazaStage canvas.islandMinimap,body.placing #quickBar,body.placing #contestBar,body.placing #plazaHint{display:none!important}
+body.placing .toast{top:16px;bottom:auto}
+@media (max-width:760px){.placeBar .placeStatus.bad{white-space:nowrap;display:block}.placeBar .placeWhy:not(.hidden){display:block;position:absolute;left:10px;right:10px;bottom:calc(100% + 8px);margin:0;padding:7px 12px;border-radius:12px;background:var(--isle-paper,#fff6e3);color:#b3261e;border:1px solid var(--isle-line,#d9c3a0);font-size:.9rem;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,.14)}.placeBar .placePad:not(.hidden)~.placeWhy{bottom:calc(100% + 70px)}
+  .placeBar{left:0;right:0;bottom:0;translate:none;width:auto;border-radius:18px 18px 0 0;padding:8px 10px}.placeBar .placeBtn{min-height:48px}.placeBar .placeActs .placeBtn:not(.main) .placeWord{display:none}.placeBar .placeActs .placeBtn:not(.main){padding:0;width:48px}.placeBar .placeActs{gap:5px}.placeBar .placePad{right:10px}}
 
 /* v1.10.233 도감: its tabs (바다 · 민물 · 곤충 · 기념) and 「찾은 것만」 under the head, fixed; only the cells scroll, in the window (PC and phone) */
 #islandBagDialog .islandDexTabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:4px 0 8px}#islandBagDialog .islandDexTabs.hidden{display:none}

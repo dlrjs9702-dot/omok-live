@@ -8,6 +8,8 @@ const Y = require('../../public/plaza/island-yard.js');
 // pressed is picked up again; turned (R / ↻); a wall clock red in the middle of the room, green and flush by the back wall;
 // a radio on a desk's top; let go (Esc / ✕); then the yard's 「마당 꾸미기」 the same tool, the same moves. PC and phone;
 // SHOT_DIR photos: the tool open, a piece on its way (green), a red place, on the desk, the yard.
+// (v1.10.239 place-tool 5, 사용자 「배치시 말풍선이 아래 부분을 다 가리고 있어서」: a piece held -- the one-line bar alone, the island's
+// buttons away; ✕ the strip back; the yard's front edge over the bar; ⋯ and the light theme in photos)
 test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨간 자리·탁자 위·내려놓기, 마당도 같은 도구', async ({ browser, request, isMobile }) => {
   test.setTimeout(600000);
   const tag = isMobile ? 'm' : 'p';
@@ -62,6 +64,11 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     const strip = (id) => page.locator(`#placeBar .placePiece[data-uid="${uid(id)}"]`);
     await shot('place-open', 1500);
     // the sofa: from the strip, pointed, placed on its grid
+    await strip('sofa__mint').click();
+    for (const hid of ['#placeBar .placeStrip', '#placeBar .placeTitle', '#islandBagTab', '#gameMenuBtn', '#questTracker']) await expect(page.locator(hid)).toBeHidden(); // (5-1·5-2: held -- the placing alone)
+    expect((await page.locator('#placeBar').boundingBox()).height, '들고 있을 때 막대 한 줄').toBeLessThanOrEqual(72);
+    if (process.env.SHOT_DIR) { await page.locator('#placeBar .placeFine').click(); await shot('place-fine', 500); await page.locator('#placeBar .placeFine').click(); }
+    await page.locator('#placeBar button[aria-label="내려놓기 (Esc)"]').click(); await expect(page.locator('#placeBar .placeStrip')).toBeVisible(); expect((await state()).held).toBe(null); // (✕: choosing again)
     await strip('sofa__mint').click(); await aim(1.5, 1.5); const want = H.aimAt({ uid: uid('sofa__mint'), id: 'sofa__mint', rot: 0 }, 1.5, 1.5, 1, []);
     expect((await state()).held).toMatchObject({ x: want.x, z: want.z }); await shot('place-drag', 600);
     if (isMobile) await put(); else { const s = await screen(1.5, 1.5); await page.mouse.click(s.x, s.y); await expect.poll(async () => (await state()).held, { timeout: 15000 }).toBe(null); }
@@ -75,7 +82,8 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     await expect.poll(async () => (await inside()).find((p) => p.uid === uid('sofa__mint'))?.rot, { timeout: 15000 }).toBe(1);
     // a wall clock: red in the middle (no ✓), green and flush by the back wall
     await strip('wall_clock__oak').click(); await aim(0, 0); expect((await state()).why).toBeTruthy(); await expect(page.locator('#placeBar .placePut')).toBeDisabled(); await shot('place-red', 600);
-    const hz = H.stageOf(1).hz; await aim(-1, hz - 0.3); expect((await state()).why).toBe(null); expect((await state()).held.rot).toBe(0); await put();
+    if (isMobile) await expect(page.locator('#placeBar .placeWhy')).toContainText((await state()).why); // (총괄 239 검토: why not, whole -- over the bar on a phone)
+    const hz = H.stageOf(1).hz; await aim(-1, hz - 0.3); expect((await state()).why).toBe(null); await expect(page.locator('#placeBar .placeWhy')).toBeHidden(); expect((await state()).held.rot).toBe(0); await put();
     await expect.poll(async () => (await inside()).find((p) => p.uid === uid('wall_clock__oak'))?.z, { timeout: 15000 }).toBeCloseTo(hz - H.SIZE.wall_clock[1] / 2, 5);
     // a desk, then a radio on its top (the top pointed at)
     await strip('desk__oak').click(); await aim(-1.5, 1.0); await put();
@@ -87,7 +95,7 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     if (isMobile) await page.locator('#placeBar button[aria-label="내려놓기 (Esc)"]').click(); else await page.keyboard.press('Escape');
     expect((await state()).held).toBe(null);
     // (총괄 232 검토 1) a window opened over it: the tool ends, I walk again
-    await page.locator('#gameMenuBtn').click(); await expect(page.locator('#gameMenuDialog')).toBeVisible(); await expect(page.locator('#placeBar')).toBeHidden({ timeout: 5000 }); expect(await state()).toBe(null); // (the ☰ menu: top left, above the bar on a phone held upright too)
+    await page.evaluate(() => document.getElementById('gameMenuDialog').showModal()); await expect(page.locator('#gameMenuDialog')).toBeVisible(); await expect(page.locator('#placeBar')).toBeHidden({ timeout: 5000 }); expect(await state()).toBe(null); // (v1.10.239: the ☰ is away while placing -- any window over it all the same)
     await page.keyboard.press('Escape'); await expect(page.locator('#gameMenuDialog')).toBeHidden();
     const at0 = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); await page.locator('#plazaStage').focus();
     await page.keyboard.down('KeyW'); await page.waitForTimeout(700); await page.keyboard.up('KeyW');
@@ -99,9 +107,11 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     await page.locator('#yardEditBtn').click(); await page.locator('#yardEdit .placeToolBtn').click(); await expect(page.locator('#placeBar')).toBeVisible();
     const L = Y.lotById(lot); const stage = (await get(request, '/api/home', a.token)).data.mine.stage || 1;
     const ok = []; for (let lz = -8; lz <= 6; lz += 0.5) for (let lx = -7; lx <= 7; lx += 0.5) { const p = Y.aimAt({ uid: 'b', id: 'yard_bench__plain', rot: 0 }, lx, lz); if (!Y.placeError(p, [], L, stage, 1)) ok.push(p); }
-    const spot = await page.evaluate((list) => { const bar = document.getElementById('placeBar').getBoundingClientRect().top - 90; const w = window.innerWidth; return list.find((p) => { const s = window.PlaceTool.screen(p.x, p.z); return s && s.y > 120 && s.y < bar && s.x > 40 && s.x < w - 40; }) || null; }, ok); // (one seen above the bar)
+    await page.locator(`#placeBar .placePiece[data-uid="${uid('yard_bench__plain')}"]`).click(); await page.waitForTimeout(600); // (held: the low bar, the view above it)
+    const spot = await page.evaluate((list) => { const bar = document.getElementById('placeBar').getBoundingClientRect().top - 24; const w = window.innerWidth; const seen = list.map((p) => ({ p, s: window.PlaceTool.screen(p.x, p.z) })).filter((o) => o.s && o.s.x > 40 && o.s.x < w - 40); const front = seen.reduce((m, o) => (!m || o.s.y > m.s.y ? o : m), null); return front && front.s.y < bar ? front.p : null; }, ok); // (5-3: the yard's front edge -- its place nearest the bottom -- over the bar)
     expect(spot).toBeTruthy();
-    await page.locator(`#placeBar .placePiece[data-uid="${uid('yard_bench__plain')}"]`).click(); await aim(spot.x, spot.z); expect((await state()).why).toBe(null); await shot('place-yard', 800);
+    await aim(spot.x, spot.z); expect((await state()).why).toBe(null); await shot('place-yard', 800);
+    if (process.env.SHOT_DIR) { await page.evaluate(() => { window.__theme = document.documentElement.dataset.theme; document.documentElement.dataset.theme = 'light'; }); await shot('place-light', 600); await page.evaluate(() => { document.documentElement.dataset.theme = window.__theme; }); }
     if (isMobile) await put(); else { const s = await screen(spot.x, spot.z); await page.mouse.click(s.x, s.y); await expect.poll(async () => (await state()).held, { timeout: 15000 }).toBe(null); }
     await expect.poll(async () => ((await get(request, '/api/home', a.token)).data.lots.find((l) => l.id === lot)?.yard || []).find((p) => p.uid === uid('yard_bench__plain')), { timeout: 15000 }).toMatchObject({ x: spot.x, z: spot.z });
     await page.locator('#placeBar .placeEnd').click(); await expect(page.locator('#yardEdit')).toBeVisible();
