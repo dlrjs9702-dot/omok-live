@@ -1476,10 +1476,15 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
 :root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button[aria-checked="true"]{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)}
 :root[data-theme="light"] body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
-:root[data-theme="light"] .placeBar{background:var(--isle-paper,#fbf3e2);color:var(--isle-ink,#3a2a1a);border:1px solid var(--isle-line,#d8c6a4);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+:root[data-theme="light"] .placeBar{background:var(--isle-paper,#fff6e3);color:var(--isle-ink,#5a4632);border:1px solid var(--isle-line,#d9c3a0);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+:root[data-theme="light"] .placeBar .placeStatus::before{background:#3f9a52}
 :root[data-theme="light"] .placeBar .placeStatus.bad{color:#b3261e}
-:root[data-theme="light"] .placeBar .placeActs button{box-shadow:0 3px 10px rgba(0,0,0,.18)}
-:root[data-theme="light"] .placeBar .placeStrip .placePiece.selected{background:var(--isle-btn,#8a5f3a);color:#fff;border-color:var(--isle-btn,#8a5f3a)}
+:root[data-theme="light"] .placeBar .placeStatus.bad::before{background:#c8463c}
+:root[data-theme="light"] .placeBar .placePad{background:var(--isle-paper,#fff6e3);border:1px solid var(--isle-line,#d9c3a0);box-shadow:0 4px 12px rgba(0,0,0,.14)}
+:root[data-theme="light"] .placeBar .placeBtn{background:var(--isle-paper,#fff6e3);color:var(--isle-ink,#5a4632);border:1px solid var(--isle-tag,#8a6a4a);box-shadow:none}
+:root[data-theme="light"] .placeBar .placeBtn:hover{background:var(--isle-hover,#f7e7c6)}
+:root[data-theme="light"] .placeBar .placeBtn.main{background:var(--isle-btn,#9c5f14);color:#fff;border-color:var(--isle-btn,#9c5f14)}
+:root[data-theme="light"] .placeBar .placeBtn.placePiece.selected{background:var(--isle-btn,#9c5f14);color:#fff;border-color:var(--isle-btn,#9c5f14)}
 :root[data-theme="light"] #islandBagDialog .islandDexTab{border:1px solid #c4a77d;background:#fbf3e2;color:var(--isle-ink)}
 :root[data-theme="light"] #islandBagDialog .islandDexTab.selected{background:var(--isle-btn,#8a5f3a);border-color:var(--isle-btn,#8a5f3a);color:#fff}
 :root[data-theme="light"] #islandBagDialog .islandDexFound{color:var(--isle-ink)}

@@ -3639,7 +3639,7 @@
   }
   function closePlaceTool(reopen = true) {
     const t = placeOn; if (!t) return; placeOn = null;
-    t.a.ghost(null); plaza.controller?.placeTool?.(null); t.a.view(false); document.body.classList.remove('placing'); placeBar.classList.add('hidden'); placeBar.replaceChildren();
+    t.a.ghost(null); plaza.controller?.placeTool?.(null); plaza.controller?.placeInset?.(0); t.a.view(false); document.body.classList.remove('placing'); placeBar.classList.add('hidden'); placeBar.replaceChildren();
     if (reopen) t.a.reopen();
   }
   function placeShow() {
@@ -3648,9 +3648,11 @@
     const status = placeBar.querySelector('.placeStatus'); if (status) { status.textContent = h ? `${h.name} · ${t.why || '여기에 놓을 수 있어요'}` : '줄에서 가구를 고르거나, 놓인 가구를 눌러 들어요.'; status.dataset.at = h ? `${h.x},${h.z},${h.rot}` : ''; status.classList.toggle('bad', Boolean(h && t.why)); }
     for (const b of placeBar.querySelectorAll('.placeHeld')) b.disabled = !h;
     const put = placeBar.querySelector('.placePut'); if (put) put.disabled = !h || Boolean(t.why);
-    const back = placeBar.querySelector('.placeBack'); if (back) back.disabled = !h || !t.a.placed().some((x) => x.uid === h.uid) || t.a.stuck({ ...h, x: NaN });
+    const back = placeBar.querySelector('.placeBack'); if (back) { back.hidden = !h || !t.a.placed().some((x) => x.uid === h.uid); back.disabled = back.hidden || t.a.stuck({ ...h, x: NaN }); } // (v1.10.239: only for a placed one)
+    if (!h) { const pad = placeBar.querySelector('.placePad'); pad?.classList.add('hidden'); placeBar.querySelector('.placeFine')?.setAttribute('aria-expanded', 'false'); }
     for (const c of placeBar.querySelectorAll('.placePiece')) c.classList.toggle('selected', Boolean(h) && c.dataset.uid === h.uid);
-    placeBar.classList.toggle('holding', Boolean(h)); // (a narrow screen: the strip folded while one is held)
+    placeBar.classList.toggle('holding', Boolean(h)); // (v1.10.239 place-tool 5-2: held -- the one-line bar alone, PC and phone)
+    requestAnimationFrame(() => { if (placeOn === t) plaza.controller?.placeInset?.(placeBar.offsetHeight + 12); }); // (5-3: the view's middle above the bar)
   }
   function placeHold(p, pt = null) { // a piece in hand: where it stands now, else the floor at the middle of the view
     const t = placeOn; if (!t) return; const was = t.a.placed().find((x) => x.uid === p.uid);
@@ -3678,22 +3680,26 @@
   function placeBack() { const h = placeOn?.held; if (!h) return; placeSend({ uid: h.uid, remove: true }, `${h.name} — 가구 창고로 넣었어요`); }
   function drawPlaceBar() {
     const t = placeOn; if (!t) return; const placedIds = new Set(t.a.placed().map((x) => x.uid));
+    // (v1.10.239 place-tool 5-4, 사용자 「각 버튼들이 통일감없이」: every button the island's paper button -- ✓ 놓기 the one brown;
+    // an icon and a word, the word away on a phone but for ✓)
+    const pb = (icon, word, cls, fn, aria = null) => { const b = document.createElement('button'); b.type = 'button'; b.className = `placeBtn ${cls}`; const i = document.createElement('span'); i.className = 'placeIc'; i.textContent = icon; b.append(i); if (word) { const w = document.createElement('span'); w.className = 'placeWord'; w.textContent = word; b.append(w); } if (aria) { b.setAttribute('aria-label', aria); b.title = aria; } b.addEventListener('click', fn); return b; };
     const strip = document.createElement('div'); strip.className = 'placeStrip'; strip.setAttribute('role', 'list');
     for (const p of [...t.pieces].sort((x, y) => Number(placedIds.has(x.uid)) - Number(placedIds.has(y.uid)))) { // (not yet placed first)
-      const c = btn(`${p.name}${placedIds.has(p.uid) ? ' · 놓음' : ''}`, 'ghost placePiece', () => placeHold(p)); c.dataset.uid = p.uid; c.setAttribute('role', 'listitem'); strip.append(c);
+      const c = pb('', `${p.name}${placedIds.has(p.uid) ? ' · 놓음' : ''}`, 'placePiece', () => placeHold(p)); c.dataset.uid = p.uid; c.setAttribute('role', 'listitem'); strip.append(c);
     }
     if (!t.pieces.length) strip.append(line(t.kind === 'home' ? '가구 창고가 비어 있어요.' : '마당 물건이 없어요.'));
-    const back = btn('창고로', 'secondary placeBack placeHeld', () => placeBack());
     const status = line(''); status.className = 'placeStatus'; status.setAttribute('role', 'status');
-    const acts = document.createElement('div'); acts.className = 'placeActs';
-    const put = btn('✓ 놓기', 'primary placePut placeHeld', () => placePut()); const turn = btn('↻', 'ghost placeHeld', () => placeTurn()); turn.setAttribute('aria-label', '돌리기 (R)'); turn.title = '돌리기 (R)';
-    const drop = btn('✕', 'ghost placeHeld', () => placeDrop()); drop.setAttribute('aria-label', '내려놓기 (Esc)'); drop.title = '내려놓기 (Esc)';
+    const drop = pb('✕', '내려놓기', 'placeHeld', () => placeDrop(), '내려놓기 (Esc)'); const turn = pb('↻', '돌리기', 'placeHeld', () => placeTurn(), '돌리기 (R)');
     const pad = document.createElement('div'); pad.className = 'placePad hidden';
-    for (const [label, right, ahead, aria] of [['←', -1, 0, '왼쪽으로'], ['↑', 0, 1, '안쪽으로'], ['↓', 0, -1, '앞쪽으로'], ['→', 1, 0, '오른쪽으로']]) { const b = btn(label, 'ghost placeHeld', () => placeStep(right, ahead)); b.setAttribute('aria-label', aria); pad.append(b); }
-    const fine = btn('⋯', 'ghost tiny placeFine', () => { pad.classList.toggle('hidden'); fine.setAttribute('aria-expanded', String(!pad.classList.contains('hidden'))); }); fine.setAttribute('aria-label', '한 칸씩 옮기기'); fine.setAttribute('aria-expanded', 'false');
-    const end = btn('끝내기', 'ghost tiny placeEnd', () => closePlaceTool());
-    acts.append(drop, turn, put); const head = document.createElement('div'); head.className = 'placeHead'; head.append(line(`🖐 배치 도구 · ${t.a.title}`, 'placeTitle'), fine, end);
-    placeBar.replaceChildren(head, status, pad, acts, strip, back); placeBar.classList.remove('hidden'); placeShow();
+    for (const [label, right, ahead, aria] of [['←', -1, 0, '왼쪽으로'], ['↑', 0, 1, '안쪽으로'], ['↓', 0, -1, '앞쪽으로'], ['→', 1, 0, '오른쪽으로']]) pad.append(pb(label, '', 'placeHeld', () => placeStep(right, ahead), aria));
+    const fine = pb('⋯', '한 칸씩', 'placeHeld placeFine', () => { pad.classList.toggle('hidden'); fine.setAttribute('aria-expanded', String(!pad.classList.contains('hidden'))); }, '한 칸씩 옮기기'); fine.setAttribute('aria-expanded', 'false');
+    const back = pb('📦', '창고로', 'placeHeld placeBack', () => placeBack(), '창고로');
+    const put = pb('✓', '놓기', 'main placePut placeHeld', () => placePut(), '✓ 놓기 (Enter)');
+    const end = pb('', '끝내기', 'placeEnd', () => closePlaceTool());
+    const acts = document.createElement('div'); acts.className = 'placeActs'; acts.append(drop, turn, fine, back, put);
+    const head = document.createElement('div'); head.className = 'placeHead'; head.append(line(`🖐 ${t.a.title}`, 'placeTitle'), end);
+    const row = document.createElement('div'); row.className = 'placeRow'; row.append(status, acts);
+    placeBar.replaceChildren(head, strip, pad, row); placeBar.classList.remove('hidden'); placeShow();
   }
   window.addEventListener('keydown', (event) => { // (a PC: R turns, Esc lets go -- or ends --, the arrows step one place)
     if (!placeOn || event.isComposing || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || '')) return;

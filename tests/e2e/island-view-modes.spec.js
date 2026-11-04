@@ -124,6 +124,11 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
       await page.evaluate(() => window.PlazaDebug().lid(null)); await page.waitForTimeout(500); expect(await geos()).toBeLessThanOrEqual(before + 4);
     }
     await shot('home-first');
+    { // (v1.10.239 「집 안쪽 칸 나누는 부분이 이상해」) the front in the first: a wall to the ceiling, not the low one and the night over it
+      await page.evaluate((id) => { const d = window.PlazaDebug(); const w = window.IslandHome.world(window.IslandHome.lotById(id), 0, 0); d.teleport(w.x, w.z); }, lot); await page.waitForTimeout(500);
+      await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw?.(d.view().yaw + Math.PI); }); await page.waitForTimeout(800);
+      expect((await page.evaluate(() => window.PlazaDebug().whatAt(0.5, 0.2)))[0]?.layer, '1인칭 실내 앞벽').toBe('lid');
+    }
     if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().setCamYaw?.(window.PlazaDebug().view().yaw)); for (const h of [3.6, 4.0]) { await page.evaluate((h) => window.PlazaDebug().lid(h), h); await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(d.view().yaw); }); await shot(`home-ceil-${h}`); } await page.evaluate(() => window.PlazaDebug().lid(null)); }
     // 꾸미기: the room from above while it is open, the first again when closed
     await page.locator('#homeEditBtn').click(); await expect(page.locator('#homeEdit')).toBeVisible(); await expect.poll(async () => (await view()).mode).toBe('third');
