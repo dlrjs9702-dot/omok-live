@@ -65,5 +65,6 @@ test('밝은 테마: 게임관은 --hp-* 밝은 한 벌을 쓰고 KEEP_DARK가 �
   const L = (h) => { const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
   const contrast = (a, b) => { const [x, y] = [L(a), L(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   assert.ok(contrast(light['hp-t1'].slice(1), light['hp-bg2'].slice(1)) >= 7); assert.ok(contrast(dark['hp-t1'].slice(1), dark['hp-bg2'].slice(1)) >= 7);
-  assert.ok(contrast(light['hp-gold'].slice(1), light['hp-bg2'].slice(1)) >= 3, 'gold on the light sheet');
+  for (const set of [light, dark]) for (const k of ['hp-gold', 'hp-blue', 'hp-win', 'hp-loss']) assert.ok(contrast(set[k].slice(1), set['hp-bg2'].slice(1)) >= 4.5, `${k} on the ${set === light ? 'light' : 'dark'} sheet`); // (총괄 #390: 「아직 기록 없음」 gold, 「게임 안내」 blue -- small words)
+  assert.match(css, /\.gameSheet \.gameSheetGuide summary\{color:var\(--hp-blue\)\}/);
 });

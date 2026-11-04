@@ -2044,6 +2044,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .gameSheetChoice{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .gameSheetChoice>small{flex-basis:100%;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--hp-t2)}
 .gameSheetBest{margin:10px 0 0;font-size:14px;font-weight:800;color:var(--hp-gold)}
+.gameSheet .gameSheetGuide summary{color:var(--hp-blue)} /* (총괄 #390: small words at 4.5:1 on either sheet) */
 .gameSheetActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .gameSheetActions button{flex:1 1 120px}
 .gameSheetCreate{margin-top:12px;padding-top:12px;border-top:1px solid var(--hp-line)}
@@ -3309,7 +3310,7 @@ body.placing .toast{top:16px;bottom:auto}
    「게임관 화면:」 밝게 / 어둡게 / 기기 설정, 총괄 U1 답 B -- the island's paper windows as they are). Used inside the hall only (#gamehallView, #roomView, #reflexView, #gameSheet); a game's own
    colours stay --c1 / --c2 (the catalogue's), --c3 the darker. The same layout, sizes and motion in both. */
 :root{--hp-bg:#0B0C1A;--hp-bg2:#15172E;--hp-line:rgba(255,255,255,.08);--hp-face:rgba(255,255,255,.08);--hp-face-on:rgba(255,255,255,.2);--hp-glass:rgba(11,12,26,.5);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.55);--hp-t3:rgba(255,255,255,.35);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-draw:#FFCB57;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A;--hp-r-md:14px;--hp-r-lg:18px;--hp-r-xl:28px;--hp-spring:cubic-bezier(.2,.9,.3,1.3)}
-:root[data-theme="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#B97A00;--hp-win:#1F9E6B;--hp-draw:#B8860B;--hp-loss:#D6365A;--hp-blue:#23806F;--hp-on-c1:#FFFFFF}
+:root[data-theme="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#8A5A00;--hp-win:#17805A;--hp-draw:#8F6A00;--hp-loss:#B82A4C;--hp-blue:#1C6B5C;--hp-on-c1:#FFFFFF}
 /* the three buttons (U1): .hpBtn 50px -- the main one in the game's colour (.hpBtn.go), the big call to act .hpBtn.cta 58px;
    .hpPill 34~40px round glass, on (.on / aria-pressed) a little brighter; .hpX the 40px round ✕ */
 .hpBtn{min-height:50px;padding:0 18px;border:0;border-radius:var(--hp-r-md);background:var(--hp-face);color:var(--hp-t1);font:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s,transform .12s}
