@@ -270,11 +270,17 @@ test('게임 아일랜드: 게임관 전용 화면 → 카드 → 상세 시트 
   await expect(page.locator('.lobbyTopGrid #createRoomBtn')).toHaveCount(1); // the form went back home
   await page.locator('#leaveRoomBtn').click();
   await expect(hall).toBeVisible(); // back to choosing a game
-  // AI 연습 opens that game's page (practice), and its 「‹ 게임관」 comes back here
+  // (v1.10.243 U1 한판마당) the sheet the one start screen: the AI's level as pills there, 「AI 연습」 the round at once (no second
+  // start screen), its ✕ back here; the hall's buttons the three kinds -- no old .ghost, the sheet's 50 px and more
   await hall.locator('.gameCard[data-game="connect4"]').click();
+  await expect(sheet.locator('.gameSheetChoice[aria-label="AI 난이도"] .hpPill')).toHaveText(['AI 쉬움', 'AI 보통', 'AI 어려움']);
+  await sheet.locator('.gameSheetChoice[aria-label="AI 난이도"] .hpPill', { hasText: 'AI 어려움' }).click();
+  await expect(sheet.locator('.gameSheetChoice[aria-label="AI 난이도"] .hpPill.on')).toHaveText('AI 어려움');
+  expect(await page.locator('#gamehallView .ghost, #gameSheet .ghost').count()).toBe(0);
+  for (const b of await sheet.locator('.gameSheetActions .hpBtn').all()) expect((await b.boundingBox()).height).toBeGreaterThanOrEqual(50);
   await sheet.getByRole('button', { name: 'AI 연습' }).click();
-  await expect(page.locator('#reflexView .reflexHead strong')).toHaveText('사목');
-  await page.locator('.reflexHead button', { hasText: '게임관' }).click();
+  await expect(page.locator('#reflexView .reflexFrame.playing')).toBeVisible(); await expect(page.locator('#reflexMenu')).toBeHidden();
+  await page.locator('#reflexQuitBtn').click();
   await expect(hall).toBeVisible();
   // Esc closes a sheet, then leaves for the island where I stood
   await hall.locator('.gameCard[data-game="baseball"]').click();

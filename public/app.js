@@ -2426,7 +2426,8 @@
     const id = g.set ? g.id : g.ai; if (!id || !(await mountHanpan()) || sheetGame !== g) return;
     const groups = reflexGames.choices(id); if (!groups) return;
     for (const o of groups) {
-      const row = hallEl('div', 'gameSheetChoice'); row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', o.title); row.append(hallEl('small', null, o.title));
+      const title = g.set ? o.title : `AI 연습 · ${o.title}`; /* (a room game's: its practice's, not the room's) */
+      const row = hallEl('div', 'gameSheetChoice'); row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', o.title); row.append(hallEl('small', null, title));
       for (const [value, label] of o.items) {
         const b = hallEl('button', 'hpPill big', label); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(o.value === value)); b.classList.toggle('on', o.value === value);
         b.addEventListener('click', () => { reflexGames.choose(id, o.key, value); sheetChoices(g); }); row.append(b);
