@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.243 게임관 UI 통일 U1
+
+- 한판마당 토큰 --hp-*(어두운 :root, 밝은 :root[data-theme=light] 크림·민트·갈색), 고르는 곳은 「게임관 화면:」 라디오(총괄 답 B).
+- 단추 셋 .hpBtn(.go·.cta)·.hpPill·.hpX, 게임관·시트·결과에 씀(게임방은 U2).
+- 시트가 하나뿐인 시작 화면: 난이도·옵션 알약·내 최고, 시작 = 바로 판(reflexMenu는 옛 로비만).
+
 ## v1.10.242 주민 날마다 말 + 가락 대회 말
 
 - 1 lib/island-daily.js: 27명 × 10상황 × 2줄(총괄 글 묶음 확정본). 차례 내 일(대어 10분·새 집·트로피·오랜만 3일, 그날 그 주민 한 번) → 대회 → 눈(겨울 구역 비) → 계절(선 구역), 2~4는 35%. 조사 slot(), 같은 줄 연달아 안 나옴.
@@ -24,9 +30,3 @@
 - 1 에셋 100: contest_tent(깃발 flag_L·R 흔들림, 밤 glow, keepNodes)·contest_sign(sign_plate에 종목 글씨, 광장 쪽). 가락은 모델 keeper 자리.
 - 2 섬 대회 매일 14:00(서울) 30분, 종목 9개 날마다 차례(dayContest, contest_d<day>). 천막 13:50~15:00, 0시 넘김 포함 끝+30분까지 유지. 관리자는 시각·길이 + 아직 시작 안 한 대회 종목만(지난·진행 중 400). 대회 없을 때 띠 「내일 14:00 · ○○ 대회」.
 - 3 Codex 10판: guideTargetOf 줄 가운데 // 고침, 1인칭 손에 폭죽·비눗방울, quickSave 두 번 실패 시 서버가 받은 칸으로, loadQuick 늦은 응답이 바꾼 칸을 덮지 않음, settleContest 종목 확인.
-
-## v1.10.240 3b: CI 흔들리는 시험 원인 고치기
-
-- CI 약 120번 실패 기록 집계. 가장 큰 흔들림 둘: island-story(66번, 선택지 뒤 revealTalk가 답 오기 전에 끝남 → 앱 talkWaiting + revealTalk가 기다림), resident-talk-gone(56번, 실제 결함: talkResident 409에 예전 대화 창이 남음 → 닫음).
-- tool-swing 각도에 닿을 때까지 측정, insects·tool-swing 곤충 시계 고정(/api/test/insects/hold, afterEach 해제), island-bag 폰 길게 누르기 들림 기다림, pandemic-followup reload 뒤 게임 상태 기다림(reloaded), tax-bill 폰 standAt, resident-talk 줄 89는 talkWaiting으로. plaza 낚시(234)·앉았다 W(239)는 이미 고침.
-- 로컬 --repeat-each=5: PC 35/35 + 낚시 5/5, 폰 30/30.
