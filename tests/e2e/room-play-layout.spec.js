@@ -45,8 +45,8 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     expect((await api(request, '/api/room/choose-role', white, { choice: 'white' })).status).toBe(200);
     await expect(page.locator('body')).toHaveClass(/roomPlaying/);
     await expect(page.locator('.roomInfoArea')).toBeHidden();
-    await page.locator('#roomInfoBtn').click(); await expect(page.locator('.roomInfoArea')).toBeVisible();
-    await page.locator('#roomInfoBtn').click(); await expect(page.locator('.roomInfoArea')).toBeHidden();
+    // (v1.10.244 U2: ⓘ in ☰ -- it closes ☰ and opens the room's info)
+    for (const shown of [true, false]) { await page.locator('#roomMenuBtn').click(); await page.locator('#gameMenuDialog #roomInfoBtn').click(); await expect(page.locator('#gameMenuDialog')).not.toHaveAttribute('open', ''); await expect(page.locator('.roomInfoArea')).toBeVisible({ visible: shown }); }
     if (game === 'yut') { // G1-3: the throw under the board, within the screen
       await expect(page.locator('.boardCard #yutThrowBtn')).toBeVisible();
       await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(300);
@@ -102,8 +102,9 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
       const overlap = b.x < box.x + box.width && b.x + b.width > box.x && b.y < box.y + box.height && b.y + b.height > box.y;
       expect(overlap, `${id}이 판을 가림`).toBe(false);
     }
-    // G1-6 빠른 말: a set word, shown a moment on the name card
-    await page.locator('#quickChat button', { hasText: '좋은 수!' }).click();
+    // G1-6 빠른 말: a set word, shown a moment on the name card (v1.10.244 U2: in 💬, in the HUD)
+    await page.locator('#roomHud #chatFloatBtn').click();
+    await page.locator('#chatPanel #quickChat button', { hasText: '좋은 수!' }).click();
     await expect(page.locator('.seatBubble')).toHaveText('좋은 수!');
     expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
     await expect(page.locator('body')).not.toHaveClass(/roomPlaying/);
@@ -124,6 +125,57 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     // (pressed, it waits for the other -- or, where every hand picks its seats again, the room is straight back at the choosing)
     await expect.poll(async () => (await page.locator('#boardOverlay .resultActions button').first().textContent({ timeout: 500 }).catch(() => null))
       || (await (await request.get('/api/room', { headers: { 'X-Session-Token': white } })).json()).state?.game?.status).toMatch(/^(준비 완료 · 기다리는 중|selecting)$/);
+    expect(errors).toEqual([]);
+  });
+}
+
+// v1.10.244 U2 HUD 한 줄 (gamecenter-notes docs/gamehall-unify-hanpan-20261104.md U2): in every room game, while a hand is
+// played -- the old bar and status row hidden, one HUD, at most one name pill lit (the turn's), the board within the screen
+async function guestToken(request, admin, label) { // (a guest file entered by its form, the session read off the page)
+  const { data } = await api(request, '/api/admin/keys', admin, { label });
+  const r = await request.post('/guest-entry', { headers: { 'X-Forwarded-For': ip() }, form: { token: /name="token" value="([^"]+)"/.exec(data.html)[1] } });
+  return /data-session="([^"]+)"/.exec(await r.text())[1];
+}
+const SEATS2 = ['1', '2']; const BW = ['black', 'white'];
+const OWN_SEATS = new Set(['gostop', 'oldmaid', 'davinci', 'pictionary', 'liar', 'twentyquestions', 'pandemic']); // (their own seat plates while a hand is played: G2·G3)
+const ROOM_GAMES = [
+  ['omok', BW], ['othello', BW], ['connect4', BW], ['dots', BW], ['yut', BW], ['omok2v2', ['1', '2', '3', '4']],
+  ['baseball', BW, async (call) => { await call(0, '/api/room/set-secret', { secret: '123' }); await call(1, '/api/room/set-secret', { secret: '456' }); }],
+  ['gostop', SEATS2, 'start-gostop'], ['oldmaid', SEATS2, 'start-oldmaid'], ['davinci', SEATS2, 'start-davinci'], ['halligalli', SEATS2, 'start-halligalli'],
+  ['bingo', SEATS2, 'start-bingo'], ['pictionary', SEATS2, 'start-pictionary'], ['liar', ['1', '2', '3'], 'start-liar'],
+  ['twentyquestions', SEATS2, async (call) => { await call(0, '/api/room/twenty-start', { mode: 'individual', totalRounds: 1 }); }],
+  ['cityking', SEATS2, 'start-city'], ['pandemic', SEATS2, 'start-pandemic'],
+];
+for (const [w, h] of [[1366, 768], [393, 851]]) {
+  test(`U2 HUD 한 줄 ${w}×${h}: 방 게임 ${ROOM_GAMES.length}개`, async ({ page, request }) => {
+    test.setTimeout(240_000);
+    const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+    await page.setViewportSize({ width: w, height: h });
+    const host = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken; const seen = {};
+    // (the page opens straight into each new room: the session put in the page, as the server does -- turn-alert.spec.js)
+    await page.route('**/', async (route) => { if (route.request().resourceType() !== 'document') return route.continue(); const response = await route.fetch(); await route.fulfill({ response, body: (await response.text()).replace('data-session=""', `data-session="${host}"`) }); });
+    for (const [game, seats, start] of ROOM_GAMES) {
+      const tokens = [host]; for (let i = 1; i < seats.length; i += 1) tokens.push(await guestToken(request, host, `U2 ${game} ${i}`)); // (one point account a seat)
+      const call = async (i, route, body) => { const r = await api(request, route, tokens[i], body); expect(r.status, `${game} ${route} ${JSON.stringify(r.data)}`).toBe(200); return r; };
+      const created = await api(request, '/api/rooms', host, { gameType: game }); expect(created.status, game).toBe(201);
+      for (let i = 1; i < seats.length; i += 1) await call(i, '/api/rooms/join', { code: created.data.state.me.roomCode });
+      for (let i = 0; i < seats.length; i += 1) await call(i, '/api/room/choose-role', { choice: seats[i] });
+      if (typeof start === 'string') await call(0, `/api/room/${start}`, {}); else if (start) await start(call);
+      await page.goto('/'); await expect(page.locator('body'), game).toHaveClass(/roomPlaying/, { timeout: 15_000 }); await page.waitForTimeout(600);
+      await expect(page.locator('.roomBar'), game).toBeHidden(); await expect(page.locator('.boardCard > .statusRow'), game).toBeHidden();
+      await expect(page.locator('.roomHud:visible'), game).toHaveCount(1);
+      await expect(page.locator('#roomHud #roomMenuBtn'), game).toBeVisible();
+      const lit = await page.locator(':is(.player,.teamPlayer).on:visible').count(); expect(lit, `${game} 켜진 이름표`).toBe(OWN_SEATS.has(game) ? 0 : 1);
+      const board = await page.evaluate(() => { const b = document.querySelector('#canvasWrap'); window.scrollTo(0, 0); return b?.offsetParent && !b.classList.contains('cityBoard') ? Math.round(b.getBoundingClientRect().bottom) : null; });
+      if (board !== null) expect(board, `${game} 판 아래`).toBeLessThanOrEqual(h + 1);
+      seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText() };
+      if (process.env.SHOT_DIR) {
+        await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });
+        if (['omok', 'othello', 'gostop'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
+      }
+      for (const t of tokens) await api(request, '/api/room/leave', t, {});
+    }
+    console.log(JSON.stringify(seen, null, 1));
     expect(errors).toEqual([]);
   });
 }

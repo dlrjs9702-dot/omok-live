@@ -8130,7 +8130,7 @@
     for (const [seatId, card] of cards) {
       if (!card) continue;
       const on = Boolean(seatId) && seats.has(String(seatId));
-      card.classList.toggle('currentActor', on && !paused);
+      card.classList.toggle('currentActor', on && !paused); card.classList.toggle('on', on && !paused); // (v1.10.244 U2: the turn pill)
       // A paused match keeps a faint, glow-less marker so nobody reads it as "move now".
       card.classList.toggle('currentActorPaused', on && paused);
     }
@@ -8658,7 +8658,8 @@
     const note = byId('boardNote'); if (!text || !document.body.classList.contains('roomPlaying')) return;
     const round = !byId('twentyPanel').classList.contains('hidden') && byId('twentyProgress'); // (v1.10.199 검토, 폰 스무고개: in the slot under the round line)
     if (round) note.style.setProperty('--twentyNoteTop', `${Math.round(round.getBoundingClientRect().bottom + 4 - originOf(note))}px`);
-    note.textContent = String(text).slice(0, 80); note.classList.remove('hidden'); clearTimeout(boardNoteTimer); boardNoteTimer = setTimeout(() => note.classList.add('hidden'), 3000);
+    const hud = byId('roomHud'); if (!hud.hidden) note.style.setProperty('--noteTop', `${Math.round(hud.getBoundingClientRect().bottom + 6 - originOf(note))}px`); // (U2: the banner under the HUD)
+    note.textContent = String(text).slice(0, 80); note.classList.remove('hidden'); clearTimeout(boardNoteTimer); boardNoteTimer = setTimeout(() => note.classList.add('hidden'), 1800);
   }
   function renderChat() {
     const lockMessage = state ? chatLockMessage() : '';
@@ -8717,12 +8718,15 @@
   // seats step aside, a canvas board fits the height left (with the actions under it), and on a phone the 💬·🎮 buttons
   // move into the top bar so they never cover the board
   const roomInfoBtn = document.getElementById('roomInfoBtn');
-  roomInfoBtn.addEventListener('click', () => { const open = !document.body.classList.contains('roomInfoOpen'); document.body.classList.toggle('roomInfoOpen', open); roomInfoBtn.setAttribute('aria-expanded', String(open)); fitBoard(); });
+  roomInfoBtn.addEventListener('click', () => { if (roomInfoBtn.closest('dialog')?.open) byId('gameMenuCloseBtn').click(); const open = !document.body.classList.contains('roomInfoOpen'); document.body.classList.toggle('roomInfoOpen', open); roomInfoBtn.setAttribute('aria-expanded', String(open)); fitBoard(); });
   const floatHome = chatFloatBtn.parentElement; const topActions = document.querySelector('.roomBar .topActions');
   // G1-3 내 행동은 판 바로 아래: the game's controls (윷 던지기, 숫자야구 추측, 라이어 힌트 …) leave the side panel for the spot under
   // the board while a hand is played (ids kept -- keys and tests lean on them); a mark keeps their place in the panel
   const actionsPanel = document.getElementById('gameActionsPanel'); const actionsMark = document.createComment('gameActionsPanel'); actionsPanel.before(actionsMark);
-  const boardActionsSpot = document.getElementById('quickChat');
+  const boardActionsSpot = document.querySelector('.boardCard > .mobileActions'); // (the actions just above the room's buttons; v1.10.244 U2: 빠른 말 left for 💬)
+  // v1.10.244 U2: while a hand is played the room's own 🎮 · 💬 · ☰ sit in the HUD (their ids kept), ⓘ and 🔔 in ☰; home after
+  const hudRight = byId('roomHudRight'); const roomMenuBtnEl = byId('roomMenuBtn'); const menuList = document.querySelector('#gameMenuDialog .gameMenuList');
+  const infoHome = document.createComment('roomInfoBtn'); roomInfoBtn.before(infoHome);
   // (G-틀①: the panel folds while a hand is played -- the yut sticks' and the dice's throw goes under the board with the actions)
   const diceSection = document.getElementById('diceYutSection'); const diceMark = document.createComment('diceYutSection'); diceSection.before(diceMark);
   const guessMark = document.createComment('baseballGuessForm'); baseballGuessForm.before(guessMark);
@@ -8765,7 +8769,12 @@
     // never over the room's words while seats are chosen: in the room the round buttons are always in the bar)
     const inBar = on || !roomView.classList.contains('hidden');
     const roomBar = document.querySelector('header.roomBar'); if (roomBar) document.body.style.setProperty('--roomBarBottom', `${Math.max(8, roomBar.offsetTop + roomBar.offsetHeight + 8)}px`); /* (a phone's toast just under it, before a hand) */
-    for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
+    if (on) { if (roomMenuBtnEl.parentElement !== hudRight) hudRight.append(gameInfoFloatBtn, chatFloatBtn, roomMenuBtnEl); if (roomInfoBtn.parentElement !== menuList) menuList.prepend(roomInfoBtn, turnNotifyBtn); }
+    else {
+      if (roomMenuBtnEl.parentElement !== topActions) topActions.append(roomMenuBtnEl);
+      if (roomInfoBtn.parentElement === menuList) { infoHome.after(roomInfoBtn); topActions.prepend(turnNotifyBtn); }
+      for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = inBar ? topActions : floatHome; if (b.parentElement !== home) (inBar ? topActions.prepend(b) : floatHome.append(b)); }
+    }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     // (G-게임별 윷: a yut hand throws on a straw mat beside the board -- a phone's under it -- not over the board)
     // (G-게임별 v187: 숫자야구's guess right under my secret, above the record -- on a PC within the screen; its home is the actions panel)
@@ -8780,7 +8789,7 @@
   function fitBoard() {
     const wrap = canvasWrap; wrap.style.maxWidth = '';
     if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
-    const below = [...document.querySelectorAll('#mySeatSpot, #yutControls, .boardCard > .diceYutSection, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    const below = [...document.querySelectorAll('#mySeatSpot, #yutControls, .boardCard > .diceYutSection, .boardCard > .gameActionsPanel, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
     const mat = document.querySelector('#boardScroll > .diceYutSection'); const stacked = mat?.offsetParent && getComputedStyle(mat.parentElement).flexDirection === 'column'; // (윷 멍석: under the board on a phone)
     const top = wrap.getBoundingClientRect().top + window.scrollY;
     wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - (stacked ? mat.offsetHeight + 8 : 0) - 12))}px`;
@@ -13342,22 +13351,27 @@
   // v1.10.244 U2 게임방 HUD (한판마당: ✕ · 가운데 라벨 + 큰 숫자 · 오른쪽 알약, 아래 시간 막대; 사용자 결정 2 ☰ + 💬): while a hand is
   // played the room's one line over the board -- the game's name, my turn's seconds big (the turn's line under it), the moves,
   // the bar my turn's time left (pink under 10 s); the old bar and status row are hidden then (styles.css)
-  const roomHud = byId('roomHud'); let hudTurn = null; // { deadlineAt, total }: the turn's whole time, from when its deadline came
+  const roomHud = byId('roomHud'); let hudTurn = null; let hudMine = false; // { deadlineAt, total }: the turn's whole time, from when its deadline came
+  // (the big number off my turn: the game's own -- 오델로·윷·점과 상자 「2 : 2」, 맞고 my 「7점」)
+  function hudScore(g) {
+    const s = g?.scores; if (s && Number.isFinite(Number(s.black)) && Number.isFinite(Number(s.white))) return `${s.black} : ${s.white}`;
+    const mine = seat && g?.seats?.[seat]; return state.gameType === 'gostop' && Number.isFinite(Number(mine?.score)) ? `${mine.score}점` : '';
+  }
   function renderRoomHud() {
-    const on = document.body.classList.contains('roomPlaying') && Boolean(state); roomHud.hidden = !on; if (!on) { hudTurn = null; return; }
+    const on = document.body.classList.contains('roomPlaying') && Boolean(state); roomHud.hidden = !on; if (!on) { hudTurn = null; hudMine = false; return; }
     const timer = state.me?.actionTimer; const serverNow = Date.now() - actionTimerClockOffset;
     if (timer && hudTurn?.deadlineAt !== timer.deadlineAt) hudTurn = { deadlineAt: timer.deadlineAt, total: Math.max(1000, Number(timer.deadlineAt) - serverNow) }; else if (!timer) hudTurn = null;
     const left = timer ? Math.max(0, Number(timer.deadlineAt) - serverNow) : 0;
-    byId('roomHudLabel').textContent = roomGameLogo.textContent;
-    byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : '';
+    const seated = Object.entries(state.players || {}).filter(([, p]) => p); const other = seated.length === 2 ? seated.find(([k]) => k !== String(seat))?.[1] : null;
+    byId('roomHudLabel').textContent = [roomGameLogo.textContent, seated.length > 2 || !other ? (seated.length ? `${seated.length}명` : '') : other.label].filter(Boolean).join(' · ');
+    byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : hudScore(state.game);
+    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) boardNote('내 차례예요'); hudMine = mine; // (U2: the turn told once, the pill lit)
     byId('roomHudSub').textContent = statusText.textContent;
-    const moves = state.game?.moveCount; const pill = byId('roomHudPill'); pill.textContent = Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; pill.classList.toggle('hidden', !pill.textContent);
+    const moves = state.game?.moveCount; const pill = byId('roomHudPill'); pill.textContent = STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('myTurn', Boolean(timer));
   }
   byId('roomHudLeave').addEventListener('click', () => leaveRoomBtn.click());
-  byId('roomHudChat').addEventListener('click', () => chatFloatBtn.click());
-  byId('roomHudMenu').addEventListener('click', () => byId('roomMenuBtn').click());
 
   setInterval(() => {
     if (state?.gameType !== 'pictionary' || pictionaryPanel.classList.contains('hidden')) return;
