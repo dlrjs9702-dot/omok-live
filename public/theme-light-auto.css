@@ -1489,3 +1489,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 }:root[data-theme="light"] #islandBagDialog .islandDexTab{border:1px solid #c4a77d;background:#fbf3e2;color:var(--isle-ink)}
 :root[data-theme="light"] #islandBagDialog .islandDexTab.selected{background:var(--isle-btn,#8a5f3a);border-color:var(--isle-btn,#8a5f3a);color:#fff}
 :root[data-theme="light"] #islandBagDialog .islandDexFound{color:var(--isle-ink)}
+:root[data-theme="light"] .hpBtn{border:0;background:var(--hp-face);color:var(--hp-t1)}
+:root[data-theme="light"] .hpBtn:hover{background:var(--hp-face-on)}
+:root[data-theme="light"] .hpBtn.go{background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
+:root[data-theme="light"] .hpPill{border:0;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1)}
+:root[data-theme="light"] .hpPill.on,:root[data-theme="light"] .hpPill[aria-pressed="true"],:root[data-theme="light"] .hpPill:has(input:checked){background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+:root[data-theme="light"] .hpX{border:0;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1)}
