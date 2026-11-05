@@ -3366,6 +3366,7 @@ body.roomPlaying .roomBar,body.roomPlaying .boardCard>.statusRow{display:none!im
 .roomHudRight>button.hidden{display:none}
 /* v1.10.246 G1 (총괄): out of a hand the room's top buttons are the HUD's round ones -- ‹ 게임관 a ✕, ☰, 💬 🎮, 🔔 */
 #roomView .roomBar :is(#leaveRoomBtn,#roomMenuBtn,.chatFloatBtn,#turnNotifyBtn):not(.hidden){position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);box-shadow:none;font-size:0}
+#roomView .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}#roomView .roomBar .roomBarTitle{flex:1 1 auto;min-width:0}#roomView .roomBar .topActions{flex:0 0 auto;display:flex;flex-wrap:nowrap;align-items:center;gap:6px} /* (G1 CI #396: the round buttons in one row -- a phone's bar stacked them) */
 #roomView .roomBar #leaveRoomBtn::before{content:"✕";font-size:1.05rem}#roomView .roomBar #roomMenuBtn::before{content:"☰";font-size:1.1rem}
 #roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn):not(.hidden){font-size:1.05rem}
 #roomView .roomBar #turnNotifyBtn::before{content:"🔕";font-size:1rem}#roomView .roomBar #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
