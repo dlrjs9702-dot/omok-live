@@ -1014,7 +1014,10 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .reflexLevel[aria-checked="true"]{background:#23806f;color:#fff;border-color:#23806f}
 :root[data-theme="light"] .reflexPoints,:root[data-theme="light"] .reflexBest{color:#5e4d3b}
 :root[data-theme="light"] .reflexStatus{color:#9b2c2c}
-:root[data-theme="light"] .reflexPanel{background:#fffaf1;color:#33281d}
+:root[data-theme="light"] .reflexBox{background:var(--hp-bg2);color:var(--hp-t1);border:1px solid var(--hp-line);box-shadow:0 24px 60px rgba(0,0,0,.45)}
+:root[data-theme="light"] .reflexBox .hpPanelPill.win,:root[data-theme="light"] .reflexBox .hpPanelPill.done{background:color-mix(in srgb,var(--hp-win) 18%,transparent);color:var(--hp-win)}
+:root[data-theme="light"] .reflexBox .hpPanelPill.loss{background:color-mix(in srgb,var(--hp-loss) 18%,transparent);color:var(--hp-loss)}
+:root[data-theme="light"] .reflexBox .hpPanelPill.draw{background:color-mix(in srgb,var(--hp-draw) 18%,transparent);color:var(--hp-draw)}
 :root[data-theme="light"] .reflexScore{color:#8a5a00}
 :root[data-theme="light"] .reflexPaid{color:#8a5a00}
 :root[data-theme="light"] .reflexStat{background:#f7efe1}
@@ -1174,6 +1177,20 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.roomMode>.gostopResult.mineWin{border-color:#d9a520;box-shadow:0 0 0 3px rgba(217,165,32,.35),0 18px 50px rgba(0,0,0,.55)}
 :root[data-theme="light"] body.roomMode>.gostopResult.mineWin::after{border:3px solid #b3261e;color:#b3261e;background:rgba(255,253,246,.9)}
 :root[data-theme="light"] body.roomMode>.gostopResult .gostopResultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel{border:1px solid var(--hp-line);color:var(--hp-t1);background:var(--hp-bg2)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel>strong{color:var(--hp-t1)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel p,:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel small{color:var(--hp-t2)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopChip{color:var(--hp-t1);border-bottom:1px solid var(--hp-line)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopChip.muted{color:var(--hp-t2)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopChip.total{border-top:2px solid var(--hp-t1)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopLoserLine{background:var(--hp-face)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopLoserLine b{color:var(--hp-loss)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopWinLine{color:var(--hp-win)!important}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel :is(.gostopLoserLine,.gostopWinLine) small{color:var(--hp-t3)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel.mineWin{border-color:var(--hp-line);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopResultActions button{border:0;background:var(--hp-face);color:var(--hp-t1)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopResultActions button.primary{background:var(--hp-blue);color:var(--hp-on-c1)}
+:root[data-theme="light"] body.roomMode>#gostopResult.hpPanel .gostopResultActions button:nth-child(3){background:none;color:var(--hp-t2)}
 :root[data-theme="light"] .gostopSets{color:#fde68a}
 :root[data-theme="light"] .seatFace{background:radial-gradient(circle at 36% 58%,#1f2937 0 2.2px,transparent 2.6px),radial-gradient(circle at 64% 58%,#1f2937 0 2.2px,transparent 2.6px),linear-gradient(180deg,var(--hair,#4a3426) 0 34%,var(--skin,#f6d3b3) 34%);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
 :root[data-theme="light"] .seatTitle{color:#fcd34d}
@@ -1519,4 +1536,18 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.roomPlaying .boardNote{background:color-mix(in srgb,var(--hp-win) 20%,var(--hp-glass));border:1px solid color-mix(in srgb,var(--hp-win) 45%,transparent);color:var(--hp-t1);box-shadow:0 8px 24px rgba(0,0,0,.3)}
 :root[data-theme="light"][data-theme="light"] .roomHud :is(.roomHudRight>button,.roomHudLeft>#leaveRoomBtn){background:rgba(61,47,32,.14)}
 :root[data-theme="light"] body.roomPlaying .boardNote::before{color:var(--hp-win)}
+:root[data-theme="light"] #boardOverlay.hpPanel.resultWin,:root[data-theme="light"] #boardOverlay.hpPanel.resultLoss{background:var(--hp-bg2);color:var(--hp-t1);border:1px solid var(--hp-line);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+:root[data-theme="light"] #boardOverlay.hpPanel strong{color:var(--hp-t1)!important}
+:root[data-theme="light"] #boardOverlay.hpPanel span{color:var(--hp-t2)}
+:root[data-theme="light"] #boardOverlay.hpPanel .hpPanelPill.win{background:color-mix(in srgb,var(--hp-win) 18%,transparent);color:var(--hp-win)}
+:root[data-theme="light"] #boardOverlay.hpPanel .hpPanelPill.loss{background:color-mix(in srgb,var(--hp-loss) 18%,transparent);color:var(--hp-loss)}
+:root[data-theme="light"] #boardOverlay.hpPanel .resultPoints{color:var(--hp-win)!important}
+:root[data-theme="light"] #boardOverlay.hpPanel .resultPoints.minus{color:var(--hp-loss)!important}
+:root[data-theme="light"] #boardOverlay.hpPanel .resultPoints.resultMoves{color:var(--hp-t1)!important}
+:root[data-theme="light"] #boardOverlay.hpPanel .resultScore{color:var(--hp-t1)!important}
+:root[data-theme="light"] #boardOverlay.hpPanel .hpStats>span{background:var(--hp-face)}
+:root[data-theme="light"] .hpStats b{color:var(--hp-t1)}
+:root[data-theme="light"] .hpStats small{color:var(--hp-t3)}
+:root[data-theme="light"] #boardOverlay.hpPanel .resultActions .hpBtn{border:0;background:var(--hp-face);color:var(--hp-t1)}
+:root[data-theme="light"] #boardOverlay.hpPanel .resultActions .hpBtn.go{background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 :root[data-theme="light"] .hpX{border:0;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1)}
