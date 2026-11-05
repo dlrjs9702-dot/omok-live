@@ -114,6 +114,12 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     // G1-7: the result on the board with the way on
     await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
     await expect(page.locator('#boardOverlay .resultPoints')).toHaveText(/^\+[\d,]+P$/); // (G-틀④: one big figure, the breakdown on its title)
+    // (v1.10.245 U3: the result is one panel -- its pill, three stats, no emoji card over it, both buttons 50px or more)
+    await expect(page.locator('.hpPanel:visible')).toHaveCount(1); await expect(page.locator('#boardOverlay .hpPanelPill')).toHaveText('승리');
+    await expect(page.locator('#boardOverlay .hpStats > span')).toHaveCount(3); await expect(page.locator('#boardOverlay .hpStats > span').nth(1).locator('b')).toHaveText(/^\d+:\d\d$/); /* (the hand's time, seen from its start) */ await page.waitForTimeout(300); await expect(page.locator('#resultEffect')).toBeHidden();
+    for (const b of await page.locator('#boardOverlay .resultActions button').all()) expect((await b.boundingBox()).height).toBeGreaterThanOrEqual(50);
+    if (process.env.SHOT_DIR) { await page.locator('#boardOverlay').scrollIntoViewIfNeeded(); await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/u3-omok-${w}x${h}.png` });
+      await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/u3-omok-${w}x${h}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
     await expect(page.locator('#blackPlayer')).toHaveClass(/seatWinner/); await expect(page.locator('#whitePlayer')).not.toHaveClass(/seatWinner/); // (the winner crowned)
     // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 hidden; pressed, it says it waits; the bar stays thin)
     await expect(page.locator('#nextRoundBtn')).toBeHidden(); await expect(page.locator('#sideNextRoundBtn')).toBeHidden(); await expect(page.locator('#roomPointRule')).toBeHidden();

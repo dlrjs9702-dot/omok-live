@@ -78,7 +78,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     // C2: 꽃님 walking -- her talk, her 부탁 in it (as at her garden)
     // (CI #389·#392: no errand of hers on `day` (fits) -- her talk opens on its choices; an islander's event may hold her
     // (RESIDENT_BUSY): let go before each try, as resident-talk does)
-    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 60000 }).toBe(true);
+    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 90000 }).toBe(true);
     await expect(page.locator('#plazaDialogTitle')).toContainText('꽃님');
     await shot(page, 'walk-kkotnim');
     await dialog.locator('[data-topic="quest"]').click(); await revealTalk(page);

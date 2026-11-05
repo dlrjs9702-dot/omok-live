@@ -193,6 +193,9 @@ test.describe('포인트와 고스톱·맞고', () => {
         await expect(c.page.getByRole('button', { name: '스톱' })).toHaveCount(0);
         await decider.page.getByRole('button', { name: '스톱' }).click();
         await expect(decider.page.locator('#gostopResult')).toContainText('승리');
+        // (v1.10.245 U3: 맞고's result is the one panel -- no emoji card over it)
+        await expect(decider.page.locator('#gostopResult')).toHaveClass(/hpPanel/); await decider.page.waitForTimeout(300); await expect(decider.page.locator('#resultEffect')).toBeHidden();
+        if (process.env.SHOT_DIR) { await decider.page.waitForTimeout(600); await decider.page.screenshot({ path: `${process.env.SHOT_DIR}/u3-gostop-pc.png` }); }
         settledRound = await settledRoom(request, a.token);
         break;
       }
