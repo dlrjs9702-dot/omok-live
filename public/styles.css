@@ -1965,8 +1965,12 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .reflexPoints,.reflexBest{margin:0;color:#cbd5e1}
 .reflexGo{padding:15px;font-size:1.1rem}
 .reflexStatus{margin:0;color:#fecaca;min-height:1.2em}
-.reflexPanel{width:min(100%,420px);margin:0 auto;padding:22px 18px;border-radius:22px;background:#111827;color:#f8fafc;text-align:center;display:grid;gap:10px}
-.reflexPanel h2{margin:0}
+.reflexBox{width:min(100%,420px);margin:0 auto;padding:22px 18px;border-radius:var(--hp-r-xl);background:var(--hp-bg2);color:var(--hp-t1);text-align:center;display:grid;justify-items:center;gap:10px;border:1px solid var(--hp-line);box-shadow:0 24px 60px rgba(0,0,0,.45);animation:hpPanelSolo .4s var(--hp-spring)}
+.reflexBox h2{margin:0}
+.reflexBox .hpPanelPill.win,.reflexBox .hpPanelPill.done{background:color-mix(in srgb,var(--hp-win) 18%,transparent);color:var(--hp-win)}.reflexBox .hpPanelPill.loss{background:color-mix(in srgb,var(--hp-loss) 18%,transparent);color:var(--hp-loss)}.reflexBox .hpPanelPill.draw{background:color-mix(in srgb,var(--hp-draw) 18%,transparent);color:var(--hp-draw)}
+.reflexBox .reflexScore{margin:0;font-size:64px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums}
+@keyframes hpPanelSolo{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.reflexBox{animation:none}}
 .reflexScore{margin:0;font-size:56px;font-weight:900;line-height:1;color:#fde68a;font-variant-numeric:tabular-nums}
 .reflexPaid{margin:0;font-weight:800;color:#fbbf24;min-height:1.3em}
 .reflexStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -2528,6 +2532,27 @@ body.roomMode>.gostopResult.mineWin{border-color:#d9a520;box-shadow:0 0 0 3px rg
 body.roomMode>.gostopResult.mineWin::after{content:"승";position:absolute;right:14px;top:12px;width:44px;height:44px;display:grid;place-items:center;border:3px solid #b3261e;border-radius:10px;color:#b3261e;background:rgba(255,253,246,.9);font-weight:950;font-size:1.3rem;transform:rotate(-12deg)}
 body.roomMode>.gostopResult .gostopResultActions button{min-height:46px;padding:10px 22px;font-weight:900}
 body.roomMode>.gostopResult .gostopResultActions .ghost{background:#fffaf0;color:#3d2f22;border:1px solid #d6c39f}
+/* v1.10.245 U3 결과 패널 하나 -- 맞고: the hanji sheet's look under the panel's (tokens, 420~560px, --hp-r-xl, spring) */
+body.roomMode>#gostopResult.hpPanel{padding:22px 22px 18px;border:1px solid var(--hp-line);border-radius:var(--hp-r-xl);color:var(--hp-t1);background:var(--hp-bg2);width:min(480px,calc(100vw - 24px))}
+body.roomMode>#gostopResult.hpPanel:not(.hidden):not(.closed){animation:hpPanelIn .4s var(--hp-spring)}
+body.roomMode>#gostopResult.hpPanel>strong{color:var(--hp-t1);font-size:22px;font-weight:900}
+body.roomMode>#gostopResult.hpPanel p,body.roomMode>#gostopResult.hpPanel small{color:var(--hp-t2)}
+body.roomMode>#gostopResult.hpPanel .gostopSettlementFlow{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px}
+body.roomMode>#gostopResult.hpPanel .gostopChip{color:var(--hp-t1);border-bottom:1px solid var(--hp-line)}
+body.roomMode>#gostopResult.hpPanel .gostopChip.muted{color:var(--hp-t2)}
+body.roomMode>#gostopResult.hpPanel .gostopChip.total{grid-column:1/-1;border-top:2px solid var(--hp-t1)}
+body.roomMode>#gostopResult.hpPanel .gostopLoserLine{background:var(--hp-face);border-radius:var(--hp-r-md)}
+body.roomMode>#gostopResult.hpPanel .gostopLoserLine b{color:var(--hp-loss)}
+body.roomMode>#gostopResult.hpPanel .gostopWinLine{color:var(--hp-win)!important;justify-items:center}
+body.roomMode>#gostopResult.hpPanel .gostopWinLine b{font-size:64px;line-height:1;font-variant-numeric:tabular-nums}
+body.roomMode>#gostopResult.hpPanel :is(.gostopLoserLine,.gostopWinLine) small{color:var(--hp-t3)}
+body.roomMode>#gostopResult.hpPanel.mineWin{border-color:var(--hp-line);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+body.roomMode>#gostopResult.hpPanel.mineWin::after{content:none}body.roomMode>#gostopResult.hpPanel.mineWin>strong{min-height:0;padding-right:0}
+body.roomMode>#gostopResult.hpPanel .gostopResultActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body.roomMode>#gostopResult.hpPanel .gostopResultActions button{min-height:50px;border:0;border-radius:var(--hp-r-lg);font-weight:800;background:var(--hp-face);color:var(--hp-t1)}
+body.roomMode>#gostopResult.hpPanel .gostopResultActions button.primary{background:var(--hp-blue);color:var(--hp-on-c1)}
+body.roomMode>#gostopResult.hpPanel .gostopResultActions button:nth-child(3){grid-column:1/-1;min-height:40px;background:none;color:var(--hp-t2)} /* (판 보기: the two buttons, then a quiet way to the last table) */
+@media (prefers-reduced-motion:reduce){body.roomMode>#gostopResult.hpPanel:not(.hidden):not(.closed){animation:none}}
 .gostopResultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
 body:not(.roomMode)>.gostopResult{display:none}
 /* A3 G2-4: what a pile still needs, an empty pile faint, the sets under way and the 박 risk */
@@ -3309,8 +3334,8 @@ body.placing .toast{top:16px;bottom:auto}
    set, and the light one (the light theme's cream, mint and brown) by the theme (<html data-theme="light">: the 환경설정's
    「게임관 화면:」 밝게 / 어둡게 / 기기 설정, 총괄 U1 답 B -- the island's paper windows as they are). Used inside the hall only (#gamehallView, #roomView, #reflexView, #gameSheet); a game's own
    colours stay --c1 / --c2 (the catalogue's), --c3 the darker. The same layout, sizes and motion in both. */
-:root{--hp-bg:#0B0C1A;--hp-bg2:#15172E;--hp-line:rgba(255,255,255,.08);--hp-face:rgba(255,255,255,.08);--hp-face-on:rgba(255,255,255,.2);--hp-glass:rgba(11,12,26,.5);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.55);--hp-t3:rgba(255,255,255,.35);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-draw:#FFCB57;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A;--hp-r-md:14px;--hp-r-lg:18px;--hp-r-xl:28px;--hp-spring:cubic-bezier(.2,.9,.3,1.3)}
-:root[data-theme="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#8A5A00;--hp-win:#17805A;--hp-draw:#8F6A00;--hp-loss:#B82A4C;--hp-blue:#1C6B5C;--hp-on-c1:#FFFFFF}
+:root{--hp-bg:#0B0C1A;--hp-bg2:#15172E;--hp-line:rgba(255,255,255,.08);--hp-face:rgba(255,255,255,.08);--hp-face-on:rgba(255,255,255,.2);--hp-btn:rgba(255,255,255,.08);--hp-glass:rgba(11,12,26,.5);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.55);--hp-t3:rgba(255,255,255,.35);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-draw:#FFCB57;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A;--hp-r-md:14px;--hp-r-lg:18px;--hp-r-xl:28px;--hp-spring:cubic-bezier(.2,.9,.3,1.3)}
+:root[data-theme="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-btn:rgba(61,47,32,.14);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#8A5A00;--hp-win:#17805A;--hp-draw:#8F6A00;--hp-loss:#B82A4C;--hp-blue:#1C6B5C;--hp-on-c1:#FFFFFF}
 /* the three buttons (U1): .hpBtn 50px -- the main one in the game's colour (.hpBtn.go), the big call to act .hpBtn.cta 58px;
    .hpPill 34~40px round glass, on (.on / aria-pressed) a little brighter; .hpX the 40px round ✕ */
 .hpBtn{min-height:50px;padding:0 18px;border:0;border-radius:var(--hp-r-md);background:var(--hp-face);color:var(--hp-t1);font:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s,transform .12s}
@@ -3337,9 +3362,23 @@ body.placing .toast{top:16px;bottom:auto}
 .roomHudBar i{display:block;height:100%;width:0;border-radius:inherit;background:var(--c1,var(--hp-blue));transition:width .25s linear}
 .roomHudBar i.low{background:var(--hp-loss)}
 body.roomPlaying .roomBar,body.roomPlaying .boardCard>.statusRow{display:none!important} /* (U2: the HUD's line in their place) */
-.roomHudRight>button{position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:1.05rem;box-shadow:none}
+.roomHudRight>button{position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);font-size:1.05rem;box-shadow:none}
 .roomHudRight>button.hidden{display:none}
-.roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
+/* v1.10.246 G1 (총괄): out of a hand the room's top buttons are the HUD's round ones -- ‹ 게임관 a ✕, ☰, 💬 🎮, 🔔 */
+#roomView .roomBar :is(#leaveRoomBtn,#roomMenuBtn,.chatFloatBtn,#turnNotifyBtn):not(.hidden){position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);box-shadow:none;font-size:0}
+#roomView .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}#roomView .roomBar .roomBarTitle{flex:1 1 auto;min-width:0}#roomView .roomBar .topActions{flex:0 0 auto;display:flex;flex-wrap:nowrap;align-items:center;gap:6px} /* (G1 CI #396: the round buttons in one row -- a phone's bar stacked them) */
+#roomView .roomBar #leaveRoomBtn::before{content:"✕";font-size:1.05rem}#roomView .roomBar #roomMenuBtn::before{content:"☰";font-size:1.1rem}
+#roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn):not(.hidden){font-size:1.05rem}
+#roomView .roomBar #turnNotifyBtn::before{content:"🔕";font-size:1rem}#roomView .roomBar #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
+:root[data-theme="light"] #roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn):not(.hidden){font-size:0}:root[data-theme="light"] #roomView .roomBar #chatFloatBtn::before{content:"💬"}:root[data-theme="light"] #roomView .roomBar #gameInfoFloatBtn::before{content:"🎮"}
+:root[data-theme="light"] #roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}
+/* v1.10.246 G1: the counts in the HUD's pill (not chips by the plates), 빙고's two boxes folded in a hand, the yut throw big */
+body.roomPlaying .seatNum{display:none}
+body.roomPlaying .bingoPanel .bingoInfoGrid{display:none}
+body.roomPlaying #yutThrowBtn.hpBtn{min-height:56px;padding:0 28px;font-size:17px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
+body.roomPlaying .yutLastThrow{color:var(--hp-t1);font-weight:800}
+#boardOverlay.hpPanel .hpPanelNote{display:block;font-size:11.5px;font-weight:700;color:var(--hp-t3);line-height:1.4;margin-top:2px}
+.roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
 .roomHudRight>#roomMenuBtn{font-size:0}.roomHudRight>#roomMenuBtn::before{content:"☰";font-size:1.1rem}
 body.roomPlaying .gameMenuList #turnNotifyBtn{font-size:inherit;padding:10px 14px}body.roomPlaying .gameMenuList #turnNotifyBtn::before{content:none}
 .gameMenuList #roomInfoBtn{font-size:inherit;padding:10px 14px}.gameMenuList #roomInfoBtn::after{content:" 방 정보"}
@@ -3363,11 +3402,37 @@ body.roomPlaying .seatNum{background:var(--hp-face);border:0;color:var(--hp-gold
 /* v1.10.244 U2 안내 배너: under the HUD, off the board (a full phone: over its top, see-through), 1.8 s */
 body.roomPlaying .boardNote{top:var(--noteTop,25vh);display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 18px;border-radius:99px;background:color-mix(in srgb,var(--hp-win) 20%,var(--hp-glass));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid color-mix(in srgb,var(--hp-win) 45%,transparent);color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 body.roomPlaying .boardNote.hidden{display:none}
+body.roomPlaying .boardNote{white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden} /* (총괄 #396: one line on a phone too -- never over the board's top row) */
 /* (U2 검토 #391: the light HUD buttons round on a darker face, the emoji icons dark grey -- 3:1 or more on it) */
-:root[data-theme="light"] .roomHud :is(.roomHudRight>button,.roomHudLeft>#leaveRoomBtn){background:rgba(61,47,32,.14)}
 :root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn){font-size:0}
 :root[data-theme="light"] .roomHudRight>#chatFloatBtn::before{content:"💬"}:root[data-theme="light"] .roomHudRight>#gameInfoFloatBtn::before{content:"🎮"}
 :root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}
 body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;color:var(--hp-win)}
 #chatPanel .quickChat{margin:6px 0}
+/* v1.10.245 U3 결과 패널 (한판마당 .hpPanel): 420px, --hp-r-xl, --hp-bg2, a spring in -- the result pill, the title, one big
+   figure (64px), three stats, two buttons; over the old hanji sheet's look */
+#boardOverlay.hpPanel.resultWin,#boardOverlay.hpPanel.resultLoss{width:min(420px,calc(100% - 24px));padding:22px 22px 18px;display:grid;justify-items:center;gap:6px;background:var(--hp-bg2);color:var(--hp-t1);border:1px solid var(--hp-line);border-radius:var(--hp-r-xl);box-shadow:0 24px 60px rgba(0,0,0,.5);animation:hpPanelIn .4s var(--hp-spring)}
+#boardOverlay.hpPanel::after{content:none!important}
+#boardOverlay.hpPanel strong{color:var(--hp-t1)!important;font-size:22px;font-weight:900}
+#boardOverlay.hpPanel span{color:var(--hp-t2)}
+.hpPanelPill{display:inline-flex;align-items:center;min-height:28px;padding:0 14px;border-radius:99px;font-size:13px;font-weight:900;letter-spacing:.04em}
+#boardOverlay.hpPanel .hpPanelPill.win{background:color-mix(in srgb,var(--hp-win) 18%,transparent);color:var(--hp-win)}
+#boardOverlay.hpPanel .hpPanelPill.loss{background:color-mix(in srgb,var(--hp-loss) 18%,transparent);color:var(--hp-loss)}
+#boardOverlay.hpPanel .resultPoints{margin:4px 0 0;font-size:64px!important;line-height:1;font-weight:900;font-variant-numeric:tabular-nums;color:var(--hp-win)!important}
+#boardOverlay.hpPanel .resultPoints.minus{color:var(--hp-loss)!important}#boardOverlay.hpPanel .resultPoints.resultMoves{color:var(--hp-t1)!important}
+#boardOverlay.hpPanel .resultScore{color:var(--hp-t1)!important}
+#boardOverlay.hpPanel .hpStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin-top:8px}
+#boardOverlay.hpPanel .hpStats>span{display:grid;justify-items:center;gap:2px;padding:10px 6px;border-radius:var(--hp-r-md);background:var(--hp-face);min-width:0}
+.hpStats b{font-size:17px;font-weight:900;color:var(--hp-t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.hpStats small{font-size:11px;color:var(--hp-t3)}
+#boardOverlay.hpPanel .resultActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:10px}
+#boardOverlay.hpPanel .resultActions .hpBtn{min-height:50px;padding:0 12px;font-size:16px;border:0;border-radius:var(--hp-r-lg);background:var(--hp-face);color:var(--hp-t1)}
+#boardOverlay.hpPanel .resultActions .hpBtn.go{background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
+/* (Codex #392: on a phone the panel is taller than the square board -- the board shows it past its edge, the panel smaller) */
+.canvasWrap:has(#boardOverlay.hpPanel:not(.hidden)){overflow:visible;z-index:5}
+@media (max-width:640px){#boardOverlay.hpPanel.resultWin,#boardOverlay.hpPanel.resultLoss{padding:14px 12px 12px;gap:4px;max-height:calc(100dvh - 16px);overflow:auto}#boardOverlay.hpPanel .resultPoints{font-size:44px!important}#boardOverlay.hpPanel strong{font-size:18px}#boardOverlay.hpPanel .hpStats>span{padding:6px 4px}#boardOverlay.hpPanel .resultActions{margin-top:6px}}
+@keyframes hpPanelIn{from{opacity:0;transform:translate(-50%,-50%) scale(.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@media (prefers-reduced-motion:reduce){#boardOverlay.hpPanel.resultWin,#boardOverlay.hpPanel.resultLoss{animation:none}}
+/* (사용자 결정 1: a legend win's effect first -- the panel in the middle after it, not the old small strip at the bottom) */
+#boardOverlay.hpPanel.legendResult.resultWin,#boardOverlay.hpPanel.legendResult.resultLoss{top:50%;bottom:auto;transform:translate(-50%,-50%);padding:22px 22px 18px;animation:hpPanelIn .4s var(--hp-spring) 2.2s both}
+@media (prefers-reduced-motion:reduce){#boardOverlay.hpPanel.legendResult.resultWin,#boardOverlay.hpPanel.legendResult.resultLoss{animation:none}}
 .hpX{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1);font:inherit;font-size:16px;font-weight:800;cursor:pointer}

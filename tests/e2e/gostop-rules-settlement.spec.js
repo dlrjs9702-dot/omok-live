@@ -285,11 +285,13 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
 
     // The other player did not send the finish request; their open page must refresh from SSE.
     await expect(b.page.locator('#pointBalanceText')).toHaveText(`${pb.balance.toLocaleString('ko-KR')}P`);
+    const look = b.page.locator('#gostopResult:not(.closed) .gostopResultActions button', { hasText: '판 보기' }); await look.waitFor({ timeout: 3000 }).catch(() => {}); if (await look.isVisible()) await look.click(); // (v1.10.245 U3: the result panel over the table -- 판 보기 first)
     await b.page.locator('#gostopPointHistory summary').click();
     await expect(b.page.locator('#gostopPointHistoryList')).toContainText(
       `${pb.recentGostopSettlements[0].delta.toLocaleString('ko-KR')}P`);
 
     await reopen(a);
+    const lookA = a.page.locator('#gostopResult:not(.closed) .gostopResultActions button', { hasText: '판 보기' }); await lookA.waitFor({ timeout: 3000 }).catch(() => {}); if (await lookA.isVisible()) await lookA.click(); // (U3: 판 보기 first)
     await a.page.locator('#gostopPointHistory summary').click();
     await expect(a.page.locator('#gostopPointHistoryList')).toContainText('맞고');
     await expect(a.page.locator('#gostopPointHistoryList')).toContainText('+' + pa.recentGostopSettlements[0].delta.toLocaleString('ko-KR') + 'P');

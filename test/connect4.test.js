@@ -127,7 +127,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   const challenger = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.10.244');
+  assert.equal(health.data.version, '1.10.246');
   const entry = await req('/api/admin/keys', host, { label: '사목손님' });
   assert.equal(entry.status, 201);
   assert.match(entry.data.html, /사목손님/);
@@ -165,12 +165,16 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
       assert.equal(move.data.state.game.status, 'finished');
       assert.equal(move.data.state.game.winner, 'black');
       assert.equal(move.data.state.game.winningLine.length, 4);
+      // (v1.10.246 G1: the hand's start and end for the result's 「시간」, the same for everyone)
+      const hc = move.data.state.handClock; assert.ok(hc?.startedAt && hc.finishedAt && hc.finishedAt >= hc.startedAt, JSON.stringify(hc));
     }
+    if (i < 6) assert.ok(move.data.state.handClock?.startedAt && !move.data.state.handClock.finishedAt); // (under way: a start, no end)
   }
   assert.equal((await req('/api/room/move', challenger, { x: 1 })).status, 409);
   const watchState = await req('/api/room', watcher, undefined, 'GET');
   assert.equal(watchState.data.state.game.winner, 'black');
   assert.equal(watchState.data.state.me.seat, null);
+  assert.ok(watchState.data.state.handClock?.finishedAt); // (a watcher sees the same clock)
   const reset = await req('/api/room/next-round', watcher, {});
   assert.equal(reset.status, 200);
   assert.equal(reset.data.state.game.round, 2);

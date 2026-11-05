@@ -13,21 +13,22 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.246 게임관 G1 + 메신저 다듬기 A+B
+
+- 서버 handClock { startedAt, finishedAt } → 결과 패널 「시간」.
+- 토스트 정리: 방 만들기 안내 처음 한 번, 정산 글은 결과 패널 한 줄, 판이 끝나면 배너도 사라짐. 판 밖 위쪽 단추 40px 둥근 단추.
+- G1 판 게임: 돌·상자·완주 수 HUD 알약, 상대 차례 초, 사목 글띠·열 번호 없앰, 빙고 상자 접음, 윷 던지기 .hpBtn.go.
+- 메신저 다듬기 A+B(#393, 클라우드 세션): 사진 있는 방 맨 아래 유지, 사람 고르기 화면, 새 메시지 ↓·안 읽은 줄·여러 줄 입력·링크·복사·작은 창, 폰 사진 방 가로 넘침 고침.
+
+## v1.10.245 게임관 UI 통일 U3
+
+- 결과 패널 하나(.hpPanel): 판 게임 #boardOverlay(알약·제목·큰 숫자 64px·통계 3칸·단추 2개), 맞고 #gostopResult.hpPanel(두 칸 점수 표·금액 64px), 한판마당 .hpPanel.reflexBox(옛 .reflexPanel 없앰).
+- 판·맞고 패널이 뜨면 #resultEffect 이모지 카드 없음, 전설 승리는 효과 뒤 2.2초에 패널.
+- 효과음 한 세트: room-sound.js가 reflex/js/audio.js sfx 사용, 내 차례 마지막 5초 beep.
+
 ## v1.10.244 게임관 UI 통일 U2
 
 - 판 중 게임방 HUD 한 줄(#roomHud): ✕ · 「게임 · 상대」 라벨 · 큰 숫자(내 차례 남은 초, 아니면 그 게임 숫자 2 : 2 / N점) · 차례 글 · 수 알약 · 🎮 💬 ☰(원래 단추를 아이디 그대로 옮김), 아래 시간 막대(10초 아래 분홍). 옛 위 막대·상태 줄은 숨김.
 - ⓘ 방 정보·🔔 알림은 ☰ 안으로, 빠른 말(#quickChat)은 💬 채팅 창 안으로.
 - 이름표(.player·.teamPlayer)를 차례 알약으로: 40px·모서리 12·얼굴 32px·m:ss와 가는 막대, 차례인 쪽만 .on(--c1 2px). 게임별 자리판(화투·파티)은 G2·G3.
 - 안내 배너: #boardNote를 HUD 바로 아래 초록 유리 알약(1.8초), 내 차례가 오면 「내 차례예요」 한 번.
-
-## v1.10.243 게임관 UI 통일 U1
-
-- 한판마당 토큰 --hp-*(어두운 :root, 밝은 :root[data-theme=light] 크림·민트·갈색), 고르는 곳은 「게임관 화면:」 라디오(총괄 답 B).
-- 단추 셋 .hpBtn(.go·.cta)·.hpPill·.hpX, 게임관·시트·결과에 씀(게임방은 U2).
-- 시트가 하나뿐인 시작 화면: 난이도·옵션 알약·내 최고, 시작 = 바로 판(reflexMenu는 옛 로비만).
-
-## v1.10.242 주민 날마다 말 + 가락 대회 말
-
-- 1 lib/island-daily.js: 27명 × 10상황 × 2줄(총괄 글 묶음 확정본). 차례 내 일(대어 10분·새 집·트로피·오랜만 3일, 그날 그 주민 한 번) → 대회 → 눈(겨울 구역 비) → 계절(선 구역), 2~4는 35%. 조사 slot(), 같은 줄 연달아 안 나옴.
-- 2 public/plaza/contest-lines.js: 가락 종목별 전·중·후·참가 부족, 시상 1·2·3위 차례, 내일 대회(실제 시각), 참가 한 줄.
-- docs/release.md 12단계: 출시 확인 → 같은 턴에서 다음 묶음.

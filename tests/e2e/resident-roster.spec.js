@@ -43,7 +43,9 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     expect(d.desks).toEqual(['civil', 'tax', 'bank'].map((k) => ({ desk: k, shown: k !== rest, sign: k === rest })));
     // C2: that day's walkers out (no one at a post), 꽃님 walking with her mark, 철이 at the station
     const walking = Array.from({ length: 27 }, (_, n) => n).filter((n) => R.walks(n, day));
-    await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).walking, { timeout: 30000 }).toEqual(walking);
+    // (CI #396 at 14:0x KST: the day's 섬 대회 has 가락 (17) at its tent, not walking -- out of the list while the tent stands)
+    const host = Cast.RESIDENTS.findIndex((x) => x.name === '가락'); const tentUp = () => page.evaluate(() => Boolean(window.PlazaDebug().contestTent?.()?.shown));
+    await expect.poll(async () => { const up = await tentUp(); return JSON.stringify((await page.evaluate(() => window.PlazaDebug().roster())).walking) === JSON.stringify(walking.filter((n) => !(up && n === host))); }, { timeout: 30000 }).toBe(true);
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).quests.find((q) => q.id === 'questgranny'), { timeout: 30000 }).toEqual({ id: 'questgranny', post: null, walker: 10, shown: false });
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).marks.some((m) => m.n === 10), { timeout: 30000 }).toBe(true);
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).station, { timeout: 30000 }).toEqual({ shown: true, resident: 'cheori' });
@@ -74,7 +76,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     // C2: 꽃님 walking -- her talk, her 부탁 in it (as at her garden)
     // (CI #389 mobile-3, 2026-11-05 00:02 KST: the errands go by the real day, the table by `day` -- on a day 꽃님 also asks an
     // errand her talk opens with its offer (「할게요!」), and her 부탁 shows only after it: taken, then her talk again)
-    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; const yes = dialog.getByRole('button', { name: '할게요!' }); if (await yes.isVisible()) { await yes.click(); await page.waitForTimeout(1200); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); } await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 40000 }).toBe(true);
+    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; const yes = dialog.getByRole('button', { name: '할게요!' }); if (await yes.isVisible()) { await yes.click(); await page.waitForTimeout(1200); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); } await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); /* (an islander's event may hold 꽃님 -- RESIDENT_BUSY: freed on every try; CI #392 three tries both projects) */ await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 90000 }).toBe(true); /* (CI #392: a try holds revealTalk's own up to 30 s -- 40 s gave CI one or two tries) */
     await expect(page.locator('#plazaDialogTitle')).toContainText('꽃님');
     await shot(page, 'walk-kkotnim');
     await dialog.locator('[data-topic="quest"]').click(); await revealTalk(page);

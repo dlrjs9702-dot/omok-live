@@ -66,7 +66,9 @@ html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color
 .mApp .messengerShot img{width:100%;height:100%;object-fit:cover;display:block}
 .mApp .messengerShotDrop{position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;line-height:22px}
 .mApp .messengerShotNote{flex:none;font-size:.72rem;opacity:.75;white-space:nowrap}
-.mApp .chatMessageText.withPhotos{padding:4px;width:min(320px,78vw);max-width:min(320px,78vw);box-sizing:border-box} /* (A1: a set width -- the bubble does not grow when the photo comes in) */
+.mApp .chatMessageText.withPhotos{padding:4px;width:min(320px,78vw);max-width:100%;flex:0 1 auto;min-width:0;box-sizing:border-box} /* (A1: a set width -- the bubble does not grow when the photo comes in; 총괄 #393: it may shrink within the row, never past the screen) */
+.mApp .chatMessageBody{min-width:0}
+.mApp .messengerRoom,.mApp .messengerMessages{min-width:0} /* (총괄 #393: the room column never wider than its card -- a photo bubble's width set the grid's) */
 .mApp .messengerPhotos{position:relative;display:grid;gap:3px;grid-template-columns:1fr;margin-bottom:4px}
 .mApp .messengerPhotos.n2{grid-template-columns:1fr 1fr}.mApp .messengerPhotos.n3{grid-template-columns:1fr 1fr 1fr}
 .mApp .chatMessageText.withPhotos .messengerPhotos:only-child{margin-bottom:0}

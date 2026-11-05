@@ -39,6 +39,8 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect(page.locator('#roomView')).toBeVisible();
     const code = (await res.json()).state.me.roomCode;
     await expect(page.locator('.roomInfoArea')).toBeVisible(); // before the hand: as it was
+    // (v1.10.246 G1: out of a hand the top buttons are the HUD's round ones)
+    for (const id of ['leaveRoomBtn', 'roomMenuBtn']) { const r = await page.locator(`.roomBar #${id}`).evaluate((b) => { const s = getComputedStyle(b); return { w: b.offsetWidth, h: b.offsetHeight, radius: s.borderRadius }; }); expect(r.w === 40 && r.h === 40 && r.radius === '50%', `${id} ${JSON.stringify(r)}`).toBe(true); }
     const white = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
     expect((await api(request, '/api/rooms/join', white, { code })).status).toBe(200);
     expect((await api(request, '/api/room/choose-role', black, { choice: 'black' })).status).toBe(200);
@@ -114,6 +116,13 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     // G1-7: the result on the board with the way on
     await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
     await expect(page.locator('#boardOverlay .resultPoints')).toHaveText(/^\+[\d,]+P$/); // (G-틀④: one big figure, the breakdown on its title)
+    // (v1.10.245 U3: the result is one panel -- its pill, three stats, no emoji card over it, both buttons 50px or more)
+    await expect(page.locator('.hpPanel:visible')).toHaveCount(1); await expect(page.locator('#boardOverlay .hpPanelPill')).toHaveText('승리');
+    await expect(page.locator('#boardOverlay .hpPanelNote')).toContainText('참가 포인트 정산'); /* (G1: the settlement a line in the panel, not a note over the board) */
+    await expect(page.locator('#boardOverlay .hpStats > span')).toHaveCount(3); await expect(page.locator('#boardOverlay .hpStats > span').nth(1).locator('b')).toHaveText(/^\d+:\d\d$/); /* (the hand's time, seen from its start) */ await page.waitForTimeout(300); await expect(page.locator('#resultEffect')).toBeHidden();
+    for (const b of await page.locator('#boardOverlay .resultActions button').all()) expect((await b.boundingBox()).height).toBeGreaterThanOrEqual(50);
+    if (process.env.SHOT_DIR) { await page.locator('#boardOverlay').scrollIntoViewIfNeeded(); await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/u3-omok-${w}x${h}.png` });
+      await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/u3-omok-${w}x${h}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
     await expect(page.locator('#blackPlayer')).toHaveClass(/seatWinner/); await expect(page.locator('#whitePlayer')).not.toHaveClass(/seatWinner/); // (the winner crowned)
     // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 hidden; pressed, it says it waits; the bar stays thin)
     await expect(page.locator('#nextRoundBtn')).toBeHidden(); await expect(page.locator('#sideNextRoundBtn')).toBeHidden(); await expect(page.locator('#roomPointRule')).toBeHidden();
@@ -164,7 +173,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       await page.goto('/'); await expect(page.locator('body'), game).toHaveClass(/roomPlaying/, { timeout: 15_000 }); await page.waitForTimeout(600);
       // (검토 #391: the banner -- 「내 차례예요」 or a system line -- never over the HUD or a name plate while it shows)
       const banner = await page.evaluate(() => { const n = document.querySelector('#boardNote'); if (!n || n.classList.contains('hidden') || !n.getBoundingClientRect().height) return null; const b = n.getBoundingClientRect();
-        return [...document.querySelectorAll('#roomHud, #roomView :is(.player,.teamPlayer)')].filter((el) => el.getBoundingClientRect().height).filter((el) => { const r = el.getBoundingClientRect(); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map((el) => el.id || el.className); });
+        return [...document.querySelectorAll('#roomHud, #roomView :is(.player,.teamPlayer)')].filter((el) => el.getBoundingClientRect().height).filter((el) => { const r = el.getBoundingClientRect(); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map((el) => el.id || el.className).concat(b.height > 48 ? [`두 줄 ${Math.round(b.height)}px`] : []); }); /* (총괄 #396: and one line) */
       if (banner) { expect(banner, `${game} 배너가 가림`).toEqual([]); bannersSeen += 1; }
       await expect(page.locator('.roomBar'), game).toBeHidden(); await expect(page.locator('.boardCard > .statusRow'), game).toBeHidden();
       await expect(page.locator('.roomHud:visible'), game).toHaveCount(1);
@@ -184,6 +193,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
     expect(bannersSeen, '배너를 본 게임 수').toBeGreaterThanOrEqual(5);
     // (검토 #391: the turn line short -- no player names, 「내 차례 · 흑」)
     expect(seen.omok.hud).toContain('내 차례 · 흑'); expect(seen.omok.hud).not.toContain('관리자님');
+    expect(seen.othello.hud).toContain('2 : 2'); expect(seen.dots.hud).toContain('상자 0 : 0'); // (G1: the counts in the HUD's pill)
     expect(errors).toEqual([]);
   });
 }

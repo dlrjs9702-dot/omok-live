@@ -143,6 +143,10 @@ test('메신저 A1: 사진 여러 장 있는 방에서 보내고 받아도 맨 �
   await page.waitForTimeout(1500); expect(await gap()).toBeLessThan(4);
   // the first photo's tile was never drawn again
   expect(await kept.evaluate((im) => im.isConnected)).toBe(true);
+  // (총괄 #393: a photo bubble beside its time never pushes the page wider than the screen -- phone and PC)
+  // (a phone's innerWidth grows with the page -- the screen is the root's clientWidth; and the room within its card)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.querySelector('#messengerRoom').getBoundingClientRect().right <= document.querySelector('#mApp').getBoundingClientRect().right + 1)).toBe(true);
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-photo-room.png` });
   await context.close();
 });
