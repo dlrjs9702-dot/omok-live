@@ -5674,7 +5674,7 @@
       enterRoomState(data.state);
       sendIslandInvite(); // v1.10.44: the room made for an island invite
       // (v1.10.246 G1, 총괄: the room-making note is a tip -- once per kind on this device; a private room's code is in ⓘ 방 정보)
-      const tipKind = ai ? 'ai' : visibility === 'public' ? 'public' : 'private'; let tipSeen = false; try { tipSeen = localStorage.getItem(`gc.roomTip.${tipKind}`) === '1'; localStorage.setItem(`gc.roomTip.${tipKind}`, '1'); } catch {}
+      const tipKind = ai ? 'ai' : visibility === 'public' ? 'public' : null; let tipSeen = false; if (tipKind) try { tipSeen = localStorage.getItem(`gc.roomTip.${tipKind}`) === '1'; localStorage.setItem(`gc.roomTip.${tipKind}`, '1'); } catch {} /* (총괄 #396: a private room's code shows every time) */
       if (!tipSeen) showToast(ai ? 'AI 방을 만들었습니다. 자리를 고르면 AI가 맞은편에 앉아요 (연습 · 포인트·전적 없음).'
         : visibility === 'public' ? '공개방을 만들었습니다. 로비 목록에서 바로 참여할 수 있어요.' : `비공개방 생성 완료 · 비밀번호 ${data.state.me.roomCode}`);
     } catch (err) { showToast(err.message); }
