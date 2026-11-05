@@ -115,6 +115,7 @@ test('메신저 A1: 사진 여러 장 있는 방에서 보내고 받아도 맨 �
     const ids = []; for (const [w, h] of set) ids.push((await upload(w, h, ['#d9534f', '#5b8def', '#4caf7d', '#e0a43a'][k])).id);
     await say(k % 2 ? `사진 ${k + 1}번` : '', ids); await say(`글 ${k + 1}`);
   }
+  await api(request, `/api/messenger/rooms/${room.id}/messages?after=0`, { account: me.account }); // (read before: opened at the end -- B2)
   await page.locator('#mLoginId').fill(me.loginId); await page.locator('#mLoginPw').fill('secret123');
   await page.locator('#mLogin').getByRole('button', { name: '로그인' }).click(); await expect(page.locator('#mApp')).toBeVisible();
   await page.locator('#messengerRoomList button', { hasText: '사진많은방' }).click();

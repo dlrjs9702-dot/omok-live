@@ -176,7 +176,10 @@
     if (msgs.length && msgs[0].seq > 1) put('more', '', moreButton);
     let marked = false;
     for (const msg of msgs) {
-      if (unreadFrom !== null && !marked && msg.seq > unreadFrom) { marked = true; put('unread', '', () => { const p = document.createElement('p'); p.className = 'messengerUnreadLine'; p.textContent = '여기까지 읽었어요'; return p; }); }
+      if (unreadFrom !== null && !marked && msg.seq > unreadFrom) {
+        marked = true; // (the line only with something read above it)
+        if (prev) put('unread', '', () => { const p = document.createElement('p'); p.className = 'messengerUnreadLine'; p.textContent = '여기까지 읽었어요'; return p; });
+      }
       const day = new Date(msg.at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
       if (day !== prevDay) put(`d${day}`, day, () => { const s = document.createElement('p'); s.className = 'messengerDay'; s.textContent = day; return s; });
       const same = Boolean(prev && !prev.system && prev.from === msg.from && day === prevDay);
@@ -348,6 +351,7 @@
       // B2: opened -- the first unread line in view with 「여기까지 읽었어요」 over it (none unread: the end)
       const mark = firstPage && box.querySelector('.messengerUnreadLine');
       if (mark) { box.scrollTop += mark.getBoundingClientRect().top - box.getBoundingClientRect().top - 6; stick = box.scrollHeight - box.scrollTop - box.clientHeight < 40; }
+      else if (firstPage && unreadFrom !== null && msgs.length && msgs[0].seq > unreadFrom) { box.scrollTop = 0; stick = box.scrollHeight - box.clientHeight < 40; } // (all of it unread: from the top, no line over nothing read)
       else if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) toEnd();
       else if (fresh.some((x) => x.from !== state.me)) newBelow.classList.remove('hidden');
     } catch (err) { if (g !== gen) return; if (err.status === 404) { current = null; app.classList.remove('inRoom'); refresh(); } else fail(err); }

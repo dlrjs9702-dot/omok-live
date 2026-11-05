@@ -413,6 +413,13 @@ test('메신저 B: 안 읽은 곳 줄·새 메시지 ↓·Shift+Enter 줄 바꿈
   if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click(); else await m.locator('#messengerRoomName').click();
   await m.locator('#messengerRoomList button', { hasText: '긴대화방' }).click(); await expect(box).toContainText('또 온 글');
   await expect(mark).toHaveCount(0); await expect.poll(gap).toBeLessThan(4);
+  // a room never read: from the top, no line over nothing read
+  const fresh = (await api(request, '/api/messenger/rooms', { account: them.account, body: { name: '처음방', members: [me.id] } })).data.room;
+  await expect(m.locator('#messengerRoomList button', { hasText: '처음방' })).toHaveCount(1, { timeout: 35000 });
+  if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click();
+  await m.locator('#messengerRoomList button', { hasText: '처음방' }).click(); await expect(box.locator('.messengerSystem')).toHaveCount(1); await expect(mark).toHaveCount(0);
+  if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click();
+  await m.locator('#messengerRoomList button', { hasText: '긴대화방' }).click(); await expect(box).toContainText('또 온 글'); expect(fresh.id).toBeTruthy();
   // B3: several lines -- a PC: Shift+Enter a new line, Enter sends; a phone: Enter a new line, 보내기 sends
   expect(await input.evaluate((el) => [el.tagName, el.maxLength])).toEqual(['TEXTAREA', 500]);
   const h1 = await input.evaluate((el) => el.offsetHeight);
