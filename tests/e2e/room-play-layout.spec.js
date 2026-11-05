@@ -239,6 +239,13 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
     const mb = await mineBox(); expect(mb.left >= 0 && mb.right <= w && mb.bottom <= h, JSON.stringify(mb)).toBe(true);
     await expect(page.locator('#hudRight')).toHaveText('남은 지뢰 10');
     if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/g4-mines-${w < 640 ? 'phone' : 'pc'}.png` });
+    if (w < 640) { // (총괄 #399: a phone's 고급 30×16 turned 16 across -- within the screen, a cell 20px or more)
+      await page.evaluate(() => { window.GameLaunch.play('mines', { place: 'quest', level: 'expert' }); });
+      await expect.poll(async () => (await mineBox())?.w, { timeout: 30000 }).toBe(30);
+      const eb = await page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); const v = E.game.view(); const a = E.game.cellPoint(0); const b = E.game.cellPoint(v.w * v.h - 1); const r = document.querySelector('.reflexFrame > canvas').getBoundingClientRect(); return { left: r.left + Math.min(a.x, b.x) - a.cell / 2, right: r.left + Math.max(a.x, b.x) + a.cell / 2, bottom: r.top + Math.max(a.y, b.y) + a.cell / 2, cell: a.cell }; });
+      expect(eb.left >= 0 && eb.right <= w && eb.bottom <= h && eb.cell >= 20, JSON.stringify(eb)).toBe(true);
+      if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/g4-mines-phone-expert.png` });
+    }
     // (검토 #391: the turn line short -- no player names, 「내 차례 · 흑」)
     expect(seen.omok.hud).toContain('내 차례 · 흑'); expect(seen.omok.hud).not.toContain('관리자님');
     expect(seen.othello.hud).toContain('2 : 2'); expect(seen.dots.hud).toContain('상자 0 : 0'); // (G1: the counts in the HUD's pill)

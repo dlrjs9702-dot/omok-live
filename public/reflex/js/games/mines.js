@@ -24,18 +24,25 @@ export default {
     this.layout();
   },
   layout() {
-    const v = s.v, top = E.top + 4;
-    s.cell = Math.max(14, Math.min(52, Math.floor(Math.min((E.W - 16) / v.w, (E.bottom - top - 64) / v.h))));
-    s.gx = Math.round((E.W - v.w * s.cell) / 2); s.gy = Math.round(top);
+    const v = s.v, top = E.top + 4, roomH = E.bottom - top - 64;
+    // (총괄 #399: a phone's 고급 30×16 is wider than the screen at its smallest cell -- on a tall screen a wide board is drawn
+    // turned, 16 across and 30 down; the server's x·y stay the board's own, cellAt · cellPoint · draw share disp())
+    s.rot = roomH > E.W && v.w > v.h && (E.W - 16) / v.w < 20;
+    s.dw = s.rot ? v.h : v.w; s.dh = s.rot ? v.w : v.h;
+    s.cell = Math.max(14, Math.min(52, Math.floor(Math.min((E.W - 16) / s.dw, roomH / s.dh))));
+    s.gx = Math.round((E.W - s.dw * s.cell) / 2); s.gy = Math.round(top);
     const bw = Math.min(E.W - 16, 420);
-    s.modeBtn = { x: (E.W - bw) / 2, y: s.gy + v.h * s.cell + 12, w: bw, h: 44 };
+    s.modeBtn = { x: (E.W - bw) / 2, y: s.gy + s.dh * s.cell + 12, w: bw, h: 44 };
   },
+  /** board cell i -> [column, row] on the screen (turned: the board's row is the column) */
+  disp(i) { const x = i % s.v.w, y = Math.floor(i / s.v.w); return s.rot ? [y, x] : [x, y]; },
   cellAt(x, y) {
-    const cx = Math.floor((x - s.gx) / s.cell), cy = Math.floor((y - s.gy) / s.cell);
-    return x >= s.gx && y >= s.gy && cx < s.v.w && cy < s.v.h ? cy * s.v.w + cx : -1;
+    const c = Math.floor((x - s.gx) / s.cell), r = Math.floor((y - s.gy) / s.cell);
+    if (x < s.gx || y < s.gy || c >= s.dw || r >= s.dh) return -1;
+    return s.rot ? c * s.v.w + r : r * s.v.w + c;
   },
   /** (시험) 칸 i의 가운데 -- 캔버스 기준 좌표 */
-  cellPoint(i) { return { x: s.gx + ((i % s.v.w) + 0.5) * s.cell, y: s.gy + (Math.floor(i / s.v.w) + 0.5) * s.cell }; },
+  cellPoint(i) { const [c, r] = this.disp(i); return { x: s.gx + (c + 0.5) * s.cell, y: s.gy + (r + 0.5) * s.cell, cell: s.cell }; },
   view() { return s.v; },
 
   down(x, y) {
@@ -61,7 +68,7 @@ export default {
         E.end(null, { score: s.v.ms, delay: 1.1, title: '클리어!', stats: [['시간', K.fmtT(Math.round(s.v.ms / 1000))], ['판', st.판], ['지뢰', st.지뢰]] }); // (rounded as the big figure is: util.fmtScore 'time')
       } else if (s.v.status === 'lost') {
         s.over = true; E.sfx.lose(); E.haptic('error');
-        E.end(null, { score: null, delay: 1.4, title: '펑! 지뢰를 밟았어요', stats: [['시간', K.fmtT(s.v.ms / 1000)], ['판', st.판], ['남은 지뢰', `${s.v.mines - s.v.flags}개`]] });
+        E.end(null, { score: null, delay: 1.4, title: '펑! 지뢰를 밟았어요', stats: [['시간', K.fmtT(Math.round(s.v.ms / 1000))], ['판', st.판], ['남은 지뢰', `${s.v.mines - s.v.flags}개`]] });
       }
     } catch (error) { if (mine === s) E.banner(error.message, 'info', 2400); }
     finally { mine.busy = false; }
@@ -74,10 +81,10 @@ export default {
 
   draw(c) {
     const { cell, gx, gy } = s, v = s.v, over = v.status === 'won' || v.status === 'lost', mineAt = new Set(v.mineAt || []);
-    c.fillStyle = '#141A2E'; E.rr(gx - 6, gy - 6, v.w * cell + 12, v.h * cell + 12, 12); c.fill();
+    c.fillStyle = '#141A2E'; E.rr(gx - 6, gy - 6, s.dw * cell + 12, s.dh * cell + 12, 12); c.fill();
     const fs = Math.max(10, cell * 0.56);
     for (let i = 0; i < v.cells.length; i++) {
-      const x = gx + (i % v.w) * cell, y = gy + Math.floor(i / v.w) * cell, n = v.cells[i];
+      const [dc, dr] = this.disp(i), x = gx + dc * cell, y = gy + dr * cell, n = v.cells[i];
       if (n >= 0) {
         c.fillStyle = v.boom === i ? '#FF5A79' : '#0F1428'; c.fillRect(x + 1, y + 1, cell - 2, cell - 2);
         if (n) E.text(String(n), x + cell / 2, y + cell / 2 + 1, fs, NUM[n], 900);
