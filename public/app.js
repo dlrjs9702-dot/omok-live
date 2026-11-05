@@ -9273,6 +9273,7 @@
     // v1.8.5: a table game (고스톱·맞고) uses a wider page on PC so the table, not the web panels, is the centre.
     document.body.classList.toggle('tableGameRoom', gostop || davinci || oldmaid || pictionary || liar || twenty || pandemic); // (v1.10.197 파티, v1.10.199 팬데믹: the same frame)
     document.body.classList.toggle('partyGame', pictionary || liar || twenty);
+    document.body.classList.toggle('twentyGame', twenty); // (v1.10.248 G3)
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     // (G-게임별 다빈치·도둑잡기: its racks / seats round the table are the name plates too)
     document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid || pictionary || liar || twenty || pandemic) && g.status !== 'selecting');
@@ -10922,6 +10923,8 @@
       card.append(name, face, count);
       halliCards.append(card);
     }
+    { const order = g.seatOrder || []; const n = order.length; const fan = n >= 3; halliCards.classList.toggle('fan', fan); halliCards.classList.toggle('fan3', n === 3); // (v1.10.248 G3: 3명 이상은 종 둘레 부채꼴, 내 더미가 아래; 셋은 둘이 종 양옆)
+      const me = Math.max(0, order.indexOf(seat)); [...halliCards.children].forEach((card, i) => { const k = (i - me + n) % n; card.style.setProperty('--a', fan ? `${n === 3 ? [180, 270, 90][k] : 180 + (k * 360) / n}deg` : ''); }); }
     if (halliFxTarget && halliRecent.fresh) requestAnimationFrame(() => SLH.h.playFx(halliFxTarget.el, halliFxTarget.fx, halliFxTarget.ms, 50));
     if (g.status === 'finished' && halliPrevStatus === 'playing') { // v1.9.2: a winner's legend `win` over the panel
       const finalSkin = [].concat(g.winner || []).map((s) => SLH.def(state.players?.[s]?.skin)).find((d) => d?.legend && d.win);
@@ -12835,6 +12838,19 @@
     return new RegExp(`^[1-9][0-9]{${digits - 1}}$`).test(value) && new Set(value).size === digits;
   }
 
+  // v1.10.248 G3 숫자야구 (한판마당 스도쿠 패드): a 54px digit pad under each input -- a digit adds (none twice, no leading 0), ⌫ takes
+  // one off; a touch screen's own keypad stays shut (the pad is its keys), a keyboard types as before
+  for (const input of [baseballSecretInput, baseballGuessInput]) {
+    const pad = document.createElement('div'); pad.className = 'baseballPad'; pad.setAttribute('role', 'group'); pad.setAttribute('aria-label', '숫자 패드');
+    for (const key of ['1', '2', '3', '4', '5', '⌫', '6', '7', '8', '9', '0']) { const b = document.createElement('button'); b.type = 'button'; b.className = 'hpBtn'; b.dataset.key = key; b.textContent = key; if (key === '⌫') b.setAttribute('aria-label', '하나 지우기'); pad.append(b); }
+    pad.addEventListener('click', (event) => {
+      const key = event.target.closest('[data-key]')?.dataset.key; if (!key || input.disabled) return;
+      const v = input.value; const max = Number(state?.game?.digitCount) === 4 ? 4 : 3;
+      input.value = key === '⌫' ? v.slice(0, -1) : v.length < max && !v.includes(key) && !(key === '0' && !v) ? v + key : v;
+    });
+    input.closest('form').querySelector('.baseballInputRow').after(pad);
+    if (window.matchMedia?.('(pointer:coarse)').matches) input.inputMode = 'none';
+  }
   async function sendBaseballAction(event, action, input, name) {
     event.preventDefault();
     const value = input.value.trim();
@@ -13346,6 +13362,11 @@
   pictionaryPenBtn.addEventListener('click', () => setPictionaryTool('pen'));
   pictionaryEraserBtn.addEventListener('click', () => setPictionaryTool(pictionaryTool === 'eraser' ? 'pen' : 'eraser'));
   pictionaryUndoBtn.addEventListener('click', () => roomAction('pictionary-undo'));
+  // (v1.10.248 G3: five colour rounds -- a pick sets the pen's colour and takes the pen; the colour box any other)
+  const pictionarySwatches = [...document.querySelectorAll('.pictionarySwatch')];
+  const markPictionarySwatch = () => { for (const b of pictionarySwatches) b.setAttribute('aria-pressed', String(b.dataset.color === pictionaryColor.value.toLowerCase())); };
+  for (const b of pictionarySwatches) { b.style.background = b.dataset.color; b.addEventListener('click', () => { pictionaryColor.value = b.dataset.color; markPictionarySwatch(); setPictionaryTool('pen'); }); }
+  pictionaryColor.addEventListener('input', markPictionarySwatch);
   pictionaryConfig.addEventListener('change', (event) => {
     const input = event.target;
     if (input.matches('[data-pictionary-mode]')) roomAction('set-pictionary-config', { mode: input.value });
@@ -13393,6 +13414,23 @@
     let text = statusText.textContent; for (const p of Object.values(state.players || {})) if (p?.label) text = text.split(`${p.label}님`).join('');
     return text.replace(/\(나\)/g, '').split(' · ').map((s) => s.trim()).filter((s) => s && s !== '차례').join(' · ');
   }
+  // (v1.10.248 G3 파티·추리: the big line the game's own -- 라이어 my word (the liar 「?」), 그림 the drawer's word, 스무고개 「n/20」, 숫자야구
+  // the digits I am choosing on my turn; the pill 숫자야구's 「내 숫자 123」, the party games' round)
+  function hudOwnBig(g) {
+    if (!g) return null; const t = state.gameType;
+    if (t === 'liar' && g.status === 'playing' && seat) return g.role === 'liar' ? '?' : g.role === 'citizen' && g.myWord ? g.myWord : null;
+    if (t === 'pictionary' && g.phase === 'drawing' && seat && seat === g.drawerSeat && state.me?.myWord) return state.me.myWord;
+    if (t === 'twentyquestions' && g.status === 'playing') return `${g.questionsUsed || 0}/20`;
+    if (t === 'baseball' && g.status === 'playing' && seat && g.turn === seat && baseballGuessInput.value) return baseballGuessInput.value;
+    return null;
+  }
+  function hudOwnPill(g) {
+    if (!g) return ''; const t = state.gameType;
+    if (t === 'baseball' && seat && state.me?.mySecret) return `내 숫자 ${state.me.mySecret}`;
+    if (t === 'pictionary' || t === 'twentyquestions') return g.roundNumber && g.totalRounds ? `라운드 ${g.roundNumber}/${g.totalRounds}` : '';
+    if (t === 'liar' && g.round && g.totalRounds > 1) return `${g.round}/${g.totalRounds}판`;
+    return '';
+  }
   function renderRoomHud() {
     const on = document.body.classList.contains('roomPlaying') && Boolean(state); roomHud.hidden = !on; if (!on) { hudTurn = null; hudMine = false; return; }
     { const k = `${state.me?.roomCode}:${state.game?.round || 1}`; if (handClock.key !== k) Object.assign(handClock, { key: k, start: !(Number(state.game?.moveCount) > 0) ? Date.now() : null, end: null }); }
@@ -13402,10 +13440,12 @@
     const seated = Object.entries(state.players || {}).filter(([, p]) => p); const other = seated.length === 2 ? seated.find(([k]) => k !== String(seat))?.[1] : null;
     byId('roomHudLabel').textContent = [roomGameLogo.textContent, seated.length > 2 || !other ? (seated.length ? `${seated.length}명` : '') : other.label].filter(Boolean).join(' · ');
     const tt = state.turnTimer; const otherLeft = !timer && tt?.deadlineAt ? Math.max(0, Number(tt.deadlineAt) - (Date.now() - (turnRingClock || (Date.now() - Number(tt.serverNow || Date.now()))))) : null; // (G1: the other's turn -- their seconds, from the public clock)
-    byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : otherLeft !== null ? String(Math.ceil(otherLeft / 1000)) : hudScore(state.game);
+    const pdActs = state.gameType === 'pandemic' && state.game?.phase === 'actions' && Number.isFinite(Number(state.game?.actionsLeft)) ? String(state.game.actionsLeft) : null; // (v1.10.248 G3: 팬데믹's actions left, big)
+    const ownBig = hudOwnBig(state.game); byId('roomHudBig').classList.toggle('word', Boolean(ownBig) && !/^[\d/ :?–]+$/.test(ownBig));
+    byId('roomHudBig').textContent = pdActs ?? ownBig ?? (timer ? String(Math.ceil(left / 1000)) : otherLeft !== null ? String(Math.ceil(otherLeft / 1000)) : hudScore(state.game));
     byId('roomHudSub').textContent = hudTurnLine(); // (U2 검토 #391: short -- the names are on the plates)
     const moves = state.game?.moveCount; const sc = state.game?.scores; const unit = { othello: '', dots: '상자 ', yut: '완주 ' }[state.gameType]; const counted = unit !== undefined && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white));
-    const pill = byId('roomHudPill'); pill.textContent = state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
+    const pill = byId('roomHudPill'); pill.textContent = hudOwnPill(state.game) || (state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''); /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
     // (v1.10.245 U3: my turn's last 5 seconds a beep a second -- the last one higher)

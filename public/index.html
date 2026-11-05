@@ -729,12 +729,13 @@
             <p id="pictionaryWordBox" class="pictionaryWordBox hidden">제시어 <strong id="pictionaryWord"></strong></p>
             <div id="pictionaryRoundResult" class="pictionaryRoundResult hidden" aria-live="polite"></div>
             <div id="pictionaryDrawTools" class="pictionaryToolbar hidden">
-              <label>색상 <input id="pictionaryColor" type="color" value="#1f2937" aria-label="펜 색상" /></label>
-              <label>굵기 <input id="pictionaryWidth" type="range" min="2" max="20" value="4" aria-label="펜 굵기" /></label>
-              <button id="pictionaryPenBtn" type="button" class="ghost tiny selected" aria-pressed="true">펜</button>
-              <button id="pictionaryEraserBtn" type="button" class="ghost tiny" aria-pressed="false">지우개</button>
-              <button id="pictionaryUndoBtn" type="button" class="ghost tiny">되돌리기</button>
-              <button id="pictionaryClearBtn" type="button" class="ghost tiny">전체 지우기</button>
+              <!-- v1.10.248 G3: the tools 40px pill toggles in one line, the colours five rounds (the colour box a sixth, any colour) -->
+              <button id="pictionaryPenBtn" type="button" class="hpPill big selected" aria-pressed="true">펜</button>
+              <button id="pictionaryEraserBtn" type="button" class="hpPill big" aria-pressed="false">지우개</button>
+              <button id="pictionaryUndoBtn" type="button" class="hpPill big">되돌리기</button>
+              <button id="pictionaryClearBtn" type="button" class="hpPill big">지우기</button>
+              <span class="pictionarySwatches" role="group" aria-label="펜 색상"><button type="button" class="pictionarySwatch" data-color="#1f2937" aria-label="검정" aria-pressed="true"></button><button type="button" class="pictionarySwatch" data-color="#ef4444" aria-label="빨강" aria-pressed="false"></button><button type="button" class="pictionarySwatch" data-color="#3b82f6" aria-label="파랑" aria-pressed="false"></button><button type="button" class="pictionarySwatch" data-color="#22c55e" aria-label="초록" aria-pressed="false"></button><button type="button" class="pictionarySwatch" data-color="#f59e0b" aria-label="노랑" aria-pressed="false"></button><input id="pictionaryColor" class="pictionaryColorMore" type="color" value="#1f2937" aria-label="다른 색 고르기" /></span>
+              <label class="pictionaryWidthLabel">굵기 <input id="pictionaryWidth" type="range" min="2" max="20" value="4" aria-label="펜 굵기" /></label>
             </div>
             <div class="pictionaryCanvasWrap">
               <canvas id="pictionaryCanvas" width="720" height="480" aria-label="그림판"></canvas>
@@ -797,7 +798,7 @@
               <p id="twentyPendingQuestion" class="twentyQ"></p>
               <div id="twentyAnswerBox" class="twentyJudgeBox hidden">
                 <small class="twentyAnswerHint">출제자님, 이 질문에 답해 주세요.</small>
-                <div id="twentyAnswerButtons" class="twentyAnswerButtons"><button type="button" class="secondary" data-twenty-answer="예">예</button><button type="button" class="secondary" data-twenty-answer="아니오">아니오</button><button type="button" class="secondary" data-twenty-answer="비슷함">비슷함</button><button type="button" class="secondary" data-twenty-answer="애매함">애매함</button></div>
+                <div id="twentyAnswerButtons" class="twentyAnswerButtons"><button type="button" class="hpBtn" data-twenty-answer="예">예</button><button type="button" class="hpBtn" data-twenty-answer="아니오">아니오</button><button type="button" class="hpBtn" data-twenty-answer="비슷함">비슷함</button><button type="button" class="hpBtn" data-twenty-answer="애매함">애매함</button></div>
               </div>
             </section>
             <ol id="twentyQuestionLog" class="twentyQuestionLog" aria-label="답변 완료 질문 · 최신순"></ol>
@@ -972,7 +973,7 @@
               <label for="baseballSecretInput">내 비밀 숫자 정하기</label>
               <div class="baseballInputRow">
                 <input id="baseballSecretInput" type="password" inputmode="numeric" pattern="[1-9][0-9]{2}" minlength="3" maxlength="3" autocomplete="new-password" placeholder="서로 다른 숫자 3개" aria-label="내 비밀 숫자" required />
-                <button class="primary" type="submit">비밀 숫자 확정</button>
+                <button class="hpBtn go" type="submit">비밀 숫자 확정</button>
               </div>
               <small>첫 자리는 0이 아니어야 하며 중복 숫자는 쓸 수 없습니다. 확정 후에는 변경할 수 없습니다.</small>
             </form>
@@ -980,14 +981,14 @@
               <label for="baseballGuessInput">상대의 비밀 숫자 추측하기</label>
               <div class="baseballInputRow">
                 <input id="baseballGuessInput" type="text" inputmode="numeric" pattern="[1-9][0-9]{2}" minlength="3" maxlength="3" autocomplete="off" placeholder="예: 123" aria-label="추측할 숫자" required />
-                <button class="secondary" type="submit">추측하기</button>
+                <button class="hpBtn go" type="submit">추측</button>
               </div>
             </form>
 
             <button id="pictionaryStartBtn" type="button" class="primary hidden">그림 맞히기 시작</button>
             <form id="pictionaryGuessForm" class="pictionaryGuessForm hidden" autocomplete="off">
               <input id="pictionaryGuessInput" type="text" maxlength="40" placeholder="정답 입력" aria-label="정답 입력" />
-              <button class="primary" type="submit">제출</button>
+              <button class="hpBtn go" type="submit">제출</button>
             </form>
 
             <div class="oldmaidStartRow">
@@ -1012,41 +1013,44 @@
             </div>
             <form id="liarHintForm" class="liarActionForm hidden" autocomplete="off">
               <input id="liarHintInput" type="text" maxlength="100" placeholder="힌트를 입력하세요" aria-label="라이어게임 힌트" />
-              <button type="submit" class="primary">힌트 제출</button>
+              <button type="submit" class="hpBtn go">힌트 제출</button>
             </form>
             <form id="liarGuessForm" class="liarActionForm hidden" autocomplete="off">
               <input id="liarGuessInput" type="text" maxlength="40" placeholder="제시어 최종 추측" aria-label="라이어 최종 제시어 추측" />
-              <button type="submit" class="primary">최종 추측</button>
+              <button type="submit" class="hpBtn go">최종 추측</button>
             </form>
 
             <section id="twentyActionPanel" class="twentyActionPanel hidden" aria-label="스무고개 행동">
-              <div id="twentyHostSetup" class="twentyHostSetup hidden">
-                <label for="twentyModeSelect">진행 방식</label><select id="twentyModeSelect"><option value="individual">개인전</option><option value="cooperative">협동전</option></select>
-                <label for="twentyRoundsSelect">진행 라운드 · 1~10 자유 선택</label>
-                <select id="twentyRoundsSelect"><option value="1">1라운드</option><option value="2">2라운드</option><option value="3">3라운드</option><option value="4">4라운드</option><option value="5">5라운드</option><option value="6">6라운드</option><option value="7">7라운드</option><option value="8">8라운드</option><option value="9">9라운드</option><option value="10">10라운드</option></select>
-                <div id="twentyRecommendations" class="twentyRecommendations" aria-label="공평한 출제 횟수 추천"></div>
-                <button id="twentyStartBtn" type="button" class="primary">스무고개 시작</button>
+              <!-- v1.10.248 G3: before a hand, the start sheet's form -- the choices pills, the start the 58px call -->
+              <div id="twentyHostSetup" class="twentyHostSetup hpSheetForm hidden">
+                <strong class="hpSheetTitle">스무고개 시작</strong>
+                <span class="hpSheetLabel">진행 방식</span>
+                <div class="hpSheetRow" role="radiogroup" aria-label="진행 방식"><label class="hpPill big"><input type="radio" name="twentyMode" value="individual" checked />개인전</label><label class="hpPill big"><input type="radio" name="twentyMode" value="cooperative" />협동전</label></div>
+                <span class="hpSheetLabel">라운드 · 1~10</span>
+                <div class="hpSheetRow" role="radiogroup" aria-label="진행 라운드"><label class="hpPill big"><input type="radio" name="twentyRounds" value="1" checked />1</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="2" />2</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="3" />3</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="4" />4</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="5" />5</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="6" />6</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="7" />7</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="8" />8</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="9" />9</label><label class="hpPill big"><input type="radio" name="twentyRounds" value="10" />10</label></div>
+                <div id="twentyRecommendations" class="twentyRecommendations hpSheetRow" aria-label="공평한 출제 횟수 추천"></div>
+                <button id="twentyStartBtn" type="button" class="hpBtn go cta">스무고개 시작</button>
               </div>
               <form id="twentySecretForm" class="stackForm hidden" autocomplete="off">
                 <label for="twentySecretInput">내 카테고리에 맞는 비밀 정답 · 출제자 전용</label>
                 <input id="twentySecretInput" type="text" maxlength="100" autocomplete="off" required placeholder="정답을 입력하세요" />
-                <button type="submit" class="primary">정답 확정 · 비공개</button>
+                <button type="submit" class="hpBtn go">정답 확정 · 비공개</button>
               </form>
               <form id="twentyQuestionForm" class="stackForm hidden" autocomplete="off">
                 <label for="twentyQuestionInput">내 차례 · 질문하기</label>
                 <input id="twentyQuestionInput" type="text" maxlength="200" autocomplete="off" required placeholder="예/아니오로 답할 수 있는 질문" />
-                <button type="submit" class="primary">질문</button><button id="twentyAskGuessBtn" type="button" class="secondary">정답</button>
+                <button type="submit" class="hpBtn go">질문</button><button id="twentyAskGuessBtn" type="button" class="hpBtn">정답</button>
               </form>
               <form id="twentyGuessForm" class="stackForm hidden" autocomplete="off">
                 <label for="twentyGuessInput">내 차례 · 질문 대신 정답 제출 / 최종 정답 기회</label>
                 <input id="twentyGuessInput" type="text" maxlength="100" autocomplete="off" required placeholder="내가 생각한 정답" />
-                <button type="submit" class="secondary">정답 제출</button>
+                <button type="submit" class="hpBtn go">정답 제출</button>
               </form>
               <div id="twentyJudgeBox" class="twentyJudgeBox hidden">
                 <strong>정답 판정 · 출제자 전용</strong><p id="twentyPendingGuess">정답 대기 중</p>
-                <div class="twentyAnswerButtons"><button id="twentyJudgeCorrect" type="button" class="primary">정답</button><button id="twentyJudgeWrong" type="button" class="secondary">오답</button></div>
+                <div class="twentyAnswerButtons"><button id="twentyJudgeCorrect" type="button" class="hpBtn go">정답</button><button id="twentyJudgeWrong" type="button" class="hpBtn">오답</button></div>
               </div>
-              <button id="twentyNextBtn" type="button" class="primary hidden">다음 라운드 시작</button>
+              <button id="twentyNextBtn" type="button" class="hpBtn go hidden">다음 라운드 시작</button>
             </section>
 
           </section>

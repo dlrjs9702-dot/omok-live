@@ -3385,13 +3385,74 @@ body.roomPlaying .yutLastThrow{color:var(--hp-t1);font-weight:800}
 .oldmaidFace.red{color:#E0334F}
 .oldmaidBack{border:2px solid #F4F5FC;border-radius:7px;background:linear-gradient(135deg,#3B4BD8,#1E2A8A)}
 .oldmaidBack::after{border-color:rgba(255,255,255,.22)}
+/* v1.10.248 G3 팬데믹: the status chips a 34px pill row on the map's dark ground (either theme) */
+body.roomPlaying #roomView #pandemicPanel .pdChip{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:0;border-radius:99px;background:var(--felt-face);color:var(--felt-t1);font-size:13px;font-weight:800}
+body.roomPlaying #roomView #pandemicPanel .pdChip.turn{box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+body.roomPlaying #roomView #pandemicPanel .pdChip.quiet{box-shadow:inset 0 0 0 2px #a78bfa}
+/* v1.10.248 G3 파티·추리 (한판마당): the input and its send one 50px line (the send the game's colour), the labels for the ear only;
+   그림's tools 40px pills and five colour rounds; the word the HUD's (not a box); 라이어's role a plate, not paper */
+body.roomPlaying :is(.liarActionForm,.pictionaryGuessForm,#twentySecretForm,#twentyQuestionForm,#twentyGuessForm){display:flex;flex-wrap:nowrap;align-items:center;gap:8px;grid-template-columns:none}
+body.roomPlaying :is(.liarActionForm,.pictionaryGuessForm,#twentySecretForm,#twentyQuestionForm,#twentyGuessForm,.baseballInputRow) input{flex:1 1 auto;min-width:0;min-height:50px;padding:0 14px;border:0;border-radius:var(--hp-r-md);background:var(--hp-face);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1);font-size:15px;font-weight:700}
+body.roomPlaying :is(.liarActionForm,.pictionaryGuessForm,#twentySecretForm,#twentyQuestionForm,#twentyGuessForm,.baseballInputRow) .hpBtn{flex:0 0 auto;min-height:50px;width:auto}
+body.roomPlaying :is(#twentySecretForm,#twentyQuestionForm,#twentyGuessForm)>label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body.roomPlaying.partyGame #pictionaryDrawTools{display:flex;flex-wrap:wrap;align-items:center;gap:6px}body.roomPlaying.partyGame #pictionaryDrawTools.hidden{display:none}
+.pictionarySwatches{display:inline-flex;align-items:center;gap:6px}
+.pictionarySwatch,.pictionaryToolbar input.pictionaryColorMore{width:34px;height:34px;min-height:34px;padding:0;border:0;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35);cursor:pointer}
+.pictionarySwatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--hp-bg,#0B0C1A),0 0 0 4px var(--c1,var(--hp-blue))}
+.pictionaryToolbar input.pictionaryColorMore{background:conic-gradient(#ef4444,#f59e0b,#22c55e,#3b82f6,#a855f7,#ef4444)}.pictionaryToolbar input.pictionaryColorMore::-webkit-color-swatch{border:0;border-radius:50%;opacity:0}
+.pictionaryWidthLabel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--hp-t2)}.pictionaryWidthLabel input{width:88px}
+body.roomPlaying.partyGame #pictionaryDrawTools>.pictionaryWordBox{display:none}
+body.roomPlaying.partyGame #liarRoleBox{min-height:40px;display:flex;align-items:center;padding:6px 14px;border:0;border-radius:12px;background:var(--hp-face);background-image:none;color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:none;transform:none}
+.roomHudBig.word{font-size:26px;letter-spacing:-.02em}
+.roomHudBig{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* (총괄 #398: never under the pill) */
+@media (max-width:640px){.roomHudBig{font-size:26px;min-height:28px}.roomHudBig.word{font-size:20px}.roomHudRight{gap:4px}.roomHudRight>button{width:36px;height:36px;min-height:36px}.roomHudRight>.hpPill{padding:0 9px;font-size:12px}} /* (a phone's HUD: the big line room in the middle) */
+/* (총괄 #398: the chalkboard and the drawing board dark in either theme -- their words light, as on the felt) */
+body.roomPlaying #roomView :is(#twentyPanel,#pictionaryPanel){color:var(--felt-t1)}
+body.roomPlaying #roomView #twentyPanel :is(.twentyHeading,h4,.twentyGuessLog p){color:var(--felt-t1)}
+body.roomPlaying #roomView #twentyPanel .twentyEmpty,body.roomPlaying #roomView #pictionaryPanel .pictionaryRuleNote{color:var(--felt-t2)}
+body.roomPlaying #roomView #twentyPanel .twentyPrivate{background:var(--felt-face);color:var(--felt-t1);border-color:var(--hp-line)}
+body.roomPlaying #roomView :is(#twentyPanel .twentyScore,#pictionaryPanel .pictionaryScoreRow){background:var(--felt-face);color:var(--felt-t1)}
+.hpPill:disabled{opacity:.45;cursor:default;color:var(--hp-t1)}
+/* 숫자야구: the guesses a record table (newest at the foot), the pad 54px under the input */
+body.roomPlaying .baseballPanel :is(#baseballReady,#baseballMySecret,.baseballHistoryHead small){display:none}
+body.roomPlaying .baseballPanel #baseballHistory{display:flex;flex-direction:column-reverse;gap:6px}
+body.roomPlaying .baseballPanel .baseballHistoryRow{min-height:44px;padding:6px 12px;border:0;border-radius:12px;background:var(--hp-face);color:var(--hp-t1);font-variant-numeric:tabular-nums}
+body.roomPlaying .baseballPanel .baseballHistoryRow strong{font-size:22px;font-weight:900;letter-spacing:.08em}
+.baseballPad{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:8px}
+.baseballPad .hpBtn{min-height:54px;padding:0;font-size:20px;font-weight:900;font-variant-numeric:tabular-nums}
+.baseballForm:has(input:disabled) .baseballPad{opacity:.45}
+/* 스무고개 before a hand: the start sheet's form -- the choices 40px pills, the start a 58px call; the seats a pill row */
+.hpSheetForm{display:grid;gap:10px;padding:18px;border-radius:var(--hp-r-xl);background:var(--hp-bg2);color:var(--hp-t1)}.hpSheetForm.hidden{display:none}
+.hpSheetTitle{font-size:20px;font-weight:900;letter-spacing:-.02em}
+.hpSheetLabel{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--hp-t2)}
+.hpSheetRow{display:flex;flex-wrap:wrap;gap:6px}.hpSheetRow .hpPill{position:relative;justify-content:center;min-width:44px}
+body.twentyGame:not(.roomPlaying) #teamRoleButtons{display:flex;flex-wrap:wrap;gap:6px}
+body.twentyGame:not(.roomPlaying) #teamRoleButtons .rolePick{min-height:40px;padding:0 14px;border:0;border-radius:99px;background:var(--hp-face);color:var(--hp-t1);font-size:13px;font-weight:800;box-shadow:inset 0 0 0 1px var(--hp-line)}
+body.twentyGame:not(.roomPlaying) #teamRoleButtons .rolePick.selected{background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+body.twentyGame:not(.roomPlaying) #teamRoleButtons .rolePick.hidden{display:none}
+/* 팬데믹: the seats the U2 turn pill (40px, face 32px with its pawn colour, the turn's lit) */
+body.roomPlaying #roomView #pandemicPanel .pdSeat{min-height:40px;gap:8px;padding:4px 12px 4px 4px;border:0;border-radius:12px;background:var(--felt-face);color:var(--felt-t1);font-size:14px;font-weight:800}
+body.roomPlaying #roomView #pandemicPanel .pdSeat .seatFace{width:32px;height:32px;box-shadow:0 0 0 2px var(--seat)}
+body.roomPlaying #roomView #pandemicPanel .pdSeat small{color:var(--felt-t2);font-size:11.5px;font-weight:700}
+body.roomPlaying #roomView #pandemicPanel .pdSeat.turn{background:var(--felt-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+/* 할리갈리 3명 이상: each face-up pile on a ring round the bell (mine at the foot), the bell in the middle -- a phone's too; the
+   ring wide and low (an ellipse: --rx across, --ry up and down) so a PC's short screen keeps my pile in it */
+body.roomPlaying .halliTable:has(.halliCards.fan){--rx:min(34vw,300px);--ry:clamp(150px,20vh,190px);--cw:min(31vw,180px);--ch:210px;--cy:50%}
+body.roomPlaying .halliTable:has(.halliCards.fan3){--cy:calc(var(--ch) / 2)} /* (three: the two others level with the bell, mine under it -- no row above) */
+body.roomPlaying .halliTable .halliCards.fan{display:block;position:relative;height:calc(var(--ry) * 2 + var(--ch))}
+body.roomPlaying .halliTable .halliCards.fan3{height:calc(var(--ry) + var(--ch))}
+body.roomPlaying .halliTable .halliCards.fan>.halliCard{position:absolute;left:calc(50% + var(--rx) * sin(var(--a)));top:calc(var(--cy) - var(--ry) * cos(var(--a)));width:var(--cw);margin:0;transform:translate(-50%,-50%)}
+body.roomPlaying .halliTable:has(.halliCards.fan) .halliBell{position:absolute;left:50%;top:var(--cy);transform:translate(-50%,-50%);margin:0;width:6.5rem;height:6.5rem}
+@media (max-width:640px){body.roomPlaying .halliTable:has(.halliCards.fan){--rx:calc(50% - var(--cw) / 2 - 4px);--ry:196px;--cw:min(30vw,116px);--ch:190px}body.roomPlaying .halliTable:has(.halliCards.fan) .halliBell{width:4.75rem;height:4.75rem;font-size:.9rem}
+  body.roomPlaying .halliCards.fan .halliFruitVisuals{flex-wrap:wrap;min-height:3.4rem;gap:.1rem}body.roomPlaying .halliCards.fan .halliFruitVisuals .halliFruitIcon{width:1.5rem}body.roomPlaying .halliCards.fan .halliFruitVisuals.count-1 .halliFruitIcon{width:2.6rem}body.roomPlaying .halliCards.fan .halliFruitVisuals.count-2 .halliFruitIcon{width:2rem}} /* (a phone's narrow piles: the fruit smaller, five in two rows) */ /* (a phone's side piles at the table's edges, inside it) */
+body.roomPlaying .baseballInputRow{display:flex;gap:8px}body.roomPlaying .baseballInputRow .hpBtn{width:auto} /* (a phone's too: the input and 추측 one line) */
 /* v1.10.247 G2 할리갈리: the turn/time strip off in a hand (the HUD has both), the how-to box too (told once as a banner), the flip the go button */
 body.roomPlaying #halliStatus{display:none}
 body.roomPlaying .halliTransferResult.idle{display:none}
 body.roomPlaying #halliFlipBtn.hpBtn{min-height:52px;padding:0 28px;font-size:16px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 body.roomPlaying #halliFlipBtn.hpBtn:disabled{opacity:.45}
 /* v1.10.247 G2 맞고: each seat's head (face · name · 점수 · 고) the turn pill too -- the turn's lit */
-#roomView .gostopFelt,#roomView #davinciHands,#roomView #oldmaidPanel{--felt-face:rgba(3,10,6,.6);--felt-face-on:rgba(255,255,255,.18);--felt-t1:#F4F5FC;--felt-t2:rgba(244,245,252,.7)} /* (#397: the felt is dark in both themes -- its plates too) */
+#roomView .gostopFelt,#roomView #davinciHands,#roomView #oldmaidPanel,#roomView #pandemicPanel,#roomView #halliPanel,#roomView #twentyPanel,#roomView #pictionaryPanel{--felt-face:rgba(3,10,6,.6);--felt-face-on:rgba(255,255,255,.18);--felt-t1:#F4F5FC;--felt-t2:rgba(244,245,252,.7);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.62);--hp-t3:rgba(255,255,255,.42);--hp-face:rgba(255,255,255,.1);--hp-face-on:rgba(255,255,255,.2);--hp-btn:rgba(255,255,255,.1);--hp-glass:rgba(11,12,26,.5);--hp-line:rgba(255,255,255,.12);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A} /* (G3, 총괄 #397: the felt dark in either theme -- the hp set too, for its buttons and words) */ /* (#397: the felt is dark in both themes -- its plates too) */
 body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:12px;background:var(--felt-face);color:var(--felt-t1);width:max-content;max-width:100%}
 body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead strong{color:var(--felt-t1)}
 body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeat.isTurn .gostopSeatHead{background:var(--felt-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}

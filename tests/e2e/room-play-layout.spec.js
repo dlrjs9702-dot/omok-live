@@ -154,7 +154,7 @@ const OWN_SEATS = new Set(['gostop', 'oldmaid', 'davinci', 'pictionary', 'liar',
 const ROOM_GAMES = [
   ['omok', BW], ['othello', BW], ['connect4', BW], ['dots', BW], ['yut', BW], ['omok2v2', ['1', '2', '3', '4']],
   ['baseball', BW, async (call) => { await call(0, '/api/room/set-secret', { secret: '123' }); await call(1, '/api/room/set-secret', { secret: '456' }); }],
-  ['gostop', SEATS2, 'start-gostop'], ['oldmaid', SEATS2, 'start-oldmaid'], ['davinci', SEATS2, 'start-davinci'], ['halligalli', SEATS2, 'start-halligalli'],
+  ['gostop', SEATS2, 'start-gostop'], ['oldmaid', SEATS2, 'start-oldmaid'], ['davinci', SEATS2, 'start-davinci'], ['halligalli', ['1', '2', '3'], 'start-halligalli'], /* (G3: three -- the fan round the bell) */
   ['bingo', SEATS2, 'start-bingo'], ['pictionary', SEATS2, 'start-pictionary'], ['liar', ['1', '2', '3'], 'start-liar'],
   ['twentyquestions', SEATS2, async (call) => { await call(0, '/api/room/twenty-start', { mode: 'individual', totalRounds: 1 }); }],
   ['cityking', SEATS2, 'start-city'], ['pandemic', SEATS2, 'start-pandemic'],
@@ -175,7 +175,8 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       for (let i = 0; i < seats.length; i += 1) await call(i, '/api/room/choose-role', { choice: seats[i] });
       if (typeof start === 'string') await call(0, `/api/room/${start}`, {}); else if (start) await start(call);
       // (총괄 #397: 할리갈리's first-turn banner photographed -- the other flips first when it is their turn)
-      if (game === 'halligalli') { const st = (await (await request.get('/api/room', { headers: { 'X-Session-Token': host, 'X-Forwarded-For': ip() } })).json()).state; if (st.game.turn !== st.me.seat) await call(1, '/api/room/flip-halligalli', { expectedRevision: st.game.revision }); }
+      const roomNow = async () => (await (await request.get('/api/room', { headers: { 'X-Session-Token': host, 'X-Forwarded-For': ip() } })).json()).state;
+      if (game === 'halligalli') for (let k = 0; k < seats.length; k += 1) { const st = await roomNow(); if (st.game.turn === st.me.seat) break; await call(seats.indexOf(st.game.turn), '/api/room/flip-halligalli', { expectedRevision: st.game.revision }); }
       await page.goto('/'); await expect(page.locator('body'), game).toHaveClass(/roomPlaying/, { timeout: 15_000 }); await page.waitForTimeout(600);
       // (검토 #391: the banner -- 「내 차례예요」 or a system line -- never over the HUD or a name plate while it shows)
       const banner = await page.evaluate(() => { const n = document.querySelector('#boardNote'); if (!n || n.classList.contains('hidden') || !n.getBoundingClientRect().height) return null; const b = n.getBoundingClientRect();
@@ -188,10 +189,43 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       const board = await page.evaluate(() => { const b = document.querySelector('#canvasWrap'); window.scrollTo(0, 0); return b?.offsetParent && !b.classList.contains('cityBoard') ? Math.round(b.getBoundingClientRect().bottom) : null; });
       if (board !== null) expect(board, `${game} 판 아래`).toBeLessThanOrEqual(h + 1);
       seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText(), plates: await page.locator('.davinciPlate.on:visible').count() };
+      // (v1.10.248 G3 파티·추리: the game's own figure big in the HUD, the inputs one 50px line, 숫자야구's pad, 그림's tool pills,
+      // 팬데믹's seats the turn pills, 할리갈리's three piles round the bell -- none over another or the bell)
+      const big = page.locator('#roomHudBig'); const st = await roomNow();
+      // (총괄 #398: the big line never under the pill, nor cut -- a phone's 「0/20」 read 「0/2C」 under 「라운드 1/1」)
+      const hudFit = await page.evaluate(() => { const b = document.getElementById('roomHudBig'); const p = document.getElementById('roomHudPill'); const r1 = b.getBoundingClientRect(); const r2 = p.getBoundingClientRect();
+        return { over: Boolean(r2.width) && r1.left < r2.right && r1.right > r2.left && r1.top < r2.bottom && r1.bottom > r2.top, cut: b.scrollWidth > b.clientWidth + 1 }; });
+      expect(hudFit, `${game} HUD 큰 글·알약`).toEqual({ over: false, cut: false });
+      if (game === 'twentyquestions') await expect(big).toHaveText('0/20');
+      if (game === 'liar') await expect(big).toHaveText(st.game.role === 'liar' ? '?' : st.game.myWord);
+      if (game === 'baseball') {
+        await expect(page.locator('#roomHudPill')).toHaveText('내 숫자 123');
+        const pad = page.locator('#baseballGuessForm .baseballPad button'); await expect(pad).toHaveCount(11); expect((await pad.first().boundingBox()).height).toBeGreaterThanOrEqual(54);
+        for (const k of ['4', '5', '5', '7']) await pad.filter({ hasText: new RegExp(`^${k}$`) }).click(); /* (a digit twice: once) */
+        await expect(big).toHaveText('457'); await expect(page.locator('#baseballGuessInput')).toHaveValue('457');
+        const [inBox, goBox] = await Promise.all([page.locator('#baseballGuessInput').boundingBox(), page.locator('#baseballGuessForm .hpBtn.go').boundingBox()]);
+        expect(goBox.height).toBeGreaterThanOrEqual(50); expect(Math.abs(inBox.y - goBox.y), '입력과 추측 한 줄').toBeLessThan(4);
+      }
+      if (game === 'pictionary') {
+        if (st.game.drawerSeat === st.me.seat) { await expect(big).toHaveText(st.me.myWord); for (const b of await page.locator('#pictionaryDrawTools .hpPill').all()) expect((await b.boundingBox()).height).toBeGreaterThanOrEqual(40); await expect(page.locator('#pictionaryDrawTools .pictionarySwatch')).toHaveCount(5); }
+        else for (const el of ['#pictionaryGuessInput', '#pictionaryGuessForm .hpBtn.go']) expect((await page.locator(el).boundingBox()).height, el).toBeGreaterThanOrEqual(50);
+      }
+      if (game === 'pandemic') { for (const p of await page.locator('#pandemicPanel .pdSeat').all()) expect((await p.boundingBox()).height).toBeGreaterThanOrEqual(40); await expect(page.locator('#pandemicPanel .pdSeat.turn')).toHaveCount(1); }
+      if (game === 'halligalli') {
+        const fan = await page.evaluate(() => { const box = (el) => el.getBoundingClientRect(); const cards = [...document.querySelectorAll('#halliCards.fan > .halliCard')].map(box); const bell = box(document.getElementById('halliBellBtn'));
+          const hit = (a, b) => a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1; const all = [...cards, bell];
+          return { n: cards.length, overlaps: all.flatMap((a, i) => all.slice(i + 1).filter((b) => hit(a, b))).length, bellInside: bell.top > Math.min(...cards.map((c) => c.top)) && bell.bottom < Math.max(...cards.map((c) => c.bottom)), inScreen: Math.max(...cards.map((c) => c.bottom)) <= innerHeight + 1 && Math.min(...cards.map((c) => c.left)) >= 0 && Math.max(...cards.map((c) => c.right)) <= innerWidth }; });
+        expect(fan).toEqual({ n: 3, overlaps: 0, bellInside: true, inScreen: true }); /* (my pile, at the foot, within the screen) */
+      }
       if (process.env.SHOT_DIR) {
         await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });
-        if (['omok', 'othello', 'gostop', 'davinci', 'oldmaid', 'halligalli'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
-          console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor)); await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
+        if (['omok', 'othello', 'gostop', 'davinci', 'oldmaid', 'halligalli', 'baseball', 'pictionary', 'liar', 'twentyquestions', 'pandemic'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
+          console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor));
+          // (G3, 총괄 #397: on the felt every word reads light in the light theme too -- its luminance over half)
+          const feltDark = await page.evaluate(() => { const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) || [0, 0, 0]; const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
+            return [...document.querySelectorAll('#roomView :is(.gostopFelt .gostopSeatHead strong, .davinciPlate, #oldmaidShuffleBtn, .oldmaidMyHeader h3, .oldmaidMyHeader .turnRing b, #twentyPanel :is(.twentyHeading, h4, .twentyScore, .twentyPrivate, .twentyEmpty), #pictionaryPanel :is(.pictionaryScoreRow, .pictionaryWidthLabel, .pictionaryHead, .hpPill))')] /* (총괄 #398: 스무고개's chalkboard, 그림's board too) */.filter((el) => el.getBoundingClientRect().height).filter((el) => lum(getComputedStyle(el).color) < 0.5).map((el) => el.id || el.className || el.tagName); });
+          expect(feltDark, `${game} 펠트 위 어두운 글자`).toEqual([]);
+          await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
       }
       for (const t of tokens) await api(request, '/api/room/leave', t, {});
     }

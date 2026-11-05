@@ -85,7 +85,7 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
       await expect.poll(async () => { if ((await get(request, '/api/island/story', token)).data.track?.title === S.title) return true; await lines().catch(() => {}); const yes = choices.filter({ hasText: '할게요!' }); if (await yes.isVisible().catch(() => false)) await yes.click().catch(() => {}); /* (its lines shown first: the buttons come after the last -- CI ▼ still up) */ await page.waitForTimeout(800); return false; }, { timeout: 90000 }).toBe(true);
       // (CI #389·#392: the line on the card before the window is shut -- the server had it, but the page's answer (its 할 일 line)
       // was still on its way when Escape ended the talk, and an answer after the end is dropped; only the 20 s refresh brought it)
-      await expect(page.locator('#questTracker .questLine', { hasText: S.task })).toBeVisible({ timeout: 60000 });
+      await expect(page.locator('#questTracker .questLine', { hasText: S.task }).or(page.locator('#questTracker .questLine.ready'))).toBeVisible({ timeout: 60000 }); /* (검토 #397: 마루 1·2장 -- I stand at its office already, so it is reached at once: the ✓ line in its place) */
       await lines(); await close();
       if (S.talk != null) { // (말 걸기 장: the one it sends me to -- 「부탁받고 왔어요」)
         await go(); await lines(); await skipErrand(); await choices.filter({ hasText: '부탁받고 왔어요' }).click(); /* (a quest's 「📜 부탁」 may come first) */ await lines(); await close();

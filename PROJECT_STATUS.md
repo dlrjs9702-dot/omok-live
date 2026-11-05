@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.248 게임관 G3 파티·추리 5
+
+- 라이어·그림·스무고개 입력줄 50px 한 줄, HUD 큰 글(라이어 제시어/「?」, 그림 제시어, 스무고개 n/20), 그림 도구 40px 알약 + 색 5원.
+- 숫자야구 54px 숫자 패드·기록표(최신 아래)·「내 숫자」 알약, 스무고개 시작 전 시트 양식, 팬데믹 차례 알약, 할리갈리 3명 이상 종 둘레 배치.
+- 펠트·칠판·그림판 안 글자는 두 테마 모두 밝게, 폰 HUD 큰 글은 알약과 안 겹침.
+- 검토 #397 시험 고침(island-projects, story-17).
+
 ## v1.10.247 게임관 G2 + 메신저 따로 설치·기기별 알림
 
 - 메신저 따로 설치(webmanifest·아이콘) + 알림 방식 기기마다(열어 둘 때만 / 닫아도 받기) (#394, 클라우드 세션).
@@ -26,9 +33,3 @@
 - 토스트 정리: 방 만들기 안내 처음 한 번, 정산 글은 결과 패널 한 줄, 판이 끝나면 배너도 사라짐. 판 밖 위쪽 단추 40px 둥근 단추.
 - G1 판 게임: 돌·상자·완주 수 HUD 알약, 상대 차례 초, 사목 글띠·열 번호 없앰, 빙고 상자 접음, 윷 던지기 .hpBtn.go.
 - 메신저 다듬기 A+B(#393, 클라우드 세션): 사진 있는 방 맨 아래 유지, 사람 고르기 화면, 새 메시지 ↓·안 읽은 줄·여러 줄 입력·링크·복사·작은 창, 폰 사진 방 가로 넘침 고침.
-
-## v1.10.245 게임관 UI 통일 U3
-
-- 결과 패널 하나(.hpPanel): 판 게임 #boardOverlay(알약·제목·큰 숫자 64px·통계 3칸·단추 2개), 맞고 #gostopResult.hpPanel(두 칸 점수 표·금액 64px), 한판마당 .hpPanel.reflexBox(옛 .reflexPanel 없앰).
-- 판·맞고 패널이 뜨면 #resultEffect 이모지 카드 없음, 전설 승리는 효과 뒤 2.2초에 패널.
-- 효과음 한 세트: room-sound.js가 reflex/js/audio.js sfx 사용, 내 차례 마지막 5초 beep.
