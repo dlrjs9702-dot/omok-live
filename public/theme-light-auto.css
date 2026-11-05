@@ -1533,6 +1533,22 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.roomPlaying #roomView #pandemicPanel .pdChip{border:0;background:var(--felt-face);color:var(--felt-t1)}
 :root[data-theme="light"] body.roomPlaying #roomView #pandemicPanel .pdChip.turn{box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
 :root[data-theme="light"] body.roomPlaying #roomView #pandemicPanel .pdChip.quiet{box-shadow:inset 0 0 0 2px #a78bfa}
+:root[data-theme="light"] body.roomPlaying :is(.liarActionForm,.pictionaryGuessForm,#twentySecretForm,#twentyQuestionForm,#twentyGuessForm,.baseballInputRow) input{border:0;background:var(--hp-face);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1)}
+:root[data-theme="light"] .pictionarySwatch,:root[data-theme="light"] .pictionaryToolbar input.pictionaryColorMore{border:0;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+:root[data-theme="light"] .pictionarySwatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--hp-bg,#0B0C1A),0 0 0 4px var(--c1,var(--hp-blue))}
+:root[data-theme="light"] .pictionaryToolbar input.pictionaryColorMore{background:conic-gradient(#ef4444,#f59e0b,#22c55e,#3b82f6,#a855f7,#ef4444)}
+:root[data-theme="light"] .pictionaryToolbar input.pictionaryColorMore::-webkit-color-swatch{border:0}
+:root[data-theme="light"] .pictionaryWidthLabel{color:var(--hp-t2)}
+:root[data-theme="light"] body.roomPlaying.partyGame #liarRoleBox{border:0;background:var(--hp-face);background-image:none;color:var(--hp-t1);box-shadow:none}
+:root[data-theme="light"] body.roomPlaying .baseballPanel .baseballHistoryRow{border:0;background:var(--hp-face);color:var(--hp-t1)}
+:root[data-theme="light"] .hpSheetForm{background:var(--hp-bg2);color:var(--hp-t1)}
+:root[data-theme="light"] .hpSheetLabel{color:var(--hp-t2)}
+:root[data-theme="light"] body.twentyGame:not(.roomPlaying) #teamRoleButtons .rolePick{border:0;background:var(--hp-face);color:var(--hp-t1);box-shadow:inset 0 0 0 1px var(--hp-line)}
+:root[data-theme="light"] body.twentyGame:not(.roomPlaying) #teamRoleButtons .rolePick.selected{background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+:root[data-theme="light"] body.roomPlaying #roomView #pandemicPanel .pdSeat{border:0;background:var(--felt-face);color:var(--felt-t1)}
+:root[data-theme="light"] body.roomPlaying #roomView #pandemicPanel .pdSeat .seatFace{box-shadow:0 0 0 2px var(--seat)}
+:root[data-theme="light"] body.roomPlaying #roomView #pandemicPanel .pdSeat small{color:var(--felt-t2)}
+:root[data-theme="light"] body.roomPlaying #roomView #pandemicPanel .pdSeat.turn{background:var(--felt-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
 :root[data-theme="light"] body.roomPlaying #halliFlipBtn.hpBtn{background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 :root[data-theme="light"] body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead{background:var(--felt-face);color:var(--felt-t1)}
 :root[data-theme="light"] body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead strong{color:var(--felt-t1)}

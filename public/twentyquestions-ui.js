@@ -66,9 +66,10 @@
     form('twentyGuessForm', 'twenty-guess', 'twentyGuessInput', 'guess');
     // (v1.10.197 검토: one input on my turn -- 「질문」 asks it, 「정답」 gives it as my answer)
     $('twentyAskGuessBtn').addEventListener('click', () => { const value = $('twentyQuestionInput').value.trim(); if (value) handle('twenty-guess', { guess: value }, 'twentyQuestionInput'); });
+    const picked = name => document.querySelector(`input[name="${name}"]:checked`)?.value; // (v1.10.248 G3: the sheet form's pills)
     $('twentyStartBtn').addEventListener('click', () => handle('twenty-start', {
-      mode: $('twentyModeSelect').value,
-      totalRounds: Number($('twentyRoundsSelect').value),
+      mode: picked('twentyMode') || 'individual',
+      totalRounds: Number(picked('twentyRounds') || 1),
     }));
     $('twentyNextBtn').addEventListener('click', () => handle('twenty-next'));
     $('twentyAnswerButtons').addEventListener('click', ev => {
@@ -83,7 +84,7 @@
     });
     $('twentyRecommendations').addEventListener('click', ev => {
       const button = ev.target.closest('[data-round-count]');
-      if (button) $('twentyRoundsSelect').value = button.dataset.roundCount;
+      const pill = button && document.querySelector(`input[name="twentyRounds"][value="${button.dataset.roundCount}"]`); if (pill) pill.checked = true;
     });
   }
 
@@ -172,7 +173,7 @@
       for (const count of suggestions) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'ghost tiny';
+        button.className = 'hpPill';
         button.dataset.roundCount = String(count);
         button.textContent = `추천 ${count}판 · 1인당 ${count / seatCount}회 출제`;
         recommendationBox.appendChild(button);

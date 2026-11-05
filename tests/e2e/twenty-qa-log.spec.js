@@ -47,7 +47,16 @@ test('스무고개 기록: 대기 질문 고정 → Q+A 한 묶음 → 최신순
   expect((await api(request, '/api/room/choose-role', a.token, { choice: '1' })).status).toBe(200);
   expect((await api(request, '/api/room/choose-role', b.token, { choice: '2' })).status).toBe(200);
   expect((await api(request, '/api/room/choose-role', w.token, { choice: 'spectator' })).status).toBe(200);
-  expect((await api(request, '/api/room/twenty-start', a.token, { mode: 'individual', totalRounds: 1 })).status).toBe(200);
+  // (v1.10.248 G3: before a hand the host's choices are the start sheet's form -- 40px pills, the 58px start; the seats a pill row)
+  const setup = a.page.locator('#twentyHostSetup'); await expect(setup).toBeVisible();
+  for (const pill of await setup.locator('.hpSheetRow .hpPill').all()) expect((await pill.boundingBox()).height).toBeGreaterThanOrEqual(40);
+  expect((await a.page.locator('#twentyStartBtn').boundingBox()).height).toBeGreaterThanOrEqual(58);
+  expect(await a.page.locator('#teamRoleButtons .rolePick:visible').first().evaluate((b) => parseFloat(getComputedStyle(b).borderRadius))).toBeGreaterThanOrEqual(20);
+  await setup.locator('.hpPill', { hasText: '협동전' }).click(); await setup.locator('.hpPill', { hasText: '개인전' }).click();
+  await setup.locator('.hpSheetRow[aria-label="진행 라운드"] .hpPill', { hasText: /^3$/ }).click(); await setup.locator('.hpSheetRow[aria-label="진행 라운드"] .hpPill', { hasText: /^1$/ }).click();
+  if (process.env.SHOT_DIR) await a.page.screenshot({ path: `${process.env.SHOT_DIR}/g3-twenty-setup.png` });
+  await a.page.locator('#twentyStartBtn').click();
+  await expect.poll(async () => { const g = (await roomState(request, a.token)).game; return `${g.status}:${g.mode}:${g.totalRounds}`; }).toBe('playing:individual:1');
   const start = await roomState(request, a.token);
   const [drawer, challenger] = start.game.drawerSeat === '1' ? [a, b] : [b, a];
   expect((await api(request, '/api/room/twenty-secret', drawer.token, { secret: '사과' })).status).toBe(200);
