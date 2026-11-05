@@ -6839,7 +6839,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const body = await parseJson(req);
     const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null, ...(body.dex ? { dexEntry: String(body.itemId) } : {}) }, nowMs());
-    questBagNow(pointAccountForSession(session), result.bag); // (CI 흔들림 묶음: a request's mark from what was given at once -- as a real catch does; not the bag's 2 s re-read) // (v1.10.233 dex: into the 도감 too) bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
+    /* (v1.10.233 dex: into the 도감 too) */ bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag); /* (CI 흔들림 묶음: these two sat behind a line-end // since v1.10.233 -- the 사진가 이야기 mark came only with the bag's later re-read, and the bike was kept) */
     return sendJson(res, 200, { ok: true, ...result });
   }
 
