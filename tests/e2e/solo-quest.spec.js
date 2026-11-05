@@ -72,7 +72,7 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
   await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().recordTower(); return [t.bulbs, t.flags >= 2, t.faces >= 3]; }), { timeout: 90000 }).toEqual([32, true, true]); /* (High and Low both carry the parts) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().recordTower().game), { timeout: 30000 }).not.toBeNull();
   const at = await page.evaluate(() => window.PlazaDebug().recordTower().at);
-  if (process.env.SHOT_DIR) for (const [name, time, dx, dz, yaw] of [['day', 'day', 6.5, 1.5, Math.PI / 2 + 0.12], ['night', 'night', 6.5, 1.5, Math.PI / 2 + 0.12], ['back', 'day', -14, 4, -Math.PI / 2 - 0.2]]) {
+  if (process.env.SHOT_DIR) for (const [name, time, dx, dz, yaw] of [['back', 'day', -14, 4, -Math.PI / 2 - 0.2]]) { /* (its front: a first-person photo -- the third person's camera stands in the 게임관 there) */
     await page.evaluate(([x, z, t, yaw]) => { const D = window.PlazaDebug(); D.setTime(t); D.setWeather?.('clear'); D.teleport(x, z); D.setCamYaw(yaw); D.setCamPitch?.(0.06); }, [at.x + dx, at.z + dz, time, yaw]);
     await page.waitForTimeout(2500); await page.screenshot({ path: `${process.env.SHOT_DIR}/rt-tower-${name}-pc.png` });
   }

@@ -1536,13 +1536,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (g.allTime) { x.fillStyle = '#ffd34d'; x.font = '800 34px system-ui, sans-serif'; x.fillText('역대 최고 · ' + g.allTime.name + ' · ' + R.format(g.game, g.allTime.best), W / 2, 210); }
       const top = g.top || [];
       if (!top.length) { x.fillStyle = '#f4f5fc'; x.font = '900 52px system-ui, sans-serif'; x.fillText('이번 주 첫 1위가 되어 보세요!', W / 2, 370); }
-      else for (const [place, cx, h, col] of [[2, W / 2 - 330, 120, '#c9ced8'], [1, W / 2, 170, '#ffd34d'], [3, W / 2 + 330, 90, '#d8925a']]) {
-        const r = top.find((v) => v.rank === place); const y0 = H - 24; x.fillStyle = col; x.globalAlpha = 0.22; x.fillRect(cx - 140, y0 - h, 280, h); x.globalAlpha = 1;
-        x.fillStyle = col; x.font = '900 34px system-ui, sans-serif'; x.fillText(place + '위', cx, y0 - h + 30);
+      else for (const [place, cx, h, col] of [[2, W / 2 - 330, 80, '#c9ced8'], [1, W / 2, 110, '#ffd34d'], [3, W / 2 + 330, 60, '#d8925a']]) { // (총괄 사진: below the all-time line -- the names over low steps)
+        const r = top.find((v) => v.rank === place); const y0 = H - 18; x.fillStyle = col; x.globalAlpha = 0.22; x.fillRect(cx - 140, y0 - h, 280, h); x.globalAlpha = 1;
+        x.fillStyle = col; x.font = '900 32px system-ui, sans-serif'; x.fillText(place + '위', cx, y0 - h / 2);
         if (!r) continue;
-        x.fillStyle = place === 1 ? '#ffd34d' : '#f4f5fc'; x.font = '900 36px system-ui, sans-serif'; x.fillText(r.name.length > 9 ? r.name.slice(0, 8) + '…' : r.name, cx, y0 - h - 62);
-        x.fillStyle = '#f4f5fc'; x.font = '800 30px system-ui, sans-serif'; x.fillText(R.format(g.game, r.best), cx, y0 - h - 24);
-        if (place === 1) { x.fillStyle = '#ffd34d'; x.font = '800 22px system-ui, sans-serif'; x.fillText('「' + g.title + '」 도전 중', cx, y0 - h - 98); }
+        x.fillStyle = place === 1 ? '#ffd34d' : '#f4f5fc'; x.font = '900 36px system-ui, sans-serif'; x.fillText(r.name.length > 9 ? r.name.slice(0, 8) + '…' : r.name, cx, y0 - h - 58);
+        x.fillStyle = '#f4f5fc'; x.font = '800 30px system-ui, sans-serif'; x.fillText(R.format(g.game, r.best), cx, y0 - h - 22);
+        if (place === 1) { x.fillStyle = '#ffd34d'; x.font = '800 24px system-ui, sans-serif'; x.fillText('「' + g.title + '」 도전 중', cx, y0 - h - 94); }
       }
       t.needsUpdate = true;
     }
@@ -1567,7 +1567,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const T = recordTower; const now = performance.now(); const t = now / 1000;
     for (const [k, fl] of T.flags.entries()) fl.o.rotation.z = fl.z + Math.sin(t * 2.2 + k * 1.7) * 0.12;
     T.F.board_ticker.t.offset.x = (T.F.board_ticker.t.offset.x + (dt || 0.016) * 0.045) % 1;
-    const lit = Boolean(night); for (const f of Object.values(T.F)) f.m.emissive.setScalar(lit ? 0.85 : 0);
+    const lit = Boolean(night); for (const f of Object.values(T.F)) f.m.emissive.setScalar(lit ? 0.85 : 0.35); /* (a little by day too: a screen's words, not paper) */
     const head = Math.floor(t * 8) % 32; T.bulbs.forEach((ms, k) => { const on = lit ? ((k - head + 32) % 32) < 6 : true; for (const m of ms) m.emissiveIntensity = lit ? (on ? 2.2 : 0.25) : 0.35; });
     for (const m of T.glows) m.emissiveIntensity = lit ? 1.6 : 0.3;
     drawRecordFaces(now);
