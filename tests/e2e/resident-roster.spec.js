@@ -23,6 +23,9 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
   let day = Calendar.dayOf(Date.now()); for (let k = 0; k < 200 && !fits(day); k += 1) day = Calendar.addDays(day, 1);
   const r = R.rosterOf(day); const name = (n) => Cast.RESIDENTS[n].name;
   expect((await request.post('/api/test/roster', { data: { on: true, day } })).ok()).toBe(true);
+  // (local 3× run at 14:00 KST: the day's contest live -- 가락 at its tent, not walking (plaza-scene walksNow), and the walkers' list
+  // short of him for 30 minutes a day; the contest's clock moved past its tent for this test, back after)
+  expect((await request.post('/api/test/contest/clock', { data: { to: 'after' } })).ok()).toBe(true);
   const shot = async (page, what, wait = 1200) => { if (!process.env.SHOT_DIR) return; await page.waitForTimeout(wait); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-${what}.png` }); };
   const admin = await adminToken(request); const set = (what, mode) => request.post(`/api/admin/island/${what}`, { headers: { 'X-Session-Token': admin }, data: { mode } });
   try {
@@ -132,7 +135,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     }
     await expectNoScriptError(page); await who.context.close();
   } finally {
-    await request.post('/api/test/roster', { data: { on: false } });
+    await request.post('/api/test/roster', { data: { on: false } }); await request.post('/api/test/contest/clock', { data: { to: 'reset' } });
     if (process.env.SHOT_DIR) { await set('time', 'auto'); await set('weather', 'auto'); }
   }
 });
