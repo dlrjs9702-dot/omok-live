@@ -199,7 +199,8 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
         const pad = page.locator('#baseballGuessForm .baseballPad button'); await expect(pad).toHaveCount(11); expect((await pad.first().boundingBox()).height).toBeGreaterThanOrEqual(54);
         for (const k of ['4', '5', '5', '7']) await pad.filter({ hasText: new RegExp(`^${k}$`) }).click(); /* (a digit twice: once) */
         await expect(big).toHaveText('457'); await expect(page.locator('#baseballGuessInput')).toHaveValue('457');
-        expect((await page.locator('#baseballGuessForm .hpBtn.go').boundingBox()).height).toBeGreaterThanOrEqual(50);
+        const [inBox, goBox] = await Promise.all([page.locator('#baseballGuessInput').boundingBox(), page.locator('#baseballGuessForm .hpBtn.go').boundingBox()]);
+        expect(goBox.height).toBeGreaterThanOrEqual(50); expect(Math.abs(inBox.y - goBox.y), '입력과 추측 한 줄').toBeLessThan(4);
       }
       if (game === 'pictionary') {
         if (st.game.drawerSeat === st.me.seat) { await expect(big).toHaveText(st.me.myWord); for (const b of await page.locator('#pictionaryDrawTools .hpPill').all()) expect((await b.boundingBox()).height).toBeGreaterThanOrEqual(40); await expect(page.locator('#pictionaryDrawTools .pictionarySwatch')).toHaveCount(5); }
@@ -209,8 +210,8 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       if (game === 'halligalli') {
         const fan = await page.evaluate(() => { const box = (el) => el.getBoundingClientRect(); const cards = [...document.querySelectorAll('#halliCards.fan > .halliCard')].map(box); const bell = box(document.getElementById('halliBellBtn'));
           const hit = (a, b) => a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1; const all = [...cards, bell];
-          return { n: cards.length, overlaps: all.flatMap((a, i) => all.slice(i + 1).filter((b) => hit(a, b))).length, bellInside: bell.top > Math.min(...cards.map((c) => c.top)) && bell.bottom < Math.max(...cards.map((c) => c.bottom)) }; });
-        expect(fan).toEqual({ n: 3, overlaps: 0, bellInside: true });
+          return { n: cards.length, overlaps: all.flatMap((a, i) => all.slice(i + 1).filter((b) => hit(a, b))).length, bellInside: bell.top > Math.min(...cards.map((c) => c.top)) && bell.bottom < Math.max(...cards.map((c) => c.bottom)), inScreen: Math.max(...cards.map((c) => c.bottom)) <= innerHeight + 1 && Math.min(...cards.map((c) => c.left)) >= 0 && Math.max(...cards.map((c) => c.right)) <= innerWidth }; });
+        expect(fan).toEqual({ n: 3, overlaps: 0, bellInside: true, inScreen: true }); /* (my pile, at the foot, within the screen) */
       }
       if (process.env.SHOT_DIR) {
         await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });

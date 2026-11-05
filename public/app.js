@@ -10923,8 +10923,8 @@
       card.append(name, face, count);
       halliCards.append(card);
     }
-    { const order = g.seatOrder || []; const fan = order.length >= 3; halliCards.classList.toggle('fan', fan); halliCards.style.setProperty('--n', String(order.length)); // (v1.10.248 G3: 3명 이상은 종 둘레 부채꼴, 내 더미가 아래)
-      const me = Math.max(0, order.indexOf(seat)); [...halliCards.children].forEach((card, i) => card.style.setProperty('--a', fan ? `${180 + (((i - me + order.length) % order.length) * 360) / order.length}deg` : '')); }
+    { const order = g.seatOrder || []; const n = order.length; const fan = n >= 3; halliCards.classList.toggle('fan', fan); halliCards.classList.toggle('fan3', n === 3); // (v1.10.248 G3: 3명 이상은 종 둘레 부채꼴, 내 더미가 아래; 셋은 둘이 종 양옆)
+      const me = Math.max(0, order.indexOf(seat)); [...halliCards.children].forEach((card, i) => { const k = (i - me + n) % n; card.style.setProperty('--a', fan ? `${n === 3 ? [180, 270, 90][k] : 180 + (k * 360) / n}deg` : ''); }); }
     if (halliFxTarget && halliRecent.fresh) requestAnimationFrame(() => SLH.h.playFx(halliFxTarget.el, halliFxTarget.fx, halliFxTarget.ms, 50));
     if (g.status === 'finished' && halliPrevStatus === 'playing') { // v1.9.2: a winner's legend `win` over the panel
       const finalSkin = [].concat(g.winner || []).map((s) => SLH.def(state.players?.[s]?.skin)).find((d) => d?.legend && d.win);

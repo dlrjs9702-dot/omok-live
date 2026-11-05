@@ -30,10 +30,10 @@ test('섬 가꾸기: 기부함 막대, 다 모이면 공사(울타리·안내판
   try {
     await expect.poll(async () => (await scene()).bits, { timeout: 20000 }).toEqual(['works:fountain']);
     await expect.poll(async () => (await scene()).keeper, { timeout: 20000 }).toBe(true);
-    const k = P.SITES.fountain.keeper; await page.evaluate(([x, z]) => { const g = window.PlazaDebug(); g.teleport(x + 0.6, z + 2.2); g.setCamYaw(0.25); g.setCamPitch?.(0.12); }, [k.x, k.z]);
+    const k = P.SITES.fountain.keeper; await page.evaluate(([x, z]) => { const g = window.PlazaDebug(); g.teleport(x + 0.3, z + 0.9); g.setCamYaw(0.25); g.setCamPitch?.(0.12); }, [k.x, k.z]);
     await shot('works');
-    // (CI #397: a walker passing nearer took the hint -- 「SPACE · 말 걸기」 -- three tries: stand by 바위 again till his is the hint)
-    await expect.poll(async () => { if ((await page.locator('#plazaHint').textContent())?.includes('바위')) return true; await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 0.6, z + 2.2), [k.x, k.z]); await page.waitForTimeout(600); return (await page.locator('#plazaHint').textContent())?.includes('바위'); }, { timeout: 30000 }).toBe(true); await expect.poll(() => spaceOn(page, 'works:keeper', isMobile), { timeout: 10000 }).toBe(true); await revealTalk(page);
+    // (CI #397: 「SPACE · 말 걸기」 took the hint -- 검토: 분수 옆 사진 행사 NPC, 1.28 m; at 0.95 m from 바위 its door (atDoor) wins)
+    await expect.poll(async () => { if ((await page.locator('#plazaHint').textContent())?.includes('바위')) return true; await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 0.3, z + 0.9), [k.x, k.z]); await page.waitForTimeout(600); return (await page.locator('#plazaHint').textContent())?.includes('바위'); }, { timeout: 30000 }).toBe(true); await expect.poll(() => spaceOn(page, 'works:keeper', isMobile), { timeout: 10000 }).toBe(true); await revealTalk(page);
     await expect(page.locator('#plazaDialog')).toContainText('내일이면 분수가 열려요'); await expect(page.locator('#plazaDialog')).not.toContainText('둘러볼게요'); await expect(page.locator('#plazaDialog')).not.toContainText('{me}'); /* (총괄 222 검토 1: their own talk, no shop) */ await shot('works-talk', 600);
     await page.keyboard.press('Escape');
   } finally { await request.post('/api/test/roster', { data: { on: false } }); }

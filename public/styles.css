@@ -3402,7 +3402,7 @@ body.roomPlaying.partyGame #pictionaryDrawTools{display:flex;flex-wrap:wrap;alig
 .pictionaryToolbar input.pictionaryColorMore{background:conic-gradient(#ef4444,#f59e0b,#22c55e,#3b82f6,#a855f7,#ef4444)}.pictionaryToolbar input.pictionaryColorMore::-webkit-color-swatch{border:0;border-radius:50%;opacity:0}
 .pictionaryWidthLabel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--hp-t2)}.pictionaryWidthLabel input{width:88px}
 body.roomPlaying.partyGame #pictionaryDrawTools>.pictionaryWordBox{display:none}
-body.roomPlaying.partyGame #liarRoleBox{min-height:40px;display:flex;align-items:center;padding:6px 14px;border:0;border-radius:12px;background:var(--hp-face);background-image:none;color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:none}
+body.roomPlaying.partyGame #liarRoleBox{min-height:40px;display:flex;align-items:center;padding:6px 14px;border:0;border-radius:12px;background:var(--hp-face);background-image:none;color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:none;transform:none}
 .roomHudBig.word{font-size:26px;letter-spacing:-.02em;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 숫자야구: the guesses a record table (newest at the foot), the pad 54px under the input */
 body.roomPlaying .baseballPanel :is(#baseballReady,#baseballMySecret,.baseballHistoryHead small){display:none}
@@ -3426,12 +3426,17 @@ body.roomPlaying #roomView #pandemicPanel .pdSeat{min-height:40px;gap:8px;paddin
 body.roomPlaying #roomView #pandemicPanel .pdSeat .seatFace{width:32px;height:32px;box-shadow:0 0 0 2px var(--seat)}
 body.roomPlaying #roomView #pandemicPanel .pdSeat small{color:var(--felt-t2);font-size:11.5px;font-weight:700}
 body.roomPlaying #roomView #pandemicPanel .pdSeat.turn{background:var(--felt-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
-/* 할리갈리 3명 이상: each face-up pile on a ring round the bell (mine at the foot), the bell in the middle -- a phone's too */
-body.roomPlaying .halliTable:has(.halliCards.fan){--r:clamp(118px,23vh,200px);--cw:min(31vw,180px)}
-body.roomPlaying .halliTable .halliCards.fan{display:block;position:relative;height:calc(var(--r) * 2 + 160px)}
-body.roomPlaying .halliTable .halliCards.fan>.halliCard{position:absolute;left:50%;top:50%;width:var(--cw);margin:0;transform:translate(-50%,-50%) rotate(var(--a)) translateY(calc(-1 * var(--r))) rotate(calc(-1 * var(--a)))}
-body.roomPlaying .halliTable:has(.halliCards.fan) .halliBell{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0}
-@media (max-width:640px){body.roomPlaying .halliTable:has(.halliCards.fan){--r:min(30vw,24vh);--cw:min(30vw,128px)}body.roomPlaying .halliTable .halliCards.fan{height:calc(var(--r) * 2 + 140px)}}
+/* 할리갈리 3명 이상: each face-up pile on a ring round the bell (mine at the foot), the bell in the middle -- a phone's too; the
+   ring wide and low (an ellipse: --rx across, --ry up and down) so a PC's short screen keeps my pile in it */
+body.roomPlaying .halliTable:has(.halliCards.fan){--rx:min(34vw,300px);--ry:clamp(150px,20vh,190px);--cw:min(31vw,180px);--ch:210px;--cy:50%}
+body.roomPlaying .halliTable:has(.halliCards.fan3){--cy:calc(var(--ch) / 2)} /* (three: the two others level with the bell, mine under it -- no row above) */
+body.roomPlaying .halliTable .halliCards.fan{display:block;position:relative;height:calc(var(--ry) * 2 + var(--ch))}
+body.roomPlaying .halliTable .halliCards.fan3{height:calc(var(--ry) + var(--ch))}
+body.roomPlaying .halliTable .halliCards.fan>.halliCard{position:absolute;left:calc(50% + var(--rx) * sin(var(--a)));top:calc(var(--cy) - var(--ry) * cos(var(--a)));width:var(--cw);margin:0;transform:translate(-50%,-50%)}
+body.roomPlaying .halliTable:has(.halliCards.fan) .halliBell{position:absolute;left:50%;top:var(--cy);transform:translate(-50%,-50%);margin:0;width:6.5rem;height:6.5rem}
+@media (max-width:640px){body.roomPlaying .halliTable:has(.halliCards.fan){--rx:calc(50% - var(--cw) / 2 - 4px);--ry:196px;--cw:min(30vw,116px);--ch:190px}body.roomPlaying .halliTable:has(.halliCards.fan) .halliBell{width:4.75rem;height:4.75rem;font-size:.9rem}
+  body.roomPlaying .halliCards.fan .halliFruitVisuals{flex-wrap:wrap;min-height:3.4rem;gap:.1rem}body.roomPlaying .halliCards.fan .halliFruitVisuals .halliFruitIcon{width:1.5rem}body.roomPlaying .halliCards.fan .halliFruitVisuals.count-1 .halliFruitIcon{width:2.6rem}body.roomPlaying .halliCards.fan .halliFruitVisuals.count-2 .halliFruitIcon{width:2rem}} /* (a phone's narrow piles: the fruit smaller, five in two rows) */ /* (a phone's side piles at the table's edges, inside it) */
+body.roomPlaying .baseballInputRow{display:flex;gap:8px}body.roomPlaying .baseballInputRow .hpBtn{width:auto} /* (a phone's too: the input and 추측 one line) */
 /* v1.10.247 G2 할리갈리: the turn/time strip off in a hand (the HUD has both), the how-to box too (told once as a banner), the flip the go button */
 body.roomPlaying #halliStatus{display:none}
 body.roomPlaying .halliTransferResult.idle{display:none}

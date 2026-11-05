@@ -56,10 +56,12 @@ test('그림 맞히기 v2: 방장 설정·출제자 도구·카테고리·추측
 
   // 2) 입장 순서대로 방장이 첫 출제자: 제시어·도구(되돌리기 포함)는 출제자에게만.
   await a.page.locator('#pictionaryStartBtn').click();
-  await expect(a.page.locator('#pictionaryWordBox')).toBeVisible();
   await expect(a.page.locator('#pictionaryUndoBtn')).toBeVisible();
   await expect(a.page.locator('.pictionaryRuleNote')).toBeVisible();
+  await expect(a.page.locator('#pictionaryWord')).not.toHaveText('');
   const word = (await a.page.locator('#pictionaryWord').textContent()).trim();
+  await expect(a.page.locator('#roomHudBig')).toHaveText(word); /* (v1.10.248 G3: the drawer's word big in the HUD -- not a box) */
+  for (const view of [b, w]) await expect(view.page.locator('#roomHudBig')).not.toHaveText(word);
   for (const view of [b, w]) {
     await expect(view.page.locator('#pictionaryDrawerLabel')).toContainText('그림방장 님이 그리는 중');
     await expect(view.page.locator('#pictionaryWordBox')).toBeHidden();

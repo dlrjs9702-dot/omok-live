@@ -173,7 +173,7 @@
       for (const count of suggestions) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'hpPill';
+        button.className = 'hpPill big';
         button.dataset.roundCount = String(count);
         button.textContent = `추천 ${count}판 · 1인당 ${count / seatCount}회 출제`;
         recommendationBox.appendChild(button);
