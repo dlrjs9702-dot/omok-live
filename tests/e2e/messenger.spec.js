@@ -46,8 +46,10 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await m.locator('#messengerPick').getByRole('button', { name: /대화 시작/ }).click();
   await expect(m.locator('#messengerRoomName')).toHaveText('우리집');
   await m.locator('#messengerInput').fill('저녁 뭐 먹어?');
-  await m.locator('#messengerForm').getByRole('button', { name: '보내기' }).click();
+  const sendBtn = m.locator('#messengerForm').getByRole('button', { name: '보내기' }); if (info.project.name.includes('mobile')) await sendBtn.tap(); else await sendBtn.click();
   await expect(m.locator('#messengerMessages .chatMessage.mine')).toHaveText(/저녁 뭐 먹어\?/);
+  // (v1.10.247 G2: a phone's 보내기 keeps the box focused -- the keypad stays -- and empties it)
+  if (info.project.name.includes('mobile')) expect(await m.evaluate(() => [document.activeElement?.id, document.getElementById('messengerInput').value])).toEqual(['messengerInput', '']);
   await expect(m.locator('#messengerMessages .messengerSystem')).toHaveText(/님을 초대했습니다/);
   await expect(m.locator('#messengerMessages .chatMessage.mine .messengerReadCount')).toHaveText('1'); // dad has not read it
   // dad: 내 계정's button tells what is unread and opens the messenger window with his login

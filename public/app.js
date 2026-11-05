@@ -12849,8 +12849,8 @@
   async function sendLobbyChat(event) {
     event.preventDefault();
     const text = lobbyChatInput.value.trim();
-    if (!text) return;
-    lobbyChatInput.disabled = true;
+    if (!text || lobbyChatInput.readOnly) return;
+    const had = document.activeElement === lobbyChatInput; lobbyChatInput.readOnly = true; // (v1.10.247 G2: read-only, not disabled -- the focus and a phone's keypad stay)
     try {
       const r = await api('/api/lobby/chat', {
         method: 'POST',
@@ -12861,8 +12861,8 @@
     } catch (err) {
       showToast(err.message, 3500);
     } finally {
-      lobbyChatInput.disabled = false;
-      lobbyChatInput.focus();
+      lobbyChatInput.readOnly = false;
+      if (had || !isMobileLayout()) lobbyChatInput.focus();
     }
   }
 
@@ -12876,8 +12876,8 @@
     event.preventDefault();
     if (chatLockMessage()) return;
     const text = chatInput.value.trim();
-    if (!text) return;
-    chatInput.disabled = true;
+    if (!text || chatInput.readOnly) return;
+    const had = document.activeElement === chatInput; chatInput.readOnly = true; // (v1.10.247 G2: read-only, not disabled -- the focus and a phone's keypad stay)
     try {
       await api('/api/room/chat', {
         method: 'POST',
@@ -12887,8 +12887,8 @@
     } catch (err) {
       showToast(err.message, 3500);
     } finally {
-      chatInput.disabled = false;
-      chatInput.focus();
+      chatInput.readOnly = false;
+      if (had || !isMobileLayout()) chatInput.focus();
     }
   }
 
@@ -13185,6 +13185,8 @@
     if (!document.hidden) loadPresence();
   });
   lobbyChatForm.addEventListener('submit', sendLobbyChat);
+  // (v1.10.247 G2: a touch on 보내기 · 전송 leaves the focus in the box -- the keypad stays; a mouse as before)
+  for (const b of [lobbyChatForm.querySelector('button[type="submit"]'), chatSendBtn]) b?.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') e.preventDefault(); });
   chatForm.addEventListener('submit', sendChat);
   baseballSecretForm.addEventListener('submit', (event) => sendBaseballAction(event, 'set-secret', baseballSecretInput, 'secret'));
   baseballGuessForm.addEventListener('submit', (event) => sendBaseballAction(event, 'guess', baseballGuessInput, 'guess'));

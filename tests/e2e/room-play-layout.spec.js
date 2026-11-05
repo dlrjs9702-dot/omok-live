@@ -222,5 +222,9 @@ test('오목 터치: 첫 탭은 미리보기, 같은 자리 두 번째 탭에 �
   expect(await moves()).toBe(0);
   await board.tap({ position: at });
   await expect.poll(moves).toBe(1);
+  // (v1.10.247 G2: a phone's 전송 keeps the chat box focused -- the keypad stays -- and empties it)
+  await page.locator('#roomHud #chatFloatBtn').tap(); await page.locator('#chatInput').fill('키패드 그대로');
+  await page.locator('#chatSendBtn').tap(); await expect(page.locator('#chatMessages')).toContainText('키패드 그대로');
+  await expect.poll(() => page.evaluate(() => [document.activeElement?.id, document.getElementById('chatInput').value])).toEqual(['chatInput', '']);
   await context.close();
 });

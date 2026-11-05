@@ -484,6 +484,8 @@
     const room = current; if (!room || !await ask({ text: `「${room.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`, ok: '나가기', danger: true }) || current !== room) return;
     try { await api(`/api/messenger/rooms/${room.id}/leave`, {}); current = null; app.classList.remove('inRoom'); clearBox(); refresh(); } catch (err) { fail(err); }
   });
+  // (v1.10.247 G2: a touch on 보내기 leaves the focus in the box -- the keypad stays, as in a chat app; a mouse as before)
+  byId('messengerForm').querySelector('button[type="submit"]').addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') e.preventDefault(); });
   byId('messengerForm').addEventListener('submit', async (event) => {
     event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if ((!text && !tray.length) || !current) return;
     input.value = ''; grow(); const photos = tray; tray = []; drawTray(); queueSend(text, photos); // (v1.10.233: at once -- the answer confirms it)
