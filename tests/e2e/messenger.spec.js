@@ -29,6 +29,8 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
     return { context, nickname, loginId };
   };
   const mom = await make('a', true); const dad = await make('b', true); const kid = await make('c', false);
+  // (B3: a PC sends with Enter; a phone's Enter is a new line -- 보내기 sends)
+  const send = async (p) => { if (info.project.name.includes('mobile')) await p.locator('#messengerForm').getByRole('button', { name: '보내기' }).click(); else await p.locator('#messengerInput').press('Enter'); };
   // 내 계정 (the start page): no button for one not let in
   const onAccount = async (p) => { const r = await api(request, '/api/account/login', { body: { loginId: p.loginId, password: 'secret123' } }); const account = r.data.accountToken; expect(account, JSON.stringify(r)).toBeTruthy(); await p.context.addInitScript((t) => sessionStorage.setItem('gc.account', t), account); const page = await p.context.newPage(); await page.goto('/'); await expect(page.locator('#accountPanel')).toBeVisible({ timeout: 30000 }); return page; }; // (a fresh context fetches the game's resource pack first)
   const kidPage = await onAccount(kid); await expect(kidPage.locator('#accountMessengerBtn')).toBeHidden();
@@ -60,11 +62,11 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   let second = null; home.once('popup', (p) => { second = p; }); await home.locator('#accountMessengerBtn').click(); await home.waitForTimeout(1500);
   expect(second).toBeNull(); expect(home.context().pages().filter((p) => p.url().includes('/messenger'))).toHaveLength(1);
   await d.locator('#messengerInput').fill('김치찌개');
-  await d.locator('#messengerInput').press('Enter');
+  await send(d);
   await expect(m.locator('#messengerMessages .chatMessage:not(.mine)')).toHaveText(/김치찌개/, { timeout: 2500 }); // at once by the stream
   await expect(m.locator('#messengerMessages .messengerReadCount')).toHaveCount(0); // dad read it: the 「1」 is gone
   // (Codex 검토 2차 #6) a line unsent after the other side got it shows as deleted there too
-  await m.locator('#messengerInput').fill('잘못 보냄'); await m.locator('#messengerInput').press('Enter');
+  await m.locator('#messengerInput').fill('잘못 보냄'); await send(m);
   await expect(d.locator('#messengerMessages .chatMessage', { hasText: '잘못 보냄' })).toHaveCount(1);
   // v1.10.190 말풍선 메뉴: no 「삭제」 word; PC a right click, a phone a 0.5 s press -- Esc or outside closes it, 삭제 asks once
   const wrong = m.locator('#messengerMessages .chatMessage.mine .chatMessageText', { hasText: '잘못 보냄' });
@@ -72,7 +74,8 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   const openMenu = async () => { if (info.project.name.includes('mobile')) { await wrong.dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true }); await m.waitForTimeout(700); await wrong.dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true }); } else await wrong.click({ button: 'right' }); await expect(m.locator('.messengerBubbleMenu')).toBeVisible(); };
   await openMenu(); await m.keyboard.press('Escape'); await expect(m.locator('.messengerBubbleMenu')).toHaveCount(0);
   await openMenu(); await m.locator('#messengerRoomName').click(); await expect(m.locator('.messengerBubbleMenu')).toHaveCount(0);
-  await openMenu(); m.once('dialog', (x) => x.accept()); await m.locator('.messengerBubbleMenu').getByRole('menuitem', { name: '삭제' }).click();
+  await openMenu(); await m.locator('.messengerBubbleMenu').getByRole('menuitem', { name: '삭제' }).click();
+  await expect(m.locator('#mAskText')).toHaveText('이 메시지를 모두에게서 삭제할까요?'); await m.locator('#mAsk').getByRole('button', { name: '삭제' }).click(); // (B6: the page's own small window)
   await expect(d.locator('#messengerMessages .chatMessageText.deleted')).toHaveText('삭제된 메시지입니다', { timeout: 8000 });
   // 1:1: named after the other; 나가기 only with the warning
   if (await d.locator('#messengerBackBtn').isVisible()) await d.locator('#messengerBackBtn').click(); // a phone shows one side
@@ -81,8 +84,6 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await d.locator('#messengerPick').getByRole('button', { name: /대화 시작/ }).click();
   await expect(d.locator('#messengerRoomName')).toHaveText(mom.nickname);
   await expect(d.locator('#messengerInviteBtn')).toBeHidden();
-  let warned = '';
-  d.once('dialog', (x) => { warned = x.message(); x.dismiss(); });
   // I8-3: the head is 「‹ 목록 · 방 이름 · ⋯」 -- 방 나가기 (red) only in the ⋯ menu, which a click outside closes
   await expect(d.locator('#messengerLeaveBtn')).toBeHidden();
   await d.locator('#messengerMoreBtn').click(); await expect(d.locator('#messengerMoreMenu')).toBeVisible();
@@ -90,7 +91,7 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await d.locator('#messengerMoreBtn').click();
   await expect(d.locator('#messengerLeaveBtn')).toHaveText('방 나가기');
   await d.locator('#messengerLeaveBtn').click();
-  expect(warned).toContain('나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다');
+  await expect(d.locator('#mAskText')).toContainText('나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다'); await d.locator('#mAsk').getByRole('button', { name: '취소' }).click(); await expect(d.locator('#mAsk')).toBeHidden();
   await expect(d.locator('#messengerRoomName')).toHaveText(mom.nickname); // dismissed: still in
   for (const page of [m, d]) { const box = await page.locator('#mApp').boundingBox(); const vw = page.viewportSize().width; expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(vw); } // fits a phone too
   // (Codex 검토 2차 #5) a pin answered late, after I went to another room: the room I am in stays
@@ -105,7 +106,7 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // error note; the blink's default timers were called as an object's methods, which Chrome refuses)
   await toList(); await m.locator('#messengerRoomList button', { hasText: '우리집' }).click(); await expect(m.locator('#messengerRoomName')).toHaveText('우리집'); // (another room: dad's line unread)
   await m.evaluate(() => { document.hasFocus = () => false; });
-  await d.locator('#messengerInput').fill('자?'); await d.locator('#messengerInput').press('Enter');
+  await d.locator('#messengerInput').fill('자?'); await send(d);
   await expect(m).toHaveTitle(/● 새 메시지/, { timeout: 10000 });
   await expect(m.locator('#mToast, .toast').filter({ hasText: 'Illegal' })).toHaveCount(0);
   await m.evaluate(() => { delete document.hasFocus; window.dispatchEvent(new Event('focus')); });
@@ -358,5 +359,93 @@ test('메신저 A2 사람 고르기: 이름 찾기·알약·최근 먼저·빈 �
   await expect(m.locator('#messengerPeople .messengerPerson[aria-pressed="true"]')).toHaveCount(1); await expect(row(star)).toHaveAttribute('aria-pressed', 'true');
   await expect(go).toHaveText('대화 시작'); await expect(m.locator('#messengerPicked')).toBeHidden();
   await go.click(); await expect(m.locator('#messengerRoomName')).toHaveText(star.nickname);
+  await context.close();
+});
+
+// 메신저 다듬기 B: 안 읽은 곳 줄 「여기까지 읽었어요」 (B2) · 위로 올려 보는 중 새 글 「새 메시지 ↓」 (B1) · 여러 줄 입력 (B3:
+// PC Shift+Enter 줄 바꿈·Enter 보내기, 폰 Enter 줄 바꿈·보내기 단추) · 주소는 <a> (B4) · 말풍선 메뉴 「복사」 (B5) · 이름 바꾸기·
+// 나가기를 화면 안 작은 창으로 (B6: Esc·취소, 포커스 가둠). PC and phone; SHOT_DIR photos
+test('메신저 B: 안 읽은 곳 줄·새 메시지 ↓·Shift+Enter 줄 바꿈·주소 링크·메뉴 복사·작은 창', async ({ browser, request, isMobile }, info) => {
+  test.setTimeout(180000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const make = async (tag, nick) => {
+    const loginId = `b${tag}_${stamp}`.slice(0, 20); const nickname = `${nick}${(Date.now() + info.project.name.length) % 100000}`;
+    await api(request, '/api/account/signup', { body: { realName: tag, loginId, password: 'secret123', nickname } });
+    const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+    await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+    const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+    await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+    const account = (await api(request, '/api/account/login', { body: { loginId, password: 'secret123' } })).data.accountToken;
+    return { id, loginId, nickname, account };
+  };
+  const me = await make('a', '읽는이'); const them = await make('b', '쓰는이');
+  const room = (await api(request, '/api/messenger/rooms', { account: them.account, body: { name: '긴대화방', members: [me.id] } })).data.room;
+  const say = async (text, who = them) => { for (let k = 0; ; k += 1) { const r = await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: who.account, body: { text } }); if (r.status !== 429 || k > 5) { expect(r.status, JSON.stringify(r.data)).toBeLessThan(300); return r.data.message; } await new Promise((done) => setTimeout(done, 2500)); } }; // (6 lines in 5 s)
+  const tall = (k) => `읽은 글 ${k}\n둘째 줄\n셋째 줄\n넷째 줄`;
+  for (let k = 1; k <= 6; k += 1) await say(tall(k));
+  await api(request, `/api/messenger/rooms/${room.id}/messages?after=0`, { account: me.account }); // (read up to here)
+  for (let k = 1; k <= 8; k += 1) await say(k === 1 ? '여기부터 새 글' : `새 글 ${k}\n둘째 줄\n셋째 줄`);
+  const context = await browser.newContext({ ...(info.project.use || {}), permissions: ['clipboard-read', 'clipboard-write'], extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+  const m = await context.newPage(); await m.goto('/messenger');
+  await m.locator('#mLoginId').fill(me.loginId); await m.locator('#mLoginPw').fill('secret123');
+  await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click(); await expect(m.locator('#mApp')).toBeVisible();
+  const shot = async (name) => { if (process.env.SHOT_DIR) { await m.waitForTimeout(400); await m.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
+  const box = m.locator('#messengerMessages'); const input = m.locator('#messengerInput'); const below = m.locator('#messengerNewBelow');
+  const gap = () => box.evaluate((b) => Math.round(b.scrollHeight - b.scrollTop - b.clientHeight));
+  const send = async () => { if (isMobile) await m.locator('#messengerForm').getByRole('button', { name: '보내기' }).click(); else await input.press('Enter'); };
+  // B2: opened -- the first unread line in view, 「여기까지 읽었어요」 over it
+  await m.locator('#messengerRoomList button', { hasText: '긴대화방' }).click();
+  const mark = box.locator('.messengerUnreadLine'); await expect(mark).toHaveText('여기까지 읽었어요');
+  await expect(mark.locator('xpath=following-sibling::*[1]')).toContainText('여기부터 새 글');
+  await expect.poll(() => mark.evaluate((el) => Math.round(el.getBoundingClientRect().top - el.parentElement.getBoundingClientRect().top))).toBeLessThan(30);
+  expect(await gap()).toBeGreaterThan(40); await shot('unread-line');
+  // B1: further up, a new line -- 「새 메시지 ↓」, the view stays; pressed: the end, gone
+  await box.evaluate((b) => { b.scrollTop = 0; }); await m.waitForTimeout(200); await expect(below).toBeHidden();
+  await say('위에 있을 때 온 글'); await expect(box).toContainText('위에 있을 때 온 글', { timeout: 10000 });
+  await expect(below).toBeVisible(); await expect(below).toHaveText('새 메시지 ↓'); expect(await box.evaluate((b) => b.scrollTop)).toBeLessThan(5); await shot('new-below');
+  await below.click(); await expect(below).toBeHidden(); await expect.poll(gap).toBeLessThan(4);
+  // at the end, a new line: no button, still at the end; up again, a new line, then scrolled down by hand -- gone
+  await say('맨 아래에서 받은 글'); await expect(box).toContainText('맨 아래에서 받은 글', { timeout: 10000 }); await expect(below).toBeHidden(); await expect.poll(gap).toBeLessThan(4);
+  await box.evaluate((b) => { b.scrollTop = 0; }); await m.waitForTimeout(200); await say('또 온 글'); await expect(below).toBeVisible({ timeout: 10000 });
+  await box.evaluate((b) => { b.scrollTop = b.scrollHeight; }); await expect(below).toBeHidden();
+  // B2: opened again, nothing unread -- no line, the end
+  if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click(); else await m.locator('#messengerRoomName').click();
+  await m.locator('#messengerRoomList button', { hasText: '긴대화방' }).click(); await expect(box).toContainText('또 온 글');
+  await expect(mark).toHaveCount(0); await expect.poll(gap).toBeLessThan(4);
+  // B3: several lines -- a PC: Shift+Enter a new line, Enter sends; a phone: Enter a new line, 보내기 sends
+  expect(await input.evaluate((el) => [el.tagName, el.maxLength])).toEqual(['TEXTAREA', 500]);
+  const h1 = await input.evaluate((el) => el.offsetHeight);
+  await input.fill('첫 줄'); await input.press(isMobile ? 'Enter' : 'Shift+Enter'); await input.pressSequentially('둘째 줄');
+  await expect(input).toHaveValue('첫 줄\n둘째 줄'); expect(await input.evaluate((el) => el.offsetHeight)).toBeGreaterThan(h1);
+  await send(); await expect(input).toHaveValue('');
+  const two = box.locator('.chatMessage.mine .chatMessageText').last(); await expect(two).toHaveText('첫 줄\n둘째 줄');
+  expect(await two.evaluate((el) => [getComputedStyle(el).whiteSpace, el.getBoundingClientRect().height > 30])).toEqual(['pre-wrap', true]);
+  expect(await input.evaluate((el) => el.offsetHeight)).toBe(h1); // (back to one line)
+  await input.fill(Array.from({ length: 10 }, (_, k) => `줄 ${k}`).join('\n')); await input.dispatchEvent('input');
+  expect(await input.evaluate((el, h) => el.offsetHeight < h * 5 && el.scrollHeight > el.clientHeight, h1)).toBe(true); await input.fill(''); await input.dispatchEvent('input'); // (about 5 lines, then it scrolls)
+  // B4: an address opens -- <a> made of text, never the line as HTML
+  await input.fill('여기 https://example.com/a?b=1 보세요, <b>굵게</b> (http://x.test/y).'); await send();
+  const linkLine = box.locator('.chatMessage.mine .chatMessageText').last(); await expect(linkLine.locator('a')).toHaveCount(2);
+  const first = linkLine.locator('a').first();
+  await expect(first).toHaveAttribute('href', 'https://example.com/a?b=1'); await expect(first).toHaveAttribute('target', '_blank'); await expect(first).toHaveAttribute('rel', 'noopener noreferrer'); await expect(first).toHaveText('https://example.com/a?b=1');
+  await expect(linkLine.locator('a').nth(1)).toHaveAttribute('href', 'http://x.test/y'); await expect(linkLine.locator('b')).toHaveCount(0); await expect(linkLine).toContainText('<b>굵게</b>');
+  // B5: the bubble menu -- 복사 on another's line (no 삭제), 복사 and 삭제 on mine
+  const openMenu = async (bubble) => { if (isMobile) { await bubble.dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true }); await m.waitForTimeout(700); await bubble.dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true }); } else await bubble.click({ button: 'right' }); await expect(m.locator('.messengerBubbleMenu')).toBeVisible(); };
+  const theirs = box.locator('.chatMessage:not(.mine) .chatMessageText', { hasText: '또 온 글' });
+  await openMenu(theirs); await expect(m.locator('.messengerBubbleMenu [role="menuitem"]')).toHaveText(['복사']);
+  await m.locator('.messengerBubbleMenu').getByRole('menuitem', { name: '복사' }).click(); await expect(m.locator('#toast')).toHaveText('복사했어요.');
+  expect(await m.evaluate(() => navigator.clipboard.readText())).toBe('또 온 글');
+  await openMenu(two); await expect(m.locator('.messengerBubbleMenu [role="menuitem"]')).toHaveText(['복사', '삭제']); await m.keyboard.press('Escape');
+  // B6: 이름 바꾸기 in the page's small window (focus kept in it, Enter takes it); 나가기 -- Esc closes it, still in the room
+  await m.locator('#messengerMoreBtn').click(); await m.locator('#messengerRenameBtn').click();
+  const dialog = m.locator('#mAsk'); await expect(dialog).toBeVisible(); await expect(m.locator('#mAskInput')).toHaveValue('긴대화방'); await expect(m.locator('#mAskInput')).toBeFocused();
+  for (let k = 0; k < 4; k += 1) await m.keyboard.press('Tab');
+  expect(await m.evaluate(() => document.getElementById('mAsk').contains(document.activeElement))).toBe(true);
+  await m.locator('#mAskInput').fill('새이름방'); await m.locator('#mAskInput').press('Enter'); await expect(dialog).toBeHidden();
+  await expect(m.locator('#messengerRoomName')).toHaveText('새이름방', { timeout: 10000 });
+  await m.locator('#messengerMoreBtn').click(); await m.locator('#messengerLeaveBtn').click(); await expect(dialog).toBeVisible();
+  await expect(m.locator('#mAskOk')).toHaveText('나가기'); await shot('ask-leave');
+  await m.keyboard.press('Escape'); await expect(dialog).toBeHidden(); await expect(m.locator('#messengerRoomName')).toHaveText('새이름방');
   await context.close();
 });

@@ -84,7 +84,7 @@
     if (msg.system) { const p = document.createElement('p'); p.className = 'messengerSystem'; p.textContent = msg.text; return p; }
     const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
     if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who); item.append(head); }
-    const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); text.textContent = msg.deleted ? '삭제된 메시지입니다' : msg.text;
+    const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); if (msg.deleted) text.textContent = '삭제된 메시지입니다'; else text.append(...linked(msg.text));
     const grid = !msg.deleted && photoGrid(msg); if (grid) { text.classList.add('withPhotos'); if (msg.text === PHOTO_ONLY) text.replaceChildren(grid); else text.prepend(grid); } // (v1.10.233: photos, a grid)
     if (msg.pending || msg.failed) item.classList.add(msg.failed ? 'failed' : 'pending');
     const meta = document.createElement('span'); meta.className = 'messengerMeta';
@@ -99,52 +99,84 @@
       meta.append(n);
     }
     const time = document.createElement('time'); time.textContent = new Date(msg.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); meta.append(time);
-    if (msg.from === state.me && !msg.deleted && canUnsend(msg)) bubbleMenuOn(text, msg); // mine, within 5 minutes, for everyone
+    if (!msg.deleted) bubbleMenuOn(text, msg); // (B5: 복사 on every line; 삭제 mine, within 5 minutes, for everyone)
     row.append(text, meta); item.append(row); return item;
   }
+  // 메신저 다듬기 B4: an http/https address in a line opens (a new tab, no opener, no referrer) -- made of text nodes and <a>
+  // with textContent only, never the line as HTML; a closing mark after it (. , ! ? ) 」) left out of it
+  const URL_IN = /https?:\/\/[^\s<>"'“”‘’「」『』]+/gi;
+  function linked(s) {
+    const out = []; let at = 0;
+    for (const m of String(s).matchAll(URL_IN)) {
+      let u = m[0];
+      while (/[.,!?;:)\]}…。、]$/.test(u)) { if (u.endsWith(')') && (u.match(/\(/g) || []).length >= (u.match(/\)/g) || []).length) break; u = u.slice(0, -1); }
+      let href = ''; try { const x = new URL(u); if (x.protocol === 'http:' || x.protocol === 'https:') href = x.href; } catch {}
+      if (!href) continue;
+      if (m.index > at) out.push(document.createTextNode(s.slice(at, m.index)));
+      const a = document.createElement('a'); a.className = 'messengerLink'; a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = u; out.push(a); at = m.index + u.length;
+    }
+    if (at < s.length) out.push(document.createTextNode(s.slice(at)));
+    return out;
+  }
   // v1.10.190 말풍선 메뉴 (사용자: no 「삭제」 word under my line): a right click on the PC, a 0.5 s press on a phone (a
-  // keyboard: the menu key on the focused line) opens a small menu by it -- 삭제, asked once; outside it or Esc closes it
+  // keyboard: the menu key on the focused line) opens a small menu by it; outside it or Esc closes it. B5: 「복사」 on every
+  // line not deleted (mine and others'), 「삭제」 as before -- mine, within 5 minutes, asked once
   const canUnsend = (msg) => !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000;
+  const canCopy = (msg) => !msg.deleted && Boolean(msg.text) && msg.text !== PHOTO_ONLY;
+  const menuOf = (msg) => ({ copy: canCopy(msg), del: msg.from === state.me && canUnsend(msg) });
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch {}
+    const area = document.createElement('textarea'); area.value = t; area.setAttribute('readonly', ''); area.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.append(area); area.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch {} area.remove(); return ok;
+  }
   let bubbleMenu = null;
   const closeBubbleMenu = () => { bubbleMenu?.remove(); bubbleMenu = null; };
   document.addEventListener('pointerdown', (e) => { if (bubbleMenu && !bubbleMenu.contains(e.target)) closeBubbleMenu(); }, true);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && bubbleMenu) closeBubbleMenu(); });
   function openBubbleMenu(bubble, msg, x, y) {
-    closeBubbleMenu(); if (!canUnsend(msg)) return; const room = current; // (C5 Codex 4차 P3-6: the room it was opened in)
+    closeBubbleMenu(); const can = menuOf(msg); if (!can.copy && !can.del) return; const room = current; // (C5 Codex 4차 P3-6: the room it was opened in)
     const menu = document.createElement('div'); menu.className = 'messengerMoreMenu messengerBubbleMenu'; menu.setAttribute('role', 'menu');
-    const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerBubbleDelete'; del.setAttribute('role', 'menuitem'); del.textContent = '삭제';
-    del.addEventListener('click', async () => {
-      closeBubbleMenu(); if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
+    const item = (label, cls, act) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', act); menu.append(b); return b; };
+    if (can.copy) item('복사', 'messengerBubbleCopy', async () => { closeBubbleMenu(); showToast(await copyText(msg.text) ? '복사했어요.' : '복사하지 못했어요.'); });
+    if (can.del) item('삭제', 'messengerBubbleDelete', async () => {
+      closeBubbleMenu(); if (!await ask({ text: '이 메시지를 모두에게서 삭제할까요?', ok: '삭제', danger: true })) return;
       if (current !== room) return; try { await api(`/api/messenger/rooms/${room.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
     });
-    menu.append(del); app.append(menu); bubbleMenu = menu;
+    app.append(menu); bubbleMenu = menu;
     if (!x && !y) { const r = bubble.getBoundingClientRect(); x = r.left; y = r.bottom; } // (the menu key: by the line)
     const w = menu.offsetWidth; const h = menu.offsetHeight;
     menu.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`; menu.style.top = `${Math.max(8, Math.min(y, innerHeight - h - 8))}px`;
-    del.focus();
+    menu.querySelector('button').focus();
   }
   function bubbleMenuOn(bubble, msg) {
     bubble.classList.add('hasMenu'); bubble.tabIndex = 0; bubble.setAttribute('aria-haspopup', 'menu');
-    bubble.addEventListener('contextmenu', (e) => { if (!canUnsend(msg)) return; e.preventDefault(); openBubbleMenu(bubble, msg, e.clientX, e.clientY); });
-    let press = null; const cancel = () => { clearTimeout(press); press = null; };
-    bubble.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') return; cancel(); const { clientX: x, clientY: y } = e; press = setTimeout(() => { press = null; openBubbleMenu(bubble, msg, x, y); }, 500); });
+    bubble.addEventListener('contextmenu', (e) => { const can = menuOf(msg); if (!can.copy && !can.del) return; e.preventDefault(); openBubbleMenu(bubble, msg, e.clientX, e.clientY); });
+    let press = null; let held = false; const cancel = () => { clearTimeout(press); press = null; };
+    bubble.addEventListener('pointerdown', (e) => { held = false; if (e.pointerType === 'mouse') return; cancel(); const { clientX: x, clientY: y } = e; press = setTimeout(() => { press = null; held = true; openBubbleMenu(bubble, msg, x, y); }, 500); });
+    bubble.addEventListener('click', (e) => { if (held) { held = false; e.preventDefault(); e.stopPropagation(); } }, true); // (a long press on an address opens the menu, not the address)
     for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) bubble.addEventListener(ev, cancel);
   }
   // 메신저 다듬기 A1 (사진 있는 방에서 보내거나 받으면 사진 근처가 보이던 것): only the lines that changed are drawn again -- a
   // line's key its seq (on its way: its pid), kept while what it shows is the same; the box held at its end when it was
   // there (after drawing, after a photo comes in, when the box itself changes size)
-  let rows = new Map(); let stick = true;
-  const clearBox = () => { rows = new Map(); box.replaceChildren(); stick = true; };
+  let rows = new Map(); let stick = true; let unreadFrom = null; // (B2: my last read when the room was opened, while it has unread lines)
+  const clearBox = () => { rows = new Map(); box.replaceChildren(); stick = true; newBelow.classList.add('hidden'); };
+  function grow() { const t = byId('messengerInput'); t.style.height = 'auto'; t.style.height = `${t.scrollHeight + t.offsetHeight - t.clientHeight}px`; keepEnd(); } // (B3: max 5 lines in CSS)
+  // 메신저 다듬기 B1: a new line come in while I read further up -- 「새 메시지 ↓」 over the box; pressed, the end; at the end, gone
+  const newBelow = byId('messengerNewBelow');
+  newBelow.addEventListener('click', () => { toEnd(); stick = true; newBelow.classList.add('hidden'); });
   const toEnd = () => { box.scrollTop = box.scrollHeight; };
   const keepEnd = () => { if (stick) toEnd(); };
-  box.addEventListener('scroll', () => { stick = box.scrollHeight - box.scrollTop - box.clientHeight < 40; });
+  box.addEventListener('scroll', () => { stick = box.scrollHeight - box.scrollTop - box.clientHeight < 40; if (stick) newBelow.classList.add('hidden'); });
   try { new ResizeObserver(keepEnd).observe(box); } catch {}
   const waitingOf = (msg) => (msg.system || msg.pending || msg.failed ? [] : current.members.filter((m) => m.active && m.id !== msg.from && (current.reads[m.id] || 0) < msg.seq));
   function render() {
     const want = []; let prev = null; let prevDay = '';
     const put = (key, sig, make) => want.push({ key, sig, make });
     if (msgs.length && msgs[0].seq > 1) put('more', '', moreButton);
+    let marked = false;
     for (const msg of msgs) {
+      if (unreadFrom !== null && !marked && msg.seq > unreadFrom) { marked = true; put('unread', '', () => { const p = document.createElement('p'); p.className = 'messengerUnreadLine'; p.textContent = '여기까지 읽었어요'; return p; }); }
       const day = new Date(msg.at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
       if (day !== prevDay) put(`d${day}`, day, () => { const s = document.createElement('p'); s.className = 'messengerDay'; s.textContent = day; return s; });
       const same = Boolean(prev && !prev.system && prev.from === msg.from && day === prevDay);
@@ -256,13 +288,37 @@
       if (current?.id === p.room) { render(); toEnd(); }
     } catch (err) {
       if (g !== gen) return; p.pending = false; p.failed = err.message || '보내지 못했어요.';
-      const input = byId('messengerInput'); if (!input.value && !p.local) input.value = p.text; // (the words back in the box)
+      const input = byId('messengerInput'); if (!input.value && !p.local) { input.value = p.text; grow(); } // (the words back in the box)
       if (current?.id === p.room) render(); if (err.status === 401 || err.status === 403) fail(err);
     }
   }
-  function resend(p) { p.failed = null; p.pending = true; const input = byId('messengerInput'); if (input.value === p.text) input.value = ''; render(); sendChain = sendChain.then(() => sendOne(p)); }
+  function resend(p) { p.failed = null; p.pending = true; const input = byId('messengerInput'); if (input.value === p.text) { input.value = ''; grow(); } render(); sendChain = sendChain.then(() => sendOne(p)); }
   function dropPending(p) { pend = pend.filter((x) => x !== p); render(); }
 
+  // 메신저 다듬기 B6: the page's own small window for 이름 바꾸기 / 나가기 / 삭제 (not the browser's prompt / confirm) -- the
+  // island's paper, focus kept inside it, Esc · 취소 · outside closes it; answers true, the typed words, or null
+  const askBack = byId('mAsk'); const askInput = byId('mAskInput'); const askOk = byId('mAskOk'); let asking = null;
+  function ask({ text, ok = '확인', danger = false, value = null }) {
+    asking?.(null);
+    return new Promise((done) => {
+      const before = document.activeElement; const typing = value !== null;
+      byId('mAskText').textContent = text; askOk.textContent = ok; askOk.classList.toggle('mAskDanger', danger);
+      askInput.hidden = !typing; askInput.value = typing ? value : '';
+      askBack.classList.remove('hidden');
+      asking = (answer) => { asking = null; askBack.classList.add('hidden'); if (before?.isConnected) before.focus?.(); done(answer); };
+      if (typing) { askInput.focus(); askInput.select(); } else askOk.focus();
+    });
+  }
+  byId('mAskForm').addEventListener('submit', (e) => { e.preventDefault(); asking?.(askInput.hidden ? true : askInput.value); });
+  byId('mAskCancel').addEventListener('click', () => asking?.(null));
+  askBack.addEventListener('pointerdown', (e) => { if (e.target === askBack) asking?.(null); });
+  askBack.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); asking?.(null); return; }
+    if (e.key !== 'Tab') return;
+    const f = [...askBack.querySelectorAll('input:not([hidden]), button')]; const k = f.indexOf(document.activeElement);
+    e.preventDefault(); f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+  });
+  document.addEventListener('focusin', (e) => { if (asking && !askBack.contains(e.target)) (askInput.hidden ? askOk : askInput).focus(); });
   function showHead() {
     byId('messengerRoomName').textContent = current.name; byId('messengerMembers').textContent = current.members.map((m) => m.label).join(' · ');
     const group = current.kind !== 'dm';
@@ -289,7 +345,11 @@
       const atEnd = stick;
       msgs.push(...fresh); msgs.sort((a, b) => a.seq - b.seq); if (data.messages.length) last = Math.max(last, data.messages.at(-1).seq); readsKey = key;
       render();
-      if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) toEnd();
+      // B2: opened -- the first unread line in view with 「여기까지 읽었어요」 over it (none unread: the end)
+      const mark = firstPage && box.querySelector('.messengerUnreadLine');
+      if (mark) { box.scrollTop += mark.getBoundingClientRect().top - box.getBoundingClientRect().top - 6; stick = box.scrollHeight - box.scrollTop - box.clientHeight < 40; }
+      else if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) toEnd();
+      else if (fresh.some((x) => x.from !== state.me)) newBelow.classList.remove('hidden');
     } catch (err) { if (g !== gen) return; if (err.status === 404) { current = null; app.classList.remove('inRoom'); refresh(); } else fail(err); }
   }
   function moreButton() { // 100 at a time from the top, the view held where it was
@@ -329,7 +389,7 @@
     if (streamWanted) setTimeout(openStream, 5000);
   }
   function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
-  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
+  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); unreadFrom = room.unread > 0 ? (room.reads?.[state.me] ?? Math.max(0, room.seq - room.unread)) : null; app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
   // 메신저 다듬기 A2 사람 고르기 (새 대화방·초대·1:1 같은 화면): 이름 찾기 (치는 대로, 부분 일치) · 고른 사람은 알약 (✕로 빼기) ·
   // 한 줄에 한 사람 (줄 아무 데나 누르면 고름) -- 최근 대화한 사람 먼저 · 방 이름은 아래, 비우면 고른 사람 이름들로 · 단추
   // 「N명과 대화 시작」/「N명 초대」/(1:1, 한 명만)「대화 시작」, 아무도 안 고르면 누를 수 없음
@@ -396,8 +456,8 @@
   byId('messengerDmBtn').addEventListener('click', () => showPick('dm'));
   byId('messengerInviteBtn').addEventListener('click', () => current && showPick('invite'));
   byId('messengerRenameBtn').addEventListener('click', async () => {
-    const name = current && window.prompt('새 방 이름 (20자)', current.name); if (!name) return;
-    try { await api(`/api/messenger/rooms/${current.id}/name`, { name }); pull(); refresh(); } catch (err) { fail(err); }
+    const room = current; if (!room) return; const name = (await ask({ text: '새 방 이름 (20자)', ok: '바꾸기', value: room.name }))?.trim(); if (!name || current !== room) return;
+    try { await api(`/api/messenger/rooms/${room.id}/name`, { name }); pull(); refresh(); } catch (err) { fail(err); }
   });
   // (Codex 검토 2차 #5) a pin or mute answered after I moved to another room changes only the list, never the room I am in
   async function roomSwitch(what, on) {
@@ -416,13 +476,18 @@
   byId('messengerMuteBtn').addEventListener('click', () => roomSwitch('mute', !current?.muted));
   byId('messengerBackBtn').addEventListener('click', () => { showMore(false); current = null; app.classList.remove('inRoom'); refresh(); });
   byId('messengerLeaveBtn').addEventListener('click', async () => { // 창 닫기 ≠ 나가기: only this button (with the warning) takes me out
-    if (!current || !window.confirm(`「${current.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`)) return;
-    try { await api(`/api/messenger/rooms/${current.id}/leave`, {}); current = null; app.classList.remove('inRoom'); clearBox(); refresh(); } catch (err) { fail(err); }
+    const room = current; if (!room || !await ask({ text: `「${room.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`, ok: '나가기', danger: true }) || current !== room) return;
+    try { await api(`/api/messenger/rooms/${room.id}/leave`, {}); current = null; app.classList.remove('inRoom'); clearBox(); refresh(); } catch (err) { fail(err); }
   });
   byId('messengerForm').addEventListener('submit', async (event) => {
     event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if ((!text && !tray.length) || !current) return;
-    input.value = ''; const photos = tray; tray = []; drawTray(); queueSend(text, photos); // (v1.10.233: at once -- the answer confirms it)
+    input.value = ''; grow(); const photos = tray; tray = []; drawTray(); queueSend(text, photos); // (v1.10.233: at once -- the answer confirms it)
   });
+  // 메신저 다듬기 B3 여러 줄: the box grows with the words (up to 5 lines, then it scrolls; 500 letters); a PC sends with Enter
+  // (Shift+Enter a new line), a phone's Enter is a new line and 보내기 sends; never while a Korean letter is being put together
+  { const input = byId('messengerInput'); const phone = window.matchMedia?.('(hover: none) and (pointer: coarse)');
+    input.addEventListener('input', grow);
+    input.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229 || phone?.matches) return; e.preventDefault(); byId('messengerForm').requestSubmit(); }); }
 
   // ---- 로그인 (④ 이 기기에서 로그인 유지) ----
   async function start() {

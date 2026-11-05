@@ -31,6 +31,7 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
   };
   const a = await make('a'); const b = await make('b'); const { page } = a;
   await page.reload(); await expect(page.locator('#mApp')).toBeVisible(); // (the people list as it is now: b let in after a looked)
+  const send = async () => { if (isMobile) await page.locator('#messengerForm').getByRole('button', { name: '보내기' }).click(); else await page.locator('#messengerInput').press('Enter'); }; // (B3: a phone's Enter is a new line)
   const shot = async (p, name) => { if (process.env.SHOT_DIR) { await p.waitForTimeout(800); await p.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
   try {
     await page.locator('#messengerNewBtn').click(); await page.locator('#messengerPickName').fill('사진방');
@@ -39,13 +40,13 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
     const input = page.locator('#messengerInput'); const mine = page.locator('#messengerMessages .chatMessage.mine');
     // Enter: at once, before the (held back) answer
     await api(request, '/api/test/messenger/slow', { body: { ms: 2500 } });
-    await input.fill('바로 떠요?'); const t0 = Date.now(); await input.press('Enter');
+    await input.fill('바로 떠요?'); const t0 = Date.now(); await send();
     await expect(page.locator('#messengerMessages .chatMessage.pending')).toHaveText(/바로 떠요\?/, { timeout: 800 }); expect(Date.now() - t0).toBeLessThan(2000); await expect(input).toHaveValue('');
     await shot(page, 'msg-sending');
     await expect(page.locator('#messengerMessages .chatMessage.pending')).toHaveCount(0, { timeout: 10000 }); await expect(mine.filter({ hasText: '바로 떠요?' })).toHaveCount(1);
     // refused: back in the box, 다시 보내기
     await api(request, '/api/test/messenger/slow', { body: { ms: 0, fail: true } });
-    await input.fill('한 번 실패'); await input.press('Enter');
+    await input.fill('한 번 실패'); await send();
     await expect(page.locator('#messengerMessages .chatMessage.failed')).toContainText('한 번 실패', { timeout: 10000 }); await expect(input).toHaveValue('한 번 실패');
     await shot(page, 'msg-failed');
     await page.locator('#messengerMessages .chatMessage.failed').getByRole('button', { name: '다시 보내기' }).click();
@@ -72,7 +73,7 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
       await expect(page.locator('#messengerShots .messengerShot')).toHaveCount(1, { timeout: 15000 });
       await page.evaluate(async () => { const cv = document.createElement('canvas'); cv.width = 200; cv.height = 300; cv.getContext('2d').fillRect(0, 0, 200, 300); const blob = await new Promise((r) => cv.toBlob(r, 'image/png')); const dt = new DataTransfer(); dt.items.add(new File([blob], 'paste.png', { type: 'image/png' })); document.getElementById('messengerInput').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); });
       await expect(page.locator('#messengerShots .messengerShot')).toHaveCount(2, { timeout: 15000 });
-      await input.fill('끌어 놓고 붙여 넣기'); await input.press('Enter'); await expect(mine.last().locator('.messengerPhoto')).toHaveCount(2, { timeout: 15000 }); await expect(mine.last()).toContainText('끌어 놓고 붙여 넣기');
+      await input.fill('끌어 놓고 붙여 넣기'); await send(); await expect(mine.last().locator('.messengerPhoto')).toHaveCount(2, { timeout: 15000 }); await expect(mine.last()).toContainText('끌어 놓고 붙여 넣기');
     }
     // seven days on: each one says it is gone (the other side, opened again)
     await api(request, '/api/test/messenger/purge', { body: { days: 8 } });
