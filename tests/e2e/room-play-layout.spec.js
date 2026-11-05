@@ -191,7 +191,12 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       if (process.env.SHOT_DIR) {
         await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });
         if (['omok', 'othello', 'gostop', 'davinci', 'oldmaid', 'halligalli'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
-          console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor)); await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
+          console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor));
+          // (G3, 총괄 #397: on the felt every word reads light in the light theme too -- its luminance over half)
+          const feltDark = await page.evaluate(() => { const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) || [0, 0, 0]; const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
+            return [...document.querySelectorAll('#roomView :is(.gostopFelt .gostopSeatHead strong, .davinciPlate, #oldmaidShuffleBtn, .oldmaidMyHeader h3, .oldmaidMyHeader .turnRing b)')].filter((el) => el.getBoundingClientRect().height).filter((el) => lum(getComputedStyle(el).color) < 0.5).map((el) => el.id || el.className || el.tagName); });
+          expect(feltDark, `${game} 펠트 위 어두운 글자`).toEqual([]);
+          await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
       }
       for (const t of tokens) await api(request, '/api/room/leave', t, {});
     }
