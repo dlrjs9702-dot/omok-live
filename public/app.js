@@ -10929,6 +10929,7 @@
     halliTransferDetails.replaceChildren();
     halliTransferResult.classList.toggle('success', Boolean(g.lastBell?.correct));
     halliTransferResult.classList.toggle('penalty', Boolean(g.lastBell && !g.lastBell.correct));
+    halliTransferResult.classList.toggle('idle', !g.lastBell); // (v1.10.247 G2: the how-to box steps aside in a hand -- the banner told it)
     if (!g.lastBell) {
       halliLastBell.textContent = halliTouch.matches ? '종을 눌러 치세요.' : '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.'; // (a touch screen has no space bar)
     } else {
@@ -13409,8 +13410,8 @@
     const s = timer ? Math.ceil(left / 1000) : null; if (s !== null && s <= 5 && s > 0 && s !== hudBeep) window.RoomSound?.play('beep', s === 1); hudBeep = s;
     // (U2: the turn told once, the pill lit -- after the HUD is filled, so the banner is placed under its full height)
     // (G1: 사목's how-to once on this device, with the first 「내 차례예요」 -- off the board)
-    let howTo = ''; if (state.gameType === 'connect4') { try { if (localStorage.getItem('gc.howTo.connect4') !== '1') { howTo = ' · 열을 눌러 두어요'; } } catch {} }
-    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) { boardNote(`내 차례예요${howTo}`); if (howTo) try { localStorage.setItem('gc.howTo.connect4', '1'); } catch {} } hudMine = mine;
+    const HOWTO = { connect4: '열을 눌러 두어요', halligalli: '과일이 5개면 종을 쳐요' }; let howTo = ''; if (HOWTO[state.gameType]) { try { if (localStorage.getItem(`gc.howTo.${state.gameType}`) !== '1') howTo = ` · ${HOWTO[state.gameType]}`; } catch {} } /* (v1.10.247 G2: 할리갈리 too) */
+    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) { boardNote(`내 차례예요${howTo}`); if (howTo) try { localStorage.setItem(`gc.howTo.${state.gameType}`, '1'); } catch {} } hudMine = mine;
     const note = byId('boardNote'); if (!note.classList.contains('hidden')) placeBoardNote(note); // (the plates may settle after it shows)
   }
 
