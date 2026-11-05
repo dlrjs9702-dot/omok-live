@@ -8,7 +8,9 @@ const { shopper, post, get, adminToken, spaceOn, revealTalk, expectNoScriptError
 test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관공서·구치소 가 보기, 말 걸기 장, 밤 장, 이야기 책 27명', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 900000 : 600000);
   const admin = await adminToken(request); const time = (mode) => request.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode } });
-  await request.post('/api/test/roster', { data: { on: true, day: '2026-11-03' } }); // (the test server's roster is off -- 11/3 빛나 walks)
+  // (the test server's roster is off -- 11/2 빛나 and 이솔 walk; the day's errands go by this day too now (server errandDay): on 11/3
+  // 빛나 asked one, and her talk opened on its offer every run -- a day with no errand of theirs; skipErrand stays for the rest)
+  await request.post('/api/test/roster', { data: { on: true, day: '2026-11-02' } });
   try {
     await time('day');
     const who = await shopper(browser, request, isMobile ? '열일곱폰' : '열일곱손', 200000, 'female'); const { page, token } = who;
