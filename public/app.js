@@ -1487,7 +1487,7 @@
     document.getElementById('gamehallView').classList.toggle('hidden', name !== 'gamehall'); // v1.10.73 게임관
     if (name !== 'gamehall' && document.getElementById('gameSheet').open) document.getElementById('gameSheet').close();
     if (name !== 'reflex') reflexGames?.stop();
-    if (name !== 'room') { document.body.classList.remove('tableGameRoom', 'tableGamePlaying', 'roomResult'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
+    if (name !== 'room') { document.getElementById('oldmaidEffectsRow')?.classList.add('hidden'); document.body.classList.remove('tableGameRoom', 'tableGamePlaying', 'roomResult'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
     syncPlaza(name);
   }
 
@@ -9275,6 +9275,7 @@
     // (G-게임별 다빈치·도둑잡기: its racks / seats round the table are the name plates too)
     document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid || pictionary || liar || twenty || pandemic) && g.status !== 'selecting');
     document.body.classList.toggle('pandemicGame', pandemic);
+    byId('oldmaidEffectsRow').classList.toggle('hidden', !oldmaid); // (v1.10.247 G2: 도둑잡기's 연출 효과 in ☰, in its room only)
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);

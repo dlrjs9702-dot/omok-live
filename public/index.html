@@ -748,7 +748,6 @@
             <div class="oldmaidHeader gamePanelHead">
               <strong id="oldmaidStatus">참가자를 기다리는 중</strong>
               <div class="oldmaidHeaderActions">
-                <label class="oldmaidEffectsToggle"><input type="checkbox" id="oldmaidEffectsToggle" checked /> 연출 효과</label>
               </div>
             </div>
             <div id="oldmaidAbilityBar" class="oldmaidAbilityBar hidden">
@@ -765,7 +764,7 @@
             <div id="oldmaidFlyer" class="oldmaidFlyer" aria-hidden="true"></div>
             <h3>최근 행동</h3><div id="oldmaidHistory" class="oldmaidHistory" aria-live="polite"></div>
             <div class="oldmaidHandDock">
-              <div class="oldmaidMyHeader"><h3>내 손패</h3><button type="button" id="oldmaidShuffleBtn" class="secondary">카드 섞기</button></div>
+              <div class="oldmaidMyHeader"><h3>내 손패</h3><button type="button" id="oldmaidShuffleBtn" class="hpBtn">카드 섞기</button></div>
               <div id="oldmaidMyHand" class="oldmaidMyHandCards" aria-label="내 손패"></div>
             </div>
           </section>
@@ -1331,6 +1330,7 @@
         </div>
         <label class="gameMenuQuality">섬 화질 <select id="qualitySelect" aria-label="섬 화질"><option value="auto">자동</option><option value="2">높음</option><option value="1">보통</option><option value="0">낮음</option></select></label>
         <label class="gameMenuSound"><input id="roomSoundToggle" type="checkbox" checked /> 게임 효과음 (게임방·한판마당)</label>
+        <label id="oldmaidEffectsRow" class="gameMenuSound hidden"><input type="checkbox" id="oldmaidEffectsToggle" checked /> 도둑잡기 연출 효과</label><!-- v1.10.247 G2: in ☰, not over the table -->
         <label class="gameMenuSound"><input id="hwatuNamesToggle" type="checkbox" /> 화투 패 이름 보기 (처음 하는 사람)</label>
         <label class="gameMenuQuality">마우스 감도 <input id="mouseSensInput" type="range" min="0.3" max="3" step="0.1" value="1" aria-label="마우스 감도" /></label>
         <label class="gameMenuSound"><input id="walkBobToggle" type="checkbox" checked /> 1인칭 걸음 흔들림</label>
