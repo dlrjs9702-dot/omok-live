@@ -33,10 +33,17 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
     };
     const space = () => page.evaluate(() => window.PlazaDebug().space);
     // talking to them: a walker where it walks; 김우성 before his desk in the 구치소; 마루 at the gate -- the last two by 「이야기해요」
+    // (CI 흔들림 묶음: a talk counts once its choices are there and still are a moment later -- a card drawn into the window after
+    // the talk began (the walk-in's) took the choices away; shut and asked again then)
+    const inTalk = async () => await talking() && await choices.count() > 0;
+    const settled = async () => { if (!await inTalk()) return false; await page.waitForTimeout(1500); return inTalk(); };
     const walker = (n) => async () => {
+      let since = 0;
       await expect.poll(async () => {
-        if (!await talking()) { await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 1.1, w.z); window.PlazaDebug().talkResident(n); }, n); await page.waitForTimeout(700); }
-        return talking();
+        if (await settled()) return true;
+        if (await talking()) { since ||= Date.now(); if (Date.now() - since > 15000) { await page.keyboard.press('Escape'); await page.waitForTimeout(600); since = 0; } return false; }
+        since = 0; await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 1.1, w.z); window.PlazaDebug().talkResident(n); }, n); await page.waitForTimeout(700);
+        return false;
       }, { timeout: 120000, intervals: [300] }).toBe(true);
     };
     const intoJail = async () => {
@@ -52,8 +59,9 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
       await open();
       const btn = page.locator('#plazaDialog .postTalkBtn', { hasText: '이야기해요' });
       await expect.poll(async () => {
-        if (await talking()) return true;
-        if (await page.locator(card).isVisible() && await btn.isVisible()) { await lines().catch(() => {}); await btn.evaluate((el) => el.click()).catch(() => {}); await page.waitForTimeout(1200); return talking(); }
+        if (await settled()) return true; /* (the desk's card drawn over the talk a moment after it began -- 「이야기해요」 pressed again) */
+        if (await page.locator(card).isVisible() && await btn.isVisible()) { await lines().catch(() => {}); await btn.evaluate((el) => el.click()).catch(() => {}); await page.waitForTimeout(1200); return false; }
+        if (await talking()) { await page.waitForTimeout(500); return false; }
         await page.evaluate((p) => { const d = window.PlazaDebug(); if (p !== 'jail:warden') return d.place(p); const J = window.IslandJail; const w = J.world(J.TALK.lx, J.TALK.lz); d.teleport(w.x, w.z); }, prefix); await page.waitForTimeout(500); /* (his desk is a counter, not a door: where one talks from) */ await spaceOn(page, prefix, isMobile); await page.waitForTimeout(900); return false; }, { timeout: 90000 }).toBe(true);
     };
     const warden = byPost(intoJail, 'jail:warden', '#wardenCard');
