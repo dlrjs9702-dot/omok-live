@@ -3364,6 +3364,20 @@ body.placing .toast{top:16px;bottom:auto}
 body.roomPlaying .roomBar,body.roomPlaying .boardCard>.statusRow{display:none!important} /* (U2: the HUD's line in their place) */
 .roomHudRight>button{position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:1.05rem;box-shadow:none}
 .roomHudRight>button.hidden{display:none}
+/* v1.10.246 G1 (총괄): out of a hand the room's top buttons are the HUD's round ones -- ‹ 게임관 a ✕, ☰, 💬 🎮, 🔔 */
+#roomView .roomBar :is(#leaveRoomBtn,#roomMenuBtn,.chatFloatBtn,#turnNotifyBtn):not(.hidden){position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);box-shadow:none;font-size:0}
+#roomView .roomBar #leaveRoomBtn::before{content:"✕";font-size:1.05rem}#roomView .roomBar #roomMenuBtn::before{content:"☰";font-size:1.1rem}
+#roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn):not(.hidden){font-size:1.05rem}
+#roomView .roomBar #turnNotifyBtn::before{content:"🔕";font-size:1rem}#roomView .roomBar #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
+:root[data-theme="light"] #roomView .roomBar :is(#leaveRoomBtn,#roomMenuBtn,.chatFloatBtn,#turnNotifyBtn):not(.hidden){background:rgba(61,47,32,.14);color:#3D2F20}
+:root[data-theme="light"] #roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn):not(.hidden){font-size:0}:root[data-theme="light"] #roomView .roomBar #chatFloatBtn::before{content:"💬"}:root[data-theme="light"] #roomView .roomBar #gameInfoFloatBtn::before{content:"🎮"}
+:root[data-theme="light"] #roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}
+/* v1.10.246 G1: the counts in the HUD's pill (not chips by the plates), 빙고's two boxes folded in a hand, the yut throw big */
+body.roomPlaying .seatNum{display:none}
+body.roomPlaying .bingoPanel .bingoInfoGrid{display:none}
+body.roomPlaying #yutThrowBtn.hpBtn{min-height:56px;padding:0 28px;font-size:17px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
+body.roomPlaying .yutLastThrow{color:var(--hp-t1);font-weight:800}
+#boardOverlay.hpPanel .hpPanelNote{display:block;font-size:11.5px;font-weight:700;color:var(--hp-t3);line-height:1.4;margin-top:2px}
 .roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
 .roomHudRight>#roomMenuBtn{font-size:0}.roomHudRight>#roomMenuBtn::before{content:"☰";font-size:1.1rem}
 body.roomPlaying .gameMenuList #turnNotifyBtn{font-size:inherit;padding:10px 14px}body.roomPlaying .gameMenuList #turnNotifyBtn::before{content:none}
