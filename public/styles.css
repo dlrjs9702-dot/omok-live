@@ -3334,8 +3334,8 @@ body.placing .toast{top:16px;bottom:auto}
    set, and the light one (the light theme's cream, mint and brown) by the theme (<html data-theme="light">: the 환경설정's
    「게임관 화면:」 밝게 / 어둡게 / 기기 설정, 총괄 U1 답 B -- the island's paper windows as they are). Used inside the hall only (#gamehallView, #roomView, #reflexView, #gameSheet); a game's own
    colours stay --c1 / --c2 (the catalogue's), --c3 the darker. The same layout, sizes and motion in both. */
-:root{--hp-bg:#0B0C1A;--hp-bg2:#15172E;--hp-line:rgba(255,255,255,.08);--hp-face:rgba(255,255,255,.08);--hp-face-on:rgba(255,255,255,.2);--hp-glass:rgba(11,12,26,.5);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.55);--hp-t3:rgba(255,255,255,.35);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-draw:#FFCB57;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A;--hp-r-md:14px;--hp-r-lg:18px;--hp-r-xl:28px;--hp-spring:cubic-bezier(.2,.9,.3,1.3)}
-:root[data-theme="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#8A5A00;--hp-win:#17805A;--hp-draw:#8F6A00;--hp-loss:#B82A4C;--hp-blue:#1C6B5C;--hp-on-c1:#FFFFFF}
+:root{--hp-bg:#0B0C1A;--hp-bg2:#15172E;--hp-line:rgba(255,255,255,.08);--hp-face:rgba(255,255,255,.08);--hp-face-on:rgba(255,255,255,.2);--hp-btn:rgba(255,255,255,.08);--hp-glass:rgba(11,12,26,.5);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.55);--hp-t3:rgba(255,255,255,.35);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-draw:#FFCB57;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A;--hp-r-md:14px;--hp-r-lg:18px;--hp-r-xl:28px;--hp-spring:cubic-bezier(.2,.9,.3,1.3)}
+:root[data-theme="light"]{--hp-bg:#F7EFE1;--hp-bg2:#FFFAF0;--hp-line:rgba(61,47,32,.12);--hp-face:rgba(61,47,32,.07);--hp-face-on:rgba(61,47,32,.16);--hp-btn:rgba(61,47,32,.14);--hp-glass:rgba(255,250,240,.72);--hp-t1:#3D2F20;--hp-t2:rgba(61,47,32,.64);--hp-t3:rgba(61,47,32,.42);--hp-gold:#8A5A00;--hp-win:#17805A;--hp-draw:#8F6A00;--hp-loss:#B82A4C;--hp-blue:#1C6B5C;--hp-on-c1:#FFFFFF}
 /* the three buttons (U1): .hpBtn 50px -- the main one in the game's colour (.hpBtn.go), the big call to act .hpBtn.cta 58px;
    .hpPill 34~40px round glass, on (.on / aria-pressed) a little brighter; .hpX the 40px round ✕ */
 .hpBtn{min-height:50px;padding:0 18px;border:0;border-radius:var(--hp-r-md);background:var(--hp-face);color:var(--hp-t1);font:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s,transform .12s}
@@ -3362,9 +3362,23 @@ body.placing .toast{top:16px;bottom:auto}
 .roomHudBar i{display:block;height:100%;width:0;border-radius:inherit;background:var(--c1,var(--hp-blue));transition:width .25s linear}
 .roomHudBar i.low{background:var(--hp-loss)}
 body.roomPlaying .roomBar,body.roomPlaying .boardCard>.statusRow{display:none!important} /* (U2: the HUD's line in their place) */
-.roomHudRight>button{position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:1.05rem;box-shadow:none}
+.roomHudRight>button{position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);font-size:1.05rem;box-shadow:none}
 .roomHudRight>button.hidden{display:none}
-.roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-face);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
+/* v1.10.246 G1 (총괄): out of a hand the room's top buttons are the HUD's round ones -- ‹ 게임관 a ✕, ☰, 💬 🎮, 🔔 */
+#roomView .roomBar :is(#leaveRoomBtn,#roomMenuBtn,.chatFloatBtn,#turnNotifyBtn):not(.hidden){position:relative;right:auto;bottom:auto;display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);box-shadow:none;font-size:0}
+#roomView .roomBar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}#roomView .roomBar .roomBarTitle{flex:1 1 auto;min-width:0}#roomView .roomBar .topActions{flex:0 0 auto;display:flex;flex-wrap:nowrap;align-items:center;gap:6px} /* (G1 CI #396: the round buttons in one row -- a phone's bar stacked them) */
+#roomView .roomBar #leaveRoomBtn::before{content:"✕";font-size:1.05rem}#roomView .roomBar #roomMenuBtn::before{content:"☰";font-size:1.1rem}
+#roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn):not(.hidden){font-size:1.05rem}
+#roomView .roomBar #turnNotifyBtn::before{content:"🔕";font-size:1rem}#roomView .roomBar #turnNotifyBtn[aria-pressed="true"]::before{content:"🔔"}
+:root[data-theme="light"] #roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn):not(.hidden){font-size:0}:root[data-theme="light"] #roomView .roomBar #chatFloatBtn::before{content:"💬"}:root[data-theme="light"] #roomView .roomBar #gameInfoFloatBtn::before{content:"🎮"}
+:root[data-theme="light"] #roomView .roomBar :is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}
+/* v1.10.246 G1: the counts in the HUD's pill (not chips by the plates), 빙고's two boxes folded in a hand, the yut throw big */
+body.roomPlaying .seatNum{display:none}
+body.roomPlaying .bingoPanel .bingoInfoGrid{display:none}
+body.roomPlaying #yutThrowBtn.hpBtn{min-height:56px;padding:0 28px;font-size:17px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
+body.roomPlaying .yutLastThrow{color:var(--hp-t1);font-weight:800}
+#boardOverlay.hpPanel .hpPanelNote{display:block;font-size:11.5px;font-weight:700;color:var(--hp-t3);line-height:1.4;margin-top:2px}
+.roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
 .roomHudRight>#roomMenuBtn{font-size:0}.roomHudRight>#roomMenuBtn::before{content:"☰";font-size:1.1rem}
 body.roomPlaying .gameMenuList #turnNotifyBtn{font-size:inherit;padding:10px 14px}body.roomPlaying .gameMenuList #turnNotifyBtn::before{content:none}
 .gameMenuList #roomInfoBtn{font-size:inherit;padding:10px 14px}.gameMenuList #roomInfoBtn::after{content:" 방 정보"}
@@ -3388,8 +3402,8 @@ body.roomPlaying .seatNum{background:var(--hp-face);border:0;color:var(--hp-gold
 /* v1.10.244 U2 안내 배너: under the HUD, off the board (a full phone: over its top, see-through), 1.8 s */
 body.roomPlaying .boardNote{top:var(--noteTop,25vh);display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 18px;border-radius:99px;background:color-mix(in srgb,var(--hp-win) 20%,var(--hp-glass));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid color-mix(in srgb,var(--hp-win) 45%,transparent);color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 body.roomPlaying .boardNote.hidden{display:none}
+body.roomPlaying .boardNote{white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden} /* (총괄 #396: one line on a phone too -- never over the board's top row) */
 /* (U2 검토 #391: the light HUD buttons round on a darker face, the emoji icons dark grey -- 3:1 or more on it) */
-:root[data-theme="light"] .roomHud :is(.roomHudRight>button,.roomHudLeft>#leaveRoomBtn){background:rgba(61,47,32,.14)}
 :root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn){font-size:0}
 :root[data-theme="light"] .roomHudRight>#chatFloatBtn::before{content:"💬"}:root[data-theme="light"] .roomHudRight>#gameInfoFloatBtn::before{content:"🎮"}
 :root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}

@@ -1444,11 +1444,15 @@
     if (!boardOverlay.querySelector('.resultPoints') && Number.isFinite(moves) && moves > 0) { const big = document.createElement('span'); big.className = 'resultPoints resultMoves'; big.textContent = `${moves}수`; boardOverlay.append(big); }
     const others = Object.entries(state.players || {}).filter(([k, p]) => p && k !== String(seat)).map(([, p]) => p.label);
     const handKey = `${state.me?.roomCode}:${g.round || 1}`; if (handClock.key === handKey && handClock.start && !handClock.end) handClock.end = Date.now();
-    const secs = handClock.key === handKey && handClock.start && handClock.end ? Math.round((handClock.end - handClock.start) / 1000) : null; // (only when this screen saw the hand from its first move)
+    const hc = state.handClock; // (v1.10.246 G1: the server's start and end of the hand; this screen's own only if it has none)
+    const secs = hc?.startedAt && hc?.finishedAt ? Math.max(0, Math.round((hc.finishedAt - hc.startedAt) / 1000)) : handClock.key === handKey && handClock.start && handClock.end ? Math.round((handClock.end - handClock.start) / 1000) : null;
     const stats = document.createElement('span'); stats.className = 'hpStats';
     for (const [k, v] of [['수', Number.isFinite(moves) ? `${moves}` : '–'], ['시간', secs === null ? '–' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`], ['상대', others.length > 1 ? `${others.length}명` : others[0] || '–']]) {
       const cell = document.createElement('span'); const b = document.createElement('b'); b.textContent = v; const small = document.createElement('small'); small.textContent = k; cell.append(b, small); stats.append(cell); }
-    row.append(again, out); boardOverlay.append(stats, row);
+    // (v1.10.246 G1: the points settlement -- the server's system line -- one small line under the stats)
+    const settled = [...(state.chat?.messages || [])].reverse().find((m) => m.type === 'system' && String(m.text).startsWith('참가 포인트 정산'));
+    const noteLine = settled && e?.status === 'settled' ? Object.assign(document.createElement('small'), { className: 'hpPanelNote', textContent: settled.text }) : null;
+    row.append(again, out); boardOverlay.append(stats, ...(noteLine ? [noteLine] : []), row);
   }
   function setResultBoardOverlay(outcome, game) {
     const win = outcome === 'win';
@@ -5669,7 +5673,9 @@
       roomTitleInput.value = '';
       enterRoomState(data.state);
       sendIslandInvite(); // v1.10.44: the room made for an island invite
-      showToast(ai ? 'AI 방을 만들었습니다. 자리를 고르면 AI가 맞은편에 앉아요 (연습 · 포인트·전적 없음).'
+      // (v1.10.246 G1, 총괄: the room-making note is a tip -- once per kind on this device; a private room's code is in ⓘ 방 정보)
+      const tipKind = ai ? 'ai' : visibility === 'public' ? 'public' : null; let tipSeen = false; if (tipKind) try { tipSeen = localStorage.getItem(`gc.roomTip.${tipKind}`) === '1'; localStorage.setItem(`gc.roomTip.${tipKind}`, '1'); } catch {} /* (총괄 #396: a private room's code shows every time) */
+      if (!tipSeen) showToast(ai ? 'AI 방을 만들었습니다. 자리를 고르면 AI가 맞은편에 앉아요 (연습 · 포인트·전적 없음).'
         : visibility === 'public' ? '공개방을 만들었습니다. 로비 목록에서 바로 참여할 수 있어요.' : `비공개방 생성 완료 · 비밀번호 ${data.state.me.roomCode}`);
     } catch (err) { showToast(err.message); }
   }
@@ -8709,7 +8715,7 @@
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     const newestSystem = systemRows.length ? Number(systemRows[systemRows.length - 1].id) || 0 : 0;
     const newestText = systemRows[systemRows.length - 1]?.text || '';
-    if (systemSeen !== null && newestSystem > systemSeen && !(state?.gameType === 'yut' && /님이 \S+[을를] 던졌습니다\.$/.test(newestText))) boardNote(newestText); // (G-틀①; G-게임별 윷 검토: a throw is told by its big card)
+    if (systemSeen !== null && newestSystem > systemSeen && !(state?.gameType === 'yut' && /님이 \S+[을를] 던졌습니다\.$/.test(newestText)) && !newestText.startsWith('참가 포인트 정산')) boardNote(newestText); /* (G1: the settlement is a line in the result panel) */ // (G-틀①; G-게임별 윷 검토: a throw is told by its big card)
     systemSeen = newestSystem;
     lastRenderedChatIds = chatRows.map(row => row.id);
     if (bubbleSeen !== null && newestId > bubbleSeen) chatBubble(chatRows[chatRows.length - 1]); // A3 G1-6 (a line newer than the last view)
@@ -8783,7 +8789,7 @@
   function setRoomPlaying(on) {
     on = Boolean(on) && !roomView.classList.contains('hidden');
     if (on !== document.body.classList.contains('roomPlaying')) {
-      document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); }
+      document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); byId('boardNote').classList.add('hidden'); } /* (G1: the hand's banner goes with it) */
       chatOverlayOpen = false; gameInfoOverlayOpen = false; applyChatLayout(); applyGameInfoLayout(); // (G-틀①: the panels fold for the hand, back after)
     }
     menuResignBtn.classList.toggle('hidden', !on || resignBtn.classList.contains('hidden')); // (C4 P3-4: not a watcher's, nor when 기권 cannot be pressed)
@@ -12447,13 +12453,7 @@
     ctx.textBaseline = 'middle';
     ctx.font = 'bold 19px system-ui, sans-serif';
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillText('열을 눌러 돌을 떨어뜨리세요', w / 2, 25);
-    for (let x = 0; x < 7; x++) {
-      const cx = left + (x + .5) * cell;
-      ctx.fillStyle = '#9eb8e8';
-      ctx.font = 'bold 17px system-ui, sans-serif';
-      ctx.fillText(String(x + 1), cx, top - 30);
-    }
+    // (v1.10.246 G1: no 「열을 눌러…」 strip nor column numbers on the board -- the how-to is the first turn's banner)
     if (boardTurnActionable()) {
       // Legal columns come from the server; the ring sits where the disc would land.
       for (const x of g.legalColumns || []) {
@@ -13395,15 +13395,19 @@
     const left = timer ? Math.max(0, Number(timer.deadlineAt) - serverNow) : 0;
     const seated = Object.entries(state.players || {}).filter(([, p]) => p); const other = seated.length === 2 ? seated.find(([k]) => k !== String(seat))?.[1] : null;
     byId('roomHudLabel').textContent = [roomGameLogo.textContent, seated.length > 2 || !other ? (seated.length ? `${seated.length}명` : '') : other.label].filter(Boolean).join(' · ');
-    byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : hudScore(state.game);
+    const tt = state.turnTimer; const otherLeft = !timer && tt?.deadlineAt ? Math.max(0, Number(tt.deadlineAt) - (Date.now() - (turnRingClock || (Date.now() - Number(tt.serverNow || Date.now()))))) : null; // (G1: the other's turn -- their seconds, from the public clock)
+    byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : otherLeft !== null ? String(Math.ceil(otherLeft / 1000)) : hudScore(state.game);
     byId('roomHudSub').textContent = hudTurnLine(); // (U2 검토 #391: short -- the names are on the plates)
-    const moves = state.game?.moveCount; const pill = byId('roomHudPill'); pill.textContent = STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
+    const moves = state.game?.moveCount; const sc = state.game?.scores; const unit = { othello: '', dots: '상자 ', yut: '완주 ' }[state.gameType]; const counted = unit !== undefined && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white));
+    const pill = byId('roomHudPill'); pill.textContent = counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
     // (v1.10.245 U3: my turn's last 5 seconds a beep a second -- the last one higher)
     const s = timer ? Math.ceil(left / 1000) : null; if (s !== null && s <= 5 && s > 0 && s !== hudBeep) window.RoomSound?.play('beep', s === 1); hudBeep = s;
     // (U2: the turn told once, the pill lit -- after the HUD is filled, so the banner is placed under its full height)
-    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) boardNote('내 차례예요'); hudMine = mine;
+    // (G1: 사목's how-to once on this device, with the first 「내 차례예요」 -- off the board)
+    let howTo = ''; if (state.gameType === 'connect4') { try { if (localStorage.getItem('gc.howTo.connect4') !== '1') { howTo = ' · 열을 눌러 두어요'; } } catch {} }
+    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) { boardNote(`내 차례예요${howTo}`); if (howTo) try { localStorage.setItem('gc.howTo.connect4', '1'); } catch {} } hudMine = mine;
     const note = byId('boardNote'); if (!note.classList.contains('hidden')) placeBoardNote(note); // (the plates may settle after it shows)
   }
 

@@ -14,7 +14,7 @@ body.messengerPage{margin:0;min-height:100dvh;background:#f4ead6;color:var(--isl
 .mApp{flex:1;min-height:0;padding:12px;border-radius:22px;background:var(--isle-paper);border:1px solid var(--isle-line);box-shadow:0 10px 28px rgba(74,56,40,.15)}
 .mApp .messengerRoomList button{color:var(--isle-ink);background:#fffaf0;border:1px solid var(--isle-line)}
 .mApp .messengerRoomList button[aria-current="true"]{outline:2px solid var(--isle-tag)}
-.mApp .messengerMessages{background:#fffdf7;border:1px solid var(--isle-line);border-radius:14px}
+.mApp .messengerMessages{background:#fffdf7;border:1px solid var(--isle-line);border-radius:14px;overflow-anchor:none} /* (A1: the page holds the view itself -- at the end, or where it was over older lines) */
 .mApp .chatMessageText{background:#fff;color:#2f2418;border:1px solid var(--isle-line)}
 .mApp .chatMessage.mine .chatMessageText{background:#ffe7a8;border-color:#f0cf7a}
 .mApp .chatMessageHead strong{color:var(--isle-soft)}
@@ -51,7 +51,8 @@ html[data-mtheme="dark"] .mApp .messengerMoreMenu .messengerLeave{color:#f87171}
 .mApp .messengerBubbleMenu{position:fixed;right:auto;top:auto;min-width:110px;z-index:40}
 .mApp .messengerBubbleMenu .messengerBubbleDelete{color:#b3261e}
 html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color:#f87171}
-.mApp .chatMessageText.hasMenu{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.mApp .chatMessageText.hasMenu{-webkit-touch-callout:none}
+@media(hover:none) and (pointer:coarse){.mApp .chatMessageText.hasMenu{-webkit-user-select:none;user-select:none}} /* (B5: a phone's long press is the menu -- 복사 in it; a PC still selects) */
 /* v1.10.233 보내기 빠르게 + 사진: a line on its way (pale, 🕒), refused (red, 다시 보내기 / 지우기); the photo tray over the box,
    a bubble's photos in a grid, the big view, the chat ringed while a photo is dragged over it */
 .mApp .chatMessage.pending .chatMessageText{opacity:.62}
@@ -59,19 +60,21 @@ html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color
 .mApp .chatMessage.failed .chatMessageText{border-color:#d9534f}
 .mApp .messengerFailed{color:#c0392b;font-size:.75rem}
 .mApp .chatMessage.failed .messengerMeta{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
-.mApp .messengerForm{display:flex;gap:6px;align-items:center}.mApp .messengerPhotoBtn{flex:none;min-width:40px;font-size:1.1rem;padding:6px 8px}
+.mApp .messengerForm{display:flex;gap:6px;align-items:flex-end}.mApp .messengerPhotoBtn{flex:none;min-width:40px;font-size:1.1rem;padding:6px 8px}
 .mApp .messengerShots{display:flex;gap:6px;overflow-x:auto;padding:6px 2px;align-items:center}.mApp .messengerShots.hidden{display:none}
 .mApp .messengerShot{position:relative;flex:none;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--isle-line)}
 .mApp .messengerShot img{width:100%;height:100%;object-fit:cover;display:block}
 .mApp .messengerShotDrop{position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;line-height:22px}
 .mApp .messengerShotNote{flex:none;font-size:.72rem;opacity:.75;white-space:nowrap}
-.mApp .chatMessageText.withPhotos{padding:4px;max-width:min(320px,78vw)}
+.mApp .chatMessageText.withPhotos{padding:4px;width:min(320px,78vw);max-width:100%;flex:0 1 auto;min-width:0;box-sizing:border-box} /* (A1: a set width -- the bubble does not grow when the photo comes in; 총괄 #393: it may shrink within the row, never past the screen) */
+.mApp .chatMessageBody{min-width:0}
+.mApp .messengerRoom,.mApp .messengerMessages{min-width:0} /* (총괄 #393: the room column never wider than its card -- a photo bubble's width set the grid's) */
 .mApp .messengerPhotos{position:relative;display:grid;gap:3px;grid-template-columns:1fr;margin-bottom:4px}
 .mApp .messengerPhotos.n2{grid-template-columns:1fr 1fr}.mApp .messengerPhotos.n3{grid-template-columns:1fr 1fr 1fr}
 .mApp .chatMessageText.withPhotos .messengerPhotos:only-child{margin-bottom:0}
 .mApp .messengerPhoto{display:block;padding:0;border:0;border-radius:8px;overflow:hidden;background:rgba(0,0,0,.08);cursor:zoom-in;min-height:60px}
 .mApp .messengerPhotos.n2 .messengerPhoto img,.mApp .messengerPhotos.n3 .messengerPhoto img{aspect-ratio:1/1!important;object-fit:cover}
-.mApp .messengerPhoto img{display:block;width:100%;max-height:320px;object-fit:cover}
+.mApp .messengerPhoto img{display:block;width:100%;max-height:320px;object-fit:cover;aspect-ratio:4/3} /* (A1: a fixed slot when the photo has no w/h) */
 .mApp .messengerPhoto.gone{display:grid;place-items:center;padding:12px 6px;font-size:.72rem;cursor:default;color:#6b5a48;background:rgba(0,0,0,.06);min-height:72px}
 .mApp .messengerPhotoProgress{position:absolute;right:6px;bottom:6px;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem}
 .messengerViewer{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(10,8,6,.88)}.messengerViewer.hidden{display:none}
@@ -83,3 +86,56 @@ html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color
 .mApp .messengerRoom.dropping::after{content:'여기에 놓아 보내기';position:absolute;inset:6px;display:grid;place-items:center;border:3px dashed #e0a43a;border-radius:14px;background:rgba(255,248,230,.86);color:#7a4b10;font-weight:800;pointer-events:none;z-index:5}
 html[data-mtheme="dark"] .mApp .messengerPhoto.gone{color:#d9c8b0;background:rgba(255,255,255,.06)}
 html[data-mtheme="dark"] .mApp .messengerRoom.dropping::after{background:rgba(35,29,25,.9);color:#f6d38f}
+/* 메신저 다듬기 A2 사람 고르기: the island's paper, one column on PC and phone alike -- the find box on top, the chosen as pills,
+   a row a person (a round face with the first letter, the name, a round mark at the right; the whole row presses), only the
+   list scrolls, the room name and the buttons under it */
+.mApp.picking{grid-template-rows:minmax(0,1fr)}
+.mApp .messengerPick{display:flex;flex-direction:column;gap:8px;min-height:0;width:100%;max-width:520px;margin:0 auto;box-sizing:border-box}
+.mApp .messengerPick.hidden{display:none}
+.mApp .messengerPick>strong{font-size:1.02rem}
+.messengerPage input[type="search"]{background:#fff;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:12px;padding:9px 12px;font-size:1rem;font:inherit}
+.mApp .messengerPicked{display:flex;flex-wrap:wrap;gap:5px}.mApp .messengerPicked.hidden{display:none}
+.mApp .messengerChip{display:inline-flex;align-items:center;gap:2px;padding:3px 4px 3px 11px;border-radius:999px;background:var(--isle-tag);color:#fff;font-size:.8rem;font-weight:800;max-width:100%}
+.mApp .messengerChip button{min-width:26px;min-height:26px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:.72rem;line-height:1;cursor:pointer}
+.mApp .messengerPeople{list-style:none;margin:0;padding:2px;flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;grid-template-columns:none}
+.mApp .messengerPeople li[hidden]{display:none}
+.mApp .messengerPeopleNone{padding:12px 6px}
+.mApp .messengerPerson{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:6px 10px;border-radius:12px;border:1px solid var(--isle-line);background:#fffaf0;color:var(--isle-ink);text-align:left;font:inherit;font-weight:800;cursor:pointer}
+@media(hover:hover){.mApp .messengerPerson:hover{background:var(--isle-hover)}}
+.mApp .messengerPerson[aria-pressed="true"]{border-color:var(--isle-tag);box-shadow:inset 0 0 0 1px var(--isle-tag);background:#f1d9a8}
+.mApp .messengerAvatar{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#fff;font-weight:900;font-size:.95rem}
+.mApp .messengerPersonName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mApp .messengerPersonMark{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--isle-line);box-sizing:border-box;display:grid;place-items:center;color:#fff;font-size:.8rem;font-weight:900}
+.mApp .messengerPerson[aria-pressed="true"] .messengerPersonMark{background:var(--isle-tag);border-color:var(--isle-tag)}
+.mApp .messengerPerson[aria-pressed="true"] .messengerPersonMark::after{content:'✓'}
+.mApp .messengerPick .noticeFormActions{display:flex;gap:8px}.mApp .messengerPick .noticeFormActions .primary{flex:1}
+.messengerPage button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:640px){.mApp .messengerPick{max-width:none}}
+html[data-mtheme="dark"] .messengerPage input[type="search"]{background:#352c25;color:var(--isle-ink)}
+html[data-mtheme="dark"] .mApp .messengerPerson{background:#352c25}
+html[data-mtheme="dark"] .mApp .messengerPerson[aria-pressed="true"]{background:#4a3a2a;border-color:#c9a36a;box-shadow:inset 0 0 0 1px #c9a36a}
+html[data-mtheme="dark"] .mApp .messengerPerson[aria-pressed="true"] .messengerPersonMark{background:#c9a36a;border-color:#c9a36a;color:#2a231e}
+html[data-mtheme="dark"] .mApp .messengerChip{background:#c9a36a;color:#2a231e}
+html[data-mtheme="dark"] .mApp .messengerChip button{background:rgba(0,0,0,.18);color:#2a231e}
+/* 메신저 다듬기 B: 새 메시지 ↓ (B1), 여기까지 읽었어요 (B2), 여러 줄 입력·말풍선 줄 바꿈 (B3), 주소 (B4), 작은 창 (B6) */
+.mApp .messengerLog{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.mApp .messengerLog>.messengerMessages{flex:1 1 auto}
+.mApp .messengerNewBelow{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:4;border-radius:999px;padding:7px 14px;box-shadow:0 6px 16px rgba(74,56,40,.28);white-space:nowrap}
+.mApp .messengerNewBelow.hidden{display:none}
+.mApp .messengerUnreadLine{display:flex;align-items:center;gap:8px;margin:10px 4px!important;color:#9a5a1a;font-size:.74rem;font-weight:800}
+.mApp .messengerUnreadLine::before,.mApp .messengerUnreadLine::after{content:'';flex:1;height:1px;background:#e0a43a}
+html[data-mtheme="dark"] .mApp .messengerUnreadLine{color:#f6c46f}
+html[data-mtheme="dark"] .mApp .messengerUnreadLine::before,html[data-mtheme="dark"] .mApp .messengerUnreadLine::after{background:#a8741f}
+.mApp .chatMessageText{white-space:pre-wrap;overflow-wrap:anywhere}
+.mApp .messengerLink{color:inherit;text-decoration:underline;text-underline-offset:2px;font-weight:800;word-break:break-all}
+.messengerPage textarea#messengerInput{flex:1;min-width:0;box-sizing:border-box;resize:none;overflow-y:auto;background:#fff;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:12px;padding:9px 12px;font:inherit;font-size:1rem;line-height:1.4;height:auto;max-height:calc(7em + 20px)}
+html[data-mtheme="dark"] .messengerPage textarea#messengerInput{background:#352c25;color:var(--isle-ink)}
+.mApp .messengerForm>button{flex:none;min-height:40px}
+.mAskBack{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(40,30,20,.42)}.mAskBack.hidden{display:none}
+.mAsk{display:grid;gap:12px;width:min(360px,100%);box-sizing:border-box;padding:18px}
+.mAskText{margin:0;white-space:pre-line;font-weight:800;line-height:1.5}
+.mAsk input[hidden]{display:none}
+.mAsk .noticeFormActions{display:flex;gap:8px}.mAsk .noticeFormActions button{flex:1;min-height:44px}
+.messengerPage .mAsk .mAskDanger{background:#b3261e;color:#fff}
+html[data-mtheme="dark"] .mAskBack{background:rgba(0,0,0,.55)}
+html[data-mtheme="dark"] .messengerPage .mAsk .mAskDanger{background:#c2410c}

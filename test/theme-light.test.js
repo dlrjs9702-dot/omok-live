@@ -68,6 +68,7 @@ test('밝은 테마: 게임관은 --hp-* 밝은 한 벌을 쓰고 KEEP_DARK가 �
   for (const set of [light, dark]) for (const k of ['hp-gold', 'hp-blue', 'hp-win', 'hp-loss']) assert.ok(contrast(set[k].slice(1), set['hp-bg2'].slice(1)) >= 4.5, `${k} on the ${set === light ? 'light' : 'dark'} sheet`); // (총괄 #390: 「아직 기록 없음」 gold, 「게임 안내」 blue -- small words)
   assert.match(css, /\.gameSheet \.gameSheetGuide summary\{color:var\(--hp-blue\)\}/);
   // (총괄 #391: the light HUD buttons round on a darker face, the emoji icons darkened -- 3:1 or more)
-  assert.match(css, /:root\[data-theme="light"\] \.roomHud :is\(\.roomHudRight>button,\.roomHudLeft>#leaveRoomBtn\)\{background:rgba\(61,47,32,\.14\)\}/);
+  assert.match(css, /:root\[data-theme="light"\]\{[^}]*--hp-btn:rgba\(61,47,32,\.14\)/); assert.match(css, /\.roomHudRight>button\{[^}]*background:var\(--hp-btn\)/); // (#396: one token, no override lines)
+  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'public', 'theme-light-auto.css'), 'utf8'), /\[data-theme="light"\]\[data-theme="light"\]/);
   assert.match(css, /:root\[data-theme="light"\] \.roomHudRight>:is\(#chatFloatBtn,#gameInfoFloatBtn\)::before\{font-size:1\.05rem;filter:grayscale\(1\) brightness\(\.35\)\}/);
 });

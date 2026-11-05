@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.246 게임관 G1 + 메신저 다듬기 A+B
+
+- 서버 handClock { startedAt, finishedAt } → 결과 패널 「시간」.
+- 토스트 정리: 방 만들기 안내 처음 한 번, 정산 글은 결과 패널 한 줄, 판이 끝나면 배너도 사라짐. 판 밖 위쪽 단추 40px 둥근 단추.
+- G1 판 게임: 돌·상자·완주 수 HUD 알약, 상대 차례 초, 사목 글띠·열 번호 없앰, 빙고 상자 접음, 윷 던지기 .hpBtn.go.
+- 메신저 다듬기 A+B(#393, 클라우드 세션): 사진 있는 방 맨 아래 유지, 사람 고르기 화면, 새 메시지 ↓·안 읽은 줄·여러 줄 입력·링크·복사·작은 창, 폰 사진 방 가로 넘침 고침.
+
 ## v1.10.245 게임관 UI 통일 U3
 
 - 결과 패널 하나(.hpPanel): 판 게임 #boardOverlay(알약·제목·큰 숫자 64px·통계 3칸·단추 2개), 맞고 #gostopResult.hpPanel(두 칸 점수 표·금액 64px), 한판마당 .hpPanel.reflexBox(옛 .reflexPanel 없앰).
@@ -25,9 +32,3 @@
 - ⓘ 방 정보·🔔 알림은 ☰ 안으로, 빠른 말(#quickChat)은 💬 채팅 창 안으로.
 - 이름표(.player·.teamPlayer)를 차례 알약으로: 40px·모서리 12·얼굴 32px·m:ss와 가는 막대, 차례인 쪽만 .on(--c1 2px). 게임별 자리판(화투·파티)은 G2·G3.
 - 안내 배너: #boardNote를 HUD 바로 아래 초록 유리 알약(1.8초), 내 차례가 오면 「내 차례예요」 한 번.
-
-## v1.10.243 게임관 UI 통일 U1
-
-- 한판마당 토큰 --hp-*(어두운 :root, 밝은 :root[data-theme=light] 크림·민트·갈색), 고르는 곳은 「게임관 화면:」 라디오(총괄 답 B).
-- 단추 셋 .hpBtn(.go·.cta)·.hpPill·.hpX, 게임관·시트·결과에 씀(게임방은 U2).
-- 시트가 하나뿐인 시작 화면: 난이도·옵션 알약·내 최고, 시작 = 바로 판(reflexMenu는 옛 로비만).
