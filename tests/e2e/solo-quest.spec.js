@@ -1,18 +1,18 @@
 const { test, expect } = require('@playwright/test');
-const { post, get, shopper, expectNoScriptError } = require('./skin-support');
+const { post, get, shopper, expectNoScriptError, spaceOn } = require('./skin-support');
 
 // v1.10.37 혼자 하는 게임 · 연계 퀘스트 · 원거리 플레이어 (사용자 확정 2026-10-06/07). PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
-async function islandPage(page) {
+async function islandPage(page, keep = []) { // keep: the models this test needs (the others off)
   await page.setViewportSize({ width: 960, height: 680 });
-  await page.evaluate(() => {
+  await page.evaluate((keep) => {
     localStorage.removeItem('gc.testClassic');
     // Story/dialogue/account-state checks do not need October's decorative night scene.
     // Its real models and lighting remain covered by island-assets.spec.js.
     localStorage.setItem('gc.testHalloween', 'off');
-    localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
-  });
+    localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).filter((id) => !keep.includes(id)).map((id) => [id, null]))));
+  }, keep);
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
 }
@@ -47,10 +47,50 @@ test('지뢰찾기: 로비 「지뢰찾기」 → 한판마당 퍼즐 화면, �
   }
   await expect(page.locator('#reflexResult')).toContainText('클리어', { timeout: 10000 });
   await expect(page.locator('#reflexResult .reflexPaid')).toHaveText(/최고/);
+  await expect(page.locator('#reflexResult .reflexPaid')).toHaveText(/이번 주 \d+위$/); // (v1.10.250 기록의 탑: the week's place)
   expect((await get(request, '/api/points', token)).data.balance).toBe(before); // (G-포인트: no points)
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/g4-mines-pc-result.png` });
   await page.locator('#reflexResult .hpBtn', { hasText: '게임관으로' }).click();
   await expect(page.locator('#lobbyView')).toBeVisible();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.250 기록의 탑 (gamecenter-notes docs/gamehall-ranking-board-20261103.md §1): before the 게임관 -- the model with its 32 bulbs,
+// two flags and three written faces (the board's games turning); SPACE at its front opens the window: the week's ranking with my
+// clear and my place, the all-time tab; 도전하기 opens that game's round at once
+test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE 창의 이번 주 순위·내 순위·역대, 도전하기', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const a = await shopper(browser, request, '탑손님'); const { page, token } = a;
+  { // a clear this week first: 지뢰찾기 초급 by the API (the server's own board)
+    const g = (await post(request, '/api/solo/minesweeper/new', token, { level: 'beginner' })).data;
+    await post(request, '/api/solo/minesweeper/act', token, { id: g.id, action: 'open', x: 4, y: 4 });
+    const mines = new Set((await post(request, '/api/test/solo/peek', token, { ageMs: 70000 })).data.mines);
+    for (let i = 0; i < 81; i += 1) if (!mines.has(i)) { const r = (await post(request, '/api/solo/minesweeper/act', token, { id: g.id, action: 'open', x: i % 9, y: Math.floor(i / 9) })).data; if (r.view.status === 'won') break; }
+  }
+  await islandPage(page, ['gamehall.record_tower']);
+  await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().recordTower(); return [t.bulbs, t.flags >= 2, t.faces >= 3]; }), { timeout: 90000 }).toEqual([32, true, true]); /* (High and Low both carry the parts) */
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().recordTower().game), { timeout: 30000 }).not.toBeNull();
+  const at = await page.evaluate(() => window.PlazaDebug().recordTower().at);
+  if (process.env.SHOT_DIR) for (const [name, time, dx, dz, yaw] of [['back', 'day', -14, 4, -Math.PI / 2 - 0.2]]) { /* (its front: a first-person photo -- the third person's camera stands in the 게임관 there) */
+    await page.evaluate(([x, z, t, yaw]) => { const D = window.PlazaDebug(); D.setTime(t); D.setWeather?.('clear'); D.teleport(x, z); D.setCamYaw(yaw); D.setCamPitch?.(0.06); }, [at.x + dx, at.z + dz, time, yaw]);
+    await page.waitForTimeout(2500); await page.screenshot({ path: `${process.env.SHOT_DIR}/rt-tower-${name}-pc.png` });
+  }
+  await page.evaluate(() => window.PlazaDebug().setTime('day'));
+  await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 2.6, z); }, [at.x, at.z]);
+  await expect.poll(() => spaceOn(page, 'board:records', false), { timeout: 15000 }).toBe(true); /* (it presses SPACE itself) */
+  const dlg = page.locator('#recordTowerDialog'); await expect(dlg).toBeVisible();
+  await expect(dlg.locator('#recordTowerGames .recordTowerChip')).toHaveCount(14);
+  await dlg.locator('#recordTowerGames .recordTowerChip', { hasText: '지뢰찾기' }).click();
+  await dlg.locator('#recordTowerLevels .recordTowerChip', { hasText: '초급' }).click();
+  await expect(dlg.locator('.recordTowerRowItem.me')).toContainText('탑손님');
+  await expect(dlg.locator('#recordTowerMe')).toContainText(/내 순위 \d+위/);
+  await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '역대 최고' }).click();
+  await expect(dlg.locator('.recordTowerRowItem.me')).toContainText('탑손님');
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/rt-window-pc.png` });
+  await dlg.locator('#recordTowerGo').click();
+  await expect(page.locator('#reflexView .reflexFrame.playing')).toBeVisible({ timeout: 30000 });
+  await expect.poll(() => page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return E.game?.id; })).toBe('mines');
   await expectNoScriptError(page);
   await a.context.close();
 });

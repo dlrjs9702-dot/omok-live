@@ -41,6 +41,7 @@ const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게�
 const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
+const SoloRanking = require('./public/solo-ranking'); // v1.10.250 기록의 탑
 const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai');
 const IslandWeather = require('./lib/island-weather'); // A4 날씨
@@ -1227,6 +1228,22 @@ async function taxNoteOf(account, now = nowMs()) {
   return `주민세 고지서 ${due.reduce((n, b) => n + b.amount, 0).toLocaleString('ko-KR')}P · 내일(${taxMd(tomorrow)})까지예요 · 관공서 세금 창구`;
 }
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
+// v1.10.250 기록의 탑: names for the board (a guest's file label, the administrator), the week's place of one account, the board
+async function soloNames() { const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label])); return (id) => labels.get(id) || (id === 'admin' ? '관리자' : '게스트'); }
+async function soloWeekRank(account, game, level) { soloBoardCache = null; /* (a clear: the board reads it at once) */ if (!SoloRanking.BY_ID[game]) return null; return SoloRanking.rank(game, await pointStore.soloLeaders({ game, level, week: climbWeekOf(nowMs()) })).find((r) => r.userId === account)?.rank ?? null; }
+let soloBoardCache = null; // { at, value } -- the board read at most every 15 s (each island visitor's page asks)
+async function soloBoard() {
+  const now = nowMs(); if (soloBoardCache && now - soloBoardCache.at < 15000) return soloBoardCache.value;
+  const week = climbWeekOf(now); const last = previousWeek(week); const nameOf = await soloNames(); const games = []; const lastWeek = [];
+  for (const g of SoloRanking.GAMES) {
+    const top = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week })).slice(0, 3).map((r) => ({ rank: r.rank, name: nameOf(r.userId), best: r.best }));
+    const ever = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board }))[0];
+    games.push({ game: g.id, name: g.name, title: g.title, level: g.board, top, allTime: ever ? { name: nameOf(ever.userId), best: ever.best } : null });
+    const first = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week: last }))[0]; /* (명예의 칸: last week's firsts) */
+    if (first) lastWeek.push({ game: g.id, short: g.name, name: nameOf(first.userId), best: first.best });
+  }
+  const value = { week, endsAt: weekStartMs(nextWeekOf(week)), games, lastWeek }; soloBoardCache = { at: now, value }; return value;
+}
 const WEEKLY_FIRST_WEEK = '2026-10-12';
 const WEEKLY_TITLES = {
   fishking: { title: 'title_fishking', name: '낚시왕', about: '어부 판매 주간 1위', rows: (from, to) => pointStore.fishSalesWeek(from, to) },
@@ -4137,7 +4154,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.249' });
+    return sendJson(res, 200, { ok: true, version: '1.10.250' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6191,10 +6208,29 @@ async function requestHandler(req, res) {
       g.paid = true;
       const L = Minesweeper.LEVELS[g.level];
       const account = pointAccountForSession(session);
-      const out = await pointStore.soloClear({ userId: account, gameId: g.id, game: 'minesweeper', level: g.level, ms: view.ms, points: 0, title: `지뢰찾기 ${L.label}` });
-      result = { best: out.best, clears: out.clears, newBest: out.newBest };
+      const out = await pointStore.soloClear({ userId: account, gameId: g.id, game: 'minesweeper', level: g.level, ms: view.ms, points: 0, title: `지뢰찾기 ${L.label}`, week: climbWeekOf(nowMs()) });
+      result = { best: out.best, clears: out.clears, newBest: out.newBest, weekRank: await soloWeekRank(account, 'minesweeper', g.level) };
     }
     return sendJson(res, 200, { ok: true, view, result });
+  }
+  // v1.10.250 기록의 탑 (gamecenter-notes docs/gamehall-ranking-board-20261103.md §1·§2): one game's ranking -- the week's or the
+  // all-time, 1~20 and mine (beyond 20 too) -- and the board the tower shows: each game's week 1·2·3 at its board level, its
+  // all-time best, and the week's leaders for the strip
+  if (pathname === '/api/solo/ranking' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const g = SoloRanking.BY_ID[url.searchParams.get('game')]; if (!g) return sendError(res, 400, 'BAD_GAME', '없는 게임입니다.');
+    const level = url.searchParams.get('level') || g.board; if (!g.levels.includes(level)) return sendError(res, 400, 'BAD_LEVEL', '고를 수 없는 난이도입니다.');
+    const period = url.searchParams.get('period') === 'all' ? 'all' : 'week'; const week = climbWeekOf(nowMs());
+    const ranked = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level, week: period === 'week' ? week : null })); const nameOf = await soloNames();
+    const account = pointAccountForSession(session); const row = (r) => ({ rank: r.rank, name: nameOf(r.userId), best: r.best, me: r.userId === account });
+    const mine = ranked.find((r) => r.userId === account);
+    return sendJson(res, 200, { ok: true, game: g.id, level, period, week, total: ranked.length, rows: ranked.slice(0, 20).map(row), me: mine ? row(mine) : null });
+  }
+  if (pathname === '/api/solo/board' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    return sendJson(res, 200, { ok: true, ...(await soloBoard()) });
   }
   // v1.10.68 순발력 게임 (lib/reflex.js): the round is played in the browser; the server opens it and judges the score it
   // is sent once (how long the round really took, a score a person can make), paying by level up to the day's cap
@@ -6230,10 +6266,10 @@ async function requestHandler(req, res) {
     if (verdict === 'score') return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
     const G = Reflex.GAMES[run.game];
     const out = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher, points: 0,
-      title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name });
+      title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name, week: climbWeekOf(nowMs()) });
     if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a round good enough counts
     const contest = verdict === 'ok' && run.contest ? await contestNote(account, session, run.contest, run.game, score) : null; // (A4: a round opened at the tent)
-    return sendJson(res, 200, { ok: true, verdict, best: out.best, newBest: out.newBest, contest });
+    return sendJson(res, 200, { ok: true, verdict, best: out.best, newBest: out.newBest, contest, weekRank: await soloWeekRank(account, run.game, run.level) });
   }
   // v1.10.69 오늘의 문제 (lib/puzzle-daily.js): the page says when it opens the day's puzzle (kept from the first time, so a
   // puzzle left and resumed still counts its whole time) and sends the solved board; the first right answer of the game,
@@ -6274,9 +6310,9 @@ async function requestHandler(req, res) {
     const fast = score < PuzzleDaily.MIN_MS[level] || (startedAt !== undefined && now - startedAt < PuzzleDaily.MIN_MS[level]);
     const claim = puzzleClaim(account, game, level, date);
     const out = await pointStore.soloClear({ userId: account, gameId: `pz-${claim}`, game, level, ms: score, points: 0,
-      title: `${PuzzleDaily.GAMES[game]} ${PuzzleDaily.LEVELS[level]} 오늘의 문제` });
+      title: `${PuzzleDaily.GAMES[game]} ${PuzzleDaily.LEVELS[level]} 오늘의 문제`, week: climbWeekOf(nowMs()) });
     islandProgress(`minigame:${game}`, account, 1); // A2b 마을 주민 부탁: a right answer of the day counts
-    return sendJson(res, 200, { ok: true, already: !out.applied, fast, best: out.best, newBest: Boolean(out.applied && out.newBest) });
+    return sendJson(res, 200, { ok: true, already: !out.applied, fast, best: out.best, newBest: Boolean(out.applied && out.newBest), weekRank: await soloWeekRank(account, game, level) });
   }
   // v1.10.70 카드 게임 (lib/cards.js): the server deals (the round's seed) and pays a clear only after playing its action
   // log again with the page's own game code; a time record is the server's own (from the deal to the report -- the page's
@@ -6317,9 +6353,9 @@ async function requestHandler(req, res) {
     const score = G.higher ? out.score : elapsed; // spider: the replay's own score; the others: the server's clock
     if (!Number.isSafeInteger(score) || score < 0) return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
     const fast = elapsed < Cards.MIN_MS;
-    const kept = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher, points: 0, title: `${G.name} ${G.levels[run.level]}` });
+    const kept = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher, points: 0, title: `${G.name} ${G.levels[run.level]}`, week: climbWeekOf(nowMs()) });
     const contest = run.contest && !fast ? await contestNote(account, session, run.contest, run.game, score) : null; // (A4: a deal opened at the tent)
-    return sendJson(res, 200, { ok: true, fast, score, best: kept.best, newBest: kept.newBest, contest });
+    return sendJson(res, 200, { ok: true, fast, score, best: kept.best, newBest: kept.newBest, contest, weekRank: await soloWeekRank(account, run.game, run.level) });
   }
   // v1.10.61 두 세계 영웅전 (/herosurv/, a Godot build we host as is): the game's own online leaderboard API, answered
   // here so its 명예의 전당 lists game-center accounts by nickname. The page adds the session header to the game's calls;
@@ -8575,7 +8611,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.249 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.250 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

@@ -8963,6 +8963,14 @@
       "lowSrc": "tent100:02. Low/contest_sign_low.glb",
       "lowSha256": "29c2675dffd6ce2fa8ba733af386442c1a0f7d44ee71adff2000e489f5310c0d",
       "precompressed": true
+    },
+    {
+      "out": "season-v1/record_tower.glb",
+      "src": "tower100:01. High/record_tower.glb",
+      "sha256": "42ca8693387c8e10ef07a40004fd1601552f2335da72a958c6ae5d3985302b20",
+      "lowSrc": "tower100:02. Low/record_tower_low.glb",
+      "lowSha256": "ba4645ee8c0185cbc456a9c0d0e64577cb935365e2bfd1b1701f681dcf9dd890",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9034,6 +9042,7 @@
     "useong95": "95. Game Island useong shoulders 2026-11-03",
     "sleeves96a": "96a. Game Island sleeves walkers 2026-11-03",
     "sleeves96b": "96b. Game Island sleeves named 2026-11-03",
-    "tent100": "100. Game Island contest tent 2026-11-04"
+    "tent100": "100. Game Island contest tent 2026-11-04",
+    "tower100": "100. Game Island record tower 2026-11-05"
   }
 }

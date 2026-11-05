@@ -1,0 +1,60 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const os = require('node:os');
+const R = require('../public/solo-ranking');
+const { boot } = require('../test-support/test-server');
+
+// v1.10.250 기록의 탑 (gamecenter-notes docs/gamehall-ranking-board-20261103.md §2): 14 games, the better record first (a time
+// smaller, a score bigger), a tie to who set it first; the records read as the games show them
+test('기록의 탑 순위 규칙: 14종, 시간은 짧을수록·점수는 높을수록, 같으면 먼저 세운 사람', () => {
+  assert.equal(R.GAMES.length, 14);
+  for (const g of R.GAMES) assert.ok(g.levels.includes(g.board), `${g.id} 게시판 난이도`);
+  const rows = [{ userId: 'b', best: 900, at: 2 }, { userId: 'a', best: 900, at: 1 }, { userId: 'c', best: 500, at: 3 }];
+  assert.deepEqual(R.rank('minesweeper', rows).map((r) => [r.userId, r.rank]), [['c', 1], ['a', 2], ['b', 3]]);
+  assert.deepEqual(R.rank('whack', rows).map((r) => r.userId), ['a', 'b', 'c']);
+  assert.equal(R.format('minesweeper', 61_400), '1:01'); assert.equal(R.format('reaction', 212.4), '212ms');
+  assert.equal(R.format('sudoku', 192_300), '192.3초'); assert.equal(R.format('whack', 1520), '1,520점'); assert.equal(R.format('colorfind', 12), '12라운드');
+});
+
+// (총괄 #400) the islanders' walk grid keeps off the tower's ground (8.55 m along world z, 1.9 m deep): its cells blocked, the
+// door before it and the plaza behind it open
+test('기록의 탑 자리: 주민 길 격자에서 탑 칸은 막히고 앞뒤는 열림', () => {
+  const N = require('../public/plaza/island-npcs'); const T = require('../public/plaza/island-terrain');
+  const t = T.RECORD_TOWER; assert.ok(t);
+  for (const dz of [-4.4, -2, 0, 2, 3.1]) assert.equal(N.free(t.x + 0.4, t.z + dz), false, `탑 칸 z${dz}`);
+  assert.equal(N.free(t.x + 5, t.z), true, '문 쪽'); assert.equal(N.free(t.x - 6, t.z), true, '광장 쪽');
+});
+
+test('기록의 탑 서버: 이번 주·역대 순위(1~20 + 내 순위), 결과의 이번 주 ○위, 게시판 14종', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tower-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const [a, b] = [await server.enter(await server.issue('탑가')), await server.enter(await server.issue('탑나'))]; assert.ok(a && b, server.logs());
+  const clear = async (who, level, ageMs) => {
+    const L = { beginner: [9, 9], intermediate: [16, 16] }[level];
+    const g = (await req('/api/solo/minesweeper/new', who, { level })).data;
+    await req('/api/solo/minesweeper/act', who, { id: g.id, action: 'open', x: 4, y: 4 });
+    const mines = new Set((await req('/api/test/solo/peek', who, { ageMs })).data.mines);
+    let last; for (let i = 0; i < L[0] * L[1]; i += 1) if (!mines.has(i)) { last = (await req('/api/solo/minesweeper/act', who, { id: g.id, action: 'open', x: i % L[0], y: Math.floor(i / L[0]) })).data; if (last.view.status === 'won') break; }
+    assert.equal(last.view.status, 'won'); return last.result;
+  };
+  assert.equal((await clear(a, 'beginner', 60_000)).weekRank, 1);
+  assert.equal((await clear(b, 'beginner', 30_000)).weekRank, 1, '더 빠른 기록이 1위');
+  const week = (await req('/api/solo/ranking?game=minesweeper&level=beginner', a)).data;
+  assert.equal(week.period, 'week'); assert.equal(week.total, 2);
+  assert.deepEqual(week.rows.map((r) => [r.rank, r.name, r.me]), [[1, '탑나', false], [2, '탑가', true]]);
+  assert.deepEqual([week.me.rank, week.me.name], [2, '탑가']);
+  const all = (await req('/api/solo/ranking?game=minesweeper&level=beginner&period=all', b)).data;
+  assert.equal(all.rows[0].name, '탑나'); assert.equal(all.me.rank, 1);
+  assert.equal((await req('/api/solo/ranking?game=nope', a)).status, 400);
+  assert.equal((await req('/api/solo/ranking?game=minesweeper&level=huge', a)).status, 400);
+  // the board: 14 games at their board level (지뢰찾기 중급) -- one clear there shows; the others empty
+  await clear(a, 'intermediate', 90_000);
+  const board = (await req('/api/solo/board', b)).data;
+  assert.equal(board.games.length, 14); assert.ok(board.endsAt > Date.now());
+  const ms = board.games.find((g) => g.game === 'minesweeper');
+  assert.equal(ms.level, 'intermediate'); assert.deepEqual(ms.top.map((r) => [r.rank, r.name]), [[1, '탑가']]); assert.equal(ms.allTime.name, '탑가'); assert.equal(ms.title, '지뢰 탐정');
+  assert.deepEqual(board.games.find((g) => g.game === 'sudoku').top, []);
+});

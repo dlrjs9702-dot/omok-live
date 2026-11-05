@@ -1577,3 +1577,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #boardOverlay.hpPanel .resultActions .hpBtn{border:0;background:var(--hp-face);color:var(--hp-t1)}
 :root[data-theme="light"] #boardOverlay.hpPanel .resultActions .hpBtn.go{background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 :root[data-theme="light"] .hpX{border:0;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1)}
+:root[data-theme="light"] .recordTowerChip{border:1px solid #c4a77d;background:#fbf3e2;color:#5a4632}
+:root[data-theme="light"] .recordTowerChip.selected{background:#9c5f14;border-color:#9c5f14;color:#fff}
+:root[data-theme="light"] .recordTowerRowItem{background:#fffaf0;border:1px solid #e2d4bd;color:#3d2f20}
+:root[data-theme="light"] .recordTowerRowItem.first{background:#fff1c7;border-color:#e0a82e}
+:root[data-theme="light"] .recordTowerRowItem.first b{color:#9a6400}
+:root[data-theme="light"] .recordTowerRowItem.me{box-shadow:inset 0 0 0 2px #23806f}
+:root[data-theme="light"] .recordTowerEmpty{color:#5e4d3b}
+:root[data-theme="light"] .recordTowerMe{color:#3d2f20}
