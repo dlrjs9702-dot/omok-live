@@ -147,11 +147,8 @@ test('게임 안내: 규칙 설명 아래 예시 그림·실수·요령, 지뢰�
   await expect(page.locator('#gameGuideMore .gameGuideCase')).toHaveCount(2);
   await page.locator('#gameRulesSelect').selectOption('bingo');
   await expect(page.locator('#gameGuideMore')).toBeEmpty(); // no guide for it
-  await page.locator('[data-game-mode="single"]').click();
-  await page.locator('#soloMinesBtn').click();
-  await page.locator('#minesDialog .gameGuideDetails summary').click();
-  await expect(page.locator('#minesGuide figcaption')).toContainText('1-2-1');
-  await page.screenshot({ path: test.info().outputPath('mines-guide.png') });
+  // (v1.10.249 G4: 지뢰찾기's guide is the game hall sheet's -- the old window is gone)
+  expect(await page.evaluate(() => JSON.stringify(window.GameGuides.minesweeper))).toContain('1-2-1');
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -384,14 +381,15 @@ test('PC 넓게: 카드놀이 판 폭 1,000px 이상, 스도쿠 판 700px 이상
   await expect.poll(async () => (await engine()).id, { timeout: 30000 }).toBe('sudoku');
   expect((await engine()).w).toBeGreaterThanOrEqual(1000); // the board's room (sudoku.js caps it at 820 px on a wide frame)
   await page.screenshot({ path: test.info().outputPath('wide-sudoku.png') });
-  // R6: 지뢰찾기 in the window's middle, sized to its height (초급 9 x 9 was 26 px a cell, 260 px, at the dialog's left)
+  // R6: 지뢰찾기 in the window's middle, sized to its height (v1.10.249 G4: on the puzzle screen's wide frame -- 고급 30 x 16)
   await page.keyboard.press('Escape'); await page.goto('/');
-  await page.locator('[data-game-mode="single"]').click();
-  await page.locator('#soloMinesBtn').click();
-  await expect(page.locator('#minesBoard .minesCell').first()).toBeVisible();
-  const board = await page.locator('#minesBoard').boundingBox();
-  expect(board.height).toBeGreaterThan(1080 * 0.4);
-  expect(Math.abs(board.x + board.width / 2 - 960)).toBeLessThan(40);
+  await expect(page.locator('#lobbyView')).toBeVisible(); /* (the page's first screen up first -- else it covers the round) */
+  await page.evaluate(() => { window.GameLaunch.play('mines', { place: 'quest', level: 'expert' }); });
+  await expect.poll(async () => (await engine()).id, { timeout: 30000 }).toBe('mines');
+  const board = await page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); const v = E.game.view(); const a = E.game.cellPoint(0); const b = E.game.cellPoint(v.w * v.h - 1); const r = document.querySelector('.reflexFrame > canvas').getBoundingClientRect(); return { left: r.left + a.x, right: r.left + b.x, top: r.top + a.y, bottom: r.top + b.y, w: v.w }; });
+  expect(board.w).toBe(30); expect(board.bottom - board.top).toBeGreaterThan(1080 * 0.35);
+  expect(Math.abs((board.left + board.right) / 2 - 960)).toBeLessThan(40);
+  await page.screenshot({ path: test.info().outputPath('mines-wide.png') }); if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/g4-mines-pc-expert.png` });
   await expectNoScriptError(page); await a.context.close();
 });
 

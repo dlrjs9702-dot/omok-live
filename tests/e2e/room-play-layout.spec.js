@@ -196,6 +196,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       const hudFit = await page.evaluate(() => { const b = document.getElementById('roomHudBig'); const p = document.getElementById('roomHudPill'); const r1 = b.getBoundingClientRect(); const r2 = p.getBoundingClientRect();
         return { over: Boolean(r2.width) && r1.left < r2.right && r1.right > r2.left && r1.top < r2.bottom && r1.bottom > r2.top, cut: b.scrollWidth > b.clientWidth + 1 }; });
       expect(hudFit, `${game} HUD 큰 글·알약`).toEqual({ over: false, cut: false });
+      for (const b of await page.locator('#roomHud .roomHudRight > button:visible').all()) expect((await b.boundingBox()).height, `${game} HUD 단추 40px`).toBeGreaterThanOrEqual(40); /* (G4, 총괄: G1's 40px on a phone too) */
       if (game === 'twentyquestions') await expect(big).toHaveText('0/20');
       if (game === 'liar') await expect(big).toHaveText(st.game.role === 'liar' ? '?' : st.game.myWord);
       if (game === 'baseball') {
@@ -223,7 +224,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
           console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor));
           // (G3, 총괄 #397: on the felt every word reads light in the light theme too -- its luminance over half)
           const feltDark = await page.evaluate(() => { const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) || [0, 0, 0]; const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
-            return [...document.querySelectorAll('#roomView :is(.gostopFelt .gostopSeatHead strong, .davinciPlate, #oldmaidShuffleBtn, .oldmaidMyHeader h3, .oldmaidMyHeader .turnRing b, #twentyPanel :is(.twentyHeading, h4, .twentyScore, .twentyPrivate, .twentyEmpty), #pictionaryPanel :is(.pictionaryScoreRow, .pictionaryWidthLabel, .pictionaryHead, .hpPill))')] /* (총괄 #398: 스무고개's chalkboard, 그림's board too) */.filter((el) => el.getBoundingClientRect().height).filter((el) => lum(getComputedStyle(el).color) < 0.5).map((el) => el.id || el.className || el.tagName); });
+            return [...document.querySelectorAll('#roomView :is(.gostopFelt .gostopSeatHead strong, .davinciPlate, #oldmaidShuffleBtn, .oldmaidMyHeader h3, .oldmaidMyHeader .turnRing b, #twentyPanel :is(.twentyHeading, h4, .twentyScore, .twentyPrivate, .twentyEmpty), #pictionaryPanel :is(.pictionaryScoreRow, .pictionaryWidthLabel, .pictionaryHead, .hpPill), #baseballHistory > .chatEmpty)')] /* (총괄 #398: 스무고개's chalkboard, 그림's board too) */.filter((el) => el.getBoundingClientRect().height).filter((el) => lum(getComputedStyle(el).color) < 0.5).map((el) => el.id || el.className || el.tagName); });
           expect(feltDark, `${game} 펠트 위 어두운 글자`).toEqual([]);
           await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
       }
@@ -231,6 +232,13 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
     }
     console.log(JSON.stringify(seen, null, 1));
     expect(bannersSeen, '배너를 본 게임 수').toBeGreaterThanOrEqual(5);
+    // (v1.10.249 G4: 지뢰찾기 on the 한판마당 puzzle screen -- its board and 열기/깃발 within the screen, PC and phone alike)
+    await page.evaluate(() => { window.GameLaunch.play('mines', { place: 'quest', level: 'beginner' }); });
+    const mineBox = async () => page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); if (E.game?.id !== 'mines') return null; const v = E.game.view(); const a = E.game.cellPoint(0); const b = E.game.cellPoint(v.w * v.h - 1); const r = document.querySelector('.reflexFrame > canvas').getBoundingClientRect(); return { w: v.w, left: r.left + a.x, right: r.left + b.x, bottom: r.top + b.y }; });
+    await expect.poll(async () => (await mineBox())?.w, { timeout: 30000 }).toBe(9);
+    const mb = await mineBox(); expect(mb.left >= 0 && mb.right <= w && mb.bottom <= h, JSON.stringify(mb)).toBe(true);
+    await expect(page.locator('#hudRight')).toHaveText('남은 지뢰 10');
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/g4-mines-${w < 640 ? 'phone' : 'pc'}.png` });
     // (검토 #391: the turn line short -- no player names, 「내 차례 · 흑」)
     expect(seen.omok.hud).toContain('내 차례 · 흑'); expect(seen.omok.hud).not.toContain('관리자님');
     expect(seen.othello.hud).toContain('2 : 2'); expect(seen.dots.hud).toContain('상자 0 : 0'); // (G1: the counts in the HUD's pill)

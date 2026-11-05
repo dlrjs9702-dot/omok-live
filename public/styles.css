@@ -1673,20 +1673,6 @@ body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display
 
 /* v1.10.37 혼자 하는 게임 — 지뢰찾기 */
 .soloGamesPanel .soloGameBtn{width:100%;margin-top:.4rem}
-.recordsDialog.minesDialog{width:auto;max-width:96vw}
-.minesLevels{display:flex;gap:.4rem;margin:.4rem 0}
-.minesLevels button{flex:1}
-.minesBar{display:flex;gap:1rem;justify-content:space-between;font-variant-numeric:tabular-nums;margin:.3rem 0 .5rem;color:#cbd5e1}
-.minesBoard{display:grid;gap:2px;background:#1e293b;padding:4px;border-radius:10px;user-select:none;width:max-content;margin:0 auto;justify-self:center}
-/* (R6 G4: the cell's size from the window on a wide mouse screen, --cell set by renderMines) */
-.minesCell{width:var(--cell,26px);height:var(--cell,26px);padding:0;border:0;border-radius:4px;background:#64748b;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);font:800 calc(var(--cell,26px) * .58)/var(--cell,26px) system-ui,sans-serif;color:#0f172a;cursor:pointer}
-.minesCell:hover{background:#7b8ba3}
-.minesCell.open{background:#e2e8f0;box-shadow:none;cursor:default}
-.minesCell.flag::after{content:'🚩';font-size:calc(var(--cell,26px) * .54)}
-.minesCell.mine{background:#fecaca}.minesCell.mine::after{content:'💣';font-size:calc(var(--cell,26px) * .54)}
-.minesCell.boom{background:#ef4444}
-.minesCell.n1{color:#2563eb}.minesCell.n2{color:#15803d}.minesCell.n3{color:#dc2626}.minesCell.n4{color:#1e3a8a}.minesCell.n5{color:#7f1d1d}.minesCell.n6{color:#0f766e}.minesCell.n7{color:#111827}.minesCell.n8{color:#6b7280}
-.minesStatus{min-height:1.4em;text-align:center;font-weight:700;margin:.5rem 0 0}
 /* v1.10.37 연계 퀘스트: the step under way, top left of the island */
 /* (Q 할 일 카드: on the island's paper -- --isle-paper/ink/line -- three lines at most, each pressed opens it) */
 .questTracker{position:absolute;left:12px;top:64px;z-index:3;display:grid;gap:6px;max-width:min(320px,calc(100vw - 24px))}
@@ -2140,7 +2126,6 @@ body.touchIsland .plazaHint { left: 50%; right: auto; transform: translateX(-50%
 .recordsDialog.rankingDialog,.recordsDialog.donationDialog{--g1:#b45309;--g2:#a16207}
 .recordsDialog.climbDialog{--g1:#0e7490;--g2:#1d4ed8}
 .recordsDialog.namingDialog{--g1:#7c4a1e;--g2:#9a3412}
-.recordsDialog.minesDialog{--g1:#475569;--g2:#334155}
 /* v1.10.84 관공서 실내: no island map inside the 민원실 */
 body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 /* v1.10.85 관공서 예금 창구 */
@@ -3003,7 +2988,6 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .myPetRow.walking
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab,.skinChip){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab[aria-selected="true"],.skinChip.selected){background:#f0dcb6;color:var(--isle-ink);border-color:var(--isle-tag)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow,.achGroup,.gameGuideCase,.climbSummary>div,.islandNotice){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
-body.plazaMode #minesDialog.isle-sheet :is(span,li):not(.minesBoard *){color:var(--isle-soft)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) input[type="range"]{background:transparent;border:0;accent-color:var(--isle-btn)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar{background:#efe2c6}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar i{background:var(--isle-btn)}
@@ -3011,7 +2995,6 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow.done 
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow .reward,.skinPrice){color:#9a5b00}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow .count,.skinCount,.skinShopBalance){color:var(--isle-soft)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinCard .skinName,.gameGuideCase :is(strong,span,li,h4)){color:var(--isle-ink)}
-body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .minesBoard{outline:6px solid #fffaf0}
 /* the name asked on paper */
 .nameAskDialog{width:min(92vw,360px)}
 .nameAskForm{display:grid;gap:8px}
@@ -3405,7 +3388,8 @@ body.roomPlaying.partyGame #pictionaryDrawTools>.pictionaryWordBox{display:none}
 body.roomPlaying.partyGame #liarRoleBox{min-height:40px;display:flex;align-items:center;padding:6px 14px;border:0;border-radius:12px;background:var(--hp-face);background-image:none;color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:none;transform:none}
 .roomHudBig.word{font-size:26px;letter-spacing:-.02em}
 .roomHudBig{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* (총괄 #398: never under the pill) */
-@media (max-width:640px){.roomHudBig{font-size:26px;min-height:28px}.roomHudBig.word{font-size:20px}.roomHudRight{gap:4px}.roomHudRight>button{width:36px;height:36px;min-height:36px}.roomHudRight>.hpPill{padding:0 9px;font-size:12px}} /* (a phone's HUD: the big line room in the middle) */
+@media (max-width:640px){.roomHudBig{font-size:26px;min-height:28px}.roomHudBig.word{font-size:20px}.roomHudRight{gap:4px}.roomHudRight>.hpPill{padding:0 9px;font-size:12px}} /* (G4, 총괄: the round buttons stay 40px -- G1's) */
+body.roomPlaying .baseballPanel #baseballHistory>.chatEmpty{margin:0;padding:10px 4px;color:rgba(244,245,252,.82);font-size:14px;font-weight:700;text-align:center} /* (G4, 총괄 #398: the empty record's words read on its dark board -- both themes) */ /* (a phone's HUD: the big line room in the middle) */
 /* (총괄 #398: the chalkboard and the drawing board dark in either theme -- their words light, as on the felt) */
 body.roomPlaying #roomView :is(#twentyPanel,#pictionaryPanel){color:var(--felt-t1)}
 body.roomPlaying #roomView #twentyPanel :is(.twentyHeading,h4,.twentyGuessLog p){color:var(--felt-t1)}
