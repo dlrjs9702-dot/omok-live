@@ -792,6 +792,18 @@ async function pokeRoom(roomId, also = []) {
 // points and administration ask for the account or session token); a new password or the messenger permission taken
 // away ends them all, and each device can be ended from the messenger page
 const DEVICE_TTL_MS = 60 * 24 * 60 * 60 * 1000; const DEVICES_MAX = 10; // (per account: the oldest goes)
+// 다음 메신저 묶음 (gamecenter-notes docs/messenger-speed-photo-20261103.md 10절) 알림 방식, 기기마다: 'open' 열어 둘 때만 (a PC's
+// default -- no push subscription, the page's own notice while the window is open), 'push' 닫아도 받기 (a phone's), 'off'.
+// A device from before the choice gets its default by its name; a PC's subscription is dropped then (told once: `moved`)
+const ALERT_MODES = ['off', 'open', 'push'];
+const alertDefault = (name) => (/^(안드로이드|아이폰)/.test(String(name || '')) ? 'push' : 'open');
+const alertOf = (d) => (ALERT_MODES.includes(d?.alert) ? d.alert : alertDefault(d?.name));
+async function setDeviceAlert(id, mode) { // (a mode other than push: the device's subscription goes with it)
+  await worldEdit(async () => {
+    await pointStore.setWorldValue('messengerDevices', ((await pointStore.worldValue('messengerDevices')) || []).map((d) => (d.id === id ? { ...d, alert: mode } : d)));
+    if (mode !== 'push') await pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== id));
+  });
+}
 const deviceHash = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
 async function devicesNow() { const now = nowMs(); return ((await pointStore.worldValue('messengerDevices')) || []).filter((d) => d.exp > now); }
 async function deviceOf(req) {
@@ -805,7 +817,7 @@ async function issueDevice(keyId, name) {
     const list = (await devicesNow()); const mine = list.filter((d) => d.keyId === keyId).sort((a, b) => a.at - b.at);
     const drop = new Set(mine.slice(0, Math.max(0, mine.length - DEVICES_MAX + 1)).map((d) => d.id));
     const kept = list.filter((d) => !drop.has(d.id)); const ids = new Set(kept.map((d) => d.id));
-    await pointStore.setWorldValue('messengerDevices', [...kept, { id: crypto.randomUUID(), keyId, hash: deviceHash(token), name: String(name || '').slice(0, 40), at: nowMs(), exp: nowMs() + DEVICE_TTL_MS }]);
+    await pointStore.setWorldValue('messengerDevices', [...kept, { id: crypto.randomUUID(), keyId, hash: deviceHash(token), name: String(name || '').slice(0, 40), at: nowMs(), exp: nowMs() + DEVICE_TTL_MS, alert: alertDefault(name) }]);
     await pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => ids.has(s.device))); // (Codex 검토 2차 #1: the 11th's pushed-out and the run-out ones' notices go too)
   });
   return token;
@@ -826,8 +838,9 @@ async function pushNew(room, from, fromLabel, text) {
   const looking = new Set([...messengerStreams.values()].flatMap((set) => [...set].map((r) => r.device).filter(Boolean)));
   // (Codex 검토 2차 #1) only a device still logged in, of the same account: one run out (60 days), pushed out or logged out
   // is told nothing (its subscription may outlive it in the store)
-  const live = new Map((await devicesNow()).map((d) => [d.id, d.keyId]));
-  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device) === s.keyId && !looking.has(s.device)); if (!subs.length) return;
+  // (10절: only a device set to 닫아도 받기 -- one on 열어 둘 때만 shows its own notice while open, nothing when shut)
+  const live = new Map((await devicesNow()).map((d) => [d.id, d]));
+  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device)?.keyId === s.keyId && alertOf(live.get(s.device)) === 'push' && !looking.has(s.device)); if (!subs.length) return;
   const unread = new Map(await Promise.all(to.map(async (id) => [id, (await messengerStore.roomsOf(id)).reduce((n, r) => n + (r.muted.includes(id) ? 0 : Math.max(0, r.seq - (r.reads[id] || 0))), 0)])));
   const gone = [];
   for (const s of subs) {
@@ -4252,7 +4265,7 @@ async function requestHandler(req, res) {
       return ids.every((id) => people.some((p) => p.id === id)) ? ids : null;
     };
     // (메신저 ④) the devices kept logged in -- this one marked -- and ending one, or all but this one
-    if (pathname === '/api/messenger/devices' && req.method === 'GET') return sendJson(res, 200, { ok: true, devices: (await devicesNow()).filter((d) => d.keyId === key.id).map((d) => ({ id: d.id, name: d.name, at: d.at, exp: d.exp, mine: d.id === acct.device })) });
+    if (pathname === '/api/messenger/devices' && req.method === 'GET') return sendJson(res, 200, { ok: true, devices: (await devicesNow()).filter((d) => d.keyId === key.id).map((d) => ({ id: d.id, name: d.name, at: d.at, exp: d.exp, mine: d.id === acct.device, alert: alertOf(d) })) });
     if (pathname === '/api/messenger/devices/drop' && req.method === 'POST') {
       const body = await parseJson(req);
       const gone = body.self === true ? acct.device : String(body.id || ''); // (self: this device's logout; all: every other)
@@ -4260,15 +4273,29 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true });
     }
     // (메신저 ③) push: the server's public key (null: no push here); a subscription for this device -- one kept logged in
-    if (pathname === '/api/messenger/push' && req.method === 'GET') return sendJson(res, 200, { ok: true, key: vapid?.publicKey || null, on: Boolean(acct.device && ((await pointStore.worldValue('messengerPush')) || []).some((s) => s.device === acct.device)) });
+    if (pathname === '/api/messenger/push' && req.method === 'GET') {
+      // (10절) this device's way: 'open' / 'push' / 'off'. One from before the choice is set now -- a PC that was pushed
+      // moves to 열어 둘 때만 and is told once (`moved`)
+      const me = acct.device && (await devicesNow()).find((d) => d.id === acct.device); let moved = false;
+      if (me && !ALERT_MODES.includes(me.alert)) { const mode = alertDefault(me.name); moved = mode !== 'push' && ((await pointStore.worldValue('messengerPush')) || []).some((s) => s.device === me.id); await setDeviceAlert(me.id, mode); }
+      return sendJson(res, 200, { ok: true, key: vapid?.publicKey || null, mode: me ? alertOf(me) : null, moved, on: Boolean(acct.device && ((await pointStore.worldValue('messengerPush')) || []).some((s) => s.device === acct.device)) });
+    }
+    if (pathname === '/api/messenger/alert' && req.method === 'POST') { // (10절) the choice for this device; not push: its subscription goes
+      if (!acct.device) return sendError(res, 409, 'DEVICE_NEEDED', '알림 방식은 「이 기기에서 로그인 유지」로 로그인한 기기에서만 고를 수 있습니다.');
+      const body = await parseJson(req); const mode = String(body.mode || '');
+      if (!ALERT_MODES.includes(mode)) return sendError(res, 400, 'BAD_ALERT_MODE', '알림 방식은 열어 둘 때만·닫아도 받기·안 받기 중 하나예요.');
+      await setDeviceAlert(acct.device, mode);
+      return sendJson(res, 200, { ok: true, mode });
+    }
     if (pathname === '/api/messenger/push' && req.method === 'POST') {
       if (!acct.device) return sendError(res, 409, 'DEVICE_NEEDED', '알림은 「이 기기에서 로그인 유지」로 로그인한 기기에서만 켤 수 있습니다.');
       const body = await parseJson(req); const sub = { endpoint: String(body.endpoint || ''), p256dh: String(body.p256dh || ''), auth: String(body.auth || '') };
       if (!WebPush.allowedEndpoint(sub.endpoint) || sub.endpoint.length > 1000 || Buffer.from(sub.p256dh, 'base64url').length !== 65 || Buffer.from(sub.auth, 'base64url').length !== 16) return sendError(res, 400, 'BAD_SUBSCRIPTION', '알림 등록 정보가 올바르지 않습니다.');
       await worldEdit(async () => pointStore.setWorldValue('messengerPush', [...((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== acct.device && s.endpoint !== sub.endpoint), { ...sub, keyId: key.id, device: acct.device, at: nowMs() }]));
+      await setDeviceAlert(acct.device, 'push'); // (10절: a subscription is the device's wish to be told when shut)
       return sendJson(res, 200, { ok: true });
     }
-    if (pathname === '/api/messenger/push/off' && req.method === 'POST') {
+    if (pathname === '/api/messenger/push/off' && req.method === 'POST') { // (the page's logout: the subscription goes; the device's way stays for its next login)
       await worldEdit(async () => pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== acct.device)));
       return sendJson(res, 200, { ok: true });
     }
@@ -8417,7 +8444,7 @@ async function requestHandler(req, res) {
     if (pathname === '/herosurv') { res.writeHead(301, securityHeaders({ Location: '/herosurv/' })); return res.end(); }
     if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
     // 메신저 단독 창 ①: its own light page (no game code) -- not behind the Chrome gate (no 3D: Safari's home-screen app too)
-    if (pathname === '/messenger') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(messengerTemplate), 'Cache-Control': 'no-store', 'Content-Security-Policy': securityHeaders()['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:") })); return res.end(messengerTemplate); } // (v1.10.233: its photos shown from the page's own blobs)
+    if (pathname === '/messenger' || pathname === '/messenger.html') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(messengerTemplate), 'Cache-Control': 'no-store', 'Content-Security-Policy': securityHeaders()['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:") })); return res.end(messengerTemplate); } // (v1.10.233: its photos shown from the page's own blobs)
     // 달마루섬 5단계: the server's own island, told before the island's scripts load (island-map.js) -- a page on it never
     // loads twice to learn the map; on 지금 섬 nothing (the administrator's preview keeps its own way)
     if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end("self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n"); }
