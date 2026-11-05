@@ -41,7 +41,7 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·최고 기록
   }
   await expect(page.locator('#reflexResult')).toBeVisible();
   await expect(page.locator('.reflexScore')).toHaveText(/^\d+ms$/);
-  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
+  await expect(page.locator('.reflexPaid')).toHaveText(/^최고 기록! · 이번 주 \d+위$/); /* (v1.10.250 기록의 탑: the week's place) */
   // (v1.10.245 U3: the one result panel -- its pill, no old box, both buttons 50px or more)
   await expect(page.locator('.hpPanel:visible')).toHaveCount(1); await expect(page.locator('.reflexPanel')).toHaveCount(0); await expect(page.locator('#reflexResult .hpPanelPill')).toHaveText('완성');
   await page.waitForTimeout(500); // (the panel springs in from .92)
@@ -82,7 +82,7 @@ test('하늘 계단: 두 버튼으로 35계단 → 헛디딤 → 결과·최고 
   await press(-(await peek()).next); // the wrong way
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 }).catch(async (error) => { error.message += `\n${JSON.stringify(await page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return { state: E.state, peek: E.game?.peek?.(), t: E.t }; }))} ${errs.slice(0, 3).join(' | ')}`; throw error; });
   await expect(page.locator('.reflexScore')).toHaveText(/^35/);
-  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
+  await expect(page.locator('.reflexPaid')).toHaveText(/^최고 기록! · 이번 주 \d+위$/); /* (v1.10.250 기록의 탑: the week's place) */
   expect((await get(request, '/api/points', token)).data.balance).toBe(before);
   await expectNoScriptError(page);
   await a.context.close();
@@ -200,7 +200,7 @@ test('카드 게임: 스파이더를 끝까지 두면 서버가 다시 두어 �
   }
   expect(won).toBe(true);
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
+  await expect(page.locator('.reflexPaid')).toHaveText(/^최고 기록! · 이번 주 \d+위$/); /* (v1.10.250 기록의 탑: the week's place) */
   expect((await get(request, '/api/solo/cards', token)).data.records.spider.easy.clears).toBe(1);
   await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();
   await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
@@ -248,7 +248,7 @@ test('카드놀이: 게임이 스스로 마무리한 판도 서버가 다시 두
   }
   expect(won).toBe(true);
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
+  await expect(page.locator('.reflexPaid')).toHaveText(/^최고 기록! · 이번 주 \d+위$/); /* (v1.10.250 기록의 탑: the week's place) */
   expect((await get(request, '/api/solo/cards', token)).data.records.klondike.easy.clears).toBe(1);
   await expectNoScriptError(page);
   await a.context.close();

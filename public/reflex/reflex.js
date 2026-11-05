@@ -236,16 +236,17 @@ export function mount({ api, onBack, pieceSkin = null }) {
       const out = score == null ? null : g.result;
       if (out && info) (info.records[g.id] ||= {})[level] = { best: out.best };
       if (out?.newBest) sfx.best();
-      line.textContent = out ? (out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`) : '';
+      line.textContent = out ? (out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`) + weekLine(out) : '';
       return;
     }
     try {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
       if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
       if (out.newBest) sfx.best();
-      line.textContent = contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`;
+      line.textContent = (contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`) + weekLine(out);
     } catch (error) { line.textContent = error.message; }
   }
+  const weekLine = (out) => (out?.weekRank ? ` · 이번 주 ${out.weekRank}위` : ''); // (v1.10.250 기록의 탑)
 
   // v1.10.70 (Codex review): puzzle-kit writes a solved 오늘의 문제 into this account's 보낼 기록함 (js/outbox.js) before it
   // marks the day done; it leaves the box once the server has answered for good, so a failed send goes again next time
@@ -256,7 +257,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       if (rec) dropRecord(Stats.uid, rec.rid);
       if (info && out.best != null) (info.records[g.id] ||= {})[level] = { best: out.best };
       if (out.newBest) sfx.best();
-      line.textContent = out.newBest ? '최고 기록!' : out.already ? '오늘의 문제는 이미 기록했어요' : '기록했어요';
+      line.textContent = (out.newBest ? '최고 기록!' : out.already ? '오늘의 문제는 이미 기록했어요' : '기록했어요') + weekLine(out);
     } catch (error) {
       if (rec && settled(error)) dropRecord(Stats.uid, rec.rid);
       line.textContent = settled(error) ? error.message : '기록을 보내지 못했어요 · 퍼즐을 다시 열면 다시 보내요';
@@ -276,7 +277,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       const out = await api('/api/solo/cards/finish', { method: 'POST', body: JSON.stringify({ id, log: log.join(';') }) });
       if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
       if (out.newBest) sfx.best();
-      line.textContent = contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : '기록했어요';
+      line.textContent = (contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : '기록했어요') + weekLine(out);
     } catch (error) { line.textContent = error.message; }
   }
 
