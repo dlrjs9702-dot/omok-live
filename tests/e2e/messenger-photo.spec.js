@@ -34,7 +34,7 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
   const shot = async (p, name) => { if (process.env.SHOT_DIR) { await p.waitForTimeout(800); await p.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
   try {
     await page.locator('#messengerNewBtn').click(); await page.locator('#messengerPickName').fill('사진방');
-    await page.locator('#messengerPeople label', { hasText: b.nickname }).locator('input').check(); await page.locator('#messengerPick').getByRole('button', { name: '확인' }).click();
+    await page.locator('#messengerPeople button', { hasText: b.nickname }).click(); await page.locator('#messengerPick').getByRole('button', { name: /대화 시작/ }).click();
     await expect(page.locator('#messengerRoomName')).toHaveText('사진방');
     const input = page.locator('#messengerInput'); const mine = page.locator('#messengerMessages .chatMessage.mine');
     // Enter: at once, before the (held back) answer

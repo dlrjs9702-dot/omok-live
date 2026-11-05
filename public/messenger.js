@@ -330,21 +330,63 @@
   }
   function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
   function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
-  function showPick(mode) { // 'new' | 'invite' | 'dm'
-    picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
-    byId('messengerPickTitle').textContent = mode === 'new' ? '새 대화방' : mode === 'dm' ? '1:1 대화' : `「${current.name}」에 초대`;
-    byId('messengerPickName').classList.toggle('hidden', mode !== 'new'); byId('messengerPickName').value = '';
-    const people = state.people.filter((p) => !inRoom.has(p.id));
-    byId('messengerPeople').replaceChildren(...people.map((p) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = mode === 'dm' ? 'radio' : 'checkbox'; c.name = 'messengerPerson'; c.value = p.id; l.append(c, p.label); return l; }));
-    if (!people.length) byId('messengerPeople').innerHTML = '<p class="smallMuted">함께할 수 있는 사람이 없습니다. 메신저는 관리자가 허용한 계정끼리 씁니다.</p>';
-    app.classList.add('picking'); pick.classList.remove('hidden');
+  // 메신저 다듬기 A2 사람 고르기 (새 대화방·초대·1:1 같은 화면): 이름 찾기 (치는 대로, 부분 일치) · 고른 사람은 알약 (✕로 빼기) ·
+  // 한 줄에 한 사람 (줄 아무 데나 누르면 고름) -- 최근 대화한 사람 먼저 · 방 이름은 아래, 비우면 고른 사람 이름들로 · 단추
+  // 「N명과 대화 시작」/「N명 초대」/(1:1, 한 명만)「대화 시작」, 아무도 안 고르면 누를 수 없음
+  let chosen = []; let pickRows = [];
+  const peopleBox = byId('messengerPeople'); const pickFind = byId('messengerPickFind'); const pickGo = byId('messengerPickGo');
+  const AVATAR = ['#8a6a4a', '#4f6d8a', '#5f7d4e', '#8a4f6d', '#9a5a26', '#5a5f8a'];
+  const avatarOf = (label) => { const s = document.createElement('span'); s.className = 'messengerAvatar'; s.setAttribute('aria-hidden', 'true'); s.textContent = [...String(label || '?').trim()][0] || '?'; let h = 0; for (const c of String(label)) h = (h * 31 + c.codePointAt(0)) >>> 0; s.style.background = AVATAR[h % AVATAR.length]; return s; };
+  const roomNameOf = (labels) => { // 「지우, 한별, 솔」 (20자 안: 넘치면 「지우, 한별 외 3명」)
+    const all = labels.join(', '); if (all.length <= 20) return all;
+    for (let k = labels.length - 1; k >= 1; k -= 1) { const s = `${labels.slice(0, k).join(', ')} 외 ${labels.length - k}명`; if (s.length <= 20) return s; }
+    const tail = ` 외 ${labels.length - 1}명`; return `${labels[0].slice(0, 20 - tail.length)}${tail}`;
+  };
+  function drawPicked() {
+    const box2 = byId('messengerPicked'); box2.classList.toggle('hidden', !chosen.length || picking === 'dm');
+    box2.replaceChildren(...chosen.map((p) => { const c = document.createElement('span'); c.className = 'messengerChip'; c.append(p.label); const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', `${p.label} 빼기`); x.addEventListener('click', () => togglePerson(p)); c.append(x); return c; }));
+    for (const row of pickRows) row.b.setAttribute('aria-pressed', String(chosen.some((p) => p.id === row.p.id)));
+    const n = chosen.length; pickGo.disabled = !n;
+    pickGo.textContent = picking === 'dm' ? '대화 시작' : picking === 'invite' ? (n ? `${n}명 초대` : '초대') : n ? `${n}명과 대화 시작` : '대화 시작';
+    byId('messengerPickName').placeholder = n && picking === 'new' ? roomNameOf(chosen.map((p) => p.label)) : '방 이름 (안 써도 돼요)';
   }
-  function hidePick() { picking = null; app.classList.remove('picking'); pick.classList.add('hidden'); }
+  function togglePerson(p) {
+    if (picking === 'dm') chosen = chosen[0]?.id === p.id ? [] : [p];
+    else chosen = chosen.some((x) => x.id === p.id) ? chosen.filter((x) => x.id !== p.id) : [...chosen, p];
+    drawPicked();
+  }
+  function filterPeople() {
+    const q = pickFind.value.trim().toLocaleLowerCase('ko'); let shown = 0;
+    for (const row of pickRows) { const on = !q || row.p.label.toLocaleLowerCase('ko').includes(q); row.li.hidden = !on; if (on) shown += 1; }
+    byId('messengerPeopleNone')?.remove();
+    if (pickRows.length && !shown) { const li = document.createElement('li'); li.id = 'messengerPeopleNone'; li.className = 'smallMuted messengerPeopleNone'; li.textContent = `「${pickFind.value.trim()}」 이름이 없어요.`; peopleBox.append(li); }
+  }
+  function showPick(mode) { // 'new' | 'invite' | 'dm'
+    picking = mode; chosen = []; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
+    byId('messengerPickTitle').textContent = mode === 'new' ? '새 대화방' : mode === 'dm' ? '1:1 대화' : `「${current.name}」에 초대`;
+    byId('messengerPickName').classList.toggle('hidden', mode !== 'new'); byId('messengerPickName').value = ''; pickFind.value = '';
+    // the people I talked with lately first (their rooms' last line), the rest after in name order
+    const lately = new Map(); for (const r of state.rooms) for (const m of r.members || []) { const at = Date.parse(r.last?.at || r.lastAt || '') || 0; if (m.id !== state.me && at > (lately.get(m.id) || 0)) lately.set(m.id, at); }
+    const people = state.people.filter((p) => !inRoom.has(p.id)).sort((a, b) => (lately.get(b.id) || 0) - (lately.get(a.id) || 0) || a.label.localeCompare(b.label, 'ko'));
+    pickRows = people.map((p) => {
+      const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'messengerPerson'; b.setAttribute('aria-pressed', 'false');
+      const name = document.createElement('span'); name.className = 'messengerPersonName'; name.textContent = p.label;
+      const mark = document.createElement('span'); mark.className = 'messengerPersonMark'; mark.setAttribute('aria-hidden', 'true');
+      b.append(avatarOf(p.label), name, mark); b.addEventListener('click', () => togglePerson(p)); li.append(b); return { p, li, b };
+    });
+    peopleBox.replaceChildren(...pickRows.map((r) => r.li));
+    if (!people.length) peopleBox.innerHTML = '<li class="smallMuted messengerPeopleNone">함께할 수 있는 사람이 없습니다. 메신저는 관리자가 허용한 계정끼리 씁니다.</li>';
+    drawPicked(); app.classList.add('picking'); pick.classList.remove('hidden'); peopleBox.scrollTop = 0;
+    if (people.length) pickFind.focus();
+  }
+  pickFind.addEventListener('input', filterPeople);
+  pickFind.addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; e.preventDefault(); const first = pickRows.find((r) => !r.li.hidden); if (first && pickFind.value.trim()) { togglePerson(first.p); pickFind.value = ''; filterPeople(); } }); // (Enter in the find box: the first one shown, not the form)
+  function hidePick() { picking = null; chosen = []; pickRows = []; app.classList.remove('picking'); pick.classList.add('hidden'); }
   pick.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const members = [...byId('messengerPeople').querySelectorAll('input:checked')].map((c) => c.value);
+    const members = chosen.map((p) => p.id); if (!members.length) return;
     try {
-      if (picking === 'new') { const data = await api('/api/messenger/rooms', { name: byId('messengerPickName').value, members }); hidePick(); await refresh(); openRoom(data.room); }
+      if (picking === 'new') { const data = await api('/api/messenger/rooms', { name: byId('messengerPickName').value.trim() || roomNameOf(chosen.map((p) => p.label)), members }); hidePick(); await refresh(); openRoom(data.room); }
       else if (picking === 'dm') { const data = await api('/api/messenger/dm', { with: members[0] }); hidePick(); await refresh(); openRoom(data.room); }
       else { await api(`/api/messenger/rooms/${current.id}/members`, { members }); hidePick(); pull(); refresh(); }
     } catch (err) { fail(err); }

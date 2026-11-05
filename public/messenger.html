@@ -53,11 +53,14 @@
         <div id="messengerShots" class="messengerShots hidden" aria-label="보낼 사진"></div>
         <form id="messengerForm" class="messengerForm"><button id="messengerPhotoBtn" class="ghost messengerPhotoBtn" type="button" aria-label="사진 고르기" title="사진 고르기 (끌어 놓기·붙여넣기도 돼요)">📷</button><input id="messengerPhotoPick" type="file" accept="image/*" multiple hidden /><input id="messengerInput" type="text" maxlength="500" autocomplete="off" placeholder="메시지 입력" aria-label="메시지 입력" /><button class="primary" type="submit">보내기</button></form>
       </section>
+      <!-- 메신저 다듬기 A2: 사람 고르기 (새 대화방·초대·1:1) -- 이름 찾기, 고른 사람 알약, 한 줄에 한 사람(최근 대화한 사람 먼저), 방 이름은 아래 -->
       <form id="messengerPick" class="messengerPick hidden">
         <strong id="messengerPickTitle">새 대화방</strong>
-        <input id="messengerPickName" type="text" maxlength="20" placeholder="방 이름 (20자)" aria-label="방 이름" />
-        <div id="messengerPeople" class="messengerPeople"></div>
-        <div class="noticeFormActions"><button class="primary" type="submit">확인</button><button id="messengerPickCancel" class="ghost" type="button">취소</button></div>
+        <input id="messengerPickFind" type="search" autocomplete="off" placeholder="이름 찾기" aria-label="이름 찾기" aria-controls="messengerPeople" />
+        <div id="messengerPicked" class="messengerPicked hidden" aria-label="고른 사람"></div>
+        <ul id="messengerPeople" class="messengerPeople" aria-label="사람"></ul>
+        <input id="messengerPickName" type="text" maxlength="20" placeholder="방 이름 (안 써도 돼요)" aria-label="방 이름" />
+        <div class="noticeFormActions"><button id="messengerPickGo" class="primary" type="submit" disabled>대화 시작</button><button id="messengerPickCancel" class="ghost" type="button">취소</button></div>
       </form>
     </div>
   </main>

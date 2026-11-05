@@ -40,8 +40,8 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await m.reload(); await expect(m.locator('#mApp')).toBeVisible(); await expect(m.locator('#mLogin')).toBeHidden(); // (the device's login, not the tab's)
   await m.locator('#messengerNewBtn').click();
   await m.locator('#messengerPickName').fill('우리집');
-  await m.locator('#messengerPeople label', { hasText: dad.nickname }).locator('input').check();
-  await m.locator('#messengerPick').getByRole('button', { name: '확인' }).click();
+  await m.locator('#messengerPeople button', { hasText: dad.nickname }).click();
+  await m.locator('#messengerPick').getByRole('button', { name: /대화 시작/ }).click();
   await expect(m.locator('#messengerRoomName')).toHaveText('우리집');
   await m.locator('#messengerInput').fill('저녁 뭐 먹어?');
   await m.locator('#messengerForm').getByRole('button', { name: '보내기' }).click();
@@ -77,8 +77,8 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // 1:1: named after the other; 나가기 only with the warning
   if (await d.locator('#messengerBackBtn').isVisible()) await d.locator('#messengerBackBtn').click(); // a phone shows one side
   await d.locator('#messengerDmBtn').click();
-  await d.locator('#messengerPeople label', { hasText: mom.nickname }).locator('input').check();
-  await d.locator('#messengerPick').getByRole('button', { name: '확인' }).click();
+  await d.locator('#messengerPeople button', { hasText: mom.nickname }).click();
+  await d.locator('#messengerPick').getByRole('button', { name: /대화 시작/ }).click();
   await expect(d.locator('#messengerRoomName')).toHaveText(mom.nickname);
   await expect(d.locator('#messengerInviteBtn')).toBeHidden();
   let warned = '';
@@ -294,5 +294,69 @@ test('메신저 창을 안 보고 있으면 읽음 처리 안 함: 보낸 쪽 �
   await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: dad.account, body: { text: '마지막 줄' } });
   await expect.poll(() => asked.length, { timeout: 15000 }).toBeGreaterThanOrEqual(2);
   expect(asked[0]).not.toContain('peek=1'); expect(asked[1]).toContain('peek=1');
+  await context.close();
+});
+
+// 메신저 다듬기 A2 사람 고르기 (새 대화방·초대·1:1 같은 화면): 이름 찾기 (치는 대로, 부분 일치), 고른 사람 알약 (✕로 빼기),
+// 최근 대화한 사람 먼저, 「N명과 대화 시작」 (아무도 안 고르면 누를 수 없음), 방 이름 비우면 이름들로, 1:1은 한 명만, 초대는
+// 「N명 초대」; 한 줄 44px 이상, 목록만 스크롤. 밝게·어둡게 (SHOT_DIR 사진)
+test('메신저 A2 사람 고르기: 이름 찾기·알약·최근 먼저·빈 방 이름·1:1 한 명만·N명 초대', async ({ browser, request, isMobile }, info) => {
+  test.setTimeout(120000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const make = async (tag, nick) => {
+    const loginId = `g${tag}_${stamp}`.slice(0, 20); const nickname = `${nick}${(Date.now() + info.project.name.length) % 100000}`;
+    await api(request, '/api/account/signup', { body: { realName: tag, loginId, password: 'secret123', nickname } });
+    const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+    await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+    const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+    await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+    const account = (await api(request, '/api/account/login', { body: { loginId, password: 'secret123' } })).data.accountToken;
+    return { id, loginId, nickname, account };
+  };
+  const me = await make('a', '나'); const jiu = await make('b', '지우'); const star = await make('c', '한별'); const sol = await make('d', '솔');
+  await api(request, '/api/messenger/dm', { account: sol.account, body: { with: me.id } }).then(({ data }) => api(request, `/api/messenger/rooms/${data.room.id}/messages`, { account: sol.account, body: { text: '안녕' } })); // (솔: talked with lately)
+  const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+  const m = await context.newPage(); await m.goto('/messenger');
+  await m.locator('#mLoginId').fill(me.loginId); await m.locator('#mLoginPw').fill('secret123');
+  await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click(); await expect(m.locator('#mApp')).toBeVisible();
+  const shot = async (name) => { if (process.env.SHOT_DIR) { await m.waitForTimeout(300); await m.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
+  const rows = m.locator('#messengerPeople li:not([hidden]) .messengerPerson'); const go = m.locator('#messengerPickGo'); const find = m.locator('#messengerPickFind');
+  const row = (p) => m.locator('#messengerPeople .messengerPerson', { hasText: p.nickname });
+  await m.locator('#messengerNewBtn').click(); await expect(m.locator('#messengerPick')).toBeVisible();
+  // talked with lately first; nobody chosen -- the button can't be pressed
+  await expect(rows.first()).toContainText(sol.nickname); await expect(rows.first().locator('.messengerAvatar')).toHaveText('솔');
+  await expect(go).toBeDisabled(); await expect(go).toHaveText('대화 시작'); await expect(m.locator('#messengerPicked')).toBeHidden();
+  // a row 44 px or more; only the list scrolls (the page does not)
+  expect((await rows.first().boundingBox()).height).toBeGreaterThanOrEqual(44);
+  expect(await m.locator('#messengerPeople').evaluate((el) => getComputedStyle(el).overflowY)).toBe('auto');
+  expect(await m.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight + 1)).toBe(true);
+  // the find box: as typed, a part of the name
+  await find.fill(star.nickname.slice(1)); await expect(rows).toHaveCount(1); await expect(rows.first()).toContainText(star.nickname);
+  await rows.first().click(); await expect(row(star)).toHaveAttribute('aria-pressed', 'true');
+  await expect(m.locator('#messengerPicked .messengerChip')).toHaveText([`${star.nickname}✕`]); await expect(go).toHaveText('1명과 대화 시작'); await expect(go).toBeEnabled();
+  await find.fill('없는이름zz'); await expect(rows).toHaveCount(0); await expect(m.locator('#messengerPeople')).toContainText('이름이 없어요');
+  await find.fill(jiu.nickname); await rows.first().click(); await expect(go).toHaveText('2명과 대화 시작');
+  await find.fill(''); await shot('pick-light');
+  // ✕ on a pill takes one out; none left -- can't be pressed
+  await m.locator('#messengerPicked').getByRole('button', { name: `${star.nickname} 빼기` }).click(); await expect(go).toHaveText('1명과 대화 시작'); await expect(row(star)).toHaveAttribute('aria-pressed', 'false');
+  await row(jiu).click(); await expect(go).toBeDisabled(); await expect(m.locator('#messengerPicked')).toBeHidden();
+  // dark too
+  await m.locator('#mTheme').selectOption('dark'); await row(jiu).click(); await row(star).click(); await shot('pick-dark');
+  expect(await row(jiu).evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgb(255, 250, 240)');
+  await m.locator('#mTheme').selectOption('light');
+  // the room name left empty: the names
+  await go.click(); await expect(m.locator('#messengerRoomName')).toHaveText(`${jiu.nickname}, ${star.nickname}`);
+  // 초대: 「N명 초대」 (the ones in the room not in the list)
+  await m.locator('#messengerMoreBtn').click(); await m.locator('#messengerInviteBtn').click();
+  await expect(m.locator('#messengerPickTitle')).toContainText('에 초대'); await expect(row(jiu)).toHaveCount(0); await expect(m.locator('#messengerPickName')).toBeHidden();
+  await row(sol).click(); await expect(go).toHaveText('1명 초대'); await m.locator('#messengerPickCancel').click();
+  // 1:1: one only
+  if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click();
+  await m.locator('#messengerDmBtn').click(); await expect(m.locator('#messengerPickTitle')).toHaveText('1:1 대화');
+  await row(jiu).click(); await row(star).click();
+  await expect(m.locator('#messengerPeople .messengerPerson[aria-pressed="true"]')).toHaveCount(1); await expect(row(star)).toHaveAttribute('aria-pressed', 'true');
+  await expect(go).toHaveText('대화 시작'); await expect(m.locator('#messengerPicked')).toBeHidden();
+  await go.click(); await expect(m.locator('#messengerRoomName')).toHaveText(star.nickname);
   await context.close();
 });

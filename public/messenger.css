@@ -83,3 +83,34 @@ html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color
 .mApp .messengerRoom.dropping::after{content:'여기에 놓아 보내기';position:absolute;inset:6px;display:grid;place-items:center;border:3px dashed #e0a43a;border-radius:14px;background:rgba(255,248,230,.86);color:#7a4b10;font-weight:800;pointer-events:none;z-index:5}
 html[data-mtheme="dark"] .mApp .messengerPhoto.gone{color:#d9c8b0;background:rgba(255,255,255,.06)}
 html[data-mtheme="dark"] .mApp .messengerRoom.dropping::after{background:rgba(35,29,25,.9);color:#f6d38f}
+/* 메신저 다듬기 A2 사람 고르기: the island's paper, one column on PC and phone alike -- the find box on top, the chosen as pills,
+   a row a person (a round face with the first letter, the name, a round mark at the right; the whole row presses), only the
+   list scrolls, the room name and the buttons under it */
+.mApp.picking{grid-template-rows:minmax(0,1fr)}
+.mApp .messengerPick{display:flex;flex-direction:column;gap:8px;min-height:0;width:100%;max-width:520px;margin:0 auto;box-sizing:border-box}
+.mApp .messengerPick.hidden{display:none}
+.mApp .messengerPick>strong{font-size:1.02rem}
+.messengerPage input[type="search"]{background:#fff;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:12px;padding:9px 12px;font-size:1rem;font:inherit}
+.mApp .messengerPicked{display:flex;flex-wrap:wrap;gap:5px}.mApp .messengerPicked.hidden{display:none}
+.mApp .messengerChip{display:inline-flex;align-items:center;gap:2px;padding:3px 4px 3px 11px;border-radius:999px;background:var(--isle-tag);color:#fff;font-size:.8rem;font-weight:800;max-width:100%}
+.mApp .messengerChip button{min-width:26px;min-height:26px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:.72rem;line-height:1;cursor:pointer}
+.mApp .messengerPeople{list-style:none;margin:0;padding:2px;flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;grid-template-columns:none}
+.mApp .messengerPeople li[hidden]{display:none}
+.mApp .messengerPeopleNone{padding:12px 6px}
+.mApp .messengerPerson{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:6px 10px;border-radius:12px;border:1px solid var(--isle-line);background:#fffaf0;color:var(--isle-ink);text-align:left;font:inherit;font-weight:800;cursor:pointer}
+@media(hover:hover){.mApp .messengerPerson:hover{background:var(--isle-hover)}}
+.mApp .messengerPerson[aria-pressed="true"]{border-color:var(--isle-tag);box-shadow:inset 0 0 0 1px var(--isle-tag);background:#f1d9a8}
+.mApp .messengerAvatar{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#fff;font-weight:900;font-size:.95rem}
+.mApp .messengerPersonName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mApp .messengerPersonMark{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--isle-line);box-sizing:border-box;display:grid;place-items:center;color:#fff;font-size:.8rem;font-weight:900}
+.mApp .messengerPerson[aria-pressed="true"] .messengerPersonMark{background:var(--isle-tag);border-color:var(--isle-tag)}
+.mApp .messengerPerson[aria-pressed="true"] .messengerPersonMark::after{content:'✓'}
+.mApp .messengerPick .noticeFormActions{display:flex;gap:8px}.mApp .messengerPick .noticeFormActions .primary{flex:1}
+.messengerPage button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:640px){.mApp .messengerPick{max-width:none}}
+html[data-mtheme="dark"] .messengerPage input[type="search"]{background:#352c25;color:var(--isle-ink)}
+html[data-mtheme="dark"] .mApp .messengerPerson{background:#352c25}
+html[data-mtheme="dark"] .mApp .messengerPerson[aria-pressed="true"]{background:#4a3a2a;border-color:#c9a36a;box-shadow:inset 0 0 0 1px #c9a36a}
+html[data-mtheme="dark"] .mApp .messengerPerson[aria-pressed="true"] .messengerPersonMark{background:#c9a36a;border-color:#c9a36a;color:#2a231e}
+html[data-mtheme="dark"] .mApp .messengerChip{background:#c9a36a;color:#2a231e}
+html[data-mtheme="dark"] .mApp .messengerChip button{background:rgba(0,0,0,.18);color:#2a231e}
