@@ -25,7 +25,8 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
       // the server took it as a walk from my last place and stopped me at the other player standing on that line
       // (plazaSeparate); a warp first (leave, enter fresh), then the talk from a step away)
       if (!await talking()) { since = 0; await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 1.1, w.z); window.PlazaDebug().talkResident(n); }, n); await page.waitForTimeout(1500); return false; }
-      if (await page.locator('#plazaDialog .talkChoices button').count()) return true;
+      // (local 3× run, phone: the window shut again a moment after its choices came -- open with its choices still a moment later)
+      if (await page.locator('#plazaDialog .talkChoices button').count()) { await page.waitForTimeout(1500); return await talking() && await page.locator('#plazaDialog .talkChoices button').count() > 0; }
       since ||= Date.now(); if (Date.now() - since > 20000) { await page.keyboard.press('Escape'); await page.waitForTimeout(600); since = 0; }
       return false;
     }, { timeout: 120000, intervals: [300] }).toBe(true).catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')} n: ${n}`; throw error; }); // (CI 3차: once 120 s with no talk on CI -- the server's answer, to find why)
