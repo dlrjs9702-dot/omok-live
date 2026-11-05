@@ -156,7 +156,9 @@ test('메신저 어두운 화면: 처음 밝게, 어둡게 고르면 새로고�
 // v1.10.210 메신저 3절 3 (gamecenter-notes docs/messenger-app-push-20261030.md): the messenger window open but not looked at
 // (minimised, another window in front) shows the notice the push would be -- one a room (its tag), never a muted room's or
 // my own line, nothing while I look at it. The page's own: the server pushes this device no more while it is open (3절 4).
-test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하나, 보고 있으면·꺼 둔 방·내 글은 없음', async ({ browser, request }, info) => {
+// 다음 메신저 묶음 10절 알림 방식, 기기마다: a PC is on 「열어 둘 때만」 -- no push subscription, the server pushes it nothing,
+// the page's own notice still comes; a phone is on 「닫아도 받기」 (subscribed). Each can be changed. SHOT_DIR photos (밝게·어둡게)
+test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하나, 보고 있으면·꺼 둔 방·내 글은 없음 / 알림 방식: PC 열어 둘 때만(구독 없음·푸시 0), 폰 닫아도 받기', async ({ browser, request, isMobile }, info) => {
   test.setTimeout(120000);
   const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
   const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
@@ -172,28 +174,40 @@ test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하�
   };
   const mom = await make('a', '엄마'); const dad = await make('b', '아빠');
   const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
-  await context.addInitScript(() => { /* (the notices it shows, kept to read; "not looked at" at the test's word) */
+  const fakeSub = { endpoint: `https://fcm.googleapis.com/fcm/send/e2e-${stamp}`, p256dh: Buffer.concat([Buffer.from([4]), require('node:crypto').randomBytes(64)]).toString('base64url'), auth: require('node:crypto').randomBytes(16).toString('base64url') };
+  await context.addInitScript((fake) => { /* (the notices it shows, kept to read; "not looked at" at the test's word; the push service stood in for) */
     Object.defineProperty(Notification, 'permission', { get: () => 'granted' }); window.__shown = []; ServiceWorkerRegistration.prototype.showNotification = function (title, options) { window.__shown.push({ title, ...options }); return Promise.resolve(); };
-    PushManager.prototype.getSubscription = function () { return Promise.resolve({ endpoint: 'https://push.test/x', unsubscribe: () => Promise.resolve(true) }); }; /* (this device subscribed: 「알림 끄기」 needs it -- Codex 검토 5차 P2-2) */
+    window.__sub = null; const mk = () => ({ endpoint: fake.endpoint, toJSON: () => ({ endpoint: fake.endpoint, keys: { p256dh: fake.p256dh, auth: fake.auth } }), unsubscribe: () => { window.__sub = null; return Promise.resolve(true); } });
+    PushManager.prototype.getSubscription = function () { return Promise.resolve(window.__sub); }; PushManager.prototype.subscribe = function () { window.__sub = mk(); return Promise.resolve(window.__sub); };
     const hasFocus = Document.prototype.hasFocus; Document.prototype.hasFocus = function () { return window.__away ? false : hasFocus.call(this); };
-  });
-  await context.route('**/api/messenger/push', (route) => (route.request().method() === 'GET' ? route.fulfill({ json: { ok: true, key: 'BKey', on: true } }) : route.continue())); // (this device's notices on: the push service itself is not reached under tests)
+  }, fakeSub);
+  await context.route('**/api/messenger/push', async (route) => { if (route.request().method() !== 'GET') return route.continue(); const real = await (await route.fetch()).json(); return route.fulfill({ json: { ...real, key: 'BKey' } }); }); // (a server key: the push service itself is not reached under tests)
   const m = await context.newPage(); await m.goto('/messenger');
   await m.locator('#mLoginId').fill(mom.loginId); await m.locator('#mLoginPw').fill('secret123');
   await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click();
-  await expect(m.locator('#mApp')).toBeVisible(); await expect(m.locator('#mPushBtn')).toHaveText('알림 끄기');
+  await expect(m.locator('#mApp')).toBeVisible(); await expect(m.locator('#mAlertPick')).toBeVisible();
+  const sel = m.locator('#mAlert'); const device = async () => { const tok = await m.evaluate(() => localStorage.getItem('gc.messengerDevice')); const res = await request.get('/api/messenger/push', { headers: { 'X-Forwarded-For': ip(), 'X-Messenger-Device': tok } }); return res.json(); };
+  const shot = async (name) => { if (process.env.SHOT_DIR) { await m.waitForTimeout(300); await m.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
+  // the device's way by its kind: a PC 열어 둘 때만 (no subscription anywhere), a phone 닫아도 받기 (subscribed, the server told)
+  if (isMobile) { await expect(sel).toHaveValue('push'); await expect.poll(() => m.evaluate(() => Boolean(window.__sub))).toBe(true); await expect.poll(async () => (await device()).on).toBe(true); expect((await device()).mode).toBe('push'); }
+  else { await expect(sel).toHaveValue('open'); expect(await m.evaluate(() => window.__sub)).toBeNull(); expect(await device()).toMatchObject({ mode: 'open', on: false }); }
+  await expect(m.locator('#mPushBtn')).toBeHidden(); // (allowed already)
+  expect(await m.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await shot('alert-light'); await m.locator('#mTheme').selectOption('dark'); await shot('alert-dark'); await m.locator('#mTheme').selectOption('light');
   const room = (await api(request, '/api/messenger/rooms', { account: dad.account, body: { name: '우리집', members: [mom.id] } })).data.room;
   const other = (await api(request, '/api/messenger/rooms', { account: dad.account, body: { name: '조용방', members: [mom.id] } })).data.room;
   await expect(m.locator('#messengerRoomList li')).toHaveCount(2);
   const say = (who, r, text) => api(request, `/api/messenger/rooms/${r.id}/messages`, { account: who.account, body: { text } });
   const shown = () => m.evaluate(() => window.__shown.map(({ title, body, tag, data }) => ({ title, body, tag, room: data?.room })));
+  const pushed = async () => (await api(request, '/api/test/messenger/pushes')).data.pushes.filter((x) => x.to === mom.id);
   // looking at it: nothing
   await say(dad, room, '보고 있지?'); await expect(m.locator('#messengerRoomList')).toContainText('보고 있지?'); await m.waitForTimeout(500);
   expect(await shown()).toEqual([]);
-  // not looked at: the notice, as the push's
+  // not looked at: the notice, as the push's -- and no push from the server (a PC: no subscription; a phone: this window open)
   await m.evaluate(() => { window.__away = true; });
   await say(dad, room, '저녁 먹자');
   await expect.poll(shown, { timeout: 15000 }).toEqual([{ title: '우리집', body: `${dad.nickname}: 저녁 먹자`, tag: room.id, room: room.id }]);
+  expect(await pushed()).toEqual([]);
   // a muted room, and my own line: nothing
   await api(request, `/api/messenger/rooms/${other.id}/mute`, { account: mom.account, body: { on: true } });
   await say(dad, other, '조용히'); await say(mom, room, '응 갈게');
@@ -205,13 +219,24 @@ test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하�
   const fresh = (await api(request, '/api/messenger/rooms', { account: dad.account, body: { name: '새방', members: [mom.id] } })).data.room;
   await say(dad, fresh, '첫 인사'); hold = false;
   await expect.poll(async () => (await shown()).filter((s) => s.tag === fresh.id), { timeout: 15000 }).toEqual([{ title: '새방', body: `${dad.nickname}: 첫 인사`, tag: fresh.id, room: fresh.id }]);
+  // the way changed: a PC to 닫아도 받기 -- subscribed, the server told; back to 열어 둘 때만 -- the subscription gone on both sides
+  // (a phone the other way round)
+  await m.evaluate(() => { window.__away = false; });
+  await sel.selectOption(isMobile ? 'open' : 'push'); await expect(m.locator('#toast')).toHaveText(isMobile ? '창을 열어 둔 동안만 새 메시지를 알려 드려요.' : '창을 닫아도 새 메시지를 알려 드려요.');
+  await expect.poll(async () => (await device()).mode).toBe(isMobile ? 'open' : 'push'); expect((await device()).on).toBe(!isMobile); expect(await m.evaluate(() => Boolean(window.__sub))).toBe(!isMobile);
+  await sel.selectOption(isMobile ? 'push' : 'open');
+  await expect.poll(async () => (await device()).mode).toBe(isMobile ? 'push' : 'open'); expect((await device()).on).toBe(isMobile); expect(await m.evaluate(() => Boolean(window.__sub))).toBe(isMobile);
+  // 안 받기: nothing shown while away either
+  await sel.selectOption('off'); await expect.poll(async () => (await device()).mode).toBe('off'); expect((await device()).on).toBe(false);
+  await m.evaluate(() => { window.__away = true; }); await say(dad, room, '안 받는다며'); await expect(m.locator('#messengerRoomList')).toContainText('안 받는다며'); await m.waitForTimeout(800);
+  expect((await shown()).filter((s) => s.body?.includes('안 받는다며'))).toEqual([]);
   await context.close();
 });
 
-// (Codex 검토 5차 P2-2) the old /messenger worker's subscription moves to the app's: let go only once the new one and its
-// record stand -- a failed move keeps the old (tried again next time); 「알림 끄기」 only with the server's on and this
-// device's subscription
-test('메신저 알림 옮기기: 새 구독이 실패하면 옛 구독 그대로·「알림 켜기」, 성공하면 옛 것 해지·「알림 끄기」', async ({ browser, request }, info) => {
+// (Codex 검토 5차 P2-2) the old /messenger worker's subscription moves to the app's: let go only once the new one stands --
+// a failed move keeps the old (tried again next time). 10절: that holds for a device on 닫아도 받기 (a phone); a PC on 열어 둘
+// 때만 wants no subscription -- the old one just goes; choosing 닫아도 받기 that fails leaves it on 열어 둘 때만
+test('메신저 알림 옮기기: 폰은 새 구독이 실패하면 옛 구독 그대로, 성공하면 옛 것 해지; PC(열어 둘 때만)는 옛 구독 해지, 닫아도 받기 실패하면 그대로', async ({ browser, request, isMobile }, info) => {
   test.setTimeout(120000);
   const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
   const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
@@ -222,25 +247,63 @@ test('메신저 알림 옮기기: 새 구독이 실패하면 옛 구독 그대�
   const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
   await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
   const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
-  await context.addInitScript(() => { /* (an old /messenger worker with a subscription; this device's new one fails until the test says) */
+  const fakeSub = { endpoint: `https://fcm.googleapis.com/fcm/send/move-${stamp}`, p256dh: Buffer.concat([Buffer.from([4]), require('node:crypto').randomBytes(64)]).toString('base64url'), auth: require('node:crypto').randomBytes(16).toString('base64url') };
+  await context.addInitScript((fake) => { /* (an old /messenger worker with a subscription; this device's new one fails until the test says) */
     Object.defineProperty(Notification, 'permission', { get: () => 'granted' });
     const ok = () => sessionStorage.getItem('subOk') === '1'; let sub = null;
     PushManager.prototype.getSubscription = function () { return Promise.resolve(sub); };
-    PushManager.prototype.subscribe = function () { if (!ok()) return Promise.reject(new Error('no push service')); sub = { endpoint: 'https://push.test/new', toJSON: () => ({ endpoint: 'https://push.test/new', keys: { p256dh: 'p', auth: 'a' } }), unsubscribe: () => Promise.resolve(true) }; return Promise.resolve(sub); };
+    PushManager.prototype.subscribe = function () { sessionStorage.setItem('subTried', '1'); if (!ok()) return Promise.reject(new Error('no push service')); sub = { endpoint: fake.endpoint, toJSON: () => ({ endpoint: fake.endpoint, keys: { p256dh: fake.p256dh, auth: fake.auth } }), unsubscribe: () => { sub = null; return Promise.resolve(true); } }; return Promise.resolve(sub); };
     const real = navigator.serviceWorker.getRegistrations.bind(navigator.serviceWorker);
     const old = { scope: `${location.origin}/messenger`, pushManager: { getSubscription: () => Promise.resolve({ unsubscribe: () => { sessionStorage.setItem('oldGone', '1'); return Promise.resolve(true); } }) }, unregister: () => { sessionStorage.setItem('oldUnreg', '1'); return Promise.resolve(true); } };
     navigator.serviceWorker.getRegistrations = async () => (sessionStorage.getItem('oldUnreg') ? real() : [...await real(), old]);
-  });
-  await context.route('**/api/messenger/push', (route) => (route.request().method() === 'GET' ? route.fulfill({ json: { ok: true, key: 'BKey', on: true } }) : route.fulfill({ json: { ok: true } })));
+  }, fakeSub);
+  await context.route('**/api/messenger/push', async (route) => { if (route.request().method() !== 'GET') return route.continue(); const real = await (await route.fetch()).json(); return route.fulfill({ json: { ...real, key: 'BKey' } }); });
   const m = await context.newPage(); await m.goto('/messenger');
   await m.locator('#mLoginId').fill(loginId); await m.locator('#mLoginPw').fill('secret123');
   await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click(); await expect(m.locator('#mApp')).toBeVisible();
-  const gone = () => m.evaluate(() => [sessionStorage.getItem('oldGone'), sessionStorage.getItem('oldUnreg')]);
-  // the new one fails: the old kept, and the button says the device has no notices
-  await expect(m.locator('#mPushBtn')).toHaveText('알림 켜기'); expect(await gone()).toEqual([null, null]);
-  // next time it works: the new one first, then the old let go
-  await m.evaluate(() => sessionStorage.setItem('subOk', '1')); await m.reload();
-  await expect(m.locator('#mPushBtn')).toHaveText('알림 끄기'); expect(await gone()).toEqual(['1', '1']);
+  const gone = () => m.evaluate(() => [sessionStorage.getItem('oldGone'), sessionStorage.getItem('oldUnreg'), sessionStorage.getItem('subTried')]);
+  const sel = m.locator('#mAlert'); const device = async () => { const tok = await m.evaluate(() => localStorage.getItem('gc.messengerDevice')); return (await request.get('/api/messenger/push', { headers: { 'X-Forwarded-For': ip(), 'X-Messenger-Device': tok } })).json(); };
+  if (isMobile) {
+    // the new one fails: the old kept, 닫아도 받기 still the way (nothing on the server yet)
+    await expect(sel).toHaveValue('push'); await expect.poll(gone).toEqual([null, null, '1']); expect(await device()).toMatchObject({ mode: 'push', on: false });
+    // next time it works: the new one first, then the old let go
+    await m.evaluate(() => sessionStorage.setItem('subOk', '1')); await m.reload(); await expect(sel).toHaveValue('push');
+    await expect.poll(gone).toEqual(['1', '1', '1']); await expect.poll(async () => (await device()).on).toBe(true);
+  } else {
+    // a PC on 열어 둘 때만: the old subscription just goes, no new one asked for
+    await expect(sel).toHaveValue('open'); await expect.poll(gone).toEqual(['1', '1', null]); expect(await device()).toMatchObject({ mode: 'open', on: false });
+    // 닫아도 받기 that fails: back on 열어 둘 때만, said so
+    await sel.selectOption('push'); await expect(m.locator('#toast')).toHaveText('no push service'); await expect(sel).toHaveValue('open'); expect(await device()).toMatchObject({ mode: 'open', on: false });
+    await m.evaluate(() => sessionStorage.setItem('subOk', '1')); await sel.selectOption('push'); await expect(m.locator('#toast')).toHaveText('창을 닫아도 새 메시지를 알려 드려요.');
+    await expect(sel).toHaveValue('push'); await expect.poll(async () => (await device()).on).toBe(true);
+  }
+  await context.close();
+});
+
+// 다음 메신저 묶음 10절 ①: 메신저만 따로 설치 -- its own manifest (id, start /messenger.html, scope /messenger, its icons), linked
+// from the messenger page only (the island's stays as it is); the browser's install prompt as an 「앱으로 설치」 button when
+// it comes, not inside an installed window. Nothing sideways. SHOT_DIR photos (밝게·어둡게)
+test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.html, 「앱으로 설치」 단추, 설치된 창에서는 숨김', async ({ browser, request, isMobile }, info) => {
+  test.setTimeout(60000);
+  const manifest = await request.get('/messenger.webmanifest'); expect(manifest.status()).toBe(200); expect(manifest.headers()['content-type']).toContain('manifest+json');
+  const mf = await manifest.json(); expect(mf).toMatchObject({ id: '/messenger', name: '아일랜드 메신저', start_url: '/messenger.html', scope: '/messenger', display: 'standalone' });
+  for (const icon of mf.icons) { const res = await request.get(icon.src); expect(res.status(), icon.src).toBe(200); expect(res.headers()['content-type']).toBe('image/png'); }
+  expect(mf.icons.map((i) => i.purpose).sort()).toEqual(['any', 'any', 'maskable']);
+  expect((await (await request.get('/manifest.webmanifest')).json())).toMatchObject({ name: '아일랜드', start_url: '/', scope: '/' }); // (the island's as it was)
+  const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+  const page = await context.newPage(); await page.goto('/messenger.html'); await expect(page.locator('#mLogin')).toBeVisible({ timeout: 30000 });
+  expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBe('/messenger.webmanifest');
+  await expect(page.locator('#mInstallBtn')).toBeHidden();
+  const offer = (p) => p.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); return e.defaultPrevented; });
+  expect(await offer(page)).toBe(true); await expect(page.locator('#mInstallBtn')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(300); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
+  await shot('install-light'); await page.locator('#mTheme').selectOption('dark'); await shot('install-dark'); await page.locator('#mTheme').selectOption('light');
+  await page.locator('#mInstallBtn').click(); expect(await page.evaluate(() => window.__prompted)).toBe(1); await expect(page.locator('#mInstallBtn')).toBeHidden();
+  // inside the installed window (display-mode: standalone): no button even when the browser offers
+  await context.addInitScript(() => { const real = window.matchMedia.bind(window); window.matchMedia = (q) => (q === '(display-mode: standalone)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q)); });
+  const app = await context.newPage(); await app.goto('/messenger.html'); await expect(app.locator('#mLogin')).toBeVisible();
+  expect(await offer(app)).toBe(true); await app.waitForTimeout(300); await expect(app.locator('#mInstallBtn')).toBeHidden();
   await context.close();
 });
 
