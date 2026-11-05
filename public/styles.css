@@ -3378,6 +3378,7 @@ body.roomPlaying .seatNum{display:none}
 body.roomPlaying .bingoPanel .bingoInfoGrid{display:none}
 body.roomPlaying #yutThrowBtn.hpBtn{min-height:56px;padding:0 28px;font-size:17px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 body.roomPlaying .yutLastThrow{color:var(--hp-t1);font-weight:800}
+.gameMenuPoints{margin:0 0 6px;padding:10px 12px;border-radius:12px;background:rgba(224,164,58,.16);color:#7a4b10;font-weight:900;font-size:15px} /* (the island paper sheet: a brown on it, 4.5:1 and more) */.gameMenuPoints.hidden{display:none}
 /* v1.10.247 G2 도둑잡기 카드 한 벌 (A3 G3-5): the 카드놀이 deck's look (reflex/js/games/cards.js drawCard/drawBack) -- white
    face, #E0334F / #1B1E33, bold sans (not Georgia), the back a blue gradient in a white rim; plain classes, so a skin's own still wins */
 .oldmaidFace{background:#FBFBFE;border:1px solid rgba(20,24,60,.2);color:#1B1E33;border-radius:7px;font-family:system-ui,"Segoe UI Symbol","Apple Symbols",sans-serif;font-weight:800}

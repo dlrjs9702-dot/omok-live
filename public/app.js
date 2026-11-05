@@ -1487,7 +1487,7 @@
     document.getElementById('gamehallView').classList.toggle('hidden', name !== 'gamehall'); // v1.10.73 게임관
     if (name !== 'gamehall' && document.getElementById('gameSheet').open) document.getElementById('gameSheet').close();
     if (name !== 'reflex') reflexGames?.stop();
-    if (name !== 'room') { document.getElementById('oldmaidEffectsRow')?.classList.add('hidden'); document.body.classList.remove('tableGameRoom', 'tableGamePlaying', 'roomResult'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
+    if (name !== 'room') { document.getElementById('oldmaidEffectsRow')?.classList.add('hidden'); document.getElementById('menuPointLine')?.classList.add('hidden'); document.body.classList.remove('tableGameRoom', 'tableGamePlaying', 'roomResult'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
     syncPlaza(name);
   }
 
@@ -9043,6 +9043,7 @@
     const myPoints = state.me?.pointBalance;
     roomPointBadge.classList.toggle('hidden', myPoints === null || myPoints === undefined);
     if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
+    { const line = byId('menuPointLine'); line.textContent = roomPointBadge.textContent; line.classList.toggle('hidden', roomPointBadge.classList.contains('hidden')); } // (v1.10.247 G2: the same in ☰)
     // v1.7.3: the room's point rule beside my balance (server-provided, never computed here).
     const pointRule = state.points?.policy === 'entry' ? `내기 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P · 승자 ${100 - state.points.burnPercent}%`
       : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각`

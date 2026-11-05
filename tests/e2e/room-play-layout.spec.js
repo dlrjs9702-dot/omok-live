@@ -227,5 +227,11 @@ test('오목 터치: 첫 탭은 미리보기, 같은 자리 두 번째 탭에 �
   await page.locator('#roomHud #chatFloatBtn').tap(); await page.locator('#chatInput').fill('키패드 그대로');
   await page.locator('#chatSendBtn').tap(); await expect(page.locator('#chatMessages')).toContainText('키패드 그대로');
   await expect.poll(() => page.evaluate(() => [document.activeElement?.id, document.getElementById('chatInput').value])).toEqual(['chatInput', '']);
+  // (총괄: Enter pressed again and again while it sends -- the line goes once)
+  await page.locator('#chatInput').fill('한 번만'); for (let k = 0; k < 4; k += 1) await page.locator('#chatInput').press('Enter');
+  await expect(page.locator('#chatMessages .chatMessage.mine', { hasText: '한 번만' })).toHaveCount(1); await page.waitForTimeout(1200);
+  await expect(page.locator('#chatMessages .chatMessage.mine', { hasText: '한 번만' })).toHaveCount(1);
+  // (총괄: a phone's bar has no points line -- ☰'s top has it)
+  await page.evaluate(() => document.getElementById('roomMenuBtn').click()); /* (the chat panel open over the HUD on a phone) */ await expect(page.locator('#gameMenuDialog #menuPointLine')).toHaveText(/^내 포인트 [\d,]+P$/);
   await context.close();
 });
