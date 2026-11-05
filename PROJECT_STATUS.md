@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.247 게임관 G2 + 메신저 따로 설치·기기별 알림
+
+- 메신저 따로 설치(webmanifest·아이콘) + 알림 방식 기기마다(열어 둘 때만 / 닫아도 받기) (#394, 클라우드 세션).
+- 폰에서 보내도 키패드 그대로: 메신저·대기방·방 채팅 보내기 단추는 터치로 포커스를 가져가지 않음, 보내는 동안 readOnly.
+- 폰 판 밖 위쪽 막대 한 줄.
+- G2 화투·카드 4.
+
 ## v1.10.246 게임관 G1 + 메신저 다듬기 A+B
 
 - 서버 handClock { startedAt, finishedAt } → 결과 패널 「시간」.
@@ -25,10 +32,3 @@
 - 결과 패널 하나(.hpPanel): 판 게임 #boardOverlay(알약·제목·큰 숫자 64px·통계 3칸·단추 2개), 맞고 #gostopResult.hpPanel(두 칸 점수 표·금액 64px), 한판마당 .hpPanel.reflexBox(옛 .reflexPanel 없앰).
 - 판·맞고 패널이 뜨면 #resultEffect 이모지 카드 없음, 전설 승리는 효과 뒤 2.2초에 패널.
 - 효과음 한 세트: room-sound.js가 reflex/js/audio.js sfx 사용, 내 차례 마지막 5초 beep.
-
-## v1.10.244 게임관 UI 통일 U2
-
-- 판 중 게임방 HUD 한 줄(#roomHud): ✕ · 「게임 · 상대」 라벨 · 큰 숫자(내 차례 남은 초, 아니면 그 게임 숫자 2 : 2 / N점) · 차례 글 · 수 알약 · 🎮 💬 ☰(원래 단추를 아이디 그대로 옮김), 아래 시간 막대(10초 아래 분홍). 옛 위 막대·상태 줄은 숨김.
-- ⓘ 방 정보·🔔 알림은 ☰ 안으로, 빠른 말(#quickChat)은 💬 채팅 창 안으로.
-- 이름표(.player·.teamPlayer)를 차례 알약으로: 40px·모서리 12·얼굴 32px·m:ss와 가는 막대, 차례인 쪽만 .on(--c1 2px). 게임별 자리판(화투·파티)은 G2·G3.
-- 안내 배너: #boardNote를 HUD 바로 아래 초록 유리 알약(1.8초), 내 차례가 오면 「내 차례예요」 한 번.
