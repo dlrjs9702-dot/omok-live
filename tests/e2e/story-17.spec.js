@@ -27,7 +27,7 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
     // minute -- the offer's own 「다음에요」 counts too, and the choices are watched a moment for it)
     const skipErrand = async () => {
       const later = choices.filter({ hasText: '다음에요' }); const note = page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).first();
-      let offered = false; for (let k = 0; k < 6 && !offered; k += 1) { offered = await later.isVisible().catch(() => false) || await note.isVisible().catch(() => false); if (!offered) await page.waitForTimeout(500); }
+      let offered = false; for (let k = 0; k < 3 && !offered; k += 1) { offered = await later.isVisible().catch(() => false) || await note.isVisible().catch(() => false); if (!offered) await page.waitForTimeout(400); }
       if (!offered) return;
       await later.waitFor({ state: 'visible', timeout: 20000 }).then(() => later.click(), () => {}); await lines();
     };
