@@ -1501,6 +1501,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const root = new THREE.Group(); root.position.set(TOWER.x, heightAt(TOWER.x, TOWER.z), TOWER.z); root.rotation.y = TOWER.yaw; scene.add(root);
     const fb = new THREE.Group(); root.add(fb); // the stand-in: a dark board on two cream posts
     mesh(new THREE.BoxGeometry(6.1, 3.9, 0.3), mat(0x3b2a1e), 0, 3.05, 0, fb); for (const x of [-3.3, 3.3]) mesh(new THREE.CylinderGeometry(0.2, 0.2, 5, 10), mat(0xf4efe6), x, 2.5, 0, fb);
+    mesh(new THREE.BoxGeometry(1.1, 2.1, 0.3), mat(0x3b2a1e), -4.3, 1.55, 0, fb); mesh(new THREE.BoxGeometry(1.0, 0.5, 0.8), mat(0xd9a520), 0, 0.25, -0.9, fb); /* (명예의 칸 and the podium too: all its solids drawn -- dalmaru-walk's mapCheck) */
     const face = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; textures.push(t);
       return { c, t, m: new THREE.MeshStandardMaterial({ name: 'record_face', map: t, emissiveMap: t, emissive: 0x000000, roughness: 0.85 }) }; };
     const F = { board_face: face(1120, 520), board_ticker: face(1536, 128) /* (its 5.6 × 0.5 m: 12 to 1, the words not squeezed) */, board_honor: face(320, 544) };
