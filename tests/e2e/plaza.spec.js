@@ -1949,10 +1949,12 @@ test('역 승강기: 다른 사람이 타면 내 화면에서도 승강기로 �
   // (CI #389 chromium-11: the watching page drew no frame in the ride's middle 1.1 s -- the car is set with them each frame they
   // are drawn, so it is checked against the frames drawn: with them at every middle height they were drawn at, and up at the
   // top after the ride when none was)
+  // (on a loaded runner the press reached B late and the 6 s watch ended before the ride did -- the end is waited for on B's
+  // screen after the watch, not read from the window)
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().others.find((p) => p.id === id)?.y ?? 0, aId), { timeout: 20000 }).toBeGreaterThan(at.top - 0.5); // (up at the end)
   const drawnMid = seen.filter((s) => mid(s.y));
   expect(drawnMid.every((s) => mid(s.cabin)), `칸이 같이 움직임 ${JSON.stringify(drawnMid.map((s) => [s.y, s.cabin]))}`).toBe(true);
-  expect(drawnMid.length > 0 || seen.some((s) => s.cabin > at.top - 1.5), `칸이 올라감 ${JSON.stringify(seen.map((s) => s.cabin).filter((c, i, l) => l.indexOf(c) === i))}`).toBe(true);
-  expect(Math.max(...seen.map((s) => s.y))).toBeGreaterThan(at.top - 0.5); // (up at the end)
+  await expect.poll(async () => drawnMid.length > 0 || (await b.page.evaluate((S) => window.PlazaDebug().train().cabins[S], S)) > at.top - 1.5, { timeout: 20000 }).toBe(true); // (칸이 올라감: with them, or up at the top after the ride)
   await expectNoScriptError(a.page); await a.context.close(); await b.context.close();
 });
 // 7회차 3 (사용자 「구치소를 어느 정도 파고들어갈 수 있어」): walking straight at the 구치소's side walls stops outside its
