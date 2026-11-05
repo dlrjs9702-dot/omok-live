@@ -42,6 +42,11 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·최고 기록
   await expect(page.locator('#reflexResult')).toBeVisible();
   await expect(page.locator('.reflexScore')).toHaveText(/^\d+ms$/);
   await expect(page.locator('.reflexPaid')).toHaveText('최고 기록!');
+  // (v1.10.245 U3: the one result panel -- its pill, no old box, both buttons 50px or more)
+  await expect(page.locator('.hpPanel:visible')).toHaveCount(1); await expect(page.locator('.reflexPanel')).toHaveCount(0); await expect(page.locator('#reflexResult .hpPanelPill')).toHaveText('완성');
+  await page.waitForTimeout(500); // (the panel springs in from .92)
+  for (const b of await page.locator('#reflexResult .reflexActions button').all()) expect((await b.boundingBox()).height).toBeGreaterThanOrEqual(50);
+  if (process.env.SHOT_DIR) { await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/u3-reflex-${isMobile ? 'phone' : 'pc'}.png` }); }
   expect((await get(request, '/api/points', token)).data.balance).toBe(before);
 
   await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();

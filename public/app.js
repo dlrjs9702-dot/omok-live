@@ -1409,7 +1409,8 @@
     const effect = { win, icon: win ? '🏆' : '😏', title: win ? '화려한 승리!' : '이번 판은 패배…', message: resultCopy(outcome, game), duration: win ? 5000 : 4600 };
     clearTimeout(resultDelayTimer);
     if (legendWinOnBoard(game)) { resultDelayTimer = setTimeout(() => playResultEffect({ ...effect, banner: true }), reducedMotionActive() ? 0 : 1600); return; }
-    playResultEffect(effect);
+    // (v1.10.245 U3: where the board's result panel shows, it is the result -- no emoji card over it)
+    resultDelayTimer = setTimeout(() => { if ((boardOverlay.classList.contains('hpPanel') && boardOverlay.offsetParent && !boardOverlay.classList.contains('hidden')) || document.querySelector('#gostopResult.hpPanel:not(.hidden):not(.closed)')) return; playResultEffect(effect); }, 0);
   }
 
   // Only ever called after the server confirmed a payout.
@@ -1419,6 +1420,7 @@
 
   // A3 G1-7 결과 창 공통: the points this hand moved for me (the server's entry settlement) and [한 판 더]·[게임관으로]
   let nextAskedFor = null; // (the room and hand I asked to play again)
+  const handClock = { key: null, start: null, end: null }; // (v1.10.245 U3: the hand's length as seen here -- set by renderRoomHud)
   let resultCountedFor = null; // (C4 P3-3: the result whose score has counted up -- a card drawn again shows the end at once)
   function resultOverlayExtras(outcome) {
     const e = state.points?.entry;
@@ -1441,7 +1443,8 @@
     const g = state.game || {}; const moves = Number(g.moveCount);
     if (!boardOverlay.querySelector('.resultPoints') && Number.isFinite(moves) && moves > 0) { const big = document.createElement('span'); big.className = 'resultPoints resultMoves'; big.textContent = `${moves}수`; boardOverlay.append(big); }
     const others = Object.entries(state.players || {}).filter(([k, p]) => p && k !== String(seat)).map(([, p]) => p.label);
-    const secs = Number(g.finishedAt) && Number(g.startedAt) ? Math.max(0, Math.round((Number(g.finishedAt) - Number(g.startedAt)) / 1000)) : null;
+    const handKey = `${state.me?.roomCode}:${g.round || 1}`; if (handClock.key === handKey && handClock.start && !handClock.end) handClock.end = Date.now();
+    const secs = handClock.key === handKey && handClock.start && handClock.end ? Math.round((handClock.end - handClock.start) / 1000) : null; // (only when this screen saw the hand from its first move)
     const stats = document.createElement('span'); stats.className = 'hpStats';
     for (const [k, v] of [['수', Number.isFinite(moves) ? `${moves}` : '–'], ['시간', secs === null ? '–' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`], ['상대', others.length > 1 ? `${others.length}명` : others[0] || '–']]) {
       const cell = document.createElement('span'); const b = document.createElement('b'); b.textContent = v; const small = document.createElement('small'); small.textContent = k; cell.append(b, small); stats.append(cell); }
@@ -13371,7 +13374,7 @@
   // played the room's one line over the board -- the game's name, my turn's seconds big (the turn's line under it), the moves,
   // the bar my turn's time left (pink under 10 s); the old bar and status row are hidden then (styles.css)
   const OWN_PLATE_GAMES = new Set(['gostop', 'oldmaid', 'davinci', 'pictionary', 'liar', 'twentyquestions', 'pandemic']); // (their own seat plates and phases: G2·G3)
-  const roomHud = byId('roomHud'); let hudTurn = null; let hudMine = false; // { deadlineAt, total }: the turn's whole time, from when its deadline came
+  const roomHud = byId('roomHud'); let hudTurn = null; let hudMine = false; let hudBeep = null; // { deadlineAt, total }: the turn's whole time, from when its deadline came
   // (the big number off my turn: the game's own -- 오델로·윷·점과 상자 「2 : 2」, 맞고 my 「7점」)
   function hudScore(g) {
     const s = g?.scores; if (s && Number.isFinite(Number(s.black)) && Number.isFinite(Number(s.white))) return `${s.black} : ${s.white}`;
@@ -13386,6 +13389,7 @@
   }
   function renderRoomHud() {
     const on = document.body.classList.contains('roomPlaying') && Boolean(state); roomHud.hidden = !on; if (!on) { hudTurn = null; hudMine = false; return; }
+    { const k = `${state.me?.roomCode}:${state.game?.round || 1}`; if (handClock.key !== k) Object.assign(handClock, { key: k, start: !(Number(state.game?.moveCount) > 0) ? Date.now() : null, end: null }); }
     const timer = state.me?.actionTimer; const serverNow = Date.now() - actionTimerClockOffset;
     if (timer && hudTurn?.deadlineAt !== timer.deadlineAt) hudTurn = { deadlineAt: timer.deadlineAt, total: Math.max(1000, Number(timer.deadlineAt) - serverNow) }; else if (!timer) hudTurn = null;
     const left = timer ? Math.max(0, Number(timer.deadlineAt) - serverNow) : 0;
@@ -13396,6 +13400,8 @@
     const moves = state.game?.moveCount; const pill = byId('roomHudPill'); pill.textContent = STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
+    // (v1.10.245 U3: my turn's last 5 seconds a beep a second -- the last one higher)
+    const s = timer ? Math.ceil(left / 1000) : null; if (s !== null && s <= 5 && s > 0 && s !== hudBeep) window.RoomSound?.play('beep', s === 1); hudBeep = s;
     // (U2: the turn told once, the pill lit -- after the HUD is filled, so the banner is placed under its full height)
     const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) boardNote('내 차례예요'); hudMine = mine;
     const note = byId('boardNote'); if (!note.classList.contains('hidden')) placeBoardNote(note); // (the plates may settle after it shows)

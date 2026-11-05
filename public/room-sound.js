@@ -32,7 +32,7 @@
   // makes it and plays a silent buffer, sound on or off; the sounds themselves come after a server's answer)
   const UNLOCK = ['pointerdown', 'touchend', 'keydown'];
   function unlock() {
-    const a = ctx(); if (!a) return;
+    const a = ctx(); if (!a) return; try { unlockSfx?.(); } catch {}
     try { const s = a.createBufferSource(); s.buffer = a.createBuffer(1, 1, a.sampleRate); s.connect(a.destination); s.start(0); } catch {}
     if (a.state === 'running') UNLOCK.forEach((t) => document.removeEventListener(t, unlock, true));
   }
@@ -53,8 +53,12 @@
     flip: (i = 0) => { noise({ dur: 0.035, vol: 0.22, from: 4200, to: 1600 }); tone({ f: 880 + Math.min(i, 12) * 70, dur: 0.045, vol: 0.08, type: 'triangle' }); }, // (G-게임별 v187 오델로 착: a disc turned -- a little higher each)
     go: () => [67, 74].forEach((n, i) => tone({ f: NOTE(n), dur: 0.18, vol: 0.18, type: 'triangle', at: i * 0.1 })), // (고!: two notes up)
   };
+  SOUNDS.beep = (hi) => tone({ f: hi ? 1320 : 660, dur: 0.12, vol: 0.16 }); SOUNDS.best = () => [72, 76, 79, 84, 88, 91].forEach((n, i) => tone({ f: NOTE(n), dur: 0.25, vol: 0.13, type: 'triangle', at: i * 0.07 }));
+  // v1.10.245 U3 효과음 한 세트: 한판마당's sfx where a room sound is the same thing (its own 소리 setting is the same gc.settings.sound)
+  let sfx = null; let unlockSfx = null; import('/reflex/js/audio.js').then((m) => { sfx = m.sfx; unlockSfx = m.unlockAudio; }).catch(() => {});
+  const VIA = { stone: () => sfx.drop(), card: () => sfx.flip(), yut: () => sfx.hit(), bell: () => sfx.beep(true), beep: (hi) => sfx.beep(hi), win: () => sfx.win(), lose: () => sfx.lose(), end: () => sfx.draw(), best: () => sfx.best() };
   let played = []; // (tests: what was asked to sound, while on)
-  function play(kind, arg) { if (!isOn() || !SOUNDS[kind] || document.hidden) return false; played = [...played.slice(-19), kind]; try { SOUNDS[kind](arg); } catch {} return true; }
+  function play(kind, arg) { if (!isOn() || !SOUNDS[kind] || document.hidden) return false; played = [...played.slice(-19), kind]; try { (sfx && VIA[kind] ? VIA[kind] : SOUNDS[kind])(arg); } catch {} return true; }
   // (G-게임별 v187) when a move's sounds fall, in ms after it comes in -- the board's own motion (app.js drawOmokBoard 300 ms
   // set-down, drawConnect4Board 260 + 70 per row fall, drawOthelloBoard 260 ms drop and each flip edge-on at 200 + 66 + 110 n):
   // [[ms, kind, arg]]; reduced motion draws it at once, so one sound at once

@@ -19,7 +19,7 @@ test('win and loss results have distinct effects, persistent board styling and r
   assert.match(app, /lastResultEffectKey !== effectKey/);
   assert.match(app, /fillVictoryParticles\(\)/);
   assert.match(app, /boardOverlay\.classList\.add\(win \? 'resultWin' : 'resultLoss', 'hpPanel'\)/); // (v1.10.245 U3: the one result panel)
-  assert.match(css, /\.boardOverlay\.hpPanel\.resultWin,\.boardOverlay\.hpPanel\.resultLoss\{width:min\(420px/);
+  assert.match(css, /#boardOverlay\.hpPanel\.resultWin,#boardOverlay\.hpPanel\.resultLoss\{width:min\(420px/);
   assert.match(css, /\.resultEffect\.win/);
   assert.match(css, /\.resultEffect\.loss/);
   assert.match(css, /@keyframes confettiFall/);
