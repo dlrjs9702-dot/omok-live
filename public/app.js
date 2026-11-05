@@ -1444,7 +1444,8 @@
     if (!boardOverlay.querySelector('.resultPoints') && Number.isFinite(moves) && moves > 0) { const big = document.createElement('span'); big.className = 'resultPoints resultMoves'; big.textContent = `${moves}수`; boardOverlay.append(big); }
     const others = Object.entries(state.players || {}).filter(([k, p]) => p && k !== String(seat)).map(([, p]) => p.label);
     const handKey = `${state.me?.roomCode}:${g.round || 1}`; if (handClock.key === handKey && handClock.start && !handClock.end) handClock.end = Date.now();
-    const secs = handClock.key === handKey && handClock.start && handClock.end ? Math.round((handClock.end - handClock.start) / 1000) : null; // (only when this screen saw the hand from its first move)
+    const hc = state.handClock; // (v1.10.246 G1: the server's start and end of the hand; this screen's own only if it has none)
+    const secs = hc?.startedAt && hc?.finishedAt ? Math.max(0, Math.round((hc.finishedAt - hc.startedAt) / 1000)) : handClock.key === handKey && handClock.start && handClock.end ? Math.round((handClock.end - handClock.start) / 1000) : null;
     const stats = document.createElement('span'); stats.className = 'hpStats';
     for (const [k, v] of [['수', Number.isFinite(moves) ? `${moves}` : '–'], ['시간', secs === null ? '–' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`], ['상대', others.length > 1 ? `${others.length}명` : others[0] || '–']]) {
       const cell = document.createElement('span'); const b = document.createElement('b'); b.textContent = v; const small = document.createElement('small'); small.textContent = k; cell.append(b, small); stats.append(cell); }

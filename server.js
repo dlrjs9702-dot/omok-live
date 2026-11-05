@@ -2535,6 +2535,14 @@ function publicRoom(room) {
 // (seen live as a spectator's screen freezing on the state from before the players sat down).
 // Seeded from the clock so it keeps increasing across restarts.
 let roomViewSeq = Date.now() * 1000;
+// v1.10.246 G1 판 시간 (총괄 #392): a hand's start -- the first view of it playing -- and its end -- the first view of it over;
+// every view is built right after a change, so these are the moments the players saw (nothing private)
+function handClockOf(room, now = nowMs()) {
+  const g = room.game || {}; const key = `${room.gameType}:${g.round || 1}`; const c = room.handClock;
+  if (g.status === 'playing' && (!c || c.key !== key)) room.handClock = { key, startedAt: now, finishedAt: null };
+  else if (['finished', 'draw'].includes(g.status) && c?.key === key && !c.finishedAt) c.finishedAt = now;
+  const h = room.handClock; return h && h.key === key ? { startedAt: h.startedAt, finishedAt: h.finishedAt } : null;
+}
 
 function roomView(room, session) {
   const p = room.participants[session.token] || null;
@@ -2560,6 +2568,7 @@ function roomView(room, session) {
     stateSeq: roomViewSeq,
     game: gameView,
     turnTimer: publicTurnTimer(room), // A3 G1-4 차례 시간 고리: whose turn and until when, for every viewer (nothing private)
+    handClock: handClockOf(room), // (v1.10.246 G1: the result's 「시간」)
     me: {
       label: session.label,
       chatId: chatIdFor(session),
