@@ -3413,6 +3413,9 @@ body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;c
 #boardOverlay.hpPanel .resultActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:10px}
 #boardOverlay.hpPanel .resultActions .hpBtn{min-height:50px;padding:0 12px;font-size:16px;border:0;border-radius:var(--hp-r-lg);background:var(--hp-face);color:var(--hp-t1)}
 #boardOverlay.hpPanel .resultActions .hpBtn.go{background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
+/* (Codex #392: on a phone the panel is taller than the square board -- the board shows it past its edge, the panel smaller) */
+.canvasWrap:has(#boardOverlay.hpPanel:not(.hidden)){overflow:visible;z-index:5}
+@media (max-width:640px){#boardOverlay.hpPanel.resultWin,#boardOverlay.hpPanel.resultLoss{padding:14px 12px 12px;gap:4px;max-height:calc(100dvh - 16px);overflow:auto}#boardOverlay.hpPanel .resultPoints{font-size:44px!important}#boardOverlay.hpPanel strong{font-size:18px}#boardOverlay.hpPanel .hpStats>span{padding:6px 4px}#boardOverlay.hpPanel .resultActions{margin-top:6px}}
 @keyframes hpPanelIn{from{opacity:0;transform:translate(-50%,-50%) scale(.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @media (prefers-reduced-motion:reduce){#boardOverlay.hpPanel.resultWin,#boardOverlay.hpPanel.resultLoss{animation:none}}
 /* (사용자 결정 1: a legend win's effect first -- the panel in the middle after it, not the old small strip at the bottom) */

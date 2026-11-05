@@ -5,7 +5,7 @@
   const KEY = 'gc.settings';
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; } };
   const isOn = () => read().sound !== false;
-  function setOn(on) { try { localStorage.setItem(KEY, JSON.stringify({ ...read(), sound: Boolean(on) })); } catch {} }
+  function setOn(on) { try { localStorage.setItem(KEY, JSON.stringify({ ...read(), sound: Boolean(on) })); } catch {} try { storeSettings?.set('sound', Boolean(on)); } catch {} } // (U3: 한판마당's sfx reads its own copy)
   let ac = null; let out = null; let noiseBuf = null;
   function ctx() {
     if (!ac) {
@@ -56,6 +56,7 @@
   SOUNDS.beep = (hi) => tone({ f: hi ? 1320 : 660, dur: 0.12, vol: 0.16 }); SOUNDS.best = () => [72, 76, 79, 84, 88, 91].forEach((n, i) => tone({ f: NOTE(n), dur: 0.25, vol: 0.13, type: 'triangle', at: i * 0.07 }));
   // v1.10.245 U3 효과음 한 세트: 한판마당's sfx where a room sound is the same thing (its own 소리 setting is the same gc.settings.sound)
   let sfx = null; let unlockSfx = null; import('/reflex/js/audio.js').then((m) => { sfx = m.sfx; unlockSfx = m.unlockAudio; }).catch(() => {});
+  let storeSettings = null; import('/reflex/js/store.js').then((m) => { storeSettings = m.Settings; if (storeSettings.get('sound') !== isOn()) storeSettings.set('sound', isOn()); }).catch(() => {}); // (the same module audio.js reads)
   const VIA = { stone: () => sfx.drop(), card: () => sfx.flip(), yut: () => sfx.hit(), bell: () => sfx.beep(true), beep: (hi) => sfx.beep(hi), win: () => sfx.win(), lose: () => sfx.lose(), end: () => sfx.draw(), best: () => sfx.best() };
   let played = []; // (tests: what was asked to sound, while on)
   function play(kind, arg) { if (!isOn() || !SOUNDS[kind] || document.hidden) return false; played = [...played.slice(-19), kind]; try { (sfx && VIA[kind] ? VIA[kind] : SOUNDS[kind])(arg); } catch {} return true; }
