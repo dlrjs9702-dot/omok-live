@@ -39,6 +39,10 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect(page.locator('#roomView')).toBeVisible();
     const code = (await res.json()).state.me.roomCode;
     await expect(page.locator('.roomInfoArea')).toBeVisible(); // before the hand: as it was
+    // (v1.10.247 G2, 총괄: the room's points rule in 대국 정보 -- a phone's bar drops it)
+    await page.locator('#gameInfoDisclosure > summary').click(); await expect(page.locator('#pointRuleText')).not.toHaveText('');
+    if (process.env.SHOT_DIR && w < 640) { await page.locator('#gameInfoDisclosure').scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.SHOT_DIR}/rule-in-info-${w}x${h}.png` }); }
+    await page.locator('#gameInfoDisclosure > summary').click();
     // (v1.10.246 G1: out of a hand the top buttons are the HUD's round ones)
     for (const id of ['leaveRoomBtn', 'roomMenuBtn']) { const r = await page.locator(`.roomBar #${id}`).evaluate((b) => { const s = getComputedStyle(b); return { w: b.offsetWidth, h: b.offsetHeight, radius: s.borderRadius }; }); expect(r.w === 40 && r.h === 40 && r.radius === '50%', `${id} ${JSON.stringify(r)}`).toBe(true); }
     const white = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
@@ -170,10 +174,12 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       for (let i = 1; i < seats.length; i += 1) await call(i, '/api/rooms/join', { code: created.data.state.me.roomCode });
       for (let i = 0; i < seats.length; i += 1) await call(i, '/api/room/choose-role', { choice: seats[i] });
       if (typeof start === 'string') await call(0, `/api/room/${start}`, {}); else if (start) await start(call);
+      // (총괄 #397: 할리갈리's first-turn banner photographed -- the other flips first when it is their turn)
+      if (game === 'halligalli') { const st = (await (await request.get('/api/room', { headers: { 'X-Session-Token': host, 'X-Forwarded-For': ip() } })).json()).state; if (st.game.turn !== st.me.seat) await call(1, '/api/room/flip-halligalli', { expectedRevision: st.game.revision }); }
       await page.goto('/'); await expect(page.locator('body'), game).toHaveClass(/roomPlaying/, { timeout: 15_000 }); await page.waitForTimeout(600);
       // (검토 #391: the banner -- 「내 차례예요」 or a system line -- never over the HUD or a name plate while it shows)
       const banner = await page.evaluate(() => { const n = document.querySelector('#boardNote'); if (!n || n.classList.contains('hidden') || !n.getBoundingClientRect().height) return null; const b = n.getBoundingClientRect();
-        return [...document.querySelectorAll('#roomHud, #roomView :is(.player,.teamPlayer)')].filter((el) => el.getBoundingClientRect().height).filter((el) => { const r = el.getBoundingClientRect(); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map((el) => el.id || el.className).concat(b.height > 48 ? [`두 줄 ${Math.round(b.height)}px`] : []); }); /* (총괄 #396: and one line) */
+        return [...document.querySelectorAll('#roomHud, #roomView :is(.player,.teamPlayer,.halliPlayerName)')].filter((el) => el.getBoundingClientRect().height).filter((el) => { const r = el.getBoundingClientRect(); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map((el) => el.id || el.className).concat(b.height > 48 ? [`두 줄 ${Math.round(b.height)}px`] : []); }); /* (총괄 #396: and one line) */
       if (banner) { expect(banner, `${game} 배너가 가림`).toEqual([]); bannersSeen += 1; }
       await expect(page.locator('.roomBar'), game).toBeHidden(); await expect(page.locator('.boardCard > .statusRow'), game).toBeHidden();
       await expect(page.locator('.roomHud:visible'), game).toHaveCount(1);
@@ -181,10 +187,10 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       const lit = await page.locator(':is(.player,.teamPlayer).on:visible').count(); expect(lit, `${game} 켜진 이름표`).toBe(OWN_SEATS.has(game) ? 0 : 1);
       const board = await page.evaluate(() => { const b = document.querySelector('#canvasWrap'); window.scrollTo(0, 0); return b?.offsetParent && !b.classList.contains('cityBoard') ? Math.round(b.getBoundingClientRect().bottom) : null; });
       if (board !== null) expect(board, `${game} 판 아래`).toBeLessThanOrEqual(h + 1);
-      seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText() };
+      seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText(), plates: await page.locator('.davinciPlate.on:visible').count() };
       if (process.env.SHOT_DIR) {
         await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });
-        if (['omok', 'othello', 'gostop'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
+        if (['omok', 'othello', 'gostop', 'davinci', 'oldmaid', 'halligalli'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
           console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor)); await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
       }
       for (const t of tokens) await api(request, '/api/room/leave', t, {});
@@ -194,6 +200,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
     // (검토 #391: the turn line short -- no player names, 「내 차례 · 흑」)
     expect(seen.omok.hud).toContain('내 차례 · 흑'); expect(seen.omok.hud).not.toContain('관리자님');
     expect(seen.othello.hud).toContain('2 : 2'); expect(seen.dots.hud).toContain('상자 0 : 0'); // (G1: the counts in the HUD's pill)
+    expect(seen.davinci.hud).toMatch(/더미 \d+장/); expect(seen.davinci.plates).toBe(1); // (G2: 다빈치's pile in the HUD, its rack plates the turn pills -- one lit)
     expect(errors).toEqual([]);
   });
 }
@@ -222,5 +229,15 @@ test('오목 터치: 첫 탭은 미리보기, 같은 자리 두 번째 탭에 �
   expect(await moves()).toBe(0);
   await board.tap({ position: at });
   await expect.poll(moves).toBe(1);
+  // (v1.10.247 G2: a phone's 전송 keeps the chat box focused -- the keypad stays -- and empties it)
+  await page.locator('#roomHud #chatFloatBtn').tap(); await page.locator('#chatInput').fill('키패드 그대로');
+  await page.locator('#chatSendBtn').tap(); await expect(page.locator('#chatMessages')).toContainText('키패드 그대로');
+  await expect.poll(() => page.evaluate(() => [document.activeElement?.id, document.getElementById('chatInput').value])).toEqual(['chatInput', '']);
+  // (총괄: Enter pressed again and again while it sends -- the line goes once)
+  await page.locator('#chatInput').fill('한 번만'); for (let k = 0; k < 4; k += 1) await page.locator('#chatInput').press('Enter');
+  await expect(page.locator('#chatMessages .chatMessage.mine', { hasText: '한 번만' })).toHaveCount(1); await page.waitForTimeout(1200);
+  await expect(page.locator('#chatMessages .chatMessage.mine', { hasText: '한 번만' })).toHaveCount(1);
+  // (총괄: a phone's bar has no points line -- ☰'s top has it)
+  await page.evaluate(() => document.getElementById('roomMenuBtn').click()); /* (the chat panel open over the HUD on a phone) */ await expect(page.locator('#gameMenuDialog #menuPointLine')).toHaveText(/^내 포인트 [\d,]+P$/);
   await context.close();
 });

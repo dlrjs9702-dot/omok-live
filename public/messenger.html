@@ -6,10 +6,10 @@
   <meta name="referrer" content="no-referrer" />
   <meta name="theme-color" content="#fff6e3" />
   <title>아일랜드 메신저</title>
-  <!-- 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): its own page, no game code; installed as
-       a notice when shut (the app's sw.js since v1.10.210: the icon badge). One app, the island's (메신저 3절 2, v1.10.211):
-       its manifest, no install of its own -->
-  <link rel="manifest" href="/manifest.webmanifest" />
+  <!-- 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): its own page, no game code; a notice when
+       shut (the app's sw.js since v1.10.210: the icon badge). 다음 메신저 묶음 (docs/messenger-speed-photo-20261103.md 10절):
+       its own app again -- messenger.webmanifest (id /messenger, start /messenger.html), installed apart from the island's -->
+  <link rel="manifest" href="/messenger.webmanifest" />
   <link rel="icon" href="/icons/messenger-192.png" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -22,7 +22,9 @@
       <strong class="mTitle">아일랜드 메신저</strong>
       <span class="mTopActions">
         <label class="mThemePick">화면 <select id="mTheme" aria-label="화면 밝기"><option value="light">밝게</option><option value="dark">어둡게</option><option value="system">기기 설정 따르기</option></select></label>
+        <label id="mAlertPick" class="mThemePick hidden">알림 <select id="mAlert" aria-label="알림 방식"><option value="open">열어 둘 때만</option><option value="push">닫아도 받기</option><option value="off">안 받기</option></select></label>
         <button id="mPushBtn" type="button" class="secondary tiny hidden">알림 켜기</button>
+        <button id="mInstallBtn" type="button" class="secondary tiny hidden">앱으로 설치</button>
         <button id="mDevicesBtn" type="button" class="ghost tiny hidden" aria-expanded="false" aria-controls="mDevices">로그인된 기기</button>
         <button id="mLogoutBtn" type="button" class="ghost tiny hidden">로그아웃</button>
       </span>

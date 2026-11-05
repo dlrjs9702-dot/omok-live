@@ -34,7 +34,7 @@
     gen += 1; state = { rooms: [], people: [], me: '' }; current = null; last = 0; msgs = []; readsKey = '';
     clearBox(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); baseTitle = '아일랜드 메신저'; blink.seen(); document.title = baseTitle;
     app.classList.add('hidden'); loginForm.classList.remove('hidden'); byId('mLoginStatus').textContent = message;
-    for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices']) byId(id).classList.add('hidden');
+    for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices', 'mAlertPick']) byId(id).classList.add('hidden');
   }
   const fail = (err) => { if (err.status === 401) { accountToken.set(''); deviceToken.set(''); showLogin('다시 로그인해 주세요.'); } else if (err.status === 403) showLogin(err.message); else showToast(err.message, 4000); };
   const when = (at) => { const d = new Date(at); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); };
@@ -72,7 +72,8 @@
   // (Codex 검토 5차 P2-1: the list after this login's first one -- a room not in it before is new, its first line a notice too)
   let synced = -1;
   function popNew(was, now) {
-    if (!pushOn || !pushReg || !streamUp || !away() || Notification.permission !== 'granted') return; // (the stream down -- a few seconds reconnecting -- the server pushes this device: one notice, one sound)
+    // (10절: 열어 둘 때만 and 닫아도 받기 alike -- the page's own notice needs no push subscription, only the permission)
+    if (alertMode === 'off' || !pushReg || !streamUp || !away() || Notification.permission !== 'granted') return; // (the stream down -- a few seconds reconnecting -- a pushed device is pushed then: one notice, one sound)
     const seen = new Map(was.map((r) => [r.id, r.seq]));
     for (const r of now) {
       if (r.muted || !r.last || r.last.system || r.last.mine || !(r.seq > (seen.get(r.id) ?? 0))) continue;
@@ -483,6 +484,8 @@
     const room = current; if (!room || !await ask({ text: `「${room.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`, ok: '나가기', danger: true }) || current !== room) return;
     try { await api(`/api/messenger/rooms/${room.id}/leave`, {}); current = null; app.classList.remove('inRoom'); clearBox(); refresh(); } catch (err) { fail(err); }
   });
+  // (v1.10.247 G2: a touch on 보내기 leaves the focus in the box -- the keypad stays, as in a chat app; a mouse as before)
+  byId('messengerForm').querySelector('button[type="submit"]').addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') e.preventDefault(); });
   byId('messengerForm').addEventListener('submit', async (event) => {
     event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if ((!text && !tray.length) || !current) return;
     input.value = ''; grow(); const photos = tray; tray = []; drawTray(); queueSend(text, photos); // (v1.10.233: at once -- the answer confirms it)
@@ -530,43 +533,66 @@
   byId('mDropOthers').addEventListener('click', async () => { try { await api('/api/messenger/devices/drop', { all: true }); byId('mDevices').classList.add('hidden'); showToast('다른 기기의 로그인을 모두 끊었어요.'); } catch (err) { fail(err); } });
 
   // ---- ③ 알림 (Web Push, the app's worker) ----
-  let pushReg = null; let pushOn = false;
+  // 다음 메신저 묶음 (docs/messenger-speed-photo-20261103.md 10절) 알림 방식, 기기마다: 「열어 둘 때만」 (a PC's default) -- no push
+  // subscription, the page's own notice (popNew) while the window is open, minimised or behind another too, nothing once
+  // it is shut; 「닫아도 받기」 (a phone's default) -- the push subscription as before; 「안 받기」. The choice is the device's
+  // (server), the login kept as before. Either way the browser's permission is needed once (「알림 켜기」 asks).
+  let pushReg = null; let pushOn = false; let pushKey = null; let alertMode = 'off';
   const keyBytes = (b64) => { const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (b64.length % 4)) % 4)); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
+  const alertSel = byId('mAlert');
+  const granted = () => typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  const browserSub = () => pushReg?.pushManager?.getSubscription().catch(() => null) ?? Promise.resolve(null);
+  function drawAlert() { // the select as the device's way; 「알림 켜기」 while the browser has not allowed notices yet
+    alertSel.value = alertMode; byId('mAlertPick').classList.remove('hidden');
+    alertSel.querySelector('[value="push"]').disabled = !pushKey || !('PushManager' in window); // (no VAPID on the server, no push in this browser: only while open)
+    byId('mPushBtn').classList.toggle('hidden', alertMode === 'off' || granted());
+  }
   async function setupPush() {
-    const btn = byId('mPushBtn');
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !deviceToken.get()) return;
+    if (!('serviceWorker' in navigator) || !deviceToken.get()) return;
     try {
       // (메신저 3절 2) the app's own worker (sw.js, scope /) takes the push: an icon badge set by a worker reaches only the apps
       // inside its scope -- the old /messenger worker's never reached the island app's icon. Its subscription moves over.
       pushReg = await navigator.serviceWorker.register('/sw.js');
       const old = (await navigator.serviceWorker.getRegistrations()).find((r) => new URL(r.scope).pathname === '/messenger');
-      const { key, on } = await api('/api/messenger/push'); if (!key) return;
-      const granted = Notification.permission === 'granted';
+      const { key, on, mode, moved } = await api('/api/messenger/push'); pushKey = key || null; alertMode = mode || 'off';
       // (Codex 검토 5차 P2-2) the old one let go only once the new one and its record stand -- a failed move keeps the old,
-      // tried again next time
-      const moved = old ? await old.pushManager.getSubscription().catch(() => null) : null;
-      const kept = moved && on && granted && !(await subscribe(key).then(() => true, () => false));
-      if (old && !kept) { await moved?.unsubscribe().catch(() => {}); await old.unregister().catch(() => {}); }
-      // 「알림 끄기」 only when the server has it on and this device holds a subscription
-      pushOn = on && granted && Boolean(await pushReg.pushManager.getSubscription().catch(() => null));
-      btn.dataset.key = key; btn.textContent = pushOn ? '알림 끄기' : '알림 켜기'; btn.classList.remove('hidden');
+      // tried again next time. (10절: a device not on 닫아도 받기 wants no subscription at all -- the old one just goes)
+      const oldSub = old ? await old.pushManager.getSubscription().catch(() => null) : null;
+      const kept = oldSub && granted() && alertMode === 'push' && pushKey && !(await subscribe(pushKey).then(() => true, () => false));
+      if (old && !kept) { await oldSub?.unsubscribe().catch(() => {}); await old.unregister().catch(() => {}); }
+      if (alertMode !== 'push') { const sub = await browserSub(); if (sub) await sub.unsubscribe().catch(() => {}); } // (열어 둘 때만 / 안 받기: nothing left in the browser either)
+      else if (granted() && pushKey && !(await browserSub())) await subscribe(pushKey).catch(() => {}); // (닫아도 받기 and allowed, no subscription in this browser yet: made now)
+      pushOn = alertMode === 'push' && granted() && Boolean(await browserSub()); void on;
+      drawAlert();
+      if (moved) showToast('이 PC는 「열어 둘 때만」 알림으로 바뀌었어요. 창을 닫아도 받으려면 위 「알림」에서 「닫아도 받기」를 고르세요.', 7000);
     } catch {}
   }
-  async function pushOff() { const sub = await pushReg?.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); await api('/api/messenger/push/off', {}); pushOn = false; }
+  async function pushOff() { const sub = await browserSub(); if (sub) await sub.unsubscribe(); await api('/api/messenger/push/off', {}); pushOn = false; }
   async function subscribe(key) {
     await navigator.serviceWorker.ready;
     const sub = (await pushReg.pushManager.getSubscription()) || await pushReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
-    const j = sub.toJSON(); await api('/api/messenger/push', { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }); pushOn = true;
+    const j = sub.toJSON(); await api('/api/messenger/push', { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }); pushOn = true; // (the server: this device on 닫아도 받기)
   }
-  byId('mPushBtn').addEventListener('click', async () => {
-    const btn = byId('mPushBtn');
+  const ALERT_SAID = { open: '창을 열어 둔 동안만 새 메시지를 알려 드려요.', push: '창을 닫아도 새 메시지를 알려 드려요.', off: '이 기기의 알림을 껐어요.' };
+  async function askPermission() { if (granted()) return true; if (await Notification.requestPermission() === 'granted') return true; showToast('브라우저에서 알림이 막혀 있어요. 사이트 설정에서 허용해 주세요.', 5000); return false; }
+  async function chooseAlert(want) {
+    const before = alertMode;
     try {
-      if (btn.textContent === '알림 끄기') { await pushOff(); btn.textContent = '알림 켜기'; showToast('이 기기의 알림을 껐어요.'); return; }
-      if (await Notification.requestPermission() !== 'granted') { showToast('브라우저에서 알림이 막혀 있어요. 사이트 설정에서 허용해 주세요.', 5000); return; }
-      await subscribe(btn.dataset.key);
-      btn.textContent = '알림 끄기'; showToast('창을 닫아도 새 메시지를 알려 드려요.');
-    } catch (err) { showToast(err.message || '알림을 켜지 못했어요.', 4000); }
+      if (want !== 'off' && !(await askPermission())) { drawAlert(); return; }
+      if (want === 'push') await subscribe(pushKey); // (its answer sets the device to 닫아도 받기)
+      else { const sub = await browserSub(); if (sub) await sub.unsubscribe().catch(() => {}); await api('/api/messenger/alert', { mode: want }); pushOn = false; }
+      alertMode = want; drawAlert(); showToast(ALERT_SAID[want]);
+    } catch (err) { alertMode = before; drawAlert(); showToast(err.message || '알림 방식을 바꾸지 못했어요.', 4000); }
+  }
+  alertSel.addEventListener('change', () => chooseAlert(alertSel.value));
+  byId('mPushBtn').addEventListener('click', async () => { // (the browser's permission, then the device's way as chosen)
+    try { if (!(await askPermission())) return; if (alertMode === 'push') await subscribe(pushKey); drawAlert(); showToast(ALERT_SAID[alertMode]); } catch (err) { showToast(err.message || '알림을 켜지 못했어요.', 4000); }
   });
+  // (10절 ①) 메신저만 따로 설치: the browser's own install prompt, when it offers one (not inside an installed window)
+  let installPrompt = null; const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches);
+  window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; if (!standalone()) byId('mInstallBtn').classList.remove('hidden'); });
+  byId('mInstallBtn').addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; byId('mInstallBtn').classList.add('hidden'); });
+  window.addEventListener('appinstalled', () => byId('mInstallBtn').classList.add('hidden'));
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
   { const sel = byId('mTheme'); sel.value = window.MessengerTheme?.get() || 'light'; sel.addEventListener('change', () => window.MessengerTheme?.set(sel.value)); } // (어두운 화면: messenger-theme.js)
   // (the game's window opens this one with its login: a new login there reaches an open messenger too)

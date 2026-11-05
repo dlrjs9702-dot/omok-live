@@ -4,6 +4,7 @@ const R = require('../../public/plaza/island-roster');
 const Calendar = require('../../public/plaza/island-calendar');
 const Assets = require('../../public/plaza/island-assets');
 const Cast = require('../../public/plaza/island-cast');
+const Errands = require('../../lib/island-errands');
 
 // v1.10.215 주민 근무표 C1 (gamecenter-notes docs/resident-roster-c-plan-20261031.md): on a day the table puts 물결 at the 1st
 // floor (his 부탁 open: the e2e server's 정원사·어부 week) -- every rotating post in that day's islander, a walker at a counter
@@ -15,10 +16,16 @@ const Cast = require('../../public/plaza/island-cast');
 // work at the 출석대 -- its 「섬 안내」 under the keeper's name; 느티 at the 정자 every day; the 박물관's 관장 the day's)
 test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·부탁, 게시판 근무표, 관공서 쉬는 창구', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.SHOT_DIR ? 600000 : 300000);
-  const fits = (d) => R.rosterOf(d).posts.mall1 === 11 && R.walks(10, d) && new Date(`${d}T00:00:00Z`).getUTCDay() !== 0; // (물결 at the 1st floor, 꽃님 walking, a weekday)
+  // (CI #389·#392: the day's errands go by the pinned day too now (server errandDay) -- a day 꽃님 asks or is sought in one is skipped:
+  // her talk would open with the errand's offer, not her 부탁)
+  const fits = (d) => R.rosterOf(d).posts.mall1 === 11 && R.walks(10, d) && new Date(`${d}T00:00:00Z`).getUTCDay() !== 0 // (물결 at the 1st floor, 꽃님 walking, a weekday)
+    && !Errands.errandsOf(d, (n) => R.walks(n, d, true)).some((e) => e.from === 10 || e.to === 10);
   let day = Calendar.dayOf(Date.now()); for (let k = 0; k < 200 && !fits(day); k += 1) day = Calendar.addDays(day, 1);
   const r = R.rosterOf(day); const name = (n) => Cast.RESIDENTS[n].name;
   expect((await request.post('/api/test/roster', { data: { on: true, day } })).ok()).toBe(true);
+  // (local 3× run at 14:00 KST: the day's contest live -- 가락 at its tent, not walking (plaza-scene walksNow), and the walkers' list
+  // short of him for 30 minutes a day; the contest's clock moved past its tent for this test, back after)
+  expect((await request.post('/api/test/contest/clock', { data: { to: 'after' } })).ok()).toBe(true);
   const shot = async (page, what, wait = 1200) => { if (!process.env.SHOT_DIR) return; await page.waitForTimeout(wait); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-${what}.png` }); };
   const admin = await adminToken(request); const set = (what, mode) => request.post(`/api/admin/island/${what}`, { headers: { 'X-Session-Token': admin }, data: { mode } });
   try {
@@ -43,9 +50,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     expect(d.desks).toEqual(['civil', 'tax', 'bank'].map((k) => ({ desk: k, shown: k !== rest, sign: k === rest })));
     // C2: that day's walkers out (no one at a post), 꽃님 walking with her mark, 철이 at the station
     const walking = Array.from({ length: 27 }, (_, n) => n).filter((n) => R.walks(n, day));
-    // (CI #396 at 14:0x KST: the day's 섬 대회 has 가락 (17) at its tent, not walking -- out of the list while the tent stands)
-    const host = Cast.RESIDENTS.findIndex((x) => x.name === '가락'); const tentUp = () => page.evaluate(() => Boolean(window.PlazaDebug().contestTent?.()?.shown));
-    await expect.poll(async () => { const up = await tentUp(); return JSON.stringify((await page.evaluate(() => window.PlazaDebug().roster())).walking) === JSON.stringify(walking.filter((n) => !(up && n === host))); }, { timeout: 30000 }).toBe(true);
+    await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).walking, { timeout: 30000 }).toEqual(walking); /* (the contest clock past its tent above: #395 23a2f63d -- one fix kept, 0cc0cdeb's allowance taken out) */
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).quests.find((q) => q.id === 'questgranny'), { timeout: 30000 }).toEqual({ id: 'questgranny', post: null, walker: 10, shown: false });
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).marks.some((m) => m.n === 10), { timeout: 30000 }).toBe(true);
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).station, { timeout: 30000 }).toEqual({ shown: true, resident: 'cheori' });
@@ -74,9 +79,9 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await shot(page, 'attendance-guide', 600);
     await shut();
     // C2: 꽃님 walking -- her talk, her 부탁 in it (as at her garden)
-    // (CI #389 mobile-3, 2026-11-05 00:02 KST: the errands go by the real day, the table by `day` -- on a day 꽃님 also asks an
-    // errand her talk opens with its offer (「할게요!」), and her 부탁 shows only after it: taken, then her talk again)
-    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; const yes = dialog.getByRole('button', { name: '할게요!' }); if (await yes.isVisible()) { await yes.click(); await page.waitForTimeout(1200); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); } await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); /* (an islander's event may hold 꽃님 -- RESIDENT_BUSY: freed on every try; CI #392 three tries both projects) */ await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 90000 }).toBe(true); /* (CI #392: a try holds revealTalk's own up to 30 s -- 40 s gave CI one or two tries) */
+    // (CI #389·#392: no errand of hers on `day` (fits) -- her talk opens on its choices; an islander's event may hold her
+    // (RESIDENT_BUSY): let go before each try, as resident-talk does)
+    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 90000 }).toBe(true);
     await expect(page.locator('#plazaDialogTitle')).toContainText('꽃님');
     await shot(page, 'walk-kkotnim');
     await dialog.locator('[data-topic="quest"]').click(); await revealTalk(page);
@@ -130,7 +135,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     }
     await expectNoScriptError(page); await who.context.close();
   } finally {
-    await request.post('/api/test/roster', { data: { on: false } });
+    await request.post('/api/test/roster', { data: { on: false } }); await request.post('/api/test/contest/clock', { data: { to: 'reset' } });
     if (process.env.SHOT_DIR) { await set('time', 'auto'); await set('weather', 'auto'); }
   }
 });

@@ -47,5 +47,9 @@ test('도둑잡기 판: 자리 카드 비킴·이름표 얼굴·상대 부채꼴
   const noteAt = await a.page.evaluate(() => { const n = document.querySelector('.boardNote'); const seatBottom = Math.max(...[...document.querySelectorAll('#oldmaidSeats .oldmaidSeat')].map((e) => e.getBoundingClientRect().bottom)); return n && n.getBoundingClientRect().height ? n.getBoundingClientRect().top - seatBottom : null; });
   if (noteAt !== null) expect(noteAt).toBeGreaterThanOrEqual(0);
   if (process.env.ZZ_OUT) for (const [who, n] of [[a, 'me'], [b, 'other']]) { await who.page.waitForTimeout(700); await who.page.screenshot({ path: `${process.env.ZZ_OUT}/oldmaid-laststand-${isMobile ? 'phone' : 'pc'}-${n}.png` }); }
+  // (v1.10.247 G2: 「연출 효과」 in ☰, not over the table; 카드 섞기 the 한판마당 button)
+  await expect(a.page.locator('#oldmaidPanel #oldmaidEffectsToggle')).toHaveCount(0);
+  await a.page.locator('#roomMenuBtn').click(); await expect(a.page.locator('#gameMenuDialog #oldmaidEffectsToggle')).toBeVisible(); await a.page.locator('#gameMenuCloseBtn').click();
+  await expect(a.page.locator('#oldmaidShuffleBtn')).toHaveClass(/hpBtn/);
   for (const who of [a, b]) await who.context.close();
 });

@@ -38,9 +38,9 @@ self.addEventListener('notificationclick', event => {
   event.notification.close(); const room = event.notification.data?.room;
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const open = wins.find(w => new URL(w.url).pathname === '/messenger');
+    const open = wins.find(w => ['/messenger', '/messenger.html'].includes(new URL(w.url).pathname)); // (10절: the messenger app's own start_url too)
     if (open) { await open.focus(); open.postMessage({ room }); return; }
-    await self.clients.openWindow(`/messenger${room ? `?room=${encodeURIComponent(room)}` : ''}`);
+    await self.clients.openWindow(`/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`);
   })());
 });
 const pushKept = async () => Boolean(await self.registration.pushManager?.getSubscription().catch(() => null)); // (the cache off: a messenger notice still wanted keeps the worker)

@@ -1487,7 +1487,7 @@
     document.getElementById('gamehallView').classList.toggle('hidden', name !== 'gamehall'); // v1.10.73 게임관
     if (name !== 'gamehall' && document.getElementById('gameSheet').open) document.getElementById('gameSheet').close();
     if (name !== 'reflex') reflexGames?.stop();
-    if (name !== 'room') { document.body.classList.remove('tableGameRoom', 'tableGamePlaying', 'roomResult'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
+    if (name !== 'room') { document.getElementById('oldmaidEffectsRow')?.classList.add('hidden'); document.getElementById('menuPointLine')?.classList.add('hidden'); document.body.classList.remove('tableGameRoom', 'tableGamePlaying', 'roomResult'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
     syncPlaza(name);
   }
 
@@ -8675,7 +8675,7 @@
   function placeBoardNote(note) {
     const hud = byId('roomHud'); let top = '';
     if (!hud.hidden && !document.body.classList.contains('gostopStamping') && byId('oldmaidPanel').classList.contains('hidden')) { // (도둑잡기: its own spot under the seats and the fan, --oldmaidNoteTop)
-      const hb = hud.getBoundingClientRect().bottom; const near = [...document.querySelectorAll('#roomView :is(.player,.teamPlayer,#twentyProgress)')].map((el) => el.getBoundingClientRect()).filter((r) => r.height && r.top < hb + 200).map((r) => r.bottom);
+      const hb = hud.getBoundingClientRect().bottom; const near = [...document.querySelectorAll('#roomView :is(.player,.teamPlayer,#twentyProgress,.halliPlayerName)')].map((el) => el.getBoundingClientRect()).filter((r) => r.height && r.top < hb + 200).map((r) => r.bottom);
       top = `${Math.round(Math.max(hb, ...near) + 6 - originOf(note))}px`;
     }
     if (note.style.top !== top) note.style.top = top;
@@ -9043,6 +9043,7 @@
     const myPoints = state.me?.pointBalance;
     roomPointBadge.classList.toggle('hidden', myPoints === null || myPoints === undefined);
     if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
+    { const line = byId('menuPointLine'); line.textContent = roomPointBadge.textContent; line.classList.toggle('hidden', roomPointBadge.classList.contains('hidden')); } // (v1.10.247 G2: the same in ☰)
     // v1.7.3: the room's point rule beside my balance (server-provided, never computed here).
     const pointRule = state.points?.policy === 'entry' ? `내기 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P · 승자 ${100 - state.points.burnPercent}%`
       : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각`
@@ -9050,6 +9051,7 @@
       : state.points?.policy === 'friendly' ? '친선 · 포인트 없음' : state.points?.policy === 'none' ? '포인트·전적 없음' : ''; // (G-포인트)
     roomPointRule.classList.toggle('hidden', !pointRule);
     roomPointRule.textContent = pointRule;
+    byId('pointRuleRow').classList.toggle('hidden', !pointRule); byId('pointRuleText').textContent = pointRule; // (v1.10.247 G2: in 대국 정보 too -- a phone's bar drops it)
     roomPointRule.title = state.points?.policy === 'entry'
       ? `게임이 시작될 때 참가자마다 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P가 차감됩니다. 모인 포인트의 ${100 - state.points.burnPercent}%는 승자가 나눠 받고 ${state.points.burnPercent}%는 소각됩니다. 관전과 같은 판 재접속은 차감하지 않습니다.`
       : state.points?.policy === 'settlement' ? `정산으로 실제 이동하는 포인트의 ${state.points.burnPercent}%는 소각되고 나머지를 승자가 받습니다.` : '';
@@ -9275,6 +9277,7 @@
     // (G-게임별 다빈치·도둑잡기: its racks / seats round the table are the name plates too)
     document.body.classList.toggle('tableGamePlaying', (gostop || davinci || oldmaid || pictionary || liar || twenty || pandemic) && g.status !== 'selecting');
     document.body.classList.toggle('pandemicGame', pandemic);
+    byId('oldmaidEffectsRow').classList.toggle('hidden', !oldmaid); // (v1.10.247 G2: 도둑잡기's 연출 효과 in ☰, in its room only)
     document.body.classList.toggle('roomResult', ['finished', 'draw'].includes(g.status)); // (G-틀④: the bar stays thin over a result)
     setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     roomSounds(g); markWinners(g);
@@ -10928,6 +10931,7 @@
     halliTransferDetails.replaceChildren();
     halliTransferResult.classList.toggle('success', Boolean(g.lastBell?.correct));
     halliTransferResult.classList.toggle('penalty', Boolean(g.lastBell && !g.lastBell.correct));
+    halliTransferResult.classList.toggle('idle', !g.lastBell); // (v1.10.247 G2: the how-to box steps aside in a hand -- the banner told it)
     if (!g.lastBell) {
       halliLastBell.textContent = halliTouch.matches ? '종을 눌러 치세요.' : '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.'; // (a touch screen has no space bar)
     } else {
@@ -11236,9 +11240,9 @@
       group.className = `davinciHand pos-${positions.get(owner) || 'top'}${isTurn ? ' is-active-turn' : ''}${isTargetOwner ? ' is-target-owner' : ''}${isTargeting ? ' is-targeting' : ''}${owner === seat ? ' is-my-hand' : ''}`;
       group.dataset.owner = owner;
       const ownerLabel = state.players[owner]?.label || owner + '번';
-      const label = document.createElement('strong');
+      const label = document.createElement('strong'); label.className = `davinciPlate${isTurn ? ' on' : ''}`; // (v1.10.247 G2: the turn pill)
       const hiddenLeft = tiles.filter(tile => !tile.revealed).length;
-      label.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}${g.status === 'playing' ? ` · 남은 비공개 ${hiddenLeft}장` : ''}${hiddenLeft === 0 && g.status !== 'selecting' ? ' · 탈락' : ''}`;
+      { const who = document.createElement('span'); who.className = 'davinciPlateName'; who.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}`; const more = document.createElement('small'); more.textContent = `${g.status === 'playing' ? `비공개 ${hiddenLeft}장` : ''}${hiddenLeft === 0 && g.status !== 'selecting' ? ' · 탈락' : ''}`; label.append(who, more); }
       { const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true'); const look = state.players[owner]?.face; if (look?.skin) f.style.setProperty('--skin', look.skin); if (look?.hair) f.style.setProperty('--hair', look.hair); label.prepend(f); } // (G-게임별: the rack's label the name plate, with the island face)
       group.setAttribute('aria-label', `${ownerLabel}의 타일${isTargeting ? ' · 현재 추리 중' : ''}${isTargetOwner ? ' · 현재 추리 대상' : ''}`);
       group.append(label);
@@ -12849,8 +12853,8 @@
   async function sendLobbyChat(event) {
     event.preventDefault();
     const text = lobbyChatInput.value.trim();
-    if (!text) return;
-    lobbyChatInput.disabled = true;
+    if (!text || lobbyChatInput.readOnly) return;
+    const had = document.activeElement === lobbyChatInput; lobbyChatInput.readOnly = true; // (v1.10.247 G2: read-only, not disabled -- the focus and a phone's keypad stay)
     try {
       const r = await api('/api/lobby/chat', {
         method: 'POST',
@@ -12861,8 +12865,8 @@
     } catch (err) {
       showToast(err.message, 3500);
     } finally {
-      lobbyChatInput.disabled = false;
-      lobbyChatInput.focus();
+      lobbyChatInput.readOnly = false;
+      if (had || !isMobileLayout()) lobbyChatInput.focus();
     }
   }
 
@@ -12876,8 +12880,8 @@
     event.preventDefault();
     if (chatLockMessage()) return;
     const text = chatInput.value.trim();
-    if (!text) return;
-    chatInput.disabled = true;
+    if (!text || chatInput.readOnly) return;
+    const had = document.activeElement === chatInput; chatInput.readOnly = true; // (v1.10.247 G2: read-only, not disabled -- the focus and a phone's keypad stay)
     try {
       await api('/api/room/chat', {
         method: 'POST',
@@ -12887,8 +12891,8 @@
     } catch (err) {
       showToast(err.message, 3500);
     } finally {
-      chatInput.disabled = false;
-      chatInput.focus();
+      chatInput.readOnly = false;
+      if (had || !isMobileLayout()) chatInput.focus();
     }
   }
 
@@ -13185,6 +13189,8 @@
     if (!document.hidden) loadPresence();
   });
   lobbyChatForm.addEventListener('submit', sendLobbyChat);
+  // (v1.10.247 G2: a touch on 보내기 · 전송 leaves the focus in the box -- the keypad stays; a mouse as before)
+  for (const b of [lobbyChatForm.querySelector('button[type="submit"]'), chatSendBtn]) b?.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') e.preventDefault(); });
   chatForm.addEventListener('submit', sendChat);
   baseballSecretForm.addEventListener('submit', (event) => sendBaseballAction(event, 'set-secret', baseballSecretInput, 'secret'));
   baseballGuessForm.addEventListener('submit', (event) => sendBaseballAction(event, 'guess', baseballGuessInput, 'guess'));
@@ -13399,15 +13405,15 @@
     byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : otherLeft !== null ? String(Math.ceil(otherLeft / 1000)) : hudScore(state.game);
     byId('roomHudSub').textContent = hudTurnLine(); // (U2 검토 #391: short -- the names are on the plates)
     const moves = state.game?.moveCount; const sc = state.game?.scores; const unit = { othello: '', dots: '상자 ', yut: '완주 ' }[state.gameType]; const counted = unit !== undefined && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white));
-    const pill = byId('roomHudPill'); pill.textContent = counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
+    const pill = byId('roomHudPill'); pill.textContent = state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
     // (v1.10.245 U3: my turn's last 5 seconds a beep a second -- the last one higher)
     const s = timer ? Math.ceil(left / 1000) : null; if (s !== null && s <= 5 && s > 0 && s !== hudBeep) window.RoomSound?.play('beep', s === 1); hudBeep = s;
     // (U2: the turn told once, the pill lit -- after the HUD is filled, so the banner is placed under its full height)
     // (G1: 사목's how-to once on this device, with the first 「내 차례예요」 -- off the board)
-    let howTo = ''; if (state.gameType === 'connect4') { try { if (localStorage.getItem('gc.howTo.connect4') !== '1') { howTo = ' · 열을 눌러 두어요'; } } catch {} }
-    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) { boardNote(`내 차례예요${howTo}`); if (howTo) try { localStorage.setItem('gc.howTo.connect4', '1'); } catch {} } hudMine = mine;
+    const HOWTO = { connect4: '열을 눌러 두어요', halligalli: '과일이 5개면 종을 쳐요' }; let howTo = ''; if (HOWTO[state.gameType]) { try { if (localStorage.getItem(`gc.howTo.${state.gameType}`) !== '1') howTo = ` · ${HOWTO[state.gameType]}`; } catch {} } /* (v1.10.247 G2: 할리갈리 too) */
+    const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) { boardNote(`내 차례예요${howTo}`); if (howTo) try { localStorage.setItem(`gc.howTo.${state.gameType}`, '1'); } catch {} } hudMine = mine;
     const note = byId('boardNote'); if (!note.classList.contains('hidden')) placeBoardNote(note); // (the plates may settle after it shows)
   }
 

@@ -16,6 +16,7 @@ test('팬데믹 판: 자리 카드 비킴·지도 위 얼굴 이름표·상태 �
   const a = people[0]; await a.page.reload(); await expect(a.page.locator('#pandemicStartBtn')).toBeVisible({ timeout: 20000 });
   if (isMobile) { // (a phone: 난이도 · 팬데믹 시작 at the thumb, within the screen)
     const box = await a.page.locator('#pandemicStartBtn').boundingBox(); expect(box.y + box.height).toBeLessThanOrEqual(a.page.viewportSize().height + 1);
+    if (process.env.SHOT_DIR) await a.page.screenshot({ path: `${process.env.SHOT_DIR}/room-before-start-phone.png` }); /* (v1.10.246: the top bar in one row before a hand) */
   }
   await a.page.locator('#pandemicStartBtn').click();
   await expect(a.page.locator('#pandemicMap .pdCity').first()).toBeVisible({ timeout: 15000 });
