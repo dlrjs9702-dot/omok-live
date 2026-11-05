@@ -202,7 +202,8 @@ test('스무고개: 질문 차례에 새로고침해도 입력 단계와 원래 
 
   await refresh(challenger, '#twentyPanel');
   await expect(challenger.page.locator('#twentyQuestionForm')).toBeVisible();
-  await expect(challenger.page.locator('#roomHud.mine #roomHudBig')).toHaveText(/^\d+$/); // (v1.10.244 U2: my clock is the HUD's big number)
+  await expect(challenger.page.locator('#roomHud.mine #roomHudBig')).toHaveText('0/20'); // (v1.10.248 G3: 스무고개's big line 「n/20」 -- my clock the HUD's bar)
+  await expect.poll(() => challenger.page.locator('#roomHudFill').evaluate((el) => parseFloat(el.style.width) || 0)).toBeGreaterThan(0);
   state = await roomState(request, challenger.token);
   expect(state.game.phase).toBe('asking');
   // Same server deadline, not a fresh 60 seconds from the reconnect.
