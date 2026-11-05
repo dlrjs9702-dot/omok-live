@@ -181,7 +181,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       const lit = await page.locator(':is(.player,.teamPlayer).on:visible').count(); expect(lit, `${game} 켜진 이름표`).toBe(OWN_SEATS.has(game) ? 0 : 1);
       const board = await page.evaluate(() => { const b = document.querySelector('#canvasWrap'); window.scrollTo(0, 0); return b?.offsetParent && !b.classList.contains('cityBoard') ? Math.round(b.getBoundingClientRect().bottom) : null; });
       if (board !== null) expect(board, `${game} 판 아래`).toBeLessThanOrEqual(h + 1);
-      seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText() };
+      seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText(), plates: await page.locator('.davinciPlate.on:visible').count() };
       if (process.env.SHOT_DIR) {
         await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });
         if (['omok', 'othello', 'gostop'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
@@ -194,6 +194,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
     // (검토 #391: the turn line short -- no player names, 「내 차례 · 흑」)
     expect(seen.omok.hud).toContain('내 차례 · 흑'); expect(seen.omok.hud).not.toContain('관리자님');
     expect(seen.othello.hud).toContain('2 : 2'); expect(seen.dots.hud).toContain('상자 0 : 0'); // (G1: the counts in the HUD's pill)
+    expect(seen.davinci.hud).toMatch(/더미 \d+장/); expect(seen.davinci.plates).toBe(1); // (G2: 다빈치's pile in the HUD, its rack plates the turn pills -- one lit)
     expect(errors).toEqual([]);
   });
 }

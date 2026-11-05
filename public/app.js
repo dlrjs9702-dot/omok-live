@@ -11236,9 +11236,9 @@
       group.className = `davinciHand pos-${positions.get(owner) || 'top'}${isTurn ? ' is-active-turn' : ''}${isTargetOwner ? ' is-target-owner' : ''}${isTargeting ? ' is-targeting' : ''}${owner === seat ? ' is-my-hand' : ''}`;
       group.dataset.owner = owner;
       const ownerLabel = state.players[owner]?.label || owner + '번';
-      const label = document.createElement('strong');
+      const label = document.createElement('strong'); label.className = `davinciPlate${isTurn ? ' on' : ''}`; // (v1.10.247 G2: the turn pill)
       const hiddenLeft = tiles.filter(tile => !tile.revealed).length;
-      label.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}${g.status === 'playing' ? ` · 남은 비공개 ${hiddenLeft}장` : ''}${hiddenLeft === 0 && g.status !== 'selecting' ? ' · 탈락' : ''}`;
+      { const who = document.createElement('span'); who.className = 'davinciPlateName'; who.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}`; const more = document.createElement('small'); more.textContent = `${g.status === 'playing' ? `비공개 ${hiddenLeft}장` : ''}${hiddenLeft === 0 && g.status !== 'selecting' ? ' · 탈락' : ''}`; label.append(who, more); }
       { const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true'); const look = state.players[owner]?.face; if (look?.skin) f.style.setProperty('--skin', look.skin); if (look?.hair) f.style.setProperty('--hair', look.hair); label.prepend(f); } // (G-게임별: the rack's label the name plate, with the island face)
       group.setAttribute('aria-label', `${ownerLabel}의 타일${isTargeting ? ' · 현재 추리 중' : ''}${isTargetOwner ? ' · 현재 추리 대상' : ''}`);
       group.append(label);
@@ -13401,7 +13401,7 @@
     byId('roomHudBig').textContent = timer ? String(Math.ceil(left / 1000)) : otherLeft !== null ? String(Math.ceil(otherLeft / 1000)) : hudScore(state.game);
     byId('roomHudSub').textContent = hudTurnLine(); // (U2 검토 #391: short -- the names are on the plates)
     const moves = state.game?.moveCount; const sc = state.game?.scores; const unit = { othello: '', dots: '상자 ', yut: '완주 ' }[state.gameType]; const counted = unit !== undefined && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white));
-    const pill = byId('roomHudPill'); pill.textContent = counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
+    const pill = byId('roomHudPill'); pill.textContent = state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''; /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
     // (v1.10.245 U3: my turn's last 5 seconds a beep a second -- the last one higher)
