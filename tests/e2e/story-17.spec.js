@@ -23,9 +23,13 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
     const close = async () => { await expect.poll(async () => { if (await dialog.isVisible()) await page.keyboard.press('Escape'); await page.waitForTimeout(400); return dialog.isVisible(); }, { timeout: 20000 }).toBe(false); };
     // (a day's errand asked first: 「다음에요」 -- only a note on screen; CI mobile-2 counted a hidden one left from before and waited
     // a minute for a button not there)
+    // (CI 흔들림 묶음: the note looked at once, while the window was still being drawn, missed an offer and the next choice waited a
+    // minute -- the offer's own 「다음에요」 counts too, and the choices are watched a moment for it)
     const skipErrand = async () => {
-      if (!(await page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).first().isVisible().catch(() => false))) return;
-      const later = choices.filter({ hasText: '다음에요' }); await later.waitFor({ state: 'visible', timeout: 20000 }).then(() => later.click(), () => {}); await lines();
+      const later = choices.filter({ hasText: '다음에요' }); const note = page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).first();
+      let offered = false; for (let k = 0; k < 6 && !offered; k += 1) { offered = await later.isVisible().catch(() => false) || await note.isVisible().catch(() => false); if (!offered) await page.waitForTimeout(500); }
+      if (!offered) return;
+      await later.waitFor({ state: 'visible', timeout: 20000 }).then(() => later.click(), () => {}); await lines();
     };
     const space = () => page.evaluate(() => window.PlazaDebug().space);
     // talking to them: a walker where it walks; 김우성 before his desk in the 구치소; 마루 at the gate -- the last two by 「이야기해요」
