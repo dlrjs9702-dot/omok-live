@@ -192,6 +192,10 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       // (v1.10.248 G3 파티·추리: the game's own figure big in the HUD, the inputs one 50px line, 숫자야구's pad, 그림's tool pills,
       // 팬데믹's seats the turn pills, 할리갈리's three piles round the bell -- none over another or the bell)
       const big = page.locator('#roomHudBig'); const st = await roomNow();
+      // (총괄 #398: the big line never under the pill, nor cut -- a phone's 「0/20」 read 「0/2C」 under 「라운드 1/1」)
+      const hudFit = await page.evaluate(() => { const b = document.getElementById('roomHudBig'); const p = document.getElementById('roomHudPill'); const r1 = b.getBoundingClientRect(); const r2 = p.getBoundingClientRect();
+        return { over: Boolean(r2.width) && r1.left < r2.right && r1.right > r2.left && r1.top < r2.bottom && r1.bottom > r2.top, cut: b.scrollWidth > b.clientWidth + 1 }; });
+      expect(hudFit, `${game} HUD 큰 글·알약`).toEqual({ over: false, cut: false });
       if (game === 'twentyquestions') await expect(big).toHaveText('0/20');
       if (game === 'liar') await expect(big).toHaveText(st.game.role === 'liar' ? '?' : st.game.myWord);
       if (game === 'baseball') {
@@ -219,7 +223,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
           console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor));
           // (G3, 총괄 #397: on the felt every word reads light in the light theme too -- its luminance over half)
           const feltDark = await page.evaluate(() => { const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) || [0, 0, 0]; const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
-            return [...document.querySelectorAll('#roomView :is(.gostopFelt .gostopSeatHead strong, .davinciPlate, #oldmaidShuffleBtn, .oldmaidMyHeader h3, .oldmaidMyHeader .turnRing b)')].filter((el) => el.getBoundingClientRect().height).filter((el) => lum(getComputedStyle(el).color) < 0.5).map((el) => el.id || el.className || el.tagName); });
+            return [...document.querySelectorAll('#roomView :is(.gostopFelt .gostopSeatHead strong, .davinciPlate, #oldmaidShuffleBtn, .oldmaidMyHeader h3, .oldmaidMyHeader .turnRing b, #twentyPanel :is(.twentyHeading, h4, .twentyScore, .twentyPrivate, .twentyEmpty), #pictionaryPanel :is(.pictionaryScoreRow, .pictionaryWidthLabel, .pictionaryHead, .hpPill))')] /* (총괄 #398: 스무고개's chalkboard, 그림's board too) */.filter((el) => el.getBoundingClientRect().height).filter((el) => lum(getComputedStyle(el).color) < 0.5).map((el) => el.id || el.className || el.tagName); });
           expect(feltDark, `${game} 펠트 위 어두운 글자`).toEqual([]);
           await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
       }

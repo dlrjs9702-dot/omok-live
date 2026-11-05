@@ -1540,6 +1540,12 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .pictionaryToolbar input.pictionaryColorMore::-webkit-color-swatch{border:0}
 :root[data-theme="light"] .pictionaryWidthLabel{color:var(--hp-t2)}
 :root[data-theme="light"] body.roomPlaying.partyGame #liarRoleBox{border:0;background:var(--hp-face);background-image:none;color:var(--hp-t1);box-shadow:none}
+:root[data-theme="light"] body.roomPlaying #roomView :is(#twentyPanel,#pictionaryPanel){color:var(--felt-t1)}
+:root[data-theme="light"] body.roomPlaying #roomView #twentyPanel :is(.twentyHeading,h4,.twentyGuessLog p){color:var(--felt-t1)}
+:root[data-theme="light"] body.roomPlaying #roomView #twentyPanel .twentyEmpty,:root[data-theme="light"] body.roomPlaying #roomView #pictionaryPanel .pictionaryRuleNote{color:var(--felt-t2)}
+:root[data-theme="light"] body.roomPlaying #roomView #twentyPanel .twentyPrivate{background:var(--felt-face);color:var(--felt-t1);border-color:var(--hp-line)}
+:root[data-theme="light"] body.roomPlaying #roomView :is(#twentyPanel .twentyScore,#pictionaryPanel .pictionaryScoreRow){background:var(--felt-face);color:var(--felt-t1)}
+:root[data-theme="light"] .hpPill:disabled{color:var(--hp-t1)}
 :root[data-theme="light"] body.roomPlaying .baseballPanel .baseballHistoryRow{border:0;background:var(--hp-face);color:var(--hp-t1)}
 :root[data-theme="light"] .hpSheetForm{background:var(--hp-bg2);color:var(--hp-t1)}
 :root[data-theme="light"] .hpSheetLabel{color:var(--hp-t2)}

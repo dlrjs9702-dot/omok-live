@@ -3403,7 +3403,16 @@ body.roomPlaying.partyGame #pictionaryDrawTools{display:flex;flex-wrap:wrap;alig
 .pictionaryWidthLabel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--hp-t2)}.pictionaryWidthLabel input{width:88px}
 body.roomPlaying.partyGame #pictionaryDrawTools>.pictionaryWordBox{display:none}
 body.roomPlaying.partyGame #liarRoleBox{min-height:40px;display:flex;align-items:center;padding:6px 14px;border:0;border-radius:12px;background:var(--hp-face);background-image:none;color:var(--hp-t1);font-size:14px;font-weight:800;box-shadow:none;transform:none}
-.roomHudBig.word{font-size:26px;letter-spacing:-.02em;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.roomHudBig.word{font-size:26px;letter-spacing:-.02em}
+.roomHudBig{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* (총괄 #398: never under the pill) */
+@media (max-width:640px){.roomHudBig{font-size:26px;min-height:28px}.roomHudBig.word{font-size:20px}.roomHudRight{gap:4px}.roomHudRight>button{width:36px;height:36px;min-height:36px}.roomHudRight>.hpPill{padding:0 9px;font-size:12px}} /* (a phone's HUD: the big line room in the middle) */
+/* (총괄 #398: the chalkboard and the drawing board dark in either theme -- their words light, as on the felt) */
+body.roomPlaying #roomView :is(#twentyPanel,#pictionaryPanel){color:var(--felt-t1)}
+body.roomPlaying #roomView #twentyPanel :is(.twentyHeading,h4,.twentyGuessLog p){color:var(--felt-t1)}
+body.roomPlaying #roomView #twentyPanel .twentyEmpty,body.roomPlaying #roomView #pictionaryPanel .pictionaryRuleNote{color:var(--felt-t2)}
+body.roomPlaying #roomView #twentyPanel .twentyPrivate{background:var(--felt-face);color:var(--felt-t1);border-color:var(--hp-line)}
+body.roomPlaying #roomView :is(#twentyPanel .twentyScore,#pictionaryPanel .pictionaryScoreRow){background:var(--felt-face);color:var(--felt-t1)}
+.hpPill:disabled{opacity:.45;cursor:default;color:var(--hp-t1)}
 /* 숫자야구: the guesses a record table (newest at the foot), the pad 54px under the input */
 body.roomPlaying .baseballPanel :is(#baseballReady,#baseballMySecret,.baseballHistoryHead small){display:none}
 body.roomPlaying .baseballPanel #baseballHistory{display:flex;flex-direction:column-reverse;gap:6px}
@@ -3443,7 +3452,7 @@ body.roomPlaying .halliTransferResult.idle{display:none}
 body.roomPlaying #halliFlipBtn.hpBtn{min-height:52px;padding:0 28px;font-size:16px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 body.roomPlaying #halliFlipBtn.hpBtn:disabled{opacity:.45}
 /* v1.10.247 G2 맞고: each seat's head (face · name · 점수 · 고) the turn pill too -- the turn's lit */
-#roomView .gostopFelt,#roomView #davinciHands,#roomView #oldmaidPanel,#roomView #pandemicPanel,#roomView #halliPanel{--felt-face:rgba(3,10,6,.6);--felt-face-on:rgba(255,255,255,.18);--felt-t1:#F4F5FC;--felt-t2:rgba(244,245,252,.7);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.62);--hp-t3:rgba(255,255,255,.42);--hp-face:rgba(255,255,255,.1);--hp-face-on:rgba(255,255,255,.2);--hp-btn:rgba(255,255,255,.1);--hp-line:rgba(255,255,255,.12);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A} /* (G3, 총괄 #397: the felt dark in either theme -- the hp set too, for its buttons and words) */ /* (#397: the felt is dark in both themes -- its plates too) */
+#roomView .gostopFelt,#roomView #davinciHands,#roomView #oldmaidPanel,#roomView #pandemicPanel,#roomView #halliPanel,#roomView #twentyPanel,#roomView #pictionaryPanel{--felt-face:rgba(3,10,6,.6);--felt-face-on:rgba(255,255,255,.18);--felt-t1:#F4F5FC;--felt-t2:rgba(244,245,252,.7);--hp-t1:#F4F5FC;--hp-t2:rgba(255,255,255,.62);--hp-t3:rgba(255,255,255,.42);--hp-face:rgba(255,255,255,.1);--hp-face-on:rgba(255,255,255,.2);--hp-btn:rgba(255,255,255,.1);--hp-glass:rgba(11,12,26,.5);--hp-line:rgba(255,255,255,.12);--hp-gold:#FFD34D;--hp-win:#3DDC97;--hp-loss:#FF5A79;--hp-blue:#5B7BFF;--hp-on-c1:#0B0C1A} /* (G3, 총괄 #397: the felt dark in either theme -- the hp set too, for its buttons and words) */ /* (#397: the felt is dark in both themes -- its plates too) */
 body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:12px;background:var(--felt-face);color:var(--felt-t1);width:max-content;max-width:100%}
 body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead strong{color:var(--felt-t1)}
 body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeat.isTurn .gostopSeatHead{background:var(--felt-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
