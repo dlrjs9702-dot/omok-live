@@ -3378,6 +3378,12 @@ body.roomPlaying .seatNum{display:none}
 body.roomPlaying .bingoPanel .bingoInfoGrid{display:none}
 body.roomPlaying #yutThrowBtn.hpBtn{min-height:56px;padding:0 28px;font-size:17px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 body.roomPlaying .yutLastThrow{color:var(--hp-t1);font-weight:800}
+/* v1.10.247 G2 도둑잡기 카드 한 벌 (A3 G3-5): the 카드놀이 deck's look (reflex/js/games/cards.js drawCard/drawBack) -- white
+   face, #E0334F / #1B1E33, bold sans (not Georgia), the back a blue gradient in a white rim; plain classes, so a skin's own still wins */
+.oldmaidFace{background:#FBFBFE;border:1px solid rgba(20,24,60,.2);color:#1B1E33;border-radius:7px;font-family:system-ui,"Segoe UI Symbol","Apple Symbols",sans-serif;font-weight:800}
+.oldmaidFace.red{color:#E0334F}
+.oldmaidBack{border:2px solid #F4F5FC;border-radius:7px;background:linear-gradient(135deg,#3B4BD8,#1E2A8A)}
+.oldmaidBack::after{border-color:rgba(255,255,255,.22)}
 /* v1.10.247 G2 할리갈리: the turn/time strip off in a hand (the HUD has both), the how-to box too (told once as a banner), the flip the go button */
 body.roomPlaying #halliStatus{display:none}
 body.roomPlaying .halliTransferResult.idle{display:none}
