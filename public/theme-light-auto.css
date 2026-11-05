@@ -890,21 +890,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .bootBar{background:#f7efe1;border:1px solid #e2d4bd}
 :root[data-theme="light"] .bootBar span{background:#23806f}
 :root[data-theme="light"] .lostRequestLine{color:#33281d}
-:root[data-theme="light"] .minesBar{color:#5e4d3b}
-:root[data-theme="light"] .minesBoard{background:#f3e9d8}
-:root[data-theme="light"] .minesCell{border:0;background:#b39c7c;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);color:#fffaf1}
-:root[data-theme="light"] .minesCell:hover{background:#7b8ba3}
-:root[data-theme="light"] .minesCell.open{background:#4a3b2c;box-shadow:none}
-:root[data-theme="light"] .minesCell.mine{background:#fecaca}
-:root[data-theme="light"] .minesCell.boom{background:#ef4444}
-:root[data-theme="light"] .minesCell.n1{color:#2563eb}
-:root[data-theme="light"] .minesCell.n2{color:#15803d}
-:root[data-theme="light"] .minesCell.n3{color:#dc2626}
-:root[data-theme="light"] .minesCell.n4{color:#1e3a8a}
-:root[data-theme="light"] .minesCell.n5{color:#7f1d1d}
-:root[data-theme="light"] .minesCell.n6{color:#0f766e}
-:root[data-theme="light"] .minesCell.n7{color:#fffaf1}
-:root[data-theme="light"] .minesCell.n8{color:#6b7280}
 :root[data-theme="light"] .questLine{border:1px solid var(--isle-line);background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 4px 12px rgba(74,56,40,.18)}
 :root[data-theme="light"] .questLine b{color:var(--isle-soft)}
 :root[data-theme="light"] .questLine small{color:var(--isle-soft)}
@@ -1402,7 +1387,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab,.skinChip){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionTab[aria-selected="true"],.skinChip.selected){background:#f0dcb6;color:var(--isle-ink);border-color:var(--isle-tag)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow,.achGroup,.gameGuideCase,.climbSummary>div,.islandNotice){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
-:root[data-theme="light"] body.plazaMode #minesDialog.isle-sheet :is(span,li):not(.minesBoard *){color:var(--isle-soft)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) input[type="range"]{background:transparent;border:0}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar{background:#efe2c6}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .missionRow .bar i{background:var(--isle-btn)}
@@ -1410,7 +1394,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow .reward,.skinPrice){color:#9a5b00}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.missionRow .count,.skinCount,.skinShopBalance){color:var(--isle-soft)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinCard .skinName,.gameGuideCase :is(strong,span,li,h4)){color:var(--isle-ink)}
-:root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .minesBoard{outline:6px solid #fffaf0}
 :root[data-theme="light"] body.plazaMode .photoBar button{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 3px 10px rgba(74,56,40,.3)}
 :root[data-theme="light"] body.plazaMode .photoBar button.secondary{background:var(--isle-btn);color:#fff;border-color:transparent}
 :root[data-theme="light"] #islandBagDialog .islandBagSlot button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
@@ -1540,6 +1523,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .pictionaryToolbar input.pictionaryColorMore::-webkit-color-swatch{border:0}
 :root[data-theme="light"] .pictionaryWidthLabel{color:var(--hp-t2)}
 :root[data-theme="light"] body.roomPlaying.partyGame #liarRoleBox{border:0;background:var(--hp-face);background-image:none;color:var(--hp-t1);box-shadow:none}
+:root[data-theme="light"] body.roomPlaying .baseballPanel #baseballHistory>.chatEmpty{color:rgba(244,245,252,.82)}
 :root[data-theme="light"] body.roomPlaying #roomView :is(#twentyPanel,#pictionaryPanel){color:var(--felt-t1)}
 :root[data-theme="light"] body.roomPlaying #roomView #twentyPanel :is(.twentyHeading,h4,.twentyGuessLog p){color:var(--felt-t1)}
 :root[data-theme="light"] body.roomPlaying #roomView #twentyPanel .twentyEmpty,:root[data-theme="light"] body.roomPlaying #roomView #pictionaryPanel .pictionaryRuleNote{color:var(--felt-t2)}

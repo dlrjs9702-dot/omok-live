@@ -43,12 +43,15 @@ import { Table } from './js/games/cards.js';
 import gomoku from './js/games/gomoku.js';
 import connect4 from './js/games/connect4.js';
 import reversi from './js/games/reversi.js';
+import mines from './js/games/mines.js';
 
 const SETS = {
   reflex: { title: '순발력 게임', games: [whack, reaction, colorfind, numbers, rhythm, stairs], info: '/api/solo/reflex' },
   puzzle: { title: '퍼즐', games: [sudoku, nonogram, hashi, circuit], info: '/api/solo/puzzle' },
   cards: { title: '카드 게임', games: [klondike, freecell, spider], info: '/api/solo/cards' },
   ai: { title: 'AI 대전', games: [gomoku, connect4, reversi], info: null }, // practice: no server
+  // v1.10.249 G4: 지뢰찾기 -- its board on the server (/api/solo/minesweeper), which keeps the record when it is cleared
+  mines: { title: '지뢰찾기', games: [mines], info: '/api/solo/minesweeper', records: (got) => ({ ...got, records: { mines: got.records || {} } }) },
 };
 const LOG_MAX = 5000; // actions in a round the server takes (a longer round is played, not paid)
 let cardLog = null; let inMove = false;
@@ -181,21 +184,22 @@ export function mount({ api, onBack, pieceSkin = null }) {
     if (set === SETS.puzzle && !info) { status.textContent = '불러오는 중이에요. 잠시 후 다시 눌러 주세요.'; return; } // whose progress, first
     const seq = ++startSeq; const level = levelOf(g); // a screen change or a later press makes this answer stale (Codex review)
     const mode = modeOf(g);
-    let id = null; let seed = null;
+    let id = null; let seed = null; let board = null;
     const skin = set === SETS.ai ? await pieceSkin?.(g.id) : null; // (A3 G3-2)
     try {
       const contest = contestPlay ? { contest: true } : {}; // (v1.10.238: the tent's round)
       if (set === SETS.reflex) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) })).id;
       else if (set === SETS.cards) ({ id, seed } = await api('/api/solo/cards/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) }));
+      else if (set === SETS.mines) { const n = await api('/api/solo/minesweeper/new', { method: 'POST', body: JSON.stringify({ level }) }); board = { minesId: n.id, minesView: n.view, api }; }
       else if (mode === 'daily') await api('/api/solo/puzzle/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) });
     } catch (error) { if (seq === startSeq) { status.textContent = error.message; menu.classList.remove('hidden'); } return; } /* (U1: started from the sheet -- the menu shows why) */
     if (seq !== startSeq || view.classList.contains('hidden')) return;
     runId = id; runLevel = level; shown = 'play'; game = g;
-    frame.classList.toggle('wideFrame', set === SETS.cards || set === SETS.puzzle || g.id === 'stairs'); // A3 G4: the card games and puzzles use a PC's width (game.css); R7 하늘 계단 its sky too (PC·휴대폰 같게)
+    frame.classList.toggle('wideFrame', set === SETS.cards || set === SETS.puzzle || set === SETS.mines || g.id === 'stairs'); // A3 G4: the card games and puzzles use a PC's width (game.css); R7 하늘 계단 its sky too (PC·휴대폰 같게)
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
-    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(mode ? { mode } : {}), ...(seed != null ? { seed } : {}), ...(skin ? { pieceSkin: skin } : {}) } });
+    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(mode ? { mode } : {}), ...(seed != null ? { seed } : {}), ...(skin ? { pieceSkin: skin } : {}), ...board } });
   }
 
   async function finish(g, r) {
@@ -210,7 +214,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       done: g.mode === 'versus' ? r.outcome === 'win' : launch?.goal == null || (score != null && (g.lowerBetter ? score <= launch.goal : score >= launch.goal)) });
     const box = el('div', 'hpPanel reflexBox'); // (v1.10.245 U3: the one result panel -- its pill, the title, the big figure)
     box.style.setProperty('--c1', g.color);
-    const pill = r.outcome === 'win' ? ['win', '승리'] : r.outcome === 'loss' ? ['loss', '패배'] : r.outcome === 'draw' ? ['draw', '무승부'] : ['done', '완성'];
+    const pill = r.outcome === 'win' ? ['win', '승리'] : r.outcome === 'loss' || (set === SETS.mines && score == null) ? ['loss', '패배'] : r.outcome === 'draw' ? ['draw', '무승부'] : ['done', '완성'];
     box.append(el('span', `hpPanelPill ${pill[0]}`, pill[1]), el('h2', null, r.title || g.name));
     if (score != null) box.append(el('p', 'reflexScore', fmtScore(score, g.unit)));
     const line = el('p', 'reflexPaid', (set === SETS.reflex || set === SETS.cards || r.proof) ? '기록 확인 중…' : '');
@@ -228,6 +232,13 @@ export function mount({ api, onBack, pieceSkin = null }) {
     if (set === SETS.puzzle) return r.proof && sendPuzzle(g, level, score, r.proof, line, r.rec);
     if (set === SETS.cards) return sendCards(g, level, id, log, line);
     if (set === SETS.ai) return; // practice: not sent
+    if (set === SETS.mines) { // (G4: the server kept it with the clearing press -- its answer)
+      const out = score == null ? null : g.result;
+      if (out && info) (info.records[g.id] ||= {})[level] = { best: out.best };
+      if (out?.newBest) sfx.best();
+      line.textContent = out ? (out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`) : '';
+      return;
+    }
     try {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
       if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
@@ -307,7 +318,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
         if (!set.info) { if (quest) go(); return; }
         const want = set; const got = await api(set.info);
         if (want !== set) return; // opened the other set meanwhile
-        info = got;
+        info = set.records ? set.records(got) : got;
         if (set === SETS.puzzle) { Stats.load(info.uid); resendPuzzles(); } // this account's own progress (Codex review)
         if (quest) { go(); return; }
         if (shown === 'list') showList(); else if (shown === 'game') showGame(game);
@@ -319,7 +330,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     choose(gameId, key, value) { remember(key === 'level' ? gameId : `${gameId}.${key}`, value); },
     async best(gameId) {
       const g = gameById(gameId); const s = g && setOf(g); if (!s?.info) return null;
-      const got = await api(s.info); const b = got?.records?.[g.id]?.[levelOf(g)]?.best;
+      const got = await api(s.info); const b = (s.records ? s.records(got) : got)?.records?.[g.id]?.[levelOf(g)]?.best;
       return b == null ? '아직 기록 없음' : `내 최고 ${fmtScore(b, g.unit)}`;
     },
     // the 게임 실행 규약 (above): which set holds the game, opened on it; the answer comes when its round ends

@@ -247,6 +247,7 @@ cv.addEventListener('pointerdown', (e) => {
   activePointers.set(e.pointerId, { x, y });
   if (E.pointer.id == null) Object.assign(E.pointer, { x, y, down: true, id: e.pointerId });
   E.pointer.type = e.pointerType; // (A3 G3-1: a mouse places a stone at once, a touch shows it first)
+  E.pointer.button = e.button; // (v1.10.249 G4: 지뢰찾기's right click is a flag)
   if (E.state === 'play') E.game.down?.(x, y, e.pointerId);
 });
 cv.addEventListener('pointermove', (e) => {
@@ -264,6 +265,7 @@ function up(e) {
   if (e.pointerId === E.pointer.id) { E.pointer.down = false; E.pointer.id = null; }
   if (E.state === 'play') E.game.up?.(x, y, e.pointerId);
 }
+cv.addEventListener('contextmenu', (e) => { if (E.game?.id === 'mines') e.preventDefault(); }); // (G4: the right click is the game's)
 cv.addEventListener('pointerup', up);
 cv.addEventListener('pointercancel', up);
 addEventListener('keydown', (e) => {

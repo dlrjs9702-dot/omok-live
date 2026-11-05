@@ -81,7 +81,7 @@
       intro: '섬의 숫자만큼 다리를 놓아 모두 이으세요', how: how('섬을 누른 뒤 이을 섬을 누르면 다리가 놓여요', '다리는 가로·세로로만, 엇갈리지 않게', '모든 섬이 하나로 이어지면 완성') },
     { id: 'circuit', name: '회로 연결', cats: ['puzzle'], players: '혼자', colors: ['#a21caf', '#701a75'], art: 'circuit', set: 'puzzle',
       intro: '칸을 돌려 모든 칸에 전기가 흐르게', how: how('칸을 누르면 90도씩 돌아갑니다', '전원과 이어진 칸에 불이 들어와요', '모든 칸에 불이 들어오면 완성') },
-    { id: 'mines', name: '지뢰찾기', cats: ['puzzle', 'solo'], players: '혼자', colors: ['#475569', '#334155'], art: 'mines', launch: 'mines',
+    { id: 'mines', name: '지뢰찾기', cats: ['puzzle', 'solo'], players: '혼자', colors: ['#475569', '#334155'], art: 'mines', set: 'mines',
       intro: '숫자를 단서로 지뢰를 피해 칸을 여세요', how: how('칸의 숫자는 주변 8칸의 지뢰 수예요', '지뢰라고 생각되면 깃발을 꽂습니다', '지뢰 아닌 칸을 모두 열면 성공') },
     { id: 'klondike', name: '카드놀이', cats: ['solo'], players: '혼자', colors: ['#15803d', '#14532d'], art: 'klondike', set: 'cards',
       intro: '모든 카드를 무늬별로 A부터 K까지 올리세요', how: how('색이 다르고 숫자가 1 큰 카드 위에 놓습니다', '더미를 누르면 카드를 넘겨요', '빈 줄에는 K만 놓을 수 있어요') },

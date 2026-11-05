@@ -2202,69 +2202,10 @@
   }
   // v1.10.10 이벤트 인벤토리: the island bag (the 「가방」 tab or I), and handing things in -- trash and found wallets
   // at the town hall, herbs, berries and mushrooms to the trader. One request id per visit until the server answers.
-  // v1.10.37 혼자 하는 게임 — 지뢰찾기: the board is the server's (it alone knows the mines); left click opens, right click
-  // flags, a click on an opened number opens around it once its flags match. A clear pays by level (shown with the time).
-  const minesDialog = document.getElementById('minesDialog');
-  const minesBoard = document.getElementById('minesBoard');
-  const minesStatus = document.getElementById('minesStatus');
-  let mines = null; let minesTimer = null; let minesBusy = false;
-  const clockText = (ms) => { const t = Math.floor(ms / 1000); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
-  async function openMines() {
-    if (plazaDialog.open) plazaDialog.close();
-    try {
-      const info = await api('/api/solo/minesweeper');
-      mines = { levels: info.levels, records: info.records, level: info.game?.view.level || mines?.level || 'beginner', id: info.game?.id || null, view: info.game?.view || null, shownAt: Date.now() };
-    } catch (error) { showToast(error.message); return; }
-    minesStatus.textContent = '';
-    renderMines(); if (!minesDialog.open) minesDialog.showModal();
-    if (!mines.view) newMines(mines.level);
-  }
-  async function newMines(level) {
-    try { const g = await api('/api/solo/minesweeper/new', { method: 'POST', body: JSON.stringify({ level }) }); Object.assign(mines, { level, id: g.id, view: g.view, shownAt: Date.now() }); minesStatus.textContent = ''; renderMines(); }
-    catch (error) { showToast(error.message); }
-  }
-  function renderMines() {
-    const levels = document.getElementById('minesLevels'); levels.replaceChildren();
-    for (const l of mines.levels) { const b = document.createElement('button'); b.type = 'button'; b.dataset.level = l.id; b.className = l.id === mines.level ? 'secondary' : 'ghost'; b.textContent = l.label; levels.append(b); }
-    const v = mines.view; const best = mines.records?.[mines.level]?.best;
-    document.getElementById('minesBest').textContent = best ? `최고 ${clockText(best)}` : '';
-    if (!v) { minesBoard.replaceChildren(); return; }
-    document.getElementById('minesLeft').textContent = `💣 ${v.mines - v.flags}`;
-    // R6 G4 (게임관 작업서): on a wide mouse screen the board as big as the window's height allows (a 26 px cell elsewhere)
-    const wide = matchMedia('(min-width: 900px) and (pointer: fine)').matches;
-    const cell = wide ? Math.max(26, Math.min(52, Math.floor(Math.min((innerHeight * 0.62) / v.h, (innerWidth * 0.86) / v.w)))) : 26;
-    minesBoard.style.setProperty('--cell', `${cell}px`); minesBoard.style.gridTemplateColumns = `repeat(${v.w}, var(--cell))`;
-    const over = v.status === 'won' || v.status === 'lost'; const mineAt = new Set(v.mineAt || []);
-    const cells = v.cells.map((c, i) => {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'minesCell'; b.dataset.i = i;
-      if (c >= 0) { b.classList.add('open', `n${c}`); b.textContent = c ? String(c) : ''; } else if (c === -2) b.classList.add('flag');
-      if (over && mineAt.has(i) && c !== -2) b.classList.add('mine');
-      if (v.boom === i) b.classList.add('boom');
-      b.setAttribute('aria-label', c >= 0 ? String(c) : c === -2 ? '깃발' : '닫힘'); return b;
-    });
-    minesBoard.replaceChildren(...cells);
-    clearInterval(minesTimer);
-    const shown = () => { document.getElementById('minesTime').textContent = `⏱ ${clockText(v.status === 'playing' ? v.ms + (Date.now() - mines.shownAt) : v.ms)}`; };
-    shown(); if (v.status === 'playing') minesTimer = setInterval(shown, 500);
-  }
-  async function actMines(action, i) {
-    if (!mines?.id || minesBusy) return;
-    const v = mines.view; if (v.status === 'won' || v.status === 'lost') return;
-    minesBusy = true;
-    try {
-      const data = await api('/api/solo/minesweeper/act', { method: 'POST', body: JSON.stringify({ id: mines.id, action, x: i % v.w, y: Math.floor(i / v.w) }) });
-      mines.view = data.view; mines.shownAt = Date.now();
-      if (data.view.status === 'won') {
-        const r = data.result;
-        if (r) mines.records[mines.level] = { best: r.best, clears: r.clears };
-        minesStatus.textContent = `클리어 ${clockText(data.view.ms)}${r?.newBest ? ' · 최고 기록' : ''}`;
-      } else if (data.view.status === 'lost') minesStatus.textContent = '펑! 난이도를 눌러 다시 시작';
-      renderMines();
-    } catch (error) { showToast(error.message); if (error.status === 409) { mines.id = null; mines.view = null; renderMines(); } }
-    finally { minesBusy = false; }
-  }
+  // v1.10.37 혼자 하는 게임 — 지뢰찾기 (v1.10.249 G4: the round on the 한판마당 puzzle screen, public/reflex/js/games/mines.js -- the
+  // board still the server's): the classic lobby's button opens it there too, and back to the lobby
+  async function openMines() { if (await loadHanpan(() => showView('lobby'))) reflexGames.play('mines'); }
   document.getElementById('soloMinesBtn').addEventListener('click', openMines);
-  renderGameGuide(document.getElementById('minesGuide'), 'minesweeper');
   // v1.10.61 두 세계 영웅전: its own page in this tab; it ranks by this session (guest or admin), handed over in the tab's
   // sessionStorage. The browser's back returns here (a guest resumes; an admin, whose login lives only in this page, logs in again).
   // (사용자 2026-10-19) now in a window over the island -- the same tab, so its sessionStorage hands the session over; the
@@ -2426,9 +2367,9 @@
     }
     if (g.ai) act('AI 연습', '', () => { gameSheet.close(); playGame(g.ai); });
     if (g.set) act('시작', 'go cta', () => { gameSheet.close(); playGame(g.id); });
-    if (g.launch) act('시작', 'go cta', () => { gameSheet.close(); if (g.launch === 'mines') openMines(); else byId('soloHerosurvBtn').click(); });
+    if (g.launch) act('시작', 'go cta', () => { gameSheet.close(); byId('soloHerosurvBtn').click(); });
     byId('gameSheetRule').textContent = g.room ? gameRules[g.room] || '' : '';
-    renderGameGuide(byId('gameSheetGuide'), g.room || (g.launch === 'mines' ? 'minesweeper' : g.id));
+    renderGameGuide(byId('gameSheetGuide'), g.room || (g.id === 'mines' ? 'minesweeper' : g.id));
     const guide = byId('gameSheetGuideBox'); guide.open = false;
     guide.classList.toggle('hidden', !byId('gameSheetRule').textContent && !byId('gameSheetGuide').childElementCount);
     if (!gameSheet.open) gameSheet.showModal();
@@ -2476,11 +2417,6 @@
     if (event.key !== 'Escape' || gamehallView.classList.contains('hidden') || document.querySelector('dialog[open]') || event.target.matches?.('input, textarea')) return;
     event.preventDefault(); closeGamehall();
   });
-  document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
-  minesDialog.addEventListener('close', () => clearInterval(minesTimer));
-  document.getElementById('minesLevels').addEventListener('click', (event) => { const b = event.target.closest('button[data-level]'); if (b) newMines(b.dataset.level); });
-  minesBoard.addEventListener('click', (event) => { const b = event.target.closest('.minesCell'); if (!b) return; actMines(b.classList.contains('open') ? 'chord' : 'open', Number(b.dataset.i)); });
-  minesBoard.addEventListener('contextmenu', (event) => { event.preventDefault(); const b = event.target.closest('.minesCell'); if (b && !b.classList.contains('open')) actMines('flag', Number(b.dataset.i)); });
 
   const islandBagDialog = document.getElementById('islandBagDialog');
   const islandPlaceDialog = document.getElementById('islandPlaceDialog');
