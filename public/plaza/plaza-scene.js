@@ -1496,7 +1496,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // 1·2·3 of one game a time, 6 s each, with its all-time best; the leaders' strip running; 명예의 칸 last week's firsts), their
   // canvases lit at night too (emissiveMap); the 32 bulbs soft by day and chasing by night, the flags in the wind; SPACE opens its
   // window (door board:records). The board's data comes from the page (setRecordBoard).
-  const TOWER = Object.freeze({ x: 35, z: -65, yaw: -Math.PI / 2 }); // (yaw: the model's front, -Z, to +x -- the door)
+  const TOWER = globalThis.IslandTerrain.RECORD_TOWER || Object.freeze({ x: 35, z: -65, yaw: -Math.PI / 2 }); // (dalmaru-island: its solids are the shared structureSolids)
   const recordTower = (() => {
     const root = new THREE.Group(); root.position.set(TOWER.x, heightAt(TOWER.x, TOWER.z), TOWER.z); root.rotation.y = TOWER.yaw; scene.add(root);
     const fb = new THREE.Group(); root.add(fb); // the stand-in: a dark board on two cream posts
@@ -1516,7 +1516,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       T.drawnKey = '';
     });
     const front = { x: TOWER.x + 2.6, z: TOWER.z }; doors['board:records'] = { x: front.x, z: front.z, name: '기록의 탑 · 순위 보기' };
-    for (let k = -4.4; k <= 3.6; k += 1.6) solids.push({ x: TOWER.x, z: TOWER.z + k, r: 1.0 }); /* (along its 8.5 m, the model's +x is the world's +z) */ solids.push({ x: TOWER.x + 1.3, z: TOWER.z, r: 1.1 }); /* (the podium) */
     return T;
   })();
   const fmtLeft = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)); const d = Math.floor(m / 1440); const h = Math.floor((m % 1440) / 60); return d ? d + '일 ' + h + '시간' : h ? h + '시간 ' + (m % 60) + '분' : (m % 60) + '분'; };
@@ -1531,18 +1530,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       x.fillStyle = '#121a3a'; x.fillRect(0, 0, W, H); x.textAlign = 'center'; x.textBaseline = 'middle';
       x.fillStyle = '#ffd34d'; x.font = '900 46px system-ui, sans-serif'; x.fillText('🏆 기록의 탑 · 이번 주', W / 2 - 130, 44);
       x.fillStyle = 'rgba(244,245,252,.75)'; x.font = '800 28px system-ui, sans-serif'; x.fillText('정산까지 ' + left, W - 165, 46);
-      x.fillStyle = '#f4f5fc'; x.font = '900 80px system-ui, sans-serif'; x.fillText(g.name, W / 2, 132);
-      x.fillStyle = 'rgba(244,245,252,.7)'; x.font = '800 30px system-ui, sans-serif'; x.fillText(R.levelName(g.game, g.level), W / 2, 184);
-      if (g.allTime) { x.fillStyle = '#ffd34d'; x.font = '800 34px system-ui, sans-serif'; x.fillText('역대 최고 · ' + g.allTime.name + ' · ' + R.format(g.game, g.allTime.best), W / 2, 210); }
+      x.fillStyle = '#f4f5fc'; x.font = '900 76px system-ui, sans-serif'; x.fillText(g.name, W / 2, 120);
+      x.fillStyle = 'rgba(244,245,252,.7)'; x.font = '800 26px system-ui, sans-serif'; x.fillText(R.levelName(g.game, g.level), W / 2, 172);
+      if (g.allTime) { x.fillStyle = '#ffd34d'; x.font = '800 32px system-ui, sans-serif'; x.fillText('역대 최고 · ' + g.allTime.name + ' · ' + R.format(g.game, g.allTime.best), W / 2, 214); }
       const top = g.top || [];
       if (!top.length) { x.fillStyle = '#f4f5fc'; x.font = '900 52px system-ui, sans-serif'; x.fillText('이번 주 첫 1위가 되어 보세요!', W / 2, 370); }
-      else for (const [place, cx, h, col] of [[2, W / 2 - 330, 80, '#c9ced8'], [1, W / 2, 110, '#ffd34d'], [3, W / 2 + 330, 60, '#d8925a']]) { // (총괄 사진: below the all-time line -- the names over low steps)
-        const r = top.find((v) => v.rank === place); const y0 = H - 18; x.fillStyle = col; x.globalAlpha = 0.22; x.fillRect(cx - 140, y0 - h, 280, h); x.globalAlpha = 1;
-        x.fillStyle = col; x.font = '900 32px system-ui, sans-serif'; x.fillText(place + '위', cx, y0 - h / 2);
-        if (!r) continue;
-        x.fillStyle = place === 1 ? '#ffd34d' : '#f4f5fc'; x.font = '900 36px system-ui, sans-serif'; x.fillText(r.name.length > 9 ? r.name.slice(0, 8) + '…' : r.name, cx, y0 - h - 58);
-        x.fillStyle = '#f4f5fc'; x.font = '800 30px system-ui, sans-serif'; x.fillText(R.format(g.game, r.best), cx, y0 - h - 22);
-        if (place === 1) { x.fillStyle = '#ffd34d'; x.font = '800 24px system-ui, sans-serif'; x.fillText('「' + g.title + '」 도전 중', cx, y0 - h - 94); }
+      else for (const [place, cx, h, col] of [[2, W / 2 - 350, 210, '#c9ced8'], [1, W / 2, 250, '#ffd34d'], [3, W / 2 + 350, 185, '#d8925a']]) { // (총괄 #400: each one's name and record inside its own step, big -- read 6 m away)
+        const r = top.find((v) => v.rank === place); const y0 = H - 10; const top0 = y0 - h; x.fillStyle = col; x.globalAlpha = 0.24; x.fillRect(cx - 165, top0, 330, h); x.globalAlpha = 1;
+        x.fillStyle = col; x.fillRect(cx - 165, top0, 330, 6); x.font = '900 34px system-ui, sans-serif'; x.fillText(place + '위', cx, top0 + 36);
+        if (!r) { x.fillStyle = 'rgba(244,245,252,.45)'; x.font = '800 30px system-ui, sans-serif'; x.fillText('비어 있어요', cx, top0 + 100); continue; }
+        const nm = r.name.length > 7 ? r.name.slice(0, 6) + '…' : r.name; x.fillStyle = place === 1 ? '#ffd34d' : '#f4f5fc'; x.font = '900 48px system-ui, sans-serif'; x.fillText(nm, cx, top0 + 96);
+        x.fillStyle = '#f4f5fc'; x.font = '800 42px system-ui, sans-serif'; x.fillText(R.format(g.game, r.best), cx, top0 + 152);
       }
       t.needsUpdate = true;
     }

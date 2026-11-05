@@ -19,6 +19,15 @@ test('기록의 탑 순위 규칙: 14종, 시간은 짧을수록·점수는 높�
   assert.equal(R.format('sudoku', 192_300), '192.3초'); assert.equal(R.format('whack', 1520), '1,520점'); assert.equal(R.format('colorfind', 12), '12라운드');
 });
 
+// (총괄 #400) the islanders' walk grid keeps off the tower's ground (8.55 m along world z, 1.9 m deep): its cells blocked, the
+// door before it and the plaza behind it open
+test('기록의 탑 자리: 주민 길 격자에서 탑 칸은 막히고 앞뒤는 열림', () => {
+  const N = require('../public/plaza/island-npcs'); const T = require('../public/plaza/island-terrain');
+  const t = T.RECORD_TOWER; assert.ok(t);
+  for (const dz of [-4.4, -2, 0, 2, 3.1]) assert.equal(N.free(t.x + 0.4, t.z + dz), false, `탑 칸 z${dz}`);
+  assert.equal(N.free(t.x + 5, t.z), true, '문 쪽'); assert.equal(N.free(t.x - 6, t.z), true, '광장 쪽');
+});
+
 test('기록의 탑 서버: 이번 주·역대 순위(1~20 + 내 순위), 결과의 이번 주 ○위, 게시판 14종', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tower-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir); const { req } = server;
