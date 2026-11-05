@@ -8675,7 +8675,7 @@
   function placeBoardNote(note) {
     const hud = byId('roomHud'); let top = '';
     if (!hud.hidden && !document.body.classList.contains('gostopStamping') && byId('oldmaidPanel').classList.contains('hidden')) { // (도둑잡기: its own spot under the seats and the fan, --oldmaidNoteTop)
-      const hb = hud.getBoundingClientRect().bottom; const near = [...document.querySelectorAll('#roomView :is(.player,.teamPlayer,#twentyProgress)')].map((el) => el.getBoundingClientRect()).filter((r) => r.height && r.top < hb + 200).map((r) => r.bottom);
+      const hb = hud.getBoundingClientRect().bottom; const near = [...document.querySelectorAll('#roomView :is(.player,.teamPlayer,#twentyProgress,.halliPlayerName)')].map((el) => el.getBoundingClientRect()).filter((r) => r.height && r.top < hb + 200).map((r) => r.bottom);
       top = `${Math.round(Math.max(hb, ...near) + 6 - originOf(note))}px`;
     }
     if (note.style.top !== top) note.style.top = top;
@@ -9051,6 +9051,7 @@
       : state.points?.policy === 'friendly' ? '친선 · 포인트 없음' : state.points?.policy === 'none' ? '포인트·전적 없음' : ''; // (G-포인트)
     roomPointRule.classList.toggle('hidden', !pointRule);
     roomPointRule.textContent = pointRule;
+    byId('pointRuleRow').classList.toggle('hidden', !pointRule); byId('pointRuleText').textContent = pointRule; // (v1.10.247 G2: in 대국 정보 too -- a phone's bar drops it)
     roomPointRule.title = state.points?.policy === 'entry'
       ? `게임이 시작될 때 참가자마다 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P가 차감됩니다. 모인 포인트의 ${100 - state.points.burnPercent}%는 승자가 나눠 받고 ${state.points.burnPercent}%는 소각됩니다. 관전과 같은 판 재접속은 차감하지 않습니다.`
       : state.points?.policy === 'settlement' ? `정산으로 실제 이동하는 포인트의 ${state.points.burnPercent}%는 소각되고 나머지를 승자가 받습니다.` : '';

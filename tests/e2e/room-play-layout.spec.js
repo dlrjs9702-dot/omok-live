@@ -39,6 +39,10 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     await expect(page.locator('#roomView')).toBeVisible();
     const code = (await res.json()).state.me.roomCode;
     await expect(page.locator('.roomInfoArea')).toBeVisible(); // before the hand: as it was
+    // (v1.10.247 G2, 총괄: the room's points rule in 대국 정보 -- a phone's bar drops it)
+    await page.locator('#gameInfoDisclosure > summary').click(); await expect(page.locator('#pointRuleText')).not.toHaveText('');
+    if (process.env.SHOT_DIR && w < 640) { await page.locator('#gameInfoDisclosure').scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.SHOT_DIR}/rule-in-info-${w}x${h}.png` }); }
+    await page.locator('#gameInfoDisclosure > summary').click();
     // (v1.10.246 G1: out of a hand the top buttons are the HUD's round ones)
     for (const id of ['leaveRoomBtn', 'roomMenuBtn']) { const r = await page.locator(`.roomBar #${id}`).evaluate((b) => { const s = getComputedStyle(b); return { w: b.offsetWidth, h: b.offsetHeight, radius: s.borderRadius }; }); expect(r.w === 40 && r.h === 40 && r.radius === '50%', `${id} ${JSON.stringify(r)}`).toBe(true); }
     const white = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
@@ -170,10 +174,12 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       for (let i = 1; i < seats.length; i += 1) await call(i, '/api/rooms/join', { code: created.data.state.me.roomCode });
       for (let i = 0; i < seats.length; i += 1) await call(i, '/api/room/choose-role', { choice: seats[i] });
       if (typeof start === 'string') await call(0, `/api/room/${start}`, {}); else if (start) await start(call);
+      // (총괄 #397: 할리갈리's first-turn banner photographed -- the other flips first when it is their turn)
+      if (game === 'halligalli') { const st = (await (await request.get('/api/room', { headers: { 'X-Session-Token': host, 'X-Forwarded-For': ip() } })).json()).state; if (st.game.turn !== st.me.seat) await call(1, '/api/room/flip-halligalli', { expectedRevision: st.game.revision }); }
       await page.goto('/'); await expect(page.locator('body'), game).toHaveClass(/roomPlaying/, { timeout: 15_000 }); await page.waitForTimeout(600);
       // (검토 #391: the banner -- 「내 차례예요」 or a system line -- never over the HUD or a name plate while it shows)
       const banner = await page.evaluate(() => { const n = document.querySelector('#boardNote'); if (!n || n.classList.contains('hidden') || !n.getBoundingClientRect().height) return null; const b = n.getBoundingClientRect();
-        return [...document.querySelectorAll('#roomHud, #roomView :is(.player,.teamPlayer)')].filter((el) => el.getBoundingClientRect().height).filter((el) => { const r = el.getBoundingClientRect(); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map((el) => el.id || el.className).concat(b.height > 48 ? [`두 줄 ${Math.round(b.height)}px`] : []); }); /* (총괄 #396: and one line) */
+        return [...document.querySelectorAll('#roomHud, #roomView :is(.player,.teamPlayer,.halliPlayerName)')].filter((el) => el.getBoundingClientRect().height).filter((el) => { const r = el.getBoundingClientRect(); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map((el) => el.id || el.className).concat(b.height > 48 ? [`두 줄 ${Math.round(b.height)}px`] : []); }); /* (총괄 #396: and one line) */
       if (banner) { expect(banner, `${game} 배너가 가림`).toEqual([]); bannersSeen += 1; }
       await expect(page.locator('.roomBar'), game).toBeHidden(); await expect(page.locator('.boardCard > .statusRow'), game).toBeHidden();
       await expect(page.locator('.roomHud:visible'), game).toHaveCount(1);
@@ -184,7 +190,7 @@ for (const [w, h] of [[1366, 768], [393, 851]]) {
       seen[game] = { lit, board, hud: await page.locator('#roomHud').innerText(), plates: await page.locator('.davinciPlate.on:visible').count() };
       if (process.env.SHOT_DIR) {
         await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}.png` });
-        if (['omok', 'othello', 'gostop'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
+        if (['omok', 'othello', 'gostop', 'davinci', 'oldmaid', 'halligalli'].includes(game)) { await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; }); await page.waitForTimeout(500);
           console.log(game, 'light HUD button', await page.locator('#roomHud #chatFloatBtn').evaluate((b) => getComputedStyle(b).backgroundColor)); await page.screenshot({ path: `${process.env.SHOT_DIR}/u2-${game}-${w < 640 ? 'phone' : 'pc'}-light.png` }); await page.evaluate(() => { delete document.documentElement.dataset.theme; }); }
       }
       for (const t of tokens) await api(request, '/api/room/leave', t, {});

@@ -3391,14 +3391,17 @@ body.roomPlaying .halliTransferResult.idle{display:none}
 body.roomPlaying #halliFlipBtn.hpBtn{min-height:52px;padding:0 28px;font-size:16px;border-radius:var(--hp-r-lg);background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 body.roomPlaying #halliFlipBtn.hpBtn:disabled{opacity:.45}
 /* v1.10.247 G2 맞고: each seat's head (face · name · 점수 · 고) the turn pill too -- the turn's lit */
-body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:12px;background:var(--hp-face);color:var(--hp-t1);width:max-content;max-width:100%}
-body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeat.isTurn .gostopSeatHead{background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+#roomView .gostopFelt,#roomView #davinciHands,#roomView #oldmaidPanel{--felt-face:rgba(3,10,6,.6);--felt-face-on:rgba(255,255,255,.18);--felt-t1:#F4F5FC;--felt-t2:rgba(244,245,252,.7)} /* (#397: the felt is dark in both themes -- its plates too) */
+body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:12px;background:var(--felt-face);color:var(--felt-t1);width:max-content;max-width:100%}
+body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeatHead strong{color:var(--felt-t1)}
+body:is(.roomPlaying,.roomResult) #roomView .gostopFelt .gostopSeat.isTurn .gostopSeatHead{background:var(--felt-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
 body:is(.roomPlaying,.roomResult) .gostopFelt .gostopSeatHead .seatFace{width:32px;height:32px}
 /* v1.10.247 G2 다빈치: the rack's plate the turn pill (the U2 pill: 40px, face 32px, the turn's lit) */
-body.roomPlaying .davinciHand>strong.davinciPlate{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:12px;background:var(--hp-face);color:var(--hp-t1);font-size:14px;font-weight:800}
-body.roomPlaying .davinciHand>strong.davinciPlate.on{background:var(--hp-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
+body.roomPlaying #roomView .davinciHand>strong.davinciPlate{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:12px;background:var(--felt-face);color:var(--felt-t1);font-size:14px;font-weight:800}
+body.roomPlaying #roomView .davinciHand>strong.davinciPlate.on{background:var(--felt-face-on);box-shadow:inset 0 0 0 2px var(--c1,var(--hp-blue))}
 body.roomPlaying .davinciHand>strong.davinciPlate .seatFace{width:32px;height:32px}
-body.roomPlaying .davinciHand>strong.davinciPlate small{font-size:11.5px;font-weight:700;color:var(--hp-t2)}
+body.roomPlaying #roomView .davinciHand>strong.davinciPlate small{font-size:11.5px;font-weight:700;color:var(--felt-t2)}
+#roomView #oldmaidPanel .oldmaidSeatInfo{background:var(--felt-face);color:var(--felt-t1)}#roomView #oldmaidPanel .oldmaidMyHeader h3{color:var(--felt-t1)} /* (도둑잡기's plates on the felt too) */
 #boardOverlay.hpPanel .hpPanelNote{display:block;font-size:11.5px;font-weight:700;color:var(--hp-t3);line-height:1.4;margin-top:2px}
 .roomHudLeft>#leaveRoomBtn{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-btn);color:var(--hp-t1);font-size:0;box-shadow:none}.roomHudLeft>#leaveRoomBtn::before{content:"✕";font-size:1.05rem}
 .roomHudRight>#roomMenuBtn{font-size:0}.roomHudRight>#roomMenuBtn::before{content:"☰";font-size:1.1rem}
