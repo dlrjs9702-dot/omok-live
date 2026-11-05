@@ -880,7 +880,8 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const aId = await idOf(a);
   for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues.filter((s) => s.rank)), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]); // (a weekend contest winner may stand too)
-  expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes.slice(0, 2))).toEqual(DAL ? [4.2, 3] : [2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st (달마루섬: 영웅마루's 14 m and 10 m niches)
+  const want = DAL ? [4.2, 3] : [2.6, 1.82]; /* (CI #397: the day's 섬 대회 winner's statue (1.56) may stand first -- the donation pair read among the sizes) */
+  expect((await a.page.evaluate(() => window.PlazaDebug().statueSizes)).filter((n) => want.includes(n))).toEqual(want); // v1.10.30: a landmark, the 2nd 70% of the 1st (달마루섬: 영웅마루's 14 m and 10 m niches)
   // 문제 기록 10: the statues keep their colours (not one stone); 2회차 7·17: the names on plaques at the plinths' fronts, the
   // same near and far (no name tag seen from everywhere)
   if (DAL) await expect.poll(() => a.page.evaluate(() => Math.min(...window.PlazaDebug().statueLook().colors.slice(0, 2))), { timeout: 15000 }).toBeGreaterThan(3);
