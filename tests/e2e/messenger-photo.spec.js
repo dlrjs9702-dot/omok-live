@@ -80,3 +80,67 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
     await expect(b.page.locator('#messengerMessages .messengerPhoto.gone').first()).toContainText('7일이 지나 사라진 사진', { timeout: 15000 }); await shot(b.page, 'photo-gone');
   } finally { await api(request, '/api/test/messenger/slow', { body: { ms: 0 } }); await a.context.close(); await b.context.close(); }
 });
+
+// 메신저 다듬기 A1 (사진 있는 방에서 보내거나 받으면 가끔 사진 근처가 보이던 것): a room with many photos (each held back on
+// the way in, as a slow network), at its end -- a line sent, a line come in, a read count gone: still at the end, after
+// every photo is in too; only the changed lines drawn again (the photos' own tiles kept)
+test('메신저 A1: 사진 여러 장 있는 방에서 보내고 받아도 맨 아래 유지', async ({ browser, request, isMobile }, info) => {
+  test.setTimeout(180000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const make = async (tag, nick) => {
+    const loginId = `s${tag}_${stamp}`.slice(0, 20); const nickname = `${nick}${(Date.now() + info.project.name.length) % 100000}`;
+    await api(request, '/api/account/signup', { body: { realName: tag, loginId, password: 'secret123', nickname } });
+    const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+    await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+    const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+    await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+    const account = (await api(request, '/api/account/login', { body: { loginId, password: 'secret123' } })).data.accountToken;
+    return { id, loginId, nickname, account };
+  };
+  const me = await make('a', '보는이'); const them = await make('b', '찍는이');
+  const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+  const page = await context.newPage();
+  await page.route('**/api/messenger/photos/*', async (route) => { if (route.request().method() !== 'GET') return route.continue(); await new Promise((r) => setTimeout(r, 400 + Math.random() * 900)); await route.continue(); });
+  await page.goto('/messenger');
+  // the photos: JPEGs made on the page, sent by the other side in four lines (one, two, three, one)
+  const jpeg = async (w, h, c) => Buffer.from(await page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.fillStyle = c; g.fillRect(0, 0, w, h); return cv.toDataURL('image/jpeg', 0.8).split(',')[1]; }, [w, h, c]), 'base64');
+  const room = (await api(request, '/api/messenger/rooms', { account: them.account, body: { name: '사진많은방', members: [me.id] } })).data.room;
+  const again = async (call) => { for (let k = 0; ; k += 1) { const r = await call(); if (r.status !== 429 || k > 4) { expect(r.status, JSON.stringify(r.data)).toBeLessThan(300); return r.data; } await new Promise((done) => setTimeout(done, 2500)); } }; // (the server's pace: 6 lines in 5 s)
+  const say = (text, photos = []) => again(() => api(request, `/api/messenger/rooms/${room.id}/messages`, { account: them.account, body: { text, photos } }));
+  const upload = async (w, h, c) => { const data = await jpeg(w, h, c); return again(async () => { const res = await request.post(`/api/messenger/rooms/${room.id}/photos`, { headers: { 'X-Forwarded-For': ip(), 'X-Account-Token': them.account, 'Content-Type': 'image/jpeg', 'X-Photo-W': String(w), 'X-Photo-H': String(h) }, data }); return { status: res.status(), data: await res.json().catch(() => ({})) }; }); };
+  const sizes = [[[900, 1200]], [[1280, 720], [800, 800]], [[1280, 960], [600, 900], [1000, 1000]], [[720, 1280]]];
+  for (const [k, set] of sizes.entries()) {
+    const ids = []; for (const [w, h] of set) ids.push((await upload(w, h, ['#d9534f', '#5b8def', '#4caf7d', '#e0a43a'][k])).id);
+    await say(k % 2 ? `사진 ${k + 1}번` : '', ids); await say(`글 ${k + 1}`);
+  }
+  await page.locator('#mLoginId').fill(me.loginId); await page.locator('#mLoginPw').fill('secret123');
+  await page.locator('#mLogin').getByRole('button', { name: '로그인' }).click(); await expect(page.locator('#mApp')).toBeVisible();
+  await page.locator('#messengerRoomList button', { hasText: '사진많은방' }).click();
+  const box = page.locator('#messengerMessages');
+  const gap = () => box.evaluate((b) => Math.round(b.scrollHeight - b.scrollTop - b.clientHeight));
+  const allIn = () => box.evaluate((b) => [...b.querySelectorAll('.messengerPhoto img')].every((im) => im.complete && im.naturalWidth > 0));
+  await expect(box.locator('.messengerPhoto img')).toHaveCount(7, { timeout: 15000 });
+  await expect.poll(allIn, { timeout: 15000 }).toBe(true); await expect.poll(gap).toBeLessThan(4);
+  // the tiles had their size before the photos came in
+  const tiles = await box.evaluate((b) => [...b.querySelectorAll('.messengerPhoto img')].map((im) => im.style.aspectRatio));
+  expect(tiles.every(Boolean)).toBe(true);
+  const kept = await box.locator('.messengerPhoto img').first().evaluateHandle((im) => im);
+  // a line sent (Enter on a PC, the button on a phone), its answer, the read count: at the end each time and once the photos are in
+  const input = page.locator('#messengerInput');
+  for (const k of [1, 2, 3]) {
+    await input.fill(`보낸 글 ${k}`);
+    if (isMobile) await page.locator('#messengerForm').getByRole('button', { name: '보내기' }).click(); else await input.press('Enter');
+    await expect(box.locator('.chatMessage.mine').last()).toContainText(`보낸 글 ${k}`); await expect(box.locator('.chatMessage.pending')).toHaveCount(0, { timeout: 10000 });
+    await page.waitForTimeout(1500); await expect.poll(allIn, { timeout: 15000 }).toBe(true); expect(await gap()).toBeLessThan(4);
+  }
+  // a line come in -- the other side read mine with it (the 「1」s gone)
+  await expect(box.locator('.chatMessage.mine .messengerReadCount')).toHaveCount(3);
+  await say('받은 글'); await expect(box).toContainText('받은 글', { timeout: 10000 });
+  await expect(box.locator('.chatMessage.mine .messengerReadCount')).toHaveCount(0, { timeout: 10000 });
+  await page.waitForTimeout(1500); expect(await gap()).toBeLessThan(4);
+  // the first photo's tile was never drawn again
+  expect(await kept.evaluate((im) => im.isConnected)).toBe(true);
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-photo-room.png` });
+  await context.close();
+});

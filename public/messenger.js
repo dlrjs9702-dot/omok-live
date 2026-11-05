@@ -32,7 +32,7 @@
   function showLogin(message = '') {
     for (const t of timers) clearInterval(t); timers = []; wantStream(false);
     gen += 1; state = { rooms: [], people: [], me: '' }; current = null; last = 0; msgs = []; readsKey = '';
-    box.replaceChildren(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); baseTitle = '아일랜드 메신저'; blink.seen(); document.title = baseTitle;
+    clearBox(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); baseTitle = '아일랜드 메신저'; blink.seen(); document.title = baseTitle;
     app.classList.add('hidden'); loginForm.classList.remove('hidden'); byId('mLoginStatus').textContent = message;
     for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices']) byId(id).classList.add('hidden');
   }
@@ -91,7 +91,7 @@
     if (msg.pending) { const s = document.createElement('span'); s.className = 'messengerSending'; s.textContent = '🕒 보내는 중'; meta.append(s); row.append(text, meta); item.append(row); return item; }
     if (msg.failed) { const s = document.createElement('span'); s.className = 'messengerFailed'; s.textContent = msg.failed; const again = document.createElement('button'); again.type = 'button'; again.className = 'ghost tiny'; again.textContent = '다시 보내기'; again.addEventListener('click', () => resend(msg)); const drop = document.createElement('button'); drop.type = 'button'; drop.className = 'ghost tiny'; drop.textContent = '지우기'; drop.addEventListener('click', () => dropPending(msg)); meta.append(s, again, drop); row.append(text, meta); item.append(row); return item; }
     // 안 읽은 사람 수 (카톡의 「1」): the members (still let in) besides the sender whose last read is before this line
-    const waitingFor = current.members.filter((m) => m.active && m.id !== msg.from && (current.reads[m.id] || 0) < msg.seq);
+    const waitingFor = waitingOf(msg);
     if (waitingFor.length) {
       const n = document.createElement('button'); n.type = 'button'; n.className = 'messengerReadCount'; n.textContent = waitingFor.length;
       const who = waitingFor.map((m) => m.label).join(', '); n.title = `안 읽음: ${who}`; n.setAttribute('aria-label', `안 읽은 사람 ${waitingFor.length}명: ${who}`);
@@ -130,17 +130,36 @@
     bubble.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') return; cancel(); const { clientX: x, clientY: y } = e; press = setTimeout(() => { press = null; openBubbleMenu(bubble, msg, x, y); }, 500); });
     for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) bubble.addEventListener(ev, cancel);
   }
+  // 메신저 다듬기 A1 (사진 있는 방에서 보내거나 받으면 사진 근처가 보이던 것): only the lines that changed are drawn again -- a
+  // line's key its seq (on its way: its pid), kept while what it shows is the same; the box held at its end when it was
+  // there (after drawing, after a photo comes in, when the box itself changes size)
+  let rows = new Map(); let stick = true;
+  const clearBox = () => { rows = new Map(); box.replaceChildren(); stick = true; };
+  const toEnd = () => { box.scrollTop = box.scrollHeight; };
+  const keepEnd = () => { if (stick) toEnd(); };
+  box.addEventListener('scroll', () => { stick = box.scrollHeight - box.scrollTop - box.clientHeight < 40; });
+  try { new ResizeObserver(keepEnd).observe(box); } catch {}
+  const waitingOf = (msg) => (msg.system || msg.pending || msg.failed ? [] : current.members.filter((m) => m.active && m.id !== msg.from && (current.reads[m.id] || 0) < msg.seq));
   function render() {
-    const nodes = []; let prev = null; let prevDay = '';
-    if (msgs.length && msgs[0].seq > 1) nodes.push(moreButton());
+    const want = []; let prev = null; let prevDay = '';
+    const put = (key, sig, make) => want.push({ key, sig, make });
+    if (msgs.length && msgs[0].seq > 1) put('more', '', moreButton);
     for (const msg of msgs) {
       const day = new Date(msg.at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-      if (day !== prevDay) { const s = document.createElement('p'); s.className = 'messengerDay'; s.textContent = day; nodes.push(s); }
-      nodes.push(line(msg, prev && !prev.system && prev.from === msg.from && day === prevDay));
+      if (day !== prevDay) put(`d${day}`, day, () => { const s = document.createElement('p'); s.className = 'messengerDay'; s.textContent = day; return s; });
+      const same = Boolean(prev && !prev.system && prev.from === msg.from && day === prevDay);
+      put(`m${msg.seq}`, JSON.stringify([msg.text, Boolean(msg.deleted), same, msg.label, waitingOf(msg).map((m) => m.id)]), () => line(msg, same));
       prev = msg; prevDay = day;
     }
-    for (const p of pend.filter((x) => x.room === current?.id)) { nodes.push(line(p, prev && !prev.system && prev.from === p.from)); prev = p; } // (v1.10.233: mine on their way)
-    if (nodes.length) box.replaceChildren(...nodes); else box.innerHTML = '<p class="emptyState">첫 메시지를 보내 보세요.</p>';
+    for (const p of pend.filter((x) => x.room === current?.id)) { const same = Boolean(prev && !prev.system && prev.from === p.from); put(`p${p.pid}`, JSON.stringify([p.text, same, p.pending, p.failed || '', p.done]), () => line(p, same)); prev = p; } // (v1.10.233: mine on their way)
+    if (!want.length) { rows = new Map(); box.innerHTML = '<p class="emptyState">첫 메시지를 보내 보세요.</p>'; return; }
+    const next = new Map();
+    const nodes = want.map(({ key, sig, make }) => { let row = rows.get(key); if (!row || row.sig !== sig) row = { sig, node: make() }; next.set(key, row); return row.node; });
+    rows = next;
+    let at = box.firstChild; // (in place: a node already where it belongs is not touched)
+    for (const node of nodes) { if (node === at) { at = at.nextSibling; continue; } box.insertBefore(node, at); }
+    while (at) { const after = at.nextSibling; at.remove(); at = after; }
+    keepEnd();
   }
   // ---- v1.10.233 보내기 빠르게 + 사진 (notes docs/messenger-speed-photo-20261103.md 2·5절) ----
   // Enter: the box empty at once and my line drawn at once, pale with 「보내는 중」; the send's own answer makes it the
@@ -165,8 +184,10 @@
     list.forEach((p, k) => {
       const tile = document.createElement('button'); tile.type = 'button'; tile.className = 'messengerPhoto';
       if (!msg.local && photoGone(msg, p)) { tile.classList.add('gone'); tile.disabled = true; tile.textContent = '7일이 지나 사라진 사진'; grid.append(tile); return; }
-      const img = document.createElement('img'); img.alt = ''; img.decoding = 'async'; if (p.w && p.h) img.style.aspectRatio = `${p.w} / ${p.h}`; tile.append(img); tile.setAttribute('aria-label', `사진 ${k + 1}/${list.length} 크게 보기`);
-      if (msg.local) img.src = p.url; else photoUrl(p.id).then((u) => { if (u === 'gone') { tile.replaceChildren('7일이 지나 사라진 사진'); tile.classList.add('gone'); tile.disabled = true; } else if (u) img.src = u; });
+      // (A1: the tile's size before the photo is in -- its own w/h, else a fixed 4:3 (CSS); one already here, its src at once)
+      const img = document.createElement('img'); img.alt = ''; img.decoding = 'async'; if (p.w && p.h) img.style.aspectRatio = `${p.w} / ${p.h}`; img.addEventListener('load', keepEnd); tile.append(img); tile.setAttribute('aria-label', `사진 ${k + 1}/${list.length} 크게 보기`);
+      const had = msg.local ? p.url : photoUrls.get(p.id);
+      if (had && had !== 'gone') img.src = had; else photoUrl(p.id).then((u) => { if (u === 'gone') { tile.replaceChildren('7일이 지나 사라진 사진'); tile.classList.add('gone'); tile.disabled = true; keepEnd(); } else if (u) img.src = u; });
       tile.addEventListener('click', () => openViewer(msg, k)); grid.append(tile);
     });
     if (msg.pending && msg.local) { const prog = document.createElement('span'); prog.className = 'messengerPhotoProgress'; prog.textContent = `${msg.done || 0}/${list.length}`; grid.append(prog); }
@@ -218,7 +239,7 @@
   function queueSend(text, photos = []) {
     const me = current.members.find((m) => m.id === state.me);
     const p = { pid: ++pseq, room: current.id, from: state.me, label: me?.label || '나', text: text || (photos.length ? PHOTO_ONLY : ''), at: new Date().toISOString(), pending: true, local: photos.length ? photos : null, ids: [], done: 0 };
-    pend.push(p); render(); box.scrollTop = box.scrollHeight;
+    pend.push(p); render(); toEnd();
     sendChain = sendChain.then(() => sendOne(p));
   }
   async function sendOne(p) {
@@ -232,7 +253,7 @@
         msgs.push(data.message); msgs.sort((a, b) => a.seq - b.seq);
         if (data.message.seq === last + 1) last = data.message.seq; else pull(); // (others' lines between: asked for, not skipped)
       }
-      if (current?.id === p.room) { render(); box.scrollTop = box.scrollHeight; }
+      if (current?.id === p.room) { render(); toEnd(); }
     } catch (err) {
       if (g !== gen) return; p.pending = false; p.failed = err.message || '보내지 못했어요.';
       const input = byId('messengerInput'); if (!input.value && !p.local) input.value = p.text; // (the words back in the box)
@@ -265,10 +286,10 @@
       let gone = false; for (const msg of data.messages) { const had = msg.deleted && msgs.find((x) => x.seq === msg.seq && !x.deleted); if (had) { had.text = ''; had.deleted = true; gone = true; } }
       const key = JSON.stringify([current.reads, current.members]);
       if (!firstPage && !fresh.length && !gone && key === readsKey) return;
-      const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+      const atEnd = stick;
       msgs.push(...fresh); msgs.sort((a, b) => a.seq - b.seq); if (data.messages.length) last = Math.max(last, data.messages.at(-1).seq); readsKey = key;
       render();
-      if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) box.scrollTop = box.scrollHeight;
+      if (firstPage || (fresh.length && (atEnd || fresh.at(-1).from === state.me))) toEnd();
     } catch (err) { if (g !== gen) return; if (err.status === 404) { current = null; app.classList.remove('inRoom'); refresh(); } else fail(err); }
   }
   function moreButton() { // 100 at a time from the top, the view held where it was
@@ -279,8 +300,8 @@
         const data = await api(`/api/messenger/rooms/${id}/messages?before=${msgs[0].seq}`);
         if (current?.id !== id) return;
         const height = box.scrollHeight;
-        msgs.unshift(...data.messages.filter((msg) => msg.seq < msgs[0].seq)); render();
-        box.scrollTop += box.scrollHeight - height;
+        msgs.unshift(...data.messages.filter((msg) => msg.seq < msgs[0].seq)); stick = false; render();
+        box.scrollTop += box.scrollHeight - height; b.disabled = false; // (A1: the button kept across drawings)
       } catch (err) { b.disabled = false; fail(err); }
     });
     return b;
@@ -308,7 +329,7 @@
     if (streamWanted) setTimeout(openStream, 5000);
   }
   function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
-  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
+  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
   function showPick(mode) { // 'new' | 'invite' | 'dm'
     picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
     byId('messengerPickTitle').textContent = mode === 'new' ? '새 대화방' : mode === 'dm' ? '1:1 대화' : `「${current.name}」에 초대`;
@@ -354,7 +375,7 @@
   byId('messengerBackBtn').addEventListener('click', () => { showMore(false); current = null; app.classList.remove('inRoom'); refresh(); });
   byId('messengerLeaveBtn').addEventListener('click', async () => { // 창 닫기 ≠ 나가기: only this button (with the warning) takes me out
     if (!current || !window.confirm(`「${current.name}」에서 나갈까요?\n나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다.`)) return;
-    try { await api(`/api/messenger/rooms/${current.id}/leave`, {}); current = null; app.classList.remove('inRoom'); box.replaceChildren(); refresh(); } catch (err) { fail(err); }
+    try { await api(`/api/messenger/rooms/${current.id}/leave`, {}); current = null; app.classList.remove('inRoom'); clearBox(); refresh(); } catch (err) { fail(err); }
   });
   byId('messengerForm').addEventListener('submit', async (event) => {
     event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if ((!text && !tray.length) || !current) return;

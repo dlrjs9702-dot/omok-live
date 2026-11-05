@@ -14,7 +14,7 @@ body.messengerPage{margin:0;min-height:100dvh;background:#f4ead6;color:var(--isl
 .mApp{flex:1;min-height:0;padding:12px;border-radius:22px;background:var(--isle-paper);border:1px solid var(--isle-line);box-shadow:0 10px 28px rgba(74,56,40,.15)}
 .mApp .messengerRoomList button{color:var(--isle-ink);background:#fffaf0;border:1px solid var(--isle-line)}
 .mApp .messengerRoomList button[aria-current="true"]{outline:2px solid var(--isle-tag)}
-.mApp .messengerMessages{background:#fffdf7;border:1px solid var(--isle-line);border-radius:14px}
+.mApp .messengerMessages{background:#fffdf7;border:1px solid var(--isle-line);border-radius:14px;overflow-anchor:none} /* (A1: the page holds the view itself -- at the end, or where it was over older lines) */
 .mApp .chatMessageText{background:#fff;color:#2f2418;border:1px solid var(--isle-line)}
 .mApp .chatMessage.mine .chatMessageText{background:#ffe7a8;border-color:#f0cf7a}
 .mApp .chatMessageHead strong{color:var(--isle-soft)}
@@ -65,13 +65,13 @@ html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color
 .mApp .messengerShot img{width:100%;height:100%;object-fit:cover;display:block}
 .mApp .messengerShotDrop{position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;line-height:22px}
 .mApp .messengerShotNote{flex:none;font-size:.72rem;opacity:.75;white-space:nowrap}
-.mApp .chatMessageText.withPhotos{padding:4px;max-width:min(320px,78vw)}
+.mApp .chatMessageText.withPhotos{padding:4px;width:min(320px,78vw);max-width:min(320px,78vw);box-sizing:border-box} /* (A1: a set width -- the bubble does not grow when the photo comes in) */
 .mApp .messengerPhotos{position:relative;display:grid;gap:3px;grid-template-columns:1fr;margin-bottom:4px}
 .mApp .messengerPhotos.n2{grid-template-columns:1fr 1fr}.mApp .messengerPhotos.n3{grid-template-columns:1fr 1fr 1fr}
 .mApp .chatMessageText.withPhotos .messengerPhotos:only-child{margin-bottom:0}
 .mApp .messengerPhoto{display:block;padding:0;border:0;border-radius:8px;overflow:hidden;background:rgba(0,0,0,.08);cursor:zoom-in;min-height:60px}
 .mApp .messengerPhotos.n2 .messengerPhoto img,.mApp .messengerPhotos.n3 .messengerPhoto img{aspect-ratio:1/1!important;object-fit:cover}
-.mApp .messengerPhoto img{display:block;width:100%;max-height:320px;object-fit:cover}
+.mApp .messengerPhoto img{display:block;width:100%;max-height:320px;object-fit:cover;aspect-ratio:4/3} /* (A1: a fixed slot when the photo has no w/h) */
 .mApp .messengerPhoto.gone{display:grid;place-items:center;padding:12px 6px;font-size:.72rem;cursor:default;color:#6b5a48;background:rgba(0,0,0,.06);min-height:72px}
 .mApp .messengerPhotoProgress{position:absolute;right:6px;bottom:6px;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem}
 .messengerViewer{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(10,8,6,.88)}.messengerViewer.hidden{display:none}
