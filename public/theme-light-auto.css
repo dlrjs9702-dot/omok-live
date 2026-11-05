@@ -1519,4 +1519,16 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.roomPlaying .boardNote{background:color-mix(in srgb,var(--hp-win) 20%,var(--hp-glass));border:1px solid color-mix(in srgb,var(--hp-win) 45%,transparent);color:var(--hp-t1);box-shadow:0 8px 24px rgba(0,0,0,.3)}
 :root[data-theme="light"][data-theme="light"] .roomHud :is(.roomHudRight>button,.roomHudLeft>#leaveRoomBtn){background:rgba(61,47,32,.14)}
 :root[data-theme="light"] body.roomPlaying .boardNote::before{color:var(--hp-win)}
+:root[data-theme="light"] .boardOverlay.hpPanel.resultWin,:root[data-theme="light"] .boardOverlay.hpPanel.resultLoss{background:var(--hp-bg2);color:var(--hp-t1);border:1px solid var(--hp-line);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+:root[data-theme="light"] .boardOverlay.hpPanel strong{color:var(--hp-t1)!important}
+:root[data-theme="light"] .boardOverlay.hpPanel span{color:var(--hp-t2)}
+:root[data-theme="light"] .boardOverlay.hpPanel .hpPanelPill.win{background:color-mix(in srgb,var(--hp-win) 18%,transparent);color:var(--hp-win)}
+:root[data-theme="light"] .boardOverlay.hpPanel .hpPanelPill.loss{background:color-mix(in srgb,var(--hp-loss) 18%,transparent);color:var(--hp-loss)}
+:root[data-theme="light"] .boardOverlay.hpPanel .resultPoints{color:var(--hp-win)!important}
+:root[data-theme="light"] .boardOverlay.hpPanel .resultPoints.minus{color:var(--hp-loss)!important}
+:root[data-theme="light"] .boardOverlay.hpPanel .resultPoints.resultMoves{color:var(--hp-t1)!important}
+:root[data-theme="light"] .boardOverlay.hpPanel .resultScore{color:var(--hp-t1)!important}
+:root[data-theme="light"] .boardOverlay.hpPanel .hpStats>span{background:var(--hp-face)}
+:root[data-theme="light"] .hpStats b{color:var(--hp-t1)}
+:root[data-theme="light"] .hpStats small{color:var(--hp-t3)}
 :root[data-theme="light"] .hpX{border:0;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1)}

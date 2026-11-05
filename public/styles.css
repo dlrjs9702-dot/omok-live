@@ -3370,4 +3370,23 @@ body.roomPlaying .boardNote.hidden{display:none}
 :root[data-theme="light"] .roomHudRight>:is(#chatFloatBtn,#gameInfoFloatBtn)::before{font-size:1.05rem;filter:grayscale(1) brightness(.35)}
 body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;color:var(--hp-win)}
 #chatPanel .quickChat{margin:6px 0}
+/* v1.10.245 U3 결과 패널 (한판마당 .hpPanel): 420px, --hp-r-xl, --hp-bg2, a spring in -- the result pill, the title, one big
+   figure (64px), three stats, two buttons; over the old hanji sheet's look */
+.boardOverlay.hpPanel.resultWin,.boardOverlay.hpPanel.resultLoss{width:min(420px,calc(100% - 24px));padding:22px 22px 18px;display:grid;justify-items:center;gap:6px;background:var(--hp-bg2);color:var(--hp-t1);border:1px solid var(--hp-line);border-radius:var(--hp-r-xl);box-shadow:0 24px 60px rgba(0,0,0,.5);animation:hpPanelIn .4s var(--hp-spring)}
+.boardOverlay.hpPanel::after{content:none!important}
+.boardOverlay.hpPanel strong{color:var(--hp-t1)!important;font-size:22px;font-weight:900}
+.boardOverlay.hpPanel span{color:var(--hp-t2)}
+.hpPanelPill{display:inline-flex;align-items:center;min-height:28px;padding:0 14px;border-radius:99px;font-size:13px;font-weight:900;letter-spacing:.04em}
+.boardOverlay.hpPanel .hpPanelPill.win{background:color-mix(in srgb,var(--hp-win) 18%,transparent);color:var(--hp-win)}
+.boardOverlay.hpPanel .hpPanelPill.loss{background:color-mix(in srgb,var(--hp-loss) 18%,transparent);color:var(--hp-loss)}
+.boardOverlay.hpPanel .resultPoints{margin:4px 0 0;font-size:64px!important;line-height:1;font-weight:900;font-variant-numeric:tabular-nums;color:var(--hp-win)!important}
+.boardOverlay.hpPanel .resultPoints.minus{color:var(--hp-loss)!important}.boardOverlay.hpPanel .resultPoints.resultMoves{color:var(--hp-t1)!important}
+.boardOverlay.hpPanel .resultScore{color:var(--hp-t1)!important}
+.boardOverlay.hpPanel .hpStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin-top:8px}
+.boardOverlay.hpPanel .hpStats>span{display:grid;justify-items:center;gap:2px;padding:10px 6px;border-radius:var(--hp-r-md);background:var(--hp-face);min-width:0}
+.hpStats b{font-size:17px;font-weight:900;color:var(--hp-t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.hpStats small{font-size:11px;color:var(--hp-t3)}
+.boardOverlay.hpPanel .resultActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:10px}
+.boardOverlay.hpPanel .resultActions .hpBtn{min-height:50px;padding:0 12px;font-size:16px}
+@keyframes hpPanelIn{from{opacity:0;transform:translate(-50%,-50%) scale(.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@media (prefers-reduced-motion:reduce){.boardOverlay.hpPanel.resultWin,.boardOverlay.hpPanel.resultLoss{animation:none}}
 .hpX{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1);font:inherit;font-size:16px;font-weight:800;cursor:pointer}

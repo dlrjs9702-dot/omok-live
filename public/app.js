@@ -1431,13 +1431,21 @@
     const row = document.createElement('span'); row.className = 'resultActions';
     // (G-틀④ 검토: the card's 「한 판 더」 is the one -- 다음 판 준비 is hidden under it; once pressed it says it is waiting)
     const asked = nextAskedFor === `${state.me?.roomCode}:${state.game?.round}`;
-    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = asked ? '준비 완료 · 기다리는 중' : '한 판 더'; again.disabled = asked;
+    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary hpBtn go'; again.textContent = asked ? '준비 완료 · 기다리는 중' : '한 판 더'; again.disabled = asked;
     again.addEventListener('click', async () => { const key = `${state.me?.roomCode}:${state.game?.round}`; nextAskedFor = key; again.textContent = '준비 완료 · 기다리는 중'; again.disabled = true;
       if (await roomAction('next-round')) return;
       if (nextAskedFor === key) nextAskedFor = null; /* (C4 P2-1: the ask failed -- the card's button again, the one under it is hidden) */
       for (const b of new Set([again, ...boardOverlay.querySelectorAll('.resultActions .primary')])) { b.textContent = '한 판 더'; b.disabled = false; } });
-    const out = document.createElement('button'); out.type = 'button'; out.className = 'ghost'; out.textContent = '게임관으로'; out.addEventListener('click', () => document.getElementById('leaveRoomBtn').click());
-    row.append(again, out); boardOverlay.append(row);
+    const out = document.createElement('button'); out.type = 'button'; out.className = 'ghost hpBtn'; out.textContent = '게임관으로'; out.addEventListener('click', () => document.getElementById('leaveRoomBtn').click());
+    // (v1.10.245 U3: a friendly hand's big figure is its moves; three stats -- 수 · 시간 · 상대 -- over the buttons)
+    const g = state.game || {}; const moves = Number(g.moveCount);
+    if (!boardOverlay.querySelector('.resultPoints') && Number.isFinite(moves) && moves > 0) { const big = document.createElement('span'); big.className = 'resultPoints resultMoves'; big.textContent = `${moves}수`; boardOverlay.append(big); }
+    const others = Object.entries(state.players || {}).filter(([k, p]) => p && k !== String(seat)).map(([, p]) => p.label);
+    const secs = Number(g.finishedAt) && Number(g.startedAt) ? Math.max(0, Math.round((Number(g.finishedAt) - Number(g.startedAt)) / 1000)) : null;
+    const stats = document.createElement('span'); stats.className = 'hpStats';
+    for (const [k, v] of [['수', Number.isFinite(moves) ? `${moves}` : '–'], ['시간', secs === null ? '–' : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`], ['상대', others.length > 1 ? `${others.length}명` : others[0] || '–']]) {
+      const cell = document.createElement('span'); const b = document.createElement('b'); b.textContent = v; const small = document.createElement('small'); small.textContent = k; cell.append(b, small); stats.append(cell); }
+    row.append(again, out); boardOverlay.append(stats, row);
   }
   function setResultBoardOverlay(outcome, game) {
     const win = outcome === 'win';
@@ -1445,7 +1453,8 @@
     const detail = document.createElement('span');
     heading.textContent = win ? '🏆 승리!' : '패배';
     detail.textContent = resultCopy(outcome, game);
-    boardOverlay.replaceChildren(heading, detail);
+    const pill = document.createElement('span'); pill.className = `hpPanelPill ${win ? 'win' : 'loss'}`; pill.textContent = win ? '승리' : '패배'; // (v1.10.245 U3)
+    boardOverlay.replaceChildren(pill, heading, detail);
     // (G-틀④ 점수가 하나씩: a game that keeps a score per side -- 오델로 돌, 윷 완주, 점과 상자 -- counts it up on the result)
     const sc = game?.scores; const unit = { othello: '돌', yut: '완주', dots: '상자' }[state?.gameType];
     if (unit && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white))) {
@@ -1454,8 +1463,8 @@
       const key = `${state.me?.roomCode}:${game?.round}:${to.black}:${to.white}`; const counted = resultCountedFor === key; resultCountedFor = key;
       if (counted || reducedMotionActive()) draw(1); else { const t0 = performance.now(); const step = (t) => { const k = Math.min(1, (t - t0) / 900); draw(k); if (k < 1 && row.isConnected) requestAnimationFrame(step); }; requestAnimationFrame(step); }
     }
-    boardOverlay.classList.remove('resultWin', 'resultLoss');
-    boardOverlay.classList.add(win ? 'resultWin' : 'resultLoss');
+    boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
+    boardOverlay.classList.add(win ? 'resultWin' : 'resultLoss', 'hpPanel');
   }
 
   let reflexGames = null; // v1.10.68 순발력 게임 (below, at its button)
@@ -9280,21 +9289,21 @@
       boardOverlay.classList.add('hidden');
       renderBaseball();
     } else if (g.status === 'selecting') {
-      boardOverlay.classList.remove('resultWin', 'resultLoss');
+      boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
       const choice = state.me?.choice;
       if (!choice) boardOverlay.textContent = team || city ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : `${choiceKo('black')} · ${choiceKo('white')} · 관전 중 역할을 선택하세요`;
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'playing' && g.paused) {
-      boardOverlay.classList.remove('resultWin', 'resultLoss');
+      boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
       boardOverlay.textContent = `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
       boardOverlay.classList.toggle('legendResult', legendWinOnBoard(g)); // keep the legend win sequence uncovered
       if (outcome) { setResultBoardOverlay(outcome, g); resultOverlayExtras(outcome); }
       else {
-        boardOverlay.classList.remove('resultWin', 'resultLoss');
+        boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
         boardOverlay.textContent = `${seatKo(g.winner)} 승리`;
       }
       if (g.endReason === 'disconnect') {
@@ -9305,11 +9314,11 @@
       }
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'draw') {
-      boardOverlay.classList.remove('resultWin', 'resultLoss');
+      boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
       boardOverlay.textContent = '무승부';
       boardOverlay.classList.remove('hidden');
     } else {
-      boardOverlay.classList.remove('resultWin', 'resultLoss');
+      boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
       boardOverlay.classList.add('hidden');
     }
 
