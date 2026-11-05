@@ -1082,7 +1082,7 @@ function errandPay(e, before) {
   return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0);
 }
 async function errandView(account) {
-  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day, errandWalkers);
+  const day = errandDay(); const errands = IslandErrands.errandsOf(day, errandWalkers);
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
   const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
@@ -1640,6 +1640,9 @@ plazaTicker.unref?.();
 // none: the tests' server keeps it off till /api/test/roster turns it on, a walker at a counter would leave their talks)
 let rosterOn = process.env.NODE_ENV !== 'test'; let rosterPin = null; // (pin: a test's day)
 const rosterDay = () => (rosterOn ? rosterPin || kstDate(nowMs()) : null);
+// (CI #389·#391 resident-roster: the day's errands by the same day as the table -- a test's pinned day too, so an errand's asker
+// is the pinned day's, not the real day's; off the tests' pin this is Seoul's date as before)
+const errandDay = () => rosterPin || kstDate(nowMs());
 const counterToday = (n) => { const d = rosterDay(); return d ? IslandRoster.counterOf(n, d) : null; };
 const deskToday = () => { const d = rosterDay(); return d ? IslandRoster.deskRest(d) : { rest: null, by: null }; };
 // C2 (v1.10.216): every islander not at a post walks (the table off: the ten as before); one walking or at a counter talks
@@ -6835,7 +6838,8 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
-    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null, ...(body.dex ? { dexEntry: String(body.itemId) } : {}) }, nowMs()); // (v1.10.233 dex: into the 도감 too) bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
+    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null, ...(body.dex ? { dexEntry: String(body.itemId) } : {}) }, nowMs());
+    questBagNow(pointAccountForSession(session), result.bag); // (CI 흔들림 묶음: a request's mark from what was given at once -- as a real catch does; not the bag's 2 s re-read) // (v1.10.233 dex: into the 도감 too) bikesOf.delete(pointAccountForSession(session)); questBagNow(pointAccountForSession(session), result.bag);
     return sendJson(res, 200, { ok: true, ...result });
   }
 
@@ -7261,7 +7265,7 @@ async function requestHandler(req, res) {
   // (Q 할 일 카드 「그만둘래요」) an errand under way let go: its asker offers it again (nothing paid, nothing kept)
   if (pathname === '/api/island/errand/drop' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
-    const account = pointAccountForSession(session); const day = kstDate(nowMs()); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day, errandWalkers);
+    const account = pointAccountForSession(session); const day = errandDay(); const key = `${day}|${account}`; const errands = IslandErrands.errandsOf(day, errandWalkers);
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const id = String((await parseJson(req)).id || ''); // (C5 Codex 4차 P3-2: both awaited before the stages are read -- no write between lost)
     const next = IslandErrands.drop(errands, errandStages.get(key) || {}, done, id);
     if (!next) return sendError(res, 409, 'ERRAND_GONE', '그만둘 수 있는 부탁이 아니에요.');
@@ -7357,9 +7361,9 @@ async function requestHandler(req, res) {
     const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
     // (대화창 새 단장: the choices are only what can be done today -- the day's story and gift not yet, an errand to do with them)
     const sendTalk = async (view) => {
-      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(day, errandWalkers);
+      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(errandDay(), errandWalkers);
       const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
-      return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${day}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
+      return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${errandDay()}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
     };
     // S1 이야기 부탁: their next chapter offered once my 호감도 has reached it (「할게요!」 starts it -- one on the island at a
     // time, 「다음에요」 keeps nothing), the islander it sends me to (that step done), back to them: their thanks and the story
@@ -7408,7 +7412,7 @@ async function requestHandler(req, res) {
       let say;
       if (topic === 'how') say = [IslandCast.walkerLine(n, Math.random, 'day', level, String(session.label || ''))];
       else {
-        const errands = IslandErrands.errandsOf(day, errandWalkers); const stages = errandStages.get(`${day}|${account}`) || {};
+        const errands = IslandErrands.errandsOf(errandDay(), errandWalkers); const stages = errandStages.get(`${errandDay()}|${account}`) || {};
         const mine = errands.find((e) => stages[e.id] === 1 && e.kind !== 'buy' && e.to !== n) || errands.find((e) => stages[e.id] === 2 && e.from !== n);
         const other = mine ? (stages[mine.id] === 2 ? mine.from : mine.to) : (n + 1 + Math.floor(Math.random() * (IslandCast.WALKERS.length - 1))) % IslandCast.WALKERS.length;
         say = [IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
@@ -7468,7 +7472,7 @@ async function requestHandler(req, res) {
       if (owed) await pointStore.questApply(account, 'resmem', (doc) => ({ doc: { ...doc, giftUsed: { ...(doc?.giftUsed || {}), [n]: null } } })).catch(() => {});
       return sendTalk(view([react.say], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, String(session.label || '')), ...(used?.bag ? { bag: used.bag } : {}) }));
     }
-    const errands = IslandErrands.errandsOf(day, errandWalkers); const key = `${day}|${account}`;
+    const errands = IslandErrands.errandsOf(errandDay(), errandWalkers); const key = `${errandDay()}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     // Q 부탁 받기 (docs/quest-accept-complete-20261026.md): 「할게요!」 starts the offered errand; 「다음에요」 keeps nothing
     // (asked again today) -- each answered in the asker's own words

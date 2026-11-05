@@ -39,13 +39,16 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
     const outOfJail = async () => {
       await expect.poll(async () => { if (await space() !== 'jail') return true; await page.evaluate(() => window.PlazaDebug().place('jail:exit')); await page.waitForTimeout(500); await spaceOn(page, 'jail:exit', isMobile); await page.waitForTimeout(1200); return (await space()) !== 'jail'; }, { timeout: 60000 }).toBe(true);
     };
+    // (CI #392 chromium-2: the card up, then 「이야기해요」 「not stable」 and gone -- on a slow runner the walk-in drew the card again
+    // under the click; the button is pressed in the page the moment the card shows (no actionability wait) and the whole
+    // step tried again until their talk is open)
     const byPost = (open, prefix, card) => async () => {
       await open();
+      const btn = page.locator('#plazaDialog .postTalkBtn', { hasText: '이야기해요' });
       await expect.poll(async () => {
-        if (await page.locator(card).isVisible()) return true;
-        await page.evaluate((p) => { const d = window.PlazaDebug(); if (p !== 'jail:warden') return d.place(p); const J = window.IslandJail; const w = J.world(J.TALK.lx, J.TALK.lz); d.teleport(w.x, w.z); }, prefix); await page.waitForTimeout(500); /* (his desk is a counter, not a door: where one talks from) */ await spaceOn(page, prefix, isMobile); await page.waitForTimeout(900); return page.locator(card).isVisible(); }, { timeout: 60000 }).toBe(true);
-      await lines(); await page.locator('#plazaDialog .postTalkBtn', { hasText: '이야기해요' }).click();
-      await expect.poll(talking, { timeout: 20000 }).toBe(true);
+        if (await talking()) return true;
+        if (await page.locator(card).isVisible() && await btn.isVisible()) { await lines().catch(() => {}); await btn.evaluate((el) => el.click()).catch(() => {}); await page.waitForTimeout(1200); return talking(); }
+        await page.evaluate((p) => { const d = window.PlazaDebug(); if (p !== 'jail:warden') return d.place(p); const J = window.IslandJail; const w = J.world(J.TALK.lx, J.TALK.lz); d.teleport(w.x, w.z); }, prefix); await page.waitForTimeout(500); /* (his desk is a counter, not a door: where one talks from) */ await spaceOn(page, prefix, isMobile); await page.waitForTimeout(900); return false; }, { timeout: 90000 }).toBe(true);
     };
     const warden = byPost(intoJail, 'jail:warden', '#wardenCard');
     const mayor = byPost(async () => { await outOfJail(); }, 'mayor', '#plazaDialog .postTalkBtn');
@@ -66,8 +69,10 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
       await shot(`offer-${n}-${c + 1}`);
       // 할게요 -- till the server has it under way (CI mobile-2: at 2.7 fps a click before the choices settled took nothing)
       await expect.poll(async () => { if ((await get(request, '/api/island/story', token)).data.track?.title === S.title) return true; await lines().catch(() => {}); const yes = choices.filter({ hasText: '할게요!' }); if (await yes.isVisible().catch(() => false)) await yes.click().catch(() => {}); /* (its lines shown first: the buttons come after the last -- CI ▼ still up) */ await page.waitForTimeout(800); return false; }, { timeout: 90000 }).toBe(true);
+      // (CI #389·#392: the line on the card before the window is shut -- the server had it, but the page's answer (its 할 일 line)
+      // was still on its way when Escape ended the talk, and an answer after the end is dropped; only the 20 s refresh brought it)
+      await expect(page.locator('#questTracker .questLine', { hasText: S.task })).toBeVisible({ timeout: 60000 });
       await lines(); await close();
-      await expect(page.locator('#questTracker .questLine', { hasText: S.task })).toBeVisible({ timeout: 30000 });
       if (S.talk != null) { // (말 걸기 장: the one it sends me to -- 「부탁받고 왔어요」)
         await go(); await lines(); await skipErrand(); await choices.filter({ hasText: '부탁받고 왔어요' }).click(); /* (a quest's 「📜 부탁」 may come first) */ await lines(); await close();
         await expect(page.locator('#questTracker .questLine.ready', { hasText: '돌아가 말해요' })).toBeVisible({ timeout: 30000 });

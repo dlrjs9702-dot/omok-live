@@ -13,11 +13,14 @@ test('1인칭 대화 구도: 눈높이·머리부터 어깨·얼굴은 위쪽 1/
   expect((await page.evaluate(() => window.PlazaDebug().view())).mode).toBe('first');
   const dialog = page.locator('#plazaDialog'); const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
   const framed = async (name) => {
-    await expect.poll(async () => { const a = await page.evaluate(() => window.PlazaDebug().talkAim()); return a && a.eyeY > 0.12 && a.eyeY < 0.6 && a.topY < 0.98 && Math.abs(a.x) < 0.2; }, { timeout: 15000 }).toBe(true);
+    // (CI #380·#383: the distance read while the step back was still under way (0.87) -- waited for with the framing)
+    await expect.poll(async () => { const a = await page.evaluate(() => window.PlazaDebug().talkAim()); return a && a.eyeY > 0.12 && a.eyeY < 0.6 && a.topY < 0.98 && Math.abs(a.x) < 0.2 && a.fill > 0 && a.dist > 1.1; }, { timeout: 15000 }).toBe(true);
     const a = await page.evaluate(() => window.PlazaDebug().talkAim()); expect(a.fill).toBeGreaterThan(0); expect(a.dist).toBeGreaterThan(1.1);
     if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-${name}.png` }); }
-    await expect.poll(async () => { if (await talking()) await page.evaluate(() => document.getElementById('plazaDialog').close()); return talking(); }, { timeout: 15000 }).toBe(false); /* (CI: a late talk request opened it again -- closed again) */
-    expect((await page.evaluate(() => window.PlazaDebug().talkAim()))).toBe(null); expect((await page.evaluate(() => window.PlazaDebug().view())).fov).toBe(70);
+    // (CI #380·#382·#383: shut, and a late talk's answer (the asks above repeat every 1.2 s) opened it again between the check and the
+    // aim's read -- shut until the aim is gone and the window stays shut)
+    await expect.poll(async () => { if (await talking()) await page.evaluate(() => document.getElementById('plazaDialog').close()); await page.waitForTimeout(400); return await talking() ? 'talking' : await page.evaluate(() => window.PlazaDebug().talkAim()); }, { timeout: 30000 }).toBe(null); /* (CI: a late talk request opened it again -- closed again) */
+    expect((await page.evaluate(() => window.PlazaDebug().talkAim()))).toBe(null); await expect.poll(() => page.evaluate(() => window.PlazaDebug().view().fov)).toBe(70);
   };
   for (const [n, name] of [[1, 'haesong'], [9, 'garam']]) {
     await expect.poll(async () => {

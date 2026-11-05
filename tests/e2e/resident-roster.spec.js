@@ -4,6 +4,7 @@ const R = require('../../public/plaza/island-roster');
 const Calendar = require('../../public/plaza/island-calendar');
 const Assets = require('../../public/plaza/island-assets');
 const Cast = require('../../public/plaza/island-cast');
+const Errands = require('../../lib/island-errands');
 
 // v1.10.215 주민 근무표 C1 (gamecenter-notes docs/resident-roster-c-plan-20261031.md): on a day the table puts 물결 at the 1st
 // floor (his 부탁 open: the e2e server's 정원사·어부 week) -- every rotating post in that day's islander, a walker at a counter
@@ -15,7 +16,10 @@ const Cast = require('../../public/plaza/island-cast');
 // work at the 출석대 -- its 「섬 안내」 under the keeper's name; 느티 at the 정자 every day; the 박물관's 관장 the day's)
 test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·부탁, 게시판 근무표, 관공서 쉬는 창구', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.SHOT_DIR ? 600000 : 300000);
-  const fits = (d) => R.rosterOf(d).posts.mall1 === 11 && R.walks(10, d) && new Date(`${d}T00:00:00Z`).getUTCDay() !== 0; // (물결 at the 1st floor, 꽃님 walking, a weekday)
+  // (CI #389·#392: the day's errands go by the pinned day too now (server errandDay) -- a day 꽃님 asks or is sought in one is skipped:
+  // her talk would open with the errand's offer, not her 부탁)
+  const fits = (d) => R.rosterOf(d).posts.mall1 === 11 && R.walks(10, d) && new Date(`${d}T00:00:00Z`).getUTCDay() !== 0 // (물결 at the 1st floor, 꽃님 walking, a weekday)
+    && !Errands.errandsOf(d, (n) => R.walks(n, d, true)).some((e) => e.from === 10 || e.to === 10);
   let day = Calendar.dayOf(Date.now()); for (let k = 0; k < 200 && !fits(day); k += 1) day = Calendar.addDays(day, 1);
   const r = R.rosterOf(day); const name = (n) => Cast.RESIDENTS[n].name;
   expect((await request.post('/api/test/roster', { data: { on: true, day } })).ok()).toBe(true);
@@ -72,9 +76,9 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await shot(page, 'attendance-guide', 600);
     await shut();
     // C2: 꽃님 walking -- her talk, her 부탁 in it (as at her garden)
-    // (CI #389 mobile-3, 2026-11-05 00:02 KST: the errands go by the real day, the table by `day` -- on a day 꽃님 also asks an
-    // errand her talk opens with its offer (「할게요!」), and her 부탁 shows only after it: taken, then her talk again)
-    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; const yes = dialog.getByRole('button', { name: '할게요!' }); if (await yes.isVisible()) { await yes.click(); await page.waitForTimeout(1200); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); } await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 40000 }).toBe(true);
+    // (CI #389·#392: no errand of hers on `day` (fits) -- her talk opens on its choices; an islander's event may hold her
+    // (RESIDENT_BUSY): let go before each try, as resident-talk does)
+    await expect.poll(async () => { if (await dialog.locator('[data-topic="quest"]').isVisible()) return true; await request.post('/api/test/island/free-residents', { headers: { 'X-Session-Token': who.token }, data: {} }); await page.evaluate(() => window.PlazaDebug().talkResident(10)); await page.waitForTimeout(1500); await revealTalk(page); return dialog.locator('[data-topic="quest"]').isVisible(); }, { timeout: 60000 }).toBe(true);
     await expect(page.locator('#plazaDialogTitle')).toContainText('꽃님');
     await shot(page, 'walk-kkotnim');
     await dialog.locator('[data-topic="quest"]').click(); await revealTalk(page);

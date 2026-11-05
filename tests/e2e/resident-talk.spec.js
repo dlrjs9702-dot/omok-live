@@ -16,13 +16,18 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
   // (the debug helper stands me by them and talks at once -- CI's slow frames; the server still checks the distance, a
   // walk-off between is retried; an island event may take the islander meanwhile -- events first: let it go for the test)
+  // (CI #391 chromium-10: the window in talk mode but no choices in it for 15 s -- another card drawn into it while their words
+  // came (an event's, the walk-in's); a talk counts once its choices are there, else it is shut and asked again)
   const talkTo = async (n) => {
+    let since = 0;
     await expect.poll(async () => {
       // (CI 3차, run 39704740141: 120 s of 「가까이 가서 다시 시도해 주세요」 -- talkResident puts me by them without leaving, so
       // the server took it as a walk from my last place and stopped me at the other player standing on that line
       // (plazaSeparate); a warp first (leave, enter fresh), then the talk from a step away)
-      if (!await talking()) { await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 1.1, w.z); window.PlazaDebug().talkResident(n); }, n); await page.waitForTimeout(1500); }
-      return talking();
+      if (!await talking()) { since = 0; await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 1.1, w.z); window.PlazaDebug().talkResident(n); }, n); await page.waitForTimeout(1500); return false; }
+      if (await page.locator('#plazaDialog .talkChoices button').count()) return true;
+      since ||= Date.now(); if (Date.now() - since > 20000) { await page.keyboard.press('Escape'); await page.waitForTimeout(600); since = 0; }
+      return false;
     }, { timeout: 120000, intervals: [300] }).toBe(true).catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')} n: ${n}`; throw error; }); // (CI 3차: once 120 s with no talk on CI -- the server's answer, to find why)
     if (!process.env.CI) expect(await page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe(`resident:${n}`); // the talk camera (사용자 2026-10-18: every talk) -- (CI: a slow screen draws the walker behind, too far for the camera)
   };
