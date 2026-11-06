@@ -3521,4 +3521,6 @@ body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;c
 .recordTowerRowItem.me{box-shadow:inset 0 0 0 2px #23806f}
 .recordTowerEmpty{padding:16px;text-align:center;color:#5e4d3b;font-weight:700}
 .recordTowerMe{margin:6px 0 10px;font-weight:800;color:#3d2f20}
-.recordTowerGo{width:100%;min-height:48px}
+.recordTowerGo{width:calc(100% - 32px);min-height:48px;box-sizing:border-box} /* (.recordsDialog's children: 16px each side) */
+.recordTowerRowItem.recordTowerAward{grid-template-columns:minmax(0,1fr) auto auto}.recordTowerAward b{white-space:nowrap;font-size:.9rem}
+.recordTowerTotal{padding:6px 12px;font-weight:900;color:#7a4a0c}

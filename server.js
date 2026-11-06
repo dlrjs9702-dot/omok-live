@@ -1268,10 +1268,13 @@ async function settleSoloWeeks(now = nowMs()) {
       for (const g of SoloRanking.GAMES) {
         const top = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week })).slice(0, 3).map((r) => ({ rank: r.rank, userId: r.userId, name: nameOf(r.userId), best: r.best }));
         games[g.id] = top; if (top[0]) firsts.set(top[0].userId, (firsts.get(top[0].userId) || 0) + 1);
-        for (const r of top) await giveTrophy(r.userId, SoloRanking.trophyGood(SoloRanking.TROPHY[g.id], SoloRanking.METALS[r.rank - 1]), `${g.title} · ${r.name} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:${g.id}:${r.rank}`);
+        const short = SoloRanking.weekLabel(week).replace(/^\d+년 /, ''); // (the line pressed: 「두더지 왕 · 이름 · 11월 2주 · 기록 52점」)
+        for (const r of top) await giveTrophy(r.userId, SoloRanking.trophyGood(SoloRanking.TROPHY[g.id], SoloRanking.METALS[r.rank - 1]), `${g.title} · ${r.name} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:${g.id}:${r.rank}`,
+          { line: `${g.title} · ${r.name} · ${short} · 기록 ${SoloRanking.format(g.id, r.best)}`, lead: `${g.name} ${SoloRanking.weekLabel(week)} ${r.rank}위!` });
       }
       const star = [...firsts].filter(([, n]) => n >= 3).map(([u]) => u);
-      for (const u of star) await giveTrophy(u, SoloRanking.trophyGood(SoloRanking.STAR.sym, 'gold'), `${SoloRanking.STAR.title} · ${nameOf(u)} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:star`);
+      for (const u of star) await giveTrophy(u, SoloRanking.trophyGood(SoloRanking.STAR.sym, 'gold'), `${SoloRanking.STAR.title} · ${nameOf(u)} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:star`,
+        { line: `${SoloRanking.STAR.title} · ${nameOf(u)} · ${SoloRanking.weekLabel(week).replace(/^\d+년 /, '')} · 1위 ${firsts.get(u)}개`, lead: `${SoloRanking.weekLabel(week)} 1위 ${firsts.get(u)}개!` });
       await pointStore.settleTitleWeek(key, { kind: 'solo_week', week, games, star });
       const given = [...new Set(Object.values(games).flat().map((r) => r.userId).concat(star))];
       if (given.length) broadcastIsland('soloTrophies', { week, accounts: given }); // (their screens: the storage and the 업적 tab read again)
@@ -1279,11 +1282,11 @@ async function settleSoloWeeks(now = nowMs()) {
   })().catch((error) => console.error('기록의 탑 정산 실패:', error.message)).finally(() => { soloSettling = null; });
   return soloSettling;
 }
-async function giveTrophy(account, good, plate, claim) {
-  await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id: good, at: nowMs(), price: 0, claim, plate }]); });
+async function giveTrophy(account, good, plate, claim, { line = plate, lead = '' } = {}) {
+  await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id: good, at: nowMs(), price: 0, claim, plate, line }]); });
   // (§3-1: a letter from the 게임관 -- once by the claim's id; a failed letter does not undo the trophy)
   const name = IslandFurniture.good(good)?.name || '트로피'; const now = nowMs(); const id = `trophy-${claim}`;
-  await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id, from: 'gamehall', fromName: '게임관', text: `기록의 탑 ${plate.split(' · ').pop()} ${name}를 받았어요! 가구 창고 「마당」 칸에 들어 있어요. 집 마당에 세워 보세요.`, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {});
+  await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id, from: 'gamehall', fromName: '게임관', text: `${lead ? `${lead} ` : ''}${name}가 창고에 들어왔어요. 가구 창고 「마당」 칸에서 꺼내 집 마당에 세워 보세요.`, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {});
 }
 // the 기록의 탑 titles' holders week by week for the titles' hall (/api/island/titles) -- as titleWeeks gives the others'
 async function soloTitleWeeks() {
@@ -1342,10 +1345,11 @@ async function settleWeeklyTitles(now = nowMs()) {
   })().catch((error) => console.error('주간 칭호 결산 실패:', error.message)).finally(() => { weeklySettling = null; });
   return weeklySettling;
 }
+let soloTitleWeekPin = null; // (NODE_ENV=test only: /api/test/solo/settle asCurrent)
 async function refreshWeeklyTitles(now = nowMs()) {
   const week = previousWeek(climbWeekOf(now)); let changed = false;
   for (const id of Object.keys(WEEKLY_TITLES)) {
-    const def = WEEKLY_TITLES[id]; const solo = def.solo ? await pointStore.settlementOf(`solo_week:${week}`) : null;
+    const def = WEEKLY_TITLES[id]; const solo = def.solo ? await pointStore.settlementOf(`solo_week:${soloTitleWeekPin || week}`) : null; /* (a test's settled week held as the current one) */
     const r = def.solo ? null : await pointStore.settlementOf(`${id}_week:${week}`); const holder = def.solo ? (def.solo === 'star' ? solo?.star || [] : solo?.games?.[def.solo]?.[0]?.userId || null) : r?.holder ?? r?.fishking ?? null;
     if (weeklyCache[id].week === week && JSON.stringify(weeklyCache[id].holder) === JSON.stringify(holder)) continue;
     weeklyCache[id] = { week, holder, statue: def.solo ? null : await kingStatue(holder, r) }; changed = true; /* (the solo titles: no statue) */
@@ -1553,7 +1557,7 @@ const taxDebt = new Map(); // account -> what it owes
 const PRISON_OUTFIT = 'avatar_outfit_2';
 function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
-  const weekly = weeklyTitleOf(equipped?.avatar?.title); if (weekly) shown.title = holdsWeekly(weekly[0], account) ? weekly[1].name : null; // v1.10.89 낚시왕 · v1.10.90 제초왕
+  const weekly = weeklyTitleOf(equipped?.avatar?.title); if (weekly) shown.title = holdsWeekly(weekly[0], account) ? `${weekly[1].solo ? '🏆 ' : ''}${weekly[1].name}` : null; // v1.10.89 낚시왕 · v1.10.90 제초왕 (v1.10.251 §3: 기록의 탑's with a small 🏆)
   if (birthdays.today.has(account)) shown.title = Together.BIRTHDAY_TITLE; // B 47 생일: the day's title
   if (!(taxDebt.get(account) > 0)) return shown;
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
@@ -4947,7 +4951,9 @@ async function requestHandler(req, res) {
     const result = await pointStore.equipSkin({ userId: account, game: 'avatar', slot: 'title', skinId, free });
     if (!result.ok) return sendError(res, 409, 'SKIN_NOT_OWNED', '보유한 전설 스킨만 칭호로 쓸 수 있습니다.');
     equippedSkinCache.set(account, result.equipped);
-    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: lookFor(account, result.equipped) });
+    const avatar = lookFor(account, result.equipped); /* (v1.10.251: the island's name tags at once, as a new look does) */
+    for (const entry of plazaPresence.values()) if (entry.account === account) { entry.title = avatar.title; plazaDirty = true; }
+    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar });
   }
 
   const eventClaimMatch = pathname.match(/^\/api\/events\/([a-z0-9_]{3,60})\/claim$/);
@@ -5694,7 +5700,7 @@ async function requestHandler(req, res) {
       if (body.remove) { const next = { ...h, yard: others }; await saveHome(account, next); broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, yard: others }); }
       const cap = IslandYard.limitOf(level);
       if (!yard.some((p) => p.uid === piece.uid) && yard.length >= cap) return sendError(res, 409, 'TOO_MANY', `마당에는 ${cap}개까지 놓을 수 있어요.`);
-      const p = { uid: piece.uid, id: piece.id, x: Number(body.x), z: Number(body.z), rot: Number(body.rot), ...(piece.plate ? { plate: piece.plate } : {}) }; // (v1.10.251: a trophy's name plate)
+      const p = { uid: piece.uid, id: piece.id, x: Number(body.x), z: Number(body.z), rot: Number(body.rot), ...(piece.plate ? { plate: piece.plate, line: piece.line || piece.plate } : {}) }; // (v1.10.251: a trophy's name plate, its line pressed)
       const why = IslandYard.placeError(p, others, lot, stage, level); if (why) return sendError(res, 409, 'BAD_PLACE', why);
       const next = { ...h, yard: [...others, p] }; await saveHome(account, next); broadcastIsland('homes', { lot: lot.id });
       return sendJson(res, 200, { ok: true, yard: next.yard });
@@ -6309,7 +6315,8 @@ async function requestHandler(req, res) {
     const me = pointAccountForSession(session); const plz = url.searchParams.get('plaza'); const who = plz ? [...sessions.values()].find((s) => s.plazaId && s.plazaId === plz) : null; // (someone on the island: by their plaza id)
     if (plz && !who) return sendError(res, 404, 'NOT_HERE', '섬에 없는 사람이에요.'); const account = who ? pointAccountForSession(who) : me;
     const counts = await soloTrophyCounts(account);
-    if (account !== me) return sendJson(res, 200, { ok: true, trophies: counts.total, games: undefined });
+    const medals = { gold: counts.star, silver: 0, bronze: 0 }; for (const c of Object.values(counts.byGame)) for (const m of SoloRanking.METALS) medals[m] += c[m]; /* (the star is gold) */
+    if (account !== me) return sendJson(res, 200, { ok: true, trophies: counts.total, medals, games: undefined });
     const records = await pointStore.soloRecords(account); const games = [];
     for (const g of SoloRanking.GAMES) { const mine = records[g.id] || {}; const levels = [];
       for (const level of g.levels) { if (!mine[level]) continue; const place = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level })).find((r) => r.userId === account)?.rank ?? null; levels.push({ level, best: mine[level].best, clears: mine[level].clears, place }); }
@@ -6318,7 +6325,7 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/solo/settle' && req.method === 'POST') { // (a week settled now: `now` a time in the week after it)
     const body = await parseJson(req); const now = Number(body.now) || nowMs(); await settleSoloWeeks(now);
-    if (body.asCurrent) { const r = await pointStore.settlementOf(`solo_week:${previousWeek(climbWeekOf(now))}`); for (const [id, def] of Object.entries(WEEKLY_TITLES)) if (def.solo) weeklyCache[id] = { week: previousWeek(climbWeekOf(nowMs())), holder: def.solo === 'star' ? r?.star || [] : r?.games?.[def.solo]?.[0]?.userId || null, statue: null }; refreshTaxLooks(); }
+    if (body.asCurrent) { soloTitleWeekPin = previousWeek(climbWeekOf(now)); const r = await pointStore.settlementOf(`solo_week:${soloTitleWeekPin}`); for (const [id, def] of Object.entries(WEEKLY_TITLES)) if (def.solo) weeklyCache[id] = { week: previousWeek(climbWeekOf(nowMs())), holder: def.solo === 'star' ? r?.star || [] : r?.games?.[def.solo]?.[0]?.userId || null, statue: null }; refreshTaxLooks(); }
     return sendJson(res, 200, { ok: true, record: await pointStore.settlementOf(`solo_week:${previousWeek(climbWeekOf(now))}`) });
   }
   if (pathname === '/api/solo/board' && req.method === 'GET') {

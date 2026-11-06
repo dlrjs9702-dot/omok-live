@@ -90,7 +90,7 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
   await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '역대 최고' }).click();
   await expect(dlg.locator('.recordTowerRowItem.me')).toContainText('탑손님');
   await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '내 업적' }).click(); /* (v1.10.251 §3-2) */
-  await expect(dlg.locator('#recordTowerMe')).toContainText('트로피 모두'); await expect(dlg.locator('.recordTowerAward', { hasText: '지뢰찾기' })).toContainText('🥇');
+  await expect(dlg.locator('.recordTowerTotal')).toContainText('트로피 모두'); await expect(dlg.locator('.recordTowerAward', { hasText: '지뢰찾기' })).toContainText('🥇');
   await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '역대 최고' }).click();
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/rt-window-pc.png` });
   await dlg.locator('#recordTowerGo').click();

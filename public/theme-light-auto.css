@@ -1585,3 +1585,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .recordTowerRowItem.me{box-shadow:inset 0 0 0 2px #23806f}
 :root[data-theme="light"] .recordTowerEmpty{color:#5e4d3b}
 :root[data-theme="light"] .recordTowerMe{color:#3d2f20}
+:root[data-theme="light"] .recordTowerTotal{color:#7a4a0c}

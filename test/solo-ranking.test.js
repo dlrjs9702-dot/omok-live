@@ -66,6 +66,8 @@ test('기록의 탑 서버: 이번 주·역대 순위(1~20 + 내 순위), 결과
   const mine = (await req('/api/island/furniture/mine', a)).data.pieces.filter((p) => p.id.startsWith('yard_trophy_'));
   assert.deepEqual(mine.map((p) => p.id), ['yard_trophy_mines__gold'], '한 번만');
   assert.match(mine[0].plate, /^지뢰 탐정 · 탑가 · \d{4}년 \d+월 \d주$/); assert.equal(mine[0].name, '지뢰 탐정 금 트로피');
+  assert.match(mine[0].line, /^지뢰 탐정 · 탑가 · \d+월 \d주 · 기록 \S+/); /* (§3-1: the line it shows when pressed) */
+  assert.ok((await req('/api/island/mail', a)).data.letters.some((l) => l.from === 'gamehall' && /^지뢰찾기 \d{4}년 \d+월 \d주 1위! 지뢰 탐정 금 트로피가 창고에 들어왔어요/.test(l.text)));
   assert.ok((await req('/api/skins', a)).data.dexTitles.some((t) => t.id === 'title_solo_minesweeper'), '칭호');
   assert.ok(!(await req('/api/skins', b)).data.dexTitles.some((t) => t.id === 'title_solo_minesweeper'));
   const awards = (await req('/api/solo/awards', a)).data;
