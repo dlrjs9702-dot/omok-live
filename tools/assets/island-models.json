@@ -8971,6 +8971,126 @@
       "lowSrc": "tower100:02. Low/record_tower_low.glb",
       "lowSha256": "ba4645ee8c0185cbc456a9c0d0e64577cb935365e2bfd1b1701f681dcf9dd890",
       "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_mole.glb",
+      "src": "trophy98:01. High/yard_trophy_mole.glb",
+      "sha256": "2853225e925472e5311fdf8d74a91fd6fcc6f2ff264500d563b0aba9d502f59b",
+      "lowSrc": "trophy98:02. Low/yard_trophy_mole_low.glb",
+      "lowSha256": "be92c695f147932ddf6a9ff594590d43f1659e5b90357c34a9860f4c67b83577",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_reaction.glb",
+      "src": "trophy98:01. High/yard_trophy_reaction.glb",
+      "sha256": "9b925e361fd128a8d7ee36bd99d2ea9ae498e4640037a6d5ce6ea561d9ab3146",
+      "lowSrc": "trophy98:02. Low/yard_trophy_reaction_low.glb",
+      "lowSha256": "cbc2685692f43db8d025704c8491a053b57866d25d52fad6f443ccb25634eac3",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_color.glb",
+      "src": "trophy98:01. High/yard_trophy_color.glb",
+      "sha256": "89bc867a287e212b8fc0eb4d5b4f257eb5906bf85afd986ae5fb2780acddd3c5",
+      "lowSrc": "trophy98:02. Low/yard_trophy_color_low.glb",
+      "lowSha256": "a98ed7487ee265bf20ec8d17768d15a89e036cbaef7281324d028e6643089337",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_numbers.glb",
+      "src": "trophy98:01. High/yard_trophy_numbers.glb",
+      "sha256": "f6bf100771b0ba575b261c5cda9876e7f0755c6d2a6ce6cf51c6cb1f3bbf0305",
+      "lowSrc": "trophy98:02. Low/yard_trophy_numbers_low.glb",
+      "lowSha256": "55a62bf582601b7e6982883d9fbc293fcd5a141d4412d890d38665435511b9ab",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_beat.glb",
+      "src": "trophy98:01. High/yard_trophy_beat.glb",
+      "sha256": "131490af8cac801a9381c9d365a977750f1d0066c9c3795634ac75b0075c4cc9",
+      "lowSrc": "trophy98:02. Low/yard_trophy_beat_low.glb",
+      "lowSha256": "35d024c41bd852050467760f98bd964c7d11e9ffdfecab7f2d6f3f38e6cc82e7",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_sky.glb",
+      "src": "trophy98:01. High/yard_trophy_sky.glb",
+      "sha256": "1c5e67b80388671ad9a0641d74647ebcf6f4550d3ed291fa0b320fc47c578f27",
+      "lowSrc": "trophy98:02. Low/yard_trophy_sky_low.glb",
+      "lowSha256": "977092eeaccee7a7cb2cfa90ca40d4808c7aaac3bd1083ea11f3bc34266e6c73",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_mines.glb",
+      "src": "trophy98:01. High/yard_trophy_mines.glb",
+      "sha256": "934e59ec5a5d5d55d5e7060503512f931787e772f16609bbb32762c36e32ca6d",
+      "lowSrc": "trophy98:02. Low/yard_trophy_mines_low.glb",
+      "lowSha256": "968c7ac5fa7abc3308d85ede4a9bce33e411f566b98ed399293b77f451169005",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_sudoku.glb",
+      "src": "trophy98:01. High/yard_trophy_sudoku.glb",
+      "sha256": "50968203d6cc08e99749891b1bac9f648b57dc8b7e184ec67e0a6d903d7c2a04",
+      "lowSrc": "trophy98:02. Low/yard_trophy_sudoku_low.glb",
+      "lowSha256": "af5bbe0b48a2be5716cb70fa50bb9ee55d95081aece8feace45682fbc9b8d3d4",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_nonogram.glb",
+      "src": "trophy98:01. High/yard_trophy_nonogram.glb",
+      "sha256": "6107768b573bf268364045a65c6b79b3d86107b4012e0990908fd56a1e2c5c30",
+      "lowSrc": "trophy98:02. Low/yard_trophy_nonogram_low.glb",
+      "lowSha256": "4e8e5a6193504f73de020fccc8f10107e56c739554eea9e371206f6aba99b862",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_bridges.glb",
+      "src": "trophy98:01. High/yard_trophy_bridges.glb",
+      "sha256": "eb8b872f5d404e7aaa51f4716ee4e41439a8ce5185adbcb5c67f1323490a187a",
+      "lowSrc": "trophy98:02. Low/yard_trophy_bridges_low.glb",
+      "lowSha256": "e7f476d815ef581ac1f373891f796d3f0035b9b827907249f5386b61455634dd",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_circuit.glb",
+      "src": "trophy98:01. High/yard_trophy_circuit.glb",
+      "sha256": "7606c396a5d0de1994533bf63e186e6aa618f93df10899568027aed5c43ebdce",
+      "lowSrc": "trophy98:02. Low/yard_trophy_circuit_low.glb",
+      "lowSha256": "594dd461b6f87ff0ae7fc4f30eebab2bb223f553a1e8f3a7665197ae1f823c7a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_klondike.glb",
+      "src": "trophy98:01. High/yard_trophy_klondike.glb",
+      "sha256": "04ae98c129336c264dba9bcde6b6459d89f12b56b65120c5325f710785bd471b",
+      "lowSrc": "trophy98:02. Low/yard_trophy_klondike_low.glb",
+      "lowSha256": "397375cbfbb539b27ad83254f47384efb7b582e1af34696960644b2019b68a71",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_freecell.glb",
+      "src": "trophy98:01. High/yard_trophy_freecell.glb",
+      "sha256": "3f391121f6cc40a6ffeaae9402cf0d7f2207204e295c59bb6f3b8e3a8dd094dd",
+      "lowSrc": "trophy98:02. Low/yard_trophy_freecell_low.glb",
+      "lowSha256": "98904913dcb9d6cfbd4d7a0eac29d24af3e23e25d3e1fd48c4e63f76e08ae961",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_spider.glb",
+      "src": "trophy98:01. High/yard_trophy_spider.glb",
+      "sha256": "bd432b40188746c1d29fe1353cf1e1197a8cbe4f4fdbcb7ec83fbafcb014df7f",
+      "lowSrc": "trophy98:02. Low/yard_trophy_spider_low.glb",
+      "lowSha256": "d16d44f28bfac1e417964d8c3381b2f14a1847766c9de6a46297cbbb30b7cab3",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_star.glb",
+      "src": "trophy98:01. High/yard_trophy_star.glb",
+      "sha256": "e6f17b2339b3633c03c58aaa193a2506387475ebf690128a1ba37c09f03f0464",
+      "lowSrc": "trophy98:02. Low/yard_trophy_star_low.glb",
+      "lowSha256": "2f7a4602d944c007c274ad5c3d46303a80cc66d40a4cd02f177137264a293a46",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9043,6 +9163,7 @@
     "sleeves96a": "96a. Game Island sleeves walkers 2026-11-03",
     "sleeves96b": "96b. Game Island sleeves named 2026-11-03",
     "tent100": "100. Game Island contest tent 2026-11-04",
-    "tower100": "100. Game Island record tower 2026-11-05"
+    "tower100": "100. Game Island record tower 2026-11-05",
+    "trophy98": "98. Game Island yard trophies 2026-11-04"
   }
 }

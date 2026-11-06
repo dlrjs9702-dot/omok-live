@@ -2234,10 +2234,11 @@
   // (on its 싱글게임 tab, the one last shown), as when leaving a room
   let hanpanBack = () => showView('lobby'); // where the screen opened last goes back to
   // (v1.10.243 U1: the module alone, for the sheet's choices -- no screen change)
+  let hanpanMounting = null; // (Codex 10판 ⑤: two opens while the module loads share one mount)
   async function mountHanpan() {
-    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack(), pieceSkin: async (gameId) => { // A3 G3-2: my equipped 오목 돌 in the AI practice too
-      if (gameId !== 'gomoku') return null; try { return (await api('/api/skins')).equipped?.omok?.piece || null; } catch { return null; } } }); }
-    catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
+    try { reflexGames ||= await (hanpanMounting ||= import('/reflex/reflex.js').then((m) => m.mount({ api, onBack: () => hanpanBack(), pieceSkin: async (gameId) => { // A3 G3-2: my equipped 오목 돌 in the AI practice too
+      if (gameId !== 'gomoku') return null; try { return (await api('/api/skins')).equipped?.omok?.piece || null; } catch { return null; } } }))); }
+    catch { hanpanMounting = null; showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
     return true;
   }
   async function loadHanpan(onBack) {
@@ -2277,11 +2278,12 @@
   async function renderRecordTower() {
     const R = window.SoloRanking; const g = R.BY_ID[towerPick.game]; const level = g.levels.includes(towerPick.level) ? towerPick.level : g.board; towerPick.level = level;
     towerChips(byId('recordTowerGames'), R.GAMES.map((x) => [x.id, x.name]), g.id, (v) => { towerPick.game = v; towerPick.level = null; renderRecordTower(); });
-    towerChips(byId('recordTowerPeriod'), [['week', '이번 주'], ['all', '역대 최고']], towerPick.period, (v) => { towerPick.period = v; renderRecordTower(); });
+    towerChips(byId('recordTowerPeriod'), [['week', '이번 주'], ['all', '역대 최고'], ['mine', '내 업적']], towerPick.period, (v) => { towerPick.period = v; renderRecordTower(); });
+    if (towerPick.period === 'mine') return renderMyAwards(); /* (v1.10.251 §3-2) */
     towerChips(byId('recordTowerLevels'), g.levels.map((l) => [l, R.levelName(g.id, l)]), level, (v) => { towerPick.level = v; renderRecordTower(); });
     byId('recordTowerLevels').classList.toggle('hidden', g.levels.length < 2);
     const list = byId('recordTowerList'); const me = byId('recordTowerMe'); const ask = ++towerAsk;
-    let d; try { d = await api(`/api/solo/ranking?game=${g.id}&level=${level}&period=${towerPick.period}`); } catch (error) { me.textContent = error.message; return; }
+    let d; try { d = await api(`/api/solo/ranking?game=${g.id}&level=${level}&period=${towerPick.period}`); } catch (error) { if (ask === towerAsk) me.textContent = error.message; return; } /* (Codex 10판 ⑦: a late failure leaves the newer one) */
     if (ask !== towerAsk) return;
     list.replaceChildren(...d.rows.map((r) => { const li = document.createElement('li'); li.className = `recordTowerRowItem${r.me ? ' me' : ''}${r.rank === 1 ? ' first' : ''}`;
       const n = document.createElement('b'); n.textContent = `${r.rank}`; const who = document.createElement('span'); who.textContent = r.name; const rec = document.createElement('strong'); rec.textContent = R.format(g.id, r.best);
@@ -2289,6 +2291,16 @@
     if (!d.rows.length) { const li = document.createElement('li'); li.className = 'recordTowerEmpty'; li.textContent = towerPick.period === 'week' ? '이번 주 첫 1위가 되어 보세요!' : '아직 기록이 없어요'; list.append(li); }
     me.textContent = d.me ? `내 순위 ${d.me.rank}위 · ${R.format(g.id, d.me.best)}${d.me.rank > 20 ? ` (${d.total}명 중)` : ''}` : '내 기록이 아직 없어요';
     byId('recordTowerGo').textContent = `${g.name} 도전하기`;
+  }
+  // v1.10.251 「내 업적」 (§3-2): the trophies won in all (🥇🥈🥉 by game), each game's all-time best of mine and its place
+  async function renderMyAwards() {
+    const R = window.SoloRanking; byId('recordTowerLevels').classList.add('hidden'); const list = byId('recordTowerList'); const me = byId('recordTowerMe'); const ask = ++towerAsk;
+    let d; try { d = await api('/api/solo/awards'); } catch (error) { if (ask === towerAsk) me.textContent = error.message; return; } if (ask !== towerAsk) return;
+    const rows = d.games.filter((g) => g.levels.length || g.trophies.gold + g.trophies.silver + g.trophies.bronze).map((g) => { const li = document.createElement('li'); li.className = 'recordTowerRowItem recordTowerAward';
+      const n = document.createElement('b'); n.textContent = `🥇${g.trophies.gold} 🥈${g.trophies.silver} 🥉${g.trophies.bronze}`; const who = document.createElement('span'); who.textContent = g.name;
+      const rec = document.createElement('strong'); const best = g.levels.find((l) => l.level === R.BY_ID[g.game].board) || g.levels[0]; rec.textContent = best ? `${R.format(g.game, best.best)}${best.place ? ` · ${best.place}위` : ''}` : '—'; li.append(n, who, rec); return li; });
+    list.replaceChildren(...rows); if (!rows.length) { const li = document.createElement('li'); li.className = 'recordTowerEmpty'; li.textContent = '아직 기록이 없어요. 도전해 보세요!'; list.append(li); }
+    me.textContent = `트로피 모두 ${d.trophies}개${d.star ? ` · 게임관의 별 ${d.star}번` : ''}`; byId('recordTowerGo').textContent = `${R.BY_ID[towerPick.game].name} 도전하기`;
   }
   function openRecordTower(game) {
     if (game && window.SoloRanking?.BY_ID[game]) { towerPick.game = game; towerPick.level = null; }
@@ -4406,6 +4418,7 @@
       try { await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller.pose()) }).catch(() => {}); const d = await api('/api/island/birthday/cheer', { method: 'POST', body: JSON.stringify({ plazaId }) }); plaza.controller?.emote?.('clap'); showToast(`축하했어요! (올해 ${d.count}명이 축하)`); } catch (error) { showToast(error.message); }
     }));
     openTalk(who?.name || '');
+    api(`/api/solo/awards?plaza=${encodeURIComponent(plazaId)}`).then((d) => { if (!d.trophies) return; const line = document.createElement('p'); line.className = 'lostRequestLine playerTrophies'; line.textContent = `🏆 기록의 탑 트로피 ${d.trophies}개`; lostCard.prepend(line); }).catch(() => {}); // (v1.10.251 §3-2)
   }
   // v1.10.92 선물: what of my bag can be given (not a lost thing, not the wrap itself), one tap gives one
   async function openGift(plazaId, name) {
@@ -4577,7 +4590,7 @@
     for (const l of d.letters) {
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
       const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
-      const office = l.from === 'office'; // (주민세 고지서: from the 관공서, its own stamp, no reply)
+      const office = l.from === 'office' || l.from === 'gamehall'; // (주민세 고지서: from the 관공서, its own stamp, no reply; v1.10.251: 게임관's trophy letter too)
       const head = el('div', 'mailHead'); const who = el('strong', '', islander || office ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
       { const stamp = el('span', `mailStamp${office ? ' office' : ''}`, office ? '관공서' : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? '#8f2f24' : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
       head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
@@ -7909,6 +7922,7 @@
     if (event === 'petshop') { if (plaza.controller?.space?.() === 'petshop') refreshPetshop(); else petshopState = null; return; } // 묶음 2-2: one taken somewhere
     if (event === 'projects') { refreshProjects(); return; } // v1.10.222 섬 가꾸기: filled, saved, at its works, open
     if (event === 'insects') { plaza.controller?.insectsGone?.(parsed.gone); return; } // 묶음 5: one caught or sent off somewhere
+    if (event === 'soloFirst') { plaza.controller?.recordRibbon?.(parsed); recordBoardAt = 0; refreshRecordBoard(true); return; } // v1.10.251 기록의 탑: a new week's 1st
     if (event === 'homes') { refreshHomes(); return; } // 묶음 4: a house new somewhere, or its roof
     if (event === 'homeInside') { if (homeInside && homeInside.home?.lot === parsed.lot && !homeInside.mine) api('/api/home/inside').then((r) => { if (homeInside?.home?.lot === parsed.lot) showHome(r, true); }).catch(() => {}); return; } // v1.10.226: the house I visit changed (a piece placed, a colour)
     if (event === 'friends') { showToast(parsed.kind === 'request' ? `${parsed.name || '이웃'}님이 친구 신청을 했어요 · 내 정보 「친구」에서 수락할 수 있어요` : '친구 신청이 받아들여졌어요', 5000); if (myInfoDialog.open) renderFriends(); return; } // 묶음 4 친구

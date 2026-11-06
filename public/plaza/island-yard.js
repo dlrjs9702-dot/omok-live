@@ -27,10 +27,12 @@
     bench: { foot: [1.25, 0.5], solids: [[-0.35, 0.05, 0.25], [0.35, 0.05, 0.25]], seats: [[-0.3, -0.18], [0.3, -0.18]] },
     lantern_stone: { foot: [0.5, 0.5], solids: [[0, 0, 0.24]], glow: true },
     arch: { foot: [1.5, 0.5], solids: [[-0.65, 0, 0.12], [0.65, 0, 0.12]] }, // (only its two posts: walked through)
+    // v1.10.251 기록의 탑 트로피 (assets 98): 1 m square, its base the 0.45 m round that blocks
+    ...Object.fromEntries(['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star'].map((sym) => [`trophy_${sym}`, { foot: [1, 1], solids: [[0, 0, 0.45]], trophy: true, glow: true }])),
   });
   const SHAPES = Object.freeze(Object.keys(ITEMS));
   const goodId = (shape) => `yard_${shape}__plain`; // (in the 가구 창고 with the furniture: island-furniture's YARD_GOODS)
-  const shapeOf = (id) => { const m = /^yard_([a-z_]+)__plain$/.exec(String(id || '')); return m && ITEMS[m[1]] ? m[1] : null; };
+  const shapeOf = (id) => { const m = /^yard_([a-z_]+)__(plain|gold|silver|bronze)$/.exec(String(id || '')); return m && ITEMS[m[1]] && (m[2] === 'plain') !== Boolean(ITEMS[m[1]].trophy) ? m[1] : null; }; // (a trophy's: its metal)
   const isYard = (id) => shapeOf(id) !== null;
   const LIMIT = Object.freeze([24, 40, 60]); // pieces a yard holds, by its level (1 at first, 2 and 3 made bigger)
   const LEVELS = LIMIT.length;

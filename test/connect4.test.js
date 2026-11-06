@@ -184,6 +184,16 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   assert.equal(keys.data.keys.find(k => k.id === entry.data.key.id).label, '사목손님');
 });
 
+// (v1.10.251 Codex 10판 ①) a rematch with the same key (a game with no round): the ended clock gives way to a new one
+test('hand clock: a new hand under the same key starts a new clock', async () => {
+  const src = await fs.readFile(path.join(__dirname, '..', 'server.js'), 'utf8'); const a = src.indexOf('function handClockOf('); const b = a + src.slice(a).search(/\r?\n\}\r?\n/) + src.slice(a).match(/\r?\n\}/)[0].length;
+  const clock = require('node:vm').runInNewContext(`(${src.slice(a, b)})`, { nowMs: () => 0 }); const handClockOf = (room, now) => ({ ...clock(room, now) }); /* (this realm's object) */
+  const room = { gameType: 'x', game: { status: 'playing' } };
+  assert.deepEqual(handClockOf(room, 10), { startedAt: 10, finishedAt: null });
+  room.game.status = 'finished'; assert.deepEqual(handClockOf(room, 20), { startedAt: 10, finishedAt: 20 });
+  room.game = { status: 'playing' }; assert.deepEqual(handClockOf(room, 30), { startedAt: 30, finishedAt: null });
+});
+
 test('Connect Four game selection and separate canvas hit detection are present in client', async () => {
   const root = path.join(__dirname, '..');
   const html = await fs.readFile(path.join(root, 'public/index.html'), 'utf8');

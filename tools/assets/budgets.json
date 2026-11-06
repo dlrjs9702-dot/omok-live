@@ -1164,6 +1164,156 @@
       "meshes": 36,
       "nodes": 78,
       "reason": "v1.10.250 assets 100 기록의 탑 Low (rebuilt, about 1/3 of High): the same named parts kept as High"
+    },
+    "yard-v1/trophy_mole.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_mole_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_reaction.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_reaction_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_color.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_color_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_numbers.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_numbers_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_beat.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_beat_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_sky.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_sky_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_mines.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_mines_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_sudoku.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_sudoku_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_nonogram.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_nonogram_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_bridges.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_bridges_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_circuit.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_circuit_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_klondike.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_klondike_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_freecell.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_freecell_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_spider.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_spider_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_star.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "yard-v1/trophy_star_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

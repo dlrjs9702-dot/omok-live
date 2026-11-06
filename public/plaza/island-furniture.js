@@ -61,7 +61,14 @@
   const YARD_GOODS = Object.freeze([['fence_wood', '나무 울타리'], ['fence_stone', '돌담'], ['fence_flower', '꽃 울타리'], ['stepping_stones', '디딤돌'], ['garden_light', '정원등'], ['birdhouse', '새집'],
     ['flowerbed', '화단'], ['planter_box', '텃밭 상자'], ['mailbox', '우편함'], ['bench', '정원 벤치'], ['lantern_stone', '석등'], ['arch', '꽃 아치']]
     .map(([shape, name]) => Object.freeze({ id: `yard_${shape}__plain`, shape: `yard_${shape}`, yardShape: shape, variant: 'plain', name, zone: 'yard', rarity: 'yard', kind: 'yard', model: `yard.${shape}`, yard: true })));
-  const byId = new Map([...GOODS, ...EVENT_GOODS, ...YARD_GOODS].map((g) => [g.id, g]));
+  // v1.10.251 기록의 탑 트로피 (assets 98): the week's 1·2·3 of a game a yard trophy -- given at the week's settling, never sold or
+  // bought (no shelf), placed in the yard; its metal a colour of the one model, its name plate the piece's own words
+  const TROPHY_SYMS = Object.freeze({ mole: '두더지 왕', reaction: '번개 손', color: '매의 눈', numbers: '숫자 사냥꾼', beat: '리듬 천재', sky: '하늘 정복자', mines: '지뢰 탐정', sudoku: '스도쿠 박사',
+    nonogram: '그림 퍼즐 장인', bridges: '다리 건축가', circuit: '회로 마법사', klondike: '카드 정리왕', freecell: '프리셀 고수', spider: '거미줄 마스터', star: '게임관의 별' });
+  const TROPHY_GOODS = Object.freeze(Object.entries(TROPHY_SYMS).flatMap(([sym, title]) => (sym === 'star' ? ['gold'] : ['gold', 'silver', 'bronze']).map((metal) => Object.freeze({
+    id: `yard_trophy_${sym}__${metal}`, shape: `yard_trophy_${sym}`, yardShape: `trophy_${sym}`, variant: metal, name: `${title} ${({ gold: '금', silver: '은', bronze: '동' })[metal]} 트로피`,
+    zone: 'yard', rarity: 'trophy', kind: 'yard', model: `yard.trophy_${sym}`, yard: true, trophy: true, metal }))));
+  const byId = new Map([...GOODS, ...EVENT_GOODS, ...YARD_GOODS, ...TROPHY_GOODS].map((g) => [g.id, g]));
   // always on sale, no end to them (and not counted in a day's three)
   const BASE = Object.freeze(['stool__oak', 'floor_cushion__red', 'plant_pot__terracotta', 'dining_chair__oak']);
 

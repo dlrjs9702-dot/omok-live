@@ -110,6 +110,23 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().yards().lots.find((l) => l.id === id)?.n, lot), { timeout: 20000 }).toBe(7);
     await b.page.evaluate(([x, z, yaw]) => { const d = window.PlazaDebug(); d.teleport(x, z); d.setCamYaw(yaw); }, [Y.world(L, -4.25, -2.25).x, Y.world(L, -4.25, -2.25).z, L.yaw + Math.PI * 1.2]);
     await b.page.waitForTimeout(1500); await expect(b.page.locator('#yardEditBtn')).toBeHidden(); await shot('yard-visitor', b.page);
+    // (v1.10.251 기록의 탑 트로피, docs/gamehall-ranking-board-20261103.md §3-1) the week's 1st of 지뢰찾기 중급 (a 1 s clear by the API),
+    // the week settled as from next week: its gold trophy in the storage with its plate, a letter from the 게임관; placed in my
+    // yard, the visitor sees it (its plate's words; with the real models its gold and written plate too)
+    { const g = (await post(request, '/api/solo/minesweeper/new', a.token, { level: 'intermediate' })).data; await post(request, '/api/solo/minesweeper/act', a.token, { id: g.id, action: 'open', x: 8, y: 8 });
+      const mines = new Set((await post(request, '/api/test/solo/peek', a.token, { ageMs: 1000 })).data.mines);
+      for (let i = 0; i < 256; i += 1) if (!mines.has(i)) { const r = (await post(request, '/api/solo/minesweeper/act', a.token, { id: g.id, action: 'open', x: i % 16, y: Math.floor(i / 16) })).data; if (r.view.status === 'won') break; } }
+    await post(request, '/api/test/solo/settle', a.token, { now: Date.now() + 7 * 86400000 });
+    const trophy = (await get(request, '/api/island/furniture/mine', a.token)).data.pieces.find((p) => p.id === 'yard_trophy_mines__gold');
+    expect(trophy?.plate).toMatch(/^지뢰 탐정 · 마당주인/);
+    expect((await get(request, '/api/island/mail', a.token)).data.letters.some((l) => l.from === 'gamehall' && l.text.includes('지뢰 탐정 금 트로피'))).toBe(true);
+    { const yardNow = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.id === lot).yard || []; let placed = null;
+      for (let lz = 1; lz <= 4 && !placed; lz += 0.5) for (const lx of [3, 2, -1, 0.5]) { const q = { uid: trophy.uid, id: trophy.id, x: lx, z: lz, rot: 0 }; if (placed || Y.placeError(q, yardNow, L, 1, 1)) continue; const r = await post(request, '/api/home/yard', a.token, q); if (r.status === 200) placed = q; }
+      expect(placed, '트로피 놓을 자리').not.toBe(null);
+      await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().yards().trophies.find((t) => t.id === 'yard_trophy_mines__gold')?.plate || ''), { timeout: 20000 }).toMatch(/^지뢰 탐정 · 마당주인/);
+      if (real) { await expect.poll(() => b.page.evaluate(() => { const t = window.PlazaDebug().yards().trophies.find((x) => x.id === 'yard_trophy_mines__gold'); return t && [t.model, t.metal, t.plateDrawn]; }), { timeout: 30000 }).toEqual([true, 'e8b53a', true]);
+        const w = Y.world(L, placed.x + 1.3, placed.z + 1.8); /* (beside it: the visitor not in front of it) */ await b.page.evaluate(([x, z, yaw]) => { const d = window.PlazaDebug(); d.teleport(x, z); d.setCamYaw(yaw); d.setCamPitch?.(0.3); }, [w.x, w.z, L.yaw]); await shot('yard-trophy', b.page, 2500); }
+    }
     // 「마당 넓히기」: room and count before → after; then a piece out at the side
     await toDesk(); await page.locator('#yardGrowBtn').click(); const card = page.locator('#homeCard');
     const a0 = Y.areaOf(L, 1, 1); const a1 = Y.areaOf(L, 1, 2);
@@ -125,7 +142,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     expect(await page.evaluate(() => window.IslandAssets.REGISTRY['yard.lantern_stone'].nightGlow)).toBe(true);
     // filled to 60 (level 3): the frame line against the empty yard
     await post(request, '/api/test/yard', a.token, { level: 3 });
-    const more = (await post(request, '/api/test/home/furniture', a.token, { ids: [...Array(52)].map((_, i) => Y.goodId(Y.SHAPES[i % Y.SHAPES.length])) })).data.pieces;
+    const more = (await post(request, '/api/test/home/furniture', a.token, { ids: [...Array(51)].map(/* (v1.10.251: 9 placed with the trophy; trophies have no plain good) */(_, i, all, s = Y.SHAPES.filter((k) => !Y.ITEMS[k].trophy)) => Y.goodId(s[i % s.length])) })).data.pieces;
     let yard = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.id === lot).yard; const box = Y.boxOf(L, 1, 3);
     await stand(-4.75, -2.25); await page.waitForTimeout(800);
     for (const p of more) {
