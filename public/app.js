@@ -4166,6 +4166,7 @@
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
   // in the bag (and the 도감), too early or too late it got away. The scene shows the cast, the bite and the catch.
   let fishBusy = false; let fishId = null; let fishSeq = null; // (Codex 검토 #1: the cast's arrows, the server's)
+  let fishMode = 'arrows'; let fishPlan = null; // (v1.10.259: the cast's bite game -- the arrows or the 타이밍 막대 and its zones)
   async function fishAction() {
     if (fishBusy) return;
     const phase = plaza.controller?.fishingNow?.();
@@ -4175,9 +4176,9 @@
         catchClose(); // (v1.10.257: the next cast -- a card still up shrinks to its note)
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
         const data = await api('/api/island/fish/start', { method: 'POST', body: '{}' });
-        fishId = data.fishId; fishSeq = Array.isArray(data.seq) ? data.seq : null;
+        fishId = data.fishId; fishSeq = Array.isArray(data.seq) ? data.seq : null; fishMode = data.mode === 'timing' && data.timing ? 'timing' : 'arrows'; fishPlan = data.timing || null;
         if (data.bait) showToast(`🪱 ${data.bait}를 썼어요.`); // v1.10.92
-        if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; fishArrowsEnd(); }, fishArrowsStart)) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
+        if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; fishArrowsEnd(); fishTimingEnd(); }, (n, ms) => (fishMode === 'timing' ? fishTimingStart(ms) : fishArrowsStart(n, ms)))) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
       } else if (phase === 'cast' || phase === 'wait') await pullFish(); // (too early: it got away)
     } catch (error) { showToast(error.message); } finally { fishBusy = false; }
   }
@@ -4220,6 +4221,28 @@
   }
   window.addEventListener('keydown', (e) => { if (!fishGame || !FISH_KEYS[e.code]) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) fishArrow(FISH_KEYS[e.code]); }, true);
   fishArrowsBox.querySelectorAll('.fishArrowPad button').forEach((b) => b.addEventListener('click', () => fishArrow(b.dataset.dir)));
+  // v1.10.259 타이밍 막대 (docs/fishing-minigames-20261104.md 2절): half the bites -- the needle runs across the bar, SPACE or Enter
+  // (a phone: 「당기기」 or the bar) while it is in the green zone, a hit (the zone moves to the server's next place); a miss shakes
+  // it and starts over; the grade's hits in, pulled in. Every press with its time sent -- the server judges them (FishTug's same)
+  const fishTimingBox = byId('fishTiming'); let fishBar = null;
+  function fishBarMark() { const g = fishBar; const zone = fishTimingBox.querySelector('.fishTimingZone'); zone.style.left = `${g.t.zones[g.hit] * 100}%`; zone.style.width = `${g.t.zone * 100}%`; fishTimingBox.querySelector('.fishTimingHits').textContent = `${'●'.repeat(g.hit)}${'○'.repeat(g.t.hits - g.hit)}`; }
+  function fishTimingStart(ms) {
+    if (!fishPlan) return; fishBar = { t: fishPlan, hit: 0, presses: [], shownAt: performance.now(), raf: 0 };
+    fishTimingBox.classList.remove('hidden', 'wrong'); document.body.classList.add('islandFishing'); fishBarMark();
+    const bar = fishTimingBox.querySelector('.fishArrowTime i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${ms}ms linear`; bar.style.width = '0%';
+    const needle = fishTimingBox.querySelector('.fishTimingNeedle');
+    const tick = () => { const g = fishBar; if (!g) return; needle.style.left = `${window.FishTug.needleAt(g.t.period, performance.now() - g.shownAt) * 100}%`; g.raf = requestAnimationFrame(tick); }; tick();
+  }
+  function fishTimingEnd() { if (fishBar) cancelAnimationFrame(fishBar.raf); fishBar = null; fishTimingBox.classList.add('hidden'); if (!fishTug) document.body.classList.remove('islandFishing'); }
+  function fishBarPress() {
+    const g = fishBar; if (!g || fishBusy) return; const ms = Math.round(performance.now() - g.shownAt); g.presses.push({ t: ms });
+    if (!window.FishTug.inZone(g.t, g.t.zones[g.hit], ms)) { g.hit = 0; fishBarMark(); fishTimingBox.classList.remove('wrong'); void fishTimingBox.offsetWidth; fishTimingBox.classList.add('wrong'); return; }
+    if (g.hit + 1 === g.t.hits && ms < window.FishTug.timingFloor(g.t)) return; // (the last one sooner than the bar allows: on its next pass -- the server's judge the same)
+    g.hit += 1; if (g.hit < g.t.hits) { fishBarMark(); return; }
+    const { presses } = g; fishTimingEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; });
+  }
+  window.addEventListener('keydown', (e) => { if (!fishBar || !(e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter' || FISH_KEYS[e.code])) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat && !FISH_KEYS[e.code]) fishBarPress(); }, true);
+  for (const el of [fishTimingBox.querySelector('.fishTimingPull'), fishTimingBox.querySelector('.fishTimingBar')]) el.addEventListener('pointerdown', (e) => { e.preventDefault(); fishBarPress(); });
   // v1.10.259 대어 줄다리기 (gamecenter-notes docs/fishing-minigames-20261104.md 3절): after the arrows a big one pulls -- hold
   // SPACE (a phone: 「감기」) to reel in, let go when it fights (「버텨요!」, a short buzz where a phone can). The bars are FishTug's
   // (the server's same code); every hold kept with its time from the 「대어다!」 and sent at the end -- the server judges them.

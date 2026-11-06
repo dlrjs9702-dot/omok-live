@@ -1838,6 +1838,15 @@ body.islandFishing .plazaHint{display:none}
 .fishArrowPad{display:none;gap:10px}
 .fishArrowPad button{width:56px;height:56px;border-radius:14px;font-size:1.5rem;font-weight:950;background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 2px 0 var(--isle-line)}.fishArrowPad button:active{transform:translateY(1px);background:#f0dcb6;box-shadow:none}
 @media (pointer:coarse){.fishArrowPad{display:flex}}
+/* v1.10.259 타이밍 막대: the arrows' window -- a bar, its green zone (the server's places), the needle running across; the hits */
+.fishTiming{width:min(340px,calc(100vw - 32px))}
+.fishTimingHits{margin:0;font-weight:950;letter-spacing:4px;color:#4caf6a}
+.fishTimingBar{position:relative;width:100%;height:26px;border-radius:10px;background:#e6d8c2;overflow:hidden;touch-action:none}
+.fishTimingZone{position:absolute;top:0;bottom:0;background:#4caf6a}
+.fishTimingNeedle{position:absolute;top:-2px;bottom:-2px;width:4px;margin-left:-2px;border-radius:2px;background:#c0392b}
+.fishTiming.wrong .fishTimingBar{animation:fishRed .45s}
+.fishTimingPull{width:100%;min-height:52px;border-radius:14px;font-size:1.15rem;font-weight:950;background:#f08a3c;color:#fff;border:0;touch-action:none;user-select:none;-webkit-user-select:none}.fishTimingPull small{font-size:.75rem;font-weight:700}
+@media (pointer:coarse){.fishTimingPull small{display:none}}
 /* v1.10.259 대어 줄다리기: the arrows' paper window -- the line left (blue), the tension (green, yellow, red); 「버텨요!」 while it fights */
 .fishTug{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:5;display:grid;gap:8px;width:min(320px,calc(100vw - 32px));padding:14px 18px;border-radius:18px;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .fishTug.hidden{display:none}

@@ -56,5 +56,26 @@
     return r;
   }
   const fastestMs = (p) => Math.ceil((DIST / (REEL / p.s)) * 1000); // (always reeling: the least a catch takes)
-  return { DIST, LIMIT_MS, STEP_MS, LATE_MS, STRENGTH, strengthOf, plan, fightAt, heldAt, valid, step, run, judge, fastestMs };
+  // v1.10.259 타이밍 막대 (fishing-minigames 2절, the bite's other game, half the casts): a needle runs left to right and back
+  // (one period), a green zone on the bar -- pressed while the needle is in it, a hit (±40 ms at its edges); every hit moves
+  // the zone to the server's next place, a miss starts it over. Done when the grade's hits are in, within hits x period x 2
+  // + 1.5 s -- and never sooner than hits x period / 2 (a made-up row: 서버 확인 1)
+  const TIMING = Object.freeze({ common: { hits: 2, zone: 0.24, period: 1400 }, normal: { hits: 3, zone: 0.2, period: 1200 }, rare: { hits: 4, zone: 0.16, period: 1000 }, big: { hits: 5, zone: 0.14, period: 900 } });
+  const EDGE_MS = 40;
+  const timingMs = (t) => t.hits * t.period * 2 + 1500;
+  const timingFloor = (t) => (t.hits * t.period) / 2;
+  const needleAt = (period, ms) => { const f = (Math.max(0, ms) / period) % 1; return f < 0.5 ? f * 2 : 2 - f * 2; }; // (0 -> 1 -> 0)
+  const inZone = (t, at, ms) => [ms - EDGE_MS, ms, ms + EDGE_MS].some((m) => { const x = needleAt(t.period, m); return x >= at && x <= at + t.zone; });
+  // presses: [{ t }] ms from the bar's showing, every one, a miss too -> 'ok' | 'late' | 'wrong'
+  function judgeTiming(t, presses, slack = 0) {
+    if (!t || !Array.isArray(presses) || presses.length > 100) return 'wrong';
+    let hit = 0; let last = -1;
+    for (const p of presses) {
+      const ms = Number(p?.t); if (!Number.isFinite(ms) || ms < last) return 'wrong'; last = ms;
+      if (!inZone(t, t.zones[hit], ms)) { hit = 0; continue; }
+      if ((hit += 1) === t.hits) { if (ms < timingFloor(t)) { hit -= 1; continue; } return ms <= timingMs(t) + slack ? 'ok' : 'late'; } // (the last one too soon: not yet -- the next pass; the page the same)
+    }
+    return 'wrong';
+  }
+  return { DIST, LIMIT_MS, STEP_MS, LATE_MS, STRENGTH, strengthOf, plan, fightAt, heldAt, valid, step, run, judge, fastestMs, TIMING, EDGE_MS, timingMs, timingFloor, needleAt, inZone, judgeTiming };
 });

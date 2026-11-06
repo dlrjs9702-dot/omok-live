@@ -59,3 +59,37 @@ test('줄다리기 서버: 대어다! 계획, 이른 잡기 거절, 제때 잡�
   ({ c, r } = await bite()); await req('/api/test/fish/bite', s, { tugAge: 26000 });
   const snapped = await req('/api/island/fish/tug', s, { fishId: c.fishId, holds: [[0, null]] }); assert.deepEqual([snapped.status, snapped.data.error], [409, 'FISH_SNAP']); assert.equal(await salmon(), 1);
 });
+
+// v1.10.259 입질 게임 반반·타이밍 막대 (docs/fishing-minigames-20261104.md 1·2절, 서버 확인 1): half and half, never three alike;
+// a hit in the zone (±40 ms), a miss starts over, done in time -- never sooner than hits x period / 2; the server the same
+const hitsFor = (t, from = 0) => t.zones.map((z, i) => ({ t: Math.round(from + (i + 1) * t.period + ((z + t.zone / 2) / 2) * t.period) })); // (each on the needle's way right, one period apart)
+test('입질 게임: 반반·세 번 연속 없음, 타이밍 막대 판정(칸·가장자리·틀리면 처음부터·시간·너무 빠름)', async (t) => {
+  const r = seeded(5); let last = []; let timing = 0; let run = 1;
+  for (let i = 0; i < 1000; i += 1) { const m = F.pickMode(r, last); if (m === last[0]) { run += 1; assert.ok(run <= 2, '세 번 연속'); } else run = 1; if (m === 'timing') timing += 1; last = [m, last[0]].filter(Boolean); }
+  assert.ok(timing > 420 && timing < 580, `타이밍 ${timing}/1000`);
+  for (const sp of ['anchovy', 'cutlassfish', 'octopus', 'sturgeon']) {
+    const tm = F.timingFor(sp, seeded(3)); const want = T.TIMING[F.SPECIES[sp].grade]; assert.deepEqual([tm.hits, tm.zone, tm.period], [want.hits, want.zone, want.period]);
+    assert.ok(tm.zones.every((z) => z >= 0 && z + tm.zone <= 1)); const hits = hitsFor(tm);
+    assert.equal(T.judgeTiming(tm, hits), 'ok', sp);
+    assert.equal(T.judgeTiming(tm, [{ t: hits[0].t - tm.period / 2 }, ...hits]), 'ok', `${sp} 칸 밖 하나 뒤 처음부터`);
+    assert.equal(T.judgeTiming(tm, hits.slice(0, -1)), 'wrong', `${sp} 모자람`);
+    assert.equal(T.judgeTiming(tm, hitsFor(tm, Math.ceil(T.timingMs(tm) / tm.period) * tm.period)), 'late', `${sp} 시간 지남`);
+  }
+  const tm = { hits: 2, zone: 0.2, period: 1000, zones: [0.4, 0.4] }; // (the zone 0.4~0.6: the needle there 200~300 ms, then 700~800)
+  assert.equal(T.judgeTiming(tm, [{ t: 760 }, { t: 1250 }]), 'ok'); assert.equal(T.judgeTiming(tm, [{ t: 165 }, { t: 1235 }]), 'ok', '가장자리 40 ms');
+  assert.equal(T.judgeTiming(tm, [{ t: 150 }, { t: 1250 }]), 'wrong', '가장자리 밖');
+  assert.equal(T.judgeTiming(tm, [{ t: 250 }, { t: 750 }]), 'wrong', '하한(맞힐 수 x 주기 / 2 = 1,000 ms)보다 빠름');
+  assert.equal(T.judgeTiming(tm, [{ t: 760 }, { t: 700 }]), 'wrong', '시간 거꾸로');
+  // the server: the bar asked, its zones given at the cast; done from the bite -- too soon after it refused
+  const fs = require('node:fs/promises'); const os = require('node:os'); const path = require('node:path');
+  const { boot } = require('../test-support/test-server'); const Terr = require('../public/plaza/island-terrain.js');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-timing-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server; const s = await server.enter(await server.issue('타이밍')); assert.ok(s, server.logs());
+  await req('/api/plaza/state', s, { x: Terr.PIER.x, z: Terr.PIER.z, yaw: 0, moving: false }); await req('/api/test/island/give', s, { itemId: 'fishing_rod', qty: 1 });
+  assert.equal((await req('/api/island/fish/start', s, {})).data.mode, 'arrows', '시험 서버는 화살표');
+  await req('/api/test/fish/mode', s, { mode: 'timing' });
+  let c = (await req('/api/island/fish/start', s, {})).data; assert.equal(c.mode, 'timing'); assert.ok(c.timing.zones.length >= 2);
+  await req('/api/test/fish/bite', s, {}); const soon = await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: hitsFor(c.timing) }); assert.deepEqual([soon.status, soon.data.error], [409, 'FISH_WRONG'], '입질 직후 도착');
+  c = (await req('/api/island/fish/start', s, {})).data; const hits = hitsFor(c.timing); await req('/api/test/fish/bite', s, { biteAgo: hits[hits.length - 1].t + 100 });
+  const ok = await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: hits }); assert.equal(ok.status, 200, JSON.stringify(ok.data)); assert.ok(ok.data.species);
+});

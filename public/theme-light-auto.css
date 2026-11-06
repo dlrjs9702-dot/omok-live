@@ -947,6 +947,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .fishArrowNote{color:#c0392b}
 :root[data-theme="light"] .fishArrowPad button{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 2px 0 var(--isle-line)}
 :root[data-theme="light"] .fishArrowPad button:active{background:#f0dcb6;box-shadow:none}
+:root[data-theme="light"] .fishTimingHits{color:#4caf6a}
+:root[data-theme="light"] .fishTimingBar{background:#e6d8c2}
+:root[data-theme="light"] .fishTimingZone{background:#4caf6a}
+:root[data-theme="light"] .fishTimingNeedle{background:#c0392b}
+:root[data-theme="light"] .fishTimingPull{background:#f08a3c;color:#fff;border:0}
 :root[data-theme="light"] .fishTug{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 6px 20px rgba(0,0,0,.25)}
 :root[data-theme="light"] .fishTugBar i{background:linear-gradient(90deg,var(--fill) var(--p,0%),#e6d8c2 var(--p,0%))}
 :root[data-theme="light"] .fishTugCall{color:#c0392b}

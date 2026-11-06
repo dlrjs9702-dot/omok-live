@@ -86,6 +86,20 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect.poll(async () => { if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); await page.waitForTimeout(400); } return page.evaluate(() => window.PlazaDebug().fishing()?.phase || null); }, { timeout: 15000, intervals: [300] }).toMatch(/cast|wait/);
   await expect(card).toBeHidden();
   await page.keyboard.press('Space'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // (pulled early: gone)
+  // v1.10.259 타이밍 막대 (fishing-minigames 2절): the bar asked for the next cast -- a miss shakes it (「틀렸어요!」), a player in the
+  // page presses while the needle is in the zone: a 붕어 pulled in; then back to the arrows
+  expect((await post(request, '/api/test/fish/mode', token, { mode: 'timing' })).data.ok).toBe(true);
+  await expect.poll(async () => { if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); await page.waitForTimeout(400); } return page.evaluate(() => window.PlazaDebug().fishing()?.bobber || false); }, { timeout: 15000, intervals: [300] }).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); expect((await post(request, '/api/test/fish/bite', token, { species: 'crucian_carp', slack: 20000 })).data.ok).toBe(true);
+  const bar = page.locator('#fishTiming'); await expect(bar).toBeVisible({ timeout: 10000 }); await expect(page.locator('#plazaHint')).toHaveText(/^입질! 초록 칸에서 2번$/);
+  await page.evaluate(() => { const box = document.getElementById('fishTiming'); const at = (sel) => box.querySelector(sel).getBoundingClientRect(); const key = () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));
+    let missed = false; const go = () => { if (box.classList.contains('hidden')) return; const n = at('.fishTimingNeedle'); const z = at('.fishTimingZone'); const x = n.left + n.width / 2; const inside = x > z.left + z.width * 0.3 && x < z.right - z.width * 0.3;
+      if (!missed && !inside && Math.abs(x - (z.left + z.width / 2)) > z.width * 1.5) { missed = true; key(); } else if (missed && inside) key(); requestAnimationFrame(go); }; requestAnimationFrame(go); });
+  await expect(bar).toHaveClass(/wrong/, { timeout: 10000 }); await shot('timing-bar');
+  await expect(bar).toBeHidden({ timeout: 20000 });
+  await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_crucian_carp')?.qty || 0, { timeout: 10000 }).toBe(1);
+  await expect(card).toBeVisible({ timeout: 5000 }); await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
+  expect((await post(request, '/api/test/fish/mode', token, { mode: null })).data.ok).toBe(true);
   // v1.10.259 대어 줄다리기 (docs/fishing-minigames-20261104.md 3절): a big one's arrows bring 「대어다!」 -- not in the bag yet; a
   // player in the page holds (SPACE / 「감기」) and lets go while it fights or the tension runs high: caught, held out in both
   // hands; then one held throughout -- the line snaps, nothing caught

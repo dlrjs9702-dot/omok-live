@@ -2587,11 +2587,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
   }
   // (3회차 4) at the bite onBite(arrows, ms): the page's arrows to press within the bite (the last one pulls it in)
-  function fishBegin({ biteIn, window: biteMs, arrows = 4 }, onEnd, onBite) {
+  function fishBegin({ biteIn, window: biteMs, arrows = 4, mode = 'arrows', timing = null }, onEnd, onBite) {
     const water = waterFrom(me.root.position.x, me.root.position.z); if (!water || fishing) return false;
     const ok = startGather({ kind: 'fish', ms: Infinity, anim: 'fishCast', at: water, onDone: () => fishStop(false) });
     if (!ok) return false;
-    fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, onBite, arrows, landed: false };
+    fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, onBite, arrows, hits: mode === 'timing' ? timing?.hits || 2 : 0, landed: false };
     fishAct('cast');
     me.noTuck = true; assets.hold(me, 'fishing.rod', 0, { key: 'rod' });
     if (fpNow()) { const dx = water.x - me.root.position.x; const dz = water.z - me.root.position.z; yawGoal = camYaw + Math.atan2(Math.sin(Math.atan2(-dx, -dz) - camYaw), Math.cos(Math.atan2(-dx, -dz) - camYaw)); pitchGoal = clampPitch(0.3); } // (1104 G: the eyes on the water where the float lands)
@@ -5098,7 +5098,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (fishing || (!best && !gather && mySpace === 'island' && globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z))) {
       const w = fishing ? fishing.water : waterFrom(me.root.position.x, me.root.position.z);
       if (w && !fishing && heldTool !== 'fishing_rod') { eventDoors['fish:spot'] = { x: w.x, z: w.z, name: '가방에서 낚싯대를 들면 낚시할 수 있어요', plain: true }; best = 'fish:spot'; }
-      else if (w) { eventDoors['fish:spot'] = fishing?.phase === 'bite' ? { x: w.x, z: w.z, name: `입질! 화살표 ${fishing.arrows}개를 순서대로${document.body.classList.contains('touchIsland') ? '' : ' (WASD도 돼요)'}`, plain: true } /* (3회차 4: the arrows pull it in) */ : { x: w.x, z: w.z, name: fishing ? '그만하기' : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
+      else if (w) { eventDoors['fish:spot'] = fishing?.phase === 'tug' ? { x: w.x, z: w.z, name: '대어다! 누르고 버티기', plain: true } : fishing?.phase === 'bite' ? { x: w.x, z: w.z, name: fishing.hits ? `입질! 초록 칸에서 ${fishing.hits}번` : `입질! 화살표 ${fishing.arrows}개를 순서대로${document.body.classList.contains('touchIsland') ? '' : ' (WASD도 돼요)'}`, plain: true } /* (3회차 4: the arrows pull it in; 259 the bar's hits, the tug) */ : { x: w.x, z: w.z, name: fishing ? '그만하기' : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
     } else delete eventDoors['fish:spot'];
     // (2회차 11: holding a piece, the hint says how to let go and turn it -- not the seat or tank in front)
     if (grab) { eventDoors['grab:hold'] = { x: me.root.position.x, z: me.root.position.z, name: grab.blocked ? `${grab.blocked} · 놓기` : '가구 놓기 · R 돌리기' }; best = 'grab:hold'; } else delete eventDoors['grab:hold'];
