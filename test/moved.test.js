@@ -3,7 +3,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
 const { movedTarget } = require('../lib/moved');
 
 // v1.10.256 주소 옮기기 14절: the old service with MOVED_TO points everyone to island-dalmaru and never opens the database
@@ -13,13 +12,11 @@ test('옛 주소 MOVED_TO: DB 연결 없이 안내 페이지·API 410·/guest-en
   const to = 'https://island-dalmaru.onrender.com';
   assert.deepEqual(movedTarget(to, '/'), { url: `${to}/island/`, what: '아일랜드', auto: true });
   assert.deepEqual(movedTarget(to + '/', '/messenger.html'), { url: `${to}/messenger`, what: '메신저', auto: false });
-  // the real server: a database address nobody answers -- it must not try it
-  const port = await require('../test-support/free-port')();
-  const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: { ...process.env, MOVED_TO: to, PORT: String(port), HOST: '127.0.0.1', DATABASE_URL: 'postgres://nobody:x@127.0.0.1:1/none', NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
-  let out = ''; child.stdout.on('data', (d) => { out += d; }); child.stderr.on('data', (d) => { out += d; });
-  t.after(async () => { if (child.exitCode !== null) return; child.kill('SIGTERM'); await new Promise((r) => { child.once('exit', r); setTimeout(r, 4000).unref(); }); }); // (as test-server's stop: waited for)
-  const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 300 && child.exitCode === null; i += 1) { try { if ((await fetch(base + '/health')).ok) break; } catch {} await new Promise((r) => setTimeout(r, 100)); }
+  // the moved server in this process (no database to it at all -- a child server.js killed under Windows' open sockets
+  // ended the test run with a libuv assertion); server.js starting it before any store is checked from its source below
+  const srv = require('../lib/moved').startMoved({ to, port: 0, host: '127.0.0.1' }); await new Promise((r) => srv.once('listening', r));
+  t.after(() => new Promise((r) => { srv.closeAllConnections?.(); srv.close(r); }));
+  const base = `http://127.0.0.1:${srv.address().port}`;
   const health = await (await fetch(base + '/health')).json();
   assert.equal(health.moved, to); assert.equal(health.version, require('../package.json').version);
   const page = await fetch(base + '/'); const html = await page.text();
@@ -27,8 +24,7 @@ test('옛 주소 MOVED_TO: DB 연결 없이 안내 페이지·API 410·/guest-en
   const msg = await (await fetch(base + '/messenger')).text(); assert.match(msg, /island-dalmaru\.onrender\.com\/messenger/); assert.doesNotMatch(msg, /http-equiv="refresh"/);
   const api = await fetch(base + '/api/plaza/state', { method: 'POST' }); assert.equal(api.status, 410); assert.equal((await api.json()).to, to);
   const entry = await fetch(base + '/guest-entry', { method: 'POST', body: 'token=abc', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, redirect: 'manual' });
-  assert.deepEqual([entry.status, entry.headers.get('location')], [307, `${to}/guest-entry`]);
-  assert.doesNotMatch(out, /PostgreSQL|ECONNREFUSED|포인트 저장소/, out);
+  assert.deepEqual([entry.status, entry.headers.get('location')], [307, `${to}/guest-entry`]); await entry.arrayBuffer(); // (its body read: an unread one held its socket past the end -- Windows' libuv assertion at exit)
   // and the server checks it before any store is made
   const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8'); const main = src.slice(src.indexOf('async function main()'));
   assert.ok(main.indexOf('process.env.MOVED_TO') < main.indexOf('createAccessStore'));
