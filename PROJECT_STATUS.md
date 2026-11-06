@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.258 자랑 장면 (catch-card 9절) + 폴드 회귀
+
+- 자랑 장면: Show* 동작 9개(에셋 97), 카메라 3.6 m 왼쪽, 잡은 것 최소 0.5 m/0.22 m, 물고기는 얼굴 옆, 장면 동안 보조 빛. 건너뛰기 SPACE·걷기·스틱·탭.
+- asset-loader hold size: 메시 상자로 재요(스킨 곤충이 빈 상자로 읽혀 크기가 안 바뀌던 것).
+- 폴드: /island/guest-entry(옛 경로도 받음), 안드로이드 메신저 intent://, 섬 「앱으로 설치」(첫 화면·☰).
+- 시험: island-daily-server 부탁 날짜 고정.
+
 ## v1.10.257 잡기 카드·설명 카드 (catch-card 1~5절)
 
 - 잡기 카드: 신기록·새 친구·대어·드문 곤충·박물관보다 큼일 때만, 3초 뒤/Esc/다음 던지기에 쪽지. 설명 카드 하나(카드 더보기·쪽지·가방 ⓘ·도감 칸·박물관 명판).
@@ -25,9 +32,3 @@
 - MOVED_TO: 저장소 열기 전 lib/moved.js만 (DB 연결 없음) — 안내 페이지, API 410, /guest-entry 307, /health moved.
 - 옛 주소 구독: 7일 뒤 지움, 같은 계정·이름 기기 새 구독 때 바로 지움 (from 주소, 다 지운 뒤 건너뜀).
 - 관리자 저장 공간: /api/admin/storage, 80% 주황·90% 빨강, [storage] 하루 한 줄(80%↑ warn).
-
-## v1.10.255 두더지 잡기 「헬」
-
-- ♥5, 놓침 −1·폭탄 −2, 시간 없음, 한 마리 10점·황금 없음, 10마리마다 단계(0.93배, 바닥 0.32/0.22초, 폭탄 최대 20 %, 동시 최대 5). 식은 public/whack-hell.js 하나(화면·서버).
-- 서버: hell은 whack만, 10의 배수, 상한 200,000, n마리 최소 시간(3·2·1 제외). 헬 순위 따로, 게시판·칭호는 보통.
-- 더하기: 10 콤보마다 글·결과 「최대 콤보」, 단계 5 심지 반짝·10 붉은 빛·치익, 시작 전 3·2·1. 결과 알약 「게임 오버」, 단계 배너는 판 위 크게.

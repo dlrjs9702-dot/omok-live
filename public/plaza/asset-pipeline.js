@@ -346,6 +346,7 @@
       // v1.10.32 운반: a kept thing let go, or handed to another character's hand (a lost thing given back)
       letGo: (character, key) => call('letGo', [character, key]),
       handOver: (from, to, key) => call('handOver', [from, to, key]),
+      reseat: (character, key, spot) => call('reseat', [character, key, spot]), // (v1.10.257: a held thing to the other hand)
       // each frame: where the player is (near squares show models, far ones their procedural copies)
       update: (x, z) => { if (impl) impl.update(x, z); },
       // v1.10.27: a new day (00:00 KST): every season moves one zone clockwise

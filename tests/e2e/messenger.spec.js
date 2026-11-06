@@ -14,7 +14,7 @@ async function api(request, route, { token, account, body } = {}) {
   return { status: res.status(), data: await res.json().catch(() => ({})) };
 }
 
-test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에서 같은 창으로 열기·안 읽은 수, 방 만들기 → 메시지 → 상대가 바로 받음', async ({ browser, request }, info) => {
+test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에서 같은 창으로 열기·안 읽은 수, 방 만들기 → 메시지 → 상대가 바로 받음', async ({ browser, request, isMobile }, info) => {
   test.setTimeout(120000);
   const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
   const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
@@ -34,6 +34,11 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // 내 계정 (the start page): no button for one not let in
   const onAccount = async (p) => { const r = await api(request, '/api/account/login', { body: { loginId: p.loginId, password: 'secret123' } }); const account = r.data.accountToken; expect(account, JSON.stringify(r)).toBeTruthy(); await p.context.addInitScript((t) => sessionStorage.setItem('gc.account', t), account); const page = await p.context.newPage(); await page.goto('/'); await expect(page.locator('#accountPanel')).toBeVisible({ timeout: 30000 }); return page; }; // (a fresh context fetches the game's resource pack first)
   const kidPage = await onAccount(kid); await expect(kidPage.locator('#accountMessengerBtn')).toBeHidden();
+  // (v1.10.258 총괄, 폴드) the island's own 「앱으로 설치」: only when Chrome offers it (here a stand-in offer), never in the app (below)
+  const offer = (p) => p.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__prompted = true; }; e.userChoice = Promise.resolve({ outcome: 'dismissed' }); window.dispatchEvent(e); });
+  await expect(kidPage.locator('#installAppBtn')).toBeHidden(); await offer(kidPage); await expect(kidPage.locator('#installAppBtn')).toBeVisible();
+  if (process.env.SHOT_DIR && isMobile) await kidPage.screenshot({ path: `${process.env.SHOT_DIR}/phone-install-island.png` });
+  await kidPage.locator('#installAppBtn').click(); await expect.poll(() => kidPage.evaluate(() => window.__prompted)).toBe(true); await expect(kidPage.locator('#installAppBtn')).toBeHidden();
   // mom: the messenger page alone, logged in there and kept on this device
   const m = await mom.context.newPage(); await m.goto('/messenger');
   await m.locator('#mLoginId').fill(mom.loginId); await m.locator('#mLoginPw').fill('secret123'); await expect(m.locator('#mKeep')).toBeChecked();
@@ -136,14 +141,19 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
     window.__opens = []; window.__realOpen = window.open.bind(window); window.open = (...args) => { window.__opens.push(args); return null; };
   });
   const appHome = await dad.context.newPage(); await appHome.goto('/'); await expect(appHome.locator('#accountMessengerBtn')).toBeVisible({ timeout: 30000 });
+  await offer(appHome); await expect(appHome.locator('#installAppBtn')).toBeHidden(); await expect(appHome.locator('#menuInstallBtn')).toBeHidden(); // (v1.10.258: the installed app -- no 「앱으로 설치」)
   await appHome.locator('#accountMessengerBtn').click(); await expect(appHome.locator('#messengerDrawer')).toBeVisible();
   const f = appHome.frameLocator('#messengerDrawer iframe'); await expect(f.locator('#mApp')).toBeVisible();
   await f.locator('#mOpenApp').click();
   expect(await appHome.evaluate(() => window.__opens)).toEqual([]);
   // (v1.10.253: first the messenger app's own link, web+gcmessenger: -- none installed here, so 1.5 s later a blank window, a
   // Chrome tab outside the island app's scope, then sent to the messenger)
-  await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 }).toEqual([['', '_blank']]);
-  { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
+  // (v1.10.258, an Android phone: no protocol_handlers in its Chrome -- an intent:// link, the OS's messenger app or the browser)
+  const host = new URL(appHome.url()).host;
+  await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 })
+    .toEqual(isMobile ? [[`intent://${host}/messenger.html#Intent;scheme=http;S.browser_fallback_url=${encodeURIComponent(`http://${host}/messenger.html`)};end`, '_blank']] : [['', '_blank']]);
+  if (process.env.SHOT_DIR && isMobile) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-open-app.png` });
+  if (!isMobile) { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
     const [tab] = await Promise.all([appHome.context().waitForEvent('page'), appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => { window.open = window.__realOpen; document.getElementById('mOpenApp').click(); })]);
     await expect.poll(() => tab.url(), { timeout: 5000 }).toContain('/messenger.html'); await tab.close();
   }

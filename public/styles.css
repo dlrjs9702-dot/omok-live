@@ -1889,6 +1889,7 @@ body.islandFishing .plazaHint{display:none}
 .accountPanel{display:grid;gap:12px;margin-top:22px}
 .accountPanel h2{margin:0}
 .accountActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#installAppBtn{width:100%;margin-top:12px} /* (v1.10.258: the island's own 「앱으로 설치」, under the account's buttons) */
 .accountMessage{min-height:1.2em;margin:12px 0 0;font-size:.86rem;color:#bbf7d0;line-height:1.5}
 .accountMessage.bad{color:#fca5a5}
 .adminLoginForm{display:flex;align-items:center;gap:8px;margin-top:22px;padding-top:14px;border-top:1px solid #334155}
@@ -1952,6 +1953,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
    its ribbons, a gold edge for a best, the 도감's for a first, a splash for a big one; turned to its 설명 by 더보기 */
 .catchCard{word-break:keep-all;overflow-wrap:anywhere;position:fixed;left:50%;top:50%;z-index:30;width:min(340px,calc(100vw - 32px)); /* (총괄 #407: Korean words whole on a line) */transform:translate(-50%,-50%);perspective:1200px;pointer-events:auto;animation:catchIn .45s cubic-bezier(.2,1.4,.4,1)}
 .catchCard.hidden{display:none}
+@media(min-width:641px){.catchCard.withShow{left:auto;right:max(16px,3vw);transform:translateY(-50%)}} /* (9절 자랑: beside me, held out in the middle) */
 @media(max-width:640px){.catchCard{top:auto;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}}
 @keyframes catchIn{from{opacity:0;scale:.7}to{opacity:1;scale:1}}
 .catchCardInner{position:relative;display:grid;transition:transform .5s;transform-style:preserve-3d}

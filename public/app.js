@@ -4228,8 +4228,9 @@
   const catchEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const catchHost = () => { const host = document.querySelector('dialog:modal') || document.body; if (catchCard.parentElement !== host) host.append(catchCard); }; // (opened over the bag or the 도감: inside that modal window, else under its top layer and not clickable)
   function catchClose(toNote = true) {
-    if (catchCard.classList.contains('hidden')) return; clearTimeout(catchTimer);
-    catchCard.classList.add('hidden'); catchCard.classList.remove('flipped', 'infoOnly');
+    plaza.controller?.showDone?.(); // (the 자랑's put away, the camera home -- nothing when none)
+    if (catchCard.classList.contains('hidden') && !catchCard.classList.contains('withShow')) return; clearTimeout(catchTimer);
+    catchCard.classList.add('hidden'); catchCard.classList.remove('flipped', 'infoOnly', 'withShow');
     const id = catchCard.dataset.id; if (toNote && catchNote) showToast(catchNote, 2800, id ? () => openDexCard(id) : null); catchNote = '';
   }
   function catchShow(id, r, note) {
@@ -4239,7 +4240,9 @@
     const museumBigger = Number.isFinite(r.museumSize) && Number.isFinite(r.size) && r.size > r.museumSize;
     if (!ribbons.length && !museumBigger) { showToast(note, 2800, () => openDexCard(id)); return; } // (사용자 2026-11-03: a plain catch, no card)
     catchClose(false); catchNote = note; catchAsk += 1; catchHost();
-    const calm = lessMotionNow(); catchCard.dataset.id = id; catchCard.className = `catchCard ${ribbons.map(([k]) => `is-${k}`).join(' ')}${calm ? ' calm' : ''}`;
+    // (9절 자랑 장면) the catch held out in a close-up first -- the card once it is up (PC: beside me, a phone: below)
+    const insect = id.startsWith('insect_'); const showing = Boolean(plaza.controller?.showCatch?.({ kind: insect ? 'insect' : 'fish', species: r.species }, () => catchClose()));
+    const calm = lessMotionNow(); catchCard.dataset.id = id; catchCard.className = `catchCard ${ribbons.map(([k]) => `is-${k}`).join(' ')}${calm ? ' calm' : ''}${showing ? ' withShow hidden' : ''}`;
     catchCard.querySelector('.catchRibbons').replaceChildren(...ribbons.map(([k, t]) => catchEl('span', `catchRibbon ${k}`, t)));
     for (const img of catchCard.querySelectorAll('.catchPic')) img.src = dexPic(id);
     for (const h of catchCard.querySelectorAll('.catchName')) h.textContent = r.name;
@@ -4252,9 +4255,13 @@
     const list = catchCard.querySelector('.catchLines'); list.replaceChildren(...lines.map((l) => catchEl('li', null, l)));
     if (r.firstTime) api('/api/island/dex').then((d) => { if (catchCard.dataset.id === id) list.append(catchEl('li', 'catchDexCount', `도감 ${d.found}/${d.total}`)); }).catch(() => {});
     catchCard.querySelector('#catchMoreBtn').classList.remove('hidden');
-    window.RoomSound?.play('right'); // (one sparkle of a sound -- 「반짝」, the sound setting's)
-    const held = (() => { try { return navigator.webdriver && localStorage.getItem('gc.testCatchHold') === '1'; } catch { return false; } })(); // (a test's slow runner: kept up till it acts)
-    if (!held) catchTimer = setTimeout(() => { if (!catchCard.classList.contains('flipped') && !catchCard.matches(':hover, :focus-within')) catchClose(); }, 3000);
+    const ask = catchAsk; const reveal = () => {
+      if (ask !== catchAsk || catchCard.dataset.id !== id) return; catchCard.classList.remove('hidden');
+      window.RoomSound?.play('right'); // (one sparkle of a sound -- 「반짝」, the sound setting's)
+      const held = (() => { try { return navigator.webdriver && localStorage.getItem('gc.testCatchHold') === '1'; } catch { return false; } })(); // (a test's slow runner: kept up till it acts)
+      if (!held) catchTimer = setTimeout(() => { if (!catchCard.classList.contains('flipped') && !catchCard.matches(':hover, :focus-within')) catchClose(); }, 3000);
+    };
+    if (showing) catchTimer = setTimeout(reveal, insect ? 1000 : 1100); else reveal();
   }
   // the 설명 (the card's back): its picture and name, grade, one line, the island's story (found only), where and when,
   // its size and my best, the museum's
@@ -13153,6 +13160,15 @@
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
+  { // v1.10.258 (총괄, 폴드) 「앱으로 설치」 on the first screen and in ☰ -- the messenger's: shown only when Chrome offers the
+    // install (Chrome's own menu won't put a second app of one site on a phone that has the messenger's), never in the app
+    let installPrompt = null; const buttons = [byId('installAppBtn'), byId('menuInstallBtn')];
+    const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone);
+    const show = (on) => { for (const b of buttons) b?.classList.toggle('hidden', !on || standalone()); };
+    window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; show(true); });
+    for (const b of buttons) b?.addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; show(false); });
+    window.addEventListener('appinstalled', () => show(false));
+  }
   // 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): the messenger is its own page now
   // (/messenger, public/messenger.js) -- open beside the game or without it, an app of its own. Here only its buttons (내 계정
   // and the island's) with what is unread, opening its 서랍 (12절), and the island's small notice.

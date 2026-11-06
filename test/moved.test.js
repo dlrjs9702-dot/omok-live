@@ -25,6 +25,8 @@ test('옛 주소 MOVED_TO: DB 연결 없이 안내 페이지·API 410·/guest-en
   const api = await fetch(base + '/api/plaza/state', { method: 'POST' }); assert.equal(api.status, 410); assert.equal((await api.json()).to, to);
   const entry = await fetch(base + '/guest-entry', { method: 'POST', body: 'token=abc', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, redirect: 'manual' });
   assert.deepEqual([entry.status, entry.headers.get('location')], [307, `${to}/guest-entry`]); await entry.arrayBuffer(); // (its body read: an unread one held its socket past the end -- Windows' libuv assertion at exit)
+  const island = await fetch(base + '/island/guest-entry', { method: 'POST', body: 'token=abc', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, redirect: 'manual' });
+  assert.deepEqual([island.status, island.headers.get('location')], [307, `${to}/island/guest-entry`]); await island.arrayBuffer(); // (v1.10.258: the entry file's new path)
   // and the server checks it before any store is made
   const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8'); const main = src.slice(src.indexOf('async function main()'));
   assert.ok(main.indexOf('process.env.MOVED_TO') < main.indexOf('createAccessStore'));

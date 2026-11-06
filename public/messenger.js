@@ -627,7 +627,10 @@
     // opens, says so on the channel (as an app) -- the tab closed then; else the tab goes on to the messenger, the login by the
     // channel as before. Never a second tab, never the island app's window.
     byId('mOpenApp').addEventListener('click', () => {
-      const room = current?.id || ''; const w = window.open('', '_blank'); if (!w) return;
+      const room = current?.id || '';
+      const intent = window.MessengerAlert?.appIntent(navigator.userAgent, location.origin, room); /* (v1.10.258 Android: no protocol_handlers there -- the OS picks the messenger app) */
+      if (intent) { window.open(intent, '_blank'); setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 1500); return; }
+      const w = window.open('', '_blank'); if (!w) return;
       try { w.opener = null; } catch {}
       let app = false; let ch = null; try { ch = new BroadcastChannel('gc-messenger'); ch.onmessage = (e) => { if (e.data?.type === 'gc-messenger-app' && e.data.app) app = true; }; } catch {}
       try { w.location.href = `web+gcmessenger:${room || 'open'}`; } catch {}

@@ -2041,7 +2041,10 @@ const seatTaken = new Map(); // seat id -> session token
 const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow']);
 // v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
 // the fish shown on a catch is the server's own result, never the page's word
-const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss']);
+const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss', 'fish:show']); // (v1.10.257 자랑: the catch held out -- the server's fish too)
+// v1.10.257 자랑 장면: an insect just caught (10 s) held out -- `insect:show`, the insect the server's
+const insectShown = new Map(); // session token -> { species, at }
+function insectShowOf(token, act) { const u = insectShown.get(token); return act === 'insect:show' && u && nowMs() - u.at < 10000 ? { act, fish: u.species } : null; }
 // v1.10.92 잡화점 놀이 물건: an act `show:<kind>` is taken only just after that good was used from the bag (6 s)
 const showUsed = new Map(); // session token -> { kind, until }
 function showActOf(token, act) { const u = showUsed.get(token); return u && act === `show:${u.kind}` && nowMs() < u.until ? { act, fish: null } : null; }
@@ -2050,7 +2053,7 @@ function fishActOf(token, act) {
   const c = fishCasts.get(token);
   if (act === 'fish:miss') return { act, fish: null };
   if (!c) return null;
-  if (act === 'fish:catch') return c.done?.species ? { act, fish: c.done.species } : null;
+  if (act === 'fish:catch' || act === 'fish:show') return c.done?.species ? { act, fish: c.done.species } : null;
   return { act, fish: null };
 }
 // v1.10.47 관광열차: who is on which train's seat (session token -> { k, seat, from: the stop they got on at }). The trains
@@ -4262,7 +4265,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.257' });
+    return sendJson(res, 200, { ok: true, version: '1.10.258' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4605,7 +4608,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true });
   }
 
-  if (pathname === '/guest-entry' && req.method === 'POST') {
+  if ((pathname === '/island/guest-entry' || pathname === '/guest-entry') && req.method === 'POST') { /* (v1.10.258: inside the island app's scope -- no out-of-scope Chrome bar; old files still post to /guest-entry) */
     if (browserBlocked(req)) return sendChromeOnly(res);
     if (!checkRateLimit(`guest-entry:${clientIp(req)}`, 20, 10 * 60 * 1000)) {
       return sendSimpleHtml(res, 429, '입장 제한', '입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
@@ -5380,7 +5383,7 @@ async function requestHandler(req, res) {
       space: jailInside.has(session.token) ? 'jail' : museumInside.has(session.token) ? 'museum' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : fashionInside.has(session.token) ? 'fashion' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
-        const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
+        const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act) || insectShowOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
         const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
@@ -6729,7 +6732,7 @@ async function requestHandler(req, res) {
       if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
       const s = IslandInsects.SPECIES[b.species];
       const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag, tool: outcome.worn || null };
-      given = true; insectCaught.set(id, { account, result }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag);
+      given = true; insectCaught.set(id, { account, result }); insectShown.set(session.token, { species: b.species, at: nowMs() }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag); // (257: its 자랑 may follow)
       if (outcome.applied !== false) eventContestScore(account, 'bug', Math.round(s.price / 100)); // (E1: a round's catch)
       return sendJson(res, 200, result);
     } finally { if (!given) insectGone.delete(id); }
@@ -8791,7 +8794,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.257 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.258 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

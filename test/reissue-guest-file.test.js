@@ -138,12 +138,12 @@ test('old entry token authenticates on Render destination with the same account 
     RENDER_EXTERNAL_URL: 'https://omok-live.onrender.com',
     PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
   });
-  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.10.257' });
+  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.10.258' });
   const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
   const issued = await req('/api/admin/keys', 'POST', admin, { label: '기존 사용자' });
   assert.equal(issued.status, 201);
-  assert.match(issued.data.html, /action="https:\/\/omok-live\.onrender\.com\/guest-entry"/);
-  const oldHtml = issued.data.html.replace('https://omok-live.onrender.com/guest-entry',
+  assert.match(issued.data.html, /action="https:\/\/omok-live\.onrender\.com\/island\/guest-entry"/);
+  const oldHtml = issued.data.html.replace('https://omok-live.onrender.com/island/guest-entry',
     'https://silent-lake-9bcf.dlrjs9702.workers.dev/guest-entry');
   const first = await enter(oldHtml);
   assert.equal(first.status, 200);
@@ -176,7 +176,7 @@ test('v1.7.22: RENDER_EXTERNAL_HOSTNAME alone still beats an old PUBLIC_BASE_URL
   const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
   const issued = await req('/api/admin/keys', 'POST', admin, { label: '호스트 이름만' });
   assert.equal(issued.status, 201);
-  assert.match(issued.data.html, /action="https:\/\/omok-live\.onrender\.com\/guest-entry"/);
+  assert.match(issued.data.html, /action="https:\/\/omok-live\.onrender\.com\/island\/guest-entry"/);
 });
 
 test('only administrator can reissue: old entry and active session are invalidated, replacement works', { timeout: 25000 }, async t => {

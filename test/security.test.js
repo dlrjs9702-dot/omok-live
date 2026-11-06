@@ -33,7 +33,7 @@ test('관리자 비밀번호 비교는 정상 동작한다', () => {
 test('입장 파일은 토큰을 URL 쿼리에 넣지 않고 POST 한다', () => {
   const html = makeGuestFile({ baseUrl: 'https://omok-live.onrender.com', token: 'SECRET_TOKEN', label: '우성_PC' });
   assert.match(html, /method="post"/);
-  assert.match(html, /action="https:\/\/omok-live\.onrender\.com\/guest-entry"/);
+  assert.match(html, /action="https:\/\/omok-live\.onrender\.com\/island\/guest-entry"/); // (v1.10.258: inside the island app's scope)
   assert.match(html, /value="SECRET_TOKEN"/);
   assert.doesNotMatch(html, /guest-entry\?token=/);
 });
