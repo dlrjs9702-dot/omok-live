@@ -75,6 +75,10 @@ test('입질 게임: 반반·세 번 연속 없음, 타이밍 막대 판정(칸�
     assert.equal(T.judgeTiming(tm, hits.slice(0, -1)), 'wrong', `${sp} 모자람`);
     assert.equal(T.judgeTiming(tm, hitsFor(tm, Math.ceil(T.timingMs(tm) / tm.period) * tm.period)), 'late', `${sp} 시간 지남`);
   }
+  // (총괄 #409) the e2e's miss -- pressed with the needle over 1.5 zone widths from the zone's middle -- is out even with ±40 ms, every grade
+  for (const g of Object.values(T.TIMING)) for (const at of [0, 0.3, 1 - g.zone]) for (let ms = 0; ms < g.period; ms += 5) {
+    if (Math.abs(T.needleAt(g.period, ms) - (at + g.zone / 2)) > g.zone * 1.5) assert.equal(T.inZone(g, at, ms), false, `${g.period} ${at} ${ms}`);
+  }
   const tm = { hits: 2, zone: 0.2, period: 1000, zones: [0.4, 0.4] }; // (the zone 0.4~0.6: the needle there 200~300 ms, then 700~800)
   assert.equal(T.judgeTiming(tm, [{ t: 760 }, { t: 1250 }]), 'ok'); assert.equal(T.judgeTiming(tm, [{ t: 165 }, { t: 1235 }]), 'ok', '가장자리 40 ms');
   assert.equal(T.judgeTiming(tm, [{ t: 150 }, { t: 1250 }]), 'wrong', '가장자리 밖');

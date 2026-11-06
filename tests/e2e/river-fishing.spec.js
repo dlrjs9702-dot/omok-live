@@ -95,7 +95,8 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await page.evaluate(() => { const box = document.getElementById('fishTiming'); const at = (sel) => box.querySelector(sel).getBoundingClientRect(); const key = () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));
     let missed = false; const go = () => { if (box.classList.contains('hidden')) return; const n = at('.fishTimingNeedle'); const z = at('.fishTimingZone'); const x = n.left + n.width / 2; const inside = x > z.left + z.width * 0.3 && x < z.right - z.width * 0.3;
       if (!missed && !inside && Math.abs(x - (z.left + z.width / 2)) > z.width * 1.5) { missed = true; key(); } else if (missed && inside) key(); requestAnimationFrame(go); }; requestAnimationFrame(go); });
-  await expect(bar).toHaveClass(/wrong/, { timeout: 10000 }); await shot('timing-bar');
+  await expect(bar).toHaveClass(/wrong/, { timeout: 10000 }); await expect(bar.locator('.fishTimingMiss')).toBeVisible(); // (총괄 #409: where it was pressed, the needle held there 0.5 s)
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-timing-bar.png` });
   await expect(bar).toBeHidden({ timeout: 20000 });
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_crucian_carp')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect(card).toBeVisible({ timeout: 5000 }); await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
@@ -116,7 +117,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await page.evaluate(() => { const box = document.getElementById('fishTug'); const ten = () => parseFloat(getComputedStyle(box.querySelector('.fishTugTension i')).getPropertyValue('--p')) || 0; // (the player: hold, let go in a fight or above 45)
     const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true })); let down = false;
     const id = setInterval(() => { if (box.classList.contains('hidden')) { if (down) key('keyup'); clearInterval(id); return; } const want = !box.classList.contains('fight') && ten() < 45; if (want !== down) { down = want; key(want ? 'keydown' : 'keyup'); } }, 30); });
-  if (process.env.SHOT_DIR) { await expect(page.locator('#fishTug.fight')).toBeVisible({ timeout: 10000 }); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-tug-fight.png` }); } // (at once: a fight lasts 0.6~1.4 s)
+  if (process.env.SHOT_DIR) { await page.evaluate(() => new Promise((ok) => { const box = document.getElementById('fishTug'); const mo = new MutationObserver(() => { if (box.classList.contains('fight')) { mo.disconnect(); setTimeout(ok, 150); } }); mo.observe(box, { attributes: true }); setTimeout(() => { mo.disconnect(); ok(); }, 12000); })); /* (a fight just begun) */ await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-tug-fight.png` }); } // (at once: a fight lasts 0.6~1.4 s)
   await expect(page.locator('#fishTug')).toBeHidden({ timeout: 40000 });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.big || false), { timeout: 10000 }).toBe(true); await expect(card).toBeVisible({ timeout: 5000 }); await expect(card.locator('.catchRibbon')).toContainText(['대어!']); await shot('catch-big');
   await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);

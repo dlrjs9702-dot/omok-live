@@ -4231,12 +4231,16 @@
     fishTimingBox.classList.remove('hidden', 'wrong'); document.body.classList.add('islandFishing'); fishBarMark();
     const bar = fishTimingBox.querySelector('.fishArrowTime i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${ms}ms linear`; bar.style.width = '0%';
     const needle = fishTimingBox.querySelector('.fishTimingNeedle');
-    const tick = () => { const g = fishBar; if (!g) return; needle.style.left = `${window.FishTug.needleAt(g.t.period, performance.now() - g.shownAt) * 100}%`; g.raf = requestAnimationFrame(tick); }; tick();
+    const tick = () => { const g = fishBar; if (!g) return; if (!(g.hold > performance.now())) needle.style.left = `${window.FishTug.needleAt(g.t.period, performance.now() - g.shownAt) * 100}%`; g.raf = requestAnimationFrame(tick); }; tick(); // (held 0.5 s where a miss was pressed)
   }
   function fishTimingEnd() { if (fishBar) cancelAnimationFrame(fishBar.raf); fishBar = null; fishTimingBox.classList.add('hidden'); if (!fishTug) document.body.classList.remove('islandFishing'); }
   function fishBarPress() {
     const g = fishBar; if (!g || fishBusy) return; const ms = Math.round(performance.now() - g.shownAt); g.presses.push({ t: ms });
-    if (!window.FishTug.inZone(g.t, g.t.zones[g.hit], ms)) { g.hit = 0; fishBarMark(); fishTimingBox.classList.remove('wrong'); void fishTimingBox.offsetWidth; fishTimingBox.classList.add('wrong'); return; }
+    if (!window.FishTug.inZone(g.t, g.t.zones[g.hit], ms)) { // (총괄 #409: why -- the needle held 0.5 s where it was pressed, a red mark there; the zone as it was)
+      const x = window.FishTug.needleAt(g.t.period, ms) * 100; fishTimingBox.querySelector('.fishTimingNeedle').style.left = `${x}%`; g.hold = performance.now() + 500;
+      const miss = fishTimingBox.querySelector('.fishTimingMiss'); miss.style.left = `${x}%`; miss.classList.remove('hidden'); clearTimeout(g.missTimer); g.missTimer = setTimeout(() => { miss.classList.add('hidden'); if (fishBar === g) fishBarMark(); }, 500);
+      g.hit = 0; fishTimingBox.classList.remove('wrong'); void fishTimingBox.offsetWidth; fishTimingBox.classList.add('wrong'); return;
+    }
     if (g.hit + 1 === g.t.hits && ms < window.FishTug.timingFloor(g.t)) return; // (the last one sooner than the bar allows: on its next pass -- the server's judge the same)
     g.hit += 1; if (g.hit < g.t.hits) { fishBarMark(); return; }
     const { presses } = g; fishTimingEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; });
@@ -4251,13 +4255,14 @@
   const tugMs = () => Math.round(performance.now() - fishTug.t0);
   function fishTugStart(tug) {
     const T = window.FishTug; fishTug = { plan: tug.plan, holds: [], down: null, t0: performance.now(), st: { dist: T.DIST, tension: 0 }, last: 0, raf: 0, fight: false };
-    fishTugBox.classList.remove('hidden', 'fight'); document.body.classList.add('islandFishing'); plaza.controller?.fishTug?.();
+    fishTugBox.classList.remove('hidden', 'fight', 'start'); void fishTugBox.offsetWidth; fishTugBox.classList.add('start'); setTimeout(() => fishTugBox.classList.remove('start'), 800); // (총괄 #409: 「대어다!」 big for 0.8 s)
+    document.body.classList.add('islandFishing'); plaza.controller?.fishTug?.();
     const dist = fishTugBox.querySelector('.fishTugDist i'); const ten = fishTugBox.querySelector('.fishTugTension');
     const tick = () => {
       const g = fishTug; if (!g) return; const now = performance.now() - g.t0; const held = g.down != null ? [...g.holds, [g.down, null]] : g.holds;
       for (; g.last + T.STEP_MS <= now; g.last += T.STEP_MS) { T.step(g.plan, g.st, T.heldAt(held, g.last), g.last, T.STEP_MS); if (g.st.dist <= 0 || g.st.tension >= 100) { fishTugEnd(); return; } }
       if (now >= T.LIMIT_MS) { fishTugEnd(); return; }
-      const fight = Boolean(T.fightAt(g.plan, now)); if (fight !== g.fight) { g.fight = fight; fishTugBox.classList.toggle('fight', fight); if (fight) try { navigator.vibrate?.(120); } catch {} }
+      const fight = Boolean(T.fightAt(g.plan, now)); if (fight !== g.fight) { g.fight = fight; fishTugBox.classList.toggle('fight', fight); plaza.controller?.fishTugFight?.(fight); if (fight) try { navigator.vibrate?.(120); } catch {} } // (총괄 #409: the splash on the island too)
       dist.style.setProperty('--p', `${Math.max(0, g.st.dist)}%`); ten.querySelector('i').style.setProperty('--p', `${g.st.tension}%`);
       ten.classList.toggle('warn', g.st.tension >= 50 && g.st.tension < 80); ten.classList.toggle('hot', g.st.tension >= 80);
       g.raf = requestAnimationFrame(tick);
