@@ -137,7 +137,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
   // chosen marked; key 'level' or the option's id
   function choicesOf(g) {
     const out = [];
-    if (g.levels || g.mode === 'versus') out.push({ key: 'level', title: g.mode === 'versus' ? 'AI 난이도' : g.levelTitle || '난이도', value: levelOf(g), items: (g.levelIds || ['easy', 'normal', 'hard']).map((id) => [id, g.levelNames?.[id] || (g.mode === 'versus' ? `AI ${LEVEL_NAMES[id]}` : LEVEL_NAMES[id])]) });
+    if (g.levels || g.mode === 'versus') out.push({ key: 'level', title: g.mode === 'versus' ? 'AI 난이도' : g.levelTitle || '난이도', value: levelOf(g), items: (g.levelIds || ['easy', 'normal', 'hard']).map((id) => [id, g.levelNames?.[id] || (g.mode === 'versus' ? `AI ${LEVEL_NAMES[id]}` : LEVEL_NAMES[id])]), notes: g.levelNotes || null });
     for (const o of (g.levels || g.mode === 'versus') ? g.options || [] : []) out.push({ key: o.id, title: o.title, value: optionOf(g, o), items: o.items });
     return out;
   }
@@ -148,17 +148,18 @@ export function mount({ api, onBack, pieceSkin = null }) {
     const box = el('div', 'reflexGame');
     box.style.setProperty('--c1', g.color);
     const how = el('ul', 'reflexHow');
-    for (const [, line] of g.howto) how.append(el('li', null, line));
+    for (const [, line] of g.howtoFor?.(levelOf(g)) || g.howto) how.append(el('li', null, line)); /* (v1.10.255: 헬's own) */
     if (KEYS[g.id]) how.append(el('li', 'reflexKeys', `키보드: ${KEYS[g.id]}`));
-    box.append(el('p', 'reflexTagline', g.tagline), how);
+    box.append(el('p', 'reflexTagline', g.taglineFor?.(levelOf(g)) || g.tagline), how);
     if (g.levels || g.mode === 'versus') {
       const pick = el('div', 'reflexLevels'); pick.setAttribute('role', 'radiogroup'); pick.setAttribute('aria-label', g.mode === 'versus' ? 'AI 난이도' : g.levelTitle || '난이도');
       for (const id of g.levelIds || ['easy', 'normal', 'hard']) {
         const label = g.mode === 'versus' ? `AI ${LEVEL_NAMES[id]}` : LEVEL_NAMES[id];
         const b = button('reflexLevel', g.levelNames?.[id] || label, () => { remember(g.id, id); showGame(g); });
-        b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(levelOf(g) === id));
+        b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(levelOf(g) === id)); b.dataset.level = id;
         pick.append(b);
       }
+      const note = g.levelNotes?.[levelOf(g)]; if (note) box.append(el('p', 'reflexLevelNote', note)); /* (v1.10.255 헬: its one line) */
       for (const o of g.options || []) {
         const modes = el('div', 'reflexLevels reflexModes'); modes.setAttribute('role', 'radiogroup'); modes.setAttribute('aria-label', o.title);
         for (const [id, label] of o.items) {
@@ -214,7 +215,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       done: g.mode === 'versus' ? r.outcome === 'win' : launch?.goal == null || (score != null && (g.lowerBetter ? score <= launch.goal : score >= launch.goal)) });
     const box = el('div', 'hpPanel reflexBox'); // (v1.10.245 U3: the one result panel -- its pill, the title, the big figure)
     box.style.setProperty('--c1', g.color);
-    const pill = r.outcome === 'win' ? ['win', '승리'] : r.outcome === 'loss' || (set === SETS.mines && score == null) ? ['loss', '패배'] : r.outcome === 'draw' ? ['draw', '무승부'] : ['done', '완성'];
+    const pill = g.resultPill?.(runLevel) || (r.outcome === 'win' ? ['win', '승리'] : r.outcome === 'loss' || (set === SETS.mines && score == null) ? ['loss', '패배'] : r.outcome === 'draw' ? ['draw', '무승부'] : ['done', '완성']); /* (v1.10.255: a game's own -- 헬 「게임 오버」) */
     box.append(el('span', `hpPanelPill ${pill[0]}`, pill[1]), el('h2', null, r.title || g.name));
     if (score != null) box.append(el('p', 'reflexScore', fmtScore(score, g.unit)));
     const line = el('p', 'reflexPaid', (set === SETS.reflex || set === SETS.cards || r.proof) ? '기록 확인 중…' : '');

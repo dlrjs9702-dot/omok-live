@@ -1948,6 +1948,17 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .reflexModes{grid-template-columns:1fr 1fr}
 .reflexLevel{padding:12px 6px;background:#0f172a;color:#f8fafc;border:1px solid #334155;font-size:.85rem}
 .reflexLevel[aria-checked="true"]{background:#2563eb;color:#fff;border-color:#2563eb}
+/* v1.10.255 두더지 잡기 「헬」: four pills a row, the hell one red with a flame (in the light theme too), its one line; the
+   HUD's hearts, a lost one empty with a shake */
+.reflexLevels:has(>.reflexLevel:nth-child(4)){grid-template-columns:repeat(4,1fr)}
+.reflexLevel[data-level="hell"],.hpPill[data-level="hell"]{background:linear-gradient(135deg,#b91c1c,#dc2626)!important;color:#fff!important;border-color:#ef4444!important}
+.reflexLevel[data-level="hell"]::before,.hpPill[data-level="hell"]::before{content:"🔥 "}
+.reflexLevel[data-level="hell"][aria-checked="true"],.hpPill[data-level="hell"].on{box-shadow:0 0 0 3px #fca5a5}
+.reflexLevelNote,.gameSheetLevelNote{margin:0;color:#f87171;font-size:.85rem;font-weight:700}
+.reflexFrame .hud-lives{display:flex;gap:4px}
+.reflexFrame .hud-lives svg{color:#ff5a79}
+.reflexFrame .hud-lives svg.off{color:#4b3a3a;opacity:.55;animation:hudLifeLost .45s}
+@keyframes hudLifeLost{0%,100%{transform:none}25%{transform:translateX(-4px) scale(1.2)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}
 .reflexPoints,.reflexBest{margin:0;color:#cbd5e1}
 .reflexGo{padding:15px;font-size:1.1rem}
 .reflexStatus{margin:0;color:#fecaca;min-height:1.2em}

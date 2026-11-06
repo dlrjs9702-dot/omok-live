@@ -8,7 +8,7 @@
   'use strict';
   // id · 이름 · 높을수록 좋은가 · 난이도들 · 게시판 난이도 · 칭호 · 기록 단위 (public/reflex/js/util.js fmtScore와 같게) · 묶음
   const GAMES = [
-    ['whack', '두더지 잡기', true, ['easy', 'normal', 'hard'], 'normal', '두더지 왕', 'pt', 'reflex'],
+    ['whack', '두더지 잡기', true, ['easy', 'normal', 'hard', 'hell'], 'normal', '두더지 왕', 'pt', 'reflex'], /* (v1.10.255 헬: its own ranking, the board 「보통」) */
     ['reaction', '반응속도', false, ['normal'], 'normal', '번개 손', 'ms', 'reflex'],
     ['colorfind', '다른 색 찾기', true, ['easy', 'normal', 'hard'], 'normal', '매의 눈', 'round', 'reflex'],
     ['numbers', '숫자 터치', false, ['easy', 'normal', 'hard'], 'normal', '숫자 사냥꾼', 'sec', 'reflex'],
@@ -33,7 +33,7 @@
   const trophyGood = (sym, metal) => `yard_trophy_${sym}__${metal}`;
   /** the week's name on a plate: its Monday's month and which week of it (2026-11-09 -> 2026년 11월 2주) */
   const weekLabel = (week) => { const [y, m, d] = String(week).split('-').map(Number); return `${y}년 ${m}월 ${Math.floor((d - 1) / 7) + 1}주`; };
-  const LEVEL_NAMES = { easy: '쉬움', normal: '보통', hard: '어려움', beginner: '초급', intermediate: '중급', expert: '고급' };
+  const LEVEL_NAMES = { easy: '쉬움', normal: '보통', hard: '어려움', hell: '헬', beginner: '초급', intermediate: '중급', expert: '고급' };
   const CARD_LEVELS = { klondike: { easy: '1장 넘기기', hard: '3장 넘기기' }, freecell: { easy: '빈칸 4개', hard: '빈칸 3개' }, spider: { easy: '1벌', normal: '2벌', hard: '4벌' } };
   const levelName = (game, level) => CARD_LEVELS[game]?.[level] || LEVEL_NAMES[level] || level;
 

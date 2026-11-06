@@ -34,6 +34,30 @@ test('순발력 판정: 최소 시간·사람 점수 범위·최소 노력', () 
   assert.equal(Reflex.judge('stairs', 'hard', 9000, 999999), 'score');
 });
 
+// v1.10.255 두더지 잡기 「헬」 (docs/whack-hell-20261106.md): whack only; 10 a mole; no sooner than that many can come up (the
+// screen's own formula, public/whack-hell.js); up to 200,000 (the others still 3000); the stages and the lives
+test('두더지 헬: 두더지만, 10의 배수, n마리 최소 시간, 상한 200,000, 단계·바닥·목숨', () => {
+  const H = require('../public/whack-hell.js');
+  assert.equal(Reflex.levelOf('whack', 'hell'), 'hell'); assert.equal(Reflex.levelOf('colorfind', 'hell'), null); assert.equal(Reflex.levelOf('stairs', 'hell'), null);
+  assert.equal(Reflex.judge('whack', 'hell', 105, 1e9), 'score', '10의 배수만');
+  assert.equal(Reflex.judge('whack', 'hell', 1000, H.minMs(100) - 1), 'fast'); assert.equal(Reflex.judge('whack', 'hell', 1000, H.minMs(100)), 'ok');
+  assert.equal(Reflex.judge('whack', 'hell', 200000, H.minMs(20000)), 'ok'); assert.equal(Reflex.judge('whack', 'hell', 200010, 1e12), 'score');
+  assert.equal(Reflex.judge('whack', 'hell', 90, 1e6), 'low'); assert.equal(Reflex.judge('whack', 'normal', 5000, 1e6), 'score', '다른 난이도 상한 3000 그대로');
+  assert.ok(H.minMs(100) > 25000 && H.minMs(10) > 4000, `${H.minMs(10)} ${H.minMs(100)}`);
+  // the stages: one every ten caught, 0.93 a stage, the floor; bombs and how many up
+  assert.deepEqual([H.stageOf(0), H.stageOf(9), H.stageOf(10), H.stageOf(25)], [0, 0, 1, 2]);
+  assert.deepEqual(H.at(0), { spawn: 1.25, stay: 1.35, bomb: 0.05, up: 2 });
+  assert.ok(Math.abs(H.at(1).spawn - 1.25 * 0.93) < 1e-9); assert.deepEqual([H.at(4).up, H.at(15).bomb, H.at(40).up], [3, 0.2, 5]);
+  assert.equal(H.spawnWait(200, 0), 0.22); assert.equal(H.stayFor(200, 0.9), 0.32); assert.ok(H.spawnWait(0, 0) > 0.43 && H.stayFor(0, 1) > 1.6);
+  // the lives: five, a miss one, a bomb two -- six misses and a bomb end it
+  let lives = H.LIVES; for (const k of ['miss', 'bomb', 'miss']) lives -= H.LOSE[k]; assert.equal(lives, 1); lives -= H.LOSE.bomb; assert.ok(lives <= 0);
+  // (더하기) the run: a catch one more, a miss or a bomb none; shouted at 10, 20, 30; 3·2·1 first; the bomb plainer at 단계 5, 10
+  let run = 0; let best = 0; const shouts = [];
+  for (const w of [...Array(12).fill('hit'), 'miss', ...Array(25).fill('hit'), 'bomb', 'hit']) { run = H.combo(run, w); best = Math.max(best, run); if (H.shout(run)) shouts.push(run); }
+  assert.deepEqual([run, best, shouts], [1, 25, [10, 10, 20]]);
+  assert.equal(H.shout(0), false); assert.deepEqual([H.COUNTDOWN, H.BOMB_FLICKER + 1, H.BOMB_GLOW + 1], [3, 5, 10]);
+});
+
 async function storeBehaves(store) {
   const U = 'guest:11111111-1111-4111-8111-111111111111';
   const daily = { day: '2026-10-12', cap: 2500 };

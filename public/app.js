@@ -2437,10 +2437,11 @@
       const title = g.set ? o.title : `AI 연습 · ${o.title}`; /* (a room game's: its practice's, not the room's) */
       const row = hallEl('div', 'gameSheetChoice'); row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', o.title); row.append(hallEl('small', null, title));
       for (const [value, label] of o.items) {
-        const b = hallEl('button', 'hpPill big', label); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(o.value === value)); b.classList.toggle('on', o.value === value);
+        const b = hallEl('button', 'hpPill big', label); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(o.value === value)); b.classList.toggle('on', o.value === value); b.dataset.level = value;
         b.addEventListener('click', () => { reflexGames.choose(id, o.key, value); sheetChoices(g); }); row.append(b);
       }
       box.append(row);
+      if (o.notes?.[o.value]) box.append(hallEl('p', 'gameSheetLevelNote', o.notes[o.value])); /* (v1.10.255 헬: its one line) */
     }
     box.classList.toggle('hidden', !groups.length);
     const best = await reflexGames.best(id).catch(() => null); if (sheetGame !== g || best == null) return;

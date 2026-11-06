@@ -84,6 +84,7 @@ export const sfx = {
   pop: () => { tone({ f: 260, f2: 90, dur: 0.12, vol: 0.35, type: 'sine' }); noise({ dur: 0.06, vol: 0.15, from: 3000, to: 800 }); },
   wrong: () => { tone({ f: 220, dur: 0.12, vol: 0.18, type: 'square' }); tone({ f: 165, dur: 0.18, vol: 0.18, type: 'square', at: 0.1 }); },
   flip: () => noise({ dur: 0.07, vol: 0.12, from: 4000, to: 1500 }),
+  fizz: () => noise({ dur: 0.1, vol: 0.1, from: 7000, to: 3000 }), // (v1.10.255 헬: a bomb's fuse as it comes up -- 「치익」)
   flap: () => tone({ f: 400, f2: 700, dur: 0.08, vol: 0.12, type: 'triangle' }),
   clear: () => [72, 76, 79, 84].forEach((n, i) => tone({ f: NOTE(n), dur: 0.14, vol: 0.14, type: 'triangle', at: i * 0.05 })),
   beep: (hi) => tone({ f: hi ? 1320 : 660, dur: 0.12, vol: 0.16, type: 'sine' }),
