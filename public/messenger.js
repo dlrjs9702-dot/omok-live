@@ -511,7 +511,10 @@
     byId('mDevicesBtn').classList.toggle('hidden', !deviceToken.get());
     wantStream(true); timers = [setInterval(() => { if (!streamUp) pull(); }, 3000), setInterval(() => refresh(), 30000)];
     const room = new URLSearchParams(location.search).get('room') || roomOfOpen(location.href); const r = room && state.rooms.find((x) => x.id === room); if (r) openRoom(r); // (a notice tapped; the 서랍's 「메신저 앱으로 열기」)
-    try { window.launchQueue?.setConsumer((p) => { const id = p?.targetURL && roomOfOpen(p.targetURL); const x = id && state.rooms.find((y) => y.id === id); if (x) openRoom(x); }); } catch {} // (the app already open: focused, told the room)
+    // (opened by web+gcmessenger:) the 서랍 that asked is told the app is up -- as an app or a tab -- and closes its own tab
+    const launched = () => { try { new BroadcastChannel('gc-messenger').postMessage({ type: 'gc-messenger-app', app: Boolean(window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone) }); } catch {} };
+    if (new URLSearchParams(location.search).has('open')) launched();
+    try { window.launchQueue?.setConsumer((p) => { if (p?.targetURL && new URL(p.targetURL).searchParams.has('open')) launched(); const id = p?.targetURL && roomOfOpen(p.targetURL); const x = id && state.rooms.find((y) => y.id === id); if (x) openRoom(x); }); } catch {} // (the app already open: focused, told the room)
     if (!EMBED) setupPush(); // (12절: notices are the messenger app's)
   }
   loginForm.addEventListener('submit', async (event) => {
@@ -619,16 +622,21 @@
     // (사용자 신고 2026-11-06: the island app's scope is / -- a window it opens on /messenger.html stays the island app's) the
     // messenger app by its own link, web+gcmessenger: (its manifest's protocol_handlers, the OS's once it is installed) with
     // the room open here; this window not left within 1.5 s (no app): a window as before
+    // (사용자 「아일랜드 앱 말고 크롬으로 열리게」) one Chrome tab, opened in the click (a blank one is outside the island app's
+    // scope -- 10/25's 「섬 앱에서 누르면 크롬으로 열려」 the other way round), sent to web+gcmessenger:; the messenger app, if it
+    // opens, says so on the channel (as an app) -- the tab closed then; else the tab goes on to the messenger, the login by the
+    // channel as before. Never a second tab, never the island app's window.
     byId('mOpenApp').addEventListener('click', () => {
-      const room = current?.id || '';
-      // (사용자 「아일랜드 앱 말고 크롬으로 열리게」) no messenger app: a Chrome tab, never the island app's window -- a blank one
-      // first (outside the app's scope the browser takes it: 10/25's 「섬 앱에서 누르면 크롬으로 열려」 the other way round), then
-      // sent to the messenger; the login by the channel as before
-      const fallback = () => { const w = window.open('', '_blank'); if (!w) return; try { w.opener = null; } catch {} w.location.href = `/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`; w.focus(); setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 800); };
-      let left = false; const gone = () => { left = true; }; const tops = [window, window.parent].filter(Boolean);
-      for (const w of tops) try { w.addEventListener('blur', gone, { once: true }); } catch {}
-      const a = document.createElement('a'); a.href = `web+gcmessenger:${room || 'open'}`; a.target = '_blank'; a.rel = 'noopener'; a.hidden = true; document.body.append(a); a.click(); a.remove(); // (_blank: an unknown scheme turns this 서랍's own page into an error page otherwise)
-      setTimeout(() => { for (const w of tops) try { w.removeEventListener('blur', gone); } catch {} if (!left) fallback(); }, 1500);
+      const room = current?.id || ''; const w = window.open('', '_blank'); if (!w) return;
+      try { w.opener = null; } catch {}
+      let app = false; let ch = null; try { ch = new BroadcastChannel('gc-messenger'); ch.onmessage = (e) => { if (e.data?.type === 'gc-messenger-app' && e.data.app) app = true; }; } catch {}
+      try { w.location.href = `web+gcmessenger:${room || 'open'}`; } catch {}
+      setTimeout(() => {
+        try { ch?.close(); } catch {}
+        if (app) { try { w.close(); } catch {} return; }
+        try { w.location.href = `/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`; w.focus(); } catch {}
+        setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 800);
+      }, 2000);
     });
     const HINT = 'gc.messengerInstallHint'; let off = false; try { off = localStorage.getItem(HINT) === 'off'; } catch {}
     byId('mInstallHint').classList.toggle('hidden', off);
