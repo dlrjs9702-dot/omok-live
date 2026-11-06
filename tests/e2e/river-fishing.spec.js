@@ -4,7 +4,7 @@ const { shopper, post, get, expectNoScriptError, pressFishArrows } = require('./
 // v1.10.90 낚시 도감 21종 (IDEAS #future-fishing-dex): a stream's bank is a fishing spot too -- the float lands on the
 // stream, a river fish comes in and goes to the bag (its new model in hand, its icon in the 도감). PC and phone.
 test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 잡아 가방에', async ({ browser, request, isMobile }) => {
-  test.setTimeout(120000);
+  test.setTimeout(240000); // (v1.10.259: two big ones' tugs, up to 25 s each)
   const who = await shopper(browser, request, '강낚시', 500000, 'male');
   const { page, token } = who;
   expect((await post(request, '/api/test/island/give', token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (낚싯대는 잡화점에서)
@@ -86,13 +86,31 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect.poll(async () => { if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); await page.waitForTimeout(400); } return page.evaluate(() => window.PlazaDebug().fishing()?.phase || null); }, { timeout: 15000, intervals: [300] }).toMatch(/cast|wait/);
   await expect(card).toBeHidden();
   await page.keyboard.press('Space'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // (pulled early: gone)
-  if (process.env.SHOT_DIR) { // (the photos only: a big one held out in both hands -- ShowCatchBig)
+  // v1.10.259 대어 줄다리기 (docs/fishing-minigames-20261104.md 3절): a big one's arrows bring 「대어다!」 -- not in the bag yet; a
+  // player in the page holds (SPACE / 「감기」) and lets go while it fights or the tension runs high: caught, held out in both
+  // hands; then one held throughout -- the line snaps, nothing caught
+  const bigBite = async (species) => {
     await expect.poll(async () => { if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); await page.waitForTimeout(400); } return page.evaluate(() => window.PlazaDebug().fishing()?.bobber || false); }, { timeout: 15000, intervals: [300] }).toBe(true);
     await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); await expect(page.locator('#plazaHint')).toHaveText(/순서대로( \(WASD도 돼요\))?$/);
-    expect((await post(request, '/api/test/fish/bite', token, { species: 'sturgeon', size: 150, slack: 20000 })).data.ok).toBe(true); await pressFishArrows(page, isMobile);
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.big || false), { timeout: 10000 }).toBe(true); await expect(card).toBeVisible({ timeout: 5000 }); await shot('catch-big');
-    await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
-  }
+    expect((await post(request, '/api/test/fish/bite', token, { species, size: 150, slack: 20000 })).data.ok).toBe(true); await pressFishArrows(page, isMobile);
+    await expect(page.locator('#fishTug')).toBeVisible({ timeout: 10000 }); await expect(page.locator('#fishTug .fishTugTitle')).toContainText('대어다!');
+    expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('tug');
+  };
+  const space = (type) => page.evaluate((t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true })), type);
+  await bigBite('sturgeon'); if (isMobile) await expect(page.locator('#fishTug .fishTugReel')).toBeVisible();
+  await shot('tug-start');
+  await page.evaluate(() => { const box = document.getElementById('fishTug'); const ten = () => parseFloat(getComputedStyle(box.querySelector('.fishTugTension i')).getPropertyValue('--p')) || 0; // (the player: hold, let go in a fight or above 45)
+    const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true })); let down = false;
+    const id = setInterval(() => { if (box.classList.contains('hidden')) { if (down) key('keyup'); clearInterval(id); return; } const want = !box.classList.contains('fight') && ten() < 45; if (want !== down) { down = want; key(want ? 'keydown' : 'keyup'); } }, 30); });
+  if (process.env.SHOT_DIR) { await expect(page.locator('#fishTug.fight')).toBeVisible({ timeout: 10000 }); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-tug-fight.png` }); } // (at once: a fight lasts 0.6~1.4 s)
+  await expect(page.locator('#fishTug')).toBeHidden({ timeout: 40000 });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.big || false), { timeout: 10000 }).toBe(true); await expect(card).toBeVisible({ timeout: 5000 }); await expect(card.locator('.catchRibbon')).toContainText(['대어!']); await shot('catch-big');
+  await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
+  await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_sturgeon')?.qty || 0, { timeout: 10000 }).toBe(1);
+  await bigBite('salmon'); await space('keydown'); await expect(page.locator('#fishTug .fishTugTension')).toHaveClass(/hot/, { timeout: 20000 }); await shot('tug-hot');
+  await expect(page.locator('#fishTug')).toBeHidden({ timeout: 30000 }); await space('keyup'); await expect(page.locator('#toast')).toHaveText('줄이 끊어졌어요!');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
+  expect(((await get(request, '/api/island/bag', token)).data.items || []).some((e) => e.itemId === 'fish_salmon')).toBe(false);
   // the bag's ⓘ and the 도감's cell: the same 설명
   await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="fish_catfish"]').first().click();
   await page.locator('#islandBagInfo .bagInfoMore').click(); await expect(card).toHaveClass(/infoOnly/); await expect(card.locator('.catchBack .catchName')).toHaveText('메기'); await shot('bag-info'); await card.locator('#catchCloseBtn').click();

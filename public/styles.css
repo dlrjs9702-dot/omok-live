@@ -1838,6 +1838,19 @@ body.islandFishing .plazaHint{display:none}
 .fishArrowPad{display:none;gap:10px}
 .fishArrowPad button{width:56px;height:56px;border-radius:14px;font-size:1.5rem;font-weight:950;background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 2px 0 var(--isle-line)}.fishArrowPad button:active{transform:translateY(1px);background:#f0dcb6;box-shadow:none}
 @media (pointer:coarse){.fishArrowPad{display:flex}}
+/* v1.10.259 대어 줄다리기: the arrows' paper window -- the line left (blue), the tension (green, yellow, red); 「버텨요!」 while it fights */
+.fishTug{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:5;display:grid;gap:8px;width:min(320px,calc(100vw - 32px));padding:14px 18px;border-radius:18px;background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.fishTug.hidden{display:none}
+.fishTugTitle{margin:0;text-align:center;font-weight:950;font-size:1.15rem}.fishTugTitle span{font-weight:700;font-size:.9rem}
+.fishTugBar{display:grid;grid-template-columns:4.2em 1fr;align-items:center;gap:8px;font-size:.85rem}
+.fishTugBar i{display:block;height:12px;border-radius:99px;background:linear-gradient(90deg,var(--fill) var(--p,0%),#e6d8c2 var(--p,0%))}
+.fishTugDist i{--fill:#3f8fd8}.fishTugTension i{--fill:#4caf6a}.fishTugTension.warn i{--fill:#e0b02c}.fishTugTension.hot i{--fill:#d64535}
+.fishTugCall{margin:0;text-align:center;font-weight:950;color:#c0392b;visibility:hidden}.fishTug.fight .fishTugCall{visibility:visible}
+.fishTug.fight{animation:fishWrong .25s}
+.fishTugReel{min-height:56px;border-radius:14px;font-size:1.2rem;font-weight:950;background:#f08a3c;color:#fff;border:0;touch-action:none;user-select:none;-webkit-user-select:none}.fishTugReel small{font-size:.75rem;font-weight:700}
+.fishTugReel.on{background:#c96a22}
+@media (pointer:coarse){.fishTugReel small{display:none}}
+@media (prefers-reduced-motion:reduce){.fishTug.fight{animation:none}}
 .plazaDialog.mapMode{width:96vw;max-height:96dvh}
 .plazaDialog.mapMode .islandMapCard canvas{width:100%;height:calc(96dvh - 120px);max-height:none;touch-action:none;cursor:grab}
 .plazaDialog.editMode{width:min(340px,92vw);max-height:calc(100dvh - 32px);margin:16px 16px 16px auto;overflow:auto}
