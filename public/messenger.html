@@ -27,8 +27,12 @@
         <button id="mInstallBtn" type="button" class="secondary tiny hidden">앱으로 설치</button>
         <button id="mDevicesBtn" type="button" class="ghost tiny hidden" aria-expanded="false" aria-controls="mDevices">로그인된 기기</button>
         <button id="mLogoutBtn" type="button" class="ghost tiny hidden">로그아웃</button>
+        <!-- 메신저 정리 12절: in the island app's 서랍 (?embed=1) only these two -->
+        <button id="mOpenApp" type="button" class="secondary tiny mEmbedOnly">메신저 앱으로 열기 ↗</button>
+        <button id="mCloseEmbed" type="button" class="ghost tiny mEmbedOnly" aria-label="메신저 닫기">✕</button>
       </span>
     </header>
+    <p id="mInstallHint" class="mInstallHint mEmbedOnly hidden" role="note">메신저 앱을 설치하면 창을 닫아도 알림을 받아요 <button id="mInstallHintClose" type="button" class="ghost tiny" aria-label="안내 닫기">✕</button></p>
     <p id="mWake" class="mWake hidden" role="status">서버를 깨우는 중이에요… 처음 한 번은 30~40초 걸릴 수 있어요.</p>
     <form id="mLogin" class="mLogin isle-paper hidden">
       <strong>로그인</strong>

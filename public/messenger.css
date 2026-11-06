@@ -5,6 +5,13 @@ body.messengerPage{margin:0;min-height:100dvh;background:#f4ead6;color:var(--isl
 .mTop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-radius:18px}
 .mTitle{font-size:1.05rem}
 .mTopActions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+/* 메신저 정리 12절: the island app's 서랍 (?embed=1) -- the head keeps ✕ and 「메신저 앱으로 열기 ↗」 only; the page alone has none of them */
+body:not(.mEmbed) .mEmbedOnly{display:none!important}
+.mEmbed .mTopActions>:not(.mEmbedOnly){display:none!important}
+.mEmbed .mPage{padding:8px 8px max(8px,env(safe-area-inset-bottom));gap:8px}
+.mEmbed .mTop{padding:6px 10px;flex-wrap:nowrap}.mEmbed .mTitle{font-size:.98rem;white-space:nowrap}
+.mInstallHint{margin:0;padding:6px 10px;border-radius:12px;background:#fdf1d6;border:1px solid var(--isle-line);font-size:.84rem;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.mInstallHint.hidden{display:none!important}
 .mWake,.mHint{margin:0;padding:8px 12px;border-radius:12px;background:#fdf1d6;border:1px solid var(--isle-line);font-size:.86rem}
 .mLogin{display:grid;gap:10px;padding:18px;max-width:380px;margin:8vh auto 0;width:100%;box-sizing:border-box}
 .mLogin label{display:grid;gap:4px;font-weight:700}

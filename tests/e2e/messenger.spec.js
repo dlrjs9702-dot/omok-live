@@ -52,17 +52,25 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   if (info.project.name.includes('mobile')) expect(await m.evaluate(() => [document.activeElement?.id, document.getElementById('messengerInput').value])).toEqual(['messengerInput', '']);
   await expect(m.locator('#messengerMessages .messengerSystem')).toHaveText(/님을 초대했습니다/);
   await expect(m.locator('#messengerMessages .chatMessage.mine .messengerReadCount')).toHaveText('1'); // dad has not read it
-  // dad: 내 계정's button tells what is unread and opens the messenger window with his login
+  // dad: 내 계정's button tells what is unread and opens the 메신저 서랍 (메신저 정리 12절) -- no new window: the same page inside
+  // with his login, its head only ✕ and 「메신저 앱으로 열기 ↗」; PC the right 380 px, a phone a sheet 85 % high
   const home = await onAccount(dad);
   await expect(home.locator('#accountMessengerBtn')).toContainText('새 메시지 2'); // the invite line + the message (server count)
-  const [d] = await Promise.all([home.waitForEvent('popup'), home.locator('#accountMessengerBtn').click()]);
+  const pagesBefore = home.context().pages().length;
+  await home.locator('#accountMessengerBtn').click();
+  await expect(home.locator('#messengerDrawer')).toBeVisible(); expect(home.context().pages()).toHaveLength(pagesBefore);
+  const d = home.frameLocator('#messengerDrawer iframe');
   await expect(d.locator('#mApp')).toBeVisible(); await expect(d.locator('#mLogin')).toBeHidden();
+  for (const id of ['#mCloseEmbed', '#mOpenApp']) await expect(d.locator(id)).toBeVisible();
+  for (const id of ['#mAlertPick', '#mLogoutBtn', '#mTheme', '#mInstallBtn']) await expect(d.locator(id)).toBeHidden();
+  { const box = await home.locator('#messengerDrawer').boundingBox(); const vp = home.viewportSize(); if (vp.width > 640) { expect(Math.round(box.width)).toBe(380); expect(Math.round(box.x + box.width)).toBe(vp.width); } else { expect(box.height).toBeGreaterThan(vp.height * 0.8); expect(Math.round(box.y + box.height)).toBe(vp.height); } }
   await expect(d.locator('#messengerRoomList button', { hasText: '우리집' })).toContainText('저녁 뭐 먹어?');
   await d.locator('#messengerRoomList button', { hasText: '우리집' }).click();
   await expect(d.locator('#messengerMessages .chatMessage')).toHaveText(/저녁 뭐 먹어\?/);
-  // the button again: the same window (no second one)
-  let second = null; home.once('popup', (p) => { second = p; }); await home.locator('#accountMessengerBtn').click(); await home.waitForTimeout(1500);
-  expect(second).toBeNull(); expect(home.context().pages().filter((p) => p.url().includes('/messenger'))).toHaveLength(1);
+  // ✕ closes it; the button again: the same 서랍, the room still open (no window)
+  await d.locator('#mCloseEmbed').click(); await expect(home.locator('#messengerDrawer')).toBeHidden();
+  await home.locator('#accountMessengerBtn').click(); await expect(home.locator('#messengerDrawer')).toBeVisible();
+  expect(home.context().pages()).toHaveLength(pagesBefore); await expect(d.locator('#messengerRoomName')).toHaveText('우리집');
   await d.locator('#messengerInput').fill('김치찌개');
   await send(d);
   await expect(m.locator('#messengerMessages .chatMessage:not(.mine)')).toHaveText(/김치찌개/, { timeout: 2500 }); // at once by the stream
@@ -95,7 +103,8 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await d.locator('#messengerLeaveBtn').click();
   await expect(d.locator('#mAskText')).toContainText('나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다'); await d.locator('#mAsk').getByRole('button', { name: '취소' }).click(); await expect(d.locator('#mAsk')).toBeHidden();
   await expect(d.locator('#messengerRoomName')).toHaveText(mom.nickname); // dismissed: still in
-  for (const page of [m, d]) { const box = await page.locator('#mApp').boundingBox(); const vw = page.viewportSize().width; expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(vw); } // fits a phone too
+  { const box = await m.locator('#mApp').boundingBox(); const vw = m.viewportSize().width; expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(vw); } // fits a phone too
+  { const box = await d.locator('#mApp').boundingBox(); const out = await home.locator('#messengerDrawer').boundingBox(); expect(box.x).toBeGreaterThanOrEqual(out.x - 1); expect(box.x + box.width).toBeLessThanOrEqual(out.x + out.width + 1); } // (the 서랍's page inside the 서랍)
   // (Codex 검토 2차 #5) a pin answered late, after I went to another room: the room I am in stays
   const toList = async () => { if (await m.locator('#messengerBackBtn').isVisible()) await m.locator('#messengerBackBtn').click(); };
   await m.route('**/pin', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
@@ -116,15 +125,19 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await m.locator('#mLogoutBtn').click(); await expect(m.locator('#mLogin')).toBeVisible();
   await expect(m.locator('#messengerRoomList li')).toHaveCount(0); await expect(m.locator('#messengerMessages > *')).toHaveCount(0); await expect(m).toHaveTitle('아일랜드 메신저');
   await m.reload(); await expect(m.locator('#mLogin')).toBeVisible();
-  // (사용자 「섬 앱에서 누르면 크롬으로 열려」) in the installed app (display-mode standalone): no blank window -- the messenger
-  // itself in a small window, once; pressed again, the same one brought forward
+  // (사용자 「섬 앱에서 누르면 크롬으로 열려」 → 12절) the installed app (display-mode standalone) too: the 서랍, no window; Esc in it
+  // closes it (not the game's menu); its 「메신저 앱으로 열기 ↗」 opens the messenger app's page
   await dad.context.addInitScript(() => {
     const real = window.matchMedia.bind(window); window.matchMedia = (q) => (q === '(display-mode: standalone)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q));
-    window.__opens = []; const open = window.open.bind(window); window.open = (...args) => { window.__opens.push(args); return open(...args); };
+    window.__opens = []; window.open = (...args) => { window.__opens.push(args); return null; };
   });
   const appHome = await dad.context.newPage(); await appHome.goto('/'); await expect(appHome.locator('#accountMessengerBtn')).toBeVisible({ timeout: 30000 });
-  await appHome.locator('#accountMessengerBtn').click(); await appHome.waitForTimeout(800); await appHome.locator('#accountMessengerBtn').click(); await appHome.waitForTimeout(800);
-  expect(await appHome.evaluate(() => window.__opens)).toEqual([['/messenger', 'gc-messenger', 'popup,width=440,height=780']]);
+  await appHome.locator('#accountMessengerBtn').click(); await expect(appHome.locator('#messengerDrawer')).toBeVisible();
+  const f = appHome.frameLocator('#messengerDrawer iframe'); await expect(f.locator('#mApp')).toBeVisible();
+  await f.locator('#mOpenApp').click();
+  expect(await appHome.evaluate(() => window.__opens)).toEqual([]);
+  expect(await appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens)).toEqual([['/messenger.html', 'gc-messenger']]);
+  await f.locator('#mOpenApp').press('Escape'); await expect(appHome.locator('#messengerDrawer')).toBeHidden(); await expect(appHome.locator('#gameMenu, .gameMenu').first()).toBeHidden();
   for (const p of [mom, dad, kid]) await p.context.close();
 });
 

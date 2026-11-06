@@ -89,3 +89,67 @@ test('메신저 알림 방식: PC 기본 열어 둘 때만(푸시 0)·폰 기본
   assert.equal((await call('/api/messenger/push/off', {}, oldPhone)).status, 200);
   assert.deepEqual((await call('/api/messenger/push', undefined, oldPhone)).data, { ok: true, key: null, mode: 'push', moved: false, on: false });
 });
+
+// 메신저 정리 (docs/messenger-speed-photo-20261103.md 12절): a PC's 닫아도 받기 only within 12 hours of opening the messenger (or
+// the island app) on it, kept 10 minutes by the push service; a phone's always, a day; one Topic a room. A phone by the
+// page's word (a 「데스크톱 사이트」 phone says Linux). A new login moves the subscription (검토: the page sends it again).
+// The island app counts on its buttons only (no icon count).
+test('메신저 정리 12절: PC는 연 지 12시간 안에만·TTL 600, 폰은 늘·TTL 86400, Topic 방마다, 재로그인에 구독 옮김, 섬 앱 setBadge 없음', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-awake-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  let { req, base, stop } = await boot(t, dir);
+  let ip = 0;
+  const call = async (route, body, auth = {}) => {
+    const headers = { 'X-Forwarded-For': `10.82.${Math.floor(++ip / 200)}.${ip % 200 + 1}`, ...(auth.account ? { 'X-Account-Token': auth.account } : {}), ...(auth.device ? { 'X-Messenger-Device': auth.device } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) };
+    const res = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    return { status: res.status, data: await res.json().catch(() => ({})) };
+  };
+  const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken;
+  const people = {};
+  for (const [loginId, nickname] of [['mum_12', '엄마'], ['pop_12', '아빠']]) {
+    await call('/api/account/signup', { realName: nickname, loginId, password: 'secret123', nickname });
+    const signup = (await req('/api/admin/signups', admin)).data.signups.find((s) => s.loginId === loginId);
+    await req(`/api/admin/signups/${signup.id}/approve`, admin, {});
+    const id = (await req('/api/admin/keys', admin)).data.keys.find((k) => k.loginId === loginId).id;
+    await req(`/api/admin/keys/${id}/messenger`, admin, { allowed: true });
+    people[loginId] = { id, loginId };
+  }
+  const { mum_12: mum, pop_12: pop } = people;
+  const login = async (p, device, deviceKind) => ({ device: (await call('/api/account/login', { loginId: p.loginId, password: 'secret123', keep: true, device, deviceKind })).data.deviceToken });
+  const P = 'https://fcm.googleapis.com/fcm/send/';
+  const subOf = (tag) => ({ endpoint: `${P}${tag}`, p256dh: Buffer.concat([Buffer.from([4]), crypto.randomBytes(64)]).toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') });
+  const pc = await login(mum, '윈도우 크롬', 'pc'); const phone = await login(mum, '기기 크롬', 'phone'); // (a phone's 「데스크톱 사이트」: its name a PC's)
+  assert.equal((await call('/api/messenger/push', undefined, phone)).data.mode, 'push', '폰은 화면이 말한 대로');
+  assert.equal((await call('/api/messenger/push', subOf('pc'), pc)).status, 200); assert.equal((await call('/api/messenger/push', subOf('phone'), phone)).status, 200);
+  const dad = await login(pop, '윈도우 크롬', 'pc');
+  const room = (await call('/api/messenger/rooms', { name: '우리집', members: [mum.id] }, dad)).data.room;
+  const say = async (text) => { assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text }, dad)).status, 201, text); await new Promise((r) => setTimeout(r, 300)); return (await req('/api/test/messenger/pushes')).data.pushes.map((x) => [x.endpoint.slice(P.length), x.ttl, x.topic]).sort(); };
+  await say('(초대)');
+  const first = await say('저녁 먹자'); const topic = first[0][2];
+  assert.match(topic, /^[A-Za-z0-9_-]{32}$/); assert.deepEqual(first, [['pc', 600, topic], ['phone', 86400, topic]]);
+  // the PC not opened for 13 hours: not pushed (the phone still is); opened again: pushed again
+  const file = path.join(dir, 'points.json'); const edit = async (fn) => { await stop(); const data = JSON.parse(await fs.readFile(file, 'utf8')); fn(data.island.world); await fs.writeFile(file, JSON.stringify(data)); ({ req, base, stop } = await boot(t, dir)); };
+  const long = Date.now() - 13 * 3600000;
+  await edit((w) => { for (const d of w.messengerDevices) if (d.keyId === mum.id) { d.at = long; d.seenAt = long; } });
+  assert.deepEqual((await say('자?')).map((x) => x[0]), ['phone']);
+  assert.deepEqual((await call('/api/messenger/push', undefined, pc)).data.mode, 'push'); // (the messenger opened on the PC)
+  assert.deepEqual((await say('일어났어?')).map((x) => x[0]), ['pc', 'phone']);
+  // the island app opened on it counts too
+  await edit((w) => { for (const d of w.messengerDevices) if (d.keyId === mum.id) d.seenAt = long; });
+  const account = (await call('/api/account/login', { loginId: mum.loginId, password: 'secret123' })).data.accountToken;
+  assert.deepEqual((await call('/api/messenger/seen', {}, { account, device: pc.device })).data, { ok: true, device: true });
+  assert.deepEqual((await say('섬에서 봤지')).map((x) => x[0]), ['pc', 'phone']);
+  // a new login on the PC (a new device): the page sends its subscription again -- it moves; the old device's hours don't count
+  const pc2 = await login(mum, '윈도우 크롬', 'pc');
+  assert.equal((await call('/api/messenger/push', subOf('pc'), pc2)).status, 200);
+  const pcIds = (await call('/api/messenger/devices', undefined, pc2)).data.devices; const oldId = pcIds.find((d) => !d.mine && d.name === '윈도우 크롬').id;
+  await edit((w) => { for (const d of w.messengerDevices) if (d.id === oldId) d.seenAt = long; assert.equal(w.messengerPush.filter((s) => s.endpoint === `${P}pc`).length, 1); });
+  assert.deepEqual((await say('새 로그인')).map((x) => x[0]), ['pc', 'phone']);
+  // the 서랍: /messenger.html?embed=1 framed by our own page only; the page alone not at all
+  { const alone = await fetch(`${base}/messenger.html`); const embed = await fetch(`${base}/messenger.html?embed=1`);
+    assert.match(alone.headers.get('content-security-policy'), /frame-ancestors 'none'/); assert.equal(alone.headers.get('x-frame-options'), 'DENY');
+    assert.match(embed.headers.get('content-security-policy'), /frame-ancestors 'self'/); assert.equal(embed.headers.get('x-frame-options'), 'SAMEORIGIN'); }
+  // the island app: no icon count of its own (the messenger app's), the 서랍 page none either
+  const app = await fs.readFile(path.join(__dirname, '..', 'public', 'app.js'), 'utf8'); assert.ok(!/setBadge\(/.test(app), '섬 앱 아이콘 숫자 없음');
+  const page = await fs.readFile(path.join(__dirname, '..', 'public', 'messenger.js'), 'utf8'); assert.match(page, /if \(EMBED\) return;[^\n]*\r?\n\s*document\.title = blink\.text\(baseTitle\); blink\.update\(unread, away\(\)\);\r?\n\s*window\.MessengerAlert\.setBadge/);
+});

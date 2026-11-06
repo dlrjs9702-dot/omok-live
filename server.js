@@ -797,8 +797,20 @@ const DEVICE_TTL_MS = 60 * 24 * 60 * 60 * 1000; const DEVICES_MAX = 10; // (per 
 // default -- no push subscription, the page's own notice while the window is open), 'push' 닫아도 받기 (a phone's), 'off'.
 // A device from before the choice gets its default by its name; a PC's subscription is dropped then (told once: `moved`)
 const ALERT_MODES = ['off', 'open', 'push'];
-const alertDefault = (name) => (/^(안드로이드|아이폰)/.test(String(name || '')) ? 'push' : 'open');
-const alertOf = (d) => (ALERT_MODES.includes(d?.alert) ? d.alert : alertDefault(d?.name));
+// (메신저 정리 12절, 검토 2026-11-06) a phone or a PC: told by the page when the device is given (its screen, not the name's
+// words -- a phone's 「데스크톱 사이트」 says Windows), else by its name for the ones from before
+const kindOf = (d) => (d?.kind === 'phone' || d?.kind === 'pc' ? d.kind : /^(안드로이드|아이폰)/.test(String(d?.name || '')) ? 'phone' : 'pc');
+const alertDefault = (d) => (kindOf(d) === 'phone' ? 'push' : 'open');
+const alertOf = (d) => (ALERT_MODES.includes(d?.alert) ? d.alert : alertDefault(d));
+// (12절) 닫아도 받기 on a PC: only within 12 hours of this device opening the messenger (a PC booted in the morning is not
+// flooded by the night's notices), kept by the push service 10 minutes; a phone: always, a day. One Topic a room (the
+// services that know it keep only the last of a room)
+const PC_AWAKE_MS = 12 * 60 * 60 * 1000; const SEEN_STEP_MS = 10 * 60 * 1000;
+const pushRule = (d, roomId) => ({ ttl: kindOf(d) === 'phone' ? 86400 : 600, topic: crypto.createHash('sha256').update(String(roomId)).digest('base64url').slice(0, 32) });
+async function markSeen(id) { // (the device opened the messenger: stamped, at most each 10 minutes)
+  const d = id && (await devicesNow()).find((x) => x.id === id); if (!d || nowMs() - (d.seenAt || 0) < SEEN_STEP_MS) return;
+  await worldEdit(async () => pointStore.setWorldValue('messengerDevices', ((await pointStore.worldValue('messengerDevices')) || []).map((x) => (x.id === id ? { ...x, seenAt: nowMs() } : x))));
+}
 async function deviceAlertNow(id, mode) { // (inside worldEdit; a mode other than push: the device's subscription goes with it)
   await pointStore.setWorldValue('messengerDevices', ((await pointStore.worldValue('messengerDevices')) || []).map((d) => (d.id === id ? { ...d, alert: mode } : d)));
   if (mode !== 'push') await pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== id));
@@ -811,13 +823,13 @@ async function deviceOf(req) {
   const hash = deviceHash(token); const d = (await devicesNow()).find((x) => x.hash === hash);
   return d ? { keyId: d.keyId, device: d.id } : null;
 }
-async function issueDevice(keyId, name) {
-  const token = newSecret(32);
+async function issueDevice(keyId, name, kind) {
+  const token = newSecret(32); const d = { name: String(name || '').slice(0, 40), ...(kind === 'phone' || kind === 'pc' ? { kind } : {}) };
   await worldEdit(async () => {
     const list = (await devicesNow()); const mine = list.filter((d) => d.keyId === keyId).sort((a, b) => a.at - b.at);
     const drop = new Set(mine.slice(0, Math.max(0, mine.length - DEVICES_MAX + 1)).map((d) => d.id));
     const kept = list.filter((d) => !drop.has(d.id)); const ids = new Set(kept.map((d) => d.id));
-    await pointStore.setWorldValue('messengerDevices', [...kept, { id: crypto.randomUUID(), keyId, hash: deviceHash(token), name: String(name || '').slice(0, 40), at: nowMs(), exp: nowMs() + DEVICE_TTL_MS, alert: alertDefault(name) }]);
+    await pointStore.setWorldValue('messengerDevices', [...kept, { id: crypto.randomUUID(), keyId, hash: deviceHash(token), ...d, at: nowMs(), exp: nowMs() + DEVICE_TTL_MS, alert: alertDefault(d) }]);
     await pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => ids.has(s.device))); // (Codex 검토 2차 #1: the 11th's pushed-out and the run-out ones' notices go too)
   });
   return token;
@@ -840,14 +852,15 @@ async function pushNew(room, from, fromLabel, text) {
   // is told nothing (its subscription may outlive it in the store)
   // (10절: only a device set to 닫아도 받기 -- one on 열어 둘 때만 shows its own notice while open, nothing when shut)
   const live = new Map((await devicesNow()).map((d) => [d.id, d]));
-  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device)?.keyId === s.keyId && alertOf(live.get(s.device)) === 'push' && !looking.has(s.device)); if (!subs.length) return;
+  const awake = (d) => kindOf(d) === 'phone' || nowMs() - (d.seenAt || d.at || 0) < PC_AWAKE_MS; // (12절: a PC only within 12 hours of opening)
+  const subs = ((await pointStore.worldValue('messengerPush')) || []).filter((s) => to.includes(s.keyId) && live.get(s.device)?.keyId === s.keyId && alertOf(live.get(s.device)) === 'push' && awake(live.get(s.device)) && !looking.has(s.device)); if (!subs.length) return;
   const unread = new Map(await Promise.all(to.map(async (id) => [id, (await messengerStore.roomsOf(id)).reduce((n, r) => n + (r.muted.includes(id) ? 0 : Math.max(0, r.seq - (r.reads[id] || 0))), 0)])));
   const gone = [];
   for (const s of subs) {
-    const out = { ...payload, unread: unread.get(s.keyId) || 0 };
-    if (process.env.NODE_ENV === 'test') { testPushes.push({ to: s.keyId, endpoint: s.endpoint, payload: out }); continue; }
+    const out = { ...payload, unread: unread.get(s.keyId) || 0 }; const rule = pushRule(live.get(s.device), room.id);
+    if (process.env.NODE_ENV === 'test') { testPushes.push({ to: s.keyId, endpoint: s.endpoint, payload: out, ...rule }); continue; }
     if (!vapid) return;
-    try { const status = await WebPush.send(s, out, vapid); if (status === 404 || status === 410) gone.push(s.endpoint); } catch (error) { console.warn('[messenger-push]', error.message); }
+    try { const status = await WebPush.send(s, out, vapid, rule); if (status === 404 || status === 410) gone.push(s.endpoint); } catch (error) { console.warn('[messenger-push]', error.message); }
   }
   if (gone.length) await worldEdit(async () => pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => !gone.includes(s.endpoint))));
 }
@@ -4279,7 +4292,7 @@ async function requestHandler(req, res) {
     if (key.pendingAt) return sendError(res, 403, 'PENDING', '관리자 승인 대기 중입니다. 승인 후 로그인할 수 있습니다.');
     if (key.revokedAt) return sendError(res, 403, 'REVOKED', '사용이 중지된 계정입니다. 관리자에게 문의해 주세요.');
     const account = await accountOut(key); // (메신저 ④: 「이 기기에서 로그인 유지」 on the messenger page -- a permitted account's device token too)
-    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account, ...(body.keep === true && account.messenger ? { deviceToken: await issueDevice(key.id, body.device) } : {}) });
+    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account, ...(body.keep === true && account.messenger ? { deviceToken: await issueDevice(key.id, body.device, body.deviceKind) } : {}) });
   }
   if (pathname === '/api/account/setup' && req.method === 'POST') { // an entry-file account's first id and password
     if (!checkRateLimit(`account-setup:${clientIp(req)}`, 10, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
@@ -4353,7 +4366,7 @@ async function requestHandler(req, res) {
     if (pathname === '/api/messenger/stream' && req.method === 'GET') { // A5: held open; 'msg' with a room id when it changes
       res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
       res.write(': open\n\n');
-      const set = messengerStreams.get(key.id) || new Set(); if (set.size >= 4) { const oldest = set.values().next().value; set.delete(oldest); try { oldest.end(); } catch {} } res.device = acct.device || null; set.add(res); messengerStreams.set(key.id, set);
+      const set = messengerStreams.get(key.id) || new Set(); if (set.size >= 4) { const oldest = set.values().next().value; set.delete(oldest); try { oldest.end(); } catch {} } res.device = acct.device || null; set.add(res); messengerStreams.set(key.id, set); if (acct.device) markSeen(acct.device).catch(() => {}); /* (12절: open on this device -- the island's 서랍 too) */
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
       req.on('close', () => { clearInterval(ping); set.delete(res); if (!set.size) messengerStreams.delete(key.id); });
       return;
@@ -4371,6 +4384,8 @@ async function requestHandler(req, res) {
       const ids = [...new Set(list.map(String))].filter((id) => id !== key.id);
       return ids.every((id) => people.some((p) => p.id === id)) ? ids : null;
     };
+    // (메신저 정리 12절) the island app opened on a device kept logged in to the messenger: its 12 hours start again
+    if (pathname === '/api/messenger/seen' && req.method === 'POST') { if (acct.device) await markSeen(acct.device); return sendJson(res, 200, { ok: true, device: Boolean(acct.device) }); }
     // (메신저 ④) the devices kept logged in -- this one marked -- and ending one, or all but this one
     if (pathname === '/api/messenger/devices' && req.method === 'GET') return sendJson(res, 200, { ok: true, devices: (await devicesNow()).filter((d) => d.keyId === key.id).map((d) => ({ id: d.id, name: d.name, at: d.at, exp: d.exp, mine: d.id === acct.device, alert: alertOf(d) })) });
     if (pathname === '/api/messenger/devices/drop' && req.method === 'POST') {
@@ -4384,7 +4399,8 @@ async function requestHandler(req, res) {
       // (10절) this device's way: 'open' / 'push' / 'off'. One from before the choice is set now -- a PC that was pushed
       // moves to 열어 둘 때만 and is told once (`moved`)
       const me = acct.device && (await devicesNow()).find((d) => d.id === acct.device); let moved = false;
-      if (me && !ALERT_MODES.includes(me.alert)) { const mode = alertDefault(me.name); moved = mode !== 'push' && ((await pointStore.worldValue('messengerPush')) || []).some((s) => s.device === me.id); await setDeviceAlert(me.id, mode); }
+      if (me) markSeen(me.id).catch(() => {}); /* (12절: this device opened the messenger) */
+      if (me && !ALERT_MODES.includes(me.alert)) { const mode = alertDefault(me); moved = mode !== 'push' && ((await pointStore.worldValue('messengerPush')) || []).some((s) => s.device === me.id); await setDeviceAlert(me.id, mode); }
       return sendJson(res, 200, { ok: true, key: vapid?.publicKey || null, mode: me ? alertOf(me) : null, moved, on: Boolean(acct.device && ((await pointStore.worldValue('messengerPush')) || []).some((s) => s.device === acct.device)) });
     }
     if (pathname === '/api/messenger/alert' && req.method === 'POST') { // (10절) the choice for this device; not push: its subscription goes
@@ -8595,7 +8611,12 @@ async function requestHandler(req, res) {
     if (pathname === '/herosurv') { res.writeHead(301, securityHeaders({ Location: '/herosurv/' })); return res.end(); }
     if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
     // 메신저 단독 창 ①: its own light page (no game code) -- not behind the Chrome gate (no 3D: Safari's home-screen app too)
-    if (pathname === '/messenger' || pathname === '/messenger.html') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(messengerTemplate), 'Cache-Control': 'no-store', 'Content-Security-Policy': securityHeaders()['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:") })); return res.end(messengerTemplate); } // (v1.10.233: its photos shown from the page's own blobs)
+    if (pathname === '/messenger' || pathname === '/messenger.html') { // (v1.10.233: its photos shown from the page's own blobs)
+      // (메신저 정리 12절) ?embed=1 is the island app's 서랍: framed by our own page only -- the page alone stays unframable
+      const embed = url.searchParams.has('embed'); const csp = securityHeaders()['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:");
+      res.writeHead(200, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(messengerTemplate), 'Cache-Control': 'no-store', 'Content-Security-Policy': embed ? csp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : csp, ...(embed ? { 'X-Frame-Options': 'SAMEORIGIN' } : {}) }));
+      return res.end(messengerTemplate);
+    }
     // 달마루섬 5단계: the server's own island, told before the island's scripts load (island-map.js) -- a page on it never
     // loads twice to learn the map; on 지금 섬 nothing (the administrator's preview keeps its own way)
     if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end("self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n"); }
@@ -8716,7 +8737,9 @@ async function main() {
   server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.251 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
-  if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
+  // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
+  // the first collection time out and the visitors' first requests 500: two minutes in, then every five as before)
+  if (process.env.NODE_ENV !== 'test') { setTimeout(() => collectTaxes(), 120_000).unref?.(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
   setImmediate(() => GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths, groundCover)); // (5회차 6: the ground's grid built once now, not in someone's first pose)
 }
 
