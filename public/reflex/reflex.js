@@ -215,7 +215,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       done: g.mode === 'versus' ? r.outcome === 'win' : launch?.goal == null || (score != null && (g.lowerBetter ? score <= launch.goal : score >= launch.goal)) });
     const box = el('div', 'hpPanel reflexBox'); // (v1.10.245 U3: the one result panel -- its pill, the title, the big figure)
     box.style.setProperty('--c1', g.color);
-    const pill = r.outcome === 'win' ? ['win', '승리'] : r.outcome === 'loss' || (set === SETS.mines && score == null) ? ['loss', '패배'] : r.outcome === 'draw' ? ['draw', '무승부'] : ['done', '완성'];
+    const pill = g.resultPill?.(runLevel) || (r.outcome === 'win' ? ['win', '승리'] : r.outcome === 'loss' || (set === SETS.mines && score == null) ? ['loss', '패배'] : r.outcome === 'draw' ? ['draw', '무승부'] : ['done', '완성']); /* (v1.10.255: a game's own -- 헬 「게임 오버」) */
     box.append(el('span', `hpPanelPill ${pill[0]}`, pill[1]), el('h2', null, r.title || g.name));
     if (score != null) box.append(el('p', 'reflexScore', fmtScore(score, g.unit)));
     const line = el('p', 'reflexPaid', (set === SETS.reflex || set === SETS.cards || r.proof) ? '기록 확인 중…' : '');

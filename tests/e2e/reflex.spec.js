@@ -86,13 +86,13 @@ test('두더지 헬: ♥5 → 놓침 −1 → 폭탄 −2 → 10마리 단계 2 
   await hook('miss'); expect((await peek()).lives).toBe(4); await expect(page.locator('#hudLives svg.off')).toHaveCount(1);
   await hook('bomb'); expect((await peek()).lives).toBe(2); await expect(page.locator('#hudRight')).toHaveText('♥ 2');
   for (let k = 0; k < 10; k += 1) await hook('hit');
-  expect(await peek()).toMatchObject({ hits: 10, stage: 1, score: 100, combo: 10, maxCombo: 10 }); await expect(page.locator('#banner')).toContainText('단계 2!'); await shot('combo');
+  expect(await peek()).toMatchObject({ hits: 10, stage: 1, score: 100, combo: 10, maxCombo: 10 }); expect((await peek()).banner).toBe('단계 2!'); await shot('combo'); /* (총괄 #405: the stage banner big on the board, its own place) */
   await page.waitForTimeout(4000); // (the server: ten moles take at least 4.4 s to come up)
   if (process.env.SHOT_DIR) { await hook('bomb10'); await page.waitForTimeout(700); await shot('bomb10'); } // (the photo: a 단계 10 bomb by a mole)
   await hook('miss'); await hook('miss');
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
   await expect(page.locator('#reflexResult')).toContainText('도달 단계'); await expect(page.locator('#reflexResult')).toContainText('잡은 두더지'); await expect(page.locator('#reflexResult')).toContainText('최대 콤보');
-  await expect(page.locator('.reflexScore')).toHaveText(/^100/);
+  await expect(page.locator('.reflexScore')).toHaveText(/^100/); await expect(page.locator('#reflexResult .hpPanelPill')).toHaveText('게임 오버'); // (총괄 #405: not 「완성」)
   await page.waitForTimeout(800); await shot('result');
   await expect.poll(async () => (await get(request, '/api/solo/reflex', token)).data.records.whack?.hell?.best ?? null, { timeout: 10000 }).toBe(100);
   await expectNoScriptError(page);

@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.255 두더지 잡기 「헬」
+
+- ♥5, 놓침 −1·폭탄 −2, 시간 없음, 한 마리 10점·황금 없음, 10마리마다 단계(0.93배, 바닥 0.32/0.22초, 폭탄 최대 20 %, 동시 최대 5). 식은 public/whack-hell.js 하나(화면·서버).
+- 서버: hell은 whack만, 10의 배수, 상한 200,000, n마리 최소 시간(3·2·1 제외). 헬 순위 따로, 게시판·칭호는 보통.
+- 더하기: 10 콤보마다 글·결과 「최대 콤보」, 단계 5 심지 반짝·10 붉은 빛·치익, 시작 전 3·2·1. 결과 알약 「게임 오버」, 단계 배너는 판 위 크게.
+
 ## v1.10.254 박물관 나누기
 
 - 세 방(입구 홀·수족관·곤충관), 문간으로 오가기: POST /api/island/museum/go(문간 2.4 m 안), 다른 방 좌표 pose 무시, 같은 방 사람만 보임.
@@ -23,9 +29,3 @@
 
 - 기록의 탑: 게임관 문 앞 (35,−65) → 광장 쪽 긴 화단 (23.3,−65.6), yaw π, 흙 위 0.45 m, 시상대 광장 중앙 쪽; 그 화단만 plaza.garden_long_bare(에셋 104), 시상대 앞 둘레 자리 하나 뺌, solids·문·주민 격자 yaw 기준.
 - 메신저 서랍 「메신저 앱으로 열기」: 메신저 manifest protocol_handlers web+gcmessenger, 누를 때 크롬 탭 하나 → 앱이 채널로 알리면 닫고 아니면 그 탭이 메신저; ?open=·launchQueue로 그 방.
-
-## v1.10.252 메신저 정리 — 섬 앱은 서랍, 알림은 메신저 앱
-
-- 섬 앱 메신저 단추: 서랍(PC 오른쪽 380 px, 폰 아래 85 %)에 /messenger.html?embed=1(같은 출처만 틀), ✕·메신저 앱으로 열기, 읽으면 섬 단추 숫자 바로.
-- 아이콘 숫자·제목 깜박임은 메신저 앱만. 푸시: 기기 kind phone|pc, PC는 연 지 12시간 안·TTL 600, 폰 TTL 86400, Topic 방마다, 열 때마다 구독 다시 등록.
-- 주민세 첫 징수 시작 2분 뒤, 단위 서버 기다림 30 s, 마당 트로피 detach, 사람 창 트로피 줄 늦은 응답 막기.

@@ -19,6 +19,7 @@ export default {
   levels: true, levelLegacy: 'normal', levelIds: ['easy', 'normal', 'hard', 'hell'], levelNames: { hell: '헬' },
   levelNote: '쉬움: 오래 머물고 폭탄이 적어요 · 어려움: 짧게 머물고 폭탄 · 동시 출현이 많아요 — 난이도마다 최고 기록과 랭킹이 따로예요',
   levelNotes: { hell: '목숨 5개로 끝까지 · 놓치면 ♥−1, 폭탄 ♥−2 · 갈수록 빨라져요' },
+  resultPill(level) { return level === 'hell' ? ['loss', '게임 오버'] : null; }, // (헬 ends when the hearts run out -- not 「완성」)
   taglineFor(level) { return level === 'hell' ? '목숨이 다할 때까지 끝없이 두더지를 잡으세요' : this.tagline; },
   howtoFor(level) { return level === 'hell' ? [['tap', '두더지 한 마리 10점 · 황금 두더지 없음'], ['heart', '놓치면 ♥−1 · 폭탄을 누르면 ♥−2'], ['bolt', '10마리마다 한 단계씩 빨라져요 · ♥가 다 없어지면 끝']] : this.howto; },
 
@@ -72,7 +73,7 @@ export default {
     s.hits++; E.add(H.POINTS, px, py, '#fff');
     s.combo = H.combo(s.combo, 'hit'); s.maxCombo = Math.max(s.maxCombo, s.combo);
     if (H.shout(s.combo)) { E.popup(`${s.combo} 콤보!`, E.W / 2, (E.top + E.bottom) / 2, '#FFD34D', 44); E.sfx.goal?.(); } // (the score the same: 10 a mole)
-    const k = H.stageOf(s.hits); if (k > s.stage) { s.stage = k; E.banner(`단계 ${k + 1}!`, 'flame', 1000); E.sfx.win?.(); }
+    const k = H.stageOf(s.hits); if (k > s.stage) { s.stage = k; s.stageShow = { text: `단계 ${k + 1}!`, t: 1 }; E.sfx.win?.(); }
     this.hellHud();
   },
   hellLose(n) {
@@ -87,6 +88,7 @@ export default {
     for (const r of s.rings) r.t -= dt;
     s.rings = s.rings.filter((r) => r.t > 0);
     if (s.go > 0) s.go -= dt;
+    if (s.stageShow?.t > 0) s.stageShow.t -= dt;
     if (s.ready > 0) { const was = Math.ceil(s.ready); s.ready -= dt; if (s.ready <= 0) { s.go = 0.7; E.sfx.beep?.(true); } else if (Math.ceil(s.ready) !== was) E.sfx.beep?.(false); return; }
     s.played += dt; const L = H.at(s.stage);
     s.spawn -= dt;
@@ -103,7 +105,7 @@ export default {
     }
   },
   // the tests' (e2e): what the round is at, and a miss or a bomb as if it happened
-  peek() { return s ? { hell: Boolean(s.hell), lives: s.lives ?? null, stage: s.stage ?? null, hits: s.hits, score: E.score, up: s.holes.filter((h) => h.st !== 'idle').length, ready: Math.max(0, s.ready ?? 0), combo: s.combo ?? null, maxCombo: s.maxCombo ?? null } : null; },
+  peek() { return s ? { hell: Boolean(s.hell), lives: s.lives ?? null, stage: s.stage ?? null, hits: s.hits, score: E.score, up: s.holes.filter((h) => h.st !== 'idle').length, ready: Math.max(0, s.ready ?? 0), banner: s.stageShow?.t > 0 ? s.stageShow.text : '', combo: s.combo ?? null, maxCombo: s.maxCombo ?? null } : null; },
   test(kind) { if (!s?.hell) return; if (kind === 'calm') s.calm = true; else if (kind === 'miss') { s.misses++; this.hellLose(H.LOSE.miss); } else if (kind === 'bomb') this.hellLose(H.LOSE.bomb); else if (kind === 'hit') this.hellCatch(); else if (kind === 'bomb10') { s.stage = H.BOMB_GLOW; this.hellHud(); Object.assign(s.holes[4], { st: 'up', h: 0, type: 'bomb', stay: 999 }); Object.assign(s.holes[0], { st: 'up', h: 0, type: 'mole', stay: 999 }); } },
 
   update(dt) {
@@ -187,6 +189,11 @@ export default {
       const text = s.ready > 0 ? String(Math.ceil(s.ready)) : '시작!'; const k = s.ready > 0 ? s.ready % 1 : s.go / 0.7;
       c.save(); c.globalAlpha = Math.min(1, 0.35 + k); c.fillStyle = s.ready > 0 ? '#fff' : '#FFD34D'; c.font = `900 ${Math.round(s.cell * (s.ready > 0 ? 0.9 : 0.55))}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 18; c.fillText(text, E.W / 2, s.oy + s.size / 2); c.restore();
+    }
+    if (s.hell && s.stageShow?.t > 0) {
+      const t = s.stageShow.t; const y = Math.max(E.top + 34, (E.top + s.oy) / 2 + 12); const pop = 1 + Math.max(0, t - 0.8) * 1.5;
+      c.save(); c.globalAlpha = Math.min(1, t * 3); c.font = `900 ${Math.round(44 * pop)}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.lineWidth = 6; c.strokeStyle = 'rgba(60,8,0,.85)'; c.strokeText(s.stageShow.text, E.W / 2, y); c.fillStyle = '#FF7A2E'; c.shadowColor = '#FF2E2E'; c.shadowBlur = 16; c.fillText(s.stageShow.text, E.W / 2, y); c.restore();
     }
     for (const r of s.rings) {
       c.globalAlpha = r.t / 0.25; c.strokeStyle = '#fff'; c.lineWidth = 3;
