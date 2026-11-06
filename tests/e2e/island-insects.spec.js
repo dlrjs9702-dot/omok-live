@@ -139,9 +139,11 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
       const I = require('../../lib/island-insects'); const Terr = require('../../public/plaza/island-terrain.js'); const spots = I.spotsOf(Terr);
       for (const [sp, type, t, cam] of [['water_strider', 'shore', 'day', [1.6, 1.3, 0.4]], ['moth_silk', 'lamp', 'night', [2.2, 2.4, 1.6]], ['snow_springtail', 'grass', 'day', [1.4, 1.1, 0.6]], ['longhorn_giant', 'tree', 'day', [1.6, 1.9, 0.8]]]) {
         const s = spots.filter((x) => x.type === type).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0]; if (!s) continue;
-        await page.evaluate((m) => window.PlazaDebug().setTime(m), t); await page.evaluate((b) => window.PlazaDebug().insectDemo(b), { species: sp, type, x: s.x, z: s.z, ...(s.r ? { r: s.r } : {}), ...(s.wx !== undefined ? { wx: s.wx, wz: s.wz } : {}) });
+        await page.evaluate((m) => window.PlazaDebug().setTime(m), t); await page.evaluate((b) => window.PlazaDebug().insectDemo(b), { species: sp, name: I.SPECIES[sp].name /* (#411 검토: the hint's name) */, type, x: s.x, z: s.z, ...(s.r ? { r: s.r } : {}), ...(s.wx !== undefined ? { wx: s.wx, wz: s.wz } : {}) });
         const stand = type === 'shore' ? { x: s.x - s.wx * 0.8, z: s.z - s.wz * 0.8 } : { x: s.x + 1.6, z: s.z + 0.4 }; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stand.x, stand.z]); await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [s.x + (s.wx || 0), s.z + (s.wz || 0)]);
         await page.evaluate(([c, l]) => window.PlazaDebug().camNear(c, l), [cam, [0, type === 'lamp' ? 2.0 : type === 'tree' ? 1.5 : 0.3, -1.4]]); await page.waitForTimeout(2500); await snap(`new-${sp}`);
+        const close = { shore: [[0.2, 0.75, -0.5], [0, 0.05, -1.7]], lamp: [[1.0, 2.7, -0.6], [0, 2.3, -1.6]] }[type]; /* (#411 검토: the strider and the moth close) */
+        if (close) { await page.evaluate(([c, l]) => window.PlazaDebug().camNear(c, l), close); await page.waitForTimeout(1200); await snap(`near-${sp}`); }
       }
       await page.evaluate(() => { window.PlazaDebug().setTime('auto'); window.PlazaDebug().camNear(null); });
       await page.evaluate(() => window.PlazaDebug().camNear(null));

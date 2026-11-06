@@ -2572,7 +2572,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (heldTool !== 'bugnet' || mySpace !== 'island' || gather || fishing || sitting || netBag || near !== 'tool:swing' || performance.now() < swingUntil) return false;
     netAim = { at: performance.now(), aiming: false, kind: null }; netAim.timer = setTimeout(() => { if (netAim) netAim.aiming = true; }, NET_TAP_MS); return true;
   }
-  function netAimEnd() { const a = netAim; if (!a) return false; netAim = null; clearTimeout(a.timer); if (a.aiming) me.anim?.release?.(); return true; }
+  function netAimEnd() { const a = netAim; if (!a) return false; netAim = null; clearTimeout(a.timer); if (a.aiming) me.anim?.release?.(); if (a.kind) netAct(null); return true; } /* (Codex 251-260 #3: the others' screens let go of my ready/sneak too; a swing sends its own) */
   // (each frame) aiming: NetReady standing, NetSneak walking; the net's swing angle kept
   function stepNetAim(moving) {
     const a = netAim; if (!a?.aiming) return; const kind = moving ? 'sneak' : 'ready'; netPoseUntil = performance.now() + 150;
