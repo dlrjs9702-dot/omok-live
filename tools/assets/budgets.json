@@ -1314,6 +1314,40 @@
       "meshes": 3,
       "nodes": 6,
       "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
+    },
+    "together-v1/tool_bugnet_v2.glb": {
+      "meshes": 3,
+      "nodes": 12,
+      "reason": "v1.10.260 assets 103: the net with its bag -- frame, open and closed bag meshes, 4 bones and the bag_in socket kept (keepNodes)"
+    },
+    "together-v1/tool_bugnet_v2_low.glb": {
+      "meshes": 3,
+      "nodes": 12,
+      "reason": "v1.10.260 assets 103: the net with its bag -- frame, open and closed bag meshes, 4 bones and the bag_in socket kept (keepNodes)"
+    },
+    "together-v1/fx_leaf_puff.glb": {
+      "nodes": 2,
+      "reason": "v1.10.260 assets 103: an effect -- its root at the player's feet and the mesh"
+    },
+    "together-v1/fx_pollen_burst.glb": {
+      "nodes": 2,
+      "reason": "v1.10.260 assets 103: an effect -- its root at the player's feet and the mesh"
+    },
+    "together-v1/fx_dust_puff.glb": {
+      "nodes": 2,
+      "reason": "v1.10.260 assets 103: an effect -- its root at the player's feet and the mesh"
+    },
+    "together-v1/fx_net_swoosh_down.glb": {
+      "nodes": 2,
+      "reason": "v1.10.260 assets 103: an effect -- its root at the player's feet and the mesh"
+    },
+    "together-v1/fx_net_swoosh_side.glb": {
+      "nodes": 2,
+      "reason": "v1.10.260 assets 103: an effect -- its root at the player's feet and the mesh"
+    },
+    "together-v1/fx_net_swoosh_up.glb": {
+      "nodes": 2,
+      "reason": "v1.10.260 assets 103: an effect -- its root at the player's feet and the mesh"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
