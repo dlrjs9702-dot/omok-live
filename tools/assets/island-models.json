@@ -9168,6 +9168,134 @@
       "out": "characters/motions/ShowPutawayInsect.glb",
       "src": "show97:01. High/motions/ShowPutawayInsect.glb",
       "sha256": "098c8697b58a9a7dad5ff2b18d793b454c4aa572a910a704af4f784f92b18510"
+    },
+    {
+      "out": "fishing-v1/fish_dotdom.glb",
+      "src": "bigfish91:High/fish_dotdom.glb",
+      "sha256": "03d632db2481e7d1419312879052da3dc8c4843c95352eae11fde87c813d51b3",
+      "lowSrc": "bigfish91:Low/fish_dotdom_low.glb",
+      "lowSha256": "fe4393de69a0f6a295ac51bc53f8e9bac22a54061e7c7478d9705ae0aaf21035",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_giant_squid.glb",
+      "src": "bigfish91:High/fish_giant_squid.glb",
+      "sha256": "2ec7006363d6c08b85752047f32381356428d22fa2845232201bddf2e62cd6bd",
+      "lowSrc": "bigfish91:Low/fish_giant_squid_low.glb",
+      "lowSha256": "e96851f5f4c07d112ddcdcdee06a12ada716c253ddd16cbdf749f447cfa316ee",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_sunfish.glb",
+      "src": "bigfish91:High/fish_sunfish.glb",
+      "sha256": "d2c11552f2d63617907e817138c7a7b8d767c1dc047a7593302f1f15b8d6547c",
+      "lowSrc": "bigfish91:Low/fish_sunfish_low.glb",
+      "lowSha256": "1e69b0d4f34f80621b5e1219d8ef9b9035ddbb7d8b4bc8042c2589cfe4525899",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_giant_octopus.glb",
+      "src": "bigfish91:High/fish_giant_octopus.glb",
+      "sha256": "3df47096ba4df5d3b2ef32f6c2a54f370d85c49e1107c9f882924b3a84782606",
+      "lowSrc": "bigfish91:Low/fish_giant_octopus_low.glb",
+      "lowSha256": "57a2726d97b1ee705836bc1401d80e76b8ba85cee0b570e2aff0a8427a7d40c5",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_snakehead.glb",
+      "src": "bigfish91:High/fish_snakehead.glb",
+      "sha256": "442e55373a5af80daf84d7f69aadfd2f22f8e80cf46abc286d59ecae881ddc52",
+      "lowSrc": "bigfish91:Low/fish_snakehead_low.glb",
+      "lowSha256": "5c970393247f635d0bae73633090abf27620f1616d80713f3597b0fb51ace3e8",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_salmon.glb",
+      "src": "bigfish91:High/fish_salmon.glb",
+      "sha256": "b148d068d61e79a328847d626b5e54ae1690d95618545bbfd919ec440c1daa89",
+      "lowSrc": "bigfish91:Low/fish_salmon_low.glb",
+      "lowSha256": "cfdf5b41002b6e42d224c031ec0076b90dea4a248e07ecd741f66cc303b6e7b2",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_king_catfish.glb",
+      "src": "bigfish91:High/fish_king_catfish.glb",
+      "sha256": "47e2ac97d7caf7e6c45b0f75105ae46762e2261cfe60cfb4ca1ac24e6d7fd60d",
+      "lowSrc": "bigfish91:Low/fish_king_catfish_low.glb",
+      "lowSha256": "bfbaf5e38850b28a22f43933f9def3b5dfe8e344d1a6bbe9bee1ce10efbfced9",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_taimen.glb",
+      "src": "bigfish91:High/fish_taimen.glb",
+      "sha256": "789b7d460b5ae9736692d8cce94bc8bccdf90b09957d59cc6aff40df8bad3f75",
+      "lowSrc": "bigfish91:Low/fish_taimen_low.glb",
+      "lowSha256": "4291e23fbdbdf1a03c573dc7d8961aa4d910aff8e454aab235c6215293538a46",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_golden_carp.glb",
+      "src": "bigfish91:High/fish_golden_carp.glb",
+      "sha256": "33cf094deb8eb45b58189d0d62d138fc078f37b56a960a3d58eb85179d9886ee",
+      "lowSrc": "bigfish91:Low/fish_golden_carp_low.glb",
+      "lowSha256": "695ef6c5817b3d3a8e35629bd9204fe434f5b084ce0db0c92ef7c2ba5977215f",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_minnow.glb",
+      "src": "freshfish93:High/fish_minnow.glb",
+      "sha256": "85c6b06f6564d979a269d277bb817c76d2af45ca42ba0110777bd9497b6cd2e7",
+      "lowSrc": "freshfish93:Low/fish_minnow_low.glb",
+      "lowSha256": "d5caa212706e18a31c31763b4f46d652c5f01d93572c905f8124969c2c259217",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_bitterling.glb",
+      "src": "freshfish93:High/fish_bitterling.glb",
+      "sha256": "1be42519365a858efa6a477071ba6b55bd517e8727580febbf2374bee68aa495",
+      "lowSrc": "freshfish93:Low/fish_bitterling_low.glb",
+      "lowSha256": "0fe20f40f2f7ce3fb1e69cd8f0e596c42d31fd0bb7a303d6d7c73954b48b4ea8",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_bluegill.glb",
+      "src": "freshfish93:High/fish_bluegill.glb",
+      "sha256": "de9f75957763c5b21c406fef7748e09bd408d8ab470e37ed8278ee8efa86656a",
+      "lowSrc": "freshfish93:Low/fish_bluegill_low.glb",
+      "lowSha256": "c49a4ddd027ae356c9a2bd0a5992e037f64d67c855135d6aa15e2fa16cc17709",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_barbel_steed.glb",
+      "src": "freshfish93:High/fish_barbel_steed.glb",
+      "sha256": "1915effd076f3ef8f551db7971d8e57b5a1044e8c6766a8d28f846bb8d8083b9",
+      "lowSrc": "freshfish93:Low/fish_barbel_steed_low.glb",
+      "lowSha256": "340d2a6b10682e458184244879fea818a5708a0612ed135e962a12bc97840b30",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_bass.glb",
+      "src": "freshfish93:High/fish_bass.glb",
+      "sha256": "361546e9817063c0af0f6104047d3cf518acd9b9483654e2950e32ca782498c7",
+      "lowSrc": "freshfish93:Low/fish_bass_low.glb",
+      "lowSha256": "80690bd2ef43ccecd2988f405472576eeec4056babe1d5b79d4c7404d9cbcb83",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_rainbow_trout.glb",
+      "src": "freshfish93:High/fish_rainbow_trout.glb",
+      "sha256": "dcfc089ed3cb410e4cebca5e1a0a329f8f72f58a9cf4ef2756226b673ef0e24c",
+      "lowSrc": "freshfish93:Low/fish_rainbow_trout_low.glb",
+      "lowSha256": "1f233eb8da9a3354a40ce41b1e5e75a08c889401c10e60a50ed3a3b9bbddf0f7",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_aucha_perch.glb",
+      "src": "freshfish93:High/fish_aucha_perch.glb",
+      "sha256": "bfe61af6d6fd34359f02cb94ae36c1b9ef0f3cbf563f75be05ccda5381a0e6f8",
+      "lowSrc": "freshfish93:Low/fish_aucha_perch_low.glb",
+      "lowSha256": "f8c1801694cec290269736239b00570d85038f9a5147680327a7bbbb0fe88757",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9243,6 +9371,8 @@
     "tower100": "100. Game Island record tower 2026-11-05",
     "trophy98": "98. Game Island yard trophies 2026-11-04",
     "bare104": "104. Game Island garden long bare 2026-11-06",
-    "show97": "97. Game Island show catch moves 2026-11-04"
+    "show97": "97. Game Island show catch moves 2026-11-04",
+    "bigfish91": "91. Game Island big fish 9 2026-11-03",
+    "freshfish93": "93. Game Island freshwater fish 7 2026-11-03"
   }
 }

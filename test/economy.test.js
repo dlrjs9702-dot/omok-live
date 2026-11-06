@@ -6,7 +6,7 @@ const Items = require('../lib/island-items');
 // v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②, 사용자 2026-10-18)
 test('경제 값: 범위 안만, 변경 이력(이전·이후), 기본값으로, 판매가에 바로 반영', () => {
   assert.ok(Economy.DEFS.some((d) => d.key === 'item:weed' && d.def === 310));
-  assert.equal(Economy.DEFS.filter((d) => d.group === '물고기 판매가').length, 34 + 2); // (v1.10.231: 34 fish, and the size's two ends)
+  assert.equal(Economy.DEFS.filter((d) => d.group === '물고기 판매가').length, 50 + 2); // (v1.10.231: 34 fish; v1.10.259 50, and the size's two ends)
   assert.deepEqual(Economy.change(null, { 'item:weed': 0 }, '관리자', 1), { error: 'RANGE', key: 'item:weed' });
   assert.deepEqual(Economy.change(null, { 'item:weed': 3101 }, '관리자', 1), { error: 'RANGE', key: 'item:weed' });
   assert.equal(Economy.change(null, { 'nope': 1 }, '관리자', 1).error, 'UNKNOWN');

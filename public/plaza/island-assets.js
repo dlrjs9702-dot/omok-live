@@ -263,6 +263,7 @@
   // v1.10.90 낚시 도감 21종 (assets 40): eight river fish and five sea fish, held the same way as the first eight
   for (const s of ['crucian_carp', 'carp', 'pale_chub', 'sweetfish', 'catfish', 'mandarin_fish', 'eel', 'smelt', 'mullet', 'flatfish', 'sea_bass', 'gizzard_shad', 'rockfish']) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`);
   for (const s of ['yellowtail', 'red_seabream', 'horse_mackerel', 'filefish', 'cod', 'squid', 'blue_crab', 'seahorse', 'crayfish', 'medaka', 'bagrid_catfish', 'masu_salmon', 'sturgeon']) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`); // v1.10.231 assets 85: 13 more (the 도감 34)
+  for (const s of ['dotdom', 'giant_squid', 'sunfish', 'giant_octopus', 'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp', 'minnow', 'bitterling', 'bluegill', 'barbel_steed', 'bass', 'rainbow_trout', 'aucha_perch']) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`); // v1.10.259 assets 91 (big 9) and 93 (fresh 7)
   REGISTRY['landmark.halloween.pedestal'] = { url: `${HWL}/pedestal.glb`, low: { url: `${HWL}/pedestal_low.glb` }, near: 70 };
   REGISTRY['landmark.halloween.lantern'] = { url: `${HWL}/jack_o_lantern.glb`, low: { url: `${HWL}/jack_o_lantern_low.glb` }, near: 70 };
   // v1.10.39 섬 전체 할로윈 꾸미기 (Codex decor pack 2026-10-07): the batches of island-halloween.js, at their stand-ins'

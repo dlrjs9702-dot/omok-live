@@ -100,6 +100,10 @@ const IslandMuseum = require('./public/plaza/island-museum'); // v1.10.231 M 박
 const IslandHome = require('./public/plaza/island-home'); // 묶음 4 내 집
 const IslandYard = require('./public/plaza/island-yard'); // v1.10.225 마당 꾸미기
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
+const FishTug = require('./public/fish-tug.js'); // v1.10.259 대어 줄다리기 and 타이밍 막대 (the page runs the same)
+const fishModes = new Map(); // account -> its last two bite games (never three alike)
+const fishModeForced = new Map(); // (tests) session token -> the bite game asked
+const fishStillThere = (session, c) => { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return Boolean(at) && Math.hypot(at.x - c.at.x, at.z - c.at.z) <= IslandFishing.MOVE_R; };
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
@@ -4265,7 +4269,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.258' });
+    return sendJson(res, 200, { ok: true, version: '1.10.259' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6666,8 +6670,11 @@ async function requestHandler(req, res) {
     const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain });
     const seq = IslandFishing.arrowSeq(); // (Codex 검토 #1: the arrows are the server's, checked at the pull)
     const arrows = IslandFishing.arrowsFor(c.species); // (3회차 4: the arrows at the bite, and the time for them)
-    fishCasts.set(session.token, { id, ...c, seq, arrowN: arrows, at: { x: at.x, z: at.z }, done: null }); // (arrowN: as many as the page was told)
-    return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.arrowMs(arrows), arrows, seq, bait: bait ? IslandItems.ITEMS[bait].name : null });
+    // v1.10.259 입질 게임 반반: the arrows or the 타이밍 막대 (a test server: the arrows unless a test asks -- /api/test/fish/mode)
+    const last = fishModes.get(account) || []; const mode = fishModeForced.get(session.token) || (process.env.NODE_ENV === 'test' ? 'arrows' : IslandFishing.pickMode(Math.random, last)); fishModes.set(account, [mode, last[0]].filter(Boolean));
+    const timing = mode === 'timing' ? IslandFishing.timingFor(c.species) : null;
+    fishCasts.set(session.token, { id, ...c, seq, arrowN: arrows, mode, timing, at: { x: at.x, z: at.z }, done: null }); // (arrowN: as many as the page was told)
+    return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: timing ? FishTug.timingMs(timing) : IslandFishing.arrowMs(arrows), arrows, seq, mode, timing, bait: bait ? IslandItems.ITEMS[bait].name : null });
   }
   if (pathname === '/api/island/fish/finish' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -6678,10 +6685,29 @@ async function requestHandler(req, res) {
     if (c.done) return sendJson(res, 200, c.done); // the same cast asked again (a lost answer)
     const verdict = IslandFishing.judge(c, nowMs());
     if (verdict !== 'ok') { fishCasts.delete(session.token); return sendError(res, 409, verdict === 'early' ? 'FISH_EARLY' : 'FISH_LATE', verdict === 'early' ? '아직 입질이 없었어요.' : '놓쳤습니다.'); }
-    const pressed = IslandFishing.judgeArrows(c, body.presses); // (Codex 검토 #1: the arrows pressed in order, in time)
-    if (pressed !== 'ok') { fishCasts.delete(session.token); return sendError(res, 409, pressed === 'late' ? 'FISH_LATE' : 'FISH_WRONG', pressed === 'late' ? '놓쳤습니다.' : '화살표를 다 누르지 못해 놓쳤어요.'); }
-    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
-    if (!at || Math.hypot(at.x - c.at.x, at.z - c.at.z) > IslandFishing.MOVE_R) { fishCasts.delete(session.token); return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.'); }
+    // (Codex 검토 #1: the arrows pressed in order, in time; 259 the bar's hits -- and never sooner than it could be done, by the
+    // presses or by this request's arrival from the bite: 서버 확인 1)
+    const timed = c.mode === 'timing';
+    const pressed = timed ? (nowMs() - c.biteAt < FishTug.timingFloor(c.timing) ? 'wrong' : FishTug.judgeTiming(c.timing, body.presses, c.slack || 0)) : IslandFishing.judgeArrows(c, body.presses);
+    if (pressed !== 'ok') { fishCasts.delete(session.token); return sendError(res, 409, pressed === 'late' ? 'FISH_LATE' : 'FISH_WRONG', pressed === 'late' ? '놓쳤습니다.' : timed ? '초록 칸을 다 맞히지 못해 놓쳤어요.' : '화살표를 다 누르지 못해 놓쳤어요.'); }
+    if (!fishStillThere(session, c)) { fishCasts.delete(session.token); return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.'); }
+    // v1.10.259 대어 줄다리기 (docs/fishing-minigames-20261104.md 3절): a big one is not in the bag yet -- its fights' plan to the
+    // page and the 「대어다!」 on this clock; /fish/tug lands it (a test's bite may skip it: tug false)
+    if (IslandFishing.SPECIES[c.species].grade === 'big' && !c.noTug) { c.tug ??= { at: nowMs(), plan: FishTug.plan(c.species) }; return sendJson(res, 200, { ok: true, tug: { plan: c.tug.plan, name: IslandFishing.SPECIES[c.species].name, limitMs: FishTug.LIMIT_MS } }); }
+    return fishLand(session, c, res);
+  }
+  if (pathname === '/api/island/fish/tug' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const c = fishCasts.get(session.token);
+    if (!c || c.id !== body.fishId || !c.tug) return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.');
+    if (c.done) return sendJson(res, 200, c.done); // (the same pull asked again)
+    const r = FishTug.judge(c.tug.plan, body.holds, nowMs() - c.tug.at); // (the holds again from the start, on this clock: one claimed before it came refused)
+    if (r.end !== 'caught') { fishCasts.delete(session.token); return sendError(res, 409, r.end === 'snap' ? 'FISH_SNAP' : r.end === 'escaped' ? 'FISH_ESCAPED' : 'FISH_GONE', r.end === 'snap' ? '줄이 끊어졌어요!' : r.end === 'escaped' ? '대어가 도망갔어요.' : '놓쳤습니다.'); }
+    if (!fishStillThere(session, c)) { fishCasts.delete(session.token); return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.'); }
+    return fishLand(session, c, res);
+  }
+  // the catch: into the bag and the 도감 (a big one after its tug)
+  async function fishLand(session, c, res) {
     const account = pointAccountForSession(session);
     const itemId = `fish_${c.species}`;
     c.size ??= IslandFishing.rollSize(c.species); // v1.10.231 물고기 크기: the server's, at the catch (a test may set it)
@@ -6775,11 +6801,15 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null, ...(d.kind === 'fish' ? { best: best[d.id.slice(5)] || null } : {}), ...about(d) })), found, total: IslandFishing.DEX.length,
       titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })) });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/mode' && req.method === 'POST') { // tests: the next casts' bite game ('arrows' | 'timing' | null)
+    const session = requireSession(req, res); if (!session) return; const m = (await parseJson(req)).mode;
+    if (m === 'arrows' || m === 'timing') fishModeForced.set(session.token, m); else fishModeForced.delete(session.token); return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/bite' && req.method === 'POST') { // tests: the bite now
     const session = requireSession(req, res);
     if (!session) return;
     const c = fishCasts.get(session.token); const body = await parseJson(req);
-    if (c) { c.biteAt = nowMs(); if (typeof body.species === 'string' && IslandFishing.SPECIES[body.species]) c.species = body.species; if (Number.isFinite(body.size)) c.size = Math.round(body.size * 10) / 10; if (Number.isFinite(body.slack)) c.slack = Math.max(0, Math.min(60000, body.slack)); } // (slack: a slow test runner's room for the arrows)
+    if (c) { c.biteAt = nowMs(); if (typeof body.species === 'string' && IslandFishing.SPECIES[body.species]) c.species = body.species; if (Number.isFinite(body.size)) c.size = Math.round(body.size * 10) / 10; if (Number.isFinite(body.slack)) c.slack = Math.max(0, Math.min(60000, body.slack)); c.noTug = body.tug === false; if (c.tug && Number.isFinite(body.tugAge)) c.tug.at -= Math.max(0, Math.min(30000, body.tugAge)); if (Number.isFinite(body.biteAgo)) c.biteAt -= Math.max(0, Math.min(30000, body.biteAgo)); } // (slack: a slow test runner's room for the arrows; tug false: a big one landed without its tug)
     return sendJson(res, 200, { ok: Boolean(c) });
   }
   // v1.10.44 앉기: a free seat right by me is mine until I stand (or leave the island)
@@ -8794,7 +8824,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.258 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.259 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

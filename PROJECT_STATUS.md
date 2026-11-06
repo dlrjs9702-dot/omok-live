@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.259 물고기 16종·대어 0.8%·입질 게임 반반·대어 줄다리기
+
+- 에셋 91(대어 9)·93(민물 7), 모든 칸 낮 7종 이상, 칸마다 대어 0.8% 먼저 뽑기. 박물관 대어 수조·물별 벽 25.
+- 입질: 화살표/타이밍 막대 반반(세 번 연속 없음), 서버 확인(막대 하한·도착 시각). 대어 줄다리기(public/fish-tug.js, 서버 재계산).
+- 자랑: 모든 물고기 두 손 가로.
+
 ## v1.10.258 자랑 장면 (catch-card 9절) + 폴드 회귀
 
 - 자랑 장면: Show* 동작 9개(에셋 97), 카메라 3.6 m 왼쪽, 잡은 것 최소 0.5 m/0.22 m, 물고기는 얼굴 옆, 장면 동안 보조 빛. 건너뛰기 SPACE·걷기·스틱·탭.
@@ -25,10 +31,3 @@
 - 잡기 카드: 신기록·새 친구·대어·드문 곤충·박물관보다 큼일 때만, 3초 뒤/Esc/다음 던지기에 쪽지. 설명 카드 하나(카드 더보기·쪽지·가방 ⓘ·도감 칸·박물관 명판).
 - 서버: 낚시 결과 prevBest·museumSize, 도감 note·where·sizes(이야기는 찾은 것만). lib/island-dex-notes.js 62종.
 - 9절 자랑 장면은 258.
-
-## v1.10.256 주소 옮기기 (14·15절)
-
-- 섬 manifest id·start·scope /island/, 메신저 /messenger (따로 설치). / → /island/ 302, 영웅전 /island/herosurv/. SW는 /sw.js 하나.
-- MOVED_TO: 저장소 열기 전 lib/moved.js만 (DB 연결 없음) — 안내 페이지, API 410, /guest-entry 307, /health moved.
-- 옛 주소 구독: 7일 뒤 지움, 같은 계정·이름 기기 새 구독 때 바로 지움 (from 주소, 다 지운 뒤 건너뜀).
-- 관리자 저장 공간: /api/admin/storage, 80% 주황·90% 빨강, [storage] 하루 한 줄(80%↑ warn).

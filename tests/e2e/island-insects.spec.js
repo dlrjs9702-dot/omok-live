@@ -69,7 +69,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     const close = by(now.map((o) => (o.id === target.id ? here : o)), here, [0.8]) || by([here], here, [0.6, 0.8, 1.0]); // (another insect near: the swing takes the nearest in its fan -- the answer says which)
     if (!close) { missed = true; return (last = `${target.id} no spot near the drawn insect`); } // (CI #298: that one, every try for 40 s -- another one next)
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [close.x, close.z]);
-    if (process.env.SHOT_DIR) await page.evaluate(() => localStorage.setItem('gc.testCatchHold', '1')); // (photos: the card kept up for both lights)
+    await page.evaluate(() => localStorage.setItem('gc.testCatchHold', '1')); // (the card kept up till the test acts: CI #409's slow phone closed it -- and the show -- before the insect's model came; photos: both lights)
     const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 10000 }) /* (CI #362: a slow runner's page took ~4.5 s from SPACE to the catch) */.catch(() => null);
     await page.evaluate((id) => { const d = window.PlazaDebug(); const b = d.insectsDrawn().find((q) => q.id === id); if (b) d.faceTo(b.x, b.z); }, target.id);
     if (!(await spaceOn(page, 'tool:swing', isMobile))) { last = await page.locator('#plazaHint').textContent(); return last; }
@@ -82,9 +82,10 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.phase || null), { timeout: 8000 }).toBe('hold');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.netLeft), { timeout: 3000 }).toBe(true);
   await expect(page.locator('#catchCard')).toBeVisible({ timeout: 5000 }); await expect(page.locator('#catchCard .catchRibbon').first()).toHaveText(/새 친구!|드문 곤충!/);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.size || 0), { timeout: 3000 }).toBeGreaterThanOrEqual(0.2); // (총괄 #408: big enough to see)
-  if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().showKeep()); for (const t of ['night', 'day']) { await page.evaluate((m) => window.PlazaDebug().setTime(m), t); await page.waitForTimeout(t === 'night' ? 500 : 1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-insect-show-${t}.png` }); } await page.evaluate(() => { window.PlazaDebug().setTime('auto'); localStorage.removeItem('gc.testCatchHold'); }); }
-  await page.keyboard.press('Escape'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()), { timeout: 3000 }).toBe(null); await expect(page.locator('#catchCard')).toBeHidden();
+  await page.evaluate(() => window.PlazaDebug().showKeep()); /* (and past its 6 s) */
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.size || 0), { timeout: 15000 }).toBeGreaterThanOrEqual(0.2); /* (CI #409: a slow runner's model load) */ // (총괄 #408: big enough to see)
+  if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().showKeep()); for (const t of ['night', 'day']) { await page.evaluate((m) => window.PlazaDebug().setTime(m), t); await page.waitForTimeout(t === 'night' ? 500 : 1200); await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.clip || null), { timeout: 5000 }).toBe('ShowInsectHold'); /* (259: the hold, not a restart after the light changed) */ await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-insect-show-${t}.png` }); } await page.evaluate(() => { window.PlazaDebug().setTime('auto'); localStorage.removeItem('gc.testCatchHold'); }); }
+  await page.evaluate(() => localStorage.removeItem('gc.testCatchHold')); await page.keyboard.press('Escape'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()), { timeout: 3000 }).toBe(null); await expect(page.locator('#catchCard')).toBeHidden();
   const itemId = `insect_${caught.species}`; // (the species the server gave: a layout redone for the day's seasons keeps the places, not always the kinds)
   await expect.poll(async () => (await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === itemId), { timeout: 10000 }).toBe(true);
   expect((await get(request, '/api/island/dex', a.token)).data.entries.find((e) => e.id === itemId).count).toBeGreaterThan(0);

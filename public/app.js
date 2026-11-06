@@ -4166,6 +4166,7 @@
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
   // in the bag (and the 도감), too early or too late it got away. The scene shows the cast, the bite and the catch.
   let fishBusy = false; let fishId = null; let fishSeq = null; // (Codex 검토 #1: the cast's arrows, the server's)
+  let fishMode = 'arrows'; let fishPlan = null; // (v1.10.259: the cast's bite game -- the arrows or the 타이밍 막대 and its zones)
   async function fishAction() {
     if (fishBusy) return;
     const phase = plaza.controller?.fishingNow?.();
@@ -4175,18 +4176,22 @@
         catchClose(); // (v1.10.257: the next cast -- a card still up shrinks to its note)
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
         const data = await api('/api/island/fish/start', { method: 'POST', body: '{}' });
-        fishId = data.fishId; fishSeq = Array.isArray(data.seq) ? data.seq : null;
+        fishId = data.fishId; fishSeq = Array.isArray(data.seq) ? data.seq : null; fishMode = data.mode === 'timing' && data.timing ? 'timing' : 'arrows'; fishPlan = data.timing || null;
         if (data.bait) showToast(`🪱 ${data.bait}를 썼어요.`); // v1.10.92
-        if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; fishArrowsEnd(); }, fishArrowsStart)) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
+        if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; fishArrowsEnd(); fishTimingEnd(); }, (n, ms) => (fishMode === 'timing' ? fishTimingStart(ms) : fishArrowsStart(n, ms)))) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
       } else if (phase === 'cast' || phase === 'wait') await pullFish(); // (too early: it got away)
     } catch (error) { showToast(error.message); } finally { fishBusy = false; }
   }
   async function pullFish(presses = []) {
     try {
       const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId, presses }) });
-      plaza.controller?.fishResult?.(data.species);
-      catchShow(`fish_${data.species}`, data, `${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name}${Number.isFinite(data.size) ? ` ${data.size} cm` : ''} +1${data.best ? ' · 내 최고!' : ''}${data.firstTime ? ' · 도감 등록' : ''}`); toolWorn(data.tool, data.bag); // (v1.10.231 물고기 크기 · 257 잡기 카드)
+      if (data.tug) { fishTugStart(data.tug); return; } // (v1.10.259: a big one -- the tug first)
+      fishLanded(data);
     } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
+  }
+  function fishLanded(data) { // (the catch: the scene, the card or the note -- a big one after its tug)
+    plaza.controller?.fishResult?.(data.species);
+    catchShow(`fish_${data.species}`, data, `${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name}${Number.isFinite(data.size) ? ` ${data.size} cm` : ''} +1${data.best ? ' · 내 최고!' : ''}${data.firstTime ? ' · 도감 등록' : ''}`); toolWorn(data.tool, data.bag); // (v1.10.231 물고기 크기 · 257 잡기 카드)
   }
   // (문제 기록 3회차 4 「낚시 미니게임: 입질 때 화살표」) at the bite, arrows to press in order (4~12, more the rarer the
   // fish) before the bar runs out: the arrow keys on a PC, the four buttons on a phone; a wrong one shakes the row red and
@@ -4216,6 +4221,69 @@
   }
   window.addEventListener('keydown', (e) => { if (!fishGame || !FISH_KEYS[e.code]) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) fishArrow(FISH_KEYS[e.code]); }, true);
   fishArrowsBox.querySelectorAll('.fishArrowPad button').forEach((b) => b.addEventListener('click', () => fishArrow(b.dataset.dir)));
+  // v1.10.259 타이밍 막대 (docs/fishing-minigames-20261104.md 2절): half the bites -- the needle runs across the bar, SPACE or Enter
+  // (a phone: 「당기기」 or the bar) while it is in the green zone, a hit (the zone moves to the server's next place); a miss shakes
+  // it and starts over; the grade's hits in, pulled in. Every press with its time sent -- the server judges them (FishTug's same)
+  const fishTimingBox = byId('fishTiming'); let fishBar = null;
+  function fishBarMark() { const g = fishBar; const zone = fishTimingBox.querySelector('.fishTimingZone'); zone.style.left = `${g.t.zones[g.hit] * 100}%`; zone.style.width = `${g.t.zone * 100}%`; fishTimingBox.querySelector('.fishTimingHits').textContent = `${'●'.repeat(g.hit)}${'○'.repeat(g.t.hits - g.hit)}`; }
+  function fishTimingStart(ms) {
+    if (!fishPlan) return; fishBar = { t: fishPlan, hit: 0, presses: [], shownAt: performance.now(), raf: 0 };
+    fishTimingBox.classList.remove('hidden', 'wrong'); document.body.classList.add('islandFishing'); fishBarMark();
+    const bar = fishTimingBox.querySelector('.fishArrowTime i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${ms}ms linear`; bar.style.width = '0%';
+    const needle = fishTimingBox.querySelector('.fishTimingNeedle');
+    const tick = () => { const g = fishBar; if (!g) return; if (!(g.hold > performance.now())) needle.style.left = `${window.FishTug.needleAt(g.t.period, performance.now() - g.shownAt) * 100}%`; g.raf = requestAnimationFrame(tick); }; tick(); // (held 0.5 s where a miss was pressed)
+  }
+  function fishTimingEnd() { if (fishBar) cancelAnimationFrame(fishBar.raf); fishBar = null; fishTimingBox.classList.add('hidden'); if (!fishTug) document.body.classList.remove('islandFishing'); }
+  function fishBarPress() {
+    const g = fishBar; if (!g || fishBusy) return; const ms = Math.round(performance.now() - g.shownAt); g.presses.push({ t: ms });
+    if (!window.FishTug.inZone(g.t, g.t.zones[g.hit], ms)) { // (총괄 #409: why -- the needle held 0.5 s where it was pressed, a red mark there; the zone as it was)
+      const x = window.FishTug.needleAt(g.t.period, ms) * 100; fishTimingBox.querySelector('.fishTimingNeedle').style.left = `${x}%`; g.hold = performance.now() + 500;
+      const miss = fishTimingBox.querySelector('.fishTimingMiss'); miss.style.left = `${x}%`; miss.classList.remove('hidden'); clearTimeout(g.missTimer); g.missTimer = setTimeout(() => { miss.classList.add('hidden'); if (fishBar === g) fishBarMark(); }, 500);
+      g.hit = 0; fishTimingBox.classList.remove('wrong'); void fishTimingBox.offsetWidth; fishTimingBox.classList.add('wrong'); return;
+    }
+    if (g.hit + 1 === g.t.hits && ms < window.FishTug.timingFloor(g.t)) return; // (the last one sooner than the bar allows: on its next pass -- the server's judge the same)
+    g.hit += 1; if (g.hit < g.t.hits) { fishBarMark(); return; }
+    const { presses } = g; fishTimingEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; });
+  }
+  window.addEventListener('keydown', (e) => { if (!fishBar || !(e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter' || FISH_KEYS[e.code])) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat && !FISH_KEYS[e.code]) fishBarPress(); }, true);
+  for (const el of [fishTimingBox.querySelector('.fishTimingPull'), fishTimingBox.querySelector('.fishTimingBar')]) el.addEventListener('pointerdown', (e) => { e.preventDefault(); fishBarPress(); });
+  // v1.10.259 대어 줄다리기 (gamecenter-notes docs/fishing-minigames-20261104.md 3절): after the arrows a big one pulls -- hold
+  // SPACE (a phone: 「감기」) to reel in, let go when it fights (「버텨요!」, a short buzz where a phone can). The bars are FishTug's
+  // (the server's same code); every hold kept with its time from the 「대어다!」 and sent at the end -- the server judges them.
+  // The walk's keys never let the line go while it lasts
+  const fishTugBox = byId('fishTug'); const fishTugReel = fishTugBox.querySelector('.fishTugReel'); let fishTug = null;
+  const tugMs = () => Math.round(performance.now() - fishTug.t0);
+  function fishTugStart(tug) {
+    const T = window.FishTug; fishTug = { plan: tug.plan, holds: [], down: null, t0: performance.now(), st: { dist: T.DIST, tension: 0 }, last: 0, raf: 0, fight: false };
+    fishTugBox.classList.remove('hidden', 'fight', 'start'); void fishTugBox.offsetWidth; fishTugBox.classList.add('start'); setTimeout(() => fishTugBox.classList.remove('start'), 800); // (총괄 #409: 「대어다!」 big for 0.8 s)
+    document.body.classList.add('islandFishing'); plaza.controller?.fishTug?.();
+    const dist = fishTugBox.querySelector('.fishTugDist i'); const ten = fishTugBox.querySelector('.fishTugTension');
+    const tick = () => {
+      const g = fishTug; if (!g) return; const now = performance.now() - g.t0; const held = g.down != null ? [...g.holds, [g.down, null]] : g.holds;
+      for (; g.last + T.STEP_MS <= now; g.last += T.STEP_MS) { T.step(g.plan, g.st, T.heldAt(held, g.last), g.last, T.STEP_MS); if (g.st.dist <= 0 || g.st.tension >= 100) { fishTugEnd(); return; } }
+      if (now >= T.LIMIT_MS) { fishTugEnd(); return; }
+      const fight = Boolean(T.fightAt(g.plan, now)); if (fight !== g.fight) { g.fight = fight; fishTugBox.classList.toggle('fight', fight); plaza.controller?.fishTugFight?.(fight); if (fight) try { navigator.vibrate?.(120); } catch {} } // (총괄 #409: the splash on the island too)
+      dist.style.setProperty('--p', `${Math.max(0, g.st.dist)}%`); ten.querySelector('i').style.setProperty('--p', `${g.st.tension}%`);
+      ten.classList.toggle('warn', g.st.tension >= 50 && g.st.tension < 80); ten.classList.toggle('hot', g.st.tension >= 80);
+      g.raf = requestAnimationFrame(tick);
+    };
+    fishTug.raf = requestAnimationFrame(tick);
+  }
+  const tugDown = () => { if (!fishTug || fishTug.down != null) return; fishTug.down = tugMs(); fishTugReel.classList.add('on'); };
+  const tugUp = () => { if (!fishTug || fishTug.down == null) return; fishTug.holds.push([fishTug.down, Math.max(fishTug.down, tugMs())]); fishTug.down = null; fishTugReel.classList.remove('on'); };
+  async function fishTugEnd() {
+    const g = fishTug; if (!g) return; tugUp(); fishTug = null; cancelAnimationFrame(g.raf);
+    fishTugBox.classList.add('hidden'); fishTugReel.classList.remove('on'); document.body.classList.remove('islandFishing');
+    fishBusy = true;
+    try { fishLanded(await api('/api/island/fish/tug', { method: 'POST', body: JSON.stringify({ fishId, holds: g.holds }) })); }
+    catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
+    finally { fishBusy = false; }
+  }
+  window.addEventListener('keydown', (e) => { if (!fishTug || !(e.code === 'Space' || FISH_KEYS[e.code])) return; e.preventDefault(); e.stopImmediatePropagation(); if (e.code === 'Space' && !e.repeat) tugDown(); }, true);
+  window.addEventListener('keyup', (e) => { if (!fishTug || e.code !== 'Space') return; e.preventDefault(); e.stopImmediatePropagation(); tugUp(); }, true);
+  fishTugReel.addEventListener('pointerdown', (e) => { e.preventDefault(); try { fishTugReel.setPointerCapture(e.pointerId); } catch {} tugDown(); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) fishTugReel.addEventListener(ev, tugUp);
+  window.addEventListener('blur', tugUp); // (the window left: the hand off the line)
   // v1.10.257 잡기 카드 (gamecenter-notes docs/catch-card-20261103.md 1·3·5절): a good catch -- my best, the first of its kind,
   // a big fish or a rare insect, bigger than the museum's -- on a card in the middle: its ribbons, the size counting up, the
   // best before; 「더보기」 turns it to the kind's 설명. 3 s on its own (not turned) it shrinks to the one-line note, at Esc and
