@@ -126,7 +126,11 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
         await page.evaluate(() => window.PlazaDebug().camNear([2.6, 1.4, -0.4], [0, 1.0, -0.6])); await page.waitForTimeout(900);
         await page.evaluate((k) => window.PlazaDebug().netTry(k), kind); await page.waitForTimeout(kind === 'jump' ? 500 : 420); await snap(`swing-${kind}`); await page.waitForTimeout(3300);
       }
-      for (const t of ['night', 'day']) { await page.evaluate((m) => window.PlazaDebug().setTime(m), t); expect(await page.evaluate(() => window.PlazaDebug().netDemo('butterfly_swallowtail'))).toBe(true); await page.evaluate(() => window.PlazaDebug().camNear([0.9, 0.35, -0.7], 'bag')); await page.waitForTimeout(1200); await snap(`bag-${t}`); await page.waitForTimeout(3100); }
+      expect(await page.evaluate(() => window.PlazaDebug().netState().bagShown)).toEqual({ open: true, closed: false }); // (v1.10.261 총괄: one look at a time from the start)
+      for (const [t, sp] of [['night', 'butterfly_swallowtail'], ['day', 'butterfly_swallowtail'], ['day', 'rhinoceros_beetle'], ['day', 'dragonfly_emperor']]) {
+        await page.evaluate((m) => window.PlazaDebug().setTime(m), t); expect(await page.evaluate((s) => window.PlazaDebug().netDemo(s), sp)).toBe(true); await page.evaluate(() => window.PlazaDebug().camNear([0.9, 0.35, -0.7], 'bag')); await page.waitForTimeout(1200);
+        expect(await page.evaluate(() => window.PlazaDebug().netState().bagShown)).toEqual({ open: false, closed: true }); await snap(`bag-${t}-${sp}`); await page.waitForTimeout(3100);
+      }
       await page.evaluate(() => window.PlazaDebug().setTime('auto'));
       const near = pick(await insectsNow()); if (near) { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [near.spot.x, near.spot.z]); await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [near.x, near.z]); await page.waitForTimeout(800);
         await page.evaluate(() => window.PlazaDebug().camNear([3.4, 2.0, 1.6], [0, 0.9, -1.0])); await page.waitForTimeout(900); await page.evaluate(() => window.PlazaDebug().missDemo()); await page.waitForTimeout(250); await snap('miss-alert'); }
