@@ -16,7 +16,7 @@ const { boot } = require('../test-support/test-server');
 // island story (two lines, a big fish three, 46 or fewer each); where and when from the tables, never empty
 test('설명 글: 물고기·곤충 모두, 줄 길이, 곳·때는 표에서', () => {
   const ids = [...Object.keys(F.SPECIES).map((s) => `fish_${s}`), ...Object.keys(I.SPECIES).map((s) => `insect_${s}`)];
-  assert.equal(ids.length, 46);
+  assert.equal(ids.length, 62); // (v1.10.259: 50 fish and 12 insects)
   for (const id of ids) {
     const n = N.DEX_NOTES[id]; assert.ok(n, id);
     assert.ok(n.line.length <= 40, `${id} line ${n.line.length}`);

@@ -2181,7 +2181,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const FISH_HOLD = { default: { at: [0, 0, -0.12], rot: [0, Math.PI / 2, 0] }, giant_tuna: { at: [0.18, -0.12, -0.14], rot: [0, Math.PI / 2, 0] },
     // v1.10.231 assets 85 (its manifest's hand: Hand.R, measured): the flank to the palm, the crab's shell upright, the sturgeon in both hands
     ...Object.fromEntries(Object.entries({ yellowtail: -0.1653, red_seabream: -0.1333, horse_mackerel: -0.1119, filefish: -0.1057, cod: -0.1538, squid: -0.1264, seahorse: -0.1073, crayfish: -0.1064, medaka: -0.0996, masu_salmon: -0.1247 }).map(([sp, z]) => [sp, { at: [0, 0, z], rot: [0, Math.PI / 2, 0] }])),
-    blue_crab: { at: [0, 0, -0.1139], rot: [Math.PI / 2, 0, 0] }, sturgeon: { at: [-0.3129, -0.0681, -0.0977], rot: [-Math.PI / 2, 1.3565, Math.PI / 2] } };
+    blue_crab: { at: [0, 0, -0.1139], rot: [Math.PI / 2, 0, 0] }, sturgeon: { at: [-0.3129, -0.0681, -0.0977], rot: [-Math.PI / 2, 1.3565, Math.PI / 2] },
+    // v1.10.259 assets 91 (two palms, measured) and 93 (one hand, its flank's thickness)
+    dotdom: { at: [-0.3012, -0.0656, -0.2008], rot: [-1.1299, 1.3347, 1.1407] }, giant_squid: { at: [-0.4068, -0.1025, -0.0406], rot: [-2.3323, 1.2787, 2.3107] }, sunfish: { at: [-0.2367, -0.2715, -0.2799], rot: [-2.0117, 1.3347, 2.7009] }, giant_octopus: { at: [-0.4537, -0.0847, -0.1754], rot: [-0.0977, -0.0212, -1.3576] }, snakehead: { at: [-0.3423, -0.0605, -0.086], rot: [-2.0117, 1.3347, 2.0009] }, salmon: { at: [-0.3833, -0.0694, -0.0815], rot: [-1.5708, 1.3565, 1.5708] }, king_catfish: { at: [-0.3423, -0.0045, -0.1794], rot: [-0.8093, 1.2787, 0.8309] }, taimen: { at: [-0.2074, -0.0451, -0.1448], rot: [-2.3323, 1.2787, 2.3107] }, golden_carp: { at: [-0.3305, -0.0859, -0.0539], rot: [-2.0117, 1.3347, 2.0009] },
+    minnow: { at: [0, 0, -0.1027], rot: [0, 1.5708, 0] }, bitterling: { at: [0, 0, -0.0984], rot: [0, 1.5708, 0] }, bluegill: { at: [0, 0, -0.1083], rot: [0, 1.5708, 0] }, barbel_steed: { at: [0, 0, -0.1242], rot: [0, 1.5708, 0] }, bass: { at: [0, 0, -0.1384], rot: [0, 1.5708, 0] }, rainbow_trout: { at: [0, 0, -0.1297], rot: [0, 1.5708, 0] } };
   let fishing = null;
   const fishLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xf4f1ea, transparent: true, opacity: 0.85 }));
   fishLine.frustumCulled = false; fishLine.visible = false; scene.add(fishLine);
@@ -2639,7 +2642,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // one in both hands ShowCatchBig, an insect pinched -- the net to the left hand -- ShowInsect), its Hold looping while the
   // card is up; then put away (ShowPutaway…) and the camera back. SPACE, Esc, a tap or a step skips it at once (SPACE
   // casts nothing then). The first person comes out to the third for it only. Others see the move (act fish:/insect:show).
-  const BIG_FISH = new Set(['giant_tuna', 'sturgeon']); // (the grade 「big」 ones -- held in both hands)
+  const BIG_FISH = new Set(['giant_tuna', 'sturgeon', 'dotdom', 'giant_squid', 'sunfish', 'giant_octopus', 'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp']); // (the grade 「big」 ones -- their own measured two-hand fit; 259: all eleven)
   const SHOW_HIDE = { fish: 0.3025, big: 0.24, insect: 0.3025 }; const SHOW_NET_BACK = 0.385; const SHOW_NET_TO_L = 0.12;
   const NET_L = { bone: 'Hand.L', at: [0.06507324, -0.046534647, 0], rot: [0, 0, 0.95] }; // (assets 97 show-moves.json events)
   let showOff = null; let onShowSkip = null; const SHOW_DIST = 3.6;
@@ -3976,7 +3979,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const rows = [-1, 1].map((side) => { const r = new THREE.Group(); r.rotation.y = side < 0 ? 0 : Math.PI; tank.add(r); return r; });
     MUS.SEA.forEach((sp, k) => { const tp = MUS.tankPlaque(k); slots.set(`fish_${sp}`, { kind: 'tank', sp, k, plaque: plaqueAt(rows[tp.side < 0 ? 0 : 1], tp.x, 0.3, -1.33, 0.52, 0.22), parent: tank, box: T.swim }); });
     const B = MUS.BIG; const big = put('museum.tank_big', B.lx, 0, B.lz, B.yaw, (f) => { mesh(new THREE.BoxGeometry(6.2, 0.5, 2.6), navy, 0, 0.25, 0, f); mesh(new THREE.BoxGeometry(5.9, 1.6, 2.3), water, 0, 1.42, 0, f); }, A, (r) => cutAbove(r, `vCutL.y > ${(2.2 * B.tall).toFixed(2)}`, 'bigLidCut'));
-    big.scale.y = B.tall; const bigSign = boardText('대어 수조\n큰 물고기가 곧 와요', 1.4, 0.36, 0.3, B.lz - 1.33); bigSign.position.x = B.lx; A.add(bigSign); // (its sign on the room, not the taller tank)
+    big.scale.y = B.tall; const bigSign = boardText('대어 수조', 1.4, 0.36, 0.3, B.lz - 1.33); bigSign.position.x = B.lx; A.add(bigSign); // (its sign on the room, not the taller tank)
+    { // v1.10.259 the sea's 대어 swim here: a holder at the tank (not the 1.3x tall one -- the fish their own shape), the plaques on its front
+      const holder = new THREE.Group(); holder.position.set(B.lx, 0, B.lz); holder.rotation.y = B.yaw; A.add(holder);
+      MUS.BIG_SEA.forEach((sp, k) => slots.set(`fish_${sp}`, { kind: 'big', sp, k, plaque: plaqueAt(holder, MUS.bigPlaque(k).x, 0.3, -1.33, 0.7, 0.22), parent: holder, box: B.swim }));
+    }
     MUS.FRESH.forEach((sp, k) => { const s = MUS.WALLS[k]; const t = wallTank(s, A); slots.set(`fish_${sp}`, { kind: 'wall', sp, k, plaque: plaqueAt(t, 0, 0.36, -0.48, 0.8, 0.22), parent: t, box: { x: 0.72, z: 0.18, y0: 0.95, y1: 1.65 } }); });
     for (const s of MUS.SPARE_WALLS) wallTank(s, A); // (water and glass: the next fish's)
     for (const w of MUS.WATERS) { const s = MUS.WALL_SIGNS[w.id]; const holder = new THREE.Group(); holder.position.set(s.lx, 0, s.lz); holder.rotation.y = s.yaw; A.add(holder); holder.add(boardText(w.name, 1.6, 0.42, 2.75, -0.02, ['#2f5a66', '#f4fbfd'])); }
@@ -4021,7 +4028,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     let seaShown = 0; const now = performance.now();
     for (const [id, s] of museum.slots) {
       const x = shown.get(id); const on = Boolean(x?.by) && (s.kind !== 'tank' || quality > 0 || (seaShown += 1) <= 8);
-      setPlaque(s.plaque, MUS.plaqueText(x?.name || '', x));
+      setPlaque(s.plaque, MUS.plaqueText(x?.name || '', x, MUS.BIGS.has(s.sp)));
       if (on && !s.thing) { s.thing = s.kind === 'case' ? insectIn(s.parent, s.sp) : swimmerOf(s); if (s.kind === 'case') s.thing.root.position.set(0, 1.0, 0); if (before) s.pop = now; }
       if (!on && s.thing) { (s.thing.root || s.thing).removeFromParent(); if (s.thing.root) s.thing.gone = true; s.thing = null; }
       if (on && before && x.size !== (before.exhibits || []).find((e) => e.id === id)?.size) s.pop = now; // (a bigger one hung)

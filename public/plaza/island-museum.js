@@ -27,8 +27,14 @@
   // (where it is caught first: lib/island-fishing's TABLE, the unit test holds them together); the 12 insects a case each
   const SEA = Object.freeze(['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna', 'mullet', 'flatfish', 'sea_bass', 'gizzard_shad', 'rockfish',
     'yellowtail', 'red_seabream', 'horse_mackerel', 'filefish', 'cod', 'squid', 'blue_crab', 'seahorse']);
-  const FRESH = Object.freeze(['crucian_carp', 'carp', 'pale_chub', 'sweetfish', 'catfish', 'mandarin_fish', 'eel', 'smelt', 'crayfish', 'medaka', 'bagrid_catfish', 'masu_salmon', 'sturgeon']);
-  const WATER_OF = Object.freeze({ masu_salmon: 'pool', sturgeon: 'lake' }); // (the rest the river's)
+  const FRESH = Object.freeze(['crucian_carp', 'carp', 'pale_chub', 'sweetfish', 'catfish', 'mandarin_fish', 'eel', 'smelt', 'crayfish', 'medaka', 'bagrid_catfish', 'masu_salmon', 'sturgeon',
+    'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp', 'minnow', 'bitterling', 'bluegill', 'barbel_steed', 'bass', 'rainbow_trout', 'aucha_perch']);
+  // (v1.10.259: the river's wall holds 12 -- 빙어 and 송사리, the lake's too, moved to its wall)
+  const WATER_OF = Object.freeze({ masu_salmon: 'pool', sturgeon: 'lake', smelt: 'lake', medaka: 'lake', king_catfish: 'lake', bitterling: 'lake', bluegill: 'lake', bass: 'lake',
+    taimen: 'pool', golden_carp: 'pool', minnow: 'pool', rainbow_trout: 'pool', aucha_perch: 'pool' }); // (the rest the river's)
+  // v1.10.259 (docs/museum-wings-20261104.md): the sea's 대어 in the 대어 tank behind the big one; every 대어's plaque says so
+  const BIG_SEA = Object.freeze(['dotdom', 'giant_squid', 'sunfish', 'giant_octopus']);
+  const BIGS = new Set(['giant_tuna', 'sturgeon', ...BIG_SEA, 'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp']);
   const WATERS = Object.freeze([['river', '강'], ['lake', '거울호수'], ['pool', '폭포 웅덩이']].map(([id, name]) => Object.freeze({ id, name })));
   const INSECTS = Object.freeze(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail']);
   const FLYERS = Object.freeze(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor']); // (in the dome too)
@@ -38,6 +44,7 @@
   const TANK = Object.freeze({ lx: 0, lz: -0.5, yaw: 0, swim: Object.freeze({ x: 2.7, z: 0.95, y0: 0.8, y1: 2.05 }) });
   const BIG = Object.freeze({ lx: 0, lz: 5.4, yaw: 0, tall: 1.3, swim: Object.freeze({ x: 2.6, z: 0.9, y0: 0.9, y1: 2.6 }) });
   const tankPlaque = (k) => ({ side: k < 11 ? -1 : 1, x: -2.75 + (k < 11 ? k : k - 11) * 0.55 }); // (11 on the front, 10 on the back)
+  const bigPlaque = (k) => ({ x: -1.2 + k * 0.8 }); // (259: the 대어 tank's four, on its front)
   const wallAt = (side, at) => side === 'west' ? { lx: -(AQUA.w / 2 - 0.45), lz: at, yaw: -Math.PI / 2 } : side === 'east' ? { lx: AQUA.w / 2 - 0.45, lz: at, yaw: Math.PI / 2 } : side === 'back' ? { lx: at, lz: AQUA.d / 2 - 0.45, yaw: 0 } : { lx: at, lz: -(AQUA.d / 2 - 0.45), yaw: Math.PI };
   // each water's wall: the river's the west wall and the front's west end, 거울호수's the back wall either side of the big
   // tank, the pools' the east wall and the front's east end -- 32 places for 25 fish, the first ones of each water used
@@ -58,7 +65,7 @@
   const CASES = Object.freeze(CASE_SPOTS.slice(0, INSECTS.length));
   const SPARE_CASES = Object.freeze(CASE_SPOTS.slice(INSECTS.length));
   const DOME = Object.freeze({ lx: 0, lz: 0.4, yaw: 0, r: 1.3, y0: 0.6, y1: 1.5 }); // (its plaque toward the door)
-  const SLOTS = Object.freeze(Object.fromEntries([...SEA.map((id, k) => [`fish_${id}`, { kind: 'tank', k }]), ...FRESH.map((id, k) => [`fish_${id}`, { kind: 'wall', k, water: WATER_OF[id] || 'river', ...WALLS[k] }]),
+  const SLOTS = Object.freeze(Object.fromEntries([...SEA.map((id, k) => [`fish_${id}`, { kind: 'tank', k }]), ...BIG_SEA.map((id, k) => [`fish_${id}`, { kind: 'big', k }]), ...FRESH.map((id, k) => [`fish_${id}`, { kind: 'wall', k, water: WATER_OF[id] || 'river', ...WALLS[k] }]),
     ...INSECTS.map((id, k) => [`insect_${id}`, { kind: 'case', k, ...CASES[k] }])].map(([id, s]) => [id, Object.freeze(s)])));
   // the entrance hall: the curator behind his desk (facing the door), where one talks to him, the benches, the board, the plants
   const DESK = Object.freeze({ lx: 0, lz: 1.6 });
@@ -113,6 +120,6 @@
   }
   const atDesk = (x, z) => { const t = world(TALK.lx, TALK.lz); return roomOf(x, z) === 'hall' && Math.hypot(x - t.x, z - t.z) <= TALK_R; };
   // a plaque's words: what is on show, its size and who gave it -- or the empty slot's
-  const plaqueText = (name, shown) => (!shown?.by ? `${name}\n아직 기증받지 못했어요` : `${name}${Number.isFinite(shown.size) ? ` ${shown.size} cm` : ''}\n${shown.by}님 기증`);
-  return { ROOM, ROOMS, AQUA, BUGS, HALL_HALF, world, local, worldIn, localIn, roomOf, inMuseum, SEA, FRESH, WATER_OF, WATERS, WATER_WALLS, INSECTS, FLYERS, TANK, BIG, tankPlaque, WALLS, SPARE_WALLS, WALL_SIGNS, CASES, SPARE_CASES, DOME, SLOTS, DESK, CURATOR, TALK, TALK_R, BENCHES, BOARD, PLANTS, PASSAGES, PASS_R, passage, FIXTURES, clamp, atDesk, plaqueText };
+  const plaqueText = (name, shown, big = false) => (big ? plaqueText(`${name} · 대어`, shown) : !shown?.by ? `${name}\n아직 기증받지 못했어요` : `${name}${Number.isFinite(shown.size) ? ` ${shown.size} cm` : ''}\n${shown.by}님 기증`);
+  return { ROOM, ROOMS, AQUA, BUGS, HALL_HALF, world, local, worldIn, localIn, roomOf, inMuseum, SEA, BIG_SEA, BIGS, bigPlaque, FRESH, WATER_OF, WATERS, WATER_WALLS, INSECTS, FLYERS, TANK, BIG, tankPlaque, WALLS, SPARE_WALLS, WALL_SIGNS, CASES, SPARE_CASES, DOME, SLOTS, DESK, CURATOR, TALK, TALK_R, BENCHES, BOARD, PLANTS, PASSAGES, PASS_R, passage, FIXTURES, clamp, atDesk, plaqueText };
 }));

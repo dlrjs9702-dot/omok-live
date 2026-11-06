@@ -85,9 +85,13 @@ test('박물관 나누기: 세 방 자리·물별 벽, 통로로만 오가기, �
   const key = (s) => `${s.lx.toFixed(2)},${s.lz.toFixed(2)}`;
   const walls = [...M.WALLS, ...M.SPARE_WALLS].map(key); assert.equal(new Set(walls).size, walls.length, '벽 수조 겹치지 않음'); assert.equal(M.WALLS.length, M.FRESH.length);
   const cases = [...M.CASES, ...M.SPARE_CASES].map(key); assert.equal(new Set(cases).size, cases.length, '곤충 상자 겹치지 않음'); assert.deepEqual([M.CASES.length, M.SPARE_CASES.length], [12, 12]);
-  assert.equal(Object.keys(M.SLOTS).length, M.SEA.length + M.FRESH.length + M.INSECTS.length);
+  assert.equal(Object.keys(M.SLOTS).length, M.SEA.length + M.BIG_SEA.length + M.FRESH.length + M.INSECTS.length);
+  // (v1.10.259: every fish a place -- 50; the sea's 대어 in the 대어 tank, every 대어 marked on its plaque)
+  assert.equal(Object.keys(M.SLOTS).filter((id) => id.startsWith('fish_')).length, Object.keys(F.SPECIES).length);
+  assert.deepEqual([...M.BIGS].sort(), Object.keys(F.SPECIES).filter((sp) => F.SPECIES[sp].grade === 'big').sort());
+  assert.ok(M.BIG_SEA.every((sp) => M.SLOTS[`fish_${sp}`].kind === 'big')); assert.match(M.plaqueText('돗돔', null, true), /^돗돔 · 대어\n/);
   const has = (water, sp) => Object.values(F.TABLE[water]).some((l) => l.includes(sp));
-  for (const sp of M.SEA) assert.ok(has('sea', sp) || has('bay', sp), `${sp} 바다`);
+  for (const sp of [...M.SEA, ...M.BIG_SEA]) assert.ok(has('sea', sp) || has('bay', sp), `${sp} 바다`);
   M.FRESH.forEach((sp, k) => { const w = M.SLOTS[`fish_${sp}`].water; assert.ok(has(w, sp), `${sp}: ${w}`); assert.ok(M.WATER_WALLS[w].some((s) => key(s) === key(M.WALLS[k])), `${sp} ${w} 벽`); });
   for (const [id, R] of Object.entries(M.ROOMS)) { const mid = M.worldIn(id, 0, 0); assert.equal(M.roomOf(mid.x, mid.z), id); const q = M.clamp(mid.x, mid.z + R.d / 2 + 1); assert.equal(M.roomOf(q.x, q.z), id, `${id} 벽`); assert.ok(Math.abs(q.z - mid.z) < R.d / 2, `${id} 안으로`); }
   for (const s of [...M.WALLS, ...M.SPARE_WALLS]) { const w = M.worldIn('aquarium', s.lx, s.lz); const q = M.clamp(w.x, w.z); assert.ok(Math.hypot(q.x - w.x, q.z - w.z) > 0.3, '벽 수조 안에 서지 않음'); }

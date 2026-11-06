@@ -88,7 +88,7 @@ test.skip('(v1.10.233 매주 대회 꺼짐 -- 게임 대회로 돌아올 때 다
   assert.equal(await firstNotice(), 1); assert.equal(await firstNotice(), 1); // (the first day's notice, once)
   const P = C.PLACES; const stand = (s, p) => req('/api/plaza/state', s, { x: p.x, z: p.z, yaw: 0, moving: false });
   const press = (seq, n) => seq.slice(0, n).map((dir, i) => ({ dir, t: i * 150 }));
-  const catchOne = async (s, species) => { await stand(s, { x: T.PIER.x, z: T.PIER.z }); const c = (await req('/api/island/fish/start', s, {})).data; await req('/api/test/fish/bite', s, { species }); return (await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: press(c.seq, c.arrows) })).data; };
+  const catchOne = async (s, species) => { await stand(s, { x: T.PIER.x, z: T.PIER.z }); const c = (await req('/api/island/fish/start', s, {})).data; await req('/api/test/fish/bite', s, { species, tug: false }); /* (v1.10.259: a big one landed without its tug) */ return (await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: press(c.seq, c.arrows) })).data; };
   for (const s of [a, b]) await req('/api/test/island/give', s, { itemId: 'fishing_rod', qty: 1 });
   assert.equal((await catchOne(a, 'anchovy')).species, 'anchovy'); // (before a round: no score)
   assert.equal((await req('/api/island/weekly/start', a, {})).data.error, 'TOO_FAR');
