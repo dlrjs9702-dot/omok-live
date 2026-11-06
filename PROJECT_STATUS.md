@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.260 곤충 손맛 (insect-catch-improve 1~3절, 에셋 103)
+
+- 겨누기·살금살금, 세 휘두르기(테 0.9 m), 자루·퍼덕임, 평범/좋은 순간, 놓침·달아남(서버 자리 옮김, 달팽이 숨기).
+- 채 v2·효과 6·곤충 12 새 판·동작 9. 261: 새 곤충 12종.
+
 ## v1.10.259 물고기 16종·대어 0.8%·입질 게임 반반·대어 줄다리기
 
 - 에셋 91(대어 9)·93(민물 7), 모든 칸 낮 7종 이상, 칸마다 대어 0.8% 먼저 뽑기. 박물관 대어 수조·물별 벽 25.
@@ -25,9 +30,3 @@
 - asset-loader hold size: 메시 상자로 재요(스킨 곤충이 빈 상자로 읽혀 크기가 안 바뀌던 것).
 - 폴드: /island/guest-entry(옛 경로도 받음), 안드로이드 메신저 intent://, 섬 「앱으로 설치」(첫 화면·☰).
 - 시험: island-daily-server 부탁 날짜 고정.
-
-## v1.10.257 잡기 카드·설명 카드 (catch-card 1~5절)
-
-- 잡기 카드: 신기록·새 친구·대어·드문 곤충·박물관보다 큼일 때만, 3초 뒤/Esc/다음 던지기에 쪽지. 설명 카드 하나(카드 더보기·쪽지·가방 ⓘ·도감 칸·박물관 명판).
-- 서버: 낚시 결과 prevBest·museumSize, 도감 note·where·sizes(이야기는 찾은 것만). lib/island-dex-notes.js 62종.
-- 9절 자랑 장면은 258.
