@@ -16,7 +16,7 @@ test('옛 주소 MOVED_TO: DB 연결 없이 안내 페이지·API 410·/guest-en
   // ended the test run with a libuv assertion); server.js starting it before any store is checked from its source below
   const srv = require('../lib/moved').startMoved({ to, port: 0, host: '127.0.0.1' }); await new Promise((r) => srv.once('listening', r));
   t.after(() => new Promise((r) => { srv.closeAllConnections?.(); srv.close(r); }));
-  const base = `http://127.0.0.1:${srv.address().port}`; const out = '';
+  const base = `http://127.0.0.1:${srv.address().port}`;
   const health = await (await fetch(base + '/health')).json();
   assert.equal(health.moved, to); assert.equal(health.version, require('../package.json').version);
   const page = await fetch(base + '/'); const html = await page.text();
@@ -25,7 +25,6 @@ test('옛 주소 MOVED_TO: DB 연결 없이 안내 페이지·API 410·/guest-en
   const api = await fetch(base + '/api/plaza/state', { method: 'POST' }); assert.equal(api.status, 410); assert.equal((await api.json()).to, to);
   const entry = await fetch(base + '/guest-entry', { method: 'POST', body: 'token=abc', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, redirect: 'manual' });
   assert.deepEqual([entry.status, entry.headers.get('location')], [307, `${to}/guest-entry`]); await entry.arrayBuffer(); // (its body read: an unread one held its socket past the end -- Windows' libuv assertion at exit)
-  assert.doesNotMatch(out, /PostgreSQL|ECONNREFUSED|포인트 저장소/, out);
   // and the server checks it before any store is made
   const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8'); const main = src.slice(src.indexOf('async function main()'));
   assert.ok(main.indexOf('process.env.MOVED_TO') < main.indexOf('createAccessStore'));

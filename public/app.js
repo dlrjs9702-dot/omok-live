@@ -4245,10 +4245,10 @@
     for (const h of catchCard.querySelectorAll('.catchName')) h.textContent = r.name;
     const size = catchCard.querySelector('.catchSize'); const lines = [];
     if (Number.isFinite(r.size)) {
-      if (calm) size.textContent = `${r.size} cm`; else { const t0 = performance.now(); const ask = catchAsk; const step = (t) => { if (ask !== catchAsk) return; const k = Math.min(1, (t - t0) / 800); size.textContent = `${(r.size * (1 - (1 - k) ** 3)).toFixed(1)} cm`; if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
-      if (r.best && r.prevBest != null) lines.push(`지난 최고 ${r.prevBest} cm → +${(r.size - r.prevBest).toFixed(1)} cm`);
+      if (calm) size.textContent = `${r.size}\u00a0cm`; else { const t0 = performance.now(); const ask = catchAsk; const step = (t) => { if (ask !== catchAsk) return; const k = Math.min(1, (t - t0) / 800); size.textContent = `${(r.size * (1 - (1 - k) ** 3)).toFixed(1)}\u00a0cm`; if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+      if (r.best && r.prevBest != null) lines.push(`지난 최고 ${r.prevBest}\u00a0cm → +${(r.size - r.prevBest).toFixed(1)}\u00a0cm`);
     } else size.textContent = '';
-    if (museumBigger) lines.push(`박물관 전시 ${r.museumSize} cm보다 커요 — 관장에게 가져가 보세요`);
+    if (museumBigger) lines.push(`박물관 전시 ${r.museumSize}\u00a0cm보다 커요 — 관장에게 가져가 보세요`);
     const list = catchCard.querySelector('.catchLines'); list.replaceChildren(...lines.map((l) => catchEl('li', null, l)));
     if (r.firstTime) api('/api/island/dex').then((d) => { if (catchCard.dataset.id === id) list.append(catchEl('li', 'catchDexCount', `도감 ${d.found}/${d.total}`)); }).catch(() => {});
     catchCard.querySelector('#catchMoreBtn').classList.remove('hidden');
@@ -4270,9 +4270,11 @@
     back.querySelector('.catchLine').textContent = known ? e?.note?.line || '' : '';
     back.querySelector('.catchStory').replaceChildren(...(found && e.note?.story ? e.note.story.map((l) => catchEl('p', null, l)) : []));
     const facts = [['잡히는 곳·때', e?.where || '—']];
-    if (found && e.sizes) facts.push(['크기', `보통 ${e.sizes[0]}~${e.sizes[1]} cm${e.best ? ` · 내 최고 ${e.best.size} cm` : ''}`]);
-    if (known) facts.push(['박물관', shown?.by ? `전시 중${shown.size != null ? ` · ${shown.size} cm` : ''} · ${shown.by}님 기증` : '아직 없어요']);
-    back.querySelector('.catchFacts').replaceChildren(...facts.flatMap(([k, v]) => [catchEl('dt', null, k), catchEl('dd', null, v)]));
+    if (found && e.sizes) facts.push(['크기', `보통 ${e.sizes[0]}~${e.sizes[1]}\u00a0cm${e.best ? ` · 내 최고 ${e.best.size}\u00a0cm` : ''}`]);
+    if (known) facts.push(['박물관', shown?.by ? `전시 중${shown.size != null ? ` · ${shown.size}\u00a0cm` : ''} · ${shown.by}님 기증` : '아직 없어요']);
+    // (총괄 #407) each piece of 「곳 · 계절 · 때」 kept whole on a line -- 「여름·/가을」 parted at its dot otherwise
+    const ddOf = (k, v) => { if (k !== '잡히는 곳·때') return catchEl('dd', null, v); const dd = catchEl('dd'); String(v).split(/( · | \/ )/).forEach((part, i) => dd.append(i % 2 ? part : catchEl('span', 'nowrap', part))); return dd; };
+    back.querySelector('.catchFacts').replaceChildren(...facts.flatMap(([k, v]) => [catchEl('dt', null, k), ddOf(k, v)]));
   }
   async function openDexCard(id) { // the 설명 alone (the bag's ⓘ, a 도감 cell, a note, a plaque)
     catchClose(false); catchNote = ''; catchHost(); catchCard.dataset.id = id; catchCard.className = `catchCard flipped infoOnly${lessMotionNow() ? ' calm' : ''}`;

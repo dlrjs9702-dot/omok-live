@@ -1950,7 +1950,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .reflexLevel[aria-checked="true"]{background:#2563eb;color:#fff;border-color:#2563eb}
 /* v1.10.257 잡기 카드·설명 카드: in the middle over the island (a phone: low, above the buttons), never blocking the rest;
    its ribbons, a gold edge for a best, the 도감's for a first, a splash for a big one; turned to its 설명 by 더보기 */
-.catchCard{position:fixed;left:50%;top:50%;z-index:30;width:min(340px,calc(100vw - 32px));transform:translate(-50%,-50%);perspective:1200px;pointer-events:auto;animation:catchIn .45s cubic-bezier(.2,1.4,.4,1)}
+.catchCard{word-break:keep-all;overflow-wrap:anywhere;position:fixed;left:50%;top:50%;z-index:30;width:min(340px,calc(100vw - 32px)); /* (총괄 #407: Korean words whole on a line) */transform:translate(-50%,-50%);perspective:1200px;pointer-events:auto;animation:catchIn .45s cubic-bezier(.2,1.4,.4,1)}
 .catchCard.hidden{display:none}
 @media(max-width:640px){.catchCard{top:auto;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}}
 @keyframes catchIn{from{opacity:0;scale:.7}to{opacity:1;scale:1}}
@@ -1982,7 +1982,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .catchGrade{color:var(--isle-tag);font-weight:700}
 .catchLine{margin:0;font-weight:800}
 .catchStory p{margin:0 0 4px;line-height:1.55}
-.catchFacts{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.9rem}.catchFacts dt{font-weight:800;color:var(--isle-tag)}.catchFacts dd{margin:0}
+.catchFacts .nowrap{white-space:nowrap}.catchFacts{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.9rem}.catchFacts dt{font-weight:800;color:var(--isle-tag)}.catchFacts dd{margin:0}
 .catchActions{display:flex;gap:8px;justify-content:center;margin-top:8px}
 .catchActions button{min-height:44px;min-width:96px;border-radius:12px}
 .catchCard.calm,.catchCard.calm *{animation:none!important;transition:none!important}
