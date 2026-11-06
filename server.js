@@ -55,7 +55,7 @@ const SERVER_VERSION = require('./package.json').version; // (관리자 「문�
 const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
 // 묶음 5 보이는 곤충: the layout of each 10 minutes (lib/island-insects.js layout over the island's spots), those caught or
 // sent off since it came (gone for everyone till the next), who caught which (a request sent again answers the same)
-let insectSpots = null; const insectGone = new Set(); const insectCaught = new Map(); let insectKey = null; let insectList = []; let insectEpoch = -1;
+let insectSpots = null; const insectGone = new Set(); const insectMoved = new Map(); /* (v1.10.260: id -> where a scared insect went in this layout) */ const insectCaught = new Map(); let insectKey = null; let insectList = []; let insectEpoch = -1;
 let insectHold = null; // (v1.10.240 3b: a test holds the insects' clock -- the layout, the night and the rain -- so a 4-minute test never crosses a new layout)
 async function insectsNow(now) {
   if (process.env.NODE_ENV === 'test' && insectHold) now = insectHold;
@@ -68,8 +68,8 @@ async function insectsNow(now) {
   const key = `${epoch}:${held}:${night}:${rain}`;
   if (key !== insectKey) {
     insectEpoch = epoch;
-    if (!insectKey || !insectKey.startsWith(`${epoch}:`)) { insectGone.clear(); insectCaught.clear(); } // (a new layout: all back)
-    insectKey = key; insectList = IslandInsects.layout(epoch, insectSpots, { at: (x, z) => ({ season: (Number.isInteger(held) ? IslandTerrain.zoneSeason(IslandTerrain.seasonZoneAt(x, z), held) : IslandTerrain.seasonAt(x, z, now)) || 'summer', night, rain }) });
+    if (!insectKey || !insectKey.startsWith(`${epoch}:`)) { insectGone.clear(); insectCaught.clear(); insectMoved.clear(); } // (a new layout: all back)
+    insectKey = key; insectList = IslandInsects.layout(epoch, insectSpots, { at: (x, z) => ({ season: (Number.isInteger(held) ? IslandTerrain.zoneSeason(IslandTerrain.seasonZoneAt(x, z), held) : IslandTerrain.seasonAt(x, z, now)) || 'summer', night, rain }) }).map((x) => ({ ...x, ...(insectMoved.get(x.id) || {}) })); // (260: the ones run off where they went)
   }
   return { epoch, list: insectList };
 }
@@ -2042,7 +2042,7 @@ const bigCatchAt = new Map(); const dailyLast = new Map(); let dailyAlways = fal
 // v1.10.44 앉기·이모트 (IDEAS ④): who sits where (first come), and the acts a pose may carry
 const SEATS = new Map([...IslandTerrain.plazaProps().seats, ...IslandFashion.SEATS].map((s) => [s.id, s])); // (v1.10.211: the 꾸미기 mirrors' two chairs)
 const seatTaken = new Map(); // seat id -> session token
-const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow']);
+const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow', ...['ready', 'sneak', 'down', 'side', 'jump', 'twist', 'miss', 'cheer', 'peek'].map((a) => `net:${a}`)]); // (v1.10.260: the net's moves seen by others)
 // v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
 // the fish shown on a catch is the server's own result, never the page's word
 const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss', 'fish:show']); // (v1.10.257 자랑: the catch held out -- the server's fish too)
@@ -4269,7 +4269,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.259' });
+    return sendJson(res, 200, { ok: true, version: '1.10.260' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6733,7 +6733,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/insects' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const now = nowMs(); const { epoch, list } = await insectsNow(now);
-    return sendJson(res, 200, { ok: true, epoch, next: (epoch + 1) * IslandInsects.EPOCH_MS - (insectHold || now), list: list.filter((b) => !insectGone.has(b.id)).map((b) => ({ ...b, name: IslandInsects.SPECIES[b.species].name })) });
+    return sendJson(res, 200, { ok: true, epoch, next: (epoch + 1) * IslandInsects.EPOCH_MS - (insectHold || now), list: list.filter((b) => !insectGone.has(b.id)).map((b) => ({ ...b, name: IslandInsects.SPECIES[b.species].name, grade: IslandInsects.SPECIES[b.species].grade })) }); // (260: a rare one notices from farther)
   }
   // one walked up to, the 잠자리채 in the bag: into the bag and the 도감, gone for everyone (once: the same request again
   // answers the same)
@@ -6770,8 +6770,15 @@ async function requestHandler(req, res) {
     const id = String((await parseJson(req)).id || ''); const b = (await insectsNow(nowMs())).list.find((x) => x.id === id); const at = plazaPresence.get(session.token);
     if (!b || insectGone.has(id)) return sendJson(res, 200, { ok: true });
     if (!at || (at.space || 'island') !== 'island' || Math.hypot(at.x - b.x, at.z - b.z) > IslandInsects.SCARE_R + 2) return sendError(res, 409, 'TOO_FAR', '멀리 있어요.');
-    insectGone.add(id); broadcastIsland('insects', { gone: [id] });
-    return sendJson(res, 200, { ok: true });
+    // v1.10.260 (docs/insect-catch-improve-20261107.md 1·3절): run off, it lands on another place of its own kind in this layout
+    // (3 m or more from where it was, 4 m from me) -- the same for everyone; a snail only hides in its shell (caught there still)
+    if (b.species === 'snail') return sendJson(res, 200, { ok: true, hid: true });
+    const r2 = (v) => Math.round(v * 100) / 100; const taken = new Set(insectList.map((x) => `${x.x},${x.z}`));
+    const spot = (insectSpots || []).filter((s) => s.type === b.type && !taken.has(`${r2(s.x)},${r2(s.z)}`)).map((s) => ({ s, d: Math.hypot(s.x - b.x, s.z - b.z) })).filter((o) => o.d >= 3 && Math.hypot(o.s.x - at.x, o.s.z - at.z) >= 4).sort((p, q) => p.d - q.d)[0]?.s;
+    if (!spot) { insectGone.add(id); broadcastIsland('insects', { gone: [id] }); return sendJson(res, 200, { ok: true }); }
+    const moved = { id, x: r2(spot.x), z: r2(spot.z), type: spot.type, ...(spot.r ? { r: r2(spot.r) } : {}) }; insectMoved.set(id, moved); Object.assign(b, moved);
+    broadcastIsland('insects', { moved: [moved] });
+    return sendJson(res, 200, { ok: true, moved });
   }
   if (pathname === '/api/island/fish/cancel' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -8824,7 +8831,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.259 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.260 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

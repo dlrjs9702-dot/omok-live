@@ -1837,7 +1837,8 @@
   const showPace = () => { walkBtn.textContent = PACE_LABEL[plaza.controller?.walkPace?.()] || '걷기'; };
   // (2회차 11: held before a piece of my house it grabs it -- the scene tells a hold from a tap)
   CONTROLS.act.el.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); CONTROLS.act.el.setPointerCapture?.(event.pointerId); plaza.controller?.actDown?.(); });
-  for (const type of ['pointerup', 'pointercancel']) CONTROLS.act.el.addEventListener(type, () => plaza.controller?.actUp?.());
+  CONTROLS.act.el.addEventListener('pointerup', () => plaza.controller?.actUp?.());
+  CONTROLS.act.el.addEventListener('pointercancel', () => (plaza.controller?.actCancel || plaza.controller?.actUp)?.()); // (총괄 #410: a cancelled touch ends the net's aim, no swing)
   walkBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); plaza.controller?.paceTap?.(); showPace(); });
   runBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); runBtn.setPointerCapture(event.pointerId); plaza.controller?.setRun?.(true); runBtn.classList.add('on'); });
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) runBtn.addEventListener(type, () => { plaza.controller?.setRun?.(false); runBtn.classList.remove('on'); });
@@ -2618,7 +2619,7 @@
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api('/api/island/insect/catch', { method: 'POST', body: JSON.stringify({ id }) });
       plaza.controller?.insectSwing?.(id); catchShow(`insect_${r.species}`, r, `${r.grade === 'rare' ? '🎉 ' : ''}${r.name} +1${r.firstTime ? ' · 도감 등록' : ''}`); /* (257 잡기 카드) */ if (r.bag) drawIslandBag(r.bag); toolWorn(r.tool, r.bag);
-    } catch (error) { showToast(error.message); if (error.status === 409) plaza.controller?.insectsGone?.([id]); }
+    } catch (error) { showToast(error.message); plaza.controller?.netFail?.(id); /* (v1.10.260: out of the bag, away) */ if (error.status === 409) plaza.controller?.insectsGone?.([id]); }
   }
   // B 45 꽃·나무 심기: a seed or the sapling into the ground where I stand; fertilizer onto the plant nearest me
   const PLANT_GOODS = { seed_flower_red: '심기', seed_flower_yellow: '심기', seed_flower_white: '심기', seed_flower_pink: '심기', seed_flower_purple: '심기', sapling: '심기', fertilizer: '비료 주기' };
@@ -4309,7 +4310,7 @@
     if (!ribbons.length && !museumBigger) { showToast(note, 2800, () => openDexCard(id)); return; } // (사용자 2026-11-03: a plain catch, no card)
     catchClose(false); catchNote = note; catchAsk += 1; catchHost();
     // (9절 자랑 장면) the catch held out in a close-up first -- the card once it is up (PC: beside me, a phone: below)
-    const insect = id.startsWith('insect_'); const showing = Boolean(plaza.controller?.showCatch?.({ kind: insect ? 'insect' : 'fish', species: r.species }, () => catchClose()));
+    const insect = id.startsWith('insect_'); const showing = Boolean(plaza.controller?.showCatch?.({ kind: insect ? 'insect' : 'fish', species: r.species, rare: insect && r.grade === 'rare' }, () => catchClose()));
     const calm = lessMotionNow(); catchCard.dataset.id = id; catchCard.className = `catchCard ${ribbons.map(([k]) => `is-${k}`).join(' ')}${calm ? ' calm' : ''}${showing ? ' withShow hidden' : ''}`;
     catchCard.querySelector('.catchRibbons').replaceChildren(...ribbons.map(([k, t]) => catchEl('span', `catchRibbon ${k}`, t)));
     for (const img of catchCard.querySelectorAll('.catchPic')) img.src = dexPic(id);
@@ -8090,7 +8091,7 @@
     if (event === 'birthdays') { birthdaySeq += 1; plaza.controller?.setBirthdays?.(parsed.names || []); return; } // B 47 생일
     if (event === 'petshop') { if (plaza.controller?.space?.() === 'petshop') refreshPetshop(); else petshopState = null; return; } // 묶음 2-2: one taken somewhere
     if (event === 'projects') { refreshProjects(); return; } // v1.10.222 섬 가꾸기: filled, saved, at its works, open
-    if (event === 'insects') { plaza.controller?.insectsGone?.(parsed.gone); return; } // 묶음 5: one caught or sent off somewhere
+    if (event === 'insects') { if (parsed.gone) plaza.controller?.insectsGone?.(parsed.gone); if (parsed.moved) plaza.controller?.insectsMoved?.(parsed.moved); return; } /* (v1.10.260: one run off, somewhere else) */ // 묶음 5: one caught or sent off somewhere
     if (event === 'soloFirst') { plaza.controller?.recordRibbon?.(parsed); recordBoardAt = 0; refreshRecordBoard(true);
       const R = window.SoloRanking; const g = R?.BY_ID[parsed.game]; if (g && document.body.classList.contains('plazaMode')) showToast(`🏆 기록의 탑 · ${g.name} 이번 주 새 1위! ${parsed.name} · ${R.format(g.id, parsed.best)}`, window.matchMedia?.('(max-width: 640px)').matches ? 2500 : 4000); /* (§1-2: the island told; a phone's covers the board -- shorter) */
       return; } // v1.10.251 기록의 탑: a new week's 1st

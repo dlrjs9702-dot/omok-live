@@ -7355,98 +7355,98 @@
     },
     {
       "out": "insects-v1/insect_butterfly_blue.glb",
-      "src": "insects62:01. High/insect_butterfly_blue.glb",
-      "sha256": "253b09e43a976b25efd3079090a671f2b52f53b14c3fcc26bca8b2ed2f435fe2",
-      "lowSrc": "insects62:02. Low/insect_butterfly_blue_low.glb",
-      "lowSha256": "5f90f339a450c0c5625ac78bb622ea5c1022337bff8072e4e8e786a5ece82486",
+      "src": "insect103:01. High/insect_butterfly_blue.glb",
+      "sha256": "05883a42f953524bbca053dcd81870be83877fe818588a92a1abd6eef607a5f9",
+      "lowSrc": "insect103:02. Low/insect_butterfly_blue_low.glb",
+      "lowSha256": "748e51dc5998c7f18bc3ebb6519673491e45b1f0cea34cc2ea01dfa41abe3aa3",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_butterfly_cabbage.glb",
-      "src": "insects62:01. High/insect_butterfly_cabbage.glb",
-      "sha256": "8f188575dd0e99b1d5c51ee604d1dce98c147a0ad6eff78d377f8c3db2218bff",
-      "lowSrc": "insects62:02. Low/insect_butterfly_cabbage_low.glb",
-      "lowSha256": "a8bec24bc89d354517a555c43c38ba9eb4428bef7646014d04a40e8381f358ad",
+      "src": "insect103:01. High/insect_butterfly_cabbage.glb",
+      "sha256": "c1f3b17704e9465d7e8f8f2de2390b7f2032cdb830232caa41a0daaf7fad06a9",
+      "lowSrc": "insect103:02. Low/insect_butterfly_cabbage_low.glb",
+      "lowSha256": "03c6dd64cced0d607762c21d0644eeef389d8d202ecada2e95bc91c34bf2d491",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_butterfly_swallowtail.glb",
-      "src": "insects62:01. High/insect_butterfly_swallowtail.glb",
-      "sha256": "a3f47478de166ab22f5f8606a62d8d1ce079cfa043342bad47a777344d721b52",
-      "lowSrc": "insects62:02. Low/insect_butterfly_swallowtail_low.glb",
-      "lowSha256": "a186f63b9bee544c0caac9933b5db06afda4134d431415cd276679c8f41a8c81",
+      "src": "insect103:01. High/insect_butterfly_swallowtail.glb",
+      "sha256": "aa3ce75232caa474ae7af2e6f6f8fc36ef7013f412dbe788295b19ac752ab827",
+      "lowSrc": "insect103:02. Low/insect_butterfly_swallowtail_low.glb",
+      "lowSha256": "06e5d084c99e064776554993aee288c1d1849d0760532190c9cd6a48ec5017be",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_cicada.glb",
-      "src": "insects62:01. High/insect_cicada.glb",
-      "sha256": "c45060b0cf125a4aa56698c2f16198b82adb13f679c42b0b3821f5285e9649de",
-      "lowSrc": "insects62:02. Low/insect_cicada_low.glb",
-      "lowSha256": "20bc6412be390536774af6aacbe93ac73e23ad4da6fb5553e0219e24f4f7da19",
+      "src": "insect103:01. High/insect_cicada.glb",
+      "sha256": "9e560ca8b68ae0a31a765b44f599f4fc8076e2bd1ef3ec5efe4a317f13406333",
+      "lowSrc": "insect103:02. Low/insect_cicada_low.glb",
+      "lowSha256": "c215ee3818a1c907dd39cb7f895353efbb805b5d7f7b09c7d39ea887cf7e569f",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_dragonfly_emperor.glb",
-      "src": "insects62:01. High/insect_dragonfly_emperor.glb",
-      "sha256": "4c43bb77de620d26548c1502d8815be2d3b7c545077de2d3291271488dbf5e69",
-      "lowSrc": "insects62:02. Low/insect_dragonfly_emperor_low.glb",
-      "lowSha256": "3fa60c442ad275c6fbbe4d26620643602f108d4afe145ae04c13064e0070afbd",
+      "src": "insect103:01. High/insect_dragonfly_emperor.glb",
+      "sha256": "39cf5048b85b82ef67a737cefa42bac45f46d03906bde3098af8fbbc0b07f9dd",
+      "lowSrc": "insect103:02. Low/insect_dragonfly_emperor_low.glb",
+      "lowSha256": "8fa3926124e78e6e8c9620cf3038432a368ee60a5a3dfe0c0653acebf4265205",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_dragonfly_red.glb",
-      "src": "insects62:01. High/insect_dragonfly_red.glb",
-      "sha256": "5a42a800fe8da45692fcffb8170612240ec52f936f4ea03305be8efecce1451a",
-      "lowSrc": "insects62:02. Low/insect_dragonfly_red_low.glb",
-      "lowSha256": "907a53c96667c4e51fefa821b48bd11ff960234ee87f1c7131169abc338b2bfd",
+      "src": "insect103:01. High/insect_dragonfly_red.glb",
+      "sha256": "c77c678c9f62d51eebbd6d9db1b898d45c6c080fc15d251b3d6264ebdfa103f2",
+      "lowSrc": "insect103:02. Low/insect_dragonfly_red_low.glb",
+      "lowSha256": "fdadaaa89ae45d322523961bd69ba277e15eb9e618158a586cc4dca4b3db2b5b",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_firefly.glb",
-      "src": "insects62:01. High/insect_firefly.glb",
-      "sha256": "5842d3b566c76f547b19ffa00f9653c9f8c8490677cf5328429a6efcdff8a7ce",
-      "lowSrc": "insects62:02. Low/insect_firefly_low.glb",
-      "lowSha256": "ec7deb225535b0393455cbe24daba909b97e0c6375f77dc788bd48f0bb490d5f",
+      "src": "insect103:01. High/insect_firefly.glb",
+      "sha256": "5485a1e9e17fe60fc67c60fcc2f720f8278b192d1f6005ea99a8164dafc400a2",
+      "lowSrc": "insect103:02. Low/insect_firefly_low.glb",
+      "lowSha256": "26e717759aeb7de131c67d586ba273c5e0687569e6d33f2f4d7052e8f60e810e",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_grasshopper.glb",
-      "src": "insects62:01. High/insect_grasshopper.glb",
-      "sha256": "0e7a2264c5c0d4a8423563a887eca1f026b86c8653a80874dc313692c3f0f70b",
-      "lowSrc": "insects62:02. Low/insect_grasshopper_low.glb",
-      "lowSha256": "d10ece40eaa90dc621b98e870c83ee7516f3c3e1ca263b9a5487130cf5cafb01",
+      "src": "insect103:01. High/insect_grasshopper.glb",
+      "sha256": "6feaf8ce0c2a3c9629e008bf59d2d23bc26114da07d16b1e817cba3e16f421c8",
+      "lowSrc": "insect103:02. Low/insect_grasshopper_low.glb",
+      "lowSha256": "252c0f46d4af2883bb0bd1d79c536aab52a47aed888ebf98fb3908ec42851b7c",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_ladybird.glb",
-      "src": "insects62:01. High/insect_ladybird.glb",
-      "sha256": "5b42d54ae12c0c83b595aad612772a6e679a93ce1783e5c59a00f78bbc95677d",
-      "lowSrc": "insects62:02. Low/insect_ladybird_low.glb",
-      "lowSha256": "03d0414abe36757c9d0e8adfb009424e6cffa01ceb9ad33ab22f1797df765541",
+      "src": "insect103:01. High/insect_ladybird.glb",
+      "sha256": "a1ec23fb11e5e05e31010beabc9782fb702f76ea549b9bc2a07c9a2dfce2b4c2",
+      "lowSrc": "insect103:02. Low/insect_ladybird_low.glb",
+      "lowSha256": "6e7528ce42272317f15997d2863763120c1df4265027e867ffaba8969e0d7cbd",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_rhinoceros_beetle.glb",
-      "src": "insects62:01. High/insect_rhinoceros_beetle.glb",
-      "sha256": "edffd6aaead8c431576578c6f11f7325cb569498dc9db0fa47d02542cd5ff216",
-      "lowSrc": "insects62:02. Low/insect_rhinoceros_beetle_low.glb",
-      "lowSha256": "0d40a278831d87dd0916c86ba65b9ffe181d3d62f78a824a55f9d5fe3daf3c11",
+      "src": "insect103:01. High/insect_rhinoceros_beetle.glb",
+      "sha256": "fac90890e2f6973fe7a0bb97d204d3125697b3c03ff91ad3e1c50a0bf48d0bd2",
+      "lowSrc": "insect103:02. Low/insect_rhinoceros_beetle_low.glb",
+      "lowSha256": "da50766ac83404567fb5a1b9ba8de8157163a81ebec6647a5e5a953df916da87",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_snail.glb",
-      "src": "insects62:01. High/insect_snail.glb",
-      "sha256": "8ecae137898dada5bd37165d8cf60ffeab24447cfa2a35469fa08d3b8c264ca7",
-      "lowSrc": "insects62:02. Low/insect_snail_low.glb",
-      "lowSha256": "46d52874fee65467603ed35fc0a1a30ec33c011f5cae5eb9e5c2d506fc4a31d3",
+      "src": "insect103:01. High/insect_snail.glb",
+      "sha256": "9cc357a2f457a326515bb1021adbfa8a17599d92db65eb90f2822a700d0bc132",
+      "lowSrc": "insect103:02. Low/insect_snail_low.glb",
+      "lowSha256": "0e97c9998a448a7119be6cc7ea6e473b3013acce98249ae0759d0a8d4a5d593e",
       "precompressed": true
     },
     {
       "out": "insects-v1/insect_stag_beetle.glb",
-      "src": "insects62:01. High/insect_stag_beetle.glb",
-      "sha256": "3fefa5812251db9eac63babc02f5650e98be23ec374d2cd25d99d0c0fcf95601",
-      "lowSrc": "insects62:02. Low/insect_stag_beetle_low.glb",
-      "lowSha256": "8d247fb7a5cd46c4466fa42702bc9a4581523bd42383b9a863c6f690ab42f7c5",
+      "src": "insect103:01. High/insect_stag_beetle.glb",
+      "sha256": "a022156eb277bb29522f7ff4e291c699e0ddd9c0caa00466124cee2a9e340113",
+      "lowSrc": "insect103:02. Low/insect_stag_beetle_low.glb",
+      "lowSha256": "4b0aa21f6acfbee7a862ab8939b6459db296b65374a44bb16f90f4f5cd3bd534",
       "precompressed": true
     },
     {
@@ -9296,6 +9296,95 @@
       "lowSrc": "freshfish93:Low/fish_aucha_perch_low.glb",
       "lowSha256": "f8c1801694cec290269736239b00570d85038f9a5147680327a7bbbb0fe88757",
       "precompressed": true
+    },
+    {
+      "out": "characters/motions/NetSneak.glb",
+      "src": "insect103:01. High/motions/NetSneak.glb",
+      "sha256": "7b23e1c610af04e7f3fcfba6ad63c8cdc3c2e2a3adbed6f0ad49ba7cc929b2f3"
+    },
+    {
+      "out": "characters/motions/NetReady.glb",
+      "src": "insect103:01. High/motions/NetReady.glb",
+      "sha256": "fa5ae52c490a4f625e45e8763080ec04fd6acbd6e9338c88ee62b1faf260b993"
+    },
+    {
+      "out": "characters/motions/NetSwingDown.glb",
+      "src": "insect103:01. High/motions/NetSwingDown.glb",
+      "sha256": "563a3b3de45de5bff33bc7287a90be0c42e21f4c89777098abfaae08ae4a399e"
+    },
+    {
+      "out": "characters/motions/NetSwingSide.glb",
+      "src": "insect103:01. High/motions/NetSwingSide.glb",
+      "sha256": "11ca6ee7ac85c9b86ae086f3f6e66fed49b50d93612d634d75ad1d9d380707e3"
+    },
+    {
+      "out": "characters/motions/NetJumpSwing.glb",
+      "src": "insect103:01. High/motions/NetJumpSwing.glb",
+      "sha256": "511ab3d11c4675c24f963893f70f67449f2356b97c16037cfe95d6b16fb1488e"
+    },
+    {
+      "out": "characters/motions/NetTwist.glb",
+      "src": "insect103:01. High/motions/NetTwist.glb",
+      "sha256": "ac92ede01eb537fd1fdb5e74a7b0ca40cce5370d34051d1c7679658c4d286307"
+    },
+    {
+      "out": "characters/motions/NetPeek.glb",
+      "src": "insect103:01. High/motions/NetPeek.glb",
+      "sha256": "187cd06e8fc9ed8b6daf36854d3496deeef47ef4b3dc291c3bb4c7ff2355b1e4"
+    },
+    {
+      "out": "characters/motions/NetMiss.glb",
+      "src": "insect103:01. High/motions/NetMiss.glb",
+      "sha256": "f789f4e39d562056c88ad86b5ef115a7b955601869be6bb1ef61ecade98a6ee4"
+    },
+    {
+      "out": "characters/motions/NetCheer.glb",
+      "src": "insect103:01. High/motions/NetCheer.glb",
+      "sha256": "48bbeec66ce9c2d5f983b13db55bd6726e761d82eab67d46bdc886daa5aa3549"
+    },
+    {
+      "out": "together-v1/tool_bugnet_v2.glb",
+      "src": "insect103:01. High/tool_bugnet_v2.glb",
+      "sha256": "c1736c09715555782b0e1819e9d90c06088abc6dbd046ab09c7fc05e35b27ed2",
+      "lowSrc": "insect103:02. Low/tool_bugnet_v2_low.glb",
+      "lowSha256": "c8d8fb99001ac2f57227987ba776024ca26df640aee25943175d8fd2a701b46b",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/fx_leaf_puff.glb",
+      "src": "insect103:01. High/fx_leaf_puff.glb",
+      "sha256": "51f721c26bef487c4c8cdde6de40bba03dabb91bc1ba7dcf39dd7c6afae6115e",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/fx_pollen_burst.glb",
+      "src": "insect103:01. High/fx_pollen_burst.glb",
+      "sha256": "91f8bfcbfc33a213d0c2148f920902827c37513c71636536f7e4470e6419310a",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/fx_dust_puff.glb",
+      "src": "insect103:01. High/fx_dust_puff.glb",
+      "sha256": "537eae6d90d1024c36af9e359c01e3d39c2f96d93dbde410d5f05a81e0eb6637",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/fx_net_swoosh_down.glb",
+      "src": "insect103:01. High/fx_net_swoosh_down.glb",
+      "sha256": "f9a22ae10e34879880d597c49cc23dab90938b97f4fb5df110a4536afc9a43ca",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/fx_net_swoosh_side.glb",
+      "src": "insect103:01. High/fx_net_swoosh_side.glb",
+      "sha256": "5870eb5433304a8dbe78f6a5a39cab68b70a156eb1cb24ec07cf3bb5f4005e3a",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/fx_net_swoosh_up.glb",
+      "src": "insect103:01. High/fx_net_swoosh_up.glb",
+      "sha256": "4fff75d4aa52c39a4576d09744a4641b7e67b00ad0feb40efda6f20725e177f2",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9373,6 +9462,7 @@
     "bare104": "104. Game Island garden long bare 2026-11-06",
     "show97": "97. Game Island show catch moves 2026-11-04",
     "bigfish91": "91. Game Island big fish 9 2026-11-03",
-    "freshfish93": "93. Game Island freshwater fish 7 2026-11-03"
+    "freshfish93": "93. Game Island freshwater fish 7 2026-11-03",
+    "insect103": "103. Game Island insect catch 2026-11-06"
   }
 }
