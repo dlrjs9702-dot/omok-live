@@ -1948,6 +1948,15 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .reflexModes{grid-template-columns:1fr 1fr}
 .reflexLevel{padding:12px 6px;background:#0f172a;color:#f8fafc;border:1px solid #334155;font-size:.85rem}
 .reflexLevel[aria-checked="true"]{background:#2563eb;color:#fff;border-color:#2563eb}
+/* v1.10.256 관리자 저장 공간: one line and a bar (orange past 80 %, red past 90 %), the biggest tables when opened */
+.adminStorage{margin:8px 0;padding:8px 12px;border-radius:12px;background:#0f172a;border:1px solid #334155}
+.adminStorage summary{display:flex;align-items:center;gap:10px;cursor:pointer;flex-wrap:wrap}
+.adminStorage summary span{font-weight:800;color:#cbd5e1}
+.adminStorageBar{flex:1;min-width:120px;height:8px;border-radius:99px;background:#1e293b;overflow:hidden;display:block}
+.adminStorageBar b{display:block;height:100%;width:0;background:#22c55e}
+.adminStorage[data-level="orange"] .adminStorageBar b{background:#f59e0b}.adminStorage[data-level="orange"] strong{color:#f59e0b}
+.adminStorage[data-level="red"] .adminStorageBar b{background:#ef4444}.adminStorage[data-level="red"] strong{color:#ef4444}
+.adminStorageTables{margin:8px 0 0;padding-left:20px;color:#cbd5e1;font-size:.85rem;line-height:1.6}
 /* v1.10.255 두더지 잡기 「헬」: four pills a row, the hell one red with a flame (in the light theme too), its one line; the
    HUD's hearts, a lost one empty with a shake */
 .reflexLevels:has(>.reflexLevel:nth-child(4)){grid-template-columns:repeat(4,1fr)}

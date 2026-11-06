@@ -13,12 +13,12 @@ const PASSWORD = 'look-test';
 // walker's place on the wrong round. The same hours here, as the server and every screen)
 require('../public/plaza/island-npcs').setPhaseOf((ms) => { const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; });
 
-async function boot(t, dir) {
+async function boot(t, dir, env = {}) { // (env: more of the server's environment -- v1.10.256 its own address)
   const port = await require('./free-port')(); // v1.10.77: claimed, never shared across parallel test files
   const base = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: PASSWORD, NODE_ENV: 'test' },
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: PASSWORD, NODE_ENV: 'test', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let logs = '';

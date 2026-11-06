@@ -844,7 +844,23 @@ const dropDevices = (keep) => worldEdit(async () => {
 // keys from the environment -- none, no push); a new line goes to the members not looking at the messenger now. Under
 // tests nothing is sent: what would be is kept for the test to read.
 const vapid = WebPush.vapidFromEnv(); const testPushes = [];
+// v1.10.256 주소 옮기기 (14절): a subscription made on another address -- the old one, or before 256 (no `from`) -- still
+// reaches (the same VAPID keys) till 7 days after this server first meets one, then goes; one of the same account and
+// device name made here drops it at once (the same notice twice). Only where the server knows its own address.
+const SITE = (() => { const u = process.env.RENDER_EXTERNAL_URL || (process.env.RENDER_EXTERNAL_HOSTNAME && `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`) || process.env.PUBLIC_BASE_URL; try { return u ? new URL(u).origin : null; } catch { return null; } })();
+const OLD_SITE = (() => { try { return new URL(process.env.OLD_SITE || 'https://omok-live.onrender.com').origin; } catch { return null; } })(); // (the address before island-dalmaru)
+const OLD_PUSH_MS = 7 * 24 * 60 * 60 * 1000;
+const pushOld = (s) => Boolean(SITE) && (s.from || OLD_SITE) !== SITE;
+let oldPushGone = false; // (총괄 #406: none left -- no more looking each message; a restart looks once again)
+async function pruneOldPush() { // (inside worldEdit) the old ones past their 7 days go
+  const all = (await pointStore.worldValue('messengerPush')) || []; if (!all.some(pushOld)) { oldPushGone = true; return all; }
+  let since = await pointStore.worldValue('pushMovedAt'); if (!since) { since = nowMs(); await pointStore.setWorldValue('pushMovedAt', since); console.log(`[push-move] 옛 주소 구독 ${all.filter(pushOld).length}개: 7일 뒤 지워요`); }
+  if (nowMs() - since < OLD_PUSH_MS) return all;
+  const kept = all.filter((s) => !pushOld(s)); await pointStore.setWorldValue('messengerPush', kept); console.log(`[push-move] 옛 주소 구독 ${all.length - kept.length}개 지움`);
+  oldPushGone = true; return kept;
+}
 async function pushNew(room, from, fromLabel, text) {
+  if (SITE && !oldPushGone) await worldEdit(pruneOldPush).catch((error) => console.warn('[push-move]', error.message));
   const { to, payload } = WebPush.pushFor(room, from, fromLabel, text);
   // (메신저 3절 4, 사용자 「폰에도 보내」: each device on its own -- the one with the messenger open now shows it itself, the others are pushed)
   const looking = new Set([...messengerStreams.values()].flatMap((set) => [...set].map((r) => r.device).filter(Boolean)));
@@ -4245,7 +4261,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.255' });
+    return sendJson(res, 200, { ok: true, version: '1.10.256' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4415,7 +4431,9 @@ async function requestHandler(req, res) {
       const body = await parseJson(req); const sub = { endpoint: String(body.endpoint || ''), p256dh: String(body.p256dh || ''), auth: String(body.auth || '') };
       if (!WebPush.allowedEndpoint(sub.endpoint) || sub.endpoint.length > 1000 || Buffer.from(sub.p256dh, 'base64url').length !== 65 || Buffer.from(sub.auth, 'base64url').length !== 16) return sendError(res, 400, 'BAD_SUBSCRIPTION', '알림 등록 정보가 올바르지 않습니다.');
       await worldEdit(async () => { // (Codex 10판 ③: one edit -- a 「안 받기」 between can't leave push with no subscription)
-        await pointStore.setWorldValue('messengerPush', [...((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== acct.device && s.endpoint !== sub.endpoint), { ...sub, keyId: key.id, device: acct.device, at: nowMs() }]);
+        const names = new Map((await devicesNow()).map((d) => [d.id, d.name])); const myName = names.get(acct.device);
+        const oldTwin = (s) => pushOld(s) && s.keyId === key.id && names.get(s.device) === myName; // (256: this device's old-address one, by its name)
+        await pointStore.setWorldValue('messengerPush', [...((await pointStore.worldValue('messengerPush')) || []).filter((s) => s.device !== acct.device && s.endpoint !== sub.endpoint && !oldTwin(s)), { ...sub, keyId: key.id, device: acct.device, at: nowMs(), ...(SITE ? { from: SITE } : {}) }]);
         await deviceAlertNow(acct.device, 'push'); /* (10절: a subscription is the device's wish to be told when shut) */ });
       return sendJson(res, 200, { ok: true });
     }
@@ -8083,6 +8101,10 @@ async function requestHandler(req, res) {
     if (!requireAdmin(req, res)) return;
     return sendJson(res, 200, await adminPresenceSnapshot());
   }
+  if (pathname === '/api/admin/storage' && req.method === 'GET') { // v1.10.256 저장 공간 보기 (lib/storage-report.js)
+    if (!requireAdmin(req, res)) return;
+    return sendJson(res, 200, { ok: true, ...(await storageReport()) });
+  }
 
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
@@ -8620,9 +8642,13 @@ async function requestHandler(req, res) {
   }
 
   if (req.method === 'GET') {
-    if (pathname === '/') return browserBlocked(req) ? sendChromeOnly(res) : sendIndex(res, {});
-    if (pathname === '/herosurv') { res.writeHead(301, securityHeaders({ Location: '/herosurv/' })); return res.end(); }
-    if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
+    // v1.10.256 (15절): the island app lives under /island/ (its manifest's scope) so the messenger (/messenger) is outside it
+    // and installs as an app of its own; the old ways in go there, their query along
+    const moveTo = { '/': '/island/', '/island': '/island/', '/herosurv': '/island/herosurv/', '/herosurv/': '/island/herosurv/', '/island/herosurv': '/island/herosurv/' }[pathname];
+    if (moveTo) { res.writeHead(pathname === '/' ? 302 : 301, securityHeaders({ Location: `${moveTo}${url.search}` })); return res.end(); }
+    if (pathname === '/island/') return browserBlocked(req) ? sendChromeOnly(res) : sendIndex(res, {});
+    if (pathname === '/island/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
+    if (pathname.startsWith('/island/herosurv/') && await serveStatic(res, pathname.slice('/island'.length), req)) return; // (the engine's worklets, asked for beside its page)
     // 메신저 단독 창 ①: its own light page (no game code) -- not behind the Chrome gate (no 3D: Safari's home-screen app too)
     if (pathname === '/messenger' || pathname === '/messenger.html') { // (v1.10.233: its photos shown from the page's own blobs)
       // (메신저 정리 12절) ?embed=1 is the island app's 서랍: framed by our own page only -- the page alone stays unframable
@@ -8641,7 +8667,18 @@ async function requestHandler(req, res) {
   return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
 }
 
+// v1.10.256 저장 공간: the database's (the point store's pool) or the data folder's files; a log line once a day (a warning past 80 %)
+const StorageReport = require('./lib/storage-report');
+const storageReport = () => (pointStore?.pool ? StorageReport.pgReport(pointStore.pool) : StorageReport.fileReport(DATA_DIR));
+let storageLoggedDay = null;
+async function storageLog() {
+  const day = new Date(nowMs() + 9 * 3600000).toISOString().slice(0, 10); if (storageLoggedDay === day) return;
+  const { line, warn } = StorageReport.logLine(await storageReport()); storageLoggedDay = day; (warn ? console.warn : console.log)(line);
+}
+
 async function main() {
+  // v1.10.256 주소 옮기기: the old service, MOVED_TO set, only points to the new address -- before any store opens the database
+  if (process.env.MOVED_TO) return require('./lib/moved').startMoved({ to: process.env.MOVED_TO, port: PORT, host: HOST });
   await fsp.mkdir(DATA_DIR, { recursive: true });
   codeRevs = buildCodeManifest(PUBLIC_DIR, VENDOR_FILES);
   ({ html: indexTemplate, csp: importMapCsp } = prepareIndex(await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8'), codeRevs));
@@ -8740,6 +8777,7 @@ async function main() {
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(sweepInputIdle, 60 * 1000).unref(); // v1.10.35
+  setInterval(() => storageLog().catch((error) => console.warn('[storage]', error.message)), 60 * 60 * 1000).unref(); storageLog().catch(() => {}); // v1.10.256 (hourly look, a line a day)
   setInterval(() => refundOrphanEntries('orphan-sweep').catch(error => console.error('참가 포인트 정기 정리 실패:', error.message)), 60_000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickHalliRooms().catch(error => console.error('할리갈리 전적 처리 오류:', error)), 100).unref();
@@ -8747,7 +8785,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.255 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.256 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
