@@ -15,7 +15,7 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·최고 기록
 
   // a round left in the middle: back to the game, nothing reported
   await page.locator('.reflexCard', { hasText: '두더지 잡기' }).click();
-  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움', '보통', '어려움']);
+  await expect(page.locator('.reflexLevel')).toHaveText(['쉬움', '보통', '어려움', '헬']);
   await page.locator('.reflexGo').click();
   await expect(page.locator('#hud')).toBeVisible();
   await page.locator('#reflexQuitBtn').click();
@@ -54,6 +54,47 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·최고 기록
   if (isMobile) await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
   else await page.keyboard.press('Escape');
   await expect(page.locator('#reflexView')).toBeHidden();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.255 두더지 잡기 「헬」 (docs/whack-hell-20261106.md): the red pill and its line, its own how-to; the round with five
+// hearts -- a miss one, a bomb two (the game's test hooks), ten caught a stage up with its banner, the last hearts gone: the
+// result with the stage reached, and the record kept apart (whack.hell). PC (the phone only for its photos)
+test('두더지 헬: ♥5 → 놓침 −1 → 폭탄 −2 → 10마리 단계 2 → 끝, 결과 「도달 단계」·헬 기록 따로', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile && !process.env.SHOT_DIR, 'PC 전용 검증 (폰은 사진만)');
+  test.setTimeout(120000);
+  const a = await shopper(browser, request, isMobile ? '헬두더지m' : '헬두더지'); const { page, token } = a;
+  const shot = async (n) => { if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-hell-${n}.png` }); };
+  await page.locator('[data-game-mode="single"]').click();
+  await page.locator('#soloReflexBtn').click();
+  await page.locator('.reflexCard', { hasText: '두더지 잡기' }).click();
+  await page.locator('.reflexLevel', { hasText: '헬' }).click();
+  await expect(page.locator('.reflexLevel[data-level="hell"]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.reflexLevelNote')).toHaveText('목숨 5개로 끝까지 · 놓치면 ♥−1, 폭탄 ♥−2 · 갈수록 빨라져요');
+  await expect(page.locator('.reflexHow')).toContainText('놓치면 ♥−1 · 폭탄을 누르면 ♥−2'); await shot('start');
+  await page.locator('.reflexGo').click();
+  const peek = () => page.evaluate(async () => (await import('/reflex/js/engine.js')).E.game?.peek?.());
+  const hook = (kind) => page.evaluate(async (k) => (await import('/reflex/js/engine.js')).E.game.test(k), kind);
+  await expect.poll(async () => (await peek())?.lives, { timeout: 10000 }).toBe(5);
+  // (더하기) 3·2·1 first: nothing comes up meanwhile
+  await page.waitForTimeout(300); await shot('countdown');
+  for (let p = await peek(); p.ready > 0; p = await peek()) { expect(p.up, '3·2·1 동안 구멍 비어 있음').toBe(0); await page.waitForTimeout(250); }
+  await hook('calm'); await page.waitForTimeout(800); // (no real moles from here: only the hooks; 「시작!」 gone)
+  await expect(page.locator('#hudLives svg')).toHaveCount(5); await expect(page.locator('#hudRight')).toHaveText('♥ 5');
+  await shot('hud');
+  await hook('miss'); expect((await peek()).lives).toBe(4); await expect(page.locator('#hudLives svg.off')).toHaveCount(1);
+  await hook('bomb'); expect((await peek()).lives).toBe(2); await expect(page.locator('#hudRight')).toHaveText('♥ 2');
+  for (let k = 0; k < 10; k += 1) await hook('hit');
+  expect(await peek()).toMatchObject({ hits: 10, stage: 1, score: 100, combo: 10, maxCombo: 10 }); await expect(page.locator('#banner')).toContainText('단계 2!'); await shot('combo');
+  await page.waitForTimeout(4000); // (the server: ten moles take at least 4.4 s to come up)
+  if (process.env.SHOT_DIR) { await hook('bomb10'); await page.waitForTimeout(700); await shot('bomb10'); } // (the photo: a 단계 10 bomb by a mole)
+  await hook('miss'); await hook('miss');
+  await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('#reflexResult')).toContainText('도달 단계'); await expect(page.locator('#reflexResult')).toContainText('잡은 두더지'); await expect(page.locator('#reflexResult')).toContainText('최대 콤보');
+  await expect(page.locator('.reflexScore')).toHaveText(/^100/);
+  await page.waitForTimeout(800); await shot('result');
+  await expect.poll(async () => (await get(request, '/api/solo/reflex', token)).data.records.whack?.hell?.best ?? null, { timeout: 10000 }).toBe(100);
   await expectNoScriptError(page);
   await a.context.close();
 });
