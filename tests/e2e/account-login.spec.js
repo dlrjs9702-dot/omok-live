@@ -89,7 +89,7 @@ test('아이디 없는 입장 파일 계정: 아이디·비밀번호 설정 뒤�
   await expect(page2.locator('#accountPanel')).toBeVisible({ timeout: 15000 });
   await expect(page2.locator('#accountSub')).toHaveText(`아이디 ${id}`);
   await expect(page2.locator('#lobbyView')).toBeHidden();
-  expect(new URL(page2.url()).pathname).toBe('/');
+  expect(new URL(page2.url()).pathname).toBe('/island/'); // (v1.10.256 주소 15절: the island app's own address)
   await page2.getByRole('button', { name: '게임 접속' }).click();
   await expect(page2.locator('body')).toContainText('이미 사용 중');
   await context.close();

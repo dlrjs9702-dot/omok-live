@@ -37,7 +37,7 @@ async function macUser(browser, request, label, gl = 'ok', omitMotionScript = fa
   await context.addInitScript(MAC_HINTS);
   await context.addInitScript(GL_SWITCH);
   if (prepareContext) await prepareContext(context);
-  if (omitMotionScript) await context.route(url => url.pathname === '/' || url.pathname === '/guest-entry', async route => {
+  if (omitMotionScript) await context.route(url => url.pathname === '/island/' || url.pathname === '/guest-entry' /* (v1.10.256: the island page's address) */, async route => {
     const response = await route.fetch();
     const html = (await response.text()).replace(/<script\b[^>]*src="\/plaza\/remote-motion\.js[^"\n]*"[^>]*><\/script>/g, '');
     await route.fulfill({ response, body: html });
