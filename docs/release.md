@@ -38,7 +38,7 @@
 9. **병합**: 사용자 승인 범위 안에서 Ready for review로 바꾼 뒤 squash 병합한다(기존 관례). 검사가 아직 돌고 있으면 GitHub 자동 병합(squash)을 걸어 통과 즉시 병합되게 할 수 있다(저장소 「Allow auto-merge」 켬, 2026-10-11) — 자동 병합 뒤에도 10단계 배포 확인은 따로 한다. **문서만 바뀐 PR**(바뀐 파일이 모두 `*.md`, 사용자 결정 2026-10-11)은 검사를 기다리지 않고 관리자 우회로 바로 병합한다: `gh pr merge N --admin --squash --subject "… [skip render]"`. 코드가 하나라도 섞인 PR에는 우회를 쓰지 않는다. 화면·동작이 바뀌는 묶음은 `STATUS.md`를 `확인대기`로 두고 사용자가 체크리스트를 확인한 뒤 병합한다(일부 번호만 고쳐 달라고 하면 그 번호만 고치고 다시 확인). 사용자가 "확인 없이 올려"라고 했거나 눈으로 볼 변경이 없으면 바로 진행한다(AGENTS.md §4). 코드 변경이 있으면 병합 커밋에 `[skip render]`를 넣지 않는다. 문서만 바뀐 PR은 **실제 병합 커밋 메시지**에 `[skip render]`를 넣는다.
 10. **배포 확인**(AGENTS §6): Render 서비스 `omok-live`의 배포 기록을 직접 조회한다.
     - 새 main SHA의 배포가 `live`, 로그에 `omok-live@X.Y.Z start`·`게임 서버 vX.Y.Z 실행`·저장소 PostgreSQL 줄
-    - 운영 `https://omok-live.onrender.com/health`가 `{"ok":true,"version":"X.Y.Z"}`
+    - 운영 `https://island-dalmaru.onrender.com/health`가 `{"ok":true,"version":"X.Y.Z"}`
     - 문서 PR은 배포 대신 Render에 건너뛰기(`commit_ignored`) 기록을 확인한다.
 11. **마무리**: 로컬 `main`을 pull하고 작업 브랜치를 `git branch -d`로 지운다(squash라 경고가 나와도 원격 병합 확인 후 삭제되면 정상). 비공개 `STATUS.md`의 항목을 `최근 완료` 맨 위로 옮기고(최신 3개만 유지, 넘치는 것은 `archive/STATUS-이력.md` 맨 위로) `진행 중`을 정리해 푸시한다. 이번 릴리스로 남은 일이 하나도 없게 된 비공개 `IDEAS.md` 절은 `archive/IDEAS-완료-이력.md`로 옮기고(일부만 끝난 절은 완료 표시만, 계속 유효한 규칙·경제 기준은 `reference/게임-규칙-경제.md`로), 옮긴 절을 가리키는 링크를 고친다.
 12. **다음 묶음**: 운영 `/health`로 출시를 확인하면 같은 턴에서 origin/main으로 다음 묶음 가지를 만들고 첫 작업까지 시작한다. 출시 보고는 그 뒤에 「X 시작했어요(가지 이름)」로 보낸다. 다음 묶음을 모르거나 막히면 멈추지 말고 총괄에게 물은 뒤 기다린다(사용자 「통과 배포되면 바로 이어서 시작해」). 같은 규칙이 묶음 안의 단계 사이에도 적용된다: 한 단계를 끝내도 턴을 닫지 않고 다음 단계로 이어 가, 사진까지 모아 draft PR을 올리고 검토를 요청할 때까지 계속한다(1.10.244 U2가 1단계 뒤 4시간 멈춤).

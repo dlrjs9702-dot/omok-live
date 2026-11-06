@@ -24,9 +24,10 @@ test('설명 글: 물고기·곤충 모두, 줄 길이, 곳·때는 표에서', 
     for (const l of n.story) assert.ok(l.length <= 46, `${id} ${l.length}: ${l}`);
     const w = N.whereText(N.whereOf(id)); assert.ok(w.length > 3, id); assert.doesNotMatch(n.line + n.story.join(''), /\d+ ?cm|\d+P/, `${id}: 곳·때·크기·값은 글에 안 씀`);
   }
-  assert.equal(N.whereText(N.whereOf('fish_squid')), '바깥 바다 여름·가을 · 윤슬만 여름·가을 · 밤');
-  assert.equal(N.whereText(N.whereOf('fish_sturgeon')), '거울호수 가을·겨울 · 낮·밤');
-  assert.equal(N.whereText(N.whereOf('insect_snail')), '섬 풀밭 봄·여름·가을 · 비 올 때');
+  assert.equal(N.whereText(N.whereOf('fish_squid')), '바깥 바다·윤슬만 · 여름·가을 · 밤'); // (총괄 #407: the waters of the same seasons together)
+  assert.equal(N.whereText(N.whereOf('fish_sturgeon')), '거울호수 · 가을·겨울 · 낮·밤');
+  assert.equal(N.whereText(N.whereOf('insect_snail')), '섬 풀밭 · 봄·여름·가을 · 비 올 때');
+  assert.equal(N.whereText({ places: [{ place: '강', seasons: '봄' }, { place: '거울호수', seasons: '여름' }, { place: '폭포 웅덩이', seasons: '봄' }], when: '낮·밤' }), '강·폭포 웅덩이 · 봄 / 거울호수 · 여름 · 낮·밤');
   assert.equal(N.whereOf('fish_nope'), null);
 });
 
