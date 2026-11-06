@@ -69,7 +69,7 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
     for (let i = 0; i < 81; i += 1) if (!mines.has(i)) { const r = (await post(request, '/api/solo/minesweeper/act', token, { id: g.id, action: 'open', x: i % 9, y: Math.floor(i / 9) })).data; if (r.view.status === 'won') break; }
   }
   await islandPage(page, ['gamehall.record_tower']);
-  await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().recordTower(); return [t.bulbs, t.flags >= 2, t.faces >= 3, t.backs === t.faces]; }), { timeout: 90000 }).toEqual([32, true, true, true]); /* (High and Low both carry the parts; v1.10.251 양면: each face on the back too) */
+  await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().recordTower(); return [t.bulbs, t.flags >= 2, t.faces >= 3, t.backs === t.faces, t.backBulbs >= 32]; }), { timeout: 90000 }).toEqual([32, true, true, true, true]); /* (High and Low both carry the parts; v1.10.251 양면: each face on the back too) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().recordTower().game), { timeout: 30000 }).not.toBeNull();
   const at = await page.evaluate(() => window.PlazaDebug().recordTower().at);
   // (v1.10.251 Codex 10판 ②) all 14 firsts on the strip: the line runs past it, its letters unsqueezed (1536 × 128 shown)

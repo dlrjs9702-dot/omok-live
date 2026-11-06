@@ -1230,7 +1230,7 @@ async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...(
 // v1.10.250 기록의 탑: names for the board (a guest's file label, the administrator), the week's place of one account, the board
 async function soloNames() { const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label])); return (id) => labels.get(id) || (id === 'admin' ? '관리자' : '게스트'); }
 // (v1.10.251) a new week's 1st at a game's board level: told to the whole island once (the tower's ribbon); the 1st known per
-// game and week in memory (a restart: the next clear only notes it)
+// game and week in memory (a restart: the board's first read fills it again, soloBoard)
 const soloFirsts = new Map();
 async function soloWeekRank(account, game, level) {
   soloBoardCache = null; /* (a clear: the board reads it at once) */ const g = SoloRanking.BY_ID[game]; if (!g) return null; const week = climbWeekOf(nowMs());
@@ -1244,7 +1244,8 @@ async function soloBoard() {
   const now = nowMs(); if (soloBoardCache && now - soloBoardCache.at < 15000) return soloBoardCache.value;
   const week = climbWeekOf(now); const last = previousWeek(week); const nameOf = await soloNames(); const games = []; const lastWeek = [];
   for (const g of SoloRanking.GAMES) {
-    const top = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week })).slice(0, 3).map((r) => ({ rank: r.rank, name: nameOf(r.userId), best: r.best }));
+    const ranked = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week })); const top = ranked.slice(0, 3).map((r) => ({ rank: r.rank, name: nameOf(r.userId), best: r.best }));
+    if (ranked[0] && !soloFirsts.has(`${week}|${g.id}`)) soloFirsts.set(`${week}|${g.id}`, ranked[0].userId); /* (검토 251: after a restart the 1st known again -- the next takeover still told) */
     const ever = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board }))[0];
     games.push({ game: g.id, name: g.name, title: g.title, level: g.board, top, allTime: ever ? { name: nameOf(ever.userId), best: ever.best } : null });
     const first = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week: last }))[0]; /* (명예의 칸: last week's firsts) */
@@ -4231,7 +4232,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.250' });
+    return sendJson(res, 200, { ok: true, version: '1.10.251' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -8712,7 +8713,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.250 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.251 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
