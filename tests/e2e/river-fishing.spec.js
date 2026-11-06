@@ -8,7 +8,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   const who = await shopper(browser, request, '강낚시', 500000, 'male');
   const { page, token } = who;
   expect((await post(request, '/api/test/island/give', token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (낚싯대는 잡화점에서)
-  await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testCatchHold', '1'); }); await page.reload(); // (v1.10.257: the catch card kept up till the test acts)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
   await require('./skin-support').holdTool(page, 'fishing_rod'); // (206 Q2 5: the rod in hand to cast)
   const weeds = (await get(request, '/api/island/weeds', token)).data.weeds || [];
@@ -43,12 +43,41 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
     expect(hits).toEqual([true, true, true, true]);
     await expect(page.locator('#islandStick')).toBeHidden();
   }
-  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);
+  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish', size: 40 })).data.ok).toBe(true);
   await pressFishArrows(page, isMobile); // (3회차 4: the bite's arrows)
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_catfish')?.qty || 0, { timeout: 10000 }).toBe(1)
     .catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')}`; throw error; }); // (CI #293 once on a phone: which -- late or wrong -- to find why)
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // the catch played out (the 13 new models: test/island-asset-pipeline)
   if (isMobile) await expect(page.locator('#islandStick')).toBeVisible(); // (the stick back once the arrows are gone)
+  // v1.10.257 잡기 카드 (docs/catch-card-20261103.md): the first catfish -- 「새 친구!」 on its card; 더보기 its 설명 (one line,
+  // the island's two, where and when, its size and mine); 닫기 -- the note, tapped its 설명 again
+  const N = require('../../lib/island-dex-notes').DEX_NOTES; const shot = async (n) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(700); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${n}.png` }); } };
+  const card = page.locator('#catchCard');
+  await expect(card).toBeVisible(); await expect(card.locator('.catchRibbon')).toHaveText(['새 친구!']); await expect(card.locator('.catchFront .catchName')).toHaveText('메기');
+  await expect(card.locator('.catchSize')).toHaveText('40.0 cm', { timeout: 5000 }); await shot('catch-first');
+  await card.locator('#catchMoreBtn').click(); await expect(card).toHaveClass(/flipped/);
+  await expect(card.locator('.catchBack .catchLine')).toHaveText(N.fish_catfish.line); await expect(card.locator('.catchBack .catchStory p')).toHaveText(N.fish_catfish.story);
+  await expect(card.locator('.catchFacts')).toContainText('강'); await expect(card.locator('.catchFacts')).toContainText('내 최고 40 cm'); await shot('catch-more');
+  await card.locator('#catchCloseBtn').click(); await expect(card).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // the catch played out (the 13 new models: test/island-asset-pipeline)
+  await expect(page.locator('#toast')).toHaveClass(/tappable/); await page.locator('#toast').click(); await expect(card).toHaveClass(/infoOnly/); await card.locator('#catchCloseBtn').click();
+  // a bigger one: cast again with the card up (it shrinks), 「신기록!」 and the best before
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); await expect(page.locator('#plazaHint')).toHaveText(/순서대로( \(WASD도 돼요\))?$/);
+  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish', size: 55.5 })).data.ok).toBe(true);
+  await pressFishArrows(page, isMobile);
+  await expect(card).toBeVisible({ timeout: 10000 }); await expect(card.locator('.catchRibbon')).toHaveText(['신기록!']);
+  await expect(card.locator('.catchLines')).toContainText('지난 최고 40 cm → +15.5 cm'); await shot('catch-best');
+  // (the next cast: the card goes to its note -- the rod never waits on it; SPACE again while the catch still plays out)
+  await expect.poll(async () => { if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); await page.waitForTimeout(400); } return page.evaluate(() => window.PlazaDebug().fishing()?.phase || null); }, { timeout: 15000, intervals: [300] }).toMatch(/cast|wait/);
+  await expect(card).toBeHidden();
+  await page.keyboard.press('Space'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // (pulled early: gone)
+  // the bag's ⓘ and the 도감's cell: the same 설명
+  await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="fish_catfish"]').first().click();
+  await page.locator('#islandBagInfo .bagInfoMore').click(); await expect(card).toHaveClass(/infoOnly/); await expect(card.locator('.catchBack .catchName')).toHaveText('메기'); await shot('bag-info'); await card.locator('#catchCloseBtn').click();
+  await page.locator('#islandDexBtn').click(); await page.locator('.islandDexTab[data-tab="fresh"]').click();
+  await page.locator('.islandDexCell.opens.unfound').first().click(); await expect(card.locator('.catchBack')).toHaveClass(/unfound/); await expect(card.locator('.catchBack .catchName')).toHaveText('???');
+  await expect(card.locator('.catchStory p')).toHaveCount(0); await shot('dex-unfound'); await card.locator('#catchCloseBtn').click();
   await expectNoScriptError(page);
   await who.context.close();
 });

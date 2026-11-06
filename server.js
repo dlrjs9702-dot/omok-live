@@ -39,6 +39,7 @@ const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-resu
 const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
 const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
 const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
+const DexNotes = require('./lib/island-dex-notes'); // v1.10.257 잡기 카드·설명
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const SoloRanking = require('./public/solo-ranking'); // v1.10.250 기록의 탑
@@ -6688,7 +6689,9 @@ async function requestHandler(req, res) {
     let seen = null; // (my best of that fish: the 도감's, its day -- the same answer to this cast asked twice at once: its id kept)
     const wrote = await pointStore.questApply(account, 'fishBest', (d) => { seen = d[c.species] || null; return c.size > (seen?.size || 0) ? { doc: { ...d, [c.species]: { size: c.size, at: nowMs(), cast: c.id } } } : null; }).catch(() => null);
     const best = Boolean(wrote?.doc) || seen?.cast === c.id;
-    c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: IslandItems.fishPrice(itemId, c.size), size: c.size, best, firstTime: dex.first, bag: outcome.bag, tool: outcome.worn || null };
+    // (v1.10.257 잡기 카드) the best before this one (the card's 「지난 최고 → +n cm」) and the museum's on show (「박물관보다 커요」)
+    const prevBest = seen && seen.cast !== c.id ? seen.size : null; const museumSize = ((await pointStore.worldValue('museum')) || {})[itemId]?.size ?? null;
+    c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: IslandItems.fishPrice(itemId, c.size), size: c.size, best, prevBest, museumSize, firstTime: dex.first, bag: outcome.bag, tool: outcome.worn || null };
     if (outcome.applied) { islandProgress('fish', account, 1); eventContestScore(account, 'fish', Math.round(f.price / 100)); } // (E1: a round's)
     if (outcome.applied && (f.grade === 'rare' || f.grade === 'big')) bigCatchAt.set(account, nowMs()); // (v1.10.242: the islanders hear of it for 10 minutes)
     questBagNow(account, outcome.bag);
@@ -6763,7 +6766,10 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     const mine = await pointStore.dexOf(account); const best = (await pointStore.questDoc(account, 'fishBest')).doc || {}; // (v1.10.231: my best size of each fish, and its day)
     const found = IslandFishing.collectionCount(mine);
-    return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null, ...(d.kind === 'fish' ? { best: best[d.id.slice(5)] || null } : {}) })), found, total: IslandFishing.DEX.length,
+    // (v1.10.257 설명 카드) a fish's or an insect's note, where and when (the tables'), a fish's size range; its island story only once found
+    const about = (d) => { if (d.kind !== 'fish' && d.kind !== 'insect') return {}; const n = DexNotes.DEX_NOTES[d.id]; const found = Boolean(mine[d.id]?.count);
+      return { note: n ? { line: n.line, story: found ? n.story : null } : null, where: DexNotes.whereText(DexNotes.whereOf(d.id)), ...(d.kind === 'fish' ? { sizes: IslandFishing.SIZES[d.id.slice(5)] || null } : {}) }; };
+    return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null, ...(d.kind === 'fish' ? { best: best[d.id.slice(5)] || null } : {}), ...about(d) })), found, total: IslandFishing.DEX.length,
       titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/bite' && req.method === 'POST') { // tests: the bite now

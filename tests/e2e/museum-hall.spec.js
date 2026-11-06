@@ -60,6 +60,15 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
   await through('museum:go:aquarium', 'aquarium');
   await expect.poll(bShown, { timeout: 10000 }).toBe(false);
   if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-${isMobile ? 'phone' : 'pc'}.png` });
+  // (v1.10.257 설명 카드) the fish's plaque clicked where it is seen: its 설명, the museum's line with my name
+  await expect.poll(async () => {
+    const at = await page.evaluate((id) => { const M = window.IslandMuseum; const s = M.SLOTS[id]; const w = M.worldIn('aquarium', s.lx, s.lz); const c = M.worldIn('aquarium', 0, 0); const d = Math.hypot(c.x - w.x, c.z - w.z); const me = { x: w.x + (c.x - w.x) / d * 3.2, z: w.z + (c.z - w.z) / d * 3.2 }; const D = window.PlazaDebug(); D.teleport(me.x, me.z); D.setCamYaw(Math.atan2(-(w.x - me.x), -(w.z - me.z))); return D.museum().plaqueOnScreen(id); }, fish);
+    if (!at) return false; await page.waitForTimeout(300); await page.mouse.click(at.x, at.y);
+    return page.locator('#catchCard.infoOnly').isVisible();
+  }, { timeout: 20000, intervals: [500] }).toBe(true);
+  await expect(page.locator('#catchCard .catchFacts')).toContainText(`${isMobile ? '기증왕m' : '기증왕'}님 기증`);
+  if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-plaque-${isMobile ? 'phone' : 'pc'}.png` });
+  await page.locator('#catchCloseBtn').click();
   await through('museum:go:hall:aquarium', 'hall');
   await expect.poll(async () => {
     if (await page.evaluate(() => window.PlazaDebug().space) === 'island') return 'island';
