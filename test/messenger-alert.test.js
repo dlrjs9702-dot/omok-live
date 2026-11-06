@@ -43,3 +43,11 @@ test('메신저 제목 깜빡임: 기본 타이머는 this 없이 부름(Chrome 
     tick(); assert.equal(title, '아일랜드'); blink.seen(); assert.equal(blink.blinking, false); assert.equal(tick, null);
   } finally { globalThis.setInterval = real.si; globalThis.clearInterval = real.ci; }
 });
+
+// v1.10.258 (총괄, 폴드): Android has no protocol_handlers -- 「메신저 앱으로 열기」 is an intent:// link there, PC as before
+test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그대로', () => {
+  const o = 'https://island-dalmaru.onrender.com';
+  assert.equal(MA.appIntent('Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile', o, 'r_abc123'),
+    'intent://island-dalmaru.onrender.com/messenger.html?room=r_abc123#Intent;scheme=https;S.browser_fallback_url=https%3A%2F%2Fisland-dalmaru.onrender.com%2Fmessenger.html%3Froom%3Dr_abc123;end');
+  assert.equal(MA.appIntent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', o, 'r_abc123'), null);
+});

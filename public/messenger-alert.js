@@ -29,5 +29,12 @@
       get blinking() { return timer != null; },
     };
   }
-  return { unreadOf, setBadge, titleBlink };
+  // v1.10.258 (총괄, 폴드): Android Chrome has no protocol_handlers -- 「메신저 앱으로 열기」 there is an intent:// link to
+  // /messenger.html (the messenger WebAPK if installed, else the browser); elsewhere null (web+gcmessenger: as before)
+  function appIntent(ua, origin, room) {
+    if (!/Android/i.test(String(ua || ''))) return null;
+    const u = new URL(`/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`, origin);
+    return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.slice(0, -1)};S.browser_fallback_url=${encodeURIComponent(u.href)};end`;
+  }
+  return { unreadOf, setBadge, titleBlink, appIntent };
 });

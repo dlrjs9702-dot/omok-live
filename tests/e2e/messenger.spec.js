@@ -14,7 +14,7 @@ async function api(request, route, { token, account, body } = {}) {
   return { status: res.status(), data: await res.json().catch(() => ({})) };
 }
 
-test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에서 같은 창으로 열기·안 읽은 수, 방 만들기 → 메시지 → 상대가 바로 받음', async ({ browser, request }, info) => {
+test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에서 같은 창으로 열기·안 읽은 수, 방 만들기 → 메시지 → 상대가 바로 받음', async ({ browser, request, isMobile }, info) => {
   test.setTimeout(120000);
   const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
   const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
@@ -142,8 +142,12 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   expect(await appHome.evaluate(() => window.__opens)).toEqual([]);
   // (v1.10.253: first the messenger app's own link, web+gcmessenger: -- none installed here, so 1.5 s later a blank window, a
   // Chrome tab outside the island app's scope, then sent to the messenger)
-  await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 }).toEqual([['', '_blank']]);
-  { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
+  // (v1.10.258, an Android phone: no protocol_handlers in its Chrome -- an intent:// link, the OS's messenger app or the browser)
+  const host = new URL(appHome.url()).host;
+  await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 })
+    .toEqual(isMobile ? [[`intent://${host}/messenger.html#Intent;scheme=http;S.browser_fallback_url=${encodeURIComponent(`http://${host}/messenger.html`)};end`, '_blank']] : [['', '_blank']]);
+  if (process.env.SHOT_DIR && isMobile) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-open-app.png` });
+  if (!isMobile) { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
     const [tab] = await Promise.all([appHome.context().waitForEvent('page'), appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => { window.open = window.__realOpen; document.getElementById('mOpenApp').click(); })]);
     await expect.poll(() => tab.url(), { timeout: 5000 }).toContain('/messenger.html'); await tab.close();
   }

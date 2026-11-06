@@ -4608,7 +4608,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true });
   }
 
-  if (pathname === '/guest-entry' && req.method === 'POST') {
+  if ((pathname === '/island/guest-entry' || pathname === '/guest-entry') && req.method === 'POST') { /* (v1.10.258: inside the island app's scope -- no out-of-scope Chrome bar; old files still post to /guest-entry) */
     if (browserBlocked(req)) return sendChromeOnly(res);
     if (!checkRateLimit(`guest-entry:${clientIp(req)}`, 20, 10 * 60 * 1000)) {
       return sendSimpleHtml(res, 429, '입장 제한', '입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
