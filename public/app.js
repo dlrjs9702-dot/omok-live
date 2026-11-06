@@ -13160,6 +13160,15 @@
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
+  { // v1.10.258 (총괄, 폴드) 「앱으로 설치」 on the first screen and in ☰ -- the messenger's: shown only when Chrome offers the
+    // install (Chrome's own menu won't put a second app of one site on a phone that has the messenger's), never in the app
+    let installPrompt = null; const buttons = [byId('installAppBtn'), byId('menuInstallBtn')];
+    const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone);
+    const show = (on) => { for (const b of buttons) b?.classList.toggle('hidden', !on || standalone()); };
+    window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; show(true); });
+    for (const b of buttons) b?.addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; show(false); });
+    window.addEventListener('appinstalled', () => show(false));
+  }
   // 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): the messenger is its own page now
   // (/messenger, public/messenger.js) -- open beside the game or without it, an app of its own. Here only its buttons (내 계정
   // and the island's) with what is unread, opening its 서랍 (12절), and the island's small notice.

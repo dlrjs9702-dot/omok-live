@@ -85,6 +85,7 @@
         <input id="setupPasswordConfirm" type="password" autocomplete="new-password" maxlength="64" required />
         <button class="primary big" type="submit">설정하고 로그인</button>
       </form>
+      <button id="installAppBtn" type="button" class="secondary hidden">앱으로 설치</button><!-- v1.10.258 (총괄, 폴드): Chrome's menu won't install a second app of one site -- the page's own prompt does -->
       <p id="accountMessage" class="accountMessage" role="status" aria-live="polite"></p>
       <form id="accountEntryForm" class="hidden" method="post" action="/island/guest-entry"><input type="hidden" name="account" id="accountEntryToken" /></form>
       <form id="adminLoginForm" class="adminLoginForm">
@@ -1350,6 +1351,7 @@
       <button id="issueLogBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="issueDialog">문제 기록</button>
       <button id="furnitureStorageBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">가구 창고</button>
       <button id="myHomeBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">내 집</button>
+      <button id="menuInstallBtn" type="button" class="ghost hidden">앱으로 설치</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">
         <h3 id="gameMenuSettingsTitle">환경설정</h3>
         <span class="gameMenuThemesLabel" id="gameMenuThemesLabel">게임관 화면:</span><!-- v1.10.192 (사용자) what the theme is for: the game hall's screens -->

@@ -433,7 +433,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     } // v1.10.42 rot: a fish held side-on
     else if (rec.bone === 'Chest') { c.root.add(rec.object); rec.object.position.set(...(rec.proc || [0, 0.65, 0.38])); }
     else { (c.armR || c.root).add(rec.object); rec.object.position.set(0, -0.5, 0.1); } // the procedural arm's end
-    if (rec.size) { rec.object.updateWorldMatrix(true, true); const d = new THREE.Box3().setFromObject(rec.object).getSize(new THREE.Vector3()); const m = Math.max(d.x, d.y, d.z); if (m > 1e-4) rec.object.scale.multiplyScalar(rec.size / m); }
+    if (rec.size) { rec.object.updateWorldMatrix(true, true); const box = new THREE.Box3(); const part = new THREE.Box3(); rec.object.traverse((m) => { if (!m.isMesh || !m.geometry) return; if (m.isSkinnedMesh) { box.union(part.setFromObject(m, true)); return; } if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); box.union(part.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld)); }); const d = box.isEmpty() ? new THREE.Vector3() : box.getSize(new THREE.Vector3()); /* (v1.10.258: by the meshes' own boxes -- Box3.setFromObject read a skinned insect as nothing, so it was never sized) */ const m = Math.max(d.x, d.y, d.z); if (m > 1e-4) rec.object.scale.multiplyScalar(rec.size / m); }
   }
   // (v1.10.236 빠른 칸, 총괄 검토 「손에 거의 안 보여요」: `size` -- its longest side that many metres in the world, whatever the bone's scale)
   function hold(c, ids, ms = 900, { key = null, bone = 'Hand.R', at = null, rot = null, proc = null, stand = null, size = null } = {}) {

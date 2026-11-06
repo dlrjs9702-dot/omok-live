@@ -57,7 +57,10 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   const N = require('../../lib/island-dex-notes').DEX_NOTES; const shot = async (n) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(700); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${n}.png` }); } };
   const card = page.locator('#catchCard');
   await expect(card).toBeVisible(); await expect(card.locator('.catchRibbon')).toHaveText(['새 친구!']); await expect(card.locator('.catchFront .catchName')).toHaveText('메기');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.size || 0), { timeout: 3000 }).toBeGreaterThanOrEqual(0.45); // (총괄 #408: a 40 cm catfish shown big enough to see)
+  if (process.env.SHOT_DIR) await page.evaluate(() => { window.PlazaDebug().showKeep(); window.PlazaDebug().setTime('night'); }); // (photos: past its 6 s for both lights)
   await expect(card.locator('.catchSize')).toHaveText('40.0 cm', { timeout: 5000 }); await shot('catch-first');
+  if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().setTime('day')); await page.waitForTimeout(500); await shot('catch-first-day'); await page.evaluate(() => window.PlazaDebug().setTime('auto')); }
   await card.locator('#catchMoreBtn').click(); await expect(card).toHaveClass(/flipped/);
   await expect(card.locator('.catchBack .catchLine')).toHaveText(N.fish_catfish.line); await expect(card.locator('.catchBack .catchStory p')).toHaveText(N.fish_catfish.story);
   await expect(card.locator('.catchFacts')).toContainText('강'); await expect(card.locator('.catchFacts')).toContainText('내 최고 40 cm'); await shot('catch-more');

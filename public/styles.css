@@ -1889,6 +1889,7 @@ body.islandFishing .plazaHint{display:none}
 .accountPanel{display:grid;gap:12px;margin-top:22px}
 .accountPanel h2{margin:0}
 .accountActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#installAppBtn{width:100%;margin-top:12px} /* (v1.10.258: the island's own 「앱으로 설치」, under the account's buttons) */
 .accountMessage{min-height:1.2em;margin:12px 0 0;font-size:.86rem;color:#bbf7d0;line-height:1.5}
 .accountMessage.bad{color:#fca5a5}
 .adminLoginForm{display:flex;align-items:center;gap:8px;margin-top:22px;padding-top:14px;border-top:1px solid #334155}
