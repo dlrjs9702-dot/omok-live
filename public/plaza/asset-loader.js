@@ -97,6 +97,15 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // v1.10.29 `onSwap(entry | null)`: told when the model comes in (its registry entry) or goes (null), for game parts
   // that sit on the look (the map board's picture moves onto the model's panel).
   function attach(ids, holder, procedural, onSwap = null) { const rec = { ids, holder, procedural, onSwap, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
+  // (Codex PR #401 P2) a holder thrown away (the yard's trophies drawn again): its records, its model's LOD and own geometry
+  // go -- a model still loading for it finds no record and is dropped
+  function detach(holder) {
+    for (let i = attaches.length - 1; i >= 0; i -= 1) {
+      const rec = attaches[i]; if (rec.holder !== holder) continue; attaches.splice(i, 1);
+      if (rec.object) { holder.remove(rec.object); const k = lods.indexOf(rec.object); if (k >= 0) lods.splice(k, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); rec.object = null; }
+      rec.onSwap = null; rec.dropped = true;
+    }
+  }
   // v1.10.36 10월 할로윈: at night every model's window glass glows warm (the materials are shared by a file's copies,
   // so each is set once; those that load later take the current state)
   const glassMats = new Set(); let night = false;
@@ -185,7 +194,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     if (!hit) { swapAttach(rec, null); return; }
     shown[hit.id] = 'loading';
     build(hit.entry).then((object) => {
-      if (disposed || rec.selection !== selection || !rec.holder.parent) {
+      if (disposed || rec.dropped || rec.selection !== selection || !rec.holder.parent) {
         const i = lods.indexOf(object); if (i >= 0) lods.splice(i, 1);
         return;
       }
@@ -927,5 +936,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

@@ -3418,7 +3418,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 });
   }
   function drawYardTrophies() {
-    for (const r of yardTrophyRoots) { r.removeFromParent(); r.traverse((o) => { if (o.material?.map?.isCanvasTexture) { o.material.map.dispose(); o.material.dispose(); } }); }
+    for (const r of yardTrophyRoots) { r.removeFromParent(); r.traverse((o) => { if (o.material?.map?.isCanvasTexture) { o.material.map.dispose(); o.material.dispose(); } }); assets.detach?.(r); /* (Codex PR #401 P2: the loader's record too -- after the plate's canvas is let go) */ }
     yardTrophyRoots = []; yardTrophyGlows.length = 0; for (const k of Object.keys(doors)) if (k.startsWith('trophy:')) delete doors[k];
     for (const y of yardsShown.values()) for (const p of y.items) {
       const shape = YARD.shapeOf(p.id); if (!shape || !YARD.ITEMS[shape].trophy) continue; const metal = /__(gold|silver|bronze)$/.exec(p.id)?.[1] || 'gold';

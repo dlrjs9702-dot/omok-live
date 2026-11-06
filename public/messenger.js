@@ -11,6 +11,10 @@
   // or this device's kept login (localStorage)
   const keep = (store, key) => ({ get: () => { try { return store.getItem(key) || ''; } catch { return ''; } }, set: (v) => { try { if (v) store.setItem(key, v); else store.removeItem(key); } catch {} } });
   const accountToken = keep(sessionStorage, 'gc.account'); const deviceToken = keep(localStorage, 'gc.messengerDevice');
+  // 메신저 정리 (docs/messenger-speed-photo-20261103.md 12절): ?embed=1 -- the island app's 서랍. Its tab's login (the same
+  // sessionStorage), no icon count, no title blink, no notices of its own and no push (those are the messenger app's);
+  // the head: ✕ and 「메신저 앱으로 열기 ↗」
+  const EMBED = new URLSearchParams(location.search).has('embed'); if (EMBED) document.body.classList.add('mEmbed');
   const headers = () => ({ ...(accountToken.get() ? { 'X-Account-Token': accountToken.get() } : {}), ...(deviceToken.get() ? { 'X-Messenger-Device': deviceToken.get() } : {}) });
   // the free server sleeps after 15 quiet minutes: a call slower than 2.5 s says it is waking
   const wake = byId('mWake'); let waiting = 0;
@@ -62,6 +66,7 @@
     }));
     if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
     const unread = unreadOf(state.rooms); baseTitle = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
+    if (EMBED) { try { window.parent.postMessage({ type: 'gc-messenger-unread', unread: unreadOf(state.rooms.filter((r) => r.id !== current?.id)) }, location.origin); } catch {} return; } /* (the room open is being read) */ // (12절: the count on the island's 메신저 button only -- told it at once, 총괄 #402)
     document.title = blink.text(baseTitle); blink.update(unread, away());
     window.MessengerAlert.setBadge(navigator, unread);
   }
@@ -504,18 +509,21 @@
     byId('mDevicesBtn').classList.toggle('hidden', !deviceToken.get());
     wantStream(true); timers = [setInterval(() => { if (!streamUp) pull(); }, 3000), setInterval(() => refresh(), 30000)];
     const room = new URLSearchParams(location.search).get('room'); const r = room && state.rooms.find((x) => x.id === room); if (r) openRoom(r); // (a notice tapped)
-    setupPush();
+    if (!EMBED) setupPush(); // (12절: notices are the messenger app's)
   }
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault(); byId('mLoginStatus').textContent = '';
     try {
-      const data = await api('/api/account/login', { loginId: byId('mLoginId').value, password: byId('mLoginPw').value, keep: byId('mKeep').checked, device: deviceName() });
+      const data = await api('/api/account/login', { loginId: byId('mLoginId').value, password: byId('mLoginPw').value, keep: byId('mKeep').checked, device: deviceName(), deviceKind: deviceKind() });
       byId('mLoginPw').value = '';
       if (!data.account.messenger) { byId('mLoginStatus').textContent = '메신저는 관리자가 허용한 계정만 쓸 수 있습니다.'; return; }
       accountToken.set(data.accountToken); deviceToken.set(data.deviceToken || '');
       start();
     } catch (err) { byId('mLoginStatus').textContent = err.message; }
   });
+  // (12절, 검토) a phone or a PC by the screen, not the name: a phone's 「데스크톱 사이트」 says Linux or Mac with touch -- a
+  // Windows touch laptop stays a PC
+  const deviceKind = () => { const ua = navigator.userAgent; return /Mobi|Android|iPhone|iPad/.test(ua) || ((navigator.maxTouchPoints || 0) > 1 && /Macintosh|Linux/.test(ua)) ? 'phone' : 'pc'; };
   const deviceName = () => { const ua = navigator.userAgent; const os = /Android/.test(ua) ? '안드로이드' : /iPhone|iPad/.test(ua) ? '아이폰' : /Windows/.test(ua) ? '윈도우' : /Mac OS/.test(ua) ? '맥' : '기기'; const b = /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Safari\//.test(ua) ? '사파리' : '브라우저'; return `${os} ${b}`; };
   byId('mLogoutBtn').addEventListener('click', async () => {
     await pushOff().catch(() => {});
@@ -561,7 +569,7 @@
       const kept = oldSub && granted() && alertMode === 'push' && pushKey && !(await subscribe(pushKey).then(() => true, () => false));
       if (old && !kept) { await oldSub?.unsubscribe().catch(() => {}); await old.unregister().catch(() => {}); }
       if (alertMode !== 'push') { const sub = await browserSub(); if (sub) await sub.unsubscribe().catch(() => {}); } // (열어 둘 때만 / 안 받기: nothing left in the browser either)
-      else if (granted() && pushKey && !(await browserSub())) await subscribe(pushKey).catch(() => {}); // (닫아도 받기 and allowed, no subscription in this browser yet: made now)
+      else if (granted() && pushKey) await subscribe(pushKey).catch(() => {}); // (닫아도 받기 and allowed: made now, or the one there sent again -- 검토 2026-11-06: a new login is a new device, and the subscription moves to it)
       pushOn = alertMode === 'push' && granted() && Boolean(await browserSub()); void on;
       drawAlert();
       if (moved) showToast('이 PC는 「열어 둘 때만」 알림으로 바뀌었어요. 창을 닫아도 받으려면 위 「알림」에서 「닫아도 받기」를 고르세요.', 7000);
@@ -598,6 +606,18 @@
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
   { const sel = byId('mTheme'); sel.value = window.MessengerTheme?.get() || 'light'; sel.addEventListener('change', () => window.MessengerTheme?.set(sel.value)); } // (어두운 화면: messenger-theme.js)
   // (the game's window opens this one with its login: a new login there reaches an open messenger too)
+  // (12절) the 서랍's head: ✕ (and Esc) tells the island app to close it; 「메신저 앱으로 열기 ↗」 opens /messenger.html in its own
+  // window (Chrome takes it to the installed messenger app when there is one) with this tab's login; the one-line note on the
+  // messenger app until it is closed
+  if (EMBED) {
+    const closeMe = () => { try { window.parent.postMessage({ type: 'gc-messenger-close' }, location.origin); } catch {} };
+    byId('mCloseEmbed').addEventListener('click', closeMe);
+    window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && byId('mAsk').classList.contains('hidden') && byId('messengerViewer').classList.contains('hidden') && !document.querySelector('.messengerBubbleMenu') && byId('messengerMoreMenu').classList.contains('hidden') && pick.classList.contains('hidden')) closeMe(); }, true); /* (first, before the menus' own Esc: one open, Esc closes only it) */
+    byId('mOpenApp').addEventListener('click', () => { const w = window.open('/messenger.html', 'gc-messenger'); w?.focus(); setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 800); });
+    const HINT = 'gc.messengerInstallHint'; let off = false; try { off = localStorage.getItem(HINT) === 'off'; } catch {}
+    byId('mInstallHint').classList.toggle('hidden', off);
+    byId('mInstallHintClose').addEventListener('click', () => { byId('mInstallHint').classList.add('hidden'); try { localStorage.setItem(HINT, 'off'); } catch {} });
+  }
   try { new BroadcastChannel('gc-messenger').addEventListener('message', (event) => { if (event.data?.account && !accountToken.get() && !deviceToken.get()) { accountToken.set(event.data.account); start(); } }); } catch {}
   start();
 })();

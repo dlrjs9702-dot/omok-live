@@ -108,7 +108,7 @@
         <!-- v1.10.63: no account bar -- Esc (or this button, on a phone) opens the menu (#gameMenuDialog) -->
         <button id="gameMenuBtn" type="button" class="islandChatTab isle-pill gameMenuBtn" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴 (Esc)">☰</button>
         <button id="islandChatTab" class="islandChatTab isle-pill" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
-        <button id="islandMessengerTab" class="islandChatTab isle-pill islandMessengerTab hidden" type="button" title="새 창으로 열려요">메신저</button><!-- 메신저 단독 창: its own window (/messenger) -->
+        <button id="islandMessengerTab" class="islandChatTab isle-pill islandMessengerTab hidden" type="button" title="섬 안 서랍으로 열려요">메신저</button><!-- 메신저 정리 12절: the 서랍 (#messengerDrawer) -->
         <button id="islandBagTab" class="islandChatTab isle-pill islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
         <button id="islandPhotoTab" class="islandChatTab isle-pill islandPhotoTab" type="button">사진</button>
         <button id="islandViewTab" class="islandChatTab isle-pill islandViewTab" type="button" aria-label="시점 바꾸기 (V)" title="시점 바꾸기 (V)">시점</button><!-- V1: 1인칭·3인칭 -->
@@ -1178,6 +1178,8 @@
   </dialog>
   <!-- v1.10.250 기록의 탑 (docs/gamehall-ranking-board-20261103.md §1-3): one game a time -- this week or the all-time best, its level,
        1~20 and my place, 도전하기 the game at once -->
+  <!-- 메신저 정리 (gamecenter-notes docs/messenger-speed-photo-20261103.md 12절): the 메신저 서랍 -- the messenger page in it -->
+  <aside id="messengerDrawer" class="messengerDrawer hidden" aria-label="메신저"><iframe title="메신저" allow="clipboard-write"></iframe></aside>
   <dialog id="recordTowerDialog" class="recordsDialog recordTowerDialog isle-sheet" aria-labelledby="recordTowerTitle">
     <div class="recordsDialogHead"><h2 id="recordTowerTitle">🏆 기록의 탑</h2><button id="recordTowerCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div id="recordTowerGames" class="recordTowerChips recordTowerGames" role="tablist" aria-label="게임"></div>

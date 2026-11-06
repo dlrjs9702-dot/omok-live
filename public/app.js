@@ -4401,7 +4401,7 @@
     } catch (error) { for (const d of Object.values(counterDialogs)) if (!d.open) { d.classList.remove('counterMode'); d.querySelector('.counterSay')?.remove(); } showToast(error.message); }
   }
   // v1.10.44 다른 사람에게 SPACE: 인사 · 환호 · 게임 초대 (the game hall's room window, then the invite to them)
-  let islandInviteTo = null;
+  let islandInviteTo = null; let playerMenuAsk = 0;
   function openPlayerMenu(plazaId) {
     const who = plaza.controller?.debug?.().others?.find((o) => o.id === plazaId);
     const make = (label, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; b.addEventListener('click', () => { plazaDialog.addEventListener('close', () => fn(), { once: true }); plazaDialog.close(); }); return b; }; // after the window has closed (it puts its sections back then)
@@ -4420,7 +4420,8 @@
       try { await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller.pose()) }).catch(() => {}); const d = await api('/api/island/birthday/cheer', { method: 'POST', body: JSON.stringify({ plazaId }) }); plaza.controller?.emote?.('clap'); showToast(`축하했어요! (올해 ${d.count}명이 축하)`); } catch (error) { showToast(error.message); }
     }));
     openTalk(who?.name || '');
-    api(`/api/solo/awards?plaza=${encodeURIComponent(plazaId)}`).then((d) => { if (!d.trophies) return; const line = document.createElement('p'); line.className = 'lostRequestLine playerTrophies'; line.textContent = `🏆 기록의 탑 트로피 🥇${d.medals?.gold || 0} 🥈${d.medals?.silver || 0} 🥉${d.medals?.bronze || 0}`; /* (§3-2) */ lostCard.prepend(line); }).catch(() => {}); // (v1.10.251 §3-2)
+    const menuAsk = ++playerMenuAsk; const mine = lostCard.firstElementChild; /* (Codex PR #401 P2: a late answer lands only while these buttons -- this person's -- are still the card's; the gift window and the islanders' talk use the same card) */
+    api(`/api/solo/awards?plaza=${encodeURIComponent(plazaId)}`).then((d) => { if (!d.trophies || menuAsk !== playerMenuAsk || !plazaDialog.open || !mine?.isConnected || mine.parentNode !== lostCard) return; const line = document.createElement('p'); line.className = 'lostRequestLine playerTrophies'; line.textContent = `🏆 기록의 탑 트로피 🥇${d.medals?.gold || 0} 🥈${d.medals?.silver || 0} 🥉${d.medals?.bronze || 0}`; /* (§3-2) */ lostCard.prepend(line); }).catch(() => {}); // (v1.10.251 §3-2)
   }
   // v1.10.92 선물: what of my bag can be given (not a lost thing, not the wrap itself), one tap gives one
   async function openGift(plazaId, name) {
@@ -13063,34 +13064,39 @@
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
   // 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): the messenger is its own page now
   // (/messenger, public/messenger.js) -- open beside the game or without it, an app of its own. Here only its buttons (내 계정
-  // and the island's) with what is unread, opening that window (the same one again), and the island's small notice.
+  // and the island's) with what is unread, opening its 서랍 (12절), and the island's small notice.
   const messenger = (() => {
     const msgBtn = byId('accountMessengerBtn'); const tab = byId('islandMessengerTab'); let on = false;
     const { unreadOf } = window.MessengerAlert;
-    // (사용자 2026-10-25 「섬 앱에서 누르면 크롬으로 열려」: the blank window used to find an open one is outside the installed
-    // app's scope, so the app handed it to the browser -- in the app, no blank one: the messenger itself in a small window,
-    // the one opened kept and brought forward)
-    const asApp = () => ['standalone', 'window-controls-overlay', 'minimal-ui'].some((m) => window.matchMedia?.(`(display-mode: ${m})`).matches) || navigator.standalone === true;
-    let opened = null;
-    function open() { // (an open messenger window comes to the front as it is; a new one gets this tab's login with it)
-      let w;
-      if (asApp()) w = opened && !opened.closed ? opened : (opened = window.open('/messenger', 'gc-messenger', 'popup,width=440,height=780'));
-      else {
-        w = window.open('', 'gc-messenger');
-        try { if (!w || w.location.href === 'about:blank') w = window.open('/messenger', 'gc-messenger'); } catch { w = window.open('/messenger', 'gc-messenger'); }
-      }
-      w?.focus(); try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {}
+    // 메신저 정리 (gamecenter-notes docs/messenger-speed-photo-20261103.md 12절, 사용자 「A안으로 해」): the messenger app is the
+    // messenger's home; here it is a 서랍 -- PC the right 380 px, a phone a sheet from below (85 %) -- the same page inside
+    // (/messenger.html?embed=1: this tab's login, no notices of its own, ✕ and 「메신저 앱으로 열기 ↗」 at its head). The game
+    // stays seen and moving behind it; keys typed in it stay in it; Esc or ✕ closes it.
+    const drawer = byId('messengerDrawer'); const frame = drawer.querySelector('iframe');
+    const isOpen = () => !drawer.classList.contains('hidden');
+    function open() {
+      if (!frame.getAttribute('src')) frame.setAttribute('src', '/messenger.html?embed=1');
+      drawer.classList.remove('hidden'); document.body.classList.add('messengerDrawerOn'); try { frame.focus(); } catch {}
     }
-    msgBtn.addEventListener('click', open); tab.addEventListener('click', open);
+    function close() { if (!isOpen()) return; drawer.classList.add('hidden'); document.body.classList.remove('messengerDrawerOn'); setTimeout(badge, 0); try { document.getElementById('plazaStage')?.focus(); } catch {} }
+    window.addEventListener('message', (event) => {
+      if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
+      if (event.data?.type === 'gc-messenger-close') close();
+      else if (event.data?.type === 'gc-messenger-unread' && Number.isFinite(event.data.unread)) showCount(event.data.unread); // (a room read in the 서랍: the button's number at once)
+    });
+    window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && isOpen()) { event.preventDefault(); event.stopImmediatePropagation(); close(); } }, true); // (before the game's Esc menu)
+    msgBtn.addEventListener('click', () => (isOpen() ? close() : open())); tab.addEventListener('click', () => (isOpen() ? close() : open()));
     // v1.10.87 알림: the buttons count what is unread in my rooms (the server's count, a room with 알림 끄기 left out)
     async function badge() {
       if (!on) return;
       try {
-        const unread = unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms); const n = unread > 99 ? '99+' : unread;
-        msgBtn.textContent = unread ? `메신저 · 새 메시지 ${n}` : '메신저'; tab.textContent = unread ? `메신저 ${n}` : '메신저';
-        for (const b of [msgBtn, tab]) b.classList.toggle('hasUnread', unread > 0);
-        window.MessengerAlert.setBadge(navigator, unread); messengerBlink.update(unread, pageInBackground()); // (v1.10.190: the app icon's count, as the messenger window's)
+        showCount(unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms));
       } catch {}
+    }
+    function showCount(unread) { // (12절: the app icon's count and the title's blink are the messenger app's only -- here the buttons)
+      const n = unread > 99 ? '99+' : unread;
+      msgBtn.textContent = unread ? `메신저 · 새 메시지 ${n}` : '메신저'; tab.textContent = unread ? `메신저 ${n}` : '메신저';
+      for (const b of [msgBtn, tab]) b.classList.toggle('hasUnread', unread > 0);
     }
     setInterval(badge, 30000);
     // A5 메신저 실시간 받기: a held stream (fetch, as the account's token goes in a header); a room's change counts again at once
@@ -13122,7 +13128,11 @@
       } catch {}
     }
     setInterval(islandNotice, 15000);
-    return { show: (want) => { on = Boolean(want); msgBtn.classList.toggle('hidden', !on); tab.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); wantStream(on); } }; // (after the account panel shows; A5: the stream while permitted)
+    // (12절) the island app's icon count from before goes once; opened on a device kept logged in to the messenger: its 12 hours
+    // of 닫아도 받기 start again (a PC's)
+    try { navigator.clearAppBadge?.().catch(() => {}); } catch {}
+    const seen = () => { let device = ''; try { device = localStorage.getItem('gc.messengerDevice') || ''; } catch {} if (device) fetch('/api/messenger/seen', { method: 'POST', headers: { 'X-Account-Token': accountToken.get(), 'X-Messenger-Device': device } }).catch(() => {}); };
+    return { show: (want) => { on = Boolean(want); msgBtn.classList.toggle('hidden', !on); tab.classList.toggle('hidden', !on); if (on) { setTimeout(badge, 0); seen(); } else close(); wantStream(on); } }; // (after the account panel shows; A5: the stream while permitted)
   })();
   // (on the island too: the account this tab logged in with, if the messenger is theirs)
   if (accountToken.get()) accountApi('/api/account/me', null, 'GET').then((d) => messenger.show(d.account?.messenger === true)).catch(() => {});

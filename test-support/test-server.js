@@ -30,7 +30,7 @@ async function boot(t, dir) {
     await new Promise(resolve => { child.once('exit', resolve); setTimeout(resolve, 4000).unref(); });
   };
   t.after(stop);
-  for (let i = 0; i < 120 && child.exitCode === null; i += 1) {
+  for (let i = 0; i < 300 && child.exitCode === null; i += 1) { // (검토 2026-11-06: 11 files starting servers at once took past 12 s)
     try { if ((await fetch(base + '/health')).ok) break; } catch {}
     await sleep(100);
   }
