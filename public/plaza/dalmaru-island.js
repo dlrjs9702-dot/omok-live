@@ -364,8 +364,15 @@
   }
   // v1.10.250 기록의 탑 (assets 100 record_tower): before the 게임관's door, its front (-Z) to the door (+x); its ground 8.55 m along
   // world z (the model's x -4.95 ~ +3.6) and 1.94 m deep (its z -1.385 ~ +0.55 -> world x +1.385 ~ -0.55): circles over it
-  const RECORD_TOWER = Object.freeze({ x: 35, z: -65, yaw: -Math.PI / 2 });
-  function towerSolids() { const out = []; for (let u = -4.45; u <= 3.11; u += 0.8) out.push({ x: RECORD_TOWER.x - 0.42, z: RECORD_TOWER.z + u, r: 0.98 }); return out; } /* (v1.10.251: the podium on the plaza side, behind the board -- the circles with it) */
+  // (v1.10.253 탑 자리 옮기기, 사용자 「동상을 가리게 되는 배치야. 그 앞에 있는 화단위로 옮기고 그 화단에 있는 나무는 없애」) on the long
+  // garden before the 게임관 (paving's (24, 18) from the fountain): the board along its length, the podium (local +z) to the
+  // plaza's middle (south); its 8.55 m ground set in the garden's 10 m (the model's x -4.95 ~ +3.6, turned: x 3.6 west ~ 4.95 east)
+  const RECORD_TOWER = Object.freeze({ x: PLAZA_C.x + 24 - 0.675, z: PLAZA_C.z + 18.4, yaw: Math.PI, lift: 0.45 }); // (lift: on the garden's soil)
+  function towerSolids() { // (along the board, its middle 0.42 m to the podium's side -- v1.10.251)
+    const R = RECORD_TOWER; const ax = Math.cos(R.yaw); const az = -Math.sin(R.yaw); const bx = Math.sin(R.yaw); const bz = Math.cos(R.yaw); const out = [];
+    for (let u = -4.45; u <= 3.11; u += 0.8) out.push({ x: R.x + ax * u + bx * 0.42, z: R.z + az * u + bz * 0.42, r: 0.98 });
+    return out;
+  }
   function structureSolids() {
     const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - 7.3, r: 1.1 }, ...pavingSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
@@ -413,7 +420,9 @@
     // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
     paving().gardens.forEach((g, k) => {
       const at = g.kind === 'round' ? [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [a * 2.23, b * 2.23]) : [-3, 0, 3].flatMap((x) => [[x, 1.95], [x, -1.95]]);
-      at.forEach(([dx, dz], n) => seats.push({ id: `g${k}-${n}`, x: g.x + dx, z: g.z + dz, yaw: g.kind === 'round' ? Math.atan2(dx, dz) : Math.atan2(0, dz) }));
+      // (v1.10.253 assets 104 tower-fit: on 기록의 탑's garden the middle seat on the podium's side goes -- 0.87 m before it)
+      const towered = Math.hypot(g.x - RECORD_TOWER.x, g.z - RECORD_TOWER.z) < 3;
+      at.forEach(([dx, dz], n) => { if (towered && dx === 0 && dz * Math.cos(RECORD_TOWER.yaw) > 0) return; seats.push({ id: `g${k}-${n}`, x: g.x + dx, z: g.z + dz, yaw: g.kind === 'round' ? Math.atan2(dx, dz) : Math.atan2(0, dz) }); });
     });
     seats.push(...C.plazaProps().seats.filter((s) => s.room));
     return { benches, lamps, beds, seats };

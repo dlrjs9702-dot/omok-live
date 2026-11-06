@@ -5432,6 +5432,38 @@
       "precompressed": true
     },
     {
+      "out": "plaza-v1/plaza_garden_long_bare_spring.glb",
+      "src": "bare104:01. High/plaza_garden_long_bare_spring.glb",
+      "sha256": "a9e990ba1aac6a6719f602597950014922c645d58f02cb5e207eb1125ee27fa9",
+      "lowSrc": "bare104:02. Low/plaza_garden_long_bare_spring_low.glb",
+      "lowSha256": "e86b6102dc3bd8054d1dc617fd015f438037715cf088a53b7fdfb767cd04a95b",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_long_bare_summer.glb",
+      "src": "bare104:01. High/plaza_garden_long_bare_summer.glb",
+      "sha256": "c2d3a78768dc315bdccf418d7f0e1740ba279234442671d7c3996e14382516e5",
+      "lowSrc": "bare104:02. Low/plaza_garden_long_bare_summer_low.glb",
+      "lowSha256": "d268a39e40a05a2bc554e88fce35c58cc59bd8d80b8f3baca8227c997fb06fae",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_long_bare_autumn.glb",
+      "src": "bare104:01. High/plaza_garden_long_bare_autumn.glb",
+      "sha256": "802baaa06d9419efa041aa5634e660b5e24a99baa18084e5fba24daf2cac77de",
+      "lowSrc": "bare104:02. Low/plaza_garden_long_bare_autumn_low.glb",
+      "lowSha256": "95c6683ae6fb5d2921a2c3b1e2306f9bab63b0f3020d910eb52edfb791016df5",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_long_bare_winter.glb",
+      "src": "bare104:01. High/plaza_garden_long_bare_winter.glb",
+      "sha256": "1769e58c20c98127bc9c5f7bfa9ddc9963c2d06eff02c31855d1d6e1318aa975",
+      "lowSrc": "bare104:02. Low/plaza_garden_long_bare_winter_low.glb",
+      "lowSha256": "d3311a53c4c2dfbe9a4cff8e4f0493fa71b58b143e0c38c4301752fa4ad8a3c0",
+      "precompressed": true
+    },
+    {
       "out": "plaza-v1/plaza_garden_round_spring.glb",
       "src": "plaza59:01. High/plaza_garden_round__spring.glb",
       "sha256": "b276daa86f349bbd9c8ba00a104b1ac863f6fd0c77d58beddd5d54963295c596",
@@ -9164,6 +9196,7 @@
     "sleeves96b": "96b. Game Island sleeves named 2026-11-03",
     "tent100": "100. Game Island contest tent 2026-11-04",
     "tower100": "100. Game Island record tower 2026-11-05",
-    "trophy98": "98. Game Island yard trophies 2026-11-04"
+    "trophy98": "98. Game Island yard trophies 2026-11-04",
+    "bare104": "104. Game Island garden long bare 2026-11-06"
   }
 }

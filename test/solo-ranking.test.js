@@ -24,8 +24,11 @@ test('기록의 탑 순위 규칙: 14종, 시간은 짧을수록·점수는 높�
 test('기록의 탑 자리: 주민 길 격자에서 탑 칸은 막히고 앞뒤는 열림', () => {
   const N = require('../public/plaza/island-npcs'); const T = require('../public/plaza/island-terrain');
   const t = T.RECORD_TOWER; assert.ok(t);
-  for (const dz of [-4.4, -2, 0, 2, 3.1]) assert.equal(N.free(t.x + 0.4, t.z + dz), false, `탑 칸 z${dz}`);
-  assert.equal(N.free(t.x + 5, t.z), true, '문 쪽'); assert.equal(N.free(t.x - 6, t.z), true, '광장 쪽');
+  // (v1.10.253: by its own axes -- along the board a, to the podium's side b; on the long garden, turned)
+  const a = [Math.cos(t.yaw), -Math.sin(t.yaw)]; const b = [Math.sin(t.yaw), Math.cos(t.yaw)]; const at = (u, v) => [t.x + a[0] * u + b[0] * v, t.z + a[1] * u + b[1] * v];
+  for (const u of [-4.4, -2, 0, 2, 3.1]) assert.equal(N.free(...at(u, 0.4)), false, `탑 칸 ${u}`);
+  assert.equal(N.free(...at(0, -5)), true, '앞(게임관) 쪽'); assert.equal(N.free(...at(0, 6)), true, '시상대(광장) 쪽');
+  assert.ok(Math.hypot(t.x - 35, t.z + 65) > 10, '옛 자리(게임관 문 앞)는 비움');
 });
 
 test('기록의 탑 서버: 이번 주·역대 순위(1~20 + 내 순위), 결과의 이번 주 ○위, 게시판 14종', async (t) => {

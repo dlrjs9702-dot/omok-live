@@ -8,6 +8,7 @@
   "scope": "/messenger",
   "display": "standalone",
   "launch_handler": { "client_mode": "focus-existing" },
+  "protocol_handlers": [{ "protocol": "web+gcmessenger", "url": "/messenger.html?open=%s" }],
   "orientation": "any",
   "background_color": "#fff6e3",
   "theme_color": "#fff6e3",

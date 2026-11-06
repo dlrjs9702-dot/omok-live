@@ -122,6 +122,9 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await expect(m).toHaveTitle(/● 새 메시지/, { timeout: 10000 });
   await expect(m.locator('#mToast, .toast').filter({ hasText: 'Illegal' })).toHaveCount(0);
   await m.evaluate(() => { delete document.hasFocus; window.dispatchEvent(new Event('focus')); });
+  // (v1.10.253) the app opened by web+gcmessenger:<room> (its protocol_handlers' url ?open=%s): that room
+  { const id = await m.evaluate(() => fetch('/api/messenger', { headers: { 'X-Messenger-Device': localStorage.getItem('gc.messengerDevice') } }).then((r) => r.json()).then((d) => d.rooms.find((x) => x.name === '우리집').id));
+    await m.goto(`/messenger.html?open=${encodeURIComponent(`web+gcmessenger:${id}`)}`); await expect(m.locator('#messengerRoomName')).toHaveText('우리집'); }
   // logged out on the page: the device's login ends with it (Codex 검토 2차 #4: and nothing of it stays on the page)
   await m.locator('#mLogoutBtn').click(); await expect(m.locator('#mLogin')).toBeVisible();
   await expect(m.locator('#messengerRoomList li')).toHaveCount(0); await expect(m.locator('#messengerMessages > *')).toHaveCount(0); await expect(m).toHaveTitle('아일랜드 메신저');
@@ -130,14 +133,20 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // closes it (not the game's menu); its 「메신저 앱으로 열기 ↗」 opens the messenger app's page
   await dad.context.addInitScript(() => {
     const real = window.matchMedia.bind(window); window.matchMedia = (q) => (q === '(display-mode: standalone)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q));
-    window.__opens = []; window.open = (...args) => { window.__opens.push(args); return null; };
+    window.__opens = []; window.__realOpen = window.open.bind(window); window.open = (...args) => { window.__opens.push(args); return null; };
   });
   const appHome = await dad.context.newPage(); await appHome.goto('/'); await expect(appHome.locator('#accountMessengerBtn')).toBeVisible({ timeout: 30000 });
   await appHome.locator('#accountMessengerBtn').click(); await expect(appHome.locator('#messengerDrawer')).toBeVisible();
   const f = appHome.frameLocator('#messengerDrawer iframe'); await expect(f.locator('#mApp')).toBeVisible();
   await f.locator('#mOpenApp').click();
   expect(await appHome.evaluate(() => window.__opens)).toEqual([]);
-  expect(await appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens)).toEqual([['/messenger.html', 'gc-messenger']]);
+  // (v1.10.253: first the messenger app's own link, web+gcmessenger: -- none installed here, so 1.5 s later a blank window, a
+  // Chrome tab outside the island app's scope, then sent to the messenger)
+  await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 }).toEqual([['', '_blank']]);
+  { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
+    const [tab] = await Promise.all([appHome.context().waitForEvent('page'), appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => { window.open = window.__realOpen; document.getElementById('mOpenApp').click(); })]);
+    await expect.poll(() => tab.url(), { timeout: 5000 }).toContain('/messenger.html'); await tab.close();
+  }
   await f.locator('#mOpenApp').press('Escape'); await expect(appHome.locator('#messengerDrawer')).toBeHidden(); await expect(appHome.locator('#gameMenu, .gameMenu').first()).toBeHidden();
   for (const p of [mom, dad, kid]) await p.context.close();
 });
@@ -303,6 +312,7 @@ test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.htm
   test.setTimeout(60000);
   const manifest = await request.get('/messenger.webmanifest'); expect(manifest.status()).toBe(200); expect(manifest.headers()['content-type']).toContain('manifest+json');
   const mf = await manifest.json(); expect(mf).toMatchObject({ id: '/messenger', name: '아일랜드 메신저', start_url: '/messenger.html', scope: '/messenger', display: 'standalone' });
+  expect(mf.protocol_handlers).toEqual([{ protocol: 'web+gcmessenger', url: '/messenger.html?open=%s' }]); // (v1.10.253: the 서랍's 「메신저 앱으로 열기」 reaches the installed app)
   for (const icon of mf.icons) { const res = await request.get(icon.src); expect(res.status(), icon.src).toBe(200); expect(res.headers()['content-type']).toBe('image/png'); }
   expect(mf.icons.map((i) => i.purpose).sort()).toEqual(['any', 'any', 'maskable']);
   expect((await (await request.get('/manifest.webmanifest')).json())).toMatchObject({ name: '아일랜드', start_url: '/', scope: '/' }); // (the island's as it was)
