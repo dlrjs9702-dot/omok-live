@@ -1921,7 +1921,8 @@
   });
   function showPlazaHint(facility) {
     const isTrain = facility?.id?.startsWith('train:');
-    plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' || touchIsland ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press; v1.10.62: on a touch screen the hint itself is tapped
+    const label = facility?.short && window.matchMedia?.('(max-width: 640px)').matches ? facility.short : facility?.name; // (v1.10.251: a phone's short one -- the trophy's whole line once pressed)
+    plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' || touchIsland ? label : `SPACE · ${label}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press; v1.10.62: on a touch screen the hint itself is tapped
     plazaHint.classList.toggle('hidden', !facility || Boolean(isTrain && !facility.plain));
     trainControls.classList.toggle('hidden', !isTrain);
     if (isTrain) {
@@ -1970,7 +1971,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'tool:use' ? useHeld() : id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : id === 'contest:tent' ? openContestTent() : id === 'board:records' ? openRecordTower() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'tool:use' ? useHeld() : String(id).startsWith('trophy:') ? showToast(`🏆 ${plaza.controller?.trophyLine?.(id) || ''}`, 4000) /* (v1.10.251 §3-1) */ :id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : id === 'contest:tent' ? openContestTent() : (id === 'board:records' || id === 'board:records:back') ? openRecordTower() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2234,10 +2235,11 @@
   // (on its 싱글게임 tab, the one last shown), as when leaving a room
   let hanpanBack = () => showView('lobby'); // where the screen opened last goes back to
   // (v1.10.243 U1: the module alone, for the sheet's choices -- no screen change)
+  let hanpanMounting = null; // (Codex 10판 ⑤: two opens while the module loads share one mount)
   async function mountHanpan() {
-    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack(), pieceSkin: async (gameId) => { // A3 G3-2: my equipped 오목 돌 in the AI practice too
-      if (gameId !== 'gomoku') return null; try { return (await api('/api/skins')).equipped?.omok?.piece || null; } catch { return null; } } }); }
-    catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
+    try { reflexGames ||= await (hanpanMounting ||= import('/reflex/reflex.js').then((m) => m.mount({ api, onBack: () => hanpanBack(), pieceSkin: async (gameId) => { // A3 G3-2: my equipped 오목 돌 in the AI practice too
+      if (gameId !== 'gomoku') return null; try { return (await api('/api/skins')).equipped?.omok?.piece || null; } catch { return null; } } }))); }
+    catch { hanpanMounting = null; showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
     return true;
   }
   async function loadHanpan(onBack) {
@@ -2277,11 +2279,12 @@
   async function renderRecordTower() {
     const R = window.SoloRanking; const g = R.BY_ID[towerPick.game]; const level = g.levels.includes(towerPick.level) ? towerPick.level : g.board; towerPick.level = level;
     towerChips(byId('recordTowerGames'), R.GAMES.map((x) => [x.id, x.name]), g.id, (v) => { towerPick.game = v; towerPick.level = null; renderRecordTower(); });
-    towerChips(byId('recordTowerPeriod'), [['week', '이번 주'], ['all', '역대 최고']], towerPick.period, (v) => { towerPick.period = v; renderRecordTower(); });
+    towerChips(byId('recordTowerPeriod'), [['week', '이번 주'], ['all', '역대 최고'], ['mine', '내 업적']], towerPick.period, (v) => { towerPick.period = v; renderRecordTower(); });
+    if (towerPick.period === 'mine') return renderMyAwards(); /* (v1.10.251 §3-2) */
     towerChips(byId('recordTowerLevels'), g.levels.map((l) => [l, R.levelName(g.id, l)]), level, (v) => { towerPick.level = v; renderRecordTower(); });
     byId('recordTowerLevels').classList.toggle('hidden', g.levels.length < 2);
     const list = byId('recordTowerList'); const me = byId('recordTowerMe'); const ask = ++towerAsk;
-    let d; try { d = await api(`/api/solo/ranking?game=${g.id}&level=${level}&period=${towerPick.period}`); } catch (error) { me.textContent = error.message; return; }
+    let d; try { d = await api(`/api/solo/ranking?game=${g.id}&level=${level}&period=${towerPick.period}`); } catch (error) { if (ask === towerAsk) me.textContent = error.message; return; } /* (Codex 10판 ⑦: a late failure leaves the newer one) */
     if (ask !== towerAsk) return;
     list.replaceChildren(...d.rows.map((r) => { const li = document.createElement('li'); li.className = `recordTowerRowItem${r.me ? ' me' : ''}${r.rank === 1 ? ' first' : ''}`;
       const n = document.createElement('b'); n.textContent = `${r.rank}`; const who = document.createElement('span'); who.textContent = r.name; const rec = document.createElement('strong'); rec.textContent = R.format(g.id, r.best);
@@ -2289,6 +2292,17 @@
     if (!d.rows.length) { const li = document.createElement('li'); li.className = 'recordTowerEmpty'; li.textContent = towerPick.period === 'week' ? '이번 주 첫 1위가 되어 보세요!' : '아직 기록이 없어요'; list.append(li); }
     me.textContent = d.me ? `내 순위 ${d.me.rank}위 · ${R.format(g.id, d.me.best)}${d.me.rank > 20 ? ` (${d.total}명 중)` : ''}` : '내 기록이 아직 없어요';
     byId('recordTowerGo').textContent = `${g.name} 도전하기`;
+  }
+  // v1.10.251 「내 업적」 (§3-2): the trophies won in all (🥇🥈🥉 by game), each game's all-time best of mine and its place
+  async function renderMyAwards() {
+    const R = window.SoloRanking; byId('recordTowerLevels').classList.add('hidden'); const list = byId('recordTowerList'); const me = byId('recordTowerMe'); const ask = ++towerAsk;
+    let d; try { d = await api('/api/solo/awards'); } catch (error) { if (ask === towerAsk) me.textContent = error.message; return; } if (ask !== towerAsk) return;
+    const rows = d.games.filter((g) => g.levels.length || g.trophies.gold + g.trophies.silver + g.trophies.bronze).map((g) => { const li = document.createElement('li'); li.className = 'recordTowerRowItem recordTowerAward';
+      const n = document.createElement('b'); n.textContent = `🥇${g.trophies.gold} 🥈${g.trophies.silver} 🥉${g.trophies.bronze}`; const who = document.createElement('span'); who.textContent = g.name;
+      const rec = document.createElement('strong'); const best = g.levels.find((l) => l.level === R.BY_ID[g.game].board) || g.levels[0]; rec.textContent = best ? `${R.format(g.game, best.best)}${best.place ? ` · ${best.place}위` : ''}` : '—'; li.append(who, n, rec); return li; });
+    const total = document.createElement('li'); total.className = 'recordTowerTotal'; total.textContent = `🏆 트로피 모두 ${d.trophies}개${d.star ? ` · 게임관의 별 ${d.star}번` : ''}`; /* (§3-2: the total on top) */
+    list.replaceChildren(total, ...rows); if (!rows.length) { const li = document.createElement('li'); li.className = 'recordTowerEmpty'; li.textContent = '아직 기록이 없어요. 도전해 보세요!'; list.append(li); }
+    me.textContent = ''; byId('recordTowerGo').textContent = `${R.BY_ID[towerPick.game].name} 도전하기`;
   }
   function openRecordTower(game) {
     if (game && window.SoloRanking?.BY_ID[game]) { towerPick.game = game; towerPick.level = null; }
@@ -4406,6 +4420,7 @@
       try { await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller.pose()) }).catch(() => {}); const d = await api('/api/island/birthday/cheer', { method: 'POST', body: JSON.stringify({ plazaId }) }); plaza.controller?.emote?.('clap'); showToast(`축하했어요! (올해 ${d.count}명이 축하)`); } catch (error) { showToast(error.message); }
     }));
     openTalk(who?.name || '');
+    api(`/api/solo/awards?plaza=${encodeURIComponent(plazaId)}`).then((d) => { if (!d.trophies) return; const line = document.createElement('p'); line.className = 'lostRequestLine playerTrophies'; line.textContent = `🏆 기록의 탑 트로피 🥇${d.medals?.gold || 0} 🥈${d.medals?.silver || 0} 🥉${d.medals?.bronze || 0}`; /* (§3-2) */ lostCard.prepend(line); }).catch(() => {}); // (v1.10.251 §3-2)
   }
   // v1.10.92 선물: what of my bag can be given (not a lost thing, not the wrap itself), one tap gives one
   async function openGift(plazaId, name) {
@@ -4577,9 +4592,9 @@
     for (const l of d.letters) {
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
       const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
-      const office = l.from === 'office'; // (주민세 고지서: from the 관공서, its own stamp, no reply)
+      const office = l.from === 'office' || l.from === 'gamehall'; // (주민세 고지서: from the 관공서, its own stamp, no reply; v1.10.251: 게임관's trophy letter too)
       const head = el('div', 'mailHead'); const who = el('strong', '', islander || office ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
-      { const stamp = el('span', `mailStamp${office ? ' office' : ''}`, office ? '관공서' : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? '#8f2f24' : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
+      { const stamp = el('span', `mailStamp${office ? ' office' : ''}`, office ? (l.from === 'gamehall' ? '게임관' : '관공서') : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? (l.from === 'gamehall' ? '#9c5f14' : '#8f2f24') : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
       head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
@@ -7909,6 +7924,9 @@
     if (event === 'petshop') { if (plaza.controller?.space?.() === 'petshop') refreshPetshop(); else petshopState = null; return; } // 묶음 2-2: one taken somewhere
     if (event === 'projects') { refreshProjects(); return; } // v1.10.222 섬 가꾸기: filled, saved, at its works, open
     if (event === 'insects') { plaza.controller?.insectsGone?.(parsed.gone); return; } // 묶음 5: one caught or sent off somewhere
+    if (event === 'soloFirst') { plaza.controller?.recordRibbon?.(parsed); recordBoardAt = 0; refreshRecordBoard(true);
+      const R = window.SoloRanking; const g = R?.BY_ID[parsed.game]; if (g && document.body.classList.contains('plazaMode')) showToast(`🏆 기록의 탑 · ${g.name} 이번 주 새 1위! ${parsed.name} · ${R.format(g.id, parsed.best)}`, window.matchMedia?.('(max-width: 640px)').matches ? 2500 : 4000); /* (§1-2: the island told; a phone's covers the board -- shorter) */
+      return; } // v1.10.251 기록의 탑: a new week's 1st
     if (event === 'homes') { refreshHomes(); return; } // 묶음 4: a house new somewhere, or its roof
     if (event === 'homeInside') { if (homeInside && homeInside.home?.lot === parsed.lot && !homeInside.mine) api('/api/home/inside').then((r) => { if (homeInside?.home?.lot === parsed.lot) showHome(r, true); }).catch(() => {}); return; } // v1.10.226: the house I visit changed (a piece placed, a colour)
     if (event === 'friends') { showToast(parsed.kind === 'request' ? `${parsed.name || '이웃'}님이 친구 신청을 했어요 · 내 정보 「친구」에서 수락할 수 있어요` : '친구 신청이 받아들여졌어요', 5000); if (myInfoDialog.open) renderFriends(); return; } // 묶음 4 친구

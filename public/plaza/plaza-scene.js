@@ -553,7 +553,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function refreshMinimap(now) {
     if (now - minimapAt < 120) return;
     minimapAt = now;
-    const places = Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && (!id.startsWith('home:') || d.mine)).map(([, d]) => ({ x: d.x, z: d.z, name: d.mapName || d.name })); // (v1.10.84: the map says 관공서, the hint 관공서 들어가기)
+    const places = Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && !id.startsWith('trophy:') && !id.endsWith(':back') && (!id.startsWith('home:') || d.mine)).map(([, d]) => ({ x: d.x, z: d.z, name: d.mapName || d.name })); // (v1.10.84: the map says 관공서, the hint 관공서 들어가기)
     ({ turn: minimapTurn, shown: minimapShown } = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, festMarks.length || tentMarks.length ? mapMarkers.concat(festMarks, tentMarks) : mapMarkers));
   }
 
@@ -1501,12 +1501,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const root = new THREE.Group(); root.position.set(TOWER.x, heightAt(TOWER.x, TOWER.z), TOWER.z); root.rotation.y = TOWER.yaw; scene.add(root);
     const fb = new THREE.Group(); root.add(fb); // the stand-in: a dark board on two cream posts
     mesh(new THREE.BoxGeometry(6.1, 3.9, 0.3), mat(0x3b2a1e), 0, 3.05, 0, fb); for (const x of [-3.3, 3.3]) mesh(new THREE.CylinderGeometry(0.2, 0.2, 5, 10), mat(0xf4efe6), x, 2.5, 0, fb);
-    mesh(new THREE.BoxGeometry(1.1, 2.1, 0.3), mat(0x3b2a1e), -4.3, 1.55, 0, fb); mesh(new THREE.BoxGeometry(1.0, 0.5, 0.8), mat(0xd9a520), 0, 0.25, -0.9, fb); /* (명예의 칸 and the podium too: all its solids drawn -- dalmaru-walk's mapCheck) */
-    const face = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; textures.push(t);
+    mesh(new THREE.BoxGeometry(1.1, 2.1, 0.3), mat(0x3b2a1e), -4.3, 1.55, 0, fb); mesh(new THREE.BoxGeometry(1.0, 0.5, 0.8), mat(0xd9a520), 0, 0.25, 0.9, fb); /* (v1.10.251: the podium behind, to the plaza) */ /* (명예의 칸 and the podium too: all its solids drawn -- dalmaru-walk's mapCheck) */
+    const face = (w, h) => { const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2; /* (v1.10.251: twice the pixels, drawn at the same sizes) */ const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; textures.push(t);
       return { c, t, m: new THREE.MeshStandardMaterial({ name: 'record_face', map: t, emissiveMap: t, emissive: 0x000000, roughness: 0.85 }) }; };
     const F = { board_face: face(1120, 520), board_ticker: face(1536, 128) /* (its 5.6 × 0.5 m: 12 to 1, the words not squeezed) */, board_honor: face(320, 544) };
     F.board_ticker.t.wrapS = THREE.RepeatWrapping;
-    const T = { root, F, bulbs: [], glows: [], flags: [], data: null, shown: 0, turnAt: 0, drawnKey: '' };
+    const T = { root, F, bulbs: [], glows: [], flags: [], data: null, shown: 0, turnAt: 0, drawnKey: '', ribbon: null };
     assets.attach('gamehall.record_tower', root, fb, (entry) => {
       T.bulbs = []; T.glows = []; T.flags = []; if (!entry) return;
       root.traverse((o) => { if (!o.isMesh) return; const name = [].concat(o.material || [])[0]?.name; if (F[name]) o.material = F[name].m; /* (no vertex colours: the words would turn navy) */ });
@@ -1514,9 +1514,46 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       for (let k = 0; k < 32; k += 1) { const ms = []; for (const b of named('bulb_' + String(k).padStart(2, '0'))) b.traverse((o) => { if (o.isMesh) { o.material = [].concat(o.material)[0].clone(); o.material.emissive?.set(0xffd27a); ms.push(o.material); } }); if (ms.length) T.bulbs.push(ms); }
       root.traverse((o) => { if (o.isMesh && !T.bulbs.some((ms) => ms.includes(o.material))) for (const m of [].concat(o.material || [])) if (m.name === 'glow' && !T.glows.includes(m)) { m.emissive?.set(0xffffff); T.glows.push(m); } });
       T.flags = ['flag_L', 'flag_R'].flatMap((id) => named(id)).map((o) => ({ o, z: o.rotation.z }));
-      T.drawnKey = '';
+      for (const p of named('podium')) if (!p.userData.turned) { p.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); p.rotation.y += Math.PI; p.userData.turned = true; } /* (사용자: the podium seen from the plaza -- turned behind the board, the same height; still only for show) */
+      T.drawnKey = ''; backFaces(root);
     });
+    // (v1.10.251 양면, 사용자: the plaza side too) each written face copied onto the board's back -- turned 180° about its own middle,
+    // 1.5 cm off the back found by a ray from behind; the same material, so the turning, the strip, the ribbon and the night are one
+    function backFaces(root) {
+      root.updateMatrixWorld(true); const faces = []; const others = [];
+      const mine = new Set(Object.values(F).map((f) => f.m)); /* (the faces already wear these) */
+      root.traverse((o) => { if (!o.isMesh || o.userData.backOf) return; (mine.has(o.material) ? faces : others).push(o); });
+      const ray = new THREE.Raycaster(); let n = 0;
+      for (const o of faces) {
+        const P = o.parent; if (P.children.some((c) => c.userData.backOf === o.uuid)) continue;
+        o.geometry.computeBoundingBox(); const c = o.geometry.boundingBox.clone().applyMatrix4(o.matrix).getCenter(new THREE.Vector3());
+        const from = new THREE.Vector3(c.x, c.y, c.z + 4).applyMatrix4(P.matrixWorld); const at = c.clone().applyMatrix4(P.matrixWorld);
+        ray.set(from, at.sub(from).normalize()); ray.far = 4.5; const hit = ray.intersectObjects(others, false)[0];
+        const zb = (hit ? P.worldToLocal(hit.point.clone()).z : -c.z) + 0.015;
+        const b = new THREE.Mesh(o.geometry, o.material); b.matrixAutoUpdate = false; b.userData.backOf = o.uuid;
+        b.matrix.makeTranslation(c.x, 0, zb).multiply(new THREE.Matrix4().makeRotationY(Math.PI)).multiply(new THREE.Matrix4().makeTranslation(-c.x, 0, -c.z)).multiply(o.matrix);
+        P.add(b); n += 1;
+      }
+      T.backs = (T.backs || 0) + n;
+      // (총괄 251 3차) the 32 bulbs on the back's frame too -- their materials shared, so the same chase; set on the back found by
+      // a ray (the bulbs and the flags not in its way)
+      const bulbs = []; const flags = []; root.traverse((o) => { if (o.userData.backOf) return; if (/^bulb_\d\d$/.test(o.name)) bulbs.push(o); else if (/^flag_[LR]$/.test(o.name)) flags.push(o); });
+      const skip = new Set(); for (const g of [...bulbs, ...flags]) g.traverse((m) => { if (m.isMesh) skip.add(m); });
+      const frame = others.filter((m) => !skip.has(m)); let lit = 0;
+      for (const g of bulbs) {
+        const P = g.parent; if (P.children.some((c) => c.userData.backOf === g.uuid)) continue;
+        const inv = P.matrixWorld.clone().invert(); const box = new THREE.Box3();
+        g.traverse((m) => { if (m.isMesh) { m.geometry.computeBoundingBox(); box.union(m.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld))); } });
+        const c = box.getCenter(new THREE.Vector3()); const from = new THREE.Vector3(-c.x, c.y, 4).applyMatrix4(P.matrixWorld);
+        ray.set(from, new THREE.Vector3(-c.x, c.y, 0).applyMatrix4(P.matrixWorld).sub(from).normalize()); ray.far = 4.5; const hit = ray.intersectObjects(frame, false)[0];
+        const dz = (hit ? P.worldToLocal(hit.point.clone()).z : -box.max.z) + box.max.z; // (its foot, -max.z once turned, onto the back)
+        const k = g.clone(); k.userData.backOf = g.uuid; k.matrixAutoUpdate = false;
+        k.matrix.makeTranslation(0, 0, dz).multiply(new THREE.Matrix4().makeRotationY(Math.PI)).multiply(g.matrix); P.add(k); lit += 1;
+      }
+      T.backBulbs = (T.backBulbs || 0) + lit;
+    }
     const front = { x: TOWER.x + 2.6, z: TOWER.z }; doors['board:records'] = { x: front.x, z: front.z, name: '기록의 탑 · 순위 보기' };
+    doors['board:records:back'] = { x: TOWER.x - 2.2, z: TOWER.z, name: '기록의 탑 · 순위 보기' }; /* (양면: from the plaza side too) */
     return T;
   })();
   const fmtLeft = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)); const d = Math.floor(m / 1440); const h = Math.floor((m % 1440) / 60); return d ? d + '일 ' + h + '시간' : h ? h + '시간 ' + (m % 60) + '분' : (m % 60) + '분'; };
@@ -1524,10 +1561,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const T = recordTower; const d = T.data; const R = globalThis.SoloRanking; if (!d || !R) return;
     const games = d.games || []; if (!games.length) return;
     if (now >= T.turnAt) { T.shown = (T.shown + (T.turnAt ? 1 : 0)) % games.length; T.turnAt = now + 6000; }
-    const g = games[T.shown]; const left = fmtLeft(d.endsAt - (Date.now() + serverOffset));
-    const key = d.week + '|' + T.shown + '|' + JSON.stringify(g) + '|' + left; if (key === T.drawnKey) return; T.drawnKey = key;
+    const g = games[T.shown]; const left = fmtLeft(d.endsAt - (Date.now() + serverOffset)); const rib = T.ribbon && now < T.ribbon.until ? T.ribbon : null;
+    const key = d.week + '|' + T.shown + '|' + JSON.stringify(g) + '|' + left + '|' + (rib ? rib.name : ''); if (key === T.drawnKey) return; T.drawnKey = key;
     { // the big face: the head line, the game, its 1·2·3 on a podium, its all-time best in gold
-      const { c, t } = T.F.board_face; const x = c.getContext('2d'); const W = c.width; const H = c.height;
+      const { c, t } = T.F.board_face; const x = c.getContext('2d'); const W = c.width / 2; const H = c.height / 2; x.setTransform(2, 0, 0, 2, 0, 0);
       x.fillStyle = '#121a3a'; x.fillRect(0, 0, W, H); x.textAlign = 'center'; x.textBaseline = 'middle';
       x.fillStyle = '#ffd34d'; x.font = '900 46px system-ui, sans-serif'; x.fillText('🏆 기록의 탑 · 이번 주', W / 2 - 130, 44);
       x.fillStyle = 'rgba(244,245,252,.75)'; x.font = '800 28px system-ui, sans-serif'; x.fillText('정산까지 ' + left, W - 165, 46);
@@ -1543,31 +1580,39 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         const nm = r.name.length > 7 ? r.name.slice(0, 6) + '…' : r.name; x.fillStyle = place === 1 ? '#ffd34d' : '#f4f5fc'; x.font = '900 48px system-ui, sans-serif'; x.fillText(nm, cx, top0 + 96);
         x.fillStyle = '#f4f5fc'; x.font = '800 42px system-ui, sans-serif'; x.fillText(R.format(g.game, r.best), cx, top0 + 152);
       }
-      t.needsUpdate = true;
+      if (rib) { x.fillStyle = '#ff5a79'; x.beginPath(); x.roundRect(W - 330, 76, 300, 60, 30); x.fill(); x.fillStyle = '#fff'; x.font = '900 32px system-ui, sans-serif'; x.fillText('새 1위! ' + (rib.name.length > 7 ? rib.name.slice(0, 6) + '…' : rib.name), W - 180, 107); } /* (v1.10.251: 3 s, everyone's) */
+      x.setTransform(1, 0, 0, 1, 0, 0); t.needsUpdate = true;
     }
   }
   function drawRecordStrips() { // the leaders' strip and 명예의 칸 -- drawn when the data comes
     const T = recordTower; const d = T.data; const R = globalThis.SoloRanking; if (!d || !R) return;
-    { const { c, t } = T.F.board_ticker; const x = c.getContext('2d'); x.fillStyle = '#0b1028'; x.fillRect(0, 0, c.width, c.height);
+    { const { c, t } = T.F.board_ticker; let x = c.getContext('2d'); const cw = 1536; const ch = 128; const FONT = '800 78px system-ui, sans-serif';
       const items = (d.games || []).filter((g) => g.top?.[0]).map((g) => g.name + ' · ' + g.top[0].name + ' ' + R.format(g.game, g.top[0].best));
       const line = (items.length ? items : ['이번 주 첫 1위를 기다려요']).join('   ★   ') + '   ★   ';
-      x.font = '800 78px system-ui, sans-serif'; x.textBaseline = 'middle'; x.fillStyle = '#ffd34d'; const w = Math.max(1, x.measureText(line).width);
-      const n = Math.max(1, Math.round(c.width / w)); x.setTransform(c.width / (n * w), 0, 0, 1, 0, 0); /* (a whole number of lines across: the wrap without a seam) */
-      for (let k = 0; k < n; k += 1) x.fillText(line, k * w, c.height / 2); x.setTransform(1, 0, 0, 1, 0, 0); t.needsUpdate = true; }
-    { const { c, t } = T.F.board_honor; const x = c.getContext('2d'); x.fillStyle = '#121a3a'; x.fillRect(0, 0, c.width, c.height); x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.font = FONT; const w = Math.max(1, x.measureText(line).width);
+      /* (a whole number of lines on the canvas: the wrap without a seam. Codex 10판 ②: the letters keep their own width -- a long line
+         makes the canvas wider and the strip shows 1536 of it at a time (repeat), not the line squeezed into it) */
+      const n = Math.max(1, Math.round(cw / w)); const lw = n * w; const p = Math.min(2, Math.min(8192, renderer.capabilities.maxTextureSize) / lw);
+      const pw = Math.ceil(lw * p); const ph = Math.round(ch * p); if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; t.dispose(); x = c.getContext('2d'); }
+      x.setTransform(pw / lw, 0, 0, ph / ch, 0, 0); x.fillStyle = '#0b1028'; x.fillRect(0, 0, lw, ch); x.font = FONT; x.textBaseline = 'middle'; x.fillStyle = '#ffd34d';
+      for (let k = 0; k < n; k += 1) x.fillText(line, k * w, ch / 2); x.setTransform(1, 0, 0, 1, 0, 0); t.repeat.x = cw / lw; t.needsUpdate = true; T.tickerScale = [pw / lw, ph / ch]; }
+    { const { c: big, t } = T.F.board_honor; const x = big.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); const c = { width: big.width / 2, height: big.height / 2 }; x.fillStyle = '#121a3a'; x.fillRect(0, 0, c.width, c.height); x.textAlign = 'center'; x.textBaseline = 'middle';
       x.fillStyle = '#ffd34d'; x.font = '900 34px system-ui, sans-serif'; x.fillText('명예의 칸', c.width / 2, 34); x.fillStyle = 'rgba(244,245,252,.7)'; x.font = '700 20px system-ui, sans-serif'; x.fillText('지난주 1위', c.width / 2, 68);
       const rows = d.lastWeek || []; x.textAlign = 'left';
       if (!rows.length) { x.textAlign = 'center'; x.fillStyle = '#f4f5fc'; x.font = '700 22px system-ui, sans-serif'; x.fillText('다음 주에 처음', c.width / 2, 200); x.fillText('이름이 올라요', c.width / 2, 232); }
       rows.slice(0, 14).forEach((r, i) => { const y = 104 + i * 31; x.fillStyle = 'rgba(244,245,252,.7)'; x.font = '700 18px system-ui, sans-serif'; x.fillText(r.short, 16, y); x.fillStyle = '#f4f5fc'; x.font = '800 20px system-ui, sans-serif'; x.textAlign = 'right'; x.fillText(r.name.length > 8 ? r.name.slice(0, 7) + '…' : r.name, c.width - 14, y); x.textAlign = 'left'; });
-      t.needsUpdate = true; }
+      x.setTransform(1, 0, 0, 1, 0, 0); t.needsUpdate = true; }
   }
   function setRecordBoard(data) { recordTower.data = data || null; recordTower.drawnKey = ''; drawRecordStrips(); }
+  // (v1.10.251) a new week's 1st somewhere: the big face turns to that game with a 3 s ribbon, the bulbs run fast meanwhile
+  function recordRibbon(news) { const T = recordTower; const k = (T.data?.games || []).findIndex((g) => g.game === news?.game); if (k < 0) return; T.shown = k; T.turnAt = performance.now() + 6000; T.ribbon = { name: String(news.name || ''), until: performance.now() + 3000 }; T.drawnKey = ''; }
   function stepRecordTower(dt) {
     const T = recordTower; const now = performance.now(); const t = now / 1000;
     for (const [k, fl] of T.flags.entries()) fl.o.rotation.z = fl.z + Math.sin(t * 2.2 + k * 1.7) * 0.12;
-    T.F.board_ticker.t.offset.x = (T.F.board_ticker.t.offset.x + (dt || 0.016) * 0.045) % 1;
+    { const tk = T.F.board_ticker.t; tk.offset.x = (tk.offset.x + (dt || 0.016) * 0.045 * tk.repeat.x) % 1; } /* (the same speed on the strip, however long the line) */
+    for (const m of yardTrophyGlows) m.emissiveIntensity = night ? (m.userData.nightGlow ?? 1.4) : 0; /* (v1.10.251: the yard trophies' symbols at night) */
     const lit = Boolean(night); for (const f of Object.values(T.F)) f.m.emissive.setScalar(lit ? 0.85 : 0.35); /* (a little by day too: a screen's words, not paper) */
-    const head = Math.floor(t * 8) % 32; T.bulbs.forEach((ms, k) => { const on = lit ? ((k - head + 32) % 32) < 6 : true; for (const m of ms) m.emissiveIntensity = lit ? (on ? 2.2 : 0.25) : 0.35; });
+    const fast = T.ribbon && now < T.ribbon.until; const head = Math.floor(t * (fast ? 32 : 8)) % 32; T.bulbs.forEach((ms, k) => { const on = lit ? ((k - head + 32) % 32) < 6 : true; for (const m of ms) m.emissiveIntensity = lit ? (on ? 2.2 : 0.25) : 0.35; });
     for (const m of T.glows) m.emissiveIntensity = lit ? 1.6 : 0.3;
     drawRecordFaces(now);
   }
@@ -3355,11 +3400,35 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     yardCells = []; const by = new Map();
     // (v1.10.230 울타리 마을: each lot's own fence at its level, the same pieces as a yard's wooden fence, stretched to fit)
     for (const y of yardsShown.values()) for (const p of YARD.fencePieces(y.level)) { if (!by.has('fence_wood')) by.set('fence_wood', new Map()); const per = by.get('fence_wood'); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p).multiply(new THREE.Matrix4().makeScale(p.len, 1, 1))); }
-    for (const y of yardsShown.values()) for (const p of y.items) { const shape = YARD.shapeOf(p.id); if (!shape) continue; if (!by.has(shape)) by.set(shape, new Map()); const per = by.get(shape); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p)); }
+    drawYardTrophies();
+    for (const y of yardsShown.values()) for (const p of y.items) { const shape = YARD.shapeOf(p.id); if (!shape || YARD.ITEMS[shape].trophy) continue; if (!by.has(shape)) by.set(shape, new Map()); const per = by.get(shape); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p)); }
     for (const [shape, per] of by) {
       const [geo, m] = yardStandIn(shape);
       const cells = [...per].map(([id, matrices]) => { const lot = YARD.lotById(id); const im = new THREE.InstancedMesh(geo, m, matrices.length); matrices.forEach((x, i) => im.setMatrixAt(i, x)); im.castShadow = true; yardGroup.add(im); return { x: lot.x, z: lot.z, parent: yardGroup, procedural: [im], matrices, colors: null, shadow: true }; });
       assets.batch(`yard.${shape}`, cells); yardCells.push(cells);
+    }
+  }
+  // v1.10.251 기록의 탑 트로피 (assets 98): its model's trophy_metal a gold, silver or bronze of its own, trophy_plate its words
+  // (「칭호 · 이름 · 2026년 11월 2주」), its symbol's glow lit at night -- one root each (a yard holds a few)
+  let yardTrophyRoots = []; const yardTrophyGlows = []; const METAL_HEX = { gold: 0xe8b53a, silver: 0xc0c8cf, bronze: 0xb9845a };
+  function plateMaterial(words) {
+    const c = document.createElement('canvas'); c.width = 384; c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#f3ead2'; x.fillRect(0, 0, 384, 128);
+    const [title, ...rest] = String(words || '').split(' · '); x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#3d2f20';
+    x.font = '900 38px system-ui, sans-serif'; x.fillText(title || '', 192, 44, 360); x.font = '800 24px system-ui, sans-serif'; x.fillText(rest.join(' · '), 192, 96, 360);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 });
+  }
+  function drawYardTrophies() {
+    for (const r of yardTrophyRoots) { r.removeFromParent(); r.traverse((o) => { if (o.material?.map?.isCanvasTexture) { o.material.map.dispose(); o.material.dispose(); } }); }
+    yardTrophyRoots = []; yardTrophyGlows.length = 0; for (const k of Object.keys(doors)) if (k.startsWith('trophy:')) delete doors[k];
+    for (const y of yardsShown.values()) for (const p of y.items) {
+      const shape = YARD.shapeOf(p.id); if (!shape || !YARD.ITEMS[shape].trophy) continue; const metal = /__(gold|silver|bronze)$/.exec(p.id)?.[1] || 'gold';
+      { const f = YARD.world(y.lot, p.x, p.z); const line = p.line || p.plate || ''; if (line) doors[`trophy:${p.uid}`] = { x: f.x, z: f.z, name: `${line} · 보기`, short: `${line.split(' · ')[0]} 트로피 · 보기`, line }; } /* (short: a phone's hint) */ /* (§3-1: SPACE by it, anyone's yard -- its one line) */
+      const root = new THREE.Group(); root.matrixAutoUpdate = false; root.matrix.copy(yardMatrix(y.lot, p)); root.userData.trophy = { id: p.id, plate: p.plate || '' }; yardGroup.add(root); yardTrophyRoots.push(root);
+      const fallback = new THREE.Group(); root.add(fallback); mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.3, 16), mat(0x8a7a66), 0, 0.15, 0, fallback); mesh(new THREE.CylinderGeometry(0.12, 0.2, 1.3, 12), mat(METAL_HEX[metal]), 0, 0.95, 0, fallback);
+      assets.attach(`yard.${shape}`, root, fallback, (entry) => { if (!entry) return; root.traverse((o) => { if (!o.isMesh) return; const m = [].concat(o.material)[0];
+        if (m?.name === 'trophy_metal') { o.material = m.clone(); o.material.color.setHex(METAL_HEX[metal]); o.material.emissive?.setHex(METAL_HEX[metal]); o.material.userData.nightGlow = metal === 'gold' ? 0.42 : 0.3; yardTrophyGlows.push(o.material); } /* (at night the metal too, gold a little brighter -- 11 of the 15 models have no `glow`) */
+        else if (m?.name === 'trophy_plate') o.material = plateMaterial(p.plate);
+        else if (m?.name === 'glow') { o.material = m.clone(); o.material.emissive?.set(0xffe9a8); yardTrophyGlows.push(o.material); } }); });
     }
   }
   function yardGhost(p) { // -> why not (Korean) or null; p lot-local in my yard (yardEdit), null to clear
@@ -4827,7 +4896,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // (문제 기록 3회차 공통 오류 「reading 'name' at step」: best may still be last frame's grab:hold or fish:spot, taken
     // away just above when the piece was let go or the line pulled in)
     if (best && !doorOf(best)) best = null;
-    if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName, plain: Boolean(doorOf(near).plain) } : null); }
+    if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName, short: doorOf(near).short || null, plain: Boolean(doorOf(near).plain) } : null); }
     stepTargetRing(); /* (v1.10.218 B6) */
     me.lookAt = near && !talkView ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
     const ambientClock = lessMotion?.matches ? 0 : clock;
@@ -5012,7 +5081,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         return { id, angle: Math.round(THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp((f.x * (s.x - p.x) + f.z * (s.z - p.z)) / (Math.hypot(f.x, f.z) * Math.hypot(s.x - p.x, s.z - p.z) || 1), -1, 1)))), home: Math.round(THREE.MathUtils.radToDeg(Math.abs(Math.atan2(Math.sin(off), Math.cos(off))))) }; }); },
 
     beams: (on) => { for (const x of uplightBeams) x.visible = Boolean(on); }, /* (v1.10.224: the before/after photos) */
-    yards: () => ({ lots: [...yardsShown].filter(([, y]) => y.items.length).map(([id, y]) => ({ id, n: y.items.length, level: y.level })), batches: yardCells.length, seats: SEATS.filter((x) => String(x.id).startsWith('yard:')).map((x) => ({ id: x.id, x: x.x, z: x.z })), solids: [...gridTagged.values()].reduce((n, l) => n + new Set(l.map((e) => e.s)).size, 0), ghost: Boolean(yardGhostV), editing: yardHere }), /* (v1.10.225) */ solidAt: (x, z, r = 0.3) => solidsNear(x, z).some((o) => Math.hypot(x - o.x, z - o.z) < o.r + r), /* (v1.10.225: what blocks there, a character's width round it) */
+    yards: () => ({ lots: [...yardsShown].filter(([, y]) => y.items.length).map(([id, y]) => ({ id, n: y.items.length, level: y.level })), batches: yardCells.length, trophies: yardTrophyRoots.map((r) => { let model = false; let metal = null; let plateDrawn = false; r.traverse((o) => { const m = o.isMesh && [].concat(o.material)[0]; if (m?.name === 'trophy_metal') { model = true; metal = m.color.getHexString(); } if (o.isMesh && o.material?.map?.isCanvasTexture) plateDrawn = true; }); return { ...r.userData.trophy, model, metal, plateDrawn }; }), /* (v1.10.251) */ seats: SEATS.filter((x) => String(x.id).startsWith('yard:')).map((x) => ({ id: x.id, x: x.x, z: x.z })), solids: [...gridTagged.values()].reduce((n, l) => n + new Set(l.map((e) => e.s)).size, 0), ghost: Boolean(yardGhostV), editing: yardHere }), /* (v1.10.225) */ solidAt: (x, z, r = 0.3) => solidsNear(x, z).some((o) => Math.hypot(x - o.x, z - o.z) < o.r + r), /* (v1.10.225: what blocks there, a character's width round it) */
     projects: () => ({ scope: Boolean(scope), beams: uplightBeams.filter((b) => b.visible).length, bridge: Boolean(globalThis.IslandTerrain.bridges.some((b) => b.project === 'bridge')), night: Boolean(night), seats: SEATS.filter((s) => String(s.id).startsWith('pm-')).length, bits: [...projectBits.keys()].sort(), keeper: Boolean(worksKeeper?.root.visible), dropTop, plaques: Object.keys(doors).filter((k) => k.startsWith('plaque:')) }), /* (v1.10.222) */
     whatAt: (nx, ny) => { /* (v1.10.239: what the house's room shows at a screen point -- its layer, the mesh, where in the room) */ const R = homeRoomV; if (!R) return []; raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera); return raycaster.intersectObject(R.group, true).filter((h) => h.object.visible).slice(0, 4).map((h) => { const layer = Object.entries(R.layers).find(([, l]) => { let o = h.object; while (o) { if (o === l.root) return true; o = o.parent; } return false; })?.[0] || (R.lid && (() => { let o = h.object; while (o) { if (o === R.lid) return true; o = o.parent; } return false; })() ? 'lid' : 'other'); const p = R.group.worldToLocal(h.point.clone()); const names = []; for (let o = h.object; o && o !== R.group && names.length < 3; o = o.parent) if (o.name) names.push(o.name); return { layer, names, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), d: +h.distance.toFixed(2) }; }); },
     contestTent: () => (contestTent ? { shown: contestTent.root.visible, resident: contestTent.keeper.resident || null, name: contestTent.name, sign: contestTent.sign?.userData.boardText || null, plate: Boolean(contestTent.plate()), flags: contestTent.flags().length, door: eventDoors['contest:tent'] || null, buskerShown: Boolean(eventObjs.get('ev:quest_npc:busker')?.npc?.root.visible) } : null), /* (v1.10.238) */
@@ -5021,7 +5090,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // (tests) by islander n and talking to them at once -- the server still checks I stand by them
       talkResident: (n) => { const o = wanderers.find((w) => w.n === n); if (!o) return false; const at = residentPose(n, Date.now() + serverOffset); const x = at.x + 1.1; const z = at.z; /* (by where the server has them -- a slow screen draws a walker behind) */ me.root.position.set(x, heightAt(x, z), z); correction = null; lastTalk = { id: `resident:${n}`, x: o.w.x, z: o.w.z }; onInteract?.(`resident:${n}`); return true; },
       tryOn: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), actLocked: actLocked(), emote: (k) => emote(k), standUpNow: () => standUp(), time: () => ({ mode: timeMode, phase }), setTime: (m) => setTimeMode(m), setMotionMode,setWeather: (k) => setWeather(k), teleport: (x, z) => { me.root.position.set(x, spaceFloor(x, z), z); /* (3회차 21: in a room, its floor) */ correction = null; trainChangedAt = Date.now(); placeCamera(true); bikeCheck(); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, residentReservations:residentStates.map(s=>({...s,hold:s.hold?{...s.hold}:null})), eventResidents:[...eventObjs].filter(([,o])=>o.resident!=null).map(([key,o])=>({key,n:o.resident,x:o.npc.root.position.x,z:o.npc.root.position.z,leaving:Boolean(o.leaving),reused:wanderers.some(w=>w.c===o.npc)})), placeWanderer:(n,x,z)=>{const o=wanderers.find(o=>o.n===n); if(o) Object.assign(o.w,{x,z,route:null,routeTo:null});}, wanderers: wanderers.map(({ n, c, w }) => ({ n,held:Boolean(w.pose.held), x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on, at) => { overview = Boolean(on); if (at) overviewAt = at; placeCamera(true); } /* (v1.10.190: `at` [x, y, z] frames the app icon shot) */, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, recordTower: () => { const T = recordTower; let faces = 0; T.root.traverse((o) => { if (o.isMesh && o.material?.name === 'record_face') faces += 1; }); return { bulbs: T.bulbs.length, flags: T.flags.length, faces, game: T.data?.games?.[T.shown]?.game ?? null, at: { ...TOWER } }; }, /* (v1.10.250) */ setCamPitch: (v) => { camPitch = pitchGoal = clampPitch(v); placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, zoom: zoomDist, zoomRange: [ZOOM_MIN, ZOOM_MAX], setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, residentReservations:residentStates.map(s=>({...s,hold:s.hold?{...s.hold}:null})), eventResidents:[...eventObjs].filter(([,o])=>o.resident!=null).map(([key,o])=>({key,n:o.resident,x:o.npc.root.position.x,z:o.npc.root.position.z,leaving:Boolean(o.leaving),reused:wanderers.some(w=>w.c===o.npc)})), placeWanderer:(n,x,z)=>{const o=wanderers.find(o=>o.n===n); if(o) Object.assign(o.w,{x,z,route:null,routeTo:null});}, wanderers: wanderers.map(({ n, c, w }) => ({ n,held:Boolean(w.pose.held), x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on, at) => { overview = Boolean(on); if (at) overviewAt = at; placeCamera(true); } /* (v1.10.190: `at` [x, y, z] frames the app icon shot) */, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, recordTower: () => { const T = recordTower; let faces = 0; let backs = 0; T.root.traverse((o) => { if (o.isMesh && o.material?.name === 'record_face') { if (o.userData.backOf) backs += 1; else faces += 1; } }); return { backs, backBulbs: T.backBulbs || 0, bulbs: T.bulbs.length, flags: T.flags.length, faces, game: T.data?.games?.[T.shown]?.game ?? null, at: { ...TOWER }, ticker: ((k, s) => [Math.round((k.c.width * k.t.repeat.x) / s[0]), Math.round(k.c.height / s[1]), k.t.repeat.x < 1])(T.F.board_ticker, T.tickerScale || [2, 2]) /* (251 ②: the units the strip shows across and down, and a line longer than it) */ }; }, setRecordBoard, /* (v1.10.250) */ setCamPitch: (v) => { camPitch = pitchGoal = clampPitch(v); placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, zoom: zoomDist, zoomRange: [ZOOM_MIN, ZOOM_MAX], setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r), rise: heightAt(camera.position.x, camera.position.z) - me.root.position.y }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, y: o.c.root.position.y, lifting: Boolean(o.liftRide), /* (the lift ride they are drawn on: its length and the heights it passes -- a slow page's few frames may miss its middle) */ ride: o.liftRide ? { ms: o.liftRide.ms, ys: [0.3, 0.5, 0.7].map((u) => { const q = new THREE.Vector3(); liftPath({ ...o.liftRide, start: Date.now() - u * o.liftRide.ms }, q); return +q.y.toFixed(2); }) } : null,tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
@@ -5172,7 +5241,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; editView = Boolean(lotId); if (!lotId) yardGhost(null); }, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; editView = Boolean(lotId); if (!lotId) yardGhost(null); }, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,

@@ -24,6 +24,15 @@
     ['spider', '스파이더', true, ['easy', 'normal', 'hard'], 'normal', '거미줄 마스터', 'pt', 'cards'],
   ].map(([id, name, higher, levels, board, title, unit, group]) => Object.freeze({ id, name, higher, levels, board, title, unit, group }));
   const BY_ID = Object.fromEntries(GAMES.map((g) => [g.id, g]));
+  // v1.10.251 the week's 1·2·3 a yard trophy (assets 98 yard_trophy_<sym>): each game its symbol; 「게임관의 별」 (three titles or
+  // more in a week) the star, gold only
+  const TROPHY = Object.freeze({ whack: 'mole', reaction: 'reaction', colorfind: 'color', numbers: 'numbers', rhythm: 'beat', stairs: 'sky', minesweeper: 'mines',
+    sudoku: 'sudoku', nonogram: 'nonogram', hashi: 'bridges', circuit: 'circuit', klondike: 'klondike', freecell: 'freecell', spider: 'spider' });
+  const STAR = Object.freeze({ id: 'gamestar', title: '게임관의 별', sym: 'star' });
+  const METALS = Object.freeze(['gold', 'silver', 'bronze']); const METAL_KO = Object.freeze({ gold: '금', silver: '은', bronze: '동' });
+  const trophyGood = (sym, metal) => `yard_trophy_${sym}__${metal}`;
+  /** the week's name on a plate: its Monday's month and which week of it (2026-11-09 -> 2026년 11월 2주) */
+  const weekLabel = (week) => { const [y, m, d] = String(week).split('-').map(Number); return `${y}년 ${m}월 ${Math.floor((d - 1) / 7) + 1}주`; };
   const LEVEL_NAMES = { easy: '쉬움', normal: '보통', hard: '어려움', beginner: '초급', intermediate: '중급', expert: '고급' };
   const CARD_LEVELS = { klondike: { easy: '1장 넘기기', hard: '3장 넘기기' }, freecell: { easy: '빈칸 4개', hard: '빈칸 3개' }, spider: { easy: '1벌', normal: '2벌', hard: '4벌' } };
   const levelName = (game, level) => CARD_LEVELS[game]?.[level] || LEVEL_NAMES[level] || level;
@@ -48,5 +57,5 @@
       .map((r, i) => ({ ...r, rank: i + 1 }));
   }
 
-  return Object.freeze({ GAMES, BY_ID, LEVEL_NAMES, levelName, format, rank });
+  return Object.freeze({ GAMES, BY_ID, LEVEL_NAMES, levelName, format, rank, TROPHY, STAR, METALS, METAL_KO, trophyGood, weekLabel });
 }));

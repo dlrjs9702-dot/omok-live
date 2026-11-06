@@ -582,7 +582,9 @@
       if (want === 'push') await subscribe(pushKey); // (its answer sets the device to 닫아도 받기)
       else { const sub = await browserSub(); if (sub) await sub.unsubscribe().catch(() => {}); await api('/api/messenger/alert', { mode: want }); pushOn = false; }
       alertMode = want; drawAlert(); showToast(ALERT_SAID[want]);
-    } catch (err) { alertMode = before; drawAlert(); showToast(err.message || '알림 방식을 바꾸지 못했어요.', 4000); }
+    } catch (err) { // (Codex 10판 ④: the subscription may be gone already -- the select shows the server's way, not the old one)
+      alertMode = before; try { alertMode = (await api('/api/messenger/push')).mode || before; pushOn = alertMode === 'push' && Boolean(await browserSub()); } catch {}
+      drawAlert(); showToast(err.message || '알림 방식을 바꾸지 못했어요.', 4000); }
   }
   alertSel.addEventListener('change', () => chooseAlert(alertSel.value));
   byId('mPushBtn').addEventListener('click', async () => { // (the browser's permission, then the device's way as chosen)

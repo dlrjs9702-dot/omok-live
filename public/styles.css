@@ -2105,7 +2105,7 @@ body.stickEdit .ctlSelected { outline: 3px solid #facc15 !important; }
 /* the hint is only a label now (the right hand has its own 상호작용): bottom centre, still tappable */
 body.touchIsland .plazaHint { left: 50%; right: auto; transform: translateX(-50%); bottom: 14px; max-width: calc(100% - 300px); }
 /* (총괄 236 검토 「안 한 글자만」) a phone held upright: the note after 가방·사진 to the right edge, two lines if it must -- read whole */
-@media (min-height: 501px) { body.touchIsland .plazaHint { left: 164px; right: 12px; transform: none; max-width: none; white-space: normal; text-align: center; text-overflow: clip; } }
+@media (min-height: 501px) { body.touchIsland .plazaHint { left: 164px; right: 12px; transform: none; max-width: none; white-space: normal; text-align: center; text-overflow: clip; font-size: .95rem; line-height: 1.15; padding: 8px 10px 6px; letter-spacing: 0; word-break: keep-all; } } /* (v1.10.251: two lines stay under 뛰기·상호작용, 66px up) */
 @media (max-height: 500px) { body.touchIsland .plazaStage.quickOn .plazaHint { bottom: 64px; } }
 
 /* v1.10.83 통합 UI 6~8 (IDEAS 통합 게임 UI 개편): the island's windows -- 게시판·미션·출석·상점·가방·내 정보·기록·랭킹·
@@ -3521,4 +3521,6 @@ body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;c
 .recordTowerRowItem.me{box-shadow:inset 0 0 0 2px #23806f}
 .recordTowerEmpty{padding:16px;text-align:center;color:#5e4d3b;font-weight:700}
 .recordTowerMe{margin:6px 0 10px;font-weight:800;color:#3d2f20}
-.recordTowerGo{width:100%;min-height:48px}
+.recordTowerGo{width:calc(100% - 32px);min-height:48px;box-sizing:border-box} /* (.recordsDialog's children: 16px each side) */
+.recordTowerRowItem.recordTowerAward{grid-template-columns:minmax(0,1fr) auto auto}.recordTowerAward b{white-space:nowrap;font-size:.9rem}
+.recordTowerTotal{padding:6px 12px;font-weight:900;color:#7a4a0c}

@@ -57,4 +57,24 @@ test('기록의 탑 서버: 이번 주·역대 순위(1~20 + 내 순위), 결과
   const ms = board.games.find((g) => g.game === 'minesweeper');
   assert.equal(ms.level, 'intermediate'); assert.deepEqual(ms.top.map((r) => [r.rank, r.name]), [[1, '탑가']]); assert.equal(ms.allTime.name, '탑가'); assert.equal(ms.title, '지뢰 탐정');
   assert.deepEqual(board.games.find((g) => g.game === 'sudoku').top, []);
+  // (v1.10.251 정산) the week settled as from next week: 지뢰찾기 중급's 1st (탑가) its gold trophy in the storage with its plate,
+  // once however often it runs; its title held the week after; 내 업적 counts it, and someone else sees the count
+  const next = Date.now() + 7 * 86400000;
+  const settled = (await req('/api/test/solo/settle', a, { now: next, asCurrent: true })).data.record;
+  assert.equal(settled.games.minesweeper[0].name, '탑가'); assert.equal(settled.games.sudoku.length, 0);
+  await req('/api/test/solo/settle', a, { now: next, asCurrent: true });
+  const mine = (await req('/api/island/furniture/mine', a)).data.pieces.filter((p) => p.id.startsWith('yard_trophy_'));
+  assert.deepEqual(mine.map((p) => p.id), ['yard_trophy_mines__gold'], '한 번만');
+  assert.match(mine[0].plate, /^지뢰 탐정 · 탑가 · \d{4}년 \d+월 \d주$/); assert.equal(mine[0].name, '지뢰 탐정 금 트로피');
+  assert.match(mine[0].line, /^지뢰 탐정 · 탑가 · \d+월 \d주 · 기록 \S+/); /* (§3-1: the line it shows when pressed) */
+  assert.ok((await req('/api/island/mail', a)).data.letters.some((l) => l.from === 'gamehall' && /^지뢰찾기 \d{4}년 \d+월 \d주 1위! 지뢰 탐정 금 트로피가 창고에 들어왔어요/.test(l.text)));
+  assert.ok((await req('/api/skins', a)).data.dexTitles.some((t) => t.id === 'title_solo_minesweeper'), '칭호');
+  assert.ok(!(await req('/api/skins', b)).data.dexTitles.some((t) => t.id === 'title_solo_minesweeper'));
+  const awards = (await req('/api/solo/awards', a)).data;
+  assert.equal(awards.trophies, 1); const ms2 = awards.games.find((g) => g.game === 'minesweeper');
+  assert.deepEqual(ms2.trophies, { gold: 1, silver: 0, bronze: 0 }); assert.deepEqual(ms2.levels.map((l) => [l.level, l.place]), [['beginner', 2], ['intermediate', 1]]);
+  const accountA = (await req('/api/solo/ranking?game=minesweeper&level=intermediate', a)).data.rows[0];
+  assert.equal(accountA.name, '탑가');
+  const hall = (await req('/api/island/titles', b)).data.titles.find((t) => t.id === 'solo_minesweeper');
+  assert.equal(hall.name, '지뢰 탐정'); assert.deepEqual(hall.entries.map((e) => e.names), [['탑가']]);
 });

@@ -69,14 +69,21 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
     for (let i = 0; i < 81; i += 1) if (!mines.has(i)) { const r = (await post(request, '/api/solo/minesweeper/act', token, { id: g.id, action: 'open', x: i % 9, y: Math.floor(i / 9) })).data; if (r.view.status === 'won') break; }
   }
   await islandPage(page, ['gamehall.record_tower']);
-  await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().recordTower(); return [t.bulbs, t.flags >= 2, t.faces >= 3]; }), { timeout: 90000 }).toEqual([32, true, true]); /* (High and Low both carry the parts) */
+  await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().recordTower(); return [t.bulbs, t.flags >= 2, t.faces >= 3, t.backs === t.faces, t.backBulbs >= 32]; }), { timeout: 90000 }).toEqual([32, true, true, true, true]); /* (High and Low both carry the parts; v1.10.251 양면: each face on the back too) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().recordTower().game), { timeout: 30000 }).not.toBeNull();
   const at = await page.evaluate(() => window.PlazaDebug().recordTower().at);
+  // (v1.10.251 Codex 10판 ②) all 14 firsts on the strip: the line runs past it, its letters unsqueezed (1536 × 128 shown)
+  expect(await page.evaluate(() => { const D = window.PlazaDebug(); const G = window.SoloRanking.GAMES; D.setRecordBoard({ week: '2026-11-02', endsAt: Date.now() + 86400000, lastWeek: [], games: G.map((g) => ({ game: g.id, name: g.name, level: g.board, top: [{ rank: 1, name: '아주긴이름의손님', best: 123456 }] })) }); return D.recordTower().ticker; })).toEqual([1536, 128, true]);
   if (process.env.SHOT_DIR) for (const [name, time, dx, dz, yaw] of [['back', 'day', -14, 4, -Math.PI / 2 - 0.2]]) { /* (its front: a first-person photo -- the third person's camera stands in the 게임관 there) */
     await page.evaluate(([x, z, t, yaw]) => { const D = window.PlazaDebug(); D.setTime(t); D.setWeather?.('clear'); D.teleport(x, z); D.setCamYaw(yaw); D.setCamPitch?.(0.06); }, [at.x + dx, at.z + dz, time, yaw]);
     await page.waitForTimeout(2500); await page.screenshot({ path: `${process.env.SHOT_DIR}/rt-tower-${name}-pc.png` });
   }
   await page.evaluate(() => window.PlazaDebug().setTime('day'));
+  { // (v1.10.251 양면) from the plaza side too: SPACE there opens the same window
+    await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x - 2.2, z); }, [at.x, at.z]);
+    await expect.poll(() => spaceOn(page, 'board:records:back', false), { timeout: 15000 }).toBe(true);
+    await expect(page.locator('#recordTowerDialog')).toBeVisible(); await page.locator('#recordTowerCloseBtn').click(); await expect(page.locator('#recordTowerDialog')).toBeHidden();
+  }
   await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 2.6, z); }, [at.x, at.z]);
   await expect.poll(() => spaceOn(page, 'board:records', false), { timeout: 15000 }).toBe(true); /* (it presses SPACE itself) */
   const dlg = page.locator('#recordTowerDialog'); await expect(dlg).toBeVisible();
@@ -87,6 +94,9 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
   await expect(dlg.locator('#recordTowerMe')).toContainText(/내 순위 \d+위/);
   await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '역대 최고' }).click();
   await expect(dlg.locator('.recordTowerRowItem.me')).toContainText('탑손님');
+  await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '내 업적' }).click(); /* (v1.10.251 §3-2) */
+  await expect(dlg.locator('.recordTowerTotal')).toContainText('트로피 모두'); await expect(dlg.locator('.recordTowerAward', { hasText: '지뢰찾기' })).toContainText('🥇');
+  await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '역대 최고' }).click();
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/rt-window-pc.png` });
   await dlg.locator('#recordTowerGo').click();
   await expect(page.locator('#reflexView .reflexFrame.playing')).toBeVisible({ timeout: 30000 });

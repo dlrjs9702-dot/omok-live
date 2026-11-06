@@ -365,7 +365,7 @@
   // v1.10.250 기록의 탑 (assets 100 record_tower): before the 게임관's door, its front (-Z) to the door (+x); its ground 8.55 m along
   // world z (the model's x -4.95 ~ +3.6) and 1.94 m deep (its z -1.385 ~ +0.55 -> world x +1.385 ~ -0.55): circles over it
   const RECORD_TOWER = Object.freeze({ x: 35, z: -65, yaw: -Math.PI / 2 });
-  function towerSolids() { const out = []; for (let u = -4.45; u <= 3.11; u += 0.8) out.push({ x: RECORD_TOWER.x + 0.42, z: RECORD_TOWER.z + u, r: 0.98 }); return out; }
+  function towerSolids() { const out = []; for (let u = -4.45; u <= 3.11; u += 0.8) out.push({ x: RECORD_TOWER.x - 0.42, z: RECORD_TOWER.z + u, r: 0.98 }); return out; } /* (v1.10.251: the podium on the plaza side, behind the board -- the circles with it) */
   function structureSolids() {
     const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - 7.3, r: 1.1 }, ...pavingSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });

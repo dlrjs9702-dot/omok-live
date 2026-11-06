@@ -59,7 +59,7 @@ export default {
     s.busy = true; const mine = s;
     try {
       const data = await s.api('/api/solo/minesweeper/act', { method: 'POST', body: JSON.stringify({ id: s.id, action, x: i % s.v.w, y: Math.floor(i / s.v.w) }) });
-      if (mine !== s) return; // a new round meanwhile
+      if (mine !== s || E.game?.id !== 'mines') return; // a new round meanwhile (Codex 10판 ⑥: or another game -- not ended by this answer)
       s.v = data.view; s.shownAt = Date.now();
       if (action === 'flag') E.sfx.tap(); else E.sfx.pop();
       const st = { 판: `${s.v.w}×${s.v.h}`, 지뢰: `${s.v.mines}개` };
@@ -70,7 +70,7 @@ export default {
         s.over = true; E.sfx.lose(); E.haptic('error');
         E.end(null, { score: null, delay: 1.4, title: '펑! 지뢰를 밟았어요', stats: [['시간', K.fmtT(Math.round(s.v.ms / 1000))], ['판', st.판], ['남은 지뢰', `${s.v.mines - s.v.flags}개`]] });
       }
-    } catch (error) { if (mine === s) E.banner(error.message, 'info', 2400); }
+    } catch (error) { if (mine === s && E.game?.id === 'mines') E.banner(error.message, 'info', 2400); }
     finally { mine.busy = false; }
   },
 
