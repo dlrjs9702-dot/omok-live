@@ -1837,7 +1837,8 @@
   const showPace = () => { walkBtn.textContent = PACE_LABEL[plaza.controller?.walkPace?.()] || '걷기'; };
   // (2회차 11: held before a piece of my house it grabs it -- the scene tells a hold from a tap)
   CONTROLS.act.el.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); CONTROLS.act.el.setPointerCapture?.(event.pointerId); plaza.controller?.actDown?.(); });
-  for (const type of ['pointerup', 'pointercancel']) CONTROLS.act.el.addEventListener(type, () => plaza.controller?.actUp?.());
+  CONTROLS.act.el.addEventListener('pointerup', () => plaza.controller?.actUp?.());
+  CONTROLS.act.el.addEventListener('pointercancel', () => (plaza.controller?.actCancel || plaza.controller?.actUp)?.()); // (총괄 #410: a cancelled touch ends the net's aim, no swing)
   walkBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); plaza.controller?.paceTap?.(); showPace(); });
   runBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); runBtn.setPointerCapture(event.pointerId); plaza.controller?.setRun?.(true); runBtn.classList.add('on'); });
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) runBtn.addEventListener(type, () => { plaza.controller?.setRun?.(false); runBtn.classList.remove('on'); });

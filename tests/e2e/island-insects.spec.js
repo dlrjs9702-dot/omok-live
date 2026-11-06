@@ -116,6 +116,28 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().lastSwing()?.kind || null), { timeout: 5000 }).toMatch(/^(down|side|jump)$/);
     if (!(await page.evaluate(() => window.PlazaDebug().lastSwing().hit))) await expect.poll(() => page.evaluate(() => window.PlazaDebug().netState().log.slice(-1)[0]), { timeout: 5000 }).toBe('miss');
   }
+  // (총괄 #410 photos, close: the three swings each at its hit, a fluttering insect in the closed bag by night and by day, a
+  // miss's dust with the insect's Alert; a phone aiming with its button held)
+  if (process.env.SHOT_DIR) {
+    const snap = (n) => page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${n}.png` });
+    if (!isMobile) {
+      await page.waitForTimeout(1500);
+      for (const kind of ['down', 'side', 'jump']) {
+        await page.evaluate(() => window.PlazaDebug().camNear([2.6, 1.4, -0.4], [0, 1.0, -0.6])); await page.waitForTimeout(900);
+        await page.evaluate((k) => window.PlazaDebug().netTry(k), kind); await page.waitForTimeout(kind === 'jump' ? 500 : 420); await snap(`swing-${kind}`); await page.waitForTimeout(3300);
+      }
+      for (const t of ['night', 'day']) { await page.evaluate((m) => window.PlazaDebug().setTime(m), t); expect(await page.evaluate(() => window.PlazaDebug().netDemo('butterfly_swallowtail'))).toBe(true); await page.evaluate(() => window.PlazaDebug().camNear([0.9, 0.35, -0.7], 'bag')); await page.waitForTimeout(1200); await snap(`bag-${t}`); await page.waitForTimeout(3100); }
+      await page.evaluate(() => window.PlazaDebug().setTime('auto'));
+      const near = pick(await insectsNow()); if (near) { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [near.spot.x, near.spot.z]); await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [near.x, near.z]); await page.waitForTimeout(800);
+        await page.evaluate(() => window.PlazaDebug().camNear([3.4, 2.0, 1.6], [0, 0.9, -1.0])); await page.waitForTimeout(900); await page.evaluate(() => window.PlazaDebug().missDemo()); await page.waitForTimeout(250); await snap('miss-alert'); }
+      await page.evaluate(() => window.PlazaDebug().camNear(null));
+    } else {
+      await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [other.spot.x, other.spot.z]); await page.waitForTimeout(600);
+      await page.locator('#islandActBtn').dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true }); await expect.poll(() => page.evaluate(() => window.PlazaDebug().netState().aiming), { timeout: 5000 }).toBe(true);
+      await page.waitForTimeout(500); await snap('net-aim'); await page.locator('#islandActBtn').dispatchEvent('pointercancel', { pointerId: 1 });
+      await expect.poll(() => page.evaluate(() => window.PlazaDebug().netState().aiming), { timeout: 3000 }).toBe(false); // (총괄 #410: a cancelled touch ends the aim, no swing)
+    }
+  }
   // 박물관 (v1.10.231: in its hall, at the curator's desk -- the page left on the island, the server keeps me where it put me):
   // not outside; once per kind, with my name
   expect((await post(request, '/api/island/museum/donate', a.token, { itemId })).status).toBe(409);
