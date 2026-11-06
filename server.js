@@ -851,15 +851,16 @@ const SITE = (() => { const u = process.env.RENDER_EXTERNAL_URL || (process.env.
 const OLD_SITE = (() => { try { return new URL(process.env.OLD_SITE || 'https://omok-live.onrender.com').origin; } catch { return null; } })(); // (the address before island-dalmaru)
 const OLD_PUSH_MS = 7 * 24 * 60 * 60 * 1000;
 const pushOld = (s) => Boolean(SITE) && (s.from || OLD_SITE) !== SITE;
+let oldPushGone = false; // (총괄 #406: none left -- no more looking each message; a restart looks once again)
 async function pruneOldPush() { // (inside worldEdit) the old ones past their 7 days go
-  const all = (await pointStore.worldValue('messengerPush')) || []; if (!all.some(pushOld)) return all;
+  const all = (await pointStore.worldValue('messengerPush')) || []; if (!all.some(pushOld)) { oldPushGone = true; return all; }
   let since = await pointStore.worldValue('pushMovedAt'); if (!since) { since = nowMs(); await pointStore.setWorldValue('pushMovedAt', since); console.log(`[push-move] 옛 주소 구독 ${all.filter(pushOld).length}개: 7일 뒤 지워요`); }
   if (nowMs() - since < OLD_PUSH_MS) return all;
   const kept = all.filter((s) => !pushOld(s)); await pointStore.setWorldValue('messengerPush', kept); console.log(`[push-move] 옛 주소 구독 ${all.length - kept.length}개 지움`);
-  return kept;
+  oldPushGone = true; return kept;
 }
 async function pushNew(room, from, fromLabel, text) {
-  if (SITE) await worldEdit(pruneOldPush).catch((error) => console.warn('[push-move]', error.message));
+  if (SITE && !oldPushGone) await worldEdit(pruneOldPush).catch((error) => console.warn('[push-move]', error.message));
   const { to, payload } = WebPush.pushFor(room, from, fromLabel, text);
   // (메신저 3절 4, 사용자 「폰에도 보내」: each device on its own -- the one with the messenger open now shows it itself, the others are pushed)
   const looking = new Set([...messengerStreams.values()].flatMap((set) => [...set].map((r) => r.device).filter(Boolean)));
@@ -4260,7 +4261,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.255' });
+    return sendJson(res, 200, { ok: true, version: '1.10.256' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -8666,13 +8667,13 @@ async function requestHandler(req, res) {
   return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
 }
 
-// v1.10.256 저장 공간: the database's (the point store's pool) or the data folder's files; past 80 % a log line once a day
+// v1.10.256 저장 공간: the database's (the point store's pool) or the data folder's files; a log line once a day (a warning past 80 %)
 const StorageReport = require('./lib/storage-report');
 const storageReport = () => (pointStore?.pool ? StorageReport.pgReport(pointStore.pool) : StorageReport.fileReport(DATA_DIR));
 let storageLoggedDay = null;
 async function storageLog() {
   const day = new Date(nowMs() + 9 * 3600000).toISOString().slice(0, 10); if (storageLoggedDay === day) return;
-  const line = StorageReport.logLine(await storageReport()); storageLoggedDay = day; if (line) console.log(line);
+  const { line, warn } = StorageReport.logLine(await storageReport()); storageLoggedDay = day; (warn ? console.warn : console.log)(line);
 }
 
 async function main() {
@@ -8776,7 +8777,7 @@ async function main() {
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(sweepInputIdle, 60 * 1000).unref(); // v1.10.35
-  setInterval(() => storageLog().catch((error) => console.warn('[storage]', error.message)), 60 * 60 * 1000).unref(); storageLog().catch(() => {}); // v1.10.256 (hourly look, a line a day past 80 %)
+  setInterval(() => storageLog().catch((error) => console.warn('[storage]', error.message)), 60 * 60 * 1000).unref(); storageLog().catch(() => {}); // v1.10.256 (hourly look, a line a day)
   setInterval(() => refundOrphanEntries('orphan-sweep').catch(error => console.error('참가 포인트 정기 정리 실패:', error.message)), 60_000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickHalliRooms().catch(error => console.error('할리갈리 전적 처리 오류:', error)), 100).unref();
@@ -8784,7 +8785,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.255 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.256 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
