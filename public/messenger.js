@@ -66,7 +66,7 @@
     }));
     if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
     const unread = unreadOf(state.rooms); baseTitle = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
-    if (EMBED) return; // (12절: the count on the island's 메신저 button only)
+    if (EMBED) { try { window.parent.postMessage({ type: 'gc-messenger-unread', unread: unreadOf(state.rooms.filter((r) => r.id !== current?.id)) }, location.origin); } catch {} return; } /* (the room open is being read) */ // (12절: the count on the island's 메신저 button only -- told it at once, 총괄 #402)
     document.title = blink.text(baseTitle); blink.update(unread, away());
     window.MessengerAlert.setBadge(navigator, unread);
   }

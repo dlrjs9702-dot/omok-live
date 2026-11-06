@@ -151,5 +151,5 @@ test('메신저 정리 12절: PC는 연 지 12시간 안에만·TTL 600, 폰은 
     assert.match(embed.headers.get('content-security-policy'), /frame-ancestors 'self'/); assert.equal(embed.headers.get('x-frame-options'), 'SAMEORIGIN'); }
   // the island app: no icon count of its own (the messenger app's), the 서랍 page none either
   const app = await fs.readFile(path.join(__dirname, '..', 'public', 'app.js'), 'utf8'); assert.ok(!/setBadge\(/.test(app), '섬 앱 아이콘 숫자 없음');
-  const page = await fs.readFile(path.join(__dirname, '..', 'public', 'messenger.js'), 'utf8'); assert.match(page, /if \(EMBED\) return;[^\n]*\r?\n\s*document\.title = blink\.text\(baseTitle\); blink\.update\(unread, away\(\)\);\r?\n\s*window\.MessengerAlert\.setBadge/);
+  const page = await fs.readFile(path.join(__dirname, '..', 'public', 'messenger.js'), 'utf8'); assert.match(page, /if \(EMBED\) \{[^\n]*gc-messenger-unread[^\n]*return; \}[^\n]*\r?\n\s*document\.title = blink\.text\(baseTitle\); blink\.update\(unread, away\(\)\);\r?\n\s*window\.MessengerAlert\.setBadge/);
 });

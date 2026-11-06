@@ -13079,17 +13079,24 @@
       drawer.classList.remove('hidden'); document.body.classList.add('messengerDrawerOn'); try { frame.focus(); } catch {}
     }
     function close() { if (!isOpen()) return; drawer.classList.add('hidden'); document.body.classList.remove('messengerDrawerOn'); setTimeout(badge, 0); try { document.getElementById('plazaStage')?.focus(); } catch {} }
-    window.addEventListener('message', (event) => { if (event.origin === location.origin && event.source === frame.contentWindow && event.data?.type === 'gc-messenger-close') close(); });
+    window.addEventListener('message', (event) => {
+      if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
+      if (event.data?.type === 'gc-messenger-close') close();
+      else if (event.data?.type === 'gc-messenger-unread' && Number.isFinite(event.data.unread)) showCount(event.data.unread); // (a room read in the 서랍: the button's number at once)
+    });
     window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && isOpen()) { event.preventDefault(); event.stopImmediatePropagation(); close(); } }, true); // (before the game's Esc menu)
     msgBtn.addEventListener('click', () => (isOpen() ? close() : open())); tab.addEventListener('click', () => (isOpen() ? close() : open()));
     // v1.10.87 알림: the buttons count what is unread in my rooms (the server's count, a room with 알림 끄기 left out)
     async function badge() {
       if (!on) return;
       try {
-        const unread = unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms); const n = unread > 99 ? '99+' : unread;
-        msgBtn.textContent = unread ? `메신저 · 새 메시지 ${n}` : '메신저'; tab.textContent = unread ? `메신저 ${n}` : '메신저';
-        for (const b of [msgBtn, tab]) b.classList.toggle('hasUnread', unread > 0); // (12절: the app icon's count and the title's blink are the messenger app's only -- here the buttons)
+        showCount(unreadOf((await accountApi('/api/messenger', null, 'GET')).rooms));
       } catch {}
+    }
+    function showCount(unread) { // (12절: the app icon's count and the title's blink are the messenger app's only -- here the buttons)
+      const n = unread > 99 ? '99+' : unread;
+      msgBtn.textContent = unread ? `메신저 · 새 메시지 ${n}` : '메신저'; tab.textContent = unread ? `메신저 ${n}` : '메신저';
+      for (const b of [msgBtn, tab]) b.classList.toggle('hasUnread', unread > 0);
     }
     setInterval(badge, 30000);
     // A5 메신저 실시간 받기: a held stream (fetch, as the account's token goes in a header); a room's change counts again at once

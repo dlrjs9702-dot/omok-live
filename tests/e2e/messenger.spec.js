@@ -67,6 +67,7 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await expect(d.locator('#messengerRoomList button', { hasText: '우리집' })).toContainText('저녁 뭐 먹어?');
   await d.locator('#messengerRoomList button', { hasText: '우리집' }).click();
   await expect(d.locator('#messengerMessages .chatMessage')).toHaveText(/저녁 뭐 먹어\?/);
+  await expect(home.locator('#accountMessengerBtn')).toHaveText('메신저', { timeout: 5000 }); // (read in the 서랍: the button's number at once, 총괄 #402)
   // ✕ closes it; the button again: the same 서랍, the room still open (no window)
   await d.locator('#mCloseEmbed').click(); await expect(home.locator('#messengerDrawer')).toBeHidden();
   await home.locator('#accountMessengerBtn').click(); await expect(home.locator('#messengerDrawer')).toBeVisible();
