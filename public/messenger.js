@@ -501,6 +501,8 @@
     input.addEventListener('input', grow);
     input.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229 || phone?.matches) return; e.preventDefault(); byId('messengerForm').requestSubmit(); }); }
 
+  // (12절) ?open=web+gcmessenger:<room id> (the protocol's link, its %s): the room in it, or none for 「open」
+  const roomOfOpen = (href) => { try { const v = new URL(href, location.href).searchParams.get('open') || ''; const m = /^web\+gcmessenger:(?:\/\/)?([0-9A-Za-z_-]{6,64})$/.exec(v); return m && m[1] !== 'open' ? m[1] : null; } catch { return null; } };
   // ---- 로그인 (④ 이 기기에서 로그인 유지) ----
   async function start() {
     if (!accountToken.get() && !deviceToken.get()) { showLogin(); return; }
@@ -508,7 +510,8 @@
     loginForm.classList.add('hidden'); app.classList.remove('hidden'); byId('mLogoutBtn').classList.remove('hidden');
     byId('mDevicesBtn').classList.toggle('hidden', !deviceToken.get());
     wantStream(true); timers = [setInterval(() => { if (!streamUp) pull(); }, 3000), setInterval(() => refresh(), 30000)];
-    const room = new URLSearchParams(location.search).get('room'); const r = room && state.rooms.find((x) => x.id === room); if (r) openRoom(r); // (a notice tapped)
+    const room = new URLSearchParams(location.search).get('room') || roomOfOpen(location.href); const r = room && state.rooms.find((x) => x.id === room); if (r) openRoom(r); // (a notice tapped; the 서랍's 「메신저 앱으로 열기」)
+    try { window.launchQueue?.setConsumer((p) => { const id = p?.targetURL && roomOfOpen(p.targetURL); const x = id && state.rooms.find((y) => y.id === id); if (x) openRoom(x); }); } catch {} // (the app already open: focused, told the room)
     if (!EMBED) setupPush(); // (12절: notices are the messenger app's)
   }
   loginForm.addEventListener('submit', async (event) => {
@@ -613,7 +616,17 @@
     const closeMe = () => { try { window.parent.postMessage({ type: 'gc-messenger-close' }, location.origin); } catch {} };
     byId('mCloseEmbed').addEventListener('click', closeMe);
     window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && byId('mAsk').classList.contains('hidden') && byId('messengerViewer').classList.contains('hidden') && !document.querySelector('.messengerBubbleMenu') && byId('messengerMoreMenu').classList.contains('hidden') && pick.classList.contains('hidden')) closeMe(); }, true); /* (first, before the menus' own Esc: one open, Esc closes only it) */
-    byId('mOpenApp').addEventListener('click', () => { const w = window.open('/messenger.html', 'gc-messenger'); w?.focus(); setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 800); });
+    // (사용자 신고 2026-11-06: the island app's scope is / -- a window it opens on /messenger.html stays the island app's) the
+    // messenger app by its own link, web+gcmessenger: (its manifest's protocol_handlers, the OS's once it is installed) with
+    // the room open here; this window not left within 1.5 s (no app): a window as before
+    byId('mOpenApp').addEventListener('click', () => {
+      const room = current?.id || '';
+      const fallback = () => { const w = window.open(`/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`, 'gc-messenger'); w?.focus(); setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 800); };
+      let left = false; const gone = () => { left = true; }; const tops = [window, window.parent].filter(Boolean);
+      for (const w of tops) try { w.addEventListener('blur', gone, { once: true }); } catch {}
+      const a = document.createElement('a'); a.href = `web+gcmessenger:${room || 'open'}`; a.target = '_blank'; a.rel = 'noopener'; a.hidden = true; document.body.append(a); a.click(); a.remove(); // (_blank: an unknown scheme turns this 서랍's own page into an error page otherwise)
+      setTimeout(() => { for (const w of tops) try { w.removeEventListener('blur', gone); } catch {} if (!left) fallback(); }, 1500);
+    });
     const HINT = 'gc.messengerInstallHint'; let off = false; try { off = localStorage.getItem(HINT) === 'off'; } catch {}
     byId('mInstallHint').classList.toggle('hidden', off);
     byId('mInstallHintClose').addEventListener('click', () => { byId('mInstallHint').classList.add('hidden'); try { localStorage.setItem(HINT, 'off'); } catch {} });

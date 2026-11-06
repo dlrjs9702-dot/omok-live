@@ -422,7 +422,7 @@
   const PV = '/assets/island/plaza-v1';
   for (const f of ['medallion', 'band_ring', 'curb', 'curb_corner', 'channel', 'channel_end']) REGISTRY[`plaza.${f}`] = { url: `${PV}/plaza_${f}.glb`, low: { url: `${PV}/plaza_${f}_low.glb` }, near: 90, shadows: false };
   const pvSeasons = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${PV}/plaza_${f.replace('{s}', s)}.glb`]));
-  for (const f of ['garden_long', 'garden_round']) REGISTRY[`plaza.${f}`] = { seasons: pvSeasons(`${f}_{s}`), low: { seasons: pvSeasons(`${f}_{s}_low`) }, near: 90 };
+  for (const f of ['garden_long', 'garden_round', 'garden_long_bare' /* (v1.10.253 assets 104: 기록의 탑's bed, no trees) */]) REGISTRY[`plaza.${f}`] = { seasons: pvSeasons(`${f}_{s}`), low: { seasons: pvSeasons(`${f}_{s}_low`) }, near: 90 };
   // 묶음 2 가구점 (assets 57 furniture-v1): every piece in each of its colours (furn.<shape>__<colour>, island-furniture.js),
   // the display's plinths, rugs, price stands and the counter, the 2nd floor, its lift and sign
   const FURN = typeof module === 'object' && module.exports ? require('./island-furniture.js') : globalThis.IslandFurniture;
