@@ -621,7 +621,10 @@
     // the room open here; this window not left within 1.5 s (no app): a window as before
     byId('mOpenApp').addEventListener('click', () => {
       const room = current?.id || '';
-      const fallback = () => { const w = window.open(`/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`, 'gc-messenger'); w?.focus(); setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 800); };
+      // (사용자 「아일랜드 앱 말고 크롬으로 열리게」) no messenger app: a Chrome tab, never the island app's window -- a blank one
+      // first (outside the app's scope the browser takes it: 10/25's 「섬 앱에서 누르면 크롬으로 열려」 the other way round), then
+      // sent to the messenger; the login by the channel as before
+      const fallback = () => { const w = window.open('', '_blank'); if (!w) return; try { w.opener = null; } catch {} w.location.href = `/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`; w.focus(); setTimeout(() => { try { new BroadcastChannel('gc-messenger').postMessage({ account: accountToken.get() }); } catch {} }, 800); };
       let left = false; const gone = () => { left = true; }; const tops = [window, window.parent].filter(Boolean);
       for (const w of tops) try { w.addEventListener('blur', gone, { once: true }); } catch {}
       const a = document.createElement('a'); a.href = `web+gcmessenger:${room || 'open'}`; a.target = '_blank'; a.rel = 'noopener'; a.hidden = true; document.body.append(a); a.click(); a.remove(); // (_blank: an unknown scheme turns this 서랍's own page into an error page otherwise)
