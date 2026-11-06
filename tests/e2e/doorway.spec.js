@@ -25,6 +25,21 @@ test('문간: 다섯 방 모두 문간으로 걸어가면 밖, 들어오자마�
     if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-doorway-${name}.png` });
     await expect.poll(async () => { if (await space() !== 'island') await walk('KeyW', 900); return space(); }, { timeout: 30000, intervals: [200] }).toBe('island');
   };
+  // (v1.10.254 박물관 나누기) the hall's side doorways walked into: the aquarium (west), the insect hall (east), each back to
+  // the hall by its own; then the front door's the nearest again
+  const room = () => page.evaluate(() => window.PlazaDebug().museum()?.room);
+  const across = async (lx, want, name) => {
+    await page.evaluate((x) => { const w = window.IslandMuseum.world(x, 0); window.PlazaDebug().teleport(w.x, w.z); }, lx); await page.waitForTimeout(400);
+    const w = await way(); expect(w.id).toBe(`museum:go:${want}`);
+    await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [w.room.x, w.room.z]); await faceOut(w); await page.waitForTimeout(400);
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-doorway-museum-${name}.png` });
+    await expect.poll(async () => { if (await room() !== want) await walk('KeyW', 900); return room(); }, { timeout: 30000, intervals: [200] }).toBe(want);
+    const back = await way(); expect(back.id).toBe(`museum:go:hall:${want}`);
+    await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [back.room.x, back.room.z]); await faceOut(back); await page.waitForTimeout(400);
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-doorway-museum-${name}-back.png` });
+    await expect.poll(async () => { if (await room() !== 'hall') await walk('KeyW', 900); return room(); }, { timeout: 30000, intervals: [200] }).toBe('hall');
+  };
+  const wings = async () => { await across(-3, 'aquarium', 'aqua'); await across(3, 'insects', 'bugs'); await page.evaluate(() => { const w = window.IslandMuseum.world(0, -5.5); window.PlazaDebug().teleport(w.x, w.z); }); await page.waitForTimeout(400); };
   // the 관공서: just in, walked straight back toward the way out -- not out at once; out of the doorway and in again: out
   await into('townhall', 'townhall');
   const lot = (await get(request, '/api/home', who.token)).data.lots.find((l) => l.owner === null).id;
@@ -39,6 +54,7 @@ test('문간: 다섯 방 모두 문간으로 걸어가면 밖, 들어오자마�
     await into(door, sp);
     // just come in (by the way out): walked out toward it, not out -- till I have stepped out of the doorway once
     const w = await way(); if (w.inside) expect(w.armed, sp).toBe(false); // (the 잡화점 comes in past the doorway already)
+    if (sp === 'museum') await wings();
     await outBy(sp);
   }
   await expectNoScriptError(page);

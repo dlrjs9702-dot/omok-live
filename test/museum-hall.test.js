@@ -74,8 +74,37 @@ test('박물관 전시관: 들어가고 나가기, 창구에서 기증, 더 큰 
   const exit = M.world(M.ROOM.exit.lx, M.ROOM.exit.lz); await req('/api/plaza/state', a, { x: exit.x, z: exit.z, yaw: 0, moving: false });
   const out = (await req('/api/island/museum/leave', a, {})).data; assert.equal(out.space, 'island'); assert.ok(Math.hypot(out.x - door.x, out.z - door.z) < 0.5);
   // the walls hold: a pose past them is pulled back inside, round the big tank
-  const tank = M.world(M.TANK.lx, M.TANK.lz); const q = M.clamp(tank.x, tank.z); assert.ok(Math.hypot(q.x - tank.x, q.z - tank.z) > 1.2, '큰 수조 안에 서지 않음');
+  const tank = M.worldIn('aquarium', M.TANK.lx, M.TANK.lz); const q = M.clamp(tank.x, tank.z); assert.ok(Math.hypot(q.x - tank.x, q.z - tank.z) > 1.2, '큰 수조 안에 서지 않음');
   const far = M.clamp(M.ROOM.x + 40, M.ROOM.z); assert.ok(M.inMuseum(far.x, far.z));
+});
+
+// v1.10.254 박물관 나누기 (docs/museum-wings-20261104.md): the hall, the aquarium and the insect hall -- every fish and insect a
+// place of its own in its room, each fresh fish by its water's wall; room to room only by a doorway (the server's go), a pose
+// in another room kept out; each room's walls its own
+test('박물관 나누기: 세 방 자리·물별 벽, 통로로만 오가기, 방마다 벽', async (t) => {
+  const key = (s) => `${s.lx.toFixed(2)},${s.lz.toFixed(2)}`;
+  const walls = [...M.WALLS, ...M.SPARE_WALLS].map(key); assert.equal(new Set(walls).size, walls.length, '벽 수조 겹치지 않음'); assert.equal(M.WALLS.length, M.FRESH.length);
+  const cases = [...M.CASES, ...M.SPARE_CASES].map(key); assert.equal(new Set(cases).size, cases.length, '곤충 상자 겹치지 않음'); assert.deepEqual([M.CASES.length, M.SPARE_CASES.length], [12, 12]);
+  assert.equal(Object.keys(M.SLOTS).length, M.SEA.length + M.FRESH.length + M.INSECTS.length);
+  const has = (water, sp) => Object.values(F.TABLE[water]).some((l) => l.includes(sp));
+  for (const sp of M.SEA) assert.ok(has('sea', sp) || has('bay', sp), `${sp} 바다`);
+  M.FRESH.forEach((sp, k) => { const w = M.SLOTS[`fish_${sp}`].water; assert.ok(has(w, sp), `${sp}: ${w}`); assert.ok(M.WATER_WALLS[w].some((s) => key(s) === key(M.WALLS[k])), `${sp} ${w} 벽`); });
+  for (const [id, R] of Object.entries(M.ROOMS)) { const mid = M.worldIn(id, 0, 0); assert.equal(M.roomOf(mid.x, mid.z), id); const q = M.clamp(mid.x, mid.z + R.d / 2 + 1); assert.equal(M.roomOf(q.x, q.z), id, `${id} 벽`); assert.ok(Math.abs(q.z - mid.z) < R.d / 2, `${id} 안으로`); }
+  for (const s of [...M.WALLS, ...M.SPARE_WALLS]) { const w = M.worldIn('aquarium', s.lx, s.lz); const q = M.clamp(w.x, w.z); assert.ok(Math.hypot(q.x - w.x, q.z - w.z) > 0.3, '벽 수조 안에 서지 않음'); }
+  // the server: in, through to the aquarium and back, the insect hall; not from the middle of the hall; a pose in another room kept
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wings-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server; const s = await server.enter(await server.issue('관람객2')); assert.ok(s, server.logs());
+  const door = Together.museumDoor(T.MUSEUM); await req('/api/plaza/state', s, { x: door.x, z: door.z, yaw: 0, moving: false }); assert.equal((await req('/api/island/museum/enter', s, {})).data.space, 'museum');
+  const stand = (room, lx, lz) => { const w = M.worldIn(room, lx, lz); return req('/api/plaza/state', s, { x: w.x, z: w.z, yaw: 0, moving: false }); };
+  const go = async (to) => (await req('/api/island/museum/go', s, { to })).data;
+  await stand('hall', 0, -5); assert.equal((await go('aquarium')).error, 'TOO_FAR', '홀 가운데서는 못 감');
+  assert.equal((await req('/api/island/museum/go', s, { to: 'roof' })).status, 400);
+  const pa = M.PASSAGES;
+  await stand('hall', pa.aquarium.door.lx + 0.9, 0); const aq = await go('aquarium'); assert.deepEqual([aq.ok, aq.room], [true, 'aquarium']); assert.equal(M.roomOf(aq.x, aq.z), 'aquarium');
+  await stand('insects', 0, pa['hall:insects'].door.lz + 0.9); assert.equal((await go('hall:insects')).error, 'TOO_FAR', '다른 방으로 건너뛴 자리는 그대로');
+  await stand('aquarium', 0, pa['hall:aquarium'].door.lz + 0.9); const back = await go('hall:aquarium'); assert.equal(back.room, 'hall');
+  await stand('hall', pa.insects.door.lx - 0.9, 0); assert.equal((await go('insects')).room, 'insects');
+  await stand('insects', 0, pa['hall:insects'].door.lz + 0.9); assert.equal((await go('hall:insects')).room, 'hall');
 });
 
 // a fish caught: its size from the server, 「내 최고」 when it is my biggest of that kind, the 도감's best

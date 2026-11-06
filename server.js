@@ -5292,7 +5292,9 @@ async function requestHandler(req, res) {
       plazaLastPos.set(session.token, IslandTerrain.facilityDoor('jail'));
     } else if (museumInside.has(session.token)) { // v1.10.231 박물관 전시관 (as the 구치소)
       const here = plazaPresence.get(session.token);
-      spot = IslandMuseum.inMuseum(Number(body.x), Number(body.z), 2) || !here ? IslandMuseum.clamp(body.x, body.z) : { x: here.x, z: here.z };
+      // (v1.10.254 박물관 나누기: one room to another only by its doorway -- /api/island/museum/go; a pose in another room stays put)
+      const sameRoom = !here || IslandMuseum.roomOf(Number(body.x), Number(body.z), 2) === IslandMuseum.roomOf(here.x, here.z, 2);
+      spot = (IslandMuseum.inMuseum(Number(body.x), Number(body.z), 2) && sameRoom) || !here ? IslandMuseum.clamp(body.x, body.z) : { x: here.x, z: here.z };
       Object.assign(wanted, IslandMuseum.clamp(body.x, body.z));
       plazaLastPos.set(session.token, Together.museumDoor(IslandTerrain.MUSEUM));
     } else if (ride) {
@@ -6037,6 +6039,17 @@ async function requestHandler(req, res) {
     plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: entering ? 'museum' : 'island', moving: false, at: nowMs(), act: null, seat: null });
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: entering ? 'museum' : 'island', x: spot.x, z: spot.z });
+  }
+  // v1.10.254 박물관 나누기: from the hall into the aquarium or the insect hall, and back -- by its doorway
+  if (pathname === '/api/island/museum/go' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const at = plazaPresence.get(session.token); const body = await parseJson(req);
+    const to = IslandMuseum.PASSAGES[String(body.to || '')] ? String(body.to) : null; if (!to) return sendError(res, 400, 'BAD_ROOM', '갈 수 없는 곳이에요.');
+    const spot = at && museumInside.has(session.token) ? IslandMuseum.passage(to, at.x, at.z) : null;
+    if (!spot) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'museum', moving: false, at: nowMs(), act: null, seat: null });
+    plazaDirty = true;
+    return sendJson(res, 200, { ok: true, space: 'museum', room: spot.room, x: spot.x, z: spot.z });
   }
   if (pathname === '/api/island/museum/donate' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
