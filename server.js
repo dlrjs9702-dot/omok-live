@@ -39,6 +39,7 @@ const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-resu
 const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
 const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
 const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
+const DexNotes = require('./lib/island-dex-notes'); // v1.10.257 잡기 카드·설명
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const SoloRanking = require('./public/solo-ranking'); // v1.10.250 기록의 탑
@@ -2040,7 +2041,10 @@ const seatTaken = new Map(); // seat id -> session token
 const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow']);
 // v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
 // the fish shown on a catch is the server's own result, never the page's word
-const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss']);
+const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss', 'fish:show']); // (v1.10.257 자랑: the catch held out -- the server's fish too)
+// v1.10.257 자랑 장면: an insect just caught (10 s) held out -- `insect:show`, the insect the server's
+const insectShown = new Map(); // session token -> { species, at }
+function insectShowOf(token, act) { const u = insectShown.get(token); return act === 'insect:show' && u && nowMs() - u.at < 10000 ? { act, fish: u.species } : null; }
 // v1.10.92 잡화점 놀이 물건: an act `show:<kind>` is taken only just after that good was used from the bag (6 s)
 const showUsed = new Map(); // session token -> { kind, until }
 function showActOf(token, act) { const u = showUsed.get(token); return u && act === `show:${u.kind}` && nowMs() < u.until ? { act, fish: null } : null; }
@@ -2049,7 +2053,7 @@ function fishActOf(token, act) {
   const c = fishCasts.get(token);
   if (act === 'fish:miss') return { act, fish: null };
   if (!c) return null;
-  if (act === 'fish:catch') return c.done?.species ? { act, fish: c.done.species } : null;
+  if (act === 'fish:catch' || act === 'fish:show') return c.done?.species ? { act, fish: c.done.species } : null;
   return { act, fish: null };
 }
 // v1.10.47 관광열차: who is on which train's seat (session token -> { k, seat, from: the stop they got on at }). The trains
@@ -5379,7 +5383,7 @@ async function requestHandler(req, res) {
       space: jailInside.has(session.token) ? 'jail' : museumInside.has(session.token) ? 'museum' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : fashionInside.has(session.token) ? 'fashion' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
-        const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
+        const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act) || insectShowOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
         const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
@@ -6688,7 +6692,9 @@ async function requestHandler(req, res) {
     let seen = null; // (my best of that fish: the 도감's, its day -- the same answer to this cast asked twice at once: its id kept)
     const wrote = await pointStore.questApply(account, 'fishBest', (d) => { seen = d[c.species] || null; return c.size > (seen?.size || 0) ? { doc: { ...d, [c.species]: { size: c.size, at: nowMs(), cast: c.id } } } : null; }).catch(() => null);
     const best = Boolean(wrote?.doc) || seen?.cast === c.id;
-    c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: IslandItems.fishPrice(itemId, c.size), size: c.size, best, firstTime: dex.first, bag: outcome.bag, tool: outcome.worn || null };
+    // (v1.10.257 잡기 카드) the best before this one (the card's 「지난 최고 → +n cm」) and the museum's on show (「박물관보다 커요」)
+    const prevBest = seen && seen.cast !== c.id ? seen.size : null; const museumSize = ((await pointStore.worldValue('museum')) || {})[itemId]?.size ?? null;
+    c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: IslandItems.fishPrice(itemId, c.size), size: c.size, best, prevBest, museumSize, firstTime: dex.first, bag: outcome.bag, tool: outcome.worn || null };
     if (outcome.applied) { islandProgress('fish', account, 1); eventContestScore(account, 'fish', Math.round(f.price / 100)); } // (E1: a round's)
     if (outcome.applied && (f.grade === 'rare' || f.grade === 'big')) bigCatchAt.set(account, nowMs()); // (v1.10.242: the islanders hear of it for 10 minutes)
     questBagNow(account, outcome.bag);
@@ -6726,7 +6732,7 @@ async function requestHandler(req, res) {
       if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
       const s = IslandInsects.SPECIES[b.species];
       const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag, tool: outcome.worn || null };
-      given = true; insectCaught.set(id, { account, result }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag);
+      given = true; insectCaught.set(id, { account, result }); insectShown.set(session.token, { species: b.species, at: nowMs() }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag); // (257: its 자랑 may follow)
       if (outcome.applied !== false) eventContestScore(account, 'bug', Math.round(s.price / 100)); // (E1: a round's catch)
       return sendJson(res, 200, result);
     } finally { if (!given) insectGone.delete(id); }
@@ -6763,7 +6769,10 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     const mine = await pointStore.dexOf(account); const best = (await pointStore.questDoc(account, 'fishBest')).doc || {}; // (v1.10.231: my best size of each fish, and its day)
     const found = IslandFishing.collectionCount(mine);
-    return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null, ...(d.kind === 'fish' ? { best: best[d.id.slice(5)] || null } : {}) })), found, total: IslandFishing.DEX.length,
+    // (v1.10.257 설명 카드) a fish's or an insect's note, where and when (the tables'), a fish's size range; its island story only once found
+    const about = (d) => { if (d.kind !== 'fish' && d.kind !== 'insect') return {}; const n = DexNotes.DEX_NOTES[d.id]; const found = Boolean(mine[d.id]?.count);
+      return { note: n ? { line: n.line, story: found ? n.story : null } : null, where: DexNotes.whereText(DexNotes.whereOf(d.id)), ...(d.kind === 'fish' ? { sizes: IslandFishing.SIZES[d.id.slice(5)] || null } : {}) }; };
+    return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null, ...(d.kind === 'fish' ? { best: best[d.id.slice(5)] || null } : {}), ...about(d) })), found, total: IslandFishing.DEX.length,
       titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/bite' && req.method === 'POST') { // tests: the bite now

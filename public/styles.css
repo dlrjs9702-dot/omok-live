@@ -1948,6 +1948,48 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .reflexModes{grid-template-columns:1fr 1fr}
 .reflexLevel{padding:12px 6px;background:#0f172a;color:#f8fafc;border:1px solid #334155;font-size:.85rem}
 .reflexLevel[aria-checked="true"]{background:#2563eb;color:#fff;border-color:#2563eb}
+/* v1.10.257 잡기 카드·설명 카드: in the middle over the island (a phone: low, above the buttons), never blocking the rest;
+   its ribbons, a gold edge for a best, the 도감's for a first, a splash for a big one; turned to its 설명 by 더보기 */
+.catchCard{position:fixed;left:50%;top:50%;z-index:30;width:min(340px,calc(100vw - 32px));transform:translate(-50%,-50%);perspective:1200px;pointer-events:auto;animation:catchIn .45s cubic-bezier(.2,1.4,.4,1)}
+.catchCard.hidden{display:none}
+@media(min-width:641px){.catchCard.withShow{left:auto;right:max(16px,3vw);transform:translateY(-50%)}} /* (9절 자랑: beside me, held out in the middle) */
+@media(max-width:640px){.catchCard{top:auto;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}}
+@keyframes catchIn{from{opacity:0;scale:.7}to{opacity:1;scale:1}}
+.catchCardInner{position:relative;display:grid;transition:transform .5s;transform-style:preserve-3d}
+.catchFront,.catchBack{grid-area:1/1;backface-visibility:hidden;padding:18px 18px 12px;border-radius:20px;background:var(--isle-paper);color:var(--isle-ink);border:3px solid var(--isle-line);box-shadow:0 18px 44px rgba(74,56,40,.38);display:grid;gap:8px;justify-items:center;text-align:center}
+.catchBack{transform:rotateY(180deg);justify-items:stretch;text-align:left;max-height:min(70vh,520px);overflow-y:auto}
+.catchCard.flipped .catchCardInner{transform:rotateY(180deg)}
+.catchCard.infoOnly .catchFront{display:none}
+.catchCard.is-best .catchFront{border-color:#e0a82e;background:linear-gradient(180deg,#fff3c4,var(--isle-paper) 60%)}
+.catchCard.is-first .catchFront{border-color:#3f8f6a}
+.catchRibbons{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:26px}
+.catchRibbon{padding:3px 12px;border-radius:99px;font-weight:900;font-size:.9rem;color:#fff;background:#8a6a4a;box-shadow:0 2px 0 rgba(0,0,0,.15)}
+.catchRibbon.best{background:linear-gradient(90deg,#d48a00,#f2c14e);color:#3a2600}
+.catchRibbon.first{background:#3f8f6a;animation:catchStamp .5s .15s both}
+.catchRibbon.big{background:#2f6fa8}
+@keyframes catchStamp{0%{opacity:0;transform:scale(2.2) rotate(-12deg)}70%{opacity:1;transform:scale(.92) rotate(-6deg)}100%{transform:scale(1) rotate(-6deg)}}
+.catchPicBox{position:relative;width:128px;height:128px}
+.catchFront .catchPic{width:128px;height:128px;object-fit:contain;animation:catchPop .6s cubic-bezier(.2,1.6,.4,1) both;filter:drop-shadow(0 6px 10px rgba(74,56,40,.3))}
+@keyframes catchPop{from{transform:scale(.3) translateY(20px)}to{transform:none}}
+.catchBurst{position:absolute;inset:-16px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,236,150,.9) 0 18%,transparent 19%) 0 0/24px 24px;opacity:0}
+.catchCard.is-best .catchBurst,.catchCard.is-big .catchBurst{animation:catchBurst .9s .2s ease-out}
+.catchCard.is-big .catchBurst{background:radial-gradient(circle,rgba(120,190,255,.9) 0 18%,transparent 19%) 0 0/22px 22px}
+@keyframes catchBurst{0%{opacity:1;transform:scale(.4)}100%{opacity:0;transform:scale(1.5)}}
+.catchName{margin:0;font-size:1.3rem}
+.catchSize{margin:0;font-size:1.6rem;font-weight:900;font-variant-numeric:tabular-nums;color:#a8641c;min-height:1.2em}
+.catchLines{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.92rem;color:var(--isle-soft)}
+.catchBackHead{display:flex;gap:12px;align-items:center}.catchBackHead .catchPic{width:72px;height:72px;object-fit:contain}
+.catchBack.unfound .catchPic{filter:brightness(0) opacity(.45)}
+.catchGrade{color:var(--isle-tag);font-weight:700}
+.catchLine{margin:0;font-weight:800}
+.catchStory p{margin:0 0 4px;line-height:1.55}
+.catchFacts{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.9rem}.catchFacts dt{font-weight:800;color:var(--isle-tag)}.catchFacts dd{margin:0}
+.catchActions{display:flex;gap:8px;justify-content:center;margin-top:8px}
+.catchActions button{min-height:44px;min-width:96px;border-radius:12px}
+.catchCard.calm,.catchCard.calm *{animation:none!important;transition:none!important}
+.toast.tappable{pointer-events:auto;cursor:pointer}.toast.tappable::after{content:" · 눌러서 설명";opacity:.7}
+.bagInfoMore{padding:0 8px;min-height:28px;border-radius:99px;font-weight:900}
+.islandDexCell.opens{cursor:pointer}.islandDexCell.opens:focus-visible{outline:3px solid #3f8f6a;outline-offset:2px}
 /* v1.10.256 관리자 저장 공간: one line and a bar (orange past 80 %, red past 90 %), the biggest tables when opened */
 .adminStorage{margin:8px 0;padding:8px 12px;border-radius:12px;background:#0f172a;border:1px solid #334155}
 .adminStorage summary{display:flex;align-items:center;gap:10px;cursor:pointer;flex-wrap:wrap}

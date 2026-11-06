@@ -77,6 +77,12 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     return r?.status() ?? 'no answer';
   }, { timeout: 40000, intervals: [300] }).toBe(200).catch((error) => { error.message += `\nlast: ${last}`; throw error; });
   expect((await post(request, '/api/island/insect/catch', a.token, { id: target.id })).data).toEqual(caught); // (the same catch again: the same answer)
+  // (v1.10.257 자랑 장면, assets 97) the first of its kind held out, pinched -- the net moved to the left hand; Esc ends it
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.phase || null), { timeout: 8000 }).toBe('hold');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.netLeft), { timeout: 3000 }).toBe(true);
+  await expect(page.locator('#catchCard')).toBeVisible({ timeout: 5000 }); await expect(page.locator('#catchCard .catchRibbon').first()).toHaveText(/새 친구!|드문 곤충!/);
+  if (process.env.SHOT_DIR) { await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-insect-show.png` }); }
+  await page.keyboard.press('Escape'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()), { timeout: 3000 }).toBe(null); await expect(page.locator('#catchCard')).toBeHidden();
   const itemId = `insect_${caught.species}`; // (the species the server gave: a layout redone for the day's seasons keeps the places, not always the kinds)
   await expect.poll(async () => (await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === itemId), { timeout: 10000 }).toBe(true);
   expect((await get(request, '/api/island/dex', a.token)).data.entries.find((e) => e.id === itemId).count).toBeGreaterThan(0);

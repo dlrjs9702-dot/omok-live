@@ -9123,6 +9123,51 @@
       "lowSrc": "trophy98:02. Low/yard_trophy_star_low.glb",
       "lowSha256": "2f7a4602d944c007c274ad5c3d46303a80cc66d40a4cd02f177137264a293a46",
       "precompressed": true
+    },
+    {
+      "out": "characters/motions/ShowCatch.glb",
+      "src": "show97:01. High/motions/ShowCatch.glb",
+      "sha256": "f2fe18a9748ab645bc68d3639fcdb1b5be31e22bd80895aa6d7fe71865536cb7"
+    },
+    {
+      "out": "characters/motions/ShowCatchHold.glb",
+      "src": "show97:01. High/motions/ShowCatchHold.glb",
+      "sha256": "4f200e208fbd289d3ae92b7910733dc697b07cb98571cff388b6b657aea744f5"
+    },
+    {
+      "out": "characters/motions/ShowCatchBig.glb",
+      "src": "show97:01. High/motions/ShowCatchBig.glb",
+      "sha256": "7e5c7afe3a507c31a811bf5a68070790ca5f8992edd17b2fc28e047d3ad53a8f"
+    },
+    {
+      "out": "characters/motions/ShowCatchBigHold.glb",
+      "src": "show97:01. High/motions/ShowCatchBigHold.glb",
+      "sha256": "43da232192e69b915549688b8b96060b27a2a9909fa2e79aad8e37136cedcfb9"
+    },
+    {
+      "out": "characters/motions/ShowInsect.glb",
+      "src": "show97:01. High/motions/ShowInsect.glb",
+      "sha256": "c4366ab599ff5a6cee420d9f37761c7eef9e9ce5e288dbf5154ce867a3080ea4"
+    },
+    {
+      "out": "characters/motions/ShowInsectHold.glb",
+      "src": "show97:01. High/motions/ShowInsectHold.glb",
+      "sha256": "c02517c6ec5499723248845bb83f78a7f1f50411703130093ef91b6442cbfedc"
+    },
+    {
+      "out": "characters/motions/ShowPutaway.glb",
+      "src": "show97:01. High/motions/ShowPutaway.glb",
+      "sha256": "d03a04dc2ef2c38a5b38bce62ff6144c269f98d38dd1fab1651377675f55fb6e"
+    },
+    {
+      "out": "characters/motions/ShowPutawayBig.glb",
+      "src": "show97:01. High/motions/ShowPutawayBig.glb",
+      "sha256": "f1148f27ccc905c41615317dc593b09d0d6d3fcaf5b122ba4da196931c695179"
+    },
+    {
+      "out": "characters/motions/ShowPutawayInsect.glb",
+      "src": "show97:01. High/motions/ShowPutawayInsect.glb",
+      "sha256": "098c8697b58a9a7dad5ff2b18d793b454c4aa572a910a704af4f784f92b18510"
     }
   ],
   "sources": {
@@ -9197,6 +9242,7 @@
     "tent100": "100. Game Island contest tent 2026-11-04",
     "tower100": "100. Game Island record tower 2026-11-05",
     "trophy98": "98. Game Island yard trophies 2026-11-04",
-    "bare104": "104. Game Island garden long bare 2026-11-06"
+    "bare104": "104. Game Island garden long bare 2026-11-06",
+    "show97": "97. Game Island show catch moves 2026-11-04"
   }
 }

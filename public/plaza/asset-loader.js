@@ -410,7 +410,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // character's right hand (handOver: a lost thing given back). One held thing per key; a character thrown away drops it.
   const boneOf = (c, pattern) => { let hit = null; c.assetRoot?.traverse((o) => { if (o.isBone && pattern.test(o.name)) hit = o; }); return hit; };
   function seat(c, rec) {
-    const bone = rec.bone === 'Root' ? null : rec.bone === 'Chest' ? boneOf(c, /^Chest$/) : boneOf(c, /^Hand\.?R$/);
+    const bone = rec.bone === 'Root' ? null : rec.bone === 'Chest' ? boneOf(c, /^Chest$/) : rec.bone === 'Hand.L' ? boneOf(c, /^Hand\.?L$/) : boneOf(c, /^Hand\.?R$/); // (v1.10.257: the left hand too -- the net while an insect is shown)
     if (rec.bone === 'Root') { c.root.add(rec.object); rec.object.position.set(...(rec.proc || [0, 0, 0])); } // (v1.10.236: in the character's own frame, upright -- a 풍선 floating beside)
     else if (bone) {
       let parent = bone, at = rec.at || [0, 0, 0];
@@ -419,7 +419,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         const norm = s => s.replace(/[. _]/g, '');
         const index = rig.joints.findIndex(j => norm(j.name) === norm(bone.name));
         const scale = rig.positionScales?.[rig.joints[index]?.name] || [1, 1, 1];
-        const socketName = rec.bone === 'Chest' ? null : 'Socket.Hand.R';
+        const socketName = rec.bone === 'Chest' || rec.bone === 'Hand.L' ? null : 'Socket.Hand.R';
         const socket = socketName && rig.socketTransforms?.[socketName];
         let anchor = null;
         if (socket) c.assetRoot.traverse(o => { if (norm(o.name) === norm(socketName)) anchor = o; });
@@ -447,6 +447,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }).catch((error) => onError(hit.id, error));
   }
   function letGo(c, key) { const rec = c.holding?.[key]; if (!rec) return; rec.object?.removeFromParent(); delete c.holding[key]; }
+  // (v1.10.257) a thing held moved to another hand or spot (the net to the left hand while an insect is shown, and back)
+  function reseat(c, key, { bone = 'Hand.R', at = null, rot = null } = {}) { const rec = c.holding?.[key]; if (!rec?.object) return false; rec.object.removeFromParent(); Object.assign(rec, { bone, at, rot }); seat(c, rec); return true; }
   function handOver(from, to, key) {
     const rec = from.holding?.[key]; if (!rec?.object) return false;
     delete from.holding[key]; letGo(to, key);
@@ -936,5 +938,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

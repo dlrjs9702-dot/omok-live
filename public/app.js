@@ -1288,8 +1288,9 @@
 
   if (sessionToken) history.replaceState(null, '', '/island/');
 
-  function showToast(message, ms = 2800) {
+  function showToast(message, ms = 2800, onTap = null) { // (v1.10.257 onTap: a note that opens something -- a catch's 설명)
     toast.textContent = message;
+    toast.classList.toggle('tappable', Boolean(onTap)); toast.onclick = onTap ? () => { toast.classList.add('hidden'); onTap(); } : null;
     toast.classList.remove('hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.add('hidden'), ms);
@@ -1971,7 +1972,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'tool:use' ? useHeld() : String(id).startsWith('trophy:') ? showToast(`🏆 ${plaza.controller?.trophyLine?.(id) || ''}`, 4000) /* (v1.10.251 §3-1) */ :id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : String(id).startsWith('museum:go:') ? museumGo(String(id).slice(10)) /* (v1.10.254 박물관 나누기) */ : id === 'contest:tent' ? openContestTent() : (id === 'board:records' || id === 'board:records:back') ? openRecordTower() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'tool:use' ? useHeld() : String(id).startsWith('trophy:') ? showToast(`🏆 ${plaza.controller?.trophyLine?.(id) || ''}`, 4000) /* (v1.10.251 §3-1) */ :id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : String(id).startsWith('museum:go:') ? museumGo(String(id).slice(10)) /* (v1.10.254 박물관 나누기) */ : String(id).startsWith('museum:plaque:') ? openDexCard(String(id).slice(14)) /* (v1.10.257: a plaque's 설명) */ : id === 'contest:tent' ? openContestTent() : (id === 'board:records' || id === 'board:records:back') ? openRecordTower() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2505,6 +2506,7 @@
     bagPicked = bagPicked === i ? null : i; const item = bagNow?.items[bagPicked];
     for (const [k, s] of [...document.getElementById('islandBagGrid').children].entries()) { s.classList.toggle('picked', k === bagPicked); s.querySelector('.bagMenu')?.remove(); }
     const at = item && ISLAND_PLACES[item.at]; byId('islandBagInfo').textContent = item ? `${item.name}${item.sizes?.length ? ` · 가장 큰 ${item.sizes[0]} cm${item.qty > 1 ? ` 외 ${item.qty - 1}마리` : ''}` : item.qty > 1 ? ` ×${item.qty}` : ''}${at ? ` · ${at.title}에서 ${at.verb}` : ''}` : ''; // (v1.10.231: a fish's sizes)
+    if (item && /^(fish|insect)_/.test(item.itemId)) { const i = document.createElement('button'); i.type = 'button'; i.className = 'bagInfoMore'; i.textContent = 'ⓘ'; i.setAttribute('aria-label', `${item.name} 설명`); i.addEventListener('click', (event) => { event.stopPropagation(); openDexCard(item.itemId); }); byId('islandBagInfo').append(' ', i); } // (v1.10.257 설명 카드)
     const acts = item ? bagActions(item) : []; if (!acts.length) return;
     const menu = document.createElement('div'); menu.className = `bagMenu${bagPicked < bagCols() ? ' below' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
     for (const [label, run] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b); }
@@ -2615,7 +2617,7 @@
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api('/api/island/insect/catch', { method: 'POST', body: JSON.stringify({ id }) });
-      plaza.controller?.insectSwing?.(id); showToast(`${r.grade === 'rare' ? '🎉 ' : ''}${r.name} +1${r.firstTime ? ' · 도감 등록' : ''}`); if (r.bag) drawIslandBag(r.bag); toolWorn(r.tool, r.bag);
+      plaza.controller?.insectSwing?.(id); catchShow(`insect_${r.species}`, r, `${r.grade === 'rare' ? '🎉 ' : ''}${r.name} +1${r.firstTime ? ' · 도감 등록' : ''}`); /* (257 잡기 카드) */ if (r.bag) drawIslandBag(r.bag); toolWorn(r.tool, r.bag);
     } catch (error) { showToast(error.message); if (error.status === 409) plaza.controller?.insectsGone?.([id]); }
   }
   // B 45 꽃·나무 심기: a seed or the sapling into the ground where I stand; fertilizer onto the plant nearest me
@@ -4170,6 +4172,7 @@
     fishBusy = true;
     try {
       if (!phase) {
+        catchClose(); // (v1.10.257: the next cast -- a card still up shrinks to its note)
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
         const data = await api('/api/island/fish/start', { method: 'POST', body: '{}' });
         fishId = data.fishId; fishSeq = Array.isArray(data.seq) ? data.seq : null;
@@ -4182,7 +4185,7 @@
     try {
       const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId, presses }) });
       plaza.controller?.fishResult?.(data.species);
-      showToast(`${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name}${Number.isFinite(data.size) ? ` ${data.size} cm` : ''} +1${data.best ? ' · 내 최고!' : ''}${data.firstTime ? ' · 도감 등록' : ''}`); toolWorn(data.tool, data.bag); // (v1.10.231 물고기 크기)
+      catchShow(`fish_${data.species}`, data, `${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name}${Number.isFinite(data.size) ? ` ${data.size} cm` : ''} +1${data.best ? ' · 내 최고!' : ''}${data.firstTime ? ' · 도감 등록' : ''}`); toolWorn(data.tool, data.bag); // (v1.10.231 물고기 크기 · 257 잡기 카드)
     } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
   }
   // (문제 기록 3회차 4 「낚시 미니게임: 입질 때 화살표」) at the bite, arrows to press in order (4~12, more the rarer the
@@ -4213,6 +4216,79 @@
   }
   window.addEventListener('keydown', (e) => { if (!fishGame || !FISH_KEYS[e.code]) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) fishArrow(FISH_KEYS[e.code]); }, true);
   fishArrowsBox.querySelectorAll('.fishArrowPad button').forEach((b) => b.addEventListener('click', () => fishArrow(b.dataset.dir)));
+  // v1.10.257 잡기 카드 (gamecenter-notes docs/catch-card-20261103.md 1·3·5절): a good catch -- my best, the first of its kind,
+  // a big fish or a rare insect, bigger than the museum's -- on a card in the middle: its ribbons, the size counting up, the
+  // best before; 「더보기」 turns it to the kind's 설명. 3 s on its own (not turned) it shrinks to the one-line note, at Esc and
+  // on the next cast too; it never stops moving or the rod. A plain catch: the note only (tapped: the same 설명 card). The
+  // 설명 alone from the bag's ⓘ, a 도감 cell, a museum plaque. 「움직임 줄이기」: no sparkle, no count -- the border only.
+  const catchCard = byId('catchCard'); let catchTimer = null; let catchNote = ''; let catchAsk = 0;
+  const lessMotionNow = () => motionMode() === 'on' || (motionMode() === 'auto' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches));
+  const dexPic = (id) => (id.startsWith('insect_') ? `/assets/dex/${id}.svg` : `/assets/dex/${id}.png`);
+  const GRADE_KO = { common: '흔함', normal: '보통', rare: '드묾', big: '대어' };
+  const catchEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const catchHost = () => { const host = document.querySelector('dialog:modal') || document.body; if (catchCard.parentElement !== host) host.append(catchCard); }; // (opened over the bag or the 도감: inside that modal window, else under its top layer and not clickable)
+  function catchClose(toNote = true) {
+    plaza.controller?.showDone?.(); // (the 자랑's put away, the camera home -- nothing when none)
+    if (catchCard.classList.contains('hidden') && !catchCard.classList.contains('withShow')) return; clearTimeout(catchTimer);
+    catchCard.classList.add('hidden'); catchCard.classList.remove('flipped', 'infoOnly', 'withShow');
+    const id = catchCard.dataset.id; if (toNote && catchNote) showToast(catchNote, 2800, id ? () => openDexCard(id) : null); catchNote = '';
+  }
+  function catchShow(id, r, note) {
+    const ribbons = [];
+    if (r.firstTime) ribbons.push(['first', '새 친구!']); else if (r.best && r.prevBest != null) ribbons.push(['best', '신기록!']);
+    if (r.grade === 'big') ribbons.push(['big', '대어!']); else if (id.startsWith('insect_') && r.grade === 'rare') ribbons.push(['big', '드문 곤충!']);
+    const museumBigger = Number.isFinite(r.museumSize) && Number.isFinite(r.size) && r.size > r.museumSize;
+    if (!ribbons.length && !museumBigger) { showToast(note, 2800, () => openDexCard(id)); return; } // (사용자 2026-11-03: a plain catch, no card)
+    catchClose(false); catchNote = note; catchAsk += 1; catchHost();
+    // (9절 자랑 장면) the catch held out in a close-up first -- the card once it is up (PC: beside me, a phone: below)
+    const insect = id.startsWith('insect_'); const showing = Boolean(plaza.controller?.showCatch?.({ kind: insect ? 'insect' : 'fish', species: r.species }, () => catchClose()));
+    const calm = lessMotionNow(); catchCard.dataset.id = id; catchCard.className = `catchCard ${ribbons.map(([k]) => `is-${k}`).join(' ')}${calm ? ' calm' : ''}${showing ? ' withShow hidden' : ''}`;
+    catchCard.querySelector('.catchRibbons').replaceChildren(...ribbons.map(([k, t]) => catchEl('span', `catchRibbon ${k}`, t)));
+    for (const img of catchCard.querySelectorAll('.catchPic')) img.src = dexPic(id);
+    for (const h of catchCard.querySelectorAll('.catchName')) h.textContent = r.name;
+    const size = catchCard.querySelector('.catchSize'); const lines = [];
+    if (Number.isFinite(r.size)) {
+      if (calm) size.textContent = `${r.size} cm`; else { const t0 = performance.now(); const ask = catchAsk; const step = (t) => { if (ask !== catchAsk) return; const k = Math.min(1, (t - t0) / 800); size.textContent = `${(r.size * (1 - (1 - k) ** 3)).toFixed(1)} cm`; if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+      if (r.best && r.prevBest != null) lines.push(`지난 최고 ${r.prevBest} cm → +${(r.size - r.prevBest).toFixed(1)} cm`);
+    } else size.textContent = '';
+    if (museumBigger) lines.push(`박물관 전시 ${r.museumSize} cm보다 커요 — 관장에게 가져가 보세요`);
+    const list = catchCard.querySelector('.catchLines'); list.replaceChildren(...lines.map((l) => catchEl('li', null, l)));
+    if (r.firstTime) api('/api/island/dex').then((d) => { if (catchCard.dataset.id === id) list.append(catchEl('li', 'catchDexCount', `도감 ${d.found}/${d.total}`)); }).catch(() => {});
+    catchCard.querySelector('#catchMoreBtn').classList.remove('hidden');
+    const ask = catchAsk; const reveal = () => {
+      if (ask !== catchAsk || catchCard.dataset.id !== id) return; catchCard.classList.remove('hidden');
+      window.RoomSound?.play('right'); // (one sparkle of a sound -- 「반짝」, the sound setting's)
+      const held = (() => { try { return navigator.webdriver && localStorage.getItem('gc.testCatchHold') === '1'; } catch { return false; } })(); // (a test's slow runner: kept up till it acts)
+      if (!held) catchTimer = setTimeout(() => { if (!catchCard.classList.contains('flipped') && !catchCard.matches(':hover, :focus-within')) catchClose(); }, 3000);
+    };
+    if (showing) catchTimer = setTimeout(reveal, insect ? 1000 : 1100); else reveal();
+  }
+  // the 설명 (the card's back): its picture and name, grade, one line, the island's story (found only), where and when,
+  // its size and my best, the museum's
+  async function fillCatchBack(id) {
+    const ask = ++catchAsk; const back = catchCard.querySelector('.catchBack');
+    const [dex, museum] = await Promise.all([api('/api/island/dex'), api('/api/island/museum').catch(() => null)]);
+    if (ask !== catchAsk) return;
+    const e = dex.entries.find((x) => x.id === id); const shown = museum?.exhibits?.find((x) => x.id === id); const found = Boolean(e?.count);
+    const known = found || Boolean(shown?.by); // (on show in the museum: its name and line for all to see -- the island's story mine once caught)
+    back.classList.toggle('unfound', !known);
+    back.querySelector('.catchPic').src = dexPic(id); back.querySelector('.catchName').textContent = known ? e?.name || shown.name : '???';
+    back.querySelector('.catchGrade').textContent = known ? GRADE_KO[e?.grade] || '' : '아직 못 찾았어요';
+    back.querySelector('.catchLine').textContent = known ? e?.note?.line || '' : '';
+    back.querySelector('.catchStory').replaceChildren(...(found && e.note?.story ? e.note.story.map((l) => catchEl('p', null, l)) : []));
+    const facts = [['잡히는 곳·때', e?.where || '—']];
+    if (found && e.sizes) facts.push(['크기', `보통 ${e.sizes[0]}~${e.sizes[1]} cm${e.best ? ` · 내 최고 ${e.best.size} cm` : ''}`]);
+    if (known) facts.push(['박물관', shown?.by ? `전시 중${shown.size != null ? ` · ${shown.size} cm` : ''} · ${shown.by}님 기증` : '아직 없어요']);
+    back.querySelector('.catchFacts').replaceChildren(...facts.flatMap(([k, v]) => [catchEl('dt', null, k), catchEl('dd', null, v)]));
+  }
+  async function openDexCard(id) { // the 설명 alone (the bag's ⓘ, a 도감 cell, a note, a plaque)
+    catchClose(false); catchNote = ''; catchHost(); catchCard.dataset.id = id; catchCard.className = `catchCard flipped infoOnly${lessMotionNow() ? ' calm' : ''}`;
+    catchCard.querySelector('#catchMoreBtn').classList.add('hidden');
+    try { await fillCatchBack(id); catchCard.querySelector('#catchCloseBtn').focus({ preventScroll: true }); } catch (error) { catchClose(false); showToast(error.message); }
+  }
+  byId('catchMoreBtn').addEventListener('click', async () => { clearTimeout(catchTimer); catchCard.classList.add('flipped'); byId('catchMoreBtn').classList.add('hidden'); await fillCatchBack(catchCard.dataset.id).catch(() => {}); });
+  byId('catchCloseBtn').addEventListener('click', () => catchClose(!catchCard.classList.contains('infoOnly')));
+  window.addEventListener('keydown', (e) => { if (e.key !== 'Escape' || catchCard.classList.contains('hidden')) return; e.preventDefault(); e.stopImmediatePropagation(); catchClose(!catchCard.classList.contains('infoOnly')); }, true);
   // v1.10.42 도감: the bag window's other page -- every find, the ones not found yet as silhouettes
   const DEX_ICON = { herb: 'herb', berry: 'berries', mushroom: 'mushrooms' };
   // v1.10.43: the page `on` is 'dex' (the finds) or 'photo' (기념사진: the photo spots and the day each was taken); false the bag
@@ -4251,6 +4327,7 @@
         const n = document.createElement('small'); n.textContent = e.count ? `×${e.count}` : '';
         cell.append(img, name, n);
         if (e.best) { const best = document.createElement('small'); best.className = 'dexBest'; best.textContent = `최고 ${e.best.size} cm · ${new Date(e.best.at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}`; cell.append(best); } // (v1.10.231: my best of that fish, its day)
+        if (e.kind === 'fish' || e.kind === 'insect') { cell.tabIndex = 0; cell.classList.add('opens'); cell.setAttribute('aria-label', `${e.count ? e.name : '아직 못 찾은 것'} 설명`); cell.addEventListener('click', () => openDexCard(e.id)); cell.addEventListener('keydown', (k) => { if (k.key === 'Enter') openDexCard(e.id); }); } // (v1.10.257 설명 카드)
         return cell;
       }));
     } catch (error) { showToast(error.message); }
