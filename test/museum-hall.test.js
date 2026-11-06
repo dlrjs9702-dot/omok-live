@@ -84,7 +84,7 @@ test('박물관 전시관: 들어가고 나가기, 창구에서 기증, 더 큰 
 test('박물관 나누기: 세 방 자리·물별 벽, 통로로만 오가기, 방마다 벽', async (t) => {
   const key = (s) => `${s.lx.toFixed(2)},${s.lz.toFixed(2)}`;
   const walls = [...M.WALLS, ...M.SPARE_WALLS].map(key); assert.equal(new Set(walls).size, walls.length, '벽 수조 겹치지 않음'); assert.equal(M.WALLS.length, M.FRESH.length);
-  const cases = [...M.CASES, ...M.SPARE_CASES].map(key); assert.equal(new Set(cases).size, cases.length, '곤충 상자 겹치지 않음'); assert.deepEqual([M.CASES.length, M.SPARE_CASES.length], [12, 12]);
+  const cases = [...M.CASES, ...M.SPARE_CASES].map(key); assert.equal(new Set(cases).size, cases.length, '곤충 상자 겹치지 않음'); assert.deepEqual([M.CASES.length, M.SPARE_CASES.length], [24, 0]); // (v1.10.261: the twelve new insects in the spare cases)
   assert.equal(Object.keys(M.SLOTS).length, M.SEA.length + M.BIG_SEA.length + M.FRESH.length + M.INSECTS.length);
   // (v1.10.259: every fish a place -- 50; the sea's 대어 in the 대어 tank, every 대어 marked on its plaque)
   assert.equal(Object.keys(M.SLOTS).filter((id) => id.startsWith('fish_')).length, Object.keys(F.SPECIES).length);

@@ -36,7 +36,8 @@
   const BIG_SEA = Object.freeze(['dotdom', 'giant_squid', 'sunfish', 'giant_octopus']);
   const BIGS = new Set(['giant_tuna', 'sturgeon', ...BIG_SEA, 'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp']);
   const WATERS = Object.freeze([['river', '강'], ['lake', '거울호수'], ['pool', '폭포 웅덩이']].map(([id, name]) => Object.freeze({ id, name })));
-  const INSECTS = Object.freeze(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail']);
+  const INSECTS = Object.freeze(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail',
+    ...['butterfly_yellow','honeybee','hawkmoth_hummingbird','jewel_beetle','longhorn_giant','water_strider','mantis','cricket','moth_silk','winter_moth','snow_springtail','snow_scorpionfly']]); // (v1.10.261: the twelve spare cases filled)
   const FLYERS = Object.freeze(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor']); // (in the dome too)
   // the aquarium (28 x 18): the big tank in the middle (assets 74 museum.tank_big: 6.2 x 2.6, its long side across), where
   // its fish swim (tank-local) and its plaques, a row along each long side of its base; the big fish's tank behind it (the

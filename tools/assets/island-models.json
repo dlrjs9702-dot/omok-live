@@ -9385,6 +9385,174 @@
       "src": "insect103:01. High/fx_net_swoosh_up.glb",
       "sha256": "4fff75d4aa52c39a4576d09744a4641b7e67b00ad0feb40efda6f20725e177f2",
       "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_butterfly_yellow.glb",
+      "src": "insect105:01. High/insect_butterfly_yellow.glb",
+      "sha256": "332ea5df6b8cb4617e2fe8fc72991d916f225a34e3450d1197ab3119fa5493fb",
+      "lowSrc": "insect105:02. Low/insect_butterfly_yellow_low.glb",
+      "lowSha256": "57e0d2f3410d487962c50aaa882777da4bdc47a1ea10848e9190ceb87ca7d51f",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_butterfly_yellow.glb",
+      "src": "insect105:01. High/still/insect_butterfly_yellow.glb",
+      "sha256": "1bb56866ece76eac83c529134114c66f6d479a6f68cee558f5c27d32a9874452",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_honeybee.glb",
+      "src": "insect105:01. High/insect_honeybee.glb",
+      "sha256": "4fd2041df3d8bf298bfacae5c793a2e30c7e68b9e82ab5e4c5825286904d4d77",
+      "lowSrc": "insect105:02. Low/insect_honeybee_low.glb",
+      "lowSha256": "7e338af8d3e798b9dcd04c86f30e845d7b340f7c29f8861d078b9ba238078070",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_honeybee.glb",
+      "src": "insect105:01. High/still/insect_honeybee.glb",
+      "sha256": "d4b3947f05d9970e56d8eeb387d42a14383ed99df819c73fcb0114e7dc5a5283",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_hawkmoth_hummingbird.glb",
+      "src": "insect105:01. High/insect_hawkmoth_hummingbird.glb",
+      "sha256": "d3ff0597d38c9b8e2c12a262b146e29b88c8343d3ec40b0f7a77c1e138ce9d7f",
+      "lowSrc": "insect105:02. Low/insect_hawkmoth_hummingbird_low.glb",
+      "lowSha256": "53a9131917f9f8bed6b0324e347df1b88b8036981b5df11eaf883e00a2372adc",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_hawkmoth_hummingbird.glb",
+      "src": "insect105:01. High/still/insect_hawkmoth_hummingbird.glb",
+      "sha256": "1cb1851bc99c5039e793a44cd2b35b78ca691d2fc39ed86249b9dfa702d82a06",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_moth_silk.glb",
+      "src": "insect105:01. High/insect_moth_silk.glb",
+      "sha256": "99f9ba0f1fb2b677992d7c64cdd869a4e32cb9eb6e0bae403022a7e73c6600d3",
+      "lowSrc": "insect105:02. Low/insect_moth_silk_low.glb",
+      "lowSha256": "ebf0b8facc645128192ec269e76e98070ae37a31fd19f24222d8779ee51ea05b",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_moth_silk.glb",
+      "src": "insect105:01. High/still/insect_moth_silk.glb",
+      "sha256": "79f04a401a8b7ea4fec4fa4630385e8b9060a6a21c87d0173e9813679052a6ad",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_winter_moth.glb",
+      "src": "insect105:01. High/insect_winter_moth.glb",
+      "sha256": "8f2c8293ecf621cb77f6043b1b8e463c8d791a9fbd2705c4b966e6d29d274d03",
+      "lowSrc": "insect105:02. Low/insect_winter_moth_low.glb",
+      "lowSha256": "a71b4cd64fe3e8d7c8858a5f0b2256df4a18e0d72d9d3c8fd7b893c63d426cf6",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_winter_moth.glb",
+      "src": "insect105:01. High/still/insect_winter_moth.glb",
+      "sha256": "b8e557ce51c91e362ac0afd7ad887d4cf9964e4dd14d60ce9186132178088adc",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_mantis.glb",
+      "src": "insect105:01. High/insect_mantis.glb",
+      "sha256": "e244c5dd2d8e3471734363832e42f62c68340fba807b9ca3fc29ff4fd291dd0d",
+      "lowSrc": "insect105:02. Low/insect_mantis_low.glb",
+      "lowSha256": "ab6856f39435dd472ba4346af4ce7fbf9aa7d11801ae039f1509a5030aa9c6c3",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_mantis.glb",
+      "src": "insect105:01. High/still/insect_mantis.glb",
+      "sha256": "2993153e7a55db120ba3ab3149784a2887b338604d6bca98e55f23d29666b186",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_jewel_beetle.glb",
+      "src": "insect105:01. High/insect_jewel_beetle.glb",
+      "sha256": "57406b4c6e2ba8b4ae318193744ad1903e6d8eef36da9594edd9ed011a491d85",
+      "lowSrc": "insect105:02. Low/insect_jewel_beetle_low.glb",
+      "lowSha256": "3845004142b599da70eda62f627d2fc6efe94c4108cd4871ff7f1cc37ca7680d",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_jewel_beetle.glb",
+      "src": "insect105:01. High/still/insect_jewel_beetle.glb",
+      "sha256": "a8ef4354e08564b867ee6ec96aa19d3705b3a4ce1cc64c1574fc4fae2b8d7f12",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_longhorn_giant.glb",
+      "src": "insect105:01. High/insect_longhorn_giant.glb",
+      "sha256": "0bed6b5d17577c03907bd7b8f83168ac0fd08321f137daef69d26bba8037fd4e",
+      "lowSrc": "insect105:02. Low/insect_longhorn_giant_low.glb",
+      "lowSha256": "9771b0eec4a50ba8b4e2cc726e81e90b490632dfc7da7105df687854fe44e6f9",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_longhorn_giant.glb",
+      "src": "insect105:01. High/still/insect_longhorn_giant.glb",
+      "sha256": "0f5fa99cad5057a73247e55aa453f4b0c728faf3b50779a0c5f554c23232c38c",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_water_strider.glb",
+      "src": "insect105:01. High/insect_water_strider.glb",
+      "sha256": "201196323782b54d41d56b47c4fa1c04d3176613f704104e99c633d26ce7ff8e",
+      "lowSrc": "insect105:02. Low/insect_water_strider_low.glb",
+      "lowSha256": "a60127f42972dfb1d528fd79403e9efa09ccd27545597903e036fc41ba09c7bb",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_water_strider.glb",
+      "src": "insect105:01. High/still/insect_water_strider.glb",
+      "sha256": "8d512ab41211738229ad3e253e8a1db6306c0f3fd3916038f4f23d51e3dcbc83",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_cricket.glb",
+      "src": "insect105:01. High/insect_cricket.glb",
+      "sha256": "d8e7e2d845cfa794c6b8df4d7beeea7297edbe5fb1161f9056b5a72f2fba78a1",
+      "lowSrc": "insect105:02. Low/insect_cricket_low.glb",
+      "lowSha256": "1f153185721e78f0e009ab18a8fe746da7b9d53f572f1226946b4dd0e0488d4e",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_cricket.glb",
+      "src": "insect105:01. High/still/insect_cricket.glb",
+      "sha256": "f1497ec2b7ef7cfefde7e75dc8eeeee9b4ed746bcac5176ede59b4a12e024359",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_snow_springtail.glb",
+      "src": "insect105:01. High/insect_snow_springtail.glb",
+      "sha256": "e74552076019d147c9ef226460a4d2dc4c747d9d64fc956617e0ac01c392b318",
+      "lowSrc": "insect105:02. Low/insect_snow_springtail_low.glb",
+      "lowSha256": "9ff76ef78ecb5afe6ae45e9f609a07360e840499129a3cb68748d0e310f00488",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_snow_springtail.glb",
+      "src": "insect105:01. High/still/insect_snow_springtail.glb",
+      "sha256": "afcdcc6153e7d9c7c527b3d98c96687f392d3c0052bf853f458c0b9a0096dc14",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_snow_scorpionfly.glb",
+      "src": "insect105:01. High/insect_snow_scorpionfly.glb",
+      "sha256": "c42f01dd2a1d3f73d61d4d1b8fbdc055136809b4a0ff9d1bbc1355a72bcd5579",
+      "lowSrc": "insect105:02. Low/insect_snow_scorpionfly_low.glb",
+      "lowSha256": "354aaa8191bf7457469183fa963452649644122182f46b89180ecda5323519e7",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_snow_scorpionfly.glb",
+      "src": "insect105:01. High/still/insect_snow_scorpionfly.glb",
+      "sha256": "eed879c96a0e7004c6c3bfc6cd5a1ccb326dcb38b19a235dcaab6bb93fb4dea8",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9463,6 +9631,7 @@
     "show97": "97. Game Island show catch moves 2026-11-04",
     "bigfish91": "91. Game Island big fish 9 2026-11-03",
     "freshfish93": "93. Game Island freshwater fish 7 2026-11-03",
-    "insect103": "103. Game Island insect catch 2026-11-06"
+    "insect103": "103. Game Island insect catch 2026-11-06",
+    "insect105": "105. Game Island insects new 12 2026-11-06"
   }
 }

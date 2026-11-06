@@ -1348,6 +1348,54 @@
     "together-v1/fx_net_swoosh_up.glb": {
       "nodes": 2,
       "reason": "v1.10.260 assets 103: an effect -- its root at the player's feet and the mesh"
+    },
+    "together-v1/insect_butterfly_yellow.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_honeybee.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_hawkmoth_hummingbird.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_moth_silk.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_winter_moth.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_mantis.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_jewel_beetle.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_longhorn_giant.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_water_strider.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_cricket.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_snow_springtail.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/insect_snow_scorpionfly.glb": {
+      "nodes": 2,
+      "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
