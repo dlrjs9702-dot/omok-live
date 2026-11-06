@@ -311,11 +311,15 @@ test('메신저 알림 옮기기: 폰은 새 구독이 실패하면 옛 구독 �
 test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.html, 「앱으로 설치」 단추, 설치된 창에서는 숨김', async ({ browser, request, isMobile }, info) => {
   test.setTimeout(60000);
   const manifest = await request.get('/messenger.webmanifest'); expect(manifest.status()).toBe(200); expect(manifest.headers()['content-type']).toContain('manifest+json');
-  const mf = await manifest.json(); expect(mf).toMatchObject({ id: '/messenger', name: '아일랜드 메신저', start_url: '/messenger.html', scope: '/messenger', display: 'standalone' });
+  const mf = await manifest.json(); expect(mf).toMatchObject({ id: '/messenger', name: '아일랜드 메신저', start_url: '/messenger', scope: '/messenger', display: 'standalone' });
   expect(mf.protocol_handlers).toEqual([{ protocol: 'web+gcmessenger', url: '/messenger.html?open=%s' }]); // (v1.10.253: the 서랍's 「메신저 앱으로 열기」 reaches the installed app)
   for (const icon of mf.icons) { const res = await request.get(icon.src); expect(res.status(), icon.src).toBe(200); expect(res.headers()['content-type']).toBe('image/png'); }
   expect(mf.icons.map((i) => i.purpose).sort()).toEqual(['any', 'any', 'maskable']);
-  expect((await (await request.get('/manifest.webmanifest')).json())).toMatchObject({ name: '아일랜드', start_url: '/', scope: '/' }); // (the island's as it was)
+  // (v1.10.256 주소 15절) the island app under /island/ -- the messenger outside its scope, installed apart; the old ways in go there
+  expect((await (await request.get('/manifest.webmanifest')).json())).toMatchObject({ id: '/island/', name: '아일랜드', start_url: '/island/', scope: '/island/' });
+  const chrome = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0.0.0 Safari/537.36', 'Sec-CH-UA': '"Google Chrome";v="140"' };
+  for (const [from, to] of [['/?room=x', '/island/?room=x'], ['/herosurv/', '/island/herosurv/']]) { const r = await request.get(from, { maxRedirects: 0, headers: chrome }); expect(r.headers().location, from).toBe(to); }
+  expect((await request.get('/island/herosurv/', { headers: chrome })).status()).toBe(200);
   const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
   const page = await context.newPage(); await page.goto('/messenger.html'); await expect(page.locator('#mLogin')).toBeVisible({ timeout: 30000 });
   expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBe('/messenger.webmanifest');

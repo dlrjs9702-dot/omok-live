@@ -1286,7 +1286,7 @@
     runSegment();
   }
 
-  if (sessionToken) history.replaceState(null, '', '/');
+  if (sessionToken) history.replaceState(null, '', '/island/');
 
   function showToast(message, ms = 2800) {
     toast.textContent = message;
@@ -2217,7 +2217,7 @@
     if (herosurvFrame) return;
     try { sessionStorage.setItem('herosurvSession', sessionToken); sessionStorage.setItem('herosurvName', String(sessionLabel || (sessionRole === 'admin' ? '관리자' : '게스트'))); } catch {} // (the name for its 명예의 전당 join, written in advance)
     plaza.controller?.stop(); document.body.classList.add('herosurvOpen');
-    const frame = document.createElement('iframe'); frame.className = 'herosurvFrame'; frame.title = '두 세계 영웅전'; frame.src = '/herosurv/'; frame.allow = 'fullscreen; gamepad; autoplay';
+    const frame = document.createElement('iframe'); frame.className = 'herosurvFrame'; frame.title = '두 세계 영웅전'; frame.src = '/island/herosurv/'; /* (v1.10.256: in the island app's scope) */ frame.allow = 'fullscreen; gamepad; autoplay';
     document.body.append(frame); herosurvFrame = frame; frame.addEventListener('load', () => frame.contentWindow?.document.getElementById('canvas')?.focus());
   }
   function closeHerosurv() {
@@ -6087,6 +6087,15 @@
     persistenceBadge.classList.toggle('warn', data.persistence !== 'database');
     renderGuestKeys(data.keys || []);
     renderSignups((await api('/api/admin/signups')).signups || []);
+    loadStorage().catch(() => {});
+  }
+  // v1.10.256 저장 공간 보기: the database (or the data files) against its disk -- 80 % orange, 90 % red; its eight biggest
+  async function loadStorage() {
+    const r = await api('/api/admin/storage'); const box = byId('adminStorage'); if (!box) return;
+    const mb = (b) => (b >= 1073741824 ? `${(b / 1073741824).toFixed(2)} GB` : `${(b / 1048576).toFixed(b < 10485760 ? 1 : 0)} MB`);
+    box.dataset.level = r.level; byId('adminStorageLine').textContent = `${r.percent}% · ${mb(r.used)} / ${r.limitGb} GB${r.kind === 'file' ? ' (파일)' : ''}`;
+    byId('adminStorageFill').style.width = `${Math.min(100, r.percent)}%`;
+    byId('adminStorageTables').replaceChildren(...r.tables.map((t) => { const li = document.createElement('li'); li.textContent = `${t.label ? `${t.label} · ` : ''}${t.name} — ${mb(t.bytes)}${t.rows != null ? ` · 약 ${t.rows.toLocaleString('ko-KR')}줄` : ''}`; return li; }));
   }
   // v1.10.63 가입 신청: 이름 · 아이디 · 원하는 닉네임, 승인(계정이 생김) / 거절
   function renderSignups(signups) {
@@ -13004,7 +13013,7 @@
   const accountToken = { get: () => { try { return sessionStorage.getItem(ACCOUNT_KEY) || ''; } catch { return ''; } },
     set: (t) => { try { if (t) sessionStorage.setItem(ACCOUNT_KEY, t); else sessionStorage.removeItem(ACCOUNT_KEY); } catch {} } };
   // v1.10.190: an entry file only logs in (body data-account) -- 내 계정 here, the island by 「게임 접속」
-  if (document.body.dataset.account) { accountToken.set(document.body.dataset.account); history.replaceState(null, '', '/'); }
+  if (document.body.dataset.account) { accountToken.set(document.body.dataset.account); history.replaceState(null, '', '/island/'); }
   const say = (text, bad = false) => { accountMessage.textContent = text; accountMessage.classList.toggle('bad', bad); };
   const accountApi = (path, body, method = 'POST') => api(path, { method, headers: { 'X-Account-Token': accountToken.get() }, ...(body ? { body: JSON.stringify(body) } : {}) });
   let accountPane = '';
@@ -13067,7 +13076,7 @@
     if (byId('setupPasswordInput').value !== byId('setupPasswordConfirm').value) { say('비밀번호 확인이 일치하지 않습니다.', true); return; }
     try {
       const data = await api('/api/account/setup', { method: 'POST', body: JSON.stringify({ ticket: setupTicket, loginId: byId('setupIdInput').value, password: byId('setupPasswordInput').value }) });
-      setupTicket = ''; accountToken.set(data.accountToken); say(''); showAccount(data.account); history.replaceState(null, '', '/');
+      setupTicket = ''; accountToken.set(data.accountToken); say(''); showAccount(data.account); history.replaceState(null, '', '/island/');
     } catch (err) { say(err.message, true); }
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's

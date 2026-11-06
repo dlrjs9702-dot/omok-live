@@ -11,7 +11,7 @@ test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 test('문제 기록: 관리자 메뉴에서 적으면 화면 정보·사진과 저장, 관리자 창에서 상태 바꾸기·지우기, 다른 계정은 없음', async ({ browser, request }) => {
   test.setTimeout(150000);
   const guest = await shopper(browser, request, '일반계정', 0, 'male');
-  expect((await get(request, '/api/admin/issues', guest.token)).status).toBe(403);
+  expect((await get(request, '/api/admin/issues', guest.token)).status).toBe(403); expect((await get(request, '/api/admin/storage', guest.token)).status).toBe(403); // (v1.10.256 저장 공간: the administrator's only)
   await guest.page.keyboard.press('Escape'); await expect(guest.page.locator('#gameMenuDialog')).toBeVisible();
   await expect(guest.page.locator('#issueLogBtn')).toBeHidden();
   await guest.context.close();
@@ -37,6 +37,11 @@ test('문제 기록: 관리자 메뉴에서 적으면 화면 정보·사진과 �
   expect((await get(request, `/api/admin/issues/${mine.id}/shot`, guest.token)).status).toBe(403);
   // the card: listed, its state changed, removed
   await page.keyboard.press('Escape'); await page.locator('#adminWindowBtn').click();
+  // (v1.10.256) the 저장 공간 line: how full against its 1 GB, the biggest opened below
+  await expect(page.locator('#adminStorageLine')).toHaveText(/^\d+(\.\d)?% · [\d.]+ [MG]B \/ 1 GB/, { timeout: 15000 });
+  await page.locator('#adminStorage summary').click(); await expect(page.locator('#adminStorageTables li').first()).toBeVisible();
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-admin-storage.png` });
+  await page.locator('#adminStorage summary').click();
   await page.locator('#issueCard summary').first().click();
   const row = page.locator('.issueItem', { hasText: '광장 벤치가 공중에 떠 있음' });
   await expect(row).toBeVisible(); await row.locator('summary').click();

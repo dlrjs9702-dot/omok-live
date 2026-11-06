@@ -4,7 +4,7 @@
   "short_name": "메신저",
   "description": "게임 아일랜드 친구들과 주고받는 메신저",
   "lang": "ko",
-  "start_url": "/messenger.html",
+  "start_url": "/messenger",
   "scope": "/messenger",
   "display": "standalone",
   "launch_handler": { "client_mode": "focus-existing" },

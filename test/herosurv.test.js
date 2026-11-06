@@ -89,7 +89,7 @@ test('영웅전 API: 게임센터 닉네임으로 기록·순위, 판마다 한 
   const ranking = await fetch(base + '/api/records/ranking?game=herosurv', { headers: { 'X-Session-Token': session } }).then((r) => r.json());
   assert.deepEqual([ranking.kind, ranking.board, ranking.top.map((r) => [r.rank, r.label, r.score, r.me]), ranking.me?.rank], ['score', 'heroes-r14', [[1, '영웅', 2746, true]], 1]);
 
-  const page = await fetch(base + '/herosurv/', { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/140.0.0.0', 'Sec-CH-UA': '"Google Chrome";v="140"' } });
+  const page = await fetch(base + '/island/herosurv/', { headers: /* (v1.10.256: under the island app's scope) */ { 'User-Agent': 'Mozilla/5.0 Chrome/140.0.0.0', 'Sec-CH-UA': '"Google Chrome";v="140"' } });
   assert.equal(page.status, 200);
   const html = await page.text();
   assert.match(html, /<script src="\/herosurv\/boot\.js\?h=/);

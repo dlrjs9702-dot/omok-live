@@ -49,7 +49,7 @@
 	exit.addEventListener('click', () => {
 		if (!confirm('게임을 나가 아일랜드로 돌아갈까요?\n진행 중인 판은 기록되지 않습니다.')) { document.getElementById('canvas').focus(); return; }
 		if (window.parent !== window) window.parent.postMessage({ type: 'herosurv-exit' }, location.origin);
-		else location.href = '/';
+		else location.href = '/island/';
 	});
 }());
 
