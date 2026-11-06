@@ -73,6 +73,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     const answer = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'), { timeout: 10000 }) /* (CI #362: a slow runner's page took ~4.5 s from SPACE to the catch) */.catch(() => null);
     await page.evaluate((id) => { const d = window.PlazaDebug(); const b = d.insectsDrawn().find((q) => q.id === id); if (b) d.faceTo(b.x, b.z); }, target.id);
     if (!(await spaceOn(page, 'tool:swing', isMobile))) { last = await page.locator('#plazaHint').textContent(); return last; }
+    if (process.env.SHOT_DIR) { await page.waitForFunction(() => (window.PlazaDebug().netState().log || []).slice(-1)[0] === 'twist', null, { timeout: 4000 }).then(() => page.waitForTimeout(250)).then(() => page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-net-bag.png` })).catch(() => {}); await page.waitForFunction(() => (window.PlazaDebug().netState().log || []).slice(-1)[0] === 'peek', null, { timeout: 4000 }).then(() => page.waitForTimeout(450)).then(() => page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-net-peek.png` })).catch(() => {}); } // (v1.10.260: the bag closed, the peek)
     const r = await answer; const text = r ? await r.text().catch(() => '') : ''; last = r ? `${r.status()} ${text}` : `no answer ${target.species} ${JSON.stringify(await page.evaluate(() => window.PlazaDebug().lastSwing()))}`; missed = !r;
     if (r?.status() === 200) { caught = JSON.parse(text); const id = r.request().postDataJSON()?.id; if (id) target = { ...target, id }; } // (the one the swing took)
     return r?.status() ?? 'no answer';
@@ -80,6 +81,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   expect((await post(request, '/api/island/insect/catch', a.token, { id: target.id })).data).toEqual(caught); // (the same catch again: the same answer)
   // (v1.10.257 자랑 장면, assets 97) the first of its kind held out, pinched -- the net moved to the left hand; Esc ends it
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.phase || null), { timeout: 8000 }).toBe('hold');
+  expect((await page.evaluate(() => window.PlazaDebug().netState().log)).slice(-3)).toEqual([expect.stringMatching(/^(down|side|jump)$/), 'twist', 'peek']); // (v1.10.260: swung, the bag closed, peeked into -- then held out)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.netLeft), { timeout: 3000 }).toBe(true);
   await expect(page.locator('#catchCard')).toBeVisible({ timeout: 5000 }); await expect(page.locator('#catchCard .catchRibbon').first()).toHaveText(/새 친구!|드문 곤충!/);
   await page.evaluate(() => window.PlazaDebug().showKeep()); /* (and past its 6 s) */
@@ -90,11 +92,30 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   await expect.poll(async () => (await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === itemId), { timeout: 10000 }).toBe(true);
   expect((await get(request, '/api/island/dex', a.token)).data.entries.find((e) => e.id === itemId).count).toBeGreaterThan(0);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().insectList().includes(id), target.id), { timeout: 15000 }).toBe(false);
-  // run at (the server is told by the page): off it goes, for everyone
+  // run at (the server is told by the page): off it goes -- v1.10.260: landing on another place of its kind, the same on every
+  // screen (a snail only hides; none free: gone as before)
   const other = pick(await insectsNow(), target.id); await standAt(request, a, other.spot.x, other.spot.z);
-  expect((await post(request, '/api/island/insect/scare', a.token, { id: other.id })).status).toBe(200);
-  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().insectList().includes(id), other.id), { timeout: 15000 }).toBe(false);
-  expect((await post(request, '/api/island/insect/catch', a.token, { id: other.id })).data.error).toBe('BUG_GONE');
+  const scared = await post(request, '/api/island/insect/scare', a.token, { id: other.id }); expect(scared.status).toBe(200);
+  if (scared.data.moved) {
+    expect(Math.hypot(scared.data.moved.x - other.x, scared.data.moved.z - other.z)).toBeGreaterThanOrEqual(3);
+    await expect.poll(async () => (await insectsNow()).find((o) => o.id === other.id)?.x, { timeout: 5000 }).toBe(scared.data.moved.x);
+    await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().insectSpot(id)?.x, other.id), { timeout: 15000 }).toBe(scared.data.moved.x);
+  } else if (!scared.data.hid) {
+    await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().insectList().includes(id), other.id), { timeout: 15000 }).toBe(false);
+    expect((await post(request, '/api/island/insect/catch', a.token, { id: other.id })).data.error).toBe('BUG_GONE');
+  }
+  // v1.10.260 곤충 손맛 (docs/insect-catch-improve-20261107.md 1절), where it was (no one by me): SPACE held, the net aims
+  // (NetReady); let go, it swings -- met nothing, the stumble (NetMiss). PC; a phone by its photos (258 rule)
+  if (!isMobile) {
+    await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [other.spot.x, other.spot.z]); await page.waitForTimeout(400);
+    await page.locator('#plazaStage').focus(); await page.keyboard.down('Space');
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().netState()), { timeout: 5000 }).toMatchObject({ aiming: true, pose: 'ready', act: 'net:ready' });
+    if (process.env.SHOT_DIR) { await page.waitForTimeout(400); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-net-ready.png` }); await page.keyboard.down('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().netState().pose)).toBe('sneak'); await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-net-sneak.png` }); await page.keyboard.up('KeyW'); }
+    await page.keyboard.up('Space');
+    if (process.env.SHOT_DIR) { await page.waitForTimeout(450); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-net-miss.png` }); }
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().lastSwing()?.kind || null), { timeout: 5000 }).toMatch(/^(down|side|jump)$/);
+    if (!(await page.evaluate(() => window.PlazaDebug().lastSwing().hit))) await expect.poll(() => page.evaluate(() => window.PlazaDebug().netState().log.slice(-1)[0]), { timeout: 5000 }).toBe('miss');
+  }
   // 박물관 (v1.10.231: in its hall, at the curator's desk -- the page left on the island, the server keeps me where it put me):
   // not outside; once per kind, with my name
   expect((await post(request, '/api/island/museum/donate', a.token, { itemId })).status).toBe(409);
