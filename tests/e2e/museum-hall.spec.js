@@ -43,9 +43,24 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
     await expect.poll(() => who.page.evaluate((id) => window.PlazaDebug().museum()?.slots[id], fish), { timeout: 15000 }).toMatchObject({ shown: true });
     expect((await who.page.evaluate((id) => window.PlazaDebug().museum().slots[id], fish)).plaque).toContain(`${size} cm\n${isMobile ? '기증왕m' : '기증왕'}님 기증`);
   }
-  if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-${isMobile ? 'phone' : 'pc'}.png` });
   // out at the hall's door: back by the museum
   await expect.poll(async () => { if (await page.locator('#plazaDialog').isVisible()) await page.keyboard.press('Escape'); await page.waitForTimeout(300); return page.locator('#plazaDialog').isVisible(); }, { timeout: 15000 }).toBe(false);
+  // (v1.10.254 박물관 나누기) the fish's in the aquarium, through the hall's west doorway: its counts by the doorway, b (in the
+  // hall) not drawn there; back to the hall the same way
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().museum()?.counts.aquarium || ''), { timeout: 15000 }).toMatch(/물고기 \d+ \/ 34/);
+  const room = () => page.evaluate(() => window.PlazaDebug().museum()?.room);
+  const through = async (id, want) => expect.poll(async () => {
+    if (await room() === want) return want;
+    await page.evaluate((door) => { const d = window.PlazaDebug(); const e = d.doors[door]; d.teleport(e.x, e.z); }, id); await page.waitForTimeout(400); await spaceOn(page, id, isMobile); await page.waitForTimeout(900);
+    return room();
+  }, { timeout: 30000, intervals: [300] }).toBe(want);
+  const bAt = await b.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  const bShown = () => page.evaluate(([x, z]) => window.PlazaDebug().others.filter((o) => Math.hypot(o.x - x, o.z - z) < 1.5).some((o) => o.shown), [bAt.x, bAt.z]);
+  await expect.poll(bShown, { timeout: 15000 }).toBe(true); // (in the hall together)
+  await through('museum:go:aquarium', 'aquarium');
+  await expect.poll(bShown, { timeout: 10000 }).toBe(false);
+  if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-${isMobile ? 'phone' : 'pc'}.png` });
+  await through('museum:go:hall:aquarium', 'hall');
   await expect.poll(async () => {
     if (await page.evaluate(() => window.PlazaDebug().space) === 'island') return 'island';
     await page.evaluate(() => { const d = window.PlazaDebug(); const e = d.doors['museum:exit']; d.teleport(e.x, e.z); });
