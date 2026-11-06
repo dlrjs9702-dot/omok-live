@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.261 새 곤충 12종 (insect-catch-improve 4~5절, 에셋 105)
+
+- 새 12종·물가(shore)·등불(lamp) 자리, 종류별 배치 몫(나무·꽃·풀 13, 물가 3, 등불 3), 겨울 3종.
+- 자루 열림/닫힘 하나만, 곤충 자루 안 0.18 m. 도감 84·곤충관 24·설명 12.
+
 ## v1.10.260 곤충 손맛 (insect-catch-improve 1~3절, 에셋 103)
 
 - 겨누기·살금살금, 세 휘두르기(테 0.9 m), 자루·퍼덕임, 평범/좋은 순간, 놓침·달아남(서버 자리 옮김, 달팽이 숨기).
@@ -23,10 +28,3 @@
 - 에셋 91(대어 9)·93(민물 7), 모든 칸 낮 7종 이상, 칸마다 대어 0.8% 먼저 뽑기. 박물관 대어 수조·물별 벽 25.
 - 입질: 화살표/타이밍 막대 반반(세 번 연속 없음), 서버 확인(막대 하한·도착 시각). 대어 줄다리기(public/fish-tug.js, 서버 재계산).
 - 자랑: 모든 물고기 두 손 가로.
-
-## v1.10.258 자랑 장면 (catch-card 9절) + 폴드 회귀
-
-- 자랑 장면: Show* 동작 9개(에셋 97), 카메라 3.6 m 왼쪽, 잡은 것 최소 0.5 m/0.22 m, 물고기는 얼굴 옆, 장면 동안 보조 빛. 건너뛰기 SPACE·걷기·스틱·탭.
-- asset-loader hold size: 메시 상자로 재요(스킨 곤충이 빈 상자로 읽혀 크기가 안 바뀌던 것).
-- 폴드: /island/guest-entry(옛 경로도 받음), 안드로이드 메신저 intent://, 섬 「앱으로 설치」(첫 화면·☰).
-- 시험: island-daily-server 부탁 날짜 고정.
