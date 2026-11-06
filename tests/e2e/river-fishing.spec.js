@@ -50,7 +50,8 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   // (9절 자랑 장면, assets 97) the first catfish held out: the camera before me, the third person, the catch in hand -- the card then
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.phase || null), { timeout: 8000 }).toBe('hold');
   expect(await page.evaluate(() => window.PlazaDebug().showOff())).toMatchObject({ kind: 'fish', big: false, fp: false });
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.clip || null), { timeout: 5000 }).toMatch(/^ShowCatch(Hold)?$/);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.clip || null), { timeout: 5000 }).toMatch(/^ShowCatchBig(Hold)?$/); // (259: every fish in both hands)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.across || false), { timeout: 5000 }).toBe(true);
   if (isMobile) await expect(page.locator('#islandStick')).toBeVisible(); // (the stick back once the arrows are gone)
   // v1.10.257 잡기 카드 (docs/catch-card-20261103.md): the first catfish -- 「새 친구!」 on its card; 더보기 its 설명 (one line,
   // the island's two, where and when, its size and mine); 닫기 -- the note, tapped its 설명 again
