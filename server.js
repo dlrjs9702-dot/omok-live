@@ -844,7 +844,7 @@ async function devicesNow() { const now = nowMs(); return ((await pointStore.wor
 async function deviceOf(req) {
   const token = req.headers['x-messenger-device']; if (!token) return null;
   const hash = deviceHash(token); const d = (await devicesNow()).find((x) => x.hash === hash);
-  return d ? { keyId: d.keyId, device: d.id } : null;
+  return d && scopesOf(d).includes('messenger') ? { keyId: d.keyId, device: d.id } : null; // (v1.10.268 총괄 검토: a game-only token never opens the messenger's door)
 }
 // (v1.10.268 2절) a device's uses: the messenger's (as before -- one from before has none written) and, kept logged in from the
 // island's first screen, the game's too: only those log in again by POST /api/account/device-login. Never the administrator's
@@ -4332,7 +4332,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.267' });
+    return sendJson(res, 200, { ok: true, version: '1.10.268' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -8992,7 +8992,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.267 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.268 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

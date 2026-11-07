@@ -31,6 +31,7 @@ test('자동 로그인: 게임 용도 기기 토큰만 device-login, 메신저 �
   const again = await dev(game); assert.equal(again.status, 200); assert.equal(again.data.account.loginId, 'auto_guest');
   assert.equal((await call('/api/account/me', undefined, { 'X-Account-Token': again.data.accountToken })).status, 200);
   assert.equal((await dev('nope'.repeat(10))).status, 401);
+  assert.equal((await call('/api/messenger', undefined, { 'X-Messenger-Device': game })).status, 401); // (총괄 검토: a game-only token -- no messenger permission -- not past the messenger's door)
   // the messenger's own kept login (a permitted account): not the game's
   await req(`/api/admin/keys/${k.id}/messenger`, admin, { allowed: true });
   const mess = (await login(false, true)).data.deviceToken; assert.ok(mess);
