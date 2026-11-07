@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -61,7 +62,7 @@ test('계정 저장소: PostgreSQL — 같은 동작, 동시에 같은 아이디
 
 test('계정 API: 가입 신청 → 승인 대기 → 승인 → 로그인 → 게임 접속, 파일 재발급·비밀번호 변경·초기화, 파일 계정 설정 강제', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'account-server-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter, release, base } = await boot(t, dir);
   let ip = 0;
   const call = async (route, body, account) => {

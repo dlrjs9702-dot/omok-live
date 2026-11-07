@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -62,7 +63,7 @@ async function boot(t, dir) {
 
 test('작명소: 형식·중복(공백 무시)·같은 이름·대기·잔액 부족은 차감 없이 거절, 성공은 한 번만 차감하고 바로 반영', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nickname-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir);
   const { req } = server;
   const [a, b, c] = [await server.issue('가나'), await server.issue('이 건'), await server.issue('다라')];

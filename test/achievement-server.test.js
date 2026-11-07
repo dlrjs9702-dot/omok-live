@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -100,7 +101,7 @@ async function waitFor(fn, message) {
 
 test('인증 없이는 조회할 수 없고, 새 계정은 아무 업적도 달성하지 않았다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'achievement-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   assert.equal((await fx.req('/api/achievements')).status, 401);
   const me = await fx.guest('조회');
@@ -114,7 +115,7 @@ test('인증 없이는 조회할 수 없고, 새 계정은 아무 업적도 달�
 
 test('판이 끝나면 전적 기준 업적이 한 번씩 지급되고(방 안 알림·원장·내역), 다시 조회해도 추가 지급이 없다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'achievement-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('승자'), await fx.guest('패자')];
   assert.equal((await fx.req('/api/test/rewards', a.session, {})).status, 200); // a만 지급 대상, b는 아직 아님
@@ -144,7 +145,7 @@ test('판이 끝나면 전적 기준 업적이 한 번씩 지급되고(방 안 �
 
 test('과거에 쌓인 전적도 대상이 되는 순간 소급되어 한 번만 지급되고, 동시에 조회해도 중복이 없다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'achievement-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('가'), await fx.guest('나')];
   await startOthello(fx, a, b);

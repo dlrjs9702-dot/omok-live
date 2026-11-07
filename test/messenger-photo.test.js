@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -41,14 +42,14 @@ async function photosBehave(store) {
 }
 
 test('메신저 사진 저장소: JSON·PostgreSQL 같은 동작 (올리기·붙이기·7일·하루·보내기 취소)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-photo-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-photo-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const json = new JsonMessengerStore(path.join(dir, 'messenger.json')); await json.init(); await photosBehave(json);
   const database = await testDatabase(); t.after(() => database.stop());
   const pg = new PostgresMessengerStore(database.url); t.after(() => pg.pool.end()); await pg.init(); await pg.init(); await photosBehave(pg);
 });
 
 test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만이면 「📷 사진」, 그 방 사람만 열림·private 캐시, 7일 뒤 410', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-photo-api-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-photo-api-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, base } = await boot(t, dir); let ip = 0;
   const call = async (route, body, account, raw = null) => {
     const headers = { 'X-Forwarded-For': `10.79.${Math.floor(++ip / 200)}.${ip % 200 + 1}`, ...(account ? { 'X-Account-Token': account } : {}), ...(raw ? raw.headers : body !== undefined ? { 'Content-Type': 'application/json' } : {}) };

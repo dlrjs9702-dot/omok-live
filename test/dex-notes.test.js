@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -35,7 +36,7 @@ test('설명 글: 물고기·곤충 모두, 줄 길이, 곳·때는 표에서', 
 // range -- its story only once found
 test('잡기 카드 서버: 지난 최고·박물관 크기, 도감 설명(찾은 것만 이야기)', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dex-notes-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const s = await server.enter(await server.issue('설명왕')); assert.ok(s, server.logs());
   await req('/api/plaza/state', s, { x: T.PIER.x, z: T.PIER.z, yaw: 0, moving: false }); await req('/api/test/island/give', s, { itemId: 'fishing_rod', qty: 1 });

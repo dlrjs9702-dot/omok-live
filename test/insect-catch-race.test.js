@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -10,7 +11,7 @@ const { boot } = require('../test-support/test-server');
 // insect is taken before the bag's wait, not after. A few insects, each raced by a fresh pair standing by it (a first
 // pose is taken where it is said), two tries each at once.
 test('곤충 동시 잡기: 두 계정이 같은 곤충을 동시에 잡으면 한쪽만', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bug-race-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bug-race-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const first = await server.enter(await server.issue('곤충손0')); assert.ok(first, server.logs());
   const list = (await req('/api/island/insects', first)).data.list.slice(0, 4); assert.ok(list.length > 0);

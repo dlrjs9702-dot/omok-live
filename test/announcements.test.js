@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const freePort = require('../test-support/free-port'); // v1.10.77: one port per
 
 test('announcement JSON storage survives reinitialization and supports edits and deletion', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-notices-store-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const file = path.join(dir, 'announcements.json');
   const store = new JsonAnnouncementStore(file);
   await store.init();
@@ -37,7 +38,7 @@ test('announcement JSON storage survives reinitialization and supports edits and
 
 test('release seeding is idempotent and pins the latest nickname-change notice', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-notices-seed-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const store = new JsonAnnouncementStore(path.join(dir, 'announcements.json'));
   await store.init();
   await store.create('닉네임 변경안내', '관리자가 닉네임을 변경할 수 있습니다.');

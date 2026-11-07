@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -32,7 +33,7 @@ test('기록의 탑 자리: 주민 길 격자에서 탑 칸은 막히고 앞뒤�
 });
 
 test('기록의 탑 서버: 이번 주·역대 순위(1~20 + 내 순위), 결과의 이번 주 ○위, 게시판 14종', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tower-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tower-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const [a, b] = [await server.enter(await server.issue('탑가')), await server.enter(await server.issue('탑나'))]; assert.ok(a && b, server.logs());
   const clear = async (who, level, ageMs) => {

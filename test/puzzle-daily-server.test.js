@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -25,7 +26,7 @@ test('오늘의 문제 정답: 네 퍼즐 모두 같은 날·난이도면 같은
 
 test('오늘의 문제 API: 처음 맞힌 한 번만 기록(G-포인트: 포인트 없음), 틀린 판·지난 날 거부', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'puzzle-server-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('퍼즐러')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;

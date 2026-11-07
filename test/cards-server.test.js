@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -28,7 +29,7 @@ test('카드 재생: 이긴 판은 같은 점수로 다시 이기고, 규칙에 
 
 test('카드 API: 서버가 나눈 판만, 한 번만, 다시 재생해 이긴 판만 기록(G-포인트: 포인트 없음)', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cards-server-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('카드손')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;
@@ -71,7 +72,7 @@ test('카드 API: 시간 기록은 서버 시계(보낸 시간 무시), 3시간 
   let r = null; let seed = 0;
   while (!r?.won && seed < 300) r = playKlondike(++seed);
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cards-time-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('시간손')); assert.ok(sa, server.logs());
   const round = async (ageMs) => {

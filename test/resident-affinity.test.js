@@ -2,6 +2,7 @@
 // R2 주민 상호작용 확장 (gamecenter-notes IDEAS #future-resident-interactions, 사용자 「호감도는 보상이랑도 연결」): 오늘의 이야기
 // (a question a day each, the liked answer +2, once), a level reached paying once (아는 사이 points, 친한 사이 points and their
 // piece in my 가구 창고, 단짝 their title), what was done together said back, and my 호감도 listed for their greeting.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -31,7 +32,7 @@ test('호감도 단계·오늘의 이야기 순수 규칙: 지난 단계, 질문
 });
 
 test('주민 호감도: 오늘의 이야기 하루 한 번, 단계 보상 한 번씩(포인트·가구·칭호), 기억 대사, 내 호감도 목록', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'affinity-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'affinity-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('단짝후보'));
   await req('/api/test/island/free-residents', a, {});
@@ -77,7 +78,7 @@ test('R3: 선물 하루 한 번(좋아함 +3·싫어함 0·보통 +1, 가방에�
   Npcs.setPhaseOf(() => 'day'); const day = Npcs.at(1, 123456); Npcs.setPhaseOf(() => 'morning'); const morning = Npcs.at(1, 123456);
   assert.ok(Math.hypot(day.x - morning.x, day.z - morning.z) > 1, JSON.stringify([day, morning])); assert.deepEqual(Npcs.at(1, 123456), morning); Npcs.setPhaseOf(seoulPhase);
   // ⑥ a gift
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'resgift-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'resgift-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('선물주기'));
   await req('/api/test/island/free-residents', a, {});
@@ -110,7 +111,7 @@ test('R3: 선물 하루 한 번(좋아함 +3·싫어함 0·보통 +1, 가방에�
 // note: what, where, what it pays, today), 「다음에요」 keeps nothing, 「할게요!」 starts it (the tracker), 「그만둘래요」 lets it go
 test('심부름 받기: 말 걸면 쪽지만, 다음에요는 기록 없음, 할게요로 시작, 그만두면 다시 부탁', async (t) => {
   const E = require('../lib/island-errands');
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'errand-accept-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'errand-accept-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('심부름꾼'));
   await req('/api/test/island/free-residents', a, {});

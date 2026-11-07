@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -8,7 +9,7 @@ const T = require('../public/plaza/island-terrain.js');
 const { boot } = require('../test-support/test-server');
 
 test('섬 시설: 원거리 지급·구매는 거부하고 가까운 출석과 개인 착용은 유지', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'near-facility-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'near-facility-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const token = await server.enter(await server.issue('시설 거리'));
   await req('/api/plaza/state', token, { ...T.SPAWN, yaw: 0, moving: false });
@@ -44,7 +45,7 @@ test('섬 시설: 원거리 지급·구매는 거부하고 가까운 출석과 �
 });
 
 test('섬 초대: 원거리 준비와 준비 후 게임방에 간 수신자를 거부', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'near-invite-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'near-invite-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('초대하는이')); const b = await server.enter(await server.issue('초대받는이'));
   await req('/api/plaza/state', a, { x: 0, z: 8 });
@@ -62,7 +63,7 @@ test('섬 초대: 원거리 준비와 준비 후 게임방에 간 수신자를 �
 // pose carries only known acts, and 'sit' only on the seat one holds (what the other screens get: e2e)
 test('앉기 서버: 좌석은 먼저 앉은 사람 것, 일어나면 비고, 자세는 허용된 행동만', async (t) => {
   const seats = T.plazaProps().seats.filter((s) => !s.room); assert.equal(seats.length, T.paving ? 4 + 14 + 28 - 1 + 8 : 4); /* (v1.10.253: 기록의 탑's garden without the seat before its podium) */ /* (v1.10.230: 툇마루섬's four little gardens, two benches each) */ /* (묶음 1: 대청마당's gardens' rims too; 3회차 13: 14 benches along its rim) */ // (B 44: the 민원실's 18 seats are counted apart)
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'seat-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'seat-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('앉는이')); const b = await server.enter(await server.issue('늦은이')); assert.ok(a && b, server.logs());
   const s = seats[0]; const near = { x: s.x + Math.sin(s.yaw), z: s.z + Math.cos(s.yaw), yaw: 0, moving: false };

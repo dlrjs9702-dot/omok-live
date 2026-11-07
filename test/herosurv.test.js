@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -52,7 +53,7 @@ test('영웅전 기록: PostgreSQL 저장소 — 같은 동작', async (t) => {
 
 test('영웅전 API: 게임센터 닉네임으로 기록·순위, 판마다 한 번, 실제 시간보다 긴 기록 거부', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'herosurv-server-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter, base } = await boot(t, dir);
   const session = await enter(await issue('영웅'));
   const call = async (route, method, body, token = session) => {

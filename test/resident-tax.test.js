@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -57,7 +58,7 @@ async function storeBehaves(store) {
 }
 
 test('주민세 저장소: JSON·PostgreSQL 같은 동작(고지서 하루 한 장·납부 전부 또는 거절·기한 지나면 체납·상한)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tax-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tax-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const json = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 30000 }); await json.init();
   await storeBehaves(json);
   const database = await testDatabase(); t.after(() => database.stop());
@@ -66,7 +67,7 @@ test('주민세 저장소: JSON·PostgreSQL 같은 동작(고지서 하루 한 �
 });
 
 test('주민세 서버: 전 계정 고지서, 우체통 편지, 기한 지나면 체납자 칭호·줄무늬 옷, 세금 창구 「모두 내기」로 풀림, 자동이체 없음', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tax-server-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tax-server-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const rich = await server.enter(await server.issue('부자')); const poor = await server.enter(await server.issue('빈털터리'));
   const sleeper = await server.issue('잠수'); // never comes in: still billed (every account)

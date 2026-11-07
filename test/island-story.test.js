@@ -3,6 +3,7 @@
 // them (one under way on the island at a time), 할 일 a place (seen by my steps) or another islander, back to the asker for
 // the story note; the 할 일 card's line, 그만둘래요; the festival stories -- the start one while it is on, the end one after
 // it to whoever got a stamp.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -69,7 +70,7 @@ test('이야기 17명: 10~26 세 장씩(제안 2·쪽지 5·끝말 1), 한 줄 4
 // v1.10.234 서버: 반디 1장 (대청마당 · 밤에) -- my step there by day counts for nothing, at night ✓ (as 0~9's night chapters);
 // 꽃님 2장 「한들에게 말 걸기」 -- the name of one past the first ten (WALKERS was ten: 「13에게」), the book's names likewise
 test('이야기 17명 서버: 밤 장은 밤에만 ✓, 10~26 주민 이름(말 걸기 장), 쪽지 다섯 줄', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story17-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story17-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('열일곱손님'));
   await req('/api/test/island/free-residents', a, {});
@@ -113,7 +114,7 @@ test('이야기 17명 서버: 밤 장은 밤에만 ✓, 10~26 주민 이름(말 
 });
 
 test('이야기 부탁: 단계 → 제안·할게요, 한 번에 하나, 곳에 가면 ✓, 돌아가 쪽지(+호감도), 다른 주민에게 말 걸기 장, 그만둘래요, 행사 이야기', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('이야기손님'));
   await req('/api/test/island/free-residents', a, {});
@@ -195,7 +196,7 @@ test('S2 장면 규칙: 섬 일지 열림·빠진 쪽(조각 7), 마지막 장 �
 });
 
 test('S2 서버: 섬 일지 쪽 읽기(닫힌 쪽 막힘), 등대 문 살펴보기 → 빠진 쪽 한 번(문은 잠김), 결론 듣기 → 쪽지 여섯·등불·칭호 한 번', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story2-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story2-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('등대이웃'));
   await req('/api/test/island/free-residents', a, {});

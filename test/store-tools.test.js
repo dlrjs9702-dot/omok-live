@@ -1,6 +1,7 @@
 'use strict';
 // 문제 기록 5회차 10-①: a tool at the 잡화점 is bought one at a time -- a bike once, not while one is in the bag; v1.10.221
 // 도구 닳기: a rod or a net three of a kind (the sturdy ones too), counted inside the buy (two at once: one)
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const S = require('../public/plaza/island-store');
 const I = require('../lib/island-items');
 
 test('잡화점 도구: 하나씩, 낚싯대·잠자리채는 종류마다 3개까지(동시에 사도), 자전거는 한 대', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'store-tools-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'store-tools-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const shopper = async (label) => {
     const a = await server.enter(await server.issue(label));

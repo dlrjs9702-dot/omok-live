@@ -2,6 +2,7 @@
 // v1.10.228 물결에게 팔기 (사용자 「팔 수 없다」, 총괄 2026-11-02): with the roster on 물결 is seldom at the harbour -- a day at
 // the 1층's counter, a day walking. Selling fish to him is where a talk with him is (questTalkPos): by him on his walk, at the
 // counter on his counter day; far from him, TOO_FAR.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -16,7 +17,7 @@ const Store = require('../public/plaza/island-store');
 const Quests = require('../lib/island-quests');
 
 test('물결에게 팔기: 계산대 날은 1층 계산대에서, 걷는 날은 물결 옆에서, 멀면 TOO_FAR', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fisher-sell-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fisher-sell-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req: send, issue, enter, logs } = await boot(t, dir);
   // (CI 2026-11-02: one request of the walking loop came back 'fetch failed' with nothing in the server's log -- a kept-alive
   // socket closed as it was reused; once more, and the server's log if it is really gone)

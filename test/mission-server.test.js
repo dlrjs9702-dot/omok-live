@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -100,7 +101,7 @@ async function waitFor(fn, message) {
 
 test('인증 없이는 조회할 수 없고, 응답에는 계정·원장 정보가 없다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   assert.equal((await fx.req('/api/missions')).status, 401);
   const me = await fx.guest('조회');
@@ -116,7 +117,7 @@ test('인증 없이는 조회할 수 없고, 응답에는 계정·원장 정보�
 
 test('정상 종료된 판이 진행도를 올리고 미션·첫 승리가 원장에 한 번씩 남는다(기권한 사람은 이탈 없는 완료가 아니다)', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('승자'), await fx.guest('기권')];
   assert.equal((await fx.deal(a, ['win1', 'clean1', 'play3'])).status, 200);
@@ -146,7 +147,7 @@ test('정상 종료된 판이 진행도를 올리고 미션·첫 승리가 원�
 
 test('같은 판을 다시 조회·종료 요청해도 두 번 세지 않고, 재대결의 새 판은 새로 센다(첫 승리는 하루 한 번)', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('가'), await fx.guest('나')];
   await fx.deal(a, ['play5', 'win3', 'variety2']);
@@ -169,7 +170,7 @@ test('같은 판을 다시 조회·종료 요청해도 두 번 세지 않고, �
 
 test('주간 미션(v1.7.20): 조회에 포함되고, 판이 끝나면 주 단위 진행이 오르며, 목표를 채우면 미션 3개와 보너스가 한 번씩 지급된다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('주간승자'), await fx.guest('주간패자')];
   const initial = (await fx.missions(a)).weekly;

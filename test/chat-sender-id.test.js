@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -107,7 +108,7 @@ async function joinRoom(fx, host, guest) {
 
 test('같은 닉네임 두 사람: 메시지마다 다른 senderId, 각자의 me.chatId와 자기 메시지만 일치, 계정 정보 미노출', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'chat-id-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('똑같은이름'), await fx.guest('똑같은이름')];
   await joinRoom(fx, a, b);
@@ -133,7 +134,7 @@ test('같은 닉네임 두 사람: 메시지마다 다른 senderId, 각자의 me
 
 test('같은 계정은 다른 방에서도 같은 ID이고 상대와는 다르다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'chat-id-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('원래이름'), await fx.guest('상대')];
   await joinRoom(fx, a, b);

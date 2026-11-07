@@ -2,6 +2,7 @@
 // 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md) ④ 이 기기에서 로그인 유지 and ③ 알림: a device token
 // reaches the messenger only (not the account, the game or points), ends with a new password, the permission taken away
 // or its own logout, and a push goes to the room's other members not looking -- muted and open ones left out
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const { boot } = require('../test-support/test-server');
 
 test('메신저 기기 로그인 유지·알림: 메신저만, 비밀번호·허용 해제·로그아웃이면 끝, 푸시 받는 사람', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-device-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   let { req, base, stop } = await boot(t, dir);
   let ip = 0;
   const pushesNow = async (n) => { let got = []; for (let k = 0; k < 50 && got.length < n; k += 1) { got = got.concat((await req('/api/test/messenger/pushes')).data.pushes); if (got.length < n) await new Promise((r) => setTimeout(r, 100)); } return got; };

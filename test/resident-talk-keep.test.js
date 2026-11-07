@@ -3,6 +3,7 @@
 // still stand by them -- its lease run out between renewals, or a late bye of an earlier talk with the same islander -- is
 // held again by the window's renewal (and a choice made then); over when someone else talks to them (or I walked off -- a talker stands held by them, so not staged here),
 // and the answer says which
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -13,7 +14,7 @@ const N = require('../public/plaza/island-npcs');
 const Cast = require('../public/plaza/island-cast');
 
 test('주민 대화: 붙잡기가 풀려도 곁에 있으면 다시 붙잡고, 멀어졌을 때·남이 붙잡았을 때만 끝(까닭과 함께)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-keep-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-keep-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('붙잡기')); const b = await enter(await issue('다른이'));
   const stand = (p, who = a) => req('/api/plaza/state', who, { x: p.x, z: p.z, yaw: 0, moving: false });

@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -42,7 +43,7 @@ test('달마루섬 관광열차: 바깥 높은 고리·역 4곳(땅 위 승강�
 });
 
 test('달마루섬 관광열차 서버: 첫 역에서 타고 다음 역에서 내린다', { skip }, async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dal-train-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dal-train-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('달마루승객')); const [S0, S1] = R.LINES.tour.order; const A = R.stationOf(S0);
   const at = (from, test) => { let ms = from; while (!test(ms)) ms += 250; return ms; };

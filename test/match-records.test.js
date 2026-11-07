@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -35,7 +36,7 @@ test('every game resolves final outcomes from the engine, never spectators or cl
 
 test('file-backed records survive reopening, reject duplicate rounds and recover after a failed write', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'match-store-'));
-  t.after(() => fs.rm(dir, { recursive:true, force:true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const file = path.join(dir,'matches.json');
   const store = new JsonMatchStore(file); await store.init();
   const match = buildMatchResult(room('omok','black'));

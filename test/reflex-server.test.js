@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -76,7 +77,7 @@ async function storeBehaves(store) {
 
 test('순발력 기록: JSON 저장소 — 높을수록 좋은 기록, 하루 상한', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'reflex-store-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const store = new JsonPointStore(path.join(dir, 'points.json'));
   await store.init();
   await storeBehaves(store);
@@ -93,7 +94,7 @@ test('순발력 기록: PostgreSQL 저장소 — 같은 동작', async (t) => {
 
 test('순발력 API: 판을 열고 한 번만 보고, 포인트 없이 기록만(G-포인트), 잘못된 점수 거부', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'reflex-server-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('순발력')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;

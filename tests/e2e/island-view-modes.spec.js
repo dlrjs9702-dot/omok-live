@@ -85,31 +85,61 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     expect((await view()).mode).toBe('first');
     expect((await post(request, '/api/test/fish/bite', who.token, { species: 'mackerel', slack: 20000 })).data.ok).toBe(true);
     await pressFishArrows(page, false);
-    if (process.env.SHOT_DIR) await expect.poll(() => page.evaluate(() => window.PlazaDebug().fpHeld().of), { timeout: 8000, intervals: [100] }).toBe('catch'); // (the fish in my hand, held up as a tool is)
+    if (process.env.SHOT_DIR) await expect.poll(() => page.evaluate(() => window.PlazaDebug().fpHeld().of), { timeout: 8000, intervals: [100] }).toBe('catch').catch(() => {}); // (the fish in my hand, held up as a tool is -- photos only; on PC it is late at times, the shots then without it)
     if (process.env.SHOT_DIR) for (const k of [1, 2]) { await page.waitForTimeout(k === 1 ? 150 : 500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-view-fishing-catch-${k}.png` }); }
     await expect.poll(async () => ((await get(request, '/api/island/bag', who.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
     expect((await view()).mode).toBe('first');
   }
-  // the 관공서: the third till V2 (「곧」); my house: the first by default, the third chosen there kept for indoors
+  // the 관공서 (V2, docs/view-v2-interiors-20261108.md 5: every room): the first by default, its ceiling and front wall in it;
+  // my house: the first by default, the third chosen there kept for indoors
   const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, who, th.x, th.z);
   const space = () => page.evaluate(() => window.PlazaDebug().space);
-  const enter = async (door, want) => { // (pressed once, then waited for: inside, one stands by the way out -- a second press would leave)
-    for (let tries = 0; tries < 8 && await space() !== want; tries += 1) {
-      await page.evaluate((id) => { const d = window.PlazaDebug(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); }, door); await page.waitForTimeout(400);
+  const enter = async (door, want, now = space) => { // (pressed once, then waited for: inside, one stands by the way out -- a second press would leave)
+    for (let tries = 0; tries < 8 && await now() !== want; tries += 1) {
+      await page.evaluate(([id, k]) => { const d = window.PlazaDebug(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); else d.place?.(id); /* (the 박물관's door is an event's) */ if (k) d.setCamYaw?.(d.view().yaw + Math.PI / 2); }, [door, tries]); await page.waitForTimeout(400); /* (the first: SPACE only within 60° of where I look -- a quarter turn each try) */
       if (isMobile) await page.locator('#plazaHint').click().catch(() => {}); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
-      await expect.poll(space, { timeout: 8000 }).toBe(want).catch(() => {});
+      await expect.poll(now, { timeout: 8000 }).toBe(want).catch(() => {});
     }
-    expect(await space()).toBe(want);
+    expect(await now()).toBe(want);
   };
   await enter('townhall', 'townhall');
-  expect(await view()).toMatchObject({ side: 'in', mode: 'third' });
-  await toggle(); await expect(page.locator('#toast')).toContainText('곧 1인칭'); expect((await view()).mode).toBe('third');
+  await expect.poll(async () => (await view())).toMatchObject({ side: 'in', mode: 'first', body: false });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().roomLids().townhall)).toBe(true); await shot('townhall-first');
+  await toggle(); await expect.poll(async () => (await view()).mode).toBe('third'); expect(await page.evaluate(() => window.PlazaDebug().roomLids().townhall)).toBe(false); await shot('townhall-third');
+  await toggle(); await expect.poll(async () => (await view()).mode).toBe('first'); // (indoors back to the first for the rooms below)
+  { // (총괄 #424 검토) the 민원 창구 in the first: sat at its window, its paper open; closed -- stood up, the first again
+    await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil'); const d = window.PlazaDebug(); d.teleport(c.x, c.z + 1.1); d.setCamYaw?.(0); });
+    await expect(page.locator('#plazaHint')).toContainText('앉아서 민원 창구 업무', { timeout: 10000 });
+    if (isMobile) await page.locator('#plazaHint').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
+    await expect(page.locator('#islandPlaceDialog.counterMode')).toBeVisible({ timeout: 10000 }); await shot('townhall-counter');
+    await page.locator('#islandPlaceCloseBtn').click();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
+    await expect.poll(async () => (await view())).toMatchObject({ side: 'in', mode: 'first', body: false }); await shot('townhall-counter-after');
+  }
   const lot = (await get(request, '/api/home', who.token)).data.lots.find((l) => l.owner === null).id;
   expect((await post(request, '/api/home/apply', who.token, { lot, roof: 'blue' })).status).toBe(200);
   try {
     await enter('room:exit', 'island');
     expect(await view()).toMatchObject({ side: 'out', mode: 'first' }); // (outside's own choice)
+    for (const sp of ['jail', 'museum']) { // (V2: the 구치소 and the 박물관 the same -- the first with its ceiling, the third without)
+      await enter(sp, sp);
+      await expect.poll(async () => (await view()).mode).toBe('first'); await expect.poll(() => page.evaluate((k) => window.PlazaDebug().roomLids()[k], sp)).toBe(true); await shot(`${sp}-first`);
+      await toggle(); await expect.poll(async () => (await view()).mode).toBe('third'); expect(await page.evaluate((k) => window.PlazaDebug().roomLids()[k], sp)).toBe(false); await shot(`${sp}-third`);
+      await toggle(); await expect.poll(async () => (await view()).mode).toBe('first');
+      if (sp === 'museum' && process.env.SHOT_DIR) { // (총괄 #424 검토, a photo) the aquarium's big tank in the first, close by its glass: its fish seen through it
+        const room = () => page.evaluate(() => window.PlazaDebug().museum()?.room);
+        expect((await post(request, '/api/test/island/give', who.token, { itemId: 'fish_mackerel', qty: 1, meta: { size: 99 } })).status).toBe(200);
+        await page.evaluate(() => { const M = window.IslandMuseum; const w = M.world(M.TALK.lx, M.TALK.lz); window.PlazaDebug().teleport(w.x, w.z); }); await page.waitForTimeout(1500);
+        expect([200, 409]).toContain((await post(request, '/api/island/museum/donate', who.token, { itemId: 'fish_mackerel' })).status); /* (409: a bigger one shown already) */
+        await enter('museum:go:aquarium', 'aquarium', room);
+        await expect.poll(() => page.evaluate(() => window.PlazaDebug().museum().slots.fish_mackerel?.shown), { timeout: 15000 }).toBe(true);
+        await page.evaluate(() => { const M = window.IslandMuseum; const t = M.worldIn('aquarium', M.TANK.lx, M.TANK.lz); const me = M.worldIn('aquarium', M.TANK.lx, M.TANK.lz - 2.9); const d = window.PlazaDebug(); d.teleport(me.x, me.z); d.setCamYaw(Math.atan2(-(t.x - me.x), -(t.z - me.z))); });
+        await shot('museum-tank');
+        await enter('museum:go:hall:aquarium', 'hall', room);
+      }
+      await enter(`${sp}:exit`, 'island');
+    }
     await enter(`home:${lot}`, 'home');
     await expect.poll(async () => (await view())).toMatchObject({ side: 'in', mode: 'first', body: false });
     // (a desk with a snow globe, a coffee table with the radio -- in again: the room as the server has it)

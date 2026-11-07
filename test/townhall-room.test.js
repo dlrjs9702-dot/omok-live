@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -11,7 +12,7 @@ const T = require('../public/plaza/island-terrain');
 // island by a pose), the counter inside settles what the hall took outside, out only at the room's door; the room and
 // the island do not see each other's chat.
 test('관공서 실내: 문에서만 입장, 실내 안에서만 이동, 창구 정산, 문에서 퇴장, 채팅 분리', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'townhall-room-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'townhall-room-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('민원인')); const b = await server.enter(await server.issue('바깥사람'));
   const door = T.facilityDoor('townhall'); const R = T.TOWNHALL_ROOM;

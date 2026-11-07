@@ -3,6 +3,7 @@
 // legend look items ten a week (two a slot, two legends, none of last week's; not the Halloween, winter, IP or transformation
 // ones), the rest hidden and not sold or given -- owned ones still worn; the 3층's rare pieces six a week on their own shelf
 // (no shape twice), none on the daily display; the board's note once a week. And the giant tuna in the big tanks: six places.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -45,7 +46,7 @@ test('참치는 6칸: 큰 수조 참치 1 + 2마리, 참치 둘째·셋째 물�
 });
 
 test('주간 신상 서버: 숨긴 희귀 사기·선물 거절, 이번 주 것은 삼, 주가 바뀌어도 산 것은 그대로·입기, 3층 신상 진열대, 게시판 쪽지 주마다 한 번', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'weekly-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'weekly-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('신상손님')); const b = await server.enter(await server.issue('신상친구'));
   await req('/api/test/points-credit', a, { amount: 3000000 });

@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -69,7 +70,7 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
 });
 
 test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도감에 한 번, 이르면 실패, 어부에게 판매, 도감 칭호', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('낚시꾼')); assert.ok(sa, server.logs());
   const at = async (x, z) => req('/api/plaza/state', sa, { x, z, yaw: 0, moving: false });
@@ -144,7 +145,7 @@ test('기념사진 서버: 장소 근처에서만 기록, 처음 한 번 표시,
   const PC = T.PLAZA_C || { x: 0, z: 0 }; // (the plaza's middle, either island)
   assert.equal(F.photoSpotAt(PC.x, PC.z + 3).id, 'photo_plaza'); assert.equal(F.photoSpotAt(PC.x + 60, PC.z + 60), null);
   for (const s of F.PHOTO_SPOTS) assert.ok(T.walkable(s.x, s.z), s.name);
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'photo-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'photo-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('사진가')); assert.ok(sa, server.logs());
   await req('/api/plaza/state', sa, { x: PC.x + 40, z: PC.z + 40, yaw: 0, moving: false });

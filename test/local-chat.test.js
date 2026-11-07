@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -11,7 +12,7 @@ const R = require('../public/plaza/island-train');
 // when it was sent, or who rode the same train -- in the lobby stream itself (never sent and hidden); one from outside
 // the island still reaches all; a message once got stays after moving off.
 test('섬 채팅: 지상 20m 안만, 같은 열차 승객끼리만, 섬 밖 대기방 글은 모두', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'local-chat-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'local-chat-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req, base } = server;
   const people = {};
   for (const name of ['탑승1', '탑승2', '역옆', '근처', '멀리', '대기방']) people[name] = await server.enter(await server.issue(name));

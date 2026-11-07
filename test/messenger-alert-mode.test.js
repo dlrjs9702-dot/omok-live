@@ -2,6 +2,7 @@
 // 다음 메신저 묶음 (gamecenter-notes docs/messenger-speed-photo-20261103.md 10절) 알림 방식, 기기마다: 「열어 둘 때만」 (a PC's
 // default: no push subscription, the server pushes that device nothing) / 「닫아도 받기」 (a phone's default) / 「안 받기」.
 // A device from before the choice: a PC with a subscription moves to 열어 둘 때만 and is told once; a phone keeps its push.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const { boot } = require('../test-support/test-server');
 
 test('메신저 알림 방식: PC 기본 열어 둘 때만(푸시 0)·폰 기본 닫아도 받기, 바꾸기, 옛 기기 옮기기 한 번 안내', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-alert-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   let { req, base, stop } = await boot(t, dir);
   let ip = 0;
   const call = async (route, body, auth = {}) => {
@@ -96,7 +97,7 @@ test('메신저 알림 방식: PC 기본 열어 둘 때만(푸시 0)·폰 기본
 // The island app counts on its buttons only (no icon count).
 test('메신저 정리 12절: PC는 연 지 12시간 안에만·TTL 600, 폰은 늘·TTL 86400, Topic 방마다, 재로그인에 구독 옮김, 섬 앱 setBadge 없음', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-awake-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   let { req, base, stop } = await boot(t, dir);
   let ip = 0;
   const call = async (route, body, auth = {}) => {
@@ -159,7 +160,7 @@ test('메신저 정리 12절: PC는 연 지 12시간 안에만·TTL 600, 폰은 
 // subscribing here drops its old one at once; after the 7 days the old ones go. The new ones carry the new address.
 test('주소 옮기기: 옛 주소 구독은 7일 동안 받고 그 뒤 지움, 같은 이름 기기가 새로 구독하면 바로 지움', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-move-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const SITE = 'https://island-dalmaru.onrender.com';
   let { req, base, stop } = await boot(t, dir, { RENDER_EXTERNAL_URL: SITE });
   let ip = 0;

@@ -2,6 +2,7 @@
 // v1.10.242 주민 날마다 말 (gamecenter-notes docs/story-extra-20261104.md 1): talking to an islander -- something of mine first
 // (a big catch just now: once that day to them), then the day's 섬 대회 in their words with its game's name. (The order, the
 // 35%, the 조사 and the season: lib/island-daily.js's own checks, run by island-a4.)
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -14,7 +15,7 @@ const Daily = require('../lib/island-daily');
 const Errands = require('../lib/island-errands');
 
 test('주민 날마다 말: 대어 소식은 그날 한 번, 그다음은 오늘 대회 말(종목 이름)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'daily-server-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'daily-server-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('날마다'));
   const wait = (ms) => new Promise((r) => { setTimeout(r, ms); });

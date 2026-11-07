@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -29,7 +30,7 @@ async function fixture(t) {
   // shutdown (added in boot) comes first. (CI 3차 후속: added before boot, the folder went while the server still wrote
   // to it -- 'ENOTEMPTY: directory not empty, rmdir' after 「열린 광장 SSE」, #271 run 39805183750)
   let fx;
-  try { fx = await boot(t, dir); } finally { t.after(() => fs.rm(dir, { recursive: true, force: true })); }
+  try { fx = await boot(t, dir); } finally { rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */ }
   const token = await fx.enter(await fx.issue('입퇴장'));
   return { ...fx, token };
 }

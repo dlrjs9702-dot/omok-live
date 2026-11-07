@@ -3,6 +3,7 @@
 // server (it keeps where the talk stands), each fitting reply +1 호감도, an end's keepsake once a day from each, its hint true to
 // the island now (봄이: the weeds' place), a topic once a day and three a day; a reply without a talk refused. And 오늘의 물때:
 // the same waters for everyone that day, the rare fish 1.5 times as often there.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -28,7 +29,7 @@ test('오늘의 물때: 날마다 바다 쪽 하나·민물 하나(모두 같음
 });
 
 test('대화 힌트는 섬 지금 상태 그대로: 물때·밤 물고기·도감 빈칸·곤충·대회·사업, 이야기 책이 없으면 다음 갈 곳 없음', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-hints-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-hints-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('힌트손님')); await req('/api/plaza/state', a, { x: 0, z: 6, yaw: 0, moving: false });
   const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); const names = { sea: '바깥 바다', bay: '윤슬만', river: '강', lake: '거울호수', pool: '폭포 웅덩이' };
@@ -46,7 +47,7 @@ test('대화 힌트는 섬 지금 상태 그대로: 물때·밤 물고기·도�
 });
 
 test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기·호감도 +1·선물 하루 한 번·잡초 힌트 참·하루 한 번·하루 세 주제·끊긴 대답 거절', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talks-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talks-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('이야기손님'));
   await req('/api/test/island/free-residents', a, {});
@@ -98,7 +99,7 @@ test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기�
 });
 
 test('대화 나무 호감도 구멍 막기(총괄 검토): 시작·대답·다시 시작은 TALK_DONE(그만둬도 그날 끝), 맞는 대답 여럿도 주민마다 하루 +2', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-cap-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-cap-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('호감손님'));
   await req('/api/test/island/free-residents', a, {});

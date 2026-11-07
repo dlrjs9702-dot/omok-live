@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -64,7 +65,7 @@ async function boot(t, dir) {
 
 test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중복 없음, 관공서 300P, 재시작 유지·밀린 자정 보충', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'weed-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   let server = await boot(t, dir);
   const { issue, enter } = server;
   const ka = await issue('뽑는가'); const kb = await issue('뽑는나');

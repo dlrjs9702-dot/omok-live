@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -41,7 +42,7 @@ async function storeBehaves(store) {
 
 test('랭킹 조회: JSON 저장소 — 게임·기간으로 고른다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ranking-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const store = new JsonMatchStore(path.join(dir, 'match-records.json'));
   await store.init();
   await storeBehaves(store);
@@ -58,7 +59,7 @@ test('랭킹 조회: PostgreSQL 저장소 — 같은 동작', async (t) => {
 
 test('랭킹 API: 게임·기간, 순위가 없으면 빈 목록과 안내', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ranking-server-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('랭커')); assert.ok(sa, server.logs());
   assert.equal((await req('/api/records/ranking?game=../x', sa)).status, 400);

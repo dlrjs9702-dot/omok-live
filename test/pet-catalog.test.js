@@ -3,6 +3,7 @@
 // the economy table (animals 8,000, characters and 메타몽 12,000), never in the bag (so never given away).
 // v1.10.191 (docs/petshop-yard-unify-20261027.md, 사용자 「모든 펫을 동일하게 하루하루 랜덤으로 풀어놓고」): no more sold at the
 // counter -- four a day in the yard, in turn (all 23 within any six days), taken as the others; one I have already: no.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -29,7 +30,7 @@ test('마당 특별 넷: 하루에 서로 다른 넷, 23가지 모두 어느 6�
 });
 
 test('펫샵 특별 펫: 창구 판매는 거절, 마당에서 데려가고, 이미 가진 종류는 「이미 함께 살아요」(다른 사람은 됨)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'petcatalog-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'petcatalog-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   let server = await boot(t, dir);
   const keys = [await server.issue('특별펫손님'), await server.issue('특별펫이웃')];
   const upstairs = async (srv, key) => {

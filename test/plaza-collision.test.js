@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -15,7 +16,7 @@ const PASSWORD = 'plaza-collision-test';
 
 async function boot(t) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'plaza-collision-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const port = await new Promise((resolve, reject) => {
     const s = net.createServer();
     s.once('error', reject);

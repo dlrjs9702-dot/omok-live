@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -63,7 +64,7 @@ async function boot(t, dir) {
 
 test('게임 아일랜드 당일 위치: 저장·복원, 재시작 유지, 날짜 변경 시 중앙광장, 못 서는 곳은 저장 안 함·보정', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'plaza-spot-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   let server = await boot(t, dir);
   const who = await server.issue('위치복원');
   let session = await server.enter(who);
