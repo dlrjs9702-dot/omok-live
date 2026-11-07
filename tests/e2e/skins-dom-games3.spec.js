@@ -97,4 +97,3 @@ test('다빈치 코드 스킨: 방장 테마가 모든 화면에 같고, 각 랙
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
-
