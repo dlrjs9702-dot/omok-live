@@ -13,6 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.267 ② 주민 대화 나무 화면
+
+- 4칸(이야기 책·힌트·오늘의 주제·더 보기)·대답 단추·흐린 두 줄·힌트 띠·미니맵 📍, 이야기 책 81장 대화(storyTalk), 받은 것(dex given), 메신저 주소 복사(섬 앱 창·Custom Tab)·gc.messengerApp, 😊 자리·조작 겹침 0 e2e. 다음: 268 입장 파일 없애기.
+
 ## v1.10.266 ① 주민 대화 나무 서버
 
 - 대화 상태·힌트 8종(섬 지금 상태)·오늘의 물때(rare ×1.5)·열림 단계·keepsakes. 총괄 검토: 시작 때 started로 TALK_DONE(호감도 무한 막기), 대화 나무 호감도 주민마다 하루 affinity:talkDaily(기본 2). RELATIONS는 그대로(§3 ②). 다음: ② 화면·이야기 책 주고받기.
@@ -20,7 +24,3 @@
 ## v1.10.265 흔들림 묶음
 
 - river-fishing 서버 입질 먼저·판정 시계 자동 조작·줄다리기 전략·박물관 칸, shopper 로비/섬 60초. 로컬 단위 게임 서버 10초 초과 9~10개(CI 통과)는 다음 흔들림 때.
-
-## v1.10.264 주민 표정 (docs/emotes-20261107.md 5~6절, 에셋 102)
-
-- 주민 44모습 교체·표정 묶음 27, 말할 때 표정, 혼자 감정, 내 감정에 반응(화면만). 메신저 #16 폴드: 서랍 「크롬에서 설치」, [install-why] 로그.
