@@ -42,9 +42,10 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
     // merging past it), every joint name in its order
     if (f.startsWith('characters/') && !f.startsWith('characters/props/')) { // (hand-held props are still models)
       if (f.startsWith('characters/motions/')) { assert.equal(info.meshes, 0, f); assert.equal(info.animations, 1, f); continue; }
-      if (!unquantized) assert.equal(info.joints.length, 1, `${f}: one skin`); // (v1.10.79: the delivered bytes keep a mesh -- and its skin -- per material)
+      if (!unquantized) assert.equal(info.joints.length, /^characters\/wear\/(eyes|mouth)_x_/.test(f) ? info.meshes : 1, `${f}: one skin`); // (v1.10.79: the delivered bytes keep a mesh -- and its skin -- per material) /* (v1.10.263 assets 101's expression parts: a mesh and skin per material too -- each the common rig, below) */
       const runtimeName = (n) => n.replace(/\./g, ''); // three.js drops the dots from node names (Shoulder.L -> ShoulderL)
-      for (const joints of info.joints) assert.deepEqual(unquantized ? joints.map(runtimeName) : joints, unquantized ? budgets.rig.map(runtimeName) : budgets.rig, `${f}: 공통 20관절`);
+      const loose = unquantized || /^characters\/wear\/(eyes|mouth)_x_/.test(f); /* (assets 101: joints named as three.js names them -- ShoulderL; bound by that name at runtime the same) */
+      for (const joints of info.joints) assert.deepEqual(loose ? joints.map(runtimeName) : joints, loose ? budgets.rig.map(runtimeName) : budgets.rig, `${f}: 공통 20관절`);
       const exception=budgets.fileOverrides?.[f];
       const triangleLimit=exception?.triangles??budgets.character.triangles;
       if(triangleLimit>budgets.character.triangles){

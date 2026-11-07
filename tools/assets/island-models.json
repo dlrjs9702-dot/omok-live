@@ -9553,6 +9553,239 @@
       "src": "insect105:01. High/still/insect_snow_scorpionfly.glb",
       "sha256": "eed879c96a0e7004c6c3bfc6cd5a1ccb326dcb38b19a235dcaab6bb93fb4dea8",
       "precompressed": true
+    },
+    {
+      "out": "characters/motions/Laugh.glb",
+      "src": "emote101:01. High/motions/Laugh.glb",
+      "sha256": "ccca72cb40cba7ef23903e579efb99c29ecf5b0da8576585d5817fb06b3e0e30"
+    },
+    {
+      "out": "characters/motions/Cry.glb",
+      "src": "emote101:01. High/motions/Cry.glb",
+      "sha256": "119953c40b659439c273e799c3c2e933068e2106f325d46befd36b0ebf76bb94"
+    },
+    {
+      "out": "characters/motions/Surprise.glb",
+      "src": "emote101:01. High/motions/Surprise.glb",
+      "sha256": "f4ea89292e532bf971833effcc1bab94b99de88307c4026b1db6e011eb026a61"
+    },
+    {
+      "out": "characters/motions/Think.glb",
+      "src": "emote101:01. High/motions/Think.glb",
+      "sha256": "1b9138da64c8f402e252d72c7238390e50c80e9c6ff21a6c51fa3ca5a6b6d680"
+    },
+    {
+      "out": "characters/motions/Shrug.glb",
+      "src": "emote101:01. High/motions/Shrug.glb",
+      "sha256": "525212ccf1066e83b4ef2affbf5d0317c187954d59f0506963fe3b0efcc42f10"
+    },
+    {
+      "out": "characters/motions/ThumbsUp.glb",
+      "src": "emote101:01. High/motions/ThumbsUp.glb",
+      "sha256": "4da7306f8414731e3452333a5c9c804fe564ac726ceb64a6b929bb7fd120575c"
+    },
+    {
+      "out": "characters/motions/HeartHands.glb",
+      "src": "emote101:01. High/motions/HeartHands.glb",
+      "sha256": "978b8f1b514edec695f200b3802d6d3acc96b538218c867edccb99124b11483c"
+    },
+    {
+      "out": "characters/motions/JumpJoy.glb",
+      "src": "emote101:01. High/motions/JumpJoy.glb",
+      "sha256": "ce80cb368dbf89c434ba34286d9f68c2cb762e679f1236088e76d5626ee3dfdc"
+    },
+    {
+      "out": "characters/motions/Shy.glb",
+      "src": "emote101:01. High/motions/Shy.glb",
+      "sha256": "11d738c8ec2c31bf4b8595cd1896cbbb60ffc3c60f101b6b84b82ad4f2ca2535"
+    },
+    {
+      "out": "characters/motions/ShyFront.glb",
+      "src": "emote101:01. High/motions/ShyFront.glb",
+      "sha256": "095d2ef11541c4aa8248240f4bb30a9c56a6939044e5f225bed3af10b8acfdeb"
+    },
+    {
+      "out": "characters/motions/Yawn.glb",
+      "src": "emote101:01. High/motions/Yawn.glb",
+      "sha256": "f17e40c9e7ca2958c84aee998ea8b00db266a5a69d9a323e44850248f7222f90"
+    },
+    {
+      "out": "characters/motions/Facepalm.glb",
+      "src": "emote101:01. High/motions/Facepalm.glb",
+      "sha256": "70489f14465759d5496d8633b51835202c581da7270ea805d0d5b6eec331bf6f"
+    },
+    {
+      "out": "characters/motions/Dance.glb",
+      "src": "emote101:01. High/motions/Dance.glb",
+      "sha256": "e5b1292d893137ab36b8c73ce70f4eba6b83a14b2ae67c73a2e9273c03b8994b"
+    },
+    {
+      "out": "characters/wear/eyes_x_blink.glb",
+      "src": "emote101:01. High/eyes_x_blink.glb",
+      "sha256": "f5126ae90840b85a591c4ca9965a407153105e9f23c1b8d28bc021dd80fe5050",
+      "lowSrc": "emote101:02. Low/eyes_x_blink_low.glb",
+      "lowSha256": "bd56f93851fe8deb9cb5ceebffef5d71b4e425d2f1d3c40cd2ade34b6e0ffc0c",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/eyes_x_happy.glb",
+      "src": "emote101:01. High/eyes_x_happy.glb",
+      "sha256": "9582ca02692387dfb59b938227f22c37804f04976c89395dbeeacfe44ccfa976",
+      "lowSrc": "emote101:02. Low/eyes_x_happy_low.glb",
+      "lowSha256": "841ecfda864fd0e5e899bd4b0aefee8b4ebcc04aff36d135f01b2185899fccfb",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/eyes_x_surprised.glb",
+      "src": "emote101:01. High/eyes_x_surprised.glb",
+      "sha256": "0a54e4b4496f3d472c7f92765580544258753b9b627633ff565b2b6691178ea2",
+      "lowSrc": "emote101:02. Low/eyes_x_surprised_low.glb",
+      "lowSha256": "87056c57082a83464061365cb95af61204fb9704ad872acdc546419492148fd2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/eyes_x_sad.glb",
+      "src": "emote101:01. High/eyes_x_sad.glb",
+      "sha256": "1cf6dbf5966b4bd4e5b3563c03ea7fade4a64fd15d1dcbabed25642384f83238",
+      "lowSrc": "emote101:02. Low/eyes_x_sad_low.glb",
+      "lowSha256": "195c44ab5138564d0e3967c615b48be9fb81799fbc6dd530570e603785c97f3d",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/eyes_x_angry.glb",
+      "src": "emote101:01. High/eyes_x_angry.glb",
+      "sha256": "2cadc313166eb9a00f917c0a22d6f8e19b818cfd51ec5c4a5898ceb0190bd182",
+      "lowSrc": "emote101:02. Low/eyes_x_angry_low.glb",
+      "lowSha256": "d21633d03ac181b9d102652b44b4308dbc913c350361a7a8d789492f5256f8f8",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/eyes_x_shy.glb",
+      "src": "emote101:01. High/eyes_x_shy.glb",
+      "sha256": "b156b62b298bda1bf5bda826001fe7bdde79d9e46b464455e4043429532fc498",
+      "lowSrc": "emote101:02. Low/eyes_x_shy_low.glb",
+      "lowSha256": "d3e576c0cd1b599f9c85533d286ae8996dddf914f9d4c2310e6f929b83bedeab",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/mouth_x_laugh.glb",
+      "src": "emote101:01. High/mouth_x_laugh.glb",
+      "sha256": "ecdf245e77a9e0b7df5bfb0446b7ea2c36affbb82cbb490db5880b4860be49e9",
+      "lowSrc": "emote101:02. Low/mouth_x_laugh_low.glb",
+      "lowSha256": "288f937643c6239d49d05bae1d0fcfed3f9e225daeb4b91548cec96ea6567c29",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/mouth_x_o.glb",
+      "src": "emote101:01. High/mouth_x_o.glb",
+      "sha256": "ee59cf966f7ab8c5ce5563302badc7c6441e3a64c53cc43356df88ea84f7a1a0",
+      "lowSrc": "emote101:02. Low/mouth_x_o_low.glb",
+      "lowSha256": "13c8f5715f92cd6992132650fb0b6cf011024005210246c7d5daccdb0ca4fedf",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/mouth_x_frown.glb",
+      "src": "emote101:01. High/mouth_x_frown.glb",
+      "sha256": "7d11fd0f32eb8be55ba88237d04710ea14f738aa06d29b4fcff55b28c2b9b6f3",
+      "lowSrc": "emote101:02. Low/mouth_x_frown_low.glb",
+      "lowSha256": "1493d20b9f558eaab39c1d0cf9d711d40e6d9217e6388c8dada071f10c991793",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/mouth_x_grit.glb",
+      "src": "emote101:01. High/mouth_x_grit.glb",
+      "sha256": "0d712fce34491a2ce774e997f7c2867bedcec40181846be0abd581c5e82481e6",
+      "lowSrc": "emote101:02. Low/mouth_x_grit_low.glb",
+      "lowSha256": "7ed609a6dbdf1ebaf9f85eabc7227f391b7a2dd29beded23702f8100f6e488f1",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/mouth_x_wavy.glb",
+      "src": "emote101:01. High/mouth_x_wavy.glb",
+      "sha256": "9f4125f7caff1b9bda533146127591494bf86746fc8bbd1e2bced541c0b3b511",
+      "lowSrc": "emote101:02. Low/mouth_x_wavy_low.glb",
+      "lowSha256": "606b02f95b21aa2d4c9ac58d8625afbbe582e6dc75330f7f64506a385713f1e2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear/mouth_x_grin.glb",
+      "src": "emote101:01. High/mouth_x_grin.glb",
+      "sha256": "39a72d3ee9d7c0cfbb8c1533642bd603206a282b78f12f190dffdb2eb99a84f6",
+      "lowSrc": "emote101:02. Low/mouth_x_grin_low.glb",
+      "lowSha256": "0ec505ebc1a8e1fc8b30db85fab1736eafd5a7dce87224dcb91b92f2db017094",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_exclaim.glb",
+      "src": "emote101:01. High/mark_exclaim.glb",
+      "sha256": "742d948a9c6ebc117c381584379dcafe2ca94a89ed82a541309d2a827530404e",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_question.glb",
+      "src": "emote101:01. High/mark_question.glb",
+      "sha256": "c4109d5372a4a7e0910889b029e8068c8cf76feb0785d14ae17da54556386882",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_heart.glb",
+      "src": "emote101:01. High/mark_heart.glb",
+      "sha256": "2bcac6e64fe81d8e7c5362b5240e904fb332f3cac2d0e2b4fc4567447c9f36f9",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_note.glb",
+      "src": "emote101:01. High/mark_note.glb",
+      "sha256": "91d22c66fbccf1aba90593824be06c3a1a0618ccba604db032b064cc0dc8b565",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_anger.glb",
+      "src": "emote101:01. High/mark_anger.glb",
+      "sha256": "58ee456d2151204910f1aac020d87ed2e6ece2eecd9235fc6f2de5b39715dbec",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_sweat.glb",
+      "src": "emote101:01. High/mark_sweat.glb",
+      "sha256": "4fbbd74ded41dc9026b5ec907fbf2c7675402df397ad543596b9f546dc6d2c40",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_tears.glb",
+      "src": "emote101:01. High/mark_tears.glb",
+      "sha256": "b996657c8fca8c17e8c2757242581d407e2a73162c9fc05c67f3186ea8c8489d",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_sparkle.glb",
+      "src": "emote101:01. High/mark_sparkle.glb",
+      "sha256": "7bdcd5db8f795cc95378f71e55110909fcf7905fccf3311917bc29f8ff80e1a0",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_zzz.glb",
+      "src": "emote101:01. High/mark_zzz.glb",
+      "sha256": "f3d5396d71f3f4f0c633c60bf273ce9996a216212cbd29fde20953a26065b220",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_idea.glb",
+      "src": "emote101:01. High/mark_idea.glb",
+      "sha256": "b9317a6bf9d68d7bfddd6dff84307e0603b6515aa3fc3f9460fac04848369007",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_sigh.glb",
+      "src": "emote101:01. High/mark_sigh.glb",
+      "sha256": "ae51c0def94790d64e066a6a4f5360d7094190ac285d23310e7f0af44b7e437f",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mark_flower.glb",
+      "src": "emote101:01. High/mark_flower.glb",
+      "sha256": "709a81e36d50f11beddbebe9807e62360bd39efba61f3647cb04258c72d27706",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9632,6 +9865,7 @@
     "bigfish91": "91. Game Island big fish 9 2026-11-03",
     "freshfish93": "93. Game Island freshwater fish 7 2026-11-03",
     "insect103": "103. Game Island insect catch 2026-11-06",
-    "insect105": "105. Game Island insects new 12 2026-11-06"
+    "insect105": "105. Game Island insects new 12 2026-11-06",
+    "emote101": "101. Game Island emotes 2026-11-05"
   }
 }
