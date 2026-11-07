@@ -2177,6 +2177,18 @@ body.touchIsland .islandCtl { display: flex; }
 .islandActBtn { right: 18px; bottom: 70px; width: 78px; height: 78px; background: rgba(255, 246, 227, .9); border: 2px solid var(--isle-tag); font-size: .82rem; } /* (U: paper -- the main one a stronger edge) */
 .islandWalkBtn { right: 30px; bottom: 160px; width: 58px; height: 58px; }
 .islandRunBtn { right: 108px; bottom: 66px; width: 58px; height: 58px; }
+/* v1.10.263 감정 표현: the 😊 over 뛰기; the wheel -- two rings of eight on a PC (the inner first), a 4 x 4 grid on a phone */
+.islandEmoteBtn { right: 115px; bottom: 140px; width: 44px; height: 44px; font-size: 1.3rem; }
+.emoteWheel { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(40, 30, 20, .16); }
+.emoteWheel.hidden { display: none; }
+.emoteRing { position: relative; width: min(460px, 94vmin); aspect-ratio: 1; border-radius: 50%; background: rgba(255, 246, 227, .5); border: 1px solid var(--isle-line); box-shadow: 0 6px 22px rgba(74, 56, 40, .28); }
+.emoteCell { position: absolute; left: calc(50% + var(--x) - 34px); top: calc(50% + var(--y) - 38px); width: 68px; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; border-radius: 16px; background: rgba(255, 246, 227, .95); color: var(--isle-ink); border: 1px solid var(--isle-line); font-size: .74rem; font-weight: 800; line-height: 1.1; cursor: pointer; transition: transform .08s; }
+.emoteCell img { width: 40px; height: 40px; pointer-events: none; }
+.emoteCell span { pointer-events: none; white-space: nowrap; }
+.emoteCell.hot, .emoteCell:hover, .emoteCell:focus-visible { transform: scale(1.18); border: 2px solid var(--isle-tag); z-index: 1; }
+.emoteWheel.grid .emoteRing { width: min(360px, calc(100% - 24px)); aspect-ratio: auto; border-radius: 22px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; box-sizing: border-box; }
+.emoteWheel.grid .emoteCell { position: static; width: auto; height: 74px; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .emoteCell { transition: none; } }
 .islandBikeBtn { right: 108px; bottom: 140px; width: 58px; height: 58px; font-size: 1.4rem; } /* 자전거 */
 .islandBikeBtn[aria-pressed="true"] { background: #f0dcb6; box-shadow: 0 0 0 3px rgba(16, 150, 100, .7); } /* (U: on -- darker paper and a ring) */
 body.touchIsland .islandCtl.islandBikeBtn.hidden { display: none; }

@@ -1303,7 +1303,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       else if (o.act === 'sit') { o.c.anim?.release?.(); if (!o.c.anim?.play('sitDown', { reverse: true })) o.c.anim?.play('standUp'); o.c.tailTucked = false; o.c.tuckTail?.(false); }
       if (['gather','pickup','pickFruit'].includes(o.act) && !['gather','pickup','pickFruit'].includes(p.act)) { o.c.anim?.finishOnce?.(); assets.letGo(o.c,'fruit'); }
       if (['gather','pickup','pickFruit'].includes(p.act) && p.actN !== o.actN) { o.c.anim?.play(p.act,{ms:p.actMs,hold:true,elapsed:Math.max(0,(Date.now()+serverOffset-p.actAt)/1000)}); if (p.actTarget) o.c.root.rotation.y=Math.atan2(p.actTarget.x-p.x,p.actTarget.z-p.z); }
-      if (['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) && p.actN !== o.actN) o.c.anim?.play(p.act);
+      remoteEmote(o, p); /* (v1.10.263: the game's wave·cheer·nod·clap·bow and emote:<id>, with the face and mark near) */
       remoteFish(o, p); remoteShow(o, p); remoteNet(o, p); // v1.10.89 · v1.10.257 자랑 · v1.10.260 곤충 손맛
       if (p.act?.startsWith('show:') && p.act !== o.act) playShow(o.c, p.act.slice(5)); // v1.10.92 잡화점: their firework, balloon or bubbles
       for (const [seat, id] of takenSeats) if (id === p.id && (p.act !== 'sit' || p.seat !== seat)) takenSeats.delete(seat);
@@ -1844,6 +1844,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (walk) { keys.add(walk); tapped.add(walk); event.preventDefault(); return; }
     if (event.key === 'Shift') { if (!event.repeat) { shifts.add(event.code); paceDown(); } return; } // (Codex: either Shift, until both are up)
     if (event.key === 'Escape' && actLocked()) actLock = 0; // v1.10.89: Esc lets a motion's hold go too (Codex review)
+    if (event.key === 'Escape' && emoting.get(me)?.e.loop) emoteEnd(me, false); /* (v1.10.263: Esc ends a dance) */
     if (event.key === 'Escape' && gather?.waitServer) { endGather(false); event.preventDefault(); return; }
     if (event.code === 'KeyV' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); toggleView(); return; } // (V1: 「👁 시점」)
     // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk -- in the
@@ -5075,6 +5076,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (viewSide() !== viewSideWas) { viewSideWas = viewSide(); pitchGoal = 0; camPitch = 0; } // (V1: in or out -- level again)
     if (fpNow() && !talkView) me.targetYaw = camYaw + Math.PI; // (V1: the first -- facing where I look)
     const moving = ix !== 0 || iz !== 0;
+    if (moving && emoting.has(me)) emoteEnd(me, false); /* (v1.10.263: walking cuts a feeling after its 0.3 s) */
     if (moving) {
       const len = Math.hypot(ix, iz); ix /= len; iz /= len;
       const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // keys are relative to the view
@@ -5093,7 +5095,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // distance -- walking, not sliding)
       else if (d > gap + 0.3) { const s = Math.min(d - gap, 1.6 * dt) / d; tryMove(p.x + (talkView.x - p.x) * s, p.z + (talkView.z - p.z) * s); me.targetYaw = Math.atan2(talkView.x - p.x, talkView.z - p.z); talkWalk = true; }
     }
-    stepPlatform(); stepRide(); stepQuestScenes(dt); stepGrabHold(); stepTool();
+    stepPlatform(); stepRide(); stepQuestScenes(dt); stepGrabHold(); stepTool(); stepMarks(); stepBlink(); /* (v1.10.263) */
     bikeCheck();
     if (!talkView) talkWalk = false; animate(me, dt, (moving && !grab) || talkWalk, talkWalk ? 1.6 : moving && !grab ? paceSpeed() : 0); // (holding a piece: the furniture clips, stepGrab)
     bikeOf(me, cycling, moving ? paceSpeed() : 0, dt);
@@ -5408,7 +5410,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       netTry: (kind) => { const sw = NET_SW[kind]; if (!sw) return; swingUntil = performance.now() + sw.ms; netPoseUntil = swingUntil + 200; me.anim?.release?.(); me.anim?.play(sw.clip); netAct(kind); fxAt(sw.fx, me.root.position.clone(), me.root.rotation.y + Math.PI, sw.ms + 3000, 1.0); setTimeout(() => { poseHeld = performance.now() + 3000; }, sw.hit); },
       netDemo: (species) => { const o = me.holding?.bugnet?.object; const c = insectHolder(species); if (!bagPut(c, o)) { c.dispose(); return false; } c.play('Struggle'); setBag(true); me.anim?.play('netTwist'); netPoseUntil = performance.now() + 4000; setTimeout(() => { poseHeld = performance.now() + 3500; }, 290); setTimeout(() => { c.dispose(); setBag(false); }, 4000); return true; },
       insectDemo: (b) => { const id = `demo-${insectList.length}-${b.species}`; insectList.push({ id, name: b.species, grade: 'common', ...b }); return id; }, /* (v1.10.261 photos: one of a kind at a spot, this screen only) */
-      missDemo: () => { const t = netTarget(); netMissed(t); return t?.b.id || null; }, insectSpot: (id) => { const b = insectList.find((x) => x.id === id); return b ? { x: b.x, z: b.z } : null; }, netState: () => ({ aiming: Boolean(netAim?.aiming), pose: netAim?.kind || null, bag: netBag ? { id: netBag.id, ok: netBag.ok, closed: Boolean(netBag.closed) } : null, bagShown: (() => { const u = me.holding?.bugnet?.object?.userData; return u ? { open: u.bagOpen?.visible ?? null, closed: u.bagClosed?.visible ?? null } : null; })(), clip: me.anim?.clip || null, act: myAct.act, log: [...netLog] }), /* (v1.10.260) */ toolTip, counterFacing: () => { buildRoom(); buildStore(); buildFashion(); buildPetshop(); buildFurniture(); buildJail(); /* (each keeper: the angle between where it faces and where its customer stands, and its home yaw's from its body, degrees) */
+      missDemo: () => { const t = netTarget(); netMissed(t); return t?.b.id || null; }, insectSpot: (id) => { const b = insectList.find((x) => x.id === id); return b ? { x: b.x, z: b.z } : null; }, feeling: (who = null) => { const c = who ? others.get(who)?.c : me; if (!c) return null; const run = emoting.get(c); const own = []; c.assetRoot?.traverse((o) => { if (o.isSkinnedMesh && o.visible && (o.userData.expression || /^wear\.(eyes_|mouth_|face_eyes)/.test(o.userData.wearId || ''))) own.push(o.userData.expression || o.userData.wearId); }); return { id: run?.id || null, act: c === me ? myAct.act : null, blocked: c === me ? feelBlocked() : null, clip: c.anim?.clip || null, face: c.faceOn || null, shown: [...new Set(own)], marks: marks.filter((m) => m.c === c).map((m) => m.id), blinks: c.blinks || 0, hands: Object.values(c.holding || {}).map((h) => Boolean(h.object?.visible)) }; }, /* (v1.10.263 tests: a feeling on me or another) */ facePose: (id) => { const e = id && EM.of(id); me.emoteFace = Boolean(e); me.blinkUntil = 0; assets.face(me, e ? { eyes: e.eyes && `wear.eyes_x_${e.eyes}`, mouth: e.mouth && `wear.mouth_x_${e.mouth}` } : null); for (const m of marks) if (m.c === me) m.until = 0; if (e?.mark) emoteMark(me, e.mark, 5000); return Boolean(e); }, /* (photos: a face and its mark held) */ netState: () => ({ aiming: Boolean(netAim?.aiming), pose: netAim?.kind || null, bag: netBag ? { id: netBag.id, ok: netBag.ok, closed: Boolean(netBag.closed) } : null, bagShown: (() => { const u = me.holding?.bugnet?.object?.userData; return u ? { open: u.bagOpen?.visible ?? null, closed: u.bagClosed?.visible ?? null } : null; })(), clip: me.anim?.clip || null, act: myAct.act, log: [...netLog] }), /* (v1.10.260) */ toolTip, counterFacing: () => { buildRoom(); buildStore(); buildFashion(); buildPetshop(); buildFurniture(); buildJail(); /* (each keeper: the angle between where it faces and where its customer stands, and its home yaw's from its body, degrees) */
       return counterKeepers.map(({ id, k, spot }) => { const p = k.root.getWorldPosition(new THREE.Vector3()); const s = spot(); const f = k.root.getWorldDirection(new THREE.Vector3()); const off = k.home.yaw - worldYaw(k.root);
         return { id, angle: Math.round(THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp((f.x * (s.x - p.x) + f.z * (s.z - p.z)) / (Math.hypot(f.x, f.z) * Math.hypot(s.x - p.x, s.z - p.z) || 1), -1, 1)))), home: Math.round(THREE.MathUtils.radToDeg(Math.abs(Math.atan2(Math.sin(off), Math.cos(off))))) }; }); },
 
@@ -5536,7 +5538,78 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (release && gather?.kind === 'sit') { gather.onDone = () => {}; endGather(false); }
     onInteract?.('seat:stand');
   }
-  function emote(kind) { if (gather || fishing || me.carrying || actLocked() || !['wave', 'cheer', 'nod', 'clap', 'bow'].includes(kind)) return false; const played = me.anim?.play(kind); if (!played) me.hop = 1; lockForClip(played); myAct.act = kind; const n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === kind) myAct.act = null; }, kind === 'clap' ? 1800 : 1500); return true; }
+  // v1.10.263 감정 표현 (docs/emotes-20261107.md 1~4절, assets 101): a feeling is its move, a face worn a moment and a mark
+  // over the head, at island-emotes' times. Mine from the wheel (`feel`) or the game's own (`emote`: wave, cheer, nod, clap,
+  // bow -- the same way, its act as before); the others' from their act, the face and the mark only within 40 m of the
+  // camera (farther, the move only). The thing in the hand is put away meanwhile.
+  const EM = globalThis.IslandEmotes; const emoting = new Map(); const marks = []; let lastFeel = { id: null, at: 0 };
+  const handProps = (c, on) => { for (const k of Object.keys(c.holding || {})) { const o = c.holding[k]?.object; if (o) o.visible = on; } };
+  const markY = (c) => { let y = (c.headTop || 1.85) + EM.MARK_UP; if (c.tag?.visible) y = Math.max(y, c.tag.position.y + c.tag.scale.y + 0.05); if (c.bubble?.visible) y = Math.max(y, c.bubble.position.y + c.bubble.scale.y / 2 + 0.05); return y; }; /* (over the name tag and a chat bubble) */
+  function emoteMark(c, id, ms) { const h = new THREE.Group(); h.scale.setScalar(0.001); c.root.add(h); assets.attach(`emote.mark_${id}`, h, new THREE.Group()); marks.push({ h, c, id, at: performance.now(), until: performance.now() + ms }); }
+  const markAt = new THREE.Vector3();
+  function stepMarks() {
+    const now = performance.now(); const calm = lessMotion.matches;
+    for (let i = marks.length - 1; i >= 0; i -= 1) {
+      const m = marks[i]; const t = now - m.at; const left = m.until - now;
+      if (left <= 0 || !m.c.root.parent) { m.h.removeFromParent(); assets.detach(m.h); marks.splice(i, 1); continue; }
+      const pop = calm || t >= 150 ? 1 : 1.15 * Math.sin((t / 150) * Math.PI / 2); /* (0.15 s up, a little over) */
+      m.h.scale.setScalar(Math.max(0.001, EM.MARK_SCALE * pop * Math.min(1, left / 300))); /* (0.3 s away) */
+      m.h.position.y = markY(m.c); m.h.rotation.z = calm ? 0 : Math.sin(t / 220) * 0.12;
+      m.h.getWorldPosition(markAt); m.h.rotation.y = Math.atan2(camera.position.x - markAt.x, camera.position.z - markAt.z) + Math.PI - m.c.root.rotation.y; /* (its front -Z to the camera) */
+    }
+  }
+  // a feeling on a character: `near` with its face and mark; `done` when it ran its course (else cut: walking, Esc, another)
+  function emoteRun(c, id, { near = true } = {}) {
+    const e = EM.of(id); if (!e) return null; emoteEnd(c, false);
+    const clip = e.clip === 'shy' && c.shyFront ? 'shyFront' : e.clip;
+    const played = e.loop ? c.anim?.loop?.(clip) : c.anim?.play(clip);
+    const run = { id, e, c, played, timers: [], every: 0 }; const later = (sec, f) => run.timers.push(setTimeout(f, sec * 1000));
+    if (near) {
+      if (e.eyes || e.mouth) { later(e.at, () => { c.emoteFace = true; c.blinkUntil = 0; assets.face(c, { eyes: e.eyes && `wear.eyes_x_${e.eyes}`, mouth: e.mouth && `wear.mouth_x_${e.mouth}` }); }); if (!e.loop) later(e.back, () => { c.emoteFace = false; assets.face(c, null); }); }
+      const markOnce = () => { if (e.mark) later(e.markAt, () => emoteMark(c, e.mark, e.markFor * 1000)); if (e.then) later(e.then.at, () => emoteMark(c, e.then.mark, e.then.for * 1000)); };
+      markOnce(); if (e.loop) run.every = setInterval(markOnce, e.dur * 1000); /* (the dance: a note each round) */
+    }
+    handProps(c, false); emoting.set(c, run);
+    later(e.loop ? EM.DANCE_MS / 1000 : e.dur, () => emoteEnd(c, true)); /* (a dance 30 s at most) */
+    return run;
+  }
+  function emoteEnd(c, done) {
+    const run = emoting.get(c); if (!run) return; emoting.delete(c);
+    for (const t of run.timers) clearTimeout(t); clearInterval(run.every);
+    if (c.emoteFace) { c.emoteFace = false; assets.face(c, null); }
+    handProps(c, true);
+    if (run.e.loop) c.anim?.release?.(); else if (!done) c.anim?.finishOnce?.();
+    if (c === me && run.n === myAct.n && myAct.act === run.act) myAct.act = null;
+  }
+  // mine: not while fishing, gathering, carrying, holding a piece, cycling, seated, aiming the net, on a ride or with a window
+  // open; once a second the same one; it holds me 0.3 s, then walking cuts it
+  const feelBlocked = () => Boolean(gather || fishing || me.carrying || grab || cycling || sitting || netAim || netBag || riding || liftRide || showOff || photoMode || isBlocked());
+  function feel(id) {
+    if (!EM.BY[id]) return false; if (feelBlocked()) return 'blocked';
+    const now = performance.now(); if (lastFeel.id === id && now - lastFeel.at < EM.SAME_MS) return false; lastFeel = { id, at: now };
+    const run = emoteRun(me, id); if (!run) return false; if (!run.played) me.hop = 1;
+    actLock = now + 300; run.act = myAct.act = `emote:${id}`; run.n = ++myAct.n; return true;
+  }
+  function emote(kind) { if (gather || fishing || me.carrying || actLocked() || !['wave', 'cheer', 'nod', 'clap', 'bow'].includes(kind)) return false; const run = emoteRun(me, kind); if (!run?.played) me.hop = 1; lockForClip(run?.played); run.act = myAct.act = kind; const n = run.n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === kind) myAct.act = null; }, kind === 'clap' ? 1800 : 1500); return true; } /* (v1.10.263: with its face and mark) */
+  // the others': a new act starts its feeling; a dance ends when their act does
+  function remoteEmote(o, p) {
+    const id = p.act?.startsWith('emote:') ? p.act.slice(6) : ['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) ? p.act : null;
+    const run = emoting.get(o.c); if (run?.e.loop && p.act !== o.act) emoteEnd(o.c, false);
+    if (id && EM.of(id) && (p.actN !== o.actN || p.act !== o.act)) emoteRun(o.c, id, { near: o.c.root.position.distanceTo(camera.position) < EM.NEAR });
+  }
+  // everyday blinks (4절): every 3~6 s, 0.12 s, within 15 m of the camera -- not in an expression, not my own in the first
+  // person, not on eyes that are closed already
+  function stepBlink() {
+    const now = performance.now();
+    for (const c of [me, ...[...others.values()].map((o) => o.c)]) {
+      if (!c?.wearRec) continue;
+      if (c.blinkUntil) { if (now >= c.blinkUntil) { c.blinkUntil = 0; if (!c.emoteFace) assets.face(c, null); } continue; }
+      if (!c.blinkAt) c.blinkAt = now + 3000 + Math.random() * 3000;
+      if (now < c.blinkAt) continue; c.blinkAt = now + (EM.BLINK.every[0] + Math.random() * (EM.BLINK.every[1] - EM.BLINK.every[0])) * 1000;
+      if (c.emoteFace || c.faceOn || (c === me && fpNow()) || c.root.position.distanceTo(camera.position) > EM.BLINK.near || c.wearPlan?.parts?.some((p) => /eyes_sleepy/.test(p))) continue;
+      assets.face(c, { eyes: 'wear.eyes_x_blink' }); c.blinkUntil = now + EM.BLINK.hold * 1000; c.blinks = (c.blinks || 0) + 1;
+    }
+  }
   // v1.10.43 기념사진 모드 (IDEAS ③): I stay put (the camera turns, up to the sky), every name tag and bubble hidden; the
   // shot is the canvas alone (no page UI), drawn and read in the same task, saved as a PNG on the PC (nothing uploaded)
   let photoMode = false; const photoHidden = new Set();
@@ -5576,6 +5649,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; editView = Boolean(lotId); if (!lotId) yardGhost(null); }, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, actCancel: () => { if (!netAimEnd()) actUp(); }, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, netFail: (id) => { if (netBag?.id === id && !netBag.ok) netLose(); }, fishTug: fishTugOn, fishTugFight, showCatch, showDone: () => showEnd(false), /* (v1.10.257 자랑 장면) */ setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+    canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, feel, feelBlocked, /* (v1.10.263 감정 표현) */ netFail: (id) => { if (netBag?.id === id && !netBag.ok) netLose(); }, fishTug: fishTugOn, fishTugFight, showCatch, showDone: () => showEnd(false), /* (v1.10.257 자랑 장면) */ setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

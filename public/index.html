@@ -119,6 +119,9 @@
         <button id="islandActBtn" class="islandCtl islandActBtn" type="button" aria-label="상호작용 (SPACE)">상호<br>작용</button>
         <button id="islandWalkBtn" class="islandCtl islandWalkBtn" type="button" aria-label="걸음 바꾸기 (느리게·보통)">걷기</button>
         <button id="islandRunBtn" class="islandCtl islandRunBtn" type="button" aria-label="누르고 있는 동안 뛰기">뛰기</button>
+        <!-- v1.10.263 감정 표현: the phone's 😊 (T held or tapped on a PC) opens the wheel of 16 -->
+        <button id="islandEmoteBtn" class="islandCtl islandEmoteBtn" type="button" aria-label="감정 표현 (T)" aria-haspopup="menu" aria-controls="emoteWheel" aria-expanded="false">😊</button>
+        <div id="emoteWheel" class="emoteWheel hidden" role="menu" aria-label="감정 표현"><div class="emoteRing"></div></div>
         <button id="homeEditBtn" class="homeEditBtn isle-pill hidden" type="button">꾸미기</button>
         <button id="yardEditBtn" class="homeEditBtn isle-pill hidden" type="button" title="마당 꾸미기 (Y)">마당 꾸미기</button><!-- v1.10.225: in my yard on the island -->
         <button id="islandTurnBtn" class="islandCtl islandTurnBtn hidden" type="button" aria-label="잡은 가구 돌리기 (R)">돌리기</button>
@@ -1469,6 +1472,7 @@
   <script src="/plaza/island-fashion.js"></script>
   <script src="/plaza/island-jail.js"></script>
   <script src="/plaza/island-museum.js"></script>
+  <script src="/plaza/island-emotes.js"></script><!-- v1.10.263 감정 표현 -->
   <script src="/plaza/island-calendar.js"></script>
   <script src="/plaza/contest-lines.js"></script><!-- v1.10.242 가락 대회 말 -->
   <script src="/plaza/island-roster.js"></script><!-- v1.10.215 주민 근무표: who stands at each post today -->

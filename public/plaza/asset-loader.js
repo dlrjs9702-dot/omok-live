@@ -812,8 +812,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       // what each part gives way to in this combination (asset-pipeline fitWardrobe), worked out on the High files
       const fits = P.fitWardrobe(parts.map((p, i) => ({ id: plan.parts[i], fit: p.entry.fit || null, pos: meshesOf(byUrl.get(p.entry.url)).flatMap((m) => Array.from(restOf(m))) })));
       const tails = []; // v1.10.46: seated, a tail is swept up against the back (c.tuckTail)
-      const adopt = (gltf, colors, into, fit, tail = false, baked = false) => {
+      const adopt = (gltf, colors, into, fit, tail = false, baked = false, id = null) => {
         for (const m of meshesOf(gltf)) {
+          if (id) m.userData.wearId = id; /* (v1.10.263: which part -- an expression hides the worn eyes and mouth) */
           if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
           if (!baked) m.geometry = slimmedGeometry(m, base.entry.slim); // v1.10.93 체형: every part narrowed as the body is (F1·F2: made so already)
           const sitGeometry = tail ? fittedGeometry(m, [...(fit?.ops || []), P.TAIL_TUCK]) : null;
@@ -832,9 +833,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       parts.forEach((p, i) => {
         const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
         const tail = p.entry.fit?.slot === 'tail'; const into = p.entry.lowUrl ? high : always; const from = into.length;
-        adopt(byUrl.get(p.entry.url), colors, into, fit, tail, p.entry.baked); // a part without a Low file shows at every distance
+        adopt(byUrl.get(p.entry.url), colors, into, fit, tail, p.entry.baked, plan.parts[i]); // a part without a Low file shows at every distance
         if (['outfit', 'top'].includes(p.entry.fit?.slot)) { const m = into.slice(from).flatMap((o) => [].concat(o.material)).find((x) => x.name !== 'skin' && x.color); if (m && (!sleeve || p.entry.fit.slot === 'outfit')) sleeve = `#${m.color.getHexString()}`; }
-        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail, p.entry.baked);
+        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail, p.entry.baked, plan.parts[i]);
       });
       c.wearMats = mats; c.wornColors = worn; c.sleeve = sleeve; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
@@ -876,7 +877,45 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (Number.isFinite(top.max.y) && top.max.y > 0.5) { c.headTop = top.max.y; c.onWorn?.(); }
       for (const key of Object.keys(c.holding || {})) if (c.holding[key].object) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
+      c.wearRec = rec; c.wearPlan = plan; c.faceParts = new Map(); c.faceOn = null; /* (v1.10.263: the expression parts, below) */
+      if (!facesAsked) { facesAsked = true; for (const [id, e] of Object.entries(registry)) if (/^wear\.(eyes|mouth)_x_/.test(id) && e.url) cache.get(e.url).catch(() => {}); } /* (fetched once, early: the first feeling's face would come after its time) */
+      for (const [list, k] of [[high, 'high'], [low, 'low'], [always, 'always']]) for (const m of list) m.userData.lod = k;
     }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });
+  }
+  // v1.10.263 감정 표현 (assets 101): an expression's eyes and mouth (`wear.eyes_x_*`, `wear.mouth_x_*`; null keeps that one)
+  // worn a moment over the character's own -- the worn eyes (or the plain face's, as a worn eyes part takes its place) and
+  // mouth hidden, the expression's bound to its bones, built once per character and shown again after; face(c, null) puts
+  // its own back. The eyes take the character's eye colour; a character without the common rig's model is left as it is.
+  let facesAsked = false;
+  function face(c, want) {
+    if (!c?.wearRec || !c.assetRoot) return false;
+    const showOwn = (m) => { m.userData.faceHidden = false; m.visible = m.userData.lod === 'high' ? c.wearRec.isHigh : m.userData.lod === 'low' ? !c.wearRec.isHigh : true; };
+    const meshes = []; c.assetRoot.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
+    const ids = want ? [want.eyes, want.mouth].filter(Boolean) : []; c.faceOn = ids.length ? ids : null;
+    for (const [id, list] of c.faceParts) if (!ids.includes(id)) for (const m of list) m.visible = false;
+    const own = (slot) => (m) => m.userData.wearId && (slot === 'eyes' ? /^wear\.(eyes_(?!x_)|face_eyes_cheeks)/ : /^wear\.mouth_(?!x_)/).test(m.userData.wearId);
+    for (const slot of ['eyes', 'mouth']) for (const m of meshes.filter(own(slot))) { if (want?.[slot]) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) showOwn(m); }
+    for (const id of ids) {
+      if (c.faceParts.has(id)) { for (const m of c.faceParts.get(id)) m.visible = true; continue; }
+      const entry = registry[id]; if (!entry?.url) continue;
+      c.faceParts.set(id, []);
+      cache.get(entry.url).then((gltf) => {
+        if (disposed || !gltf || !c.assetRoot) return;
+        const bones = new Map(); let rootBone = null; c.assetRoot.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
+        const eyesOf = c.wearPlan?.parts?.find((p) => /^wear\.(eyes_|face_eyes_cheeks)/.test(p)); const colors = id.startsWith('wear.eyes_') ? c.wearPlan?.colors?.[eyesOf] : null;
+        const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); });
+        const made = [];
+        for (const m of list) {
+          m.geometry = slimmedGeometry(m, registry['character.base']?.slim);
+          const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone())); if (skeleton.bones.some((b) => !b)) continue;
+          const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix); m.frustumCulled = false;
+          const mats = [].concat(m.material).map((x) => { const r = wearMaterial(x, colors?.[x.name] || c.wearPlan?.tint?.[x.name], c.player); (c.wearMats ||= []).push(r); return r.material; }); m.material = Array.isArray(m.material) ? mats : mats[0];
+          m.userData.expression = id; m.visible = Boolean(c.faceOn?.includes(id)); made.push(m); /* (loaded late: shown only if still wanted) */
+        }
+        c.faceParts.set(id, made);
+      }).catch((error) => onError(id, error));
+    }
+    return true;
   }
   // High near the player, Low farther (the body's `near`, the same band as the nature), the mixer untouched
   const wpos = new THREE.Vector3();
@@ -886,7 +925,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const w = wearing[i]; if (!w.c.root.parent || w.c.assetRoot === null) { wearing.splice(i, 1); continue; }
       w.c.root.getWorldPosition(wpos);
       const high = P.highState(w.isHigh, Math.hypot(wpos.x - x, wpos.z - z), near);
-      if (high !== w.isHigh) { w.isHigh = high; for (const m of w.high) m.visible = high; for (const m of w.low) m.visible = !high; }
+      if (high !== w.isHigh) { w.isHigh = high; for (const m of w.high) m.visible = high && !m.userData.faceHidden; for (const m of w.low) m.visible = !high && !m.userData.faceHidden; } /* (v1.10.263: an eye or mouth under an expression stays hidden) */
     }
   }
 
@@ -938,5 +977,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, release, batch, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

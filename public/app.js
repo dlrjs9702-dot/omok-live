@@ -3587,6 +3587,42 @@
     if (event.code !== 'KeyY' || event.isComposing || event.repeat || event.ctrlKey || event.metaKey || event.altKey || !document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]') || (event.target !== document.body && event.target !== plazaStage)) return;
     if (!inMyYard()) return; event.preventDefault(); openYardEdit();
   });
+  // v1.10.263 감정 표현 (gamecenter-notes docs/emotes-20261107.md 1절): T held -- the wheel, the cell the mouse points to grows,
+  // let go: that one; T tapped (0.2 s or less) -- it stays open, a click picks. The phone's 😊 opens it as a 4 x 4 grid, a tap
+  // picks. Esc, a click outside, or T / 😊 again closes it. Not while fishing, gathering, carrying and the like.
+  const emoteWheel = (() => {
+    const box = byId('emoteWheel'); const ring = box.querySelector('.emoteRing'); const btn = byId('islandEmoteBtn'); const E = window.IslandEmotes;
+    let open = false; let tDown = 0; let held = false; let hot = null;
+    const setHot = (b) => { if (hot) hot.classList.remove('hot'); hot = b; if (b) b.classList.add('hot'); };
+    const show = (on) => { open = on; box.classList.toggle('hidden', !on); btn.setAttribute('aria-expanded', String(on)); if (!on) setHot(null); };
+    const cant = () => showToast('지금은 할 수 없어요', 1500);
+    function pick(id) { show(false); if (plaza.controller?.feel?.(id) === 'blocked') cant(); }
+    function tryOpen(grid) { if (!plaza.controller || plaza.controller.feelBlocked?.()) { cant(); return false; } box.classList.toggle('grid', grid); show(true); return true; }
+    const cells = E.LIST.map((e, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'emoteCell'; b.dataset.emote = e.id; b.setAttribute('role', 'menuitem'); b.setAttribute('aria-label', e.label);
+      const img = document.createElement('img'); img.src = `/assets/emotes/emote-${e.icon || e.id}.svg`; img.alt = ''; const label = document.createElement('span'); label.textContent = e.label; b.append(img, label);
+      const a = ((i % 8) / 8) * Math.PI * 2; const r = i < 8 ? 23.5 : 41; /* (the inner eight, then the outer; % of the ring) */
+      b.style.setProperty('--x', `${(Math.sin(a) * r).toFixed(2)}%`); b.style.setProperty('--y', `${(-Math.cos(a) * r).toFixed(2)}%`);
+      b.addEventListener('click', () => pick(e.id)); return b;
+    });
+    ring.append(...cells);
+    window.addEventListener('pointermove', (ev) => { /* (the way from the middle: the inner ring near, the outer farther) */
+      if (!open || box.classList.contains('grid')) return; const rc = ring.getBoundingClientRect(); const dx = ev.clientX - (rc.left + rc.width / 2); const dy = ev.clientY - (rc.top + rc.height / 2); const d = Math.hypot(dx, dy);
+      if (d < rc.width * 0.1) { setHot(null); return; } const k = Math.round(((Math.atan2(dx, -dy) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8; setHot(cells[k + (d > rc.width * 0.33 ? 8 : 0)]);
+    });
+    window.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && open) { ev.preventDefault(); ev.stopImmediatePropagation(); show(false); return; }
+      if (ev.code !== 'KeyT' || ev.isComposing || ev.ctrlKey || ev.metaKey || ev.altKey || !document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]') || (ev.target !== document.body && ev.target !== plazaStage && !box.contains(ev.target))) return;
+      ev.preventDefault(); if (ev.repeat) return;
+      if (open) { show(false); return; }
+      if (tryOpen(false)) { tDown = performance.now(); held = true; }
+    }, true);
+    window.addEventListener('keyup', (ev) => { if (ev.code !== 'KeyT' || !held) return; held = false; if (performance.now() - tDown <= 200) return; if (hot) pick(hot.dataset.emote); else show(false); });
+    box.addEventListener('pointerdown', (ev) => { if (ev.target === box) show(false); }); /* (outside the ring) */
+    btn.addEventListener('click', () => (open ? show(false) : tryOpen(true)));
+    return { isOpen: () => open, close: () => show(false) };
+  })();
+  void emoteWheel;
   const yardBox = document.createElement('div'); yardBox.className = 'homeEdit yardEdit'; yardBox.id = 'yardEdit';
   let yardEditing = null; let yardBusy = false;
   async function openYardEdit() {

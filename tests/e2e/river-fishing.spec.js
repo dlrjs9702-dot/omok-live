@@ -98,6 +98,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   };
   expect((await post(request, '/api/test/fish/mode', token, { mode: 'timing' })).data.ok).toBe(true);
   await castNow();
+  if (!isMobile) { await page.keyboard.press('t'); await expect(page.locator('#toast')).toContainText('지금은 할 수 없어요'); await expect(page.locator('#emoteWheel')).toBeHidden(); } /* (v1.10.263: no wheel while fishing) */
   await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); expect((await post(request, '/api/test/fish/bite', token, { species: 'crucian_carp', slack: 20000 })).data.ok).toBe(true);
   const bar = page.locator('#fishTiming'); await expect(bar).toBeVisible({ timeout: 10000 }); await expect(page.locator('#plazaHint')).toHaveText(/^입질! 초록 칸에서 [2-5]번$/); /* (the cast's own fish's grade: 2~5) */
   await page.evaluate(() => { const box = document.getElementById('fishTiming'); const at = (sel) => box.querySelector(sel).getBoundingClientRect(); const key = () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));

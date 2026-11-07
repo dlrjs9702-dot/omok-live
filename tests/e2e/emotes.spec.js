@@ -1,0 +1,49 @@
+const { test, expect } = require('@playwright/test');
+const { shopper, expectNoScriptError } = require('./skin-support');
+
+// v1.10.263 감정 표현 (gamecenter-notes docs/emotes-20261107.md 8절): T held -> the wheel -> 웃음 where the mouse points, let go ->
+// my act emote:laugh, the happy eyes and laughing mouth over mine, the note over my head, my own face again after; on
+// another's screen the same feeling with its face and mark; T tapped stays open for a click -- a dance, ended by walking; my
+// everyday blink. PC (the phone's 😊 grid: mobile-island.spec; none while fishing: river-fishing.spec).
+test('감정 표현: T 바퀴 → 웃음 → 몸짓·표정·기호, 끝나면 원래 얼굴, 다른 사람 화면에도 / 톡 → 클릭으로 춤, 걸으면 끝 / 깜박임', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile); test.setTimeout(180000);
+  const a = await shopper(browser, request, '웃는이', 0, 'male'); const b = await shopper(browser, request, '보는이', 0, 'female');
+  for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
+  const { page } = a; const feeling = (p, who = null) => p.evaluate((w) => window.PlazaDebug().feeling(w), who);
+  await expect.poll(async () => (await feeling(page))?.shown.length || 0, { timeout: 60000 }).toBeGreaterThan(0); // (my model and face in)
+  const own = (await feeling(page)).shown.sort();
+  await expect.poll(() => page.evaluate(() => Object.entries(window.PlazaDebug().assets?.files || {}).filter(([u, s]) => /wear\/(eyes|mouth)_x_[a-z]+\.glb$/.test(u) && s === 'loaded').length), { timeout: 30000 }).toBe(12); // (the 12 expression parts fetched early)
+  const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 2.5, z + 1.5), [at.x, at.z]);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
+  // T held, the mouse on 웃음, let go
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('t'); await expect(page.locator('#emoteWheel')).toBeVisible(); await expect(page.locator('#emoteWheel')).not.toHaveClass(/grid/);
+  const laugh = page.locator('.emoteCell[data-emote="laugh"]'); const cell = await laugh.boundingBox(); await page.mouse.move(cell.x + cell.width / 2, cell.y + cell.height / 2);
+  await expect(laugh).toHaveClass(/hot/); await page.waitForTimeout(250);
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-wheel.png` });
+  const seen = b.page.evaluate(() => new Promise((ok) => { const D = window.PlazaDebug(); const t0 = Date.now(); const id = setInterval(() => { for (const o of D.others) { const f = D.feeling(o.id); if (f?.id === 'laugh' && f.face?.includes('wear.eyes_x_happy') && f.marks.includes('note')) { clearInterval(id); ok(f); return; } } if (Date.now() - t0 > 8000) { clearInterval(id); ok(null); } }, 50); }));
+  await page.keyboard.up('t'); await expect(page.locator('#emoteWheel')).toBeHidden();
+  await expect.poll(() => feeling(page), { timeout: 3000, intervals: [50] }).toMatchObject({ id: 'laugh', act: 'emote:laugh', clip: 'Laugh' });
+  await expect.poll(async () => (await feeling(page)).shown.sort(), { timeout: 3000, intervals: [50] }).toEqual(['wear.eyes_x_happy', 'wear.mouth_x_laugh']); // (mine hidden meanwhile)
+  await expect.poll(async () => (await feeling(page)).marks, { timeout: 3000, intervals: [50] }).toContain('note');
+  expect(await seen).toMatchObject({ id: 'laugh', clip: 'Laugh' }); // (another's screen: the move, the face and the mark)
+  await expect.poll(async () => { const f = await feeling(page); return [f.id, f.act, f.face, f.shown.sort()]; }, { timeout: 5000 }).toEqual([null, null, null, own]); // (mine again)
+  if (process.env.SHOT_DIR) await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 9, z + 6), [at.x, at.z]); /* (out of the close-ups) */
+  if (process.env.SHOT_DIR) for (const id of ['laugh', 'cry', 'surprise', 'heart']) { /* (photos: the face and its mark close, held) */
+    await page.evaluate((x) => window.PlazaDebug().facePose(x), id); await expect.poll(async () => (await feeling(page)).shown.some((s) => s.includes('_x_')), { timeout: 5000 }).toBe(true);
+    await page.evaluate(() => window.PlazaDebug().camNear([0.6, 2.5, -4.4], [0, 2.35, 0])); await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-face-${id}.png` });
+    await page.evaluate(() => { window.PlazaDebug().facePose(null); window.PlazaDebug().camNear(null); });
+  }
+  // T tapped: open for a click -- 춤, until I walk
+  await page.waitForTimeout(1100); expect(await feeling(page)).toMatchObject({ blocked: false }); await page.locator('#plazaStage').focus(); await page.keyboard.press('t'); await expect(page.locator('#emoteWheel')).toBeVisible(); await page.waitForTimeout(300); await expect(page.locator('#emoteWheel')).toBeVisible();
+  await page.locator('.emoteCell[data-emote="dance"]').click(); await expect(page.locator('#emoteWheel')).toBeHidden();
+  await expect.poll(() => feeling(page), { timeout: 3000 }).toMatchObject({ id: 'dance', act: 'emote:dance', clip: 'Dance' });
+  await page.waitForTimeout(4500); expect(await feeling(page)).toMatchObject({ id: 'dance' }); // (round and round)
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('w'); await page.waitForTimeout(400); await page.keyboard.up('w'); /* (W walks; the arrows turn the view) */
+  await expect.poll(async () => (await feeling(page)).id, { timeout: 3000 }).toBe(null);
+  // Esc closes the wheel; and my blink comes now and then
+  await page.keyboard.press('t'); await expect(page.locator('#emoteWheel')).toBeVisible(); await page.keyboard.press('Escape'); await expect(page.locator('#emoteWheel')).toBeHidden();
+  await expect.poll(async () => (await feeling(page)).blinks, { timeout: 15000 }).toBeGreaterThan(0);
+  await expectNoScriptError(page); await expectNoScriptError(b.page);
+  await a.context.close(); await b.context.close();
+});

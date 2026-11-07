@@ -72,6 +72,11 @@ test('앉기 서버: 좌석은 먼저 앉은 사람 것, 일어나면 비고, �
   assert.equal((await req('/api/island/sit', b, { seat: s.id })).data.error, 'SEAT_TAKEN');
   await req('/api/plaza/state', a, { x: s.x, z: s.z, yaw: s.yaw, moving: false, act: 'sit', actN: 0, seat: s.id });
   assert.equal((await req('/api/plaza/state', b, { ...near, x: near.x + 0.8, act: 'dance', actN: 3 })).status, 200, '모르는 행동은 버리고 받는다 (화면 동기화는 e2e)');
+  /* (v1.10.263 감정 표현) the 16 emote:<id> go through to the others, one outside the list is dropped */
+  const actOf = async () => (await req('/api/test/plaza-snapshot', b)).data.players.find((p) => p.name === '늦은이')?.act;
+  assert.equal(require('../public/plaza/island-emotes.js').ACTS.length, 16);
+  for (const act of require('../public/plaza/island-emotes.js').ACTS) { await req('/api/plaza/state', b, { ...near, x: near.x + 0.8, act, actN: 4 }); assert.equal(await actOf(), act); }
+  await req('/api/plaza/state', b, { ...near, x: near.x + 0.8, act: 'emote:nope', actN: 5 }); assert.equal(await actOf(), null);
   await req('/api/island/stand', a, {});
   assert.equal((await req('/api/island/sit', b, { seat: s.id })).status, 200, '일어나면 다른 사람이 앉는다');
 });

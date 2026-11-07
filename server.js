@@ -2042,7 +2042,7 @@ const bigCatchAt = new Map(); const dailyLast = new Map(); let dailyAlways = fal
 // v1.10.44 앉기·이모트 (IDEAS ④): who sits where (first come), and the acts a pose may carry
 const SEATS = new Map([...IslandTerrain.plazaProps().seats, ...IslandFashion.SEATS].map((s) => [s.id, s])); // (v1.10.211: the 꾸미기 mirrors' two chairs)
 const seatTaken = new Map(); // seat id -> session token
-const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow', ...['ready', 'sneak', 'down', 'side', 'jump', 'twist', 'miss', 'cheer', 'peek'].map((a) => `net:${a}`)]); // (v1.10.260: the net's moves seen by others)
+const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow', ...['ready', 'sneak', 'down', 'side', 'jump', 'twist', 'miss', 'cheer', 'peek'].map((a) => `net:${a}`), ...require('./public/plaza/island-emotes.js').ACTS]); // (v1.10.260: the net's moves seen by others) /* (v1.10.263 감정 표현: emote:<id> 16) */
 // v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
 // the fish shown on a catch is the server's own result, never the page's word
 const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss', 'fish:show']); // (v1.10.257 자랑: the catch held out -- the server's fish too)
