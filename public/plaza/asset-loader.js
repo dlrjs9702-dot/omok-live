@@ -905,7 +905,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         c.npcBase = base; c.npcParts = new Map(); c.npcHead = c.assetRoot.getObjectByName('Head');
       }
       const w = c.npcWant; const names = w ? [w.eyes && `eyes_x_${w.eyes}`, w.mouth && `mouth_x_${w.mouth}`].filter(Boolean) : [];
-      for (const n of names) if (!c.npcParts.has(n) && c.npcHead) { const node = gltf.scene.getObjectByName(n); if (node) { const copy = node.clone(); copy.traverse((x) => { x.frustumCulled = false; x.castShadow = false; }); c.npcHead.add(copy); c.npcParts.set(n, copy); } }
+      for (const n of names) if (!c.npcParts.has(n) && c.npcHead) { const node = gltf.scene.getObjectByName(n); if (node) { const copy = node.clone(); copy.traverse((x) => { x.frustumCulled = false; x.castShadow = false; for (const m of [].concat(x.material || [])) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; m.vertexColors = Boolean(x.geometry?.attributes.color); } }); /* (총괄 #414: 0.5~3 mm over the face -- drawn in front of it, not fighting it, farther off too; their own colours kept) */ c.npcHead.add(copy); c.npcParts.set(n, copy); } }
       for (const [n, o] of c.npcParts) o.visible = names.includes(n);
       for (const slot of ['eyes', 'mouth']) { const on = Boolean(w?.[slot]) && c.npcParts.has(`${slot}_x_${w[slot]}`); for (const m of c.npcBase[slot]) { if (on) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } } }
       c.faceOn = names.length ? names : null;

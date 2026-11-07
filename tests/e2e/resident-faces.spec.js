@@ -15,7 +15,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   const shot = async (name) => { if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-${name}.png` }); };
   const tried = new Set();
   // an islander standing (freed from the island's events), me 2 m from it, facing it; my feeling -> its answer
-  const answer = async (feel, photo = null) => {
+  const answer = async (feel, photo = null, cam = [1.0, 1.7, -0.5]) => {
     let got = null;
     await expect.poll(async () => {
       await post(request, '/api/test/island/free-residents', token, {});
@@ -28,7 +28,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
       await page.evaluate(() => window.PlazaDebug().camNear(null)); const r = await page.evaluate((f) => window.PlazaDebug().feel(f), feel); await page.waitForTimeout(250);
       const react = await page.evaluate(() => window.PlazaDebug().lastReact());
       if (r !== true || !react?.move) { await watch; return null; }
-      if (photo) { await page.evaluate(() => window.PlazaDebug().camNear([1.0, 1.7, -0.5], [0, 1.45, -2.0])); await page.waitForTimeout(700); await photo(); await page.evaluate(() => window.PlazaDebug().camNear(null)); }
+      if (photo) { await page.evaluate((c) => window.PlazaDebug().camNear(c ? c : null, [0, 1.45, -2.0]), cam); await page.waitForTimeout(700); await photo(); await page.evaluate(() => window.PlazaDebug().camNear(null)); }
       got = { n: w.n, react, seen: await watch }; return got.n;
     }, { timeout: 90000, intervals: [1200] }).not.toBe(null);
     return got;
@@ -50,15 +50,25 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   // what it says: its face a moment (a greeting -- happy and laughing), then its own; and a blink (photo)
   await expect.poll(() => page.evaluate((n) => window.PlazaDebug().talkFace(n, { eyes: 'happy', mouth: 'laugh' }, 2500), thumbs.n), { timeout: 10000, intervals: [300] }).toBe(true); /* (once its own feeling is over) */
   await expect.poll(async () => (await face(thumbs.n)).parts.slice().sort(), { timeout: 3000 }).toEqual(['eyes_x_happy', 'mouth_x_laugh']);
-  const front = async () => { const f = await face(thumbs.n); await page.evaluate(([x, z, yaw]) => { const D = window.PlazaDebug(); D.teleport(x + Math.sin(yaw) * 2.2, z + Math.cos(yaw) * 2.2); D.faceTo(x, z); D.camNear([0.35, 1.65, -0.8], [0, 1.45, -2.2]); }, [f.at.x, f.at.z, f.yaw]); await page.waitForTimeout(250); }; /* (photos: before its face, along the way it looks) */
-  if (process.env.SHOT_DIR) { await front(); await shot('resident-talk-face'); }
   await expect.poll(async () => (await face(thumbs.n)).parts, { timeout: 5000 }).toEqual([]);
-  if (process.env.SHOT_DIR) { await page.evaluate((n) => window.PlazaDebug().talkFace(n, { eyes: 'blink' }, 2500), thumbs.n); await front(); await shot('resident-blink'); }
-  await page.evaluate(() => window.PlazaDebug().camNear(null));
-  // photos: 하트 -> 부끄러움 (not yet close) and 춤 -> 춤, each on another islander
-  if (process.env.SHOT_DIR) for (const [feel, name] of [['heart', 'resident-heart'], ['dance', 'resident-dance']]) {
+  // photos (총괄 #414: the pieces over a muzzle, a beak and a face -- at the play camera's distance, where depth is coarser):
+  // 봄이·하람·콩이 laughing, me 2.8 m before each along the way it looks, the camera as in play
+  if (process.env.SHOT_DIR) for (const person of ['bomi', 'haram', 'kongi']) {
+    const n = await page.evaluate((p) => { const D = window.PlazaDebug(); for (let k = 0; k < 27; k += 1) if (D.residentFace(k)?.person === p) return k; return null; }, person);
+    if (n == null) { console.log(`PHOTO_SKIP ${person}: no model`); continue; }
+    { const at = (await face(n)).at; await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 3, z); }, [at.x, at.z]); await page.waitForTimeout(800); } /* (drawn only within 85 m of me) */
+    if (!(await face(n)).visible) { console.log(`PHOTO_SKIP ${person}: not out on the island now`); continue; }
+    /* (my 웃음: it turns to me and laughs -- its own happy eyes and laughing mouth; the camera 1.2 m behind me, ~3.7 m from its face) */
+    await page.waitForTimeout(1100); const f = await face(n);
+    await page.evaluate(([x, z, yaw]) => { const D = window.PlazaDebug(); D.teleport(x + Math.sin(yaw) * 2.5, z + Math.cos(yaw) * 2.5); D.faceTo(x, z); }, [f.at.x, f.at.z, f.yaw]); await page.waitForTimeout(500);
+    await page.evaluate(() => window.PlazaDebug().feel('laugh')); const r = await page.evaluate(() => window.PlazaDebug().lastReact());
+    if (r?.n !== n) { console.log(`PHOTO_SKIP ${person}: did not answer (${JSON.stringify(r)})`); continue; }
+    await page.evaluate(() => window.PlazaDebug().camNear([2.3, 1.9, -0.2], [0, 1.5, -2.5])); await page.waitForTimeout(800); /* (beside me, out of my head's way, ~3.3 m from its face) */ await shot(`resident-laugh-${person}`); await page.evaluate(() => window.PlazaDebug().camNear(null));
+  }
+  // photos: 하트 -> 부끄러움 (not yet close) close by, 춤 -> 춤 at the play camera (3~4 m), each on another islander
+  if (process.env.SHOT_DIR) for (const [feel, name, cam] of [['heart', 'resident-heart', [1.0, 1.7, -0.5]], ['dance', 'resident-dance', null]]) {
     await page.waitForTimeout(1100);
-    const r = await answer(feel, () => shot(name)); expect(feel === 'heart' ? ['shy'] : ['dance', 'clap']).toContain(r.react.move); /* (a rainy or night island claps along) */
+    const r = await answer(feel, () => shot(name), cam); expect(feel === 'heart' ? ['shy'] : ['dance', 'clap']).toContain(r.react.move); /* (a rainy or night island claps along) */
   }
   await expectNoScriptError(page); await who.context.close();
 });
