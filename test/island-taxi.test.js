@@ -25,7 +25,14 @@ test('택시 시간: 한 번 25~40초(시험 길은 3초), 타기→출발→달
     const seen = []; let last = -1;
     for (let t = 0; t <= dur + 200; t += 100) { const p = X.poseAt(ride, 1000 + t); if (seen.at(-1) !== p.phase) seen.push(p.phase); assert.ok(p.d >= last - 1e-9, 'never back'); last = p.d; }
     assert.deepEqual(seen, ['enter', 'start', 'run', 'stop', 'exit', 'done']);
-    const end = X.poseAt(ride, 1000 + dur); const to = X.stopOf(X.STOPS[from].to); assert.ok(Math.hypot(end.x - to.x, end.z - to.z) < 0.01);
+    const end = X.poseAt(ride, 1000 + dur); const to = X.stopOf(X.STOPS[from].to); const drop = X.dropOf(to.id); assert.ok(Math.hypot(end.x - drop.x, end.z - drop.z) < 0.01);
+    // (v1.10.272 총괄) it stands across the shelter from the standing car, facing back along the road: its door -- and where one
+    // gets out -- to the shelter, as where one gets in at the start
+    assert.ok(Math.abs(Math.atan2(Math.sin(end.yaw - drop.yaw), Math.cos(end.yaw - drop.yaw))) < 0.01, `${from} yaw`);
+    const shelterOf = (p) => Math.hypot(p.x - to.shelter.x, p.z - to.shelter.z);
+    assert.ok(shelterOf(X.arrivalOf(ride)) < shelterOf(end) && shelterOf(X.arrivalOf(ride)) < 3.5, `${from} out by the shelter`);
+    const from0 = X.stopOf(from); assert.ok(Math.hypot(from0.out.x - from0.shelter.x, from0.out.z - from0.shelter.z) < Math.hypot(from0.x - from0.shelter.x, from0.z - from0.shelter.z), `${from} in by the shelter`);
+    const pts = X.driveOf(from); for (let i = 1; i < pts.length; i += 1) { const [a, b] = [pts[i - 1], pts[i]]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let s = 0; s <= L; s += 0.5) { const x = a[0] + (b[0] - a[0]) * s / L; const z = a[1] + (b[1] - a[1]) * s / L; assert.ok(ok(x, z), `${from} drive ${x.toFixed(1)},${z.toFixed(1)}`); } }
     const out = X.arrivalOf(ride); assert.ok(T.walkable(out.x, out.z), `${from} out`); assert.ok(Math.abs(Math.hypot(out.x - end.x, out.z - end.z) - Math.hypot(1.75, 1.27)) < 0.01); // (beside the car as it stands: exit_L)
     assert.ok(Math.abs(Math.hypot(to.out.x - to.x, to.out.z - to.z) - Math.hypot(1.5, 1.18)) < 0.01); // (where one gets in: enter_L)
   }

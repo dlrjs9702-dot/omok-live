@@ -32,11 +32,20 @@
     const nx = Math.cos(yaw); const nz = -Math.sin(yaw); // (the car's right)
     return { ...STOPS[id], x: a[0], z: a[1], yaw, shelter: { x: a[0] + nx * 3.2 - Math.sin(yaw) * 1.2, z: a[1] + nz * 3.2 - Math.cos(yaw) * 1.2, yaw: yaw - Math.PI / 2 }, out: beside(a[0], a[1], yaw, BOARD) };
   }
+  // (v1.10.272 총괄: the door to the bench at both ends) where an arriving car stops: across the shelter from the standing one
+  // (DROP m to the stop's right), facing back along the road -- so its door, on its right, is to the shelter; come in straight
+  // over the last IN m; the drive is the road to there, its points within 10 m of the stop left out
+  const DROP = 6.4; const IN = 6;
+  function dropOf(id) {
+    const s = stopOf(id); const x = s.x + Math.cos(s.yaw) * DROP; const z = s.z - Math.sin(s.yaw) * DROP;
+    return { x, z, yaw: wrap(s.yaw + Math.PI), approach: [x + Math.sin(s.yaw) * IN, z + Math.cos(s.yaw) * IN] };
+  }
+  const driveOf = (from) => { const s = stopOf(STOPS[from].to); const d = dropOf(s.id); return [...roadOf(from).slice(0, -1).filter(([x, z]) => Math.hypot(x - s.x, z - s.z) > 10), d.approach, [d.x, d.z]]; };
   // the time table of a ride's drive: distance gone by each 50 ms, easing in and out; a short road (runMs) is the same drive faster
   const tables = new Map();
   function tableOf(from, runMs) {
     const key = `${from}|${runMs || 0}`; if (tables.has(key)) return tables.get(key);
-    const road = roadOf(from); const ss = segs(road); const total = ss.reduce((n, s) => n + s.len, 0);
+    const road = driveOf(from); const ss = segs(road); const total = ss.reduce((n, s) => n + s.len, 0);
     const speedAt = (d) => { let k = 0; let at = 0; while (k < ss.length - 1 && at + ss[k].len < d) { at += ss[k].len; k += 1; } return ss[k].slow ? SLOW : FAST; };
     let cruise = 0; for (const s of ss) cruise += s.len / (s.slow ? SLOW : FAST); const M = cruise * 1000 + EASE; // (easing in and out costs half a ramp each)
     const out = [0]; let d = 0; let u = 0;
@@ -73,5 +82,5 @@
   // out 0..0.12 open, 0.80..1 shut)
   const doorOf = (phase, k) => (phase === 'enter' ? (k < 0.5 ? smooth(k / 0.14) : 1 - smooth((k - 0.86) / 0.14)) : phase === 'exit' ? (k < 0.5 ? smooth(k / 0.12) : 1 - smooth((k - 0.8) / 0.2)) : 0);
   const fareOf = ({ hasHome = false, fare = FARE } = {}) => (hasHome ? 0 : Math.max(0, Math.round(Number(fare) || 0)));
-  return { ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, BOARD, ALIGHT, roadOf, stopOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+  return { ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, BOARD, ALIGHT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

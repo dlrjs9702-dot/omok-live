@@ -45,6 +45,7 @@ export function taxiScene({ scene, assets }) {
     return { id, s, standing };
   });
   const moving = new Map(); // key (mine: 'me'; another's: their id) -> car
+  const PARKED = 20000;
   let night = false;
   // each frame: `rides` [{ key, ride }] -- a car for each on its way, the standing ones away while one leaves or arrives there
   function step(now, rides) {
@@ -52,9 +53,9 @@ export function taxiScene({ scene, assets }) {
     for (const { key, ride } of rides) {
       const p = X.poseAt(ride, now); if (p.phase === 'done') continue; live.add(key);
       let rec = moving.get(key); if (!rec) { rec = car(); moving.set(key, rec); }
-      placeCar(rec, p);
+      placeCar(rec, p); rec.left = p.phase === 'exit' ? now + PARKED : 0;
     }
-    for (const [key, rec] of moving) if (!live.has(key)) { group.remove(rec.h); moving.delete(key); }
+    for (const [key, rec] of moving) if (!live.has(key) && !(rec.left > now)) { group.remove(rec.h); moving.delete(key); } /* (v1.10.272: a car that let its rider out stands a while across the shelter, not gone at once) */
     for (const st of stops) {
       const busy = rides.some(({ ride }) => { const p = X.poseAt(ride, now); if (p.phase === 'done') return false; return (ride.from === st.id && now - ride.startedAt < X.ENTER + 2000) || Math.hypot(p.x - st.s.x, p.z - st.s.z) < 6; });
       st.standing.h.visible = !busy;
