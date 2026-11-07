@@ -299,7 +299,7 @@ function securityHeaders(extra = {}) {
     'Referrer-Policy': 'no-referrer',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${importMapCsp ? ` ${importMapCsp}` : ''}; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${importMapCsp ? ` ${importMapCsp}` : ''}; style-src 'self'; connect-src 'self' blob:; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, /* (v1.10.272: blob: -- a GLB's own pictures, which GLTFLoader reads from a blob: address -- the 99b taxi is the first textured model) */
     ...extra,
   };
 }
@@ -4336,7 +4336,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.271' });
+    return sendJson(res, 200, { ok: true, version: '1.10.272' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -7829,23 +7829,25 @@ async function requestHandler(req, res) {
         if (why === 'tired') return sendError(res, 409, 'TALK_TIRED', '오늘은 이야기 많이 했네요.');
         const b = IslandTalks.begin(n, id, { again: Boolean(tm.last?.[n]?.[id]), pick: daySeed(`${day}|${n}|${id}`) });
         const hints = IslandTalks.kindsOf(IslandTalks.topicOf(n, id)).length ? await talkHints(account, n, pos, now) : {}; const vals = Object.assign({}, ...Object.values(hints).map((h) => h.vals)); // (a hint's words met before its end: its values from the start)
+        for (const [k, v] of talkNow) if (v.day !== day) talkNow.delete(k); /* (Codex 261-270 #6: talks begun and left on other days do not pile up) */
         talkNow.set(key, { topic: id, node: b.node, day, vals });
         return sendTalk({ ...base, say: fillAll(b.say, vals), talk: { id, node: b.node, replies: b.replies, end: false }, affinity: affinityView(before[n] || 0) });
       }
       const cur = talkNow.get(key); if (!cur || cur.topic !== id || cur.day !== day) return sendError(res, 409, 'TALK_GONE', '이야기가 끊겼어요. 다시 말 걸어 주세요.');
+      if (body.node != null && String(body.node) !== String(cur.node)) return sendError(res, 409, 'TALK_STALE', '이미 대답했어요.'); /* (Codex 261-270 #3: the node my reply answers -- the same reply twice moves it once) */
       const a = IslandTalks.answer(n, id, cur.node, reply); if (!a) return sendError(res, 400, 'BAD_REPLY', '잘못된 요청입니다.');
-      if (talkNow.get(key) !== cur) return sendError(res, 409, 'TALK_GONE', '이야기가 끊겼어요. 다시 말 걸어 주세요.'); cur.node = a.next; // (two replies at once: one moves it)
+      cur.node = a.next;
       let gain = false; /* (총괄 검토: the trees' 호감도 at most affinity:talkDaily a day from each -- the day's first talk +1 apart) */
       if (a.delta) await pointStore.questApply(account, 'talkmem', (d) => { const t = today(d); const g = Number(t.gained?.[n]) || 0; if (g >= Economy.value('affinity:talkDaily')) return null; gain = true; t.gained = { ...t.gained, [n]: g + 1 }; return { doc: t }; });
       const after = gain ? await pointStore.affinityAdd(account, day, [{ n, delta: 1 }]) : before;
       const v = IslandTalks.view(n, id, a.next); const extra = { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, me) };
       if (!v.end) return sendTalk({ ...base, say: fillAll(v.say, cur.vals), talk: { id, node: v.node, replies: v.replies, end: false }, ...extra });
-      talkNow.delete(key);
-      const hints = await talkHints(account, n, pos, now); const told = tm.day === day ? tm.kinds || [] : []; const hintFromToday = tm.day === day && tm.hintFrom?.[n] === day;
-      const e = IslandTalks.endOf(n, id, a.next, (k) => Boolean(hints[k]) && !told.includes(k) && !hintFromToday);
-      let gift = null;
-      await pointStore.questApply(account, 'talkmem', (d) => {
-        const t = today(d); t.last = { ...(t.last || {}), [n]: { ...(t.last?.[n] || {}), [id]: a.text } };
+      if (talkNow.get(key) === cur) talkNow.delete(key); /* (Codex 261-270 #4: not a topic begun again while this one's saves were awaited) */
+      const hints = await talkHints(account, n, pos, now);
+      let gift = null; let e = null;
+      await pointStore.questApply(account, 'talkmem', (d) => { /* (Codex 261-270 #5: the hint chosen from the latest record and kept in the same update -- two ends at once do not both tell one kind) */
+        const t = today(d); gift = null; e = IslandTalks.endOf(n, id, a.next, (k) => Boolean(hints[k]) && !(t.kinds || []).includes(k) && t.hintFrom?.[n] !== day);
+        t.last = { ...(t.last || {}), [n]: { ...(t.last?.[n] || {}), [id]: a.text } };
         if (e.hint) { t.hintFrom = { ...t.hintFrom, [n]: day }; t.kinds = [...new Set([...(t.kinds || []), e.hint])]; }
         if (e.gift && t.giftFrom?.[n] !== day) { gift = e.gift; t.giftFrom = { ...(t.giftFrom || {}), [n]: day }; t.keepsakes = [...(t.keepsakes || []), { n, name: e.gift, day }].slice(-200); }
         return { doc: t };
@@ -8342,7 +8344,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/admin/keys/revoke-no-id' && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
     const rows = (await accessStore.list()).filter((k) => !k.loginId && !k.revokedAt && !k.pendingAt); let done = 0;
-    for (const k of rows) { const row = await accessStore.revoke(k.id); if (row) { invalidateGuestSessions(row.id); done += 1; } }
+    for (const k of rows) { const row = await accessStore.revoke(k.id, { noLogin: true }); if (row) { invalidateGuestSessions(row.id); done += 1; } }
     return sendJson(res, 200, { ok: true, revoked: done });
   }
 
@@ -9021,7 +9023,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.271 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.272 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

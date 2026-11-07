@@ -57,5 +57,9 @@
     if (install === '1') return { copy: messengerUrl(origin), line: COPY_LINE };
     return { menuOnly: true, line: MENU_LINE };
   }
-  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall, messengerUrl, COPY_LINE };
+  // (Codex 261-270 #1, v1.10.272) 알림 켜기 that failed: the guide to Chrome or the messenger app only where it may be the
+  // island app's window (come by install=1, and not a standalone window on a device that has opened the messenger app) --
+  // the messenger app itself and a Chrome tab keep their own message
+  const pushElsewhere = ({ install = null, standalone = false, appSeen = false }) => install === '1' && !(standalone && appSeen);
+  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall, pushElsewhere, messengerUrl, COPY_LINE };
 });

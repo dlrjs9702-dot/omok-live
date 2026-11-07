@@ -13,6 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.272 Codex 261~270 고침 + 택시 99b
+
+- Codex 13건(메신저 알림은 실패 때만 안내, 대화 나무 동시 요청, 표정 로딩, 감정 끝, 받은 것, 복사 실패, revoke 재확인). 택시 99b 질감판(첫 질감 모델: KHR_texture_transform 허용, CSP connect/img blob:), 도착 택시는 지붕 건너 서서 문이 벤치 쪽. 다음: 273 그래픽 시범(에셋 준비 뒤), 그 전에 274 사진 부탁은 주민이.
+
 ## v1.10.271 섬 택시
 
 - 대청마당 ↔ 툇마루섬 입구, 에셋 99(차·정류장·TaxiEnter/Sit/Exit). 요금 집 없으면 1,000P(경제 taxi:fare), 집주인 무료. 서버가 길·시계로 자리 결정. 검토 반영: 동작은 좌석 원점(enter_L/exit_L), 문은 동작 시각, 카메라는 차 뒤 대각선·1인칭 차 안. 다음: 272 Codex 261~270 고침.
@@ -20,7 +24,3 @@
 ## v1.10.270 시험 정리 2차(일부) + 크롬 열기 시험 지우기
 
 - 크롬 열기 시험 단추·try·install-why 지움(주소 복사 확정), resident-talk-gone 합침, island-assets 4계절 → 한 번. 남은 합침·줄이기는 다음 시험 정리 묶음. 다음: 271 택시.
-
-## v1.10.269 시험 정리 1차
-
-- 폰 빼기 38곳, 겹치는 e2e 지움(pandemic·island-entry 파일 포함), 스킨 판독 대비 12개 → skins-contrast 한 테스트, 메신저 manifest 단위, ci-timings 새로(PC 205·폰 50 기계분). 다음: 270 합침·줄이기, 크롬 열기 시험·install-why 지우기.

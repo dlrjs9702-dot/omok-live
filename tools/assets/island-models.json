@@ -9951,17 +9951,17 @@
     },
     {
       "out": "taxi-v1/taxi_island.glb",
-      "src": "taxi99:01. High/taxi_island.glb",
-      "sha256": "0439390aec73260ea86cbbcc67d897946af805c603e62867211b8ccb227159f5",
-      "lowSrc": "taxi99:02. Low/taxi_island_low.glb",
-      "lowSha256": "4e5dbfa2f98b7f1b017fdd0fe93a4ad4b6fe82ff8dc4c3f7760b6b9aa9420517"
+      "src": "taxi99b:01. High/taxi_island.glb",
+      "sha256": "0dbaf1a227d0879ee2bb31ae76fed398c8b30fb4ad5721b1a24b837487f856c2",
+      "lowSrc": "taxi99b:02. Low/taxi_island_low.glb",
+      "lowSha256": "f6df3f417d11a7e17c3c4e7d5c9cd3ba89af03c2a561674048a40b19ade2e633"
     },
     {
       "out": "taxi-v1/taxi_stop.glb",
-      "src": "taxi99:01. High/taxi_stop.glb",
-      "sha256": "64291a9bbb807ce91fb3c79b3bc8d8e07cf073f1bc14710931704deab8fe44b7",
-      "lowSrc": "taxi99:02. Low/taxi_stop_low.glb",
-      "lowSha256": "e978da31e83fbabddd74696cb98c9b757f87177fe11c2dc3d10367a0438a570e"
+      "src": "taxi99b:01. High/taxi_stop.glb",
+      "sha256": "acbc3e70f2d1729dc8acdc8e02394bb785a7bb3f1f7b11aabd5ac6091d4b18ca",
+      "lowSrc": "taxi99b:02. Low/taxi_stop_low.glb",
+      "lowSha256": "f9bcc240b438244632d558e43574e405112f4f4281b39f3649293f6afd203f0e"
     },
     {
       "out": "characters/motions/TaxiSit.glb",
@@ -10059,6 +10059,7 @@
     "insect105": "105. Game Island insects new 12 2026-11-06",
     "emote101": "101. Game Island emotes 2026-11-05",
     "faces102": "102. Game Island resident faces 2026-11-05",
-    "taxi99": "99. Game Island taxi 2026-11-04"
+    "taxi99": "99. Game Island taxi 2026-11-04",
+    "taxi99b": "99b. Game Island taxi textured 2026-11-07"
   }
 }

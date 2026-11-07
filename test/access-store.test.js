@@ -26,6 +26,10 @@ test('취소된 입장 키는 같은 토큰으로 복구할 수 있고 영구 �
   await store.remove(created.id);
   assert.deepEqual(await store.list(), []);
   assert.equal(await store.validateAndRecord(token), null);
+  // (Codex 261-270 #2, v1.10.272) 「ID 없는 키 모두 막기」: a key that set its ID after the list was read is left alone
+  const late = await store.create('막 ID 만든 기기', 'b'.repeat(48)); await store.setLogin(late.id, 'late01', 'hash');
+  assert.equal(await store.revoke(late.id, { noLogin: true }), null); assert.equal((await store.get(late.id)).revokedAt, null);
+  const plain = await store.create('ID 없는 기기', 'c'.repeat(48)); assert.ok((await store.revoke(plain.id, { noLogin: true })).revokedAt);
 });
 
 

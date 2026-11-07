@@ -12,7 +12,8 @@ async function parse(buffer) {
   const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
   const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); // v1.10.26 pipeline output
   const ab = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-  return new Promise((resolve, reject) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(ab, '', resolve, reject));
+  const { Texture } = await three(); /* (v1.10.272 99b: textured models -- node has no image decoder, a blank texture stands in) */
+  return new Promise((resolve, reject) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).register(() => ({ name: 'test_blank_texture', loadTexture: () => Promise.resolve(new Texture()) })).parse(ab, '', resolve, reject));
 }
 
 // v1.10.18/19: the real models -- every file is in public/assets/island (so in the game resource pack, with its

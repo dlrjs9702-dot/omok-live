@@ -75,7 +75,10 @@ test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기�
   assert.equal((await talk({ topic: 'talk', talk: 'today', reply: 9 })).data.error, 'TALK_GONE');
   const b0 = await talk({ topic: 'talk', talk: 'today' }); assert.equal((await talk({ topic: 'talk', talk: 'today', reply: 9 })).status, 400); // (no such reply)
   // 봄이's 「요즘 어때요?」: the first replies lead to 「눌러 말린 꽃잎」 (e1) -- the day's keepsake from her
-  let r = null; let node = 'start'; for (let i = 0; i < 3; i += 1) { gained += Talks.answer(n, 'today', node, 0).delta && gained < 2 ? 1 : 0; r = await talk({ topic: 'talk', talk: 'today', reply: 0 }); node = r.data.talk.node; }
+  let r = null; let node = 'start'; for (let i = 0; i < 3; i += 1) {
+    if (i === 1) assert.equal((await talk({ topic: 'talk', talk: 'today', reply: 0, node: 'start' })).data.error, 'TALK_STALE'); /* (Codex 261-270 #3: the first reply sent again -- it does not move the talk a second step) */
+    gained += Talks.answer(n, 'today', node, 0).delta && gained < 2 ? 1 : 0; r = await talk({ topic: 'talk', talk: 'today', reply: 0, node }); node = r.data.talk.node;
+  }
   assert.equal(r.data.talk.end, true); assert.equal(r.data.gift, '눌러 말린 꽃잎');
   assert.deepEqual((await req('/api/island/dex', a)).data.given.map((g) => [g.from, g.name]), [['봄이', '눌러 말린 꽃잎']]); // (v1.10.267 받은 것) void b0;
   assert.equal((await talk({ topic: 'talk', talk: 'today' })).data.error, 'TALK_DONE');
