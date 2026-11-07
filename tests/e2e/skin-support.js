@@ -40,7 +40,9 @@ async function shopper(browser, request, label, points = 0, gender = 'male', pre
   // v1.10.3: test accounts have already chosen their character, so the island opens without the first-visit choice
   if (gender) await post(request, '/api/avatar/gender', token, { gender });
   // v1.10.14: the game starts after the resource pack is ready; scripted clicks before that would race the lobby opening
-  await page.locator('#lobbyView').waitFor({ state: 'visible' });
+  // (265 흔들림: a context without gc.testClassic goes on to the island by itself -- its lobby may show only a moment, missed:
+  // the game started either way)
+  await page.locator('#lobbyView:not(.hidden), #plazaStage:not(.hidden)').first().waitFor({ state: 'visible' }); /* (each matched only while shown) */
   return person;
 }
 
