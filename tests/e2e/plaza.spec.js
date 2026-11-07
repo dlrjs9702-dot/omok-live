@@ -258,7 +258,9 @@ test('게임 아일랜드: 게임관 전용 화면 → 카드 → 상세 시트 
   await expect(sheet.locator('.gameSheetChoice[aria-label="AI 난이도"] .hpPill')).toHaveText(['AI 쉬움', 'AI 보통', 'AI 어려움']);
   await sheet.locator('.gameSheetChoice[aria-label="AI 난이도"] .hpPill', { hasText: 'AI 어려움' }).click();
   await expect(sheet.locator('.gameSheetChoice[aria-label="AI 난이도"] .hpPill.on')).toHaveText('AI 어려움');
-  expect(await page.locator('#gamehallView .ghost, #gameSheet .ghost').count()).toBe(0);
+  // (v1.10.270, CI chromium-13: another test's connect4 room still playing -- the sheet's 공개방 list showed its 「관전하기」, a
+  // room row's own small button (the lobby's list too), not one of the hall's; that list left out, any other named)
+  expect(await page.locator('#gamehallView .ghost, #gameSheet .ghost').evaluateAll((els) => els.filter((e) => !e.closest('.publicRoomList')).map((e) => `${e.id || e.className}: ${e.textContent.trim().slice(0, 20)}`))).toEqual([]);
   for (const b of await sheet.locator('.gameSheetActions .hpBtn').all()) expect((await b.boundingBox()).height).toBeGreaterThanOrEqual(50);
   await sheet.getByRole('button', { name: 'AI 연습' }).click();
   await expect(page.locator('#reflexView .reflexFrame.playing')).toBeVisible(); await expect(page.locator('#reflexMenu')).toBeHidden();
