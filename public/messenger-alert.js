@@ -34,7 +34,14 @@
   function appIntent(ua, origin, room) {
     if (!/Android/i.test(String(ua || ''))) return null;
     const u = new URL(`/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`, origin);
-    return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.slice(0, -1)};S.browser_fallback_url=${encodeURIComponent(u.href)};end`;
+    const back = new URL(u.href); back.searchParams.set('install', '1'); /* (Codex 251-260 #16: no app -- the page asks for the install) */
+    return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.slice(0, -1)};S.browser_fallback_url=${encodeURIComponent(back.href)};end`;
   }
-  return { unreadOf, setBadge, titleBlink, appIntent };
+  // (Codex 251-260 #16) an Android page not installed and no install prompt by now (the island app's Custom Tab gets none):
+  // the messenger in Chrome itself, asking to install; null otherwise -- and in Chrome already (?install=1), only the menu line
+  function chromeInstall({ ua, origin, standalone, prompted, asked }) {
+    if (!/Android/i.test(String(ua || '')) || standalone || prompted) return null;
+    return asked ? { menuOnly: true } : { url: `intent://${new URL(origin).host}/messenger.html?install=1#Intent;scheme=https;package=com.android.chrome;end` };
+  }
+  return { unreadOf, setBadge, titleBlink, appIntent, chromeInstall };
 });

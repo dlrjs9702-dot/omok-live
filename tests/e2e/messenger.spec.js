@@ -340,6 +340,18 @@ test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.htm
   const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(300); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
   await shot('install-light'); await page.locator('#mTheme').selectOption('dark'); await shot('install-dark'); await page.locator('#mTheme').selectOption('light');
   await page.locator('#mInstallBtn').click(); expect(await page.evaluate(() => window.__prompted)).toBe(1); await expect(page.locator('#mInstallBtn')).toBeHidden();
+  await expect(page.locator('#mChromeInstall')).toBeHidden(); // (a prompt came: no Chrome line)
+  // (Codex 251-260 #16) no prompt in 3 s (the island app's Custom Tab): a phone (Android) is asked to open it in Chrome to
+  // install, the menu line beside; in Chrome already (?install=1) the menu line only; a PC nothing
+  for (const q of ['', '?install=1']) {
+    const p = await context.newPage(); await p.goto(`/messenger.html${q}`); await expect(p.locator('#mLogin')).toBeVisible(); await p.waitForTimeout(3500);
+    if (!isMobile) { await expect(p.locator('#mChromeInstall')).toBeHidden(); await p.close(); continue; }
+    await expect(p.locator('#mChromeInstall')).toBeVisible(); await expect(p.locator('#mChromeInstall')).toContainText('크롬 메뉴 ⋮ → 앱 설치도 돼요');
+    await expect(p.locator('#mChromeInstallBtn')).toBeVisible({ visible: !q });
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (process.env.SHOT_DIR && !q) await p.screenshot({ path: `${process.env.SHOT_DIR}/phone-chrome-install.png` });
+    await p.close();
+  }
   // inside the installed window (display-mode: standalone): no button even when the browser offers
   await context.addInitScript(() => { const real = window.matchMedia.bind(window); window.matchMedia = (q) => (q === '(display-mode: standalone)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q)); });
   const app = await context.newPage(); await app.goto('/messenger.html'); await expect(app.locator('#mLogin')).toBeVisible();
