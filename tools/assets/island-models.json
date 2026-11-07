@@ -7675,82 +7675,82 @@
     },
     {
       "out": "characters/npc_walker_bomi.glb",
-      "src": "sleeves96a:01. High/npc_walker_bomi.glb",
-      "sha256": "2ee3b7ea0b6b6717d33ed188d11bcb735b1c7b1743f64dfda99e0abcfb2135bf",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_bomi_low.glb",
-      "lowSha256": "54f08df3508625d503ef9f995e36807e07379a7ed5ee9dc1476ec83b77a60fb5",
+      "src": "faces102:01. High/npc_walker_bomi.glb",
+      "sha256": "7ecb96f09f8e919a6afec4ee73ce4a8fd14ccaa6a05a1253dafc78e14c2489bc",
+      "lowSrc": "faces102:02. Low/npc_walker_bomi_low.glb",
+      "lowSha256": "1571a7f46237bad6c1c7a2ec7450fd4b12f1567241d63adffdfe78732b69a380",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_sea_grandpa.glb",
-      "src": "sleeves96a:01. High/npc_walker_sea_grandpa.glb",
-      "sha256": "9cf3363afa2657d9137ea7069747d0ca5557974d2f010832ea0b3c5acdca49c4",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_sea_grandpa_low.glb",
-      "lowSha256": "5da97154428ef2eaf3d3dbdfd3e004bf4a6dea7c5e4fffd9b5c92661b813e7fc",
+      "src": "faces102:01. High/npc_walker_sea_grandpa.glb",
+      "sha256": "4ff46a2ae40b3c94c6ae83ff7613a38c404c8e2797c3b89ca5f874d6f71fe635",
+      "lowSrc": "faces102:02. Low/npc_walker_sea_grandpa_low.glb",
+      "lowSha256": "4daa9bbdc8ee1954d8c7fdcf32dc70395778f42442d058fd0bf6786b0892c40b",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_haram.glb",
-      "src": "sleeves96a:01. High/npc_walker_haram.glb",
-      "sha256": "8466548a3402c49a063b92e2dac3238468bf27e6e2fd110c9ea1c82ca066e78c",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_haram_low.glb",
-      "lowSha256": "bc95c16810f4986d9cf41787ddfafc519f057d8cce7e94eba9085abf93898f53",
+      "src": "faces102:01. High/npc_walker_haram.glb",
+      "sha256": "1b97ca058971012214793bba623364dd46883f842222722b01b86a0d1628be3f",
+      "lowSrc": "faces102:02. Low/npc_walker_haram_low.glb",
+      "lowSha256": "c54576f4a4fa7eb6b9d0b237695d35dcb1290b6d7b51e91e9fa0bbb775914166",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_duri.glb",
-      "src": "sleeves96a:01. High/npc_walker_duri.glb",
-      "sha256": "d71b45cec8585b10bf5164ea32597883e889df6879c1d8626b229d3919621ef3",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_duri_low.glb",
-      "lowSha256": "cf2b162fa81b56cef941adc8c15897b6feff57420917f6412a63476b3ea29ba8",
+      "src": "faces102:01. High/npc_walker_duri.glb",
+      "sha256": "ae5b28686a59d7841e69d31493958f746d9f05607b027c449fb617216706fab8",
+      "lowSrc": "faces102:02. Low/npc_walker_duri_low.glb",
+      "lowSha256": "b76b71bc972410869c51d4a1d0afee2350e6efd0b9103b75939262bc56ade1d1",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_noeul_granny.glb",
-      "src": "residents88:01. High/npc_walker_noeul_granny.glb",
-      "sha256": "4785c3a2c82eff42dd9f25e8450e5d2c86858f29fd16e1c7e833b11bc45840f5",
-      "lowSrc": "residents88:02. Low/npc_walker_noeul_granny_low.glb",
-      "lowSha256": "09d6f5a34af7bfdb2efb75994d845181db36ec9e2037b9aa165783cfa5eb6fd0",
+      "src": "faces102:01. High/npc_walker_noeul_granny.glb",
+      "sha256": "40d64969236110e538e772c1fb7c4dc936da9ddffdaaf187451a948c40a5061d",
+      "lowSrc": "faces102:02. Low/npc_walker_noeul_granny_low.glb",
+      "lowSha256": "86de58d93f896b987f749b006f85838c44b745dac41349f76c7a6c3bb5280a68",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_detective_oh.glb",
-      "src": "sleeves96a:01. High/npc_walker_detective_oh.glb",
-      "sha256": "b72df7c4b6b5b7f969a897652f3c93817b05acfb72eaf4a7f38004003901a736",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_detective_oh_low.glb",
-      "lowSha256": "9e5e5b2f5abc04184701228ea6631d3ada11be23c86dbfc34e60c0009aa06cb3",
+      "src": "faces102:01. High/npc_walker_detective_oh.glb",
+      "sha256": "09267cdcbfca94bff893f8c5f00635fff4939ff3fa9f54b9ef125022154e9ee7",
+      "lowSrc": "faces102:02. Low/npc_walker_detective_oh_low.glb",
+      "lowSha256": "01eea31f650d290a4115b75b95012b20162bb1c49f9175916ae0da5f80c4df1a",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_daon.glb",
-      "src": "sleeves96a:01. High/npc_walker_daon.glb",
-      "sha256": "32ae410c844bf063726b37765bdd00081edbb2c4fae83a9cca852e885f7bc3b9",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_daon_low.glb",
-      "lowSha256": "b1f72113beaa3dddae7954b391356403711a60a868bc4596d8e0b952bbcd54f3",
+      "src": "faces102:01. High/npc_walker_daon.glb",
+      "sha256": "abff21871aa2e9f1cc99589d2fb30e33104b5f2becd63d5ede709d45f45e2ab3",
+      "lowSrc": "faces102:02. Low/npc_walker_daon_low.glb",
+      "lowSha256": "b3d0a198a08b8b30a4c1832c1c2342f5cf40e8cd5804c0a143d75d27fb855583",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_barami.glb",
-      "src": "sleeves96a:01. High/npc_walker_barami.glb",
-      "sha256": "28edfa82ce5f9c43ba6b243cf25f9b292c8b6f619fa30ea113acac73eb667414",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_barami_low.glb",
-      "lowSha256": "d3e2fc8e1aa86f57d2c424938708f09e7e7e91e0b8804d0169c6884d7a18a52d",
+      "src": "faces102:01. High/npc_walker_barami.glb",
+      "sha256": "c303af2ea8afa2a1ba8505ffe6b89991b9f25e4d671b1ccc0be6816e90aa1c9c",
+      "lowSrc": "faces102:02. Low/npc_walker_barami_low.glb",
+      "lowSha256": "6cbf92701ff558a3c0c9c09161dfc754621d77c2c3b2ee6f7172a83616578d4a",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_isol.glb",
-      "src": "sleeves96a:01. High/npc_walker_isol.glb",
-      "sha256": "bc067cd9cf641099925c4ecc02b858977548954e998ae379bb17f8a1aec5eff5",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_isol_low.glb",
-      "lowSha256": "4feecc9f5afea5b50dee2abf73a4cc5973c8d6cd395af61c2c302351880e4d2d",
+      "src": "faces102:01. High/npc_walker_isol.glb",
+      "sha256": "372a16a56d9d28633208c7868f398a90eb3af39e6cf479dd9f92caf1cf71ad60",
+      "lowSrc": "faces102:02. Low/npc_walker_isol_low.glb",
+      "lowSha256": "72445630c8765207fe9ac50fb070f7b44220d8a78912a5b9786fc9f91823809d",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_garam.glb",
-      "src": "arms89:01. High/npc_walker_garam.glb",
-      "sha256": "82f6a2861243545c51faab584f918fcd5bf7b481f8f6f3b8f07d4c71d9214af8",
-      "lowSrc": "arms89:02. Low/npc_walker_garam_low.glb",
-      "lowSha256": "2757b5ba91be4c352439d3ebd3b9364beb4337683017d7bbb6f48d840cf8f480",
+      "src": "faces102:01. High/npc_walker_garam.glb",
+      "sha256": "5b42197ee0752898426a2e192dd96080c888cd7add80fddaca2f6d571cbd9954",
+      "lowSrc": "faces102:02. Low/npc_walker_garam_low.glb",
+      "lowSha256": "f6382303c910ed5589c603107d6411f5672f22093afd12eb5dbc061d75a5ad43",
       "precompressed": true
     },
     {
@@ -8392,274 +8392,274 @@
     },
     {
       "out": "characters/npc_walker_bandi_off.glb",
-      "src": "sleeves96a:01. High/npc_walker_bandi_off.glb",
-      "sha256": "9e28f33da32af699f02eb1ee7df9d0214503dcc3724969adb3c687aff5ae8d45",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_bandi_off_low.glb",
-      "lowSha256": "f49ba44859f82381d9c0e231be5ce28ec62dbec5bdae9d335a154e8c559893a8",
+      "src": "faces102:01. High/npc_walker_bandi_off.glb",
+      "sha256": "b3aa5fa6e7c751ddd9508144e76f23b3c390a89ebc21d237bed8aa229337aa07",
+      "lowSrc": "faces102:02. Low/npc_walker_bandi_off_low.glb",
+      "lowSha256": "0d88aee0c64a3492068b9be735c8c8555502a370d34e6605bda1b1f8689da362",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_bandi_work.glb",
-      "src": "sleeves96a:01. High/npc_walker_bandi_work.glb",
-      "sha256": "1ff3d461f5c9cf25fd0c8aa2126a62dc5b55b91ee48a58af0ec90abec4659d59",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_bandi_work_low.glb",
-      "lowSha256": "49840e4f786c80ff55c03c9be6872d47afe1793de7508561d681a5deda12d3b0",
+      "src": "faces102:01. High/npc_walker_bandi_work.glb",
+      "sha256": "777a0e32227c2f2349af958c92e1d31d3f90c4ab05b5f8199072291997f4e29d",
+      "lowSrc": "faces102:02. Low/npc_walker_bandi_work_low.glb",
+      "lowSha256": "642d2c5df15249f3fd3530c19c51c1eb947980ad193fcdbb21eae8b5cf4b1855",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_bawi_off.glb",
-      "src": "sleeves96a:01. High/npc_walker_bawi_off.glb",
-      "sha256": "8e456b40e4725e9f9ace8e4bd49b0b0c815b09ec29d9ff2b03c9b803b740100c",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_bawi_off_low.glb",
-      "lowSha256": "7e0b2b57487480e7dafe4c301d987493e6f25af44cf0989b4f75e7c18e973c00",
+      "src": "faces102:01. High/npc_walker_bawi_off.glb",
+      "sha256": "da8d9ba15e3495aea254cd42db7b54be369ea92ada6d01f9f57c047d29a7f644",
+      "lowSrc": "faces102:02. Low/npc_walker_bawi_off_low.glb",
+      "lowSha256": "cd80b11e808ce9fef4c115f7d7584f796cb65b7ca75fa5155716b0ab66bf037b",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_bawi_work.glb",
-      "src": "sleeves96a:01. High/npc_walker_bawi_work.glb",
-      "sha256": "cc3cd2519c3dce651473cdd5419ac33466d8c30109c80dec836930928083bbf2",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_bawi_work_low.glb",
-      "lowSha256": "006b82279950789bb6703ad66f1683aa75253359939cafa227a5de2104ae2963",
+      "src": "faces102:01. High/npc_walker_bawi_work.glb",
+      "sha256": "3099cddd3785d860fd5b276a85909156edb30880a62e897b9b4df387abf02e19",
+      "lowSrc": "faces102:02. Low/npc_walker_bawi_work_low.glb",
+      "lowSha256": "627747173005cd885069a0458433af17fa8a5bd3d843266401c4f01d6cb042a4",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_bitna_off.glb",
-      "src": "sleeves96a:01. High/npc_walker_bitna_off.glb",
-      "sha256": "1cb1dad57a4bae12fb665a0ba37b00d4591b1ca63d0e72e1eef9c21d654fd6f2",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_bitna_off_low.glb",
-      "lowSha256": "238e0349513f144333c1bf692140b9bbaf603f16c9be30ecd13cc71e7e8d505f",
+      "src": "faces102:01. High/npc_walker_bitna_off.glb",
+      "sha256": "6b79fa9a5fae23558da9ca906366e80c229f4432b4b92f1955a1c9be2e256238",
+      "lowSrc": "faces102:02. Low/npc_walker_bitna_off_low.glb",
+      "lowSha256": "e21b4109e6ae5d72e4d4820a3091114ab46cefb17ec926c2e5b3f9fbb0f28d32",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_bitna_work.glb",
-      "src": "sleeves96a:01. High/npc_walker_bitna_work.glb",
-      "sha256": "548b1a3fe2e00ffd3038af316c1316e44adc8a0cea23ee0736613b8f4f7cc41b",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_bitna_work_low.glb",
-      "lowSha256": "0e9c65e30c11d3b79768dfc0c812b977908991390bffebf7ceb6c4e177f2bd85",
+      "src": "faces102:01. High/npc_walker_bitna_work.glb",
+      "sha256": "f306823e3d9caa608276c727b3059b2e04a52ba27bcb53947192aff5bdc5ef7e",
+      "lowSrc": "faces102:02. Low/npc_walker_bitna_work_low.glb",
+      "lowSha256": "0b065a0a60b9bb1fdde595d4c4a8dea10569580f07e0fa92f26e8d6fe892171b",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_cheori_off.glb",
-      "src": "sleeves96a:01. High/npc_walker_cheori_off.glb",
-      "sha256": "01ac33d1d44be8267ecd5383eb15c88b79462d7377b483a166bb601eb5911e91",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_cheori_off_low.glb",
-      "lowSha256": "75c0cc274665abe9095408101723b2cf7492d116ba821ce096292d1e596753ea",
+      "src": "faces102:01. High/npc_walker_cheori_off.glb",
+      "sha256": "80dcfd201f7a9e681c8a2ca25daebd8e990ebc0afb45f5b7afaab89372f1635a",
+      "lowSrc": "faces102:02. Low/npc_walker_cheori_off_low.glb",
+      "lowSha256": "52b7d590e033c436cd4d67ef263012bc5daa269937bd745cef3f52e5a8d3d8e0",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_cheori_work.glb",
-      "src": "sleeves96a:01. High/npc_walker_cheori_work.glb",
-      "sha256": "5d87bb38dfbc2788b1796a2e30d2c5e617a77d7b79d9cf8622cf86e7a96f8ca5",
-      "lowSrc": "sleeves96a:02. Low/npc_walker_cheori_work_low.glb",
-      "lowSha256": "f7a4a64b907b6ca0d7b02d97831d5cafb21dd79dd78388757037cd9e19f5c187",
+      "src": "faces102:01. High/npc_walker_cheori_work.glb",
+      "sha256": "e63156860dd10aeea39fafd9bc6399d02060aa4ab8f2f788faeb9b051c6be293",
+      "lowSrc": "faces102:02. Low/npc_walker_cheori_work_low.glb",
+      "lowSha256": "bf2c7409ae456780999679828c75d38d4f72af042797f358d52e129ac000330c",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_garak_off.glb",
-      "src": "garak94:01. High/npc_walker_garak_off.glb",
-      "sha256": "56efcbbf52ef9528721f666b03528107b854dd3c363b5b930d63d1ca402917ae",
-      "lowSrc": "garak94:02. Low/npc_walker_garak_off_low.glb",
-      "lowSha256": "11fddb7e745aa7da208f6425665519e1d6bf375affb9b68c911f86327d3df6de",
+      "src": "faces102:01. High/npc_walker_garak_off.glb",
+      "sha256": "5f1229ec315736657008588fe610774ef57968d2b948fe73e881be228e8c53b6",
+      "lowSrc": "faces102:02. Low/npc_walker_garak_off_low.glb",
+      "lowSha256": "d506f18082dfb7c07923b1cec185c8d689a4c2fd30895378f7c06cbd5d5f3710",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_garak_work.glb",
-      "src": "garak94:01. High/npc_walker_garak_work.glb",
-      "sha256": "14bd17d6f14bd9b98ce3d0f63323c516e274f700c938f66663ad2950116fc365",
-      "lowSrc": "garak94:02. Low/npc_walker_garak_work_low.glb",
-      "lowSha256": "f4f906a8109889e494847e8d4fd2fd91be1dbbcb8aea1cb02481836dd7ef7918",
+      "src": "faces102:01. High/npc_walker_garak_work.glb",
+      "sha256": "e3811c5d17528ca99d3e479ba02316791637b250ab146e3de4a2cf00bbe232b1",
+      "lowSrc": "faces102:02. Low/npc_walker_garak_work_low.glb",
+      "lowSha256": "def6fe988d1cf111d01995b5ea2b3a54a8f854a7812128f93d2c24a3e7af24d5",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_goeun_off.glb",
-      "src": "arms89:01. High/npc_walker_goeun_off.glb",
-      "sha256": "fae6ba04b810f3bf9b3cdcf2dd14d37407ab7636c64bb3bb4eba807abba98360",
-      "lowSrc": "arms89:02. Low/npc_walker_goeun_off_low.glb",
-      "lowSha256": "7c8d5554da9d2a4662f5dc474abf10cbc8101694a31b1daaaa9425582740f64a",
+      "src": "faces102:01. High/npc_walker_goeun_off.glb",
+      "sha256": "59b863c2086307b24af5e28f195ae442f277d8d13ef55e80798291ed32d36035",
+      "lowSrc": "faces102:02. Low/npc_walker_goeun_off_low.glb",
+      "lowSha256": "db7f90d84c40de3d05e6623527294e26d54097e0d0125136732d0cda9f1235b0",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_goeun_work.glb",
-      "src": "arms89:01. High/npc_walker_goeun_work.glb",
-      "sha256": "7a6d445959c83ac2eccb647bc8164d8520c8b42c12f3a57f6ee90afc66199032",
-      "lowSrc": "arms89:02. Low/npc_walker_goeun_work_low.glb",
-      "lowSha256": "8194d6ff85940368ffa4d9cc6ecd85655d415df0d14c461ca999939e4b751bc5",
+      "src": "faces102:01. High/npc_walker_goeun_work.glb",
+      "sha256": "8dce905241dee848f112d14b0c8b2477e2be3ae633296deef896ab3f15cb789d",
+      "lowSrc": "faces102:02. Low/npc_walker_goeun_work_low.glb",
+      "lowSha256": "a5ee2b1fce8e704c1a7c7d038c26835547b6a93ccd1c171fd9e2ef80dec93e1b",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_handeul_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_handeul_off.glb",
-      "sha256": "2a22bb2c18de8a0306e87abb69841ce170e006e546a3a171b3a5c31ca3038da4",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_handeul_off_low.glb",
-      "lowSha256": "cd38fb39bd5505afa061038575fca6e8a6b63925da7d3e15118bf041e75cc674",
+      "src": "faces102:01. High/npc_walker_handeul_off.glb",
+      "sha256": "e65a71834f89dc5a479c7d10f1be648124c44b7470c4609eb1d2fb2c9d9a1f47",
+      "lowSrc": "faces102:02. Low/npc_walker_handeul_off_low.glb",
+      "lowSha256": "792f9dfb36d9d288cb1dd4cbc9e29188f30a5f8c4a58810b14dbd79cd8a3918a",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_handeul_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_handeul_work.glb",
-      "sha256": "f4593520194cbdaeb6d0a09197128d202e8d01f1b670f7a7b679229f05bec390",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_handeul_work_low.glb",
-      "lowSha256": "307bbab8a2b4c019b67ab2bc3262dba76ef347c2d652a216272c060cf715d336",
+      "src": "faces102:01. High/npc_walker_handeul_work.glb",
+      "sha256": "f287b24a95083d6bc6b6f8f19d01ae755a7044184e6b3f2c630586d0bf3a28ab",
+      "lowSrc": "faces102:02. Low/npc_walker_handeul_work_low.glb",
+      "lowSha256": "a70316ad3c649e7157212c28be782c62ebe095031129eb17594adf4c453643f6",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_hangyeol_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_hangyeol_off.glb",
-      "sha256": "52a68a3d41d850c5c14059c81461c1f3530af7447702bf6309ee32629b5f1895",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_hangyeol_off_low.glb",
-      "lowSha256": "34e4943262a820531133ded3b117cb8ececa4aa364fedf26bd488d05042024ee",
+      "src": "faces102:01. High/npc_walker_hangyeol_off.glb",
+      "sha256": "000c01fb61f8b1ccb3a27967aadf9804fb950c6d59af9c43b74fe4e8cc8d5174",
+      "lowSrc": "faces102:02. Low/npc_walker_hangyeol_off_low.glb",
+      "lowSha256": "ae2cb7432a3a86ef9629911bf2bdd81288d21c70f551ff348187e3dcb63e205c",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_hangyeol_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_hangyeol_work.glb",
-      "sha256": "977c6bae76638b686058a390e9e854adba1f2be214ab9fd706b444d8664448c5",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_hangyeol_work_low.glb",
-      "lowSha256": "f6f8f4253f17b87fc22b4f711b6c2731fa46bbee5ff4541cba1e1399ce28fe31",
+      "src": "faces102:01. High/npc_walker_hangyeol_work.glb",
+      "sha256": "ca6bd175dd492580662bfe0affa98256553eebf01506f744c8ccf140f994439c",
+      "lowSrc": "faces102:02. Low/npc_walker_hangyeol_work_low.glb",
+      "lowSha256": "758efc12c607b0de33964e767bd9e89c5657ef634ff54c6053d31f318689f482",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_kkotnim_off.glb",
-      "src": "arms90:01. High/npc_walker_kkotnim_off.glb",
-      "sha256": "3df07747aeee8ecf5fb84038d637c5655eb4bdeb303d8d5e7e3cd52404a2c08a",
-      "lowSrc": "arms90:02. Low/npc_walker_kkotnim_off_low.glb",
-      "lowSha256": "bb3503b3074e0b6e413c15711e748a0abca2379c0b7f6b58ebc8de74f5c2c349",
+      "src": "faces102:01. High/npc_walker_kkotnim_off.glb",
+      "sha256": "276bde94acc5c7f3c308b4b52be5b322d07a13e7fda5215a2c3bcf2db4f888a4",
+      "lowSrc": "faces102:02. Low/npc_walker_kkotnim_off_low.glb",
+      "lowSha256": "a4ad7e0f8974b21cb9f342586c7a70888091c3ea1467f576db8f5b70cf901318",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_kkotnim_work.glb",
-      "src": "arms90:01. High/npc_walker_kkotnim_work.glb",
-      "sha256": "643230b314c90fb048ea020c1fa75ddca8028365806a82d5313411e37fe8ee8c",
-      "lowSrc": "arms90:02. Low/npc_walker_kkotnim_work_low.glb",
-      "lowSha256": "367ee832fc6623a5ac518d8175ca42a8eac5eef1c51fdb3fede2adeb55cd0a8f",
+      "src": "faces102:01. High/npc_walker_kkotnim_work.glb",
+      "sha256": "0652d4b5a064a9bbd03ffd4588d866dd5b76f48f7c9dd8be6bbf0ea2ea046948",
+      "lowSrc": "faces102:02. Low/npc_walker_kkotnim_work_low.glb",
+      "lowSha256": "5ed7ff9f25ab6a2bf5fc8b5b9d6be1cbb22b3a5d14386688626d5c99bb48ad07",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_kongi_off.glb",
-      "src": "arms90:01. High/npc_walker_kongi_off.glb",
-      "sha256": "201dc80dbf9b205dacde670efc7969eeae32f38efeecabfce61c27266e9d4f1e",
-      "lowSrc": "arms90:02. Low/npc_walker_kongi_off_low.glb",
-      "lowSha256": "53d543b50823ad53ce2e0335774f70ebc769bf78177fd3b4c4156cb3bdc0c7a6",
+      "src": "faces102:01. High/npc_walker_kongi_off.glb",
+      "sha256": "48b5f556a09a84bcdcf8ed881f8b0b7efdb3b2d188bd1b8d93fe020e47cca88c",
+      "lowSrc": "faces102:02. Low/npc_walker_kongi_off_low.glb",
+      "lowSha256": "e634495b3e553f1b88dd71e6aaf801b045447465c7fcecdbef1b926299301de3",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_kongi_work.glb",
-      "src": "arms90:01. High/npc_walker_kongi_work.glb",
-      "sha256": "867cda908dae8ee95f73895be7f80f42659c3b465da79eda34bdb6979a548f0e",
-      "lowSrc": "arms90:02. Low/npc_walker_kongi_work_low.glb",
-      "lowSha256": "986d8ea1662667a2c45dd12d6b71fbc7eeb7ba0d199ccc6f563ecad6ff1d5a0b",
+      "src": "faces102:01. High/npc_walker_kongi_work.glb",
+      "sha256": "3bc4fcdcceab7003713551d68084ace32b01799402ccbc4271f0bc7c025bb82e",
+      "lowSrc": "faces102:02. Low/npc_walker_kongi_work_low.glb",
+      "lowSha256": "a70635f6d503bb8d277ea524ba2b4054b97fc3254a695544d7f72d1c4f491b1e",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_maru_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_maru_off.glb",
-      "sha256": "6b508e6f6061f03664503976fcafb2f5646b807408c4ac7e36b019814755c613",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_maru_off_low.glb",
-      "lowSha256": "b455e56132d6d3fddcf37819a44f67c00c7a1d6ec1fbc0e498d757b3aac38e8d",
+      "src": "faces102:01. High/npc_walker_maru_off.glb",
+      "sha256": "58c8d9947f586fbfaca5286666b4c82bcaffe88c0190fbcc4dfe3c87cf92ee8c",
+      "lowSrc": "faces102:02. Low/npc_walker_maru_off_low.glb",
+      "lowSha256": "782f5d14ff6bb4b1ec52458affbcfbbf087a96660eaeb2420478e03bb52089e0",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_maru_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_maru_work.glb",
-      "sha256": "dab421dd18dc450916ef74f843a612c3ba5173c7af8cc6212d7f89d6d76388f1",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_maru_work_low.glb",
-      "lowSha256": "c467156c9a7c113441c1775696fd0e3a9833bdfa2c15110a1cebf5a4f98ed010",
+      "src": "faces102:01. High/npc_walker_maru_work.glb",
+      "sha256": "09a8be8b6d4205cf7c6d3b3a35a0b39c0636a52e9524de4f6aaa829e896d52e6",
+      "lowSrc": "faces102:02. Low/npc_walker_maru_work_low.glb",
+      "lowSha256": "049602718b4be551d475fd9002ede3da1d23e44626cb9fdb855db0e77e209e68",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_mulgyeol_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_mulgyeol_off.glb",
-      "sha256": "446d6fcb80e63f7b994cce271be36ed5e2498c6a655135db75ceeab20d72e812",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_mulgyeol_off_low.glb",
-      "lowSha256": "e2020943a9d4f85a1aef26e353db3344f39ce3639b20d70614bec3425f780b36",
+      "src": "faces102:01. High/npc_walker_mulgyeol_off.glb",
+      "sha256": "a6a11c75fc27948054f834d5281940a23d111c7cd88604ec198f598b5283a0ec",
+      "lowSrc": "faces102:02. Low/npc_walker_mulgyeol_off_low.glb",
+      "lowSha256": "781818de706605ea7f39ea776e8cb78914c0b86070466e2af35a1b06ba4437e4",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_mulgyeol_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_mulgyeol_work.glb",
-      "sha256": "c5c1acabce0e27337f499afc87d50f3ec19692bd14af7ee5b76c658b38cac0f4",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_mulgyeol_work_low.glb",
-      "lowSha256": "48df0a2f6891a37ec282c439ef75b91ef351db95e5f094ccd56c18083c224ac5",
+      "src": "faces102:01. High/npc_walker_mulgyeol_work.glb",
+      "sha256": "1456d080761ade2548d52a02f68b0e6d70094a8fc2a5d5cb81582fb06b3a3017",
+      "lowSrc": "faces102:02. Low/npc_walker_mulgyeol_work_low.glb",
+      "lowSha256": "3b7dfd26f3b101b090e7240fe4a8bcaca10956b85d65348ceb4812cd445fd6c2",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_neuti_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_neuti_off.glb",
-      "sha256": "d0356f0a51ff5be66ab3c3b4ab4194de7a9ea7ee2299af2b03ca2b41ce35cbec",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_neuti_off_low.glb",
-      "lowSha256": "9c0880369986fb919f6a20bc1bba07f70772b8eba41012378339d647619426d9",
+      "src": "faces102:01. High/npc_walker_neuti_off.glb",
+      "sha256": "3911ec58ab930e0f76ba3b5ee19b633ffbb082560fc8443928ee3548aa930747",
+      "lowSrc": "faces102:02. Low/npc_walker_neuti_off_low.glb",
+      "lowSha256": "a4dd004c234aefc763ced16f9daf6808685fbaea70d598b77bafac434a993a3b",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_neuti_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_neuti_work.glb",
-      "sha256": "9df718f7b1ecc9cc7128417b630ab611b447cc87e096f464b954029ec2326c67",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_neuti_work_low.glb",
-      "lowSha256": "4f55e59d837f1fc109a2e3c7a6fea2320a38b3db1a10070e6bca057cb5fb1e60",
+      "src": "faces102:01. High/npc_walker_neuti_work.glb",
+      "sha256": "14e30f0f628bd12183f2520c9dc744edc50f7eb9836eeb533b11a81ca7783c1d",
+      "lowSrc": "faces102:02. Low/npc_walker_neuti_work_low.glb",
+      "lowSha256": "0e07780a44b19af160c692d102d9f04a1007c43599467c7171e597615935212c",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_useong_off.glb",
-      "src": "useong95:01. High/npc_walker_useong_off.glb",
-      "sha256": "ba54fda8b71f9d71fdb1d81c35f7c8029647f4078be8acf39bc0007f1bd6c57e",
-      "lowSrc": "useong95:02. Low/npc_walker_useong_off_low.glb",
-      "lowSha256": "c1fd3fe52ce8ff2a248e636c0fe8f3a92dbfb4b7226cc44b00f51f0363ebf9d0",
+      "src": "faces102:01. High/npc_walker_useong_off.glb",
+      "sha256": "9fe8b5b3b3b26df888187b1ee450c8514acb573c41ab5b2d90e6436e5ebc7975",
+      "lowSrc": "faces102:02. Low/npc_walker_useong_off_low.glb",
+      "lowSha256": "08a1666016441cec1f173957690e1478f52c45cf32a7cd74a78e24cfc72dd885",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_useong_work.glb",
-      "src": "useong95:01. High/npc_walker_useong_work.glb",
-      "sha256": "9937811d680a953024d02c3b20a68f2a41a98cce492cc1f572d83402d92966a1",
-      "lowSrc": "useong95:02. Low/npc_walker_useong_work_low.glb",
-      "lowSha256": "3639b0f52e0f04b91b38e16f6d84103403e95ee2ec4ad61ca741a82f3da32b62",
+      "src": "faces102:01. High/npc_walker_useong_work.glb",
+      "sha256": "d6aabfa99e705d54a50009238286216b5845f671c6ace516374dd610a515e35b",
+      "lowSrc": "faces102:02. Low/npc_walker_useong_work_low.glb",
+      "lowSha256": "f5f8259bdbbb447c955a2cfd142251fd0b8fb1ed0aceb9cbdb242e47d349e200",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_danbi_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_danbi_off.glb",
-      "sha256": "46f39c25007d108afcfff0acd535870c0b3b05029180f21a03f91e0909615777",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_danbi_off_low.glb",
-      "lowSha256": "9cd6297740532ea70cd5b1a98488aa4108386fb936575ff6d1f00af66a80458b",
+      "src": "faces102:01. High/npc_walker_danbi_off.glb",
+      "sha256": "6aa08c15daba44cd0655a873adb2163ead7ffca5aa448e95f71f74c7485bc964",
+      "lowSrc": "faces102:02. Low/npc_walker_danbi_off_low.glb",
+      "lowSha256": "d533c199aea23751ea10b074a923fb630518aa1f65cad2e0b5d86b437c04d2e7",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_danbi_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_danbi_work.glb",
-      "sha256": "1889d9d2e85740c5f99eae8ec25e91f330df9eb7d00fe264a2f6b139de8f24c8",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_danbi_work_low.glb",
-      "lowSha256": "db445b437b1cebf2873a454a5d0e8ec414b710496710901d3ca8243f71fa2338",
+      "src": "faces102:01. High/npc_walker_danbi_work.glb",
+      "sha256": "8da04812b739fb692c654bc1f51ce5f3585df4f14b75486a35e9ca7221fa8eae",
+      "lowSrc": "faces102:02. Low/npc_walker_danbi_work_low.glb",
+      "lowSha256": "b4205c81b7de7c8712d0b6d4feea7d78bc933434115b3ed300415814d63dcb9f",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_hansol_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_hansol_off.glb",
-      "sha256": "afa266cf9d383d3ae621ff16f62dfaf9ebad3b618d18a2174f6bdb6e22c65a42",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_hansol_off_low.glb",
-      "lowSha256": "65c312fe6ee270473794e620b69384ff9946c7355c0b1e90d42b93b32fb47783",
+      "src": "faces102:01. High/npc_walker_hansol_off.glb",
+      "sha256": "4f55090b9a72aa3a0f35c9bddf9c659273f200f1a2c52c72941e67fb096e5b9d",
+      "lowSrc": "faces102:02. Low/npc_walker_hansol_off_low.glb",
+      "lowSha256": "97b044b29fc7a400fd01f7580946c97e3d006844a14b7ac67fcc8668c7fd20d5",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_hansol_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_hansol_work.glb",
-      "sha256": "86bb40117c70f49003df447d7e50c904b1847b4f34c2a2f953b2bb499336cfdc",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_hansol_work_low.glb",
-      "lowSha256": "5022eca8609c7150ee7e12c323c32a7dcfc482bcab9fba90d2cbeb282839f17d",
+      "src": "faces102:01. High/npc_walker_hansol_work.glb",
+      "sha256": "1c61d39919469b7e8608bc3c53c78d0e711b532166f174002149d331970aa1e9",
+      "lowSrc": "faces102:02. Low/npc_walker_hansol_work_low.glb",
+      "lowSha256": "1f5d81674e958f6b865670cd4e8110036af93c88e9bd6136bc0221bb5bb193f1",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_saerom_off.glb",
-      "src": "sleeves96b:01. High/npc_walker_saerom_off.glb",
-      "sha256": "9f7b53aa216543b76b8926d7990e493fa265b4e6545b701551b10181eba2b5a6",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_saerom_off_low.glb",
-      "lowSha256": "b643ac083a21534022e64f59d7ab0c80d705e1ec582afd3dc4cd892362d64398",
+      "src": "faces102:01. High/npc_walker_saerom_off.glb",
+      "sha256": "b142015c6c36b59e0bccfccc5f72a3972f199034b79144d0fb096902f904ec6f",
+      "lowSrc": "faces102:02. Low/npc_walker_saerom_off_low.glb",
+      "lowSha256": "5d62675a7bd5b5e4b7b6753783acf7a8ef251a42ecc670d9c9a3dca9d94c3d1f",
       "precompressed": true
     },
     {
       "out": "characters/npc_walker_saerom_work.glb",
-      "src": "sleeves96b:01. High/npc_walker_saerom_work.glb",
-      "sha256": "dddc14602774e7b0102ec91519c35d7ec50f6b81efc5aa4049a5e11d92e08752",
-      "lowSrc": "sleeves96b:02. Low/npc_walker_saerom_work_low.glb",
-      "lowSha256": "3c1151f7285b6cd753ff98e1d49757892a7d071835a84d7ec2691eec7e575772",
+      "src": "faces102:01. High/npc_walker_saerom_work.glb",
+      "sha256": "71d7d3a4b77654673887d0adb43839b8397ba42baa9d40af5b6976e6ae9b384a",
+      "lowSrc": "faces102:02. Low/npc_walker_saerom_work_low.glb",
+      "lowSha256": "d0cc3730f1e23dc341c97b610f3906333c8c0f893e9171b97dbd6db638e2bd0f",
       "precompressed": true
     },
     {
@@ -9786,6 +9786,168 @@
       "src": "emote101:01. High/mark_flower.glb",
       "sha256": "709a81e36d50f11beddbebe9807e62360bd39efba61f3647cb04258c72d27706",
       "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_barami.glb",
+      "src": "faces102:01. High/npc_face_barami.glb",
+      "sha256": "b45ec19ec593e1b1c08184a5c96be09cfa172da7dbba5c590efbc00022047c58",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_duri.glb",
+      "src": "faces102:01. High/npc_face_duri.glb",
+      "sha256": "d097fb94d9ec3425135e7487cd99d4bd4004b887193ffec5c8256f8ba9f39c58",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_detective_oh.glb",
+      "src": "faces102:01. High/npc_face_detective_oh.glb",
+      "sha256": "a57a76654fa2f959ef73de11d7bce3f0bc64dc5aa8477d70758a0829fa9f8326",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_hansol.glb",
+      "src": "faces102:01. High/npc_face_hansol.glb",
+      "sha256": "6533baeeded7b37179cf4bb5bca4c1b4180bf20598ab30d700ea69f26f798eea",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_bawi.glb",
+      "src": "faces102:01. High/npc_face_bawi.glb",
+      "sha256": "78c8be72dc267d122e56a3e5a59a569a8521edec1442b69d71e62de78fc79f5c",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_cheori.glb",
+      "src": "faces102:01. High/npc_face_cheori.glb",
+      "sha256": "7babbeb30e1590a200dc8c4da22063542286e30c0fcae1f5d86181a697ba1707",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_saerom.glb",
+      "src": "faces102:01. High/npc_face_saerom.glb",
+      "sha256": "067498b11d275ca791b429b203e47da53103540b39694ca6aa42db86a65341da",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_mulgyeol.glb",
+      "src": "faces102:01. High/npc_face_mulgyeol.glb",
+      "sha256": "82e49cf5c06f67e8e92e6a10449add4391ae4ff69ddd90bcca5bd6e5605713d4",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_goeun.glb",
+      "src": "faces102:01. High/npc_face_goeun.glb",
+      "sha256": "580f33210944ddd0cb6b8d5aea95637b8a3613ead8a0f646fb25f25dcc99064b",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_bandi.glb",
+      "src": "faces102:01. High/npc_face_bandi.glb",
+      "sha256": "52acec8f9dc8cfc8728a1e3e4e5cf1506bd59601bf638a6d28d36aa8a502c5ea",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_daon.glb",
+      "src": "faces102:01. High/npc_face_daon.glb",
+      "sha256": "cfda7e688f11a2bbf3088dd2125b8eb1700715f7fe78ccdfe70c6809afaac365",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_handeul.glb",
+      "src": "faces102:01. High/npc_face_handeul.glb",
+      "sha256": "ff7b2acc0019d4bb72e68a500d2ce6695e3e63800c252b4a734d0431cd5806e3",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_isol.glb",
+      "src": "faces102:01. High/npc_face_isol.glb",
+      "sha256": "2b7356d0bd14e20d41beca872a2ad85303a0345a920ad67f89260333f53208de",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_kkotnim.glb",
+      "src": "faces102:01. High/npc_face_kkotnim.glb",
+      "sha256": "e8f56543f2b0415e54a0c6b8472d45dfa659fb87d043a602de453e47c1477e20",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_neuti.glb",
+      "src": "faces102:01. High/npc_face_neuti.glb",
+      "sha256": "81fb1a198a7a7fcc0a6bad0bc6df298469055ec614ee8ecf31f5f231fcefdef3",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_noeul_granny.glb",
+      "src": "faces102:01. High/npc_face_noeul_granny.glb",
+      "sha256": "97a9027ff2692cf9c6368153f14ea23f24924763fedfe1d0be278046b0a9cdee",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_useong.glb",
+      "src": "faces102:01. High/npc_face_useong.glb",
+      "sha256": "48638f91e0f10a5a1fdd65af5e25152f04a412e390683acc3511155a015797c1",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_danbi.glb",
+      "src": "faces102:01. High/npc_face_danbi.glb",
+      "sha256": "2cf8ee0bf7167914bed2610b483e4a08830e0580ac37d983153d77b505dd57c3",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_bomi.glb",
+      "src": "faces102:01. High/npc_face_bomi.glb",
+      "sha256": "cdcc3018d8056dc3ec789c5ed5ee48d32196505955d1ef560d7863e48ed23617",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_sea_grandpa.glb",
+      "src": "faces102:01. High/npc_face_sea_grandpa.glb",
+      "sha256": "3681a34cd308f8c0b9b5f8da4ccf6510f32cadaf64e02cd27928351a8124e83c",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_kongi.glb",
+      "src": "faces102:01. High/npc_face_kongi.glb",
+      "sha256": "5fc4a2d880236c187134bc614db0b04567c3ba9eb7bdd5b9cdc5b68fcbd528c6",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_garak.glb",
+      "src": "faces102:01. High/npc_face_garak.glb",
+      "sha256": "2115ddfc9e657b56bc0e975baa9c0328d8cd8e1671ca35ebbb425546d8db96d0",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_garam.glb",
+      "src": "faces102:01. High/npc_face_garam.glb",
+      "sha256": "30d028ed7a7d53a538e7453c7dd51480ad0ea39ea311c70788ad1274ed726276",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_hangyeol.glb",
+      "src": "faces102:01. High/npc_face_hangyeol.glb",
+      "sha256": "3d78d744d1d9c97c8078931afe37ff68f0832936b5f937d0f77aa6c304c3448e",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_haram.glb",
+      "src": "faces102:01. High/npc_face_haram.glb",
+      "sha256": "2f15499b39bc40f06947d9fbe52e57027acb81b0a7b78e8d19f02073c20cb406",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_bitna.glb",
+      "src": "faces102:01. High/npc_face_bitna.glb",
+      "sha256": "0e69dd3dd0f46768b8c548216cbcf1993d957ee47c42f1f2fbe9df54900d7e0b",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_maru.glb",
+      "src": "faces102:01. High/npc_face_maru.glb",
+      "sha256": "4e1122ec2767109baa30fa604c6b45a6a7d58fe50158f853d2cfca0feb399086",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -9866,6 +10028,7 @@
     "freshfish93": "93. Game Island freshwater fish 7 2026-11-03",
     "insect103": "103. Game Island insect catch 2026-11-06",
     "insect105": "105. Game Island insects new 12 2026-11-06",
-    "emote101": "101. Game Island emotes 2026-11-05"
+    "emote101": "101. Game Island emotes 2026-11-05",
+    "faces102": "102. Game Island resident faces 2026-11-05"
   }
 }
