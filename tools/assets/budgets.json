@@ -67,6 +67,10 @@
     "textures": 0
   },
   "fileOverrides": {
+    "taxi-v1/taxi_island.glb": { "meshes": 23, "nodes": 74 },
+    "taxi-v1/taxi_island_low.glb": { "meshes": 23, "nodes": 74 },
+    "taxi-v1/taxi_stop.glb": { "meshes": 2, "nodes": 7 },
+    "taxi-v1/taxi_stop_low.glb": { "meshes": 2, "nodes": 7 },
     "additions-v1/facilities/faces.glb": {
       "materials": 15
     },
