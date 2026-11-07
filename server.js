@@ -89,6 +89,7 @@ const IslandDaily = require('./lib/island-daily'); // v1.10.242 주민 날마다
 const IslandRoster = require('./public/plaza/island-roster'); // v1.10.215 주민 근무표
 const IslandProjects = require('./public/plaza/island-projects'); // v1.10.222 섬 가꾸기 사업
 const IslandStory = require('./public/plaza/island-story'); // S1 섬 이야기
+const IslandTalks = require('./lib/island-talks'); // v1.10.266 주민 대화 나무
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
@@ -2233,6 +2234,48 @@ const snowmenFor = (account, list) => (list || []).map(({ account: who, ...sm })
 const eventTitleGive = (account, id) => pointStore.questApply(account, 'eventTitles', (doc) => ((doc.titles || []).includes(id) ? null : { doc: { ...doc, titles: [...(doc.titles || []), id] } }));
 let contestKindTest = null; // (tests: the day's event held at one kind)
 const contestKindHeld = (c) => { if (!c || !contestKindTest) return c; const K = IslandContest.KINDS[contestKindTest]; return Object.assign(c, { kind: contestKindTest, game: contestKindTest, name: K.name, how: K.how, unit: K.unit, set: K.set, level: K.level, higher: K.higher }); };
+// v1.10.266 주민 대화 나무 (gamecenter-notes docs/resident-talk-trees-20261104.md 2·4절): a talk's place in its tree (in memory:
+// a restart ends the talks under way -- begun again), and the hints filled from the island as it is now. Every kind is true
+// or not given: the most weeds, today's good water (오늘의 물때), a night fish of the season, a fish missing from my 도감 that
+// bites now, an insect out in this layout, today's contest and a tip, my story book's next stop, the island's works
+const talkNow = new Map(); // `${account}|${n}` -> { topic, node, day }
+const WATER_NAMES = Object.freeze({ sea: '바깥 바다', bay: '윤슬만', river: '강', lake: '거울호수', pool: '폭포 웅덩이' });
+const WATER_AREA = Object.freeze({ bay: 'bay', lake: 'lake' }); // (where the 📍 goes for a water)
+const CONTEST_TIPS = Object.freeze({
+  whack: ['머리 내민 두더지만 노려요. 빈 구멍은 쳐도 점수가 없어요.', '눈은 가운데에 두고, 손은 먼저 뜬 쪽부터요.'],
+  klondike: ['뒤집힌 카드가 많은 줄부터 열어 줘요.', '빈 칸은 왕 자리예요. 함부로 채우지 말아요.'],
+  colorfind: ['가운데보다 가장자리부터 훑어봐요.', '다른 색은 늘 한 칸뿐이에요. 눈을 가늘게 떠요.'],
+  rhythm: ['소리보다 박자를 세며 눌러요. 하나, 둘!', '빨라질수록 손목 힘을 빼야 맞아요.'],
+  freecell: ['빈 칸 네 개는 아껴 둬요. 막히면 거기서 살아나요.', '에이스 위 카드부터 풀어 주면 길이 열려요.'],
+  stairs: ['멀리 보지 말고 다음 두 칸만 봐요.', '박자를 일정하게 누르면 떨어지지 않아요.'],
+  numbers: ['다음 숫자를 미리 눈으로 찾아 두고 눌러요.', '손가락은 화면 가운데에 두면 빨라요.'],
+  spider: ['같은 무늬끼리 먼저 이어 줘요.', '빈 줄이 생기면 큰 숫자 줄을 옮겨 둬요.'],
+  reaction: ['색이 바뀌기 전에 누르면 처음부터예요. 참아요.', '눈은 깜빡이지 말고 손끝에 힘을 살짝 실어요.'],
+});
+const areaNear = (x, z, max = 60) => { let best = null; let bd = max; for (const [key, a] of Object.entries(IslandTerrain.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { bd = d; best = { key, label: a.label, x: a.x, z: a.z }; } } return best; };
+const daySeed = (s) => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
+// what each hint kind can say now -> { kind: { vals, at? } } (a kind left out has nothing true to say)
+async function talkHints(account, n, pos, now) {
+  const day = kstDate(now); const pick = (list, salt) => list[daySeed(`${day}|${n}|${salt}`) % list.length]; const out = {};
+  const held = (await pointStore.worldValue('season'))?.day; const season = (pos ? (Number.isInteger(held) ? IslandTerrain.zoneSeason(IslandTerrain.seasonZoneAt(pos.x, pos.z), held) : IslandTerrain.seasonAt(pos.x, pos.z, now)) : null) || 'summer';
+  const night = IslandFishing.isNight(now);
+  { const ws = IslandWeeds.active(await weedState()); const count = new Map(); for (const w of ws) { const a = areaNear(w.x, w.z); if (a) count.set(a.key, (count.get(a.key) || 0) + 1); }
+    const top = [...count.entries()].sort((p, q) => q[1] - p[1])[0]; if (top) { const a = IslandTerrain.AREAS[top[0]]; out.weeds = { vals: { place: a.label }, at: { x: a.x, z: a.z, label: a.label } }; } }
+  { const hot = IslandFishing.hotOf(day); const w = n % 2 ? hot.fresh : hot.sea; const a = IslandTerrain.AREAS[WATER_AREA[w]]; out.fishHot = { vals: { place: WATER_NAMES[w] }, ...(a ? { at: { x: a.x, z: a.z, label: WATER_NAMES[w] } } : {}) }; }
+  { const nights = Object.keys(WATER_NAMES).flatMap((w) => IslandFishing.listFor(w, season).filter((id) => IslandFishing.SPECIES[id].night && IslandFishing.SPECIES[id].grade !== 'big').map((id) => [id, w]));
+    if (nights.length) { const [id, w] = pick(nights, 'night'); out.nightFish = { vals: { fish: IslandFishing.SPECIES[id].name, water: WATER_NAMES[w] } }; } }
+  { const mine = await pointStore.dexOf(account); const have = new Set(Object.keys(mine || {}).filter((k) => mine[k]));
+    const gaps = Object.keys(WATER_NAMES).flatMap((w) => IslandFishing.listFor(w, season, night ? undefined : false).filter((id) => IslandFishing.SPECIES[id].grade !== 'big' && !have.has(`fish_${id}`) && !have.has(id)).map((id) => [id, w]));
+    if (gaps.length) { const [id, w] = pick(gaps, 'gap'); const a = IslandTerrain.AREAS[WATER_AREA[w]]; out.dexGap = { vals: { name: IslandFishing.SPECIES[id].name, where: WATER_NAMES[w], time: IslandFishing.SPECIES[id].night ? '밤' : '낮' }, ...(a ? { at: { x: a.x, z: a.z, label: WATER_NAMES[w] } } : {}) }; } }
+  { const list = (await insectsNow(now)).list.filter((b) => !insectGone.has(b.id) && !insectCaught.has(b.id));
+    if (list.length) { const b = pick(list, 'insect'); const a = areaNear(b.x, b.z); out.insectNow = { vals: { insect: IslandInsects.SPECIES[b.species]?.name || b.species, place: a?.label || '섬 어딘가' }, at: { x: b.x, z: b.z, label: a?.label || '' } }; } }
+  { const ct = await contestState(); const kind = ['soon', 'live'].includes(ct.phase) ? ct.kind : ct.next?.kind || ct.kind; const name = ['soon', 'live'].includes(ct.phase) ? ct.name : ct.next?.name || ct.name;
+    if (kind && CONTEST_TIPS[kind]) out.contestTip = { vals: { game: name, tip: pick(CONTEST_TIPS[kind], 'tip') } }; }
+  { const doc = await storyDoc(account); const t = IslandStory.trackOf(doc, IslandTerrain, (k) => IslandCast.callOf(k)); const go = doc?.cur ? IslandStory.chapterOf(doc.cur)?.go : null;
+    if (t && go) { const who = go.talk != null ? go.talk : doc.cur.n; const place = go.talk != null ? IslandNpcs.hangout(go.talk) : (t.where || '').replace(/ · 밤에$/, ''); if (place) out.storyNext = { vals: { name: IslandCast.callOf(who), place }, ...(t.to ? { at: { x: t.to.x, z: t.to.z, label: place } } : {}) }; } }
+  { const v = IslandProjects.view(await projectsNow(), projectGoal); if (v.cur && v.cur.goal > v.cur.raised) out.project = { vals: { project: v.cur.name, left: `${(v.cur.goal - v.cur.raised).toLocaleString('ko-KR')}P` } }; }
+  return out;
+}
 async function contestState() { return contestKindHeld(IslandContest.phaseAt(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
 async function contestEnded() { return contestKindHeld(IslandContest.lastEnded(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
 // E1 매주 대회 (docs/season-events-design-20261025.md, A안): Saturday 낚시·Sunday 곤충, 10:00-22:00 -- each a three-minute
@@ -6689,7 +6732,7 @@ async function requestHandler(req, res) {
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
-    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain });
+    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain, hot: IslandFishing.isHot(kstDate(now), water) }); /* (v1.10.266 오늘의 물때) */
     const seq = IslandFishing.arrowSeq(); // (Codex 검토 #1: the arrows are the server's, checked at the pull)
     const arrows = IslandFishing.arrowsFor(c.species); // (3회차 4: the arrows at the bite, and the time for them)
     // v1.10.259 입질 게임 반반: the arrows or the 타이밍 막대 (a test server: the arrows unless a test asks -- /api/test/fish/mode)
@@ -7622,7 +7665,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/resident/talk' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
-    if (!talkable(n) || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift', 'accept', 'decline', 'story', 'storyYes', 'storyNo', 'final'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+    if (!talkable(n) || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift', 'accept', 'decline', 'story', 'storyYes', 'storyNo', 'final', 'talk'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
     const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
     const state = islandEvents.residents()[n]; const who = talkKey(session);
     if (state?.hold && state.hold.eventId !== who) {
@@ -7649,10 +7692,16 @@ async function requestHandler(req, res) {
     const moods = [weather === 'rain' && 'rain', weather === 'rainbow' && 'rainbow', phase === 'night' && starSoon && 'stars', ['live', 'soon'].includes(contest.phase) && 'contest', winter && 'winter'].filter(Boolean);
     const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
     // (대화창 새 단장: the choices are only what can be done today -- the day's story and gift not yet, an errand to do with them)
+    // (v1.10.266 대화 나무) their topics open to me today: done today or not, how many left today (3), the hint told or not
+    const talksToday = async () => {
+      const lvl = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); const doc = await storyDoc(account); const tm = (await pointStore.questDoc(account, 'talkmem')).doc || {};
+      const done = tm.day === day ? tm.done?.[n] || [] : []; const told = tm.day === day && tm.hintFrom?.[n] === day;
+      return { topics: IslandTalks.openTopics(n, { level: lvl, storyDone: Number(doc.chapters?.[n]) || 0 }).map((id) => ({ id, label: IslandTalks.labelOf(n, id), done: done.includes(id), fresh: !tm.last?.[n]?.[id] })), left: Math.max(0, IslandTalks.PER_DAY - done.length), hintTold: told };
+    };
     const sendTalk = async (view) => {
       const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(errandDay(), errandWalkers);
       const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
-      return sendJson(res, 200, { ...view, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${errandDay()}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
+      return sendJson(res, 200, { ...view, talks: await talksToday(), today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${errandDay()}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
     };
     // S1 이야기 부탁: their next chapter offered once my 호감도 has reached it (「할게요!」 starts it -- one on the island at a
     // time, 「다음에요」 keeps nothing), the islander it sends me to (that step done), back to them: their thanks and the story
@@ -7696,6 +7745,43 @@ async function requestHandler(req, res) {
           storyNote: { n, c: k, title: ch.title, note: ch.note.map((l) => IslandCast.fill(l, me)), piece: ch.piece } }));
       }
       return sendTalk(view(IslandCast.say(n, 'errandNone')));
+    }
+    // v1.10.266 대화 나무: { talk: <topic> } begins one (open to me, not done today, three a day at most); { talk, reply: i } my
+    // reply at the node the server has me at -- its +1 or 0 호감도, their next words; at an end its keepsake (one a day from each)
+    // or its hint, filled from the island now (once a day from each, a kind not told today by another), else a warm end
+    if (topic === 'talk') {
+      const id = String(body.talk || ''); const reply = body.reply == null ? null : Number(body.reply); const me = String(session.label || ''); const key = `${account}|${n}`;
+      const doc = await storyDoc(account); if (!IslandTalks.openTopics(n, { level, storyDone: Number(doc.chapters?.[n]) || 0 }).includes(id)) return sendError(res, 409, 'TALK_CLOSED', '아직 그 이야기는 꺼내기 어려워요.');
+      const tm = (await pointStore.questDoc(account, 'talkmem')).doc || {}; const doneToday = tm.day === day ? tm.done?.[n] || [] : [];
+      const fillAll = (lines, vals = {}) => lines.map((l) => Object.entries(vals).reduce((s, [k, v]) => IslandCast.slot(s, k, String(v)), IslandCast.fill(l, me)));
+      const base = { ok: true, n, name: c.name, role: c.role, reward: 0, errand: false, choices: true };
+      if (reply === null) {
+        if (doneToday.includes(id)) return sendError(res, 409, 'TALK_DONE', '그 이야기는 오늘 이미 나눴어요.');
+        if (doneToday.length >= IslandTalks.PER_DAY) return sendError(res, 409, 'TALK_TIRED', '오늘은 이야기 많이 했네요.');
+        const b = IslandTalks.begin(n, id, { again: Boolean(tm.last?.[n]?.[id]), pick: daySeed(`${day}|${n}|${id}`) });
+        const hints = IslandTalks.kindsOf(IslandTalks.topicOf(n, id)).length ? await talkHints(account, n, pos, now) : {}; const vals = Object.assign({}, ...Object.values(hints).map((h) => h.vals)); // (a hint's words met before its end: its values from the start)
+        talkNow.set(key, { topic: id, node: b.node, day, vals });
+        return sendTalk({ ...base, say: fillAll(b.say, vals), talk: { id, node: b.node, replies: b.replies, end: false }, affinity: affinityView(before[n] || 0) });
+      }
+      const cur = talkNow.get(key); if (!cur || cur.topic !== id || cur.day !== day) return sendError(res, 409, 'TALK_GONE', '이야기가 끊겼어요. 다시 말 걸어 주세요.');
+      const a = IslandTalks.answer(n, id, cur.node, reply); if (!a) return sendError(res, 400, 'BAD_REPLY', '잘못된 요청입니다.');
+      if (talkNow.get(key) !== cur) return sendError(res, 409, 'TALK_GONE', '이야기가 끊겼어요. 다시 말 걸어 주세요.'); cur.node = a.next; // (two replies at once: one moves it)
+      const after = a.delta ? await pointStore.affinityAdd(account, day, [{ n, delta: 1 }]) : before;
+      const v = IslandTalks.view(n, id, a.next); const extra = { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, me) };
+      if (!v.end) return sendTalk({ ...base, say: fillAll(v.say, cur.vals), talk: { id, node: v.node, replies: v.replies, end: false }, ...extra });
+      talkNow.delete(key);
+      const hints = await talkHints(account, n, pos, now); const told = tm.day === day ? tm.kinds || [] : []; const hintFromToday = tm.day === day && tm.hintFrom?.[n] === day;
+      const e = IslandTalks.endOf(n, id, a.next, (k) => Boolean(hints[k]) && !told.includes(k) && !hintFromToday);
+      let gift = null;
+      await pointStore.questApply(account, 'talkmem', (d) => {
+        const t = { ...(d || {}) }; if (t.day !== day) { t.day = day; t.done = {}; t.hintFrom = {}; t.kinds = []; t.giftFrom = {}; }
+        t.done = { ...t.done, [n]: [...new Set([...(t.done[n] || []), id])] }; t.last = { ...(t.last || {}), [n]: { ...(t.last?.[n] || {}), [id]: a.text } };
+        if (e.hint) { t.hintFrom = { ...t.hintFrom, [n]: day }; t.kinds = [...new Set([...(t.kinds || []), e.hint])]; }
+        if (e.gift && t.giftFrom?.[n] !== day) { gift = e.gift; t.giftFrom = { ...(t.giftFrom || {}), [n]: day }; t.keepsakes = [...(t.keepsakes || []), { n, name: e.gift, day }].slice(-200); }
+        return { doc: t };
+      });
+      const h = e.hint ? hints[e.hint] : null;
+      return sendTalk({ ...base, say: fillAll(e.say, h?.vals || cur.vals), talk: { id, node: e.node, replies: null, end: true }, hint: h ? { kind: e.hint, ...(h.at ? { at: h.at } : {}) } : null, gift, ...extra });
     }
     if (topic === 'how' || topic === 'rumor') {
       let say;
