@@ -341,15 +341,17 @@ test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.htm
   await shot('install-light'); await page.locator('#mTheme').selectOption('dark'); await shot('install-dark'); await page.locator('#mTheme').selectOption('light');
   await page.locator('#mInstallBtn').click(); expect(await page.evaluate(() => window.__prompted)).toBe(1); await expect(page.locator('#mInstallBtn')).toBeHidden();
   await expect(page.locator('#mChromeInstall')).toBeHidden(); // (a prompt came: no Chrome line)
-  // (Codex 251-260 #16) no prompt in 3 s (the island app's Custom Tab): a phone (Android) is asked to open it in Chrome to
-  // install, the menu line beside; in Chrome already (?install=1) the menu line only; a PC nothing
-  for (const q of ['', '?install=1']) {
-    const p = await context.newPage(); await p.goto(`/messenger.html${q}`); await expect(p.locator('#mLogin')).toBeVisible(); await p.waitForTimeout(3500);
+  // (Codex 251-260 #16; v1.10.263 two values) a phone (Android): from the island app's fallback (?install=1, its Custom Tab) the
+  // Chrome button at once; a plain visit with no prompt in 3 s the same; in Chrome itself (?install=chrome) the menu line only;
+  // the values it was decided on kept on it (data-why); a PC nothing
+  for (const [q, wait, button, line] of [['?install=1', 300, true, '크롬 메뉴 ⋮ → 앱 설치도 돼요'], ['', 3500, true, '크롬 메뉴 ⋮ → 앱 설치도 돼요'], ['?install=chrome', 3500, false, '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)']]) {
+    const p = await context.newPage(); await p.goto(`/messenger.html${q}`); await expect(p.locator('#mLogin')).toBeVisible(); await p.waitForTimeout(wait);
     if (!isMobile) { await expect(p.locator('#mChromeInstall')).toBeHidden(); await p.close(); continue; }
-    await expect(p.locator('#mChromeInstall')).toBeVisible(); await expect(p.locator('#mChromeInstall')).toContainText('크롬 메뉴 ⋮ → 앱 설치도 돼요');
-    await expect(p.locator('#mChromeInstallBtn')).toBeVisible({ visible: !q });
+    await expect(p.locator('#mChromeInstall')).toBeVisible(); await expect(p.locator('#mChromeInstallText')).toHaveText(line);
+    await expect(p.locator('#mChromeInstallBtn')).toBeVisible({ visible: button });
+    expect(JSON.parse(await p.locator('#mChromeInstall').getAttribute('data-why'))).toMatchObject({ install: q ? q.split('=')[1] : null, prompted: false, show: button ? 'button' : 'menu' });
     expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    if (process.env.SHOT_DIR && !q) await p.screenshot({ path: `${process.env.SHOT_DIR}/phone-chrome-install.png` });
+    if (process.env.SHOT_DIR && q) await p.screenshot({ path: `${process.env.SHOT_DIR}/phone-install-${q.split('=')[1]}.png` });
     await p.close();
   }
   // inside the installed window (display-mode: standalone): no button even when the browser offers

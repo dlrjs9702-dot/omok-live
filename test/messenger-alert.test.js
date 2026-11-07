@@ -50,9 +50,13 @@ test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그
   assert.equal(MA.appIntent('Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile', o, 'r_abc123'),
     'intent://island-dalmaru.onrender.com/messenger.html?room=r_abc123#Intent;scheme=https;S.browser_fallback_url=https%3A%2F%2Fisland-dalmaru.onrender.com%2Fmessenger.html%3Froom%3Dr_abc123%26install%3D1;end'); // (Codex #16: the fallback asks for the install)
   assert.equal(MA.appIntent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', o, 'r_abc123'), null);
-  // (Codex 251-260 #16) Android, not installed, no prompt in 3 s: open in Chrome to install; in Chrome already the menu line only
+  // (Codex 251-260 #16; v1.10.263 two values) Android: from the island app's fallback (install=1, a Custom Tab -- even one that
+  // reads as standalone) the Chrome button at once; in Chrome itself (install=chrome) the menu line only; a plain visit not
+  // installed the button; a prompt that came, an installed window or a PC nothing
   const fold = 'Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile';
-  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false }), { url: 'intent://island-dalmaru.onrender.com/messenger.html?install=1#Intent;scheme=https;package=com.android.chrome;end' });
-  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, asked: true }), { menuOnly: true });
-  for (const x of [{ ua: fold, standalone: true }, { ua: fold, prompted: true }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);
+  const button = { url: 'intent://island-dalmaru.onrender.com/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end', line: '크롬 메뉴 ⋮ → 앱 설치도 돼요' };
+  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false }), button);
+  for (const standalone of [false, true]) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone, prompted: false, install: '1' }), button);
+  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install: 'chrome' }), { menuOnly: true, line: '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)' });
+  for (const x of [{ ua: fold, standalone: true }, { ua: fold, prompted: true }, { ua: fold, prompted: true, install: '1' }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);
 });

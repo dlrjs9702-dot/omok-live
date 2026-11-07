@@ -359,7 +359,18 @@ function sendHerosurv(res) {
 function browserBlocked(req) {
   return !ALLOWED_BROWSERS.includes(classifyBrowser({ brands: parseSecChUa(req.headers['sec-ch-ua']), ua: req.headers['user-agent'] }));
 }
-function sendChromeOnly(res) { sendSimpleHtml(res, 403, 'Chrome 전용', 'Google Chrome으로 접속해 주세요. 아이폰은 Safari나 Chrome으로 접속할 수 있습니다.'); }
+// v1.10.263 (사용자 「섬과 메신저 둘 다 크롬으로만」): the notice helps on -- an Android phone gets 「크롬으로 열기」 (an intent to
+// Chrome itself, this same address), an iPhone the address and 「주소 복사」 (a small script of our own: no inline script)
+function sendChromeOnly(res, req = null) {
+  const ua = String(req?.headers['user-agent'] || ''); const host = String(req?.headers.host || '').replace(/[^\w.:-]/g, ''); const at = req ? new URL(req.url, 'http://x') : null;
+  const where = host && at ? `${host}${at.pathname}${at.search}` : '';
+  const android = /Android/i.test(ua) && where; const ios = /iPhone|iPad|iPod/i.test(ua) && where;
+  const more = android ? `<p><a class="go" href="${escapeAttr(`intent://${where}#Intent;scheme=https;package=com.android.chrome;end`)}">크롬으로 열기</a></p>`
+    : ios ? `<p>Chrome(또는 Safari)에서 열어 주세요.</p><p><input id="addr" readonly value="${escapeAttr(`https://${where}`)}"></p><p><button id="copyAddr" class="go" type="button">주소 복사</button></p><script src="/chrome-only.js"></script>` : '';
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Chrome 전용</title><style>body{font-family:system-ui,sans-serif;background:#111827;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;box-sizing:border-box}.box{max-width:460px;padding:30px;background:#1f2937;border-radius:20px;text-align:center}p{color:#d1d5db;line-height:1.6}.go{display:inline-block;padding:14px 22px;border-radius:14px;background:#2563eb;color:#fff;font-weight:800;text-decoration:none;border:0;font-size:1rem}input{width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:0;font-size:.9rem}</style></head><body><main class="box"><h1>Chrome 전용</h1><p>Google Chrome으로 접속해 주세요. 아이폰은 Safari나 Chrome으로 접속할 수 있습니다.</p>${more}</main></body></html>`;
+  res.writeHead(403, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(html), 'Cache-Control': 'no-store' }));
+  res.end(html);
+}
 
 function sendSimpleHtml(res, status, title, message) {
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeAttr(title)}</title><style>body{font-family:system-ui,sans-serif;background:#111827;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.box{max-width:460px;padding:30px;background:#1f2937;border-radius:20px;text-align:center}p{color:#d1d5db;line-height:1.6}</style></head><body><div class="box"><h1>${escapeAttr(title)}</h1><p>${escapeAttr(message)}</p></div></body></html>`;
@@ -4613,7 +4624,7 @@ async function requestHandler(req, res) {
   }
 
   if ((pathname === '/island/guest-entry' || pathname === '/guest-entry') && req.method === 'POST') { /* (v1.10.258: inside the island app's scope -- no out-of-scope Chrome bar; old files still post to /guest-entry) */
-    if (browserBlocked(req)) return sendChromeOnly(res);
+    if (browserBlocked(req)) return sendChromeOnly(res, req);
     if (!checkRateLimit(`guest-entry:${clientIp(req)}`, 20, 10 * 60 * 1000)) {
       return sendSimpleHtml(res, 429, '입장 제한', '입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
     }
@@ -8692,11 +8703,13 @@ async function requestHandler(req, res) {
     // and installs as an app of its own; the old ways in go there, their query along
     const moveTo = { '/': '/island/', '/island': '/island/', '/herosurv': '/island/herosurv/', '/herosurv/': '/island/herosurv/', '/island/herosurv': '/island/herosurv/' }[pathname];
     if (moveTo) { res.writeHead(pathname === '/' ? 302 : 301, securityHeaders({ Location: `${moveTo}${url.search}` })); return res.end(); }
-    if (pathname === '/island/') return browserBlocked(req) ? sendChromeOnly(res) : sendIndex(res, {});
-    if (pathname === '/island/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
+    if (pathname === '/island/') return browserBlocked(req) ? sendChromeOnly(res, req) : sendIndex(res, {});
+    if (pathname === '/island/herosurv/') return browserBlocked(req) ? sendChromeOnly(res, req) : sendHerosurv(res);
     if (pathname.startsWith('/island/herosurv/') && await serveStatic(res, pathname.slice('/island'.length), req)) return; // (the engine's worklets, asked for beside its page)
-    // 메신저 단독 창 ①: its own light page (no game code) -- not behind the Chrome gate (no 3D: Safari's home-screen app too)
+    // 메신저 단독 창 ①: its own light page (no game code); v1.10.263 (사용자 「둘이 동일하게 크롬으로만」) behind the island's
+    // Chrome gate too -- the same browsers (an iPhone as the island lets it), the 서랍 (?embed=1) opening wherever the island does
     if (pathname === '/messenger' || pathname === '/messenger.html') { // (v1.10.233: its photos shown from the page's own blobs)
+      if (browserBlocked(req)) return sendChromeOnly(res, req);
       // (메신저 정리 12절) ?embed=1 is the island app's 서랍: framed by our own page only -- the page alone stays unframable
       const embed = url.searchParams.has('embed'); const csp = securityHeaders()['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:");
       res.writeHead(200, securityHeaders({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(messengerTemplate), 'Cache-Control': 'no-store', 'Content-Security-Policy': embed ? csp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : csp, ...(embed ? { 'X-Frame-Options': 'SAMEORIGIN' } : {}) }));
