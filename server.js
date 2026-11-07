@@ -7589,6 +7589,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, ...(await storyView(account)) });
   }
   if (pathname === '/api/island/roster' && req.method === 'GET') return sendJson(res, 200, { ok: true, day: rosterDay() }); // (v1.10.215 근무표)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/talk-hints' && req.method === 'POST') { const session = requireSession(req, res); if (!session) return; const b = await parseJson(req); return sendJson(res, 200, { ok: true, hints: await talkHints(pointAccountForSession(session), Number(b.n) || 0, plazaPresence.get(session.token) || null, nowMs()) }); } // (v1.10.266: what each hint kind would say now)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/roster' && req.method === 'POST') { const b = await parseJson(req); rosterOn = b.on === true; rosterPin = typeof b.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.day) ? b.day : null; return sendJson(res, 200, { ok: true, day: rosterDay() }); }
   if (pathname === '/api/island/errands' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;

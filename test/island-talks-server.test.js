@@ -27,6 +27,24 @@ test('오늘의 물때: 날마다 바다 쪽 하나·민물 하나(모두 같음
   assert.ok(warm.rare / cold.rare > 1.3 && warm.rare / cold.rare < 1.6, JSON.stringify({ cold, warm })); assert.ok(Math.abs(warm.big - cold.big) < 0.004);
 });
 
+test('대화 힌트는 섬 지금 상태 그대로: 물때·밤 물고기·도감 빈칸·곤충·대회·사업, 이야기 책이 없으면 다음 갈 곳 없음', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-hints-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('힌트손님')); await req('/api/plaza/state', a, { x: 0, z: 6, yaw: 0, moving: false });
+  const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); const names = { sea: '바깥 바다', bay: '윤슬만', river: '강', lake: '거울호수', pool: '폭포 웅덩이' };
+  for (const n of [0, 1]) {
+    const h = (await req('/api/test/talk-hints', a, { n })).data.hints;
+    assert.equal(h.fishHot.vals.place, names[n % 2 ? F.hotOf(day).fresh : F.hotOf(day).sea]); // (봄이 the sea-side one, 해송 the fresh)
+    const night = Object.entries(F.SPECIES).find(([, s]) => s.name === h.nightFish.vals.fish); assert.ok(night && night[1].night, JSON.stringify(h.nightFish));
+    const gap = Object.entries(F.SPECIES).find(([, s]) => s.name === h.dexGap.vals.name); assert.ok(gap && gap[1].grade !== 'big' && ['낮', '밤'].includes(h.dexGap.vals.time)); // (nothing in my 도감 yet)
+    const bugs = (await req('/api/island/insects', a)).data; const list = bugs.insects || bugs.list || [];
+    if (h.insectNow) assert.ok(list.some((b) => Math.abs(b.x - h.insectNow.at.x) < 0.01 && Math.abs(b.z - h.insectNow.at.z) < 0.01), 'an insect out now');
+    assert.ok(h.contestTip.vals.game.endsWith('대회') && h.contestTip.vals.tip.length > 5);
+    assert.ok(/P$/.test(h.project?.vals.left || 'P'));
+    assert.equal(h.storyNext, undefined); // (no story book under way)
+  }
+});
+
 test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기·호감도 +1·선물 하루 한 번·잡초 힌트 참·하루 한 번·하루 세 주제·끊긴 대답 거절', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talks-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir); const { req } = server;
