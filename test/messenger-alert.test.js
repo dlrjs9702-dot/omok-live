@@ -58,6 +58,13 @@ test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그
   const fold = 'Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile';
   const copy = { copy: 'https://island-dalmaru.onrender.com/messenger', line: '크롬 앱을 열고 주소창에 붙여넣으면 메신저 앱을 설치할 수 있어요' }; const menu = { menuOnly: true, line: '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)' };
   for (const install of ['1', 'chrome']) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: true, prompted: false, install }), copy);
+  // (v1.10.268 총괄 「C만 시험」) the four ways to Chrome itself, each page telling its try
+  assert.deepEqual(MA.chromeTries(o), [
+    'intent://island-dalmaru.onrender.com/messenger.html?install=chrome&try=1#Intent;scheme=https;package=com.android.chrome;launchFlags=0x10000000;end',
+    'intent://island-dalmaru.onrender.com/messenger.html?install=chrome&try=2#Intent;scheme=https;package=com.android.chrome;launchFlags=0x18000000;end',
+    'googlechrome://navigate?url=https%3A%2F%2Fisland-dalmaru.onrender.com%2Fmessenger.html%3Finstall%3Dchrome%26try%3D3',
+    'intent://island-dalmaru.onrender.com/messenger.html?install=chrome&try=4#Intent;scheme=https;action=android.intent.action.VIEW;component=com.android.chrome/com.google.android.apps.chrome.Main;end',
+  ]);
   assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install: '1' }), copy);
   for (const install of [null, 'chrome']) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install }), menu);
   for (const x of [{ ua: fold, standalone: true }, { ua: fold, standalone: true, install: '1', appSeen: true }, { ua: fold, prompted: true }, { ua: fold, prompted: true, install: '1' }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);

@@ -5689,7 +5689,7 @@
   async function logout() {
     leavePhoto(); // cancel before waiting for the logout request, including a slow/offline response
     try { if (sessionToken) await api('/api/logout', { method: 'POST' }); } catch {}
-    expireSession('나갔습니다. 다시 이용하려면 로그인하거나 입장 파일을 여세요.');
+    expireSession('나갔습니다. 다시 이용하려면 로그인하세요.');
   }
 
   function gameName(type) {
@@ -6323,11 +6323,25 @@
     }, 12000);
   }
 
+  // v1.10.268 아이디 없는 계정 (사용자 「아이디 없는 계정은 정리해」): nickname, last entry, how many -- 「모두 막기」 is the administrator's
+  let adminEntryKeys = false;
+  function renderNoId(list) {
+    byId('noIdCount').textContent = String(list.length); byId('noIdRevokeAll').classList.toggle('hidden', !list.length);
+    byId('noIdList').replaceChildren(...(list.length ? list.map((k) => { const p = document.createElement('p'); p.className = 'smallMuted noIdRow'; p.textContent = `${k.label} · 마지막 접속 ${k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString('ko-KR') : '없음'} · 접속 ${Number(k.useCount || 0)}번`; return p; })
+      : [Object.assign(document.createElement('p'), { className: 'emptyState', textContent: '아이디 없는 계정이 없어요.' })]));
+  }
+  byId('noIdRevokeAll').addEventListener('click', async () => {
+    const n = byId('noIdCount').textContent;
+    if (!window.confirm(`아이디 없는 계정 ${n}명을 모두 막을까요?\n들어올 수 없게 되지만 포인트·집·기록은 남고, 「취소됨」에서 하나씩 복구할 수 있어요.`)) return;
+    try { const r = await api('/api/admin/keys/revoke-no-id', { method: 'POST', body: '{}' }); showToast(`${r.revoked}명을 막았어요.`); await loadGuestKeys(); } catch (err) { showToast(err.message, 4000); }
+  });
   async function loadGuestKeys() {
     if (sessionRole !== 'admin' || !sessionToken) return;
     const data = await api('/api/admin/keys');
     persistenceBadge.textContent = data.persistence === 'database' ? '영구 DB 저장' : '임시 서버 저장';
     persistenceBadge.classList.toggle('warn', data.persistence !== 'database');
+    adminEntryKeys = data.entryKeys === true; byId('issueFileForm').classList.toggle('hidden', !adminEntryKeys); byId('reissueNote').classList.toggle('hidden', !adminEntryKeys);
+    renderNoId((data.keys || []).filter((k) => !k.loginId && !k.revokedAt && !k.pendingAt));
     renderGuestKeys(data.keys || []);
     renderSignups((await api('/api/admin/signups')).signups || []);
     loadStorage().catch(() => {});
@@ -6422,7 +6436,7 @@
       const reissueBtn = document.createElement('button');
       reissueBtn.className = 'secondary tiny compactAction';
       reissueBtn.type = 'button';
-      reissueBtn.textContent = '재발급';
+      reissueBtn.textContent = '재발급'; reissueBtn.hidden = !adminEntryKeys; /* (v1.10.268: files only under tests and a local run) */
       reissueBtn.title = '새 파일 발급 · 이전 파일 즉시 무효화';
       reissueBtn.addEventListener('click', async () => {
         reissueBtn.disabled = true;
@@ -13275,8 +13289,23 @@
     byId('accountSub').textContent = `아이디 ${account.loginId}`;
     showAccountPane('account');
   }
+  // v1.10.268 아이디 저장 · 자동 로그인 (notes docs/login-keep-no-entry-file-20261107.md 2절): both off until turned on, kept on this
+  // device; the kept login is the messenger's device token (one localStorage key -- the messenger app logged in with it too)
+  // with the game's use: opening the app again brings 내 계정 (「게임 접속」 once), not the island itself
+  const DEVICE_KEY = 'gc.messengerDevice'; const local = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ''; if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch {} return ''; };
+  byId('loginRemember').checked = local('gc.loginRemember') === '1'; byId('loginKeep').checked = local('gc.autoLogin') === '1';
+  if (byId('loginRemember').checked && local('gc.loginId')) byId('loginIdInput').value = local('gc.loginId');
+  for (const [id, k] of [['loginRemember', 'gc.loginRemember'], ['loginKeep', 'gc.autoLogin']]) byId(id).addEventListener('change', () => { local(k, byId(id).checked ? '1' : ''); if (id === 'loginRemember' && !byId(id).checked) local('gc.loginId', ''); });
+  if (document.body.dataset.entryNotice) { const n = document.body.dataset.entryNotice; setTimeout(() => say(n, true), 0); }
+  let autoTried = false;
+  async function autoLogin() { // (once a tab: 접속 종료 back to 내 계정 is by the tab's own token)
+    if (autoTried || local('gc.autoLogin') !== '1' || !local(DEVICE_KEY)) return false; autoTried = true;
+    try { const d = await api('/api/account/device-login', { method: 'POST', headers: { 'X-Messenger-Device': local(DEVICE_KEY) }, body: '{}' }); accountToken.set(d.accountToken); showAccount(d.account); return true; }
+    catch (err) { if (err.status === 401) { local(DEVICE_KEY, ''); say('다시 로그인해 주세요.', true); } return false; }
+  }
   async function openAccountGate() { // the gate is shown: which part of it
-    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 이제 아이디와 비밀번호로도 로그인합니다. 설정해야 로그인할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.`; showAccountPane('setup'); return; }
+    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 입장 파일은 이제 쓰지 않아요. 아이디와 비밀번호를 정하면 로그인돼요.`; showAccountPane('setup'); return; }
+    if (!accountToken.get() && await autoLogin()) return;
     if (!accountToken.get()) { if (accountPane !== 'login' && accountPane !== 'signup') showAccountPane('login'); return; } // the tab in use stays
     try { showAccount((await accountApi('/api/account/me', null, 'GET')).account); }
     catch { accountToken.set(''); showAccountPane('login'); }
@@ -13299,8 +13328,11 @@
   byId('accountLoginForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
-      const data = await api('/api/account/login', { method: 'POST', body: JSON.stringify({ loginId: byId('loginIdInput').value, password: byId('loginPasswordInput').value }) });
+      const keepGame = byId('loginKeep').checked; const ua = navigator.userAgent;
+      const device = `${/Android/.test(ua) ? '안드로이드' : /iPhone|iPad/.test(ua) ? '아이폰' : /Windows/.test(ua) ? '윈도우' : /Mac OS/.test(ua) ? '맥' : '기기'} ${/Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : '브라우저'}`; /* (the messenger's way of naming it) */
+      const data = await api('/api/account/login', { method: 'POST', body: JSON.stringify({ loginId: byId('loginIdInput').value, password: byId('loginPasswordInput').value, keepGame, device, deviceKind: document.body.classList.contains('touchIsland') || matchMedia('(pointer: coarse)').matches ? 'phone' : 'pc' }) });
       byId('loginPasswordInput').value = ''; accountToken.set(data.accountToken); say(''); showAccount(data.account);
+      local('gc.loginId', byId('loginRemember').checked ? data.account.loginId : ''); if (data.deviceToken) local(DEVICE_KEY, data.deviceToken);
     } catch (err) { say(err.message, true); }
   });
   byId('accountSignupForm').addEventListener('submit', async (event) => {
@@ -13407,9 +13439,11 @@
   })();
   // (on the island too: the account this tab logged in with, if the messenger is theirs)
   if (accountToken.get()) accountApi('/api/account/me', null, 'GET').then((d) => messenger.show(d.account?.messenger === true)).catch(() => {});
-  byId('accountLogoutBtn').addEventListener('click', async () => {
-    await accountApi('/api/account/logout').catch(() => {});
-    messenger.show(false); accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
+  byId('accountLogoutBtn').addEventListener('click', async () => { // (v1.10.268: this device's kept login ends too -- next time the login screen)
+    const device = local(DEVICE_KEY);
+    await api('/api/account/logout', { method: 'POST', headers: { 'X-Account-Token': accountToken.get(), ...(device ? { 'X-Messenger-Device': device } : {}) } }).catch(() => {});
+    local(DEVICE_KEY, ''); messenger.show(false); accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
+    if (byId('loginRemember').checked && local('gc.loginId')) byId('loginIdInput').value = local('gc.loginId');
   });
   byId('accountPasswordBtn').addEventListener('click', () => {
     const form = byId('accountPasswordForm'); const open = form.classList.toggle('hidden') === false;
@@ -13422,16 +13456,6 @@
       await accountApi('/api/account/password', { current: byId('passwordCurrentInput').value, next: byId('passwordNextInput').value });
       event.target.reset(); event.target.classList.add('hidden'); byId('accountPasswordBtn').setAttribute('aria-expanded', 'false');
       say('비밀번호를 바꿨습니다.');
-    } catch (err) { say(err.message, true); }
-  });
-  // 입장 파일 받기 = 재발급: asked once, since the file got before stops working
-  byId('accountFileBtn').addEventListener('click', async () => {
-    if (!window.confirm('새 파일을 받으면 이전에 받은 입장 파일은 더 이상 쓸 수 없습니다. 새로 받을까요?')) return;
-    try {
-      const data = await accountApi('/api/account/entry-file');
-      const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([data.html], { type: 'text/html' })); link.download = data.fileName;
-      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-      say('새 입장 파일을 받았습니다. 이전 파일은 이제 쓸 수 없습니다.');
     } catch (err) { say(err.message, true); }
   });
   logoutBtn.addEventListener('click', requestLogout);

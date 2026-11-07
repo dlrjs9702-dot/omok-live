@@ -72,7 +72,7 @@ test('계정 API: 가입 신청 → 승인 대기 → 승인 → 로그인 → �
   const entry = async (form) => {
     const res = await fetch(base + '/guest-entry', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(form).toString() });
     const html = await res.text();
-    return { status: res.status, session: html.match(/data-session="([^"]+)"/)?.[1] || '', setup: html.match(/data-setup="([^"]*)"/)?.[1] || '', account: html.match(/data-account="([^"]*)"/)?.[1] || '' };
+    return { status: res.status, session: html.match(/data-session="([^"]+)"/)?.[1] || '', setup: html.match(/data-setup="([^"]*)"/)?.[1] || '', account: html.match(/data-account="([^"]*)"/)?.[1] || '', notice: html.match(/data-entry-notice="([^"]*)"/)?.[1] || '', html };
   };
   const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken;
 
@@ -142,17 +142,17 @@ test('계정 API: 가입 신청 → 승인 대기 → 승인 → 로그인 → �
   const played = await entry({ account: set.data.accountToken });
   assert.ok(played.session);
   await release(played.session);
-  // v1.10.190: the file still works, now only logging in -- 내 계정, the island by 「게임 접속」, one place at a time checked there
+  // v1.10.268 입장 파일 없애기: the file of an account with an id no longer logs in -- the first screen says to log in, the id half
+  // shown; 게임 접속 by the login as before (one place at a time); a stopped account's file: 「막힌 입장이에요」
   const again = await entry({ token: guest.key });
-  assert.equal(again.status, 200); assert.equal(again.session, ''); assert.equal(again.setup, '');
-  assert.equal((await call('/api/account/me', undefined, again.account)).data.account.loginId, 'file_guest');
-  const inGame = await entry({ account: again.account }); assert.ok(inGame.session);
-  const whilePlaying = await entry({ token: guest.key }); // (the file opened elsewhere while in the game: 내 계정 still, no 「이미 사용 중」)
-  assert.equal(whilePlaying.status, 200); assert.ok(whilePlaying.account);
-  assert.equal((await entry({ account: whilePlaying.account })).status, 409);
-  // a new file from 내 계정 ends the session of the old one (Codex)
-  assert.equal((await call('/api/account/entry-file', {}, set.data.accountToken)).status, 200);
-  assert.equal((await req('/api/session', inGame.session)).data.authenticated, false);
+  assert.equal(again.status, 200); assert.equal(again.session, ''); assert.equal(again.setup, ''); assert.equal(again.account, '');
+  assert.match(again.notice, /입장 파일은 이제 쓰지 않아요\. 아이디로 로그인해 주세요\(아이디: fil\*\*\*\)/); assert.ok(!again.html.includes('file_guest'));
+  const inGame = await entry({ account: set.data.accountToken }); assert.ok(inGame.session);
+  assert.equal((await entry({ account: set.data.accountToken })).status, 409);
+  await release(inGame.session);
+  assert.equal((await req(`/api/admin/keys/${guest.id}/revoke`, admin, {})).status, 200);
+  const stopped = await entry({ token: guest.key }); assert.equal(stopped.status, 403); assert.match(stopped.html, /막힌 입장이에요/);
+  assert.equal((await req(`/api/admin/keys/${guest.id}/restore`, admin, {})).status, 200);
 
   // a setup begun with a file the administrator then reissued is over (Codex)
   const late = await issue('늦은손님');

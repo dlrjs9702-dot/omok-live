@@ -44,12 +44,25 @@ test('회원가입 신청 → 승인 대기 안내 → 관리자 승인 → 로�
   const signup = (await api(request, '/api/admin/signups', admin)).data.signups.find((s) => s.loginId === id);
   expect((await api(request, `/api/admin/signups/${signup.id}/approve`, admin, {})).status).toBe(200);
 
+  // v1.10.268 아이디 저장 · 자동 로그인: off at first; turned on, kept on this device
+  await expect(page.locator('#loginRemember')).not.toBeChecked(); await expect(page.locator('#loginKeep')).not.toBeChecked();
+  await page.locator('#loginRemember').check(); await page.locator('#loginKeep').check();
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-login-checks.png` });
   await page.locator('#loginPasswordInput').fill('secret123');
   await page.locator('#accountLoginForm').getByRole('button', { name: '로그인' }).click();
   await expect(page.locator('#accountPanel')).toBeVisible();
   await expect(page.locator('#accountSub')).toHaveText(`아이디 ${id}`);
   await page.reload(); // the login stays in this tab
   await expect(page.locator('#accountPanel')).toBeVisible();
+  // a new tab (the app opened again): 내 계정 straight away by the kept login -- the island by 「게임 접속」 once
+  const tab = await page.context().newPage(); await tab.setExtraHTTPHeaders({ 'X-Forwarded-For': ip() }); await tab.goto('/');
+  await expect(tab.locator('#accountPanel')).toBeVisible({ timeout: 15000 }); await expect(tab.locator('#accountSub')).toHaveText(`아이디 ${id}`);
+  // 로그아웃: the kept login ends -- the login screen, only the id filled in
+  await tab.locator('#accountLogoutBtn').click(); await expect(tab.locator('#accountLoginForm')).toBeVisible();
+  await expect(tab.locator('#loginIdInput')).toHaveValue(id); await expect(tab.locator('#loginPasswordInput')).toHaveValue('');
+  const third = await page.context().newPage(); await third.setExtraHTTPHeaders({ 'X-Forwarded-For': ip() }); await third.goto('/');
+  await expect(third.locator('#accountLoginForm')).toBeVisible(); await expect(third.locator('#loginIdInput')).toHaveValue(id); await expect(third.locator('#accountPanel')).toBeHidden();
+  await third.close(); await tab.close();
   await page.getByRole('button', { name: '게임 접속' }).click();
   await expect(page.locator('#lobbyView')).toBeVisible();
   await expect(page.locator('#gateView')).toBeHidden();
@@ -82,16 +95,12 @@ test('아이디 없는 입장 파일 계정: 아이디·비밀번호 설정 뒤�
   await expect(page.locator('#lobbyView')).toBeVisible({ timeout: 15000 });
   const keys = (await api(request, '/api/admin/keys', admin)).data.keys;
   expect(keys.find((k) => k.id === issued.key.id).loginId).toBe(id);
-  // v1.10.190: the same file again elsewhere, while that one plays -- 내 계정 (no 「이미 사용 중」 yet); 「게임 접속」 is where it is checked
+  // v1.10.268 입장 파일 없애기: the same file again, now that it has an id -- no login; the first screen says to log in by the id
   const other = await browser.newContext(); const page2 = await other.newPage();
   await page2.setExtraHTTPHeaders({ 'X-Forwarded-For': ip() });
   await page2.setContent(issued.html);
-  await expect(page2.locator('#accountPanel')).toBeVisible({ timeout: 15000 });
-  await expect(page2.locator('#accountSub')).toHaveText(`아이디 ${id}`);
-  await expect(page2.locator('#lobbyView')).toBeHidden();
-  expect(new URL(page2.url()).pathname).toBe('/island/'); // (v1.10.256 주소 15절: the island app's own address)
-  await page2.getByRole('button', { name: '게임 접속' }).click();
-  await expect(page2.locator('body')).toContainText('이미 사용 중');
-  await context.close();
+  await expect(page2.locator('#accountLoginForm')).toBeVisible({ timeout: 15000 });
+  await expect(page2.locator('#accountMessage')).toHaveText(`입장 파일은 이제 쓰지 않아요. 아이디로 로그인해 주세요(아이디: ${id.slice(0, 3)}***)`);
+  await expect(page2.locator('#accountPanel')).toBeHidden(); await expect(page2.locator('#lobbyView')).toBeHidden();  await context.close();
   await other.close();
 });
