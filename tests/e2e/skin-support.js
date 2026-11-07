@@ -42,7 +42,7 @@ async function shopper(browser, request, label, points = 0, gender = 'male', pre
   // v1.10.14: the game starts after the resource pack is ready; scripted clicks before that would race the lobby opening
   // (265 흔들림: a context without gc.testClassic goes on to the island by itself -- its lobby may show only a moment, missed:
   // the game started either way)
-  await page.locator('#lobbyView:not(.hidden), #plazaStage:not(.hidden)').first().waitFor({ state: 'visible' }); /* (each matched only while shown) */
+  await page.locator('#lobbyView:not(.hidden), #plazaStage:not(.hidden)').first().waitFor({ state: 'visible', timeout: 60000 }); /* (each matched only while shown; the resource pack first -- 263·264 made it bigger, a busy run's fresh context past 15 s: skins.spec's 60 s) */
   return person;
 }
 
