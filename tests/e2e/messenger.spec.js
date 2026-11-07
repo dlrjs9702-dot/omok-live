@@ -368,9 +368,7 @@ test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.htm
     const p = await context.newPage(); await p.goto(`/messenger.html${q}`); await expect(p.locator('#mLogin')).toBeVisible(); await p.waitForTimeout(wait);
     if (!isMobile) { await expect(p.locator('#mChromeInstall')).toBeHidden(); await p.close(); continue; }
     await expect(p.locator('#mChromeInstall')).toBeVisible(); await expect(p.locator('#mChromeInstallText')).toHaveText(line);
-    await expect(p.locator('#mChromeInstallBtn')).toBeVisible({ visible: button });
-    await expect(p.locator('#mChromeTries [data-try]')).toHaveCount(4); await expect(p.locator('#mChromeTries')).toBeVisible({ visible: q === '?install=1' }); // (v1.10.268 「C만 시험」: install=1 only)
-    expect(JSON.parse(await p.locator('#mChromeInstall').getAttribute('data-why'))).toMatchObject({ install: q ? q.split('=')[1] : null, prompted: false, show: button ? 'copy' : 'menu' });
+    await expect(p.locator('#mChromeInstallBtn')).toBeVisible({ visible: button });    expect(JSON.parse(await p.locator('#mChromeInstall').getAttribute('data-why'))).toMatchObject({ install: q ? q.split('=')[1] : null, prompted: false, show: button ? 'copy' : 'menu' });
     expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     if (process.env.SHOT_DIR && q) await p.screenshot({ path: `${process.env.SHOT_DIR}/phone-install-${q.split('=')[1]}.png` });
     await p.close();
