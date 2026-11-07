@@ -43,13 +43,19 @@
   // may even read as standalone): 「크롬에서 열어 설치하기」 at once; install=chrome -- that button's Chrome itself: the
   // prompt's 「앱으로 설치」, or with none the menu line only; otherwise not installed and no prompt: the button. A prompt that
   // came always wins (its 「앱으로 설치」).
-  const CHROME_LINE = '크롬 메뉴 ⋮ → 앱 설치도 돼요'; const MENU_LINE = '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)'; const TAB_LINE = '또는 ⋮ → Chrome에서 열기'; /* (총괄 #413: a Custom Tab's ⋮ has no 앱 설치, it has Chrome에서 열기) */
-  function chromeInstall({ ua, origin, standalone, prompted, install = null }) {
+  // (v1.10.267 총괄, 사용자 「1번으로 가자」: inside the island app every link -- the messenger app's, Chrome's intent -- opened in
+  // the island app's own window (standalone, out of its scope), so no prompt ever came. Now: the address copied, to paste in
+  // Chrome. A real Chrome tab: the prompt's 「앱으로 설치」, or with none the menu line only -- no button.)
+  const MENU_LINE = '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)'; const COPY_LINE = '크롬 앱을 열고 주소창에 붙여넣으면 메신저 앱을 설치할 수 있어요';
+  const messengerUrl = (origin) => `${new URL(origin).origin}/messenger`;
+  // what the messenger page offers to install it on Android (null nothing): the island app's window (standalone, come by
+  // install=1/chrome, and no messenger app seen on this device) or a Custom Tab (install=1): copy the address; a Chrome tab: the
+  // menu line; the messenger app itself: nothing. A prompt that came always wins.
+  function chromeInstall({ ua, origin, standalone, prompted, install = null, appSeen = false }) {
     if (!/Android/i.test(String(ua || '')) || prompted) return null;
-    const url = chromeIntent(ua, origin);
-    if (install === '1') return { url, line: TAB_LINE };
-    if (install === 'chrome') return { menuOnly: true, line: MENU_LINE };
-    return standalone ? null : { url, line: CHROME_LINE };
+    if (standalone) return (install === '1' || install === 'chrome') && !appSeen ? { copy: messengerUrl(origin), line: COPY_LINE } : null;
+    if (install === '1') return { copy: messengerUrl(origin), line: COPY_LINE };
+    return { menuOnly: true, line: MENU_LINE };
   }
-  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall };
+  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall, messengerUrl, COPY_LINE };
 });

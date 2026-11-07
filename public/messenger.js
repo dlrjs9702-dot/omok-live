@@ -613,17 +613,23 @@
   // the Chrome line: install=1 at once (no waiting: the fallback comes only when there is no messenger app), else after 3 s
   // with no prompt; the values it was decided on kept on it and in the console (a phone where it fails tells why)
   const LINE_OFF = 'gc.messengerChromeLineOff'; let lineOff = false; try { lineOff = localStorage.getItem(LINE_OFF) === 'off'; } catch {}
+  // (v1.10.267 총괄) the messenger app opened here (its own window at its start_url): the day kept -- the island's 서랍, the same
+  // Chrome profile and origin, then no longer asks to install it; and the messenger app opened with install=1 is not taken for
+  // the island app's window
+  const APP_SEEN = 'gc.messengerApp'; let appSeen = false;
+  try { if (!EMBED && standalone() && location.pathname === '/messenger') localStorage.setItem(APP_SEEN, new Date().toISOString().slice(0, 10)); appSeen = Boolean(localStorage.getItem(APP_SEEN)); } catch {}
+  const copyAddress = async (url) => { try { await navigator.clipboard.writeText(url); showToast('주소를 복사했어요'); } catch { showToast(url, 8000); } }; /* (no clipboard: the address shown to copy by hand) */
   byId('mChromeInstallClose').addEventListener('click', () => { byId('mChromeInstall').classList.add('hidden'); try { localStorage.setItem(LINE_OFF, 'off'); } catch {} }); /* (v1.10.264: ✕ -- not again here; a true messenger app opened with install=1 may say it too) */
   let whySent = false;
   const chromeLine = (note = null) => {
-    const why = { ua: navigator.userAgent, standalone: standalone(), prompted: Boolean(installPrompt), install }; const c = window.MessengerAlert?.chromeInstall({ ...why, origin: location.origin });
-    const show = c ? (c.menuOnly ? 'menu' : 'button') : 'none'; const box = byId('mChromeInstall'); box.dataset.why = JSON.stringify({ ...why, show }); console.info('[messenger install]', box.dataset.why);
+    const why = { ua: navigator.userAgent, standalone: standalone(), prompted: Boolean(installPrompt), install, appSeen }; const c = window.MessengerAlert?.chromeInstall({ ...why, origin: location.origin });
+    const show = c ? (c.menuOnly ? 'menu' : 'copy') : 'none'; const box = byId('mChromeInstall'); box.dataset.why = JSON.stringify({ ...why, show }); console.info('[messenger install]', box.dataset.why);
     if (!whySent && /Android/i.test(navigator.userAgent)) { /* (v1.10.264 총괄: once, to the server's log -- no account, no room) */
       whySent = true; const modes = Object.fromEntries(['fullscreen', 'standalone', 'minimal-ui', 'browser'].map((m) => [m, Boolean(window.matchMedia?.(`(display-mode: ${m})`).matches)]));
       fetch('/api/messenger/install-why', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ standalone: why.standalone, modes, prompted: why.prompted, install, show, ref: String(document.referrer || '').replace(/[?#].*$/, '').slice(0, 40) }) }).catch(() => {});
     }
     if (!c || (lineOff && !note)) return false; byId('mChromeInstallBtn').classList.toggle('hidden', Boolean(c.menuOnly)); byId('mChromeInstallText').textContent = note || c.line; box.classList.remove('hidden');
-    if (c.url) byId('mChromeInstallBtn').onclick = () => { location.href = c.url; }; return true;
+    if (c.copy) byId('mChromeInstallBtn').onclick = () => copyAddress(c.copy); return true;
   };
   if (!EMBED) { if (install === '1') chromeLine(); else setTimeout(() => chromeLine(), 3000); }
   // (v1.10.263) in the island app's Custom Tab notices cannot be turned on: say where, with the same Chrome button
@@ -661,9 +667,10 @@
       }, 2000);
     });
     const HINT = 'gc.messengerInstallHint'; let off = false; try { off = localStorage.getItem(HINT) === 'off'; } catch {}
-    byId('mInstallHint').classList.toggle('hidden', off);
-    { const chrome = window.MessengerAlert?.chromeIntent(navigator.userAgent, location.origin); /* (v1.10.264 총괄, 폴드: Chrome itself, where its install comes -- the sure way) */
-      byId('mInstallHintChrome').classList.toggle('hidden', !chrome); if (chrome) byId('mInstallHintChrome').addEventListener('click', () => window.open(chrome, '_blank')); }
+    byId('mInstallHint').classList.toggle('hidden', off || appSeen); /* (v1.10.267: the messenger app already opened on this device -- no more asking) */
+    { const android = /Android/i.test(navigator.userAgent); /* (v1.10.267 총괄 「1번」: Chrome's intent opened in the island app's own window too -- the address copied instead, pasted in Chrome) */
+      byId('mInstallHintChrome').classList.toggle('hidden', !android);
+      if (android) { byId('mInstallHintText').textContent = window.MessengerAlert.COPY_LINE; byId('mInstallHintChrome').addEventListener('click', () => copyAddress(window.MessengerAlert.messengerUrl(location.origin))); } }
     byId('mInstallHintClose').addEventListener('click', () => { byId('mInstallHint').classList.add('hidden'); try { localStorage.setItem(HINT, 'off'); } catch {} });
   }
   try { new BroadcastChannel('gc-messenger').addEventListener('message', (event) => { if (event.data?.account && !accountToken.get() && !deviceToken.get()) { accountToken.set(event.data.account); start(); } }); } catch {}

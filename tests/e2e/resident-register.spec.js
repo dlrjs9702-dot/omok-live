@@ -21,10 +21,10 @@ test('이야기해요 말씨: 가람·노을 할머니·오 탐정, 소문과 �
   if (admin) { await world('time', 'day'); await world('weather', 'clear'); } // (the photos by day, no rain -- put back after)
   for (const n of [9, 4, 5]) { // 가람, 노을 할머니, 오 탐정
     await talkTo(n);
-    if (admin) { // (the photos: 이야기해요 → 섬 소문 있어요? in the talk window)
+    if (admin) { // (the photos: ⋯ 더 보기 → 섬 소문 있어요? in the talk window -- v1.10.267 대화 나무 3-0)
       const choice = (text) => page.locator('#plazaDialog .talkChoices button', { hasText: text });
       await revealTalk(page); if (await page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).count()) { await choice('다음에요').click(); await revealTalk(page); } // (an errand asked first: later)
-      await choice('이야기해요').click(); await page.waitForTimeout(400);
+      await choice('⋯ 더 보기').click(); await page.waitForTimeout(400);
       await Promise.all([page.waitForResponse((r) => r.url().includes('/api/island/resident/talk')), choice('섬 소문 있어요?').click()]); await revealTalk(page); await page.waitForTimeout(600);
       await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-rumor-${n}.png` });
     }

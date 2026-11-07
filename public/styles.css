@@ -2178,7 +2178,8 @@ body.touchIsland .islandCtl { display: flex; }
 .islandWalkBtn { right: 30px; bottom: 160px; width: 58px; height: 58px; }
 .islandRunBtn { right: 108px; bottom: 66px; width: 58px; height: 58px; }
 /* v1.10.263 감정 표현: the 😊 over 뛰기; the wheel -- two rings of eight on a PC (the inner first), a 4 x 4 grid on a phone */
-.islandEmoteBtn { right: 115px; bottom: 140px; width: 44px; height: 44px; font-size: 1.3rem; }
+.islandEmoteBtn { right: 37px; bottom: 290px; width: 44px; height: 44px; font-size: 1.3rem; } /* (v1.10.267 총괄, 폴드: over 뛰기 it sat on 🚲 -- now the right column's top, over 걷기 and the seat turns; a narrow phone's stick reaches left of 뛰기) */
+@media (max-height: 500px) { .islandEmoteBtn { right: 180px; bottom: 16px; } } /* (a phone on its side: no room up there -- low, left of 뛰기) */
 .emoteWheel { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(40, 30, 20, .16); }
 .emoteWheel.hidden { display: none; }
 .emoteRing { position: relative; width: min(460px, 94vmin); aspect-ratio: 1; border-radius: 50%; background: rgba(255, 246, 227, .5); border: 1px solid var(--isle-line); box-shadow: 0 6px 22px rgba(74, 56, 40, .28); }
@@ -3144,6 +3145,11 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 /* the choices: one balloon, a plain list; the one the keys or a finger are on bold with ▶ (the number keys still choose) */
 .plazaDialog.talkMode .talkChoices{gap:0;padding:8px 6px;border:0;border-radius:24px;filter:drop-shadow(0 0 .7px #b49a74) drop-shadow(0 0 .7px #b49a74);box-shadow:0 8px 20px rgba(74,56,40,.2)}
 .plazaDialog.talkMode .talkChoices::after{border:0}
+.islandGivenCell b{font-size:2rem;line-height:64px}
+/* v1.10.267 대화 나무: the last words and my reply faint above, a hint's paper ribbon under the end */
+.plazaDialog.talkMode .lostRequest .talkPast{margin:0;font-size:.86rem;opacity:.5;line-height:1.35}
+.plazaDialog.talkMode .lostRequest .talkPast.mine{text-align:right;font-style:italic}
+.plazaDialog.talkMode .lostRequest .talkHint{justify-self:start;margin:2px 0 0;padding:4px 12px;border-radius:6px;background:#fff3c8;color:#5a4320;font-size:.88rem;font-weight:700;box-shadow:0 1px 0 #d8c08a,0 2px 6px rgba(74,56,40,.15);transform:rotate(-1deg)}
 .plazaDialog.talkMode .lostRequest .talkChoices button{border:0;background:transparent;border-radius:12px;padding:8px 14px 8px 30px;font-size:1.02rem;font-weight:500;position:relative}
 .plazaDialog.talkMode .talkChoices button::before{content:"";counter-increment:choice}
 .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible){background:transparent;font-weight:800;outline:none;border:0}

@@ -153,14 +153,20 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 })
     .toEqual(isMobile ? [[`intent://${host}/messenger.html?install=1#Intent;scheme=http;S.browser_fallback_url=${encodeURIComponent(`http://${host}/messenger.html?install=1`)};end`, '_blank']] /* (Codex #16, v1.10.264: install=1 on the address and the fallback) */ : [['', '_blank']]);
   if (process.env.SHOT_DIR && isMobile) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-open-app.png` });
-  // (v1.10.264 총괄, 폴드) the 서랍's note: on Android 「크롬에서 설치」 -- Chrome itself, where its install comes; a PC none
+  // (v1.10.267 총괄 「1번」) the 서랍's note on Android: 「주소 복사」 -- the messenger's address, to paste in Chrome (Chrome's own
+  // intent opened in the island app's window too); a PC none
   { await expect(f.locator('#mInstallHint')).toBeVisible();
     await expect(f.locator('#mInstallHintChrome')).toBeVisible({ visible: Boolean(isMobile) });
     if (isMobile) {
-      await appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => { window.__opens = []; });
+      await expect(f.locator('#mInstallHintText')).toHaveText('크롬 앱을 열고 주소창에 붙여넣으면 메신저 앱을 설치할 수 있어요'); await expect(f.locator('#mInstallHintChrome')).toHaveText('주소 복사');
+      const frame = appHome.frames().find((x) => x.url().includes('embed=1'));
+      await frame.evaluate(() => { window.__copied = []; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__copied.push(t); } } }); });
       await f.locator('#mInstallHintChrome').click();
-      expect(await appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens)).toEqual([[`intent://${host}/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end`, '_blank']]);
-      if (process.env.SHOT_DIR) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-drawer-chrome.png` });
+      expect(await frame.evaluate(() => window.__copied)).toEqual([`http://${host}/messenger`]); await expect(f.locator('#toast, .toast').filter({ hasText: '주소를 복사했어요' }).first()).toBeVisible();
+      if (process.env.SHOT_DIR) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-drawer-copy.png` });
+      // the messenger app once opened on this device (same profile, same origin): the 서랍 no longer asks
+      await frame.evaluate(() => localStorage.setItem('gc.messengerApp', '2026-11-07')); await frame.evaluate(() => location.reload()); await expect(f.locator('#mInstallHint')).toBeHidden({ timeout: 20000 });
+      await frame.evaluate(() => localStorage.removeItem('gc.messengerApp'));
     }
   }
   if (!isMobile) { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
@@ -354,12 +360,15 @@ test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.htm
   // (Codex 251-260 #16; v1.10.263 two values) a phone (Android): from the island app's fallback (?install=1, its Custom Tab) the
   // Chrome button at once; a plain visit with no prompt in 3 s the same; in Chrome itself (?install=chrome) the menu line only;
   // the values it was decided on kept on it (data-why); a PC nothing
-  for (const [q, wait, button, line] of [['?install=1', 300, true, '또는 ⋮ → Chrome에서 열기'], ['', 3500, true, '크롬 메뉴 ⋮ → 앱 설치도 돼요'], ['?install=chrome', 3500, false, '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)']]) {
+  // (v1.10.267 총괄 「1번」: the Custom Tab -- install=1 -- the address to copy; a Chrome tab, plain or install=chrome, the menu
+  // line only, no button)
+  const COPY = '크롬 앱을 열고 주소창에 붙여넣으면 메신저 앱을 설치할 수 있어요'; const MENU = '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)';
+  for (const [q, wait, button, line] of [['?install=1', 300, true, COPY], ['', 3500, false, MENU], ['?install=chrome', 3500, false, MENU]]) {
     const p = await context.newPage(); await p.goto(`/messenger.html${q}`); await expect(p.locator('#mLogin')).toBeVisible(); await p.waitForTimeout(wait);
     if (!isMobile) { await expect(p.locator('#mChromeInstall')).toBeHidden(); await p.close(); continue; }
     await expect(p.locator('#mChromeInstall')).toBeVisible(); await expect(p.locator('#mChromeInstallText')).toHaveText(line);
     await expect(p.locator('#mChromeInstallBtn')).toBeVisible({ visible: button });
-    expect(JSON.parse(await p.locator('#mChromeInstall').getAttribute('data-why'))).toMatchObject({ install: q ? q.split('=')[1] : null, prompted: false, show: button ? 'button' : 'menu' });
+    expect(JSON.parse(await p.locator('#mChromeInstall').getAttribute('data-why'))).toMatchObject({ install: q ? q.split('=')[1] : null, prompted: false, show: button ? 'copy' : 'menu' });
     expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     if (process.env.SHOT_DIR && q) await p.screenshot({ path: `${process.env.SHOT_DIR}/phone-install-${q.split('=')[1]}.png` });
     await p.close();

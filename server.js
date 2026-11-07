@@ -89,6 +89,7 @@ const IslandDaily = require('./lib/island-daily'); // v1.10.242 주민 날마다
 const IslandRoster = require('./public/plaza/island-roster'); // v1.10.215 주민 근무표
 const IslandProjects = require('./public/plaza/island-projects'); // v1.10.222 섬 가꾸기 사업
 const IslandStory = require('./public/plaza/island-story'); // S1 섬 이야기
+const STORY_TALKS = new Map(require('./lib/island-story-talks.json').map((e) => [`${e.n},${e.ch}`, e])); // (v1.10.267 1-2: notes story/extra-20261104/final-7-story.json)
 const IslandTalks = require('./lib/island-talks'); // v1.10.266 주민 대화 나무
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
@@ -6871,7 +6872,8 @@ async function requestHandler(req, res) {
     const about = (d) => { if (d.kind !== 'fish' && d.kind !== 'insect') return {}; const n = DexNotes.DEX_NOTES[d.id]; const found = Boolean(mine[d.id]?.count);
       return { note: n ? { line: n.line, story: found ? n.story : null } : null, where: DexNotes.whereText(DexNotes.whereOf(d.id)), ...(d.kind === 'fish' ? { sizes: IslandFishing.SIZES[d.id.slice(5)] || null } : {}) }; };
     return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null, ...(d.kind === 'fish' ? { best: best[d.id.slice(5)] || null } : {}), ...about(d) })), found, total: IslandFishing.DEX.length,
-      titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })) });
+      titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })),
+      given: (((await pointStore.questDoc(account, 'talkmem')).doc || {}).keepsakes || []).map((k) => ({ n: k.n, from: IslandCast.RESIDENTS[k.n]?.name || '', name: k.name, day: k.day })).reverse() }); // (v1.10.267 받은 것: the talk trees' keepsakes, newest first)
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/mode' && req.method === 'POST') { // tests: the next casts' bite game ('arrows' | 'timing' | null)
     const session = requireSession(req, res); if (!session) return; const m = (await parseJson(req)).mode;
@@ -7729,9 +7731,12 @@ async function requestHandler(req, res) {
         if (!out?.doc) return sendError(res, 409, 'STORY_GONE', '지금은 받을 수 없는 이야기예요.');
         return sendTalk(view(IslandCast.say(n, 'errandYes'), { storyAccepted: { title: IslandStory.RESIDENTS[n][ch].title }, story: await storyView(account) }));
       }
+      // (v1.10.267 1-2: the chapter's 부탁 · 다녀왔어요 · 이야기 as a talk -- this chapter's trees, {me} filled, the page walks them;
+      // 받기 / 나중에 are storyYes / storyNo as before, the note's paper after the talk)
+      const treeOf = (c, part) => { const e = STORY_TALKS.get(`${n},${c}`)?.[part]; return e ? Object.fromEntries(Object.entries(e).map(([k, nd]) => [k, { ...nd, say: nd.say.map((l) => IslandCast.fill(l, me)) }])) : null; };
       if (st === 'offer') {
-        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.RESIDENTS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
-        return sendTalk(view(ch.offer, { storyOffer: { title: ch.title, task: ch.task, where: t.where } }));
+        const ch = IslandStory.RESIDENTS[n][Number(doc.chapters?.[n]) || 0]; const storyTalk = treeOf(Number(doc.chapters?.[n]) || 0, 'offer'); const t = IslandStory.trackOf({ cur: { n, c: Number(doc.chapters?.[n]) || 0 } }, IslandTerrain, (n) => IslandCast.RESIDENTS[n]?.name || String(n)) /* (Q2: the name on screen -- 설정집 2-1) */;
+        return sendTalk(view(ch.offer, { storyOffer: { title: ch.title, task: ch.task, where: t.where }, ...(storyTalk ? { storyTalk } : {}) }));
       }
       if (st === 'visit') {
         const asker = doc.cur.n; await storyApply(account, (d) => (d.cur?.n === asker && !d.cur.reached ? { doc: { ...d, cur: { ...d.cur, reached: true } } } : null));
@@ -7743,7 +7748,7 @@ async function requestHandler(req, res) {
         if (!out?.doc) return sendError(res, 409, 'STORY_GONE', '이미 끝난 이야기예요.');
         const after = await storyPay(account, day) || before;
         return sendTalk(view([ch.done], { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, me), story: await storyView(account),
-          storyNote: { n, c: k, title: ch.title, note: ch.note.map((l) => IslandCast.fill(l, me)), piece: ch.piece } }));
+          storyNote: { n, c: k, title: ch.title, note: ch.note.map((l) => IslandCast.fill(l, me)), piece: ch.piece }, ...(treeOf(k, 'done') ? { storyTalk: { done: treeOf(k, 'done'), note: treeOf(k, 'note') } } : {}) }));
       }
       return sendTalk(view(IslandCast.say(n, 'errandNone')));
     }

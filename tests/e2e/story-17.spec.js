@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, adminToken, spaceOn, revealTalk, expectNoScriptError } = require('./skin-support');
+const { shopper, post, get, adminToken, spaceOn, revealTalk, expectNoScriptError, walkStory } = require('./skin-support');
 
 // v1.10.234 새 주민 17명 이야기 (gamecenter-notes docs/resident-stories-17-20261102.md): three of them to 단짝 -- 빛나 (walking;
 // 윤슬다리, 이솔에게 말 걸기, 마루폭포), 김우성 (at the 구치소 desk: 「이야기해요」 on his talk; 구치소, 푸른숲골, 구치소 at night),
@@ -78,11 +78,12 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
       await levelTo(n, [5, 15, 30][c]);
       await open(); await lines(); await skipErrand();
       await choices.filter({ hasText: '이야기 들려줘요' }).click(); /* (a quest's 「📜 부탁」 may come first) */ await lines();
+      await walkStory(page); /* (v1.10.267 1-2: the 부탁 as a talk, to its 받기) */
       const note = page.locator('#plazaDialog .questNote'); await expect(note).toContainText(S.title);
       if (S.label) await expect(note).toContainText(S.label);
       await shot(`offer-${n}-${c + 1}`);
       // 할게요 -- till the server has it under way (CI mobile-2: at 2.7 fps a click before the choices settled took nothing)
-      await expect.poll(async () => { if ((await get(request, '/api/island/story', token)).data.track?.title === S.title) return true; await lines().catch(() => {}); const yes = choices.filter({ hasText: '할게요!' }); if (await yes.isVisible().catch(() => false)) await yes.click().catch(() => {}); /* (its lines shown first: the buttons come after the last -- CI ▼ still up) */ await page.waitForTimeout(800); return false; }, { timeout: 90000 }).toBe(true);
+      await expect.poll(async () => { if ((await get(request, '/api/island/story', token)).data.track?.title === S.title) return true; await lines().catch(() => {}); const yes = page.locator('#plazaDialog .talkChoices button[data-accept]').first(); if (await yes.isVisible().catch(() => false)) await yes.click().catch(() => {}); /* (its lines shown first: the buttons come after the last -- CI ▼ still up) */ await page.waitForTimeout(800); return false; }, { timeout: 90000 }).toBe(true);
       // (CI #389·#392: the line on the card before the window is shut -- the server had it, but the page's answer (its 할 일 line)
       // was still on its way when Escape ended the talk, and an answer after the end is dropped; only the 20 s refresh brought it)
       await expect(page.locator('#questTracker .questLine', { hasText: S.task }).or(page.locator('#questTracker .questLine.ready'))).toBeVisible({ timeout: 60000 }); /* (검토 #397: 마루 1·2장 -- I stand at its office already, so it is reached at once: the ✓ line in its place) */
@@ -96,7 +97,7 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
         if (S.night) await time('day');
       }
       await open(); await lines(); await skipErrand();
-      await choices.filter({ hasText: '다녀왔어요' }).click(); /* (a quest's 「📜 부탁」 may come first) */
+      await choices.filter({ hasText: '다녀왔어요' }).click(); /* (a quest's 「📜 부탁」 may come first) */ await lines(); await walkStory(page); /* (1-2: 다녀왔어요 and the note's talk, the paper at its end) */
       const paper = page.locator('#storyNoteDialog'); await expect(paper).toBeVisible(); await expect(paper.locator('h3')).toHaveText(`${c + 1}장 · ${S.title}`);
       await expect(paper.locator('.storyNoteBody p')).toHaveCount(6); await expect(paper.locator('.storySign')).not.toHaveText('— ');
       if (c === 2) await shot(`note-${n}-3`);
