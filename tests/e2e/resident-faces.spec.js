@@ -11,6 +11,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   const who = await shopper(browser, request, '주민표정', 0, 'male'); const { page, token } = who;
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  if (process.env.THROTTLE) await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.THROTTLE) }); /* (265 흔들림: CI's slow frames, here) */
   const face = (n) => page.evaluate((x) => window.PlazaDebug().residentFace(x), n);
   const shot = async (name) => { if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-${name}.png` }); };
   const tried = new Set();
@@ -23,8 +24,8 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
       const w = list.find((x) => !tried.has(x.n)); if (!w) { tried.clear(); return null; }
       tried.add(w.n); if (!(await face(w.n))?.person) return null; // (its model in)
       await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 2, z); window.PlazaDebug().faceTo(x, z); }, [w.x, w.z]); await page.waitForTimeout(700);
-      /* (what it shows, sampled in the page every 20 ms for 3 s: the clips, its pieces with its own eyes and mouth hidden, the marks, the line) */
-      const watch = page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const got = { clips: [], faces: [], marks: [], lines: [] }; const add = (k, v) => { if (v && !got[k].includes(v)) got[k].push(v); }; const t0 = Date.now(); const id = setInterval(() => { const f = D.residentFace(n); if (f) { add('clips', f.clip); if (f.parts.length && f.eyesBase === false) add('faces', f.parts.slice().sort().join()); for (const m of f.marks) add('marks', m); add('lines', f.bubble); } if (Date.now() - t0 > 3000) { clearInterval(id); ok(got); } }, 20); }), w.n);
+      /* (what it shows, sampled in the page every 20 ms for 6 s -- CI's slow frames put the mark past 3 s: the clips, its pieces with its own eyes and mouth hidden, the marks, the line) */
+      const watch = page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const got = { clips: [], faces: [], marks: [], lines: [] }; const add = (k, v) => { if (v && !got[k].includes(v)) got[k].push(v); }; const t0 = Date.now(); const id = setInterval(() => { const f = D.residentFace(n); if (f) { add('clips', f.clip); if (f.parts.length && f.eyesBase === false) add('faces', f.parts.slice().sort().join()); for (const m of f.marks) add('marks', m); add('lines', f.bubble); } if (Date.now() - t0 > 6000) { clearInterval(id); ok(got); } }, 20); }), w.n);
       await page.evaluate(() => window.PlazaDebug().camNear(null)); const r = await page.evaluate((f) => window.PlazaDebug().feel(f), feel); await page.waitForTimeout(250);
       const react = await page.evaluate(() => window.PlazaDebug().lastReact());
       if (r !== true || !react?.move) { await watch; return null; }
@@ -38,10 +39,13 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   expect(thumbs.react).toMatchObject({ move: 'thumbsup' });
   expect(thumbs.seen.clips).toContain('ThumbsUp'); expect(thumbs.seen.faces).toContain('eyes_x_happy,mouth_x_grin'); expect(thumbs.seen.marks).toContain('sparkle');
   expect(thumbs.seen.lines.some((l) => /최고|너도/.test(l))).toBe(true);
+  // the same one again within its 20 s: it only turns its head -- tried in the page at once (265 흔들림: CI's slow tries from here
+  // ran past the 20 s, and then it answered again): its own move over, me before it, a feeling each try (인사, 절 by turns)
+  expect(await page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const t0 = Date.now(); let k = 0;
+    const tryOnce = () => { if (Date.now() - t0 > 12000) { ok(D.lastReact()); return; } const f = D.residentFace(n); if (!f || f.run) { setTimeout(tryOnce, 200); return; }
+      D.teleport(f.at.x + 2, f.at.z); D.faceTo(f.at.x, f.at.z); setTimeout(() => { k += 1; D.feel(k % 2 ? 'wave' : 'bow'); const r = D.lastReact(); if (r?.head) ok(r); else setTimeout(tryOnce, 300); }, 400); };
+    tryOnce(); }), thumbs.n)).toEqual({ head: true });
   await expect.poll(async () => { const f = await face(thumbs.n); return [f.run, f.parts, f.eyesBase, f.mouthBase]; }, { timeout: 6000 }).toEqual([null, [], true, true]); // (its own face again)
-  // the same one again at once: it only turns its head
-  let k = 0; /* (it may have walked on meanwhile: in front of it again, a feeling each try -- two kinds, not the same within 1 s) */
-  await expect.poll(async () => { await post(request, '/api/test/island/free-residents', token, {}); const w = (await page.evaluate(() => window.PlazaDebug().wanderers)).find((x) => x.n === thumbs.n); await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 2, z); window.PlazaDebug().faceTo(x, z); }, [w.x, w.z]); await page.waitForTimeout(600); k += 1; await page.evaluate((f) => window.PlazaDebug().feel(f), k % 2 ? 'wave' : 'bow'); return page.evaluate(() => window.PlazaDebug().lastReact()); }, { timeout: 15000, intervals: [1200] }).toEqual({ head: true });
   // alone: a feeling of its own now and then (here at once)
   await expect.poll(async () => { /* (once it stands, its line's bubble gone, within 30 m of the camera -- me by it each try) */
     const w = (await page.evaluate(() => window.PlazaDebug().wanderers)).find((x) => x.n === thumbs.n); await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 3, z); window.PlazaDebug().faceTo(x, z); }, [w.x, w.z]);
