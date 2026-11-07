@@ -57,16 +57,5 @@
     if (install === '1') return { copy: messengerUrl(origin), line: COPY_LINE };
     return { menuOnly: true, line: MENU_LINE };
   }
-  // (v1.10.268 총괄 「C만 시험해보자」: four ways out of the island app's window into Chrome itself -- tried by hand, the opened
-  // page tells install-why its try; the next bundle keeps the one that won)
-  function chromeTries(origin) {
-    const host = new URL(origin).host; const page = (n) => `${host}/messenger.html?install=chrome&try=${n}`;
-    return [
-      `intent://${page(1)}#Intent;scheme=https;package=com.android.chrome;launchFlags=0x10000000;end`,
-      `intent://${page(2)}#Intent;scheme=https;package=com.android.chrome;launchFlags=0x18000000;end`,
-      `googlechrome://navigate?url=${encodeURIComponent(`https://${page(3)}`)}`,
-      `intent://${page(4)}#Intent;scheme=https;action=android.intent.action.VIEW;component=com.android.chrome/com.google.android.apps.chrome.Main;end`,
-    ];
-  }
-  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall, messengerUrl, COPY_LINE, chromeTries };
+  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall, messengerUrl, COPY_LINE };
 });

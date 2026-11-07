@@ -278,7 +278,7 @@ test('길가 장식과 실물 4계절 회전', async ({ browser, request }) => {
   const before = await sample(); if (!before.environment.edgeDecor.painted) expect(before.environment.edgeDecor.tiles).toBeGreaterThan(0); /* (painted walks: no border pieces) */
   expect(before.environment.edgeDecor.flowers).toBeGreaterThan(0); expect(before.environment.edgeDecor.seasonal).toBeGreaterThan(0);
   await expect.poll(async () => (await sample()).batches.find(b => b.ids.includes('deco.layer.edge'))?.placed).toBe(true);
-  for (const day of [0, 1, 2, 3]) {
+  for (const day of [0, 1]) { /* (v1.10.270 시험 정리: one turn -- the seasons' order round the zones is island-calendar's unit tests') */
     await a.page.evaluate(day => window.PlazaDebug().setSeasonDay(day), day);
     await expect.poll(async () => {
       const batch = (await sample()).batches.find(b => b.ids.includes('deco.layer.edge'));
