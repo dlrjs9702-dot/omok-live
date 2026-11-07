@@ -4306,6 +4306,9 @@
     };
     fishTug.raf = requestAnimationFrame(tick);
   }
+  // (v1.10.265 흔들림: the tests' players read the games as they are judged -- the bar's needle by its clock, the tug's holds
+  // and plan -- not the drawing a slow frame behind)
+  window.FishGameDebug = () => ({ bar: fishBar ? { t: fishBar.t, hit: fishBar.hit, shownAt: fishBar.shownAt, hold: fishBar.hold || 0 } : null, tug: fishTug ? { plan: fishTug.plan, holds: fishTug.holds.slice(), down: fishTug.down, t0: fishTug.t0 } : null });
   const tugDown = () => { if (!fishTug || fishTug.down != null) return; fishTug.down = tugMs(); fishTugReel.classList.add('on'); };
   const tugUp = () => { if (!fishTug || fishTug.down == null) return; fishTug.holds.push([fishTug.down, Math.max(fishTug.down, tugMs())]); fishTug.down = null; fishTugReel.classList.remove('on'); };
   async function fishTugEnd() {
