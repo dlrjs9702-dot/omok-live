@@ -603,7 +603,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   if (require('../../public/plaza/island-terrain.js').dalmaru) for (const id of ['dalmaru.facade_townhall', 'dalmaru.facade_mall', 'facility.naming', 'facility.trader', 'prop.planter']) { const k = ids.indexOf(id); if (k >= 0) ids.splice(k, 1); }
   // (「땅에 칠하는 길」: painted walks lay no path pieces -- only 대청마당's busking disc)
   if (await page.evaluate(() => window.PlazaDebug().environment.edgeDecor.painted)) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('path.') && ids[k] !== 'path.junction.disc.town') ids.splice(k, 1);
-  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return Object.fromEntries(ids.map((id) => [id, s[id]])); }, { timeout: 60000 }).toEqual(Object.fromEntries(ids.map((id) => [id, 'model']))); // (by id: a miss names itself)
+  await expect.poll(async () => { const s = (await debug(page))?.assets?.shown || {}; return Object.fromEntries(ids.map((id) => [id, s[id]])); }, { timeout: 60000 }).toEqual(Object.fromEntries(ids.map((id) => [id, 'model']))); // (by id: a miss names itself)
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
   const files = Object.entries(d.assets.files).filter(([url]) => url.startsWith('/assets/island/'));

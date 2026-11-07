@@ -532,7 +532,9 @@
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)
-  const INSECT_LONG = { butterfly_cabbage: 0.205, butterfly_swallowtail: 0.205, butterfly_blue: 0.205, dragonfly_red: 0.28, dragonfly_emperor: 0.28, cicada: 0.159, rhinoceros_beetle: 0.187, stag_beetle: 0.207, ladybird: 0.134, firefly: 0.147, grasshopper: 0.197, snail: 0.138 };
+  const INSECT_LONG = { butterfly_cabbage: 0.205, butterfly_swallowtail: 0.205, butterfly_blue: 0.205, dragonfly_red: 0.28, dragonfly_emperor: 0.28, cicada: 0.159, rhinoceros_beetle: 0.187, stag_beetle: 0.207, ladybird: 0.134, firefly: 0.147, grasshopper: 0.197, snail: 0.138,
+    butterfly_yellow: 0.2, honeybee: 0.14, hawkmoth_hummingbird: 0.2, moth_silk: 0.26, winter_moth: 0.15, mantis: 0.26, jewel_beetle: 0.17, longhorn_giant: 0.16, water_strider: 0.167, cricket: 0.17, snow_springtail: 0.13, snow_scorpionfly: 0.14 }; // (v1.10.261 assets 105: twelve more -- the longhorn by its body, the water strider 1.2x)
+  for (const s of ["butterfly_yellow","honeybee","hawkmoth_hummingbird","moth_silk","winter_moth","mantis","jewel_beetle","longhorn_giant","water_strider","cricket","snow_springtail","snow_scorpionfly"]) REGISTRY[`together.insect_${s}`] = { url: `/assets/island/together-v1/insect_${s}.glb`, near: 40 }; // (v1.10.261: their still ones -- the case, the museum)
   // v1.10.260 곤충 손맛 (assets 103): the net with its bag (open, closed, the socket a catch goes in -- its nodes kept), the
   // swing's streaks (from my feet), the leaves, the dust and the pollen
   REGISTRY['together.tool_bugnet'] = { url: '/assets/island/together-v1/tool_bugnet_v2.glb', low: { url: '/assets/island/together-v1/tool_bugnet_v2_low.glb' }, near: 40, keepNodes: true };

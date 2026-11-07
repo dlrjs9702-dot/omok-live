@@ -14,8 +14,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 test('신규 꾸미기 염색: 주색 저장·요청당 한 번 차감·재입장 복구, 고정색 목걸이 거절은 무과금', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'look-x2-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir);
+  t.after(() => fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })); /* (CI 261: after the server closes, retried -- a write still landing) */
   const { req } = server;
   const key = await server.issue('신규염색');
   const token = await server.enter(key);
@@ -55,8 +55,8 @@ test('신규 꾸미기 염색: 주색 저장·요청당 한 번 차감·재입�
 
 test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·잘못된 품목은 차감 없이 거절, 성공은 요청당 한 번 차감되고 외형에 반영', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'look-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir);
+  t.after(() => fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })); /* (CI 261: after the server closes, retried -- a write still landing) */
   const { req } = server;
   const sa = await server.enter(await server.issue('외형가'));
   assert.ok(sa, server.logs());
@@ -121,8 +121,8 @@ test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·잘�
 // lost thing a player carries
 test('캐릭터 스킨: 등급 가격 1회 결제·중복 구매 무과금·5칸 동시 장착·해제·재접속 유지·염색·다른 사람에게 보이는 외형과 운반', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wear-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir);
+  t.after(() => fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })); /* (CI 261: after the server closes, retried -- a write still landing) */
   const { req } = server;
   const keyA = await server.issue('꾸미기');
   let sa = await server.enter(keyA);

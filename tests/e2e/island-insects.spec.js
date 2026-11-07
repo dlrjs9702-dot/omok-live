@@ -126,10 +126,26 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
         await page.evaluate(() => window.PlazaDebug().camNear([2.6, 1.4, -0.4], [0, 1.0, -0.6])); await page.waitForTimeout(900);
         await page.evaluate((k) => window.PlazaDebug().netTry(k), kind); await page.waitForTimeout(kind === 'jump' ? 500 : 420); await snap(`swing-${kind}`); await page.waitForTimeout(3300);
       }
-      for (const t of ['night', 'day']) { await page.evaluate((m) => window.PlazaDebug().setTime(m), t); expect(await page.evaluate(() => window.PlazaDebug().netDemo('butterfly_swallowtail'))).toBe(true); await page.evaluate(() => window.PlazaDebug().camNear([0.9, 0.35, -0.7], 'bag')); await page.waitForTimeout(1200); await snap(`bag-${t}`); await page.waitForTimeout(3100); }
+      expect(await page.evaluate(() => window.PlazaDebug().netState().bagShown)).toEqual({ open: true, closed: false }); // (v1.10.261 총괄: one look at a time from the start)
+      for (const [t, sp] of [['night', 'butterfly_swallowtail'], ['day', 'butterfly_swallowtail'], ['day', 'rhinoceros_beetle'], ['day', 'dragonfly_emperor']]) {
+        await page.evaluate((m) => window.PlazaDebug().setTime(m), t); expect(await page.evaluate((s) => window.PlazaDebug().netDemo(s), sp)).toBe(true); await page.evaluate(() => window.PlazaDebug().camNear([0.9, 0.35, -0.7], 'bag')); await page.waitForTimeout(1200);
+        expect(await page.evaluate(() => window.PlazaDebug().netState().bagShown)).toEqual({ open: false, closed: true }); await snap(`bag-${t}-${sp}`); await page.waitForTimeout(3100);
+      }
       await page.evaluate(() => window.PlazaDebug().setTime('auto'));
       const near = pick(await insectsNow()); if (near) { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [near.spot.x, near.spot.z]); await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [near.x, near.z]); await page.waitForTimeout(800);
         await page.evaluate(() => window.PlazaDebug().camNear([3.4, 2.0, 1.6], [0, 0.9, -1.0])); await page.waitForTimeout(900); await page.evaluate(() => window.PlazaDebug().missDemo()); await page.waitForTimeout(250); await snap('miss-alert'); }
+      // (v1.10.261 photos: the new kinds where they live -- a water strider on its bank's water, a silk moth round a lamp by
+      // night, a springtail in the grass; each put at a real spot of its kind, this screen only)
+      const I = require('../../lib/island-insects'); const Terr = require('../../public/plaza/island-terrain.js'); const spots = I.spotsOf(Terr);
+      for (const [sp, type, t, cam] of [['water_strider', 'shore', 'day', [1.6, 1.3, 0.4]], ['moth_silk', 'lamp', 'night', [2.2, 2.4, 1.6]], ['snow_springtail', 'grass', 'day', [1.4, 1.1, 0.6]], ['longhorn_giant', 'tree', 'day', [1.6, 1.9, 0.8]]]) {
+        const s = spots.filter((x) => x.type === type).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0]; if (!s) continue;
+        await page.evaluate((m) => window.PlazaDebug().setTime(m), t); await page.evaluate((b) => window.PlazaDebug().insectDemo(b), { species: sp, name: I.SPECIES[sp].name /* (#411 검토: the hint's name) */, type, x: s.x, z: s.z, ...(s.r ? { r: s.r } : {}), ...(s.wx !== undefined ? { wx: s.wx, wz: s.wz } : {}) });
+        const stand = type === 'shore' ? { x: s.x - s.wx * 0.8, z: s.z - s.wz * 0.8 } : { x: s.x + 1.6, z: s.z + 0.4 }; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stand.x, stand.z]); await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [s.x + (s.wx || 0), s.z + (s.wz || 0)]);
+        await page.evaluate(([c, l]) => window.PlazaDebug().camNear(c, l), [cam, [0, type === 'lamp' ? 2.0 : type === 'tree' ? 1.5 : 0.3, -1.4]]); await page.waitForTimeout(2500); await snap(`new-${sp}`);
+        const close = { shore: [[0.2, 0.75, -0.5], [0, 0.05, -1.7]], lamp: [[1.0, 2.7, -0.6], [0, 2.3, -1.6]] }[type]; /* (#411 검토: the strider and the moth close) */
+        if (close) { await page.evaluate(([c, l]) => window.PlazaDebug().camNear(c, l), close); await page.waitForTimeout(1200); await snap(`near-${sp}`); }
+      }
+      await page.evaluate(() => { window.PlazaDebug().setTime('auto'); window.PlazaDebug().camNear(null); });
       await page.evaluate(() => window.PlazaDebug().camNear(null));
     } else {
       await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [other.spot.x, other.spot.z]); await page.waitForTimeout(600);

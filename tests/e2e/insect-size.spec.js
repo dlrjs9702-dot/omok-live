@@ -17,6 +17,8 @@ test('곤충 크기: 섬의 곤충 12종 모두 가장 긴 쪽 0.3 m', async ({ 
     }
     return out;
   });
-  expect(Object.keys(sizes)).toHaveLength(12);
-  for (const [id, long] of Object.entries(sizes)) expect(Math.abs(long - 0.3), `${id} ${long}`).toBeLessThan(0.006);
+  expect(Object.keys(sizes)).toHaveLength(24); // (v1.10.261: twelve more)
+  /* (v1.10.261) the longhorn sized by its body (the feelers past it), the water strider 1.2x: longer, never shorter */
+  const LONGER = { 'insect.longhorn_giant': true, 'insect.water_strider': true };
+  for (const [id, long] of Object.entries(sizes)) if (LONGER[id]) expect(long, id).toBeGreaterThan(0.3); else expect(Math.abs(long - 0.3), `${id} ${long}`).toBeLessThan(0.006);
 });
