@@ -76,3 +76,37 @@ test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임,
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
+
+// v1.10.271 섬 택시 (gamecenter-notes docs/taxi-20261104.md 5절, B7: with the island's other ride): at 대청마당's stop SPACE (the
+// phone's 상호작용) asks -- 「툇마루섬 입구까지 갈까요? · 1,000P」 -- 타기 pays once; I sit in the car on the road (the keys do
+// nothing, the other screen sees it go), out at 툇마루섬 입구 (the tests' road 3 s) and back the same way. PC and phone.
+test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 입구에서 내림 → 돌아오기, 다른 화면에도 택시', async ({ browser, request, isMobile }) => {
+  test.setTimeout(240000);
+  const a = await shopper(browser, request, isMobile ? '택시타m' : '택시타', 0, 'female'); const b = await shopper(browser, request, isMobile ? '택시보m' : '택시보', 0, 'male');
+  for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
+  const { page } = a; const X = require('../../public/plaza/island-taxi.js');
+  const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(400); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-taxi-${name}.png` }); } };
+  const press = async () => { if (isMobile) await page.locator('#islandActBtn').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
+  const balance = async () => (await (await request.get('/api/points', { headers: { 'X-Session-Token': a.token } })).json()).balance;
+  const ride = async (from) => {
+    const s = X.stopOf(from); const to = X.stopOf(X.STOPS[from].to);
+    await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x, s.out.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain(X.STOPS[from].sign);
+    if (from === 'plaza') { await b.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x - 6, s.out.z - 4]); await shot('stop'); }
+    await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.taxiLine')).toHaveText(`${to.label}까지 갈까요? · 1,000P`, { timeout: 15000 });
+    const before = await balance(); await dialog.locator('#taxiRideBtn').click();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride?.from)).toBe(from); await expect(dialog).toBeHidden();
+    expect(await balance()).toBe(before - 1000);
+    if (from === 'plaza') {
+      await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().taxi.others), { timeout: 15000 }).toBe(1); // (the other screen: my car on its way)
+      const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW'); // (the keys do nothing in the car)
+      const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
+    }
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 20000 }).toBe(null);
+    const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); expect(Math.hypot(here.x - to.out.x, here.z - to.out.z)).toBeLessThan(0.6);
+    await expect(page.locator('#toast')).toContainText(`${to.label}에 도착했어요`);
+    if (from === 'plaza') await shot('arrived');
+  };
+  await ride('plaza'); await ride('isle');
+  for (const who of [a, b]) await expectNoScriptError(who.page);
+  for (const who of [a, b]) await who.context.close();
+});

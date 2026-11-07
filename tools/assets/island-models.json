@@ -9948,6 +9948,25 @@
       "src": "faces102:01. High/npc_face_maru.glb",
       "sha256": "4e1122ec2767109baa30fa604c6b45a6a7d58fe50158f853d2cfca0feb399086",
       "precompressed": true
+    },
+    {
+      "out": "taxi-v1/taxi_island.glb",
+      "src": "taxi99:01. High/taxi_island.glb",
+      "sha256": "0439390aec73260ea86cbbcc67d897946af805c603e62867211b8ccb227159f5",
+      "lowSrc": "taxi99:02. Low/taxi_island_low.glb",
+      "lowSha256": "4e5dbfa2f98b7f1b017fdd0fe93a4ad4b6fe82ff8dc4c3f7760b6b9aa9420517"
+    },
+    {
+      "out": "taxi-v1/taxi_stop.glb",
+      "src": "taxi99:01. High/taxi_stop.glb",
+      "sha256": "64291a9bbb807ce91fb3c79b3bc8d8e07cf073f1bc14710931704deab8fe44b7",
+      "lowSrc": "taxi99:02. Low/taxi_stop_low.glb",
+      "lowSha256": "e978da31e83fbabddd74696cb98c9b757f87177fe11c2dc3d10367a0438a570e"
+    },
+    {
+      "out": "characters/motions/TaxiSit.glb",
+      "src": "taxi99:01. High/motions/TaxiSit.glb",
+      "sha256": "d0ab47c697a0b482641455ae7b81ae56d96239d474d4d5db1750d45ccdeafa93"
     }
   ],
   "sources": {
@@ -10029,6 +10048,7 @@
     "insect103": "103. Game Island insect catch 2026-11-06",
     "insect105": "105. Game Island insects new 12 2026-11-06",
     "emote101": "101. Game Island emotes 2026-11-05",
-    "faces102": "102. Game Island resident faces 2026-11-05"
+    "faces102": "102. Game Island resident faces 2026-11-05",
+    "taxi99": "99. Game Island taxi 2026-11-04"
   }
 }
