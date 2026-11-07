@@ -9967,6 +9967,16 @@
       "out": "characters/motions/TaxiSit.glb",
       "src": "taxi99:01. High/motions/TaxiSit.glb",
       "sha256": "d0ab47c697a0b482641455ae7b81ae56d96239d474d4d5db1750d45ccdeafa93"
+    },
+    {
+      "out": "characters/motions/TaxiEnter.glb",
+      "src": "taxi99:01. High/motions/TaxiEnter.glb",
+      "sha256": "483a61623a95cde48226374b22053c6bc24f3e7007b9aa580e0b243590498815"
+    },
+    {
+      "out": "characters/motions/TaxiExit.glb",
+      "src": "taxi99:01. High/motions/TaxiExit.glb",
+      "sha256": "15f6f6d4fd9359428808407c454ba0ab48103d2ba2563b4a6586e64bb4f3202a"
     }
   ],
   "sources": {

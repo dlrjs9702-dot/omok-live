@@ -102,7 +102,7 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
     }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 20000 }).toBe(null);
-    const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); expect(Math.hypot(here.x - to.out.x, here.z - to.out.z)).toBeLessThan(0.6);
+    const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); const out = X.arrivalOf({ from, startedAt: 0, runMs: 3000 }); expect(Math.hypot(here.x - out.x, here.z - out.z)).toBeLessThan(0.6); // (exit_L beside the car as it stands)
     await expect(page.locator('#toast')).toContainText(`${to.label}에 도착했어요`);
     if (from === 'plaza') await shot('arrived');
   };

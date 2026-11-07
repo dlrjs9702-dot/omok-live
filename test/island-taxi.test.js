@@ -26,10 +26,16 @@ test('택시 시간: 한 번 25~40초(시험 길은 3초), 타기→출발→달
     for (let t = 0; t <= dur + 200; t += 100) { const p = X.poseAt(ride, 1000 + t); if (seen.at(-1) !== p.phase) seen.push(p.phase); assert.ok(p.d >= last - 1e-9, 'never back'); last = p.d; }
     assert.deepEqual(seen, ['enter', 'start', 'run', 'stop', 'exit', 'done']);
     const end = X.poseAt(ride, 1000 + dur); const to = X.stopOf(X.STOPS[from].to); assert.ok(Math.hypot(end.x - to.x, end.z - to.z) < 0.01);
-    assert.deepEqual(X.arrivalOf(ride), to.out);
+    const out = X.arrivalOf(ride); assert.ok(T.walkable(out.x, out.z), `${from} out`); assert.ok(Math.abs(Math.hypot(out.x - end.x, out.z - end.z) - Math.hypot(1.75, 1.27)) < 0.01); // (beside the car as it stands: exit_L)
+    assert.ok(Math.abs(Math.hypot(to.out.x - to.x, to.out.z - to.z) - Math.hypot(1.5, 1.18)) < 0.01); // (where one gets in: enter_L)
   }
   assert.equal(X.durationOf({ from: 'plaza', startedAt: 0, runMs: 3000 }), X.ENTER + 3000 + X.EXIT);
   assert.equal(X.poseAt({ from: 'plaza', startedAt: 0, runMs: 3000 }, X.ENTER + 3000 + X.EXIT).phase, 'done');
+});
+
+test('택시 문: 타기 0~0.14에 열고 0.86~1에 닫고, 내리기 0~0.12에 열고 0.80~1에 닫고, 달리는 동안 닫힘', () => {
+  assert.equal(X.doorOf('enter', 0), 0); assert.equal(X.doorOf('enter', 0.14), 1); assert.equal(X.doorOf('enter', 0.5), 1); assert.equal(X.doorOf('enter', 1), 0);
+  assert.equal(X.doorOf('exit', 0.12), 1); assert.equal(X.doorOf('exit', 0.79), 1); assert.equal(X.doorOf('exit', 1), 0); assert.equal(X.doorOf('run', 0.5), 0);
 });
 
 test('택시 요금: 집주인 무료, 집 없으면 경제 값(기본 1,000P)', () => {

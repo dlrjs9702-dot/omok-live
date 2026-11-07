@@ -4,7 +4,7 @@
 import * as THREE from '/vendor/three/three.module.js';
 
 const T = globalThis.IslandTerrain; const X = globalThis.IslandTaxi;
-const SEAT = { x: 0, y: 0.1, z: -0.12 }; // (assets 99: the one back seat, [0, 0.10, 0.12] in the model's own frame -- turned round here)
+const SEAT = { x: 0, y: 0.48, z: -0.12 }; // (assets 99: the one back seat, body [0, 0.38, 0] + [0, 0.10, 0.12] in the model's own frame -- turned round here)
 
 export function taxiScene({ scene, assets }) {
   const group = new THREE.Group(); group.name = 'taxi'; scene.add(group);
@@ -34,7 +34,7 @@ export function taxiScene({ scene, assets }) {
   // a car where a ride's pose says: on the ground (the bridge's arch too), its lean, its doors open while one gets in or out
   function placeCar(rec, pose) {
     rec.h.position.set(pose.x, groundY(pose.x, pose.z), pose.z); rec.h.rotation.set(pose.pitch || 0, pose.yaw, pose.roll || 0, 'YXZ');
-    const open = pose.phase === 'enter' || pose.phase === 'exit' ? Math.sin(Math.PI * Math.min(1, Math.max(0, pose.k))) : 0;
+    const open = X.doorOf(pose.phase, Math.min(1, Math.max(0, pose.k || 0))); /* (assets 99 motions.json: TaxiEnter opens 0~0.14 and shuts 0.86~1, TaxiExit 0~0.12 and 0.80~1) */
     for (const d of rec.doors) d.o.rotation.y = d.yaw0 + d.side * open * 1.22;
     for (const w of rec.wheels) w.rotation.x = -(pose.d || 0) / 0.32;
   }

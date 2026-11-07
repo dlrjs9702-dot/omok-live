@@ -37,7 +37,7 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   assert.ok(Math.hypot(mid.data.x - want.x, mid.data.z - want.z) < 8, JSON.stringify({ got: [mid.data.x, mid.data.z], want: [want.x, want.z] }));
   // over: at the 툇마루섬 stop's step out
   await sleep(X.durationOf(rode.data.taxi) - (X.ENTER + 1500) + 300); const done = await stand(a, -50, -50);
-  assert.deepEqual([done.data.x, done.data.z], [Math.round(I.out.x * 100) / 100, Math.round(I.out.z * 100) / 100]); assert.equal(done.data.taxi, null); assert.ok(done.data.taxiDone);
+  const out = X.arrivalOf(rode.data.taxi); assert.deepEqual([done.data.x, done.data.z], [Math.round(out.x * 100) / 100, Math.round(out.z * 100) / 100]); void I; assert.equal(done.data.taxi, null); assert.ok(done.data.taxiDone);
   // a home owner rides free
   const door = T.facilityDoor('townhall'); await stand(b, door.x, door.z); assert.equal((await req('/api/island/townhall/enter', b, {})).status, 200);
   const lot = H.LOTS[3]; assert.equal((await req('/api/home/apply', b, { lot: lot.id, roof: 'red' })).status, 200);
