@@ -5140,6 +5140,11 @@
   plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) endResidentTalk(); });
   function showResidentTalk(data, first) {
     showErrands(data);
+    { /* (v1.10.264 말할 때: their face for the first 1.5 s -- a mood line found among what they say) */
+      const C = globalThis.IslandCast; const said = data.say || []; const mood = Object.keys(C?.MOODS || {}).find((k) => { const l = C.MOODS[k][data.n]; return l && said.some((s) => s.startsWith(String(l).slice(0, 12))); }) || null;
+      const f = window.IslandEmotes?.talkFace({ first, topic: first ? null : residentTopic, mood, offer: Boolean(data.offer || data.storyOffer), question: Boolean(data.question), reward: Boolean(data.reward) });
+      if (f) plaza.controller?.residentTalkFace?.(data.n, f);
+    }
     const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
     // (v1.10.193 대화창 2차: no line of their job and closeness -- the hearts by the name; a reward still says itself)
     const meta = document.createElement('p'); meta.className = 'lookMeta talkMeta'; meta.hidden = !data.reward;
@@ -5183,8 +5188,9 @@
       }, 4000) };
     }
   }
+  let residentTopic = null; /* (v1.10.264: what was asked -- its answer's face) */
   async function askResident(n, topic, choice = null) {
-    if (residentBusy) return; residentBusy = true; lostCard.classList.add('talkWaiting'); // (v1.10.240: an answer on its way -- the choices faded, not pressed twice)
+    if (residentBusy) return; residentBusy = true; residentTopic = topic; lostCard.classList.add('talkWaiting'); // (v1.10.240: an answer on its way -- the choices faded, not pressed twice)
     try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : topic === 'accept' ? { errand: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
     catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
   }

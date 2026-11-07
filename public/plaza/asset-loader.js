@@ -612,8 +612,13 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
           m.frustumCulled = false; m.castShadow = true; m.visible = false; low.push(m);
         }
-        if (low.length) wearing.push({ c, high, low, isHigh: true });
+        if (low.length) { const rec = { c, high, low, isHigh: true }; wearing.push(rec); c.wearRec = rec; for (const m of high) m.userData.lod = 'high'; for (const m of low) m.userData.lod = 'low'; } /* (v1.10.264: a face piece hidden stays hidden across the switch) */
       }
+      // v1.10.264 주민 표정 (assets 102): an islander -- its person (the look without _work/_off), its pack fetched early, the
+      // two whose tail or coat fills the back do 부끄러움 with their hands in front (emotes.json residentMotion)
+      const who = /^character\.walker\.([a-z_]+?)(?:_(?:work|off))?$/.exec(hit.id)?.[1];
+      if (who && registry[`npc_face.${who}`]?.url) { c.npcPerson = who; c.wearRec ||= { isHigh: true, high: [], low: [] }; cache.get(registry[`npc_face.${who}`].url).catch(() => {}); }
+      if (/^character\.walker\.(hangyeol_(work|off)|isol)$/.test(hit.id)) c.shyFront = true;
       const clips = base ? motions.map((m) => m?.animations?.[0]).filter(Boolean) : gltf.animations;
       const anim = P.createAnimator(THREE, object, clips, base ? base.animations : hit.entry.animations || {}, { walkSpeed, speeds: (base || hit.entry).speeds, rates: base?.rates });
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown[hit.id] = 'model';
@@ -886,8 +891,34 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // worn a moment over the character's own -- the worn eyes (or the plain face's, as a worn eyes part takes its place) and
   // mouth hidden, the expression's bound to its bones, built once per character and shown again after; face(c, null) puts
   // its own back. The eyes take the character's eye colour; a character without the common rig's model is left as it is.
+  // v1.10.264 주민 표정 (assets 102): an islander's expression -- the pieces of its pack (`npc_face.<person>`, the 12 named as
+  // 101's, in its Head bone's space) cloned once onto that bone and shown, its own eyes or mouth (face_eyes_base,
+  // face_mouth_base, High and Low) hidden while one is; want { eyes, mouth } in short names, a null keeps that one
+  const ownVisible = (c, m) => (m.userData.lod === 'high' ? c.wearRec?.isHigh !== false : m.userData.lod === 'low' ? c.wearRec?.isHigh === false : true);
+  function npcFace(c, want) {
+    if (!c?.assetRoot) return false; c.npcWant = want || null;
+    const entry = registry[`npc_face.${c.npcPerson}`]; if (!entry?.url) return false;
+    cache.get(entry.url).then((gltf) => {
+      if (disposed || !gltf || !c.assetRoot) return;
+      if (c.npcBase?.root !== c.assetRoot) { /* (found once per model: a re-dress starts again) */
+        const base = { root: c.assetRoot, eyes: new Set(), mouth: new Set() }; c.assetRoot.traverse((o) => { const m = /face_(eyes|mouth)_base/.exec(o.name); if (m) o.traverse((x) => { if (x.isMesh) base[m[1]].add(x); }); });
+        c.npcBase = base; c.npcParts = new Map(); c.npcHead = c.assetRoot.getObjectByName('Head');
+      }
+      const w = c.npcWant; const names = w ? [w.eyes && `eyes_x_${w.eyes}`, w.mouth && `mouth_x_${w.mouth}`].filter(Boolean) : [];
+      for (const n of names) if (!c.npcParts.has(n) && c.npcHead) { const node = gltf.scene.getObjectByName(n); if (node) { const copy = node.clone(); copy.traverse((x) => { x.frustumCulled = false; x.castShadow = false; }); c.npcHead.add(copy); c.npcParts.set(n, copy); } }
+      for (const [n, o] of c.npcParts) o.visible = names.includes(n);
+      for (const slot of ['eyes', 'mouth']) { const on = Boolean(w?.[slot]) && c.npcParts.has(`${slot}_x_${w[slot]}`); for (const m of c.npcBase[slot]) { if (on) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } } }
+      c.faceOn = names.length ? names : null;
+    }).catch((error) => onError(entry.url, error));
+    return true;
+  }
+  // an islander's things in hand (its `equipment` material: 반디's net, 콩이's jar...) put away during a gesture and back
+  function props(c, on) {
+    c.assetRoot?.traverse((m) => { if (!m.isMesh || ![].concat(m.material).some((x) => x?.name === 'equipment')) return; if (!on) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } });
+  }
   let facesAsked = false;
   function face(c, want) {
+    if (c?.npcPerson) return npcFace(c, want && { eyes: want.eyes?.replace(/^wear\.eyes_x_/, '') || null, mouth: want.mouth?.replace(/^wear\.mouth_x_/, '') || null }); /* (v1.10.264: an islander's own pieces) */
     if (!c?.wearRec || !c.assetRoot) return false;
     const showOwn = (m) => { m.userData.faceHidden = false; m.visible = m.userData.lod === 'high' ? c.wearRec.isHigh : m.userData.lod === 'low' ? !c.wearRec.isHigh : true; };
     const meshes = []; c.assetRoot.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
@@ -977,5 +1008,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, release, batch, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, props, release, batch, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }
