@@ -13,6 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.263 감정 표현 — 나 (docs/emotes-20261107.md 1~4절, 에셋 101)
+
+- T 바퀴·😊 격자 16, 몸짓+표정+기호, 원격 emote:*, 깜박임. 메신저 크롬 전용·안내 단추, #16 install=1/chrome.
+
 ## v1.10.262 Codex 251–260 고침 (docs/codex-review-251-260.md)
 
 - 꼭 4·작은 것 8·확인 3 모두, #16 메신저 크롬 설치 안내(Android·프롬프트 없음).
@@ -21,8 +25,3 @@
 
 - 새 12종·물가(shore)·등불(lamp) 자리, 종류별 배치 몫(나무·꽃·풀 13, 물가 3, 등불 3), 겨울 3종.
 - 자루 열림/닫힘 하나만, 곤충 자루 안 0.18 m. 도감 84·곤충관 24·설명 12.
-
-## v1.10.260 곤충 손맛 (insect-catch-improve 1~3절, 에셋 103)
-
-- 겨누기·살금살금, 세 휘두르기(테 0.9 m), 자루·퍼덕임, 평범/좋은 순간, 놓침·달아남(서버 자리 옮김, 달팽이 숨기).
-- 채 v2·효과 6·곤충 12 새 판·동작 9. 261: 새 곤충 12종.
