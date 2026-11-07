@@ -4336,7 +4336,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.272' });
+    return sendJson(res, 200, { ok: true, version: '1.10.273' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6899,7 +6899,8 @@ async function requestHandler(req, res) {
       return { note: n ? { line: n.line, story: found ? n.story : null } : null, where: DexNotes.whereText(DexNotes.whereOf(d.id)), ...(d.kind === 'fish' ? { sizes: IslandFishing.SIZES[d.id.slice(5)] || null } : {}) }; };
     return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null, ...(d.kind === 'fish' ? { best: best[d.id.slice(5)] || null } : {}), ...about(d) })), found, total: IslandFishing.DEX.length,
       titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })),
-      given: (((await pointStore.questDoc(account, 'talkmem')).doc || {}).keepsakes || []).map((k) => ({ n: k.n, from: IslandCast.RESIDENTS[k.n]?.name || '', name: k.name, day: k.day })).reverse() }); // (v1.10.267 받은 것: the talk trees' keepsakes, newest first)
+      given: (((await pointStore.questDoc(account, 'talkmem')).doc || {}).keepsakes || []).map((k) => ({ n: k.n, from: IslandCast.RESIDENTS[k.n]?.name || '', name: k.name, day: k.day })).reverse(), // (v1.10.267 받은 것: the talk trees' keepsakes, newest first)
+      photoWith: (((await pointStore.questDoc(account, 'photomem')).doc || {}).list || []).map((p) => ({ n: p.n, with: IslandCast.RESIDENTS[p.n]?.name || '', spot: IslandFishing.PHOTO_SPOTS.find((s) => s.id === p.spot)?.name || '', day: p.day })).reverse() }); // (v1.10.274 사진 부탁: who I took, where -- the spot, the islander, the day; never the picture)
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/mode' && req.method === 'POST') { // tests: the next casts' bite game ('arrows' | 'timing' | null)
     const session = requireSession(req, res); if (!session) return; const m = (await parseJson(req)).mode;
@@ -7145,10 +7146,11 @@ async function requestHandler(req, res) {
     }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true, shot: body.shot === true });
     if (claimed.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
-    const PHOTO_FAIL = { PHOTO_FAR: '관광객이 사진에 들어오게 가까이(12 m 안)에서 찍어 주세요.', NOT_ASKED: '먼저 관광객에게 말을 걸어 주세요.', TOO_SOON: '관광객이 포즈를 잡는 중이에요. 잠깐만요!', OFF_SPOT: '관광객이 있는 명소 안에서 찍어 주세요.' }; // (Q2 사진 부탁)
+    const PHOTO_FAIL = { PHOTO_FAR: '사진 부탁한 주민이 사진에 들어오게 가까이(12 m 안)에서 찍어 주세요.', NOT_ASKED: '먼저 사진 부탁한 주민에게 말을 걸어 주세요.', TOO_SOON: '포즈를 잡는 중이에요. 잠깐만요!', OFF_SPOT: '주민이 있는 명소 안에서 찍어 주세요.', NOT_THERE: '아직 명소로 가는 중이에요. 도착하면 말을 걸어 주세요.' }; // (Q2 사진 부탁; v1.10.274 the islander's)
     if (PHOTO_FAIL[claimed.error]) return sendError(res, 409, claimed.error, PHOTO_FAIL[claimed.error]);
     if (claimed.error) { resourcePulls.delete(session.token); return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.'); }
-    if (claimed.action === 'photoAsk') { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return sendJson(res, 200, { ok: true, action: 'photoAsk', id, spot: claimed.spot, events: at ? islandEvents.nearby(at.x, at.z, account) : [] }); } // (Q2: asked -- the shot is the photo mode's)
+    const photoN = claimed.event?.type === 'photo' && Number.isInteger(claimed.event.resident) ? claimed.event.resident : null; const me = String(session.label || '');
+    if (claimed.action === 'photoAsk') { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return sendJson(res, 200, { ok: true, action: 'photoAsk', id, spot: claimed.spot, ...(photoN != null ? { n: photoN, name: IslandCast.RESIDENTS[photoN]?.name || '', say: IslandCast.photoLine(photoN, 'ask', me, Math.random, claimed.spot || ''), pose: IslandCast.photoPose(photoN) } : {}), events: at ? islandEvents.nearby(at.x, at.z, account) : [] }); } // (Q2: asked -- the shot is the photo mode's; v1.10.274 their words, their pose)
     if (claimed.action === 'talk') { // v1.10.34: the owner's request -- where the thing lies, for my map; nothing paid
       const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
@@ -7167,11 +7169,17 @@ async function requestHandler(req, res) {
     }
     const done = islandEvents.settle(claimed, true, account);
     if (done?.removed) broadcastIslandRemoved([done.removed]);
+    let photoThanks = null; // (v1.10.274 사진 부탁: the islander +1 호감도 -- one request a day from each, apart from the talks' cap -- and the album's line)
+    if (photoN != null && outcome.applied) {
+      const day = kstDate(nowMs()); const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, day, [{ n: photoN, delta: 1 }]);
+      await pointStore.questApply(account, 'photomem', (d) => ({ doc: { list: [...((d || {}).list || []), { n: photoN, spot: claimed.event.spot, day }].slice(-200) } }));
+      photoThanks = { n: photoN, name: IslandCast.RESIDENTS[photoN]?.name || '', say: IslandCast.photoLine(photoN, 'ok', me), affinity: after[photoN] || 0, stages: await affinityStages(account, before, after, me) };
+    }
     if (outcome.applied && claimed.event?.type) islandProgress(claimed.event.type, account, 1); // v1.10.37 연계 퀘스트 (e.g. beach_trash)
     if (claimed.points || outcome.bonus) notifyPointsChanged([account]); // v1.10.31: or the week's life bonus
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     const result = { ok: true, action: claimed.action, item: claimed.item ? IslandItems.itemDef(claimed.item) && { id: claimed.item, name: IslandItems.itemDef(claimed.item).name, icon: IslandItems.itemDef(claimed.item).icon, qty: claimed.qty } : null,
-      points: claimed.points || 0, bonus: outcome.bonus || 0, balance: outcome.balance ?? null, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [] };
+      points: claimed.points || 0, bonus: outcome.bonus || 0, balance: outcome.balance ?? null, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [], ...(photoThanks ? { photo: photoThanks } : {}) };
     if (isResource) { resourcePulls.set(session.token,{...pull,requestId:body.requestId,result}); collectionPose(session.token); }
     return sendJson(res,200,result);
   }
@@ -7213,8 +7221,9 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && (pathname === '/api/test/island/lost' || pathname === '/api/test/island/photo') && req.method === 'POST') { // (Q2: the tourist too -- the page asks again till an islander is in a photo spot)
     const e = islandEvents.spawnLost(pathname.endsWith('/photo') ? 'photo' : 'lost');
-    const at = (await parseJson(req)).at; if (e && Number.isFinite(at?.x) && Number.isFinite(at?.z)) { e.npc.x = at.x; e.npc.z = at.z; } /* (#355: the owner waiting in a doorway) */
-    return sendJson(res, 200, { ok: Boolean(e), event: e && { id: e.id, x: e.x, z: e.z, npc: e.npc } });
+    const body = await parseJson(req); const at = body.at; if (e && Number.isFinite(at?.x) && Number.isFinite(at?.z)) { e.npc.x = at.x; e.npc.z = at.z; } /* (#355: the owner waiting in a doorway) */
+    if (e && body.arrive === true && e.arriveAt) e.arriveAt = nowMs(); /* (v1.10.274: the photo request's islander counted there now -- the screens still walk them in) */
+    return sendJson(res, 200, { ok: Boolean(e), event: e && { id: e.id, x: e.x, z: e.z, npc: e.npc, resident: e.resident ?? null, arriveAt: e.arriveAt || null } });
   }
   // (휴대폰 「가까이」: my lobby stream cut from the server's side, as a phone's network drops it -- the page reconnects)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/lobby/drop' && req.method === 'POST') {
@@ -7706,6 +7715,8 @@ async function requestHandler(req, res) {
     const post = IslandCast.RESIDENTS[n] ? postToday(n) : null; // (v1.10.215 근무표 C1: at their counter today; C2: or the station)
     if (post) return atPost(pos, post) ? sendJson(res, 200, { ok: true }) : over('far');
     if (!pos || (pos.space || 'island') !== 'island' || !talkable(n)) return over('far');
+    const walking = islandEvents.residentWalkAt(n); /* (v1.10.274 총괄: on their way to a photo spot -- the talk goes on beside them, they keep walking; a screen draws them a little off that walk) */
+    if (walking) return Math.hypot(pos.x - walking.x, pos.z - walking.z) <= TALK_FAR * 2 ? sendJson(res, 200, { ok: true }) : over('far');
     if (hold && hold.eventId === who && Math.hypot(pos.x - hold.x, pos.z - hold.z) <= TALK_FAR && islandEvents.residentKeep(n, who)) return sendJson(res, 200, { ok: true });
     if (hold && hold.eventId !== who) return over('busy');
     // (mine but let go: where it holds them; else where they walked, now or a few seconds back -- as the talk's own reach)
@@ -7725,8 +7736,8 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
     if (!talkable(n) || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift', 'accept', 'decline', 'story', 'storyYes', 'storyNo', 'final', 'talk'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
     const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
-    const state = islandEvents.residents()[n]; const who = talkKey(session);
-    if (state?.hold && state.hold.eventId !== who) {
+    const state = islandEvents.residents()[n]; const who = talkKey(session); const walking = islandEvents.residentWalkAt(n); // (v1.10.274: on the way to a photo spot -- talked to as they go, not held)
+    if (state?.hold && state.hold.eventId !== who && !walking) {
       const other = state.hold.eventId.startsWith('talk:') ? [...plazaPresence.values()].find((p) => `talk:${p.id}` === state.hold.eventId) : null;
       return sendError(res, 409, 'RESIDENT_BUSY', other ? `지금은 ${other.name || '다른 분'}님과 이야기 중이에요.` : '지금은 다른 일로 바빠 보여요.');
     }
@@ -7735,7 +7746,7 @@ async function requestHandler(req, res) {
     // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
     const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
     const post = postToday(n); // (v1.10.215 근무표 C1: at their counter today -- talked to there, no walk to hold; C2: or the station)
-    const back = post ? (atPost(pos, post) ? 0 : undefined) : pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
+    const back = post ? (atPost(pos, post) ? 0 : undefined) : walking ? (pos && Math.hypot(pos.x - walking.x, pos.z - walking.z) <= TALK_FAR * 2 ? 0 : undefined) : pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
     if (back === undefined) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (!post && !state?.hold) { const seen = IslandNpcs.residentAt(n, nowMs() - back, state); islandEvents.residentTalk(n, who, Math.atan2(pos.x - seen.x, pos.z - seen.z), back); residentsChanged(); } // (held where I reached them)
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
@@ -9023,7 +9034,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.272 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.273 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

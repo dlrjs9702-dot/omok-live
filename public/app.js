@@ -4449,6 +4449,11 @@
         if (e.kind === 'fish' || e.kind === 'insect') { cell.tabIndex = 0; cell.classList.add('opens'); cell.setAttribute('aria-label', `${e.count ? e.name : '아직 못 찾은 것'} 설명`); cell.addEventListener('click', () => openDexCard(e.id)); cell.addEventListener('keydown', (k) => { if (k.key === 'Enter') openDexCard(e.id); }); } // (v1.10.257 설명 카드)
         return cell;
       }));
+      if (on === 'photo' && data.photoWith?.length) { // (v1.10.274 사진 부탁은 주민이: 「봄이와 정자에서」 -- who I took, where, the day; the pictures stay on my device)
+        const box = document.createElement('div'); box.className = 'islandPhotoWith'; box.setAttribute('role', 'list');
+        for (const p of data.photoWith.slice(0, 20)) { const row = document.createElement('p'); row.className = 'lookMeta'; row.setAttribute('role', 'listitem'); row.textContent = `📸 ${window.IslandCast?.josa?.(p.with, '과와') || p.with} ${p.spot}에서 · ${Number(p.day.slice(5, 7))}월 ${Number(p.day.slice(8, 10))}일`; box.append(row); }
+        dex.prepend(box);
+      }
     } catch (error) { showToast(error.message); }
   }
   // v1.10.43 기념사진: 「사진」 (or P) -- the island without name tags or the page around it; 「촬영」 counts three while my
@@ -4495,8 +4500,9 @@
       const p = shot.controller.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p), signal: shot.abort.signal }).catch(() => {});
       if (!current()) return;
       const tourist = shot.controller.photoTarget?.(); // (Q2 사진 부탁: one I asked -- in the frame, then the server's own checks)
-      if (tourist && !tourist.inFrame) showToast('📸 관광객이 사진에 안 들어왔어요. 관광객이 화면에 나오게 다시 찍어 주세요.', 5000);
-      else if (tourist) { try { const r = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id: tourist.id, shot: true }), signal: shot.abort.signal }); showIslandEvents(r.events || islandEventsNear); showToast(`📸 관광객: 「고마워요! 잘 나왔네요」 +${Number(r.points || 0).toLocaleString('ko-KR')}P`, 5000); loadPoints(); } catch (error) { if (error.name !== 'AbortError') showToast(error.message, 5000); } if (!current()) return; }
+      /* (v1.10.274 사진 부탁은 주민이: the islander's own words -- not in it: 「제가 안 나온 것 같아요…」 and a shrug; in it: their thanks, +1 호감도) */
+      if (tourist && !tourist.inFrame) { const said = shot.controller.photoMiss?.(tourist.id); showToast(`📸 ${said ? `${said.name}: 「${said.say}」 · ` : ''}화면에 나오게 다시 찍어 주세요.`, 5000); }
+      else if (tourist) { try { const r = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id: tourist.id, shot: true }), signal: shot.abort.signal }); showIslandEvents(r.events || islandEventsNear); shot.controller.photoThanks?.(tourist.id, r.photo); showToast(`📸 ${r.photo ? `${r.photo.name}: 「${r.photo.say}」 · 호감도 +1` : '「고마워요! 잘 나왔네요」'} +${Number(r.points || 0).toLocaleString('ko-KR')}P`, 5000); if (r.photo) { plaza.controller?.setAffinity?.([{ n: r.photo.n, level: window.IslandCast?.levelOf?.(r.photo.affinity) ?? 0 }]); for (const note of r.photo.stages || []) showToast(`💛 ${note}`, 6000); } loadPoints(); } catch (error) { if (error.name !== 'AbortError') showToast(error.message, 5000); } if (!current()) return; }
       const data = await api('/api/island/photo', { method: 'POST', body: '{}', signal: shot.abort.signal }).catch(() => null);
       if (!current()) return;
       if (!tourist) showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
@@ -5304,7 +5310,7 @@
       plaza.controller?.setResidents?.(data.residents);
       if (ev) { completed=true; plaza.controller?.finishGather?.(true); }
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
-      if (data.action === 'photoAsk') { showIslandEvents(data.events || islandEventsNear); plaza.controller?.photoAsk?.(id); showToast(`📸 「여기서 저 좀 찍어 주세요!」 · 「사진」으로 관광객이 나오게 찍어요${data.spot ? ` (${data.spot} 안에서)` : ''}`, 7000); return; } // (Q2 사진 부탁 B안)
+      if (data.action === 'photoAsk') { showIslandEvents(data.events || islandEventsNear); plaza.controller?.photoAsk?.(id, data); showToast(`📸 ${data.name ? `${data.name}: ` : ''}「${data.say || '여기서 저 좀 찍어 주세요!'}」 · 「사진」으로 ${window.IslandCast?.josa?.(data.name || '주민', '이가') || '주민이'} 나오게 찍어요${data.spot ? ` (${data.spot} 안에서)` : ''}`, 7000); return; } // (Q2 사진 부탁 B안; v1.10.274 the islander's words)
       if (data.action === 'quest') {
         showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []);
         if (departureController === plaza.controller && data.story === 'fisher' && data.done && data.reward) { questDepartureDialog = departureController; departureDialog = true; }

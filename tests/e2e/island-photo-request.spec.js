@@ -3,11 +3,12 @@ const { shopper, post, get, standAt, spaceOn, expectNoScriptError } = require('.
 const Fishing = require('../../lib/island-fishing');
 const T = require('../../public/plaza/island-terrain.js');
 
-// Q2 사진 부탁 B안 (gamecenter-notes docs/interact-quests-20261029.md 1, 사용자 「B안으로 가자」): the tourist stands in a photo
-// spot; a shot before a word pays nothing; a word -- 「여기서 저 좀 찍어 주세요!」, posing -- then a shot with them out of the
-// frame (here: the camera drawn in between us, looking away) is 「안 들어왔어요」, one from outside the spot is refused, one facing them from the spot pays 6,000P
-// and the request ends. PC and phone.
-test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×, 명소 밖 ×, 틀 안에 들게 찍으면 6,000P', async ({ browser, request, isMobile }) => {
+// Q2 사진 부탁 B안 (gamecenter-notes docs/interact-quests-20261029.md 1, 사용자 「B안으로 가자」); v1.10.274 사진 부탁은 주민이
+// (docs/photo-request-residents-20261108.md 5): an islander free then walks to a photo spot and asks there; a shot before a
+// word pays nothing; a word -- their words, their pose -- then a shot with them out of the frame (here: the camera drawn in
+// between us, looking away) is their 「안 나온 것 같아요」, one from outside the spot is refused, one facing them from the spot
+// pays 6,000P with 호감도 +1 and the album's line, and the request ends. PC and phone.
+test('주민 사진 부탁: 명소로 걸어와 부탁, 말 안 걸고 ×, 틀 밖이면 ×, 명소 밖 ×, 틀 안에 들게 찍으면 6,000P·호감도·앨범 줄', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 400000 : 240000);
   const who = await shopper(browser, request, isMobile ? '사진사m' : '사진사', 0, 'female'); const { page, token } = who;
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); });
@@ -17,18 +18,22 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×,
   // the test stood 1.6 m off and the camera saw them)
   const farFrom = (e) => { const sp = Fishing.photoSpotAt(e.x, e.z); if (!sp) return null; for (let d = 8.5; d <= 11.5; d += 0.5) for (let k = 0; k < 24; k += 1) { const a = (k / 24) * Math.PI * 2; const p = { x: e.x + Math.sin(a) * d, z: e.z + Math.cos(a) * d }; if (T.walkable(p.x, p.z) && Fishing.photoSpotAt(p.x, p.z)?.id === sp.id) return p; } return null; };
   let ev = null;
-  await expect.poll(async () => { ev = (await post(request, '/api/test/island/photo', null, {})).data.event; return Boolean(ev && farFrom(ev)); }, { timeout: 180000, intervals: [2000] }).toBe(true);
-  const spot = Fishing.photoSpotAt(ev.x, ev.z); expect(spot).toBeTruthy();
+  await expect.poll(async () => { ev = (await post(request, '/api/test/island/photo', null, { arrive: true })).data.event; return Boolean(ev && farFrom(ev)); }, { timeout: 180000, intervals: [2000] }).toBe(true);
+  const spot = Fishing.photoSpotAt(ev.x, ev.z); expect(spot).toBeTruthy(); expect(Number.isInteger(ev.resident)).toBe(true);
+  const name = require('../../public/plaza/island-cast.js').RESIDENTS[ev.resident].name;
   const balance = async () => (await get(request, '/api/points', token)).data.balance;
-  const before = await balance();
+  const before = await balance(); const affinity = async () => (await get(request, '/api/island/affinity', token)).data.residents.find((r) => r.n === ev.resident).points; const liked = await affinity();
+  // the islander walks there on my screen (held, on the route grid)
+  await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [ev.x + 4, ev.z]);
+  await expect.poll(() => page.evaluate(([n, x, z]) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); return w ? Math.hypot(w.x - x, w.z - z) < 1 : false; }, [ev.resident, ev.x, ev.z]), { timeout: 150000, intervals: [2000] }).toBe(true);
   // a shot before a word: nothing
   expect((await post(request, '/api/island/event', token, { id: ev.id, shot: true })).data.error).toBeTruthy();
   // by them, a word: asked, posing
   const by = await page.evaluate(([x, z]) => { const T2 = window.IslandTerrain; for (let k = 0; k < 16; k += 1) { const a = (k / 16) * Math.PI * 2; const p = { x: x + Math.sin(a) * 1.6, z: z + Math.cos(a) * 1.6 }; if (T2.walkable(p.x, p.z)) return p; } return { x: x + 1.6, z }; }, [ev.x, ev.z]);
   await standAt(request, who, by.x, by.z);
   await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [ev.x, ev.z]); return spaceOn(page, `ev:photo:${ev.id}`, isMobile); }, { timeout: 30000 }).toBe(true);
-  await expect(page.locator('#toast')).toContainText('여기서 저 좀 찍어 주세요');
-  if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-pose.png` }); }
+  await expect(page.locator('#toast')).toContainText(`${name}: 「`); await expect(page.locator('#toast')).toContainText('「사진」으로');
+  if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().setTime?.('day')); await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-pose.png` }); } // (by day)
   await page.waitForTimeout(2200); // (the pose: 2 s)
   const shoot = async () => { await page.locator('#islandPhotoTab').click(); await expect(page.locator('#photoNowBtn')).toBeVisible(); await page.evaluate(() => { HTMLAnchorElement.prototype.click = () => {}; }); await page.locator('#photoNowBtn').click(); };
   const leave = async () => { if (await page.locator('#photoCloseBtn').isVisible()) await page.locator('#photoCloseBtn').click(); };
@@ -37,7 +42,7 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×,
   await standAt(request, who, stand.x, stand.z);
   await page.locator('#plazaStage').focus(); for (let i = 0; i < 4; i += 1) await page.keyboard.press('KeyQ'); // (drawn in)
   await page.evaluate(([tx, tz]) => { const d = window.PlazaDebug(); d.faceTo(d.x + (d.x - tx), d.z + (d.z - tz)); d.setCamYaw(Math.atan2(tx - d.x, tz - d.z)); }, [ev.x, ev.z]); await page.waitForTimeout(800);
-  await shoot(); await expect(page.locator('#toast')).toContainText('사진에 안 들어왔어요', { timeout: 15000 });
+  await shoot(); await expect(page.locator('#toast')).toContainText('화면에 나오게 다시 찍어 주세요', { timeout: 15000 }); await expect(page.locator('#toast')).toContainText(name);
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-out.png` });
   await leave(); expect(await balance()).toBe(before);
   // from outside the spot (the server's check)
@@ -47,9 +52,12 @@ test('관광객 사진 부탁: 말 안 걸고 ×, 관광객이 틀 밖이면 ×,
   await standAt(request, who, stand.x, stand.z);
   await page.evaluate(([tx, tz]) => { const d = window.PlazaDebug(); d.faceTo(tx, tz); d.setCamYaw(Math.atan2(d.x - tx, d.z - tz)); }, [ev.x, ev.z]);
   if (process.env.SHOT_DIR) { await expect(page.locator('#toast')).toBeHidden({ timeout: 10000 }); await page.waitForTimeout(600); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-in.png` }); } // (the last try's note gone first)
-  await shoot(); await expect(page.locator('#toast')).toContainText('잘 나왔네요', { timeout: 15000 });
+  await shoot(); await expect(page.locator('#toast')).toContainText('호감도 +1', { timeout: 15000 });
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-done.png` });
   await leave(); expect(await balance()).toBe(before + 6000);
+  expect(await affinity()).toBe(liked + 1);
+  const album = (await get(request, '/api/island/dex', token)).data.photoWith; expect(album[0]).toMatchObject({ n: ev.resident, with: name, spot: spot.name }); // (the album's 「○○와 ○○에서」)
+  if (process.env.SHOT_DIR) { await page.locator('#islandBagTab').click(); await page.locator('#islandPhotoBtn').click(); await expect(page.locator('.islandPhotoWith')).toContainText(`${spot.name}에서`); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-album.png` }); }
   expect(((await get(request, '/api/test/island/events', token)).data.events || []).some((e) => e.id === ev.id)).toBe(false);
   await expectNoScriptError(page); await who.context.close();
 });
