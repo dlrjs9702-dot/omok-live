@@ -4269,7 +4269,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.261' });
+    return sendJson(res, 200, { ok: true, version: '1.10.262' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6758,7 +6758,7 @@ async function requestHandler(req, res) {
       if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
       const s = IslandInsects.SPECIES[b.species];
       const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag, tool: outcome.worn || null };
-      given = true; insectCaught.set(id, { account, result }); insectShown.set(session.token, { species: b.species, at: nowMs() }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag); // (257: its 자랑 may follow)
+      given = true; insectCaught.set(id, { account, result }); for (const [k, v] of insectShown) if (nowMs() - v.at > 10000) insectShown.delete(k); /* (Codex 251-260 #6: the old ones go) */ insectShown.set(session.token, { species: b.species, at: nowMs() }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag); // (257: its 자랑 may follow)
       if (outcome.applied !== false) eventContestScore(account, 'bug', Math.round(s.price / 100)); // (E1: a round's catch)
       return sendJson(res, 200, result);
     } finally { if (!given) insectGone.delete(id); }
@@ -6773,10 +6773,10 @@ async function requestHandler(req, res) {
     // v1.10.260 (docs/insect-catch-improve-20261107.md 1·3절): run off, it lands on another place of its own kind in this layout
     // (3 m or more from where it was, 4 m from me) -- the same for everyone; a snail only hides in its shell (caught there still)
     if (b.species === 'snail') return sendJson(res, 200, { ok: true, hid: true });
-    const r2 = (v) => Math.round(v * 100) / 100; const taken = new Set(insectList.map((x) => `${x.x},${x.z}`));
+    const r2 = (v) => Math.round(v * 100) / 100; const taken = new Set(insectList.filter((x) => !insectGone.has(x.id) && x.id !== id).map((x) => `${x.x},${x.z}`)); /* (Codex 251-260 #5: the gone ones' places free) */
     const spot = (insectSpots || []).filter((s) => s.type === b.type && !taken.has(`${r2(s.x)},${r2(s.z)}`)).map((s) => ({ s, d: Math.hypot(s.x - b.x, s.z - b.z) })).filter((o) => o.d >= 3 && Math.hypot(o.s.x - at.x, o.s.z - at.z) >= 4).sort((p, q) => p.d - q.d)[0]?.s;
     if (!spot) { insectGone.add(id); broadcastIsland('insects', { gone: [id] }); return sendJson(res, 200, { ok: true }); }
-    const moved = { id, x: r2(spot.x), z: r2(spot.z), type: spot.type, ...(spot.r ? { r: r2(spot.r) } : {}) }; insectMoved.set(id, moved); Object.assign(b, moved);
+    const moved = { id, x: r2(spot.x), z: r2(spot.z), type: spot.type, ...(spot.r ? { r: r2(spot.r) } : {}), ...(spot.wx !== undefined ? { wx: spot.wx, wz: spot.wz } : {}) /* (a bank's own way to the water) */ }; insectMoved.set(id, moved); Object.assign(b, moved);
     broadcastIsland('insects', { moved: [moved] });
     return sendJson(res, 200, { ok: true, moved });
   }
@@ -8831,7 +8831,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.261 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.262 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

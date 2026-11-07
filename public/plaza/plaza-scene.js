@@ -2334,7 +2334,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // (v1.10.261 총괄: both looks showed till the first close -- set open as the net comes into my hand, in stepTool)
   function setBag(closed) { const o = me.holding?.bugnet?.object; if (!o) return; const u = o.userData; u.bagSet = true; u.bagOpen ??= o.getObjectByName('bag_open') || null; u.bagClosed ??= o.getObjectByName('bag_closed') || null; if (u.bagOpen) u.bagOpen.visible = !closed; if (u.bagClosed) u.bagClosed.visible = Boolean(closed); }
   // an insect off: Alert (0.8 s) then TakeOff and Flee up and away (the server puts it elsewhere); a snail into its shell
-  function insectAway(h, alert = false) { if (!h || h.flee || h.hide) return; if (h.b.species === 'snail') { h.hide = performance.now() + 4000; return; } h.flee = { t: alert ? -0.8 : 0, x: Math.random() - 0.5, z: Math.random() - 0.5 }; }
+  function insectAway(h, alert = false) { if (!h || h.flee || h.hide > performance.now()) return; /* (Codex 251-260 #10: hidden once, it may hide again) */ if (h.b.species === 'snail') { h.hide = performance.now() + 4000; return; } h.flee = { t: alert ? -0.8 : 0, x: Math.random() - 0.5, z: Math.random() - 0.5 }; }
   function setInsects(list, net) { if (Array.isArray(list)) insectList = list; if (net !== undefined) insectNet = Boolean(net); }
   function insectsGone(ids) { const gone = new Set(ids || []); insectList = insectList.filter((b) => !gone.has(b.id)); for (const id of gone) { const h = insectShown.get(id); if (h && !h.flee) h.flee = { t: 0, x: Math.random() - 0.5, z: Math.random() - 0.5 }; } } // (v1.10.260: my own catch's gone comes too, maybe before my answer -- the bag is let go only by netFail)
   // (v1.10.260) run off: where the server put it -- the one shown here flies off first, then comes back there
@@ -2780,7 +2780,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function showEnd(skip = false) {
     const s = showOff; if (!s) return; showOff = null; clearTimeout(s.limit);
     if (myAct.act === 'fish:show' || myAct.act === 'insect:show') myAct.act = s.kind === 'fish' && fishing ? 'fish:catch' : null;
-    const done = () => { assets.letGo(me, 'catch'); if (s.kind === 'insect') showTool(); else if (fishing) fishStop(); else me.anim?.release?.(); };
+    const was = fishing; /* (Codex 251-260 #14: a cast made in the 0.6 s after is not this show's to stop) */
+    const done = () => { assets.letGo(me, 'catch'); if (s.kind === 'insect') showTool(); else if (fishing) { if (fishing === was) fishStop(); } else me.anim?.release?.(); };
     if (skip || s.phase === 'wait' || lessMotion?.matches) { me.anim?.release?.(); done(); return; }
     const out = s.kind === 'insect' ? 'showPutawayInsect' : 'showPutawayBig';
     me.anim.release(); me.anim.play(out);
@@ -2845,7 +2846,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // others: the move only (the camera and the card are mine)
   function remoteShow(o, p) {
     const was = o.showAct || null; const now = p.act === 'fish:show' || p.act === 'insect:show' ? p.act : null; if (was === now) return; o.showAct = now; const c = o.c;
-    if (!now) { if (was === 'insect:show') assets.letGo(c, 'catch'); return; }
+    if (!now) { c.anim?.release?.(); /* (Codex 251-260 #13: the Hold loop let go too, as remoteNet) */ if (was === 'insect:show') assets.letGo(c, 'catch'); return; }
     const insect = now === 'insect:show'; const into = insect ? 'showInsect' : 'showCatchBig'; // (259: every fish in both hands)
     c.anim?.release?.(); c.anim?.play(into); c.anim?.loop?.(`${into}Hold`);
     if (insect && p.fish) assets.hold(c, `insect.${p.fish}`, 0, { key: 'catch', at: [0, 0, -0.065], size: SHOW_MIN.insect });
@@ -3659,7 +3660,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function drawYardTrophies() {
     for (const r of yardTrophyRoots) { r.removeFromParent(); r.traverse((o) => { if (o.material?.map?.isCanvasTexture) { o.material.map.dispose(); o.material.dispose(); } }); assets.detach?.(r); /* (Codex PR #401 P2: the loader's record too -- after the plate's canvas is let go) */ }
-    yardTrophyRoots = []; yardTrophyGlows.length = 0; for (const k of Object.keys(doors)) if (k.startsWith('trophy:')) delete doors[k];
+    for (const m of yardTrophyGlows) m.dispose(); /* (Codex 251-260 #11: the metal and glow copies made below -- this list is just them) */ yardTrophyRoots = []; yardTrophyGlows.length = 0; for (const k of Object.keys(doors)) if (k.startsWith('trophy:')) delete doors[k];
     for (const y of yardsShown.values()) for (const p of y.items) {
       const shape = YARD.shapeOf(p.id); if (!shape || !YARD.ITEMS[shape].trophy) continue; const metal = /__(gold|silver|bronze)$/.exec(p.id)?.[1] || 'gold';
       { const f = YARD.world(y.lot, p.x, p.z); const line = p.line || p.plate || ''; if (line) doors[`trophy:${p.uid}`] = { x: f.x, z: f.z, name: `${line} · 보기`, short: `${line.split(' · ')[0]} 트로피 · 보기`, line }; } /* (short: a phone's hint) */ /* (§3-1: SPACE by it, anyone's yard -- its one line) */
@@ -4119,7 +4120,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const D = MUS.DOME; const dome = put('museum.butterfly_dome', D.lx, 0, D.lz, D.yaw, (f) => { mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.3, 24), plaster, 0, 0.15, 0, f); mesh(new THREE.SphereGeometry(1.5, 20, 10, 0, TAU, 0, Math.PI / 2), glass, 0, 0.32, 0, f); }, I);
     const domePlaque = plaqueAt(dome, 0, 0.2, -1.6, 0.6, 0.2);
     for (const lx of [-5, 5]) { const light = new THREE.PointLight(0xffd9a0, 12, 14, 1.2); light.position.set(lx, 3.2, 0); I.add(light); }
-    for (const [id, s] of slots) { s.plaque.p.userData.museumSlot = id; if (s.kind !== 'tank') s.parent.userData.museumSlot = id; } // (v1.10.257: a plaque, a wall tank, a case -- clicked, its 설명)
+    for (const [id, s] of slots) { s.plaque.p.userData.museumSlot = id; if (s.kind !== 'tank' && s.kind !== 'big') s.parent.userData.museumSlot = id; } // (v1.10.257: a plaque, a wall tank, a case -- clicked, its 설명)
     g.updateMatrixWorld(true); for (const w of fadeWalls) { w.p = w.parent.localToWorld(new THREE.Vector3(w.lx, 0, w.lz)); w.n = new THREE.Vector3(-w.nx, 0, -w.nz); } /* (the rooms turned half round: the normal too) */
     museum = { group: g, rooms, slots, domePlaque, board, boardFace: null, fadeWalls, flyers: [], shownRoom: null };
     showMuseumRoom();
@@ -4137,7 +4138,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // a plaque's face (its words changed: a new face)
   function setPlaque(pl, text) { if (pl.face?.userData.boardText === text) return; if (pl.face) pl.face.removeFromParent(); pl.face = boardText(text, pl.w, pl.h, pl.y, pl.z, ['#fbf6ea', '#3a2a1a']); pl.p.add(pl.face); }
-  const swimmerOf = (s) => { const h = new THREE.Group(); s.parent.add(h); const f = new THREE.Group(); h.add(f); mesh(new THREE.BoxGeometry(0.06, 0.1, 0.3), mat(0xb8c4cc), 0, 0, 0, f); assets.attach(`fish.${s.sp}`, h, f); h.userData.ph = Math.random() * TAU; return h; };
+  const swimmerOf = (s) => { const h = new THREE.Group(); s.parent.add(h); if (s.kind === 'big') h.userData.museumSlot = `fish_${s.sp}`; /* (Codex 251-260 #9: each 대어 its own -- they share a holder) */ const f = new THREE.Group(); h.add(f); mesh(new THREE.BoxGeometry(0.06, 0.1, 0.3), mat(0xb8c4cc), 0, 0, 0, f); assets.attach(`fish.${s.sp}`, h, f); h.userData.ph = Math.random() * TAU; return h; };
   function insectIn(parent, sp) { const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Rest', now: null, gone: false, play(name) { c.want = name; if (!c.mixer || c.now === name) return; const next = c.actions[name] || c.actions.Rest || c.actions.Crawl; if (!next) return; next.reset().fadeIn(0.15).play(); c.actions[c.now]?.fadeOut(0.15); c.now = name; } }; parent.add(c.root); assets.creature([`insect.${sp}`], c); c.root.userData.ph = Math.random() * TAU; return c; }
   // app.js: what is on show (GET /api/island/museum) -- each slot shown or empty, its plaque; one new since the last a 「톡」
   function setMuseum(d) {

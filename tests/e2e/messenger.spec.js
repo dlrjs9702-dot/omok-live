@@ -151,7 +151,7 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // (v1.10.258, an Android phone: no protocol_handlers in its Chrome -- an intent:// link, the OS's messenger app or the browser)
   const host = new URL(appHome.url()).host;
   await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 })
-    .toEqual(isMobile ? [[`intent://${host}/messenger.html#Intent;scheme=http;S.browser_fallback_url=${encodeURIComponent(`http://${host}/messenger.html`)};end`, '_blank']] : [['', '_blank']]);
+    .toEqual(isMobile ? [[`intent://${host}/messenger.html#Intent;scheme=http;S.browser_fallback_url=${encodeURIComponent(`http://${host}/messenger.html?install=1`)};end`, '_blank']] /* (Codex #16: no app -- the page asks for the install) */ : [['', '_blank']]);
   if (process.env.SHOT_DIR && isMobile) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-open-app.png` });
   if (!isMobile) { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
     const [tab] = await Promise.all([appHome.context().waitForEvent('page'), appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => { window.open = window.__realOpen; document.getElementById('mOpenApp').click(); })]);
@@ -340,6 +340,18 @@ test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.htm
   const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(300); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
   await shot('install-light'); await page.locator('#mTheme').selectOption('dark'); await shot('install-dark'); await page.locator('#mTheme').selectOption('light');
   await page.locator('#mInstallBtn').click(); expect(await page.evaluate(() => window.__prompted)).toBe(1); await expect(page.locator('#mInstallBtn')).toBeHidden();
+  await expect(page.locator('#mChromeInstall')).toBeHidden(); // (a prompt came: no Chrome line)
+  // (Codex 251-260 #16) no prompt in 3 s (the island app's Custom Tab): a phone (Android) is asked to open it in Chrome to
+  // install, the menu line beside; in Chrome already (?install=1) the menu line only; a PC nothing
+  for (const q of ['', '?install=1']) {
+    const p = await context.newPage(); await p.goto(`/messenger.html${q}`); await expect(p.locator('#mLogin')).toBeVisible(); await p.waitForTimeout(3500);
+    if (!isMobile) { await expect(p.locator('#mChromeInstall')).toBeHidden(); await p.close(); continue; }
+    await expect(p.locator('#mChromeInstall')).toBeVisible(); await expect(p.locator('#mChromeInstall')).toContainText('크롬 메뉴 ⋮ → 앱 설치도 돼요');
+    await expect(p.locator('#mChromeInstallBtn')).toBeVisible({ visible: !q });
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (process.env.SHOT_DIR && !q) await p.screenshot({ path: `${process.env.SHOT_DIR}/phone-chrome-install.png` });
+    await p.close();
+  }
   // inside the installed window (display-mode: standalone): no button even when the browser offers
   await context.addInitScript(() => { const real = window.matchMedia.bind(window); window.matchMedia = (q) => (q === '(display-mode: standalone)' ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q)); });
   const app = await context.newPage(); await app.goto('/messenger.html'); await expect(app.locator('#mLogin')).toBeVisible();

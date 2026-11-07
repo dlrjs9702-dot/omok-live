@@ -278,13 +278,13 @@ test('지연 로더: 등록이 없으면 로더를 받지 않고, 있으면 한 
   const seen = [];
   const lazy = P.createLazyAssets({ registry: { 'facility.shop': { url: '/x.glb' } }, importLoader: async () => { imported += 1; return { createIslandAssets: (o) => {
     seen.push(['create', Object.keys(o.registry)]);
-    return { attach: (...a) => seen.push(['attach', a[0]]), dress: (...a) => seen.push(['dress', a[0]]), setQuality: (t) => seen.push(['quality', t]), release() {}, dispose() {}, debug: () => ({ shown: {} }) };
+    return { attach: (...a) => seen.push(['attach', a[0]]), dress: (...a) => seen.push(['dress', a[0]]), setQuality: (t) => seen.push(['quality', t]), detach: (h) => seen.push(['detach', h.n]), release() {}, dispose() {}, debug: () => ({ shown: {} }) };
   } }; } });
   lazy.attach('facility.shop', {}, {}); lazy.dress('character.player', {});
   await new Promise((r) => setTimeout(r, 0)); await new Promise((r) => setTimeout(r, 0));
-  lazy.setQuality(1);
+  lazy.setQuality(1); lazy.detach({ n: 7 }); /* (Codex 251-260 #4: detach through the wrapper) */
   assert.equal(imported, 1);
-  assert.deepEqual(seen, [['create', ['facility.shop']], ['attach', 'facility.shop'], ['dress', 'character.player'], ['quality', 1]]);
+  assert.deepEqual(seen, [['create', ['facility.shop']], ['attach', 'facility.shop'], ['dress', 'character.player'], ['quality', 1], ['detach', 7]]);
   assert.equal(lazy.debug().loader, 'ready');
 
   const errors = [];

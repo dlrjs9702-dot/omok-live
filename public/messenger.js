@@ -66,7 +66,7 @@
     }));
     if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
     const unread = unreadOf(state.rooms); baseTitle = unread ? `(${unread > 99 ? '99+' : unread}) 아일랜드 메신저` : '아일랜드 메신저';
-    if (EMBED) { try { window.parent.postMessage({ type: 'gc-messenger-unread', unread: unreadOf(state.rooms.filter((r) => r.id !== current?.id)) }, location.origin); } catch {} return; } /* (the room open is being read) */ // (12절: the count on the island's 메신저 button only -- told it at once, 총괄 #402)
+    if (EMBED) { try { window.parent.postMessage({ type: 'gc-messenger-unread', unread: unreadOf(state.rooms.filter((r) => away() || r.id !== current?.id)) /* (Codex 251-260 #15: the 서랍 closed or not looked at -- its room is peeked, not read: counted) */ }, location.origin); } catch {} return; } /* (the room open is being read) */ // (12절: the count on the island's 메신저 button only -- told it at once, 총괄 #402)
     document.title = blink.text(baseTitle); blink.update(unread, away());
     window.MessengerAlert.setBadge(navigator, unread);
   }
@@ -514,7 +514,7 @@
     // (opened by web+gcmessenger:) the 서랍 that asked is told the app is up -- as an app or a tab -- and closes its own tab
     const launched = () => { try { new BroadcastChannel('gc-messenger').postMessage({ type: 'gc-messenger-app', app: Boolean(window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone) }); } catch {} };
     if (new URLSearchParams(location.search).has('open')) launched();
-    try { window.launchQueue?.setConsumer((p) => { if (p?.targetURL && new URL(p.targetURL).searchParams.has('open')) launched(); const id = p?.targetURL && roomOfOpen(p.targetURL); const x = id && state.rooms.find((y) => y.id === id); if (x) openRoom(x); }); } catch {} // (the app already open: focused, told the room)
+    try { window.launchQueue?.setConsumer((p) => { if (p?.targetURL && new URL(p.targetURL).searchParams.has('open')) launched(); const id = p?.targetURL && (new URL(p.targetURL).searchParams.get('room') || roomOfOpen(p.targetURL)); /* (Codex 251-260 #2: ?room= too) */ const x = id && state.rooms.find((y) => y.id === id); if (x) openRoom(x); }); } catch {} // (the app already open: focused, told the room)
     if (!EMBED) setupPush(); // (12절: notices are the messenger app's)
   }
   loginForm.addEventListener('submit', async (event) => {
@@ -606,9 +606,12 @@
   });
   // (10절 ①) 메신저만 따로 설치: the browser's own install prompt, when it offers one (not inside an installed window)
   let installPrompt = null; const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches);
-  window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; if (!standalone()) byId('mInstallBtn').classList.remove('hidden'); });
+  const askedInstall = new URLSearchParams(location.search).has('install'); /* (Codex 251-260 #16: come here to install) */
+  window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; byId('mChromeInstall').classList.add('hidden'); if (standalone()) return; const b = byId('mInstallBtn'); b.classList.remove('hidden'); if (askedInstall) { b.classList.replace('secondary', 'primary'); b.focus({ preventScroll: true }); } });
   byId('mInstallBtn').addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; byId('mInstallBtn').classList.add('hidden'); });
-  window.addEventListener('appinstalled', () => byId('mInstallBtn').classList.add('hidden'));
+  window.addEventListener('appinstalled', () => { byId('mInstallBtn').classList.add('hidden'); byId('mChromeInstall').classList.add('hidden'); });
+  // (Codex 251-260 #16) Android with no prompt in 3 s (the island app's Custom Tab gets none): open it in Chrome to install
+  if (!EMBED) setTimeout(() => { const c = window.MessengerAlert?.chromeInstall({ ua: navigator.userAgent, origin: location.origin, standalone: standalone(), prompted: Boolean(installPrompt), asked: askedInstall }); if (!c) return; byId('mChromeInstallBtn').classList.toggle('hidden', Boolean(c.menuOnly)); byId('mChromeInstall').classList.remove('hidden'); if (c.url) byId('mChromeInstallBtn').onclick = () => { location.href = c.url; }; }, 3000);
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
   { const sel = byId('mTheme'); sel.value = window.MessengerTheme?.get() || 'light'; sel.addEventListener('change', () => window.MessengerTheme?.set(sel.value)); } // (어두운 화면: messenger-theme.js)
   // (the game's window opens this one with its login: a new login there reaches an open messenger too)

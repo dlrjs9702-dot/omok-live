@@ -48,6 +48,11 @@ test('메신저 제목 깜빡임: 기본 타이머는 this 없이 부름(Chrome 
 test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그대로', () => {
   const o = 'https://island-dalmaru.onrender.com';
   assert.equal(MA.appIntent('Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile', o, 'r_abc123'),
-    'intent://island-dalmaru.onrender.com/messenger.html?room=r_abc123#Intent;scheme=https;S.browser_fallback_url=https%3A%2F%2Fisland-dalmaru.onrender.com%2Fmessenger.html%3Froom%3Dr_abc123;end');
+    'intent://island-dalmaru.onrender.com/messenger.html?room=r_abc123#Intent;scheme=https;S.browser_fallback_url=https%3A%2F%2Fisland-dalmaru.onrender.com%2Fmessenger.html%3Froom%3Dr_abc123%26install%3D1;end'); // (Codex #16: the fallback asks for the install)
   assert.equal(MA.appIntent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', o, 'r_abc123'), null);
+  // (Codex 251-260 #16) Android, not installed, no prompt in 3 s: open in Chrome to install; in Chrome already the menu line only
+  const fold = 'Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile';
+  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false }), { url: 'intent://island-dalmaru.onrender.com/messenger.html?install=1#Intent;scheme=https;package=com.android.chrome;end' });
+  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, asked: true }), { menuOnly: true });
+  for (const x of [{ ua: fold, standalone: true }, { ua: fold, prompted: true }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);
 });

@@ -4236,7 +4236,7 @@
   }
   function fishTimingEnd() { if (fishBar) cancelAnimationFrame(fishBar.raf); fishBar = null; fishTimingBox.classList.add('hidden'); if (!fishTug) document.body.classList.remove('islandFishing'); }
   function fishBarPress() {
-    const g = fishBar; if (!g || fishBusy) return; const ms = Math.round(performance.now() - g.shownAt); g.presses.push({ t: ms });
+    const g = fishBar; if (!g || fishBusy || g.hold > performance.now()) return; /* (Codex 251-260 #7: the needle held after a miss -- no press on a needle not shown) */ const ms = Math.round(performance.now() - g.shownAt); g.presses.push({ t: ms });
     if (!window.FishTug.inZone(g.t, g.t.zones[g.hit], ms)) { // (총괄 #409: why -- the needle held 0.5 s where it was pressed, a red mark there; the zone as it was)
       const x = window.FishTug.needleAt(g.t.period, ms) * 100; fishTimingBox.querySelector('.fishTimingNeedle').style.left = `${x}%`; g.hold = performance.now() + 500;
       const miss = fishTimingBox.querySelector('.fishTimingMiss'); miss.style.left = `${x}%`; miss.classList.remove('hidden'); clearTimeout(g.missTimer); g.missTimer = setTimeout(() => { miss.classList.add('hidden'); if (fishBar === g) fishBarMark(); }, 500);
@@ -4355,8 +4355,10 @@
   async function openDexCard(id) { // the 설명 alone (the bag's ⓘ, a 도감 cell, a note, a plaque)
     catchClose(false); catchNote = ''; catchHost(); catchCard.dataset.id = id; catchCard.className = `catchCard flipped infoOnly${lessMotionNow() ? ' calm' : ''}`;
     catchCard.querySelector('#catchMoreBtn').classList.add('hidden');
-    try { await fillCatchBack(id); catchCard.querySelector('#catchCloseBtn').focus({ preventScroll: true }); } catch (error) { catchClose(false); showToast(error.message); }
+    const n = ++dexCardSeq; /* (Codex 251-260 #8: a late answer for one opened before -- not this card's to close) */
+    try { await fillCatchBack(id); if (n === dexCardSeq) catchCard.querySelector('#catchCloseBtn').focus({ preventScroll: true }); } catch (error) { if (n !== dexCardSeq) return; catchClose(false); showToast(error.message); }
   }
+  let dexCardSeq = 0;
   byId('catchMoreBtn').addEventListener('click', async () => { clearTimeout(catchTimer); catchCard.classList.add('flipped'); byId('catchMoreBtn').classList.add('hidden'); await fillCatchBack(catchCard.dataset.id).catch(() => {}); });
   byId('catchCloseBtn').addEventListener('click', () => catchClose(!catchCard.classList.contains('infoOnly')));
   window.addEventListener('keydown', (e) => { if (e.key !== 'Escape' || catchCard.classList.contains('hidden')) return; e.preventDefault(); e.stopImmediatePropagation(); catchClose(!catchCard.classList.contains('infoOnly')); }, true);
