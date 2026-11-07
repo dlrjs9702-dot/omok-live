@@ -31,7 +31,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
       since ||= Date.now(); if (Date.now() - since > 20000) { await page.keyboard.press('Escape'); await page.waitForTimeout(600); since = 0; }
       return false;
     }, { timeout: 120000, intervals: [300] }).toBe(true).catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')} n: ${n}`; throw error; }); // (CI 3차: once 120 s with no talk on CI -- the server's answer, to find why)
-    if (!process.env.CI) expect(await page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe(`resident:${n}`); // the talk camera (사용자 2026-10-18: every talk) -- (CI: a slow screen draws the walker behind, too far for the camera)
+    if (!process.env.CI) await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id), { timeout: 8000 }).toBe(`resident:${n}`); /* (v1.10.270: polled -- the camera eases in a moment after the choices) */ // the talk camera (사용자 2026-10-18: every talk) -- (CI: a slow screen draws the walker behind, too far for the camera)
   };
   // (대화창 새 단장: the words typed out -- Space shows a line at once, then the next)
   const lines = () => require('./skin-support').revealTalk(page);
@@ -99,6 +99,15 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   await choices.last().click(); await expect.poll(async () => (await topics()).filter((t) => t !== 'tree')).toEqual(['how', 'rumor', 'bye', 'back']); // (아는 사이 reached: two more topics first)
   await choices.filter({ hasText: '잘 가요' }).click(); await expect(dialog).not.toHaveClass(/talkMode/);
   await expect.poll(() => holdOn(other.page, idle), { timeout: 15000 }).toBe(null);
+  // Q2 「대화 창 저절로 닫힘」 (was resident-talk-gone -- v1.10.270 시험 정리 합침): my hold let go (as a late bye would) and the
+  // other player talking to them now -- the window says why as it closes (the renewal's 「다른 일로 가 봐야 한대요」, or a slow
+  // screen's own request after theirs: 「지금은 ○○님과 이야기 중이에요」)
+  await talkTo(idle);
+  await post(request, '/api/island/resident/bye', token, { n: idle });
+  await expect.poll(async () => { const at = await page.evaluate(() => [window.PlazaDebug().x, window.PlazaDebug().z]); await post(request, '/api/plaza/state', other.token, { x: at[0] + 0.8, z: at[1] + 0.8, yaw: 0, moving: false }); return (await post(request, '/api/island/resident/talk', other.token, { n: idle })).status; }, { timeout: 30000 }).toBe(200);
+  await expect(page.locator('#toast')).toContainText(/다른 일로 가 봐야 한대요|님과 이야기 중이에요/, { timeout: 15000 });
+  await expect.poll(talking, { timeout: 10000 }).toBe(false);
+  await post(request, '/api/island/resident/bye', other.token, { n: idle });
   // the asker: the request (their name on the window) before the choices, then the tracker
   const askers = Object.entries(view.marks).filter(([, m]) => m === 'new').map(([n]) => Number(n));
   expect(askers.length).toBeGreaterThan(0);
