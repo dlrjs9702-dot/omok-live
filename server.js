@@ -7150,7 +7150,7 @@ async function requestHandler(req, res) {
     if (PHOTO_FAIL[claimed.error]) return sendError(res, 409, claimed.error, PHOTO_FAIL[claimed.error]);
     if (claimed.error) { resourcePulls.delete(session.token); return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.'); }
     const photoN = claimed.event?.type === 'photo' && Number.isInteger(claimed.event.resident) ? claimed.event.resident : null; const me = String(session.label || '');
-    if (claimed.action === 'photoAsk') { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return sendJson(res, 200, { ok: true, action: 'photoAsk', id, spot: claimed.spot, ...(photoN != null ? { n: photoN, name: IslandCast.RESIDENTS[photoN]?.name || '', say: IslandCast.photoLine(photoN, 'ask', me), pose: IslandCast.photoPose(photoN) } : {}), events: at ? islandEvents.nearby(at.x, at.z, account) : [] }); } // (Q2: asked -- the shot is the photo mode's; v1.10.274 their words, their pose)
+    if (claimed.action === 'photoAsk') { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return sendJson(res, 200, { ok: true, action: 'photoAsk', id, spot: claimed.spot, ...(photoN != null ? { n: photoN, name: IslandCast.RESIDENTS[photoN]?.name || '', say: IslandCast.photoLine(photoN, 'ask', me, Math.random, claimed.spot || ''), pose: IslandCast.photoPose(photoN) } : {}), events: at ? islandEvents.nearby(at.x, at.z, account) : [] }); } // (Q2: asked -- the shot is the photo mode's; v1.10.274 their words, their pose)
     if (claimed.action === 'talk') { // v1.10.34: the owner's request -- where the thing lies, for my map; nothing paid
       const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
@@ -7715,6 +7715,8 @@ async function requestHandler(req, res) {
     const post = IslandCast.RESIDENTS[n] ? postToday(n) : null; // (v1.10.215 근무표 C1: at their counter today; C2: or the station)
     if (post) return atPost(pos, post) ? sendJson(res, 200, { ok: true }) : over('far');
     if (!pos || (pos.space || 'island') !== 'island' || !talkable(n)) return over('far');
+    const walking = islandEvents.residentWalkAt(n); /* (v1.10.274 총괄: on their way to a photo spot -- the talk goes on beside them, they keep walking; a screen draws them a little off that walk) */
+    if (walking) return Math.hypot(pos.x - walking.x, pos.z - walking.z) <= TALK_FAR * 2 ? sendJson(res, 200, { ok: true }) : over('far');
     if (hold && hold.eventId === who && Math.hypot(pos.x - hold.x, pos.z - hold.z) <= TALK_FAR && islandEvents.residentKeep(n, who)) return sendJson(res, 200, { ok: true });
     if (hold && hold.eventId !== who) return over('busy');
     // (mine but let go: where it holds them; else where they walked, now or a few seconds back -- as the talk's own reach)
@@ -7734,8 +7736,8 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
     if (!talkable(n) || (topic !== null && !['how', 'rumor', 'errand', 'ask', 'answer', 'gift', 'accept', 'decline', 'story', 'storyYes', 'storyNo', 'final', 'talk'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
     const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
-    const state = islandEvents.residents()[n]; const who = talkKey(session);
-    if (state?.hold && state.hold.eventId !== who) {
+    const state = islandEvents.residents()[n]; const who = talkKey(session); const walking = islandEvents.residentWalkAt(n); // (v1.10.274: on the way to a photo spot -- talked to as they go, not held)
+    if (state?.hold && state.hold.eventId !== who && !walking) {
       const other = state.hold.eventId.startsWith('talk:') ? [...plazaPresence.values()].find((p) => `talk:${p.id}` === state.hold.eventId) : null;
       return sendError(res, 409, 'RESIDENT_BUSY', other ? `지금은 ${other.name || '다른 분'}님과 이야기 중이에요.` : '지금은 다른 일로 바빠 보여요.');
     }
@@ -7744,7 +7746,7 @@ async function requestHandler(req, res) {
     // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
     const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
     const post = postToday(n); // (v1.10.215 근무표 C1: at their counter today -- talked to there, no walk to hold; C2: or the station)
-    const back = post ? (atPost(pos, post) ? 0 : undefined) : pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
+    const back = post ? (atPost(pos, post) ? 0 : undefined) : walking ? (pos && Math.hypot(pos.x - walking.x, pos.z - walking.z) <= TALK_FAR * 2 ? 0 : undefined) : pos ? [0, 1500, 3000, 4500].find((ms) => reach(IslandNpcs.residentAt(n, nowMs() - ms, state))) : undefined;
     if (back === undefined) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (!post && !state?.hold) { const seen = IslandNpcs.residentAt(n, nowMs() - back, state); islandEvents.residentTalk(n, who, Math.atan2(pos.x - seen.x, pos.z - seen.z), back); residentsChanged(); } // (held where I reached them)
     const account = pointAccountForSession(session); const day = kstDate(nowMs());

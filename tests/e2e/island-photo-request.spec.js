@@ -33,7 +33,7 @@ test('주민 사진 부탁: 명소로 걸어와 부탁, 말 안 걸고 ×, 틀 �
   await standAt(request, who, by.x, by.z);
   await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().faceTo(x, z), [ev.x, ev.z]); return spaceOn(page, `ev:photo:${ev.id}`, isMobile); }, { timeout: 30000 }).toBe(true);
   await expect(page.locator('#toast')).toContainText(`${name}: 「`); await expect(page.locator('#toast')).toContainText('「사진」으로');
-  if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-pose.png` }); }
+  if (process.env.SHOT_DIR) { await page.evaluate(([tx, tz]) => { const d = window.PlazaDebug(); d.setTime?.('day'); d.setCamYaw(Math.atan2(d.x - tx, d.z - tz) + Math.PI / 2); }, [ev.x, ev.z]); await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-pose.png` }); } // (from the side: them and me, by day)
   await page.waitForTimeout(2200); // (the pose: 2 s)
   const shoot = async () => { await page.locator('#islandPhotoTab').click(); await expect(page.locator('#photoNowBtn')).toBeVisible(); await page.evaluate(() => { HTMLAnchorElement.prototype.click = () => {}; }); await page.locator('#photoNowBtn').click(); };
   const leave = async () => { if (await page.locator('#photoCloseBtn').isVisible()) await page.locator('#photoCloseBtn').click(); };
@@ -57,6 +57,7 @@ test('주민 사진 부탁: 명소로 걸어와 부탁, 말 안 걸고 ×, 틀 �
   await leave(); expect(await balance()).toBe(before + 6000);
   expect(await affinity()).toBe(liked + 1);
   const album = (await get(request, '/api/island/dex', token)).data.photoWith; expect(album[0]).toMatchObject({ n: ev.resident, with: name, spot: spot.name }); // (the album's 「○○와 ○○에서」)
+  if (process.env.SHOT_DIR) { await page.locator('#islandBagTab').click(); await page.locator('#islandPhotoBtn').click(); await expect(page.locator('.islandPhotoWith')).toContainText(`${spot.name}에서`); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-photo-album.png` }); }
   expect(((await get(request, '/api/test/island/events', token)).data.events || []).some((e) => e.id === ev.id)).toBe(false);
   await expectNoScriptError(page); await who.context.close();
 });

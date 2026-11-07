@@ -218,8 +218,9 @@ test('사진 부탁은 주민이: 쉬는 주민을 잡아 명소로 걸어감(�
     const spot=Fishing.photoSpotAt(e.x,e.z); assert.ok(spot,'명소 안'); assert.equal(e.spot,spot.id);
     for(let dx=-3.5;dx<=3.5;dx+=0.5) for(let dz=-3.5;dz<=3.5;dz+=0.5) if(Math.hypot(dx,dz)<=3.5) assert.ok(!T.canFish(e.x+dx,e.z+dz),'낚시 자리 밖');
     assert.ok(Number.isInteger(e.resident)); const hold=ev.residents()[e.resident].hold; assert.equal(hold.eventId,e.id); assert.deepEqual([hold.x,hold.z],[e.x,e.z]); assert.ok(hold.arriveAt>t,'걸어가는 중');
+    const w0=ev.residentWalkAt(e.resident); assert.ok(w0,'걸어가는 자리'); assert.ok(Math.hypot(w0.x-e.x,w0.z-e.z)<=150,'150 m 안에서 고름'); // (총괄: talked to as they walk, not stopped -- where they are now; a long way, not chosen)
     const on=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id); assert.equal(on.arriving,true); assert.equal(on.verb,null); assert.equal(ev.claim(e.id,'a',e).error,'NOT_THERE');
-    t=e.arriveAt+1;
+    t=e.arriveAt+1; assert.equal(ev.residentWalkAt(e.resident),null,'도착');
     const a=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id); const b=ev.nearby(e.x,e.z,'b').find(v=>v.id===e.id);
     assert.deepEqual(a,b); assert.equal(a.resident,e.resident); assert.equal(a.asked,false); assert.equal(a.arriving,false); assert.equal(a.verb,'말 걸기');
     assert.equal(ev.claim(e.id,'a',e,{shot:true}).error,'NOT_ASKED'); // (a shot before a word)

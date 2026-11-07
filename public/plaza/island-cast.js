@@ -1125,10 +1125,39 @@ REG.hasyo = {
   // v1.10.274 사진 부탁은 주민이 (docs/photo-request-residents-20261108.md 2-2·3): what an islander says asking for a picture
   // (ask: two), when it came out (ok) and when they were not in it (miss) -- PHOTO_LINES[n] their own (총괄's 27 × 4), else
   // these; and the feeling each holds for the picture (the 263 emotes, a dance is too long)
-  const PHOTO_LINES = {};
+  const PHOTO_LINES = Object.freeze({ // (notes story/photo-request-lines-20261108.json, 총괄: 27 × 4 and each one's pose)
+    0: { pose: "heart", ask: ["{me}님! {spot} 꽃이 예뻐서요, 저 좀 찍어 줄래요?","오늘 머리에 꽃 꽂았거든요. {me}님이 찍어 주면 좋겠어요!"], ok: ["와아, 꽃이랑 같이 잘 나왔어요! 고마워요!"], miss: ["어… 사진에 제 얼굴이 안 보여요. 한 번만 더요!"] }, // 봄이
+    1: { pose: "thumbsup", ask: ["허허, {me}. {spot}에서 이 늙은 선장 한 장 남겨 주겠나?","바다 냄새 좋은 날이구먼. {me}, 사진 한 장 부탁하네."], ok: ["허허, 젊을 적 뱃머리에 선 기분이구먼. 고맙네."], miss: ["허허, 이 선장이 틀 밖으로 표류했구먼. 다시 한 번."] }, // 해송
+    2: { pose: "think", ask: ["저… {me}님, {spot}에서 작가 사진 한 장… 부탁해도 될까요…","소설 뒷날개에 넣을 사진이 필요하달까요… 찍어 주실래요?"], ok: ["아… 생각하는 얼굴로 잘 나왔달까요. 고마워요…"], miss: ["앗… 제가 문장 밖으로 나가 버렸달까요… 다시요."] }, // 하람
+    3: { pose: "laugh", ask: ["흐음~ {me}님, {spot}에서 저 한 장 찍어 줄래요?","벌들 자랑 사진 대신 오늘은 제 사진이 필요해요~"], ok: ["흐음~ 꿀처럼 달달하게 나왔네요. 고마워요."], miss: ["흐음… 사진에 벌만 있고 제가 없어요. 다시요~"] }, // 두리
+    4: { pose: "wave", ask: ["얘야, {spot}에서 이 할미 사진 하나 찍어 주련?","손주들한테 보낼 사진이 있어야 해서 말이다. 부탁하자."], ok: ["아이고, 곱게도 찍었구나. 고맙다, 얘야."], miss: ["아이고, 할미가 안 보이는구나. 한 번만 더 찍어 주렴."] }, // 노을
+    5: { pose: "think", ask: ["{me} 조수, {spot}에서 증거 사진이 필요하다는 말이지.","탐정 명함에 넣을 사진이 필요하다. 찍어 주겠나?"], ok: ["훌륭한 증거로군. 사건 해결이라는 말이지."], miss: ["흠… 사진에 탐정이 없다. 이건 미스터리라는 말이지."] }, // 누리
+    6: { pose: "jumpjoy", ask: ["{me}님! {spot}에서 저 좀 찍어 주세요. 가게에 걸 거예요!","갓 구운 웃음으로 찍히고 싶어요. 부탁해요!"], ok: ["와, 갓 구운 빵처럼 따끈하게 나왔어요! 고마워요!"], miss: ["앗, 오븐 밖으로 나간 빵처럼 제가 없어요. 다시요!"] }, // 다온
+    7: { pose: "wave", ask: ["{me}님! 배달 가기 전에 {spot}에서 한 장만요!","잠깐 멈춘 김에 사진 하나 찍어 줄래요? 금방 가야 해요."], ok: ["고마워요! 사진은 마음에 잘 배달됐어요."], miss: ["어, 제가 너무 빨랐나 봐요. 사진에 없어요. 한 번 더요!"] }, // 바람이
+    8: { pose: "shy", ask: ["하암… {me}님, {spot}에서 사진 한 장 부탁해도 돼요?","동아리 소개에 넣을 사진이요… 찍어 줄래요?"], ok: ["와… 별처럼 잘 나왔어요. 고마워요."], miss: ["하암… 사진에 제가 안 보여요. 다시 찍어 줘요."] }, // 이솔
+    9: { pose: "jumpjoy", ask: ["{me} 대장! {spot} 탐험 기념사진 찍어 줘!","대장, 나 멋있게 찍어 줘! 탐험가 사진!"], ok: ["우와! 진짜 탐험가 같아! 고마워, 대장!"], miss: ["어? 나 사진에 없어! 대장, 다시 찍어 줘!"] }, // 가람
+    10: { pose: "wave", ask: ["{me} 새싹아, {spot}에서 이 할미 한 장 찍어 주련?","꽃 피는 날엔 사진이 남아야 한단다. 부탁하마."], ok: ["어머, 꽃처럼 피었구나. 고맙다, 새싹아."], miss: ["어머, 할미가 화분 밖으로 나갔구나. 다시 한 번 부탁하마."] }, // 꽃님
+    11: { pose: "thumbsup", ask: ["{me}님, {spot}에서 한 장 부탁해요. 낚시 동호회에 보내요.","물때 좋은 날 사진이 있어야죠. 찍어 줄래요?"], ok: ["잘 나왔네요. 월척 사진보다 좋아요. 고마워요."], miss: ["어, 놓쳤네요. 사진에 제가 없어요. 한 번 더요."] }, // 물결
+    12: { pose: "heart", ask: ["{me} 모델님, 오늘은 반대로 저 좀 찍어 줄래요? {spot}이요!","늘 찍기만 해서 제 사진이 없어요. 부탁해요!"], ok: ["와, 구도 좋다! {me} 모델님 사진가 해도 되겠어요!"], miss: ["앗, 제가 틀 밖이에요. 사진가가 사진에 없네요. 다시요!"] }, // 빛나
+    13: { pose: "thumbsup", ask: ["{me}님, {spot}에서 사진 한 장 부탁해요. 밭 일지에 붙이게요.","수확 끝난 기념으로 한 장만요. 찍어 줄래요?"], ok: ["잘 나왔네요. 올해 농사 사진으로 딱이에요. 고마워요."], miss: ["어이쿠, 사진에 제가 없네요. 밭에 숨은 것처럼요. 다시요."] }, // 한들
+    14: { pose: "dance", ask: ["{me}님! {spot}에서 나 찍어 줘요! 무섭게 나올 거예요!","사탕 대신 사진! 나 찍어 줘요!"], ok: ["와! 진짜 호박 요정처럼 나왔다! 고마워요!"], miss: ["어? 나 데구르 굴러 나갔나 봐요. 다시 찍어요!"] }, // 콩이
+    15: { pose: "think", ask: ["{me} 선생, {spot} 빛이 좋아요. 저를 그림처럼 찍어 줄래요?","그리기만 하다가 그려지고 싶어졌어요. 한 장 부탁해요."], ok: ["좋네요, {me} 선생. 이 빛은 다시 안 와요. 고마워요."], miss: ["선생, 캔버스 밖에 제가 서 있어요. 다시 한 번요."] }, // 고은
+    16: { pose: "bow", ask: ["{me} 씨, {spot}에서 한 장 부탁드려요. 다음 근무 전까지요.","역무원 사원증 사진이 필요해서요. 찍어 주실래요?"], ok: ["정시 도착처럼 딱 맞게 나왔네요. 고맙습니다."], miss: ["{me} 씨, 제가 틀 밖이에요. 다음 셔터 기다릴게요."] }, // 철이
+    17: { pose: "dance", ask: ["{me} 쪽, {spot}에서 공연 포스터 사진 하나 부탁해요.","박자 좋은 날이에요. 한 장 찍어 줄래요?"], ok: ["좋아요, 사진에서 소리가 들리는 것 같아요. 고마워요."], miss: ["어, 박자를 놓쳤어요. 사진에 제가 없네요. 다시요."] }, // 가락
+    18: { pose: "shy", ask: ["{me}님… {spot}에서 사진 한 장 부탁해도 될까요…","가로등 켜기 전에 한 장만요… 찍어 줄래요?"], ok: ["고마워요… 사진 속 제가 반짝이네요."], miss: ["어… 사진이 깜깜해요. 제가 안 보여요. 다시요…"] }, // 반디
+    19: { pose: "thumbsup", ask: ["{me}님! {spot}에서 한 장 찍어 줘요. 공사 끝난 기념이에요!","튼튼하게 찍어 줘요! 부탁해요!"], ok: ["좋아요! 돌처럼 단단하게 나왔어요. 고마워요!"], miss: ["어이쿠, 사진에 제가 없어요! 한 번 더 영차!"] }, // 바위
+    20: { pose: "bow", ask: ["{me}님, {spot}에서 기록용 사진 한 장 부탁드려요.","일지 맨 앞에 붙일 사진이요. 천천히 찍어 주세요."], ok: ["잘 나왔네요. 오늘 일지에 꼭 붙여 둘게요. 고마워요."], miss: ["어… 사진에 제가 없네요. 천천히, 다시 한 번 부탁해요."] }, // 한결
+    21: { pose: "bow", ask: ["{me} 양반, {spot}에서 이 늙은이 한 장 찍어 주시오.","바둑판 앞이 아니라도 사진은 남겨야 하오. 부탁하오."], ok: ["허허, 좋은 수처럼 잘 나왔소. 고맙소."], miss: ["허허, 내가 판 밖에 있구려. 다시 한 수 부탁하오."] }, // 느티
+    22: { pose: "bow", ask: ["{me}님, {spot}에서 사진 한 장 부탁드리겠습니다.","구치소 게시판에 걸 사진이 필요합니다. 찍어 주시겠습니까?"], ok: ["반듯하게 나왔습니다. 감사합니다."], miss: ["사진에 제가 없습니다. 죄송하지만 한 번 더 부탁드립니다."] }, // 김우성
+    23: { pose: "wave", ask: ["{me}님, {spot}에서 시장 사진 한 장 부탁드립니다.","섬 소식지에 실을 사진입니다. 찍어 주시겠습니까?"], ok: ["훌륭합니다! 시장으로서 감사드립니다."], miss: ["이런, 시장이 사진 밖에 있군요. 다시 부탁드립니다."] }, // 마루
+    24: { pose: "jumpjoy", ask: ["{me}님! {spot}에서 저 좀 찍어 줘요. 비 오기 전에요!","창구 밖에서 찍는 사진은 처음이에요. 부탁해요!"], ok: ["와, 비 갠 하늘처럼 맑게 나왔어요! 고마워요!"], miss: ["어, 사진에 제가 없어요. 빗방울처럼 흘렀나 봐요. 다시요!"] }, // 단비
+    25: { pose: "thumbsup", ask: ["{me}님, {spot}에서 한 장 부탁해요. 딱 한 장이요.","장부 표지에 붙일 사진이에요. 찍어 줄래요?"], ok: ["딱 맞게 나왔네요. 두 번 세어 봐도 좋아요. 고마워요."], miss: ["셈이 안 맞아요. 사진에 제가 없어요. 한 번 더요."] }, // 한솔
+    26: { pose: "wave", ask: ["{me}님, {spot}에서 사진 한 장 부탁해도 될까요?","창구가 조용한 날이라서요. 한 장만 찍어 줄래요?"], ok: ["음… 평안하게 잘 나왔네요. 고마워요."], miss: ["음… 사진에 제가 안 보여요. 다시 한 번 부탁해요."] }, // 새롬
+  });
   const PHOTO_DEFAULT = Object.freeze({ ask: ['여기 경치 좋죠? 저 좀 찍어 줄래요?', '{me}님, 여기서 사진 한 장만 부탁해요!'], ok: ['고마워요! 잘 나왔네요.'], miss: ['어… 제가 안 나온 것 같아요.'] });
   const PHOTO_POSES = Object.freeze(['thumbsup', 'heart', 'jumpjoy', 'clap', 'laugh', 'shy', 'wave']);
-  const photoLine = (n, kind, me = '', random = Math.random) => { const own = PHOTO_LINES[n]?.[kind]; return fill(pick(own?.length ? own : PHOTO_DEFAULT[kind], random), me); };
-  const photoPose = (n) => RESIDENTS[n]?.photoPose || PHOTO_POSES[Math.abs(Number(n) || 0) % PHOTO_POSES.length];
+  // ({me} as each one's own.greet calls me -- the 님 or 씨 is in the line; {spot} the spot's name; their tail added here)
+  const photoLine = (n, kind, me = '', random = Math.random, spot = '') => { const own = PHOTO_LINES[n]?.[kind]; return withTail(slot(fill(pick(own?.length ? own : PHOTO_DEFAULT[kind], random), me), 'spot', spot || '여기'), n); };
+  const photoPose = (n) => PHOTO_LINES[n]?.pose || PHOTO_POSES[Math.abs(Number(n) || 0) % PHOTO_POSES.length];
   return { callOf, photoLine, photoPose, PHOTO_LINES, RESIDENTS, WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, questionLine, chatLine, keeperLine, passLine, keeperN, josa, hasFinal, fill, slot /* (v1.10.242: lib/island-daily fills its words) */, say, withTail, untail, whyOf };
 }));
