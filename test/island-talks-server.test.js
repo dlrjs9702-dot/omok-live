@@ -57,7 +57,8 @@ test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기�
   assert.deepEqual(first.data.talks.topics.map((x) => x.id), ['today', 'hint']); assert.equal(first.data.talks.left, 3);
   assert.equal((await talk({ topic: 'talk', talk: 'work' })).data.error, 'TALK_CLOSED'); // (아는 사이 first)
   assert.equal((await talk({ topic: 'talk', talk: 'today', reply: 0 })).data.error, 'TALK_GONE'); // (no talk begun)
-  // a topic walked to its end, the first reply each time: each fitting reply +1
+  // a topic walked to its end, the first reply each time: each fitting reply +1, two a day from the trees at most
+  let gained = 0;
   const walk = async (id, choose = () => 0) => {
     const b = await talk({ topic: 'talk', talk: id }); assert.equal(b.status, 200, JSON.stringify(b.data)); assert.equal(b.data.talk.node, 'start');
     assert.ok(b.data.say.every((l) => !/\{/.test(l)), JSON.stringify(b.data.say)); assert.ok(b.data.talk.replies.length >= 2);
@@ -65,7 +66,8 @@ test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기�
     for (let step = 0; step < 12 && !r.data.talk.end; step += 1) {
       const i = choose(r.data.talk.replies); const ans = Talks.answer(n, id, node, i);
       r = await talk({ topic: 'talk', talk: id, reply: i }); assert.equal(r.status, 200, JSON.stringify(r.data));
-      assert.equal(r.data.affinity.points, points + ans.delta); points = r.data.affinity.points; node = r.data.talk.node;
+      const up = ans.delta && gained < 2 ? 1 : 0; gained += up;
+      assert.equal(r.data.affinity.points, points + up); points = r.data.affinity.points; node = r.data.talk.node;
       assert.ok(r.data.say.every((l) => !/\{/.test(l)), JSON.stringify(r.data.say));
     }
     assert.equal(r.data.talk.end, true); return r;
@@ -73,7 +75,7 @@ test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기�
   assert.equal((await talk({ topic: 'talk', talk: 'today', reply: 9 })).data.error, 'TALK_GONE');
   const b0 = await talk({ topic: 'talk', talk: 'today' }); assert.equal((await talk({ topic: 'talk', talk: 'today', reply: 9 })).status, 400); // (no such reply)
   // 봄이's 「요즘 어때요?」: the first replies lead to 「눌러 말린 꽃잎」 (e1) -- the day's keepsake from her
-  let r = await talk({ topic: 'talk', talk: 'today', reply: 0 }); r = await talk({ topic: 'talk', talk: 'today', reply: 0 }); r = await talk({ topic: 'talk', talk: 'today', reply: 0 });
+  let r = null; let node = 'start'; for (let i = 0; i < 3; i += 1) { gained += Talks.answer(n, 'today', node, 0).delta && gained < 2 ? 1 : 0; r = await talk({ topic: 'talk', talk: 'today', reply: 0 }); node = r.data.talk.node; }
   assert.equal(r.data.talk.end, true); assert.equal(r.data.gift, '눌러 말린 꽃잎'); void b0;
   assert.equal((await talk({ topic: 'talk', talk: 'today' })).data.error, 'TALK_DONE');
   // 「뭐 좋은 거 없어요?」: the weeds -- the place with the most of them now, by the island's areas
@@ -89,4 +91,27 @@ test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기�
   const more = await talk({}); assert.ok(more.data.talks.topics.some((x) => x.id === 'work')); assert.equal(more.data.talks.left, 1);
   assert.equal(more.data.talks.topics.find((x) => x.id === 'today').fresh, false);
   await walk('work'); assert.equal((await talk({ topic: 'talk', talk: 'you' })).data.error, 'TALK_TIRED');
+});
+
+test('대화 나무 호감도 구멍 막기(총괄 검토): 시작·대답·다시 시작은 TALK_DONE(그만둬도 그날 끝), 맞는 대답 여럿도 주민마다 하루 +2', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'talk-cap-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('호감손님'));
+  await req('/api/test/island/free-residents', a, {});
+  const n = 0;
+  const by = async (i) => { const w = await serverAt(req, a, n); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); };
+  const talk = async (body) => { for (let i = 0; i < 6; i += 1) { await by(i); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  const start = (await talk({})).data.affinity.points; // (the day's first talk: its own +1, before this)
+  const fit = (id, node) => { const nd = Talks.topicOf(n, id).nodes[node]; const i = nd.replies.findIndex((x) => x[2] > 0); return i >= 0 ? i : 0; };
+  // begun, one reply, begun again: refused, the first talk goes on
+  assert.equal((await talk({ topic: 'talk', talk: 'today' })).status, 200);
+  let r = await talk({ topic: 'talk', talk: 'today', reply: fit('today', 'start') }); assert.equal(r.data.affinity.points, start + 1);
+  assert.equal((await talk({ topic: 'talk', talk: 'today' })).data.error, 'TALK_DONE');
+  // every fitting reply through two topics: +2 for the day all the same
+  let fits = Talks.answer(n, 'today', 'start', fit('today', 'start')).delta;
+  for (const id of ['today', 'hint']) {
+    if (id === 'hint') { r = await talk({ topic: 'talk', talk: 'hint' }); assert.equal(r.status, 200); }
+    for (let step = 0; step < 12 && !r.data.talk.end; step += 1) { const i = fit(id, r.data.talk.node); fits += Talks.answer(n, id, r.data.talk.node, i).delta; r = await talk({ topic: 'talk', talk: id, reply: i }); assert.equal(r.status, 200, JSON.stringify(r.data)); }
+  }
+  assert.ok(fits >= 3, `fitting replies ${fits}`); assert.equal(r.data.affinity.points, start + 2);
 });

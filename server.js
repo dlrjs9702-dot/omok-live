@@ -4323,7 +4323,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.265' });
+    return sendJson(res, 200, { ok: true, version: '1.10.266' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -7696,7 +7696,7 @@ async function requestHandler(req, res) {
     // (v1.10.266 대화 나무) their topics open to me today: done today or not, how many left today (3), the hint told or not
     const talksToday = async () => {
       const lvl = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); const doc = await storyDoc(account); const tm = (await pointStore.questDoc(account, 'talkmem')).doc || {};
-      const done = tm.day === day ? tm.done?.[n] || [] : []; const told = tm.day === day && tm.hintFrom?.[n] === day;
+      const done = tm.day === day ? tm.started?.[n] || [] : []; const told = tm.day === day && tm.hintFrom?.[n] === day;
       return { topics: IslandTalks.openTopics(n, { level: lvl, storyDone: Number(doc.chapters?.[n]) || 0 }).map((id) => ({ id, label: IslandTalks.labelOf(n, id), done: done.includes(id), fresh: !tm.last?.[n]?.[id] })), left: Math.max(0, IslandTalks.PER_DAY - done.length), hintTold: told };
     };
     const sendTalk = async (view) => {
@@ -7753,12 +7753,20 @@ async function requestHandler(req, res) {
     if (topic === 'talk') {
       const id = String(body.talk || ''); const reply = body.reply == null ? null : Number(body.reply); const me = String(session.label || ''); const key = `${account}|${n}`;
       const doc = await storyDoc(account); if (!IslandTalks.openTopics(n, { level, storyDone: Number(doc.chapters?.[n]) || 0 }).includes(id)) return sendError(res, 409, 'TALK_CLOSED', '아직 그 이야기는 꺼내기 어려워요.');
-      const tm = (await pointStore.questDoc(account, 'talkmem')).doc || {}; const doneToday = tm.day === day ? tm.done?.[n] || [] : [];
+      const tm = (await pointStore.questDoc(account, 'talkmem')).doc || {};
+      const today = (d) => { const t = { ...(d || {}) }; if (t.day !== day) { t.day = day; t.started = {}; t.gained = {}; t.hintFrom = {}; t.kinds = []; t.giftFrom = {}; } return t; };
       const fillAll = (lines, vals = {}) => lines.map((l) => Object.entries(vals).reduce((s, [k, v]) => IslandCast.slot(s, k, String(v)), IslandCast.fill(l, me)));
       const base = { ok: true, n, name: c.name, role: c.role, reward: 0, errand: false, choices: true };
       if (reply === null) {
-        if (doneToday.includes(id)) return sendError(res, 409, 'TALK_DONE', '그 이야기는 오늘 이미 나눴어요.');
-        if (doneToday.length >= IslandTalks.PER_DAY) return sendError(res, 409, 'TALK_TIRED', '오늘은 이야기 많이 했네요.');
+        // (총괄 검토: a topic counts once begun -- begun again it is done for the day, left halfway or not, so its replies' 호감도
+        // is had once; kept with talkmem, not the talk in memory, so a restart does not open it again)
+        let why = null;
+        await pointStore.questApply(account, 'talkmem', (d) => {
+          const t = today(d); const s = t.started?.[n] || []; why = s.includes(id) ? 'done' : s.length >= IslandTalks.PER_DAY ? 'tired' : null; if (why) return null;
+          t.started = { ...t.started, [n]: [...s, id] }; return { doc: t };
+        });
+        if (why === 'done') return sendError(res, 409, 'TALK_DONE', '그 이야기는 오늘 이미 나눴어요.');
+        if (why === 'tired') return sendError(res, 409, 'TALK_TIRED', '오늘은 이야기 많이 했네요.');
         const b = IslandTalks.begin(n, id, { again: Boolean(tm.last?.[n]?.[id]), pick: daySeed(`${day}|${n}|${id}`) });
         const hints = IslandTalks.kindsOf(IslandTalks.topicOf(n, id)).length ? await talkHints(account, n, pos, now) : {}; const vals = Object.assign({}, ...Object.values(hints).map((h) => h.vals)); // (a hint's words met before its end: its values from the start)
         talkNow.set(key, { topic: id, node: b.node, day, vals });
@@ -7767,7 +7775,9 @@ async function requestHandler(req, res) {
       const cur = talkNow.get(key); if (!cur || cur.topic !== id || cur.day !== day) return sendError(res, 409, 'TALK_GONE', '이야기가 끊겼어요. 다시 말 걸어 주세요.');
       const a = IslandTalks.answer(n, id, cur.node, reply); if (!a) return sendError(res, 400, 'BAD_REPLY', '잘못된 요청입니다.');
       if (talkNow.get(key) !== cur) return sendError(res, 409, 'TALK_GONE', '이야기가 끊겼어요. 다시 말 걸어 주세요.'); cur.node = a.next; // (two replies at once: one moves it)
-      const after = a.delta ? await pointStore.affinityAdd(account, day, [{ n, delta: 1 }]) : before;
+      let gain = false; /* (총괄 검토: the trees' 호감도 at most affinity:talkDaily a day from each -- the day's first talk +1 apart) */
+      if (a.delta) await pointStore.questApply(account, 'talkmem', (d) => { const t = today(d); const g = Number(t.gained?.[n]) || 0; if (g >= Economy.value('affinity:talkDaily')) return null; gain = true; t.gained = { ...t.gained, [n]: g + 1 }; return { doc: t }; });
+      const after = gain ? await pointStore.affinityAdd(account, day, [{ n, delta: 1 }]) : before;
       const v = IslandTalks.view(n, id, a.next); const extra = { affinity: affinityView(after[n] || 0), stages: await affinityStages(account, before, after, me) };
       if (!v.end) return sendTalk({ ...base, say: fillAll(v.say, cur.vals), talk: { id, node: v.node, replies: v.replies, end: false }, ...extra });
       talkNow.delete(key);
@@ -7775,8 +7785,7 @@ async function requestHandler(req, res) {
       const e = IslandTalks.endOf(n, id, a.next, (k) => Boolean(hints[k]) && !told.includes(k) && !hintFromToday);
       let gift = null;
       await pointStore.questApply(account, 'talkmem', (d) => {
-        const t = { ...(d || {}) }; if (t.day !== day) { t.day = day; t.done = {}; t.hintFrom = {}; t.kinds = []; t.giftFrom = {}; }
-        t.done = { ...t.done, [n]: [...new Set([...(t.done[n] || []), id])] }; t.last = { ...(t.last || {}), [n]: { ...(t.last?.[n] || {}), [id]: a.text } };
+        const t = today(d); t.last = { ...(t.last || {}), [n]: { ...(t.last?.[n] || {}), [id]: a.text } };
         if (e.hint) { t.hintFrom = { ...t.hintFrom, [n]: day }; t.kinds = [...new Set([...(t.kinds || []), e.hint])]; }
         if (e.gift && t.giftFrom?.[n] !== day) { gift = e.gift; t.giftFrom = { ...(t.giftFrom || {}), [n]: day }; t.keepsakes = [...(t.keepsakes || []), { n, name: e.gift, day }].slice(-200); }
         return { doc: t };
@@ -8942,7 +8951,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.265 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.266 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
