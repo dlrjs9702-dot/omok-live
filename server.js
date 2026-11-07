@@ -299,7 +299,7 @@ function securityHeaders(extra = {}) {
     'Referrer-Policy': 'no-referrer',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${importMapCsp ? ` ${importMapCsp}` : ''}; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${importMapCsp ? ` ${importMapCsp}` : ''}; style-src 'self'; connect-src 'self' blob:; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, /* (v1.10.272: blob: -- a GLB's own pictures, which GLTFLoader reads from a blob: address -- the 99b taxi is the first textured model) */
     ...extra,
   };
 }
