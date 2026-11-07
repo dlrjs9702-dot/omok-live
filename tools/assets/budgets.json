@@ -1396,6 +1396,54 @@
     "together-v1/insect_snow_scorpionfly.glb": {
       "nodes": 2,
       "reason": "v1.10.261 assets 105: a still insect -- its root and the mesh"
+    },
+    "together-v1/mark_exclaim.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_question.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_heart.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_note.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_anger.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_sweat.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_tears.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_sparkle.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_zzz.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_idea.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_sigh.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
+    },
+    "together-v1/mark_flower.glb": {
+      "nodes": 2,
+      "reason": "v1.10.263 assets 101: a mark over the head -- its root at the bottom middle and the mesh"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

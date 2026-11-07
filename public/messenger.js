@@ -606,12 +606,21 @@
   });
   // (10절 ①) 메신저만 따로 설치: the browser's own install prompt, when it offers one (not inside an installed window)
   let installPrompt = null; const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches);
-  const askedInstall = new URLSearchParams(location.search).has('install'); /* (Codex 251-260 #16: come here to install) */
-  window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; byId('mChromeInstall').classList.add('hidden'); if (standalone()) return; const b = byId('mInstallBtn'); b.classList.remove('hidden'); if (askedInstall) { b.classList.replace('secondary', 'primary'); b.focus({ preventScroll: true }); } });
+  const install = new URLSearchParams(location.search).get('install'); /* (Codex 251-260 #16, v1.10.263: '1' from the island app's fallback, 'chrome' in Chrome itself) */
+  window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; byId('mChromeInstall').classList.add('hidden'); if (standalone() && install !== '1') return; const b = byId('mInstallBtn'); b.classList.remove('hidden'); if (install) { b.classList.replace('secondary', 'primary'); b.focus({ preventScroll: true }); } });
   byId('mInstallBtn').addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; byId('mInstallBtn').classList.add('hidden'); });
   window.addEventListener('appinstalled', () => { byId('mInstallBtn').classList.add('hidden'); byId('mChromeInstall').classList.add('hidden'); });
-  // (Codex 251-260 #16) Android with no prompt in 3 s (the island app's Custom Tab gets none): open it in Chrome to install
-  if (!EMBED) setTimeout(() => { const c = window.MessengerAlert?.chromeInstall({ ua: navigator.userAgent, origin: location.origin, standalone: standalone(), prompted: Boolean(installPrompt), asked: askedInstall }); if (!c) return; byId('mChromeInstallBtn').classList.toggle('hidden', Boolean(c.menuOnly)); byId('mChromeInstall').classList.remove('hidden'); if (c.url) byId('mChromeInstallBtn').onclick = () => { location.href = c.url; }; }, 3000);
+  // the Chrome line: install=1 at once (no waiting: the fallback comes only when there is no messenger app), else after 3 s
+  // with no prompt; the values it was decided on kept on it and in the console (a phone where it fails tells why)
+  const chromeLine = (note = null) => {
+    const why = { ua: navigator.userAgent, standalone: standalone(), prompted: Boolean(installPrompt), install }; const c = window.MessengerAlert?.chromeInstall({ ...why, origin: location.origin });
+    const box = byId('mChromeInstall'); box.dataset.why = JSON.stringify({ ...why, show: c ? (c.menuOnly ? 'menu' : 'button') : 'none' }); console.info('[messenger install]', box.dataset.why);
+    if (!c) return false; byId('mChromeInstallBtn').classList.toggle('hidden', Boolean(c.menuOnly)); byId('mChromeInstallText').textContent = note || c.line; box.classList.remove('hidden');
+    if (c.url) byId('mChromeInstallBtn').onclick = () => { location.href = c.url; }; return true;
+  };
+  if (!EMBED) { if (install === '1') chromeLine(); else setTimeout(() => chromeLine(), 3000); }
+  // (v1.10.263) in the island app's Custom Tab notices cannot be turned on: say where, with the same Chrome button
+  if (install === '1') byId('mPushBtn').addEventListener('click', (event) => { event.stopImmediatePropagation(); showToast('알림은 크롬이나 메신저 앱에서 켤 수 있어요.', 4000); chromeLine('알림은 크롬이나 메신저 앱에서 켤 수 있어요'); }, { capture: true });
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
   { const sel = byId('mTheme'); sel.value = window.MessengerTheme?.get() || 'light'; sel.addEventListener('change', () => window.MessengerTheme?.set(sel.value)); } // (어두운 화면: messenger-theme.js)
   // (the game's window opens this one with its login: a new login there reaches an open messenger too)

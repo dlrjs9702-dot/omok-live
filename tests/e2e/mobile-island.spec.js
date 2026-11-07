@@ -256,4 +256,12 @@ test('모바일 채팅 창: 손가락으로 모서리 크기·머리 옮기기, 
   for (const l of looks) { expect(l.paper, JSON.stringify(l)).toBe(true); if (l.id !== 'islandStick') expect(l.contrast, JSON.stringify(l)).toBeGreaterThanOrEqual(4.5); }
   for (const id of ['#islandActBtn', '#islandWalkBtn', '#islandRunBtn']) { const b = await page.locator(id).boundingBox(); expect(Math.min(b.width, b.height), id).toBeGreaterThanOrEqual(44); }
   { const b1 = await page.locator('#islandBagTab').boundingBox(); const p1 = await page.locator('#islandPhotoTab').boundingBox(); expect(b1.x + b1.width).toBeLessThanOrEqual(p1.x); } // (neighbours apart)
+  // (v1.10.263 감정 표현) the 😊 (44 px, clear of the others) opens the 16 as a 4 x 4 grid inside the screen; a tap outside closes it
+  { const e = await page.locator('#islandEmoteBtn').boundingBox(); expect(Math.min(e.width, e.height)).toBeGreaterThanOrEqual(44);
+    for (const id of ['#islandActBtn', '#islandWalkBtn', '#islandRunBtn']) { const o = await page.locator(id).boundingBox(); expect(o.x >= e.x + e.width || o.x + o.width <= e.x || o.y >= e.y + e.height || o.y + o.height <= e.y, id).toBe(true); }
+    await page.locator('#islandEmoteBtn').tap(); await expect(page.locator('#emoteWheel.grid')).toBeVisible(); await expect(page.locator('.emoteCell')).toHaveCount(16);
+    const g = await page.locator('#emoteWheel .emoteRing').boundingBox(); const W = page.viewportSize().width; expect(g.x).toBeGreaterThanOrEqual(0); expect(g.x + g.width).toBeLessThanOrEqual(W);
+    const cells = await page.locator('.emoteCell').evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [Math.round(r.top), r.width >= 44 && r.height >= 44]; })); expect(new Set(cells.map((c) => c[0])).size).toBe(4); expect(cells.every((c) => c[1])).toBe(true);
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/phone-emote-grid.png` });
+    await page.locator('#emoteWheel').dispatchEvent('pointerdown'); await expect(page.locator('#emoteWheel')).toBeHidden(); } /* (a tap on the backdrop, outside the grid) */
 });

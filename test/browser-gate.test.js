@@ -66,7 +66,7 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'browser-gate-'));
   const port = await new Promise(resolve => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
   const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'gate-test', NODE_ENV: 'test', ALLOWED_BROWSERS: 'chrome' }, stdio: 'ignore' });
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'gate-test', NODE_ENV: 'test', ALLOWED_BROWSERS: 'chrome ios' /* (production's) */ }, stdio: 'ignore' });
   t.after(async () => {
     if (proc.exitCode === null && proc.signalCode === null) {
       const exited = new Promise(resolve => proc.once('exit', resolve));
@@ -104,7 +104,7 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
   const page = await fetch(`${base}/`, { headers: chrome });
   assert.equal(page.status, 200);
   const html = await page.text();
-  assert.match(html, /data-browsers="chrome"/);
+  assert.match(html, /data-browsers="chrome ios"/);
   const manifest = JSON.parse(html.match(/<script id="assetManifest" type="application\/json">([^<]*)<\/script>/)[1]);
   assert.match(manifest.version, /^[0-9a-f]{16}$/);
   assert.ok(manifest.assets.some(asset => asset.url === '/hwatu/m01-gwang.svg'));
@@ -114,6 +114,23 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
   const sw = await fetch(`${base}/sw.js`);
   assert.equal(sw.status, 200);
   assert.equal(sw.headers.get('cache-control'), 'no-cache');
+
+  // v1.10.263 (사용자 「섬과 메신저 둘 다 크롬으로만, 아이폰도」): the messenger (and the island's 서랍) behind the same gate -- an
+  // Android phone told 「크롬으로 열기」 for this same address, an iPhone's in-app view the address to copy; Chrome, an iPhone's
+  // Safari or Chrome and its home-screen app let in
+  const samsung = 'Mozilla/5.0 (Linux; Android 14; SM-F956N) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/26.0 Chrome/122.0.0.0 Mobile Safari/537.36';
+  const iphoneKakao = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.9.0';
+  for (const [ua, path] of [[samsung, '/messenger.html?room=r_1'], [UA.whale, '/messenger'], [iphoneKakao, '/messenger.html?embed=1']]) {
+    const res = await fetch(`${base}${path}`, { headers: { 'User-Agent': ua } }); assert.equal(res.status, 403, ua); const body = await res.text();
+    assert.match(body, /Google Chrome으로 접속해 주세요/); assert.doesNotMatch(body, /messenger\.js/);
+    if (ua === samsung) assert.ok(body.includes(`intent://127.0.0.1:${port}/messenger.html?room=r_1#Intent;scheme=https;package=com.android.chrome;end`), body);
+    if (ua === iphoneKakao) { assert.match(body, /주소 복사/); assert.match(body, /<script src="\/chrome-only\.js"><\/script>/); assert.ok(body.includes(`https://127.0.0.1:${port}/messenger.html?embed=1`)); }
+  }
+  assert.match(await (await fetch(`${base}/island/`, { headers: { 'User-Agent': samsung } })).text(), /크롬으로 열기/); // (the island's notice too)
+  assert.equal((await fetch(`${base}/chrome-only.js`)).status, 200);
+  for (const ua of [UA.chrome, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.6723.90 Mobile/15E148 Safari/604.1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148']) {
+    const res = await fetch(`${base}/messenger`, { headers: { 'User-Agent': ua, ...(ua === UA.chrome ? { 'Sec-CH-UA': chrome['Sec-CH-UA'] } : {}) } }); assert.equal(res.status, 200, ua); await res.arrayBuffer();
+  }
 });
 
 // v1.10.65 아이폰 허용 (IDEAS 2026-10-12): Safari and Chrome on an iPhone/iPad are 'ios' (allowed in production); other iOS
