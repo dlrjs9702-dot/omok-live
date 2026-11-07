@@ -263,5 +263,5 @@ test('모바일 채팅 창: 손가락으로 모서리 크기·머리 옮기기, 
     const g = await page.locator('#emoteWheel .emoteRing').boundingBox(); const W = page.viewportSize().width; expect(g.x).toBeGreaterThanOrEqual(0); expect(g.x + g.width).toBeLessThanOrEqual(W);
     const cells = await page.locator('.emoteCell').evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [Math.round(r.top), r.width >= 44 && r.height >= 44]; })); expect(new Set(cells.map((c) => c[0])).size).toBe(4); expect(cells.every((c) => c[1])).toBe(true);
     if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/phone-emote-grid.png` });
-    await page.mouse.click(8, 200); await expect(page.locator('#emoteWheel')).toBeHidden(); }
+    await page.locator('#emoteWheel').dispatchEvent('pointerdown'); await expect(page.locator('#emoteWheel')).toBeHidden(); } /* (a tap on the backdrop, outside the grid) */
 });

@@ -22,10 +22,10 @@ test('감정 표현: T 바퀴 → 웃음 → 몸짓·표정·기호, 끝나면 �
   await expect(laugh).toHaveClass(/hot/); await page.waitForTimeout(250);
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-wheel.png` });
   const seen = b.page.evaluate(() => new Promise((ok) => { const D = window.PlazaDebug(); const t0 = Date.now(); const id = setInterval(() => { for (const o of D.others) { const f = D.feeling(o.id); if (f?.id === 'laugh' && f.face?.includes('wear.eyes_x_happy') && f.marks.includes('note')) { clearInterval(id); ok(f); return; } } if (Date.now() - t0 > 8000) { clearInterval(id); ok(null); } }, 50); }));
+  /* (watched in the page from before the key comes up: the face is on 1.4 s only -- a slow test's polls can miss it) */
+  const mine = page.evaluate(() => new Promise((ok) => { const D = window.PlazaDebug(); const got = {}; const t0 = Date.now(); const id = setInterval(() => { const f = D.feeling(); if (f.id === 'laugh') got.run = [f.act, f.clip]; if (f.shown.slice().sort().join() === 'wear.eyes_x_happy,wear.mouth_x_laugh') got.face = true; if (f.marks.includes('note')) got.mark = true; if ((got.face && got.mark && got.run) || Date.now() - t0 > 6000) { clearInterval(id); ok(got); } }, 20); }));
   await page.keyboard.up('t'); await expect(page.locator('#emoteWheel')).toBeHidden();
-  await expect.poll(() => feeling(page), { timeout: 3000, intervals: [50] }).toMatchObject({ id: 'laugh', act: 'emote:laugh', clip: 'Laugh' });
-  await expect.poll(async () => (await feeling(page)).shown.sort(), { timeout: 3000, intervals: [50] }).toEqual(['wear.eyes_x_happy', 'wear.mouth_x_laugh']); // (mine hidden meanwhile)
-  await expect.poll(async () => (await feeling(page)).marks, { timeout: 3000, intervals: [50] }).toContain('note');
+  expect(await mine).toEqual({ run: ['emote:laugh', 'Laugh'], face: true, mark: true }); // (my act and move; the happy eyes and laughing mouth with mine hidden; the note)
   expect(await seen).toMatchObject({ id: 'laugh', clip: 'Laugh' }); // (another's screen: the move, the face and the mark)
   await expect.poll(async () => { const f = await feeling(page); return [f.id, f.act, f.face, f.shown.sort()]; }, { timeout: 5000 }).toEqual([null, null, null, own]); // (mine again)
   if (process.env.SHOT_DIR) await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 9, z + 6), [at.x, at.z]); /* (out of the close-ups) */
