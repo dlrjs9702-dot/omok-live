@@ -91,25 +91,35 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
     expect((await view()).mode).toBe('first');
   }
-  // the 관공서: the third till V2 (「곧」); my house: the first by default, the third chosen there kept for indoors
+  // the 관공서 (V2, docs/view-v2-interiors-20261108.md 5: every room): the first by default, its ceiling and front wall in it;
+  // my house: the first by default, the third chosen there kept for indoors
   const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, who, th.x, th.z);
   const space = () => page.evaluate(() => window.PlazaDebug().space);
   const enter = async (door, want) => { // (pressed once, then waited for: inside, one stands by the way out -- a second press would leave)
     for (let tries = 0; tries < 8 && await space() !== want; tries += 1) {
-      await page.evaluate((id) => { const d = window.PlazaDebug(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); }, door); await page.waitForTimeout(400);
+      await page.evaluate(([id, k]) => { const d = window.PlazaDebug(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); else d.place?.(id); /* (the 박물관's door is an event's) */ if (k) d.setCamYaw?.(d.view().yaw + Math.PI / 2); }, [door, tries]); await page.waitForTimeout(400); /* (the first: SPACE only within 60° of where I look -- a quarter turn each try) */
       if (isMobile) await page.locator('#plazaHint').click().catch(() => {}); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
       await expect.poll(space, { timeout: 8000 }).toBe(want).catch(() => {});
     }
     expect(await space()).toBe(want);
   };
   await enter('townhall', 'townhall');
-  expect(await view()).toMatchObject({ side: 'in', mode: 'third' });
-  await toggle(); await expect(page.locator('#toast')).toContainText('곧 1인칭'); expect((await view()).mode).toBe('third');
+  await expect.poll(async () => (await view())).toMatchObject({ side: 'in', mode: 'first', body: false });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().roomLids().townhall)).toBe(true); await shot('townhall-first');
+  await toggle(); await expect.poll(async () => (await view()).mode).toBe('third'); expect(await page.evaluate(() => window.PlazaDebug().roomLids().townhall)).toBe(false); await shot('townhall-third');
+  await toggle(); await expect.poll(async () => (await view()).mode).toBe('first'); // (indoors back to the first for the rooms below)
   const lot = (await get(request, '/api/home', who.token)).data.lots.find((l) => l.owner === null).id;
   expect((await post(request, '/api/home/apply', who.token, { lot, roof: 'blue' })).status).toBe(200);
   try {
     await enter('room:exit', 'island');
     expect(await view()).toMatchObject({ side: 'out', mode: 'first' }); // (outside's own choice)
+    for (const sp of ['jail', 'museum']) { // (V2: the 구치소 and the 박물관 the same -- the first with its ceiling, the third without)
+      await enter(sp, sp);
+      await expect.poll(async () => (await view()).mode).toBe('first'); await expect.poll(() => page.evaluate((k) => window.PlazaDebug().roomLids()[k], sp)).toBe(true); await shot(`${sp}-first`);
+      await toggle(); await expect.poll(async () => (await view()).mode).toBe('third'); expect(await page.evaluate((k) => window.PlazaDebug().roomLids()[k], sp)).toBe(false); await shot(`${sp}-third`);
+      await toggle(); await expect.poll(async () => (await view()).mode).toBe('first');
+      await enter(`${sp}:exit`, 'island');
+    }
     await enter(`home:${lot}`, 'home');
     await expect.poll(async () => (await view())).toMatchObject({ side: 'in', mode: 'first', body: false });
     // (a desk with a snow globe, a coffee table with the radio -- in again: the room as the server has it)
