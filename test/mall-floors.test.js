@@ -3,6 +3,7 @@
 // 1 잡화·생활, 2 옷·꾸미기, 3 가구, 4 옥상 펫샵. Every good, shop, plinth, mirror and counter reached on foot from the lift,
 // the aisles between the shelves 2 m or more; the lift goes to all four; two 꾸미기 mirrors (a third waits), hair, colour
 // and face only sat at one; the bag made bigger on the 1st floor only; a place kept from before on its new floor.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -57,7 +58,7 @@ test('백화점 네 층: 물건·가게·받침·거울·계산대 모두 승강
 });
 
 test('백화점 승강기 4층·꾸미기 거울 둘(셋째는 기다림)·앉아서만 머리·가방 늘리기는 1층·옛 자리는 새 층으로', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mall-floors-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mall-floors-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const into = async (name) => {
     const token = await server.enter(await server.issue(name)); await req('/api/test/points-credit', token, { amount: 1000000 });

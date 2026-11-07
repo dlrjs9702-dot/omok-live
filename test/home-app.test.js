@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -10,7 +11,7 @@ const { boot } = require('../test-support/test-server');
 // manifest as a manifest and every icon it lists as a PNG; v1.10.190 달마루섬 and the tab's favicon.ico (16, 32, 48)
 test('홈 화면 앱: manifest와 섬 아이콘을 내보내고 첫 화면이 그것을 가리킨다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'home-app-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { base } = await boot(t, dir);
   const page = await (await fetch(base + '/')).text();
   assert.match(page, /<link rel="manifest" href="\/manifest\.webmanifest"/);
@@ -39,7 +40,7 @@ test('홈 화면 앱: manifest와 섬 아이콘을 내보내고 첫 화면이 �
 // two apps Chrome installs apart; the old ways in go to the new ones (query kept); the hero game's files beside its page
 test('주소 15절: / → /island/, 섬·메신저 manifest id·scope 안 겹침, 옛 영웅전 경로 넘김', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'island-path-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { base } = await boot(t, dir);
   const chrome = { 'User-Agent': 'Mozilla/5.0 Chrome/140.0.0.0', 'Sec-CH-UA': '"Google Chrome";v="140"' };
   const go = async (p) => { const r = await fetch(base + p, { redirect: 'manual', headers: chrome }); return [r.status, r.headers.get('location')]; };

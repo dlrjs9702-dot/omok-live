@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -16,7 +17,7 @@ function entryToken(html) {
 
 test('JSON nickname change keeps original identity and metadata, removes old secret and survives restart', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'omok-rename-store-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const file = path.join(dir, 'keys.json');
   const store = new JsonAccessStore(file);
   await store.init();

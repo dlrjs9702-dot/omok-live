@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -11,7 +12,7 @@ const Skins = require('../lib/skins');
 // the recipient's, a note in their 우체통; not an IP skin, not to oneself or one who has it, a few a day per giver, the same
 // request once.
 test('스킨 선물: 받는 사람 소유·우체통 쪽지, 같은 요청 한 번, IP·자기 자신·이미 가진 사람·하루 상한은 안 됨', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'skin-gift-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'skin-gift-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const giverKey = await server.issue('주는이'); const giver = await server.enter(giverKey);
   const friendKey = await server.issue('받는이'); const friend = await server.enter(friendKey);

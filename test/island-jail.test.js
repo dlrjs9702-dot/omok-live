@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -25,7 +26,7 @@ test('구치소 규칙: 날마다 같은 문장 3개, 비교 정규화, 철창 �
 });
 
 test('구치소 서버: 체납자는 철창 안에서 시작, 반성문 3문장 통과·시간 초과 재시도, 그날 다시 안 갇힘, 납부로 풀림', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'jail-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'jail-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const rich = await server.enter(await server.issue('부자')); const poor = await server.enter(await server.issue('빈털터리'));
   const newbie = await server.enter(await server.issue('새내기'));

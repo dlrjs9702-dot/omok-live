@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -105,7 +106,7 @@ test('스킨 모양: 모든 스킨에서 흑·백 돌의 명도 차이가 충분
 
 async function boot(t, extraEnv = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'skins-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const port = await new Promise((resolve, reject) => {
     const s = net.createServer();
     s.once('error', reject);

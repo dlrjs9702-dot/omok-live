@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -97,7 +98,7 @@ test('메신저 저장소: PostgreSQL — 같은 동작, 동시에 보내도 번
 
 test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·초대·대화·나가기, 방 밖·허용 해제는 막힘', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-server-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, base } = await boot(t, dir);
   let ip = 0;
   const call = async (route, body, account) => {
@@ -213,7 +214,7 @@ test('메신저 저장소: 밀린 메시지 100개 넘어도 빠짐없이, 동�
 // v1.10.90 운영 스위치: the administrator closes sign-ups and turns the messenger off for everyone, then back on
 test('운영 스위치: 가입 신청 멈춤·메신저 끄기, 관리자만', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'switches-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, base } = await boot(t, dir);
   const call = async (route, body, account) => { const res = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Forwarded-For': `10.91.0.${Math.floor(Math.random() * 200) + 1}`, ...(account ? { 'X-Account-Token': account } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }); return { status: res.status, data: await res.json().catch(() => ({})) }; };
   const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken;

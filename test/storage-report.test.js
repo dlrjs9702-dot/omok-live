@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -20,7 +21,7 @@ test('저장 공간: % 계산·주황/빨강·쉬운 이름·로그 줄, 관리�
   assert.deepEqual([S.limitGb({}), S.limitGb({ DB_DISK_GB: '4' }), S.limitGb({ DB_DISK_GB: 'x' })], [1, 4, 1]);
   assert.equal(S.shape('postgres', 1, Array.from({ length: 12 }, (_, i) => ({ name: `t${i}`, bytes: 12 - i })), 1).tables.length, 8);
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'storage-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const guest = await server.enter(await server.issue('구경꾼')); assert.ok(guest, server.logs());
   assert.notEqual((await req('/api/admin/storage', guest)).status, 200, '관리자만');

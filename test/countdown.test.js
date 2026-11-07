@@ -2,6 +2,7 @@
 // X2 카운트다운 (gamecenter-notes docs/asset-proposal-christmas-20261027.md 「X2 행사 결정」): the year's last night from 18:00 to
 // 01:00 -- the board's words by the server's clock, and round the board in the new year's first ten minutes the title
 // 「해피 뉴 이어」 and the festival's one stamp (no stall: it opens the end story after 01:00, to those who have it)
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -33,7 +34,7 @@ test('카운트다운: 행사 창 18:00~01:00(날짜 넘김), 판 글 단계, 0�
 });
 
 test('카운트다운 서버: 0시 둘레만 칭호·도장 1(한 번), 23:59:59·0:10·둘레 밖 ×, 끝나면(01:00 뒤) 도장 있는 계정만 끝 이야기', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'countdown-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'countdown-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('새해맞이')); const b = await enter(await issue('멀리선이'));
   const clock = (s, tick = false) => req('/api/test/festival/clock', null, { at: at(s), tick });

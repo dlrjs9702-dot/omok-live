@@ -2,6 +2,7 @@
 // 묶음 2-2 펫샵 (gamecenter-notes docs/pet-shop-20261020.md): the 백화점's 3rd floor by the lift, ten pets a day (v1.10.191) walking
 // their rounds in the yard (the same everywhere: the server knows where each is), one taken by the first who asks
 // (by it), one a day each, named, it walks with me in its coat; the pets bought before at the 잡화점 stay mine.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -27,7 +28,7 @@ test('펫샵 하루: 열 마리(기본 종류마다 둘·무늬 다름 + 특별 
 });
 
 test('펫샵: 승강기 3층, 곁에서만·먼저 온 한 명만·하루 한 마리, 이름과 무늬로 따라다님, 잡화점 반려동물도 내 것', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'petshop-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'petshop-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('펫손님A')); const b = await server.enter(await server.issue('펫손님B'));
   for (const token of [a, b]) {

@@ -2,6 +2,7 @@
 // v1.10.226 가구 리폼 (docs/furniture-reform-20261102.md): a shop piece made another colour of its own shape at the 3층
 // counter -- not another shape, a colour it has not, the colour it is, an event piece or a yard piece; 3,000 a time, the
 // same request twice paid once; a placed piece keeps its place and turn, a tank its fish, a desk what stands on it.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -25,7 +26,7 @@ test('가구 리폼 규칙: 같은 모양의 다른 색만', () => {
 });
 
 test('가구 리폼 서버: 3층 계산대에서 3,000P, 같은 요청 두 번은 한 번, 놓인 소파·수조 물고기·책상 위 라디오 그대로', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'reform-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'reform-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('리폼손님'));
   await req('/api/test/points-credit', a, { amount: 200000 });

@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -43,7 +44,7 @@ async function storeBehaves(store) {
 }
 
 test('예금 저장소: JSON·PostgreSQL 같은 동작(맡기기·이자·찾기·부족·한 번만)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bank-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bank-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const json = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 100000 }); await json.init();
   await storeBehaves(json);
   const database = await testDatabase(); t.after(() => database.stop());
@@ -52,7 +53,7 @@ test('예금 저장소: JSON·PostgreSQL 같은 동작(맡기기·이자·찾기
 });
 
 test('예금 API: 관공서 안 예금 창구에서만, 맡기기·찾기·포인트 내역', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bank-server-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bank-server-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('예금손님'));
   const stand = (x, z) => req('/api/plaza/state', a, { x, z, yaw: 0, moving: false });
@@ -79,7 +80,7 @@ test('예금 API: 관공서 안 예금 창구에서만, 맡기기·찾기·포�
 // Codex review: the counted day never goes back (a late request from before midnight), and a move past a safe number on
 // either side is refused rather than losing points
 test('예금 경계: 늦게 온 전날 요청이 기준일을 되돌리지 않음, 안전한 수를 넘는 이동은 거절', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bank-edge-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bank-edge-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const store = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 100000 }); await store.init();
   const U = 'guest:00000000-0000-4000-8000-0000000000b2';
   const d1 = Date.parse('2026-10-17T23:59:00+09:00'); const d2 = Date.parse('2026-10-18T00:01:00+09:00');

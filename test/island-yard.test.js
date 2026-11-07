@@ -4,6 +4,7 @@
 // holds (24 / 40 / 60), furniture and yard pieces never mixed, the yard made bigger at the 관공서 (its prices), a lot
 // given up sends the pieces back to the 가구 창고 and keeps the level, a bigger house sends back the ones it stands on
 // (and a note says so). Pure rules and the server.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -58,7 +59,7 @@ test('마당 규칙: 울타리 안/밖·집·현관 길·겹침·울타리 기�
 });
 
 test('마당 서버: 사기 → 마당에 놓기(개수 24·넓히기 40) · 집 안↔마당 섞기 막음 · 넓히기 값 · 벤치 앉기 · 집 넓히면 걸린 것 창고로·쪽지 · 집터 풀면 창고로·단계는 남음', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'yard-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'yard-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('마당주인'));
   const key = (await req('/api/admin/keys', server.admin)).data.keys.find((k) => k.label === '마당주인');

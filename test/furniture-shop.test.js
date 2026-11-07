@@ -2,6 +2,7 @@
 // 묶음 2 가구점 (gamecenter-notes docs/furniture-shop-20261019.md): the 백화점's 2nd floor by its lift, the day's display
 // (the same for everyone, the rarer ones less often), a piece bought by the first one only (the next pays nothing), three
 // of the display a day each, the always-on-sale ones without that limit, everything bought in my 가구 창고.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -30,7 +31,7 @@ test('가구점 진열: 날마다 같은 진열, 모양 겹침 없음, 자리마
 });
 
 test('가구점: 승강기로 2층, 먼저 산 한 명만(다음 사람은 포인트 그대로), 하루 3점, 늘 파는 것, 가구 창고', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'furniture-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'furniture-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('가구손님A')); const b = await server.enter(await server.issue('가구손님B'));
   const up = async (token) => {

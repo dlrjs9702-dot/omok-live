@@ -2,6 +2,7 @@
 // 펫 깜빡임 (사용자 2026-10-27 「펫이 자꾸 한번씩 없어지는데」): a server just up (a deploy, Render waking) has no pet cached --
 // the first pose went out with none, and a 펫샵 pet (ditto·변신) was never read back at all. Now the walking pet is there from
 // the first pose after a restart.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -13,7 +14,7 @@ const P = require('../public/plaza/island-petshop');
 const { boot } = require('../test-support/test-server');
 
 test('서버가 다시 뜬 직후 첫 자세 전송에서도 데리고 다니는 펫이 보인다(펫샵 메타몽 포함)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pet-restart-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pet-restart-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const first = await boot(t, dir);
   const key = await first.issue('펫주인');
   const a = await first.enter(key);

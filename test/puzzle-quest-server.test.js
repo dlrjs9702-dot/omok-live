@@ -1,5 +1,6 @@
 'use strict';
 process.env.ISLAND_QUEST_WEEK = '1'; // the electrician's week (lib/island-quests.js VILLAGE)
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const PuzzleDaily = require('../lib/puzzle-daily');
 // A2b 마을 주민 × 퍼즐: the electrician's step is today's 회로 연결 (쉬움) -- a right answer sent counts, and one solved
 // earlier today (in the game hall) counts as soon as the step is taken
 test('전기 담당 부탁: 오늘의 회로 연결 쉬움을 풀면 단계 완료, 먼저 풀어 둔 날은 받자마자 완료', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pzquest-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pzquest-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const at = Q.STORIES.electrician.at;
   const date = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);

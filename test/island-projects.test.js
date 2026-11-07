@@ -2,6 +2,7 @@
 // v1.10.222 섬 가꾸기 사업 (public/plaza/island-projects.js): a 기부 fills the project (once per request), what overflows is saved;
 // filled, that day its works -- 바위 at the fence (the roster), talked to there -- the next day open with its plaque, the next
 // begun with the savings. Pure rules and the server.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -26,7 +27,7 @@ test('섬 가꾸기 규칙: 순서대로, 넘친 돈·공사 날 기부는 적�
 });
 
 test('섬 가꾸기 서버: 기부 → 사업, 같은 요청 두 번은 한 번, 공사 날 바위는 공사 울타리 옆(대화), 다음 날 열림·명판', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projects-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projects-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('보태미'));
   const key = (await req('/api/admin/keys', server.admin)).data.keys.find((k) => k.label === '보태미');
@@ -89,7 +90,7 @@ test('섬 가꾸기 투표(223): 첫 두 사업 뒤 마루 시장이 셋까지 �
 });
 
 test('섬 가꾸기 투표·민원 창구 서버: 정문에서만 한 표, 바꿀 수 있음, 창구 밖에서는 못 보탬, 물가 거리 벤치는 열린 뒤에만', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projects-vote-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projects-vote-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('투표미'));
   await req('/api/test/projects', a, { reset: true }); await req('/api/test/projects', a, { open: ['fountain', 'flower_path'] });

@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -82,7 +83,7 @@ async function register(fx, person, over = {}, audience = 'self') {
 
 test('기간 중 최초 수령: +100,000P 전액, 잔액·원장·내역이 서버 기준으로 일치한다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const me = await fx.guest('수령자');
   const event = await register(fx, me);
@@ -113,7 +114,7 @@ test('기간 중 최초 수령: +100,000P 전액, 잔액·원장·내역이 서�
 
 test('이미 받은 계정의 재요청·새로고침·재시도는 정상 응답이며 추가 지급이 없다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const me = await fx.guest('재요청');
   const event = await register(fx, me);
@@ -131,7 +132,7 @@ test('이미 받은 계정의 재요청·새로고침·재시도는 정상 응�
 
 test('동시 요청(버튼 연타·여러 탭)은 정확히 한 번만 지급한다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const me = await fx.guest('연타');
   const event = await register(fx, me);
@@ -146,7 +147,7 @@ test('동시 요청(버튼 연타·여러 탭)은 정확히 한 번만 지급한
 
 test('서버를 다시 시작해도(재접속) 받은 기록이 남아 다시 지급하지 않는다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const me = await fx.guest('재시작');
   const event = await register(fx, me);
@@ -167,7 +168,7 @@ test('서버를 다시 시작해도(재접속) 받은 기록이 남아 다시 �
 
 test('기간이 아니거나 없는 이벤트는 지급하지 않고 목록에도 나오지 않는다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const me = await fx.guest('기간');
   const now = Date.now();
@@ -190,7 +191,7 @@ test('기간이 아니거나 없는 이벤트는 지급하지 않고 목록에�
 
 test('클라이언트가 금액을 보내도 서버의 이벤트 정의 금액만 지급한다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const me = await fx.guest('변조');
   const event = await register(fx, me);
@@ -204,7 +205,7 @@ test('클라이언트가 금액을 보내도 서버의 이벤트 정의 금액�
 
 test('한 계정의 이벤트 수령은 다른 계정에 영향이 없고, 각자 1회씩 받는다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const a = await fx.guest('가');
   const b = await fx.guest('나');
@@ -223,7 +224,7 @@ test('한 계정의 이벤트 수령은 다른 계정에 영향이 없고, 각�
 
 test('다른 포인트 기능은 그대로: 출석 +50,000P, 관리자 지급, 이벤트와 함께 내역에 남는다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'event-reward-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const me = await fx.guest('회귀');
   const event = await register(fx, me);

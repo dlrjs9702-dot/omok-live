@@ -3,6 +3,7 @@
 // home, free for a home owner), 타기 paid once; riding twice refused, far off refused, too few points refused; while riding
 // the server has me on the road by its clock (what I post does not move me), and after it at the other stop's step out --
 // the next visit starting there too. The tests' road is 3 s.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -15,7 +16,7 @@ const T = require('../public/plaza/island-terrain');
 const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 차감·두 번 타기·먼 곳·포인트 부족 막기, 타는 동안 길 위, 끝나면 건너편 정류장', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('택시손님')); const b = await server.enter(await server.issue('집주인'));
   for (const who of [a, b]) await req('/api/test/points-credit', who, { amount: 100000 });

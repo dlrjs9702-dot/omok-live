@@ -1,5 +1,6 @@
 'use strict';
 // 창 2단계 출석 도장 카드: this month's days attended (Seoul) -- none before, today's after the claim, and the month's shape
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -10,7 +11,7 @@ const { kstDate } = require('../lib/point-store');
 
 test('출석 도장 카드: 이번 달 출석한 날, 출석하면 오늘이 찍힘, 달의 길이·첫 요일', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'attendance-card-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const s = await enter(await issue('도장'));
   const before = (await req('/api/points/attendance/month', s)).data;

@@ -2,6 +2,7 @@
 // E1 계절 행사 (gamecenter-notes docs/season-events-design-20261025.md): the harvest festival through the real server --
 // stamps for its tasks (a day's cap each, the cooking judged by the host, the feast only on the last evening), spent at the
 // stall on its goods (furniture into 가구 창고, a title worn), nothing out of its days; the administrator moves its days
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const C = require('../public/plaza/island-calendar');
 const T = require('../public/plaza/island-terrain');
 
 test('수확제: 할 일마다 도장(하루 한도), 요리 심사, 마지막 날 저녁 잔치, 가판대 교환(가구·칭호), 기간 밖은 없음, 관리자 기간 옮기기', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'festival-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'festival-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter, admin } = await boot(t, dir);
   const a = await enter(await issue('수확하는이'));
   const clock = (s) => req('/api/test/festival/clock', null, { at: Date.parse(`${s}+09:00`) });
@@ -63,7 +64,7 @@ test('수확제: 할 일마다 도장(하루 한도), 요리 심사, 마지막 �
 
 // C4 P3-1: two cooks at once (two tabs) -- one stamped, the other's things given back
 test('수확제 요리: 동시에 두 번 내도 재료는 한 벌만 쓰임', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'festival-cook-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'festival-cook-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('요리두번'));
   const clock = (s) => req('/api/test/festival/clock', null, { at: Date.parse(`${s}+09:00`) });
@@ -79,7 +80,7 @@ test('수확제 요리: 동시에 두 번 내도 재료는 한 벌만 쓰임', a
 });
 
 test.skip('(v1.10.233 매주 대회 꺼짐 -- 게임 대회로 돌아올 때 다시) 매주 대회(A안): 토 낚시 3분 판 -- 행사 주민 곁에서 시작, 판 안의 물고기만 점수, 그날 최고 기록·순위, 밤 정산(트로피·칭호·포인트, 토 낚시 1등 영웅마루), 시간 밖은 닫힘', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'contest-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'contest-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('낚시상')); const b = await enter(await issue('둘째'));
   let now = Date.parse('2026-11-07T12:00:00+09:00'); const clock = (ms) => { now = ms; return req('/api/test/festival/clock', null, { at: ms }); };
@@ -122,7 +123,7 @@ test.skip('(v1.10.233 매주 대회 꺼짐 -- 게임 대회로 돌아올 때 다
 // server's own clock), stacked and dressed -- the day's snowmen on the field for everyone, whose not told; the gathering by
 // the plaza's tree only on the last evening; the stall's title
 test('크리스마스: 선물 배달(받는 이웃 곁에서만), 눈사람(서버 시계 크기·눈밭 안·꾸밈), 그날 눈사람 목록, 성탄 저녁 모임, 칭호', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'festival-xmas-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'festival-xmas-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('산타돕기')); const b = await enter(await issue('구경꾼'));
   const N = require('../public/plaza/island-npcs');

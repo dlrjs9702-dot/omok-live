@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const T = require('../public/fish-tug.js');
@@ -44,7 +45,7 @@ test('줄다리기: 계속 누르면 끊김, 안 누르면 도망, 힘쓸 때 �
 test('줄다리기 서버: 대어다! 계획, 이른 잡기 거절, 제때 잡기는 가방에, 끊기면 없음', async (t) => {
   const fs = require('node:fs/promises'); const os = require('node:os'); const path = require('node:path');
   const { boot } = require('../test-support/test-server'); const Terr = require('../public/plaza/island-terrain.js');
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-tug-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-tug-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server; const s = await server.enter(await server.issue('줄다리기')); assert.ok(s, server.logs());
   await req('/api/plaza/state', s, { x: Terr.PIER.x, z: Terr.PIER.z, yaw: 0, moving: false }); await req('/api/test/island/give', s, { itemId: 'fishing_rod', qty: 1 });
   const bite = async () => { const c = (await req('/api/island/fish/start', s, {})).data; await req('/api/test/fish/bite', s, { species: 'salmon' }); const r = await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: c.seq.slice(0, 12).map((dir, i) => ({ dir, t: i * 150 })) }); return { c, r }; };
@@ -87,7 +88,7 @@ test('입질 게임: 반반·세 번 연속 없음, 타이밍 막대 판정(칸�
   // the server: the bar asked, its zones given at the cast; done from the bite -- too soon after it refused
   const fs = require('node:fs/promises'); const os = require('node:os'); const path = require('node:path');
   const { boot } = require('../test-support/test-server'); const Terr = require('../public/plaza/island-terrain.js');
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-timing-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-timing-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server; const s = await server.enter(await server.issue('타이밍')); assert.ok(s, server.logs());
   await req('/api/plaza/state', s, { x: Terr.PIER.x, z: Terr.PIER.z, yaw: 0, moving: false }); await req('/api/test/island/give', s, { itemId: 'fishing_rod', qty: 1 });
   assert.equal((await req('/api/island/fish/start', s, {})).data.mode, 'arrows', '시험 서버는 화살표');

@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -10,7 +11,7 @@ const { JsonAccessStore, PostgresAccessStore, hashToken } = require('../lib/acce
 
 async function tempStore(t) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'entry-reissue-v1610-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const file = path.join(dir, 'keys.json');
   const store = new JsonAccessStore(file);
   await store.init();

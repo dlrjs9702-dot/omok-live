@@ -2,6 +2,7 @@
 // 「문제 기록」 쓰기 허용 (사용자 2026-10-20 「메신저 권한 주는 것처럼 문제 기록도 관리자가 권한을 줄 수 있게」): an account the
 // administrator allows writes records (who wrote it kept) and reads only its own; any other is refused; the
 // administrator's list shows every record and who wrote it.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -10,7 +11,7 @@ const path = require('node:path');
 const { boot } = require('../test-support/test-server');
 
 test('문제 기록 허용: 허용 안 된 계정은 403, 허용하면 바로 쓰기, 자기 기록만 보고, 관리자는 쓴 사람과 함께 모두 본다', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issue-writers-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issue-writers-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req, admin } = server;
   const ka = await server.issue('기록가'); const kb = await server.issue('다른이');
   const a = await server.enter(ka); const b = await server.enter(kb);

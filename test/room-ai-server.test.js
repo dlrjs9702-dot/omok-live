@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -15,7 +16,7 @@ const waitFor = async (check, what) => {
 
 test('게임방 AI: 자리를 고르면 AI가 맞은편에, 두면 AI가 받아 두고, 참가 포인트·전적 없음', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'room-ai-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('AI상대')); assert.ok(a, server.logs());
   const b = await server.enter(await server.issue('구경꾼'));

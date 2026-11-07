@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -9,7 +10,7 @@ const { boot } = require('../test-support/test-server');
 // 달마루섬 5단계 이사 (사용자 결정: 심은 꽃·나무는 전부 씨앗으로): the first start on the new island gives every planted
 // flower back to its owner as its seed and every tree as a sapling -- no points, once -- and takes the plants up.
 test('달마루섬 이사: 심은 꽃은 씨앗, 나무는 묘목으로 한 번만 돌려받고 땅은 비운다', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dal-move-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dal-move-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   // (묶음 3: one island only -- a first start, then the old island's state written back: the move not yet done, plants in the ground)
   let server = await boot(t, dir);
   const key = await server.issue('이사손님'); let s = await server.enter(key);

@@ -3,6 +3,7 @@
 // the game hall's solo games opened at the 대청마당 tent -- the server checks the contest is on, its game, and that I stand by
 // the tent; the round's level is the contest's, a card contest's deal the same for everyone; a round from the game hall
 // keeps its record only there. (The turn of events, no 낚시 or 잡초: lib/island-contest.js's own checks, run by island-a4.)
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const { boot } = require('../test-support/test-server');
 const Calendar = require('../public/plaza/island-calendar');
 
 test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 난이도, 카드는 모두 같은 패', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'contest-server-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'contest-server-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter, admin } = await boot(t, dir);
   const a = await enter(await issue('대회손님')); const b = await enter(await issue('대회이웃'));
   const K = Calendar.PLACES.keeper; const stand = (s, x, z) => req('/api/plaza/state', s, { x, z, yaw: 0, moving: false });

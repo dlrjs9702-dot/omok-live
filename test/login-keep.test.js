@@ -3,6 +3,7 @@
 // logged in from the island's first screen (keepGame) logs in again by POST /api/account/device-login -- the messenger's own
 // kept login does not; a new password or 로그아웃 ends it; 「모두 막기」 stops every account with no id (kept, restorable); on the
 // live server (Render, no ALLOW_ENTRY_KEYS) no files are issued.
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -11,7 +12,7 @@ const path = require('node:path');
 const { boot } = require('../test-support/test-server');
 
 async function server(t, env) {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'login-keep-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'login-keep-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const s = await boot(t, dir, env); let ip = 0;
   const call = async (route, body, headers = {}) => {
     const res = await fetch(s.base + route, { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Forwarded-For': `10.88.0.${++ip % 250 + 1}`, ...headers, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });

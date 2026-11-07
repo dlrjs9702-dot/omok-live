@@ -3,6 +3,7 @@
 // puts a walker at a counter they are talked to there (not on their walk); a story islander at a counter gives their 부탁
 // there (not at their own place); the 관공서's resting desk's work at the desk beside it. A tests' server keeps the table
 // off (the other tests' talks) till /api/test/roster turns it on -- here on a day picked for it
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -17,7 +18,7 @@ const Store = require('../public/plaza/island-store');
 const Quests = require('../lib/island-quests');
 
 test('근무표 C1 서버: 계산대 주민은 계산대에서, 이야기 주민 부탁도 계산대에서, 쉬는 창구 일은 옆 창구에서', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'roster-server-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'roster-server-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('근무표손님'));
   const stand = (p) => req('/api/plaza/state', a, { x: p.x, z: p.z, yaw: 0, moving: false });
@@ -59,7 +60,7 @@ test('근무표 C1 서버: 계산대 주민은 계산대에서, 이야기 주민
 // harbour); one of the 17 walking that day talks; the station's keeper (철이 of a weekday) talks at the station
 test('근무표 C2 서버: 걷는 이야기 주민에게서 부탁, 17명도 걸으며 대화, 역 근무 주민은 역에서 대화', async (t) => {
   const N = require('../public/plaza/island-npcs');
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'roster-c2-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'roster-c2-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, issue, enter } = await boot(t, dir);
   const a = await enter(await issue('걷는부탁'));
   const stand = (p) => req('/api/plaza/state', a, { x: p.x, z: p.z, yaw: 0, moving: false });

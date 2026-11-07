@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -15,7 +16,7 @@ const DAY = 86400e3;
 
 test('문제 기록 저장: 옛 기록 사진 옮기기, 해결 7일·30일 정리, 사진은 한 장씩, 로그 한 줄', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issue-log-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const shot = `data:image/jpeg;base64,${'A'.repeat(400)}`; const now = Date.now();
   const old = (id, extra) => ({ id, at: now - 60 * DAY, version: '1.10.110', kind: 'bug', status: 'open', text: `기록 ${id}`, ctx: {}, shot, by: { id: 'admin', label: '관리자' }, ...extra });
   await fs.writeFile(path.join(dir, 'points.json'), JSON.stringify({ accounts: {}, ledger: [], island: { bags: {}, days: {}, world: { issueLog: [

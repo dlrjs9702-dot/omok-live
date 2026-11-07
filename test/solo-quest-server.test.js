@@ -1,5 +1,6 @@
 'use strict';
 process.env.ISLAND_QUEST_WEEK ??= '0'; // the stories of the 정원사·어부 week, whatever today's week is (lib/island-quests.js)
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -12,7 +13,7 @@ const Q = require('../lib/island-quests');
 // is kept once, records keep the best time (G-포인트: no points); the islanders' story
 // moves on what the server noted, pays each step once, takes the asked things from the bag, and sends the map and tracker.
 test('지뢰찾기 서버: 지뢰는 보내지 않음, 클리어 기록 한 번, 포인트 없음, 최고 기록', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'solo-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'solo-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('혼자')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;
@@ -47,7 +48,7 @@ test('지뢰찾기 서버: 지뢰는 보내지 않음, 클리어 기록 한 번,
 });
 
 test('연계 퀘스트 서버: 말 걸기·진행·보고 보상 한 번·가방에서 가져감·지도 표시·멀면 거절', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'quest-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'quest-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('부탁')); assert.ok(sa, server.logs());
   const balance = async () => (await req('/api/points', sa)).data.balance;

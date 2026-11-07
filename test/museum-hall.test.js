@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -45,7 +46,7 @@ test('물고기 크기: 범위·드문 큰 끝, 가방 크기 목록, 작은 것
 // the hall: in at the museum's door, the curator's desk the place to give; a fish shows the biggest given, a bigger one hung
 // in its place (the one before told by letter, kept as past), a smaller one refused; out at the hall's door
 test('박물관 전시관: 들어가고 나가기, 창구에서 기증, 더 큰 물고기로 바꿔 걸기·쪽지·지난 기록', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'museum-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'museum-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('관람객')); const b = await server.enter(await server.issue('낚시꾼')); assert.ok(a && b, server.logs());
   const door = Together.museumDoor(T.MUSEUM); const desk = M.world(M.TALK.lx, M.TALK.lz);
@@ -96,7 +97,7 @@ test('박물관 나누기: 세 방 자리·물별 벽, 통로로만 오가기, �
   for (const [id, R] of Object.entries(M.ROOMS)) { const mid = M.worldIn(id, 0, 0); assert.equal(M.roomOf(mid.x, mid.z), id); const q = M.clamp(mid.x, mid.z + R.d / 2 + 1); assert.equal(M.roomOf(q.x, q.z), id, `${id} 벽`); assert.ok(Math.abs(q.z - mid.z) < R.d / 2, `${id} 안으로`); }
   for (const s of [...M.WALLS, ...M.SPARE_WALLS]) { const w = M.worldIn('aquarium', s.lx, s.lz); const q = M.clamp(w.x, w.z); assert.ok(Math.hypot(q.x - w.x, q.z - w.z) > 0.3, '벽 수조 안에 서지 않음'); }
   // the server: in, through to the aquarium and back, the insect hall; not from the middle of the hall; a pose in another room kept
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wings-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wings-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server; const s = await server.enter(await server.issue('관람객2')); assert.ok(s, server.logs());
   const door = Together.museumDoor(T.MUSEUM); await req('/api/plaza/state', s, { x: door.x, z: door.z, yaw: 0, moving: false }); assert.equal((await req('/api/island/museum/enter', s, {})).data.space, 'museum');
   const stand = (room, lx, lz) => { const w = M.worldIn(room, lx, lz); return req('/api/plaza/state', s, { x: w.x, z: w.z, yaw: 0, moving: false }); };
@@ -113,7 +114,7 @@ test('박물관 나누기: 세 방 자리·물별 벽, 통로로만 오가기, �
 
 // a fish caught: its size from the server, 「내 최고」 when it is my biggest of that kind, the 도감's best
 test('낚시 크기: 서버가 정한 크기, 내 최고, 도감 최고 크기', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fishsize-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fishsize-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('크기재기')); assert.ok(sa, server.logs());
   await req('/api/plaza/state', sa, { x: T.PIER.x, z: T.PIER.z, yaw: 0, moving: false }); await req('/api/test/island/give', sa, { itemId: 'fishing_rod', qty: 1 });

@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -74,7 +75,7 @@ async function openRoom(fx, gameType, host, others, stakes = gameType !== 'gosto
 
 test('일반 게임(오델로): 시작 때 1,000P씩, 승자 1,600P(20% 소각), 중복 종료 1회, 재대결은 다시 1,000P', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b, watcher] = [await fx.guest('흑'), await fx.guest('백'), await fx.guest('관전')];
   await openRoom(fx, 'othello', a, [b, watcher]);
@@ -122,7 +123,7 @@ test('일반 게임(오델로): 시작 때 1,000P씩, 승자 1,600P(20% 소각),
 
 test('G-포인트: 겨루는 판은 기본 친선(차감·지급 없음, 전적은 남음), 파티·협동은 포인트·전적 없음, 내기는 겨루는 판만', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b, c] = [await fx.guest('친선흑'), await fx.guest('친선백'), await fx.guest('파티')];
   await openRoom(fx, 'othello', a, [b], false);
@@ -143,7 +144,7 @@ test('G-포인트: 겨루는 판은 기본 친선(차감·지급 없음, 전적�
 
 test('참가비 부족: 한 명이라도 1,000P 미만이면 시작하지 않고(자리 유지·아무도 차감 안 됨) 충전 후 시작된다', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, poor] = [await fx.guest('가'), await fx.guest('부족')];
   await openRoom(fx, 'connect4', a, [poor]);
@@ -170,7 +171,7 @@ test('참가비 부족: 한 명이라도 1,000P 미만이면 시작하지 않고
 
 test('다인·팀전: 동시 시작은 1회 차감, 4인 3승자 1,066P씩(잔여 소각), 2:2 승리팀 1,600P씩', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const people = [await fx.guest('일'), await fx.guest('이'), await fx.guest('삼'), await fx.guest('사')];
   await openRoom(fx, 'davinci', people[0], people.slice(1));
@@ -194,7 +195,7 @@ test('다인·팀전: 동시 시작은 1회 차감, 4인 3승자 1,066P씩(잔�
 
 test('고스톱은 참가비 없음, 서버 재시작으로 끝나지 못한 판은 재시작 때 1회 환불', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   let fx = await boot(t, dir);
   const [a, b] = [await fx.guest('가'), await fx.guest('나')];
   await openRoom(fx, 'gostop', a, [b]);
@@ -229,7 +230,7 @@ test('고스톱은 참가비 없음, 서버 재시작으로 끝나지 못한 판
 
 test('관리자 포인트 지급 API: 10,000P 단위·사유 필수·관리자만·요청 1회·원장/내역 기록', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const target = await fx.guest('홍길동');
   const intruder = await fx.guest('일반');
@@ -277,7 +278,7 @@ const reasons = async (fx, person) => (await fx.req('/api/points/history?limit=1
 
 test('참가비 COMMIT 직후 오류: 재시도해도 이중 차감되지 않는다(즉시 복구, 복구 실패 시 정기 정리)', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = await connect4Pair(fx);
 
@@ -297,7 +298,7 @@ test('참가비 COMMIT 직후 오류: 재시도해도 이중 차감되지 않는
 
 test('참가비 오류 뒤 즉시 환불도 실패하면 잔액이 묶이지만 정기 정리가 한 번만 환불한다', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = await connect4Pair(fx);
   assert.equal((await fx.req('/api/test/points-fault', a.session, { chargeAfterCommit: 1, refundFail: 1 })).status, 200);
@@ -313,7 +314,7 @@ test('참가비 오류 뒤 즉시 환불도 실패하면 잔액이 묶이지만 
 
 test('만료된 방의 환불이 DB 오류로 실패해도 재시도로 한 번 환불된다(그동안 고아 정리가 끼어들지 않는다)', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const [a, b] = await connect4Pair(fx);
   assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 200);
@@ -332,7 +333,7 @@ test('만료된 방의 환불이 DB 오류로 실패해도 재시도로 한 번 
 
 test('관리자 지급: 접속 중인 대상에게 pointsChanged가 가고, 제한은 대상이 달라도 전체 분당 20회', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const fx = await boot(t, dir);
   const people = [await fx.guest('하나'), await fx.guest('둘'), await fx.guest('셋')];
   const grant = (person, extra = {}) => fx.req(`/api/admin/keys/${person.id}/points`, fx.admin, { requestId: crypto.randomUUID(), category: 'event', amount: 10_000, ...extra });

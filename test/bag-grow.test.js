@@ -2,6 +2,7 @@
 // v1.10.195 가방 개편 (gamecenter-notes docs/bag-redesign-20261027.md): 가방 늘리기 16 -> 24 -> 32 at the 잡화점, paid once
 // each (economy bag:24 · bag:32), for good -- the 17th thing fits after it; 내 순서 -- the order I set (every entry once,
 // else turned away) and 정리 (tools, fish, insects, materials, the rest).
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -18,7 +19,7 @@ test('정리 순서: 도구 → 물고기 → 곤충 → 재료 → 기타, 같�
 });
 
 test('가방 늘리기·내 순서: 잡화점에서만, 24 → 32, 값은 한 번씩, 늘린 만큼 더 담김; 순서는 내가 정한 대로', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'baggrow-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'baggrow-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('가방손님'));
   await req('/api/test/points-credit', a, { amount: 300000 });
