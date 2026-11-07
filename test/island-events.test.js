@@ -62,7 +62,7 @@ test('공용 이벤트: 분실물은 주운 사람만 주인에게 돌려주고,
   for (let k = 0; k < 60 && !lost; k += 1) { // photo requests are taken until someone has lost something
     const npcEvent = [...ev.events.values()].find((e) => TYPES[e.type].npc);
     if (npcEvent.type === 'lost') lost = npcEvent;
-    else ev.settle(ev.claim(npcEvent.id, 'guest:z', npcEvent), true, 'guest:z');
+    else { t = Math.max(t, npcEvent.arriveAt || 0) + 1; ev.settle(ev.claim(npcEvent.id, 'guest:z', npcEvent), true, 'guest:z'); } // (v1.10.274: the islander there first)
   }
   assert.ok(lost, '분실물 이벤트');
   const item = { x: lost.x, z: lost.z }; const owner = lost.npc;
@@ -203,7 +203,10 @@ test('주민 이벤트: 같은 주민 ID·대기 위치를 모두에게 보내�
 
 // Q2 사진 부탁 B안 (gamecenter-notes docs/interact-quests-20261029.md 1): the tourist stands in a photo spot; a word (asked) and
 // then a shot from that spot, 2 s on, within 12 m pays -- not a word alone, not before asking, not from outside the spot
-test('주민 이벤트: 사진 부탁은 명소 안의 방문객(주민 예약 없음), 말 걸기 → 2초 뒤 같은 명소에서 찍어야 돈, 서버 재시작은 새 이벤트만', () => {
+// v1.10.274 사진 부탁은 주민이 (docs/photo-request-residents-20261108.md 2·5): an islander free then (no post) is held and walks
+// to a place in the spot, off any fishing place; on the way no 사진 부탁 (not there yet); the same islander not twice a day;
+// with no one free, no request at all
+test('사진 부탁은 주민이: 쉬는 주민을 잡아 명소로 걸어감(도착 전엔 부탁 없음), 낚시 자리 밖, 말 걸기 → 2초 뒤 같은 명소에서 찍어야 돈, 같은 주민 하루 한 번, 쉬는 주민 없으면 안 나옴', () => {
   const Fishing=require('../lib/island-fishing');
   let t=Date.parse('2026-10-08T12:00:00+09:00'); const now=()=>t;
   let found=false;
@@ -213,9 +216,12 @@ test('주민 이벤트: 사진 부탁은 명소 안의 방문객(주민 예약 �
     if(!e) continue;
     found=true;
     const spot=Fishing.photoSpotAt(e.x,e.z); assert.ok(spot,'명소 안'); assert.equal(e.spot,spot.id);
+    for(let dx=-3.5;dx<=3.5;dx+=0.5) for(let dz=-3.5;dz<=3.5;dz+=0.5) if(Math.hypot(dx,dz)<=3.5) assert.ok(!T.canFish(e.x+dx,e.z+dz),'낚시 자리 밖');
+    assert.ok(Number.isInteger(e.resident)); const hold=ev.residents()[e.resident].hold; assert.equal(hold.eventId,e.id); assert.deepEqual([hold.x,hold.z],[e.x,e.z]); assert.ok(hold.arriveAt>t,'걸어가는 중');
+    const on=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id); assert.equal(on.arriving,true); assert.equal(on.verb,null); assert.equal(ev.claim(e.id,'a',e).error,'NOT_THERE');
+    t=e.arriveAt+1;
     const a=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id); const b=ev.nearby(e.x,e.z,'b').find(v=>v.id===e.id);
-    assert.deepEqual(a,b); assert.equal(a.resident,e.resident); assert.equal(a.asked,false); assert.equal(a.verb,'말 걸기');
-    assert.equal(e.resident,undefined); assert.ok(ev.residents().every(r=>r.hold?.eventId!==e.id)); // (총괄 #351: a visitor, no islander held)
+    assert.deepEqual(a,b); assert.equal(a.resident,e.resident); assert.equal(a.asked,false); assert.equal(a.arriving,false); assert.equal(a.verb,'말 걸기');
     assert.equal(ev.claim(e.id,'a',e,{shot:true}).error,'NOT_ASKED'); // (a shot before a word)
     assert.equal(ev.claim(e.id,'a',e).action,'photoAsk'); assert.equal(ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id).asked,true); assert.equal(ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id).verb,null);
     assert.equal(ev.claim(e.id,'a',e,{shot:true}).error,'TOO_SOON'); t+=2100;
@@ -228,16 +234,21 @@ test('주민 이벤트: 사진 부탁은 명소 안의 방문객(주민 예약 �
     ev.settle(claim,true,'a');
     const restart=createIslandEvents({random:seeded(k+1),now});
     assert.ok(restart.residents().every(r=>r.hold?.eventId!==e.id));
+    // the same islander not asked again today: photo requests made one after another never take them
+    const n=e.resident; for(let j=0;j<12;j++){ const p=ev.spawnLost('photo'); if(p) assert.notEqual(p.resident,n,'같은 주민 하루 한 번'); }
   }
   assert.ok(found,'실제 사진 이벤트 검증');
+  // no islander free (all at their posts): no photo request -- never a stranger instead
+  const none=createIslandEvents({random:seeded(3),now,working:()=>true});
+  assert.equal(none.spawnLost('photo'),null); assert.ok([...none.events.values()].every(v=>v.type!=='photo'));
 });
 
 test('주민 예약: 플레이어가 선점한 대기 위치는 고르지 않고 비워지면 공용 의뢰를 채운다',()=>{
   const N=require('../public/plaza/island-npcs');const time=Date.parse('2026-10-08T12:00:00+09:00');
   let people=Array.from({length:N.COUNT},(_,n)=>N.at(n,time));
   const ev=createIslandEvents({random:seeded(7),now:()=>time,occupied:()=>people});
-  assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc&&e.resident!=null).length,0,'플레이어가 서 있는 주민 대기점을 피한다'); // (Q2: the tourist a visitor, holding no islander)
-  assert.ok(ev.residents().every(s=>!s.hold));
+  assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc&&e.type!=='photo'&&e.resident!=null).length,0,'플레이어가 서 있는 주민 대기점을 피한다'); // (v1.10.274: a photo request's islander walks to its spot -- the spot itself kept clear of people)
+  const photos=new Set([...ev.events.values()].filter(e=>e.type==='photo').map(e=>e.id)); assert.ok(ev.residents().every(s=>!s.hold||photos.has(s.hold.eventId)));
   people=[];ev.expire();assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,1,'자리가 비면 다음 조회에서 복구');
 });
 

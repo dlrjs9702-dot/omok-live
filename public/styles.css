@@ -3147,6 +3147,7 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 .plazaDialog.talkMode .talkChoices{gap:0;padding:8px 6px;border:0;border-radius:24px;filter:drop-shadow(0 0 .7px #b49a74) drop-shadow(0 0 .7px #b49a74);box-shadow:0 8px 20px rgba(74,56,40,.2)}
 .plazaDialog.talkMode .talkChoices::after{border:0}
 .islandGivenCell b{font-size:2rem;line-height:64px}
+.islandPhotoWith{grid-column:1/-1;display:grid;gap:2px;margin:0 0 6px}.islandPhotoWith p{margin:0;text-align:left}
 /* v1.10.267 대화 나무: the last words and my reply faint above, a hint's paper ribbon under the end */
 .plazaDialog.talkMode .lostRequest .talkPast{margin:0;font-size:.86rem;opacity:.5;line-height:1.35}
 .plazaDialog.talkMode .lostRequest .talkPast.mine{text-align:right;font-style:italic}

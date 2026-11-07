@@ -1122,5 +1122,13 @@ REG.hasyo = {
   // B 「이야기 나눠요」: the day's question k (lib/island-affinity QUESTIONS) in islander n's words
   const questionLine = (n, k) => say(n, `q${k}`, {}, () => 0)[0] || null;
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { callOf, RESIDENTS, WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, questionLine, chatLine, keeperLine, passLine, keeperN, josa, hasFinal, fill, slot /* (v1.10.242: lib/island-daily fills its words) */, say, withTail, untail, whyOf };
+  // v1.10.274 사진 부탁은 주민이 (docs/photo-request-residents-20261108.md 2-2·3): what an islander says asking for a picture
+  // (ask: two), when it came out (ok) and when they were not in it (miss) -- PHOTO_LINES[n] their own (총괄's 27 × 4), else
+  // these; and the feeling each holds for the picture (the 263 emotes, a dance is too long)
+  const PHOTO_LINES = {};
+  const PHOTO_DEFAULT = Object.freeze({ ask: ['여기 경치 좋죠? 저 좀 찍어 줄래요?', '{me}님, 여기서 사진 한 장만 부탁해요!'], ok: ['고마워요! 잘 나왔네요.'], miss: ['어… 제가 안 나온 것 같아요.'] });
+  const PHOTO_POSES = Object.freeze(['thumbsup', 'heart', 'jumpjoy', 'clap', 'laugh', 'shy', 'wave']);
+  const photoLine = (n, kind, me = '', random = Math.random) => { const own = PHOTO_LINES[n]?.[kind]; return fill(pick(own?.length ? own : PHOTO_DEFAULT[kind], random), me); };
+  const photoPose = (n) => RESIDENTS[n]?.photoPose || PHOTO_POSES[Math.abs(Number(n) || 0) % PHOTO_POSES.length];
+  return { callOf, photoLine, photoPose, PHOTO_LINES, RESIDENTS, WALKERS, KEEPERS, LEVELS, GAIN, RELATIONS, relationOf, PHASES, MOODS, CHATS, REG, VOICES, levelOf, walkerLine, rumor, questionLine, chatLine, keeperLine, passLine, keeperN, josa, hasFinal, fill, slot /* (v1.10.242: lib/island-daily fills its words) */, say, withTail, untail, whyOf };
 }));
