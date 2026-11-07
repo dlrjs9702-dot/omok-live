@@ -602,7 +602,9 @@
   }
   alertSel.addEventListener('change', () => chooseAlert(alertSel.value));
   byId('mPushBtn').addEventListener('click', async () => { // (the browser's permission, then the device's way as chosen)
-    try { if (!(await askPermission())) return; if (alertMode === 'push') await subscribe(pushKey); drawAlert(); showToast(ALERT_SAID[alertMode]); } catch (err) { showToast(err.message || '알림을 켜지 못했어요.', 4000); }
+    /* (Codex 261-270 #1: tried everywhere -- only when it fails where it may be the island app's window, where to turn it on) */
+    const elsewhere = () => { if (!window.MessengerAlert?.pushElsewhere({ install, standalone: standalone(), appSeen })) return false; showToast('알림은 크롬이나 메신저 앱에서 켤 수 있어요.', 4000); chromeLine('알림은 크롬이나 메신저 앱에서 켤 수 있어요'); return true; };
+    try { if (!(await askPermission())) { elsewhere(); return; } if (alertMode === 'push') await subscribe(pushKey); drawAlert(); showToast(ALERT_SAID[alertMode]); } catch (err) { if (!elsewhere()) showToast(err.message || '알림을 켜지 못했어요.', 4000); }
   });
   // (10절 ①) 메신저만 따로 설치: the browser's own install prompt, when it offers one (not inside an installed window)
   let installPrompt = null; const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches);
@@ -627,8 +629,6 @@
     if (c.copy) byId('mChromeInstallBtn').onclick = () => copyAddress(c.copy); return true;
   };
   if (!EMBED) { if (install === '1') chromeLine(); else setTimeout(() => chromeLine(), 3000); }
-  // (v1.10.263) in the island app's Custom Tab notices cannot be turned on: say where, with the same Chrome button
-  if (install === '1') byId('mPushBtn').addEventListener('click', (event) => { event.stopImmediatePropagation(); showToast('알림은 크롬이나 메신저 앱에서 켤 수 있어요.', 4000); chromeLine('알림은 크롬이나 메신저 앱에서 켤 수 있어요'); }, { capture: true });
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
   { const sel = byId('mTheme'); sel.value = window.MessengerTheme?.get() || 'light'; sel.addEventListener('change', () => window.MessengerTheme?.set(sel.value)); } // (어두운 화면: messenger-theme.js)
   // (the game's window opens this one with its login: a new login there reaches an open messenger too)

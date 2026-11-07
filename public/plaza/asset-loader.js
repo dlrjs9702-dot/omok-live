@@ -917,21 +917,27 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     c.assetRoot?.traverse((m) => { if (!m.isMesh || ![].concat(m.material).some((x) => x?.name === 'equipment')) return; if (!on) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } });
   }
   let facesAsked = false;
+  // (Codex 261-270 #8) the character's own eyes or mouth hidden only under an expression part that is there -- one still
+  // loading, or failed, leaves its own face
+  function ownFace(c, want) {
+    const showOwn = (m) => { m.userData.faceHidden = false; m.visible = m.userData.lod === 'high' ? c.wearRec.isHigh : m.userData.lod === 'low' ? !c.wearRec.isHigh : true; };
+    const meshes = []; c.assetRoot.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
+    const own = (slot) => (m) => m.userData.wearId && (slot === 'eyes' ? /^wear\.(eyes_(?!x_)|face_eyes_cheeks)/ : /^wear\.mouth_(?!x_)/).test(m.userData.wearId);
+    for (const slot of ['eyes', 'mouth']) { const on = Boolean(want?.[slot]) && (c.faceParts.get(want[slot]) || []).length > 0; for (const m of meshes.filter(own(slot))) { if (on) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) showOwn(m); } }
+  }
   function face(c, want) {
     if (c?.npcPerson) return npcFace(c, want && { eyes: want.eyes?.replace(/^wear\.eyes_x_/, '') || null, mouth: want.mouth?.replace(/^wear\.mouth_x_/, '') || null }); /* (v1.10.264: an islander's own pieces) */
     if (!c?.wearRec || !c.assetRoot) return false;
-    const showOwn = (m) => { m.userData.faceHidden = false; m.visible = m.userData.lod === 'high' ? c.wearRec.isHigh : m.userData.lod === 'low' ? !c.wearRec.isHigh : true; };
-    const meshes = []; c.assetRoot.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
-    const ids = want ? [want.eyes, want.mouth].filter(Boolean) : []; c.faceOn = ids.length ? ids : null;
+    const ids = want ? [want.eyes, want.mouth].filter(Boolean) : []; c.faceOn = ids.length ? ids : null; c.faceWant = want || null;
     for (const [id, list] of c.faceParts) if (!ids.includes(id)) for (const m of list) m.visible = false;
-    const own = (slot) => (m) => m.userData.wearId && (slot === 'eyes' ? /^wear\.(eyes_(?!x_)|face_eyes_cheeks)/ : /^wear\.mouth_(?!x_)/).test(m.userData.wearId);
-    for (const slot of ['eyes', 'mouth']) for (const m of meshes.filter(own(slot))) { if (want?.[slot]) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) showOwn(m); }
+    ownFace(c, want);
     for (const id of ids) {
       if (c.faceParts.has(id)) { for (const m of c.faceParts.get(id)) m.visible = true; continue; }
       const entry = registry[id]; if (!entry?.url) continue;
-      c.faceParts.set(id, []);
+      const root = c.assetRoot; const parts = c.faceParts; parts.set(id, []); /* (Codex 261-270 #7: the model asked for -- a re-dress meanwhile drops this one) */
+      const failed = () => { if (parts.get(id)?.length === 0) parts.delete(id); }; /* (#8: asked again, tried again) */
       cache.get(entry.url).then((gltf) => {
-        if (disposed || !gltf || !c.assetRoot) return;
+        if (disposed || c.assetRoot !== root || c.faceParts !== parts) return; if (!gltf) { failed(); return; }
         const bones = new Map(); let rootBone = null; c.assetRoot.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
         const eyesOf = c.wearPlan?.parts?.find((p) => /^wear\.(eyes_|face_eyes_cheeks)/.test(p)); const colors = id.startsWith('wear.eyes_') ? c.wearPlan?.colors?.[eyesOf] : null;
         const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); });
@@ -943,8 +949,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           const mats = [].concat(m.material).map((x) => { const r = wearMaterial(x, colors?.[x.name] || c.wearPlan?.tint?.[x.name], c.player); (c.wearMats ||= []).push(r); return r.material; }); m.material = Array.isArray(m.material) ? mats : mats[0];
           m.userData.expression = id; m.visible = Boolean(c.faceOn?.includes(id)); made.push(m); /* (loaded late: shown only if still wanted) */
         }
-        c.faceParts.set(id, made);
-      }).catch((error) => onError(id, error));
+        parts.set(id, made); ownFace(c, c.faceWant);
+      }).catch((error) => { failed(); onError(id, error); });
     }
     return true;
   }

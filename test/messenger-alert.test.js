@@ -62,4 +62,11 @@ test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그
   assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install: '1' }), copy);
   for (const install of [null, 'chrome']) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install }), menu);
   for (const x of [{ ua: fold, standalone: true }, { ua: fold, standalone: true, install: '1', appSeen: true }, { ua: fold, prompted: true }, { ua: fold, prompted: true, install: '1' }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);
+  // (Codex 261-270 #1, v1.10.272) 알림 켜기 that failed -- the guide only where it may be the island app's window: come by
+  // install=1, standalone with no messenger app seen, or a Custom Tab; the messenger app (seen, or its own start) and a Chrome tab: no
+  assert.equal(MA.pushElsewhere({ install: '1', standalone: true, appSeen: false }), true); /* (the island app's window) */
+  assert.equal(MA.pushElsewhere({ install: '1', standalone: false }), true); /* (a Custom Tab) */
+  assert.equal(MA.pushElsewhere({ install: '1', standalone: true, appSeen: true }), false); /* (the messenger app, opened from the 서랍) */
+  assert.equal(MA.pushElsewhere({ install: null, standalone: true, appSeen: true }), false); /* (the messenger app at its start) */
+  for (const install of [null, 'chrome']) assert.equal(MA.pushElsewhere({ install, standalone: false }), false); /* (a Chrome tab) */
 });

@@ -5638,6 +5638,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const run = emoting.get(c); if (!run) return; emoting.delete(c);
     for (const t of run.timers) clearTimeout(t); clearInterval(run.every);
     if (c.emoteFace) { c.emoteFace = false; assets.face(c, null); }
+    if (!done) { const now = performance.now(); for (const m of marks) if (m.c === c) m.until = Math.min(m.until, now); } /* (Codex 261-270 #11: cut short -- its mark goes too, not over the next one) */
     handProps(c, true);
     if (run.e.loop) c.anim?.release?.(); else if (!done) c.anim?.finishOnce?.();
     if (c === me && run.n === myAct.n && myAct.act === run.act) myAct.act = null;
@@ -5655,7 +5656,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the others': a new act starts its feeling; a dance ends when their act does
   function remoteEmote(o, p) {
     const id = p.act?.startsWith('emote:') ? p.act.slice(6) : ['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) ? p.act : null;
-    const run = emoting.get(o.c); if (run?.e.loop && p.act !== o.act) emoteEnd(o.c, false);
+    const run = emoting.get(o.c); if (run && p.act !== o.act && (run.e.loop || String(o.act || '').startsWith('emote:'))) emoteEnd(o.c, !run.e.loop && !p.moving); /* (Codex 261-270 #9: a feeling's act ends with it -- cut by walking off, its face and the things in hand back at once; ended in place, its move plays out) */
     if (id && EM.of(id) && (p.actN !== o.actN || p.act !== o.act)) emoteRun(o.c, id, { near: o.c.root.position.distanceTo(camera.position) < EM.NEAR });
   }
   // everyday blinks (4절): every 3~6 s, 0.12 s, within 15 m of the camera -- not in an expression, not my own in the first
@@ -5697,7 +5698,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     c.reactedAt = now; const n = castNOf(c);
     const r = EM.reactOf(id, { night: Boolean(night), rain: weatherKind === 'rain', level: affinity.get(n)?.level ?? 0 }); if (!r) return null;
     c.reacting = setTimeout(() => {
-      if (!c.root.parent) return; emoteRun(c, r.move, { mark: r.mark ?? undefined, ms: r.ms || null });
+      if (!c.root.parent || npcBusy(c)) return; /* (Codex 261-270 #10: talked to in the meantime -- the talk wins) */ emoteRun(c, r.move, { mark: r.mark ?? undefined, ms: r.ms || null });
       const C = globalThis.IslandCast; const line = r.lines[Math.floor(Math.random() * r.lines.length)]; say(c, n != null && C?.withTail ? C.withTail(line, n) : line); c.reactSaid = line;
       if (r.then) setTimeout(() => { if (c.root.parent && !emoting.has(c)) emoteRun(c, r.then); }, 1000);
     }, 400);

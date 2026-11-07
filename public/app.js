@@ -4404,6 +4404,7 @@
   // v1.10.42 도감: the bag window's other page -- every find, the ones not found yet as silhouettes
   const DEX_ICON = { herb: 'herb', berry: 'berries', mushroom: 'mushrooms' };
   // v1.10.43: the page `on` is 'dex' (the finds) or 'photo' (기념사진: the photo spots and the day each was taken); false the bag
+  let dexAsked = 0;
   async function showDex(on) {
     const grid = document.getElementById('islandBagGrid'); const dex = document.getElementById('islandDexGrid');
     for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given']]) document.getElementById(id).classList.toggle('selected', on === page);
@@ -4411,9 +4412,9 @@
     grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
     byId('islandBagSort').classList.toggle('hidden', Boolean(on)); bagSortReset(); // (v1.10.233, 사용자: 「정리」 the bag's only -- in the 도감 it sorted the bag and the count went wrong)
     byId('islandDexTabs').classList.toggle('hidden', on !== 'dex');
-    if (!on) return;
+    const asked = ++dexAsked; if (!on) return; /* (Codex 261-270 #12: only the last request draws -- a late answer does not cover the tab now shown) */
     try {
-      const data = await api('/api/island/dex');
+      const data = await api('/api/island/dex'); if (asked !== dexAsked) return;
       if (on === 'given') { // (v1.10.267 받은 것: what the islanders gave at a talk's end -- a keepsake, not a bag item)
         dex.scrollTop = 0; byId('islandBagCount').textContent = String(data.given.length);
         const cells = data.given.map((g) => { const cell = document.createElement('div'); cell.className = 'islandDexCell islandGivenCell'; cell.setAttribute('role', 'listitem'); const i = document.createElement('b'); i.textContent = '🎁'; const name = document.createElement('span'); name.textContent = g.name; const by = document.createElement('small'); by.textContent = `${g.from} · ${Number(g.day.slice(5, 7))}월 ${Number(g.day.slice(8, 10))}일`; cell.append(i, name, by); return cell; });
@@ -5216,7 +5217,7 @@
     const fill = (choices) => list.replaceChildren(...choices.map(([topic, label, choice]) => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
       b.addEventListener('click', () => (topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'more' || topic === 'back' ? (fill(talkSlots(data, topic === 'more')), list.querySelector('button')?.focus())
-        : topic === 'tree' ? askTree(data.n, choice) : topic === 'sreply' ? storyReply(data, Number(choice)) : topic === 'reply' ? askTree(data.n, data.talk.id, Number(choice), [data.say.at(-1), label]) : askResident(data.n, topic, choice)));
+        : topic === 'tree' ? askTree(data.n, choice) : topic === 'sreply' ? storyReply(data, Number(choice)) : topic === 'reply' ? askTree(data.n, data.talk.id, Number(choice), [data.say.at(-1), label], data.talk.node) : askResident(data.n, topic, choice)));
       return b;
     }));
     // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them;
@@ -5264,10 +5265,10 @@
     catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
   }
   // v1.10.267 대화 나무: a topic begun (reply null) or my reply at the node the server has me at
-  async function askTree(n, id, reply = null, past = []) {
+  async function askTree(n, id, reply = null, past = [], node = null) { // (node: the one my reply answers -- Codex 261-270 #3)
     if (residentBusy) return; residentBusy = true; residentTopic = 'talk'; lostCard.classList.add('talkWaiting');
-    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic: 'talk', talk: id, ...(reply != null ? { reply } : {}) }) }); talkPast = reply != null ? past : []; if (residentTalk?.n === n) showResidentTalk(data, false); }
-    catch (error) { showToast(error.message); if (error.status === 409 && !['TALK_DONE', 'TALK_TIRED', 'TALK_CLOSED'].includes(error.data?.error)) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
+    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic: 'talk', talk: id, ...(reply != null ? { reply, ...(node != null ? { node } : {}) } : {}) }) }); talkPast = reply != null ? past : []; if (residentTalk?.n === n) showResidentTalk(data, false); }
+    catch (error) { showToast(error.message); if (error.status === 409 && !['TALK_DONE', 'TALK_TIRED', 'TALK_CLOSED', 'TALK_STALE'].includes(error.data?.error)) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
   }
   async function talkResident(n, lead = null) { // (lead: a line of the place before their own words -- 바위 at the works)
     guideDone('talk'); // B 47 안내
