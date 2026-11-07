@@ -100,7 +100,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   expect((await post(request, '/api/test/fish/mode', token, { mode: 'timing' })).data.ok).toBe(true);
   await castNow();
   if (!isMobile) { await page.keyboard.press('t'); await expect(page.locator('#toast')).toContainText('지금은 할 수 없어요'); await expect(page.locator('#emoteWheel')).toBeHidden(); } /* (v1.10.263: no wheel while fishing) */
-  await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); expect((await post(request, '/api/test/fish/bite', token, { species: 'crucian_carp', slack: 20000 })).data.ok).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); expect((await post(request, '/api/test/fish/bite', token, { species: 'crucian_carp', slack: 20000, biteAgo: 2000 })).data.ok).toBe(true); /* (265: the server's bite before the page's, as for a player -- set after it, a quick last hit came "sooner than the bar allows" by the server's clock: FISH_WRONG) */
   const bar = page.locator('#fishTiming'); await expect(bar).toBeVisible({ timeout: 10000 }); await expect(page.locator('#plazaHint')).toHaveText(/^입질! 초록 칸에서 [2-5]번$/); /* (the cast's own fish's grade: 2~5) */
   /* (the player: one miss away from the zone, then each press in it -- by the bar's own clock and FishTug.inZone, as the page and the
      server judge it, not the needle a slow frame drew; 265 흔들림: at CI's 2.7 fps the drawing was a third of a second behind) */
@@ -119,7 +119,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   const bigBite = async (species) => {
     await castNow();
     await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); await expect(page.locator('#plazaHint')).toHaveText(/순서대로( \(WASD도 돼요\))?$/);
-    expect((await post(request, '/api/test/fish/bite', token, { species, size: 150, slack: 20000 })).data.ok).toBe(true); await pressFishArrows(page, isMobile);
+    expect((await post(request, '/api/test/fish/bite', token, { species, size: 150, slack: 20000, biteAgo: 2000 })).data.ok).toBe(true); await pressFishArrows(page, isMobile);
     await expect(page.locator('#fishTug')).toBeVisible({ timeout: 10000 }); await expect(page.locator('#fishTug .fishTugTitle')).toContainText('대어다!');
     expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('tug');
   };
