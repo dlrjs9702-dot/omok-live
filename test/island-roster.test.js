@@ -47,6 +47,8 @@ test('근무표 C1: 계산대 주민(걷는·이야기 주민 모두), 관공서
   try {
     assert.equal(Q.isOpen('stationmaster', Date.parse('2026-11-01T12:00:00+09:00')), false); // a Sunday: 반디 at the station
     assert.equal(Q.isOpen('stationmaster', Date.parse('2026-11-02T00:30:00+09:00')), true); // Monday: 철이 again
+    Q.openForTest('stationmaster'); assert.equal(Q.isOpen('stationmaster', Date.parse('2026-11-01T12:00:00+09:00')), true); Q.openForTest('stationmaster', false); // (v1.10.270: opened for a test -- a Sunday too)
+    assert.equal(Q.isOpen('stationmaster', Date.parse('2026-11-01T12:00:00+09:00')), false);
     assert.equal(R.rosterOf('2026-11-01').posts.station, 18);
   } finally { delete process.env.ISLAND_QUEST_WEEK; }
 });
