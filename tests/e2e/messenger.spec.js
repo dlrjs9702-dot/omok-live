@@ -151,8 +151,18 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   // (v1.10.258, an Android phone: no protocol_handlers in its Chrome -- an intent:// link, the OS's messenger app or the browser)
   const host = new URL(appHome.url()).host;
   await expect.poll(() => appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens), { timeout: 5000 })
-    .toEqual(isMobile ? [[`intent://${host}/messenger.html#Intent;scheme=http;S.browser_fallback_url=${encodeURIComponent(`http://${host}/messenger.html?install=1`)};end`, '_blank']] /* (Codex #16: no app -- the page asks for the install) */ : [['', '_blank']]);
+    .toEqual(isMobile ? [[`intent://${host}/messenger.html?install=1#Intent;scheme=http;S.browser_fallback_url=${encodeURIComponent(`http://${host}/messenger.html?install=1`)};end`, '_blank']] /* (Codex #16, v1.10.264: install=1 on the address and the fallback) */ : [['', '_blank']]);
   if (process.env.SHOT_DIR && isMobile) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-open-app.png` });
+  // (v1.10.264 총괄, 폴드) the 서랍's note: on Android 「크롬에서 설치」 -- Chrome itself, where its install comes; a PC none
+  { await expect(f.locator('#mInstallHint')).toBeVisible();
+    await expect(f.locator('#mInstallHintChrome')).toBeVisible({ visible: Boolean(isMobile) });
+    if (isMobile) {
+      await appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => { window.__opens = []; });
+      await f.locator('#mInstallHintChrome').click();
+      expect(await appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => window.__opens)).toEqual([[`intent://${host}/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end`, '_blank']]);
+      if (process.env.SHOT_DIR) await appHome.screenshot({ path: `${process.env.SHOT_DIR}/phone-drawer-chrome.png` });
+    }
+  }
   if (!isMobile) { // (in a plain page, the blank window is sent on to the messenger -- the room of the 서랍, none here)
     const [tab] = await Promise.all([appHome.context().waitForEvent('page'), appHome.frames().find((x) => x.url().includes('embed=1')).evaluate(() => { window.open = window.__realOpen; document.getElementById('mOpenApp').click(); })]);
     await expect.poll(() => tab.url(), { timeout: 5000 }).toContain('/messenger.html'); await tab.close();

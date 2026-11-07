@@ -27,9 +27,42 @@
   ];
   const BY = Object.fromEntries(LIST.map((e) => [e.id, e]));
   // the game's own (행사·선물·축하): cheer and nod take the same way (no wheel cell)
-  const EXTRA = { cheer: E('cheer', '환호', 'cheer', 1.5, 'happy', 'laugh', 0.05, 1.3, 'sparkle', 0.2, 1.0), nod: E('nod', '끄덕', 'nod', 1.5, null, 'grin', 0.1, 1.3, null, 0, 0) };
+  const EXTRA = { cheer: E('cheer', '환호', 'cheer', 1.5, 'happy', 'laugh', 0.05, 1.3, 'sparkle', 0.2, 1.0), nod: E('nod', '끄덕', 'nod', 1.5, null, 'grin', 0.1, 1.3, null, 0, 0),
+    greet: E('greet', '살짝 인사', 'greet', 1.6, 'happy', null, 0.1, 1.4, 'flower', 0.3, 1.0) /* (v1.10.264: an islander's GreetingSmall) */ };
   const of = (id) => BY[id] || EXTRA[id] || null;
   const ACTS = LIST.map((e) => `emote:${e.id}`);
   const BLINK = { every: [3, 6], hold: 0.12, near: 15 };
-  return { LIST, BY, EXTRA, of, ACTS, BLINK, SAME_MS: 1000, DANCE_MS: 30000, MARK_SCALE: 1.75, MARK_UP: 0.25, NEAR: 40 };
+  // v1.10.264 주민 반응 (6절): my feeling -> the islander's move (an emote id, its face with it), its mark when another than
+  // the move's own, and its two lines (one picked, the islander's tail after it). Only on the screen: no 호감도, no server.
+  const R = (move, mark, lines, more = {}) => ({ move, mark, lines, ...more });
+  const HI = ['안녕!', '반가워!']; const FUN = ['뭐가 그렇게 좋아?', '나도 덩달아 웃음 나!']; const HUH = ['글쎄…', '나도 모르겠어.'];
+  function reactOf(feel, { night = false, rain = false, level = 0 } = {}) {
+    switch (feel) {
+      case 'wave': return R('wave', null, HI); case 'bow': return R('bow', 'flower', HI);
+      case 'laugh': case 'jumpjoy': case 'clap': return R('laugh', null, FUN);
+      case 'dance': return night || rain ? R('clap', 'note', ['같이 춰!', '흥이 난다!']) : R('dance', null, ['같이 춰!', '흥이 난다!'], { ms: 4000 });
+      case 'thumbsup': return R('thumbsup', null, ['최고!', '너도!']);
+      case 'heart': return level >= 3 ? R('heart', null, ['헤헤…', '나도 좋아!']) : R('shy', 'heart', ['헤헤…', '나도 좋아!']);
+      case 'shy': return R('greet', 'flower', ['왜 그래, 귀엽게.', '쑥스러워?']);
+      case 'surprise': return R('surprise', null, ['앗, 왜?!', '뭐 있어?']);
+      case 'think': case 'shrug': return R('shrug', null, HUH);
+      case 'yawn': return night ? R('yawn', null, ['졸리다…', '벌써 졸려?']) : R('laugh', 'note', ['졸리다…', '벌써 졸려?']);
+      case 'facepalm': return R('shrug', 'sweat', ['무슨 일 있었어?', '힘내!']);
+      case 'cry': return R('surprise', 'sweat', ['괜찮아?', '울지 마, 내가 있잖아.'], { then: 'wave' });
+      case 'angry': return R('surprise', 'sweat', ['히익, 미안해!', '진정해…']);
+      default: return null;
+    }
+  }
+  // v1.10.264 말할 때 (5절): an islander's face for the first 1.5 s of what it says -> { eyes, mouth } (null keeps that one) or
+  // null: a rain or winter grumble sad; a rainbow or a star night pleased; an errand asked a grin; a rumour or their question
+  // an 「o」; a greeting, thanks or a gift taken laughing
+  function talkFace({ first = false, topic = null, mood = null, offer = false, question = false, reward = false } = {}) {
+    if (mood === 'rain' || mood === 'winter') return { eyes: 'sad', mouth: 'frown' };
+    if (mood === 'rainbow' || mood === 'stars') return { eyes: 'happy', mouth: 'grin' };
+    if (offer) return { eyes: null, mouth: 'grin' };
+    if (question || topic === 'rumor') return { eyes: null, mouth: 'o' };
+    if (first || reward || topic === 'gift' || topic === 'answer') return { eyes: 'happy', mouth: 'laugh' };
+    return null;
+  }
+  return { LIST, BY, EXTRA, of, ACTS, BLINK, reactOf, talkFace, SAME_MS: 1000, DANCE_MS: 30000, MARK_SCALE: 1.75, MARK_UP: 0.25, NEAR: 40, REACT_R: 4, REACT_MS: 20000, TALK_FACE_MS: 1500, IDLE_MS: [120000, 240000], IDLE_NEAR: 30 };
 }));

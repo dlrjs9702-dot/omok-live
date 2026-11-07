@@ -4504,9 +4504,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         animate(c,dt,!w.arrived && w.speed>.3,w.speed); continue;
       }
       c.waving=false; delete c.returnEmote;
-      c.targetYaw = c.talkYaw ?? c.chatYaw ?? (w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw); // (v1.10.91: turned to me in a talk; A-6: to the one they chat with)
-      c.lookAt = c.talkYaw != null || c.chatYaw != null || w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
-      greetMe(c, w, m, nowMs);
+      const reacting = c.reactUntil > nowMs; /* (v1.10.264: turned to me answering my feeling, or to another it waves at) */
+      c.targetYaw = c.talkYaw ?? (reacting ? c.reactYaw : null) ?? c.chatYaw ?? (w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw); // (v1.10.91: turned to me in a talk; A-6: to the one they chat with)
+      c.lookAt = reacting || c.talkYaw != null || c.chatYaw != null || w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
+      greetMe(c, w, m, nowMs); idleFeel(c, w, nowMs);
       animate(c, dt, w.speed > 0.3, w.speed);
     }
     if ((chatCheck -= dt) <= 0) { chatCheck = 0.25; chatter(); }
@@ -5107,7 +5108,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const o of others.values()) { const far = Math.hypot(o.c.root.position.x - me.root.position.x, o.c.root.position.z - me.root.position.z) > FAR_TAG; if (o.c.bubble) o.c.bubble.visible = !far; }
     for (const npc of npcs) { // the keeper turns to a player who comes close and waves
       const close = near === npc.home.id && !(talkView && talkView.id === npc.home.id); // in a talk: the body faces me (talkCamera)
-      npc.lookAt = close ? Math.atan2(me.root.position.x - npc.home.x, me.root.position.z - npc.home.z) - npc.home.yaw : null;
+      npc.lookAt = close || npc.reactUntil > performance.now() ? Math.atan2(me.root.position.x - npc.home.x, me.root.position.z - npc.home.z) - npc.home.yaw : null; /* (v1.10.264: at a counter, the head turns to my feeling) */
       npc.waving = close;
       // v1.10.79 (assets 36): a small greeting when I come up (not again within 20 s), and now and then a look around
       // while nobody is there -- only over its plain idle, never over another clip it is playing
@@ -5410,7 +5411,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       netTry: (kind) => { const sw = NET_SW[kind]; if (!sw) return; swingUntil = performance.now() + sw.ms; netPoseUntil = swingUntil + 200; me.anim?.release?.(); me.anim?.play(sw.clip); netAct(kind); fxAt(sw.fx, me.root.position.clone(), me.root.rotation.y + Math.PI, sw.ms + 3000, 1.0); setTimeout(() => { poseHeld = performance.now() + 3000; }, sw.hit); },
       netDemo: (species) => { const o = me.holding?.bugnet?.object; const c = insectHolder(species); if (!bagPut(c, o)) { c.dispose(); return false; } c.play('Struggle'); setBag(true); me.anim?.play('netTwist'); netPoseUntil = performance.now() + 4000; setTimeout(() => { poseHeld = performance.now() + 3500; }, 290); setTimeout(() => { c.dispose(); setBag(false); }, 4000); return true; },
       insectDemo: (b) => { const id = `demo-${insectList.length}-${b.species}`; insectList.push({ id, name: b.species, grade: 'common', ...b }); return id; }, /* (v1.10.261 photos: one of a kind at a spot, this screen only) */
-      missDemo: () => { const t = netTarget(); netMissed(t); return t?.b.id || null; }, insectSpot: (id) => { const b = insectList.find((x) => x.id === id); return b ? { x: b.x, z: b.z } : null; }, feeling: (who = null) => { const c = who ? others.get(who)?.c : me; if (!c) return null; const run = emoting.get(c); const own = []; c.assetRoot?.traverse((o) => { if (o.isSkinnedMesh && o.visible && (o.userData.expression || /^wear\.(eyes_|mouth_|face_eyes)/.test(o.userData.wearId || ''))) own.push(o.userData.expression || o.userData.wearId); }); return { id: run?.id || null, act: c === me ? myAct.act : null, blocked: c === me ? feelBlocked() : null, clip: c.anim?.clip || null, face: c.faceOn || null, shown: [...new Set(own)], marks: marks.filter((m) => m.c === c).map((m) => m.id), blinks: c.blinks || 0, hands: Object.values(c.holding || {}).map((h) => Boolean(h.object?.visible)) }; }, /* (v1.10.263 tests: a feeling on me or another) */ facePose: (id) => { const e = id && EM.of(id); me.emoteFace = Boolean(e); me.blinkUntil = 0; assets.face(me, e ? { eyes: e.eyes && `wear.eyes_x_${e.eyes}`, mouth: e.mouth && `wear.mouth_x_${e.mouth}` } : null); for (const m of marks) if (m.c === me) m.until = 0; if (e?.mark) emoteMark(me, e.mark, 5000); return Boolean(e); }, /* (photos: a face and its mark held) */ netState: () => ({ aiming: Boolean(netAim?.aiming), pose: netAim?.kind || null, bag: netBag ? { id: netBag.id, ok: netBag.ok, closed: Boolean(netBag.closed) } : null, bagShown: (() => { const u = me.holding?.bugnet?.object?.userData; return u ? { open: u.bagOpen?.visible ?? null, closed: u.bagClosed?.visible ?? null } : null; })(), clip: me.anim?.clip || null, act: myAct.act, log: [...netLog] }), /* (v1.10.260) */ toolTip, counterFacing: () => { buildRoom(); buildStore(); buildFashion(); buildPetshop(); buildFurniture(); buildJail(); /* (each keeper: the angle between where it faces and where its customer stands, and its home yaw's from its body, degrees) */
+      missDemo: () => { const t = netTarget(); netMissed(t); return t?.b.id || null; }, insectSpot: (id) => { const b = insectList.find((x) => x.id === id); return b ? { x: b.x, z: b.z } : null; }, residentFace: (n) => { const c = residentChar(n); if (!c) return null; const vis = (set) => [...(set || [])].some((m) => m.visible); return { person: c.npcPerson || null, visible: Boolean(c.root.visible && c.root.parent && (c.root.parent === scene || c.root.parent.visible !== false)), run: emoting.get(c)?.id || null, clip: c.anim?.clip || null, parts: [...(c.npcParts || new Map())].filter(([, o]) => o.visible).map(([k]) => k), eyesBase: c.npcBase ? vis(c.npcBase.eyes) : null, mouthBase: c.npcBase ? vis(c.npcBase.mouth) : null, marks: marks.filter((m) => m.c === c).map((m) => m.id), said: c.reactSaid || null, bubble: c.bubble?.userData.text || null, blinks: c.blinks || 0, idle: c.idleFelt || null, props: (() => { let on = null; c.assetRoot?.traverse((m) => { if (m.isMesh && [].concat(m.material).some((x) => x?.name === 'equipment')) on = (on ?? false) || m.visible; }); return on; })(), at: { x: c.root.position.x, z: c.root.position.z }, yaw: c.root.rotation.y }; }, idleNow: (n) => { const c = residentChar(n); if (c) c.idleAt = 0; return Boolean(c); }, lastReact: () => lastReact, feel: (id) => feel(id), talkFace: (n, f, ms = 1500) => faceFor(residentChar(n), f, ms), /* (v1.10.264 tests: an islander's face, its pieces and its own) */ feeling: (who = null) => { const c = who ? others.get(who)?.c : me; if (!c) return null; const run = emoting.get(c); const own = []; c.assetRoot?.traverse((o) => { if (o.isSkinnedMesh && o.visible && (o.userData.expression || /^wear\.(eyes_|mouth_|face_eyes)/.test(o.userData.wearId || ''))) own.push(o.userData.expression || o.userData.wearId); }); return { id: run?.id || null, act: c === me ? myAct.act : null, blocked: c === me ? feelBlocked() : null, clip: c.anim?.clip || null, face: c.faceOn || null, shown: [...new Set(own)], marks: marks.filter((m) => m.c === c).map((m) => m.id), blinks: c.blinks || 0, hands: Object.values(c.holding || {}).map((h) => Boolean(h.object?.visible)) }; }, /* (v1.10.263 tests: a feeling on me or another) */ facePose: (id) => { const e = id && EM.of(id); me.emoteFace = Boolean(e); me.blinkUntil = 0; assets.face(me, e ? { eyes: e.eyes && `wear.eyes_x_${e.eyes}`, mouth: e.mouth && `wear.mouth_x_${e.mouth}` } : null); for (const m of marks) if (m.c === me) m.until = 0; if (e?.mark) emoteMark(me, e.mark, 5000); return Boolean(e); }, /* (photos: a face and its mark held) */ netState: () => ({ aiming: Boolean(netAim?.aiming), pose: netAim?.kind || null, bag: netBag ? { id: netBag.id, ok: netBag.ok, closed: Boolean(netBag.closed) } : null, bagShown: (() => { const u = me.holding?.bugnet?.object?.userData; return u ? { open: u.bagOpen?.visible ?? null, closed: u.bagClosed?.visible ?? null } : null; })(), clip: me.anim?.clip || null, act: myAct.act, log: [...netLog] }), /* (v1.10.260) */ toolTip, counterFacing: () => { buildRoom(); buildStore(); buildFashion(); buildPetshop(); buildFurniture(); buildJail(); /* (each keeper: the angle between where it faces and where its customer stands, and its home yaw's from its body, degrees) */
       return counterKeepers.map(({ id, k, spot }) => { const p = k.root.getWorldPosition(new THREE.Vector3()); const s = spot(); const f = k.root.getWorldDirection(new THREE.Vector3()); const off = k.home.yaw - worldYaw(k.root);
         return { id, angle: Math.round(THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp((f.x * (s.x - p.x) + f.z * (s.z - p.z)) / (Math.hypot(f.x, f.z) * Math.hypot(s.x - p.x, s.z - p.z) || 1), -1, 1)))), home: Math.round(THREE.MathUtils.radToDeg(Math.abs(Math.atan2(Math.sin(off), Math.cos(off))))) }; }); },
 
@@ -5542,8 +5543,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // over the head, at island-emotes' times. Mine from the wheel (`feel`) or the game's own (`emote`: wave, cheer, nod, clap,
   // bow -- the same way, its act as before); the others' from their act, the face and the mark only within 40 m of the
   // camera (farther, the move only). The thing in the hand is put away meanwhile.
-  const EM = globalThis.IslandEmotes; const emoting = new Map(); const marks = []; let lastFeel = { id: null, at: 0 };
-  const handProps = (c, on) => { for (const k of Object.keys(c.holding || {})) { const o = c.holding[k]?.object; if (o) o.visible = on; } };
+  const EM = globalThis.IslandEmotes; const emoting = new Map(); const marks = []; let lastFeel = { id: null, at: 0 }; let lastReact = null;
+  const handProps = (c, on) => { for (const k of Object.keys(c.holding || {})) { const o = c.holding[k]?.object; if (o) o.visible = on; } if (c.npcPerson) assets.props(c, on); /* (v1.10.264: an islander's net, jar, can...) */ };
   const markY = (c) => { let y = (c.headTop || 1.85) + EM.MARK_UP; if (c.tag?.visible) y = Math.max(y, c.tag.position.y + c.tag.scale.y + 0.05); if (c.bubble?.visible) y = Math.max(y, c.bubble.position.y + c.bubble.scale.y / 2 + 0.05); return y; }; /* (over the name tag and a chat bubble) */
   function emoteMark(c, id, ms) { const h = new THREE.Group(); h.scale.setScalar(0.001); c.root.add(h); assets.attach(`emote.mark_${id}`, h, new THREE.Group()); marks.push({ h, c, id, at: performance.now(), until: performance.now() + ms }); }
   const markAt = new THREE.Vector3();
@@ -5559,18 +5560,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
   }
   // a feeling on a character: `near` with its face and mark; `done` when it ran its course (else cut: walking, Esc, another)
-  function emoteRun(c, id, { near = true } = {}) {
+  function emoteRun(c, id, { near = true, mark = undefined, ms = null } = {}) { /* (v1.10.264: an islander's reaction -- its own mark, a dance 4 s) */
     const e = EM.of(id); if (!e) return null; emoteEnd(c, false);
     const clip = e.clip === 'shy' && c.shyFront ? 'shyFront' : e.clip;
     const played = e.loop ? c.anim?.loop?.(clip) : c.anim?.play(clip);
     const run = { id, e, c, played, timers: [], every: 0 }; const later = (sec, f) => run.timers.push(setTimeout(f, sec * 1000));
     if (near) {
       if (e.eyes || e.mouth) { later(e.at, () => { c.emoteFace = true; c.blinkUntil = 0; assets.face(c, { eyes: e.eyes && `wear.eyes_x_${e.eyes}`, mouth: e.mouth && `wear.mouth_x_${e.mouth}` }); }); if (!e.loop) later(e.back, () => { c.emoteFace = false; assets.face(c, null); }); }
-      const markOnce = () => { if (e.mark) later(e.markAt, () => emoteMark(c, e.mark, e.markFor * 1000)); if (e.then) later(e.then.at, () => emoteMark(c, e.then.mark, e.then.for * 1000)); };
+      const mk = mark !== undefined ? mark : e.mark; const markOnce = () => { if (mk) later(e.markAt || 0.3, () => emoteMark(c, mk, (e.markFor || 1) * 1000)); if (e.then && mark === undefined) later(e.then.at, () => emoteMark(c, e.then.mark, e.then.for * 1000)); };
       markOnce(); if (e.loop) run.every = setInterval(markOnce, e.dur * 1000); /* (the dance: a note each round) */
     }
     handProps(c, false); emoting.set(c, run);
-    later(e.loop ? EM.DANCE_MS / 1000 : e.dur, () => emoteEnd(c, true)); /* (a dance 30 s at most) */
+    later(ms ? ms / 1000 : e.loop ? EM.DANCE_MS / 1000 : e.dur, () => emoteEnd(c, true)); /* (a dance 30 s at most) */
     return run;
   }
   function emoteEnd(c, done) {
@@ -5588,7 +5589,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!EM.BY[id]) return false; if (feelBlocked()) return 'blocked';
     const now = performance.now(); if (lastFeel.id === id && now - lastFeel.at < EM.SAME_MS) return false; lastFeel = { id, at: now };
     const run = emoteRun(me, id); if (!run) return false; if (!run.played) me.hop = 1;
-    actLock = now + 300; run.act = myAct.act = `emote:${id}`; run.n = ++myAct.n; return true;
+    actLock = now + 300; run.act = myAct.act = `emote:${id}`; run.n = ++myAct.n; lastReact = npcReact(id); return true; /* (v1.10.264: an islander in front answers) */
   }
   function emote(kind) { if (gather || fishing || me.carrying || actLocked() || !['wave', 'cheer', 'nod', 'clap', 'bow'].includes(kind)) return false; const run = emoteRun(me, kind); if (!run?.played) me.hop = 1; lockForClip(run?.played); run.act = myAct.act = kind; const n = run.n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === kind) myAct.act = null; }, kind === 'clap' ? 1800 : 1500); return true; } /* (v1.10.263: with its face and mark) */
   // the others': a new act starts its feeling; a dance ends when their act does
@@ -5601,7 +5602,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // person, not on eyes that are closed already
   function stepBlink() {
     const now = performance.now();
-    for (const c of [me, ...[...others.values()].map((o) => o.c)]) {
+    for (const c of [me, ...[...others.values()].map((o) => o.c), ...residentChars()]) { /* (v1.10.264: the islanders too) */
       if (!c?.wearRec) continue;
       if (c.blinkUntil) { if (now >= c.blinkUntil) { c.blinkUntil = 0; if (!c.emoteFace) assets.face(c, null); } continue; }
       if (!c.blinkAt) c.blinkAt = now + 3000 + Math.random() * 3000;
@@ -5609,6 +5610,48 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (c.emoteFace || c.faceOn || (c === me && fpNow()) || c.root.position.distanceTo(camera.position) > EM.BLINK.near || c.wearPlan?.parts?.some((p) => /eyes_sleepy/.test(p))) continue;
       assets.face(c, { eyes: 'wear.eyes_x_blink' }); c.blinkUntil = now + EM.BLINK.hold * 1000; c.blinks = (c.blinks || 0) + 1;
     }
+  }
+  // v1.10.264 주민 표정 (docs/emotes-20261107.md 5~6절, assets 102): the islanders in their own models -- at a counter
+  // (posted) or walking (wanderers), shown; their number in the cast (n) and whether they are taken up with something
+  const residentChars = () => [...new Set([...posted.values(), ...wanderers.map((w) => w.c)])].filter((c) => c?.npcPerson && c.root.visible && c.root.parent);
+  const castNOf = (c) => c.postN ?? wanderers.find((w) => w.c === c)?.n ?? null;
+  const residentChar = (n) => (atCounter(n) && [...posted.values()].find((c) => c.postN === n)) || wanderers.find((w) => w.n === n)?.c || null;
+  function npcBusy(c) {
+    const w = wanderers.find((x) => x.c === c)?.w; const t = talkView && talkFigure(talkView.id) === c.root;
+    return Boolean(t || c.talkYaw != null || c.chatYaw != null || c.hitUntil > performance.now() || emoting.has(c) || w?.pose.held); /* (talking, chatting, an island event's hold; walking by is fine) */
+  }
+  // an islander's face a moment (what it says: talkFace), then its own again
+  function faceFor(c, f, ms) {
+    if (!c || !f || emoting.has(c)) return false;
+    c.emoteFace = true; c.blinkUntil = 0; assets.face(c, { eyes: f.eyes && `wear.eyes_x_${f.eyes}`, mouth: f.mouth && `wear.mouth_x_${f.mouth}` });
+    clearTimeout(c.faceForT); c.faceForT = setTimeout(() => { if (emoting.has(c)) return; c.emoteFace = false; assets.face(c, null); }, ms); return true;
+  }
+  // 6절: my feeling seen by the nearest islander within 4 m in front of me (±60°), not taken up with something: it turns to me,
+  // then answers (reactOf) with a line over its head; the same islander again within 20 s only turns its head
+  function npcReact(id) {
+    const m = me.root.position; const fx = Math.sin(me.root.rotation.y); const fz = Math.cos(me.root.rotation.y); let best = null; let bd = Infinity;
+    for (const c of residentChars()) { const p = c.root.position; const dx = p.x - m.x; const dz = p.z - m.z; const d = Math.hypot(dx, dz); if (d > EM.REACT_R || d < 0.01 || (dx * fx + dz * fz) / d < 0.5) continue; if (d < bd) { bd = d; best = c; } }
+    if (!best || npcBusy(best)) return null;
+    const now = performance.now(); const c = best; c.reactYaw = Math.atan2(m.x - c.root.position.x, m.z - c.root.position.z); c.reactUntil = now + 4500;
+    if (now - (c.reactedAt ?? -Infinity) < EM.REACT_MS) { c.reactUntil = now + 1500; return { head: true }; }
+    c.reactedAt = now; const n = castNOf(c);
+    const r = EM.reactOf(id, { night: Boolean(night), rain: weatherKind === 'rain', level: affinity.get(n)?.level ?? 0 }); if (!r) return null;
+    c.reacting = setTimeout(() => {
+      if (!c.root.parent) return; emoteRun(c, r.move, { mark: r.mark ?? undefined, ms: r.ms || null });
+      const C = globalThis.IslandCast; const line = r.lines[Math.floor(Math.random() * r.lines.length)]; say(c, n != null && C?.withTail ? C.withTail(line, n) : line); c.reactSaid = line;
+      if (r.then) setTimeout(() => { if (c.root.parent && !emoting.has(c)) emoteRun(c, r.then); }, 1000);
+    }, 400);
+    return { move: r.move, n };
+  }
+  // 5절 혼자 있을 때: a walking islander standing a while, now and then (each its own 2~4 minutes), within 30 m of the camera --
+  // a yawn at night, a shrug in the rain, else a laugh or a wave to another islander nearby
+  function idleFeel(c, w, now) {
+    if (!c.npcPerson || w.pose.moving || w.pose.held || w.speed > 0.2 || c.talkYaw != null || c.chatYaw != null || c.bubble || emoting.has(c) || c.reactUntil > now) return;
+    const gap = () => EM.IDLE_MS[0] + Math.random() * (EM.IDLE_MS[1] - EM.IDLE_MS[0]); c.idleAt ??= now + gap(); if (now < c.idleAt) return; c.idleAt = now + gap();
+    if (c.root.position.distanceTo(camera.position) > EM.IDLE_NEAR) return;
+    let id = night ? 'yawn' : weatherKind === 'rain' ? 'shrug' : Math.random() < 0.5 ? 'laugh' : 'wave';
+    if (id === 'wave') { const o = wanderers.find((x) => x.c !== c && x.c.root.visible && Math.hypot(x.w.x - w.x, x.w.z - w.z) < 6); if (o) { c.reactYaw = Math.atan2(o.w.x - w.x, o.w.z - w.z); c.reactUntil = now + 2500; } else id = 'laugh'; }
+    emoteRun(c, id); c.idleFelt = id;
   }
   // v1.10.43 기념사진 모드 (IDEAS ③): I stay put (the camera turns, up to the sky), every name tag and bubble hidden; the
   // shot is the canvas alone (no page UI), drawn and read in the same task, saved as a PNG on the PC (nothing uploaded)
@@ -5649,6 +5692,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; editView = Boolean(lotId); if (!lotId) yardGhost(null); }, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id) => photoAsk(id), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setQualityMode, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, actCancel: () => { if (!netAimEnd()) actUp(); }, grabTurn: () => turnGrab(), homeEditView: (on) => { editView = Boolean(on); }, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, feel, feelBlocked, /* (v1.10.263 감정 표현) */ netFail: (id) => { if (netBag?.id === id && !netBag.ok) netLose(); }, fishTug: fishTugOn, fishTugFight, showCatch, showDone: () => showEnd(false), /* (v1.10.257 자랑 장면) */ setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+    canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, feel, feelBlocked, /* (v1.10.263 감정 표현) */ residentTalkFace: (n, f) => faceFor(residentChar(n), f, EM.TALK_FACE_MS), /* (v1.10.264: what an islander says, its face) */ netFail: (id) => { if (netBag?.id === id && !netBag.ok) netLose(); }, fishTug: fishTugOn, fishTugFight, showCatch, showDone: () => showEnd(false), /* (v1.10.257 자랑 장면) */ setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

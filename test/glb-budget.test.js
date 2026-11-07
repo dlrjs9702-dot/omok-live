@@ -40,7 +40,7 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
     for (const ext of info.extensions) assert.ok(budgets.allowedExtensions.includes(ext), `${f}: 허용되지 않은 확장 ${ext}`);
     // v1.10.30 a character body, a wardrobe part or a motion: the common 20-joint rig kept whole (no node or mesh
     // merging past it), every joint name in its order
-    if (f.startsWith('characters/') && !f.startsWith('characters/props/')) { // (hand-held props are still models)
+    if (f.startsWith('characters/') && !f.startsWith('characters/props/') && !f.startsWith('characters/npc_face_')) { // (hand-held props are still models) /* (v1.10.264: an islander's expression pieces too -- static, on its Head bone) */
       if (f.startsWith('characters/motions/')) { assert.equal(info.meshes, 0, f); assert.equal(info.animations, 1, f); continue; }
       if (!unquantized) assert.equal(info.joints.length, /^characters\/wear\/(eyes|mouth)_x_/.test(f) ? info.meshes : 1, `${f}: one skin`); // (v1.10.79: the delivered bytes keep a mesh -- and its skin -- per material) /* (v1.10.263 assets 101's expression parts: a mesh and skin per material too -- each the common rig, below) */
       const runtimeName = (n) => n.replace(/\./g, ''); // three.js drops the dots from node names (Shoulder.L -> ShoulderL)
