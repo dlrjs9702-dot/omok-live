@@ -128,6 +128,10 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
   }
   assert.match(await (await fetch(`${base}/island/`, { headers: { 'User-Agent': samsung } })).text(), /크롬으로 열기/); // (the island's notice too)
   assert.equal((await fetch(`${base}/chrome-only.js`)).status, 200);
+  // v1.10.264 (총괄, 폴드 #16): a phone's install values to the log -- no login, 20 a day from one address
+  const why = () => fetch(`${base}/api/messenger/install-why`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': samsung, 'X-Forwarded-For': '10.9.9.9' }, body: JSON.stringify({ standalone: true, modes: { standalone: true }, prompted: false, install: '1', show: 'button', ref: 'https://x/messenger.html?room=secret' }) });
+  for (let i = 0; i < 20; i += 1) assert.equal((await why()).status, 200);
+  assert.equal((await why()).status, 429);
   for (const ua of [UA.chrome, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.6723.90 Mobile/15E148 Safari/604.1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148']) {
     const res = await fetch(`${base}/messenger`, { headers: { 'User-Agent': ua, ...(ua === UA.chrome ? { 'Sec-CH-UA': chrome['Sec-CH-UA'] } : {}) } }); assert.equal(res.status, 200, ua); await res.arrayBuffer();
   }

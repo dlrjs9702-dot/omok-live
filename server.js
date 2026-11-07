@@ -4378,6 +4378,17 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/photo-day' && req.method === 'POST') { const body = await parseJson(req); MESSENGER_PHOTOS_DAY = Number(body.max) || 200; return sendJson(res, 200, { ok: true, max: MESSENGER_PHOTOS_DAY }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/purge' && req.method === 'POST') { const body = await parseJson(req); return sendJson(res, 200, { ok: true, n: await messengerStore.purgePhotos(Date.now() + (Number(body.days) || 0) * 86400000) }); } // (v1.10.233: as if days had gone by)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/messenger/slow' && req.method === 'POST') { const body = await parseJson(req); messengerSlowMs = Math.max(0, Math.min(10000, Number(body.ms) || 0)); messengerFailNext = body.fail === true; return sendJson(res, 200, { ok: true }); } // (v1.10.233: a send held back, or the next one refused)
+  // v1.10.264 (총괄, 폴드 #16): why a phone's messenger page showed what it did about installing -- one line in the log
+  // (`[install-why]`), no login and nothing of an account or a room: the browser's own words, the display modes, the prompt,
+  // the install value, where it came from (the address only, 40 characters). 20 a day from one address.
+  if (pathname === '/api/messenger/install-why' && req.method === 'POST') {
+    if (!checkRateLimit(`install-why:${clientIp(req)}`, 20, 24 * 60 * 60 * 1000)) return sendJson(res, 429, { ok: false });
+    const b = await parseJson(req).catch(() => ({})); const flag = (v) => (v === true ? 1 : v === false ? 0 : null);
+    const modes = Object.fromEntries(['fullscreen', 'standalone', 'minimal-ui', 'browser'].map((m) => [m, flag(b.modes?.[m])]));
+    const ref = String(b.ref || '').replace(/[?#].*$/, '').slice(0, 40);
+    console.log(`[install-why] ${JSON.stringify({ ua: String(req.headers['user-agent'] || '').slice(0, 200), standalone: flag(b.standalone), modes, prompted: flag(b.prompted), install: /^(1|chrome)$/.test(String(b.install)) ? String(b.install) : null, show: /^(button|menu|none)$/.test(String(b.show)) ? String(b.show) : null, ref })}`);
+    return sendJson(res, 200, { ok: true });
+  }
   if (pathname === '/api/messenger' || pathname.startsWith('/api/messenger/')) {
     const signed = accountOf(req); const kept = await deviceOf(req); // (메신저 ④: a device kept logged in reaches these calls only)
     const acct = signed ? (kept?.keyId === signed.keyId ? { ...signed, device: kept.device } : signed) : kept; // (메신저 1절: the messenger opened from the game sends both -- the same account's device counts)

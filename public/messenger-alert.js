@@ -33,10 +33,11 @@
   // /messenger.html (the messenger WebAPK if installed, else the browser); elsewhere null (web+gcmessenger: as before)
   function appIntent(ua, origin, room) {
     if (!/Android/i.test(String(ua || ''))) return null;
-    const u = new URL(`/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`, origin);
-    const back = new URL(u.href); back.searchParams.set('install', '1'); /* (Codex 251-260 #16: no app -- the page asks for the install) */
-    return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.slice(0, -1)};S.browser_fallback_url=${encodeURIComponent(back.href)};end`;
+    const u = new URL(`/messenger.html${room ? `?room=${encodeURIComponent(room)}` : ''}`, origin); u.searchParams.set('install', '1'); /* (Codex #16; v1.10.264 총괄, 폴드: Chrome may open the address itself in a Custom Tab, not the fallback -- install=1 on both) */
+    return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.slice(0, -1)};S.browser_fallback_url=${encodeURIComponent(u.href)};end`;
   }
+  // (v1.10.264) the messenger in Chrome itself, to install it there (where the install prompt comes): Android only
+  const chromeIntent = (ua, origin) => (/Android/i.test(String(ua || '')) ? `intent://${new URL(origin).host}/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end` : null);
   // (Codex 251-260 #16; v1.10.263 총괄, 폴드: two values) what the messenger page offers to install it on Android, null nothing:
   // install=1 -- come from the island app's fallback (no messenger app there; a Custom Tab, which never gets the prompt and
   // may even read as standalone): 「크롬에서 열어 설치하기」 at once; install=chrome -- that button's Chrome itself: the
@@ -45,10 +46,10 @@
   const CHROME_LINE = '크롬 메뉴 ⋮ → 앱 설치도 돼요'; const MENU_LINE = '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)'; const TAB_LINE = '또는 ⋮ → Chrome에서 열기'; /* (총괄 #413: a Custom Tab's ⋮ has no 앱 설치, it has Chrome에서 열기) */
   function chromeInstall({ ua, origin, standalone, prompted, install = null }) {
     if (!/Android/i.test(String(ua || '')) || prompted) return null;
-    const url = `intent://${new URL(origin).host}/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end`;
+    const url = chromeIntent(ua, origin);
     if (install === '1') return { url, line: TAB_LINE };
     if (install === 'chrome') return { menuOnly: true, line: MENU_LINE };
     return standalone ? null : { url, line: CHROME_LINE };
   }
-  return { unreadOf, setBadge, titleBlink, appIntent, chromeInstall };
+  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall };
 });

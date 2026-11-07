@@ -48,7 +48,9 @@ test('메신저 제목 깜빡임: 기본 타이머는 this 없이 부름(Chrome 
 test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그대로', () => {
   const o = 'https://island-dalmaru.onrender.com';
   assert.equal(MA.appIntent('Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile', o, 'r_abc123'),
-    'intent://island-dalmaru.onrender.com/messenger.html?room=r_abc123#Intent;scheme=https;S.browser_fallback_url=https%3A%2F%2Fisland-dalmaru.onrender.com%2Fmessenger.html%3Froom%3Dr_abc123%26install%3D1;end'); // (Codex #16: the fallback asks for the install)
+    'intent://island-dalmaru.onrender.com/messenger.html?room=r_abc123&install=1#Intent;scheme=https;S.browser_fallback_url=https%3A%2F%2Fisland-dalmaru.onrender.com%2Fmessenger.html%3Froom%3Dr_abc123%26install%3D1;end'); // (Codex #16; v1.10.264: install=1 on the address too -- Chrome may open it itself in a Custom Tab)
+  assert.equal(MA.chromeIntent('Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile', o), 'intent://island-dalmaru.onrender.com/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end'); // (v1.10.264: the 서랍's 「크롬에서 설치」)
+  assert.equal(MA.chromeIntent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148', o), null);
   assert.equal(MA.appIntent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', o, 'r_abc123'), null);
   // (Codex 251-260 #16; v1.10.263 two values) Android: from the island app's fallback (install=1, a Custom Tab -- even one that
   // reads as standalone) the Chrome button at once; in Chrome itself (install=chrome) the menu line only; a plain visit not
