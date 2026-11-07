@@ -866,7 +866,10 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   expect((await a.page.evaluate(() => window.PlazaDebug().statueSizes)).filter((n) => want.includes(n))).toEqual(want); // v1.10.30: a landmark, the 2nd 70% of the 1st (달마루섬: 영웅마루's 14 m and 10 m niches)
   // 문제 기록 10: the statues keep their colours (not one stone); 2회차 7·17: the names on plaques at the plinths' fronts, the
   // same near and far (no name tag seen from everywhere)
-  if (DAL) await expect.poll(() => a.page.evaluate(() => Math.min(...window.PlazaDebug().statueLook().colors.slice(0, 2))), { timeout: 15000 }).toBeGreaterThan(3);
+  // (v1.10.270, CI chromium-10 four times: 0 colours -- the stones not baked yet (this spec's stand-ins: the drawn body, 4 s
+  // after each statue is made). Given longer; a miss says each statue's colours and the statues as the page has them)
+  if (DAL) await expect.poll(() => a.page.evaluate(() => Math.min(...window.PlazaDebug().statueLook().colors.slice(0, 2))), { timeout: 45000 }).toBeGreaterThan(3)
+    .catch(async (error) => { error.message += `\n동상 색: ${JSON.stringify(await a.page.evaluate(() => window.PlazaDebug().statueLook().colors))} · 동상: ${JSON.stringify(await a.page.evaluate(() => window.PlazaDebug().statues))}`; throw error; });
   const plates = async (x, z) => { await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); await a.page.waitForTimeout(400); return a.page.evaluate(() => window.PlazaDebug().statueLook().plates); };
   const nearP = await plates(0, -112); const farP = await plates(0, -10);
   expect(nearP.filter((p) => /위 기부(왕|둘)$/.test(p.text)).length).toBe(2); expect(nearP.every((p) => !p.sprite && p.w > 1)).toBe(true); expect(farP).toEqual(nearP); // (a contest winner's plaque may be there too)

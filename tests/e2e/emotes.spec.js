@@ -37,8 +37,11 @@ test('감정 표현: T 바퀴 → 웃음 → 몸짓·표정·기호, 끝나면 �
   }
   // T tapped: open for a click -- 춤, until I walk
   await page.waitForTimeout(1100); expect(await feeling(page)).toMatchObject({ blocked: false }); await page.locator('#plazaStage').focus(); await page.keyboard.press('t'); await expect(page.locator('#emoteWheel')).toBeVisible(); await page.waitForTimeout(300); await expect(page.locator('#emoteWheel')).toBeVisible();
+  // (v1.10.270, CI 266·270: the dance's clip not there in 3 s -- given longer; a miss says what was there and which
+  // character models were not in)
   await page.locator('.emoteCell[data-emote="dance"]').click(); await expect(page.locator('#emoteWheel')).toBeHidden();
-  await expect.poll(() => feeling(page), { timeout: 3000 }).toMatchObject({ id: 'dance', act: 'emote:dance', clip: 'Dance' });
+  await expect.poll(() => feeling(page), { timeout: 10000 }).toMatchObject({ id: 'dance', act: 'emote:dance', clip: 'Dance' })
+    .catch(async (error) => { error.message += `\n그때 감정: ${JSON.stringify(await feeling(page))} · 안 들어온 모델: ${JSON.stringify(await page.evaluate(() => Object.entries(window.PlazaDebug().assets?.shown || {}).filter(([k, v]) => /^character\./.test(k) && v !== 'model').map(([k, v]) => `${k}=${v}`)))}`; throw error; });
   await page.waitForTimeout(4500); expect(await feeling(page)).toMatchObject({ id: 'dance' }); // (round and round)
   await page.locator('#plazaStage').focus(); await page.keyboard.down('w'); await page.waitForTimeout(400); await page.keyboard.up('w'); /* (W walks; the arrows turn the view) */
   await expect.poll(async () => (await feeling(page)).id, { timeout: 3000 }).toBe(null);
