@@ -127,7 +127,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   const challenger = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.10.267');
+  assert.equal(health.data.version, '1.10.268');
   const entry = await req('/api/admin/keys', host, { label: '사목손님' });
   assert.equal(entry.status, 201);
   assert.match(entry.data.html, /사목손님/);
@@ -165,7 +165,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
       assert.equal(move.data.state.game.status, 'finished');
       assert.equal(move.data.state.game.winner, 'black');
       assert.equal(move.data.state.game.winningLine.length, 4);
-      // (v1.10.267 G1: the hand's start and end for the result's 「시간」, the same for everyone)
+      // (v1.10.268 G1: the hand's start and end for the result's 「시간」, the same for everyone)
       const hc = move.data.state.handClock; assert.ok(hc?.startedAt && hc.finishedAt && hc.finishedAt >= hc.startedAt, JSON.stringify(hc));
     }
     if (i < 6) assert.ok(move.data.state.handClock?.startedAt && !move.data.state.handClock.finishedAt); // (under way: a start, no end)
@@ -184,7 +184,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   assert.equal(keys.data.keys.find(k => k.id === entry.data.key.id).label, '사목손님');
 });
 
-// (v1.10.267 Codex 10판 ①) a rematch with the same key (a game with no round): the ended clock gives way to a new one
+// (v1.10.268 Codex 10판 ①) a rematch with the same key (a game with no round): the ended clock gives way to a new one
 test('hand clock: a new hand under the same key starts a new clock', async () => {
   const src = await fs.readFile(path.join(__dirname, '..', 'server.js'), 'utf8'); const a = src.indexOf('function handClockOf('); const b = a + src.slice(a).search(/\r?\n\}\r?\n/) + src.slice(a).match(/\r?\n\}/)[0].length;
   const clock = require('node:vm').runInNewContext(`(${src.slice(a, b)})`, { nowMs: () => 0 }); const handClockOf = (room, now) => ({ ...clock(room, now) }); /* (this realm's object) */

@@ -332,6 +332,7 @@ function sendIndex(res, bootstrap = {}) {
     .replace('__SESSION_LABEL__', escapeAttr(bootstrap.label || ''))
     .replace('__SETUP_TICKET__', escapeAttr(bootstrap.setupTicket || ''))
     .replace('__ACCOUNT_TOKEN__', escapeAttr(bootstrap.accountToken || ''))
+    .replace('__ENTRY_NOTICE__', escapeAttr(bootstrap.entryNotice || ''))
     .replace('__BROWSERS__', escapeAttr(ALLOWED_BROWSERS.join(' ')))
     .replace('__ASSET_MANIFEST__', () => (assetCacheEnabled ? assetManifestJson.on : assetManifestJson.off));
   res.writeHead(200, securityHeaders({
@@ -720,6 +721,10 @@ const SETUP_TTL_MS = 15 * 60 * 1000;
 const accountTokens = new Map(); // token -> { keyId, exp }
 const setupTickets = new Map(); // ticket -> { keyId, exp }
 const setupNotRequired = process.env.NODE_ENV === 'test'; // tests enter by files straight in; a test turns a key to the live way
+// v1.10.268 입장 파일 없애기 (notes docs/login-keep-no-entry-file-20261107.md 1절): files are made only under tests and a local run
+// (not on Render, or ALLOW_ENTRY_KEYS=1) -- on the live server the issuing APIs are 404 and an old file only shows the way to log in
+const entryKeysOn = process.env.NODE_ENV === 'test' || process.env.ALLOW_ENTRY_KEYS === '1' || !process.env.RENDER;
+const maskLoginId = (id) => `${String(id).slice(0, 3)}***`;
 const liveEntryKeys = new Set(); // (tests: keys whose file goes as on the live server -- the setup first, then login only)
 function issueTicket(map, keyId, ttl) {
   const now = nowMs();
@@ -839,10 +844,13 @@ async function devicesNow() { const now = nowMs(); return ((await pointStore.wor
 async function deviceOf(req) {
   const token = req.headers['x-messenger-device']; if (!token) return null;
   const hash = deviceHash(token); const d = (await devicesNow()).find((x) => x.hash === hash);
-  return d ? { keyId: d.keyId, device: d.id } : null;
+  return d && scopesOf(d).includes('messenger') ? { keyId: d.keyId, device: d.id } : null; // (v1.10.268 총괄 검토: a game-only token never opens the messenger's door)
 }
-async function issueDevice(keyId, name, kind) {
-  const token = newSecret(32); const d = { name: String(name || '').slice(0, 40), ...(kind === 'phone' || kind === 'pc' ? { kind } : {}) };
+// (v1.10.268 2절) a device's uses: the messenger's (as before -- one from before has none written) and, kept logged in from the
+// island's first screen, the game's too: only those log in again by POST /api/account/device-login. Never the administrator's
+const scopesOf = (d) => (Array.isArray(d?.scopes) && d.scopes.length ? d.scopes : ['messenger']);
+async function issueDevice(keyId, name, kind, scopes = ['messenger']) {
+  const token = newSecret(32); const d = { name: String(name || '').slice(0, 40), ...(kind === 'phone' || kind === 'pc' ? { kind } : {}), scopes };
   await worldEdit(async () => {
     const list = (await devicesNow()); const mine = list.filter((d) => d.keyId === keyId).sort((a, b) => a.at - b.at);
     const drop = new Set(mine.slice(0, Math.max(0, mine.length - DEVICES_MAX + 1)).map((d) => d.id));
@@ -4324,7 +4332,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.267' });
+    return sendJson(res, 200, { ok: true, version: '1.10.268' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4371,7 +4379,20 @@ async function requestHandler(req, res) {
     if (key.pendingAt) return sendError(res, 403, 'PENDING', '관리자 승인 대기 중입니다. 승인 후 로그인할 수 있습니다.');
     if (key.revokedAt) return sendError(res, 403, 'REVOKED', '사용이 중지된 계정입니다. 관리자에게 문의해 주세요.');
     const account = await accountOut(key); // (메신저 ④: 「이 기기에서 로그인 유지」 on the messenger page -- a permitted account's device token too)
-    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account, ...(body.keep === true && account.messenger ? { deviceToken: await issueDevice(key.id, body.device, body.deviceKind) } : {}) });
+    // (v1.10.268 자동 로그인: from the island's first screen, keepGame -- a device token for the game, and the messenger's when permitted)
+    const device = body.keepGame === true ? await issueDevice(key.id, body.device, body.deviceKind, account.messenger ? ['messenger', 'game'] : ['game'])
+      : body.keep === true && account.messenger ? await issueDevice(key.id, body.device, body.deviceKind) : null;
+    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account, ...(device ? { deviceToken: device } : {}) });
+  }
+  // v1.10.268 자동 로그인: a device kept logged in for the game -- a new account token (내 계정; the island by its 「게임 접속」)
+  if (pathname === '/api/account/device-login' && req.method === 'POST') {
+    if (!checkRateLimit(`device-login:${clientIp(req)}`, 30, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
+    const token = String(req.headers['x-messenger-device'] || ''); const d = token && (await devicesNow()).find((x) => x.hash === deviceHash(token));
+    if (!d) return sendError(res, 401, 'DEVICE_GONE', '다시 로그인해 주세요.');
+    if (!scopesOf(d).includes('game')) return sendError(res, 403, 'DEVICE_SCOPE', '이 기기는 자동 로그인으로 켜지 않았어요. 로그인해 주세요.');
+    const key = await accessStore.get(d.keyId);
+    if (!key || key.revokedAt || key.pendingAt || !key.loginId) return sendError(res, 401, 'DEVICE_GONE', '다시 로그인해 주세요.');
+    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account: await accountOut(key) });
   }
   if (pathname === '/api/account/setup' && req.method === 'POST') { // an entry-file account's first id and password
     if (!checkRateLimit(`account-setup:${clientIp(req)}`, 10, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
@@ -4393,7 +4414,11 @@ async function requestHandler(req, res) {
     if (!key || key.revokedAt || key.pendingAt) { if (acct) accountTokens.delete(String(req.headers['x-account-token'])); return sendError(res, 401, 'ACCOUNT_AUTH', '로그인이 필요합니다.'); }
     const action = pathname.slice(13);
     if (action === 'me' && req.method === 'GET') return sendJson(res, 200, { ok: true, account: await accountOut(key) });
-    if (action === 'logout' && req.method === 'POST') { accountTokens.delete(String(req.headers['x-account-token'])); return sendJson(res, 200, { ok: true }); }
+    if (action === 'logout' && req.method === 'POST') { // (v1.10.268: this device's kept login ends with it)
+      accountTokens.delete(String(req.headers['x-account-token']));
+      const device = String(req.headers['x-messenger-device'] || ''); if (device) { const hash = deviceHash(device); await dropDevices((d) => !(d.hash === hash && d.keyId === key.id)); }
+      return sendJson(res, 200, { ok: true });
+    }
     if (action === 'password' && req.method === 'POST') {
       if (!checkRateLimit(`account-password:${key.id}`, 10, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
       const body = await parseJson(req);
@@ -4405,6 +4430,7 @@ async function requestHandler(req, res) {
       await dropDevices((d) => d.keyId !== key.id); // (메신저 ④: and every device kept logged in)
       return sendJson(res, 200, { ok: true });
     }
+    if (action === 'entry-file' && !entryKeysOn) return sendError(res, 404, 'NOT_FOUND', '입장 파일은 이제 쓰지 않아요.'); // (v1.10.268)
     if (action === 'entry-file' && req.method === 'POST') { // a new file: the earlier one stops working (the client asked first)
       if (!checkRateLimit(`account-file:${key.id}`, 5, 60 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '입장 파일 발급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
       const token = newSecret(32);
@@ -4430,7 +4456,7 @@ async function requestHandler(req, res) {
     const b = await parseJson(req).catch(() => ({})); const flag = (v) => (v === true ? 1 : v === false ? 0 : null);
     const modes = Object.fromEntries(['fullscreen', 'standalone', 'minimal-ui', 'browser'].map((m) => [m, flag(b.modes?.[m])]));
     const ref = String(b.ref || '').replace(/[?#].*$/, '').slice(0, 40);
-    console.log(`[install-why] ${JSON.stringify({ ua: String(req.headers['user-agent'] || '').slice(0, 200), standalone: flag(b.standalone), modes, prompted: flag(b.prompted), install: /^(1|chrome)$/.test(String(b.install)) ? String(b.install) : null, show: /^(button|menu|none)$/.test(String(b.show)) ? String(b.show) : null, ref })}`);
+    console.log(`[install-why] ${JSON.stringify({ ua: String(req.headers['user-agent'] || '').slice(0, 200), standalone: flag(b.standalone), modes, prompted: flag(b.prompted), install: /^(1|chrome)$/.test(String(b.install)) ? String(b.install) : null, show: /^(button|copy|menu|none)$/.test(String(b.show)) ? String(b.show) : null, try: /^[1-4]$/.test(String(b.try)) ? Number(b.try) : null, ref })}`); /* (v1.10.268 총괄 「C만 시험」: which of the four ways opened Chrome itself) */
     return sendJson(res, 200, { ok: true });
   }
   if (pathname === '/api/messenger' || pathname.startsWith('/api/messenger/')) {
@@ -4477,7 +4503,7 @@ async function requestHandler(req, res) {
     // (메신저 정리 12절) the island app opened on a device kept logged in to the messenger: its 12 hours start again
     if (pathname === '/api/messenger/seen' && req.method === 'POST') { if (acct.device) await markSeen(acct.device); return sendJson(res, 200, { ok: true, device: Boolean(acct.device) }); }
     // (메신저 ④) the devices kept logged in -- this one marked -- and ending one, or all but this one
-    if (pathname === '/api/messenger/devices' && req.method === 'GET') return sendJson(res, 200, { ok: true, devices: (await devicesNow()).filter((d) => d.keyId === key.id).map((d) => ({ id: d.id, name: d.name, at: d.at, exp: d.exp, mine: d.id === acct.device, alert: alertOf(d) })) });
+    if (pathname === '/api/messenger/devices' && req.method === 'GET') return sendJson(res, 200, { ok: true, devices: (await devicesNow()).filter((d) => d.keyId === key.id).map((d) => ({ id: d.id, name: d.name, at: d.at, exp: d.exp, mine: d.id === acct.device, alert: alertOf(d), game: scopesOf(d).includes('game') })) }); /* (v1.10.268: a game's 자동 로그인 too) */
     if (pathname === '/api/messenger/devices/drop' && req.method === 'POST') {
       const body = await parseJson(req);
       const gone = body.self === true ? acct.device : String(body.id || ''); // (self: this device's logout; all: every other)
@@ -4693,11 +4719,11 @@ async function requestHandler(req, res) {
       const token = String(form.token || '');
       if (token.length < 30 || token.length > 200) return sendSimpleHtml(res, 403, '입장 거부', '유효하지 않은 입장 파일입니다.');
       key = await accessStore.validateAndRecord(token);
-      if (!key) return sendSimpleHtml(res, 403, '입장 거부', '이 입장 파일은 유효하지 않거나 권한이 취소되었습니다.');
-      // an account with no login id sets one first (no skipping); the file goes on working after
+      if (!key) return sendSimpleHtml(res, 403, '막힌 입장', '막힌 입장이에요. 이 입장 파일로는 들어올 수 없어요.');
+      // an account with no login id sets one first (no skipping), then is logged in
       if (!key.loginId && (!setupNotRequired || liveEntryKeys.has(key.id))) return sendIndex(res, { setupTicket: issueTicket(setupTickets, key.id, SETUP_TTL_MS), label: key.label });
-      // v1.10.190: the file only logs in -- 내 계정, the island by its 「게임 접속」 (where one place at a time is checked)
-      if (key.loginId && (!setupNotRequired || liveEntryKeys.has(key.id))) return sendIndex(res, { accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), label: key.label });
+      // v1.10.268: an account with an id -- not logged in by the file any more; the first screen says to log in, its id half shown
+      if (key.loginId && (!setupNotRequired || liveEntryKeys.has(key.id))) return sendIndex(res, { entryNotice: `입장 파일은 이제 쓰지 않아요. 아이디로 로그인해 주세요(아이디: ${maskLoginId(key.loginId)})` });
     }
     if (guestKeyInUse(key.id)) {
       return sendSimpleHtml(
@@ -8280,7 +8306,15 @@ async function requestHandler(req, res) {
     const messenger = new Set(await messengerStore.allowedIds());
     const writers = new Set(await issueWriters()); // (2026-10-20 문제 기록 허용)
     const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id), issues: writers.has(key.id) }));
-    return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file' });
+    return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file', entryKeys: entryKeysOn });
+  }
+  // v1.10.268 (사용자 「아이디 없는 계정은 정리해」): every account with no login id, not yet stopped, stopped at once -- their points,
+  // home and records kept (복구 brings one back); only when the administrator presses it, never by the server itself
+  if (pathname === '/api/admin/keys/revoke-no-id' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const rows = (await accessStore.list()).filter((k) => !k.loginId && !k.revokedAt && !k.pendingAt); let done = 0;
+    for (const k of rows) { const row = await accessStore.revoke(k.id); if (row) { invalidateGuestSessions(row.id); done += 1; } }
+    return sendJson(res, 200, { ok: true, revoked: done });
   }
 
   // v1.10.63 가입 신청: waiting sign-ups, approved (the account is made: its file comes later from 내 계정) or rejected
@@ -8316,6 +8350,7 @@ async function requestHandler(req, res) {
 
   if (pathname === '/api/admin/keys' && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
+    if (!entryKeysOn) return sendError(res, 404, 'NOT_FOUND', '입장 파일은 이제 발급하지 않아요.'); // (v1.10.268)
     const body = await parseJson(req);
     const label = sanitizeLabel(body.label);
     if (!label) return sendError(res, 400, 'BAD_LABEL', '파일을 구분할 이름을 입력해 주세요. 예: 우성_PC');
@@ -8413,6 +8448,7 @@ async function requestHandler(req, res) {
   const reissueMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/reissue$/i);
   if (reissueMatch && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
+    if (!entryKeysOn) return sendError(res, 404, 'NOT_FOUND', '입장 파일은 이제 발급하지 않아요.'); // (v1.10.268)
     if (!checkRateLimit('reissue:' + reissueMatch[1], 5, 60 * 1000)) {
       return sendError(res, 429, 'REISSUE_RATE_LIMIT', '재발급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
     }
@@ -8956,7 +8992,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.267 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.268 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

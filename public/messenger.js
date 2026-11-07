@@ -541,7 +541,7 @@
     const panel = byId('mDevices'); const open = panel.classList.toggle('hidden') === false; byId('mDevicesBtn').setAttribute('aria-expanded', String(open)); if (!open) return;
     try {
       const { devices } = await api('/api/messenger/devices');
-      byId('mDeviceList').replaceChildren(...devices.map((d) => { const li = document.createElement('li'); li.textContent = `${d.name || '기기'} · ${new Date(d.at).toLocaleDateString('ko-KR')}${d.mine ? ' (이 기기)' : ''}`; if (!d.mine) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = '끊기'; b.addEventListener('click', async () => { await api('/api/messenger/devices/drop', { id: d.id }).catch(fail); li.remove(); }); li.append(' ', b); } return li; }));
+      byId('mDeviceList').replaceChildren(...devices.map((d) => { const li = document.createElement('li'); li.textContent = `${d.name || '기기'} · ${new Date(d.at).toLocaleDateString('ko-KR')}${d.mine ? ' (이 기기)' : ''}${d.game ? ' · 게임·메신저' : ''}`; if (!d.mine) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = '끊기'; b.addEventListener('click', async () => { await api('/api/messenger/devices/drop', { id: d.id }).catch(fail); li.remove(); }); li.append(' ', b); } return li; }));
     } catch (err) { fail(err); }
   });
   byId('mDropOthers').addEventListener('click', async () => { try { await api('/api/messenger/devices/drop', { all: true }); byId('mDevices').classList.add('hidden'); showToast('다른 기기의 로그인을 모두 끊었어요.'); } catch (err) { fail(err); } });
@@ -626,12 +626,16 @@
     const show = c ? (c.menuOnly ? 'menu' : 'copy') : 'none'; const box = byId('mChromeInstall'); box.dataset.why = JSON.stringify({ ...why, show }); console.info('[messenger install]', box.dataset.why);
     if (!whySent && /Android/i.test(navigator.userAgent)) { /* (v1.10.264 총괄: once, to the server's log -- no account, no room) */
       whySent = true; const modes = Object.fromEntries(['fullscreen', 'standalone', 'minimal-ui', 'browser'].map((m) => [m, Boolean(window.matchMedia?.(`(display-mode: ${m})`).matches)]));
-      fetch('/api/messenger/install-why', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ standalone: why.standalone, modes, prompted: why.prompted, install, show, ref: String(document.referrer || '').replace(/[?#].*$/, '').slice(0, 40) }) }).catch(() => {});
+      fetch('/api/messenger/install-why', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ standalone: why.standalone, modes, prompted: why.prompted, install, show, try: new URLSearchParams(location.search).get('try'), ref: String(document.referrer || '').replace(/[?#].*$/, '').slice(0, 40) }) }).catch(() => {});
     }
     if (!c || (lineOff && !note)) return false; byId('mChromeInstallBtn').classList.toggle('hidden', Boolean(c.menuOnly)); byId('mChromeInstallText').textContent = note || c.line; box.classList.remove('hidden');
     if (c.copy) byId('mChromeInstallBtn').onclick = () => copyAddress(c.copy); return true;
   };
   if (!EMBED) { if (install === '1') chromeLine(); else setTimeout(() => chromeLine(), 3000); }
+  if (!EMBED && install === '1') { /* (v1.10.268 총괄 「C만 시험」: the four ways, by the user's own tap; a failure does nothing) */
+    const urls = window.MessengerAlert?.chromeTries(location.origin) || []; byId('mChromeTries').classList.toggle('hidden', !urls.length);
+    for (const b of byId('mChromeTries').querySelectorAll('[data-try]')) b.addEventListener('click', () => { try { location.href = urls[Number(b.dataset.try) - 1]; } catch {} });
+  }
   // (v1.10.263) in the island app's Custom Tab notices cannot be turned on: say where, with the same Chrome button
   if (install === '1') byId('mPushBtn').addEventListener('click', (event) => { event.stopImmediatePropagation(); showToast('알림은 크롬이나 메신저 앱에서 켤 수 있어요.', 4000); chromeLine('알림은 크롬이나 메신저 앱에서 켤 수 있어요'); }, { capture: true });
   navigator.serviceWorker?.addEventListener('message', (event) => { const r = state.rooms.find((x) => x.id === event.data?.room); if (r) openRoom(r); }); // (a notice tapped while open)
