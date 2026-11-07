@@ -46,16 +46,18 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   await talkTo(idle);
   await lines();
   const choices = page.locator('#plazaDialog .talkChoices button');
-  // (대화창 새 단장) four at most and only what can be done today -- nothing to ask of them: no 「부탁」
-  const TOP = ['이야기해요', '선물해요', '잘 가요']; const TOPICS = ['요즘 어때요?', '섬 소문 있어요?', '이야기 나눠요', '← 돌아가기'];
-  await expect(choices).toHaveText(TOP);
+  // (v1.10.267 대화 나무 3-0) four at most, straight away -- nothing to ask of them: 「뭐 좋은 거 없어요?」, the day's topic,
+  // 「⋯ 더 보기」 (the rest: the old one-liners, a gift, 잘 가요, ← 돌아가기)
+  const topics = () => choices.evaluateAll((bs) => bs.map((b) => b.dataset.topic));
+  const TOP = ['tree', 'tree', 'more']; const MORE = ['how', 'rumor', 'ask', 'gift', 'bye', 'back'];
+  await expect.poll(topics).toEqual(TOP); await expect(choices.first()).toHaveText('뭐 좋은 거 없어요?');
   // the words' bubble and the choices' bubble: on the screen, apart
   const box = async (sel) => page.locator(sel).boundingBox(); const vp = page.viewportSize();
   const words = await box('#plazaDialog'); const menu = await box('#plazaDialog .talkChoices');
   for (const b of [words, menu]) { expect(b.x).toBeGreaterThanOrEqual(0); expect(b.y).toBeGreaterThanOrEqual(0); expect(b.x + b.width).toBeLessThanOrEqual(vp.width); expect(b.y + b.height).toBeLessThanOrEqual(vp.height); }
   expect(menu.y + menu.height).toBeLessThanOrEqual(words.y);
-  await page.keyboard.press('1'); await expect(choices).toHaveText(TOPICS); await page.keyboard.press('4'); await expect(choices).toHaveText(TOP); // 이야기해요 → 돌아가기
-  await page.keyboard.press('1'); await expect(choices).toHaveText(TOPICS);
+  await page.keyboard.press('3'); await expect.poll(topics).toEqual(MORE); await page.keyboard.press('6'); await expect.poll(topics).toEqual(TOP); // 더 보기 → 돌아가기
+  await page.keyboard.press('3'); await expect.poll(topics).toEqual(MORE);
   await expect.poll(async () => (await holdOn(other.page, idle)) || '', { timeout: 30000 }).toMatch(/^talk:/); // (the other screen hears it from the server: past 15 s on a slow runner; '' while not yet -- toMatch on null stops the poll)
   // (a slow screen eases the islander into the place it is held at: measured once it stands there)
   let at = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
@@ -72,22 +74,36 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const seen = await typingNow(); if (seen.typing) expect(seen.choices).toBe('none');
   await page.keyboard.press('Space'); await expect(page.locator('.lostRequestLine.typing')).toHaveCount(0);
   await expect(page.locator('.lostRequestLine').first()).not.toHaveText(/^「[\s\S]*」$/); // (v1.10.194 대화창 2차: no 「 」 round it -- a 「낚시 대회」 inside it stays)
-  await lines(); await expect(choices).toHaveText(TOP);
+  await lines(); await expect.poll(topics).toEqual(TOP);
   // (R2 ④) their question of the day: three answers in place of the choices; one answered, the choices back -- and that
-  // one gone from the topics for today
-  await page.keyboard.press('1'); await choose('3'); await expect(choices).toHaveCount(3); await expect(choices.first()).toHaveAttribute('data-topic', 'answer');
-  await choose('1'); await expect(choices).toHaveText(TOP);
-  await page.keyboard.press('1'); await expect(choices).toHaveText(['요즘 어때요?', '섬 소문 있어요?', '← 돌아가기']); await page.keyboard.press('3');
+  // one gone from 「더 보기」 for today
+  await page.keyboard.press('3'); await choose('3'); await expect(choices).toHaveCount(3); await expect(choices.first()).toHaveAttribute('data-topic', 'answer');
+  await choose('1'); await expect.poll(topics).toEqual(TOP);
+  await page.keyboard.press('3'); await expect.poll(topics).toEqual(['how', 'rumor', 'gift', 'bye', 'back']); await page.keyboard.press('5');
   // (R3 ⑥) a gift: what my bag holds that they could take -- one given, the choices back without 「선물해요」
   await post(request, '/api/test/island/give', token, { itemId: 'berry', qty: 1 });
-  await choose('2'); await expect(choices.first()).toHaveAttribute('data-topic', 'gift'); await expect(choices.first()).toHaveText('나무 열매');
-  await choose('1'); await expect(choices).toHaveText(['이야기해요', '잘 가요']);
-  await page.keyboard.press('2'); await expect(dialog).not.toHaveClass(/talkMode/); // 잘 가요
+  await page.keyboard.press('3'); await choose('3'); await expect(choices.first()).toHaveAttribute('data-topic', 'gift'); await expect(choices.first()).toHaveText('나무 열매');
+  await choose('1'); await expect.poll(topics).toEqual(TOP);
+  // (v1.10.267 대화 나무) 「뭐 좋은 거 없어요?」 to its end, the first reply each time: their words and my reply faint above
+  // the next, a hint's paper ribbon 「📍 … · 오늘」 under the end and its place on the minimap; the topic gone from the four
+  await choose('1'); await expect.poll(topics).toEqual(expect.arrayContaining(['reply'])); let end = null;
+  for (let step = 0; step < 12 && !end; step += 1) {
+    const [res] = await Promise.all([page.waitForResponse((r) => r.url().includes('/api/island/resident/talk')), page.keyboard.press('1')]); const d = await res.json(); await lines();
+    if (d.talk?.end) end = d; else { await expect(page.locator('#plazaDialog .talkPast')).toHaveCount(2); if (process.env.SHOT_DIR && step === 1) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-tree.png` }); }
+  }
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-hint.png` });
+  expect(end, 'the talk reached its end').toBeTruthy();
+  if (end.hint?.at) { await expect(page.locator('#plazaDialog .talkHint')).toHaveText(`📍 ${end.hint.at.label || '이 근처'} · 오늘`); expect(await page.evaluate(() => window.PlazaDebug().pinned)).toMatchObject({ x: end.hint.at.x, z: end.hint.at.z }); }
+  await expect.poll(async () => (await topics()).filter((t) => t !== 'story')).toEqual(['tree', 'more']); // (its 호감도 may have opened their story book: 「이야기 들려줘요」 first)
+  await choices.last().click(); await expect.poll(async () => (await topics()).filter((t) => t !== 'tree')).toEqual(['how', 'rumor', 'bye', 'back']); // (아는 사이 reached: two more topics first)
+  await choices.filter({ hasText: '잘 가요' }).click(); await expect(dialog).not.toHaveClass(/talkMode/);
   await expect.poll(() => holdOn(other.page, idle), { timeout: 15000 }).toBe(null);
   // the asker: the request (their name on the window) before the choices, then the tracker
   const askers = Object.entries(view.marks).filter(([, m]) => m === 'new').map(([n]) => Number(n));
   expect(askers.length).toBeGreaterThan(0);
-  const before = (await get(request, '/api/points', token)).data.balance;
+  const def = (key) => require('../../lib/economy').DEFS.find((d) => d.key === key).def;
+  const levelPayNow = async () => (await get(request, '/api/island/affinity', token)).data.residents.reduce((sum, r) => sum + (r.level >= 1 ? def('affinity:known') : 0) + (r.level >= 2 ? def('affinity:close') : 0), 0);
+  const before = (await get(request, '/api/points', token)).data.balance; const paidBefore = await levelPayNow(); // (v1.10.267: the talk tree above may have taken that islander to 아는 사이 already)
   await talkTo(askers[0]);
   await expect(page.locator('#plazaDialogTitle')).not.toHaveText('');
   // (asked -- or, a slow runner having talked twice, reminded; T: in any walker's register; T2: their own word first, the ask
@@ -113,8 +129,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   expect(now.done).toBe(1);
   expect(await page.evaluate(() => window.__doneSeen)).toBe(true);
   // (2026-10-28: the day's errand took its asker to 아는 사이 -- that level's own pay came with it; a fresh account: each level once)
-  const def = (key) => require('../../lib/economy').DEFS.find((d) => d.key === key).def;
-  const levelPay = (await get(request, '/api/island/affinity', token)).data.residents.reduce((sum, r) => sum + (r.level >= 1 ? def('affinity:known') : 0) + (r.level >= 2 ? def('affinity:close') : 0), 0);
+  const levelPay = (await levelPayNow()) - paidBefore;
   expect((await get(request, '/api/points', token)).data.balance - before).toBe(track[0].reward + levelPay); // (the errand's own pay: its kind and how far apart -- 묶음 1 errand:far)
   await expectNoScriptError(page);
   await who.context.close(); await other.context.close();

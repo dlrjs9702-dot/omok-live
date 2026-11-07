@@ -130,6 +130,8 @@ test('이야기 부탁: 단계 → 제안·할게요, 한 번에 하나, 곳에 
   const hi = await talk(0); assert.equal(hi.data.today.story, 'offer');
   const offered = await req('/api/island/resident/talk', a, { n: 0, topic: 'story' });
   assert.equal(offered.status, 200, JSON.stringify(offered.data)); assert.equal(offered.data.storyOffer.title, S.RESIDENTS[0][0].title); assert.match(offered.data.storyOffer.where, /대청마당/);
+  { const t = offered.data.storyTalk; assert.ok(t?.o1?.replies?.length >= 2, 'v1.10.267 1-2: the 부탁 as a talk'); const all = Object.values(t).flatMap((nd) => nd.say).join(' '); /* (the 부탁's own lines on its way, {me} filled) */
+    for (const l of S.RESIDENTS[0][0].offer) assert.ok(all.includes(l.replace('{me}', '이야기손님')), l); assert.ok(!all.includes('{me}')); assert.ok(Object.values(t).some((nd) => nd.replies?.some((r) => r[3]?.accept))); }
   assert.ok(offered.data.say.every((l) => !l.includes('{me}')) && offered.data.say[0].includes('이야기손님'));
   const took = await req('/api/island/resident/talk', a, { n: 0, topic: 'storyYes' }); assert.equal(took.status, 200); assert.equal(took.data.storyAccepted.title, S.RESIDENTS[0][0].title);
   assert.equal(took.data.story.track.ready, false); await bye(0);
@@ -144,6 +146,7 @@ test('이야기 부탁: 단계 → 제안·할게요, 한 번에 하나, 곳에 
   const done = await req('/api/island/resident/talk', a, { n: 0, topic: 'story' });
   assert.equal(done.status, 200, JSON.stringify(done.data)); assert.equal(done.data.storyNote.title, S.RESIDENTS[0][0].title); assert.equal(done.data.storyNote.note.length, 5);
   assert.ok(done.data.storyNote.note.join('').includes('이야기손님') && !done.data.storyNote.note.join('').includes('{me}'));
+  assert.ok(done.data.storyTalk?.done?.o1 && done.data.storyTalk?.note?.o1, 'v1.10.267 1-2: 다녀왔어요 and the note as talks');
   assert.equal(done.data.affinity.points, 5 + 1 + 2); await bye(0);
   v = await story(); assert.deepEqual(v.chapters, { 0: 1 }); assert.equal(v.track, null);
   // 2장 waits for 친한 사이

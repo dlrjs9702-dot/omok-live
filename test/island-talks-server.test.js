@@ -76,7 +76,8 @@ test('주민 대화 나무 서버: 주제 시작·대답으로 마디 넘기기�
   const b0 = await talk({ topic: 'talk', talk: 'today' }); assert.equal((await talk({ topic: 'talk', talk: 'today', reply: 9 })).status, 400); // (no such reply)
   // 봄이's 「요즘 어때요?」: the first replies lead to 「눌러 말린 꽃잎」 (e1) -- the day's keepsake from her
   let r = null; let node = 'start'; for (let i = 0; i < 3; i += 1) { gained += Talks.answer(n, 'today', node, 0).delta && gained < 2 ? 1 : 0; r = await talk({ topic: 'talk', talk: 'today', reply: 0 }); node = r.data.talk.node; }
-  assert.equal(r.data.talk.end, true); assert.equal(r.data.gift, '눌러 말린 꽃잎'); void b0;
+  assert.equal(r.data.talk.end, true); assert.equal(r.data.gift, '눌러 말린 꽃잎');
+  assert.deepEqual((await req('/api/island/dex', a)).data.given.map((g) => [g.from, g.name]), [['봄이', '눌러 말린 꽃잎']]); // (v1.10.267 받은 것) void b0;
   assert.equal((await talk({ topic: 'talk', talk: 'today' })).data.error, 'TALK_DONE');
   // 「뭐 좋은 거 없어요?」: the weeds -- the place with the most of them now, by the island's areas
   const hint = await walk('hint', (rs) => rs.findIndex((x) => /어디/.test(x)) >= 0 ? rs.findIndex((x) => /어디/.test(x)) : 0);

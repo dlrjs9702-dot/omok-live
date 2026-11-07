@@ -1449,6 +1449,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead h2[data-hearts]:not([data-hearts=""])::after{color:#ffe1e6}
 :root[data-theme="light"] .plazaDialog.talkMode .talkChoices{border:0;box-shadow:0 8px 20px rgba(74,56,40,.2)}
 :root[data-theme="light"] .plazaDialog.talkMode .talkChoices::after{border:0}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkHint{background:#fff3c8;color:#5a4320;box-shadow:0 1px 0 #d8c08a,0 2px 6px rgba(74,56,40,.15)}
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button{border:0;background:transparent}
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible){background:transparent;outline:none;border:0}
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest .talkChoices button:is(:hover,:focus,:focus-visible)::before{color:var(--talk-tag,var(--isle-tag))}

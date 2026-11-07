@@ -52,7 +52,7 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
   // two fingers on the island: apart brings the camera in, together takes it out, and the view does not turn meanwhile
   const view = () => page.evaluate(() => { const d = window.PlazaDebug(); return { zoom: d.zoom, yaw: d.camYaw }; });
   const pinch = async (from, to) => {
-    const y = 420; const cx2 = page.viewportSize().width / 2;
+    const y = 300; const cx2 = page.viewportSize().width / 2; /* (v1.10.267: at 420 a finger came down on the 😊, now over 걷기 -- the island above the controls) */
     const at = (s) => [{ x: cx2 - s, y, id: 1 }, { x: cx2 + s, y, id: 2 }];
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at(from)[0]] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(from) });
@@ -174,6 +174,23 @@ test('모바일 조작 배치: 오른손 상호작용·걷기·뛰기 기본 배
   const stick = await box('#islandStick');
   expect(stick.x + stick.width / 2).toBeLessThan(W / 2); // left hand
   for (const id of ['#islandActBtn', '#islandWalkBtn', '#islandRunBtn']) { const b = await box(id); expect(b.x + b.width / 2, id).toBeGreaterThan(W / 2); } // right hand
+  // (v1.10.267 총괄, 폴드 사진: 😊 sat on 🚲) no two controls over each other -- a phone, a Fold shut and open, with a bike and
+  // without; the open Fold's photo
+  const overlaps = () => page.evaluate(() => {
+    const els = [...document.querySelectorAll('#islandStick, .islandCtl')].filter((e) => e.offsetParent && getComputedStyle(e).visibility !== 'hidden'); const r = els.map((e) => [e.id, e.getBoundingClientRect()]); const out = [];
+    for (let i = 0; i < r.length; i += 1) for (let j = i + 1; j < r.length; j += 1) { const [a, p] = r[i]; const [b, q] = r[j]; if (p.left < q.right && q.left < p.right && p.top < q.bottom && q.top < p.bottom) out.push(`${a}×${b}`); }
+    return { shown: r.map(([id]) => id), out };
+  });
+  const size0 = page.viewportSize();
+  for (const [w, h] of [[375, 812], [412, 915], [904, 1100]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const bike of [false, true]) {
+      await page.evaluate((on) => document.getElementById('islandBikeBtn').classList.toggle('hidden', !on), bike); await page.waitForTimeout(150);
+      const o = await overlaps(); expect(o.shown, `${w}×${h}`).toEqual(expect.arrayContaining(['islandStick', 'islandActBtn', 'islandEmoteBtn', ...(bike ? ['islandBikeBtn'] : [])])); expect(o.out, `${w}×${h} bike ${bike}`).toEqual([]);
+      if (process.env.SHOT_DIR && w === 904 && bike) await page.screenshot({ path: `${process.env.SHOT_DIR}/fold-open-controls.png` });
+    }
+  }
+  await page.evaluate(() => document.getElementById('islandBikeBtn').classList.add('hidden')); await page.setViewportSize(size0);
 
   // 걷기: a tap switches to 느리게 and back; 뛰기: runs while held
   await page.locator('#islandWalkBtn').tap();

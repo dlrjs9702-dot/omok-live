@@ -52,13 +52,13 @@ test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그
   assert.equal(MA.chromeIntent('Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile', o), 'intent://island-dalmaru.onrender.com/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end'); // (v1.10.264: the 서랍's 「크롬에서 설치」)
   assert.equal(MA.chromeIntent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148', o), null);
   assert.equal(MA.appIntent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', o, 'r_abc123'), null);
-  // (Codex 251-260 #16; v1.10.263 two values) Android: from the island app's fallback (install=1, a Custom Tab -- even one that
-  // reads as standalone) the Chrome button at once; in Chrome itself (install=chrome) the menu line only; a plain visit not
-  // installed the button; a prompt that came, an installed window or a PC nothing
+  // (v1.10.267 총괄 「1번」) Android: the island app's own window (standalone, come by install=1/chrome, no messenger app seen
+  // here) or a Custom Tab (install=1): the address to copy; a real Chrome tab: the menu line only, no button; the messenger
+  // app itself (standalone, plain or seen), a prompt that came or a PC: nothing
   const fold = 'Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile';
-  const button = { url: 'intent://island-dalmaru.onrender.com/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end', line: '크롬 메뉴 ⋮ → 앱 설치도 돼요' };
-  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false }), button);
-  for (const standalone of [false, true]) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone, prompted: false, install: '1' }), { ...button, line: '또는 ⋮ → Chrome에서 열기' }); /* (총괄 #413: the Custom Tab's own menu) */
-  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install: 'chrome' }), { menuOnly: true, line: '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)' });
-  for (const x of [{ ua: fold, standalone: true }, { ua: fold, prompted: true }, { ua: fold, prompted: true, install: '1' }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);
+  const copy = { copy: 'https://island-dalmaru.onrender.com/messenger', line: '크롬 앱을 열고 주소창에 붙여넣으면 메신저 앱을 설치할 수 있어요' }; const menu = { menuOnly: true, line: '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)' };
+  for (const install of ['1', 'chrome']) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: true, prompted: false, install }), copy);
+  assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install: '1' }), copy);
+  for (const install of [null, 'chrome']) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install }), menu);
+  for (const x of [{ ua: fold, standalone: true }, { ua: fold, standalone: true, install: '1', appSeen: true }, { ua: fold, prompted: true }, { ua: fold, prompted: true, install: '1' }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);
 });

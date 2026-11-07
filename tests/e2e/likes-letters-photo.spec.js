@@ -23,7 +23,7 @@ test('사진: 반디·한솔·김우성 선물·편지', async ({ browser, reque
         if (await choices.filter({ hasText: '다음에요' }).count()) { /* (one of the day's askers: the errand first -- shot, then 다음에요) */
           await page.screenshot({ path: `${process.env.SHOT_DIR}/${tag()}-errand-${n}.png` }); await choices.filter({ hasText: '다음에요' }).click(); await revealTalk(page);
         }
-        await choices.filter({ hasText: '선물해요' }).click(); await revealTalk(page);
+        await choices.filter({ hasText: '⋯ 더 보기' }).click(); await choices.filter({ hasText: '선물해요' }).click(); await revealTalk(page); /* (v1.10.267: in 「더 보기」) */
         await expect(choices.first()).toHaveAttribute('data-topic', 'gift', { timeout: 10000 }); await choices.first().click();
         await page.waitForTimeout(1500); await revealTalk(page); await page.waitForTimeout(600);
         await page.screenshot({ path: `${process.env.SHOT_DIR}/${tag()}-gift-${n}.png` });

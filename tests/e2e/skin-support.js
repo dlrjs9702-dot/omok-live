@@ -255,6 +255,18 @@ async function revealTalk(page) {
   await expect.poll(async () => { if (await waiting.count()) return -1; const n = await pending.count(); if (n) await page.keyboard.press('Space'); return n; }, { timeout: 30000, intervals: [150] }).toBe(0);
 }
 module.exports.revealTalk = revealTalk;
+// v1.10.267 1-2 이야기 책도 대화로: a chapter's talk walked, the first reply each time -- to the node asking 받기 (its note up:
+// stops there) or to the end (the note's paper)
+async function walkStory(page) {
+  const reply = page.locator('#plazaDialog .talkChoices button[data-topic="sreply"]'); const asks = page.locator('#plazaDialog .questNote');
+  for (let i = 0; i < 40; i += 1) {
+    await revealTalk(page);
+    if (!(await reply.count()) || (await asks.count())) return;
+    await reply.first().click();
+  }
+  throw new Error('a story talk without an end');
+}
+module.exports.walkStory = walkStory;
 // (206 Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」: a tool is used in hand only) the bag's 「들기」 on it -- in hand
 async function holdTool(page, itemId) {
   await page.keyboard.press('KeyI');

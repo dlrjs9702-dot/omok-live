@@ -2833,7 +2833,7 @@
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   islandBagDialog.addEventListener('close', () => { bagSortReset(); quickPick = null; quickMenu = null; drawQuick(); }); // (v1.10.236: a slot-to-be let go)
   byId('islandDexFoundOnly').addEventListener('change', () => showDex('dex')); // (v1.10.233 「찾은 것만」)
-  for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
+  for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
   byId('homeApplyBtn').addEventListener('click', () => openHomeApply()); // 묶음 4 내 집 신청
   byId('yardGrowBtn').addEventListener('click', () => openYardGrow()); // v1.10.225 마당 넓히기
@@ -4406,14 +4406,20 @@
   // v1.10.43: the page `on` is 'dex' (the finds) or 'photo' (기념사진: the photo spots and the day each was taken); false the bag
   async function showDex(on) {
     const grid = document.getElementById('islandBagGrid'); const dex = document.getElementById('islandDexGrid');
-    for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).classList.toggle('selected', on === page);
-    document.getElementById('islandBagTitle').textContent = on === 'dex' ? '도감' : on === 'photo' ? '기념사진' : '가방';
+    for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given']]) document.getElementById(id).classList.toggle('selected', on === page);
+    document.getElementById('islandBagTitle').textContent = on === 'dex' ? '도감' : on === 'photo' ? '기념사진' : on === 'given' ? '받은 것' : '가방';
     grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
     byId('islandBagSort').classList.toggle('hidden', Boolean(on)); bagSortReset(); // (v1.10.233, 사용자: 「정리」 the bag's only -- in the 도감 it sorted the bag and the count went wrong)
     byId('islandDexTabs').classList.toggle('hidden', on !== 'dex');
     if (!on) return;
     try {
       const data = await api('/api/island/dex');
+      if (on === 'given') { // (v1.10.267 받은 것: what the islanders gave at a talk's end -- a keepsake, not a bag item)
+        dex.scrollTop = 0; byId('islandBagCount').textContent = String(data.given.length);
+        const cells = data.given.map((g) => { const cell = document.createElement('div'); cell.className = 'islandDexCell islandGivenCell'; cell.setAttribute('role', 'listitem'); const i = document.createElement('b'); i.textContent = '🎁'; const name = document.createElement('span'); name.textContent = g.name; const by = document.createElement('small'); by.textContent = `${g.from} · ${Number(g.day.slice(5, 7))}월 ${Number(g.day.slice(8, 10))}일`; cell.append(i, name, by); return cell; });
+        if (!cells.length) { const p = document.createElement('p'); p.className = 'lookMeta'; p.textContent = '주민과 이야기를 끝까지 나누면 작은 선물을 받기도 해요.'; cells.push(p); }
+        dex.replaceChildren(...cells); return;
+      }
       // v1.10.233 도감 탭 (사용자): 바다 · 민물 · 곤충 · 기념 -- the fish by the tables' water (the server's), the insects, the
       // finds and keepsakes; each its found/all; 「찾은 것만」; the tab last opened kept on this device; only the cells scroll
       const TABS = [['sea', '바다', (e) => e.kind === 'fish' && e.water !== 'fresh'], ['fresh', '민물', (e) => e.kind === 'fish' && e.water === 'fresh'], ['insect', '곤충', (e) => e.kind === 'insect'], ['keep', '기념', (e) => e.kind === 'gather' || e.keepsake]];
@@ -5079,13 +5085,41 @@
   // while this window is open (renewed every few seconds, let go when it closes), and after their words come the choices
   let residentBusy = false; let residentTalk = null; // { n, timer } while a talk is open
   // (대화창 새 단장: four at most -- 「이야기해요」 opens the talk topics in the same bubble; only what can be done today)
-  const TALK_CHOICES = [['story', '이야기'], ['talk', '이야기해요'], ['errand', '부탁할 거 있어요?'], ['gift', '선물해요'], ['bye', '잘 가요']]; // (R2 ④ 오늘의 이야기 · R3 ⑥ 선물 · S1 이야기 부탁)
   const STORY_CHOICE = { offer: '이야기 들려줘요', visit: '부탁받고 왔어요', hand: '다녀왔어요' };
-  // (S1: 오 탐정's 수사판 -- the book's 초승등대 page, before 「잘 가요」)
-  const withBoard = (list, n, today) => (n === 5 ? [...(today?.final ? [['final', '결론 듣기']] : []), ...list.filter(([t]) => t !== 'bye'), ['board', '수사판 보기'], ...list.filter(([t]) => t === 'bye')] : list);
-  const TALK_TOPICS = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['ask', '이야기 나눠요'], ['back', '← 돌아가기']];
   const talkToday = (list, today) => list.filter(([topic]) => !(topic === 'story' && !today?.story) && (!today || !((topic === 'errand' && !today.errand) || (topic === 'gift' && today.gifted) || (topic === 'ask' && today.asked))))
     .map(([topic, label]) => [topic, topic === 'story' ? STORY_CHOICE[today.story] || label : label]);
+  // v1.10.267 대화 나무 (notes docs/resident-talk-trees-20261104.md 3-0): four at most, straight away -- 1 the story book's step
+  // (오 탐정: 결론 듣기 / 수사판), else an errand asked; 2 「뭐 좋은 거 없어요?」 not had today; 3 the day's topic (one never
+  // talked first); 4 「⋯ 더 보기」: the other topics, the old one-liners, a gift, 잘 가요. Three topics done: 「요즘 어때요?」 as before
+  function talkSlots(data, more = false) {
+    const t = data.today || {}; const k = data.talks || { topics: [], left: 0 };
+    const first = data.n === 5 && t.final ? ['final', '결론 듣기'] : t.story ? ['story', STORY_CHOICE[t.story] || '이야기'] : t.errand ? ['errand', '부탁할 거 있어요?'] : data.n === 5 ? ['board', '수사판 보기'] : null;
+    const open = k.left > 0 ? k.topics.filter((x) => !x.done) : []; const hint = open.find((x) => x.id === 'hint');
+    const others = open.filter((x) => x.id !== 'hint').sort((a, b) => Number(b.fresh) - Number(a.fresh)); const day = others[0];
+    if (!more) return [...(first ? [first] : []), ...(hint ? [['tree', hint.label, 'hint']] : []), ...(day ? [['tree', day.label, day.id]] : []), ...(k.left > 0 ? [] : [['how', '요즘 어때요?']]), ['more', '⋯ 더 보기']];
+    const shown = new Set([first?.[0]]);
+    return [...others.slice(1).map((x) => ['tree', x.label, x.id]), ...(t.errand && !shown.has('errand') ? [['errand', '부탁할 거 있어요?']] : []), ...(data.n === 5 && !shown.has('board') ? [['board', '수사판 보기']] : []),
+      ...talkToday(k.left > 0 ? [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['ask', '이야기 나눠요']] : [['rumor', '섬 소문 있어요?'], ['ask', '이야기 나눠요']], t), ...talkToday([['gift', '선물해요']], t), ['bye', '잘 가요'], ['back', '← 돌아가기']];
+  }
+  let talkPast = []; /* (3-0: the last words and my reply, faint above the next) */
+  // v1.10.267 1-2 이야기 책도 대화로: the chapter's tree (the server's, {me} filled) walked here -- a node's `next` straight on,
+  // 다녀왔어요's end on into the note's talk; 받기 / 나중에 the server's storyYes / storyNo with the tree's last words
+  function storyTreeView(d, part, nodes, key) {
+    const say = []; let k = key;
+    for (let i = 0; i < 60 && nodes[k]; i += 1) {
+      const nd = nodes[k]; say.push(...nd.say);
+      if (nd.next) { k = nd.next; continue; }
+      if (nd.end && part === 'done' && d.storyTalk?.note) { part = 'note'; nodes = d.storyTalk.note; k = 'o1'; continue; }
+      return { say, storyTree: { part, nodes, key: k, replies: nd.end ? null : nd.replies } };
+    }
+    return { say, storyTree: { part, nodes, key: k, replies: null } };
+  }
+  function storyReply(d, i) {
+    const r = d.storyTree.replies[i]; const v = storyTreeView(d, d.storyTree.part, d.storyTree.nodes, r[1]); talkPast = [d.say.at(-1), r[0]];
+    if (r[3]?.accept) return askResident(d.n, 'storyYes', null, v.say);
+    if (r[3]?.later) return askResident(d.n, 'storyNo', null, v.say);
+    showResidentTalk({ n: d.n, name: d.name, role: d.role, today: d.today, talks: d.talks, affinity: d.affinity, storyNote: d.storyNote, storyOffer: d.storyOffer, storyTalk: d.storyTalk, ...v }, false);
+  }
   // R2: my 호감도 with each islander (their greeting as I pass by -- the scene), again after each talk
   // v1.10.217 조작 개편 (총괄 검토 「클릭 안 하는 PC 사용자는 방향키가 갑자기 시점이 된 걸 몰라요」): a PC's first time on the island
   // since -- the walking and view keys swapped, told once (kept on this device); not on a phone (its stick is as it was); a
@@ -5142,6 +5176,8 @@
   }
   plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) endResidentTalk(); });
   function showResidentTalk(data, first) {
+    if (data.storyTalk && !data.storyTree) { talkPast = []; data = { ...data, ...storyTreeView(data, data.storyOffer ? 'offer' : 'done', data.storyOffer ? data.storyTalk : data.storyTalk.done, 'o1') }; }
+    const tree = data.storyTree; const asks = Boolean(tree?.replies?.some((r) => r[3]?.accept));
     showErrands(data);
     { /* (v1.10.264 말할 때: their face for the first 1.5 s -- a mood line found among what they say) */
       const C = globalThis.IslandCast; const said = data.say || []; const mood = Object.keys(C?.MOODS || {}).find((k) => { const l = C.MOODS[k][data.n]; return l && said.some((s) => s.startsWith(String(l).slice(0, 12))); }) || null;
@@ -5155,12 +5191,18 @@
     const list = document.createElement('div'); list.className = 'talkChoices';
     const fill = (choices) => list.replaceChildren(...choices.map(([topic, label, choice]) => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
-      b.addEventListener('click', () => (topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'talk' ? (fill(talkToday(TALK_TOPICS, data.today)), list.querySelector('button')?.focus()) : topic === 'back' ? (fill(withBoard(talkToday(TALK_CHOICES, data.today), data.n, data.today)), list.querySelector('button')?.focus()) : askResident(data.n, topic, choice)));
+      b.addEventListener('click', () => (topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'more' || topic === 'back' ? (fill(talkSlots(data, topic === 'more')), list.querySelector('button')?.focus())
+        : topic === 'tree' ? askTree(data.n, choice) : topic === 'sreply' ? storyReply(data, Number(choice)) : topic === 'reply' ? askTree(data.n, data.talk.id, Number(choice), [data.say.at(-1), label]) : askResident(data.n, topic, choice)));
       return b;
     }));
     // (R2 ④) their question of the day: three answers in place of the usual choices; (R3 ⑥) what I could give them;
     // (Q 부탁 받기) an errand asked: its note and 「할게요!」 / 「다음에요」
-    fill(data.storyOffer ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : withBoard(talkToday(TALK_CHOICES, data.today), data.n, data.today));
+    fill(data.talk && !data.talk.end ? data.talk.replies.map((r, i) => ['reply', r, i]) : tree?.replies ? tree.replies.map((r, i) => ['sreply', r[0], i]) : data.storyOffer && !tree ? [['storyYes', '할게요!'], ['storyNo', '다음에요']] : data.offer ? [['accept', '할게요!', data.offer.id], ['decline', '다음에요']] : data.question ? data.question.answers.map((a) => ['answer', a.text, a.id]) : data.gifts?.length ? [...data.gifts.map((g) => ['gift', g.name, g.itemId]), ['bye', '잘 가요']] : talkSlots(data));
+    if (tree?.replies) list.querySelectorAll('[data-topic="sreply"]').forEach((b, i) => { const f = tree.replies[i]?.[3]; if (f?.accept) b.dataset.accept = '1'; if (f?.later) b.dataset.later = '1'; }); /* (받기 / 나중에) */
+    const past = (data.talk || tree) && talkPast.length ? talkPast.map((s, i) => { const p = document.createElement('p'); p.className = `talkPast${i ? ' mine' : ''}`; p.textContent = i ? s : `「${s}」`; return p; }) : [];
+    const ribbon = []; /* (2: the hint's place under the end -- 「📍 달끝나루 · 오늘」, on the minimap 3 s) */
+    if (data.hint?.at) { const r = document.createElement('p'); r.className = 'talkHint'; r.textContent = `📍 ${data.hint.at.label || '이 근처'} · 오늘`; ribbon.push(r); plaza.controller?.pinMap?.(data.hint.at); }
+    if (data.gift) showToast(`🎁 받은 것 · ${data.gift}`);
     const quest = !data.storyOffer && !data.offer && !data.question && !data.gifts?.length ? plaza.controller?.questOf?.(data.n) : null;
     if (quest) { // (C2 v1.10.216: a story islander's 부탁 from them -- walking or at their counter -- as it was at their place)
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'quest'; b.className = 'questAsk'; b.textContent = '📜 부탁';
@@ -5171,10 +5213,10 @@
       b.addEventListener('click', async () => { const r = await festivalPost('gift', { step: 'give', n: data.n }); if (!r) return; plaza.controller?.emote?.('clap'); showToast(`🎁 ${r.name}에게 선물을 건넸어요 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`); plazaDialog.close(); });
       list.prepend(b);
     }
-    lostCard.replaceChildren(...lines, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer ? [offerNote({ title: data.storyOffer.title, label: storyLine(data.storyOffer) })] : []), meta, list);
+    lostCard.replaceChildren(...past, ...lines, ...ribbon, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer && (!tree || asks) ? [offerNote({ title: data.storyOffer.title, label: storyLine(data.storyOffer) })] : []), meta, list);
     if (data.story) showStory(data.story);
     if (data.storyAccepted) showToast(`📖 할 일에 넣었어요 · ${data.storyAccepted.title}`);
-    if (data.storyNote) openStoryNote(data.storyNote);
+    if (data.storyNote && !tree?.replies) openStoryNote(data.storyNote); /* (a talk first: the paper at its end) */
     if (data.finalScenes) showFinal(data.finalScenes);
     if (data.finished) showDoneCard(data.finished); // (Q 끝내기)
     if (data.accepted) showToast(`📜 할 일에 넣었어요 · ${data.accepted.title}`);
@@ -5192,10 +5234,16 @@
     }
   }
   let residentTopic = null; /* (v1.10.264: what was asked -- its answer's face) */
-  async function askResident(n, topic, choice = null) {
+  async function askResident(n, topic, choice = null, say = null) { // (say: a story tree's last words in place of the answer's)
     if (residentBusy) return; residentBusy = true; residentTopic = topic; lostCard.classList.add('talkWaiting'); // (v1.10.240: an answer on its way -- the choices faded, not pressed twice)
-    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : topic === 'accept' ? { errand: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
+    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : topic === 'accept' ? { errand: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (say) data.say = say; if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
     catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
+  }
+  // v1.10.267 대화 나무: a topic begun (reply null) or my reply at the node the server has me at
+  async function askTree(n, id, reply = null, past = []) {
+    if (residentBusy) return; residentBusy = true; residentTopic = 'talk'; lostCard.classList.add('talkWaiting');
+    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic: 'talk', talk: id, ...(reply != null ? { reply } : {}) }) }); talkPast = reply != null ? past : []; if (residentTalk?.n === n) showResidentTalk(data, false); }
+    catch (error) { showToast(error.message); if (error.status === 409 && !['TALK_DONE', 'TALK_TIRED', 'TALK_CLOSED'].includes(error.data?.error)) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
   }
   async function talkResident(n, lead = null) { // (lead: a line of the place before their own words -- 바위 at the works)
     guideDone('talk'); // B 47 안내

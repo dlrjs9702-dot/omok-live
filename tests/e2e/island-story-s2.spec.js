@@ -45,7 +45,7 @@ test('섬 이야기 장면: 섬 일지 → 등대 아래 문 살펴보기(빠진
   await require('./skin-support').revealTalk(page);
   const choices = page.locator('#plazaDialog .talkChoices button');
   if (await page.locator('#plazaDialog .questNote', { hasText: '오늘 안에' }).count()) await choices.filter({ hasText: '다음에요' }).click(); // (a day's errand asked first)
-  await expect(choices.first()).toHaveText('결론 듣기'); await expect(choices.filter({ hasText: '수사판 보기' })).toHaveCount(1);
+  await expect(choices.first()).toHaveText('결론 듣기'); await expect(choices.filter({ hasText: '⋯ 더 보기' })).toHaveCount(1); /* (v1.10.267 3-0: 결론 in the first slot, 수사판 under 더 보기) */
   await choices.first().click();
   await expect(note).toBeVisible(); await expect(note.locator('h3')).toHaveText('마지막 장 · 수사판의 결론');
   await note.locator('.storyNext').click(); await expect(note.locator('h3')).toHaveText('마지막 장 · 등대 아래 문');

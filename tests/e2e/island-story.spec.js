@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, expectNoScriptError } = require('./skin-support');
+const { shopper, post, get, expectNoScriptError, walkStory } = require('./skin-support');
 
 // S1 섬 이야기 (gamecenter-notes docs/island-story-bible-20261027.md 5절): 아는 사이 봄이 offers 1장 (「이야기 들려줘요」 → the
 // note with 할게요 / 다음에요), the 할 일 card's line, 대청마당 reached → ✓, back to 봄이 (「다녀왔어요」) → the story note;
@@ -28,9 +28,12 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   await talkTo(0); await lines(); await skipErrand();
   await expect(choices.first()).toHaveText('이야기 들려줘요');
   await choices.first().click(); await lines();
+  // (v1.10.267 1-2: the 부탁 as a talk -- my replies to it, its note with the 받기 replies)
+  await expect(choices.first()).toHaveAttribute('data-topic', 'sreply'); await expect(page.locator('#plazaDialog .questNote')).toHaveCount(0);
+  await walkStory(page);
   await expect(page.locator('#plazaDialog .questNote')).toContainText('꽃 이름 맞히기 놀이');
   await expect(page.locator('#plazaDialog .questNote')).toContainText('대청마당');
-  await expect(choices).toHaveText(['할게요!', '다음에요']);
+  await expect(choices.last()).toHaveText('나중에 할게요'); await expect(page.locator('#plazaDialog .talkPast')).toHaveCount(2);
   await shot('1offer');
   await choices.first().click(); await lines();
   await close();
@@ -49,8 +52,9 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   // back to 봄이: 「다녀왔어요」 → the note
   await talkTo(0); await lines(); await skipErrand();
   await expect(choices.first()).toHaveText('다녀왔어요');
-  await choices.first().click();
+  await choices.first().click(); await lines();
   const note = page.locator('#storyNoteDialog');
+  await expect(note).toBeHidden(); await walkStory(page); // (1-2: 다녀왔어요 and the note's talk first, the paper at its end)
   await expect(note).toBeVisible(); await expect(note.locator('h3')).toHaveText('1장 · 꽃 이름 맞히기 놀이');
   await expect(note.locator('.storyNoteBody p')).toHaveCount(6); await expect(note.locator('.storySign')).toHaveText('— 봄이');
   const box = await note.boundingBox(); expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize().height + 1);
@@ -77,7 +81,7 @@ test('섬 이야기: 이야기 부탁 → 할 일 줄 → 곳에 가면 ✓ → 
   await shot('6events');
   await book.locator('#storyBookClose').click();
   // 오 탐정: 「수사판 보기」 -- the book at 초승등대
-  await talkTo(5); await lines(); await skipErrand(); await choices.filter({ hasText: '수사판 보기' }).click();
+  await talkTo(5); await lines(); await skipErrand(); if (!(await choices.filter({ hasText: '수사판 보기' }).count())) await choices.filter({ hasText: '⋯ 더 보기' }).click(); /* (v1.10.267 3-0: the first slot his story's step, if any) */ await choices.filter({ hasText: '수사판 보기' }).click();
   await expect(book).toBeVisible(); await expect(book.locator('[data-tab="lighthouse"]')).toHaveClass(/selected/); await expect(dialog).toBeHidden(); // (the talk ended under it)
   await expectNoScriptError(page);
   await who.context.close();
