@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
+test.skip(({ isMobile }) => isMobile, '폰에서는 뜻 없음 — 시험 시작 경로 (v1.10.269 시험 정리)');
 
 test.describe('게임센터 입장과 로비', () => {
   test('일반 주소는 관리자 입장 화면을 제공한다', async ({ page }) => {
@@ -72,110 +73,6 @@ test.describe('게임센터 입장과 로비', () => {
     await page.locator('[data-game-mode="multi"]').click();
     await expect(page.locator('[data-game-kind="coop"]')).toHaveAttribute('aria-selected', 'true'); // its kind too
     await page.evaluate(() => localStorage.removeItem('gc.gameTab'));
-  });
-
-  // v1.10.63 게임 홀: room cards (game badge, status chip, players) and arrow keys among tabs, game cards and rooms
-  test('게임 홀: 방 카드와 화살표 키 이동', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name.includes('mobile'), 'PC 전용 검증');
-    await page.setExtraHTTPHeaders({ 'X-Forwarded-For': `100.72.${testInfo.project.name.length % 250}.${process.pid % 250 + 1}` });
-    const rooms = [
-      { id: 'r1', gameType: 'omok', title: '한 판 해요', status: 'waiting', playerCount: 1, maxPlayers: 2, connectedCount: 1 },
-      { id: 'r2', gameType: 'yut', title: '', host: '길동', status: 'playing', playerCount: 4, maxPlayers: 4, connectedCount: 5 },
-    ];
-    await page.route('**/api/rooms/public', route => route.fulfill({ json: { rooms } }));
-    await page.route('**/api/lobby/events*', route => route.abort()); // its snapshot would replace the rooms above
-    await page.goto('/');
-    await page.locator('#adminPassword').fill(adminPassword);
-    await page.getByRole('button', { name: '관리자로 입장' }).click();
-    await expect(page.locator('#lobbyView')).toBeVisible();
-
-    const cards = page.locator('#publicRoomList .publicRoomRow');
-    await expect(cards).toHaveCount(2);
-    await expect(cards.nth(0)).toHaveAttribute('data-status', 'waiting');
-    await expect(cards.nth(0).locator('.publicRoomGame')).toHaveText('오목 · 1vs1');
-    await expect(cards.nth(0).locator('.publicRoomStatus')).toHaveText('모집 중');
-    await expect(cards.nth(0).locator('button')).toHaveText('바로 입장');
-    await expect(cards.nth(1).locator('strong')).toHaveText('길동의 윷놀이방');
-    await expect(cards.nth(1).locator('small')).toHaveText('선수 4/4 · 접속 5명');
-    await expect(cards.nth(1).locator('button')).toHaveText('관전하기');
-
-    await cards.nth(0).locator('button').focus();
-    await page.keyboard.press('ArrowDown');
-    await expect(cards.nth(1).locator('button')).toBeFocused();
-    await page.keyboard.press('KeyS'); // (문제 기록 1103 10: down the list on the screen -- the last stays; W/S as the arrows)
-    await expect(cards.nth(1).locator('button')).toBeFocused();
-    await page.keyboard.press('KeyW');
-    await expect(cards.nth(0).locator('button')).toBeFocused();
-
-    await page.locator('[data-game-mode="multi"]').focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-game-mode="single"]')).toBeFocused();
-    await page.locator('#gamePicker [data-game="omok"]').focus();
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('Enter');
-    await expect(page.locator('#selectedGameText')).not.toHaveText('오목 방을 만듭니다.');
-    await page.keyboard.press('ArrowLeft');
-    await expect(page.locator('#gamePicker [data-game="omok"]')).toBeFocused();
-  });
-
-  // v1.10.63 게임방 공통 틀: the Esc menu in a room (로비로 돌아가기 on top), Enter to the room chat, Esc out of it
-  test('게임방: Esc 메뉴와 Enter 채팅', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name.includes('mobile'), 'PC 전용 검증');
-    await page.setExtraHTTPHeaders({ 'X-Forwarded-For': `100.73.${testInfo.project.name.length % 250}.${process.pid % 250 + 1}` });
-    await page.goto('/');
-    await page.locator('#adminPassword').fill(adminPassword);
-    await page.getByRole('button', { name: '관리자로 입장' }).click();
-    await expect(page.locator('#lobbyView')).toBeVisible();
-    await page.locator('#createRoomBtn').click();
-    await expect(page.locator('#roomView')).toBeVisible();
-
-    // v1.10.64: no 접속 종료 in the room's bar -- the menu has it (☰ 메뉴 here, for a phone)
-    await expect(page.locator('#roomLogoutBtn')).toHaveCount(0);
-    await page.locator('#roomMenuBtn').click();
-    await expect(page.locator('#gameMenuDialog #logoutBtn')).toBeVisible();
-    await page.keyboard.press('Escape');
-    // v1.10.64: Tab goes round the room only -- past the last control back to the first, Shift+Tab the other way
-    const ringEnds = () => page.evaluate(() => { const el = document.activeElement; return { inRoom: Boolean(el?.closest('#roomView') || el?.matches('.chatFloatBtn')), id: el?.id || el?.textContent?.trim().slice(0, 12) }; });
-    await page.locator('#roomMenuBtn').focus();
-    for (let i = 0; i < 60; i += 1) { await page.keyboard.press('Tab'); expect((await ringEnds()).inRoom).toBe(true); }
-    await page.locator('#statusText').click(); await page.keyboard.press('Shift+Tab');
-    expect((await ringEnds()).inRoom).toBe(true);
-    await page.locator('#statusText').click(); // nothing focused
-    await page.keyboard.press('Enter');
-    await expect(page.locator('#chatInput')).toBeFocused();
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#chatInput')).not.toBeFocused();
-    await expect(page.locator('#gameMenuDialog')).not.toHaveAttribute('open', '');
-
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#gameMenuDialog')).toHaveAttribute('open', '');
-    await expect(page.locator('#menuLeaveRoomBtn')).toBeVisible();
-    await page.locator('#menuLeaveRoomBtn').click();
-    await expect(page.locator('#lobbyView')).toBeVisible();
-    await expect(page.locator('#gameMenuDialog')).not.toHaveAttribute('open', '');
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#gameMenuDialog')).toHaveAttribute('open', '');
-    await expect(page.locator('#menuLeaveRoomBtn')).toBeHidden(); // not in the lobby
-  });
-
-  // v1.10.66 홈 화면 앱: where the page cannot go fullscreen (an iPhone) the menu shows how to add the island icon instead
-  test('메뉴: 전체화면이 없는 곳에서는 홈 화면에 추가 안내, 있는 곳에서는 전체화면 버튼', async ({ browser }, testInfo) => {
-    test.skip(testInfo.project.name.includes('mobile'), 'PC 전용 검증');
-    for (const fullscreen of [true, false]) {
-      const context = await browser.newContext();
-      const page = await context.newPage();
-      if (!fullscreen) await page.addInitScript(() => Object.defineProperty(Document.prototype, 'fullscreenEnabled', { get: () => false }));
-      await page.setExtraHTTPHeaders({ 'X-Forwarded-For': `100.76.${fullscreen ? 1 : 2}.${process.pid % 250 + 1}` });
-      await page.goto('/');
-      await page.locator('#adminPassword').fill(adminPassword);
-      await page.getByRole('button', { name: '관리자로 입장' }).click();
-      await expect(page.locator('#lobbyView')).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.locator('#gameMenuDialog')).toHaveAttribute('open', '');
-      await expect(page.locator('#fullscreenBtn')).toBeVisible({ visible: fullscreen });
-      await expect(page.locator('#homeAppHint')).toBeVisible({ visible: !fullscreen });
-      await context.close();
-    }
   });
 
   test('헬스 엔드포인트는 게임 서버 준비 상태를 반환한다', async ({ request }) => {

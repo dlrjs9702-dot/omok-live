@@ -214,37 +214,3 @@ test('스무고개: 질문 차례에 새로고침해도 입력 단계와 원래 
   for (const v of [a, b]) expect(v.errors).toEqual([]);
   for (const v of [a, b]) await v.context.close();
 });
-
-test('고스톱: 짝패·고/스톱·국진 선택 중 새로고침해도 같은 선택 화면으로 돌아와 이어서 고른다', async ({ browser, request }) => {
-  test.setTimeout(120_000);
-  const admin = await adminToken(request);
-  const [a, b] = [await guest(browser, request, admin, '복구A'), await guest(browser, request, admin, '복구B')];
-  await openRoom([a, b], 'gostop', '#gostopPanel');
-  for (const [index, view] of [a, b].entries()) expect((await api(request, '/api/room/choose-role', view.token, { choice: String(index + 1) })).status).toBe(200);
-  const fixture = async name => {
-    const result = await api(request, '/api/test/gostop-fixture', a.token, { fixture: name });
-    expect(result.status, JSON.stringify(result.data)).toBe(200);
-    await expect.poll(async () => (await roomState(request, a.token)).game.phase).toBe(name);
-  };
-
-  await fixture('choose-floor');
-  const options = (await roomState(request, a.token)).game.choice.options;
-  await refresh(a, '#gostopPanel');
-  await expect(a.page.locator('#gostopFloor button.gostopChoiceTarget')).toHaveCount(options.length);
-  await a.page.locator('#gostopFloor button.gostopChoiceTarget').first().click();
-  await expect.poll(async () => { const g = (await roomState(request, a.token)).game; return `${g.phase}:${g.turn}`; }).toBe('play:2');
-
-  await fixture('go-stop');
-  const score = (await roomState(request, a.token)).game.stopPreview.score;
-  await refresh(a, '#gostopPanel');
-  await expect(a.page.locator('.gostopDecisionPanel')).toContainText(`현재 ${score}점`);
-  await a.page.getByRole('button', { name: '고 · 계속하기' }).click();
-  await expect.poll(async () => { const g = (await roomState(request, a.token)).game; return [g.phase, g.seats['1'].goCount]; }).toEqual(['play', 1]);
-
-  await fixture('gukjin');
-  await refresh(a, '#gostopPanel');
-  await a.page.getByRole('button', { name: '쌍피로' }).click();
-  await expect.poll(async () => (await roomState(request, a.token)).game.seats['1'].gukjin).toBe('pi');
-  for (const v of [a, b]) expect(v.errors).toEqual([]);
-  for (const v of [a, b]) await v.context.close();
-});

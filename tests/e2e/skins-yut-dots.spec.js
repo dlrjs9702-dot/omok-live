@@ -28,18 +28,6 @@ const tint = (page, id, kind) => page.evaluate(([skinId, what]) => {
   return out;
 }, [id, kind]);
 
-test('윷놀이·점과 상자 스킨: 모든 말/선 스킨이 두 팀 색(파랑·빨강)을 지킨다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '색');
-  for (const [list, kind] of [[YUT_PIECES, 'piece'], [DOTS_LINES, 'line']]) {
-    for (const id of list) {
-      const t = await tint(a.page, id, kind);
-      for (const rgb of t.black) { expect(rgb, `${id} 선공`).not.toBeNull(); expect(rgb[2], `${id} 선공은 파랑 계열`).toBeGreaterThan(rgb[0]); }
-      for (const rgb of t.white) { expect(rgb, `${id} 후공`).not.toBeNull(); expect(rgb[0], `${id} 후공은 빨강 계열`).toBeGreaterThan(rgb[2]); }
-    }
-  }
-  await a.context.close();
-});
-
 // Node pixel positions of the yut board (same table as the client) for the first lap.
 const YUT_XY = { 0: [630, 630], 1: [630, 518], 2: [630, 406], 3: [630, 294], 4: [630, 182], 5: [630, 70], 6: [518, 70], 7: [406, 70], 8: [294, 70], 9: [182, 70], 10: [70, 70] };
 

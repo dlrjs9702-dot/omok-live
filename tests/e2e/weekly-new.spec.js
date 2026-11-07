@@ -12,6 +12,7 @@ const shotOf = (test) => async (page, name, wait = 1200) => { if (!process.env.S
 const pressOf = (page, isMobile) => async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
 
 test('주간 신상: 옷가게 신상 10칸에서 사기, 숨긴 것 없음 → 주 넘김 → 줄이 바뀌고 산 것은 그대로 → 3층 신상 진열대 → 게시판 쪽지', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리)');
   test.setTimeout(600000);
   expect((await request.post('/api/test/new-week', { data: { week: 0 } })).ok()).toBe(true);
   try {
@@ -60,6 +61,7 @@ test('주간 신상: 옷가게 신상 10칸에서 사기, 숨긴 것 없음 → 
 });
 
 test('참치: 큰 수조·원기둥 수조에 한 마리씩(유리 밖으로 안 나옴), 둘째는 거절', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리)');
   test.setTimeout(400000);
   const a = await shopper(browser, request, isMobile ? '참치m' : '참치p', 500000, 'male'); const { page } = a; await prep(a);
   const shot = shotOf(test); const press = pressOf(page, isMobile);

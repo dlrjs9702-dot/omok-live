@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // Q2 「대화 창 저절로 닫힘」: a talk is over only when I walked off or someone else talks to them now -- and the window says
 // which as it closes (here: my hold let go and another player talking to them -- 「○○가 다른 일로 가 봐야 한대요」)

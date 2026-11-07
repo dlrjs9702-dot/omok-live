@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, holdTool, expectNoScriptError } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // 206 Q2 5 (gamecenter-notes docs/interact-quests-20261029.md 5, 사용자 「낚시대만 있으면 물가에서 바로 낚시를 시작할 수 있는데
 // 낚시대를 장착해야 할 수 있게. 장착한 동안은 다른 상호작용(잡초채집, 열매채집 등)이 안되게」): by the water without the rod in

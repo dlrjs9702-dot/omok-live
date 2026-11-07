@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, intoMall, expectNoScriptError, spaceOn } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // 묶음 2-2 펫샵 (gamecenter-notes docs/pet-shop-20261020.md): the lift to the 3rd floor, eight pets walking in the yard, by
 // one SPACE opens its window -- named and taken, it walks with me in its coat and is gone from the yard; my pets in the

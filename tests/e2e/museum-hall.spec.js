@@ -3,6 +3,7 @@ const { shopper, get, post, expectNoScriptError, spaceOn } = require('./skin-sup
 const T = require('../../public/plaza/island-terrain.js');
 const Together = require('../../lib/island-together');
 const M = require('../../public/plaza/island-museum.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.231 M 박물관 전시관: in at the museum's door; the curator's 「기증해요」 gives the biggest of a fish from my bag -- it
 // comes into its tank (on another's screen in the hall too), its plaque its size and my name; an empty slot says so; the

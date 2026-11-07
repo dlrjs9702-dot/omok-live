@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, expectNoScriptError } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.219 대화 자리 잡기 (총괄 218 검토): a tree on the talk camera's line -- the camera goes to the other side; an islander
 // caught further off -- I walk up to the talking distance; the station's keeper (철이) faces the path where people come by.

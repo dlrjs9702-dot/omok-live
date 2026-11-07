@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, uniqueIp, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // Q2 (gamecenter-notes docs/interact-quests-20261029.md 3, 사용자 「내 할 일이 지금 3가지만 출력되고 있는데 나머지 전체를 조회할 수
 // 있는 칸」): four asks -- the card three lines and 「+1개 더 · 전체 보기」, the window 「내 할 일」 all four (grouped); one

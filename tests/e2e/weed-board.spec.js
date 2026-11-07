@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, expectNoScriptError, spaceOn } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): a board by the town hall's gate opens today's pull / hand-in rankings,
 // yesterday's island count and today's weeds, the week's hand-ins and last week's 제초왕. PC and phone.

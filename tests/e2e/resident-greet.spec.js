@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // R2 ① 주민이 먼저 말 걸기: an islander I know (아는 사이 and on) says a line over their head as I pass by -- one I have not
 // met yet says nothing. PC and phone.

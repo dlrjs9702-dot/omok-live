@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, get, post, expectNoScriptError, spaceOn, revealTalk } = require('./skin-support');
 const P = require('../../public/plaza/island-projects.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.222 섬 가꾸기 사업 (gamecenter-notes docs/spending-sinks-20261025.md ①): the 기부함 shows the project filling (mine, the
 // savings); filled -- its works that day (the fence round the fountain, the sign, 바위 by it to talk to: the roster on); the next

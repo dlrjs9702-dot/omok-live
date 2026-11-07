@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // 206 구경 C안 (gamecenter-notes docs/interact-quests-20261029.md 2-1, 사용자 「c 안으로 가자」): a visit is a small task
 // where it is, not walking in -- the flowers (the colour asked, on the card too; a wrong one 「다시 볼까요?」), the mural's

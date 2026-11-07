@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, get, post, spaceOn, standAt, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // 주민세 고지서 (gamecenter-notes docs/tax-bill-design-20261025.md, 사용자 「고지서 + 창구 납부」): the day's bill comes to the
 // 우체통 as a letter from the 관공서 (nothing taken); at the 세금 창구 the unpaid bills, 「모두 내기」 pays them; no 자동이체

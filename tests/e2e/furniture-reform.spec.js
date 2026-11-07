@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, intoMall, standAt, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.226 가구 리폼 (gamecenter-notes docs/furniture-reform-20261102.md): a sofa placed in my house, a guest inside; at the
 // 3층 counter 「가구 리폼」 -- my pieces (「놓임」), the sofa's colours (「지금」 not to be chosen), 「바꾸기 · 3,000P」; the guest

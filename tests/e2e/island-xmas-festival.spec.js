@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, adminToken, spaceOn, standAt, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // X2 크리스마스 (gamecenter-notes docs/asset-proposal-christmas-20261027.md): in its days the stall wears its dress and the
 // host's sack stands by; a gift from the sack goes in my hands and to the islander named on it (in their talk); the snow

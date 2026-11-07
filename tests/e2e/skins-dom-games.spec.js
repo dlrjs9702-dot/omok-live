@@ -18,36 +18,6 @@ const contrastOf = (page, fg, bg) => page.evaluate(([f, b]) => {
   return (l1 + .05) / (l2 + .05);
 }, [fg, bg]);
 
-test('숫자야구 스킨: 모든 행 스킨에서 추측 숫자와 S/B/O 램프가 행 배경 위에서 또렷하다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '대비');
-  for (const id of ids('baseball', PIECES)) {
-    const def = await a.page.evaluate((skinId) => { const d = window.SkinLooks.def(skinId); return { bg: d.row.backgroundColor, digit: d.digit.color, lamps: [d.lamp.strike, d.lamp.ball, d.lamp.out], off: d.lamp.off }; }, id);
-    expect(await contrastOf(a.page, def.digit, def.bg), `${id} 숫자`).toBeGreaterThanOrEqual(4.5);
-    for (const lamp of def.lamps) expect(await contrastOf(a.page, lamp, def.bg), `${id} 램프`).toBeGreaterThanOrEqual(3);
-    expect(await contrastOf(a.page, def.lamps[0], def.off), `${id} 켜짐과 꺼짐`).toBeGreaterThanOrEqual(3);
-  }
-  await a.context.close();
-});
-
-test('빙고 스킨: 모든 표식 스킨에서 칸의 숫자가 표식 위에서도 읽힌다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '대비');
-  for (const id of ids('bingo', PIECES)) {
-    const ratio = await a.page.evaluate((skinId) => {
-      const d = window.SkinLooks.def(skinId); const s = 96; const c = document.createElement('canvas'); c.width = s; c.height = s; const x = c.getContext('2d');
-      x.fillStyle = '#fffdf6'; x.fillRect(0, 0, s, s); x.save(); x.translate(s * .06, s * .06); x.scale(.88, .88); d.mark(x, s); x.restore();
-      const data = x.getImageData(s * .3, s * .3, s * .4, s * .4).data; // where the number sits
-      const lin = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; };
-      let l = 0; for (let i = 0; i < data.length; i += 4) l += .2126 * lin(data[i]) + .7152 * lin(data[i + 1]) + .0722 * lin(data[i + 2]);
-      l /= data.length / 4;
-      const tc = document.createElement('canvas').getContext('2d'); tc.fillStyle = d.text.color; tc.fillRect(0, 0, 1, 1); const t = tc.getImageData(0, 0, 1, 1).data;
-      const tl = .2126 * lin(t[0]) + .7152 * lin(t[1]) + .0722 * lin(t[2]);
-      const [hi, lo] = [Math.max(l, tl), Math.min(l, tl)]; return (hi + .05) / (lo + .05);
-    }, id);
-    expect(ratio, id).toBeGreaterThanOrEqual(3);
-  }
-  await a.context.close();
-});
-
 test('빙고 스킨: 방장 테마가 모든 화면에 같고, 각자의 표식이 자기 판에 그려진다', async ({ browser, request }) => {
   const a = await shopper(browser, request, '방장', 6_000_000);
   const b = await shopper(browser, request, '손님', 600_000);

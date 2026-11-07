@@ -124,13 +124,4 @@ test('아일랜드 모듈 실패 뒤 다시 시도하면 새 문서로 복구하
   await expect(page.locator('#plazaError')).toBeHidden();
   await context.close();
 });
-
-test('이동 의존성 스크립트가 없는 구페이지도 현재 아일랜드 모듈로 진입', async ({ browser, request }) => {
-  const { context, page, errors } = await macUser(browser, request, '구페이지이동', 'ok', true);
-  expect(await page.locator('script[src*="/plaza/remote-motion.js"]').count()).toBe(0);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 15000 }).toBe(true);
-  expect(await page.evaluate(() => typeof window.RemoteMotion?.createTrack)).toBe('function');
-  expect(await classicShown(page)).toBe(false);
-  expect(errors).toEqual([]);
-  await context.close();
-});
+

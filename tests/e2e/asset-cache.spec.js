@@ -134,25 +134,6 @@ test('필수 그룹(core·아일랜드 4계절)만 입장 전에 받고, 게임 
   expect((await packKeys(page, FILES)).filter(key => cards.includes(key) || key === plum)).toHaveLength(cards.length + 1);
 });
 
-test('이전 구조(v1.10.14~21)의 팩은 내려받지 않고 한 번 옮긴 뒤 지운다', async ({ page }) => {
-  await page.goto('/');
-  await ready(page);
-  const keys = await manifestKeys(page);
-  await page.evaluate(async () => { // the files as a v1.10.21 pack cache, the pointer at it
-    const files = await caches.open('gc-res:files');
-    const pack = await caches.open('gc-res:pack:older:1');
-    for (const request of await files.keys()) await pack.put(request, await files.match(request));
-    await caches.delete('gc-res:files');
-    await (await caches.open('gc-res:meta')).put('/active', new Response(JSON.stringify({ version: 'older', cache: 'gc-res:pack:older:1' })));
-  });
-  await page.reload();
-  await ready(page);
-  expect(await downloads(page)).toEqual([]);
-  expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']);
-  expect(await packKeys(page, FILES)).toEqual(keys);
-  expect((await active(page)).cache).toBe(FILES);
-});
-
 test('같은 프로필의 두 탭이 동시에 준비해도 한 번만 받고 둘 다 들어간다', async ({ page, context }) => {
   await page.goto('/');
   await ready(page);

@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, adminToken, revealTalk, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // B v1.10.214 주민 말씨 (gamecenter-notes story/voices-20261029 「이야기해요 말투 어긋남」): 「섬 소문 있어요?」 and 「이야기
 // 나눠요」 in the islander's own register -- 가람 (꼬마 반말), 노을 할머니 (할머니 말), 오 탐정 (하게체 ~란 말이지) say the
