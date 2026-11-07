@@ -42,11 +42,11 @@
   // may even read as standalone): 「크롬에서 열어 설치하기」 at once; install=chrome -- that button's Chrome itself: the
   // prompt's 「앱으로 설치」, or with none the menu line only; otherwise not installed and no prompt: the button. A prompt that
   // came always wins (its 「앱으로 설치」).
-  const CHROME_LINE = '크롬 메뉴 ⋮ → 앱 설치도 돼요'; const MENU_LINE = '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)';
+  const CHROME_LINE = '크롬 메뉴 ⋮ → 앱 설치도 돼요'; const MENU_LINE = '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)'; const TAB_LINE = '또는 ⋮ → Chrome에서 열기'; /* (총괄 #413: a Custom Tab's ⋮ has no 앱 설치, it has Chrome에서 열기) */
   function chromeInstall({ ua, origin, standalone, prompted, install = null }) {
     if (!/Android/i.test(String(ua || '')) || prompted) return null;
     const url = `intent://${new URL(origin).host}/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end`;
-    if (install === '1') return { url, line: CHROME_LINE };
+    if (install === '1') return { url, line: TAB_LINE };
     if (install === 'chrome') return { menuOnly: true, line: MENU_LINE };
     return standalone ? null : { url, line: CHROME_LINE };
   }

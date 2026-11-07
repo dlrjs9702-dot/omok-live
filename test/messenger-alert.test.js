@@ -56,7 +56,7 @@ test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그
   const fold = 'Mozilla/5.0 (Linux; Android 14; SM-F956N) Chrome/141.0 Mobile';
   const button = { url: 'intent://island-dalmaru.onrender.com/messenger.html?install=chrome#Intent;scheme=https;package=com.android.chrome;end', line: '크롬 메뉴 ⋮ → 앱 설치도 돼요' };
   assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false }), button);
-  for (const standalone of [false, true]) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone, prompted: false, install: '1' }), button);
+  for (const standalone of [false, true]) assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone, prompted: false, install: '1' }), { ...button, line: '또는 ⋮ → Chrome에서 열기' }); /* (총괄 #413: the Custom Tab's own menu) */
   assert.deepEqual(MA.chromeInstall({ ua: fold, origin: o, standalone: false, prompted: false, install: 'chrome' }), { menuOnly: true, line: '크롬 메뉴 ⋮ → 앱 설치(홈 화면에 추가)' });
   for (const x of [{ ua: fold, standalone: true }, { ua: fold, prompted: true }, { ua: fold, prompted: true, install: '1' }, { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0' }]) assert.equal(MA.chromeInstall({ origin: o, standalone: false, prompted: false, ...x }), null);
 });
