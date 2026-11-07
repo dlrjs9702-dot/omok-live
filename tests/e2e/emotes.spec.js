@@ -11,6 +11,7 @@ test('감정 표현: T 바퀴 → 웃음 → 몸짓·표정·기호, 끝나면 �
   for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
   const { page } = a; const feeling = (p, who = null) => p.evaluate((w) => window.PlazaDebug().feeling(w), who);
   await expect.poll(async () => (await feeling(page))?.shown.length || 0, { timeout: 60000 }).toBeGreaterThan(0); // (my model and face in)
+  await expect.poll(async () => (await feeling(page)).shown.some((s) => s.includes('_x_')), { timeout: 10000, intervals: [30] }).toBe(false); /* (not mid-blink) */
   const own = (await feeling(page)).shown.sort();
   await expect.poll(() => page.evaluate(() => Object.entries(window.PlazaDebug().assets?.files || {}).filter(([u, s]) => /wear\/(eyes|mouth)_x_[a-z]+\.glb$/.test(u) && s === 'loaded').length), { timeout: 30000 }).toBe(12); // (the 12 expression parts fetched early)
   const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));

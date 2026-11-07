@@ -3617,7 +3617,7 @@
       if (open) { show(false); return; }
       if (tryOpen(false)) { tDown = performance.now(); held = true; }
     }, true);
-    window.addEventListener('keyup', (ev) => { if (ev.code !== 'KeyT' || !held) return; held = false; if (performance.now() - tDown <= 200) return; if (hot) pick(hot.dataset.emote); else show(false); });
+    window.addEventListener('keyup', (ev) => { if (ev.code !== 'KeyT' || !held) return; held = false; if (hot && performance.now() - tDown > 200) pick(hot.dataset.emote); }); /* (let go with none pointed at: it stays open -- a slow frame turned a tap into a 「hold」 and closed it, CI 263) */
     box.addEventListener('pointerdown', (ev) => { if (ev.target === box) show(false); }); /* (outside the ring) */
     btn.addEventListener('click', () => (open ? show(false) : tryOpen(true)));
     return { isOpen: () => open, close: () => show(false) };

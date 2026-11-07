@@ -878,7 +878,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       for (const key of Object.keys(c.holding || {})) if (c.holding[key].object) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
       c.wearRec = rec; c.wearPlan = plan; c.faceParts = new Map(); c.faceOn = null; /* (v1.10.263: the expression parts, below) */
-      if (!facesAsked) { facesAsked = true; for (const [id, e] of Object.entries(registry)) if (/^wear\.(eyes|mouth)_x_/.test(id) && e.url) cache.get(e.url).catch(() => {}); } /* (fetched once, early: the first feeling's face would come after its time) */
+      if (!facesAsked) { facesAsked = true; for (const [id, e] of Object.entries(registry)) if (/^wear\.(eyes|mouth)_x_/.test(id) && e?.url) cache.get(e.url).catch(() => {}); } /* (fetched once, early: the first feeling's face would come after its time) */
       for (const [list, k] of [[high, 'high'], [low, 'low'], [always, 'always']]) for (const m of list) m.userData.lod = k;
     }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });
   }
