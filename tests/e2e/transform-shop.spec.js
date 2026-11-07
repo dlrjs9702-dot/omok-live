@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, get, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.91 변신 의상실 (사용자 2026-10-18, IDEAS #future-transform-npc A안): the transformation is bought and chosen at
 // its own place on the island, apart from the parts; choosing it turns me, 변신 풀기 turns me back. PC and phone.

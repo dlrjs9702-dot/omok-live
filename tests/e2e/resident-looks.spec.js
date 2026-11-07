@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, adminToken, spaceOn, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.213 주민 근무표 A (assets 84·83·88): every post in its islander's own model -- the story islanders where their
 // stories stand, the mayor at the 관공서 gate, the 관공서's three desks, the jail's warden -- and the ten walking ones in

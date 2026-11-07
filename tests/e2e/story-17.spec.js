@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, adminToken, spaceOn, revealTalk, expectNoScriptError, walkStory } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.234 새 주민 17명 이야기 (gamecenter-notes docs/resident-stories-17-20261102.md): three of them to 단짝 -- 빛나 (walking;
 // 윤슬다리, 이솔에게 말 걸기, 마루폭포), 김우성 (at the 구치소 desk: 「이야기해요」 on his talk; 구치소, 푸른숲골, 구치소 at night),

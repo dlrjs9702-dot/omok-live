@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, intoMall, expectNoScriptError, spaceOn } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // 문제 기록 3회차 21 + 메타몽, v1.10.191 (docs/petshop-yard-unify-20261027.md): the special pets -- each transformation small
 // and 메타몽 -- walk the yard with the others, four a day, each with its name over it; the counter's keeper sells none

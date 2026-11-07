@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, spaceOn, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): the plaza board keeps its notices first; the hall below it,
 // folded, lists a title's holders from the first recorded week (1대 ...), the current one marked. PC and phone.

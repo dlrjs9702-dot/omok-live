@@ -2,6 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { shopper, post, expectNoScriptError } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 const Train = require('../../public/plaza/island-train.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.233 (문제 기록 11-03, 총괄): 철이's 2단계 「초승역 다음 열차 세기」 -- its place was the station lift's door, whose
 // prompt (2.6 m) always took the 이름판's (2.4 m): the step could never be done. Now 3.6 m off it: by the 이름판 its prompt,

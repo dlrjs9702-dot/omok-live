@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, expectNoScriptError, walkStory } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // S1 섬 이야기 (gamecenter-notes docs/island-story-bible-20261027.md 5절): 아는 사이 봄이 offers 1장 (「이야기 들려줘요」 → the
 // note with 할게요 / 다음에요), the 할 일 card's line, 대청마당 reached → ✓, back to 봄이 (「다녀왔어요」) → the story note;

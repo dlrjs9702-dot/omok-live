@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, intoMall, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // 묶음 2 가구점 (gamecenter-notes docs/furniture-shop-20261019.md): up the 백화점's lift to the 2nd floor, the day's pieces
 // standing on their plinths with their prices, SPACE by one opens its window, bought it is sold for everyone (the

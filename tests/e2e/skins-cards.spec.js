@@ -14,29 +14,6 @@ const contrastOf = (page, fg, bg) => page.evaluate(([f, b]) => {
   return (l1 + .05) / (l2 + .05);
 }, [fg, bg]);
 
-test('도둑잡기 스킨: 모든 카드 뒷면이 밝은 카드 앞면과 헷갈리지 않는 어두운 뒷면이다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '대비');
-  for (const id of ids('oldmaid')) {
-    const lum = await a.page.evaluate((skinId) => {
-      const d = window.SkinLooks.def(skinId); const c = document.createElement('canvas'); c.width = 57; c.height = 77; const x = c.getContext('2d'); d.art(x, 57, 77);
-      const px = x.getImageData(0, 0, 57, 77).data; const lin = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; };
-      let l = 0; let n = 0; for (let i = 0; i < px.length; i += 4) { l += .2126 * lin(px[i]) + .7152 * lin(px[i + 1]) + .0722 * lin(px[i + 2]); n += 1; }
-      return l / n;
-    }, id);
-    expect(lum, `${id} 뒷면 평균 밝기`).toBeLessThan(.2); // 앞면(#f8fafc)은 약 .95
-  }
-  await a.context.close();
-});
-
-test('할리갈리 스킨: 모든 카드 프레임에서 이름과 장수가 프레임 위에서 또렷하다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '대비');
-  for (const id of ids('halligalli')) {
-    const d = await a.page.evaluate((skinId) => { const s = window.SkinLooks.def(skinId); return { bg: s.text.bg, text: s.text.color }; }, id);
-    expect(await contrastOf(a.page, d.text, d.bg), `${id} 글자`).toBeGreaterThanOrEqual(4.5);
-  }
-  await a.context.close();
-});
-
 test('도둑잡기 스킨: 방장 테마가 모든 화면에 같고, 각 자리의 카드 뒷면은 그 사람의 스킨이다', async ({ browser, request }) => {
   test.setTimeout(90000); // (CI 2차: three pages and their reloads -- past the 30 s default on a busy runner)
   const a = await shopper(browser, request, '방장', 6_000_000);

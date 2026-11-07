@@ -23,54 +23,7 @@ async function guest(browser, request, admin, label, viewport = { width: 1920, h
 }
 const box = (page, selector) => page.locator(selector).first().boundingBox();
 
-for (const count of [2, 3]) {
-  test(`${count === 2 ? '맞고' : '3인 고스톱'}: 하나의 큰 테이블에 상대·바닥·덱·내 영역·큰 손패가 배치되고 한 화면에 들어온다`, async ({ browser, request }) => {
-    const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
-    const people = [];
-    for (let i = 0; i < count; i += 1) people.push(await guest(browser, request, admin, ['나', '상대', '셋째'][i]));
-    const code = (await api(request, '/api/rooms', people[0].token, { gameType: 'gostop' })).data.state.me.roomCode;
-    for (let i = 1; i < count; i += 1) await api(request, '/api/rooms/join', people[i].token, { code });
-    for (let i = 0; i < count; i += 1) await api(request, '/api/room/choose-role', people[i].token, { choice: String(i + 1) });
-    const page = people[0].page;
-    await page.reload();
-    expect((await api(request, '/api/room/start-gostop', people[0].token, {})).status).toBe(200);
-    await expect(page.locator('#gostopHand .hwatu').first()).toBeVisible();
-    await expect(page.locator('body')).toHaveClass(/tableGamePlaying/);
-    await expect(page.locator('#teamPlayers')).toBeHidden(); // 테이블이 자리를 보여 주므로 일반 자리 목록은 비킨다
-    await page.waitForTimeout(1200); // 판 시작 시 한 번 테이블로 스크롤
-
-    const felt = await box(page, '#gostopFelt');
-    for (const sel of ['#gostopOpponents', '#gostopFloor', '#gostopDeck', '#gostopMine', '#gostopHand']) {
-      const b = await box(page, sel);
-      expect(b.x >= felt.x - 1 && b.x + b.width <= felt.x + felt.width + 1 && b.y >= felt.y - 1 && b.y + b.height <= felt.y + felt.height + 1, `${sel} 테이블 안`).toBe(true);
-    }
-    const [opp, floor, mine, hand] = await Promise.all(['#gostopOpponents', '#gostopFloor', '#gostopMine', '#gostopHand'].map(s => box(page, s)));
-    expect(opp.y + opp.height).toBeLessThanOrEqual(floor.y); // 상대 → 바닥 → 내 영역 → 손패 순서로 위에서 아래
-    expect(floor.y + floor.height).toBeLessThanOrEqual(mine.y);
-    expect(mine.y + mine.height).toBeLessThanOrEqual(hand.y);
-    if (count === 3) {
-      const seats = await page.locator('#gostopOpponents .gostopSeat').evaluateAll(els => els.map(el => el.getBoundingClientRect()).map(r => ({ x: r.x, y: r.y })));
-      expect(seats).toHaveLength(2);
-      expect(Math.abs(seats[0].y - seats[1].y)).toBeLessThan(2); // 같은 높이
-      expect(seats[1].x).toBeGreaterThan(seats[0].x + 200); // 좌상·우상
-    }
-    const handCard = await box(page, '#gostopHand .hwatu');
-    expect(handCard.width).toBeGreaterThanOrEqual(80); // 손패는 클릭하기 편할 만큼 크다(기존 58px)
-    const floorCard = await box(page, '#gostopFloor .hwatu');
-    expect(floorCard.width).toBeGreaterThanOrEqual(70); // 바닥패도 테이블에 맞게 크다(기존 46px)
-    // G-고스톱ⓒ: 산은 바닥 한가운데, 바닥패는 그 둘레(산과 겹치지 않음)
-    const pile = await box(page, '#gostopDeck .deckPile');
-    expect(Math.abs(pile.x + pile.width / 2 - (floor.x + floor.width / 2))).toBeLessThan(floor.width * 0.04);
-    expect(pile.y + pile.height / 2).toBeGreaterThan(floor.y); expect(pile.y + pile.height / 2).toBeLessThan(floor.y + floor.height);
-    const floorCards = await page.locator('#gostopFloor .hwatu').evaluateAll(els => els.map(el => el.getBoundingClientRect()).map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })));
-    expect(floorCards.filter(r => r.x < pile.x + pile.width && r.x + r.width > pile.x && r.y < pile.y + pile.height && r.y + r.height > pile.y)).toHaveLength(0);
-    expect(felt.width).toBeGreaterThan(1000); // 넓은 PC 화면에서는 테이블이 주인공
-    const handBottom = (await box(page, '#gostopHand')).y + (await box(page, '#gostopHand')).height;
-    expect(handBottom).toBeLessThanOrEqual(1080); // 손패까지 한 화면
-    for (const p of people) await p.context.close();
-  });
-}
-
+// (v1.10.269 시험 정리: 2인/3인 「한 화면」은 gostop-late-layout·room-play-layout이 봐요)
 // G-고스톱ⓒ 검토: 바닥 8묶음(4묶음은 2장)이어도 묶음끼리, 묶음과 산(「산 N장」 포함)이 겹치지 않는다 -- 폰 393과 PC
 for (const viewport of [{ width: 393, height: 851 }, { width: 1920, height: 1080 }]) {
   test(`맞고 ${viewport.width}: 바닥 8묶음도 묶음끼리·산과 겹치지 않는다`, async ({ browser, request }) => {

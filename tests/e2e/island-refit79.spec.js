@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, adminToken, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.202 79 소품 맞춤: the refitted pendant hangs 0.14~0.17 in front of the body, so over a thick outfit (the sailor
 // collar, 65 mm) only a push-out from -0.13 brings it out in front of the cloth; the refitted boots bend at the ankle

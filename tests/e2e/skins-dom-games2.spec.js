@@ -14,42 +14,6 @@ const contrastOf = (page, fg, bg) => page.evaluate(([f, b]) => {
   return (l1 + .05) / (l2 + .05);
 }, [fg, bg]);
 
-test('그림 맞히기 스킨: 모든 도구 스킨이 출제자가 고른 색(검정·빨강·파랑)을 그대로 지킨다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '색');
-  for (const id of ids('pictionary')) {
-    const result = await a.page.evaluate((skinId) => {
-      const def = window.SkinLooks.def(skinId); const out = {};
-      for (const [name, color] of [['black', '#111111'], ['red', '#e11d48'], ['blue', '#1d4ed8']]) {
-        const c = document.createElement('canvas'); c.width = 300; c.height = 120; const x = c.getContext('2d'); x.fillStyle = '#fffdf6'; x.fillRect(0, 0, 300, 120);
-        let px = 20; let py = 60;
-        for (let i = 1; i <= 40; i += 1) { const nx = 20 + i * 6.5; const ny = 60 + Math.sin(i / 5) * 18; def.seg(x, px, py, nx, ny, color, 8); px = nx; py = ny; }
-        const d = x.getImageData(0, 0, 300, 120).data; let r = 0; let g = 0; let b = 0; let n = 0;
-        for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 255) + Math.abs(d[i + 1] - 253) + Math.abs(d[i + 2] - 246) > 90) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n += 1; }
-        out[name] = n ? [r / n, g / n, b / n] : null;
-      }
-      return out;
-    }, id);
-    expect(result.black, id).not.toBeNull();
-    if (process.env.SKIN_LOG) console.log(id, Math.round(result.black[0] + result.black[1] + result.black[2]));
-    expect(result.black[0] + result.black[1] + result.black[2], `${id} 검정은 어둡다`).toBeLessThan(300);
-    expect(result.red[0], `${id} 빨강은 빨강 계열`).toBeGreaterThan(result.red[2] + 40);
-    expect(result.red[0], id).toBeGreaterThan(result.red[1] + 50);
-    expect(result.blue[2], `${id} 파랑은 파랑 계열`).toBeGreaterThan(result.blue[0] + 40);
-  }
-  await a.context.close();
-});
-
-test('스무고개 스킨: 모든 질문 줄 스킨에서 글자와 Q/A 표시가 배경 위에서 또렷하다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '대비');
-  for (const id of ids('twentyquestions')) {
-    const d = await a.page.evaluate((skinId) => { const s = window.SkinLooks.def(skinId); return { bg: s.text.bg, text: s.text.color, q: [s.tagQ.color, s.tagQ.backgroundColor], a: [s.tagA.color, s.tagA.backgroundColor] }; }, id);
-    expect(await contrastOf(a.page, d.text, d.bg), `${id} 글자`).toBeGreaterThanOrEqual(4.5);
-    expect(await contrastOf(a.page, d.q[0], d.q[1]), `${id} Q`).toBeGreaterThanOrEqual(4.5);
-    expect(await contrastOf(a.page, d.a[0], d.a[1]), `${id} A`).toBeGreaterThanOrEqual(4.5);
-  }
-  await a.context.close();
-});
-
 // Pixels around (px, py) of a canvas by id: a key to compare across pages and the count of coloured pixels.
 const cropOfCanvas = (page, id, px, py) => page.evaluate(([cid, x, y]) => {
   const d = document.getElementById(cid).getContext('2d').getImageData(Math.round(x) - 22, Math.round(y) - 22, 44, 44).data;

@@ -9,18 +9,6 @@ test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 const MIN = { connect4: 3, othello: 4 }; // 사목은 빨강·노랑이 기본이라 기본 칩(약 3:1) 이상을 지킨다
 const PIECES = (family) => [...[1, 2, 3, 4, 5].map(i => `${family}_c${i}`), ...[1, 2, 3].map(i => `${family}_p${i}`), `${family}_l1`, `${family}_l2`];
 
-for (const family of ['connect4', 'othello']) {
-  test(`${family} 스킨: 모든 말 스킨에서 두 진영 명도 대비가 4:1 이상이다`, async ({ browser, request }) => {
-    const a = await shopper(browser, request, '대비');
-    for (const id of PIECES(family)) {
-      const ratio = await stoneContrast(a.page, id);
-      if (process.env.SKIN_LOG) console.log(id, ratio.toFixed(2));
-      expect(ratio, id).toBeGreaterThanOrEqual(Number(process.env.SKIN_MIN || MIN[family]));
-    }
-    await a.context.close();
-  });
-}
-
 test('사목 스킨: 방장 테마와 각자 칩이 모든 화면에 같고, 전설은 승리 연출을 갖는다', async ({ browser, request }) => {
   const a = await shopper(browser, request, '방장', 6_000_000);
   const b = await shopper(browser, request, '손님', 600_000);

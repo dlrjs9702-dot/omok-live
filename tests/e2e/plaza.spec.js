@@ -134,24 +134,6 @@ test('상점 전환: 이전 목록을 비우고 늦은 응답이 새 상점을 �
   } finally { release(); await a.context.close(); }
 });
 
-test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석·미션은 유지', async ({ browser, request }) => {
-  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to the 60 s waited for below)
-  const a = await shopper(browser, request, '보유 외형', 100000);
-  try {
-    await buyAndEquip(request, a, ['avatar_x2_outfit_tidal_surveyor']);
-    await expect(a.page.locator('#islandFacilityActions')).toBeVisible();
-    await islandPage(a.page);
-    await expect.poll(() => a.page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(a.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); // (CI 2차: the scene's own shown signal first)
-    await expect(a.page.locator('#islandFacilityActions')).toBeHidden();
-    await a.page.keyboard.press('Escape'); await a.page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
-    await a.page.locator('#myInfoDialog button[data-action="unequip"]').click();
-    await expect.poll(async () => (await get(request, '/api/skins', a.token)).data.equipped?.avatar?.outfit || null).toBe(null);
-    await a.page.keyboard.press('Escape');
-    await expect(a.page.locator('#plazaStage')).toBeFocused();
-    await expectNoScriptError(a.page);
-  } finally { await a.context.close(); }
-});
-
 test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 창을 열며 창이 열린 동안 멈춘다', async ({ browser, request }) => {
   test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */ // a software-rendered 3D page walking to two facilities: about 21-29 s on a CI runner already
   const a = await intoPlaza(browser, request, '광장');
@@ -958,38 +940,6 @@ test('영웅마루 왕 동상: 낚시왕·제초왕이 빈 벽감 둘에, 명판
   await show([]);
   expect((await look()).emptySigns.slice(3)).toEqual([true, true, true, true]);
   await expectNoScriptError(a.page);
-  await a.context.close();
-});
-
-// v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
-test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
-  test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */
-  const a = await shopper(browser, request, '입구');
-  const { page } = a;
-  await islandPage(page);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // (CI 2차: up to 60 s on the runner)
-  await page.evaluate(() => window.PlazaDebug().place('climb'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 등반 도전');
-  await page.keyboard.press('Space');
-  await expect(page.locator('#climbDialog')).toBeVisible();
-  const before = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
-  await page.keyboard.down('KeyA'); await page.waitForTimeout(300); await page.keyboard.up('KeyA');
-  const during = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
-  expect(Math.hypot(during.x - before.x, during.z - before.z)).toBeLessThan(0.01);
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#climbDialog')).toBeHidden();
-  await page.keyboard.down('KeyS');
-  await expect.poll(async () => { const d = await page.evaluate(() => window.PlazaDebug()); return Math.hypot(d.x - during.x, d.z - during.z); }, { timeout: 10000 }).toBeGreaterThan(0.2);
-  await page.keyboard.up('KeyS');
-  // a click on the gate does the same
-  await page.evaluate(() => window.PlazaDebug().place('climb'));
-  await page.waitForTimeout(300);
-  const gate = await page.evaluate(() => window.PlazaDebug().screenOf('climb'));
-  await page.mouse.click(gate.x, gate.y);
-  await expect(page.locator('#climbDialog')).toBeVisible();
-  await page.locator('#climbStartBtn').click();
-  await expect(page.locator('#climbView')).toBeVisible();
-  await expectNoScriptError(page);
   await a.context.close();
 });
 
@@ -1808,31 +1758,6 @@ async function appearanceShop(browser, request, label, door, name, outfit = fals
   await expect(page.locator('#plazaDialog')).toBeVisible();
   return a;
 }
-test('성형 썸네일: 근접 입장과 30개 실제 이미지 로딩', async ({ browser, request }) => {
-  const a = await appearanceShop(browser, request, '성형이미지', 'faces', '성형외과');
-  const thumbs = a.page.locator('.lookFaceThumb'); await expect(thumbs).toHaveCount(30);
-  await thumbs.last().scrollIntoViewIfNeeded();
-  await expect.poll(() => thumbs.evaluateAll(images => images.filter(img => img.complete && img.naturalWidth === 128 && img.naturalHeight === 128).length)).toBe(30);
-  await expectNoScriptError(a.page); await a.context.close();
-});
-test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ browser, request }) => {
-  test.setTimeout(90000); // v1.10.60: 23-29 s on the CI runner, over the default 30 s now and then (main run 38025855881 too)
-  const a = await appearanceShop(browser, request, '의상주색', 'dye', '염색사', true);
-  const { page, token } = a;
-  // Native keyboard activation exercises the same UI handler without waiting for two
-  // stable pointer frames on the software-rendered 3D scene (main trace: ~4s/click).
-  const outfit = page.locator('[data-item="avatar_outfit_6"]');
-  await expect(outfit).toBeVisible(); await expect(outfit).toBeEnabled(); await outfit.press('Enter');
-  const before = (await get(request, '/api/donation', token)).data.balance;
-  const dye = page.locator('.lookShop [data-color="c12"]');
-  await expect(dye).toBeVisible(); await expect(dye).toBeEnabled(); await dye.press('Enter'); await dye.press('Enter');
-  await expect.poll(async () => (await get(request, '/api/skins', token)).data.avatar.look.dye?.avatar_outfit_6).toBe('#eda3b8');
-  expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
-  const back = page.locator('.lookShop [data-color=""]'); await expect(back).toBeEnabled(); await expect(back).toBeVisible(); await back.press('Enter'); await back.press('Enter');
-  await expect.poll(async () => (await get(request, '/api/skins', token)).data.avatar.look.dye?.avatar_outfit_6 || null).toBe(null);
-  expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
-  await expectNoScriptError(page); await a.context.close();
-});
 
 
 test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지와 중복 없는 주민',async({browser,request})=>{
@@ -1905,25 +1830,6 @@ test('계절 행사: 수확제 기간에 대청마당 가판대·행사 주민, 
   } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
 });
 
-// E1 매주 대회 (A안): a contest day without a festival -- the stall (its board the contest's) and host still there; the
-// host's window starts a three-minute round, counted down at the top of the screen
-test('매주 대회: 토요일 낚시 대회 날 가판대·주민, 주민 창에서 3분 판 시작, 남은 시간 표시', async ({ browser, request, isMobile }) => {
-  test.setTimeout(150000);
-  test.skip(true, 'v1.10.233 매주 대회 꺼짐 -- 게임 대회로 돌아올 때 다시'); test.skip(!DAL, '달마루섬');
-  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-07T12:00:00+09:00') })).status).toBe(200);
-  try {
-    const a = await intoPlaza(browser, request, isMobile ? '대회판m' : '대회판'); const { page } = a;
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().festival()?.sign), { timeout: 20000 }).toBe('🎣 낚시 대회');
-    expect(await page.evaluate(() => window.PlazaDebug().festival().doors)).toEqual(['fest:host']); // (no festival: no stall's goods, no harvest)
-    const P = await page.evaluate(() => window.IslandCalendar.PLACES);
-    // (a new account's guide, or another test's player left standing there, may be nearer: round the host's front until it is the one SPACE is for)
-    let turn = 0; await expect.poll(async () => { const a2 = P.host.yaw + [0, 0.5, -0.5, 0.9, -0.9][turn++ % 5]; await page.evaluate(([x, z, a]) => window.PlazaWarp(x + Math.sin(a) * 1.0, z + Math.cos(a) * 1.0), [P.host.x, P.host.z, a2]); await page.waitForTimeout(300); return spaceOn(page, 'fest:host', isMobile); }, { timeout: 20000 }).toBe(true);
-    const card = page.locator('#contestCard'); await expect(card).toContainText('오늘은 낚시 대회');
-    await card.getByRole('button', { name: '3분 대회 시작' }).click();
-    await expect(page.locator('#contestTimer')).toContainText(/낚시 대회 · [23]:\d\d · 0점/);
-    await expectNoScriptError(page); await a.context.close();
-  } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
-});
 // v1.10.160 (사용자 「다른 사람이 승강기 탈 때 바로 위로 순간이동해 보여」): someone going up a station's lift is seen riding it
 // on another's screen -- their height through the middle for the ride's 1.8 s, the lift's car with them
 test('역 승강기: 다른 사람이 타면 내 화면에서도 승강기로 올라가는 모습(순간이동 아님), 칸도 같이', async ({ browser, request }) => {

@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, adminToken, spaceOn, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // S2 섬 이야기 장면 (notes story/residents-20261027.md 「S2 정함」): the 기록관's 「섬 일지」 (pages read as opened), the little
 // door under 초승등대 -- 「살펴보기」: locked, the box at its foot gives the missing page (piece 7); 오 탐정's 「결론 듣기」 (the

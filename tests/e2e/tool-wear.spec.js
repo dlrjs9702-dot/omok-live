@@ -2,6 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { shopper, get, post, expectNoScriptError, spaceOn, intoMall } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 const S = require('../../public/plaza/island-store.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.221 도구 닳기 (gamecenter-notes docs/spending-sinks-20261025.md ③): a net's catches left -- a bar in its bag slot and,
 // held, on the screen; a catch takes one from the most worn (5 left: 「많이 낡았어요」, 0: 「툭!」 splinters and it is gone, the

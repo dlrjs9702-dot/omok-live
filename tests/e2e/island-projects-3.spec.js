@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, adminToken, expectNoScriptError, spaceOn, holdTool } = require('./skin-support');
 const P = require('../../public/plaza/island-projects.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.224 섬 가꾸기 3 (gamecenter-notes docs/spending-sinks-20261025.md ①): 동쪽 강 새 다리 -- walked over the gorge to the east
 // meadow; 능선 전망대 -- SPACE at its back step looks through the telescope at the glacier (Esc back); 야경 조명's lights throw

@@ -138,6 +138,7 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
 });
 
 test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레이어 메뉴로 친구 신청 → 내 정보에서 수락하면 들어가고, 끊으면 다시 닫힘', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리)');
   test.setTimeout(600000);
   const { a, b, page, press, openMenu, goTo, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'n' : 'q');
   // the house (the 민원실, as the other test does by its window)
@@ -205,6 +206,7 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
 // stairs by their foot on the 1층 (SPACE), a room of its own up there (its own pieces: one placed there is not on the 1층),
 // out only from the 1층; a guest goes up too and sees the owner there, not below. PC and phone.
 test('2층 큰 집(R8): 계단으로 2층, 층마다 가구, 1층에서만 나감, 손님도 같은 층끼리 보임', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리)');
   test.setTimeout(600000);
   const { a, b, page, press, goTo, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'u' : 'v');
   { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
@@ -245,6 +247,7 @@ test('2층 큰 집(R8): 계단으로 2층, 층마다 가구, 1층에서만 나�
 });
 
 test('친구: 거절은 알리지 않음, 끊으면 양쪽에서, 50명까지, 로그인 안 한 손님은 못 함, 신청 횟수 제한', async ({ request }, info) => {
+  test.skip(Boolean(info.project.use?.isMobile), 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리)');
   test.skip(info.project.name !== 'chromium', 'API만 쓰는 검사(한 번)');
   test.setTimeout(120000);
   const [l1, l2, l3] = await Promise.all([1, 2, 3].map((i) => apiPlayer(request, `친구${i}`, true)));
@@ -369,6 +372,7 @@ test('스툴: 바라보던 방향으로 앉고, ←/→(폰 ↺↻)로 45° 돌�
 // v1.10.193 (사용자 「2층 큰 집을 사려는데 살 곳이 없어」): the 민원 창구's button grew a house only from the 오두막 -- from
 // the 작은 집 it said 「내 집」, off; now 「집 넓히기」 up to the 2층 큰 집 (IslandHome.TOP_STAGE), 「내 집」 and off only there
 test('민원 창구 집 넓히기: 작은 집·큰 집에서도 「집 넓히기」가 켜지고 공사가 시작되며, 2층 큰 집에서만 꺼진다', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리)');
   test.setTimeout(400000);
   const { a, b, page, press, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'um' : 'up');
   await b.context.close();

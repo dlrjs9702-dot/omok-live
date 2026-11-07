@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, get, post, expectNoScriptError } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.91 주민 대화·심부름 (사용자 2026-10-18): any walking islander talks (name, their own words); the day's errands
 // show a star over the asker, the tracker says where to go, and the one at the end pays once. PC and phone.

@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, adminToken, expectNoScriptError, spaceOn, revealTalk } = require('./skin-support');
 const P = require('../../public/plaza/island-projects.js');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // v1.10.223 섬 가꾸기 2 (gamecenter-notes docs/spending-sinks-20261025.md ①): after the first two, the mayor at the 관공서 gate puts
 // the next to a day's vote (one ballot each); the 민원 창구 takes a 기부 into the project too; 물가 거리 -- lamps and benches by

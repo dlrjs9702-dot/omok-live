@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, get, post, intoMall, standInMall, standForGood, spaceOn } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // 문제 기록 (사용자 제보 2026-10-25, 휴대폰): 잡화점 물건이 안 사지고, 가구점 승강기에서 「승강기 앞에서 다시 시도해 주세요」만 --
 // a phone's lobby stream drops and comes back by itself (the network, the screen off), and the server dropped my visit

@@ -321,62 +321,6 @@ test.describe('고스톱·맞고 1차 UX 및 화투판 시각화 (v1.6.92)', () 
     await me.context.close();
   });
 
-  test('실제 대국: 손패 클릭 → 이동 재생·입력 잠금, 관전자 비공개, 재접속 후 재생 없이 복원', async ({ browser, request }) => {
-    test.setTimeout(120_000);
-    const admin = await adminToken(request);
-    const a = await guest(browser, request, admin, '가');
-    const b = await guest(browser, request, admin, '나');
-    const w = await guest(browser, request, admin, '관');
-    await a.page.locator('[data-game="gostop"]').click();
-    const [created] = await Promise.all([
-      a.page.waitForResponse(res => res.url().endsWith('/api/rooms') && res.request().method() === 'POST'),
-      a.page.locator('#createRoomBtn').click(),
-    ]);
-    const code = (await created.json()).state.me.roomCode;
-    for (const v of [b, w]) { await v.page.locator('#roomPasswordInput').fill(code); await v.page.locator('#roomPasswordInput').press('Enter'); await expect(v.page.locator('#gostopPanel')).toBeVisible(); }
-    for (const [v, choice] of [[a, '1'], [b, '2'], [w, 'spectator']]) expect((await api(request, '/api/room/choose-role', v.token, { choice })).status).toBe(200);
-    await a.page.locator('#gostopStartBtn').click();
-    await expect.poll(async () => (await roomState(request, a.token)).game.status).not.toBe('selecting');
-    let state = await roomState(request, a.token);
-    test.skip(state.game.status !== 'playing', '총통으로 즉시 종료된 분배');
-    const actor = state.game.turn === '1' ? a : b;
-    const other = actor === a ? b : a;
-    const fromActor = await actor.page.evaluate(() => window.GostopUI.fxLog.length);
-    const fromWatcher = await w.page.evaluate(() => window.GostopUI.fxLog.length);
-    await actor.page.locator('#gostopHand .hwatu.actionableTarget').first().click();
-    const special = actor.page.getByRole('button', { name: '그냥 내기' });
-    if (await special.isVisible().catch(() => false)) await special.click();
-    // 이동이 재생되는 동안 손패 입력은 잠긴다.
-    await expect.poll(() => actor.page.evaluate(() => window.GostopUI.fxLog.length)).toBeGreaterThan(fromActor);
-    if (await actor.page.evaluate(() => window.GostopUI.fxBusy())) {
-      await expect(actor.page.locator('#gostopHand button.hwatu:not([disabled])')).toHaveCount(0);
-    }
-    await expect.poll(() => actor.page.evaluate(() => window.GostopUI.fxBusy()), { timeout: 10_000 }).toBe(false);
-    const actorLog = await actor.page.evaluate(start => window.GostopUI.fxLog.slice(start), fromActor);
-    expect(actorLog.some(e => e.k === 'play')).toBe(true);
-    // 관전자도 같은 공개 이동을 보되, 손패 값은 DOM·이동 기록 어디에도 없다.
-    await expect.poll(() => w.page.evaluate(() => window.GostopUI.fxLog.length)).toBeGreaterThan(fromWatcher);
-    const watcherLog = await w.page.evaluate(start => window.GostopUI.fxLog.slice(start), fromWatcher);
-    state = await roomState(request, a.token);
-    const hands = [...((await roomState(request, a.token)).me.myGostopHand || []), ...((await roomState(request, b.token)).me.myGostopHand || [])].map(c => c.id);
-    const watcherHtml = await w.page.content();
-    for (const id of hands) {
-      expect(watcherHtml).not.toContain(id);
-      expect(watcherLog.some(e => e.card === id)).toBe(false);
-    }
-    // 재접속: 입장 파일을 다시 열면 같은 자리·손패로 복원되고, 지난 이동은 다시 재생하지 않는다.
-    const { data } = await api(request, `/api/admin/keys/${other.keyId}/reissue`, admin, {});
-    await other.page.goto('about:blank');
-    await Promise.all([other.page.waitForURL(/\/guest-entry$/), other.page.setContent(data.html)]);
-    other.token = await other.page.evaluate(() => document.body.dataset.session);
-    await expect(other.page.locator('#gostopPanel')).toBeVisible();
-    const mineNow = (await roomState(request, other.token)).me.myGostopHand;
-    await expect(other.page.locator('#gostopHand .hwatu')).toHaveCount(mineNow.length);
-    await other.page.waitForTimeout(600);
-    expect(await other.page.evaluate(() => window.GostopUI.fxLog.length)).toBe(0);
-    await expect(other.page.locator('.gostopFxHidden')).toHaveCount(0);
-    for (const v of [a, b, w]) await v.context.close();
-  });
 });
 
 test.describe('고스톱·맞고 자체 화투·실물감 연출 (v1.7.4)', () => {

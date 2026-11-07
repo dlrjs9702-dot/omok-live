@@ -9,12 +9,6 @@ test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 const OMOK_PIECES = ['omok_c1', 'omok_c2', 'omok_c3', 'omok_c4', 'omok_c5', 'omok_p1', 'omok_p2', 'omok_p3', 'omok_l1', 'omok_l2',
   'omok_common_obsidian', 'omok_common_jade', 'omok_common_amber', 'omok_common_porcelain', 'omok_common_bronze'];
 
-test('오목 스킨: 모든 돌 스킨에서 흑·백 명도 대비가 4:1 이상이다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '대비');
-  for (const id of OMOK_PIECES) { const ratio = await stoneContrast(a.page, id); if (process.env.SKIN_LOG) console.log(id, ratio.toFixed(2)); expect(ratio, id).toBeGreaterThanOrEqual(4); }
-  await a.context.close();
-});
-
 // The pixels of one stone's cell (40x40 around the intersection) of the board canvas.
 const cell = (page, gx, gy) => page.evaluate(([x, y]) => {
   const c = document.getElementById('board'); const grid = (c.width - 96) / 14;

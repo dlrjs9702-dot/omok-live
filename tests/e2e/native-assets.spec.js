@@ -3,6 +3,7 @@ const { shopper, post, get, buyAndEquip, twoPlayerRoom, expectNoScriptError } = 
 const { REGISTRY, wardrobeOf } = require('../../public/plaza/island-assets');
 const { characters } = require('../../public/plaza/character-transformations');
 const { IP_GAME } = require('../../public/plaza/skins-x2');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 const native = id => characters.find(c => c.id === id);
 // v1.10.91 (사용자 2026-10-18 A안): the transformation, bought and chosen at the 변신 의상실 (2026-10-21: its parts are gone)

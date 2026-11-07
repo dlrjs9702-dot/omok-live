@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, expectNoScriptError, spaceOn } = require('./skin-support');
+test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // R4 구치소 반성문: one owing the tax comes onto the island in the cell, the warden's talk open; [시작] -- his sentence over
 // his head -- typed into the island chat three times, the cell opens; walked out, the day's essays on the board. PC and phone.

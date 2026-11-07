@@ -335,6 +335,7 @@ test('메신저 알림 옮기기: 폰은 새 구독이 실패하면 옛 구독 �
 // from the messenger page only (the island's stays as it is); the browser's install prompt as an 「앱으로 설치」 button when
 // it comes, not inside an installed window. Nothing sideways. SHOT_DIR photos (밝게·어둡게)
 test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.html, 「앱으로 설치」 단추, 설치된 창에서는 숨김', async ({ browser, request, isMobile }, info) => {
+  test.skip(!isMobile, 'manifest·아이콘은 단위(messenger-manifest), 설치 안내는 폰에서 (v1.10.269 시험 정리)');
   test.setTimeout(60000);
   const manifest = await request.get('/messenger.webmanifest'); expect(manifest.status()).toBe(200); expect(manifest.headers()['content-type']).toContain('manifest+json');
   const mf = await manifest.json(); expect(mf).toMatchObject({ id: '/messenger', name: '아일랜드 메신저', start_url: '/messenger', scope: '/messenger', display: 'standalone' });
@@ -385,6 +386,7 @@ test('메신저 앱 따로 설치: 메신저 manifest·아이콘·/messenger.htm
 // not looked at (minimised, behind another) -- the new line shows, but is not read: the sender's 「1」 stays, my unread
 // count 1; back at the window, read then.
 test('메신저 창을 안 보고 있으면 읽음 처리 안 함: 보낸 쪽 「1」 그대로, 창으로 돌아오면 읽음', async ({ browser, request }, info) => {
+  test.skip(Boolean(info.project.use?.isMobile), 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리)');
   test.setTimeout(120000);
   const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
   const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
