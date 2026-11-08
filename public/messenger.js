@@ -342,14 +342,25 @@
       emojiBody.replaceChildren(...(recent.length ? section('최근', recent.map(pickG), 'messengerGlyphGrid') : []), ...GLYPHS.flatMap(([name, list]) => section(name, list.map(pickG), 'messengerGlyphGrid')));
     }
   }
+  const touch = () => Boolean(window.matchMedia?.('(hover: none) and (pointer: coarse)').matches); /* (a phone: no keypad unless the box is tapped) */
   function putGlyph(g) { // at the cursor (the box's 500 letters kept); a phone's keypad not called up for it
     const input = byId('messengerInput'); const a = input.selectionStart ?? input.value.length; const b = input.selectionEnd ?? a;
     if (input.value.length - (b - a) + g.length > 500) return showToast('500자까지 쓸 수 있어요.'); // (v1.10.283 Codex #10: the chosen words replaced, not added to)
     input.setRangeText(g, a, b, 'end'); grow(); used('glyph', g);
     if (!window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) input.focus();
   }
-  function openEmoji(on) { emoji.classList.toggle('hidden', !on); emojiBtn.setAttribute('aria-expanded', String(on)); if (on) { if (window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) byId('messengerInput').blur(); drawEmoji(); keepEnd(); } else showPreview(null); }
+  // v1.10.286 (사용자 「이모티콘 창을 닫을 수가 없어」): besides the 😊 -- its ✕, the list tapped, and on a phone the box tapped (the keypad up) and the
+  // phone's back (one history step while it is open)
+  let emojiBack = false;
+  function openEmoji(on) {
+    const was = !emoji.classList.contains('hidden'); emoji.classList.toggle('hidden', !on); emojiBtn.setAttribute('aria-expanded', String(on));
+    if (on) { if (touch()) { byId('messengerInput').blur(); if (!was && !emojiBack) { history.pushState({ emoji: 1 }, ''); emojiBack = true; } } drawEmoji(); keepEnd(); } else { showPreview(null); if (emojiBack) { emojiBack = false; history.back(); } }
+  }
+  window.addEventListener('popstate', () => { if (emojiBack) { emojiBack = false; openEmoji(false); } });
   emojiBtn.addEventListener('click', () => openEmoji(emoji.classList.contains('hidden')));
+  byId('messengerEmojiClose').addEventListener('click', () => { openEmoji(false); emojiBtn.focus(); });
+  byId('messengerMessages').addEventListener('pointerdown', () => { if (!emoji.classList.contains('hidden')) openEmoji(false); });
+  byId('messengerInput').addEventListener('pointerdown', () => { if (touch() && !emoji.classList.contains('hidden')) openEmoji(false); }); /* (a PC keeps it: 그림 글자 at the cursor) */
   for (const b of emoji.querySelectorAll('[role="tab"]')) b.addEventListener('click', () => { emojiTab = b.dataset.tab; emojiBody.scrollTop = 0; drawEmoji(); });
   byId('messengerEmojiSend').addEventListener('click', () => { if (chosenSticker) sendSticker(chosenSticker); });
   byId('messengerEmojiPreviewClose').addEventListener('click', () => showPreview(null));
@@ -450,7 +461,7 @@
     if (streamWanted) setTimeout(openStream, 5000);
   }
   function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
-  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); openEmoji(false); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); unreadFrom = room.unread > 0 ? (room.reads?.[state.me] ?? Math.max(0, room.seq - room.unread)) : null; app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
+  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); openEmoji(false); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); unreadFrom = room.unread > 0 ? (room.reads?.[state.me] ?? Math.max(0, room.seq - room.unread)) : null; app.classList.add('inRoom'); showHead(); renderRooms(); pull(); if (!touch()) byId('messengerInput').focus(); } /* (v1.10.286 사용자: on a phone the keypad only when the box is tapped) */
   // 메신저 다듬기 A2 사람 고르기 (새 대화방·초대·1:1 같은 화면): 이름 찾기 (치는 대로, 부분 일치) · 고른 사람은 알약 (✕로 빼기) ·
   // 한 줄에 한 사람 (줄 아무 데나 누르면 고름) -- 최근 대화한 사람 먼저 · 방 이름은 아래, 비우면 고른 사람 이름들로 · 단추
   // 「N명과 대화 시작」/「N명 초대」/(1:1, 한 명만)「대화 시작」, 아무도 안 고르면 누를 수 없음

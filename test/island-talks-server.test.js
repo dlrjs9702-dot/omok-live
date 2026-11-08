@@ -36,7 +36,10 @@ test('대화 힌트는 섬 지금 상태 그대로: 물때·밤 물고기·도�
   for (const n of [0, 1]) {
     const h = (await req('/api/test/talk-hints', a, { n })).data.hints;
     assert.equal(h.fishHot.vals.place, names[n % 2 ? F.hotOf(day).fresh : F.hotOf(day).sea]); // (봄이 the sea-side one, 해송 the fresh)
-    const night = Object.entries(F.SPECIES).find(([, s]) => s.name === h.nightFish.vals.fish); assert.ok(night && night[1].night, JSON.stringify(h.nightFish));
+    /* (v1.10.286: the season where I stand turns by the day -- spring and winter have no night fish but big ones, and then no hint) */
+    const season = T.seasonAt(0, 6, Date.now()); const anyNight = Object.keys(names).some((w) => (F.listFor(w, season) || []).some((id) => F.SPECIES[id].night && F.SPECIES[id].grade !== 'big'));
+    assert.equal(Boolean(h.nightFish), anyNight, `${season} ${JSON.stringify(h.nightFish)}`);
+    if (h.nightFish) { const night = Object.entries(F.SPECIES).find(([, s]) => s.name === h.nightFish.vals.fish); assert.ok(night && night[1].night, JSON.stringify(h.nightFish)); }
     const gap = Object.entries(F.SPECIES).find(([, s]) => s.name === h.dexGap.vals.name); assert.ok(gap && gap[1].grade !== 'big' && ['낮', '밤'].includes(h.dexGap.vals.time)); // (nothing in my 도감 yet)
     const bugs = (await req('/api/island/insects', a)).data; const list = bugs.insects || bugs.list || [];
     if (h.insectNow) assert.ok(list.some((b) => Math.abs(b.x - h.insectNow.at.x) < 0.01 && Math.abs(b.z - h.insectNow.at.z) < 0.01), 'an insect out now');

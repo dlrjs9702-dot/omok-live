@@ -111,13 +111,15 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
       expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(true); /* (v1.10.285: the hat away in the car) */
     }
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 20000 }).toBe(null);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 30000 }).toBe(null);
     const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); const out = X.arrivalOf({ from, startedAt: 0, runMs: 3000 }); expect(Math.hypot(here.x - out.x, here.z - out.z)).toBeLessThan(0.6); // (exit_L beside the car as it stands)
     await expect(page.locator('#toast')).toContainText(`${to.label}에 도착했어요`);
     expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(false); /* (out: the hat back) */
     if (from === 'plaza') await shot('arrived');
   };
-  await ride('plaza'); await ride('isle');
+  /* (v1.10.286: CI at 2.7 fps took more than the 3 s road + 1.2 s getting in to reach the in-ride checks -- the way there 12 s) */
+  expect((await request.post('/api/test/taxi-run', { data: { ms: 12000 } })).ok()).toBe(true); await ride('plaza');
+  expect((await request.post('/api/test/taxi-run', { data: { ms: 3000 } })).ok()).toBe(true); await ride('isle');
   // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter and the standing car block -- walked into, I stop at their edge
   { const s = X.stopOf('plaza'); const at = (x, z) => page.evaluate(([x, z]) => window.PlazaDebug().solidsAt(x, z), [x, z]);
     expect(await at(s.x, s.z)).toBe(true); expect(await at(s.shelter.x, s.shelter.z)).toBe(true); expect(await at(s.out.x, s.out.z)).toBe(false); /* (the door's side clear) */

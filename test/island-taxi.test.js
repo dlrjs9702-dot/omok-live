@@ -73,3 +73,25 @@ test('택시 문: 타기 0~0.14에 열고 0.86~1에 닫고, 내리기 0~0.12에 
 test('택시 요금: 집주인 무료, 집 없으면 경제 값(기본 1,000P)', () => {
   assert.equal(X.fareOf({ hasHome: true }), 0); assert.equal(X.fareOf({ hasHome: false }), 1000); assert.equal(X.fareOf({ hasHome: false, fare: 1500 }), 1500);
 });
+
+// v1.10.286 (notes docs/taxi-fix-20261108.md 6절, 밤에 지붕 위 회색 동그라미): every body and every hair seated by TaxiSit at the seat
+// (hats are put away in the car) -- its top more than 0.05 m under the roof's underside straight over the seat (the model
+// turned round in the game, as the body: the seat at the model's z -SEAT.z), and the seated body on the floor, not in it
+test('택시 좌석: 가장 큰 몸·머리로 앉아도 머리 꼭대기가 지붕 아래 0.05 m 넘게, 발은 바닥 위', { timeout: 120000 }, async () => {
+  const fs = require('node:fs'); const path = require('node:path'); const A = require('../public/plaza/island-assets');
+  const THREE = await import('three'); const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js'); const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  await MeshoptDecoder.ready; const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).register(() => ({ name: 'test_blank_texture', loadTexture: () => Promise.resolve(new THREE.Texture()) }));
+  const load = async (url) => { const b = fs.readFileSync(path.join(__dirname, '../public', url)); return loader.parseAsync(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), ''); };
+  const base = A.REGISTRY['character.base']; const sit = (await load(base.clips.TaxiSit)).animations[0];
+  const seated = async (url) => { const g = await load(url); const m = new THREE.AnimationMixer(g.scene); m.clipAction(sit).play(); m.update(sit.duration / 2); g.scene.updateMatrixWorld(true); const b = new THREE.Box3(); g.scene.traverse((o) => { if (o.isMesh) b.expandByObject(o, true); }); return b; };
+  const urls = [base.url, base.bare.url, ...Object.entries(A.REGISTRY).filter(([id, e]) => /^wear\.(x2_)?hair_/.test(id) && e.url).map(([, e]) => e.url)];
+  assert.ok(urls.length > 20, `${urls.length} bodies and hairs`);
+  let top = -Infinity; let tallest = ''; let feet = Infinity;
+  for (const url of urls) { const b = await seated(url); if (b.max.y > top) { top = b.max.y; tallest = url; } if (url === base.url) feet = b.min.y; }
+  const car = await load(A.REGISTRY['taxi.car'].url); car.scene.updateMatrixWorld(true); const ray = new THREE.Raycaster();
+  ray.set(new THREE.Vector3(-X.SEAT.x, X.SEAT.y + 0.3, -X.SEAT.z), new THREE.Vector3(0, 1, 0)); const roof = ray.intersectObject(car.scene, true)[0];
+  ray.set(new THREE.Vector3(-X.SEAT.x, X.SEAT.y + 0.3, -X.SEAT.z - 0.33), new THREE.Vector3(0, -1, 0)); const floor = ray.intersectObject(car.scene, true)[0]; /* (under the feet, 0.33 ahead) */
+  assert.ok(roof && floor, 'roof and floor over and under the seat');
+  assert.ok(X.SEAT.y + top < roof.point.y - 0.05, `${path.basename(tallest)}: head ${(X.SEAT.y + top).toFixed(3)}, roof ${roof.point.y.toFixed(3)}`);
+  assert.ok(Math.abs(X.SEAT.y + feet - floor.point.y) < 0.03, `feet ${(X.SEAT.y + feet).toFixed(3)}, floor ${floor.point.y.toFixed(3)}`);
+});
