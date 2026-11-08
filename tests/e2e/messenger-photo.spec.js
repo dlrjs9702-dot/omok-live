@@ -82,6 +82,71 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
   } finally { await api(request, '/api/test/messenger/slow', { body: { ms: 0 } }); await a.context.close(); await b.context.close(); }
 });
 
+// v1.10.279 이모티콘 (notes docs/messenger-emoticons-20261108.md 5절): 😊 -- 「이모티콘」, pressed: large, pressed again: sent
+// (no bubble, its picture); the other side sees the picture and the room list 「(이모티콘) …」; 「그림 글자」 goes in the box at
+// the cursor; the last used on top. PC (a phone: SHOT_DIR photos only -- the panel's fit)
+test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화면 그림·방 목록 줄·그림 글자 커서 자리·최근', async ({ browser, request, isMobile }, info) => {
+  test.skip(isMobile && !process.env.SHOT_DIR, '폰은 판 사진만 (새 e2e 규칙)');
+  test.setTimeout(150000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const make = async (tag, nick) => {
+    const loginId = `e${tag}_${stamp}`.slice(0, 20); const nickname = `${nick}${(Date.now() + info.project.name.length) % 100000}`;
+    await api(request, '/api/account/signup', { body: { realName: tag, loginId, password: 'secret123', nickname } });
+    const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+    await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+    const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+    await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+    const account = (await api(request, '/api/account/login', { body: { loginId, password: 'secret123' } })).data.accountToken;
+    const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+    const page = await context.newPage(); await page.goto('/messenger');
+    await page.locator('#mLoginId').fill(loginId); await page.locator('#mLoginPw').fill('secret123'); await page.locator('#mLogin').getByRole('button', { name: '로그인' }).click();
+    await expect(page.locator('#mApp')).toBeVisible(); return { id, account, context, page, nickname };
+  };
+  const a = await make('a', '보내는이'); const b = await make('b', '받는이'); const { page } = a;
+  const shot = async (p, name) => { if (process.env.SHOT_DIR) { await p.waitForTimeout(600); await p.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
+  try {
+    const room = (await api(request, '/api/messenger/rooms', { account: a.account, body: { name: '이모티콘방', members: [b.id] } })).data.room;
+    await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: a.account, body: { text: '안녕하세요' } });
+    await page.reload(); await page.locator('#messengerRoomList button', { hasText: '이모티콘방' }).click();
+    const panel = page.locator('#messengerEmoji'); const cells = panel.locator('.messengerStickerCell');
+    await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeVisible(); await expect(cells).toHaveCount(24);
+    // pressed once: large, nothing sent; pressed again: sent, a picture with no bubble
+    await cells.nth(16).click(); await expect(page.locator('#messengerEmojiPreview')).toBeVisible(); await shot(page, 'emoji-sticker');
+    await expect(page.locator('#messengerMessages .chatMessage.mine')).toHaveCount(1);
+    await cells.nth(16).click(); await expect(page.locator('#messengerEmojiPreview')).toBeHidden();
+    const sent = page.locator('#messengerMessages .chatMessage.mine .messengerSticker img'); await expect(sent).toHaveCount(1);
+    await expect(page.locator('#messengerMessages .chatMessage.pending')).toHaveCount(0, { timeout: 10000 });
+    await expect.poll(() => sent.evaluate((im) => im.complete && im.naturalWidth > 0)).toBe(true);
+    expect(await sent.evaluate((im) => Math.round(im.getBoundingClientRect().width))).toBe(isMobile ? 110 : 120);
+    expect(await page.locator('#messengerMessages .chatMessage.mine .messengerSticker').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+    // the last used on top: 최근 one, then the 24
+    await expect(panel.locator('.messengerEmojiHead').first()).toHaveText('최근'); await expect(cells).toHaveCount(25);
+    // the other side: the picture, and the list's line in words
+    const them = b.page; await them.reload(); await expect(them.locator('#messengerRoomList button', { hasText: '이모티콘방' })).toContainText('(이모티콘) 고마워요'); await shot(them, 'emoji-room-list');
+    await them.locator('#messengerRoomList button', { hasText: '이모티콘방' }).click();
+    await expect(them.locator('#messengerMessages .messengerSticker img')).toHaveAttribute('alt', '고마워요');
+    await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: b.account, body: { sticker: 'islanders1/laugh_duri' } });
+    await expect(page.locator('#messengerMessages .chatMessage:not(.mine) .messengerSticker img')).toHaveCount(1, { timeout: 10000 });
+    // 그림 글자: at the cursor, the panel kept
+    await page.locator('#messengerEmojiTabGlyph').click(); await expect(panel.locator('.messengerGlyphGrid').first()).toBeVisible(); await shot(page, 'emoji-glyph');
+    const input = page.locator('#messengerInput'); await input.fill('좋아요 고마워요'); await input.evaluate((el) => el.setSelectionRange(4, 4));
+    await panel.getByRole('button', { name: '👍', exact: true }).click(); await expect(input).toHaveValue('좋아요 👍고마워요');
+    await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeHidden(); // (the grid not moved under the finger: 최근 when opened again)
+    await page.locator('#messengerEmojiBtn').click(); await expect(panel.locator('.messengerEmojiHead').first()).toHaveText('최근'); await expect(panel.locator('.messengerGlyphGrid').first().getByRole('button')).toHaveText(['👍']);
+    await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeHidden();
+    await shot(page, 'emoji-room'); await shot(them, 'emoji-room-them');
+    // (총괄 #429) the time beside the art: its clear edge taken in on the time's side, the picture still whole
+    const near = async (sel) => page.locator(sel).evaluate((el) => { const im = el.querySelector('.messengerStickerImg').getBoundingClientRect(); const t = el.querySelector('.messengerMeta').getBoundingClientRect(); return Math.round(Math.max(im.left - t.right, t.left - im.right)); });
+    expect(await near('#messengerMessages .chatMessage.mine:has(.messengerSticker)')).toBeLessThan(0); expect(await near('#messengerMessages .chatMessage:not(.mine):has(.messengerSticker)')).toBeLessThan(0);
+    expect(await page.evaluate(() => { const b = document.querySelector('#messengerMessages'); return b.scrollWidth <= b.clientWidth; })).toBe(true);
+    if (process.env.SHOT_DIR) { // (어두운 화면: the art's edge on the panel's #352c25 and in the room)
+      await page.evaluate(() => { document.documentElement.dataset.mtheme = 'dark'; }); await shot(page, 'emoji-dark-room');
+      await page.locator('#messengerEmojiBtn').click(); await page.locator('#messengerEmojiTabSticker').click(); await shot(page, 'emoji-dark-panel');
+    }
+  } finally { await a.context.close(); await b.context.close(); }
+});
+
 // 메신저 다듬기 A1 (사진 있는 방에서 보내거나 받으면 가끔 사진 근처가 보이던 것): a room with many photos (each held back on
 // the way in, as a slow network), at its end -- a line sent, a line come in, a read count gone: still at the end, after
 // every photo is in too; only the changed lines drawn again (the photos' own tiles kept)

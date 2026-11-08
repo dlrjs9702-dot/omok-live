@@ -138,6 +138,31 @@ html[data-mtheme="dark"] .mApp .messengerUnreadLine::before,html[data-mtheme="da
 .messengerPage textarea#messengerInput{flex:1;min-width:0;box-sizing:border-box;resize:none;overflow-y:auto;background:#fff;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:12px;padding:9px 12px;font:inherit;font-size:1rem;line-height:1.4;height:auto;max-height:calc(7em + 20px)}
 html[data-mtheme="dark"] .messengerPage textarea#messengerInput{background:#352c25;color:var(--isle-ink)}
 .mApp .messengerForm>button{flex:none;min-height:40px}
+/* v1.10.279 이모티콘: a sticker -- the picture alone, no bubble (PC 120px, phone 110px); the 😊 panel over the box (PC and
+   phone the same place), two tabs, the stickers 4 a row, the large one pressed again to send, 그림 글자 by groups */
+.mApp .chatMessageText.messengerSticker{background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+.mApp .messengerStickerImg{--size:120px;display:block;width:var(--size);height:var(--size);object-fit:contain}
+.mApp .chatMessage.mine .messengerStickerImg{margin-left:calc(var(--pad,0) * var(--size) * -1)}.mApp .chatMessage:not(.mine) .messengerStickerImg{margin-right:calc(var(--pad,0) * var(--size) * -1)} /* (총괄 #429: the time beside the art -- the clear edge on its side only, never past the box) */
+.mApp .messengerEmoji{display:flex;flex-direction:column;height:min(300px,42vh);margin:0 0 6px;border:1px solid var(--isle-line);border-radius:14px;background:#fffaf0;overflow:hidden}
+.mApp .messengerEmoji.hidden{display:none}
+.mApp .messengerEmojiTabs{display:flex;flex:none;border-bottom:1px solid var(--isle-line)}
+.mApp .messengerEmojiTabs button{flex:1;min-height:40px;border:0;background:none;color:var(--isle-ink);font:inherit;font-weight:800;cursor:pointer;opacity:.6}
+.mApp .messengerEmojiTabs button[aria-selected="true"]{opacity:1;box-shadow:inset 0 -3px 0 var(--isle-tag)}
+.mApp .messengerEmojiPreview{flex:none;display:flex;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--isle-line);font-size:.8rem;font-weight:800}
+.mApp .messengerEmojiPreview.hidden{display:none}
+.mApp .messengerEmojiPreview span{flex:1;opacity:.75}
+.mApp .messengerEmojiBig{padding:0;border:0;background:none;cursor:pointer}.mApp .messengerEmojiBig img{display:block;width:96px;height:96px;object-fit:contain}
+.mApp .messengerEmojiBody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 8px 8px}
+.mApp .messengerEmojiHead{margin:6px 2px 4px;font-size:.72rem;font-weight:800;opacity:.7}
+.mApp .messengerStickerGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mApp .messengerStickerCell{aspect-ratio:1/1;padding:6px;border:0;border-radius:10px;background:none;cursor:pointer}
+.mApp .messengerStickerCell[aria-pressed="true"]{background:var(--isle-hover);box-shadow:inset 0 0 0 2px var(--isle-tag)}
+.mApp .messengerStickerCell img{width:100%;height:100%;object-fit:contain;display:block}
+@media(hover:hover){.mApp .messengerStickerCell:hover,.mApp .messengerGlyph:hover{background:var(--isle-hover)}}
+.mApp .messengerGlyphGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:2px}
+.mApp .messengerGlyph{min-height:40px;padding:0;border:0;border-radius:8px;background:none;font-size:1.45rem;line-height:1;cursor:pointer}
+html[data-mtheme="dark"] .mApp .messengerEmoji{background:#352c25}
+@media(max-width:640px){.mApp .messengerStickerImg{--size:110px}}
 .mAskBack{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(40,30,20,.42)}.mAskBack.hidden{display:none}
 .mAsk{display:grid;gap:12px;width:min(360px,100%);box-sizing:border-box;padding:18px}
 .mAskText{margin:0;white-space:pre-line;font-weight:800;line-height:1.5}

@@ -91,6 +91,7 @@
     const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
     if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who); item.append(head); }
     const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); if (msg.deleted) text.textContent = '삭제된 메시지입니다'; else text.append(...linked(msg.text));
+    if (msg.sticker && !msg.deleted) { text.classList.add('messengerSticker'); text.replaceChildren(stickerImg(msg.sticker, msg.text)); } // (v1.10.279: the picture alone, no bubble)
     const grid = !msg.deleted && photoGrid(msg); if (grid) { text.classList.add('withPhotos'); if (msg.text === PHOTO_ONLY) text.replaceChildren(grid); else text.prepend(grid); } // (v1.10.233: photos, a grid)
     if (msg.pending || msg.failed) item.classList.add(msg.failed ? 'failed' : 'pending');
     const meta = document.createElement('span'); meta.className = 'messengerMeta';
@@ -189,7 +190,7 @@
       const day = new Date(msg.at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
       if (day !== prevDay) put(`d${day}`, day, () => { const s = document.createElement('p'); s.className = 'messengerDay'; s.textContent = day; return s; });
       const same = Boolean(prev && !prev.system && prev.from === msg.from && day === prevDay);
-      put(`m${msg.seq}`, JSON.stringify([msg.text, Boolean(msg.deleted), same, msg.label, waitingOf(msg).map((m) => m.id)]), () => line(msg, same));
+      put(`m${msg.seq}`, JSON.stringify([msg.text, msg.sticker || '', Boolean(msg.deleted), same, msg.label, waitingOf(msg).map((m) => m.id)]), () => line(msg, same));
       prev = msg; prevDay = day;
     }
     for (const p of pend.filter((x) => x.room === current?.id)) { const same = Boolean(prev && !prev.system && prev.from === p.from); put(`p${p.pid}`, JSON.stringify([p.text, same, p.pending, p.failed || '', p.done]), () => line(p, same)); prev = p; } // (v1.10.233: mine on their way)
@@ -277,9 +278,9 @@
     let data = {}; try { data = await res.json(); } catch {}
     if (!res.ok) throw Object.assign(new Error(data.message || '사진을 올리지 못했습니다.'), { status: res.status, code: data.error }); return data.id;
   }
-  function queueSend(text, photos = []) {
+  function queueSend(text, photos = [], sticker = null) { // (v1.10.279: a sticker -- { id, text } -- goes alone)
     const me = current.members.find((m) => m.id === state.me);
-    const p = { pid: ++pseq, room: current.id, from: state.me, label: me?.label || '나', text: text || (photos.length ? PHOTO_ONLY : ''), at: new Date().toISOString(), pending: true, local: photos.length ? photos : null, ids: [], done: 0 };
+    const p = { pid: ++pseq, room: current.id, from: state.me, label: me?.label || '나', text: sticker ? `(이모티콘) ${sticker.text}` : text || (photos.length ? PHOTO_ONLY : ''), sticker: sticker?.id || null, at: new Date().toISOString(), pending: true, local: photos.length ? photos : null, ids: [], done: 0 };
     pend.push(p); render(); toEnd();
     sendChain = sendChain.then(() => sendOne(p));
   }
@@ -287,7 +288,7 @@
     const g = gen;
     try {
       for (let k = p.ids.length; k < (p.local || []).length; k += 1) { p.ids.push(await upload(p.room, p.local[k])); p.done = k + 1; if (current?.id === p.room) render(); }
-      const data = await api(`/api/messenger/rooms/${p.room}/messages`, { text: p.local && p.text === PHOTO_ONLY ? '' : p.text, photos: p.ids });
+      const data = await api(`/api/messenger/rooms/${p.room}/messages`, p.sticker ? { sticker: p.sticker } : { text: p.local && p.text === PHOTO_ONLY ? '' : p.text, photos: p.ids });
       if (g !== gen) return; pend = pend.filter((x) => x !== p);
       if (data.message?.photos && p.local) data.message.photos.forEach((q, k) => { if (p.local[k]) photoUrls.set(q.id, p.local[k].url); }); // (mine: the shrunk ones already here)
       if (current?.id === p.room && data.message && !msgs.some((x) => x.seq === data.message.seq)) {
@@ -297,12 +298,59 @@
       if (current?.id === p.room) { render(); toEnd(); }
     } catch (err) {
       if (g !== gen) return; p.pending = false; p.failed = err.message || '보내지 못했어요.';
-      const input = byId('messengerInput'); if (!input.value && !p.local) { input.value = p.text; grow(); } // (the words back in the box)
+      const input = byId('messengerInput'); if (!input.value && !p.local && !p.sticker) { input.value = p.text; grow(); } // (the words back in the box)
       if (current?.id === p.room) render(); if (err.status === 401 || err.status === 403) fail(err);
     }
   }
   function resend(p) { p.failed = null; p.pending = true; const input = byId('messengerInput'); if (input.value === p.text) { input.value = ''; grow(); } render(); sendChain = sendChain.then(() => sendOne(p)); }
   function dropPending(p) { pend = pend.filter((x) => x !== p); render(); }
+
+  // ---- v1.10.279 이모티콘 (notes docs/messenger-emoticons-20261108.md): the 😊 panel over the box, PC and phone alike --
+  // 「이모티콘」 (섬 친구들 1, 4 a row: pressed, large; pressed again, sent -- alone), 「그림 글자」 (6 groups, put in the box
+  // at the cursor: a text line), the last 8 of each on top (this device's, never needed)
+  const STICKERS = fetch('/messenger/stickers/stickers.json', { cache: 'default' }).then((r) => r.json()).then((d) => new Map(d.stickers.map((s) => [s.id, s]))).catch(() => new Map());
+  function stickerImg(id, alt) {
+    const img = document.createElement('img'); img.className = 'messengerStickerImg'; img.alt = String(alt || '').replace(/^\(이모티콘\) /, ''); img.decoding = 'async'; img.addEventListener('load', keepEnd);
+    STICKERS.then((m) => { const s = m.get(id); if (s) { img.src = `/messenger/stickers/${s.file}`; img.style.setProperty('--pad', String((s.pad || 0) / 360)); } }); return img; // (pad: its clear side edge -- the time beside the art)
+  }
+  const GLYPHS = [['얼굴', '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 😘 😋 😜 🤔 😴 😭'], ['손', '👍 👎 👏 🙌 👐 🙏 🤝 👋 ✌️ 🤞 👌 🤙 💪 ☝️ 👉 👈 👆 👇 ✋ 🫶'],
+    ['하트', '❤️ 🧡 💛 💚 💙 💜 🤎 🖤 🤍 💕 💞 💓 💗 💖 💘 💝 💌 💯 ✨ ⭐'], ['동물', '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐟 🐝'],
+    ['음식', '🍎 🍊 🍋 🍉 🍇 🍓 🍑 🍒 🍞 🍕 🍔 🍟 🍗 🍜 🍣 🍙 🍰 🍩 ☕ 🍺'], ['물건', '🎉 🎁 🎈 🎂 🎮 🏆 ⚽ 🎵 📷 📱 💡 📌 ⏰ 🌸 🌈 ☀️ 🌙 ☔ 🔥 🏝️']].map(([name, s]) => [name, s.split(' ')]);
+  const recentStore = keep(localStorage, 'gc.messengerRecent');
+  const recentOf = (tab) => { try { const v = JSON.parse(recentStore.get() || '{}')[tab]; return Array.isArray(v) ? v.slice(0, 8) : []; } catch { return []; } };
+  const used = (tab, v) => { try { const all = JSON.parse(recentStore.get() || '{}'); all[tab] = [v, ...recentOf(tab).filter((x) => x !== v)].slice(0, 8); recentStore.set(JSON.stringify(all)); } catch {} };
+  const emoji = byId('messengerEmoji'); const emojiBody = byId('messengerEmojiBody'); const preview = byId('messengerEmojiPreview'); const emojiBtn = byId('messengerEmojiBtn');
+  let emojiTab = 'sticker'; let chosenSticker = null;
+  const showPreview = (s) => { // (the chosen cell marked too)
+    for (const c of emojiBody.querySelectorAll('.messengerStickerCell')) c.setAttribute('aria-pressed', String(Boolean(s) && c.dataset.id === s.id)); chosenSticker = s; preview.classList.toggle('hidden', !s); if (s) { const im = preview.querySelector('img'); im.src = `/messenger/stickers/${s.file}`; im.alt = s.text; } };
+  function sendSticker(s) { if (!current) return; used('sticker', s.id); showPreview(null); queueSend('', [], s); drawEmoji(); }
+  const cell = (label, title, onPick, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.title = title; b.setAttribute('aria-label', title); if (typeof label === 'string') b.textContent = label; else b.append(label); b.addEventListener('click', onPick); return b; };
+  const section = (name, cells, cls) => { const h = document.createElement('p'); h.className = 'messengerEmojiHead'; h.textContent = name; const g = document.createElement('div'); g.className = cls; g.append(...cells); return [h, g]; };
+  async function drawEmoji() {
+    for (const b of emoji.querySelectorAll('[role="tab"]')) b.setAttribute('aria-selected', String(b.dataset.tab === emojiTab));
+    if (emojiTab === 'sticker') {
+      const m = await STICKERS; if (emojiTab !== 'sticker') return;
+      const pickS = (s) => { const im = document.createElement('img'); im.src = `/messenger/stickers/${s.file}`; im.alt = ''; im.loading = 'lazy';
+        const b = cell(im, s.text, () => (chosenSticker?.id === s.id ? sendSticker(s) : showPreview(s)), 'messengerStickerCell'); b.dataset.id = s.id; b.setAttribute('aria-pressed', String(chosenSticker?.id === s.id)); return b; }; // (its id: the chosen one marked)
+      const recent = recentOf('sticker').map((id) => m.get(id)).filter(Boolean);
+      emojiBody.replaceChildren(...(recent.length ? section('최근', recent.map(pickS), 'messengerStickerGrid') : []), ...section('섬 친구들 1', [...m.values()].map(pickS), 'messengerStickerGrid'));
+    } else {
+      showPreview(null);
+      const pickG = (g) => cell(g, g, () => putGlyph(g), 'messengerGlyph'); const recent = recentOf('glyph');
+      emojiBody.replaceChildren(...(recent.length ? section('최근', recent.map(pickG), 'messengerGlyphGrid') : []), ...GLYPHS.flatMap(([name, list]) => section(name, list.map(pickG), 'messengerGlyphGrid')));
+    }
+  }
+  function putGlyph(g) { // at the cursor (the box's 500 letters kept); a phone's keypad not called up for it
+    const input = byId('messengerInput'); if (input.value.length + g.length > 500) return showToast('500자까지 쓸 수 있어요.');
+    const a = input.selectionStart ?? input.value.length; const b = input.selectionEnd ?? a; input.setRangeText(g, a, b, 'end'); grow(); used('glyph', g);
+    if (!window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) input.focus();
+  }
+  function openEmoji(on) { emoji.classList.toggle('hidden', !on); emojiBtn.setAttribute('aria-expanded', String(on)); if (on) { if (window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) byId('messengerInput').blur(); drawEmoji(); keepEnd(); } else showPreview(null); }
+  emojiBtn.addEventListener('click', () => openEmoji(emoji.classList.contains('hidden')));
+  for (const b of emoji.querySelectorAll('[role="tab"]')) b.addEventListener('click', () => { emojiTab = b.dataset.tab; emojiBody.scrollTop = 0; drawEmoji(); });
+  byId('messengerEmojiSend').addEventListener('click', () => { if (chosenSticker) sendSticker(chosenSticker); });
+  byId('messengerEmojiPreviewClose').addEventListener('click', () => showPreview(null));
+  emoji.addEventListener('keydown', (e) => { if (e.key === 'Escape') { openEmoji(false); emojiBtn.focus(); } });
 
   // 메신저 다듬기 B6: the page's own small window for 이름 바꾸기 / 나가기 / 삭제 (not the browser's prompt / confirm) -- the
   // island's paper, focus kept inside it, Esc · 취소 · outside closes it; answers true, the typed words, or null
@@ -399,7 +447,7 @@
     if (streamWanted) setTimeout(openStream, 5000);
   }
   function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
-  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); unreadFrom = room.unread > 0 ? (room.reads?.[state.me] ?? Math.max(0, room.seq - room.unread)) : null; app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
+  function openRoom(room) { closeBubbleMenu(); if (typeof closeViewer === 'function') closeViewer(); openEmoji(false); for (const t of tray) URL.revokeObjectURL(t.url); tray = []; drawTray(); current = room; last = 0; msgs = []; readsKey = ''; clearBox(); unreadFrom = room.unread > 0 ? (room.reads?.[state.me] ?? Math.max(0, room.seq - room.unread)) : null; app.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
   // 메신저 다듬기 A2 사람 고르기 (새 대화방·초대·1:1 같은 화면): 이름 찾기 (치는 대로, 부분 일치) · 고른 사람은 알약 (✕로 빼기) ·
   // 한 줄에 한 사람 (줄 아무 데나 누르면 고름) -- 최근 대화한 사람 먼저 · 방 이름은 아래, 비우면 고른 사람 이름들로 · 단추
   // 「N명과 대화 시작」/「N명 초대」/(1:1, 한 명만)「대화 시작」, 아무도 안 고르면 누를 수 없음

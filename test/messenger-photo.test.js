@@ -48,6 +48,23 @@ test('메신저 사진 저장소: JSON·PostgreSQL 같은 동작 (올리기·붙
   const pg = new PostgresMessengerStore(database.url); t.after(() => pg.pool.end()); await pg.init(); await pg.init(); await photosBehave(pg);
 });
 
+// v1.10.279 이모티콘 (notes docs/messenger-emoticons-20261108.md 2절): the store keeps its id (JSON and PostgreSQL), unsent -- gone
+async function stickersBehave(store) {
+  const room = await store.createRoom('그림방', 'a', ['b']);
+  const msg = await store.post(room.id, 'a', '(이모티콘) 안녕!', false, 'islanders1/hi_bomi'); assert.equal(msg.sticker, 'islanders1/hi_bomi');
+  const plain = await store.post(room.id, 'a', '글자'); assert.equal(plain.sticker, undefined);
+  const shown = await store.messages(room.id); assert.deepEqual(shown.map((m) => [m.text, m.sticker]), [['(이모티콘) 안녕!', 'islanders1/hi_bomi'], ['글자', undefined]]);
+  assert.equal((await store.messageAt(room.id, msg.seq)).sticker, 'islanders1/hi_bomi');
+  await store.unsend(room.id, msg.seq); const gone = await store.messageAt(room.id, msg.seq); assert.equal(gone.text, ''); assert.equal(gone.sticker, undefined, '보내기 취소');
+}
+
+test('메신저 이모티콘 저장소: JSON·PostgreSQL 같은 동작 (그림 이름 저장·보내기 취소)', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-sticker-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
+  const json = new JsonMessengerStore(path.join(dir, 'messenger.json')); await json.init(); await stickersBehave(json);
+  const database = await testDatabase(); t.after(() => database.stop());
+  const pg = new PostgresMessengerStore(database.url); t.after(() => pg.pool.end()); await pg.init(); await pg.init(); await stickersBehave(pg);
+});
+
 test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만이면 「📷 사진」, 그 방 사람만 열림·private 캐시, 7일 뒤 410', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-photo-api-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const { req, base } = await boot(t, dir); let ip = 0;
@@ -81,6 +98,20 @@ test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만�
   assert.equal(got.status, 200); assert.equal(got.headers.get('content-type'), 'image/jpeg'); assert.equal(got.headers.get('cache-control'), 'private, max-age=3600'); assert.equal(got.data.length, JPEG(201).length);
   assert.equal((await call(`/api/messenger/photos/${ids[1]}`, undefined, c.token)).status, 404, '방 밖 사람');
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '설명 한 줄', photos: [ids[0]] }, a.token)).data.error, 'PHOTO_NOT_READY', '한 번만');
+  // v1.10.279 이모티콘: one from the list, alone; its words are the text (the room list, an old page); unsent as a line is
+  const say = (body, who = b) => call( /* (받는이: 사진가 is near the 5-second limit) */`/api/messenger/rooms/${room.id}/messages`, body, who.token);
+  const list = require('../public/messenger/stickers/stickers.json').stickers; assert.equal(list.length, 24); assert.equal(new Set(list.map((s) => s.id)).size, 24);
+  for (const s of list) await fs.access(path.join(__dirname, '../public/messenger/stickers', s.file)); // (every picture there)
+  assert.equal((await say({ sticker: 'islanders1/nope' })).data.error, 'BAD_STICKER', '목록에 없는 이름');
+  assert.equal((await say({ sticker: 'islanders1/hi_bomi', text: '안녕' })).status, 400, '글자와 같이');
+  assert.equal((await say({ sticker: 'islanders1/hi_bomi', photos: [ids[0]] })).status, 400, '사진과 같이');
+  const st = await say({ sticker: 'islanders1/thanks_handeul' }); assert.equal(st.status, 201, JSON.stringify(st.data));
+  assert.equal(st.data.message.text, '(이모티콘) 고마워요'); assert.equal(st.data.message.sticker, 'islanders1/thanks_handeul');
+  const theirs = (await call(`/api/messenger/rooms/${room.id}/messages?after=0`, undefined, a.token)).data.messages.find((m) => m.seq === st.data.message.seq);
+  assert.equal(theirs.sticker, 'islanders1/thanks_handeul'); assert.equal((await call('/api/messenger', undefined, a.token)).data.rooms[0].last.text, '(이모티콘) 고마워요', '방 목록 줄');
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/unsend`, { seq: st.data.message.seq }, b.token)).status, 200);
+  const undone = (await call(`/api/messenger/rooms/${room.id}/messages?after=0`, undefined, b.token)).data.messages.find((m) => m.seq === st.data.message.seq);
+  assert.equal(undone.deleted, true); assert.equal(undone.sticker, undefined, '보내기 취소');
   await req('/api/test/messenger/photo-day', null, { max: 4 }); assert.equal((await up(JPEG())).status, 201, '하루 4장째');
   const over = await up(JPEG()); assert.equal(over.status, 429); assert.equal(over.data.error, 'PHOTO_DAY_LIMIT', '하루 상한');
   await req('/api/test/messenger/photo-day', null, { max: 6 }); const three = await Promise.all([0, 1, 2].map(() => up(JPEG(400000))));
