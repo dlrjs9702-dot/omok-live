@@ -20,7 +20,7 @@ test('주민 내기 규칙: 27명 모두 좋아하는 게임·실력, 그날 게
   const games = B.PROFILES.flatMap((p) => p.games); for (const g of games) assert.ok(B.NAMES[g] && B.kindOf(g), g);
   assert.ok(games.filter((g) => B.kindOf(g) === 'score').length >= 15 && games.filter((g) => B.kindOf(g) === 'match').length >= 15); // (score and match mixed)
   for (const s of ['easy', 'normal', 'hard']) assert.ok(B.PROFILES.some((p) => p.skill === s), s);
-  for (let n = 0; n < 27; n += 1) { const g = B.gameOf(n, '2026-11-08'); assert.ok(B.PROFILES[n].games.includes(g)); assert.equal(B.gameOf(n, '2026-11-08'), g); }
+  for (let n = 0; n < C.RESIDENTS.length; n += 1) { const g = B.gameOf(n, '2026-11-08'); assert.ok(B.PROFILES[n].games.includes(g)); assert.equal(B.gameOf(n, '2026-11-08'), g); }
   assert.ok(new Set(Array.from({ length: 20 }, (_, i) => B.gameOf(0, `2026-12-${String(i + 1).padStart(2, '0')}`))).size === 2); // (both of 봄이's, day by day)
   // marks: harder is harder; a time beaten from under
   for (const [g, s] of Object.entries(B.SCORE)) { const t = s.target; assert.ok(s.higher ? t.easy < t.normal && t.normal < t.hard : t.easy > t.normal && t.normal > t.hard, g); }
@@ -52,7 +52,7 @@ test('주민 내기 돈: 잊힌 내기 환불은 판돈만 빠졌을 때 한 번
   // ① taken and paid out (won), forgotten before its open was cleared: nothing more
   b0 = await balance(); await forgot({ take: true, pay: true }); assert.equal(await balance(), b0 + 1000); await read(); assert.equal(await balance(), b0 + 1000, '지급 뒤 재시작');
   // ④ a match bet settling past the 20 minutes: kept (forgotten, it would be refunded)
-  const fixed = new Set(Object.values(R.FIXED)); const day = kst(); const n = [...Array(27).keys()].find((k) => !fixed.has(k) && B.kindOf(B.gameOf(k, day)) === 'match') ?? [...Array(27).keys()].find((k) => !fixed.has(k));
+  const fixed = new Set(Object.values(R.FIXED)); const day = kst(); const n = [...Array(C.RESIDENTS.length).keys()].find((k) => !fixed.has(k) && B.kindOf(B.gameOf(k, day)) === 'match') ?? [...Array(C.RESIDENTS.length).keys()].find((k) => !fixed.has(k));
   await req('/api/test/affinity', a, { n, delta: 5 }); await req('/api/test/island/free-residents', a, {});
   const s = (await req('/api/island/bet/start', a, { n, stake: 1000 })).data; assert.ok(s.ok, JSON.stringify(s));
   assert.equal((await req('/api/test/bet', a, { pendingOld: s.id })).data.kept, true, '정산 중은 남김');
@@ -68,8 +68,8 @@ test('주민 내기 서버: 아는 사이부터·근무 중 아님·하루 한 �
   const free = () => req('/api/test/island/free-residents', a, {}); // (an island event may hold an islander -- let go, as the e2e do)
   const day = kst(); const fixed = new Set(Object.values(R.FIXED));
   // a score game today with a short least round (reaction 7 s, numbers 6.5 s at 보통) -- an islander off a post
-  const n = [...Array(27).keys()].find((k) => !fixed.has(k) && ['reaction', 'numbers'].includes(B.gameOf(k, day)));
-  const other = [...Array(27).keys()].find((k) => !fixed.has(k) && k !== n);
+  const n = [...Array(C.RESIDENTS.length).keys()].find((k) => !fixed.has(k) && ['reaction', 'numbers'].includes(B.gameOf(k, day)));
+  const other = [...Array(C.RESIDENTS.length).keys()].find((k) => !fixed.has(k) && k !== n);
   await free(); { const r = (await req(`/api/island/bet?n=${n ?? other}`, a)).data; assert.equal(r.error, 'NOT_KNOWN', JSON.stringify(r)); } // (처음 본 사이)
   for (const k of [n, other]) await req('/api/test/affinity', a, { n: k, delta: 5 });
   const busy = (await req(`/api/island/bet?n=${R.FIXED.gate}`, a)).data; assert.equal(busy.busy, true); assert.equal(busy.say, require('../public/plaza/island-cast').withTail(require('../lib/island-bet-lines.json').lines.find((l) => l.n === R.FIXED.gate).duty, R.FIXED.gate)); /* (마루's own 「근무 중」 line) */ // (마루 at the gate: no bet)
@@ -81,7 +81,7 @@ test('주민 내기 서버: 아는 사이부터·근무 중 아님·하루 한 �
   const left = (await req('/api/island/bet/end', a, { id: s.id })).data.done; assert.equal(left.result, 'lose'); assert.equal(left.pay, 0); assert.equal(await balance(), b0 - 1000);
   assert.equal((await req(`/api/island/bet?n=${other}`, a)).data.error, 'BET_DONE');
   // (총괄 #428) a restart forgets a running bet: the next read gives its stake back -- once, read twice; its 「한 판」 stays
-  const third = [...Array(27).keys()].find((k) => !fixed.has(k) && k !== n && k !== other); await req('/api/test/affinity', a, { n: third, delta: 5 }); await free();
+  const third = [...Array(C.RESIDENTS.length).keys()].find((k) => !fixed.has(k) && k !== n && k !== other); await req('/api/test/affinity', a, { n: third, delta: 5 }); await free();
   const b2 = await balance(); const s3 = (await req('/api/island/bet/start', a, { n: third, stake: 1000 })).data; assert.ok(s3.ok, JSON.stringify(s3)); assert.equal(await balance(), b2 - 1000);
   await req('/api/test/bet', a, { forget: true });
   await req(`/api/island/bet?n=${third}`, a); assert.equal(await balance(), b2); await req(`/api/island/bet?n=${third}`, a); assert.equal(await balance(), b2); // (memory gone: back once)

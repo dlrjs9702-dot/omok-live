@@ -115,7 +115,7 @@ test('17명 이야기: 빛나·김우성·마루 단짝까지, 마루폭포·관
     // the book: all 27, the three at 3/3 -- 김우성's 3장 in full
     await page.locator('#islandBagTab').click(); await page.locator('#islandStoryBtn').click();
     const book = page.locator('#storyBookDialog'); await expect(book).toBeVisible();
-    await expect(book.locator('.storyResident')).toHaveCount(27);
+    await expect(book.locator('.storyResident')).toHaveCount(await page.evaluate(() => window.IslandCast.RESIDENTS.length)); /* (all of them -- v1.10.284) */
     for (const n of [12, 22, 23]) await expect(book.locator('.storyResident').nth(n).locator('summary small')).toHaveText('3/3');
     await shot('book-27'); await book.locator('.storyResident').nth(26).scrollIntoViewIfNeeded(); await shot('book-17');
     const woo = book.locator('.storyResident').nth(22); await woo.locator('summary').click(); await expect(woo.locator('.storyChapter.locked')).toHaveCount(0);

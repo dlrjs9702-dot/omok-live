@@ -24,7 +24,7 @@ test('이야기 글·규칙: 스물일곱 명 세 장, 쪽지·제안·할 일, 
     for (const ch of chs) {
       assert.ok(ch.title && ch.task && ch.done && ch.offer.length >= 1 && ch.note.length >= 4, ch.title);
       assert.ok(!`${ch.offer}${ch.task}${ch.done}${ch.note}`.includes('*'), ch.title); // (no markdown left)
-      if (ch.go.talk != null) assert.ok(Number.isInteger(ch.go.talk) && ch.go.talk >= 0 && ch.go.talk <= 26);
+      if (ch.go.talk != null) assert.ok(Number.isInteger(ch.go.talk) && ch.go.talk >= 0 && ch.go.talk < S.RESIDENTS.length);
       else { const p = S.spotOf(ch.go, T); assert.ok(p, `${ch.title} ${ch.go.at}`); let near = false; for (let dx = -p.r; dx <= p.r && !near; dx += 1) for (let dz = -p.r; dz <= p.r && !near; dz += 1) near = Math.hypot(dx, dz) <= p.r && T.walkable(p.x + dx, p.z + dz); assert.ok(near, ch.go.at); }
     }
   }
@@ -44,13 +44,13 @@ test('이야기 글·규칙: 스물일곱 명 세 장, 쪽지·제안·할 일, 
 // on a walk and 4 m or more off every door (233 초승역: a door within 2.6 m took the prompt); the night ones as before
 test('이야기 17명: 10~26 세 장씩(제안 2·쪽지 5·끝말 1), 한 줄 46자, 꼬리말 한 번, 새 곳 다섯은 길 위·문에서 4 m, 밤 장', () => {
   const Cast = require('../public/plaza/island-cast');
-  for (let n = 10; n <= 26; n += 1) {
+  for (let n = 10; n < S.RESIDENTS.length; n += 1) {
     assert.equal(S.RESIDENTS[n].length, 3, String(n));
     S.RESIDENTS[n].forEach((ch, c) => {
       const at = `${n}.${c + 1} ${ch.title}`;
       assert.equal(ch.offer.length, 2, at); assert.equal(ch.note.length, 5, at); assert.equal(typeof ch.done, 'string', at); assert.equal(ch.piece, null, at);
       for (const line of [...ch.offer, ch.done, ...ch.note]) assert.ok(line.length <= 46, `${at}: ${line}`);
-      assert.ok(ch.go.talk != null ? ch.go.talk >= 0 && ch.go.talk <= 26 && ch.go.talk !== n : Boolean(S.PLACE[ch.go.at]), at);
+      assert.ok(ch.go.talk != null ? ch.go.talk >= 0 && ch.go.talk < S.RESIDENTS.length && ch.go.talk !== n : Boolean(S.PLACE[ch.go.at]), at);
       assert.equal(Cast.withTail(ch.note[4], n), ch.note[4], `${at}: 꼬리말 두 번`);
     });
   }

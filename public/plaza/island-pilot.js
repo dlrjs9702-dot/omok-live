@@ -56,5 +56,35 @@
     return (T.nature?.().trees || []).filter((t) => inZone(t.x, t.z) && !fruit.some((h) => h.x === t.x && h.z === t.z) && TREE_OF[T.treeKind(t)])
       .map((t) => ({ id: TREE_OF[T.treeKind(t)], x: t.x, z: t.z, yaw: Math.round((((t.x * 12.9898 + t.z * 78.233) % 6.28) + 6.28) % 6.28 * 100) / 100, s: Math.round(t.s * 100) / 100 }));
   }
-  return Object.freeze({ ZONE, PATH_X, CUT_R, KINDS, IDS, TREE_OF, plants, blades, trees, inZone });
+  // ---- v1.10.284 G1 땅과 풀, 섬 전체 (notes docs/graphics-island-wide-20261108.md): the blades over all the island's grass
+  // ground, in square cells (CELL m) made as the camera comes near and dropped behind it -- each cell its own seed, the same
+  // on every screen. Where grass grows is read from the ground's own painted maps (tools/maps: path-a, path-b, cover-a/b,
+  // shore -- each a value 0..255 per point), not the walks' curves (34 µs a point: too slow for a cell a frame).
+  const CELL = 16;
+  // how thick the grass is at a point from the maps' values (0: none) -- off the walks (half a metre past their edge), the
+  // gravel, bare earth, sand and rock, and two metres back from the sea; thinner on the forest floor
+  function grassFrom(m) {
+    if (m.path > 64 || m.gravel > 60 || m.bare > 128 || m.sand > 100 || m.rock > 100 || m.shore < 150) return 0;
+    return 1 - (m.forest / 255) * 0.65;
+  }
+  // the cells with any part within r of (x, z), nearest first: { i, j, x, z (its centre), d (to its nearest point) }
+  function cellsNear(x, z, r, size = CELL) {
+    const out = []; const i0 = Math.floor((x - r) / size); const i1 = Math.floor((x + r) / size); const j0 = Math.floor((z - r) / size); const j1 = Math.floor((z + r) / size);
+    for (let i = i0; i <= i1; i += 1) for (let j = j0; j <= j1; j += 1) {
+      const dx = Math.max(i * size - x, 0, x - (i + 1) * size); const dz = Math.max(j * size - z, 0, z - (j + 1) * size); const d = Math.hypot(dx, dz);
+      if (d <= r) out.push({ i, j, x: (i + 0.5) * size, z: (j + 0.5) * size, d });
+    }
+    return out.sort((a, b) => a.d - b.d || Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z));
+  }
+  // a cell's blades: up to `max` tried points in a random order of its own (any first part of the list is spread over the
+  // whole cell -- fewer shown is evenly thinner), each kept with the chance `thick(x, z)` (0..1) gives: { x, z, yaw, h }
+  function cellBlades(i, j, max, thick, size = CELL) {
+    const r = rng(((i * 73856093) ^ (j * 19349663) ^ 0x51ed) | 0); const out = [];
+    for (let k = 0; k < max; k += 1) {
+      const x = (i + r()) * size; const z = (j + r()) * size; const yaw = r() * Math.PI * 2; const h = 0.12 + r() * 0.14; const keep = r();
+      if (keep < thick(x, z)) out.push({ x, z, yaw, h });
+    }
+    return out;
+  }
+  return Object.freeze({ ZONE, PATH_X, CUT_R, KINDS, IDS, TREE_OF, plants, blades, trees, inZone, CELL, grassFrom, cellsNear, cellBlades });
 }));

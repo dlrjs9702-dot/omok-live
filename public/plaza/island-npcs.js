@@ -11,7 +11,9 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.IslandNpcs = api;
 }(typeof self !== 'undefined' ? self : this, (T) => {
-  const COUNT = 27; // v1.10.216 근무표 C2: every islander (island-cast RESIDENTS) -- those at a post that day not walking (island-roster walks)
+  // v1.10.216 근무표 C2: every islander (island-cast RESIDENTS) -- those at a post that day not walking (island-roster walks).
+  // (v1.10.284: as many as the cast has -- read when first wanted: this file loads before island-cast.js in the page)
+  let castCount = 0; const count = () => (castCount ||= ((typeof module === 'object' && module.exports ? require('./island-cast.js') : (typeof self !== 'undefined' ? self : globalThis).IslandCast)?.RESIDENTS?.length || 27));
   // 달마루섬 (5단계): the bigger island's grid; where one may stand is the island's own walkable (rivers, the lake, the
   // cliffs, the stairs), the cliff fronts are rectangles, the structures' circles shared with the scene
   const DAL = T.MAP === 'dalmaru'; const PC = T.PLAZA_C || { x: 0, z: 0 };
@@ -244,7 +246,7 @@
     if (homes) return homes;
     const all = stopPlaces(); if (!all.length) return (homes = []);
     const c = { x: PC.x, z: PC.z }; homes = [all.reduce((b, p) => (far(p, c) < far(b, c) ? p : b))];
-    while (homes.length < Math.min(COUNT, all.length)) homes.push(all.reduce((b, p) => (Math.min(...homes.map((h) => far(h, p))) > Math.min(...homes.map((h) => far(h, b))) ? p : b)));
+    while (homes.length < Math.min(count(), all.length)) homes.push(all.reduce((b, p) => (Math.min(...homes.map((h) => far(h, p))) > Math.min(...homes.map((h) => far(h, b))) ? p : b)));
     return homes;
   }
   // (the outing: of an 아침 the even ones, of an 저녁 the odd ones, to the neighbourhood three homes on -- a visit, never
@@ -262,7 +264,7 @@
   const rounds = new Map();
   function round(n, phase = 'day') {
     const key = phase === 'day' ? n : `${n}:${phase}`; if (rounds.has(key)) return rounds.get(key);
-    if (n < COUNT) { const used = new Map(); for (let k = 0; k < COUNT; k += 1) makeRound(k, phase, used); return rounds.get(key); }
+    if (n < count()) { const used = new Map(); for (let k = 0; k < count(); k += 1) makeRound(k, phase, used); return rounds.get(key); }
     return makeRound(n, phase, null);
   }
   function makeRound(n, phase, used) {
@@ -524,6 +526,6 @@
 
   // the islanders walking about the island now (X2 선물 배달 picks from these) -- all of them for now; 주민 근무표 changes
   // only this when some keep a shop part of the day
-  const walking = () => Array.from({ length: COUNT }, (_, n) => n);
-  return { COUNT, WALKER, round, at, residentAt, walking, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  const walking = () => Array.from({ length: count() }, (_, n) => n);
+  return { get COUNT() { return count(); }, WALKER, round, at, residentAt, walking, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));
