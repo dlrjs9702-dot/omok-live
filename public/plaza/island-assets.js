@@ -68,6 +68,11 @@
   // v1.10.271 섬 택시 (assets 99): the car (front −Z: turned round, its doors and wheels kept as nodes) and the stop's bench
   'taxi.car': { url: '/assets/island/taxi-v1/taxi_island.glb', low: { url: '/assets/island/taxi-v1/taxi_island_low.glb' }, near: 40, rotationY: Math.PI },
   'taxi.stop': { url: '/assets/island/taxi-v1/taxi_stop.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_low.glb' }, near: 40, rotationY: Math.PI },
+    // v1.10.275 그래픽 시범 (assets 106: Nature Megapack - Low Poly Extended, RG Poly, CC0): the one patch's plants
+    // (island-pilot-scene.js), a file per season with its own 512 picture -- light enough to be its own Low everywhere
+    ...Object.fromEntries(('tree_poplar tree_round tree_cluster tree_twin tree_fir tree_fir_slim bush_round bush_berry bush_leafy bush_fern rock_boulder rock_flat rock_block rock_pebble '
+      + 'grass_broad grass_tuft grass_short grass_reed flower_blue flower_daisy flower_red flower_lily mushroom_red mushroom_brown').split(' ')
+      .map((id) => [`pilot.${id}`, { seasons: Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/pilot106/${s}/${id}.glb`])), near: 60 }])),
     'nature.tree.round': { seasons: seasonal('nature/tree_v1_{s}.glb'), low: { seasons: seasonal('nature/tree_v1_{s}_low.glb') }, scale: 0.72, near: 35 },
     'nature.tree.tiered': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.68, near: 35 },
     'nature.tree.blossom': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.62, near: 35 },
