@@ -209,3 +209,25 @@ test('1인칭 손: 잡초 뽑기·열매 따기·문 SPACE 동안만 손, 잡초
   expect((await pull(dark.page, w)).some((s) => s.shown)).toBe(false);
   await expectNoScriptError(dark.page); await dark.context.close();
 });
+
+// v1.10.284 그래픽 G1 (gamecenter-notes docs/graphics-island-wide-20261108.md 4절): with the pilot asked for (gc.testPilot), the
+// wind grass over the whole island in 16 m cells round me -- made as I come and gone behind me; none on a walk, by a tree or on
+// the plaza, some on a lawn. PC (a phone's 25 m the same code).
+test('그래픽 G1: 섬 전체 풀 칸이 나를 따라 바뀌고, 길·나무·광장에는 풀 없음', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 한 번 (같은 코드)'); test.setTimeout(180000);
+  const who = await shopper(browser, request, '풀칸손님', 0, 'female'); const { page } = who;
+  await page.evaluate(() => { localStorage.setItem('gc.testPilot', '1'); localStorage.removeItem('gc.testClassic'); });
+  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().holdQuality(2));
+  const pilot = () => page.evaluate(() => window.PlazaDebug().pilot());
+  await page.evaluate(() => window.PlazaWarp(-15, -40)); await expect.poll(async () => (await pilot()).cells, { timeout: 60000 }).toBeGreaterThan(8);
+  const here = (await pilot()).cellKeys; expect(here).toContain('-1,-3'); /* (the cell I stand in: x -16..0, z -48..-32) */
+  await page.evaluate(() => window.PlazaWarp(60, -110)); await expect.poll(async () => (await pilot()).cellKeys.includes('3,-7'), { timeout: 60000 }).toBe(true);
+  await expect.poll(async () => (await pilot()).cellKeys.includes('-1,-3'), { timeout: 30000 }).toBe(false); /* (well behind me -- past the reach and a cell: gone) */
+  const at = await page.evaluate(() => { const T = window.IslandTerrain; const D = window.PlazaDebug(); const tree = T.natureSolids()[0]; let walk = null;
+    for (let x = -40; x < 40 && !walk; x += 0.5) for (let z = -60; z < 0 && !walk; z += 0.5) if (T.walkDist(x, z) < -0.5 && !T.inPlaza(x, z)) walk = [x, z];
+    return { walk: D.pilotGrassAt(walk[0], walk[1]), tree: D.pilotGrassAt(tree.x, tree.z), plaza: D.pilotGrassAt(T.PLAZA_C.x, T.PLAZA_C.z), lawn: D.pilotGrassAt(-15, -40) }; });
+  expect(at).toMatchObject({ walk: 0, tree: 0, plaza: 0 }); expect(at.lawn).toBeGreaterThan(0.5);
+  await page.evaluate(() => window.PlazaDebug().holdQuality(0)); await expect.poll(async () => (await pilot()).cells).toBe(0); /* (「낮음」: none) */
+  await expectNoScriptError(page); await who.context.close();
+});

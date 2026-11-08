@@ -11,10 +11,10 @@ const CUTS = 24;
 // the ground's own colour, lighter toward the tip, so it grows out of the ground and does not float on it
 const GRASS = 0x9fd67f; const GROUND = { spring: [0xc0e0a4, 0.55], summer: [0xacd497, 0.35], autumn: [0xe9d7a8, 0.6], winter: [0xeff4fa, 0.8] };
 
-export function pilotScene({ scene, assets, phone = false, onTreesIn = null }) {
+export function pilotScene({ scene, assets, phone = false, onTreesIn = null, groundMaps = null }) {
   const group = new THREE.Group(); group.name = 'pilot'; scene.add(group);
   const made = [];
-  const U = { uPilotTime: { value: 0 }, uPilotTone: { value: 1 }, uPilotExposure: { value: 0.7 }, uPilotCuts: { value: Array.from({ length: CUTS }, () => new THREE.Vector4()) }, uPilotCutN: { value: 0 } };
+  const U = { uPilotTime: { value: 0 }, uPilotTone: { value: 1 }, uPilotOut: { value: 1 }, uPilotExposure: { value: 0.7 }, uPilotCuts: { value: Array.from({ length: CUTS }, () => new THREE.Vector4()) }, uPilotCutN: { value: 0 } };
   // a material of the patch: its own wind (if its geometry has the second UV), cuts (grass and flowers) and tone
   // `unit`: metres to the geometry's own units (a quantized model's positions are integers, its part matrix the scale)
   function patch(m, { wind, cut, unit = 1 }) {
@@ -38,9 +38,9 @@ ${wind ? `  float pilotSway = uv1.x * (0.75 + 0.25 * sin(uPilotTime * 0.37 + pil
       /* the tone: the ACES curve on the brightness only (each channel's own made dark greys navy at night -- 총괄 #425), and
          none in the dark (its toe would make the night darker than the island round it) */
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uPilotTone; uniform float uPilotExposure;
+uniform float uPilotTone; uniform float uPilotOut; uniform float uPilotExposure;
 vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x = l * uPilotExposure; float t = clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); return mix(c, c * (t / max(l, 1e-4)), smoothstep(0.04, 0.2, l)); }`)
-        .replace('#include <tonemapping_fragment>', '#include <tonemapping_fragment>\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, pilotTone(gl_FragColor.rgb), uPilotTone);');
+        .replace('#include <tonemapping_fragment>', '#include <tonemapping_fragment>\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, pilotTone(gl_FragColor.rgb), uPilotTone * uPilotOut);');
     };
     const key = m.customProgramCacheKey?.bind(m);
     m.customProgramCacheKey = () => `${key ? key() : ''}:pilot2${wind ? 'w' : ''}${cut ? 'c' : ''}`; m.needsUpdate = true;
@@ -65,13 +65,10 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   blade.setAttribute('color', new THREE.Float32BufferAttribute([0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 1.16, 1.22, 1.04, 1.16, 1.22, 1.04, 1.55, 1.58, 1.18], 3));
   blade.setAttribute('uv1', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0.5, 0, 0.5, 0, 1, 0], 2));
   blade.setIndex([0, 1, 2, 1, 3, 2, 2, 3, 4, 0, 2, 1, 1, 2, 3, 2, 4, 3]); /* (both faces, each lit from above -- a DoubleSide material turns the back's normal down, and half the blades went dark) */
-  const bladeMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 }); made.push(bladeMat); patch(bladeMat, { wind: true, cut: true });
-  const bladeList = P.blades(T, phone ? 2500 : 7000);
-  const grass = new THREE.InstancedMesh(blade, bladeMat, bladeList.length); grass.receiveShadow = true; grass.castShadow = false; grass.name = 'pilot_grass';
-  bladeList.forEach((b, i) => grass.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(b.x, T.heightAt(b.x, b.z), b.z), q.setFromAxisAngle(up, b.yaw).clone(), new THREE.Vector3(1, b.h, 1))));
-  grass.computeBoundingSphere(); group.add(grass);
-  // v1.10.276 ④ the patch's ground: a mottled picture (made here, 512, no file) on a sheet laid on the ground, the season's
-  // ground colour, fading out from two thirds of the way to the edge -- no tone, so its rim is the island's own ground
+  // (v1.10.284 G1: a blade material per season -- the cells stand in the island's season zones, each its own ground colour)
+  const bladeMats = new Map(); const bladeMatOf = (s) => { if (!bladeMats.has(s)) { const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 }); const [to, share] = GROUND[s] || GROUND.summer; m.color.setHex(GRASS).lerp(new THREE.Color(to), share); patch(m, { wind: true, cut: true }); made.push(m); bladeMats.set(s, m); } return bladeMats.get(s); };
+  // v1.10.276 ④ the ground: a mottled picture (made here, 512, no file) on a sheet laid on the ground, the season's ground
+  // colour -- no tone, so where it fades it is the island's own ground. v1.10.284 G1: a sheet a cell, seen where grass grows
   const groundTex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d'); const r = (() => { let s = 2761; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
     x.fillStyle = 'rgb(232,232,232)'; x.fillRect(0, 0, 512, 512);
@@ -80,24 +77,80 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     for (let i = 0; i < 900; i += 1) blob(r() * 512, r() * 512, 2 + r() * 5, r() < 0.7 ? 170 : 255, 0.35); /* (specks: soil, light leaves) */
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 5); t.anisotropy = 4; made.push(t); return t;
   })();
-  const sheet = new THREE.PlaneGeometry(P.ZONE.r * 2, P.ZONE.r * 2, 40, 40); sheet.rotateX(-Math.PI / 2); made.push(sheet);
-  { const p = sheet.attributes.position; const rgba = new Float32Array(p.count * 4);
-    for (let i = 0; i < p.count; i += 1) { const wx = P.ZONE.x + p.getX(i); const wz = P.ZONE.z + p.getZ(i); p.setY(i, T.heightAt(wx, wz) + 0.025); const e = Math.min(1, Math.max(0, (Math.hypot(p.getX(i), p.getZ(i)) / P.ZONE.r - 0.65) / 0.35)); rgba.set([1, 1, 1, 1 - e * e * (3 - 2 * e)], i * 4); }
-    sheet.setAttribute('color', new THREE.BufferAttribute(rgba, 4)); sheet.computeVertexNormals(); }
-  const groundMat = new THREE.MeshStandardMaterial({ map: groundTex, vertexColors: true, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); made.push(groundMat);
-  const ground = new THREE.Mesh(sheet, groundMat); ground.position.set(P.ZONE.x, 0, P.ZONE.z); ground.receiveShadow = true; ground.renderOrder = -1; ground.name = 'pilot_ground'; group.add(ground);
-  let season = null; let seasonAt = 0;
+  const groundMats = new Map(); const groundMatOf = (s) => { if (!groundMats.has(s)) { const m = new THREE.MeshStandardMaterial({ map: groundTex, vertexColors: true, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.color.copy(bladeMatOf(s).color).multiplyScalar(1.12); /* (the picture's mean ~0.9: its sheet the ground's colour) */ made.push(m); groundMats.set(s, m); } return groundMats.get(s); };
+
+  // ---- v1.10.284 G1 땅과 풀, 섬 전체 (notes docs/graphics-island-wide-20261108.md 2절): the cells round me, made one a frame
+  // nearest first and dropped once well behind; where grass grows read from the ground's maps (island.js's pictures, read
+  // once small: 512 a side, 1.15 m a point, the walks' and the shore's distances blended between points), off every solid
+  // and the plaza and the water. PC: 45 m, 12 blades a square metre; a phone 25 m, 6. 「중간」 half, 「낮음」 none; beyond
+  // half the distance thinning to a quarter at the edge.
+  // (the software-render gate, docs 3절: 「중간」 within 20% of no grass -- 12 a m² cost 35-40%; this 8, 「중간」 a third of it within
+  // two thirds of the reach)
+  const REACH = phone ? 25 : 45; const PER_M2 = phone ? 5 : 8; const MAX_CELLS = phone ? 24 : 48; const SIDE = 512; const TIER = [0, 0.35, 1];
+  let quality = 2; let mapsRead = null; let solidGrid = null;
+  function readMaps() { // -> { path, gravel, bare, sand, rock, forest, shore } sampler, or null until island.js's pictures are in
+    if (mapsRead) return mapsRead; const m = groundMaps?.(); const imgs = m && [m.pathA, m.pathB, m.coverA, m.coverB, m.shore].map((t) => t?.image);
+    if (!imgs || imgs.some((im) => !im?.width)) return null;
+    const c = document.createElement('canvas'); c.width = c.height = SIDE; const g = c.getContext('2d', { willReadFrequently: true });
+    const data = imgs.map((im) => { g.clearRect(0, 0, SIDE, SIDE); g.drawImage(im, 0, 0, SIDE, SIDE); return g.getImageData(0, 0, SIDE, SIDE).data; });
+    const S = T.GROUND.size; const at = (d, ch, x, z) => { const u = ((x + S / 2) / S) * SIDE - 0.5; const v = ((z + S / 2) / S) * SIDE - 0.5; const i = Math.max(0, Math.min(SIDE - 2, Math.floor(u))); const j = Math.max(0, Math.min(SIDE - 2, Math.floor(v))); const fu = Math.max(0, Math.min(1, u - i)); const fv = Math.max(0, Math.min(1, v - j)); const p = (a, b) => d[((j + b) * SIDE + i + a) * 4 + ch]; return (p(0, 0) * (1 - fu) + p(1, 0) * fu) * (1 - fv) + (p(0, 1) * (1 - fu) + p(1, 1) * fu) * fv; };
+    const [pa, pb, ca, cb, sh] = data;
+    mapsRead = (x, z) => ({ path: at(pa, 0, x, z), gravel: at(pb, 2, x, z), forest: at(ca, 0, x, z), bare: at(ca, 1, x, z), sand: at(ca, 2, x, z), rock: at(cb, 0, x, z), shore: at(sh, 0, x, z) });
+    return mapsRead;
+  }
+  function nearSolid(x, z) { // (a 4 m grid of the island's solids, made once)
+    if (!solidGrid) { solidGrid = new Map(); for (const s of [...(T.natureSolids?.() || []), ...(T.structureSolids?.() || []), ...(T.villageSolids?.() || [])]) { const k = `${Math.floor(s.x / 4)},${Math.floor(s.z / 4)}`; if (!solidGrid.has(k)) solidGrid.set(k, []); solidGrid.get(k).push(s); } }
+    const i = Math.floor(x / 4); const j = Math.floor(z / 4);
+    for (let a = i - 2; a <= i + 2; a += 1) for (let b = j - 2; b <= j + 2; b += 1) for (const s of solidGrid.get(`${a},${b}`) || []) if (Math.hypot(x - s.x, z - s.z) < (s.r || 0.5) + 0.12) return true;
+    return false;
+  }
+  const thickAt = (x, z) => { const m = readMaps(); if (!m) return 0; const k = P.grassFrom(m(x, z)); return k > 0 && !(T.inPlaza && T.inPlaza(x, z)) && T.walkable(x, z) && !nearSolid(x, z) ? k : 0; };
+  const cellMap = new Map(); // 'i,j' -> { mesh, sheet, n (its blades), d }
+  function makeCell({ i, j, x, z }) {
+    const season = T.seasonAt?.(x, z, Date.now()) || 'summer';
+    const list = P.cellBlades(i, j, Math.round(P.CELL * P.CELL * PER_M2), thickAt);
+    const mesh = new THREE.InstancedMesh(blade, bladeMatOf(season), Math.max(1, list.length)); mesh.receiveShadow = true; mesh.castShadow = false; mesh.name = 'pilot_grass';
+    list.forEach((b, k) => mesh.setMatrixAt(k, new THREE.Matrix4().compose(new THREE.Vector3(b.x, T.heightAt(b.x, b.z), b.z), q.setFromAxisAngle(up, b.yaw).clone(), new THREE.Vector3(1, b.h, 1))));
+    mesh.count = list.length; mesh.computeBoundingSphere(); group.add(mesh);
+    // its ground sheet: 17 x 17 points on the ground, each as clear as the grass is thick there
+    const geo = new THREE.PlaneGeometry(P.CELL, P.CELL, 16, 16); geo.rotateX(-Math.PI / 2); const p = geo.attributes.position; const rgba = new Float32Array(p.count * 4);
+    for (let k = 0; k < p.count; k += 1) { const wx = x + p.getX(k); const wz = z + p.getZ(k); p.setY(k, T.heightAt(wx, wz) + 0.025); rgba.set([1, 1, 1, Math.min(1, thickAt(wx, wz) * 1.4)], k * 4); }
+    geo.setAttribute('color', new THREE.BufferAttribute(rgba, 4)); geo.computeVertexNormals(); geo.computeBoundingSphere();
+    const sheet = new THREE.Mesh(geo, groundMatOf(season)); sheet.position.set(x, 0, z); sheet.receiveShadow = true; sheet.renderOrder = -1; sheet.name = 'pilot_ground'; group.add(sheet);
+    return { mesh, sheet, n: list.length, d: 0 };
+  }
+  function dropCell(key) { const c = cellMap.get(key); if (!c) return; c.mesh.removeFromParent(); c.mesh.dispose(); c.sheet.removeFromParent(); c.sheet.geometry.dispose(); cellMap.delete(key); }
+  const reachNow = () => (quality === 1 ? REACH * 0.66 : REACH);
+  const shownOf = (c) => { const far = Math.max(0, Math.min(1, (c.d / reachNow() - 0.5) / 0.5)); return Math.round(c.n * (TIER[quality] ?? 1) * (1 - far * 0.75)); };
+  let cellsAt = { x: Infinity, z: Infinity };
+  function stepCells(me) { // (where I stand: the cells' distances each frame, one made a frame -- none while the maps are not in)
+    if (!readMaps()) return;
+    const want = quality > 0 ? P.cellsNear(me.x, me.z, reachNow()) : []; const keep = new Set(want.map((c) => `${c.i},${c.j}`));
+    for (const key of [...cellMap.keys()]) { const [i, j] = key.split(',').map(Number); const dx = Math.max(i * P.CELL - me.x, 0, me.x - (i + 1) * P.CELL); const dz = Math.max(j * P.CELL - me.z, 0, me.z - (j + 1) * P.CELL); if (!keep.has(key) && (Math.hypot(dx, dz) > REACH + P.CELL || quality === 0)) dropCell(key); }
+    let made1 = false;
+    for (const c of want) { const key = `${c.i},${c.j}`; let cell = cellMap.get(key); if (!cell) { if (made1 || cellMap.size >= MAX_CELLS) continue; cell = makeCell(c); cellMap.set(key, cell); made1 = true; } cell.d = c.d; const n = shownOf(cell); cell.mesh.count = n; cell.mesh.visible = n > 0; cell.sheet.visible = quality >= 2; }
+    for (const [key, cell] of cellMap) if (!keep.has(key)) { cell.mesh.visible = false; cell.sheet.visible = false; }
+    cellsAt = { x: me.x, z: me.z };
+  }
   // each frame on the island: wind time, cuts round `things` ([{ x, z }]), the season's tint, the loaded models patched
   // (v1.10.283 Codex #12: the island's own trees here hidden only once every one of the patch's tree models is in)
   const treeIds = [...new Set(P.trees(T).map((p) => `pilot.${p.id}`))]; let treesIn = !treeIds.length;
-  function step(dt, now, things = []) {
+  // (v1.10.284 G1: the tone over the whole island outside -- every lit material in the scene patched for it once, looked for
+  // every two seconds; uPilotOut 0 indoors, so a room, a shop and a character in them look as before)
+  let toneAt = 0; const toned = new WeakSet();
+  function toneAll() {
+    scene.traverse((o) => { if (!o.isMesh || o.isSprite) return; for (const m of [].concat(o.material)) { if (!m || toned.has(m) || m.isShaderMaterial || m.userData.pilot) continue; toned.add(m); patch(m, { wind: false, cut: false }); } });
+  }
+  function setOutdoors(on) { U.uPilotOut.value = on ? 1 : 0; }
+  function step(dt, now, things = [], me = null) {
     if (!treesIn && treeIds.every((id) => assets.shownOf?.(id) === 'model')) { treesIn = true; onTreesIn?.(); }
+    if (now - toneAt > 2000) { toneAt = now; toneAll(); }
     U.uPilotTime.value = (U.uPilotTime.value + dt) % 1000;
-    let n = 0; for (const t of things) { if (n >= CUTS) break; if (!P.inZone(t.x, t.z, 1)) continue; U.uPilotCuts.value[n].set(t.x, t.z, t.r || P.CUT_R, 0); n += 1; }
+    if (me) stepCells(me);
+    let n = 0; for (const t of things) { if (n >= CUTS) break; U.uPilotCuts.value[n].set(t.x, t.z, t.r || P.CUT_R, 0); n += 1; } /* (G1: the nearest few round me -- plaza-scene sorts them) */
     U.uPilotCutN.value = n;
-    if (now - seasonAt > 5000) { seasonAt = now; const s = T.seasonAt?.(P.ZONE.x, P.ZONE.z, Date.now()) || 'summer'; if (s !== season) { season = s; const [to, share] = GROUND[s] || GROUND.summer; bladeMat.color.setHex(GRASS).lerp(new THREE.Color(to), share); groundMat.color.copy(bladeMat.color).multiplyScalar(1.12); } } /* (the picture's mean ~0.9: its sheet the ground's colour) */
     for (const o of group.children) { /* (a model's material is its file's: patched once; grass and flowers -- small and swaying -- cut) */
-      if (!o.isMesh || o === grass || o === ground || o.material === noneMat || o.userData.pilotSeen === o.material) continue; o.userData.pilotSeen = o.material;
+      if (!o.isMesh || o.name === 'pilot_grass' || o.name === 'pilot_ground' || o.material === noneMat || o.userData.pilotSeen === o.material) continue; o.userData.pilotSeen = o.material;
       const wind = Boolean(o.geometry.attributes.uv1); if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
       const scale = o.userData.part ? new THREE.Vector3().setFromMatrixScale(o.userData.part).x : 1; /* (the part's dequantizing scale: metres per unit) */
       for (const m of [].concat(o.material)) patch(m, { wind, cut: wind && o.geometry.boundingSphere.radius * scale < 0.5, unit: 1 / scale });
@@ -105,8 +158,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   }
   // the graphics tier (plaza-scene setTier: 0 낮음, 1 중간, 2 높음): no blades and no ground sheet, half the blades, all (총괄 276 --
   // slow phones; a quarter on 낮음 still cost as much as none). The layout is in random order: the first ones spread over the patch.
-  const BLADES_BY_TIER = [0, 0.5, 1];
-  function setQuality(q) { grass.count = Math.round(bladeList.length * (BLADES_BY_TIER[q] ?? 1)); grass.visible = grass.count > 0; ground.visible = q > 0; }
+  function setQuality(q) { quality = q; if (q === 0) for (const key of [...cellMap.keys()]) dropCell(key); } /* (G1: the cells' counts by tier and distance, stepCells) */
   // v1.10.276 ③ (PC 「높음」 only, in and by the patch): ambient occlusion (GTAO) and a soft bloom over the picture, faded in
   // and out over a second; the passes load the first time they are wanted. draw() says whether it drew the frame.
   const ADDONS = '/vendor/three/addons/postprocessing';
@@ -141,6 +193,6 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     post.ao.blendIntensity = POST.ao * postMix; post.bloom.strength = POST.bloom * postMix;
     post.composer.render(dt); return true;
   }
-  function dispose() { for (const one of cells) assets.unbatch?.(one); group.removeFromParent(); grass.dispose(); for (const m of made) m.dispose?.(); if (post) { for (const p of post.composer.passes) p.dispose?.(); post.composer.dispose(); } } /* (v1.10.283 Codex #11: each pass's own render targets too) */
-  return { group, step, setQuality, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, blades: bladeList.length, shown: grass.count }) };
+  function dispose() { for (const one of cells) assets.unbatch?.(one); for (const key of [...cellMap.keys()]) dropCell(key); group.removeFromParent(); for (const m of made) m.dispose?.(); if (post) { for (const p of post.composer.passes) p.dispose?.(); post.composer.dispose(); } } /* (v1.10.283 Codex #11: each pass's own render targets too) */
+  return { group, step, setQuality, setOutdoors, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, cells: cellMap.size, cellKeys: [...cellMap.keys()], blades: [...cellMap.values()].reduce((s, c) => s + c.n, 0), shown: [...cellMap.values()].reduce((s, c) => s + (c.mesh.visible ? c.mesh.count : 0), 0), mapsIn: Boolean(mapsRead), reach: REACH, at: cellsAt }), grassAt: (x, z) => thickAt(x, z) };
 }
