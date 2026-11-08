@@ -35,6 +35,14 @@ test('잔액 한도: 패자는 보유분까지만 내고 승자는 실제 지불
 
 async function exercise(t, makeStore) {
   const store = await makeStore();
+  await t.test('hasClaim: 적용된 claim만 있음, 모자라서 거절된 것은 없음 (v1.10.283 Codex #1·#2)', async () => {
+    const U = 'guest:0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f'; await store.ensureAccount(U); /* (its own: A starts fresh below) */
+    assert.equal(await store.hasClaim('resident_bet:claimtest01:stake'), false);
+    assert.equal((await store.charge({ userId: U, claimId: 'resident_bet:claimtest01:stake', price: 1000, title: '내기' })).applied, true);
+    assert.equal(await store.hasClaim('resident_bet:claimtest01:stake'), true);
+    const refused = await store.charge({ userId: U, claimId: 'resident_bet:claimtest02:stake', price: 10 ** 9, title: '내기' }).catch((e) => e);
+    assert.equal(await store.hasClaim('resident_bet:claimtest02:stake'), false, String(refused?.reason || refused?.message || ''));
+  });
   await t.test('신규 계정은 100,000P를 한 번만 받는다', async () => {
     const first = await store.ensureAccount(A);
     const again = await store.ensureAccount(A);

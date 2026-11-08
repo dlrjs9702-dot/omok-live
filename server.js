@@ -2030,7 +2030,10 @@ async function betDoc(account) {
   const day = kstDate(nowMs()); let d = (await pointStore.questDoc(account, 'betmem')).doc || {};
   const lost = (d.opens || []).filter((o) => !residentBets.has(o.id));
   if (lost.length) {
-    for (const o of lost) if (o.stake > 0) { await pointStore.charge({ userId: account, claimId: `resident_bet:${o.id}:back`, price: o.stake, title: `${IslandCast.RESIDENTS[o.n]?.name || ''}와 내기 · 돌려받음`, credit: true }); notifyPointsChanged([account]); }
+    // (v1.10.283 Codex 271~280 #1·#2: back only a stake that was taken and neither paid out nor given back -- a restart after
+    // the payout, or between writing it open and taking the stake, gives nothing)
+    const owed = async (o) => o.stake > 0 && await pointStore.hasClaim(`resident_bet:${o.id}:stake`) && !(await pointStore.hasClaim(`resident_bet:${o.id}:pay`));
+    for (const o of lost) if (await owed(o)) { await pointStore.charge({ userId: account, claimId: `resident_bet:${o.id}:back`, price: o.stake, title: `${IslandCast.RESIDENTS[o.n]?.name || ''}와 내기 · 돌려받음`, credit: true }); notifyPointsChanged([account]); }
     const gone = new Set(lost.map((o) => o.id)); await pointStore.questApply(account, 'betmem', (x) => ({ doc: { ...(x || {}), opens: ((x || {}).opens || []).filter((o) => !gone.has(o.id)) } }));
     d = { ...d, opens: (d.opens || []).filter((o) => !gone.has(o.id)) };
   }
@@ -2052,11 +2055,19 @@ async function betInfo(account, n, me = '') {
 }
 // a bet ended: paid (twice, or back on a draw), today's winnings, the islander's 호감도 +1 (affinity:betDaily a day each, apart
 // from the talks'), let go; once -- a second call answers the first's result
+// (v1.10.283 Codex #4: one account's bets settle one after another -- two at once never both read the same day's winnings)
+const betChains = new Map();
+function betQueue(account, fn) { const run = (betChains.get(account) || Promise.resolve()).catch(() => {}).then(fn); const tail = run.catch(() => {}); betChains.set(account, tail); tail.then(() => { if (betChains.get(account) === tail) betChains.delete(account); }); return run; }
 async function settleBet(b, result, me = '') {
-  if (b.done) return b.done; b.done = { pending: true };
+  if (b.done) return b.done; b.done = { pending: true }; b.want = result;
+  try { return await betQueue(b.account, () => settleNow(b, result, me)); }
+  catch (error) { b.done = null; islandEvents.residentFree(`bet:${b.id}`); throw error; } // (Codex #6: undone -- the sweep settles it again, its result kept in b.want; the islander let go)
+}
+async function settleNow(b, result, me) {
   const doc = await betDoc(b.account); const { pay, net } = IslandBets.payout(b.stake, result, doc.won, betLimits());
   let balance = null; if (pay > 0) { const out = await pointStore.charge({ userId: b.account, claimId: `resident_bet:${b.id}:pay`, price: pay, title: `${IslandCast.RESIDENTS[b.n]?.name || ''}와 내기`, credit: true }); balance = out.balance ?? null; notifyPointsChanged([b.account]); }
-  let gain = false; await pointStore.questApply(b.account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; const had = Number(t.aff?.[b.n]) || 0; gain = had < Economy.value('affinity:betDaily'); return { doc: { ...t, won: (t.won || 0) + net, beat: result === 'win' ? [...new Set([...(t.beat || []), b.n])] : t.beat || [], aff: gain ? { ...t.aff, [b.n]: had + 1 } : t.aff || {}, opens: (t.opens || []).filter((o) => o.id !== b.id) } }; });
+  // (Codex #6: the day's winnings and 호감도 once per bet -- a settle tried again after a failure adds nothing twice)
+  let gain = false; await pointStore.questApply(b.account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; if ((t.settled || []).includes(b.id)) return { doc: t }; const had = Number(t.aff?.[b.n]) || 0; gain = had < Economy.value('affinity:betDaily'); return { doc: { ...t, won: (t.won || 0) + net, beat: result === 'win' ? [...new Set([...(t.beat || []), b.n])] : t.beat || [], aff: gain ? { ...t.aff, [b.n]: had + 1 } : t.aff || {}, opens: (t.opens || []).filter((o) => o.id !== b.id), settled: [...(t.settled || []), b.id] } }; });
   const before = await pointStore.affinityOf(b.account); const after = gain ? await pointStore.affinityAdd(b.account, doc.day, [{ n: b.n, delta: 1 }]) : before;
   islandEvents.residentFree(`bet:${b.id}`); broadcastIsland('residents', { list: islandEvents.residents() });
   const key = result === 'win' ? 'lose' : result === 'draw' ? 'draw' : 'win'; /* (my win is the islander's loss) */
@@ -2064,7 +2075,7 @@ async function settleBet(b, result, me = '') {
   b.done = { result, pay, net, stake: b.stake, balance, say: betSay(b.n, key, { me }), emote, affinity: after[b.n] || 0, stages: gain ? await affinityStages(b.account, before, after, me) : [] };
   return b.done;
 }
-setInterval(() => { const t = nowMs(); for (const b of residentBets.values()) { const room = b.kind === 'match' && b.room ? rooms.get(b.room) : null; const live = room && room.game?.status !== 'finished'; /* (총괄 #428: a slow match still being played -- its loss waits, up to 40 minutes) */ if (!b.done && t - b.at > (live ? 40 * 60000 : IslandBets.HOLD_MS)) settleBet(b, 'lose').catch((error) => console.error('주민 내기 정리 실패:', error.message)); if (b.done && t - b.at > 2 * IslandBets.HOLD_MS) residentBets.delete(b.id); } }, 30000).unref?.(); // (left mid-bet: lost, let go)
+const betSweep = () => { const t = nowMs(); for (const b of residentBets.values()) { const room = b.kind === 'match' && b.room ? rooms.get(b.room) : null; const live = room && room.game?.status !== 'finished'; /* (총괄 #428: a slow match still being played -- its loss waits, up to 40 minutes) */ if (!b.done && t - b.at > (live ? 40 * 60000 : IslandBets.HOLD_MS)) settleBet(b, b.want || 'lose').catch((error) => console.error('주민 내기 정리 실패:', error.message)); if (b.done && !b.done.pending && t - b.at > 2 * IslandBets.HOLD_MS) residentBets.delete(b.id); } }; setInterval(betSweep, 30000).unref?.(); // (left mid-bet: lost, let go; Codex #5: never dropped while it settles -- a forgotten one would be refunded; #6: a failed settle tried again with its own result)
 const puzzleStarts = new Map(); // v1.10.69 오늘의 문제: 'account|game|level|date' -> when it was first opened (memory only)
 const cardRuns = new Map(); // v1.10.70 카드 게임: round id -> { account, game, level, seed, at } (memory only)
 // v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
@@ -2150,6 +2161,7 @@ function fishActOf(token, act) {
 const trainVisitors = new Map();
 const trainRiders = new Map(); let trainShift = 0; let trainTraffic = IslandTrain.createTraffic(nowMs());
 const taxiRides = new Map(); // v1.10.271 섬 택시: session token -> { from, startedAt, runMs? } while riding
+const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time per session)
 let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it -- 0 the real road, for photos on the bridge)
 function trainService() { const snapshot = trainTraffic.advance(trainNow()); IslandTrain.setService(snapshot); return snapshot; }
 const trainNow = () => nowMs() + trainShift;
@@ -6281,12 +6293,17 @@ async function requestHandler(req, res) {
     if (stake ? !info.stakes.includes(stake) : info.stakes.length > 0) return sendError(res, 400, 'BAD_STAKE', '고를 수 있는 판돈이 아니에요.'); // (none to pick -- the cap reached or too little: for fun)
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 20);
     if (!islandEvents.residentHold(n, `bet:${id}`)) return sendError(res, 409, 'RESIDENT_BUSY', `${info.name}은(는) 지금 다른 일을 하고 있어요.`);
-    let balance = null;
-    if (stake) { const out = await pointStore.charge({ userId: account, claimId: `resident_bet:${id}:stake`, price: stake, title: `${info.name}와 내기` }); if (!out.applied) { islandEvents.residentFree(`bet:${id}`); return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.'); } balance = out.balance; notifyPointsChanged([account]); }
     const doc = await betDoc(account);
     const b = { id, account, n, game: info.game, kind: info.kind, skill: info.skill, level: info.level, target: info.target, stake, day: doc.day, at: nowMs(), run: null, room: null, done: null };
     residentBets.set(id, b); /* (in memory before it is written open: a read between never takes it for a forgotten one) */
     await pointStore.questApply(account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; return { doc: { ...t, done: [...new Set([...(t.done || []), n])], opens: [...(t.opens || []), { id, n, stake, at: b.at }] } }; }); // (one a day each, counted when it starts; open till settled)
+    // (v1.10.283 Codex #2: the stake taken only once it is written open -- a restart between leaves an open with no stake, given nothing back)
+    let balance = null;
+    if (stake) {
+      const out = await pointStore.charge({ userId: account, claimId: `resident_bet:${id}:stake`, price: stake, title: `${info.name}와 내기` });
+      if (!out.applied) { residentBets.delete(id); islandEvents.residentFree(`bet:${id}`); await pointStore.questApply(account, 'betmem', (d) => ({ doc: { ...(d || doc), done: ((d || doc).done || []).filter((x) => x !== n), opens: ((d || doc).opens || []).filter((o) => o.id !== id) } })); return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.'); }
+      balance = out.balance; notifyPointsChanged([account]);
+    }
     broadcastIsland('residents', { list: islandEvents.residents() });
     return sendJson(res, 200, { ok: true, id, n, name: info.name, game: info.game, gameName: info.gameName, kind: info.kind, level: info.level, target: info.target, stake, balance, title: `${info.name}와 내기`, emote: IslandBets.EMOTE.pick });
   }
@@ -6300,6 +6317,14 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/bet' && req.method === 'POST') { // (the day's offers and my bets afresh; won: today's winnings)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     if (body.forget) for (const b of [...residentBets.values()]) if (b.account === account) { islandEvents.residentFree(`bet:${b.id}`); residentBets.delete(b.id); } // (as a restart does)
+    // (v1.10.283 Codex #1·#2: a bet a restart forgot at a given point -- written open; its stake taken (take); its payout made (pay))
+    if (body.open) { const id = `t${crypto.randomUUID().replace(/-/g, '').slice(0, 15)}`; const o = body.open; const stake = Number(o.stake) || 0;
+      await pointStore.questApply(account, 'betmem', (d) => ({ doc: { ...(d || {}), opens: [...((d || {}).opens || []), { id, n: Number(o.n) || 0, stake, at: nowMs() }] } }));
+      if (o.take) await pointStore.charge({ userId: account, claimId: `resident_bet:${id}:stake`, price: stake, title: '시험 내기' });
+      if (o.pay) await pointStore.charge({ userId: account, claimId: `resident_bet:${id}:pay`, price: stake * 2, title: '시험 내기', credit: true });
+      return sendJson(res, 200, { ok: true, id }); }
+    // (Codex #5: a bet settling (pending) long past -- the sweep keeps it)
+    if (body.pendingOld) { const b = residentBets.get(String(body.pendingOld)); if (!b || b.account !== account) return sendError(res, 404, 'BET_GONE', '없는 내기예요.'); b.done = { pending: true }; b.at -= 25 * 60000; betSweep(); const kept = residentBets.has(b.id); b.done = null; return sendJson(res, 200, { ok: true, kept }); }
     if (body.reset) { betOffers = { day: null, count: 0 }; await pointStore.questApply(account, 'betmem', () => ({ doc: { day: kstDate(nowMs()), done: [], won: Number(body.won) || 0, beat: [], aff: {}, prev: [], opens: [] } })); }
     return sendJson(res, 200, { ok: true, doc: (await betDoc(account)) });
   }
@@ -6620,6 +6645,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const now = nowMs();
     if (pathname === '/api/solo/reflex/start') {
+      if (body.contest && body.bet) return sendError(res, 400, 'BAD_REQUEST', '대회와 내기는 따로 해 주세요.'); // (v1.10.283 Codex #7: a bet's level never enters the contest's record)
       const entry = body.contest ? await contestRunOf(session, body.game) : null; if (entry?.error) return sendError(res, ...entry.error); // (v1.10.238 대회 천막)
       const bet = body.bet ? residentBets.get(String(body.bet)) : null; // (v1.10.278 주민 내기: the bet's one round, at its level)
       if (body.bet && (!bet || bet.account !== account || bet.kind !== 'score' || bet.game !== body.game || bet.run || bet.done)) return sendError(res, 409, 'BET_GONE', '이미 끝난 내기예요.');
@@ -7114,13 +7140,17 @@ async function requestHandler(req, res) {
     if (trainRiders.has(session.token) || trainVisitors.has(session.token) || fishCasts.has(session.token) || here.seat || getCurrentRoom(session)) return sendError(res, 409, 'TAXI_BUSY', '지금은 택시를 탈 수 없어요.');
     if (here.bike) return sendError(res, 409, 'TAXI_BIKE', '자전거에서 내려 주세요.');
     const startedAt = nowMs();
-    if (fare > 0) {
-      const out = await pointStore.charge({ userId: account, claimId: `taxi:${account}:${startedAt}`, price: fare, title: `섬 택시 · ${stop.label} → ${IslandTaxi.STOPS[stop.to].label}` }).catch(() => null);
-      if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${fare.toLocaleString('ko-KR')}P)`);
-      if (out.applied) notifyPointsChanged([account]);
-    }
-    if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.'); // (two at once: the first one rides)
+    // (v1.10.283 Codex #3: two at once -- the second is refused before anything is paid)
+    if (taxiPaying.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
+    taxiPaying.add(session.token);
+    try {
+      if (fare > 0) {
+        const out = await pointStore.charge({ userId: account, claimId: `taxi:${account}:${startedAt}`, price: fare, title: `섬 택시 · ${stop.label} → ${IslandTaxi.STOPS[stop.to].label}` }).catch(() => null);
+        if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+        if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${fare.toLocaleString('ko-KR')}P)`);
+        if (out.applied) notifyPointsChanged([account]);
+      }
+    } finally { taxiPaying.delete(session.token); }
     const ride = { from, startedAt, ...(process.env.NODE_ENV === 'test' && taxiTestRunMs ? { runMs: taxiTestRunMs } : {}) };
     taxiRides.set(session.token, ride); freeSeat(session.token);
     here.taxi = ride; here.bike = null; plazaDirty = true;
