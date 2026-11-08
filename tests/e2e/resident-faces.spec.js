@@ -25,7 +25,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
       tried.add(w.n); if (!(await face(w.n))?.person) return null; // (its model in)
       await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 2, z); window.PlazaDebug().faceTo(x, z); }, [w.x, w.z]); await page.waitForTimeout(700);
       /* (what it shows, sampled in the page every 20 ms for 6 s -- CI's slow frames put the mark past 3 s: the clips, its pieces with its own eyes and mouth hidden, the marks, the line) */
-      const watch = page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const got = { clips: [], faces: [], marks: [], lines: [] }; const add = (k, v) => { if (v && !got[k].includes(v)) got[k].push(v); }; const t0 = Date.now(); const id = setInterval(() => { const f = D.residentFace(n); if (f) { add('clips', f.clip); if (f.parts.length && f.eyesBase === false) add('faces', f.parts.slice().sort().join()); for (const m of f.marks) add('marks', m); add('lines', f.bubble); } if (Date.now() - t0 > 6000) { clearInterval(id); ok(got); } }, 20); }), w.n);
+      const watch = page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const got = { clips: [], faces: [], marks: [], lines: [], props: [], body: [] }; const add = (k, v) => { if (v != null && v !== '' && !got[k].includes(v)) got[k].push(v); }; const t0 = Date.now(); const id = setInterval(() => { const f = D.residentFace(n); if (f) { add('clips', f.clip); add('props', f.props); add('body', f.body); if (f.parts.length && f.eyesBase === false) add('faces', f.parts.slice().sort().join()); for (const m of f.marks) add('marks', m); add('lines', f.bubble); } if (Date.now() - t0 > 6000) { clearInterval(id); ok(got); } }, 20); }), w.n);
       await page.evaluate(() => window.PlazaDebug().camNear(null)); const r = await page.evaluate((f) => window.PlazaDebug().feel(f), feel); await page.waitForTimeout(250);
       const react = await page.evaluate(() => window.PlazaDebug().lastReact());
       if (r !== true || !react?.move) { await watch; return null; }
@@ -39,6 +39,8 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   expect(thumbs.react).toMatchObject({ move: 'thumbsup' });
   expect(thumbs.seen.clips).toContain('ThumbsUp'); expect(thumbs.seen.faces).toContain('eyes_x_happy,mouth_x_grin'); expect(thumbs.seen.marks).toContain('sparkle');
   expect(thumbs.seen.lines.some((l) => /최고|너도/.test(l))).toBe(true);
+  // (v1.10.280, asset 108) what is in its hand put away during it, its hat, neck, flowers (the `equipment` meshes) never
+  expect(thumbs.seen.body).not.toContain(false); if (thumbs.seen.props.length) expect(thumbs.seen.props).toContain(false);
   // the same one again within its 20 s: it only turns its head -- tried in the page at once (265 흔들림: CI's slow tries from here
   // ran past the 20 s, and then it answered again): its own move over, me before it, a feeling each try (인사, 절 by turns)
   expect(await page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const t0 = Date.now(); let k = 0;
@@ -57,7 +59,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   await expect.poll(async () => (await face(thumbs.n)).parts, { timeout: 5000 }).toEqual([]);
   // photos (총괄 #414: the pieces over a muzzle, a beak and a face -- at the play camera's distance, where depth is coarser):
   // 봄이·하람·콩이 laughing, me 2.8 m before each along the way it looks, the camera as in play
-  if (process.env.SHOT_DIR) for (const person of ['bomi', 'haram', 'kongi']) {
+  if (process.env.SHOT_DIR) for (const person of ['bomi', 'haram', 'kongi', 'bitna', 'garam']) { /* (빛나·가람, v1.10.280: neck, hat and bag kept) */
     const n = await page.evaluate((p) => { const D = window.PlazaDebug(); for (let k = 0; k < 27; k += 1) if (D.residentFace(k)?.person === p) return k; return null; }, person);
     if (n == null) { console.log(`PHOTO_SKIP ${person}: no model`); continue; }
     { const at = (await face(n)).at; await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 3, z); }, [at.x, at.z]); await page.waitForTimeout(800); } /* (drawn only within 85 m of me) */
