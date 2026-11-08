@@ -4,7 +4,7 @@
 import * as THREE from '/vendor/three/three.module.js';
 
 const T = globalThis.IslandTerrain; const X = globalThis.IslandTaxi;
-const SEAT = { x: 0, y: 0.48, z: -0.12 }; // (assets 99: the one back seat, body [0, 0.38, 0] + [0, 0.10, 0.12] in the model's own frame -- turned round here)
+const SEAT = X.SEAT; // (island-taxi.js: the rider's root on the car's floor, v1.10.286)
 
 export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: a little 「빵」 over a car passing someone -- no sound)
   const group = new THREE.Group(); group.name = 'taxi'; scene.add(group);

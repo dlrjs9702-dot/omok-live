@@ -27,6 +27,10 @@
   // (assets 99 motions.json, the model's frame turned round: one gets in by the door on the car's right -- enter_L [-1.5, 0, 1.18]
   // -- and is out at exit_L [-1.75, 0, 1.27]; here from the car's middle, across (+ its right) and along (- behind))
   const BOARD = { across: 1.5, along: -1.18 }; const ALIGHT = { across: 1.75, along: -1.27 };
+  // a rider's root in the car (assets 99: the back seat -- the body's hips [0, 0.38, 0] over its root at [0, 0.10, 0.12], the car's
+  // floor, turned round here). v1.10.286 (notes docs/taxi-fix-20261108.md 6절): it was 0.48 (the hips added twice) -- the head through
+  // the roof and the getting in and out 0.38 m over the ground; test/island-taxi.test.js seats every body and hair under the roof
+  const SEAT = { x: 0, y: 0.10, z: -0.12 };
   const beside = (x, z, yaw, at) => ({ x: x + Math.cos(yaw) * at.across + Math.sin(yaw) * at.along, z: z - Math.sin(yaw) * at.across + Math.cos(yaw) * at.along });
   // a stop's place: where the car stands (the road's end, facing the road), the shelter beside it, where one gets in
   function stopOf(id) {
@@ -84,5 +88,5 @@
   // out 0..0.12 open, 0.80..1 shut)
   const doorOf = (phase, k) => (phase === 'enter' ? (k < 0.5 ? smooth(k / 0.14) : 1 - smooth((k - 0.86) / 0.14)) : phase === 'exit' ? (k < 0.5 ? smooth(k / 0.12) : 1 - smooth((k - 0.8) / 0.2)) : 0);
   const fareOf = ({ hasHome = false, fare = FARE } = {}) => (hasHome ? 0 : Math.max(0, Math.round(Number(fare) || 0)));
-  return { ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, BOARD, ALIGHT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+  return { ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));
