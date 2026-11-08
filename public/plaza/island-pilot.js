@@ -48,5 +48,13 @@
     return out;
   }
   const inZone = (x, z, pad = 0) => Math.hypot(x - ZONE.x, z - ZONE.z) <= ZONE.r + pad;
-  return Object.freeze({ ZONE, PATH_X, CUT_R, KINDS, IDS, plants, blades, inZone });
+  // v1.10.276: the island's own trees in the patch drawn as the pilot's, where they stand (their solids, insects and size the
+  // island's) -- not a fruit tree (shaken for its fruit: its own model) nor a stump
+  const TREE_OF = Object.freeze({ round: 'tree_round', blossom: 'tree_round', tiered: 'tree_cluster', tall: 'tree_poplar', pine: 'tree_fir', sapling: 'tree_fir_slim', fruit: 'tree_twin' });
+  function trees(T) {
+    const fruit = T.harvestTrees?.() || [];
+    return (T.nature?.().trees || []).filter((t) => inZone(t.x, t.z) && !fruit.some((h) => h.x === t.x && h.z === t.z) && TREE_OF[T.treeKind(t)])
+      .map((t) => ({ id: TREE_OF[T.treeKind(t)], x: t.x, z: t.z, yaw: Math.round((((t.x * 12.9898 + t.z * 78.233) % 6.28) + 6.28) % 6.28 * 100) / 100, s: Math.round(t.s * 100) / 100 }));
+  }
+  return Object.freeze({ ZONE, PATH_X, CUT_R, KINDS, IDS, TREE_OF, plants, blades, trees, inZone });
 }));

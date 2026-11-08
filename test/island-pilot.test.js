@@ -16,6 +16,9 @@ test('그래픽 시범 구역: 같은 배치, 구역 안·길 서쪽·광장 밖
     }
   }
   assert.equal(P.IDS.length, 24);
+  // v1.10.276: the patch's own trees as the pilot's -- where the island's stand, never a fruit tree, each a pilot model
+  const trees = P.trees(T); const fruit = T.harvestTrees();
+  for (const t of trees) { assert.ok(P.IDS.includes(t.id) && P.inZone(t.x, t.z), t.id); assert.ok(T.nature().trees.some((n) => n.x === t.x && n.z === t.z), 'an island tree'); assert.ok(!fruit.some((h) => h.x === t.x && h.z === t.z), 'not a fruit tree'); }
   const b = P.blades(T, 3000); assert.equal(b.length, 3000);
   for (const g of b) assert.ok(P.inZone(g.x, g.z) && g.x <= P.PATH_X && solids.every((s) => Math.hypot(g.x - s.x, g.z - s.z) > (s.r || 0.5)), `blade ${g.x},${g.z}`);
 });
