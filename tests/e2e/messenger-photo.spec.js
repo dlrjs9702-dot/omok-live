@@ -86,7 +86,6 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
 // (no bubble, its picture); the other side sees the picture and the room list 「(이모티콘) …」; 「그림 글자」 goes in the box at
 // the cursor; the last used on top. PC (a phone: SHOT_DIR photos only -- the panel's fit)
 test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화면 그림·방 목록 줄·그림 글자 커서 자리·최근', async ({ browser, request, isMobile }, info) => {
-  test.skip(isMobile && !process.env.SHOT_DIR, '폰은 판 사진만 (새 e2e 규칙)');
   test.setTimeout(150000);
   const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
   const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
@@ -110,8 +109,18 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     const room = (await api(request, '/api/messenger/rooms', { account: a.account, body: { name: '이모티콘방', members: [b.id] } })).data.room;
     await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: a.account, body: { text: '안녕하세요' } });
     await page.reload(); await page.locator('#messengerRoomList button', { hasText: '이모티콘방' }).click();
+    expect(await page.evaluate(() => document.activeElement?.id === 'messengerInput')).toBe(!isMobile); /* (v1.10.286 사용자: a phone's keypad not up on entering; a PC types at once) */
     const panel = page.locator('#messengerEmoji'); const cells = panel.locator('.messengerStickerCell');
     await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeVisible(); await expect(cells).toHaveCount(24);
+    if (isMobile) { /* (v1.10.286 사용자 「보낸 후 닫을 수가 없어」: sent, then closed by its ✕, the 😊, the box (keypad up), the list, the phone's back -- the phone's whole part) */
+      const btn = page.locator('#messengerEmojiBtn'); await cells.nth(3).tap(); await cells.nth(3).tap(); await expect(page.locator('#messengerMessages .messengerSticker img')).toHaveCount(1); await shot(page, 'emoji-sent-open');
+      await page.locator('#messengerEmojiClose').tap(); await expect(panel).toBeHidden(); await expect(btn).toHaveAttribute('aria-expanded', 'false'); await shot(page, 'emoji-sent-closed');
+      await btn.tap(); await expect(panel).toBeVisible(); await btn.tap(); await expect(panel).toBeHidden();
+      await btn.tap(); await page.locator('#messengerInput').tap(); await expect(panel).toBeHidden(); await expect(page.locator('#messengerInput')).toBeFocused();
+      await btn.tap(); await expect(panel).toBeVisible(); await page.locator('#messengerMessages').tap({ position: { x: 12, y: 12 } }); await expect(panel).toBeHidden();
+      await btn.tap(); await expect(panel).toBeVisible(); await page.goBack(); await expect(panel).toBeHidden(); await expect(page.locator('#messengerInput')).toBeVisible(); /* (still in the room) */
+      return;
+    }
     if (!isMobile) { /* (v1.10.280 폴드 펼침 제보: the room's column squeezed the panel flat -- an unfolded phone (two columns) and a low PC: 200 px at least, the first sticker whole inside it) */
       const size = page.viewportSize();
       for (const [w, h] of [[820, 900], [1280, 600]]) {
