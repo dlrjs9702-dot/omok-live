@@ -77,7 +77,9 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     for (let i = 0; i < 900; i += 1) blob(r() * 512, r() * 512, 2 + r() * 5, r() < 0.7 ? 170 : 255, 0.35); /* (specks: soil, light leaves) */
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 5); t.anisotropy = 4; made.push(t); return t;
   })();
-  const groundMats = new Map(); const groundMatOf = (s) => { if (!groundMats.has(s)) { const m = new THREE.MeshStandardMaterial({ map: groundTex, vertexColors: true, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.color.copy(bladeMatOf(s).color).multiplyScalar(1.12); /* (the picture's mean ~0.9: its sheet the ground's colour) */ made.push(m); groundMats.set(s, m); } return groundMats.get(s); };
+  // one ground material; its colour in the sheet's points (the season there, x1.12: the picture's mean ~0.9)
+  const groundMat = new THREE.MeshStandardMaterial({ map: groundTex, vertexColors: true, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }); made.push(groundMat); /* (G1: -1, not -2 -- at a low angle it reached over the season's flat specks) */
+  const groundColors = new Map(); const groundColorOf = (s) => { if (!groundColors.has(s)) groundColors.set(s, bladeMatOf(s).color.clone().multiplyScalar(1.12)); return groundColors.get(s); };
 
   // ---- v1.10.284 G1 땅과 풀, 섬 전체 (notes docs/graphics-island-wide-20261108.md 2절): the cells round me, made one a frame
   // nearest first and dropped once well behind; where grass grows read from the ground's maps (island.js's pictures, read
@@ -105,18 +107,21 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     return false;
   }
   const thickAt = (x, z) => { const m = readMaps(); if (!m) return 0; const k = P.grassFrom(m(x, z)); return k > 0 && !(T.inPlaza && T.inPlaza(x, z)) && T.walkable(x, z) && !nearSolid(x, z) ? k : 0; };
+  // the drawn ground's own height (its mesh's triangles, 2.5 m) -- the smooth heightAt left the sheet under it on a slope
+  const groundY = (x, z) => (T.meshGroundHeight ? T.meshGroundHeight(x, z) : T.heightAt(x, z));
   const cellMap = new Map(); // 'i,j' -> { mesh, sheet, n (its blades), d }
   function makeCell({ i, j, x, z }) {
     const season = T.seasonAt?.(x, z, Date.now()) || 'summer';
     const list = P.cellBlades(i, j, Math.round(P.CELL * P.CELL * PER_M2), thickAt);
     const mesh = new THREE.InstancedMesh(blade, bladeMatOf(season), Math.max(1, list.length)); mesh.receiveShadow = true; mesh.castShadow = false; mesh.name = 'pilot_grass';
-    list.forEach((b, k) => mesh.setMatrixAt(k, new THREE.Matrix4().compose(new THREE.Vector3(b.x, T.heightAt(b.x, b.z), b.z), q.setFromAxisAngle(up, b.yaw).clone(), new THREE.Vector3(1, b.h, 1))));
+    list.forEach((b, k) => mesh.setMatrixAt(k, new THREE.Matrix4().compose(new THREE.Vector3(b.x, groundY(b.x, b.z), b.z), q.setFromAxisAngle(up, b.yaw).clone(), new THREE.Vector3(1, b.h, 1))));
     mesh.count = list.length; mesh.computeBoundingSphere(); group.add(mesh);
     // its ground sheet: 17 x 17 points on the ground, each as clear as the grass is thick there
     const geo = new THREE.PlaneGeometry(P.CELL, P.CELL, 16, 16); geo.rotateX(-Math.PI / 2); const p = geo.attributes.position; const rgba = new Float32Array(p.count * 4);
-    for (let k = 0; k < p.count; k += 1) { const wx = x + p.getX(k); const wz = z + p.getZ(k); p.setY(k, T.heightAt(wx, wz) + 0.025); rgba.set([1, 1, 1, Math.min(1, thickAt(wx, wz) * 1.4)], k * 4); }
+    /* (each point its own season's ground colour -- a cell on a zone's edge took its middle's, a straight 16 m seam) */
+    for (let k = 0; k < p.count; k += 1) { const wx = x + p.getX(k); const wz = z + p.getZ(k); p.setY(k, groundY(wx, wz) + 0.05); /* (5 cm: between its points it crosses the mesh's creases a few cm low) */ const c = groundColorOf(T.seasonAt?.(wx, wz, Date.now()) || 'summer'); rgba.set([c.r, c.g, c.b, Math.min(1, thickAt(wx, wz) * 1.4)], k * 4); }
     geo.setAttribute('color', new THREE.BufferAttribute(rgba, 4)); geo.computeVertexNormals(); geo.computeBoundingSphere();
-    const sheet = new THREE.Mesh(geo, groundMatOf(season)); sheet.position.set(x, 0, z); sheet.receiveShadow = true; sheet.renderOrder = -1; sheet.name = 'pilot_ground'; group.add(sheet);
+    const sheet = new THREE.Mesh(geo, groundMat); sheet.position.set(x, 0, z); sheet.receiveShadow = true; sheet.renderOrder = -1; sheet.name = 'pilot_ground'; group.add(sheet);
     return { mesh, sheet, n: list.length, d: 0 };
   }
   function dropCell(key) { const c = cellMap.get(key); if (!c) return; c.mesh.removeFromParent(); c.mesh.dispose(); c.sheet.removeFromParent(); c.sheet.geometry.dispose(); cellMap.delete(key); }
@@ -128,7 +133,16 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     const want = quality > 0 ? P.cellsNear(me.x, me.z, reachNow()) : []; const keep = new Set(want.map((c) => `${c.i},${c.j}`));
     for (const key of [...cellMap.keys()]) { const [i, j] = key.split(',').map(Number); const dx = Math.max(i * P.CELL - me.x, 0, me.x - (i + 1) * P.CELL); const dz = Math.max(j * P.CELL - me.z, 0, me.z - (j + 1) * P.CELL); if (!keep.has(key) && (Math.hypot(dx, dz) > REACH + P.CELL || quality === 0)) dropCell(key); }
     let made1 = false;
-    for (const c of want) { const key = `${c.i},${c.j}`; let cell = cellMap.get(key); if (!cell) { if (made1 || cellMap.size >= MAX_CELLS) continue; cell = makeCell(c); cellMap.set(key, cell); made1 = true; } cell.d = c.d; const n = shownOf(cell); cell.mesh.count = n; cell.mesh.visible = n > 0; cell.sheet.visible = quality >= 2; }
+    for (const c of want) {
+      const key = `${c.i},${c.j}`; let cell = cellMap.get(key);
+      if (!cell) {
+        if (made1) continue;
+        if (cellMap.size >= MAX_CELLS) { /* (full: the farthest one I left goes first -- a warp left the old place's behind) */
+          let far = null; let fd = -1; for (const k of cellMap.keys()) { if (keep.has(k)) continue; const [i, j] = k.split(',').map(Number); const d = Math.hypot((i + 0.5) * P.CELL - me.x, (j + 0.5) * P.CELL - me.z); if (d > fd) { fd = d; far = k; } }
+          if (!far) continue; dropCell(far);
+        }
+        cell = makeCell(c); cellMap.set(key, cell); made1 = true;
+      } cell.d = c.d; const n = shownOf(cell); cell.mesh.count = n; cell.mesh.visible = n > 0; cell.sheet.visible = quality >= 2; }
     for (const [key, cell] of cellMap) if (!keep.has(key)) { cell.mesh.visible = false; cell.sheet.visible = false; }
     cellsAt = { x: me.x, z: me.z };
   }

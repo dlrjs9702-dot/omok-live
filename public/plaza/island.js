@@ -981,7 +981,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     }
     const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })]));
     spots.push(...edgeSeason);
-    const layerY = pilotTrees ? 0.035 : 0.005; /* (v1.10.284 G1: over the grass's ground sheet, 2.5 cm up -- else it hid the petals) */
+    const layerY = pilotTrees ? 0.09 : 0.005; /* (v1.10.284 G1: over the grass's ground sheet (2.5 cm up, pulled forward at a low angle) -- else it hid the petals and snow) */
     LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, onMesh(p.x, p.z) + layerY, p.z, p.s ?? 1, p.s ?? 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
   }
   let coverCount = null;
@@ -1009,7 +1009,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       else if (k < 0.52 && woods > 0.05) low.flowers.push({ x, z, r, s });
     }
     const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })])); // under the ground: nothing without a model
-    const lay = (list, id, parent) => instanced(speck, natureMat, list, (p) => setM(p.x, onMesh(p.x, p.z) + 0.005, p.z, p.s, p.s, p.r), { shadow: false, cell: PATH_CELL, target: id, parent });
+    const lay = (list, id, parent) => instanced(speck, natureMat, list, (p) => setM(p.x, onMesh(p.x, p.z) + (parent === coverFlat && pilotTrees ? 0.09 : 0.005), p.z, p.s, p.s, p.r), { shadow: false, cell: PATH_CELL, target: id, parent }); /* (v1.10.284 G1: the flat ones over the grass's ground sheet, as the season's layers) */
     lay(flat.season, 'ground.season', coverFlat); lay(flat.moss, 'ground.moss', coverFlat);
     lay(low.fern, 'ground.fern', coverLow); lay(low.shrub, 'ground.shrub', coverLow); lay(low.flowers, 'ground.flowers', coverLow);
     coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length };
