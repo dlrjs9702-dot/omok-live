@@ -11,7 +11,7 @@ const POOL = ['fish_bass', 'insect_beetle', 'herb', 'berry', 'mushroom', 'harves
 
 test('새 주민 17명: 좋아하는 것 +3, 싫어하는 것 0, 그 밖 +1', () => {
   assert.equal(Affinity.LIKES.length, Cast.RESIDENTS.length);
-  for (let n = 10; n < 27; n += 1) {
+  for (let n = 10; n < Cast.RESIDENTS.length; n += 1) {
     const { like, dislike } = Affinity.LIKES[n]; const is = (id, list) => list.some((p) => id.startsWith(p));
     const liked = POOL.find((id) => is(id, like)); const disliked = POOL.find((id) => is(id, dislike)); const other = POOL.find((id) => !is(id, like) && !is(id, dislike));
     assert.equal(Affinity.giftReact(n, liked, '나').delta, 3, `${n} ${liked}`);

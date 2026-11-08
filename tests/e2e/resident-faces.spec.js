@@ -60,7 +60,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   // photos (총괄 #414: the pieces over a muzzle, a beak and a face -- at the play camera's distance, where depth is coarser):
   // 봄이·하람·콩이 laughing, me 2.8 m before each along the way it looks, the camera as in play
   if (process.env.SHOT_DIR) for (const person of ['bomi', 'haram', 'kongi', 'bitna', 'garam']) { /* (빛나·가람, v1.10.280: neck, hat and bag kept) */
-    const n = await page.evaluate((p) => { const D = window.PlazaDebug(); for (let k = 0; k < 27; k += 1) if (D.residentFace(k)?.person === p) return k; return null; }, person);
+    const n = await page.evaluate((p) => { const D = window.PlazaDebug(); for (let k = 0; k < window.IslandCast.RESIDENTS.length; k += 1) if (D.residentFace(k)?.person === p) return k; return null; }, person);
     if (n == null) { console.log(`PHOTO_SKIP ${person}: no model`); continue; }
     { const at = (await face(n)).at; await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 3, z); }, [at.x, at.z]); await page.waitForTimeout(800); } /* (drawn only within 85 m of me) */
     if (!(await face(n)).visible) { console.log(`PHOTO_SKIP ${person}: not out on the island now`); continue; }

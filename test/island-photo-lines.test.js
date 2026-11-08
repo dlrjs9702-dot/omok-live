@@ -9,7 +9,7 @@ const E = require('../public/plaza/island-emotes.js');
 
 test('주민 사진 부탁 대사: 27명 × 부탁 2·성공·틀 밖, 빈칸 다 채움, 포즈는 감정 16개 안', () => {
   assert.equal(C.RESIDENTS.length, 27);
-  for (let n = 0; n < 27; n += 1) {
+  for (let n = 0; n < C.RESIDENTS.length; n += 1) {
     assert.ok(E.BY[C.photoPose(n)], `${n} pose ${C.photoPose(n)}`);
     assert.equal(C.PHOTO_LINES[n].ask.length, 2, `${n}`);
     for (const kind of ['ask', 'ok', 'miss']) for (let k = 0; k < C.PHOTO_LINES[n][kind].length; k += 1) {

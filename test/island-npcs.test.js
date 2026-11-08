@@ -8,7 +8,7 @@ const P = require('../public/plaza/island-npcs.js');
 // server -- that stay on standable ground clear of buildings and trees, never turn straight back, stop for a while
 // away from doors, and never jump.
 test('배회 NPC: 27명(v1.10.216 근무표 C2: 주민 모두), 같은 시각이면 같은 자리, 설 수 있는 곳만, 순간이동 없음', () => {
-  assert.equal(P.COUNT, 27);
+  assert.equal(P.COUNT, require('../public/plaza/island-cast.js').RESIDENTS.length);
   for (let n = 0; n < P.COUNT; n += 1) {
     const r = P.round(n);
     assert.ok(r.period > 30 && Number.isFinite(r.period));

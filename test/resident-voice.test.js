@@ -57,7 +57,7 @@ test('주민 말투: 10명 × 같이 쓰는 대사 전부, 말버릇은 끝에 �
 // in place of the register's (꽃님 always 「{me} 새싹」); the kid, the grandmother and the detective end their words apart
 test('주민 말씨 B: 27명 × 모든 키, 이야기해요 말씨별, 자기 말이 말씨 대신, 소문·질문 어미가 서로 다름', () => {
   assert.equal(Cast.RESIDENTS.length, 27); assert.equal(Cast.WALKERS.length, 10);
-  assert.deepEqual(Cast.RESIDENTS.map((c) => c.n), Array.from({ length: 27 }, (_, n) => n));
+  assert.deepEqual(Cast.RESIDENTS.map((c) => c.n), Array.from({ length: Cast.RESIDENTS.length }, (_, n) => n));
   for (const [id, n] of [['granny', 10], ['fisher', 11], ['photographer', 12], ['farmer', 13], ['kid', 14], ['painter', 15], ['stationmaster', 16], ['busker', 17], ['electrician', 18], ['builder', 19], ['librarian', 20], ['grandpa', 21], ['warden', 22]]) assert.equal(Cast.keeperN(id), n, id);
   const TALK = ['rumor_rain', 'rumor_rainbow', 'rumor_clear', 'rumor_starNight', 'rumor_starDay', 'rumor_contestLive', 'rumor_contestSoon', 'rumor_contestWeek', 'rumor_plants', 'rumor_plantsNone', 'rumor_winter', 'rumor_halloween', 'rumor_hint', 'rumor_quiet', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5'];
   const vars = { ...VARS, count: 12 };
