@@ -343,8 +343,9 @@
     }
   }
   function putGlyph(g) { // at the cursor (the box's 500 letters kept); a phone's keypad not called up for it
-    const input = byId('messengerInput'); if (input.value.length + g.length > 500) return showToast('500자까지 쓸 수 있어요.');
-    const a = input.selectionStart ?? input.value.length; const b = input.selectionEnd ?? a; input.setRangeText(g, a, b, 'end'); grow(); used('glyph', g);
+    const input = byId('messengerInput'); const a = input.selectionStart ?? input.value.length; const b = input.selectionEnd ?? a;
+    if (input.value.length - (b - a) + g.length > 500) return showToast('500자까지 쓸 수 있어요.'); // (v1.10.283 Codex #10: the chosen words replaced, not added to)
+    input.setRangeText(g, a, b, 'end'); grow(); used('glyph', g);
     if (!window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) input.focus();
   }
   function openEmoji(on) { emoji.classList.toggle('hidden', !on); emojiBtn.setAttribute('aria-expanded', String(on)); if (on) { if (window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) byId('messengerInput').blur(); drawEmoji(); keepEnd(); } else showPreview(null); }

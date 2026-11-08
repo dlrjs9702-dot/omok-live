@@ -28,7 +28,11 @@ test('주민 내기: 제안 말풍선 → 「내기해요」 → 점수 내기 �
   const dialog = page.locator('#plazaDialog'); const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
   await expect.poll(async () => { if (!await talking()) { await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) await window.PlazaWarp(w.x + 1.1, w.z); window.PlazaDebug().talkResident(n); }, sn); await page.waitForTimeout(800); } return talking(); }, { timeout: 90000, intervals: [300] }).toBe(true);
   await require('./skin-support').revealTalk(page);
-  const betBtn = dialog.locator('[data-topic="bet"]'); await expect(betBtn).toBeVisible({ timeout: 10000 }); await betBtn.click();
+  const betBtn = dialog.locator('[data-topic="bet"]'); await expect(betBtn).toBeVisible({ timeout: 10000 });
+  // (v1.10.283 Codex #8) talked to again within the 30 s its answer is kept: the button there again
+  await page.keyboard.press('Escape'); await expect.poll(talking, { timeout: 10000 }).toBe(false);
+  await page.evaluate((n) => window.PlazaDebug().talkResident(n), sn); await expect.poll(talking, { timeout: 10000 }).toBe(true); await require('./skin-support').revealTalk(page);
+  await expect(betBtn).toBeVisible({ timeout: 10000 }); await betBtn.click();
   await expect(dialog.locator('[data-topic="stake"]')).toHaveText(['1,000P 걸기', '5,000P 걸기']); await expect(dialog.locator('.betNote')).toContainText(B.NAMES[B.gameOf(sn, day)]);
   await shot('stakes');
   const before = (await get(request, '/api/points', token)).data.balance;

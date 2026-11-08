@@ -984,7 +984,7 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('townhall');
   // A-7: the window opens from its customer's chair -- seated, the camera on the clerk; closing it stands me up
   await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil'); window.PlazaDebug().teleport(c.x, c.z + 1.1); });
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 민원 창구 업무');
+  await expect(page.locator('#plazaHint')).toHaveText(/^SPACE · 앉아서 민원 창구 업무( · 단비)?$/); /* (v1.10.283: its clerk named -- none on her resting day) */
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:desk');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
@@ -999,7 +999,7 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (the stand-up motion done)
   // (달마루섬 5단계) the fourth window, 개명 신청: the 작명소's window from its chair
   await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-rename'); window.PlazaDebug().teleport(c.x, c.z + 1.1); });
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 개명 신청 업무');
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 개명 신청 업무 · 개명 담당');
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:rename');
   await expect(page.locator('#namingCurrent')).toContainText('가방손님');

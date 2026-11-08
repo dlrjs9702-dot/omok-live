@@ -340,6 +340,7 @@
       // square (see asset-loader.js `batch`)
       wants: (targetIds) => Boolean([null, ...SEASONS].some((s) => pick(registry, targetIds, off, s))),
       batch: (targetIds, cells) => call('batch', [targetIds, cells]),
+      shownOf: (id) => (impl?.shownOf ? impl.shownOf(id) : null), // (v1.10.283 Codex #12: a target's model in yet -- null till the loader is)
       // v1.10.31: a square of a batch drawn again after a copy changed; a batch taken away; a model held for a moment
       refill: (cell) => call('refill', [cell]),
       unbatch: (cells) => call('unbatch', [cells]),

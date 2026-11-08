@@ -5242,7 +5242,10 @@
     try { const room = await api('/api/rooms', { method: 'POST', body: JSON.stringify({ gameType: go.game, visibility: 'private', title: go.title, ai: go.level, bet: go.id }) }); enterRoomState(room.state); showToast(`자리를 고르면 ${go.name}이(가) 맞은편에 앉아요.`, 5000); }
     catch (error) { showToast(error.message); await api('/api/island/bet/end', { method: 'POST', body: JSON.stringify({ id: go.id }) }).catch(() => {}); return; }
     clearInterval(betWatch); const until = Date.now() + 12 * 60000; /* (the room's end settles it on the server: its answer when it comes) */
-    betWatch = setInterval(async () => { if (Date.now() > until) { clearInterval(betWatch); return; } const d = (await api(`/api/island/bet/result?id=${go.id}`).catch(() => ({}))).done; if (d) { clearInterval(betWatch); showBetResult(go, d); } }, 3000);
+    let asking = false; const watch = setInterval(async () => { /* (v1.10.283 Codex #9: one ask at a time; an answer for a watch since stopped or replaced is dropped) */
+      if (Date.now() > until) { clearInterval(watch); return; } if (asking) return; asking = true;
+      try { const d = (await api(`/api/island/bet/result?id=${go.id}`).catch(() => ({}))).done; if (d && betWatch === watch) { clearInterval(watch); betWatch = null; showBetResult(go, d); } } finally { asking = false; }
+    }, 3000); betWatch = watch;
   }
   // their own ask: standing still by a walking islander (10 s, nothing open) -- the server lets two or three a day over the island;
   // a wave and their line in a bubble (talk to them: 「🎲 내기해요」 among the topics)
@@ -5301,8 +5304,8 @@
       b.addEventListener('click', async () => { const r = await festivalPost('gift', { step: 'give', n: data.n }); if (!r) return; plaza.controller?.emote?.('clap'); showToast(`🎁 ${r.name}에게 선물을 건넸어요 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`); plazaDialog.close(); });
       list.prepend(b);
     }
-    if (!data.talk && !tree?.replies && !data.offer && !data.storyOffer && !data.question && !data.gifts?.length) betButton(data.n, list); /* (v1.10.278 주민 내기: among the topics) */
     lostCard.replaceChildren(...past, ...lines, ...ribbon, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer && (!tree || asks) ? [offerNote({ title: data.storyOffer.title, label: storyLine(data.storyOffer) })] : []), meta, list);
+    if (!data.talk && !tree?.replies && !data.offer && !data.storyOffer && !data.question && !data.gifts?.length) betButton(data.n, list); /* (v1.10.278 주민 내기: among the topics; v1.10.283 Codex #8: once the list is in -- a cached answer checked it before) */
     if (data.story) showStory(data.story);
     if (data.storyAccepted) showToast(`📖 할 일에 넣었어요 · ${data.storyAccepted.title}`);
     if (data.storyNote && !tree?.replies) openStoryNote(data.storyNote); /* (a talk first: the paper at its end) */

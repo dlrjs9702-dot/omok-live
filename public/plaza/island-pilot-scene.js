@@ -11,7 +11,7 @@ const CUTS = 24;
 // the ground's own colour, lighter toward the tip, so it grows out of the ground and does not float on it
 const GRASS = 0x9fd67f; const GROUND = { spring: [0xc0e0a4, 0.55], summer: [0xacd497, 0.35], autumn: [0xe9d7a8, 0.6], winter: [0xeff4fa, 0.8] };
 
-export function pilotScene({ scene, assets, phone = false }) {
+export function pilotScene({ scene, assets, phone = false, onTreesIn = null }) {
   const group = new THREE.Group(); group.name = 'pilot'; scene.add(group);
   const made = [];
   const U = { uPilotTime: { value: 0 }, uPilotTone: { value: 1 }, uPilotExposure: { value: 0.7 }, uPilotCuts: { value: Array.from({ length: CUTS }, () => new THREE.Vector4()) }, uPilotCutN: { value: 0 } };
@@ -88,7 +88,10 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   const ground = new THREE.Mesh(sheet, groundMat); ground.position.set(P.ZONE.x, 0, P.ZONE.z); ground.receiveShadow = true; ground.renderOrder = -1; ground.name = 'pilot_ground'; group.add(ground);
   let season = null; let seasonAt = 0;
   // each frame on the island: wind time, cuts round `things` ([{ x, z }]), the season's tint, the loaded models patched
+  // (v1.10.283 Codex #12: the island's own trees here hidden only once every one of the patch's tree models is in)
+  const treeIds = [...new Set(P.trees(T).map((p) => `pilot.${p.id}`))]; let treesIn = !treeIds.length;
   function step(dt, now, things = []) {
+    if (!treesIn && treeIds.every((id) => assets.shownOf?.(id) === 'model')) { treesIn = true; onTreesIn?.(); }
     U.uPilotTime.value = (U.uPilotTime.value + dt) % 1000;
     let n = 0; for (const t of things) { if (n >= CUTS) break; if (!P.inZone(t.x, t.z, 1)) continue; U.uPilotCuts.value[n].set(t.x, t.z, t.r || P.CUT_R, 0); n += 1; }
     U.uPilotCutN.value = n;
@@ -138,6 +141,6 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     post.ao.blendIntensity = POST.ao * postMix; post.bloom.strength = POST.bloom * postMix;
     post.composer.render(dt); return true;
   }
-  function dispose() { for (const one of cells) assets.unbatch?.(one); group.removeFromParent(); grass.dispose(); for (const m of made) m.dispose?.(); if (post) post.composer.dispose(); }
+  function dispose() { for (const one of cells) assets.unbatch?.(one); group.removeFromParent(); grass.dispose(); for (const m of made) m.dispose?.(); if (post) { for (const p of post.composer.passes) p.dispose?.(); post.composer.dispose(); } } /* (v1.10.283 Codex #11: each pass's own render targets too) */
   return { group, step, setQuality, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, blades: bladeList.length, shown: grass.count }) };
 }

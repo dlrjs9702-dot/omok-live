@@ -148,6 +148,8 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     await page.locator('#messengerEmojiTabGlyph').click(); await expect(panel.locator('.messengerGlyphGrid').first()).toBeVisible(); await shot(page, 'emoji-glyph');
     const input = page.locator('#messengerInput'); await input.fill('좋아요 고마워요'); await input.evaluate((el) => el.setSelectionRange(4, 4));
     await panel.getByRole('button', { name: '👍', exact: true }).click(); await expect(input).toHaveValue('좋아요 👍고마워요');
+    await input.fill('가'.repeat(500)); await input.evaluate((el) => el.setSelectionRange(0, 500)); await panel.getByRole('button', { name: '👍', exact: true }).click(); await expect(input).toHaveValue('👍'); /* (v1.10.283 Codex #10: a full box, all chosen -- replaced) */
+    await input.fill('좋아요 👍고마워요');
     await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeHidden(); // (the grid not moved under the finger: 최근 when opened again)
     await page.locator('#messengerEmojiBtn').click(); await expect(panel.locator('.messengerEmojiHead').first()).toHaveText('최근'); await expect(panel.locator('.messengerGlyphGrid').first().getByRole('button')).toHaveText(['👍']);
     await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeHidden();

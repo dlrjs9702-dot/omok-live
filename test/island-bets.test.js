@@ -36,6 +36,30 @@ test('주민 내기 규칙: 27명 모두 좋아하는 게임·실력, 그날 게
   assert.match(B.rule('whack', 'normal'), /1,500점/); assert.match(B.rule('reaction', 'hard'), /270ms/); assert.match(B.rule('numbers', 'normal'), /25초/); assert.equal(B.rule('omok', 'hard'), '나 꽤 둬.');
 });
 
+// v1.10.283 Codex 271~280 (notes docs/codex-review-271-280.md): a bet a restart forgot is given back only when its stake was
+// taken and it was neither paid out nor given back (①②③); one settling long past stays in memory (④, #5); a reflex round
+// asked for a contest and a bet at once is refused (#7)
+test('주민 내기 돈: 잊힌 내기 환불은 판돈만 빠졌을 때 한 번, 지급 뒤·판돈 전에는 없음, 정산 중 내기는 안 지움, 대회+내기 거절', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'resident-bets-money-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('내기돈손님')); await req('/api/test/points-credit', a, { amount: 100000 });
+  const balance = async () => (await req('/api/points', a)).data.balance; const read = async () => (await req('/api/test/bet', a, {})).data.doc;
+  const forgot = async (open) => (await req('/api/test/bet', a, { open: { n: 3, stake: 1000, ...open } })).data.id;
+  // ② written open, the stake never taken: nothing back
+  let b0 = await balance(); await forgot({}); assert.deepEqual((await read()).opens, []); assert.equal(await balance(), b0, '판돈 전 재시작');
+  // ③ the stake taken only: back once
+  b0 = await balance(); await forgot({ take: true }); assert.equal(await balance(), b0 - 1000); await read(); assert.equal(await balance(), b0, '한 번 돌려받음'); await read(); assert.equal(await balance(), b0);
+  // ① taken and paid out (won), forgotten before its open was cleared: nothing more
+  b0 = await balance(); await forgot({ take: true, pay: true }); assert.equal(await balance(), b0 + 1000); await read(); assert.equal(await balance(), b0 + 1000, '지급 뒤 재시작');
+  // ④ a match bet settling past the 20 minutes: kept (forgotten, it would be refunded)
+  const fixed = new Set(Object.values(R.FIXED)); const day = kst(); const n = [...Array(27).keys()].find((k) => !fixed.has(k) && B.kindOf(B.gameOf(k, day)) === 'match') ?? [...Array(27).keys()].find((k) => !fixed.has(k));
+  await req('/api/test/affinity', a, { n, delta: 5 }); await req('/api/test/island/free-residents', a, {});
+  const s = (await req('/api/island/bet/start', a, { n, stake: 1000 })).data; assert.ok(s.ok, JSON.stringify(s));
+  assert.equal((await req('/api/test/bet', a, { pendingOld: s.id })).data.kept, true, '정산 중은 남김');
+  // #7: a contest and a bet in one reflex round
+  assert.equal((await req('/api/solo/reflex/start', a, { game: 'reaction', contest: true, bet: s.id })).status, 400);
+});
+
 test('주민 내기 서버: 아는 사이부터·근무 중 아님·하루 한 판, 판돈 먼저·나가면 짐, 딴 돈 한도면 재미로, 점수 내기 이기면 2배·호감도 +1', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'resident-bets-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
