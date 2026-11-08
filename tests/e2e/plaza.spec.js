@@ -1101,7 +1101,7 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
       expect(w.grounded, `n${w.n} 지면`).toBe(true);
       expect(w.walkable, `n${w.n} 설 수 있는 땅`).toBe(true);
       expect(w.clear, `n${w.n} 장애물 밖 (${w.x.toFixed(2)}, ${w.z.toFixed(2)})`).toBe(true);
-      expect(w.off, `n${w.n} 경로 근처`).toBeLessThan(5);
+      if (!w.held) expect(w.off, `n${w.n} 경로 근처`).toBeLessThan(5); /* (v1.10.278: one an island event took during the test stands where it holds them -- CI chromium-8 #427·#428) */
     }
     for (let i = 0; i < list.length; i += 1) for (let j = i + 1; j < list.length; j += 1) {
       expect(Math.hypot(list[i].x - list[j].x, list[i].z - list[j].z), `n${i}·n${j} 겹치지 않음`).toBeGreaterThan(2 * R * 0.9);

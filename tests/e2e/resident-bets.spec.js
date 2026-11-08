@@ -54,5 +54,6 @@ test('주민 내기: 제안 말풍선 → 「내기해요」 → 점수 내기 �
   expect(room.status, JSON.stringify(room.data)).toBe(201); expect(room.data.state.room?.title || room.data.state.title || go.title).toContain('와 내기');
   expect(JSON.stringify(room.data.state)).toContain(go.name); // (their name in the AI's seat)
   expect((await post(request, '/api/rooms', token, { gameType: go.game, visibility: 'private', title: go.title, ai: go.level, bet: go.id })).data.error).toBe('BET_GONE'); // (one room a bet)
+  expect((await post(request, '/api/island/bet/end', token, { id: go.id })).data.done?.result).toBe('lose'); /* (ended: the islander let go for the tests after, not held for its 40 minutes) */
   await expectNoScriptError(page); await who.context.close();
 });
