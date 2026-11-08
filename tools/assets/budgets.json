@@ -9,6 +9,11 @@
     "EXT_meshopt_compression",
     "KHR_texture_transform"
   ],
+  "pilot106": {
+    "nodes": 2,
+    "textures": 2
+  },
+  "$pilot106": "v1.10.275 그래픽 시범(에셋 106, Nature Megapack Extended CC0): 시범 구역 예외로 파일마다 512 그림 1장(텍스처·이미지 각 1), 노드는 2까지(뿌리 노드 하나 더). 메시·재질·삼각형은 공통 예산 그대로.",
   "trainCarriage": {
     "meshes": 11,
     "nodes": 46
