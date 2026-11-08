@@ -29,7 +29,7 @@ test('섬 가꾸기 1·2·3: 기부함·공사·열림·꽃길, 시장 투표·�
   { // 1 (v1.10.222)
     expect((await tp({ reset: true })).status).toBe(200);
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
-    
+
     await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
     const shot = async (name, wait = 1500) => { if (!process.env.SHOT_DIR) return; await page.waitForTimeout(wait); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-${name}.png` }); };
     const scene = () => page.evaluate(() => window.PlazaDebug().projects());

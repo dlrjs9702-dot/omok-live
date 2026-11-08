@@ -121,4 +121,3 @@ test('사진: 대화 중 주민 앞·옆 모습', async ({ browser, request, isM
   } finally { await set('time', 'auto'); await set('weather', 'auto'); await request.post('/api/test/roster', { data: { on: false } }); }
   await who.context.close();
 });
-
