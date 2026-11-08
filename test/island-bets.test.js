@@ -56,6 +56,12 @@ test('주민 내기 서버: 아는 사이부터·근무 중 아님·하루 한 �
   assert.equal((await req('/api/island/bet/start', a, { n: other, stake: 1000 })).data.error, 'BET_DONE');
   const left = (await req('/api/island/bet/end', a, { id: s.id })).data.done; assert.equal(left.result, 'lose'); assert.equal(left.pay, 0); assert.equal(await balance(), b0 - 1000);
   assert.equal((await req(`/api/island/bet?n=${other}`, a)).data.error, 'BET_DONE');
+  // (총괄 #428) a restart forgets a running bet: the next read gives its stake back -- once, read twice; its 「한 판」 stays
+  const third = [...Array(27).keys()].find((k) => !fixed.has(k) && k !== n && k !== other); await req('/api/test/affinity', a, { n: third, delta: 5 }); await free();
+  const b2 = await balance(); const s3 = (await req('/api/island/bet/start', a, { n: third, stake: 1000 })).data; assert.ok(s3.ok, JSON.stringify(s3)); assert.equal(await balance(), b2 - 1000);
+  await req('/api/test/bet', a, { forget: true });
+  await req(`/api/island/bet?n=${third}`, a); assert.equal(await balance(), b2); await req(`/api/island/bet?n=${third}`, a); assert.equal(await balance(), b2); // (memory gone: back once)
+  assert.equal((await req(`/api/island/bet?n=${third}`, a)).data.error, 'BET_DONE'); assert.deepEqual((await req('/api/test/bet', a, {})).data.doc.opens, []);
   if (n == null) return; // (no short score game off a post today -- the rest needs one)
   // a stake not on offer refused; the day's winnings at the cap: none to pick, for fun only
   await free(); assert.equal((await req('/api/island/bet/start', a, { n, stake: 10000 })).data.error, 'BAD_STAKE'); // (a score bet: 5,000 at most)

@@ -7069,6 +7069,7 @@
     if (item.reason === 'nickname_refund') return `개명소 환불 · ${item.memo || '이름 변경'}`;
     if (item.reason === 'climb_weekly_rank') return `등반 주간 순위 · ${item.memo || '보상'}`; // v1.9.5
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
+    if (item.reason === 'resident_bet') return `주민 내기${item.memo ? ` · ${item.memo}` : ''}`; // v1.10.278 (the stake, its 2x or its return)
     return '기타 시스템 조정';
   }
   function pointHistoryRow(item) {

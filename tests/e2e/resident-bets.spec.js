@@ -43,6 +43,10 @@ test('주민 내기: 제안 말풍선 → 「내기해요」 → 점수 내기 �
   await expect(dialog).toContainText('「'); await shot('result');
   expect((await get(request, '/api/points', token)).data.balance).toBe(before - 1000);
   await page.keyboard.press('Escape');
+  // (총괄 #428) 내 정보 → 포인트 내역: the stake as 「주민 내기」, not the ledger's word
+  await page.evaluate(() => { const d = document.getElementById('myInfoDialog'); if (!d.open) d.showModal(); document.getElementById('pointHistoryBtn').click(); });
+  await expect(page.locator('.pointHistoryRow').first()).toContainText('주민 내기', { timeout: 10000 }); await expect(page.locator('.pointHistoryRow').first()).toContainText('-1,000P'); await shot('history');
+  await page.evaluate(() => document.getElementById('myInfoDialog').close());
   // another's match bet: an AI room 「○○와 내기」, them in its seat
   await post(request, '/api/test/island/free-residents', token, {}); /* (an event -- or another run's bet -- may hold them) */
   const go = (await post(request, '/api/island/bet/start', token, { n: mn, stake: 1000 })).data; expect(go.kind, JSON.stringify(go)).toBe('match');

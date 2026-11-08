@@ -2023,9 +2023,17 @@ const residentBets = new Map(); // id -> { id, account, n, game, kind, skill, le
 let betOffers = { day: null, count: 0 }; const BET_OFFERS_A_DAY = 3; // (the islanders' own asks: two or three a day over the island)
 const betLimits = () => ({ dailyWinMax: Economy.value('bet:dailyWinMax'), scoreStakeMax: Economy.value('bet:scoreStakeMax'), stakeMax: Economy.value('bet:stakeMax') });
 // this account's bets today: who (done), what it won (won), whom it beat (beat: tomorrow's 「복수전!」), each one's 호감도 (aff)
+// (총괄 #428: a restart -- each release is one -- forgets a running bet; the store keeps it open (opens), and the next read gives
+// its stake back, once (`resident_bet:<id>:back`), the day's 「한 판」 and 호감도 left as they are)
 async function betDoc(account) {
-  const day = kstDate(nowMs()); const d = (await pointStore.questDoc(account, 'betmem')).doc || {};
-  return d.day === day ? d : { day, done: [], won: 0, beat: [], aff: {}, prev: d.day === kstDate(nowMs() - 86400000) ? d.beat || [] : [] };
+  const day = kstDate(nowMs()); let d = (await pointStore.questDoc(account, 'betmem')).doc || {};
+  const lost = (d.opens || []).filter((o) => !residentBets.has(o.id));
+  if (lost.length) {
+    for (const o of lost) if (o.stake > 0) { await pointStore.charge({ userId: account, claimId: `resident_bet:${o.id}:back`, price: o.stake, title: `${IslandCast.RESIDENTS[o.n]?.name || ''}와 내기 · 돌려받음`, credit: true }); notifyPointsChanged([account]); }
+    const gone = new Set(lost.map((o) => o.id)); await pointStore.questApply(account, 'betmem', (x) => ({ doc: { ...(x || {}), opens: ((x || {}).opens || []).filter((o) => !gone.has(o.id)) } }));
+    d = { ...d, opens: (d.opens || []).filter((o) => !gone.has(o.id)) };
+  }
+  return d.day === day ? d : { day, done: [], won: 0, beat: [], aff: {}, opens: d.opens || [], prev: d.day === kstDate(nowMs() - 86400000) ? d.beat || [] : [] };
 }
 // may this account bet with islander n now: { n, name, game, ... } or { busy, say } (at a post) or { error: [status, code, text] }
 async function betInfo(account, n, me = '') {
@@ -2047,7 +2055,7 @@ async function settleBet(b, result, me = '') {
   if (b.done) return b.done; b.done = { pending: true };
   const doc = await betDoc(b.account); const { pay, net } = IslandBets.payout(b.stake, result, doc.won, betLimits());
   let balance = null; if (pay > 0) { const out = await pointStore.charge({ userId: b.account, claimId: `resident_bet:${b.id}:pay`, price: pay, title: `${IslandCast.RESIDENTS[b.n]?.name || ''}와 내기`, credit: true }); balance = out.balance ?? null; notifyPointsChanged([b.account]); }
-  let gain = false; await pointStore.questApply(b.account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; const had = Number(t.aff?.[b.n]) || 0; gain = had < Economy.value('affinity:betDaily'); return { doc: { ...t, won: (t.won || 0) + net, beat: result === 'win' ? [...new Set([...(t.beat || []), b.n])] : t.beat || [], aff: gain ? { ...t.aff, [b.n]: had + 1 } : t.aff || {} } }; });
+  let gain = false; await pointStore.questApply(b.account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; const had = Number(t.aff?.[b.n]) || 0; gain = had < Economy.value('affinity:betDaily'); return { doc: { ...t, won: (t.won || 0) + net, beat: result === 'win' ? [...new Set([...(t.beat || []), b.n])] : t.beat || [], aff: gain ? { ...t.aff, [b.n]: had + 1 } : t.aff || {}, opens: (t.opens || []).filter((o) => o.id !== b.id) } }; });
   const before = await pointStore.affinityOf(b.account); const after = gain ? await pointStore.affinityAdd(b.account, doc.day, [{ n: b.n, delta: 1 }]) : before;
   islandEvents.residentFree(`bet:${b.id}`); broadcastIsland('residents', { list: islandEvents.residents() });
   const key = result === 'win' ? 'lose' : result === 'draw' ? 'draw' : 'win'; /* (my win is the islander's loss) */
@@ -2055,7 +2063,7 @@ async function settleBet(b, result, me = '') {
   b.done = { result, pay, net, stake: b.stake, balance, say: betSay(b.n, key, { me }), emote, affinity: after[b.n] || 0, stages: gain ? await affinityStages(b.account, before, after, me) : [] };
   return b.done;
 }
-setInterval(() => { const t = nowMs(); for (const b of residentBets.values()) { if (!b.done && t - b.at > IslandBets.HOLD_MS) settleBet(b, 'lose').catch((error) => console.error('주민 내기 정리 실패:', error.message)); if (b.done && t - b.at > 2 * IslandBets.HOLD_MS) residentBets.delete(b.id); } }, 30000).unref?.(); // (left mid-bet: lost, let go)
+setInterval(() => { const t = nowMs(); for (const b of residentBets.values()) { const room = b.kind === 'match' && b.room ? rooms.get(b.room) : null; const live = room && room.game?.status !== 'finished'; /* (총괄 #428: a slow match still being played -- its loss waits, up to 40 minutes) */ if (!b.done && t - b.at > (live ? 40 * 60000 : IslandBets.HOLD_MS)) settleBet(b, 'lose').catch((error) => console.error('주민 내기 정리 실패:', error.message)); if (b.done && t - b.at > 2 * IslandBets.HOLD_MS) residentBets.delete(b.id); } }, 30000).unref?.(); // (left mid-bet: lost, let go)
 const puzzleStarts = new Map(); // v1.10.69 오늘의 문제: 'account|game|level|date' -> when it was first opened (memory only)
 const cardRuns = new Map(); // v1.10.70 카드 게임: round id -> { account, game, level, seed, at } (memory only)
 // v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
@@ -6270,9 +6278,11 @@ async function requestHandler(req, res) {
     if (!islandEvents.residentHold(n, `bet:${id}`)) return sendError(res, 409, 'RESIDENT_BUSY', `${info.name}은(는) 지금 다른 일을 하고 있어요.`);
     let balance = null;
     if (stake) { const out = await pointStore.charge({ userId: account, claimId: `resident_bet:${id}:stake`, price: stake, title: `${info.name}와 내기` }); if (!out.applied) { islandEvents.residentFree(`bet:${id}`); return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.'); } balance = out.balance; notifyPointsChanged([account]); }
-    const doc = await betDoc(account); await pointStore.questApply(account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; return { doc: { ...t, done: [...new Set([...(t.done || []), n])] } }; }); // (one a day each, counted when it starts)
+    const doc = await betDoc(account);
     const b = { id, account, n, game: info.game, kind: info.kind, skill: info.skill, level: info.level, target: info.target, stake, day: doc.day, at: nowMs(), run: null, room: null, done: null };
-    residentBets.set(id, b); broadcastIsland('residents', { list: islandEvents.residents() });
+    residentBets.set(id, b); /* (in memory before it is written open: a read between never takes it for a forgotten one) */
+    await pointStore.questApply(account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; return { doc: { ...t, done: [...new Set([...(t.done || []), n])], opens: [...(t.opens || []), { id, n, stake, at: b.at }] } }; }); // (one a day each, counted when it starts; open till settled)
+    broadcastIsland('residents', { list: islandEvents.residents() });
     return sendJson(res, 200, { ok: true, id, n, name: info.name, game: info.game, gameName: info.gameName, kind: info.kind, level: info.level, target: info.target, stake, balance, title: `${info.name}와 내기`, emote: IslandBets.EMOTE.pick });
   }
   if ((pathname === '/api/island/bet/end' && req.method === 'POST') || (pathname === '/api/island/bet/result' && req.method === 'GET')) {
@@ -6284,7 +6294,8 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/bet' && req.method === 'POST') { // (the day's offers and my bets afresh; won: today's winnings)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
-    if (body.reset) { betOffers = { day: null, count: 0 }; await pointStore.questApply(account, 'betmem', () => ({ doc: { day: kstDate(nowMs()), done: [], won: Number(body.won) || 0, beat: [], aff: {}, prev: [] } })); }
+    if (body.forget) for (const b of [...residentBets.values()]) if (b.account === account) { islandEvents.residentFree(`bet:${b.id}`); residentBets.delete(b.id); } // (as a restart does)
+    if (body.reset) { betOffers = { day: null, count: 0 }; await pointStore.questApply(account, 'betmem', () => ({ doc: { day: kstDate(nowMs()), done: [], won: Number(body.won) || 0, beat: [], aff: {}, prev: [], opens: [] } })); }
     return sendJson(res, 200, { ok: true, doc: (await betDoc(account)) });
   }
   // B 47 반려동물: which of mine walks with me (one bought at the 잡화점, a name of up to 10 characters), or none
