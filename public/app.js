@@ -2258,7 +2258,7 @@
   // done, run } when the round ends ({ done: false } if left). From the game hall 「‹ 게임관」 comes back there; from a
   // quest, back to the island. Reward rules stay as they are (AI practice pays nothing; quests are not connected yet).
   async function playGame(game, opts = {}) {
-    const place = ['quest', 'contest'].includes(opts.place) ? opts.place : 'gamehall'; // (v1.10.238: the tent's contest round, back to the island)
+    const place = ['quest', 'contest', 'bet'].includes(opts.place) ? opts.place : 'gamehall'; // (v1.10.238: the tent's contest round, back to the island; v1.10.278 a 주민 내기's)
     if (!(await loadHanpan(() => (place === 'gamehall' ? openGamehall() : showView('lobby'))))) return { game, done: false };
     return reflexGames.play(game, { ...opts, place });
   }
@@ -5206,6 +5206,60 @@
     residentBye = api('/api/island/resident/bye', { method: 'POST', body: JSON.stringify({ n: t.n }) }).then((d) => plaza.controller?.setResidents?.(d.residents)).catch(() => {});
   }
   plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) endResidentTalk(); });
+  // v1.10.278 주민 내기 (notes docs/resident-bets-design-20261025.md): 「🎲 내기해요」 in an islander's talk (아는 사이, not yet today;
+  // at a post: their 「근무 중」 line); the stake, then their game -- a score game's round (place 'bet', the server's check) or an AI
+  // room in their name; the result in their words and face
+  let betInfoCache = null; let betWatch = null;
+  const betLine = (s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = `「${s}」`; return p; };
+  async function betButton(n, list) {
+    let info = betInfoCache?.n === n && Date.now() - betInfoCache.at < 30000 ? betInfoCache.info : null;
+    if (!info) { try { info = await api(`/api/island/bet?n=${n}`); betInfoCache = { n, info, at: Date.now() }; } catch { return; } } // (처음 본 사이, done today, held: none)
+    if (!list.isConnected || list.querySelector('[data-topic="bet"]')) return;
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'bet'; b.className = 'betAsk'; b.textContent = '🎲 내기해요';
+    b.addEventListener('click', () => { if (info.busy) { lostCard.replaceChildren(betLine(info.say), byeChoice()); return; } openBet(info); }); list.insertBefore(b, list.lastElementChild); /* (before the last -- 잘 가요: their own topics first, CI #428 island-story) */
+  }
+  function byeChoice(label = '다음에요') { const l = document.createElement('div'); l.className = 'talkChoices'; const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'bye'; b.textContent = label; b.addEventListener('click', () => plazaDialog.close()); l.append(b); return l; }
+  function openBet(info) {
+    plaza.controller?.residentEmote?.(info.n, info.emote || 'wave');
+    const note = document.createElement('p'); note.className = 'lookMeta betNote'; note.textContent = info.kind === 'score' ? `${info.gameName} · 넘으면 판돈 2배` : `${info.gameName} 대국 · 이기면 2배, 비기면 돌려받아요`;
+    const list = byeChoice();
+    for (const s of (info.stakes.length ? info.stakes : [0]).slice().reverse()) { const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'stake'; b.dataset.stake = String(s); b.textContent = s ? `${s.toLocaleString('ko-KR')}P 걸기` : '재미로 한 판'; b.addEventListener('click', () => startBet(info, s)); list.prepend(b); }
+    lostCard.replaceChildren(betLine(info.say), betLine(info.pick), note, list); setTimeout(() => plaza.controller?.residentEmote?.(info.n, 'think'), 1600);
+  }
+  async function startBet(info, stake) {
+    let go; try { go = await api('/api/island/bet/start', { method: 'POST', body: JSON.stringify({ n: info.n, stake }) }); } catch (error) { showToast(error.message); return; }
+    betInfoCache = null; loadPoints(); plazaDialog.close();
+    if (go.kind === 'score') {
+      const r = await window.GameLaunch.play(go.game, { level: go.level, place: 'bet', bet: go.id });
+      let done = null; /* (the round's report reaches the server a moment after the game says it ended -- waited for; left: lost) */
+      for (let k = 0; r?.run && k < 25 && !done; k += 1) { await new Promise((ok) => setTimeout(ok, 400)); done = (await api(`/api/island/bet/result?id=${go.id}`).catch(() => ({}))).done; }
+      if (!done) done = (await api('/api/island/bet/end', { method: 'POST', body: JSON.stringify({ id: go.id }) }).catch(() => ({}))).done;
+      showBetResult(go, done); return;
+    }
+    try { const room = await api('/api/rooms', { method: 'POST', body: JSON.stringify({ gameType: go.game, visibility: 'private', title: go.title, ai: go.level, bet: go.id }) }); enterRoomState(room.state); showToast(`자리를 고르면 ${go.name}이(가) 맞은편에 앉아요.`, 5000); }
+    catch (error) { showToast(error.message); await api('/api/island/bet/end', { method: 'POST', body: JSON.stringify({ id: go.id }) }).catch(() => {}); return; }
+    clearInterval(betWatch); const until = Date.now() + 12 * 60000; /* (the room's end settles it on the server: its answer when it comes) */
+    betWatch = setInterval(async () => { if (Date.now() > until) { clearInterval(betWatch); return; } const d = (await api(`/api/island/bet/result?id=${go.id}`).catch(() => ({}))).done; if (d) { clearInterval(betWatch); showBetResult(go, d); } }, 3000);
+  }
+  // their own ask: standing still by a walking islander (10 s, nothing open) -- the server lets two or three a day over the island;
+  // a wave and their line in a bubble (talk to them: 「🎲 내기해요」 among the topics)
+  let betStill = null; let betAsked = 0;
+  const betOfferQuick = () => { try { return localStorage.getItem('gc.testBetOffer') === '1'; } catch { return false; } }; // (tests: no 10 s stand)
+  setInterval(async () => {
+    const near = plaza.controller?.nearResident?.(betOfferQuick() ? 8 : 4); if (!near || plazaDialog.open || document.hidden || Date.now() - betAsked < 60000) { betStill = null; return; }
+    if (!betStill || betStill.n !== near.n || Math.hypot(betStill.x - near.x, betStill.z - near.z) > 0.3) { betStill = { ...near, at: Date.now() }; return; }
+    if (Date.now() - betStill.at < (betOfferQuick() ? 0 : 10000)) return; betAsked = Date.now(); betStill = null;
+    const o = await api('/api/island/bet/offer', { method: 'POST', body: JSON.stringify({ n: near.n }) }).catch(() => null);
+    if (o?.ok) { plaza.controller?.residentEmote?.(o.n, o.emote || 'wave'); plaza.controller?.residentSay?.(o.n, o.say); betInfoCache = null; }
+  }, 2500);
+  function showBetResult(go, done) {
+    if (!done) return; loadPoints();
+    plaza.controller?.residentEmote?.(go.n, done.emote);
+    const what = done.result === 'win' ? '이겼어요!' : done.result === 'draw' ? '비겼어요' : '졌어요';
+    const sum = document.createElement('p'); sum.className = 'lookMeta betResult'; sum.dataset.result = done.result; sum.textContent = `${what}${done.pay ? ` · +${done.pay.toLocaleString('ko-KR')}P` : go.stake ? ` · -${go.stake.toLocaleString('ko-KR')}P` : ''}`;
+    openPlazaWindow(`🎲 ${go.title}`, [betLine(done.say), sum]);
+    for (const note of done.stages || []) showToast(`💛 ${note}`, 6000);
+  }
   function showResidentTalk(data, first) {
     if (data.storyTalk && !data.storyTree) { talkPast = []; data = { ...data, ...storyTreeView(data, data.storyOffer ? 'offer' : 'done', data.storyOffer ? data.storyTalk : data.storyTalk.done, 'o1') }; }
     const tree = data.storyTree; const asks = Boolean(tree?.replies?.some((r) => r[3]?.accept));
@@ -5244,6 +5298,7 @@
       b.addEventListener('click', async () => { const r = await festivalPost('gift', { step: 'give', n: data.n }); if (!r) return; plaza.controller?.emote?.('clap'); showToast(`🎁 ${r.name}에게 선물을 건넸어요 · 도장 +${r.added} (모은 도장 ${r.festival.stamps})`); plazaDialog.close(); });
       list.prepend(b);
     }
+    if (!data.talk && !tree?.replies && !data.offer && !data.storyOffer && !data.question && !data.gifts?.length) betButton(data.n, list); /* (v1.10.278 주민 내기: among the topics) */
     lostCard.replaceChildren(...past, ...lines, ...ribbon, ...(data.offer ? [offerNote(data.offer)] : []), ...(data.storyOffer && (!tree || asks) ? [offerNote({ title: data.storyOffer.title, label: storyLine(data.storyOffer) })] : []), meta, list);
     if (data.story) showStory(data.story);
     if (data.storyAccepted) showToast(`📖 할 일에 넣었어요 · ${data.storyAccepted.title}`);
@@ -7014,6 +7069,7 @@
     if (item.reason === 'nickname_refund') return `개명소 환불 · ${item.memo || '이름 변경'}`;
     if (item.reason === 'climb_weekly_rank') return `등반 주간 순위 · ${item.memo || '보상'}`; // v1.9.5
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
+    if (item.reason === 'resident_bet') return `주민 내기${item.memo ? ` · ${item.memo}` : ''}`; // v1.10.278 (the stake, its 2x or its return)
     return '기타 시스템 조정';
   }
   function pointHistoryRow(item) {
