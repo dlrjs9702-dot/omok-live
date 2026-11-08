@@ -47,14 +47,14 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   }
   // the plants: one batch per kind, each copy on the ground where the layout says
   const cells = [];
-  const byId = new Map(); for (const p of P.plants(T)) { if (!byId.has(p.id)) byId.set(p.id, []); byId.get(p.id).push(p); }
+  const byId = new Map(); for (const p of [...P.plants(T), ...P.trees(T)]) { /* (v1.10.276: and the patch's trees -- island.js leaves them out) */ if (!byId.has(p.id)) byId.set(p.id, []); byId.get(p.id).push(p); }
   const none = new THREE.BufferGeometry(); none.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(9), 3)); made.push(none);
   const noneMat = new THREE.MeshBasicMaterial(); made.push(noneMat);
   const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0);
   for (const [id, list] of byId) {
     const fallback = new THREE.InstancedMesh(none, noneMat, list.length); fallback.count = 0; fallback.visible = false; group.add(fallback);
     const matrices = list.map((p) => new THREE.Matrix4().compose(new THREE.Vector3(p.x, T.heightAt(p.x, p.z), p.z), q.setFromAxisAngle(up, p.yaw).clone(), new THREE.Vector3().setScalar(p.s)));
-    const cell = { x: P.ZONE.x, z: P.ZONE.z, parent: group, procedural: [fallback], matrices, colors: null, shadow: /^(bush|rock)/.test(id) };
+    const cell = { x: P.ZONE.x, z: P.ZONE.z, parent: group, procedural: [fallback], matrices, colors: null, shadow: /^(bush|rock|tree)/.test(id) };
     const one = [cell]; cells.push(one); assets.batch([`pilot.${id}`], one);
   }
   // the blades: one thin bent leaf ending in a point (총괄 #425: half as wide), many times; the season's ground colour on the
@@ -70,20 +70,74 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   const grass = new THREE.InstancedMesh(blade, bladeMat, bladeList.length); grass.receiveShadow = true; grass.castShadow = false; grass.name = 'pilot_grass';
   bladeList.forEach((b, i) => grass.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(b.x, T.heightAt(b.x, b.z), b.z), q.setFromAxisAngle(up, b.yaw).clone(), new THREE.Vector3(1, b.h, 1))));
   grass.computeBoundingSphere(); group.add(grass);
+  // v1.10.276 ④ the patch's ground: a mottled picture (made here, 512, no file) on a sheet laid on the ground, the season's
+  // ground colour, fading out from two thirds of the way to the edge -- no tone, so its rim is the island's own ground
+  const groundTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d'); const r = (() => { let s = 2761; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
+    x.fillStyle = 'rgb(232,232,232)'; x.fillRect(0, 0, 512, 512);
+    const blob = (px, py, rad, v, a) => { for (const [ox, oy] of [[0, 0], [512, 0], [-512, 0], [0, 512], [0, -512]]) { const g = x.createRadialGradient(px + ox, py + oy, 0, px + ox, py + oy, rad); g.addColorStop(0, `rgba(${v},${v},${v},${a})`); g.addColorStop(1, `rgba(${v},${v},${v},0)`); x.fillStyle = g; x.fillRect(px + ox - rad, py + oy - rad, rad * 2, rad * 2); } };
+    for (let i = 0; i < 260; i += 1) blob(r() * 512, r() * 512, 20 + r() * 60, r() < 0.5 ? 200 : 255, 0.18); /* (light and dark patches) */
+    for (let i = 0; i < 900; i += 1) blob(r() * 512, r() * 512, 2 + r() * 5, r() < 0.7 ? 170 : 255, 0.35); /* (specks: soil, light leaves) */
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 5); t.anisotropy = 4; made.push(t); return t;
+  })();
+  const sheet = new THREE.PlaneGeometry(P.ZONE.r * 2, P.ZONE.r * 2, 40, 40); sheet.rotateX(-Math.PI / 2); made.push(sheet);
+  { const p = sheet.attributes.position; const rgba = new Float32Array(p.count * 4);
+    for (let i = 0; i < p.count; i += 1) { const wx = P.ZONE.x + p.getX(i); const wz = P.ZONE.z + p.getZ(i); p.setY(i, T.heightAt(wx, wz) + 0.025); const e = Math.min(1, Math.max(0, (Math.hypot(p.getX(i), p.getZ(i)) / P.ZONE.r - 0.65) / 0.35)); rgba.set([1, 1, 1, 1 - e * e * (3 - 2 * e)], i * 4); }
+    sheet.setAttribute('color', new THREE.BufferAttribute(rgba, 4)); sheet.computeVertexNormals(); }
+  const groundMat = new THREE.MeshStandardMaterial({ map: groundTex, vertexColors: true, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); made.push(groundMat);
+  const ground = new THREE.Mesh(sheet, groundMat); ground.position.set(P.ZONE.x, 0, P.ZONE.z); ground.receiveShadow = true; ground.renderOrder = -1; ground.name = 'pilot_ground'; group.add(ground);
   let season = null; let seasonAt = 0;
   // each frame on the island: wind time, cuts round `things` ([{ x, z }]), the season's tint, the loaded models patched
   function step(dt, now, things = []) {
     U.uPilotTime.value = (U.uPilotTime.value + dt) % 1000;
     let n = 0; for (const t of things) { if (n >= CUTS) break; if (!P.inZone(t.x, t.z, 1)) continue; U.uPilotCuts.value[n].set(t.x, t.z, t.r || P.CUT_R, 0); n += 1; }
     U.uPilotCutN.value = n;
-    if (now - seasonAt > 5000) { seasonAt = now; const s = T.seasonAt?.(P.ZONE.x, P.ZONE.z, Date.now()) || 'summer'; if (s !== season) { season = s; const [to, share] = GROUND[s] || GROUND.summer; bladeMat.color.setHex(GRASS).lerp(new THREE.Color(to), share); } }
+    if (now - seasonAt > 5000) { seasonAt = now; const s = T.seasonAt?.(P.ZONE.x, P.ZONE.z, Date.now()) || 'summer'; if (s !== season) { season = s; const [to, share] = GROUND[s] || GROUND.summer; bladeMat.color.setHex(GRASS).lerp(new THREE.Color(to), share); groundMat.color.copy(bladeMat.color).multiplyScalar(1.12); } } /* (the picture's mean ~0.9: its sheet the ground's colour) */
     for (const o of group.children) { /* (a model's material is its file's: patched once; grass and flowers -- small and swaying -- cut) */
-      if (!o.isMesh || o === grass || o.material === noneMat || o.userData.pilotSeen === o.material) continue; o.userData.pilotSeen = o.material;
+      if (!o.isMesh || o === grass || o === ground || o.material === noneMat || o.userData.pilotSeen === o.material) continue; o.userData.pilotSeen = o.material;
       const wind = Boolean(o.geometry.attributes.uv1); if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
       const scale = o.userData.part ? new THREE.Vector3().setFromMatrixScale(o.userData.part).x : 1; /* (the part's dequantizing scale: metres per unit) */
       for (const m of [].concat(o.material)) patch(m, { wind, cut: wind && o.geometry.boundingSphere.radius * scale < 0.5, unit: 1 / scale });
     }
   }
-  function dispose() { for (const one of cells) assets.unbatch?.(one); group.removeFromParent(); grass.dispose(); for (const m of made) m.dispose?.(); }
-  return { group, step, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, blades: bladeList.length }) };
+  // the graphics tier (plaza-scene setTier: 0 낮음, 1 중간, 2 높음): no blades and no ground sheet, half the blades, all (총괄 276 --
+  // slow phones; a quarter on 낮음 still cost as much as none). The layout is in random order: the first ones spread over the patch.
+  const BLADES_BY_TIER = [0, 0.5, 1];
+  function setQuality(q) { grass.count = Math.round(bladeList.length * (BLADES_BY_TIER[q] ?? 1)); grass.visible = grass.count > 0; ground.visible = q > 0; }
+  // v1.10.276 ③ (PC 「높음」 only, in and by the patch): ambient occlusion (GTAO) and a soft bloom over the picture, faded in
+  // and out over a second; the passes load the first time they are wanted. draw() says whether it drew the frame.
+  const ADDONS = '/vendor/three/addons/postprocessing';
+  const POST = { ao: 0.75, bloom: 0.16 };
+  let post = null; let postLoading = false; let postMix = 0;
+  async function loadPost(renderer, scene, camera) {
+    postLoading = true;
+    try {
+      const [{ EffectComposer }, { RenderPass }, { GTAOPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all(['EffectComposer', 'RenderPass', 'GTAOPass', 'UnrealBloomPass', 'OutputPass'].map((n) => import(`${ADDONS}/${n}.js`)));
+      const size = renderer.getSize(new THREE.Vector2()); const composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      const ao = new GTAOPass(scene, camera, size.x, size.y); ao.updateGtaoMaterial({ radius: 0.5, distanceExponent: 1, thickness: 1, scale: 1 }); ao.blendIntensity = 0; composer.addPass(ao);
+      /* (its depth and normals drew a name label and the see-through ground sheet as solid -- a dark box over me: those left
+         out as it leaves out points and lines) */
+      /* ponytail: wraps GTAOPass's internal _overrideVisibility/_visibilityCache (three 0.186) -- check on a three upgrade */
+      const hide = ao._overrideVisibility.bind(ao);
+      ao._overrideVisibility = () => { hide(); scene.traverse((o) => { if (o.visible && (o.isSprite || (o.material && [].concat(o.material).some((m) => m.transparent || m.depthWrite === false)))) { o.visible = false; ao._visibilityCache.push(o); } }); };
+      const bloom = new UnrealBloomPass(size.clone(), 0, 0.35, 0.92); composer.addPass(bloom);
+      composer.addPass(new OutputPass());
+      post = { composer, ao, bloom, w: 0, h: 0, ratio: 0 };
+    } catch { post = false; } /* (not loaded: drawn as before) */
+  }
+  let postForce = null; /* (tests: on/off whatever the place and tier, its strengths set -- debug().pilotPost) */
+  function setPost({ force = null, ao = POST.ao, bloom = POST.bloom } = {}) { postForce = force; POST.ao = ao; POST.bloom = bloom; }
+  function draw(renderer, scene, camera, wanted, dt) {
+    const want = postForce ?? wanted;
+    if (want && !post && !postLoading) loadPost(renderer, scene, camera);
+    postMix = Math.max(0, Math.min(1, postMix + (want ? dt : -dt)));
+    if (!post || postMix <= 0) return false;
+    const size = renderer.getSize(new THREE.Vector2()); const ratio = renderer.getPixelRatio();
+    if (size.x !== post.w || size.y !== post.h || ratio !== post.ratio) { post.w = size.x; post.h = size.y; post.ratio = ratio; post.composer.setPixelRatio(ratio); post.composer.setSize(size.x, size.y); }
+    post.ao.blendIntensity = POST.ao * postMix; post.bloom.strength = POST.bloom * postMix;
+    post.composer.render(dt); return true;
+  }
+  function dispose() { for (const one of cells) assets.unbatch?.(one); group.removeFromParent(); grass.dispose(); for (const m of made) m.dispose?.(); if (post) post.composer.dispose(); }
+  return { group, step, setQuality, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, blades: bladeList.length, shown: grass.count }) };
 }

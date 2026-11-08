@@ -58,7 +58,7 @@ test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 �
   assert.doesNotMatch(homeHtml, /\?v=/);
 
   // the loader and what it imports, served as they are (the bare 'three' goes through the import map)
-  for (const addon of ['loaders/GLTFLoader.js', 'utils/SkeletonUtils.js', 'utils/BufferGeometryUtils.js', 'libs/meshopt_decoder.module.js']) {
+  for (const addon of ['loaders/GLTFLoader.js', 'utils/SkeletonUtils.js', 'utils/BufferGeometryUtils.js', 'libs/meshopt_decoder.module.js', /* v1.10.276 그래픽 시범 ③ */ 'postprocessing/EffectComposer.js', 'postprocessing/GTAOPass.js', 'postprocessing/UnrealBloomPass.js', 'postprocessing/OutputPass.js', 'shaders/GTAOShader.js', 'math/SimplexNoise.js']) {
     const url = imports[`/vendor/three/addons/${addon}`];
     assert.match(url, /\?h=[0-9a-f]{16}$/, addon);
     const res = await fetch(`${base}${url}`);
