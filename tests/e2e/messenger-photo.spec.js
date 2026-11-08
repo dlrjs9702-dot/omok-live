@@ -140,9 +140,9 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     await expect(them.locator('#messengerMessages .messengerSticker img')).toHaveAttribute('alt', '고마워요');
     await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: b.account, body: { sticker: 'islanders1/laugh_duri' } });
     await expect(page.locator('#messengerMessages .chatMessage:not(.mine) .messengerSticker img')).toHaveCount(1, { timeout: 10000 });
-    // (v1.10.281 움직이는 이모티콘) in the room its moving picture (ㅋㅋㅋ has one), one without stays still; the panel all still
+    // (v1.10.282 움직이는 이모티콘) in the room its moving picture, mine and theirs; the panel all still
     await expect(page.locator('#messengerMessages .chatMessage:not(.mine) .messengerSticker img')).toHaveAttribute('src', /\/islanders1\/anim\/laugh_duri\.webp$/);
-    await expect(sent).toHaveAttribute('src', /\/islanders1\/thanks_handeul\.webp$/);
+    await expect(sent).toHaveAttribute('src', /\/islanders1\/anim\/thanks_handeul\.webp$/); /* (107b: all 24 move) */
     expect(await panel.locator('img').evaluateAll((ims) => ims.filter((im) => im.getAttribute('src')?.includes('/anim/')).length)).toBe(0);
     // 그림 글자: at the cursor, the panel kept
     await page.locator('#messengerEmojiTabGlyph').click(); await expect(panel.locator('.messengerGlyphGrid').first()).toBeVisible(); await shot(page, 'emoji-glyph');
