@@ -118,6 +118,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
       const ao = new GTAOPass(scene, camera, size.x, size.y); ao.updateGtaoMaterial({ radius: 0.5, distanceExponent: 1, thickness: 1, scale: 1 }); ao.blendIntensity = 0; composer.addPass(ao);
       /* (its depth and normals drew a name label and the see-through ground sheet as solid -- a dark box over me: those left
          out as it leaves out points and lines) */
+      /* ponytail: wraps GTAOPass's internal _overrideVisibility/_visibilityCache (three 0.186) -- check on a three upgrade */
       const hide = ao._overrideVisibility.bind(ao);
       ao._overrideVisibility = () => { hide(); scene.traverse((o) => { if (o.visible && (o.isSprite || (o.material && [].concat(o.material).some((m) => m.transparent || m.depthWrite === false)))) { o.visible = false; ao._visibilityCache.push(o); } }); };
       const bloom = new UnrealBloomPass(size.clone(), 0, 0.35, 0.92); composer.addPass(bloom);
@@ -125,7 +126,10 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
       post = { composer, ao, bloom, w: 0, h: 0, ratio: 0 };
     } catch { post = false; } /* (not loaded: drawn as before) */
   }
-  function draw(renderer, scene, camera, want, dt) {
+  let postForce = null; /* (tests: on/off whatever the place and tier, its strengths set -- debug().pilotPost) */
+  function setPost({ force = null, ao = POST.ao, bloom = POST.bloom } = {}) { postForce = force; POST.ao = ao; POST.bloom = bloom; }
+  function draw(renderer, scene, camera, wanted, dt) {
+    const want = postForce ?? wanted;
     if (want && !post && !postLoading) loadPost(renderer, scene, camera);
     postMix = Math.max(0, Math.min(1, postMix + (want ? dt : -dt)));
     if (!post || postMix <= 0) return false;
@@ -135,5 +139,5 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     post.composer.render(dt); return true;
   }
   function dispose() { for (const one of cells) assets.unbatch?.(one); group.removeFromParent(); grass.dispose(); for (const m of made) m.dispose?.(); if (post) post.composer.dispose(); }
-  return { group, step, setQuality, draw, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, blades: bladeList.length, shown: grass.count }) };
+  return { group, step, setQuality, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, blades: bladeList.length, shown: grass.count }) };
 }
