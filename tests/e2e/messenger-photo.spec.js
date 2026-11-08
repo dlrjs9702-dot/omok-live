@@ -111,6 +111,17 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     await page.reload(); await page.locator('#messengerRoomList button', { hasText: '이모티콘방' }).click();
     const panel = page.locator('#messengerEmoji'); const cells = panel.locator('.messengerStickerCell');
     await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeVisible(); await expect(cells).toHaveCount(24);
+    if (!isMobile) { /* (v1.10.280 폴드 펼침 제보: the room's column squeezed the panel flat -- an unfolded phone (two columns) and a low PC: 200 px at least, the first sticker whole inside it) */
+      const size = page.viewportSize();
+      for (const [w, h] of [[820, 900], [1280, 600]]) {
+        await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
+        const [p, c, c2] = await Promise.all([panel.boundingBox(), cells.first().boundingBox(), cells.nth(4).boundingBox()]); /* (the first, and the second row's first) */
+        expect(p.height, `${w}x${h}`).toBeGreaterThanOrEqual(200); expect(c.y >= p.y && c.y + c.height <= p.y + p.height && c.height > 40, `${w}x${h} ${JSON.stringify([p, c])}`).toBe(true);
+        expect(c2.y > c.y && c2.y + c2.height <= p.y + p.height + 1, `${w}x${h} two rows ${JSON.stringify([p, c2])}`).toBe(true);
+        await shot(page, `emoji-panel-${w}x${h}`);
+      }
+      await page.setViewportSize(size);
+    }
     // pressed once: large, nothing sent; pressed again: sent, a picture with no bubble
     await cells.nth(16).click(); await expect(page.locator('#messengerEmojiPreview')).toBeVisible(); await shot(page, 'emoji-sticker');
     await expect(page.locator('#messengerMessages .chatMessage.mine')).toHaveCount(1);
