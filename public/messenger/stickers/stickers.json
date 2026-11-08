@@ -1,0 +1,29 @@
+{
+  "packs": [{ "id": "islanders1", "name": "섬 친구들 1" }],
+  "stickers": [
+    { "id": "islanders1/hi_bomi", "file": "tmp/emote-wave.svg", "text": "안녕!" },
+    { "id": "islanders1/laugh_duri", "file": "tmp/emote-laugh.svg", "text": "ㅋㅋㅋ" },
+    { "id": "islanders1/clap_haram", "file": "tmp/emote-clap.svg", "text": "짝짝짝" },
+    { "id": "islanders1/good_cheori", "file": "tmp/emote-thumbsup.svg", "text": "좋아요" },
+    { "id": "islanders1/love_kkotnim", "file": "tmp/emote-hearthands.svg", "text": "사랑해요" },
+    { "id": "islanders1/wow_noeul", "file": "tmp/emote-surprise.svg", "text": "헉!" },
+    { "id": "islanders1/hmm_nuri", "file": "tmp/emote-think.svg", "text": "음…" },
+    { "id": "islanders1/dance_kongi", "file": "tmp/emote-dance.svg", "text": "신난다~" },
+    { "id": "islanders1/yay_daon", "file": "tmp/emote-jumpjoy.svg", "text": "야호!" },
+    { "id": "islanders1/shy_bitna", "file": "tmp/emote-shy.svg", "text": "부끄…" },
+    { "id": "islanders1/shrug_baram", "file": "tmp/emote-shrug.svg", "text": "글쎄요?" },
+    { "id": "islanders1/oops_garam", "file": "tmp/emote-facepalm.svg", "text": "아이고" },
+    { "id": "islanders1/sleepy_mulgyeol", "file": "tmp/emote-yawn.svg", "text": "졸려요" },
+    { "id": "islanders1/cry_isol", "file": "tmp/emote-cry.svg", "text": "흑흑" },
+    { "id": "islanders1/bow_haesong", "file": "tmp/emote-bow.svg", "text": "감사합니다" },
+    { "id": "islanders1/angry_bawi", "file": "tmp/emote-angry.svg", "text": "흥!" },
+    { "id": "islanders1/thanks_handeul", "file": "tmp/emote-bow.svg", "text": "고마워요" },
+    { "id": "islanders1/sorry_goeun", "file": "tmp/emote-facepalm.svg", "text": "미안해요" },
+    { "id": "islanders1/lol_garak", "file": "tmp/emote-laugh.svg", "text": "하하하" },
+    { "id": "islanders1/night_bandi", "file": "tmp/emote-yawn.svg", "text": "잘 자요" },
+    { "id": "islanders1/ok_hangyeol", "file": "tmp/emote-thumbsup.svg", "text": "오케이!" },
+    { "id": "islanders1/wait_neuti", "file": "tmp/emote-think.svg", "text": "잠깐만요" },
+    { "id": "islanders1/congrats_saerom", "file": "tmp/emote-clap.svg", "text": "축하해요!" },
+    { "id": "islanders1/hungry_maru", "file": "tmp/emote-shrug.svg", "text": "배고파요" }
+  ]
+}
