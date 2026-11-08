@@ -184,13 +184,13 @@ test('모바일 조작 배치: 오른손 상호작용·걷기·뛰기 기본 배
   const size0 = page.viewportSize();
   for (const [w, h] of [[375, 812], [412, 915], [904, 1100]]) {
     await page.setViewportSize({ width: w, height: h });
-    for (const bike of [false, true]) {
-      await page.evaluate((on) => document.getElementById('islandBikeBtn').classList.toggle('hidden', !on), bike); await page.waitForTimeout(150);
-      const o = await overlaps(); expect(o.shown, `${w}×${h}`).toEqual(expect.arrayContaining(['islandStick', 'islandActBtn', 'islandEmoteBtn', ...(bike ? ['islandBikeBtn'] : [])])); expect(o.out, `${w}×${h} bike ${bike}`).toEqual([]);
-      if (process.env.SHOT_DIR && w === 904 && bike) await page.screenshot({ path: `${process.env.SHOT_DIR}/fold-open-controls.png` });
+    { /* (v1.10.281: no 🚲 button -- 😊 where it was) */
+      await page.waitForTimeout(150);
+      const o = await overlaps(); expect(o.shown, `${w}×${h}`).toEqual(expect.arrayContaining(['islandStick', 'islandActBtn', 'islandEmoteBtn'])); expect(o.out, `${w}×${h}`).toEqual([]);
+      if (process.env.SHOT_DIR && w === 904) await page.screenshot({ path: `${process.env.SHOT_DIR}/fold-open-controls.png` });
     }
   }
-  await page.evaluate(() => document.getElementById('islandBikeBtn').classList.add('hidden')); await page.setViewportSize(size0);
+  await page.setViewportSize(size0);
 
   // 걷기: a tap switches to 느리게 and back; 뛰기: runs while held
   await page.locator('#islandWalkBtn').tap();

@@ -10,24 +10,32 @@ async function apiGuest(request, label) { // a player without a browser (for a c
   const res = await request.post('/guest-entry', { headers: { 'X-Forwarded-For': uniqueIp(), 'Content-Type': 'application/x-www-form-urlencoded' }, data: `token=${encodeURIComponent(key)}` });
   return (await res.text()).match(/data-session="([^"]+)"/)[1];
 }
-test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임, 실내·계단·사람 많은 곳에서 저절로 내림', async ({ browser, request, isMobile }) => {
+test('자전거: B·빠른 칸(폰)으로 타고 내리기, 다른 사람에게 보임, 실내·계단·사람 많은 곳에서 저절로 내림', async ({ browser, request, isMobile }) => {
   test.setTimeout(300000);
   const a = await shopper(browser, request, '자전거A', 0, 'female'); const b = await shopper(browser, request, '자전거B', 0, 'male');
   const ready = async (who) => { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); };
-  // no bike: no button, B does nothing but say so
+  // no bike: nothing to ride (no 🚲 button any more -- v1.10.281 문제 기록 4)
   await ready(a);
-  if (isMobile) await expect(a.page.locator('#islandBikeBtn')).toBeHidden();
+  await expect(a.page.locator('#islandBikeBtn')).toHaveCount(0);
   await post(request, '/api/test/island/give', a.token, { itemId: 'bike_red', qty: 1 });
+  if (isMobile) await a.page.evaluate(() => localStorage.removeItem('gc.bikeQuickTip'));
   await ready(a); await ready(b);
   const { page } = a;
-  const toggle = async () => { if (isMobile) await page.locator('#islandBikeBtn').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyB'); } };
+  // a phone: told once to put it in a 빠른 칸, then rides from that slot (a PC: B, as before)
+  if (isMobile) {
+    await expect(page.locator('#toast')).toContainText('빠른 칸에 넣어 보세요', { timeout: 15000 });
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/phone-bike-quick-before.png` });
+    await post(request, '/api/island/quick', a.token, { slots: [null, null, 'bike', null, null] }); await ready(a);
+    await expect(page.locator('#quickBar .quickSlot[data-k="3"]')).toHaveAttribute('aria-label', /자전거/, { timeout: 15000 });
+  }
+  const toggle = async () => { if (isMobile) await page.locator('#quickBar .quickSlot[data-k="3"]').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyB'); } };
   const spot = await page.evaluate(() => { const T = window.IslandTerrain; return { x: T.PLAZA_C.x + 12, z: T.PLAZA_C.z + 12 }; });
   for (const who of [a, b]) await who.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [spot.x + (who === b ? 3 : 0), spot.z]);
-  if (isMobile) await expect(page.locator('#islandBikeBtn')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().bikes()), { timeout: 15000 }).toEqual(['red']);
   // on: mine, and the other screen sees me on a red one
   await toggle();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
+  if (isMobile) { await expect(page.locator('#quickBar .quickSlot[data-k="3"]')).toHaveClass(/inHand/); if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/phone-bike-quick-after.png` }); } /* (its slot raised while riding) */
   const myId = await page.evaluate(() => window.PlazaDebug().myId);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().othersBikes()[id] ?? null, myId), { timeout: 20000 }).toBe('red');
   // 9 m/s, 12 while Shift is held (the phone: the 뛰기 button) -- 사용자 2026-10-21

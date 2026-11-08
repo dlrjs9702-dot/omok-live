@@ -1097,7 +1097,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .emoteRing{background:rgba(255, 246, 227, .5);border:1px solid var(--isle-line);box-shadow:0 6px 22px rgba(74, 56, 40, .28)}
 :root[data-theme="light"] .emoteCell{background:rgba(255, 246, 227, .95);color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] .emoteCell.hot,:root[data-theme="light"] .emoteCell:hover,:root[data-theme="light"] .emoteCell:focus-visible{border:2px solid var(--isle-tag)}
-:root[data-theme="light"] .islandBikeBtn[aria-pressed="true"]{background:#f0dcb6;box-shadow:0 0 0 3px rgba(16, 150, 100, .7)}
 :root[data-theme="light"] .islandRunBtn.on,:root[data-theme="light"] .islandRunBtn:active{background:#f0dcb6;box-shadow:0 0 0 3px rgba(200, 50, 40, .7)}
 :root[data-theme="light"] body.stickEdit .islandCtl{outline:2px dashed #facc15}
 :root[data-theme="light"] body.stickEdit .ctlSelected{outline:3px solid #facc15 !important}

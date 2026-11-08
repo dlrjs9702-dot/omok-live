@@ -55,6 +55,15 @@ test('조작·1인칭: W/A/S/D 걷기·방향키 시점·마우스 보기·감�
         expect((await page.evaluate(() => window.PlazaDebug().pointerLock())).sens).toBe(2);
         expect((await page.evaluate(() => window.PlazaDebug().pointerLock())).ok).toBe(false); // (a window open: no lock)
         await page.keyboard.press('Escape'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().pointerLock().ok), { timeout: 10000 }).toBe(true);
+        // (v1.10.281 문제 기록 1) the lock wanted (my click took it): a window opened and closed by a key -- taken again then;
+        // let go by me (the browser's Esc: a pointerlockchange the game did not ask for) -- not wanted any more
+        const pl = () => page.evaluate(() => window.PlazaDebug().pointerLock());
+        await page.evaluate(() => window.PlazaDebug().lockWant(true)); const r0 = (await pl()).relocks;
+        await page.keyboard.press('Escape'); await expect.poll(async () => (await pl()).ok, { timeout: 10000 }).toBe(false); expect((await pl()).relocks).toBe(r0); /* (open: not while it is) */
+        await page.keyboard.press('Escape'); await expect.poll(async () => (await pl()).relocks, { timeout: 10000 }).toBe(r0 + 1); expect((await pl()).want).toBe(true);
+        await page.evaluate(() => { if (document.pointerLockElement) document.exitPointerLock(); else document.dispatchEvent(new Event('pointerlockchange')); }); /* (taken for real or not -- let go not by the game) */
+        await expect.poll(async () => (await pl()).want, { timeout: 5000 }).toBe(false);
+        await page.keyboard.press('Shift'); await page.waitForTimeout(200); expect((await pl()).relocks).toBe(r0 + 1); /* (mine let go: a key takes nothing) */
         const y1 = (await view()).yaw; await page.evaluate(() => window.PlazaDebug().lookBy(100, 0)); await page.waitForTimeout(500); expect(y1 - (await view()).yaw).toBeGreaterThan(turned * 1.6);
       }
     }

@@ -16,6 +16,8 @@ test('빠른 칸 규칙: 다섯 칸, 도구·쓰는 것만, 한 물건은 한 �
   assert.deepEqual(I.quickSlots([null, '', 'balloon', null, 'fishing_rod']), [null, null, 'balloon', null, 'fishing_rod']);
   assert.equal(I.quickSlots(['bugnet', null, null, null, null, 'firework']), null, '여섯 칸');
   assert.equal(I.quickSlots(['fish_goby']), null, '물고기');
+  assert.deepEqual(I.quickSlots([null, 'bike']), [null, 'bike', null, null, null], '자전거 (v1.10.281 문제 기록 4)'); assert.equal(I.quickSlots(['bike', 'bike']), null, '한 칸만');
+  assert.equal(I.QUICK_KINDS.includes('bike'), false, '자전거는 손에 들지 않음 (탐)');
   assert.equal(I.quickSlots(['seed_flower_red']), null, '꽃씨');
   assert.equal(I.quickSlots(['firework', 'firework']), null, '같은 것 두 칸');
   assert.equal(I.quickSlots('bugnet'), null);

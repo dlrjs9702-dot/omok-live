@@ -1978,7 +1978,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
+      plaza.controller.onBike?.((on, why) => { drawQuick(); if (why) showToast(why, 3000); }); /* (v1.10.281: the bike's 빠른 칸 raised while riding) */ refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); loadQuick(); setTimeout(islandNoticeOnce, 1500); // (1103 4: a note once) (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
@@ -2641,18 +2641,18 @@
   // 상호작용키를 누르면 쓰는 걸로」): five slots -- a tool by its kind, a thing to use by its id -- kept on the server (the same
   // on every screen). A number (a tap) holds that slot's, again puts it away; a thing to use in hand, SPACE (상호작용) uses one
   // when nothing else is before me. Set from the bag: 「빠른 칸에」 then a slot (or 1~5); in the bag a slot's 「빼기」
-  const QUICK_NAMES = { bugnet: '잠자리채', fishing_rod: '낚싯대', firework: '폭죽', balloon: '풍선', bubbles: '비눗방울' };
-  const QUICK_EMOJI = { bugnet: '🥅', fishing_rod: '🎣', firework: '🎆', balloon: '🎈', bubbles: '🫧' };
+  const QUICK_NAMES = { bugnet: '잠자리채', fishing_rod: '낚싯대', firework: '폭죽', balloon: '풍선', bubbles: '비눗방울', bike: '자전거' };
+  const QUICK_EMOJI = { bugnet: '🥅', fishing_rod: '🎣', firework: '🎆', balloon: '🎈', bubbles: '🫧', bike: '🚲' };
   let quickSlots = [null, null, null, null, null]; let quickPick = null; let quickItems = []; let quickMenu = null; // (quickPick: a kind from the bag waiting for its slot)
   const quickBar = document.createElement('div'); quickBar.id = 'quickBar'; quickBar.className = 'quickRow quickBar hidden'; quickBar.setAttribute('role', 'toolbar'); quickBar.setAttribute('aria-label', '빠른 칸'); plazaStage.append(quickBar);
-  const quickKind = (item) => item?.tool || (SHOW_GOODS.has(item?.itemId) ? item.itemId : null);
+  const quickKind = (item) => item?.tool || (SHOW_GOODS.has(item?.itemId) ? item.itemId : item?.itemId?.startsWith('bike_') ? 'bike' : null); /* (v1.10.281: any colour's bike is the one 「자전거」 slot) */
   const quickHave = (kind) => quickItems.filter((e) => quickKind(e) === kind).reduce((n, e) => n + (e.tool ? 1 : e.qty), 0);
   const josa = (word, a, b) => { const c = word.charCodeAt(word.length - 1) - 0xac00; return c >= 0 && c % 28 ? a : b; }; // (받침: 이/가, 을/를)
   function drawQuick() {
     for (const row of [quickBar, byId('quickInBag')]) {
       const inBag = row !== quickBar; const cells = quickSlots.map((kind, k) => {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'quickSlot'; b.dataset.k = String(k + 1); const n = kind ? quickHave(kind) : 0;
-        b.classList.toggle('empty', !kind); b.classList.toggle('inHand', Boolean(kind) && heldTool === kind); b.classList.toggle('spent', Boolean(kind) && n === 0); b.classList.toggle('waiting', inBag && quickPick != null);
+        b.classList.toggle('empty', !kind); b.classList.toggle('inHand', Boolean(kind) && (kind === 'bike' ? Boolean(plaza.controller?.cycling?.()) : heldTool === kind)); b.classList.toggle('spent', Boolean(kind) && n === 0); b.classList.toggle('waiting', inBag && quickPick != null);
         b.setAttribute('aria-label', kind ? `${k + 1}번 · ${QUICK_NAMES[kind]}${SHOW_GOODS.has(kind) ? ` ${n}개` : ''}${heldTool === kind ? ' · 든 것' : ''}` : `${k + 1}번 · 빈 칸`);
         const num = document.createElement('i'); num.textContent = String(k + 1); b.append(num);
         if (kind) { const e = quickItems.find((x) => quickKind(x) === kind); b.append(itemIcon(e || { itemId: kind, icon: QUICK_EMOJI[kind] })); if (SHOW_GOODS.has(kind)) b.append(Object.assign(document.createElement('small'), { textContent: String(n) })); }
@@ -2683,6 +2683,7 @@
   function quickHold(k) { // (a number or a tap: that slot's in hand -- again, put away)
     const kind = quickSlots[k]; if (!kind) return;
     if (heldTool !== kind && !quickHave(kind)) { const name = QUICK_NAMES[kind]; showToast(`${name}${josa(name, '이', '가')} 없어요. 잡화점에서 살 수 있어요.`, 2500); return; }
+    if (kind === 'bike') { plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); return; } // (v1.10.281: ridden, as B -- never in hand)
     holdTool(kind);
   }
   async function useHeld() { // (상호작용 with a thing to use in hand: one of it, as the bag's 「쓰기」 was; the last one, out of the hand)
@@ -2731,10 +2732,12 @@
       } finally { sending = false; }
     });
   }
-  const bikeBtn = byId('islandBikeBtn');
-  const showBikes = (bag) => { showToolGauge(bag); const colors = (bag?.items || []).filter((e) => e.itemId.startsWith('bike_')).map((e) => e.itemId.slice(5)); plaza.controller?.setBikes?.(colors); bikeBtn.classList.toggle('hidden', !colors.length); plaza.controller?.setInsects?.(null, (bag?.items || []).some((e) => e.tool === 'bugnet')); }; // (묶음 5: the net in the bag)
+  // v1.10.281 (문제 기록 4): no 🚲 button -- a PC rides by B as before, a phone from the bike's 빠른 칸 (told once to put it there)
+  const showBikes = (bag) => {
+    showToolGauge(bag); const colors = (bag?.items || []).filter((e) => e.itemId.startsWith('bike_')).map((e) => e.itemId.slice(5)); plaza.controller?.setBikes?.(colors); plaza.controller?.setInsects?.(null, (bag?.items || []).some((e) => e.tool === 'bugnet')); /* (묶음 5: the net in the bag) */
+    if (touchIsland && colors.length && !quickSlots.includes('bike')) { let told = false; try { told = localStorage.getItem('gc.bikeQuickTip') === '1'; localStorage.setItem('gc.bikeQuickTip', '1'); } catch {} if (!told) showToast('자전거를 가방에서 빠른 칸에 넣어 보세요. 그 칸을 누르면 타고 내려요.', 5000); }
+  };
   async function refreshBikes() { try { showBikes(await api('/api/island/bag')); } catch {} }
-  bikeBtn.addEventListener('click', () => { plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); });
   async function openIslandBag() {
     showDex(false); bagPicked = null; // (v1.10.195: opened afresh, nothing picked)
     if (!islandBagDialog.open) islandBagDialog.showModal();
@@ -3175,7 +3178,7 @@
   // v1.10.92 잡화점 (IDEAS #future-general-store): in and out like the 민원실; inside, standing at a good on its shelf, SPACE
   // opens it (what it is for, 1·5·10 to buy -- paid and in the bag at once); the keeper behind the counter greets
   let storeBusy = false; let storeGoods = [];
-  const GOOD_USE = { bike: '가방에 있으면 섬에서 B(휴대폰은 🚲 단추)로 타고 내려요. 걷기보다 빨라요(실내·계단·다리·사람 많은 곳에서는 내려요).', bait: '가방에 있으면 낚시할 때 자동으로 써요. 입질이 빨라져요.', show: '가방에서 「쓰기」를 누르면 그 자리에서 모두가 볼 수 있어요.', gift: '다른 사람에게 가방 물건을 선물할 때 하나 써요.', errand: '주민이 사다 달라고 부탁하는 물건이에요.', keep: '기념으로 간직하는 물건이에요.' };
+  const GOOD_USE = { bike: '가방에 있으면 섬에서 B로 타고 내려요(휴대폰은 「빠른 칸에」 넣고 그 칸을 눌러요). 걷기보다 빨라요(실내·계단·다리·사람 많은 곳에서는 내려요).', bait: '가방에 있으면 낚시할 때 자동으로 써요. 입질이 빨라져요.', show: '가방에서 「쓰기」를 누르면 그 자리에서 모두가 볼 수 있어요.', gift: '다른 사람에게 가방 물건을 선물할 때 하나 써요.', errand: '주민이 사다 달라고 부탁하는 물건이에요.', keep: '기념으로 간직하는 물건이에요.' };
   async function storeDoor(entering) {
     if (storeBusy) return; storeBusy = true;
     try {
