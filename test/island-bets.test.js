@@ -46,7 +46,7 @@ test('주민 내기 서버: 아는 사이부터·근무 중 아님·하루 한 �
   // a score game today with a short least round (reaction 7 s, numbers 6.5 s at 보통) -- an islander off a post
   const n = [...Array(27).keys()].find((k) => !fixed.has(k) && ['reaction', 'numbers'].includes(B.gameOf(k, day)));
   const other = [...Array(27).keys()].find((k) => !fixed.has(k) && k !== n);
-  { const r = (await req(`/api/island/bet?n=${n ?? other}`, a)).data; assert.equal(r.error, 'NOT_KNOWN', JSON.stringify(r)); } // (처음 본 사이)
+  await free(); { const r = (await req(`/api/island/bet?n=${n ?? other}`, a)).data; assert.equal(r.error, 'NOT_KNOWN', JSON.stringify(r)); } // (처음 본 사이)
   for (const k of [n, other]) await req('/api/test/affinity', a, { n: k, delta: 5 });
   const busy = (await req(`/api/island/bet?n=${R.FIXED.gate}`, a)).data; assert.equal(busy.busy, true); assert.equal(busy.say, require('../public/plaza/island-cast').withTail(require('../lib/island-bet-lines.json').lines.find((l) => l.n === R.FIXED.gate).duty, R.FIXED.gate)); /* (마루's own 「근무 중」 line) */ // (마루 at the gate: no bet)
   // left before its end: the stake gone, the islander let go; once a day each

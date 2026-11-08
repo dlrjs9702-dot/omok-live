@@ -5216,7 +5216,7 @@
     if (!info) { try { info = await api(`/api/island/bet?n=${n}`); betInfoCache = { n, info, at: Date.now() }; } catch { return; } } // (처음 본 사이, done today, held: none)
     if (!list.isConnected || list.querySelector('[data-topic="bet"]')) return;
     const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'bet'; b.className = 'betAsk'; b.textContent = '🎲 내기해요';
-    b.addEventListener('click', () => { if (info.busy) { lostCard.replaceChildren(betLine(info.say), byeChoice()); return; } openBet(info); }); list.prepend(b);
+    b.addEventListener('click', () => { if (info.busy) { lostCard.replaceChildren(betLine(info.say), byeChoice()); return; } openBet(info); }); list.insertBefore(b, list.lastElementChild); /* (before the last -- 잘 가요: their own topics first, CI #428 island-story) */
   }
   function byeChoice(label = '다음에요') { const l = document.createElement('div'); l.className = 'talkChoices'; const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = 'bye'; b.textContent = label; b.addEventListener('click', () => plazaDialog.close()); l.append(b); return l; }
   function openBet(info) {
