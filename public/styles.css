@@ -2179,8 +2179,7 @@ body.touchIsland .islandCtl { display: flex; }
 .islandWalkBtn { right: 30px; bottom: 160px; width: 58px; height: 58px; }
 .islandRunBtn { right: 108px; bottom: 66px; width: 58px; height: 58px; }
 /* v1.10.263 감정 표현: the 😊 over 뛰기; the wheel -- two rings of eight on a PC (the inner first), a 4 x 4 grid on a phone */
-.islandEmoteBtn { right: 37px; bottom: 290px; width: 44px; height: 44px; font-size: 1.3rem; } /* (v1.10.267 총괄, 폴드: over 뛰기 it sat on 🚲 -- now the right column's top, over 걷기 and the seat turns; a narrow phone's stick reaches left of 뛰기) */
-@media (max-height: 500px) { .islandEmoteBtn { right: 180px; bottom: 16px; } } /* (a phone on its side: no room up there -- low, left of 뛰기) */
+.islandEmoteBtn { right: 108px; bottom: 140px; width: 58px; height: 58px; font-size: 1.4rem; } /* (v1.10.281 문제 기록 4: where 🚲 was -- the bike rides from its 빠른 칸 now) */
 .emoteWheel { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(40, 30, 20, .16); }
 .emoteWheel.hidden { display: none; }
 .emoteRing { position: relative; width: min(460px, 94vmin); aspect-ratio: 1; border-radius: 50%; background: rgba(255, 246, 227, .5); border: 1px solid var(--isle-line); box-shadow: 0 6px 22px rgba(74, 56, 40, .28); }
@@ -2191,9 +2190,6 @@ body.touchIsland .islandCtl { display: flex; }
 .emoteWheel.grid .emoteRing { width: min(360px, calc(100% - 24px)); aspect-ratio: auto; border-radius: 22px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; box-sizing: border-box; }
 .emoteWheel.grid .emoteCell { position: static; width: auto; height: 74px; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .emoteCell { transition: none; } }
-.islandBikeBtn { right: 108px; bottom: 140px; width: 58px; height: 58px; font-size: 1.4rem; } /* 자전거 */
-.islandBikeBtn[aria-pressed="true"] { background: #f0dcb6; box-shadow: 0 0 0 3px rgba(16, 150, 100, .7); } /* (U: on -- darker paper and a ring) */
-body.touchIsland .islandCtl.islandBikeBtn.hidden { display: none; }
 .islandTurnBtn { right: 108px; bottom: 210px; width: 58px; height: 58px; font-size: .85rem; } /* 2회차 11: 잡은 가구 돌리기 */
 body.touchIsland .islandCtl.islandTurnBtn.hidden { display: none; }
 .islandSeatBtn { bottom: 230px; width: 46px; height: 46px; font-size: 1.3rem; } /* v1.10.189: 스툴·방석 돌기, above 걷기 */
