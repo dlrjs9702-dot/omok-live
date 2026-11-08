@@ -3431,6 +3431,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       else { assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] }); }
       const id = d.id === 'civil' ? 'room:desk' : `room:${d.id}`; const chair = globalThis.IslandTerrain.COUNTERS.find((x) => x.id === d.id);
       counterKeepers.push({ id: `townhall:${d.id}`, k: c, spot: () => roomAt(chair.lx, chair.lz) });
+      if (d.id === 'rename') { c.tag = makeTag('개명 담당', null); c.root.add(c.tag); fitTag(c); } /* (v1.10.281 문제 기록 2: the one clerk no islander keeps -- its role over it, the roster untouched) */
       if (d.id !== 'rename') { c.desk = d.id; c.restSign = makeTag('오늘은 쉬어요', null); c.restSign.position.set(d.lx, 2.1, d.lz); c.restSign.visible = false; g.add(c.restSign); } /* (v1.10.215 근무표) */
       return Object.assign(c, { home: { x: ROOM.x + d.lx, z: ROOM.z + d.keeper, yaw: worldYaw(c.root), id } });
     });

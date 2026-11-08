@@ -4579,7 +4579,7 @@
   // a window's business, seated at `seat`'s window (the camera on its clerk) -- `door`'s own, or the resting desk's beside it
   async function counterOpen(door, seatDoor, before = '') {
     counterSeat = { door }; plaza.controller?.counterCamera?.(seatDoor);
-    const dialog = counterDialogs[door]; const say = document.createElement('p'); say.className = 'counterSay'; say.textContent = before + COUNTER_SAY[door];
+    const dialog = counterDialogs[door]; const say = document.createElement('p'); say.className = 'counterSay'; say.textContent = before + COUNTER_SAY[door]; if (door === 'room:rename') say.prepend(Object.assign(document.createElement('b'), { textContent: '개명 담당 · ' })); /* (v1.10.281 문제 기록 2: the one clerk no islander keeps, named by its role) */
     dialog.querySelector('.counterSay')?.remove(); dialog.querySelector('.recordsDialogHead').after(say); dialog.classList.add('counterMode');
     await COUNTER_OPEN[door]();
   }

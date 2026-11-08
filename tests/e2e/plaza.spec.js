@@ -1003,6 +1003,8 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:rename');
   await expect(page.locator('#namingCurrent')).toContainText('가방손님');
+  await expect(page.locator('#namingDialog .counterSay b')).toHaveText('개명 담당 · '); /* (v1.10.281 문제 기록 2: its clerk named -- over its head too) */
+  if (process.env.SHOT_DIR) { await page.locator('#namingCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-rename'); window.PlazaDebug().teleport(c.x, c.z + 2.5); window.PlazaDebug().setCamYaw(0); }); await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-townhall-rename-clerk.png` }); await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-rename'); window.PlazaDebug().teleport(c.x, c.z + 1.1); }); await page.keyboard.press('Space'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:rename'); }
   await page.locator('#namingCloseBtn').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false);
   await page.evaluate(() => window.PlazaDebug().place('room:exit'));
@@ -1326,7 +1328,7 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
   await expect.poll(async () => { const s = await state(page); return Math.hypot(s.x - th.out.x, s.z - th.out.z); }, { timeout: 15000 }).toBeLessThan(0.6);
   // asking the mayor
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기 · 마루'); /* (v1.10.281: named as the others) */
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   // v1.10.45: a click on the hall from out here opens nothing -- only SPACE at its door, in the yard
   await page.evaluate(() => { const T = window.IslandTerrain.TOWNHALL; window.PlazaDebug().setCamYaw(Math.atan2(T.sin, T.cos)); });
