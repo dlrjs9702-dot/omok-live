@@ -98,7 +98,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const button = (cls, text, onClick) => { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', onClick); return b; };
-  const levelOf = (g) => (contestPlay ? contestPlay.level : launch?.level && launch.place === 'quest' ? launch.level : g.levels || g.mode === 'versus' ? levels[g.id] || g.defaultLevel || 'normal' : 'normal');
+  const levelOf = (g) => (contestPlay ? contestPlay.level : launch?.level && (launch.place === 'quest' || launch.place === 'bet') ? launch.level : g.levels || g.mode === 'versus' ? levels[g.id] || g.defaultLevel || 'normal' : 'normal');
   const optionOf = (g, o) => (o.items.some(([v]) => v === levels[`${g.id}.${o.id}`]) ? levels[`${g.id}.${o.id}`] : o.def);
   const optionsOf = (g) => Object.fromEntries((g.options || []).map((o) => [o.id, optionOf(g, o)]));
   const modeOf = (g) => (launch?.place === 'quest' && optionsOf(g).mode ? 'daily' : optionsOf(g).mode ?? null); // the puzzles: 오늘의 문제 (daily) or 새 문제 (A2b: a quest's round is always the daily)
@@ -188,7 +188,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     let id = null; let seed = null; let board = null;
     const skin = set === SETS.ai ? await pieceSkin?.(g.id) : null; // (A3 G3-2)
     try {
-      const contest = contestPlay ? { contest: true } : {}; // (v1.10.238: the tent's round)
+      const contest = contestPlay ? { contest: true } : launch?.place === 'bet' && launch.bet ? { bet: launch.bet } : {}; // (v1.10.238: the tent's round; v1.10.278: a bet's -- the server settles it with the round)
       if (set === SETS.reflex) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) })).id;
       else if (set === SETS.cards) ({ id, seed } = await api('/api/solo/cards/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) }));
       else if (set === SETS.mines) { const n = await api('/api/solo/minesweeper/new', { method: 'POST', body: JSON.stringify({ level }) }); board = { minesId: n.id, minesView: n.view, api }; }
@@ -314,7 +314,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       // sheet chose (v1.10.243 U1: the sheet the one start screen; this menu stays for the classic lobby's lists)
       const quest = Boolean(one && launch);
       contestPlay = quest && launch.place === 'contest' ? { level: launch.level, end: launch.contest?.end ?? 0, offset: launch.contest?.offset ?? 0 } : null; paintContest();
-      questMode = quest && (launch.place === 'quest' || launch.place === 'contest'); if (quest) { showGame(one); menu.classList.add('hidden'); } // (v1.10.80: its way back says 섬으로)
+      questMode = quest && (launch.place === 'quest' || launch.place === 'contest' || launch.place === 'bet'); /* (v1.10.278 주민 내기: a bet's round as a quest's) */ if (quest) { showGame(one); menu.classList.add('hidden'); } // (v1.10.80: its way back says 섬으로)
       const go = () => start(one, menu.querySelector('.reflexStatus'));
       try { // the list is usable meanwhile: redraw only what still shows (Codex review)
         if (!set.info) { if (quest) go(); return; }
@@ -336,11 +336,11 @@ export function mount({ api, onBack, pieceSkin = null }) {
       return b == null ? '아직 기록 없음' : `내 최고 ${fmtScore(b, g.unit)}`;
     },
     // the 게임 실행 규약 (above): which set holds the game, opened on it; the answer comes when its round ends
-    play(gameId, { level = null, goal = null, place = 'gamehall', contest = null } = {}) {
+    play(gameId, { level = null, goal = null, place = 'gamehall', contest = null, bet = null } = {}) {
       const which = Object.keys(SETS).find((k) => SETS[k].games.some((g) => g.id === gameId));
       if (!which) return Promise.reject(new Error(`unknown game ${gameId}`));
       settle({ game: gameId, done: false }); // a play still waiting is over
-      return new Promise((resolve) => { launch = { place, goal, level, contest, resolve }; this.open(which, gameId); });
+      return new Promise((resolve) => { launch = { place, goal, level, contest, bet, resolve }; this.open(which, gameId); }); /* (v1.10.278 bet: the 주민 내기's id) */
     },
   };
 }
