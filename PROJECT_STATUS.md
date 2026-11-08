@@ -13,6 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.279 메신저 이모티콘
+
+- 😊 판(이모티콘 24·그림 글자 120·최근 8), messages POST {sticker}(목록 검사 BAD_STICKER, 글자·사진과 같이 400), text는 「(이모티콘) 글」, messenger_messages.sticker 칸, 보내기 취소 때 지움, 말풍선 없는 그림(PC 120·폰 110, 시간 글자는 그림 옆), 그림 에셋 107 WebP. 다음: 280 감정 표현 때 몸 소품 사라짐(에셋 108 held 재질).
+
 ## v1.10.278 주민 내기
 
 - 아는 사이·근무 중 아님·하루 한 판, 점수 내기(순발력, 서버 판정, 최대 5,000)·대국 내기(AI 방 「○○와 내기」, 최대 10,000), 판돈 먼저(resident_bet)·2배/비김 돌려받기, 하루 딴 돈 30,000 한도, 「♠」 잡힘, 주민 제안(섬 하루 3번), 총괄 대사 270줄, 재시작 때 열린 내기 판돈 돌려받기, 대국은 두는 동안 40분까지 기다림. 다음: 총괄 지시.
@@ -20,7 +24,3 @@
 ## v1.10.277 시험 정리 2차
 
 - test-audit §6: fp·island-projects 1·2·3·island-story+s2·talk-camera 합침, reflex AI·solo-quest 할머니·current-actor 오델로 옮김, yard 줄임, river-fishing 도감 칸 data-item·줄다리기 자동 진행 고침, 시간표 새로(#426), 폰 샤드 6 → 4. 다음: 278 주민 내기(설계 notes 1e5c890).
-
-## v1.10.276 그래픽 시범 2차
-
-- PC 높음·GPU·구역 6 m 안: GTAO·약한 블룸(1초 서서히, 이름표·반투명 판 제외, 색 차이 없음 확인), 구역 땅 무늬(코드 그림), 구역 섬 나무 → 시범 나무(열매 나무·충돌 그대로), 화질별 풀잎(낮음 없음·중간 절반). fps 표는 #426. 다음: 총괄 지시 대기(실제 폰 측정, 시범 결과 정리).

@@ -311,7 +311,7 @@
   const STICKERS = fetch('/messenger/stickers/stickers.json', { cache: 'default' }).then((r) => r.json()).then((d) => new Map(d.stickers.map((s) => [s.id, s]))).catch(() => new Map());
   function stickerImg(id, alt) {
     const img = document.createElement('img'); img.className = 'messengerStickerImg'; img.alt = String(alt || '').replace(/^\(이모티콘\) /, ''); img.decoding = 'async'; img.addEventListener('load', keepEnd);
-    STICKERS.then((m) => { const s = m.get(id); if (s) img.src = `/messenger/stickers/${s.file}`; }); return img;
+    STICKERS.then((m) => { const s = m.get(id); if (s) { img.src = `/messenger/stickers/${s.file}`; img.style.setProperty('--pad', String((s.pad || 0) / 360)); } }); return img; // (pad: its clear side edge -- the time beside the art)
   }
   const GLYPHS = [['얼굴', '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 😘 😋 😜 🤔 😴 😭'], ['손', '👍 👎 👏 🙌 👐 🙏 🤝 👋 ✌️ 🤞 👌 🤙 💪 ☝️ 👉 👈 👆 👇 ✋ 🫶'],
     ['하트', '❤️ 🧡 💛 💚 💙 💜 🤎 🖤 🤍 💕 💞 💓 💗 💖 💘 💝 💌 💯 ✨ ⭐'], ['동물', '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐟 🐝'],
@@ -321,7 +321,8 @@
   const used = (tab, v) => { try { const all = JSON.parse(recentStore.get() || '{}'); all[tab] = [v, ...recentOf(tab).filter((x) => x !== v)].slice(0, 8); recentStore.set(JSON.stringify(all)); } catch {} };
   const emoji = byId('messengerEmoji'); const emojiBody = byId('messengerEmojiBody'); const preview = byId('messengerEmojiPreview'); const emojiBtn = byId('messengerEmojiBtn');
   let emojiTab = 'sticker'; let chosenSticker = null;
-  const showPreview = (s) => { chosenSticker = s; preview.classList.toggle('hidden', !s); if (s) { const im = preview.querySelector('img'); im.src = `/messenger/stickers/${s.file}`; im.alt = s.text; } };
+  const showPreview = (s) => { // (the chosen cell marked too)
+    for (const c of emojiBody.querySelectorAll('.messengerStickerCell')) c.setAttribute('aria-pressed', String(Boolean(s) && c.dataset.id === s.id)); chosenSticker = s; preview.classList.toggle('hidden', !s); if (s) { const im = preview.querySelector('img'); im.src = `/messenger/stickers/${s.file}`; im.alt = s.text; } };
   function sendSticker(s) { if (!current) return; used('sticker', s.id); showPreview(null); queueSend('', [], s); drawEmoji(); }
   const cell = (label, title, onPick, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.title = title; b.setAttribute('aria-label', title); if (typeof label === 'string') b.textContent = label; else b.append(label); b.addEventListener('click', onPick); return b; };
   const section = (name, cells, cls) => { const h = document.createElement('p'); h.className = 'messengerEmojiHead'; h.textContent = name; const g = document.createElement('div'); g.className = cls; g.append(...cells); return [h, g]; };
@@ -329,7 +330,8 @@
     for (const b of emoji.querySelectorAll('[role="tab"]')) b.setAttribute('aria-selected', String(b.dataset.tab === emojiTab));
     if (emojiTab === 'sticker') {
       const m = await STICKERS; if (emojiTab !== 'sticker') return;
-      const pickS = (s) => cell((() => { const im = document.createElement('img'); im.src = `/messenger/stickers/${s.file}`; im.alt = ''; im.loading = 'lazy'; return im; })(), s.text, () => (chosenSticker?.id === s.id ? sendSticker(s) : showPreview(s)), 'messengerStickerCell');
+      const pickS = (s) => { const im = document.createElement('img'); im.src = `/messenger/stickers/${s.file}`; im.alt = ''; im.loading = 'lazy';
+        const b = cell(im, s.text, () => (chosenSticker?.id === s.id ? sendSticker(s) : showPreview(s)), 'messengerStickerCell'); b.dataset.id = s.id; b.setAttribute('aria-pressed', String(chosenSticker?.id === s.id)); return b; }; // (its id: the chosen one marked)
       const recent = recentOf('sticker').map((id) => m.get(id)).filter(Boolean);
       emojiBody.replaceChildren(...(recent.length ? section('최근', recent.map(pickS), 'messengerStickerGrid') : []), ...section('섬 친구들 1', [...m.values()].map(pickS), 'messengerStickerGrid'));
     } else {

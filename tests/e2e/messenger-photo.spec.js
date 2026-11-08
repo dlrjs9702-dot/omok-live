@@ -136,6 +136,14 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     await page.locator('#messengerEmojiBtn').click(); await expect(panel.locator('.messengerEmojiHead').first()).toHaveText('최근'); await expect(panel.locator('.messengerGlyphGrid').first().getByRole('button')).toHaveText(['👍']);
     await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeHidden();
     await shot(page, 'emoji-room'); await shot(them, 'emoji-room-them');
+    // (총괄 #429) the time beside the art: its clear edge taken in on the time's side, the picture still whole
+    const near = async (sel) => page.locator(sel).evaluate((el) => { const im = el.querySelector('.messengerStickerImg').getBoundingClientRect(); const t = el.querySelector('.messengerMeta').getBoundingClientRect(); return Math.round(Math.max(im.left - t.right, t.left - im.right)); });
+    expect(await near('#messengerMessages .chatMessage.mine:has(.messengerSticker)')).toBeLessThan(0); expect(await near('#messengerMessages .chatMessage:not(.mine):has(.messengerSticker)')).toBeLessThan(0);
+    expect(await page.evaluate(() => { const b = document.querySelector('#messengerMessages'); return b.scrollWidth <= b.clientWidth; })).toBe(true);
+    if (process.env.SHOT_DIR) { // (어두운 화면: the art's edge on the panel's #352c25 and in the room)
+      await page.evaluate(() => { document.documentElement.dataset.mtheme = 'dark'; }); await shot(page, 'emoji-dark-room');
+      await page.locator('#messengerEmojiBtn').click(); await page.locator('#messengerEmojiTabSticker').click(); await shot(page, 'emoji-dark-panel');
+    }
   } finally { await a.context.close(); await b.context.close(); }
 });
 
