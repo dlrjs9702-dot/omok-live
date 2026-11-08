@@ -93,8 +93,8 @@ const setHidden = (page, value) => page.evaluate(v => window.__setHidden(v), val
 const settle = page => page.waitForTimeout(700);
 
 test.describe('백그라운드 내 차례 알림', () => {
-  test('오델로: 상대 차례·중복·복귀·다음 차례·관전자·일시정지·종료', async ({ page, browser, request }) => {
-    test.setTimeout(90_000);
+  test('오델로: 상대 차례·중복·복귀·다음 차례·관전자·일시정지·종료, 현재 차례 표시(이동·일시정지·새로고침·종료)', async ({ page, browser, request }) => {
+    test.setTimeout(120_000);
     await installBrowserFakes(page.context());
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -127,6 +127,12 @@ test.describe('백그라운드 내 차례 알림', () => {
     await setHidden(page, true);
     const started = await api(request, '/api/room/choose-role', black, { choice: 'black' });
     expect(started.data.state.game.turn).toBe('black');
+    // (v1.10.277 시험 정리 2차: current-actor's 오델로 folded in) only the one whose turn it is marked, for me and the spectator;
+    // my seat outlined with it, the mark's real colour
+    const allActors = (view) => view.locator('.currentActor, .currentActorPaused');
+    for (const view of [page, spectator]) { await expect(view.locator('#blackPlayer')).toHaveClass(/currentActor/); await expect(view.locator('#whitePlayer')).not.toHaveClass(/currentActor/); await expect(allActors(view)).toHaveCount(1); }
+    await expect(page.locator('#whitePlayer')).toHaveClass(/mySeat/);
+    expect(await page.locator('#blackPlayer strong').evaluate((el) => getComputedStyle(el, '::after').backgroundColor)).toBe('rgb(56, 189, 248)');
 
     // 1) 상대 차례: 알림 없음.
     await settle(page);
@@ -138,6 +144,7 @@ test.describe('백그라운드 내 차례 알림', () => {
     expect((await api(request, '/api/room/move', black, { x: move.x, y: move.y })).status).toBe(200);
     await expect(page).toHaveTitle(`${PREFIX}오델로 · 아일랜드`);
     expect(await notes(page)).toEqual([{ title: '아일랜드 · 내 차례', body: '오델로에서 착수할 차례입니다.', closed: false }]);
+    for (const view of [page, spectator]) { await expect(view.locator('#whitePlayer')).toHaveClass(/currentActor/); await expect(view.locator('#blackPlayer')).not.toHaveClass(/currentActor/); } // (the mark moved)
 
     // 4) 같은 차례 상태의 재수신(채팅 등): 중복 알림 없음.
     expect((await api(request, '/api/room/chat', black, { text: '안녕하세요' })).status).toBe(200);
@@ -170,14 +177,23 @@ test.describe('백그라운드 내 차례 알림', () => {
     await expect(page).toHaveTitle('오델로 · 아일랜드', { timeout: 15_000 });
     expect((await notes(page))[1].closed).toBe(true);
     expect(await notes(page)).toHaveLength(2);
+    // (current-actor) paused: the strong mark gone, only the soft one on whose turn it is
+    await expect(page.locator('#whitePlayer')).toHaveClass(/currentActorPaused/, { timeout: 15_000 }); await expect(page.locator('.currentActor')).toHaveCount(0);
+    expect(await page.locator('#whitePlayer strong').evaluate((el) => getComputedStyle(el, '::after').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
     expect((await api(request, '/api/rooms/join', black, { code })).status).toBe(200);
     await settle(page);
     expect(await notes(page)).toHaveLength(2);
+    await expect(page.locator('#whitePlayer')).toHaveClass(/(^|\s)currentActor(\s|$)/, { timeout: 15_000 }); // (back: marked again)
+    // (current-actor) a reload -- the server's way back in, the session put in the page -- the mark as it is at once
+    await page.route('**/', async (route) => { if (route.request().resourceType() !== 'document') return route.continue(); const response = await route.fetch(); await route.fulfill({ response, body: (await response.text()).replace('data-session=""', `data-session="${white}"`) }); });
+    await page.reload(); await expect(page.locator('#roomView')).toBeVisible();
+    await expect(page.locator('#whitePlayer')).toHaveClass(/currentActor/); await expect(allActors(page)).toHaveCount(1);
 
     // 8) 종료(기권): 알림 상태가 남지 않는다.
     expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
     await settle(page);
     expect(await page.title()).toBe('오델로 · 아일랜드');
+    for (const view of [page, spectator]) await expect(allActors(view)).toHaveCount(0); // (current-actor: no one's turn, the winner's neither)
 
     // 6) 관전자: 어떤 차례에도 제목·시스템 알림 없음.
     expect(await spectator.title()).toBe('오델로 · 아일랜드');

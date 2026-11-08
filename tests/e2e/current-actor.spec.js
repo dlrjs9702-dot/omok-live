@@ -72,68 +72,7 @@ const seatCard = (page, seat) => page.locator(`.teamPlayer[data-seat="${seat}"]`
 const allActors = page => page.locator('.currentActor, .currentActorPaused');
 
 test.describe('현재 행동 주체 강조', () => {
-  test('오델로: 현재 차례만 표시·턴 이동·관전자·일시정지·새로고침 복구·종료 시 제거', async ({ page, browser, request }) => {
-    test.setTimeout(90_000);
-    const errors = [];
-    page.on('pageerror', error => errors.push(error.message));
-    const black = await browserLogin(page);
-    const code = await createRoom(page, 'othello');
-    const white = await apiLogin(request);
-    expect((await api(request, '/api/rooms/join', white, { code })).status).toBe(200);
-    const spectator = await joinAsSpectator(browser, code);
-
-    expect((await api(request, '/api/room/choose-role', black, { choice: 'black' })).status).toBe(200);
-    const started = await api(request, '/api/room/choose-role', white, { choice: 'white' });
-    expect(started.data.state.game.turn).toBe('black');
-
-    for (const view of [page, spectator.page]) {
-      await expect(view.locator('#blackPlayer')).toHaveClass(/currentActor/);
-      await expect(view.locator('#whitePlayer')).not.toHaveClass(/currentActor/);
-      await expect(allActors(view)).toHaveCount(1);
-    }
-    // 내 좌석 윤곽(mySeat)과 현재 행동 주체 표시가 함께 유지되고, 실제 CSS 표시가 적용된다.
-    await expect(page.locator('#blackPlayer')).toHaveClass(/mySeat/);
-    const dot = await page.locator('#blackPlayer strong').evaluate(el => getComputedStyle(el, '::after').backgroundColor);
-    expect(dot).toBe('rgb(56, 189, 248)');
-
-    // 턴이 넘어가면 표시가 이동한다.
-    const move = started.data.state.game.legalMoves[0];
-    expect((await api(request, '/api/room/move', black, { x: move.x, y: move.y })).status).toBe(200);
-    for (const view of [page, spectator.page]) {
-      await expect(view.locator('#whitePlayer')).toHaveClass(/currentActor/);
-      await expect(view.locator('#blackPlayer')).not.toHaveClass(/currentActor/);
-    }
-
-    // 일시정지(상대가 방을 떠남): 강한 표시는 사라지고 약한 표시만 남는다.
-    expect((await api(request, '/api/room/leave', white, {})).status).toBe(200);
-    await expect(page.locator('#whitePlayer')).toHaveClass(/currentActorPaused/, { timeout: 15_000 });
-    await expect(page.locator('.currentActor')).toHaveCount(0);
-    const pausedDot = await page.locator('#whitePlayer strong').evaluate(el => getComputedStyle(el, '::after').backgroundColor);
-    expect(pausedDot).toBe('rgba(0, 0, 0, 0)');
-
-    // 복귀하면 다시 현재 행동 주체로 표시된다.
-    expect((await api(request, '/api/rooms/join', white, { code })).status).toBe(200);
-    await expect(page.locator('#whitePlayer')).toHaveClass(/(^|\s)currentActor(\s|$)/, { timeout: 15_000 });
-
-    // 새로고침(서버가 세션을 문서에 넣어 주는 재접속 경로와 동일) 직후 현재 상태로 바로 복구.
-    await page.route('**/', async route => {
-      if (route.request().resourceType() !== 'document') return route.continue();
-      const response = await route.fetch();
-      const html = (await response.text()).replace('data-session=""', `data-session="${black}"`);
-      await route.fulfill({ response, body: html });
-    });
-    await page.reload();
-    await expect(page.locator('#roomView')).toBeVisible();
-    await expect(page.locator('#whitePlayer')).toHaveClass(/currentActor/);
-    await expect(allActors(page)).toHaveCount(1);
-
-    // 종료(기권): 승자를 포함해 누구도 현재 행동 주체가 아니다.
-    expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
-    for (const view of [page, spectator.page]) await expect(allActors(view)).toHaveCount(0);
-    expect(errors).toEqual([]);
-    await spectator.context.close();
-  });
-
+  // (v1.10.277 시험 정리 2차: the 오델로 case moved into turn-alert.spec.js's 오델로 test -- the same game, one run)
   test('스무고개: 비밀 정답·질문·답변·판정 단계마다 실제 행동 담당자로 이동한다', async ({ page, browser, request }) => {
     test.setTimeout(90_000);
     const host = await browserLogin(page);

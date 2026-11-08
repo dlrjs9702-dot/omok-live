@@ -65,7 +65,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     // (v1.10.230 울타리 마을: from far off -- the 관공서, 350 m -- in by a warp: the server took the one long step for a stale pose and
     // put me back at the hall's door, CI #376; the steps within the yard stay teleports)
     const arrive = (lx, lz) => page.evaluate(([x, z]) => window.PlazaWarp(x, z), [Y.world(L, lx, lz).x, Y.world(L, lx, lz).z]);
-    await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(6000); const empty = await frames(page);
+    await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(3000); const empty = await frames(page); /* (v1.10.277: settled in 3 s) */
     // in my yard: 「마당 꾸미기」 (the button; on a PC Y too)
     await stand(-4.25, -2.25); await expect(page.locator('#yardEditBtn')).toBeVisible({ timeout: 10000 });
     if (isMobile) await page.locator('#yardEditBtn').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyY'); }
@@ -91,8 +91,11 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
       await expect(edit.locator(`.furniturePiece[data-uid="${uid}"]`)).toContainText('놓음', { timeout: 15000 }); // (v1.10.233, 검토: the window made again after a placing -- the next piece from the new list, not the old one under it)
     };
     const by = (shape) => pieces.filter((p) => p.id === Y.goodId(shape));
-    const fences = by('fence_wood'); for (const [k, f] of fences.entries()) await placeAt(f.uid, -4.25, -0.5 + k, 1); // (end to end along the side: their posts shared)
-    await placeAt(by('bench')[0].uid, -3, -3.75, 0); /* (in the front yard, facing the walk) */ await placeAt(by('lantern_stone')[0].uid, 1.5, 4); await placeAt(by('garden_light')[0].uid, -2.5, 4.25);
+    // (v1.10.277 시험 정리 2차: the window places the first fence and the arch -- arrows, turning, 놓기, the list made again; the
+    // rest at the same spots by the yard's own API, as the trophy and the 60 below -- 9 placings by taps were minutes on CI)
+    const put = async (p, x, z, rot = 0) => { const r = await post(request, '/api/home/yard', a.token, { uid: p.uid, id: p.id, x, z, rot }); expect(r.status, JSON.stringify(r.data)).toBe(200); };
+    const fences = by('fence_wood'); await placeAt(fences[0].uid, -4.25, -0.5, 1); for (const [k, f] of fences.entries()) if (k) await put(f, -4.25, -0.5 + k, 1); // (end to end along the side: their posts shared)
+    await put(by('bench')[0], -3, -3.75, 0); /* (in the front yard, facing the walk) */ await put(by('lantern_stone')[0], 1.5, 4); await put(by('garden_light')[0], -2.5, 4.25);
     const arch = (await get(request, '/api/island/furniture/mine', a.token)).data.pieces.find((p) => p.id === Y.goodId('arch')); await placeAt(arch.uid, 4.25, 0, 1);
     await page.locator('#plazaCloseBtn').click();
     // seen in 3D: the batches, what blocks (the arch's middle free, its posts not), the bench's seats
@@ -113,9 +116,10 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     // (v1.10.251 기록의 탑 트로피, docs/gamehall-ranking-board-20261103.md §3-1) the week's 1st of 지뢰찾기 중급 (a 1 s clear by the API),
     // the week settled as from next week: its gold trophy in the storage with its plate, a letter from the 게임관; placed in my
     // yard, the visitor sees it (its plate's words; with the real models its gold and written plate too)
-    { const g = (await post(request, '/api/solo/minesweeper/new', a.token, { level: 'intermediate' })).data; await post(request, '/api/solo/minesweeper/act', a.token, { id: g.id, action: 'open', x: 8, y: 8 });
+    { const g = (await post(request, '/api/solo/minesweeper/new', a.token, { level: 'intermediate' })).data; const first = (await post(request, '/api/solo/minesweeper/act', a.token, { id: g.id, action: 'open', x: 8, y: 8 })).data;
       const mines = new Set((await post(request, '/api/test/solo/peek', a.token, { ageMs: 1000 })).data.mines);
-      for (let i = 0; i < 256; i += 1) if (!mines.has(i)) { const r = (await post(request, '/api/solo/minesweeper/act', a.token, { id: g.id, action: 'open', x: i % 16, y: Math.floor(i / 16) })).data; if (r.view.status === 'won') break; } }
+      let cells = first.view?.cells || null; /* (v1.10.277: a cell the flood already opened not asked again -- 256 calls were most of a minute on CI) */
+      for (let i = 0; i < 256; i += 1) if (!mines.has(i) && !(cells && cells[i] >= 0)) { const r = (await post(request, '/api/solo/minesweeper/act', a.token, { id: g.id, action: 'open', x: i % 16, y: Math.floor(i / 16) })).data; cells = r.view.cells; if (r.view.status === 'won') break; } }
     await post(request, '/api/test/solo/settle', a.token, { now: Date.now() + 7 * 86400000 });
     const trophy = (await get(request, '/api/island/furniture/mine', a.token)).data.pieces.find((p) => p.id === 'yard_trophy_mines__gold');
     expect(trophy?.plate).toMatch(/^지뢰 탐정 · 마당주인/);
@@ -155,7 +159,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     expect(yard.length).toBe(60);
     await expect(page.locator('#yardEditBtn')).toBeVisible(); // (60 placed: the count the server lets)
     await expect.poll(() => page.evaluate((id) => window.PlazaDebug().yards().lots.find((l) => l.id === id)?.n, lot), { timeout: 20000 }).toBe(60);
-    await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(6000); const full = await frames(page);
+    await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await page.waitForTimeout(3000); const full = await frames(page);
     await shot('yard-full');
     await time('night'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().projects().night), { timeout: 30000 }).toBe(true);
     await arrive(0, -7); await page.evaluate((yaw) => window.PlazaDebug().setCamYaw(yaw), L.yaw + Math.PI); await shot('yard-night', page, 2500);

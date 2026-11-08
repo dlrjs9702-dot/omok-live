@@ -295,36 +295,6 @@ test('카드놀이: 게임이 스스로 마무리한 판도 서버가 다시 두
   await a.context.close();
 });
 
-// v1.10.71 AI 대전 (연습): 싱글게임 → 「AI 대전」 → 오목(규칙·먼저 두기·AI 난이도) — 두면 AI가 받아 두고, 서버에는 아무것도 보내지 않는다.
-test('AI 대전: 오목을 두면 AI가 받아 두고, 연습이라 서버로 보내지 않는다', async ({ browser, request }) => {
-  const a = await shopper(browser, request, 'AI손');
-  const { page } = a;
-  const sent = [];
-  page.on('request', (r) => { if (/\/api\/solo\//.test(r.url())) sent.push(r.url()); });
-  await page.locator('[data-game-mode="single"]').click();
-  await page.locator('#soloAiBtn').click();
-  await expect(page.locator('.reflexCard strong')).toHaveText(['오목', '사목', '오델로']);
-  await expect(page.locator('.reflexToday')).toHaveText('연습 · 기록 없음');
-  await page.locator('.reflexCard', { hasText: '오목' }).click();
-  await expect(page.locator('.reflexModes').first().locator('.reflexLevel')).toHaveText(['렌주룰', '3수 교환 · 5수 2타']);
-  await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel')).toHaveText(['AI 쉬움', 'AI 보통', 'AI 어려움']);
-  await page.locator('.reflexGo').click();
-  await expect(page.locator('#hud')).toBeVisible();
-  const stones = () => page.evaluate(async () => { // the board state the game keeps (rules.js TURN.gomoku)
-    const { E } = await import('/reflex/js/engine.js'); return E.game?.id === 'gomoku' ? JSON.stringify(E.game).length : 0;
-  });
-  expect(await stones()).toBeGreaterThan(0);
-  const box = await page.locator('#stage').boundingBox();
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.45); // preview, then place, near the centre
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.45);
-  await page.waitForTimeout(1500); // the AI answers
-  await page.screenshot({ path: test.info().outputPath('gomoku-ai.png') });
-  await page.locator('#reflexQuitBtn').click();
-  expect(sent.filter((u) => !/\/api\/solo\/(reflex|puzzle|cards)$/.test(u))).toEqual([]);
-  await expectNoScriptError(page);
-  await a.context.close();
-});
-
 // v1.10.71 게임별 랭킹: 내 전적 「랭킹」 → 게임·이번 주/전체, 아직 10판을 둔 사람이 없으면 안내
 test('랭킹: 내 전적의 「랭킹」에서 게임·기간을 고른다', async ({ browser, request }) => {
   const a = await shopper(browser, request, '랭킹손');
@@ -435,13 +405,38 @@ test('PC 넓게: 카드놀이 판 폭 1,000px 이상, 스도쿠 판 700px 이상
 });
 
 // A3 G3-2: my equipped 오목 돌 skin goes into the AI practice too (my stones drawn with it)
-test('AI 연습 오목: 장착한 오목 돌 스킨으로 내 돌을 그린다', async ({ browser, request, isMobile }) => {
+// (v1.10.277 시험 정리 2차: the AI 대전 menu test folded in here -- one player, its stone skin on)
+test('AI 대전·연습 오목: 오목을 두면 AI가 받아 두고 서버로 보내지 않음, 장착한 오목 돌 스킨으로 내 돌을 그린다', async ({ browser, request, isMobile }) => {
   test.skip(isMobile, 'PC 전용 검증');
-  test.setTimeout(120000);
+  test.setTimeout(150000);
   const { buyAndEquip } = require('./skin-support');
   const a = await shopper(browser, request, 'AI스킨', 3000000);
   await buyAndEquip(request, a, ['omok_l1']);
   const { page } = a;
+  // the AI 대전 menu: 오목 against the AI, a practice -- nothing sent to the server's solo records
+  const sent = [];
+  page.on('request', (r) => { if (/\/api\/solo\//.test(r.url())) sent.push(r.url()); });
+  await page.locator('[data-game-mode="single"]').click();
+  await page.locator('#soloAiBtn').click();
+  await expect(page.locator('.reflexCard strong')).toHaveText(['오목', '사목', '오델로']);
+  await expect(page.locator('.reflexToday')).toHaveText('연습 · 기록 없음');
+  await page.locator('.reflexCard', { hasText: '오목' }).click();
+  await expect(page.locator('.reflexModes').first().locator('.reflexLevel')).toHaveText(['렌주룰', '3수 교환 · 5수 2타']);
+  await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel')).toHaveText(['AI 쉬움', 'AI 보통', 'AI 어려움']);
+  await page.locator('.reflexGo').click();
+  await expect(page.locator('#hud')).toBeVisible();
+  const stones = () => page.evaluate(async () => { // the board state the game keeps (rules.js TURN.gomoku)
+    const { E } = await import('/reflex/js/engine.js'); return E.game?.id === 'gomoku' ? JSON.stringify(E.game).length : 0;
+  });
+  expect(await stones()).toBeGreaterThan(0);
+  const box = await page.locator('#stage').boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.45); // preview, then place, near the centre
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.45);
+  await page.waitForTimeout(1500); // the AI answers
+  await page.screenshot({ path: test.info().outputPath('gomoku-ai.png') });
+  await page.locator('#reflexQuitBtn').click();
+  expect(sent.filter((u) => !/\/api\/solo\/(reflex|puzzle|cards)$/.test(u))).toEqual([]);
+  // the stone skin on: my stones drawn with it
   await page.evaluate(() => { window.GameLaunch.play('gomoku', { place: 'quest', level: 'easy' }); });
   await expect.poll(() => page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return E.game?.id === 'gomoku' ? E.opts?.pieceSkin || 'none' : null; }), { timeout: 30000 }).toBe('omok_l1');
   await expectNoScriptError(page); await a.context.close();

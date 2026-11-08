@@ -33,7 +33,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [unit, chromium-1, chromium-2, chromium-3, chromium-4, chromium-5, chromium-6, chromium-7, chromium-8, chromium-9, chromium-10, chromium-11, chromium-12, chromium-13, mobile-1, mobile-2, mobile-3, mobile-4, mobile-5, mobile-6]
+        # (v1.10.277 시험 정리 2차: the phone in four -- 62 min of its tests by the table, 15.5 a part against the PC's 15.2: the run as
+        # long, two runners fewer)
+        group: [unit, chromium-1, chromium-2, chromium-3, chromium-4, chromium-5, chromium-6, chromium-7, chromium-8, chromium-9, chromium-10, chromium-11, chromium-12, chromium-13, mobile-1, mobile-2, mobile-3, mobile-4]
     env:
       # (the island's 3D specs on PC: since 2차 단축 every spec runs on PC, kept for reference until the next tidy)
       PLAZA_PC: >-
@@ -116,7 +118,7 @@ jobs:
         run: |
           case "$GROUP" in
             chromium-*) PROJECT=chromium; LIST=$(node tools/ci-split.js chromium 13 ${GROUP#chromium-}) || exit 1 ;;
-            mobile-*) PROJECT=mobile-chromium; LIST=$(node tools/ci-split.js mobile 6 ${GROUP#mobile-}) || exit 1 ;;
+            mobile-*) PROJECT=mobile-chromium; LIST=$(node tools/ci-split.js mobile 4 ${GROUP#mobile-}) || exit 1 ;;
             *) echo "unknown part $GROUP"; exit 1 ;;
           esac
           test -n "$LIST" || exit 1
