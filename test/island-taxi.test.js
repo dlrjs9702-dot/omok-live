@@ -18,6 +18,31 @@ test('택시 길: 두 정류장이 길 양 끝, 길 모든 점이 걸을 수 있
   assert.ok(Math.hypot(X.stopOf('plaza').x - T.SPAWN.x, X.stopOf('plaza').z - T.SPAWN.z) > 20, 'clear of the first spot');
 });
 
+// v1.10.285 (notes docs/taxi-fix-20261108.md 2절, 사용자 「지형 지물 다 무시하고 뚫고 지나가버려」): both drives -- the road and
+// the last turn to the drop-off -- walked every half metre: every solid at least the car's half width + 0.3 m off, no water
+// (bridges fine), no stairs, the car's height following the ground (no step over 0.5 m in half a metre -- a bridge end ramps 0.4; off the bridges on the
+// drawn ground within 0.25 m); the island end at the user's spot (-13.3, 173.1), its shelter and car spots clear too
+test('택시 길 확인: 양쪽 길을 0.5 m마다 -- 단단한 물체에서 차 반폭+0.3 m 밖, 물·계단 아님, 차 높이가 땅을 따라감, 툇마루섬 마을 정류장', () => {
+  const solids = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids()];
+  const clear = (x, z) => Math.min(...solids.map((s) => Math.hypot(x - s.x, z - s.z) - (s.r || 0.5)));
+  const HALF = 0.85; // (the car 1.7 m wide -- island-taxi-scene's stand-in, assets 99's model)
+  for (const from of ['plaza', 'isle']) {
+    const road = X.driveOf(from); let last = null;
+    for (let i = 1; i < road.length; i += 1) {
+      const [a, b] = [road[i - 1], road[i]]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      for (let s = 0; s <= L; s += 0.5) {
+        const x = a[0] + (b[0] - a[0]) * s / L; const z = a[1] + (b[1] - a[1]) * s / L; const at = `${from} ${x.toFixed(1)},${z.toFixed(1)}`;
+        assert.ok(clear(x, z) > HALF + 0.3, `${at} by a solid (${clear(x, z).toFixed(2)})`);
+        assert.ok(ok(x, z) && !T.onStairs(x, z), `${at} water or stairs`);
+        const y = T.heightAt(x, z); if (last != null) assert.ok(Math.abs(y - last) < 0.5, `${at} a step of ${(y - last).toFixed(2)} m`); last = y;
+        if (!T.onBridge(x, z)) assert.ok(Math.abs(y - T.meshGroundHeight(x, z)) < 0.25, `${at} off the ground (${(y - T.meshGroundHeight(x, z)).toFixed(2)})`);
+      }
+    }
+  }
+  const isle = X.stopOf('isle'); assert.equal(isle.label, '툇마루섬 마을'); assert.ok(Math.hypot(isle.x + 13.3, isle.z - 173.1) < 4, '사용자 자리');
+  for (const id of ['plaza', 'isle']) { const s = X.stopOf(id); const d = X.dropOf(id); for (const [name, p] of [['shelter', s.shelter], ['stand', s], ['drop', d], ['out', s.out]]) assert.ok(clear(p.x, p.z) > 1 && ok(p.x, p.z), `${id} ${name} ${p.x.toFixed(1)},${p.z.toFixed(1)}`); }
+});
+
 test('택시 시간: 한 번 25~40초(시험 길은 3초), 타기→출발→달리기→멈춤→내리기 순서, 끝에서 도착 정류장 앞', () => {
   for (const from of ['plaza', 'isle']) {
     const ride = { from, startedAt: 1000 }; const dur = X.durationOf(ride);

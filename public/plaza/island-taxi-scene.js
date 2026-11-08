@@ -6,7 +6,7 @@ import * as THREE from '/vendor/three/three.module.js';
 const T = globalThis.IslandTerrain; const X = globalThis.IslandTaxi;
 const SEAT = { x: 0, y: 0.48, z: -0.12 }; // (assets 99: the one back seat, body [0, 0.38, 0] + [0, 0.10, 0.12] in the model's own frame -- turned round here)
 
-export function taxiScene({ scene, assets }) {
+export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: a little 「빵」 over a car passing someone -- no sound)
   const group = new THREE.Group(); group.name = 'taxi'; scene.add(group);
   const made = []; const box = new THREE.BoxGeometry(1, 1, 1); made.push(box);
   const mat = (color, extra = {}) => { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...extra }); made.push(m); return m; };
@@ -25,7 +25,8 @@ export function taxiScene({ scene, assets }) {
   const groundY = (x, z) => T.heightAt(x, z);
   function car() {
     const h = new THREE.Group(); group.add(h); const rec = { h, doors: [], wheels: [], lights: [] };
-    assets.attach('taxi.car', h, carStandIn(), (entry) => {
+    const fallback = carStandIn(); h.add(fallback); /* (v1.10.285: in the scene -- attach only hides it once the model is in; it never showed) */
+    assets.attach('taxi.car', h, fallback, (entry) => {
       rec.doors = []; rec.wheels = []; rec.lights = []; if (!entry) return;
       h.traverse((o) => { if (o.name === 'door_L') rec.doors.push({ o, side: -1, yaw0: o.rotation.y }); /* (the bench's side: only that door opens, 0 -> -70°) */ if (/wheel/i.test(o.name) && !/mesh/i.test(o.name)) rec.wheels.push(o); if (o.material && /glow/.test(o.material.name || '')) rec.lights.push(o.material); });
     });
@@ -40,7 +41,7 @@ export function taxiScene({ scene, assets }) {
   }
   const stops = Object.keys(X.STOPS).map((id) => {
     const s = X.stopOf(id); const shelter = new THREE.Group(); shelter.position.set(s.shelter.x, groundY(s.shelter.x, s.shelter.z), s.shelter.z); shelter.rotation.y = s.shelter.yaw; group.add(shelter);
-    assets.attach('taxi.stop', shelter, stopStandIn()); shelter.add(signOf(s.sign));
+    const fallback = stopStandIn(); shelter.add(fallback); assets.attach('taxi.stop', shelter, fallback); shelter.add(signOf(s.sign));
     const standing = car(); placeCar(standing, { x: s.x, z: s.z, yaw: s.yaw, phase: 'wait', d: 0 });
     return { id, s, standing };
   });
@@ -48,14 +49,17 @@ export function taxiScene({ scene, assets }) {
   const PARKED = 20000;
   let night = false;
   // each frame: `rides` [{ key, ride }] -- a car for each on its way, the standing ones away while one leaves or arrives there
-  function step(now, rides) {
+  function step(now, rides, people = []) { // (v1.10.285 people: [{ x, z }] on foot -- a running car within 2 m of one honks)
     const live = new Set();
     for (const { key, ride } of rides) {
       const p = X.poseAt(ride, now); if (p.phase === 'done') continue; live.add(key);
       let rec = moving.get(key); if (!rec) { rec = car(); moving.set(key, rec); }
-      placeCar(rec, p); rec.left = p.phase === 'exit' ? now + PARKED : 0;
+      placeCar(rec, p); rec.left = p.phase === 'exit' ? now + PARKED : 0; rec.running = ['start', 'run', 'stop'].includes(p.phase);
+      if (mark && rec.running && people.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < 2)) { if (!rec.horn) { rec.horn = mark(); rec.horn.position.y = 2.6; rec.h.add(rec.horn); } rec.hornUntil = now + 1200; }
+      if (rec.horn) rec.horn.visible = rec.hornUntil > now;
     }
     for (const [key, rec] of moving) if (!live.has(key) && !(rec.left > now)) { group.remove(rec.h); moving.delete(key); } /* (v1.10.272: a car that let its rider out stands a while across the shelter, not gone at once) */
+    for (const [key, rec] of moving) if (!live.has(key)) rec.running = false;
     for (const st of stops) {
       const busy = rides.some(({ ride }) => { const p = X.poseAt(ride, now); if (p.phase === 'done') return false; return (ride.from === st.id && now - ride.startedAt < X.ENTER + 2000) || Math.hypot(p.x - st.s.x, p.z - st.s.z) < 6; });
       st.standing.h.visible = !busy;
@@ -70,5 +74,7 @@ export function taxiScene({ scene, assets }) {
   }
   const setNight = (on) => { night = Boolean(on); };
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
-  return { group, step, seatOf, setNight, dispose, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible })), moving: () => [...moving.keys()] };
+  // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
+  const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible) }));
+  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible })), moving: () => [...moving.keys()] };
 }

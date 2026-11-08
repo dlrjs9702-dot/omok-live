@@ -334,7 +334,8 @@
       // v1.10.30: a common-rig character put together from wardrobe parts (island-assets wardrobeOf)
       wear: (character, plan) => call('wear', [character, plan]),
       face: (character, want) => call('face', [character, want]),
-      props: (character, on) => call('props', [character, on]), /* (v1.10.264: an islander's things in hand away during a gesture) */ /* (v1.10.263 감정 표현: the expression's eyes and mouth over the character's own; null its own back) */
+      props: (character, on) => call('props', [character, on]),
+      hat: (character, off) => { character.hatHidden = Boolean(off); call('hat', [character, off]); }, /* (v1.10.285: put away in a taxi -- remembered before the loader is in) */ /* (v1.10.264: an islander's things in hand away during a gesture) */ /* (v1.10.263 감정 표현: the expression's eyes and mouth over the character's own; null its own back) */
       // v1.10.17 nature and props placed many times: does any of `targetIds` have a model to load? (synchronous, so the
       // scene can keep those copies apart from the rest when it bakes), then hand over the placed copies square by
       // square (see asset-loader.js `batch`)
