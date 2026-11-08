@@ -98,7 +98,8 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
     await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
     const account = (await api(request, '/api/account/login', { body: { loginId, password: 'secret123' } })).data.accountToken;
-    const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+    const video = process.env.SHOT_DIR && tag === 'a' ? { recordVideo: { dir: process.env.SHOT_DIR, size: info.project.use?.viewport || { width: 1280, height: 720 } } } : {}; /* (v1.10.281: the moving stickers, as a clip) */
+    const context = await browser.newContext({ ...(info.project.use || {}), ...video, extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
     const page = await context.newPage(); await page.goto('/messenger');
     await page.locator('#mLoginId').fill(loginId); await page.locator('#mLoginPw').fill('secret123'); await page.locator('#mLogin').getByRole('button', { name: '로그인' }).click();
     await expect(page.locator('#mApp')).toBeVisible(); return { id, account, context, page, nickname };
@@ -139,6 +140,10 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     await expect(them.locator('#messengerMessages .messengerSticker img')).toHaveAttribute('alt', '고마워요');
     await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: b.account, body: { sticker: 'islanders1/laugh_duri' } });
     await expect(page.locator('#messengerMessages .chatMessage:not(.mine) .messengerSticker img')).toHaveCount(1, { timeout: 10000 });
+    // (v1.10.281 움직이는 이모티콘) in the room its moving picture (ㅋㅋㅋ has one), one without stays still; the panel all still
+    await expect(page.locator('#messengerMessages .chatMessage:not(.mine) .messengerSticker img')).toHaveAttribute('src', /\/islanders1\/anim\/laugh_duri\.webp$/);
+    await expect(sent).toHaveAttribute('src', /\/islanders1\/thanks_handeul\.webp$/);
+    expect(await panel.locator('img').evaluateAll((ims) => ims.filter((im) => im.getAttribute('src')?.includes('/anim/')).length)).toBe(0);
     // 그림 글자: at the cursor, the panel kept
     await page.locator('#messengerEmojiTabGlyph').click(); await expect(panel.locator('.messengerGlyphGrid').first()).toBeVisible(); await shot(page, 'emoji-glyph');
     const input = page.locator('#messengerInput'); await input.fill('좋아요 고마워요'); await input.evaluate((el) => el.setSelectionRange(4, 4));
@@ -152,10 +157,14 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     expect(await near('#messengerMessages .chatMessage.mine:has(.messengerSticker)')).toBeLessThan(0); expect(await near('#messengerMessages .chatMessage:not(.mine):has(.messengerSticker)')).toBeLessThan(0);
     expect(await page.evaluate(() => { const b = document.querySelector('#messengerMessages'); return b.scrollWidth <= b.clientWidth; })).toBe(true);
     if (process.env.SHOT_DIR) { // (어두운 화면: the art's edge on the panel's #352c25 and in the room)
+      await page.waitForTimeout(3000); /* (the clip: ㅋㅋㅋ moving a few seconds in the room) */
       await page.evaluate(() => { document.documentElement.dataset.mtheme = 'dark'; }); await shot(page, 'emoji-dark-room');
       await page.locator('#messengerEmojiBtn').click(); await page.locator('#messengerEmojiTabSticker').click(); await shot(page, 'emoji-dark-panel');
     }
-  } finally { await a.context.close(); await b.context.close(); }
+  } finally {
+    const clip = page.video(); await a.context.close(); await b.context.close();
+    if (clip) { await clip.saveAs(`${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-emoji-room.webm`); await clip.delete(); }
+  }
 });
 
 // 메신저 다듬기 A1 (사진 있는 방에서 보내거나 받으면 가끔 사진 근처가 보이던 것): a room with many photos (each held back on
