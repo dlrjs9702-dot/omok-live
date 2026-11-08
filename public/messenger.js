@@ -311,7 +311,9 @@
   const STICKERS = fetch('/messenger/stickers/stickers.json', { cache: 'default' }).then((r) => r.json()).then((d) => new Map(d.stickers.map((s) => [s.id, s]))).catch(() => new Map());
   function stickerImg(id, alt) {
     const img = document.createElement('img'); img.className = 'messengerStickerImg'; img.alt = String(alt || '').replace(/^\(이모티콘\) /, ''); img.decoding = 'async'; img.addEventListener('load', keepEnd);
-    STICKERS.then((m) => { const s = m.get(id); if (s) { img.src = `/messenger/stickers/${s.file}`; img.style.setProperty('--pad', String((s.pad || 0) / 360)); } }); return img; // (pad: its clear side edge -- the time beside the art)
+    // (v1.10.281 움직이는 이모티콘: in the room its moving picture -- the panel keeps the still ones (a phone's weight); still
+    // when the device asks for less motion. ponytail: off screen it is left to the browser (Chrome does not animate what it does not paint))
+    STICKERS.then((m) => { const s = m.get(id); if (s) { img.src = `/messenger/stickers/${s.anim && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? s.anim : s.file}`; img.style.setProperty('--pad', String((s.pad || 0) / 360)); } }); return img; // (pad: its clear side edge -- the time beside the art)
   }
   const GLYPHS = [['얼굴', '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 😘 😋 😜 🤔 😴 😭'], ['손', '👍 👎 👏 🙌 👐 🙏 🤝 👋 ✌️ 🤞 👌 🤙 💪 ☝️ 👉 👈 👆 👇 ✋ 🫶'],
     ['하트', '❤️ 🧡 💛 💚 💙 💜 🤎 🖤 🤍 💕 💞 💓 💗 💖 💘 💝 💌 💯 ✨ ⭐'], ['동물', '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐟 🐝'],

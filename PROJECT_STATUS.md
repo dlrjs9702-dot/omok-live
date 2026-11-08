@@ -13,6 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.282 움직이는 이모티콘
+
+- 에셋 107b 24장 islanders1/anim/, stickers.json anim·animSha256; 방 안 메시지만 anim, 판(격자·미리 보기)은 멈춘 그림, prefers-reduced-motion이면 멈춘 그림; 단위가 그림마다 sha256 대조. 다음: 283 Codex 271~280 12건 + 창구 안내 직원 이름.
+
 ## v1.10.281 문제 기록 1·2·4
 
 - 마우스 잠금은 사용자가 푼 것만 꺼짐(게임이 푼 것은 다음 클릭·키에서 다시 잡음); 개명 신청 직원 「개명 담당」, 시장 안내 「말 걸기 · 마루」; 🚲 단추 없앰, 폰은 빠른 칸 자전거(서버 빠른 칸 bike), 😊 단추 🚲 자리. 다음: 282 움직이는 이모티콘(107b), 283 Codex 271~280 12건.
@@ -20,7 +24,3 @@
 ## v1.10.280 이모티콘·주민 소품 고침
 
 - 279에서 깨진 WebP 3장(줄 끝 변환 스크립트) 원본으로, 모든 그림 WebP 확인 단위; 😊 판 flex:none·높이 max(220px, min(300px, 42vh))·격자 360px(820×900·1280×600 두 줄 e2e); 감정 표현 때 held 재질만 숨김(에셋 108, 44명 88파일, island-models held108). 다음: 움직이는 이모티콘(107b), 총괄 지시.
-
-## v1.10.279 메신저 이모티콘
-
-- 😊 판(이모티콘 24·그림 글자 120·최근 8), messages POST {sticker}(목록 검사 BAD_STICKER, 글자·사진과 같이 400), text는 「(이모티콘) 글」, messenger_messages.sticker 칸, 보내기 취소 때 지움, 말풍선 없는 그림(PC 120·폰 110, 시간 글자는 그림 옆), 그림 에셋 107 WebP. 다음: 280 감정 표현 때 몸 소품 사라짐(에셋 108 held 재질).
