@@ -1025,8 +1025,34 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const train = trainScene({ scene, assets, solids, vcMat, signboard }); // v1.10.47 관광열차 (its steps are walked round)
   // v1.10.271 섬 택시: the two stops and every ride's car; SPACE by a stop asks (app: the fare, then 타기)
-  const TX = globalThis.IslandTaxi; const taxiView = taxiScene({ scene, assets });
-  for (const id of Object.keys(TX.STOPS)) { const s = TX.stopOf(id); doors[`taxi:${id}`] = { x: s.out.x, z: s.out.z, name: s.sign, mapName: '🚕 택시' }; }
+  const TX = globalThis.IslandTaxi; const taxiView = taxiScene({ scene, assets, mark: () => { const t = makeTag('빵!', null); t.scale.multiplyScalar(0.8); return t; } });
+  for (const id of Object.keys(TX.STOPS)) {
+    const s = TX.stopOf(id); doors[`taxi:${id}`] = { x: s.out.x, z: s.out.z, name: s.sign, mapName: '🚕 택시' };
+    // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter (its roof 2.9 m along its own x) and the car
+    // standing there (1.7 x 3.2 m) block -- three circles along the shelter, two along the car; the car's door side left clear
+    const sh = s.shelter; for (const k of [-0.8, 0, 0.8]) solids.push({ x: sh.x + Math.cos(sh.yaw) * k, z: sh.z - Math.sin(sh.yaw) * k, r: 0.7, taxi: true });
+    for (const k of [-0.75, 0.75]) solids.push({ x: s.x + Math.sin(s.yaw) * k, z: s.z + Math.cos(s.yaw) * k, r: 0.9, taxi: true });
+  }
+  // (v1.10.285) a car on its way or parked: I am put out of its box (0.85 + 0.35 across, 1.6 + 0.35 along) -- it never stops
+  // for me (the same clock on every screen), so it pushes; walking islanders step 2 m to its right while it is within 5 m
+  function taxiPush(cars) {
+    const p = me.root.position;
+    for (const car of cars) {
+      const dx = p.x - car.x; const dz = p.z - car.z; const al = dx * Math.sin(car.yaw) + dz * Math.cos(car.yaw); const ac = dx * Math.cos(car.yaw) - dz * Math.sin(car.yaw);
+      const HA = 1.2; const HL = 1.95; if (Math.abs(ac) >= HA || Math.abs(al) >= HL) continue;
+      const pa = HA - Math.abs(ac); const pl = HL - Math.abs(al);
+      const nac = pa < pl ? Math.sign(ac || 1) * HA : ac; const nal = pa < pl ? al : Math.sign(al || 1) * HL;
+      const nx = car.x + nac * Math.cos(car.yaw) + nal * Math.sin(car.yaw); const nz = car.z - nac * Math.sin(car.yaw) + nal * Math.cos(car.yaw);
+      if (walkable(nx, nz)) { p.x = nx; p.z = nz; p.y = heightAt(nx, nz); }
+    }
+  }
+  function asideOf(w, cars) { // the walker's step aside now: 2 m to a near car's right (or left, if that is not walkable), else none
+    for (const car of cars) {
+      if (!car.running || Math.hypot(w.x - car.x, w.z - car.z) > 5) continue;
+      for (const side of [1, -1]) { const ox = Math.cos(car.yaw) * 2 * side; const oz = -Math.sin(car.yaw) * 2 * side; if (walkable(w.x + ox, w.z + oz)) return { x: ox, z: oz }; }
+    }
+    return { x: 0, z: 0 };
+  }
   // v1.10.275 그래픽 시범: the patch west of the north path -- assets 106's plants and trees, blades of grass, wind and its own
   // tone (island-pilot-scene.js); pilotOn above
   const pilotPhone = Boolean(window.matchMedia?.('(pointer: coarse)').matches);
@@ -1349,7 +1375,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       o.ride = ride; o.platform = plat; o.space = p.space || 'island'; o.home = p.home || null; // v1.10.84 (묶음 4: which house)
       { /* (v1.10.271 섬 택시: their ride, drawn by the same road and clock -- seated in its car) */
         const tx = p.taxi && TX.STOPS[p.taxi.from] && Number.isFinite(p.taxi.startedAt) ? { from: p.taxi.from, startedAt: p.taxi.startedAt, ...(Number.isFinite(p.taxi.runMs) ? { runMs: p.taxi.runMs } : {}) } : null;
-        if (tx && !o.taxi) { o.taxiClips = taxiClipsIn(o.c, tx); o.taxiOut = false; o.c.noTuck = true; o.c.tailTucked = true; o.c.tuckTail?.(true); }
+        if (tx && !o.taxi) { o.taxiClips = taxiClipsIn(o.c, tx); o.taxiOut = false; o.c.noTuck = true; o.c.tailTucked = true; o.c.tuckTail?.(true); assets.hat?.(o.c, true); /* (v1.10.285: the hat away in the car) */ }
         if (!tx && o.taxi) taxiOff(o.c);
         o.taxi = tx; }
       o.pet = p.pet || null; // B 47 반려동물
@@ -4568,6 +4594,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (c.hitUntil > nowMs) { c.targetYaw = c.hitYaw; c.lookAt = null; animate(c, dt, false, 0); continue; } // (3회차 22: struck by a net, where it was struck)
       if (c.rejoin > 0) { c.rejoin -= dt; const k = Math.min(1, dt / Math.max(dt, c.rejoin)); const p = c.root.position; p.x += (w.x - p.x) * k; p.z += (w.z - p.z) * k; p.y = heightAt(p.x, p.z); } // (then back to its shared walk)
       else c.root.position.set(w.x, heightAt(w.x, w.z), w.z); // the exact ground (slopes, bridge decks) every frame
+      { /* (v1.10.285: a taxi near -- stepped aside, eased in and out; their shared walk goes on under it) */
+        const want = asideOf(w, taxiCars); c.aside ||= { x: 0, z: 0 }; const k = Math.min(1, dt * 3); c.aside.x += (want.x - c.aside.x) * k; c.aside.z += (want.z - c.aside.z) * k;
+        if (Math.abs(c.aside.x) + Math.abs(c.aside.z) > 0.02) { const p = c.root.position; p.x += c.aside.x; p.z += c.aside.z; p.y = heightAt(p.x, p.z); }
+      }
       c.root.visible = Math.hypot(w.x - m.x, w.z - m.z) < 85 && walksNow(w.n); // (v1.10.215: at their counter today; C2: anyone at a post)
       if (!c.root.visible) continue;
       { const betting = String(residentStates[w.n]?.hold?.eventId || '').startsWith('bet:'); /* (v1.10.278 주민 내기: 「♠」 over one in a bet -- every screen, from the server's hold) */
@@ -5511,7 +5541,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // (tests) by islander n and talking to them at once -- the server still checks I stand by them
       talkResident: (n) => { const o = wanderers.find((w) => w.n === n); if (!o) return false; const at = residentPose(n, Date.now() + serverOffset); const x = at.x + 1.1; const z = at.z; /* (by where the server has them -- a slow screen draws a walker behind) */ me.root.position.set(x, heightAt(x, z), z); correction = null; lastTalk = { id: `resident:${n}`, x: o.w.x, z: o.w.z }; onInteract?.(`resident:${n}`); return true; },
       tryOn: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), actLocked: actLocked(), emote: (k) => emote(k), standUpNow: () => standUp(), time: () => ({ mode: timeMode, phase }), setTime: (m) => setTimeMode(m), setMotionMode,setWeather: (k) => setWeather(k), teleport: (x, z) => { me.root.position.set(x, spaceFloor(x, z), z); /* (3회차 21: in a room, its floor) */ correction = null; trainChangedAt = Date.now(); placeCamera(true); bikeCheck(); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, residentReservations:residentStates.map(s=>({...s,hold:s.hold?{...s.hold}:null})), eventResidents:[...eventObjs].filter(([,o])=>o.resident!=null).map(([key,o])=>({key,n:o.resident,x:o.npc.root.position.x,z:o.npc.root.position.z,leaving:Boolean(o.leaving),reused:wanderers.some(w=>w.c===o.npc)})), placeWanderer:(n,x,z)=>{const o=wanderers.find(o=>o.n===n); if(o) Object.assign(o.w,{x,z,route:null,routeTo:null});}, wanderers: wanderers.map(({ n, c, w }) => ({ n,held:Boolean(w.pose.held), x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on, at) => { overview = Boolean(on); if (at) overviewAt = at; placeCamera(true); } /* (v1.10.190: `at` [x, y, z] frames the app icon shot) */, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, pilotPost: (o) => pilot?.setPost(o), pilotGrassAt: (x, z) => (pilot ? pilot.grassAt(x, z) : null), /* (v1.10.284 G1: how thick the grass is there -- 0 on a walk, by a solid) */ pilot:(set = null) => { if (!pilot) return null; if (set) for (const [k, v] of Object.entries(set)) if (pilot.uniforms[k]) pilot.uniforms[k].value = v; return { ...pilot.counts(), visible: pilot.group.visible, tone: pilot.uniforms.uPilotTone.value, exposure: pilot.uniforms.uPilotExposure.value, cuts: pilot.uniforms.uPilotCutN.value, post: pilot.postShown(), tier: quality, models: pilot.group.children.filter((o) => o.isInstancedMesh && o.visible && o.name !== 'pilot_grass').length }; }, /* (v1.10.275 그래픽 시범) */ recordTower: () => { const T = recordTower; let faces = 0; let backs = 0; T.root.traverse((o) => { if (o.isMesh && o.material?.name === 'record_face') { if (o.userData.backOf) backs += 1; else faces += 1; } }); return { bed: towerBed ? { id: towerBed.userData.piece, model: !towerBed.children[0].visible /* (its stand-in hidden: the model in) */ } : null, backs, backBulbs: T.backBulbs || 0, bulbs: T.bulbs.length, flags: T.flags.length, faces, game: T.data?.games?.[T.shown]?.game ?? null, at: { ...TOWER }, ticker: ((k, s) => [Math.round((k.c.width * k.t.repeat.x) / s[0]), Math.round(k.c.height / s[1]), k.t.repeat.x < 1])(T.F.board_ticker, T.tickerScale || [2, 2]) /* (251 ②: the units the strip shows across and down, and a line longer than it) */ }; }, setRecordBoard, /* (v1.10.250) */ setCamPitch: (v) => { camPitch = pitchGoal = clampPitch(v); placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, zoom: zoomDist, zoomRange: [ZOOM_MIN, ZOOM_MAX], setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, residentReservations:residentStates.map(s=>({...s,hold:s.hold?{...s.hold}:null})), eventResidents:[...eventObjs].filter(([,o])=>o.resident!=null).map(([key,o])=>({key,n:o.resident,x:o.npc.root.position.x,z:o.npc.root.position.z,leaving:Boolean(o.leaving),reused:wanderers.some(w=>w.c===o.npc)})), placeWanderer:(n,x,z)=>{const o=wanderers.find(o=>o.n===n); if(o) Object.assign(o.w,{x,z,route:null,routeTo:null});}, wanderers: wanderers.map(({ n, c, w }) => ({ n,held:Boolean(w.pose.held), x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on, at) => { overview = Boolean(on); if (at) overviewAt = at; placeCamera(true); } /* (v1.10.190: `at` [x, y, z] frames the app icon shot) */, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, pilotPost: (o) => pilot?.setPost(o), pilotGrassAt: (x, z) => (pilot ? pilot.grassAt(x, z) : null), /* (v1.10.284 G1: how thick the grass is there -- 0 on a walk, by a solid) */ taxiCars: () => taxiCars, taxiAside: () => wanderers.filter(({ c }) => Math.hypot(c.aside?.x || 0, c.aside?.z || 0) > 1).map(({ n }) => n), hatHidden: () => Boolean(me.hatHidden), solidsAt: (x, z) => solidsNear(x, z).some((o) => blocksNow(o) && Math.hypot(o.x - x, o.z - z) < o.r), asideOf: (x, z, car) => asideOf({ x, z }, [car]), taxiPush: (car) => { taxiPush([car]); return { x: me.root.position.x, z: me.root.position.z }; }, /* (v1.10.285) */ pilot:(set = null) => { if (!pilot) return null; if (set) for (const [k, v] of Object.entries(set)) if (pilot.uniforms[k]) pilot.uniforms[k].value = v; return { ...pilot.counts(), visible: pilot.group.visible, tone: pilot.uniforms.uPilotTone.value, exposure: pilot.uniforms.uPilotExposure.value, cuts: pilot.uniforms.uPilotCutN.value, post: pilot.postShown(), tier: quality, models: pilot.group.children.filter((o) => o.isInstancedMesh && o.visible && o.name !== 'pilot_grass').length }; }, /* (v1.10.275 그래픽 시범) */ recordTower: () => { const T = recordTower; let faces = 0; let backs = 0; T.root.traverse((o) => { if (o.isMesh && o.material?.name === 'record_face') { if (o.userData.backOf) backs += 1; else faces += 1; } }); return { bed: towerBed ? { id: towerBed.userData.piece, model: !towerBed.children[0].visible /* (its stand-in hidden: the model in) */ } : null, backs, backBulbs: T.backBulbs || 0, bulbs: T.bulbs.length, flags: T.flags.length, faces, game: T.data?.games?.[T.shown]?.game ?? null, at: { ...TOWER }, ticker: ((k, s) => [Math.round((k.c.width * k.t.repeat.x) / s[0]), Math.round(k.c.height / s[1]), k.t.repeat.x < 1])(T.F.board_ticker, T.tickerScale || [2, 2]) /* (251 ②: the units the strip shows across and down, and a line longer than it) */ }; }, setRecordBoard, /* (v1.10.250) */ setCamPitch: (v) => { camPitch = pitchGoal = clampPitch(v); placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, zoom: zoomDist, zoomRange: [ZOOM_MIN, ZOOM_MAX], setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r), rise: heightAt(camera.position.x, camera.position.z) - me.root.position.y }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, y: o.c.root.position.y, lifting: Boolean(o.liftRide), /* (the lift ride they are drawn on: its length and the heights it passes -- a slow page's few frames may miss its middle) */ ride: o.liftRide ? { ms: o.liftRide.ms, ys: [0.3, 0.5, 0.7].map((u) => { const q = new THREE.Vector3(); liftPath({ ...o.liftRide, start: Date.now() - u * o.liftRide.ms }, q); return +q.y.toFixed(2); }) } : null,tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {}, shown: o.c.root.visible })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
@@ -5563,13 +5593,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // v1.10.271 섬 택시: the server's ride (its road and clock) -- I get in, sit by the window the whole way (the keys do nothing,
   // the camera turns as ever), get out at the other stop a half step towards its bench; the cars drawn for everyone's rides
-  let taxiRide = null; let onTaxiEnd = null;
+  let taxiRide = null; let onTaxiEnd = null; let taxiCars = []; // (v1.10.285: the cars this frame -- pushing me, the walkers stepping aside)
   const taxiNow = () => Date.now() + serverOffset;
   function startTaxi(ride) {
     if (taxiRide || riding || !ride || !TX.STOPS[ride.from] || !Number.isFinite(ride.startedAt)) return false;
     if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop?.(); actLock = 0; if (cycling) { cycling = null; onBike?.(false, null); }
     taxiRide = { ride: { from: ride.from, startedAt: ride.startedAt, ...(ride.runMs ? { runMs: ride.runMs } : {}) }, from: (() => { const o = TX.stopOf(ride.from).out; return new THREE.Vector3(o.x, heightAt(o.x, o.z), o.z); })(), out: false }; /* (from enter_L, where TaxiEnter's first frame stands) */
-    keys.clear(); taxiRide.clips = taxiClipsIn(me, taxiRide.ride); me.noTuck = true; me.tailTucked = true; me.tuckTail?.(true);
+    keys.clear(); taxiRide.clips = taxiClipsIn(me, taxiRide.ride); me.noTuck = true; me.tailTucked = true; me.tuckTail?.(true); assets.hat?.(me, true); /* (v1.10.285) */
     return true;
   }
   // (총괄 271 검토 「타고/출발하고/멈추고/내려주는 애니메이션이 자연스럽게 이어지게」, assets 99 motions.json: each clip is from the
@@ -5587,10 +5617,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const elapsed = Math.max(0, (taxiNow() - ride.startedAt - TX.durationOf(ride) + TX.EXIT) / 1000);
     return Boolean(c.anim?.play?.('taxiExit', { ms: TX.EXIT, hold: true, elapsed })) || (c.anim?.play?.('standUp'), false);
   }
-  const taxiOff = (c) => { c.noTuck = false; c.anim?.release?.(); c.anim?.finishOnce?.(); c.tailTucked = false; c.tuckTail?.(false); };
+  const taxiOff = (c) => { c.noTuck = false; c.anim?.release?.(); c.anim?.finishOnce?.(); c.tailTucked = false; c.tuckTail?.(false); assets.hat?.(c, false); /* (v1.10.285: out of the car, the hat back) */ };
   function stepTaxi() {
     const rides = [...(taxiRide ? [{ key: 'me', ride: taxiRide.ride }] : []), ...[...others.entries()].filter(([, o]) => o.taxi).map(([id, o]) => ({ key: id, ride: o.taxi }))];
-    taxiView.setNight(phase === 'night'); taxiView.step(taxiNow(), rides);
+    const onFoot = [...(taxiRide ? [] : [me.root.position]), ...[...others.values()].filter((o) => !o.taxi).map((o) => o.c.root.position)]; /* (v1.10.285: who a car honks at) */
+    taxiView.setNight(phase === 'night'); taxiView.step(taxiNow(), rides, onFoot); taxiCars = taxiView.cars();
+    if (!taxiRide && mySpace === 'island') taxiPush(taxiCars);
     if (!taxiRide) return;
     const q = taxiView.seatOf(taxiRide.ride, taxiNow()); const out = TX.arrivalOf(taxiRide.ride);
     if (q.phase === 'done') { // (out at the other stop: exit_L, where TaxiExit's last frame stands)

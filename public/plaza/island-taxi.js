@@ -1,4 +1,4 @@
-// v1.10.271 섬 택시 (gamecenter-notes docs/taxi-20261104.md): two stops -- 대청마당 and 툇마루섬 입구 -- and the one road between,
+// v1.10.271 섬 택시 (gamecenter-notes docs/taxi-20261104.md): two stops -- 대청마당 and 툇마루섬 마을 (v1.10.285) -- and the one road between,
 // shared word for word by the server (who rides, where they are now, where they come out) and the page (the car on the road,
 // the rider in it, the same on every screen). Pure numbers.
 //   타기 1.2 s -> 출발(slowly faster, 1.5 s) -> 달리기 (10 m/s, 6 on the bridge) -> 멈춤 (slower, 1.5 s) -> 내리기 1.0 s
@@ -7,15 +7,17 @@
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api; else root.IslandTaxi = api;
 }(typeof self !== 'undefined' ? self : this, () => {
-  // the road, 대청마당 -> 툇마루섬 입구 (worked out on the island's walkable ground and its east bridge, the walks preferred);
-  // the other way is the same road backwards
-  const ROUTE = [[8, -50], [1, -14], [37, 2], [77, 31], [97, 71], [100, 98], [91, 135], [70, 139], [33, 143], [32, 146]];
+  // the road, 대청마당 -> 툇마루섬 마을; the other way is the same road backwards. v1.10.285 (notes docs/taxi-fix-20261108.md, 사용자
+  // 「뚫고 지나가버려」): found once on a 0.5 m grid (the walks' middles preferred, every solid at least the car's half width +
+  // 0.3 m off, no water but the bridges, no stairs) and straightened, its points 4 m apart at most -- test/island-taxi.test.js walks
+  // it every half metre both ways. The island end at the user's own spot (문제 기록 「택시 위치」 -13.3, 173.1: the village front)
+  const ROUTE = [[8,-53],[4.4,-52.6],[0.8,-52.2],[0.7,-48.5],[0.7,-44.7],[0.6,-40.9],[0.6,-37.1],[0.5,-33.3],[0.5,-29.5],[0.5,-25.7],[0.4,-21.9],[0.4,-18.1],[0.3,-14.3],[0.3,-10.5],[0.3,-6.7],[3.3,-5.2],[7.1,-4.8],[10.9,-4.4],[14.7,-4],[18.5,-3.6],[22.3,-3.2],[25.7,-2.1],[29.1,-0.9],[32.5,0.3],[35.9,1.4],[39.3,2.6],[42.8,3.8],[46.2,5.8],[49.6,7.8],[53,9.8],[56.4,11.8],[59.8,13.8],[62.3,16],[64.8,18.3],[67.3,20.5],[69.8,22.8],[72.3,25],[74.8,27.3],[76.8,30.1],[78.9,32.9],[81,35.8],[83.1,38.6],[85.2,41.4],[87.3,44.3],[88.8,47.3],[90.3,50.3],[91.8,53.3],[93.3,56.3],[94.3,59.1],[95.3,62],[96.3,64.9],[97.3,67.8],[97.8,71.3],[98.4,74.8],[99,78.3],[99.6,81.8],[100.2,85.3],[100.8,88.8],[100.7,92.4],[100.6,96],[100.5,99.6],[100.4,103.2],[100.3,106.8],[99.6,110.6],[98.9,114.4],[98.3,118.3],[97.1,121.9],[96,125.5],[94.9,129.1],[93.8,132.8],[92.3,135.8],[89.8,137.8],[87.3,139.8],[83.3,139.8],[79.4,139.9],[75.4,139.9],[71.5,140],[67.5,140],[63.6,140.1],[59.6,140.1],[55.7,140.2],[51.8,140.3],[47.8,140.3],[43.9,140.4],[39.9,140.4],[36,140.5],[32,140.5],[28.1,140.6],[24.1,140.6],[20.2,140.7],[16.3,140.8],[12.3,140.8],[8.4,140.9],[4.4,140.9],[0.5,141],[-3.5,141],[-7.4,141.1],[-11.4,141.1],[-15.3,141.2],[-19.2,141.3],[-19.3,145.2],[-19.4,149.1],[-19.4,153.1],[-19.5,157],[-19.6,160.9],[-19.6,164.9],[-19.7,168.8],[-19.7,172.8],[-16.5,172.9],[-13.3,173.1]];
   const BRIDGE = { x0: 38, x1: 81, z0: 136, z1: 144 }; // (the east 윤슬다리: slower there)
   const STOPS = {
-    plaza: { id: 'plaza', label: '대청마당', to: 'isle', sign: '🚕 섬 택시 · 툇마루섬 입구까지' },
-    isle: { id: 'isle', label: '툇마루섬 입구', to: 'plaza', sign: '🚕 섬 택시 · 대청마당까지' },
+    plaza: { id: 'plaza', label: '대청마당', to: 'isle', sign: '🚕 섬 택시 · 툇마루섬 마을까지' },
+    isle: { id: 'isle', label: '툇마루섬 마을', to: 'plaza', sign: '🚕 섬 택시 · 대청마당까지' },
   };
-  const ENTER = 1200; const EXIT = 1000; const EASE = 1500; const FAST = 10; const SLOW = 6; const STEP = 50; // (ms; m/s)
+  const ENTER = 1200; const EXIT = 1000; const EASE = 1500; const FAST = 13; /* (v1.10.285: 10 -> 13 -- the road along the walks is 400 m, a ride still under 40 s) */ const SLOW = 6; const STEP = 50; // (ms; m/s)
   const FARE = 1000; // (경제 값 taxi:fare's default)
   const roadOf = (from) => (from === 'isle' ? ROUTE.slice().reverse() : ROUTE.slice());
   const segs = (pts) => pts.slice(1).map((q, i) => { const p = pts[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); const mx = (p[0] + q[0]) / 2; const mz = (p[1] + q[1]) / 2;

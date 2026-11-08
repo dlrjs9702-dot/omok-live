@@ -86,9 +86,10 @@ test('자전거: B·빠른 칸(폰)으로 타고 내리기, 다른 사람에게 
 });
 
 // v1.10.271 섬 택시 (gamecenter-notes docs/taxi-20261104.md 5절, B7: with the island's other ride): at 대청마당's stop SPACE (the
-// phone's 상호작용) asks -- 「툇마루섬 입구까지 갈까요? · 1,000P」 -- 타기 pays once; I sit in the car on the road (the keys do
-// nothing, the other screen sees it go), out at 툇마루섬 입구 (the tests' road 3 s) and back the same way. PC and phone.
-test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 입구에서 내림 → 돌아오기, 다른 화면에도 택시', async ({ browser, request, isMobile }) => {
+// phone's 상호작용) asks -- 「툇마루섬 마을까지 갈까요? · 1,000P」 -- 타기 pays once; I sit in the car on the road (the keys do
+// nothing, the other screen sees it go), out at 툇마루섬 마을 (v1.10.285; the tests' road 3 s) and back the same way. PC and phone.
+// v1.10.285: the hat away in the car, the stops and the car block, walking islanders step aside.
+test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 마을에서 내림 → 돌아오기, 다른 화면에도 택시', async ({ browser, request, isMobile }) => {
   test.setTimeout(240000);
   const a = await shopper(browser, request, isMobile ? '택시타m' : '택시타', 0, 'female'); const b = await shopper(browser, request, isMobile ? '택시보m' : '택시보', 0, 'male');
   for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
@@ -108,13 +109,27 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().taxi.others), { timeout: 15000 }).toBe(1); // (the other screen: my car on its way)
       const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW'); // (the keys do nothing in the car)
       const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
+      expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(true); /* (v1.10.285: the hat away in the car) */
     }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 20000 }).toBe(null);
     const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); const out = X.arrivalOf({ from, startedAt: 0, runMs: 3000 }); expect(Math.hypot(here.x - out.x, here.z - out.z)).toBeLessThan(0.6); // (exit_L beside the car as it stands)
     await expect(page.locator('#toast')).toContainText(`${to.label}에 도착했어요`);
+    expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(false); /* (out: the hat back) */
     if (from === 'plaza') await shot('arrived');
   };
   await ride('plaza'); await ride('isle');
+  // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter and the standing car block -- walked into, I stop at their edge
+  { const s = X.stopOf('plaza'); const at = (x, z) => page.evaluate(([x, z]) => window.PlazaDebug().solidsAt(x, z), [x, z]);
+    expect(await at(s.x, s.z)).toBe(true); expect(await at(s.shelter.x, s.shelter.z)).toBe(true); expect(await at(s.out.x, s.out.z)).toBe(false); /* (the door's side clear) */
+    // a walking islander 3 m ahead of a running car: 2 m to its side; behind a parked one or 8 m off: none
+    const car = { x: s.x, z: s.z, yaw: s.yaw, running: true }; const ahead = [s.x + Math.sin(s.yaw) * 3, s.z + Math.cos(s.yaw) * 3];
+    const o = await page.evaluate(([x, z, c]) => window.PlazaDebug().asideOf(x, z, c), [...ahead, car]); expect(Math.hypot(o.x, o.z)).toBeCloseTo(2, 1);
+    expect(await page.evaluate(([x, z, c]) => window.PlazaDebug().asideOf(x, z, { ...c, running: false }), [...ahead, car])).toEqual({ x: 0, z: 0 });
+    expect(await page.evaluate(([x, z, c]) => window.PlazaDebug().asideOf(x + 8, z, c), [...ahead, car])).toEqual({ x: 0, z: 0 });
+    // walked into a running car on the road: put out at its side (1.2 m from its middle), not through it
+    const [rx, rz] = X.ROUTE[55]; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [rx, rz]); const me = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+    const run = { x: me.x - Math.cos(s.yaw) * 0.3, z: me.z + Math.sin(s.yaw) * 0.3, yaw: s.yaw, running: true }; const put = await page.evaluate((c) => window.PlazaDebug().taxiPush(c), run);
+    expect(Math.hypot(put.x - run.x, put.z - run.z)).toBeCloseTo(1.2, 1); }
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });

@@ -838,10 +838,11 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       let sleeve = null; // v1.10.228: the top's (or the outfit's) own colour, for the first person's cuff
       parts.forEach((p, i) => {
         const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
-        const tail = p.entry.fit?.slot === 'tail'; const into = p.entry.lowUrl ? high : always; const from = into.length;
+        const tail = p.entry.fit?.slot === 'tail'; const into = p.entry.lowUrl ? high : always; const from = into.length; const fromLow = low.length;
         adopt(byUrl.get(p.entry.url), colors, into, fit, tail, p.entry.baked, plan.parts[i]); // a part without a Low file shows at every distance
+        for (const m of into.slice(from)) m.userData.wearSlot = p.entry.fit?.slot || null; /* (v1.10.285: which slot -- the hat put away in a taxi) */
         if (['outfit', 'top'].includes(p.entry.fit?.slot)) { const m = into.slice(from).flatMap((o) => [].concat(o.material)).find((x) => x.name !== 'skin' && x.color); if (m && (!sleeve || p.entry.fit.slot === 'outfit')) sleeve = `#${m.color.getHexString()}`; }
-        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail, p.entry.baked, plan.parts[i]);
+        if (p.entry.lowUrl) { adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail, p.entry.baked, plan.parts[i]); for (const m of low.slice(fromLow)) m.userData.wearSlot = p.entry.fit?.slot || null; }
       });
       c.wearMats = mats; c.wornColors = worn; c.sleeve = sleeve; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
@@ -876,6 +877,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       c.tuckTail(c.tailTucked); // dressed while seated: tucked from the start
       if (c.tailTucked) { if (!c.noTuck || !anim.loop('rideLook')) anim.loop('sitIdle'); }
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown['character.base'] = 'model';
+      if (c.hatHidden) hat(c, true); /* (v1.10.285: dressed while in a taxi) */
       c.wardrobe = plan.parts.slice();
       // v1.10.35: how tall it stands with what it wears (the bind pose, a hat counted), for the name tag over its head
       c.root.updateMatrixWorld(true); const toRoot = c.root.matrixWorld.clone().invert(); const top = new THREE.Box3();
@@ -912,6 +914,12 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       c.faceOn = names.length ? names : null;
     }).catch((error) => onError(entry.url, error));
     return true;
+  }
+  // v1.10.285 (사용자 「모자가 택시를 뚫고 올라와있어」): a hat put away from getting into a taxi to getting out -- mine and
+  // everyone's; a character dressed meanwhile starts so (c.hatHidden, applied as its parts come in)
+  function hat(c, off) {
+    c.hatHidden = Boolean(off);
+    c.assetRoot?.traverse((m) => { if (!m.isMesh || m.userData.wearSlot !== 'hat') return; if (off) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } });
   }
   // an islander's things in hand (its `held` material, asset 108: 반디's net, 콩이's jar...) put away during a gesture and back;
   // v1.10.280: not `equipment` -- that one has their hats, necks, flowers too, gone during an emote since 264
@@ -1016,5 +1024,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, props, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, props, hat, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }
