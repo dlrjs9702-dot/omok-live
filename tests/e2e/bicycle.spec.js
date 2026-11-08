@@ -125,7 +125,11 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
     const car = { x: s.x, z: s.z, yaw: s.yaw, running: true }; const ahead = [s.x + Math.sin(s.yaw) * 3, s.z + Math.cos(s.yaw) * 3];
     const o = await page.evaluate(([x, z, c]) => window.PlazaDebug().asideOf(x, z, c), [...ahead, car]); expect(Math.hypot(o.x, o.z)).toBeCloseTo(2, 1);
     expect(await page.evaluate(([x, z, c]) => window.PlazaDebug().asideOf(x, z, { ...c, running: false }), [...ahead, car])).toEqual({ x: 0, z: 0 });
-    expect(await page.evaluate(([x, z, c]) => window.PlazaDebug().asideOf(x + 8, z, c), [...ahead, car])).toEqual({ x: 0, z: 0 }); }
+    expect(await page.evaluate(([x, z, c]) => window.PlazaDebug().asideOf(x + 8, z, c), [...ahead, car])).toEqual({ x: 0, z: 0 });
+    // walked into a running car on the road: put out at its side (1.2 m from its middle), not through it
+    const [rx, rz] = X.ROUTE[55]; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [rx, rz]); const me = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+    const run = { x: me.x - Math.cos(s.yaw) * 0.3, z: me.z + Math.sin(s.yaw) * 0.3, yaw: s.yaw, running: true }; const put = await page.evaluate((c) => window.PlazaDebug().taxiPush(c), run);
+    expect(Math.hypot(put.x - run.x, put.z - run.z)).toBeCloseTo(1.2, 1); }
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
