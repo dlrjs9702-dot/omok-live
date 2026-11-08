@@ -105,8 +105,8 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
   await a.context.close();
 });
 
-test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 → 다 하면 초록 ✓ → 보고 보상', async ({ browser, request }) => {
-  test.setTimeout(150000);
+test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 → 다 하면 초록 ✓ → 보고 보상, 결과는 계정별·재접속 유지, 멀리 있는 사람 이름표', async ({ browser, request }) => {
+  test.setTimeout(210000);
   const a = await shopper(browser, request, '부탁손님');
   await islandPage(a.page);
   // This story fixture warps between objectives. Keep periodic poses at the fixture position so an old
@@ -182,26 +182,7 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await expect(page.locator('#plazaDialog')).toContainText('정원이 환해졌');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'bloom', frame: true });
   await page.keyboard.press('Escape');
-  await expectNoScriptError(page);await a.context.close();
-});
-
-test('연계 퀘스트: 할머니 결과는 계정별·재접속 유지, 멀리 있는 사람 이름표는 보인다', async ({ browser, request }) => {
-  test.setTimeout(150000);
-  const a=await shopper(browser,request,'정원결과');const {page,token}=a;
-  const story=require('../../lib/island-quests').STORIES.granny;
-  // Prepare an independent account through the existing server engine; the previous test covers every dialogue.
-  const place=async at=>{
-    expect((await post(request,'/api/plaza/leave',token,{})).status).toBe(200);
-    expect((await post(request,'/api/plaza/state',token,{...at,yaw:0,moving:false})).status).toBe(200);
-  };
-  const report=async()=>{const r=await post(request,'/api/island/event',token,{id:'questgranny',accept:true});expect(r.status).toBe(200);return r.data;};
-  await place(story.at);await report();
-  expect((await post(request,'/api/test/quest/note',token,{what:'weed',qty:20})).status).toBe(200);await report();
-  expect((await post(request,'/api/test/island/give',token,{itemId:'berry',qty:5})).status).toBe(200);await report();
-  for (const [i,p] of require('../../lib/island-quests').TASK.flowers.spots.entries()) { await place(p); if ((await post(request,'/api/island/visit',token,{story:'granny',act:'choose',choice:i})).data.done) break; } // (206: the asked colour)
-  await place(story.at);expect(await report()).toMatchObject({story:'granny',done:true});
-  await islandPage(page);
-  await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().questScenes()),{timeout:15000}).toMatchObject({flower:'bloom',frame:true});
+  // (v1.10.277 시험 정리 2차: the 결과 test folded in) mine after a reload; not another account's -- and its name tag seen from far
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.questScenes()), { timeout: 30000 }).toMatchObject({ flower: 'bloom', frame: true });
   const b = await shopper(browser, request, '멀리손님');

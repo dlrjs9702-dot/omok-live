@@ -131,7 +131,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
      the 25 s limit or let it get away, 1 in 50; this way every one of 800 tries, by 16 s, deciding as seldom as every 0.4 s) */
   await page.evaluate(() => { const box = document.getElementById('fishTug'); const T = window.FishTug;
     const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true })); let down = false;
-    const id = setInterval(() => { const g = window.FishGameDebug?.().tug; if (!g || box.classList.contains('hidden')) { if (down) key('keyup'); clearInterval(id); return; }
+    const id = setInterval(() => { const g = window.FishGameDebug?.().tug; if (box.classList.contains('hidden')) { if (down) key('keyup'); clearInterval(id); return; } if (!g) return; /* (v1.10.277: the tug's state a moment between two of its updates -- the player waits a tick; stopping for good there left the fish to get away) */
       const now = performance.now() - g.t0; const st = T.run(g.plan, g.down != null ? [...g.holds, [g.down, null]] : g.holds, now);
       const want = T.fightAt(g.plan, now) ? st.tension < 30 : st.tension < 60; if (want !== down) { down = want; key(want ? 'keydown' : 'keyup'); } }, 20); });
   if (process.env.SHOT_DIR) { await page.evaluate(() => new Promise((ok) => { const box = document.getElementById('fishTug'); const mo = new MutationObserver(() => { if (box.classList.contains('fight')) { mo.disconnect(); setTimeout(ok, 150); } }); mo.observe(box, { attributes: true }); setTimeout(() => { mo.disconnect(); ok(); }, 12000); })); /* (a fight just begun) */ await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-tug-fight.png` }); } // (at once: a fight lasts 0.6~1.4 s)
@@ -149,7 +149,9 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await page.locator('#islandDexBtn').click(); await page.locator('.islandDexTab[data-tab="fresh"]').click();
   /* (265 흔들림: one not on show in the museum either -- a fish another test gave there reads as known, its name shown) */
   const shown = ((await get(request, '/api/island/museum', token)).data.exhibits || []).filter((x) => x.by).map((x) => x.id);
-  const k = await page.locator('.islandDexCell.opens.unfound').evaluateAll((cells, ids) => cells.findIndex((c) => !ids.some((id) => (c.querySelector('img')?.getAttribute('src') || '').endsWith(`/${id}.png`))), shown); expect(k).toBeGreaterThanOrEqual(0);
+  /* (v1.10.277: by the cell's own item, not its icon's file -- a fish's icon may be named for another, and a 붕어 given by
+     museum-hall read as unfound here) */
+  const k = await page.locator('.islandDexCell.opens.unfound').evaluateAll((cells, ids) => cells.findIndex((c) => !ids.includes(c.dataset.item)), shown); expect(k).toBeGreaterThanOrEqual(0);
   await page.locator('.islandDexCell.opens.unfound').nth(k).click(); await expect(card.locator('.catchBack')).toHaveClass(/unfound/); await expect(card.locator('.catchBack .catchName')).toHaveText('???');
   await expect(card.locator('.catchStory p')).toHaveCount(0); await shot('dex-unfound'); await card.locator('#catchCloseBtn').click();
   await expectNoScriptError(page);

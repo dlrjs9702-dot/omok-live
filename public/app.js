@@ -4440,7 +4440,7 @@
           const day = document.createElement('small'); day.textContent = e.first ? new Date(e.first).toLocaleDateString('ko-KR') : '';
           cell.append(icon, name, day); return cell;
         }
-        const cell = document.createElement('div'); cell.className = `islandDexCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
+        const cell = document.createElement('div'); cell.className = `islandDexCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem'); cell.dataset.item = e.id; /* (v1.10.277: which it is -- its icon's name may be another's) */
         const img = document.createElement('img'); img.src = e.kind === 'insect' ? `/assets/dex/${e.id}.svg` : `/assets/dex/${DEX_ICON[e.id] || e.id}.png`; /* (B 47: the insects' drawn icons) */ img.alt = ''; img.width = 64; img.height = 64;
         const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
         const n = document.createElement('small'); n.textContent = e.count ? `×${e.count}` : '';
