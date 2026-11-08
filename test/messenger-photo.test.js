@@ -101,7 +101,10 @@ test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만�
   // v1.10.279 이모티콘: one from the list, alone; its words are the text (the room list, an old page); unsent as a line is
   const say = (body, who = b) => call( /* (받는이: 사진가 is near the 5-second limit) */`/api/messenger/rooms/${room.id}/messages`, body, who.token);
   const list = require('../public/messenger/stickers/stickers.json').stickers; assert.equal(list.length, 24); assert.equal(new Set(list.map((s) => s.id)).size, 24);
-  for (const s of list) await fs.access(path.join(__dirname, '../public/messenger/stickers', s.file)); // (every picture there)
+  for (const s of list) { /* (every picture there, a whole WebP -- 279 shipped three rewritten as text) */
+    const b = await fs.readFile(path.join(__dirname, '../public/messenger/stickers', s.file));
+    assert.equal(b.toString('latin1', 0, 4) + b.toString('latin1', 8, 12), 'RIFFWEBP', s.file); assert.equal(b.readUInt32LE(4) + 8, b.length, s.file);
+  }
   assert.equal((await say({ sticker: 'islanders1/nope' })).data.error, 'BAD_STICKER', '목록에 없는 이름');
   assert.equal((await say({ sticker: 'islanders1/hi_bomi', text: '안녕' })).status, 400, '글자와 같이');
   assert.equal((await say({ sticker: 'islanders1/hi_bomi', photos: [ids[0]] })).status, 400, '사진과 같이');

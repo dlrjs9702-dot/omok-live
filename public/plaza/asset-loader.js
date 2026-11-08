@@ -912,9 +912,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }).catch((error) => onError(entry.url, error));
     return true;
   }
-  // an islander's things in hand (its `equipment` material: 반디's net, 콩이's jar...) put away during a gesture and back
+  // an islander's things in hand (its `held` material, asset 108: 반디's net, 콩이's jar...) put away during a gesture and back;
+  // v1.10.280: not `equipment` -- that one has their hats, necks, flowers too, gone during an emote since 264
   function props(c, on) {
-    c.assetRoot?.traverse((m) => { if (!m.isMesh || ![].concat(m.material).some((x) => x?.name === 'equipment')) return; if (!on) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } });
+    c.assetRoot?.traverse((m) => { if (!m.isMesh || ![].concat(m.material).some((x) => x?.name === 'held')) return; if (!on) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } });
   }
   let facesAsked = false;
   // (Codex 261-270 #8) the character's own eyes or mouth hidden only under an expression part that is there -- one still
