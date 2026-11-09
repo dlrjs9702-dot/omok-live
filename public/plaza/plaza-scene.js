@@ -2847,7 +2847,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (s.kind === 'insect') setTimeout(() => { if (showOff !== s) return; assets.reseat(me, 'bugnet', NET_L); if (s.species) assets.hold(me, `insect.${s.species}`, 0, { key: 'catch', at: [0, 0, -0.065], size: SHOW_MIN.insect }); }, SHOW_NET_TO_L * 1000);
     myAct.act = s.kind === 'insect' ? 'insect:show' : 'fish:show'; myAct.seat = null; myAct.n += 1;
     if (s.rare) { fxAt('fx.pollen_burst', mine([0.25, 1.0, -0.5]), me.root.rotation.y, 900, 1.6); netSound('sparkle'); } // (v1.10.260: a rare insect's pollen before my hand)
-    clearTimeout(s.limit); s.limit = setTimeout(() => showEnd(), 6000); // (the card's 3 s, never past 6)
+    /* (294: no time limit -- held till the card is closed, I walk or tap: showDone / showSkip) */
   }
   // put away: the catch hidden at its moment, the net back in the right hand, the camera home; skip: all at once
   function showEnd(skip = false) {

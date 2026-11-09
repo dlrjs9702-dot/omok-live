@@ -3675,3 +3675,5 @@ button.tagPill{cursor:pointer;padding:3px 10px;font-size:.8rem}button.tagPill[ar
   .accountName{max-width:7em}.accountId{display:none}
 }
 .islandEnvBox .joinForm{display:grid;grid-template-columns:7.5em minmax(0,1fr);align-items:center;gap:8px;margin:4px 0}.islandEnvBox .joinForm label{margin:0}
+/* 294 잡기 카드: ✕ in its corner, 「확인」 the big one */
+.catchCard .catchX{position:absolute;top:8px;right:8px;min-width:36px;min-height:36px;padding:0;border-radius:50%}.catchCard #catchOkBtn{flex:1;min-height:44px;font-size:1.05rem}

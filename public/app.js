@@ -4367,8 +4367,7 @@
     const ask = catchAsk; const reveal = () => {
       if (ask !== catchAsk || catchCard.dataset.id !== id) return; catchCard.classList.remove('hidden');
       window.RoomSound?.play('right'); // (one sparkle of a sound -- 「반짝」, the sound setting's)
-      const held = (() => { try { return navigator.webdriver && localStorage.getItem('gc.testCatchHold') === '1'; } catch { return false; } })(); // (a test's slow runner: kept up till it acts)
-      if (!held) catchTimer = setTimeout(() => { if (!catchCard.classList.contains('flipped') && !catchCard.matches(':hover, :focus-within')) catchClose(); }, 3000);
+      /* (294 사용자 「내가 직접 꺼야 끝나는 걸로」: no closing of its own -- ✕, 「확인」, Esc, walking or a tap on the island end it) */
     };
     if (showing) catchTimer = setTimeout(reveal, insect ? 1000 : 1100); else reveal();
   }
@@ -4401,6 +4400,7 @@
   let dexCardSeq = 0;
   byId('catchMoreBtn').addEventListener('click', async () => { clearTimeout(catchTimer); catchCard.classList.add('flipped'); byId('catchMoreBtn').classList.add('hidden'); await fillCatchBack(catchCard.dataset.id).catch(() => {}); });
   byId('catchCloseBtn').addEventListener('click', () => catchClose(!catchCard.classList.contains('infoOnly')));
+  byId('catchOkBtn').addEventListener('click', () => catchClose(!catchCard.classList.contains('infoOnly'))); /* (294: the big 「확인」) */
   window.addEventListener('keydown', (e) => { if (e.key !== 'Escape' || catchCard.classList.contains('hidden')) return; e.preventDefault(); e.stopImmediatePropagation(); catchClose(!catchCard.classList.contains('infoOnly')); }, true);
   // v1.10.42 도감: the bag window's other page -- every find, the ones not found yet as silhouettes
   const DEX_ICON = { herb: 'herb', berry: 'berries', mushroom: 'mushrooms' };
