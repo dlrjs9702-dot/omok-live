@@ -124,7 +124,7 @@ const IslandBets = require('./public/plaza/island-bets.js'); // v1.10.278 주민
 const BET_LINES = Object.fromEntries(require('./lib/island-bet-lines.json').lines.map((r) => [r.n, { offer: r.propose, pick: r.pick, goal: r.goal, win: r.iWin, lose: r.youWin, draw: r.draw, revenge: r.revenge, busy: r.duty, emote: r.emote || {} }]));
 const betSay = (n, key, vals = {}, k = 0) => IslandCast.withTail(IslandBets.lineOf(n, key, vals, BET_LINES, k), n);
 // the score bet's mark in their words where it says 「점」 (whack, rhythm), the plain rule otherwise; a match: their pick alone
-const betPick = (n, game, skill, vals) => { const t = IslandBets.targetOf(game, skill); const own = BET_LINES[n]?.goal && ['whack', 'rhythm'].includes(game) && t != null ? IslandBets.lineOf(n, 'goal', { ...vals, goal: t.toLocaleString('ko-KR') }, BET_LINES) : t != null ? IslandBets.rule(game, skill) : '';
+const betPick = (n, game, skill, vals, t = IslandBets.targetOf(game, skill)) => { /* (v1.10.291: the day's mark, betGoalsToday) */ const own = BET_LINES[n]?.goal && ['whack', 'rhythm'].includes(game) && t != null ? IslandBets.lineOf(n, 'goal', { ...vals, goal: t.toLocaleString('ko-KR') }, BET_LINES) : t != null ? IslandBets.rule(game, skill, t) : '';
   return IslandCast.withTail([IslandBets.lineOf(n, 'pick', vals, BET_LINES), own].filter(Boolean).join(' '), n); };
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
@@ -1386,7 +1386,7 @@ async function soloTrophyLastWeek(account) {
 }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
 const WEEKLY_TITLES = {
-  fishking: { title: 'title_fishking', name: '낚시왕', about: '어부 판매 주간 1위', rows: (from, to) => pointStore.fishSalesWeek(from, to) },
+  fishking: { title: 'title_fishking', name: '낚시왕', about: '물고기 판매 주간 1위', rows: (from, to) => pointStore.fishSalesWeek(from, to) },
   weedking: { title: 'title_weedking', name: '제초왕', about: '관공서 잡초 납품 주간 1위', rows: async (from, to) => (await pointStore.weedStats(from, to)).submits },
   // v1.10.251 기록의 탑 (docs/gamehall-ranking-board-20261103.md §3): each solo game's 「보통」 1st of last week, and who held three or
   // more of them -- settled by settleSoloWeeks (solo: their holders read from its record, not from rows)
@@ -2039,6 +2039,15 @@ async function betDoc(account) {
   }
   return d.day === day ? d : { day, done: [], won: 0, beat: [], aff: {}, opens: d.opens || [], prev: d.day === kstDate(nowMs() - 86400000) ? d.beat || [] : [] };
 }
+// v1.10.291 내기 목표를 기록의 탑에서 (notes docs/bet-targets-real-20261109.md): each score game's all-time 1st at its bet level and
+// how many recorded it, the marks from them (IslandBets.goalsOf) -- once a Seoul day, the same on every screen
+let betGoals = { day: null, map: null };
+async function betGoalsToday() {
+  const day = kstDate(nowMs()); if (betGoals.day === day && betGoals.map) return betGoals.map;
+  const map = {};
+  for (const [game, g] of Object.entries(IslandBets.SCORE)) { const ranked = SoloRanking.rank(game, await pointStore.soloLeaders({ game, level: g.level })); const best = ranked[0]?.best ?? null; map[game] = { best, count: ranked.length, goals: IslandBets.goalsOf(game, best, ranked.length) }; }
+  betGoals = { day, map }; return map;
+}
 // may this account bet with islander n now: { n, name, game, ... } or { busy, say } (at a post) or { error: [status, code, text] }
 async function betInfo(account, n, me = '') {
   const P = IslandBets.profileOf(n); if (!P) return { error: [400, 'BAD_RESIDENT', '없는 주민이에요.'] };
@@ -2050,7 +2059,8 @@ async function betInfo(account, n, me = '') {
   const doc = await betDoc(account); if (doc.done.includes(n)) return { error: [409, 'BET_DONE', `오늘은 ${name}와(과) 이미 내기를 했어요.`] };
   const game = IslandBets.gameOf(n, doc.day); const kind = IslandBets.kindOf(game); const { balance } = await pointStore.getAccount(account);
   const stakes = IslandBets.stakesFor(game, balance, doc.won, betLimits());
-  return { n, name, game, gameName: IslandBets.NAMES[game], kind, skill: P.skill, level: kind === 'score' ? IslandBets.SCORE[game].level : P.skill, target: IslandBets.targetOf(game, P.skill),
+  const rec = kind === 'score' ? (await betGoalsToday())[game] : null; const target = IslandBets.targetOf(game, P.skill, rec?.goals); /* (v1.10.291) */
+  return { n, name, game, gameName: IslandBets.NAMES[game], kind, skill: P.skill, level: kind === 'score' ? IslandBets.SCORE[game].level : P.skill, target, best: rec?.best ?? null, record: rec ? IslandBets.recordLine(game, rec.best, target) : '',
     stakes, fun: doc.won >= betLimits().dailyWinMax, revenge: doc.prev?.includes(n) || false, wonToday: doc.won };
 }
 // a bet ended: paid (twice, or back on a draw), today's winnings, the islander's 호감도 +1 (affinity:betDaily a day each, apart
@@ -6269,13 +6279,14 @@ async function requestHandler(req, res) {
   // v1.10.278 주민 내기: may I bet with islander n (the day's game, their mark, my stakes, their words); their own ask (offer: two
   // or three a day over the island); start (the stake taken, the islander held -- a score bet's round or a match's AI room then
   // carries its id); end (left: lost); result
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/bet/goals' && req.method === 'POST') { betGoals = { day: null, map: null }; return sendJson(res, 200, { ok: true, goals: await betGoalsToday() }); } /* (v1.10.291: worked out again now -- a test's records in) */
   if (pathname === '/api/island/bet' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const me = String(session.label || '');
     const info = await betInfo(pointAccountForSession(session), Number(url.searchParams.get('n')), me);
     if (info.error) return sendError(res, ...info.error);
     if (info.busy) return sendJson(res, 200, { ok: true, n: info.n, name: info.name, busy: true, say: info.say });
     return sendJson(res, 200, { ok: true, ...info, say: betSay(info.n, info.revenge ? 'revenge' : 'offer', { me, game: info.gameName }, Math.floor(Math.random() * 2)),
-      pick: info.fun ? IslandBets.lineOf(info.n, 'fun', { me }) : betPick(info.n, info.game, info.skill, { me, game: info.gameName }), emote: info.revenge ? IslandBets.EMOTE.revenge : IslandBets.EMOTE.offer });
+      pick: info.fun ? IslandBets.lineOf(info.n, 'fun', { me }) : betPick(info.n, info.game, info.skill, { me, game: info.gameName }, info.target), emote: info.revenge ? IslandBets.EMOTE.revenge : IslandBets.EMOTE.offer });
   }
   if (pathname === '/api/island/bet/offer' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const me = String(session.label || ''); const account = pointAccountForSession(session);
@@ -6532,17 +6543,17 @@ async function requestHandler(req, res) {
     if (!session) return;
     if (!checkRateLimit(`island-sell:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
-    const place = ['office', 'merchant', 'fisher'].includes(body.place) ? body.place : null;
+    const place = ['office', 'merchant'].includes(body.place) ? body.place : null; // (v1.10.291 사용자 「물결 말고」: no 'fisher' -- fish at the 노점)
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'merchant' ? IslandTerrain.SPOTS.trader || null : null; // (달마루섬: none -- the 백화점's 노점) v1.10.41: the town hall's door, inside its yard; (the fisher: atFisher)
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     const atCounter = place === 'office' && atDesk(session, at, 'civil'); // v1.10.84 (v1.10.86: 1.8 m, each window its own)
     const atStall = place === 'merchant' && storeInside.has(session.token) && at && (() => { const d = IslandStore.sectorPoint('mall:stall'); return Math.hypot(at.x - d.x, at.z - d.z) < 2.4; })(); // (달마루섬 5단계: the 백화점's 노점)
-    const atFisher = place === 'fisher' && Boolean(questTalkPos('fisher', at)); // v1.10.228: by 물결 where she is today (walking, at the 1층's counter, or at the harbour) -- as a talk with her (사용자 「팔 수 없다」: with the roster on she is seldom at the harbour)
-    if (!atCounter && !atStall && !atFisher && (place === 'fisher' || !at || !spot || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    /* (v1.10.291: the 노점 takes the fish too -- 물결 by her place took them from v1.10.228 to 290) */ // v1.10.228: by 물결 where she is today (walking, at the 1층's counter, or at the harbour) -- as a talk with her (사용자 「팔 수 없다」: with the roster on she is seldom at the harbour)
+    if (!atCounter && !atStall && (!at || !spot || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
-    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
+    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
@@ -6668,7 +6679,7 @@ async function requestHandler(req, res) {
     if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a round good enough counts
     const contest = verdict === 'ok' && run.contest ? await contestNote(account, session, run.contest, run.game, score) : null; // (A4: a round opened at the tent)
     const bet = run.bet && residentBets.get(run.bet); /* (v1.10.278: won if the server's check passed and it beat the islander's mark -- 'low' or 'fast': lost) */
-    const betOut = bet ? await settleBet(bet, (verdict === 'ok' || verdict === 'low') && IslandBets.beat(bet.game, bet.skill, score) ? 'win' : 'lose', String(session.label || '')) : null;
+    const betOut = bet ? await settleBet(bet, (verdict === 'ok' || verdict === 'low') && IslandBets.beat(bet.game, bet.skill, score, bet.target) /* (v1.10.291: the mark it started with) */ ? 'win' : 'lose', String(session.label || '')) : null;
     return sendJson(res, 200, { ok: true, verdict, best: out.best, newBest: out.newBest, contest, weekRank: await soloWeekRank(account, run.game, run.level), ...(betOut ? { bet: betOut } : {}) });
   }
   // v1.10.69 오늘의 문제 (lib/puzzle-daily.js): the page says when it opens the day's puzzle (kept from the first time, so a

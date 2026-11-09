@@ -15,6 +15,7 @@ test('주민 내기: 제안 말풍선 → 「내기해요」 → 점수 내기 �
   const sn = walkers.find((n) => B.kindOf(B.gameOf(n, day)) === 'score'); const mn = walkers.find((n) => B.kindOf(B.gameOf(n, day)) === 'match');
   for (const n of [sn, mn]) expect((await post(request, '/api/test/affinity', token, { n, delta: 5 })).status).toBe(200); // (아는 사이)
   await post(request, '/api/test/bet', token, { reset: true });
+  const goals = (await post(request, '/api/test/bet/goals', token, {})).data.goals; /* (v1.10.291: today's marks from 기록의 탑, worked out now) */
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testBetOffer', '1'); }); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(800); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name === 'chromium' ? 'pc' : 'phone'}-bet-${name}.png` }); } };
@@ -34,6 +35,7 @@ test('주민 내기: 제안 말풍선 → 「내기해요」 → 점수 내기 �
   await page.evaluate((n) => window.PlazaDebug().talkResident(n), sn); await expect.poll(talking, { timeout: 10000 }).toBe(true); await require('./skin-support').revealTalk(page);
   await expect(betBtn).toBeVisible({ timeout: 10000 }); await betBtn.click();
   await expect(dialog.locator('[data-topic="stake"]')).toHaveText(['1,000P 걸기', '5,000P 걸기']); await expect(dialog.locator('.betNote')).toContainText(B.NAMES[B.gameOf(sn, day)]);
+  { const g = B.gameOf(sn, day); await expect(dialog.locator('.betRecord')).toHaveText(B.recordLine(g, goals[g].best, B.targetOf(g, B.profileOf(sn).skill, goals[g].goals))); } /* (「역대 최고 N · 나는 M」) */
   await shot('stakes');
   const before = (await get(request, '/api/points', token)).data.balance;
   await dialog.locator('[data-topic="stake"]', { hasText: '1,000P' }).click();

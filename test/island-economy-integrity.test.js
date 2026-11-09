@@ -39,7 +39,7 @@ for (const mode of ['JSON', 'PostgreSQL']) test(`${mode}: 다중스택 지급/�
   const herb = { userId, claimId: 'integrity-full-herb-001', itemId: 'herb', dexEntry: 'herb' };
   assert.equal((await store.islandGive(herb)).reason, 'full');
   assert.equal((await store.dexOf(userId)).herb, undefined, 'full bag cannot increment the dex');
-  await store.islandSell({ userId, requestId: 'integrity-free-slot-001', place: 'fisher' }, Date.now());
+  await store.islandSell({ userId, requestId: 'integrity-free-slot-001', place: 'merchant', fish: true }, Date.now()); /* (v1.10.291: fish at the 노점) */
   assert.equal((await store.islandGive(herb)).applied, true, 'rejected claim remains retryable');
   assert.equal((await store.dexOf(userId)).herb.count, 1);
   if (database) {
