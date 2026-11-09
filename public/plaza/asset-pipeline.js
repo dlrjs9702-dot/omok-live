@@ -146,7 +146,37 @@
   // 0 low (no shadows). An LOD level's switch distance shrinks on lower tiers, so a slower PC uses the coarser model
   // nearer the camera; tier 2 keeps the distances as registered.
   const LOD_SCALE = [0.5, 0.75, 1];
-  const lodDistance = (base, tier) => base * (LOD_SCALE[tier] ?? 1);
+  // v1.10.290 High/Low 바뀜 부드럽게 (notes docs/lod-smooth-20261109.md, 사용자 「이질감이 큰데」): every switch 1.5 times as far as
+  // registered; one that casts shadows never nearer than the shadow's reach + 5 m (the sun's box is 30 about me -- its shadow
+  // would go out there). 0 stays 0 (an LOD's own first level).
+  const LOD_FAR = 1.5; const SHADOW_FLOOR = 35;
+  const lodDistance = (base, tier, shadows = false) => (base > 0 ? Math.max(base * LOD_FAR * (LOD_SCALE[tier] ?? 1), shadows ? SHADOW_FLOOR : 0) : 0);
+  // ... and the switch itself takes FADE_MS: both drawn, a 4x4 Bayer screen dither sharing the pixels (`bayer`, as the shader's)
+  // -- `fadeStep` moves High's share toward the side wanted; turned back midway, it goes back from where it is
+  const FADE_MS = 400; const BAYER4 = Object.freeze([0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]);
+  const bayer = (x, y) => (BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
+  const fadeStep = (share, high, ms) => Math.min(1, Math.max(0, share + ((high ? 1 : -1) * ms) / FADE_MS));
+  // v1.10.290 6 (사용자 「풀이 멋대로 사라졌다 생겨」): the automatic 「섬 화질」 steps less often. It is fed one sample per 3 s
+  // (`slow`: over half that time below 35 fps, `fast`: under a tenth). Down after GOV.DOWN_RUNS slow samples in a row (~9 s);
+  // up after GOV.UP_AFTER s fast, never within GOV.NO_UP s of a step down; two steps within GOV.FLIP_WINDOW s hold the tier
+  // GOV.HOLD s. Times in seconds. `step` gives the new tier or null.
+  const GOV = Object.freeze({ DOWN_RUNS: 3, UP_AFTER: 60, NO_UP: 120, FLIP_WINDOW: 300, HOLD: 600 });
+  function qualityGovernor(tier = 2) {
+    const g = { tier, slowRuns: 0, fastFor: 0, downAt: -Infinity, holdUntil: -Infinity, changes: [] };
+    const change = (now, to) => {
+      g.tier = to; g.slowRuns = 0; g.fastFor = 0; g.changes = g.changes.filter((t) => now - t < GOV.HOLD).concat(now);
+      if (g.changes.filter((t) => now - t < GOV.FLIP_WINDOW).length >= 2) g.holdUntil = now + GOV.HOLD;
+      return to;
+    };
+    g.reset = () => { g.slowRuns = 0; g.fastFor = 0; };
+    g.step = (now, { slow, fast, secs = 3 }) => {
+      if (now < g.holdUntil) { g.reset(); return null; }
+      if (slow && g.tier > 0) { g.fastFor = 0; g.slowRuns += 1; if (g.slowRuns < GOV.DOWN_RUNS) return null; g.downAt = now; return change(now, g.tier - 1); }
+      if (fast && g.tier < 2) { g.slowRuns = 0; g.fastFor += secs; return g.fastFor >= GOV.UP_AFTER && now - g.downAt >= GOV.NO_UP ? change(now, g.tier + 1) : null; }
+      g.reset(); return null;
+    };
+    return g;
+  }
 
   // v1.10.32 캐릭터 조합 맞춤: what each worn part must give way to, worked out from the parts themselves in the common
   // rig's rest space (y up, the front -z, metres; every part file shares it) -- so a new skin needs no hand-placed
@@ -359,6 +389,7 @@
       // v1.10.36 10월 할로윈: night (the windows' glass glows); replayed when the loader comes
       setNight: (on) => call('setNight', [on]),
       setQuality: (tier) => call('setQuality', [tier]),
+      setFade: (on, slow = 1) => call('setFade', [on, slow]), /* (v1.10.290: the High/Low cross-fade -- off in the tests' drawing, on for a check) */
       // v1.10.29: a model playing its clip once (a whale breaching), the seasonal falling flakes, and their per-frame step
       once: (targetIds, where, options) => call('once', [targetIds, where, options]),
       ambient: (parent) => call('ambient', [parent]),
@@ -393,5 +424,5 @@
     return parts;
   }
 
-  return { tintMaterial, sampleRigidPoses, SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, TAIL_TUCK, fitWardrobe, applyFit, roofShape, drapeSnow, createLazyAssets };
+  return { tintMaterial, sampleRigidPoses, SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, LOD_FAR, SHADOW_FLOOR, lodDistance, FADE_MS, BAYER4, bayer, fadeStep, GOV, qualityGovernor, HIGH_BAND, highState, FIT, TAIL_TUCK, fitWardrobe, applyFit, roofShape, drapeSnow, createLazyAssets };
 });

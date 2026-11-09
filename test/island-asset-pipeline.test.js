@@ -181,11 +181,38 @@ test('걸음 상태: 속도로 Idle·Walk·Run을 고르고, 경계 근처에서
   assert.equal(P.nextGait('wave', 0, W), 'idle');
 });
 
-test('LOD 품질 단계: 높음은 등록 거리 그대로, 낮을수록 더 가까이서 단순 모델로 바뀐다', () => {
-  assert.equal(P.lodDistance(40, 2), 40);
-  assert.equal(P.lodDistance(40, 1), 30);
-  assert.equal(P.lodDistance(40, 0), 20);
-  assert.equal(P.lodDistance(40, 7), 40);
+test('LOD 품질 단계: 등록 거리의 1.5배(v1.10.290), 낮을수록 더 가까이, 그림자 그리는 것은 35 m 안에서 안 바뀜', () => {
+  assert.equal(P.lodDistance(40, 2), 60);
+  assert.equal(P.lodDistance(40, 1), 45);
+  assert.equal(P.lodDistance(40, 0), 30);
+  assert.equal(P.lodDistance(40, 7), 60);
+  assert.equal(P.lodDistance(22, 0), 16.5); assert.equal(P.lodDistance(22, 0, true), 35); assert.equal(P.lodDistance(22, 2, true), 35); assert.equal(P.lodDistance(40, 2, true), 60); /* (the shadow's reach 30 + 5) */
+  assert.equal(P.lodDistance(0, 2, true), 0); /* (an LOD's own first level) */
+});
+
+// v1.10.290 High/Low 바뀜 부드럽게: 0.4 s from one to the other, turned back midway from where it is; the 4x4 Bayer values
+test('LOD 섞어 바뀜: 0.4초 동안 몫이 0 → 1, 중간에 되돌아가면 그 자리에서, 점무늬 16칸 고르게', () => {
+  assert.equal(P.FADE_MS, 400);
+  let s = 0; let frames = 0; while (s < 1) { s = P.fadeStep(s, true, 16); frames += 1; } assert.equal(frames, 25);
+  assert.equal(P.fadeStep(0, false, 100), 0); assert.equal(P.fadeStep(1, true, 100), 1); assert.equal(P.fadeStep(0.5, true, 1000), 1);
+  let t = P.fadeStep(0, true, 200); assert.equal(t, 0.5); t = P.fadeStep(t, false, 100); assert.equal(t, 0.25); /* (back from where it is) */
+  const v = []; for (let y = 0; y < 4; y += 1) for (let x = 0; x < 4; x += 1) v.push(P.bayer(x, y)); assert.equal(new Set(v).size, 16);
+  assert.ok(v.every((b) => b > 0 && b < 1)); assert.equal(P.bayer(5, 6), P.bayer(1, 2)); /* (a 4x4 tile repeated) */
+  for (const share of [0.25, 0.5, 0.75]) assert.equal(v.filter((b) => b < share).length, share * 16); /* (the share is the pixels' share) */
+});
+
+test('자동 화질: 느림 9초 뒤 내림, 60초 빠르면 올림, 내린 뒤 2분 막음, 5분에 두 번 바뀌면 10분 머묾', () => {
+  const g = P.qualityGovernor(2); let t = 0; const slow = { slow: true }; const fast = { fast: true }; const mid = {};
+  const run = (kind, secs) => { const out = []; for (let s = 0; s < secs; s += 3) { t += 3; const to = g.step(t, kind); if (to !== null) out.push([t, to]); } return out; };
+  assert.deepEqual(run(slow, 6), []); assert.equal(g.tier, 2); /* (two slow samples: not yet) */
+  g.step((t += 3), mid); assert.deepEqual(run(slow, 6), []); /* (a middling sample starts the count again) */
+  assert.deepEqual(run(slow, 3), [[t, 1]]); const downAt = t; /* (the third in a row, ~9 s) */
+  const ups = run(fast, 150); assert.equal(ups.length, 1); assert.ok(ups[0][0] - downAt >= 120); /* (60 s fast, but not within 2 min) */
+  assert.equal(g.tier, 2); assert.ok(g.holdUntil > t); /* (two steps within 5 minutes: held) */
+  const holdEnd = g.holdUntil; assert.deepEqual(run(slow, holdEnd - t - 3), []); assert.equal(g.tier, 2); /* (10 minutes at that tier) */
+  assert.equal(run(slow, 12).length, 1); assert.equal(g.tier, 1); /* (after the hold, steps again) */
+  const h = P.qualityGovernor(0); assert.deepEqual([h.step(3, slow), h.step(6, slow), h.step(9, slow)], [null, null, null]); /* (already lowest) */
+  const u = P.qualityGovernor(1); let ut = 0; let to = null; while (to === null && ut < 100) { ut += 3; to = u.step(ut, fast); } assert.equal(to, 2); assert.equal(ut, 60); /* (never stepped down here: up after 60 s fast) */
 });
 
 test('실제 GLB: 정적 모델과 리깅 모델을 읽고, 복제본은 지오메트리를 공유하되 뼈대는 각자 갖는다', async () => {

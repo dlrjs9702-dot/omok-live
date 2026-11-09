@@ -228,6 +228,7 @@ test('그래픽 G1: 섬 전체 풀 칸이 나를 따라 바뀌고, 길·나무·
     for (let x = -40; x < 40 && !walk; x += 0.5) for (let z = -60; z < 0 && !walk; z += 0.5) if (T.walkDist(x, z) < -0.5 && !T.inPlaza(x, z)) walk = [x, z];
     return { walk: D.pilotGrassAt(walk[0], walk[1]), tree: D.pilotGrassAt(tree.x, tree.z), plaza: D.pilotGrassAt(T.PLAZA_C.x, T.PLAZA_C.z), lawn: D.pilotGrassAt(-15, -40) }; });
   expect(at).toMatchObject({ walk: 0, tree: 0, plaza: 0 }); expect(at.lawn).toBeGreaterThan(0.5);
-  await page.evaluate(() => window.PlazaDebug().holdQuality(0)); await expect.poll(async () => (await pilot()).cells).toBe(0); /* (「낮음」: none) */
+  await page.evaluate(() => window.PlazaDebug().holdQuality(1)); await expect.poll(async () => (await pilot()).grow.some((h) => h > 0 && h < 1), { timeout: 5000 }).toBe(true); /* (v1.10.290 6: 「중간」 -- the blades laid down over 1.5 s, not gone at once) */
+  await page.evaluate(() => window.PlazaDebug().holdQuality(0)); await expect.poll(async () => (await pilot()).cells, { timeout: 15000 }).toBe(0); /* (「낮음」: none -- once laid down) */
   await expectNoScriptError(page); await who.context.close();
 });

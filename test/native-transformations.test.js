@@ -50,7 +50,7 @@ test('실제 변신 로더: 두 체형·LOD·운반·좌석·소켓, 해제와 �
   code=code.replace(/from '(\/vendor\/three\/[^']+)'/g,(_,url)=>'from '+JSON.stringify(pathToFileURL(url.includes('addons/')?require.resolve('three/'+url.split('/vendor/three/')[1]):path.join(path.dirname(require.resolve('three')),'three.module.js')).href))
     .replace(/import \{ preparePlatformSurfaces, prepareTownhallSurfaces \} from '\.\/platform-surfaces.js';/,'const preparePlatformSurfaces=g=>g,prepareTownhallSurfaces=g=>g;');
   const {createIslandAssets}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
-  const errors=[],layer=createIslandAssets({registry:assets.REGISTRY,onError:(id,error)=>errors.push({id,message:error.message})});
+  const errors=[],layer=createIslandAssets({registry:assets.REGISTRY,fade:false /* (v1.10.290: the switch itself; the 0.4 s blend is asset-pipeline's test) */,onError:(id,error)=>errors.push({id,message:error.message})});
   const make=()=>{const root=new THREE.Group(),body=new THREE.Group();root.add(body);new THREE.Scene().add(root);return {root,body,player:true,transformation:null,nativeRig:null};};
   const wait=async c=>{for(let n=0;n<300&&!c.assetRoot;n++)await new Promise(resolve=>setTimeout(resolve,10));assert.ok(c.assetRoot,'model installed');};
   try {

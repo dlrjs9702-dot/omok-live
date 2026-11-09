@@ -307,6 +307,10 @@ test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', asy
   await expect.poll(async () => (await sample()).environment.water.ripple).toBe(1);
   await a.page.evaluate(() => window.PlazaDebug().setMotionMode('auto'));
   await expect.poll(async () => (await sample()).environment.water.ripple).toBe(0);
+  // (v1.10.290 6: 자동 stepping says so once a day; the counts 문제 기록 sends)
+  await a.page.evaluate(() => { localStorage.setItem('gc.testQualityNote', '1'); localStorage.removeItem('gc.qualityNote'); const D = window.PlazaDebug(); D.holdQuality(2); D.holdQuality(null); D.autoTier(1); /* (from 「높음」, whatever 자동 did before) */ });
+  await expect(a.page.locator('#toast')).toContainText('「중간」으로 바꿨어요');
+  expect(await a.page.evaluate(() => { window.PlazaDebug().autoTier(0); const d = window.PlazaDebug(); return { changes: d.qualityChanges >= 2, note: localStorage.getItem('gc.qualityNote')?.length }; })).toEqual({ changes: true, note: 10 });
   const before = await a.page.evaluate(() => {
     const d = window.PlazaDebug(); d.holdQuality(2); d.holdQuality(null);
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange'));
@@ -697,7 +701,7 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   const t = await tree();
   expect(t.low).toMatch(/tree_v1_[a-z]+_low\.glb$/);
   await page.evaluate(() => window.PlazaDebug().holdQuality(2)); // a slow test machine must not change the distances mid-way
-  const near = async () => page.evaluate(() => { const d = window.PlazaDebug(); return 35 * window.AssetPipeline.LOD_SCALE[d.quality]; });
+  const near = async () => page.evaluate(() => { const d = window.PlazaDebug(); return window.AssetPipeline.lodDistance(35, d.quality, true); }); /* (v1.10.290: 1.5x, a tree casts shadows -- 35 m at least) */
   // the player stands `dist` east of the first round tree
   const standAt = async (dist) => { await page.evaluate(([x, z, dd]) => window.PlazaDebug().teleport(x + dd, z), [...t.at, dist]); await page.waitForTimeout(250); };
   await standAt(2);
@@ -717,6 +721,10 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   }
   const all = await tree();
   expect(all.far).toBeGreaterThan(0); expect(all.near).toBeGreaterThan(0);
+  // v1.10.290: the cross-fade (the tests' drawing switches at once) -- on, walking off: some copies on their way, then none
+  { const fade = async () => (await debug(page)).assets.fade; const before = (await fade()).started; await page.evaluate(() => window.PlazaDebug().lodFade(true));
+    await standAt((await near()) * 1.1 + 3); await expect.poll(async () => (await fade()).started, { timeout: 15000 }).toBeGreaterThan(before);
+    await expect.poll(async () => (await fade()).fading, { timeout: 15000 }).toBe(0); await expect.poll(async () => (await tree()).first).toBe('low'); await page.evaluate(() => window.PlazaDebug().lodFade(false)); }
   expect(a.errors).toEqual([]);
   await a.context.close();
 });

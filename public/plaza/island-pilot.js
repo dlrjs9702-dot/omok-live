@@ -86,5 +86,18 @@
     }
     return out;
   }
-  return Object.freeze({ ZONE, PATH_X, CUT_R, KINDS, IDS, TREE_OF, plants, blades, trees, inZone, CELL, grassFrom, cellsNear, cellBlades });
+  // v1.10.290 6 (사용자 「풀이 멋대로 사라졌다 생겨」): a cell's shown count eases. A big change (a tier, the cell in or out of
+  // reach) grows or lays down the blades between the old count and the new over GROW_MS -- their height 0 -> 1 or 1 -> 0;
+  // a small one (walking: the far share, under a tenth of the cell's blades) is taken at once. `g` { from, to, t } is the
+  // cell's (start { from: 0, to: 0, t: 1 }); gives the instances to draw (`count`), the band's first (`lo`) and its height (`s`)
+  const GROW_MS = 1500;
+  function growStep(g, n, ms, total) {
+    if (n !== g.to) {
+      if (Math.abs(n - g.to) <= total * 0.1) { g.to = n; if (g.t >= 1) g.from = n; }
+      else { g.from = Math.round(g.from + (g.to - g.from) * g.t); g.to = n; g.t = 0; }
+    }
+    g.t = Math.min(1, g.t + ms / GROW_MS); if (g.t >= 1) g.from = g.to;
+    return { count: Math.max(g.from, g.to), lo: Math.min(g.from, g.to), s: g.to > g.from ? g.t : 1 - g.t };
+  }
+  return Object.freeze({ ZONE, PATH_X, CUT_R, KINDS, IDS, TREE_OF, plants, blades, trees, inZone, CELL, grassFrom, cellsNear, cellBlades, GROW_MS, growStep });
 }));
