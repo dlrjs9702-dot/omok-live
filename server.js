@@ -405,11 +405,11 @@ const VENDOR_FILES = {
   '/vendor/three/addons/utils/SkeletonUtils.js': path.join(THREE_ADDONS, 'utils', 'SkeletonUtils.js'),
   // v1.10.26: the Meshopt decoder for the pipeline's compressed models (WebAssembly inside; CSP 'wasm-unsafe-eval')
   '/vendor/three/addons/libs/meshopt_decoder.module.js': path.join(THREE_ADDONS, 'libs', 'meshopt_decoder.module.js'),
-  // v1.10.276 그래픽 시범 2차: ambient occlusion and a soft bloom in the pilot patch, PC 「높음」 only (island-pilot-scene.js
-  // loads them when first wanted) -- the passes and what they import
+  // v1.10.276 그래픽 시범 2차: a soft bloom outside, PC 「높음」 only (island-pilot-scene.js loads it when first wanted) -- the
+  // passes and what they import (G3 C안: the GTAO and its shaders gone)
   ...Object.fromEntries(['postprocessing/EffectComposer.js', 'postprocessing/Pass.js', 'postprocessing/ShaderPass.js', 'postprocessing/MaskPass.js', 'postprocessing/RenderPass.js',
-    'postprocessing/GTAOPass.js', 'postprocessing/UnrealBloomPass.js', 'postprocessing/OutputPass.js', 'shaders/CopyShader.js', 'shaders/GTAOShader.js', 'shaders/PoissonDenoiseShader.js',
-    'shaders/LuminosityHighPassShader.js', 'shaders/OutputShader.js', 'math/SimplexNoise.js'].map((f) => [`/vendor/three/addons/${f}`, path.join(THREE_ADDONS, ...f.split('/'))])),
+    'postprocessing/UnrealBloomPass.js', 'postprocessing/OutputPass.js', 'shaders/CopyShader.js',
+    'shaders/LuminosityHighPassShader.js', 'shaders/OutputShader.js'].map((f) => [`/vendor/three/addons/${f}`, path.join(THREE_ADDONS, ...f.split('/'))])),
 };
 // v1.10.24: served as they are -- the addons' bare 'three' resolves through the page's import map to the very module
 // URL the game imports (one Three.js instance, shared classes); no rewriting.
