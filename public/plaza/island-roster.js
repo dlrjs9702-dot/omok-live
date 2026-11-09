@@ -2,7 +2,7 @@
 // 설 뿐」): who stands at each post on a Seoul date -- the same for everyone, from the date alone (the server and the screen
 // count it alike). Each post has its own people (island-cast RESIDENTS numbers); a day, one of them; one person works at
 // most 4 days a Monday-to-Sunday week and not more than 3 days running at the same post; a festival's host is off its
-// days. The 관공서's three: two at their desks, one resting (in turn). The station: 철이, on Sundays 반디. Always the same:
+// days. The 관공서's four (v1.10.288 다래 at 개명): three at their desks, one resting (in turn). The station: 철이, on Sundays 반디. Always the same:
 // 마루 at the 관공서 gate, 김우성 at the jail, 느티 at the 정자, 한들 at the field. 기록관 (한결·하람·이솔) waits for its
 // building: they walk.
 (function (root, factory) {
@@ -18,7 +18,7 @@
     Object.freeze({ id: 'plaza', name: '광장 출석·안내', who: Object.freeze([4, 7, 5]) }), // 노을 · 바람이 · 누리
     Object.freeze({ id: 'museum', name: '박물관 관장', who: Object.freeze([20, 2, 8]) }), // 한결 · 하람 · 이솔 (문제 기록 1103 9: the 기록관's people, its building not yet there)
   ]);
-  const CIVIL = Object.freeze([24, 25, 26]); // 단비 (민원) · 한솔 (세금) · 새롬 (은행)
+  const CIVIL = Object.freeze([24, 25, 26, 27]); // 단비 (민원) · 한솔 (세금) · 새롬 (은행) · 다래 (개명, v1.10.288)
   const FIXED = Object.freeze({ gate: 23, jail: 22, pavilion: 21, farm: 13 }); // 마루 · 김우성 · 느티 · 한들
   const HOSTS = Object.freeze({ harvest: 13, christmas: 7, countdown: 8 }); // (a festival's host by its id: 한들, 바람이, 이솔)
   const MAX_WEEK = 4; const MAX_RUN = 3; const EPOCH = '2026-10-26'; // (a Monday: the table counted on from it)
@@ -57,7 +57,7 @@
   const WORKS = 19; let worksOn = () => false; const setWorks = (fn) => { worksOn = typeof fn === 'function' ? fn : () => false; };
   // the day's table -> { day, posts: { mall1..plaza: n, civil: [n, n], station: n, gate, jail, pavilion, farm, works? }, resting: n, off: [n] }
   function rosterOf(day, plain = false) { // (plain: without the works day -- the day's errands are drawn from it, not changed when a project fills at noon)
-    const r = rotating(day); const rest = CIVIL[((dayNum(day) % 3) + 3) % 3];
+    const r = rotating(day); const rest = CIVIL[((dayNum(day) % CIVIL.length) + CIVIL.length) % CIVIL.length];
     const posts = { ...r.at, civil: CIVIL.filter((n) => n !== rest), station: weekday(day) === 0 ? 18 : 16, ...FIXED };
     if (!plain && worksOn(day)) { posts.works = WORKS; if (posts.mall3 === WORKS) posts.mall3 = 1; }
     return { day, posts, resting: rest };
@@ -69,7 +69,7 @@
   const POST_IDS = POSTS.map((p) => p.id);
   const counterOf = (n, day) => { const p = postOf(n, day); return POST_IDS.includes(p) ? p : null; };
   // C1 ③: the 관공서's desks by their islander; the resting one's work taken at the desk beside it
-  const DESK = Object.freeze({ 24: 'civil', 25: 'tax', 26: 'bank' }); const COVER = Object.freeze({ civil: 'tax', tax: 'bank', bank: 'tax' });
+  const DESK = Object.freeze({ 24: 'civil', 25: 'tax', 26: 'bank', 27: 'rename' }); const COVER = Object.freeze({ civil: 'tax', tax: 'bank', bank: 'tax', rename: 'civil' }); /* (개명 at the 민원 desk beside it) */
   const deskRest = (day) => { const rest = DESK[rosterOf(day).resting]; return { rest, by: COVER[rest] }; };
   // C2 (v1.10.216): who walks the island that day -- everyone not at a post (the resting clerk too, 철이 on a Sunday);
   // 콩이 in October at his Halloween spot

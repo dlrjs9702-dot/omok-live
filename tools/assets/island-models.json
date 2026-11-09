@@ -8663,6 +8663,22 @@
       "precompressed": true
     },
     {
+      "out": "characters/npc_walker_darae_off.glb",
+      "src": "darae110:01. High/npc_walker_darae_off.glb",
+      "sha256": "1686222c38839a8bd9f9e10f8ccd27a34dcfb768cf6172864568162c64b72786",
+      "lowSrc": "darae110:02. Low/npc_walker_darae_off_low.glb",
+      "lowSha256": "a8e90383ec529e13055d0b37422615fb9f397e2866129008a586e94fa9450efa",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_darae_work.glb",
+      "src": "darae110:01. High/npc_walker_darae_work.glb",
+      "sha256": "894ab3304ecc534d21ce5c9cf26e6bcf6d09fa529786fc63d6dc5b59ef6995ef",
+      "lowSrc": "darae110:02. Low/npc_walker_darae_work_low.glb",
+      "lowSha256": "c59f93faf5c81074dac74440e725e42b5d58194672c8d1b6d130cd8a72d0e828",
+      "precompressed": true
+    },
+    {
       "out": "projects-v1/bridge_stone.glb",
       "src": "projects71:01. High/project_bridge_stone.glb",
       "sha256": "50f724bc48f73532ef6238e4d200722099f6310f269850adea39cbacdc90f13a",
@@ -9830,6 +9846,12 @@
       "precompressed": true
     },
     {
+      "out": "characters/npc_face_darae.glb",
+      "src": "darae110:01. High/npc_face_darae.glb",
+      "sha256": "1e3ca27cc7d097e7b4efa2605b4416bb0d4e6d8c7ee56fdc24db30d57a0d1a98",
+      "precompressed": true
+    },
+    {
       "out": "characters/npc_face_mulgyeol.glb",
       "src": "faces102:01. High/npc_face_mulgyeol.glb",
       "sha256": "82e49cf5c06f67e8e92e6a10449add4391ae4ff69ddd90bcca5bd6e5605713d4",
@@ -10638,6 +10660,7 @@
     "held108": "108. Game Island resident held props 2026-11-08",
     "taxi99": "99. Game Island taxi 2026-11-04",
     "taxi99b": "99b. Game Island taxi textured 2026-11-07",
-    "pilot106": "106. Game Island graphics pilot 2026-11-07"
+    "pilot106": "106. Game Island graphics pilot 2026-11-07",
+    "darae110": "110. Game Island rename clerk 2026-11-08"
   }
 }

@@ -7,8 +7,8 @@ const assert = require('node:assert/strict');
 const C = require('../public/plaza/island-cast.js');
 const E = require('../public/plaza/island-emotes.js');
 
-test('주민 사진 부탁 대사: 27명 × 부탁 2·성공·틀 밖, 빈칸 다 채움, 포즈는 감정 16개 안', () => {
-  assert.equal(C.RESIDENTS.length, 27);
+test('주민 사진 부탁 대사: 주민 모두 × 부탁 2·성공·틀 밖, 빈칸 다 채움, 포즈는 감정 16개 안', () => {
+  assert.ok(C.RESIDENTS.length >= 28); /* (v1.10.288: 다래 the 28th -- every islander below, no count kept here) */
   for (let n = 0; n < C.RESIDENTS.length; n += 1) {
     assert.ok(E.BY[C.photoPose(n)], `${n} pose ${C.photoPose(n)}`);
     assert.equal(C.PHOTO_LINES[n].ask.length, 2, `${n}`);

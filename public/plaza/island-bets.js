@@ -30,6 +30,7 @@
     P(['reaction', 'othello'], 'normal'), P(['rhythm', 'stairs'], 'hard'), P(['reaction', 'numbers'], 'normal'), P(['whack', 'connect4'], 'normal'),
     P(['numbers', 'othello'], 'hard', 'shrug'), P(['omok', 'othello'], 'hard', 'shrug'), P(['connect4', 'reaction'], 'normal'), P(['omok', 'whack'], 'normal'),
     P(['numbers', 'colorfind'], 'easy'), P(['numbers', 'connect4'], 'normal'), P(['othello', 'rhythm'], 'easy'),
+    P(['colorfind', 'reaction'], 'normal'), /* 27 다래 */
   ]);
   const STAKES = Object.freeze([1000, 5000, 10000]);
   const LIMITS = Object.freeze({ dailyWinMax: 30000, scoreStakeMax: 5000, stakeMax: 10000 }); // (the economy table's defaults: bet:*)

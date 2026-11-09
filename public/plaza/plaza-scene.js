@@ -1458,7 +1458,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // height for the tag and the bubble; false when the post has no islander yet (its old look stays)
   function dressResident(c, post, fallback = []) {
     const look = globalThis.IslandAssets?.residentLook?.(post); if (!look) return false;
-    assets.dress([look.model, ...fallback, 'character.npc'], c); c.headTop = look.headTop; c.resident = look.resident; c.root.userData.resident = look.resident; if (c.tag) fitTag(c); return true;
+    assets.dress([look.model, ...fallback, 'character.npc'], c); c.headTop = look.headTop; c.modelLean = look.lean ? (look.lean * Math.PI) / 180 : 0; c.resident = look.resident; c.root.userData.resident = look.resident; if (c.tag) fitTag(c); return true;
   }
   // v1.10.215 주민 근무표 C1 (gamecenter-notes docs/resident-roster-c-plan-20261031.md): today's table by Seoul's date (the same
   // on every screen and the server, island-roster.js) -- a rotating post's keeper in that day's islander, a walker at a counter
@@ -1474,10 +1474,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return true;
   }
   const postName = (post) => { const n = roster?.posts[post]; return n == null ? null : globalThis.IslandCast?.RESIDENTS[n]?.name || null; };
-  // (v1.10.283 총괄: the 민원실 desk's clerk named at its seat -- 개명 담당, else the islander keeping it; none at a resting desk)
+  // (v1.10.283 총괄: the 민원실 desk's clerk named at its seat -- the islander keeping it (v1.10.288: 개명 too, 다래); none at a resting desk)
   function deskClerk(id) {
     const c = room?.clerks.find((k) => k.deskId === id); if (!c || !c.root.visible) return '';
-    if (id === 'rename') return '개명 담당';
     const n = c.resident ? globalThis.IslandCast?.RESIDENTS.findIndex((_, k) => globalThis.IslandAssets?.lookOf?.(k)?.resident === c.resident) : -1;
     return n >= 0 ? globalThis.IslandCast.RESIDENTS[n].name : '';
   }
@@ -3465,8 +3464,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       else { assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] }); }
       const id = d.id === 'civil' ? 'room:desk' : `room:${d.id}`; const chair = globalThis.IslandTerrain.COUNTERS.find((x) => x.id === d.id);
       counterKeepers.push({ id: `townhall:${d.id}`, k: c, spot: () => roomAt(chair.lx, chair.lz) });
-      if (d.id === 'rename') { c.tag = makeTag('개명 담당', null); c.root.add(c.tag); fitTag(c); } /* (v1.10.281 문제 기록 2: the one clerk no islander keeps -- its role over it, the roster untouched) */
-      if (d.id !== 'rename') { c.desk = d.id; c.restSign = makeTag('오늘은 쉬어요', null); c.restSign.position.set(d.lx, 2.1, d.lz); c.restSign.visible = false; g.add(c.restSign); } /* (v1.10.215 근무표) */
+      c.desk = d.id; c.restSign = makeTag('오늘은 쉬어요', null); c.restSign.position.set(d.lx, 2.1, d.lz); c.restSign.visible = false; g.add(c.restSign); /* (v1.10.215 근무표; v1.10.288 the 개명 desk too -- 다래 in the rotation, no role tag) */
       return Object.assign(c, { home: { x: ROOM.x + d.lx, z: ROOM.z + d.keeper, yaw: worldYaw(c.root), id } });
     });
     for (const c of globalThis.IslandTerrain.COUNTERS) put('townhall3.chair_marble', c.lx, 0, c.lz, 0, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // A-7: the customer's chair at each window, toward its clerk

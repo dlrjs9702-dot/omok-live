@@ -47,7 +47,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     expect(away.some((n) => d.walking.includes(n)), 'a counter walker walking').toBe(false);
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).quests.find((q) => q.id === 'questfisher'), { timeout: 30000 }).toEqual({ id: 'questfisher', post: 'mall1', walker: null, shown: false });
     const { rest } = R.deskRest(day);
-    expect(d.desks).toEqual(['civil', 'tax', 'bank'].map((k) => ({ desk: k, shown: k !== rest, sign: k === rest })));
+    expect(d.desks).toEqual(['civil', 'tax', 'bank', 'rename'].map((k) => ({ desk: k, shown: k !== rest, sign: k === rest }))); /* (v1.10.288: 다래 at 개명, four in turn) */
     // C2: that day's walkers out (no one at a post), 꽃님 walking with her mark, 철이 at the station
     const walking = Array.from({ length: Cast.RESIDENTS.length }, (_, n) => n).filter((n) => R.walks(n, day));
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).walking, { timeout: 30000 }).toEqual(walking); /* (the contest clock past its tent above: #395 23a2f63d -- one fix kept, 0cc0cdeb's allowance taken out) */
