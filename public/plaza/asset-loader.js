@@ -14,7 +14,7 @@ import { preparePlatformSurfaces, prepareTownhallSurfaces } from './platform-sur
 
 const P = globalThis.AssetPipeline;
 
-export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, day = null, fogColor = 0xd7efff, onError = () => {} }) {
+export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, day = null, fogColor = 0xd7efff, fade = true, onError = () => {} }) {
   // v1.10.27: a thing's season is its zone's today (island-terrain.js); the neutral plaza shows NEUTRAL_LOOK. Without
   // a day (or the terrain) every target uses its plain `url`.
   const T = globalThis.IslandTerrain;
@@ -31,6 +31,31 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   const lods = [];
   const shown = {}; // target id -> 'loading' | 'model' | 'procedural'
   let quality = tier; let disposed = false;
+  // v1.10.290 High/Low 바뀜 부드럽게 (notes docs/lod-smooth-20261109.md): for P.FADE_MS both are drawn and a screen dither (4x4
+  // Bayer) shares the pixels -- never transparent (no sorting); a see-through material just switches. A fading copy is drawn
+  // with a copy of its material that reads its share: `lodFade` (an instanced fade mesh's own attribute) or `uLodFade` (one
+  // object's) -- s > 0 kept where the dither < s (the one coming in), s <= 0 kept where it >= -s (the one going). The material's
+  // own patches (the pilot's tone...) run first.
+  let fadeOn = fade; let fadeStarts = 0; let fadeSlow = 1; /* (a photo's: how many times slower) */
+  const DITHER = 'varying float vLodFade;\nfloat lodBayer(vec2 p) { const float B[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0); ivec2 q = ivec2(mod(floor(p), 4.0)); return (B[q.y * 4 + q.x] + 0.5) / 16.0; }';
+  const fadeable = (m) => Boolean(m) && !Array.isArray(m) && !m.transparent && !m.isShaderMaterial;
+  function fadeCopy(m, instanced) {
+    const f = m.clone(); const base = m.onBeforeCompile; const key = m.customProgramCacheKey?.bind(m);
+    f.userData = { ...m.userData, lodFadeOf: m }; const u = (f.userData.uLodFade = { value: 1 });
+    f.onBeforeCompile = (sh, r) => {
+      base?.call(f, sh, r); sh.uniforms.uLodFade = u;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\n${instanced ? 'attribute float lodFade;' : 'uniform float uLodFade;'}\nvarying float vLodFade;`).replace('#include <begin_vertex>', `#include <begin_vertex>\n  vLodFade = ${instanced ? 'lodFade' : 'uLodFade'};`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${DITHER}`).replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n  { float lb = lodBayer(gl_FragCoord.xy); if (vLodFade > 0.0 ? lb >= vLodFade : lb < -vLodFade) discard; }');
+    };
+    f.customProgramCacheKey = () => `${key ? key() : ''}|lodfade-${instanced ? 'i' : 'o'}`;
+    return f;
+  }
+  const instFade = new Map(); const instFadeOf = (m) => { if (!instFade.has(m)) { const f = fadeCopy(m, true); instFade.set(m, f); made.push(f); } return instFade.get(m); };
+  // one object's meshes on per-mesh fading copies (put back after); its share: the coming one +s, the going one -s
+  const swapIn = (meshes) => meshes.map((o) => { const orig = o.material; o.material = fadeCopy(orig, false); return [o, orig]; });
+  const shareTo = (swapped, s) => { for (const [o] of swapped) o.material.userData.uLodFade.value = s; };
+  const swapOut = (swapped) => { for (const [o, orig] of swapped) { o.material.dispose(); o.material = orig; } };
+  const meshesIn = (object) => { const out = []; object.traverse((o) => { if (o.isMesh) out.push(o); }); return out; };
   const attaches = []; const batches = []; const made = []; // made: geometries/materials this file created (flattened models)
 
   // One placed copy of a loaded model. Geometry, materials and textures stay shared with the loaded file; SkeletonUtils'
@@ -84,10 +109,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     const lod = new THREE.LOD();
     levels.forEach((level, i) => {
       if (!loaded[i]) return;
-      const object = instance(loaded[i], entry); lodBase.set(object, level.distance);
-      lod.addLevel(object, P.lodDistance(level.distance, quality), 0.1);
+      const object = instance(loaded[i], entry); lodBase.set(object, { d: level.distance, shadows: entry.shadows !== false });
+      lod.addLevel(object, P.lodDistance(level.distance, quality, entry.shadows !== false), 0.1);
     });
-    lods.push(lod);
+    lod.autoUpdate = false; lods.push(lod); /* (v1.10.290: its level picked in tick -- with a cross-fade) */
     return lod;
   }
 
@@ -320,17 +345,22 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // each shows the copies without a model.
   function fill(p) {
     const { cell } = p; let b = 0;
-    for (const g of p.groups.values()) { g.a = 0; g.b = 0; }
+    for (const g of p.groups.values()) { g.a = 0; g.b = 0; g.c = 0; }
     cell.matrices.forEach((m, i) => {
       const g = p.groups.get(p.zones[i]);
       if (!g) { for (const proc of cell.procedural) { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); } b += 1; return; }
-      const high = p.flags[i] === 1 || !g.low; // no Low file: High everywhere
+      const s = p.share[i]; if (g.fh && s > 0 && s < 1) { /* (v1.10.290: on its way -- both, each its share) */
+        for (const im of g.fh) { im.setMatrixAt(g.c, both.multiplyMatrices(m, local).multiply(im.userData.part)); im.geometry.attributes.lodFade.setX(g.c, s); }
+        for (const im of g.fl) { im.setMatrixAt(g.c, both.multiplyMatrices(m, local).multiply(im.userData.part)); im.geometry.attributes.lodFade.setX(g.c, -s); }
+        g.c += 1; return;
+      }
+      const high = (g.fh ? s >= 1 : p.flags[i] === 1) || !g.low; // no Low file: High everywhere
       for (const im of (high ? g.high : g.low)) im.setMatrixAt(high ? g.a : g.b, both.multiplyMatrices(m, local).multiply(im.userData.part));
       if (high) g.a += 1; else g.b += 1;
     });
     const set = (meshes, n) => { for (const im of meshes) { im.count = n; im.visible = n > 0; im.instanceMatrix.needsUpdate = true; } }; // none: not even a call
     p.near = 0; p.far = 0;
-    for (const g of p.groups.values()) { set(g.high, g.a); if (g.low) set(g.low, g.b); p.near += g.a; p.far += g.b; }
+    for (const g of p.groups.values()) { set(g.high, g.a); if (g.low) set(g.low, g.b); if (g.fh) { for (const im of [...g.fh, ...g.fl]) im.geometry.attributes.lodFade.needsUpdate = true; set(g.fh, g.c); set(g.fl, g.c); } p.near += g.a; p.far += g.b; }
     for (const proc of cell.procedural) { proc.count = b; proc.visible = b > 0; proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true; }
     p.procedural = b;
   }
@@ -344,7 +374,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function clearBatch(rec) {
     if (rec.placed) {
       for (const p of rec.placed) {
-        for (const g of p.groups.values()) for (const im of [...g.high, ...(g.low || [])]) { p.cell.parent.remove(im); im.dispose(); } // the instance buffers; geometry and material stay the file's
+        for (const g of p.groups.values()) for (const im of [...g.high, ...(g.low || []), ...(g.fh || []), ...(g.fl || [])]) { p.cell.parent.remove(im); im.dispose(); } // the instance buffers; geometry and material stay the file's
         p.groups.clear(); restoreProcedural(p.cell);
       }
     }
@@ -372,7 +402,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       rec.zoneUrls = Object.fromEntries([...hits].map(([zone, hit]) => [zone, hit && models.get(hit.entry.url) ? hit.entry.url : null]));
       rec.zoneLowUrls = Object.fromEntries([...hits].map(([zone, hit]) => [zone, hit?.entry.lowUrl && models.get(hit.entry.lowUrl) && models.get(hit.entry.url) ? hit.entry.lowUrl : null]));
       rec.placed = rec.cells.map((cell) => {
-        const p = { cell, near: 0, far: 0, procedural: 0, zones: zonesOf(cell), flags: new Uint8Array(cell.matrices.length), groups: new Map() };
+        const p = { cell, near: 0, far: 0, procedural: 0, zones: zonesOf(cell), flags: new Uint8Array(cell.matrices.length), share: new Float32Array(cell.matrices.length), moving: new Set(), groups: new Map() };
         const counts = new Map(); for (const zone of p.zones) counts.set(zone, (counts.get(zone) || 0) + 1);
         for (const [zone, count] of counts) {
           const hit = hits.get(zone); const gltf = hit && models.get(hit.entry.url);
@@ -386,7 +416,11 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
             im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true;
             cell.parent.add(im); invalidateOcclusion(cell.parent); return im; // (a building's batched parts: its sight boxes again)
           });
-          p.groups.set(zone, { high: meshesOf(gltf, cell.shadow && entry.shadows !== false), low: lowGltf ? meshesOf(lowGltf, false) : null, a: 0, b: 0 });
+          const high = meshesOf(gltf, cell.shadow && entry.shadows !== false); const low = lowGltf ? meshesOf(lowGltf, false) : null;
+          /* (v1.10.290: the copies on their way between the two -- their own instanced meshes on the same buffers, each its share) */
+          const fadeMeshes = (meshes) => meshes.map((src) => { const geo = new THREE.BufferGeometry(); geo.index = src.geometry.index; for (const [k, a] of Object.entries(src.geometry.attributes)) geo.setAttribute(k, a); geo.groups = src.geometry.groups; geo.boundingBox = src.geometry.boundingBox; geo.boundingSphere = src.geometry.boundingSphere; geo.setAttribute('lodFade', new THREE.InstancedBufferAttribute(new Float32Array(count), 1)); const im = new THREE.InstancedMesh(geo, instFadeOf(src.material), count); im.userData.part = src.userData.part; im.boundingSphere = src.boundingSphere; im.count = 0; im.visible = false; im.castShadow = false; im.receiveShadow = true; cell.parent.add(im); return im; });
+          const canFade = Boolean(low) && [...high, ...low].every((im) => fadeable(im.material));
+          p.groups.set(zone, { high, low, fh: canFade ? fadeMeshes(high) : null, fl: canFade ? fadeMeshes(low) : null, a: 0, b: 0, c: 0 });
         }
         fill(p); // every copy Low (or High without a Low file) until the next update() works out the near ones
         return p;
@@ -466,12 +500,12 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     for (const rec of batches) {
       if (!rec.placed) continue;
       entryMatrix(rec.entry, local);
-      const near = P.lodDistance(rec.entry.near ?? 45, quality);
+      const near = P.lodDistance(rec.entry.near ?? 45, quality, rec.entry.shadows !== false);
       for (const p of rec.placed) {
         let changed = false;
         p.cell.matrices.forEach((m, i) => {
           const high = P.highState(p.flags[i] === 1, Math.hypot(m.elements[12] - x, m.elements[14] - z), near);
-          if (high !== (p.flags[i] === 1)) { p.flags[i] = high ? 1 : 0; changed = true; }
+          if (high !== (p.flags[i] === 1)) { p.flags[i] = high ? 1 : 0; changed = true; if (fadeOn && p.groups.get(p.zones[i])?.fh) { if (!p.moving.has(i)) fadeStarts += 1; p.moving.add(i); } else { p.share[i] = p.flags[i]; p.moving.delete(i); } } /* (v1.10.290: on its way, or at once) */
         });
         if (changed) fill(p);
       }
@@ -584,8 +618,40 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }
     if (reduceMotion && ambientState) { for (const k of Object.values(ambientState.kinds)) k.im.count = 0; ambientState.counts = {}; }
     else tickAmbient(dt, x, z);
-    wearLod(x, z);
+    const fms = (dt * 1000) / fadeSlow; wearLod(x, z, fms); lodLevels(x, z, fms); stepFades(fms);
   }
+  // v1.10.290: the copies on their way between High and Low, a step each frame (their squares drawn again only then)
+  let fading = 0;
+  function stepFades(ms) {
+    let n = 0;
+    for (const rec of batches) for (const p of rec.placed || []) {
+      if (!p.moving?.size) continue;
+      for (const i of p.moving) { p.share[i] = P.fadeStep(p.share[i], p.flags[i] === 1, ms); if (p.share[i] === p.flags[i]) p.moving.delete(i); }
+      fill(p); n += p.moving.size;
+    }
+    fading = n + lods.filter((l) => l.userData.lodRun).length + wearing.filter((w) => w.run).length;
+  }
+  // an LOD object's level by my distance (the batches' band back toward the nearer one); a change cross-fades both levels
+  function lodLevels(x, z, ms) {
+    for (const lod of lods) {
+      if (!lod.parent) continue;
+      const lv = lod.levels; if (lv.length < 2) continue;
+      lod.getWorldPosition(placeOf); const d = Math.hypot(placeOf.x - x, placeOf.z - z); const cur = lod.userData.lodAt; let want = 0;
+      for (let k = 1; k < lv.length; k += 1) { if (d >= (cur !== undefined && cur >= k ? lv[k].distance / P.HIGH_BAND : lv[k].distance)) want = k; else break; }
+      if (cur === undefined) { lv.forEach((l, k) => { l.object.visible = k === want; }); lod.userData.lodAt = want; continue; }
+      let run = lod.userData.lodRun;
+      if (run && want !== run.to) { if (want === run.from) { run = lod.userData.lodRun = { ...run, from: run.to, to: run.from, f: 1 - run.f, a: run.b, b: run.a }; } else { swapOut([...run.a, ...run.b]); lv[run.from].object.visible = false; lod.userData.lodAt = run.to; run = lod.userData.lodRun = null; } }
+      if (!run && want !== lod.userData.lodAt) {
+        const from = lod.userData.lodAt; const A = meshesIn(lv[from].object); const B = meshesIn(lv[want].object);
+        if (!fadeOn || ![...A, ...B].every((o) => fadeable(o.material))) { lv[from].object.visible = false; lv[want].object.visible = true; lod.userData.lodAt = want; continue; }
+        run = lod.userData.lodRun = { from, to: want, f: 0, a: swapIn(A), b: swapIn(B) }; lv[want].object.visible = true; fadeStarts += 1;
+      }
+      if (!run) continue;
+      run.f = P.fadeStep(run.f, true, ms); shareTo(run.b, Math.max(run.f, 1e-4)); shareTo(run.a, -run.f);
+      if (run.f >= 1) { swapOut([...run.a, ...run.b]); lv[run.from].object.visible = false; lod.userData.lodAt = run.to; lod.userData.lodRun = null; }
+    }
+  }
+  const setFade = (on, slow = 1) => { fadeOn = Boolean(on); fadeSlow = Math.max(1, Number(slow) || 1); };
 
   // A character: the rigged model goes under c.root (the name tag and chat bubble stay), the procedural body is
   // hidden, and plaza-scene's animate() hands the drawn speed to c.anim (Idle/Walk/Run cross-fades) instead of
@@ -966,13 +1032,20 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   // High near the player, Low farther (the body's `near`, the same band as the nature), the mixer untouched
   const wpos = new THREE.Vector3();
-  function wearLod(x, z) {
-    const near = P.lodDistance(registry['character.base']?.near ?? 22, quality);
+  function wearLod(x, z, ms = 0) {
+    const near = P.lodDistance(registry['character.base']?.near ?? 22, quality, true);
     for (let i = wearing.length - 1; i >= 0; i -= 1) {
-      const w = wearing[i]; if (!w.c.root.parent || w.c.assetRoot === null) { wearing.splice(i, 1); continue; }
+      const w = wearing[i]; if (!w.c.root.parent || w.c.assetRoot === null) { if (w.run) swapOut([...w.run.a, ...w.run.b]); wearing.splice(i, 1); continue; }
       w.c.root.getWorldPosition(wpos);
       const high = P.highState(w.isHigh, Math.hypot(wpos.x - x, wpos.z - z), near);
-      if (high !== w.isHigh) { w.isHigh = high; for (const m of w.high) m.visible = high && !m.userData.faceHidden; for (const m of w.low) m.visible = !high && !m.userData.faceHidden; } /* (v1.10.263: an eye or mouth under an expression stays hidden) */
+      const show = () => { for (const m of w.high) m.visible = w.isHigh && !m.userData.faceHidden; for (const m of w.low) m.visible = !w.isHigh && !m.userData.faceHidden; }; /* (v1.10.263: an eye or mouth under an expression stays hidden) */
+      if (high !== w.isHigh) {
+        w.isHigh = high; /* (v1.10.290: both a moment, dithered -- the coming set +s, the going -s; turned back midway, from where it is) */
+        if (w.run) w.run = { ...w.run, f: 1 - w.run.f, a: w.run.b, b: w.run.a };
+        else if (fadeOn && w.high.length && w.low.length && [...w.high, ...w.low].every((m) => fadeable(m.material))) { const [go, come] = high ? [w.low, w.high] : [w.high, w.low]; w.run = { f: 0, a: swapIn(go), b: swapIn(come) }; fadeStarts += 1; for (const m of [...w.high, ...w.low]) m.visible = !m.userData.faceHidden; }
+        else show();
+      }
+      if (w.run) { w.run.f = P.fadeStep(w.run.f, true, ms); shareTo(w.run.b, Math.max(w.run.f, 1e-4)); shareTo(w.run.a, -w.run.f); if (w.run.f >= 1) { swapOut([...w.run.a, ...w.run.b]); w.run = null; show(); } }
     }
   }
 
@@ -989,7 +1062,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   function setQuality(next) {
     quality = next; lastX = NaN;
-    for (const lod of lods) for (const level of lod.levels) level.distance = P.lodDistance(lodBase.get(level.object) || 0, quality);
+    for (const lod of lods) for (const level of lod.levels) { const b = lodBase.get(level.object); level.distance = P.lodDistance(b?.d || 0, quality, b?.shadows); }
   }
 
   function dispose() {
@@ -1024,5 +1097,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, props, hat, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, props, hat, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, setFade, once, ambient, tick, dispose, debug: () => ({ fade: { on: fadeOn, fading, started: fadeStarts }, lodsNear: (x, z, r = 80, n = 8) => lods.filter((l) => l.parent && l.levels.length > 1).map((l) => { l.getWorldPosition(placeOf); return { x: +placeOf.x.toFixed(1), z: +placeOf.z.toFixed(1), d: Math.hypot(placeOf.x - x, placeOf.z - z), levels: l.levels.map((v) => +v.distance.toFixed(1)), at: l.userData.lodAt ?? null, fading: Boolean(l.userData.lodRun), name: l.levels[0].object.name || l.parent?.name || '' }; }).filter((l) => l.d <= r).sort((a, b) => a.d - b.d).slice(0, n), glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

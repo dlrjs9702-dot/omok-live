@@ -41,3 +41,12 @@ test('G1 섬 전체 풀: 지도 값으로 풀 자리(길·자갈·맨땅·모래
   const half = a.slice(0, a.length / 2); for (const q of [[0, 8, 0, 8], [8, 16, 0, 8], [0, 8, 8, 16], [8, 16, 8, 16]]) assert.ok(half.filter((g) => g.x >= q[0] && g.x < q[1] && g.z >= q[2] && g.z < q[3]).length > half.length / 6, `half spread ${q}`);
   assert.notDeepEqual(P.cellBlades(1, 0, 50, () => 1).map((g) => g.x - 16), P.cellBlades(0, 0, 50, () => 1).map((g) => g.x), '칸마다 다른 씨앗');
 });
+
+test('풀 서서히: 단계를 바꾸면 1.5초 동안 그 사이 풀잎 높이가 0과 1 사이, 걸으며 조금 바뀌면 바로', () => {
+  const g = { from: 0, to: 0, t: 1 }; let r = P.growStep(g, 1000, 16, 1000); assert.equal(r.count, 1000); assert.equal(r.lo, 0); assert.ok(r.s > 0 && r.s < 0.02); /* (a cell in: grows from nothing) */
+  for (let ms = 16; ms < P.GROW_MS; ms += 16) r = P.growStep(g, 1000, 16, 1000); assert.deepEqual(r, { count: 1000, lo: 1000, s: 0 }); /* (grown: no band) */
+  r = P.growStep(g, 350, 500, 1000); assert.equal(r.count, 1000); assert.equal(r.lo, 350); assert.ok(r.s > 0 && r.s < 1, 'half a second after a tier change'); /* (「중간」: 650 laid down) */
+  r = P.growStep(g, 340, 1000, 1000); assert.equal(r.count, 340); assert.equal(g.to, 340); /* (a small change midway kept the band; done at 1.5 s) */
+  r = P.growStep(g, 330, 16, 1000); assert.deepEqual(r, { count: 330, lo: 330, s: 0 }); /* (walking: at once) */
+  r = P.growStep(g, 0, 750, 1000); assert.equal(r.count, 330); assert.ok(Math.abs(r.s - 0.5) < 1e-9); r = P.growStep(g, 0, 750, 1000); assert.equal(r.count, 0); /* (out of reach: laid down, then none) */
+});

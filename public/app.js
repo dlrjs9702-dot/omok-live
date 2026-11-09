@@ -1796,6 +1796,9 @@
   const qualityMode = () => { try { const v = localStorage.getItem('gc.quality'); return ['0', '1', '2'].includes(v) ? v : 'auto'; } catch { return 'auto'; } };
   byId('qualitySelect').value = qualityMode();
   byId('qualitySelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.quality', event.target.value); } catch {} plaza.controller?.setQualityMode?.(event.target.value); });
+  // v1.10.290 6: when 자동 changes the tier, a short note -- once a day on this device (Seoul's day; not in tests unless asked)
+  const TIER_NAMES = ['낮음', '중간', '높음'];
+  const autoTierNote = (tier) => { const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); try { if (localStorage.getItem('gc.qualityNote') === day || (navigator.webdriver && !localStorage.getItem('gc.testQualityNote'))) return; localStorage.setItem('gc.qualityNote', day); } catch { return; } showToast(`화면이 ${tier < 2 ? '느려서' : '빨라져서'} 화질을 「${TIER_NAMES[tier]}」으로 바꿨어요 · ☰ 섬 화질에서 고정할 수 있어요`, 5000); };
   // 사용자 「파도가 전혀 안 움직여」: 「움직임 줄이기」 -- the device's setting (default), or on/off whatever it says, kept on this device
   const motionMode = () => { try { const v = localStorage.getItem('gc.lessMotion'); return v === 'on' || v === 'off' ? v : 'auto'; } catch { return 'auto'; } };
   // v1.10.217 포인터 잠금: how far a mouse move turns the view (kept on this device)
@@ -1982,7 +1985,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); loadQuick(); setTimeout(islandNoticeOnce, 1500); // (1103 4: a note once) (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
-      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
+      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.onAutoTier?.(autoTierNote); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); refreshProjects(); // (v1.10.215: today's table on; v1.10.222 섬 가꾸기)
       showControlsNotice(); // (v1.10.217: the keys swapped -- told once on a PC)
@@ -2033,7 +2036,7 @@
       device: { touch: document.body.classList.contains('touchIsland'), w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ua: navigator.userAgent.slice(0, 200) }, fps: fpsNow, errors: recentErrors.slice() };
     if (ctx.screen === 'room' && state) ctx.room = { game: state.gameType || null, id: state.id || null, status: state.game?.status || null };
     const d = plaza.controller?.debug?.();
-    if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality, camera: { yaw: +Number(d.camYaw).toFixed(2), pitch: +Number(d.camPitch).toFixed(2), zoom: +Number(d.zoom).toFixed(1) } }; } // (2회차: how it was looked at)
+    if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality, qualityMode: d.qualityAuto ? 'auto' : 'fixed', qualityChanges10m: d.qualityChanges ?? null, camera: { yaw: +Number(d.camYaw).toFixed(2), pitch: +Number(d.camPitch).toFixed(2), zoom: +Number(d.zoom).toFixed(1) } }; } // (2회차: how it was looked at)
     // (문제 기록 정리 2026-10-21: what the writer wears -- each slot's item, the transformation and how it is shown, and
     // the parts the island actually put on -- so an outfit report is made again from the record)
     if (plazaAvatar?.look) ctx.wear = { look: plazaAvatar.look, parts: Array.isArray(d?.wardrobe) ? d.wardrobe.slice(0, 20) : null, transformation: typeof d?.transformation === 'string' ? d.transformation : null };
