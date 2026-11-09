@@ -187,7 +187,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   // the graphics tier (plaza-scene setTier: 0 낮음, 1 중간, 2 높음): no blades and no ground sheet, half the blades, all (총괄 276 --
   // slow phones; a quarter on 낮음 still cost as much as none). The layout is in random order: the first ones spread over the patch.
   function setQuality(q) { quality = q; } /* (G1: the cells' counts by tier and distance, stepCells -- 290 6: eased there, on 「낮음」 laid down and then dropped) */
-  // v1.10.276 ③ (PC 「높음」 only, in and by the patch): ambient occlusion (GTAO) and a soft bloom over the picture, faded in
+  // v1.10.276 ③ (PC 「높음」 only; G3: the whole island outside): ambient occlusion (GTAO) and a soft bloom over the picture, faded in
   // and out over a second; the passes load the first time they are wanted. draw() says whether it drew the frame.
   const ADDONS = '/vendor/three/addons/postprocessing';
   const POST = { ao: 0.75, bloom: 0.16 };

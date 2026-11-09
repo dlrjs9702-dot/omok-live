@@ -5016,7 +5016,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     step(dt);
     if (now - coverCheckedAt > 250) { coverCheckedAt = now; covered = windowCovers(); }
     if (covered && now - drawnAt < 500) return;
-    const postWant = Boolean(pilot) && quality === 2 && !pilotPhone && !pilotSoftware && !photoMode && mySpace === 'island' && globalThis.IslandPilot.inZone(me.root.position.x, me.root.position.z, 6); /* (v1.10.276 그래픽 시범 ③: PC 「높음」, in and by the patch) */
+    const postWant = Boolean(pilot) && quality === 2 && !pilotPhone && !pilotSoftware && !photoMode && mySpace === 'island'; /* (v1.10.276 그래픽 시범 ③: PC 「높음」; G3: the whole island outside, not only by the patch) */
     if (!pilot?.draw(renderer, scene, camera, postWant, dt)) renderer.render(scene, camera); drawnAt = now; draws += 1;
     if (covered) return; // (the quality is measured on frames drawn every frame)
     adaptQuality(Math.min(real, 1)); // real time, so a very slow PC steps down after 3 seconds, not 3 seconds of capped frames
