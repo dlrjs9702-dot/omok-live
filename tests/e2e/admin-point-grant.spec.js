@@ -48,6 +48,18 @@ test('관리자 포인트 지급 대화상자 → 확인 → 1회 지급, 사용
     await page.getByRole('button', { name: '관리자로 입장' }).click();
   }
 
+  // (293 계정 탭) found by the search, its detail opened; a tag made and put on it; that tag's chip shows it alone
+  await page.locator('#adminTabs [data-tab="accounts"]').click();
+  await page.locator('#accountSearch').fill(target.label);
+  await page.locator('#guestKeyList .accountRow', { hasText: target.label }).first().click();
+  await expect(page.locator('#accountDetail')).toContainText(target.label);
+  const tagName = `시험${Date.now() % 1000}`;
+  await page.locator('details:has(#tagAddForm) > summary').click(); await page.locator('#tagName').fill(tagName); await page.locator('#tagAddForm button[type="submit"]').click();
+  await page.locator('#accountDetail button.tagPill', { hasText: tagName }).click();
+  await expect(page.locator('#accountDetail button.tagPill', { hasText: tagName })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#accountSearch').fill(''); await page.locator('#accountChips button', { hasText: tagName }).click();
+  await expect(page.locator('#guestKeyList .accountRow')).toHaveCount(1); await expect(page.locator('#guestKeyList .accountRow')).toContainText(target.label);
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-admin-accounts.png` });
   const grantButton = page.getByRole('button', { name: `${target.label} 포인트 지급` });
   await expect(grantButton).toBeVisible();
   await grantButton.click();

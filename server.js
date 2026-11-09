@@ -1652,6 +1652,8 @@ const JAIL_WARDEN = IslandCast.keeperN('warden');
 // cell till that Seoul day's essay is passed (one essay frees both that day), again the next day while its time runs; never
 // an administrator. Its time running out, or 풀어 주기, ends it ([admin-jail] in the log, 변경 이력 a line).
 let adminJailCache = null;
+const TAG_COLORS = Object.freeze(['red', 'orange', 'yellow', 'green', 'blue', 'purple']); let adminTagsCache = null; /* (293 6-2: the administrator's tags, see /api/admin/tags) */
+const adminTags = async (fresh = false) => { if (fresh || !adminTagsCache) { const v = await pointStore.worldValue('adminTags'); adminTagsCache = { tags: v?.tags || [], of: v?.of || {} }; } return adminTagsCache; };
 const adminJails = async () => (adminJailCache ||= (await pointStore.worldValue('adminJail')) || {});
 const adminJailNow = (account, now = nowMs()) => { const j = adminJailCache?.[account]; return j && (j.until == null || j.until > now) ? j : null; };
 async function adminJailOf(account, now = nowMs()) {
@@ -2096,11 +2098,12 @@ async function settleBet(b, result, me = '') {
   catch (error) { b.done = null; islandEvents.residentFree(`bet:${b.id}`); throw error; } // (Codex #6: undone -- the sweep settles it again, its result kept in b.want; the islander let go)
 }
 async function settleNow(b, result, me) {
-  const doc = await betDoc(b.account); const { pay, net } = IslandBets.payout(b.stake, result, doc.won, betLimits());
+  /* (Codex 281~290 #7: tried again after a failure, the pay and net worked out the first time -- the day's winnings read then) */
+  const doc = await betDoc(b.account); const { pay, net } = (b.paid ||= IslandBets.payout(b.stake, result, doc.won, betLimits()));
   let balance = null; if (pay > 0) { const out = await pointStore.charge({ userId: b.account, claimId: `resident_bet:${b.id}:pay`, price: pay, title: `${IslandCast.RESIDENTS[b.n]?.name || ''}와 내기`, credit: true }); balance = out.balance ?? null; notifyPointsChanged([b.account]); }
   // (Codex #6: the day's winnings and 호감도 once per bet -- a settle tried again after a failure adds nothing twice)
-  let gain = false; await pointStore.questApply(b.account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; if ((t.settled || []).includes(b.id)) return { doc: t }; const had = Number(t.aff?.[b.n]) || 0; gain = had < Economy.value('affinity:betDaily'); return { doc: { ...t, won: (t.won || 0) + net, beat: result === 'win' ? [...new Set([...(t.beat || []), b.n])] : t.beat || [], aff: gain ? { ...t.aff, [b.n]: had + 1 } : t.aff || {}, opens: (t.opens || []).filter((o) => o.id !== b.id), settled: [...(t.settled || []), b.id] } }; });
-  const before = await pointStore.affinityOf(b.account); const after = gain ? await pointStore.affinityAdd(b.account, doc.day, [{ n: b.n, delta: 1 }]) : before;
+  let gain = b.gain ?? false; await pointStore.questApply(b.account, 'betmem', (d) => { const t = d?.day === doc.day ? d : doc; if ((t.settled || []).includes(b.id)) return { doc: t }; const had = Number(t.aff?.[b.n]) || 0; gain = had < Economy.value('affinity:betDaily'); b.gain = gain; /* (Codex #8: remembered -- a retry after the record was written still adds it) */ return { doc: { ...t, won: (t.won || 0) + net, beat: result === 'win' ? [...new Set([...(t.beat || []), b.n])] : t.beat || [], aff: gain ? { ...t.aff, [b.n]: had + 1 } : t.aff || {}, opens: (t.opens || []).filter((o) => o.id !== b.id), settled: [...(t.settled || []), b.id] } }; });
+  const before = await pointStore.affinityOf(b.account); const after = gain && !b.affDone ? await pointStore.affinityAdd(b.account, doc.day, [{ n: b.n, delta: 1 }]) : before; b.affDone = true;
   islandEvents.residentFree(`bet:${b.id}`); broadcastIsland('residents', { list: islandEvents.residents() });
   const key = result === 'win' ? 'lose' : result === 'draw' ? 'draw' : 'win'; /* (my win is the islander's loss) */
   const emote = key === 'lose' ? BET_LINES[b.n]?.emote.lose || IslandBets.profileOf(b.n).lose : key === 'draw' ? IslandBets.EMOTE.draw : BET_LINES[b.n]?.emote.win || IslandCast.photoPose(b.n);
@@ -8536,8 +8539,37 @@ async function requestHandler(req, res) {
     if (!requireAdmin(req, res)) return;
     const messenger = new Set(await messengerStore.allowedIds());
     const writers = new Set(await issueWriters()); // (2026-10-20 문제 기록 허용)
-    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id), issues: writers.has(key.id) }));
-    return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file', entryKeys: entryKeysOn });
+    // (293 계정 탭 6-5: what the list sorts and filters by, in one read -- points, tax owed, jail, a home, the admin's tags)
+    const points = await pointStore.holdings(); const tags = await adminTags(); const now = nowMs();
+    const keys = await Promise.all((await accessStore.list()).map(async (key) => { const account = `guest:${key.id}`; const presence = guestPresence(key.id); const aj = adminJailNow(account, now);
+      const home = homeCache.has(account) ? homeCache.get(account) : await pointStore.worldValue(`home:${account}`); /* (ponytail: one read an account not in the cache -- a home index if the accounts grow into the hundreds) */
+      return { ...key, presence, messenger: messenger.has(key.id), issues: writers.has(key.id), lastSeenAt: presence?.online ? new Date(now).toISOString() : key.lastUsedAt || null,
+        points: points[account] || 0, debt: taxDebt.get(account) || 0, jail: aj ? { admin: true, until: aj.until, reason: aj.reason } : taxDebt.get(account) > 0 ? { admin: false } : null, hasHome: Boolean(home), tags: tags.of[key.id] || [] }; }));
+    return sendJson(res, 200, { keys, tags: tags.tags, persistence: DATABASE_URL ? 'database' : 'ephemeral-file', entryKeys: entryKeysOn });
+  }
+  // 293 관리자 분류 태그 (6-2): { tags: [{ id, name (10), color (one of six) }], of: { keyId: [tagId] } } in the world value 'adminTags'
+  // -- POST { action: 'add', name, color } | { action: 'edit', id, name, color } | { action: 'delete', id } (off every account too);
+  // an account's own: POST /api/admin/keys/:id/tags { tags }. The administrator's only -- never shown to the account.
+  if (pathname === '/api/admin/tags' && (req.method === 'GET' || req.method === 'POST')) {
+    if (!requireAdmin(req, res)) return;
+    if (req.method === 'POST') {
+      const body = await parseJson(req); const name = String(body.name || '').trim().slice(0, 10); const color = TAG_COLORS.includes(body.color) ? body.color : TAG_COLORS[0];
+      if (body.action !== 'delete' && !name) return sendError(res, 400, 'NO_NAME', '태그 이름을 적어 주세요.');
+      const out = await worldEdit(async () => { const t = await adminTags(true); const tags = [...t.tags]; let of = { ...t.of };
+        if (body.action === 'add') { if (tags.length >= 30) return 'full'; tags.push({ id: crypto.randomUUID().slice(0, 8), name, color }); }
+        else { const i = tags.findIndex((g) => g.id === body.id); if (i < 0) return 'missing'; if (body.action === 'delete') { tags.splice(i, 1); of = Object.fromEntries(Object.entries(of).map(([k, v]) => [k, v.filter((x) => x !== body.id)])); } else tags[i] = { ...tags[i], name, color }; }
+        adminTagsCache = { tags, of }; await pointStore.setWorldValue('adminTags', adminTagsCache); return 'ok'; });
+      if (out === 'full') return sendError(res, 400, 'TOO_MANY', '태그는 30개까지예요.'); if (out === 'missing') return sendError(res, 404, 'TAG_NOT_FOUND', '태그를 찾을 수 없어요.');
+    }
+    return sendJson(res, 200, { ok: true, tags: (await adminTags()).tags, colors: TAG_COLORS });
+  }
+  const tagsMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/tags$/i);
+  if (tagsMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); if (!await accessStore.get(tagsMatch[1])) return sendError(res, 404, 'KEY_NOT_FOUND', '계정을 찾을 수 없습니다.');
+    const tags = await worldEdit(async () => { const t = await adminTags(true); const known = new Set(t.tags.map((g) => g.id)); const mine = [...new Set((Array.isArray(body.tags) ? body.tags : []).map(String))].filter((x) => known.has(x));
+      adminTagsCache = { tags: t.tags, of: { ...t.of, [tagsMatch[1]]: mine } }; await pointStore.setWorldValue('adminTags', adminTagsCache); return mine; });
+    return sendJson(res, 200, { ok: true, tags });
   }
   // 293 관리자 구치소: POST { account, minutes | until: 'midnight' | 'forever', reason } -- on the island now: into the cell at once;
   // DELETE { account } (or POST { account, release: true }) -- let out (still owing tax and not passed today: the cell stays); GET -- who is there

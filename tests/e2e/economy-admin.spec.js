@@ -12,7 +12,7 @@ test('경제 값 관리: 바꾸기 확인창, 변경 이력, 되돌리기', asyn
   await page.goto('/');
   await page.locator('#adminPassword').fill(adminPassword);
   await page.getByRole('button', { name: '관리자로 입장' }).click();
-  await page.locator('#economyBox summary').click();
+  await page.locator('#adminTabs [data-tab="economy"]').click(); /* (293: its tab) */ await page.locator('#economyBox summary').click();
   const weed = page.locator('#economyTable input[data-key="item:weed"]');
   await expect(weed).toHaveAttribute('placeholder', '310');
   await weed.fill('99999');
