@@ -13,6 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.293 구치소 세금 없애기·관리자 구치소·관리자 화면 탭
+
+- 감방에서 세금 못 냄(반성문만), 관리자 구치소(1시간·자정·3일·풀 때까지 + 사유, 섬에 있으면 바로, 반성문으로 그날 나감·다음 날 다시, JSON·PG·변경 이력·[admin-jail]), 관리자 화면 탭 넷(현황·계정·섬 운영·경제), 계정 탭(검색·초성·/ 키·정렬·칩·분류 태그·한 줄 목록·상세 창), /api/admin/keys에 포인트·체납·구치소·집·태그; Codex 281~290 #5~#8(풀 계절 색, stepLook 월드 좌표, 내기 정산 재시도). 다음: G3 빛.
+
 ## v1.10.292 물고기 노점·내기 목표·메신저 사진 확대
 
 - 물고기는 백화점 1층 노점(mall:stall, `fish: true` → sellAt merchant+fisher), 물결 fisher 판매 400·「물고기 팔기」 없앰, 낚시왕은 sold의 fish_ 값 합(JSON·PG); 주민 내기 목표 = 기록의 탑 역대 1위 × 0.9/0.75/0.55(시간은 나눔, 3명 미만은 표의 쉬움 기준, 표가 한도, 서울 하루 한 번, 내기에 박힘), 창에 「역대 최고 · 나는」; 메신저 사진 1~5배(두 손가락·두 번 톡 2.5배·휠·「− 100% +」, 끌기 한도, 넘기면 1배, public/messenger-zoom.js). 다음: 293 구치소·관리자·Codex 281~290 #5~#8.
@@ -20,7 +24,3 @@
 ## v1.10.291 Codex 281~290 빠른 고침
 
 - 풀 칸 InstancedMesh 구를 모든 잎으로 잰 뒤 count 0(three 0.186은 count만 재서 빈 구 → 칸이 잘려 안 보임), 섞기 끝 fill 앞에 그 배치 entryMatrix, 섞기 메시 감싼 geometry의 lodFade 버퍼만 정리, 자동 화질은 머무는 동안에도 9초 느리면 내림. 시험: fp G1 구 반지름, island-assets fillSame 0. 다음: 1.10.292 물고기 노점·내기 목표·메신저 사진 확대.
-
-## v1.10.290 High/Low 바뀜 부드럽게
-
-- 0.4초 4×4 점무늬 섞기(투명 아님, 인스턴스 lodFade 속성·혼자 LOD·사람 재질 복사본), 거리 1.5배, 그림자 그리는 항목 35 m 한도; 자동 화질 qualityGovernor(느림 9초 내림, 60초 올림, 내린 뒤 2분 막음, 5분 두 번 → 10분 머묾), 풀 1.5초 높이 0↔1·땅 무늬 섞기, 하루 한 번 알림, 문제 기록 화질 단계·auto/fixed·10분 바뀜 수. 성능 「중간」 288 대비 −6~+6%. 다음: 291 물고기 1층 가게, 주민 내기 목표.
