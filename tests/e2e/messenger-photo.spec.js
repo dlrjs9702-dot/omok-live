@@ -125,7 +125,12 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
       const box = await page.locator('#messengerForm').boundingBox(); expect(box.y >= 0 && box.y + box.height <= page.viewportSize().height + 1, JSON.stringify(box)).toBe(true);
     } /* (v1.10.286 사용자: a phone's keypad not up on entering; a PC types at once) */
     const panel = page.locator('#messengerEmoji'); const cells = panel.locator('.messengerStickerCell');
-    await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeVisible(); await expect(cells).toHaveCount(24);
+    await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeVisible();
+    /* (v1.10.298 주민별 이모티콘: the name chips, 28 islanders (no 「최근」 yet) -- 봄이 first, her 8; 해송 chosen: his 8, kept after the panel again) */
+    const chips = panel.locator('.messengerChip'); await expect(chips).toHaveCount(28); await expect(chips.first()).toHaveText('봄이'); await expect(chips.first()).toHaveAttribute('aria-selected', 'true'); await expect(cells).toHaveCount(8);
+    await chips.nth(1).click(); await expect(chips.nth(1)).toHaveAttribute('aria-selected', 'true'); await expect(cells).toHaveCount(8); await expect(cells.first()).toHaveAttribute('data-id', /_haesong$/);
+    await shot(page, 'emoji-chips');
+    await page.locator('#messengerEmojiBtn').click(); await page.locator('#messengerEmojiBtn').click(); await expect(panel.locator('.messengerChip[aria-selected="true"]')).toHaveText('해송');
     if (isMobile) { /* (v1.10.286 사용자 「보낸 후 닫을 수가 없어」: sent, then closed by its ✕, the 😊, the box (keypad up), the list, the phone's back -- the phone's whole part) */
       const btn = page.locator('#messengerEmojiBtn'); await cells.nth(3).tap(); await cells.nth(3).tap(); await expect(page.locator('#messengerMessages .messengerSticker img')).toHaveCount(1); await shot(page, 'emoji-sent-open');
       await page.locator('#messengerEmojiClose').tap(); await expect(panel).toBeHidden(); await expect(btn).toHaveAttribute('aria-expanded', 'false'); await shot(page, 'emoji-sent-closed');
@@ -147,16 +152,17 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
       await page.setViewportSize(size);
     }
     // pressed once: large, nothing sent; pressed again: sent, a picture with no bubble
-    await cells.nth(16).click(); await expect(page.locator('#messengerEmojiPreview')).toBeVisible(); await shot(page, 'emoji-sticker');
+    await panel.locator('.messengerChip', { hasText: '한들' }).click(); const thanks = panel.locator('.messengerStickerCell[data-id="islanders1/thanks_handeul"]'); /* (298: 「고마워요」 under 한들's chip) */
+    await thanks.click(); await expect(page.locator('#messengerEmojiPreview')).toBeVisible(); await shot(page, 'emoji-sticker');
     await expect(page.locator('#messengerMessages .chatMessage.mine')).toHaveCount(1);
-    await cells.nth(16).click(); await expect(page.locator('#messengerEmojiPreview')).toBeHidden();
+    await thanks.click(); await expect(page.locator('#messengerEmojiPreview')).toBeHidden();
     const sent = page.locator('#messengerMessages .chatMessage.mine .messengerSticker img'); await expect(sent).toHaveCount(1);
     await expect(page.locator('#messengerMessages .chatMessage.pending')).toHaveCount(0, { timeout: 10000 });
     await expect.poll(() => sent.evaluate((im) => im.complete && im.naturalWidth > 0)).toBe(true);
     expect(await sent.evaluate((im) => Math.round(im.getBoundingClientRect().width))).toBe(isMobile ? 110 : 120);
     expect(await page.locator('#messengerMessages .chatMessage.mine .messengerSticker').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
-    // the last used on top: 최근 one, then the 24
-    await expect(panel.locator('.messengerEmojiHead').first()).toHaveText('최근'); await expect(cells).toHaveCount(25);
+    // the last used: a 「최근」 chip first now (298), its one
+    await expect(chips.first()).toHaveText('최근'); await expect(chips).toHaveCount(29); await chips.first().click(); await expect(cells).toHaveCount(1); await expect(cells.first()).toHaveAttribute('data-id', 'islanders1/thanks_handeul');
     // the other side: the picture, and the list's line in words
     const them = b.page; await them.reload(); await expect(them.locator('#messengerRoomList button', { hasText: '이모티콘방' })).toContainText('(이모티콘) 고마워요'); await shot(them, 'emoji-room-list');
     await them.locator('#messengerRoomList button', { hasText: '이모티콘방' }).click();

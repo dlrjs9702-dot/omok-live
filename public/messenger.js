@@ -340,7 +340,13 @@
   // ---- v1.10.279 이모티콘 (notes docs/messenger-emoticons-20261108.md): the 😊 panel over the box, PC and phone alike --
   // 「이모티콘」 (섬 친구들 1, 4 a row: pressed, large; pressed again, sent -- alone), 「그림 글자」 (6 groups, put in the box
   // at the cursor: a text line), the last 8 of each on top (this device's, never needed)
-  const STICKERS = fetch('/messenger/stickers/stickers.json', { cache: 'default' }).then((r) => r.json()).then((d) => new Map(d.stickers.map((s) => [s.id, s]))).catch(() => new Map());
+  const STICKER_DATA = fetch('/messenger/stickers/stickers.json', { cache: 'default' }).then((r) => r.json()).catch(() => ({ packs: [], stickers: [] }));
+  const STICKERS = STICKER_DATA.then((d) => new Map((d.stickers || []).map((s) => [s.id, s])));
+  // v1.10.298 주민별 이모티콘 (notes docs/asset-order-114-stickers-by-resident.md 4, assets 114): over the cells a row of name
+  // chips -- 「최근」 · 봄이 · 해송 · … (the islanders' order, a small face each), slid sideways; a chip's 8 under it (4 × 2,
+  // a phone too); the last chip kept on this device
+  const RESIDENTS = STICKER_DATA.then((d) => d.packs?.[0]?.residents || []);
+  const chipStore = keep(localStorage, 'gc.messengerStickerChip');
   function stickerImg(id, alt) {
     const img = document.createElement('img'); img.className = 'messengerStickerImg'; img.alt = String(alt || '').replace(/^\(이모티콘\) /, ''); img.decoding = 'async'; img.addEventListener('load', keepEnd);
     // (v1.10.281 움직이는 이모티콘: in the room its moving picture -- the panel keeps the still ones (a phone's weight); still
@@ -363,11 +369,20 @@
   async function drawEmoji() {
     for (const b of emoji.querySelectorAll('[role="tab"]')) b.setAttribute('aria-selected', String(b.dataset.tab === emojiTab));
     if (emojiTab === 'sticker') {
-      const m = await STICKERS; if (emojiTab !== 'sticker') return;
+      const [m, people] = await Promise.all([STICKERS, RESIDENTS]); if (emojiTab !== 'sticker') return;
       const pickS = (s) => { const im = document.createElement('img'); im.src = `/messenger/stickers/${s.file}`; im.alt = ''; im.loading = 'lazy';
         const b = cell(im, s.text, () => (chosenSticker?.id === s.id ? sendSticker(s) : showPreview(s)), 'messengerStickerCell'); b.dataset.id = s.id; b.setAttribute('aria-pressed', String(chosenSticker?.id === s.id)); return b; }; // (its id: the chosen one marked)
       const recent = recentOf('sticker').map((id) => m.get(id)).filter(Boolean);
-      emojiBody.replaceChildren(...(recent.length ? section('최근', recent.map(pickS), 'messengerStickerGrid') : []), ...section('섬 친구들 1', [...m.values()].map(pickS), 'messengerStickerGrid'));
+      let chip = chipStore.get(); if (chip !== 'recent' && !people.some((p) => String(p.n) === chip)) chip = recent.length ? 'recent' : String(people[0]?.n ?? 'recent'); if (chip === 'recent' && !recent.length && people.length) chip = String(people[0].n);
+      const row = document.createElement('div'); row.className = 'messengerChipRow'; row.setAttribute('role', 'tablist'); row.setAttribute('aria-label', '주민');
+      const chipBtn = (key, name, icon) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'messengerChip'; b.dataset.chip = key; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(key === chip));
+        if (icon) { const face = document.createElement('span'); face.className = 'messengerChipFace'; const im = document.createElement('img'); im.src = `/messenger/stickers/${icon}`; im.alt = ''; im.loading = 'lazy'; face.append(im); b.append(face); } b.append(name); /* (총괄 #448: the 「안녕」 picture's top only -- the face, not its words) */
+        b.addEventListener('click', () => { chipStore.set(key); showPreview(null); drawEmoji(); }); return b; };
+      if (recent.length) row.append(chipBtn('recent', '최근'));
+      row.append(...people.map((p) => chipBtn(String(p.n), p.name, p.icon)));
+      const list = chip === 'recent' ? recent : [...m.values()].filter((s) => String(s.n) === chip);
+      const grid = document.createElement('div'); grid.className = 'messengerStickerGrid'; grid.append(...list.map(pickS));
+      emojiBody.replaceChildren(row, grid); const on = row.querySelector('[aria-selected="true"]'); if (on) row.scrollLeft = Math.max(0, on.offsetLeft - 8); /* (the chosen chip in sight -- the row alone scrolled, never the page) */
     } else {
       showPreview(null);
       const pickG = (g) => cell(g, g, () => putGlyph(g), 'messengerGlyph'); const recent = recentOf('glyph');
