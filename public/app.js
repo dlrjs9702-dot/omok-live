@@ -3193,7 +3193,7 @@
   }
   // R4 구치소 반성문: in and out at its doors; one owing the tax is put in its cell by the server (the first pose of a visit:
   // jailedBy). The warden's talk: [시작] (his sentence over his head, 20 s a ring; typed into the island chat, his answer
-  // comes back with the chat -- jailAnswer), [지금 세금 내기]; to an onlooker, how many passed today. The board: the day's.
+  // comes back with the chat -- jailAnswer) -- the only way out (293: no paying from the cell); to an onlooker, how many passed today. The board: the day's.
   let jailBusy = false; let jailState = null; let essayTimer = null; let essayGen = 0;
   async function jailDoor(entering) {
     if (jailBusy) return; jailBusy = true;
@@ -3220,8 +3220,11 @@
     const say = document.createElement('p'); say.className = 'lostRequestLine'; const row = wardenCard; row.replaceChildren();
     const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); return b; };
     if (s.inmate === true) {
-      say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
-      button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
+      /* (293: one the administrator sent -- its reason and time; out by the essay as anyone) */
+      const left = s.admin ? (s.admin.until == null ? '풀어 줄 때까지' : (() => { const m = Math.max(1, Math.round((s.admin.until - Date.now()) / 60000)); return m < 60 ? `${m}분` : m < 1440 ? `${Math.round(m / 60)}시간` : `${Math.round(m / 1440)}일`; })()) : '';
+      const why = s.admin ? `관리자 판단으로 들어와 있어요 · 사유: ${s.admin.reason} · 남은 시간 ${left}. ` : '세금이 밀렸군요. ';
+      say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `${why}제가 말하는 문장을 채팅으로 똑같이 쓰면 오늘은 나갈 수 있어요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.${s.debt > 0 ? ' 세금은 나가서 관공서 세금 창구에서 내요.' : ''}`;
+      button('시작', () => startEssay());
     } else { say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`; if (s.inmate !== true) row.append(...fixedTalk(22)); } // (v1.10.234: his own talk too)
     lostCard.replaceChildren(say, row); openTalk('김우성'); // (사용자 2026-10-26: his name)
   }
@@ -3240,14 +3243,6 @@
     if (!j) return;
     if (!j.passed) { showEssay(j, j.say); return; }
     stopEssay(); plaza.controller?.wardenSay?.(j.say, 0); refreshJail(); showToast('반성문 통과! 철창이 열렸어요.');
-  }
-  async function payFromJail() {
-    try {
-      const out = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID() }) });
-      closeIslandWindows(); loadPoints(); refreshPlazaAvatar();
-      showToast(!out.paid ? '낼 포인트가 없습니다.' : out.debt > 0 ? `${Number(out.paid).toLocaleString('ko-KR')}P 냈어요. 남은 체납 ${Number(out.debt).toLocaleString('ko-KR')}P — 반성문은 그대로예요.` : '세금을 다 냈어요. 철창이 열렸어요.');
-      if (!(out.debt > 0)) { stopEssay(); plaza.controller?.wardenSay?.('다 내셨군요. 나가셔도 좋습니다.', 0); } await refreshJail();
-    } catch (error) { showToast(error.message); }
   }
   const jailBoardCard = document.createElement('div'); jailBoardCard.className = 'goodCard'; jailBoardCard.id = 'jailBoardCard';
   async function openJailBoard() {
@@ -4070,7 +4065,7 @@
         const def = document.createElement('small'); def.textContent = `기본 ${d.def.toLocaleString('ko-KR')}`; row.append(name, input, def); f.append(row); }
       return f; }));
     byId('economyHistory').replaceChildren(...v.history.slice(0, 30).map((h, i) => { const li = document.createElement('li'); li.textContent = `${new Date(h.at).toLocaleString('ko-KR')} · ${h.label}: ${h.before.toLocaleString('ko-KR')} → ${h.after.toLocaleString('ko-KR')} `;
-      const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost'; back.textContent = '되돌리기'; back.addEventListener('click', () => saveEconomy({ [h.key]: h.before === v.defs.find((d) => d.key === h.key)?.def ? null : h.before })); li.append(back); return li; }));
+      if (h.key === 'jail') return li; /* (293: a jail line -- nothing to put back) */ const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost'; back.textContent = '되돌리기'; back.addEventListener('click', () => saveEconomy({ [h.key]: h.before === v.defs.find((d) => d.key === h.key)?.def ? null : h.before })); li.append(back); return li; }));
   }
   async function saveEconomy(changes) {
     const keys = Object.keys(changes); if (!keys.length) { showToast('바뀐 값이 없습니다.'); return; }
@@ -5568,7 +5563,7 @@
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
-        if (data.jail) jailedBy(data); // R4: put in the 구치소's cell
+        if (data.jail) { jailedBy(data); if (jailState && data.jail.inmate !== jailState.inmate) refreshJail(); } // R4: put in the 구치소's cell (293: let out by the administrator -- seen at once)
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();
         const waiting = plaza.controller?.platform?.();

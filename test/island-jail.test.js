@@ -67,11 +67,45 @@ test('구치소 서버: 체납자는 철창 안에서 시작, 반성문 3문장 
   assert.equal((await req('/api/island/jail/leave', poor, {})).data.space, 'island');
   await req('/api/plaza/leave', poor, {});
   assert.equal((await req('/api/plaza/state', poor, { x: gate.x, z: gate.z, yaw: 0 })).data.jail, null, '통과는 그날 하루');
-  // 「지금 세금 내기」: paid in full from the cell, it opens
+  // (293 사용자 「구치소에서 세금 납부하는 거 없애고」) no paying from the cell: its way out is the essay
   await req('/api/test/jail', newbie, { veteran: true }); await req('/api/plaza/leave', newbie, {});
   assert.equal((await req('/api/plaza/state', newbie, { x: gate.x, z: gate.z, yaw: 0 })).data.jail.inmate, true);
   const key = (await req('/api/admin/keys', server.admin)).data.keys.find((k) => k.label === '새내기');
   await req(`/api/admin/keys/${key.id}/points`, server.admin, { amount: 300000, category: 'other', memo: '시험', requestId: crypto.randomUUID() });
-  const paid = (await req('/api/island/tax', newbie, { requestId: 'jail-pay-0001' })).data; assert.equal(paid.debt, 0);
-  assert.equal((await req('/api/island/jail', newbie)).data.inmate, 'free');
+  assert.equal((await req('/api/island/tax', newbie, { requestId: 'jail-pay-0001' })).data.error, 'TOO_FAR');
+  assert.equal((await req('/api/island/jail', newbie)).data.inmate, true);
+});
+
+// 293 관리자 구치소 (notes docs/admin-jail-292-20261109.md 2절)
+test('관리자 구치소: 보내면 섬에서 바로 감방, 사유 필수, 반성문으로 그날 나감·다음 날 다시, 풀어 주기·기간 끝, 체납과 겹치면 반성문 하나', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'jail-admin-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('보낼사람')); const gate = T.facilityDoor('jail');
+  const id = (await req('/api/admin/keys', server.admin)).data.keys.find((k) => k.label === '보낼사람').id; const account = `guest:${id}`;
+  assert.equal((await req('/api/plaza/state', a, { x: gate.x, z: gate.z, yaw: 0 })).data.jail, null, '빚 없고 첫날: 안 갇힘');
+  assert.equal((await req('/api/admin/jail', a, { account, minutes: 60, reason: '시험' })).status, 403, '관리자만');
+  assert.equal((await req('/api/admin/jail', server.admin, { account, minutes: 60, reason: '  ' })).data.error, 'NO_REASON');
+  const sent = (await req('/api/admin/jail', server.admin, { account, minutes: 60, reason: '도배' })).data;
+  assert.deepEqual(sent.jailed.map((j) => [j.account, j.name, j.reason]), [[account, '보낼사람', '도배']]); assert.ok(sent.jailed[0].until > Date.now() + 59 * 60000);
+  const now = (await req('/api/plaza/state', a, { x: gate.x, z: gate.z, yaw: 0 })).data; assert.equal(now.jail.inmate, true, '섬에 있으면 바로'); assert.ok(J.inCell(now.x, now.z));
+  const view = (await req('/api/island/jail', a)).data; assert.deepEqual([view.admin.reason, view.inmate], ['도배', true]);
+  assert.equal((await req('/api/island/jail/leave', a, {})).data.error, 'JAILED');
+  assert.ok((await req('/api/admin/economy', server.admin)).data.history.some((h) => h.key === 'jail' && /보낼사람/.test(h.label)), '변경 이력');
+  // the essay frees it that day; the next day (its time still running) the cell again
+  const essay = async () => { let s = (await req('/api/island/jail/start', a, {})).data; for (;;) { const r = (await req('/api/lobby/chat', a, { text: s.sentence })).data.jail; if (r.passed) return r; s = r; } };
+  assert.equal((await essay()).passed, true); assert.equal((await req('/api/island/jail', a)).data.inmate, 'free');
+  await req('/api/plaza/leave', a, {}); assert.equal((await req('/api/plaza/state', a, { x: gate.x, z: gate.z, yaw: 0 })).data.jail, null, '그날은 다시 안 갇힘');
+  await req('/api/test/jail', a, { passedDay: '2000-01-01' }); await req('/api/plaza/leave', a, {});
+  assert.equal((await req('/api/plaza/state', a, { x: gate.x, z: gate.z, yaw: 0 })).data.jail.inmate, true, '다음 날 다시');
+  // let out by the administrator: the cell opens at once
+  assert.deepEqual((await req('/api/admin/jail', server.admin, { account, release: true })).data.jailed, []);
+  assert.equal((await req('/api/plaza/state', a, { x: gate.x, z: gate.z, yaw: 0 })).data.jail.inmate, 'free');
+  // owing tax too: one essay frees both that day; its time over, only the tax
+  await req('/api/admin/jail', server.admin, { account, until: 'forever', reason: '도배' }); await req('/api/test/jail', a, { debt: 30000, veteran: true, passedDay: '2000-01-01' });
+  const owe = (await req('/api/admin/jail', server.admin)).data.jailed[0]; assert.equal(owe.until, null);
+  await req('/api/island/jail/leave', a, {}).catch(() => {}); await req('/api/plaza/leave', a, {});
+  assert.equal((await req('/api/plaza/state', a, { x: gate.x, z: gate.z, yaw: 0 })).data.jail.inmate, true);
+  assert.equal((await essay()).passed, true); assert.equal((await req('/api/island/jail', a)).data.inmate, 'free', '둘 다 그날 풀림');
+  await req('/api/test/jail', a, { adminExpire: true });
+  assert.deepEqual((await req('/api/admin/jail', server.admin)).data.jailed, [], '기간 끝');
 });

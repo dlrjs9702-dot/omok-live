@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, expectNoScriptError, spaceOn } = require('./skin-support');
+const { shopper, post, get, expectNoScriptError, spaceOn, adminToken } = require('./skin-support');
 test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
 // R4 구치소 반성문: one owing the tax comes onto the island in the cell, the warden's talk open; [시작] -- his sentence over
@@ -14,7 +14,7 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
   const inCell = () => page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandJail.inCell(d.x, d.z); });
   expect(await inCell()).toBe(true);
   await expect(page.locator('#wardenCard')).toBeVisible({ timeout: 15000 });
-  await expect(page.locator('#wardenCard')).toContainText('지금 세금 내기 · 20,000P');
+  await expect(page.locator('#plazaDialog')).toContainText('세금은 나가서 관공서 세금 창구에서'); await expect(page.locator('#wardenCard button', { hasText: '세금' })).toHaveCount(0); /* (293: no paying from the cell) */
   await page.locator('#wardenCard button', { hasText: '시작' }).click();
   // each sentence: over the warden's head, typed into the island chat
   for (let k = 0; k < 3; k += 1) {
@@ -43,6 +43,14 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
     await page.waitForTimeout(400); await spaceOn(page, 'jail:exit', isMobile); await page.waitForTimeout(800);
     return page.evaluate(() => window.PlazaDebug().space);
   }, { timeout: 30000, intervals: [300] }).toBe('island');
+  // (293 관리자 구치소) the administrator sends me: in the cell at once, the reason in the warden's talk; let out: the cell opens
+  const admin = await adminToken(request); const me = `guest:${(await get(request, '/api/admin/keys', admin)).data.keys.find((k) => k.label === (isMobile ? '반성문m' : '반성문')).id}`;
+  await post(request, '/api/test/jail', who.token, { debt: 0, passedDay: '2000-01-01' }); /* (today's essay as not yet passed; no tax) */
+  expect((await post(request, '/api/admin/jail', admin, { account: me, minutes: 60, reason: '시험 보냄' })).status).toBe(200);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 30000 }).toBe('jail');
+  await expect(page.locator('#plazaDialog')).toContainText('관리자 판단으로 들어와 있어요 · 사유: 시험 보냄', { timeout: 15000 });
+  expect((await post(request, '/api/admin/jail', admin, { account: me, release: true })).data.jailed.some((j) => j.account === me)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().jail().inmate), { timeout: 15000 }).toBe('free');
   await expectNoScriptError(page);
   await who.context.close();
 });

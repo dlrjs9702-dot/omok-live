@@ -1630,9 +1630,9 @@ function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
   const weekly = weeklyTitleOf(equipped?.avatar?.title); if (weekly) shown.title = holdsWeekly(weekly[0], account) ? `${weekly[1].solo ? '🏆 ' : ''}${weekly[1].name}` : null; // v1.10.89 낚시왕 · v1.10.90 제초왕 (v1.10.251 §3: 기록의 탑's with a small 🏆)
   if (birthdays.today.has(account)) shown.title = Together.BIRTHDAY_TITLE; // B 47 생일: the day's title
-  if (!(taxDebt.get(account) > 0)) return shown;
+  const owes = taxDebt.get(account) > 0; if (!owes && !adminJailNow(account)) return shown; /* (293: one the administrator sent wears it too) */
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
-  return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
+  return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: owes };
 }
 // R4 구치소 (gamecenter-notes IDEAS 「구치소 — 체납자 반성문」): one owing the 주민세 starts each visit to the island in the
 // cell until that Seoul day's essay is passed (questDoc 'jail' { day }) or all is paid; admins and an account's first day
@@ -1647,10 +1647,32 @@ const jailEssays = new Map(); // token -> { day, sentences, i, until }
 const jailLog = { day: null, list: [], passed: 0 }; // the day's essays as typed (ponytail: in memory, gone at a restart)
 const jailVeterans = new Set(); // (test only: accounts taken as past their first day)
 const JAIL_WARDEN = IslandCast.keeperN('warden');
+// 293 관리자 구치소 (notes docs/admin-jail-292-20261109.md 2절): an account the administrator sent -- { until (ms; null: till let
+// out), reason, by, at } in the world value 'adminJail' (JSON and PG) -- is jailed as one owing tax is: each visit in the
+// cell till that Seoul day's essay is passed (one essay frees both that day), again the next day while its time runs; never
+// an administrator. Its time running out, or 풀어 주기, ends it ([admin-jail] in the log, 변경 이력 a line).
+let adminJailCache = null;
+const adminJails = async () => (adminJailCache ||= (await pointStore.worldValue('adminJail')) || {});
+const adminJailNow = (account, now = nowMs()) => { const j = adminJailCache?.[account]; return j && (j.until == null || j.until > now) ? j : null; };
+async function adminJailOf(account, now = nowMs()) {
+  const j = (await adminJails())[account]; if (!j) return null;
+  if (j.until != null && j.until <= now) { await adminJailSet(account, null, 'end'); return null; }
+  return j;
+}
+async function adminJailSet(account, rec, why, name = '') {
+  let before = null; await worldEdit(async () => { const all = { ...((await pointStore.worldValue('adminJail')) || {}) }; before = all[account] || null; if (rec) all[account] = rec; else delete all[account]; await pointStore.setWorldValue('adminJail', all); adminJailCache = all; });
+  const when = (r) => (!r ? '-' : r.until == null ? `풀어 줄 때까지 · ${r.reason}` : `${new Date(r.until + 9 * 3600000).toISOString().slice(5, 16).replace('T', ' ')}까지 · ${r.reason}`);
+  console.log(`[admin-jail] ${why} ${account}${rec ? ` until=${rec.until == null ? 'forever' : new Date(rec.until).toISOString()} reason=${JSON.stringify(rec.reason)}` : ''}`);
+  await worldEdit(async () => { const saved = (await pointStore.worldValue('economy')) || {}; await pointStore.setWorldValue('economy', { ...saved, history: [{ at: nowMs(), by: why === 'end' ? '서버' : '관리자', key: 'jail', label: `구치소 · ${name || account}`, before: when(before), after: why === 'end' ? '기간 끝' : when(rec) }, ...(saved.history || [])].slice(0, 200) }); });
+  refreshTaxLooks();
+}
+// one put in the cell now (a first pose, or the administrator's word while on the island): out of any other room
+function jailPut(token) { freeSeat(token); for (const s of [storeInside, furnitureInside, petshopInside, fashionInside, townhallInside, museumInside]) s.delete(token); homeInside.delete(token); jailFreed.delete(token); jailInside.add(token); jailInmates.add(token); plazaDirty = true; }
 async function jailable(session, account) {
-  if (session.role === 'admin' || !(taxDebt.get(account) > 0)) return false;
+  if (session.role === 'admin') return false;
+  const admin = await adminJailOf(account); if (!admin && !(taxDebt.get(account) > 0)) return false;
   const day = kstDate(nowMs()); const key = session.guestKeyId ? await accessStore.get(session.guestKeyId) : null;
-  if (!jailVeterans.has(account) && key?.createdAt && kstDate(Date.parse(key.createdAt)) === day) return false;
+  if (!admin && !jailVeterans.has(account) && key?.createdAt && kstDate(Date.parse(key.createdAt)) === day) return false; /* (an account's first day: not for tax) */
   return (await pointStore.questDoc(account, 'jail')).doc.day !== day;
 }
 function jailLogNow(now = nowMs()) { const day = kstDate(now); if (jailLog.day !== day) Object.assign(jailLog, { day, list: [], passed: 0 }); return jailLog; }
@@ -5478,7 +5500,7 @@ async function requestHandler(req, res) {
     if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token)) {
       const owes = await jailable(session, account);
       if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
-      if (owes) { freeSeat(session.token); jailInside.add(session.token); jailInmates.add(session.token); }
+      if (owes) jailPut(session.token);
     }
     // (사용자 제보 2026-10-25, 휴대폰: the visit dropped while I stood inside -- the stream gone a while, the phone put away --
     // a first pose from inside a room puts me back in it: the 백화점's floors, the open-to-all rooms off the island, and the
@@ -5746,7 +5768,7 @@ async function requestHandler(req, res) {
       freeSeat(session.token); jailInside.add(session.token);
     } else {
       const exit = IslandJail.world(R.exit.lx, R.exit.lz);
-      if (jailInmates.has(session.token)) return sendError(res, 409, 'JAILED', '반성문을 마치거나 세금을 내야 나갈 수 있어요.');
+      if (jailInmates.has(session.token)) return sendError(res, 409, 'JAILED', '오늘 반성문을 마쳐야 나갈 수 있어요.'); /* (293: no paying out of it) */
       if (!jailInside.has(session.token) || Math.hypot(at.x - exit.x, at.z - exit.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       jailInside.delete(session.token); jailFreed.delete(session.token);
     }
@@ -5760,7 +5782,8 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/jail' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const log = jailLogNow(); const e = jailEssays.get(session.token);
-    return sendJson(res, 200, { ok: true, inmate: jailMode(session.token), essay: e ? essayView(e) : null, passed: log.passed, log: jailInside.has(session.token) ? log.list : [], debt: taxDebt.get(account) || 0, level: await affinityLevelOf(account, JAIL_WARDEN) });
+    const admin = await adminJailOf(account); /* (293: the administrator's reason and time, for the cell's notice) */
+    return sendJson(res, 200, { ok: true, inmate: jailMode(session.token), essay: e ? essayView(e) : null, passed: log.passed, log: jailInside.has(session.token) ? log.list : [], debt: taxDebt.get(account) || 0, admin: admin ? { reason: admin.reason, until: admin.until } : null, level: await affinityLevelOf(account, JAIL_WARDEN) });
   }
   if (pathname === '/api/island/jail/start' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
@@ -5775,6 +5798,8 @@ async function requestHandler(req, res) {
     if (body.veteran === true) jailVeterans.add(pointAccountForSession(session));
     if (Number.isSafeInteger(body.debt)) { taxDebt.set(pointAccountForSession(session), body.debt); refreshTaxLooks(); }
     const e = jailEssays.get(session.token); if (body.expire === true && e) e.until = nowMs() - 1;
+    const acc = pointAccountForSession(session); if (typeof body.passedDay === 'string') await pointStore.questApply(acc, 'jail', () => ({ doc: { day: body.passedDay } })); /* (293: the essay passed that day -- "yesterday") */
+    if (body.adminExpire === true) { const j = (await adminJails())[acc]; if (j) await adminJailSet(acc, { ...j, until: nowMs() - 1 }, 'test'); } /* (293: its time over) */
     return sendJson(res, 200, { ok: true });
   }
   // 묶음 2·2-2: the 백화점's lift -- from in front of the floor's own to the floor asked (v1.10.211: 1층 잡화·생활, 2층 옷·꾸미기, 3층 가구, 4층 옥상 펫샵)
@@ -6522,19 +6547,17 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); const b = await pointStore.taxBills(account); return sendJson(res, 200, { ok: true, debt: b.debt, bills: b.bills, today: kstDate(nowMs()), dueDays: PointStore.TAX_DUE_DAYS, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
     const at = plazaPresence.get(session.token);
-    const jailed = jailInmates.has(session.token); // (R4: or 「지금 세금 내기」 from the cell)
-    if (!jailed && !atDesk(session, at, 'tax')) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
+    if (!atDesk(session, at, 'tax')) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.'); // (293 사용자 「구치소에서 세금 납부하는 거 없애고」: not from the cell -- its way out is the essay)
     const body = await parseJson(req);
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    // (주민세 고지서: at the window, the bills -- all, or the days asked -- and the 체납 too, whole or not at all; the cell's
-    // 「지금 세금 내기」 pays the 체납 as before, as much as there is)
-    const bills = !jailed && (body.all === true || Array.isArray(body.days) || body.debt === true);
+    // (주민세 고지서: at the window, the bills -- all, or the days asked -- and the 체납 too, whole or not at all; none asked: the
+    // 체납, as much as there is)
+    const bills = body.all === true || Array.isArray(body.days) || body.debt === true;
     const days = Array.isArray(body.days) ? body.days.filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0, 40) : null;
     const out = bills ? await pointStore.taxBillPay(account, body.requestId, nowMs(), { days: body.all === true ? null : days || [], debt: body.all === true || body.debt === true }) : await pointStore.taxPay(account, body.requestId, nowMs());
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '지갑과 예금을 합쳐도 모자라요. 나눠서는 낼 수 없어요.', { debt: out.debt, bills: out.bills });
     if (out.reason === 'none') return sendError(res, 409, 'NOTHING_TO_PAY', '낼 고지서가 없어요.', { debt: out.debt, bills: out.bills });
     taxDebt.set(account, out.debt);
-    if (jailed && !(out.debt > 0)) jailFree(session.token); // all paid: the cell opens (some: the essay still)
     if (out.applied) { notifyPointsChanged([account]); refreshTaxLooks(); }
     return sendJson(res, 200, { ok: true, ...out });
   }
@@ -8516,6 +8539,29 @@ async function requestHandler(req, res) {
     const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id), issues: writers.has(key.id) }));
     return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file', entryKeys: entryKeysOn });
   }
+  // 293 관리자 구치소: POST { account, minutes | until: 'midnight' | 'forever', reason } -- on the island now: into the cell at once;
+  // DELETE { account } (or POST { account, release: true }) -- let out (still owing tax and not passed today: the cell stays); GET -- who is there
+  if (pathname === '/api/admin/jail' && ['GET', 'POST', 'DELETE'].includes(req.method)) {
+    if (!requireAdmin(req, res)) return;
+    if (req.method !== 'GET') {
+      const body = await parseJson(req); const account = String(body.account || ''); const id = account.startsWith('guest:') ? account.slice(6) : '';
+      const key = /^[0-9a-f-]{36}$/i.test(id) ? await accessStore.get(id) : null; if (!key) return sendError(res, 404, 'KEY_NOT_FOUND', '계정을 찾을 수 없습니다.');
+      const name = String(key.label || '').slice(0, 24);
+      if (req.method === 'POST' && body.release !== true) {
+        if (key.role === 'admin') return sendError(res, 400, 'ADMIN_ACCOUNT', '관리자 계정은 보낼 수 없어요.');
+        const reason = String(body.reason || '').trim().slice(0, 60); if (!reason) return sendError(res, 400, 'NO_REASON', '사유를 적어 주세요.');
+        const now = nowMs(); const until = body.until === 'forever' ? null : body.until === 'midnight' ? Date.parse(`${kstDate(now + 86400000)}T00:00:00+09:00`) : Number.isFinite(Number(body.minutes)) && Number(body.minutes) >= 1 && Number(body.minutes) <= 60 * 24 * 30 ? now + Number(body.minutes) * 60000 : NaN;
+        if (Number.isNaN(until)) return sendError(res, 400, 'BAD_TIME', '기간을 골라 주세요.');
+        await adminJailSet(account, { until, reason, by: '관리자', at: now }, 'send', name);
+        for (const [token, s] of sessions) if (pointAccountForSession(s) === account && plazaPresence.has(token) && !jailInmates.has(token) && !trainRiders.has(token) && !taxiRides.has(token) && await jailable(s, account)) jailPut(token); /* (on the island: at once -- riding, at the next visit) */
+      } else {
+        await adminJailSet(account, null, 'release', name);
+        for (const [token, s] of sessions) if (pointAccountForSession(s) === account && jailInmates.has(token) && !(await jailable(s, account))) jailFree(token);
+      }
+    }
+    const all = await adminJails(); const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label])); const now = nowMs();
+    return sendJson(res, 200, { ok: true, jailed: Object.entries(all).filter(([, j]) => j.until == null || j.until > now).map(([account, j]) => ({ account, name: labels.get(account) || '', ...j })) });
+  }
   // v1.10.268 (사용자 「아이디 없는 계정은 정리해」): every account with no login id, not yet stopped, stopped at once -- their points,
   // home and records kept (복구 brings one back); only when the administrator presses it, never by the server itself
   if (pathname === '/api/admin/keys/revoke-no-id' && req.method === 'POST') {
@@ -9121,7 +9167,7 @@ async function main() {
   await dalmaruMoveIn().catch((error) => console.error('달마루섬 이사 실패:', error.message)); // 5단계: once, the first start on the new island
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
-  Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
+  await adminJails(); /* (293: the administrator's jail list, for the outfit at once) */ Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
   await projectsNow().catch((error) => console.error('섬 가꾸기 상태 읽기 실패:', error.message)); // v1.10.222 (after the goals are known)
   for (const [account, n] of Object.entries((await pointStore.worldValue('bagSlots')) || {})) bagSlots.set(account, n); // v1.10.195
   // v1.10.91 변신 따로 판매 A안: the set owners get their transformation (idempotent; new owners of a whole set after this buy it)
