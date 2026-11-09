@@ -405,11 +405,11 @@ const VENDOR_FILES = {
   '/vendor/three/addons/utils/SkeletonUtils.js': path.join(THREE_ADDONS, 'utils', 'SkeletonUtils.js'),
   // v1.10.26: the Meshopt decoder for the pipeline's compressed models (WebAssembly inside; CSP 'wasm-unsafe-eval')
   '/vendor/three/addons/libs/meshopt_decoder.module.js': path.join(THREE_ADDONS, 'libs', 'meshopt_decoder.module.js'),
-  // v1.10.276 그래픽 시범 2차: ambient occlusion and a soft bloom in the pilot patch, PC 「높음」 only (island-pilot-scene.js
-  // loads them when first wanted) -- the passes and what they import
+  // v1.10.276 그래픽 시범 2차: a soft bloom outside, PC 「높음」 only (island-pilot-scene.js loads it when first wanted) -- the
+  // passes and what they import (G3 C안: the GTAO and its shaders gone)
   ...Object.fromEntries(['postprocessing/EffectComposer.js', 'postprocessing/Pass.js', 'postprocessing/ShaderPass.js', 'postprocessing/MaskPass.js', 'postprocessing/RenderPass.js',
-    'postprocessing/GTAOPass.js', 'postprocessing/UnrealBloomPass.js', 'postprocessing/OutputPass.js', 'shaders/CopyShader.js', 'shaders/GTAOShader.js', 'shaders/PoissonDenoiseShader.js',
-    'shaders/LuminosityHighPassShader.js', 'shaders/OutputShader.js', 'math/SimplexNoise.js'].map((f) => [`/vendor/three/addons/${f}`, path.join(THREE_ADDONS, ...f.split('/'))])),
+    'postprocessing/UnrealBloomPass.js', 'postprocessing/OutputPass.js', 'shaders/CopyShader.js',
+    'shaders/LuminosityHighPassShader.js', 'shaders/OutputShader.js'].map((f) => [`/vendor/three/addons/${f}`, path.join(THREE_ADDONS, ...f.split('/'))])),
 };
 // v1.10.24: served as they are -- the addons' bare 'three' resolves through the page's import map to the very module
 // URL the game imports (one Three.js instance, shared classes); no rewriting.
@@ -4456,7 +4456,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.295' });
+    return sendJson(res, 200, { ok: true, version: '1.10.296' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -9290,7 +9290,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.295 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.296 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

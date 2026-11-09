@@ -5016,7 +5016,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     step(dt);
     if (now - coverCheckedAt > 250) { coverCheckedAt = now; covered = windowCovers(); }
     if (covered && now - drawnAt < 500) return;
-    const postWant = Boolean(pilot) && quality === 2 && !pilotPhone && !pilotSoftware && !photoMode && mySpace === 'island' && globalThis.IslandPilot.inZone(me.root.position.x, me.root.position.z, 6); /* (v1.10.276 그래픽 시범 ③: PC 「높음」, in and by the patch) */
+    const postWant = Boolean(pilot) && quality === 2 && !pilotPhone && !pilotSoftware && !photoMode && mySpace === 'island'; /* (v1.10.276 그래픽 시범 ③: PC 「높음」; G3: the whole island outside, not only by the patch) */
     if (!pilot?.draw(renderer, scene, camera, postWant, dt)) renderer.render(scene, camera); drawnAt = now; draws += 1;
     if (covered) return; // (the quality is measured on frames drawn every frame)
     adaptQuality(Math.min(real, 1)); // real time, so a very slow PC steps down after 3 seconds, not 3 seconds of capped frames
@@ -5471,7 +5471,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('wheel', onWheel); renderer.domElement.removeEventListener('pointerup', onUp); renderer.domElement.removeEventListener('pointercancel', onUp);
     scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
     mats.forEach((m) => m.dispose()); vcMat.dispose(); textures.forEach((t) => t.dispose()); island.dispose(); decor.dispose(); yard.dispose(); train.dispose();
-    pilot?.dispose(); /* (v1.10.283 Codex #11: its grass, trees and the GTAO·Bloom targets -- each new scene added them again) */
+    pilot?.dispose(); /* (v1.10.283 Codex #11: its grass, trees and the bloom's targets -- each new scene added them again) */
     document.removeEventListener('pointerlockchange', onLockChange); document.removeEventListener('click', relock); document.removeEventListener('keyup', relock); /* (v1.10.281's, left behind) */
     renderer.dispose(); renderer.domElement.remove(); minimap.remove();
   }

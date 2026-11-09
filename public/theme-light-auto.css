@@ -1472,6 +1472,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagSlot .bagMenu button{border:0;background:transparent;color:var(--isle-ink)}
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagSlot .bagMenu button:is(:hover,:focus-visible){background:var(--isle-hover);outline:none}
 :root[data-theme="light"] .islandBagInfo{color:var(--isle-ink)}
+:root[data-theme="light"] .islandBagGrow{color:var(--isle-ink)}
 :root[data-theme="light"] .islandBagFoot .islandBagPoints{background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink)}
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagFoot .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagFoot .ghost.selected{background:#f0dcb6;border-color:var(--isle-tag);outline:none}

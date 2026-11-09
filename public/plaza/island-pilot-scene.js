@@ -187,30 +187,25 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   // the graphics tier (plaza-scene setTier: 0 낮음, 1 중간, 2 높음): no blades and no ground sheet, half the blades, all (총괄 276 --
   // slow phones; a quarter on 낮음 still cost as much as none). The layout is in random order: the first ones spread over the patch.
   function setQuality(q) { quality = q; } /* (G1: the cells' counts by tier and distance, stepCells -- 290 6: eased there, on 「낮음」 laid down and then dropped) */
-  // v1.10.276 ③ (PC 「높음」 only, in and by the patch): ambient occlusion (GTAO) and a soft bloom over the picture, faded in
-  // and out over a second; the passes load the first time they are wanted. draw() says whether it drew the frame.
+  // v1.10.276 ③ (PC 「높음」 only; G3: the whole island outside): a soft bloom over the picture, faded in and out over a second;
+  // the passes load the first time they are wanted. draw() says whether it drew the frame. (G3 사용자 「C안: GTAO 끄기」: the
+  // 276 GTAO is gone everywhere -- its second scene pass halved the frame rate on a mid GPU, bloom costs next to nothing)
   const ADDONS = '/vendor/three/addons/postprocessing';
-  const POST = { ao: 0.75, bloom: 0.16 };
+  const POST = { bloom: 0.16 };
   let post = null; let postLoading = false; let postMix = 0;
   async function loadPost(renderer, scene, camera) {
     postLoading = true;
     try {
-      const [{ EffectComposer }, { RenderPass }, { GTAOPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all(['EffectComposer', 'RenderPass', 'GTAOPass', 'UnrealBloomPass', 'OutputPass'].map((n) => import(`${ADDONS}/${n}.js`)));
+      const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all(['EffectComposer', 'RenderPass', 'UnrealBloomPass', 'OutputPass'].map((n) => import(`${ADDONS}/${n}.js`)));
       const size = renderer.getSize(new THREE.Vector2()); const composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      const ao = new GTAOPass(scene, camera, size.x, size.y); ao.updateGtaoMaterial({ radius: 0.5, distanceExponent: 1, thickness: 1, scale: 1 }); ao.blendIntensity = 0; composer.addPass(ao);
-      /* (its depth and normals drew a name label and the see-through ground sheet as solid -- a dark box over me: those left
-         out as it leaves out points and lines) */
-      /* ponytail: wraps GTAOPass's internal _overrideVisibility/_visibilityCache (three 0.186) -- check on a three upgrade */
-      const hide = ao._overrideVisibility.bind(ao);
-      ao._overrideVisibility = () => { hide(); scene.traverse((o) => { if (o.visible && (o.isSprite || (o.material && [].concat(o.material).some((m) => m.transparent || m.depthWrite === false)))) { o.visible = false; ao._visibilityCache.push(o); } }); };
       const bloom = new UnrealBloomPass(size.clone(), 0, 0.35, 0.92); composer.addPass(bloom);
       composer.addPass(new OutputPass());
-      post = { composer, ao, bloom, w: 0, h: 0, ratio: 0 };
+      post = { composer, bloom, w: 0, h: 0, ratio: 0 };
     } catch { post = false; } /* (not loaded: drawn as before) */
   }
-  let postForce = null; /* (tests: on/off whatever the place and tier, its strengths set -- debug().pilotPost) */
-  function setPost({ force = null, ao = POST.ao, bloom = POST.bloom } = {}) { postForce = force; POST.ao = ao; POST.bloom = bloom; }
+  let postForce = null; /* (tests: on/off whatever the place and tier, its strength set -- debug().pilotPost) */
+  function setPost({ force = null, bloom = POST.bloom } = {}) { postForce = force; POST.bloom = bloom; }
   function draw(renderer, scene, camera, wanted, dt) {
     const want = postForce ?? wanted;
     if (want && !post && !postLoading) loadPost(renderer, scene, camera);
@@ -218,7 +213,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     if (!post || postMix <= 0) return false;
     const size = renderer.getSize(new THREE.Vector2()); const ratio = renderer.getPixelRatio();
     if (size.x !== post.w || size.y !== post.h || ratio !== post.ratio) { post.w = size.x; post.h = size.y; post.ratio = ratio; post.composer.setPixelRatio(ratio); post.composer.setSize(size.x, size.y); }
-    post.ao.blendIntensity = POST.ao * postMix; post.bloom.strength = POST.bloom * postMix;
+    post.bloom.strength = POST.bloom * postMix;
     post.composer.render(dt); return true;
   }
   function dispose() { for (const one of cells) assets.unbatch?.(one); for (const key of [...cellMap.keys()]) dropCell(key); group.removeFromParent(); for (const m of made) m.dispose?.(); if (post) { for (const p of post.composer.passes) p.dispose?.(); post.composer.dispose(); } } /* (v1.10.283 Codex #11: each pass's own render targets too) */
