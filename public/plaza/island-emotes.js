@@ -64,5 +64,21 @@
     if (first || reward || topic === 'gift' || topic === 'answer') return { eyes: 'happy', mouth: 'laugh' };
     return null;
   }
-  return { LIST, BY, EXTRA, of, ACTS, BLINK, reactOf, talkFace, SAME_MS: 1000, DANCE_MS: 30000, MARK_SCALE: 1.75, MARK_UP: 0.25, NEAR: 40, REACT_R: 4, REACT_MS: 20000, TALK_FACE_MS: 1500, IDLE_MS: [120000, 240000], IDLE_NEAR: 30 };
+  // v1.10.287 얼굴이 살아 있게 (notes docs/face-life-20261108.md 2절): a line said -- the mouth to 「o」 and back every 0.12~0.18 s
+  // for its letters x 0.06 s, 0.6 s at least and 3 s at most
+  const TALK = { letter: 0.06, min: 0.6, max: 3, flip: [0.12, 0.18] };
+  const talkMs = (text) => Math.round(Math.min(TALK.max, Math.max(TALK.min, [...String(text || '')].length * TALK.letter)) * 1000);
+  // (3절) the head turned to the nearest one within 4 m -- the one I talk with, if any, alone; at most 45° aside and 15° up or
+  // down, there in 0.3 s, picked again every 0.25 s. self { x, y, z, yaw } (yaw: the body's, atan2(dx, dz)), people [{ x, y, z }]
+  // (their eyes' height) -> { yaw, pitch, who } (radians from the body's front: + to its left as the yaw goes, + up) or null
+  const LOOK = { near: 4, yaw: Math.PI / 4, pitch: Math.PI / 12, ease: 0.3, every: 0.25, cam: 15 };
+  function lookPick(self, people = [], partner = null) {
+    let who = partner; let best = Infinity;
+    if (!who) for (const p of people) { const d = Math.hypot(p.x - self.x, p.z - self.z); if (d > 0.05 && d <= LOOK.near && d < best) { best = d; who = p; } }
+    if (!who) return null;
+    const flat = Math.hypot(who.x - self.x, who.z - self.z); const turn = Math.atan2(who.x - self.x, who.z - self.z) - (self.yaw || 0);
+    const yaw = Math.atan2(Math.sin(turn), Math.cos(turn)); const pitch = Math.atan2((who.y ?? self.y) - self.y, Math.max(0.3, flat));
+    return { yaw: Math.max(-LOOK.yaw, Math.min(LOOK.yaw, yaw)), pitch: Math.max(-LOOK.pitch, Math.min(LOOK.pitch, pitch)), who };
+  }
+  return { LIST, BY, EXTRA, of, ACTS, BLINK, TALK, talkMs, LOOK, lookPick, reactOf, talkFace, SAME_MS: 1000, DANCE_MS: 30000, MARK_SCALE: 1.75, MARK_UP: 0.25, NEAR: 40, REACT_R: 4, REACT_MS: 20000, TALK_FACE_MS: 1500, IDLE_MS: [120000, 240000], IDLE_NEAR: 30 };
 }));
