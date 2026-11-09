@@ -6,7 +6,7 @@ import * as THREE from '/vendor/three/three.module.js';
 const T = globalThis.IslandTerrain; const X = globalThis.IslandTaxi;
 const SEAT = X.SEAT; // (island-taxi.js: the rider's root on the car's floor, v1.10.286)
 
-export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: a little 「빵」 over a car passing someone -- no sound)
+export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 7 tag: a name tag maker -- the stop's 「돌아오는 중」) */ // (v1.10.285 mark: a little 「빵」 over a car passing someone -- no sound)
   const group = new THREE.Group(); group.name = 'taxi'; scene.add(group);
   const made = []; const box = new THREE.BoxGeometry(1, 1, 1); made.push(box);
   const mat = (color, extra = {}) => { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...extra }); made.push(m); return m; };
@@ -15,12 +15,13 @@ export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: 
   function carStandIn() { const g = new THREE.Group(); piece(g, yellow, 1.7, 0.9, 3.2, 0, 0.75, 0); piece(g, cream, 1.5, 0.7, 1.8, 0, 1.55, -0.2); piece(g, lamp, 0.5, 0.18, 0.3, 0, 2.0, -0.2); return g; }
   function stopStandIn() { const g = new THREE.Group(); for (const x of [-1.2, 1.2]) piece(g, wood, 0.12, 2.3, 0.12, x, 1.15, -0.4); piece(g, roofMat, 2.9, 0.12, 1.4, 0, 2.35, 0); piece(g, wood, 2.2, 0.12, 0.5, 0, 0.5, -0.2); return g; }
   // a stop's sign: its words on a board over the bench, both sides
+  // (294 7: drawn again with the seconds left while its car is away -- `o.userData.say(text)`)
   function signOf(text) {
     const c = document.createElement('canvas'); c.width = 512; c.height = 96; const x = c.getContext('2d');
-    x.fillStyle = '#fff6e3'; x.fillRect(0, 0, 512, 96); x.strokeStyle = '#8a6b45'; x.lineWidth = 6; x.strokeRect(3, 3, 506, 90);
-    x.fillStyle = '#4a3828'; x.font = '700 40px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 256, 50);
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; made.push(tex); const m = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }); made.push(m);
-    const plane = new THREE.PlaneGeometry(2.6, 0.49); made.push(plane); const o = new THREE.Mesh(plane, m); o.position.y = 2.75; return o;
+    let shown = null; const say = (t) => { if (t === shown) return; shown = t; x.fillStyle = '#fff6e3'; x.fillRect(0, 0, 512, 96); x.strokeStyle = '#8a6b45'; x.lineWidth = 6; x.strokeRect(3, 3, 506, 90);
+      x.fillStyle = '#4a3828'; let px = 40; do { x.font = `700 ${px}px sans-serif`; px -= 2; } while (x.measureText(t).width > 480 && px > 14); /* (294: the seconds too -- shrunk to fit the board) */ x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(t, 256, 50); tex.needsUpdate = true; };
+    say(text); const plane = new THREE.PlaneGeometry(2.6, 0.49); made.push(plane); const o = new THREE.Mesh(plane, m); o.position.y = 2.75; o.userData.say = say; return o;
   }
   const groundY = (x, z) => T.heightAt(x, z);
   function car() {
@@ -41,28 +42,29 @@ export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: 
   }
   const stops = Object.keys(X.STOPS).map((id) => {
     const s = X.stopOf(id); const shelter = new THREE.Group(); shelter.position.set(s.shelter.x, groundY(s.shelter.x, s.shelter.z), s.shelter.z); shelter.rotation.y = s.shelter.yaw; group.add(shelter);
-    const fallback = stopStandIn(); shelter.add(fallback); assets.attach('taxi.stop', shelter, fallback); shelter.add(signOf(s.sign));
+    const fallback = stopStandIn(); shelter.add(fallback); assets.attach('taxi.stop', shelter, fallback); const sign = signOf(s.sign); shelter.add(sign);
     const standing = car(); placeCar(standing, { x: s.x, z: s.z, yaw: s.yaw, phase: 'wait', d: 0 });
-    return { id, s, standing };
+    return { id, s, standing, sign };
   });
-  const moving = new Map(); // key (mine: 'me'; another's: their id) -> car
-  const PARKED = 20000;
+  const moving = new Map(); // (294 7) stop id -> its car while out (there, the turn, back)
   let night = false;
-  // each frame: `rides` [{ key, ride }] -- a car for each on its way, the standing ones away while one leaves or arrives there
-  function step(now, rides, people = []) { // (v1.10.285 people: [{ x, z }] on foot -- a running car within 2 m of one honks)
-    const live = new Set();
-    for (const { key, ride } of rides) {
-      const p = X.poseAt(ride, now); if (p.phase === 'done') continue; live.add(key);
+  // each frame: `rides` [{ key, ride }] I know of and `out` { stopId: ride } the server's -- one car a stop (294 7): on its ride, then
+  // empty back the same road (IslandTaxi.carAt) -- the standing one away till it is in its place again, its sign the seconds left
+  function step(now, rides, people = [], out = {}) { // (v1.10.285 people: [{ x, z }] on foot -- a running car within 2 m of one honks)
+    const live = new Set(); const byStop = { ...out }; for (const { ride } of rides) if (!byStop[ride.from] || byStop[ride.from].startedAt <= ride.startedAt) byStop[ride.from] = ride;
+    for (const [key, ride] of Object.entries(byStop)) {
+      const p = X.carAt(ride, now); if (!p) continue; live.add(key);
       let rec = moving.get(key); if (!rec) { rec = car(); moving.set(key, rec); }
-      placeCar(rec, p); rec.left = p.phase === 'exit' ? now + PARKED : 0; rec.running = ['start', 'run', 'stop'].includes(p.phase);
+      placeCar(rec, p); rec.running = ['start', 'run', 'stop', 'back'].includes(p.phase);
       if (mark && rec.running && people.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < 2)) { if (!rec.horn) { rec.horn = mark(); rec.horn.position.y = 2.6; rec.h.add(rec.horn); } rec.hornUntil = now + 1200; }
       if (rec.horn) rec.horn.visible = rec.hornUntil > now;
     }
-    for (const [key, rec] of moving) if (!live.has(key) && !(rec.left > now)) { group.remove(rec.h); moving.delete(key); } /* (v1.10.272: a car that let its rider out stands a while across the shelter, not gone at once) */
-    for (const [key, rec] of moving) if (!live.has(key)) rec.running = false;
+    for (const [key, rec] of moving) if (!live.has(key)) { group.remove(rec.h); moving.delete(key); } /* (in its place: the standing one again) */
     for (const st of stops) {
-      const busy = rides.some(({ ride }) => { const p = X.poseAt(ride, now); if (p.phase === 'done') return false; return (ride.from === st.id && now - ride.startedAt < X.ENTER + 2000) || Math.hypot(p.x - st.s.x, p.z - st.s.z) < 6; });
-      st.standing.h.visible = !busy;
+      const away = live.has(st.id); st.standing.h.visible = !away;
+      const left = away ? Math.max(1, Math.ceil((X.backOf(byStop[st.id]) - now) / 1000)) : 0; st.sign.userData.say(left ? `${st.s.sign} · 약 ${left}초` : st.s.sign);
+      const say = left ? `🚕 돌아오는 중 · ${left}초` : ''; /* (294: big, over the stop -- the sign's seconds were too small to read) */
+      if (tag && say !== st.said) { st.said = say; if (st.label) { group.remove(st.label); st.label.traverse((o) => { o.material?.map?.dispose?.(); o.material?.dispose?.(); }); st.label = null; } if (say) { st.label = tag(say); st.label.position.set(st.s.shelter.x, groundY(st.s.shelter.x, st.s.shelter.z) + 3.7, st.s.shelter.z); group.add(st.label); } }
     }
     for (const rec of [...moving.values(), ...stops.map((s) => s.standing)]) for (const m of rec.lights) m.emissiveIntensity = night ? 1.2 : 0;
     lamp.emissiveIntensity = night ? 1.2 : 0;
@@ -76,5 +78,5 @@ export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: 
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
   const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible) }));
-  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible })), moving: () => [...moving.keys()] };
+  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible, away: [...moving.keys()].includes(st.id), label: st.said || '' })), /* (294) */ moving: () => [...moving.keys()] };
 }

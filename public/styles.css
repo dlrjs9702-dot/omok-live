@@ -3642,7 +3642,8 @@ body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;c
 .adminTabs button{border-radius:999px;padding:6px 14px;border:1px solid rgba(148,163,184,.45);background:transparent;color:inherit;font-weight:600;cursor:pointer}
 .adminTabs button[aria-selected="true"]{background:rgba(250,204,21,.22);border-color:rgba(250,204,21,.7)}
 .adminTab[hidden]{display:none}
-.accountFind{display:flex;gap:8px;align-items:center;margin:4px 0 6px}.accountFind input{flex:1;min-width:0}.accountFind select{flex:none}
+.accountFind{display:flex;gap:8px;align-items:center;margin:4px 0 6px}.accountFind input{flex:1 1 auto;min-width:200px;width:auto}.accountFind select{flex:0 0 140px;width:140px;min-width:0}
+@media (max-width:640px){.accountFind{flex-wrap:wrap}.accountFind input{flex:1 1 100%;min-width:0}.accountFind select{flex:0 0 auto;width:auto}} /* (294 사용자 「왼쪽에 검색창인 거 같은데 맞아?」: the search the row, the sort its own 140 px; a phone: the sort below) */
 .accountChips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .accountChip{border-radius:999px;padding:3px 10px;border:1px solid rgba(148,163,184,.4);background:transparent;color:inherit;font-size:.8rem;cursor:pointer}
 .accountChip b{opacity:.7;font-weight:600}.accountChip[aria-pressed="true"]{background:rgba(59,130,246,.25);border-color:rgba(59,130,246,.75)}
@@ -3675,3 +3676,5 @@ button.tagPill{cursor:pointer;padding:3px 10px;font-size:.8rem}button.tagPill[ar
   .accountName{max-width:7em}.accountId{display:none}
 }
 .islandEnvBox .joinForm{display:grid;grid-template-columns:7.5em minmax(0,1fr);align-items:center;gap:8px;margin:4px 0}.islandEnvBox .joinForm label{margin:0}
+/* 294 잡기 카드: ✕ in its corner, 「확인」 the big one */
+.catchCard .catchX{position:absolute;top:8px;right:8px;min-width:36px;min-height:36px;padding:0;border-radius:50%}.catchCard #catchOkBtn{flex:1;min-height:44px;font-size:1.05rem}

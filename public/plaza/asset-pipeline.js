@@ -193,6 +193,7 @@
   // (0.92 behind the hips seated) ends 0.38 behind, short of a bench's back (0.40 behind a seated character's hips)
   const TAIL_TUCK = { kind: 'tuck', z0: 0.15, k: 0.3, lift: 0.7 };
   // v1.10.202 79 소품 맞춤: refitted pendants hang 0.14~0.17 in front (no longer 0.2+), so the push-out starts at -0.13
+  const RING = 24; const sectorOf = (dx, dz) => ((Math.round(((Math.atan2(dx, dz) + Math.PI) / (2 * Math.PI)) * RING) % RING) + RING) % RING; /* (294: the angle round the head, in RING sectors) */
   const FIT = { band: 0.06, gap: 0.015, chest: { x: 0.16, y0: 0.86, y1: 1.06 }, pendantZ: -0.13, capeZ: 0.15, back: 0.36, tailX: 0.45 };
   function fitWardrobe(parts) {
     const out = Object.fromEntries(parts.map((p) => [p.id, { ops: [], hide: [] }]));
@@ -204,7 +205,17 @@
     // `widen` times wider round its own axis so the head stays inside its crown; the hair's cover line comes down with it
     for (const hat of of(['hat'])) if (hat.fit.sink || hat.fit.widen) out[hat.id].ops.push({ kind: 'seat', drop: hat.fit.sink || 0, widen: hat.fit.widen || 1 });
     const cover = Math.min(...of(['hat']).map((p) => (p.fit?.cover ?? Infinity) - (p.fit?.sink || 0)));
-    if (Number.isFinite(cover)) for (const p of of(['hair'])) out[p.id].ops.push({ kind: 'cover', above: cover });
+    // v1.10.294 (문제 기록 「건」, vampire_sweep x coral_tiara): round the head, the cut comes no lower than the hat itself there --
+    // `ring` the seated hat's lowest point in each of RING sectors round the hair's axis (none: no hat there, nothing cut);
+    // the brim line stays the least (a hat sitting high, a tiara, never leaves a skin band; its back, no gap)
+    if (Number.isFinite(cover)) for (const p of of(['hair'])) {
+      const hats = of(['hat']); const seated = hats.flatMap((h) => Array.from(applyFit(h.pos, null, out[h.id].ops).pos || h.pos));
+      let cx = 0; let cz = 0; const n = p.pos.length / 3; for (let i = 0; i < p.pos.length; i += 3) { cx += p.pos[i]; cz += p.pos[i + 2]; } cx /= n || 1; cz /= n || 1;
+      /* (the hat over the hair: only its points within the hair's own reach there + 3 cm -- a wide brim's flare past it is not where it rests) */
+      const reach = new Array(RING).fill(0); for (let i = 0; i < p.pos.length; i += 3) if (p.pos[i + 1] > cover - 0.1) { const s = sectorOf(p.pos[i] - cx, p.pos[i + 2] - cz); reach[s] = Math.max(reach[s], Math.hypot(p.pos[i] - cx, p.pos[i + 2] - cz)); }
+      const ring = new Array(RING).fill(null); for (let i = 0; i < seated.length; i += 3) { const dx = seated[i] - cx; const dz = seated[i + 2] - cz; const s = sectorOf(dx, dz); if (Math.hypot(dx, dz) > reach[s] + 0.03) continue; ring[s] = ring[s] == null ? seated[i + 1] : Math.min(ring[s], seated[i + 1]); }
+      out[p.id].ops.push({ kind: 'cover', above: cover, ring: ring.map((y) => (y == null ? null : +Math.max(cover, y).toFixed(4))), cx: +cx.toFixed(4), cz: +cz.toFixed(4) });
+    }
     const clothes = of(['outfit', 'top', 'bottom']);
     for (const neck of of(['necklace'])) {
       let front = Infinity; let back = -Infinity;
@@ -243,8 +254,12 @@
     for (const op of ops) {
       if (op.kind === 'cover') {
         const src = I || index || Array.from({ length: pos.length / 3 }, (_, i) => i);
-        const keep = [];
-        for (let t = 0; t < src.length; t += 3) { const cy = ((P || pos)[src[t] * 3 + 1] + (P || pos)[src[t + 1] * 3 + 1] + (P || pos)[src[t + 2] * 3 + 1]) / 3; if (cy <= op.above) keep.push(src[t], src[t + 1], src[t + 2]); }
+        const keep = []; const Q = P || pos;
+        for (let t = 0; t < src.length; t += 3) {
+          const [a, b, c] = [src[t] * 3, src[t + 1] * 3, src[t + 2] * 3]; const cy = (Q[a + 1] + Q[b + 1] + Q[c + 1]) / 3;
+          const line = op.ring ? op.ring[sectorOf((Q[a] + Q[b] + Q[c]) / 3 - op.cx, (Q[a + 2] + Q[b + 2] + Q[c + 2]) / 3 - op.cz)] ?? Infinity : op.above; /* (294: the hat's own edge at this angle) */
+          if (cy <= line) keep.push(src[t], src[t + 1], src[t + 2]);
+        }
         if (keep.length !== src.length) I = keep;
       } else if (op.kind === 'shift') {
         P ||= Float32Array.from(pos);

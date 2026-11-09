@@ -82,11 +82,31 @@
     const acc = r < EASE * (t.runMs / (t.ds.length * STEP) || 1) ? 'start' : r > t.runMs - EASE * (t.runMs / (t.ds.length * STEP) || 1) ? 'stop' : 'run';
     return { phase: acc, ...p, d, pitch: acc === 'start' ? -0.04 : acc === 'stop' ? 0.05 : 0, roll: Math.max(-0.06, Math.min(0.06, wrap(ahead.yaw - p.yaw) * 0.25)), k: d / t.total };
   }
+  // v1.10.294 7: the stop's car for a ride -- its way there (poseAt), then empty: turning round where it let the rider out (TURN
+  // ms), the same road back on the same timing reversed, turning round again into its place at its stop; null once it stands
+  // there. backOf: when that is (the stop has no car till then -- TAXI_AWAY)
+  const TURN = 3000;
+  const backOf = (ride) => ride.startedAt + durationOf(ride) + TURN + tableOf(ride.from, ride.runMs).runMs + TURN;
+  function carAt(ride, now) {
+    const p = poseAt(ride, now); if (p.phase !== 'done') return p;
+    const t = tableOf(ride.from, ride.runMs); const e = now - ride.startedAt - durationOf(ride);
+    const turn = (q, k) => ({ phase: 'turn', ...q, yaw: wrap(q.yaw + Math.PI * smooth(k)), d: q.d, pitch: 0, roll: 0, k });
+    if (e < TURN) return turn({ ...along(t, t.total), d: t.total }, e / TURN);
+    const r = e - TURN; if (r < t.runMs) {
+      const i = (t.runMs - r) / t.step; const i0 = Math.floor(i); const at = (j) => t.ds[Math.min(t.ds.length - 1, Math.max(0, j))]; const d = at(i0) + (at(i0 + 1) - at(i0)) * (i - i0);
+      const q = along(t, d); return { phase: 'back', ...q, yaw: wrap(q.yaw + Math.PI), d, pitch: 0, roll: 0, k: 1 - d / t.total };
+    }
+    const k = (r - t.runMs) / TURN; if (k >= 1) return null;
+    const s = along(t, 0); return turn({ ...s, yaw: wrap(s.yaw + Math.PI), d: 0 }, k);
+  }
   // where the rider stands once out (and where a ride cut off counts them): beside the car as it stands at the other stop
   const arrivalOf = (ride) => { const t = tableOf(ride.from, ride.runMs); const p = along(t, t.total); return beside(p.x, p.z, p.yaw, ALIGHT); };
   // the door's opening (0 shut .. 1 open) through a getting in or out (motion-utils doorAngle: in 0..0.14 open, 0.86..1 shut;
   // out 0..0.12 open, 0.80..1 shut)
   const doorOf = (phase, k) => (phase === 'enter' ? (k < 0.5 ? smooth(k / 0.14) : 1 - smooth((k - 0.86) / 0.14)) : phase === 'exit' ? (k < 0.5 ? smooth(k / 0.12) : 1 - smooth((k - 0.8) / 0.2)) : 0);
   const fareOf = ({ hasHome = false, fare = FARE } = {}) => (hasHome ? 0 : Math.max(0, Math.round(Number(fare) || 0)));
-  return { ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+  // v1.10.294 6a: the screen's clock offset a frame toward the server's -- at most `step` ms, at once past `jump` (a first
+  // reading, a sleep): a clock answer moving it tens of ms at once made a moving car jump that far
+  const easeClock = (view, server, step = 2, jump = 1000) => (view == null || Math.abs(server - view) > jump ? server : view + Math.max(-step, Math.min(step, server - view)));
+  return { TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

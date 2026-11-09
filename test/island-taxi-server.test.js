@@ -27,7 +27,7 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   await stand(a, P.x + 12, P.z); assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).data.error, 'TOO_FAR');
   // by the stop: 1,000P, once
   await stand(a, P.out.x, P.out.z);
-  assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, { ok: true, from: 'plaza', to: 'isle', fare: 1000, home: false });
+  assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, { ok: true, from: 'plaza', to: 'isle', fare: 1000, home: false, awayS: 0 });
   const before = await balance(a); const rode = await req('/api/island/taxi', a, { from: 'plaza' });
   assert.equal(rode.status, 200, JSON.stringify(rode.data)); assert.equal(rode.data.fare, 1000); assert.equal(rode.data.taxi.runMs, 3000);
   assert.equal(await balance(a), before - 1000);
@@ -39,6 +39,11 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   // over: at the 툇마루섬 stop's step out
   await sleep(X.durationOf(rode.data.taxi) - (X.ENTER + 1500) + 300); const done = await stand(a, -50, -50);
   const out = X.arrivalOf(rode.data.taxi); assert.deepEqual([done.data.x, done.data.z], [Math.round(out.x * 100) / 100, Math.round(out.z * 100) / 100]); void I; assert.equal(done.data.taxi, null); assert.ok(done.data.taxiDone);
+  // (294 7) the stop's car on its way back empty: no car there -- refused, nothing taken; every screen told
+  assert.ok(['turn', 'back'].includes(X.carAt(rode.data.taxi, Date.now())?.phase)); assert.ok(done.data.taxiStops.plaza?.startedAt === rode.data.taxi.startedAt);
+  await stand(b, P.out.x + 0.5, P.out.z + 0.5); const b0 = await balance(b); const away = await req('/api/island/taxi', b, { from: 'plaza' });
+  assert.equal(away.data.error, 'TAXI_AWAY'); assert.ok(away.data.awayS > 0 && away.data.awayS <= Math.ceil((X.backOf(rode.data.taxi) - Date.now()) / 1000) + 1); assert.equal(await balance(b), b0);
+  assert.ok((await req('/api/island/taxi?from=plaza', b)).data.awayS > 0); await req('/api/test/taxi-run', a, { ms: 3000 }); /* (back at its stop) */
   // a home owner rides free
   const door = T.facilityDoor('townhall'); await stand(b, door.x, door.z); assert.equal((await req('/api/island/townhall/enter', b, {})).status, 200);
   const lot = H.LOTS[3]; assert.equal((await req('/api/home/apply', b, { lot: lot.id, roof: 'red' })).status, 200);
@@ -46,6 +51,7 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   await stand(b, P.out.x + 0.5, P.out.z + 0.5); const owner = await balance(b);
   assert.equal((await req('/api/island/taxi?from=plaza', b)).data.fare, 0);
   const free = await req('/api/island/taxi', b, { from: 'plaza' }); assert.equal(free.status, 200, JSON.stringify(free.data)); assert.equal(await balance(b), owner);
+  await req('/api/test/taxi-run', a, { ms: 3000 }); /* (294: its car back) */
   // the fare is the economy's (the administrator's table); more than I have: refused, nothing taken
   const c = await server.enter(await server.issue('빈손')); await stand(c, P.out.x - 0.6, P.out.z - 0.6); const has = await balance(c);
   const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken; const fare = 1500;
@@ -54,4 +60,9 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   const set = await req('/api/admin/economy', admin, { changes: { 'taxi:fare': fare } }); assert.equal(set.status, 200, JSON.stringify(set.data));
   await stand(c, P.out.x - 0.6, P.out.z - 0.6); assert.equal((await req('/api/island/taxi?from=plaza', c)).data.fare, fare);
   const poor = await req('/api/island/taxi', c, { from: 'plaza' }); assert.equal(poor.data.error, 'INSUFFICIENT_POINTS'); assert.match(poor.data.message, /1,500P/); assert.equal(await balance(c), 500);
+  assert.equal((await req('/api/island/taxi?from=plaza', c)).data.awayS, 0, '못 탄 사람은 차를 잡지 않음');
+  // (294 7) two at once at one stop: one rides, the other is told the car is away -- and pays nothing
+  const d = await server.enter(await server.issue('동시하나')); const e = await server.enter(await server.issue('동시둘')); for (const who of [d, e]) { await req('/api/test/points-credit', who, { amount: 100000 }); await stand(who, P.out.x, P.out.z); }
+  const [d0, e0] = [await balance(d), await balance(e)]; const both = await Promise.all([d, e].map((who) => req('/api/island/taxi', who, { from: 'plaza' })));
+  assert.deepEqual(both.map((r) => r.data.error || 'ok').sort(), ['TAXI_AWAY', 'ok']); assert.equal((await balance(d)) + (await balance(e)), d0 + e0 - fare);
 });

@@ -8,7 +8,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   const who = await shopper(browser, request, '강낚시', 500000, 'male');
   const { page, token } = who;
   expect((await post(request, '/api/test/island/give', token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (낚싯대는 잡화점에서)
-  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testCatchHold', '1'); }); await page.reload(); // (v1.10.257: the catch card kept up till the test acts)
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await page.reload(); // (294: the catch card stays till I end it -- no test hold)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
   await require('./skin-support').holdTool(page, 'fishing_rod'); // (206 Q2 5: the rod in hand to cast)
   if (process.env.THROTTLE) await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.THROTTLE) }); /* (265 흔들림: CI's slow frames, here -- THROTTLE=6) */
@@ -62,11 +62,12 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.size || 0), { timeout: 15000 }).toBeGreaterThanOrEqual(0.45); // (총괄 #408: a 40 cm catfish shown big enough to see)
   if (process.env.SHOT_DIR) await page.evaluate(() => { window.PlazaDebug().showKeep(); window.PlazaDebug().setTime('night'); }); // (photos: past its 6 s for both lights)
   await expect(card.locator('.catchSize')).toHaveText('40.0 cm', { timeout: 5000 }); await shot('catch-first');
+  await page.waitForTimeout(4000); await expect(card).toBeVisible(); expect(await page.evaluate(() => Boolean(window.PlazaDebug().showOff()))).toBe(true); /* (294 사용자 「내가 직접 꺼야」: 4 s on, the card and the pose still up) */
   if (process.env.SHOT_DIR) { await page.evaluate(() => window.PlazaDebug().setTime('day')); await page.waitForTimeout(500); await shot('catch-first-day'); await page.evaluate(() => window.PlazaDebug().setTime('auto')); }
   await card.locator('#catchMoreBtn').click(); await expect(card).toHaveClass(/flipped/);
   await expect(card.locator('.catchBack .catchLine')).toHaveText(N.fish_catfish.line); await expect(card.locator('.catchBack .catchStory p')).toHaveText(N.fish_catfish.story);
   await expect(card.locator('.catchFacts')).toContainText('강'); await expect(card.locator('.catchFacts')).toContainText('내 최고 40 cm'); await shot('catch-more');
-  await card.locator('#catchCloseBtn').click(); await expect(card).toBeHidden();
+  await card.locator('#catchCloseBtn').click(); await expect(card).toBeHidden(); await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug().showOff()))).toBe(false); /* (✕: both end) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()), { timeout: 3000 }).toBe(null); // (put away, the camera home)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // the catch played out (the 13 new models: test/island-asset-pipeline)
   await expect(page.locator('#toast')).toHaveClass(/tappable/); await page.evaluate(() => document.getElementById('toast').click()); /* (CI #408 phone: a slow runner's toast gone before a pointer click landed) */ await expect(card).toHaveClass(/infoOnly/); await card.locator('#catchCloseBtn').click();

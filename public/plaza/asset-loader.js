@@ -497,9 +497,12 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // Which copies are near enough for High, worked out again once the player has moved a unit; a square is filled again
   // only when one of its copies changed side.
   let lastX = NaN; let lastZ = NaN;
+  // (294 6c: a car's ride started ~20 fades a frame -- at most FADE_STARTS new ones a frame, the rest the next frame: their
+  // sides not turned yet, this update asked again)
+  const FADE_STARTS = 8;
   function update(x, z) {
     if (Math.hypot(x - lastX, z - lastZ) < 1) return;
-    lastX = x; lastZ = z;
+    lastX = x; lastZ = z; let starts = 0;
     for (const rec of batches) {
       if (!rec.placed) continue;
       entryMatrix(rec.entry, local);
@@ -508,7 +511,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         let changed = false;
         p.cell.matrices.forEach((m, i) => {
           const high = P.highState(p.flags[i] === 1, Math.hypot(m.elements[12] - x, m.elements[14] - z), near);
-          if (high !== (p.flags[i] === 1)) { p.flags[i] = high ? 1 : 0; changed = true; if (fadeOn && p.groups.get(p.zones[i])?.fh) { if (!p.moving.has(i)) fadeStarts += 1; p.moving.add(i); } else { p.share[i] = p.flags[i]; p.moving.delete(i); } } /* (v1.10.290: on its way, or at once) */
+          if (high !== (p.flags[i] === 1)) { const fades = fadeOn && p.groups.get(p.zones[i])?.fh; if (fades && !p.moving.has(i) && starts >= FADE_STARTS) { lastX = NaN; return; } /* (294: next frame) */ p.flags[i] = high ? 1 : 0; changed = true; if (fades) { if (!p.moving.has(i)) { fadeStarts += 1; starts += 1; } p.moving.add(i); } else { p.share[i] = p.flags[i]; p.moving.delete(i); } } /* (v1.10.290: on its way, or at once) */
         });
         if (changed) fill(p);
       }
@@ -894,7 +897,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
           if (!baked) m.geometry = slimmedGeometry(m, base.entry.slim); // v1.10.93 체형: every part narrowed as the body is (F1·F2: made so already)
           const sitGeometry = tail ? fittedGeometry(m, [...(fit?.ops || []), P.TAIL_TUCK]) : null;
-          if (fit?.ops.length) m.geometry = fittedGeometry(m, fit.ops);
+          if (fit?.ops.length) { const bare = m.geometry; m.geometry = fittedGeometry(m, fit.ops); if (fit.ops.some((op) => op.kind === 'cover')) { m.userData.bareHair = bare; m.userData.hatHair = m.geometry; } } /* (294 C: the hair uncut kept -- shown while the hat is put away) */
           if (sitGeometry) { m.userData.stand = m.geometry; m.userData.sit = sitGeometry; tails.push(m); }
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
           if (skeleton.bones.some((b) => !b)) throw new Error(`rig mismatch: ${m.name}`);
@@ -989,6 +992,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // everyone's; a character dressed meanwhile starts so (c.hatHidden, applied as its parts come in)
   function hat(c, off) {
     c.hatHidden = Boolean(off);
+    c.assetRoot?.traverse((m) => { if (m.isMesh && m.userData.bareHair) m.geometry = off ? m.userData.bareHair : m.userData.hatHair; }); /* (294 C, 문제 기록 「대머리야」: the hair whole while the hat is away -- every screen) */
     c.assetRoot?.traverse((m) => { if (!m.isMesh || m.userData.wearSlot !== 'hat') return; if (off) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } });
   }
   // an islander's things in hand (its `held` material, asset 108: 반디's net, 콩이's jar...) put away during a gesture and back;

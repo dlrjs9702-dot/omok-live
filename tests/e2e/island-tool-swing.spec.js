@@ -50,6 +50,8 @@ test('도구 휘두르기: 가방에서 잠자리채 들기, 앞의 곤충은 �
     if (!(await spaceOn(page, 'tool:swing', isMobile))) return (last = await page.locator('#plazaHint').textContent());
     const r = await answer; last = r ? `${r.status()} ${await r.text().catch(() => '')}` : `no answer ${JSON.stringify(await page.evaluate(() => window.PlazaDebug().lastSwing()))}`; await page.waitForTimeout(900); return r?.status() ?? 'no answer';
   }, { timeout: 60000, intervals: [500] }).toBe(200).catch((error) => { error.message += `\nlast: ${last}\nanswers: ${answers.join(' | ')}`; throw error; });
+  /* (294: a first catch's card and 자랑 now stay till closed -- a SPACE then only ends the 자랑, it swings nothing) */
+  await page.locator('#catchCard').waitFor({ state: 'visible', timeout: 3000 }).then(() => page.locator('#catchOkBtn').click(), () => {});
   await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [T.SPAWN.x, T.SPAWN.z]); await page.waitForTimeout(1000); // (back among the islanders)
   // an islander right in front: struck -- HitReact, then cross words over the head
   const swingTries = [];

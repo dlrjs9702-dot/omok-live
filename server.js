@@ -2197,6 +2197,11 @@ const trainVisitors = new Map();
 const trainRiders = new Map(); let trainShift = 0; let trainTraffic = IslandTrain.createTraffic(nowMs());
 const taxiRides = new Map(); // v1.10.271 섬 택시: session token -> { from, startedAt, runMs? } while riding
 const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time per session)
+// v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
+// (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
+const taxiStopOut = new Map();
+const taxiAwayMs = (from, now = nowMs()) => { const r = taxiStopOut.get(from); const left = r ? IslandTaxi.backOf(r) - now : 0; if (left <= 0) taxiStopOut.delete(from); return Math.max(0, left); };
+const taxiStopsView = (now = nowMs()) => Object.fromEntries(Object.keys(IslandTaxi.STOPS).filter((id) => taxiAwayMs(id, now) > 0).map((id) => [id, taxiStopOut.get(id)]));
 let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it -- 0 the real road, for photos on the bridge)
 function trainService() { const snapshot = trainTraffic.advance(trainNow()); IslandTrain.setService(snapshot); return snapshot; }
 const trainNow = () => nowMs() + trainShift;
@@ -4451,7 +4456,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.293' });
+    return sendJson(res, 200, { ok: true, version: '1.10.294' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5609,7 +5614,7 @@ async function requestHandler(req, res) {
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
     if ((plazaPresence.get(session.token)?.space || 'island') === 'island') storyArrive(account, spot); // (S1: a story's place)
     const taxNote = await taxNoteOf(account); // (주민세 고지서: a bill whose last day is tomorrow -- said once that day)
-    return sendJson(res, 200, { ok: true, taxNote, id: session.plazaId, x: spot.x, z: spot.z, corrected, jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi ? { from: taxi.from, startedAt: taxi.startedAt, ...(taxi.runMs ? { runMs: taxi.runMs } : {}) } : null, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    return sendJson(res, 200, { ok: true, taxNote, id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi ? { from: taxi.from, startedAt: taxi.startedAt, ...(taxi.runMs ? { runMs: taxi.runMs } : {}) } : null, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -7170,16 +7175,19 @@ async function requestHandler(req, res) {
     const from = String((req.method === 'GET' ? new URL(req.url, 'http://x').searchParams.get('from') : body.from) || '');
     if (!IslandTaxi.STOPS[from]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const hasHome = Boolean((await homeOf(account))?.lot); const fare = IslandTaxi.fareOf({ hasHome, fare: Economy.value('taxi:fare') });
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to: IslandTaxi.STOPS[from].to, fare, home: hasHome });
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to: IslandTaxi.STOPS[from].to, fare, home: hasHome, awayS: Math.ceil(taxiAwayMs(from) / 1000) });
     const stop = IslandTaxi.stopOf(from); const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > 5.5) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.');
     if (trainRiders.has(session.token) || trainVisitors.has(session.token) || fishCasts.has(session.token) || here.seat || getCurrentRoom(session)) return sendError(res, 409, 'TAXI_BUSY', '지금은 택시를 탈 수 없어요.');
     if (here.bike) return sendError(res, 409, 'TAXI_BIKE', '자전거에서 내려 주세요.');
     const startedAt = nowMs();
+    { const away = taxiAwayMs(from, startedAt); if (away > 0) return sendError(res, 409, 'TAXI_AWAY', `택시가 돌아오는 중이에요 · 약 ${Math.ceil(away / 1000)}초`, { awayS: Math.ceil(away / 1000) }); } /* (294: no charge) */
     // (v1.10.283 Codex #3: two at once -- the second is refused before anything is paid)
     if (taxiPaying.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     taxiPaying.add(session.token);
+    const ride = { from, startedAt, ...(process.env.NODE_ENV === 'test' && taxiTestRunMs ? { runMs: taxiTestRunMs } : {}) };
+    taxiStopOut.set(from, ride); let took = false; /* (294: the stop's car taken before the fare -- one of two at once) */
     try {
       if (fare > 0) {
         const out = await pointStore.charge({ userId: account, claimId: `taxi:${account}:${startedAt}`, price: fare, title: `섬 택시 · ${stop.label} → ${IslandTaxi.STOPS[stop.to].label}` }).catch(() => null);
@@ -7187,13 +7195,13 @@ async function requestHandler(req, res) {
         if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${fare.toLocaleString('ko-KR')}P)`);
         if (out.applied) notifyPointsChanged([account]);
       }
-    } finally { taxiPaying.delete(session.token); }
-    const ride = { from, startedAt, ...(process.env.NODE_ENV === 'test' && taxiTestRunMs ? { runMs: taxiTestRunMs } : {}) };
+      took = true;
+    } finally { taxiPaying.delete(session.token); if (!took && taxiStopOut.get(from) === ride) taxiStopOut.delete(from); }
     taxiRides.set(session.token, ride); freeSeat(session.token);
     here.taxi = ride; here.bike = null; plazaDirty = true;
     return sendJson(res, 200, { ok: true, taxi: ride, fare, to: stop.to, now: nowMs() });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) taxiStopOut.clear(); /* (294: every car at its stop) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/train-shift' && req.method === 'POST') { // tests: the trains' clock moved on (ms)
     const body = await parseJson(req); trainShift = Number.isFinite(Number(body.ms)) ? Number(body.ms) : 0;
     trainTraffic = IslandTrain.createTraffic(trainNow());
@@ -8541,10 +8549,11 @@ async function requestHandler(req, res) {
     const writers = new Set(await issueWriters()); // (2026-10-20 문제 기록 허용)
     // (293 계정 탭 6-5: what the list sorts and filters by, in one read -- points, tax owed, jail, a home, the admin's tags)
     const points = await pointStore.holdings(); const tags = await adminTags(); const now = nowMs();
+    const inCell = new Set([...sessions].filter(([token]) => jailInmates.has(token)).map(([, s]) => pointAccountForSession(s))); /* (294: 「구치소」 -- sent, or in the cell now; a debt alone is 「체납」) */
     const keys = await Promise.all((await accessStore.list()).map(async (key) => { const account = `guest:${key.id}`; const presence = guestPresence(key.id); const aj = adminJailNow(account, now);
       const home = homeCache.has(account) ? homeCache.get(account) : await pointStore.worldValue(`home:${account}`); /* (ponytail: one read an account not in the cache -- a home index if the accounts grow into the hundreds) */
       return { ...key, presence, messenger: messenger.has(key.id), issues: writers.has(key.id), lastSeenAt: presence?.online ? new Date(now).toISOString() : key.lastUsedAt || null,
-        points: points[account] || 0, debt: taxDebt.get(account) || 0, jail: aj ? { admin: true, until: aj.until, reason: aj.reason } : taxDebt.get(account) > 0 ? { admin: false } : null, hasHome: Boolean(home), tags: tags.of[key.id] || [] }; }));
+        points: points[account] || 0, debt: taxDebt.get(account) || 0, jail: aj ? { admin: true, until: aj.until, reason: aj.reason } : inCell.has(account) ? { admin: false } : null, hasHome: Boolean(home), tags: tags.of[key.id] || [] }; }));
     return sendJson(res, 200, { keys, tags: tags.tags, persistence: DATABASE_URL ? 'database' : 'ephemeral-file', entryKeys: entryKeysOn });
   }
   // 293 관리자 분류 태그 (6-2): { tags: [{ id, name (10), color (one of six) }], of: { keyId: [tagId] } } in the world value 'adminTags'
@@ -9281,7 +9290,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.293 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.294 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

@@ -4367,8 +4367,7 @@
     const ask = catchAsk; const reveal = () => {
       if (ask !== catchAsk || catchCard.dataset.id !== id) return; catchCard.classList.remove('hidden');
       window.RoomSound?.play('right'); // (one sparkle of a sound -- 「반짝」, the sound setting's)
-      const held = (() => { try { return navigator.webdriver && localStorage.getItem('gc.testCatchHold') === '1'; } catch { return false; } })(); // (a test's slow runner: kept up till it acts)
-      if (!held) catchTimer = setTimeout(() => { if (!catchCard.classList.contains('flipped') && !catchCard.matches(':hover, :focus-within')) catchClose(); }, 3000);
+      /* (294 사용자 「내가 직접 꺼야 끝나는 걸로」: no closing of its own -- ✕, 「확인」, Esc, walking or a tap on the island end it) */
     };
     if (showing) catchTimer = setTimeout(reveal, insect ? 1000 : 1100); else reveal();
   }
@@ -4401,6 +4400,7 @@
   let dexCardSeq = 0;
   byId('catchMoreBtn').addEventListener('click', async () => { clearTimeout(catchTimer); catchCard.classList.add('flipped'); byId('catchMoreBtn').classList.add('hidden'); await fillCatchBack(catchCard.dataset.id).catch(() => {}); });
   byId('catchCloseBtn').addEventListener('click', () => catchClose(!catchCard.classList.contains('infoOnly')));
+  byId('catchOkBtn').addEventListener('click', () => catchClose(!catchCard.classList.contains('infoOnly'))); /* (294: the big 「확인」) */
   window.addEventListener('keydown', (e) => { if (e.key !== 'Escape' || catchCard.classList.contains('hidden')) return; e.preventDefault(); e.stopImmediatePropagation(); catchClose(!catchCard.classList.contains('infoOnly')); }, true);
   // v1.10.42 도감: the bag window's other page -- every find, the ones not found yet as silhouettes
   const DEX_ICON = { herb: 'herb', berry: 'berries', mushroom: 'mushrooms' };
@@ -5178,6 +5178,7 @@
     const ride = document.createElement('button'); ride.type = 'button'; ride.className = 'primary'; ride.id = 'taxiRideBtn'; ride.textContent = '타기';
     const close = document.createElement('button'); close.type = 'button'; close.className = 'secondary'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
     if (q.fare && Number.isFinite(balance) && balance < q.fare) { ride.disabled = true; status.textContent = `포인트가 모자라요(${q.fare.toLocaleString('ko-KR')}P)`; }
+    if (q.awayS > 0) { ride.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
     ride.addEventListener('click', async () => {
       ride.disabled = true;
       try {
@@ -5563,6 +5564,7 @@
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
+        plaza.controller?.setTaxiStops?.(data.taxiStops); /* (294 7: one car a stop -- every screen draws it there and back) */
         if (data.jail) { jailedBy(data); if (jailState && data.jail.inmate !== jailState.inmate) refreshJail(); } // R4: put in the 구치소's cell (293: let out by the administrator -- seen at once)
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();
