@@ -3676,3 +3676,4 @@ button.tagPill{cursor:pointer;padding:3px 10px;font-size:.8rem}button.tagPill[ar
   :root[data-theme="light"] .accountDetail:not(.hidden){background:#fffaf2}
   .accountName{max-width:7em}.accountId{display:none}
 }
+.islandEnvBox .joinForm{display:grid;grid-template-columns:7.5em minmax(0,1fr);align-items:center;gap:8px;margin:4px 0}.islandEnvBox .joinForm label{margin:0}

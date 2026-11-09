@@ -49,6 +49,7 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
   expect((await post(request, '/api/admin/jail', admin, { account: me, minutes: 60, reason: '시험 보냄' })).status).toBe(200);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 30000 }).toBe('jail');
   await expect(page.locator('#plazaDialog')).toContainText('관리자 판단으로 들어와 있어요 · 사유: 시험 보냄', { timeout: 15000 });
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-jail-admin-notice.png` });
   expect((await post(request, '/api/admin/jail', admin, { account: me, release: true })).data.jailed.some((j) => j.account === me)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().jail().inmate), { timeout: 15000 }).toBe('free');
   await expectNoScriptError(page);

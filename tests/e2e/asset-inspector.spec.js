@@ -14,6 +14,7 @@ test('에셋 점검실: 모델·모션 미리보기, 메모 저장, 주문서 �
   await page.goto('/');
   await page.locator('#adminPassword').fill(adminPassword);
   await page.getByRole('button', { name: '관리자로 입장' }).click();
+  await page.locator('#adminTabs [data-tab="status"]').click({ timeout: 20000 }); /* (293: in the 현황 tab) */
   await expect(page.locator('#assetInspectorTab')).toBeVisible({ timeout: 20000 });
   await page.locator('#assetInspectorTab').click();
   await expect.poll(() => page.evaluate(() => Boolean(window.AssetInspector)), { timeout: 20000 }).toBe(true);
