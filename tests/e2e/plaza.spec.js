@@ -870,7 +870,9 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   // same near and far (no name tag seen from everywhere)
   // (v1.10.270, CI chromium-10 four times: 0 colours -- the stones not baked yet (this spec's stand-ins: the drawn body, 4 s
   // after each statue is made). Given longer; a miss says each statue's colours and the statues as the page has them)
-  if (DAL) await expect.poll(() => a.page.evaluate(() => Math.min(...window.PlazaDebug().statueLook().colors.slice(0, 2))), { timeout: 45000 }).toBeGreaterThan(3)
+  // (v1.10.290 CI chromium-5, three times: [0, 6, 6] -- the day's contest winner's statue, put up first and not of stone, was
+  // the first; the donation pair read by their sizes)
+  if (DAL) await expect.poll(() => a.page.evaluate((w) => { const d = window.PlazaDebug(); const sizes = d.statueSizes; return Math.min(...d.statueLook().colors.filter((_, i) => w.includes(sizes[i]))); }, want), { timeout: 45000 }).toBeGreaterThan(3)
     .catch(async (error) => { error.message += `\n동상 색: ${JSON.stringify(await a.page.evaluate(() => window.PlazaDebug().statueLook().colors))} · 동상: ${JSON.stringify(await a.page.evaluate(() => window.PlazaDebug().statues))}`; throw error; });
   const plates = async (x, z) => { await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); await a.page.waitForTimeout(400); return a.page.evaluate(() => window.PlazaDebug().statueLook().plates); };
   const nearP = await plates(0, -112); const farP = await plates(0, -10);
