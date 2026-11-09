@@ -17,17 +17,18 @@ test('감정 표현: T 바퀴 → 웃음 → 몸짓·표정·기호, 끝나면 �
   const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
   await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 2.5, z + 1.5), [at.x, at.z]);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
+  await expect.poll(() => b.page.evaluate(() => { const D = window.PlazaDebug(); const o = D.others[0]; return Boolean(o && D.feeling(o.id)?.clip && Math.hypot(o.x - D.x, o.z - D.z) < 6); }), { timeout: 60000 }).toBe(true); /* (v1.10.288 CI: on a slow page my model and place there before the feeling -- else it ran there with no move, face or mark) */
   // T held, the mouse on 웃음, let go
   await page.locator('#plazaStage').focus(); await page.keyboard.down('t'); await expect(page.locator('#emoteWheel')).toBeVisible(); await expect(page.locator('#emoteWheel')).not.toHaveClass(/grid/);
   const laugh = page.locator('.emoteCell[data-emote="laugh"]'); const cell = await laugh.boundingBox(); await page.mouse.move(cell.x + cell.width / 2, cell.y + cell.height / 2);
   await expect(laugh).toHaveClass(/hot/); await page.waitForTimeout(250);
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-wheel.png` });
-  const seen = b.page.evaluate(() => new Promise((ok) => { const D = window.PlazaDebug(); const t0 = Date.now(); const id = setInterval(() => { for (const o of D.others) { const f = D.feeling(o.id); if (f?.id === 'laugh' && f.face?.includes('wear.eyes_x_happy') && f.marks.includes('note')) { clearInterval(id); ok(f); return; } } if (Date.now() - t0 > 8000) { clearInterval(id); ok(null); } }, 50); }));
   /* (watched in the page from before the key comes up: the face is on 1.4 s only -- a slow test's polls can miss it) */
   const mine = page.evaluate(() => new Promise((ok) => { const D = window.PlazaDebug(); const got = {}; const t0 = Date.now(); const id = setInterval(() => { const f = D.feeling(); if (f.id === 'laugh') got.run = [f.act, f.clip]; if (f.shown.slice().sort().join() === 'wear.eyes_x_happy,wear.mouth_x_laugh') got.face = true; if (f.marks.includes('note')) got.mark = true; if ((got.face && got.mark && got.run) || Date.now() - t0 > 6000) { clearInterval(id); ok(got); } }, 20); }));
   await page.keyboard.up('t'); await expect(page.locator('#emoteWheel')).toBeHidden();
   expect(await mine).toEqual({ run: ['emote:laugh', 'Laugh'], face: true, mark: true }); // (my act and move; the happy eyes and laughing mouth with mine hidden; the note)
-  expect(await seen).toMatchObject({ id: 'laugh', clip: 'Laugh' }); // (another's screen: the move, the face and the mark)
+  /* (another's screen: the move, the face and the mark -- what the feeling showed there, read after it: v1.10.288 CI, a slow page sampled it too late) */
+  await expect.poll(() => b.page.evaluate(() => { const D = window.PlazaDebug(); for (const o of D.others) { const f = D.feeling(o.id)?.felt; if (f?.id === 'laugh' && f.face?.includes('wear.eyes_x_happy') && f.marks.includes('note')) return f; } return null; }), { timeout: 30000 }).toMatchObject({ id: 'laugh', clip: 'Laugh' });
   await expect.poll(async () => { const f = await feeling(page); return [f.id, f.act, f.face, f.shown.sort()]; }, { timeout: 5000 }).toEqual([null, null, null, own]); // (mine again)
   if (process.env.SHOT_DIR) await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 9, z + 6), [at.x, at.z]); /* (out of the close-ups) */
   if (process.env.SHOT_DIR) for (const id of ['laugh', 'cry', 'surprise', 'heart']) { /* (photos: the face and its mark close, held) */
