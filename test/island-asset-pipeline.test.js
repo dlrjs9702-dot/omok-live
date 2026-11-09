@@ -469,7 +469,8 @@ test('모자 아래 머리: 각도마다 모자 아래 끝까지만 자름, 모�
   const real = P.fitWardrobe([{ id: 'hat', fit: REGISTRY['wear.x2_hat_coral_tiara'].fit, pos: tiara }, { id: 'hair', fit: { slot: 'hair' }, pos: sweep }]).hair.ops[0];
   const ring = real.ring; assert.equal(ring.length, 24); assert.ok(ring.some((y) => y === null), '티아라가 없는 자리(뒤)'); assert.ok(ring.filter((y) => y !== null).every((y) => y >= real.above), '챙 선보다 아래는 안 자름');
   const low = new Array(24).fill(Infinity); const sec = (x, z) => ((Math.round(((Math.atan2(x - real.cx, z - real.cz) + Math.PI) / (2 * Math.PI)) * 24) % 24) + 24) % 24;
-  for (let i = 0; i < tiara.length; i += 3) { const s = sec(tiara[i], tiara[i + 2]); low[s] = Math.min(low[s], tiara[i + 1]); }
+  const sink = REGISTRY['wear.x2_hat_coral_tiara'].fit.sink || 0; assert.ok(sink > 0, '(294: seated lower -- its brim floated over the hair)');
+  for (let i = 0; i < tiara.length; i += 3) { const s = sec(tiara[i], tiara[i + 2]); low[s] = Math.min(low[s], tiara[i + 1] - sink); }
   for (let s = 0; s < 24; s += 1) if (ring[s] !== null) assert.ok(ring[s] >= real.above && ring[s] >= low[s] - 0.006, `${s}: ${ring[s]} ${low[s]}`); /* (never below the brim line nor the tiara's own lowest there -- its part over the hair) */});
 
 // v1.10.32 겨울 지붕 눈 (asset-pipeline roofShape / drapeSnow): a roof read from its faces -- flat, gable (which way its
