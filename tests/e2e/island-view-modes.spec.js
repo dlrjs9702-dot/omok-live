@@ -17,6 +17,24 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
   const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-view-${name}.png` }); } };
   await expect(page.locator('#plazaDialogTitle')).toHaveText('📢 섬 소식', { timeout: 15000 }); await shot('notice');
   await page.locator('#plazaDialog').getByRole('button', { name: '알겠어요' }).click(); await expect(page.locator('#plazaDialog')).toBeHidden();
+  if (isMobile) { // (297 사용자 「핸드폰에서 시점 버튼이 안보여」: 360 · 412 · a fold open × 메신저 × 대회 띠 -- 「시점」 over nothing, pressed itself)
+    const size = page.viewportSize(); const bad = [];
+    for (const width of [360, 412, 884]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const m of [false, true]) for (const band of [false, true]) {
+        bad.push(...await page.evaluate(([m, band]) => {
+          const $ = (id) => document.getElementById(id); $('islandMessengerTab').classList.toggle('hidden', !m); const bar = $('contestBar'); bar.textContent = '🏆 내일 13:30 · 두더지 잡기 대회'; bar.classList.toggle('hidden', !band);
+          const v = $('islandViewTab').getBoundingClientRect(); const out = []; const at = `${innerWidth} 메신저${m ? 'O' : 'X'} 띠${band ? 'O' : 'X'}`;
+          for (const id of ['gameMenuBtn', 'islandChatTab', 'islandMessengerTab', 'contestBar']) { const r = $(id).getBoundingClientRect(); if (r.width && !(r.right <= v.left || v.right <= r.left || r.bottom <= v.top || v.bottom <= r.top)) out.push(`${at}: ${id}`); }
+          const hit = document.elementFromPoint(v.left + v.width / 2, v.top + v.height / 2); if (!v.width || hit !== $('islandViewTab')) out.push(`${at}: ${hit?.id || hit?.className || 'none'}`);
+          return out;
+        }, [m, band]));
+        if (process.env.SHOT_DIR && m && band) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-view-btn-${width}.png` });
+      }
+    }
+    await page.setViewportSize(size); await page.evaluate(() => { document.getElementById('islandMessengerTab').classList.add('hidden'); document.getElementById('contestBar').classList.add('hidden'); });
+    expect(bad).toEqual([]);
+  }
   const toggle = async () => { if (isMobile) await page.locator('#islandViewTab').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyV'); } };
   // outside: the third, then the first -- at my eyes, my body hidden, 75°
   expect(await view()).toMatchObject({ mode: 'third', side: 'out', body: true });
