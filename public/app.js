@@ -2567,10 +2567,19 @@
     });
     if (!cells.length) { const p = document.createElement('p'); p.className = 'lookMeta'; p.textContent = kind === 'fish' ? '잡은 물고기가 가방보다 먼저 여기 들어와요.' : '잡은 곤충이 가방보다 먼저 여기 들어와요.'; cells.push(p); }
     dex.replaceChildren(...cells); dex.scrollTop = 0;
+    /* (총괄 #447) under the box: where it grows, and 「가방에서 옮기기」 -- what the bag held before it was bought */
+    const next = boxGrowNow?.[kind]; const foot = byId('islandBoxFoot');
+    foot.textContent = next === null ? '통이 가장 커요 ' : next ? `통 늘리기: 백화점 1층 잡화점 · 다음 ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P ` : '통 늘리기: 백화점 1층 잡화점 ';
+    const move = document.createElement('button'); move.type = 'button'; move.className = 'ghost tiny'; move.id = 'boxFillBtn'; move.textContent = '가방에서 옮기기';
+    move.disabled = !bagNow?.items.some((e) => (kind === 'fish' ? /^fish_/ : /^insect_/).test(e.itemId)) || items.length >= cap;
+    move.addEventListener('click', async () => { move.disabled = true; try { const r = await api('/api/island/box/fill', { method: 'POST', body: JSON.stringify({ kind }) }); showToast(`${r.moved}${kind === 'fish' ? '마리' : '개'} 옮겼어요.`, 2500); drawIslandBag(r.bag); } catch (error) { showToast(error.message); move.disabled = false; } });
+    foot.append(move);
   }
+  let boxGrowNow = null;
   function drawIslandBag(full) {
     const bag = full.bagOnly ? full : { ...full, items: (full.items || []).filter((e) => !e.box), bagOnly: true };
-    if (!full.bagOnly) { boxNow = { boxes: full.boxes || boxNow.boxes, items: (full.items || []).filter((e) => e.box) }; for (const [id, k] of BOX_BTNS) byId(id).classList.toggle('hidden', !(boxNow.boxes[k] > 0)); if (boxPage) drawBox(boxPage); }
+    if ('boxGrow' in full) boxGrowNow = full.boxGrow;
+    if (!full.bagOnly) { boxNow = { boxes: full.boxes || boxNow.boxes, items: (full.items || []).filter((e) => e.box) }; for (const [id, k] of BOX_BTNS) byId(id).classList.toggle('hidden', !(boxNow.boxes[k] > 0)); }
     drawBagGrow(full); bagNow = bag; quickItems = full.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
     for (let i = 0; i < (bag.slots || 16); i += 1) {
       const item = bag.items[i]; const slot = document.createElement('div');
@@ -2606,6 +2615,7 @@
     if (byId('islandDexGrid').classList.contains('hidden')) document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`; // (v1.10.233: on the 도감's page its own count stays)
     byId('islandBagPoints').textContent = pointBalanceText.textContent || '';
     if (bagPicked != null && bag.items[bagPicked]) { const k = bagPicked; bagPicked = null; pickBagSlot(k); } else { bagPicked = null; byId('islandBagInfo').textContent = ''; }
+    if (boxPage) drawBox(boxPage); /* (297: a box's page again, after the bag -- its 「가방에서 옮기기」 reads the bag now) */
   }
   // v1.10.192 a name asked on paper (the browser's prompt before): resolves to the words, or null when let go
   const nameAskDialog = document.getElementById('nameAskDialog'); const nameAskInput = document.getElementById('nameAskInput'); let nameAskDone = null;
@@ -4464,6 +4474,7 @@
     document.getElementById('islandBagTitle').textContent = on === 'dex' ? '도감' : on === 'photo' ? '기념사진' : on === 'given' ? '받은 것' : BOX_TITLE[on] || '가방';
     boxPage = BOX_TITLE[on] ? on : null; /* (297: a box's page -- drawn from the bag's last answer, again on each) */
     byId('islandBagGrow').classList.toggle('hidden', Boolean(on)); /* (the bag's own line) */
+    islandBagDialog.dataset.page = boxPage ? 'box' : ''; /* (총괄 #447: a box's page -- the bag's 빠른 칸 and foot buttons hidden, the box's own line) */
     grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
     byId('islandBagSort').classList.toggle('hidden', Boolean(on)); bagSortReset(); // (v1.10.233, 사용자: 「정리」 the bag's only -- in the 도감 it sorted the bag and the count went wrong)
     byId('islandDexTabs').classList.toggle('hidden', on !== 'dex');

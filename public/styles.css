@@ -2022,6 +2022,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .catchCard.calm,.catchCard.calm *{animation:none!important;transition:none!important}
 .toast.tappable{pointer-events:auto;cursor:pointer}.toast.tappable::after{content:" · 눌러서 설명";opacity:.7}
 .bagInfoMore{padding:0 8px;min-height:28px;border-radius:99px;font-weight:900}
+#islandBagDialog:not([data-page="box"]) #islandBoxFoot,#islandBagDialog[data-page="box"] #quickInBag,#islandBagDialog[data-page="box"] .islandBagFoot>button:not(#islandFishBoxBtn):not(#islandBugBoxBtn){display:none} /* (총괄 #447) */
 .islandDexCell.boxCell{font:inherit;font-size:.8rem;cursor:pointer}.islandDexCell.boxCell.picked{outline:3px solid #3f8f6a;outline-offset:1px}.islandDexCell.boxCell.grade-rare,.islandDexCell.boxCell.grade-big{border-style:solid} /* (297 통: a fish's own size under it) */
 .islandDexCell.opens{cursor:pointer}.islandDexCell.opens:focus-visible{outline:3px solid #3f8f6a;outline-offset:2px}
 /* v1.10.256 관리자 저장 공간: one line and a bar (orange past 80 %, red past 90 %), the biggest tables when opened */

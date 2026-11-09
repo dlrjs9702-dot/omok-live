@@ -38,6 +38,12 @@ test('물고기 통·곤충 채집통: 통 먼저, 가득 차면 가방, 팔기�
   assert.equal(I.reorderBag(e, e.map((x) => x.entryId)), null); // (the boxes' entries are not the bag's to order)
   assert.deepEqual(I.sortBag(e).slice(-3).map((x) => x.meta?.box), ['fish', 'fish', 'insect']);
   assert.deepEqual(I.addToBag([], 'fish_goby', 2, 'x', { sizes: [20, 25] }, 16).map((x) => x.qty), [2]); // (no box: as before)
+  // 가방에서 옮기기 (총괄 #447): what the bag held before -- into the box as far as it has room, the biggest first
+  const before = [{ entryId: 'b', itemId: 'bread', qty: 1 }, { entryId: 'g', itemId: 'fish_goby', qty: 3, meta: { sizes: [30, 25, 20] } }, { entryId: 'l', itemId: 'insect_ladybird', qty: 4 }];
+  const f = I.fillBox(before, 'fish', { bag: 16, fish: 2, insect: 0 }); assert.equal(f.moved, 2);
+  assert.deepEqual(f.entries.map((x) => [x.itemId, x.qty, x.meta?.box || '-', x.meta?.sizes || null]), [['bread', 1, '-', null], ['fish_goby', 1, '-', [20]], ['insect_ladybird', 4, '-', null], ['fish_goby', 1, 'fish', [30]], ['fish_goby', 1, 'fish', [25]]]);
+  assert.equal(I.fillBox(f.entries, 'fish', { bag: 16, fish: 2, insect: 0 }), null); // (full: nothing moved)
+  assert.deepEqual(I.fillBox(before, 'insect', { bag: 16, fish: 0, insect: 30 }).entries.filter((x) => x.meta?.box).map((x) => x.qty), [4]); assert.equal(I.fillBox(before, 'insect', 16), null); // (none bought)
 });
 
 test('물고기 통 사기·놓아주기: 1층에서만, 30 → 60 → 90 → 120, 값은 한 번씩, 잡은 물고기는 통으로', async (t) => {
@@ -56,6 +62,7 @@ test('물고기 통 사기·놓아주기: 1층에서만, 30 → 60 → 90 → 12
   assert.equal((await req('/api/island/box/release', a, { entryId: 'nope' })).status, 409);
   const r = await req('/api/island/box/release', a, { entryId: fish.entryId }); assert.equal(r.status, 200); assert.equal(r.data.bag.items.some((x) => x.itemId === 'fish_goby'), false);
   assert.deepEqual((await bag()).boxes, { fish: 120, insect: 0 });
+  assert.equal((await req('/api/island/box/fill', a, { kind: 'insect' })).status, 409); // (no 곤충 채집통)
 });
 
 test('가방 늘리기·내 순서: 잡화점에서만, 24 → 32, 값은 한 번씩, 늘린 만큼 더 담김; 순서는 내가 정한 대로', async (t) => {

@@ -5724,6 +5724,14 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, kind, slots: to, next: IslandItems.BOX_GROW.find((n) => n > to) || null, balance: out.balance ?? null });
     });
   }
+  // 297 가방에서 옮기기 (총괄 #447): what the bag held before the box was bought -- into the box as far as it has room
+  if (pathname === '/api/island/box/fill' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const kind = String((await parseJson(req)).kind || ''); if (!IslandItems.BOXES.includes(kind)) return sendError(res, 400, 'BAD_BOX', '없는 통이에요.');
+    const out = await pointStore.islandBoxFill({ userId: account, kind });
+    if (!out.applied) return sendError(res, 409, 'NOTHING_TO_MOVE', IslandItems.boxOf(account, kind) ? '옮길 것이 없거나 통이 가득 찼어요.' : `${BOX_NAME[kind]}을 먼저 사 주세요.`);
+    return sendJson(res, 200, { ok: true, moved: out.moved, bag: out.bag });
+  }
   // 297 놓아주기: one out of a box, back to the water or the grass (nothing paid; the 도감 keeps it)
   if (pathname === '/api/island/box/release' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
