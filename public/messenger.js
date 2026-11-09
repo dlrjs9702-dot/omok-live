@@ -237,13 +237,45 @@
   }
   // the big view: one at a time, ← → (a swipe on a phone), Esc or ✕ to close
   const viewer = byId('messengerViewer'); const viewerImg = byId('messengerViewerImg'); let viewing = null;
-  async function showViewer() { const { msg, k } = viewing; const list = msg.local || msg.photos; const p = list[k]; byId('messengerViewerCount').textContent = `${k + 1} / ${list.length}`; viewerImg.removeAttribute('src'); const u = msg.local ? p.url : await photoUrl(p.id); if (viewing?.msg === msg && viewing.k === k && u && u !== 'gone') viewerImg.src = u; }
+  async function showViewer() { setZoom({ s: 1, x: 0, y: 0 }); const { msg, k } = viewing; const list = msg.local || msg.photos; const p = list[k]; byId('messengerViewerCount').textContent = `${k + 1} / ${list.length}`; viewerImg.removeAttribute('src'); const u = msg.local ? p.url : await photoUrl(p.id); if (viewing?.msg === msg && viewing.k === k && u && u !== 'gone') viewerImg.src = u; }
   function openViewer(msg, k) { viewing = { msg, k }; viewer.classList.remove('hidden'); showViewer(); byId('messengerViewerClose').focus(); }
   const viewStep = (d) => { if (!viewing) return; const n = (viewing.msg.local || viewing.msg.photos).length; viewing.k = (viewing.k + d + n) % n; showViewer(); };
-  const closeViewer = () => { viewing = null; viewer.classList.add('hidden'); viewerImg.removeAttribute('src'); };
+  const closeViewer = () => { viewing = null; viewer.classList.add('hidden'); viewerImg.removeAttribute('src'); setZoom({ s: 1, x: 0, y: 0 }); };
   byId('messengerViewerClose').addEventListener('click', closeViewer); byId('messengerViewerPrev').addEventListener('click', () => viewStep(-1)); byId('messengerViewerNext').addEventListener('click', () => viewStep(1));
   document.addEventListener('keydown', (e) => { if (!viewing) return; if (e.key === 'Escape') closeViewer(); else if (e.key === 'ArrowLeft') viewStep(-1); else if (e.key === 'ArrowRight') viewStep(1); });
-  { let sx = null; viewer.addEventListener('pointerdown', (e) => { sx = e.clientX; }); viewer.addEventListener('pointerup', (e) => { if (sx !== null && Math.abs(e.clientX - sx) > 50) viewStep(e.clientX < sx ? 1 : -1); sx = null; }); }
+  // v1.10.291 확대·축소 (public/messenger-zoom.js): two fingers, a double tap (2.5x <-> 1x), the wheel and 「− 100% +」; dragged
+  // when zoomed; a swipe turns the photo only at 1x; back to 1x on another photo or closing (`viewer.dataset.zoom` the scale)
+  var zoom = { s: 1, x: 0, y: 0 }; const MZ = window.MessengerZoom;
+  const zoomBox = () => ({ w: viewerImg.offsetWidth, h: viewerImg.offsetHeight, W: viewer.clientWidth, H: viewer.clientHeight });
+  const fromCentre = (cx, cy) => { const r = viewer.getBoundingClientRect(); return [cx - r.left - r.width / 2, cy - r.top - r.height / 2]; };
+  function setZoom(z) { zoom = z; viewerImg.style.transform = z.s === 1 ? '' : `translate(${z.x}px, ${z.y}px) scale(${z.s})`; viewer.dataset.zoom = String(Math.round(z.s * 100) / 100); byId('messengerZoomPct').textContent = `${Math.round(z.s * 100)}%`; }
+  const zoomTo = (s, px = 0, py = 0) => { const b = zoomBox(); setZoom(MZ.zoomAt(zoom, s, px, py, b.w, b.h, b.W, b.H)); };
+  {
+    const pts = new Map(); let start = null; let pinch = null; let lastTap = null;
+    viewer.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return; pts.set(e.pointerId, [e.clientX, e.clientY]); try { viewer.setPointerCapture(e.pointerId); } catch {}
+      if (pts.size === 1) start = { x: e.clientX, y: e.clientY, at: performance.now(), moved: false, pinched: false };
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, s: zoom.s }; if (start) { start.moved = true; start.pinched = true; } }
+    });
+    viewer.addEventListener('pointermove', (e) => {
+      const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p[0]; const dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pinch && pts.size >= 2) { const [a, b] = [...pts.values()]; zoomTo(pinch.s * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d, ...fromCentre((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)); return; }
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) start.moved = true;
+      if (zoom.s > 1) { const b = zoomBox(); setZoom(MZ.panBy(zoom, dx, dy, b.w, b.h, b.W, b.H)); }
+    });
+    const up = (e) => {
+      if (!pts.delete(e.pointerId)) return; if (pts.size < 2) pinch = null; if (pts.size || !start) return; const s0 = start; start = null;
+      if (!s0.moved && performance.now() - s0.at < 300) { /* (a tap; two within 350 ms and 30 px: the double tap) */
+        const now = performance.now();
+        if (lastTap && now - lastTap.at < 350 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) { lastTap = null; const b = zoomBox(); setZoom(MZ.toggle(zoom, ...fromCentre(e.clientX, e.clientY), b.w, b.h, b.W, b.H)); } else lastTap = { at: now, x: e.clientX, y: e.clientY };
+        return;
+      }
+      if (zoom.s === 1 && !s0.pinched && Math.abs(e.clientX - s0.x) > 50) viewStep(e.clientX < s0.x ? 1 : -1);
+    };
+    viewer.addEventListener('pointerup', up); viewer.addEventListener('pointercancel', up);
+    viewer.addEventListener('wheel', (e) => { if (!viewing) return; e.preventDefault(); zoomTo(zoom.s * Math.exp(-e.deltaY * 0.0015), ...fromCentre(e.clientX, e.clientY)); }, { passive: false });
+    byId('messengerZoomIn').addEventListener('click', () => zoomTo(zoom.s * 1.5)); byId('messengerZoomOut').addEventListener('click', () => zoomTo(zoom.s / 1.5));
+  }
   // the tray: shrunk here, before sending
   async function shrink(file) {
     let src = null; try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { src = await new Promise((done) => { const im = new Image(); const u = URL.createObjectURL(file); im.onload = () => done(im); im.onerror = () => done(null); im.src = u; }); }

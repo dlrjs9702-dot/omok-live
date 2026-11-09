@@ -114,10 +114,10 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   assert.equal((await req('/api/skins/title', sa, { skinId: 'dex_title_1' })).status, 409, '도감 4개 전에는 못 씀');
   for (const sp of ['goby', 'mackerel']) { const c2 = (await req('/api/island/fish/start', sa, {})).data; await req('/api/test/fish/bite', sa, { species: sp }); const r2 = (await req('/api/island/fish/finish', sa, { fishId: c2.fishId, presses: press(c2.seq) })).data; assert.equal(r2.species, sp); caughtSizes.push([sp, r2.size]); } // (멸치 above: four kinds)
   const worn = (await req('/api/skins/title', sa, { skinId: 'dex_title_1' })).data; assert.equal(worn.avatar.title, '섬 탐험가');
-  const fisher = require('../lib/island-quests').STORIES.fisher.at;
-  await at(fisher.x, fisher.z);
+  const door = require('../public/plaza/island-terrain').facilityDoor('store'); const stall = require('../public/plaza/island-store').sectorPoint('mall:stall'); /* (v1.10.291: fish at the 백화점's 노점, not 물결) */
+  await at(door.x, door.z); assert.equal((await req('/api/island/store/enter', sa, {})).status, 200); await at(stall.x, stall.z);
   const before = (await req('/api/points', sa)).data.balance;
-  const sold = (await req('/api/island/sell', sa, { place: 'fisher', requestId: 'fish-sale-0001' })).data;
+  const sold = (await req('/api/island/sell', sa, { place: 'merchant', requestId: 'fish-sale-0001' })).data;
   assert.equal(sold.paid, caughtSizes.reduce((n, [sp, cm]) => n + require('../lib/island-items').fishPrice(`fish_${sp}`, cm), 0), '크기대로 (v1.10.231)'); assert.equal((await req('/api/points', sa)).data.balance, before + sold.paid);
   // v1.10.89 낚시왕: the week of that sale closed -> its 1st holds 낚시왕 (worn in the title slot), once, on the hall
   assert.equal((await req('/api/skins/title', sa, { skinId: 'title_fishking' })).status, 409, '낚시왕 전에는 못 씀');
@@ -130,11 +130,11 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   assert.deepEqual([hall.entries.length, hall.entries[0].names, hall.entries[0].mine], [1, ['낚시꾼'], true]); // (its week is this one: the hook only moved the holder)
 });
 
-test('낚시왕 집계: 어부 판매만, 그 주 안의 것만, 계정별 합계와 마지막 판매 시각', () => {
-  const { fishSaleTotals } = require('../lib/point-store');
-  const sale = (userId, paid, at, place = 'fisher') => ({ kind: 'island_sale', place, userId, paid, at });
-  const rows = fishSaleTotals([sale('a', 500, '2026-10-12T01:00:00.000Z'), sale('a', 700, '2026-10-14T01:00:00.000Z'), sale('b', 1200, '2026-10-13T01:00:00.000Z'),
-    sale('b', 9000, '2026-10-13T02:00:00.000Z', 'merchant'), sale('c', 5000, '2026-10-19T00:00:00.000Z'), { kind: 'island_sale', place: 'fisher', userId: 'd', paid: 0, at: '2026-10-13T00:00:00.000Z' }],
+test('낚시왕 집계: 어디서 팔든 물고기 판 값만, 그 주 안의 것만, 계정별 합계와 마지막 판매 시각', () => {
+  const { fishSaleTotals } = require('../lib/point-store'); /* (v1.10.291: the 노점's sales count their fish; 1.10.290's 물결 sales still do) */
+  const sale = (userId, sold, at, place = 'merchant') => ({ kind: 'island_sale', place, userId, paid: sold.reduce((n, [, q, p]) => n + q * p, 0), sold: sold.map(([itemId, qty, price]) => ({ itemId, qty, price })), at });
+  const rows = fishSaleTotals([sale('a', [['fish_goby', 1, 500]], '2026-10-12T01:00:00.000Z', 'fisher'), sale('a', [['fish_goby', 1, 700], ['herb', 2, 4000]], '2026-10-14T01:00:00.000Z'), sale('b', [['fish_mackerel', 3, 400]], '2026-10-13T01:00:00.000Z'),
+    sale('b', [['herb', 2, 4500]], '2026-10-13T02:00:00.000Z'), sale('c', [['fish_goby', 10, 500]], '2026-10-19T00:00:00.000Z'), sale('d', [], '2026-10-13T00:00:00.000Z', 'office')],
     '2026-10-11T15:00:00.000Z', '2026-10-18T15:00:00.000Z');
   assert.deepEqual(rows.sort((x, y) => x.userId.localeCompare(y.userId)), [{ userId: 'a', total: 1200, lastAt: '2026-10-14T01:00:00.000Z' }, { userId: 'b', total: 1200, lastAt: '2026-10-13T01:00:00.000Z' }]);
 });

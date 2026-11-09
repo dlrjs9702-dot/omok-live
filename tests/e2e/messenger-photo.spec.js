@@ -66,6 +66,13 @@ test('메신저: 엔터 즉시 말풍선·실패 되돌림·다시 보내기, �
     await shot(b.page, 'photo-received');
     await theirs.locator('.messengerPhoto').first().click(); await expect(b.page.locator('#messengerViewer')).toBeVisible(); await expect(b.page.locator('#messengerViewerCount')).toHaveText('1 / 2');
     await b.page.locator('#messengerViewerNext').click(); await expect(b.page.locator('#messengerViewerCount')).toHaveText('2 / 2'); await shot(b.page, 'photo-viewer');
+    { // (v1.10.291 확대·축소: a PC's wheel, a phone's double tap -- 2.5x; the next photo back at 1x)
+      const im = b.page.locator('#messengerViewerImg'); await expect.poll(() => im.evaluate((e) => e.naturalWidth), { timeout: 15000 }).toBeGreaterThan(0); const box = await im.boundingBox(); const cx = box.x + box.width / 2; const cy = box.y + box.height / 2;
+      if (isMobile) { await b.page.touchscreen.tap(cx, cy); await b.page.touchscreen.tap(cx, cy); await expect(b.page.locator('#messengerViewer')).toHaveAttribute('data-zoom', '2.5'); }
+      else { await b.page.mouse.move(cx, cy); await b.page.mouse.wheel(0, -600); await expect.poll(async () => Number(await b.page.locator('#messengerViewer').getAttribute('data-zoom'))).toBeGreaterThan(1); await expect(b.page.locator('#messengerZoomPct')).not.toHaveText('100%'); }
+      await expect.poll(() => im.evaluate((e) => getComputedStyle(e).transform)).not.toBe('none'); await shot(b.page, 'photo-zoom');
+      await b.page.locator('#messengerViewerPrev').click(); await expect(b.page.locator('#messengerViewerCount')).toHaveText('1 / 2'); await expect(b.page.locator('#messengerViewer')).toHaveAttribute('data-zoom', '1');
+    }
     await b.page.keyboard.press('Escape'); await expect(b.page.locator('#messengerViewer')).toBeHidden();
     if (!isMobile) { // a PC: dropped on the chat, pasted in the box
       await page.evaluate(async () => { const cv = document.createElement('canvas'); cv.width = 300; cv.height = 200; cv.getContext('2d').fillRect(0, 0, 300, 200); const blob = await new Promise((r) => cv.toBlob(r, 'image/png')); const file = new File([blob], 'drop.png', { type: 'image/png' });

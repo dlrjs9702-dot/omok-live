@@ -21,7 +21,7 @@
   // the sectors: `place` is the facility id each shop had on the island (its window and the server's check stay)
   const SECTORS = Object.freeze([
     { id: 'store', place: 'mall:store', name: '잡화점', interact: [9.5, 4.3], keeper: [9.5, 6.6, 0] }, // (assets 82 mall.counter__f1: its customer and keeper spots)
-    { id: 'stall', place: 'mall:stall', name: '노점', interact: [12.4, 4.5], keeper: null }, // (the sell basket by the counter -- its keeper's)
+    { id: 'stall', place: 'mall:stall', name: '노점 · 물고기도 받아요', interact: [12.4, 4.5], keeper: null }, // (the sell basket by the counter -- its keeper's)
   ].map((s) => Object.freeze(s)));
   const sectorOf = (place) => SECTORS.find((s) => s.place === place) || null;
   const sectorPoint = (place) => { const s = sectorOf(place); return s ? world(s.interact[0], s.interact[1]) : null; };

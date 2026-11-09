@@ -40,9 +40,21 @@
   // the day's game of islander n (the same all day, on every screen): one of the two they like
   function gameOf(n, day) { const p = profileOf(n); return p ? p.games[hash(`${day}|${n}`) % p.games.length] : null; }
   const kindOf = (game) => (MATCH.includes(game) ? 'match' : SCORE[game] ? 'score' : null);
-  function targetOf(game, skill) { return SCORE[game]?.target[skill] ?? null; }
-  // what my score did against the mark (a time: under it wins)
-  function beat(game, skill, score) { const g = SCORE[game]; const t = targetOf(game, skill); if (!g || t == null || !Number.isFinite(score)) return false; return g.higher ? score > t : score < t; }
+  // v1.10.291 내기 목표를 기록의 탑에서 (사용자 「680이 최고인데 1500이라고 주장해」, notes docs/bet-targets-real-20261109.md): the
+  // marks from the game's all-time 1st at its bet level -- more is better: x 0.9 / 0.75 / 0.55 (hard / normal / easy); a time:
+  // divided by them; fewer than 3 recorders: the table's easy is the base; never harder than the table; to 10 (under 100: to 1).
+  // The server works them out once a Seoul day (`goals`), and a bet keeps the mark it started with.
+  const SKILL = Object.freeze({ hard: 0.9, normal: 0.75, easy: 0.55 });
+  function goalsOf(game, best = null, recorders = 0) {
+    const g = SCORE[game]; if (!g) return null;
+    const base = recorders >= 3 && Number.isFinite(best) && best > 0 ? best : g.target.easy;
+    const nice = (v) => (v >= 100 ? Math.round(v / 10) * 10 : Math.round(v));
+    const out = {}; for (const [skill, f] of Object.entries(SKILL)) { const v = nice(g.higher ? base * f : base / f); out[skill] = g.higher ? Math.min(v, g.target[skill]) : Math.max(v, g.target[skill]); }
+    return Object.freeze(out);
+  }
+  function targetOf(game, skill, goals = null) { return goals?.[skill] ?? SCORE[game]?.target[skill] ?? null; }
+  // what my score did against the mark (a time: under it wins) -- `t` the bet's own mark
+  function beat(game, skill, score, t = targetOf(game, skill)) { const g = SCORE[game]; if (!g || t == null || !Number.isFinite(score)) return false; return g.higher ? score > t : score < t; }
   // the stakes I may pick: those under the game's cap that I can pay; none once today's winnings reached the cap (a game for fun)
   function stakesFor(game, balance, wonToday = 0, limits = LIMITS) {
     if (wonToday >= limits.dailyWinMax) return [];
@@ -62,12 +74,14 @@
     win: '내가 이겼다! 다음에 또 하자.', lose: '졌다… {me}님 잘하는구나.', draw: '비겼네. 판돈은 돌려줄게.', revenge: '어제는 졌지만 오늘은 복수전이야!',
     busy: '지금 근무 중이라, 쉬는 날 한 판 해요!', fun: '오늘은 네가 너무 잘한다, 재미로만 하자.' });
   const UNIT = Object.freeze({ whack: '점', colorfind: '개', rhythm: '점', stairs: '칸' });
-  function rule(game, skill) {
-    const t = targetOf(game, skill); if (t == null) return '나 꽤 둬.';
-    if (game === 'reaction') return `난 아까 ${t}ms 나왔어. 더 빠르면 네가 이겨.`;
-    if (game === 'numbers') return `난 아까 ${Math.round(t / 100) / 10}초 걸렸어. 더 빠르면 네가 이겨.`;
-    return `난 아까 ${t.toLocaleString('ko-KR')}${UNIT[game] || '점'} 냈어. 넘으면 네가 이겨.`;
+  const shown = (game, v) => (game === 'reaction' ? `${v}ms` : game === 'numbers' ? `${Math.round(v / 100) / 10}초` : `${v.toLocaleString('ko-KR')}${UNIT[game] || '점'}`);
+  function rule(game, skill, t = targetOf(game, skill)) {
+    if (t == null) return '나 꽤 둬.';
+    if (game === 'reaction' || game === 'numbers') return `난 아까 ${shown(game, t)} ${game === 'reaction' ? '나왔어' : '걸렸어'}. 더 빠르면 네가 이겨.`;
+    return `난 아까 ${shown(game, t)} 냈어. 넘으면 네가 이겨.`;
   }
+  // (v1.10.291: the bet window's 「역대 최고 680점 · 나는 610점」 -- what the mark stands on)
+  function recordLine(game, best, t) { if (!SCORE[game] || t == null) return ''; return `${Number.isFinite(best) ? `역대 최고 ${shown(game, best)} · ` : ''}나는 ${shown(game, t)}`; }
   // a line of islander n: theirs from `own` (the lines file: { [n]: { key: text | [texts] } }) or the default; k picks among several
   function lineOf(n, key, vals = {}, own = null, k = 0) {
     const src = own?.[n]?.[key] ?? LINES[key]; const s = Array.isArray(src) ? src[Math.abs(k) % src.length] : src || '';
@@ -75,5 +89,5 @@
   }
   // the islander's face (assets 263·264 emotes) at each moment of a bet; their win: their photo pose's (island-cast photoPose)
   const EMOTE = Object.freeze({ offer: 'wave', pick: 'think', draw: 'nod', revenge: 'angry' });
-  return Object.freeze({ NAMES, MATCH, SCORE, PROFILES, STAKES, LIMITS, HOLD_MS, LINES, EMOTE, profileOf, gameOf, kindOf, targetOf, beat, stakesFor, payout, rule, lineOf });
+  return Object.freeze({ NAMES, MATCH, SCORE, PROFILES, STAKES, LIMITS, HOLD_MS, LINES, EMOTE, profileOf, gameOf, kindOf, SKILL, goalsOf, targetOf, beat, stakesFor, payout, rule, recordLine, lineOf });
 }));

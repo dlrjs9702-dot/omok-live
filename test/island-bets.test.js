@@ -39,6 +39,19 @@ test('주민 내기 규칙: 27명 모두 좋아하는 게임·실력, 그날 게
 // v1.10.283 Codex 271~280 (notes docs/codex-review-271-280.md): a bet a restart forgot is given back only when its stake was
 // taken and it was neither paid out nor given back (①②③); one settling long past stays in memory (④, #5); a reflex round
 // asked for a contest and a bet at once is refused (#7)
+test('내기 목표: 역대 1위에서 실력별(0.9·0.75·0.55, 시간은 나눔), 10 단위, 기록 3명 미만이면 표의 쉬움이 기준, 표 값이 한도, 내기에 박힌 목표로 판정', () => {
+  assert.deepEqual({ ...B.goalsOf('whack', 680, 5) }, { hard: 610, normal: 510, easy: 370 }); /* (사용자's 680: hard 612 -> 610) */
+  assert.deepEqual({ ...B.goalsOf('whack', 680, 2) }, { hard: 810, normal: 680, easy: 500 }); /* (2 recorders: the table's easy 900 the base) */
+  assert.deepEqual({ ...B.goalsOf('whack', 5000, 9) }, { ...B.SCORE.whack.target }); /* (never past the table) */
+  assert.deepEqual({ ...B.goalsOf('reaction', 300, 4) }, { hard: 330, normal: 400, easy: 550 }); /* (a time: divided -- 333, 400, 545) */
+  assert.deepEqual({ ...B.goalsOf('reaction', 200, 4) }, { hard: 270, normal: 340, easy: 450 }); /* (faster than the table: the table) */
+  assert.deepEqual({ ...B.goalsOf('colorfind', 30, 3) }, { hard: 27, normal: 20, easy: 12 }); /* (under 100: to 1 -- 27, 22.5 -> 20 by the table, 16.5 -> 12) */
+  assert.equal(B.goalsOf('omok', 10, 5), null); assert.equal(B.targetOf('whack', 'hard', B.goalsOf('whack', 680, 5)), 610); assert.equal(B.targetOf('whack', 'hard'), 2100);
+  assert.equal(B.beat('whack', 'hard', 700, 610), true); assert.equal(B.beat('whack', 'hard', 600, 610), false); assert.equal(B.beat('reaction', 'hard', 320, 330), true);
+  assert.equal(B.recordLine('whack', 680, 610), '역대 최고 680점 · 나는 610점'); assert.equal(B.recordLine('reaction', null, 450), '나는 450ms'); assert.equal(B.recordLine('omok', 1, 1), '');
+  assert.match(B.rule('whack', 'hard', 610), /610점/);
+});
+
 test('주민 내기 돈: 잊힌 내기 환불은 판돈만 빠졌을 때 한 번, 지급 뒤·판돈 전에는 없음, 정산 중 내기는 안 지움, 대회+내기 거절', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'resident-bets-money-')); rmAtExit(dir);
   const server = await boot(t, dir); const { req } = server;
@@ -90,6 +103,7 @@ test('주민 내기 서버: 아는 사이부터·근무 중 아님·하루 한 �
   // a stake not on offer refused; the day's winnings at the cap: none to pick, for fun only
   await free(); assert.equal((await req('/api/island/bet/start', a, { n, stake: 10000 })).data.error, 'BAD_STAKE'); // (a score bet: 5,000 at most)
   await req('/api/test/bet', a, { reset: true, won: 30000 }); const fun = (await req(`/api/island/bet?n=${n}`, a)).data; assert.deepEqual(fun.stakes, []); assert.equal(fun.fun, true);
+  assert.equal(fun.target, B.goalsOf(fun.game, null, 0)[fun.skill]); assert.equal(fun.record, `나는 ${fun.game === 'reaction' ? `${fun.target}ms` : `${Math.round(fun.target / 100) / 10}초`}`); /* (v1.10.291: no records here -- the table's easy the base) */
   await req('/api/test/bet', a, { reset: true });
   // a score bet: the stake, its round (the server's), beaten -- twice back, +1 호감도
   const aff0 = (await req('/api/test/affinity', a, { n, delta: 0 })).data.after?.[n];
