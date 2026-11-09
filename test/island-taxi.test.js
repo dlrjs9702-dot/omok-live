@@ -39,6 +39,18 @@ test('택시 길 확인: 양쪽 길을 0.5 m마다 -- 단단한 물체에서 차
       }
     }
   }
+  // (294 7) the empty car's way back -- turning round where it let the rider out, the same road back, turning round into its place:
+  // every 0.5 m as the way there, and at the end standing just as the parked car does
+  for (const from of ['plaza', 'isle']) {
+    const ride = { from, startedAt: 0 }; const s = X.stopOf(from); let last = null;
+    for (let now = X.durationOf(ride); now < X.backOf(ride); now += 50) {
+      const p = X.carAt(ride, now); if (!p) break; assert.ok(['turn', 'back'].includes(p.phase), p.phase);
+      if (last && Math.hypot(p.x - last.x, p.z - last.z) < 0.5) continue; last = p; const at = `${from} back ${p.x.toFixed(1)},${p.z.toFixed(1)}`;
+      assert.ok(clear(p.x, p.z) > HALF + 0.3, `${at} by a solid`); assert.ok(ok(p.x, p.z) && !T.onStairs(p.x, p.z), `${at} water or stairs`);
+    }
+    const end = X.carAt(ride, X.backOf(ride) - 1); assert.ok(Math.hypot(end.x - s.x, end.z - s.z) < 0.01 && Math.abs(Math.sin(end.yaw - s.yaw)) < 0.01 && Math.cos(end.yaw - s.yaw) > 0, `${from} parked again`);
+    assert.equal(X.carAt(ride, X.backOf(ride)), null);
+  }
   const isle = X.stopOf('isle'); assert.equal(isle.label, '툇마루섬 마을'); assert.ok(Math.hypot(isle.x + 13.3, isle.z - 173.1) < 4, '사용자 자리');
   for (const id of ['plaza', 'isle']) { const s = X.stopOf(id); const d = X.dropOf(id); for (const [name, p] of [['shelter', s.shelter], ['stand', s], ['drop', d], ['out', s.out]]) assert.ok(clear(p.x, p.z) > 1 && ok(p.x, p.z), `${id} ${name} ${p.x.toFixed(1)},${p.z.toFixed(1)}`); }
 });

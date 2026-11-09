@@ -5178,6 +5178,7 @@
     const ride = document.createElement('button'); ride.type = 'button'; ride.className = 'primary'; ride.id = 'taxiRideBtn'; ride.textContent = '타기';
     const close = document.createElement('button'); close.type = 'button'; close.className = 'secondary'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
     if (q.fare && Number.isFinite(balance) && balance < q.fare) { ride.disabled = true; status.textContent = `포인트가 모자라요(${q.fare.toLocaleString('ko-KR')}P)`; }
+    if (q.awayS > 0) { ride.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
     ride.addEventListener('click', async () => {
       ride.disabled = true;
       try {
@@ -5563,6 +5564,7 @@
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
+        plaza.controller?.setTaxiStops?.(data.taxiStops); /* (294 7: one car a stop -- every screen draws it there and back) */
         if (data.jail) { jailedBy(data); if (jailState && data.jail.inmate !== jailState.inmate) refreshJail(); } // R4: put in the 구치소's cell (293: let out by the administrator -- seen at once)
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();

@@ -116,7 +116,7 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
     }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 30000 }).toBe(null);
     if (from === 'plaza') { /* (294 6 사용자 「택시가 이동이 끊기는 것」: no frame's step 3x off its neighbours' -- the clock eased, not jumping) */
-      const jumps = await page.evaluate(() => { const f = (window.PlazaDebug().taxiTrace() || []).filter((x) => ['start', 'run', 'stop'].includes(x.phase)); const v = []; for (let i = 1; i < f.length; i += 1) { const dt = f[i].t - f[i - 1].t; v.push({ d: Math.hypot(f[i].x - f[i - 1].x, f[i].z - f[i - 1].z), v: Math.hypot(f[i].x - f[i - 1].x, f[i].z - f[i - 1].z) / Math.max(1, dt) }); } const med = (a) => { const b = [...a].sort((p, q) => p - q); return b[Math.floor(b.length / 2)] || 0; }; window.PlazaDebug().taxiTrace(false); return v.filter((r, i) => { const ref = med(v.slice(Math.max(0, i - 4), i + 5).map((x) => x.v)); return r.d > 0.03 && ref > 0 && (r.v > ref * 3 || r.v < ref / 3); }).length; });
+      const jumps = await page.evaluate(() => { const f = (window.PlazaDebug().taxiTrace() || []).filter((x) => x.phase === 'run') /* (the cruise: its ease in and out speed up and slow on purpose) */; const v = []; for (let i = 1; i < f.length; i += 1) { const dt = f[i].t - f[i - 1].t; v.push({ d: Math.hypot(f[i].x - f[i - 1].x, f[i].z - f[i - 1].z), v: Math.hypot(f[i].x - f[i - 1].x, f[i].z - f[i - 1].z) / Math.max(1, dt) }); } const med = (a) => { const b = [...a].sort((p, q) => p - q); return b[Math.floor(b.length / 2)] || 0; }; window.PlazaDebug().taxiTrace(false); return v.filter((r, i) => { const ref = med(v.slice(Math.max(0, i - 4), i + 5).map((x) => x.v)); return r.d > 0.03 && ref > 0 && (r.v > ref * 3 || r.v < ref / 3); }).length; });
       expect(jumps).toBe(0);
     }
     const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); const out = X.arrivalOf({ from, startedAt: 0, runMs: 3000 }); expect(Math.hypot(here.x - out.x, here.z - out.z)).toBeLessThan(0.6); // (exit_L beside the car as it stands)
@@ -126,7 +126,11 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
   };
   /* (v1.10.286: CI at 2.7 fps took more than the 3 s road + 1.2 s getting in to reach the in-ride checks -- the way there 12 s) */
   expect((await request.post('/api/test/taxi-run', { data: { ms: 12000 } })).ok()).toBe(true); await ride('plaza');
-  expect((await request.post('/api/test/taxi-run', { data: { ms: 3000 } })).ok()).toBe(true); await ride('isle');
+  // (294 7 사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」) the plaza stop's car on its way back empty: 타기 there told so, the other screen sees it away
+  expect((await (await request.get('/api/island/taxi?from=plaza', { headers: { 'X-Session-Token': b.token } })).json()).awayS).toBeGreaterThan(0);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().taxiStopsShown().find((s) => s.id === 'plaza')), { timeout: 15000 }).toMatchObject({ away: true, standing: false }); if (process.env.SHOT_DIR) { const sh = X.stopOf('plaza').shelter; await b.page.evaluate(([x, z]) => { const D = window.PlazaDebug(); D.faceTo(x, z); D.camNear([1.2, 2.4, 3.2], [0, 2.4, -5]); }, [sh.x, sh.z]); await b.page.waitForTimeout(900); await b.page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-taxi-stop-away.png` }); } /* (the other screen by the stop: its sign the seconds left) */
+  expect((await request.post('/api/test/taxi-run', { data: { ms: 3000, back: false } })).ok()).toBe(true); await ride('isle');
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().taxiStopsShown().find((s) => s.id === 'plaza')), { timeout: 45000 }).toMatchObject({ away: false, standing: true }); /* (back in its place: 타기 again) */
   // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter and the standing car block -- walked into, I stop at their edge
   { const s = X.stopOf('plaza'); const at = (x, z) => page.evaluate(([x, z]) => window.PlazaDebug().solidsAt(x, z), [x, z]);
     expect(await at(s.x, s.z)).toBe(true); expect(await at(s.shelter.x, s.shelter.z)).toBe(true); expect(await at(s.out.x, s.out.z)).toBe(false); /* (the door's side clear) */
