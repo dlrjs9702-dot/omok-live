@@ -1,10 +1,11 @@
 /* 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md): the page on the island's common parts (cream
    paper, brown ink -- styles.css --isle-*), the rooms and lines as the old window laid them out */
-body.messengerPage{margin:0;min-height:100dvh;background:#f4ead6;color:var(--isle-ink);display:block}
-.mPage{box-sizing:border-box;width:min(960px,100%);height:100dvh;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+body.messengerPage{margin:0;min-height:var(--mvh,100dvh);background:#f4ead6;color:var(--isle-ink);display:block}
+.mPage{box-sizing:border-box;width:min(960px,100%);height:var(--mvh,100dvh); /* (v1.10.289: what is seen -- messenger.js; 100dvh was taller than a phone's screen, the page scrolled under the room's own) */margin:0 auto;padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
 .mTop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-radius:18px}
 .mTitle{font-size:1.05rem}
 .mTopActions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+@media (hover:none) and (pointer:coarse){body:not(.mEmbed) .mPage:has(.mApp.inRoom)>.mTop{display:none}} /* (v1.10.289: a phone in a room -- the settings card away, the messages get its room; the list shows it; the 서랍's ✕ kept) */
 /* 메신저 정리 12절: the island app's 서랍 (?embed=1) -- the head keeps ✕ and 「메신저 앱으로 열기 ↗」 only; the page alone has none of them */
 body:not(.mEmbed) .mEmbedOnly{display:none!important}
 .mEmbed .mTopActions>:not(.mEmbedOnly){display:none!important}

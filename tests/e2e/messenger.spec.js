@@ -131,6 +131,7 @@ test('메신저 단독 창: 로그인 유지(새로고침해도), 내 계정에�
   { const id = await m.evaluate(() => fetch('/api/messenger', { headers: { 'X-Messenger-Device': localStorage.getItem('gc.messengerDevice') } }).then((r) => r.json()).then((d) => d.rooms.find((x) => x.name === '우리집').id));
     await m.goto(`/messenger.html?open=${encodeURIComponent(`web+gcmessenger:${id}`)}`); await expect(m.locator('#messengerRoomName')).toHaveText('우리집'); }
   // logged out on the page: the device's login ends with it (Codex 검토 2차 #4: and nothing of it stays on the page)
+  if (info.project.name.includes('mobile')) { await expect(m.locator('.mTop')).toBeHidden(); await m.locator('#messengerBackBtn').click(); await expect(m.locator('.mTop')).toBeVisible(); } /* (v1.10.289: a phone in a room -- the settings card away; the list shows it) */
   await m.locator('#mLogoutBtn').click(); await expect(m.locator('#mLogin')).toBeVisible();
   await expect(m.locator('#messengerRoomList li')).toHaveCount(0); await expect(m.locator('#messengerMessages > *')).toHaveCount(0); await expect(m).toHaveTitle('아일랜드 메신저');
   await m.reload(); await expect(m.locator('#mLogin')).toBeVisible();
@@ -536,7 +537,7 @@ test('메신저 B: 안 읽은 곳 줄·새 메시지 ↓·Shift+Enter 줄 바꿈
   const mark = box.locator('.messengerUnreadLine'); await expect(mark).toHaveText('여기까지 읽었어요');
   await expect(mark.locator('xpath=following-sibling::*[1]')).toContainText('여기부터 새 글');
   await expect.poll(() => mark.evaluate((el) => Math.round(el.getBoundingClientRect().top - el.parentElement.getBoundingClientRect().top))).toBeLessThan(30);
-  expect(await gap()).toBeGreaterThan(40); await shot('unread-line');
+  expect(await gap()).toBeGreaterThan(10); await shot('unread-line'); /* (not at the end -- v1.10.289: a phone's room taller, its card away) */
   // B1: further up, a new line -- 「새 메시지 ↓」, the view stays; pressed: the end, gone
   await box.evaluate((b) => { b.scrollTop = 0; }); await m.waitForTimeout(200); await expect(below).toBeHidden();
   await say('위에 있을 때 온 글'); await expect(box).toContainText('위에 있을 때 온 글', { timeout: 10000 });

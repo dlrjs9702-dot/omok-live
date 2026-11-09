@@ -343,6 +343,10 @@
     }
   }
   const touch = () => Boolean(window.matchMedia?.('(hover: none) and (pointer: coarse)').matches); /* (a phone: no keypad unless the box is tapped) */
+  // v1.10.289 (사용자 「핸드폰에서 스크롤이 생겨서 불편해」): the page as tall as what is seen -- the keypad up too (the box over it); a pinch's zoom
+  // not taken for a smaller screen
+  const fitPage = () => { const v = window.visualViewport; document.documentElement.style.setProperty('--mvh', `${Math.round(v ? v.height * v.scale : window.innerHeight)}px`); };
+  fitPage(); window.visualViewport?.addEventListener('resize', fitPage); window.addEventListener('resize', fitPage);
   function putGlyph(g) { // at the cursor (the box's 500 letters kept); a phone's keypad not called up for it
     const input = byId('messengerInput'); const a = input.selectionStart ?? input.value.length; const b = input.selectionEnd ?? a;
     if (input.value.length - (b - a) + g.length > 500) return showToast('500자까지 쓸 수 있어요.'); // (v1.10.283 Codex #10: the chosen words replaced, not added to)
