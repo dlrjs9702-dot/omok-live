@@ -413,14 +413,14 @@ test('조합 맞춤: 모자 덮기·펜던트·망토 드리우기·꼬리·내�
   const P = require('../public/plaza/asset-pipeline.js');
   const tri = (...pts) => pts.flat();
   const hair = { id: 'hair', fit: { slot: 'hair' }, pos: tri([0, 1.7, 0], [0.3, 2.05, 0], [-0.3, 2.05, 0], [0.4, 2.1, 0], [0, 2.12, 0.1], [-0.4, 2.1, 0]) };
-  const hat = { id: 'hat', fit: { slot: 'hat', cover: 2.0 }, pos: [0, 2.1, 0] };
+  const hat = { id: 'hat', fit: { slot: 'hat', cover: 2.0 }, pos: Array.from({ length: 24 }, (_, k) => [Math.sin((k * Math.PI) / 12) * 0.35, 2.1, Math.cos((k * Math.PI) / 12) * 0.35]).flat() }; /* (294: a crown round the head -- the cut follows the hat at each angle) */
   const robe = { id: 'robe', fit: { slot: 'outfit' }, pos: tri([0, 0.95, -0.27], [0, 0.6, 0.36], [0, 0.95, 0.24]) };
   const pendant = { id: 'neck', fit: { slot: 'necklace' }, pos: tri([0, 1.07, -0.19], [0, 0.99, -0.255], [0, 0.97, -0.235]) };
   const cape = { id: 'cape', fit: { slot: 'cape' }, pos: tri([0, 1.07, 0.28], [0, 0.95, 0.28], [0, 0.6, 0.28], [0, 0.45, 0.28]) };
   const tail = { id: 'tail', fit: { slot: 'tail' }, pos: tri([0, 0.6, 0.2], [0, 0.6, 0.38], [0, 0.6, 0.6]) };
   const royal = { id: 'royal', fit: { slot: 'outfit', hideWith: { cape: ['cape_main'] } }, pos: [0, 1, 0] };
   const fit = P.fitWardrobe([hair, hat, robe, pendant, cape, tail, royal]);
-  assert.deepEqual(fit.hair.ops, [{ kind: 'cover', above: 2.0 }]);
+  assert.deepEqual(fit.hair.ops.map((o) => [o.kind, o.above]), [['cover', 2.0]]); /* (294: and its ring round the head) */
   assert.deepEqual(P.applyFit(hair.pos, [0, 1, 2, 3, 4, 5], fit.hair.ops).index, [0, 1, 2]); // the face above the brim line goes
   const neck = P.applyFit(pendant.pos, null, fit.neck.ops).pos;
   assert.ok(neck[5] < -0.27 - 0.01 && Math.abs(neck[2] - -0.19) < 1e-6, '펜던트만 앞으로(끈은 그대로)');
@@ -442,13 +442,35 @@ test('모자 쓰는 깊이: 내려 쓰고 넓혀 머리를 감싸며, 머리카�
   const hair = { id: 'hair', fit: { slot: 'hair' }, pos: [0, 1.7, 0, 0.3, 2.05, 0, -0.3, 2.05, 0] };
   const hat = { id: 'hat', fit: { slot: 'hat', cover: 2.04, sink: 0.12, widen: 1.15 }, pos: [0.3, 2.07, 0, 0, 2.3, 0.3] };
   const fit = P.fitWardrobe([hair, hat]);
-  assert.deepEqual(fit.hair.ops, [{ kind: 'cover', above: 2.04 - 0.12 }]);
+  assert.deepEqual(fit.hair.ops.map((o) => [o.kind, o.above]), [['cover', 2.04 - 0.12]]);
   const seated = P.applyFit(hat.pos, null, fit.hat.ops).pos;
   for (const [i, v] of [[0, 0.345], [1, 1.95], [4, 2.18], [5, 0.345]]) assert.ok(Math.abs(seated[i] - v) < 1e-6, `${i}: ${seated[i]}`);
   for (const id of ['wear.hat_straw', 'wear.hat_fedora', 'wear.hat_wizard', 'wear.hat_hw_witch', 'wear.hat_crown']) {
     const f = REGISTRY[id].fit; assert.ok(f.sink >= 0.1 && f.widen >= 1 && f.widen <= 1.2, id);
   }
   for (const id of ['wear.hat_beanie', 'wear.hat_cap', 'wear.hat_halo']) assert.equal(REGISTRY[id].fit.sink, undefined, `${id}: 그대로`);
+});
+
+// v1.10.294 (문제 기록 「건」: vampire_sweep x coral_tiara -- a skin band under the tiara, a gap in the back hair): the hair under a hat
+// is cut round the head at the hat's own lowest point at each angle (never below its brim line), and not at all where no hat is
+test('모자 아래 머리: 각도마다 모자 아래 끝까지만 자름, 모자 없는 자리는 안 자름, 건의 조합 띠 0.5 cm 이하', async () => {
+  const P = require('../public/plaza/asset-pipeline.js');
+  // a tiara at the front only (z < 0), its lowest point 2.05; the brim line 1.95: the front's cut at 2.05, the back's none
+  const hat = { id: 'hat', fit: { slot: 'hat', cover: 1.95 }, pos: [0, 2.05, -0.12, 0.05, 2.15, -0.11, -0.05, 2.12, -0.11] };
+  const tri = (x, y, z) => [x - 0.01, y, z, x + 0.01, y, z, x, y + 0.001, z + 0.001];
+  const hair = { id: 'hair', fit: { slot: 'hair' }, pos: [...tri(0, 2.0, -0.11), ...tri(0, 2.1, -0.11), ...tri(0, 2.1, 0.11), ...tri(0, 2.0, 0.11)] };
+  const op = P.fitWardrobe([hair, hat]).hair.ops[0]; assert.equal(op.kind, 'cover');
+  assert.deepEqual(P.applyFit(hair.pos, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [op]).index, [0, 1, 2, 6, 7, 8, 9, 10, 11], '앞 위(2.1)만 잘림, 뒤는 그대로');
+  // the reported combo, from its files: the cut line at least the tiara's own edge round the head, nothing cut where it is not
+  const fs = require('node:fs'); const path = require('node:path'); const THREE = await three();
+  const rest = async (id) => { const g = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', REGISTRY[id].url))); g.scene.updateMatrixWorld(true); const out = [];
+    g.scene.traverse((o) => { if (!o.isSkinnedMesh) return; const M = new THREE.Matrix4().multiplyMatrices(o.skeleton.bones[0].matrixWorld, o.skeleton.boneInverses[0]).multiply(o.bindMatrix); const a = o.geometry.attributes.position; const v = new THREE.Vector3(); for (let i = 0; i < a.count; i += 1) { v.fromBufferAttribute(a, i).applyMatrix4(M); out.push(v.x, v.y, v.z); } }); return out; };
+  const [tiara, sweep] = [await rest('wear.x2_hat_coral_tiara'), await rest('wear.hair_hw_vampire_sweep')];
+  const real = P.fitWardrobe([{ id: 'hat', fit: REGISTRY['wear.x2_hat_coral_tiara'].fit, pos: tiara }, { id: 'hair', fit: { slot: 'hair' }, pos: sweep }]).hair.ops[0];
+  const ring = real.ring; assert.equal(ring.length, 24); assert.ok(ring.some((y) => y === null), '티아라가 없는 자리(뒤)'); assert.ok(ring.filter((y) => y !== null).every((y) => y >= real.above), '챙 선보다 아래는 안 자름');
+  const low = new Array(24).fill(Infinity); const sec = (x, z) => ((Math.round(((Math.atan2(x - real.cx, z - real.cz) + Math.PI) / (2 * Math.PI)) * 24) % 24) + 24) % 24;
+  for (let i = 0; i < tiara.length; i += 3) { const s = sec(tiara[i], tiara[i + 2]); low[s] = Math.min(low[s], tiara[i + 1]); }
+  for (let s = 0; s < 24; s += 1) if (Number.isFinite(low[s])) assert.ok(Math.abs(ring[s] - Math.max(real.above, low[s])) < 0.006, `${s}: ${ring[s]} ${low[s]}`); /* (the tiara's edge there -- the old flat line was 9.2 cm under it) */
 });
 
 // v1.10.32 겨울 지붕 눈 (asset-pipeline roofShape / drapeSnow): a roof read from its faces -- flat, gable (which way its

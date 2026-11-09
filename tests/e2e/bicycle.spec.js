@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, adminToken, uniqueIp, intoMall, expectNoScriptError } = require('./skin-support');
+const { shopper, post, adminToken, uniqueIp, intoMall, expectNoScriptError, grant, buyAndEquip } = require('./skin-support');
 
 // 자전거 (gamecenter-notes docs/bicycle-20261020.md, assets 61): one in the bag rides by B (the phone's 🚲 button, shown
 // only with a bike); the others see it, in its colour; it gets off by itself indoors, on stairs (not bridges, 2026-10-21), and among
@@ -92,6 +92,7 @@ test('자전거: B·빠른 칸(폰)으로 타고 내리기, 다른 사람에게 
 test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 마을에서 내림 → 돌아오기, 다른 화면에도 택시', async ({ browser, request, isMobile }) => {
   test.setTimeout(240000);
   const a = await shopper(browser, request, isMobile ? '택시타m' : '택시타', 0, 'female'); const b = await shopper(browser, request, isMobile ? '택시보m' : '택시보', 0, 'male');
+  await grant(request, a, 1_000_000); await buyAndEquip(request, a, ['avatar_x2_hat_coral_tiara', 'avatar_hair_16']); /* (294 문제 기록 「건」: the coral tiara on the vampire sweep) */
   for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
   const { page } = a; const X = require('../../public/plaza/island-taxi.js');
   const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(400); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-taxi-${name}.png` }); } };
@@ -110,11 +111,12 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW'); // (the keys do nothing in the car)
       const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
       expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(true); /* (v1.10.285: the hat away in the car) */
+      expect(await page.evaluate(() => window.PlazaDebug().hairCut())).toBe(false); /* (294 C 「대머리야」: the hair its whole shape while the hat is away) */
     }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 30000 }).toBe(null);
     const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); const out = X.arrivalOf({ from, startedAt: 0, runMs: 3000 }); expect(Math.hypot(here.x - out.x, here.z - out.z)).toBeLessThan(0.6); // (exit_L beside the car as it stands)
     await expect(page.locator('#toast')).toContainText(`${to.label}에 도착했어요`);
-    expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(false); /* (out: the hat back) */
+    expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(false); /* (out: the hat back) */ expect(await page.evaluate(() => window.PlazaDebug().hairCut())).toBe(true); /* (294: and the hat's cut again) */
     if (from === 'plaza') await shot('arrived');
   };
   /* (v1.10.286: CI at 2.7 fps took more than the 3 s road + 1.2 s getting in to reach the in-ride checks -- the way there 12 s) */

@@ -894,7 +894,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
           if (!baked) m.geometry = slimmedGeometry(m, base.entry.slim); // v1.10.93 체형: every part narrowed as the body is (F1·F2: made so already)
           const sitGeometry = tail ? fittedGeometry(m, [...(fit?.ops || []), P.TAIL_TUCK]) : null;
-          if (fit?.ops.length) m.geometry = fittedGeometry(m, fit.ops);
+          if (fit?.ops.length) { const bare = m.geometry; m.geometry = fittedGeometry(m, fit.ops); if (fit.ops.some((op) => op.kind === 'cover')) { m.userData.bareHair = bare; m.userData.hatHair = m.geometry; } } /* (294 C: the hair uncut kept -- shown while the hat is put away) */
           if (sitGeometry) { m.userData.stand = m.geometry; m.userData.sit = sitGeometry; tails.push(m); }
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
           if (skeleton.bones.some((b) => !b)) throw new Error(`rig mismatch: ${m.name}`);
@@ -989,6 +989,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // everyone's; a character dressed meanwhile starts so (c.hatHidden, applied as its parts come in)
   function hat(c, off) {
     c.hatHidden = Boolean(off);
+    c.assetRoot?.traverse((m) => { if (m.isMesh && m.userData.bareHair) m.geometry = off ? m.userData.bareHair : m.userData.hatHair; }); /* (294 C, 문제 기록 「대머리야」: the hair whole while the hat is away -- every screen) */
     c.assetRoot?.traverse((m) => { if (!m.isMesh || m.userData.wearSlot !== 'hat') return; if (off) { m.userData.faceHidden = true; m.visible = false; } else if (m.userData.faceHidden) { m.userData.faceHidden = false; m.visible = ownVisible(c, m); } });
   }
   // an islander's things in hand (its `held` material, asset 108: 반디's net, 콩이's jar...) put away during a gesture and back;
