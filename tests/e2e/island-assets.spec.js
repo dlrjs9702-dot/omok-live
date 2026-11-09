@@ -721,6 +721,8 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   }
   const all = await tree();
   expect(all.far).toBeGreaterThan(0); expect(all.near).toBeGreaterThan(0);
+  { const bushes = (await debug(page)).assets.batches.filter((b) => b.placed && b.ids.some((id) => /^(nature|angular)\.bush/.test(id))); /* (G2 덤불: past 60 m none drawn -- `far` the hidden ones; no Low file) */
+    expect(bushes.length).toBeGreaterThan(0); expect(bushes.reduce((n, b) => n + b.far, 0)).toBeGreaterThan(0); for (const b of bushes) expect(b.low).toBe(null); }
   // v1.10.290: the cross-fade (the tests' drawing switches at once) -- on, walking off: some copies on their way, then none
   { const fade = async () => (await debug(page)).assets.fade; const before = (await fade()).started; await page.evaluate(() => window.PlazaDebug().lodFade(true));
     await standAt((await near()) * 1.1 + 3); await expect.poll(async () => (await fade()).started, { timeout: 15000 }).toBeGreaterThan(before);

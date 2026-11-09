@@ -397,6 +397,8 @@ test('운영 등록부: 남은 관목은 사계절 Low 파일이 있고 High보�
   const P = require('../public/plaza/asset-pipeline.js');
   const { REGISTRY } = require('../public/plaza/island-assets.js');
   for (const id of ['nature.tree.round', 'nature.tree.tiered', 'nature.tree.blossom', 'nature.tree.tall', 'nature.bush.0', 'nature.bush.1', 'angular.bush', 'tree.harvest']) for (const season of P.SEASONS) { const e = P.entryOf(REGISTRY, id, [], season); assert.ok(e.url.startsWith(`/assets/island/nature109/${season}/`) && e.lowUrl === null, `${id} ${season}`); } // (G2 사용자 「로우 모델 넣지 마」)
+  for (const id of ['nature.bush.0', 'nature.bush.1', 'angular.bush']) assert.deepEqual([REGISTRY[id].hideFar, REGISTRY[id].shadows], [60, false], id); /* (G2 덤불: faded out past 60 m, no shadows) */
+  for (const id of ['nature.tree.round', 'nature.rock.0', 'ground.fern']) assert.equal(REGISTRY[id].hideFar, undefined, id); /* (trees and rocks stay) */
   for (const id of ['nature.bush']) {
     for (const season of P.SEASONS) {
       const e = P.entryOf(REGISTRY, id, [], season);

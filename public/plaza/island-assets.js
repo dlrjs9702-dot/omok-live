@@ -569,6 +569,7 @@
     'ground.fern': 'bush_fern', 'ground.shrub': 'plant_low', 'ground.flowers': 'clover',
   };
   for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale }; } // ('nature.bush.0' was 'nature.bush')
+  for (const id of ['nature.bush.0', 'nature.bush.1', 'angular.bush']) REGISTRY[id].hideFar = 60; // (G2 덤불: past 60 m faded out over the 0.4 s dither; never casting shadows -- `shadows: false` kept)
   REGISTRY['project.blossom'] = { url: `${N109}/spring/tree_cluster.glb`, scale: 0.888, near: 35 }; // (the flower path's trees: in bloom whatever the season)
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum

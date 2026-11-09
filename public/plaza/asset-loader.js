@@ -419,7 +419,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
             im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true;
             cell.parent.add(im); invalidateOcclusion(cell.parent); return im; // (a building's batched parts: its sight boxes again)
           });
-          const high = meshesOf(gltf, cell.shadow && entry.shadows !== false); const low = lowGltf ? meshesOf(lowGltf, false) : null;
+          const high = meshesOf(gltf, cell.shadow && entry.shadows !== false); const low = lowGltf ? meshesOf(lowGltf, false) : hit.entry.hideFar ? [] : null; /* (G2 덤불 `hideFar`: an empty Low -- past it nothing, the fade's dither taking it out) */
           /* (v1.10.290: the copies on their way between the two -- their own instanced meshes on the same buffers, each its share) */
           const fadeMeshes = (meshes) => meshes.map((src) => { const geo = new THREE.BufferGeometry(); geo.index = src.geometry.index; for (const [k, a] of Object.entries(src.geometry.attributes)) geo.setAttribute(k, a); geo.groups = src.geometry.groups; geo.boundingBox = src.geometry.boundingBox; geo.boundingSphere = src.geometry.boundingSphere; geo.setAttribute('lodFade', new THREE.InstancedBufferAttribute(new Float32Array(count), 1)); const im = new THREE.InstancedMesh(geo, instFadeOf(src.material), count); im.userData.part = src.userData.part; im.boundingSphere = src.boundingSphere; im.count = 0; im.visible = false; im.castShadow = false; im.receiveShadow = true; cell.parent.add(im); return im; });
           const canFade = Boolean(low) && [...high, ...low].every((im) => fadeable(im.material));
@@ -506,7 +506,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     for (const rec of batches) {
       if (!rec.placed) continue;
       entryMatrix(rec.entry, local);
-      const near = P.lodDistance(rec.entry.near ?? 45, quality, rec.entry.shadows !== false);
+      const near = rec.entry.hideFar || P.lodDistance(rec.entry.near ?? 45, quality, rec.entry.shadows !== false); /* (G2 덤불: `hideFar` m, at every quality) */
       for (const p of rec.placed) {
         let changed = false;
         p.cell.matrices.forEach((m, i) => {
