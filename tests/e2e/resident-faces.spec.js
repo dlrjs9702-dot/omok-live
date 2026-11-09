@@ -68,7 +68,9 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   await page.evaluate((n) => window.PlazaDebug().sayAs(n, '오늘 바람이 참 시원하네요!'), thumbs.n);
   await expect.poll(async () => { const f = await life(thumbs.n); return f.talking && f.flaps > 0; }, { timeout: 3000, intervals: [50] }).toBe(true);
   await expect.poll(async () => (await life(thumbs.n)).talking, { timeout: 6000 }).toBe(false); await expect.poll(async () => (await face(thumbs.n)).parts, { timeout: 3000 }).toEqual([]);
-  await expect.poll(async () => { const f = await life(thumbs.n); return Boolean(f.want) && Math.abs(f.look?.yaw || 0) + Math.abs(f.look?.pitch || 0) > 0.05; }, { timeout: 15000, intervals: [300] }).toBe(true);
+  await expect.poll(async () => { /* (v1.10.289 CI: each try me 2.5 m from where it stands now -- it walks on, or has a feeling of its own) */
+    await post(request, '/api/test/island/free-residents', token, {}); const at = (await face(thumbs.n)).at; await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 2.5, z), [at.x, at.z]); await page.waitForTimeout(900);
+    const f = await life(thumbs.n); return Boolean(f.want) && Math.abs(f.look?.yaw || 0) + Math.abs(f.look?.pitch || 0) > 0.05; }, { timeout: 40000, intervals: [500] }).toBe(true);
   // photos (총괄 #414: the pieces over a muzzle, a beak and a face -- at the play camera's distance, where depth is coarser):
   // 봄이·하람·콩이 laughing, me 2.8 m before each along the way it looks, the camera as in play
   if (process.env.SHOT_DIR) for (const person of ['bomi', 'haram', 'kongi', 'bitna', 'garam']) { /* (빛나·가람, v1.10.280: neck, hat and bag kept) */
