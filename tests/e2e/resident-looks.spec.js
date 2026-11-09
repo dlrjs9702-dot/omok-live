@@ -15,7 +15,7 @@ test('주민 모습: 자리마다 그 주민 모델, 서 있기·대화 가까�
   await page.evaluate(() => window.PlazaDebug().counterFacing());
   await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().residentPosts())).filter((p) => !p.model).map((p) => p.resident), { timeout: 60000 }).toEqual([]);
   const posts = await page.evaluate(() => window.PlazaDebug().residentPosts());
-  expect(posts.map((p) => p.resident)).toEqual(expect.arrayContaining(['maru', 'danbi', 'hansol', 'saerom', 'useong']));
+  expect(posts.map((p) => p.resident)).toEqual(expect.arrayContaining(['maru', 'danbi', 'hansol', 'saerom', 'darae', 'useong']));
   expect(posts.length).toBeGreaterThanOrEqual(10); // (the story islanders this week, besides the five always there)
   // talked to: they whole from head to waist, my head off to the side (v1.10.213 총괄 검토 「내 머리가 주민을 가려요」)
   const talking = () => page.evaluate(() => /talkMode/.test(document.getElementById('plazaDialog').className));

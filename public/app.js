@@ -3870,7 +3870,7 @@
     const r = plaza.controller?.roster?.(); const R = window.IslandRoster; const C = window.IslandCast; if (!r || !R || !C) return null;
     const who = (n) => C.RESIDENTS[n]?.name || '';
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-    const { rest, by } = R.deskRest(r.day); const DESK = { civil: '민원', tax: '세금', bank: '예금' };
+    const { rest, by } = R.deskRest(r.day); const DESK = { civil: '민원', tax: '세금', bank: '예금', rename: '개명' };
     const rows = [...R.POSTS.map((p) => [p.name, who(r.posts[p.id])]),
       ['관공서 창구', `${r.posts.civil.map((n) => `${who(n)}(${DESK[R.DESK[n]]})`).join(' · ')} — 오늘 쉬는 ${who(r.resting)}의 ${DESK[rest]} 일은 ${DESK[by]} 창구에서`],
       ['달마루역', r.posts.station === 18 ? `${who(18)} — 일요일은 반디가 역을 봐요 (철이 부탁은 월요일에)` : `${who(r.posts.station)} (일요일은 반디)`], /* (총괄 C1 검토 2) */ ['관공서 문 · 구치소 · 정자 · 밭', [r.posts.gate, r.posts.jail, r.posts.pavilion, r.posts.farm].map(who).join(' · ')]];
@@ -4579,7 +4579,7 @@
   // a window's business, seated at `seat`'s window (the camera on its clerk) -- `door`'s own, or the resting desk's beside it
   async function counterOpen(door, seatDoor, before = '') {
     counterSeat = { door }; plaza.controller?.counterCamera?.(seatDoor);
-    const dialog = counterDialogs[door]; const say = document.createElement('p'); say.className = 'counterSay'; say.textContent = before + COUNTER_SAY[door]; if (door === 'room:rename') say.prepend(Object.assign(document.createElement('b'), { textContent: '개명 담당 · ' })); /* (v1.10.281 문제 기록 2: the one clerk no islander keeps, named by its role) */
+    const dialog = counterDialogs[door]; const say = document.createElement('p'); say.className = 'counterSay'; say.textContent = before + COUNTER_SAY[door]; /* (v1.10.288: no role name before the 개명 desk's words -- 다래 keeps it, named over the seat as the others) */
     dialog.querySelector('.counterSay')?.remove(); dialog.querySelector('.recordsDialogHead').after(say); dialog.classList.add('counterMode');
     await COUNTER_OPEN[door]();
   }
@@ -4594,12 +4594,13 @@
         await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller?.pose?.()) }).catch(() => {}); // (seated: where the server checks the counter)
         // (v1.10.215 근무표 C1, 총괄 ③: today's resting desk -- its clerk away, its work at the desk beside it)
         const r = plaza.controller?.roster?.(); const dr = r && window.IslandRoster ? window.IslandRoster.deskRest(r.day) : null;
-        const DOOR = { civil: 'room:desk', tax: 'room:tax', bank: 'room:bank' }; const nameOf = (d) => globalThis.IslandTerrain.COUNTERS.find((c) => c.id === d)?.name || '';
-        if (dr && door === DOOR[dr.rest]) { showToast(`오늘 ${nameOf(dr.rest)}는 쉬어요. 옆 ${nameOf(dr.by)}에서 같이 받아요.`, 4000); api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}); plaza.controller?.standUp?.(); return; }
+        const DOOR = { civil: 'room:desk', tax: 'room:tax', bank: 'room:bank', rename: 'room:rename' }; const nameOf = (d) => globalThis.IslandTerrain.COUNTERS.find((c) => c.id === d)?.name || '';
+        const jong = (w) => { const c = (w || '').charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c < 11172 && c % 28 > 0; }; const eun = (w) => `${w}${jong(w) ? '은' : '는'}`; const iga = (w) => `${w}${jong(w) ? '이' : '가'}`; /* (개명 신청은, 민원 창구는) */
+        if (dr && door === DOOR[dr.rest]) { showToast(`오늘 ${eun(nameOf(dr.rest))} 쉬어요. 옆 ${nameOf(dr.by)}에서 같이 받아요.`, 4000); api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}); plaza.controller?.standUp?.(); return; }
         if (dr && door === DOOR[dr.by]) {
           const row = document.createElement('div'); row.className = 'goodBuy';
           for (const [label, to] of [[nameOf(dr.by), door], [nameOf(dr.rest), DOOR[dr.rest]]]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.addEventListener('click', () => { plazaDialog.close(); counterOpen(to, door, to !== door ? `오늘은 ${nameOf(dr.rest)} 일도 여기서 받아요. ` : '').catch((error) => showToast(error.message)); }); row.append(b); }
-          const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = `오늘은 ${nameOf(dr.rest)}가 쉬는 날이라 여기서 같이 받아요. 어떤 일로 오셨어요?`;
+          const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = `오늘은 ${iga(nameOf(dr.rest))} 쉬는 날이라 여기서 같이 받아요. 어떤 일로 오셨어요?`;
           const card = document.createElement('div'); card.className = 'mirrorCard'; card.append(note, row); openPlazaWindow(nameOf(dr.by), [card]); return;
         }
         await counterOpen(door, door);
@@ -5544,7 +5545,8 @@
     // CI 3차: a start or a stop goes at once -- not after the pose still on its way (one at a time). On a busy page that
     // took 0.5 s; meanwhile the others' screens walked me on past my last moving pose and, the stop come, drew me a step
     // back (plaza.spec 「멀티유저」 never-backward, 0.1-0.47 m). The newer pose replaces the one on its way.
-    if (plazaSending && (!plazaLastSent || c.pose().moving === plazaLastSent.moving)) return;
+    // (v1.10.288 CI: a new act too -- a feeling's 1.6 s could pass while a slow page's pose was on its way, and the others never saw it)
+    if (plazaSending && (!plazaLastSent || (c.pose().moving === plazaLastSent.moving && c.pose().actN === plazaLastSent.actN))) return;
     if (plazaSending) plazaStateRequest?.abort();
     const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
     const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving

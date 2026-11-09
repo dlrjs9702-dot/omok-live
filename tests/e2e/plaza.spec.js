@@ -999,11 +999,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (the stand-up motion done)
   // (달마루섬 5단계) the fourth window, 개명 신청: the 작명소's window from its chair
   await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-rename'); window.PlazaDebug().teleport(c.x, c.z + 1.1); });
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 개명 신청 업무 · 개명 담당');
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 개명 신청 업무 · 다래'); /* (v1.10.288: 다래, the 28th islander, keeps it) */
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:rename');
   await expect(page.locator('#namingCurrent')).toContainText('가방손님');
-  await expect(page.locator('#namingDialog .counterSay b')).toHaveText('개명 담당 · '); /* (v1.10.281 문제 기록 2: its clerk named -- over its head too) */
+  await expect(page.locator('#namingDialog .counterSay')).toContainText('개명 신청이요'); await expect(page.locator('#namingDialog .counterSay b')).toHaveCount(0); /* (v1.10.288: no role name -- 다래 named over the seat as the others) */
   if (process.env.SHOT_DIR) { await page.locator('#namingCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-rename'); window.PlazaDebug().teleport(c.x, c.z + 2.5); window.PlazaDebug().setCamYaw(0); }); await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-townhall-rename-clerk.png` }); await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-rename'); window.PlazaDebug().teleport(c.x, c.z + 1.1); }); await page.keyboard.press('Space'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:rename'); }
   await page.locator('#namingCloseBtn').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false);

@@ -17,8 +17,8 @@ const seoulPhase = (ms) => { const h = new Date(ms + 9 * 3600000).getUTCHours();
 Npcs.setPhaseOf(seoulPhase);
 const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, -0.7]];
 
-test('이야기 글·규칙: 스물일곱 명 세 장, 쪽지·제안·할 일, 곳은 섬 위(걸어서 닿음), 조각 여덟, 여는 단계·한 번에 하나', () => {
-  assert.equal(S.RESIDENTS.length, 27); // (v1.10.234: 10~26 the new seventeen)
+test('이야기 글·규칙: 주민 모두 세 장, 쪽지·제안·할 일, 곳은 섬 위(걸어서 닿음), 조각 여덟, 여는 단계·한 번에 하나', () => {
+  assert.equal(S.RESIDENTS.length, require('../public/plaza/island-cast').RESIDENTS.length); // (v1.10.234: 10~26 the new seventeen; v1.10.288 다래 27 -- one story each)
   for (const chs of S.RESIDENTS) {
     assert.equal(chs.length, 3);
     for (const ch of chs) {
@@ -42,7 +42,7 @@ test('이야기 글·규칙: 스물일곱 명 세 장, 쪽지·제안·할 일, 
 // v1.10.234 새 주민 17명 (notes docs/resident-stories-17-20261102.md): 10~26 each three chapters of offer 2 · note 5 · done 1,
 // a line 46 at most, its tail already on the last note line (withTail adds none), its places known; the five new places
 // on a walk and 4 m or more off every door (233 초승역: a door within 2.6 m took the prompt); the night ones as before
-test('이야기 17명: 10~26 세 장씩(제안 2·쪽지 5·끝말 1), 한 줄 46자, 꼬리말 한 번, 새 곳 다섯은 길 위·문에서 4 m, 밤 장', () => {
+test('이야기 10번부터 끝까지 세 장씩(제안 2·쪽지 5·끝말 1), 한 줄 46자, 꼬리말 한 번, 새 곳 다섯은 길 위·문에서 4 m, 밤 장', () => {
   const Cast = require('../public/plaza/island-cast');
   for (let n = 10; n < S.RESIDENTS.length; n += 1) {
     assert.equal(S.RESIDENTS[n].length, 3, String(n));
