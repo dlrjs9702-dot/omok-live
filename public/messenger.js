@@ -376,7 +376,7 @@
       let chip = chipStore.get(); if (chip !== 'recent' && !people.some((p) => String(p.n) === chip)) chip = recent.length ? 'recent' : String(people[0]?.n ?? 'recent'); if (chip === 'recent' && !recent.length && people.length) chip = String(people[0].n);
       const row = document.createElement('div'); row.className = 'messengerChipRow'; row.setAttribute('role', 'tablist'); row.setAttribute('aria-label', '주민');
       const chipBtn = (key, name, icon) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'messengerChip'; b.dataset.chip = key; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(key === chip));
-        if (icon) { const im = document.createElement('img'); im.src = `/messenger/stickers/${icon}`; im.alt = ''; im.loading = 'lazy'; b.append(im); } b.append(name);
+        if (icon) { const face = document.createElement('span'); face.className = 'messengerChipFace'; const im = document.createElement('img'); im.src = `/messenger/stickers/${icon}`; im.alt = ''; im.loading = 'lazy'; face.append(im); b.append(face); } b.append(name); /* (총괄 #448: the 「안녕」 picture's top only -- the face, not its words) */
         b.addEventListener('click', () => { chipStore.set(key); showPreview(null); drawEmoji(); }); return b; };
       if (recent.length) row.append(chipBtn('recent', '최근'));
       row.append(...people.map((p) => chipBtn(String(p.n), p.name, p.icon)));
