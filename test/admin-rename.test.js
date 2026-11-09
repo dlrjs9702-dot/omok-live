@@ -166,8 +166,7 @@ test('admin rename endpoint validates input, invalidates prior file and active s
 
 test('rename control is admin-only inside expandable guest key details and uses regenerated file', async () => {
   const app = await fs.readFile(path.join(__dirname, '..', 'public/app.js'), 'utf8');
-  assert.match(app, /renameBtn\.textContent = '닉네임 변경'/);
-  assert.match(app, /detail\.appendChild\(renameBtn\)/);
+  assert.match(app, /act\('닉네임 변경', \(\) => renameKey\(k\.id, k\.label\)/); /* (293: in the account's detail -- the 계정 tab) */
   assert.match(app, /api\/admin\/keys\/\$\{id\}\/rename/);
   assert.match(app, /downloadEntryFile\(data\)/);
   assert.match(app, /기존 파일과 접속은 즉시 무효화됩니다/);

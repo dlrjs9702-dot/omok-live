@@ -3670,10 +3670,8 @@ button.tagPill{cursor:pointer;padding:3px 10px;font-size:.8rem}button.tagPill[ar
 .accountJailForm{display:grid;gap:6px;border:1px solid rgba(239,68,68,.5);border-radius:10px;padding:8px}.accountJailForm h4{margin:0}
 .tagRow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}.tagRow input{width:8em}
 .islandEnvBox .joinForm button[type="submit"]{display:none}.islandEnvBox{border:1px solid rgba(148,163,184,.35);border-radius:10px;padding:8px 12px;margin:8px 0}
-:root[data-theme="light"] .accountDetail{background:#fffaf2}
 @media (max-width:899px),(hover:none) and (pointer:coarse){
   .accountDetail:not(.hidden){position:fixed;left:0;right:0;bottom:0;max-height:78vh;overflow:auto;z-index:60;border-radius:16px 16px 0 0;background:#111a2e;box-shadow:0 -10px 30px rgba(0,0,0,.35)}
-  :root[data-theme="light"] .accountDetail:not(.hidden){background:#fffaf2}
   .accountName{max-width:7em}.accountId{display:none}
 }
 .islandEnvBox .joinForm{display:grid;grid-template-columns:7.5em minmax(0,1fr);align-items:center;gap:8px;margin:4px 0}.islandEnvBox .joinForm label{margin:0}
