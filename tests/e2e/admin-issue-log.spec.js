@@ -39,6 +39,7 @@ test('문제 기록: 관리자 메뉴에서 적으면 화면 정보·사진과 �
   await page.keyboard.press('Escape'); await page.locator('#adminWindowBtn').click();
   // (v1.10.256) the 저장 공간 line: how full against its 1 GB, the biggest opened below
   await expect(page.locator('#adminStorageLine')).toHaveText(/^\d+(\.\d)?% · [\d.]+ [MG]B \/ 1 GB/, { timeout: 15000 });
+  await page.locator('#adminTabs [data-tab="status"]').click(); /* (293: its 현황 tab) */
   await page.locator('#adminStorage summary').click(); await expect(page.locator('#adminStorageTables li').first()).toBeVisible();
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-admin-storage.png` });
   await page.locator('#adminStorage summary').click();

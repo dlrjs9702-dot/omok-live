@@ -2001,7 +2001,7 @@
   let inspectorCard = null; let inspector = null;
   function assetInspectorCard() {
     if (inspectorCard) return inspectorCard;
-    const home = adminPanel; // (inside the admin panel: the lobby and the 관리자 창 alike)
+    const home = adminPanel.querySelector('.adminTab[data-tab="status"]'); // (inside the admin panel: the lobby and the 관리자 창 alike; 293: its 현황 tab)
     inspectorCard = document.createElement('section'); inspectorCard.className = 'noticeCard'; inspectorCard.id = 'assetInspectorCard';
     const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'noticeTab'; toggle.id = 'assetInspectorTab'; toggle.textContent = '🔎 에셋 점검'; toggle.setAttribute('aria-expanded', 'false');
     const host = document.createElement('div'); host.className = 'hidden'; host.id = 'assetInspectorHost';
@@ -2067,7 +2067,7 @@
   const ISSUE_KIND = { bug: '버그', odd: '어색함', idea: '개선' }; const ISSUE_STATE = { open: '열림', doing: '고치는 중', done: '해결' };
   const issueCard = document.createElement('details'); issueCard.id = 'issueCard'; issueCard.className = 'economyBox issueCard';
   issueCard.innerHTML = '<summary>문제 기록</summary><div class="issueTools"><select id="issueWho" aria-label="쓴 사람"></select><select id="issueFilter" aria-label="상태"><option value="open">열림</option><option value="doing">고치는 중</option><option value="done">해결</option><option value="">전체</option></select><button id="issueNewBtn" type="button" class="ghost tiny">새로 적기</button><button id="issueCopyBtn" type="button" class="ghost tiny">열린 것 복사</button></div><div id="issueList" class="issueList" role="list"></div>';
-  adminPanel.append(issueCard);
+  adminPanel.querySelector('.adminTab[data-tab="status"]').append(issueCard); /* (293: in the 현황 tab) */
   let issues = [];
   const issueBy = (i) => i.by?.label || '관리자';
   const issueWhere = (i) => [i.ctx?.screen === 'room' ? `게임방 ${i.ctx.room?.game || ''}` : i.ctx?.screen === 'island' ? `섬 (${i.ctx.island?.x}, ${i.ctx.island?.z})${i.ctx.island?.space && i.ctx.island.space !== 'island' ? ` · ${i.ctx.island.space}` : ''}` : i.ctx?.screen || '', ...(i.ctx?.windows || [])].filter(Boolean).join(' · ');
@@ -3193,7 +3193,7 @@
   }
   // R4 구치소 반성문: in and out at its doors; one owing the tax is put in its cell by the server (the first pose of a visit:
   // jailedBy). The warden's talk: [시작] (his sentence over his head, 20 s a ring; typed into the island chat, his answer
-  // comes back with the chat -- jailAnswer), [지금 세금 내기]; to an onlooker, how many passed today. The board: the day's.
+  // comes back with the chat -- jailAnswer) -- the only way out (293: no paying from the cell); to an onlooker, how many passed today. The board: the day's.
   let jailBusy = false; let jailState = null; let essayTimer = null; let essayGen = 0;
   async function jailDoor(entering) {
     if (jailBusy) return; jailBusy = true;
@@ -3220,8 +3220,11 @@
     const say = document.createElement('p'); say.className = 'lostRequestLine'; const row = wardenCard; row.replaceChildren();
     const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); return b; };
     if (s.inmate === true) {
-      say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `세금이 밀렸군요. 제가 말하는 문장을 채팅으로 똑같이 쓰세요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.`;
-      button('시작', () => startEssay()); button(`지금 세금 내기 · ${Number(s.debt).toLocaleString('ko-KR')}P`, () => payFromJail(), 'secondary');
+      /* (293: one the administrator sent -- its reason and time; out by the essay as anyone) */
+      const left = s.admin ? (s.admin.until == null ? '풀어 줄 때까지' : (() => { const m = Math.max(1, Math.round((s.admin.until - Date.now()) / 60000)); return m < 60 ? `${m}분` : m < 1440 ? `${Math.round(m / 60)}시간` : `${Math.round(m / 1440)}일`; })()) : '';
+      const why = s.admin ? `관리자 판단으로 들어와 있어요 · 사유: ${s.admin.reason} · 남은 시간 ${left}. ` : '세금이 밀렸군요. ';
+      say.textContent = s.essay ? `계속합시다. ${s.essay.count}문장 중 ${s.essay.i + 1}번째예요.` : `${why}제가 말하는 문장을 채팅으로 똑같이 쓰면 오늘은 나갈 수 있어요. 한 문장에 ${globalThis.IslandJail.SECONDS}초, ${s.level >= 2 ? '친한 사이니 2문장만' : '3문장'}입니다.${s.debt > 0 ? ' 세금은 나가서 관공서 세금 창구에서 내요.' : ''}`;
+      button('시작', () => startEssay());
     } else { say.textContent = s.inmate === 'free' ? '오늘은 통과입니다. 나가셔도 좋아요.' : `구경만 하세요. 오늘 반성문을 통과한 사람은 ${s.passed}명입니다.`; if (s.inmate !== true) row.append(...fixedTalk(22)); } // (v1.10.234: his own talk too)
     lostCard.replaceChildren(say, row); openTalk('김우성'); // (사용자 2026-10-26: his name)
   }
@@ -3240,14 +3243,6 @@
     if (!j) return;
     if (!j.passed) { showEssay(j, j.say); return; }
     stopEssay(); plaza.controller?.wardenSay?.(j.say, 0); refreshJail(); showToast('반성문 통과! 철창이 열렸어요.');
-  }
-  async function payFromJail() {
-    try {
-      const out = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID() }) });
-      closeIslandWindows(); loadPoints(); refreshPlazaAvatar();
-      showToast(!out.paid ? '낼 포인트가 없습니다.' : out.debt > 0 ? `${Number(out.paid).toLocaleString('ko-KR')}P 냈어요. 남은 체납 ${Number(out.debt).toLocaleString('ko-KR')}P — 반성문은 그대로예요.` : '세금을 다 냈어요. 철창이 열렸어요.');
-      if (!(out.debt > 0)) { stopEssay(); plaza.controller?.wardenSay?.('다 내셨군요. 나가셔도 좋습니다.', 0); } await refreshJail();
-    } catch (error) { showToast(error.message); }
   }
   const jailBoardCard = document.createElement('div'); jailBoardCard.className = 'goodCard'; jailBoardCard.id = 'jailBoardCard';
   async function openJailBoard() {
@@ -4070,7 +4065,7 @@
         const def = document.createElement('small'); def.textContent = `기본 ${d.def.toLocaleString('ko-KR')}`; row.append(name, input, def); f.append(row); }
       return f; }));
     byId('economyHistory').replaceChildren(...v.history.slice(0, 30).map((h, i) => { const li = document.createElement('li'); li.textContent = `${new Date(h.at).toLocaleString('ko-KR')} · ${h.label}: ${h.before.toLocaleString('ko-KR')} → ${h.after.toLocaleString('ko-KR')} `;
-      const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost'; back.textContent = '되돌리기'; back.addEventListener('click', () => saveEconomy({ [h.key]: h.before === v.defs.find((d) => d.key === h.key)?.def ? null : h.before })); li.append(back); return li; }));
+      if (h.key === 'jail') return li; /* (293: a jail line -- nothing to put back) */ const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost'; back.textContent = '되돌리기'; back.addEventListener('click', () => saveEconomy({ [h.key]: h.before === v.defs.find((d) => d.key === h.key)?.def ? null : h.before })); li.append(back); return li; }));
   }
   async function saveEconomy(changes) {
     const keys = Object.keys(changes); if (!keys.length) { showToast('바뀐 값이 없습니다.'); return; }
@@ -5568,7 +5563,7 @@
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
-        if (data.jail) jailedBy(data); // R4: put in the 구치소's cell
+        if (data.jail) { jailedBy(data); if (jailState && data.jail.inmate !== jailState.inmate) refreshJail(); } // R4: put in the 구치소's cell (293: let out by the administrator -- seen at once)
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();
         const waiting = plaza.controller?.platform?.();
@@ -6441,7 +6436,8 @@
     persistenceBadge.classList.toggle('warn', data.persistence !== 'database');
     adminEntryKeys = data.entryKeys === true; byId('issueFileForm').classList.toggle('hidden', !adminEntryKeys); byId('reissueNote').classList.toggle('hidden', !adminEntryKeys);
     renderNoId((data.keys || []).filter((k) => !k.loginId && !k.revokedAt && !k.pendingAt));
-    renderGuestKeys(data.keys || []);
+    renderGuestKeys(data.keys || [], data.tags || []);
+    api('/api/admin/issues').then((r) => { const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); const today = (r.issues || []).filter((i) => new Date(Date.parse(i.at) + 9 * 3600000).toISOString().slice(0, 10) === day).length; const open = (r.issues || []).filter((i) => i.status === 'open').length; byId('adminIssueCount').textContent = `문제 기록 오늘 ${today} · 열림 ${open}`; }).catch(() => {}); /* (293 현황: 오늘 문제 기록 수) */
     renderSignups((await api('/api/admin/signups')).signups || []);
     loadStorage().catch(() => {});
   }
@@ -6456,7 +6452,7 @@
   // v1.10.63 가입 신청: 이름 · 아이디 · 원하는 닉네임, 승인(계정이 생김) / 거절
   function renderSignups(signups) {
     const list = byId('signupList');
-    list.replaceChildren();
+    list.replaceChildren(); byId('signupBand').classList.toggle('hidden', !signups.length); byId('signupCount').textContent = String(signups.length); /* (293: a yellow band over the list, only when there are) */
     if (!signups.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '대기 중인 가입 신청이 없습니다.'; list.append(empty); return; }
     for (const s of signups) {
       const row = document.createElement('div'); row.className = 'keyRow compactKeyRow signupRow';
@@ -6480,240 +6476,130 @@
     }
   }
 
-  function renderGuestKeys(keys) {
-    guestKeyList.innerHTML = '';
-    revokedGuestKeyList.innerHTML = '';
-    const activeKeys = keys.filter((key) => !key.revokedAt);
-    const revokedKeys = keys.filter((key) => key.revokedAt);
-    if (!activeKeys.length) {
-      const empty = document.createElement('p');
-      empty.className = 'emptyState';
-      empty.textContent = '사용 가능한 입장 파일이 없습니다.';
-      guestKeyList.appendChild(empty);
-    }
-    if (!revokedKeys.length) {
-      const empty = document.createElement('p');
-      empty.className = 'emptyState';
-      empty.textContent = '취소된 입장 파일이 없습니다.';
-      revokedGuestKeyList.appendChild(empty);
-    }
-    for (const key of activeKeys) {
-      const row = document.createElement('div');
-      row.className = 'keyRow compactKeyRow';
-
-      const main = document.createElement('div');
-      main.className = 'keyMain';
-      const identity = document.createElement('div');
-      identity.className = 'keyIdentity';
-      const strong = document.createElement('strong');
-      strong.textContent = key.label;
-      const status = document.createElement('span');
-      status.className = `keyStatus${key.presence?.online ? ' online' : ''}`;
-      status.textContent = key.presence?.online ? '접속 중' : '오프라인';
-      const memoPreview = document.createElement('span');
-      memoPreview.className = 'keyMemoPreview';
-      const refreshMemo = () => {
-        const note = key.adminNote || '';
-        memoPreview.textContent = note ? '· ' + note : '';
-        memoPreview.title = note;
-        memoPreview.classList.toggle('hidden', !note);
-        identity.classList.toggle('withMemo', Boolean(note));
-      };
-      refreshMemo();
-      identity.append(strong, status, memoPreview);
-      main.appendChild(identity);
-
-      const actions = document.createElement('div');
-      actions.className = 'keyActions';
-      const detailBtn = document.createElement('button');
-      detailBtn.className = 'ghost tiny compactAction';
-      detailBtn.textContent = '자세히 보기';
-      const memoBtn = document.createElement('button');
-      memoBtn.className = 'ghost tiny compactAction';
-      memoBtn.textContent = '메모';
-      memoBtn.title = '관리자 전용 메모 입력·수정';
-      const reissueBtn = document.createElement('button');
-      reissueBtn.className = 'secondary tiny compactAction';
-      reissueBtn.type = 'button';
-      reissueBtn.textContent = '재발급'; reissueBtn.hidden = !adminEntryKeys; /* (v1.10.268: files only under tests and a local run) */
-      reissueBtn.title = '새 파일 발급 · 이전 파일 즉시 무효화';
-      reissueBtn.addEventListener('click', async () => {
-        reissueBtn.disabled = true;
-        try { await reissueKey(key.id, key.label); }
-        finally { reissueBtn.disabled = false; }
-      });
-      const revokeBtn = document.createElement('button');
-      revokeBtn.className = 'danger tiny compactAction';
-      revokeBtn.textContent = '권한 취소';
-      revokeBtn.addEventListener('click', () => revokeKey(key.id, key.label));
-      const grantBtn = document.createElement('button');
-      grantBtn.className = 'secondary tiny compactAction';
-      grantBtn.type = 'button';
-      grantBtn.textContent = '포인트 지급';
-      grantBtn.setAttribute('aria-label', `${key.label} 포인트 지급`);
-      grantBtn.addEventListener('click', () => openPointGrant(key));
-      const messengerBtn = document.createElement('button'); // v1.10.78 메신저 허용 (IDEAS #future-messenger)
-      messengerBtn.className = 'ghost tiny compactAction';
-      messengerBtn.type = 'button';
-      const messengerLabel = () => { messengerBtn.textContent = key.messenger ? '메신저 해제' : '메신저 허용'; messengerBtn.setAttribute('aria-pressed', String(Boolean(key.messenger))); };
-      messengerLabel();
-      messengerBtn.addEventListener('click', async () => {
-        messengerBtn.disabled = true;
-        try {
-          const data = await api(`/api/admin/keys/${key.id}/messenger`, { method: 'POST', body: JSON.stringify({ allowed: !key.messenger }) });
-          key.messenger = data.messenger; messengerLabel();
-          showToast(`${key.label}: 메신저 ${key.messenger ? '허용' : '해제'}`);
-        } catch (err) { showToast(err.message, 4000); } finally { messengerBtn.disabled = false; }
-      });
-      const issueBtn = document.createElement('button'); // (2026-10-20) 문제 기록 허용, as 메신저
-      issueBtn.className = 'ghost tiny compactAction'; issueBtn.type = 'button';
-      const issueLabel = () => { issueBtn.textContent = key.issues ? '문제 기록 해제' : '문제 기록 허용'; issueBtn.setAttribute('aria-pressed', String(Boolean(key.issues))); };
-      issueLabel();
-      issueBtn.addEventListener('click', async () => {
-        issueBtn.disabled = true;
-        try {
-          const data = await api(`/api/admin/keys/${key.id}/issues`, { method: 'POST', body: JSON.stringify({ allowed: !key.issues }) });
-          key.issues = data.issues; issueLabel(); showToast(`${key.label}: 문제 기록 ${key.issues ? '허용' : '해제'}`);
-        } catch (err) { showToast(err.message, 4000); } finally { issueBtn.disabled = false; }
-      });
-      actions.append(detailBtn, memoBtn, reissueBtn, grantBtn, messengerBtn, issueBtn, revokeBtn);
-
-      const detail = document.createElement('div');
-      detail.className = 'keyDetail hidden';
-      const used = key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString('ko-KR') : '사용 기록 없음';
-      const presence = key.presence?.online ? (key.presence.inRoom ? '접속 중 · 방 참여 중' : '접속 중') : '오프라인';
-      detail.textContent = `아이디 ${key.loginId || '미설정'}${key.realName ? ` · 이름 ${key.realName}` : ''} · 상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
-      const renameBtn = document.createElement('button');
-      renameBtn.type = 'button';
-      renameBtn.className = 'ghost tiny compactAction renameAction';
-      renameBtn.textContent = '닉네임 변경';
-      renameBtn.title = '닉네임 변경 후 새 입장파일 자동 발급 · 기존 파일 무효화';
-      renameBtn.addEventListener('click', async () => {
-        renameBtn.disabled = true;
-        try { await renameKey(key.id, key.label); }
-        finally { renameBtn.disabled = false; }
-      });
-      detail.appendChild(renameBtn);
-      if (key.loginId) { // v1.10.63 비밀번호 분실: a temporary password, shown once to tell the player
-        const resetBtn = document.createElement('button'); resetBtn.type = 'button'; resetBtn.className = 'ghost tiny compactAction'; resetBtn.textContent = '비밀번호 초기화';
-        resetBtn.addEventListener('click', async () => {
-          if (!window.confirm(`${key.label}(${key.loginId})의 비밀번호를 임시 비밀번호로 바꿀까요?`)) return;
-          try { const data = await api(`/api/admin/keys/${key.id}/password-reset`, { method: 'POST', body: '{}' }); window.alert(`아이디 ${data.loginId}
-임시 비밀번호 ${data.password}
-
-본인에게 전달하고, 로그인 뒤 비밀번호를 바꾸게 해 주세요.`); }
-          catch (err) { showToast(err.message, 4000); }
-        });
-        detail.appendChild(resetBtn);
-      }
-      const memoEditor = document.createElement('form');
-      memoEditor.className = 'keyMemoEditor hidden';
-      const memoInput = document.createElement('input');
-      memoInput.className = 'keyMemoInput';
-      memoInput.type = 'text';
-      memoInput.maxLength = 200;
-      memoInput.autocomplete = 'off';
-      memoInput.placeholder = '누구인지 구분할 메모 (최대 200자)';
-      memoInput.setAttribute('aria-label', `${key.label} 관리자 메모`);
-      const saveMemoBtn = document.createElement('button');
-      saveMemoBtn.className = 'secondary tiny compactAction';
-      saveMemoBtn.type = 'submit';
-      saveMemoBtn.textContent = '저장';
-      const cancelMemoBtn = document.createElement('button');
-      cancelMemoBtn.className = 'ghost tiny compactAction';
-      cancelMemoBtn.type = 'button';
-      cancelMemoBtn.textContent = '취소';
-      memoEditor.append(memoInput, saveMemoBtn, cancelMemoBtn);
-      const closeMemoEditor = () => memoEditor.classList.add('hidden');
-      memoBtn.addEventListener('click', () => {
-        const opening = memoEditor.classList.contains('hidden');
-        memoEditor.classList.toggle('hidden', !opening);
-        if (opening) {
-          memoInput.value = key.adminNote || '';
-          memoInput.focus();
-        }
-      });
-      cancelMemoBtn.addEventListener('click', closeMemoEditor);
-      memoEditor.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const note = memoInput.value.trim().replace(/\s+/g, ' ');
-        if (note.length > 200) return showToast('메모는 200자까지 입력할 수 있습니다.');
-        saveMemoBtn.disabled = true;
-        try {
-          const data = await api(`/api/admin/keys/${key.id}/note`, {
-            method: 'POST',
-            body: JSON.stringify({ note }),
-          });
-          key.adminNote = data.key.adminNote || '';
-          memoInput.value = key.adminNote;
-          refreshMemo();
-          closeMemoEditor();
-          showToast('관리자 메모를 저장했습니다.');
-        } catch (err) {
-          showToast(err.message, 4000);
-        } finally {
-          saveMemoBtn.disabled = false;
-        }
-      });
-      detailBtn.addEventListener('click', () => {
-        const opening = detail.classList.contains('hidden');
-        detail.classList.toggle('hidden', !opening);
-        detailBtn.textContent = opening ? '접기' : '자세히 보기';
-      });
-
-      row.append(main, actions, detail, memoEditor);
-      guestKeyList.appendChild(row);
-    }
-    for (const key of revokedKeys) {
-      const row = document.createElement('div');
-      row.className = 'keyRow compactKeyRow revoked';
-
-      const main = document.createElement('div');
-      main.className = 'keyMain';
-      const identity = document.createElement('div');
-      identity.className = 'keyIdentity';
-      const strong = document.createElement('strong');
-      strong.textContent = key.label;
-      const status = document.createElement('span');
-      status.className = 'keyStatus revokedStatus';
-      status.textContent = '취소됨';
-      const note = document.createElement('span');
-      note.className = 'keyMemoPreview';
-      note.textContent = key.adminNote ? '· ' + key.adminNote : '';
-      note.title = key.adminNote || '';
-      note.classList.toggle('hidden', !key.adminNote);
-      identity.classList.toggle('withMemo', Boolean(key.adminNote));
-      identity.append(strong, status, note);
-      main.appendChild(identity);
-
-      const actions = document.createElement('div');
-      actions.className = 'keyActions';
-      const detailBtn = document.createElement('button');
-      detailBtn.className = 'ghost tiny compactAction';
-      detailBtn.textContent = '자세히 보기';
-      const restoreBtn = document.createElement('button');
-      restoreBtn.className = 'secondary tiny compactAction';
-      restoreBtn.textContent = '권한 복구';
-      restoreBtn.addEventListener('click', () => restoreKey(key.id, key.label));
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'danger tiny compactAction';
-      deleteBtn.textContent = '영구 삭제';
-      deleteBtn.addEventListener('click', () => deleteKey(key.id, key.label));
-      actions.append(detailBtn, restoreBtn, deleteBtn);
-
-      const detail = document.createElement('div');
-      detail.className = 'keyDetail hidden';
-      detail.textContent = `권한 취소 ${new Date(key.revokedAt).toLocaleString('ko-KR')} · 총 ${key.useCount || 0}회 사용`;
-      detailBtn.addEventListener('click', () => {
-        const opening = detail.classList.contains('hidden');
-        detail.classList.toggle('hidden', !opening);
-        detailBtn.textContent = opening ? '접기' : '자세히 보기';
-      });
-
-      row.append(main, actions, detail);
-      revokedGuestKeyList.appendChild(row);
-    }
+  // 293 관리자 화면 정리 (notes docs/admin-jail-292-20261109.md 3절·6절): four tabs (현황 · 계정 · 섬 운영 · 경제), the one picked kept
+  // on this device. The 계정 tab: one row an account, no buttons -- ● nickname · id · tags · last seen · points · badges; a row
+  // opens its detail (PC: the right column, a phone: a sheet from below) where the rights are switches and the actions are;
+  // the search (초성 too, / to it), four sorts and the chips with their counts (public/admin-accounts.js)
+  const AA = window.AdminAccounts;
+  const aaPref = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } }; const aaKeep = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  const aaEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const ADMIN_TABS = ['status', 'accounts', 'island', 'economy'];
+  function adminTab(tab) {
+    const want = ADMIN_TABS.includes(tab) ? tab : 'accounts'; aaKeep('gc.adminTab', want);
+    for (const b of byId('adminTabs').querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.tab === want));
+    for (const s of adminPanel.querySelectorAll('.adminTab')) s.hidden = s.dataset.tab !== want;
+    adminPresencePanel.classList.toggle('tabOff', want !== 'status');
   }
+  byId('adminTabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) adminTab(b.dataset.tab); });
+  adminTab(aaPref('gc.adminTab', 'accounts'));
+  // (섬 환경: the four rows, one 「저장」)
+  byId('islandEnvSave').addEventListener('click', () => { for (const id of ['islandTimeForm', 'islandWeatherForm', 'islandSeasonForm', 'islandDecorForm']) byId(id).requestSubmit(); });
+  let accountKeys = []; let accountTags = []; let accountShown = 50; let accountOpen = null;
+  let accountChip = aaPref('gc.adminChip', 'all'); let accountSortBy = aaPref('gc.adminSort', 'seen');
+  const TAG_COLORS = [['red', '빨강'], ['orange', '주황'], ['yellow', '노랑'], ['green', '초록'], ['blue', '파랑'], ['purple', '보라']];
+  byId('tagColor').replaceChildren(...TAG_COLORS.map(([v, l]) => new Option(l, v)));
+  byId('accountSort').replaceChildren(...AA.SORTS.map(([v, l]) => new Option(l, v))); byId('accountSort').value = accountSortBy;
+  byId('accountSort').addEventListener('change', (e) => { accountSortBy = e.target.value; aaKeep('gc.adminSort', accountSortBy); drawAccounts(); });
+  byId('accountSearch').addEventListener('input', () => { accountShown = 50; drawAccounts(); });
+  document.addEventListener('keydown', (e) => { // 「/」 to the search, when not typing elsewhere and the tab is shown
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return; const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || t?.isContentEditable) return;
+    const box = byId('accountSearch'); if (!box.offsetParent) return; e.preventDefault(); box.focus();
+  });
+  byId('accountMore').addEventListener('click', () => { accountShown += 50; drawAccounts(); });
+  const tagOf = (id) => accountTags.find((g) => g.id === id);
+  const tagPill = (g) => aaEl('span', `tagPill tag-${g.color}`, g.name);
+  const badgesOf = (k) => [...(k.jail ? [aaEl('span', 'keyBadge jail', '구치소')] : []), ...(k.debt > 0 ? [aaEl('span', 'keyBadge debt', '체납')] : []), ...(k.revokedAt ? [aaEl('span', 'keyBadge revoked', '취소')] : [])];
+  function renderGuestKeys(keys, tags = accountTags) {
+    accountKeys = keys; accountTags = tags; drawAccounts(); renderTags(); renderAdminJail();
+    if (accountOpen) { const k = keys.find((x) => x.id === accountOpen); if (k) openAccount(k); else closeAccount(); }
+  }
+  function drawAccounts() {
+    const v = AA.view(accountKeys, { q: byId('accountSearch').value, chip: accountChip, sort: accountSortBy, tags: accountTags });
+    if (!v.chips.some((c) => c.id === accountChip)) accountChip = 'all';
+    byId('accountChips').replaceChildren(...v.chips.filter((c) => c.count || c.id === 'all' || c.id === accountChip || c.id.startsWith('tag:')).map((c) => {
+      const b = aaEl('button', `accountChip${c.color ? ` tag-${c.color}` : ''}`); b.type = 'button'; b.dataset.chip = c.id; b.append(c.label, ' ', aaEl('b', '', String(c.count)));
+      b.setAttribute('aria-pressed', String(c.id === accountChip)); b.addEventListener('click', () => { accountChip = c.id; aaKeep('gc.adminChip', c.id); accountShown = 50; drawAccounts(); }); return b;
+    }));
+    guestKeyList.replaceChildren();
+    for (const k of v.rows.slice(0, accountShown)) {
+      const row = aaEl('button', `accountRow${k.id === accountOpen ? ' open' : ''}${k.revokedAt ? ' revoked' : ''}`); row.type = 'button'; row.dataset.key = k.id; row.setAttribute('role', 'listitem');
+      const dot = aaEl('i', `accountDot${k.presence?.online ? ' on' : ''}`); const tags = aaEl('span', 'accountTags'); for (const t of k.tags || []) { const g = tagOf(t); if (g) tags.append(tagPill(g)); }
+      row.append(dot, aaEl('strong', 'accountName', k.label), aaEl('span', 'accountId', k.loginId || '아이디 없음'), tags, aaEl('span', 'accountSeen', k.presence?.online ? '접속 중' : AA.ago(k.lastSeenAt)), aaEl('span', 'accountPoints', `${AA.pointsShort(k.points || 0)}P`), ...badgesOf(k));
+      row.addEventListener('click', () => openAccount(k)); guestKeyList.append(row);
+    }
+    if (!v.rows.length) guestKeyList.append(aaEl('p', 'emptyState', '맞는 계정이 없어요.'));
+    byId('accountMore').classList.toggle('hidden', v.rows.length <= accountShown);
+  }
+  function closeAccount() { accountOpen = null; byId('accountDetail').classList.add('hidden'); byId('accountDetail').replaceChildren(); document.body.classList.remove('accountSheetOpen'); for (const r of guestKeyList.querySelectorAll('.accountRow.open')) r.classList.remove('open'); }
+  function openAccount(k) {
+    accountOpen = k.id; const box = byId('accountDetail'); box.classList.remove('hidden'); document.body.classList.add('accountSheetOpen');
+    for (const r of guestKeyList.querySelectorAll('.accountRow')) r.classList.toggle('open', r.dataset.key === k.id);
+    const fmt = (iso) => (iso ? new Date(iso).toLocaleString('ko-KR') : '없음');
+    const fact = (label, value) => { const p = aaEl('p', 'accountFact'); p.append(aaEl('span', '', label), aaEl('b', '', value)); return p; };
+    const group = (title, ...kids) => { const s = aaEl('section', 'accountGroup'); s.append(aaEl('h4', '', title), ...kids); return s; };
+    const act = (label, fn, cls = 'secondary', aria = null) => { const b = aaEl('button', `${cls} tiny compactAction`, label); b.type = 'button'; if (aria) b.setAttribute('aria-label', aria); b.addEventListener('click', fn); return b; };
+    const head = aaEl('div', 'accountDetailHead'); head.append(aaEl('h3', '', k.label), act('닫기', closeAccount, 'ghost'));
+    const basic = group('기본', fact('아이디', k.loginId || '미설정'), fact('이름', k.realName || '-'), fact('가입한 날', fmt(k.createdAt)), fact('마지막 접속', k.presence?.online ? '접속 중' : `${AA.ago(k.lastSeenAt)} · ${fmt(k.lastSeenAt)}`), fact('접속 횟수', `${k.useCount || 0}번`));
+    const jailText = !k.jail ? '없음' : k.jail.admin ? `관리자 · ${k.jail.until == null ? '풀어 줄 때까지' : `${new Date(k.jail.until).toLocaleString('ko-KR')}까지`} · ${k.jail.reason}` : '체납으로';
+    const island = group('섬', fact('포인트', `${Number(k.points || 0).toLocaleString('ko-KR')}P (지갑+예금)`), fact('체납', k.debt > 0 ? `${Number(k.debt).toLocaleString('ko-KR')}P` : '없음'), fact('집', k.hasHome ? '있음' : '없음'), fact('구치소', jailText));
+    const toggles = aaEl('div', 'tagToggles');
+    for (const g of accountTags) {
+      const b = aaEl('button', `tagPill tag-${g.color}`, g.name); b.type = 'button'; b.dataset.tag = g.id; b.setAttribute('aria-pressed', String((k.tags || []).includes(g.id)));
+      b.addEventListener('click', async () => { const next = (k.tags || []).includes(g.id) ? k.tags.filter((x) => x !== g.id) : [...(k.tags || []), g.id]; try { const r = await api(`/api/admin/keys/${k.id}/tags`, { method: 'POST', body: JSON.stringify({ tags: next }) }); k.tags = r.tags; drawAccounts(); openAccount(k); } catch (err) { showToast(err.message, 4000); } });
+      toggles.append(b);
+    }
+    if (!accountTags.length) toggles.append(aaEl('span', 'smallMuted', '태그는 아래 「분류 태그」에서 만들어요.'));
+    const memo = aaEl('input', 'keyMemoInput'); memo.type = 'text'; memo.maxLength = 200; memo.value = k.adminNote || ''; memo.placeholder = '관리자 메모 (200자, 고치면 바로 저장)'; memo.setAttribute('aria-label', `${k.label} 관리자 메모`);
+    memo.addEventListener('change', async () => { try { const d = await api(`/api/admin/keys/${k.id}/note`, { method: 'POST', body: JSON.stringify({ note: memo.value.trim().replace(/\s+/g, ' ') }) }); k.adminNote = d.key.adminNote || ''; showToast('관리자 메모를 저장했습니다.'); drawAccounts(); } catch (err) { showToast(err.message, 4000); } });
+    const sw = (label, field) => { const l = aaEl('label', 'accountSwitch'); const c = aaEl('input'); c.type = 'checkbox'; c.checked = Boolean(k[field]); c.setAttribute('role', 'switch'); c.setAttribute('aria-label', `${k.label} ${label}`);
+      c.addEventListener('change', async () => { c.disabled = true; try { const d = await api(`/api/admin/keys/${k.id}/${field}`, { method: 'POST', body: JSON.stringify({ allowed: c.checked }) }); k[field] = d[field]; showToast(`${k.label}: ${label} ${k[field] ? '허용' : '해제'}`); drawAccounts(); } catch (err) { c.checked = !c.checked; showToast(err.message, 4000); } finally { c.disabled = false; } });
+      l.append(c, aaEl('span', '', label)); return l; };
+    const acts = aaEl('div', 'accountActions');
+    if (!k.revokedAt) {
+      acts.append(act('포인트 지급', () => openPointGrant(k), 'secondary', `${k.label} 포인트 지급`), act('닉네임 변경', () => renameKey(k.id, k.label), 'ghost'));
+      if (k.loginId) acts.append(act('비밀번호 초기화', () => resetPassword(k), 'ghost'));
+      acts.append(k.jail?.admin ? act('풀어 주기', () => releaseJail(k)) : act('구치소 보내기', () => openJailSend(k), 'ghost'));
+      if (adminEntryKeys) acts.append(act('재발급', () => reissueKey(k.id, k.label), 'ghost'));
+    }
+    const bottom = aaEl('div', 'accountDanger'); bottom.append(k.revokedAt ? act('권한 복구', () => restoreKey(k.id, k.label)) : act('권한 취소', () => revokeKey(k.id, k.label), 'danger')); if (k.revokedAt) bottom.append(act('영구 삭제', () => deleteKey(k.id, k.label), 'danger'));
+    box.replaceChildren(head, basic, island, group('분류', toggles, memo), group('권한', sw('메신저', 'messenger'), sw('문제 기록', 'issues')), group('할 일', acts), bottom);
+  }
+  async function resetPassword(k) { // v1.10.63 비밀번호 분실: a temporary password, shown once to tell the player
+    if (!window.confirm(`${k.label}(${k.loginId})의 비밀번호를 임시 비밀번호로 바꿀까요?`)) return;
+    try { const data = await api(`/api/admin/keys/${k.id}/password-reset`, { method: 'POST', body: '{}' }); window.alert(`아이디 ${data.loginId}\n임시 비밀번호 ${data.password}\n\n본인에게 전달하고, 로그인 뒤 비밀번호를 바꾸게 해 주세요.`); }
+    catch (err) { showToast(err.message, 4000); }
+  }
+  // 293 관리자 구치소: the time (1시간 · 오늘 자정까지 · 3일 · 풀어 줄 때까지) and the reason, in the detail; 「구치소에 있는 사람」 above the list
+  function openJailSend(k) {
+    const box = byId('accountDetail'); box.querySelector('#jailSendForm')?.remove();
+    const f = aaEl('form', 'accountJailForm'); f.id = 'jailSendForm'; const sel = aaEl('select'); sel.id = 'jailSendTime'; sel.setAttribute('aria-label', '기간');
+    for (const [v, l] of [['60', '1시간'], ['midnight', '오늘 자정까지'], ['4320', '3일'], ['forever', '풀어 줄 때까지']]) sel.append(new Option(l, v));
+    const why = aaEl('input'); why.id = 'jailSendReason'; why.type = 'text'; why.maxLength = 60; why.required = true; why.placeholder = '사유 (꼭 적어요, 60자)'; why.setAttribute('aria-label', '사유');
+    const go = aaEl('button', 'danger tiny', '보내기'); go.type = 'submit'; const no = aaEl('button', 'ghost tiny', '취소'); no.type = 'button'; no.addEventListener('click', () => f.remove());
+    f.append(aaEl('h4', '', `${k.label} 구치소 보내기`), sel, why, go, no);
+    f.addEventListener('submit', async (e) => { e.preventDefault(); const t = sel.value; go.disabled = true;
+      try { await api('/api/admin/jail', { method: 'POST', body: JSON.stringify({ account: `guest:${k.id}`, reason: why.value, ...(t === 'midnight' || t === 'forever' ? { until: t } : { minutes: Number(t) }) }) }); showToast(`${k.label}을(를) 구치소에 보냈어요.`); await loadGuestKeys(); }
+      catch (err) { showToast(err.message, 4000); go.disabled = false; } });
+    box.append(f); why.focus();
+  }
+  async function releaseJail(k) { try { await api('/api/admin/jail', { method: 'POST', body: JSON.stringify({ account: `guest:${k.id}`, release: true }) }); showToast(`${k.label}을(를) 풀어 줬어요.`); await loadGuestKeys(); } catch (err) { showToast(err.message, 4000); } }
+  function renderAdminJail() {
+    const list = accountKeys.filter((k) => k.jail?.admin && !k.revokedAt); byId('adminJailBox').classList.toggle('hidden', !list.length);
+    byId('adminJailList').replaceChildren(...list.map((k) => { const row = aaEl('div', 'keyRow compactKeyRow'); const m = Math.max(1, Math.round(((k.jail.until ?? 0) - Date.now()) / 60000)); const left = k.jail.until == null ? '풀어 줄 때까지' : `${m < 60 ? `${m}분` : m < 1440 ? `${Math.round(m / 60)}시간` : `${Math.round(m / 1440)}일`} 남음`;
+      const b = aaEl('button', 'secondary tiny compactAction', '풀어 주기'); b.type = 'button'; b.setAttribute('aria-label', `${k.label} 풀어 주기`); b.addEventListener('click', () => releaseJail(k));
+      row.append(aaEl('strong', '', k.label), aaEl('small', 'smallMuted', ` ${left} · ${k.jail.reason} `), b); return row; }));
+  }
+  // 293 6-2 분류 태그: made here (name, one of six colours), renamed or recoloured, removed (off every account too)
+  function renderTags() {
+    byId('tagList').replaceChildren(...accountTags.map((g) => { const row = aaEl('div', 'tagRow'); const name = aaEl('input'); name.type = 'text'; name.maxLength = 10; name.value = g.name; name.setAttribute('aria-label', '태그 이름');
+      const color = aaEl('select'); color.setAttribute('aria-label', '색'); color.replaceChildren(...TAG_COLORS.map(([v, l]) => new Option(l, v))); color.value = g.color;
+      const save = aaEl('button', 'secondary tiny', '저장'); save.type = 'button'; save.addEventListener('click', () => tagAction({ action: 'edit', id: g.id, name: name.value, color: color.value }));
+      const del = aaEl('button', 'danger tiny', '지우기'); del.type = 'button'; del.addEventListener('click', () => { if (window.confirm(`「${g.name}」 태그를 지울까요? 붙은 계정에서도 빠져요.`)) tagAction({ action: 'delete', id: g.id }); });
+      row.append(tagPill(g), name, color, save, del); return row; }));
+  }
+  async function tagAction(body) { try { await api('/api/admin/tags', { method: 'POST', body: JSON.stringify(body) }); await loadGuestKeys(); } catch (err) { showToast(err.message, 4000); } }
+  byId('tagAddForm').addEventListener('submit', (e) => { e.preventDefault(); tagAction({ action: 'add', name: byId('tagName').value, color: byId('tagColor').value }).then(() => { byId('tagName').value = ''; }); });
 
   function downloadEntryFile(data) {
     const blob = new Blob([data.html], { type: 'text/html;charset=utf-8' });

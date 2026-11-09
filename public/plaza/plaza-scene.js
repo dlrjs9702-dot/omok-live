@@ -5805,12 +5805,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function stepLook() {
     const now = performance.now(); if (now < lookAt) return; lookAt = now + EM.LOOK.every * 1000;
     const chars = [me, ...[...others.values()].map((o) => o.c), ...residentChars()].filter((c) => c?.assetRoot && c.root.visible !== false);
-    const eyes = (c) => ({ c, x: c.root.position.x, y: c.root.position.y + 1.5, z: c.root.position.z }); const people = chars.map(eyes);
+    /* (Codex 281~290 #6: in the world's coordinates -- a counter's clerk stands in its room's group, turned) */
+    const W = new THREE.Vector3(); const Q = new THREE.Quaternion(); const E = new THREE.Euler();
+    const eyes = (c) => { c.root.getWorldPosition(W); return { c, x: W.x, y: W.y + 1.5, z: W.z }; }; const people = chars.map(eyes);
+    const yawOf = (c) => (c.root.parent === scene ? c.root.rotation.y : E.setFromQuaternion(c.root.getWorldQuaternion(Q), 'YXZ').y);
     const tf = talkView ? talkFigure(talkView.id) : null; const them = tf ? chars.find((c) => c.root === tf) : null;
     for (const c of chars) {
-      const free = c.anim && GAIT.has(c.anim.state) && !emoting.has(c) && !(c === me && (fpNow() || photoMode || sitting || fishing)) && c.root.position.distanceTo(camera.position) <= EM.LOOK.cam;
+      const free = c.anim && GAIT.has(c.anim.state) && !emoting.has(c) && !(c === me && (fpNow() || photoMode || sitting || fishing)) && c.root.getWorldPosition(W).distanceTo(camera.position) <= EM.LOOK.cam;
       if (!free) { c.lookWant = null; continue; }
-      const partner = them && (c === me ? them : c === them ? me : null); const self = { ...eyes(c), yaw: c.root.rotation.y };
+      const partner = them && (c === me ? them : c === them ? me : null); const self = { ...eyes(c), yaw: yawOf(c) };
       c.lookWant = EM.lookPick(self, people.filter((p) => p.c !== c), partner ? eyes(partner) : null);
     }
   }

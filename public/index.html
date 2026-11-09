@@ -389,40 +389,52 @@
 
         <article id="adminPanel" class="card lobbyCard lobbyAdminCard hidden">
           <p class="eyebrow">ADMIN</p>
-          <div class="helpHeading"><h2>계정 관리</h2><details class="helpDisclosure"><summary>자세히 보기</summary><p>가입 신청을 승인하고 계정을 관리해요. 권한을 취소하면 더 이상 들어올 수 없지만 포인트·집·기록은 남고, 관리자가 복구할 수 있어요. 입장 파일은 v1.10.268부터 운영에서 발급하지 않아요(시험·로컬만).</p></details></div>
+          <div class="helpHeading"><h2>관리자</h2><details class="helpDisclosure"><summary>ⓘ</summary><p>가입 신청을 승인하고 계정을 관리해요. 권한을 취소하면 더 이상 들어올 수 없지만 포인트·집·기록은 남고, 관리자가 복구할 수 있어요. 입장 파일은 v1.10.268부터 운영에서 발급하지 않아요(시험·로컬만).</p></details></div>
+          <!-- 293 관리자 화면 정리 (notes docs/admin-jail-292-20261109.md 3절): four tabs, the one picked kept on this device -->
+          <nav id="adminTabs" class="adminTabs" role="tablist" aria-label="관리자 화면"><button type="button" role="tab" data-tab="status">현황</button><button type="button" role="tab" data-tab="accounts">계정</button><button type="button" role="tab" data-tab="island">섬 운영</button><button type="button" role="tab" data-tab="economy">경제</button></nav>
+          <section class="adminTab" data-tab="status" role="tabpanel" aria-label="현황">
+          <div class="adminMeta"><span id="persistenceBadge" class="badge">저장소 확인 중</span> <span id="adminIssueCount" class="badge">문제 기록 확인 중</span></div>
+          <p class="smallMuted">접속 현황과 저장 공간은 이 탭에서 보여요.</p>
+          </section>
+          <section class="adminTab" data-tab="accounts" role="tabpanel" aria-label="계정">
           <form id="issueFileForm" class="joinForm hidden">
-            <label for="guestLabelInput">닉네임</label>
-            <input id="guestLabelInput" autocomplete="off" spellcheck="false" maxlength="40" placeholder="예: 우성" required />
-            <button class="primary" type="submit">입장 파일 발급</button>
-          </form>
-          <div class="adminMeta"><span id="persistenceBadge" class="badge">저장소 확인 중</span></div>
-          <!-- v1.10.90 섬 환경 (IDEAS #future-admin-console ①): the island's time of day for everyone -->
-          <form id="islandTimeForm" class="joinForm islandTimeForm"><label for="islandTimeSelect">섬 시간대</label><select id="islandTimeSelect"><option value="auto">자동 (서울 시각)</option><option value="morning">아침</option><option value="day">낮</option><option value="evening">저녁</option><option value="night">밤</option></select><button class="secondary" type="submit">적용</button></form>
-          <form id="islandWeatherForm" class="joinForm islandTimeForm"><label for="islandWeatherSelect">섬 날씨</label><select id="islandWeatherSelect"><option value="auto">자동 (서버 시계)</option><option value="clear">맑음</option><option value="rain">비 (겨울 구역은 눈)</option><option value="rainbow">무지개</option></select><button class="secondary" type="submit">적용</button></form>
-          <form id="islandSeasonForm" class="joinForm islandTimeForm"><label for="islandSeasonSelect">계절 회전</label><select id="islandSeasonSelect"><option value="auto">자동 (날마다 돎)</option><option value="hold">지금 배치로 멈춤</option></select><button class="secondary" type="submit">적용</button></form>
-          <form id="islandDecorForm" class="joinForm islandTimeForm"><label for="islandDecorSelect">이벤트 장식</label><select id="islandDecorSelect"><option value="auto">자동 (10월 할로윈·12월 겨울 축제)</option><option value="halloween">할로윈</option><option value="winter">겨울 축제</option><option value="off">끔</option></select><button class="secondary" type="submit">적용</button></form>
-          <form id="adminBirthdayForm" class="joinForm islandTimeForm"><label for="adminBirthdayName">생일 넣기</label><input id="adminBirthdayName" type="text" placeholder="계정 이름" required><input id="adminBirthdayMonth" type="number" min="1" max="12" placeholder="월" aria-label="월" required><input id="adminBirthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일" required><button class="secondary" type="submit">적용</button></form>
-          <form id="contestForm" class="joinForm islandTimeForm"><label for="contestTime">매일 섬 대회</label><input id="contestTime" type="time" value="14:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><select id="contestNextKind" aria-label="다음 대회 종목"></select><button class="secondary" type="submit">적용</button></form>
-          <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
-          <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
-          <!-- E1 행사 달력: a festival switched off or its days moved (서울 날짜) -->
-          <details id="calendarBox" class="economyBox"><summary>행사 달력</summary><p class="lookMeta">행사를 끄거나 기간을 옮길 수 있어요(서울 날짜). 빈칸은 원래 날짜. 매주 대회는 토 낚시·일 곤충 10~22시.</p><div id="calendarTable"></div><button id="calendarSave" class="primary" type="button">저장</button></details>
-          <!-- v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②) -->
-          <details id="economyBox" class="economyBox"><summary>경제 값 관리</summary><p class="lookMeta">값을 바꾸고 「저장」을 누르면 확인 뒤 바로 적용됩니다. 빈칸은 기본값.</p><div id="economyTable"></div><button id="economySave" class="primary" type="button">저장</button><h4>변경 이력</h4><ol id="economyHistory"></ol></details>
-          <!-- 경제 점검 ⑥-E: the numbers behind the values -->
-          <details id="economyStatsBox" class="economyBox"><summary>경제 통계</summary><p class="lookMeta">지금 가진 포인트(지갑+예금)와 최근 14일 사유별 들어옴·나감(서울 날짜), 많이 가진 10명. 예금 이자는 내역에 없고 예금 합에만 보여요.</p><label class="lookMeta"><input type="checkbox" id="economyStatsMask" checked /> 이름 가리기</label><div id="economyStats"></div></details>
-          <h3 class="keySectionTitle">가입 신청</h3>
-          <div id="signupList" class="keyList"></div>
-          <!-- v1.10.268 (사용자 「아이디 없는 계정은 정리해」): their nicknames, last entry and count; 「모두 막기」 only by the administrator -->
-          <h3 class="keySectionTitle">아이디 없는 계정 <span id="noIdCount">0</span>명</h3>
+<label for="guestLabelInput">닉네임</label>
+<input id="guestLabelInput" autocomplete="off" spellcheck="false" maxlength="40" placeholder="예: 우성" required />
+<button class="primary" type="submit">입장 파일 발급</button>
+</form>
+          <!-- 293 6-1: 찾기 -- the search (/ to it), the sort, the chips with their counts -->
+          <div class="accountFind"><input id="accountSearch" type="search" autocomplete="off" spellcheck="false" placeholder="닉네임·아이디·이름·메모 (초성도, / 키)" aria-label="계정 찾기" /><select id="accountSort" aria-label="정렬"></select></div>
+          <div id="accountChips" class="accountChips" role="toolbar" aria-label="거르기"></div>
+          <details id="signupBand" class="signupBand hidden"><summary>가입 신청 <b id="signupCount">0</b></summary><div id="signupList" class="keyList"></div></details>
+          <div id="adminJailBox" class="adminJailBox hidden"><h3 class="keySectionTitle">구치소에 있는 사람</h3><div id="adminJailList" class="keyList"></div></div>
+          <div class="accountsWrap">
+          <div class="accountsMain"><p id="reissueNote" class="smallMuted hidden">재발급 시 기존 파일과 접속은 즉시 무효화됩니다. 새로 받은 HTML 파일을 사용자에게 전달하세요.</p>
+          <div id="guestKeyList" class="keyList accountList" role="list"></div><button id="accountMore" type="button" class="ghost hidden">더 보기</button>
+          <div id="revokedGuestKeyList" class="keyList hidden"></div></div>
+          <aside id="accountDetail" class="accountDetail hidden" aria-label="계정 자세히"></aside>
+          </div>
+          <details class="economyBox"><summary>분류 태그</summary><div id="tagList" class="tagList"></div><form id="tagAddForm" class="joinForm islandTimeForm"><input id="tagName" type="text" maxlength="10" placeholder="태그 이름 (10자)" required /><select id="tagColor" aria-label="색"></select><button class="secondary" type="submit">만들기</button></form></details>
+          <details class="economyBox"><summary>아이디 없는 계정 <span id="noIdCount">0</span>명</summary>
           <p class="smallMuted">예전 입장 파일로만 들어오던 계정이에요. 그 사람이 예전 파일을 한 번 열면 아이디를 만들 수 있어요. 「모두 막기」를 해도 포인트·집·기록은 남고 복구할 수 있어요.</p>
           <div id="noIdList" class="keyList"></div>
-          <button id="noIdRevokeAll" class="secondary hidden" type="button">모두 막기</button>
-          <h3 class="keySectionTitle">계정</h3>
-          <p id="reissueNote" class="smallMuted hidden">재발급 시 기존 파일과 접속은 즉시 무효화됩니다. 새로 받은 HTML 파일을 사용자에게 전달하세요.</p>
-          <div id="guestKeyList" class="keyList"></div>
-          <h3 class="keySectionTitle">취소됨</h3>
-          <div id="revokedGuestKeyList" class="keyList"></div>
+          <button id="noIdRevokeAll" class="secondary hidden" type="button">모두 막기</button></details>
+          <details class="economyBox"><summary>생일 넣기</summary><form id="adminBirthdayForm" class="joinForm islandTimeForm"><label for="adminBirthdayName">생일 넣기</label><input id="adminBirthdayName" type="text" placeholder="계정 이름" required><input id="adminBirthdayMonth" type="number" min="1" max="12" placeholder="월" aria-label="월" required><input id="adminBirthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일" required><button class="secondary" type="submit">적용</button></form></details>
+          </section>
+          <section class="adminTab" data-tab="island" role="tabpanel" aria-label="섬 운영">
+          <div id="islandEnvBox" class="islandEnvBox"><h3 class="keySectionTitle">섬 환경</h3>
+          <form id="islandTimeForm" class="joinForm islandTimeForm"><label for="islandTimeSelect">섬 시간대</label><select id="islandTimeSelect"><option value="auto">자동 (서울 시각)</option><option value="morning">아침</option><option value="day">낮</option><option value="evening">저녁</option><option value="night">밤</option></select><button class="secondary" type="submit">적용</button></form>
+<form id="islandWeatherForm" class="joinForm islandTimeForm"><label for="islandWeatherSelect">섬 날씨</label><select id="islandWeatherSelect"><option value="auto">자동 (서버 시계)</option><option value="clear">맑음</option><option value="rain">비 (겨울 구역은 눈)</option><option value="rainbow">무지개</option></select><button class="secondary" type="submit">적용</button></form>
+<form id="islandSeasonForm" class="joinForm islandTimeForm"><label for="islandSeasonSelect">계절 회전</label><select id="islandSeasonSelect"><option value="auto">자동 (날마다 돎)</option><option value="hold">지금 배치로 멈춤</option></select><button class="secondary" type="submit">적용</button></form>
+<form id="islandDecorForm" class="joinForm islandTimeForm"><label for="islandDecorSelect">이벤트 장식</label><select id="islandDecorSelect"><option value="auto">자동 (10월 할로윈·12월 겨울 축제)</option><option value="halloween">할로윈</option><option value="winter">겨울 축제</option><option value="off">끔</option></select><button class="secondary" type="submit">적용</button></form>
+          <button id="islandEnvSave" class="primary" type="button">저장</button></div>
+          <form id="contestForm" class="joinForm islandTimeForm"><label for="contestTime">매일 섬 대회</label><input id="contestTime" type="time" value="14:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><select id="contestNextKind" aria-label="다음 대회 종목"></select><button class="secondary" type="submit">적용</button></form>
+          <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
+          <details id="calendarBox" class="economyBox"><summary>행사 달력</summary><p class="lookMeta">행사를 끄거나 기간을 옮길 수 있어요(서울 날짜). 빈칸은 원래 날짜. 매주 대회는 토 낚시·일 곤충 10~22시.</p><div id="calendarTable"></div><button id="calendarSave" class="primary" type="button">저장</button></details>
+          </section>
+          <section class="adminTab" data-tab="economy" role="tabpanel" aria-label="경제">
+          <details id="economyBox" class="economyBox"><summary>경제 값 관리</summary><p class="lookMeta">값을 바꾸고 「저장」을 누르면 확인 뒤 바로 적용됩니다. 빈칸은 기본값.</p><div id="economyTable"></div><button id="economySave" class="primary" type="button">저장</button><h4>변경 이력</h4><ol id="economyHistory"></ol></details>
+          <details id="economyStatsBox" class="economyBox"><summary>경제 통계</summary><p class="lookMeta">지금 가진 포인트(지갑+예금)와 최근 14일 사유별 들어옴·나감(서울 날짜), 많이 가진 10명. 예금 이자는 내역에 없고 예금 합에만 보여요.</p><label class="lookMeta"><input type="checkbox" id="economyStatsMask" checked /> 이름 가리기</label><div id="economyStats"></div></details>
+          </section>
         </article>
       </section>
 
@@ -1439,6 +1451,7 @@
   <script src="/session-lock.js"></script>
   <script src="/recent-action.js"></script>
   <script src="/messenger-alert.js"></script>
+  <script src="/admin-accounts.js"></script>
   <script src="/skin-looks.js"></script>
   <script src="/skin-art-omok.js"></script>
   <script src="/skin-art-connect4.js"></script>

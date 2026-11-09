@@ -166,12 +166,14 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     scene.traverse((o) => { if (!o.isMesh || o.isSprite) return; for (const m of [].concat(o.material)) { if (!m || toned.has(m) || m.isShaderMaterial || m.userData.pilot) continue; toned.add(m); patch(m, { wind: false, cut: false }); } });
   }
   function setOutdoors(on) { U.uPilotOut.value = on ? 1 : 0; }
-  let stepAt = null;
+  let stepAt = null; let seasonAt = 0; let seasonDay = null;
   function step(dt, now, things = [], me = null) {
     if (!treesIn && treeIds.every((id) => assets.shownOf?.(id) === 'model')) { treesIn = true; onTreesIn?.(); }
     if (now - toneAt > 2000) { toneAt = now; toneAll(); }
     U.uPilotTime.value = (U.uPilotTime.value + dt) % 1000;
     const ms = Math.min(500, Math.max(0, now - (stepAt ?? now))); stepAt = now; /* (290 6: the grass eases in real time -- a slow screen too) */
+    /* (Codex 281~290 #5: a new Seoul day turns the season zones -- the cells made again in their new colours, grown in) */
+    if (now - seasonAt > 10000) { seasonAt = now; const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); if (seasonDay && day !== seasonDay) for (const key of [...cellMap.keys()]) dropCell(key); seasonDay = day; }
     if (me) stepCells(me, ms);
     let n = 0; for (const t of things) { if (n >= CUTS) break; U.uPilotCuts.value[n].set(t.x, t.z, t.r || P.CUT_R, 0); n += 1; } /* (G1: the nearest few round me -- plaza-scene sorts them) */
     U.uPilotCutN.value = n;
