@@ -158,8 +158,8 @@
   const fadeStep = (share, high, ms) => Math.min(1, Math.max(0, share + ((high ? 1 : -1) * ms) / FADE_MS));
   // v1.10.290 6 (사용자 「풀이 멋대로 사라졌다 생겨」): the automatic 「섬 화질」 steps less often. It is fed one sample per 3 s
   // (`slow`: over half that time below 35 fps, `fast`: under a tenth). Down after GOV.DOWN_RUNS slow samples in a row (~9 s);
-  // up after GOV.UP_AFTER s fast, never within GOV.NO_UP s of a step down; two steps within GOV.FLIP_WINDOW s hold the tier
-  // GOV.HOLD s. Times in seconds. `step` gives the new tier or null.
+  // up after GOV.UP_AFTER s fast, never within GOV.NO_UP s of a step down; two steps within GOV.FLIP_WINDOW s hold it from stepping
+  // up GOV.HOLD s (a slow screen still steps down). Times in seconds. `step` gives the new tier or null.
   const GOV = Object.freeze({ DOWN_RUNS: 3, UP_AFTER: 60, NO_UP: 120, FLIP_WINDOW: 300, HOLD: 600 });
   function qualityGovernor(tier = 2) {
     const g = { tier, slowRuns: 0, fastFor: 0, downAt: -Infinity, holdUntil: -Infinity, changes: [] };
@@ -170,8 +170,8 @@
     };
     g.reset = () => { g.slowRuns = 0; g.fastFor = 0; };
     g.step = (now, { slow, fast, secs = 3 }) => {
+      if (slow && g.tier > 0) { g.fastFor = 0; g.slowRuns += 1; if (g.slowRuns < GOV.DOWN_RUNS) return null; g.downAt = now; return change(now, g.tier - 1); } /* (Codex 281~290 #4: held too -- a slow screen still steps down) */
       if (now < g.holdUntil) { g.reset(); return null; }
-      if (slow && g.tier > 0) { g.fastFor = 0; g.slowRuns += 1; if (g.slowRuns < GOV.DOWN_RUNS) return null; g.downAt = now; return change(now, g.tier - 1); }
       if (fast && g.tier < 2) { g.slowRuns = 0; g.fastFor += secs; return g.fastFor >= GOV.UP_AFTER && now - g.downAt >= GOV.NO_UP ? change(now, g.tier + 1) : null; }
       g.reset(); return null;
     };

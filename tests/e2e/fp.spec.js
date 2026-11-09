@@ -221,7 +221,8 @@ test('그래픽 G1: 섬 전체 풀 칸이 나를 따라 바뀌고, 길·나무·
   await page.evaluate(() => window.PlazaDebug().holdQuality(2));
   const pilot = () => page.evaluate(() => window.PlazaDebug().pilot());
   await page.evaluate(() => window.PlazaWarp(-15, -40)); await expect.poll(async () => (await pilot()).cells, { timeout: 60000 }).toBeGreaterThan(8);
-  const here = (await pilot()).cellKeys; expect(here).toContain('-1,-3'); /* (the cell I stand in: x -16..0, z -48..-32) */
+  const here = (await pilot()).cellKeys; expect(here).toContain('-1,-3');
+  expect(Math.min(...(await pilot()).spheres)).toBeGreaterThan(1); /* (Codex 281~290 #1: each cell's sphere over its blades -- an empty one, measured at count 0, culled the cell) */ /* (the cell I stand in: x -16..0, z -48..-32) */
   await page.evaluate(() => window.PlazaWarp(60, -110)); await expect.poll(async () => (await pilot()).cellKeys.includes('3,-7'), { timeout: 60000 }).toBe(true);
   await expect.poll(async () => (await pilot()).cellKeys.includes('-1,-3'), { timeout: 30000 }).toBe(false); /* (well behind me -- past the reach and a cell: gone) */
   const at = await page.evaluate(() => { const T = window.IslandTerrain; const D = window.PlazaDebug(); const tree = T.natureSolids()[0]; let walk = null;

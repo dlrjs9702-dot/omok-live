@@ -209,8 +209,9 @@ test('자동 화질: 느림 9초 뒤 내림, 60초 빠르면 올림, 내린 뒤 
   assert.deepEqual(run(slow, 3), [[t, 1]]); const downAt = t; /* (the third in a row, ~9 s) */
   const ups = run(fast, 150); assert.equal(ups.length, 1); assert.ok(ups[0][0] - downAt >= 120); /* (60 s fast, but not within 2 min) */
   assert.equal(g.tier, 2); assert.ok(g.holdUntil > t); /* (two steps within 5 minutes: held) */
-  const holdEnd = g.holdUntil; assert.deepEqual(run(slow, holdEnd - t - 3), []); assert.equal(g.tier, 2); /* (10 minutes at that tier) */
-  assert.equal(run(slow, 12).length, 1); assert.equal(g.tier, 1); /* (after the hold, steps again) */
+  assert.equal(run(slow, 9).length, 1); assert.equal(g.tier, 1); /* (Codex 281~290 #4: held, but 9 s slow still steps down) */
+  const holdEnd = g.holdUntil; assert.ok(holdEnd > t + 590); assert.deepEqual(run(fast, holdEnd - t - 3), []); assert.equal(g.tier, 1); /* (10 minutes held: no step up) */
+  const back = run(fast, 66); assert.equal(back.length, 1); assert.ok(back[0][0] - holdEnd >= 54); assert.equal(g.tier, 2); /* (after the hold, 60 s fast again) */
   const h = P.qualityGovernor(0); assert.deepEqual([h.step(3, slow), h.step(6, slow), h.step(9, slow)], [null, null, null]); /* (already lowest) */
   const u = P.qualityGovernor(1); let ut = 0; let to = null; while (to === null && ut < 100) { ut += 3; to = u.step(ut, fast); } assert.equal(to, 2); assert.equal(ut, 60); /* (never stepped down here: up after 60 s fast) */
 });

@@ -724,7 +724,9 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   // v1.10.290: the cross-fade (the tests' drawing switches at once) -- on, walking off: some copies on their way, then none
   { const fade = async () => (await debug(page)).assets.fade; const before = (await fade()).started; await page.evaluate(() => window.PlazaDebug().lodFade(true));
     await standAt((await near()) * 1.1 + 3); await expect.poll(async () => (await fade()).started, { timeout: 15000 }).toBeGreaterThan(before);
-    await expect.poll(async () => (await fade()).fading, { timeout: 15000 }).toBe(0); await expect.poll(async () => (await tree()).first).toBe('low'); await page.evaluate(() => window.PlazaDebug().lodFade(false)); }
+    await expect.poll(async () => (await fade()).fading, { timeout: 15000 }).toBe(0); await expect.poll(async () => (await tree()).first).toBe('low');
+    expect(await page.evaluate(() => window.PlazaDebug().assets.fillSame())).toBe(0); /* (Codex 281~290 #2: after a fade every batch as its own matrix makes it -- not the last one update() set) */
+    await page.evaluate(() => window.PlazaDebug().lodFade(false)); }
   expect(a.errors).toEqual([]);
   await a.context.close();
 });

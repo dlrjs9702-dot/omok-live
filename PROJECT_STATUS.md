@@ -13,6 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.291 Codex 281~290 빠른 고침
+
+- 풀 칸 InstancedMesh 구를 모든 잎으로 잰 뒤 count 0(three 0.186은 count만 재서 빈 구 → 칸이 잘려 안 보임), 섞기 끝 fill 앞에 그 배치 entryMatrix, 섞기 메시 감싼 geometry의 lodFade 버퍼만 정리, 자동 화질은 머무는 동안에도 9초 느리면 내림. 시험: fp G1 구 반지름, island-assets fillSame 0. 다음: 1.10.292 물고기 노점·내기 목표·메신저 사진 확대.
+
 ## v1.10.290 High/Low 바뀜 부드럽게
 
 - 0.4초 4×4 점무늬 섞기(투명 아님, 인스턴스 lodFade 속성·혼자 LOD·사람 재질 복사본), 거리 1.5배, 그림자 그리는 항목 35 m 한도; 자동 화질 qualityGovernor(느림 9초 내림, 60초 올림, 내린 뒤 2분 막음, 5분 두 번 → 10분 머묾), 풀 1.5초 높이 0↔1·땅 무늬 섞기, 하루 한 번 알림, 문제 기록 화질 단계·auto/fixed·10분 바뀜 수. 성능 「중간」 288 대비 −6~+6%. 다음: 291 물고기 1층 가게, 주민 내기 목표.
@@ -20,7 +24,3 @@
 ## v1.10.289 메신저 폰 화면 맞춤
 
 - 페이지 높이를 보이는 높이(visualViewport)에 맞춤(설치한 앱에서 100dvh가 화면보다 커서 두 겹 스크롤), 폰 방 안에서 설정 카드 숨김(목록·서랍·PC 그대로), 30줄 방 e2e. 다음: 290 High/Low 바뀜 부드럽게.
-
-## v1.10.288 28번째 주민 다래
-
-- 개명 창구 공무원 카멜레온(에셋 110, 0.86·윗몸 6°), 글 9가지(이야기 세 장 village·office, 대화 나무, 내기, 좋아하는 것, 사진 부탁), 단비와 겹치던 21줄은 다래 말씨로, 관공서 넷이 하루 하나씩 쉼(개명은 민원 창구가 받음), 개명 창구 이름표 대신 「· 다래」, 27을 박은 시험은 주민 수로. 다음: G3 빛.
