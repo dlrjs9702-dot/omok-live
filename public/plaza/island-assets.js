@@ -328,8 +328,10 @@
     REGISTRY[`character.transform.${c.id}`] = REGISTRY[`character.transform.${c.id}.${c.defaultVariant}`];
   }
   const X2_FIT = (slot) => (slot === 'outfit' ? { dye: 'primary', replaces: ['top', 'bottom'] } : slot === 'hat' ? { dye: 'primary', cover: 1.95 } : slot === 'shoes' ? { dye: 'primary', replaces: ['shoes'] } : slot === 'necklace' ? {} : { dye: 'primary' });
+  // v1.10.294 (문제 기록 「건」): a hat whose brim floated over the hair -- seated lower by its own sink (the hair's cut line with it)
+  const X2_HAT_SEAT = Object.freeze({ coral_tiara: { sink: 0.03 } });
   for (const [slot, items] of Object.entries(X2?.X2_ITEMS || {})) for (const [, , file] of items) {
-    REGISTRY[`wear.x2_${slot}_${file}`] = part(`x2_${slot}_${file}`, slot, X2_FIT(slot)); WARDROBE[`avatar_x2_${slot}_${file}`] = `wear.x2_${slot}_${file}`;
+    REGISTRY[`wear.x2_${slot}_${file}`] = part(`x2_${slot}_${file}`, slot, { ...X2_FIT(slot), ...(slot === 'hat' ? X2_HAT_SEAT[file] : null) }); WARDROBE[`avatar_x2_${slot}_${file}`] = `wear.x2_${slot}_${file}`;
   }
   // 옷 뚫림 B (2026-10-21): the long skirts and robes -- their wearers' arms turn out a little (asset-loader skirtArms)
   for (const id of ['wear.outfit_dress', 'wear.outfit_hw_ghost', 'wear.outfit_hw_witch', 'wear.outfit_robe', 'wear.outfit_raincoat', ...['kite_festival', 'rain_gauge', 'noodle_chef', 'bamboo_weaver', 'moon_courier', 'reef_chemist', 'solstice_coat', 'tea_master'].map((f) => `wear.x2_outfit_${f}`)]) if (REGISTRY[id]) REGISTRY[id].fit = { ...REGISTRY[id].fit, skirtArms: true };
