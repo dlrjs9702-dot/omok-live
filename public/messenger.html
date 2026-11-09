@@ -76,11 +76,12 @@
       </form>
     </div>
   </main>
-  <div id="messengerViewer" class="messengerViewer hidden" role="dialog" aria-modal="true" aria-label="사진 크게 보기"><img id="messengerViewerImg" alt="" /><span id="messengerViewerCount" class="messengerViewerCount"></span><button id="messengerViewerPrev" class="ghost messengerViewerPrev" type="button" aria-label="이전 사진">‹</button><button id="messengerViewerNext" class="ghost messengerViewerNext" type="button" aria-label="다음 사진">›</button><button id="messengerViewerClose" class="ghost messengerViewerClose" type="button" aria-label="닫기">✕</button></div>
+  <div id="messengerViewer" class="messengerViewer hidden" role="dialog" aria-modal="true" aria-label="사진 크게 보기"><img id="messengerViewerImg" alt="" /><span id="messengerViewerCount" class="messengerViewerCount"></span><button id="messengerViewerPrev" class="ghost messengerViewerPrev" type="button" aria-label="이전 사진">‹</button><button id="messengerViewerNext" class="ghost messengerViewerNext" type="button" aria-label="다음 사진">›</button><button id="messengerViewerClose" class="ghost messengerViewerClose" type="button" aria-label="닫기">✕</button><div class="messengerViewerZoom"><button id="messengerZoomOut" class="ghost" type="button" aria-label="축소">−</button><span id="messengerZoomPct">100%</span><button id="messengerZoomIn" class="ghost" type="button" aria-label="확대">+</button></div></div>
   <!-- B6: 화면 안 작은 창 (이름 바꾸기·나가기·삭제) -- window.prompt / confirm 대신 -->
   <div id="mAsk" class="mAskBack hidden"><form id="mAskForm" class="mAsk isle-paper" role="dialog" aria-modal="true" aria-labelledby="mAskText"><p id="mAskText" class="mAskText"></p><input id="mAskInput" type="text" maxlength="20" autocomplete="off" aria-labelledby="mAskText" /><div class="noticeFormActions"><button id="mAskOk" class="primary" type="submit">확인</button><button id="mAskCancel" class="ghost" type="button">취소</button></div></form></div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="/messenger-alert.js"></script>
+  <script src="/messenger-zoom.js"></script>
   <script src="/messenger.js"></script>
 </body>
 </html>

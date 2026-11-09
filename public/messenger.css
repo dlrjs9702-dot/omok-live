@@ -85,8 +85,11 @@ html[data-mtheme="dark"] .mApp .messengerBubbleMenu .messengerBubbleDelete{color
 .mApp .messengerPhoto img{display:block;width:100%;max-height:320px;object-fit:cover;aspect-ratio:4/3} /* (A1: a fixed slot when the photo has no w/h) */
 .mApp .messengerPhoto.gone{display:grid;place-items:center;padding:12px 6px;font-size:.72rem;cursor:default;color:#6b5a48;background:rgba(0,0,0,.06);min-height:72px}
 .mApp .messengerPhotoProgress{position:absolute;right:6px;bottom:6px;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem}
-.messengerViewer{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(10,8,6,.88)}.messengerViewer.hidden{display:none}
-.messengerViewer img{max-width:94vw;max-height:86vh;object-fit:contain;border-radius:6px}
+.messengerViewer{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(10,8,6,.88);touch-action:none;overflow:hidden}.messengerViewer.hidden{display:none}
+.messengerViewer img{max-width:94vw;max-height:86vh;object-fit:contain;border-radius:6px;transform-origin:center;user-select:none;-webkit-user-drag:none}
+/* v1.10.291 확대·축소: 「− 100% +」 under the photo (a phone: two fingers and the double tap) */
+.messengerViewerZoom{position:absolute;bottom:14px;left:50%;translate:-50% 0;display:flex;align-items:center;gap:8px;color:#fff;font-size:.85rem}.messengerViewer .messengerViewerZoom button{position:static}.messengerViewerZoom span{min-width:3.4em;text-align:center}
+@media (hover:none) and (pointer:coarse){.messengerViewerZoom{display:none}}
 .messengerViewerCount{position:absolute;top:14px;left:50%;translate:-50% 0;color:#fff;font-size:.85rem}
 .messengerViewer button{position:absolute;color:#fff;background:rgba(255,255,255,.12);border:0;border-radius:24px;min-width:44px;min-height:44px;font-size:1.4rem}
 .messengerViewerPrev{left:10px;top:50%;translate:0 -50%}.messengerViewerNext{right:10px;top:50%;translate:0 -50%}.messengerViewerClose{top:10px;right:10px}
