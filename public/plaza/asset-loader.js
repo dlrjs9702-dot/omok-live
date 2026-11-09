@@ -497,9 +497,12 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // Which copies are near enough for High, worked out again once the player has moved a unit; a square is filled again
   // only when one of its copies changed side.
   let lastX = NaN; let lastZ = NaN;
+  // (294 6c: a car's ride started ~20 fades a frame -- at most FADE_STARTS new ones a frame, the rest the next frame: their
+  // sides not turned yet, this update asked again)
+  const FADE_STARTS = 8;
   function update(x, z) {
     if (Math.hypot(x - lastX, z - lastZ) < 1) return;
-    lastX = x; lastZ = z;
+    lastX = x; lastZ = z; let starts = 0;
     for (const rec of batches) {
       if (!rec.placed) continue;
       entryMatrix(rec.entry, local);
@@ -508,7 +511,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         let changed = false;
         p.cell.matrices.forEach((m, i) => {
           const high = P.highState(p.flags[i] === 1, Math.hypot(m.elements[12] - x, m.elements[14] - z), near);
-          if (high !== (p.flags[i] === 1)) { p.flags[i] = high ? 1 : 0; changed = true; if (fadeOn && p.groups.get(p.zones[i])?.fh) { if (!p.moving.has(i)) fadeStarts += 1; p.moving.add(i); } else { p.share[i] = p.flags[i]; p.moving.delete(i); } } /* (v1.10.290: on its way, or at once) */
+          if (high !== (p.flags[i] === 1)) { const fades = fadeOn && p.groups.get(p.zones[i])?.fh; if (fades && !p.moving.has(i) && starts >= FADE_STARTS) { lastX = NaN; return; } /* (294: next frame) */ p.flags[i] = high ? 1 : 0; changed = true; if (fades) { if (!p.moving.has(i)) { fadeStarts += 1; starts += 1; } p.moving.add(i); } else { p.share[i] = p.flags[i]; p.moving.delete(i); } } /* (v1.10.290: on its way, or at once) */
         });
         if (changed) fill(p);
       }

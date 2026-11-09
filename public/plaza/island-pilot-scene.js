@@ -126,7 +126,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     for (let k = 0; k < p.count; k += 1) { const wx = x + p.getX(k); const wz = z + p.getZ(k); p.setY(k, groundY(wx, wz) + 0.05); /* (5 cm: between its points it crosses the mesh's creases a few cm low) */ const c = groundColorOf(T.seasonAt?.(wx, wz, Date.now()) || 'summer'); rgba.set([c.r, c.g, c.b, Math.min(1, thickAt(wx, wz) * 1.4)], k * 4); }
     geo.setAttribute('color', new THREE.BufferAttribute(rgba, 4)); geo.computeVertexNormals(); geo.computeBoundingSphere();
     const sheet = new THREE.Mesh(geo, groundMat.clone()); sheet.material.opacity = 0; sheet.visible = false; /* (290 6: its own, faded in and out with its blades) */ sheet.position.set(x, 0, z); sheet.receiveShadow = true; sheet.renderOrder = -1; sheet.name = 'pilot_ground'; group.add(sheet);
-    return { mesh, sheet, n: list.length, d: 0, g: { from: 0, to: 0, t: 1 }, a: 0 };
+    madeN += 1; return { mesh, sheet, n: list.length, d: 0, g: { from: 0, to: 0, t: 1 }, a: 0 };
   }
   function dropCell(key) { const c = cellMap.get(key); if (!c) return; c.mesh.removeFromParent(); c.mesh.dispose(); c.mesh.material.dispose(); c.sheet.removeFromParent(); c.sheet.geometry.dispose(); c.sheet.material.dispose(); cellMap.delete(key); }
   // (290 6: a cell toward `n` blades and its sheet toward `a`, over GROW_MS -- P.growStep; `ms` real time)
@@ -142,11 +142,11 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     if (!readMaps()) return;
     const want = quality > 0 ? P.cellsNear(me.x, me.z, reachNow()) : []; const keep = new Set(want.map((c) => `${c.i},${c.j}`));
     for (const key of [...cellMap.keys()]) { const [i, j] = key.split(',').map(Number); const dx = Math.max(i * P.CELL - me.x, 0, me.x - (i + 1) * P.CELL); const dz = Math.max(j * P.CELL - me.z, 0, me.z - (j + 1) * P.CELL); if (!keep.has(key) && Math.hypot(dx, dz) > REACH + P.CELL) dropCell(key); }
-    let made1 = false;
+    let made1 = false; const madeFrom = performance.now();
     for (const c of want) {
       const key = `${c.i},${c.j}`; let cell = cellMap.get(key);
       if (!cell) {
-        if (made1) continue;
+        if (made1 && performance.now() - madeFrom > 2) continue; /* (294 6b: as many as 2 ms of a frame lets -- a riding car's road comes fast) */
         if (cellMap.size >= MAX_CELLS) { /* (full: the farthest one I left goes first -- a warp left the old place's behind) */
           let far = null; let fd = -1; for (const k of cellMap.keys()) { if (keep.has(k)) continue; const [i, j] = k.split(',').map(Number); const d = Math.hypot((i + 0.5) * P.CELL - me.x, (j + 0.5) * P.CELL - me.z); if (d > fd) { fd = d; far = k; } }
           if (!far) continue; dropCell(far);
@@ -166,7 +166,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     scene.traverse((o) => { if (!o.isMesh || o.isSprite) return; for (const m of [].concat(o.material)) { if (!m || toned.has(m) || m.isShaderMaterial || m.userData.pilot) continue; toned.add(m); patch(m, { wind: false, cut: false }); } });
   }
   function setOutdoors(on) { U.uPilotOut.value = on ? 1 : 0; }
-  let stepAt = null; let seasonAt = 0; let seasonDay = null;
+  let stepAt = null; let madeN = 0; /* (294: cells made so far -- a ride's trace) */ let seasonAt = 0; let seasonDay = null;
   function step(dt, now, things = [], me = null) {
     if (!treesIn && treeIds.every((id) => assets.shownOf?.(id) === 'model')) { treesIn = true; onTreesIn?.(); }
     if (now - toneAt > 2000) { toneAt = now; toneAll(); }
@@ -222,5 +222,5 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     post.composer.render(dt); return true;
   }
   function dispose() { for (const one of cells) assets.unbatch?.(one); for (const key of [...cellMap.keys()]) dropCell(key); group.removeFromParent(); for (const m of made) m.dispose?.(); if (post) { for (const p of post.composer.passes) p.dispose?.(); post.composer.dispose(); } } /* (v1.10.283 Codex #11: each pass's own render targets too) */
-  return { group, step, setQuality, setOutdoors, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, cells: cellMap.size, cellKeys: [...cellMap.keys()], blades: [...cellMap.values()].reduce((s, c) => s + c.n, 0), shown: [...cellMap.values()].reduce((s, c) => s + (c.mesh.visible ? c.mesh.count : 0), 0), spheres: [...cellMap.values()].filter((c) => c.n > 0).map((c) => +(c.mesh.boundingSphere?.radius ?? -1).toFixed(1)), /* (Codex 281~290 #1) */ grow: [...cellMap.values()].filter((c) => c.g.t < 1).map((c) => +(c.g.to > c.g.from ? c.g.t : 1 - c.g.t).toFixed(2)).slice(0, 8), mapsIn: Boolean(mapsRead), reach: REACH, at: cellsAt }), grassAt: (x, z) => thickAt(x, z) };
+  return { group, step, setQuality, setOutdoors, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, cells: cellMap.size, cellKeys: [...cellMap.keys()], blades: [...cellMap.values()].reduce((s, c) => s + c.n, 0), shown: [...cellMap.values()].reduce((s, c) => s + (c.mesh.visible ? c.mesh.count : 0), 0), spheres: [...cellMap.values()].filter((c) => c.n > 0).map((c) => +(c.mesh.boundingSphere?.radius ?? -1).toFixed(1)), /* (Codex 281~290 #1) */ grow: [...cellMap.values()].filter((c) => c.g.t < 1).map((c) => +(c.g.to > c.g.from ? c.g.t : 1 - c.g.t).toFixed(2)).slice(0, 8), made: madeN, mapsIn: Boolean(mapsRead), reach: REACH, at: cellsAt }), grassAt: (x, z) => thickAt(x, z) };
 }

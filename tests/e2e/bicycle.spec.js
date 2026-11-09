@@ -103,6 +103,7 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
     await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x, s.out.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain(X.STOPS[from].sign);
     if (from === 'plaza') { await b.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x - 6, s.out.z - 4]); await shot('stop'); }
     await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.taxiLine')).toHaveText(`${to.label}까지 갈까요? · 1,000P`, { timeout: 15000 });
+    if (from === 'plaza') await page.evaluate(() => window.PlazaDebug().taxiTrace(true)); /* (294 6: the ride's frames) */
     const before = await balance(); await dialog.locator('#taxiRideBtn').click();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride?.from)).toBe(from); await expect(dialog).toBeHidden();
     expect(await balance()).toBe(before - 1000);
@@ -114,6 +115,10 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       expect(await page.evaluate(() => window.PlazaDebug().hairCut())).toBe(false); /* (294 C 「대머리야」: the hair its whole shape while the hat is away) */
     }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride), { timeout: 30000 }).toBe(null);
+    if (from === 'plaza') { /* (294 6 사용자 「택시가 이동이 끊기는 것」: no frame's step 3x off its neighbours' -- the clock eased, not jumping) */
+      const jumps = await page.evaluate(() => { const f = (window.PlazaDebug().taxiTrace() || []).filter((x) => ['start', 'run', 'stop'].includes(x.phase)); const v = []; for (let i = 1; i < f.length; i += 1) { const dt = f[i].t - f[i - 1].t; v.push({ d: Math.hypot(f[i].x - f[i - 1].x, f[i].z - f[i - 1].z), v: Math.hypot(f[i].x - f[i - 1].x, f[i].z - f[i - 1].z) / Math.max(1, dt) }); } const med = (a) => { const b = [...a].sort((p, q) => p - q); return b[Math.floor(b.length / 2)] || 0; }; window.PlazaDebug().taxiTrace(false); return v.filter((r, i) => { const ref = med(v.slice(Math.max(0, i - 4), i + 5).map((x) => x.v)); return r.d > 0.03 && ref > 0 && (r.v > ref * 3 || r.v < ref / 3); }).length; });
+      expect(jumps).toBe(0);
+    }
     const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); const out = X.arrivalOf({ from, startedAt: 0, runMs: 3000 }); expect(Math.hypot(here.x - out.x, here.z - out.z)).toBeLessThan(0.6); // (exit_L beside the car as it stands)
     await expect(page.locator('#toast')).toContainText(`${to.label}에 도착했어요`);
     expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(false); /* (out: the hat back) */ expect(await page.evaluate(() => window.PlazaDebug().hairCut())).toBe(true); /* (294: and the hat's cut again) */

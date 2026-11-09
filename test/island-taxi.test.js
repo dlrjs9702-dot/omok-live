@@ -95,3 +95,11 @@ test('택시 좌석: 가장 큰 몸·머리로 앉아도 머리 꼭대기가 지
   assert.ok(X.SEAT.y + top < roof.point.y - 0.05, `${path.basename(tallest)}: head ${(X.SEAT.y + top).toFixed(3)}, roof ${roof.point.y.toFixed(3)}`);
   assert.ok(Math.abs(X.SEAT.y + feet - floor.point.y) < 0.03, `feet ${(X.SEAT.y + feet).toFixed(3)}, floor ${floor.point.y.toFixed(3)}`);
 });
+
+// v1.10.294 6a (사용자 「택시가 이동이 끊기는 것」): the screen's clock eases to the server's -- 2 ms a frame, at once past 1 s
+test('화면 시계: 장면마다 2 ms까지 따라가고, 1초 넘게 차이 나면 한 번에', () => {
+  const X = require('../public/plaza/island-taxi.js');
+  assert.equal(X.easeClock(null, 120), 120); assert.equal(X.easeClock(100, 160), 102); assert.equal(X.easeClock(100, 99), 99); assert.equal(X.easeClock(100, 40), 98);
+  assert.equal(X.easeClock(0, 1500), 1500); assert.equal(X.easeClock(0, -1001), -1001);
+  let v = 0; for (let k = 0; k < 30; k += 1) v = X.easeClock(v, 60); assert.equal(v, 60); /* (60 ms over 30 frames, no jump) */
+});
