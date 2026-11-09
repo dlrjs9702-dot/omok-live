@@ -100,7 +100,8 @@ test('메신저 사진 API: JPEG만·2MB까지, 보낼 때 붙이기·사진만�
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '설명 한 줄', photos: [ids[0]] }, a.token)).data.error, 'PHOTO_NOT_READY', '한 번만');
   // v1.10.279 이모티콘: one from the list, alone; its words are the text (the room list, an old page); unsent as a line is
   const say = (body, who = b) => call( /* (받는이: 사진가 is near the 5-second limit) */`/api/messenger/rooms/${room.id}/messages`, body, who.token);
-  const list = require('../public/messenger/stickers/stickers.json').stickers; assert.equal(list.length, 24); assert.equal(new Set(list.map((s) => s.id)).size, 24);
+  const data = require('../public/messenger/stickers/stickers.json'); const list = data.stickers; assert.equal(list.length, 224); assert.equal(new Set(list.map((s) => s.id)).size, 224); /* (v1.10.298 assets 114: 28 islanders x 8) */
+  const chips = data.packs[0].residents; assert.equal(chips.length, 28); for (const p of chips) assert.equal(list.filter((s) => s.n === p.n).length, 8, p.name);
   for (const s of list) { /* (every picture there, a whole WebP and the asset's own bytes (its sha256) -- 279 shipped three rewritten as text) */
     for (const [file, sum] of [[s.file, s.sha256], ...(s.anim ? [[s.anim, s.animSha256]] : [])]) {
       const b = await fs.readFile(path.join(__dirname, '../public/messenger/stickers', file));
