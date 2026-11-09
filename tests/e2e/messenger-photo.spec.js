@@ -108,8 +108,15 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
   try {
     const room = (await api(request, '/api/messenger/rooms', { account: a.account, body: { name: '이모티콘방', members: [b.id] } })).data.room;
     await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: a.account, body: { text: '안녕하세요' } });
+    if (isMobile) for (let k = 0; k < 29; k += 1) await api(request, `/api/messenger/rooms/${room.id}/messages`, { account: k % 2 ? a.account : b.account, body: { text: `줄 ${k + 1}` } }); /* (v1.10.289: a room the list overflows) */
     await page.reload(); await page.locator('#messengerRoomList button', { hasText: '이모티콘방' }).click();
-    expect(await page.evaluate(() => document.activeElement?.id === 'messengerInput')).toBe(!isMobile); /* (v1.10.286 사용자: a phone's keypad not up on entering; a PC types at once) */
+    expect(await page.evaluate(() => document.activeElement?.id === 'messengerInput')).toBe(!isMobile);
+    if (isMobile) { /* (v1.10.289 사용자 「핸드폰에서 스크롤이 생겨서 불편해」: 30 lines -- the page no taller than the screen (only the list scrolls), the box on it, the settings card away) */
+      await expect.poll(() => page.locator('#messengerMessages').evaluate((b) => b.scrollHeight > b.clientHeight + 40)).toBe(true); /* (the list overflows -- its first page in) */
+      await expect(page.locator('.mTop')).toBeHidden();
+      expect(await page.evaluate(() => document.scrollingElement.scrollHeight <= window.innerHeight + 1)).toBe(true);
+      const box = await page.locator('#messengerForm').boundingBox(); expect(box.y >= 0 && box.y + box.height <= page.viewportSize().height + 1, JSON.stringify(box)).toBe(true);
+    } /* (v1.10.286 사용자: a phone's keypad not up on entering; a PC types at once) */
     const panel = page.locator('#messengerEmoji'); const cells = panel.locator('.messengerStickerCell');
     await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeVisible(); await expect(cells).toHaveCount(24);
     if (isMobile) { /* (v1.10.286 사용자 「보낸 후 닫을 수가 없어」: sent, then closed by its ✕, the 😊, the box (keypad up), the list, the phone's back -- the phone's whole part) */
