@@ -41,7 +41,9 @@ test('계정 목록 서버: 한 번에 포인트·체납·구치소·집·태그
   const id = (await key()).id;
   assert.deepEqual((await req(`/api/admin/keys/${id}/tags`, server.admin, { tags: [tags[0].id, tags[1].id, 'nope', tags[0].id] })).data.tags, [tags[0].id, tags[1].id]);
   await req('/api/test/jail', a, { debt: 12000 });
-  const k = await key(); assert.deepEqual([k.tags, k.debt, k.jail, k.hasHome, typeof k.points, Boolean(k.lastSeenAt)], [[tags[0].id, tags[1].id], 12000, { admin: false }, false, 'number', true]);
+  const k = await key(); assert.deepEqual([k.tags, k.debt, k.jail, k.hasHome, typeof k.points, Boolean(k.lastSeenAt)], [[tags[0].id, tags[1].id], 12000, null, false, 'number', true], '(294) 체납만으로는 구치소 아님');
+  await req('/api/test/jail', a, { veteran: true }); await req('/api/plaza/leave', a, {}); await req('/api/plaza/state', a, { x: 0, z: 6, yaw: 0 }); /* (294: now in the cell -- 구치소) */
+  assert.deepEqual((await key()).jail, { admin: false });
   assert.equal((await req('/api/admin/tags', server.admin, { action: 'delete', id: tags[0].id })).status, 200);
   assert.deepEqual((await key()).tags, [tags[1].id], '지운 태그는 계정에서도 빠짐');
   assert.equal((await req('/api/admin/tags', server.admin, { action: 'edit', id: tags[1].id, name: '주의', color: 'red' })).data.tags[0].name, '주의');

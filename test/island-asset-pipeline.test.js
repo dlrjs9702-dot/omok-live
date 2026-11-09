@@ -413,7 +413,7 @@ test('조합 맞춤: 모자 덮기·펜던트·망토 드리우기·꼬리·내�
   const P = require('../public/plaza/asset-pipeline.js');
   const tri = (...pts) => pts.flat();
   const hair = { id: 'hair', fit: { slot: 'hair' }, pos: tri([0, 1.7, 0], [0.3, 2.05, 0], [-0.3, 2.05, 0], [0.4, 2.1, 0], [0, 2.12, 0.1], [-0.4, 2.1, 0]) };
-  const hat = { id: 'hat', fit: { slot: 'hat', cover: 2.0 }, pos: Array.from({ length: 24 }, (_, k) => [Math.sin((k * Math.PI) / 12) * 0.35, 2.1, Math.cos((k * Math.PI) / 12) * 0.35]).flat() }; /* (294: a crown round the head -- the cut follows the hat at each angle) */
+  const hat = { id: 'hat', fit: { slot: 'hat', cover: 2.0 }, pos: Array.from({ length: 24 }, (_, k) => [[Math.sin((k * Math.PI) / 12) * 0.35, 2.1, Math.cos((k * Math.PI) / 12) * 0.35], [Math.sin((k * Math.PI) / 12) * 0.05, 2.1, Math.cos((k * Math.PI) / 12) * 0.05]]).flat(2) }; /* (294: a brim round the head and its crown over it -- the cut follows the hat over the hair at each angle) */
   const robe = { id: 'robe', fit: { slot: 'outfit' }, pos: tri([0, 0.95, -0.27], [0, 0.6, 0.36], [0, 0.95, 0.24]) };
   const pendant = { id: 'neck', fit: { slot: 'necklace' }, pos: tri([0, 1.07, -0.19], [0, 0.99, -0.255], [0, 0.97, -0.235]) };
   const cape = { id: 'cape', fit: { slot: 'cape' }, pos: tri([0, 1.07, 0.28], [0, 0.95, 0.28], [0, 0.6, 0.28], [0, 0.45, 0.28]) };
@@ -470,8 +470,7 @@ test('모자 아래 머리: 각도마다 모자 아래 끝까지만 자름, 모�
   const ring = real.ring; assert.equal(ring.length, 24); assert.ok(ring.some((y) => y === null), '티아라가 없는 자리(뒤)'); assert.ok(ring.filter((y) => y !== null).every((y) => y >= real.above), '챙 선보다 아래는 안 자름');
   const low = new Array(24).fill(Infinity); const sec = (x, z) => ((Math.round(((Math.atan2(x - real.cx, z - real.cz) + Math.PI) / (2 * Math.PI)) * 24) % 24) + 24) % 24;
   for (let i = 0; i < tiara.length; i += 3) { const s = sec(tiara[i], tiara[i + 2]); low[s] = Math.min(low[s], tiara[i + 1]); }
-  for (let s = 0; s < 24; s += 1) if (Number.isFinite(low[s])) assert.ok(Math.abs(ring[s] - Math.max(real.above, low[s])) < 0.006, `${s}: ${ring[s]} ${low[s]}`); /* (the tiara's edge there -- the old flat line was 9.2 cm under it) */
-});
+  for (let s = 0; s < 24; s += 1) if (ring[s] !== null) assert.ok(ring[s] >= real.above && ring[s] >= low[s] - 0.006, `${s}: ${ring[s]} ${low[s]}`); /* (never below the brim line nor the tiara's own lowest there -- its part over the hair) */});
 
 // v1.10.32 겨울 지붕 눈 (asset-pipeline roofShape / drapeSnow): a roof read from its faces -- flat, gable (which way its
 // ridge runs) or round -- and a snowcap laid over it, every point on the roof (never inside it), within its extent

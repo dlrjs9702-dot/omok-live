@@ -211,7 +211,9 @@
     if (Number.isFinite(cover)) for (const p of of(['hair'])) {
       const hats = of(['hat']); const seated = hats.flatMap((h) => Array.from(applyFit(h.pos, null, out[h.id].ops).pos || h.pos));
       let cx = 0; let cz = 0; const n = p.pos.length / 3; for (let i = 0; i < p.pos.length; i += 3) { cx += p.pos[i]; cz += p.pos[i + 2]; } cx /= n || 1; cz /= n || 1;
-      const ring = new Array(RING).fill(null); for (let i = 0; i < seated.length; i += 3) { const s = sectorOf(seated[i] - cx, seated[i + 2] - cz); ring[s] = ring[s] == null ? seated[i + 1] : Math.min(ring[s], seated[i + 1]); }
+      /* (the hat over the hair: only its points within the hair's own reach there + 3 cm -- a wide brim's flare past it is not where it rests) */
+      const reach = new Array(RING).fill(0); for (let i = 0; i < p.pos.length; i += 3) if (p.pos[i + 1] > cover - 0.1) { const s = sectorOf(p.pos[i] - cx, p.pos[i + 2] - cz); reach[s] = Math.max(reach[s], Math.hypot(p.pos[i] - cx, p.pos[i + 2] - cz)); }
+      const ring = new Array(RING).fill(null); for (let i = 0; i < seated.length; i += 3) { const dx = seated[i] - cx; const dz = seated[i + 2] - cz; const s = sectorOf(dx, dz); if (Math.hypot(dx, dz) > reach[s] + 0.03) continue; ring[s] = ring[s] == null ? seated[i + 1] : Math.min(ring[s], seated[i + 1]); }
       out[p.id].ops.push({ kind: 'cover', above: cover, ring: ring.map((y) => (y == null ? null : +Math.max(cover, y).toFixed(4))), cx: +cx.toFixed(4), cz: +cz.toFixed(4) });
     }
     const clothes = of(['outfit', 'top', 'bottom']);

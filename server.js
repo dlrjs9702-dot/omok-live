@@ -8549,10 +8549,11 @@ async function requestHandler(req, res) {
     const writers = new Set(await issueWriters()); // (2026-10-20 문제 기록 허용)
     // (293 계정 탭 6-5: what the list sorts and filters by, in one read -- points, tax owed, jail, a home, the admin's tags)
     const points = await pointStore.holdings(); const tags = await adminTags(); const now = nowMs();
+    const inCell = new Set([...sessions].filter(([token]) => jailInmates.has(token)).map(([, s]) => pointAccountForSession(s))); /* (294: 「구치소」 -- sent, or in the cell now; a debt alone is 「체납」) */
     const keys = await Promise.all((await accessStore.list()).map(async (key) => { const account = `guest:${key.id}`; const presence = guestPresence(key.id); const aj = adminJailNow(account, now);
       const home = homeCache.has(account) ? homeCache.get(account) : await pointStore.worldValue(`home:${account}`); /* (ponytail: one read an account not in the cache -- a home index if the accounts grow into the hundreds) */
       return { ...key, presence, messenger: messenger.has(key.id), issues: writers.has(key.id), lastSeenAt: presence?.online ? new Date(now).toISOString() : key.lastUsedAt || null,
-        points: points[account] || 0, debt: taxDebt.get(account) || 0, jail: aj ? { admin: true, until: aj.until, reason: aj.reason } : taxDebt.get(account) > 0 ? { admin: false } : null, hasHome: Boolean(home), tags: tags.of[key.id] || [] }; }));
+        points: points[account] || 0, debt: taxDebt.get(account) || 0, jail: aj ? { admin: true, until: aj.until, reason: aj.reason } : inCell.has(account) ? { admin: false } : null, hasHome: Boolean(home), tags: tags.of[key.id] || [] }; }));
     return sendJson(res, 200, { keys, tags: tags.tags, persistence: DATABASE_URL ? 'database' : 'ephemeral-file', entryKeys: entryKeysOn });
   }
   // 293 관리자 분류 태그 (6-2): { tags: [{ id, name (10), color (one of six) }], of: { keyId: [tagId] } } in the world value 'adminTags'

@@ -1025,7 +1025,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const train = trainScene({ scene, assets, solids, vcMat, signboard }); // v1.10.47 관광열차 (its steps are walked round)
   // v1.10.271 섬 택시: the two stops and every ride's car; SPACE by a stop asks (app: the fare, then 타기)
-  const TX = globalThis.IslandTaxi; const taxiView = taxiScene({ scene, assets, mark: () => { const t = makeTag('빵!', null); t.scale.multiplyScalar(0.8); return t; } });
+  const TX = globalThis.IslandTaxi; const taxiView = taxiScene({ scene, assets, mark: () => { const t = makeTag('빵!', null); t.scale.multiplyScalar(0.8); return t; }, tag: (text) => { const t = makeTag(text, null); t.scale.multiplyScalar(1.6); return t; } }); /* (294 7: the stop's 「돌아오는 중 · N초」, big) */
   for (const id of Object.keys(TX.STOPS)) {
     const s = TX.stopOf(id); doors[`taxi:${id}`] = { x: s.out.x, z: s.out.z, name: s.sign, mapName: '🚕 택시' };
     // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter (its roof 2.9 m along its own x) and the car

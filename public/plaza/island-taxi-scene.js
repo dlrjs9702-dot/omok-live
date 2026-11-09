@@ -6,7 +6,7 @@ import * as THREE from '/vendor/three/three.module.js';
 const T = globalThis.IslandTerrain; const X = globalThis.IslandTaxi;
 const SEAT = X.SEAT; // (island-taxi.js: the rider's root on the car's floor, v1.10.286)
 
-export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: a little 「빵」 over a car passing someone -- no sound)
+export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 7 tag: a name tag maker -- the stop's 「돌아오는 중」) */ // (v1.10.285 mark: a little 「빵」 over a car passing someone -- no sound)
   const group = new THREE.Group(); group.name = 'taxi'; scene.add(group);
   const made = []; const box = new THREE.BoxGeometry(1, 1, 1); made.push(box);
   const mat = (color, extra = {}) => { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...extra }); made.push(m); return m; };
@@ -63,6 +63,8 @@ export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: 
     for (const st of stops) {
       const away = live.has(st.id); st.standing.h.visible = !away;
       const left = away ? Math.max(1, Math.ceil((X.backOf(byStop[st.id]) - now) / 1000)) : 0; st.sign.userData.say(left ? `${st.s.sign} · 약 ${left}초` : st.s.sign);
+      const say = left ? `🚕 돌아오는 중 · ${left}초` : ''; /* (294: big, over the stop -- the sign's seconds were too small to read) */
+      if (tag && say !== st.said) { st.said = say; if (st.label) { group.remove(st.label); st.label.traverse((o) => { o.material?.map?.dispose?.(); o.material?.dispose?.(); }); st.label = null; } if (say) { st.label = tag(say); st.label.position.set(st.s.shelter.x, groundY(st.s.shelter.x, st.s.shelter.z) + 3.7, st.s.shelter.z); group.add(st.label); } }
     }
     for (const rec of [...moving.values(), ...stops.map((s) => s.standing)]) for (const m of rec.lights) m.emissiveIntensity = night ? 1.2 : 0;
     lamp.emissiveIntensity = night ? 1.2 : 0;
@@ -76,5 +78,5 @@ export function taxiScene({ scene, assets, mark = null }) { // (v1.10.285 mark: 
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
   const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible) }));
-  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible, away: [...moving.keys()].includes(st.id) })), /* (294) */ moving: () => [...moving.keys()] };
+  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible, away: [...moving.keys()].includes(st.id), label: st.said || '' })), /* (294) */ moving: () => [...moving.keys()] };
 }
