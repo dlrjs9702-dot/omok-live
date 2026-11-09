@@ -15,6 +15,7 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   const tab = async () => { const b = await page.locator('#islandBagTab').boundingBox(); await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); };
   const order = async () => (await get(request, '/api/island/bag', token)).data.items.map((e) => e.itemId);
   await tab(); const bag = page.locator('#islandBagDialog'); await expect(bag).toBeVisible();
+  await expect(page.locator('#islandBagGrow')).toHaveText('가방 늘리기: 백화점 1층 잡화점'); /* (G3 총괄: where it grows, away from the 백화점 a line only) */
   // the pouch: 8 (5) a row, round, empty ones too; no 「닫기」 word
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('islandBagGrid')).gridTemplateColumns.split(' ').length)).toBe(isMobile ? 4 : 8);
   await expect(page.locator('.islandBagSlot')).toHaveCount(16); await expect(page.locator('.islandBagSlot.empty')).toHaveCount(12);
@@ -62,6 +63,11 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await expect(talk).toHaveText('가방 늘리기 · 24칸 50,000P');
   await talk.click(); await expect.poll(async () => (await get(request, '/api/island/bag', token)).data.slots).toBe(24);
   await tab(); await expect(page.locator('.islandBagSlot')).toHaveCount(24); await expect(page.locator('#islandBagCount')).toHaveText('4/24');
+  /* (G3 총괄: on the 백화점 1층 the line is the button; at 32 「가방이 가장 커요」) */
+  const here = page.locator('#bagGrowHereBtn'); await expect(here).toHaveText('가방 늘리기 · 32칸 150,000P');
+  if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-bag-grow-${isMobile ? 'phone' : 'pc'}.png` });
+  await here.click(); await expect(page.locator('.islandBagSlot')).toHaveCount(32); await expect(page.locator('#islandBagGrow')).toHaveText('가방이 가장 커요 · 32칸');
+  if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-bag-top-${isMobile ? 'phone' : 'pc'}.png` });
   await expectNoScriptError(page);
   await who.context.close();
 });

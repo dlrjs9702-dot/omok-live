@@ -2525,8 +2525,23 @@
     try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ ids: items.map((e) => e.entryId) }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); }
     catch (error) { if (mine !== bagMoveSeq) return; showToast(error.message); drawIslandBag(error.data?.bag || before); }
   }
+  /* (G3 총괄 「가방 늘리기 어디서?」: a line under the bag -- where it grows; on the 백화점 1층 (space 'store') that line is the
+     button itself; at the top size 「가방이 가장 커요」. The price comes with GET /api/island/bag only -- kept from it) */
+  let bagGrowNext;
+  function drawBagGrow(bag) {
+    const line = byId('islandBagGrow'); if ('grow' in bag) bagGrowNext = bag.grow; const next = bagGrowNext;
+    if (next === null || bag.slots >= 32) { line.textContent = `가방이 가장 커요 · ${bag.slots}칸`; return; } /* ponytail: 32 = IslandItems.BAG_GROW's last */
+    if (plaza.controller?.space?.() !== 'store' || !next) { line.textContent = '가방 늘리기: 백화점 1층 잡화점'; return; }
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.id = 'bagGrowHereBtn'; b.textContent = `가방 늘리기 · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`;
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); drawIslandBag(await api('/api/island/bag')); }
+      catch (error) { showToast(error.message, 4000); b.disabled = false; }
+    });
+    line.replaceChildren(b);
+  }
   function drawIslandBag(bag) {
-    bagNow = bag; quickItems = bag.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
+    drawBagGrow(bag); bagNow = bag; quickItems = bag.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
     for (let i = 0; i < (bag.slots || 16); i += 1) {
       const item = bag.items[i]; const slot = document.createElement('div');
       slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
