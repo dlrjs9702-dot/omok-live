@@ -84,6 +84,9 @@ require('./lib/island-items').setSizeHook(() => [Economy.value('fish:sizeMin'), 
 // v1.10.195 가방 늘리기: each account's bag size (world 'bagSlots': { account: 24 | 32 }), kept here for the stores' adds
 const bagSlots = new Map();
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
+// v1.10.297 물고기 통·곤충 채집통: each account's boxes (world 'boxSlots': { account: { fish: 30.., insect: 30.. } }), 'account|kind'
+const boxSlots = new Map(); const BOX_KEY = { fish: 'keepnet', insect: 'bugbox' }; const BOX_NAME = { fish: '물고기 통', insect: '곤충 채집통' };
+require('./lib/island-items').setBoxHook((account, kind) => boxSlots.get(`${account}|${kind}`));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandDaily = require('./lib/island-daily'); // v1.10.242 주민 날마다 말
 const IslandRoster = require('./public/plaza/island-roster'); // v1.10.215 주민 근무표
@@ -5703,7 +5706,30 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) } });
+    const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxOf(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297)
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow });
+  }
+  // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
+  if (pathname === '/api/island/box/grow' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const kind = String((await parseJson(req)).kind || ''); if (!IslandItems.BOXES.includes(kind)) return sendError(res, 400, 'BAD_BOX', '없는 통이에요.');
+    if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 살 수 있어요.');
+    return worldEdit(async () => {
+      const to = IslandItems.BOX_GROW.find((n) => n > IslandItems.boxOf(account, kind)); const name = BOX_NAME[kind];
+      if (!to) return sendError(res, 409, 'BOX_TOP', `${name}이 이미 가장 커요.`);
+      let out; try { out = await pointStore.charge({ userId: account, claimId: `bag:${kind}box:${to}:${account}`, /* (the charge kind 'bag': the 잡화점's) */ price: Economy.value(`${BOX_KEY[kind]}:${to}`), title: `잡화점 · ${name} ${to}칸` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      const all = (await pointStore.worldValue('boxSlots')) || {}; await pointStore.setWorldValue('boxSlots', { ...all, [account]: { ...(all[account] || {}), [kind]: to } }); boxSlots.set(`${account}|${kind}`, to);
+      if (out.applied) notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, kind, slots: to, next: IslandItems.BOX_GROW.find((n) => n > to) || null, balance: out.balance ?? null });
+    });
+  }
+  // 297 놓아주기: one out of a box, back to the water or the grass (nothing paid; the 도감 keeps it)
+  if (pathname === '/api/island/box/release' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const out = await pointStore.islandRelease({ userId: account, entryId: String((await parseJson(req)).entryId || '') });
+    if (!out.applied) return sendError(res, 409, 'NOT_IN_BOX', '통에 없어요.');
+    return sendJson(res, 200, { ok: true, bag: out.bag });
   }
   // (문제 기록 1103 4) 한 번 공지: a note on the island once for each account (seen kept on the server -- not again on another
   // device); the next one only a line here. Tests: off unless turned on (every test's first island would open it)
@@ -9211,6 +9237,7 @@ async function main() {
   await adminJails(); /* (293: the administrator's jail list, for the outfit at once) */ Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
   await projectsNow().catch((error) => console.error('섬 가꾸기 상태 읽기 실패:', error.message)); // v1.10.222 (after the goals are known)
   for (const [account, n] of Object.entries((await pointStore.worldValue('bagSlots')) || {})) bagSlots.set(account, n); // v1.10.195
+  for (const [account, kinds] of Object.entries((await pointStore.worldValue('boxSlots')) || {})) for (const [kind, n] of Object.entries(kinds || {})) boxSlots.set(`${account}|${kind}`, n); // v1.10.297
   // v1.10.91 변신 따로 판매 A안: the set owners get their transformation (idempotent; new owners of a whole set after this buy it)
   if (!(await pointStore.worldValue('transformGrant'))) {
     const sets = SkinCatalog.SKINS.filter((s) => s.slot === 'transform').map((s) => ({ tf: s.id, items: require('./public/plaza/character-transformations.js').find(s.transform).items }));

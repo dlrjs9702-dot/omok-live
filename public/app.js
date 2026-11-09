@@ -1724,6 +1724,7 @@
   const touchIsland = window.matchMedia('(any-pointer: coarse)').matches;
   document.body.classList.toggle('touchIsland', touchIsland);
   if (touchIsland) byId('islandChatInput').placeholder = '메시지 입력'; // no Enter/Esc keys to name on a phone
+  if (touchIsland) byId('islandTopRow').insertBefore(byId('islandViewTab'), byId('contestBar')); /* (297 사용자 「핸드폰에서 시점 버튼이 안보여」: a phone's 시점 in the top row, after 메신저) */
   const islandStick = byId('islandStick'); const stickKnob = islandStick.firstElementChild; let stickPointer = null;
   function moveStick(event) {
     const box = islandStick.getBoundingClientRect(); const r = box.width / 2;
@@ -2540,8 +2541,37 @@
     });
     line.replaceChildren(b);
   }
-  function drawIslandBag(bag) {
-    drawBagGrow(bag); bagNow = bag; quickItems = bag.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
+  /* (297 물고기 통·곤충 채집통, notes docs/fish-keepnet-20261109.md): the server's list has the boxes' entries too (`box`); the
+     bag's grid and order are the bag's own, each box its page (the foot's 「물고기 통」·「곤충 채집통」, shown once bought) --
+     by grade, then size; one tapped: its name and size, ⓘ, 「놓아주기」 */
+  const BOX_BTNS = [['islandFishBoxBtn', 'fish'], ['islandBugBoxBtn', 'insect']]; const BOX_TITLE = { fish: '물고기 통', insect: '곤충 채집통' };
+  const GRADE_ORDER = { big: 0, rare: 1, normal: 2, common: 3 };
+  let boxNow = { boxes: { fish: 0, insect: 0 }, items: [] }; let boxPage = null;
+  function drawBox(kind) {
+    const dex = byId('islandDexGrid'); const cap = boxNow.boxes[kind] || 0;
+    const items = boxNow.items.filter((e) => e.box === kind).sort((a, b) => (GRADE_ORDER[a.grade] ?? 9) - (GRADE_ORDER[b.grade] ?? 9) || (b.sizes?.[0] || b.qty) - (a.sizes?.[0] || a.qty));
+    byId('islandBagCount').textContent = `${items.length}/${cap}`; byId('islandBagInfo').textContent = '';
+    const cells = items.map((e) => {
+      const cell = document.createElement('button'); cell.type = 'button'; cell.className = `islandDexCell boxCell grade-${e.grade || 'common'}`; cell.setAttribute('role', 'listitem'); cell.dataset.item = e.itemId;
+      const name = document.createElement('span'); name.textContent = e.name; const small = document.createElement('small'); small.textContent = e.sizes?.length ? `${e.sizes[0]} cm` : `×${e.qty}`;
+      cell.append(itemIcon(e), name, small);
+      cell.addEventListener('click', () => {
+        for (const c of dex.children) c.classList.toggle('picked', c === cell);
+        const info = byId('islandBagInfo'); info.textContent = `${e.name}${e.sizes?.length ? ` · ${e.sizes[0]} cm` : ` ×${e.qty}`} `;
+        const more = document.createElement('button'); more.type = 'button'; more.className = 'bagInfoMore'; more.textContent = 'ⓘ'; more.setAttribute('aria-label', `${e.name} 설명`); more.addEventListener('click', () => openDexCard(e.itemId));
+        const free = document.createElement('button'); free.type = 'button'; free.className = 'ghost tiny boxRelease'; free.textContent = '놓아주기';
+        free.addEventListener('click', async () => { free.disabled = true; try { const r = await api('/api/island/box/release', { method: 'POST', body: JSON.stringify({ entryId: e.entryId }) }); showToast(`${e.name}을(를) 놓아줬어요.`, 2500); drawIslandBag(r.bag); } catch (error) { showToast(error.message); free.disabled = false; } });
+        info.append(more, ' ', free);
+      });
+      return cell;
+    });
+    if (!cells.length) { const p = document.createElement('p'); p.className = 'lookMeta'; p.textContent = kind === 'fish' ? '잡은 물고기가 가방보다 먼저 여기 들어와요.' : '잡은 곤충이 가방보다 먼저 여기 들어와요.'; cells.push(p); }
+    dex.replaceChildren(...cells); dex.scrollTop = 0;
+  }
+  function drawIslandBag(full) {
+    const bag = full.bagOnly ? full : { ...full, items: (full.items || []).filter((e) => !e.box), bagOnly: true };
+    if (!full.bagOnly) { boxNow = { boxes: full.boxes || boxNow.boxes, items: (full.items || []).filter((e) => e.box) }; for (const [id, k] of BOX_BTNS) byId(id).classList.toggle('hidden', !(boxNow.boxes[k] > 0)); if (boxPage) drawBox(boxPage); }
+    drawBagGrow(full); bagNow = bag; quickItems = full.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
     for (let i = 0; i < (bag.slots || 16); i += 1) {
       const item = bag.items[i]; const slot = document.createElement('div');
       slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
@@ -2854,7 +2884,7 @@
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   islandBagDialog.addEventListener('close', () => { bagSortReset(); quickPick = null; quickMenu = null; drawQuick(); }); // (v1.10.236: a slot-to-be let go)
   byId('islandDexFoundOnly').addEventListener('change', () => showDex('dex')); // (v1.10.233 「찾은 것만」)
-  for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
+  for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given'], ...BOX_BTNS]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
   byId('homeApplyBtn').addEventListener('click', () => openHomeApply()); // 묶음 4 내 집 신청
   byId('yardGrowBtn').addEventListener('click', () => openYardGrow()); // v1.10.225 마당 넓히기
@@ -3903,7 +3933,14 @@
       try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); }
       catch (error) { showToast(error.message, 4000); grow.disabled = false; }
     });
-    lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
+    /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 30 → 60 → 90 → 120) */
+    const boxBtns = BOX_BTNS.map(([, kind]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost hidden'; b.id = `boxGrowBtn-${kind}`; b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind }) }); plazaDialog.close(); showToast(`${BOX_TITLE[kind]}이 ${r.slots}칸이 됐어요! 잡은 ${kind === 'fish' ? '물고기는' : '곤충은'} 통에 먼저 들어가요.`, 4500); loadPoints(); }
+      catch (error) { showToast(error.message, 4000); b.disabled = false; }
+    }); return b; });
+    api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.textContent = `${BOX_TITLE[kind]} ${bag.boxes?.[kind] ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
+    lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
   }
   const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';
   let goodBusy = false;
@@ -4423,12 +4460,15 @@
   let dexAsked = 0;
   async function showDex(on) {
     const grid = document.getElementById('islandBagGrid'); const dex = document.getElementById('islandDexGrid');
-    for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given']]) document.getElementById(id).classList.toggle('selected', on === page);
-    document.getElementById('islandBagTitle').textContent = on === 'dex' ? '도감' : on === 'photo' ? '기념사진' : on === 'given' ? '받은 것' : '가방';
+    for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given'], ...BOX_BTNS]) document.getElementById(id).classList.toggle('selected', on === page);
+    document.getElementById('islandBagTitle').textContent = on === 'dex' ? '도감' : on === 'photo' ? '기념사진' : on === 'given' ? '받은 것' : BOX_TITLE[on] || '가방';
+    boxPage = BOX_TITLE[on] ? on : null; /* (297: a box's page -- drawn from the bag's last answer, again on each) */
+    byId('islandBagGrow').classList.toggle('hidden', Boolean(on)); /* (the bag's own line) */
     grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
     byId('islandBagSort').classList.toggle('hidden', Boolean(on)); bagSortReset(); // (v1.10.233, 사용자: 「정리」 the bag's only -- in the 도감 it sorted the bag and the count went wrong)
     byId('islandDexTabs').classList.toggle('hidden', on !== 'dex');
     const asked = ++dexAsked; if (!on) return; /* (Codex 261-270 #12: only the last request draws -- a late answer does not cover the tab now shown) */
+    if (boxPage) { drawBox(boxPage); return; }
     try {
       const data = await api('/api/island/dex'); if (asked !== dexAsked) return;
       if (on === 'given') { // (v1.10.267 받은 것: what the islanders gave at a talk's end -- a keepsake, not a bag item)

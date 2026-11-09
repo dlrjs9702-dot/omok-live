@@ -1712,8 +1712,15 @@ body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint
 /* (U: a phone's bottom row keeps its places -- the hint's pill sits between -- so 가방·사진 without their pictures there) */
 body.touchIsland #islandBagTab::before, body.touchIsland #islandPhotoTab::before { content: none; }
 body.touchIsland .islandPhotoTab { left: 86px; }
-body.touchIsland .islandViewTab { top: 14px; bottom: auto; left: 172px; } /* (V1 CI: on a phone the bottom row is the hint's -- up beside 「💬 채팅」) */
-body.touchIsland #islandMessengerTab:not(.hidden) ~ #islandViewTab { left: 278px; }
+/* (297 사용자 「핸드폰에서 시점 버튼이 안보여」: ☰ 채팅 메신저 (a phone's 시점 too -- app.js moves it in) one flex row, no left
+   numbers; the 대회 띠 in the same row, in the middle of what is left, under the row when there is no room -- never over a
+   button; the minimap's corner kept clear) */
+.islandTopRow { position: absolute; top: 14px; left: 14px; right: 14px; z-index: 3; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; pointer-events: none; }
+@media (min-width: 641px) { .islandTopRow { right: 200px; } } /* (the 176 px minimap's corner; a narrow phone's 띠 goes under the row, as before) */
+@media (min-width: 641px) and (max-height: 500px) { body.touchIsland .islandTopRow { right: 136px; } } /* (its 112 px map) */
+.islandTopRow > * { pointer-events: auto; }
+.islandTopRow .islandChatTab { position: static; }
+.islandTopRow .contestBar { position: static; margin: 2px auto 0; transform: rotate(1deg); max-width: 100%; }
 
 /* v1.10.48: visible train actions, beside the keyboard hint. */
 .trainControls{position:absolute;z-index:5;left:50%;bottom:82px;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap}
@@ -1744,8 +1751,6 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 }
 
 /* v1.10.63 메뉴: the ☰ button where the 채팅 tab was (the tab moves right), and the menu window (Esc) */
-#islandChatTab { left: 62px; }
-.islandMessengerTab { left: 164px; } /* 메신저 단독 창: opens its own window */
 .gameMenuBtn { padding: 7px 12px; }
 .gameMenuDialog { width: min(360px, 92vw); }
 /* (U: on the island the menu is paper too -- the game hall keeps its own look) */
@@ -2017,6 +2022,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .catchCard.calm,.catchCard.calm *{animation:none!important;transition:none!important}
 .toast.tappable{pointer-events:auto;cursor:pointer}.toast.tappable::after{content:" · 눌러서 설명";opacity:.7}
 .bagInfoMore{padding:0 8px;min-height:28px;border-radius:99px;font-weight:900}
+.islandDexCell.boxCell{font:inherit;font-size:.8rem;cursor:pointer}.islandDexCell.boxCell.picked{outline:3px solid #3f8f6a;outline-offset:1px}.islandDexCell.boxCell.grade-rare,.islandDexCell.boxCell.grade-big{border-style:solid} /* (297 통: a fish's own size under it) */
 .islandDexCell.opens{cursor:pointer}.islandDexCell.opens:focus-visible{outline:3px solid #3f8f6a;outline-offset:2px}
 /* v1.10.256 관리자 저장 공간: one line and a bar (orange past 80 %, red past 90 %), the biggest tables when opened */
 .adminStorage{margin:8px 0;padding:8px 12px;border-radius:12px;background:#0f172a;border:1px solid #334155}
