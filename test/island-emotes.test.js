@@ -48,3 +48,20 @@ test('주민 반응 표: 16 감정 → 동작·기호·말 둘, 밤·비·호감
   for (const mood of ['rainbow', 'stars']) assert.deepEqual(E.talkFace({ first: true, mood }), { eyes: 'happy', mouth: 'grin' });
   assert.equal(E.talkFace({ topic: 'how' }), null);
 });
+
+// v1.10.287 얼굴이 살아 있게 (notes docs/face-life-20261108.md 2~3절): a line's mouth -- its letters x 0.06 s, 0.6~3 s; the head -- the
+// nearest within 4 m, the one I talk with first, at most 45° aside and 15° up or down, + to the left of the body's front
+test('얼굴: 말 길이(글자 × 0.06초, 0.6~3초), 바라볼 사람(4 m 안 가장 가까운, 대화 상대 먼저), 각도 제한', () => {
+  assert.equal(E.talkMs(''), 600); assert.equal(E.talkMs('안녕'), 600); assert.equal(E.talkMs('가'.repeat(20)), 1200); assert.equal(E.talkMs('가'.repeat(100)), 3000);
+  assert.equal(E.talkMs('😊'.repeat(20)), 1200); /* (letters, not UTF-16 halves) */
+  const me = { x: 0, y: 1.5, z: 0, yaw: 0 }; const a = { x: 0, y: 1.5, z: 3 }; const b = { x: 1, y: 1.5, z: 1.5 }; const far = { x: 0, y: 1.5, z: 4.5 };
+  assert.equal(E.lookPick(me, [a, b, far]).who, b); /* (the nearest) */
+  assert.equal(E.lookPick(me, [far]), null); /* (none within 4 m) */
+  assert.equal(E.lookPick(me, [a, b], far).who, far); /* (the one I talk with, wherever) */
+  const ahead = E.lookPick(me, [a]); assert.ok(Math.abs(ahead.yaw) < 1e-9 && Math.abs(ahead.pitch) < 1e-9);
+  const left = E.lookPick(me, [{ x: 2, y: 1.5, z: 2 }]); assert.ok(Math.abs(left.yaw - Math.PI / 4) < 1e-9); /* (atan2(dx, dz): +x is the body's left at yaw 0) */
+  const behind = E.lookPick(me, [{ x: -0.5, y: 1.5, z: -2 }]); assert.equal(behind.yaw, -Math.PI / 4); /* (aside 45° at most) */
+  const tall = E.lookPick(me, [{ x: 0, y: 4, z: 1 }]); assert.equal(tall.pitch, Math.PI / 12); const small = E.lookPick(me, [{ x: 0, y: 0.5, z: 2 }]); assert.ok(small.pitch < 0 && small.pitch >= -Math.PI / 12);
+  const turned = E.lookPick({ ...me, yaw: Math.PI / 2 }, [{ x: 2, y: 1.5, z: 0 }]); assert.ok(Math.abs(turned.yaw) < 1e-9); /* (from the body's own front) */
+  assert.equal(E.lookPick(me, [{ ...me }]), null); /* (not myself, at my own spot) */
+});

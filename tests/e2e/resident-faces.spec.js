@@ -5,12 +5,18 @@ const { shopper, post, expectNoScriptError } = require('./skin-support');
 // 4 m) answers my 「엄지」 -- it turns to me, plays ThumbsUp, its own happy eyes and grinning mouth on its Head bone with its
 // own eyes and mouth hidden, the sparkle over it, a line of its own; then its own face again. The same islander, now and then
 // alone: a feeling of its own. Its talk face for a moment. PC (photos: the reaction, 하트 -> 부끄러움, 춤 -> 춤, a talk face, a
-// blink).
+// blink). v1.10.287 얼굴이 살아 있게 (docs/face-life-20261108.md): my sleepy eyes blink, a line said moves the mouth, the head turns
+// to the one by it.
 test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표정 조각·기호·말, 끝나면 원래 얼굴 / 혼자 감정 / 말할 때 표정', async ({ browser, request, isMobile }) => {
   test.skip(isMobile); test.setTimeout(240000);
-  const who = await shopper(browser, request, '주민표정', 0, 'male'); const { page, token } = who;
+  const who = await shopper(browser, request, '주민표정', 40000, 'male'); const { page, token } = who;
+  expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'sleepy', requestId: require('node:crypto').randomUUID() })).status).toBe(200); /* (v1.10.287: 졸린 반달눈) */
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  const life = (n = null) => page.evaluate((x) => window.PlazaDebug().faceLife(x), n);
+  // (v1.10.287 1절) sleepy eyes blink too -- they were left out
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 60000 }).toContain('wear.eyes_sleepy');
+  { const b0 = (await life()).blinks; await expect.poll(async () => (await life()).blinks, { timeout: 15000 }).toBeGreaterThan(b0); }
   if (process.env.THROTTLE) await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.THROTTLE) }); /* (265 흔들림: CI's slow frames, here) */
   const face = (n) => page.evaluate((x) => window.PlazaDebug().residentFace(x), n);
   const shot = async (name) => { if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-${name}.png` }); };
@@ -57,6 +63,12 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   await expect.poll(() => page.evaluate((n) => window.PlazaDebug().talkFace(n, { eyes: 'happy', mouth: 'laugh' }, 2500), thumbs.n), { timeout: 10000, intervals: [300] }).toBe(true); /* (once its own feeling is over) */
   await expect.poll(async () => (await face(thumbs.n)).parts.slice().sort(), { timeout: 3000 }).toEqual(['eyes_x_happy', 'mouth_x_laugh']);
   await expect.poll(async () => (await face(thumbs.n)).parts, { timeout: 5000 }).toEqual([]);
+  // (v1.10.287 2절) a line said: its mouth to 「o」 and back for the line's length, then its own; (3절) me 3 m by it -- its head turned to me
+  { const w = (await page.evaluate(() => window.PlazaDebug().wanderers)).find((x) => x.n === thumbs.n); await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 3, z); }, [w.x, w.z]); await page.waitForTimeout(500); }
+  await page.evaluate((n) => window.PlazaDebug().sayAs(n, '오늘 바람이 참 시원하네요!'), thumbs.n);
+  await expect.poll(async () => { const f = await life(thumbs.n); return f.talking && f.flaps > 0; }, { timeout: 3000, intervals: [50] }).toBe(true);
+  await expect.poll(async () => (await life(thumbs.n)).talking, { timeout: 6000 }).toBe(false); await expect.poll(async () => (await face(thumbs.n)).parts, { timeout: 3000 }).toEqual([]);
+  await expect.poll(async () => { const f = await life(thumbs.n); return Boolean(f.want) && Math.abs(f.look?.yaw || 0) + Math.abs(f.look?.pitch || 0) > 0.05; }, { timeout: 15000, intervals: [300] }).toBe(true);
   // photos (총괄 #414: the pieces over a muzzle, a beak and a face -- at the play camera's distance, where depth is coarser):
   // 봄이·하람·콩이 laughing, me 2.8 m before each along the way it looks, the camera as in play
   if (process.env.SHOT_DIR) for (const person of ['bomi', 'haram', 'kongi', 'bitna', 'garam']) { /* (빛나·가람, v1.10.280: neck, hat and bag kept) */

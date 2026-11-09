@@ -5274,6 +5274,7 @@
       const C = globalThis.IslandCast; const said = data.say || []; const mood = Object.keys(C?.MOODS || {}).find((k) => { const l = C.MOODS[k][data.n]; return l && said.some((s) => s.startsWith(String(l).slice(0, 12))); }) || null;
       const f = window.IslandEmotes?.talkFace({ first, topic: first ? null : residentTopic, mood, offer: Boolean(data.offer || data.storyOffer), question: Boolean(data.question), reward: Boolean(data.reward) });
       if (f) plaza.controller?.residentTalkFace?.(data.n, f);
+      plaza.controller?.residentTalk?.(data.n, said.join(' ')); /* (v1.10.287: their mouth moves as they say it) */
     }
     const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
     // (v1.10.193 대화창 2차: no line of their job and closeness -- the hearts by the name; a reward still says itself)
