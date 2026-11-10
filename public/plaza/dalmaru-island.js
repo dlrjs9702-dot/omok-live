@@ -435,7 +435,8 @@
   // (no weed at a quest giver's or a keeper's feet: SPACE there is for talking)
   const nearKeeper = (x, z) => Object.values(PL.quests).some((q) => Math.hypot(x - q.x, z - q.z) < 3.5) || [VILLAGE.painter, VILLAGE.busker, VILLAGE.electrician, VILLAGE.builder, VILLAGE.librarian, VILLAGE.grandpa, VILLAGE.guide, FARM.farmer].some((q) => Math.hypot(x - q.x, z - q.z) < 3.5);
   // (G4a: what blocks keeps off the taxi's road and its stops -- island-taxi.js, loaded before this file)
-  const taxiClear = (x, z, r) => { const route = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi).ROUTE; return lineDist(x, z, route) > 3.2 + r && [route[0], route.at(-1)].every(([sx, sz]) => Math.hypot(x - sx, z - sz) > 10 + r); };
+  const TAXI_BAND = 0.85 + 3.2; /* (from the road's middle: the car's half width, then the islanders' band 1.5~3 m beside it, a little over -- notes docs/taxi-yield-20261109.md) */
+  const taxiClear = (x, z, r) => { const route = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi).ROUTE; return lineDist(x, z, route) > TAXI_BAND + r && [route[0], route.at(-1)].every(([sx, sz]) => Math.hypot(x - sx, z - sz) > 10 + r); };
   let natureCache = null; const natureBlocks = []; // (island-train: no tree on a lift's way)
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
