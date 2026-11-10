@@ -1661,4 +1661,14 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .accountJailForm{border:1px solid rgba(239,68,68,.5)}
 :root[data-theme="light"] .islandEnvBox{border:1px solid rgba(179,156,124,.35)}
 @media (max-width:899px),(hover:none) and (pointer:coarse){:root[data-theme="light"] .accountDetail:not(.hidden){background:#111a2e;box-shadow:0 -10px 30px rgba(0,0,0,.35)}
-}
+}:root[data-theme="light"] .boardOverlay .boardPick:not(.primary){background:#f3e9d8;border:1px solid #c9b394;color:#33281d}
+:root[data-theme="light"] .boardOverlay .boardPick.selected{border-color:#facc15;box-shadow:0 0 0 2px rgba(250,204,21,.45)}
+:root[data-theme="light"] .player.pickable,:root[data-theme="light"] .teamPlayer.pickable{border-color:#23806f;box-shadow:0 0 0 2px rgba(35,128,111,.35)}
+:root[data-theme="light"] .player.pickable:hover,:root[data-theme="light"] .teamPlayer.pickable:hover,:root[data-theme="light"] .teamPlayer.pickable:focus-visible{background:#f3e9d8}
+:root[data-theme="light"] button.pdSeat{color:inherit}
+:root[data-theme="light"] .pdSeat .pdRoleTag{color:var(--role)}
+:root[data-theme="light"] .pdCity.danger .pdRing{stroke:#ef4444}
+:root[data-theme="light"] .pdNow{background:#f7efe1;border:1px solid #d6c3a5;color:#33281d}
+:root[data-theme="light"] .pdRoleCard{border:2px solid var(--role);background:#f7efe1;color:#fff;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+:root[data-theme="light"] .pdRoleCard strong{color:var(--role)}
+:root[data-theme="light"] .pdRoleCard span{color:#3d3024}
