@@ -1068,7 +1068,7 @@ test('일반 자원: 미니맵 ! 없음, 근접 강조·SPACE 채집·다른 화
   await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), close);
   await expect(a.page.locator('#plazaHint')).toHaveText(/(SPACE · )?[가-힣 ]*버섯 · 채집/, { timeout: 10000 }); /* (G4b: its kind's name -- 빨간 고깔 버섯 ...) */
   expect(await a.page.evaluate(t => window.PlazaDebug().markers.some(m => Math.hypot(m.x-t.x,m.z-t.z)<0.01),target)).toBe(false);
-  expect(await shownMatchesRange(a.page)).toBe(true);
+  await expect.poll(() => shownMatchesRange(a.page), { timeout: 5000 }).toBe(true); /* (the minimap's count is its last drawing's: after the warp, as above -- the 대회 천막's mark near since v1.10.305) */
   await a.page.keyboard.press('Space');
   await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 15000 }); // after the gathering motion (slower on CI)
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);

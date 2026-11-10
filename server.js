@@ -4501,7 +4501,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.305' });
+    return sendJson(res, 200, { ok: true, version: '1.10.306' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -7452,10 +7452,7 @@ async function requestHandler(req, res) {
       const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
     }
-    /* G4b 채집: one account's picks a day by group (lib/island-gather.js perDay) -- over it, the thing stays for anyone */
-    const gather = IslandGather.KINDS[claimed.event?.type] || null; const gatherDay = kstDate(nowMs());
-    if (gather) { const d = (await pointStore.questDoc(account, 'gatherDay')).doc; const used = d?.day === gatherDay ? d.n?.[gather.group] || 0 : 0;
-      if (used >= gather.perDay) { resourcePulls.delete(session.token); islandEvents.settle(claimed, false, account); return sendError(res, 409, 'GATHER_CAP', `${IslandGather.GROUP_NAMES[gather.group]}은(는) 하루 ${gather.perDay}개까지 주울 수 있어요. 내일 다시 와 주세요.`); } }
+    const gather = IslandGather.KINDS[claimed.event?.type] || null; /* (G4b 채집: no daily cap -- 사용자 「추천대로」, v1.10.35) */
     let outcome;
     try {
       if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null, dexEntry: IslandFishing.DEX_IDS.has(claimed.item) ? claimed.item : null }, nowMs());
@@ -7470,10 +7467,7 @@ async function requestHandler(req, res) {
     }
     const done = islandEvents.settle(claimed, true, account);
     if (done?.removed) broadcastIslandRemoved([done.removed]);
-    if (gather && outcome.applied) { /* (G4b: today's count, and what grows back kept over a restart) */
-      await pointStore.questApply(account, 'gatherDay', (d) => { const n = d?.day === gatherDay ? { ...(d.n || {}) } : {}; n[gather.group] = (n[gather.group] || 0) + 1; return { doc: { day: gatherDay, n } }; });
-      await pointStore.setWorldValue('gatherGrowing', islandEvents.gatherGrowing()).catch(() => {});
-    }
+    if (gather && outcome.applied) await pointStore.setWorldValue('gatherGrowing', islandEvents.gatherGrowing()).catch(() => {}); /* (G4b: what grows back kept over a restart) */
     let photoThanks = null; // (v1.10.274 사진 부탁: the islander +1 호감도 -- one request a day from each, apart from the talks' cap -- and the album's line)
     if (photoN != null && outcome.applied) {
       const day = kstDate(nowMs()); const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, day, [{ n: photoN, delta: 1 }]);
@@ -9410,7 +9404,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.305 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.306 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

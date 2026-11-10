@@ -2967,7 +2967,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function eventModel(kind, root, eventId) {
     const visual = new THREE.Group(); root.add(visual);
     const looks = kind === 'lost_item' ? [[lostProp(eventId), 0, 0]] : kind === 'berry' ? [[twoLooks(eventId, 'prop.event.berry', 'prop.event.fruit'), 0, 0]] : EVENT_PROPS[kind];
-    for (const [id, x, z] of looks || []) { const h = new THREE.Group(); h.position.set(x, 0, z); root.add(h); assets.attach(id, h, visual); if (kind === 'coin') { h.position.y = 0.2; root.userData.spin = h; } }
+    const big = /^mushroom_|^clover_four$/.test(kind) ? 1.5 : 1; visual.scale.setScalar(big); /* (G4b, 사용자 「추천대로」: the mushrooms and the four-leaf clover 1.5 times, the twigs as made) */
+    for (const [id, x, z] of looks || []) { const h = new THREE.Group(); h.position.set(x, 0, z); h.scale.setScalar(big); root.add(h); assets.attach(id, h, visual); if (kind === 'coin') { h.position.y = 0.2; root.userData.spin = h; } }
     const add = (geo, color, x, y, z, extra) => mesh(geo, mat(color, extra), x, y, z, visual);
     if (kind === 'beach_trash' || kind === 'grass_trash') {
       const can = add(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 10), 0xc9d1d9, 0, 0.1, 0); can.rotation.z = Math.PI / 2;
