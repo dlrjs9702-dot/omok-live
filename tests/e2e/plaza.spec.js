@@ -378,7 +378,9 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   const walked = await watching;
   const steps = walked.slice(1).map((s, i) => ({ dz: s.z - walked[i].z, dt: (s.t - walked[i].t) / 1000 })).filter((s) => s.dt > 0);
   expect(Math.min(...steps.map((s) => s.dz))).toBeGreaterThan(-0.02); // never backward
-  expect(Math.max(...steps.filter((s) => s.dt > 0.012).map((s) => s.dz / s.dt))).toBeLessThan(5.2 * 1.75); // no surge
+  /* no surge, over 0.1 s or more (at 60 fps (PW_GPU) one 16 ms frame's own timing read 2.5x; CI's frames are longer than 0.1 s anyway) */
+  const spans = walked.map((s, i) => { const j = walked.findIndex((e, k) => k > i && e.t - s.t >= 100); return j < 0 ? null : (walked[j].z - s.z) / ((walked[j].t - s.t) / 1000); }).filter((v) => v != null);
+  expect(Math.max(...spans)).toBeLessThan(5.2 * 1.75);
   expect(walked[walked.length - 1].z).toBeCloseTo(end, 1); // b sees a arrive where a stopped
 
   // a goes into a room: gone from b's plaza; back in the lobby: there again.
@@ -754,7 +756,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
     expect(Math.abs(now.pitch - dragged.pitch)).toBeLessThan(0.02);
     prev = now;
   }
-  await page.keyboard.up('ArrowLeft');
+  await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(400); /* (the view eases on to the keys' last angle for ~0.3 s: at 60 fps (PW_GPU) the typing check below began inside that glide) */
   expect(prev.yaw).toBeGreaterThan(dragged.yaw);
 
   // typing a chat message: W/A/S/D are letters, not camera keys

@@ -347,6 +347,37 @@
   // a phone too); the last chip kept on this device
   const RESIDENTS = STICKER_DATA.then((d) => d.packs?.[0]?.residents || []);
   const chipStore = keep(localStorage, 'gc.messengerStickerChip');
+  // 칩 순서 내가 정하기 (notes docs/sticker-chip-order-20261110.md, 사용자 「꾹 눌러서 드래그로」): a chip held 0.4 s lifts, is dragged
+  // along the row (the row slid at its ends), saved where it is let go -- the account's on the server, this device's copy kept
+  // too; 「최근」 stays first; 「처음대로」 at the row's end while dragging
+  const orderStore = keep(localStorage, 'gc.messengerStickerOrder');
+  let chipOrder = (() => { try { const v = JSON.parse(orderStore.get() || 'null'); return Array.isArray(v) ? v.map(String) : null; } catch { return null; } })();
+  let orderAsked = false;
+  const setOrder = (order, save) => { chipOrder = order; orderStore.set(order ? JSON.stringify(order) : ''); if (save) api('/api/messenger/sticker-order', { order }).catch(() => {}); };
+  const askOrder = () => { if (orderAsked) return; orderAsked = true; api('/api/messenger/sticker-order').then((d) => { if (!d.saved || JSON.stringify(d.order) === JSON.stringify(chipOrder)) return; setOrder(d.order, false); if (emojiTab === 'sticker' && !emoji.classList.contains('hidden')) drawEmoji(); }).catch(() => { orderAsked = false; }); };
+  function dragChips(row) {
+    let hold = null; let drag = null; let slide = 0; let quiet = 0;
+    const chips = () => [...row.querySelectorAll('.messengerChip:not(.recent):not(.reset)')];
+    const over = (el, x, y) => { const r = el?.getBoundingClientRect(); return Boolean(r) && x >= r.left && x <= r.right && y >= r.top - 24 && y <= r.bottom + 24; };
+    const place = () => { // the lifted chip before the first chip whose middle is right of the pointer
+      const reset = row.querySelector('.reset'); reset.classList.toggle('over', over(reset, drag.x, drag.y)); if (reset.classList.contains('over')) return;
+      const next = chips().find((c) => c !== drag.chip && drag.x < c.getBoundingClientRect().left + c.offsetWidth / 2) || reset; if (drag.chip.nextSibling !== next) row.insertBefore(drag.chip, next);
+    };
+    const tick = () => { if (!drag) return; const r = row.getBoundingClientRect(); const edge = 44; const d = drag.x < r.left + edge ? -1 : drag.x > r.right - edge ? 1 : 0; if (d) { row.scrollLeft += d * 9; place(); } slide = requestAnimationFrame(tick); };
+    const lift = (chip, e) => { hold = null; drag = { chip, id: e.pointerId, x: e.clientX, y: e.clientY }; chip.classList.add('lifted'); row.classList.add('dragging');
+      const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'messengerChip reset'; reset.textContent = '처음대로'; row.append(reset);
+      try { row.setPointerCapture(e.pointerId); } catch {} navigator.vibrate?.(15); slide = requestAnimationFrame(tick); };
+    const end = (keepIt) => { clearTimeout(hold?.t); hold = null; if (!drag) return; const d = drag; drag = null; cancelAnimationFrame(slide); quiet = performance.now() + 400;
+      if (keepIt && row.querySelector('.reset.over')) setOrder(null, true); else if (keepIt) setOrder(chips().map((c) => c.dataset.chip), true);
+      d.chip.classList.remove('lifted'); drawEmoji(); };
+    row.addEventListener('pointerdown', (e) => { const chip = e.target.closest('.messengerChip'); if (!chip || chip.classList.contains('recent') || chip.classList.contains('reset') || e.button > 0) return;
+      const ev = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY }; hold = { x: e.clientX, y: e.clientY, t: setTimeout(() => lift(chip, ev), 400) }; });
+    row.addEventListener('pointermove', (e) => { if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) { clearTimeout(hold.t); hold = null; } if (drag && e.pointerId === drag.id) { drag.x = e.clientX; drag.y = e.clientY; place(); } });
+    row.addEventListener('pointerup', () => end(true)); row.addEventListener('pointercancel', () => end(false));
+    row.addEventListener('touchmove', (e) => { if (drag) e.preventDefault(); }, { passive: false }); /* (the row not slid by the finger while a chip is held) */
+    row.addEventListener('contextmenu', (e) => e.preventDefault()); /* (a phone's long-press menu) */
+    row.addEventListener('click', (e) => { if (drag || performance.now() < quiet) { e.stopPropagation(); e.preventDefault(); } }, true); /* (the let-go is not a press) */
+  }
   function stickerImg(id, alt) {
     const img = document.createElement('img'); img.className = 'messengerStickerImg'; img.alt = String(alt || '').replace(/^\(이모티콘\) /, ''); img.decoding = 'async'; img.addEventListener('load', keepEnd);
     // (v1.10.281 움직이는 이모티콘: in the room its moving picture -- the panel keeps the still ones (a phone's weight); still
@@ -376,10 +407,11 @@
       let chip = chipStore.get(); if (chip !== 'recent' && !people.some((p) => String(p.n) === chip)) chip = recent.length ? 'recent' : String(people[0]?.n ?? 'recent'); if (chip === 'recent' && !recent.length && people.length) chip = String(people[0].n);
       const row = document.createElement('div'); row.className = 'messengerChipRow'; row.setAttribute('role', 'tablist'); row.setAttribute('aria-label', '주민');
       const chipBtn = (key, name, icon) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'messengerChip'; b.dataset.chip = key; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(key === chip));
-        if (icon) { const face = document.createElement('span'); face.className = 'messengerChipFace'; const im = document.createElement('img'); im.src = `/messenger/stickers/${icon}`; im.alt = ''; im.loading = 'lazy'; face.append(im); b.append(face); } b.append(name); /* (총괄 #448: the 「안녕」 picture's top only -- the face, not its words) */
+        if (icon) { const face = document.createElement('span'); face.className = 'messengerChipFace'; const im = document.createElement('img'); im.src = `/messenger/stickers/${icon}`; im.alt = ''; im.loading = 'lazy'; im.draggable = false; face.append(im); b.append(face); } b.append(name); /* (총괄 #448: the 「안녕」 picture's top only -- the face, not its words) */
         b.addEventListener('click', () => { chipStore.set(key); showPreview(null); drawEmoji(); }); return b; };
-      if (recent.length) row.append(chipBtn('recent', '최근'));
-      row.append(...people.map((p) => chipBtn(String(p.n), p.name, p.icon)));
+      if (recent.length) row.append(Object.assign(chipBtn('recent', '최근'), { className: 'messengerChip recent' }));
+      askOrder(); const rank = new Map((chipOrder || []).map((n, i) => [n, i]));
+      row.append(...[...people].sort((a, b) => (rank.get(String(a.n)) ?? 1e3 + a.n) - (rank.get(String(b.n)) ?? 1e3 + b.n)).map((p) => chipBtn(String(p.n), p.name, p.icon))); dragChips(row);
       const list = chip === 'recent' ? recent : [...m.values()].filter((s) => String(s.n) === chip);
       const grid = document.createElement('div'); grid.className = 'messengerStickerGrid'; grid.append(...list.map(pickS));
       emojiBody.replaceChildren(row, grid); const on = row.querySelector('[aria-selected="true"]'); if (on) row.scrollLeft = Math.max(0, on.offsetLeft - 8); /* (the chosen chip in sight -- the row alone scrolled, never the page) */
@@ -671,17 +703,25 @@
   const browserSub = () => pushReg?.pushManager?.getSubscription().catch(() => null) ?? Promise.resolve(null);
   function drawAlert() { // the select as the device's way; 「알림 켜기」 while the browser has not allowed notices yet
     alertSel.value = alertMode; byId('mAlertPick').classList.remove('hidden');
-    alertSel.querySelector('[value="push"]').disabled = !pushKey || !('PushManager' in window); // (no VAPID on the server, no push in this browser: only while open)
+    const push = alertSel.querySelector('[value="push"]'); push.disabled = !pushKey || !('PushManager' in window) || !keptLogin(); // (no VAPID on the server, no push in this browser: only while open)
+    push.textContent = keptLogin() || !pushKey ? '닫아도 받기' : '닫아도 받기 (로그인 유지 때)'; /* (a login not kept: the server cannot know this device) */
     byId('mPushBtn').classList.toggle('hidden', alertMode === 'off' || granted());
   }
+  // (알림 방식은 기기에, 2026-11-10 사용자 「각 기기에 저장」): the way chosen is this browser's (`messengerAlert`) -- a new login, another
+  // account, a login not kept keep it; the server's copy only says where to push. Logout and 「다른 기기 끊기」 leave it.
+  const alertStore = keep(localStorage, 'messengerAlert'); const savedAlert = () => alertStore.get() || null;
+  const keptLogin = () => Boolean(deviceToken.get());
   async function setupPush() {
-    if (!('serviceWorker' in navigator) || !deviceToken.get()) return;
+    if (!('serviceWorker' in navigator)) return;
     try {
       // (메신저 3절 2) the app's own worker (sw.js, scope /) takes the push: an icon badge set by a worker reaches only the apps
       // inside its scope -- the old /messenger worker's never reached the island app's icon. Its subscription moves over.
       pushReg = await navigator.serviceWorker.register('/sw.js');
       const old = (await navigator.serviceWorker.getRegistrations()).find((r) => new URL(r.scope).pathname === '/messenger');
-      const { key, on, mode, moved } = await api('/api/messenger/push'); pushKey = key || null; alertMode = mode || 'off';
+      const saved = savedAlert(); const { key, on, mode, moved: movedNow } = await api('/api/messenger/push'); pushKey = key || null;
+      alertMode = window.MessengerAlert.alertChoice(saved, keptLogin() ? mode : null, keptLogin()); const moved = movedNow && !saved;
+      if (!saved && keptLogin() && mode) alertStore.set(mode); /* (the first time: the server's way taken over once) */
+      if (keptLogin() && mode && mode !== alertMode && alertMode !== 'push') await api('/api/messenger/alert', { mode: alertMode }).catch(() => {}); /* (the server's copy as this browser's) */
       // (Codex 검토 5차 P2-2) the old one let go only once the new one and its record stand -- a failed move keeps the old,
       // tried again next time. (10절: a device not on 닫아도 받기 wants no subscription at all -- the old one just goes)
       const oldSub = old ? await old.pushManager.getSubscription().catch(() => null) : null;
@@ -706,11 +746,11 @@
     const before = alertMode;
     try {
       if (want !== 'off' && !(await askPermission())) { drawAlert(); return; }
-      if (want === 'push') await subscribe(pushKey); // (its answer sets the device to 닫아도 받기)
-      else { const sub = await browserSub(); if (sub) await sub.unsubscribe().catch(() => {}); await api('/api/messenger/alert', { mode: want }); pushOn = false; }
-      alertMode = want; drawAlert(); showToast(ALERT_SAID[want]);
-    } catch (err) { // (Codex 10판 ④: the subscription may be gone already -- the select shows the server's way, not the old one)
-      alertMode = before; try { alertMode = (await api('/api/messenger/push')).mode || before; pushOn = alertMode === 'push' && Boolean(await browserSub()); } catch {}
+      if (want === 'push') { if (!keptLogin()) { drawAlert(); return; } await subscribe(pushKey); } // (its answer sets the device to 닫아도 받기)
+      else { const sub = await browserSub(); if (sub) await sub.unsubscribe().catch(() => {}); if (keptLogin()) await api('/api/messenger/alert', { mode: want }); pushOn = false; }
+      alertMode = want; alertStore.set(want); drawAlert(); showToast(ALERT_SAID[want]);
+    } catch (err) { // (Codex 10판 ④: the subscription may be gone already -- the select shows the way this browser keeps)
+      alertMode = window.MessengerAlert.alertChoice(savedAlert(), before, keptLogin()); pushOn = alertMode === 'push' && Boolean(await browserSub());
       drawAlert(); showToast(err.message || '알림 방식을 바꾸지 못했어요.', 4000); }
   }
   alertSel.addEventListener('change', () => chooseAlert(alertSel.value));

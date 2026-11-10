@@ -12,7 +12,7 @@ test('관공서 시장: 허락 뒤 비켜설 때 걸음이 끊기지 않는다(�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass), { timeout: 15000 }).toBe(false);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().gait), { timeout: 60000 }).not.toBe(null);
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기 · 마루', { timeout: 20000 }); /* (v1.10.281: named as the others) */
+  await expect(page.locator('#plazaHint')).toHaveText(/^(SPACE · )?말 걸기 · 마루$/, { timeout: 20000 }); /* (v1.10.281: named as the others; a touch screen's hint has no SPACE -- the local phone's Chrome reads any-pointer: coarse, CI's not) */
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/); await page.keyboard.press('Space');
   // every frame, while he goes out and aside

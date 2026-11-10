@@ -4755,7 +4755,7 @@
     const list = document.createElement('div'); list.className = 'guideTopics';
     for (const [kind, g] of Object.entries(GUIDE)) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = g.title;
-      b.addEventListener('click', () => { line.textContent = `「${touchNow() ? g.phone : g.pc}」`; });
+      b.addEventListener('click', () => { finishTyping(); line.textContent = `「${touchNow() ? g.phone : g.pc}」`; }); /* (a topic picked while the greeting still typed: its timer typed the greeting back over it) */
       list.append(b);
     }
     const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = '처음부터 다시 배우기';

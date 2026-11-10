@@ -282,6 +282,17 @@ test('메신저 창을 안 보고 있으면 새 메시지 팝업: 방마다 하�
   await sel.selectOption('off'); await expect.poll(async () => (await device()).mode).toBe('off'); expect((await device()).on).toBe(false);
   await m.evaluate(() => { window.__away = true; }); await say(dad, room, '안 받는다며'); await expect(m.locator('#messengerRoomList')).toContainText('안 받는다며'); await m.waitForTimeout(800);
   expect((await shown()).filter((s) => s.body?.includes('안 받는다며'))).toEqual([]);
+  if (!isMobile) { /* (알림 방식은 기기에, 사용자 「각 기기에 저장」: logged out and in again -- a new device record -- still 안 받기, the server's copy too; a login
+    not kept: 안 받기 still, 닫아도 받기 shut with its word, 열어 둘 때만 chosen and kept on this browser) */
+    const relogin = async (keepIt) => { await m.evaluate(() => { window.__away = false; }); await m.locator('#mLogoutBtn').click(); await expect(m.locator('#mLogin')).toBeVisible();
+      await m.locator('#mLoginId').fill(mom.loginId); await m.locator('#mLoginPw').fill('secret123'); await m.locator('#mKeep').setChecked(keepIt); await m.locator('#mLogin').getByRole('button', { name: '로그인' }).click();
+      await expect(m.locator('#mApp')).toBeVisible(); await expect(m.locator('#mAlertPick')).toBeVisible(); };
+    await relogin(true); await expect(sel).toHaveValue('off'); await expect.poll(async () => (await device()).mode).toBe('off');
+    await relogin(false); expect(await m.evaluate(() => localStorage.getItem('gc.messengerDevice'))).toBeNull(); await expect(sel).toHaveValue('off');
+    await expect(sel.locator('option[value="push"]')).toHaveText('닫아도 받기 (로그인 유지 때)'); expect(await sel.locator('option[value="push"]').evaluate((o) => o.disabled)).toBe(true);
+    await sel.selectOption('open'); await expect(m.locator('#toast')).toHaveText('창을 열어 둔 동안만 새 메시지를 알려 드려요.'); expect(await m.evaluate(() => localStorage.getItem('messengerAlert'))).toBe('open');
+    await m.reload(); await expect(m.locator('#mApp')).toBeVisible(); await expect(sel).toHaveValue('open');
+  }
   await context.close();
 });
 

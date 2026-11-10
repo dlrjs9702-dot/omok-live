@@ -61,5 +61,13 @@
   // island app's window (come by install=1, and not a standalone window on a device that has opened the messenger app) --
   // the messenger app itself and a Chrome tab keep their own message
   const pushElsewhere = ({ install = null, standalone = false, appSeen = false }) => install === '1' && !(standalone && appSeen);
-  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall, pushElsewhere, messengerUrl, COPY_LINE };
+  // 알림 방식은 기기에 (notes docs/messenger-alert-per-device-20261110.md, 사용자 「각 기기에 저장」): this browser's saved way first, then
+  // the server's for this kept device (once, the update changes nobody's), then 열어 둘 때만. A login not kept: never 닫아도 받기
+  // (the server cannot know the device) -- its saved way kept for the next kept login
+  const ALERT_MODES = ['open', 'push', 'off'];
+  function alertChoice(saved, server, kept) {
+    const v = ALERT_MODES.includes(saved) ? saved : ALERT_MODES.includes(server) ? server : 'open';
+    return !kept && v === 'push' ? 'open' : v;
+  }
+  return { unreadOf, setBadge, titleBlink, appIntent, chromeIntent, chromeInstall, pushElsewhere, alertChoice, ALERT_MODES, messengerUrl, COPY_LINE };
 });
