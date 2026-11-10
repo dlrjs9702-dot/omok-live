@@ -115,3 +115,20 @@ test('화면 시계: 장면마다 2 ms까지 따라가고, 1초 넘게 차이 �
   assert.equal(X.easeClock(0, 1500), 1500); assert.equal(X.easeClock(0, -1001), -1001);
   let v = 0; for (let k = 0; k < 30; k += 1) v = X.easeClock(v, 60); assert.equal(v, 60); /* (60 ms over 30 frames, no jump) */
 });
+
+// G4a 흩뿌리기 (notes docs/taxi-yield-20261109.md, docs/graphics-island-wide-20261108.md G4): every new thing that blocks
+// -- the added bushes and rocks, the logs, the palms -- 3.2 m off the taxi's road (the car's half width + 1.5 m and the
+// islanders' walk to be moved beside it), 10 m off its stops, 2.5 m off the walks and off the lots; an older rock by the
+// road or a walk stays walked over; the pebble and the shore's low stones never block
+test('택시 길 비우기: G4a 새 단단한 자연물은 길 3.2 m·정류장 10 m·걷는 길 2.5 m·집터 밖, 길가 옛 바위·자갈은 지나감', () => {
+  const N = T.nature(); const R = X.ROUTE; const ends = [R[0], R.at(-1)];
+  const far = (o, r, road, stop) => T.lineDist(o.x, o.z, R) > road + r && ends.every(([x, z]) => Math.hypot(o.x - x, o.z - z) > stop + r);
+  const before = 510; const added = N.bushes.slice(before); /* (the island's own 510 first; the added after them) */
+  assert.ok(added.length >= 150 && N.rocks.filter((r) => r.g4).length >= 110 && N.logs.length >= 30 && N.palms.length >= 15 && N.grass.length >= 200 && N.lilies.length >= 30, JSON.stringify([added.length, N.logs.length, N.palms.length]));
+  const solid = [...added.map((b) => [b, 0.75 * b.s]), ...N.rocks.filter((r) => r.g4).map((r) => [r, r.s]), ...N.logs.map((l) => [l, 1.1]), ...N.palms.map((p) => [p, 0.4])];
+  for (const [o, r] of solid) { assert.ok(far(o, r, 3.2, 10), `${o.x},${o.z} by the taxi`); assert.ok(!T.onLot(o.x, o.z, 1), `${o.x},${o.z} on a lot`); }
+  for (const [o, r] of solid.filter(([o]) => !N.palms.includes(o))) assert.ok(T.walkDist(o.x, o.z) > 2.5 + r, `${o.x},${o.z} by a walk`);
+  for (const s of T.natureSolids()) assert.ok(T.lineDist(s.x, s.z, R) > s.r + 0.85 + 0.3, `${s.x},${s.z} on the road`);
+  for (const r of N.rocks) { if (['shore', 'rock_small'].includes(T.rockKind(r))) assert.equal(T.rockBlocks(r), false); else if (!r.g4 && !far(r, 0.8 * r.s, 3.2, 10)) assert.equal(T.rockBlocks(r), false, 'an older rock by the road'); }
+  assert.ok(N.lilies.every((l) => T.dalmaru.lakeDist(l.x, l.z) < 0 || T.dalmaru.riverDist(l.x, l.z) < 0), 'lily pads on the water');
+});

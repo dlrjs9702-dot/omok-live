@@ -12256,6 +12256,306 @@
       "src": "land113:02. Low/winter/shipwreck_low.glb",
       "sha256": "0149231169841978e43612efc08551b3834277c4c07e3f716b7db9966937be9f",
       "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/lily_pads.glb",
+      "src": "nature112:01. High/autumn/lily_pads.glb",
+      "sha256": "5cd3d84dcc30565dd3388aa16b0802529bc1c6b06482d041e7680b00e38541c0",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/lily_pads_wide.glb",
+      "src": "nature112:01. High/autumn/lily_pads_wide.glb",
+      "sha256": "de02b6a751abe4ea7e4a977c2e5398c3cfd0c418dcc2a3e7e25315480c578a3c",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/log_fork_mossy.glb",
+      "src": "nature112:01. High/autumn/log_fork_mossy.glb",
+      "sha256": "e2d43ff548b0946451c3e178a3c895314807572e2146331d9feb347620a4bb9a",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/log_mossy.glb",
+      "src": "nature112:01. High/autumn/log_mossy.glb",
+      "sha256": "3b6073d1b96253b2c911765cce9c7ffca3d805ef145f7c7821bcd268a1996fdd",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/log_plain.glb",
+      "src": "nature112:01. High/autumn/log_plain.glb",
+      "sha256": "505caef2e48831296d0923f8865cc7aa9041b382bbed3748f32d6316bf2dc44f",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/lotus_pink.glb",
+      "src": "nature112:01. High/autumn/lotus_pink.glb",
+      "sha256": "5bc83d2e46a9d467ff1a506f286e9275a5c3db3291359e3070817152d77bc0bf",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/lotus_white.glb",
+      "src": "nature112:01. High/autumn/lotus_white.glb",
+      "sha256": "b93f3b9a0ae1b38209591cf0764a252412ff12585b0c3a08eb1b8cde099d2d9a",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/palm_curve.glb",
+      "src": "nature112:01. High/autumn/palm_curve.glb",
+      "sha256": "cfee823301e1006c82b18a043692f68835a44c13bc6b65dd73c0b060cd3d60e8",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/palm_lean.glb",
+      "src": "nature112:01. High/autumn/palm_lean.glb",
+      "sha256": "36847728065014720d69a23e19f9e2e7f65eeb4abcd95f10615eb57f9d3c97ef",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/palm_straight.glb",
+      "src": "nature112:01. High/autumn/palm_straight.glb",
+      "sha256": "2a30b509de806f0d8ce2ac9ae02d74179299d608f9d173425043b6df48729822",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/tallgrass_a.glb",
+      "src": "nature112:01. High/autumn/tallgrass_a.glb",
+      "sha256": "52312e4333ad8efc82841cedccd90c57ad47f25461762f0c808bcef0367e9024",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/tallgrass_b.glb",
+      "src": "nature112:01. High/autumn/tallgrass_b.glb",
+      "sha256": "e19962d5d2e3acee0eba75d1caf7cd1023e84ddf0b74c0fc3e5a326e3837f629",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/tallgrass_c.glb",
+      "src": "nature112:01. High/autumn/tallgrass_c.glb",
+      "sha256": "8f8302fb6e463e01ab716c24d0289f07c6d2552544a6f28bd86e6f9f4e5b7d8f",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/lily_pads.glb",
+      "src": "nature112:01. High/spring/lily_pads.glb",
+      "sha256": "e774f9cf3d8ca42c4bfb6e5ba628a1c7d9d9682a394632946aaf35e5f1b74d51",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/lily_pads_wide.glb",
+      "src": "nature112:01. High/spring/lily_pads_wide.glb",
+      "sha256": "5fe4d1a21f8fb18cf5ed150845f821cb74457f943cad74bb5581e545f005cfff",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/log_fork_mossy.glb",
+      "src": "nature112:01. High/spring/log_fork_mossy.glb",
+      "sha256": "e5007127f3671c6eec0a166492a1105fd5d994870cb66cdd66ac516ff7faf92d",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/log_mossy.glb",
+      "src": "nature112:01. High/spring/log_mossy.glb",
+      "sha256": "4a34750b04b913d49bb9a57bd91cd7b18952ad6379adb6f6cf2bdc7cd0c97dac",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/log_plain.glb",
+      "src": "nature112:01. High/spring/log_plain.glb",
+      "sha256": "e05e09b7ce241492485e7a743b094df1d70aad89630c2634d81821ee74b035ca",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/lotus_pink.glb",
+      "src": "nature112:01. High/spring/lotus_pink.glb",
+      "sha256": "cb9276035c36384444b61fe58b8c05cb03337d57e518c3926f67b6f926277bd6",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/lotus_white.glb",
+      "src": "nature112:01. High/spring/lotus_white.glb",
+      "sha256": "d11975c0f9c7ab61d369c970444e0ffffd36e133e6f4e88e032c3e6670146be1",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/palm_curve.glb",
+      "src": "nature112:01. High/spring/palm_curve.glb",
+      "sha256": "6703dd6389dab159529468d3c1006e5204a658b89fe9fd8f9b3c589d202feca4",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/palm_lean.glb",
+      "src": "nature112:01. High/spring/palm_lean.glb",
+      "sha256": "a062ac484333f3d78c5f75120c414e5b9ff4a83cf6d6655e8a1312ddfd0139ee",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/palm_straight.glb",
+      "src": "nature112:01. High/spring/palm_straight.glb",
+      "sha256": "bd88a481933e2ee9150b8c5d98afdcb3812a1f8bd61f1dc597321518b6a3ab5a",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/tallgrass_a.glb",
+      "src": "nature112:01. High/spring/tallgrass_a.glb",
+      "sha256": "364c38aeb5433ea2004d40930587535239d142d16f71c8a51564d2c23e35475d",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/tallgrass_b.glb",
+      "src": "nature112:01. High/spring/tallgrass_b.glb",
+      "sha256": "ca7debb542a92763f4cde235cf7075f01bbb7547c441bf93709614b2e2a71f8f",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/tallgrass_c.glb",
+      "src": "nature112:01. High/spring/tallgrass_c.glb",
+      "sha256": "428f65ec6ed9b96b8ad95f485b75efc364361e3fcba0527014ef480f75b8f139",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/lily_pads.glb",
+      "src": "nature112:01. High/summer/lily_pads.glb",
+      "sha256": "95977d0be6e3d973501717f7743b7fdba0d62f341fab7948871cbcf630f465f7",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/lily_pads_wide.glb",
+      "src": "nature112:01. High/summer/lily_pads_wide.glb",
+      "sha256": "899e6c31eb2c08ca0b2648d8e63e1ddb5128400ac417ace1d3fcd2488e9e2da9",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/log_fork_mossy.glb",
+      "src": "nature112:01. High/summer/log_fork_mossy.glb",
+      "sha256": "f8bc88aff64e7a7558cc50b29bc26f6552bb0818cdbde2756350b2a6c6446dad",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/log_mossy.glb",
+      "src": "nature112:01. High/summer/log_mossy.glb",
+      "sha256": "53266a73ef50e89569a322c8a97dc38550c3c8f0c01c2b6fa632dc02b02a1e61",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/log_plain.glb",
+      "src": "nature112:01. High/summer/log_plain.glb",
+      "sha256": "910aa4dba0ec9ae3d890352af4f83321520dc6275c78b0cc77e402f4ef9146ae",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/lotus_pink.glb",
+      "src": "nature112:01. High/summer/lotus_pink.glb",
+      "sha256": "b0ea6c1688383eb0758b9da1f9a34d37fccf111349cb8237b7e5a7a4ced54065",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/lotus_white.glb",
+      "src": "nature112:01. High/summer/lotus_white.glb",
+      "sha256": "9bbcc67bfe74428f73683c139ff6d9ac36a360730f1b6105c024c6acf5ed2b46",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/palm_curve.glb",
+      "src": "nature112:01. High/summer/palm_curve.glb",
+      "sha256": "d6d0ad2cda5c177fd8ef868b748e41bf6f99de6628468fecd3e0614129320677",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/palm_lean.glb",
+      "src": "nature112:01. High/summer/palm_lean.glb",
+      "sha256": "7ee23cb17ac70dd150d1ac24ec7684232b30cd258bb8f9ce7f79b171051f464f",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/palm_straight.glb",
+      "src": "nature112:01. High/summer/palm_straight.glb",
+      "sha256": "78cd7c7f2cc75a0975a594cc07f0090af31c083f52d251269d8fd07573e236a0",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/tallgrass_a.glb",
+      "src": "nature112:01. High/summer/tallgrass_a.glb",
+      "sha256": "0bc554b3b254db869f8363e34f661f6387cff86e5a68483bd0034541d0ce5cf9",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/tallgrass_b.glb",
+      "src": "nature112:01. High/summer/tallgrass_b.glb",
+      "sha256": "5efbbe2582d4d0657177d2addcf6273e5ed62b51e9862c4312a5223e40fd03df",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/tallgrass_c.glb",
+      "src": "nature112:01. High/summer/tallgrass_c.glb",
+      "sha256": "db1b134a934ec08443926d8f2aef1e996efc7352b8f65c7eed4295d76b280de0",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/lily_pads.glb",
+      "src": "nature112:01. High/winter/lily_pads.glb",
+      "sha256": "1a1bc087c7babea1197a3ec95cd03164258041f6c38d91d6a24c693ebc8db286",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/lily_pads_wide.glb",
+      "src": "nature112:01. High/winter/lily_pads_wide.glb",
+      "sha256": "32d779fef60cc99d555ef08206b622bd948a124487ac5ecf6393d041ea70df39",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/log_fork_mossy.glb",
+      "src": "nature112:01. High/winter/log_fork_mossy.glb",
+      "sha256": "82f120ced4a90ca6fb3d1369224ed69e0df67cad6aee9a79507cd43c9535390a",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/log_mossy.glb",
+      "src": "nature112:01. High/winter/log_mossy.glb",
+      "sha256": "874fbf5a6936eb6a0361708f2a8a39806eb214cc65acbf772fb03c908404c717",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/log_plain.glb",
+      "src": "nature112:01. High/winter/log_plain.glb",
+      "sha256": "f8cb5c36ca53c206bf94ba81355c21cda8d210c293dc91a0371a8609be0ed400",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/palm_curve.glb",
+      "src": "nature112:01. High/winter/palm_curve.glb",
+      "sha256": "d0b4267c0369f62d71254e7e980dadd27efc84c224bcf9bb1d817ba16c1e538d",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/palm_lean.glb",
+      "src": "nature112:01. High/winter/palm_lean.glb",
+      "sha256": "a901b6b0b58abcf2c6501189cd27e1eade642caf54e1cbf921a7714815ba2b51",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/palm_straight.glb",
+      "src": "nature112:01. High/winter/palm_straight.glb",
+      "sha256": "48e5749b177712f703ec367d98f0a174ba60b8273dcf3c3d6099ba8a711dd7f0",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/tallgrass_a.glb",
+      "src": "nature112:01. High/winter/tallgrass_a.glb",
+      "sha256": "2644b2bc86a7b7f169a76bf7a044c9a0a211a9749fbc72c30b44dd453fd807ca",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/tallgrass_b.glb",
+      "src": "nature112:01. High/winter/tallgrass_b.glb",
+      "sha256": "1548b5bcb318bce6ca94f8246ab77c400a07edc56957dd6032528a9646892c27",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/tallgrass_c.glb",
+      "src": "nature112:01. High/winter/tallgrass_c.glb",
+      "sha256": "3fd99b5bc621b38fb1ffceba26cd0ea69d8dbb523ecc41580f4b100de79c3be2",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -12345,6 +12645,7 @@
     "darae110": "110. Game Island rename clerk 2026-11-08",
     "nature109": "109. Game Island nature megapack 2026-11-08",
     "yard111": "111. Game Island yard and paths 2026-11-08",
-    "land113": "113. Game Island paths and landmarks 2026-11-08"
+    "land113": "113. Game Island paths and landmarks 2026-11-08",
+    "nature112": "112. Game Island new nature G4 2026-11-08"
   }
 }
