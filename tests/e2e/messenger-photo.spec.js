@@ -131,6 +131,25 @@ test('메신저 이모티콘: 😊 판·미리 보기 뒤 보내기·상대 화�
     await chips.nth(1).click(); await expect(chips.nth(1)).toHaveAttribute('aria-selected', 'true'); await expect(cells).toHaveCount(8); await expect(cells.first()).toHaveAttribute('data-id', /_haesong$/);
     await shot(page, 'emoji-chips');
     await page.locator('#messengerEmojiBtn').click(); await page.locator('#messengerEmojiBtn').click(); await expect(panel.locator('.messengerChip[aria-selected="true"]')).toHaveText('해송');
+    /* (칩 순서, 사용자 「꾹 눌러서 드래그로」: held 0.4 s -- lifted, 「처음대로」 at the row's end; dragged to the row's start (the row slid by itself) and
+    let go: first, saved for the account, still first after a reload; a short press still opens; let go on 「처음대로」: the islanders' order. A phone
+    by real touches -- the row not slid by the finger) */
+    const row = panel.locator('.messengerChipRow'); const lifted = panel.locator('.messengerChip.lifted'); const fourth = (await chips.nth(3).textContent()).trim();
+    const dragChip = async (chip, toEnd, until) => {
+      const b = await chip.boundingBox(); const r = await row.boundingBox(); const y = b.y + b.height / 2; const x0 = b.x + b.width / 2; const x1 = toEnd ? r.x + r.width - 6 : r.x + 6;
+      const cdp = isMobile && await a.context.newCDPSession(page); const at = (type, x) => (cdp ? cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] }) : type === 'touchStart' ? page.mouse.move(x, y).then(() => page.mouse.down()) : type === 'touchEnd' ? page.mouse.up() : page.mouse.move(x, y));
+      await at('touchStart', x0); await expect(lifted).toHaveCount(1); await expect(panel.locator('.messengerChip.reset')).toBeVisible();
+      await at('touchMove', x0 + (x1 - x0) / 4); if (!toEnd) await shot(page, 'emoji-chip-drag');
+      for (let k = 2; k <= 6; k += 1) await at('touchMove', x0 + (x1 - x0) * k / 6); await expect(until).toHaveCount(1, { timeout: 15000 }); await at('touchEnd'); if (cdp) await cdp.detach();
+      await expect(lifted).toHaveCount(0); await expect(panel.locator('.messengerChip.reset')).toHaveCount(0);
+    };
+    await dragChip(chips.nth(3), false, panel.locator('.messengerChip.lifted:first-child')); await expect(chips.first()).toHaveText(fourth); await expect(panel.locator('.messengerChip[aria-selected="true"]')).toHaveText('해송');
+    const saved = async () => (await api(request, '/api/messenger/sticker-order', { account: a.account })).data; expect((await saved()).order[0]).toBe('3');
+    await page.reload(); await page.locator('#messengerRoomList button', { hasText: '이모티콘방' }).click(); await page.locator('#messengerEmojiBtn').click(); await expect(panel).toBeVisible();
+    await expect(chips.first()).toHaveText(fourth); await expect(chips.nth(1)).toHaveText('봄이');
+    await chips.first().click(); await expect(chips.first()).toHaveAttribute('aria-selected', 'true'); await expect(cells).toHaveCount(8); /* (a short press: its 8) */
+    if (!isMobile) { await dragChip(chips.nth(5), true, panel.locator('.messengerChip.reset.over')); await expect(chips.first()).toHaveText('봄이'); expect((await saved()).saved).toBe(false); }
+    await panel.locator('.messengerChip', { hasText: '해송' }).click(); await expect(panel.locator('.messengerChip[aria-selected="true"]')).toHaveText('해송');
     if (isMobile) { /* (v1.10.286 사용자 「보낸 후 닫을 수가 없어」: sent, then closed by its ✕, the 😊, the box (keypad up), the list, the phone's back -- the phone's whole part) */
       const btn = page.locator('#messengerEmojiBtn'); await cells.nth(3).tap(); await cells.nth(3).tap(); await expect(page.locator('#messengerMessages .messengerSticker img')).toHaveCount(1); await shot(page, 'emoji-sent-open');
       await page.locator('#messengerEmojiClose').tap(); await expect(panel).toBeHidden(); await expect(btn).toHaveAttribute('aria-expanded', 'false'); await shot(page, 'emoji-sent-closed');

@@ -97,6 +97,10 @@ const IslandTalks = require('./lib/island-talks'); // v1.10.266 주민 대화 �
 const IslandAffinity = require('./lib/island-affinity'); // R2 호감도 = 보상·기억·오늘의 이야기
 const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
+// 이모티콘 주민 칩 순서 (notes docs/sticker-chip-order-20261110.md): an account's own order -- ids it no longer knows dropped, the
+// islanders it leaves out after it in number order (a new islander safe)
+const STICKER_RESIDENTS = (require('./public/messenger/stickers/stickers.json').packs?.[0]?.residents || []).map((r) => String(r.n));
+const stickerOrderOf = (list) => { const seen = new Set(); const kept = (Array.isArray(list) ? list : []).map(String).filter((n) => STICKER_RESIDENTS.includes(n) && !seen.has(n) && seen.add(n)); return [...kept, ...STICKER_RESIDENTS.filter((n) => !seen.has(n))]; };
 const IslandFurniture = require('./public/plaza/island-furniture'); // 묶음 2 가구점 (백화점 2층)
 const IslandPetShop = require('./public/plaza/island-petshop'); // 묶음 2-2 펫샵 (백화점 4층 옥상, v1.10.211)
 const IslandFashion = require('./public/plaza/island-fashion'); // 백화점 개편 A안 (v1.10.211): 2층 옷·꾸미기
@@ -4472,7 +4476,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.303' });
+    return sendJson(res, 200, { ok: true, version: '1.10.304' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -4639,6 +4643,16 @@ async function requestHandler(req, res) {
       const gone = body.self === true ? acct.device : String(body.id || ''); // (self: this device's logout; all: every other)
       await dropDevices((d) => d.keyId !== key.id || (body.all === true ? d.id === acct.device : d.id !== gone));
       return sendJson(res, 200, { ok: true });
+    }
+    // 이모티콘 칩 순서: the same on every device of the account; `order: null` back to the islanders' order
+    if (pathname === '/api/messenger/sticker-order') {
+      if (req.method === 'GET') { const saved = await pointStore.worldValue(`stickerOrder:${key.id}`); return sendJson(res, 200, { ok: true, order: stickerOrderOf(saved), saved: Array.isArray(saved) }); }
+      if (req.method === 'POST') {
+        const body = await parseJson(req);
+        if (body.order !== null && (!Array.isArray(body.order) || body.order.length > 200)) return sendError(res, 400, 'BAD_ORDER', '순서가 올바르지 않습니다.');
+        const order = body.order === null ? null : stickerOrderOf(body.order); await pointStore.setWorldValue(`stickerOrder:${key.id}`, order);
+        return sendJson(res, 200, { ok: true, order: stickerOrderOf(order), saved: Boolean(order) });
+      }
     }
     // (메신저 ③) push: the server's public key (null: no push here); a subscription for this device -- one kept logged in
     if (pathname === '/api/messenger/push' && req.method === 'GET') {
@@ -9352,7 +9366,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.303 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.304 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

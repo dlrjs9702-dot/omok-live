@@ -70,3 +70,12 @@ test('메신저 앱으로 열기: 안드로이드는 intent:// 주소, PC는 그
   assert.equal(MA.pushElsewhere({ install: null, standalone: true, appSeen: true }), false); /* (the messenger app at its start) */
   for (const install of [null, 'chrome']) assert.equal(MA.pushElsewhere({ install, standalone: false }), false); /* (a Chrome tab) */
 });
+
+// 알림 방식은 기기에 (docs/messenger-alert-per-device-20261110.md): this browser's way first, then the server's for the kept device,
+// then 열어 둘 때만; a login not kept never 닫아도 받기
+test('메신저 알림 방식: 기기 값 → 서버 값 → 열어 둘 때만, 로그인 유지 없이는 닫아도 받기 안 됨', () => {
+  assert.equal(MA.alertChoice('off', 'push', true), 'off'); assert.equal(MA.alertChoice('push', 'open', true), 'push');
+  assert.equal(MA.alertChoice(null, 'push', true), 'push'); assert.equal(MA.alertChoice('', 'off', true), 'off'); assert.equal(MA.alertChoice('weird', 'open', true), 'open');
+  assert.equal(MA.alertChoice(null, null, true), 'open'); assert.equal(MA.alertChoice(null, null, false), 'open');
+  assert.equal(MA.alertChoice('push', null, false), 'open'); assert.equal(MA.alertChoice('off', null, false), 'off');
+});

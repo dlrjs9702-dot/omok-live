@@ -104,7 +104,7 @@ test('조작·1인칭: W/A/S/D 걷기·방향키 시점·마우스 보기·감�
     await hold('fishing_rod'); await expect.poll(() => d('heldTool')).toBe('fishing_rod');
     await page.evaluate(() => window.PlazaWarp(30, 0)); await page.evaluate(() => { window.PlazaDebug().setCamPitch?.(0); });
     await expect.poll(async () => (await d('fpHand')).tool, { timeout: 20000 }).toBe(true); await pshot('fp-rod');
-    await hold('fishing_rod'); await expect.poll(() => d('heldTool')).toBeNull(); expect((await d('fpHand')).shown).toBe(false);
+    await hold('fishing_rod'); await expect.poll(() => d('heldTool')).toBeNull(); await expect.poll(async () => (await d('fpHand')).shown).toBe(false); /* (the empty hand lowers for 0.14 s first: at 60 fps (PW_GPU) a single look saw it still up) */
     await intoMall(page, null, isMobile);
     await page.evaluate(() => { const S = window.IslandStore; const s = S.SECTORS.find((x) => x.keeper); const c = S.world(s.interact[0], s.interact[1]); const k = S.world(s.keeper[0], s.keeper[1]); const p = window.PlazaDebug(); const w = { x: c.x + (c.x - k.x) * 0.6, z: c.z + (c.z - k.z) * 0.6 }; p.teleport(w.x, w.z); p.faceTo?.(k.x, k.z); p.setCamYaw(Math.atan2(-(k.x - w.x), -(k.z - w.z))); p.setCamPitch?.(0); }); await shot('mall1'); // (the customer's side, the counter and its keeper ahead)
     await liftTo(page, 3, isMobile);

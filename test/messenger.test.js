@@ -121,6 +121,17 @@ test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·�
   assert.equal((await call('/api/messenger')).status, 401);
   assert.equal((await req(`/api/admin/keys/${mom.id}/messenger`, null, { allowed: true })).status, 401); // the administrator only
   for (const p of [mom, dad]) assert.equal((await req(`/api/admin/keys/${p.id}/messenger`, admin, { allowed: true })).data.messenger, true);
+  // 이모티콘 칩 순서 (docs/sticker-chip-order-20261110.md): the islanders' order until saved; an account's own (ids it does not know
+  // dropped, the islanders left out after it in number order); another account's untouched; null back to the first order
+  const islanders = require('../public/messenger/stickers/stickers.json').packs[0].residents.map((r) => String(r.n));
+  const first = (await call('/api/messenger/sticker-order', undefined, mom.token)).data; assert.deepEqual([first.order, first.saved], [islanders, false]);
+  const myOrder = (await call('/api/messenger/sticker-order', { order: ['5', 'nope', 2, '5', '999'] }, mom.token)).data;
+  assert.deepEqual(myOrder.order, ['5', '2', ...islanders.filter((n) => n !== '5' && n !== '2')]); assert.equal(myOrder.saved, true);
+  assert.deepEqual((await call('/api/messenger/sticker-order', undefined, mom.token)).data.order, myOrder.order);
+  assert.deepEqual((await call('/api/messenger/sticker-order', undefined, dad.token)).data.order, islanders);
+  assert.equal((await call('/api/messenger/sticker-order', { order: 'x' }, mom.token)).status, 400);
+  assert.equal((await call('/api/messenger/sticker-order', { order: ['1'] })).status, 401);
+  assert.deepEqual((await call('/api/messenger/sticker-order', { order: null }, mom.token)).data, { ok: true, order: islanders, saved: false });
   assert.equal((await req('/api/admin/keys', admin)).data.keys.find((k) => k.id === mom.id).messenger, true);
   assert.equal((await call('/api/account/me', undefined, mom.token)).data.account.messenger, true);
 

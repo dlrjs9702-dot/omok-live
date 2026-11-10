@@ -19,7 +19,7 @@ module.exports = defineConfig({
     ...(process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') || process.env.PLAYWRIGHT_SKIP_ISLAND === '1' ? ['**/river-fishing.spec.js', '**/weed-board.spec.js', '**/island-time.spec.js', '**/island-weather.spec.js', '**/island-stars.spec.js', '**/island-contest.spec.js', '**/island-admin-look.spec.js', '**/island-plants.spec.js', '**/island-together.spec.js', '**/island-guide.spec.js', '**/island-insects.spec.js', '**/island-pets.spec.js', '**/asset-inspector.spec.js', '**/shop-browse.spec.js', '**/title-hall.spec.js', '**/action-lock.spec.js', '**/resident-talk.spec.js', '**/transform-shop.spec.js', '**/general-store.spec.js', '**/mayor-gait.spec.js', '**/island-solids.spec.js', '**/dalmaru-preview.spec.js', '**/dalmaru-walk.spec.js', '**/dress-room.spec.js'] : [])],
   timeout: process.env.CI ? 60_000 : 30_000, // (CI 2차: a test with two or three pages on the software-rendered runner sat at 29-30 s -- the budget, not the waits)
   expect: {
-    timeout: process.env.CI ? 15_000 : 5_000, // (CI 2026-10-19: the GitHub runner draws the island at a few frames a second -- a state the page sets a moment later is missed at 5 s)
+    timeout: 15_000, // (CI 2026-10-19: the GitHub runner draws the island at a few frames a second -- a state the page sets a moment later is missed at 5 s; local too since 2026-11-10: each guest's resource pack, ~3,000 files, held the lobby past 5 s when specs ran together)
   },
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
@@ -45,6 +45,8 @@ module.exports = defineConfig({
     actionTimeout: process.env.CI ? 60_000 : 15_000, // (CI #351: a talk's lines typed out on a slow runner took past 30 s before its choices showed)
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    // PW_GPU=1 (local only): draw with the graphics card instead of SwiftShader -- island specs about twice as fast; CI stays CPU
+    launchOptions: !process.env.CI && process.env.PW_GPU ? { args: ['--use-angle=d3d11'] } : {},
   },
   projects: [
     {
