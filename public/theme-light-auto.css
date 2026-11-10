@@ -1669,6 +1669,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .pdSeat .pdRoleTag{color:var(--role)}
 :root[data-theme="light"] .pdCity.danger .pdRing{stroke:#ef4444}
 :root[data-theme="light"] .pdNow{background:#0f1d33;border:1px solid #d6c3a5;color:#f8fafc}
-:root[data-theme="light"] .pdRoleCard{border:2px solid var(--role);background:rgba(61,47,32,.9);color:#fff}
+:root[data-theme="light"] .pdRoleCard{border:2px solid var(--role);background:#f7efe1;color:#fff;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 :root[data-theme="light"] .pdRoleCard strong{color:var(--role)}
 :root[data-theme="light"] .pdRoleCard span{color:#3d3024}

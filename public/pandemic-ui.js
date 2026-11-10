@@ -17,6 +17,7 @@
     quarantine: '내 도시와 인접 도시에는 큐브가 놓이지 않음', researcher: '정보 공유에서 어떤 도시 카드든 줄 수 있음', scientist: '치료제 개발에 같은 색 4장이면 충분',
   };
   const ROLE_ICON = { contingency: '📋', dispatcher: '🧭', medic: '🩹', operations: '🏗️', quarantine: '🛡️', researcher: '📚', scientist: '🔬' }; /* (게임관 1차 P1: each role its mark and colour) */
+  const ROLE_SHORT = { contingency: '대책가', dispatcher: '운항', medic: '위생병', operations: '건축가', quarantine: '검역관', researcher: '연구자', scientist: '과학자' }; /* (#452 검토: a phone's plate keeps the whole short name) */
   const ROLE_COLOR = { contingency: '#22d3ee', dispatcher: '#e879f9', medic: '#fb923c', operations: '#a3e635', quarantine: '#16a34a', researcher: '#d97706', scientist: '#e2e8f0' };
   const EVENT = { airlift: ['공중 수송', '말 하나를 원하는 도시로 이동(주인 동의)'], grant: ['정부 보조금', '원하는 도시에 연구소 건설'], quietnight: ['조용한 하룻밤', '다음 도시 감염 단계를 건너뜀'], forecast: ['예측', '감염 더미 위 6장을 보고 순서 정하기'], resilient: ['회복력 있는 인구', '감염 버림 더미 카드 1장 제거'] };
   const CITY = Object.fromEntries(M.cities.map((c) => [c.id, c]));
@@ -185,7 +186,7 @@
     for (const color of ['blue', 'yellow', 'black', 'red']) { const s = g.cures?.[color]; const c = h('i', `pdCure ${s || ''}`, s === 'eradicated' ? '✓' : ''); /* (P7: a dot each, filled once made, ✓ wiped out) */ c.style.setProperty('--c', COLOR[color]); c.title = `${COLOR_KO[color]}: ${s === 'eradicated' ? '근절됨' : s ? '치료제 개발' : '아직'} · 남은 큐브 ${g.supply?.[color]}`; cures.append(c); }
     box.append(cures);
     const legend = h('button', 'pdChip link', '?'); legend.type = 'button'; legend.title = '지도 보는 법'; legend.setAttribute('aria-label', '지도 보는 법'); /* (P7) */
-    legend.onclick = () => { const menu = $('pandemicMenu'); const close = h('button', 'ghost tiny', '닫기'); close.type = 'button'; close.onclick = closeMenu;
+    legend.onclick = () => { dropRoleCard(); const menu = $('pandemicMenu'); const close = h('button', 'ghost tiny', '닫기'); close.type = 'button'; close.onclick = closeMenu;
       menu.replaceChildren(h('strong', '', '지도 보는 법'), ...['숫자 동그라미: 말 (자리 번호, 자리 색)', '작은 막대: 질병 큐브 (색마다, 한 도시에 3개면 빨간 테두리 — 하나 더 오면 확산)', '집 모양: 연구소', '치료제 동그라미: 채워지면 개발, ✓ 는 근절'].map((t) => h('p', 'pdSmall', t)), close); menu.classList.remove('hidden'); };
     box.append(legend);
     // (v1.10.199 총괄 검토: 확산·감염률·치료제 always; the piles, discards and cubes folded -- opened by a tap)
@@ -208,12 +209,13 @@
     for (const s of Object.keys(g.roles || {}).sort()) {
       const p = h('button', `pdSeat${s === g.turn ? ' turn' : ''}${s === mySeat() ? ' me' : ''}`); p.type = 'button'; p.style.setProperty('--seat', SEAT_COLOR[s] || '#94a3b8'); p.style.setProperty('--role', ROLE_COLOR[g.roles[s]] || '#94a3b8');
       const face = h('span', 'seatFace'); face.setAttribute('aria-hidden', 'true'); const look = state.players?.[s]?.face; if (look?.skin) face.style.setProperty('--skin', look.skin); if (look?.hair) face.style.setProperty('--hair', look.hair);
-      p.append(face, h('b', '', label(s)), h('small', 'pdRoleTag', `${ROLE_ICON[g.roles[s]] || ''} ${ROLE_KO[g.roles[s]] || ''} · ${(g.hands?.[s] || []).length}장`)); row.append(p);
+      p.append(face, h('b', '', label(s)), h('small', 'pdRoleTag', `${ROLE_ICON[g.roles[s]] || ''} ${ROLE_SHORT[g.roles[s]] || ''}`)); row.append(p);
+      p.querySelector('small').append(h('span', 'pdHandN', ` · ${(g.hands?.[s] || []).length}장`)); /* (a phone: the count is on the card bar under the map -- the role whole here) */
       p.onclick = () => popup(`${label(s)} · ${ROLE_ICON[g.roles[s]] || ''} ${ROLE_KO[g.roles[s]] || ''}`, [], ROLE_TEXT[g.roles[s]] || ''); /* (P1: what the role does, a tap away) */
     }
   }
   function showPile(title, names) {
-    const menu = $('pandemicMenu'); menu.replaceChildren(h('strong', '', title), h('p', 'pdSmall', names.length ? names.join(', ') : '비어 있습니다.'));
+    dropRoleCard(); const menu = $('pandemicMenu'); menu.replaceChildren(h('strong', '', title), h('p', 'pdSmall', names.length ? names.join(', ') : '비어 있습니다.'));
     const close = h('button', 'ghost tiny', '닫기'); close.type = 'button'; close.onclick = () => menu.classList.add('hidden'); menu.append(close); menu.classList.remove('hidden');
   }
 
@@ -225,8 +227,9 @@
   }
   const closeMenu = () => $('pandemicMenu').classList.add('hidden');
   function legal() { return state?.me?.myPandemic?.legal || null; }
+  const dropRoleCard = () => $('pandemicMapWrap')?.querySelector('.pdRoleCard')?.remove(); /* (one box at a time: a menu opened closes the role card) */
   function popup(title, buttons, note) {
-    const menu = $('pandemicMenu'); menu.replaceChildren(h('strong', '', title));
+    dropRoleCard(); const menu = $('pandemicMenu'); menu.replaceChildren(h('strong', '', title));
     if (note) menu.append(h('p', 'pdSmall', note));
     const row = h('div', 'pdMenuRow');
     for (const [text, fn] of buttons) { const b = h('button', 'secondary tiny', text); b.type = 'button'; b.onclick = fn; row.append(b); }
@@ -488,7 +491,7 @@
     if (!$('pandemicNow')) { const n = h('div', 'pdNow'); n.id = 'pandemicNow'; n.setAttribute('role', 'status'); $('pandemicHud').after(n); }
     const now = started ? nowLine() : ''; $('pandemicNow').textContent = now; $('pandemicNow').classList.toggle('hidden', !now);
     if (g.status === 'playing' && mySeat() && revealed !== room) { revealed = room; const role = g.roles?.[mySeat()]; /* (게임관 1차 P1: my role, told once as the hand starts) */
-      if (role) { const card = h('div', 'pdRoleCard'); card.style.setProperty('--role', ROLE_COLOR[role]); card.append(h('strong', '', `당신은 ${ROLE_ICON[role]} ${ROLE_KO[role]}`), h('span', '', ROLE_TEXT[role])); $('pandemicMapWrap').append(card); setTimeout(() => card.remove(), 4000); } }
+      if (role) { const card = h('div', 'pdRoleCard'); card.style.setProperty('--role', ROLE_COLOR[role]); card.append(h('strong', '', `당신은 ${ROLE_ICON[role]} ${ROLE_KO[role]}`), h('span', '', ROLE_TEXT[role])); $('pandemicMapWrap').append(card); setTimeout(() => card.classList.add('out'), 3700); setTimeout(() => card.remove(), 4000); } }
     if (started && lastFocus !== room) { lastFocus = room; const at = CITY[g.pawns?.[mySeat() || g.seatOrder?.[0]]]; if (at) { view.cx = at.x; view.cy = at.y; } }
     applyView(); // (the box may have changed shape since: shown, turned)
     if (!$('pandemicActions')) { const a = h('div', 'pandemicActions'); a.id = 'pandemicActions'; $('pandemicMapWrap').after(a); }
