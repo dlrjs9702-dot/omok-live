@@ -3686,3 +3686,23 @@ button.tagPill{cursor:pointer;padding:3px 10px;font-size:.8rem}button.tagPill[ar
 .islandEnvBox .joinForm{display:grid;grid-template-columns:7.5em minmax(0,1fr);align-items:center;gap:8px;margin:4px 0}.islandEnvBox .joinForm label{margin:0}
 /* 294 잡기 카드: ✕ in its corner, 「확인」 the big one */
 .catchCard .catchX{position:absolute;top:8px;right:8px;min-width:36px;min-height:36px;padding:0;border-radius:50%}.catchCard #catchOkBtn{flex:1;min-height:44px;font-size:1.05rem}
+
+/* 게임관 1차 (notes docs/gamehall-screen-audit-20261110.md): F1 첫걸음 -- the seats and the host's start on the board, an empty
+   seat's tile pressed takes it; 팬데믹 P1 role card and role colours, P3 지금 할 일, P7 cure dots, the danger ring, P8 why */
+.boardOverlay .boardPicks{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px;pointer-events:auto}
+.boardOverlay .boardPicks:empty{display:none}
+.boardOverlay .boardPick{min-height:40px;padding:8px 14px;border-radius:10px;font-weight:800;font-size:.9rem}
+.boardOverlay .boardPick:not(.primary){background:#1e293b;border:1px solid #475569;color:#f8fafc}
+.boardOverlay .boardPick.selected{border-color:#facc15;box-shadow:0 0 0 2px rgba(250,204,21,.45)}
+.boardOverlay .boardPick:disabled{opacity:.45}
+.player.pickable,.teamPlayer.pickable{cursor:pointer;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.35)}
+.player.pickable:hover,.teamPlayer.pickable:hover,.teamPlayer.pickable:focus-visible{background:#13213a}
+button.pdSeat{font:inherit;color:inherit;cursor:pointer;text-align:left}
+.pdSeat .pdRoleTag{color:var(--role);font-weight:800}
+.pdCure,body.pandemicGame .pdCure{min-width:16px;width:16px;height:16px;padding:0;border-radius:50%;font-size:.6rem}
+.pdCity.danger .pdRing{stroke:#ef4444;stroke-width:4}
+.pdNow{margin:6px 0 2px;padding:7px 12px;border-radius:10px;background:#0f1d33;border:1px solid #334155;color:#f8fafc;font-weight:800;font-size:.86rem}
+.pdRoleCard{position:absolute;left:50%;top:34%;z-index:8;transform:translate(-50%,-50%);display:grid;gap:6px;max-width:min(420px,88%);padding:16px 22px;border-radius:14px;border:2px solid var(--role);background:rgba(2,6,23,.9);color:#fff;text-align:center;pointer-events:none;animation:pdRoleIn .35s ease-out}
+.pdRoleCard strong{font-size:1.3rem;color:var(--role)}.pdRoleCard span{font-size:.86rem;line-height:1.45;color:#e2e8f0}
+@keyframes pdRoleIn{from{opacity:0;transform:translate(-50%,-40%)}to{opacity:1;transform:translate(-50%,-50%)}}
+.pdBtn.why{opacity:.55}

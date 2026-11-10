@@ -16,6 +16,8 @@
     medic: '치료 1회에 한 색 큐브 전부 제거, 치료된 색은 들어가면 자동 제거·방지', operations: '연구소 무료 건설, 차례마다 한 번 도시 카드로 연구소에서 어디든 이동',
     quarantine: '내 도시와 인접 도시에는 큐브가 놓이지 않음', researcher: '정보 공유에서 어떤 도시 카드든 줄 수 있음', scientist: '치료제 개발에 같은 색 4장이면 충분',
   };
+  const ROLE_ICON = { contingency: '📋', dispatcher: '🧭', medic: '🩹', operations: '🏗️', quarantine: '🛡️', researcher: '📚', scientist: '🔬' }; /* (게임관 1차 P1: each role its mark and colour) */
+  const ROLE_COLOR = { contingency: '#22d3ee', dispatcher: '#e879f9', medic: '#fb923c', operations: '#a3e635', quarantine: '#16a34a', researcher: '#d97706', scientist: '#e2e8f0' };
   const EVENT = { airlift: ['공중 수송', '말 하나를 원하는 도시로 이동(주인 동의)'], grant: ['정부 보조금', '원하는 도시에 연구소 건설'], quietnight: ['조용한 하룻밤', '다음 도시 감염 단계를 건너뜀'], forecast: ['예측', '감염 더미 위 6장을 보고 순서 정하기'], resilient: ['회복력 있는 인구', '감염 버림 더미 카드 1장 제거'] };
   const CITY = Object.fromEntries(M.cities.map((c) => [c.id, c]));
   const isEvent = (card) => String(card).startsWith('ev:');
@@ -127,6 +129,7 @@
       const node = cityEls.get(c.id); const cubes = g.cubes?.[c.id] || {};
       const total = Object.values(cubes).reduce((a, b) => a + b, 0);
       node.classList.toggle('infected', total > 0);
+      node.classList.toggle('danger', Object.values(cubes).some((n) => n >= 3)); /* (게임관 1차 P7: one more and it breaks out) */
       node.querySelector('title').textContent = `${c.name} · 인구 ${fmt(c.pop)} · ${COLOR_KO[c.color]} 도시${total ? ` · 큐브 ${Object.entries(cubes).filter(([, n]) => n).map(([k, n]) => `${COLOR_KO[k]} ${n}`).join(' ')}` : ''}`;
     }
     const cubesLayer = $('pdCubes'); cubesLayer.replaceChildren();
@@ -179,8 +182,12 @@
     [2, 2, 2, 3, 3, 4, 4].forEach((r, i) => rate.append(h('i', `pdPip rate${i === g.rateIndex ? ' on' : ''}`, String(r))));
     box.append(rate);
     const cures = h('span', 'pdTrack'); cures.append(h('b', '', '치료제'));
-    for (const color of ['blue', 'yellow', 'black', 'red']) { const s = g.cures?.[color]; const c = h('i', `pdCure ${s || ''}`, s === 'eradicated' ? '근절' : s ? '개발' : '—'); c.style.setProperty('--c', COLOR[color]); c.title = `${COLOR_KO[color]}: ${s === 'eradicated' ? '근절됨' : s ? '치료제 개발' : '아직'} · 남은 큐브 ${g.supply?.[color]}`; cures.append(c); }
+    for (const color of ['blue', 'yellow', 'black', 'red']) { const s = g.cures?.[color]; const c = h('i', `pdCure ${s || ''}`, s === 'eradicated' ? '✓' : ''); /* (P7: a dot each, filled once made, ✓ wiped out) */ c.style.setProperty('--c', COLOR[color]); c.title = `${COLOR_KO[color]}: ${s === 'eradicated' ? '근절됨' : s ? '치료제 개발' : '아직'} · 남은 큐브 ${g.supply?.[color]}`; cures.append(c); }
     box.append(cures);
+    const legend = h('button', 'pdChip link', '?'); legend.type = 'button'; legend.title = '지도 보는 법'; legend.setAttribute('aria-label', '지도 보는 법'); /* (P7) */
+    legend.onclick = () => { const menu = $('pandemicMenu'); const close = h('button', 'ghost tiny', '닫기'); close.type = 'button'; close.onclick = closeMenu;
+      menu.replaceChildren(h('strong', '', '지도 보는 법'), ...['숫자 동그라미: 말 (자리 번호, 자리 색)', '작은 막대: 질병 큐브 (색마다, 한 도시에 3개면 빨간 테두리 — 하나 더 오면 확산)', '집 모양: 연구소', '치료제 동그라미: 채워지면 개발, ✓ 는 근절'].map((t) => h('p', 'pdSmall', t)), close); menu.classList.remove('hidden'); };
+    box.append(legend);
     // (v1.10.199 총괄 검토: 확산·감염률·치료제 always; the piles, discards and cubes folded -- opened by a tap)
     const more = h('details', 'pdMore'); more.open = moreOpen; more.addEventListener('toggle', () => { moreOpen = more.open; });
     more.append(h('summary', 'pdChip link', `더미 ${g.playerDeckCount} · 큐브`)); box.append(more);
@@ -199,9 +206,10 @@
     let row = $('pandemicSeats'); if (!row) { row = h('div', 'pandemicSeats'); row.id = 'pandemicSeats'; $('pandemicHud').before(row); }
     const g = state.game; row.replaceChildren();
     for (const s of Object.keys(g.roles || {}).sort()) {
-      const p = h('span', `pdSeat${s === g.turn ? ' turn' : ''}${s === mySeat() ? ' me' : ''}`); p.style.setProperty('--seat', SEAT_COLOR[s] || '#94a3b8');
+      const p = h('button', `pdSeat${s === g.turn ? ' turn' : ''}${s === mySeat() ? ' me' : ''}`); p.type = 'button'; p.style.setProperty('--seat', SEAT_COLOR[s] || '#94a3b8'); p.style.setProperty('--role', ROLE_COLOR[g.roles[s]] || '#94a3b8');
       const face = h('span', 'seatFace'); face.setAttribute('aria-hidden', 'true'); const look = state.players?.[s]?.face; if (look?.skin) face.style.setProperty('--skin', look.skin); if (look?.hair) face.style.setProperty('--hair', look.hair);
-      p.append(face, h('b', '', label(s)), h('small', '', `${ROLE_KO[g.roles[s]] || ''} · ${(g.hands?.[s] || []).length}장`)); row.append(p);
+      p.append(face, h('b', '', label(s)), h('small', 'pdRoleTag', `${ROLE_ICON[g.roles[s]] || ''} ${ROLE_KO[g.roles[s]] || ''} · ${(g.hands?.[s] || []).length}장`)); row.append(p);
+      p.onclick = () => popup(`${label(s)} · ${ROLE_ICON[g.roles[s]] || ''} ${ROLE_KO[g.roles[s]] || ''}`, [], ROLE_TEXT[g.roles[s]] || ''); /* (P1: what the role does, a tap away) */
     }
   }
   function showPile(title, names) {
@@ -295,10 +303,15 @@
     if (!p && g.phase === 'actions' && g.turn === me && lg) {
       const here = g.pawns[me];
       btn('이동', () => setMode(mode?.kind === 'move' ? null : { kind: 'move' }), mode?.kind === 'move' ? 'primary' : 'secondary', '갈 수 있는 도시가 지도에 표시됩니다');
-      btn('연구소 건설', () => (lg.buildRemove ? (setMode({ kind: 'build-remove' }), popup('연구소가 6개입니다', [], '옮길 기존 연구소를 지도에서 고르세요.')) : send({ type: 'build' })), 'secondary').disabled = busy || !lg.build;
+      /* (게임관 1차 P8: a button not usable now says why when pressed, instead of a grey that says nothing) */
+      const why = (b, ok, reason) => { if (busy || ok) return; b.classList.add('why'); b.setAttribute('aria-disabled', 'true'); b.onclick = () => popup('지금은 할 수 없어요', [], reason); };
+      const role0 = g.roles[me]; const sameCity = g.seatOrder.filter((s) => s !== me && g.pawns[s] === here);
+      const most = Math.max(0, ...['blue', 'yellow', 'black', 'red'].filter((c) => !g.cures?.[c]).map((c) => (g.hands[me] || []).filter((x) => !isEvent(x) && CITY[x].color === c).length)); const need = role0 === 'scientist' ? 4 : 5;
+      why(btn('연구소 건설', () => (lg.buildRemove ? (setMode({ kind: 'build-remove' }), popup('연구소가 6개입니다', [], '옮길 기존 연구소를 지도에서 고르세요.')) : send({ type: 'build' })), 'secondary'), lg.build,
+        g.stations.includes(here) ? '이 도시에는 이미 연구소가 있어요.' : role0 === 'operations' ? '지금은 연구소를 지을 수 없어요.' : `${cityName(here)} 카드가 있어야 지을 수 있어요.`);
       for (const color of ['blue', 'yellow', 'black', 'red']) if (g.cubes[here]?.[color] > 0) btn(`${COLOR_KO[color]} 치료 (${g.cubes[here][color]})`, () => send({ type: 'treat', color }), 'secondary', `${cityName(here)}의 ${COLOR_KO[color]} 큐브 제거`).style.borderColor = COLOR[color];
-      btn('정보 공유', () => openShare(), 'secondary').disabled = busy || !lg.share.length;
-      btn('치료제 개발', () => openCure(), 'secondary').disabled = busy || !lg.cure.length;
+      why(btn('정보 공유', () => openShare(), 'secondary'), lg.share.length, !sameCity.length ? '같은 도시에 다른 사람이 있어야 해요.' : role0 === 'researcher' ? '줄 수 있는 도시 카드가 없어요.' : `같은 도시에서 ${cityName(here)} 카드를 주고받을 수 있어요.`);
+      why(btn('치료제 개발', () => openCure(), 'secondary'), lg.cure.length, !g.stations.includes(here) ? '연구소가 있는 도시에서만 만들 수 있어요.' : `같은 색 카드 ${need}장이 필요해요 (지금 ${most}장).`);
       const role = g.roles[me];
       if (role === 'dispatcher') btn('다른 말 이동', () => popup('어느 말을 옮길까요?', g.seatOrder.map((s) => [`${label(s)}${s === me ? ' (나)' : ''} · ${cityName(g.pawns[s])}`, () => setMode({ kind: 'dispatch', pawn: s })]), '내 카드로 이동하고, 다른 사람의 말이면 동의가 필요합니다.'), 'secondary');
       if (role === 'operations' && lg.opsmove) { const b = btn('특수 이동', () => { dockOpen = true; dockSeat = me; selection = { kind: 'ops' }; renderDock(); }, 'secondary', '연구소에서 도시 카드 1장을 버리고 어디든 이동(차례당 1번)'); b.disabled = busy || !lg.opsmove.length; }
@@ -434,6 +447,20 @@
     }
   }
 
+  // 게임관 1차 P3 「지금 할 일」: one line under the HUD -- what I am to do now, or whom we wait for
+  let revealed = null;
+  function nowLine() {
+    const g = state.game; const me = mySeat(); const p = g.pending;
+    if (g.status !== 'playing') return '';
+    if (!me) return `관전 중 · ${label(g.turn)}님 차례`;
+    if (p?.type === 'discard') return p.seat === me ? `카드 ${Math.max(1, (g.hands[me] || []).length - 7)}장을 버리세요 — 아래 카드 패널에서 고르세요` : `${label(p.seat)}님이 카드를 버리는 중`;
+    if (p?.type === 'window') { const next = { draw: '카드를 뽑는 중', infect: '도시 감염 단계', 'infect-card': '다음 감염 카드', intensify: '전염 강화' }[p.next] || '다음 단계'; return g.turn === me ? `${next} — [계속]을 누르세요` : `${label(g.turn)}님 차례 · ${next}`; }
+    if (p?.type === 'forecast') return p.seat === me ? '예측: 감염 카드 6장의 순서를 정하세요' : `${label(p.seat)}님이 예측하는 중`;
+    if (p?.type === 'consent' || p?.type === 'share') return me === (p.owner || p.other) ? '요청이 왔어요 — 동의 또는 거절' : '동의를 기다리는 중';
+    if (g.phase === 'actions') return g.turn === me ? `행동 ${g.actionsLeft}번 남음 — 이동하거나 치료하세요` : `${label(g.turn)}님이 행동하는 중`;
+    return g.turn === me ? '카드를 뽑고 도시가 감염되는 중' : `${label(g.turn)}님 차례`;
+  }
+
   // ---- entry points ------------------------------------------------------------------------------------------
   function renderSetup() {
     const g = state.game; const host = Boolean(state.me?.isHost); const box = $('pandemicSetup');
@@ -458,6 +485,10 @@
     const g = state.game; const started = g.status !== 'selecting';
     $('pandemicHud').classList.toggle('hidden', !started); $('pandemicMapWrap').classList.toggle('pdIdle', !started);
     if (started) { renderHud(); drawBoard(); }
+    if (!$('pandemicNow')) { const n = h('div', 'pdNow'); n.id = 'pandemicNow'; n.setAttribute('role', 'status'); $('pandemicHud').after(n); }
+    const now = started ? nowLine() : ''; $('pandemicNow').textContent = now; $('pandemicNow').classList.toggle('hidden', !now);
+    if (g.status === 'playing' && mySeat() && revealed !== room) { revealed = room; const role = g.roles?.[mySeat()]; /* (게임관 1차 P1: my role, told once as the hand starts) */
+      if (role) { const card = h('div', 'pdRoleCard'); card.style.setProperty('--role', ROLE_COLOR[role]); card.append(h('strong', '', `당신은 ${ROLE_ICON[role]} ${ROLE_KO[role]}`), h('span', '', ROLE_TEXT[role])); $('pandemicMapWrap').append(card); setTimeout(() => card.remove(), 4000); } }
     if (started && lastFocus !== room) { lastFocus = room; const at = CITY[g.pawns?.[mySeat() || g.seatOrder?.[0]]]; if (at) { view.cx = at.x; view.cy = at.y; } }
     applyView(); // (the box may have changed shape since: shown, turned)
     if (!$('pandemicActions')) { const a = h('div', 'pandemicActions'); a.id = 'pandemicActions'; $('pandemicMapWrap').after(a); }

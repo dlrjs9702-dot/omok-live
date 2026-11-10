@@ -8710,6 +8710,7 @@
     el.classList.toggle('disconnected', Boolean(player && !player.connected));
     if (!player) small.textContent = '선택 가능';
     else small.textContent = `${seatKo(color)} · ${player.connected ? '접속 중' : '연결 끊김'}`;
+    el.classList.toggle('pickable', !player && state?.game?.status === 'selecting'); /* (F1: an empty seat's tile takes the seat -- the click below) */
     el.classList.toggle('mySeat', seat === color);
     seatFace(el, player);
     // (G-틀② 이름표의 게임 숫자: 윷 완주·점과 상자 상자·오델로 돌 -- the score the game keeps for this seat)
@@ -9154,8 +9155,17 @@
   // the live start button mirrored under the board, so a host on a phone sees how to begin
   const mobileStartBtn = document.getElementById('mobileStartBtn'); let mobileStartTarget = null;
   mobileStartBtn.addEventListener('click', () => mobileStartTarget?.click());
+  // 게임관 1차 F1 첫걸음 (notes docs/gamehall-screen-audit-20261110.md 4·9): the seats to choose and the host's start on the
+  // board itself -- each a stand-in for the panel's own button (its words, its state; a press is that button's)
+  const startTarget = () => [...gameInfoPanel.querySelectorAll('button[id$="StartBtn"]')].find((b) => !b.closest('.hidden') && !b.disabled) || null;
+  function fillBoardPicks(row) {
+    if (!row.isConnected) return;
+    const real = [...roleChooser.querySelectorAll('#standardRoleButtons:not(.hidden) > button, #teamRoleButtons:not(.hidden) > button')].filter((b) => !b.classList.contains('hidden'));
+    const start = startTarget();
+    row.replaceChildren(...[...real, ...(start ? [start] : [])].map((b) => { const p = document.createElement('button'); p.type = 'button'; p.className = b === start ? 'primary boardPick' : `boardPick${b.classList.contains('selected') ? ' selected' : ''}`; p.textContent = b.textContent.trim().replace(/^([◎⚫⚪])\s*/u, '$1 '); p.disabled = b.disabled; p.addEventListener('click', () => b.click()); return p; }));
+  }
   function syncMobileStart() {
-    mobileStartTarget = isMobileLayout() && !roomView.classList.contains('hidden') ? [...gameInfoPanel.querySelectorAll('button[id$="StartBtn"]')].find((b) => !b.closest('.hidden') && !b.disabled) || null : null;
+    mobileStartTarget = isMobileLayout() && !roomView.classList.contains('hidden') && !(boardOverlay.querySelector('.boardPicks') && !boardOverlay.classList.contains('hidden')) ? startTarget() : null; /* (F1: on the board already) */
     mobileStartBtn.classList.toggle('hidden', !mobileStartTarget);
     if (mobileStartTarget) mobileStartBtn.textContent = mobileStartTarget.textContent;
   }
@@ -9201,6 +9211,8 @@
       card.className = `teamPlayer ${(isRpgGame() || gostop || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli || pandemic) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       card.dataset.seat = number; // public seat number only -- renderCurrentActor() keys on it
       card.classList.toggle('emptySeat', !player); // (A3 G1-1: hidden while a hand is played)
+      const pickBtn = !player && state.game.status === 'selecting' ? teamSeatButtons.find((b) => b.dataset.teamSeat === String(number) && !b.disabled) : null; /* (F1: an empty seat's tile takes the seat) */
+      if (pickBtn) { card.classList.add('pickable'); card.setAttribute('role', 'button'); card.tabIndex = 0; card.addEventListener('click', () => pickBtn.click()); }
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
         ? `${number}번${state.game.mode === 'team' ? ` · ${Number(number) % 2 ? 'A' : 'B'}팀` : ''}${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
@@ -9623,6 +9635,7 @@
     oldmaidModeChooser.classList.toggle('hidden', !oldmaid);
     if (oldmaid) renderOldMaid();
     if (g.status !== 'finished') boardOverlay.classList.remove('legendResult');
+    boardOverlay.querySelector('.boardPicks')?.remove(); /* (F1: the choice row only while choosing -- made again below) */
     if (rpg || gostop || pictionary || liar || oldmaid || twenty || davinci || halli || pandemic) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
@@ -9634,6 +9647,7 @@
       if (!choice) boardOverlay.textContent = team || city ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : `${choiceKo('black')} · ${choiceKo('white')} · 관전 중 역할을 선택하세요`;
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
+      const picks = document.createElement('div'); picks.className = 'boardPicks'; boardOverlay.append(picks); requestAnimationFrame(() => fillBoardPicks(picks)); /* (게임관 1차 F1: the choice on the board) */
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'playing' && g.paused) {
       boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
@@ -13804,7 +13818,7 @@
     if (timer && hudTurn?.deadlineAt !== timer.deadlineAt) hudTurn = { deadlineAt: timer.deadlineAt, total: Math.max(1000, Number(timer.deadlineAt) - serverNow) }; else if (!timer) hudTurn = null;
     const left = timer ? Math.max(0, Number(timer.deadlineAt) - serverNow) : 0;
     const seated = Object.entries(state.players || {}).filter(([, p]) => p); const other = seated.length === 2 ? seated.find(([k]) => k !== String(seat))?.[1] : null;
-    byId('roomHudLabel').textContent = [roomGameLogo.textContent, seated.length > 2 || !other ? (seated.length ? `${seated.length}명` : '') : other.label].filter(Boolean).join(' · ');
+    byId('roomHudLabel').textContent = [roomGameLogo.textContent, state.gameType === 'pandemic' ? `함께하기 ${seated.length}명` /* (게임관 1차 P5: no opponent -- all together) */ : seated.length > 2 || !other ? (seated.length ? `${seated.length}명` : '') : other.label].filter(Boolean).join(' · ');
     const tt = state.turnTimer; const otherLeft = !timer && tt?.deadlineAt ? Math.max(0, Number(tt.deadlineAt) - (Date.now() - (turnRingClock || (Date.now() - Number(tt.serverNow || Date.now()))))) : null; // (G1: the other's turn -- their seconds, from the public clock)
     const pdActs = state.gameType === 'pandemic' && state.game?.phase === 'actions' && Number.isFinite(Number(state.game?.actionsLeft)) ? String(state.game.actionsLeft) : null; // (v1.10.248 G3: 팬데믹's actions left, big)
     const ownBig = hudOwnBig(state.game); byId('roomHudBig').classList.toggle('word', Boolean(ownBig) && !/^[\d/ :?–]+$/.test(ownBig));
@@ -13844,6 +13858,7 @@
     if (!arrow) continue;
     details.addEventListener('toggle', () => { arrow.textContent = details.open ? '▼' : '▶'; });
   }
+  for (const [card, btn] of [[blackPlayer, chooseBlackBtn], [whitePlayer, chooseWhiteBtn]]) card.addEventListener('click', () => { if (card.classList.contains('pickable')) btn.click(); }); /* (게임관 1차 F1: the empty seat's tile) */
   chooseBlackBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'black' }));
   chooseWhiteBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'white' }));
   chooseSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));

@@ -170,10 +170,15 @@ test('캐릭터 짝 역할 안내: 흑·백과 기본 색의 대기 문구 일�
     expect((await post(request,'/api/room/choose-role',a.token,{choice:'black'})).status).toBe(200);
     await b.page.reload();await expect(b.page.locator('#roomView')).toBeVisible();
     const [first,second]=paired?['흑','백']:game==='connect4'?['빨강','노랑']:['파랑','빨강'];
-    await expect(b.page.locator('#boardOverlay')).toHaveText(`${first} · ${second} · 관전 중 역할을 선택하세요`);
+    await expect(b.page.locator('#boardOverlay')).toContainText(`${first} · ${second} · 관전 중 역할을 선택하세요`);
+    // (게임관 1차 F1 첫걸음: the same choice on the board -- the taken seat greyed, mine to press; the empty seat's tile too)
+    const picks=b.page.locator('#boardOverlay .boardPick');
+    await expect(picks.filter({hasText:`${first} 선택`})).toBeDisabled();await expect(picks.filter({hasText:`${second} 선택`})).toBeEnabled();await expect(picks.filter({hasText:'관전'})).toBeEnabled();
+    await expect(b.page.locator('#whitePlayer')).toHaveClass(/pickable/);await expect(b.page.locator('#blackPlayer')).not.toHaveClass(/pickable/);
     await expect(b.page.locator('#chooseBlackBtn')).toContainText(`${first} 선택`);
     await expect(b.page.locator('#chooseWhiteBtn')).toContainText(`${second} 선택`);
     if(game==='yut')await expect(b.page.locator('#yutHint')).toHaveText(`${first}과 ${second}이 정해지면 ${first}부터 시작합니다.`);
+    if(game==='yut'&&paired){await picks.filter({hasText:`${second} 선택`}).click();await expect(b.page.locator('#roleChooser')).toBeHidden();await expect(b.page.locator('#boardOverlay .boardPicks')).toHaveCount(0);} /* (pressed on the board: both seats taken, the hand starts) */
     await expectNoScriptError(b.page);
     expect((await post(request,'/api/room/leave',b.token,{})).status).toBe(200);
     expect((await post(request,'/api/room/leave',a.token,{})).status).toBe(200);
