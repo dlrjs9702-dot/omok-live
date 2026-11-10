@@ -565,8 +565,10 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // and its arch deckAt (what feet walk on, island-terrain): every vertex keeps its height above the model's own deck
   // (BRIDGE.top, the model's plank tops, about 0.57 in the middle to 0.32 at the ends) on top of the game's.
   const plank = mat(0xc58b5a); const post = mat(0x8a5a3b);
-  const BRIDGE_SCALE = 1.3; // prop.bridge's scale (island-assets.js)
-  const BRIDGE = { half: 1.63, side: 0.8, top: (x) => 0.57 - 0.25 * (x / 1.5) ** 2 }; // the model: deck ends, post line, plank tops
+  const BRIDGE_SCALE = 1; // prop.bridge's scale (island-assets.js; 111 yard-v2 bridge_arch, made at our size)
+  /* (111: measured on bridge_arch -- planks 0.752 m in the middle down to 0.13 at the deck's ends ±2.08 m, within 1 cm of the
+     curve; posts and rails 0.92~1.2 m out) */
+  const BRIDGE = { half: 2.08, side: 1.06, top: (x) => 0.752 - 0.148 * x * x }; // the model: deck ends, post line, plank tops
   for (const b of bridges) {
     const g = new THREE.Group(); g.position.set(b.x, 0, b.z); g.rotation.y = Math.atan2(b.ux, b.uz); scene.add(g);
     const visual = new THREE.Group(); g.add(visual);
