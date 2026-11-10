@@ -2249,7 +2249,13 @@ async function plazaSpotToday(account, now = nowMs()) {
 }
 const plazaSpotTimer = setInterval(() => { for (const [account, spot] of plazaSpots) if (!spot.dirty && spot.day !== kstDate()) plazaSpots.delete(account); savePlazaSpots(); }, PLAZA_SPOT_SAVE_MS);
 plazaSpotTimer.unref?.();
-process.once('SIGTERM', () => { savePlazaSpots().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });
+/* (300 끊기지 않는 섬 (나): every open lobby and room stream told first -- the page says so and joins again by itself; the
+   spots saved; out 1.5 s later, 3 s at most) */
+function shutdown() {
+  for (const e of [...lobbyStreams, ...[...streams.values()].flatMap((s) => [...s])]) { try { sseWrite(e.res, 'restart', { at: nowMs() }); } catch {} }
+  savePlazaSpots().finally(() => setTimeout(() => process.exit(0), 1500)); setTimeout(() => process.exit(0), 3000).unref();
+}
+process.once('SIGTERM', shutdown);
 
 async function broadcastAnnouncements() {
   const items = await announcementStore.list();
@@ -4459,8 +4465,9 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.299' });
+    return sendJson(res, 200, { ok: true, version: '1.10.300' });
   }
+  if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
   if (pathname === '/asset-cache.json' && req.method === 'GET') {
@@ -4781,6 +4788,7 @@ async function requestHandler(req, res) {
     }
     return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/shutdown' && req.method === 'POST') { sendJson(res, 200, { ok: true }); shutdown(); return; } // 300: SIGTERM's way where no signal reaches a handler (Windows)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tax' && req.method === 'POST') { // v1.10.86: a day's tax now
     const body = await parseJson(req); taxDay = null; await collectTaxes(nowMs(), String(body.day || '')); return sendJson(res, 200, { ok: true });
   }
@@ -5863,6 +5871,10 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const lots = await homeLots(); const names = new Map();
     for (const owner of new Set(Object.values(lots))) names.set(owner, await accountName(owner));
+    /* (300 (다): the houses and yard levels not yet in memory read in one query -- after a start every lot's two reads at
+       once had queued past the pool's 10 s, 11-10 07:35) */
+    const cold = [...new Set(Object.values(lots))].flatMap((o) => [...(homeCache.has(o) ? [] : [`home:${o}`]), ...(yardLevels.has(o) ? [] : [`yard:${o}`])]);
+    if (cold.length) for (const [k, v] of Object.entries(await pointStore.worldValues(cold))) { const o = k.slice(5); if (k.startsWith('home:')) { if (!homeCache.has(o)) homeCache.set(o, v || null); } else if (!yardLevels.has(o)) yardLevels.set(o, Number(v?.level) || 1); }
     const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null, stage: h ? homeStage(h).n : null, building: Boolean(h?.upgradeDay), yard: h?.yard || [], yardLevel: owner ? await yardLevelOf(owner) : 1 }; })); // (v1.10.225: the yard outside, for everyone)
     const mine = await homeOf(account); const grow = Math.min(IslandHome.TOP_STAGE, mine ? homeStage(mine).n + 1 : 2); // (the next stage's price)
     const yardLevel = await yardLevelOf(account);
@@ -9315,6 +9327,9 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
+  /* (300 (다): the pool's connections opened again before listening -- the start's own reads are a minute old by now; not
+     ready: asked again every 5 s, /ready 503 till then) */
+  if (pointStore.warm && !(await pointStore.warm())) { const again = setInterval(() => pointStore.warm({ tries: 1 }).then((ok) => { if (ok) clearInterval(again); }), 5000); again.unref(); }
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(sweepInputIdle, 60 * 1000).unref(); // v1.10.35
   setInterval(() => storageLog().catch((error) => console.warn('[storage]', error.message)), 60 * 60 * 1000).unref(); storageLog().catch(() => {}); // v1.10.256 (hourly look, a line a day)
@@ -9325,7 +9340,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.299 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.300 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

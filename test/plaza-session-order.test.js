@@ -179,3 +179,22 @@ test('새 문서 heartbeat가 끝나면 첫 heartbeat가 미완료인 옛 문서
   assert.equal((await fx.req('/api/session', fx.token)).data.authenticated, true);
   assert.equal((await fx.req('/api/session/heartbeat', fx.token, { page: 'current', sequence: 2 })).status, 200);
 });
+
+// 300 끊기지 않는 섬 (나·다): SIGTERM (a test's own route where no signal reaches a handler) -- every open lobby stream gets
+// 'restart' before the server goes; /ready answers once the store is ready (JSON here: at once)
+test('끌 때 열린 대기방 SSE에 restart를 먼저 보내고 꺼진다, /ready는 준비되면 200', async t => {
+  const fx = await fixture(t);
+  assert.equal((await fetch(fx.base + '/ready')).status, 200);
+  const abort = new AbortController(); t.after(() => abort.abort());
+  const res = await fetch(fx.base + '/api/lobby/events', { headers: { 'X-Session-Token': fx.token }, signal: abort.signal });
+  const reader = res.body.getReader(); const decoder = new TextDecoder(); let text = '';
+  const reading = (async () => { try { for (;;) { const { value, done } = await reader.read(); if (done) break; text += decoder.decode(value, { stream: true }); } } catch {} })();
+  await sleep(300);
+  const started = Date.now();
+  if (process.platform === 'win32') assert.equal((await fx.req('/api/test/shutdown', fx.token, {})).status, 200); else fx.stop();
+  await reading;
+  assert.match(text, /^event: restart$/m);
+  for (let k = 0; k < 40 && (await fetch(fx.base + '/health').then(() => true, () => false)); k += 1) await sleep(100);
+  assert.equal(await fetch(fx.base + '/health').then(() => true, () => false), false, '꺼짐');
+  assert.ok(Date.now() - started < 3500, `${Date.now() - started} ms`);
+});

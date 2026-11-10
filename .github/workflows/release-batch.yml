@@ -1,0 +1,38 @@
+name: Release batch
+
+# 300 끊기지 않는 섬 (가) (notes docs/steady-island-20261110.md): the live server follows the `live` branch, not main --
+# once a day at 05:00 KST `live` is moved up to main (a fast-forward; nothing when they are the same), so a day's merges
+# go out together at the quietest hour. By hand (workflow_dispatch) for an urgent fix or 「바로 올려」.
+on:
+  schedule:
+    - cron: '0 20 * * *' # (05:00 KST)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-batch
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Move live up to main
+        run: |
+          main=$(git rev-parse origin/main)
+          if ! git rev-parse -q --verify origin/live >/dev/null; then
+            echo "live: new at main ${main}"
+          elif [ "$(git rev-parse origin/live)" = "$main" ]; then
+            echo "live: already main ${main}"; exit 0
+          elif ! git merge-base --is-ancestor origin/live "$main"; then
+            echo "::error::live is not behind main (a commit only on live?) -- left as it is"; exit 1
+          else
+            echo "live: $(git rev-parse --short origin/live) -> $(git rev-parse --short "$main")"
+          fi
+          git push origin "${main}:refs/heads/live"
