@@ -248,11 +248,12 @@ module.exports.standAt = standAt;
 // some were pending at that instant left the rest hidden when the card filled a moment later -- its choices then never
 // showed. Pressed till none is pending or typing)
 async function revealTalk(page) {
-  const pending = page.locator('#plazaDialog .lostRequestLine.talkPending, #plazaDialog .lostRequestLine.typing');
   // (v1.10.240 3b, island-story CI: a choice's answer arriving after the reveal had found nothing pending left its new lines
   // -- and the next choices -- hidden for good; the card is marked while an answer is on its way: waited out first)
   const waiting = page.locator('#plazaDialog .lostRequest.talkWaiting');
-  await expect.poll(async () => { if (await waiting.count()) return -1; const n = await pending.count(); if (n) await page.keyboard.press('Space'); return n; }, { timeout: 30000, intervals: [150] }).toBe(0);
+  /* (검토 2026-11-11, notes docs/resident-roster-87-20261111.md: counted and pressed in one go in the page -- a Space sent after the typing had
+     ended in between pressed the card's 「할게요!」 (resident-roster CI 「…확인」); a tap on the card is talkNext, nothing when no line is left) */
+  await expect.poll(async () => { if (await waiting.count()) return -1; return page.evaluate(() => { const n = document.querySelectorAll('#plazaDialog .lostRequestLine.talkPending, #plazaDialog .lostRequestLine.typing').length; if (n) document.querySelector('#plazaDialog .lostRequest').click(); return n; }); }, { timeout: 30000, intervals: [150] }).toBe(0);
 }
 module.exports.revealTalk = revealTalk;
 // v1.10.267 1-2 이야기 책도 대화로: a chapter's talk walked, the first reply each time -- to the node asking 받기 (its note up:
