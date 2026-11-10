@@ -79,4 +79,3 @@ test('메신저 알림 방식: 기기 값 → 서버 값 → 열어 둘 때만, 
   assert.equal(MA.alertChoice(null, null, true), 'open'); assert.equal(MA.alertChoice(null, null, false), 'open');
   assert.equal(MA.alertChoice('push', null, false), 'open'); assert.equal(MA.alertChoice('off', null, false), 'off');
 });
-
