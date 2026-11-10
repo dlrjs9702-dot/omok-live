@@ -20,7 +20,7 @@ const downloads = page => page.evaluate(() => performance.getEntriesByType('reso
 // v1.10.25: the files prepared before the game starts -- the required groups (core and the whole island)
 const manifestKeys = page => page.evaluate(() => { const m = window.GameBoot.manifest; return m.assets.filter(a => m.required.includes(a.group)).map(a => `${a.url}?rev=${a.rev}`).sort(); });
 const groupKeys = (page, group) => page.evaluate(g => window.GameBoot.manifest.assets.filter(a => a.group === g).map(a => `${a.url}?rev=${a.rev}`).sort(), group);
-const ROCK = '/assets/island/seasonal-v2/common/rock_v1_round.glb';
+const ROCK = '/assets/island/nature109/summer/rock_boulder.glb'; /* (G2: a rock still on the island -- assets 109) */
 const FILES = 'gc-res:files';
 const ourCaches = page => page.evaluate(async () => (await caches.keys()).filter(n => n.startsWith('gc-res:')).sort());
 const active = page => page.evaluate(async () => { const r = await caches.match('/active', { cacheName: 'gc-res:meta' }); return r ? r.json() : null; });
@@ -85,7 +85,7 @@ test('업데이트: 바뀐 파일만 같은 캐시에 받고(복사 없음), 완
   await page.goto('/');
   await ready(page);
   const keys = await manifestKeys(page);
-  await agePack(page, /^\/assets\/island\/seasonal-v2\/common\/rock_v1_round\.glb$/);
+  await agePack(page, /^\/assets\/island\/nature109\/summer\/rock_boulder\.glb$/);
 
   await page.reload();
   await ready(page);
@@ -102,7 +102,7 @@ test('필수 그룹(core·아일랜드 4계절)만 입장 전에 받고, 게임 
   await ready(page);
   const required = await manifestKeys(page);
   expect(await page.evaluate(() => window.GameBoot.manifest.required)).toEqual(['core', 'island']);
-  for (const season of ['spring', 'summer', 'autumn', 'winter', 'common']) expect(required.some(key => key.includes(`/seasonal-v2/${season}/`))).toBe(true);
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const pack of ['seasonal-v2', 'nature109']) expect(required.some(key => key.includes(`/${pack}/${season}/`)), `${pack} ${season}`).toBe(true); /* (G2: the nature in assets 109's four seasons; seasonal-v2's common rocks gone) */
   expect(await downloads(page)).toHaveLength(required.length);
   expect(await packKeys(page, FILES)).toEqual(required);
   const cards = await groupKeys(page, 'game.gostop');
@@ -237,7 +237,7 @@ test.describe('사전검사', () => {
     });
     await page.goto('/');
     await ready(page);
-    const old = await agePack(page, /^\/assets\/island\/seasonal-v2\/common\/rock_v1_round\.glb$/);
+    const old = await agePack(page, /^\/assets\/island\/nature109\/summer\/rock_boulder\.glb$/);
     await page.evaluate(() => sessionStorage.setItem('denyWrites', '1'));
 
     await page.reload();

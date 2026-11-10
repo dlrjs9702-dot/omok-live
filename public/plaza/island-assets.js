@@ -551,6 +551,26 @@
   for (const f of ['tree_block', 'tree_stack', 'tree_spire']) REGISTRY[`angular.${f}`] = av4(f, { scale: 0.75 }); // (4.8-5.4 m as made: our trees' height)
   REGISTRY['angular.bush'] = av4('bush', { near: 22, shadows: false });
   for (const f of ['rock_block', 'rock_lump', 'rock_small', 'rock_stack', 'cliff_a', 'cliff_b', 'grass_a', 'grass_b', 'grass_c', 'grass_d']) REGISTRY[`angular.${f}`] = { url: `${AV}/angular_${f}.glb`, low: { url: `${AV}/angular_${f}_low.glb` }, near: f.startsWith('grass') ? 22 : 40, ...(f.startsWith('grass') ? { shadows: false } : {}) };
+  // G2 나무·덤불·바위 (assets 109: Nature Megapack - Low Poly Extended, RG Poly, CC0; notes docs/graphics-island-wide-20261108.md):
+  // the island's trees, bushes, rocks, crystals, cliffs, flowers, reeds and ground cover as the pilot patch's -- made at our
+  // sizes (scale 1 but the few noted), a small picture each, four seasons; the same targets, so places, solids and boxes
+  // stay. No far file (사용자 「로우 모델 넣지 마」): one model at every distance -- no High/Low switch, nothing to fade.
+  // `offset`, `near`, `shadows` kept as they were.
+  const N109 = '/assets/island/nature109'; const n109 = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${N109}/${s}/${f}.glb`]));
+  const G2 = {
+    'nature.tree.round': 'tree_round', 'nature.tree.tiered': 'tree_twin', 'nature.tree.blossom': 'tree_cluster', 'nature.tree.tall': 'tree_poplar', 'nature.tree.pine': 'tree_fir',
+    'angular.tree_stack': 'tree_fir_slim', 'nature.tree.sapling': 'tree_sapling', 'angular.tree_block': 'tree_trio', 'angular.tree_spire': 'tree_spire',
+    'tree.harvest': 'tree_fruit', 'tree.fruitLayer': 'fruit_layer', 'nature.tree.stump': 'stump_short', 'nature.tree.stump.1': 'stump_tall',
+    'nature.bush.0': 'bush_round', 'angular.bush': 'bush_tall', 'nature.bush.1': 'bush_mound',
+    'nature.rock.0': 'rock_boulder', 'nature.rock.1': 'rock_flat', 'nature.rock.2': 'rock_tall', 'angular.rock_block': 'rock_block', 'angular.rock_lump': 'rock_lump', 'angular.rock_small': 'rock_pebble',
+    'angular.rock_stack': 'crystal_heap', 'nature.shoreStones': 'shore_stones', 'angular.cliff_a': 'cliff_a', 'angular.cliff_b': 'cliff_b',
+    'nature.flower.0': 'flower_tulip', 'nature.flower.1': 'flower_daisy_yellow', 'nature.flower.2': 'flower_daisy', 'nature.flower.3': 'flower_lavender', 'nature.flower.4': 'flower_red',
+    'angular.grass_b': 'grass_reed', 'angular.grass_a': ['grass_reed', 0.778], 'angular.grass_d': 'reed_cattail', 'angular.grass_c': ['reed_cattail', 0.917],
+    'ground.fern': 'bush_fern', 'ground.shrub': 'plant_low', 'ground.flowers': 'clover',
+  };
+  for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale }; } // ('nature.bush.0' was 'nature.bush')
+  for (const id of ['nature.bush.0', 'nature.bush.1', 'angular.bush']) REGISTRY[id].hideFar = 60; // (G2 덤불: past 60 m faded out over the 0.4 s dither; never casting shadows -- `shadows: false` kept)
+  REGISTRY['project.blossom'] = { url: `${N109}/spring/tree_cluster.glb`, scale: 0.888, near: 35 }; // (the flower path's trees: in bloom whatever the season)
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)

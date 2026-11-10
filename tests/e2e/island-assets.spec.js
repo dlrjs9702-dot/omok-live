@@ -600,7 +600,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const { page } = a;
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !id.startsWith('pilot.') /* (v1.10.275 그래픽 시범: off in tests) */ && !/^(furn|shop|pet|petshop|bike|home|insect|jail|museum|event|harvest|story|xmas|snow|snowman|newyear|roof)./.test(id) && !id.startsWith('mall.') /* (v1.10.211: the 백화점's floors -- inside, and the roof) */ && !id.startsWith('project.') && !id.startsWith('yard.') /* (v1.10.225: a yard's pieces only where one is placed) */ /* (v1.10.222: a project's pieces only at its works or open -- island-projects.spec) */ && !/^character.walker.[a-z]+_(work|off)$/.test(id) && id !== 'character.farmer' /* (v1.10.213: the islanders' two looks -- at posts in rooms, this week's stories, the day off from the roster; the farmer's old model only if 한들's is not there) */ /* (E1: the festival's stall and goods show only during a festival, the trophies in houses; X1: the Christmas pieces too) */ && !['mall.floor2', 'mall.elevator', 'mall.floor2_sign', 'sign.wall' /* (간판: indoors only) */, 'sign.post' /* (I8-4 간판은 건물에만: the small places' post board -- none on the island now) */, 'together.pet_ditto', 'character.warden'].includes(id) /* (R4: the jail's room and its warden, inside) */ /* (묶음 2·2-2: the 가구점's and the 펫샵's, inside the 백화점; 3회차 21 메타몽: walks only with its owner) */ && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('fx.') /* (v1.10.260: the net's effects, only as it swings) */ && !id.startsWith('emote.') /* (v1.10.263: the marks, only over one who emotes) */ && !id.startsWith('npc_face.') /* (v1.10.264: an islander's expression pieces, only on its head) */ &&!id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !id.startsWith('winter.') && !id.startsWith('townhall3.') && !id.startsWith('plant.') /* (B 45: only where someone planted) */ && !id.startsWith('together.') && id !== 'character.guide' /* (B 47: on a birthday, at the 우체통, with the guide, the insects, the museum and pets) */ && !id.startsWith('character.clerk_') /* (B 44: inside the 민원실 only) */ /* (B 46: December or the administrator's switch only) */ && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && id !== 'nature.bush' /* (G2: both bush kinds their own entries now -- the general one only a fallback) */ && !id.startsWith('pilot.') /* (v1.10.275 그래픽 시범: off in tests) */ && !/^(furn|shop|pet|petshop|bike|home|insect|jail|museum|event|harvest|story|xmas|snow|snowman|newyear|roof)./.test(id) && !id.startsWith('mall.') /* (v1.10.211: the 백화점's floors -- inside, and the roof) */ && !id.startsWith('project.') && !id.startsWith('yard.') /* (v1.10.225: a yard's pieces only where one is placed) */ /* (v1.10.222: a project's pieces only at its works or open -- island-projects.spec) */ && !/^character.walker.[a-z]+_(work|off)$/.test(id) && id !== 'character.farmer' /* (v1.10.213: the islanders' two looks -- at posts in rooms, this week's stories, the day off from the roster; the farmer's old model only if 한들's is not there) */ /* (E1: the festival's stall and goods show only during a festival, the trophies in houses; X1: the Christmas pieces too) */ && !['mall.floor2', 'mall.elevator', 'mall.floor2_sign', 'sign.wall' /* (간판: indoors only) */, 'sign.post' /* (I8-4 간판은 건물에만: the small places' post board -- none on the island now) */, 'together.pet_ditto', 'character.warden'].includes(id) /* (R4: the jail's room and its warden, inside) */ /* (묶음 2·2-2: the 가구점's and the 펫샵's, inside the 백화점; 3회차 21 메타몽: walks only with its owner) */ && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('fx.') /* (v1.10.260: the net's effects, only as it swings) */ && !id.startsWith('emote.') /* (v1.10.263: the marks, only over one who emotes) */ && !id.startsWith('npc_face.') /* (v1.10.264: an islander's expression pieces, only on its head) */ &&!id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !id.startsWith('winter.') && !id.startsWith('townhall3.') && !id.startsWith('plant.') /* (B 45: only where someone planted) */ && !id.startsWith('together.') && id !== 'character.guide' /* (B 47: on a birthday, at the 우체통, with the guide, the insects, the museum and pets) */ && !id.startsWith('character.clerk_') /* (B 44: inside the 민원실 only) */ /* (B 46: December or the administrator's switch only) */ && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   if (!require('../../public/plaza/island-terrain.js').dalmaru) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('dalmaru.') || ids[k].startsWith('plaza.')) ids.splice(k, 1); // (달마루섬's own models: placed only on it -- 대청마당's paving too)
   // (달마루섬: its cliff fronts are shown as facility.townhall/store, their aliases; the 작명소 and the trader are indoors --
   // the 개명 신청 window and the 백화점's 노점, built on the way in; 묶음 1: 대청마당 has gardens, no planters)
@@ -615,10 +615,10 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // (v1.10.213 주민 근무표 A: 꽃님's and 물결's own models carry their watering can and rod -- quest.watering_can and
   // quest.fishing_rod are put in a hand only if those models are not there)
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
-    for (const kind of ['tree_v1', 'tree_v2', 'tree_v3', 'shrub']) {
-      expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}.glb`)), `${season} ${kind}`).toBe(true);
-      expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}_low.glb`)), `${season} ${kind} low`).toBe(true); // v1.10.28
+    for (const kind of ['tree_round', 'tree_twin', 'tree_poplar', 'bush_round']) { /* (G2 assets 109: each season's own file, no far one -- 사용자 「로우 모델 넣지 마」) */
+      expect(files.some(([url]) => url === `/assets/island/nature109/${season}/${kind}.glb`), `${season} ${kind}`).toBe(true);
     }
+    expect(files.some(([url]) => url.startsWith('/assets/island/nature109/') && url.endsWith('_low.glb') && !url.endsWith('/plant_low.glb') /* (the ground cover's 「low plant」, its name) */), `${season} no G2 low`).toBe(false);
   }
   const gazebo = d.assets.attaches.find((x) => x.ids.includes('facility.chat'));
   expect(gazebo.zone).toBeGreaterThanOrEqual(0);
@@ -630,12 +630,12 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // Terrain changes can leave a colour absent in one zone. Check every placed colour's actual seasonal H/L pair.
   const flowers = d.assets.batches.filter((batch) => batch.ids[0].startsWith('nature.flower.'));
   expect(flowers.length).toBe(5);
+  const FLOWER = ['flower_tulip', 'flower_daisy_yellow', 'flower_daisy', 'flower_lavender', 'flower_red']; /* (G2 assets 109: a colour each, its season's file, no far one) */
   for (const batch of flowers) for (const zone of Object.values(batch.zones)) {
-    const colour = batch.ids[0].split('.').pop();
-    expect(zone.url.endsWith('/' + zone.look + '/flower_' + colour + '_' + zone.look + '.glb')).toBe(true);
-    expect(zone.low.endsWith('/' + zone.look + '/flower_' + colour + '_' + zone.look + '_low.glb')).toBe(true);
+    const colour = Number(batch.ids[0].split('.').pop());
+    expect(zone.url, batch.ids[0]).toBe(`/assets/island/nature109/${zone.look}/${FLOWER[colour]}.glb`);
+    expect(zone.low).toBe(null);
     expect(files.some(([url, state]) => url === zone.url && state === 'loaded')).toBe(true);
-    expect(files.some(([url, state]) => url === zone.low && state === 'loaded')).toBe(true);
   }
   const bridges = d.assets.attaches.filter((x) => x.ids.includes('prop.bridge'));
   expect(bridges.length).toBe(await page.evaluate(() => { const B = window.IslandTerrain.bridges; return (typeof B === 'function' ? B() : B).filter((b) => !b.model).length; })); // (지금 섬 4; 달마루섬 2 -- 윤슬다리 is its own model)
@@ -647,10 +647,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.startsWith('/assets/island/'));
   });
   // All four seasons/colours remain available offline, including files not used by today's placement.
-  for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const c of [0, 1, 2, 3, 4]) {
-    expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '.glb');
-    expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '_low.glb');
-  }
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const f of FLOWER) expect(cached).toContain(`/assets/island/nature109/${season}/${f}.glb`); /* (G2: assets 109's flowers) */
   const manifest = await page.evaluate(() => window.GameBoot.manifest);
   const requiredGroups = new Set(manifest.required || ['core']);
   const islandAssets = manifest.assets.filter(asset => asset.url.startsWith('/assets/island/'));
@@ -693,13 +690,16 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
 // tree is the full model, far away the same design simplified (never the procedural look), and the switch has a band
 test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 Low, 경계에는 히스테리시스, 생성형으로 돌아가지 않는다', async ({ browser, request }) => {
   test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */
-  const a = await island(browser, request, 'LOD', null);
+  /* (G2 사용자 「로우 모델 넣지 마」: the island's nature has no Low now -- the switch, still the houses' and others', tried on
+     the round tree given a stand-in far file) */
+  const n109 = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/nature109/${s}/${f}.glb`]));
+  const a = await island(browser, request, 'LOD', { 'nature.tree.round': { seasons: n109('tree_round'), low: { seasons: n109('tree_twin') }, near: 35 } });
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.39: trees only -- October's decor and bats would slow a software-rendered runner
   const tree = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.tree.round');
   await expect.poll(async () => (await tree())?.placed, { timeout: 30000 }).toBe(true);
   const t = await tree();
-  expect(t.low).toMatch(/tree_v1_[a-z]+_low\.glb$/);
+  expect(t.low).toMatch(/nature109\/[a-z]+\/tree_twin\.glb$/);
   await page.evaluate(() => window.PlazaDebug().holdQuality(2)); // a slow test machine must not change the distances mid-way
   const near = async () => page.evaluate(() => { const d = window.PlazaDebug(); return window.AssetPipeline.lodDistance(35, d.quality, true); }); /* (v1.10.290: 1.5x, a tree casts shadows -- 35 m at least) */
   // the player stands `dist` east of the first round tree
@@ -721,6 +721,8 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   }
   const all = await tree();
   expect(all.far).toBeGreaterThan(0); expect(all.near).toBeGreaterThan(0);
+  { const bushes = (await debug(page)).assets.batches.filter((b) => b.placed && b.ids.some((id) => /^(nature|angular)\.bush/.test(id))); /* (G2 덤불: past 60 m none drawn -- `far` the hidden ones; no Low file) */
+    expect(bushes.length).toBeGreaterThan(0); expect(bushes.reduce((n, b) => n + b.far, 0)).toBeGreaterThan(0); for (const b of bushes) expect(b.low).toBe(null); }
   // v1.10.290: the cross-fade (the tests' drawing switches at once) -- on, walking off: some copies on their way, then none
   { const fade = async () => (await debug(page)).assets.fade; const before = (await fade()).started; await page.evaluate(() => window.PlazaDebug().lodFade(true));
     await standAt((await near()) * 1.1 + 3); await expect.poll(async () => (await fade()).started, { timeout: 15000 }).toBeGreaterThan(before);
