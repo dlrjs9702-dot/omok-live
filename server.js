@@ -2249,7 +2249,13 @@ async function plazaSpotToday(account, now = nowMs()) {
 }
 const plazaSpotTimer = setInterval(() => { for (const [account, spot] of plazaSpots) if (!spot.dirty && spot.day !== kstDate()) plazaSpots.delete(account); savePlazaSpots(); }, PLAZA_SPOT_SAVE_MS);
 plazaSpotTimer.unref?.();
-process.once('SIGTERM', () => { savePlazaSpots().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });
+/* (300 끊기지 않는 섬 (나): every open lobby and room stream told first -- the page says so and joins again by itself; the
+   spots saved; out 1.5 s later, 3 s at most) */
+function shutdown() {
+  for (const e of [...lobbyStreams, ...[...streams.values()].flatMap((s) => [...s])]) { try { sseWrite(e.res, 'restart', { at: nowMs() }); } catch {} }
+  savePlazaSpots().finally(() => setTimeout(() => process.exit(0), 1500)); setTimeout(() => process.exit(0), 3000).unref();
+}
+process.once('SIGTERM', shutdown);
 
 async function broadcastAnnouncements() {
   const items = await announcementStore.list();
@@ -4461,6 +4467,7 @@ async function requestHandler(req, res) {
   if (pathname === '/health' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, version: '1.10.299' });
   }
+  if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
   if (pathname === '/asset-cache.json' && req.method === 'GET') {
@@ -4781,6 +4788,7 @@ async function requestHandler(req, res) {
     }
     return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/shutdown' && req.method === 'POST') { sendJson(res, 200, { ok: true }); shutdown(); return; } // 300: SIGTERM's way where no signal reaches a handler (Windows)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tax' && req.method === 'POST') { // v1.10.86: a day's tax now
     const body = await parseJson(req); taxDay = null; await collectTaxes(nowMs(), String(body.day || '')); return sendJson(res, 200, { ok: true });
   }
@@ -9315,6 +9323,9 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
+  /* (300 (다): the pool's connections opened again before listening -- the start's own reads are a minute old by now; not
+     ready: asked again every 5 s, /ready 503 till then) */
+  if (pointStore.warm && !(await pointStore.warm())) { const again = setInterval(() => pointStore.warm({ tries: 1 }).then((ok) => { if (ok) clearInterval(again); }), 5000); again.unref(); }
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(sweepInputIdle, 60 * 1000).unref(); // v1.10.35
   setInterval(() => storageLog().catch((error) => console.warn('[storage]', error.message)), 60 * 60 * 1000).unref(); storageLog().catch(() => {}); // v1.10.256 (hourly look, a line a day)

@@ -553,3 +553,20 @@ test('PostgreSQL 포인트 저장소', async (t) => {
   await matches.pool.end();
   await store.pool.end();
 });
+
+// 300 끊기지 않는 섬 (다): a SELECT whose connection never came is asked once more -- a write, or another error, never twice;
+// warming an unreachable DB says not ready (/ready 503) instead of waiting on
+test('DB: 연결 시간 초과 때 읽기만 한 번 더, 쓰기·다른 오류는 그대로; 닿지 않는 DB는 준비 안 됨', async () => {
+  const { retryRead } = require('../lib/point-store');
+  const timeout = () => Object.assign(new Error('timeout exceeded when trying to connect'), {});
+  const calls = []; const flaky = (fails) => retryRead(async (text) => { calls.push(text); if (calls.length <= fails) throw timeout(); return { rows: [text] }; });
+  assert.deepEqual((await flaky(1)('SELECT 1')).rows, ['SELECT 1']); assert.equal(calls.length, 2);
+  calls.length = 0; assert.deepEqual((await flaky(1)({ text: ' select x from y' })).rows.length, 1); assert.equal(calls.length, 2);
+  calls.length = 0; await assert.rejects(flaky(2)('SELECT 1'), /timeout exceeded/); assert.equal(calls.length, 2); /* (once more only) */
+  calls.length = 0; await assert.rejects(flaky(1)('UPDATE point_accounts SET balance = 1'), /timeout exceeded/); assert.equal(calls.length, 1);
+  calls.length = 0; await assert.rejects(flaky(1)('WITH a AS (DELETE FROM t RETURNING 1) SELECT 1'), /timeout exceeded/); assert.equal(calls.length, 1);
+  calls.length = 0; await assert.rejects(retryRead(async (text) => { calls.push(text); throw new Error('relation does not exist'); })('SELECT 1'), /relation/); assert.equal(calls.length, 1);
+  const store = new PostgresPointStore('postgres://nobody@127.0.0.1:1/none');
+  assert.equal(store.dbReady, false); assert.equal(await store.warm({ tries: 2, wait: 10 }), false); assert.equal(store.dbReady, false);
+  await store.pool.end();
+});

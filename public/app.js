@@ -8245,6 +8245,7 @@
     if (!data) return;
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
+    if (event === 'restart') { serverRestarting(); return; } // 300 (나)
     if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
@@ -8345,6 +8346,7 @@
     if (!data) return;
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
+    if (event === 'restart') { serverRestarting(); return; } // 300 (나): a game room's too (the match itself ends -- in memory)
     if (event === 'roomState') {
       if (isStaleRoomState(parsed)) return;
       const settledGostop = needsGostopPoints(parsed, state);
@@ -13409,6 +13411,17 @@
     } catch (err) { say(err.message, true); }
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
+  // 300 끊기지 않는 섬 (나): the server going (a new version, a restart -- sessions and sign-ins live in its memory) -- a note,
+  // /health asked till it answers, then in again by this device's sign-in (자동 로그인's) to the spot it saved; without one,
+  // the page again
+  let restarting = false;
+  async function serverRestarting() {
+    if (restarting) return; restarting = true;
+    stopStream(); stopLobbyStream(); showToast('새 판으로 바뀌는 중이에요. 잠시 뒤 저절로 이어져요', 20000);
+    for (let k = 0; k < 100; k += 1) { await new Promise((r) => setTimeout(r, k ? 3000 : 2500)); try { if ((await fetch('/health', { cache: 'no-store' })).ok) break; } catch {} }
+    try { if (local(DEVICE_KEY)) { const d = await api('/api/account/device-login', { method: 'POST', headers: { 'X-Messenger-Device': local(DEVICE_KEY) }, body: '{}' }); accountToken.set(d.accountToken); enterWithAccount(); return; } } catch {}
+    location.reload();
+  }
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
   { // v1.10.258 (총괄, 폴드) 「앱으로 설치」 on the first screen and in ☰ -- the messenger's: shown only when Chrome offers the
     // install (Chrome's own menu won't put a second app of one site on a phone that has the messenger's), never in the app
