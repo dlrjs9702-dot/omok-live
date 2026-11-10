@@ -48,6 +48,7 @@ const RoomAi = require('./lib/room-ai');
 const IslandWeather = require('./lib/island-weather'); // A4 날씨
 const IslandStars = require('./lib/island-stars'); // A4 별똥별
 const IslandContest = require('./lib/island-contest'); // A4 섬 대회 (every day)
+const IslandGather = require('./lib/island-gather'); // G4b 채집 (mushrooms, twigs, the four-leaf clover on fixed spots)
 const IslandCalendar = require('./public/plaza/island-calendar'); // E1 계절 행사 달력
 const IslandFestival = require('./lib/island-festival'); // E1 축제 도장
 const Together = require('./lib/island-together'); // B 47 생일·우체통
@@ -1881,7 +1882,10 @@ function broadcastIslandRemoved(ids) {
     try { sseWrite(entry.res, 'islandEvent', { removed: ids }); } catch { lobbyStreams.delete(entry); }
   }
 }
-const islandEventTimer = setInterval(() => broadcastIslandRemoved(islandEvents.expire()), 30000);
+// (G4b: the collectables still growing back when the server stopped -- read once the store is up)
+let gatherRestored = false;
+const restoreGather = () => { if (gatherRestored || !pointStore) return; gatherRestored = true; pointStore.worldValue('gatherGrowing').then((m) => islandEvents.restoreGrowing(m)).catch(() => { gatherRestored = false; }); };
+const islandEventTimer = setInterval(() => { restoreGather(); broadcastIslandRemoved(islandEvents.expire()); }, 30000);
 islandEventTimer.unref?.();
 
 // v1.10.31 잡초 채집 (IDEAS 「잡초 채집」, 사용자 확정 2026-10-05): the island's weeds (lib/island-weeds.js) and their state
@@ -7448,6 +7452,10 @@ async function requestHandler(req, res) {
       const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, residents: islandEvents.residents(), events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
     }
+    /* G4b 채집: one account's picks a day by group (lib/island-gather.js perDay) -- over it, the thing stays for anyone */
+    const gather = IslandGather.KINDS[claimed.event?.type] || null; const gatherDay = kstDate(nowMs());
+    if (gather) { const d = (await pointStore.questDoc(account, 'gatherDay')).doc; const used = d?.day === gatherDay ? d.n?.[gather.group] || 0 : 0;
+      if (used >= gather.perDay) { resourcePulls.delete(session.token); islandEvents.settle(claimed, false, account); return sendError(res, 409, 'GATHER_CAP', `${IslandGather.GROUP_NAMES[gather.group]}은(는) 하루 ${gather.perDay}개까지 주울 수 있어요. 내일 다시 와 주세요.`); } }
     let outcome;
     try {
       if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null, dexEntry: IslandFishing.DEX_IDS.has(claimed.item) ? claimed.item : null }, nowMs());
@@ -7462,6 +7470,10 @@ async function requestHandler(req, res) {
     }
     const done = islandEvents.settle(claimed, true, account);
     if (done?.removed) broadcastIslandRemoved([done.removed]);
+    if (gather && outcome.applied) { /* (G4b: today's count, and what grows back kept over a restart) */
+      await pointStore.questApply(account, 'gatherDay', (d) => { const n = d?.day === gatherDay ? { ...(d.n || {}) } : {}; n[gather.group] = (n[gather.group] || 0) + 1; return { doc: { day: gatherDay, n } }; });
+      await pointStore.setWorldValue('gatherGrowing', islandEvents.gatherGrowing()).catch(() => {});
+    }
     let photoThanks = null; // (v1.10.274 사진 부탁: the islander +1 호감도 -- one request a day from each, apart from the talks' cap -- and the album's line)
     if (photoN != null && outcome.applied) {
       const day = kstDate(nowMs()); const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, day, [{ n: photoN, delta: 1 }]);
@@ -9307,6 +9319,7 @@ async function main() {
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
   walkerTimeMode = (await pointStore.worldValue('time'))?.mode || 'auto'; // (R3 ③: the islanders' round by the held time of day)
+  gatherRestored = true; islandEvents.restoreGrowing(await pointStore.worldValue('gatherGrowing').catch(() => null)); // (G4b: before anyone asks)
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   await dalmaruMoveIn().catch((error) => console.error('달마루섬 이사 실패:', error.message)); // 5단계: once, the first start on the new island
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back

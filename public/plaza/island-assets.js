@@ -580,6 +580,9 @@
   ['tallgrass_a', 'tallgrass_b', 'tallgrass_c'].forEach((f, k) => { REGISTRY[`ground.tallgrass.${k}`] = { seasons: n112(f), near: 25, shadows: false, hideFar: 40 }; }); /* (240 clumps x 428 triangles: faded out past 40 m like the bushes past 60) */
   ['lily_pads', 'lily_pads_wide'].forEach((f, k) => { REGISTRY[`water.lily.${k}`] = { seasons: n112(f), near: 30, shadows: false }; });
   ['lotus_pink', 'lotus_white'].forEach((f, k) => { REGISTRY[`water.lotus.${k}`] = { seasons: n112(f, 'lily_pads'), near: 30, shadows: false }; });
+  // G4b 채집 (assets 112; lib/island-gather.js): the collectables lying on their spots -- four of the six mushrooms, the twigs and the
+  // four-leaf clover (the other two mushrooms the 106 pilot's, pilot.mushroom_*); one model at every distance
+  for (const f of ['mushroom_brown_cap', 'mushroom_red_cone', 'mushroom_bolete', 'mushroom_blue', 'branch_fork', 'twigs', 'clover_four_leaf']) REGISTRY[`gather.${f}`] = { seasons: n112(f), near: 30, shadows: false };
   // 111 마당과 길 (assets 111: Cute Park, FarmLand, Pirate Island -- RG Poly, CC0; Roadside -- EmacEArt, our baked files only):
   // the yard's and the paths' pieces, the same targets fitted to their boxes (places, turns, solids and stand-ins stay), made
   // at our size (scale 1 but the mailboxes), a picture each, four seasons; the three filled with flowers keep a lighter far
