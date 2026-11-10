@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.303 G4a 흩뿌리기·막힘
+
+- 에셋 112: 덤불 +160·바위 +120·통나무 34·야자수 18(막힘), 키 큰 풀 240(40 m 밖 숨김)·연잎/연꽃 36. 바위 막힘(자갈·물가 돌 빼고). 택시 길 가운데서 4.05 m·정류장 10 m·걷는 길 2.5 m·건널목·집터·열매 자리 비움. Low 없음.
+- 다음: G4b 채집(버섯·네잎클로버·나뭇가지) + 로컬 e2e 설정(로비 15초, PW_GPU, fp:107).
+
 ## v1.10.302 게임관 1차
 
 - F1 첫걸음: 판 게임 고르는 중 덮개에 역할 버튼(오른쪽 칸 버튼 대역)과 방장 시작, 빈 자리 이름표 누르면 앉기. 팬데믹 P1 역할 카드(불투명, 이유 창이 뜨면 닫힘)·칩 짧은 역할 이름, P3 지금 할 일, P5 함께하기 N명, P7 치료제 동그라미·큐브 3개 빨간 테두리·? 범례, P8 못 쓰는 버튼 이유.
@@ -22,8 +27,3 @@
 
 - 에셋 111 yard-v2: 등록부 23개 같은 대상에 파일만, 꽃 셋만 Low; 다리 BRIDGE 값을 새 모델에 맞춤(판 윗면 0.752 − 0.148x², 끝 ±2.08). 옛 파일 54개 정리. 에셋 113 land-v1 34모델 등록만(G4a·G4b에서 놓기). Codex 291~300 7건(fillBox ID, box/grow to, 구치소 기간 끝 jailFree·같은 기록만, 관리자 태그 3).
 - 다음: 게임관 1차(판 안에서 고르기·팬데믹 1차), 그다음 G4a.
-
-## v1.10.300 끊기지 않는 섬
-
-- (가) release-batch.yml: 매일 05:00 KST·손으로 live ← main fast-forward(Render Branch→live·/ready는 병합 뒤 총괄). (나) SIGTERM → SSE restart → 화면 알림·/health 뒤 기기 로그인으로 다시 입장(자동 로그인 끈 계정·손님은 로그인 화면). (다) 07:35 원인 = /api/home 집터마다 동시 읽기 + 풀 3·쉬는 연결 10초 닫힘 → worldValues 한 쿼리, 쉬는 연결 5분, 듣기 전 데우기·/ready, SELECT만 한 번 더. 사진 부탁 자리 집 7 m 밖.
-- 다음: 게임관 1차 또는 111(사용자 답).

@@ -766,11 +766,11 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // lists bake together exactly as one did
   // v1.10.32 해안 돌: about half the rocks on the beaches (not the cliffs) are a low cluster of shore stones (04 pack),
   // lying along the shoreline, in the same places -- nothing new to walk round
-  const shoreStones = (r) => (T.dalmaru ? coastDist(r.x, r.z) < 4 : cliffAt(r.x, r.z) < 0.4) && hash(r.x, r.z, 31) < 0.5; // (달마루섬 6회차 1: the rocks at the water are the rocky shore's now)
+  const shoreStones = T.rockKind ? (r) => T.rockKind(r) === 'shore' /* (G4a: the terrain says which rock is which -- what blocks follows it) */ : (r) => (T.dalmaru ? coastDist(r.x, r.z) < 4 : cliffAt(r.x, r.z) < 0.4) && hash(r.x, r.z, 31) < 0.5; // (달마루섬 6회차 1: the rocks at the water are the rocky shore's now)
   // 묶음 5: the purple crystal heap at three places (the inland rocks lowest by their hash), and some inland rocks angular
   const inland = rocks.filter((r) => !shoreStones(r)); const crystals = new Set(inland.slice().sort((a, b) => hash(a.x, a.z, 43) - hash(b.x, b.z, 43)).slice(0, 3));
   const ANGULAR_ROCKS = ['rock_lump', 'rock_small', 'rock_block'];
-  const angularRock = (r) => (crystals.has(r) ? 'rock_stack' : hash(r.x, r.z, 41) < 0.3 ? ANGULAR_ROCKS[Math.min(2, Math.floor(hash(r.x, r.z, 42) * 3))] : null);
+  const angularRock = T.rockKind ? (r) => (/^rock_/.test(T.rockKind(r)) ? T.rockKind(r) : null) : (r) => (crystals.has(r) ? 'rock_stack' : hash(r.x, r.z, 41) < 0.3 ? ANGULAR_ROCKS[Math.min(2, Math.floor(hash(r.x, r.z, 42) * 3))] : null);
   for (const name of [...ANGULAR_ROCKS, 'rock_stack']) instanced(pebble, natureMat, inland.filter((r) => angularRock(r) === name && settled(r)), (r) => setM(r.x, onMesh(r.x, r.z) + (name === 'rock_stack' ? 0 : 0.1), r.z, r.s, r.s * 0.7, r.r),
     { cell: 60, color: (r, c) => c.set(name === 'rock_stack' ? 0x9b7fd6 : name === 'rock_block' ? 0xd99a9a : 0xb8b0a4), target: [`angular.${name}`] });
   for (let k = 0; k < 3; k += 1) {
@@ -779,6 +779,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   }
   instanced(pebble, natureMat, rocks.filter(shoreStones), (r) => setM(r.x, onMesh(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, -(Math.atan2(r.z, r.x) + Math.PI / 2)),
     { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: ['nature.shoreStones', 'nature.rock.1', 'nature.rock'] });
+  if (T.rockBlocks) for (const r of rocks) if (settled(r) && T.rockBlocks(r)) solids.push({ nature: true, x: r.x, z: r.z, r: 0.8 * r.s }); // (G4a 사용자 「바위들은 뚫고 지나가지 못하게」: all but the pebble and the shore's low stones)
   instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, onMesh(p.x, p.z) + 0.5, p.z, 1));
   // 묶음 5: reeds on the river's and the lake's banks (decoration -- nothing to walk round), cliff pieces on the cliff
   // edges facing the sea (walked round: there is no going over the edge anyway)
@@ -796,6 +797,23 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     for (let k = 0; k < 4; k += 1) instanced(reedGeo, natureMat, reeds.filter((r) => r.k === k), (r) => setM(r.x, onMesh(r.x, r.z) - 0.02, r.z, 1, 1, hash(r.x, r.z, 48) * TAU), { shadow: false, cell: 60, target: [`angular.grass_${'abcd'[k]}`] });
     for (let k = 0; k < 2; k += 1) instanced(mergeColored([facet(BOX, 0x8f8a7c, 0, 0.8, 0, 2.4, 1.6)]), natureMat, cliffs.filter((c) => c.k === k), (c) => setM(c.x, ground(c.x, c.z) - 0.2, c.z, 1, 1, c.yaw), { cell: 60, target: [`angular.cliff_${'ab'[k]}`] });
     for (const c of cliffs) solids.push({ nature: true, x: c.x, z: c.z, r: 1.2 });
+  }
+  // G4a (assets 112): fallen logs and palms (blocking: the terrain's rounds), tall grass and lily pads / lotus (walked
+  // through, on the water) -- where the terrain scattered them; each a plain stand-in until its model is in
+  const N4 = nature(); /* (not G: the shared shapes) */
+  if (N4.logs) {
+    const bark = 0x8a6a48; const moss = 0x6f9a4f;
+    const LOG_GEO = [[part(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 7), bark, 0, 0.2, 0, { rz: Math.PI / 2 })], [part(new THREE.CylinderGeometry(0.21, 0.21, 1.8, 7), moss, 0, 0.21, 0, { rz: Math.PI / 2 })],
+      [part(new THREE.CylinderGeometry(0.2, 0.2, 2.0, 7), moss, 0, 0.2, 0, { rz: Math.PI / 2 }), part(new THREE.CylinderGeometry(0.15, 0.15, 0.9, 6), moss, 0.3, 0.17, 0.3, { rz: Math.PI / 2, ry: -0.8 })]];
+    LOG_GEO.forEach((parts, k) => instanced(mergeColored(parts), natureMat, N4.logs.filter((l) => l.kind === k && settled(l)), (l) => setM(l.x, onMesh(l.x, l.z), l.z, 1, 1, l.yaw), { cell: 60, target: [`nature.log.${k}`] }));
+    for (const l of N4.logs) if (settled(l)) for (const o of T.logRounds(l)) solids.push({ nature: true, ...o });
+    const palmGeo = mergeColored([part(new THREE.CylinderGeometry(0.13, 0.22, 4.4, 7), 0x9a7a55, 0, 2.2, 0), crown(SPH, 0x5fae4f, 0, 4.6, 0, 2.6, 0.7)]);
+    for (let k = 0; k < 3; k += 1) instanced(palmGeo, natureMat, N4.palms.filter((p) => p.kind === k && settled(p)), (p) => setM(p.x, onMesh(p.x, p.z), p.z, p.s, p.s, p.yaw), { cell: 60, target: [`nature.palm.${k}`] });
+    for (const p of N4.palms) if (settled(p)) solids.push({ nature: true, x: p.x, z: p.z, r: 0.3 * p.s });
+    const tallClump = keep(mergeColored([blade(0, 0, 0.95), blade(0.3, 0.25, 0.8), blade(-0.25, -0.3, 0.85), blade(0.1, -0.35, 0.7)])); /* (the instance's size is the model's too: the stand-in made tall, not scaled) */
+    for (let k = 0; k < 3; k += 1) instanced(tallClump, natureMat, N4.grass.filter((g) => g.kind === k && settled(g)), (g) => setM(g.x, onMesh(g.x, g.z), g.z, g.s, g.s, g.yaw), { shadow: false, cell: 60, target: [`ground.tallgrass.${k}`] });
+    const padGeo = mergeColored([part(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 9), 0x5f9e4f, 0, 0.015, 0)]);
+    for (let k = 0; k < 4; k += 1) instanced(padGeo, natureMat, N4.lilies.filter((l) => l.kind === k), (l) => setM(l.x, T.streamWaterHeight(l.x, l.z) + 0.01, l.z, 1, 1, l.yaw), { shadow: false, cell: 60, target: [k < 2 ? `water.lily.${k}` : `water.lotus.${k - 2}`] });
   }
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut

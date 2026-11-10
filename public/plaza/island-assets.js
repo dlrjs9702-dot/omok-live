@@ -571,6 +571,15 @@
   for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale }; } // ('nature.bush.0' was 'nature.bush')
   for (const id of ['nature.bush.0', 'nature.bush.1', 'angular.bush']) REGISTRY[id].hideFar = 60; // (G2 덤불: past 60 m faded out over the 0.4 s dither; never casting shadows -- `shadows: false` kept)
   REGISTRY['project.blossom'] = { url: `${N109}/spring/tree_cluster.glb`, scale: 0.888, near: 35 }; // (the flower path's trees: in bloom whatever the season)
+  // G4a 흩뿌리기 (assets 112: Nature Megapack, RG Poly, CC0): fallen logs, palms, tall grass, lily pads and lotus where the
+  // terrain scattered them (island.js) -- four seasons, one model at every distance (사용자 「로우 모델 넣지 마」); the lotus
+  // in winter only its pads (assets 112: hidden in winter)
+  const N112 = '/assets/island/nature112'; const n112 = (f, winter = f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${N112}/${s}/${s === 'winter' ? winter : f}.glb`]));
+  ['log_plain', 'log_mossy', 'log_fork_mossy'].forEach((f, k) => { REGISTRY[`nature.log.${k}`] = { seasons: n112(f), near: 35 }; });
+  ['palm_straight', 'palm_lean', 'palm_curve'].forEach((f, k) => { REGISTRY[`nature.palm.${k}`] = { seasons: n112(f), near: 45 }; });
+  ['tallgrass_a', 'tallgrass_b', 'tallgrass_c'].forEach((f, k) => { REGISTRY[`ground.tallgrass.${k}`] = { seasons: n112(f), near: 25, shadows: false, hideFar: 40 }; }); /* (240 clumps x 428 triangles: faded out past 40 m like the bushes past 60) */
+  ['lily_pads', 'lily_pads_wide'].forEach((f, k) => { REGISTRY[`water.lily.${k}`] = { seasons: n112(f), near: 30, shadows: false }; });
+  ['lotus_pink', 'lotus_white'].forEach((f, k) => { REGISTRY[`water.lotus.${k}`] = { seasons: n112(f, 'lily_pads'), near: 30, shadows: false }; });
   // 111 마당과 길 (assets 111: Cute Park, FarmLand, Pirate Island -- RG Poly, CC0; Roadside -- EmacEArt, our baked files only):
   // the yard's and the paths' pieces, the same targets fitted to their boxes (places, turns, solids and stand-ins stay), made
   // at our size (scale 1 but the mailboxes), a picture each, four seasons; the three filled with flowers keep a lighter far
