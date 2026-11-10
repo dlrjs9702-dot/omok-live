@@ -1661,15 +1661,22 @@ const adminJails = async () => (adminJailCache ||= (await pointStore.worldValue(
 const adminJailNow = (account, now = nowMs()) => { const j = adminJailCache?.[account]; return j && (j.until == null || j.until > now) ? j : null; };
 async function adminJailOf(account, now = nowMs()) {
   const j = (await adminJails())[account]; if (!j) return null;
-  if (j.until != null && j.until <= now) { await adminJailSet(account, null, 'end'); return null; }
+  if (j.until != null && j.until <= now) {
+    if (await adminJailSet(account, null, 'end', '', j)) /* (Codex 291~300 #3: its sessions out of the cell -- unless the tax still holds them) */
+      if (!(taxDebt.get(account) > 0)) for (const [token, s] of sessions) if (pointAccountForSession(s) === account) jailFree(token);
+    return null;
+  }
   return j;
 }
-async function adminJailSet(account, rec, why, name = '') {
-  let before = null; await worldEdit(async () => { const all = { ...((await pointStore.worldValue('adminJail')) || {}) }; before = all[account] || null; if (rec) all[account] = rec; else delete all[account]; await pointStore.setWorldValue('adminJail', all); adminJailCache = all; });
+// `expect`: the record it ends (Codex 291~300 #4: a new one the administrator set meanwhile stays) -> false when changed
+async function adminJailSet(account, rec, why, name = '', expect = undefined) {
+  let before = null; let stale = false;
+  await worldEdit(async () => { const all = { ...((await pointStore.worldValue('adminJail')) || {}) }; before = all[account] || null; if (expect !== undefined && JSON.stringify(before) !== JSON.stringify(expect)) { stale = true; adminJailCache = all; return; } if (rec) all[account] = rec; else delete all[account]; await pointStore.setWorldValue('adminJail', all); adminJailCache = all; });
+  if (stale) return false;
   const when = (r) => (!r ? '-' : r.until == null ? `풀어 줄 때까지 · ${r.reason}` : `${new Date(r.until + 9 * 3600000).toISOString().slice(5, 16).replace('T', ' ')}까지 · ${r.reason}`);
   console.log(`[admin-jail] ${why} ${account}${rec ? ` until=${rec.until == null ? 'forever' : new Date(rec.until).toISOString()} reason=${JSON.stringify(rec.reason)}` : ''}`);
   await worldEdit(async () => { const saved = (await pointStore.worldValue('economy')) || {}; await pointStore.setWorldValue('economy', { ...saved, history: [{ at: nowMs(), by: why === 'end' ? '서버' : '관리자', key: 'jail', label: `구치소 · ${name || account}`, before: when(before), after: why === 'end' ? '기간 끝' : when(rec) }, ...(saved.history || [])].slice(0, 200) }); });
-  refreshTaxLooks();
+  refreshTaxLooks(); return true;
 }
 // one put in the cell now (a first pose, or the administrator's word while on the island): out of any other room
 function jailPut(token) { freeSeat(token); for (const s of [storeInside, furnitureInside, petshopInside, fashionInside, townhallInside, museumInside]) s.delete(token); homeInside.delete(token); jailFreed.delete(token); jailInside.add(token); jailInmates.add(token); plazaDirty = true; }
@@ -5720,11 +5727,16 @@ async function requestHandler(req, res) {
   // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
   if (pathname === '/api/island/box/grow' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
-    const kind = String((await parseJson(req)).kind || ''); if (!IslandItems.BOXES.includes(kind)) return sendError(res, 400, 'BAD_BOX', '없는 통이에요.');
+    const body = await parseJson(req); const kind = String(body.kind || ''); if (!IslandItems.BOXES.includes(kind)) return sendError(res, 400, 'BAD_BOX', '없는 통이에요.');
     if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 살 수 있어요.');
+    /* (Codex 291~300 #2: the size the page asked for -- sent again or pressed twice, the step already bought answers ok at no
+       charge, and never the step after it; a page from before `to` gets the next step as it did) */
+    const want = body.to === undefined ? null : Number(body.to);
     return worldEdit(async () => {
-      const to = IslandItems.BOX_GROW.find((n) => n > IslandItems.boxOf(account, kind)); const name = BOX_NAME[kind];
+      const now = IslandItems.boxOf(account, kind); const to = IslandItems.BOX_GROW.find((n) => n > now); const name = BOX_NAME[kind];
+      if (want !== null && want <= now && IslandItems.BOX_GROW.includes(want)) return sendJson(res, 200, { ok: true, kind, slots: now, next: to || null, balance: null, already: true });
       if (!to) return sendError(res, 409, 'BOX_TOP', `${name}이 이미 가장 커요.`);
+      if (want !== null && want !== to) return sendError(res, 409, 'STALE_BOX', `${name} 크기가 바뀌었어요. 다시 확인해 주세요.`);
       let out; try { out = await pointStore.charge({ userId: account, claimId: `bag:${kind}box:${to}:${account}`, /* (the charge kind 'bag': the 잡화점's) */ price: Economy.value(`${BOX_KEY[kind]}:${to}`), title: `잡화점 · ${name} ${to}칸` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
       const all = (await pointStore.worldValue('boxSlots')) || {}; await pointStore.setWorldValue('boxSlots', { ...all, [account]: { ...(all[account] || {}), [kind]: to } }); boxSlots.set(`${account}|${kind}`, to);

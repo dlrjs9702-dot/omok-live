@@ -3946,10 +3946,10 @@
     /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 30 → 60 → 90 → 120) */
     const boxBtns = BOX_BTNS.map(([, kind]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost hidden'; b.id = `boxGrowBtn-${kind}`; b.addEventListener('click', async () => {
       b.disabled = true;
-      try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind }) }); plazaDialog.close(); showToast(`${BOX_TITLE[kind]}이 ${r.slots}칸이 됐어요! 잡은 ${kind === 'fish' ? '물고기는' : '곤충은'} 통에 먼저 들어가요.`, 4500); loadPoints(); }
+      try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind, to: Number(b.dataset.to) }) }); /* (Codex 291~300 #2: the size on the button -- sent again, never the one after) */ plazaDialog.close(); showToast(r.already ? `${BOX_TITLE[kind]}은 이미 ${r.slots}칸이에요.` : `${BOX_TITLE[kind]}이 ${r.slots}칸이 됐어요! 잡은 ${kind === 'fish' ? '물고기는' : '곤충은'} 통에 먼저 들어가요.`, 4500); loadPoints(); }
       catch (error) { showToast(error.message, 4000); b.disabled = false; }
     }); return b; });
-    api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.textContent = `${BOX_TITLE[kind]} ${bag.boxes?.[kind] ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
+    api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.dataset.to = String(next.slots); b.textContent = `${BOX_TITLE[kind]} ${bag.boxes?.[kind] ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
     lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
   }
   const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';
@@ -6562,7 +6562,7 @@
   adminTab(aaPref('gc.adminTab', 'accounts'));
   // (섬 환경: the four rows, one 「저장」)
   byId('islandEnvSave').addEventListener('click', () => { for (const id of ['islandTimeForm', 'islandWeatherForm', 'islandSeasonForm', 'islandDecorForm']) byId(id).requestSubmit(); });
-  let accountKeys = []; let accountTags = []; let accountShown = 50; let accountOpen = null;
+  let accountKeys = []; let accountTags = []; let accountShown = 50; let accountOpen = null; const tagSaves = new Map(); // (key id -> its last tag save)
   let accountChip = aaPref('gc.adminChip', 'all'); let accountSortBy = aaPref('gc.adminSort', 'seen');
   const TAG_COLORS = [['red', '빨강'], ['orange', '주황'], ['yellow', '노랑'], ['green', '초록'], ['blue', '파랑'], ['purple', '보라']];
   byId('tagColor').replaceChildren(...TAG_COLORS.map(([v, l]) => new Option(l, v)));
@@ -6583,8 +6583,8 @@
     if (accountOpen) { const k = keys.find((x) => x.id === accountOpen); if (k) openAccount(k); else closeAccount(); }
   }
   function drawAccounts() {
-    const v = AA.view(accountKeys, { q: byId('accountSearch').value, chip: accountChip, sort: accountSortBy, tags: accountTags });
-    if (!v.chips.some((c) => c.id === accountChip)) accountChip = 'all';
+    const look = () => AA.view(accountKeys, { q: byId('accountSearch').value, chip: accountChip, sort: accountSortBy, tags: accountTags });
+    let v = look(); if (!v.chips.some((c) => c.id === accountChip)) { accountChip = 'all'; aaKeep('gc.adminChip', 'all'); v = look(); } /* (Codex 291~300 #7: the chosen tag gone -- 「전체」 and its rows) */
     byId('accountChips').replaceChildren(...v.chips.filter((c) => c.count || c.id === 'all' || c.id === accountChip || c.id.startsWith('tag:')).map((c) => {
       const b = aaEl('button', `accountChip${c.color ? ` tag-${c.color}` : ''}`); b.type = 'button'; b.dataset.chip = c.id; b.append(c.label, ' ', aaEl('b', '', String(c.count)));
       b.setAttribute('aria-pressed', String(c.id === accountChip)); b.addEventListener('click', () => { accountChip = c.id; aaKeep('gc.adminChip', c.id); accountShown = 50; drawAccounts(); }); return b;
@@ -6614,7 +6614,10 @@
     const toggles = aaEl('div', 'tagToggles');
     for (const g of accountTags) {
       const b = aaEl('button', `tagPill tag-${g.color}`, g.name); b.type = 'button'; b.dataset.tag = g.id; b.setAttribute('aria-pressed', String((k.tags || []).includes(g.id)));
-      b.addEventListener('click', async () => { const next = (k.tags || []).includes(g.id) ? k.tags.filter((x) => x !== g.id) : [...(k.tags || []), g.id]; try { const r = await api(`/api/admin/keys/${k.id}/tags`, { method: 'POST', body: JSON.stringify({ tags: next }) }); k.tags = r.tags; drawAccounts(); openAccount(k); } catch (err) { showToast(err.message, 4000); } });
+      /* (Codex 291~300 #5·#6: an account's tag saves one after another, each from the tags the last one left; its detail opened
+         again only while it is still the one open) */
+      b.addEventListener('click', () => { const save = async () => { const next = (k.tags || []).includes(g.id) ? k.tags.filter((x) => x !== g.id) : [...(k.tags || []), g.id]; try { const r = await api(`/api/admin/keys/${k.id}/tags`, { method: 'POST', body: JSON.stringify({ tags: next }) }); k.tags = r.tags; drawAccounts(); if (accountOpen === k.id) openAccount(k); } catch (err) { showToast(err.message, 4000); } };
+        tagSaves.set(k.id, (tagSaves.get(k.id) || Promise.resolve()).then(save)); });
       toggles.append(b);
     }
     if (!accountTags.length) toggles.append(aaEl('span', 'smallMuted', '태그는 아래 「분류 태그」에서 만들어요.'));
