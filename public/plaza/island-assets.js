@@ -571,6 +571,29 @@
   for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale }; } // ('nature.bush.0' was 'nature.bush')
   for (const id of ['nature.bush.0', 'nature.bush.1', 'angular.bush']) REGISTRY[id].hideFar = 60; // (G2 덤불: past 60 m faded out over the 0.4 s dither; never casting shadows -- `shadows: false` kept)
   REGISTRY['project.blossom'] = { url: `${N109}/spring/tree_cluster.glb`, scale: 0.888, near: 35 }; // (the flower path's trees: in bloom whatever the season)
+  // 111 마당과 길 (assets 111: Cute Park, FarmLand, Pirate Island -- RG Poly, CC0; Roadside -- EmacEArt, our baked files only):
+  // the yard's and the paths' pieces, the same targets fitted to their boxes (places, turns, solids and stand-ins stay), made
+  // at our size (scale 1 but the mailboxes), a picture each, four seasons; the three filled with flowers keep a lighter far
+  // file (their flowers all tulips), the rest one model at every distance. `offset`, `near`, `shadows`, `rotationY`,
+  // `nightGlow` kept as they were
+  const Y2 = '/assets/island/yard-v2'; const y2 = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${Y2}/${s}/${f}.glb`]));
+  const YARD111 = {
+    'yard.fence_wood': 'fence_rail', 'prop.fence': 'fence_rail_low', 'yard.fence_stone': 'fence_stone_block', 'yard.garden_light': 'garden_lamp', 'prop.lamp': 'street_lamp',
+    'yard.bench': 'bench_yard', 'prop.bench': 'bench_path', 'prop.mailbox.0': ['mailbox_blue_flag', 0.821], 'yard.mailbox': 'mailbox_red', 'prop.mailbox.1': ['mailbox_red', 0.821],
+    'prop.bridge': 'bridge_arch', 'yard.stepping_stones': 'stepping_stones', 'prop.steppingStone': 'stone_step', 'path.town.slab.a': 'slab_town', 'path.trail.step.a': 'step_trail',
+    'path.town.border.straight': 'border_stone', 'path.walk.edge.a': 'pebble_edge', 'yard.flowerbed': 'flowerbed_crate', 'yard.planter_box': 'planter_cabbage',
+    'yard.fence_flower': 'fence_flower_lattice', 'yard.arch': 'arch_vines', 'prop.planter': 'plaza_planter_filled', 'path.gate.planter': 'gate_planter_bush',
+  };
+  const FAR111 = new Set(['flowerbed_crate', 'fence_flower_lattice', 'arch_vines']);
+  // 113 길과 지형지물 (assets 113: Nature Megapack, Cute Park, Pirate Island -- RG Poly, CC0): registered only, land.<file> -- placed
+  // on the island in G4a/G4b with the taxi road's rule (notes docs/taxi-yield-20261109.md); four seasons, a far file for the
+  // far hills and mountains (no shadows: background), the rope bridge and the wreck
+  const L1 = '/assets/island/land-v1'; const l1 = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${L1}/${s}/${f}.glb`]));
+  const LAND113 = ['road_mud_straight', 'road_mud_curve', 'road_mud_t', 'creek_straight', 'creek_corner', 'creek_end', 'creek_bridge', 'footbridge', 'stone_arch_bridge', 'rope_bridge', 'shell', 'starfish', 'crab', 'treasure_chest',
+    'shipwreck', 'rowboat', 'rowboat_light', 'tent_peaked', 'tent_round', 'tent_ridge', 'stall_stripes', 'stall_counter', 'stall_counter_blue', 'cliff_tall', 'cliff_tall_moss', 'cliff_wide', 'cliff_wide_moss', 'crag', 'lantern',
+    'mountain_rock', 'mountain_snow', 'mountain_tall', 'mountain_tall_snow', 'hill_green'];
+  for (const f of LAND113) { const far = /^(mountain|hill)_/.test(f); REGISTRY[`land.${f}`] = { seasons: l1(f), near: far ? 120 : 40, ...(far || f === 'rope_bridge' || f === 'shipwreck' ? { low: { seasons: l1(`${f}_low`) } } : {}), ...(far ? { shadows: false } : {}) }; }
+  for (const [id, v] of Object.entries(YARD111)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || {}; REGISTRY[id] = { near: 30, ...kept, seasons: y2(f), scale, ...(FAR111.has(f) ? { low: { seasons: y2(`${f}_low`) } } : {}) }; }
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)

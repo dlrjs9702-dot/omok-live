@@ -13,7 +13,7 @@
     "nodes": 2,
     "textures": 2
   },
-  "$pilot106": "v1.10.275 그래픽 시범(에셋 106, Nature Megapack Extended CC0): 시범 구역 예외로 파일마다 512 그림 1장(텍스처·이미지 각 1), 노드는 2까지(뿌리 노드 하나 더). 메시·재질·삼각형은 공통 예산 그대로. G2(에셋 109, nature109/): 섬 자연물도 같은 예외(모델마다 작은 그림 1장).",
+  "$pilot106": "v1.10.275 그래픽 시범(에셋 106, Nature Megapack Extended CC0): 시범 구역 예외로 파일마다 512 그림 1장(텍스처·이미지 각 1), 노드는 2까지(뿌리 노드 하나 더). 메시·재질·삼각형은 공통 예산 그대로. G2(에셋 109, nature109/): 섬 자연물도 같은 예외(모델마다 작은 그림 1장). 111(yard-v2/): 마당·길도 같은 예외, 꽃 아치 High만 삼각형 15,000(꽃잎이 얇아 줄이면 깨짐; 먼 거리는 Low 4,884).",
   "trainCarriage": {
     "meshes": 11,
     "nodes": 46
@@ -73,6 +73,10 @@
     "textures": 0
   },
   "fileOverrides": {
+    "yard-v2/spring/arch_vines.glb": { "triangles": 15000 },
+    "yard-v2/summer/arch_vines.glb": { "triangles": 15000 },
+    "yard-v2/autumn/arch_vines.glb": { "triangles": 15000 },
+    "yard-v2/winter/arch_vines.glb": { "triangles": 15000 },
     "taxi-v1/taxi_island.glb": { "meshes": 23, "nodes": 74, "textures": 2 },
     "taxi-v1/taxi_island_low.glb": { "meshes": 23, "nodes": 74, "textures": 2 },
     "taxi-v1/taxi_stop.glb": { "meshes": 2, "nodes": 7, "textures": 2 },

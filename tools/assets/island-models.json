@@ -200,13 +200,6 @@
       "lowSha256": "116ddf178bc5298df2825ad93c5af9e7179243d6727ecc9567479dc23432fec9"
     },
     {
-      "out": "additions-v1/props/lamp.glb",
-      "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/04. Props/lamp.glb",
-      "sha256": "b849ede20d1f16471394966c8923f0de57a87b0c97f2308edbf2f62e47bee32d",
-      "lowSrc": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/05. Low LOD/04. Props/lamp.glb",
-      "lowSha256": "90c3382bf8c459bb0bc1c5b541658df2d7ac11f3f8004a4c7c6d51bc30d91df6"
-    },
-    {
       "out": "characters/body_core.glb",
       "src": "slim49:01. High/body_core.glb",
       "sha256": "a0ee94ef505d8f2566c3d75558f3444d4723c7c14be61e9cc47cc9812784767a",
@@ -748,20 +741,6 @@
       "sha256": "6e4878adb11d9a253f68d47002963f4a2df9b0fcfcc509f8888ce47e4d5b8a92"
     },
     {
-      "out": "gaps-v1/props/mailbox_blue.glb",
-      "src": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/01. High/mailbox_blue_high.glb",
-      "sha256": "7a318ceae4ca5e5c4ed1a54b713f50eb636f50e91da77f3789f8d267645db78e",
-      "lowSrc": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/02. Low/mailbox_blue_low.glb",
-      "lowSha256": "f1fd6886f2426578fd97f5b9182caaa0d5745ed37a045282119d09f3208b61fa"
-    },
-    {
-      "out": "gaps-v1/props/mailbox_red.glb",
-      "src": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/01. High/mailbox_red_high.glb",
-      "sha256": "81a374bac401b34738f88c5a2875cfe15d29fbd8b487cf169490afbddb51de11",
-      "lowSrc": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/02. Low/mailbox_red_low.glb",
-      "lowSha256": "11a2876ce6db149db3fa5b08029581e9685ac215fec5b1c877bf47491ec96b01"
-    },
-    {
       "out": "gaps-v1/props/paper_litter.glb",
       "src": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/01. High/paper_litter_high.glb",
       "sha256": "b3698fdfb63b401d9ea2f87769332355a2fede393e394db6d3fd944ae64ec05a",
@@ -781,13 +760,6 @@
       "sha256": "fdcf64e8cd717420eeb9912a9d111d942ac92e99bd8b06f09b5d184b3d7edece",
       "lowSrc": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/02. Low/pier_post_low.glb",
       "lowSha256": "beb0a2b0f8b92b4395b65d716ca1a853c049632006c51d5be47f116da11c9c50"
-    },
-    {
-      "out": "gaps-v1/props/stepping_stone.glb",
-      "src": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/01. High/stepping_stone_high.glb",
-      "sha256": "a107cdfa7e0c1ab652bf1236a0c905740a0709eddc1d40d80b7f014578c9716a",
-      "lowSrc": "overhaul:refined/04. Game Island gaps 2026-10-05/06. Props and atmosphere/02. Low/stepping_stone_low.glb",
-      "lowSha256": "52f0b7b4325d1531444fb23cb7530c896126805c57949c06827c90515b8289af"
     },
     {
       "out": "gaps-v1/sea/distant_coast_cove.glb",
@@ -981,21 +953,6 @@
       "precompressed": true
     },
     {
-      "out": "seasonal-v2/autumn/bench_autumn_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/03. Autumn/bench_autumn_v1.glb",
-      "sha256": "ceff0bbc1a928adeae313fee10188b5f472b7d60d400df8dcb2e6b4a91e1df06"
-    },
-    {
-      "out": "seasonal-v2/autumn/bridge_autumn_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/03. Autumn/bridge_autumn_v1.glb",
-      "sha256": "2518fbb6aabf6f5a52c8bbd2a17d48eec0dcac6271b3afd6e44d8aa26dd250ad"
-    },
-    {
-      "out": "seasonal-v2/autumn/fence_autumn_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/03. Autumn/fence_autumn_v1.glb",
-      "sha256": "5f02696bb26df8abda4541e2a26a71963c90f9cdee312ff78aff1efc7a8824ba"
-    },
-    {
       "out": "seasonal-v2/autumn/gazebo_autumn_v1.glb",
       "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/03. Autumn/gazebo_autumn_v1.glb",
       "sha256": "32203f870d485988dd7511dc7991ccd4dda9efd7a07510e4776637ecee4b0ef3"
@@ -1005,26 +962,6 @@
       "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/03. Autumn/Nature/shrub_autumn.glb",
       "sha256": "65e1b71f8b44df369d717a5ab12431988fcc4ba30f4c01f8af248235f4bdff69",
       "low": 0.25
-    },
-    {
-      "out": "seasonal-v2/autumn/planter_autumn_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/03. Autumn/planter_autumn_v1.glb",
-      "sha256": "3f5c5719648132b543605eb345a4aa6de875423c6dcf1bd79ef7d81f3e666bdd"
-    },
-    {
-      "out": "seasonal-v2/spring/bench_spring_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/01. Spring/bench_spring_v1.glb",
-      "sha256": "c47a2aa311e5485ae4f715988729fc59e5864cc0164e7573e79fe6a041f884fa"
-    },
-    {
-      "out": "seasonal-v2/spring/bridge_spring_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/01. Spring/bridge_spring_v1.glb",
-      "sha256": "fde2c6b5b3ecff7283f905c40f65a17b2c3123097a1f43727ddfe7e0cd9e545f"
-    },
-    {
-      "out": "seasonal-v2/spring/fence_spring_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/01. Spring/fence_spring_v1.glb",
-      "sha256": "05951349aba8f05ce7b2c81fd26ef2c8ab19446633b7c4482efc4c4ce5969956"
     },
     {
       "out": "seasonal-v2/spring/gazebo_spring_v1.glb",
@@ -1038,26 +975,6 @@
       "low": 0.25
     },
     {
-      "out": "seasonal-v2/spring/planter_spring_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/01. Spring/planter_spring_v1.glb",
-      "sha256": "a7217700143e0836f73cb10288b2ec311f1e0cfb8e17de30329ae779cf75f0b4"
-    },
-    {
-      "out": "seasonal-v2/summer/bench_summer_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/02. Summer/bench_summer_v1.glb",
-      "sha256": "e5206679c3c24d22d64e4436abe0874bb782f01143c512e9697a93ddbd5db3a0"
-    },
-    {
-      "out": "seasonal-v2/summer/bridge_summer_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/02. Summer/bridge_summer_v1.glb",
-      "sha256": "00cfc98692e5dbcaee7b04d090b4202ebe396dc89de90ba783d310724d375aa4"
-    },
-    {
-      "out": "seasonal-v2/summer/fence_summer_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/02. Summer/fence_summer_v1.glb",
-      "sha256": "8285547a02dc950ba461073de64297e5eea2269b63b50417b034da837115e465"
-    },
-    {
       "out": "seasonal-v2/summer/gazebo_summer_v1.glb",
       "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/02. Summer/gazebo_summer_v1.glb",
       "sha256": "657de55c57e87ddcb5a42270b77e07202d41255ca7d7f4a4c4d90b77e294f6dc"
@@ -1069,26 +986,6 @@
       "low": 0.25
     },
     {
-      "out": "seasonal-v2/summer/planter_summer_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/02. Summer/planter_summer_v1.glb",
-      "sha256": "184c1b5476b8dbcfe6d585838f134e8e21536d37aad82f027cfea4ded40808d5"
-    },
-    {
-      "out": "seasonal-v2/winter/bench_winter_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/04. Winter/bench_winter_v1.glb",
-      "sha256": "77edd2366148658b668c94eea10bc1a476ade92739fcd76dd7d40195c7d0c9a6"
-    },
-    {
-      "out": "seasonal-v2/winter/bridge_winter_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/04. Winter/bridge_winter_v1.glb",
-      "sha256": "7051357bba2372624ddb78169c9cc8394e080757274d70f68a270c09fb55a836"
-    },
-    {
-      "out": "seasonal-v2/winter/fence_winter_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/04. Winter/fence_winter_v1.glb",
-      "sha256": "8337897f4773731d63fc7ca5ad786e0e659472c1ebde8f5052b0bcf612457020"
-    },
-    {
       "out": "seasonal-v2/winter/gazebo_winter_v1.glb",
       "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/04. Winter/gazebo_winter_v1.glb",
       "sha256": "6205fc3885368b8403d1117cbe4fca66a93ebd6132b9ecdf6f4a2a0b717dc2de"
@@ -1098,11 +995,6 @@
       "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/04. Winter/Nature/shrub_winter.glb",
       "sha256": "a4a3a29cdd320ca0d14992aab6eeee50ba7571a1e0d6ccc0062851ce2ea70d99",
       "low": 0.25
-    },
-    {
-      "out": "seasonal-v2/winter/planter_winter_v1.glb",
-      "src": "overhaul:refined/01. Game Island assets 2026-10-05/02. Finished assets/04. Winter/planter_winter_v1.glb",
-      "sha256": "04eb5100eca48413f080d41289d44804934a0fdb6910af673d1d941878babff9"
     },
     {
       "out": "characters/wear/hair_crew.glb",
@@ -2364,13 +2256,6 @@
       "lowSha256": "93589f4d7698d5e0adb664527615ec9a71266cbf42fb44fad05817b4fa2a9150"
     },
     {
-      "out": "path-tiers-v1/gate.planter.glb",
-      "src": "overhaul:refined/24. Game Island path tiers 2026-10-12/01. High/gate.planter.glb",
-      "sha256": "cc055baba78cc0905c10cb5b59ba9562eac29d444e496ac45392cc71fc789409",
-      "lowSrc": "overhaul:refined/24. Game Island path tiers 2026-10-12/02. Low/gate.planter.glb",
-      "lowSha256": "d835696d3c9d4bc5747f8b0ef778d417b9e79be89930891d3550d4235dd48d75"
-    },
-    {
       "out": "path-tiers-v1/junction.disc.town.glb",
       "src": "overhaul:refined/24. Game Island path tiers 2026-10-12/01. High/junction.disc.town.glb",
       "sha256": "c8e1d30334598394381857d8b1180865b5aa0d133b45d1387db2050107d7f547",
@@ -2383,20 +2268,6 @@
       "sha256": "4497659242ab8a7f3d26c0a995197f2436c3ce0cc105e0c232b196df52fee5bc",
       "lowSrc": "overhaul:refined/24. Game Island path tiers 2026-10-12/02. Low/junction.disc.walk.glb",
       "lowSha256": "f931b2cfadda4a60385b1509db29fa373e11edc9240590e5c0ccbee7a72e39e0"
-    },
-    {
-      "out": "path-tiers-v1/town.border.straight.glb",
-      "src": "overhaul:refined/24. Game Island path tiers 2026-10-12/01. High/town.border.straight.glb",
-      "sha256": "1c678c8ac8741b2722ba46f31e2bd282a35f116e16516da113b0a6d980d01e40",
-      "lowSrc": "overhaul:refined/24. Game Island path tiers 2026-10-12/02. Low/town.border.straight.glb",
-      "lowSha256": "bfcb51a7b3e2fb33a2d8d1563187481a8fbfb87dd96d67fa1a3533d26905138a"
-    },
-    {
-      "out": "path-tiers-v1/town.slab.a.glb",
-      "src": "overhaul:refined/24. Game Island path tiers 2026-10-12/01. High/town.slab.a.glb",
-      "sha256": "84279625073146b6d86e24b6227efaf4361788d10e4950f8d5f8fa53206319fa",
-      "lowSrc": "overhaul:refined/24. Game Island path tiers 2026-10-12/02. Low/town.slab.a.glb",
-      "lowSha256": "440459b08aa84d3fc0c1d43c0b9c63524b42c346b18dfa2a9e12feb093b3811f"
     },
     {
       "out": "path-tiers-v1/town.slab.b.glb",
@@ -2413,25 +2284,11 @@
       "lowSha256": "fcbf823141680afafbfba3f6e50149c76730bb53d82cba871e5bd4b57de762ee"
     },
     {
-      "out": "path-tiers-v1/trail.step.a.glb",
-      "src": "overhaul:refined/24. Game Island path tiers 2026-10-12/01. High/trail.step.a.glb",
-      "sha256": "a400b332fc571e4f3b8b2b21682bf1d861afdbb0c4ce2ad7e2c429c68cc6557a",
-      "lowSrc": "overhaul:refined/24. Game Island path tiers 2026-10-12/02. Low/trail.step.a.glb",
-      "lowSha256": "5c484a936a39fbc1f5b16ced365810092b783372824bfa6edc6f09397d276dfc"
-    },
-    {
       "out": "path-tiers-v1/trail.step.b.glb",
       "src": "overhaul:refined/24. Game Island path tiers 2026-10-12/01. High/trail.step.b.glb",
       "sha256": "1901b64378a6fdb2ab0b769b60b314c53c6edd2b52f2786a53b5e812b1a7a19f",
       "lowSrc": "overhaul:refined/24. Game Island path tiers 2026-10-12/02. Low/trail.step.b.glb",
       "lowSha256": "79098c724a1aefc51528ed391bb1fe6539d96f9d019befe979cb252830fd6a01"
-    },
-    {
-      "out": "path-tiers-v1/walk.edge.a.glb",
-      "src": "overhaul:refined/24. Game Island path tiers 2026-10-12/01. High/walk.edge.a.glb",
-      "sha256": "4c6583980689d8009d3a48fd48058c37e1f3a09e5904276d10037f51f753dbad",
-      "lowSrc": "overhaul:refined/24. Game Island path tiers 2026-10-12/02. Low/walk.edge.a.glb",
-      "lowSha256": "9680025fd00cd5478cf4493f4c563a79b9e49969ced55ce7d1c0f1a16e5fd6ff"
     },
     {
       "out": "path-tiers-v1/walk.edge.c.glb",
@@ -8199,46 +8056,6 @@
       "precompressed": true
     },
     {
-      "out": "yard-v1/fence_wood.glb",
-      "src": "yard70:01. High/yard_fence_wood.glb",
-      "sha256": "c2495385a86014e90226268d0c36555fc34ff42bf98c4099b6559de8645e74a1",
-      "lowSrc": "yard70:02. Low/yard_fence_wood_low.glb",
-      "lowSha256": "2d038190cee79ef9e149c330135af206738b0ec514a06895bbd16dc6567dc041",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/fence_stone.glb",
-      "src": "yard70:01. High/yard_fence_stone.glb",
-      "sha256": "39db8dd12bfd84437aa7071b151d84f06bbdc0e95f66e5227df0b9c2b2ad399d",
-      "lowSrc": "yard70:02. Low/yard_fence_stone_low.glb",
-      "lowSha256": "fc83ff48b09ebe5dbac8e3a1a4264e02e63397607607e9d685e04c3bd7c0e5e7",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/fence_flower.glb",
-      "src": "yard70:01. High/yard_fence_flower.glb",
-      "sha256": "8b24b54f68322ea519023d0e1f36f50e0cb181e8d666a0ba8bf2eb00edfb993e",
-      "lowSrc": "yard70:02. Low/yard_fence_flower_low.glb",
-      "lowSha256": "23c2d07370b6254365110e0025c98b803477afb2f6ff99e2a53f26a0b9ba71f4",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/stepping_stones.glb",
-      "src": "yard70:01. High/yard_stepping_stones.glb",
-      "sha256": "234120c14babd8ca397f9bf3acb18df0f9d26f8470289e96f234db91d73d2566",
-      "lowSrc": "yard70:02. Low/yard_stepping_stones_low.glb",
-      "lowSha256": "3b73899ddde4d64b6cbf1f11952ef5ff71f5002ee9bec06c13898a597ee2bedd",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/garden_light.glb",
-      "src": "yard70:01. High/yard_garden_light.glb",
-      "sha256": "30ed628905775c15c82fd5579b30fb15ad79b62c8a44499cf9e9325b16d1254a",
-      "lowSrc": "yard70:02. Low/yard_garden_light_low.glb",
-      "lowSha256": "7d36e8288672ff3427b47ae29ff7aaa22a6b66f9547d0228cc4ceb87d2937e9e",
-      "precompressed": true
-    },
-    {
       "out": "yard-v1/birdhouse.glb",
       "src": "yard70:01. High/yard_birdhouse.glb",
       "sha256": "bd583a70d1df67c41bfe7e6dad4c92494d63f322595c7b49789826e087380a86",
@@ -8247,51 +8064,11 @@
       "precompressed": true
     },
     {
-      "out": "yard-v1/flowerbed.glb",
-      "src": "yard70:01. High/yard_flowerbed.glb",
-      "sha256": "2a46dd996eda31f5891f0a5b515f28fe3398f2f8046f9ce28a0a141761a934cd",
-      "lowSrc": "yard70:02. Low/yard_flowerbed_low.glb",
-      "lowSha256": "589c984b2232c6e9564cae789011ee1921d010b07696f67e077f4ff07782eda1",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/planter_box.glb",
-      "src": "yard70:01. High/yard_planter_box.glb",
-      "sha256": "40fce2e351e8891c15bc2c80bd746778a42676a6b1cbfcdeda7e905d1125c83b",
-      "lowSrc": "yard70:02. Low/yard_planter_box_low.glb",
-      "lowSha256": "9964b280d54057a0fd2938567e4baf738969045bf83638e169c45a77d7138b62",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/mailbox.glb",
-      "src": "yard70:01. High/yard_mailbox.glb",
-      "sha256": "6b75a65699ee279d5544c82a371661d0c5fd21d7a41ec590396ef8aec99e2c18",
-      "lowSrc": "yard70:02. Low/yard_mailbox_low.glb",
-      "lowSha256": "1dd4758391b94fc9ee8ad89454334ba2f3e3408975780bf38d82f4b798b4828d",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/bench.glb",
-      "src": "yard70:01. High/yard_bench.glb",
-      "sha256": "388f605177de5ba12dbab1f6249613d2f7412cf15aa3dbb440abcb9aa1a7d201",
-      "lowSrc": "yard70:02. Low/yard_bench_low.glb",
-      "lowSha256": "b4a6cd22db98d9b69d92ba697c541ab6f0ed36b4b4c1a760af8fe3a49f51b518",
-      "precompressed": true
-    },
-    {
       "out": "yard-v1/lantern_stone.glb",
       "src": "yard70:01. High/yard_lantern_stone.glb",
       "sha256": "e3d16e8ec934c9da1eacda78990578c3f423af61a326c382cff2da2f0dc4e746",
       "lowSrc": "yard70:02. Low/yard_lantern_stone_low.glb",
       "lowSha256": "d6c376c09b3399a7cbacaede7890c1460ca4fb4a5d248f839ed8bf03660d30d8",
-      "precompressed": true
-    },
-    {
-      "out": "yard-v1/arch.glb",
-      "src": "yard70:01. High/yard_arch.glb",
-      "sha256": "d20dabec18a771e392e8069f4b12792f3678a50bb8557eff1f5b7912b51f7828",
-      "lowSrc": "yard70:02. Low/yard_arch_low.glb",
-      "lowSha256": "336d03391a603114d5340d3466f9c93db061aecb847db273b13f950932a28199",
       "precompressed": true
     },
     {
@@ -10895,6 +10672,1590 @@
       "src": "nature109:01. High/winter/tree_twin.glb",
       "sha256": "ae6a6d6c6545fb31cdfaf3675e16911c90789f2fea9f2ceccf08febf2e58887b",
       "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/arch_vines.glb",
+      "src": "yard111:01. High/autumn/arch_vines.glb",
+      "sha256": "9bb84e51b1ca0823469e3e99d7c3f524661c12dbc1922d8419a3e129af756a6a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/bench_path.glb",
+      "src": "yard111:01. High/autumn/bench_path.glb",
+      "sha256": "3097ebf62f838d4fe705e2c00bc09486401d8a91a3955657a4e48bfe75b43363",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/bench_yard.glb",
+      "src": "yard111:01. High/autumn/bench_yard.glb",
+      "sha256": "fc140dc480f925c7047acd638ae570c27888253f2c36f1b30367e76fbb3ab5da",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/border_stone.glb",
+      "src": "yard111:01. High/autumn/border_stone.glb",
+      "sha256": "1ca16b31775494f921373b65e481d786f0d5f5ef75c99b59a29a499e3ef11a3a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/bridge_arch.glb",
+      "src": "yard111:01. High/autumn/bridge_arch.glb",
+      "sha256": "02d113c1159ed897e5053c66f56d04eb5ed895dcc243cc63ac9d4483a2f5d3a1",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_flower_lattice.glb",
+      "src": "yard111:01. High/autumn/fence_flower_lattice.glb",
+      "sha256": "7284c21a1650a5788fe0c1a3ff3fff9d118616f99337afa0c8f22dc4aaa34e63",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_rail.glb",
+      "src": "yard111:01. High/autumn/fence_rail.glb",
+      "sha256": "d4cab22e0f435eb86b7480d7aaa962807dcc1f982a3e888666ba9ef6ebf46499",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_rail_low.glb",
+      "src": "yard111:01. High/autumn/fence_rail_low.glb",
+      "sha256": "743f4107cd0b224a229cdf1d908d3e38eb485d86f6f06418587cbd28ff70b3f5",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_stone_block.glb",
+      "src": "yard111:01. High/autumn/fence_stone_block.glb",
+      "sha256": "0a2dc7d8630a51161904d859b337bfbdc4adb87a7537743cc48f058dc17af294",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/flowerbed_crate.glb",
+      "src": "yard111:01. High/autumn/flowerbed_crate.glb",
+      "sha256": "281e3ee91942743133597ab898d8b053e4bcbf41bbae8746c0498c961d77a538",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/garden_lamp.glb",
+      "src": "yard111:01. High/autumn/garden_lamp.glb",
+      "sha256": "a52fc1762b47d7dcb3ea2520640b6f815f8b6c5b262b50329d87cc84f6b492bb",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/gate_planter_bush.glb",
+      "src": "yard111:01. High/autumn/gate_planter_bush.glb",
+      "sha256": "9d0a89c4b51df5f43a3bc8d3d490adcb1b7a0eb5238b22253bf38d0ab298e2e9",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/mailbox_blue_flag.glb",
+      "src": "yard111:01. High/autumn/mailbox_blue_flag.glb",
+      "sha256": "a09972a9e881d00de47bf982e0808133065b6a373eb9b1561287c2cdd74bbd64",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/mailbox_red.glb",
+      "src": "yard111:01. High/autumn/mailbox_red.glb",
+      "sha256": "b35a7fb292d60e5629f214dbeacb3cf47c22ae653098dc05088cb4dfcec7a43d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/pebble_edge.glb",
+      "src": "yard111:01. High/autumn/pebble_edge.glb",
+      "sha256": "f8ab28ce80df1de4e7e585bfc329c04034d6dd2383adf8df954afbbccbe5f7ae",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/planter_cabbage.glb",
+      "src": "yard111:01. High/autumn/planter_cabbage.glb",
+      "sha256": "fdb30454cf042aea5507831692902d827ae3e65a4f7e0bb6e5be0f8d1952400d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/plaza_planter_filled.glb",
+      "src": "yard111:01. High/autumn/plaza_planter_filled.glb",
+      "sha256": "e7910860fc0175a856381ca6339acd24490bb9c0657f6daf75751cba41af0331",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/slab_town.glb",
+      "src": "yard111:01. High/autumn/slab_town.glb",
+      "sha256": "80379489a8fc4a2c5ad44715ea26e9eca26259f49c0730b05f9860557afcac97",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/step_trail.glb",
+      "src": "yard111:01. High/autumn/step_trail.glb",
+      "sha256": "f9ae25cb342a2cfefd651fb3e01984dae2d08e3b3f833396320b1138e63b95c3",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/stepping_stones.glb",
+      "src": "yard111:01. High/autumn/stepping_stones.glb",
+      "sha256": "67be301a7926dda7bbe813eca8fbf4d9f41d818c4daf1c3d33222c3511de0042",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/stone_step.glb",
+      "src": "yard111:01. High/autumn/stone_step.glb",
+      "sha256": "7336c8545ff44c8a667b83da25ab7784e715a8ddc2841ed76a7996cfc025013d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/street_lamp.glb",
+      "src": "yard111:01. High/autumn/street_lamp.glb",
+      "sha256": "303e29cfe551431a856093f2a7d229d4cd4768bbcbf51adb9e5fe4bf2d78d0ee",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/arch_vines.glb",
+      "src": "yard111:01. High/spring/arch_vines.glb",
+      "sha256": "37854bfdac8a14a9450839027f589be04fe2278888ad4889ba4d98d5cb4f53e5",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/bench_path.glb",
+      "src": "yard111:01. High/spring/bench_path.glb",
+      "sha256": "b0f45a70694841c1611deea61ad71a13111e4940f3431229abedaf3da7220e19",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/bench_yard.glb",
+      "src": "yard111:01. High/spring/bench_yard.glb",
+      "sha256": "2cad99fbc500e220e76639ede3f244fe44a26bb1497ed894ab007f9ed273e5f7",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/border_stone.glb",
+      "src": "yard111:01. High/spring/border_stone.glb",
+      "sha256": "433a2f996b1131a5b3fec0b4d45d5159c7d6db780d86eeeb9e2b43e38f9e1d20",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/bridge_arch.glb",
+      "src": "yard111:01. High/spring/bridge_arch.glb",
+      "sha256": "422e09d6d07fce6688866f45c1dc5f8b09238b797db11f4c2ed632794d22ac6b",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_flower_lattice.glb",
+      "src": "yard111:01. High/spring/fence_flower_lattice.glb",
+      "sha256": "a946674d7d0539b82865837e574ecf38fc57a67785f1843585dcc0af600fb99c",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_rail.glb",
+      "src": "yard111:01. High/spring/fence_rail.glb",
+      "sha256": "f1d518092790132eca13d2372b85a952df491db4dd6df207c3600d09baebd893",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_rail_low.glb",
+      "src": "yard111:01. High/spring/fence_rail_low.glb",
+      "sha256": "ac9fa357f1ffeee817fe41227c87134d46495323eae3a5cf3fed9cbaa8e3419d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_stone_block.glb",
+      "src": "yard111:01. High/spring/fence_stone_block.glb",
+      "sha256": "2bcc34193a8800482a90a90b8cbfd0d678e6da43065e1a9ebf895e360b23991e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/flowerbed_crate.glb",
+      "src": "yard111:01. High/spring/flowerbed_crate.glb",
+      "sha256": "86fe0122ea65994161e22eff75214b6e32282b207f36d44577f14823b2318f4d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/garden_lamp.glb",
+      "src": "yard111:01. High/spring/garden_lamp.glb",
+      "sha256": "c952a909a7d1a3b18c5d40a817f7b28a51a6a6fe1d07d858184ea858d98e47ce",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/gate_planter_bush.glb",
+      "src": "yard111:01. High/spring/gate_planter_bush.glb",
+      "sha256": "611cd88d673ddac1241d95653b47e6fb55ad13793617ac4f9dd835cb2f1e247b",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/mailbox_blue_flag.glb",
+      "src": "yard111:01. High/spring/mailbox_blue_flag.glb",
+      "sha256": "1a55814802bc2c5aa3d31eb2de84e206ed1553b56bbf76289108c4f4be5a6566",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/mailbox_red.glb",
+      "src": "yard111:01. High/spring/mailbox_red.glb",
+      "sha256": "48537bdd7fa343c3697c6a65ab48007fd25075f8719a98d33a3b8b1c493f8e63",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/pebble_edge.glb",
+      "src": "yard111:01. High/spring/pebble_edge.glb",
+      "sha256": "362548bed0b69059fe305c5983baa0bda380f42bb159f67dac46c3fa6277c859",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/planter_cabbage.glb",
+      "src": "yard111:01. High/spring/planter_cabbage.glb",
+      "sha256": "4121a9fc899e559f5297e74771fbc4e83d8de51eb2818e779ff042e86eb805d5",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/plaza_planter_filled.glb",
+      "src": "yard111:01. High/spring/plaza_planter_filled.glb",
+      "sha256": "b17ecd1ff1171ad08868d826bc6139fc3670de95a91840c46d41e59878ba033a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/slab_town.glb",
+      "src": "yard111:01. High/spring/slab_town.glb",
+      "sha256": "5e02c6d687d152aeafacad2f3eea20121a13b0c5a1a1877487bc7d5c3b429136",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/step_trail.glb",
+      "src": "yard111:01. High/spring/step_trail.glb",
+      "sha256": "eb8e504b9dbaec12f24433ad99bf20f90907c0819ba7c3b7b89ea1c2be1d7f73",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/stepping_stones.glb",
+      "src": "yard111:01. High/spring/stepping_stones.glb",
+      "sha256": "735cf40ec6a8391fc69a224367445bef13f1f761110303ad945ed070c231bdce",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/stone_step.glb",
+      "src": "yard111:01. High/spring/stone_step.glb",
+      "sha256": "c1fb1874aa940404072087a57cba8e60b9212994e7130fa1e813f3e02a3b7c96",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/street_lamp.glb",
+      "src": "yard111:01. High/spring/street_lamp.glb",
+      "sha256": "06472b13a1b8c8f1b8398483ddaf6e6d1683413d6eb829b7830021b4354718e6",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/arch_vines.glb",
+      "src": "yard111:01. High/summer/arch_vines.glb",
+      "sha256": "14ef5ee9dc741d2379b773d69fe7e870d2ad054898a529e5ae84b79ec8f8818d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/bench_path.glb",
+      "src": "yard111:01. High/summer/bench_path.glb",
+      "sha256": "19f2acf81387be7e1e015b4c85fdadbe2e7014d84f5e1177186fef02e9d47898",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/bench_yard.glb",
+      "src": "yard111:01. High/summer/bench_yard.glb",
+      "sha256": "3f92d826e3212b063b24449e6537bfc709e7956cf244a42e6f01088c13d371bc",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/border_stone.glb",
+      "src": "yard111:01. High/summer/border_stone.glb",
+      "sha256": "545b012ad4e41bf32f210a71e426a5ed47686a2b466ac6f3f038c914d130eb98",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/bridge_arch.glb",
+      "src": "yard111:01. High/summer/bridge_arch.glb",
+      "sha256": "ff75e08168f32e95ecb407da32576c60386724a49e4e7fac826648f05918a477",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_flower_lattice.glb",
+      "src": "yard111:01. High/summer/fence_flower_lattice.glb",
+      "sha256": "92c7d60f4706be58d810c5d65f3e342045f1bce2b6b4f579cba30f16248101cd",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_rail.glb",
+      "src": "yard111:01. High/summer/fence_rail.glb",
+      "sha256": "4ed45cd10495d0197d7ebd15de759440d91d65f64dc8ede9cb68e0e60a4eb945",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_rail_low.glb",
+      "src": "yard111:01. High/summer/fence_rail_low.glb",
+      "sha256": "71e288a094f79346b6d12345e429f2bd7519a3b995619f817d2752cdc825f65b",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_stone_block.glb",
+      "src": "yard111:01. High/summer/fence_stone_block.glb",
+      "sha256": "700fc1d16596955aa1b19cf762281eca47729b56630f653fce02f91c7e3e1514",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/flowerbed_crate.glb",
+      "src": "yard111:01. High/summer/flowerbed_crate.glb",
+      "sha256": "36acac3786c95c2ff67b5cf57e9f15cad86a8b9d44d2a947cf0f1450e04c98e0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/garden_lamp.glb",
+      "src": "yard111:01. High/summer/garden_lamp.glb",
+      "sha256": "bc86e05f0f0db2261d322b09f6b067fe331d740c55d627c656db50f306a90275",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/gate_planter_bush.glb",
+      "src": "yard111:01. High/summer/gate_planter_bush.glb",
+      "sha256": "065abde086cc7394bc0b0e8e93749efb77a5e296a45c40fb2ea889ad40f7cbb9",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/mailbox_blue_flag.glb",
+      "src": "yard111:01. High/summer/mailbox_blue_flag.glb",
+      "sha256": "6ef28e75a1e553a29b188e646a6b9275c594800d2d3b209c3a2be2e5859a7ce1",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/mailbox_red.glb",
+      "src": "yard111:01. High/summer/mailbox_red.glb",
+      "sha256": "21a0d3e3cbd593c458fa63b5d1b576b9cf7d5dd723079800dddfa6cb960f80aa",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/pebble_edge.glb",
+      "src": "yard111:01. High/summer/pebble_edge.glb",
+      "sha256": "ffc55da8ef22be8e292bd9a7ae39bcfc7d5c6df93e5a2ff36b0508339a56cd87",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/planter_cabbage.glb",
+      "src": "yard111:01. High/summer/planter_cabbage.glb",
+      "sha256": "d7ef0943bafc3046bd47a214449d7531bb427065e4e76fa8684af05a7a3cf584",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/plaza_planter_filled.glb",
+      "src": "yard111:01. High/summer/plaza_planter_filled.glb",
+      "sha256": "89b07bbdb1d7733c7edc6929029a72ce14b51f72ae5e7fbac4bec8ad2019468d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/slab_town.glb",
+      "src": "yard111:01. High/summer/slab_town.glb",
+      "sha256": "2cab3342c72d8352b54c57e182fca56ad73af077fa7eafacfa448335e24e3cf0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/step_trail.glb",
+      "src": "yard111:01. High/summer/step_trail.glb",
+      "sha256": "e035ef3670655edb0bfe27fe3f1227127502b11ed85cac449fe5e9874a4711ff",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/stepping_stones.glb",
+      "src": "yard111:01. High/summer/stepping_stones.glb",
+      "sha256": "1e910dae8513811f62b8dbfed0dd4de6e9eb6de91004ef430dcc76f4a0b89809",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/stone_step.glb",
+      "src": "yard111:01. High/summer/stone_step.glb",
+      "sha256": "7a15a0b6384893c8125ab9df6d02e49696b336f81db50f02985ad2c3f8075c2d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/street_lamp.glb",
+      "src": "yard111:01. High/summer/street_lamp.glb",
+      "sha256": "6d59f2620df1203fb91dfa2a803db5a1017c0843ea29e8569fd2f05e07e08c3d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/arch_vines.glb",
+      "src": "yard111:01. High/winter/arch_vines.glb",
+      "sha256": "ce222c3f977b0d2f9998905ffd1930ea040e5555ce8ee6ebc8039d46a66c6f56",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/bench_path.glb",
+      "src": "yard111:01. High/winter/bench_path.glb",
+      "sha256": "047d0e45d1473c83f5963e4a477531d8e58155084e05c8a7cbe1a33da00ab40e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/bench_yard.glb",
+      "src": "yard111:01. High/winter/bench_yard.glb",
+      "sha256": "b2761c226ba6e3a5c8027d3db7dd53d58ef3183c839b417d5e653ec581aae3d8",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/border_stone.glb",
+      "src": "yard111:01. High/winter/border_stone.glb",
+      "sha256": "ea74f72ff87ff0eb07b1f84bfeedac679f060ad1e27de01d54b3c0a4033f12ef",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/bridge_arch.glb",
+      "src": "yard111:01. High/winter/bridge_arch.glb",
+      "sha256": "985f70191ad51fb048595c1868c980e358727715dbb41f1539c6e7868114e66a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_flower_lattice.glb",
+      "src": "yard111:01. High/winter/fence_flower_lattice.glb",
+      "sha256": "e106ecb4bf12458b90c1fb0898800cf5209687e8f0956ca762b0d647eed99553",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_rail.glb",
+      "src": "yard111:01. High/winter/fence_rail.glb",
+      "sha256": "5b3e0f2326bbc761527ef5ce686521e6e231e0c47b3e675e72530fdedcd64d7e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_rail_low.glb",
+      "src": "yard111:01. High/winter/fence_rail_low.glb",
+      "sha256": "35befbd8530ccb614cb2b76f733c58fcc9a8b73ad0d95537bc23379971bb559c",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_stone_block.glb",
+      "src": "yard111:01. High/winter/fence_stone_block.glb",
+      "sha256": "04430a40d1b7df0f25d6c096f9acf04440b6d270d63a6ca78cb0fb69c1dcdd86",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/flowerbed_crate.glb",
+      "src": "yard111:01. High/winter/flowerbed_crate.glb",
+      "sha256": "b4a76fa7e01d6303226a4e4574d98c558fa8d04e26b9f507cefac5fea565e900",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/garden_lamp.glb",
+      "src": "yard111:01. High/winter/garden_lamp.glb",
+      "sha256": "8fe2e34ad0f326f7872f3cd96ff9f6d54e7fb04fed53034fecfa9dc8eef4433a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/gate_planter_bush.glb",
+      "src": "yard111:01. High/winter/gate_planter_bush.glb",
+      "sha256": "7bdbfe3815c4e4d8be816c7509d3030757a2139fa5e4f309bf43f8c78324f8ec",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/mailbox_blue_flag.glb",
+      "src": "yard111:01. High/winter/mailbox_blue_flag.glb",
+      "sha256": "d4cff128b0cde38c6612868f138092c37ed9025303e4db0121401766ce48c6cd",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/mailbox_red.glb",
+      "src": "yard111:01. High/winter/mailbox_red.glb",
+      "sha256": "18f40cc62791f2aeaa2cc2be8f3c4a8c6ff426c5df044498c9cecb8fb368458f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/pebble_edge.glb",
+      "src": "yard111:01. High/winter/pebble_edge.glb",
+      "sha256": "2da6ceb43ff82c1099aad71668e3e57f99399b27852c92c53fd29a26c62f5f87",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/planter_cabbage.glb",
+      "src": "yard111:01. High/winter/planter_cabbage.glb",
+      "sha256": "26ec88bbdf6aa28221f52e09b1c61924f0ea794174678ba520160366aef3e6f0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/plaza_planter_filled.glb",
+      "src": "yard111:01. High/winter/plaza_planter_filled.glb",
+      "sha256": "c3a911d5015e1c3fc320b368324b70aab776e548be1a534ab0e5deb1ba504c6a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/slab_town.glb",
+      "src": "yard111:01. High/winter/slab_town.glb",
+      "sha256": "6678c177d595463d2e25278f7c67f51dc216f5f1834001b96af244a7f88f064e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/step_trail.glb",
+      "src": "yard111:01. High/winter/step_trail.glb",
+      "sha256": "25a43cd15871b724949667eecba867cac16a82760306584d18c241a8fc2294b2",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/stepping_stones.glb",
+      "src": "yard111:01. High/winter/stepping_stones.glb",
+      "sha256": "268ef9aec0825575aa0e474c513253c399339cd02a5f65848ae91fe693db382f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/stone_step.glb",
+      "src": "yard111:01. High/winter/stone_step.glb",
+      "sha256": "2f5c0dcc6958b8f105483efdc2ad5bb5c7d0087557fb9e05b19d616334b5176a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/street_lamp.glb",
+      "src": "yard111:01. High/winter/street_lamp.glb",
+      "sha256": "f22e1e2e25922c30dbea1311097d053c1b7228c6d845d79a64693a85d12749a6",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/arch_vines_low.glb",
+      "src": "yard111:02. Low/autumn/arch_vines_low.glb",
+      "sha256": "73644dbe6441fe940b10e71070adef2759fac1fb4903d0f3a469e6e6f3dd4293",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_flower_lattice_low.glb",
+      "src": "yard111:02. Low/autumn/fence_flower_lattice_low.glb",
+      "sha256": "574d0879b987389daff26f41039f2539e4ba9b13773f74b8fbf213f968ceee6f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/flowerbed_crate_low.glb",
+      "src": "yard111:02. Low/autumn/flowerbed_crate_low.glb",
+      "sha256": "04c78746bd85aaaaf7b6e1967c4abf39a27169381a76e7bf95204586c180078a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/arch_vines_low.glb",
+      "src": "yard111:02. Low/spring/arch_vines_low.glb",
+      "sha256": "fa3250f4771a74f41dfe644933cf7ed04b522516647473368a1c28057b8f6a8f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_flower_lattice_low.glb",
+      "src": "yard111:02. Low/spring/fence_flower_lattice_low.glb",
+      "sha256": "fc940facc5ba86180682ce288598fffa07ccb94d3fe1ff6d3aa1d8849fa638e4",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/flowerbed_crate_low.glb",
+      "src": "yard111:02. Low/spring/flowerbed_crate_low.glb",
+      "sha256": "84d51b7f40b5f7f679678617900cd346ef785dbd45931e643a4d678fd2621d39",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/arch_vines_low.glb",
+      "src": "yard111:02. Low/summer/arch_vines_low.glb",
+      "sha256": "4475effb8dee697c49ff6faf28de00358f4d132b4b025a7273a8eeba3ee5f45c",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_flower_lattice_low.glb",
+      "src": "yard111:02. Low/summer/fence_flower_lattice_low.glb",
+      "sha256": "201a644ed164ace97daa809d939f93881316ffa4db0b9121467212d0ae33a867",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/flowerbed_crate_low.glb",
+      "src": "yard111:02. Low/summer/flowerbed_crate_low.glb",
+      "sha256": "567df7532f4c440acc4060fa9d48ffe22bca20f599ab40b2be5e1e257cec9e24",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/arch_vines_low.glb",
+      "src": "yard111:02. Low/winter/arch_vines_low.glb",
+      "sha256": "bd63f8546c24af115bf3146f97db9b6b9f907f07d0cb2eb6346ceb7e04a8079d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_flower_lattice_low.glb",
+      "src": "yard111:02. Low/winter/fence_flower_lattice_low.glb",
+      "sha256": "fc43b0217f62a9ebf53f552af1ba22558423f1bffc81b43523b74e5195355a63",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/flowerbed_crate_low.glb",
+      "src": "yard111:02. Low/winter/flowerbed_crate_low.glb",
+      "sha256": "30deb0c9f0abe86e190a45edaae8df1ecac3f4260a0e324f154de4d7f68ad2c6",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/cliff_tall.glb",
+      "src": "land113:01. High/autumn/cliff_tall.glb",
+      "sha256": "40f002d4bbc6384ba25f0e028c95e711640ba8092e90029f37933cbc10479fb2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/cliff_tall_moss.glb",
+      "src": "land113:01. High/autumn/cliff_tall_moss.glb",
+      "sha256": "87f49ebf4ad3c4671fabc032b98444a39d588eb0b02d1f58805e713d0468dd02",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/cliff_wide.glb",
+      "src": "land113:01. High/autumn/cliff_wide.glb",
+      "sha256": "a30da0f956ae91781a729ccdbbe91692614f21381748147ca5cf267524c677fc",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/cliff_wide_moss.glb",
+      "src": "land113:01. High/autumn/cliff_wide_moss.glb",
+      "sha256": "d3bd056d9b8329bad2ae7f16bfa0fc8bbe2c8fb95bca03e46a6c97bb57c02482",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/crab.glb",
+      "src": "land113:01. High/autumn/crab.glb",
+      "sha256": "988e010eb83a15cb2b1ad189d58f3c9add87575853a51b07db391a3471937dc1",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/crag.glb",
+      "src": "land113:01. High/autumn/crag.glb",
+      "sha256": "c784891ffbbfd2576b42fe6f485dd9d68dd82617de60dda088c2e141ca5eca30",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/creek_bridge.glb",
+      "src": "land113:01. High/autumn/creek_bridge.glb",
+      "sha256": "e690d2626324cbcd10257e96be43b9e94f5f2dd8d7f25a815e8b843ae0ff1cf2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/creek_corner.glb",
+      "src": "land113:01. High/autumn/creek_corner.glb",
+      "sha256": "e1b575198bce3cd396098f0bdedd5addb106b0e2839857bfc8672ac6e1f5f955",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/creek_end.glb",
+      "src": "land113:01. High/autumn/creek_end.glb",
+      "sha256": "64d5008ca58052afb2a10313ae5e1693e96866213175a8029789d05d576adcc2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/creek_straight.glb",
+      "src": "land113:01. High/autumn/creek_straight.glb",
+      "sha256": "4e3e1b7e9bcd2e35d87d7d9a08c24d7f3e10836f1fc2fd02b2ac0e2f146b6a53",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/footbridge.glb",
+      "src": "land113:01. High/autumn/footbridge.glb",
+      "sha256": "2649e0f80fc1dbcdd9d4e01a2f11b7fc58232d966ec08456436bf10bedac42b8",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/hill_green.glb",
+      "src": "land113:01. High/autumn/hill_green.glb",
+      "sha256": "13de62043a077cf1546d0bd02b9f7eec2113c15c15bc6ae957060b403d81d671",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/lantern.glb",
+      "src": "land113:01. High/autumn/lantern.glb",
+      "sha256": "c1a6178774b86995ba8339ad8db9f260d90a7b0fa8394a36a20f30002b12f74c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_rock.glb",
+      "src": "land113:01. High/autumn/mountain_rock.glb",
+      "sha256": "edc3c283388e5da0928ed01f40efd505c80a28f5842c29604f82aece192fdaec",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_snow.glb",
+      "src": "land113:01. High/autumn/mountain_snow.glb",
+      "sha256": "ee55ae606fd05cabf97f23228d6a962de3a68ff681cb65fc298aa2dfb547b7cf",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_tall.glb",
+      "src": "land113:01. High/autumn/mountain_tall.glb",
+      "sha256": "6f4cf807c6ee3d2655ce07e1dcde64a5a1eb7868e399992f801ab853d4c6d599",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_tall_snow.glb",
+      "src": "land113:01. High/autumn/mountain_tall_snow.glb",
+      "sha256": "c28c118d79a5a991070a0331974656cca59a1d30d67e10e76aaa11735420cfcc",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/road_mud_curve.glb",
+      "src": "land113:01. High/autumn/road_mud_curve.glb",
+      "sha256": "1ac7e2154780c02a34d4773a949821f213e400b8847bf04c2c6354b826fdd343",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/road_mud_straight.glb",
+      "src": "land113:01. High/autumn/road_mud_straight.glb",
+      "sha256": "8f3fd61fa6b0aa1b17818076593aea67951900a42643ebb9b2632d50ed2b07c7",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/road_mud_t.glb",
+      "src": "land113:01. High/autumn/road_mud_t.glb",
+      "sha256": "f8c3803a6f747660f192da4920b70dbc6cedd26c24371175838e6b49d5b58dc3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/rope_bridge.glb",
+      "src": "land113:01. High/autumn/rope_bridge.glb",
+      "sha256": "f7d35313a9ac7ca5f57e1fa4d88774cfad3035fcd5efad416fcfc2dd9e5351fc",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/rowboat.glb",
+      "src": "land113:01. High/autumn/rowboat.glb",
+      "sha256": "0c4295da91a50e13eddda9935b9425a812f0c324a389592457dc4959fc98bbc9",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/rowboat_light.glb",
+      "src": "land113:01. High/autumn/rowboat_light.glb",
+      "sha256": "b3edf52e7e36094d49544beedd5ea36b7b65e7854139d29c3887c02c768324a3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/shell.glb",
+      "src": "land113:01. High/autumn/shell.glb",
+      "sha256": "3872b152621b5b14de8001cdaeeefe5450c034b60d432823a8c5d65234fe5dbc",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/shipwreck.glb",
+      "src": "land113:01. High/autumn/shipwreck.glb",
+      "sha256": "6ec48b8e3bd792a121c25b530467285bcecdbe2678bc6d30999619915f87e1bc",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/stall_counter.glb",
+      "src": "land113:01. High/autumn/stall_counter.glb",
+      "sha256": "bc75e6bbc3aa06892bb6b1d43b0aae5038e474f6d5400ac1b608001998d17964",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/stall_counter_blue.glb",
+      "src": "land113:01. High/autumn/stall_counter_blue.glb",
+      "sha256": "fd43de42763e9acce0e051bfc0338d06d2257bc16cf6f6d566d4698c1fb5df3f",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/stall_stripes.glb",
+      "src": "land113:01. High/autumn/stall_stripes.glb",
+      "sha256": "0c61fe353af2d00aeaf21fb1844462ea1f2de411174a7ae231ac25afced80099",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/starfish.glb",
+      "src": "land113:01. High/autumn/starfish.glb",
+      "sha256": "01301bdec91065be709c3b27a1463daeb24ebf829d499eb39da116644d5391f6",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/stone_arch_bridge.glb",
+      "src": "land113:01. High/autumn/stone_arch_bridge.glb",
+      "sha256": "95813a1e79aa4b4bdf9729025a920b3d24b9b06ec5d44b34496417ba60286929",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/tent_peaked.glb",
+      "src": "land113:01. High/autumn/tent_peaked.glb",
+      "sha256": "678bab2e2650381702f5e1e2bc17b0d51c2fcb0ee756b6687a9d7f031b9437af",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/tent_ridge.glb",
+      "src": "land113:01. High/autumn/tent_ridge.glb",
+      "sha256": "be46651f9100f05882c88b360bbab2c3eebc03c831df187020555345532d22d5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/tent_round.glb",
+      "src": "land113:01. High/autumn/tent_round.glb",
+      "sha256": "2a55d2c8146acdf25042a28804170a5d95cd05475ea987c0e8ea6bca4a7a0fce",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/treasure_chest.glb",
+      "src": "land113:01. High/autumn/treasure_chest.glb",
+      "sha256": "60501c447e2d95664e52bd6e0e849d59e68e686e1da63c1eec4c8815b14e68bf",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/cliff_tall.glb",
+      "src": "land113:01. High/spring/cliff_tall.glb",
+      "sha256": "71e081c4d162a3e9b82aa286adbbbf4d7f9df78376bacd24a306c6079f9402d0",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/cliff_tall_moss.glb",
+      "src": "land113:01. High/spring/cliff_tall_moss.glb",
+      "sha256": "4f0111cf59fa0367a5742daf08e115c6240a09849066f200d7dcb20f8f1c8bb2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/cliff_wide.glb",
+      "src": "land113:01. High/spring/cliff_wide.glb",
+      "sha256": "cfa855399f2b40a04d930782543a739e663647d7218610bb2466b017c7c1b2d6",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/cliff_wide_moss.glb",
+      "src": "land113:01. High/spring/cliff_wide_moss.glb",
+      "sha256": "a91acb52ce63e9408ca379d8f520f435d1cafe0673b62b4dc12b2161b7505a03",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/crab.glb",
+      "src": "land113:01. High/spring/crab.glb",
+      "sha256": "38686d47e969efbdffd82c0bdebc835188eff0c7e6a9a0b161b7359d06a90e72",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/crag.glb",
+      "src": "land113:01. High/spring/crag.glb",
+      "sha256": "4a6d6718af1d9ba452fdbc1f4938de04bbf5b2d1417c8314ee3eeb2077522232",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/creek_bridge.glb",
+      "src": "land113:01. High/spring/creek_bridge.glb",
+      "sha256": "202f9c5b2ad025be1f8754aa959af548298ab7e0b4cdd0be98725b23071c9903",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/creek_corner.glb",
+      "src": "land113:01. High/spring/creek_corner.glb",
+      "sha256": "d2529233ba060edb92372d04cf16c50261dca3761fe9dbee272af9acbc475096",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/creek_end.glb",
+      "src": "land113:01. High/spring/creek_end.glb",
+      "sha256": "931980106c465ac1bc59c3abbc291585e49980296a53428b2002f5b14026d2e9",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/creek_straight.glb",
+      "src": "land113:01. High/spring/creek_straight.glb",
+      "sha256": "c5a5a4227c1e93c2d13be978c446068a69432f27db446df5ce55f2437a22f111",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/footbridge.glb",
+      "src": "land113:01. High/spring/footbridge.glb",
+      "sha256": "63b218e7f85b357d901fdbd90db2a5d4eb055c637ab9934b5640dcbed26d2185",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/hill_green.glb",
+      "src": "land113:01. High/spring/hill_green.glb",
+      "sha256": "a53f5cba93e3677af99686732a686a60fb4c263bfafa1e85cf848d69c16b0e94",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/lantern.glb",
+      "src": "land113:01. High/spring/lantern.glb",
+      "sha256": "22e9c8fbab59028839feb67e810a7de599d82259864abd9290e6f9f427043026",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_rock.glb",
+      "src": "land113:01. High/spring/mountain_rock.glb",
+      "sha256": "ce61568f3a8f9c547503c9c54f3adea38c49800a87d55f414a44b39646e26066",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_snow.glb",
+      "src": "land113:01. High/spring/mountain_snow.glb",
+      "sha256": "d26c35b9675b17323fc3047ea8ad457a1743d9c809e3d05f1a24845d74721ed3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_tall.glb",
+      "src": "land113:01. High/spring/mountain_tall.glb",
+      "sha256": "c10eb71b15a94eb69ef8fe51bf7b005ee2f5c9c176021836b3f8ca4cc14afd4e",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_tall_snow.glb",
+      "src": "land113:01. High/spring/mountain_tall_snow.glb",
+      "sha256": "b0da716490ab85b67b8c6cd7f69ba049207b0f5dbf00ff0b756e3b408e7a8a66",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/road_mud_curve.glb",
+      "src": "land113:01. High/spring/road_mud_curve.glb",
+      "sha256": "5232a8770d6bbb29f56f2d542a7990858f84db25703228a5685af4a47b7a50e8",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/road_mud_straight.glb",
+      "src": "land113:01. High/spring/road_mud_straight.glb",
+      "sha256": "87f6a84f83ac088d1f98e8f7adc7eeb7997e511a5c0f6006f160ce56082b570a",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/road_mud_t.glb",
+      "src": "land113:01. High/spring/road_mud_t.glb",
+      "sha256": "8ae4625735ae95a9d27d3a559cda1feffe3fb0d8e7235c6c3929853005b5868f",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/rope_bridge.glb",
+      "src": "land113:01. High/spring/rope_bridge.glb",
+      "sha256": "b89b1c32e69a79489650cfad38cfdbd92a6ea3c46c8e865ef3f8507a45182636",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/rowboat.glb",
+      "src": "land113:01. High/spring/rowboat.glb",
+      "sha256": "62d042327ab1e82f617eb841e4300b2979f6cd96aca8b1d0f7a2b3caa3b7abd9",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/rowboat_light.glb",
+      "src": "land113:01. High/spring/rowboat_light.glb",
+      "sha256": "c660b4bfa6d0c5775e7069ab4038481867d0cc9a267817638408141d79769ebd",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/shell.glb",
+      "src": "land113:01. High/spring/shell.glb",
+      "sha256": "e9f9a8e2d881c6230a19754e57ce987aa90b21dbbccff08f3d0b79a250593da4",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/shipwreck.glb",
+      "src": "land113:01. High/spring/shipwreck.glb",
+      "sha256": "f8be821e0795d9e3ea0b8bc68774401a18c93a8a5bc784ea717dd8327a99fda8",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/stall_counter.glb",
+      "src": "land113:01. High/spring/stall_counter.glb",
+      "sha256": "2c372f4faa9294f1d87576aca4df24ae037e53d13206edbae18ad26b4ec55111",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/stall_counter_blue.glb",
+      "src": "land113:01. High/spring/stall_counter_blue.glb",
+      "sha256": "502881ae3c4c18fc479ee4008a20f0985e942641a07b7f70d6239d587c9f3d97",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/stall_stripes.glb",
+      "src": "land113:01. High/spring/stall_stripes.glb",
+      "sha256": "2581217b5c5f6c67f3157b34a650e42c01dea5ab5965a6e15bff0d6a1edb5de2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/starfish.glb",
+      "src": "land113:01. High/spring/starfish.glb",
+      "sha256": "2b83957ec7cdc49a650e2d8796beb1e79746246332ab3aef50dcf0dbb72e2e27",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/stone_arch_bridge.glb",
+      "src": "land113:01. High/spring/stone_arch_bridge.glb",
+      "sha256": "4de052394d01ae8328357c072ed1efd2d111415e7fed98d749573fab6a534eb3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/tent_peaked.glb",
+      "src": "land113:01. High/spring/tent_peaked.glb",
+      "sha256": "0f3c07c1ad575ee9b3c7512475dc683e436134ecdaae362586f2c733a0e4ebf3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/tent_ridge.glb",
+      "src": "land113:01. High/spring/tent_ridge.glb",
+      "sha256": "954b1fa1e9cda8f925b8b663b866e1ee0316de6429bd52e906e72aa3c17088e5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/tent_round.glb",
+      "src": "land113:01. High/spring/tent_round.glb",
+      "sha256": "d9b0613aac2bd48df09c2bd8e9b2ae743a528dbb467d353c48ffe053c70df7de",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/treasure_chest.glb",
+      "src": "land113:01. High/spring/treasure_chest.glb",
+      "sha256": "9f6eb2d5ef59b73549bfd1636b3eedc613acbad56c1c9335f02145a7ad38edc5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/cliff_tall.glb",
+      "src": "land113:01. High/summer/cliff_tall.glb",
+      "sha256": "cd1e531bff366b9332700ce3b6736130a719f5396324d52e1928891496c22a7c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/cliff_tall_moss.glb",
+      "src": "land113:01. High/summer/cliff_tall_moss.glb",
+      "sha256": "4ee7112404471cafcf25dd53bed72dce77e93938a155e36ac293efddf1cc23e6",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/cliff_wide.glb",
+      "src": "land113:01. High/summer/cliff_wide.glb",
+      "sha256": "3e71731c229202a896dd49dabe9348b1ce982c7f53496f388b6527cac5a5ee81",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/cliff_wide_moss.glb",
+      "src": "land113:01. High/summer/cliff_wide_moss.glb",
+      "sha256": "9956e01a1238b1003287f0415e615bac83c20e440a86ebb6cdd30459d492b918",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/crab.glb",
+      "src": "land113:01. High/summer/crab.glb",
+      "sha256": "e6ee7874470c97044e7b8204c2ae1b3b575e0731f8a68ddd4839800917c8cfd5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/crag.glb",
+      "src": "land113:01. High/summer/crag.glb",
+      "sha256": "08da64a97290c8e5fec11269fd881cd5591c915b7faa123c4651de2694c5386b",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/creek_bridge.glb",
+      "src": "land113:01. High/summer/creek_bridge.glb",
+      "sha256": "d5e4a6282c301162f37bde4568c11ae0c47f2e650128c6205a167360f3df47d9",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/creek_corner.glb",
+      "src": "land113:01. High/summer/creek_corner.glb",
+      "sha256": "4d7f0385d5e38402a3154bda8758d0361dcacbf78f1984d2c39586145f152259",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/creek_end.glb",
+      "src": "land113:01. High/summer/creek_end.glb",
+      "sha256": "f684d6b9d2878de9740746eddb74d43b3012c52fc901b18a6c6f7b18d96548f3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/creek_straight.glb",
+      "src": "land113:01. High/summer/creek_straight.glb",
+      "sha256": "adf7ee8c9ab622b30283e91a703ce4e07f64a5b7bcd5b6ebd2bb1dc534785b14",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/footbridge.glb",
+      "src": "land113:01. High/summer/footbridge.glb",
+      "sha256": "aa0ea0e1af407ed067aac749a346d36b3b162ebcffc495e7034224354ccfc712",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/hill_green.glb",
+      "src": "land113:01. High/summer/hill_green.glb",
+      "sha256": "6cdf1091bd21f86d31ca027bc1a3d4e29424f351e98dbd2ccc1d3d15fce3b130",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/lantern.glb",
+      "src": "land113:01. High/summer/lantern.glb",
+      "sha256": "fcfd9628c985ee9e891785fc6f96f2cbdbd680fd0bb28a25a654540297dbb974",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_rock.glb",
+      "src": "land113:01. High/summer/mountain_rock.glb",
+      "sha256": "d4fcdead105ec8a7b519ae9a13569f936db49ed6a82a93de23cd1b4e8be229a8",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_snow.glb",
+      "src": "land113:01. High/summer/mountain_snow.glb",
+      "sha256": "9f6c2a2cea58dcda2b342508782e26c655613e08b1e861eb6d996982b29117d6",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_tall.glb",
+      "src": "land113:01. High/summer/mountain_tall.glb",
+      "sha256": "f5969d4abca2ddc375ddfbd23e9f58f91150655f1cd87f04977302a99d56559c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_tall_snow.glb",
+      "src": "land113:01. High/summer/mountain_tall_snow.glb",
+      "sha256": "2c76104dbc002d1baff5935e504e58da3dd34c0bebae071649ed48dc2dd00044",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/road_mud_curve.glb",
+      "src": "land113:01. High/summer/road_mud_curve.glb",
+      "sha256": "10cf487fa2a5ecbb7bda07eb368060228907238698916aff2da9806af94c8a03",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/road_mud_straight.glb",
+      "src": "land113:01. High/summer/road_mud_straight.glb",
+      "sha256": "e1ea3932bca7f921e5a9b7f2cdb10d08f19376a0c47133d0f1fe8e7c4c99b0d5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/road_mud_t.glb",
+      "src": "land113:01. High/summer/road_mud_t.glb",
+      "sha256": "51a69e5d31daf21db31422a9a29723bc76fdfb655bb5df12dd32841000ac90e5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/rope_bridge.glb",
+      "src": "land113:01. High/summer/rope_bridge.glb",
+      "sha256": "f82242d7c75b233166baaca3e63eab89676ce56f794bda55f78fc82ec6719609",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/rowboat.glb",
+      "src": "land113:01. High/summer/rowboat.glb",
+      "sha256": "7cbe68ca51e933a17659239a90ed03d4e189355d9d16bd03d3061a6bd6971db7",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/rowboat_light.glb",
+      "src": "land113:01. High/summer/rowboat_light.glb",
+      "sha256": "9d0be2648e97eb81c9172de12d063c7e42fa555724da3e874d8c294c59ae0297",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/shell.glb",
+      "src": "land113:01. High/summer/shell.glb",
+      "sha256": "89f6d3e05d9fcc07025c36c075ae66c683ffdfa1755f801c202776f050a61024",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/shipwreck.glb",
+      "src": "land113:01. High/summer/shipwreck.glb",
+      "sha256": "60c48a4f78db3b7442f798a0ad174d4a08243ddb0830bb3d424a7c3bb7ebc32e",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/stall_counter.glb",
+      "src": "land113:01. High/summer/stall_counter.glb",
+      "sha256": "65a6f3c572136d0d05c9eff3588bd657637ce11010e44cea12e0ffed2810f9c5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/stall_counter_blue.glb",
+      "src": "land113:01. High/summer/stall_counter_blue.glb",
+      "sha256": "040f353b6b7fc79e3756389722e487e3c46196caa07f98d8b49879638b4827a2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/stall_stripes.glb",
+      "src": "land113:01. High/summer/stall_stripes.glb",
+      "sha256": "637dde217d1f2bae716123c2a88a2716d28acff397cefcb341613fdfe630d8eb",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/starfish.glb",
+      "src": "land113:01. High/summer/starfish.glb",
+      "sha256": "8f431b7b7cf52e4f4d7926236be7e595914b61c237ba264fbac7e66813179f22",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/stone_arch_bridge.glb",
+      "src": "land113:01. High/summer/stone_arch_bridge.glb",
+      "sha256": "76f05aa80518b9474a46442d6188243258974305ff0c7f427c087c6983d994ed",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/tent_peaked.glb",
+      "src": "land113:01. High/summer/tent_peaked.glb",
+      "sha256": "e682a8ddd4eb300ea5baaa9e8633924df8388b741de65cf4f958a5c7a09bc34c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/tent_ridge.glb",
+      "src": "land113:01. High/summer/tent_ridge.glb",
+      "sha256": "0ef4a8d46cfc6c407ed4a722d64515e7e3bdbda552a37c0c160d5d7b10316738",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/tent_round.glb",
+      "src": "land113:01. High/summer/tent_round.glb",
+      "sha256": "0d4b0b468302444b6a22d2b48bb6fe8b2aee47fdf7b4a7063bba4626f80d93df",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/treasure_chest.glb",
+      "src": "land113:01. High/summer/treasure_chest.glb",
+      "sha256": "83fe020c0b0506e8153078f8a986b864ab48dc58a0ca0e15aac56e3dc4babb3c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/cliff_tall.glb",
+      "src": "land113:01. High/winter/cliff_tall.glb",
+      "sha256": "34783737b0b1481fe4251dea8f01857b1fe5f157aa54f56097636f116ec06cce",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/cliff_tall_moss.glb",
+      "src": "land113:01. High/winter/cliff_tall_moss.glb",
+      "sha256": "30175979ef93dfdee696dd0115c18c7f967439c73635bb4c446ade1407572c20",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/cliff_wide.glb",
+      "src": "land113:01. High/winter/cliff_wide.glb",
+      "sha256": "af95b8ba976cba4648a8f778e2797b05d625819f15d4af6d201b3939e361cadf",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/cliff_wide_moss.glb",
+      "src": "land113:01. High/winter/cliff_wide_moss.glb",
+      "sha256": "a6151ba7a15de0cdf3c414abdaf2a58c3dabda5d8246ed0347e34742d55a7864",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/crab.glb",
+      "src": "land113:01. High/winter/crab.glb",
+      "sha256": "503de9c96736fbde377164abc4d467723f5d07f14d0e89c628f132e933ddc514",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/crag.glb",
+      "src": "land113:01. High/winter/crag.glb",
+      "sha256": "20f533d3f009841e7a11e414f175cef0b23b67deda29e414aef7e298a642089d",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/creek_bridge.glb",
+      "src": "land113:01. High/winter/creek_bridge.glb",
+      "sha256": "af62ac4ae304d39e0572bf6bdc657e1a55d9cfbe70b5ea8e3540ef573b0a8364",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/creek_corner.glb",
+      "src": "land113:01. High/winter/creek_corner.glb",
+      "sha256": "379db694ed603103666d4f3716d6d2af400db5d4b6ff2000ade8d2671d0568a8",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/creek_end.glb",
+      "src": "land113:01. High/winter/creek_end.glb",
+      "sha256": "66438cd11b65b4f6520ac2b3de5a9af06a3dedb47d9d6aca5379b6fe2d379a37",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/creek_straight.glb",
+      "src": "land113:01. High/winter/creek_straight.glb",
+      "sha256": "a8cf236ee5795cffdaeb7b2d0d7a31585c7267d467af1df02f5ea3f5eed515d5",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/footbridge.glb",
+      "src": "land113:01. High/winter/footbridge.glb",
+      "sha256": "7aa483d9851108db46f8c0bd348a48036c67bb6af516742fba585be0d61edbbe",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/hill_green.glb",
+      "src": "land113:01. High/winter/hill_green.glb",
+      "sha256": "b2f746dfa5d379b8a766a67301c6ed254b6d3ca12b5a72b46c3f5a671d0b43b7",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/lantern.glb",
+      "src": "land113:01. High/winter/lantern.glb",
+      "sha256": "cc196459deb2abed56e7b9148c4550a57947e316b5296f71087062569ed6bc7e",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_rock.glb",
+      "src": "land113:01. High/winter/mountain_rock.glb",
+      "sha256": "aded814c2993023db017035415ab535b3c1f6c80e102cd64f103ada0303d7740",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_snow.glb",
+      "src": "land113:01. High/winter/mountain_snow.glb",
+      "sha256": "203cfc80351efc2be69a896d3a5762f95b6dff8e40b1eb8f1454a670c8d2ab84",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_tall.glb",
+      "src": "land113:01. High/winter/mountain_tall.glb",
+      "sha256": "46a5be3269e1ffe69707ae06171dd1cb664f6a2f16af9ee49dbe29d0af528c36",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_tall_snow.glb",
+      "src": "land113:01. High/winter/mountain_tall_snow.glb",
+      "sha256": "014f5337fc2328314954ecd62cb531bd4a1ba7240c5da12dd7a59d794619d5f4",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/road_mud_curve.glb",
+      "src": "land113:01. High/winter/road_mud_curve.glb",
+      "sha256": "07962b9dab8274e1a3be99281eaf1d17f223370f007af57e4055d1f0a7239cf2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/road_mud_straight.glb",
+      "src": "land113:01. High/winter/road_mud_straight.glb",
+      "sha256": "9fe13f36108d6cd097382f6e97e22c684b542f7cdb674a7d35c2de458a5a6aa3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/road_mud_t.glb",
+      "src": "land113:01. High/winter/road_mud_t.glb",
+      "sha256": "29a99c4d83efa8159c10e42fc7179cb4716a5ffea1e0224c810d085dfd9512df",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/rope_bridge.glb",
+      "src": "land113:01. High/winter/rope_bridge.glb",
+      "sha256": "5466c4defd0848146963b8123911a7b8717c5edd6001d990bcbf89e107155c93",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/rowboat.glb",
+      "src": "land113:01. High/winter/rowboat.glb",
+      "sha256": "35b8bcc2d7405e21f6ab0ac3a8501e26fe977870504ac2f0615f63da47afb976",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/rowboat_light.glb",
+      "src": "land113:01. High/winter/rowboat_light.glb",
+      "sha256": "eaf39b018af51f103a153213d59b297df500b2f7915204501808fce33b4826bb",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/shell.glb",
+      "src": "land113:01. High/winter/shell.glb",
+      "sha256": "3fecece947d1bc2eccc622361d4fe6be28e989319f0532a7748a45018e2f90bf",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/shipwreck.glb",
+      "src": "land113:01. High/winter/shipwreck.glb",
+      "sha256": "4b3f172e7d497056664e6d403c1423571d7c39baec39e864a1fe6b765b4492a9",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/stall_counter.glb",
+      "src": "land113:01. High/winter/stall_counter.glb",
+      "sha256": "31aa5514f0d47acfd0c818c6d870ca70fee083420912e445d900f042c351f256",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/stall_counter_blue.glb",
+      "src": "land113:01. High/winter/stall_counter_blue.glb",
+      "sha256": "0fd00ac6e64ad62665972197ec7cab04296de12d00ca61644e444e1a4162783e",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/stall_stripes.glb",
+      "src": "land113:01. High/winter/stall_stripes.glb",
+      "sha256": "3e4ff218eae3b46b717f2a8276d2f7948d91e2f89aa00bca959b2670defee056",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/starfish.glb",
+      "src": "land113:01. High/winter/starfish.glb",
+      "sha256": "59e8bc3297c1c9907b57da18634d27f76c42441a6f435a75496b98854349ad80",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/stone_arch_bridge.glb",
+      "src": "land113:01. High/winter/stone_arch_bridge.glb",
+      "sha256": "3fdf5b8ad43ae02433d9ab0d5346545e11f248c3fbb2ada0700fdf400e1bc451",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/tent_peaked.glb",
+      "src": "land113:01. High/winter/tent_peaked.glb",
+      "sha256": "1af6fa5588495f7dd31fd7dd21bf1ffb6a42dd747fcf1b684a38d85a3aa99e9a",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/tent_ridge.glb",
+      "src": "land113:01. High/winter/tent_ridge.glb",
+      "sha256": "22729ec9febba5630e67c5a8dc1601bee2295832be4a876c886a09aa8df7eb4e",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/tent_round.glb",
+      "src": "land113:01. High/winter/tent_round.glb",
+      "sha256": "be6d3ffefc9128f4878432dd15abf48e5f35217663d35492180cbdb5f768701f",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/treasure_chest.glb",
+      "src": "land113:01. High/winter/treasure_chest.glb",
+      "sha256": "f775481bec35fb86a1f70471f317b9be831ed4a210dfe86f21428c625c191132",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/hill_green_low.glb",
+      "src": "land113:02. Low/autumn/hill_green_low.glb",
+      "sha256": "0348838ed1f03997f117a2f939cbb8d8e63c37af27edfd41f855796b79cf4787",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_rock_low.glb",
+      "src": "land113:02. Low/autumn/mountain_rock_low.glb",
+      "sha256": "2f366ab416fb87e01ce7cb166ae53a629b2021054a52d60d639fdd995f37667f",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_snow_low.glb",
+      "src": "land113:02. Low/autumn/mountain_snow_low.glb",
+      "sha256": "7bd77a1d06985ea491f2a2388888269e8ad365631656ef4013f30685348ed83d",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_tall_low.glb",
+      "src": "land113:02. Low/autumn/mountain_tall_low.glb",
+      "sha256": "10bb3e1faa155ec8818e98b80d17238e7e6ae26e77528b6b0a59182c010aad1e",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/mountain_tall_snow_low.glb",
+      "src": "land113:02. Low/autumn/mountain_tall_snow_low.glb",
+      "sha256": "aa568b915a5bc8fc3bbf1787593e9339715a4e899efacb0add9a00641501b1c2",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/rope_bridge_low.glb",
+      "src": "land113:02. Low/autumn/rope_bridge_low.glb",
+      "sha256": "682836815ee2ce7c384d60d12ba3e310b8a34f28c1feaa3bcfac9f347bf2074b",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/autumn/shipwreck_low.glb",
+      "src": "land113:02. Low/autumn/shipwreck_low.glb",
+      "sha256": "aa43b04766936541e8af6f25e812b0282bd71f1ff47673c9ab958270d6d88f8b",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/hill_green_low.glb",
+      "src": "land113:02. Low/spring/hill_green_low.glb",
+      "sha256": "b5d5539f61bc04bb2f18384aed8bb5f3cbdbd73007ee99adac3a34251b3059c6",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_rock_low.glb",
+      "src": "land113:02. Low/spring/mountain_rock_low.glb",
+      "sha256": "314d1359435c2659b44efc29ac86aabeea1f41a1f5c5ef5aeba7ef0563e86a59",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_snow_low.glb",
+      "src": "land113:02. Low/spring/mountain_snow_low.glb",
+      "sha256": "aa9c4efede26361c10cfa24e8d8568cf4b2c931d071227e2086b86f8a8dfac7c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_tall_low.glb",
+      "src": "land113:02. Low/spring/mountain_tall_low.glb",
+      "sha256": "7fa486af317582e0d8df0714b2d5fb98fb41728e32e42a313aa7686dae626c4c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/mountain_tall_snow_low.glb",
+      "src": "land113:02. Low/spring/mountain_tall_snow_low.glb",
+      "sha256": "94b57db8f1ff838eee6f29ae1491e3ef0bc2d8a6a0ab19284442507f2b7df334",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/rope_bridge_low.glb",
+      "src": "land113:02. Low/spring/rope_bridge_low.glb",
+      "sha256": "5da0749dbbc35f5edca54f958bb21800db068be4f9aa7b7d2a692dec82b82f4c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/spring/shipwreck_low.glb",
+      "src": "land113:02. Low/spring/shipwreck_low.glb",
+      "sha256": "89b68aa9b655235dfd6097edf604c41ab03cbe380f5b70575301efca58c7b584",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/hill_green_low.glb",
+      "src": "land113:02. Low/summer/hill_green_low.glb",
+      "sha256": "c6bae218feb79de47c4be590696d840d1bb47c183a1281eba441dae073be4c4f",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_rock_low.glb",
+      "src": "land113:02. Low/summer/mountain_rock_low.glb",
+      "sha256": "48b850cc4ac599b2053df9ade35f34341ac8af7889958c2e8c17bbe34fae6f3f",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_snow_low.glb",
+      "src": "land113:02. Low/summer/mountain_snow_low.glb",
+      "sha256": "6e4a74252f78483c18f3e0346b1f4422a2f171b04e8d0b4db5c937807571ba52",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_tall_low.glb",
+      "src": "land113:02. Low/summer/mountain_tall_low.glb",
+      "sha256": "2e59babe1dfd65f83fb8070c43899bbbbd6ad7092a53bc1db04db48d91197f54",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/mountain_tall_snow_low.glb",
+      "src": "land113:02. Low/summer/mountain_tall_snow_low.glb",
+      "sha256": "b50839d8672a316f22d2a59a3a0f3e96456f84c1c3c31da1db7b9be25cf43282",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/rope_bridge_low.glb",
+      "src": "land113:02. Low/summer/rope_bridge_low.glb",
+      "sha256": "4111909b644e9ca987c0be50bc2d3c48d13791faa7e6135dac8693eb3eede298",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/summer/shipwreck_low.glb",
+      "src": "land113:02. Low/summer/shipwreck_low.glb",
+      "sha256": "bd200f1f8008fe47a560ed3fdba574d3eb22e9dc33e1411c4ce95384ce118d4c",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/hill_green_low.glb",
+      "src": "land113:02. Low/winter/hill_green_low.glb",
+      "sha256": "7ee4cb8bca2b4fd0ab8489cb1bfab327d43369321530ad27b0a37a7907217bcf",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_rock_low.glb",
+      "src": "land113:02. Low/winter/mountain_rock_low.glb",
+      "sha256": "c008488f9b63aa4265d5e2aebed681fbc713ff0d8926906cdb2b62755c5455f3",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_snow_low.glb",
+      "src": "land113:02. Low/winter/mountain_snow_low.glb",
+      "sha256": "710e56ca42be42e66f92dbf86b1763cc81b03b3ebc63de4597f3e523e0e03f93",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_tall_low.glb",
+      "src": "land113:02. Low/winter/mountain_tall_low.glb",
+      "sha256": "2729d44e4e303b041631218d50c7aab3503da58795a05b216cb4397334292c39",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/mountain_tall_snow_low.glb",
+      "src": "land113:02. Low/winter/mountain_tall_snow_low.glb",
+      "sha256": "b197883ee3d699bf517cb4f7795bde6518cadd6f8e32a46df0550e08d2744514",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/rope_bridge_low.glb",
+      "src": "land113:02. Low/winter/rope_bridge_low.glb",
+      "sha256": "b7ff1a734f1224e79b80b99141568fbf4cef3ea103103411ed0a57adf84ae802",
+      "precompressed": true
+    },
+    {
+      "out": "land-v1/winter/shipwreck_low.glb",
+      "src": "land113:02. Low/winter/shipwreck_low.glb",
+      "sha256": "0149231169841978e43612efc08551b3834277c4c07e3f716b7db9966937be9f",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -10982,6 +12343,8 @@
     "taxi99b": "99b. Game Island taxi textured 2026-11-07",
     "pilot106": "106. Game Island graphics pilot 2026-11-07",
     "darae110": "110. Game Island rename clerk 2026-11-08",
-    "nature109": "109. Game Island nature megapack 2026-11-08"
+    "nature109": "109. Game Island nature megapack 2026-11-08",
+    "yard111": "111. Game Island yard and paths 2026-11-08",
+    "land113": "113. Game Island paths and landmarks 2026-11-08"
   }
 }
