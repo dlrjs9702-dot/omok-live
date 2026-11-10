@@ -5871,6 +5871,10 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const lots = await homeLots(); const names = new Map();
     for (const owner of new Set(Object.values(lots))) names.set(owner, await accountName(owner));
+    /* (300 (다): the houses and yard levels not yet in memory read in one query -- after a start every lot's two reads at
+       once had queued past the pool's 10 s, 11-10 07:35) */
+    const cold = [...new Set(Object.values(lots))].flatMap((o) => [...(homeCache.has(o) ? [] : [`home:${o}`]), ...(yardLevels.has(o) ? [] : [`yard:${o}`])]);
+    if (cold.length) for (const [k, v] of Object.entries(await pointStore.worldValues(cold))) { const o = k.slice(5); if (k.startsWith('home:')) { if (!homeCache.has(o)) homeCache.set(o, v || null); } else if (!yardLevels.has(o)) yardLevels.set(o, Number(v?.level) || 1); }
     const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null, stage: h ? homeStage(h).n : null, building: Boolean(h?.upgradeDay), yard: h?.yard || [], yardLevel: owner ? await yardLevelOf(owner) : 1 }; })); // (v1.10.225: the yard outside, for everyone)
     const mine = await homeOf(account); const grow = Math.min(IslandHome.TOP_STAGE, mine ? homeStage(mine).n + 1 : 2); // (the next stage's price)
     const yardLevel = await yardLevelOf(account);

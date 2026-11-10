@@ -570,3 +570,15 @@ test('DB: 연결 시간 초과 때 읽기만 한 번 더, 쓰기·다른 오류�
   assert.equal(store.dbReady, false); assert.equal(await store.warm({ tries: 2, wait: 10 }), false); assert.equal(store.dbReady, false);
   await store.pool.end();
 });
+// 300 (다): several island values in one read (the house lots' houses and yard levels) -- the same as one at a time, a missing one null
+test('worldValues: 여러 값을 한 번에, 없는 값은 null (JSON·PostgreSQL)', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'world-values-'));
+  const json = new JsonPointStore(path.join(dir, 'points.json')); await json.init();
+  const database = await testDatabase(); t.after(() => database.stop());
+  const pg = new PostgresPointStore(database.url); await pg.init(); t.after(() => pg.pool.end());
+  for (const store of [json, pg]) {
+    await store.setWorldValue('home:guest:a', { roof: 'red', pieces: [] }); await store.setWorldValue('yard:guest:b', { level: 3 });
+    assert.deepEqual(await store.worldValues(['home:guest:a', 'yard:guest:b', 'home:guest:none']), { 'home:guest:a': { roof: 'red', pieces: [] }, 'yard:guest:b': { level: 3 }, 'home:guest:none': null });
+    assert.deepEqual(await store.worldValues([]), {});
+  }
+});
