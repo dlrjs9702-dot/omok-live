@@ -3637,6 +3637,13 @@ body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;c
 .recordTowerGo{width:calc(100% - 32px);min-height:48px;box-sizing:border-box} /* (.recordsDialog's children: 16px each side) */
 .recordTowerRowItem.recordTowerAward{grid-template-columns:minmax(0,1fr) auto auto}.recordTowerAward b{white-space:nowrap;font-size:.9rem}
 .recordTowerTotal{padding:6px 12px;font-weight:900;color:#7a4a0c}
+/* 대회 순위: the 「매일 대회」 tab's past days -- one line each (its 1~3위), opened to the whole board */
+.recordTowerDay details{border-radius:12px;background:#fffaf0;border:1px solid #e2d4bd;color:#3d2f20}
+.recordTowerDay summary{min-height:40px;padding:8px 12px;box-sizing:border-box;font-weight:700;cursor:pointer;overflow-wrap:anywhere}
+.recordTowerDayList{list-style:none;margin:0;padding:0 6px 6px;display:grid;gap:4px}
+/* (총괄 #455) the tent sign's 「섬 대회 안내」: the 1~3위 one a row, the next contest under them */
+.contestSignInfo{flex:1 0 100%;display:grid;gap:4px;margin:2px 0 8px}
+.contestSignRow{margin:0;font-weight:700;line-height:1.5;overflow-wrap:anywhere}.contestSignRow.next{margin-top:4px;color:#7a4a0c}
 /* 메신저 정리 (docs/messenger-speed-photo-20261103.md 12절): the 메신저 서랍 -- PC the right 380 px, a phone (≤640 px) a sheet from below, 85 % high */
 .messengerDrawer{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:100vw;z-index:85;display:flex;background:#fff6e3;border-left:1px solid #c4a77d;box-shadow:-10px 0 28px rgba(40,28,16,.28)}
 .messengerDrawer.hidden{display:none}

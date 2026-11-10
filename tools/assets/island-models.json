@@ -1426,10 +1426,10 @@
     },
     {
       "out": "characters/wear/outfit_apron.glb",
-      "src": "slim49:01. High/wear/outfit_apron.glb",
-      "sha256": "6f8b1d151d2048e1551e536ff7bd894d144798cda0c40f3408cb84086b298d05",
-      "lowSrc": "slim49:02. Low/wear/outfit_apron_low.glb",
-      "lowSha256": "a2809d4e2b5b8483e628af2ba06daa42279ce948b64ab32eb3072fe3e0858f37",
+      "src": "refit117:01. High/outfit_apron.glb",
+      "sha256": "201ea70700b74cb2a9f08c01e147813f7599670630cedf9a3a6dac4a0ef73572",
+      "lowSrc": "refit117:02. Low/outfit_apron_low.glb",
+      "lowSha256": "f74008782ac8bc74dea77a58939fbfec09f7267253653caa366bc0bfcf627340",
       "precompressed": true
     },
     {
@@ -1458,18 +1458,18 @@
     },
     {
       "out": "characters/wear/outfit_robe.glb",
-      "src": "slim49:01. High/wear/outfit_robe.glb",
-      "sha256": "578ab9a8285bc97b9be4fd691103c8e19737927b0bfe4812a2d72a630e1855fa",
-      "lowSrc": "slim49:02. Low/wear/outfit_robe_low.glb",
-      "lowSha256": "a1a6f7231a971fe8199ee4d4d48ac09ab8b63c3494ee8c30e8cc9b6dec83f5d8",
+      "src": "refit117:01. High/outfit_robe.glb",
+      "sha256": "d0e13db27ef3fb0d2888c35defd13bc1e3f590e81c895ae0ddec16a33d01d6dc",
+      "lowSrc": "refit117:02. Low/outfit_robe_low.glb",
+      "lowSha256": "e9ee7c42023a4b302e1279aad3170825697e353c192019347c19ce61687bb055",
       "precompressed": true
     },
     {
       "out": "characters/wear/outfit_dress.glb",
-      "src": "slim49:01. High/wear/outfit_dress.glb",
-      "sha256": "ec9ea65c140ab9326ab43dbacb30477b19cf4dff738e54a9b79ba1bbd9e7d3f6",
-      "lowSrc": "slim49:02. Low/wear/outfit_dress_low.glb",
-      "lowSha256": "8bf7826835ea0a724934efe48251f4a79d982b2c101a7a712bb53c013c2f7200",
+      "src": "refit117:01. High/outfit_dress.glb",
+      "sha256": "710048f9afc51239fe5fb41a76c8905ccaf4e06cfd41c4debfac7f172d1b7f74",
+      "lowSrc": "refit117:02. Low/outfit_dress_low.glb",
+      "lowSha256": "02829e01c7decec97da1a7f4c15c7b425630ea0b625e5470a54f88fb69bd98a8",
       "precompressed": true
     },
     {
@@ -1520,10 +1520,10 @@
     },
     {
       "out": "characters/wear/outfit_royal.glb",
-      "src": "slim49:01. High/wear/outfit_royal.glb",
-      "sha256": "7609a09c7deabe1183caa64943038c83a4561636d24fb43c92bf6596fd51ad49",
-      "lowSrc": "slim49:02. Low/wear/outfit_royal_low.glb",
-      "lowSha256": "dfc69f8962882eea4378134f53a2b0efa879fd0311d6743950c8ea7d934975b1",
+      "src": "refit117:01. High/outfit_royal.glb",
+      "sha256": "573e277057b2448ceee26c7b63fd0bc3b41a0dfb5bc5b6387af8f1f0131d8e8d",
+      "lowSrc": "refit117:02. Low/outfit_royal_low.glb",
+      "lowSha256": "0edcfbf8a777ba53a7989e5b1b8262a7845247bc8d0bd8fd37dbb18745fffdb3",
       "precompressed": true
     },
     {
@@ -1644,26 +1644,26 @@
     },
     {
       "out": "characters/wear/outfit_hw_pumpkin.glb",
-      "src": "slim49:01. High/wear/outfit_hw_pumpkin.glb",
-      "sha256": "072e93cbf120bdb5573f9572fe41e7813a9a75ffa98a79cf619a2263289cf415",
-      "lowSrc": "slim49:02. Low/wear/outfit_hw_pumpkin_low.glb",
-      "lowSha256": "0244157177fc406491803f6577a3f5120ea6a867a5c03a330c3bacc6e70a210e",
+      "src": "refit117:01. High/outfit_hw_pumpkin.glb",
+      "sha256": "1ddf8f5450fce29412a99a4b6c6e717e21a704d6c00d23e08c21dca04bd14f02",
+      "lowSrc": "refit117:02. Low/outfit_hw_pumpkin_low.glb",
+      "lowSha256": "4d4c87a76129610fc9e5dba25f433b00f98ac51bf03de31b1ce7bcd31206c58e",
       "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hw_witch.glb",
-      "src": "slim49:01. High/wear/outfit_hw_witch.glb",
-      "sha256": "1e0d917ca69943a4a82391ef44786278b7afc20a95d12d0720e113045d870a89",
-      "lowSrc": "slim49:02. Low/wear/outfit_hw_witch_low.glb",
-      "lowSha256": "b3cf8550f2b50fd18a7271c2dbbab24154a58f9dced001715f8ae2e911b4fb12",
+      "src": "refit117:01. High/outfit_hw_witch.glb",
+      "sha256": "a3827d533922f3a5f81941bc3b1feb364e1f1be20176a94148e4180c59ae2c83",
+      "lowSrc": "refit117:02. Low/outfit_hw_witch_low.glb",
+      "lowSha256": "67af23808035734f6f3ef327108f837fadecd3255ebb053980d98e26fbc4d7eb",
       "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hw_vampire.glb",
-      "src": "slim49:01. High/wear/outfit_hw_vampire.glb",
-      "sha256": "b262f1c0f4c675aa941acccba4e045ba89a222a6faf1a54291395dbcc60012f3",
-      "lowSrc": "slim49:02. Low/wear/outfit_hw_vampire_low.glb",
-      "lowSha256": "1e771acff115cc65d3932194d606d27593fff9b261f34f9322368aef1b63c14a",
+      "src": "refit117:01. High/outfit_hw_vampire.glb",
+      "sha256": "d069ef33c42e8c23499f0ea10284c2d77b6a29c9986b743052051847088e22ac",
+      "lowSrc": "refit117:02. Low/outfit_hw_vampire_low.glb",
+      "lowSha256": "0ef436ac66b9bdb5c5bff2f1d3eed2ffb6e41ca41251bee270934bf71e480a0f",
       "precompressed": true
     },
     {
@@ -12646,6 +12646,7 @@
     "nature109": "109. Game Island nature megapack 2026-11-08",
     "yard111": "111. Game Island yard and paths 2026-11-08",
     "land113": "113. Game Island paths and landmarks 2026-11-08",
-    "nature112": "112. Game Island new nature G4 2026-11-08"
+    "nature112": "112. Game Island new nature G4 2026-11-08",
+    "refit117": "117. Game Island outfit decor refit 2026-11-10"
   }
 }

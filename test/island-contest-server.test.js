@@ -37,6 +37,13 @@ test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 �
     assert.deepEqual((await round(a, 'whack', 240, { contest: true })).contest, { score: 260, rank: 2 }); // (my best kept)
     const live = (await req('/api/island/contest', a)).data;
     assert.deepEqual(live.top.map((r) => [r.name, r.score]), [['대회이웃', 280], ['대회손님', 260]]); assert.deepEqual(live.mine, { score: 260, rank: 2 });
+    // 대회 순위 (notes docs/contest-results-20261110.md): the open contest's whole board, mine marked, no accounts out; the tent
+    // standing all day, 가락 sent walking to it for its hours (the server's `contest:tent` hold at its keeper spot)
+    const open = (await req('/api/island/contest/history', b)).data;
+    assert.deepEqual(open.live.ranks, [{ rank: 1, name: '대회이웃', score: 280, mine: true }, { rank: 2, name: '대회손님', score: 260 }]); assert.ok(!JSON.stringify(open).includes('account'));
+    assert.equal(live.contest.stands, true); assert.equal(live.contest.duty, true);
+    const garak = require('../public/plaza/island-cast').RESIDENTS.findIndex((r) => r.reg === 'garak'); const held = async () => (await req('/api/island/resident/bye', a, { n: -1 })).data.residents?.[garak]?.hold || null;
+    const h = await held(); assert.equal(h?.eventId, 'contest:tent'); assert.deepEqual([h.x, h.z], [K.x, K.z]); assert.ok(h.arriveAt > Date.now() && h.from, JSON.stringify(h));
     // a card contest: one deal for everyone (a game hall deal its own)
     await req('/api/test/contest/clock', a, { to: 'live', kind: 'klondike' });
     const deal = async (s, extra) => (await req('/api/solo/cards/start', s, { game: 'klondike', level: 'hard', ...extra })).data;
@@ -55,6 +62,12 @@ test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 �
     await req('/api/test/weekly/settle', a, { day: Calendar.dayOf(Date.now()) }); await req('/api/test/weekly/settle', a, { all: true });
     await req('/api/test/contest/clock', a, { to: 'end' });
     assert.deepEqual((await req('/api/island/contest', a)).data.last, last);
+    // 대회 순위: everyone's place kept once settled (the time contest: the shorter first), mine marked; the tent's half hour over:
+    // 가락 sent home (on the route grid from the tent)
+    const kept = (await req('/api/island/contest/history', a)).data; assert.equal(kept.live, null); assert.equal(kept.history.length, 1); assert.equal(kept.history[0].id, live.contest.id);
+    assert.deepEqual(kept.history[0].ranks, [{ rank: 1, name: '대회이웃', score: 250 }, { rank: 2, name: '대회손님', score: 320, mine: true }]); assert.equal(kept.history[0].entrants, 2);
+    await req('/api/test/contest/clock', a, { to: 'after' }); const home = await held(); assert.equal(home?.eventId, 'contest:back', JSON.stringify(home));
+    assert.ok(Math.hypot(home.from.x - K.x, home.from.z - K.z) < 2);
   } finally { await req('/api/test/contest/clock', a, { to: 'reset' }); }
   // the contest over (the real clock, unless it is 14:00 now): no contest round
   const off = (await req('/api/island/contest', a)).data.contest;

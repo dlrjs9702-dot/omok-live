@@ -2283,8 +2283,11 @@
       b.setAttribute(box.getAttribute('role') === 'tablist' ? 'aria-selected' : 'aria-checked', String(v === value)); b.classList.toggle('selected', v === value); b.addEventListener('click', () => pick(v)); return b; }));
   }
   async function renderRecordTower() {
-    const R = window.SoloRanking; const g = R.BY_ID[towerPick.game]; const level = g.levels.includes(towerPick.level) ? towerPick.level : g.board; towerPick.level = level;
-    towerChips(byId('recordTowerGames'), R.GAMES.map((x) => [x.id, x.name]), g.id, (v) => { towerPick.game = v; towerPick.level = null; renderRecordTower(); });
+    const R = window.SoloRanking; const games = [['contest', '매일 대회'], ...R.GAMES.map((x) => [x.id, x.name])]; /* (대회 순위: the daily contest's own tab first) */
+    towerChips(byId('recordTowerGames'), games, towerPick.game, (v) => { towerPick.game = v; towerPick.level = null; renderRecordTower(); });
+    if (towerPick.game === 'contest') return renderContestTab();
+    const g = R.BY_ID[towerPick.game]; const level = g.levels.includes(towerPick.level) ? towerPick.level : g.board; towerPick.level = level;
+    byId('recordTowerPeriod').classList.remove('hidden');
     towerChips(byId('recordTowerPeriod'), [['week', '이번 주'], ['all', '역대 최고'], ['mine', '내 업적']], towerPick.period, (v) => { towerPick.period = v; renderRecordTower(); });
     if (towerPick.period === 'mine') return renderMyAwards(); /* (v1.10.251 §3-2) */
     towerChips(byId('recordTowerLevels'), g.levels.map((l) => [l, R.levelName(g.id, l)]), level, (v) => { towerPick.level = v; renderRecordTower(); });
@@ -2310,12 +2313,41 @@
     list.replaceChildren(total, ...rows); if (!rows.length) { const li = document.createElement('li'); li.className = 'recordTowerEmpty'; li.textContent = '아직 기록이 없어요. 도전해 보세요!'; list.append(li); }
     me.textContent = ''; byId('recordTowerGo').textContent = `${R.BY_ID[towerPick.game].name} 도전하기`;
   }
+  // 대회 순위 (notes docs/contest-results-20261110.md 1): the open contest's whole board (every 10 s while it runs), else the latest
+  // one's; then the last 7 days -- each its 1~3위, opened to its whole board. Long lists scroll inside the list only.
+  let contestTabTimer = null;
+  async function renderContestTab() {
+    clearTimeout(contestTabTimer); byId('recordTowerPeriod').classList.add('hidden'); byId('recordTowerLevels').classList.add('hidden');
+    const list = byId('recordTowerList'); const me = byId('recordTowerMe'); const ask = ++towerAsk; byId('recordTowerGo').textContent = '대회 천막으로 가기';
+    let d; try { d = await api('/api/island/contest/history'); } catch (error) { if (ask === towerAsk) me.textContent = error.message; return; } if (ask !== towerAsk) return;
+    const day = (ms) => { const t = new Date(ms + 9 * 3600000); return `${t.getUTCMonth() + 1}/${t.getUTCDate()}`; };
+    const row = (c, r) => { const li = document.createElement('li'); li.className = `recordTowerRowItem${r.mine ? ' me' : ''}${r.rank === 1 ? ' first' : ''}`; const n = document.createElement('b'); n.textContent = `${r.rank}`; const who = document.createElement('span'); who.textContent = r.name; const s = document.createElement('strong'); s.textContent = contestScore(c, r.score); li.append(n, who, s); return li; };
+    const head = (text) => Object.assign(document.createElement('li'), { className: 'recordTowerTotal', textContent: text });
+    const empty = (text) => Object.assign(document.createElement('li'), { className: 'recordTowerEmpty', textContent: text });
+    const live = d.live; const shown = live || d.history[0] || null; const past = live ? d.history : d.history.slice(1); const items = [];
+    if (live) items.push(head(`🏆 ${live.name} 진행 중 · 남은 ${Math.max(1, Math.ceil((live.end - d.serverNow) / 60000))}분`), ...(live.ranks.length ? live.ranks.map((r) => row(live, r)) : [empty('아직 기록이 없어요. 천막에서 참가해 보세요!')]));
+    else if (shown) items.push(head(`🏆 ${day(shown.end)} ${shown.name} · ${shown.entrants}명${shown.rewarded ? '' : ' · 시상 없음'}`), ...(shown.ranks.length ? shown.ranks.map((r) => row(shown, r)) : [empty('참가한 사람이 없었어요')]));
+    else items.push(empty('아직 끝난 대회가 없어요'));
+    if (past.length) items.push(head('지난 7일'));
+    for (const h of past) { /* (a day: its 1~3위 on one line, opened to everyone's) */
+      const li = document.createElement('li'); li.className = 'recordTowerDay'; const box = document.createElement('details'); const sum = document.createElement('summary');
+      sum.textContent = `${day(h.end)} · ${h.name.replace(/ 대회$/, '')} · ${h.ranks.length ? h.ranks.slice(0, 3).map((r) => `${r.rank}위 ${r.name}`).join(' · ') : '참가 없음'}`;
+      const ol = document.createElement('ol'); ol.className = 'recordTowerDayList'; ol.append(...h.ranks.map((r) => row(h, r))); box.append(sum, ol); li.append(box); items.push(li);
+    }
+    list.replaceChildren(...items);
+    const mine = shown?.ranks.find((r) => r.mine); me.textContent = mine ? `내 순위 ${mine.rank}위 · ${contestScore(shown, mine.score)}` : d.next ? `다음 대회 · ${day(d.next.start)} ${new Date(d.next.start + 9 * 3600000).toISOString().slice(11, 16)} ${d.next.name}` : '';
+    if (live && recordTowerDialog.open) contestTabTimer = setTimeout(() => { if (recordTowerDialog.open && towerPick.game === 'contest') renderContestTab(); }, 10000); /* (as the bar) */
+  }
   function openRecordTower(game) {
-    if (game && window.SoloRanking?.BY_ID[game]) { towerPick.game = game; towerPick.level = null; }
+    if (game === 'contest' || (game && window.SoloRanking?.BY_ID[game])) { towerPick.game = game; towerPick.level = null; }
     if (!recordTowerDialog.open) recordTowerDialog.showModal(); renderRecordTower(); refreshRecordBoard(true);
   }
   byId('recordTowerCloseBtn').addEventListener('click', () => recordTowerDialog.close());
-  byId('recordTowerGo').addEventListener('click', () => { recordTowerDialog.close(); const id = towerPick.game; playGame(LAUNCH_ID[id] || id, { place: 'quest', level: towerPick.level }); });
+  byId('recordTowerGo').addEventListener('click', () => {
+    recordTowerDialog.close(); const id = towerPick.game;
+    if (id === 'contest') { const K = globalThis.IslandCalendar?.PLACES?.keeper; if (K) { plaza.controller?.setGuideTarget?.({ x: K.x, z: K.z }); contestArrow = true; showToast('화살표를 따라 대청마당 대회 천막으로 가요', 3500); } return; }
+    playGame(LAUNCH_ID[id] || id, { place: 'quest', level: towerPick.level });
+  });
   document.getElementById('soloReflexBtn').addEventListener('click', () => openHanpan('reflex'));
   document.getElementById('soloPuzzleBtn').addEventListener('click', () => openHanpan('puzzle'));
   document.getElementById('soloCardsBtn').addEventListener('click', () => openHanpan('cards'));
@@ -4032,14 +4064,15 @@
   const contestScore = (c, n) => (c.unit === 'ms' ? (n >= 60000 ? `${Math.floor(n / 60000)}:${((n % 60000) / 1000).toFixed(1).padStart(4, '0')}` : `${(n / 1000).toFixed(2)}초`) : `${Number(n).toLocaleString('ko-KR')}${c.unit}`);
   const TENT_AT = '대청마당 대회 천막';
   byId('contestBar')?.addEventListener('click', () => { // (문제 기록 1103 7 「이거 어디서 하는 거지?」: the way to the tent)
-    const K = globalThis.IslandCalendar?.PLACES?.keeper; if (!K || !byId('contestBar').classList.contains('tentLink')) return;
-    plaza.controller?.setGuideTarget?.({ x: K.x, z: K.z }); contestArrow = true; showToast(`화살표를 따라 ${TENT_AT}으로 가요`, 3500);
+    const K = globalThis.IslandCalendar?.PLACES?.keeper; /* (대회 순위: the bar opens the 기록의 탑 「매일 대회」 tab; while one is near or on, the arrow too) */
+    if (K && byId('contestBar').classList.contains('tentLink')) { plaza.controller?.setGuideTarget?.({ x: K.x, z: K.z }); contestArrow = true; showToast(`화살표를 따라 ${TENT_AT}으로 가요`, 3500); }
+    openRecordTower('contest');
   });
   function refreshContest() {
     clearTimeout(contestPoll); if (!document.body.classList.contains('plazaMode')) return;
     api('/api/island/contest').then((d) => {
       const c = d.contest; const bar = byId('contestBar'); const offset = d.serverNow - Date.now(); clearInterval(contestTick);
-      plaza.controller?.setContestTent?.(c.tent ? c : null); bar.classList.toggle('tentLink', Boolean(c.tent) && c.phase !== 'done'); // (v1.10.238 대회 천막)
+      plaza.controller?.setContestTent?.(c.stands || c.tent ? c : null); /* (대회 순위: standing all day) */ bar.classList.toggle('tentLink', Boolean(c.tent) && c.phase !== 'done'); // (v1.10.238 대회 천막)
       if (c.phase === 'live' && contestSeen !== c.id + ':live') { contestSeen = c.id + ':live'; showToast(`🏆 ${c.name} 시작! ${TENT_AT}에서 참가해요.`, 5000); }
       const show = (text) => { bar.textContent = text; bar.classList.toggle('hidden', !text); };
       const clock = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -4056,9 +4089,30 @@
     }).catch(() => { contestPoll = setTimeout(refreshContest, 60000); });
   }
   const tentCard = document.createElement('div'); tentCard.className = 'talkActions'; tentCard.id = 'tentCard';
+  // 대회 순위 (2): 가락 not at the tent -- its sign's 「섬 대회 안내」: the last contest's 1~3위 and 「전체 순위 보기」 (the tower's tab),
+  // the next one's event and time, and 「참가하기」 only while one runs (as with him)
+  function openContestSign(d) {
+    const c = d.contest; const row = tentCard; row.replaceChildren(); const says = [];
+    const say = (text) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = text; says.push(p); };
+    const seoul = (ms) => { const t = new Date(ms + 9 * 3600000); return `${t.getUTCMonth() + 1}/${t.getUTCDate()} ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`; };
+    const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); };
+    /* (총괄 #455: one typed line, the rest at once -- 1~3위 one a row, then the next one or the open one; a phone broke 「2 / 위」 in one sentence) */
+    const L = d.last; say(L ? `지난 대회 · ${L.name}` : '아직 끝난 대회가 없어요.');
+    const info = document.createElement('div'); info.className = 'contestSignInfo'; const line = (text, cls = '') => { const p = document.createElement('p'); p.className = `contestSignRow${cls}`; p.textContent = text; info.append(p); };
+    if (L) { if (L.top.length) for (const r of L.top.slice(0, 3)) line(`${['🥇', '🥈', '🥉'][r.rank - 1]} ${r.name} ${contestScore(L, r.score)}`); else line('참가한 사람이 없었어요'); }
+    const K = 9 * 3600000; const today = (ms) => Math.floor((ms + K) / 86400000);
+    if (c.phase === 'live') line(`진행 중 · 남은 ${Math.max(1, Math.ceil((c.end - d.serverNow) / 60000))}분 · 참가하기`, ' next');
+    else if (d.next) line(`다음 대회: ${today(d.next.start) === today(d.serverNow) ? '오늘' : '내일'} ${seoul(d.next.start).split(' ')[1]} · ${d.next.name.replace(/ 대회$/, '')}`, ' next');
+    says.push(info);
+    if (c.phase === 'live') button('참가하기', () => joinContest(c, d.serverNow - Date.now()));
+    button('전체 순위 보기', () => { plazaDialog.close(); openRecordTower('contest'); }, c.phase === 'live' ? 'ghost' : 'primary');
+    button('닫기', () => plazaDialog.close(), 'ghost');
+    lostCard.replaceChildren(...says, row); openTalk('섬 대회 안내');
+  }
   async function openContestTent() {
     let d; try { d = await api('/api/island/contest'); } catch (error) { showToast(error.message); return; }
     if (contestArrow) { plaza.controller?.setGuideTarget?.(null); contestArrow = false; } // (there: the arrow down)
+    if (plaza.controller?.contestKeeperHere && !plaza.controller.contestKeeperHere()) { openContestSign(d); return; }
     const c = d.contest; const now = Date.now() + (d.serverNow - Date.now()); const mins = (ms) => Math.max(1, Math.ceil(ms / 60000));
     const says = []; const sayLine = (text) => { if (!text) return; const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = text; says.push(p); }; const row = tentCard; row.replaceChildren(); /* (v1.10.242: his lines one after another) */
     const G = globalThis.ContestLines; const his = (key, vars) => G?.say(c.kind, key, vars) || ''; const seoul = (ms) => { const t = new Date(ms + 9 * 3600000); return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`; };

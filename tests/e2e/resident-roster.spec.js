@@ -40,7 +40,7 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     await expect.poll(async () => Object.fromEntries(Object.entries((await page.evaluate(() => window.PlazaDebug().roster())).posts).map(([p, v]) => [p, v.model ? v.resident : null])), { timeout: 60000 }).toEqual(want);
     // a walker at a counter: not on the island; 물결 at his counter: his harbour spot empty; the resting desk's clerk away
     const d = await page.evaluate(() => window.PlazaDebug().roster());
-    const away = R.POSTS.map((p) => r.posts[p.id]).filter((n) => n < Cast.WALKERS.length).sort((a, b) => a - b);
+    const away = R.POSTS.map((p) => r.posts[p.id]).filter((n) => n < Cast.WALKERS.length || Cast.RESIDENTS[n]?.reg === 'garak').sort((a, b) => a - b); /* (대회 순위: 가락 made a walker for his walk to the 대회 천막 -- hidden again at his counter) */
     // (a walker at a counter is made and hidden when the walkers come out before the day's table, or not made at all when the
     // table came first -- either way none of them on the island: CI #375, the order turned with the page's start)
     expect(d.walkersAway.every((n) => away.includes(n)), JSON.stringify(d.walkersAway)).toBe(true); expect(d.shownAway).toBe(0);

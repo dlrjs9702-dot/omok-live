@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.305 대회 순위·천막 하루 종일·에셋 117
+
+- 기록의 탑 「매일 대회」 탭(진행 중/최근 전체 순위, 지난 7일), 대회 띠 → 탭. 서버 contestHistory 7일(keepHistory), /api/island/contest/history(계정 안 내보냄). 천막 stands 하루 종일, 가락 duty(알림 15분 전 ~ 끝+30분) contest:tent 붙잡기로 걸어옴·contest:back 귀가, 갈대 길·계산대 날은 백화점 문에서. 안내판 「섬 대회 안내」.
+- 에셋 117 옷 7벌 장식(흡혈귀 나비넥타이·호박 배 등) High+Low, island-models refit117. 다음: 총괄 지시.
+
 ## v1.10.304 이모티콘 순서·알림 기기별·로컬 시험
 
 - 이모티콘 칩: 0.4초 꾹 눌러 드래그(최근 고정, 끝 자동 스크롤, 「처음대로」 드래그 중만), /api/messenger/sticker-order 계정별 저장. 알림 방식: localStorage messengerAlert → 서버 값(유지 기기) → 열어 둘 때만, 유지 없으면 닫아도 받기 막음. 섬 안내 주제 클릭 중 타자 덮어쓰기 수정.
@@ -22,8 +27,3 @@
 
 - 에셋 112: 덤불 +160·바위 +120·통나무 34·야자수 18(막힘), 키 큰 풀 240(40 m 밖 숨김)·연잎/연꽃 36. 바위 막힘(자갈·물가 돌 빼고). 택시 길 가운데서 4.05 m·정류장 10 m·걷는 길 2.5 m·건널목·집터·열매 자리 비움. Low 없음.
 - 다음: G4b 채집(버섯·네잎클로버·나뭇가지) + 로컬 e2e 설정(로비 15초, PW_GPU, fp:107).
-
-## v1.10.302 게임관 1차
-
-- F1 첫걸음: 판 게임 고르는 중 덮개에 역할 버튼(오른쪽 칸 버튼 대역)과 방장 시작, 빈 자리 이름표 누르면 앉기. 팬데믹 P1 역할 카드(불투명, 이유 창이 뜨면 닫힘)·칩 짧은 역할 이름, P3 지금 할 일, P5 함께하기 N명, P7 치료제 동그라미·큐브 3개 빨간 테두리·? 범례, P8 못 쓰는 버튼 이유.
-- 다음: G4a 흩어진 자연물(에셋 112).

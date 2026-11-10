@@ -352,7 +352,7 @@
   function residentAt(n, ms, state = null) {
     const hold = state?.hold;
     if (hold && Number.isFinite(hold.x) && Number.isFinite(hold.z) && Number.isFinite(hold.yaw)) {
-      return { x: hold.x, z: hold.z, yaw: hold.yaw, moving: false, held: true };
+      return { x: hold.x, z: hold.z, yaw: hold.yaw, moving: false, held: true, ...(hold.from ? { from: hold.from } : {}), ...(String(hold.eventId || '').startsWith('contest:') ? { contest: hold.eventId } : {}) };
     }
     const delay = Number.isFinite(state?.delay) && state.delay >= 0 ? state.delay : 0;
     return at(n, ms - delay);
@@ -430,9 +430,10 @@
     // v1.10.73 (IDEAS #bug-event-resident-stuck): the way to a held place on the route grid, with this screen's own
     // solids (October night's pumpkins) kept off it too. A cell is blocked where a solid comes within an islander of it.
     const blockedCell = ({ x, z }) => !walkable(x, z) || solidsNear(x, z).some((s) => Math.hypot(Math.max(0, Math.abs(x - s.x) - CELL / 2), Math.max(0, Math.abs(z - s.z) - CELL / 2)) < s.r + R);
-    function pathTo(w, x, z) {
+    function pathTo(w, x, z, from = null) {
       const cells = new Map(); const at = (id) => { if (!cells.has(id)) cells.set(id, blockedCell(centre(id % N, Math.floor(id / N)))); return cells.get(id); };
-      const pts = findPath({ x: w.x, z: w.z }, { x, z }, at) || findPath({ x: w.x, z: w.z }, { x, z });
+      let pts = findPath({ x: w.x, z: w.z }, { x, z }, at) || findPath({ x: w.x, z: w.z }, { x, z });
+      if (!pts && from) { [w.x, w.z] = [from.x, from.z]; resyncs += 1; pts = findPath(from, { x, z }, at) || findPath(from, { x, z }, () => false); } /* (대회 순위: no way from where they are drawn -- 가락's reeds -- the hold's own start, the 백화점's door, and the walk from there) */
       // (CI #315: no walking way at all -- parts of the grid that never meet, a river between -- a straight walk stopped on
       // the bank for good: there at once instead, as a screen that was paused puts them)
       if (!pts) { [w.x, w.z] = [x, z]; resyncs += 1; }
@@ -461,8 +462,8 @@
           // without headway (wedged on the way), it takes the route grid from where it stands.
           if (paused) { [w.x, w.z] = [pose.x, pose.z]; w.route = null; resyncs += 1; }
           const left = Math.hypot(pose.x - w.x, pose.z - w.z); const key = `${pose.x},${pose.z}`;
-          if (w.routeTo !== key) { w.route = null; w.routeTo = key; w.routeCheck = { t: 0, d: left }; if (left > MAX_OFF) pathTo(w, pose.x, pose.z); }
-          else if ((w.routeCheck.t += dt) >= 1.5) { if (left > 0.05 && left > w.routeCheck.d - 0.2) pathTo(w, pose.x, pose.z); else w.routeCheck = { t: 0, d: left }; }
+          if (w.routeTo !== key) { w.route = null; w.routeTo = key; w.routeCheck = { t: 0, d: left }; if (left > MAX_OFF) pathTo(w, pose.x, pose.z, pose.from); }
+          else if ((w.routeCheck.t += dt) >= 1.5) { if (left > 0.05 && left > w.routeCheck.d - 0.2) pathTo(w, pose.x, pose.z, pose.from); else w.routeCheck = { t: 0, d: left }; }
           if (left < 0.6) w.route = null;
           const goal = w.route ? routeTarget(w) : pose;
           const distance=Math.hypot(goal.x-w.x,goal.z-w.z), scale=distance?Math.min(1,TOP*dt/distance):1;
@@ -474,7 +475,7 @@
           continue; // approach the same safe server point; never teleport away from local avoidance
         }
         w.route = null; w.routeTo = null;
-        if (w.pose.held) w.rejoining = true;
+        if (w.pose.held) w.rejoining = w.pose.contest !== 'contest:back'; /* (대회 순위: 가락 home from the tent -- at his round's spot, or gone in at the 백화점's door: straight back on his round) */
         if (w.rejoining && Math.hypot(w.x-pose.x,w.z-pose.z)<0.5) w.rejoining = false;
         let tx = pose.x + (w.x - w.bx) * keep; let tz = pose.z + (w.z - w.bz) * keep;
         const want = Math.hypot(tx - w.x, tz - w.z);

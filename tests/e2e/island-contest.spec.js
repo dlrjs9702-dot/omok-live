@@ -29,7 +29,11 @@ test('섬 대회 천막: 띠가 천막을 가리키고, 가락에게 참가하�
     const bar = page.locator('#contestBar');
     await expect(bar).toContainText('두더지 잡기 대회', { timeout: 15000 }); await expect(bar).toContainText('대청마당 대회 천막');
     await bar.click(); await expect(page.locator('#toast')).toContainText('화살표를 따라 대청마당 대회 천막');
+    // (대회 순위) the bar opens the 기록의 탑's 「매일 대회」 tab too: the open contest, no record yet
+    await expect(page.locator('#recordTowerList')).toContainText('두더지 잡기 대회 진행 중', { timeout: 15000 }); await expect(page.locator('#recordTowerGo')).toHaveText('대회 천막으로 가기');
+    await page.locator('#recordTowerCloseBtn').click(); await expect(page.locator('#recordTowerDialog')).toBeHidden();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().contestTent()?.shown)).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().contestTent()?.keeper), { timeout: 90000 }).toBe(true); // (가락 walked there from the 백화점: the server's hold)
     expect(await page.evaluate(() => window.PlazaDebug().contestTent())).toMatchObject({ name: '가락', sign: '🏆 섬 대회 · 두더지 잡기' });
     if (process.env.SHOT_DIR) await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().contestTent(); return t.plate && t.flags === 2; }), { timeout: 30000 }).toBe(true); // (v1.10.241 assets 100: the models on -- the sign's plate written on, the two flags found)
     // the tent's keeper: 「참가하기」 -- the round at once, the contest's tag over it; ✕ back to the island
@@ -83,6 +87,17 @@ test('섬 대회 천막: 띠가 천막을 가리키고, 가락에게 참가하�
     await expect(dialog).toContainText(`${NA} 쪽`); await expect(dialog).toContainText(/내일 \d\d:\d\d · /); await page.evaluate(() => document.getElementById('plazaDialog').close()); // (v1.10.242 가락: the winner, the podium, tomorrow's)
     // (v1.10.241 매일 대회) none on: the bar tells tomorrow's, at its time
     await post(request, '/api/test/contest/clock', a.token, { to: 'after' }); await expect(bar).toContainText(/내일 \d\d:\d\d · .+ 대회/, { timeout: 20000 }); await shot(page, 'next', 300);
+    // (대회 순위) its half hour over: 가락 gone home, the tent still standing -- its sign's 「섬 대회 안내」 (the last one's 1~3위, the
+    // next one), 「전체 순위 보기」 the 「매일 대회」 tab: everyone's place, mine marked
+    await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().contestTent(); return t && t.shown && !t.keeper && t.door?.name; }), { timeout: 30000 }).toBe('섬 대회 안내');
+    await talkTill('전체 순위 보기'); await expect(page.locator('#plazaDialogTitle')).toHaveText('섬 대회 안내');
+    const signRows = dialog.locator('.contestSignRow'); await expect(signRows.nth(0)).toHaveText(`🥇 ${NA} 260점`); await expect(signRows.nth(1)).toHaveText(`🥈 ${NB} 220점`);
+    await expect(signRows.last()).toHaveText(/^다음 대회: 내일 \d\d:\d\d · .+$/); await expect(signRows.last()).toBeVisible(); await expect(dialog.getByRole('button', { name: '참가하기' })).toHaveCount(0);
+    await shot(page, 'sign', 600);
+    await dialog.getByRole('button', { name: '전체 순위 보기' }).click();
+    const rows = page.locator('#recordTowerList > .recordTowerRowItem'); await expect(rows).toHaveCount(2, { timeout: 15000 });
+    await expect(rows.nth(0)).toContainText(NA); await expect(rows.nth(0)).toHaveClass(/me/); await expect(rows.nth(1)).toContainText(NB); await expect(page.locator('#recordTowerMe')).toContainText('내 순위 1위');
+    await shot(page, 'tab', 600); await page.locator('#recordTowerCloseBtn').click();
     await expectNoScriptError(page);
   } finally {
     await post(request, '/api/test/contest/clock', a.token, { to: 'reset' });

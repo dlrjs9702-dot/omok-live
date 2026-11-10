@@ -2370,6 +2370,8 @@ function postDueNotices() {
 setInterval(postDueNotices, 30000).unref?.();
 let contestShiftMs = 0; const contestNow = () => nowMs() + contestShiftMs; // (tests may move the contest's clock)
 let contestBoard = { id: null, rows: new Map() }; let contestPhase = null;
+/* a contest's whole board as a page sees it: places, names, scores, mine marked (no accounts out) */
+const contestRanksFor = (rows, account) => rows.map((r, i) => ({ rank: i + 1, name: r.name, score: r.score, ...(r.account === account ? { mine: true } : {}) }));
 // E1 계절 행사: the administrator's override of the calendar (read once, then from memory), the festival's clock (tests may
 // hold it) and the titles an event gave (owned for good, worn like the others)
 let calendarCache = null; let festivalClock = null;
@@ -2422,6 +2424,22 @@ async function talkHints(account, n, pos, now) {
     if (t && go) { const who = go.talk != null ? go.talk : doc.cur.n; const place = go.talk != null ? IslandNpcs.hangout(go.talk) : (t.where || '').replace(/ · 밤에$/, ''); if (place) out.storyNext = { vals: { name: IslandCast.callOf(who), place }, ...(t.to ? { at: { x: t.to.x, z: t.to.z, label: place } } : {}) }; } }
   { const v = IslandProjects.view(await projectsNow(), projectGoal); if (v.cur && v.cur.goal > v.cur.raised) out.project = { vals: { project: v.cur.name, left: `${(v.cur.goal - v.cur.raised).toLocaleString('ko-KR')}P` } }; }
   return out;
+}
+/* 대회 순위 (notes docs/contest-results-20261110.md 2): 가락 walks to the tent for its hours (`duty`: 15 min before the notice till
+   half an hour after the end) -- from the 백화점's door on a day at his counter (empty those hours), else from where his round
+   has him -- and goes back after; another event holding him then: tried again on the next tick */
+const CONTEST_KEEPER = IslandCast.RESIDENTS.findIndex((r) => r.reg === 'garak'); const CONTEST_DUTY = 'contest:tent'; const CONTEST_BACK = 'contest:back';
+function contestKeeperDuty(c) {
+  if (CONTEST_KEEPER < 0) return; const n = CONTEST_KEEPER; const id = islandEvents.residents()[n]?.hold?.eventId; const told = () => broadcastIsland('residents', { list: islandEvents.residents() });
+  /* (his reeds round lies where the route grid has no way to the plaza: then from, and back to, the 백화점's door -- as on a counter day) */
+  const K = IslandCalendar.PLACES.keeper; const tent = { x: K.x, z: K.z }; const door = { ...IslandTerrain.facilityDoor('store'), yaw: 0 }; const walks = walksToday(n);
+  if (c.duty) {
+    if (id === CONTEST_DUTY) return; if (id === CONTEST_BACK) islandEvents.residentFree(CONTEST_BACK);
+    if (islandEvents.residentSend(n, CONTEST_DUTY, { x: K.x, z: K.z, yaw: K.yaw }, walks ? [null, door] : [door])) told();
+  } else if (id === CONTEST_DUTY) { /* (the way back on the route grid too: to where his round has him, else the door) */
+    islandEvents.residentFree(CONTEST_DUTY); const round = IslandNpcs.residentAt(n, nowMs(), islandEvents.residents()[n]);
+    if (!(walks && islandEvents.residentSend(n, CONTEST_BACK, { x: round.x, z: round.z, yaw: round.yaw }, [tent]))) islandEvents.residentSend(n, CONTEST_BACK, door, [tent]); told();
+  } else if (id === CONTEST_BACK && !(islandEvents.residents()[n].hold.arriveAt > nowMs())) { islandEvents.residentFree(CONTEST_BACK); told(); }
 }
 async function contestState() { return contestKindHeld(IslandContest.phaseAt(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
 async function contestEnded() { return contestKindHeld(IslandContest.lastEnded(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
@@ -2522,6 +2540,8 @@ async function settleContest(c) {
   if (paid.length) notifyPointsChanged(paid);
   const winner = rewarded && rows[0] ? (() => { const al = avatarLookOf(equippedSkinCache.get(rows[0].account) || {}); return { name: rows[0].name, look: al.look, title: al.title, score: rows[0].score }; })() : null;
   const result = { id: c.id, kind: c.kind, name: c.name, unit: c.unit, top: rows.slice(0, 3).map((r, i) => ({ rank: i + 1, name: r.name, score: r.score })), entrants: rows.length, rewarded, winner };
+  /* 대회 순위 (notes docs/contest-results-20261110.md): every entrant's place kept a week, for the 기록의 탑 「매일 대회」 tab */
+  await pointStore.setWorldValue('contestHistory', IslandContest.keepHistory(await pointStore.worldValue('contestHistory'), { id: c.id, kind: c.kind, name: c.name, unit: c.unit, end: c.end, rewarded, rows: rows.map((r) => ({ account: r.account, name: r.name, score: r.score })) }, contestNow()));
   await pointStore.setWorldValue('soloContestResult', result); soloContestStatue = winner ? { name: winner.name, look: winner.look, title: winner.title, label: c.name } : soloContestStatue;
   if (winner) { for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } } // (the winner joins the statues)
   return result;
@@ -2532,6 +2552,7 @@ setInterval(() => { contestState().then(async (c) => {
   if (contestWinnerStatue === null) { const r = await pointStore.worldValue('contestResult'); contestWinnerStatue = r?.winner ? { name: r.winner.name, look: r.winner.look, title: r.winner.title, label: r.name } : false; }
   if (soloContestStatue === null) { const r = await pointStore.worldValue('soloContestResult'); soloContestStatue = r?.winner ? { name: r.winner.name, look: r.winner.look, title: r.winner.title, label: r.name } : false; } // (after a restart)
   const ended = await contestEnded(); if (ended) await settleContest(ended);
+  contestKeeperDuty(c);
   if (c.phase === contestPhase) return; contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id }); }).catch((error) => console.error('섬 대회 정산 실패:', error.message)); }, 15000).unref?.();
 function seatRoomAi(room, level) {
   const token = `ai:${room.id}`;
@@ -4476,7 +4497,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.304' });
+    return sendJson(res, 200, { ok: true, version: '1.10.305' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -7478,9 +7499,9 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'after' (its tent down: none on), 'reset'
     const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.dayContest(nowMs(), cfg); /* (today's) */
     contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : body.to === 'after' ? k.end + IslandContest.TENT_AFTER_MS + 60000 - nowMs() : 0;
-    if (body.to === 'live' && (await pointStore.worldValue('soloContestResult'))?.id === k.id) { await pointStore.setWorldValue('soloContestResult', null); contestBoard = { id: null, rows: new Map() }; } // (the real clock may have closed today's contest already, empty)
+    if (body.to === 'live') { if ((await pointStore.worldValue('soloContestResult'))?.id === k.id) await pointStore.setWorldValue('soloContestResult', null); await pointStore.setWorldValue('contestHistory', ((await pointStore.worldValue('contestHistory')) || []).filter((h) => h.id !== k.id)); contestBoard = { id: null, rows: new Map() }; } // (the real clock may have closed today's contest already, empty; 대회 순위: a fresh board each time -- the PC and phone runs on one local server left the PC's rows when the real clock had settled another day's in between)
     contestKindTest = body.to === 'reset' ? null : IslandContest.KINDS[body.kind] ? body.kind : contestKindTest;
-    const c = await contestState(); if (c.phase === 'done') await settleContest(c); contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id });
+    const c = await contestState(); if (c.phase === 'done') await settleContest(c); contestKeeperDuty(c); contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id });
     return sendJson(res, 200, { ok: true, phase: c.phase, kind: c.kind, id: c.id });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/store/fail' && req.method === 'POST') { // (Codex 검토 5차 P3-4: a save failing half way -- the store's `method` throws once, after `skip` calls)
@@ -8300,9 +8321,19 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const c = await contestState(); const account = pointAccountForSession(session);
     const live = contestBoard.id === c.id && contestBoard.kind === c.kind; const mine = live ? contestBoard.rows.get(account) : null;
-    return sendJson(res, 200, { ok: true, contest: { id: c.id, kind: c.kind, name: c.name, how: c.how, unit: c.unit, phase: c.phase, start: c.start, end: c.end, tent: c.tent, game: c.game, set: c.set, level: c.level, higher: c.higher }, serverNow: contestNow(), rewards: IslandContest.REWARDS, minEntrants: IslandContest.MIN_ENTRANTS,
+    return sendJson(res, 200, { ok: true, contest: { id: c.id, kind: c.kind, name: c.name, how: c.how, unit: c.unit, phase: c.phase, start: c.start, end: c.end, tent: c.tent, stands: c.stands, duty: c.duty, game: c.game, set: c.set, level: c.level, higher: c.higher }, serverNow: contestNow(), rewards: IslandContest.REWARDS, minEntrants: IslandContest.MIN_ENTRANTS,
       top: live ? contestTop(5) : [], mine: mine ? { score: mine.score, rank: IslandContest.rank([...contestBoard.rows.values()], contestBoard.kind).indexOf(mine) + 1 } : null, entrants: live ? contestBoard.rows.size : 0,
       last: await pointStore.worldValue('soloContestResult'), next: c.next || null }); /* (v1.10.241: the next contest, for the bar) */
+  }
+  /* 대회 순위: the open contest's whole board (live) and the last week's, newest first -- 기록의 탑 「매일 대회」 and the tent's sign */
+  if (pathname === '/api/island/contest/history' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const c = await contestState(); const account = pointAccountForSession(session); const since = contestNow() - IslandContest.HISTORY_MS;
+    const open = c.phase === 'live' && contestBoard.id === c.id && contestBoard.kind === c.kind;
+    const history = ((await pointStore.worldValue('contestHistory')) || []).filter((h) => h.end > since)
+      .map((h) => ({ id: h.id, kind: h.kind, name: h.name, unit: h.unit, end: h.end, rewarded: h.rewarded, entrants: h.rows.length, ranks: contestRanksFor(h.rows, account) }));
+    return sendJson(res, 200, { ok: true, serverNow: contestNow(), phase: c.phase, next: c.next || null,
+      live: c.phase === 'live' ? { id: c.id, kind: c.kind, name: c.name, unit: c.unit, end: c.end, ranks: open ? contestRanksFor(IslandContest.rank([...contestBoard.rows.values()], c.kind), account) : [] } : null, history });
   }
   if (pathname === '/api/island/contest/join' && req.method === 'POST') { // (v1.10.238 대회 천막: 「참가하기」)
     const session = requireSession(req, res); if (!session) return; const out = await contestJoin(session); if (out.error) return sendError(res, ...out.error);
@@ -9366,7 +9397,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.304 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.305 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
