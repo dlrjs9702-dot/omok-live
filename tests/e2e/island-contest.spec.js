@@ -91,7 +91,8 @@ test('섬 대회 천막: 띠가 천막을 가리키고, 가락에게 참가하�
     // next one), 「전체 순위 보기」 the 「매일 대회」 tab: everyone's place, mine marked
     await expect.poll(() => page.evaluate(() => { const t = window.PlazaDebug().contestTent(); return t && t.shown && !t.keeper && t.door?.name; }), { timeout: 30000 }).toBe('섬 대회 안내');
     await talkTill('전체 순위 보기'); await expect(page.locator('#plazaDialogTitle')).toHaveText('섬 대회 안내');
-    await expect(dialog).toContainText(`1위 ${NA}`); await expect(dialog).toContainText('다음 대회'); await expect(dialog.getByRole('button', { name: '참가하기' })).toHaveCount(0);
+    const signRows = dialog.locator('.contestSignRow'); await expect(signRows.nth(0)).toHaveText(`🥇 ${NA} 260점`); await expect(signRows.nth(1)).toHaveText(`🥈 ${NB} 220점`);
+    await expect(signRows.last()).toHaveText(/^다음 대회: 내일 \d\d:\d\d · .+$/); await expect(signRows.last()).toBeVisible(); await expect(dialog.getByRole('button', { name: '참가하기' })).toHaveCount(0);
     await shot(page, 'sign', 600);
     await dialog.getByRole('button', { name: '전체 순위 보기' }).click();
     const rows = page.locator('#recordTowerList > .recordTowerRowItem'); await expect(rows).toHaveCount(2, { timeout: 15000 });

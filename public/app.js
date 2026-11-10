@@ -4096,9 +4096,14 @@
     const say = (text) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = text; says.push(p); };
     const seoul = (ms) => { const t = new Date(ms + 9 * 3600000); return `${t.getUTCMonth() + 1}/${t.getUTCDate()} ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`; };
     const button = (label, fn, kind = 'primary') => { const b = document.createElement('button'); b.type = 'button'; b.className = kind; b.textContent = label; b.addEventListener('click', fn); row.append(b); };
-    const L = d.last; say(L ? `지난 대회 · ${L.name}: ${L.top.length ? L.top.map((r) => `${r.rank}위 ${r.name} ${contestScore(L, r.score)}`).join(' · ') : '참가한 사람이 없었어요'}` : '아직 끝난 대회가 없어요.');
-    if (c.phase === 'live') say(`지금 ${c.name} 중이에요 — 남은 ${Math.max(1, Math.ceil((c.end - d.serverNow) / 60000))}분.`);
-    else if (d.next) say(`다음 대회 · ${seoul(d.next.start)} ${d.next.name}`);
+    /* (총괄 #455: one typed line, the rest at once -- 1~3위 one a row, then the next one or the open one; a phone broke 「2 / 위」 in one sentence) */
+    const L = d.last; say(L ? `지난 대회 · ${L.name}` : '아직 끝난 대회가 없어요.');
+    const info = document.createElement('div'); info.className = 'contestSignInfo'; const line = (text, cls = '') => { const p = document.createElement('p'); p.className = `contestSignRow${cls}`; p.textContent = text; info.append(p); };
+    if (L) { if (L.top.length) for (const r of L.top.slice(0, 3)) line(`${['🥇', '🥈', '🥉'][r.rank - 1]} ${r.name} ${contestScore(L, r.score)}`); else line('참가한 사람이 없었어요'); }
+    const K = 9 * 3600000; const today = (ms) => Math.floor((ms + K) / 86400000);
+    if (c.phase === 'live') line(`진행 중 · 남은 ${Math.max(1, Math.ceil((c.end - d.serverNow) / 60000))}분 · 참가하기`, ' next');
+    else if (d.next) line(`다음 대회: ${today(d.next.start) === today(d.serverNow) ? '오늘' : '내일'} ${seoul(d.next.start).split(' ')[1]} · ${d.next.name.replace(/ 대회$/, '')}`, ' next');
+    says.push(info);
     if (c.phase === 'live') button('참가하기', () => joinContest(c, d.serverNow - Date.now()));
     button('전체 순위 보기', () => { plazaDialog.close(); openRecordTower('contest'); }, c.phase === 'live' ? 'ghost' : 'primary');
     button('닫기', () => plazaDialog.close(), 'ghost');
