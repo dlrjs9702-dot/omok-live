@@ -6109,7 +6109,7 @@
   const roomStakes = () => !document.getElementById('roomStakesChoices').classList.contains('hidden') && document.querySelector('input[name="roomStakes"]:checked')?.value === '1';
   function syncRoomAiChoices() {
     const ai = document.getElementById('roomAiChoices');
-    ai.classList.toggle('hidden', !(['connect4', 'othello'].includes(selectedGameType) || (selectedGameType === 'omok' && omokMode() === '1v1')));
+    ai.classList.toggle('hidden', !(['connect4', 'othello', 'yut'].includes(selectedGameType) || (selectedGameType === 'omok' && omokMode() === '1v1'))); /* (윷놀이 실제 규칙 A: the 2-player AI) */
     const withAi = !ai.classList.contains('hidden') && Boolean(document.querySelector('input[name="roomAi"]:checked')?.value);
     document.getElementById('roomStakesChoices').classList.toggle('hidden', ['gostop', 'rpg', 'pictionary', 'liar', 'twentyquestions', 'pandemic'].includes(selectedGameType) || withAi);
   }
@@ -9854,8 +9854,26 @@
     return steps < 0 ? `${Math.abs(steps)}칸 후진` : `${steps}칸`;
   }
 
+  // 윷놀이 실제 규칙 (notes docs/yut-real-rules-20261109.md 3): the kept results (`pend`) as chips under the board -- the one
+  // chosen gives the moves on the board and the buttons (`options[pick]`, as `legalMoves` and `pendingSteps` were); a new hand
+  // or a used chip falls back to the first
+  let yutPick = 0;
+  function yutApplyPick(g) {
+    if (!Array.isArray(g?.pend)) return; if (!(yutPick < g.pend.length)) yutPick = 0;
+    g.legalMoves = g.options?.[yutPick] || []; g.pendingSteps = g.pend[yutPick]?.steps ?? null;
+  }
+  function renderYutChips(g, mine) {
+    let row = byId('yutResultChips');
+    if (!row) { /* (총괄 #457: by the board -- right under it, over the throw button: the chips, then the move line under them) */
+      row = document.createElement('div'); row.id = 'yutResultChips'; row.className = 'yutResultChips'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', '모은 윷 결과');
+      const act = yutThrowBtn.closest('.yutActionRow') || yutThrowBtn; act.before(row); act.before(yutMoveChoices);
+    }
+    row.classList.toggle('hidden', !(g.pend || []).length);
+    row.replaceChildren(...(g.pend || []).map((r, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = `yutResultChip${i === yutPick ? ' selected' : ''}`; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(i === yutPick)); b.textContent = r.name; b.disabled = !mine || g.phase !== 'move';
+      b.addEventListener('click', () => { yutPick = i; yutHoverTargetKey = null; renderYut(); drawYutBoard(); }); return b; }));
+  }
   function renderYut() {
-    const g = state.game;
+    const g = state.game; yutApplyPick(g);
     const mine = Boolean(seat && g.turn === seat && g.status === 'playing');
     yutThrowBtn.disabled = !(mine && g.phase === 'throw') || yutThrowAnimating;
     setActionable(yutThrowBtn, !yutThrowBtn.disabled && actionWindowOpen(g), 'primary');
@@ -9940,9 +9958,10 @@
     else if (g.status === 'finished') yutHint.textContent = `${seatKo(g.winner)}이 말 4개를 모두 완주했습니다.`;
     else if (!seat) yutHint.textContent = `${seatKo(g.turn)}의 진행을 관전하고 있습니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
     else if (g.turn !== seat) yutHint.textContent = `${seatKo(g.turn)} 차례입니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
-    else if (g.phase === 'throw') yutHint.textContent = '내 차례입니다. 윷을 던져 주세요.';
-    else if (g.pendingSteps < 0) yutHint.textContent = `${g.lastThrow?.name || ''} · 한 칸 뒤로 물릴 말을 선택하세요.`;
-    else yutHint.textContent = `${g.lastThrow?.name || ''} · ${g.pendingSteps || 0}칸 이동할 말을 선택하세요.`;
+    else if (g.phase === 'throw') yutHint.textContent = (g.pend || []).length ? `한 번 더! 윷을 던져 주세요. (모은 결과 ${g.pend.map((r) => r.name).join(' · ')})` : '내 차례입니다. 윷을 던져 주세요.';
+    else if (g.pendingSteps < 0) yutHint.textContent = `${g.pend?.[yutPick]?.name || '빽도'} · 지나온 칸으로 한 칸 되돌릴 말을 선택하세요.`;
+    else yutHint.textContent = `${g.pend?.[yutPick]?.name || ''} · ${g.pendingSteps || 0}칸 이동할 말을 선택하세요.${(g.pend || []).length > 1 ? ' (아래에서 다른 결과를 골라도 돼요)' : ''}`;
+    renderYutChips(g, mine);
 
     // Buttons are rebuilt below without firing pointerleave/blur, so drop a hover link that came
     // from one of them unless the pointer/focus is still on the board or the list itself.
@@ -11859,10 +11878,11 @@
     yutMovePending = true;
     yutHoverTargetKey = null;
     canvas.style.cursor = '';
+    const ri = yutPick; /* (실제 규칙: the kept result chosen on the 결과 칩 row) */
     renderYut();
     drawYutBoard();
     try {
-      await roomAction('move-yut', { pieceId });
+      await roomAction('move-yut', { pieceId, ri });
     } finally {
       yutMovePending = false;
       if (state?.gameType === 'yut') { renderYut(); drawYutBoard(); }

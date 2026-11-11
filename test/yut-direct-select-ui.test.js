@@ -31,7 +31,7 @@ test('윷판 선택 대상은 서버 legalMoves와 애니메이션·요청 대�
 test('판 클릭과 보조 버튼은 같은 move-yut 요청 경로와 중복 전송 방지를 공유한다', () => {
   const request = functionBody('requestYutMove');
   assert.match(request, /if \(yutMovePending \|\| !yutTargetForPiece\(pieceId\)\) return;/);
-  assert.match(request, /roomAction\('move-yut', \{ pieceId \}\)/);
+  assert.match(request, /roomAction\('move-yut', \{ pieceId, ri \}\)/); /* (v1.10.307 실제 규칙: the chosen kept result too) */
   assert.match(request, /finally/);
   assert.match(app, /button\.addEventListener\('click', \(\) => requestYutMove\(move\.pieceId\)\)/);
   assert.doesNotMatch(app, /roomAction\('move-yut', \{ pieceId: move\.pieceId \}\)/);

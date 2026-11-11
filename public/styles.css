@@ -955,6 +955,12 @@ input.actionableTarget{border-color:rgba(52,211,153,.9);box-shadow:0 0 0 2px rgb
    list stays as a quieter fallback -- compact, no fill -- and pointing at an entry lights up the
    same piece and destination on the board. */
 .yutMoveChoices{gap:6px}
+/* 윷놀이 실제 규칙: the kept results as chips -- one row, sliding sideways on a phone when there are many */
+.yutResultChips{display:flex;justify-content:center;gap:8px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:thin;max-width:100%}
+.yutResultChip{flex:0 0 auto;min-width:52px;min-height:44px;padding:6px 14px;border-radius:999px;border:2px solid #c4a77d;background:#fbf3e2;color:#5a4632;font:inherit;font-size:1.05rem;font-weight:850;cursor:pointer}
+.yutResultChip.selected{background:#9c5f14;border-color:#ffd27a;color:#fff;box-shadow:0 0 0 3px rgba(255,210,122,.45);transform:scale(1.06)}
+body.roomPlaying .boardCard .yutMoveChoices{justify-content:center;text-align:center} /* (총괄 #457: the move line right under the chips, centred under the board) */
+.yutResultChip:disabled{cursor:default;opacity:.75}
 .yutPieceChoice{background:transparent;color:#cbd5e1;border:1px solid #334155;padding:6px 10px;font-size:.8rem;font-weight:750}
 .yutPieceChoice:hover:not(:disabled),.yutPieceChoice:focus-visible{background:rgba(16,185,129,.12);border-color:rgba(52,211,153,.7);color:#ecfdf5}
 .yutPieceChoice:disabled{opacity:.55;cursor:default}

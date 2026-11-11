@@ -53,27 +53,19 @@ test('Land King: no building on another tile or without cash; skip is allowed', 
 });
 
 test('Yut: a piece resting on center always departs via the short 10-side diagonal, regardless of arrival route', () => {
-  assert.equal(yut.destination({ status: 'board', position: 22, route: 'shortcut5' }, 1).position, 23);
-  // Stopping exactly on 23 always leaves toward home via 28/29, whichever diagonal it arrived on.
-  assert.equal(yut.destination({ status: 'board', position: 23, route: 'shortcut5' }, 1).position, 28);
-  assert.equal(yut.destination({ status: 'board', position: 23, route: 'shortcut10' }, 1).position, 28);
-  // Passing through 23 mid-throw (not stopping there) keeps the original diagonal unchanged.
-  assert.equal(yut.destination({ status: 'board', position: 21, route: 'shortcut5' }, 4).position, 25);
-  assert.equal(yut.destination({ status: 'board', position: 25, route: 'shortcut5' }, 1).position, 15);
-  // 29 is now one step short of actually finishing: it rests on the finish line first.
-  assert.equal(yut.destination({ status: 'board', position: 29, route: 'shortcut10' }, 1).position, 'finishLine');
-  assert.equal(yut.destination({ status: 'board', position: 'finishLine', route: 'shortcut10' }, 1).status, 'finished');
+  // (v1.10.307 실제 규칙, 한판마당 길: 23에 멈춘 말은 늘 28·29로, 지나가기만 하면 제 대각선 그대로; 참먹이 20 = 화면의 finishLine)
+  assert.deepEqual(yut.stepsFrom(22, 1), [23]); assert.deepEqual(yut.stepsFrom(23, 1), [28]);
+  assert.deepEqual(yut.stepsFrom(21, 4), [22, 23, 24, 25]); assert.deepEqual(yut.stepsFrom(25, 1), [15]);
+  assert.deepEqual(yut.stepsFrom(29, 1), [20]); assert.deepEqual(yut.stepsFrom(20, 1), [yut.OUT]);
   const g = yut.create(); yut.start(g);
-  Object.assign(g.pieces.black[0], { status:'board', position:23, route:'shortcut5' });
-  Object.assign(g.pieces.black[1], { status:'board', position:23, route:'shortcut10' });
-  g.phase = 'move'; g.pendingSteps = 1;
+  Object.assign(g.pieces.black[0], { at: 23, tr: [20, 1, 2, 3, 4, 5, 21, 22, 23] }); Object.assign(g.pieces.black[1], { at: 23, tr: [20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 26, 27, 23] });
+  yut.throwYut(g, 'black', 'center', { n: 1, steps: 1 });
   const options = yut.legalMoves(g, 'black').filter(m => ['black-1','black-2'].includes(m.pieceId));
   assert.equal(options.length, 1);
   assert.equal(options[0].destination.position, 28);
-  assert.equal(yut.applyMove(g, 'black-1', 'black', 'center').legal, true);
-  assert.equal(g.pieces.black[0].position, 28);
-  assert.equal(g.pieces.black[1].position, 28);
-  assert.equal(g.pieces.black[1].route, 'shortcut10');
+  assert.equal(yut.applyMove(g, 'black-1', 'black', 'center', 0).legal, true);
+  assert.equal(g.pieces.black[0].at, 28);
+  assert.equal(g.pieces.black[1].at, 28);
   const js = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8');
   assert.match(js, /\[5,21,22,23,24,25,15\], \[10,26,27,23,28,29,'finishLine'\]/);
 });

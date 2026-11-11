@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.307 윷놀이 실제 규칙 A
+
+- lib/games/yut.js 한판마당 규칙(서버 판 번호 20 참먹이·99 남, 화면은 finishLine/finished), pend 모으기·결과마다 말 고르기(move-yut ri)·빽도 tr·도 3/16·빽도 1/16·쓸 수 없는 결과 버림, aiPick + 2인 AI(scheduleAiMove), 결과 칩(판 바로 아래 가운데). release-batch 05:17·예비 05:47. resident-faces :46·:69 시험(검토).
+- 다음: 윷놀이 B(3~4명·초록·노랑·인원별 랭킹·나간 자리 AI).
+
 ## v1.10.306 G4b 채집
 
 - lib/island-gather.js 83자리(버섯 44: 통나무 둘레 27·푸른 4, 나뭇가지 34, 네잎클로버 5), 공용 자원 fixed 종류: 같은 자리 재생(버섯·가지 3시간, 푸른 6시간, 클로버 12시간), 자라는 중 worldValue gatherGrowing 저장. 하루 상한 없음(사용자). 흔한 버섯 5종 = 「버섯」, 새 물건 mushroom_blue 6,000·branch 500·twig 300·clover_four 10,000. 버섯·클로버 1.5배. 잡초 A안(채집 표에 행만). 공급 약 31,700P/h.
@@ -22,8 +27,3 @@
 
 - 기록의 탑 「매일 대회」 탭(진행 중/최근 전체 순위, 지난 7일), 대회 띠 → 탭. 서버 contestHistory 7일(keepHistory), /api/island/contest/history(계정 안 내보냄). 천막 stands 하루 종일, 가락 duty(알림 15분 전 ~ 끝+30분) contest:tent 붙잡기로 걸어옴·contest:back 귀가, 갈대 길·계산대 날은 백화점 문에서. 안내판 「섬 대회 안내」.
 - 에셋 117 옷 7벌 장식(흡혈귀 나비넥타이·호박 배 등) High+Low, island-models refit117. 다음: 총괄 지시.
-
-## v1.10.304 이모티콘 순서·알림 기기별·로컬 시험
-
-- 이모티콘 칩: 0.4초 꾹 눌러 드래그(최근 고정, 끝 자동 스크롤, 「처음대로」 드래그 중만), /api/messenger/sticker-order 계정별 저장. 알림 방식: localStorage messengerAlert → 서버 값(유지 기기) → 열어 둘 때만, 유지 없으면 닫아도 받기 막음. 섬 안내 주제 클릭 중 타자 덮어쓰기 수정.
-- 로컬 e2e: expect 15초, PW_GPU=1(로컬만) 1 worker 권장; 60fps 시험 시점(fp·카메라·원격 걸음 0.1초 구간), 터치 힌트. 다음: 대회 순위.

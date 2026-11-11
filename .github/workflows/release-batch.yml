@@ -4,8 +4,11 @@ name: Release batch
 # once a day at 05:00 KST `live` is moved up to main (a fast-forward; nothing when they are the same), so a day's merges
 # go out together at the quietest hour. By hand (workflow_dispatch) for an urgent fix or 「바로 올려」.
 on:
+  # (2026-11-11: the 05:00 run on the hour never happened -- no record of it; GitHub drops scheduled runs at busy on-the-hour
+  # times. Off the hour now, and a second try half an hour on: a run with live already at main ends 「already main」)
   schedule:
-    - cron: '0 20 * * *' # (05:00 KST)
+    - cron: '17 20 * * *' # (05:17 KST)
+    - cron: '47 20 * * *' # (05:47 KST, the backup)
   workflow_dispatch:
 
 permissions:

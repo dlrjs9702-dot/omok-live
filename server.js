@@ -2569,6 +2569,17 @@ function scheduleAiMove(room) {
   if (!ai || ai.thinking || g.status !== 'playing' || g.paused || g.turn !== ai.seat || room.players[ai.seat] !== ai.token) return;
   ai.thinking = true;
   const round = g.round; const moves = g.moves.length; const started = nowMs();
+  if (room.gameType === 'yut') { /* (윷놀이 실제 규칙 A: the AI throws on its throw, then uses its kept results one by one -- lib/games/yut.js aiPick) */
+    const throws = g.throws.length; const Yut = getGame('yut');
+    setTimeout(() => {
+      ai.thinking = false; syncGamePause(room, false);
+      if (rooms.get(room.id) !== room || room.game !== g || g.round !== round || g.moves.length !== moves || g.throws.length !== throws || g.status !== 'playing' || g.turn !== ai.seat || g.paused) return;
+      if (g.phase === 'throw') { const v = Yut.throwYut(g, ai.seat, nowIso()); if (v.legal) appendSystemMessage(room, `${room.participants[ai.token]?.label || 'AI'}가 ${v.name}${/[걸윷]$/.test(v.name) ? '을' : '를'} 던졌습니다.${v.dropped ? ` 쓸 수 없는 결과 ${v.dropped}개는 버렸어요.` : ''}`); }
+      else { const pick = Yut.aiPick(g, ai.seat); const v = pick && Yut.applyMove(g, pick.pieceId, ai.seat, nowIso(), pick.ri); if (!v?.legal) { console.error('AI 윷 실패:', JSON.stringify(pick)); return; } if (v.captured.length) appendSystemMessage(room, `${room.participants[ai.token]?.label || 'AI'}가 상대 말 ${v.captured.length}개를 잡았습니다!`); }
+      touchRoom(room); broadcast(room); scheduleAiMove(room);
+    }, 900).unref?.();
+    return;
+  }
   RoomAi.think(room.gameType, g, ai.seat, ai.level).then(async (move) => {
     await new Promise((resolve) => setTimeout(resolve, Math.max(0, 500 - (nowMs() - started))));
     ai.thinking = false;
@@ -4251,9 +4262,10 @@ async function handleRoomAction(req, res, action, session) {
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 윷을 던질 수 없습니다.');
     const engine = getGame('yut');
-    const verdict = engine.throwYut(room.game, seat, nowIso());
+    const fixed = process.env.NODE_ENV === 'test' && engine.RESULTS[body.steps] ? { n: body.steps === 5 ? 0 : body.steps === -1 ? 1 : Number(body.steps), steps: Number(body.steps) } : undefined; /* (tests only: a set throw -- docs/yut-real-rules-20261109.md 4 「시험용 고정 던지기」) */
+    const verdict = engine.throwYut(room.game, seat, nowIso(), fixed);
     if (!verdict.legal) return sendError(res, 409, 'INVALID_YUT_THROW', engine.moveError(verdict.reason));
-    appendSystemMessage(room, `${session.label || '플레이어'}님이 ${verdict.name}${/[걸윷]$/.test(verdict.name) ? '을' : '를'} 던졌습니다.`); // (G-게임별 윷: 「개를」·「윷을」, not 「개을(를)」)
+    appendSystemMessage(room, `${session.label || '플레이어'}님이 ${verdict.name}${/[걸윷]$/.test(verdict.name) ? '을' : '를'} 던졌습니다.${verdict.dropped ? ` 쓸 수 없는 결과 ${verdict.dropped}개는 버렸어요.` : ''}`); // (G-게임별 윷: 「개를」·「윷을」, not 「개을(를)」; 실제 규칙: a result no piece can use dropped)
   }
 
   if (action === 'move-yut') {
@@ -4261,7 +4273,7 @@ async function handleRoomAction(req, res, action, session) {
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 말을 움직일 수 없습니다.');
     const engine = getGame('yut');
-    const verdict = engine.applyMove(room.game, String(body.pieceId || ''), seat, nowIso());
+    const verdict = engine.applyMove(room.game, String(body.pieceId || ''), seat, nowIso(), Number.isInteger(body.ri) ? body.ri : 0); /* (실제 규칙: which kept result -- the 결과 칩 chosen) */
     if (!verdict.legal) return sendError(res, 409, 'INVALID_YUT_MOVE', engine.moveError(verdict.reason));
     if (verdict.captured.length) appendSystemMessage(room, `${session.label || '플레이어'}님이 상대 말 ${verdict.captured.length}개를 잡았습니다!`);
   }
@@ -4501,7 +4513,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.306' });
+    return sendJson(res, 200, { ok: true, version: '1.10.307' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -9404,7 +9416,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.306 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.307 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
