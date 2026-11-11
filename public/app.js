@@ -1453,7 +1453,8 @@
     // (v1.10.246 G1: the points settlement -- the server's system line -- one small line under the stats)
     const settled = [...(state.chat?.messages || [])].reverse().find((m) => m.type === 'system' && String(m.text).startsWith('참가 포인트 정산'));
     const noteLine = settled && e?.status === 'settled' ? Object.assign(document.createElement('small'), { className: 'hpPanelNote', textContent: settled.text }) : null;
-    row.append(again, out); boardOverlay.append(stats, ...(noteLine ? [noteLine] : []), row);
+    const left = state.gameType === 'yut' && Array.isArray(g.leftSeats) && g.leftSeats.length ? Object.assign(document.createElement('small'), { className: 'hpPanelNote resultLeftSeats', textContent: `AI가 이어 둔 자리 · ${g.leftSeats.map(seatKo).join(' · ')} (기권)` }) : null; /* (윷놀이 C) */
+    row.append(again, out); boardOverlay.append(stats, ...(left ? [left] : []), ...(noteLine ? [noteLine] : []), row);
   }
   function setResultBoardOverlay(outcome, game) {
     const win = outcome === 'win';
@@ -8517,11 +8518,12 @@
   // G-틀② 이름표 판 둘레: while a hand is played my name card sits under the board, the others above it (the board between
   // us, as at a table) -- the two-colour games and 2vs2 오목; a table game's own seats (고스톱, 다빈치 …) stay for G-게임별
   const mySeatSpot = document.getElementById('mySeatSpot');
-  const seatCardOf = (s) => (/^(black|white)$/.test(s) ? document.getElementById(`${s}Player`) : document.querySelector(`#teamPlayers [data-seat="${s}"], #mySeatSpot [data-seat="${s}"]`));
+  const seatCardOf = (s) => (/^(black|white|green|yellow)$/.test(s) ? document.getElementById(`${s}Player`) : document.querySelector(`#teamPlayers [data-seat="${s}"], #mySeatSpot [data-seat="${s}"]`));
   function placeMySeat() {
     const playing = document.body.classList.contains('roomPlaying');
-    const mine = playing && seat ? (/^(black|white)$/.test(seat) ? (standardPlayers.classList.contains('hidden') ? null : seatCardOf(seat)) : teamPlayers.querySelector(`.teamPlayer[data-seat="${seat}"]:not(.bingoSeat)`)) : null;
-    for (const c of [...mySeatSpot.children]) if (c !== mine) { if (c === blackPlayer) standardPlayers.prepend(c); else if (c === whitePlayer) standardPlayers.append(c); else c.remove(); }
+    const mine = playing && seat ? (/^(black|white|green|yellow)$/.test(seat) ? /* (윷놀이 C 사진: 초록·노랑 under the board too) */ (standardPlayers.classList.contains('hidden') ? null : seatCardOf(seat)) : teamPlayers.querySelector(`.teamPlayer[data-seat="${seat}"]:not(.bingoSeat)`)) : null;
+    const back = (c) => { const next = ['whitePlayer', 'greenPlayer', 'yellowPlayer'].slice(['whitePlayer', 'greenPlayer', 'yellowPlayer'].indexOf(c.id) + 1).map((id) => standardPlayers.querySelector(`#${id}`)).find(Boolean); if (next) next.before(c); else standardPlayers.append(c); }; /* (back in board order) */
+    for (const c of [...mySeatSpot.children]) if (c !== mine) { if (c === blackPlayer) standardPlayers.prepend(c); else if (/^(white|green|yellow)Player$/.test(c.id)) back(c); else c.remove(); }
     if (mine && mine.parentElement !== mySeatSpot) mySeatSpot.append(mine);
   }
   function renderCurrentActor() {
@@ -8774,7 +8776,7 @@
     // (G-틀② 이름표의 게임 숫자: 윷 완주·점과 상자 상자·오델로 돌 -- the score the game keeps for this seat)
     el.querySelector('.seatNum')?.remove();
     const score = state?.game?.scores?.[color]; const unit = { yut: '완주', dots: '상자', othello: '돌' }[state?.gameType];
-    if (player && unit && Number.isFinite(Number(score))) { const n = document.createElement('b'); n.className = 'seatNum'; n.textContent = `${unit} ${score}`; el.append(n); }
+    if (player && unit && Number.isFinite(Number(score)) && state.game?.status !== 'selecting') { /* (윷놀이 C 사진: not before the start) */ const n = document.createElement('b'); n.className = 'seatNum'; n.textContent = `${unit} ${score}`; el.append(n); }
   }
   // A3 G1-5: a small island face (skin and hair colour) and the worn title on a name card
   function seatFace(card, player) {
@@ -9297,6 +9299,8 @@
     }
   }
 
+  // 윷놀이 C: a people's 3~4 seat 윷 game being played -- a seat left or silent goes on with an AI (server yutTakeOverOk)
+  const yutGoesOn = () => state?.gameType === 'yut' && (state.game?.seatOrder?.length || 0) > 2 && state.points?.policy !== 'practice';
   function renderRoleChooser() {
     const g = state.game;
     const choice = state.me?.choice;
@@ -9375,6 +9379,11 @@
       if (!b) continue; b.classList.toggle('hidden', !more.includes(c)); b.disabled = Boolean(state.players[c] && seat !== c); b.classList.toggle('selected', choice === c);
     }
     if (yut && more.length) roleChooser.querySelector('small').textContent = `${more.length + 2}명 판이에요. 자리가 모두 차면 파랑부터 윷을 던져요(말은 3개씩).`;
+    // 윷놀이 C: the host fills the empty seats with AIs (a people's room; someone seated) -- the game starts, no entry points
+    const seatsNow = Object.values(state.players || {}); const canFill = yut && isHost && selecting && state.points?.policy !== 'practice' && seatsNow.some(Boolean) && seatsNow.some((p) => !p);
+    let fill = document.getElementById('fillAiBtn');
+    if (!fill && canFill) { fill = document.createElement('button'); fill.type = 'button'; fill.id = 'fillAiBtn'; fill.className = 'ghost'; fill.textContent = '빈자리 AI 넣기'; fill.addEventListener('click', () => confirm('빈자리를 모두 AI로 채우고 바로 시작할까요? AI가 있는 판은 참가 포인트가 없어요.') && roomAction('fill-ai')); whitePlayer.parentElement.after(fill); const note = document.createElement('small'); note.id = 'fillAiNote'; note.textContent = 'AI가 들어가면 참가 포인트 없이 해요'; fill.after(note); } /* (under the seat cards: a phone takes a seat by its card, the chooser hidden there) */
+    if (fill) { fill.classList.toggle('hidden', !canFill); document.getElementById('fillAiNote')?.classList.toggle('hidden', !canFill); }
   }
 
   // v1.6.40: universal connection-drop popup. A brief network blip should never pop this up --
@@ -9422,7 +9431,7 @@
           if (pauseEpisodeKey(state?.game) !== key || key === pauseDialogDismissedKey) return;
           pauseDialogShownKey = key;
           const names = disconnectedNow.map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
-          pauseDialogMessage.textContent = `참가자 ${names}님이 응답하지 않아 게임이 일시 중단되었습니다.`;
+          pauseDialogMessage.textContent = `참가자 ${names}님이 응답하지 않아 게임이 일시 중단되었습니다.`; pauseEndBtn.textContent = yutGoesOn() ? 'AI가 이어 두기' : '게임 종료'; /* (윷놀이 C: 3~4명 -- the game goes on with an AI) */
           if (!pauseDialog.open) pauseDialog.showModal();
         }, 2000);
       }
@@ -9598,9 +9607,11 @@
     // v1.6.40: any connected, seated participant may end a paused match -- not just the host of
     // the 4-seat team game it started on -- matching the server's generalized end-game handler.
     const canEndPaused = canAct && g.status === 'playing' && g.paused;
+    const goOn = yutGoesOn(); /* (윷놀이 C: 3~4명 -- the silent seats to AIs, the game goes on) */
     for (const b of [endGameBtn, sideEndGameBtn]) {
       b.classList.toggle('hidden', !canEndPaused);
       b.disabled = !canEndPaused;
+      b.dataset.label ||= b.textContent; b.textContent = goOn ? 'AI가 이어 두기' : b.dataset.label;
     }
     for (const b of [resignBtn, sideResignBtn]) {
       b.classList.toggle('hidden', !canResign);
@@ -13969,8 +13980,9 @@
   for (const button of teamSeatButtons) button.addEventListener('click', () => roomAction('choose-role', { choice: button.dataset.teamSeat }));
   teamSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
   const endPausedConfirmMsg = '응답이 없는 참가자를 패배로, 응답 중인 참가자를 승리로 기록하며 대국을 종료할까요?';
-  endGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
-  sideEndGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
+  const endPausedMsg = () => (yutGoesOn() ? '응답이 없는 자리를 AI가 이어 두고 판을 계속할까요? 그 참가자는 판이 끝나면 기권으로 기록돼요.' : endPausedConfirmMsg);
+  endGameBtn.addEventListener('click', () => confirm(endPausedMsg()) && roomAction('end-game'));
+  sideEndGameBtn.addEventListener('click', () => confirm(endPausedMsg()) && roomAction('end-game'));
   pauseWaitBtn.addEventListener('click', () => {
     pauseDialogDismissedKey = pauseDialogShownKey;
     pauseDialog.close();

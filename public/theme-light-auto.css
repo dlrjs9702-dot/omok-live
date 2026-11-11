@@ -175,10 +175,10 @@
 :root[data-theme="light"] .teamPlayer.white{border-left:3px solid #3d3024}
 :root[data-theme="light"] .teamPlayer small{color:#7a6650}
 :root[data-theme="light"] .teamPlayer.mySeat{outline:2px solid #23806f}
-:root[data-theme="light"] .connectFourPlayers .player.black .stoneMini,:root[data-theme="light"] .connectFourRole .blackPick .stoneMini{background:#f43f5e;border-color:#be123c}
-:root[data-theme="light"] .connectFourPlayers .player.white .stoneMini,:root[data-theme="light"] .connectFourRole .whitePick .stoneMini{background:#facc15;border-color:#ca8a04}
-:root[data-theme="light"] .blueRedPlayers .player.black .stoneMini,:root[data-theme="light"] .blueRedRole .blackPick .stoneMini{background:#23806f;border-color:#1f6f60}
-:root[data-theme="light"] .blueRedPlayers .player.white .stoneMini,:root[data-theme="light"] .blueRedRole .whitePick .stoneMini{background:#ef4444;border-color:#b91c1c}
+:root[data-theme="light"] .connectFourPlayers .player.black .stoneMini,:root[data-theme="light"] .connectFourRole .blackPick .stoneMini,:root[data-theme="light"] body:has(#standardPlayers.connectFourPlayers) #mySeatSpot .player.black .stoneMini{background:#f43f5e;border-color:#be123c}
+:root[data-theme="light"] .connectFourPlayers .player.white .stoneMini,:root[data-theme="light"] .connectFourRole .whitePick .stoneMini,:root[data-theme="light"] body:has(#standardPlayers.connectFourPlayers) #mySeatSpot .player.white .stoneMini{background:#facc15;border-color:#ca8a04}
+:root[data-theme="light"] .blueRedPlayers .player.black .stoneMini,:root[data-theme="light"] .blueRedRole .blackPick .stoneMini,:root[data-theme="light"] body:has(#standardPlayers.blueRedPlayers) #mySeatSpot .player.black .stoneMini{background:#23806f;border-color:#1f6f60}
+:root[data-theme="light"] .blueRedPlayers .player.white .stoneMini,:root[data-theme="light"] .blueRedRole .whitePick .stoneMini,:root[data-theme="light"] body:has(#standardPlayers.blueRedPlayers) #mySeatSpot .player.white .stoneMini{background:#ef4444;border-color:#b91c1c}
 :root[data-theme="light"] .canvasWrap.connectFour{background:#0b1c38}
 :root[data-theme="light"] .announcementDetails[open]{border-top:1px solid #e2d4bd}
 :root[data-theme="light"] .collapsibleSummary:focus-visible{outline:2px solid #23806f}
@@ -1676,3 +1676,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .pdRoleCard{border:2px solid var(--role);background:#f7efe1;color:#fff;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 :root[data-theme="light"] .pdRoleCard strong{color:var(--role)}
 :root[data-theme="light"] .pdRoleCard span{color:#3d3024}
+:root[data-theme="light"] #fillAiNote{color:var(--hp-t2,#7a6650)}
