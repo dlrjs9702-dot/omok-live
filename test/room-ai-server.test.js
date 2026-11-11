@@ -95,7 +95,7 @@ test('윷놀이 C: 빈자리 AI, 나간 자리 AI가 이어 두기, 사람만 �
   // 손님이 나가면 초록 자리를 AI가 이어 둔다
   assert.equal((await req('/api/room/leave', b, {})).status, 200);
   s = await room(a); const green = s.participants.find((p) => p.seat === 'green');
-  assert.ok(green && /^AI · 보통 3$/.test(green.label), JSON.stringify(s.participants));
+  assert.ok(green && green.label === 'AI · 이어 둠 (윷손님)', JSON.stringify(s.participants));
   assert.equal(s.game.status, 'playing'); assert.equal(s.game.paused, false);
   // 방장이 기권하면 남은 사람이 없어 판이 끝나고, 두 사람 모두 패로 기록된다(4명 판: yut4)
   assert.equal((await req('/api/room/resign', a, {})).status, 200);
