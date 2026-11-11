@@ -21,7 +21,8 @@ test('생활 자원: 15개 제한 없이 모든 종류·20개 나무, 지형/길
       for(const l of T.HOME_LOTS||[]) assert.ok(Math.hypot(e.x-l.x,e.z-l.z)>7.9,'툇마루섬 집터 밖(6회차 5)');
       for(const solid of T.natureSolids()) assert.ok(Math.hypot(e.x-solid.x,e.z-solid.z)>solid.r+0.45,'player approach clear');
       if(e.type==='beach_trash') assert.ok(T.coastDist(e.x,e.z)<8);
-      if(['herb','mushroom'].includes(e.type)) assert.ok(T.nature().trees.some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6));
+      if(e.type==='herb') assert.ok(T.nature().trees.some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6));
+      if(TYPES[e.type].fixed) assert.ok([...T.nature().trees,...T.nature().logs,...T.nature().flowers].some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6),e.type); /* (G4b: under a tree, by a log, in the clover by the flowers) */
     }
   }
 });
@@ -37,7 +38,7 @@ test('생활 자원: 한 사람만 획득, 실패 복원, 종류별 재생·세�
     assert.equal(Boolean(ownView()),type==='berry');if(e.tree) assert.equal(ownView().verb,null);
     time=e.readyAt-1;ev.expire();assert.equal(e.state,'growing');
     time++;ev.expire();assert.equal(e.state,'open');assert.equal(e.generation,2);
-    if(e.tree) assert.deepEqual({x:e.x,z:e.z},original);else assert.ok(Math.hypot(e.x-original.x,e.z-original.z)>=15);
+    if(e.tree||e.fixed) assert.deepEqual({x:e.x,z:e.z},original);else assert.ok(Math.hypot(e.x-original.x,e.z-original.z)>=15); /* (G4b: a collectable grows back on its own spot) */
   }
   const restart=createIslandEvents({random:seeded(7),now:()=>time});
   assert.ok([...restart.events.keys()].every(id=>!ev.events.has(id)),'restart claim IDs never reused');
@@ -46,14 +47,20 @@ test('쓰레기 길 위(1103 4): 해안·풀밭 쓰레기 일부는 길 위, 약
   let onWalk = 0;
   for (const seed of [1, 2, 3, 4]) {
     const ev = createIslandEvents({ random: seeded(seed), now: () => Date.parse('2026-10-08T12:00:00+09:00') });
-    for (const e of ev.events.values()) { if (e.npc) continue; if (e.type.endsWith('_trash')) { if (T.walkDist(e.x, e.z) < 0.35) onWalk += 1; } else if (['herb', 'mushroom', 'candy'].includes(e.type)) assert.ok(T.walkDist(e.x, e.z) >= 0.35, e.type); }
+    for (const e of ev.events.values()) { if (e.npc) continue; if (e.type.endsWith('_trash')) { if (T.walkDist(e.x, e.z) < 0.35) onWalk += 1; } else if (['herb', 'candy'].includes(e.type) || TYPES[e.type].fixed) assert.ok(T.walkDist(e.x, e.z) >= (TYPES[e.type].fixed ? 2.5 : 0.35), e.type); } /* (G4b: the collectables 2.5 m off a walk) */
   }
   assert.ok(onWalk > 0, '길 위 쓰레기');
+});
+test('G4b 채집 표: 버섯 6·나뭇가지 2·네잎클로버와 잡초(자기 틀) 한 표, 가방 물건은 모두 있음, 잡초는 이벤트 아님', () => {
+  const G = require('../lib/island-gather'); const I = require('../lib/island-items');
+  assert.deepEqual(Object.keys(G.TABLE).sort(), [...Object.keys(G.KINDS), 'weed'].sort());
+  for (const [k, row] of Object.entries(G.TABLE)) assert.ok(I.itemDef(row.item), `${k} -> ${row.item}`);
+  assert.equal(TYPES.weed, undefined); assert.equal(Object.keys(G.KINDS).filter((k) => k.startsWith('mushroom_')).length, 6);
 });
 test('생활 경제: 단가 유지·공용 재생 공급 520,000P/h 이하, 개인 일일 상한 없음', () => { // (1103 4: trash 8·6 -> 32·28, +24·22 at 1,000P six an hour; the 경제 값 to turn it down)
   const I=require('../lib/island-items');let hourly=0;
   for(const [type,count] of Object.entries(RESOURCE_COUNTS)){const d=TYPES[type];hourly+=count*(d.points || I.priceOf(d.item))*(d.qty||1)*3600000/REGEN_MS[type];}
-  assert.equal(hourly,520000);assert.equal(I.DAILY_CAP,Infinity);
+  assert.ok(hourly<=520000,String(hourly));assert.ok(hourly>=510000,String(hourly));assert.equal(I.DAILY_CAP,Infinity); /* (G4b: the random six 「버섯」 36,000/h went into the 83 collectables, about 31,700/h) */
 });
 
 test('공용 이벤트: 분실물은 주운 사람만 주인에게 돌려주고, 돌려주면 끝난다', () => {

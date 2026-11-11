@@ -67,7 +67,7 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   const all=async()=> (await req('/api/test/island/events',a)).data.events;
   const stand=(s,p)=>req('/api/plaza/state',s,{x:p.x,z:p.z,yaw:0,moving:true});
   const list=await all();assert.ok(list.length>15);
-  const one=list.find(e=>e.type==='mushroom');
+  const one=list.find(e=>e.type.startsWith('mushroom')&&e.type!=='mushroom_blue'); /* (G4b: the common mushrooms -- 「버섯」 in the bag) */
   assert.equal((await req('/api/island/resource/start',a,{id:one.id})).data.error,'TOO_FAR');
   await stand(a,one);await stand(b,{x:one.x+1.2,z:one.z});
   assert.equal((await req('/api/island/event',a,{id:one.id})).data.error,'COLLECT_NOT_STARTED');
@@ -98,7 +98,16 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   let dig=null; // (a random coin, like the tree: its own spot may not be stood on -- then beside it)
   for(const [dx,dz] of [[0,0],[0.9,0],[-0.9,0],[0,0.9],[0,-0.9]]){await stand(a,{x:coin.x+dx,z:coin.z+dz});dig=await req('/api/island/resource/start',a,{id:coin.id});if(dig.status===200)break;}assert.equal(dig.status,200,JSON.stringify(dig.data));
   await sleep(1050);const paid=await req('/api/island/resource/finish',a,{id:coin.id,requestId:crypto.randomUUID()});assert.equal(paid.data.points,2000);assert.equal((await req('/api/donation',a)).data.balance,before+2000);
+  // G4b 채집: no daily cap (사용자 「추천대로」, v1.10.35 -- the blue mushroom a third time too), and what grows back kept over a restart
+  const near=async(s,e)=>{for(const [dx,dz] of [[0,0],[0.9,0],[-0.9,0],[0,0.9],[0,-0.9]]){await stand(s,{x:e.x+dx,z:e.z+dz});const r=await req('/api/island/resource/start',s,{id:e.id});if(r.status===200)return r;}return null;};
+  const pick=async(e)=>{assert.ok(await near(a,e),e.type);await sleep(1050);return req('/api/island/resource/finish',a,{id:e.id,requestId:crypto.randomUUID()});};
+  const blue=(await all()).find(e=>e.type==='mushroom_blue');
+  for(let k=0;k<3;k+=1){assert.equal((await pick(blue)).status,200);await req('/api/test/island/events',a,{grow:blue.id});}
+  assert.equal((await bag(a)).find(e=>e.itemId==='mushroom_blue').qty,3);await req('/api/island/resource/cancel',a,{});
+  const stick=(await all()).find(e=>e.type==='twig_branch');assert.equal((await pick(stick)).status,200);assert.equal((await bag(a)).find(e=>e.itemId==='branch').qty,1);
   const previousIds=(await all()).map(e=>e.id);await server.stop();server=await boot(t,dir);req=server.req;a=await server.enter(ka);
   assert.equal((await bag(a)).find(e=>e.itemId==='berry').qty,1);
   assert.ok((await all()).every(e=>!previousIds.includes(e.id)));
+  const again=(await all()).find(e=>e.type==='twig_branch'&&e.x===stick.x&&e.z===stick.z);assert.ok(again,'the same spot after a restart');
+  assert.equal((await near(a,again)),null,'still growing back after the restart');
 });

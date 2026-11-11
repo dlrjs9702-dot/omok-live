@@ -1047,7 +1047,7 @@ test('일반 자원: 미니맵 ! 없음, 근접 강조·SPACE 채집·다른 화
   }, { from, min, max });
   // (CI 3차, run 39729416981 #3 both tries: the first open mushroom had nowhere to stand 58-70 m off -- by the coast or the
   // ridge, where the events happened to be that hour. The first open one that has)
-  const mushrooms = (await get(request, '/api/test/island/events', a.token)).data.events.filter((e) => e.type === 'mushroom' && e.state === 'open');
+  const mushrooms = (await get(request, '/api/test/island/events', a.token)).data.events.filter((e) => e.type.startsWith('mushroom_') && e.state === 'open'); /* (G4b: the six mushrooms on their fixed spots) */
   let target = null; for (const m of mushrooms) if (await spotNear(a.page, m, 58, 70)) { target = m; break; }
   expect(target, `open mushrooms: ${mushrooms.length}`).not.toBeNull();
   const key = `ev:${target.type}:${target.id}`;
@@ -1066,9 +1066,9 @@ test('일반 자원: 미니맵 ! 없음, 근접 강조·SPACE 채집·다른 화
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 10000 }).toBe(true);
   const close = await spotNear(a.page, target, 0.4, 0.8); // nearer than any weed beside it (the nearest thing is what Space does)
   await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), close);
-  await expect(a.page.locator('#plazaHint')).toHaveText(/SPACE · 버섯 · 채집/, { timeout: 10000 });
+  await expect(a.page.locator('#plazaHint')).toHaveText(/(SPACE · )?[가-힣 ]*버섯 · 채집/, { timeout: 10000 }); /* (G4b: its kind's name -- 빨간 고깔 버섯 ...) */
   expect(await a.page.evaluate(t => window.PlazaDebug().markers.some(m => Math.hypot(m.x-t.x,m.z-t.z)<0.01),target)).toBe(false);
-  expect(await shownMatchesRange(a.page)).toBe(true);
+  await expect.poll(() => shownMatchesRange(a.page), { timeout: 5000 }).toBe(true); /* (the minimap's count is its last drawing's: after the warp, as above -- the 대회 천막's mark near since v1.10.305) */
   await a.page.keyboard.press('Space');
   await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 15000 }); // after the gathering motion (slower on CI)
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);

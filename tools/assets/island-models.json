@@ -12556,6 +12556,174 @@
       "src": "nature112:01. High/winter/tallgrass_c.glb",
       "sha256": "3fd99b5bc621b38fb1ffceba26cd0ea69d8dbb523ecc41580f4b100de79c3be2",
       "precompressed": true
+    },
+    {
+      "out": "nature112/spring/mushroom_brown_cap.glb",
+      "src": "nature112:01. High/spring/mushroom_brown_cap.glb",
+      "sha256": "58bd030f69e9fad9387c5fed73bc04c51d9b85fcc4e41e56c33ad900c19d1784",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/mushroom_red_cone.glb",
+      "src": "nature112:01. High/spring/mushroom_red_cone.glb",
+      "sha256": "6f70e33c0c4537b3729aad88f68dd1d91aa2084d5bc2638e58bfcffde6321a05",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/mushroom_bolete.glb",
+      "src": "nature112:01. High/spring/mushroom_bolete.glb",
+      "sha256": "0a3426a296a7e6199d8f8fc7e20ab7c26cb04689fbe6d5a19736c5cd064a34c0",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/mushroom_blue.glb",
+      "src": "nature112:01. High/spring/mushroom_blue.glb",
+      "sha256": "857e382934d76cb8d40efe6efa0755a9a1bbf06d4d6144c9dfb7100e5b9ff3d1",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/branch_fork.glb",
+      "src": "nature112:01. High/spring/branch_fork.glb",
+      "sha256": "21434a1660f76aa24f8184bfab9991ce448d13328e394ceb4ab93853f3a6dd06",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/twigs.glb",
+      "src": "nature112:01. High/spring/twigs.glb",
+      "sha256": "fd322a60db8c49b390309a3f248458a0ed038898c4744aeca8cfe1c91e3f7265",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/spring/clover_four_leaf.glb",
+      "src": "nature112:01. High/spring/clover_four_leaf.glb",
+      "sha256": "7572955aedc19fb2a5d84f76b0a90bcde45edbc9df13d29396d59022b9191b31",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/mushroom_brown_cap.glb",
+      "src": "nature112:01. High/summer/mushroom_brown_cap.glb",
+      "sha256": "df567f977d34f6ca73d55d15157d136c7b47d17ee969c40d99c5a594f8572364",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/mushroom_red_cone.glb",
+      "src": "nature112:01. High/summer/mushroom_red_cone.glb",
+      "sha256": "d8c02dd639f4e6f8e1d7f2bb286203fbb283609d7b1cb353add1637e8c9eeb72",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/mushroom_bolete.glb",
+      "src": "nature112:01. High/summer/mushroom_bolete.glb",
+      "sha256": "ad54d12265f28097858ed98f0c559e1048dd7544b3c27378a77b22836b4488cc",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/mushroom_blue.glb",
+      "src": "nature112:01. High/summer/mushroom_blue.glb",
+      "sha256": "abdfa3faf7dc03ed5c9da0a0916400ae61e5c23666b661a43e2781fb7d310cab",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/branch_fork.glb",
+      "src": "nature112:01. High/summer/branch_fork.glb",
+      "sha256": "0edaec4ce47c4578d1953d7001506ccd2b526c40d4eba82c570e26a7e38374e7",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/twigs.glb",
+      "src": "nature112:01. High/summer/twigs.glb",
+      "sha256": "5e8d44f11f88f6783036f9c10a7af37064efa869deeaaee335b181b61ea9d9c7",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/summer/clover_four_leaf.glb",
+      "src": "nature112:01. High/summer/clover_four_leaf.glb",
+      "sha256": "6d115c0866e86a7d300beb147bdcd975c2f632b4a71f2588b336c2c987514960",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/mushroom_brown_cap.glb",
+      "src": "nature112:01. High/autumn/mushroom_brown_cap.glb",
+      "sha256": "23499ec47f9b15d34cc96430f84226c0a4ed11c79668ac275d60bf06de209a06",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/mushroom_red_cone.glb",
+      "src": "nature112:01. High/autumn/mushroom_red_cone.glb",
+      "sha256": "b0914c234129f62dc547632a466eeca0dbd9c3ea1a96539d210c3b65f98b2fd6",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/mushroom_bolete.glb",
+      "src": "nature112:01. High/autumn/mushroom_bolete.glb",
+      "sha256": "dd1c693c55458b54a9f2ff66f6a9ab44dda7918bfe43bf8e50d59bc3c73fa1b8",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/mushroom_blue.glb",
+      "src": "nature112:01. High/autumn/mushroom_blue.glb",
+      "sha256": "a6f5cbe223a29351485426ee04980d04abc31fe3b2c9b26b1702c702b6ff5c86",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/branch_fork.glb",
+      "src": "nature112:01. High/autumn/branch_fork.glb",
+      "sha256": "2331937862a4b7244f471d384066ffac40aca60c6f21dd1b7995ba9e0a8f8bb1",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/twigs.glb",
+      "src": "nature112:01. High/autumn/twigs.glb",
+      "sha256": "7cfacfd4f1bb5f7a2f155b6ef6e3a3e0814135467bd2b757db9a855c6470f204",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/autumn/clover_four_leaf.glb",
+      "src": "nature112:01. High/autumn/clover_four_leaf.glb",
+      "sha256": "fbe10e06bb826baf6143410c02851b35a8ecfba2e94af3ba46c0b2797ad9ba80",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/mushroom_brown_cap.glb",
+      "src": "nature112:01. High/winter/mushroom_brown_cap.glb",
+      "sha256": "8588532ca54a4e7f7c33e1db00da72f48ad0cfcaf158305ec11beda79f24324b",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/mushroom_red_cone.glb",
+      "src": "nature112:01. High/winter/mushroom_red_cone.glb",
+      "sha256": "b351d4fdb982d14d0f145885d0137dbb9f5ccd08058d213828ba9aedc359977f",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/mushroom_bolete.glb",
+      "src": "nature112:01. High/winter/mushroom_bolete.glb",
+      "sha256": "9096213f57008a8347f0949e6408886285f21e6d0f683624833c47912ec0de5d",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/mushroom_blue.glb",
+      "src": "nature112:01. High/winter/mushroom_blue.glb",
+      "sha256": "65c84b32eeaeaa5d15a08be04e83e8b55c01c2bba6b13ca708410e0bbaa67997",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/branch_fork.glb",
+      "src": "nature112:01. High/winter/branch_fork.glb",
+      "sha256": "b4dbd9bcf4c54989f4671731d92f0d48d402b70dac9f006e0bf3a3c7ae7b9364",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/twigs.glb",
+      "src": "nature112:01. High/winter/twigs.glb",
+      "sha256": "f79b8fd673240ad0714558467a820b1305a6fc29691c28a3dfa8d0e08f1501c4",
+      "precompressed": true
+    },
+    {
+      "out": "nature112/winter/clover_four_leaf.glb",
+      "src": "nature112:01. High/winter/clover_four_leaf.glb",
+      "sha256": "2483495820207a5a0b5cfa74a391cd06adc13bf3aa6713b7df780993e129db8a",
+      "precompressed": true
     }
   ],
   "sources": {
