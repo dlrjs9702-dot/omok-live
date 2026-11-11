@@ -2922,11 +2922,10 @@ function publicRoom(room) {
     spectatorCount: liveSpectatorCount(room),
     participants: publicParticipants(room),
     chat: { messages: publicChatMessages(room) },
-    players: isNumberedSeatGame(room) ? Object.fromEntries(seatsFor(room).map(seat => [seat, publicPlayer(room, seat)])) : {
-      black: publicPlayer(room, 'black'),
-      white: publicPlayer(room, 'white'),
-    },
-    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : 2,
+    players: isNumberedSeatGame(room) ? Object.fromEntries(seatsFor(room).map(seat => [seat, publicPlayer(room, seat)]))
+      : isYut(room) ? Object.fromEntries(Object.keys(room.players).map((seat) => [seat, publicPlayer(room, seat)])) /* (윷놀이 B: 2~4 seats) */
+      : { black: publicPlayer(room, 'black'), white: publicPlayer(room, 'white') },
+    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : Object.keys(room.players).length,
     game: gameEngine.publicState(room.game),
     ...(familyOf(room.gameType) && equippedSkin(accountOfIdentity(room.hostIdentity), familyOf(room.gameType), 'theme')
       ? { skinTheme: equippedSkin(accountOfIdentity(room.hostIdentity), familyOf(room.gameType), 'theme') } : {}), // the host's room theme
@@ -3124,7 +3123,7 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
       if (!rewardsEnabled(account)) continue;
       const outcome = result.outcomes[i];
       const done = await pointStore.recordMissionMatch({
-        userId: account, matchId: result.id, gameType: result.gameType, result: outcome.result, soleWinner: sole && outcome.result === 'win',
+        userId: account, matchId: result.id, gameType: room.gameType /* (윷놀이 B: yut3·yut4 are still 윷놀이 for missions) */, result: outcome.result, soleWinner: sole && outcome.result === 'win',
         clean: seats[i] !== resignedSeat, opponents: accounts.filter((other, j) => j !== i && other),
         friendly: roomPolicy(room) === 'friendly', // (G-포인트: the same opponent counts twice a day at most)
       }, finishedAt);

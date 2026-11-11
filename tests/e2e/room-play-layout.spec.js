@@ -290,3 +290,28 @@ test('오목 터치: 첫 탭은 미리보기, 같은 자리 두 번째 탭에 �
   await page.evaluate(() => document.getElementById('roomMenuBtn').click()); /* (the chat panel open over the HUD on a phone) */ await expect(page.locator('#gameMenuDialog #menuPointLine')).toHaveText(/^내 포인트 [\d,]+P$/);
   await context.close();
 });
+
+// 윷놀이 B: a four-seat AI room made from the form -- on a phone the four cards two a row, every seat's colour, the score
+// row with all four, and the throw still within the screen
+test('윷놀이 4명 AI 판 한 화면 375×667', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 375, height: 667 });
+  const me = await login(page);
+  await page.evaluate(() => document.querySelector('[data-game="yut"]').click());
+  await page.evaluate(() => { document.querySelector('input[name="roomAi"][value="normal"]').click(); });
+  await expect(page.locator('#yutPlayerChoices')).toBeVisible();
+  await page.evaluate(() => document.querySelector('input[name="yutPlayers"][value="4"]').click());
+  const [res] = await Promise.all([page.waitForResponse((r) => r.url().endsWith('/api/rooms') && r.request().method() === 'POST'), page.locator('#createRoomBtn').click()]);
+  expect(res.status()).toBe(201);
+  expect((await api(request, '/api/room/choose-role', me, { choice: 'yellow' })).status).toBe(200);
+  await expect(page.locator('#yutThrowBtn')).toHaveText('윷 던지기', { timeout: 60_000 }); /* (the three AIs had their turns) */
+  const fill = { black: 'rgb(37, 99, 235)', white: 'rgb(239, 68, 68)', green: 'rgb(22, 163, 74)', yellow: 'rgb(234, 179, 8)' };
+  for (const [c, rgb] of Object.entries(fill)) { await expect(page.locator(`#${c}Player`)).toBeVisible(); expect(await page.locator(`#${c}Player .stoneMini`).evaluate((s) => getComputedStyle(s).backgroundColor)).toBe(rgb); }
+  const [b, w, g] = await Promise.all(['black', 'white', 'green'].map((c) => page.locator(`#${c}Player`).boundingBox()));
+  expect(w.y === b.y && g.y > b.y + b.height - 1 && g.x === b.x, JSON.stringify([b, w, g])).toBe(true); /* (two a row) */
+  await expect(page.locator('#gameScoreText')).toHaveText(/파랑 완주 \d+ · 빨강 완주 \d+ · 초록 완주 \d+ · 노랑 완주 \d+/);
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(300);
+  const t = await page.locator('#yutThrowBtn').boundingBox(); expect(t.y + t.height).toBeLessThanOrEqual(668);
+  expect(errors).toEqual([]);
+});

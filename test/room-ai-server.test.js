@@ -9,8 +9,8 @@ const { boot } = require('../test-support/test-server');
 
 // v1.10.72 게임방 AI 자리 (사용자 2026-10-12): 오목·사목·오델로 rooms where the server plays the other seat with the
 // 한판마당 AI — private, no entry points, no match record (so no missions or ranking), one person per AI room.
-const waitFor = async (check, what) => {
-  for (let i = 0; i < 100; i += 1) { const v = await check(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); }
+const waitFor = async (check, what, tries = 100) => {
+  for (let i = 0; i < tries; i += 1) { const v = await check(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); }
   throw new Error(what);
 };
 
@@ -68,6 +68,6 @@ test('게임방 AI: 자리를 고르면 AI가 맞은편에, 두면 AI가 받아 
   assert.equal((await req('/api/room/choose-role', a, { choice: 'yellow' })).status, 200);
   state = await room(); assert.equal(state.game.status, 'playing'); assert.deepEqual(state.game.seatOrder, ['black', 'white', 'green', 'yellow']);
   assert.deepEqual(state.participants.filter((p) => /^AI · 보통 \d$/.test(p.label)).map((p) => p.seat).sort(), ['black', 'green', 'white']);
-  state = await waitFor(async () => { const s = await room(); return s.game.turn === 'yellow' && s.game.phase === 'throw' && s; }, 'AI 셋이 차례를 넘기지 않았습니다');
+  state = await waitFor(async () => { const s = await room(); return s.game.turn === 'yellow' && s.game.phase === 'throw' && s; }, 'AI 셋이 차례를 넘기지 않았습니다', 400); /* (three AIs, each maybe throwing again on 윷·모·잡기: up to 40 s) */
   assert.ok(state.game.throwCount >= 3); assert.equal(state.game.pieceCount, 3);
 });

@@ -1467,8 +1467,8 @@
     const sc = game?.scores; const unit = { othello: '돌', yut: '완주', dots: '상자' }[state?.gameType];
     if (unit && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white))) {
       const row = document.createElement('span'); row.className = 'resultScore'; boardOverlay.append(row);
-      const to = { black: Number(sc.black), white: Number(sc.white) }; const draw = (k) => { row.textContent = `${seatKo('black')} ${unit} ${Math.round(to.black * k)} · ${seatKo('white')} ${unit} ${Math.round(to.white * k)}`; };
-      const key = `${state.me?.roomCode}:${game?.round}:${to.black}:${to.white}`; const counted = resultCountedFor === key; resultCountedFor = key;
+      const order = Array.isArray(game?.seatOrder) && game.seatOrder.length > 2 ? game.seatOrder : ['black', 'white']; const to = Object.fromEntries(order.map((c) => [c, Number(sc[c] ?? 0)])); const draw = (k) => { row.textContent = order.map((c) => `${seatKo(c)} ${unit} ${Math.round(to[c] * k)}`).join(' · '); }; /* (윷놀이 B: every seat) */
+      const key = `${state.me?.roomCode}:${game?.round}:${order.map((c) => to[c]).join(':')}`; const counted = resultCountedFor === key; resultCountedFor = key;
       if (counted || reducedMotionActive()) draw(1); else { const t0 = performance.now(); const step = (t) => { const k = Math.min(1, (t - t0) / 900); draw(k); if (k < 1 && row.isConnected) requestAnimationFrame(step); }; requestAnimationFrame(step); }
     }
     boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
@@ -5910,7 +5910,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드' : type === 'pandemic' ? '팬데믹' : type === 'halligalli' ? '할리갈리' : type === 'gostop' ? '고스톱 · 맞고' : type === 'rpg' ? '잿빛 원정'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'yut3' ? '윷놀이 3명' : type === 'yut4' ? '윷놀이 4명' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드' : type === 'pandemic' ? '팬데믹' : type === 'halligalli' ? '할리갈리' : type === 'gostop' ? '고스톱 · 맞고' : type === 'rpg' ? '잿빛 원정'
         : (type === 'othello' ? '오델로' : '오목');
   }
 
@@ -6111,6 +6111,7 @@
     const ai = document.getElementById('roomAiChoices');
     ai.classList.toggle('hidden', !(['connect4', 'othello', 'yut'].includes(selectedGameType) || (selectedGameType === 'omok' && omokMode() === '1v1'))); /* (윷놀이 실제 규칙 A: the 2-player AI) */
     const withAi = !ai.classList.contains('hidden') && Boolean(document.querySelector('input[name="roomAi"]:checked')?.value);
+    document.getElementById('yutPlayerChoices')?.classList.toggle('hidden', selectedGameType !== 'yut'); /* (윷놀이 B: 2·3·4명 -- with AI: me and the AIs) */
     document.getElementById('roomStakesChoices').classList.toggle('hidden', ['gostop', 'rpg', 'pictionary', 'liar', 'twentyquestions', 'pandemic'].includes(selectedGameType) || withAi);
   }
   for (const radio of document.querySelectorAll('input[name="omokMode"], input[name="roomAi"]')) radio.addEventListener('change', syncRoomAiChoices);
@@ -6124,6 +6125,7 @@
         visibility,
         title: roomTitleInput.value,
         ...(selectedGameType === 'baseball' ? { digitCount } : {}),
+        ...(selectedGameType === 'yut' ? { players: Number(document.querySelector('input[name="yutPlayers"]:checked')?.value || 2) } : {}), /* (윷놀이 B) */
         ...(selectedGameType === 'gostop' ? { pointsPerScore: Number(document.querySelector('input[name="gostopStake"]:checked')?.value || 100) } : {}),
         ...(ai ? { ai } : {}),
         ...(roomStakes() ? { stakes: true } : {}),
@@ -8455,6 +8457,7 @@
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
     if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
+    if (value === 'green') return '초록'; if (value === 'yellow') return '노랑'; /* (윷놀이 B: the third and fourth seats) */
     return '관전';
   }
 
@@ -8786,6 +8789,7 @@
     if (isNumberedSeatGame() && numberedSeats().includes(p.seat)) return seatKo(p.seat);
     if (p.seat === 'black') return seatKo('black');
     if (p.seat === 'white') return seatKo('white');
+    if (p.seat === 'green' || p.seat === 'yellow') return seatKo(p.seat); /* (윷놀이 B) */
     if (p.choice === 'spectator') return '관전';
     return '역할 선택 중';
   }
@@ -9360,6 +9364,14 @@
     chooseBlackBtn.classList.toggle('selected', choice === 'black');
     chooseWhiteBtn.classList.toggle('selected', choice === 'white');
     chooseSpectatorBtn.classList.toggle('selected', choice === 'spectator');
+    // 윷놀이 B: 초록·노랑 for a room of three or four (made once, beside 파랑·빨강)
+    const more = yut ? ['green', 'yellow'].filter((c) => Object.hasOwn(state.players || {}, c)) : [];
+    for (const c of ['green', 'yellow']) {
+      let b = document.getElementById(`choose${c === 'green' ? 'Green' : 'Yellow'}Btn`);
+      if (!b && more.includes(c)) { b = document.createElement('button'); b.type = 'button'; b.id = `choose${c === 'green' ? 'Green' : 'Yellow'}Btn`; b.className = `rolePick ${c}Pick`; const dot = document.createElement('span'); dot.className = 'stoneMini'; dot.style.background = YUT_FILL[c]; /* (CSP: no style="" from markup -- set here) */ b.append(dot, `${c === 'green' ? '초록' : '노랑'} 선택`); b.addEventListener('click', () => roomAction('choose-role', { choice: c })); chooseSpectatorBtn.before(b); }
+      if (!b) continue; b.classList.toggle('hidden', !more.includes(c)); b.disabled = Boolean(state.players[c] && seat !== c); b.classList.toggle('selected', choice === c);
+    }
+    if (yut && more.length) roleChooser.querySelector('small').textContent = `${more.length + 2}명 판이에요. 자리가 모두 차면 파랑부터 윷을 던져요(말은 3개씩).`;
   }
 
   // v1.6.40: universal connection-drop popup. A brief network blip should never pop this up --
@@ -9480,12 +9492,12 @@
     const scores = !pictionary && !liar && !twenty && g.scores;
     gameScoreRow.classList.toggle('hidden', !scores);
     gameScoreText.textContent = scores ? (state.gameType === 'yut'
-      ? `${seatKo('black')} 완주 ${scores.black} · ${seatKo('white')} 완주 ${scores.white}`
+      ? yutSeatsOf(g).map((c) => `${seatKo(c)} 완주 ${scores[c] ?? 0}`).join(' · ') /* (윷놀이 B: every seat) */
       : state.gameType === 'dots' ? `${seatKo('black')} 상자 ${scores.black} · ${seatKo('white')} 상자 ${scores.white}`
         : state.gameType === 'cityking' ? `파랑 자산 ${scores.black} · 빨강 자산 ${scores.white}`
         : `흑 ${scores.black} · 백 ${scores.white}`) : (state.gameType === 'bingo' ? Object.entries(g.lineCounts || {}).map(([n, count]) => `${n}번 ${count}줄`).join(' · ') || '-' : '-');
     // A3 G1-5: a two-seat game's score between the name cards, always in sight (오델로 「2 : 2」 as in the AI practice)
-    const versus = document.querySelector('#standardPlayers .versus'); if (versus) { const two = scores && Number.isFinite(Number(scores.black)) && Number.isFinite(Number(scores.white)) && state.gameType !== 'cityking'; versus.textContent = two ? `${scores.black} : ${scores.white}` : 'VS'; versus.classList.toggle('versusScore', Boolean(two)); }
+    const versus = document.querySelector('#standardPlayers .versus'); if (versus) { const two = scores && Number.isFinite(Number(scores.black)) && Number.isFinite(Number(scores.white)) && state.gameType !== 'cityking'; versus.textContent = two ? scoreColon(g, scores) : 'VS'; versus.classList.toggle('versusScore', Boolean(two)); }
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
     // v1.6.40: a paused, disconnect-affected match takes over the status line for every game type
@@ -9554,6 +9566,11 @@
     else {
       setPlayerCard(blackPlayer, 'black', state.players.black);
       setPlayerCard(whitePlayer, 'white', state.players.white);
+      for (const c of ['green', 'yellow']) { /* (윷놀이 B: the third and fourth seats' cards, beside the opponent's) */
+        const has = state.gameType === 'yut' && Object.hasOwn(state.players || {}, c); let card = document.getElementById(`${c}Player`);
+        if (!card && has) { card = document.createElement('div'); card.id = `${c}Player`; card.className = `player ${c}`; card.innerHTML = '<span class="stoneMini"></span><div><strong></strong><small></small></div>'; card.querySelector('.stoneMini').style.background = YUT_FILL[c]; /* (CSP: the colour set here, not in style="") */ card.addEventListener('click', () => { if (card.classList.contains('pickable')) roomAction('choose-role', { choice: c }); }); (c === 'yellow' && document.getElementById('greenPlayer') || whitePlayer).after(card); }
+        if (!card) continue; card.classList.toggle('hidden', !has); if (has) setPlayerCard(card, c, state.players[c]);
+      }
     }
     renderParticipants();
     renderChat();
@@ -11889,6 +11906,11 @@
     }
   }
 
+  // 윷놀이 B: 파랑 · 빨강 · 초록 · 노랑 -- the pieces' fill and the bottom line's ink; the game's own seats in turn order
+  const YUT_FILL = { black: '#2563eb', white: '#ef4444', green: '#16a34a', yellow: '#eab308' };
+  const YUT_TEXT = { black: '#1d4ed8', white: '#b91c1c', green: '#15803d', yellow: '#a16207' };
+  const scoreColon = (g, sc) => (Array.isArray(g?.seatOrder) && g.seatOrder.length > 2 ? g.seatOrder.map((c) => sc[c] ?? 0).join(' : ') : `${sc.black} : ${sc.white}`); /* (윷놀이 B: three or four seats' scores) */
+  const yutSeatsOf = (g) => (Array.isArray(g?.seatOrder) && g.seatOrder.length ? g.seatOrder : ['black', 'white']);
   function drawYutBoard() {
     const g = state.game;
     const yutRecent = observeRecentAction(g.lastMove
@@ -11923,7 +11945,7 @@
       const isFinish = node === 'finishLine';
       const corner = [0,5,10,15,23].includes(node);
       if (isStart) {
-        ctx.fillStyle = '#1d4ed8';
+        ctx.fillStyle = yutSeatsOf(g).length > 2 ? '#3f2a1c' : '#1d4ed8'; /* (윷놀이 B: blue is a team then) */
         ctx.beginPath(); ctx.arc(x,y,30,0,Math.PI*2); ctx.fill();
         ctx.strokeStyle = '#fef9c3';
         ctx.lineWidth = 4;
@@ -11934,7 +11956,7 @@
       // piece parked there -- and a back-do moving it off again -- is never mistaken for the blue
       // start tile it used to sit directly on top of.
       if (isFinish) {
-        ctx.fillStyle = '#15803d';
+        ctx.fillStyle = yutSeatsOf(g).length > 2 ? '#78716c' : '#15803d'; /* (윷놀이 B: green is a team then) */
         ctx.beginPath(); ctx.arc(x,y,22,0,Math.PI*2); ctx.fill();
         ctx.strokeStyle = '#fef9c3';
         ctx.lineWidth = 3;
@@ -11959,7 +11981,7 @@
     // more, separately, at its interpolated in-transit pixel position instead of its already-final
     // server position -- the visuals are identical either way, only which (x,y) gets passed differs.
     const drawPieceStack = (x, y, color, pieces) => {
-      const fill = color === 'black' ? '#2563eb' : '#ef4444';
+      const fill = YUT_FILL[color] || '#64748b';
       const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
       const offsets = yutStackOffsets(ordered.length);
       for (const [index, piece] of ordered.entries()) {
@@ -11969,7 +11991,7 @@
     };
     const animatingIds = yutPieceAnimation?.pieceIds || null;
     const grouped = new Map();
-    for (const color of ['black','white']) for (const piece of g.pieces?.[color] || []) {
+    for (const color of yutSeatsOf(g)) for (const piece of g.pieces?.[color] || []) {
       if (piece.status !== 'board') continue;
       if (animatingIds?.has(piece.id)) continue; // drawn separately below, mid-transit
       const key = `${piece.position}:${color}`;
@@ -11984,7 +12006,7 @@
       // The whole piggybacked group travels together in lockstep (identical path), so there is only
       // ever one in-transit (x,y) to draw at -- but keep colors separate in case a future rule ever
       // lets pieces of different colors be captured/carried mid-animation together.
-      for (const color of ['black','white']) {
+      for (const color of yutSeatsOf(g)) {
         const pieces = (g.pieces?.[color] || []).filter(piece => animatingIds.has(piece.id));
         if (pieces.length) {
           const trailSkin = window.SkinLooks.def(state.players?.[color]?.skin);
@@ -12068,7 +12090,7 @@
           // The waiting pieces' token, drawn on the (never occupied) start corner only while entering
           // a new piece is actually legal; a small count shows how many are still at home.
           ctx.save();
-          drawYutToken(target.x1, target.y, seat === 'black' ? '#2563eb' : '#ef4444', String(target.numbers[0]), seat);
+          drawYutToken(target.x1, target.y, YUT_FILL[seat] || '#64748b', String(target.numbers[0]), seat);
           ctx.textAlign = 'center';
           if (target.waiting > 1) {
             ctx.fillStyle = '#0f172a';
@@ -12113,8 +12135,8 @@
     const done = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'finished').length;
     ctx.textAlign = 'left';
     ctx.font = '850 18px system-ui, sans-serif';
-    ctx.fillStyle = characterPairActive() ? '#282132' : '#1d4ed8'; ctx.fillText(`${seatKo('black')} 집 ${home('black')} · 완주 ${done('black')}`, 120, 690);
-    ctx.fillStyle = characterPairActive() ? '#282132' : '#b91c1c'; ctx.fillText(`${seatKo('white')} 집 ${home('white')} · 완주 ${done('white')}`, 390, 690);
+    const seats = yutSeatsOf(g); const wide = seats.length > 2; if (wide) ctx.font = '850 15px system-ui, sans-serif'; /* (윷놀이 B: three or four across) */
+    seats.forEach((c, i) => { ctx.fillStyle = characterPairActive() ? '#282132' : YUT_TEXT[c]; ctx.fillText(wide ? `${seatKo(c)} 집${home(c)}·완주${done(c)}` : `${seatKo(c)} 집 ${home(c)} · 완주 ${done(c)}`, wide ? 40 + i * (600 / seats.length) : (i ? 390 : 120), 690); });
   }
 
   function dotsLayout() {
@@ -13349,7 +13371,7 @@
   const rankingDialog = document.getElementById('rankingDialog');
   const rankingGame = document.getElementById('rankingGame');
   let rankingWeek = 'this';
-  rankingGame.replaceChildren(...[...gameRulesSelect.options].filter((o) => !['cityking', 'rpg'].includes(o.value)).map((o) => new Option(o.textContent, o.value)), new Option('두 세계 영웅전 (최고 기록)', 'herosurv')); // (사용자 2026-10-19)
+  rankingGame.replaceChildren(...[...gameRulesSelect.options].filter((o) => !['cityking', 'rpg'].includes(o.value)).flatMap((o) => [new Option(o.textContent, o.value), ...(o.value === 'yut' ? ['yut3', 'yut4'].map((v) => new Option(gameName(v), v)) : [])]) /* (윷놀이 B: 3·4명 boards of their own) */, new Option('두 세계 영웅전 (최고 기록)', 'herosurv')); // (사용자 2026-10-19)
   async function loadRanking() {
     const list = document.getElementById('rankingList'); const mine = document.getElementById('rankingMe');
     const game = rankingGame.value; const week = rankingWeek;
@@ -13858,7 +13880,7 @@
   const roomHud = byId('roomHud'); let hudTurn = null; let hudMine = false; let hudBeep = null; // { deadlineAt, total }: the turn's whole time, from when its deadline came
   // (the big number off my turn: the game's own -- 오델로·윷·점과 상자 「2 : 2」, 맞고 my 「7점」)
   function hudScore(g) {
-    const s = g?.scores; if (s && Number.isFinite(Number(s.black)) && Number.isFinite(Number(s.white))) return `${s.black} : ${s.white}`;
+    const s = g?.scores; if (s && Number.isFinite(Number(s.black)) && Number.isFinite(Number(s.white))) return scoreColon(g, s);
     const mine = seat && g?.seats?.[seat]; return state.gameType === 'gostop' && Number.isFinite(Number(mine?.score)) ? `${mine.score}점` : '';
   }
   // the turn line: 「내 차례 · 흑」 / 「상대 차례 · 백」 where one seat moves; else the status line without the players' names
@@ -13899,7 +13921,7 @@
     byId('roomHudBig').textContent = pdActs ?? ownBig ?? (timer ? String(Math.ceil(left / 1000)) : otherLeft !== null ? String(Math.ceil(otherLeft / 1000)) : hudScore(state.game));
     byId('roomHudSub').textContent = hudTurnLine(); // (U2 검토 #391: short -- the names are on the plates)
     const moves = state.game?.moveCount; const sc = state.game?.scores; const unit = { othello: '', dots: '상자 ', yut: '완주 ' }[state.gameType]; const counted = unit !== undefined && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white));
-    const pill = byId('roomHudPill'); pill.textContent = hudOwnPill(state.game) || (state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? `${unit}${sc.black} : ${sc.white}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''); /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
+    const pill = byId('roomHudPill'); pill.textContent = hudOwnPill(state.game) || (state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? `${unit}${scoreColon(state.game, sc)}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''); /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
     // (v1.10.245 U3: my turn's last 5 seconds a beep a second -- the last one higher)
