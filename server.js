@@ -29,7 +29,7 @@ const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 
 // (pause detection, disconnect-forced ending) operates over.
 const assignedSeatsFor = (room) => isNumberedSeatGame(room)
   ? seatsFor(room).filter(seat => room.players[seat])
-  : ['black', 'white'].filter(color => room.players[color]);
+  : Object.keys(room.players).filter(color => ['black', 'white', 'green', 'yellow'].includes(color) && room.players[color]); /* (윷놀이 B: 초록·노랑 too) */
 const { createAccessStore, hashPassword, verifyPassword, normalizeLoginId, loginIdOk } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMessengerStore } = require('./lib/messenger-store');
@@ -962,8 +962,8 @@ function publicRoomSummary(room) {
     stakes: roomPolicy(room) === 'entry', // (G-포인트: a 「내기 1,000P」 room)
     host: host.label || '방장',
     playerCount: isNumberedSeatGame(room) ? seatsFor(room).filter(seat => room.players[seat]).length
-      : Number(Boolean(room.players.black)) + Number(Boolean(room.players.white)),
-    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : 2,
+      : Object.values(room.players).filter(Boolean).length,
+    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : Object.keys(room.players).length, /* (윷놀이 B: 2~4) */
     connectedCount: Object.values(room.participants).filter(p => p.connected && sessions.has(p.sessionToken)).length,
     status: room.game.status === 'selecting' ? 'waiting'
       : ['finished', 'draw'].includes(room.game.status) ? 'finished'
@@ -2302,6 +2302,9 @@ function newParticipant(session, connected = false) {
   };
 }
 
+const yutPlayersOf = (options) => ([2, 3, 4].includes(Number(options?.yutPlayers)) ? Number(options.yutPlayers) : 2); // (윷놀이 B: the room's player count)
+const isYut = (room) => room.gameType === 'yut';
+const isAiToken = (token) => String(token || '').startsWith('ai:');
 function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private', options = {}) {
   const gameEngine = getGame(requestedGameType);
   if (!gameEngine) return null;
@@ -2331,9 +2334,10 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
       ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
       : ['omok2v2', 'bingo', 'rpg'].includes(gameEngine.id)
         ? { '1': null, '2': null, '3': null, '4': null }
+        : gameEngine.id === 'yut' ? Object.fromEntries(gameEngine.SEATS.slice(0, yutPlayersOf(options)).map((seat) => [seat, null])) /* (윷놀이 B: 2~4 seats, 파랑·빨강·초록·노랑) */
         : { black: null, white: null },
     social: createRoomSocial(),
-    game: gameEngine.create(gameEngine.id === 'baseball' ? { digitCount: options.digitCount } : undefined),
+    game: gameEngine.create(gameEngine.id === 'baseball' ? { digitCount: options.digitCount } : gameEngine.id === 'yut' ? yutPlayersOf(options) : undefined),
   };
   if (gameEngine.id === 'gostop' && options.pointsPerScore) gameEngine.setStake(room.game, options.pointsPerScore);
   appendSystemMessage(room, `${hostSession.label || '방장'}님이 ${room.title || gameEngine.name + ' 방'}을 만들었습니다.`);
@@ -2564,18 +2568,32 @@ function seatRoomAi(room, level) {
   room.participants[token] = { sessionToken: token, identity: 'ai', label: `AI · ${RoomAi.LEVELS[level]}`, ai: true, role: 'ai', rejoinable: false,
     connected: true, joinedAt: nowIso(), lastSeen: nowIso(), choice: null };
 }
+// 윷놀이 B 「AI와 하기」: my seat chosen, every other seat of the room an AI of the room's level (each its own participant)
+function fillYutAi(room, mine) {
+  const level = room.ai.level; let k = 0;
+  for (const seat of Object.keys(room.players)) {
+    if (seat === mine) continue; k += 1;
+    const token = k === 1 ? room.ai.token : `${room.ai.token}:${k}`;
+    room.participants[token] ||= { sessionToken: token, identity: 'ai', label: '', ai: true, role: 'ai', rejoinable: false, connected: true, joinedAt: nowIso(), lastSeen: nowIso(), choice: null };
+    room.participants[token].label = `AI · ${RoomAi.LEVELS[level]}${Object.keys(room.players).length > 2 ? ` ${k}` : ''}`; /* (several: numbered) */
+    room.players[seat] = token; room.participants[token].choice = seat;
+  }
+  room.ai.seat = Object.keys(room.players).find((s) => s !== mine);
+}
 function scheduleAiMove(room) {
   const ai = room.ai; const g = room.game;
-  if (!ai || ai.thinking || g.status !== 'playing' || g.paused || g.turn !== ai.seat || room.players[ai.seat] !== ai.token) return;
+  const yutSeat = room.gameType === 'yut' && isAiToken(room.players[g.turn]) ? g.turn : null; /* (윷놀이 B: any seat an AI holds -- several in 「AI와 하기」, or a leaver's) */
+  if (!ai || ai.thinking || g.status !== 'playing' || g.paused || (room.gameType === 'yut' ? !yutSeat : g.turn !== ai.seat || room.players[ai.seat] !== ai.token)) return;
   ai.thinking = true;
   const round = g.round; const moves = g.moves.length; const started = nowMs();
   if (room.gameType === 'yut') { /* (윷놀이 실제 규칙 A: the AI throws on its throw, then uses its kept results one by one -- lib/games/yut.js aiPick) */
     const throws = g.throws.length; const Yut = getGame('yut');
     setTimeout(() => {
       ai.thinking = false; syncGamePause(room, false);
-      if (rooms.get(room.id) !== room || room.game !== g || g.round !== round || g.moves.length !== moves || g.throws.length !== throws || g.status !== 'playing' || g.turn !== ai.seat || g.paused) return;
-      if (g.phase === 'throw') { const v = Yut.throwYut(g, ai.seat, nowIso()); if (v.legal) appendSystemMessage(room, `${room.participants[ai.token]?.label || 'AI'}가 ${v.name}${/[걸윷]$/.test(v.name) ? '을' : '를'} 던졌습니다.${v.dropped ? ` 쓸 수 없는 결과 ${v.dropped}개는 버렸어요.` : ''}`); }
-      else { const pick = Yut.aiPick(g, ai.seat); const v = pick && Yut.applyMove(g, pick.pieceId, ai.seat, nowIso(), pick.ri); if (!v?.legal) { console.error('AI 윷 실패:', JSON.stringify(pick)); return; } if (v.captured.length) appendSystemMessage(room, `${room.participants[ai.token]?.label || 'AI'}가 상대 말 ${v.captured.length}개를 잡았습니다!`); }
+      if (rooms.get(room.id) !== room || room.game !== g || g.round !== round || g.moves.length !== moves || g.throws.length !== throws || g.status !== 'playing' || g.turn !== yutSeat || g.paused) return;
+      const label = room.participants[room.players[yutSeat]]?.label || 'AI';
+      if (g.phase === 'throw') { const v = Yut.throwYut(g, yutSeat, nowIso()); if (v.legal) appendSystemMessage(room, `${label}가 ${v.name}${/[걸윷]$/.test(v.name) ? '을' : '를'} 던졌습니다.${v.dropped ? ` 쓸 수 없는 결과 ${v.dropped}개는 버렸어요.` : ''}`); }
+      else { const pick = Yut.aiPick(g, yutSeat); const v = pick && Yut.applyMove(g, pick.pieceId, yutSeat, nowIso(), pick.ri); if (!v?.legal) { console.error('AI 윷 실패:', JSON.stringify(pick)); return; } if (v.captured.length) appendSystemMessage(room, `${label}가 상대 말 ${v.captured.length}개를 잡았습니다!`); }
       touchRoom(room); broadcast(room); scheduleAiMove(room);
     }, 900).unref?.();
     return;
@@ -2645,6 +2663,7 @@ function roomAwaits(room, oldToken, p) {
 
 function findSeat(room, token) {
   if (isNumberedSeatGame(room)) return seatsFor(room).find(seat => room.players[seat] === token) || null;
+  if (isYut(room)) return Object.keys(room.players).find((seat) => room.players[seat] === token) || null; /* (윷놀이 B: 초록·노랑 too) */
   if (room.players.black === token) return 'black';
   if (room.players.white === token) return 'white';
   return null;
@@ -2903,11 +2922,10 @@ function publicRoom(room) {
     spectatorCount: liveSpectatorCount(room),
     participants: publicParticipants(room),
     chat: { messages: publicChatMessages(room) },
-    players: isNumberedSeatGame(room) ? Object.fromEntries(seatsFor(room).map(seat => [seat, publicPlayer(room, seat)])) : {
-      black: publicPlayer(room, 'black'),
-      white: publicPlayer(room, 'white'),
-    },
-    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : 2,
+    players: isNumberedSeatGame(room) ? Object.fromEntries(seatsFor(room).map(seat => [seat, publicPlayer(room, seat)]))
+      : isYut(room) ? Object.fromEntries(Object.keys(room.players).map((seat) => [seat, publicPlayer(room, seat)])) /* (윷놀이 B: 2~4 seats) */
+      : { black: publicPlayer(room, 'black'), white: publicPlayer(room, 'white') },
+    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : Object.keys(room.players).length,
     game: gameEngine.publicState(room.game),
     ...(familyOf(room.gameType) && equippedSkin(accountOfIdentity(room.hostIdentity), familyOf(room.gameType), 'theme')
       ? { skinTheme: equippedSkin(accountOfIdentity(room.hostIdentity), familyOf(room.gameType), 'theme') } : {}), // the host's room theme
@@ -3000,6 +3018,12 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
+  if (isYut(room)) { /* (윷놀이 B: every seat of the room taken -- 2, 3 or 4) */
+    if (room.game.status !== 'selecting' || !Object.values(room.players).every(Boolean)) return;
+    getGame('yut').start(room.game, Object.keys(room.players));
+    for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
+    syncGamePause(room); return;
+  }
   if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
@@ -3099,7 +3123,7 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
       if (!rewardsEnabled(account)) continue;
       const outcome = result.outcomes[i];
       const done = await pointStore.recordMissionMatch({
-        userId: account, matchId: result.id, gameType: result.gameType, result: outcome.result, soleWinner: sole && outcome.result === 'win',
+        userId: account, matchId: result.id, gameType: room.gameType /* (윷놀이 B: yut3·yut4 are still 윷놀이 for missions) */, result: outcome.result, soleWinner: sole && outcome.result === 'win',
         clean: seats[i] !== resignedSeat, opponents: accounts.filter((other, j) => j !== i && other),
         friendly: roomPolicy(room) === 'friendly', // (G-포인트: the same opponent counts twice a day at most)
       }, finishedAt);
@@ -3902,7 +3926,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'choose-role') {
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
-    const valid = isNumberedSeatGame(room) ? [...seatsFor(room), 'spectator'] : ['black', 'white', 'spectator'];
+    const valid = isNumberedSeatGame(room) ? [...seatsFor(room), 'spectator'] : isYut(room) ? [...Object.keys(room.players), 'spectator'] /* (윷놀이 B: its 2~4 colour seats) */ : ['black', 'white', 'spectator'];
     const choice = valid.includes(body.choice) ? body.choice : null;
     if (!choice) return sendError(res, 400, 'BAD_ROLE', isNumberedSeatGame(room) ? `1~${seatsFor(room).length}번 자리 또는 관전을 선택해 주세요.` : '흑, 백, 관전 중에서 선택해 주세요.');
     if (isGostop(room) && choice !== 'spectator') await pointStore.ensureAccount(pointAccountForSession(session));
@@ -3921,7 +3945,8 @@ async function handleRoomAction(req, res, action, session) {
     if (oldSeat && oldSeat !== choice) room.players[oldSeat] = null;
     if (choice === 'spectator') participant.choice = 'spectator';
     else {
-      if (aiRoomSeat) { const other = choice === 'black' ? 'white' : 'black'; room.players[other] = room.ai.token; room.ai.seat = other; room.participants[room.ai.token].choice = other; }
+      if (aiRoomSeat && isYut(room)) fillYutAi(room, choice); /* (윷놀이 B 「AI와 하기」: every other seat an AI) */
+      else if (aiRoomSeat) { const other = choice === 'black' ? 'white' : 'black'; room.players[other] = room.ai.token; room.ai.seat = other; room.participants[room.ai.token].choice = other; }
       room.players[choice] = session.token;
       participant.choice = choice;
     }
@@ -4513,7 +4538,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.307' });
+    return sendJson(res, 200, { ok: true, version: '1.10.308' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -9121,7 +9146,9 @@ async function requestHandler(req, res) {
     if (stakes && (aiLevel || pointPolicy(gameType) !== 'entry')) return sendError(res, 400, 'BAD_STAKES', '내기를 걸 수 없는 게임입니다.');
     const bet = body.bet ? residentBets.get(String(body.bet)) : null; // (v1.10.278 주민 내기: the match bet's AI room -- the islander in its seat)
     if (body.bet && (!bet || bet.account !== pointAccountForSession(session) || bet.kind !== 'match' || bet.game !== gameType || bet.room || bet.done || aiLevel !== bet.level)) return sendError(res, 409, 'BET_GONE', '이미 끝난 내기예요.');
-    const room = makeRoom(session, gameType, aiLevel ? 'private' : visibility, { title, digitCount, pointsPerScore, stakes });
+    const yutPlayers = gameType === 'yut' && body.players != null ? Number(body.players) : 2; /* (윷놀이 B: 2·3·4) */
+    if (gameType === 'yut' && ![2, 3, 4].includes(yutPlayers)) return sendError(res, 400, 'BAD_PLAYERS', '윷놀이는 2·3·4명 중에서 골라 주세요.');
+    const room = makeRoom(session, gameType, aiLevel ? 'private' : visibility, { title, digitCount, pointsPerScore, stakes, yutPlayers });
     if (aiLevel) seatRoomAi(room, aiLevel);
     if (bet) { bet.room = room.id; room.bet = bet.id; room.participants[room.ai.token].label = IslandCast.RESIDENTS[bet.n]?.name || room.participants[room.ai.token].label; }
     rooms.set(room.id, room);
@@ -9416,7 +9443,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.307 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.308 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

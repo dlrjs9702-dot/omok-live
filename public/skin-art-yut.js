@@ -7,8 +7,10 @@
   const TEAM = {
     black: { main: '#2563eb', light: '#93c5fd', dark: '#1e3a8a', deep: '#0f1f5a' },
     white: { main: '#ef4444', light: '#fca5a5', dark: '#7f1d1d', deep: '#450a0a' },
+    green: { main: '#16a34a', light: '#86efac', dark: '#14532d', deep: '#052e16' }, /* (윷놀이 B: the third and fourth seats -- every skin keeps its team colour) */
+    yellow: { main: '#eab308', light: '#fde68a', dark: '#854d0e', deep: '#422006' },
   };
-  const team = (c) => TEAM[c === 'white' ? 'white' : 'black'];
+  const team = (c) => TEAM[c] || TEAM.black;
   const body = (ctx, r, c, k = .92) => { const T = team(c); ctx.fillStyle = sphere(ctx, r * k, [T.light, T.main, T.dark], .5); ctx.beginPath(); ctx.arc(0, 0, r * k, 0, TAU); ctx.fill(); };
   const eyes = (ctx, r, y = -.12, dx = .3, k = .12) => { for (const s of [-1, 1]) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s * r * dx, r * y, r * k, 0, TAU); ctx.fill(); ctx.fillStyle = '#10131a'; ctx.beginPath(); ctx.arc(s * r * dx, r * y, r * k * .55, 0, TAU); ctx.fill(); } };
 

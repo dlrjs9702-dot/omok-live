@@ -29,6 +29,12 @@ test('every game resolves final outcomes from the engine, never spectators or cl
   for (const type of ['liar','pictionary']) assert.equal(buildMatchResult(room(type,['1','3'])), null); // G-포인트: party games keep no record
   assert.deepEqual(buildMatchResult(room('bingo','2')).outcomes.map(x => x.result), ['loss','win','loss']);
   assert.equal(buildMatchResult(room('baseball',null,'playing')), null);
+  // 윷놀이 B: two seats stay 'yut'; three or four keep their own record (yut3·yut4)
+  assert.equal(buildMatchResult(room('yut','black')).gameType, 'yut');
+  for (const seats of [['black','white','green'], ['black','white','green','yellow']]) {
+    const r = room('yut','green'); r.players = Object.fromEntries(seats.map(s => [s, 'session-' + s])); r.participants = Object.fromEntries(seats.map(s => ['session-' + s, { recordId: 'guest-' + s }])); r.game.seatOrder = seats;
+    const m = buildMatchResult(r); assert.equal(m.gameType, `yut${seats.length}`); assert.deepEqual(m.outcomes.map(x => x.result), seats.map(s => s === 'green' ? 'win' : 'loss'));
+  }
   assert.throws(() => buildMatchResult(room('omok',null)), /winner/);
   const invalid = room('omok','black'); delete invalid.participants['session-white'].recordId;
   assert.throws(() => buildMatchResult(invalid), /identity/);

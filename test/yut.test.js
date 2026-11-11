@@ -74,6 +74,24 @@ test('AI 한 판 끝까지: aiPick만으로 두 자리가 50판을 막힘 없이
   const g = playing(); put(g, 'white-1', 7, [20, 1, 2, 3, 4, 5, 6, 7]); throwAs(g, 'black', 4); throwAs(g, 'black', 3);
   assert.equal(yut.applyMove(g, 'black-1', 'black', 't', 0).legal, true); /* (black-1 on 4) */ assert.deepEqual(yut.aiPick(g, 'black'), { pieceId: 'black-1', ri: 0 }, '잡을 수 있으면 잡아요(4+3=7)');
 });
+test('B 3~4명: 말 3개, 차례는 파랑→빨강→초록(→노랑)→파랑, 잡기는 모든 상대, 앉은 자리만 판에', () => {
+  const g = yut.create(4); yut.start(g, ['white', 'black', 'yellow']); /* (three seats taken: the board's order, 3 pieces) */
+  assert.deepEqual(g.seatOrder, ['black', 'white', 'yellow']); assert.deepEqual(Object.keys(g.pieces), ['black', 'white', 'yellow']); assert.equal(g.pieces.black.length, 3);
+  const pub = yut.publicState(g); assert.equal(pub.players, 3); assert.equal(pub.pieceCount, 3); assert.deepEqual(Object.keys(pub.scores), ['black', 'white', 'yellow']);
+  throwAs(g, 'black', 2); yut.applyMove(g, 'black-1', 'black', 't', 0); assert.equal(g.turn, 'white');
+  throwAs(g, 'white', 1); yut.applyMove(g, 'white-1', 'white', 't', 0); assert.equal(g.turn, 'yellow');
+  put(g, 'yellow-1', 3, [20, 1, 2, 3]); throwAs(g, 'yellow', 1); /* (yellow-1 on 3 → 4; none there) */ yut.applyMove(g, 'yellow-1', 'yellow', 't', 0); assert.equal(g.turn, 'black');
+  put(g, 'white-2', 4, [20, 1, 2, 3, 4]); throwAs(g, 'black', 2); const cap = yut.applyMove(g, 'black-1', 'black', 't', 0);
+  assert.deepEqual(cap.captured.sort(), ['white-2', 'yellow-1'], '빨강·노랑 둘 다 잡혀요'); assert.equal(g.turn, 'black');
+  const two = yut.create(2); yut.start(two, ['black', 'white']); assert.equal(two.pieces.black.length, 4);
+});
+test('B AI: 3명·4명 판도 aiPick만으로 끝까지', () => {
+  for (const n of [3, 4]) for (let k = 0; k < 20; k += 1) {
+    const g = yut.create(n); yut.start(g, yut.SEATS.slice(0, n)); let m = 0;
+    while (g.status === 'playing' && m < 6000) { m += 1; if (g.phase === 'throw') assert.equal(yut.throwYut(g, g.turn, 't').legal, true); else { const p = yut.aiPick(g, g.turn); assert.ok(p); assert.equal(yut.applyMove(g, p.pieceId, g.turn, 't', p.ri).legal, true); } }
+    assert.equal(g.status, 'finished'); assert.ok(yut.SEATS.slice(0, n).includes(g.winner));
+  }
+});
 test('차례·단계 지키기: 남의 차례, 던질 게 남았는데 움직이기, 없는 결과 번호는 거절', () => {
   const g = playing();
   assert.equal(throwAs(g, 'white', 2).reason, 'not-your-turn'); assert.equal(yut.applyMove(g, 'black-1', 'black', 't', 0).reason, 'must-throw');

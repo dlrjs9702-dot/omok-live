@@ -3721,3 +3721,6 @@ button.pdSeat{font:inherit;color:inherit;cursor:pointer;text-align:left}
 @keyframes pdRoleIn{from{transform:translate(-50%,-50%) scale(.6)}to{transform:translate(-50%,-50%) scale(1)}} /* (#452 검토: opaque, grows in and shrinks away -- never see-through) */
 @media(max-width:640px){body.pandemicGame .pdSeat .pdHandN,body.roomPlaying #roomView #pandemicPanel .pdSeat .pdHandN{display:none}}
 .pdBtn.why{opacity:.55}
+/* 윷놀이 B: three or four seats on a phone -- two cards a row */
+@media (max-width:700px){.players:has(#greenPlayer.occupied){display:grid;grid-template-columns:1fr 1fr;gap:6px}.players:has(#greenPlayer.occupied) .versus{display:none}}
+#roomHudPill.stack{white-space:pre-line;line-height:1.1;text-align:center;padding:2px 7px;font-size:11px;letter-spacing:-.01em} .roomHud:has(#roomHudPill.stack) .roomHudSub{font-size:12px} /* (총괄 #458: 3~4명 완주 two lines -- CI #458: a Linux/Android font needs the room for 「내 차례 · 노랑」) */
