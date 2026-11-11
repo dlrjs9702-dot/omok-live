@@ -110,4 +110,8 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   assert.ok((await all()).every(e=>!previousIds.includes(e.id)));
   const again=(await all()).find(e=>e.type==='twig_branch'&&e.x===stick.x&&e.z===stick.z);assert.ok(again,'the same spot after a restart');
   assert.equal((await near(a,again)),null,'still growing back after the restart');
+  // (Codex 301~310 #2) a start whose first read of it failed: tried again before anyone picks -- still growing, not open
+  await server.stop();server=await boot(t,dir,{TEST_GATHER_RESTORE_FAIL:'1'});req=server.req;a=await server.enter(ka);
+  const third=(await all()).find(e=>e.type==='twig_branch'&&e.x===stick.x&&e.z===stick.z);assert.ok(third);
+  assert.equal((await near(a,third)),null,'still growing back after a failed first read');
 });

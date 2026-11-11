@@ -107,3 +107,27 @@ test('윷놀이 C: 빈자리 AI, 나간 자리 AI가 이어 두기, 사람만 �
   assert.equal(s.participants.filter((p) => /^AI/.test(p.label)).length, 0);
   assert.equal((await req('/api/room/choose-role', a, { choice: 'yellow' })).status, 200, '노랑 자리가 남아 있음');
 });
+
+// Codex 301~310 #1 (P1): a 내기 game where an AI took over a leaver's seat and then won -- recorded (the people, the leaver's
+// loss) and its entry settled: those who stayed share the pool (it never stays held)
+test('Codex #1: 나간 자리를 이어 받은 AI가 이긴 내기 판도 기록·정산', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ai-last-move-'));
+  rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const [a, b, c] = [await server.enter(await server.issue('내기방장')), await server.enter(await server.issue('내기둘')), await server.enter(await server.issue('내기셋'))];
+  for (const tok of [a, b, c]) assert.equal((await req('/api/test/points-credit', tok, { amount: 50000 })).status, 200);
+  const made = await req('/api/rooms', a, { gameType: 'yut', players: 3, visibility: 'public', stakes: true }); assert.equal(made.status, 201, JSON.stringify(made.data));
+  for (const tok of [b, c]) assert.equal((await req('/api/rooms/join', tok, { code: made.data.state.me.roomCode })).status, 200);
+  const balance = async (tok) => (await req('/api/points', tok)).data.balance; const before = await balance(a);
+  for (const [tok, seat] of [[a, 'black'], [b, 'white'], [c, 'green']]) assert.equal((await req('/api/room/choose-role', tok, { choice: seat })).status, 200);
+  let s = (await req('/api/room', a)).data.state; assert.equal(s.game.status, 'playing'); assert.equal(s.points.entry?.status, 'charged', JSON.stringify(s.points));
+  assert.ok(await balance(a) < before, '참가비');
+  assert.equal((await req('/api/room/leave', b, {})).status, 200); /* (빨강's seat to an AI) */
+  assert.equal((await req('/api/test/yut-near-end', a, { seat: 'white' })).status, 200);
+  const waitFor = async (check, what) => { for (let i = 0; i < 100; i += 1) { const v = await check(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } throw new Error(what); };
+  s = await waitFor(async () => { const st = (await req('/api/room', a)).data.state; return st.game.status === 'finished' && st.points.entry?.status === 'settled' && st; }, 'AI의 마지막 수로 끝난 판이 정산되지 않았습니다');
+  assert.equal(s.game.winner, 'white');
+  assert.equal(s.points.entry.winners, 2, '남은 두 사람이 나눔');
+  assert.ok(await balance(a) > before - 1000 * 0.5, '판돈이 사라지지 않음');
+  for (const tok of [a, b, c]) { const r = (await req('/api/records/me', tok)).data; assert.equal(r.byGame.yut3?.losses, 1, JSON.stringify(r)); }
+});
