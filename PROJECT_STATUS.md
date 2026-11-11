@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.308 윷놀이 B (3~4명)
+
+- lib/games/yut.js 2~4명(SEATS black·white·green·yellow, 3~4명 말 3개, seatOrder), 서버 방 인원 players 2~4·다 차면 시작·AI 1~3(fillYutAi), 정산 seatOrder, 기록 2인 yut·3·4인 yut3·yut4(미션은 yut), 랭킹 고르기 3명·4명. 화면: 초록·노랑 카드, 폰 카드 2줄, 판 아래 자리 글씨 크림 칩, 3~4명 출발·완주 칸 갈색·회색, HUD 완주 두 줄, 윷 「내 차례예요」 알림은 폰에서 윷가락 판 위.
+- 다음: 윷놀이 C(사람 방 빈자리 AI·나간 자리 AI 이어 두기·섞인 판 정산과 전적, 주민 대화 TOO_FAR 한 줄), 택시 서서 기다리기, 마당 농사 F1.
+
 ## v1.10.307 윷놀이 실제 규칙 A
 
 - lib/games/yut.js 한판마당 규칙(서버 판 번호 20 참먹이·99 남, 화면은 finishLine/finished), pend 모으기·결과마다 말 고르기(move-yut ri)·빽도 tr·도 3/16·빽도 1/16·쓸 수 없는 결과 버림, aiPick + 2인 AI(scheduleAiMove), 결과 칩(판 바로 아래 가운데). release-batch 05:17·예비 05:47. resident-faces :46·:69 시험(검토).
@@ -22,8 +27,3 @@
 
 - lib/island-gather.js 83자리(버섯 44: 통나무 둘레 27·푸른 4, 나뭇가지 34, 네잎클로버 5), 공용 자원 fixed 종류: 같은 자리 재생(버섯·가지 3시간, 푸른 6시간, 클로버 12시간), 자라는 중 worldValue gatherGrowing 저장. 하루 상한 없음(사용자). 흔한 버섯 5종 = 「버섯」, 새 물건 mushroom_blue 6,000·branch 500·twig 300·clover_four 10,000. 버섯·클로버 1.5배. 잡초 A안(채집 표에 행만). 공급 약 31,700P/h.
 - 감정 표현 remoteEmote 한 줄(검토, emotes:31), resident-roster:87 시험 두 줄(검토). 다음: 윷놀이.
-
-## v1.10.305 대회 순위·천막 하루 종일·에셋 117
-
-- 기록의 탑 「매일 대회」 탭(진행 중/최근 전체 순위, 지난 7일), 대회 띠 → 탭. 서버 contestHistory 7일(keepHistory), /api/island/contest/history(계정 안 내보냄). 천막 stands 하루 종일, 가락 duty(알림 15분 전 ~ 끝+30분) contest:tent 붙잡기로 걸어옴·contest:back 귀가, 갈대 길·계산대 날은 백화점 문에서. 안내판 「섬 대회 안내」.
-- 에셋 117 옷 7벌 장식(흡혈귀 나비넥타이·호박 배 등) High+Low, island-models refit117. 다음: 총괄 지시.

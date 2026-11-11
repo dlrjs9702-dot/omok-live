@@ -8447,6 +8447,7 @@
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
     if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
+    if (choice === 'green' || choice === 'yellow') return seatKo(choice); /* (윷놀이 B: 「내 차례 · 노랑」, not 미선택) */
     if (choice === 'spectator') return '관전';
     return '미선택';
   }
@@ -9064,6 +9065,8 @@
       const hb = hud.getBoundingClientRect().bottom; const near = [...document.querySelectorAll('#roomView :is(.player,.teamPlayer,#twentyProgress,.halliPlayerName)')].map((el) => el.getBoundingClientRect()).filter((r) => r.height && r.top < hb + 200).map((r) => r.bottom);
       top = `${Math.round(Math.max(hb, ...near) + 6 - originOf(note))}px`;
     }
+    const mat = state?.gameType === 'yut' && byId('diceYutSection'); /* (총괄 #458: 윷 -- on the sticks' mat when it is under the board, never over the board's top row) */
+    if (mat?.offsetParent) { const m = mat.getBoundingClientRect(); const b = byId('canvasWrap').getBoundingClientRect(); if (m.top >= b.bottom - 1) top = `${Math.round(m.top + 8 - originOf(note))}px`; }
     if (note.style.top !== top) note.style.top = top;
   }
   function boardNote(text) {
@@ -11908,7 +11911,7 @@
 
   // 윷놀이 B: 파랑 · 빨강 · 초록 · 노랑 -- the pieces' fill and the bottom line's ink; the game's own seats in turn order
   const YUT_FILL = { black: '#2563eb', white: '#ef4444', green: '#16a34a', yellow: '#eab308' };
-  const YUT_TEXT = { black: '#1d4ed8', white: '#b91c1c', green: '#15803d', yellow: '#a16207' };
+  const YUT_TEXT = { black: '#1d4ed8', white: '#b91c1c', green: '#166534', yellow: '#854d0e' }; /* (총괄 #458: on the cream chip each 6:1 or more) */
   const scoreColon = (g, sc) => (Array.isArray(g?.seatOrder) && g.seatOrder.length > 2 ? g.seatOrder.map((c) => sc[c] ?? 0).join(' : ') : `${sc.black} : ${sc.white}`); /* (윷놀이 B: three or four seats' scores) */
   const yutSeatsOf = (g) => (Array.isArray(g?.seatOrder) && g.seatOrder.length ? g.seatOrder : ['black', 'white']);
   function drawYutBoard() {
@@ -12136,7 +12139,11 @@
     ctx.textAlign = 'left';
     ctx.font = '850 18px system-ui, sans-serif';
     const seats = yutSeatsOf(g); const wide = seats.length > 2; if (wide) ctx.font = '850 15px system-ui, sans-serif'; /* (윷놀이 B: three or four across) */
-    seats.forEach((c, i) => { ctx.fillStyle = characterPairActive() ? '#282132' : YUT_TEXT[c]; ctx.fillText(wide ? `${seatKo(c)} 집${home(c)}·완주${done(c)}` : `${seatKo(c)} 집 ${home(c)} · 완주 ${done(c)}`, wide ? 40 + i * (600 / seats.length) : (i ? 390 : 120), 690); });
+    seats.forEach((c, i) => {
+      const text = wide ? `${seatKo(c)} 집${home(c)}·완주${done(c)}` : `${seatKo(c)} 집 ${home(c)} · 완주 ${done(c)}`; const x = wide ? 40 + i * (600 / seats.length) : (i ? 390 : 120); const h = wide ? 15 : 18;
+      ctx.fillStyle = 'rgba(255,250,235,.94)'; ctx.beginPath(); ctx.roundRect(x - 7, 690 - h - 2, ctx.measureText(text).width + 14, h + 9, 8); ctx.fill(); /* (총괄 #458: a cream chip -- the wood under it made 노랑·초록 faint) */
+      ctx.fillStyle = characterPairActive() ? '#282132' : YUT_TEXT[c]; ctx.fillText(text, x, 690);
+    });
   }
 
   function dotsLayout() {
@@ -13921,7 +13928,8 @@
     byId('roomHudBig').textContent = pdActs ?? ownBig ?? (timer ? String(Math.ceil(left / 1000)) : otherLeft !== null ? String(Math.ceil(otherLeft / 1000)) : hudScore(state.game));
     byId('roomHudSub').textContent = hudTurnLine(); // (U2 검토 #391: short -- the names are on the plates)
     const moves = state.game?.moveCount; const sc = state.game?.scores; const unit = { othello: '', dots: '상자 ', yut: '완주 ' }[state.gameType]; const counted = unit !== undefined && sc && Number.isFinite(Number(sc.black)) && Number.isFinite(Number(sc.white));
-    const pill = byId('roomHudPill'); pill.textContent = hudOwnPill(state.game) || (state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? `${unit}${scoreColon(state.game, sc)}` : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''); /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
+    const stack = counted && (state.game?.seatOrder?.length || 0) > 2; /* (총괄 #458: 3-4 seats' counts in two short lines -- the turn line keeps its room on a phone) */
+    const pill = byId('roomHudPill'); pill.classList.toggle('stack', stack); pill.textContent = hudOwnPill(state.game) || (state.gameType === 'davinci' && Number.isFinite(Number(state.game?.pileCount)) ? `더미 ${state.game.pileCount}장` : counted ? (stack ? `${unit.trim()}\n${state.game.seatOrder.map((c) => sc[c] ?? 0).join(':')}` : `${unit}${scoreColon(state.game, sc)}`) : STONE_GAMES.has(state.gameType) && Number.isFinite(moves) && moves > 0 ? `${moves}수` : ''); /* (G1: the counts here, not by the plates) */ /* (the stone games' moves; the others' own figures: G1~G3) */ pill.classList.toggle('hidden', !pill.textContent);
     const fill = byId('roomHudFill'); fill.style.width = hudTurn ? `${Math.round((left / hudTurn.total) * 100)}%` : '0%'; fill.classList.toggle('low', Boolean(timer) && left < 10000);
     roomHud.classList.toggle('mine', Boolean(timer));
     // (v1.10.245 U3: my turn's last 5 seconds a beep a second -- the last one higher)

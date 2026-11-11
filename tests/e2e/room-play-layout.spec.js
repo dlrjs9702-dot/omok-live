@@ -305,7 +305,10 @@ test('윷놀이 4명 AI 판 한 화면 375×667', async ({ page, request }) => {
   const [res] = await Promise.all([page.waitForResponse((r) => r.url().endsWith('/api/rooms') && r.request().method() === 'POST'), page.locator('#createRoomBtn').click()]);
   expect(res.status()).toBe(201);
   expect((await api(request, '/api/room/choose-role', me, { choice: 'yellow' })).status).toBe(200);
-  await expect(page.locator('#yutThrowBtn')).toHaveText('윷 던지기', { timeout: 60_000 }); /* (the three AIs had their turns) */
+  await expect(page.locator('#boardNote')).toHaveText(/내 차례예요/, { timeout: 60_000 }); /* (the three AIs had their turns) */
+  { const [note, wrap] = await Promise.all([page.locator('#boardNote').boundingBox(), page.locator('#canvasWrap').boundingBox()]); expect(note.y >= wrap.y + wrap.height - 1, JSON.stringify([note, wrap])).toBe(true); } /* (총괄 #458: on the mat, never over the board's top row) */
+  await expect(page.locator('#roomHudSub')).toHaveText('내 차례 · 노랑'); expect(await page.locator('#roomHudSub').evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true); /* (총괄 #458: whole, the 완주 pill in two lines) */
+  await expect(page.locator('#yutThrowBtn')).toHaveText('윷 던지기');
   const fill = { black: 'rgb(37, 99, 235)', white: 'rgb(239, 68, 68)', green: 'rgb(22, 163, 74)', yellow: 'rgb(234, 179, 8)' };
   for (const [c, rgb] of Object.entries(fill)) { await expect(page.locator(`#${c}Player`)).toBeVisible(); expect(await page.locator(`#${c}Player .stoneMini`).evaluate((s) => getComputedStyle(s).backgroundColor)).toBe(rgb); }
   const [b, w, g] = await Promise.all(['black', 'white', 'green'].map((c) => page.locator(`#${c}Player`).boundingBox()));
