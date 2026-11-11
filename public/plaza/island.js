@@ -183,11 +183,6 @@ function waterTexture() {
 }
 
 export function buildIsland(scene, { mat, mesh, solids, assets = null, software = false, pilotTrees = false }) {
-  // v1.10.276 그래픽 시범: the patch's trees are drawn by island-pilot-scene.js (their solids stay here)
-  const pilotSkip = new Set(pilotTrees && globalThis.IslandPilot ? globalThis.IslandPilot.trees(globalThis.IslandTerrain).map((p) => `${p.x},${p.z}`) : []);
-  // (v1.10.283 Codex #12: those trees still drawn here, in a group of their own -- hidden only once the pilot's own are in
-  // (pilotTreesIn); while they load, or if they never come, no tree is missing where its solid stands)
-  const pilotOld = new THREE.Group(); pilotOld.name = 'pilot-old-trees'; scene.add(pilotOld);
   const disposables = [];
   const keep = (x) => { disposables.push(x); return x; };
 
@@ -708,7 +703,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   TREE_KINDS.forEach(([name, , parts], k) => {
     const every = trees.filter((t) => kindOf(t) === k && !angularTree(t) && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z));
     const geo = mergeColored(parts);
-    for (const [all, parent] of [[every.filter((t) => !pilotSkip.has(`${t.x},${t.z}`)), scene], [every.filter((t) => pilotSkip.has(`${t.x},${t.z}`)), pilotOld]]) {
+    for (const [all, parent] of [[every, scene]]) { /* (v1.10.310: the pilot patch's trees are the island's again) */
       const splits = name === 'stump' ? [0, 1].map((v) => [all.filter((t) => (hash(t.x, t.z, 18) < 0.5 ? 0 : 1) === v), [`nature.tree.stump.${v}`, 'nature.tree.stump', 'nature.tree']]) : [[all, [`nature.tree.${name}`, 'nature.tree']]];
       for (const [list, target] of splits) {
         if (!list.length) continue;
@@ -723,7 +718,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   for (const name of ANGULAR_TREES) {
     const every = trees.filter((t) => angularTree(t) === name && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z)); if (!every.length) continue;
     const geo = mergeColored(ANGULAR_STAND[name]);
-    for (const [list, parent] of [[every.filter((t) => !pilotSkip.has(`${t.x},${t.z}`)), scene], [every.filter((t) => pilotSkip.has(`${t.x},${t.z}`)), pilotOld]]) { /* (283 #12: as above) */
+    for (const [list, parent] of [[every, scene]]) {
       if (!list.length) continue;
       instanced(geo, natureMat, list, (t) => setM(t.x, onMesh(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
         { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target: [`angular.tree_${name}`], parent });
@@ -812,6 +807,12 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     for (const p of N4.palms) if (settled(p)) solids.push({ nature: true, x: p.x, z: p.z, r: 0.3 * p.s });
     const tallClump = keep(mergeColored([blade(0, 0, 0.95), blade(0.3, 0.25, 0.8), blade(-0.25, -0.3, 0.85), blade(0.1, -0.35, 0.7)])); /* (the instance's size is the model's too: the stand-in made tall, not scaled) */
     for (let k = 0; k < 3; k += 1) instanced(tallClump, natureMat, N4.grass.filter((g) => g.kind === k && settled(g)), (g) => setM(g.x, onMesh(g.x, g.z), g.z, g.s, g.s, g.yaw), { shadow: false, cell: 60, target: [`ground.tallgrass.${k}`] });
+    // v1.10.310 덩굴 (assets 112): hung down the steep faces (island-vines.js, tools/vine-spots.js: 총괄 #460 -- along the face, x2.2,
+    // a few side by side) -- strands and drapes; the stand-in a thin green sheet of the model's size (its origin at the bottom, its
+    // face +z out over the drop, its top tilted back toward the face)
+    const vines = globalThis.IslandVines?.SPOTS || []; const vineTurn = new THREE.Euler();
+    [['strands', 0.26, 1.6], ['drape', 2.4, 0.76]].forEach(([kind, w, h], k) => instanced(mergeColored([part(new THREE.BoxGeometry(w, h, 0.04), 0x4f8a3f, 0, h / 2, 0)]), natureMat, vines.filter((v) => v[0] === kind).map(([, x, y, z, yaw, tilt, s]) => ({ x, y, z, yaw, tilt, s })),
+      (v) => { q.setFromEuler(vineTurn.set(-v.tilt, v.yaw, 0, 'YXZ')); m4.compose(v3.set(v.x, v.y, v.z), q, sc.set(v.s, v.s, v.s)); }, { shadow: false, cell: 60, target: [`nature.vine.${k}`] }));
     const padGeo = mergeColored([part(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 9), 0x5f9e4f, 0, 0.015, 0)]);
     for (let k = 0; k < 4; k += 1) instanced(padGeo, natureMat, N4.lilies.filter((l) => l.kind === k), (l) => setM(l.x, T.streamWaterHeight(l.x, l.z) + 0.01, l.z, 1, 1, l.yaw), { shadow: false, cell: 60, target: [k < 2 ? `water.lily.${k}` : `water.lotus.${k - 2}`] });
   }
@@ -1179,5 +1180,5 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     if (lessMotion) clock *= 0.5; seaLines.value = lessMotion ? 0 : seaLinesOn; seaRipple.value = lessMotion ? 0 : 1;
     flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, pilotTreesIn: () => { pilotOld.visible = false; }, pilotOldShown: () => pilotOld.visible && pilotOld.children.length > 0, speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

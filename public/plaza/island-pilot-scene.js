@@ -11,7 +11,7 @@ const CUTS = 24;
 // the ground's own colour, lighter toward the tip, so it grows out of the ground and does not float on it
 const GRASS = 0x9fd67f; const GROUND = { spring: [0xc0e0a4, 0.55], summer: [0xacd497, 0.35], autumn: [0xe9d7a8, 0.6], winter: [0xeff4fa, 0.8] };
 
-export function pilotScene({ scene, assets, phone = false, onTreesIn = null, groundMaps = null }) {
+export function pilotScene({ scene, assets, phone = false, groundMaps = null }) {
   const group = new THREE.Group(); group.name = 'pilot'; scene.add(group);
   const made = [];
   const U = { uPilotTime: { value: 0 }, uPilotTone: { value: 1 }, uPilotOut: { value: 1 }, uPilotExposure: { value: 0.7 }, uPilotCuts: { value: Array.from({ length: CUTS }, () => new THREE.Vector4()) }, uPilotCutN: { value: 0 } };
@@ -47,18 +47,8 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     const key = m.customProgramCacheKey?.bind(m);
     m.customProgramCacheKey = () => `${key ? key() : ''}:pilot2${wind ? 'w' : ''}${cut ? 'c' : ''}${grow ? 'g' : ''}`; m.needsUpdate = true;
   }
-  // the plants: one batch per kind, each copy on the ground where the layout says
-  const cells = [];
-  const byId = new Map(); for (const p of [...P.plants(T), ...P.trees(T)]) { /* (v1.10.276: and the patch's trees -- island.js leaves them out) */ if (!byId.has(p.id)) byId.set(p.id, []); byId.get(p.id).push(p); }
-  const none = new THREE.BufferGeometry(); none.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(9), 3)); made.push(none);
-  const noneMat = new THREE.MeshBasicMaterial(); made.push(noneMat);
+  // (v1.10.310 잡초 편입: the patch's own plants and trees are gone -- the island's nature and weeds stand there as everywhere)
   const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0);
-  for (const [id, list] of byId) {
-    const fallback = new THREE.InstancedMesh(none, noneMat, list.length); fallback.count = 0; fallback.visible = false; group.add(fallback);
-    const matrices = list.map((p) => new THREE.Matrix4().compose(new THREE.Vector3(p.x, T.heightAt(p.x, p.z), p.z), q.setFromAxisAngle(up, p.yaw).clone(), new THREE.Vector3().setScalar(p.s)));
-    const cell = { x: P.ZONE.x, z: P.ZONE.z, parent: group, procedural: [fallback], matrices, colors: null, shadow: /^(bush|rock|tree)/.test(id) };
-    const one = [cell]; cells.push(one); assets.batch([`pilot.${id}`], one);
-  }
   // the blades: one thin bent leaf ending in a point (총괄 #425: half as wide), many times; the season's ground colour on the
   // material, the vertex colours how much lighter -- the root as the ground, the tip lightest
   const blade = new THREE.BufferGeometry(); made.push(blade);
@@ -156,9 +146,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     for (const [key, cell] of [...cellMap]) if (!keep.has(key) && easeCell(cell, 0, 0, ms) && quality === 0) dropCell(key); /* (out of reach: laid down; on 「낮음」 then dropped) */
     cellsAt = { x: me.x, z: me.z };
   }
-  // each frame on the island: wind time, cuts round `things` ([{ x, z }]), the season's tint, the loaded models patched
-  // (v1.10.283 Codex #12: the island's own trees here hidden only once every one of the patch's tree models is in)
-  const treeIds = [...new Set(P.trees(T).map((p) => `pilot.${p.id}`))]; let treesIn = !treeIds.length;
+  // each frame on the island: wind time, cuts round `things` ([{ x, z }]), the season's tint
   // (v1.10.284 G1: the tone over the whole island outside -- every lit material in the scene patched for it once, looked for
   // every two seconds; uPilotOut 0 indoors, so a room, a shop and a character in them look as before)
   let toneAt = 0; const toned = new WeakSet();
@@ -168,7 +156,6 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   function setOutdoors(on) { U.uPilotOut.value = on ? 1 : 0; }
   let stepAt = null; let madeN = 0; /* (294: cells made so far -- a ride's trace) */ let seasonAt = 0; let seasonDay = null;
   function step(dt, now, things = [], me = null) {
-    if (!treesIn && treeIds.every((id) => assets.shownOf?.(id) === 'model')) { treesIn = true; onTreesIn?.(); }
     if (now - toneAt > 2000) { toneAt = now; toneAll(); }
     U.uPilotTime.value = (U.uPilotTime.value + dt) % 1000;
     const ms = Math.min(500, Math.max(0, now - (stepAt ?? now))); stepAt = now; /* (290 6: the grass eases in real time -- a slow screen too) */
@@ -177,12 +164,6 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     if (me) stepCells(me, ms);
     let n = 0; for (const t of things) { if (n >= CUTS) break; U.uPilotCuts.value[n].set(t.x, t.z, t.r || P.CUT_R, 0); n += 1; } /* (G1: the nearest few round me -- plaza-scene sorts them) */
     U.uPilotCutN.value = n;
-    for (const o of group.children) { /* (a model's material is its file's: patched once; grass and flowers -- small and swaying -- cut) */
-      if (!o.isMesh || o.name === 'pilot_grass' || o.name === 'pilot_ground' || o.material === noneMat || o.userData.pilotSeen === o.material) continue; o.userData.pilotSeen = o.material;
-      const wind = Boolean(o.geometry.attributes.uv1); if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
-      const scale = o.userData.part ? new THREE.Vector3().setFromMatrixScale(o.userData.part).x : 1; /* (the part's dequantizing scale: metres per unit) */
-      for (const m of [].concat(o.material)) patch(m, { wind, cut: wind && o.geometry.boundingSphere.radius * scale < 0.5, unit: 1 / scale });
-    }
   }
   // the graphics tier (plaza-scene setTier: 0 낮음, 1 중간, 2 높음): no blades and no ground sheet, half the blades, all (총괄 276 --
   // slow phones; a quarter on 낮음 still cost as much as none). The layout is in random order: the first ones spread over the patch.
@@ -216,6 +197,6 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     post.bloom.strength = POST.bloom * postMix;
     post.composer.render(dt); return true;
   }
-  function dispose() { for (const one of cells) assets.unbatch?.(one); for (const key of [...cellMap.keys()]) dropCell(key); group.removeFromParent(); for (const m of made) m.dispose?.(); if (post) { for (const p of post.composer.passes) p.dispose?.(); post.composer.dispose(); } } /* (v1.10.283 Codex #11: each pass's own render targets too) */
-  return { group, step, setQuality, setOutdoors, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ plants: [...byId.values()].reduce((s, l) => s + l.length, 0), kinds: byId.size, cells: cellMap.size, cellKeys: [...cellMap.keys()], blades: [...cellMap.values()].reduce((s, c) => s + c.n, 0), shown: [...cellMap.values()].reduce((s, c) => s + (c.mesh.visible ? c.mesh.count : 0), 0), spheres: [...cellMap.values()].filter((c) => c.n > 0).map((c) => +(c.mesh.boundingSphere?.radius ?? -1).toFixed(1)), /* (Codex 281~290 #1) */ grow: [...cellMap.values()].filter((c) => c.g.t < 1).map((c) => +(c.g.to > c.g.from ? c.g.t : 1 - c.g.t).toFixed(2)).slice(0, 8), made: madeN, mapsIn: Boolean(mapsRead), reach: REACH, at: cellsAt }), grassAt: (x, z) => thickAt(x, z) };
+  function dispose() { for (const key of [...cellMap.keys()]) dropCell(key); group.removeFromParent(); for (const m of made) m.dispose?.(); if (post) { for (const p of post.composer.passes) p.dispose?.(); post.composer.dispose(); } } /* (v1.10.283 Codex #11: each pass's own render targets too) */
+  return { group, step, setQuality, setOutdoors, draw, setPost, postShown: () => postMix, dispose, uniforms: U, counts: () => ({ cells: cellMap.size, cellKeys: [...cellMap.keys()], blades: [...cellMap.values()].reduce((s, c) => s + c.n, 0), shown: [...cellMap.values()].reduce((s, c) => s + (c.mesh.visible ? c.mesh.count : 0), 0), spheres: [...cellMap.values()].filter((c) => c.n > 0).map((c) => +(c.mesh.boundingSphere?.radius ?? -1).toFixed(1)), /* (Codex 281~290 #1) */ grow: [...cellMap.values()].filter((c) => c.g.t < 1).map((c) => +(c.g.to > c.g.from ? c.g.t : 1 - c.g.t).toFixed(2)).slice(0, 8), made: madeN, mapsIn: Boolean(mapsRead), reach: REACH, at: cellsAt }), grassAt: (x, z) => thickAt(x, z) };
 }

@@ -70,8 +70,7 @@
   'taxi.stop': { url: '/assets/island/taxi-v1/taxi_stop.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_low.glb' }, near: 40, rotationY: Math.PI },
     // v1.10.275 그래픽 시범 (assets 106: Nature Megapack - Low Poly Extended, RG Poly, CC0): the one patch's plants
     // (island-pilot-scene.js), a file per season with its own 512 picture -- light enough to be its own Low everywhere
-    ...Object.fromEntries(('tree_poplar tree_round tree_cluster tree_twin tree_fir tree_fir_slim bush_round bush_berry bush_leafy bush_fern rock_boulder rock_flat rock_block rock_pebble '
-      + 'grass_broad grass_tuft grass_short grass_reed flower_blue flower_daisy flower_red flower_lily mushroom_red mushroom_brown').split(' ')
+    ...Object.fromEntries(['grass_broad', 'grass_tuft', 'bush_fern', 'mushroom_red', 'mushroom_brown'] /* (v1.10.310: the patch's own plants gone -- these still drawn: island-pilot IDS) */
       .map((id) => [`pilot.${id}`, { seasons: Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/pilot106/${s}/${id}.glb`])), near: 60 }])),
     'nature.tree.round': { seasons: seasonal('nature/tree_v1_{s}.glb'), low: { seasons: seasonal('nature/tree_v1_{s}_low.glb') }, scale: 0.72, near: 35 },
     'nature.tree.tiered': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.68, near: 35 },
@@ -299,8 +298,7 @@
   // v1.10.31 잡초 채집·생활 소품: the weed (a light model that stands apart from the grass, the same in every season)
   // and the one pulled out with its roots (in the hand a moment); the finds of the island events as the 2026-10-05
   // interaction props (their kinds, rules and rewards unchanged -- only their look)
-  REGISTRY['nature.grass'] = { url: '/assets/island/additions-v1/common/weed_standing.glb', near: 18, shadows: false };
-  REGISTRY['prop.weedRooted'] = { url: '/assets/island/additions-v1/common/weed_rooted.glb', shadows: false };
+  // (v1.10.310 잡초 편입: the weeds are assets 106's three -- weed.* below; weed_standing / weed_rooted no longer drawn)
   const prop = (name, extra = {}) => ({ url: `${CH}/props/${name}.glb`, shadows: false, ...extra });
   Object.assign(REGISTRY, {
     'prop.event.trash_can': prop('trash_can'), 'prop.event.trash_bottle': prop('trash_bottle'),
@@ -569,6 +567,10 @@
     'ground.fern': 'bush_fern', 'ground.shrub': 'plant_low', 'ground.flowers': 'clover',
   };
   for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale }; } // ('nature.bush.0' was 'nature.bush')
+  // v1.10.310 잡초 편입 (사용자 「섬 전체 잡초를 해당 그림으로 바꿔, 가볍게」): the weeds as assets 106's broad leaves, tufts and ferns
+  // (60 : 30 : 10 by place, island-pilot weedKind) -- no shadows; broad leaves faded out past 48 m, tufts and ferns past 25 m (beyond
+  // it only the broad ones, the lightest); in the hand the season where I stand (asset-loader hold `season`)
+  for (const [k, f, far, scale] of [['broad', 'grass_broad', 48, 1], ['tuft', 'grass_tuft', 25, 1], ['fern', 'bush_fern', 25, 0.65]]) REGISTRY[`weed.${k}`] = { seasons: REGISTRY[`pilot.${f}`].seasons, near: far, shadows: false, hideFar: far, ...(scale !== 1 ? { scale } : {}) }; /* (총괄 #460: the fern 0.65 -- as tall as a character it read as a bush) */
   for (const id of ['nature.bush.0', 'nature.bush.1', 'angular.bush']) REGISTRY[id].hideFar = 60; // (G2 덤불: past 60 m faded out over the 0.4 s dither; never casting shadows -- `shadows: false` kept)
   REGISTRY['project.blossom'] = { url: `${N109}/spring/tree_cluster.glb`, scale: 0.888, near: 35 }; // (the flower path's trees: in bloom whatever the season)
   // G4a 흩뿌리기 (assets 112: Nature Megapack, RG Poly, CC0): fallen logs, palms, tall grass, lily pads and lotus where the
@@ -577,6 +579,7 @@
   const N112 = '/assets/island/nature112'; const n112 = (f, winter = f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${N112}/${s}/${s === 'winter' ? winter : f}.glb`]));
   ['log_plain', 'log_mossy', 'log_fork_mossy'].forEach((f, k) => { REGISTRY[`nature.log.${k}`] = { seasons: n112(f), near: 35 }; });
   ['palm_straight', 'palm_lean', 'palm_curve'].forEach((f, k) => { REGISTRY[`nature.palm.${k}`] = { seasons: n112(f), near: 45 }; });
+  ['vine_strands', 'vine_drape'].forEach((f, k) => { REGISTRY[`nature.vine.${k}`] = { seasons: n112(f), near: 50, shadows: false, hideFar: 50 }; }); /* (v1.10.310 덩굴: on the cliffs' and banks' tops, island-vines.js -- walked past, faded out past 50 m as the weeds) */
   ['tallgrass_a', 'tallgrass_b', 'tallgrass_c'].forEach((f, k) => { REGISTRY[`ground.tallgrass.${k}`] = { seasons: n112(f), near: 25, shadows: false, hideFar: 40 }; }); /* (240 clumps x 428 triangles: faded out past 40 m like the bushes past 60) */
   ['lily_pads', 'lily_pads_wide'].forEach((f, k) => { REGISTRY[`water.lily.${k}`] = { seasons: n112(f), near: 30, shadows: false }; });
   ['lotus_pink', 'lotus_white'].forEach((f, k) => { REGISTRY[`water.lotus.${k}`] = { seasons: n112(f, 'lily_pads'), near: 30, shadows: false }; });
