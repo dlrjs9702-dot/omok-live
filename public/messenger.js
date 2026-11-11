@@ -352,9 +352,9 @@
   // too; 「최근」 stays first; 「처음대로」 at the row's end while dragging
   const orderStore = keep(localStorage, 'gc.messengerStickerOrder');
   let chipOrder = (() => { try { const v = JSON.parse(orderStore.get() || 'null'); return Array.isArray(v) ? v.map(String) : null; } catch { return null; } })();
-  let orderAsked = false;
-  const setOrder = (order, save) => { chipOrder = order; orderStore.set(order ? JSON.stringify(order) : ''); if (save) api('/api/messenger/sticker-order', { order }).catch(() => {}); };
-  const askOrder = () => { if (orderAsked) return; orderAsked = true; api('/api/messenger/sticker-order').then((d) => { if (!d.saved || JSON.stringify(d.order) === JSON.stringify(chipOrder)) return; setOrder(d.order, false); if (emojiTab === 'sticker' && !emoji.classList.contains('hidden')) drawEmoji(); }).catch(() => { orderAsked = false; }); };
+  let orderAsked = false; let orderRev = 0; let chipDrag = null; /* (Codex 301~310 #5·#6: my changes counted; the row's drag, to stop it) */
+  const setOrder = (order, save) => { if (save) orderRev += 1; chipOrder = order; orderStore.set(order ? JSON.stringify(order) : ''); if (save) api('/api/messenger/sticker-order', { order }).catch(() => {}); };
+  const askOrder = () => { if (orderAsked) return; orderAsked = true; const rev = orderRev; api('/api/messenger/sticker-order').then((d) => { if (rev !== orderRev || chipDrag?.busy()) return; /* (#5: changed by me meanwhile, or being dragged: mine stays) */ if (!d.saved || JSON.stringify(d.order) === JSON.stringify(chipOrder)) return; setOrder(d.order, false); if (emojiTab === 'sticker' && !emoji.classList.contains('hidden')) drawEmoji(); }).catch(() => { orderAsked = false; }); };
   function dragChips(row) {
     let hold = null; let drag = null; let slide = 0; let quiet = 0;
     const chips = () => [...row.querySelectorAll('.messengerChip:not(.recent):not(.reset)')];
@@ -367,13 +367,15 @@
     const lift = (chip, e) => { hold = null; drag = { chip, id: e.pointerId, x: e.clientX, y: e.clientY }; chip.classList.add('lifted'); row.classList.add('dragging');
       const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'messengerChip reset'; reset.textContent = '처음대로'; row.append(reset);
       try { row.setPointerCapture(e.pointerId); } catch {} navigator.vibrate?.(15); slide = requestAnimationFrame(tick); };
-    const end = (keepIt) => { clearTimeout(hold?.t); hold = null; if (!drag) return; const d = drag; drag = null; cancelAnimationFrame(slide); quiet = performance.now() + 400;
+    const end = (keepIt, redraw = true) => { clearTimeout(hold?.t); hold = null; if (!drag) return; const d = drag; drag = null; cancelAnimationFrame(slide); quiet = performance.now() + 400; try { row.releasePointerCapture(d.id); } catch {}
+      if (!redraw) { d.chip.classList.remove('lifted'); return; } /* (#6: the row drawn again anyway -- nothing saved, no redraw) */
       if (keepIt && row.querySelector('.reset.over')) setOrder(null, true); else if (keepIt) setOrder(chips().map((c) => c.dataset.chip), true);
       d.chip.classList.remove('lifted'); drawEmoji(); };
     row.addEventListener('pointerdown', (e) => { const chip = e.target.closest('.messengerChip'); if (!chip || chip.classList.contains('recent') || chip.classList.contains('reset') || e.button > 0) return;
       const ev = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY }; hold = { x: e.clientX, y: e.clientY, t: setTimeout(() => lift(chip, ev), 400) }; });
     row.addEventListener('pointermove', (e) => { if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) { clearTimeout(hold.t); hold = null; } if (drag && e.pointerId === drag.id) { drag.x = e.clientX; drag.y = e.clientY; place(); } });
-    row.addEventListener('pointerup', () => end(true)); row.addEventListener('pointercancel', () => end(false));
+    row.addEventListener('pointerup', () => end(true)); row.addEventListener('pointercancel', () => end(false)); row.addEventListener('lostpointercapture', () => end(false)); /* (#6) */
+    chipDrag = { busy: () => Boolean(hold || drag), stop: () => end(false, false) };
     row.addEventListener('touchmove', (e) => { if (drag) e.preventDefault(); }, { passive: false }); /* (the row not slid by the finger while a chip is held) */
     row.addEventListener('contextmenu', (e) => e.preventDefault()); /* (a phone's long-press menu) */
     row.addEventListener('click', (e) => { if (drag || performance.now() < quiet) { e.stopPropagation(); e.preventDefault(); } }, true); /* (the let-go is not a press) */
@@ -405,6 +407,7 @@
         const b = cell(im, s.text, () => (chosenSticker?.id === s.id ? sendSticker(s) : showPreview(s)), 'messengerStickerCell'); b.dataset.id = s.id; b.setAttribute('aria-pressed', String(chosenSticker?.id === s.id)); return b; }; // (its id: the chosen one marked)
       const recent = recentOf('sticker').map((id) => m.get(id)).filter(Boolean);
       let chip = chipStore.get(); if (chip !== 'recent' && !people.some((p) => String(p.n) === chip)) chip = recent.length ? 'recent' : String(people[0]?.n ?? 'recent'); if (chip === 'recent' && !recent.length && people.length) chip = String(people[0].n);
+      chipDrag?.stop(); /* (Codex 301~310 #6: the old row's hold timer, its frame loop and its drag ended before it is replaced) */
       const row = document.createElement('div'); row.className = 'messengerChipRow'; row.setAttribute('role', 'tablist'); row.setAttribute('aria-label', '주민');
       const chipBtn = (key, name, icon) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'messengerChip'; b.dataset.chip = key; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(key === chip));
         if (icon) { const face = document.createElement('span'); face.className = 'messengerChipFace'; const im = document.createElement('img'); im.src = `/messenger/stickers/${icon}`; im.alt = ''; im.loading = 'lazy'; im.draggable = false; face.append(im); b.append(face); } b.append(name); /* (총괄 #448: the 「안녕」 picture's top only -- the face, not its words) */
