@@ -11,6 +11,9 @@ const PASSWORD = 'look-test';
 // (CI X2·Q2 「never by them」: the islanders' rounds go by the island's time of day -- the server sets it by Seoul's hour
 // (server.js islandPhase), this test process's island-npcs stayed on 'day', so outside 10~17시 a test computed every
 // walker's place on the wrong round. The same hours here, as the server and every screen)
+// (2026-11-11 저녁 「never by them」 again: the server loads island-train, whose lift ways are nature blocks -- the walk grid and
+// so the 저녁 rounds differ (봄이 -10,-6 vs -16,-51; the 낮 ones happened not to). This process the same, before any round is made)
+require('../public/plaza/island-train');
 require('../public/plaza/island-npcs').setPhaseOf((ms) => { const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; });
 
 async function boot(t, dir, env = {}) { // (env: more of the server's environment -- v1.10.256 its own address)
