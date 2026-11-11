@@ -56,6 +56,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   await expect.poll(async () => { const f = await face(thumbs.n); return [f.run, f.parts, f.eyesBase, f.mouthBase]; }, { timeout: 6000 }).toEqual([null, [], true, true]); // (its own face again)
   // alone: a feeling of its own now and then (here at once)
   await expect.poll(async () => { /* (once it stands, its line's bubble gone, within 30 m of the camera -- me by it each try) */
+    await post(request, '/api/test/island/free-residents', token, {}); /* (the 30 s timer's new lost thing can hold this islander -- no feeling of its own while held: 검토 docs/resident-faces-46-20261111.md :61) */
     const w = (await page.evaluate(() => window.PlazaDebug().wanderers)).find((x) => x.n === thumbs.n); await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 3, z); window.PlazaDebug().faceTo(x, z); }, [w.x, w.z]);
     await page.evaluate((n) => window.PlazaDebug().idleNow(n), thumbs.n); await page.waitForTimeout(300); return (await face(thumbs.n)).idle || '';
   }, { timeout: 60000, intervals: [1000] }).toMatch(/^(laugh|wave|yawn|shrug)$/);
