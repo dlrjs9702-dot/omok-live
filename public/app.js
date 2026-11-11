@@ -9864,7 +9864,10 @@
   }
   function renderYutChips(g, mine) {
     let row = byId('yutResultChips');
-    if (!row) { row = document.createElement('div'); row.id = 'yutResultChips'; row.className = 'yutResultChips'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', '모은 윷 결과'); yutMoveChoices.before(row); }
+    if (!row) { /* (총괄 #457: by the board -- right under it, over the throw button: the chips, then the move line under them) */
+      row = document.createElement('div'); row.id = 'yutResultChips'; row.className = 'yutResultChips'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', '모은 윷 결과');
+      const act = yutThrowBtn.closest('.yutActionRow') || yutThrowBtn; act.before(row); act.before(yutMoveChoices);
+    }
     row.classList.toggle('hidden', !(g.pend || []).length);
     row.replaceChildren(...(g.pend || []).map((r, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = `yutResultChip${i === yutPick ? ' selected' : ''}`; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(i === yutPick)); b.textContent = r.name; b.disabled = !mine || g.phase !== 'move';
       b.addEventListener('click', () => { yutPick = i; yutHoverTargetKey = null; renderYut(); drawYutBoard(); }); return b; }));
