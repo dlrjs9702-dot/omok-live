@@ -1667,9 +1667,11 @@ const adminJailNow = (account, now = nowMs()) => { const j = adminJailCache?.[ac
 async function adminJailOf(account, now = nowMs()) {
   const j = (await adminJails())[account]; if (!j) return null;
   if (j.until != null && j.until <= now) {
-    if (await adminJailSet(account, null, 'end', '', j)) /* (Codex 291~300 #3: its sessions out of the cell -- unless the tax still holds them) */
+    if (await adminJailSet(account, null, 'end', '', j)) { /* (Codex 291~300 #3: its sessions out of the cell -- unless the tax still holds them) */
       if (!(taxDebt.get(account) > 0)) for (const [token, s] of sessions) if (pointAccountForSession(s) === account) jailFree(token);
-    return null;
+      return null;
+    }
+    const now2 = (await adminJails())[account]; return now2 && !(now2.until != null && now2.until <= now) ? now2 : null; /* (Codex 301~310 #4: not ended -- an administrator jailed them again meanwhile: that new one, not 「none」) */
   }
   return j;
 }
@@ -1883,8 +1885,10 @@ function broadcastIslandRemoved(ids) {
   }
 }
 // (G4b: the collectables still growing back when the server stopped -- read once the store is up)
-let gatherRestored = false;
-const restoreGather = () => { if (gatherRestored || !pointStore) return; gatherRestored = true; pointStore.worldValue('gatherGrowing').then((m) => islandEvents.restoreGrowing(m)).catch(() => { gatherRestored = false; }); };
+let gatherRestored = false; let gatherRestoring = null;
+// (Codex 301~310 #2: restored only once the stored list was really read -- a failed read is tried again (the 30 s timer, and at
+// the start), and nothing is saved over it before then; a gather made meanwhile is kept in memory: restoreGrowing only adds)
+const restoreGather = () => { if (gatherRestored || gatherRestoring || !pointStore) return gatherRestoring || Promise.resolve(); gatherRestoring = (process.env.NODE_ENV === 'test' && process.env.TEST_GATHER_RESTORE_FAIL === '1' && !restoreGather.failed ? (restoreGather.failed = true, Promise.reject(new Error('시험: 첫 읽기 실패'))) : pointStore.worldValue('gatherGrowing')).then((m) => { islandEvents.restoreGrowing(m); gatherRestored = true; }).catch((error) => console.error('채집 다시 자람 복원 실패(다시 시도):', error.message)).finally(() => { gatherRestoring = null; }); return gatherRestoring; };
 const islandEventTimer = setInterval(() => { restoreGather(); broadcastIslandRemoved(islandEvents.expire()); }, 30000);
 islandEventTimer.unref?.();
 
@@ -2600,6 +2604,13 @@ function yutTakeOver(room, seat) {
 }
 const yutTakeOverOk = (room, leaving) => isYut(room) && !room.ai && room.game.status === 'playing' && Object.keys(room.players).length > 2
   && Object.entries(room.players).some(([seat, t]) => t && !isAiToken(t) && !leaving.includes(seat)); /* (someone stays: 2명 판 keeps the old flow) */
+// (Codex 301~310 #1, P1: an AI's own last move ended the game with no record -- no 전적, no entry or bet settled, a pool that took
+// over a leaver's seat lost to the AI vanished. Now as every other ending: recorded, then shown)
+function aiMoved(room) {
+  touchRoom(room);
+  if (!['finished', 'draw'].includes(room.game.status)) { broadcast(room); return; }
+  recordFinishedMatch(room).catch((error) => console.error('AI 판 기록 실패:', error)).finally(() => { if (rooms.get(room.id) === room) broadcast(room); });
+}
 function scheduleAiMove(room) {
   const ai = room.ai || room.bots; const g = room.game; /* (윷놀이 C: a mixed room's AIs -- room.bots, never an AI room's practice rules) */
   const yutSeat = room.gameType === 'yut' && isAiToken(room.players[g.turn]) ? g.turn : null; /* (윷놀이 B: any seat an AI holds -- several in 「AI와 하기」, or a leaver's) */
@@ -2614,7 +2625,7 @@ function scheduleAiMove(room) {
       const label = room.participants[room.players[yutSeat]]?.label || 'AI';
       if (g.phase === 'throw') { const v = Yut.throwYut(g, yutSeat, nowIso()); if (v.legal) appendSystemMessage(room, `${label}가 ${v.name}${/[걸윷]$/.test(v.name) ? '을' : '를'} 던졌습니다.${v.dropped ? ` 쓸 수 없는 결과 ${v.dropped}개는 버렸어요.` : ''}`); }
       else { const pick = Yut.aiPick(g, yutSeat); const v = pick && Yut.applyMove(g, pick.pieceId, yutSeat, nowIso(), pick.ri); if (!v?.legal) { console.error('AI 윷 실패:', JSON.stringify(pick)); return; } if (v.captured.length) appendSystemMessage(room, `${label}가 상대 말 ${v.captured.length}개를 잡았습니다!`); }
-      touchRoom(room); broadcast(room); scheduleAiMove(room);
+      aiMoved(room); scheduleAiMove(room);
     }, 900).unref?.();
     return;
   }
@@ -2626,7 +2637,7 @@ function scheduleAiMove(room) {
     const verdict = move && (getGame(room.gameType)).applyMove(g, move.x, move.y, ai.seat, nowIso());
     if (!verdict?.legal) { console.error('AI 착수 실패:', room.gameType, JSON.stringify(move)); return; }
     if (verdict.passed) appendSystemMessage(room, `${verdict.passed === 'black' ? '흑' : '백'}은 둘 수 있는 곳이 없어 자동으로 패스했습니다.`);
-    touchRoom(room); broadcast(room);
+    aiMoved(room);
     scheduleAiMove(room); // 오델로: the person may have had to pass
   }).catch((error) => {
     ai.thinking = false;
@@ -4584,7 +4595,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.310' });
+    return sendJson(res, 200, { ok: true, version: '1.10.311' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5477,6 +5488,15 @@ async function requestHandler(req, res) {
 
   // (G-게임별 도둑잡기, test only) the last stand of a two-player hand: seat 1 holds the joker and a 5, seat 2 the other 5, seat 1 draws
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/plaza-snapshot' && req.method === 'GET') return sendJson(res, 200, plazaSnapshot());
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/yut-near-end' && req.method === 'POST') { // (Codex 301~310 #1: `seat` one 도 from winning, its turn to move)
+    const session = requireSession(req, res); if (!session) return;
+    const room = getCurrentRoom(session); const body = await parseJson(req); const seat = String(body.seat || '');
+    if (!room || !isYut(room) || room.game.status !== 'playing' || !room.game.pieces?.[seat]) return sendError(res, 409, 'NOT_YUT', '윷놀이 판이 아닙니다.');
+    room.game.pieces[seat].forEach((p, k) => Object.assign(p, k ? { at: 99, tr: [] } : { at: 20, tr: [19] }));
+    Object.assign(room.game, { turn: seat, phase: 'move', pend: [1], bonus: 0 });
+    touchRoom(room); broadcast(room); scheduleAiMove(room);
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/oldmaid-last-stand' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -7465,6 +7485,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-event:${session.token}`, pathname === '/api/island/event' ? 60 : 120, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
     if (pathname.endsWith('/cancel')) { if ((!body.id || resourcePulls.get(session.token)?.id===body.id) && !resourcePulls.get(session.token)?.result) resourcePulls.delete(session.token); collectionPose(session.token); return sendJson(res, 200, { ok: true }); }
+    if (pathname.endsWith('/start') && !gatherRestored) { await restoreGather(); if (!gatherRestored) return sendError(res, 503, 'TRY_AGAIN', '잠시 후 다시 시도해 주세요.'); } /* (Codex 301~310 #2: what was growing back known first -- else it was open to pick again) */
     const id = typeof body.id === 'string' && /^[a-z0-9]{2,24}$/.test(body.id) ? body.id : null;
     if (!id) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const account = pointAccountForSession(session);
@@ -7550,7 +7571,7 @@ async function requestHandler(req, res) {
     }
     const done = islandEvents.settle(claimed, true, account);
     if (done?.removed) broadcastIslandRemoved([done.removed]);
-    if (gather && outcome.applied) await pointStore.setWorldValue('gatherGrowing', islandEvents.gatherGrowing()).catch(() => {}); /* (G4b: what grows back kept over a restart) */
+    if (gather && outcome.applied && gatherRestored) await pointStore.setWorldValue('gatherGrowing', islandEvents.gatherGrowing()).catch(() => {}); /* (G4b: what grows back kept over a restart -- Codex #2: never over a list not read yet) */
     let photoThanks = null; // (v1.10.274 사진 부탁: the islander +1 호감도 -- one request a day from each, apart from the talks' cap -- and the album's line)
     if (photoN != null && outcome.applied) {
       const day = kstDate(nowMs()); const before = await pointStore.affinityOf(account); const after = await pointStore.affinityAdd(account, day, [{ n: photoN, delta: 1 }]);
@@ -9400,7 +9421,7 @@ async function main() {
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
   walkerTimeMode = (await pointStore.worldValue('time'))?.mode || 'auto'; // (R3 ③: the islanders' round by the held time of day)
-  gatherRestored = true; islandEvents.restoreGrowing(await pointStore.worldValue('gatherGrowing').catch(() => null)); // (G4b: before anyone asks)
+  await restoreGather(); // (G4b: before anyone asks -- Codex #2: a failed read tried again, not taken as nothing growing)
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   await dalmaruMoveIn().catch((error) => console.error('달마루섬 이사 실패:', error.message)); // 5단계: once, the first start on the new island
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
@@ -9491,7 +9512,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.310 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.311 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

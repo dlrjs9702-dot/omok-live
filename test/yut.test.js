@@ -98,3 +98,11 @@ test('차례·단계 지키기: 남의 차례, 던질 게 남았는데 움직이
   throwAs(g, 'black', 4); assert.equal(yut.applyMove(g, 'black-1', 'black', 't', 0).reason, 'must-throw');
   throwAs(g, 'black', 1); assert.equal(throwAs(g, 'black', 2).reason, 'must-move'); assert.equal(yut.applyMove(g, 'black-1', 'black', 't', 7).reason, 'bad-result');
 });
+
+test('업히면 한 묶음이 같은 지나온 길(빽도는 어느 말이 먼저든 같은 칸으로) -- Codex 301~310 #3', () => {
+  const g = yut.create(2); yut.start(g); const [p1, p2] = g.pieces.black;
+  Object.assign(p1, { at: 3, tr: [7, 8, 3] }); Object.assign(p2, { at: 1, tr: [20, 1] });
+  Object.assign(g, { turn: 'black', phase: 'move', pend: [2], bonus: 0 });
+  assert.equal(yut.applyMove(g, p2.id, 'black', 't', 0).legal, true);
+  assert.equal(p1.at, 3); assert.equal(p2.at, 3); assert.deepEqual(p1.tr, p2.tr); assert.deepEqual(p2.tr, [20, 1, 2, 3]);
+});
