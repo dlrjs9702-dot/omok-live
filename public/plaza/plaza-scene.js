@@ -5345,7 +5345,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
     if ((!best || eventDoors[best]?.resource) && !gather && !fishing) { // v1.10.91 주민 대화: an islander by me (not one an event holds) talks -- A-6: walking too
       const m = me.root.position; let who = null; let wd = 2.2; const overWeed = Boolean(best); // (묶음 3: over a weed only the one I face)
-      for (const { n, c, w } of wanderers) { if ((w.pose.held && !residentStates[n]?.hold?.eventId?.startsWith('talk:') && !(residentStates[n]?.hold?.arriveAt > taxiNow())) || !c.root.visible) continue; /* (v1.10.274: one on the way to a photo spot talks as they go) */ /* (in someone else's talk: the server says with whom) */ const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd && (!overWeed || facing(w.x, w.z))) { who = { n, w }; wd = d; } }
+      for (const { n, c, w } of wanderers) { if ((w.pose.held && !residentStates[n]?.hold?.eventId?.startsWith('talk:') && !(residentStates[n]?.hold?.arriveAt > taxiNow())) || !c.root.visible || w.rejoining) continue; /* (검토 TOO_FAR: walking back to the walk the server already counts it on -- no talk till it is there) */ /* (v1.10.274: one on the way to a photo spot talks as they go) */ /* (in someone else's talk: the server says with whom) */ const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd && (!overWeed || facing(w.x, w.z))) { who = { n, w }; wd = d; } }
       if (who) { eventDoors[`resident:${who.n}`] = { x: who.w.x, z: who.w.z, name: `말 걸기 · ${globalThis.IslandCast?.RESIDENTS[who.n]?.name || '주민'}` }; best = `resident:${who.n}`; }
     }
     if (!best && !gather && !fishing) {

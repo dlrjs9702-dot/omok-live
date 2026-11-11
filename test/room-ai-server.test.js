@@ -71,3 +71,39 @@ test('게임방 AI: 자리를 고르면 AI가 맞은편에, 두면 AI가 받아 
   state = await waitFor(async () => { const s = await room(); return s.game.turn === 'yellow' && s.game.phase === 'throw' && s; }, 'AI 셋이 차례를 넘기지 않았습니다', 400); /* (three AIs, each maybe throwing again on 윷·모·잡기: up to 40 s) */
   assert.ok(state.game.throwCount >= 3); assert.equal(state.game.pieceCount, 3);
 });
+
+// 윷놀이 C (notes yut-real-rules 「나누기」): in a people's 4-seat room the host fills the empty seats with AIs (no entry
+// points), a leaver's seat is played on by an AI and kept as their loss, the next round keeps the 4 seats without the AIs
+test('윷놀이 C: 빈자리 AI, 나간 자리 AI가 이어 두기, 사람만 기록, 다음 판 4자리', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'yut-c-'));
+  rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('윷방장')); const b = await server.enter(await server.issue('윷손님'));
+  const room = (tok) => req('/api/room', tok).then((r) => r.data.state);
+  const made = await req('/api/rooms', a, { gameType: 'yut', players: 4, visibility: 'public', stakes: true }); assert.equal(made.status, 201, JSON.stringify(made.data));
+  assert.equal(made.data.state.points.policy, 'entry');
+  const balance = async (tok) => (await req('/api/points', tok)).data.balance; const before = [await balance(a), await balance(b)];
+  assert.equal((await req('/api/rooms/join', b, { code: made.data.state.me.roomCode })).status, 200);
+  assert.equal((await req('/api/room/fill-ai', b, {})).status, 403, '방장만');
+  assert.equal((await req('/api/room/choose-role', a, { choice: 'black' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', b, { choice: 'green' })).status, 200);
+  const filled = await req('/api/room/fill-ai', a, {}); assert.equal(filled.status, 200, JSON.stringify(filled.data));
+  let s = filled.data.state; assert.equal(s.game.status, 'playing'); assert.deepEqual(s.game.seatOrder, ['black', 'white', 'green', 'yellow']);
+  assert.deepEqual(s.participants.filter((p) => /^AI · 보통 \d$/.test(p.label)).map((p) => p.seat).sort(), ['white', 'yellow']);
+  assert.equal(s.points.policy, 'friendly', 'AI가 있는 판은 포인트 없음');
+  assert.deepEqual([await balance(a), await balance(b)], before, '참가 포인트를 걷지 않음');
+  // 손님이 나가면 초록 자리를 AI가 이어 둔다
+  assert.equal((await req('/api/room/leave', b, {})).status, 200);
+  s = await room(a); const green = s.participants.find((p) => p.seat === 'green');
+  assert.ok(green && green.label === 'AI · 이어 둠 (윷손님)', JSON.stringify(s.participants));
+  assert.equal(s.game.status, 'playing'); assert.equal(s.game.paused, false);
+  // 방장이 기권하면 남은 사람이 없어 판이 끝나고, 두 사람 모두 패로 기록된다(4명 판: yut4)
+  assert.equal((await req('/api/room/resign', a, {})).status, 200);
+  s = await room(a); assert.equal(s.game.status, 'finished'); assert.equal(s.game.winner, 'white');
+  for (const tok of [a, b]) { const r = (await req('/api/records/me', tok)).data; assert.equal(r.total.played, 1, JSON.stringify(r)); assert.equal(r.total.losses, 1); assert.equal(r.byGame.yut4?.played, 1); }
+  // 다음 판: 네 자리 그대로, AI는 나감
+  assert.equal((await req('/api/room/next-round', a, {})).status, 200);
+  s = await room(a); assert.equal(s.game.status, 'selecting'); assert.equal(s.game.seatOrder.length, 4);
+  assert.equal(s.participants.filter((p) => /^AI/.test(p.label)).length, 0);
+  assert.equal((await req('/api/room/choose-role', a, { choice: 'yellow' })).status, 200, '노랑 자리가 남아 있음');
+});

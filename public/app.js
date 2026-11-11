@@ -1453,7 +1453,8 @@
     // (v1.10.246 G1: the points settlement -- the server's system line -- one small line under the stats)
     const settled = [...(state.chat?.messages || [])].reverse().find((m) => m.type === 'system' && String(m.text).startsWith('참가 포인트 정산'));
     const noteLine = settled && e?.status === 'settled' ? Object.assign(document.createElement('small'), { className: 'hpPanelNote', textContent: settled.text }) : null;
-    row.append(again, out); boardOverlay.append(stats, ...(noteLine ? [noteLine] : []), row);
+    const left = state.gameType === 'yut' && Array.isArray(g.leftSeats) && g.leftSeats.length ? Object.assign(document.createElement('small'), { className: 'hpPanelNote resultLeftSeats', textContent: `AI가 이어 둔 자리 · ${g.leftSeats.map(seatKo).join(' · ')} (기권)` }) : null; /* (윷놀이 C) */
+    row.append(again, out); boardOverlay.append(stats, ...(left ? [left] : []), ...(noteLine ? [noteLine] : []), row);
   }
   function setResultBoardOverlay(outcome, game) {
     const win = outcome === 'win';
@@ -5961,7 +5962,7 @@
     "omok": "15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.",
     "omok2v2": "4인 팀전! 흑팀 1번 → 백팀 2번 → 흑팀 3번 → 백팀 4번 순서로 반복합니다. 네 자리가 모두 정해지면 시작하며 기존 15×15 오목과 금수 규칙은 그대로입니다. 승리하면 같은 팀 두 명이 함께 승리합니다. 누군가 연결이 끊기면 복귀할 때까지 일시정지합니다.",
     "connect4": "7열×6행. 빨강이 먼저 시작하며 번갈아 열을 누르면 맨 아래 빈칸부터 돌이 쌓입니다. 같은 색 돌 4개를 가로·세로·대각선으로 먼저 연결하면 승리합니다. 가득 찬 열에는 둘 수 없고 판이 다 차면 무승부입니다.",
-    "yut": "각자 말 4개를 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 빽도가 나오면 보드 위의 말 하나를 한 칸 뒤로 물립니다(대기 중인 말은 낼 수 없고, 물릴 말이 없으면 차례가 자동으로 넘어갑니다). 출발 직후 첫 번째 칸의 말이 빽도로 물러나면 한 바퀴를 돌아온 것과 같이 완주 직전 칸으로 들어갑니다. 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용하며, 중앙에 정확히 멈춘 말은 항상 짧은 지름길로 출발합니다. 완주 직전 칸에 정확히 멈춘 말은 그 칸에 머무르고 다음 이동에서 한 칸 이상 더 나아가야 완주하지만, 그 칸을 지나칠 만큼 눈이 넉넉하면 그 던지기 안에서 곧바로 완주합니다.",
+    "yut": "각자 말(2명은 4개, 3~4명은 3개)을 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 빽도가 나오면 보드 위의 말 하나를 한 칸 뒤로 물립니다(대기 중인 말은 낼 수 없고, 물릴 말이 없으면 차례가 자동으로 넘어갑니다). 출발 직후 첫 번째 칸의 말이 빽도로 물러나면 한 바퀴를 돌아온 것과 같이 완주 직전 칸으로 들어갑니다. 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용하며, 중앙에 정확히 멈춘 말은 항상 짧은 지름길로 출발합니다. 완주 직전 칸에 정확히 멈춘 말은 그 칸에 머무르고 다음 이동에서 한 칸 이상 더 나아가야 완주하지만, 그 칸을 지나칠 만큼 눈이 넉넉하면 그 던지기 안에서 곧바로 완주합니다.",
     "bingo": "2~4명이 참가합니다. 방장이 시작 전에 판 크기(5×5/7×7)와 숫자 범위(1~50/75/100/150)를 정하면 각자 그 범위에서 중복 없는 숫자로 자신의 판을 받습니다. 자기 차례에 자신의 판에서 아직 선택되지 않은 숫자를 누르면 같은 숫자를 가진 모든 참가자의 판도 함께 체크됩니다. 방장이 정한 목표 줄 수(5×5는 최대 12줄, 7×7은 최대 16줄)를 가로·세로·두 대각선을 합쳐 먼저 달성하면 승리합니다.",
     "dots": "5×5 점 사이에 번갈아 선을 하나씩 긋습니다. 네 변을 완성해 상자를 만든 사람이 그 상자를 차지하고 한 번 더 긋습니다. 모든 선을 그은 뒤 차지한 상자가 더 많은 사람이 승리합니다.",
     "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 자기 소유 도시에 도착하면 매입가의 50%로 별장·빌딩·호텔을 방문당 한 단계 건설할 수 있습니다. 통행료는 기본·2배·3배·5배이며, 건설비는 순자산에 포함됩니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
@@ -8517,11 +8518,12 @@
   // G-틀② 이름표 판 둘레: while a hand is played my name card sits under the board, the others above it (the board between
   // us, as at a table) -- the two-colour games and 2vs2 오목; a table game's own seats (고스톱, 다빈치 …) stay for G-게임별
   const mySeatSpot = document.getElementById('mySeatSpot');
-  const seatCardOf = (s) => (/^(black|white)$/.test(s) ? document.getElementById(`${s}Player`) : document.querySelector(`#teamPlayers [data-seat="${s}"], #mySeatSpot [data-seat="${s}"]`));
+  const seatCardOf = (s) => (/^(black|white|green|yellow)$/.test(s) ? document.getElementById(`${s}Player`) : document.querySelector(`#teamPlayers [data-seat="${s}"], #mySeatSpot [data-seat="${s}"]`));
   function placeMySeat() {
     const playing = document.body.classList.contains('roomPlaying');
-    const mine = playing && seat ? (/^(black|white)$/.test(seat) ? (standardPlayers.classList.contains('hidden') ? null : seatCardOf(seat)) : teamPlayers.querySelector(`.teamPlayer[data-seat="${seat}"]:not(.bingoSeat)`)) : null;
-    for (const c of [...mySeatSpot.children]) if (c !== mine) { if (c === blackPlayer) standardPlayers.prepend(c); else if (c === whitePlayer) standardPlayers.append(c); else c.remove(); }
+    const mine = playing && seat ? (/^(black|white|green|yellow)$/.test(seat) ? /* (윷놀이 C 사진: 초록·노랑 under the board too) */ (standardPlayers.classList.contains('hidden') ? null : seatCardOf(seat)) : teamPlayers.querySelector(`.teamPlayer[data-seat="${seat}"]:not(.bingoSeat)`)) : null;
+    const back = (c) => { const next = ['whitePlayer', 'greenPlayer', 'yellowPlayer'].slice(['whitePlayer', 'greenPlayer', 'yellowPlayer'].indexOf(c.id) + 1).map((id) => standardPlayers.querySelector(`#${id}`)).find(Boolean); if (next) next.before(c); else standardPlayers.append(c); }; /* (back in board order) */
+    for (const c of [...mySeatSpot.children]) if (c !== mine) { if (c === blackPlayer) standardPlayers.prepend(c); else if (/^(white|green|yellow)Player$/.test(c.id)) back(c); else c.remove(); }
     if (mine && mine.parentElement !== mySeatSpot) mySeatSpot.append(mine);
   }
   function renderCurrentActor() {
@@ -8774,7 +8776,7 @@
     // (G-틀② 이름표의 게임 숫자: 윷 완주·점과 상자 상자·오델로 돌 -- the score the game keeps for this seat)
     el.querySelector('.seatNum')?.remove();
     const score = state?.game?.scores?.[color]; const unit = { yut: '완주', dots: '상자', othello: '돌' }[state?.gameType];
-    if (player && unit && Number.isFinite(Number(score))) { const n = document.createElement('b'); n.className = 'seatNum'; n.textContent = `${unit} ${score}`; el.append(n); }
+    if (player && unit && Number.isFinite(Number(score)) && state.game?.status !== 'selecting') { /* (윷놀이 C 사진: not before the start) */ const n = document.createElement('b'); n.className = 'seatNum'; n.textContent = `${unit} ${score}`; el.append(n); }
   }
   // A3 G1-5: a small island face (skin and hair colour) and the worn title on a name card
   function seatFace(card, player) {
@@ -9297,6 +9299,8 @@
     }
   }
 
+  // 윷놀이 C: a people's 3~4 seat 윷 game being played -- a seat left or silent goes on with an AI (server yutTakeOverOk)
+  const yutGoesOn = () => state?.gameType === 'yut' && (state.game?.seatOrder?.length || 0) > 2 && state.points?.policy !== 'practice';
   function renderRoleChooser() {
     const g = state.game;
     const choice = state.me?.choice;
@@ -9375,6 +9379,11 @@
       if (!b) continue; b.classList.toggle('hidden', !more.includes(c)); b.disabled = Boolean(state.players[c] && seat !== c); b.classList.toggle('selected', choice === c);
     }
     if (yut && more.length) roleChooser.querySelector('small').textContent = `${more.length + 2}명 판이에요. 자리가 모두 차면 파랑부터 윷을 던져요(말은 3개씩).`;
+    // 윷놀이 C: the host fills the empty seats with AIs (a people's room; someone seated) -- the game starts, no entry points
+    const seatsNow = Object.values(state.players || {}); const canFill = yut && isHost && selecting && state.points?.policy !== 'practice' && seatsNow.some(Boolean) && seatsNow.some((p) => !p);
+    let fill = document.getElementById('fillAiBtn');
+    if (!fill && canFill) { fill = document.createElement('button'); fill.type = 'button'; fill.id = 'fillAiBtn'; fill.className = 'ghost'; fill.textContent = '빈자리 AI 넣기'; fill.addEventListener('click', () => confirm('빈자리를 모두 AI로 채우고 바로 시작할까요? AI가 있는 판은 참가 포인트가 없어요.') && roomAction('fill-ai')); whitePlayer.parentElement.after(fill); const note = document.createElement('small'); note.id = 'fillAiNote'; note.textContent = 'AI가 들어가면 참가 포인트 없이 해요'; fill.after(note); } /* (under the seat cards: a phone takes a seat by its card, the chooser hidden there) */
+    if (fill) { fill.classList.toggle('hidden', !canFill); document.getElementById('fillAiNote')?.classList.toggle('hidden', !canFill); }
   }
 
   // v1.6.40: universal connection-drop popup. A brief network blip should never pop this up --
@@ -9422,7 +9431,7 @@
           if (pauseEpisodeKey(state?.game) !== key || key === pauseDialogDismissedKey) return;
           pauseDialogShownKey = key;
           const names = disconnectedNow.map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
-          pauseDialogMessage.textContent = `참가자 ${names}님이 응답하지 않아 게임이 일시 중단되었습니다.`;
+          pauseDialogMessage.textContent = `참가자 ${names}님이 응답하지 않아 게임이 일시 중단되었습니다.`; pauseEndBtn.textContent = yutGoesOn() ? 'AI가 이어 두기' : '게임 종료'; /* (윷놀이 C: 3~4명 -- the game goes on with an AI) */
           if (!pauseDialog.open) pauseDialog.showModal();
         }, 2000);
       }
@@ -9598,9 +9607,11 @@
     // v1.6.40: any connected, seated participant may end a paused match -- not just the host of
     // the 4-seat team game it started on -- matching the server's generalized end-game handler.
     const canEndPaused = canAct && g.status === 'playing' && g.paused;
+    const goOn = yutGoesOn(); /* (윷놀이 C: 3~4명 -- the silent seats to AIs, the game goes on) */
     for (const b of [endGameBtn, sideEndGameBtn]) {
       b.classList.toggle('hidden', !canEndPaused);
       b.disabled = !canEndPaused;
+      b.dataset.label ||= b.textContent; b.textContent = goOn ? 'AI가 이어 두기' : b.dataset.label;
     }
     for (const b of [resignBtn, sideResignBtn]) {
       b.classList.toggle('hidden', !canResign);
@@ -9718,7 +9729,7 @@
     } else if (g.status === 'selecting') {
       boardOverlay.classList.remove('resultWin', 'resultLoss', 'hpPanel');
       const choice = state.me?.choice;
-      if (!choice) boardOverlay.textContent = team || city ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : `${choiceKo('black')} · ${choiceKo('white')} · 관전 중 역할을 선택하세요`;
+      if (!choice) boardOverlay.textContent = team || city ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : `${(state.gameType === 'yut' ? Object.keys(state.players || {}) : ['black', 'white']).map(choiceKo).join(' · ')} · 관전 중 역할을 선택하세요`; /* (윷놀이 C: every seat of a 3~4 seat room) */
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       const picks = document.createElement('div'); picks.className = 'boardPicks'; boardOverlay.append(picks); requestAnimationFrame(() => fillBoardPicks(picks)); /* (게임관 1차 F1: the choice on the board) */
@@ -9975,7 +9986,7 @@
     }
 
     if (g.status === 'selecting') yutHint.textContent = `${seatKo('black')}과 ${seatKo('white')}이 정해지면 ${seatKo('black')}부터 시작합니다.`;
-    else if (g.status === 'finished') yutHint.textContent = `${seatKo(g.winner)}이 말 4개를 모두 완주했습니다.`;
+    else if (g.status === 'finished') yutHint.textContent = `${seatKo(g.winner)}이 말 ${g.pieceCount || 4}개를 모두 완주했습니다.`; /* (윷놀이 C: 3~4명은 3개) */
     else if (!seat) yutHint.textContent = `${seatKo(g.turn)}의 진행을 관전하고 있습니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
     else if (g.turn !== seat) yutHint.textContent = `${seatKo(g.turn)} 차례입니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
     else if (g.phase === 'throw') yutHint.textContent = (g.pend || []).length ? `한 번 더! 윷을 던져 주세요. (모은 결과 ${g.pend.map((r) => r.name).join(' · ')})` : '내 차례입니다. 윷을 던져 주세요.';
@@ -13969,8 +13980,9 @@
   for (const button of teamSeatButtons) button.addEventListener('click', () => roomAction('choose-role', { choice: button.dataset.teamSeat }));
   teamSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
   const endPausedConfirmMsg = '응답이 없는 참가자를 패배로, 응답 중인 참가자를 승리로 기록하며 대국을 종료할까요?';
-  endGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
-  sideEndGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
+  const endPausedMsg = () => (yutGoesOn() ? '응답이 없는 자리를 AI가 이어 두고 판을 계속할까요? 그 참가자는 판이 끝나면 기권으로 기록돼요.' : endPausedConfirmMsg);
+  endGameBtn.addEventListener('click', () => confirm(endPausedMsg()) && roomAction('end-game'));
+  sideEndGameBtn.addEventListener('click', () => confirm(endPausedMsg()) && roomAction('end-game'));
   pauseWaitBtn.addEventListener('click', () => {
     pauseDialogDismissedKey = pauseDialogShownKey;
     pauseDialog.close();

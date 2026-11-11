@@ -35,7 +35,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMessengerStore } = require('./lib/messenger-store');
 const WebPush = require('./lib/web-push'); // 메신저 단독 창 ③
 const { createMatchStore } = require('./lib/match-records');
-const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
+const { buildMatchResult, matchSeats, recordSeats, holderOf, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
 const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
 const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
@@ -2351,7 +2351,7 @@ function touchRoom(room) { room.updatedAt = nowIso(); }
 // engine as a person's, a short moment after the person's turn so it does not feel instant.
 // A3 G1-4: the turn seat's clock as everyone may see it -- the same deadline its owner gets (lib/action-timer.js)
 function publicTurnTimer(room) {
-  const seat = currentTurnSeat(room); if (seat == null || (room.ai && String(seat) === String(room.ai.seat))) return null;
+  const seat = currentTurnSeat(room); if (seat == null || isAiToken(room.players[seat])) return null;
   const t = buildActionTimer(room, seat, nowMs(), AFK_TIMEOUT_MS);
   return t ? { seat: String(seat), deadlineAt: t.deadlineAt, serverNow: t.serverNow } : null;
 }
@@ -2580,8 +2580,28 @@ function fillYutAi(room, mine) {
   }
   room.ai.seat = Object.keys(room.players).find((s) => s !== mine);
 }
+// 윷놀이 C: an AI in a people's room (the host's 「빈자리 AI」 or a leaver's seat) -- room.bots, not room.ai (an AI room is
+// practice: private, no record); its participant is an AI like 「AI와 하기」's
+function seatBot(room, seat) {
+  room.bots ||= { level: 'normal', thinking: false };
+  const token = `ai:${room.id}:b:${seat}`; const k = Object.keys(room.players).indexOf(seat) + 1;
+  room.participants[token] = { sessionToken: token, identity: 'ai', label: `AI · ${RoomAi.LEVELS.normal} ${k}`, ai: true, role: 'ai', rejoinable: false, connected: true, joinedAt: nowIso(), lastSeen: nowIso(), choice: seat };
+  room.players[seat] = token;
+}
+// a person left a 3~4 seat 윷 game being played (or dropped and the others chose to go on): an AI plays their seat to the end;
+// the record keeps the seat as theirs, a loss (기권)
+function yutTakeOver(room, seat) {
+  const token = room.players[seat]; if (!token || isAiToken(token)) return false;
+  room.game.leftSeats = { ...(room.game.leftSeats || {}), [seat]: token };
+  const person = room.participants[token]; if (person) person.choice = 'spectator';
+  seatBot(room, seat); room.participants[room.players[seat]].label = `AI · 이어 둠 (${person?.label || '참가자'})`; /* (총괄 #459: whose seat it was -- the result's words) */
+  appendSystemMessage(room, `${person?.label || '참가자'}님 자리를 AI가 이어 둬요 · 기권 기록`); /* (short: one line on a phone) */
+  return true;
+}
+const yutTakeOverOk = (room, leaving) => isYut(room) && !room.ai && room.game.status === 'playing' && Object.keys(room.players).length > 2
+  && Object.entries(room.players).some(([seat, t]) => t && !isAiToken(t) && !leaving.includes(seat)); /* (someone stays: 2명 판 keeps the old flow) */
 function scheduleAiMove(room) {
-  const ai = room.ai; const g = room.game;
+  const ai = room.ai || room.bots; const g = room.game; /* (윷놀이 C: a mixed room's AIs -- room.bots, never an AI room's practice rules) */
   const yutSeat = room.gameType === 'yut' && isAiToken(room.players[g.turn]) ? g.turn : null; /* (윷놀이 B: any seat an AI holds -- several in 「AI와 하기」, or a leaver's) */
   if (!ai || ai.thinking || g.status !== 'playing' || g.paused || (room.gameType === 'yut' ? !yutSeat : g.turn !== ai.seat || room.players[ai.seat] !== ai.token)) return;
   ai.thinking = true;
@@ -2821,7 +2841,7 @@ function syncGamePause(room, allowTimeouts = true) {
       room.turnWatch.since += Date.now() - room.turnWatch.pausedAt;
       room.turnWatch.pausedAt = null;
     }
-    if (!turnSeat || (room.ai && turnSeat === room.ai.seat)) { // v1.10.72: no idle clock on the AI's own turn
+    if (!turnSeat || isAiToken(room.players[turnSeat])) { // v1.10.72: no idle clock on the AI's own turn (윷놀이 C: any AI seat)
       room.turnWatch = null;
     } else if (!room.turnWatch || room.turnWatch.seat !== turnSeat) {
       room.turnWatch = { seat: turnSeat, since: Date.now() };
@@ -2841,7 +2861,7 @@ async function tickIdleRooms() {
     if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) continue;
     const wasPaused = room.game.paused;
     const pauseResult = syncGamePause(room);
-    if (room.ai) scheduleAiMove(room); // v1.10.72: e.g. the person came back after a pause on the AI's turn
+    if (room.ai || room.bots) scheduleAiMove(room); // v1.10.72: e.g. the person came back after a pause on the AI's turn
     if (pauseResult?.gameFinished) {
       try { await recordFinishedMatch(room); }
       catch (error) { console.error('스무고개 시간초과 전적 저장 실패:', error); }
@@ -2899,7 +2919,7 @@ function publicParticipants(room) {
 function roomPolicy(room) {
   if (room.ai) return 'practice';
   const policy = pointPolicy(room.gameType);
-  return policy === 'entry' && !room.stakes ? 'friendly' : policy;
+  return policy === 'entry' && (!room.stakes || room.botFill === room.game.round) ? 'friendly' : policy; /* (윷놀이 C: AI seats from the start -- no points) */
 }
 function publicRoom(room) {
   const live = uniqueLiveTokens(room.id);
@@ -3021,6 +3041,7 @@ function maybeStart(room) {
   if (isYut(room)) { /* (윷놀이 B: every seat of the room taken -- 2, 3 or 4) */
     if (room.game.status !== 'selecting' || !Object.values(room.players).every(Boolean)) return;
     getGame('yut').start(room.game, Object.keys(room.players));
+    room.game.humanStart = Object.values(room.players).filter((t) => !isAiToken(t)).length; room.game.leftSeats = {}; /* (윷놀이 C) */
     for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     syncGamePause(room); return;
   }
@@ -3066,7 +3087,8 @@ function prepareNextRound(room) {
     }
     return;
   }
-  room.players = isTeam(room) ? { '1': null, '2': null, '3': null, '4': null } : { black: null, white: null };
+  room.players = isTeam(room) ? { '1': null, '2': null, '3': null, '4': null } : Object.fromEntries(Object.keys(room.players).map((seat) => [seat, null])); /* (윷놀이 C: a 3~4 seat 윷 room stays so) */
+  if (room.bots) { for (const [t, p] of Object.entries(room.participants)) if (p.ai) delete room.participants[t]; room.bots = null; } room.game.leftSeats = {};
   for (const p of Object.values(room.participants)) p.choice = null;
 }
 
@@ -3087,11 +3109,12 @@ function settleRoomBet(room) {
 async function recordFinishedMatch(room) {
   if (room.ai) { aiWinProgress(room); settleRoomBet(room); return false; } // v1.10.72: an AI game is practice -- no record, missions, achievements or ranking
   if (isGostop(room)) await settleGostopBonuses(room);
+  if (room.bots && (room.game.humanStart || 0) < 2) return false; /* (윷놀이 C: one person with AIs -- practice, like 「AI와 하기」) */
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
   // v1.7.20: who played each seat, taken now (the room may change before the awaits below finish).
-  const seats = matchSeats(room);
-  const accounts = seats.map(seat => pointAccountForParticipant(room.participants[room.players[seat]]));
+  const seats = recordSeats(room); /* (윷놀이 C: no AI seat; a leaver's seat is theirs) */
+  const accounts = seats.map(seat => pointAccountForParticipant(holderOf(room, seat)));
   const resignedSeat = room.game.resignedSeat ?? null;
   await settleGostopIfNeeded(room, result);
   await settleEntryIfNeeded(room);
@@ -3119,7 +3142,7 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
   try {
     for (let i = 0; i < result.outcomes.length; i += 1) {
       const account = accounts[i];
-      if (!account) continue;
+      if (!account || room.game.leftSeats?.[seats[i]]) continue; /* (윷놀이 C: who left gets no mission step) */
       if (!rewardsEnabled(account)) continue;
       const outcome = result.outcomes[i];
       const done = await pointStore.recordMissionMatch({
@@ -3422,7 +3445,8 @@ function settleEntryIfNeeded(room) {
   const entry = room.entry;
   if (!entry || entry.status !== 'charged' || entry.round !== room.game.round || !['finished', 'draw'].includes(room.game.status)) return Promise.resolve();
   if (room.entrySettling) return room.entrySettling;
-  const winners = winningSeats(room).map(seat => pointAccountForSeat(room, seat)).filter(validUserId);
+  let winners = winningSeats(room).map(seat => pointAccountForSeat(room, seat)).filter(validUserId);
+  if (!winners.length && room.game.status === 'finished' && Object.keys(room.game.leftSeats || {}).length) winners = Object.values(room.players).filter((t) => t && !isAiToken(t)).map((t) => pointAccountForParticipant(room.participants[t])).filter(validUserId); /* (윷놀이 C) */
   const promise = pointStore.settleEntry({ resultId: `game-result:${room.id}:${entry.n}`, entryId: entry.id, winners }).then((outcome) => {
     clearTimeout(room.entryRetry); room.entryRetry = null; room.entryAttempts = 0;
     if (outcome.kind === 'result') {
@@ -3955,6 +3979,18 @@ async function handleRoomAction(req, res, action, session) {
 
 
 
+  if (action === 'fill-ai') { /* 윷놀이 C: the host fills every empty seat with an AI -- the game starts (no entry) */
+    if (!isYut(room) || room.ai) return sendError(res, 400, 'WRONG_GAME', '윷놀이 방에서만 AI를 넣을 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 AI를 넣을 수 있습니다.');
+    if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 AI를 넣을 수 없습니다.');
+    const empty = Object.keys(room.players).filter((seat) => !room.players[seat]);
+    if (!empty.length || empty.length === Object.keys(room.players).length) return sendError(res, 409, 'NO_EMPTY_SEAT', empty.length ? '사람이 한 명은 자리에 앉아야 합니다.' : '빈자리가 없습니다.');
+    for (const seat of empty) seatBot(room, seat);
+    room.botFill = room.game.round;
+    appendSystemMessage(room, `${session.label || '방장'}님이 빈자리 ${empty.length}곳에 AI를 넣었습니다. AI가 있는 판은 참가 포인트가 없어요.`);
+    maybeStart(room);
+  }
+
   if (action === 'set-liar-rounds') {
     if (!isLiar(room)) return sendError(res, 400, 'WRONG_GAME', '라이어게임 방에서만 설정할 수 있습니다.');
     if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 판 수를 변경할 수 있습니다.');
@@ -4398,6 +4434,8 @@ async function handleRoomAction(req, res, action, session) {
   if (action === 'resign') {
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
+    if (yutTakeOverOk(room, [seat])) { yutTakeOver(room, seat); room.turnWatch = null; syncGamePause(room, false); } /* (윷놀이 C: 3~4명 -- 기권 is leaving the seat to an AI; the others play on) */
+    else {
     if (isPandemic(room)) getGame('pandemic').forfeit(room.game);
     else room.game.status = 'finished';
     room.game.resignedSeat = seat; // server-only: lets the mission rules tell a resignation from a clean finish
@@ -4413,12 +4451,15 @@ async function handleRoomAction(req, res, action, session) {
       room.game.winner = isPandemic(room) ? [] : assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
       if (isGostop(room)) getGame('gostop').forfeitResult(room.game, [seat], 'resign');
+    } else if (isYut(room) && room.game.seatOrder?.length > 2) {
+      const order = room.game.seatOrder; room.game.winner = order[(order.indexOf(seat) + 1) % order.length]; /* (윷놀이 C: nobody stays -- the next seat; B gave 파랑·빨강 by the 2-seat flip) */
     } else {
       room.game.winner = (isTeam(room) ? teamColor(seat) : seat) === 'black' ? 'white' : 'black';
     }
     room.game.winningLine = null;
     room.game.paused = false;
     room.game.disconnectedSeats = [];
+    }
   }
 
   // Any connected participant may end a game that's paused for a disconnected required player --
@@ -4454,6 +4495,10 @@ async function handleRoomAction(req, res, action, session) {
     if (!connectedSeats.length) {
       return sendError(res, 409, 'NO_CONNECTED_PLAYERS', '접속 중인 참가자가 없어 종료할 수 없습니다.');
     }
+    if (yutTakeOverOk(room, disconnectedSeats)) { /* (윷놀이 C: 3~4명 -- the AI plays the silent seats, the game goes on) */
+      for (const seat of disconnectedSeats) yutTakeOver(room, seat);
+      room.turnWatch = null; syncGamePause(room, false);
+    } else {
     room.game.status = 'finished';
     // 2-seat games (and anywhere else exactly one seat is left) keep the plain single-value
     // winner every other ending path on that game already uses; only a 3+ seat free-for-all with
@@ -4471,6 +4516,7 @@ async function handleRoomAction(req, res, action, session) {
     room.game.paused = false;
     room.game.disconnectedSeats = [];
     appendSystemMessage(room, `${session.label || '참가자'}님이 응답 없는 참가자를 상대로 대국을 종료했습니다. 응답 중인 참가자 승리로 기록됩니다.`);
+    }
   }
 
   if (action === 'next-round' || action === 'rematch') {
@@ -4483,7 +4529,7 @@ async function handleRoomAction(req, res, action, session) {
 
   // v1.7.3: this action started the game -- charge every seated player's entry fee now, or undo
   // the start (the room goes back to waiting; seats stay) if anyone is short or points fail.
-  if (entryBefore && room.game.status !== 'selecting') {
+  if (entryBefore && room.game.status !== 'selecting' && roomPolicy(room) === 'entry') { /* (윷놀이 C: 「빈자리 AI」 started it -- no entry) */
     let charged;
     const pending = chargeRoomEntry(room);
     room.entryPending = pending;
@@ -4504,7 +4550,7 @@ async function handleRoomAction(req, res, action, session) {
   if (!(await recordOrError(room, res))) return;
   touchRoom(room);
   broadcast(room);
-  if (room.ai) scheduleAiMove(room); // v1.10.72: the AI's turn now (a start with AI first, or after the person's move)
+  if (room.ai || room.bots) scheduleAiMove(room); // v1.10.72: the AI's turn now (a start with AI first, or after the person's move)
   return sendJson(res, 200, {
     ok: true,
     state: roomView(room, session),
@@ -4538,7 +4584,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.308' });
+    return sendJson(res, 200, { ok: true, version: '1.10.309' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -9208,6 +9254,8 @@ async function requestHandler(req, res) {
       room.participants[session.token].connected = false;
       room.participants[session.token].lastSeen = nowIso();
       appendSystemMessage(room, (session.label || '게스트') + '님이 방에서 나갔습니다.');
+      const takeOver = leftSeat && yutTakeOverOk(room, [leftSeat]) && yutTakeOver(room, leftSeat); /* (윷놀이 C: after the leaving line -- the AI's is the last one said) */
+      if (takeOver) { room.turnWatch = null; syncGamePause(room, false); scheduleAiMove(room); }
       touchRoom(room);
       broadcast(room);
     }
@@ -9285,7 +9333,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-pandemic|start-pandemic|pandemic-act|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|present|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-pandemic|start-pandemic|pandemic-act|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|fill-ai|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|present|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -9443,7 +9491,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.308 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.309 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

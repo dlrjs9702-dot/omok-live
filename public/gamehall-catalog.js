@@ -38,7 +38,7 @@
     { id: 'othello', name: '오델로', cats: ['board', 'ai'], players: '2인', colors: ['#166534', '#14532d'], art: 'reversi', room: 'othello', ai: 'reversi',
       intro: '사이에 낀 돌을 뒤집는 판 게임', how: how('상대 돌을 내 돌 사이에 끼우는 자리에만 둡니다', '끼운 돌은 모두 내 색으로 뒤집힙니다', '판이 다 차면 돌이 많은 쪽이 이깁니다') },
     { id: 'yut', name: '윷놀이', cats: ['board'], players: '2인', colors: ['#9a3412', '#7c2d12'], art: 'yut', room: 'yut',
-      intro: '윷을 던져 말 네 개를 먼저 내는 놀이', how: how('윷을 던져 나온 만큼 말을 움직입니다', '윷·모가 나오거나 상대 말을 잡으면 한 번 더', '말 네 개가 먼저 한 바퀴를 돌아 나오면 이깁니다') },
+      intro: '윷을 던져 말을 먼저 모두 내는 놀이', how: how('윷을 던져 나온 만큼 말을 움직입니다', '윷·모가 나오거나 상대 말을 잡으면 한 번 더', '말(2명 4개 · 3~4명 3개)이 먼저 모두 한 바퀴를 돌아 나오면 이깁니다') },
     { id: 'dots', name: '점과 상자', cats: ['board'], players: '2인', colors: ['#0f766e', '#115e59'], svg: 'dots', room: 'dots',
       intro: '선을 그어 상자를 더 많이 닫는 대결', how: how('점 사이에 선을 하나씩 긋습니다', '상자의 네 번째 선을 그으면 내 상자가 되고 한 번 더', '상자를 더 많이 가진 쪽이 이깁니다') },
     { id: 'bingo', name: '빙고', cats: ['board', 'party'], players: '2~4인', colors: ['#b45309', '#92400e'], svg: 'bingo', room: 'bingo',
