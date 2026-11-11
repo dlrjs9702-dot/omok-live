@@ -570,7 +570,7 @@
   // v1.10.310 잡초 편입 (사용자 「섬 전체 잡초를 해당 그림으로 바꿔, 가볍게」): the weeds as assets 106's broad leaves, tufts and ferns
   // (60 : 30 : 10 by place, island-pilot weedKind) -- no shadows; broad leaves faded out past 48 m, tufts and ferns past 25 m (beyond
   // it only the broad ones, the lightest); in the hand the season where I stand (asset-loader hold `season`)
-  for (const [k, f, far] of [['broad', 'grass_broad', 48], ['tuft', 'grass_tuft', 25], ['fern', 'bush_fern', 25]]) REGISTRY[`weed.${k}`] = { seasons: REGISTRY[`pilot.${f}`].seasons, near: far, shadows: false, hideFar: far };
+  for (const [k, f, far, scale] of [['broad', 'grass_broad', 48, 1], ['tuft', 'grass_tuft', 25, 1], ['fern', 'bush_fern', 25, 0.65]]) REGISTRY[`weed.${k}`] = { seasons: REGISTRY[`pilot.${f}`].seasons, near: far, shadows: false, hideFar: far, ...(scale !== 1 ? { scale } : {}) }; /* (총괄 #460: the fern 0.65 -- as tall as a character it read as a bush) */
   for (const id of ['nature.bush.0', 'nature.bush.1', 'angular.bush']) REGISTRY[id].hideFar = 60; // (G2 덤불: past 60 m faded out over the 0.4 s dither; never casting shadows -- `shadows: false` kept)
   REGISTRY['project.blossom'] = { url: `${N109}/spring/tree_cluster.glb`, scale: 0.888, near: 35 }; // (the flower path's trees: in bloom whatever the season)
   // G4a 흩뿌리기 (assets 112: Nature Megapack, RG Poly, CC0): fallen logs, palms, tall grass, lily pads and lotus where the

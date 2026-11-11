@@ -807,10 +807,12 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     for (const p of N4.palms) if (settled(p)) solids.push({ nature: true, x: p.x, z: p.z, r: 0.3 * p.s });
     const tallClump = keep(mergeColored([blade(0, 0, 0.95), blade(0.3, 0.25, 0.8), blade(-0.25, -0.3, 0.85), blade(0.1, -0.35, 0.7)])); /* (the instance's size is the model's too: the stand-in made tall, not scaled) */
     for (let k = 0; k < 3; k += 1) instanced(tallClump, natureMat, N4.grass.filter((g) => g.kind === k && settled(g)), (g) => setM(g.x, onMesh(g.x, g.z), g.z, g.s, g.s, g.yaw), { shadow: false, cell: 60, target: [`ground.tallgrass.${k}`] });
-    // v1.10.310 덩굴 (assets 112): hung from the tops of the steep faces (island-vines.js, tools/vine-spots.js) -- strands and drapes;
-    // the stand-in a thin green sheet of the model's size (its origin at the bottom, its face +z out over the drop)
-    const vines = globalThis.IslandVines?.SPOTS || [];
-    [['strands', 0.26, 1.6], ['drape', 2.4, 0.76]].forEach(([kind, w, h], k) => instanced(mergeColored([part(new THREE.BoxGeometry(w, h, 0.04), 0x4f8a3f, 0, h / 2, 0)]), natureMat, vines.filter((v) => v[0] === kind).map(([, x, y, z, yaw]) => ({ x, y, z, yaw })), (v) => setM(v.x, v.y, v.z, 1, 1, v.yaw), { shadow: false, cell: 60, target: [`nature.vine.${k}`] }));
+    // v1.10.310 덩굴 (assets 112): hung down the steep faces (island-vines.js, tools/vine-spots.js: 총괄 #460 -- along the face, x2.2,
+    // a few side by side) -- strands and drapes; the stand-in a thin green sheet of the model's size (its origin at the bottom, its
+    // face +z out over the drop, its top tilted back toward the face)
+    const vines = globalThis.IslandVines?.SPOTS || []; const vineTurn = new THREE.Euler();
+    [['strands', 0.26, 1.6], ['drape', 2.4, 0.76]].forEach(([kind, w, h], k) => instanced(mergeColored([part(new THREE.BoxGeometry(w, h, 0.04), 0x4f8a3f, 0, h / 2, 0)]), natureMat, vines.filter((v) => v[0] === kind).map(([, x, y, z, yaw, tilt, s]) => ({ x, y, z, yaw, tilt, s })),
+      (v) => { q.setFromEuler(vineTurn.set(-v.tilt, v.yaw, 0, 'YXZ')); m4.compose(v3.set(v.x, v.y, v.z), q, sc.set(v.s, v.s, v.s)); }, { shadow: false, cell: 60, target: [`nature.vine.${k}`] }));
     const padGeo = mergeColored([part(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 9), 0x5f9e4f, 0, 0.015, 0)]);
     for (let k = 0; k < 4; k += 1) instanced(padGeo, natureMat, N4.lilies.filter((l) => l.kind === k), (l) => setM(l.x, T.streamWaterHeight(l.x, l.z) + 0.01, l.z, 1, 1, l.yaw), { shadow: false, cell: 60, target: [k < 2 ? `water.lily.${k}` : `water.lotus.${k - 2}`] });
   }
