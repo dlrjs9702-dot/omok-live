@@ -61,4 +61,13 @@ test('게임방 AI: 자리를 고르면 AI가 맞은편에, 두면 AI가 받아 
   state = await waitFor(async () => { const s = await room(); return s.game.throwCount > 0 && s.game.turn === 'white' && s.game.phase === 'throw' && s; }, 'AI가 윷을 던지고 차례를 넘기지 않았습니다');
   assert.equal(state.game.status, 'playing'); assert.ok(state.participants.some((p) => p.label === 'AI · 보통' && p.seat === 'black'));
   assert.equal((await req('/api/room/throw-yut', a, {})).status, 200);
+  // 윷놀이 B 「AI와 하기」: four seats, mine 노랑 -- the three others AIs, each its own turn, then mine
+  await req('/api/room/leave', a, {});
+  const y4 = await req('/api/rooms', a, { gameType: 'yut', ai: 'normal', players: 4 }); assert.equal(y4.status, 201, JSON.stringify(y4.data));
+  assert.equal((await req('/api/rooms', a, { gameType: 'yut', players: 5 })).status, 400);
+  assert.equal((await req('/api/room/choose-role', a, { choice: 'yellow' })).status, 200);
+  state = await room(); assert.equal(state.game.status, 'playing'); assert.deepEqual(state.game.seatOrder, ['black', 'white', 'green', 'yellow']);
+  assert.deepEqual(state.participants.filter((p) => /^AI · 보통 \d$/.test(p.label)).map((p) => p.seat).sort(), ['black', 'green', 'white']);
+  state = await waitFor(async () => { const s = await room(); return s.game.turn === 'yellow' && s.game.phase === 'throw' && s; }, 'AI 셋이 차례를 넘기지 않았습니다');
+  assert.ok(state.game.throwCount >= 3); assert.equal(state.game.pieceCount, 3);
 });
