@@ -1057,7 +1057,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // tone (island-pilot-scene.js); pilotOn above
   const pilotPhone = Boolean(window.matchMedia?.('(pointer: coarse)').matches);
   const pilotSoftware = /swiftshader|llvmpipe|softpipe|software/i.test(made.gpu || ''); /* (v1.10.276: no ambient occlusion without a GPU -- 8.4 → 2.4 fps in the measure) */
-  const pilot = pilotOn ? pilotScene({ scene, assets, phone: pilotPhone, onTreesIn: () => island.pilotTreesIn(), groundMaps: () => island.groundMaps() }) : null;
+  const pilot = pilotOn ? pilotScene({ scene, assets, phone: pilotPhone, groundMaps: () => island.groundMaps() }) : null;
   let pilotCuts = []; let pilotCutsAt = 0;
   const pilotThings = (now) => { /* (no blade round a weed, an insect or an event's thing: 4 times a second) */
     if (now - pilotCutsAt < 250) return pilotCuts; pilotCutsAt = now; const out = []; const m = me.root.position;
@@ -2140,7 +2140,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // second -- moving, a window opening or leaving the island in that time calls it off -- and only the server's answer
   // takes the weed away (for everyone: removeWeeds).
   const WEED_CELL = 30; const WEED_GRID = 4; const WEED_REACH = 1.6; const WEED_MS = 1400; const WEED_LIFT = 620; /* v1.10.89 assets 37: 1.4 s, the weed comes up at the clip's lift event (0.62 s) */ const NOTHING = new THREE.Matrix4().makeScale(0, 0, 0);
-  let weedCells = []; const weedById = new Map(); let weedGrid = new Map(); let weedKey = null; let gather = null;
+  let weedCells = []; let weedBatches = { broad: [], tuft: [], fern: [] }; let pulledKind = 'broad'; const weedById = new Map(); let weedGrid = new Map(); let weedKey = null; let gather = null;
   const weedRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff7c2, transparent: true, opacity: 0.85, depthWrite: false }));
   weedRing.visible = false; weedRing.renderOrder = 1; scene.add(weedRing);
   const gridKey = (x, z) => `${Math.floor(x / WEED_GRID)},${Math.floor(z / WEED_GRID)}`;
@@ -2163,26 +2163,27 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function setWeeds(list) {
     prepareWeedBoard();
-    if (weedCells.length) { assets.unbatch(weedCells); for (const c of weedCells) { scene.remove(c.procedural[0]); c.procedural[0].dispose(); } }
-    weedCells = []; weedById.clear(); weedGrid = new Map();
+    if (weedCells.length) { for (const k of Object.keys(weedBatches)) assets.unbatch(weedBatches[k]); for (const c of weedCells) { scene.remove(c.procedural[0]); c.procedural[0].dispose(); } }
+    weedCells = []; weedBatches = { broad: [], tuft: [], fern: [] }; weedById.clear(); weedGrid = new Map();
     if (weedKey) { delete eventDoors[weedKey]; weedKey = null; }
     const byCell = new Map();
-    for (const [id, x, z] of list || []) { const k = `${Math.floor(x / WEED_CELL)},${Math.floor(z / WEED_CELL)}`; if (!byCell.has(k)) byCell.set(k, []); byCell.get(k).push({ id, x, z }); }
+    const kindOf = (x, z) => globalThis.IslandPilot?.weedKind?.(x, z) || 'broad'; /* (v1.10.310 잡초 편입: broad · tuft · fern, 60 : 30 : 10 by place) */
+    for (const [id, x, z] of list || []) { const kind = kindOf(x, z); const k = `${Math.floor(x / WEED_CELL)},${Math.floor(z / WEED_CELL)},${kind}`; if (!byCell.has(k)) byCell.set(k, []); byCell.get(k).push({ id, x, z, kind }); }
     const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0); const v = new THREE.Vector3(); const sc = new THREE.Vector3();
     for (const [k, items] of byCell) {
       const im = new THREE.InstancedMesh(island.weedGeometry, island.natureMaterial, items.length);
-      const [cx, cz] = k.split(',').map(Number);
+      const [cx, cz] = k.split(',').map(Number); const kind = items[0].kind;
       const cell = { x: (cx + 0.5) * WEED_CELL, z: (cz + 0.5) * WEED_CELL, parent: scene, procedural: [im], matrices: [], colors: null, shadow: false };
       items.forEach((w, i) => {
         const h = Math.abs(Math.sin(w.x * 12.9898 + w.z * 78.233) * 43758.5453) % 1; const size = 0.85 + h * 0.35;
         m4.compose(v.set(w.x, heightAt(w.x, w.z), w.z), q.setFromAxisAngle(up, h * TAU), sc.set(size, size, size));
         im.setMatrixAt(i, m4); cell.matrices.push(m4.clone());
-        weedById.set(w.id, { cell, i, x: w.x, z: w.z });
+        weedById.set(w.id, { cell, i, x: w.x, z: w.z, kind });
         const g = gridKey(w.x, w.z); if (!weedGrid.has(g)) weedGrid.set(g, []); weedGrid.get(g).push(w.id);
       });
-      im.computeBoundingSphere(); im.receiveShadow = true; scene.add(im); weedCells.push(cell);
+      im.computeBoundingSphere(); im.receiveShadow = true; scene.add(im); weedCells.push(cell); weedBatches[kind].push(cell);
     }
-    if (weedCells.length) assets.batch('nature.grass', weedCells);
+    for (const [kind, cells] of Object.entries(weedBatches)) if (cells.length) assets.batch(`weed.${kind}`, cells);
   }
   // a weed's copy moved (lifted while pulled) or gone (NOTHING)
   function weedMatrix(w, matrix) { w.cell.procedural[0].setMatrixAt(w.i, matrix); w.cell.procedural[0].instanceMatrix.needsUpdate = true; w.cell.matrices[w.i] = matrix.clone(); assets.refill(w.cell); }
@@ -2190,7 +2191,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const id of ids || []) {
       const w = weedById.get(id); if (!w) continue;
       if (gather?.id === id && !gather.pending) endGather(false);
-      weedMatrix(w, NOTHING); weedById.delete(id);
+      weedMatrix(w, NOTHING); weedById.delete(id); pulledKind = w.kind || 'broad'; /* (v1.10.310: the one pulled shown in the hand -- holdWeed right after) */
       const g = weedGrid.get(gridKey(w.x, w.z)); if (g) g.splice(g.indexOf(id), 1);
       if (weedKey === `weed:${id}`) { delete eventDoors[weedKey]; weedKey = null; }
     }
@@ -5595,7 +5596,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const setEventsPublic = (list) => setEvents(list);
   // v1.10.31: an event's motion when the server took it (pick up, give back, a photo), the weed in hand
   const playMine = (name) => { const played = Boolean(me.anim?.play(name)); lockForClip(played); return played; };
-  const holdWeed = () => assets.hold(me, 'prop.weedRooted', 900);
+  const holdWeed = () => { const p = me.root.position; assets.hold(me, `weed.${pulledKind}`, 900, { season: globalThis.IslandTerrain.seasonAt?.(p.x, p.z, Date.now()) || 'summer' }); }; /* (v1.10.310 잡초 편입: the weed's own model in the hand, its season) */
   const holdBasket = () => assets.hold(me, 'prop.event.basket', 1400); // v1.10.32: picking herbs, berries, mushrooms
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
   const setTownhallPass = (on) => yard.setPass(on); const mayorLine = () => yard.line(); // v1.10.41
