@@ -460,6 +460,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .bingoCell.actionableTarget{border-color:#10b981}
 :root[data-theme="light"] .oldmaidBack.selectable.actionableTarget{border-color:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,.8),0 0 12px rgba(52,211,153,.34)}
 :root[data-theme="light"] .davinciTile.actionableTarget{border-color:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,.8),0 0 12px rgba(52,211,153,.38),0 .24rem .48rem rgba(0,0,0,.3)}
+:root[data-theme="light"] .yutResultChip{border:1px solid #c4a77d;background:#fbf3e2;color:#5a4632}
+:root[data-theme="light"] .yutResultChip.selected{background:#9c5f14;border-color:#9c5f14;color:#fff}
 :root[data-theme="light"] .yutPieceChoice{background:transparent;color:#cbd5e1;border:1px solid #334155}
 :root[data-theme="light"] .yutPieceChoice:hover:not(:disabled),:root[data-theme="light"] .yutPieceChoice:focus-visible{background:rgba(16,185,129,.12);border-color:rgba(52,211,153,.7);color:#ecfdf5}
 :root[data-theme="light"] .currentActor{box-shadow:inset 4px 0 0 #38bdf8,0 0 0 1px rgba(56,189,248,.55),0 0 14px rgba(56,189,248,.22);background-image:linear-gradient(90deg,rgba(56,189,248,.14),rgba(56,189,248,0) 70%)}

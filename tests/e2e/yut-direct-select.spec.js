@@ -152,7 +152,7 @@ test.describe('윷놀이 말 직접 선택', () => {
       if (NODE[destination.position]) await clickBoard(page, NODE[destination.position]);
       await page.waitForTimeout(900);
       await clickBoard(page, START);
-      expect(sent).toEqual([{ pieceId: 'black-1' }]);
+      expect(sent).toEqual([{ pieceId: 'black-1', ri: 0 }]);
 
       const after = await roomState(request, blue);
       const piece = after.game.pieces.black.find(item => item.id === 'black-1');
@@ -207,28 +207,31 @@ test.describe('윷놀이 말 직접 선택', () => {
       for (const [color, placed] of [['black', black], ['white', white]]) {
         for (const [id, position] of Object.entries(placed)) {
           const piece = game.pieces[color].find(item => item.id === `${color}-${id}`);
-          if (position === 'finished') Object.assign(piece, { status: 'finished', position: null });
-          else Object.assign(piece, { status: 'board', position, route: 'outer' });
+          /* (v1.10.307 실제 규칙: a cell and the trail it came by -- 참먹이 20 is the screen's finishLine) */
+          if (position === 'finished') Object.assign(piece, { at: yut.OUT, tr: [] });
+          else { const at = position === 'finishLine' ? 20 : position; Object.assign(piece, { at, tr: trailTo(at) }); }
         }
       }
       game.turn = turn;
-      assert(yut.throwYut(game, turn, new Date(throwAt += 1000).toISOString(), steps === -1 ? 1 : steps === 5 ? 0 : steps, steps === -1).legal);
+      assert(yut.throwYut(game, turn, new Date(throwAt += 1000).toISOString(), { n: steps === -1 ? 1 : steps === 5 ? 0 : steps, steps }).legal);
       return game;
     }
     function assert(value) { expect(value).toBeTruthy(); }
+    /* the cells a piece came by to `at` (빽도 goes back along it): the outer way, the 모 diagonal (21~25), the 뒷모 diagonal (26 27 23 28 29) */
+    function trailTo(at) { const run = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k); if (at <= 20) return [20, ...run(1, at)]; if (at <= 25) return [20, ...run(1, 5), ...run(21, at)]; if (at <= 27) return [20, ...run(1, 10), ...run(26, at)]; return [20, ...run(1, 10), 26, 27, 23, ...run(28, at)]; }
     const snapshotOf = game => ({ ...base, game: { ...base.game, ...yut.publicState(game) } });
     async function show(game) {
       injected = snapshotOf(game);
       // 집 말은 서로 같아 출발점 토큰 하나(가장 낮은 번호)만 제안한다: 집 말 이동은 여러 개여도 버튼은 하나.
       const legal = yut.legalMoves(game);
-      const isHome = move => game.pieces.black.find(item => item.id === move.pieceId)?.status === 'home';
+      const isHome = move => game.pieces.black.find(item => item.id === move.pieceId)?.at === -1;
       const expectedButtons = game.turn === 'black' ? legal.filter(move => !isHome(move)).length + (legal.some(isHome) ? 1 : 0) : 0;
       if (expectedButtons) await expect(page.locator('#yutMoveChoices .yutPieceChoice')).toHaveCount(expectedButtons, { timeout: 8000 });
       else await expect(page.locator('#yutMoveChoices .yutPieceChoice')).toHaveCount(0, { timeout: 8000 });
       await page.waitForTimeout(150);
     }
     const acceptMove = game => body => {
-      const verdict = yut.applyMove(game, body.pieceId, 'black', new Date(throwAt += 1000).toISOString());
+      const verdict = yut.applyMove(game, body.pieceId, 'black', new Date(throwAt += 1000).toISOString(), body.ri ?? 0);
       return verdict.legal ? snapshotOf(game) : null;
     };
 
@@ -241,10 +244,10 @@ test.describe('윷놀이 말 직접 선택', () => {
     await clickBoard(page, [NODE[3][0] + 13, NODE[3][1]]); // 오른쪽 말
     await clickBoard(page, [NODE[3][0] - 13, NODE[3][1]]); // 곧바로 왼쪽 말(요청 대기 중)
     await expect.poll(() => sent.length).toBe(1);
-    expect(sent[0]).toEqual({ pieceId: stackMove.pieceId });
+    expect(sent[0]).toEqual({ pieceId: stackMove.pieceId, ri: 0 });
     await page.waitForTimeout(700);
     expect(sent).toHaveLength(1);
-    expect(game.pieces.black.filter(item => item.position === 5).map(item => item.id).sort()).toEqual(['black-1', 'black-3']);
+    expect(game.pieces.black.filter(item => item.at === 5).map(item => item.id).sort()).toEqual(['black-1', 'black-3']);
 
     // 2) 빽도: 1번 칸 말 → 완주 직전 칸, 7번 칸 말 → 6번 칸. 집 말(출발점)은 대상이 아니다.
     sent.length = 0;
@@ -257,9 +260,9 @@ test.describe('윷놀이 말 직접 선택', () => {
     expect(sent).toHaveLength(0);
     await clickBoard(page, NODE[1]);
     await expect.poll(() => sent.length).toBe(1);
-    expect(sent[0]).toEqual({ pieceId: 'black-1' });
+    expect(sent[0]).toEqual({ pieceId: 'black-1', ri: 0 });
     await page.waitForTimeout(700);
-    expect(game.pieces.black.find(item => item.id === 'black-1').position).toBe('finishLine');
+    expect(game.pieces.black.find(item => item.id === 'black-1').at).toBe(20); /* (참먹이: the screen's finishLine) */
 
     // 3) 완주 직전 칸의 말이 도(1칸)로 완주: 클릭 → 완주 처리, 이동 애니메이션 중 재클릭 무시.
     sent.length = 0;
@@ -272,8 +275,8 @@ test.describe('윷놀이 말 직접 선택', () => {
     await clickBoard(page, NODE.finishLine);
     await clickBoard(page, START);
     await page.waitForTimeout(700);
-    expect(sent).toEqual([{ pieceId: 'black-1' }]);
-    expect(game.pieces.black.find(item => item.id === 'black-1').status).toBe('finished');
+    expect(sent).toEqual([{ pieceId: 'black-1', ri: 0 }]);
+    expect(game.pieces.black.find(item => item.id === 'black-1').at).toBe(yut.OUT);
 
     // 4) 상대 차례의 move 단계: 상대 말·출발점을 눌러도 요청이 없다.
     sent.length = 0;
@@ -286,4 +289,24 @@ test.describe('윷놀이 말 직접 선택', () => {
     expect(sent).toHaveLength(0);
     expect(errors).toEqual([]);
   });
+});
+
+// v1.10.307 윷놀이 실제 규칙 (notes docs/yut-real-rules-20261109.md 3): 윷 → one more throw → 개; the kept results as chips, the one
+// chosen used on the piece (its distance in the hint), the other kept; set throws (the server's test hook)
+test('윷놀이 결과 칩: 윷·모면 한 번 더, 모은 결과를 골라 쓰고 나머지는 남아요', async ({ browser, request }) => {
+  const { shopper, post, twoPlayerRoom } = require('./skin-support');
+  const a = await shopper(browser, request, '윷칩흑', 0, 'male'); const b = await shopper(browser, request, '윷칩백', 0, 'female');
+  await twoPlayerRoom(request, a, b, 'yut'); const { page } = a;
+  const chips = page.locator('#yutResultChips .yutResultChip');
+  expect((await post(request, '/api/room/throw-yut', a.token, { steps: 4 })).status).toBe(200);
+  await expect(page.locator('#yutHint')).toContainText('한 번 더', { timeout: 15000 });
+  expect((await post(request, '/api/room/throw-yut', a.token, { steps: 2 })).status).toBe(200);
+  await expect(chips).toHaveText(['윷', '개'], { timeout: 15000 });
+  await chips.nth(1).click(); await expect(chips.nth(1)).toHaveClass(/selected/); await expect(page.locator('#yutHint')).toContainText('개 · 2칸');
+  await page.locator('#yutMoveChoices .yutPieceChoice').first().click();
+  await expect(chips).toHaveText(['윷'], { timeout: 15000 });
+  const g = (await (await request.get('/api/room', { headers: { 'X-Session-Token': a.token } })).json()).state.game;
+  expect(g.pieces.black.filter((p) => p.position === 2)).toHaveLength(1); expect(g.pend.map((r) => r.name)).toEqual(['윷']);
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/pc-yut-chips.png` });
+  for (const who of [a, b]) await who.context.close();
 });

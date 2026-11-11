@@ -53,4 +53,12 @@ test('게임방 AI: 자리를 고르면 AI가 맞은편에, 두면 AI가 받아 
   state = await room();
   assert.equal(state.game.status, 'playing');
   assert.ok(state.participants.some((p) => p.label === 'AI · 보통' && p.seat === 'white'));
+  // 윷놀이 (v1.10.307 실제 규칙 A, notes docs/yut-real-rules-20261109.md 2): the AI throws on its turn, uses its kept results,
+  // then the turn is mine -- practice too
+  await req('/api/room/leave', a, {}); await req('/api/room/leave', b, {});
+  const yr = await req('/api/rooms', a, { gameType: 'yut', ai: 'normal' }); assert.equal(yr.status, 201, JSON.stringify(yr.data));
+  assert.equal((await req('/api/room/choose-role', a, { choice: 'white' })).status, 200);
+  state = await waitFor(async () => { const s = await room(); return s.game.throwCount > 0 && s.game.turn === 'white' && s.game.phase === 'throw' && s; }, 'AI가 윷을 던지고 차례를 넘기지 않았습니다');
+  assert.equal(state.game.status, 'playing'); assert.ok(state.participants.some((p) => p.label === 'AI · 보통' && p.seat === 'black'));
+  assert.equal((await req('/api/room/throw-yut', a, {})).status, 200);
 });
