@@ -5032,6 +5032,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req); const ms = Number(body.ms) || 0; const now = nowMs();
     if (ms) await farmApply(account, (d) => ({ doc: { ...d, beds: Object.fromEntries(Object.entries(d.beds || {}).map(([u, cells]) => [u, cells.map((c) => (c ? { ...c, at: c.at - ms, ...(c.fed ? { fed: c.fed - ms } : {}) } : c))])) } }));
     if (body.weeks || body.days) await upkeepApply(account, (d) => ({ doc: { ...d, ...(body.weeks ? { since: IslandFarm.weekOf(now - Number(body.weeks) * 7 * 86400000), week: null, given: {}, done: [], letter: null } : {}), ...(body.days ? { weeds: { list: d.weeds?.list || [], day: IslandFarm.dayOf(now - Number(body.days) * 86400000) } } : {}) } }));
+    const h = await homeOf(account); if (h?.lot) broadcastIsland('homes', { lot: h.lot }); /* (every screen draws it again) */
     return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity/fail-once' && req.method === 'POST') { giftAffinityFails = true; return sendJson(res, 200, { ok: true }); } // (Codex 검토 2차 #7: the next gift's 호감도 fails)

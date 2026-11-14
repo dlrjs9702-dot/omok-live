@@ -20,6 +20,9 @@ const HOUR = 3600000;
 test('마당 농사 규칙: 단계 4개(시간의 1/3마다), 퇴비 뒤 두 배, 집 크기별 손보기 양, 한 주 빠지면 허름함, 마당 잡초 하루 3포기·최대 12', () => {
   const c = { crop: 'carrot', at: 0 }; // (12 h)
   assert.deepEqual([0, 4, 8, 12, 99].map((h) => Farm.stageOf(c, h * HOUR)), [0, 1, 2, 3, 3]);
+  /* time left: whole minutes rounded up, never 「60분」 */
+  assert.deepEqual([10 * HOUR + 59.5 * 60000, 2 * HOUR, 61000, 5000].map(Farm.leftWord), ['11시간', '2시간', '2분', '1분']);
+  assert.equal(Farm.leftWord(3 * HOUR + 5 * 60000), '3시간 5분');
   assert.equal(Farm.stageOf({ ...c, fed: 2 * HOUR }, 7 * HOUR - 1), 2); // (composted at 2 h: 2 h + 5 h twice = 12 h -- ripe at 7 h)
   assert.equal(Farm.ripeAt({ ...c, fed: 2 * HOUR }), 7 * HOUR);
   assert.equal(Farm.stageOf({ ...c, fed: 2 * HOUR }, 7 * HOUR), 3);

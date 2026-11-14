@@ -44,6 +44,8 @@
     if (f === null || f - cell.at >= c.growMs) return cell.at + c.growMs;
     return f + (c.growMs - (f - cell.at)) / 2;
   }
+  // 「3시간 5분」 for the time left (whole minutes, rounded up: never 「60분」)
+  function leftWord(ms) { const all = Math.max(1, Math.ceil(ms / 60000)); const h = Math.floor(all / 60); const m = all % 60; return `${h ? `${h}시간` : ''}${h && m ? ' ' : ''}${m || !h ? `${m}분` : ''}`; }
 
   // 집 손보기 (사용자 1A 한 주 양, 2A 집 크기에 따라): each week's owing, 큰 집 ×1.5, 2층 큰 집 ×2 (rounded up)
   const UPKEEP = Object.freeze({ weed: 30, twig: 10, stone: 5 });
@@ -95,5 +97,5 @@
     return out;
   }
 
-  return { CROPS, ORDER, seedId, cropId, cropOfSeed, SLOTS, BEDS, bedsFor, stageOf, ripe, ripeAt, UPKEEP, UPKEEP_NAMES, UPKEEP_ITEMS, upkeepNeed, upkeepScale, upkeepDone, upkeepState, weekOf, dayOf, prevWeek, CRAFTS, YARD_WEEDS, growYardWeeds };
+  return { CROPS, ORDER, seedId, cropId, cropOfSeed, SLOTS, BEDS, bedsFor, stageOf, ripe, ripeAt, leftWord, UPKEEP, UPKEEP_NAMES, UPKEEP_ITEMS, upkeepNeed, upkeepScale, upkeepDone, upkeepState, weekOf, dayOf, prevWeek, CRAFTS, YARD_WEEDS, growYardWeeds };
 }));

@@ -50,8 +50,8 @@ test('마당 규칙: 울타리 안/밖·집·현관 길·겹침 허용·0.05 m �
   // the arch blocks at its two posts only; the stepping stones not at all; a bench's two seats
   assert.equal(Y.solidsOf(lot, { id: id('arch'), x: -5, z: 0, rot: 0 }).length, 2); assert.equal(Y.solidsOf(lot, { id: id('stepping_stones'), x: -5, z: 0, rot: 0 }).length, 0);
   assert.equal(Y.seatsOf(lot, bench).length, 2); assert.equal(Y.limitOf(1), 24); assert.equal(Y.limitOf(2), 40); assert.equal(Y.limitOf(3), 60);
-  // the shop: all twelve on the 「마당」 shelf, each its own place
-  assert.equal(F.YARD_SLOTS.length, 12); assert.ok(F.YARD_SLOTS.every((s) => F.placeAt(F.world(s.lx, s.lz).x, F.world(s.lx, s.lz).z).id === s.id));
+  // the shop: all twelve on the 「마당」 shelf, each its own place (v1.10.318: and the 텃밭, the thirteenth, by the lift's wall)
+  assert.equal(F.YARD_SLOTS.length, 13); assert.ok(F.YARD_SLOTS.every((s) => F.placeAt(F.world(s.lx, s.lz).x, F.world(s.lx, s.lz).z).id === s.id));
 });
 
 test('마당 서버: 사기 → 마당에 놓기(개수 24·넓히기 40) · 집 안↔마당 섞기 막음 · 넓히기 값 · 벤치 앉기 · 집 넓히면 걸린 것 창고로·쪽지 · 집터 풀면 창고로·단계는 남음', async (t) => {
