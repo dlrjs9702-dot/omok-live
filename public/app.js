@@ -3815,7 +3815,7 @@
   function placeShow() {
     const t = placeOn; if (!t) return; const h = t.held;
     t.why = h ? (t.a.stuck(h) ? '위에 놓인 물건을 먼저 치워 주세요.' : null) || t.a.ghost(h) : (t.a.ghost(null), null);
-    const status = placeBar.querySelector('.placeStatus'); if (status) { status.textContent = h ? `${h.name} · ${t.why || '여기에 놓을 수 있어요'}` : '줄에서 가구를 고르거나, 놓인 가구를 눌러 들어요.'; status.dataset.at = h ? `${h.x},${h.z},${h.rot}` : ''; status.classList.toggle('bad', Boolean(h && t.why)); }
+    const status = placeBar.querySelector('.placeStatus'); if (status) { if (h) { const n = document.createElement('span'); n.className = 'placeName'; n.textContent = h.name; const r = document.createElement('span'); r.className = 'placeSay'; r.textContent = ` · ${t.why || '여기에 놓을 수 있어요'}`; status.replaceChildren(n, r); } else status.textContent = '줄에서 가구를 고르거나, 놓인 가구를 눌러 들어요.'; /* (v1.10.315 총괄 #465: a phone shows the name, up to two lines -- why not over the bar as before) */ status.dataset.at = h ? `${h.x},${h.z},${h.rot}` : ''; status.classList.toggle('bad', Boolean(h && t.why)); }
     for (const b of placeBar.querySelectorAll('.placeHeld')) b.disabled = !h;
     const put = placeBar.querySelector('.placePut'); if (put) put.disabled = !h || Boolean(t.why);
     const back = placeBar.querySelector('.placeBack'); if (back) { back.hidden = !h || !t.a.placed().some((x) => x.uid === h.uid); back.disabled = back.hidden || t.a.stuck({ ...h, x: NaN }); } // (v1.10.239: only for a placed one)

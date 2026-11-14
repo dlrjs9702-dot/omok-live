@@ -118,6 +118,9 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     const L = Y.lotById(lot); const stage = (await get(request, '/api/home', a.token)).data.mine.stage || 1;
     const ok = []; for (let lz = -8; lz <= 6; lz += 0.5) for (let lx = -7; lx <= 7; lx += 0.5) { const p = Y.aimAt({ uid: 'b', id: 'yard_bench__plain', rot: 0 }, lx, lz); if (!Y.placeError(p, [], L, stage, 1)) ok.push(p); }
     await page.locator(`#placeBar .placePiece[data-uid="${uid('yard_bench__plain')}"]`).click(); await page.waitForTimeout(600); // (held: the low bar, the view above it)
+    expect((await page.evaluate(() => window.PlazaDebug().editCam())).zoom, '총괄 #465: 가까이·비스듬히 시작').toBeGreaterThan(0.2); await shot('place-yard-start', 900);
+    if (!isMobile) { const r = await page.locator('#plazaStage').boundingBox(); await page.mouse.move(r.x + r.width / 2, r.y + r.height / 3); await page.mouse.wheel(0, 3000); } else await page.evaluate(() => window.PlazaDebug().editCam(0)); /* (out to the whole yard: its front edge over the bar) */
+    await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().editCam())).zoom).toBe(0); await page.waitForTimeout(900);
     const spot = await page.evaluate((list) => { const bar = document.getElementById('placeBar').getBoundingClientRect().top - 24; const w = window.innerWidth; const seen = list.map((p) => ({ p, s: window.PlaceTool.screen(p.x, p.z) })).filter((o) => o.s && o.s.x > 40 && o.s.x < w - 40); const front = seen.reduce((m, o) => (!m || o.s.y > m.s.y ? o : m), null); return front && front.s.y < bar ? front.p : null; }, ok); // (5-3: the yard's front edge -- its place nearest the bottom -- over the bar)
     expect(spot).toBeTruthy();
     await aim(spot.x, spot.z); expect((await state()).why).toBe(null); await shot('place-yard', 800);
