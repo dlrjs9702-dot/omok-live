@@ -100,7 +100,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     for (let a = i - 2; a <= i + 2; a += 1) for (let b = j - 2; b <= j + 2; b += 1) for (const s of solidGrid.get(`${a},${b}`) || []) if (Math.hypot(x - s.x, z - s.z) < (s.r || 0.5) + 0.12) return true;
     return false;
   }
-  const thickAt = (x, z) => { const m = readMaps(); if (!m) return 0; const k = P.grassFrom(m(x, z)); return k > 0 && !(T.inPlaza && T.inPlaza(x, z)) && T.walkable(x, z) && !nearSolid(x, z) ? k : 0; };
+  const thickAt = (x, z) => { const m = readMaps(); if (!m) return 0; const k = P.grassFrom(m(x, z)); return k > 0 && !(T.inPlaza && T.inPlaza(x, z)) && !T.inTownhall?.(x, z, 0.3) /* (313 A4 「관공서 바닥에도 돌을 뚫고 풀이」: its paved yard and walls) */ && T.walkable(x, z) && !nearSolid(x, z) ? k : 0; };
   // the drawn ground's own height (its mesh's triangles, 2.5 m) -- the smooth heightAt left the sheet under it on a slope
   const groundY = (x, z) => (T.meshGroundHeight ? T.meshGroundHeight(x, z) : T.heightAt(x, z));
   const cellMap = new Map(); // 'i,j' -> { mesh, sheet, n (its blades), d }

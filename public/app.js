@@ -2038,6 +2038,7 @@
       device: { touch: document.body.classList.contains('touchIsland'), w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ua: navigator.userAgent.slice(0, 200) }, fps: fpsNow, errors: recentErrors.slice() };
     if (ctx.screen === 'room' && state) ctx.room = { game: state.gameType || null, id: state.id || null, status: state.game?.status || null };
     const d = plaza.controller?.debug?.();
+    try { const p = d?.perf?.(); if (p) ctx.perf = { fps: fpsNow, jsMs: p.jsMs, px: p.px, pixelRatio: p.pixelRatio, quality: d.quality ?? null, gpu: p.gpu }; } catch {} /* (313 ㅁ: CPU or graphics card -- the frame's JS, the pixels drawn, the tier, the GPU) */
     if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality, qualityMode: d.qualityAuto ? 'auto' : 'fixed', qualityChanges10m: d.qualityChanges ?? null, camera: { yaw: +Number(d.camYaw).toFixed(2), pitch: +Number(d.camPitch).toFixed(2), zoom: +Number(d.zoom).toFixed(1) } }; } // (2회차: how it was looked at)
     // (문제 기록 정리 2026-10-21: what the writer wears -- each slot's item, the transformation and how it is shown, and
     // the parts the island actually put on -- so an outfit report is made again from the record)
@@ -2703,7 +2704,7 @@
   }
   async function swingNet() {
     const hit = await plaza.controller?.netSwing?.(); if (!hit) return;
-    if (hit.insect) await catchInsect(hit.insect); else if (hit.resident != null) plaza.controller?.residentHit?.(hit.resident);
+    if (hit.insect) await catchInsect(hit.insect); else if (hit.resident != null) { plaza.controller?.residentHit?.(hit.resident); api('/api/island/resident/hit', { method: 'POST', body: JSON.stringify({ n: hit.resident }) }).catch(() => {}); } /* (313 A8: held there on every screen, the round put back) */
   }
   async function catchInsect(id) {
     try {

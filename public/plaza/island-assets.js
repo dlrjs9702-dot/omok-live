@@ -564,7 +564,7 @@
     'angular.rock_stack': 'crystal_heap', 'nature.shoreStones': 'shore_stones', 'angular.cliff_a': 'cliff_a', 'angular.cliff_b': 'cliff_b',
     'nature.flower.0': 'flower_tulip', 'nature.flower.1': 'flower_daisy_yellow', 'nature.flower.2': 'flower_daisy', 'nature.flower.3': 'flower_lavender', 'nature.flower.4': 'flower_red',
     'angular.grass_b': 'grass_reed', 'angular.grass_a': ['grass_reed', 0.778], 'angular.grass_d': 'reed_cattail', 'angular.grass_c': ['reed_cattail', 0.917],
-    'ground.fern': 'bush_fern', 'ground.shrub': 'plant_low', 'ground.flowers': 'clover',
+    'ground.fern': 'plant_low', 'ground.shrub': 'plant_low', 'ground.flowers': 'clover', /* (313 A6 「뽑을 수 없는 잡초가 몇개 있어」: the woods' fern cover was bush_fern -- since 310 the fern weed's own model, pulled at nowhere: the low plant instead) */
   };
   for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale }; } // ('nature.bush.0' was 'nature.bush')
   // v1.10.310 잡초 편입 (사용자 「섬 전체 잡초를 해당 그림으로 바꿔, 가볍게」): the weeds as assets 106's broad leaves, tufts and ferns
@@ -609,6 +609,9 @@
     'mountain_rock', 'mountain_snow', 'mountain_tall', 'mountain_tall_snow', 'hill_green'];
   for (const f of LAND113) { const far = /^(mountain|hill)_/.test(f); REGISTRY[`land.${f}`] = { seasons: l1(f), near: far ? 120 : 40, ...(far || f === 'rope_bridge' || f === 'shipwreck' ? { low: { seasons: l1(`${f}_low`) } } : {}), ...(far ? { shadows: false } : {}) }; }
   for (const [id, v] of Object.entries(YARD111)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || {}; REGISTRY[id] = { near: 30, ...kept, seasons: y2(f), scale, ...(FAR111.has(f) ? { low: { seasons: y2(`${f}_low`) } } : {}) }; }
+  // (313 A2 「의자랑 반대 방향으로 앉아」: the two benches of 111 have their backs at their own -z, the old ones at +z -- the turn kept
+  // with them put the back where one sits facing it. 대청마당's bench no longer turned; the yard's turned half round)
+  REGISTRY['prop.bench'].rotationY = 0; REGISTRY['yard.bench'].rotationY = Math.PI;
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)

@@ -102,3 +102,17 @@ test('주민 대화: 느린 화면이 몇 초 전 자리에서 붙잡으면 그 
   const p = Npcs.residentAt(5, t, s); assert.ok(Math.hypot(p.x - seen.x, p.z - seen.z) < 1e-9); // on from there
   r.talk(6, 'talk:b', 0, 60_000); assert.equal(r.snapshot()[6].hold.x, Npcs.at(6, t - 5000).x); // (never more than 5 s back)
 });
+
+// 313 A8 「채집채를 휘두르면 반응은 하는데 … 반응 한 후 빠른속도로 다른데로 가버려」: struck, held where they were for the
+// reaction, then on from that very spot (their round put back by as much) -- not one held for anything else
+test('채집채에 맞은 주민: 그 자리에 2.7초 서 있다가 같은 자리에서 이어 걷고, 다른 일로 붙잡힌 주민은 그대로', () => {
+  let t = 2_000_000;
+  const r = createIslandResidents({ now: () => t, random: () => 0 });
+  const before = Npcs.at(3, t);
+  assert.equal(r.flinch(3, 2700, 1), true); assert.equal(r.flinch(3, 2700, 1), false);
+  const held = r.snapshot()[3]; assert.match(held.hold.eventId, /^hit:3:/); assert.deepEqual([held.hold.x, held.hold.z], [before.x, before.z]);
+  t += 1500; assert.deepEqual([Npcs.residentAt(3, t, r.snapshot()[3]).x, Npcs.residentAt(3, t, r.snapshot()[3]).z], [before.x, before.z]);
+  t += 1200; const after = r.snapshot()[3]; assert.equal(after.hold, null); assert.equal(after.delay, 2700);
+  const on = Npcs.residentAt(3, t, after); assert.ok(Math.hypot(on.x - before.x, on.z - before.z) < 0.01, '같은 자리에서 다시 걷기 시작');
+  const e = r.reserve('event-x'); assert.equal(r.flinch(e.n, 2700, 0), false);
+});

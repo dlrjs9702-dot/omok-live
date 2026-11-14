@@ -98,9 +98,15 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
   await expect(dlg.locator('.recordTowerTotal')).toContainText('트로피 모두'); await expect(dlg.locator('.recordTowerAward', { hasText: '지뢰찾기' })).toContainText('🥇');
   await dlg.locator('#recordTowerPeriod .recordTowerChip', { hasText: '역대 최고' }).click();
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/rt-window-pc.png` });
+  await dlg.locator('#recordTowerLevels .recordTowerChip', { hasText: '고급' }).click(); /* (313 A7: not the remembered 초급) */
   await dlg.locator('#recordTowerGo').click();
   await expect(page.locator('#reflexView .reflexFrame.playing')).toBeVisible({ timeout: 30000 });
-  await expect.poll(() => page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return E.game?.id; })).toBe('mines');
+  const eng = () => page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return [E.game?.id, E.level]; });
+  await expect.poll(eng).toEqual(['mines', 'expert']);
+  // (313 A7 「어려움 한 후 다시하기를 누르면 쉬움으로 시작함」) the round over, 다시 하기: the same level again
+  await page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); E.onEnd({ score: null, outcome: 'loss' }); });
+  await page.locator('#reflexResult .hpBtn.go').click();
+  await expect(page.locator('#reflexView .reflexFrame.playing')).toBeVisible({ timeout: 30000 }); await expect.poll(eng).toEqual(['mines', 'expert']);
   await expectNoScriptError(page);
   await a.context.close();
 });
