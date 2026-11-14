@@ -1835,10 +1835,10 @@ test('계절 행사: 수확제 기간에 대청마당 가판대·행사 주민, 
     // the farm: the festival's harvest, a stamp
     const F = T.FARM; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [F.x, F.z - 1]);
     const answer = page.waitForResponse((r) => r.url().includes('/api/island/festival/harvest'));
-    expect(await spaceOn(page, 'fest:harvest', isMobile)).toBeTruthy(); expect((await answer).status()).toBe(200);
+    await expect.poll(() => spaceOn(page, 'fest:harvest', isMobile), { timeout: 15000 }).toBe(true); expect((await answer).status()).toBe(200); /* (#462 local, main too 3 of 3: right after the warp no frame had picked the farm yet) */
     // the stall: its goods, the stamp counted
     await page.evaluate(([x, z, yaw]) => window.PlazaWarp(x - Math.sin(yaw) * 1.6, z - Math.cos(yaw) * 1.6), [P.stall.x, P.stall.z, P.stall.yaw]);
-    expect(await spaceOn(page, 'fest:stall', isMobile)).toBeTruthy();
+    await expect.poll(() => spaceOn(page, 'fest:stall', isMobile), { timeout: 15000 }).toBe(true);
     await expect(card.locator('.festivalStamps')).toHaveText('도장 1개'); await expect(card.locator('.festivalShop li')).toHaveCount(6);
     await expectNoScriptError(page); await a.context.close();
   } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
