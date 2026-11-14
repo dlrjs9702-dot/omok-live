@@ -12450,6 +12450,366 @@
       "src": "nature112:01. High/winter/vine_strands.glb",
       "sha256": "9961d38ac12548c2d2fda5216b992bbf1939b89703919735918f3f1880482527",
       "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_cabbage_stage2.glb",
+      "src": "farm115:01. High/autumn/crop_cabbage_stage2.glb",
+      "sha256": "cd1728d5872d5499d824519ef8ae54b60615b09766c9433353ad56a5d36f690a",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_cabbage_stage3.glb",
+      "src": "farm115:01. High/autumn/crop_cabbage_stage3.glb",
+      "sha256": "0f68448d979d52972185a40c441a13472b372c128f686f715c53f8321b73442e",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_carrot_stage2.glb",
+      "src": "farm115:01. High/autumn/crop_carrot_stage2.glb",
+      "sha256": "34ea64b93e36acfdb155c21190ca20f7ac25c3f196924f76cb11c74fe465e6e4",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_carrot_stage3.glb",
+      "src": "farm115:01. High/autumn/crop_carrot_stage3.glb",
+      "sha256": "9a6042adeff3ec47c00528631bc07e913512c5b0eea2b27fa303595cd2056779",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_corn_stage2.glb",
+      "src": "farm115:01. High/autumn/crop_corn_stage2.glb",
+      "sha256": "4250b4e5dff14f7ccbfda23e89ede6e49a89ee8aec595d57f42f512142f415d7",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_corn_stage3.glb",
+      "src": "farm115:01. High/autumn/crop_corn_stage3.glb",
+      "sha256": "71a4f47ab86fffc1888f697ff1aa52bca71e92af06d319c3660a92f1945e38ff",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_potato_stage2.glb",
+      "src": "farm115:01. High/autumn/crop_potato_stage2.glb",
+      "sha256": "7f7d4b1f1bf05f7f6085293f25986e6e279e79ef008ccc88164f38207dbd6a8d",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_potato_stage3.glb",
+      "src": "farm115:01. High/autumn/crop_potato_stage3.glb",
+      "sha256": "9afc8a603341b407a750a9f63d164de2b9973e4012ae0a6b66a80507889a168b",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_pumpkin_stage2.glb",
+      "src": "farm115:01. High/autumn/crop_pumpkin_stage2.glb",
+      "sha256": "d0d37738be7fe6b2694f7dcdef3196885b90b1aa4c7b442826ab77c87fdfa1c1",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_pumpkin_stage3.glb",
+      "src": "farm115:01. High/autumn/crop_pumpkin_stage3.glb",
+      "sha256": "f555b670afb0f5702c498cd6860f897593eeb7cc4540f9becb02974ab087e2b1",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_stage0.glb",
+      "src": "farm115:01. High/autumn/crop_stage0.glb",
+      "sha256": "9cbd7d6dc2e68d8f55588f5c2093ec582207813151425c6d7dda036c9bd175ef",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_stage1.glb",
+      "src": "farm115:01. High/autumn/crop_stage1.glb",
+      "sha256": "b7c3389eb4daaa044bb9fffd5132fdebd3a95ee8652e6114b9dc4bce74a44d57",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_tomato_stage2.glb",
+      "src": "farm115:01. High/autumn/crop_tomato_stage2.glb",
+      "sha256": "aa0d3f4ee305c37374b9752b1e8b0749bee7f12defdc617be8447a44d15e3e59",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/crop_tomato_stage3.glb",
+      "src": "farm115:01. High/autumn/crop_tomato_stage3.glb",
+      "sha256": "488b99b400722971c192dfd410d47be11795928bb1b730a01a618504c10abb9d",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/autumn/farm_bed.glb",
+      "src": "farm115:01. High/autumn/farm_bed.glb",
+      "sha256": "9c0064e0c4e5ca0d2e15a8b86f6da593fafe1c2ae03f40fa963d61e0f612c05b",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_cabbage_stage2.glb",
+      "src": "farm115:01. High/spring/crop_cabbage_stage2.glb",
+      "sha256": "830ce9ec7a405623e74cf31458dbef4c570f6e20a9a3259544993957597b8ca2",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_cabbage_stage3.glb",
+      "src": "farm115:01. High/spring/crop_cabbage_stage3.glb",
+      "sha256": "4c8edd7f8281091d6b981239bab6a1175044428e95e0dc91e79e0d7771a0bc7e",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_carrot_stage2.glb",
+      "src": "farm115:01. High/spring/crop_carrot_stage2.glb",
+      "sha256": "9a17e4957a34966931c62cce8899970d969acd16a5a19e76d4a025a0751843a9",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_carrot_stage3.glb",
+      "src": "farm115:01. High/spring/crop_carrot_stage3.glb",
+      "sha256": "30019168e4b7bb1512d37b8795bacb6fac0bf36a2b999f9aca7a40f88f556240",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_corn_stage2.glb",
+      "src": "farm115:01. High/spring/crop_corn_stage2.glb",
+      "sha256": "e7367ff6ff5cf08f7d89a27240966a859758297bfa1585be9161d1890aa906c0",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_corn_stage3.glb",
+      "src": "farm115:01. High/spring/crop_corn_stage3.glb",
+      "sha256": "03bbab50339e359e90af9755199a71ad582c4f5bc6824006bef8d6c40b80cfe1",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_potato_stage2.glb",
+      "src": "farm115:01. High/spring/crop_potato_stage2.glb",
+      "sha256": "ec4662e2bf9707f95a9d65f5acb3c1142395e553ab4987671edee0167a23b9d8",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_potato_stage3.glb",
+      "src": "farm115:01. High/spring/crop_potato_stage3.glb",
+      "sha256": "bb9392861551483f90459122d4c43d32f77b3e513e1c83e5bd83a5638ab3248c",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_pumpkin_stage2.glb",
+      "src": "farm115:01. High/spring/crop_pumpkin_stage2.glb",
+      "sha256": "622070e16ff22ee477973fb310b576512f9a8a72c3c27e65d9800890c2cadc1a",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_pumpkin_stage3.glb",
+      "src": "farm115:01. High/spring/crop_pumpkin_stage3.glb",
+      "sha256": "6bb532336316540c66be7993d15f7ceacca6e1ce2cb65d286a76c9d6cc3f84a8",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_stage0.glb",
+      "src": "farm115:01. High/spring/crop_stage0.glb",
+      "sha256": "56f50a588107270d228f6e51987ab5c1ddc3176c312e11aabf7fdb43ec55fb4d",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_stage1.glb",
+      "src": "farm115:01. High/spring/crop_stage1.glb",
+      "sha256": "0dcff630c65331ad66987e88a5fcab67374488cbdf5511338ec310f12d6ab4f7",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_tomato_stage2.glb",
+      "src": "farm115:01. High/spring/crop_tomato_stage2.glb",
+      "sha256": "0e4be506ee109daae54cc0c0a96b5fc1b360639a547d9db3178267604292d109",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/crop_tomato_stage3.glb",
+      "src": "farm115:01. High/spring/crop_tomato_stage3.glb",
+      "sha256": "981b91c620786db46c8750be64b7126759f0b5a578206f4ea1077c535be8c934",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/spring/farm_bed.glb",
+      "src": "farm115:01. High/spring/farm_bed.glb",
+      "sha256": "baaf0a221db7fc5523b5360efe9a2405cf47774fa87cd004180f213286b40c8a",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_cabbage_stage2.glb",
+      "src": "farm115:01. High/summer/crop_cabbage_stage2.glb",
+      "sha256": "8bd303c870a8dd599015a7ac9ee501a503aa185428e9b53ad2b566f771a24f66",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_cabbage_stage3.glb",
+      "src": "farm115:01. High/summer/crop_cabbage_stage3.glb",
+      "sha256": "6959f64c28b4bd7f77d6add039e925c655c34e989e11adbb68d25f424375e815",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_carrot_stage2.glb",
+      "src": "farm115:01. High/summer/crop_carrot_stage2.glb",
+      "sha256": "a115c20ae9f18501ed6a679321794ddd9791477631b3228c0879cc3d281b1159",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_carrot_stage3.glb",
+      "src": "farm115:01. High/summer/crop_carrot_stage3.glb",
+      "sha256": "8f6074f10668aef1900560370b3db1b765038636a4dd80696ecaeb9fce9f07e8",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_corn_stage2.glb",
+      "src": "farm115:01. High/summer/crop_corn_stage2.glb",
+      "sha256": "d0bdd9fb84c04f72d6e7a6080a0a36dc1aa4c5aad6f24f99c3f702869a48dd39",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_corn_stage3.glb",
+      "src": "farm115:01. High/summer/crop_corn_stage3.glb",
+      "sha256": "d722c6967bd152e4b3ab7d6db9d98e1ab389c9a5c98715ddb1e4fc922ff23762",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_potato_stage2.glb",
+      "src": "farm115:01. High/summer/crop_potato_stage2.glb",
+      "sha256": "eddbb599c4d6e453d37be4ef1dafc32b8be696c42876790c8b12f2eab5c4c18c",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_potato_stage3.glb",
+      "src": "farm115:01. High/summer/crop_potato_stage3.glb",
+      "sha256": "a104d4c3752169a3ce975e20a1cbec775441492bd36d7f92b766f9173a12f6d9",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_pumpkin_stage2.glb",
+      "src": "farm115:01. High/summer/crop_pumpkin_stage2.glb",
+      "sha256": "fc4b045aee7378627461fb79cfe657678b9b7e0fd70965b384398428293b7fd4",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_pumpkin_stage3.glb",
+      "src": "farm115:01. High/summer/crop_pumpkin_stage3.glb",
+      "sha256": "0c31cea4c882dbbe56495a0841194cc8d9b16ce38d6172a50cc49d79d20b4571",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_stage0.glb",
+      "src": "farm115:01. High/summer/crop_stage0.glb",
+      "sha256": "1cce320f43759fd5f66c15f67e07a485e676122cbafaea3f3ad18753c4c7c5ae",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_stage1.glb",
+      "src": "farm115:01. High/summer/crop_stage1.glb",
+      "sha256": "6f0ccfbb5720c10fa0f36d09559b5bd297a1bca94c7194f15ab6f3ffee5059e9",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_tomato_stage2.glb",
+      "src": "farm115:01. High/summer/crop_tomato_stage2.glb",
+      "sha256": "575c213d23cf4dd9b4112522e20f944df1eb7abbcbcb483bac48ace9139085cc",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/crop_tomato_stage3.glb",
+      "src": "farm115:01. High/summer/crop_tomato_stage3.glb",
+      "sha256": "1d3862efce775d54a2faf136fea78fb402ddd8abc8399774c36db2f2f6fb2468",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/summer/farm_bed.glb",
+      "src": "farm115:01. High/summer/farm_bed.glb",
+      "sha256": "8198088d1c3c5194ea5537ec75e030442cf5edea5efdd7829db88b7832ff8ff1",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_cabbage_stage2.glb",
+      "src": "farm115:01. High/winter/crop_cabbage_stage2.glb",
+      "sha256": "c9bf027bdf6c4c3041fa5bc46141e388ee7380db4052a52320d9cd22bb76add1",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_cabbage_stage3.glb",
+      "src": "farm115:01. High/winter/crop_cabbage_stage3.glb",
+      "sha256": "a85380ef58f3880f04f09e74ce8c6962581fe99848dc34f80eb07d64c3940960",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_carrot_stage2.glb",
+      "src": "farm115:01. High/winter/crop_carrot_stage2.glb",
+      "sha256": "21a99f9274ff2dda6c2024dbfa97304c1727762ec0828fc58651766ec6645714",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_carrot_stage3.glb",
+      "src": "farm115:01. High/winter/crop_carrot_stage3.glb",
+      "sha256": "30a7d379852b3bac16d26ee40de4a002a6c37685732953c1591034f225e89309",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_corn_stage2.glb",
+      "src": "farm115:01. High/winter/crop_corn_stage2.glb",
+      "sha256": "ebb23ed984111091deef51470370ba0b9762983fabadeb2586d43ae6a32d3bf4",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_corn_stage3.glb",
+      "src": "farm115:01. High/winter/crop_corn_stage3.glb",
+      "sha256": "8926801e33b2644504353f166b30cd77109bee2fb2085c086b257ded79f5fb74",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_potato_stage2.glb",
+      "src": "farm115:01. High/winter/crop_potato_stage2.glb",
+      "sha256": "4bc43d4bf0688b43f24849e26792827825ca71e4b62f527e8d80b99ccba69dd8",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_potato_stage3.glb",
+      "src": "farm115:01. High/winter/crop_potato_stage3.glb",
+      "sha256": "86573a13a30f0eabdc9b233a06249f2dab90ea74e895e9724e12a7934349d064",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_pumpkin_stage2.glb",
+      "src": "farm115:01. High/winter/crop_pumpkin_stage2.glb",
+      "sha256": "838aa29c5cef0efaf760ad25a1c335375014c3b7e2db280eca041cb502c0fbee",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_pumpkin_stage3.glb",
+      "src": "farm115:01. High/winter/crop_pumpkin_stage3.glb",
+      "sha256": "db7cd4c5cdce1826035ea95f98014f29771821715b80de8050c76dd07b2a7720",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_stage0.glb",
+      "src": "farm115:01. High/winter/crop_stage0.glb",
+      "sha256": "db845891ccc0093060cc32af2c6c4f11712924a8750018726e37efa01f03d294",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_stage1.glb",
+      "src": "farm115:01. High/winter/crop_stage1.glb",
+      "sha256": "3aea4c060df1e685ca361d013f71ba8af12eebdbe0614907bfee782939731bc7",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_tomato_stage2.glb",
+      "src": "farm115:01. High/winter/crop_tomato_stage2.glb",
+      "sha256": "8fb95aa7cf1373fe9a2e8eaf89eb64f57d02629f709512cedb0661cae78a814f",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/crop_tomato_stage3.glb",
+      "src": "farm115:01. High/winter/crop_tomato_stage3.glb",
+      "sha256": "7cc8433ed82041e55bc00b36cdcadfbd83d5eb6a7295c4a1084a69b524f5ccef",
+      "precompressed": true
+    },
+    {
+      "out": "farm-v1/winter/farm_bed.glb",
+      "src": "farm115:01. High/winter/farm_bed.glb",
+      "sha256": "336f463fefcfcc9ab64e635d0f15ec3460f88529a5254b9f4c4a1ccd8365e04e",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -12544,6 +12904,7 @@
     "refit117": "117. Game Island outfit decor refit 2026-11-10",
     "fence120": "120. Game Island yard fence diet 2026-11-14",
     "walker121": "121. Game Island resident walker merge 2026-11-14",
-    "diet122": "122. Game Island heavy props diet 2026-11-14"
+    "diet122": "122. Game Island heavy props diet 2026-11-14",
+    "farm115": "115. Game Island yard farming F1 2026-11-10"
   }
 }

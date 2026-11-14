@@ -22,7 +22,7 @@ test('생활 자원: 15개 제한 없이 모든 종류·20개 나무, 지형/길
       for(const solid of T.natureSolids()) assert.ok(Math.hypot(e.x-solid.x,e.z-solid.z)>solid.r+0.45,'player approach clear');
       if(e.type==='beach_trash') assert.ok(T.coastDist(e.x,e.z)<8);
       if(e.type==='herb') assert.ok(T.nature().trees.some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6));
-      if(TYPES[e.type].fixed) assert.ok([...T.nature().trees,...T.nature().logs,...T.nature().flowers].some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6),e.type); /* (G4b: under a tree, by a log, in the clover by the flowers) */
+      if(TYPES[e.type].fixed) assert.ok((e.type==='stone_small'?T.nature().rocks:[...T.nature().trees,...T.nature().logs,...T.nature().flowers]).some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6),e.type); /* (G4b: under a tree, by a log, in the clover by the flowers; 318: a small stone by a rock) */
     }
   }
 });
