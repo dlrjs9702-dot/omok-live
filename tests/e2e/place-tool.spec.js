@@ -80,6 +80,16 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     if (!isMobile) { const was = (await state()).held; await page.keyboard.press('KeyW'); expect((await state()).held).not.toMatchObject({ x: was.x, z: was.z }); await page.keyboard.press('KeyS'); expect((await state()).held).toMatchObject({ x: was.x, z: was.z }); } // (문제 기록 1103 10: W/S a place, as the arrows)
     await put();
     await expect.poll(async () => (await inside()).find((p) => p.uid === uid('sofa__mint'))?.rot, { timeout: 15000 }).toBe(1);
+    // (v1.10.315 배치 도구 1단계) 「세밀」: turned 15°, moved 0.05 m, kept so by the server; the view zoomed in toward the held piece
+    await expect.poll(async () => { const s = await screen(want.x, want.z); if (isMobile) await page.touchscreen.tap(s.x, s.y); else await page.mouse.click(s.x, s.y); await page.waitForTimeout(300); return (await state()).held?.uid; }, { timeout: 15000 }).toBe(uid('sofa__mint'));
+    await page.locator('#placeBar .placeFineMode').click(); await expect(page.locator('#placeBar .placeFineMode')).toHaveAttribute('aria-pressed', 'true');
+    if (isMobile) await page.locator('#placeBar button[aria-label="돌리기 (R)"]').click(); else await page.keyboard.press('KeyR');
+    expect((await state()).held.rot).toBeCloseTo(7 / 6, 6);
+    const was = (await state()).held; if (isMobile) { await page.locator('#placeBar .placeFine').click(); await page.locator('#placeBar button[aria-label="오른쪽으로"]').click(); } else await page.keyboard.press('ArrowRight');
+    expect(Math.round(Math.hypot((await state()).held.x - was.x, (await state()).held.z - was.z) * 100) / 100).toBe(0.05);
+    if (!isMobile) { const s = await screen(was.x, was.z); await page.mouse.move(s.x, s.y); await page.mouse.wheel(0, -400); await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().editCam())).zoom).toBeGreaterThan(0.3); expect((await page.evaluate(() => window.PlazaDebug().editCam())).focus).toBeTruthy(); await shot('place-fine-zoom', 900); await page.mouse.wheel(0, 3000); await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().editCam())).zoom).toBe(0); } /* (out again: the whole room for the rest) */
+    await page.locator('#placeBar .placeFineMode').click(); await expect(page.locator('#placeBar .placeFineMode')).toHaveAttribute('aria-pressed', 'false'); /* (off again -- the held piece stays where 세밀 put it) */
+    { const h = (await state()).held; await put(); await expect.poll(async () => { const p = (await inside()).find((x) => x.uid === uid('sofa__mint')); return p && [Math.round(p.rot * 6), Math.round(p.x * 100) / 100, Math.round(p.z * 100) / 100]; }, { timeout: 15000 }).toEqual([7, Math.round(h.x * 100) / 100, Math.round(h.z * 100) / 100]); }
     // a wall clock: red in the middle (no ✓), green and flush by the back wall
     await strip('wall_clock__oak').click(); await aim(0, 0); expect((await state()).why).toBeTruthy(); await expect(page.locator('#placeBar .placePut')).toBeDisabled(); await shot('place-red', 600);
     if (isMobile) await expect(page.locator('#placeBar .placeWhy')).toContainText((await state()).why); // (총괄 239 검토: why not, whole -- over the bar on a phone)
@@ -108,6 +118,9 @@ test('배치 도구: 집에서 가리켜 놓기·다시 들기·돌리기·빨�
     const L = Y.lotById(lot); const stage = (await get(request, '/api/home', a.token)).data.mine.stage || 1;
     const ok = []; for (let lz = -8; lz <= 6; lz += 0.5) for (let lx = -7; lx <= 7; lx += 0.5) { const p = Y.aimAt({ uid: 'b', id: 'yard_bench__plain', rot: 0 }, lx, lz); if (!Y.placeError(p, [], L, stage, 1)) ok.push(p); }
     await page.locator(`#placeBar .placePiece[data-uid="${uid('yard_bench__plain')}"]`).click(); await page.waitForTimeout(600); // (held: the low bar, the view above it)
+    expect((await page.evaluate(() => window.PlazaDebug().editCam())).zoom, '총괄 #465: 가까이·비스듬히 시작').toBeGreaterThan(0.2); await shot('place-yard-start', 900);
+    if (!isMobile) { const r = await page.locator('#plazaStage').boundingBox(); await page.mouse.move(r.x + r.width / 2, r.y + r.height / 3); await page.mouse.wheel(0, 3000); } else await page.evaluate(() => window.PlazaDebug().editCam(0)); /* (out to the whole yard: its front edge over the bar) */
+    await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().editCam())).zoom).toBe(0); await page.waitForTimeout(900);
     const spot = await page.evaluate((list) => { const bar = document.getElementById('placeBar').getBoundingClientRect().top - 24; const w = window.innerWidth; const seen = list.map((p) => ({ p, s: window.PlaceTool.screen(p.x, p.z) })).filter((o) => o.s && o.s.x > 40 && o.s.x < w - 40); const front = seen.reduce((m, o) => (!m || o.s.y > m.s.y ? o : m), null); return front && front.s.y < bar ? front.p : null; }, ok); // (5-3: the yard's front edge -- its place nearest the bottom -- over the bar)
     expect(spot).toBeTruthy();
     await aim(spot.x, spot.z); expect((await state()).why).toBe(null); await shot('place-yard', 800);

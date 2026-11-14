@@ -16,12 +16,18 @@ test('내 집: 울타리 마을 집터 16곳은 길·물 밖 평지, 문 앞은 
   }
 });
 
-test('내 집: 놓기 규칙 -- 방 안·0.25 칸·겹침·문간·벽 가구', () => {
+// (v1.10.315 배치 도구 1단계: 0.05 m places and 15° turns, furniture into furniture -- the doorway still kept clear)
+test('내 집: 놓기 규칙 -- 방 안·0.05 칸·15°·겹침 허용·문간·벽 가구', () => {
   const sofa = { uid: 'a', id: 'sofa__mint', x: 0, z: 0, rot: 0 };
   assert.equal(H.placeError(sofa, []), null);
-  assert.match(H.placeError({ ...sofa, x: 0.1 }, []), /자리/);
+  assert.equal(H.placeError({ ...sofa, x: 0.1 }, []), null, '0.05 칸');
+  assert.match(H.placeError({ ...sofa, x: 0.12 }, []), /자리/);
+  assert.equal(H.placeError({ ...sofa, rot: 1 / 6 }, []), null, '15°'); assert.match(H.placeError({ ...sofa, rot: 0.1 }, []), /자리/); assert.match(H.placeError({ ...sofa, rot: 4 }, []), /자리/);
   assert.match(H.placeError({ ...sofa, x: 5.75 }, []), /방 밖/); // (the 작은 집: 12 x 12 m since 2026-10-21)
-  assert.match(H.placeError({ ...sofa, uid: 'b', x: 0.5 }, [sofa]), /겹쳐요/);
+  assert.equal(H.placeError({ ...sofa, uid: 'b', x: 0.5 }, [sofa]), null, '가구끼리 겹쳐도 됨');
+  { const b = H.boxOf({ ...sofa, rot: 0.5 }); assert.ok(b.x1 - b.x0 > 1.9 * Math.SQRT1_2 && b.z1 - b.z0 > 0.85, '45°: 돌린 발자국을 감싼 상자'); }
+  assert.match(H.placeError({ uid: 'w', id: 'wall_clock__oak', x: 0, z: 5.75, rot: 1 / 6 }, []), /나란히/, '벽 가구는 90°씩');
+  assert.equal(H.turnBy({ ...sofa, rot: 0 }, true), 1 / 6); assert.equal(H.turnBy({ ...sofa, rot: 23 / 6 }, true), 0); assert.equal(H.turnBy({ ...sofa, rot: 1 / 6 }), 7 / 6); assert.equal(H.turnBy({ id: 'wall_clock__oak', rot: 0 }, true), 1);
   assert.match(H.placeError({ ...sofa, z: -5 }, []), /문 앞/);
   assert.equal(H.placeError({ uid: 'r', id: 'rug_round__sage', x: 0, z: 0, rot: 0 }, [sofa]), null); // (a rug under it)
   const clock = { uid: 'c', id: 'wall_clock__oak', x: 0, z: 5.75, rot: 0 };
@@ -112,14 +118,14 @@ test('집 꾸미기: 작은 물건은 책상·탁자 위에, 걸치면 바닥 �
   assert.equal(H.supportOf(box, [desk])?.uid, 'd'); assert.equal(H.liftOf(box, [desk]), H.TOPS.desk); assert.ok(H.TOPS.desk > 0.7 && H.TOPS.desk < 0.85, '모델 윗면');
   assert.match(H.placeError({ ...box, x: 0.73 }, [desk]), /자리/, '위에서는 0.05 칸');
   assert.equal(H.placeError({ ...box, x: 1.15 }, [desk]), null, '0.05 칸 어디나');
-  const half = { ...box, x: 0.25 }; assert.equal(H.supportOf(half, [desk]), null); assert.match(H.placeError(half, [desk]), /다른 가구와 겹쳐요/, '반쯤 걸침 → 바닥 규칙');
+  const half = { ...box, x: 0.25 }; assert.equal(H.supportOf(half, [desk]), null); assert.equal(H.placeError(half, [desk]), null, '반쯤 걸침 → 바닥 규칙 (v1.10.315: 겹쳐도 됨)');
   const globe = { uid: 'g', id: 'xmas_snow_globe__plain', x: 0.8, z: 2, rot: 0 };
-  assert.match(H.placeError(globe, [desk, box]), /위에 놓인 다른 물건과 겹쳐요/, '같은 책상 위 둘 겹침');
+  assert.equal(H.placeError(globe, [desk, box]), null, '같은 책상 위 둘 겹쳐도 됨 (v1.10.315)');
   assert.equal(H.placeError({ ...globe, x: 1.3 }, [desk, box]), null, '같은 책상 위 나란히');
   assert.deepEqual(H.heldOn(desk, [box, { ...globe, x: 1.3 }]).map((p) => p.uid), ['i', 'g'], '책상 위에 있는 것');
   assert.equal(H.placeError({ uid: 's', id: 'sofa__mint', x: 3, z: 2, rot: 0 }, [desk, box]), null, '바닥 규칙 그대로');
-  assert.match(H.placeError({ ...desk, uid: 'd2', x: 1.25 }, [desk]), /겹쳐요/, '책상끼리는 겹침');
-  assert.equal(H.placeError(desk, [box]), null, '제자리 책상: 위의 것은 걸리지 않음'); assert.match(H.placeError({ ...desk, x: 0.25 }, [box]), /겹쳐요/, '조금 옮기면 걸친 물건과 겹침');
+  assert.equal(H.placeError({ ...desk, uid: 'd2', x: 1.25 }, [desk]), null, '책상끼리 겹쳐도 됨 (v1.10.315)');
+  assert.equal(H.placeError(desk, [box]), null, '제자리 책상: 위의 것은 걸리지 않음');
   assert.equal(H.supportOf({ uid: 'r', id: 'sofa__mint', x: 1, z: 2, rot: 0 }, [desk]), null, '큰 가구는 안 올라감');
   assert.equal(H.supportOf({ uid: 'n', id: 'radio__red', x: 1, z: 2, rot: 0 }, [{ ...desk, id: 'nightstand__oak' }]), null, '협탁은 위가 평평하지 않아 뺌');
   // V1 (assets 86): on a top the 곤충 상자 is the small tabletop one -- its own footprint decides (0.36 x 0.24), the floor one's not

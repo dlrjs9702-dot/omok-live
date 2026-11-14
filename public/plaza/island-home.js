@@ -107,15 +107,18 @@
   const tankRoom = (tankShape, fishes, id) => { const t = TANKS[tankShape]; return Boolean(t) && tankUsed(fishes) + fishRoom(id) <= t.slots; };
   const shapeOf = (goodId) => String(goodId || '').split('__')[0];
   // a placed piece's floor box (room-local): its footprint turned by rot quarters about (x, z)
+  // (v1.10.315 배치 도구 1단계: `rot` in quarter turns, a sixth of one -- 15° -- the finest; turned between the quarters, the box
+  // round its turned footprint)
+  const turnedSize = (s, rot) => { const a = (Number(rot) || 0) * (Math.PI / 2); const c = Math.abs(Math.cos(a)); const n = Math.abs(Math.sin(a)); return [s[0] * c + s[1] * n, s[0] * n + s[1] * c]; };
   function boxOf(p) {
     const s = SIZE[shapeOf(p.id)]; if (!s) return null;
-    const [w, d] = p.rot % 2 ? [s[1], s[0]] : [s[0], s[1]];
+    const [w, d] = turnedSize(s, p.rot);
     return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2 };
   }
   const overlap = (a, b) => a.x0 < b.x1 - 1e-6 && b.x0 < a.x1 - 1e-6 && a.z0 < b.z1 - 1e-6 && b.z0 < a.z1 - 1e-6;
   const within = (a, b) => a.x0 >= b.x0 - 1e-6 && a.x1 <= b.x1 + 1e-6 && a.z0 >= b.z0 - 1e-6 && a.z1 <= b.z1 + 1e-6;
   // the piece a small thing stands on (null: the floor), and what stands on a piece -- by place alone, nothing saved for it
-  const topBox = (p) => { const t = TOP_SIZE[shapeOf(p.id)]; if (!t) return boxOf(p); const [w, d] = p.rot % 2 ? [t[1], t[0]] : t; return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2 }; };
+  const topBox = (p) => { const t = TOP_SIZE[shapeOf(p.id)]; if (!t) return boxOf(p); const [w, d] = turnedSize(t, p.rot); return { x0: p.x - w / 2, x1: p.x + w / 2, z0: p.z - d / 2, z1: p.z + d / 2 }; };
   const supportOf = (p, others = []) => { const b = SMALL.has(shapeOf(p.id)) && topBox(p); return (b && others.find((o) => o.uid !== p.uid && TOPS[shapeOf(o.id)] && within(b, boxOf(o)))) || null; };
   const liftOf = (p, others = []) => { const t = supportOf(p, others); return t ? TOPS[shapeOf(t.id)] : 0; };
   const heldOn = (t, pieces = []) => (TOPS[shapeOf(t.id)] ? pieces.filter((o) => o.uid !== t.uid && SMALL.has(shapeOf(o.id)) && within(topBox(o), boxOf(t))) : []);
@@ -124,47 +127,49 @@
   // -> null when it may stand there, else why not (Korean, for the page)
   // (문제 기록 3회차 6 「벽면에 딱 안 붙어」: a piece stands on the 0.25 m steps or with an edge right against a wall -- the
   // walls are not on the steps, so a step short of one left a gap of up to 0.24 m)
-  const onStep = (v) => Math.abs(v * 4 - Math.round(v * 4)) < 1e-6;
+  // (v1.10.315 「세밀」: a place on the 0.05 m steps everywhere -- the plain arrows keep their 0.25 m -- or flush on a wall; a
+  // turn on the 15° steps, a hung piece still square to its wall)
+  const FINE = 0.05; const onStep = (v) => Math.abs(v / FINE - Math.round(v / FINE)) < 1e-6;
+  const onTurn = (r) => Number.isFinite(r) && r >= -1e-9 && r < 4 - 1e-9 && Math.abs(r * 6 - Math.round(r * 6)) < 1e-6;
   const flushOn = (v, half, H) => Math.abs(Math.abs(v) + half - H) < 1e-6;
   function placeError(p, others = [], stage = 2, { free = false } = {}) { // free: a held piece on its way (any place, not only the steps)
     const shape = shapeOf(p.id); if (!SIZE[shape]) return '놓을 수 없는 가구예요.';
-    if (![0, 1, 2, 3].includes(p.rot) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return '자리를 확인해 주세요.';
+    if (!onTurn(p.rot) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return '자리를 확인해 주세요.';
+    if (HUNG.has(shape) && !Number.isInteger(Math.round(p.rot * 1e6) / 1e6)) return '벽에 거는 가구는 벽과 나란히 걸어요.';
     const b = boxOf(p); const st = stageOf(stage); const HX = st.hx; const HZ = st.hz;
-    const top = supportOf(p, others); // (207: on a desk -- any 0.05 m place on it, clear of the other things on that top)
-    if (top) {
-      if (!free && !(onStep(p.x * 5) && onStep(p.z * 5))) return '자리를 확인해 주세요.';
-      return heldOn(top, others).some((o) => o.uid !== p.uid && overlap(topBox(p), topBox(o))) ? '위에 놓인 다른 물건과 겹쳐요.' : null;
-    }
+    const top = supportOf(p, others); // (207: on a desk -- any 0.05 m place on it; v1.10.315 사용자 「겹칠 수 있게」: into the other things on it too)
+    if (top) return !free && !(onStep(p.x) && onStep(p.z)) ? '자리를 확인해 주세요.' : null;
     if (!free && !((onStep(p.x) || flushOn(p.x, (b.x1 - b.x0) / 2, HX)) && (onStep(p.z) || flushOn(p.z, (b.z1 - b.z0) / 2, HZ)))) return '자리를 확인해 주세요.';
     if (b.x0 < -HX - 1e-6 || b.x1 > HX + 1e-6 || b.z0 < -HZ - 1e-6 || b.z1 > HZ + 1e-6) return '방 밖으로 나가요.';
     if (st.fixed.some((w) => overlap(b, w))) return '방의 벽이나 창가 의자와 겹쳐요.';
     if (HUNG.has(shape)) { // its back against the back or a side wall (the low front wall holds nothing)
       const [bx, bz] = backDir(p.rot); const ok = (bz === 1 && b.z1 > HZ - 0.2) || (bx === 1 && b.x1 > HX - 0.2) || (bx === -1 && b.x0 < -HX + 0.2); // (on the 0.25 m steps: drawn flat against the wall)
-      if (!ok) return '벽에 거는 가구예요. 뒤가 벽에 닿게 놓아 주세요.';
-      return others.some((o) => HUNG.has(shapeOf(o.id)) && overlap(b, boxOf(o))) ? '다른 장식과 겹쳐요.' : null;
+      return ok ? null : '벽에 거는 가구예요. 뒤가 벽에 닿게 놓아 주세요.';
     }
-    if (overlap(b, doorwayOf(stage))) return '문 앞은 비워 두세요.';
-    if (FLAT.has(shape)) return null; // (a rug goes under the rest)
-    return others.some((o) => !HUNG.has(shapeOf(o.id)) && !FLAT.has(shapeOf(o.id)) && !supportOf(o, [...others, p]) && overlap(b, boxOf(o))) ? '다른 가구와 겹쳐요.' : null; // (what stands on a top -- this one's too -- is not in the way)
+    // (v1.10.315 사용자 「배치하는 물체들끼리는 겹칠 수 있게」: furniture may stand into other furniture -- only the doorway, the
+    // way in and out, is kept clear)
+    return overlap(b, doorwayOf(stage)) ? '문 앞은 비워 두세요.' : null;
   }
   // the place nearest p that placeError takes: its step, or against a wall when that is within a step (3회차 6)
-  function snapPos(p, stage = 2, others = []) {
-    const s = SIZE[shapeOf(p.id)]; if (!s) return { x: p.x, z: p.z }; const st = stageOf(stage);
-    const [w0, d0] = p.rot % 2 ? [s[1], s[0]] : [s[0], s[1]];
-    const top = supportOf(p, others); if (top) { const t = boxOf(top); const ts = TOP_SIZE[shapeOf(p.id)]; const [w, d] = ts ? (p.rot % 2 ? [ts[1], ts[0]] : ts) : [w0, d0]; const near = (v, lo, hi) => Math.min(Math.floor(hi * 20 + 1e-6) / 20, Math.max(Math.ceil(lo * 20 - 1e-6) / 20, Math.round(v * 20) / 20)); return { x: near(p.x, t.x0 + w / 2, t.x1 - w / 2), z: near(p.z, t.z0 + d / 2, t.z1 - d / 2) }; }
-    const one = (v, half, H) => { const hi = H - half; const q = Math.min(hi, Math.max(-hi, Math.round(v * 4) / 4)); return [q, hi, -hi].filter((c) => c === q || Math.abs(c - v) < 0.25).sort((a, b) => Math.abs(a - v) - Math.abs(b - v))[0]; };
+  function snapPos(p, stage = 2, others = [], fine = false) { // (v1.10.315 fine: the 0.05 m steps on the floor too)
+    const s = SIZE[shapeOf(p.id)]; if (!s) return { x: p.x, z: p.z }; const st = stageOf(stage); const step = fine ? FINE : 0.25;
+    const [w0, d0] = turnedSize(s, p.rot);
+    const top = supportOf(p, others); if (top) { const t = boxOf(top); const ts = TOP_SIZE[shapeOf(p.id)]; const [w, d] = ts ? turnedSize(ts, p.rot) : [w0, d0]; const near = (v, lo, hi) => Math.min(Math.floor(hi * 20 + 1e-6) / 20, Math.max(Math.ceil(lo * 20 - 1e-6) / 20, Math.round(v * 20) / 20)); return { x: near(p.x, t.x0 + w / 2, t.x1 - w / 2), z: near(p.z, t.z0 + d / 2, t.z1 - d / 2) }; }
+    const one = (v, half, H) => { const hi = H - half; const q = Math.min(hi, Math.max(-hi, Math.round(Math.round(v / step) * step * 100) / 100)); return [q, hi, -hi].filter((c) => c === q || Math.abs(c - v) < step).sort((a, b) => Math.abs(a - v) - Math.abs(b - v))[0]; };
     return { x: one(p.x, w0 / 2, st.hx), z: one(p.z, d0 / 2, st.hz) };
   }
+  // a turn: a quarter, or 15° 「세밀」 (a hung piece always a quarter) -- kept on the sixths of a quarter (0 <= rot < 4)
+  const turnBy = (p, fine = false) => { const k = Math.round((Number(p.rot) || 0) * 6) + (fine && !HUNG.has(shapeOf(p.id)) ? 1 : 6); return ((k % 24) + 24) % 24 / 6; };
   // v1.10.232 배치 도구 (docs/place-tool-20261103.md): a held piece aimed at a room-local point -- on its step (on a top by
   // 0.05 m, as the arrows), a wall piece within 0.6 m of the back or a side wall turned with its back to it, flush on it
   const WALL_REACH = 0.6;
-  function aimAt(p, lx, lz, stage = 2, others = []) {
+  function aimAt(p, lx, lz, stage = 2, others = [], fine = false) {
     const q = { ...p, x: Number(lx), z: Number(lz) }; const s = SIZE[shapeOf(p.id)]; if (!s || !Number.isFinite(q.x) || !Number.isFinite(q.z)) return q;
     if (HUNG.has(shapeOf(p.id))) {
       const st = stageOf(stage); const [d, rot] = [[st.hz - q.z, 0], [st.hx - q.x, 1], [q.x + st.hx, 3]].sort((a, b) => a[0] - b[0])[0]; // (the back wall, then +x, -x; the low front holds nothing)
       if (d < WALL_REACH) { q.rot = rot; const [w, dd] = rot % 2 ? [s[1], s[0]] : [s[0], s[1]]; if (rot === 0) q.z = st.hz - dd / 2; else q.x = rot === 1 ? st.hx - w / 2 : -st.hx + w / 2; }
     }
-    return { ...q, ...snapPos(q, stage, others) };
+    return { ...q, ...snapPos(q, stage, others, fine) };
   }
   // the placed piece at a room-local point (a thing on a top before its top; a wall piece by its footprint against the wall)
   function pieceAt(pieces, lx, lz) {
@@ -211,5 +216,5 @@
     const anyDir = ANY_DIR.has(shapeOf(p.id));
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn, WALL_REACH, aimAt, pieceAt };
+  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn, WALL_REACH, aimAt, pieceAt, turnBy, FINE, onTurn };
 }));

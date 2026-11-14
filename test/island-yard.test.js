@@ -18,29 +18,25 @@ const T = require('../public/plaza/island-terrain');
 
 const lot = Y.lotById('lot5'); const id = (shape) => Y.goodId(shape);
 
-test('마당 규칙: 울타리 안/밖·집·현관 길·겹침·울타리 기둥 맞춤·0.25 m 칸, 넓히면 울타리가 밖으로', () => { // (v1.10.230: the yard is inside the fence)
+test('마당 규칙: 울타리 안/밖·집·현관 길·겹침 허용·0.05 m 칸·15°, 넓히면 울타리가 밖으로', () => { // (v1.10.230: the yard is inside the fence; v1.10.315 배치 도구 1단계)
   const bench = { uid: 'b', id: id('bench'), x: -5, z: 0, rot: 1 };
   assert.equal(Y.placeError(bench, [], lot, 1, 1), null, '집 옆 처음 마당');
   assert.equal(Y.placeError({ ...bench, x: 0, z: 0 }, [], lot, 1, 1), '집에 너무 붙었어요.');
   assert.equal(Y.placeError({ ...bench, x: 0, z: -4, rot: 0 }, [], lot, 1, 1), '현관에서 길까지는 비워 둬요.');
-  assert.equal(Y.placeError({ ...bench, x: -5.1, z: 0 }, [], lot, 1, 1), '자리를 확인해 주세요.', '0.25 m 칸에만');
+  assert.equal(Y.placeError({ ...bench, x: -5.1, z: 0 }, [], lot, 1, 1), null, '0.05 m 칸 (v1.10.315)'); assert.equal(Y.placeError({ ...bench, x: -5.12, z: 0 }, [], lot, 1, 1), '자리를 확인해 주세요.', '0.05 m 칸에만');
+  assert.equal(Y.placeError({ ...bench, rot: 1 + 1 / 6 }, [], lot, 1, 1), null, '15°'); assert.equal(Y.placeError({ ...bench, rot: 1.1 }, [], lot, 1, 1), '자리를 확인해 주세요.');
+  assert.equal(Y.turnBy(0, true), 1 / 6); assert.equal(Y.turnBy(23 / 6, true), 0); assert.equal(Y.turnBy(3), 0); assert.equal(Y.aimAt(bench, -5.13, 0.31, true).x, -5.15); assert.equal(Y.aimAt(bench, -5.13, 0.31).z, 0.25);
   assert.equal(Y.placeError({ ...bench, x: 3, z: 2.75 }, [], lot, 1, 1), '집에 너무 붙었어요.');
   // the back: 2.5 m out at first, 6 m once made bigger twice
   const far = { uid: 'f', id: id('lantern_stone'), x: 0, z: 7.5, rot: 0 };
   assert.equal(Y.placeError(far, [], lot, 1, 1), '마당 칸 밖이에요.'); assert.equal(Y.placeError(far, [], lot, 1, 3), null);
   assert.ok(Y.areaOf(lot, 1, 1) < Y.areaOf(lot, 1, 2) && Y.areaOf(lot, 1, 2) < Y.areaOf(lot, 1, 3));
-  // overlapping: no -- but fences end to end and at a corner share their posts
-  const fa = { uid: 'fa', id: id('fence_wood'), x: -4, z: 1, rot: 0 }; const fb = { uid: 'fb', id: id('fence_stone'), x: -4.5, z: 1.5, rot: 1 };
-  assert.equal(Y.placeError(fb, [fa], lot, 1, 1), null, '울타리끼리 모서리');
-  // (총괄 225 검토: end posts only -- not one on another, nor half along)
+  // (v1.10.315 사용자 「배치하는 물체들끼리는 겹칠 수 있게」) one piece into another: yes -- the house, its way and the fence's outside still no
+  const fa = { uid: 'fa', id: id('fence_wood'), x: -4, z: 1, rot: 0 };
   const g = { uid: 'g', id: id('fence_wood'), x: 0, z: 4, rot: 0 };
-  assert.equal(Y.placeError({ ...g, uid: 'g2', x: 1 }, [g], lot, 1, 1), null, '1 m 이어 붙이기');
-  assert.equal(Y.placeError({ ...g, uid: 'g2' }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '같은 자리 둘');
-  assert.equal(Y.placeError({ ...g, uid: 'g2', x: 0.5 }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '반 칸 엇갈림');
-  assert.equal(Y.placeError({ ...g, uid: 'g2', z: 4.25 }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '나란히 포갬');
-  assert.equal(Y.placeError({ ...g, uid: 'g3', rot: 1, x: 0, z: 4.5 }, [g], lot, 1, 1), '다른 물건과 겹쳐요.', '가운데를 가로지름');
-  assert.equal(Y.placeError({ ...g, uid: 'g4', rot: 1, x: 0.5, z: 4.5 }, [g], lot, 1, 1), null, '90° 모서리');
-  assert.equal(Y.placeError({ ...bench, x: -4, z: 1, rot: 0 }, [fa], lot, 1, 1), '다른 물건과 겹쳐요.');
+  assert.equal(Y.placeError({ ...g, uid: 'g2' }, [g], lot, 1, 1), null, '같은 자리 둘');
+  assert.equal(Y.placeError({ ...g, uid: 'g3', rot: 1, x: 0, z: 4.5 }, [g], lot, 1, 1), null, '가운데를 가로지름');
+  assert.equal(Y.placeError({ ...bench, x: -4, z: 1, rot: 0 }, [fa], lot, 1, 1), null, '울타리 위 벤치');
   assert.equal(Y.placeError({ uid: 'x', id: 'sofa__mint', x: -5, z: 0, rot: 0 }, [], lot, 1, 1), '마당 물건이 아니에요.');
   // the way in, its walk and the neighbours': never in a yard, whatever the level
   for (const l of Y.LOTS) for (const st of [1, 2, 3]) {

@@ -4599,7 +4599,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.314' });
+    return sendJson(res, 200, { ok: true, version: '1.10.315' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6144,7 +6144,7 @@ async function requestHandler(req, res) {
       }
       // (R8: on the floor I am on -- its own pieces, count and room; a piece from the other floor comes up or down)
       const floor = floorOf(session.token); const st = floor === 2 ? 'upper' : h.stage; const here = others.filter((o) => IslandHome.onFloor(o, floor));
-      const p = { uid: piece.uid, id: piece.id, x: Number(body.x), z: Number(body.z), rot: Number(body.rot), ...(floor === 2 ? { floor: 2 } : {}) };
+      const p = { uid: piece.uid, id: piece.id, x: placeNum(body.x), z: placeNum(body.z), rot: placeTurn(body.rot), ...(floor === 2 ? { floor: 2 } : {}) };
       if (IslandHome.shapeOf(piece.id) === 'picture_frame') { const was = h.pieces.find((x) => x.uid === piece.uid)?.photo; const want = body.photo === undefined ? was : body.photo; if (want) { if (!IslandFishing.PHOTO_SPOTS.some((s) => s.id === want) || !(await pointStore.dexOf(account))[want]) return sendError(res, 409, 'NO_PHOTO', '찍은 기념사진만 걸 수 있어요.'); p.photo = want; } }
       const cap = IslandHome.stageOf(st).pieces;
       if (!h.pieces.some((x) => x.uid === p.uid && IslandHome.onFloor(x, floor)) && here.length >= cap) return sendError(res, 409, 'TOO_MANY', `가구는 ${floor === 2 ? '2층에 ' : ''}${cap}점까지 놓을 수 있어요.`);
@@ -6152,6 +6152,10 @@ async function requestHandler(req, res) {
       const next = { ...h, pieces: [...others, p] }; await saveHome(account, next); broadcastIsland('homeInside', { lot: h.lot }); return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) }); // (v1.10.226: guests see it at once)
     });
   }
+  // (v1.10.315 배치 도구 1단계: a place on the 0.05 m steps (or flush on a wall) and a turn on the 15° ones -- kept tidy: the
+  // place to 0.1 mm, the turn on its sixth of a quarter when it is one; anything else stays as sent and the rules refuse it)
+  function placeNum(v) { const n = Number(v); return Number.isFinite(n) ? Math.round(n * 1e4) / 1e4 : n; }
+  function placeTurn(v) { const n = Number(v); return Number.isFinite(n) && Math.abs(n * 6 - Math.round(n * 6)) < 1e-6 ? Math.round(n * 6) / 6 : n; }
   // v1.10.225 마당 꾸미기: the owner, standing in their yard on the island -- a yard piece from the 가구 창고 placed (moved,
   // turned) or put back; the same rules as the screen (island-yard.js), and how many the yard's level holds
   if (pathname === '/api/home/yard' && req.method === 'POST') {
@@ -6168,7 +6172,7 @@ async function requestHandler(req, res) {
       if (body.remove) { const next = { ...h, yard: others }; await saveHome(account, next); broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, yard: others }); }
       const cap = IslandYard.limitOf(level);
       if (!yard.some((p) => p.uid === piece.uid) && yard.length >= cap) return sendError(res, 409, 'TOO_MANY', `마당에는 ${cap}개까지 놓을 수 있어요.`);
-      const p = { uid: piece.uid, id: piece.id, x: Number(body.x), z: Number(body.z), rot: Number(body.rot), ...(piece.plate ? { plate: piece.plate, line: piece.line || piece.plate } : {}) }; // (v1.10.251: a trophy's name plate, its line pressed)
+      const p = { uid: piece.uid, id: piece.id, x: placeNum(body.x), z: placeNum(body.z), rot: placeTurn(body.rot), ...(piece.plate ? { plate: piece.plate, line: piece.line || piece.plate } : {}) }; // (v1.10.251: a trophy's name plate, its line pressed)
       const why = IslandYard.placeError(p, others, lot, stage, level); if (why) return sendError(res, 409, 'BAD_PLACE', why);
       const next = { ...h, yard: [...others, p] }; await saveHome(account, next); broadcastIsland('homes', { lot: lot.id });
       return sendJson(res, 200, { ok: true, yard: next.yard });
@@ -9527,7 +9531,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.314 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.315 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
