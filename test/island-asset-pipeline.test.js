@@ -63,6 +63,9 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     ...[0, 1, 2, 3].map((s) => `farm.field.${s}`), 'farm.sign', 'farm.shed', 'farm.scarecrow', 'farm.mallet', 'character.farmer',
     // v1.10.318 마당 농사 F1 (assets 115): the crops' shared mound and sprout, each crop's growing and ripe; the 작은 돌
     'farm.crop.0', 'farm.crop.1', ...['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage'].flatMap((c) => [2, 3].map((k) => `farm.crop.${c}.${k}`)), 'gather.rock_pebble', 'yard.farm_bed',
+    /* v1.10.319 111b 새 마당 물건 25 (assets 111 README) */
+    ...['fence_veg_a', 'fence_veg_b', 'gate_stick', 'gate_plank', 'wooden_pin', 'fence_lattice', 'gate_iron', 'wall_brick_high', 'watering_can', 'hay_bale', 'milk_can', 'ladder', 'farm_sign', 'barrel', 'bucket',
+      'hand_cart', 'water_jar', 'wooden_box', 'spade', 'log_bench', 'stall_awning', 'fountain', 'greenhouse_small', 'pebbles', 'duck'].map((f) => `yard.${f}`),
     'facility.store', 'character.storekeeper', 'character.transformer', /* v1.10.92 (assets 41·42; v1.10.211 its room assets 82's) */
     // v1.10.211 백화점 개편 A안 (assets 82): the floors' pieces, the 2nd floor's (as mall.wear_*), the roof
     ...['floor1', 'today_table', 'gondola', 'wall_shelf', 'tool_wall', 'sell_basket', 'lift_panel', 'counter__f1', 'counter__f2', 'counter__f3', 'counter__f4'].map((f) => `mall.${f}`),

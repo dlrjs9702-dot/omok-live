@@ -12810,6 +12810,606 @@
       "src": "farm115:01. High/winter/farm_bed.glb",
       "sha256": "336f463fefcfcc9ab64e635d0f15ec3460f88529a5254b9f4c4a1ccd8365e04e",
       "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_veg_a.glb",
+      "src": "yard111:01. High/spring/fence_veg_a.glb",
+      "sha256": "26ea750dfab95f6cdb20cdeeeaa3b4121f819b8e7da3dab23ca4409539ff93c3",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_veg_b.glb",
+      "src": "yard111:01. High/spring/fence_veg_b.glb",
+      "sha256": "28115246925971acec24419f3b8961729368cf25933a8b9cee5766ff66faed50",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/gate_stick.glb",
+      "src": "yard111:01. High/spring/gate_stick.glb",
+      "sha256": "e82333e94bad0bfabc9ba4ae31010f672a118378586178c4145dffb36da16895",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/gate_plank.glb",
+      "src": "yard111:01. High/spring/gate_plank.glb",
+      "sha256": "b84b8978bcf9bfce66c5838d2dc055fd3c48acb4e5a5ae4a4c10a30fc2acd257",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/wooden_pin.glb",
+      "src": "yard111:01. High/spring/wooden_pin.glb",
+      "sha256": "21df9b92264f229d4b250857523727902290d89956515ac493afd8f639c92d78",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_lattice.glb",
+      "src": "yard111:01. High/spring/fence_lattice.glb",
+      "sha256": "abb1a31d51893d45d410d065664b3d9436174011c41126010742a7751e6ff12c",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/gate_iron.glb",
+      "src": "yard111:01. High/spring/gate_iron.glb",
+      "sha256": "bedf518800623a170c0b093f4f34a86e9288e06d40045e85cdb395428ecc4ea2",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/wall_brick_high.glb",
+      "src": "yard111:01. High/spring/wall_brick_high.glb",
+      "sha256": "45dfbb2f85b9a241492806c4b8c2157690a9ff0453a092b2b160af15eb29b694",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/watering_can.glb",
+      "src": "yard111:01. High/spring/watering_can.glb",
+      "sha256": "5fe78a27272d5ae709d82a349e7afca5a66e3baaad94bf04760c587f1fcd45aa",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/hay_bale.glb",
+      "src": "yard111:01. High/spring/hay_bale.glb",
+      "sha256": "e3c02a3343c8e2437a9cf6b0e3c670dcfa523c51781f988e002cb254d5a57989",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/milk_can.glb",
+      "src": "yard111:01. High/spring/milk_can.glb",
+      "sha256": "ffc2ff9c68d6ac4b3f1f82479ca1779b9d7d367d7317a05aae3cf226701b1f42",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/ladder.glb",
+      "src": "yard111:01. High/spring/ladder.glb",
+      "sha256": "57708f53bbabc555477c7c006a4fa86c946593935b04f8d2672ae4ba7984ee3f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/farm_sign.glb",
+      "src": "yard111:01. High/spring/farm_sign.glb",
+      "sha256": "e14b5a5e3a805fedda41c5f4f9b79f1b2d6a8b9fdb9088bc2b6185ca391c69f1",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/barrel.glb",
+      "src": "yard111:01. High/spring/barrel.glb",
+      "sha256": "00adf79be2ea176bc8c96dae7639fe2e3cac470ee52e35bb66d6803bc6ef21dc",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/bucket.glb",
+      "src": "yard111:01. High/spring/bucket.glb",
+      "sha256": "0e1d0b72a551f5f2eee269e880b304608cef3afe07abf79e31d84a59fb4ed77c",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/hand_cart.glb",
+      "src": "yard111:01. High/spring/hand_cart.glb",
+      "sha256": "52865eb1fa3946c482091a928d2a2cd2225499a014035e8d6dec3c67a5e1d3f3",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/water_jar.glb",
+      "src": "yard111:01. High/spring/water_jar.glb",
+      "sha256": "3320979546f1a41ed16fe0507b07958ff3b688ae42aab26641028e86670d364d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/wooden_box.glb",
+      "src": "yard111:01. High/spring/wooden_box.glb",
+      "sha256": "101f044545729e7f9174e982676813e5382c53ff13d2510538f28fc58e8c60fb",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/spade.glb",
+      "src": "yard111:01. High/spring/spade.glb",
+      "sha256": "7b61a5c2a84080bec8804a7898bc7f83949fe437de84448010474ee51da841a5",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/log_bench.glb",
+      "src": "yard111:01. High/spring/log_bench.glb",
+      "sha256": "ef4ce5081e38b7f6c1f5c7d64fd8e3f2e71783f24bbafc8e7e786d0669c3556a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/stall_awning.glb",
+      "src": "yard111:01. High/spring/stall_awning.glb",
+      "sha256": "04e21bb39185de4ecc7d48024a7c00ae9dac5bac1806a315d07a098fa022e440",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fountain.glb",
+      "src": "yard111:01. High/spring/fountain.glb",
+      "sha256": "00dcafdbdafa24c4b96277caf3335da87231ddb406c9c90ec1c5f94c9782d7d0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/greenhouse_small.glb",
+      "src": "yard111:01. High/spring/greenhouse_small.glb",
+      "sha256": "5cdb7fdd9c8311993901facfa09ba9bd661fec0b7f852de08e5721407f9a02f4",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/pebbles.glb",
+      "src": "yard111:01. High/spring/pebbles.glb",
+      "sha256": "0429ae06daf6a11d7a00ebd84b621ac2ac4fb2a12f97b076684aa8a18731e913",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/duck.glb",
+      "src": "yard111:01. High/spring/duck.glb",
+      "sha256": "fae7d54b3ded244b2f3389979e304e367cb251270e3f27281749f8c01afcacad",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_veg_a.glb",
+      "src": "yard111:01. High/summer/fence_veg_a.glb",
+      "sha256": "eaad0dc8410618826e08ad497935d2ebc72c137f3d8beff13904fff97c0f1928",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_veg_b.glb",
+      "src": "yard111:01. High/summer/fence_veg_b.glb",
+      "sha256": "f45bac5909434ebed3f637046f11ca11d56003536143c7c0d747fd8fc7a4629b",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/gate_stick.glb",
+      "src": "yard111:01. High/summer/gate_stick.glb",
+      "sha256": "c273f124d60c5516fbbcf360d8ccae33af8a8a808866daf333619af902f851e1",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/gate_plank.glb",
+      "src": "yard111:01. High/summer/gate_plank.glb",
+      "sha256": "4b18db1cea3e02e59d1b573fb04964924e4c7c2103dc307b1b4ea19d1516beb4",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/wooden_pin.glb",
+      "src": "yard111:01. High/summer/wooden_pin.glb",
+      "sha256": "e64d21a409abd1dc7c0096d4fce2b27d38503a6bbdf6ac6e83e93f66f619b250",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_lattice.glb",
+      "src": "yard111:01. High/summer/fence_lattice.glb",
+      "sha256": "702b35f54d33ed04a23de02cca353997aa07f0195329beb4eb742f23efe54463",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/gate_iron.glb",
+      "src": "yard111:01. High/summer/gate_iron.glb",
+      "sha256": "b000a4f669a7402479c72ab9862c7b0f7c0ba47d9f665e9cd3dee8c21d84add9",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/wall_brick_high.glb",
+      "src": "yard111:01. High/summer/wall_brick_high.glb",
+      "sha256": "a2782cae10ed4a0bb8a7861fda56e682333b94cdc15166bd9e351d385eca47f6",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/watering_can.glb",
+      "src": "yard111:01. High/summer/watering_can.glb",
+      "sha256": "9231fa377d00caffd8fb3b3ccde8634fe5bd67e460b98d7448ffc4263563bd7a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/hay_bale.glb",
+      "src": "yard111:01. High/summer/hay_bale.glb",
+      "sha256": "d20af3b64568cfe9ee5094e65dc13f35cb144d0debdfe796d9d8152f7a2e57a9",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/milk_can.glb",
+      "src": "yard111:01. High/summer/milk_can.glb",
+      "sha256": "6f6bb5102e057bd114a9764d242af9870409c28a94cf1fbb98b1ba8cc2a665fc",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/ladder.glb",
+      "src": "yard111:01. High/summer/ladder.glb",
+      "sha256": "1708d4dc802ab461c348f44aa980fd3dca0356abef97d49cfd1a97676b30f164",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/farm_sign.glb",
+      "src": "yard111:01. High/summer/farm_sign.glb",
+      "sha256": "ba5d08c82fccde44dce010327d36c9f11afb01d346c04275cf5bec2035892d50",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/barrel.glb",
+      "src": "yard111:01. High/summer/barrel.glb",
+      "sha256": "c7d4591cf3238608d300bf4219d87a6333c0e1d0f6c6b71a6131b697a734858c",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/bucket.glb",
+      "src": "yard111:01. High/summer/bucket.glb",
+      "sha256": "eab5a2e7635f9ff276686c3baa50d7823f5122c2ddb9c61cb6e9ed3d436f4a5d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/hand_cart.glb",
+      "src": "yard111:01. High/summer/hand_cart.glb",
+      "sha256": "89e880887b678e760bc60f32cf8a753666cacf29507c76239b6601495a7cc08e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/water_jar.glb",
+      "src": "yard111:01. High/summer/water_jar.glb",
+      "sha256": "735953542708f18f77f939069451b6eb9cae7d3290b34feb600652935eb361c2",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/wooden_box.glb",
+      "src": "yard111:01. High/summer/wooden_box.glb",
+      "sha256": "51582ab6ff4cf1a5ae9fb80143dfb6f56dc032574059ff3852676322e1682678",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/spade.glb",
+      "src": "yard111:01. High/summer/spade.glb",
+      "sha256": "8315a5220ecd2a274312e332898b6ac8d995cbabb1e2286361173ff739bcf781",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/log_bench.glb",
+      "src": "yard111:01. High/summer/log_bench.glb",
+      "sha256": "96e8cf3072389ed0a95725766ef81115f99ac1b31bb26813607baa22791f4ff0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/stall_awning.glb",
+      "src": "yard111:01. High/summer/stall_awning.glb",
+      "sha256": "287a7c5d70cf5f1e609882a5b4548bfcd48910c9eecb3785d22416e710550bac",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fountain.glb",
+      "src": "yard111:01. High/summer/fountain.glb",
+      "sha256": "84f81d0d1c292d66ed6c1780cb1ab2f51ad29041a9db5d1b912f588eabd50201",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/greenhouse_small.glb",
+      "src": "yard111:01. High/summer/greenhouse_small.glb",
+      "sha256": "85c5620fa4c02d771f07bba3da389327a37e82a9e1485e0729ec1c8d4bbaa1c0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/pebbles.glb",
+      "src": "yard111:01. High/summer/pebbles.glb",
+      "sha256": "e2b01d2dd2c48e768be93d8e032fda02dbe7fe50203c099a1945b8acddf04828",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/duck.glb",
+      "src": "yard111:01. High/summer/duck.glb",
+      "sha256": "d5fb9b0cc6166ce0890e7d71985948d449261609afebae30ea68c268701eb93b",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_veg_a.glb",
+      "src": "yard111:01. High/autumn/fence_veg_a.glb",
+      "sha256": "15c5ce74bc9150ac9f7562047545a64a4c6fb66266cec8eeb23724c4cc15bd9e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_veg_b.glb",
+      "src": "yard111:01. High/autumn/fence_veg_b.glb",
+      "sha256": "559bf57583bb101309a3100d0031d067b47a80a01304a14e5576112a56e8af46",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/gate_stick.glb",
+      "src": "yard111:01. High/autumn/gate_stick.glb",
+      "sha256": "cdc0cd16cb5e2fedd3879b94b9249653020b262e7cdedff24042a275831cbb51",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/gate_plank.glb",
+      "src": "yard111:01. High/autumn/gate_plank.glb",
+      "sha256": "33b83734b43e83d6b41e17e8554e7eb5cfdb7339eb677d30986f6278512e9432",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/wooden_pin.glb",
+      "src": "yard111:01. High/autumn/wooden_pin.glb",
+      "sha256": "1bc979fd546c79cc916f6ed2ef3fcb0d86f5886a54f681b4abe87eda50b6d2ae",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_lattice.glb",
+      "src": "yard111:01. High/autumn/fence_lattice.glb",
+      "sha256": "5ece6f57dd77f78a33ed49b4a7a7568d0e0d3a290cb3ce81e2997a12a70e285c",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/gate_iron.glb",
+      "src": "yard111:01. High/autumn/gate_iron.glb",
+      "sha256": "0abda70bc30019322fe08298d3de510898fc5801e60f0f091c492254ec622132",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/wall_brick_high.glb",
+      "src": "yard111:01. High/autumn/wall_brick_high.glb",
+      "sha256": "2c74988f73c9f2017f6527560d892daac2fd031ae5f24401f2029d35d0192a5a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/watering_can.glb",
+      "src": "yard111:01. High/autumn/watering_can.glb",
+      "sha256": "b01f8e1b9debee61a9f01f9d0bad3362929fffece49c5278f09259359f90b1a8",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/hay_bale.glb",
+      "src": "yard111:01. High/autumn/hay_bale.glb",
+      "sha256": "33b29bcc65368b3aad73eea54074244d413b4fa38c8282c0db8d29b837bc447d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/milk_can.glb",
+      "src": "yard111:01. High/autumn/milk_can.glb",
+      "sha256": "1c2646d0ab438344e1c38904a36023803afa5f5633dc3011b6c1ee769a953a6a",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/ladder.glb",
+      "src": "yard111:01. High/autumn/ladder.glb",
+      "sha256": "aa5eebbb7c879aed7cee9645cce0f5d1cd1a9c9e0aaecdfe5fcda94b2a348f1f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/farm_sign.glb",
+      "src": "yard111:01. High/autumn/farm_sign.glb",
+      "sha256": "8b6d0251f205f54f4772a0f72458d72ed5a8dfee2fe6dbbc2dd99109704d1815",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/barrel.glb",
+      "src": "yard111:01. High/autumn/barrel.glb",
+      "sha256": "6836e71aedd42c517ebbd82ed71b9c4b9c5309514bedaf14c565d4829f639f7d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/bucket.glb",
+      "src": "yard111:01. High/autumn/bucket.glb",
+      "sha256": "ac22999080efbbecf86286ccc11c69db02b511b6dfb527e037c108e10ff6d26f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/hand_cart.glb",
+      "src": "yard111:01. High/autumn/hand_cart.glb",
+      "sha256": "eec66ad916024388f295b73b0a1caf58a10e81051b39af6c1a62bf216e1c99a5",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/water_jar.glb",
+      "src": "yard111:01. High/autumn/water_jar.glb",
+      "sha256": "b0215e2dad10bf44a4481e6b50b06c68299b780ca388f98e2cefa4b1bf82672d",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/wooden_box.glb",
+      "src": "yard111:01. High/autumn/wooden_box.glb",
+      "sha256": "3f8ad93c59d870ca1bacfaf53390511652ff994bd37f8fd1930084feed778bc7",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/spade.glb",
+      "src": "yard111:01. High/autumn/spade.glb",
+      "sha256": "cb8c273d032b634bb3078a2fa6e1e4a7c8afacaf09181f4e77814fce91060cfb",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/log_bench.glb",
+      "src": "yard111:01. High/autumn/log_bench.glb",
+      "sha256": "f39290fc0e8acc8d9b1cbae4e73de2264c7e4188f565cf74e6c9aafde4d44ef4",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/stall_awning.glb",
+      "src": "yard111:01. High/autumn/stall_awning.glb",
+      "sha256": "1ea389d9251975111d4ccf953403733115146c0771fb82cb6378fc7e4893033b",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fountain.glb",
+      "src": "yard111:01. High/autumn/fountain.glb",
+      "sha256": "d8cc4ae8fbc022f730f2d2468333883b846f2ec3df0cb44890ce8c0503f84d48",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/greenhouse_small.glb",
+      "src": "yard111:01. High/autumn/greenhouse_small.glb",
+      "sha256": "e2091c97f4c9e3425c4b2a15e4b5a29e5c5b9d3d6dc7e09f76640c9421e6a230",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/pebbles.glb",
+      "src": "yard111:01. High/autumn/pebbles.glb",
+      "sha256": "fa75d709354ec493a08d6102760939921d93048ccd05ac33083f387e7a7ac2a7",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/duck.glb",
+      "src": "yard111:01. High/autumn/duck.glb",
+      "sha256": "d2b43ded72d45024685550373b76b3b2b098b290dc289d7c686f80d2391b3e1f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_veg_a.glb",
+      "src": "yard111:01. High/winter/fence_veg_a.glb",
+      "sha256": "e925ac42eaa503b948f49e383cfa8d28f17af6819c645f2463ac1d3c4bb2f9bf",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_veg_b.glb",
+      "src": "yard111:01. High/winter/fence_veg_b.glb",
+      "sha256": "d5e073dc6f51181f8fcade5c4d226910c24903781ca52f212447be622a52646e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/gate_stick.glb",
+      "src": "yard111:01. High/winter/gate_stick.glb",
+      "sha256": "b4782bc1c75f84ddff37eab1e4727a10babb45368e557a967d02d33f4a16118b",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/gate_plank.glb",
+      "src": "yard111:01. High/winter/gate_plank.glb",
+      "sha256": "9b5fd97f33c4e4309df4be5a73703c457a307b167259954f10bebe13710ab7a2",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/wooden_pin.glb",
+      "src": "yard111:01. High/winter/wooden_pin.glb",
+      "sha256": "49ef947927454c64d847ac34efefce9e079081df7b4b3b504e3e408c02e322a0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_lattice.glb",
+      "src": "yard111:01. High/winter/fence_lattice.glb",
+      "sha256": "0c728967f7d220bf028c7212179533529c156165dedae4030d56a64c75322492",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/gate_iron.glb",
+      "src": "yard111:01. High/winter/gate_iron.glb",
+      "sha256": "9801d4f71014e2a594546316bf037f19fc4aa7f239233a6265fe9a92bdbc2214",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/wall_brick_high.glb",
+      "src": "yard111:01. High/winter/wall_brick_high.glb",
+      "sha256": "d72816954bbec38cef7d7352c84f14f00ea7dfe8828135b283f86759eba58c98",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/watering_can.glb",
+      "src": "yard111:01. High/winter/watering_can.glb",
+      "sha256": "a88d396f6ae4e7ca4053e3003db432b3e7745b9e3a7c96ea3b7da59e73c10562",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/hay_bale.glb",
+      "src": "yard111:01. High/winter/hay_bale.glb",
+      "sha256": "96591f4819da9ce93e5e9b9348276ee1e64298c29b6a636174defb846283956e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/milk_can.glb",
+      "src": "yard111:01. High/winter/milk_can.glb",
+      "sha256": "282368093b9a63c0169874552ef8839c43725690b89da2c5fe00624ccf80e5c2",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/ladder.glb",
+      "src": "yard111:01. High/winter/ladder.glb",
+      "sha256": "07f2bab99d07c62e156e77996717077e4515d42df94862d20ae23ab3854de1eb",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/farm_sign.glb",
+      "src": "yard111:01. High/winter/farm_sign.glb",
+      "sha256": "ac4c1e47ffa307645eeb5aa8624ec43d6b40bb561fae22031bc30e2d443afa87",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/barrel.glb",
+      "src": "yard111:01. High/winter/barrel.glb",
+      "sha256": "ce98bed49b325976bf5eea5dc557e8c0519125db32853da9200fe11d9cc6c745",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/bucket.glb",
+      "src": "yard111:01. High/winter/bucket.glb",
+      "sha256": "81fb8fcea3a6cf9f328f3736905952b4d8a7d0c5abbe6efcb1b5f423764fc663",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/hand_cart.glb",
+      "src": "yard111:01. High/winter/hand_cart.glb",
+      "sha256": "654ab56f6c1fd803ebf96b389b41a1431dbe6719832763dc6277124b3292b23e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/water_jar.glb",
+      "src": "yard111:01. High/winter/water_jar.glb",
+      "sha256": "58e34898d074f2a5e574fbe0b45ede87efef46db91c75bbedac6bf5131ec661e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/wooden_box.glb",
+      "src": "yard111:01. High/winter/wooden_box.glb",
+      "sha256": "8e11b72faa09f2ad5039a161701ff599213bbdde6d2a84da172e2d023d34134e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/spade.glb",
+      "src": "yard111:01. High/winter/spade.glb",
+      "sha256": "2969545efb8ebbba84e0224129d1e3cbd02268273ead69113dfc6c81b7242ba6",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/log_bench.glb",
+      "src": "yard111:01. High/winter/log_bench.glb",
+      "sha256": "53e7fcdecccc665bfacae755c89c147a97e8c158dc64183329199dd936b79ac3",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/stall_awning.glb",
+      "src": "yard111:01. High/winter/stall_awning.glb",
+      "sha256": "0a7b1f05b8f3bd938607403934ea9dc0f83bf4a753889aaa9ac67893a6708238",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fountain.glb",
+      "src": "yard111:01. High/winter/fountain.glb",
+      "sha256": "fd37a871f79f5ae857ac97a9b02bf90a07eebd93b56ab96fdcf98c3b32931a53",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/greenhouse_small.glb",
+      "src": "yard111:01. High/winter/greenhouse_small.glb",
+      "sha256": "985639562ea59cf3052f402a7c48000b5bb3a9910fdf6e11acdaaf0e8ce96aa5",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/pebbles.glb",
+      "src": "yard111:01. High/winter/pebbles.glb",
+      "sha256": "1551a7aa9a78c103aeb69da628f21b5d2d9146e7157f564b14c73182a09d60b5",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/duck.glb",
+      "src": "yard111:01. High/winter/duck.glb",
+      "sha256": "076e8d44b443ded8e13ce3c077816f23709d0702c09bd9354315144d070d80f8",
+      "precompressed": true
     }
   ],
   "sources": {
