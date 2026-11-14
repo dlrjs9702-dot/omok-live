@@ -430,13 +430,13 @@
     // v1.10.73 (IDEAS #bug-event-resident-stuck): the way to a held place on the route grid, with this screen's own
     // solids (October night's pumpkins) kept off it too. A cell is blocked where a solid comes within an islander of it.
     const blockedCell = ({ x, z }) => !walkable(x, z) || solidsNear(x, z).some((s) => Math.hypot(Math.max(0, Math.abs(x - s.x) - CELL / 2), Math.max(0, Math.abs(z - s.z) - CELL / 2)) < s.r + R);
-    function pathTo(w, x, z, from = null) {
+    function pathTo(w, x, z, from = null, jump = true) { // (jump false: no way found -- no route, the caller walks as before; v1.10.316 the way back)
       const cells = new Map(); const at = (id) => { if (!cells.has(id)) cells.set(id, blockedCell(centre(id % N, Math.floor(id / N)))); return cells.get(id); };
       let pts = findPath({ x: w.x, z: w.z }, { x, z }, at) || findPath({ x: w.x, z: w.z }, { x, z });
       if (!pts && from) { [w.x, w.z] = [from.x, from.z]; resyncs += 1; pts = findPath(from, { x, z }, at) || findPath(from, { x, z }, () => false); } /* (대회 순위: no way from where they are drawn -- 가락's reeds -- the hold's own start, the 백화점's door, and the walk from there) */
       // (CI #315: no walking way at all -- parts of the grid that never meet, a river between -- a straight walk stopped on
       // the bank for good: there at once instead, as a screen that was paused puts them)
-      if (!pts) { [w.x, w.z] = [x, z]; resyncs += 1; }
+      if (!pts && jump) { [w.x, w.z] = [x, z]; resyncs += 1; }
       w.route = pts ? pts.slice(1) : null; w.routeTo = `${x},${z}`; w.routeCheck = { t: 0, d: Infinity };
     }
     // along the route: the next corner, passed once close to it
@@ -462,21 +462,38 @@
           // without headway (wedged on the way), it takes the route grid from where it stands.
           if (paused) { [w.x, w.z] = [pose.x, pose.z]; w.route = null; resyncs += 1; }
           const left = Math.hypot(pose.x - w.x, pose.z - w.z); const key = `${pose.x},${pose.z}`;
-          if (w.routeTo !== key) { w.route = null; w.routeTo = key; w.routeCheck = { t: 0, d: left }; if (left > MAX_OFF) pathTo(w, pose.x, pose.z, pose.from); }
+          if (w.routeTo !== key) { w.route = null; w.routeTo = key; w.routeCheck = { t: 0, d: left }; [w.holdX, w.holdZ] = pushOut(pose.x, pose.z); if (left > MAX_OFF) pathTo(w, pose.x, pose.z, pose.from); }
           else if ((w.routeCheck.t += dt) >= 1.5) { if (left > 0.05 && left > w.routeCheck.d - 0.2) pathTo(w, pose.x, pose.z, pose.from); else w.routeCheck = { t: 0, d: left }; }
           if (left < 0.6) w.route = null;
-          const goal = w.route ? routeTarget(w) : pose;
+          // (v1.10.316 검토 resident-stuck ㅁ: the held place as this screen can stand on it -- pushed out of what blocks here; a
+          // place the server chose in a solid was never 「arrived」 at, 0.35 m short, and 「말 걸기」 never came)
+          const end = { x: w.holdX ?? pose.x, z: w.holdZ ?? pose.z };
+          const goal = w.route ? routeTarget(w) : end;
           const distance=Math.hypot(goal.x-w.x,goal.z-w.z), scale=distance?Math.min(1,TOP*dt/distance):1;
           [w.x,w.z]=move(w.x,w.z,w.x+(goal.x-w.x)*scale,w.z+(goal.z-w.z)*scale);
           w.bx=pose.x; w.bz=pose.z; w.pose=pose;
-          w.speed=dt?Math.hypot(w.x-w.px,w.z-w.pz)/dt:0;
-          w.arrived=Math.hypot(w.x-pose.x,w.z-pose.z)<0.05;
+          { const v = dt ? Math.hypot(w.x - w.px, w.z - w.pz) / dt : 0; w.speed += (v - w.speed) * Math.min(1, dt * 10); } /* (ㄷ: eased as the walking ones -- a frame's back and forth between two solids no longer reads as a walk) */
+          w.arrived=Math.hypot(w.x-end.x,w.z-end.z)<0.05;
           w.heading = distance > 0.05 ? Math.atan2(goal.x - w.x, goal.z - w.z) : null; w.warped = false; w.rejoining = false;
           continue; // approach the same safe server point; never teleport away from local avoidance
         }
-        w.route = null; w.routeTo = null;
-        if (w.pose.held) w.rejoining = w.pose.contest !== 'contest:back'; /* (대회 순위: 가락 home from the tent -- at his round's spot, or gone in at the 백화점's door: straight back on his round) */
+        if (w.pose.held) { w.rejoining = w.pose.contest !== 'contest:back'; w.route = null; w.routeTo = null; w.rejoin = { t: 0, d: Infinity, tries: 0 }; w.holdX = null; w.holdZ = null; } /* (대회 순위: 가락 home from the tent -- at his round's spot, or gone in at the 백화점's door: straight back on his round) */
         if (w.rejoining && Math.hypot(w.x-pose.x,w.z-pose.z)<0.5) w.rejoining = false;
+        // (v1.10.316 검토 resident-stuck ㄱ·ㄴ, 사용자 「장애물에 막혀서 못가고 그자리에서 걸어가는」: back to the round from a hold far off
+        // -- a photo spot up to 150 m away -- on the route grid, as the way there (pathTo, this screen's solids kept off), not a
+        // straight jog into the fountain, a row of benches or the bay. The round's spot moves on: the way found again every
+        // 1.5 s. No headway for 1.5 s twice over: given up -- the round takes them back as any stuck islander (the warp))
+        const back = w.rejoining ? Math.hypot(pose.x - w.x, pose.z - w.z) : 0;
+        if (w.rejoining && back > MAX_OFF) {
+          const r = w.rejoin || (w.rejoin = { t: 0, d: Infinity, tries: 0 });
+          if (!w.routeTo) pathTo(w, pose.x, pose.z, null, false);
+          if ((r.t += dt) >= 1.5) { if (back > r.d - 0.2) { r.tries += 1; if (r.tries >= 2) w.rejoining = false; } else r.tries = 0; r.t = 0; r.d = back; if (w.rejoining) pathTo(w, pose.x, pose.z, null, false); }
+          if (w.rejoining && w.route && w.route.length) {
+            const goal = routeTarget(w); const distance = Math.hypot(goal.x - w.x, goal.z - w.z); const scale = distance ? Math.min(1, (TOP * dt) / distance) : 1;
+            [w.x, w.z] = move(w.x, w.z, w.x + (goal.x - w.x) * scale, w.z + (goal.z - w.z) * scale);
+            w.warped = false; w.bx = pose.x; w.bz = pose.z; w.pose = pose; continue;
+          }
+        } else { w.route = null; w.routeTo = null; } // (far and no way found: as before, straight -- not asked again till the 1.5 s check)
         let tx = pose.x + (w.x - w.bx) * keep; let tz = pose.z + (w.z - w.bz) * keep;
         const want = Math.hypot(tx - w.x, tz - w.z);
         w.warped = !w.rejoining && (want > WARP || Math.hypot(w.x - w.bx, w.z - w.bz) > MAX_OFF); // a long pause (a hidden tab), or stuck: back on the round at once

@@ -625,7 +625,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     for (const kind of ['tree_round', 'tree_twin', 'tree_poplar', 'bush_round']) { /* (G2 assets 109: each season's own file, no far one -- 사용자 「로우 모델 넣지 마」) */
       expect(files.some(([url]) => url === `/assets/island/nature109/${season}/${kind}.glb`), `${season} ${kind}`).toBe(true);
     }
-    expect(files.some(([url]) => url.startsWith('/assets/island/nature109/') && url.endsWith('_low.glb') && !url.endsWith('/plant_low.glb') /* (the ground cover's 「low plant」, its name) */), `${season} no G2 low`).toBe(false);
+    expect(files.some(([url]) => url.startsWith('/assets/island/nature109/') && url.endsWith('_low.glb') && !url.endsWith('/plant_low.glb') /* (the ground cover's 「low plant」, its name) */ && !/\/flower_(daisy_yellow|daisy|lavender|red)_low\.glb$/.test(url) /* (316 assets 122: the four flowers' far files) */), `${season} no G2 low`).toBe(false);
   }
   const gazebo = d.assets.attaches.find((x) => x.ids.includes('facility.chat'));
   expect(gazebo.zone).toBeGreaterThanOrEqual(0);
@@ -633,6 +633,9 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   for (const prop of d.assets.attaches.filter((x) => (x.ids.includes('prop.bench') || x.ids.includes('prop.planter')) && x.zone !== 3)) { // (v1.10.230: 툇마루섬's little gardens take the isle's season)
     expect(prop.zone).toBe(-1); expect(prop.look).toBe('summer'); // the neutral plaza
   }
+  { const benches = d.assets.batches.find((x) => x.ids.includes('prop.bench')); /* (316 ④: the plaza's benches one batch now -- the same rule, per zone) */
+    expect(benches?.copies).toBeGreaterThan(0);
+    for (const [zone, z] of Object.entries(benches.zones)) if (zone !== '3') { expect(zone).toBe('-1'); expect(z.look).toBe('summer'); } }
   // v1.10.29: each flower colour its own model in every season; the bridges and yard fences take their zone's season
   // Terrain changes can leave a colour absent in one zone. Check every placed colour's actual seasonal H/L pair.
   const flowers = d.assets.batches.filter((batch) => batch.ids[0].startsWith('nature.flower.'));
@@ -641,7 +644,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   for (const batch of flowers) for (const zone of Object.values(batch.zones)) {
     const colour = Number(batch.ids[0].split('.').pop());
     expect(zone.url, batch.ids[0]).toBe(`/assets/island/nature109/${zone.look}/${FLOWER[colour]}.glb`);
-    expect(zone.low).toBe(null);
+    expect(zone.low).toBe(colour === 0 ? null : `/assets/island/nature109/${zone.look}/${FLOWER[colour]}_low.glb`); /* (316 assets 122: the daisies, lavender and poppy have a far file; the tulip not) */
     expect(files.some(([url, state]) => url === zone.url && state === 'loaded')).toBe(true);
   }
   const bridges = d.assets.attaches.filter((x) => x.ids.includes('prop.bridge'));

@@ -153,11 +153,23 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       root.userData.occlusionRevision = (root.userData.occlusionRevision || 0) + 1; break;
     }
   };
+  // v1.10.316 렉 줄이기 2차 ③: a hidden procedural look still had its matrices worked out every frame (the scene walks
+  // hidden subtrees too) -- once the model is there it leaves the tree, and comes back where it was if the model goes.
+  // Kept in place: a facility's or a building's look (clicks and the camera's see-through boxes take its whole tree,
+  // hidden parts too -- left as they were), and one shared by several holders (the pier's posts) until none shows it.
+  const procHome = new WeakMap(); // procedural -> { parent, using: Set of recs showing their model, shared }
+  const inFacility = (o) => { for (let p = o; p; p = p.parent) if (p.userData?.facility || p.userData?.building) return true; return false; };
+  function parkProcedural(rec, hide) {
+    const proc = rec.procedural; let home = procHome.get(proc);    if (hide) {
+      if (!home) { if (!proc.parent || inFacility(rec.holder)) return; home = { parent: proc.parent, using: new Set(), shared: attaches.filter((r) => r.procedural === proc).length }; procHome.set(proc, home); }
+      home.using.add(rec); if (home.using.size >= home.shared && proc.parent) proc.removeFromParent();
+    } else if (home) { home.using.delete(rec); if (!proc.parent) home.parent.add(proc); }
+  }
   function swapAttach(rec, object, entry = null) {
     noteGlass(object);
     if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); }
     rec.object = object; if (object) rec.holder.add(object);
-    rec.procedural.visible = !object; invalidateOcclusion(rec.holder);
+    if (rec.procedural) { rec.procedural.visible = !object; parkProcedural(rec, Boolean(object)); } invalidateOcclusion(rec.holder);
     rec.onSwap?.(object ? entry : null);
     rec.snowEntry = object && entry?.snow ? entry : null; rec.snow = null; applySnow(rec);
   }
@@ -414,17 +426,18 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           const hit = hits.get(zone); const gltf = hit && models.get(hit.entry.url);
           if (!gltf) continue; // this zone's season has no model: its copies stay procedural
           const lowGltf = hit.entry.lowUrl ? models.get(hit.entry.lowUrl) : null;
+          if (hit.entry.nightGlow) for (const g of [gltf, lowGltf]) if (g) nightGlowFiles.add(g); /* (316 ④: a batched lamp's glow lit at night, as an attached one's) */
           const meshesOf = (model, shadow) => partsOf(model).map(({ geometry, material, matrix }) => {
             const im = new THREE.InstancedMesh(geometry, material, count);
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
             im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in
-            im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true;
+            im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true; im.matrixAutoUpdate = false; /* (316 ③: at the cell's origin for good -- its copies carry their places) */
             cell.parent.add(im); invalidateOcclusion(cell.parent); return im; // (a building's batched parts: its sight boxes again)
           });
           const high = meshesOf(gltf, cell.shadow && entry.shadows !== false); const low = lowGltf ? meshesOf(lowGltf, false) : hit.entry.hideFar ? [] : null; /* (G2 덤불 `hideFar`: an empty Low -- past it nothing, the fade's dither taking it out) */
           /* (v1.10.290: the copies on their way between the two -- their own instanced meshes on the same buffers, each its share) */
-          const fadeMeshes = (meshes) => meshes.map((src) => { const geo = new THREE.BufferGeometry(); geo.index = src.geometry.index; for (const [k, a] of Object.entries(src.geometry.attributes)) geo.setAttribute(k, a); geo.groups = src.geometry.groups; geo.boundingBox = src.geometry.boundingBox; geo.boundingSphere = src.geometry.boundingSphere; geo.setAttribute('lodFade', new THREE.InstancedBufferAttribute(new Float32Array(count), 1)); const im = new THREE.InstancedMesh(geo, instFadeOf(src.material), count); im.userData.part = src.userData.part; im.boundingSphere = src.boundingSphere; im.count = 0; im.visible = false; im.castShadow = false; im.receiveShadow = true; cell.parent.add(im); return im; });
+          const fadeMeshes = (meshes) => meshes.map((src) => { const geo = new THREE.BufferGeometry(); geo.index = src.geometry.index; for (const [k, a] of Object.entries(src.geometry.attributes)) geo.setAttribute(k, a); geo.groups = src.geometry.groups; geo.boundingBox = src.geometry.boundingBox; geo.boundingSphere = src.geometry.boundingSphere; geo.setAttribute('lodFade', new THREE.InstancedBufferAttribute(new Float32Array(count), 1)); const im = new THREE.InstancedMesh(geo, instFadeOf(src.material), count); im.userData.part = src.userData.part; im.boundingSphere = src.boundingSphere; im.count = 0; im.visible = false; im.castShadow = false; im.receiveShadow = true; im.matrixAutoUpdate = false; cell.parent.add(im); return im; });
           const canFade = Boolean(low) && [...high, ...low].every((im) => fadeable(im.material));
           p.groups.set(zone, { high, low, fh: canFade ? fadeMeshes(high) : null, fl: canFade ? fadeMeshes(low) : null, a: 0, b: 0, c: 0 });
         }
@@ -433,6 +446,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       });
       for (const hit of hits.values()) if (hit) shown[hit.id] = models.get(hit.entry.url) ? 'model' : 'procedural';
       rec.entry = entry; lastX = NaN;
+      rec.twoLevels = [...hits.values()].some((hit) => hit && (hit.entry.hideFar || (hit.entry.lowUrl && models.get(hit.entry.lowUrl)))); /* (v1.10.316 ⑤: a Low or a hideFar somewhere -- else update() leaves it be) */
     }).catch((error) => { shown[any.id] = 'procedural'; onError(any.id, error); });
   }
   // v1.10.31: a copy of a square changed (a pulled weed's matrix set to nothing) -- the square is drawn again; and a
@@ -508,14 +522,13 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     if (Math.hypot(x - lastX, z - lastZ) < 1) return;
     lastX = x; lastZ = z; let starts = 0;
     for (const rec of batches) {
-      if (!rec.placed) continue;
-      entryMatrix(rec.entry, local);
+      if (!rec.placed || !rec.twoLevels) continue; /* (v1.10.316 렉 줄이기 2차 ⑤: no Low and no hideFar -- High at every distance; nothing to work out) */
       const near = rec.entry.hideFar || P.lodDistance(rec.entry.near ?? 45, quality, rec.entry.shadows !== false); /* (G2 덤불: `hideFar` m, at every quality) */
       for (const p of rec.placed) {
         let changed = false;
         p.cell.matrices.forEach((m, i) => {
           const high = P.highState(p.flags[i] === 1, Math.hypot(m.elements[12] - x, m.elements[14] - z), near);
-          if (high !== (p.flags[i] === 1)) { const fades = fadeOn && p.groups.get(p.zones[i])?.fh; if (fades && !p.moving.has(i) && starts >= FADE_STARTS) { lastX = NaN; return; } /* (294: next frame) */ p.flags[i] = high ? 1 : 0; changed = true; if (fades) { if (!p.moving.has(i)) { fadeStarts += 1; starts += 1; } p.moving.add(i); } else { p.share[i] = p.flags[i]; p.moving.delete(i); } } /* (v1.10.290: on its way, or at once) */
+          if (high !== (p.flags[i] === 1)) { const fades = fadeOn && p.groups.get(p.zones[i])?.fh; if (fades && !p.moving.has(i) && starts >= FADE_STARTS) { lastX = NaN; return; } /* (294: next frame) */ p.flags[i] = high ? 1 : 0; changed = true; if (fades) { if (!p.moving.has(i)) { fadeStarts += 1; starts += 1; } p.moving.add(i); fadingCells.add(p); } else { p.share[i] = p.flags[i]; p.moving.delete(i); } } /* (v1.10.290: on its way, or at once; v1.10.316 ⑤ its square in the fading list) */
         });
         if (changed) fill(p);
       }
@@ -632,13 +645,14 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   // v1.10.290: the copies on their way between High and Low, a step each frame (their squares drawn again only then)
   let fading = 0;
+  // (v1.10.316 렉 줄이기 2차 ⑤: only the squares with a copy on its way -- not every square of every batch each frame)
+  const fadingCells = new Set();
   function stepFades(ms) {
     let n = 0;
-    for (const rec of batches) for (const p of rec.placed || []) {
-      if (!p.moving?.size) continue;
-      entryMatrix(rec.entry, local); /* (Codex 281~290 #2: this batch's own offset, turn and size -- `local` was whichever update() did last) */
+    for (const p of fadingCells) {
+      if (!p.moving?.size || !p.groups.size) { fadingCells.delete(p); continue; } // (done, or its batch laid out anew)
       for (const i of p.moving) { p.share[i] = P.fadeStep(p.share[i], p.flags[i] === 1, ms); if (p.share[i] === p.flags[i]) p.moving.delete(i); }
-      fill(p); n += p.moving.size;
+      fill(p); n += p.moving.size; if (!p.moving.size) fadingCells.delete(p); // (fill: each square its own matrix since 313 A1)
     }
     fading = n + lods.filter((l) => l.userData.lodRun).length + wearing.filter((w) => w.run).length;
   }

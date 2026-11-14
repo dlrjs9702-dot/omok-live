@@ -19,7 +19,9 @@ async function backZ(file, decoder) {
     const out = new Uint8Array(e.count * e.byteStride); decoder.decodeGltfBuffer(out, e.count, e.byteStride, new Uint8Array(bin.slice(e.byteOffset || 0, (e.byteOffset || 0) + e.byteLength)), e.mode, e.filter); return { buf: Buffer.from(out), stride: e.byteStride }; };
   const pts = [];
   const walk = (i, T = [0, 0, 0], S = [1, 1, 1]) => {
-    const n = j.nodes[i]; const t = n.translation || [0, 0, 0]; const s = n.scale || [1, 1, 1]; const T2 = T.map((v, k) => v + t[k] * S[k]); const S2 = S.map((v, k) => v * s[k]);
+    const n = j.nodes[i]; const m = n.matrix; /* (316 assets 122: the dequantizing scale and offset as a node matrix -- scale and move only) */
+    if (m) assert.ok([1, 2, 3, 4, 6, 7, 8, 9, 11].every((k) => Math.abs(m[k]) < 1e-9), `${file}: a turned node matrix`);
+    const t = m ? [m[12], m[13], m[14]] : n.translation || [0, 0, 0]; const s = m ? [m[0], m[5], m[10]] : n.scale || [1, 1, 1]; const T2 = T.map((v, k) => v + t[k] * S[k]); const S2 = S.map((v, k) => v * s[k]);
     assert.ok(!n.rotation || Math.abs(n.rotation[3]) > 0.999, `${file}: a turned node`);
     if (n.mesh != null) for (const p of j.meshes[n.mesh].primitives) {
       const a = j.accessors[p.attributes.POSITION]; const { buf, stride } = view(a.bufferView); const size = { 5126: 4, 5123: 2, 5122: 2, 5121: 1, 5120: 1 }[a.componentType]; const st = stride || size * 3;
