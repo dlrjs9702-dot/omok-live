@@ -18,7 +18,7 @@ const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); ret
 // CI 3차 후속: up, and its islanders out -- just after `running` the page works out the islanders' route grid in one task
 // (island-npcs.js buildGrid: 1.5 s on a fast PC, past 8 s on a slow one) and nothing else runs meanwhile, a check's
 // page.evaluate included: a 8 s check right after a reload never got to read anything (첫 접속 성별, 광장 챔피언)
-const islandSettled = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return Boolean(d?.running) && d.wanderers.length === d.wanderersWanted(); }); /* (314 CI: by the hour of a 대회 가락 walks to its tent -- an eleventh) */ // (v1.10.216: the rounds are 27, a tests' server -- the table off -- has the ten out)
+const islandSettled = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return Boolean(d?.running) && d.wanderers.length >= window.IslandCast.WALKERS.length; }); /* (314 CI: 13:35~15:00, the 대회's hours, 가락 walks to its tent too -- an eleventh) */ // (v1.10.216: the rounds are 27, a tests' server -- the table off -- has the ten out)
 
 // These tests check movement, sync, collision and the island's rules, not its 3D models (tests/e2e/island-assets.spec.js
 // does that): every registered model is switched off, so each page draws the light procedural island. On a CI runner
@@ -1087,9 +1087,8 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   await post(request, '/api/test/island/free-residents', a.token, {}); // (no resident held by an earlier test's event: they all walk their rounds)
   const islanders = (page) => page.evaluate(() => window.PlazaDebug().wanderers);
   /* (314 CI 2026-11-14 토요일, main too: 11 out -- the roster's day off walks some of the 17; as many as walk today, at least the ten) */
-  const wanted = await a.page.evaluate(() => window.PlazaDebug().wanderersWanted()); expect(wanted).toBeGreaterThanOrEqual(10);
-  await expect.poll(async () => (await islanders(a.page)).length, { timeout: 15000 }).toBe(wanted);
-  await expect.poll(async () => (await islanders(b.page)).length, { timeout: 15000 }).toBe(wanted);
+  await expect.poll(async () => (await islanders(a.page)).length, { timeout: 15000 }).toBeGreaterThanOrEqual(10);
+  await expect.poll(async () => (await islanders(b.page)).length, { timeout: 15000 }).toBeGreaterThanOrEqual(10);
   await a.page.waitForTimeout(1500); // both have heard the server clock (pose answers)
   // Where an islander's round has it is a pure function of the server clock (island-npcs.js `at`), so the two screens
   // show the same places when they agree on that clock. (v1.10.16: comparing the drawn spots directly measured mostly

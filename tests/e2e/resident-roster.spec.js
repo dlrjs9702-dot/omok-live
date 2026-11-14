@@ -44,7 +44,8 @@ test('주민 근무표: 자리마다 그날 주민, 계산대에서 이야기·�
     // (a walker at a counter is made and hidden when the walkers come out before the day's table, or not made at all when the
     // table came first -- either way none of them on the island: CI #375, the order turned with the page's start)
     expect(d.walkersAway.every((n) => away.includes(n)), JSON.stringify(d.walkersAway)).toBe(true); expect(d.shownAway).toBe(0);
-    expect(away.some((n) => d.walking.includes(n)), 'a counter walker walking').toBe(false);
+    const held = (await page.evaluate(() => window.PlazaDebug().wanderers)).filter((w) => w.held).map((w) => w.n); /* (314 CI 14:12: in the 대회's hours 가락 is sent from his counter to the tent, held on that walk -- every run 13:35~15:00) */
+    expect(away.some((n) => d.walking.includes(n) && !held.includes(n)), 'a counter walker walking').toBe(false);
     await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().roster())).quests.find((q) => q.id === 'questfisher'), { timeout: 30000 }).toEqual({ id: 'questfisher', post: 'mall1', walker: null, shown: false });
     const { rest } = R.deskRest(day);
     expect(d.desks).toEqual(['civil', 'tax', 'bank', 'rename'].map((k) => ({ desk: k, shown: k !== rest, sign: k === rest }))); /* (v1.10.288: 다래 at 개명, four in turn) */
