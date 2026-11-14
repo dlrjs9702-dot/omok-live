@@ -166,3 +166,23 @@ test('주민 길 격자: 조금씩 만들어도 한 번에 만든 것과 같고,
   for (let ms = 100; ms <= 3000; ms += 100) walkers.step(ms, 0.1);
   assert.deepEqual([w.x, w.z, w.arrived, walkers.resyncs()], [to.x, to.z, true, 1]);
 });
+
+// v1.10.317 택시 C1 (notes docs/taxi-yield-20261109.md, 사용자 「큰길을 건너는 자리는 건널목 몇 곳으로 모아요」): no stopping place on the
+// taxi road's middle; a round goes over the road only at a 건널목 (a bridge's deck aside -- the way over its stream); it never
+// walks along the road's middle for long; nothing solid within 5 m of a 건널목
+test('택시 C1: 멈출 자리는 택시 길 밖, 건너기는 건널목에서만, 길 가운데를 따라 걷지 않음, 건널목은 비움', () => {
+  const X = require('../public/plaza/island-taxi.js'); const R = X.ROUTE;
+  const near = (x, z) => { let b = { d: Infinity }; for (let i = 1; i < R.length; i += 1) { const [a, c] = [R[i - 1], R[i]]; const L = Math.hypot(c[0] - a[0], c[1] - a[1]); const u = Math.max(0, Math.min(1, ((x - a[0]) * (c[0] - a[0]) + (z - a[1]) * (c[1] - a[1])) / (L * L))); const px = a[0] + (c[0] - a[0]) * u; const pz = a[1] + (c[1] - a[1]) * u; const d = Math.hypot(x - px, z - pz); if (d < b.d) b = { d, side: Math.sign((c[0] - a[0]) * (z - a[1]) - (c[1] - a[1]) * (x - a[0])), x: px, z: pz }; } return b; };
+  for (const s of P.stopPlaces()) assert.ok(near(s.x, s.z).d >= 1.5, `stop on the road ${s.x},${s.z}`);
+  let along = 0; let worst = 0;
+  for (let n = 0; n < P.COUNT; n += 1) {
+    const pts = P.round(n).parts.filter((p) => p.moving).flatMap((p) => p.pts); let inAt = null; let run = 0; let side = null;
+    for (let i = 1; i < pts.length; i += 1) { const a = pts[i - 1]; const b = pts[i]; const L = Math.hypot(b.x - a.x, b.z - a.z); for (let s = 0; s < L; s += 0.5) { const x = a.x + (b.x - a.x) * s / L; const z = a.z + (b.z - a.z) * s / L; const q = near(x, z);
+      if (q.d < 1.45) { inAt ||= q; run += 0.5; continue; }
+      if (q.d < 6) { if (inAt && side !== null && q.side !== side && !T.onBridge(inAt.x, inAt.z)) assert.ok(X.CROSSINGS.some((c) => Math.hypot(inAt.x - c.x, inAt.z - c.z) < 6), `${n} crossed at ${inAt.x.toFixed(1)},${inAt.z.toFixed(1)}`); side = q.side; }
+      if (inAt && !T.onBridge(inAt.x, inAt.z)) { along += run; worst = Math.max(worst, run); } inAt = null; run = 0; } }
+  }
+  assert.ok(along < 120 && worst < 12, `along the road's middle ${along} m, longest ${worst} m`);
+  const solids = [...T.natureSolids(), ...T.villageSolids(), ...(T.structureSolids?.() || [])];
+  for (const c of X.CROSSINGS) for (const o of solids) assert.ok(Math.hypot(c.x - o.x, c.z - o.z) - (o.r || 0) > X.CROSS_CLEAR, `건널목 ${c.x},${c.z}: ${o.x.toFixed(1)},${o.z.toFixed(1)}`);
+});

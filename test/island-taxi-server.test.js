@@ -66,3 +66,35 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   const [d0, e0] = [await balance(d), await balance(e)]; const both = await Promise.all([d, e].map((who) => req('/api/island/taxi', who, { from: 'plaza' })));
   assert.deepEqual(both.map((r) => r.data.error || 'ok').sort(), ['TAXI_AWAY', 'ok']); assert.equal((await balance(d)) + (await balance(e)), d0 + e0 - fare);
 });
+
+// v1.10.317 택시 서서 기다리기 (notes docs/taxi-yield-20261109.md A1~A3): on the real road someone standing in the car's way has it
+// ease to a stop short of them (never through them), 「빵」 time on (blockedAt), after 4 s creeping at a walk; they step off the
+// road and it goes on at its pace -- the ride later by the wait, on every screen's road clock (warp)
+test('섬 택시 서서 기다리기: 앞에 선 사람 앞에서 섬, 4초 뒤 천천히, 비키면 다시 달림, 도착은 그만큼 늦게', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-wait-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('택시탄이')); const b = await server.enter(await server.issue('길막이'));
+  await req('/api/test/points-credit', a, { amount: 100000 }); await req('/api/test/taxi-run', a, { ms: 0 }); /* (the real road) */
+  const stand = (who, x, z) => req('/api/plaza/state', who, { x, z, yaw: 0, moving: false });
+  const P = X.stopOf('plaza'); const spot = { x: 0.6, z: -37.1 }; /* (a point of the road, about 22 m on) */
+  await req('/api/island/npc-grid', a); /* (the islanders' grid made first -- seconds of a busy test machine's CPU, the server's ticks waiting behind it) */
+  await stand(a, P.out.x, P.out.z); await stand(b, spot.x, spot.z);
+  const rode = await req('/api/island/taxi', a, { from: 'plaza' }); assert.equal(rode.status, 200, JSON.stringify(rode.data));
+  const t0 = Date.now(); let ride = null; let blockedSeen = null; let creep = null;
+  while (Date.now() - t0 < 16000) {
+    const s = await stand(b, spot.x, spot.z); ride = s.data.taxiStops?.plaza || ride;
+    if (ride?.blockedAt && !blockedSeen) blockedSeen = Date.now();
+    if (ride?.warp && ride.warp.r1 > 0 && ride.warp.r1 < 0.3) { creep = ride.warp.r1; break; }
+    await sleep(200);
+  }
+  assert.ok(blockedSeen, 'waited for the one in front');
+  const stood = X.carAt(ride, ride.warp.at); const closest = (spot.x - stood.x) * Math.sin(stood.yaw) + (spot.z - stood.z) * Math.cos(stood.yaw); /* (where it stood: the last road clock, read when creeping begins -- not the test's own guess between answers) */
+  assert.ok(closest > 1.95 + 0.5, `stands short of them (its nose 1.95 m on): ${closest.toFixed(2)} m from its middle`); /* (round the corner too -- 317: it looks along its own way) */
+  assert.ok(creep > 0 && creep < 0.3, `creeping by at a walk after 4 s: ${creep}`); assert.ok(Date.now() - blockedSeen >= 3500);
+  const late = rode.data.taxi.startedAt + X.durationOf(rode.data.taxi); assert.equal(X.rideOver(ride, late), false, 'the ride later by its wait');
+  // off the road: on at its pace again
+  let back = null; const t1 = Date.now();
+  while (Date.now() - t1 < 5000) { const s = await stand(b, spot.x + 6, spot.z); const r = s.data.taxiStops?.plaza; if (r && !r.blockedAt && r.warp?.r1 === 1) { back = r; break; } await sleep(200); }
+  assert.ok(back, 'on again once clear');
+  await req('/api/test/taxi-run', a, { ms: 3000 });
+});

@@ -2226,9 +2226,59 @@ const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time
 // v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
 // (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
 const taxiStopOut = new Map();
-const taxiAwayMs = (from, now = nowMs()) => { const r = taxiStopOut.get(from); const left = r ? IslandTaxi.backOf(r) - now : 0; if (left <= 0) taxiStopOut.delete(from); return Math.max(0, left); };
+const taxiAwayMs = (from, now = nowMs()) => { const r = taxiStopOut.get(from); const left = r ? IslandTaxi.backOf(r, now) - now : 0; if (left <= 0) taxiStopOut.delete(from); return Math.max(0, left); };
 const taxiStopsView = (now = nowMs()) => Object.fromEntries(Object.keys(IslandTaxi.STOPS).filter((id) => taxiAwayMs(id, now) > 0).map((id) => [id, taxiStopOut.get(id)]));
 let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it -- 0 the real road, for photos on the bridge)
+// v1.10.317 택시 서서 기다리기 (notes docs/taxi-yield-20261109.md A1~A3): ten times a second each car on the road looks ahead. Someone
+// on foot in its way -- across within the car's half width + 0.3 m and their own 0.35, ahead from its middle to 3 m past its nose
+// plus what it goes before it can stand -- has it ease to a stop (the road's clock, IslandTaxi.warpTo: every screen eases it the
+// same); waiting 2 s, its 「빵」 (ride.blockedAt, on the screens); 4 s, it creeps by at a walk (on their screen they are eased
+// aside); clear, back to its pace. A test's short road (runMs) never waits.
+const TAXI_LOOK = { across: 0.85 + 0.3 + 0.35, nose: 1.95, gap: 3, walk: 1.2, honk: 2000, creep: 4000 };
+// (the way ahead: the car's own poses on its time table, 100 ms apart, till `look` metres on -- round a corner too; someone in
+// any of their boxes is in its way)
+function taxiWay(bare, road, look) {
+  const out = []; let gone = 0; let last = IslandTaxi.carAt(bare, road); if (!last) return out; out.push(last);
+  for (let k = 1; k <= 60 && gone < look; k += 1) { const q = IslandTaxi.carAt(bare, road + k * 100); if (!q) break; gone += Math.hypot(q.x - last.x, q.z - last.z); out.push(q); last = q; }
+  return out;
+}
+// -> { token, stand }: the first one in its way and the last of its poses that keeps a metre between its nose and them (where it
+// should come to stand), or null
+function taxiBlocker(ride, way, now) {
+  for (const [token, e] of plazaPresence) {
+    if (e.ride || e.platform || e.taxi || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > 5000 || (e.space && e.space !== 'island')) continue;
+    const rel = (p) => { const dx = e.x - p.x; const dz = e.z - p.z; return { along: dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw), across: dx * Math.cos(p.yaw) - dz * Math.sin(p.yaw) }; };
+    const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < TAXI_LOOK.across && Math.abs(r.along) < TAXI_LOOK.nose; });
+    if (hit < 0) continue;
+    let stand = 0; for (let k = hit; k >= 0; k -= 1) if (rel(way[k]).along > TAXI_LOOK.nose + 1 || Math.abs(rel(way[k]).across) >= TAXI_LOOK.across) { stand = k; break; }
+    return { token, stand };
+  }
+  return null;
+}
+let taxiTickAt = 0;
+function taxiTick() {
+  const now = nowMs(); const late = taxiTickAt ? Math.min(1500, Math.max(0, now - taxiTickAt - 100)) : 0; taxiTickAt = now; /* (a busy server's tick late: looks that much further) */
+  for (const ride of new Set([...taxiStopOut.values(), ...taxiRides.values()])) {
+    if (ride.runMs) continue;
+    const p = IslandTaxi.carAt(ride, now);
+    if (!p || !['start', 'run', 'stop', 'back'].includes(p.phase)) { if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; } continue; }
+    const road = IslandTaxi.roadNow(ride, now); const bare = { from: ride.from, startedAt: ride.startedAt };
+    const speedAt = (r) => { const a = IslandTaxi.carAt(bare, r); const b = IslandTaxi.carAt(bare, r + 200); return a && b ? Math.hypot(b.x - a.x, b.z - a.z) / 0.2 : 0; };
+    const brake = IslandTaxi.LEAD + IslandTaxi.RAMP / 2 + 200 + late * 2; /* (+ a late tick or two on a busy server) */ const vTable = speedAt(road); const vMax = Math.max(vTable, speedAt(road + brake)); /* (pulling away it is still speeding up as it brakes) */
+    const look = TAXI_LOOK.gap + vMax * IslandTaxi.rateOf(ride, now) * (brake / 1000);
+    const who = taxiBlocker(ride, taxiWay(bare, road, look), now); let want = 1;
+    if (who) { if (!ride.blockedAt) { ride.blockedAt = now; plazaDirty = true; } want = now - ride.blockedAt >= TAXI_LOOK.creep && vTable > 0.1 ? Math.min(1, TAXI_LOOK.walk / vTable) : 0; }
+    else if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; }
+    const was = ride.warp ? ride.warp.r1 : 1;
+    if (want === 0) { /* (to a stand where `who.stand` says -- the ramp shortened to get there, never past it: a late tick still stops short) */
+      const at = now + IslandTaxi.LEAD; const tauAt = IslandTaxi.roadNow(ride, at); const r0 = IslandTaxi.rateOf(ride, at); const target = road + who.stand * 100;
+      const ms = Math.max(120, Math.min(IslandTaxi.RAMP, (2 * (target - tauAt)) / Math.max(0.05, r0)));
+      const planned = ride.warp && was === 0 ? ride.warp.tau + (ride.warp.r0 * ride.warp.ms) / 2 : Infinity;
+      if (was !== 0 || planned > target + 40) { IslandTaxi.warpTo(ride, 0, now, ms); plazaDirty = true; }
+    } else if (Math.abs(was - want) > 0.02 && !(want > 0 && want < 1 && was > 0 && Math.abs(was - want) / want < 0.25)) { IslandTaxi.warpTo(ride, want, now, want === 1 ? 700 : IslandTaxi.RAMP); plazaDirty = true; }
+  }
+}
+setInterval(taxiTick, 100).unref?.();
 function trainService() { const snapshot = trainTraffic.advance(trainNow()); IslandTrain.setService(snapshot); return snapshot; }
 const trainNow = () => nowMs() + trainShift;
 const trainDocked = (stopId, id = null, line = null) => { trainService(); const candidates = IslandTrain.TRAINS.map((t) => IslandTrain.trainAt(t.id, trainNow())).filter((st) => st.stop && st.wait > 0.7 && st.wait <= IslandTrain.DWELL - 0.7 && (!stopId || st.stop === stopId) && (id === null || st.id === id) && (!line || st.line === line)); return candidates[0] || null; };
@@ -4599,7 +4649,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.316' });
+    return sendJson(res, 200, { ok: true, version: '1.10.317' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5663,7 +5713,7 @@ async function requestHandler(req, res) {
     const platform = trainVisitors.get(session.token) || null;
     // v1.10.271 섬 택시: in the taxi I am where the road's clock says; once the ride is over, at the other stop's step out
     let taxi = taxiRides.get(session.token) || null; let taxiDone = null;
-    if (taxi && nowMs() >= taxi.startedAt + IslandTaxi.durationOf(taxi)) { taxiDone = IslandTaxi.arrivalOf(taxi); taxiRides.delete(session.token); taxi = null; }
+    if (taxi && IslandTaxi.rideOver(taxi, nowMs())) { /* (317: on the road's clock -- later by every wait) */ taxiDone = IslandTaxi.arrivalOf(taxi); taxiRides.delete(session.token); taxi = null; }
     // R4 구치소: a visit's first pose -- one owing the tax (not passed today) starts in the cell
     // (Codex 검토 #4: left the island while an await ran -- `left` -- a late pose brings nothing back, the cell neither)
     const left = () => sessions.get(session.token) !== session || getCurrentRoom(session) || generation !== (session.plazaGeneration || 0);
@@ -5762,7 +5812,7 @@ async function requestHandler(req, res) {
       held: IslandItems.QUICK_KINDS.includes(body.held) && !ride && !taxi && !platform ? body.held : null, /* (v1.10.236: in my hand, seen by the others) */ bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) / GroundSpeed.factorAt(IslandTerrain, spot.x, spot.z, IslandPaths, groundCover) : 0; })(), // (5회차 6: as fast as the ground lets one -- a walk on a path is no run)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
-      taxi: taxi ? { from: taxi.from, startedAt: taxi.startedAt, ...(taxi.runMs ? { runMs: taxi.runMs } : {}) } : null, // v1.10.271 (the road and its clock: every screen draws the same)
+      taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, // v1.10.271 (the road and its clock: every screen draws the same)
       home: homeInside.has(session.token) ? ((l) => (l && floorOf(session.token) === 2 ? `${l}:2` : l || null))(homeCache.get(homeInside.get(session.token))?.lot) : null, /* (R8: the 2층 is `<lot>:2` -- one sees the people on the same floor) */ // (묶음 4: which house, by its lot -- one sees the people in the same one)
       space: jailInside.has(session.token) ? 'jail' : museumInside.has(session.token) ? 'museum' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : fashionInside.has(session.token) ? 'fashion' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
@@ -5778,7 +5828,7 @@ async function requestHandler(req, res) {
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
     if ((plazaPresence.get(session.token)?.space || 'island') === 'island') storyArrive(account, spot); // (S1: a story's place)
     const taxNote = await taxNoteOf(account); // (주민세 고지서: a bill whose last day is tomorrow -- said once that day)
-    return sendJson(res, 200, { ok: true, taxNote, id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi ? { from: taxi.from, startedAt: taxi.startedAt, ...(taxi.runMs ? { runMs: taxi.runMs } : {}) } : null, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    return sendJson(res, 200, { ok: true, taxNote, id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -9531,7 +9581,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.316 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.317 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

@@ -135,3 +135,22 @@ test('택시 길 비우기: G4a 새 단단한 자연물은 길 가운데서 0.85
   for (const r of N.rocks) { if (['shore', 'rock_small'].includes(T.rockKind(r))) assert.equal(T.rockBlocks(r), false); else if (!r.g4 && !far(r, 0.8 * r.s, 4.05, 10)) assert.equal(T.rockBlocks(r), false, 'an older rock by the road'); }
   assert.ok(N.lilies.every((l) => T.dalmaru.lakeDist(l.x, l.z) < 0 || T.dalmaru.riverDist(l.x, l.z) < 0), 'lily pads on the water');
 });
+// v1.10.317 택시 서서 기다리기: the road's clock -- no warp the table's own time; a change set LEAD ms ahead, eased over its ramp,
+// never backwards and never a jump; standing (0) the car stays where it stopped; creeping (a little) it goes on slowly; the
+// other stop and the car's way home later by the wait (backOf in server time)
+test('택시 길 시계: 미리 정한 속도 바꿈, 끊김·뒤로 없음, 서면 그 자리, 기다린 만큼 늦게', () => {
+  const ride = { from: 'plaza', startedAt: 1000 }; assert.equal(X.roadNow(ride, 5000), 5000);
+  const stopAt = 1000 + X.ENTER + 3000; X.warpTo(ride, 0, stopAt); const w = { ...ride.warp };
+  assert.equal(w.at, stopAt + X.LEAD); assert.equal(w.r0, 1); assert.equal(w.r1, 0);
+  let last = -Infinity; let lastD = -Infinity;
+  for (let t = stopAt - 500; t <= stopAt + X.LEAD + X.RAMP + 3000; t += 20) {
+    const r = X.roadNow(ride, t); assert.ok(r >= last - 1e-6, 'never back'); assert.ok(last === -Infinity || r - last < 21, 'no jump'); last = r;
+    const d = X.poseAt(ride, t).d; assert.ok(d >= lastD - 1e-9); lastD = d;
+  }
+  const a = X.poseAt(ride, stopAt + X.LEAD + X.RAMP + 100); const b = X.poseAt(ride, stopAt + X.LEAD + X.RAMP + 2000); assert.ok(Math.hypot(b.x - a.x, b.z - a.z) < 1e-6, 'standing');
+  const still = X.backOf(ride, stopAt + 5000); const plain = X.backOf({ from: 'plaza', startedAt: 1000 }); assert.ok(still > plain, 'its way home later by the wait');
+  X.warpTo(ride, 0.1, stopAt + 5000); const c = X.poseAt(ride, stopAt + 5000 + X.LEAD + X.RAMP + 1000); const e = X.poseAt(ride, stopAt + 5000 + X.LEAD + X.RAMP + 2000);
+  const v = Math.hypot(e.x - c.x, e.z - c.z); assert.ok(v > 0.3 && v < 2.5, `creeping ${v.toFixed(2)} m/s`);
+  X.warpTo(ride, 1, stopAt + 9000); assert.equal(X.rideOver(ride, 1000 + X.durationOf(ride)), false, 'later than the table');
+  assert.equal(X.rideOver(ride, X.realAt(ride, 1000 + X.durationOf(ride), stopAt + 9000) + 10), true);
+});
