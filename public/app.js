@@ -1798,6 +1798,10 @@
   const qualityMode = () => { try { const v = localStorage.getItem('gc.quality'); return ['0', '1', '2'].includes(v) ? v : 'auto'; } catch { return 'auto'; } };
   byId('qualitySelect').value = qualityMode();
   byId('qualitySelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.quality', event.target.value); } catch {} plaza.controller?.setQualityMode?.(event.target.value); });
+  // v1.10.314 렉 줄이기 (사용자 「해상도를 더 세부화 해서」): 「그리기 해상도」 -- 자동 (by the tier) or 100~50 %, kept on this device
+  const renderScaleMode = () => { try { const v = localStorage.getItem('gc.renderScale'); return ['100', '90', '80', '70', '60', '50'].includes(v) ? v : 'auto'; } catch { return 'auto'; } };
+  byId('renderScaleSelect').value = renderScaleMode();
+  byId('renderScaleSelect').addEventListener('change', (event) => { try { localStorage.setItem('gc.renderScale', event.target.value); } catch {} plaza.controller?.setRenderScale?.(event.target.value); });
   // v1.10.290 6: when 자동 changes the tier, a short note -- once a day on this device (Seoul's day; not in tests unless asked)
   const TIER_NAMES = ['낮음', '중간', '높음'];
   const autoTierNote = (tier) => { const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); try { if (localStorage.getItem('gc.qualityNote') === day || (navigator.webdriver && !localStorage.getItem('gc.testQualityNote'))) return; localStorage.setItem('gc.qualityNote', day); } catch { return; } showToast(`화면이 ${tier < 2 ? '느려서' : '빨라져서'} 화질을 「${TIER_NAMES[tier]}」으로 바꿨어요 · ☰ 섬 화질에서 고정할 수 있어요`, 5000); };
@@ -1987,7 +1991,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); loadQuick(); setTimeout(islandNoticeOnce, 1500); // (1103 4: a note once) (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
-      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.onAutoTier?.(autoTierNote); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
+      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setRenderScale?.(renderScaleMode()); /* (314) */ plaza.controller.onAutoTier?.(autoTierNote); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); refreshProjects(); // (v1.10.215: today's table on; v1.10.222 섬 가꾸기)
       showControlsNotice(); // (v1.10.217: the keys swapped -- told once on a PC)

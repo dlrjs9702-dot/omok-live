@@ -599,7 +599,7 @@
     'path.town.border.straight': 'border_stone', 'path.walk.edge.a': 'pebble_edge', 'yard.flowerbed': 'flowerbed_crate', 'yard.planter_box': 'planter_cabbage',
     'yard.fence_flower': 'fence_flower_lattice', 'yard.arch': 'arch_vines', 'prop.planter': 'plaza_planter_filled', 'path.gate.planter': 'gate_planter_bush',
   };
-  const FAR111 = new Set(['flowerbed_crate', 'fence_flower_lattice', 'arch_vines']);
+  const FAR111 = new Set(['flowerbed_crate', 'fence_flower_lattice', 'arch_vines', 'fence_stone_block']); /* (314 assets 120 울타리 다이어트: the stone fence's far file too) */
   // 113 길과 지형지물 (assets 113: Nature Megapack, Cute Park, Pirate Island -- RG Poly, CC0): registered only, land.<file> -- placed
   // on the island in G4a/G4b with the taxi road's rule (notes docs/taxi-yield-20261109.md); four seasons, a far file for the
   // far hills and mountains (no shadows: background), the rope bridge and the wreck
@@ -612,6 +612,8 @@
   // (313 A2 「의자랑 반대 방향으로 앉아」: the two benches of 111 have their backs at their own -z, the old ones at +z -- the turn kept
   // with them put the back where one sits facing it. 대청마당's bench no longer turned; the yard's turned half round)
   REGISTRY['prop.bench'].rotationY = 0; REGISTRY['yard.bench'].rotationY = Math.PI;
+  // (314 assets 120: the wooden fence's far file has its own name -- fence_rail_low is the 오두막·농장 fence, prop.fence)
+  REGISTRY['yard.fence_wood'].low = { seasons: y2('fence_rail_far') };
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)

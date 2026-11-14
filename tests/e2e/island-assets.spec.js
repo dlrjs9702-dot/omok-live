@@ -311,6 +311,13 @@ test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', asy
   await a.page.evaluate(() => { localStorage.setItem('gc.testQualityNote', '1'); localStorage.removeItem('gc.qualityNote'); const D = window.PlazaDebug(); D.holdQuality(2); D.holdQuality(null); D.autoTier(1); /* (from 「높음」, whatever 자동 did before) */ });
   await expect(a.page.locator('#toast')).toContainText('「중간」으로 바꿨어요');
   expect(await a.page.evaluate(() => { window.PlazaDebug().autoTier(0); const d = window.PlazaDebug(); return { changes: d.qualityChanges >= 2, note: localStorage.getItem('gc.qualityNote')?.length }; })).toEqual({ changes: true, note: 10 });
+  { // (v1.10.314 렉 줄이기: ☰ 「그리기 해상도」 -- a fixed share of the pixels, kept on this device; 자동 by the tier again)
+    const pick = (v) => a.page.evaluate((v) => { const s = document.getElementById('renderScaleSelect'); s.value = v; s.dispatchEvent(new Event('change')); }, v);
+    const ratio = () => a.page.evaluate(() => window.PlazaDebug().perf().pixelRatio);
+    await a.page.evaluate(() => window.PlazaDebug().holdQuality(2)); const full = await ratio();
+    await pick('70'); await expect.poll(ratio).toBeCloseTo(full * 0.7, 2); expect(await a.page.evaluate(() => localStorage.getItem('gc.renderScale'))).toBe('70');
+    await pick('auto'); await expect.poll(ratio).toBeCloseTo(full, 2);
+  }
   const before = await a.page.evaluate(() => {
     const d = window.PlazaDebug(); d.holdQuality(2); d.holdQuality(null);
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange'));
