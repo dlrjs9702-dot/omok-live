@@ -4088,10 +4088,10 @@
     },
     {
       "out": "village-v1/table_cards.glb",
-      "src": "residents39:01. High/table_cards_high.glb",
-      "sha256": "76ba92dee1d236bad92dd7b52c610a24da290756502044fe7d013add281ebdf1",
-      "lowSrc": "residents39:02. Low/table_cards_low.glb",
-      "lowSha256": "754f3f0cf475e102feb9588a6c646473ab4cfc2bb23007d2097302d64368d54e",
+      "src": "diet122:01. High/village-v1/table_cards.glb",
+      "sha256": "474c500d7c3a68999cf4842ab198b205ebd731d79aa8eba83e89cd45569f2d90",
+      "lowSrc": "diet122:02. Low/village-v1/table_cards_low.glb",
+      "lowSha256": "ed88e6cfe5452bedf9f552ed00645f77b2b47c0d6587b0eee99b8d6feba25b7a",
       "precompressed": true
     },
     {
@@ -9387,26 +9387,50 @@
     },
     {
       "out": "nature109/autumn/flower_daisy.glb",
-      "src": "nature109:01. High/autumn/flower_daisy.glb",
-      "sha256": "718ddc2f38e30e4d05fc964bd619603b763652e05a0fc6cf6d67fb4ad9a46639",
+      "src": "diet122:01. High/nature109/autumn/flower_daisy.glb",
+      "sha256": "5a8147e438b933055abc5a01443fb14f6613e973b348dce47b73e58ec442d8ee",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/autumn/flower_daisy_low.glb",
+      "src": "diet122:02. Low/nature109/autumn/flower_daisy_low.glb",
+      "sha256": "2e8f73eec197ec65762aa1be465662e48b4642b1d50ebca26e3dffac22acb5dd",
       "precompressed": true
     },
     {
       "out": "nature109/autumn/flower_daisy_yellow.glb",
-      "src": "nature109:01. High/autumn/flower_daisy_yellow.glb",
-      "sha256": "1f77bb7066522baa1f3aee963a820bfa2f0422b49d32e64ff506767509c8f6f9",
+      "src": "diet122:01. High/nature109/autumn/flower_daisy_yellow.glb",
+      "sha256": "8d184e7492969e3c48b39de8d5b29b0afd660d1189e55ec68b40af7578089593",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/autumn/flower_daisy_yellow_low.glb",
+      "src": "diet122:02. Low/nature109/autumn/flower_daisy_yellow_low.glb",
+      "sha256": "92244deb4d812b8d24c5a3f7d2409f1e2153fdb1037ace1cfbc45f2600e3a512",
       "precompressed": true
     },
     {
       "out": "nature109/autumn/flower_lavender.glb",
-      "src": "nature109:01. High/autumn/flower_lavender.glb",
-      "sha256": "1f57d47261b1bbbd67761c8219b92960169d1f7ecda8c699708ef6eb88660153",
+      "src": "diet122:01. High/nature109/autumn/flower_lavender.glb",
+      "sha256": "9ed340462ce0db2ef06b28c72864076788e1467926b1952f305416eacea147d4",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/autumn/flower_lavender_low.glb",
+      "src": "diet122:02. Low/nature109/autumn/flower_lavender_low.glb",
+      "sha256": "a829405f081311ce275413af4b4eb052bd1f8a65d30f39c10991dc9b34b582da",
       "precompressed": true
     },
     {
       "out": "nature109/autumn/flower_red.glb",
-      "src": "nature109:01. High/autumn/flower_red.glb",
-      "sha256": "df6877836325694693d7e9f773abadfea4e94ed1355599590858ca7d395303ed",
+      "src": "diet122:01. High/nature109/autumn/flower_red.glb",
+      "sha256": "87bf2f349d881196441eb77ee1df5b7ff8e08e5ed6ab4fb598c277fc775e5ce6",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/autumn/flower_red_low.glb",
+      "src": "diet122:02. Low/nature109/autumn/flower_red_low.glb",
+      "sha256": "5a8e88de273f3ba709ebd41bf25e39e37b4f921ee9bd1b4549d2078279d73da8",
       "precompressed": true
     },
     {
@@ -9597,26 +9621,50 @@
     },
     {
       "out": "nature109/spring/flower_daisy.glb",
-      "src": "nature109:01. High/spring/flower_daisy.glb",
-      "sha256": "b41364cdb34dd3d384aa79c6979026e91bce9808d504d2365427531462c30d12",
+      "src": "diet122:01. High/nature109/spring/flower_daisy.glb",
+      "sha256": "d2da3aee62e109e449221ed4fea02ad45e53eb3b1c5259788375ccd70d7c47b3",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/spring/flower_daisy_low.glb",
+      "src": "diet122:02. Low/nature109/spring/flower_daisy_low.glb",
+      "sha256": "72e8d90b3426617238bf07940db892906f4bf3bbf6cf826f10f175c8d79607cb",
       "precompressed": true
     },
     {
       "out": "nature109/spring/flower_daisy_yellow.glb",
-      "src": "nature109:01. High/spring/flower_daisy_yellow.glb",
-      "sha256": "6f3c6fc88399f3b6ef6a524570f70288576040fff43497777d5e95126b457433",
+      "src": "diet122:01. High/nature109/spring/flower_daisy_yellow.glb",
+      "sha256": "b5b9bcec2f90b07ef041aa8624274ccfbbba15d98fd4c42fe9feb4b33560f441",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/spring/flower_daisy_yellow_low.glb",
+      "src": "diet122:02. Low/nature109/spring/flower_daisy_yellow_low.glb",
+      "sha256": "007b0544bcb22ad26ffb70053ad6352bddbb818afe645861ea8ad4b70d75dbad",
       "precompressed": true
     },
     {
       "out": "nature109/spring/flower_lavender.glb",
-      "src": "nature109:01. High/spring/flower_lavender.glb",
-      "sha256": "1b0ecdc970b968be6b97fafe601c81df290d8b7af258ade7e38ea47abf4b3885",
+      "src": "diet122:01. High/nature109/spring/flower_lavender.glb",
+      "sha256": "895e14e87ebb74de1060092057f1fc5c24a762bdaab892fc20990fdf68eb24ef",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/spring/flower_lavender_low.glb",
+      "src": "diet122:02. Low/nature109/spring/flower_lavender_low.glb",
+      "sha256": "5d4e694861cec9b3210b64afd26dd68b1fa9d9fdec71c31b93563cd6b7e3d167",
       "precompressed": true
     },
     {
       "out": "nature109/spring/flower_red.glb",
-      "src": "nature109:01. High/spring/flower_red.glb",
-      "sha256": "f8527b3805963ad238ae392d030d23aa0150bf89189a05a8d9a7f7dd44a1a0af",
+      "src": "diet122:01. High/nature109/spring/flower_red.glb",
+      "sha256": "a17a2a77946e5d53a0c820eab6e7f92a34ecb26345340011c8c2cefb31ca3490",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/spring/flower_red_low.glb",
+      "src": "diet122:02. Low/nature109/spring/flower_red_low.glb",
+      "sha256": "262f90ba0ebc8c934d97889fd2eddb03f184c9c40f07e0b28d7432c2f6a12e5b",
       "precompressed": true
     },
     {
@@ -9807,26 +9855,50 @@
     },
     {
       "out": "nature109/summer/flower_daisy.glb",
-      "src": "nature109:01. High/summer/flower_daisy.glb",
-      "sha256": "b9e69c135138693e553ad37cab3170b7f2714d405e8404770aa263b76dea3847",
+      "src": "diet122:01. High/nature109/summer/flower_daisy.glb",
+      "sha256": "c1ab4e2e1ee26e6badc2353dc3f2c8d7e696ea14262801c2f661b900df89ae9d",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/summer/flower_daisy_low.glb",
+      "src": "diet122:02. Low/nature109/summer/flower_daisy_low.glb",
+      "sha256": "60ded99dd428f841db821e4634d1ae0571164cc89eb10a263788ec1e05e24852",
       "precompressed": true
     },
     {
       "out": "nature109/summer/flower_daisy_yellow.glb",
-      "src": "nature109:01. High/summer/flower_daisy_yellow.glb",
-      "sha256": "b0e1bd660cd181e3cba0d11167b800eb36025543c67d6bdccb6edbb7def08d3c",
+      "src": "diet122:01. High/nature109/summer/flower_daisy_yellow.glb",
+      "sha256": "bc50c4181c47327d6243a1f197521bf92ed53ff7bd6f092ce474f8fc849a131d",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/summer/flower_daisy_yellow_low.glb",
+      "src": "diet122:02. Low/nature109/summer/flower_daisy_yellow_low.glb",
+      "sha256": "6bcdcb1e8cd461b409e8d140872f7105f139a5ba715915c93d87a6a3f9e0826e",
       "precompressed": true
     },
     {
       "out": "nature109/summer/flower_lavender.glb",
-      "src": "nature109:01. High/summer/flower_lavender.glb",
-      "sha256": "5d199532c7ecc1957772e73efb7e5394164974f987f0a80a004f0cd7b849a29e",
+      "src": "diet122:01. High/nature109/summer/flower_lavender.glb",
+      "sha256": "1105bb927712eb0ffff88192872147a83d27b32deda2739cb24db701727fd4d8",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/summer/flower_lavender_low.glb",
+      "src": "diet122:02. Low/nature109/summer/flower_lavender_low.glb",
+      "sha256": "8a35a3b6bbd0ccdb262d7de4d31df8adb905038406ff13090a090d1403fc394c",
       "precompressed": true
     },
     {
       "out": "nature109/summer/flower_red.glb",
-      "src": "nature109:01. High/summer/flower_red.glb",
-      "sha256": "06b13a0d750d7092adcf9c27d7beec5efa630cce1364042305e162b69b5cd238",
+      "src": "diet122:01. High/nature109/summer/flower_red.glb",
+      "sha256": "11ba7c694e80e0c226adbc637cb2430eaaa9e9108ca269538c8b5b6e48841f17",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/summer/flower_red_low.glb",
+      "src": "diet122:02. Low/nature109/summer/flower_red_low.glb",
+      "sha256": "48e75ff436c4798029a56e6a79951a52bb425ac760b64634e616fcddde8deae4",
       "precompressed": true
     },
     {
@@ -10017,26 +10089,50 @@
     },
     {
       "out": "nature109/winter/flower_daisy.glb",
-      "src": "nature109:01. High/winter/flower_daisy.glb",
-      "sha256": "811c562697149b6e29a932ddbf535a932008367577f79e5e1d9ca2da12cd3653",
+      "src": "diet122:01. High/nature109/winter/flower_daisy.glb",
+      "sha256": "899e58eccf9357758a772b8c2de2240caeef3b560fa347f37ade698376a3fc00",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/winter/flower_daisy_low.glb",
+      "src": "diet122:02. Low/nature109/winter/flower_daisy_low.glb",
+      "sha256": "6aaf343f6b7248390903106683bf64acfc49c4b04eb9461f12a7c86e57c96434",
       "precompressed": true
     },
     {
       "out": "nature109/winter/flower_daisy_yellow.glb",
-      "src": "nature109:01. High/winter/flower_daisy_yellow.glb",
-      "sha256": "62bf2b72aa28c8f5256306b5201c552cec2caf22559c0117c2adf313427aa6c4",
+      "src": "diet122:01. High/nature109/winter/flower_daisy_yellow.glb",
+      "sha256": "f9d5b7cd06a428749614d99917d654af1a228e57066f8d9fd95228226dd8ed77",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/winter/flower_daisy_yellow_low.glb",
+      "src": "diet122:02. Low/nature109/winter/flower_daisy_yellow_low.glb",
+      "sha256": "e0f72695ac15d11509e40227ceb60849a930da48fd11d81f1f8e37dffd20faa2",
       "precompressed": true
     },
     {
       "out": "nature109/winter/flower_lavender.glb",
-      "src": "nature109:01. High/winter/flower_lavender.glb",
-      "sha256": "3f40517cd35fae6a9464c7bf269bafaafb6dd2cb47baf6e5668c36d23f1d1ff7",
+      "src": "diet122:01. High/nature109/winter/flower_lavender.glb",
+      "sha256": "0f1df8d9fddf89a614d193142b97ce7245a3b825222776571fc29c28e423452c",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/winter/flower_lavender_low.glb",
+      "src": "diet122:02. Low/nature109/winter/flower_lavender_low.glb",
+      "sha256": "41863cec339002090ca3f113362f89360c9c4fff985fe1b9868c3d093a3fa732",
       "precompressed": true
     },
     {
       "out": "nature109/winter/flower_red.glb",
-      "src": "nature109:01. High/winter/flower_red.glb",
-      "sha256": "26f9518b551c49049016b3b60ab94b92497335a4f4f0267678a84023ece77275",
+      "src": "diet122:01. High/nature109/winter/flower_red.glb",
+      "sha256": "b125c902450f948923501f1acd0329cda79798430c061d091cb8b058a9f1bd7c",
+      "precompressed": true
+    },
+    {
+      "out": "nature109/winter/flower_red_low.glb",
+      "src": "diet122:02. Low/nature109/winter/flower_red_low.glb",
+      "sha256": "166d1f73200a4476f7ca75cfd11ca5c0f575785b06ab352c5bda205b1664ff1b",
       "precompressed": true
     },
     {
@@ -10203,14 +10299,14 @@
     },
     {
       "out": "yard-v2/autumn/bench_path.glb",
-      "src": "yard111:01. High/autumn/bench_path.glb",
-      "sha256": "3097ebf62f838d4fe705e2c00bc09486401d8a91a3955657a4e48bfe75b43363",
+      "src": "diet122:01. High/yard-v2/autumn/bench_path.glb",
+      "sha256": "edf90f940e5d893e1877eb4f45d5b32c5a66d1d794172f847ec4f789d5c85ec9",
       "precompressed": true
     },
     {
       "out": "yard-v2/autumn/bench_yard.glb",
-      "src": "yard111:01. High/autumn/bench_yard.glb",
-      "sha256": "fc140dc480f925c7047acd638ae570c27888253f2c36f1b30367e76fbb3ab5da",
+      "src": "diet122:01. High/yard-v2/autumn/bench_yard.glb",
+      "sha256": "d1a84c669eb3bc0d1cacefda2d0bb6eeb7a66abcd91f1a6d793f0a75e785125a",
       "precompressed": true
     },
     {
@@ -10293,8 +10389,14 @@
     },
     {
       "out": "yard-v2/autumn/plaza_planter_filled.glb",
-      "src": "yard111:01. High/autumn/plaza_planter_filled.glb",
-      "sha256": "e7910860fc0175a856381ca6339acd24490bb9c0657f6daf75751cba41af0331",
+      "src": "diet122:01. High/yard-v2/autumn/plaza_planter_filled.glb",
+      "sha256": "264dd8f9ed234a44463d9b7cde5f5f6dc3dcd522fc23b0e65c2a051b902dd3dd",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/plaza_planter_filled_low.glb",
+      "src": "diet122:02. Low/yard-v2/autumn/plaza_planter_filled_low.glb",
+      "sha256": "b84a5384a426ddd42232644612224481cbed8a94a237871e31c14123adbe343c",
       "precompressed": true
     },
     {
@@ -10347,14 +10449,14 @@
     },
     {
       "out": "yard-v2/spring/bench_path.glb",
-      "src": "yard111:01. High/spring/bench_path.glb",
-      "sha256": "b0f45a70694841c1611deea61ad71a13111e4940f3431229abedaf3da7220e19",
+      "src": "diet122:01. High/yard-v2/spring/bench_path.glb",
+      "sha256": "02ac86e42953b623ccdda166a04c72f271775ab72c79ad2c9f0e97f210d7d446",
       "precompressed": true
     },
     {
       "out": "yard-v2/spring/bench_yard.glb",
-      "src": "yard111:01. High/spring/bench_yard.glb",
-      "sha256": "2cad99fbc500e220e76639ede3f244fe44a26bb1497ed894ab007f9ed273e5f7",
+      "src": "diet122:01. High/yard-v2/spring/bench_yard.glb",
+      "sha256": "628dc7e848fb6b19573bfe216099b38fd01bc5039c3e1a17f1d728ed3f211873",
       "precompressed": true
     },
     {
@@ -10437,8 +10539,14 @@
     },
     {
       "out": "yard-v2/spring/plaza_planter_filled.glb",
-      "src": "yard111:01. High/spring/plaza_planter_filled.glb",
-      "sha256": "b17ecd1ff1171ad08868d826bc6139fc3670de95a91840c46d41e59878ba033a",
+      "src": "diet122:01. High/yard-v2/spring/plaza_planter_filled.glb",
+      "sha256": "f71e57aec485b43e8998c2a23b0d65fe20ede5653ce95cd03ba287a53e4d6dd0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/plaza_planter_filled_low.glb",
+      "src": "diet122:02. Low/yard-v2/spring/plaza_planter_filled_low.glb",
+      "sha256": "f3a52de717c0969805c6bd61f3342ad1154563fc58c0f855fc9808398eadb938",
       "precompressed": true
     },
     {
@@ -10491,14 +10599,14 @@
     },
     {
       "out": "yard-v2/summer/bench_path.glb",
-      "src": "yard111:01. High/summer/bench_path.glb",
-      "sha256": "19f2acf81387be7e1e015b4c85fdadbe2e7014d84f5e1177186fef02e9d47898",
+      "src": "diet122:01. High/yard-v2/summer/bench_path.glb",
+      "sha256": "0261172e7dee2f6f1b3f4f3f044b1c8b34f191be81abf7fe27679f18aec284a6",
       "precompressed": true
     },
     {
       "out": "yard-v2/summer/bench_yard.glb",
-      "src": "yard111:01. High/summer/bench_yard.glb",
-      "sha256": "3f92d826e3212b063b24449e6537bfc709e7956cf244a42e6f01088c13d371bc",
+      "src": "diet122:01. High/yard-v2/summer/bench_yard.glb",
+      "sha256": "ea991f847d14bc849249ec3a799f81b49d2db3ef4edce0ddff2d776473f21e8e",
       "precompressed": true
     },
     {
@@ -10581,8 +10689,14 @@
     },
     {
       "out": "yard-v2/summer/plaza_planter_filled.glb",
-      "src": "yard111:01. High/summer/plaza_planter_filled.glb",
-      "sha256": "89b07bbdb1d7733c7edc6929029a72ce14b51f72ae5e7fbac4bec8ad2019468d",
+      "src": "diet122:01. High/yard-v2/summer/plaza_planter_filled.glb",
+      "sha256": "fa6c1532c11181ff0be444c25ebe209b12de9eb331911d3ed674516e13d1b8f7",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/plaza_planter_filled_low.glb",
+      "src": "diet122:02. Low/yard-v2/summer/plaza_planter_filled_low.glb",
+      "sha256": "69e28fcfebe0c878899742972bc3d4a63da855fbca5b655cd5f2ab3afbaa15d8",
       "precompressed": true
     },
     {
@@ -10635,14 +10749,14 @@
     },
     {
       "out": "yard-v2/winter/bench_path.glb",
-      "src": "yard111:01. High/winter/bench_path.glb",
-      "sha256": "047d0e45d1473c83f5963e4a477531d8e58155084e05c8a7cbe1a33da00ab40e",
+      "src": "diet122:01. High/yard-v2/winter/bench_path.glb",
+      "sha256": "4bafc76b1cde9d97dbda824169dd155e67ea38ff765525f67f3d5024ed49d82e",
       "precompressed": true
     },
     {
       "out": "yard-v2/winter/bench_yard.glb",
-      "src": "yard111:01. High/winter/bench_yard.glb",
-      "sha256": "b2761c226ba6e3a5c8027d3db7dd53d58ef3183c839b417d5e653ec581aae3d8",
+      "src": "diet122:01. High/yard-v2/winter/bench_yard.glb",
+      "sha256": "e32522d5512d306a63bbbbfb4c97bd4216a2bfca11f6e90dd2ab25f93684b4a8",
       "precompressed": true
     },
     {
@@ -10725,8 +10839,14 @@
     },
     {
       "out": "yard-v2/winter/plaza_planter_filled.glb",
-      "src": "yard111:01. High/winter/plaza_planter_filled.glb",
-      "sha256": "c3a911d5015e1c3fc320b368324b70aab776e548be1a534ab0e5deb1ba504c6a",
+      "src": "diet122:01. High/yard-v2/winter/plaza_planter_filled.glb",
+      "sha256": "40a697cd755bed4daa81047417e538890ada90dc685231b2ef2920fcd2bb76fd",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/plaza_planter_filled_low.glb",
+      "src": "diet122:02. Low/yard-v2/winter/plaza_planter_filled_low.glb",
+      "sha256": "c72627f2705c3def50417a7b2f4e8af4a992185c2bcfa3c89b4d99ab56edf432",
       "precompressed": true
     },
     {
@@ -12423,6 +12543,7 @@
     "nature112": "112. Game Island new nature G4 2026-11-08",
     "refit117": "117. Game Island outfit decor refit 2026-11-10",
     "fence120": "120. Game Island yard fence diet 2026-11-14",
-    "walker121": "121. Game Island resident walker merge 2026-11-14"
+    "walker121": "121. Game Island resident walker merge 2026-11-14",
+    "diet122": "122. Game Island heavy props diet 2026-11-14"
   }
 }

@@ -566,7 +566,8 @@
     'angular.grass_b': 'grass_reed', 'angular.grass_a': ['grass_reed', 0.778], 'angular.grass_d': 'reed_cattail', 'angular.grass_c': ['reed_cattail', 0.917],
     'ground.fern': 'plant_low', 'ground.shrub': 'plant_low', 'ground.flowers': 'clover', /* (313 A6 「뽑을 수 없는 잡초가 몇개 있어」: the woods' fern cover was bush_fern -- since 310 the fern weed's own model, pulled at nowhere: the low plant instead) */
   };
-  for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale }; } // ('nature.bush.0' was 'nature.bush')
+  const FLOWER_LOW = new Set(['flower_daisy_yellow', 'flower_daisy', 'flower_lavender', 'flower_red']); /* (316 assets 122 무거운 소품 다이어트: four flowers' far files, each season's) */
+  for (const [id, v] of Object.entries(G2)) { const [f, scale = 1] = [].concat(v); const { low, url, seasons, ...kept } = REGISTRY[id] || REGISTRY[id.replace(/\.\d+$/, '')] || {}; REGISTRY[id] = { near: 35, ...kept, seasons: n109(f), scale, ...(FLOWER_LOW.has(f) ? { low: { seasons: n109(`${f}_low`) } } : {}) }; } // ('nature.bush.0' was 'nature.bush')
   // v1.10.310 잡초 편입 (사용자 「섬 전체 잡초를 해당 그림으로 바꿔, 가볍게」): the weeds as assets 106's broad leaves, tufts and ferns
   // (60 : 30 : 10 by place, island-pilot weedKind) -- no shadows; broad leaves faded out past 48 m, tufts and ferns past 25 m (beyond
   // it only the broad ones, the lightest); in the hand the season where I stand (asset-loader hold `season`)
@@ -599,7 +600,7 @@
     'path.town.border.straight': 'border_stone', 'path.walk.edge.a': 'pebble_edge', 'yard.flowerbed': 'flowerbed_crate', 'yard.planter_box': 'planter_cabbage',
     'yard.fence_flower': 'fence_flower_lattice', 'yard.arch': 'arch_vines', 'prop.planter': 'plaza_planter_filled', 'path.gate.planter': 'gate_planter_bush',
   };
-  const FAR111 = new Set(['flowerbed_crate', 'fence_flower_lattice', 'arch_vines', 'fence_stone_block']); /* (314 assets 120 울타리 다이어트: the stone fence's far file too) */
+  const FAR111 = new Set(['flowerbed_crate', 'fence_flower_lattice', 'arch_vines', 'fence_stone_block', 'plaza_planter_filled']); /* (314 assets 120 울타리 다이어트: the stone fence's far file too; 316 assets 122: the plaza planter's) */
   // 113 길과 지형지물 (assets 113: Nature Megapack, Cute Park, Pirate Island -- RG Poly, CC0): registered only, land.<file> -- placed
   // on the island in G4a/G4b with the taxi road's rule (notes docs/taxi-yield-20261109.md); four seasons, a far file for the
   // far hills and mountains (no shadows: background), the rope bridge and the wreck
