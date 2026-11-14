@@ -746,10 +746,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
         { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target: [`angular.tree_${name}`], parent });
     }
   }
-  for (const t of globalThis.IslandTerrain.harvestTrees()) {
-    const root=new THREE.Group(); root.position.set(t.x,ground(t.x,t.z),t.z); root.rotation.y=t.yaw; scene.add(root);
-    const fallback=new THREE.Mesh(keep(mergeColored(TREE_KINDS[0][2])),natureMat); root.add(fallback); assets.attach('tree.harvest',root,fallback);
-  }
+  /* (v1.10.316 렉 줄이기 2차 ④: the 36 fruit trees one instanced batch a square, as the island's other trees -- they were
+     36 models of their own; picking goes by harvestTrees()' spots, as before) */
+  instanced(mergeColored(TREE_KINDS[0][2]), natureMat, globalThis.IslandTerrain.harvestTrees(), (t) => setM(t.x, ground(t.x, t.z), t.z, 1, 1, t.yaw), { target: 'tree.harvest' });
   for (const t of trees) solids.push({ nature: true, x: t.x, z: t.z, r: globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s }); // (문제 기록 13: a fruit tree's trunk, not 0.2 -- one walked into it)
 
   // Flowers: one mesh, each a little bloom with its colour per copy.

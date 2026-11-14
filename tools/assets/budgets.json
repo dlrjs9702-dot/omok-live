@@ -408,102 +408,102 @@
     },
     "characters/npc_walker_bomi.glb": {
       "triangles": 31973,
-      "sourceSha256": "7ecb96f09f8e919a6afec4ee73ce4a8fd14ccaa6a05a1253dafc78e14c2489bc",
+      "sourceSha256": "83bee92fb51c6fa329c8d6dfd3e4b9153be8769ef89edbfd662b5c4869094595",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bomi_low.glb": {
       "triangles": 9920,
-      "sourceSha256": "1571a7f46237bad6c1c7a2ec7450fd4b12f1567241d63adffdfe78732b69a380",
+      "sourceSha256": "a2795d2f52d350440fa16ad0d1291d9324bcb0aca664ee9215aa69a703d9e7d6",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_sea_grandpa.glb": {
       "triangles": 31595,
-      "sourceSha256": "4ff46a2ae40b3c94c6ae83ff7613a38c404c8e2797c3b89ca5f874d6f71fe635",
+      "sourceSha256": "f800984c1956bab583e49f624cc6e771aa1e3169834db0808c46925dc1bb0502",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_sea_grandpa_low.glb": {
       "triangles": 9990,
-      "sourceSha256": "4daa9bbdc8ee1954d8c7fdcf32dc70395778f42442d058fd0bf6786b0892c40b",
+      "sourceSha256": "723121117c102e8103323adf52ef0d1eed56d6aa92732e1cda58c856731bf0f6",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_haram.glb": {
       "triangles": 29835,
-      "sourceSha256": "1b97ca058971012214793bba623364dd46883f842222722b01b86a0d1628be3f",
+      "sourceSha256": "3c61c861c05cb6f43e90d18dc9c76374c05b121868e1ba705b426044dadcc767",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_haram_low.glb": {
       "triangles": 9497,
-      "sourceSha256": "c54576f4a4fa7eb6b9d0b237695d35dcb1290b6d7b51e91e9fa0bbb775914166",
+      "sourceSha256": "987d6dab73af50618388c9cf9ee49c5c190b1fc40435d6cbf4ff3b5032b926ad",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_duri.glb": {
       "triangles": 31935,
-      "sourceSha256": "ae5b28686a59d7841e69d31493958f746d9f05607b027c449fb617216706fab8",
+      "sourceSha256": "ef8f17b16052be3f4ca8cea22c0fb2f930f797f9da87cd7b067da6e9f3758017",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_duri_low.glb": {
       "triangles": 9917,
-      "sourceSha256": "b76b71bc972410869c51d4a1d0afee2350e6efd0b9103b75939262bc56ade1d1",
+      "sourceSha256": "f213ec9840fcadddfaf0b1ec314cd7f9b6602659868e08e57680a479fda577d4",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_noeul_granny.glb": {
       "triangles": 31992,
-      "sourceSha256": "368310f793e319424a4c2d6c579e770c4ec12f7e74af56955db251be30733e8c",
+      "sourceSha256": "f098d30577409a11cb5d15a9d812753a666f3d8e1deedbee2c0063cc05eaea81",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_noeul_granny_low.glb": {
       "triangles": 9901,
-      "sourceSha256": "ac31e57e13e9d23447361663f462e97cb7396fdf8cc8c09bb6d3135e62a4321f",
+      "sourceSha256": "148ac341f7c6bb6d0d2659281f13767aee1ebabdcbfb28b33f7037f5724b07c6",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_detective_oh.glb": {
       "triangles": 31844,
-      "sourceSha256": "662b04b36b704917221211371d960161661fa28380ff7a4be228cd3b8d0fafa2",
+      "sourceSha256": "4164d4c388f483b591bc11f3a4f33282f30eccfd95b9571b612061961370aa13",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_detective_oh_low.glb": {
       "triangles": 9957,
-      "sourceSha256": "fb2b4864edccd5ea3e5c5b948c6fcdaa887bed4956a73d2bcb576d0aa39aa736",
+      "sourceSha256": "bb378b0a130a0962c5f9f8b58c7a1205fb81b37ae0ce820ce0f3363bc45b5cbb",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_daon.glb": {
       "triangles": 31869,
-      "sourceSha256": "abff21871aa2e9f1cc99589d2fb30e33104b5f2becd63d5ede709d45f45e2ab3",
+      "sourceSha256": "900238ac040893de2f26356051ed3cff6a736b61caf14db19d08a7925890bee5",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_daon_low.glb": {
       "triangles": 9923,
-      "sourceSha256": "b3d0a198a08b8b30a4c1832c1c2342f5cf40e8cd5804c0a143d75d27fb855583",
+      "sourceSha256": "582766bb6e7f74b7aabe8b811d6c8059dad74cd8fd45837d2656fdf7b1339128",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_barami.glb": {
       "triangles": 31271,
-      "sourceSha256": "c303af2ea8afa2a1ba8505ffe6b89991b9f25e4d671b1ccc0be6816e90aa1c9c",
+      "sourceSha256": "ec7af231a81674114ba407ddd765f7664150f815d1ace2cde9417c47f5762af7",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_barami_low.glb": {
       "triangles": 9875,
-      "sourceSha256": "6cbf92701ff558a3c0c9c09161dfc754621d77c2c3b2ee6f7172a83616578d4a",
+      "sourceSha256": "7fa359517a9b3b09a0f416ae7de54cb4d29a3459ed3fd70320f0a4012b6f5908",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_isol.glb": {
       "triangles": 31213,
-      "sourceSha256": "372a16a56d9d28633208c7868f398a90eb3af39e6cf479dd9f92caf1cf71ad60",
+      "sourceSha256": "b6b4bab61a8b4e357f755e66066cf7cd0a81c55973829a9af6103fde7884dc89",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_isol_low.glb": {
       "triangles": 9896,
-      "sourceSha256": "72445630c8765207fe9ac50fb070f7b44220d8a78912a5b9786fc9f91823809d",
+      "sourceSha256": "8b00fe9bd85f7c9520850b9a152a6fa984cabc0a376a45e831dd35fa7af7034e",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_garam.glb": {
       "triangles": 17154,
-      "sourceSha256": "5b42197ee0752898426a2e192dd96080c888cd7add80fddaca2f6d571cbd9954",
+      "sourceSha256": "d2e65690c032f212f25e6e186f3cabb23195afc7117697401d5ace0d076d9188",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_garam_low.glb": {
       "triangles": 6488,
-      "sourceSha256": "f6382303c910ed5589c603107d6411f5672f22093afd12eb5dbc061d75a5ad43",
+      "sourceSha256": "585c5fac006aa6f7d729407e1afda0efac981a5f11d249077426419e38506bbc",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "home-v1/home_manor2__red.glb": {
@@ -810,362 +810,362 @@
     },
     "characters/npc_walker_bandi_off.glb": {
       "triangles": 31888,
-      "sourceSha256": "1489673fa17ace55f2d9215af04cc3476af242ce53864ba99ca744625a76ef4c",
+      "sourceSha256": "0b5602613d964fb39aed844fb42f2faec0d5b1db57b6ce8d1a181d8156c98bb1",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bandi_off_low.glb": {
       "triangles": 9944,
-      "sourceSha256": "2249cc30d5c282ed722cf561997b3c1b9b438d77454e4661ab5ea7e181b75f06",
+      "sourceSha256": "27a47186d344020c33de6376ee649bf42d9797cc3e53dd11031df82aff601991",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bandi_work.glb": {
       "triangles": 31817,
-      "sourceSha256": "90dfdd9087999b3d6da9fef072d2c05c556eeba370e93bb33a4e2fb1437f6fb8",
+      "sourceSha256": "75a0a340d3fd9b21368ac31f3c6c86e71d1f7595501f3633b67388d09464f8c4",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bandi_work_low.glb": {
       "triangles": 9911,
-      "sourceSha256": "d0f711cd6f0dfed4e3bafff97bf61684264aa0b8f68f8213d1bf15b23dc4f76c",
+      "sourceSha256": "fb12d2e46787b20e10440eaa43cf470f87f4d20b3cc28c9a8d2748d0217d36ba",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bawi_off.glb": {
       "triangles": 30690,
-      "sourceSha256": "10b7d4484382d1800790189f0c91e5898d88975ec5c42aa7cdf9edda2e8c60e1",
+      "sourceSha256": "dfb7e41d4585152f3dd3d4bd898eba6fd606e8b1782264c603d3c24a964e6b09",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bawi_off_low.glb": {
       "triangles": 9931,
-      "sourceSha256": "c4bb5692384486bdfe66d4d7d9b01fbb251af0449608aa0776d95403581c8aa3",
+      "sourceSha256": "e1c8ca301c2370bc07e2131bf812376ae0011b921307b84918e4982ac0fbe43d",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bawi_work.glb": {
       "triangles": 27592,
-      "sourceSha256": "c6f5575aaa178bcea839ced29048ad919830b1aec50ff96ffd0ce79b700241ef",
+      "sourceSha256": "0463f840bf3a121bfb2d3428dbe0af008c7b01f2e6076532bfe1010eb209119b",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bawi_work_low.glb": {
       "triangles": 9332,
-      "sourceSha256": "6fd388ff71da5ab5cd8b4498ce5ac95a7578925d83062c756725adfebf968eab",
+      "sourceSha256": "3522e0bbc4c9d7ee00268273fbbeb88dcba362ba9f6cbb246d36cdd84e6789ec",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bitna_off.glb": {
       "triangles": 30541,
-      "sourceSha256": "168c94b71503de1704560caa3b8c8c807e89c4950e3a06bf98c02ddc0cdb70f7",
+      "sourceSha256": "9c7f18f20231f3fd0d5577ccd5e4c65722dee45d83df879908af9ebf536b6f81",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bitna_off_low.glb": {
       "triangles": 9833,
-      "sourceSha256": "5cf74c51e435b5bee841c221329f26d8acfab202c02ead7c4006b6793d17c548",
+      "sourceSha256": "e6d081dd449efe85d4bc85bfd25607b0231f118c361b90bd616393caa844c569",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bitna_work.glb": {
       "triangles": 31707,
-      "sourceSha256": "84ac00f18593dad7f4545ba003868e3ed155283c3d483eff3565e6d27f6929f3",
+      "sourceSha256": "f6f88252858f0166aa40146c02d64e259076d24e589e0042756476cc3167a657",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_bitna_work_low.glb": {
       "triangles": 9954,
-      "sourceSha256": "c5f2ee558112bf72b40b33a29fb25cdd1d16e904718ab5f88c79793be111b059",
+      "sourceSha256": "7fb601012a53d94fdc76be8eb962c8de7b2d05fcef924d8fa06d3cda3cfce4f7",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_cheori_off.glb": {
       "triangles": 27093,
-      "sourceSha256": "84772565a7fd97eb326ea5e563b4b75942fd14dd937e87ed4cd1fa8864a425cd",
+      "sourceSha256": "32166b4ad3bce738b9a96bcae6c29236bf10debff86483204a38fef160123a13",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_cheori_off_low.glb": {
       "triangles": 9115,
-      "sourceSha256": "e51c1bcc5aa3fcbf312f1d4e9348df6659b530a9926c413a2f19551320cfc625",
+      "sourceSha256": "551bbb27ec387f3e195416f9783b6e517566f520d00ad6c77d80dbd9b1f24630",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_cheori_work.glb": {
       "triangles": 29600,
-      "sourceSha256": "b1baf54d624f1e6d11c671dfb5c978077507da554901e13771621a47c86268c9",
+      "sourceSha256": "4014f50cf031d221d06be750adf1db2210af993f51a033b5ed511af96b294cff",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_cheori_work_low.glb": {
       "triangles": 9947,
-      "sourceSha256": "7c8fccb09bfc074fe2c7c0df86c7a6fd738c53ae5d9ba8826a3f9d26611847be",
+      "sourceSha256": "625d6839332173bbddd1a68256f1754dd55227cbd2a27d906ae49dd644ba5888",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_garak_off.glb": {
       "triangles": 31179,
-      "sourceSha256": "8e74376d9bb8d3987088a4e988e09fbbcc4f75de89a3a7ab57c0bdd8df382a49",
+      "sourceSha256": "7316bc96b34bb1c291845c0a23e6beb8028c11ab3ef9e999315ce53a5b2490f7",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms); v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_garak_off_low.glb": {
       "triangles": 9505,
-      "sourceSha256": "1fae283ae8a53a804b7dfaa573fee6c01d80947e8bb472e58c3b33195cb9c26c",
+      "sourceSha256": "fc105cc3a97f3a256a17bb9a826fd3dae36ed15b584ad4dba3b00aded596b1c9",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms); v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_garak_work.glb": {
       "triangles": 28732,
-      "sourceSha256": "353a913f16a849c6427afad5c6c93a5a099eef6cacda4545175d293f2f81bca3",
+      "sourceSha256": "08af50d5867285e0096cefb2c54caebd4131029d75e3c382d71dc8f7ec36eac4",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms); v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_garak_work_low.glb": {
       "triangles": 8474,
-      "sourceSha256": "52d2d534748c833beb9ab0297972e28a329b2587cd7fd3b36ddc965167f388dd",
+      "sourceSha256": "d155b4ac8bef14d0cfd84ead338c337cedcd623fabddb55957be5ef205e331f1",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.233 assets 94: 가락 dried leaves, low curved reeds, one-piece arms); v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_goeun_off.glb": {
       "triangles": 30696,
-      "sourceSha256": "ad25a071b909521e95d708bf1a46b0c5738c450a6621ffaaf2c08bd5ee811175",
+      "sourceSha256": "4546dfa276b9fa974be5b2e6610d2a184b9ca09568c7935f75033af489d463b6",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_goeun_off_low.glb": {
       "triangles": 9811,
-      "sourceSha256": "03e0849b6a8ba2c099082b523b7ddd6675cb23d7e2b8cdfc0ee1d15bab072187",
+      "sourceSha256": "99d9a129c9e70cd1b51b2a48a3e0d5c0f28cf4916bd0455c91fdc7bbacdf3269",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_goeun_work.glb": {
       "triangles": 31903,
-      "sourceSha256": "bf9a0d662d938b753df66f151a09846cc3f81ab7e4df66f49abc95c5391b9b49",
+      "sourceSha256": "21086135cca97facd07050c33fce7d0fc455be73d5bca772a42165ce83cee005",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_goeun_work_low.glb": {
       "triangles": 9909,
-      "sourceSha256": "406304f96fd4013068f6e32e993b1653cf9b4878f730f95ec7e78fa638d4294a",
+      "sourceSha256": "0b18fd97aa33601648db3fb63737bb1048209067e6f12595acbc38f2d8732fd0",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_handeul_off.glb": {
       "triangles": 24546,
-      "sourceSha256": "06b93da81fa053559b52d7188ab5c8e649995d95ecb1ef05deb508d0b322df0a",
+      "sourceSha256": "4c82b4c26ec9daafa4ec3b97ba8ec234d93c12ab00254b42762d0937fcd913ad",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_handeul_off_low.glb": {
       "triangles": 8882,
-      "sourceSha256": "1f55be0bf474896e5deff9e10bb5563df660bcef1cbb5fdb74c2cede11ea04b3",
+      "sourceSha256": "a22555d5f403c80960cd1a48f39961d3ee55e6193ce3d04a2f2f308585bf4b8f",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_handeul_work.glb": {
       "triangles": 26988,
-      "sourceSha256": "8821156a70ef5bad9e1f9b009556ac65f4b3bed08d038459929ae72c89b9fbe8",
+      "sourceSha256": "5f53912e4e2219fff48a6325deeea9dc8161bb59287572a03d3f992ef3bf66c5",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_handeul_work_low.glb": {
       "triangles": 9239,
-      "sourceSha256": "ebfa02aa888d07855f53d400e7b20c6a02ad70ddd926f7a230428cc5153564c5",
+      "sourceSha256": "6d91f12956f5d68f17f1d531573e497c4d94a9cc3644b6eeb4d8a6fa6403a7f4",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hangyeol_off.glb": {
       "triangles": 25373,
-      "sourceSha256": "5355553234d5952f3d40e8179a6246de1219f59f6d1e0adbdda278945b805ff8",
+      "sourceSha256": "670783b249d705312575e93e04e17eb21101ec72f0403c031b86350dfb8c22f1",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hangyeol_off_low.glb": {
       "triangles": 8617,
-      "sourceSha256": "151b66ed50f2e26e1b4aaafb88b1fbfbf6b9682139730905f4b6b00620fa18fe",
+      "sourceSha256": "fdd46eb95506814d440f4a21302e9641c94e57f7cd643bbc8de43e1dbce2508b",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hangyeol_work.glb": {
       "triangles": 24961,
-      "sourceSha256": "2952e233a27418fa891abc94da7cef1efbe870e13f71d23e804515f61a33f129",
+      "sourceSha256": "98d0a1a89dae22eb43b804b278a0884dc089e1ced17570ab348e67958de8b596",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hangyeol_work_low.glb": {
       "triangles": 8463,
-      "sourceSha256": "4a2f84087e519aa38e3515016d3f6a27e11062c2b6b9c35145bd92f0226f0fc7",
+      "sourceSha256": "8e7aefc57e1d86dab1308073d1f13905de0ec2425f16c4ba7cf78723041c1f9e",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kkotnim_off.glb": {
       "triangles": 30525,
-      "sourceSha256": "904a2bdec61126d3cb738479adf1ec80a546726159276d3a0a7dc9bf13fe695c",
+      "sourceSha256": "17b5831bfaf938d8b57d26da26667ffea3901501897d5e111ddaed9b293b9c71",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kkotnim_off_low.glb": {
       "triangles": 9910,
-      "sourceSha256": "ce4b0ffc0e9e38a51136d0418200f4ef366756ecc9608d652e2d64d2444419b3",
+      "sourceSha256": "0123dd5db114ecb92b8c25e664de18dc3b4bdfc33fa6ccf7705c8f545d1c843d",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kkotnim_work.glb": {
       "triangles": 30530,
-      "sourceSha256": "3859b52c48613da7bb9b55b1972e81857c50eb78ebe4a63ecf56d7895b6cffea",
+      "sourceSha256": "b7bfb3d4513839be2272b52cbbf8929ed16e7a796d8b71606588b98dfc135553",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kkotnim_work_low.glb": {
       "triangles": 9818,
-      "sourceSha256": "7dc965878370d9fa0d99fee948bcede274417c209f669b3a68276733681a32b7",
+      "sourceSha256": "e710c91e3dc3edeeffa1bd552a203d7e7be7e1923dda3d17e4d4abba9727e427",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kongi_off.glb": {
       "triangles": 29331,
-      "sourceSha256": "1544e0176bb39c36c229e1e9ef385addbb7485f45019a3344d6fbf35c69391cf",
+      "sourceSha256": "937f0a855067c68ee7cd6c710b28c335c084f8ac70076a6f19c37ca99f699c70",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kongi_off_low.glb": {
       "triangles": 9017,
-      "sourceSha256": "a1b3f967fb0d8928417e18a27be0e9c787e441374013dfd17f532ff9601e37c0",
+      "sourceSha256": "3648c8fb7806d360cc6748d98c15bb5246eb067ccdd53f0f56e8f812c1d912a9",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kongi_work.glb": {
       "triangles": 29689,
-      "sourceSha256": "b3043b67eff63c5ea537701ae2532873595ee1e9bb60f4c38cb7a858a42e6cf5",
+      "sourceSha256": "66dec5ba8573c56b532d864f18c50e21f4d8b1e655aa302ddf8f3c7762257c46",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_kongi_work_low.glb": {
       "triangles": 9145,
-      "sourceSha256": "a58c133ae782e0581cfe2265eb7d86b10239fdf25ed7c1cb503b6795cdd407af",
+      "sourceSha256": "f0a4544b83f8e26799f81a004dce5139389684c9d58710fae58799768e68ae6e",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); v1.10.217 assets 89·90: 고은 얼굴·팔, 하람 얼굴, 가람·꽃님·콩이 팔; global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_maru_off.glb": {
       "triangles": 22190,
-      "sourceSha256": "35517d3b5e8e861167cc788208f02e73906765894b0a3ce04847cffa837ba1df",
+      "sourceSha256": "6be1b652dddbb40b99f4b9cec34c55d578e668210bc2cb42d75ac7eb5f4e31c2",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_maru_off_low.glb": {
       "triangles": 7876,
-      "sourceSha256": "d365760674eb92cd0c260e941ff9f8d85172dd6c9e65dcae24b6d49a3f6d17ef",
+      "sourceSha256": "7f4472cfa32a04acce88344db4f5a868fb453721eb421617ad669171c810e532",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_maru_work.glb": {
       "triangles": 18167,
-      "sourceSha256": "4fe549f9c196aab1ff26cf34a92e59e0b94125c6fd7f4c6508ceee30007e96ad",
+      "sourceSha256": "186d5f87e5f863db028e954fda42275920fa7216c61347aef6f89d602cf14bd9",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_maru_work_low.glb": {
       "triangles": 6532,
-      "sourceSha256": "d6c6149fb0a702d0545d16d73667d077592b145293055774f31f622b2796294c",
+      "sourceSha256": "fb0a25ff284ad5922b18e6a00668372c0450cad717c83dec3dbf03c3ff7195ca",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_mulgyeol_off.glb": {
       "triangles": 28650,
-      "sourceSha256": "62c5e90c8e34898c0d74f1f4dd6097cc8b6eca09d6bd0cd9e78ee5b73e028d40",
+      "sourceSha256": "856863f608999fae2235db97bb3890da5f81cf0e9b68597de6be5fc7332ea955",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_mulgyeol_off_low.glb": {
       "triangles": 9061,
-      "sourceSha256": "5132a49effc6c13d38f3d90b542b9c8c675724b906ea5c45b56d7c5c6a574b4e",
+      "sourceSha256": "6a5e9fa285f95a9822b61ed6e017c48d9badb5f28d318cced616cdced1f97515",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_mulgyeol_work.glb": {
       "triangles": 29488,
-      "sourceSha256": "719e694fa1505fc77692f561958adf6785adfcc932c54d682c50842beced8c4b",
+      "sourceSha256": "5cb61153f318089477b7bf538ef3693cad11cc2643fbfbe65ceb17a3e088d044",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_mulgyeol_work_low.glb": {
       "triangles": 9190,
-      "sourceSha256": "bb79c4a697dacbadb665bdd5bedac70211abbc7af1f37e57f3c95c6a7cbea39c",
+      "sourceSha256": "6da00dc0d95ebfd665de3f0a740e1b06db8a3a183cc1ab1f6686f2a181fdd166",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_neuti_off.glb": {
       "triangles": 30016,
-      "sourceSha256": "d0c71af4cf8c113bf8b6286787959c1ac7ce704b8a358561ea269cafb0f4752b",
+      "sourceSha256": "7ee8cff5415b4ca9d18b021ac4ca056f7bde920d4403bb4843ca72f02721b98e",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_neuti_off_low.glb": {
       "triangles": 9203,
-      "sourceSha256": "c48c97396fd3eff653f751dea275a5b484d9a7d14c32009699c6c67ffb181d20",
+      "sourceSha256": "b101d1b7f6ec3b7e0e1dccbc4dbb37b6189ed7475f83e6cb522dc5ae6c6b39d0",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_neuti_work.glb": {
       "triangles": 26316,
-      "sourceSha256": "4741a0bfd85c6914e100cc540af9d5560f1253349f4478eba11af6fb3577259f",
+      "sourceSha256": "a00eb93f5048ed466ebb05be8df4e012318a854a20d61e32d05c25d984412216",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_neuti_work_low.glb": {
       "triangles": 8979,
-      "sourceSha256": "d9e5cf462bc19ddd390cc3e48f0abff6a53eb4742ba8b53988a4b0aa73a2bf0b",
+      "sourceSha256": "50fad1988393b420abc3fe84da74d00c021eb0bb04c249ea13ef37e30b63fbb8",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_useong_off.glb": {
       "triangles": 23875,
-      "sourceSha256": "0fb7a71897a40f2c7d2a1974526400bf75765bded2fe99b82826ef7571cb6689",
+      "sourceSha256": "b594340ad3b7781bc2f6f5cafb590dfac0e138d17dfbf545ff3f0139d4c6a7f1",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_useong_off_low.glb": {
       "triangles": 9417,
-      "sourceSha256": "6a52166a45cc25a3e3c0df6702f004a1e60ac571b616184701cc50ab73328e7c",
+      "sourceSha256": "211d3c2a5255184463295b9521f8a346c14fc4a79c7d0aa0fb255eda44b3e503",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_useong_work.glb": {
       "triangles": 23215,
-      "sourceSha256": "c5aacca51683f0fec0c697fa9ba1cf2aa6e7da434010a1c17ff250cb1179f436",
+      "sourceSha256": "7c0544e03de777fa944b9952fa49297c019077c94240f684d986c6603052333a",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_useong_work_low.glb": {
       "triangles": 9418,
-      "sourceSha256": "0b52256dcd063380423ba18584003759ab2c36b2f11cf2a6984b057babc9ec5a",
+      "sourceSha256": "17b460651a401ad810c99870d331d3b4ac960301b1237c4e4d182c0783d3f006",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_danbi_off.glb": {
       "triangles": 28303,
-      "sourceSha256": "d566858d16381bd2927cbf6edb3265bbccc6a4811627a100eb31d1fe5942e37b",
+      "sourceSha256": "19510bde0a4450afd338cf2b0b8efc63af28da88c6e466f94eec354552b423aa",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_danbi_off_low.glb": {
       "triangles": 9078,
-      "sourceSha256": "d9b44083219a4bc57c4e47d574d69313f8e3233682924e0610c15d1857ecbe5c",
+      "sourceSha256": "463c65c5d65ae2632800127f444e408e7ee6824a98dab0b7748161c19d762a35",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_danbi_work.glb": {
       "triangles": 27545,
-      "sourceSha256": "8de3c761e321d915093895bd61037eb16fe11e9b7aa712f0556e85e0713cb2d9",
+      "sourceSha256": "bce2ff80fc40513d6ee407a2ddc28a115fdca6c779ff704bc55a330fb69ea9f6",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_danbi_work_low.glb": {
       "triangles": 9167,
-      "sourceSha256": "08630a8cc254dd72c3cdf4418d23252f49356165c8cbfd4d9cb019070a91d484",
+      "sourceSha256": "eb00b661484dd2a9cdf62a11e4bedffb4f403b5ce9d1a9e04b1b1fa6f42d890c",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hansol_off.glb": {
       "triangles": 26948,
-      "sourceSha256": "3c9ba3e8289c479cee8a7d150f718a7aab4fa3b11733dd917f53693e4ac7409b",
+      "sourceSha256": "7e3240cf33e22e13e05113e1bd84b584c7f25c63a0fac1d547c55f33b7489599",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hansol_off_low.glb": {
       "triangles": 8891,
-      "sourceSha256": "0912c6b2a83060793bf3b79975cb4a64742dff1d59b293026cce31945644f8a4",
+      "sourceSha256": "5d313ae277061df1e6afeaa07262cf55b644e4252fa320559a4ebd27d9659d07",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hansol_work.glb": {
       "triangles": 29107,
-      "sourceSha256": "7b43a1a0aefed9b0b9a109cdb36c5f4d1c639cd51682efe654427f192dc673e7",
+      "sourceSha256": "fabf17d8bbdd5e4a0fae61ada07aabf4c907d76eb4ace921fec20df5aed6224a",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_hansol_work_low.glb": {
       "triangles": 9216,
-      "sourceSha256": "bf154e9cfbc5736cece7ea30dc9d535389fb5c8665661c2605b09370960e1266",
+      "sourceSha256": "f823d7c6432c156e4c27774693297085f67e6279870df7430c613e0faa6b3423",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_saerom_off.glb": {
       "triangles": 27329,
-      "sourceSha256": "c6767390619dec407f498bd48da9ab3901b5191480460eecc71038396e940c28",
+      "sourceSha256": "c93efc432aeb7e3aad23d729b192818f9e8db8284b914eb6aa4fb81c47e041b4",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_saerom_off_low.glb": {
       "triangles": 8573,
-      "sourceSha256": "53290d32a0c827f0279ed4d5b32dbbbf7ac873a0d9099dd495d1d6a76000474a",
+      "sourceSha256": "c3cea4b818c817eae5e03c8d5650b6c0d51a3f5318766933c5f4f8fde2e7250b",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_saerom_work.glb": {
       "triangles": 28032,
-      "sourceSha256": "efa199bb8cf08b6dc9b6b2dd3776c1e823e0410df46adf7c34ae82e86a1f920b",
+      "sourceSha256": "6066d424c929809d55576178a7828188435dad7ada7659c9ccb2f3837f3a1731",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_saerom_work_low.glb": {
       "triangles": 9056,
-      "sourceSha256": "c799176dea6b64f4c9da6f5c0112f3f009b7e0034eec9f1d3b7971c9a922e080",
+      "sourceSha256": "0fc50ea2f29e17d1f0bdf2aa5ab57cf5c352e339afd9d4fbfb400afa94a202b6",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_darae_off.glb": {
       "triangles": 31149,
-      "sourceSha256": "1686222c38839a8bd9f9e10f8ccd27a34dcfb768cf6172864568162c64b72786",
+      "sourceSha256": "b631e2f72e5e0fe466e27814cc0c912bcc77bcff62540d6f3f3f0388c0467a98",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base; v1.10.288 assets 110: 다래, the 28th"
     },
     "characters/npc_walker_darae_off_low.glb": {
       "triangles": 9681,
-      "sourceSha256": "a8e90383ec529e13055d0b37422615fb9f397e2866129008a586e94fa9450efa",
+      "sourceSha256": "8259a2b04608ba815fa2cfdff61b725c4d4c13942e3e693a23a88a0ec0d23644",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base; v1.10.288 assets 110: 다래, the 28th"
     },
     "characters/npc_walker_darae_work.glb": {
       "triangles": 31147,
-      "sourceSha256": "894ab3304ecc534d21ce5c9cf26e6bcf6d09fa529786fc63d6dc5b59ef6995ef",
+      "sourceSha256": "b5fa3f9c5e0a0dba973229d2da7e6bb2a1d9cad7afc2d9aa73c595870a65db21",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base; v1.10.288 assets 110: 다래, the 28th"
     },
     "characters/npc_walker_darae_work_low.glb": {
       "triangles": 9694,
-      "sourceSha256": "c59f93faf5c81074dac74440e725e42b5d58194672c8d1b6d130cd8a72d0e828",
+      "sourceSha256": "96f8d2c2b6121bc4e2f6d2850acc74d29be99291daa06749b06d270781f1c38a",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base; v1.10.288 assets 110: 다래, the 28th"
     },
     "season-v1/contest_tent.glb": {

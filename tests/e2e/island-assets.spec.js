@@ -633,6 +633,9 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   for (const prop of d.assets.attaches.filter((x) => (x.ids.includes('prop.bench') || x.ids.includes('prop.planter')) && x.zone !== 3)) { // (v1.10.230: 툇마루섬's little gardens take the isle's season)
     expect(prop.zone).toBe(-1); expect(prop.look).toBe('summer'); // the neutral plaza
   }
+  { const benches = d.assets.batches.find((x) => x.ids.includes('prop.bench')); /* (316 ④: the plaza's benches one batch now -- the same rule, per zone) */
+    expect(benches?.copies).toBeGreaterThan(0);
+    for (const [zone, z] of Object.entries(benches.zones)) if (zone !== '3') { expect(zone).toBe('-1'); expect(z.look).toBe('summer'); } }
   // v1.10.29: each flower colour its own model in every season; the bridges and yard fences take their zone's season
   // Terrain changes can leave a colour absent in one zone. Check every placed colour's actual seasonal H/L pair.
   const flowers = d.assets.batches.filter((batch) => batch.ids[0].startsWith('nature.flower.'));

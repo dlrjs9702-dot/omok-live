@@ -377,9 +377,10 @@
     const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - 7.3, r: 1.1 }, ...pavingSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
-    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 });
-    for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r });
-    for (const b of WATERFRONT.benches) out.push({ x: b.x, z: b.z, r: b.r });
+    /* (316 ④ `batch`: drawn instanced -- the map check counts them as seen) */
+    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3, batch: true });
+    for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r, batch: true });
+    for (const b of WATERFRONT.benches) out.push({ x: b.x, z: b.z, r: b.r, batch: true });
     for (const p of farmFence()) out.push({ ...p, r: 0.22, fence: true }); // (3회차 15: the farm's fence, its shed and scarecrow)
     { const s = FARM.yard.shed; for (const dx of [-1, 0, 1]) for (const dz of [-0.6, 0.6]) out.push({ x: s.x + dx, z: s.z + dz, r: 0.8 }); }
     out.push({ ...FARM.yard.scarecrow, r: 0.35 });
