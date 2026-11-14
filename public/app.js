@@ -3621,6 +3621,12 @@
   }
   // 꾸미기: a piece chosen from the 가구 창고, moved and turned with the buttons (the same on a PC and a phone), placed
   const homeEditBtn = byId('homeEditBtn'); homeEditBtn.addEventListener('click', () => openHomeEdit());
+  // v1.10.315 배치 도구 1단계 (docs/placement-tool-v2-20261114.md, 사용자 「확대해서 미세조정할 수 있게」): 「세밀」 -- moved 0.05 m, turned
+  // 15° (a drag too, off the 0.25 m steps); plain, the steps and quarters as before. Kept on this device; one switch for the
+  // house's and the yard's windows and the 배치 도구
+  let placeFine = false; try { placeFine = localStorage.getItem('gc.placeFine') === '1'; } catch {}
+  const fineButtons = new Set();
+  const fineToggle = (cls, onChange) => { const b = btn('세밀', `ghost ${cls}`, () => { placeFine = !placeFine; try { localStorage.setItem('gc.placeFine', placeFine ? '1' : '0'); } catch {} for (const x of fineButtons) if (x.isConnected) x.setAttribute('aria-pressed', String(placeFine)); else fineButtons.delete(x); onChange?.(); }); b.setAttribute('aria-pressed', String(placeFine)); b.setAttribute('aria-label', '세밀 조정 (0.05 m · 15°)'); fineButtons.add(b); return b; };
   const editBox = document.createElement('div'); editBox.className = 'homeEdit'; editBox.id = 'homeEdit';
   let homeEditing = null;
   async function openHomeEdit() {
@@ -3639,7 +3645,7 @@
       if (homeEditing) status.textContent = `${homeEditing.name} · ${why || (held ? '위에 물건이 있어요' : H.supportOf(homeEditing, others()) ? '위에 올려 놓을 수 있어요' : '여기에 놓을 수 있어요')}`;
       for (const b of pad.querySelectorAll('button')) b.disabled = !homeEditing; put.disabled = !homeEditing || Boolean(why); back.disabled = !homeEditing || !placed.has(homeEditing.uid) || held;
     };
-    const move = (dx, dz) => { if (!homeEditing) return; const step = H.supportOf(homeEditing, others()) ? 0.05 : 0.25; /* (207: on a top by 0.05 m) */ const q = H.snapPos({ ...homeEditing, x: homeEditing.x + dx * step, z: homeEditing.z + dz * step }, homeInside.home.stage, others()); homeEditing.x = q.x; homeEditing.z = q.z; show(); }; // (3회차 6: up against a wall too)
+    const move = (dx, dz) => { if (!homeEditing) return; const step = H.supportOf(homeEditing, others()) || placeFine ? 0.05 : 0.25; /* (207: on a top by 0.05 m; v1.10.315 세밀 too) */ const q = H.snapPos({ ...homeEditing, x: homeEditing.x + dx * step, z: homeEditing.z + dz * step }, homeInside.home.stage, others(), placeFine); homeEditing.x = q.x; homeEditing.z = q.z; show(); }; // (3회차 6: up against a wall too)
     for (const p of pieces) {
       const b = btn(`${p.name}${placed.has(p.uid) ? ' · 놓음' : ''}`, 'ghost furniturePiece');
       b.dataset.uid = p.uid; b.setAttribute('role', 'listitem');
@@ -3653,7 +3659,8 @@
     }
     const arrows = [['←', 1, 0], ['↑', 0, 1], ['↓', 0, -1], ['→', -1, 0]]; // (the room is seen from its doorway: my left is its +x)
     for (const [label, dx, dz] of arrows) { const b = btn(label, 'ghost', () => move(dx, dz)); b.setAttribute('aria-label', { '←': '왼쪽으로', '↑': '안쪽으로', '↓': '앞쪽으로', '→': '오른쪽으로' }[label]); pad.append(b); }
-    { const turn = btn('↻ 돌리기', 'ghost homeEditTurn', () => { if (homeEditing) { homeEditing.rot = (homeEditing.rot + 1) % 4; show(); } }); turn.setAttribute('aria-label', '돌리기'); pad.append(turn); } // (207: one line, not 돌/리/기)
+    { const turn = btn('↻ 돌리기', 'ghost homeEditTurn', () => { if (homeEditing) { homeEditing.rot = H.turnBy(homeEditing, placeFine); const q = H.snapPos(homeEditing, homeInside.home.stage, others(), placeFine); homeEditing.x = q.x; homeEditing.z = q.z; show(); } }); turn.setAttribute('aria-label', '돌리기'); pad.append(turn); } // (207: one line, not 돌/리/기; v1.10.315: 15° 세밀, kept in the room)
+    pad.append(fineToggle('homeEditFine'));
     const send = async (body, done) => {
       if (homeBusy) return; homeBusy = true;
       try { const r = await api('/api/home/place', { method: 'POST', body: JSON.stringify(body) }); showHome({ ...homeInside, home: r.home }); homeEditing = null; showToast(done); openHomeEdit(); }
@@ -3731,7 +3738,7 @@
       if (yardEditing) status.textContent = `${yardEditing.name} · ${why || '여기에 놓을 수 있어요'}`; status.dataset.at = yardEditing ? `${yardEditing.x},${yardEditing.z},${yardEditing.rot}` : ''; /* (where it is, lot-local: tests) */
       for (const b of pad.querySelectorAll('button')) b.disabled = !yardEditing; put.disabled = !yardEditing || Boolean(why); back.disabled = !yardEditing || !placed.has(yardEditing.uid);
     };
-    const move = (right, ahead) => { if (!yardEditing) return; const [dx, dz] = plaza.controller?.yardStep?.(right, ahead) || [0, 0]; yardEditing.x = Y.snap(yardEditing.x + dx); yardEditing.z = Y.snap(yardEditing.z + dz); show(); };
+    const move = (right, ahead) => { if (!yardEditing) return; const [dx, dz] = plaza.controller?.yardStep?.(right, ahead) || [0, 0]; const k = placeFine ? Y.FINE / Y.STEP : 1; yardEditing.x = Y.snap(yardEditing.x + dx * k, placeFine); yardEditing.z = Y.snap(yardEditing.z + dz * k, placeFine); show(); }; // (v1.10.315: 세밀 -- 0.05 m)
     for (const p of pieces) {
       const b = btn(`${p.name}${placed.has(p.uid) ? ' · 놓음' : ''}`, 'ghost furniturePiece'); b.dataset.uid = p.uid; b.setAttribute('role', 'listitem');
       b.addEventListener('click', () => {
@@ -3743,7 +3750,8 @@
       list.append(b);
     }
     for (const [label, right, ahead, aria] of [['←', -1, 0, '왼쪽으로'], ['↑', 0, 1, '안쪽으로'], ['↓', 0, -1, '앞쪽으로'], ['→', 1, 0, '오른쪽으로']]) { const b = btn(label, 'ghost', () => move(right, ahead)); b.setAttribute('aria-label', aria); pad.append(b); }
-    { const turn = btn('↻ 돌리기', 'ghost homeEditTurn', () => { if (yardEditing) { yardEditing.rot = (yardEditing.rot + 1) % 4; show(); } }); turn.setAttribute('aria-label', '돌리기'); pad.append(turn); }
+    { const turn = btn('↻ 돌리기', 'ghost homeEditTurn', () => { if (yardEditing) { yardEditing.rot = Y.turnBy(yardEditing.rot, placeFine); show(); } }); turn.setAttribute('aria-label', '돌리기'); pad.append(turn); } // (v1.10.315: 15° 세밀)
+    pad.append(fineToggle('homeEditFine'));
     const send = async (body, done) => {
       if (yardBusy) return; yardBusy = true;
       try {
@@ -3774,8 +3782,8 @@
       const others = (p) => placed().filter((x) => x.uid !== p?.uid);
       return { kind, title: '꾸미기', placed, filter: (p) => p.rarity !== 'yard', reopen: () => openHomeEdit(),
         view: (on) => plaza.controller?.homeEditView?.(on), ghost: (p) => plaza.controller?.homeGhost?.(p) ?? null,
-        aim: (p, pt) => H.aimAt(p, pt.lx, pt.lz, stage(), others(p)), turn: (p) => ({ ...p, ...H.snapPos({ ...p, rot: (p.rot + 1) % 4 }, stage(), others(p)), rot: (p.rot + 1) % 4 }),
-        step: (p, right, ahead) => { const s = H.supportOf(p, others(p)) ? 0.05 : 0.25; return { ...p, ...H.snapPos({ ...p, x: p.x - right * s, z: p.z + ahead * s }, stage(), others(p)) }; }, // (the room seen from its doorway: my right is its -x)
+        aim: (p, pt) => H.aimAt(p, pt.lx, pt.lz, stage(), others(p), placeFine), turn: (p) => { const rot = H.turnBy(p, placeFine); return { ...p, ...H.snapPos({ ...p, rot }, stage(), others(p), placeFine), rot }; }, // (v1.10.315 세밀: 0.05 m, 15°)
+        step: (p, right, ahead) => { const s = H.supportOf(p, others(p)) || placeFine ? 0.05 : 0.25; return { ...p, ...H.snapPos({ ...p, x: p.x - right * s, z: p.z + ahead * s }, stage(), others(p), placeFine) }; }, // (the room seen from its doorway: my right is its -x)
         pick: (pt) => H.pieceAt(placed(), pt.lx, pt.lz), stuck: (p) => { const was = placed().find((x) => x.uid === p.uid); return Boolean(was && H.heldOn(was, others(was)).length && (was.x !== p.x || was.z !== p.z || was.rot !== p.rot)); },
         under: (p, pt) => { const b = H.boxOf(p); return Boolean(b) && pt.lx >= b.x0 - 0.4 && pt.lx <= b.x1 + 0.4 && pt.lz >= b.z0 - 0.4 && pt.lz <= b.z1 + 0.4; },
         send: async (body) => { const r = await api('/api/home/place', { method: 'POST', body: JSON.stringify(body) }); showHome({ ...homeInside, home: r.home }); },
@@ -3784,8 +3792,8 @@
     const Y = window.IslandYard; const lotNow = () => myYardLot();
     return { kind, title: '마당 꾸미기', placed: () => lotNow()?.yard || [], filter: (p) => p.rarity === 'yard', reopen: () => openYardEdit(),
       view: (on) => plaza.controller?.yardEdit?.(on ? lotNow()?.lot.id : null), ghost: (p) => plaza.controller?.yardGhost?.(p) ?? null,
-      aim: (p, pt) => Y.aimAt(p, pt.lx, pt.lz), turn: (p) => ({ ...p, rot: (p.rot + 1) % 4 }),
-      step: (p, right, ahead) => { const [dx, dz] = plaza.controller?.yardStep?.(right, ahead) || [0, 0]; return { ...p, x: Y.snap(p.x + dx), z: Y.snap(p.z + dz) }; },
+      aim: (p, pt) => Y.aimAt(p, pt.lx, pt.lz, placeFine), turn: (p) => ({ ...p, rot: Y.turnBy(p.rot, placeFine) }), // (v1.10.315 세밀: 0.05 m, 15°)
+      step: (p, right, ahead) => { const [dx, dz] = plaza.controller?.yardStep?.(right, ahead) || [0, 0]; const k = placeFine ? Y.FINE / Y.STEP : 1; return { ...p, x: Y.snap(p.x + dx * k, placeFine), z: Y.snap(p.z + dz * k, placeFine) }; },
       pick: (pt) => Y.pieceAt(lotNow()?.yard || [], pt.lx, pt.lz), stuck: () => false,
       under: (p, pt) => Math.abs(pt.lx - p.x) <= 1.2 && Math.abs(pt.lz - p.z) <= 1.2,
       send: async (body) => { const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {}); await api('/api/home/yard', { method: 'POST', body: JSON.stringify(body) }); await refreshHomes(); },
@@ -3857,9 +3865,10 @@
     for (const [label, right, ahead, aria] of [['←', -1, 0, '왼쪽으로'], ['↑', 0, 1, '안쪽으로'], ['↓', 0, -1, '앞쪽으로'], ['→', 1, 0, '오른쪽으로']]) pad.append(pb(label, '', 'placeHeld', () => placeStep(right, ahead), aria));
     const fine = pb('⋯', '한 칸씩', 'placeHeld placeFine', () => { pad.classList.toggle('hidden'); fine.setAttribute('aria-expanded', String(!pad.classList.contains('hidden'))); }, '한 칸씩 옮기기'); fine.setAttribute('aria-expanded', 'false');
     const back = pb('📦', '창고로', 'placeHeld placeBack', () => placeBack(), '창고로');
+    const fineMode = pb('🔍', '세밀', 'placeFineMode', () => { placeFine = !placeFine; try { localStorage.setItem('gc.placeFine', placeFine ? '1' : '0'); } catch {} fineMode.setAttribute('aria-pressed', String(placeFine)); }, '세밀 조정 (0.05 m · 15°)'); fineMode.setAttribute('aria-pressed', String(placeFine)); /* (v1.10.315: moved and dragged on 0.05 m, turned 15°) */
     const put = pb('✓', '놓기', 'main placePut placeHeld', () => placePut(), '✓ 놓기 (Enter)');
     const end = pb('', '끝내기', 'placeEnd', () => closePlaceTool());
-    const acts = document.createElement('div'); acts.className = 'placeActs'; acts.append(drop, turn, fine, back, put);
+    const acts = document.createElement('div'); acts.className = 'placeActs'; acts.append(drop, turn, fine, fineMode, back, put);
     const head = document.createElement('div'); head.className = 'placeHead'; head.append(line(`🖐 ${t.a.title}`, 'placeTitle'), end);
     const row = document.createElement('div'); row.className = 'placeRow'; row.append(status, acts);
     const whyLine = document.createElement('p'); whyLine.className = 'placeWhy hidden'; whyLine.setAttribute('aria-hidden', 'true'); // (the status says it for a screen reader)

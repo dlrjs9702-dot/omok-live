@@ -76,21 +76,25 @@
     const a = Math.round(n * STEP * STEP); areas.set(key, a); return a;
   }
   // a piece {uid, id, x, z, rot} (lot-local): its footprint box, its blocking circles and seats in the world
-  function footBox(p) { const it = ITEMS[shapeOf(p.id)]; const [w, d] = p.rot % 2 ? [it.foot[1], it.foot[0]] : it.foot; return [p.x - w / 2, p.x + w / 2, p.z - d / 2, p.z + d / 2]; }
+  // (v1.10.315 배치 도구 1단계: `rot` in quarter turns, a sixth of one -- 15° -- the finest; a piece turned between the quarters
+  // takes the box round its turned footprint)
+  function footBox(p) { const it = ITEMS[shapeOf(p.id)]; const a = (Number(p.rot) || 0) * (Math.PI / 2); const c = Math.abs(Math.cos(a)); const s = Math.abs(Math.sin(a)); const w = it.foot[0] * c + it.foot[1] * s; const d = it.foot[0] * s + it.foot[1] * c; return [p.x - w / 2, p.x + w / 2, p.z - d / 2, p.z + d / 2]; }
   const turn = (p, ox, oz) => { const a = (p.rot * Math.PI) / 2; return [p.x + ox * Math.cos(a) + oz * Math.sin(a), p.z - ox * Math.sin(a) + oz * Math.cos(a)]; };
   function solidsOf(lot, p) { const it = ITEMS[shapeOf(p.id)]; return (it?.solids || []).map(([ox, oz, r]) => { const [lx, lz] = turn(p, ox, oz); return { ...world(lot, lx, lz), r }; }); }
   function seatsOf(lot, p) {
     const it = ITEMS[shapeOf(p.id)]; const yaw = lot.yaw + (p.rot * Math.PI) / 2;
     return (it?.seats || []).map(([ox, oz], k) => { const [lx, lz] = turn(p, ox, oz); const w = world(lot, lx, lz); return { id: `yard:${lot.id}:${p.uid}:${k}`, x: Math.round(w.x * 100) / 100, z: Math.round(w.z * 100) / 100, yaw: yaw + Math.PI, name: '앉기' }; });
   }
-  const overlap = (a, b) => a[0] < b[1] - 1e-6 && b[0] < a[1] - 1e-6 && a[2] < b[3] - 1e-6 && b[2] < a[3] - 1e-6;
-  const onStep = (v) => Math.abs(v * 4 - Math.round(v * 4)) < 1e-6;
+  // (v1.10.315 「세밀」: a place on the 0.05 m steps, a turn on the 15° ones; the plain arrows keep the 0.25 m and quarters)
+  const FINE = 0.05; const onStep = (v) => Math.abs(v / FINE - Math.round(v / FINE)) < 1e-6;
+  const onTurn = (r) => Number.isFinite(r) && r >= -1e-9 && r < 4 - 1e-9 && Math.abs(r * 6 - Math.round(r * 6)) < 1e-6;
   const samples = (a, b) => { const out = []; for (let v = a + 0.02; v < b - 0.02; v += STEP) out.push(v); out.push(b - 0.02); return out; }; // (across a footprint, its far edge too)
-  // why a piece may not stand there (null: it may) -- in my yard, on the steps, clear of the house, the door's way, the
-  // ground's edge and the other pieces (fences may share their end posts)
+  // why a piece may not stand there (null: it may) -- in my yard, on the steps, clear of the house and the door's way and
+  // the ground's edge. (v1.10.315 사용자 「배치하는 물체들끼리는 겹칠 수 있게」: one piece may stand into another now -- only
+  // where one would be shut in or kept from passing: the house, the way from its door to the gate, outside the fence)
   function placeError(p, others, lot, stage, level) {
     const shape = shapeOf(p.id); if (!shape) return '마당 물건이 아니에요.';
-    if (![p.x, p.z].every(Number.isFinite) || !onStep(p.x) || !onStep(p.z) || ![0, 1, 2, 3].includes(p.rot)) return '자리를 확인해 주세요.';
+    if (![p.x, p.z].every(Number.isFinite) || !onStep(p.x) || !onStep(p.z) || !onTurn(p.rot)) return '자리를 확인해 주세요.';
     const b = footBox(p);
     for (const lx of samples(b[0], b[1])) {
       for (const lz of samples(b[2], b[3])) {
@@ -99,28 +103,20 @@
         if (!usable(lot, stage, level, lx, lz)) return '마당 칸 밖이에요.';
       }
     }
-    const fence = ITEMS[shape].fence;
-    for (const o of others) { if (o.uid === p.uid) continue; if (fence && ITEMS[shapeOf(o.id)]?.fence && postsOnly(p, o)) continue; if (overlap(b, footBox(o))) return '다른 물건과 겹쳐요.'; }
-    return null;
-  }
-  // two fences that meet only at an end post (총괄 225 검토): in a line, overlapping 0.1 m at most; at a corner, the
-  // overlap no longer than the other's depth and at an end of each -- never one on another, nor half way along
-  function postsOnly(a, b) {
-    const A = footBox(a); const B = footBox(b); const lo = [Math.max(A[0], B[0]), Math.max(A[2], B[2])]; const hi = [Math.min(A[1], B[1]), Math.min(A[3], B[3])];
-    if (hi[0] - lo[0] <= 1e-6 || hi[1] - lo[1] <= 1e-6) return true; // (only touching)
-    const ok = (p, box, room) => { const k = p.rot % 2 ? 1 : 0; const len = hi[k] - lo[k]; return len <= room + 1e-6 && (lo[k] <= box[k * 2] + 1e-6 || hi[k] >= box[k * 2 + 1] - 1e-6); };
-    if (a.rot % 2 === b.rot % 2) return ok(a, A, 0.1) && ok(b, B, 0.1);
-    return ok(a, A, ITEMS[shapeOf(b.id)].foot[1]) && ok(b, B, ITEMS[shapeOf(a.id)].foot[1]);
+    void others; return null;
   }
   // the pieces that no longer fit (a bigger house, say) -- they go back to the 가구 창고
   const misfits = (items, lot, stage, level) => items.filter((p, i) => placeError(p, items.slice(0, i), lot, stage, level));
   const limitOf = (level) => LIMIT[Math.min(LEVELS, Math.max(1, level)) - 1];
   // a lot-local spot snapped to the steps
-  const snap = (v) => Math.round(v / STEP) * STEP;
+  const snap = (v, fine = false) => { const s = fine ? FINE : STEP; return Math.round(Math.round(v / s) * s * 100) / 100; };
   // v1.10.232 배치 도구: a held piece aimed at a lot-local point (its step), and the placed piece there -- as the house's
-  const aimAt = (p, lx, lz) => ({ ...p, x: snap(Number(lx)), z: snap(Number(lz)) });
+  // (v1.10.315 「세밀」: on the 0.05 m steps -- a drag no longer jumps to the 0.25 m ones)
+  const aimAt = (p, lx, lz, fine = false) => ({ ...p, x: snap(Number(lx), fine), z: snap(Number(lz), fine) });
+  // a turn: a quarter, or 15° 「세밀」 -- kept on the sixths of a quarter (0 <= rot < 4)
+  const turnBy = (rot, fine = false) => { const k = Math.round((Number(rot) || 0) * 6) + (fine ? 1 : 6); return ((k % 24) + 24) % 24 / 6; };
   const pieceAt = (items, lx, lz) => items.find((p) => { if (!ITEMS[shapeOf(p.id)]) return false; const [x0, x1, z0, z1] = footBox(p); return lx >= x0 - 1e-6 && lx <= x1 + 1e-6 && lz >= z0 - 1e-6 && lz <= z1 + 1e-6; }) || null;
   // is this spot (world) in the yard of that lot (its box at that level, a little round it): where 「마당 꾸미기」 shows
   function inYard(lot, stage, level, x, z, pad = 0.5) { const { lx, lz } = local(lot, x, z); const b = boxOf(lot, stage, level); return lx > b[0] - pad && lx < b[1] + pad && lz > b[2] - pad && lz < b[3] + pad && !inHouse(stage, lx, lz); }
-  return { ITEMS, SHAPES, LIMIT, LEVELS, FENCE, fenceOf, GATE, fencePieces, fenceSolids, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, inHouse, inPath, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard, aimAt, pieceAt };
+  return { ITEMS, SHAPES, LIMIT, LEVELS, FENCE, fenceOf, GATE, fencePieces, fenceSolids, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, inHouse, inPath, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard, aimAt, pieceAt, turnBy, FINE, onTurn };
 }));

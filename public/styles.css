@@ -2792,6 +2792,7 @@ body.herosurvOpen { overflow: hidden; }
 .homeLots .selected,.homeChoice .selected{outline:2px solid #60a5fa}
 .homeChoice .goodBuy{flex-wrap:wrap;gap:6px}
 .homeEditPad{display:grid;grid-template-columns:repeat(6,minmax(40px,1fr));gap:6px}.homeEditPad .homeEditTurn{grid-column:span 2;white-space:nowrap} /* (207: 「↻ 돌리기」 one line, not 돌/리/기) */
+.homeEditPad .homeEditFine{grid-column:span 2;white-space:nowrap}.homeEditPad .homeEditFine[aria-pressed="true"],.placeBar .placeBtn.placeFineMode[aria-pressed="true"]{background:var(--isle-btn,#9c5f14);color:#fff;border-color:var(--isle-btn,#9c5f14)} /* (v1.10.315 「세밀」 on) */
 .homeEditBtn{position:absolute;z-index:3;top:12px;right:12px;padding:8px 16px} /* (U: .isle-pill) */
 .homeEditBtn.hidden{display:none}
 /* 묶음 2 가구 창고: the piece in 3D above, the list under it */

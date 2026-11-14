@@ -86,7 +86,7 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
   const sofaAt = (await mine()).find((p) => p.uid === sofa);
   await choose(sofa); await tap('오른쪽으로', 2); await tap('놓기');
   await expect.poll(async () => (await mine()).find((p) => p.uid === sofa).x, { timeout: 10000 }).toBe(sofaAt.x - 0.5);
-  await choose(tank); await tap('안쪽으로', 4); await tap('오른쪽으로', 2); await expect(status).toContainText('겹쳐요'); await expect(edit.getByRole('button', { name: '놓기', exact: true })).toBeDisabled();
+  await choose(tank); await tap('안쪽으로', 4); await tap('오른쪽으로', 2); await expect(status).toContainText('여기에 놓을 수 있어요'); await expect(edit.getByRole('button', { name: '놓기', exact: true })).toBeEnabled(); /* (v1.10.315 사용자 「겹칠 수 있게」: into the sofa -- allowed) */
   await tap('왼쪽으로', 4); await tapUntil('왼쪽으로', '여기에 놓을 수 있어요'); await tap('놓기');
   await expect.poll(async () => (await mine()).some((p) => p.uid === tank), { timeout: 10000 }).toBe(true);
   await choose(insectCase); await tap('오른쪽으로', 6); await tapUntil('오른쪽으로', '여기에 놓을 수 있어요'); await tap('놓기');
@@ -430,7 +430,7 @@ test('집 꾸미기: 작은 물건은 책상·탁자 위에, 위에 있으면 �
   expect((await place(desk, 0, 2)).status).toBe(200); expect((await place(table, -2.5, 2)).status).toBe(200);
   // on the desk: the case (turned), the globe beside it -- not on it; the radio on the table
   expect((await place(box, -0.3, 2, 1)).status).toBe(200);
-  const over = await place(globe, -0.25, 2); expect(over.data.error).toBe('BAD_PLACE'); expect(over.data.message).toContain('위에 놓인 다른 물건과 겹쳐요');
+  expect((await place(globe, -0.25, 2)).status).toBe(200); /* (v1.10.315 사용자 「겹칠 수 있게」: into the case on the same top -- allowed) */
   expect((await place(globe, 0.3, 2.05)).status).toBe(200); expect((await place(radio, -2.5, 2)).status).toBe(200);
   // the desk with things on it: not moved, turned or put away
   for (const body of [{ uid: desk, x: 0.5, z: 2, rot: 0 }, { uid: desk, x: 0, z: 2, rot: 1 }, { uid: desk, remove: true }]) { const r = await post(request, '/api/home/place', a.token, body); expect(r.data.error).toBe('HOLDS_THINGS'); expect(r.data.message).toBe('위에 놓인 물건을 먼저 치워 주세요.'); }
