@@ -163,6 +163,14 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   expect((await post(request, '/api/home/upgrade', a.token, {})).status).toBe(200); await post(request, '/api/test/home/next-day', a.token, {});
   expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ stage: 4, upgradeDay: null });
   expect((await post(request, '/api/home/upgrade', a.token, {})).data.error).toBe('TOP_STAGE');
+  { // (313 A5 「여기로 그냥 뚫고 지나가버릴수가 있어」) before the 큰 집: walked at its bushes or its veranda's front, I stop before them
+    const L = await b.page.evaluate((id) => window.IslandYard.lotById(id), lot); const W = (lx, lz) => [L.x + lx * Math.cos(L.yaw) + lz * Math.sin(L.yaw), L.z - lx * Math.sin(L.yaw) + lz * Math.cos(L.yaw)];
+    for (const lx of [-2.4, 1.2, 4]) {
+      await b.page.evaluate(async ([x, z, yaw]) => { await window.PlazaWarp(x, z); window.PlazaDebug().setCamYaw(yaw); }, [...W(lx, -8), L.yaw + Math.PI]);
+      await b.page.locator('#plazaStage').focus(); await b.page.keyboard.down('KeyW'); await b.page.waitForTimeout(2500); await b.page.keyboard.up('KeyW');
+      const lz = await b.page.evaluate((L) => { const d = window.PlazaDebug(); return (d.x - L.x) * Math.sin(L.yaw) + (d.z - L.z) * Math.cos(L.yaw); }, L); expect(lz, `x ${lx}`).toBeLessThan(-5.2);
+    }
+  }
   await through(page, 'room:exit', '나가기', 'island');
   // 방문 허용 (내 집 in the menu): 안 받음 -- the door says so and stays shut; 친구만 -- shut until they are friends
   const bAtDoor = async () => { const d = await b.page.evaluate((id) => window.PlazaDebug().doors[id], `home:${lot}`); await standAt(request, b, d.x, d.z); }; // (the page and the server both: the checks below ask the server)

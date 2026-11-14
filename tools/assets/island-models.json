@@ -9344,12 +9344,6 @@
       "precompressed": true
     },
     {
-      "out": "nature109/autumn/bush_fern.glb",
-      "src": "nature109:01. High/autumn/bush_fern.glb",
-      "sha256": "17a5b4bbc553567ea94db7ee6190941673a11834c57887c15b4a8b1a7bb0233e",
-      "precompressed": true
-    },
-    {
       "out": "nature109/autumn/bush_mound.glb",
       "src": "nature109:01. High/autumn/bush_mound.glb",
       "sha256": "6b6d8724bebda330a238036dba1a62437c94ecfb1f6004577f44f6d06ad4556f",
@@ -9557,12 +9551,6 @@
       "out": "nature109/autumn/tree_twin.glb",
       "src": "nature109:01. High/autumn/tree_twin.glb",
       "sha256": "27dbca03112ef96c6ea718ee8d4e50f1d45c795fd033c566d57cc7ed491a4427",
-      "precompressed": true
-    },
-    {
-      "out": "nature109/spring/bush_fern.glb",
-      "src": "nature109:01. High/spring/bush_fern.glb",
-      "sha256": "f3fa76066b1ee9bfa977e9794979b65f234a2f1e2d88f0bc27f143530c492a98",
       "precompressed": true
     },
     {
@@ -9776,12 +9764,6 @@
       "precompressed": true
     },
     {
-      "out": "nature109/summer/bush_fern.glb",
-      "src": "nature109:01. High/summer/bush_fern.glb",
-      "sha256": "01493832894978d247be15836bcdc44739789c01fa6d0056c090f0a81fc2074f",
-      "precompressed": true
-    },
-    {
       "out": "nature109/summer/bush_mound.glb",
       "src": "nature109:01. High/summer/bush_mound.glb",
       "sha256": "e7d4a81538c67324e802368e562a817fb56d6cbbf22bbcd156dc22a9e6cbf17c",
@@ -9989,12 +9971,6 @@
       "out": "nature109/summer/tree_twin.glb",
       "src": "nature109:01. High/summer/tree_twin.glb",
       "sha256": "150a7d4b99bcdc7c4cb65a892ad9e04769d5919e2b2f98c10d11736ca6190cd8",
-      "precompressed": true
-    },
-    {
-      "out": "nature109/winter/bush_fern.glb",
-      "src": "nature109:01. High/winter/bush_fern.glb",
-      "sha256": "722244c22a12157e2b4cb68fa109e0a0b542f3969f8257278dfeeb8954b5bf42",
       "precompressed": true
     },
     {

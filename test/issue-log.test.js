@@ -39,6 +39,15 @@ test('문제 기록 로그 한 줄: 쓴 사람의 장착(옷 칸 id·변신·보
   assert.deepEqual(o.wear, { gender: 'male', outfit: 'avatar_outfit_yellow', hat: 'avatar_hat_x', transform: 'cat', modes: { cat: 'current' }, shown: 'cat', parts: ['wear.basic_pants', 'wear.cat_head'] });
 });
 
+// (313 ㅁ, 검토 render-scale-and-house-lag 4절) a 「렉」 record says CPU or graphics card: fps, a frame's JS, the pixels, the tier, the GPU
+test('문제 기록 로그 한 줄: 화면 무게(fps·프레임 JS ms·렌더 픽셀·화질 단계·GPU 이름), 이상한 값은 null', () => {
+  const ctx = { screen: 'island', fps: 24, perf: { fps: 24, jsMs: 31.46, px: '1280x720', pixelRatio: 1.5, quality: 1, gpu: 'ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0)' } };
+  assert.deepEqual(JSON.parse(logLine('add', { id: 'p', at: now, text: '렉', ctx }).slice(8)).perf, { fps: 24, jsMs: 31.5, px: '1280x720', pixelRatio: 1.5, quality: 1, gpu: 'ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0)' });
+  const odd = JSON.parse(logLine('add', { id: 'q', at: now, text: '렉', ctx: { perf: { fps: -3, jsMs: 'x', px: '<b>', pixelRatio: 99, quality: 1, gpu: 7 } } }).slice(8)).perf;
+  assert.deepEqual(odd, { fps: null, jsMs: null, px: null, pixelRatio: null, quality: 1, gpu: null });
+  assert.equal(JSON.parse(logLine('add', { id: 'r', at: now, text: '', ctx: { screen: 'lobby' } }).slice(8)).perf, null);
+});
+
 test('문제 기록 사진 링크: 서버 키로 서명, 7일, 다른 키·바꾼 id·지난 시각·고친 서명은 거절', () => {
   const key = 'k'.repeat(64); const now = Date.UTC(2026, 9, 21); const link = shotLink(key, 'rec-1', now);
   const m = link.match(/^\/api\/issues\/shot\/rec-1\?exp=(\d+)&sig=([0-9a-f]{32})$/); assert.ok(m, link);

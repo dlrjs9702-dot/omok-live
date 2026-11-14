@@ -523,12 +523,16 @@ async function serveStatic(res, pathname, req = null) {
   }
 }
 
+// (313 A3 「사진 포함해서 문제기록이 안돼」: a 문제 기록 carries its picture -- up to 60,000 characters (addIssue), its words and the
+// screen's context besides -- past the 48 KB every other call keeps: refused whole (413) for a busy picture. Those two only: 96 KB)
+const ISSUE_BODY_MAX = 96 * 1024;
+const bodyMaxOf = (req) => (/^\/api\/(admin\/)?issues\/?$/.test(String(req.url || '').split('?')[0]) ? ISSUE_BODY_MAX : MAX_BODY);
 async function readBody(req) {
-  let size = 0;
+  let size = 0; const max = bodyMaxOf(req);
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY) throw Object.assign(new Error('too large'), { status: 413 });
+    if (size > max) throw Object.assign(new Error('too large'), { status: 413 });
     chunks.push(chunk);
   }
   return Buffer.concat(chunks).toString('utf8');
@@ -8127,6 +8131,17 @@ async function requestHandler(req, res) {
     if (back === undefined) return over('far');
     const p = at(back); if (islandEvents.residentTalk(n, who, Math.atan2(pos.x - p.x, pos.z - p.z), hold ? 0 : back)?.busy) return over('busy');
     residentsChanged(); return sendJson(res, 200, { ok: true, again: true });
+  }
+  // (313 A8 「걸어가는 주민을 채집채를 휘두르면 … 반응 한 후 빠른속도로 다른데로 가버려」) a walking islander struck by my net:
+  // held where they are for the reaction (HitReact + Angry, 2.7 s) and their round put back by as much -- on every screen
+  if (pathname === '/api/island/resident/hit' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const n = Number((await parseJson(req)).n); if (!talkable(n)) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+    const pos = plazaPresence.get(session.token); const state = islandEvents.residents()[n];
+    if (!pos || (pos.space || 'island') !== 'island' || state?.hold || postToday(n)) return sendJson(res, 200, { ok: false }); // (held already, at a counter: nothing to put back)
+    const seen = IslandNpcs.residentAt(n, nowMs(), state); if (Math.hypot(pos.x - seen.x, pos.z - seen.z) > 4) return sendJson(res, 200, { ok: false }); // (the swing's reach, a slow screen's lag)
+    if (islandEvents.residentFlinch(n, 2700, Math.atan2(pos.x - seen.x, pos.z - seen.z))) residentsChanged();
+    return sendJson(res, 200, { ok: true });
   }
   // R2 ① 먼저 말 걸기: my 호감도 with each walking islander and the last thing done together (for their greeting as I pass)
   if (pathname === '/api/island/affinity' && req.method === 'GET') {

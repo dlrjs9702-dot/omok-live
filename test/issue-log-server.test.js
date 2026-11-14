@@ -62,4 +62,9 @@ test('문제 기록 저장: 옛 기록 사진 옮기기, 해결 7일·30일 정�
   assert.equal((await fetch(base + links[0].shot.replace(/sig=./, (s) => (s.endsWith('0') ? 'sig=1' : 'sig=0')))).status, 404);
   assert.equal((await fetch(base + links[0].shot.replace(/exp=\d+/, 'exp=1000000000'))).status, 404);
   assert.equal((await fetch(base + lines[1].shot)).status, 404, '지운 기록의 사진'); assert.equal((await fetch(base + '/api/issues/shot/open1')).status, 404);
+  // (313 A3 「사진 포함해서 문제기록이 안돼」: a busy picture -- 59,000 characters, as much as the screen sends -- with long words and
+  // the screen's context: the whole record over 48 KB, taken with its picture, not refused)
+  const big = `data:image/jpeg;base64,${'B'.repeat(59000 - 23)}`; const ctx = { screen: 'island', errors: Array.from({ length: 40 }, (_, k) => `오류 ${k} `.repeat(6)) };
+  const r = await req('/api/admin/issues', admin, { action: 'add', kind: 'bug', text: '가'.repeat(1000), shot: big, ctx }); assert.equal(r.status, 201);
+  assert.equal((await req('/api/admin/issues', admin)).data.issues.find((i) => i.id === r.data.id).hasShot, true);
 });

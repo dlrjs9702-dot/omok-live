@@ -343,8 +343,11 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // the copies into their zone group's High or Low meshes (by p.flags), the ones without a model in the procedural mesh
   // v1.10.29: a cell may have several procedural meshes placed with the same matrices (a lamp's pole and its bulb);
   // each shows the copies without a model.
+  // (313 A1 「잡초들이 뽑을 때 작아졌다가 커졌다가 해」: a pulled weed's refill() drew its square with the shared `local` -- the
+  // entry matrix of whichever batch update() or a load set last (another kind's scale, a tree's) -- the whole square another
+  // size till I next moved a metre. Each placed square keeps its own)
   function fill(p) {
-    const { cell } = p; let b = 0;
+    const { cell } = p; let b = 0; const local = p.local;
     for (const g of p.groups.values()) { g.a = 0; g.b = 0; g.c = 0; }
     cell.matrices.forEach((m, i) => {
       const g = p.groups.get(p.zones[i]);
@@ -405,7 +408,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       rec.zoneUrls = Object.fromEntries([...hits].map(([zone, hit]) => [zone, hit && models.get(hit.entry.url) ? hit.entry.url : null]));
       rec.zoneLowUrls = Object.fromEntries([...hits].map(([zone, hit]) => [zone, hit?.entry.lowUrl && models.get(hit.entry.lowUrl) && models.get(hit.entry.url) ? hit.entry.lowUrl : null]));
       rec.placed = rec.cells.map((cell) => {
-        const p = { cell, near: 0, far: 0, procedural: 0, zones: zonesOf(cell), flags: new Uint8Array(cell.matrices.length), share: new Float32Array(cell.matrices.length), moving: new Set(), groups: new Map() };
+        const p = { cell, local: local.clone() /* (313 A1: its own -- `local` is the last batch's) */, near: 0, far: 0, procedural: 0, zones: zonesOf(cell), flags: new Uint8Array(cell.matrices.length), share: new Float32Array(cell.matrices.length), moving: new Set(), groups: new Map() };
         const counts = new Map(); for (const zone of p.zones) counts.set(zone, (counts.get(zone) || 0) + 1);
         for (const [zone, count] of counts) {
           const hit = hits.get(zone); const gltf = hit && models.get(hit.entry.url);
@@ -471,15 +474,16 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     } // v1.10.42 rot: a fish held side-on
     else if (rec.bone === 'Chest') { c.root.add(rec.object); rec.object.position.set(...(rec.proc || [0, 0.65, 0.38])); }
     else { ((rec.bone === 'Hand.L' ? c.armL : c.armR) || c.root).add(rec.object); /* (Codex 251-260 #12: the left hand's on the left arm) */ rec.object.position.set(0, -0.5, 0.1); } // the procedural arm's end
+    if (rec.worldScale && rec.object.parent) { const p = new THREE.Vector3(); rec.object.parent.updateWorldMatrix(true, false); rec.object.parent.getWorldScale(p); if (p.y > 1e-6) rec.object.scale.multiplyScalar(rec.worldScale / p.y); } /* (313 A1 「뽑을 때 작아졌다가 커졌다가」: `worldScale` -- as big in the world as the copy on the ground was, x its entry scale, whatever the hand bone's scale) */
     if (rec.size) { rec.object.updateWorldMatrix(true, true); const box = new THREE.Box3(); const part = new THREE.Box3(); rec.object.traverse((m) => { if (!m.isMesh || !m.geometry) return; if (m.isSkinnedMesh) { box.union(part.setFromObject(m, true)); return; } if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); box.union(part.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld)); }); const d = box.isEmpty() ? new THREE.Vector3() : box.getSize(new THREE.Vector3()); /* (v1.10.258: by the meshes' own boxes -- Box3.setFromObject read a skinned insect as nothing, so it was never sized) */ const m = Math.max(d.x, d.y, d.z); if (m > 1e-4) rec.object.scale.multiplyScalar(rec.size / m); }
   }
   // (v1.10.236 빠른 칸, 총괄 검토 「손에 거의 안 보여요」: `size` -- its longest side that many metres in the world, whatever the bone's scale)
-  function hold(c, ids, ms = 900, { key = null, bone = 'Hand.R', at = null, rot = null, proc = null, stand = null, size = null, season = null } = {}) {
+  function hold(c, ids, ms = 900, { key = null, bone = 'Hand.R', at = null, rot = null, proc = null, stand = null, size = null, season = null, worldScale = null } = {}) {
     const hit = P.pick(registry, ids, off, season); if (!hit) return; /* (v1.10.310 `season`: a seasonal model -- the weed pulled -- as the season where it was) */
     const token = {}; if (key) { letGo(c, key); (c.holding ||= {})[key] = { token, object: null }; }
     cache.get(hit.entry.url).then((gltf) => {
       if (disposed || !gltf || !c.root.parent || (key && c.holding?.[key]?.token !== token)) return;
-      const rec = { token, object: instance(gltf, hit.entry), bone, at, rot, proc, size };
+      const rec = { token, object: instance(gltf, hit.entry), bone, at, rot, proc, size, worldScale };
       seat(c, rec); stand?.removeFromParent(); // the procedural stand-in gives way
       if (key) c.holding[key] = rec; else setTimeout(() => rec.object.removeFromParent(), ms);
     }).catch((error) => onError(hit.id, error));

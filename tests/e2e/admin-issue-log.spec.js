@@ -30,7 +30,7 @@ test('문제 기록: 관리자 메뉴에서 적으면 화면 정보·사진과 �
   await page.locator('#issueText').press('Control+Enter');
   await expect(page.locator('#issueDialog')).toBeHidden();
   const all = (await get(request, '/api/admin/issues', admin)).data.issues; const mine = all.find((i) => i.text === '광장 벤치가 공중에 떠 있음');
-  expect(mine).toMatchObject({ kind: 'odd', status: 'open', hasShot: true, version: expect.stringMatching(/^1\.10\./), ctx: { screen: 'island', island: { space: 'island' }, device: { touch: false } } });
+  expect(mine).toMatchObject({ kind: 'odd', status: 'open', hasShot: true, version: expect.stringMatching(/^1\.10\./), ctx: { screen: 'island', island: { space: 'island' }, device: { touch: false }, perf: { px: expect.stringMatching(/^\d+x\d+$/), pixelRatio: expect.any(Number), jsMs: expect.any(Number) } } }); /* (313 ㅁ: the screen's weight) */
   expect(mine.shot).toBeUndefined(); // (저장 정리 2026-10-21: the list has no pictures, each one is fetched on its own)
   const shot = (await get(request, `/api/admin/issues/${mine.id}/shot`, admin)).data.shot;
   expect(shot).toMatch(/^data:image\/jpeg;base64,/); expect(shot.length).toBeLessThanOrEqual(60000);

@@ -140,3 +140,10 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   assert.ok(!after.weeds.some(([w]) => w === id));
   assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, GROW_MAX);
 });
+
+// 313 A4 「관공서 바닥에도 돌을 뚫고 풀이 자라있어」: no first weed in the 관공서's paved yard (the grown ones kept out by fits)
+test('잡초 자리: 관공서 마당 포장 위에는 처음 잡초도 없다', () => {
+  const T = require('../public/plaza/island-terrain.js'); const W = require('../lib/island-weeds');
+  assert.ok(T.nature().tufts.some((t) => T.inTownhall(t.x, t.z, 1)), '그려진 풀포기 중 관공서 안 것이 있었음');
+  assert.deepEqual(W.BASE.filter((w) => T.inTownhall(w.x, w.z, 1)).map((w) => w.id), []);
+});

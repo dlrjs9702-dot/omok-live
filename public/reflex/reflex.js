@@ -180,10 +180,10 @@ export function mount({ api, onBack, pieceSkin = null }) {
     go.focus();
   }
 
-  async function start(g, status) {
+  async function start(g, status, again = null) {
     unlockAudio(); // the first press opens the sound (phones need a touch first)
     if (set === SETS.puzzle && !info) { status.textContent = '불러오는 중이에요. 잠시 후 다시 눌러 주세요.'; return; } // whose progress, first
-    const seq = ++startSeq; const level = levelOf(g); // a screen change or a later press makes this answer stale (Codex review)
+    const seq = ++startSeq; const level = again || levelOf(g); // a screen change or a later press makes this answer stale (Codex review) /* (313 A7 「어려움 한 후 다시하기를 누르면 쉬움」: 기록의 탑's level came with the launch, gone once settled -- 다시 하기 the round's own) */
     const mode = modeOf(g);
     let id = null; let seed = null; let board = null;
     const skin = set === SETS.ai ? await pieceSkin?.(g.id) : null; // (A3 G3-2)
@@ -200,7 +200,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
-    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(mode ? { mode } : {}), ...(seed != null ? { seed } : {}), ...(skin ? { pieceSkin: skin } : {}), ...board } });
+    startGame(g, { best: info?.records?.[g.id]?.[level]?.best ?? null, level, opts: { ...optionsOf(g), ...(mode ? { mode } : {}), ...(seed != null ? { seed } : {}), ...(skin ? { pieceSkin: skin } : {}), ...board } });
   }
 
   async function finish(g, r) {
@@ -225,7 +225,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
       for (const [k, v] of r.stats) { const s = el('div', 'reflexStat'); s.append(el('b', null, String(v)), el('span', null, k)); stats.append(s); }
       box.append(stats);
     }
-    const again = button('hpBtn go', '다시 하기', () => start(g, line));
+    const again = button('hpBtn go', '다시 하기', () => start(g, line, level));
     box.append(el('div', 'reflexActions'));
     box.lastChild.append(again, button('hpBtn', direct ? (questMode ? '섬으로' : '게임관으로') : '다른 게임', () => { if (direct) { goBack(); return; } stopGame(); showList(); menu.classList.remove('hidden'); result.classList.add('hidden'); }));
     result.replaceChildren(box); result.classList.remove('hidden');
