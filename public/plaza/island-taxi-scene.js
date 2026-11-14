@@ -55,14 +55,15 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     for (const [key, ride] of Object.entries(byStop)) {
       const p = X.carAt(ride, now); if (!p) continue; live.add(key);
       let rec = moving.get(key); if (!rec) { rec = car(); moving.set(key, rec); }
-      placeCar(rec, p); rec.running = ['start', 'run', 'stop', 'back'].includes(p.phase);
-      if (mark && rec.running && people.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < 2)) { if (!rec.horn) { rec.horn = mark(); rec.horn.position.y = 2.6; rec.h.add(rec.horn); } rec.hornUntil = now + 1200; }
+      placeCar(rec, p); rec.running = ['start', 'run', 'stop', 'back'].includes(p.phase); rec.rate = X.rateOf(ride, now); rec.waitMs = ride.blockedAt ? Math.max(0, now - ride.blockedAt) : 0;
+      /* (317 A2: 「빵」 once the server has had it waiting 2 s for someone in front -- no sound; v1.10.285 honked passing within 2 m) */
+      if (mark && rec.running && rec.waitMs >= 2000) { if (!rec.horn) { rec.horn = mark(); rec.horn.position.y = 3.4; /* (317: over the rider's name) */ rec.h.add(rec.horn); } rec.hornUntil = now + 600; }
       if (rec.horn) rec.horn.visible = rec.hornUntil > now;
     }
     for (const [key, rec] of moving) if (!live.has(key)) { group.remove(rec.h); moving.delete(key); } /* (in its place: the standing one again) */
     for (const st of stops) {
       const away = live.has(st.id); st.standing.h.visible = !away;
-      const left = away ? Math.max(1, Math.ceil((X.backOf(byStop[st.id]) - now) / 1000)) : 0; st.sign.userData.say(left ? `${st.s.sign} · 약 ${left}초` : st.s.sign);
+      const left = away ? Math.max(1, Math.ceil((X.backOf(byStop[st.id], now) - now) / 1000)) : 0; st.sign.userData.say(left ? `${st.s.sign} · 약 ${left}초` : st.s.sign);
       const say = left ? `🚕 돌아오는 중 · ${left}초` : ''; /* (294: big, over the stop -- the sign's seconds were too small to read) */
       if (tag && say !== st.said) { st.said = say; if (st.label) { group.remove(st.label); st.label.traverse((o) => { o.material?.map?.dispose?.(); o.material?.dispose?.(); }); st.label = null; } if (say) { st.label = tag(say); st.label.position.set(st.s.shelter.x, groundY(st.s.shelter.x, st.s.shelter.z) + 3.7, st.s.shelter.z); group.add(st.label); } }
     }
@@ -77,6 +78,6 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   const setNight = (on) => { night = Boolean(on); };
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
-  const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible) }));
+  const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by) */
   return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible, away: [...moving.keys()].includes(st.id), label: st.said || '' })), /* (294) */ moving: () => [...moving.keys()] };
 }

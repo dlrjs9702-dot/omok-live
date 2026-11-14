@@ -5700,6 +5700,7 @@
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
         plaza.controller?.setTaxiStops?.(data.taxiStops); /* (294 7: one car a stop -- every screen draws it there and back) */
+        plaza.controller?.setTaxiRide?.(data.taxi); /* (317: my car's road clock and wait, as the server moves them) */
         if (data.jail) { jailedBy(data); if (jailState && data.jail.inmate !== jailState.inmate) refreshJail(); } // R4: put in the 구치소's cell (293: let out by the administrator -- seen at once)
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();
