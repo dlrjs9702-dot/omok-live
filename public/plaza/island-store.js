@@ -50,6 +50,7 @@
     ...['seed_flower_red', 'seed_flower_yellow', 'seed_flower_white', 'seed_flower_pink', 'seed_flower_purple', 'sapling'].map((id, k) => [id, gondola(4.6, 'a', k)]),
     ...['fertilizer', 'bait', 'bait_premium'].map((id, k) => [id, gondola(4.6, 'b', k + 1)]),
     ...['milk', 'bread', 'bulb', 'paint', 'nail_box', 'guitar_string'].map((id, k) => [id, gondola(7.7, 'a', k)]),
+    ...['seed_carrot', 'seed_potato', 'seed_tomato', 'seed_corn', 'seed_pumpkin', 'seed_cabbage'].map((id, k) => [id, gondola(10.8, 'a', k), 'seed_flower_yellow']), // (v1.10.318 마당 농사: the crops' seeds, the third gondola -- a seed bag's look)
     ['fishing_rod', on(-8.0, 9.98, 0, [-2, 1.86, -0.2])], ['bugnet', on(-8.0, 9.98, 0, [-1.2, 1.86, -0.2])], // (hook0 the rod, hook1 the net -- B 47)
     ['fishing_rod_sturdy', on(-8.0, 9.98, 0, [-0.4, 1.86, -0.2]), 'fishing_rod'], ['bugnet_sturdy', on(-8.0, 9.98, 0, [0.4, 1.86, -0.2]), 'bugnet'], // (v1.10.221: the sturdy ones on the next hooks, the same look)
     ['bike_mint', [-9.35, 0, -6]], ['bike_red', [-8.45, 0, -6]], ['bike_sky', [-7.55, 0, -6]], ['bike_butter', [-6.65, 0, -6]], // (자전거: by the door)

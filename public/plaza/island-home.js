@@ -18,6 +18,9 @@
   // -6.2 past its veranda) -- model -Z is the front
   const DOOR = { 1: 3.6, 2: 4.6, 3: 6.9, 4: 6.9 }; // (R8 4단계: the 큰 집's footing and door)
   const doorOf = (lot, stage = 2) => { const d = DOOR[stage] || DOOR[2]; return { x: Math.round((lot.x - Math.sin(lot.yaw) * d) * 100) / 100, z: Math.round((lot.z - Math.cos(lot.yaw) * d) * 100) / 100 }; };
+  // v1.10.318 집 손보기: the 「손보기 상자」 by the door -- 1.6 m to its right (lot-local +x, clear of the way to the gate), facing the
+  // way the door does; lx/lz lot-local, x/z world
+  const upkeepBoxOf = (lot, stage = 2) => { const lx = 1.6; const lz = -(DOOR[stage] || DOOR[2]) + 0.2; const c = Math.cos(lot.yaw); const s = Math.sin(lot.yaw); return { lx, lz, x: Math.round((lot.x + lx * c + lz * s) * 100) / 100, z: Math.round((lot.z - lx * s + lz * c) * 100) / 100, yaw: lot.yaw + Math.PI }; };
   const ROOFS = Object.freeze(['red', 'blue', 'green', 'brown']);
   const FLOORS = Object.freeze(['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink']);
   const WALLS = Object.freeze(['cream', 'mint', 'pink', 'sky']);
@@ -216,5 +219,5 @@
     const anyDir = ANY_DIR.has(shapeOf(p.id));
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn, WALL_REACH, aimAt, pieceAt, turnBy, FINE, onTurn };
+  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, upkeepBoxOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn, WALL_REACH, aimAt, pieceAt, turnBy, FINE, onTurn };
 }));

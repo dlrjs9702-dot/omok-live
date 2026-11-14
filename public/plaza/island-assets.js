@@ -587,6 +587,14 @@
   // G4b 채집 (assets 112; lib/island-gather.js): the collectables lying on their spots -- four of the six mushrooms, the twigs and the
   // four-leaf clover (the other two mushrooms the 106 pilot's, pilot.mushroom_*); one model at every distance
   for (const f of ['mushroom_brown_cap', 'mushroom_red_cone', 'mushroom_bolete', 'mushroom_blue', 'branch_fork', 'twigs', 'clover_four_leaf']) REGISTRY[`gather.${f}`] = { seasons: n112(f), near: 30, shadows: false };
+  // v1.10.318 집 손보기 「작은 돌」 (lib/island-gather.js stone): the island's own pebble (109), a hand's size by the rocks
+  REGISTRY['gather.rock_pebble'] = { seasons: n109('rock_pebble'), scale: 0.35, near: 30, shadows: false }; /* (0.78 m across -> about 0.27 m) */
+  // v1.10.318 마당 농사 F1 (assets 115 farm-v1, 4 seasons, Low = High): the 텃밭 (a yard good) and what grows on its cells -- the
+  // shared mound and sprout, then each crop's growing and ripe (their root on the cell's slot)
+  { const F1 = '/assets/island/farm-v1'; const f1 = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${F1}/${s}/${f}.glb`]));
+    REGISTRY['yard.farm_bed'] = { seasons: f1('farm_bed'), near: 30 };
+    for (const k of [0, 1]) REGISTRY[`farm.crop.${k}`] = { seasons: f1(`crop_stage${k}`), near: 30, shadows: false };
+    for (const c of ['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage']) for (const k of [2, 3]) REGISTRY[`farm.crop.${c}.${k}`] = { seasons: f1(`crop_${c}_stage${k}`), near: 30, shadows: false }; }
   // 111 마당과 길 (assets 111: Cute Park, FarmLand, Pirate Island -- RG Poly, CC0; Roadside -- EmacEArt, our baked files only):
   // the yard's and the paths' pieces, the same targets fitted to their boxes (places, turns, solids and stand-ins stay), made
   // at our size (scale 1 but the mailboxes), a picture each, four seasons; the three filled with flowers keep a lighter far

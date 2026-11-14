@@ -59,7 +59,8 @@
   // v1.10.225 마당 꾸미기 (assets 70 yard-v1): the yard's twelve, always on the 「마당」 shelf, kept in the 가구 창고 with the
   // furniture but placed only outside (island-yard.js) -- priced by economy yard:<shape>
   const YARD_GOODS = Object.freeze([['fence_wood', '나무 울타리'], ['fence_stone', '돌담'], ['fence_flower', '꽃 울타리'], ['stepping_stones', '디딤돌'], ['garden_light', '정원등'], ['birdhouse', '새집'],
-    ['flowerbed', '화단'], ['planter_box', '텃밭 상자'], ['mailbox', '우편함'], ['bench', '정원 벤치'], ['lantern_stone', '석등'], ['arch', '꽃 아치']]
+    ['flowerbed', '화단'], ['planter_box', '텃밭 상자'], ['mailbox', '우편함'], ['bench', '정원 벤치'], ['lantern_stone', '석등'], ['arch', '꽃 아치'],
+  ['farm_bed', '텃밭']] /* (v1.10.318 마당 농사 F1, assets 115: six soil cells to sow -- island-farm) */
     .map(([shape, name]) => Object.freeze({ id: `yard_${shape}__plain`, shape: `yard_${shape}`, yardShape: shape, variant: 'plain', name, zone: 'yard', rarity: 'yard', kind: 'yard', model: `yard.${shape}`, yard: true })));
   // v1.10.251 기록의 탑 트로피 (assets 98): the week's 1·2·3 of a game a yard trophy -- given at the week's settling, never sold or
   // bought (no shelf), placed in the yard; its metal a colour of the one model, its name plate the piece's own words
@@ -88,7 +89,8 @@
   ].map((s) => Object.freeze(s)));
   const BASE_SLOTS = Object.freeze(BASE.map((id, i) => Object.freeze({ id: `base${i}`, good: id, lx: [11.5, 13.7, 11.5, 13.7][i], lz: [-6.8, -6.8, -8.8, -8.8][i], yaw: 0 })));
   // the 「마당」 shelf: two rows of small plinths by the lift's wall, in front of it and behind (the way from the lift clear)
-  const YARD_SLOTS = Object.freeze(YARD_GOODS.map((g, i) => Object.freeze({ id: `yard${i}`, good: g.id, yard: true, lx: [-12.6, -10.0][i % 2], lz: [-8.6, -6.6, -4.6, 4.6, 6.6, 8.6][Math.floor(i / 2)], yaw: 0 })));
+  // (v1.10.318: the 13th, the 텃밭 -- 2.8 m across, shown at 0.42 on a plinth by the lift's wall, behind the way out of it)
+  const YARD_SLOTS = Object.freeze(YARD_GOODS.map((g, i) => Object.freeze(i < 12 ? { id: `yard${i}`, good: g.id, yard: true, lx: [-12.6, -10.0][i % 2], lz: [-8.6, -6.6, -4.6, 4.6, 6.6, 8.6][Math.floor(i / 2)], yaw: 0 } : { id: `yard${i}`, good: g.id, yard: true, lx: -12.6, lz: -2.6, yaw: 0, scale: 0.42 })));
   // v1.10.227 주간 신상: the 「이번 주 신상」 shelf -- six plinths right of the counter, two across, three deep (the rare
   // floor pieces, a week each)
   const WEEK_SLOTS = Object.freeze([0, 1, 2, 3, 4, 5].map((i) => Object.freeze({ id: `week${i}`, weekly: i, kind: 'floor', lx: [10.6, 13.4][i % 2], lz: [2.0, 4.6, 7.2][Math.floor(i / 2)], yaw: 0 })));

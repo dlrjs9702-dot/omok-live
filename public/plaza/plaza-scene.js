@@ -3041,7 +3041,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     berry: [['prop.event.berry', 0, 0]], mushroom: [['prop.event.mushroom', 0, 0]], coin: [['prop.event.coin', 0, 0]], wallet: [['prop.event.wallet', 0, 0]], lost_item: [['prop.event.lost_item', 0, 0]], candy: [['halloween.candyBag', 0, 0]], // v1.10.39 사탕 주머니
     /* G4b 채집 (lib/island-gather.js, assets 112 + the 106 pilot's two mushrooms) */
     mushroom_brown: [['pilot.mushroom_brown', 0, 0]], mushroom_red: [['pilot.mushroom_red', 0, 0]], mushroom_brown_cap: [['gather.mushroom_brown_cap', 0, 0]], mushroom_red_cone: [['gather.mushroom_red_cone', 0, 0]],
-    mushroom_bolete: [['gather.mushroom_bolete', 0, 0]], mushroom_blue: [['gather.mushroom_blue', 0, 0]], twig_branch: [['gather.branch_fork', 0, 0]], twig_bundle: [['gather.twigs', 0, 0]], clover_four: [['gather.clover_four_leaf', 0, 0]] };
+    mushroom_bolete: [['gather.mushroom_bolete', 0, 0]], mushroom_blue: [['gather.mushroom_blue', 0, 0]], twig_branch: [['gather.branch_fork', 0, 0]], twig_bundle: [['gather.twigs', 0, 0]], clover_four: [['gather.clover_four_leaf', 0, 0]], stone_small: [['gather.rock_pebble', 0, 0]] /* (318 작은 돌) */ };
   // v1.10.32: some finds come in two looks, each event its own (from its id: the same on every screen and in the hands)
   const twoLooks = (id, a, b) => ([...String(id)].reduce((n, ch) => n + ch.charCodeAt(0), 0) % 2 ? b : a);
   const lostProp = (id) => twoLooks(id, 'prop.event.lost_item', 'prop.event.lost_pouch');
@@ -3072,6 +3072,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
     } else if (kind === 'twig_branch' || kind === 'twig_bundle') { /* (G4b) a stick or two on the ground */
       for (const [a, l] of kind === 'twig_branch' ? [[0.3, 0.8]] : [[0.2, 0.5], [-0.5, 0.45], [1.1, 0.4]]) { const t = add(new THREE.CylinderGeometry(0.025, 0.03, l, 6), 0x7a5634, 0, 0.04, 0); t.rotation.set(Math.PI / 2, 0, a); }
+    } else if (kind === 'stone_small') { /* (318) a grey stone, two pebbles by it */
+      for (const [x, z, r] of [[0, 0, 0.12], [0.16, 0.08, 0.06], [-0.12, 0.1, 0.05]]) add(new THREE.DodecahedronGeometry(r), 0x9a958c, x, r * 0.7, z);
     } else if (kind === 'clover_four') { /* (G4b) four heart leaves on a stem */
       add(new THREE.CylinderGeometry(0.008, 0.008, 0.12, 5), 0x4f8f3a, 0, 0.06, 0);
       for (let k = 0; k < 4; k += 1) add(new THREE.SphereGeometry(0.035, 8, 6), 0x5fcf4a, Math.cos((k * Math.PI) / 2) * 0.035, 0.13, Math.sin((k * Math.PI) / 2) * 0.035);
@@ -3760,6 +3762,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const P = furniture.plinths[s.id]; const good = FURN.good(d.id);
       const root = d.sold ? furniture.put('shop.sold_sign', s.lx, P.top, s.lz, 0, (f) => mesh(new THREE.BoxGeometry(0.6, 0.5, 0.3), mat(0xcfb58a), 0, 0.25, 0, f))
         : furniture.put(good.model, s.lx, P.top, s.lz, s.yaw, (f) => mesh(new THREE.BoxGeometry(1, 0.8, 0.6), mat(0xc9a77c), 0, 0.4, 0, f));
+      if (s.scale && !d.sold) root.scale.setScalar(s.scale); /* (318: the 텃밭 shown small) */
       const tag = boardText(d.sold ? '팔렸어요' : `${Number(d.price).toLocaleString('ko-KR')}P`, 0.44, 0.18, 0.55, -0.04, ['#fffaf0', '#4a3828']); P.root.add(tag); // (간판: a paper card on the price stand, read from the front)
       furniture.shown[s.id] = { key, root, tag };
     }

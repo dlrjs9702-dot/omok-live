@@ -27,6 +27,9 @@
     bench: { foot: [1.25, 0.5], solids: [[-0.35, 0.05, 0.25], [0.35, 0.05, 0.25]], seats: [[-0.3, -0.18], [0.3, -0.18]] },
     lantern_stone: { foot: [0.5, 0.5], solids: [[0, 0, 0.24]], glow: true },
     arch: { foot: [1.5, 0.5], solids: [[-0.65, 0, 0.12], [0.65, 0, 0.12]] }, // (only its two posts: walked through)
+    // v1.10.318 마당 농사 F1 (assets 115 README): the 텃밭, 2.8 × 1.9 m, each of its six cells a 0.45 m round that blocks; how many a
+    // yard holds: island-farm bedsFor(level)
+    farm_bed: { foot: [2.8, 1.9], solids: [[0.9, -0.45, 0.45], [0, -0.45, 0.45], [-0.9, -0.45, 0.45], [0.9, 0.45, 0.45], [0, 0.45, 0.45], [-0.9, 0.45, 0.45]], farm: true },
     // v1.10.251 기록의 탑 트로피 (assets 98): 1 m square, its base the 0.45 m round that blocks
     ...Object.fromEntries(['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star'].map((sym) => [`trophy_${sym}`, { foot: [1, 1], solids: [[0, 0, 0.45]], trophy: true, glow: true }])),
   });

@@ -109,6 +109,7 @@ const IslandJail = require('./public/plaza/island-jail'); // R4 구치소
 const IslandMuseum = require('./public/plaza/island-museum'); // v1.10.231 M 박물관 전시관
 const IslandHome = require('./public/plaza/island-home'); // 묶음 4 내 집
 const IslandYard = require('./public/plaza/island-yard'); // v1.10.225 마당 꾸미기
+const IslandFarm = require('./public/plaza/island-farm'); // v1.10.318 마당 농사 F1 + 집 손보기
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const FishTug = require('./public/fish-tug.js'); // v1.10.259 대어 줄다리기 and 타이밍 막대 (the page runs the same)
 const fishModes = new Map(); // account -> its last two bite games (never three alike)
@@ -1579,6 +1580,39 @@ function weeklyView(owned) {
 const yardLevels = new Map();
 async function yardLevelOf(account) { if (!yardLevels.has(account)) yardLevels.set(account, Number((await pointStore.worldValue(`yard:${account}`))?.level) || 1); return yardLevels.get(account); }
 async function setYardLevel(account, level) { await pointStore.setWorldValue(`yard:${account}`, { level }); yardLevels.set(account, level); }
+// v1.10.318 마당 농사 F1 + 집 손보기 (public/plaza/island-farm.js): an owner's beds' cells (quest doc 'farm': { beds: { uid: [cell
+// x6] } }) and the upkeep record (quest doc 'upkeep': { since, week, given, done: [weeks], weeds: { day, list } }) -- read once,
+// kept with each change; every change through questApply (what it takes from the bag in the same step)
+const farmDocs = new Map(); const upkeepDocs = new Map();
+async function farmDocOf(owner) { if (!farmDocs.has(owner)) farmDocs.set(owner, (await pointStore.questDoc(owner, 'farm')).doc || {}); return farmDocs.get(owner); }
+async function upkeepDocOf(owner) { if (!upkeepDocs.has(owner)) upkeepDocs.set(owner, (await pointStore.questDoc(owner, 'upkeep')).doc || {}); return upkeepDocs.get(owner); }
+async function farmApply(owner, fn) { const out = await pointStore.questApply(owner, 'farm', (d, bag) => fn(d || {}, bag)); if (out?.doc) farmDocs.set(owner, out.doc); return out; }
+async function upkeepApply(owner, fn) { const out = await pointStore.questApply(owner, 'upkeep', (d, bag) => fn(d || {}, bag)); if (out?.doc) upkeepDocs.set(owner, out.doc); return out; }
+const bagCount = (bag, itemId) => (bag || []).filter((e) => e.itemId === itemId).reduce((n, e) => n + (Number(e.qty) || 1), 0);
+// the yard's weeds today (grown since the last day it was looked at, at most YARD_WEEDS.MAX) -- saved when they grew; and the
+// upkeep record started on a house's first look (its first week owes nothing), the week's letter from the 관공서 once
+async function upkeepNow(owner, h) {
+  const lot = h && IslandHome.lotById(h.lot); if (!lot) return { doc: {}, weeds: [] };
+  const now = nowMs(); const today = IslandFarm.dayOf(now); const week = IslandFarm.weekOf(now); let doc = await upkeepDocOf(owner);
+  const stage = homeStage(h).n; const level = await yardLevelOf(owner); const box = IslandYard.boxOf(lot, stage, level);
+  const free = (lx, lz) => IslandYard.usable(lot, stage, level, lx, lz) && !IslandYard.pieceAt(h.yard || [], lx, lz);
+  if (!doc.since || (doc.weeds?.day || '') < today) {
+    const out = await upkeepApply(owner, (d) => { const w = d.weeds || {}; const list = w.day ? IslandFarm.growYardWeeds(w.list, lot.id, w.day, today, box, free) : (w.list || []); return { doc: { ...d, since: d.since || week, weeds: { day: today, list } } }; }).catch(() => null);
+    doc = out?.doc || doc;
+  }
+  if (doc.since && doc.since < week && doc.letter !== week) {
+    const need = IslandFarm.upkeepNeed(stage); const text = `이번 주 집 손보기: ${Object.entries(need).map(([k, n]) => `${IslandFarm.UPKEEP_NAMES[k]} ${n}`).join(' · ')}을 집 문 앞 「손보기 상자」에 넣어 주세요. 다 넣으면 작은 보답이 있어요.`;
+    await pointStore.questApply(owner, 'mail', (d) => ((d.letters || []).some((l) => l.id === `upkeep-${week}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `upkeep-${week}`, from: 'office', fromName: '관공서', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {});
+    const out = await upkeepApply(owner, (d) => (d.letter === week ? null : { doc: { ...d, letter: week } })).catch(() => null); doc = out?.doc || doc;
+  }
+  return { doc, weeds: doc.weeds?.list || [] };
+}
+// a lot's farm and upkeep as everyone sees them: the beds' cells, 허름함, the yard's weeds
+async function farmView(owner, h) {
+  const beds = (await farmDocOf(owner)).beds || {}; const up = await upkeepNow(owner, h);
+  return { farm: Object.fromEntries((h?.yard || []).filter((p) => IslandYard.shapeOf(p.id) === 'farm_bed').map((p) => [p.uid, (beds[p.uid] || []).map((c) => (c ? { crop: c.crop, at: c.at, fed: c.fed || null } : null))])),
+    shabby: IslandFarm.upkeepState(up.doc, homeStage(h).n, nowMs()).shabby, weeds: up.weeds };
+}
 // 친구 (docs/friends-20261020.md): world 'friends:<account>' = { list: [account], incoming: [{ from, at }] }; both say
 // yes; 50 at most; accounts that log in only (not an entry file's guest)
 const FRIEND_MAX = 50;
@@ -4994,6 +5028,12 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return worldEdit(async () => { const h = await homeOf(account); if (h?.upgradeDay) { const next = { ...h, upgradeDay: '2000-01-01' }; await saveHome(account, next); broadcastIsland('homes', { lot: h.lot }); } return sendJson(res, 200, { ok: true }); });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/farm-time' && req.method === 'POST') { // v1.10.318: my beds' cells as if sown `ms` earlier; my upkeep as if begun `weeks` weeks ago (nothing done since), my yard last looked at `days` days ago
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req); const ms = Number(body.ms) || 0; const now = nowMs();
+    if (ms) await farmApply(account, (d) => ({ doc: { ...d, beds: Object.fromEntries(Object.entries(d.beds || {}).map(([u, cells]) => [u, cells.map((c) => (c ? { ...c, at: c.at - ms, ...(c.fed ? { fed: c.fed - ms } : {}) } : c))])) } }));
+    if (body.weeks || body.days) await upkeepApply(account, (d) => ({ doc: { ...d, ...(body.weeks ? { since: IslandFarm.weekOf(now - Number(body.weeks) * 7 * 86400000), week: null, given: {}, done: [], letter: null } : {}), ...(body.days ? { weeds: { list: d.weeds?.list || [], day: IslandFarm.dayOf(now - Number(body.days) * 86400000) } } : {}) } }));
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity/fail-once' && req.method === 'POST') { giftAffinityFails = true; return sendJson(res, 200, { ok: true }); } // (Codex 검토 2차 #7: the next gift's 호감도 fails)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/affinity' && req.method === 'POST') { // R2: 호감도 added as a talk would (the levels reached pay)
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
@@ -6083,10 +6123,11 @@ async function requestHandler(req, res) {
        once had queued past the pool's 10 s, 11-10 07:35) */
     const cold = [...new Set(Object.values(lots))].flatMap((o) => [...(homeCache.has(o) ? [] : [`home:${o}`]), ...(yardLevels.has(o) ? [] : [`yard:${o}`])]);
     if (cold.length) for (const [k, v] of Object.entries(await pointStore.worldValues(cold))) { const o = k.slice(5); if (k.startsWith('home:')) { if (!homeCache.has(o)) homeCache.set(o, v || null); } else if (!yardLevels.has(o)) yardLevels.set(o, Number(v?.level) || 1); }
-    const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null, stage: h ? homeStage(h).n : null, building: Boolean(h?.upgradeDay), yard: h?.yard || [], yardLevel: owner ? await yardLevelOf(owner) : 1 }; })); // (v1.10.225: the yard outside, for everyone)
+    const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null, stage: h ? homeStage(h).n : null, building: Boolean(h?.upgradeDay), yard: h?.yard || [], yardLevel: owner ? await yardLevelOf(owner) : 1, ...(owner && h ? await farmView(owner, h) : {}) }; })); // (v1.10.225: the yard outside, for everyone; 318: its beds' crops, 허름함, its weeds)
     const mine = await homeOf(account); const grow = Math.min(IslandHome.TOP_STAGE, mine ? homeStage(mine).n + 1 : 2); // (the next stage's price)
     const yardLevel = await yardLevelOf(account);
-    return sendJson(res, 200, { ok: true, lots: out, mine, price: Economy.value('home:price_1'), grow: Economy.value(`home:price_${grow}`), style: Economy.value('home:style'), yardLevel, yardGrow: yardLevel < IslandYard.LEVELS ? Economy.value(`yard:price_${yardLevel + 1}`) : null });
+    const upkeep = mine ? IslandFarm.upkeepState(await upkeepDocOf(account), homeStage(mine).n, nowMs()) : null; /* (318: this week's owing, given, 허름함) */
+    return sendJson(res, 200, { ok: true, lots: out, mine, price: Economy.value('home:price_1'), grow: Economy.value(`home:price_${grow}`), style: Economy.value('home:style'), yardLevel, yardGrow: yardLevel < IslandYard.LEVELS ? Economy.value(`yard:price_${yardLevel + 1}`) : null, upkeep, upkeepReward: Economy.value('upkeep:reward'), now: nowMs() });
   }
   // a house: at the 관공서 (in the 민원실), one an account, a free lot, paid at once
   if (pathname === '/api/home/apply' && req.method === 'POST') {
@@ -6219,9 +6260,12 @@ async function requestHandler(req, res) {
       const piece = owned.find((p) => p.uid === String(body.uid)); if (!piece) return sendError(res, 404, 'NOT_MINE', '내 물건이 아니에요.');
       if (!IslandYard.isYard(piece.id)) return sendError(res, 409, 'NOT_YARD', '집 안 가구는 집 안에 놓아요.');
       const yard = h.yard || []; const others = yard.filter((p) => p.uid !== piece.uid);
+      const bed = IslandYard.shapeOf(piece.id) === 'farm_bed'; /* (318 마당 농사: a 텃밭 with something growing stays till it is picked; the yard's level says how many) */
+      if (body.remove && bed && ((await farmDocOf(account)).beds?.[piece.uid] || []).some(Boolean)) return sendError(res, 409, 'BED_GROWING', '심은 작물을 먼저 거둬 주세요.');
       if (body.remove) { const next = { ...h, yard: others }; await saveHome(account, next); broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, yard: others }); }
       const cap = IslandYard.limitOf(level);
       if (!yard.some((p) => p.uid === piece.uid) && yard.length >= cap) return sendError(res, 409, 'TOO_MANY', `마당에는 ${cap}개까지 놓을 수 있어요.`);
+      if (bed && !yard.some((p) => p.uid === piece.uid) && others.filter((p) => IslandYard.shapeOf(p.id) === 'farm_bed').length >= IslandFarm.bedsFor(level)) return sendError(res, 409, 'TOO_MANY_BEDS', `텃밭은 이 마당에 ${IslandFarm.bedsFor(level)}개까지 놓을 수 있어요. 마당을 넓히면 더 놓을 수 있어요.`);
       const p = { uid: piece.uid, id: piece.id, x: placeNum(body.x), z: placeNum(body.z), rot: placeTurn(body.rot), ...(piece.plate ? { plate: piece.plate, line: piece.line || piece.plate } : {}) }; // (v1.10.251: a trophy's name plate, its line pressed)
       const why = IslandYard.placeError(p, others, lot, stage, level); if (why) return sendError(res, 409, 'BAD_PLACE', why);
       const next = { ...h, yard: [...others, p] }; await saveHome(account, next); broadcastIsland('homes', { lot: lot.id });
@@ -6242,6 +6286,99 @@ async function requestHandler(req, res) {
       await setYardLevel(account, level + 1); notifyPointsChanged([account]); broadcastIsland('homes', { lot: h.lot });
       return sendJson(res, 200, { ok: true, yardLevel: level + 1, limit: IslandYard.limitOf(level + 1) });
     });
+  }
+  // v1.10.318 마당 농사 F1 (public/plaza/island-farm.js): the owner, in their yard, at one of their beds' cells -- `plant` a seed
+  // from the bag (one), `feed` it compost or fertilizer (once, the rest of its growth twice as fast), `harvest` it ripe (its crops
+  // into the bag, the cell empty again)
+  if (pathname === '/api/home/farm' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const body = await parseJson(req); const at = plazaPresence.get(session.token); const slot = Number(body.slot);
+    const h = await homeOf(account); const lot = h && IslandHome.lotById(h.lot); if (!lot) return sendError(res, 404, 'NO_HOME', '아직 집이 없어요.');
+    const stage = homeStage(h).n; const level = await yardLevelOf(account);
+    if (!at || (at.space && at.space !== 'island') || homeInside.has(session.token) || !IslandYard.inYard(lot, stage, level, at.x, at.z, 2)) return sendError(res, 409, 'TOO_FAR', '내 마당에서 다시 시도해 주세요.');
+    const bed = (h.yard || []).find((p) => p.uid === String(body.uid) && IslandYard.shapeOf(p.id) === 'farm_bed');
+    if (!bed || !Number.isInteger(slot) || slot < 0 || slot >= IslandFarm.SLOTS.length) return sendError(res, 404, 'NO_BED', '텃밭 칸을 확인해 주세요.');
+    const now = nowMs(); const cellOf = (d) => (d.beds?.[bed.uid] || [])[slot] || null;
+    const put = (d, cell) => { const cells = [...(d.beds?.[bed.uid] || [])]; while (cells.length < IslandFarm.SLOTS.length) cells.push(null); cells[slot] = cell; return { ...d, beds: { ...(d.beds || {}), [bed.uid]: cells } }; };
+    if (body.action === 'plant') {
+      const crop = IslandFarm.cropOfSeed(body.seed); if (!crop) return sendError(res, 400, 'BAD_SEED', '씨앗을 골라 주세요.');
+      const out = await farmApply(account, (d, bag) => (cellOf(d) ? { error: 'TAKEN' } : bagCount(bag, body.seed) < 1 ? { error: 'MISSING' } : { doc: put(d, { id: `c${now.toString(36)}${slot}`, crop, at: now, fed: null }), take: { itemId: body.seed, qty: 1 } }));
+      if (out?.error === 'TAKEN') return sendError(res, 409, 'TAKEN', '이미 심은 칸이에요.');
+      if (!out?.doc) return sendError(res, 409, 'MISSING', '가방에 그 씨앗이 없어요.');
+      broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, cell: cellOf(out.doc), bag: out.bag, now });
+    }
+    if (body.action === 'feed') {
+      const item = body.item === 'fertilizer' ? 'fertilizer' : 'compost';
+      const out = await farmApply(account, (d, bag) => { const c = cellOf(d); if (!c) return { error: 'EMPTY' }; if (c.fed || IslandFarm.ripe(c, now)) return { error: 'DONE' }; if (bagCount(bag, item) < 1) return { error: 'MISSING' }; return { doc: put(d, { ...c, fed: now }), take: { itemId: item, qty: 1 } }; });
+      if (out?.error === 'EMPTY') return sendError(res, 409, 'EMPTY', '빈 칸이에요.');
+      if (out?.error === 'DONE') return sendError(res, 409, 'FED', '이 칸은 이미 거름을 줬거나 다 자랐어요.');
+      if (!out?.doc) return sendError(res, 409, 'MISSING', item === 'compost' ? '가방에 퇴비가 없어요. 잡초로 만들 수 있어요.' : '가방에 비료가 없어요.');
+      broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, cell: cellOf(out.doc), bag: out.bag, now });
+    }
+    if (body.action === 'harvest') {
+      const c = cellOf(await farmDocOf(account)); if (!c) return sendError(res, 409, 'EMPTY', '빈 칸이에요.');
+      if (!IslandFarm.ripe(c, now)) return sendError(res, 409, 'NOT_RIPE', '아직 덜 자랐어요.');
+      const crop = IslandFarm.CROPS[c.crop]; const given = await pointStore.islandGive({ userId: account, claimId: `farm:${lot.id}:${c.id}`, itemId: IslandFarm.cropId(c.crop), qty: crop.yield, quiet: true }, now).catch(() => null);
+      if (!given || (!given.applied && given.reason === 'full')) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
+      const out = await farmApply(account, (d) => (cellOf(d)?.id === c.id ? { doc: put(d, null) } : null));
+      broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, crop: c.crop, qty: crop.yield, bag: given.bag || out?.bag, now });
+    }
+    return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+  }
+  // v1.10.318 집 손보기: at my house's 「손보기 상자」 (by the door, on the island) -- `give` hands in what the week still owes of
+  // one kind (as much as the bag has); the last of it: the week done, its 보답 paid once, 허름함 gone. `craft`: weeds into
+  // compost, stones into stepping stones, branches into a fence piece (재료로 쓰기)
+  if (pathname === '/api/home/upkeep' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const body = await parseJson(req); const at = plazaPresence.get(session.token);
+    const h = await homeOf(account); const lot = h && IslandHome.lotById(h.lot); if (!lot) return sendError(res, 404, 'NO_HOME', '아직 집이 없어요.');
+    const stage = homeStage(h).n; const boxAt = IslandHome.upkeepBoxOf(lot, stage);
+    if (!at || (at.space && at.space !== 'island') || homeInside.has(session.token) || Math.hypot(at.x - boxAt.x, at.z - boxAt.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '집 문 앞 손보기 상자 앞에서 다시 시도해 주세요.');
+    const now = nowMs(); await upkeepNow(account, h);
+    if (body.action === 'give') {
+      const kind = Object.keys(IslandFarm.UPKEEP).find((k) => IslandFarm.UPKEEP_ITEMS[k].includes(body.itemId)); if (!kind) return sendError(res, 400, 'BAD_ITEM', '손보기에 쓰는 물건이 아니에요.');
+      let reward = Economy.value('upkeep:reward');
+      const hand = () => upkeepApply(account, (d, bag) => {
+        const st = IslandFarm.upkeepState(d, stage, now); const left = st.need[kind] - (st.given[kind] || 0); if (left <= 0) return { error: 'ENOUGH' };
+        const n = Math.min(left, bagCount(bag, body.itemId)); if (n < 1) return { error: 'MISSING' };
+        const given = { ...st.given, [kind]: (st.given[kind] || 0) + n }; const done = IslandFarm.upkeepDone(given, st.need);
+        return { doc: { ...d, week: st.week, given, done: done ? [...new Set([...(d.done || []), st.week])].slice(-8) : d.done || [] }, take: { itemId: body.itemId, qty: n }, ...(done && reward ? { reward, payKey: `upkeep:${account}:${st.week}` } : {}), n, finished: done };
+      });
+      let out = await hand(); if (out?.error === 'PAID') { reward = 0; out = await hand(); } /* (the week's 보답 paid already: done again without it) */
+      if (out?.error === 'ENOUGH') return sendError(res, 409, 'ENOUGH', `이번 주 ${IslandFarm.UPKEEP_NAMES[kind]}은(는) 다 넣었어요.`);
+      if (!out?.doc) return sendError(res, 409, 'MISSING', `가방에 ${IslandItems.ITEMS[body.itemId]?.name || '그 물건'}이(가) 없어요.`);
+      if (out.finished) notifyPointsChanged([account]);
+      broadcastIsland('homes', { lot: lot.id });
+      return sendJson(res, 200, { ok: true, put: out.n, upkeep: IslandFarm.upkeepState(out.doc, stage, now), reward: out.finished ? reward : 0, bag: out.bag });
+    }
+    if (body.action === 'craft') {
+      const r = IslandFarm.CRAFTS[body.recipe]; if (!r) return sendError(res, 400, 'BAD_RECIPE', '만들 것을 골라 주세요.');
+      const [itemId, qty] = Object.entries(r.takes)[0];
+      if (r.item) { const bag = (await pointStore.questDoc(account, 'upkeep')).bag || []; const after = IslandItems.takeFromBag(bag, itemId, qty); if (after && !IslandItems.addToBag(after, r.item, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.'); } /* (room for what is made, checked first) */
+      const out = await upkeepApply(account, (d, bag) => (bagCount(bag, itemId) < qty ? { error: 'MISSING' } : { doc: { ...d, crafted: (d.crafted || 0) + 1 }, take: { itemId, qty } }));
+      if (!out?.doc) return sendError(res, 409, 'MISSING', `${IslandItems.ITEMS[itemId]?.name || itemId} ${qty}개가 있어야 해요.`);
+      if (r.item) { const g = await pointStore.islandGive({ userId: account, claimId: `craft:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${out.doc.crafted}`, itemId: r.item, qty: 1, quiet: true }, now).catch(() => null); return sendJson(res, 200, { ok: true, made: r.name, bag: g?.bag || out.bag }); }
+      const uid = `y${now.toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
+      await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid, id: r.good, at: now }]); });
+      return sendJson(res, 200, { ok: true, made: r.name, good: r.good, uid, bag: out.bag });
+    }
+    return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+  }
+  // v1.10.318 내 마당 잡초: anyone standing in a house's yard may pull one of its weeds (1.4 s on the screen first) -- a 잡초 into
+  // their bag, gone from that yard for everyone
+  if (pathname === '/api/home/yard/weed' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const body = await parseJson(req); const at = plazaPresence.get(session.token);
+    const lots = await homeLots(); const lot = IslandHome.lotById(body.lot); const owner = lot && lots[lot.id]; const h = owner && await homeOf(owner);
+    if (!h) return sendError(res, 404, 'NO_HOME', '집이 없는 집터예요.');
+    const up = await upkeepNow(owner, h); const w = up.weeds.find((x) => x.id === String(body.id)); if (!w) return sendError(res, 409, 'GONE', '방금 뽑힌 잡초예요.');
+    const p = IslandYard.world(lot, w.lx, w.lz);
+    if (!at || (at.space && at.space !== 'island') || Math.hypot(at.x - p.x, at.z - p.z) > IslandWeeds.REACH + 0.5) return sendError(res, 409, 'TOO_FAR', '잡초 가까이에서 다시 시도해 주세요.');
+    const out = await upkeepApply(owner, (d) => ((d.weeds?.list || []).some((x) => x.id === w.id) ? { doc: { ...d, weeds: { ...d.weeds, list: d.weeds.list.filter((x) => x.id !== w.id) } } } : null));
+    if (!out?.doc) return sendError(res, 409, 'GONE', '방금 뽑힌 잡초예요.');
+    const given = await pointStore.islandGive({ userId: account, claimId: `yardweed:${lot.id}:${w.id}`, itemId: 'weed', qty: 1 }, nowMs()).catch(() => null);
+    broadcastIsland('homes', { lot: lot.id });
+    return sendJson(res, 200, { ok: true, bag: given?.bag || null, left: out.doc.weeds.list.length });
   }
   // the owner, inside or out: the room's floor, wallpaper, the roof (each a small price), who may come in (free)
   if (pathname === '/api/home/style' && req.method === 'POST') {
