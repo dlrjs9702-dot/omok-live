@@ -10184,6 +10184,18 @@
       "precompressed": true
     },
     {
+      "out": "yard-v2/autumn/fence_stone_block_low.glb",
+      "src": "fence120:02. Low/autumn/fence_stone_block_low.glb",
+      "sha256": "a4674ca26dcfb8a527251e3328de290268b7237b1908a13b9a7c502229686c2e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/autumn/fence_rail_far.glb",
+      "src": "fence120:02. Low/autumn/fence_rail_far.glb",
+      "sha256": "1f397284ff6bbc946074a16d1512ae728d1232bbef38a7ee2f54e7a6e6d2c5e6",
+      "precompressed": true
+    },
+    {
       "out": "yard-v2/autumn/arch_vines.glb",
       "src": "yard111:01. High/autumn/arch_vines.glb",
       "sha256": "9bb84e51b1ca0823469e3e99d7c3f524661c12dbc1922d8419a3e129af756a6a",
@@ -10215,26 +10227,26 @@
     },
     {
       "out": "yard-v2/autumn/fence_flower_lattice.glb",
-      "src": "yard111:01. High/autumn/fence_flower_lattice.glb",
-      "sha256": "7284c21a1650a5788fe0c1a3ff3fff9d118616f99337afa0c8f22dc4aaa34e63",
+      "src": "fence120:01. High/autumn/fence_flower_lattice.glb",
+      "sha256": "a8fd61004261c83691f5b6aa9551cce037cfa122a37e10ca90610fe11bfcee2b",
       "precompressed": true
     },
     {
       "out": "yard-v2/autumn/fence_rail.glb",
-      "src": "yard111:01. High/autumn/fence_rail.glb",
-      "sha256": "d4cab22e0f435eb86b7480d7aaa962807dcc1f982a3e888666ba9ef6ebf46499",
+      "src": "fence120:01. High/autumn/fence_rail.glb",
+      "sha256": "41e9186329909345b932fc3fb51077f318c1e5922bad79c229918ebc44e16d1c",
       "precompressed": true
     },
     {
       "out": "yard-v2/autumn/fence_rail_low.glb",
-      "src": "yard111:01. High/autumn/fence_rail_low.glb",
-      "sha256": "743f4107cd0b224a229cdf1d908d3e38eb485d86f6f06418587cbd28ff70b3f5",
+      "src": "fence120:01. High/autumn/fence_rail_low.glb",
+      "sha256": "724026aaec82afe74ae01f38017bdabee4f72c614bcea025adf544c8492135fa",
       "precompressed": true
     },
     {
       "out": "yard-v2/autumn/fence_stone_block.glb",
-      "src": "yard111:01. High/autumn/fence_stone_block.glb",
-      "sha256": "0a2dc7d8630a51161904d859b337bfbdc4adb87a7537743cc48f058dc17af294",
+      "src": "fence120:01. High/autumn/fence_stone_block.glb",
+      "sha256": "573c2a1be79ec8cf2aba8d8ebb70c929feb8581432cedeb98ebaf94be17bd2b5",
       "precompressed": true
     },
     {
@@ -10316,6 +10328,18 @@
       "precompressed": true
     },
     {
+      "out": "yard-v2/spring/fence_stone_block_low.glb",
+      "src": "fence120:02. Low/spring/fence_stone_block_low.glb",
+      "sha256": "a4674ca26dcfb8a527251e3328de290268b7237b1908a13b9a7c502229686c2e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/spring/fence_rail_far.glb",
+      "src": "fence120:02. Low/spring/fence_rail_far.glb",
+      "sha256": "1f397284ff6bbc946074a16d1512ae728d1232bbef38a7ee2f54e7a6e6d2c5e6",
+      "precompressed": true
+    },
+    {
       "out": "yard-v2/spring/arch_vines.glb",
       "src": "yard111:01. High/spring/arch_vines.glb",
       "sha256": "37854bfdac8a14a9450839027f589be04fe2278888ad4889ba4d98d5cb4f53e5",
@@ -10347,26 +10371,26 @@
     },
     {
       "out": "yard-v2/spring/fence_flower_lattice.glb",
-      "src": "yard111:01. High/spring/fence_flower_lattice.glb",
-      "sha256": "a946674d7d0539b82865837e574ecf38fc57a67785f1843585dcc0af600fb99c",
+      "src": "fence120:01. High/spring/fence_flower_lattice.glb",
+      "sha256": "eac28c9d9d767700ac513b3593458b6e539d7e62cc570a8bed7039ae21784de9",
       "precompressed": true
     },
     {
       "out": "yard-v2/spring/fence_rail.glb",
-      "src": "yard111:01. High/spring/fence_rail.glb",
-      "sha256": "f1d518092790132eca13d2372b85a952df491db4dd6df207c3600d09baebd893",
+      "src": "fence120:01. High/spring/fence_rail.glb",
+      "sha256": "41e9186329909345b932fc3fb51077f318c1e5922bad79c229918ebc44e16d1c",
       "precompressed": true
     },
     {
       "out": "yard-v2/spring/fence_rail_low.glb",
-      "src": "yard111:01. High/spring/fence_rail_low.glb",
-      "sha256": "ac9fa357f1ffeee817fe41227c87134d46495323eae3a5cf3fed9cbaa8e3419d",
+      "src": "fence120:01. High/spring/fence_rail_low.glb",
+      "sha256": "724026aaec82afe74ae01f38017bdabee4f72c614bcea025adf544c8492135fa",
       "precompressed": true
     },
     {
       "out": "yard-v2/spring/fence_stone_block.glb",
-      "src": "yard111:01. High/spring/fence_stone_block.glb",
-      "sha256": "2bcc34193a8800482a90a90b8cbfd0d678e6da43065e1a9ebf895e360b23991e",
+      "src": "fence120:01. High/spring/fence_stone_block.glb",
+      "sha256": "573c2a1be79ec8cf2aba8d8ebb70c929feb8581432cedeb98ebaf94be17bd2b5",
       "precompressed": true
     },
     {
@@ -10448,6 +10472,18 @@
       "precompressed": true
     },
     {
+      "out": "yard-v2/summer/fence_stone_block_low.glb",
+      "src": "fence120:02. Low/summer/fence_stone_block_low.glb",
+      "sha256": "a4674ca26dcfb8a527251e3328de290268b7237b1908a13b9a7c502229686c2e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/summer/fence_rail_far.glb",
+      "src": "fence120:02. Low/summer/fence_rail_far.glb",
+      "sha256": "1f397284ff6bbc946074a16d1512ae728d1232bbef38a7ee2f54e7a6e6d2c5e6",
+      "precompressed": true
+    },
+    {
       "out": "yard-v2/summer/arch_vines.glb",
       "src": "yard111:01. High/summer/arch_vines.glb",
       "sha256": "14ef5ee9dc741d2379b773d69fe7e870d2ad054898a529e5ae84b79ec8f8818d",
@@ -10479,26 +10515,26 @@
     },
     {
       "out": "yard-v2/summer/fence_flower_lattice.glb",
-      "src": "yard111:01. High/summer/fence_flower_lattice.glb",
-      "sha256": "92c7d60f4706be58d810c5d65f3e342045f1bce2b6b4f579cba30f16248101cd",
+      "src": "fence120:01. High/summer/fence_flower_lattice.glb",
+      "sha256": "b98cbba908d986b0056b4ed33128ed261174dc9af6f7eff4339b25652b5b3230",
       "precompressed": true
     },
     {
       "out": "yard-v2/summer/fence_rail.glb",
-      "src": "yard111:01. High/summer/fence_rail.glb",
-      "sha256": "4ed45cd10495d0197d7ebd15de759440d91d65f64dc8ede9cb68e0e60a4eb945",
+      "src": "fence120:01. High/summer/fence_rail.glb",
+      "sha256": "41e9186329909345b932fc3fb51077f318c1e5922bad79c229918ebc44e16d1c",
       "precompressed": true
     },
     {
       "out": "yard-v2/summer/fence_rail_low.glb",
-      "src": "yard111:01. High/summer/fence_rail_low.glb",
-      "sha256": "71e288a094f79346b6d12345e429f2bd7519a3b995619f817d2752cdc825f65b",
+      "src": "fence120:01. High/summer/fence_rail_low.glb",
+      "sha256": "724026aaec82afe74ae01f38017bdabee4f72c614bcea025adf544c8492135fa",
       "precompressed": true
     },
     {
       "out": "yard-v2/summer/fence_stone_block.glb",
-      "src": "yard111:01. High/summer/fence_stone_block.glb",
-      "sha256": "700fc1d16596955aa1b19cf762281eca47729b56630f653fce02f91c7e3e1514",
+      "src": "fence120:01. High/summer/fence_stone_block.glb",
+      "sha256": "573c2a1be79ec8cf2aba8d8ebb70c929feb8581432cedeb98ebaf94be17bd2b5",
       "precompressed": true
     },
     {
@@ -10580,6 +10616,18 @@
       "precompressed": true
     },
     {
+      "out": "yard-v2/winter/fence_stone_block_low.glb",
+      "src": "fence120:02. Low/winter/fence_stone_block_low.glb",
+      "sha256": "a4674ca26dcfb8a527251e3328de290268b7237b1908a13b9a7c502229686c2e",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v2/winter/fence_rail_far.glb",
+      "src": "fence120:02. Low/winter/fence_rail_far.glb",
+      "sha256": "1f397284ff6bbc946074a16d1512ae728d1232bbef38a7ee2f54e7a6e6d2c5e6",
+      "precompressed": true
+    },
+    {
       "out": "yard-v2/winter/arch_vines.glb",
       "src": "yard111:01. High/winter/arch_vines.glb",
       "sha256": "ce222c3f977b0d2f9998905ffd1930ea040e5555ce8ee6ebc8039d46a66c6f56",
@@ -10611,26 +10659,26 @@
     },
     {
       "out": "yard-v2/winter/fence_flower_lattice.glb",
-      "src": "yard111:01. High/winter/fence_flower_lattice.glb",
-      "sha256": "e106ecb4bf12458b90c1fb0898800cf5209687e8f0956ca762b0d647eed99553",
+      "src": "fence120:01. High/winter/fence_flower_lattice.glb",
+      "sha256": "8b7a38d5a392f60e3ba59a166238f97f43ec8c181f08c43f0d5e5fb3554e6ff6",
       "precompressed": true
     },
     {
       "out": "yard-v2/winter/fence_rail.glb",
-      "src": "yard111:01. High/winter/fence_rail.glb",
-      "sha256": "5b3e0f2326bbc761527ef5ce686521e6e231e0c47b3e675e72530fdedcd64d7e",
+      "src": "fence120:01. High/winter/fence_rail.glb",
+      "sha256": "41e9186329909345b932fc3fb51077f318c1e5922bad79c229918ebc44e16d1c",
       "precompressed": true
     },
     {
       "out": "yard-v2/winter/fence_rail_low.glb",
-      "src": "yard111:01. High/winter/fence_rail_low.glb",
-      "sha256": "35befbd8530ccb614cb2b76f733c58fcc9a8b73ad0d95537bc23379971bb559c",
+      "src": "fence120:01. High/winter/fence_rail_low.glb",
+      "sha256": "724026aaec82afe74ae01f38017bdabee4f72c614bcea025adf544c8492135fa",
       "precompressed": true
     },
     {
       "out": "yard-v2/winter/fence_stone_block.glb",
-      "src": "yard111:01. High/winter/fence_stone_block.glb",
-      "sha256": "04430a40d1b7df0f25d6c096f9acf04440b6d270d63a6ca78cb0fb69c1dcdd86",
+      "src": "fence120:01. High/winter/fence_stone_block.glb",
+      "sha256": "573c2a1be79ec8cf2aba8d8ebb70c929feb8581432cedeb98ebaf94be17bd2b5",
       "precompressed": true
     },
     {
@@ -10719,8 +10767,8 @@
     },
     {
       "out": "yard-v2/autumn/fence_flower_lattice_low.glb",
-      "src": "yard111:02. Low/autumn/fence_flower_lattice_low.glb",
-      "sha256": "574d0879b987389daff26f41039f2539e4ba9b13773f74b8fbf213f968ceee6f",
+      "src": "fence120:02. Low/autumn/fence_flower_lattice_low.glb",
+      "sha256": "c274388252a7808220aef993c6fa4bde1259218ceec244d3a33c205f779f530a",
       "precompressed": true
     },
     {
@@ -10737,8 +10785,8 @@
     },
     {
       "out": "yard-v2/spring/fence_flower_lattice_low.glb",
-      "src": "yard111:02. Low/spring/fence_flower_lattice_low.glb",
-      "sha256": "fc940facc5ba86180682ce288598fffa07ccb94d3fe1ff6d3aa1d8849fa638e4",
+      "src": "fence120:02. Low/spring/fence_flower_lattice_low.glb",
+      "sha256": "78f318e2fc52f088f711fd8c9d43e53a07ff3aed3b328a14721823a6d79cc8b7",
       "precompressed": true
     },
     {
@@ -10755,8 +10803,8 @@
     },
     {
       "out": "yard-v2/summer/fence_flower_lattice_low.glb",
-      "src": "yard111:02. Low/summer/fence_flower_lattice_low.glb",
-      "sha256": "201a644ed164ace97daa809d939f93881316ffa4db0b9121467212d0ae33a867",
+      "src": "fence120:02. Low/summer/fence_flower_lattice_low.glb",
+      "sha256": "e8823eca16ce6be08da0472fa921ee58bf3255d741fe36fd328013a3ed111ce1",
       "precompressed": true
     },
     {
@@ -10773,8 +10821,8 @@
     },
     {
       "out": "yard-v2/winter/fence_flower_lattice_low.glb",
-      "src": "yard111:02. Low/winter/fence_flower_lattice_low.glb",
-      "sha256": "fc43b0217f62a9ebf53f552af1ba22558423f1bffc81b43523b74e5195355a63",
+      "src": "fence120:02. Low/winter/fence_flower_lattice_low.glb",
+      "sha256": "cdc50bd2ca53fec47e0660b943a117dcb7ddacc147247b81f576fa1e72527154",
       "precompressed": true
     },
     {
@@ -12373,6 +12421,7 @@
     "yard111": "111. Game Island yard and paths 2026-11-08",
     "land113": "113. Game Island paths and landmarks 2026-11-08",
     "nature112": "112. Game Island new nature G4 2026-11-08",
-    "refit117": "117. Game Island outfit decor refit 2026-11-10"
+    "refit117": "117. Game Island outfit decor refit 2026-11-10",
+    "fence120": "120. Game Island yard fence diet 2026-11-14"
   }
 }
