@@ -19,7 +19,7 @@
   const DAL = T.MAP === 'dalmaru'; const PC = T.PLAZA_C || { x: 0, z: 0 };
   const CELL = 1.5; const EXTENT = DAL ? 200 : 120; const N = Math.round((EXTENT * 2) / CELL);
   const MARGIN = 1.1; // more than half a cell's diagonal: every point of a free cell is standable
-  const TAXI_ROAD_COST = 6; // (317 C1: a step on the taxi road's middle -- a crossing yes, along it no)
+  const TAXI_ROAD_COST = 40; // (317 C1: a step on the taxi road's middle away from a 건널목 -- only where there is no other way)
   const STOP_MIN = 3; const STOP_MAX = 9; // seconds standing at each stopping place
   const LOOKS = [ // shirt, hair, skin, hat (null = none)
     [0xf4a261, 0x3d2b1f, 0xffdcbc, null], [0x8ecae6, 0x6b4a2b, 0xffe0c4, 0xffffff], [0xb5838d, 0x2b2b2b, 0xf1c9a5, null],
@@ -94,13 +94,16 @@
     // v1.10.317 택시 C1 (notes docs/taxi-yield-20261109.md): the taxi's road -- its middle (the car's half width + 0.6 m) dear to
     // step on, so a round crosses it rather than walking along it, and the strip 1.5~3.2 m beside it as cheap as a walk: the
     // islanders go beside the road and over it where they must (read when the grid is made: island-taxi.js is loaded by then)
-    const route = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi)?.ROUTE || [];
+    const TX = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi);
+    const route = TX?.ROUTE || []; const crossings = TX?.CROSSINGS || []; const half = TX?.CROSS_HALF ?? 2.2;
+    /* (건널목: the road's middle within `half` of one is a walk to cross on; a bridge's deck stays as it was -- the way over the stream) */
+    const crossingAt = (x, z) => crossings.some((c) => Math.hypot(x - c.x, z - c.z) < half + 0.75);
     for (let s = 1; s < route.length; s += 1) {
       const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const len2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1e-9;
       const [i0, j0] = cellOf(Math.min(ax, bx) - 3.4, Math.min(az, bz) - 3.4); const [i1, j1] = cellOf(Math.max(ax, bx) + 3.4, Math.max(az, bz) + 3.4);
       for (let j = Math.max(0, j0); j <= Math.min(N - 1, j1); j += 1) for (let i = Math.max(0, i0); i <= Math.min(N - 1, i1); i += 1) {
         const c = centre(i, j); const u = Math.max(0, Math.min(1, ((c.x - ax) * (bx - ax) + (c.z - az) * (bz - az)) / len2)); const d = Math.hypot(c.x - ax - (bx - ax) * u, c.z - az - (bz - az) * u); const id = j * N + i;
-        if (d < 0.85 + 0.6) cost[id] = TAXI_ROAD_COST; else if (d >= 1.5 && d <= 3.2 && cost[id] !== TAXI_ROAD_COST) cost[id] = 1;
+        if (d < 0.85 + 0.6) { if (crossingAt(c.x, c.z)) cost[id] = 1; else if (!onAnyBridge(c.x, c.z)) cost[id] = TAXI_ROAD_COST; } else if (d >= 1.5 && d <= 3.2 && cost[id] !== TAXI_ROAD_COST) cost[id] = 1;
       }
     }
     grid = { blocked, cost, comp: connect(blocked) }; building = null;
@@ -191,7 +194,7 @@
   }
   function clearLine(p, q) {
     const d = Math.hypot(q.x - p.x, q.z - p.z); const n = Math.ceil(d / 0.4); let road = 0;
-    for (let k = 1; k < n; k += 1) { const t = k / n; const x = p.x + (q.x - p.x) * t; const z = p.z + (q.z - p.z) * t; const [i, j] = cellOf(x, z); if (!free(i, j)) return false; if (grid?.cost[j * N + i] === TAXI_ROAD_COST && (road += 1) > 10) return false; } /* (317 C1: a shortcut over the taxi road, not along it -- 4 m of it at most) */
+    for (let k = 1; k < n; k += 1) { const t = k / n; const x = p.x + (q.x - p.x) * t; const z = p.z + (q.z - p.z) * t; const [i, j] = cellOf(x, z); if (!free(i, j)) return false; if (grid?.cost[j * N + i] === TAXI_ROAD_COST && (road += 1) > 1) return false; } /* (317 C1: a shortcut never over the taxi road's middle -- the 건널목 are walks) */
     return true;
   }
   function smoothPath(pts) {
@@ -204,6 +207,20 @@
     return out;
   }
 
+  // (317 C1) a point within 1.5 m of the taxi road's middle -> 2.3 m from it, its own side first (else the other); null when
+  // neither side is a free cell; any other point as it is
+  function offTaxiRoad(x, z) {
+    const route = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi)?.ROUTE || [];
+    let best = null;
+    for (let s = 1; s < route.length; s += 1) {
+      const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const L = Math.hypot(bx - ax, bz - az) || 1e-9; const u = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / (L * L)));
+      const px = ax + (bx - ax) * u; const pz = az + (bz - az) * u; const d = Math.hypot(x - px, z - pz); if (!best || d < best.d) best = { d, px, pz, nx: (bz - az) / L, nz: -(bx - ax) / L };
+    }
+    if (!best || best.d >= 1.5) return [x, z];
+    const side = Math.sign((x - best.px) * best.nx + (z - best.pz) * best.nz) || 1;
+    for (const k of [side, -side]) { const qx = best.px + best.nx * 2.3 * k; const qz = best.pz + best.nz * 2.3 * k; const [i, j] = cellOf(qx, qz); if (free(i, j) && grid.cost[j * N + i] !== TAXI_ROAD_COST) return [qx, qz]; }
+    return null;
+  }
   // Stopping places: points on the walks, clear of the grid's blocks and well away from every building door.
   let stops = null;
   function stopPlaces() {
@@ -211,7 +228,7 @@
     buildGrid();
     stops = [];
     for (const w of T.walkCurves) for (let i = 4; i < w.pts.length; i += 9) {
-      const [x, z] = w.pts[i];
+      const moved = offTaxiRoad(...w.pts[i]); if (!moved) continue; const [x, z] = moved; /* (317 C1: a stop on the taxi road -- the walks' middles -- stood in the car's way: 2.3 m to its side) */
       const [ci, cj] = cellOf(x, z);
       if (!free(ci, cj) || Math.hypot(x, z) < T.PLAZA_R + 2) continue;
       if (T.STREET_Z && z > 168 && Math.abs(x - (T.dalmaru?.NECK?.x ?? -20)) < 20) continue; // (v1.10.230: not down the way to the 울타리 마을 -- under the ring, past their grid; their rounds as before)
