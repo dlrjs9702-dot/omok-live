@@ -42,7 +42,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['lift:1']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('승강기');
     await press(); await page.locator('#liftCard button[data-floor="3"]').click();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('furniture');
-    await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().furniture() || {}).length), { timeout: 15000 }).toBe(38); // (16 + 4 + the yard's 12 + the week's 6)
+    await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().furniture() || {}).length), { timeout: 15000 }).toBe(39); // (16 + 4 + the yard's 12 + the week's 6; v1.10.318 the 텃밭, the yard's 13th)
     const W = await page.evaluate(() => { const F = window.IslandFurniture; const s = F.YARD_SLOTS.find((x) => x.good === 'yard_arch__plain'); const w = F.world(s.lx, s.lz); return F.clamp(w.x, w.z); });
     await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [W.x, W.z]); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('꽃 아치');
     await page.evaluate(() => window.PlazaDebug().setCamYaw(-Math.PI / 2)); await shot('shop-shelf-view', page, 2500); await press(); await expect(page.locator('#furnitureCard')).toContainText('20,000P'); await expect(page.locator('#furnitureCard')).toContainText('마당 물건이에요');
@@ -195,7 +195,7 @@ test('마당 농사·집 손보기: 텃밭 칸 SPACE → 심기 → 다 자라�
   const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
   const shot = async (name, wait = 1500) => { if (!process.env.SHOT_DIR) return; await page.waitForTimeout(wait); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-farm-${name}.png` }); };
   /* (that very prompt -- every empty cell's reads the same: the scene's own `near` is the one asked for) */
-  const goTo = async (door, text) => expect.poll(async () => { await page.evaluate((id) => { const d = window.PlazaDebug(); d.farm(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); }, door); await page.waitForTimeout(500); const near = await page.evaluate(() => window.PlazaDebug().farm().near); return near === door ? page.locator('#plazaHint').textContent() : `near ${near}`; }, { timeout: 20000 }).toContain(text);
+  const goTo = async (door, text) => expect.poll(async () => { await page.evaluate((id) => { const d = window.PlazaDebug(); d.yardFarm(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); }, door); await page.waitForTimeout(500); const near = await page.evaluate(() => window.PlazaDebug().yardFarm().near); return near === door ? page.locator('#plazaHint').textContent() : `near ${near}`; }, { timeout: 20000 }).toContain(text);
   const bag = async (itemId) => ((await get(request, '/api/island/bag', token)).data.items || []).filter((e) => e.itemId === itemId).reduce((n, e) => n + (e.qty || 1), 0);
   let lot = null;
   try {
@@ -212,7 +212,7 @@ test('마당 농사·집 손보기: 텃밭 칸 SPACE → 심기 → 다 자라�
     await goTo(`bed:${bed.uid}:0`, '빈 칸 · 씨앗 심기'); await press();
     const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.farmCard')).toBeVisible(); await dialog.locator('.farmActions button', { hasText: '당근' }).click();
     await expect(page.locator('#toast')).toContainText('당근 씨앗을 심었어요'); expect(await bag('seed_carrot')).toBe(1);
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().farm().drawn), { timeout: 20000 }).toBeGreaterThanOrEqual(2); /* (the mound and the box) */
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().yardFarm().drawn), { timeout: 20000 }).toBeGreaterThanOrEqual(2); /* (the mound and the box) */
     await shot('sown');
     // grown: 거두기 into the bag
     await post(request, '/api/test/home/farm-time', token, { ms: 13 * 3600000 });
@@ -226,13 +226,13 @@ test('마당 농사·집 손보기: 텃밭 칸 SPACE → 심기 → 다 자라�
     expect((await get(request, '/api/home', token)).data.upkeep.given.weed).toBe(12);
     // a week missed: weathered for everyone; the yard's weeds grown, one pulled
     await post(request, '/api/test/home/farm-time', token, { weeks: 2, days: 1 });
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().farm().shabbyMeshes), { timeout: 20000 }).toBeGreaterThan(0);
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().farm().doors.filter((k) => k.startsWith('yardweed:')).length), { timeout: 20000 }).toBe(3);
-    const weed = (await page.evaluate(() => window.PlazaDebug().farm().doors)).find((k) => k.startsWith('yardweed:'));
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().yardFarm().shabbyMeshes), { timeout: 20000 }).toBeGreaterThan(0);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().yardFarm().doors.filter((k) => k.startsWith('yardweed:')).length), { timeout: 20000 }).toBe(3);
+    const weed = (await page.evaluate(() => window.PlazaDebug().yardFarm().doors)).find((k) => k.startsWith('yardweed:'));
     { const d = H.doorOf(L, 1); await standAt(request, a, d.x, d.z - 2); } await shot('shabby', 2500);
     const weeds0 = await bag('weed'); await goTo(weed, '잡초 뽑기'); await press();
     await expect.poll(() => bag('weed'), { timeout: 15000 }).toBe(weeds0 + 1);
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().farm().doors.filter((k) => k.startsWith('yardweed:')).length), { timeout: 20000 }).toBe(2);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().yardFarm().doors.filter((k) => k.startsWith('yardweed:')).length), { timeout: 20000 }).toBe(2);
     await expectNoScriptError(page);
   } finally { if (lot) await post(request, '/api/test/home/release', token, { lot }).catch(() => {}); await a.context.close(); }
 });
