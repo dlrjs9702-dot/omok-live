@@ -53,7 +53,7 @@ function compute(T, X) {
     const kind = hash(f.x, f.z) < 0.7 ? 'strands' : 'drape'; const yaw = Math.atan2(f.dir[0], f.dir[1]); const tx = f.dir[1]; const tz = -f.dir[0];
     for (const a of ALONG[kind]) {
       const x = f.x + tx * a; const z = f.z + tz * a; if (!clear(x, z)) continue;
-      const v = hang(x, z, f.dir, H[kind] * S); if (v) out.push([kind, r2(v.x), r2(v.y), r2(v.z), r2(yaw), r2(v.tilt), S]);
+      const v = hang(x, z, f.dir, H[kind] * S); if (v && kind === 'drape' && v.tilt > 0.35) continue; /* (땅·길: a 5 m wide drape on a leaning face lay on it -- 총괄 #460 사진) */ if (v) out.push([kind, r2(v.x), r2(v.y), r2(v.z), r2(yaw), r2(v.tilt), S]);
     }
   }
   return out;

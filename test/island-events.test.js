@@ -249,6 +249,11 @@ test('사진 부탁은 주민이: 쉬는 주민을 잡아 명소로 걸어감(�
   // no islander free (all at their posts): no photo request -- never a stranger instead
   const none=createIslandEvents({random:seeded(3),now,working:()=>true});
   assert.equal(none.spawnLost('photo'),null); assert.ok([...none.events.values()].every(v=>v.type!=='photo'));
+  // (#462 CI island-projects:64: one stood 0.6 m from the fountain's plaque, 「말 걸기」 over it) never within 3.5 m of a door
+  // or a 섬 가꾸기 sign, plaque or keeper
+  const P=require('../public/plaza/island-projects.js'); const marks=[...Object.values(T.SPOTS).map(s=>s.face?{x:s.face[0],z:s.face[1]}:s),...Object.values(P.SITES).flatMap(s=>[s.sign,s.plaque,s.keeper])];
+  let photos=0; for(let k=0;k<60;k++){ const ev=createIslandEvents({random:seeded(500+k),now}); for(let j=0;j<6;j++) ev.spawnLost('photo'); for(const e of ev.events.values()) if(e.type==='photo'){ photos+=1; for(const q of marks) assert.ok(Math.hypot(e.x-q.x,e.z-q.z)>=3.5,`${e.x},${e.z} 문·명판 옆`); } }
+  assert.ok(photos>=20,`사진 부탁 ${photos}개 확인`);
 });
 
 test('주민 예약: 플레이어가 선점한 대기 위치는 고르지 않고 비워지면 공용 의뢰를 채운다',()=>{

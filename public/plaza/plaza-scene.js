@@ -375,7 +375,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // cliff fronts, my house): every space but the island, set in one place (setSpace) -- no rain, snow, falling leaves,
   // rainbow or rainy sky in there
   let indoors = false; let openSky = false;
-  function setWeather(kind) { if (!['clear', 'rain', 'rainbow'].includes(kind) || kind === weatherKind) return; weatherKind = kind; lightKey = null; halloweenCheckedAt = -Infinity; }
+  function setWeather(kind) { if (!['clear', 'rain', 'rainbow'].includes(kind) || kind === weatherKind) return; weatherKind = kind; lightKey = null; halloweenCheckedAt = -Infinity; island.setRain?.(kind === 'rain' ? 1 : 0); /* (땅·길 ④: the ground wet while it rains) */ }
   function prepareWeather() {
     if (weatherFx) return weatherFx;
     const N = 900; const make = (color, size) => { const g = new THREE.BufferGeometry(); const pos = new Float32Array(N * 3); for (let i = 0; i < N; i += 1) { pos[i * 3] = (Math.random() - 0.5) * 44; pos[i * 3 + 1] = Math.random() * 22; pos[i * 3 + 2] = (Math.random() - 0.5) * 44; } g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0.75, depthWrite: false, fog: false })); p.frustumCulled = false; p.visible = false; scene.add(p); return p; };

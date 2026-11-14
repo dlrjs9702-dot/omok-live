@@ -246,6 +246,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
     return { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), edge: t('ground.grass_soil_edge_mask', false, true) };
   })();
   const GRAIN = 0.5; // how strongly the grains show
+  const rainOn = { value: 0 }; // (땅·길 ④: 0 dry .. 1 raining -- plaza-scene's weather, setRain)
   const grainOn = { value: software ? 0 : GRAIN }; const cheapOn = { value: 0 }; // (none on a software renderer: SwiftShader, llvmpipe -- no GPU) // (0 on the lowest quality tier: a slow device -- or a software renderer -- skips the samples)
   // 섬 땅 지도 그림 (path-paint·terrain-paint 설계, 사용자 「그림 파일로 가자」): the ground's maps, made by
   // tools/maps/build-ground-maps.js and read here -- path-a (inside a walk's edge, its course), path-b (its tier, where walks
@@ -301,17 +302,27 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.97, 0.99, 1.0), band * holes * s
   const paintCover = (path) => (path || !maps ? '' : `
 { // 땅 종류
 vec2 guv = (vGroundXZ - uPathBox.xy) / uPathBox.z; vec3 ca = texture2D(tCoverA, guv).rgb; vec3 cb = texture2D(tCoverB, guv).rgb; float gravel = texture2D(tPathB, guv).b;
+if (uPlazaC.y > 0.0) { float pdC = max(max(abs(vGroundXZ.x - uPlazaC.x) - uPlazaC.y, uPlazaC.z - vGroundXZ.y), vGroundXZ.y - uPlazaC.w); gravel = max(gravel, 1.0 - smoothstep(0.5, 1.4, pdC)); } // (땅·길 ① 4: the gravel apron's map stops ~0.75 m short of 대청마당's paving -- a light grass strip ran between them; the apron now reaches the paving)
 float nz = (texture2D(tGrass, vGroundXZ / 9.0).r / 0.611 - 1.0) * 0.45 + (texture2D(tSand, vGroundXZ / 2.3).r / 0.701 - 1.0) * 0.18; // (검토 2차 2·3: the grain pictures' own randomness, coarse and fine -- a product of waves made a lattice)
 vec3 grass = diffuseColor.rgb; float snow = smoothstep(0.45, 0.7, min(grass.r, min(grass.g, grass.b)));
+float wm = texture2D(tGrass, vGroundXZ / 33.0).r / 0.611; grass = mix(grass * mix(vec3(1.05, 1.03, 0.9), vec3(0.93, 0.98, 0.95), smoothstep(0.75, 1.25, wm)), grass, snow); // (땅·길 ⑤: the meadow's wide patches, 10~40 m -- a little warmer, a little cooler; none on the snow)
 #define KIND(w) smoothstep(0.24, 0.72, (w) + nz)
 float wet = 1.0 - smoothstep(${(SEA_PLANE_Y + 0.08).toFixed(2)}, ${(SEA_PLANE_Y + 0.45).toFixed(2)}, vWorldY); // (Codex 검토 2차: edges low to high -- reversed is undefined in GLSL)
 vec3 col = mix(grass, grass * vec3(0.87, 0.93, 0.84), KIND(cb.g) * (1.0 - 0.6 * snow));
 col = mix(col, mix(uForest, grass, 0.75 * snow), KIND(ca.r) * 0.85);
-float speck = step(0.9, fract(sin(dot(floor(vGroundXZ * 5.0), vec2(12.9898, 78.233))) * 43758.5453));
+vec2 spq = vGroundXZ * 5.0; float speck = step(0.9, fract(sin(dot(floor(spq), vec2(12.9898, 78.233))) * 43758.5453)) * (1.0 - smoothstep(0.16, 0.3, length(fract(spq) - 0.5))); // (땅·길 ① 8: round dots in their 20 cm cells -- squares read as stone chips on 「낮음」)
 col = mix(col, mix(mix(uClover, vec3(0.95, 0.9, 0.95), speck), grass, 0.8 * snow), KIND(cb.b));
 col = mix(col, mix(uEarth, grass, 0.92 * snow), smoothstep(0.44, 0.56, ca.g + nz)); // (동산 검토: bare earth in crisp patches, no smudge)
 col = mix(col, mix(uGravel, grass, 0.7 * snow), KIND(gravel));
 col = mix(col, mix(uRock, grass, 0.65 * snow), KIND(cb.r)); // (검토 2차 1: snow on the slopes too, a little less on the rock)
+#ifndef FLAT_SHADED
+{ // (땅·길 ② 절벽: a face steeper than ~50° is rock by its slope -- the 0.38 m map ran down a 2.5 m face in streaks -- in faint bands by
+// height and with a grain seen from the side, the soil picture laid on the face)
+float upN = (vec4(normalize(vNormal), 0.0) * viewMatrix).y; float steep = 1.0 - smoothstep(0.52, 0.66, upN);
+if (steep > 0.0) { float bands = 0.92 + 0.08 * sin(vWorldY * 2.6 + nz * 5.0) + 0.04 * sin(vWorldY * 7.3 + nz * 9.0); vec3 side = texture2D(tSoil, vec2(vGroundXZ.x * 0.7 + vGroundXZ.y * 0.7, vWorldY) / 2.2).rgb / 0.319;
+vec3 rockC = uRock * 1.08 * bands * mix(vec3(1.0), side, 0.22); col = mix(col, mix(rockC, grass, 0.55 * snow), steep); }
+}
+#endif
 col = mix(col, mix(mix(uSand, uWet, wet), grass, 0.6 * snow * (1.0 - wet)), smoothstep(0.4, 0.58, ca.b + 0.7 * nz)); // (검토 3차 1: the sand's edge a little crisper)
 #ifndef FLAT_SHADED
 col *= 1.0 - 0.22 * (1.0 - smoothstep(0.82, 0.97, (vec4(normalize(vNormal), 0.0) * viewMatrix).y)); // (동산 검토: a bank's face a little in its own shade, so the steps read)
@@ -346,6 +357,10 @@ float wp = uPlazaC.y > 0.0 ? 1.0 - smoothstep(4.0, 12.0, pd) : 0.0;
 if (wp > 0.0) pc = mix(pc, texture2D(tPlaza, vec2(vGroundXZ.x - (uPlazaC.x - uPlazaC.y), uPlazaC.w - vGroundXZ.y) / 6.0).rgb, wp);
 }
 if (uGrain > 0.0 && uCheap < 0.5) pc *= mix(vec3(1.0), texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, uGrain * (pm.a > 0.9 ? 0.35 : 0.9));
+if (pm.a <= 0.9) { // (땅·길 ③: an earth walk's gravel -- dots in 14 cm cells, some light some dark -- and a darker rim at its edge)
+vec2 gq = vGroundXZ * 7.0; float gh = fract(sin(dot(floor(gq), vec2(41.3, 289.1))) * 43758.5453); float gdot = step(0.84, gh) * (1.0 - smoothstep(0.14, 0.32, length(fract(gq) - 0.5)));
+pc = mix(pc, pc * (gh > 0.92 ? 1.16 : 0.8), gdot * 0.85); pc *= mix(0.84, 1.0, smoothstep(0.02, 0.4, inside));
+}
 diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
 }
 }`);
@@ -355,14 +370,14 @@ diffuseColor.rgb = mix(diffuseColor.rgb, pc, cover);
         uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
         ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: plazaBox }, tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB }, tShore: { value: maps.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
         uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0x9c8a74) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
-        uSand: { value: new THREE.Color(0xf1dfae) }, uWet: { value: new THREE.Color(0xd8c48f) }, uClover: { value: new THREE.Color(0x7fb35a) } });
+        uSand: { value: new THREE.Color(0xf1dfae) }, uWet: { value: new THREE.Color(0xd8c48f) }, uClover: { value: new THREE.Color(0x7fb35a) }, uRain: rainOn });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
 attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;`).replace('#include <begin_vertex>', `#include <begin_vertex>
 vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz; vWorldY = (modelMatrix * vec4(transformed, 1.0)).y;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; uniform float uCheap; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
 uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPlaza; uniform vec4 uPlazaC; uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea;' : ''}
-uniform vec3 uForest; uniform vec3 uEarth; uniform vec3 uGravel; uniform vec3 uRock; uniform vec3 uSand; uniform vec3 uWet; uniform vec3 uClover;`).replace('#include <color_fragment>', `#include <color_fragment>
+uniform vec3 uForest; uniform vec3 uEarth; uniform vec3 uGravel; uniform vec3 uRock; uniform vec3 uSand; uniform vec3 uWet; uniform vec3 uClover; uniform float uRain;`).replace('#include <color_fragment>', `#include <color_fragment>
 vec2 gw = vGround; float gWet = 0.0; // (the grass and the sand share, for the grains: the vertex's, or the cover map's; how wet: 파도)${paintCover(path)}
 if (uGrain > 0.0) {
 vec3 gGrass = texture2D(tGrass, vGroundXZ / 2.4).rgb / 0.611; // (each over its own mean: the colours keep their brightness, only the grain shows)${path ? `
@@ -373,7 +388,8 @@ diffuseColor.a *= 1.0 - 0.85 * gCover * step(0.001, vGround.y); // the island's 
 vec3 gGrain = mix(vec3(1.0), gGrass, 0.6); // (5회차 1: the lowest tier keeps this one grain -- one sample -- not a flat colour)
 if (uCheap < 0.5) gGrain = mix(mix(vec3(1.0), gGrass, gw.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, gw.y);
 diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
-}`}${paintPath(path)}${shoreWash(path)}`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.28, gWet);'); // (파도: wet sand shines)
+}`}${paintPath(path)}${shoreWash(path)}
+diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·길 ④ 비: the ground wet -- darker and shining; colour only, nothing reflected)`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.28, gWet);'); // (파도: wet sand shines)
     };
     material.customProgramCacheKey = () => (path ? 'ground-path' : 'ground');
     return material;
@@ -544,7 +560,13 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     // (묶음 1, assets 59: 박석 -- one 6 m tile repeated over it; the disc, ring, kerbs, channels and gardens are plaza-scene's)
     const P = T.dalmaru.PLAZA; const tex = keep(new THREE.TextureLoader().load(`/assets/island/plaza-v1/plaza_pave${software ? '_low' : ''}.webp`));
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace; tex.repeat.set((P.hw * 2) / 6, (P.d1 - P.d0) / 6);
-    const pave = new THREE.Mesh(keep(new THREE.PlaneGeometry(P.hw * 2, P.d1 - P.d0)), keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }))); pave.rotation.x = -Math.PI / 2; pave.position.set(P.x, P.h + 0.03, (P.d0 + P.d1) / 2); pave.receiveShadow = true; scene.add(pave);
+    const paveMat2 = keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
+    paveMat2.onBeforeCompile = (sh) => { /* (땅·길 ③: the one 6 m tile no longer reads as a grid -- a wide mottle (the grass picture over ~16 m) and a little moss in the darker joints where it is greener; ④ wet in the rain) */
+      Object.assign(sh.uniforms, { tMottle: { value: groundTex.grass }, uRain: rainOn });
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tMottle; uniform float uRain;').replace('#include <map_fragment>', '#include <map_fragment>\n{ float m = texture2D(tMottle, vMapUv / 2.7).r / 0.611; float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114)); float joint = 1.0 - smoothstep(0.3, 0.5, lum);\nfloat mm = smoothstep(0.75, 1.25, m); diffuseColor.rgb *= 0.86 + 0.2 * mm; diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.72, 0.86, 0.6), joint * smoothstep(0.55, 0.9, mm) * 0.8); diffuseColor.rgb *= 1.0 - 0.22 * uRain; }').replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.3, 0.6 * uRain);');
+    };
+    paveMat2.customProgramCacheKey = () => 'plaza-pave';
+    const pave = new THREE.Mesh(keep(new THREE.PlaneGeometry(P.hw * 2, P.d1 - P.d0)), paveMat2); pave.rotation.x = -Math.PI / 2; pave.position.set(P.x, P.h + 0.03, (P.d0 + P.d1) / 2); pave.receiveShadow = true; scene.add(pave);
   } else {
   disc(0, 0, PLAZA_R, paveMat, 0.03, 64);
   const rim = new THREE.Mesh(keep(new THREE.RingGeometry(PLAZA_R - 0.4, PLAZA_R, 64)), mat(0xe2cfa6)); rim.rotation.x = -Math.PI / 2; rim.position.y = PLAZA_H + 0.045; scene.add(rim);
@@ -1180,5 +1202,5 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     if (lessMotion) clock *= 0.5; seaLines.value = lessMotion ? 0 : seaLinesOn; seaRipple.value = lessMotion ? 0 : 1;
     flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }
