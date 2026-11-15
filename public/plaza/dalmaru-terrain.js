@@ -198,14 +198,14 @@
     gamehall: { x: 56, z: -66 }, jail: { x: -66.4, z: -75.7 } /* (R4 구치소: by 관공서, level ground clear of the walks, its door south to the walk east of it) */, notice: { x: -42, z: -71 }, /* (묶음 5: 알림마루 -- one row along 대청마당's west edge, its middle) */ village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
     // 2단계 (2026-10-19): the rest of what stands by hand -- [x, z] or { x, z, face: [x, z] } (the point its front looks at)
     spawn: { x: -22, z: -60 }, // 첫 접속 자리: 알림마루's east side, on 대청마당
-    records: { x: 64, z: -86, face: [60, -95] }, missions: { x: 46, z: -75, face: [40, -75] }, // beside the 게임관 (묶음 5 배치 점검: 기록관 off the 백화점 walk, facing it; 미션 게시판 by the hall's door, off its walk)
+    records: { x: 64, z: -86, face: [60, -95] }, missions: { x: -42.2, z: -82, face: [-30, -82] } /* (1.10.325 대청마당 다시 배치 54A: the 알림마루 row's north end) */, // beside the 게임관 (묶음 5 배치 점검: 기록관 off the 백화점 walk, facing it; 미션 게시판 by the hall's door, off its walk)
     admin: { x: -54, z: -72, face: [-40, -76] }, chat: { x: -86, z: -4, face: [-100, -20] }, climb: { x: -128, z: -12, face: [-112, -10] },
     // (the trader and the 작명소 are indoors: the 백화점's 노점 and the 관공서's 개명 신청 window)
     lane: [[-52, -48], [-74, -4]], // 이웃골's street (the islanders' ten houses either side of it)
     // (거리 악단 자리 2026-10-25 「너무 뜬금없이 있어」: a paved round 6 m across on 물가 거리's land side, west of where the
     // walk goes down to 배 타는 곳 (266.5°, its middle 105.3 from the bay's centre -- the walk's edge 102.6; clear of the
     // photographer's spot west of it); faces the water)
-    mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
+    mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },
     hallLamps: [[-2.8, -22], [3.2, -30], [-2.8, -38]], // the three lamps the electrician mends, beside the walk to the water (off it)
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in

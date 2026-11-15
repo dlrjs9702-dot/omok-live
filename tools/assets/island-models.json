@@ -13536,6 +13536,54 @@
       "src": "pickaxe130:01. High/motions/PickaxeEnd.glb",
       "sha256": "8925edd7e4cf88661a655d9b8ea82581044a7fd1fa1cf242e1cc107e89f19cde",
       "precompressed": true
+    },
+    {
+      "out": "xmas-v2/market_stall_cocoa.glb",
+      "src": "market124:01. High/xmas-v2/market_stall_cocoa.glb",
+      "sha256": "06e9df6d5be87cb0eff0499fdde1ecd676d3cfb53cba9431cdc89eae2380bc42",
+      "lowSrc": "market124:02. Low/xmas-v2/market_stall_cocoa_low.glb",
+      "lowSha256": "467868715e0fede5c3eef9e441bdeb56be19797a1d730c2b3a1d461d55204a29",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/market_stall_fishbread.glb",
+      "src": "market124:01. High/xmas-v2/market_stall_fishbread.glb",
+      "sha256": "c99e5a57281b265aaf7f7c6b1c26030e5dc8dbee6a011369ec34f39b2407498a",
+      "lowSrc": "market124:02. Low/xmas-v2/market_stall_fishbread_low.glb",
+      "lowSha256": "0cdbb9bd2cd37b82411c6fb68a2a2d995f5fc883f21c1ce57e54d1848cc24f9e",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/market_stall_sweetpotato.glb",
+      "src": "market124:01. High/xmas-v2/market_stall_sweetpotato.glb",
+      "sha256": "4552c8bb112bc3756a490b3456cb77e0df27832d7f85205b9dc0daefa89d1618",
+      "lowSrc": "market124:02. Low/xmas-v2/market_stall_sweetpotato_low.glb",
+      "lowSha256": "8452ec55db24c1a772b786e0982f1c8d74cea28e1f81e33ca0ec7e5f5251d9c6",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/snack_cocoa.glb",
+      "src": "market124:01. High/xmas-v2/snack_cocoa.glb",
+      "sha256": "db9af89c5a543455c320040efd581b81dc77bca5f9db90b178c14d61b9e23ca6",
+      "lowSrc": "market124:02. Low/xmas-v2/snack_cocoa_low.glb",
+      "lowSha256": "f75bf64f03069e4468bfa56a920a18edb99848281cb88a408be920c1b0877f75",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/snack_fishbread.glb",
+      "src": "market124:01. High/xmas-v2/snack_fishbread.glb",
+      "sha256": "8fe3b815cc1e5db2dca0c5201525ea9ede462220768a1091fe8be67b8e409f2a",
+      "lowSrc": "market124:02. Low/xmas-v2/snack_fishbread_low.glb",
+      "lowSha256": "91fac82f302aced8556e10def388bde00146ef135d10a4e1bf36191c8de82c57",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/snack_sweetpotato.glb",
+      "src": "market124:01. High/xmas-v2/snack_sweetpotato.glb",
+      "sha256": "036b78da5d9ef49665f5462a1b95400539fd7e6cd7fb45a67b3d1efd41763064",
+      "lowSrc": "market124:02. Low/xmas-v2/snack_sweetpotato_low.glb",
+      "lowSha256": "972b7750a0a3593403f80372bb77bee889edbf227c3c3d813c3a83437b479511",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -13633,6 +13681,7 @@
     "diet122": "122. Game Island heavy props diet 2026-11-14",
     "farm115": "115. Game Island yard farming F1 2026-11-10",
     "quarry129": "129. Game Island quarry rocks ore pickaxe 2026-11-15",
-    "pickaxe130": "130. Game Island pickaxe motion 2026-11-15"
+    "pickaxe130": "130. Game Island pickaxe motion 2026-11-15",
+    "market124": "124. Game Island xmas market stalls 2026-11-15"
   }
 }

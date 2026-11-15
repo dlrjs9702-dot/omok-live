@@ -439,6 +439,11 @@
   for (const k of ['a', 'b', 'c']) for (const st of ['', '_mined']) REGISTRY[`quarry.rock_${k}${st}`] = q(`quarry_rock_${k}${st}`, { near: 60 });
   REGISTRY['quarry.ore_chunk'] = q('ore_chunk'); REGISTRY['quarry.ore_pile'] = q('ore_pile', { near: 50 }); REGISTRY['quarry.pickaxe'] = q('pickaxe'); REGISTRY['quarry.sign'] = q('sign_quarry', { near: 40 });
   REGISTRY['good.pickaxe'] = { ...REGISTRY['quarry.pickaxe'], scale: 0.55 }; } // (on the 잡화점's tool wall)
+// 1.10.325 크리스마스 마켓 (assets 124, IslandCalendar.PLACES.market): the three stalls (keepNodes: vendor, buy, steam, FACE) and the
+// snacks held in the hand (scale 1.8: true to life they read small there -- 124's 192-pose check passed at 1.8)
+{ const XM = '/assets/island/xmas-v2'; for (const s of ['cocoa', 'sweetpotato', 'fishbread']) {
+  REGISTRY[`xmas.market.${s}`] = { url: `${XM}/market_stall_${s}.glb`, low: { url: `${XM}/market_stall_${s}_low.glb` }, near: 50, keepNodes: true, nightGlow: true };
+  REGISTRY[`xmas.snack.${s}`] = { url: `${XM}/snack_${s}.glb`, low: { url: `${XM}/snack_${s}_low.glb` }, scale: 1.8, keepNodes: true }; } }
   REGISTRY['character.farmer'] = { url: `${CH}/npc_farmer.glb`, low: { url: `${CH}/npc_farmer_low.glb` }, rotationY: Math.PI, motions: true };
   // v1.10.92 잡화점 (assets 41 store-v1): the building (front -Z, its door at local z -2.65), the room one walks into
   // (10 x 8 m, its door at local -Z; plaza-scene turns it half round), its keeper (the common rig) and the 23 goods on the shelves

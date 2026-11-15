@@ -36,6 +36,12 @@ function buildCoverMaps(T, res = 1024) {
   const flowers = T.nature().flowers || [];
   const flowerAt = (x, z) => { let f = 0; for (const p of flowers) { const d = Math.hypot(p.x - x, p.z - z); if (d < 2.6) f = Math.max(f, 1 - smooth(1.2, 2.4, d + 0.5 * noise(x * 1.7, z * 1.7))); } return f; };
   const apronAt = (x, z) => { const out = Math.hypot(Math.max(0, Math.abs(x - P.x) - P.hw), Math.max(0, P.d0 - z, z - P.d1)); return out <= 0 || z < P.d0 ? 0 : 1 - smooth(1.5, 3.4 + 1.1 * Math.sin(x * 0.83) * Math.cos(z * 0.67), out); };
+  // (1.10.325 채석장 바닥, 사용자 59A: the quarry's ground bare earth to its frayed edge, gravel round each rock and the ore pile)
+  const Q = require('../../public/plaza/island-quarry.js'); const DEG = Math.PI / 180;
+  const quarryAt = (x, z) => { if (!Q.inArea(x, z, 4)) return 0; const r = Math.hypot(x, z); let ang = Math.atan2(z, x) / DEG; if (ang < 0) ang += 360;
+    const ed = Math.min(r - Q.AREA.r0, Q.AREA.r1 - r, (ang - Q.AREA.a0) * DEG * r, (Q.AREA.a1 - ang) * DEG * r); return smooth(-1.5, 1.5, ed + (noise(x * 0.7, z * 0.7) - 0.5) * 2.4); };
+  const quarryStones = [...Q.ROCKS.map((q) => [q.x, q.z, Q.SOLIDS[q.kind].r + 1.2]), [Q.PILE.x, Q.PILE.z, 1.6]];
+  const quarryGravelAt = (x, z) => { let g = 0; for (const [qx, qz, r] of quarryStones) { const d = Math.hypot(qx - x, qz - z); if (d < r + 1.5) g = Math.max(g, 1 - smooth(r * 0.7, r + 0.4 + 0.5 * noise(x * 1.9, z * 1.9), d)); } return g; };
   const a = new Uint8Array(n * 3); const b = new Uint8Array(n * 3); const gravel = new Uint8Array(n);
   const put = (arr, k, c, v) => { arr[k * 3 + c] = Math.round(Math.max(0, Math.min(1, v)) * 255); };
   for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) {
@@ -49,13 +55,14 @@ function buildCoverMaps(T, res = 1024) {
     const rock = Math.max(cliff > 0.4 && cd < 3.5 ? smooth(3.5, 0.5, cd + (n1 - 0.5)) : 0, smooth(1.9, 2.8, slope + (n1 - 0.5) * 0.3));
     // (동산 다듬기 검토 3차: the banks are grass only -- earth patches on them read as stickers or a cow's coat)
     const rockAll = rock;
-    const soil = Math.max(smooth(1.15, 1.9, slope + (n1 - 0.5) * 0.25) * (1 - rock) * 0.8, wornAt(x, z)) * (1 - sand);
+    const quarry = quarryAt(x, z);
+    const soil = Math.max(smooth(1.15, 1.9, slope + (n1 - 0.5) * 0.25) * (1 - rock) * 0.8, wornAt(x, z), quarry * 0.92) * (1 - sand);
     const forest = forestAt(x, z) * (1 - sand) * (1 - rock);
     // (검토 2차 2: darker grass in patches from a turned and warped noise -- no grid in it)
     const u = x * 0.8 - z * 0.6; const v = x * 0.6 + z * 0.8; const wx = noise(u * 0.05 + 3.1, v * 0.05) * 9; const wz = noise(u * 0.05, v * 0.05 - 5.7) * 9;
     const dark = 0.7 * smooth(0.52, 0.78, noise((u + wx) * 0.09, (v + wz) * 0.09) * 0.75 + noise((v - wz) * 0.31 + 1.7, (u + wx) * 0.31) * 0.25) * (1 - sand) * (1 - rock) * (1 - forest);
     put(a, k, 0, forest); put(a, k, 1, soil); put(a, k, 2, sand); put(b, k, 0, rockAll); put(b, k, 1, dark); put(b, k, 2, flowerAt(x, z) * (1 - sand));
-    gravel[k] = Math.round(apronAt(x, z) * 255);
+    gravel[k] = Math.round(Math.max(apronAt(x, z), quarry ? quarryGravelAt(x, z) * quarry : 0) * 255);
   }
   return { a, b, gravel };
 }

@@ -51,7 +51,7 @@
     games: { ...PL.gamehall, face: [PL.gamehall.x - 16, PL.gamehall.z], kind: 'hall', wall: 0xffe3b3, roof: 0xf08a6b }, // 대청마당 동쪽 바로 옆
     records: spot(PL.records, 'house', { wall: 0xf3e2ff, roof: 0x9b7fd6, size: [7, 8.7], front: 5.85, back: 2.85 /* (assets 75 records.hall -- 간판 ④ 「작은 일반 집」: 7 m across, 8.7 m deep with its porch steps, from 2.85 behind its spot to 5.85 before it) */ }), missions: spot(PL.missions, 'board', { tint: 0x8fd18a }),
     store: { ...facade(PL.facadeMall), kind: 'facade' }, townhall: { ...facade(PL.facadeTownhall), kind: 'facade' },
-    board: { ...row(0), kind: 'board' }, map: { ...row(1), kind: 'mapboard' }, attendance: { ...row(4), kind: 'npc' }, donate: { ...row(2), kind: 'donation' },
+    board: { ...row(0), kind: 'board' }, map: { ...row(1), kind: 'mapboard' }, attendance: { ...row(3), kind: 'npc' }, donate: { x: 3.5, z: -62, face: [-9, -62], kind: 'donation' } /* (1.10.325 56A: the 기부함 to the 경제 앞뜰, by the 거래소; the row closed up) */,
     chat: spot(PL.chat, 'gazebo'), climb: spot(PL.climb, 'tower'), admin: spot(PL.admin, 'office', { wall: 0xe4e7ec, roof: 0x7b8794 }),
     jail: { ...PL.jail, face: [PL.jail.x, PL.jail.z + 10], kind: 'jail' }, // R4 구치소 (assets 67: 9.8 x 7.4 m; its door toward the camera -- the island's buildings never fade)
     // v1.10.320 섬 증권거래소 (assets 118; 사용자 22A, notes img/stocks-320 나): 대청마당's water side by 기록의 탑, its door to the fountain
@@ -91,7 +91,7 @@
     stones: Object.freeze({ ...PL.stones, yaw: stoneYaw }), builder: off(PL.stones, 4.2, -2),
     bookcart: prop(PL.bookcart, 0.8), librarian: off(PL.bookcart, 2.1, -1.1),
     omokTable: prop(PL.omokTable, 1.4), grandpa: off(PL.omokTable, -0.1, 2.8),
-    mailbox: prop(row(3), 0.5), guide: prop({ x: PL.spawn.x - 2, z: PL.spawn.z + 2, face: [PL.spawn.x, PL.spawn.z] }, 0.45), /* (the guide beside 첫 접속's spot) */ birthday: prop(PL.birthday, 0.3),
+    mailbox: prop(row(2), 0.5) /* (1.10.325: up the row where the 기부함 was) */, guide: prop({ x: PL.spawn.x - 2, z: PL.spawn.z + 2, face: [PL.spawn.x, PL.spawn.z] }, 0.45), /* (the guide beside 첫 접속's spot) */ birthday: prop(PL.birthday, 0.3),
   });
   const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.buskBenches, VILLAGE.buskLamp, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, /* (1103 9: no guide standing apart -- its spot open) */ MUSEUM];
   const MUSEUM = Object.freeze({ ...PL.museum, yaw: yawTo(PL.museum.x, PL.museum.z, [100, 46]), r: 5 }); // (its door toward 잔치마루's walk)
