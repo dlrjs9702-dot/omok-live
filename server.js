@@ -125,6 +125,12 @@ function stocksMarket() {
   })().catch((error) => { stockMarketHeld = null; throw error; });
   return stockMarketHeld;
 }
+// v1.10.322 경제 로그 (lib/economy-log.js): the economy's sums in Render's log -- a minute after the start, then each day after
+// 00:10 Seoul (the tax and the interest done); never an account, only sums
+const EconomyLog = require('./lib/economy-log');
+let economyLoggedDay = null; let economyLogReady = false;
+async function logEconomy(now = Date.now()) { const stats = await pointStore.economyStats(14, now); for (const line of EconomyLog.economyLogLines(stats, now, require('./package.json').version)) console.log(line); }
+function economyLogTick(now = Date.now()) { if (!economyLogReady) return; const due = EconomyLog.dueDay(now, economyLoggedDay); if (!due) return; economyLoggedDay = due; logEconomy(now).catch((error) => console.error('경제 로그 실패:', error.message)); }
 let stockClock = 0; const stockNow = () => Date.now() + stockClock; // (tests: /api/test/stocks/clock)
 const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', LIMIT: '오늘 주문 20번을 다 썼어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
 // this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
@@ -2649,7 +2655,8 @@ async function noticeEvents() {
   for (const [id, title, body] of notes) { if (await pointStore.worldValue(`eventNotice:${id}`)) continue; await pointStore.setWorldValue(`eventNotice:${id}`, nowMs()); await announcementStore.create(title, body, false); posted = true; }
   if (posted) await broadcastAnnouncements().catch(() => {});
 }
-setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); stockNotices().catch((error) => console.error('정리 매매 알림 실패:', error.message)); }, 60000).unref?.();
+setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); stockNotices().catch((error) => console.error('정리 매매 알림 실패:', error.message)); economyLogTick(); }, 60000).unref?.();
+setTimeout(() => { economyLoggedDay = EconomyLog.dueDay(Date.now(), null); economyLogReady = true; logEconomy().catch((error) => console.error('경제 로그 실패:', error.message)); }, 60000).unref?.(); // (a minute after the start; that day counted if past 00:10)
 async function contestNote(account, session, contestId, kind, value) {
   const c = await contestState();
   if (c.phase !== 'live' || c.id !== contestId || c.kind !== kind || !Number.isFinite(value) || value < 0 || (c.higher && value <= 0)) return null; // (총괄 검토 2: a score round of 0 is no entry)
