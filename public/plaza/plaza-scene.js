@@ -5776,7 +5776,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
     // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
     if (clock - seasonCheckedAt > 2 && seasonOverride === null && seasonHold === null) { seasonCheckedAt = clock; setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }
-    if (clock - whiteCheckedAt > 2) { whiteCheckedAt = clock; const w = xmasSnow() === 'white'; if (w !== whiteNow) { whiteNow = w; setSeasonDay(seasonDayNow); } stepTreeLights(); } /* (1.10.329: the 화이트 크리스마스 on and off; the plaza tree's lighting) */
+    if (performance.now() - whiteCheckedAt > 2000) { whiteCheckedAt = performance.now(); /* (wall time: CI's 2.7 fps frames run the scene clock 1/7 as fast -- CI #480) */ const w = xmasSnow() === 'white'; if (w !== whiteNow) { whiteNow = w; setSeasonDay(seasonDayNow); } stepTreeLights(); } /* (1.10.329: the 화이트 크리스마스 on and off; the plaza tree's lighting) */
     island.step(clock, Boolean(lessMotion?.matches)); refreshMapBoard(); refreshMinimap(performance.now());
     drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, dropTop + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
     lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(ambientClock * 1.5 + i) * 0.05; }); shopGlow.value = night ? 1.7 : 0.55; beaconStep(clock); // (S2: 초승등대 at night)
