@@ -55,6 +55,57 @@ test('섬 주식 주문: 1주 단위·수수료 0.5%·한 회사 1,000주·하�
   const out = S.order(w, full, { code: found.x.code, side: 'sell', qty: 5 }, found.ms); assert.ok(out.reward > 0, '정리 매매 팔기는 하루 상한과 상관없이'); assert.equal(out.doc.d.n, 20);
 });
 
+test('Codex 311~320: 시세는 서버 키로(키마다 다름, 키 없으면 안 만듦) · 종목 코드는 정규형만(1,000주 우회 막힘) · 늦은 주간 정산은 그 주 자료로', () => {
+  // #1: the key makes the prices; no public default
+  assert.throws(() => S.createMarket(), TypeError);
+  const k1 = S.createMarket('a'.repeat(64)).view(at(3, 12)); const k2 = S.createMarket('b'.repeat(64)).view(at(3, 12));
+  assert.notDeepEqual(k1.companies.map((c) => c.price), k2.companies.map((c) => c.price), '키가 다르면 시세가 다름');
+  // #2: one company, one code
+  assert.deepEqual(S.parseCode('0.0'), [0, 0]); assert.deepEqual(S.parseCode('29.12'), [29, 12]);
+  for (const bad of ['00.0', '0.00', ' 0.0', '0.0 ', '30.0', '1e0.0', '-0.0', '0x1.0', '0', 0]) assert.equal(S.parseCode(bad), null, `코드 ${JSON.stringify(bad)}`);
+  const m = S.createMarket('o'); const t = at(2, 10, 10); const c = m.view(t).companies.find((x) => x.status === 'active');
+  const alias = c.code.replace(/^/, '0'); assert.equal(S.order(m, {}, { code: alias, side: 'buy', qty: 1 }, t).error, 'GONE', '앞에 0 붙인 코드는 없는 회사');
+  const full = S.order(m, {}, { code: c.code, side: 'buy', qty: S.HOLD_MAX }, t); assert.equal(full.error, undefined);
+  assert.equal(S.order(m, full.doc, { code: alias, side: 'buy', qty: S.HOLD_MAX }, t).error, 'GONE'); assert.deepEqual(Object.keys(full.doc.h), [c.code]);
+  // #5: week 0's return read after a Monday order (and with the market a few days on) is week 0's own -- at its close's prices
+  const weekEnd = (w) => S.tickTime(7 * (w + 1) * S.PER_DAY) - S.OPEN * HOUR - 1; /* (Sunday 23:59:59.999 Seoul) */ const end0 = weekEnd(0); const r0 = S.weekReturn(m, full.doc, end0); assert.ok(Number.isFinite(r0));
+  const other = m.view(at(7, 10)).companies.find((x) => x.status === 'active' && x.code !== c.code);
+  const mon = S.order(m, full.doc, { code: other.code, side: 'buy', qty: 3 }, at(7, 10)); assert.equal(mon.doc.w.week, 1); assert.equal(mon.doc.last.week, 0);
+  m.view(at(10, 15)); assert.equal(S.weekReturn(m, mon.doc, end0), r0, '월요일 주문 뒤에 정산해도 같은 값');
+  const held = m.priceAt(c.code, 7 * S.PER_DAY - 1) * S.HOLD_MAX; const base = full.doc.w.start + full.doc.w.buys; assert.equal(r0, ((held - base) / base) * 100, '그 주 마감 값으로');
+  // a week without an order: what was held through it, from its start
+  const end1 = weekEnd(1); const r1 = S.weekReturn(m, full.doc, end1); const s1 = m.priceAt(c.code, 7 * S.PER_DAY - 1) * S.HOLD_MAX;
+  assert.equal(r1, ((m.priceAt(c.code, 14 * S.PER_DAY - 1) * S.HOLD_MAX - s1) / s1) * 100);
+  assert.equal(S.weekReturn(m, mon.doc, weekEnd(2)) === null, false); assert.equal(S.weekReturn(m, { h: {} }, end0), null);
+  // a company since gone keeps its prices (a past week's value)
+  for (let k = 0; k < 6 * 7 * S.PER_DAY; k += 1) m.view(S.tickTime(k) + 1000);
+  const sl = m.slots.find((x) => x.gen >= 1); assert.ok(sl); assert.equal(m.priceAt(`${sl.s}.0`, 0), sl.past[0].prices[0]);
+});
+
+test('1.10.321 옛 시세 주식 돌려주기: 거래 없으면 아무 일도 안 함 · 산 값(수수료 포함) 그대로 포인트 · 기록 비움 · 한 번만', async () => {
+  const { JsonPointStore } = require('../lib/point-store');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'stockrefund-')); rmAtExit(dir);
+  const store = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 0 }); await store.init();
+  const letters = []; const letter = (u, n) => { letters.push([u, n]); };
+  const ledger = async () => (await store.economyStats(14, Date.now())).flows.filter((f) => f.reason === 'stock_refund');
+  // no trade at all: nothing
+  await store.ensureAccount('guest:00000000-0000-4000-8000-000000000001'); assert.deepEqual(await S.refundOldStocks(store, letter), []); assert.equal(letters.length, 0); assert.equal((await ledger()).length, 0);
+  // the old market (no v): one holding, one sold out; the new market (v 2): left alone
+  const old = { h: { '3.0': { q: 10, c: 50250 }, '7.1': { q: 2, c: 4020 } }, d: { day: S.FIRST_DAY, n: 2 }, w: { week: 0, start: 0, buys: 54270, sells: 0 } };
+  await store.questApply('guest:00000000-0000-4000-8000-000000000002', 'stocks', () => ({ doc: old })); await store.questApply('guest:00000000-0000-4000-8000-000000000003', 'stocks', () => ({ doc: { h: {}, d: { day: S.FIRST_DAY, n: 2 }, w: { week: 0, start: 0, buys: 1005, sells: 995 } } }));
+  await store.questApply('guest:00000000-0000-4000-8000-000000000004', 'stocks', () => ({ doc: { v: S.MARKET_V, h: { '3.0': { q: 1, c: 5025 } } } }));
+  const done = await S.refundOldStocks(store, letter);
+  assert.deepEqual(done.map((x) => [x.userId, x.refund]).sort(), [['guest:00000000-0000-4000-8000-000000000002', 54270], ['guest:00000000-0000-4000-8000-000000000003', 0]]);
+  assert.deepEqual(letters, [['guest:00000000-0000-4000-8000-000000000002', 54270]], '돌려받은 사람에게만 우편 한 통');
+  assert.deepEqual((await store.questDoc('guest:00000000-0000-4000-8000-000000000002', 'stocks')).doc, { v: S.MARKET_V }, '보유·주문 기록 비움'); assert.deepEqual((await store.questDoc('guest:00000000-0000-4000-8000-000000000003', 'stocks')).doc, { v: S.MARKET_V });
+  assert.equal((await store.questDoc('guest:00000000-0000-4000-8000-000000000004', 'stocks')).doc.h['3.0'].q, 1, '새 시세 주식은 그대로');
+  assert.equal((await ledger()).reduce((n, f) => n + f.in, 0), 54270, '산 값 그대로 포인트');
+  assert.deepEqual(await S.refundOldStocks(store, letter), [], '두 번째는 아무 일도 없음'); assert.equal(letters.length, 1);
+  // an order on the new market marks the doc
+  const m = S.createMarket('o'); const t = at(2, 10, 10); const c = m.view(t).companies.find((x) => x.status === 'active');
+  assert.equal(S.order(m, {}, { code: c.code, side: 'buy', qty: 1 }, t).doc.v, S.MARKET_V);
+});
+
 test('섬 주식 서버: 사고팔면 포인트가 같이 빠지고 들어옴, 같은 주문 번호는 한 번, 장 밖 막힘, 주간 수익률 순위', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'stocks-')); rmAtExit(dir);
   const server = await boot(t, dir); const { req } = server;
@@ -63,6 +114,7 @@ test('섬 주식 서버: 사고팔면 포인트가 같이 빠지고 들어옴, �
   const bal = async (who) => (await req('/api/points', who)).data.balance;
   await req('/api/test/stocks/clock', a, { at: at(1, 8, 0) });
   const v0 = (await req('/api/island/stocks', a)).data; assert.equal(v0.open, false); assert.equal(v0.companies.length, 30);
+  { const files = (await fs.readdir(dir)).filter((f) => f.endsWith('.json')); const kept = (await Promise.all(files.map((f) => fs.readFile(path.join(dir, f), 'utf8')))).join('\n'); assert.match(kept, /"stocksKey":\s*"[0-9a-f]{64}"/, '시세 키는 서버 저장소에 한 번 만들어 둠'); assert.doesNotMatch(JSON.stringify(v0), /stocksKey|[0-9a-f]{64}/, '보드에는 키가 없음'); }
   const c = v0.companies.find((x) => x.status === 'active');
   assert.equal((await req('/api/island/stocks/order', a, { code: c.code, side: 'buy', qty: 1, requestId: crypto.randomUUID() })).data.error, 'CLOSED');
   await req('/api/test/stocks/clock', a, { at: at(1, 10, 30) });

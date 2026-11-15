@@ -3884,12 +3884,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const key = JSON.stringify([owned, stage, beds.map((p) => [p.uid, p.x, p.z, p.rot]), looks, l.weeds || []]);
       const was = farmShown.get(l.id);
       if (force || was?.key !== key) {
-        if (was) { was.root.removeFromParent(); }
-        const root = new THREE.Group(); farmGroup.add(root);
-        beds.forEach((p, b) => looks[b].forEach((id, i) => { if (!id) return; const at = cellPlace(lot, p, i); const h = new THREE.Group(); h.position.set(at.x, at.y, at.z); h.rotation.y = lot.yaw + (p.rot * Math.PI) / 2; root.add(h); const f = new THREE.Group(); mesh(new THREE.SphereGeometry(0.16, 8, 6), mat(id.endsWith('.0') ? 0x6b4f3a : 0x6aa84f), 0, 0.04, 0, f).scale.y = 0.5; h.add(f); assets.attach(id, h, f); }));
-        if (owned) { const bx = HOME.upkeepBoxOf(lot, stage); const h = new THREE.Group(); h.position.set(bx.x, heightAt(bx.x, bx.z), bx.z); h.rotation.y = bx.yaw; root.add(h); const f = new THREE.Group(); mesh(new THREE.BoxGeometry(0.7, 0.45, 0.45), mat(0x9a6b45), 0, 0.22, 0, f); h.add(f); assets.attach('village.toolbox', h, f); }
-        for (const w of l.weeds || []) { const at = YARD.world(lot, w.lx, w.lz); const h = new THREE.Group(); h.position.set(at.x, heightAt(at.x, at.z), at.z); h.rotation.y = (w.lx * 7 + w.lz * 13) % TAU; root.add(h); const f = new THREE.Group(); mesh(new THREE.ConeGeometry(0.12, 0.35, 5), mat(0x5f9e4f), 0, 0.17, 0, f); h.add(f); assets.attach('weed.tuft', h, f); }
-        farmShown.set(l.id, { key, root });
+        if (was) { was.root.removeFromParent(); for (const [h, f] of was.held) { assets.detach(h); disposeOwn(f); } } /* (Codex 311-320 #8: each holder let go of -- out of the loader's records and LODs -- and its stand-in's geometry) */
+        const root = new THREE.Group(); farmGroup.add(root); const held = [];
+        const hold = (id, h, f) => { held.push([h, f]); assets.attach(id, h, f); };
+        beds.forEach((p, b) => looks[b].forEach((id, i) => { if (!id) return; const at = cellPlace(lot, p, i); const h = new THREE.Group(); h.position.set(at.x, at.y, at.z); h.rotation.y = lot.yaw + (p.rot * Math.PI) / 2; root.add(h); const f = new THREE.Group(); mesh(new THREE.SphereGeometry(0.16, 8, 6), mat(id.endsWith('.0') ? 0x6b4f3a : 0x6aa84f), 0, 0.04, 0, f).scale.y = 0.5; h.add(f); hold(id, h, f); }));
+        if (owned) { const bx = HOME.upkeepBoxOf(lot, stage); const h = new THREE.Group(); h.position.set(bx.x, heightAt(bx.x, bx.z), bx.z); h.rotation.y = bx.yaw; root.add(h); const f = new THREE.Group(); mesh(new THREE.BoxGeometry(0.7, 0.45, 0.45), mat(0x9a6b45), 0, 0.22, 0, f); h.add(f); hold('village.toolbox', h, f); }
+        for (const w of l.weeds || []) { const at = YARD.world(lot, w.lx, w.lz); const h = new THREE.Group(); h.position.set(at.x, heightAt(at.x, at.z), at.z); h.rotation.y = (w.lx * 7 + w.lz * 13) % TAU; root.add(h); const f = new THREE.Group(); mesh(new THREE.ConeGeometry(0.12, 0.35, 5), mat(0x5f9e4f), 0, 0.17, 0, f); h.add(f); hold('weed.tuft', h, f); }
+        farmShown.set(l.id, { key, root, held });
       }
       const house = homesShown.get(l.id)?.root; if (house) weather(house, Boolean(owned && l.shabby));
       for (const w of l.weeds || []) { const at = YARD.world(lot, w.lx, w.lz); doors[`yardweed:${l.id}:${w.id}`] = { x: at.x, z: at.z, name: '잡초 뽑기' }; }

@@ -112,12 +112,24 @@ const IslandYard = require('./public/plaza/island-yard'); // v1.10.225 마당 �
 const IslandFarm = require('./public/plaza/island-farm'); // v1.10.318 마당 농사 F1 + 집 손보기
 const IslandStocks = require('./lib/island-stocks'); // v1.10.320 섬 주식
 const IslandExchange = require('./public/plaza/island-exchange'); // (its room)
-const stockMarket = IslandStocks.createMarket();
+// (Codex 311-320 #1: the market's key -- made once, kept in the world store, never sent anywhere; the prices from it alone)
+let stockMarketHeld = null;
+function stocksMarket() {
+  stockMarketHeld ||= (async () => {
+    let key = await pointStore.worldValue('stocksKey');
+    if (typeof key !== 'string' || key.length < 32) { key = crypto.randomBytes(32).toString('hex'); await pointStore.setWorldValue('stocksKey', key); }
+    // (사용자 「B」: shares bought on 320's market (its public seed) given back at what they cost, before anything else is read)
+    const back = await IslandStocks.refundOldStocks(pointStore, (userId, refund) => pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === 'stock-refund-321') ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: 'stock-refund-321', from: 'office', fromName: '섬 증권거래소', text: `섬 주식 시세를 새로 정하면서, 그동안 가지고 있던 주식을 산 값 그대로(수수료 포함) ${refund.toLocaleString('ko-KR')}P로 돌려드렸어요. 가진 주식과 주문 기록은 비워졌어요. 새 시세로 다시 사고팔 수 있어요.`, itemId: null, itemName: null, at: Date.now(), read: false }, Date.now()) } })));
+    if (back.length) { console.log(`[stocks] refund accounts=${back.length} points=${back.reduce((n, x) => n + x.refund, 0)}`); notifyPointsChanged(back.filter((x) => x.refund > 0).map((x) => x.userId)); }
+    return IslandStocks.createMarket(key);
+  })().catch((error) => { stockMarketHeld = null; throw error; });
+  return stockMarketHeld;
+}
 let stockClock = 0; const stockNow = () => Date.now() + stockClock; // (tests: /api/test/stocks/clock)
 const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', LIMIT: '오늘 주문 20번을 다 썼어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
 // this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
 async function stockRank(now, me = null) {
-  const all = await pointStore.questAll('stocks'); const rows = [];
+  const all = await pointStore.questAll('stocks'); const rows = []; const stockMarket = await stocksMarket();
   for (const { userId, doc } of all) { const r = IslandStocks.weekReturn(stockMarket, doc, now); if (r !== null && Number.isFinite(r)) rows.push({ userId, r: Math.round(r * 10) / 10 }); }
   rows.sort((a, b) => b.r - a.r || (a.userId < b.userId ? -1 : 1));
   const top = await Promise.all(rows.slice(0, 10).map(async (x, i) => ({ rank: i + 1, name: await accountName(x.userId).catch(() => '섬 주민'), r: x.r, mine: x.userId === me })));
@@ -127,15 +139,16 @@ async function stockRank(now, me = null) {
 // 정리 매매 (4A): a letter to everyone holding a company that goes away tomorrow -- once a company, checked each minute
 const stockNoticed = new Set();
 async function stockNotices(now = stockNow()) {
-  const going = stockMarket.view(now).companies.filter((c) => c.status === 'cleanup' && !stockNoticed.has(c.code)); if (!going.length) return;
+  const going = (await stocksMarket()).view(now).companies.filter((c) => c.status === 'cleanup' && !stockNoticed.has(c.code)); if (!going.length) return;
   const all = await pointStore.questAll('stocks');
   for (const c of going) {
-    stockNoticed.add(c.code);
+    let sent = true; /* (Codex 311-320 #6: done only when every holder's letter is in -- a failed one asked again next minute; the letter's id keeps it once) */
     const text = `${c.name}${c.bust ? '가 부도를 냈어요' : ' 주가가 상장가의 10% 아래로 떨어졌어요'}. 오늘 하루 정리 매매(팔기만 돼요) 뒤 상장 폐지돼요. 남은 주식은 0이 돼요. 섬 증권거래소 보드에서 팔 수 있어요.`;
     for (const { userId, doc } of all) {
       if (!(doc?.h?.[c.code]?.q > 0)) continue;
-      await pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === `stock-${c.code}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `stock-${c.code}`, from: 'office', fromName: '섬 증권거래소', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {});
+      await pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === `stock-${c.code}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `stock-${c.code}`, from: 'office', fromName: '섬 증권거래소', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => { sent = false; });
     }
+    if (sent) stockNoticed.add(c.code);
   }
 }
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
@@ -1436,7 +1449,7 @@ const WEEKLY_TITLES = {
   // v1.10.320 섬 주식 (3: 「순위 보여주고 1위에게 칭호, 보상 없음」): the week's best return (%), read at its end -- no market between
   // Sunday's close and Monday 09:00, so what each holds then is that week's; a title only (no statue, no points)
   stockking: { title: 'title_stockking', name: '이번 주 큰손', about: '섬 주식 주간 수익률 1위', noStatue: true, rows: async (from, to) => {
-    const end = Date.parse(to) - 1; const out = [];
+    const end = Date.parse(to) - 1; const out = []; const stockMarket = await stocksMarket();
     for (const { userId, doc } of await pointStore.questAll('stocks')) { const r = IslandStocks.weekReturn(stockMarket, doc, end); if (r !== null && Number.isFinite(r)) out.push({ userId, total: Math.round(r * 10) / 10, lastAt: '' }); }
     return out;
   } },
@@ -1897,7 +1910,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
+  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
@@ -4719,7 +4732,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.320' });
+    return sendJson(res, 200, { ok: true, version: '1.10.321' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6292,7 +6305,9 @@ async function requestHandler(req, res) {
   }
   // (v1.10.315 배치 도구 1단계: a place on the 0.05 m steps (or flush on a wall) and a turn on the 15° ones -- kept tidy: the
   // place to 0.1 mm, the turn on its sixth of a quarter when it is one; anything else stays as sent and the rules refuse it)
-  function placeNum(v) { const n = Number(v); return Number.isFinite(n) ? Math.round(n * 1e4) / 1e4 : n; }
+  // (Codex 311-320 #9: 0.1 mm was coarser than the rules' 1e-6 -- a stool turned 15° flush on a wall, x 4.129545923, came back
+  // 4.1295 and BAD_PLACE; kept to 1e-8 m now, well inside what island-home/island-yard allow)
+  function placeNum(v) { const n = Number(v); return Number.isFinite(n) ? Math.round(n * 1e8) / 1e8 : n; }
   function placeTurn(v) { const n = Number(v); return Number.isFinite(n) && Math.abs(n * 6 - Math.round(n * 6)) < 1e-6 ? Math.round(n * 6) / 6 : n; }
   // v1.10.225 마당 꾸미기: the owner, standing in their yard on the island -- a yard piece from the 가구 창고 placed (moved,
   // turned) or put back; the same rules as the screen (island-yard.js), and how many the yard's level holds
@@ -6358,14 +6373,14 @@ async function requestHandler(req, res) {
   // (whole shares, points taken or paid in the same step as the holdings, once per request); this week's ranking (returns)
   if (pathname === '/api/island/stocks' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = stockNow();
-    const { doc } = await pointStore.questDoc(account, 'stocks');
+    const { doc } = await pointStore.questDoc(account, 'stocks'); const stockMarket = await stocksMarket();
     return sendJson(res, 200, { ...stockMarket.view(now), mine: IslandStocks.mine(stockMarket, doc, now), rules: { fee: IslandStocks.FEE, hold: IslandStocks.HOLD_MAX, orders: IslandStocks.ORDERS_DAY, open: IslandStocks.OPEN, close: IslandStocks.CLOSE }, now });
   }
   if (pathname === '/api/island/stocks/order' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = stockNow();
     const body = await parseJson(req); const requestId = String(body.requestId || '');
     if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '주문 번호가 올바르지 않아요.');
-    const payKey = `stock:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${requestId}`;
+    const payKey = `stock:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${requestId}`; const stockMarket = await stocksMarket();
     const out = await pointStore.questApply(account, 'stocks', (doc) => { const r = IslandStocks.order(stockMarket, doc, { code: String(body.code || ''), side: body.side, qty: body.qty }, now); return r.error ? { error: r.error } : { doc: r.doc, cost: r.cost || 0, reward: r.reward || 0, payKey, reason: r.cost ? 'stock_buy' : 'stock_sell', price: r.price, fee: r.fee, name: r.name, side: body.side, qty: Number(body.qty) }; });
     if (out?.error) return sendError(res, out.error === 'PAID' ? 409 : 400, out.error, STOCK_ERRORS[out.error] || '주문하지 못했어요.');
     const { doc } = await pointStore.questDoc(account, 'stocks');
@@ -6390,7 +6405,7 @@ async function requestHandler(req, res) {
     const put = (d, cell) => { const cells = [...(d.beds?.[bed.uid] || [])]; while (cells.length < IslandFarm.SLOTS.length) cells.push(null); cells[slot] = cell; return { ...d, beds: { ...(d.beds || {}), [bed.uid]: cells } }; };
     if (body.action === 'plant') {
       const crop = IslandFarm.cropOfSeed(body.seed); if (!crop) return sendError(res, 400, 'BAD_SEED', '씨앗을 골라 주세요.');
-      const out = await farmApply(account, (d, bag) => (cellOf(d) ? { error: 'TAKEN' } : bagCount(bag, body.seed) < 1 ? { error: 'MISSING' } : { doc: put(d, { id: `c${now.toString(36)}${slot}`, crop, at: now, fed: null }), take: { itemId: body.seed, qty: 1 } }));
+      const out = await farmApply(account, (d, bag) => (cellOf(d) ? { error: 'TAKEN' } : bagCount(bag, body.seed) < 1 ? { error: 'MISSING' } : { doc: put(d, { id: `c${now.toString(36)}${slot}${crypto.randomBytes(4).toString('hex')}`, crop, at: now, fed: null }), take: { itemId: body.seed, qty: 1 } })); /* (Codex 311-320 #4: two beds' same cell in the same ms had one id -- its own now, and the bed in the harvest's claim) */
       if (out?.error === 'TAKEN') return sendError(res, 409, 'TAKEN', '이미 심은 칸이에요.');
       if (!out?.doc) return sendError(res, 409, 'MISSING', '가방에 그 씨앗이 없어요.');
       broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, cell: cellOf(out.doc), bag: out.bag, now });
@@ -6406,7 +6421,7 @@ async function requestHandler(req, res) {
     if (body.action === 'harvest') {
       const c = cellOf(await farmDocOf(account)); if (!c) return sendError(res, 409, 'EMPTY', '빈 칸이에요.');
       if (!IslandFarm.ripe(c, now)) return sendError(res, 409, 'NOT_RIPE', '아직 덜 자랐어요.');
-      const crop = IslandFarm.CROPS[c.crop]; const given = await pointStore.islandGive({ userId: account, claimId: `farm:${lot.id}:${c.id}`, itemId: IslandFarm.cropId(c.crop), qty: crop.yield, quiet: true }, now).catch(() => null);
+      const crop = IslandFarm.CROPS[c.crop]; const given = await pointStore.islandGive({ userId: account, claimId: `farm:${lot.id}:${bed.uid}:${c.id}`, itemId: IslandFarm.cropId(c.crop), qty: crop.yield, quiet: true }, now).catch(() => null);
       if (!given || (!given.applied && given.reason === 'full')) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
       const out = await farmApply(account, (d) => (cellOf(d)?.id === c.id ? { doc: put(d, null) } : null));
       broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, crop: c.crop, qty: crop.yield, bag: given.bag || out?.bag, now });
@@ -6442,13 +6457,30 @@ async function requestHandler(req, res) {
     if (body.action === 'craft') {
       const r = IslandFarm.CRAFTS[body.recipe]; if (!r) return sendError(res, 400, 'BAD_RECIPE', '만들 것을 골라 주세요.');
       const [itemId, qty] = Object.entries(r.takes)[0];
+      // (Codex 311-320 #3: the materials taken and what is made owed, in one step -- `owed` in the upkeep record; then given (once,
+      // by its claim) and the owing struck off. Not given (a full bag, a failed write): kept owed, and the next 만들기 gives it
+      // first without taking anything again)
+      const tag = crypto.createHash('sha1').update(account).digest('hex').slice(0, 16);
+      const deliver = async (o) => {
+        const claim = `craft:${tag}:${o.n}`;
+        if (o.item) { const g = await pointStore.islandGive({ userId: account, claimId: claim, itemId: o.item, qty: 1, quiet: true }, now).catch(() => null); return g && !(g.applied === false && g.reason === 'full') ? { ok: true, bag: g.bag } : { ok: false, full: g?.reason === 'full' }; }
+        const done = await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: o.uid, id: o.good, at: o.at, claim }]); return true; }).catch(() => false);
+        return { ok: Boolean(done) };
+      };
+      const settle = (n) => upkeepApply(account, (d) => ((d.owed || []).some((o) => o.n === n) ? { doc: { ...d, owed: d.owed.filter((o) => o.n !== n) } } : null)).catch(() => null);
+      const reply = async (o, bag) => {
+        const g = await deliver(o); const made = IslandFarm.CRAFTS[o.recipe]?.name || r.name;
+        if (!g.ok) return g.full ? sendError(res, 409, 'BAG_FULL', `가방이 가득 찼어요. 가방을 비우고 다시 만들기를 누르면 ${made}을(를) 받아요.`) : sendError(res, 503, 'CRAFT_OWED', `${made}을(를) 아직 못 넣었어요. 다시 만들기를 누르면 받아요.`);
+        await settle(o.n);
+        return sendJson(res, 200, { ok: true, made, ...(o.good ? { good: o.good, uid: o.uid } : {}), bag: g.bag || bag, ...(o.recipe !== body.recipe ? { owed: true } : {}) });
+      };
+      const owedNow = ((await pointStore.questDoc(account, 'upkeep')).doc?.owed || [])[0];
+      if (owedNow) return reply(owedNow, null);
       if (r.item) { const bag = (await pointStore.questDoc(account, 'upkeep')).bag || []; const after = IslandItems.takeFromBag(bag, itemId, qty); if (after && !IslandItems.addToBag(after, r.item, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.'); } /* (room for what is made, checked first) */
-      const out = await upkeepApply(account, (d, bag) => (bagCount(bag, itemId) < qty ? { error: 'MISSING' } : { doc: { ...d, crafted: (d.crafted || 0) + 1 }, take: { itemId, qty } }));
+      const uid = `y${now.toString(36)}${crypto.randomBytes(3).toString('hex')}`;
+      const out = await upkeepApply(account, (d, bag) => { if (bagCount(bag, itemId) < qty) return { error: 'MISSING' }; const n = (d.crafted || 0) + 1; return { doc: { ...d, crafted: n, owed: [...(d.owed || []), { n, recipe: body.recipe, at: now, ...(r.item ? { item: r.item } : { good: r.good, uid }) }] }, take: { itemId, qty } }; });
       if (!out?.doc) return sendError(res, 409, 'MISSING', `${IslandItems.ITEMS[itemId]?.name || itemId} ${qty}개가 있어야 해요.`);
-      if (r.item) { const g = await pointStore.islandGive({ userId: account, claimId: `craft:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${out.doc.crafted}`, itemId: r.item, qty: 1, quiet: true }, now).catch(() => null); return sendJson(res, 200, { ok: true, made: r.name, bag: g?.bag || out.bag }); }
-      const uid = `y${now.toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
-      await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid, id: r.good, at: now }]); });
-      return sendJson(res, 200, { ok: true, made: r.name, good: r.good, uid, bag: out.bag });
+      return reply(out.doc.owed[out.doc.owed.length - 1], out.bag);
     }
     return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
   }
@@ -9806,7 +9838,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.320 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.321 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

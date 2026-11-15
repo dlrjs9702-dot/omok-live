@@ -29,6 +29,11 @@ test('내 집: 놓기 규칙 -- 방 안·0.05 칸·15°·겹침 허용·문간·
   assert.match(H.placeError({ uid: 'w', id: 'wall_clock__oak', x: 0, z: 5.75, rot: 1 / 6 }, []), /나란히/, '벽 가구는 90°씩');
   assert.equal(H.turnBy({ ...sofa, rot: 0 }, true), 1 / 6); assert.equal(H.turnBy({ ...sofa, rot: 23 / 6 }, true), 0); assert.equal(H.turnBy({ ...sofa, rot: 1 / 6 }), 7 / 6); assert.equal(H.turnBy({ id: 'wall_clock__oak', rot: 0 }, true), 1);
   assert.match(H.placeError({ ...sofa, z: -5 }, []), /문 앞/);
+  // (Codex 311-320 #9) a stool turned 15° flush on the 오두막's right wall (x 4.1295459...): the server keeps it to 1e-8 m
+  // (server.js placeNum) -- the 0.1 mm it kept before fell outside the flush rule's 1e-6
+  { const s = { uid: 's', id: 'stool__oak', z: 0, rot: 1 / 6, ...H.snapPos({ id: 'stool__oak', x: 4.25, z: 0, rot: 1 / 6 }, 1, [], true) };
+    assert.ok(Math.abs(s.x - 4.1295459) < 1e-6, String(s.x)); const kept = (k) => ({ ...s, x: Math.round(s.x * k) / k, z: Math.round(s.z * k) / k });
+    assert.equal(H.placeError(kept(1e8), [], 1), null, '벽 밀착 15° 그대로 저장'); assert.match(H.placeError(kept(1e4), [], 1), /자리/, '(0.1 mm면 거절되던 것)'); }
   assert.equal(H.placeError({ uid: 'r', id: 'rug_round__sage', x: 0, z: 0, rot: 0 }, [sofa]), null); // (a rug under it)
   const clock = { uid: 'c', id: 'wall_clock__oak', x: 0, z: 5.75, rot: 0 };
   assert.equal(H.placeError(clock, [sofa]), null);
