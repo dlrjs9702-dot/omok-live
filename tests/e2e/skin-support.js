@@ -198,7 +198,7 @@ async function intoMall(page, place = null, isMobile = false) {
     await expect.poll(async () => { if (await inside()) return '백화점 들어가기'; await page.evaluate(() => window.PlazaDebug().place('store')); await page.waitForTimeout(600); return (await inside()) ? '백화점 들어가기' : page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('백화점 들어가기');
     if (await inside()) break;
     await spaceOn(page, 'store', isMobile); // (CI 3차: the door read and pressed at once)
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 10000 }).toBe('store').catch(() => {});
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 30000 }).toBe('store').catch(() => {}); /* (1.10.326 흔들림 §6: the scene rebuilt -- 4.4~5.4 s on a CI phone) */
   }
   expect(MALL).toContain(await page.evaluate(() => window.PlazaDebug().space));
   if (place) await liftTo(page, await page.evaluate((place) => (window.IslandFashion.sectorOf(place) || window.IslandFashion.MIRROR_PLACES.includes(place) ? 2 : 1), place), isMobile); // (the shop's floor)
@@ -219,7 +219,7 @@ async function outOfMall(page) {
   await page.evaluate(() => { const d = window.PlazaDebug(); const door = d.doors['store:exit'] || null; const w = door || window.IslandStore.world(0, -9.1); d.teleport(w.x, w.z); });
   await expect(page.locator('#plazaHint')).toContainText('나가기', { timeout: 10000 });
   // (CI 3차: the exit read and pressed at once, again until out)
-  await expect.poll(async () => { if (await page.evaluate(() => window.PlazaDebug().space) === 'island') return 'island'; await spaceOn(page, 'store:exit'); await page.waitForTimeout(1000); return page.evaluate(() => window.PlazaDebug().space); }, { timeout: 15000 }).toBe('island');
+  await expect.poll(async () => { if (await page.evaluate(() => window.PlazaDebug().space) === 'island') return 'island'; await spaceOn(page, 'store:exit'); await page.waitForTimeout(1000); return page.evaluate(() => window.PlazaDebug().space); }, { timeout: 45000 }).toBe('island');
 }
 module.exports.outOfMall = outOfMall;
 

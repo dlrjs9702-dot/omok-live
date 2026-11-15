@@ -85,6 +85,7 @@ test('기록의 탑: 게임관 앞 탑(전구 32·깃발·글 면 셋), SPACE �
   }
   await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x, z); }, await door('board:records'));
   expect(Math.hypot(at.x - 35, at.z + 65)).toBeGreaterThan(10); /* (v1.10.253: off the 게임관's door -- on the long garden) */
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 15000 }).toBe('board:records'); /* (1.10.326: 'board:records' is also the start of the back's key -- still by the back after the warp, the press was lost) */
   await expect.poll(() => spaceOn(page, 'board:records', false), { timeout: 15000 }).toBe(true); /* (it presses SPACE itself) */
   const dlg = page.locator('#recordTowerDialog'); await expect(dlg).toBeVisible();
   await expect(dlg.locator('#recordTowerGames .recordTowerChip')).toHaveCount(15); await expect(dlg.locator('#recordTowerGames .recordTowerChip').first()).toHaveText('매일 대회'); /* (v1.10.305 대회 순위: the daily contest's tab first, then the 14 games) */

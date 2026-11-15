@@ -14,6 +14,7 @@ test('감정 표현: T 바퀴 → 웃음 → 몸짓·표정·기호, 끝나면 �
   let own = null; /* (taken when not mid-blink -- in the same read) */
   await expect.poll(async () => { const s = (await feeling(page)).shown.sort(); if (!s.some((x) => x.includes('_x_'))) own = s; return own !== null; }, { timeout: 10000, intervals: [30] }).toBe(true);
   await expect.poll(() => page.evaluate(() => Object.entries(window.PlazaDebug().assets?.files || {}).filter(([u, s]) => /wear\/(eyes|mouth)_x_[a-z]+\.glb$/.test(u) && s === 'loaded').length), { timeout: 30000 }).toBe(12); // (the 12 expression parts fetched early)
+  await page.evaluate(() => window.PlazaDebug().facePose('laugh')); await page.waitForTimeout(800); await page.evaluate(() => window.PlazaDebug().facePose(null)); /* (1.10.326 흔들림 §6, low confidence: drawn once first -- a software renderer's first shader compile no more inside the 6 s watch) */
   const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
   await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 2.5, z + 1.5), [at.x, at.z]);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
@@ -29,7 +30,7 @@ test('감정 표현: T 바퀴 → 웃음 → 몸짓·표정·기호, 끝나면 �
   expect(await mine).toEqual({ run: ['emote:laugh', 'Laugh'], face: true, mark: true }); // (my act and move; the happy eyes and laughing mouth with mine hidden; the note)
   /* (another's screen: the move, the face and the mark -- what the feeling showed there, read after it: v1.10.288 CI, a slow page sampled it too late) */
   await expect.poll(() => b.page.evaluate(() => { const D = window.PlazaDebug(); for (const o of D.others) { const f = D.feeling(o.id)?.felt; if (f?.id === 'laugh' && f.face?.includes('wear.eyes_x_happy') && f.marks.includes('note')) return f; } return null; }), { timeout: 30000 }).toMatchObject({ id: 'laugh', clip: 'Laugh' });
-  await expect.poll(async () => { const f = await feeling(page); return [f.id, f.act, f.face, f.shown.sort()]; }, { timeout: 5000 }).toEqual([null, null, null, own]); // (mine again)
+  await expect.poll(async () => { const f = await feeling(page); return [f.id, f.act, f.face, f.shown.filter((x) => !x.includes('_x_blink')).sort()]; }, { timeout: 15000 }).toEqual([null, null, null, own]); /* (1.10.326 흔들림 §6: a blink between is not it; the clip at CI's frame dt) */ // (mine again)
   if (process.env.SHOT_DIR) await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 9, z + 6), [at.x, at.z]); /* (out of the close-ups) */
   if (process.env.SHOT_DIR) for (const id of ['laugh', 'cry', 'surprise', 'heart']) { /* (photos: the face and its mark close, held) */
     await page.evaluate((x) => window.PlazaDebug().facePose(x), id); await expect.poll(async () => (await feeling(page)).shown.some((s) => s.includes('_x_')), { timeout: 5000 }).toBe(true);

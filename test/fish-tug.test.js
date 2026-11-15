@@ -95,6 +95,6 @@ test('입질 게임: 반반·세 번 연속 없음, 타이밍 막대 판정(칸�
   await req('/api/test/fish/mode', s, { mode: 'timing' });
   let c = (await req('/api/island/fish/start', s, {})).data; assert.equal(c.mode, 'timing'); assert.ok(c.timing.zones.length >= 2);
   await req('/api/test/fish/bite', s, {}); const soon = await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: hitsFor(c.timing) }); assert.deepEqual([soon.status, soon.data.error], [409, 'FISH_WRONG'], '입질 직후 도착');
-  c = (await req('/api/island/fish/start', s, {})).data; const hits = hitsFor(c.timing); await req('/api/test/fish/bite', s, { biteAgo: hits[hits.length - 1].t + 100 });
+  c = (await req('/api/island/fish/start', s, {})).data; const hits = hitsFor(c.timing); await req('/api/test/fish/bite', s, { biteAgo: hits[hits.length - 1].t + 100, tug: false }); /* (1.10.326 흔들림 §6: a big one drawn would answer with its tug plan, no species) */
   const ok = await req('/api/island/fish/finish', s, { fishId: c.fishId, presses: hits }); assert.equal(ok.status, 200, JSON.stringify(ok.data)); assert.ok(ok.data.species);
 });

@@ -28,7 +28,7 @@ test('1인칭 대화 구도: 눈높이·머리부터 어깨·얼굴은 위쪽 1/
   };
   for (const [n, name] of [[1, 'haesong'], [9, 'garam']]) {
     await expect.poll(async () => {
-      if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w) { await window.PlazaWarp(w.x + 1.0, w.z); window.PlazaDebug().talkResident(n); } }, n); await page.waitForTimeout(900); }
+      if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async (n) => { const w = window.PlazaDebug().wanderers.find((o) => o.n === n); if (w && !w.held) { /* (1.10.326 흔들림 §6: not while held -- drawn where they were) */ await window.PlazaWarp(w.x + 1.0, w.z); window.PlazaDebug().talkResident(n); } }, n); await page.waitForTimeout(900); }
       return talking();
     }, { timeout: 120000, intervals: [300] }).toBe(true);
     await framed(name);
@@ -79,7 +79,7 @@ test('대화 자리 잡기: 나무 피하는 대화 카메라, 먼 주민에게 
     let gaps = [];
     for (const n of [11, 14]) {
       await expect.poll(async () => { if (await talking()) return true; await post(request, '/api/test/island/free-residents', who.token, {}); /* (v1.10.231, 230 CI: an island NPC event held 11 -- RESIDENT_BUSY) */ await d('talkResident', n); await page.waitForTimeout(1500); return talking(); }, { timeout: 30000 }).toBe(true);
-      await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().talkView))?.gap ?? 9, { timeout: 8000 }).toBeLessThan(2.0);
+      await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().talkView))?.gap ?? 9, { timeout: 25000 }).toBeLessThan(2.0); /* (1.10.326 흔들림 §6: the walk over at CI's 2.7 fps) */
       await page.waitForTimeout(1500); gaps.push((await page.evaluate(() => window.PlazaDebug().talkView)).gap); /* (settled) */ const fr = await page.evaluate(() => window.PlazaDebug().talkFrame3()); if (n === 14) { expect(fr.head.y, '콩이 머리 화면 위쪽').toBeGreaterThan(0.35); expect(Math.abs(fr.waist.x)).toBeLessThan(0.6); }
       if (process.env.SHOT_DIR) { await page.waitForTimeout(1200); await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-talk-${n}.png` }); }
       await page.keyboard.press('Escape'); await page.waitForTimeout(800);

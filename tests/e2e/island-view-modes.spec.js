@@ -56,13 +56,13 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
   // a talk in the first: face to face -- the view turned to them (no talk camera), my body still hidden; closed, the first on
   const dialog = page.locator('#plazaDialog'); const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
   await expect.poll(async () => {
-    if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async () => { const w = window.PlazaDebug().wanderers.find((o) => o.n === 1); if (w) { await window.PlazaWarp(w.x + 1.3, w.z); window.PlazaDebug().talkResident(w.n); } }); await page.waitForTimeout(900); }
+    if (!await talking()) { await post(request, '/api/test/island/free-residents', who.token, {}); await page.evaluate(async () => { const w = window.PlazaDebug().wanderers.find((o) => o.visible && !o.held && o.speed < 0.2); /* (1.10.326 흔들림 §6: one drawn where the server has them) */ if (w) { await window.PlazaWarp(w.x + 1.3, w.z); window.PlazaDebug().talkResident(w.n); } }); await page.waitForTimeout(900); }
     return talking();
   }, { timeout: 120000, intervals: [300] }).toBe(true);
   await expect.poll(async () => Math.abs((await page.evaluate(() => window.PlazaDebug().talkAim()))?.x ?? 9), { timeout: 10000 }).toBeLessThan(0.2); /* (their eyes in the middle of the screen -- the figure drawn, not the walker's reckoned spot: v1.10.210 local phone run, one held while walking drawn a step behind) */
   expect(await view()).toMatchObject({ mode: 'first', body: false, fov: 64 });
   await shot('talk-first');
-  await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false); expect(await view()).toMatchObject({ mode: 'first', fov: 70 });
+  await page.evaluate(() => document.getElementById('plazaDialog').close()); await expect.poll(talking).toBe(false); await expect.poll(async () => (await view()).fov).toBe(70); expect(await view()).toMatchObject({ mode: 'first', fov: 70 });
   // (문제 기록 1103 3 「의자에 앉았을 때도 1인칭이 유지되게」) seated: the first kept, the eyes lower, the look held within ±100°
   // of the seat's way; stood up, the first still
   {
