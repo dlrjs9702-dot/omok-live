@@ -16,7 +16,9 @@ permissions:
 
 # One run per PR: a new push cancels the PR's run still in progress (main runs are keyed by SHA, so they never cancel).
 concurrency:
-  group: e2e-${{ github.event.pull_request.number || github.sha }}
+  # (notes patch-speed-20261115 안 4: a draft's run -- skipped by its jobs' `if` -- in a group of its own, so a push to a draft
+  # never cancels the ready run of the same PR)
+  group: e2e-${{ github.event.pull_request.draft && github.run_id || github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:

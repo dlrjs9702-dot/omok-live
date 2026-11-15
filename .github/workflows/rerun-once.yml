@@ -1,0 +1,27 @@
+name: Rerun failed parts once
+
+# notes patch-speed-20261115 안 1, 사용자 67A: a PR's browser run that failed on its first attempt has its failed parts run again,
+# once -- what we pressed by hand a few minutes (once 168 minutes) later. A real failure just fails twice; a push meanwhile
+# cancels it (playwright.yml's concurrency). Nothing of the PR is checked out here: only the rerun is asked for.
+on:
+  workflow_run:
+    workflows: [Playwright E2E]
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  rerun:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt == 1 &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the failed parts again
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.event.workflow_run.id }}
+        run: gh run rerun "$RUN" --failed -R "$GITHUB_REPOSITORY"

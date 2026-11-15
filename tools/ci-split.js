@@ -5,7 +5,8 @@
 // the tests of one part (tests/e2e/<file>:<line>); every part job works out the same split from the same commit, so the
 // parts never overlap and together are the whole set (checked here: every test in exactly one part).
 //   chromium: every spec on PC; mobile: the general specs (PLAYWRIGHT_SKIP_ISLAND) and the island specs in $PLAZA_MOBILE
-// Each test's time is tools/ci-timings.json (seconds, from a green run's logs: tools/ci-timings.js); a new one counts 60 s.
+// Each test's time is tools/ci-timings.json (seconds, from a green run's logs: tools/ci-timings.js); a new one counts as its
+// file's median (60 s in a new file).
 const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
@@ -21,7 +22,11 @@ function list(project, files = [], env = {}) {
 const project = kind === 'chromium' ? 'chromium' : 'mobile-chromium';
 const tests = [...new Set(kind === 'chromium' ? list(project) : [...list(project, [], { PLAYWRIGHT_SKIP_ISLAND: '1' }), ...list(project, (process.env.PLAZA_MOBILE || '').split(/\s+/).filter(Boolean))])];
 const timings = require('./ci-timings.json');
-const time = (t) => timings[`${project} ${t}`] ?? 60;
+// (notes patch-speed-20261115 안 2, 65A: a test with no time yet counts as its file's known tests' median, 60 s with none)
+const fileOf = (t) => t.replace(/:\d+$/, ''); const byFile = new Map();
+for (const [k, s] of Object.entries(timings)) { const [p, t] = [k.slice(0, k.indexOf(' ')), k.slice(k.indexOf(' ') + 1)]; if (p !== project) continue; const f = fileOf(t); if (!byFile.has(f)) byFile.set(f, []); byFile.get(f).push(s); }
+const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 60; };
+const time = (t) => timings[`${project} ${t}`] ?? (byFile.has(fileOf(t)) ? median(byFile.get(fileOf(t))) : 60);
 // longest first, each to the part with the least so far (ties: the lower part, the test's own order)
 const load = Array(parts).fill(0); const assigned = Array.from({ length: parts }, () => []);
 for (const t of [...tests].sort((a, b) => time(b) - time(a) || a.localeCompare(b))) {

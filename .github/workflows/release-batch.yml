@@ -6,9 +6,11 @@ name: Release batch
 on:
   # (2026-11-11: the 05:00 run on the hour never happened -- no record of it; GitHub drops scheduled runs at busy on-the-hour
   # times. Off the hour now, and a second try half an hour on: a run with live already at main ends 「already main」)
+  # (notes patch-speed-20261115 안 3, 66A: GitHub ran these 3.6~5.6 hours late -- so a line every hour from 00:17 KST, and the
+  # job moves live only when it really runs between 04:30 and 09:00 KST, once that day; the others end at once)
   schedule:
-    - cron: '17 20 * * *' # (05:17 KST)
-    - cron: '47 20 * * *' # (05:47 KST, the backup)
+    - cron: '17 15,16,17,18,19,20 * * *' # (00:17 ~ 05:17 KST, every hour)
+    - cron: '47 20 * * *' # (05:47 KST)
   workflow_dispatch:
 
 permissions:
@@ -26,8 +28,18 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          fetch-tags: true
       - name: Move live up to main
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
+          today=$(TZ=Asia/Seoul date +%F)
+          if [ "$EVENT" = schedule ]; then
+            h=$(TZ=Asia/Seoul date +%H%M)
+            if [ "$h" -lt 0430 ] || [ "$h" -ge 0900 ]; then echo "outside 04:30~09:00 KST (${h}) -- nothing"; exit 0; fi
+            last=$(git for-each-ref refs/tags/live-moved --format='%(contents:subject)')
+            if [ "$last" = "$today" ]; then echo "live already moved today (${today}) -- nothing"; exit 0; fi
+          fi
           main=$(git rev-parse origin/main)
           if ! git rev-parse -q --verify origin/live >/dev/null; then
             echo "live: new at main ${main}"
@@ -39,3 +51,7 @@ jobs:
             echo "live: $(git rev-parse --short origin/live) -> $(git rev-parse --short "$main")"
           fi
           git push origin "${main}:refs/heads/live"
+          # (the day it moved, for the hourly lines after it: one tag moved along, its message the Seoul date)
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -f -a live-moved -m "$today" "$main"
+          git push -f origin refs/tags/live-moved
