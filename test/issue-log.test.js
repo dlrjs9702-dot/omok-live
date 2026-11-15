@@ -29,6 +29,9 @@ test('문제 기록 로그 한 줄: [issue] JSON, 사진·계정 id 없음, 줄�
   assert.match(o.error, /reading 'name'/);
   assert.ok(!line.includes('secret-account') && !line.includes('base64'));
   assert.equal(o.wear, null);
+  // (1.10.322) the screen's measured 100vh, when the page sends it
+  const v = JSON.parse(logLine('add', { id: 'y', at: now, version: '1.10.322', kind: 'bug', status: 'open', text: '밀림', ctx: { device: { touch: true, w: 749, h: 750, vh: 806 } } }).slice(8));
+  assert.equal(v.device, 'phone 749x750 vh806');
 });
 
 // (문제 기록 정리 2026-10-21) the writer's outfit in the line: slot ids, the transformation and its mode, the parts put on

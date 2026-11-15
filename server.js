@@ -125,6 +125,12 @@ function stocksMarket() {
   })().catch((error) => { stockMarketHeld = null; throw error; });
   return stockMarketHeld;
 }
+// v1.10.322 경제 로그 (lib/economy-log.js): the economy's sums in Render's log -- a minute after the start, then each day after
+// 00:10 Seoul (the tax and the interest done); never an account, only sums
+const EconomyLog = require('./lib/economy-log');
+let economyLoggedDay = null; let economyLogReady = false;
+async function logEconomy(now = Date.now()) { const stats = await pointStore.economyStats(14, now); for (const line of EconomyLog.economyLogLines(stats, now, require('./package.json').version)) console.log(line); }
+function economyLogTick(now = Date.now()) { if (!economyLogReady) return; const due = EconomyLog.dueDay(now, economyLoggedDay); if (!due) return; economyLoggedDay = due; logEconomy(now).catch((error) => console.error('경제 로그 실패:', error.message)); }
 let stockClock = 0; const stockNow = () => Date.now() + stockClock; // (tests: /api/test/stocks/clock)
 const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', LIMIT: '오늘 주문 20번을 다 썼어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
 // this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
@@ -1912,7 +1918,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
 // where I was and how far from the place, how old that pose was, and whether my lobby stream was open
 function nearLog(session, what, at, target) {
@@ -2306,6 +2312,7 @@ const trainVisitors = new Map();
 const trainRiders = new Map(); let trainShift = 0; let trainTraffic = IslandTrain.createTraffic(nowMs());
 const taxiRides = new Map(); // v1.10.271 섬 택시: session token -> { from, startedAt, runMs? } while riding
 const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time per session)
+const unstuckAt = new Map(); // (1.10.322 U3: session token -> when it last asked to be put on 대청마당)
 // v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
 // (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
 const taxiStopOut = new Map();
@@ -2649,7 +2656,8 @@ async function noticeEvents() {
   for (const [id, title, body] of notes) { if (await pointStore.worldValue(`eventNotice:${id}`)) continue; await pointStore.setWorldValue(`eventNotice:${id}`, nowMs()); await announcementStore.create(title, body, false); posted = true; }
   if (posted) await broadcastAnnouncements().catch(() => {});
 }
-setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); stockNotices().catch((error) => console.error('정리 매매 알림 실패:', error.message)); }, 60000).unref?.();
+setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); stockNotices().catch((error) => console.error('정리 매매 알림 실패:', error.message)); economyLogTick(); }, 60000).unref?.();
+setTimeout(() => { economyLoggedDay = EconomyLog.dueDay(Date.now(), null); economyLogReady = true; logEconomy().catch((error) => console.error('경제 로그 실패:', error.message)); }, 60000).unref?.(); // (a minute after the start; that day counted if past 00:10)
 async function contestNote(account, session, contestId, kind, value) {
   const c = await contestState();
   if (c.phase !== 'live' || c.id !== contestId || c.kind !== kind || !Number.isFinite(value) || value < 0 || (c.higher && value <= 0)) return null; // (총괄 검토 2: a score round of 0 is no entry)
@@ -4732,7 +4740,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.321' });
+    return sendJson(res, 200, { ok: true, version: '1.10.322' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6348,6 +6356,20 @@ async function requestHandler(req, res) {
       await setYardLevel(account, level + 1); notifyPointsChanged([account]); broadcastIsland('homes', { lot: h.lot });
       return sendJson(res, 200, { ok: true, yardLevel: level + 1, limit: IslandYard.limitOf(level + 1) });
     });
+  }
+  // 1.10.322 편의 1 U3 「막혔을 때 대청마당으로」 (notes mokpo-onxdo-ui-ideas-20261115): stuck in a wall or a thing -- the server puts
+  // me on a free spot by 대청마당's arrival place; not in a room, a taxi or a train (their own ways out), once in 20 s
+  if (pathname === '/api/island/unstuck' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const t = session.token;
+    const at = plazaPresence.get(t); if (!at) return sendError(res, 409, 'NOT_ON_ISLAND', '섬에서 다시 시도해 주세요.');
+    const inside = [exchangeInside, museumInside, jailInside, storeInside, townhallInside, furnitureInside, petshopInside, fashionInside].some((s) => s.has(t)) || homeInside.has(t);
+    if (inside || (at.space && at.space !== 'island')) return sendError(res, 409, 'INSIDE', '건물 안에서는 문으로 나가 주세요.');
+    if (taxiRides.has(t) || trainRiders.has(t) || trainVisitors.has(t) || at.ride || at.platform || at.taxi) return sendError(res, 409, 'RIDING', '택시나 열차에서는 쓸 수 없어요. 내린 뒤 다시 눌러 주세요.');
+    const last = unstuckAt.get(t) || 0; if (nowMs() - last < 20000) return sendError(res, 429, 'TOO_SOON', '조금 뒤에 다시 눌러 주세요.');
+    const S = IslandTerrain.SPAWN; const spot = plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
+    unstuckAt.set(t, nowMs()); freeSeat(t);
+    plazaPresence.set(t, { ...at, x: spot.x, z: spot.z, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
+    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z });
   }
   // v1.10.320 섬 증권거래소: in at its door on 대청마당 (anyone), out at the room's (public/plaza/island-exchange.js)
   if ((pathname === '/api/island/exchange/enter' || pathname === '/api/island/exchange/leave') && req.method === 'POST') {
@@ -9838,7 +9860,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.321 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.322 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

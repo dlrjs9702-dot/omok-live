@@ -26,8 +26,9 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
   const menu = async () => { await closeAll(); await page.locator('#gameMenuBtn').click(); await expect(page.locator('#gameMenuDialog')).toBeVisible(); };
   await menu();
   await expect(page.locator('#gameMenuThemesLabel')).toHaveText('게임관 화면:');
-  await expect(page.locator('.gameMenuThemes label')).toHaveText(['밝게', '어둡게', '기기 설정']);
-  for (const [button, sel] of [[null, '#gameMenuDialog'], ['#myInfoBtn', '#myInfoDialog'], ['#issueLogBtn', '#issueDialog'], ['#furnitureStorageBtn', '#plazaDialog'], ['#myHomeBtn', '#plazaDialog'], ['#logoutBtn', '#logoutDialog']]) {
+  await expect(page.locator('[aria-labelledby="gameMenuThemesLabel"] label')).toHaveText(['밝게', '어둡게', '기기 설정']);
+  await expect(page.locator('[aria-labelledby="screenPresetLabel"] label')).toHaveText(['자동(권장)', '가볍게', '최대한 가볍게']); // (1.10.322 U2 섬 화면 3단계)
+  for (const [button, sel] of [[null, '#gameMenuDialog'], ['#myInfoBtn', '#myInfoDialog'], ['#issueLogBtn', '#issueDialog'], ['#furnitureStorageBtn', '#plazaDialog'], ['#myHomeBtn', '#plazaDialog'], ['#controlsBtn', '#plazaDialog'], ['#logoutBtn', '#logoutDialog']]) {
     if (button) { await menu(); await page.locator(button).click(); }
     await expect(page.locator(sel)).toBeVisible();
     const l = await look(sel);

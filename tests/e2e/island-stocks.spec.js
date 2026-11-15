@@ -28,10 +28,15 @@ test('섬 증권거래소: 문으로 들어가 보드 SPACE → 시세 30종 →
     const win = page.locator('.stocksCard'); await expect(win).toBeVisible({ timeout: 15000 });
     await expect(win.locator('.stocksHead')).toContainText('장 열림'); await expect(win.locator('.stocksRow')).toHaveCount(30);
     await shot(page, 'exchange-board');
+    // (1.10.322) each row's line and its ▲▼ on one basis (today's first price to now), the columns named
+    await expect(win.locator('.stocksCols')).toContainText('오늘');
+    expect(await win.locator('.stocksRow:not([disabled])').evaluateAll((rows) => rows.every((r) => { const line = r.querySelector('.stockSpark polyline'); const ch = r.querySelector('.stocksChange'); return !line || [...ch.classList].includes(line.getAttribute('class')); }))).toBe(true);
     // a company: buy 3, the points down by price x 3 + the fee; sell 1
     const bal = async () => (await get(request, '/api/points', token)).data.balance; const before = await bal();
     await win.locator('.stocksRow:not([disabled])').first().click();
     const priceText = await win.locator('.stocksPrice.big').textContent(); const price = Number(priceText.replace(/[^0-9]/g, ''));
+    await expect(win.locator('.stocksDetail')).toContainText('오늘'); await expect(win.locator('.stocksDetail')).toContainText('어제보다');
+    await expect(win.locator('.stocksLabel').nth(1)).toHaveText(/^(상장 [1-6]일째|지난 7일)$/); /* (fewer than 7 days listed: 「상장 n일째」) */
     await win.locator('.stocksQtyInput').fill('3'); await expect(win.locator('.stocksNote')).toContainText('수수료 0.5%');
     await shot(page, 'exchange-company');
     await win.getByRole('button', { name: '사기', exact: true }).click();
