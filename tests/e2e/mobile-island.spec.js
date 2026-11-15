@@ -83,9 +83,12 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
     await page.setViewportSize(size);
     await expect.poll(() => page.evaluate(() => {
       const bottom = (id) => document.getElementById(id).getBoundingClientRect().bottom;
-      return document.documentElement.scrollHeight <= innerHeight && bottom('plazaStage') <= innerHeight && bottom('islandStick') <= innerHeight;
+      return document.documentElement.scrollHeight <= innerHeight && document.scrollingElement.scrollHeight <= innerHeight && bottom('plazaStage') <= innerHeight && bottom('islandStick') <= innerHeight;
     })).toBe(true);
   }
+  // (1.10.322 폰 화면 밀림: a phone's 100vh can be 56 px over the screen -- not here in emulation, so the rules themselves: body as
+  // tall as the screen (100dvh), the canvas's drags never the page's)
+  expect(await page.evaluate(() => ({ body: Math.round(parseFloat(getComputedStyle(document.body).minHeight)) === innerHeight, touch: getComputedStyle(document.querySelector('.plazaStage canvas.plazaCanvas')).touchAction }))).toEqual({ body: true, touch: 'none' });
 });
 
 // v1.10.67 조이스틱 위치·크기 (사용자 2026-10-12): 메뉴 → 환경설정 → 「조이스틱 위치·크기」, drag the stick, size it, 완료;

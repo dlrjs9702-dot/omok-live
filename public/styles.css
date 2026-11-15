@@ -1570,6 +1570,7 @@ body.tableGamePlaying #teamPlayers{display:none!important}
 @media (prefers-reduced-motion:reduce){.boardOverlay.legendResult{animation:none}}
 
 /* v1.8.8 3D 광장 로비: the square fills the lobby under the top bar; facility windows reuse the lobby sections */
+body.plazaMode{min-height:100dvh}/* (1.10.322 폰 화면 밀림, notes phone-screen-shift-20261115 검토: body 100vh가 섬 틀 100dvh보다 56px 커서 문서가 스크롤됐음) */
 body.plazaMode .shell{width:min(1600px,calc(100% - 24px));padding-bottom:16px}
 body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 #lobbyView>#islandMapCard{display:none}.islandMapCard canvas{display:block;width:auto;max-width:100%;max-height:72vh;margin:0 auto;border-radius:14px}
@@ -1601,7 +1602,7 @@ body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display
 .islandChatMessages{flex:1;min-height:0;overflow:auto;background:transparent!important}
 .islandChatForm{position:absolute;left:50%;bottom:64px;z-index:3;width:min(520px,70%);transform:translateX(-50%)}.islandChatForm input{width:100%;padding:11px 14px;border-radius:14px;background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-tag);box-shadow:0 0 0 3px rgba(138,106,74,.25)}.islandChatForm input::placeholder{color:var(--isle-soft)}
 .plazaStage:focus-visible{box-shadow:0 0 0 3px #60a5fa,0 24px 70px rgba(0,0,0,.28)}
-.plazaStage canvas.plazaCanvas{display:block;width:100%;height:100%}
+.plazaStage canvas.plazaCanvas{display:block;width:100%;height:100%;touch-action:none}
 .doorShade{position:absolute;inset:0;background:rgb(0,0,0);opacity:0;pointer-events:none;transition:opacity .25s;z-index:2}.doorShade.on{opacity:.55} /* (문제 기록 1103 6: out by a doorway) */
 .plazaHint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%) rotate(-1deg);padding:12px 22px 10px;font-weight:950;font-size:1.1rem;letter-spacing:.03em;pointer-events:none;white-space:nowrap} /* (U: an .isle-tape note) */
 @media (max-width: 1100px) { body:not(.touchIsland) .plazaHint { bottom: 64px; width: max-content; max-width: calc(100% - 32px); white-space: normal; text-align: center; } } /* (문제 기록 1103 5: a narrow PC window -- above the 가방·사진·시점 row, two lines if it must) */
@@ -3747,4 +3748,5 @@ body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:
 .stocksDetail{display:flex;align-items:baseline;gap:12px}
 .stocksOrder{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .stocksQtyInput{width:96px;padding:6px 8px;border-radius:8px;border:1px solid rgba(120,100,70,.35);font:inherit}
-@media (max-width:560px){.stocksRow{grid-template-columns:minmax(0,1.4fr) 64px minmax(0,1fr) minmax(0,.9fr);gap:6px;padding:6px 8px}.stockSpark{width:64px}}
+.stocksCols{display:grid;grid-template-columns:minmax(0,1.6fr) 96px minmax(0,1fr) minmax(0,.9fr);gap:8px;padding:0 11px;font-size:.78rem;opacity:.72}/* (1.10.322: the board's column names) */
+@media (max-width:560px){.stocksRow,.stocksCols{grid-template-columns:minmax(0,1.4fr) 64px minmax(0,1fr) minmax(0,.9fr);gap:6px;padding:6px 8px}.stocksCols{padding:0 9px}.stockSpark{width:64px}}

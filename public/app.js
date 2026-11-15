@@ -1288,6 +1288,12 @@
 
   if (sessionToken) history.replaceState(null, '', '/island/');
 
+  // (1.10.322 폰 화면 밀림, notes phone-screen-shift-20261115 검토) the island's page is never scrolled: body is 100dvh in
+  // plazaMode (styles.css), and should a phone still scroll it (a keyboard, a drag) it goes back to the top at once; the
+  // 문제 기록 carries what 100vh measures on this screen
+  function measuredVh() { try { const d = document.createElement('div'); d.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100vh;visibility:hidden;pointer-events:none'; document.body.append(d); const h = d.offsetHeight; d.remove(); return h; } catch { return null; } }
+  addEventListener('scroll', () => { if (document.body.classList.contains('plazaMode') && document.body.classList.contains('touchIsland') && (scrollY || scrollX)) scrollTo(0, 0); }, { passive: true });
+
   function showToast(message, ms = 2800, onTap = null) { // (v1.10.257 onTap: a note that opens something -- a catch's 설명)
     toast.textContent = message;
     toast.classList.toggle('tappable', Boolean(onTap)); toast.onclick = onTap ? () => { toast.classList.add('hidden'); onTap(); } : null;
@@ -2040,7 +2046,7 @@
   function issueContext() {
     const openDialogs = [...document.querySelectorAll('dialog[open]')].filter((d) => d !== issueDialog).map((d) => d.querySelector('h2')?.textContent || d.id);
     const ctx = { screen: !roomView.classList.contains('hidden') ? 'room' : document.body.classList.contains('plazaMode') ? 'island' : !document.getElementById('gamehallView')?.classList.contains('hidden') ? 'gamehall' : 'lobby', windows: openDialogs,
-      device: { touch: document.body.classList.contains('touchIsland'), w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ua: navigator.userAgent.slice(0, 200) }, fps: fpsNow, errors: recentErrors.slice() };
+      device: { touch: document.body.classList.contains('touchIsland'), w: innerWidth, h: innerHeight, vh: measuredVh(), dpr: devicePixelRatio, ua: navigator.userAgent.slice(0, 200) }, /* (1.10.322: the 100vh this screen really has -- phone-screen-shift 검토 ③) */ fps: fpsNow, errors: recentErrors.slice() };
     if (ctx.screen === 'room' && state) ctx.room = { game: state.gameType || null, id: state.id || null, status: state.game?.status || null };
     const d = plaza.controller?.debug?.();
     try { const p = d?.perf?.(); if (p) ctx.perf = { fps: fpsNow, jsMs: p.jsMs, px: p.px, pixelRatio: p.pixelRatio, quality: d.quality ?? null, gpu: p.gpu }; } catch {} /* (313 ㅁ: CPU or graphics card -- the frame's JS, the pixels drawn, the tier, the GPU) */
@@ -4943,11 +4949,13 @@
   const stockSign = (v) => `${v > 0 ? '▲' : v < 0 ? '▼' : '–'} ${Math.abs(v).toFixed(1)}%`;
   const stockTone = (v) => (v > 0 ? 'stockUp' : v < 0 ? 'stockDown' : 'stockFlat');
   const stockRid = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
-  function stockSpark(values, w = 96, h = 26) {
+  // (1.10.322 섬 주식 보드 고침: the line's colour and the ▲▼ beside it on one basis -- today's first price to now, 「오늘」)
+  const stockToday = (c) => { const t = (c.today || []).filter((x) => Number(x) > 0); return t.length ? stockPct(c.price, t[0]) : 0; };
+  function stockSpark(values, w = 96, h = 26, tone = null) {
     const v = (values || []).map(Number).filter((x) => Number.isFinite(x) && x > 0); const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('class', 'stockSpark'); svg.setAttribute('aria-hidden', 'true');
     if (v.length < 2) return svg; const lo = Math.min(...v); const hi = Math.max(...v); const span = hi - lo || 1;
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); p.setAttribute('points', v.map((x, i) => `${((i / (v.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((x - lo) / span) * (h - 4)).toFixed(1)}`).join(' '));
-    p.setAttribute('class', stockTone(v[v.length - 1] - v[0])); svg.append(p); return svg;
+    p.setAttribute('class', tone || stockTone(v[v.length - 1] - v[0])); svg.append(p); return svg;
   }
   async function refreshStocksBoard() { try { stocksView = await api('/api/island/stocks'); plaza.controller?.setStocksBoard?.(stocksView); } catch {} return stocksView; }
   async function openStocks(tab = stocksTab, code = null) {
@@ -4967,11 +4975,12 @@
       if (rk?.me && !rk.top.some((r) => r.mine)) body.append(sEl('div', 'stocksRow stocksRank mine', `내 순위 ${rk.me.rank}위 · ${stockSign(rk.me.r)}`));
       if (!rk?.top?.length) body.append(line('아직 이번 주에 주식을 산 사람이 없어요.', 'lookMeta'));
     } else {
+      const head = sEl('div', 'stocksCols'); head.append(sEl('span', 'stocksName', '회사'), sEl('span', 'stocksQty', '오늘'), sEl('span', 'stocksPrice', '지금 값'), sEl('span', 'stocksChange', '오늘')); body.append(head);
       for (const c of d.companies) {
         const row = sEl('button', 'stocksRow'); row.type = 'button';
         if (c.status === 'gone') { row.disabled = true; row.append(sEl('span', 'stocksName', c.name), sEl('span', 'stocksQty', '상장 폐지 · 곧 새 회사가 들어와요'), sEl('span', 'stocksChange stockFlat', '')); body.append(row); continue; }
-        const ch = stockPct(c.price, c.prevClose); const tag = c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : '';
-        row.append(sEl('span', 'stocksName', `${c.name}${tag}`), stockSpark(c.today), sEl('span', 'stocksPrice', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, stockSign(ch)));
+        const ch = stockToday(c); const tag = c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : '';
+        row.append(sEl('span', 'stocksName', `${c.name}${tag}`), stockSpark(c.today, 96, 26, stockTone(ch)), sEl('span', 'stocksPrice', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, stockSign(ch)));
         row.addEventListener('click', () => openStocks('board', c.code)); body.append(row);
       }
     }
@@ -4981,8 +4990,9 @@
     const c = d.companies.find((x) => x.code === code); if (!c) { body.append(line('이 회사는 이제 없어요.', 'lookMeta')); return; }
     const mine = d.mine?.rows?.find((r) => r.code === code); const ch = stockPct(c.price, c.prevClose);
     body.append(line(`${c.name} · ${c.kindLabel} · 상장가 ${stockWon(c.list)}${c.status === 'cleanup' ? ' · 정리 매매(오늘 뒤 상장 폐지, 팔기만 돼요)' : ''}`, 'lookMeta'));
-    const top = sEl('div', 'stocksDetail'); top.append(sEl('span', 'stocksPrice big', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, `어제보다 ${stockSign(ch)}`)); body.append(top);
-    body.append(line('오늘', 'lookMeta stocksLabel'), stockSpark(c.today, 260, 60), line('지난 7일', 'lookMeta stocksLabel'), stockSpark(c.week, 260, 60));
+    const today = stockToday(c); const days = (c.week || []).filter((x) => Number(x) > 0).length; /* (fewer than 7: 「상장 n일째」) */
+    const top = sEl('div', 'stocksDetail'); top.append(sEl('span', 'stocksPrice big', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(today)}`, `오늘 ${stockSign(today)}`), sEl('span', `stocksChange ${stockTone(ch)}`, `어제보다 ${stockSign(ch)}`)); body.append(top);
+    body.append(line('오늘', 'lookMeta stocksLabel'), stockSpark(c.today, 260, 60, stockTone(today)), line(days < 7 ? `상장 ${Math.max(1, days)}일째` : '지난 7일', 'lookMeta stocksLabel'), stockSpark(c.week, 260, 60));
     body.append(line(mine ? `가진 주식 ${mine.qty.toLocaleString('ko-KR')}주 · 평균 ${stockWon(mine.avg)} · ${stockSign(mine.gain)}` : '가진 주식이 없어요.', 'lookMeta'));
     const qty = sEl('input', 'stocksQtyInput'); qty.type = 'number'; qty.min = '1'; qty.max = '1000'; qty.value = '1'; qty.inputMode = 'numeric'; qty.setAttribute('aria-label', '몇 주');
     const note = line('', 'lookMeta stocksNote'); const fee = (n) => Math.max(1, Math.ceil(c.price * n * 0.005));
