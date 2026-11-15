@@ -44,6 +44,7 @@ function places() {
   const L = PL.lighthouse; const lw = [-88, 140]; const ll = Math.hypot(lw[0] - L.x, lw[1] - L.z); out.push(['초승등대', { x: L.x + ((lw[0] - L.x) / ll) * 4.5, z: L.z + ((lw[1] - L.z) / ll) * 4.5 }]);
   out.push(['달끝나루 부두', T.PIER.root], ['배 타는 곳', { x: T.DOCK.rects[1].x, z: T.DOCK.rects[1].z - T.DOCK.rects[1].half }]);
   out.push(['농부 밭', T.FARM.farmer]);
+  out.push(['채석장', require('../public/plaza/island-quarry.js').SIGN]); // (1.10.323: the ridge walk's new end, at the quarry's sign)
   { const Pj = require('../public/plaza/island-projects.js'); const PB = Pj.BRIDGE; for (const s of [-1, 1]) out.push([`새 다리 ${s < 0 ? '건너편' : '앞'}`, { x: PB.x + PB.ux * PB.half * s, z: PB.z + PB.uz * PB.half * s }]); out.push(['강 어귀 낚시터', Pj.FISHING_SPOT]); } // (v1.10.224)
   // (묶음 3) the village's minigame residents where they stand
   for (const k of ['painter', 'busker', 'stationmaster', 'electrician', 'builder', 'librarian', 'grandpa']) if (T.VILLAGE?.[k]) out.push([`주민:${k}`, T.VILLAGE[k]]);

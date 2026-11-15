@@ -18,6 +18,7 @@ test('길 끝: 허공에서 끝나는 길 없음 (다른 길·마당·문·다�
   const stations = Object.values(R.STATIONS).map((s) => ({ x: s.entry[0], z: s.entry[1] }));
   const places = []; const walkIn = (o) => { if (!o || typeof o !== 'object') return; if (Number.isFinite(o.x) && Number.isFinite(o.z)) places.push(o); else Object.values(o).forEach(walkIn); };
   walkIn(T.dalmaru.PLACES); walkIn(T.SPOTS); walkIn(T.WATERFRONT); places.push(require('../public/plaza/island-projects').FISHING_SPOT);
+  places.push(require('../public/plaza/island-quarry.js').SIGN); // (1.10.323: the ridge walk on to the quarry, ending at its sign)
   const loose = [];
   T.walkCurves.forEach((w, wi) => {
     for (const [x, z] of [w.pts[0], w.pts[w.pts.length - 1]]) {

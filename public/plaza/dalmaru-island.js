@@ -10,6 +10,7 @@
   if (root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain); // (묶음 3: the only island)
 }(typeof self !== 'undefined' ? self : this, (D, C) => {
   const { TAU, smooth, lerp, catmull, lineDist } = C;
+  const Q = (typeof self !== 'undefined' && self.IslandQuarry) || (typeof require === 'function' ? require('./island-quarry') : null); // (1.10.323 채석장)
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
   // 묶음 4 내 집: 툇마루섬's twelve lots -- 2회차 15: laid out again on the isle widened toward 윤슬만 so that a 큰 집 (with
@@ -163,6 +164,7 @@
     { tier: 'walk', w: 5, pts: [[-126, STREET_Z], [-20, STREET_Z], [98, STREET_Z]] }, // (from the west lot's gate to the east lot's: the open land past it, for later)
     ...HOME_LOTS.map((l) => { const s = Math.cos(l.yaw); return { tier: 'trail', w: 1.4, pts: [[l.x, l.z - s * 6.9], [l.x, STREET_Z - s * 2.5]] }; }),
     { tier: 'walk', w: 2.8, pts: [stairsAt(35.6, 1.7), stairsAt(36, -1.5), stairsAt(36, -4.5), stairsAt(35.8, -6.4), po(STAIRS_TOP_DEG + 4, 138) /* (문제 기록 4회차: on the top's fill, not its edge, and toward the ridge from where the stairs now end -- 216° stayed when they moved) */, ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
+    ...(Q ? [{ tier: 'trail', w: 2.4, pts: Q.WALK.map((p) => [p.x, p.z]) }] : []), // (1.10.323 채석장, 28A: from 영웅마루역 on along the ridge, r 150, 79 m east into the quarry)
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
   const walkDist = (x, z) => { let d = Infinity; for (const w of walkCurves) d = Math.min(d, lineDist(x, z, w.pts) - w.w / 2); return d; };
@@ -389,6 +391,7 @@
     out.push({ ...FARM.yard.scarecrow, r: 0.35 });
     out.push(...towerSolids()); // (v1.10.250: the islanders' routes and the player keep off 기록의 탑)
     out.push(...exchangeSolids()); // (v1.10.320: and off the 증권거래소)
+    if (Q) out.push(...Q.solidsOf()); // (1.10.323 채석장: its rocks, the sign and the ore pile -- assets 129 circles)
     return out;
   }
   // v1.10.320 섬 증권거래소: its ground's edge all round (0.5 m circles every 0.5 m, 0.3 in) and its middle filled -- in its own
@@ -455,6 +458,7 @@
   let natureCache = null; const natureBlocks = []; // (island-train: no tree on a lift's way)
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
+  if (Q) addNatureBlock((x, z, r) => Q.inArea(x, z, r + 1)); // (1.10.323 채석장: the quarry's ground clear of trees, bushes and rocks)
   function nature() {
     if (natureCache) return natureCache;
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -500,8 +504,10 @@
     }
     // what the train's lifts keep clear is taken out after the seeded scenery, so nothing else moves -- the weeds are
     // numbered by the tufts (island-weeds `w<i>`): the server and every screen must have the same ones
+    const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); /* (1.10.323: the 건널목 kept clear by rule, not by where the seeded trees happened to fall) */
+    const atCrossing = (o, r) => (X?.CROSSINGS || []).some((c) => Math.hypot(c.x - o.x, c.z - o.z) < (X.CROSS_CLEAR || 5) + r + 0.1);
     const blocked = (o, r) => natureBlocks.some((fn) => fn(o.x, o.z, r)) || onBank(o, 0.35);
-    const keptTrees = trees.filter((t) => !blocked(t, 1.5)); const keptBushes = bushes.filter((b) => !blocked(b, 0.8));
+    const keptTrees = trees.filter((t) => !blocked(t, 1.5) && !atCrossing(t, 0.7)); /* (a tree's trunk: the solid by a 건널목) */ const keptBushes = bushes.filter((b) => !blocked(b, 0.8));
     // the walks' lamps (island-terrain's rule): beside the town walks and the 산책로 (not the 오솔길), every 14 points of
     // their curve -- on standable ground, off 대청마당 (its own lamps), the stairs, the bridges, the 관공서 yard, another
     // walk, what is built and the trees (after the tufts: the weeds keep their numbers)
@@ -597,7 +603,7 @@
   const natureSolids = () => { const n = nature(); if (solidsOf === n) return solidsCache; solidsOf = n; return (solidsCache = natureSolidsOf(n)); };
   const natureSolidsOf = (n) => { const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 })),
     ...n.rocks.filter((r) => rockBlocks(r) && settledSpot(r.x, r.z)).map((r) => ({ x: r.x, z: r.z, r: 0.8 * r.s })), ...n.logs.flatMap(logRounds), ...n.palms.map((p) => ({ x: p.x, z: p.z, r: 0.3 * p.s }))]; }; // (as the scene walks round them: island.js; G4a the rocks, logs and palms too)
-  const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
+  const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ...(Q ? [['quarry', { x: 90, z: -123, label: '채석장' }]] : []) /* (1.10.323) */,['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
 

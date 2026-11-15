@@ -1932,3 +1932,22 @@ test('간판: 건물마다 문 6 m 안에 이름 간판(밖을 봄), 작은 시�
   expect(missing).toEqual([]); expect(doors.length).toBeGreaterThan(8);
   await expectNoScriptError(page); await a.context.close();
 });
+
+// 1.10.323 Q1 채석장 (public/plaza/island-quarry.js, assets 129·130): on the ridge, at a rock's mining spot with a 곡괭이 in the bag,
+// SPACE (the phone's 상호작용): the pickaxe taken in hand, the swings, a 광석 into the bag; the 「지금 자리」 chip says 채석장
+test('채석장: 능선 위 바위 앞에서 곡괭이로 캐면 광석 1개, 지금 자리는 채석장', async ({ browser, request, isMobile }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, isMobile ? '채석장광부m' : '채석장광부'); const { page } = a;
+  try {
+    const Q = require('../../public/plaza/island-quarry.js'); const rock = Q.ROCKS[1]; const s = Q.standOf(rock, 'full', 0);
+    await post(request, '/api/test/island/give', a.token, { itemId: 'pickaxe', qty: 1 });
+    await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [s.x, s.z]);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().placeNow().words), { timeout: 15000 }).toMatch(/^채석장/);
+    await expect.poll(() => spaceOn(page, `quarry:${rock.id}:0`, isMobile), { timeout: 20000 }).toBe(true);
+    await expect(page.locator('#toast')).toContainText('광석 +1', { timeout: 15000 });
+    const bag = (await get(request, '/api/island/bag', a.token)).data; const items = bag.items || bag.bag?.items || [];
+    expect(items.filter((e) => e.itemId === 'ore').reduce((n, e) => n + e.qty, 0)).toBe(1);
+    expect(items.find((e) => e.itemId === 'pickaxe')?.uses).toBe(Q.PICK_USES - 1);
+    await expectNoScriptError(page);
+  } finally { await a.context.close(); }
+});
