@@ -39,8 +39,16 @@
   const recentErrors = []; const keepError = (text) => { recentErrors.push({ at: Date.now(), text: String(text).slice(0, 300) }); if (recentErrors.length > 8) recentErrors.shift(); };
   // (문제 기록 진단: where it broke too -- the file:line:column and the stack's first frame)
   const firstFrame = (err) => String(err?.stack || '').split('\n').map((l) => l.trim()).find((l) => l.startsWith('at ')) || '';
-  window.addEventListener('error', (event) => keepError(`${event.message || event.error} @ ${String(event.filename || '').split('/').pop()}:${event.lineno}:${event.colno} ${firstFrame(event.error)}`));
-  window.addEventListener('unhandledrejection', (event) => keepError(`${event.reason?.message || event.reason} ${firstFrame(event.reason)}`));
+  // 1.10.324 스스로 알려 주는 섬 (notes direction-ideas-20261110 ②): each new page error (not the console's lines) sent to the server --
+  // once a kind, ten a page --, and the island's frame rate (app.js reportFrames); nothing of who or where
+  const reportedErrors = new Set();
+  function sendReport(body) {
+    try { const token = sessionToken; if (!token) return; const device = document.body.classList.contains('touchIsland') || matchMedia('(pointer: coarse)').matches ? 'phone' : 'pc';
+      fetch('/api/client/report', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session-Token': token }, body: JSON.stringify({ ...body, device }), keepalive: true }).catch(() => {}); } catch { /* (before the session is known) */ }
+  }
+  const reportError = (text) => { const t = String(text).slice(0, 300); if (reportedErrors.has(t) || reportedErrors.size >= 10) return; reportedErrors.add(t); sendReport({ kind: 'error', text: t }); };
+  window.addEventListener('error', (event) => { const t = `${event.message || event.error} @ ${String(event.filename || '').split('/').pop()}:${event.lineno}:${event.colno} ${firstFrame(event.error)}`; keepError(t); reportError(t); });
+  window.addEventListener('unhandledrejection', (event) => { const t = `${event.reason?.message || event.reason} ${firstFrame(event.reason)}`; keepError(t); if (!event.reason?.status) reportError(t); }); /* (an API's refusal -- a status -- is no screen error) */
   { const realError = console.error.bind(console); console.error = (...args) => { keepError(args.map((a) => (a instanceof Error ? a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); realError(...args); }; }
   let fpsNow = null; { let n = 0; let t0 = performance.now(); const tick = (t) => { n += 1; if (t - t0 >= 2000) { fpsNow = Math.round((n * 1000) / (t - t0)); n = 0; t0 = t; } requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
   const myInfoBtn = document.getElementById('myInfoBtn');
@@ -1831,6 +1839,15 @@
   for (const id of ['qualitySelect', 'renderScaleSelect']) byId(id).addEventListener('change', showScreenNow);
   const onIslandFloor = () => document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden');
   new MutationObserver(() => { if (byId('gameMenuDialog').open) { showScreenNow(); byId('unstuckBtn').classList.toggle('hidden', !onIslandFloor()); byId('controlsBtn').classList.toggle('hidden', !document.body.classList.contains('plazaMode')); } }).observe(byId('gameMenuDialog'), { attributes: true, attributeFilter: ['open'] });
+  // 1.10.324 스스로 알려 주는 섬: how fast this screen draws the island -- a minute in, then every 15 minutes while it is open and
+  // seen; with its tier and share drawn (not in tests unless asked: gc.testReport)
+  let framesVisit = 0;
+  function reportFrames() {
+    try { if (navigator.webdriver && !localStorage.getItem('gc.testReport')) return; } catch { return; }
+    const visit = ++framesVisit;
+    const tick = () => { if (visit !== framesVisit || !document.body.classList.contains('plazaMode')) return; if (!document.hidden && fpsNow) { const s = plaza.controller?.screenNow?.(); sendReport({ kind: 'perf', fps: fpsNow, tier: s?.tier ?? null, scale: s?.scale ?? null }); } setTimeout(tick, 15 * 60000); };
+    setTimeout(tick, Number(localStorage.getItem('gc.testReport')) || 60000);
+  }
   // U1 느린 기기 알림: the first seconds on the island measured (from 3 s in -- past the first loads -- for 10 s); under 20 fps a
   // note once on this device: [그대로 하기] [최대한 가볍게] (낮음 + 60 % at once). Not in tests unless asked (gc.testSlowNote)
   function watchSlowStart() {
@@ -2069,7 +2086,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); loadQuick(); setTimeout(islandNoticeOnce, 1500); // (1103 4: a note once) (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
-      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setRenderScale?.(renderScaleMode()); /* (314) */ plaza.controller.onAutoTier?.(autoTierNote); watchSlowStart(); showControlsHint(); /* (1.10.322 U1, U4) */ api('/api/island/quarry').then((d) => plaza.controller?.setQuarry?.(d.rocks)).catch(() => {}); /* (1.10.323 채석장: the rocks as they are) */ plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
+      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setRenderScale?.(renderScaleMode()); /* (314) */ plaza.controller.onAutoTier?.(autoTierNote); watchSlowStart(); showControlsHint(); reportFrames(); /* (1.10.322 U1, U4; 1.10.324 the frame rate) */ api('/api/island/quarry').then((d) => plaza.controller?.setQuarry?.(d.rocks)).catch(() => {}); /* (1.10.323 채석장: the rocks as they are) */ plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); refreshProjects(); // (v1.10.215: today's table on; v1.10.222 섬 가꾸기)
       showControlsNotice(); // (v1.10.217: the keys swapped -- told once on a PC)
