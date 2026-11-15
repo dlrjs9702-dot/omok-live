@@ -40,7 +40,8 @@ test('백화점 네 층: 물건·가게·받침·거울·계산대 모두 승강
   // 3층: each plinth (from where SPACE picks it), the counter
   const f3 = reachable(F);
   for (const sl of [...F.SLOTS, ...F.BASE_SLOTS, ...F.YARD_SLOTS, ...F.WEEK_SLOTS]) { // (v1.10.225: the 「마당」 shelf too)
-    let ok = false; for (let k = 0; k < 64 && !ok; k += 1) for (const r of [1.3, 1.6, 1.9]) { const w = F.world(sl.lx + Math.cos(k / 64 * Math.PI * 2) * r, sl.lz + Math.sin(k / 64 * Math.PI * 2) * r); if (f3(w.x, w.z) && F.placeAt(w.x, w.z)?.id === sl.id) { ok = true; break; } }
+    const out = sl.plat ? Math.max(...sl.plat) / 2 - 0.6 : 0; /* (v1.10.319 111b: a big platform's ring from its long side's half) */
+    let ok = false; for (let k = 0; k < 64 && !ok; k += 1) for (const r of [1.3, 1.6, 1.9].map((x) => x + out)) { const w = F.world(sl.lx + Math.cos(k / 64 * Math.PI * 2) * r, sl.lz + Math.sin(k / 64 * Math.PI * 2) * r); if (f3(w.x, w.z) && F.placeAt(w.x, w.z)?.id === sl.id) { ok = true; break; } }
     assert.ok(ok, sl.id);
   }
   { const w = F.world(F.CHECKOUT.lx, F.CHECKOUT.lz - 1.3); assert.ok(f3(w.x, w.z), 'the 3rd floor counter'); }

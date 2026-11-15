@@ -51,7 +51,19 @@ test('마당 규칙: 울타리 안/밖·집·현관 길·겹침 허용·0.05 m �
   assert.equal(Y.solidsOf(lot, { id: id('arch'), x: -5, z: 0, rot: 0 }).length, 2); assert.equal(Y.solidsOf(lot, { id: id('stepping_stones'), x: -5, z: 0, rot: 0 }).length, 0);
   assert.equal(Y.seatsOf(lot, bench).length, 2); assert.equal(Y.limitOf(1), 24); assert.equal(Y.limitOf(2), 40); assert.equal(Y.limitOf(3), 60);
   // the shop: all twelve on the 「마당」 shelf, each its own place (v1.10.318: and the 텃밭, the thirteenth, by the lift's wall)
-  assert.equal(F.YARD_SLOTS.length, 13); assert.ok(F.YARD_SLOTS.every((s) => F.placeAt(F.world(s.lx, s.lz).x, F.world(s.lx, s.lz).z).id === s.id));
+  // (v1.10.319 111b, map-A2: + the small nineteen in the corner, the big six at their own size)
+  assert.equal(F.YARD_SLOTS.length, 38); assert.ok(F.YARD_SLOTS.every((s) => F.placeAt(F.world(s.lx, s.lz).x, F.world(s.lx, s.lz).z).id === s.id));
+  assert.ok(F.YARD_GOODS.every((g) => Y.ITEMS[g.yardShape]), '마당 물건마다 크기·막는 원');
+  const big = F.YARD_SLOTS.filter((s) => s.plat); assert.equal(big.length, 6);
+  for (const s of big) {
+    const [w, d] = Y.ITEMS[F.good(s.good).yardShape].foot; const turned = Math.abs(Math.sin(s.yaw)) > 0.5;
+    assert.deepEqual(s.plat, turned ? [d + 0.6, w + 0.6] : [w + 0.6, d + 0.6], `${s.good}: 제 크기 + 0.3 m 둘레`);
+    const [x0, x1, z0, z1] = [s.lx - s.plat[0] / 2, s.lx + s.plat[0] / 2, s.lz - s.plat[1] / 2, s.lz + s.plat[1] / 2];
+    assert.ok(x0 >= -F.ROOM.w / 2 + 0.3 && x1 <= F.ROOM.w / 2 - 0.3 && z0 >= -F.ROOM.d / 2 + 0.3 && z1 <= F.ROOM.d / 2 - 0.3, `${s.good}: 벽 안`);
+    // (the walk: 1.8 m at least to whatever else stands -- the lift, the counter, the plinths, the other platforms)
+    for (const f of F.FIXTURES) { if (f.x === s.lx && f.z === s.lz) continue; const gx = Math.max(f.x - f.w / 2 - x1, x0 - (f.x + f.w / 2), 0); const gz = Math.max(f.z - f.d / 2 - z1, z0 - (f.z + f.d / 2), 0); assert.ok(Math.hypot(gx, gz) >= 1.8, `${s.good}: 통로 ${Math.hypot(gx, gz).toFixed(2)} m`); }
+  }
+  assert.equal(F.LIFT.lx, -F.ROOM.w / 2 + 0.95); assert.ok(F.SLOTS.filter((s) => s.kind === 'wall').every((s) => s.lz === F.ROOM.d / 2 - 0.18), '벽 진열은 뒷벽에');
 });
 
 test('마당 서버: 사기 → 마당에 놓기(개수 24·넓히기 40) · 집 안↔마당 섞기 막음 · 넓히기 값 · 벤치 앉기 · 집 넓히면 걸린 것 창고로·쪽지 · 집터 풀면 창고로·단계는 남음', async (t) => {

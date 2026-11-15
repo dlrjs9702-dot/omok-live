@@ -623,6 +623,10 @@
   REGISTRY['prop.bench'].rotationY = 0; REGISTRY['yard.bench'].rotationY = Math.PI;
   // (314 assets 120: the wooden fence's far file has its own name -- fence_rail_low is the 오두막·농장 fence, prop.fence)
   REGISTRY['yard.fence_wood'].low = { seasons: y2('fence_rail_far') };
+  // v1.10.319 111b 새 마당 물건 25 (assets 111 README 「새 마당 물건」): yard.<id>, its file the id, at our size, four seasons, one
+  // model at every distance
+  for (const f of ['fence_veg_a', 'fence_veg_b', 'gate_stick', 'gate_plank', 'wooden_pin', 'fence_lattice', 'gate_iron', 'wall_brick_high', 'watering_can', 'hay_bale', 'milk_can', 'ladder', 'farm_sign', 'barrel', 'bucket',
+    'hand_cart', 'water_jar', 'wooden_box', 'spade', 'log_bench', 'stall_awning', 'fountain', 'greenhouse_small', 'pebbles', 'duck']) REGISTRY[`yard.${f}`] = { seasons: y2(f), near: 30 };
   // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)

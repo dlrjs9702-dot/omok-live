@@ -60,7 +60,12 @@
   // furniture but placed only outside (island-yard.js) -- priced by economy yard:<shape>
   const YARD_GOODS = Object.freeze([['fence_wood', '나무 울타리'], ['fence_stone', '돌담'], ['fence_flower', '꽃 울타리'], ['stepping_stones', '디딤돌'], ['garden_light', '정원등'], ['birdhouse', '새집'],
     ['flowerbed', '화단'], ['planter_box', '텃밭 상자'], ['mailbox', '우편함'], ['bench', '정원 벤치'], ['lantern_stone', '석등'], ['arch', '꽃 아치'],
-  ['farm_bed', '텃밭']] /* (v1.10.318 마당 농사 F1, assets 115: six soil cells to sow -- island-farm) */
+  ['farm_bed', '텃밭'], /* (v1.10.318 마당 농사 F1, assets 115: six soil cells to sow -- island-farm) */
+    /* v1.10.319 111b 새 마당 물건 25 (assets 111 README, notes docs/yard-111b-prices-20261110.md): the small 19 on the 「마당」 corner, the big 6 at their own size (YARD_BIG) */
+    ['fence_veg_a', '채소밭 울타리'], ['fence_veg_b', '채소밭 울타리 2'], ['gate_stick', '가지 문'], ['gate_plank', '널 문'], ['wooden_pin', '말뚝'], ['fence_lattice', '격자 울타리'], ['gate_iron', '쇠 대문'],
+    ['watering_can', '물뿌리개'], ['milk_can', '우유통'], ['ladder', '사다리'], ['farm_sign', '농장 간판'], ['barrel', '나무통'], ['bucket', '나무 들통'], ['water_jar', '물 항아리'], ['wooden_box', '나무 상자'],
+    ['spade', '삽'], ['log_bench', '통나무 의자'], ['pebbles', '조약돌'], ['duck', '오리'],
+    ['greenhouse_small', '작은 온실'], ['stall_awning', '차양 진열대'], ['fountain', '분수'], ['hand_cart', '손수레'], ['hay_bale', '건초'], ['wall_brick_high', '높은 벽돌담']]
     .map(([shape, name]) => Object.freeze({ id: `yard_${shape}__plain`, shape: `yard_${shape}`, yardShape: shape, variant: 'plain', name, zone: 'yard', rarity: 'yard', kind: 'yard', model: `yard.${shape}`, yard: true })));
   // v1.10.251 기록의 탑 트로피 (assets 98): the week's 1·2·3 of a game a yard trophy -- given at the week's settling, never sold or
   // bought (no shelf), placed in the yard; its metal a colour of the one model, its name plate the piece's own words
@@ -74,31 +79,41 @@
   const BASE = Object.freeze(['stool__oak', 'floor_cushion__red', 'plant_pot__terracotta', 'dining_chair__oak']);
 
   // the room: room-local metres (its front, low wall toward the camera, at local -Z), turned half round in the world
-  const ROOM = Object.freeze({ x: 140, z: -330, y: 0.4, w: 30, d: 20 });
+  // (v1.10.319 111b, 사용자 10A·11B, notes img/yard-111b map-A2: 30 x 20 -> 38 x 26 -- 4 m each side (6 m left to the 1층·4층
+  // rooms beside it), 3 m front and back (no room that way); the back wall's displays went back with it)
+  const ROOM = Object.freeze({ x: 140, z: -330, y: 0.4, w: 38, d: 26 });
+  const BACK = ROOM.d / 2 - 0.18; // (the back wall's displays, their faces on it)
   const world = (lx, lz) => ({ x: Math.round((ROOM.x - lx) * 100) / 100, z: Math.round((ROOM.z - lz) * 100) / 100 });
   const local = (x, z) => ({ lx: ROOM.x - x, lz: ROOM.z - z });
   const inRoom = (x, z, pad = 0) => Math.abs(x - ROOM.x) <= ROOM.w / 2 + pad && Math.abs(z - ROOM.z) <= ROOM.d / 2 + pad;
   // the lift on the left wall of each floor (assets 57 mall.elevator, its back on the wall, its front into the room)
-  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (3층; 1층's in island-store.js)
+  const LIFT = Object.freeze({ lx: -ROOM.w / 2 + 0.95, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-ROOM.w / 2 + 3.5, 0]) }); // (3층; 1층's in island-store.js)
   const ZONES = Object.freeze({ living: [-6.2, -1.6], bedroom: [-1.8, -1.6], kitchen: [2.6, -1.6], garden: [7.0, -1.6] });
   // the display: 3 plinths a zone, 3 places on the back wall for what hangs, 1 wide one for a wall tank (or a big piece)
   const SLOTS = Object.freeze([
     ...Object.entries(ZONES).flatMap(([zone, [x, z]]) => [[0, -4.4], [0, 0], [0, 4.4]].map(([dx, dz], i) => ({ id: `${zone}${i}`, zone, kind: 'floor', lx: x + dx, lz: z + dz, yaw: 0 }))),
-    ...[-6.5, -2.5, 1.5].map((x, i) => ({ id: `wall${i}`, zone: 'wall', kind: 'wall', lx: x, lz: 9.82, yaw: 0, plinth: false })),
-    { id: 'wide0', zone: 'wall', kind: 'wide', lx: 8.6, lz: 9.82 - 0.76, yaw: 0, plinth: false },
+    ...[-6.5, -2.5, 1.5].map((x, i) => ({ id: `wall${i}`, zone: 'wall', kind: 'wall', lx: x, lz: BACK, yaw: 0, plinth: false })),
+    { id: 'wide0', zone: 'wall', kind: 'wide', lx: 8.6, lz: BACK - 0.76, yaw: 0, plinth: false },
   ].map((s) => Object.freeze(s)));
   const BASE_SLOTS = Object.freeze(BASE.map((id, i) => Object.freeze({ id: `base${i}`, good: id, lx: [11.5, 13.7, 11.5, 13.7][i], lz: [-6.8, -6.8, -8.8, -8.8][i], yaw: 0 })));
-  // the 「마당」 shelf: two rows of small plinths by the lift's wall, in front of it and behind (the way from the lift clear)
-  // (v1.10.318: the 13th, the 텃밭 -- 2.8 m across, shown at 0.42 on a plinth by the lift's wall, behind the way out of it)
-  const YARD_SLOTS = Object.freeze(YARD_GOODS.map((g, i) => Object.freeze(i < 12 ? { id: `yard${i}`, good: g.id, yard: true, lx: [-12.6, -10.0][i % 2], lz: [-8.6, -6.6, -4.6, 4.6, 6.6, 8.6][Math.floor(i / 2)], yaw: 0 } : { id: `yard${i}`, good: g.id, yard: true, lx: -12.6, lz: -2.6, yaw: 0, scale: 0.42 })));
+  // the 「마당」 corner by the lift's wall: four columns of small plinths, eight deep, the way from the lift (its middle 3 m) clear
+  // -- the first twelve, the 텃밭 (318: 2.8 m across, shown at 0.42), then 111b's small nineteen (v1.10.319, map-A2)
+  const CORNER = [-17.0, -14.6, -12.2, -9.8].flatMap((lx) => [-8.6, -6.6, -4.6, -2.6, 2.6, 4.6, 6.6, 8.6].map((lz) => [lx, lz]));
+  // 111b's big six at their own size, each on a platform 0.3 m round it [w, d] (its yard foot turned by its yaw, island-yard ITEMS):
+  // the greenhouse and the stall on the band in front, the fountain, the cart, the hay and the high wall on the strip by the right wall
+  const YARD_BIG = Object.freeze({ greenhouse_small: [-4.0, -11.0, Math.PI / 2, [5.1, 3.35]], stall_awning: [2.2, -11.3, 0, [3.35, 2.35]], fountain: [17.4, 10.0, 0, [2.35, 2.6]],
+    hand_cart: [17.6, 5.4, 0, [1.6, 2.6]], hay_bale: [17.6, 1.05, Math.PI / 2, [1.6, 2.1]], wall_brick_high: [17.75, -3.2, Math.PI / 2, [1.35, 2.35]] });
+  const YARD_SLOTS = Object.freeze(YARD_GOODS.map((g, i) => { const big = YARD_BIG[g.yardShape];
+    return Object.freeze(big ? { id: `yard${i}`, good: g.id, yard: true, lx: big[0], lz: big[1], yaw: big[2], plat: Object.freeze(big[3]) }
+      : { id: `yard${i}`, good: g.id, yard: true, lx: CORNER[i][0], lz: CORNER[i][1], yaw: 0, ...(g.yardShape === 'farm_bed' ? { scale: 0.42 } : {}) }); }));
   // v1.10.227 주간 신상: the 「이번 주 신상」 shelf -- six plinths right of the counter, two across, three deep (the rare
   // floor pieces, a week each)
   const WEEK_SLOTS = Object.freeze([0, 1, 2, 3, 4, 5].map((i) => Object.freeze({ id: `week${i}`, weekly: i, kind: 'floor', lx: [10.6, 13.4][i % 2], lz: [2.0, 4.6, 7.2][Math.floor(i / 2)], yaw: 0 })));
   const CHECKOUT = Object.freeze({ lx: 11.8, lz: -1.5, yaw: 0, keeper: Object.freeze([11.8, -0.6, 0]) });
   const FIXTURES = Object.freeze([ // what is walked round (x, z centre, w, d): the plinths, the counter, the lift
     ...SLOTS.filter((s) => s.plinth !== false).map((s) => ({ x: s.lx, z: s.lz, w: 2.4, d: 2.4 })),
-    { x: 8.6, z: 9.1, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 2.3, d: 0.85 }, { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
-    ...[...BASE_SLOTS, ...YARD_SLOTS].map((s) => ({ x: s.lx, z: s.lz, w: 1.2, d: 1.2 })),
+    { x: 8.6, z: BACK - 0.72, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 2.3, d: 0.85 }, { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
+    ...[...BASE_SLOTS, ...YARD_SLOTS].map((s) => ({ x: s.lx, z: s.lz, w: s.plat ? s.plat[0] : 1.2, d: s.plat ? s.plat[1] : 1.2 })),
     ...WEEK_SLOTS.map((s) => ({ x: s.lx, z: s.lz, w: 2.0, d: 2.0 })),
   ].map((f) => Object.freeze(f)));
   const REACH = 2.1; // a piece within this of me (to its plinth's middle) is the one SPACE buys
@@ -147,12 +162,16 @@
   // the display place (or always-on-sale place) nearest me within reach
   function placeAt(x, z) {
     const { lx, lz } = local(x, z); let best = null; let bd = REACH;
-    for (const s of [...SLOTS, ...BASE_SLOTS, ...YARD_SLOTS, ...WEEK_SLOTS]) { const d = Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0); if (d < bd) { bd = d; best = s; } }
+    for (const s of [...SLOTS, ...BASE_SLOTS, ...YARD_SLOTS, ...WEEK_SLOTS]) {
+      /* (v1.10.319: a big platform by its edge -- 0.6 m at it, as at a small plinth's) */
+      const d = s.plat ? Math.hypot(Math.max(0, Math.abs(s.lx - lx) - s.plat[0] / 2), Math.max(0, Math.abs(s.lz - lz) - s.plat[1] / 2)) + 0.6 : Math.hypot(s.lx - lx, s.lz - lz) - (s.kind === 'wall' || s.kind === 'wide' ? 0.6 : 0);
+      if (d < bd) { bd = d; best = s; }
+    }
     return best;
   }
   // v1.10.226 가구 리폼 (docs/furniture-reform-20261102.md): a shop piece made another of its shape's colours -- the
   // colours a piece may take (its own first), none for an event piece, a yard piece or a shape in one colour only
   const reformColors = (id) => { const g = byId.get(id); if (!g || g.event || g.yard) return []; const list = GOODS.filter((x) => x.shape === g.shape); return list.length > 1 ? list : []; };
   const reformTo = (from, to) => { const g = byId.get(to); return Boolean(g) && from !== to && reformColors(from).includes(g); };
-  return { WEEK_SLOTS, WEEK_SHAPES, weekOf, weekEndsAt, weeklyOf, seeded, reformColors, reformTo, SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, YARD_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, YARD_SLOTS, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
+  return { WEEK_SLOTS, WEEK_SHAPES, weekOf, weekEndsAt, weeklyOf, seeded, reformColors, reformTo, SHAPES, COLOR, RARITY, GOODS, EVENT_GOODS, YARD_GOODS, BASE, ROOM, LIFT, ZONES, SLOTS, BASE_SLOTS, YARD_SLOTS, YARD_BIG, CHECKOUT, FIXTURES, REACH, world, local, inRoom, clamp, placeAt, displayOf, good: (id) => byId.get(id) || null };
 }));

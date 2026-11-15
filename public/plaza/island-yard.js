@@ -30,6 +30,18 @@
     // v1.10.318 마당 농사 F1 (assets 115 README): the 텃밭, 2.8 × 1.9 m, each of its six cells a 0.45 m round that blocks; how many a
     // yard holds: island-farm bedsFor(level)
     farm_bed: { foot: [2.8, 1.9], solids: [[0.9, -0.45, 0.45], [0, -0.45, 0.45], [-0.9, -0.45, 0.45], [0.9, 0.45, 0.45], [0, 0.45, 0.45], [-0.9, 0.45, 0.45]], farm: true },
+    // v1.10.319 111b 새 마당 물건 25 (assets 111 README 「새 마당 물건」: places rounded up to the 0.25 m step, a round a metre;
+    // the 조약돌 flat -- walked over like the stepping stones)
+    fence_veg_a: { foot: [1.5, 0.5], solids: [[0, 0, 0.142]], fence: true }, fence_veg_b: { foot: [1.25, 0.25], solids: [[0, 0, 0.088]], fence: true },
+    gate_stick: { foot: [1, 0.75], solids: [[0, 0, 0.351]] }, gate_plank: { foot: [1.5, 0.75], solids: [[0, 0, 0.262]] }, wooden_pin: { foot: [0.25, 0.25], solids: [[0, 0, 0.099]] },
+    fence_lattice: { foot: [2.5, 0.5], solids: [[-0.584, 0, 0.148], [0.584, 0, 0.148]], fence: true }, gate_iron: { foot: [1.25, 0.25], solids: [[0, 0, 0.063]] },
+    wall_brick_high: { foot: [1.75, 0.75], solids: [[-0.394, 0, 0.251], [0.394, 0, 0.251]], fence: true },
+    watering_can: { foot: [0.25, 0.5], solids: [[0, 0, 0.1]] }, hay_bale: { foot: [1.5, 1], solids: [[0, 0, 0.496]] }, milk_can: { foot: [0.5, 0.5], solids: [[0, 0, 0.151]] },
+    ladder: { foot: [1, 0.5], solids: [[0, 0, 0.223]] }, farm_sign: { foot: [2, 0.25], solids: [[-0.484, 0, 0.101], [0.484, 0, 0.101]] }, barrel: { foot: [1, 1], solids: [[0, 0, 0.386]] },
+    bucket: { foot: [0.5, 0.5], solids: [[0, 0, 0.199]] }, hand_cart: { foot: [1, 2], solids: [[0, -0.484, 0.498], [0, 0.484, 0.498]] }, water_jar: { foot: [0.5, 0.5], solids: [[0, 0, 0.228]] },
+    wooden_box: { foot: [0.5, 0.75], solids: [[0, 0, 0.25]] }, spade: { foot: [0.25, 0.25], solids: [[0, 0, 0.034]] }, log_bench: { foot: [1.5, 0.5], solids: [[0, 0, 0.201]] },
+    stall_awning: { foot: [2.75, 1.75], solids: [[-0.86, 0, 0.5], [0, 0, 0.5], [0.86, 0, 0.5]] }, fountain: { foot: [1.75, 2], solids: [[0, -0.45, 0.5], [0, 0.45, 0.5]] },
+    greenhouse_small: { foot: [2.75, 4.5], solids: [[0, -1.65, 0.5], [0, -0.55, 0.5], [0, 0.55, 0.5], [0, 1.65, 0.5]] }, pebbles: { foot: [1, 1], solids: [] }, duck: { foot: [0.25, 0.5], solids: [[0, 0, 0.1]] },
     // v1.10.251 기록의 탑 트로피 (assets 98): 1 m square, its base the 0.45 m round that blocks
     ...Object.fromEntries(['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star'].map((sym) => [`trophy_${sym}`, { foot: [1, 1], solids: [[0, 0, 0.45]], trophy: true, glow: true }])),
   });
