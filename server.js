@@ -144,7 +144,11 @@ function stocksMarket() {
 const EconomyLog = require('./lib/economy-log');
 let economyLoggedDay = null; let economyLogReady = false;
 async function logEconomy(now = Date.now()) { const stats = await pointStore.economyStats(14, now); for (const line of EconomyLog.economyLogLines(stats, now, require('./package.json').version)) console.log(line); }
-function economyLogTick(now = Date.now()) { if (!economyLogReady) return; const due = EconomyLog.dueDay(now, economyLoggedDay); if (!due) return; economyLoggedDay = due; logEconomy(now).catch((error) => console.error('경제 로그 실패:', error.message)); }
+function economyLogTick(now = Date.now()) { if (!economyLogReady) return; clientLogTick(now); const due = EconomyLog.dueDay(now, economyLoggedDay); if (!due) return; economyLoggedDay = due; logEconomy(now).catch((error) => console.error('경제 로그 실패:', error.message)); }
+// 1.10.324 스스로 알려 주는 섬 (lib/client-report.js): the screens' errors and frame rates, summed; once a day after 00:10 Seoul the
+// day's `[client]` line (then started again) -- never an account, only kinds and counts
+const ClientReport = require('./lib/client-report'); const clientReports = ClientReport.createReports(); let clientLoggedDay = null;
+function clientLogTick(now = Date.now()) { const due = EconomyLog.dueDay(now, clientLoggedDay); if (!due) return; if (clientLoggedDay) { console.log(clientReports.line(clientLoggedDay, require('./package.json').version)); clientReports.reset(); } clientLoggedDay = due; }
 let stockClock = 0; const stockNow = () => Date.now() + stockClock; // (tests: /api/test/stocks/clock)
 const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', LIMIT: '오늘 주문 20번을 다 썼어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
 // this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
@@ -2671,7 +2675,7 @@ async function noticeEvents() {
   if (posted) await broadcastAnnouncements().catch(() => {});
 }
 setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); stockNotices().catch((error) => console.error('정리 매매 알림 실패:', error.message)); economyLogTick(); }, 60000).unref?.();
-setTimeout(() => { economyLoggedDay = EconomyLog.dueDay(Date.now(), null); economyLogReady = true; logEconomy().catch((error) => console.error('경제 로그 실패:', error.message)); }, 60000).unref?.(); // (a minute after the start; that day counted if past 00:10)
+setTimeout(() => { economyLoggedDay = EconomyLog.dueDay(Date.now(), null); clientLoggedDay = economyLoggedDay || EconomyLog.dayOf(Date.now() - 86400000); economyLogReady = true; logEconomy().catch((error) => console.error('경제 로그 실패:', error.message)); }, 60000).unref?.(); // (a minute after the start; that day counted if past 00:10)
 async function contestNote(account, session, contestId, kind, value) {
   const c = await contestState();
   if (c.phase !== 'live' || c.id !== contestId || c.kind !== kind || !Number.isFinite(value) || value < 0 || (c.higher && value <= 0)) return null; // (총괄 검토 2: a score round of 0 is no entry)
@@ -6371,6 +6375,15 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, yardLevel: level + 1, limit: IslandYard.limitOf(level + 1) });
     });
   }
+  // 1.10.324 스스로 알려 주는 섬: a screen's error or its frame rate, sent by the page itself (a signed-in page only, 20 a minute;
+  // what is kept: lib/client-report.js -- no account, name, place or chat)
+  if (pathname === '/api/client/report' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!checkRateLimit(`client-report:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); const kept = clientReports.add({ kind: body.kind, text: body.text, fps: body.fps, tier: body.tier, scale: body.scale, device: body.device });
+    return sendJson(res, 200, { ok: true, kept });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/client-report' && req.method === 'GET') return sendJson(res, 200, { ok: true, line: clientReports.line(clientLoggedDay || 'test', require('./package.json').version) });
   // 1.10.322 편의 1 U3 「막혔을 때 대청마당으로」 (notes mokpo-onxdo-ui-ideas-20261115): stuck in a wall or a thing -- the server puts
   // me on a free spot by 대청마당's arrival place; not in a room, a taxi or a train (their own ways out), once in 20 s
   if (pathname === '/api/island/unstuck' && req.method === 'POST') {
