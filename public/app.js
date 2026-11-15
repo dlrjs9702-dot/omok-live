@@ -1812,6 +1812,77 @@
   // v1.10.290 6: when 자동 changes the tier, a short note -- once a day on this device (Seoul's day; not in tests unless asked)
   const TIER_NAMES = ['낮음', '중간', '높음'];
   const autoTierNote = (tier) => { const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); try { if (localStorage.getItem('gc.qualityNote') === day || (navigator.webdriver && !localStorage.getItem('gc.testQualityNote'))) return; localStorage.setItem('gc.qualityNote', day); } catch { return; } showToast(`화면이 ${tier < 2 ? '느려서' : '빨라져서'} 화질을 「${TIER_NAMES[tier]}」으로 바꿨어요 · ☰ 섬 화질에서 고정할 수 있어요`, 5000); };
+  // 1.10.322 편의 1 (notes mokpo-onxdo-ui-ideas-20261115) U2 화면 3단계: 자동(권장) / 가볍게 (보통, 80 %) / 최대한 가볍게 (낮음 -- no
+  // shadows -- 60 %): the two settings under 「더 보기」 set together; 「지금 화면」 what is drawn now (the tier and the share)
+  const SCREEN_PRESETS = { auto: ['auto', 'auto'], light: ['1', '80'], min: ['0', '60'] };
+  const SCREEN_NAMES = { auto: '자동', light: '가볍게', min: '최대한 가볍게' };
+  const screenPreset = () => Object.keys(SCREEN_PRESETS).find((k) => SCREEN_PRESETS[k][0] === qualityMode() && SCREEN_PRESETS[k][1] === renderScaleMode()) || null;
+  function showScreenNow() {
+    const k = screenPreset(); for (const r of document.querySelectorAll('input[name="gcScreen"]')) r.checked = r.value === k;
+    const s = plaza.controller?.screenNow?.(); byId('screenNowLine').textContent = `지금 화면: ${SCREEN_NAMES[k] || '직접 고름'}${s ? ` · ${TIER_NAMES[s.tier] || ''} · ${s.scale}%` : ''}`;
+  }
+  function setScreenPreset(k) {
+    const [q, s] = SCREEN_PRESETS[k] || SCREEN_PRESETS.auto;
+    try { localStorage.setItem('gc.quality', q); localStorage.setItem('gc.renderScale', s); } catch {}
+    byId('qualitySelect').value = q; byId('renderScaleSelect').value = s;
+    plaza.controller?.setQualityMode?.(q); plaza.controller?.setRenderScale?.(s); showScreenNow();
+  }
+  for (const r of document.querySelectorAll('input[name="gcScreen"]')) r.addEventListener('change', () => { if (r.checked) setScreenPreset(r.value); });
+  for (const id of ['qualitySelect', 'renderScaleSelect']) byId(id).addEventListener('change', showScreenNow);
+  const onIslandFloor = () => document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden');
+  new MutationObserver(() => { if (byId('gameMenuDialog').open) { showScreenNow(); byId('unstuckBtn').classList.toggle('hidden', !onIslandFloor()); byId('controlsBtn').classList.toggle('hidden', !document.body.classList.contains('plazaMode')); } }).observe(byId('gameMenuDialog'), { attributes: true, attributeFilter: ['open'] });
+  // U1 느린 기기 알림: the first seconds on the island measured (from 3 s in -- past the first loads -- for 10 s); under 20 fps a
+  // note once on this device: [그대로 하기] [최대한 가볍게] (낮음 + 60 % at once). Not in tests unless asked (gc.testSlowNote)
+  function watchSlowStart() {
+    let test = null; try { if (localStorage.getItem('gc.slowNote')) return; test = localStorage.getItem('gc.testSlowNote'); } catch { return; }
+    if ((navigator.webdriver && !test) || screenPreset() === 'min' || byId('slowNote')) return;
+    let n = 0; let t0 = 0; const start = performance.now() + 3000;
+    const tick = (t) => {
+      if (!document.body.classList.contains('plazaMode') || document.hidden) return; /* (left, or a hidden tab: its frames are not this device's speed) */
+      if (t < start) { requestAnimationFrame(tick); return; } if (!t0) t0 = t; n += 1;
+      if (t - t0 < 10000) { requestAnimationFrame(tick); return; }
+      if ((n * 1000) / (t - t0) < 20 || test === 'force') showSlowNote();
+    };
+    requestAnimationFrame(tick);
+  }
+  function showSlowNote() {
+    try { localStorage.setItem('gc.slowNote', String(Date.now())); } catch {}
+    const box = document.createElement('div'); box.id = 'slowNote'; box.className = 'slowNote'; box.setAttribute('role', 'alertdialog'); box.setAttribute('aria-labelledby', 'slowNoteText');
+    const p = document.createElement('p'); p.id = 'slowNoteText'; p.textContent = '이 기기에서는 화면이 느려요. 최대한 가볍게 바꾸면 더 부드러워져요.';
+    const keep = document.createElement('button'); keep.type = 'button'; keep.className = 'ghost tiny'; keep.textContent = '그대로 하기';
+    keep.addEventListener('click', () => { box.remove(); plazaStage.focus({ preventScroll: true }); });
+    const lite = document.createElement('button'); lite.type = 'button'; lite.className = 'primary tiny'; lite.textContent = '최대한 가볍게';
+    lite.addEventListener('click', () => { setScreenPreset('min'); box.remove(); showToast('화면을 최대한 가볍게 바꿨어요 · ☰ 환경설정에서 바꿀 수 있어요', 4000); plazaStage.focus({ preventScroll: true }); });
+    const row = document.createElement('div'); row.className = 'slowNoteRow'; row.append(keep, lite); box.append(p, row); plazaStage.append(box);
+  }
+  // U4 조작법: the menu's card, PC and phone side by side; and for the first 3 days on this device a one-line band of the main keys
+  // (✕ closes it for good; not in tests unless asked: gc.testHint)
+  const CONTROLS_PC = [['W A S D · 방향키', '걷기'], ['Shift 누르고 있기', '뛰기'], ['SPACE', '눈앞의 것 하기 (말 걸기·줍기·들어가기)'], ['마우스 끌기', '시점 돌리기'], ['Q · E', '가까이·멀리'], ['V', '1인칭·3인칭'], ['I', '가방'], ['T 누르고 있기', '감정 표현'], ['B', '자전거'], ['Enter', '채팅'], ['Esc', '메뉴']];
+  const CONTROLS_PHONE = [['왼쪽 아래 막대', '걷기'], ['「뛰기」 누르고 있기', '뛰기'], ['「걷기」', '느리게·보통'], ['「상호작용」', '눈앞의 것 하기 (말 걸기·줍기·들어가기)'], ['화면 끌기', '시점 돌리기'], ['두 손가락 벌리기·모으기', '가까이·멀리'], ['「시점」', '1인칭·3인칭'], ['「가방」', '가방'], ['😊', '감정 표현'], ['「채팅」', '채팅'], ['☰', '메뉴']];
+  function openControls() {
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const col = (title, rows) => { const box = el('section', 'controlsCol'); const dl = el('dl'); for (const [k, v] of rows) dl.append(el('dt', null, k), el('dd', null, v)); box.append(el('h3', null, title), dl); return box; };
+    const card = el('div', 'mirrorCard controlsCard'); const grid = el('div', 'controlsGrid'); grid.append(col(touchIsland ? '폰 (지금 기기)' : '폰', CONTROLS_PHONE), col(touchIsland ? 'PC' : 'PC (지금 기기)', CONTROLS_PC));
+    if (!touchIsland) grid.prepend(grid.lastChild); /* (this device's column first) */
+    const close = el('button', 'secondary', '닫기'); close.type = 'button'; close.addEventListener('click', () => plazaDialog.close());
+    card.append(grid, close); openPlazaWindow('🎮 조작법', [card]);
+  }
+  byId('controlsBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); openControls(); });
+  function showControlsHint() {
+    let test = null; let since = 0; try { if (localStorage.getItem('gc.hintClosed')) return; test = localStorage.getItem('gc.testHint'); if (navigator.webdriver && !test) return; since = Number(localStorage.getItem('gc.hintSince')) || 0; if (!since) { since = Date.now(); localStorage.setItem('gc.hintSince', String(since)); } } catch { return; }
+    if (Date.now() - since > 3 * 86400000 || byId('controlsHint')) return;
+    const bar = document.createElement('div'); bar.id = 'controlsHint'; bar.className = 'controlsHint isle-tape';
+    const words = document.createElement('span'); words.textContent = touchIsland ? '막대 걷기 · 「뛰기」 누르고 뛰기 · 「상호작용」 눈앞의 것 하기' : 'WASD 걷기 · Shift 뛰기 · SPACE 눈앞의 것 하기 · I 가방 · Enter 채팅 · Esc 메뉴';
+    const more = document.createElement('button'); more.type = 'button'; more.className = 'ghost tiny'; more.textContent = '조작법'; more.addEventListener('click', openControls);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'ghost tiny'; x.textContent = '✕'; x.setAttribute('aria-label', '조작 안내 띠 닫기');
+    x.addEventListener('click', () => { try { localStorage.setItem('gc.hintClosed', '1'); } catch {} bar.remove(); plazaStage.focus({ preventScroll: true }); });
+    bar.append(words, more, x); plazaStage.append(bar);
+  }
+  // U3 막혔을 때 대청마당으로 (☰ 환경설정 맨 위, on the island only): the server puts me on 대청마당
+  byId('unstuckBtn').addEventListener('click', async () => {
+    try { const r = await api('/api/island/unstuck', { method: 'POST', body: '{}' }); byId('gameMenuDialog').close(); plaza.controller?.correctTo?.(r.x, r.z); plazaLastSent = null; showToast('대청마당으로 왔어요.', 2800); plazaStage.focus({ preventScroll: true }); }
+    catch (error) { showToast(error.message, 3500); }
+  });
   // 사용자 「파도가 전혀 안 움직여」: 「움직임 줄이기」 -- the device's setting (default), or on/off whatever it says, kept on this device
   const motionMode = () => { try { const v = localStorage.getItem('gc.lessMotion'); return v === 'on' || v === 'off' ? v : 'auto'; } catch { return 'auto'; } };
   // v1.10.217 포인터 잠금: how far a mouse move turns the view (kept on this device)
@@ -1998,7 +2069,7 @@
       wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); loadQuick(); setTimeout(islandNoticeOnce, 1500); // (1103 4: a note once) (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
-      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setRenderScale?.(renderScaleMode()); /* (314) */ plaza.controller.onAutoTier?.(autoTierNote); plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
+      plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setRenderScale?.(renderScaleMode()); /* (314) */ plaza.controller.onAutoTier?.(autoTierNote); watchSlowStart(); showControlsHint(); /* (1.10.322 U1, U4) */ plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); refreshProjects(); // (v1.10.215: today's table on; v1.10.222 섬 가꾸기)
       showControlsNotice(); // (v1.10.217: the keys swapped -- told once on a PC)

@@ -1385,17 +1385,30 @@
       <button id="issueLogBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="issueDialog">문제 기록</button>
       <button id="furnitureStorageBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">가구 창고</button>
       <button id="myHomeBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">내 집</button>
+      <button id="controlsBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">조작법</button><!-- 1.10.322 편의 1 U4: PC·폰 두 칸 -->
+
       <button id="menuInstallBtn" type="button" class="ghost hidden">앱으로 설치</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">
         <h3 id="gameMenuSettingsTitle">환경설정</h3>
+        <!-- 1.10.322 편의 1 (notes mokpo-onxdo-ui-ideas-20261115 U2·U3): the island's screen in three steps, what it is now, the details under 더 보기; and a way out when stuck -->
+        <span class="gameMenuThemesLabel" id="screenPresetLabel">섬 화면:</span>
+        <div class="gameMenuThemes gameMenuScreen" role="radiogroup" aria-labelledby="screenPresetLabel">
+          <label><input type="radio" name="gcScreen" value="auto"> 자동(권장)</label>
+          <label><input type="radio" name="gcScreen" value="light"> 가볍게</label>
+          <label><input type="radio" name="gcScreen" value="min"> 최대한 가볍게</label>
+        </div>
+        <p id="screenNowLine" class="gameMenuScreenNow">지금 화면: 자동</p>
+        <details class="gameMenuMore"><summary>더 보기</summary>
+        <label class="gameMenuQuality">섬 화질 <select id="qualitySelect" aria-label="섬 화질"><option value="auto">자동</option><option value="2">높음</option><option value="1">보통</option><option value="0">낮음</option></select></label>
+        <label class="gameMenuQuality">그리기 해상도 <select id="renderScaleSelect" aria-label="그리기 해상도"><option value="auto">자동</option><option value="100">100%</option><option value="90">90%</option><option value="80">80%</option><option value="70">70%</option><option value="60">60%</option><option value="50">50%</option></select></label><!-- v1.10.314 렉 줄이기: the 3D's share of the screen's pixels, this device's -->
+        </details>
+        <button id="unstuckBtn" type="button" class="ghost hidden">막혔을 때 대청마당으로</button>
         <span class="gameMenuThemesLabel" id="gameMenuThemesLabel">게임관 화면:</span><!-- v1.10.192 (사용자) what the theme is for: the game hall's screens -->
         <div class="gameMenuThemes" role="radiogroup" aria-labelledby="gameMenuThemesLabel">
           <label><input type="radio" name="gcTheme" value="light"> 밝게</label>
           <label><input type="radio" name="gcTheme" value="dark"> 어둡게</label>
           <label><input type="radio" name="gcTheme" value="system"> 기기 설정</label>
         </div>
-        <label class="gameMenuQuality">섬 화질 <select id="qualitySelect" aria-label="섬 화질"><option value="auto">자동</option><option value="2">높음</option><option value="1">보통</option><option value="0">낮음</option></select></label>
-        <label class="gameMenuQuality">그리기 해상도 <select id="renderScaleSelect" aria-label="그리기 해상도"><option value="auto">자동</option><option value="100">100%</option><option value="90">90%</option><option value="80">80%</option><option value="70">70%</option><option value="60">60%</option><option value="50">50%</option></select></label><!-- v1.10.314 렉 줄이기: the 3D's share of the screen's pixels, this device's -->
         <label class="gameMenuSound"><input id="roomSoundToggle" type="checkbox" checked /> 게임 효과음 (게임방·한판마당)</label>
         <label id="oldmaidEffectsRow" class="gameMenuSound hidden"><input type="checkbox" id="oldmaidEffectsToggle" checked /> 도둑잡기 연출 효과</label><!-- v1.10.247 G2: in ☰, not over the table -->
         <label class="gameMenuSound"><input id="hwatuNamesToggle" type="checkbox" /> 화투 패 이름 보기 (처음 하는 사람)</label>

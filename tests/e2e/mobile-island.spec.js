@@ -20,11 +20,19 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
   await page.evaluate(() => { // the island itself, light: no 3D models (as in plaza.spec)
     localStorage.removeItem('gc.testClassic');
     localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
+    localStorage.setItem('gc.testSlowNote', 'force'); localStorage.setItem('gc.testHint', '1'); // (1.10.322 U1·U4: shown in tests only when asked)
   });
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
   await page.evaluate(() => window.PlazaDebug().halloween.set(false));
   await expect(page.locator('#islandStick')).toBeVisible();
+  // (1.10.322 U4) the first days' band: the phone's keys, and 조작법 opens the card with this phone's column first
+  await expect(page.locator('#controlsHint')).toContainText('막대 걷기');
+  await page.locator('#controlsHint').getByRole('button', { name: '조작법' }).tap();
+  await expect(page.locator('.controlsCard .controlsCol h3').first()).toHaveText('폰 (지금 기기)'); expect(await page.evaluate(() => { const d = document.getElementById('plazaDialog'); return d.scrollWidth <= d.clientWidth; })).toBe(true);
+  await page.locator('.controlsCard').getByRole('button', { name: '닫기' }).tap();
+  await page.locator('#controlsHint').getByRole('button', { name: '조작 안내 띠 닫기' }).tap(); await expect(page.locator('#controlsHint')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('gc.hintClosed'))).toBe('1');
 
   // a thumb on the stick, pushed up: the character walks, and stops when it lets go
   const box = await page.locator('#islandStick').boundingBox();
@@ -89,6 +97,10 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
   // (1.10.322 폰 화면 밀림: a phone's 100vh can be 56 px over the screen -- not here in emulation, so the rules themselves: body as
   // tall as the screen (100dvh), the canvas's drags never the page's)
   expect(await page.evaluate(() => ({ body: Math.round(parseFloat(getComputedStyle(document.body).minHeight)) === innerHeight, touch: getComputedStyle(document.querySelector('.plazaStage canvas.plazaCanvas')).touchAction }))).toEqual({ body: true, touch: 'none' });
+  // (1.10.322 U1) the slow-device note (forced here: a test's own speed says nothing) -- 최대한 가볍게 sets 낮음 + 60 % at once, once a device
+  await expect(page.locator('#slowNote')).toBeVisible({ timeout: 30000 });
+  await page.locator('#slowNote').getByRole('button', { name: '최대한 가볍게' }).tap(); await expect(page.locator('#slowNote')).toHaveCount(0);
+  expect(await page.evaluate(() => [localStorage.getItem('gc.quality'), localStorage.getItem('gc.renderScale'), Boolean(localStorage.getItem('gc.slowNote')), window.PlazaDebug().placeNow().words.length > 0])).toEqual(['0', '60', true, true]);
 });
 
 // v1.10.67 조이스틱 위치·크기 (사용자 2026-10-12): 메뉴 → 환경설정 → 「조이스틱 위치·크기」, drag the stick, size it, 완료;

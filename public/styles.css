@@ -1576,6 +1576,10 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 #lobbyView>#islandMapCard{display:none}.islandMapCard canvas{display:block;width:auto;max-width:100%;max-height:72vh;margin:0 auto;border-radius:14px}
 .plazaStage{position:relative;height:calc(100vh - 40px);min-height:520px;border-radius:22px;overflow:hidden;background:#bfe6ff;box-shadow:0 24px 70px rgba(0,0,0,.28);outline:none}
 .plazaStage canvas.islandMinimap{position:absolute;top:12px;right:12px;width:176px;height:176px;z-index:2;border-radius:50%;box-shadow:0 6px 18px rgba(0,0,0,.28);pointer-events:none}
+.islandPlaceChip{position:absolute;top:4px;right:2px;width:196px;z-index:3;display:flex;justify-content:center;pointer-events:none}.islandPlaceChip[hidden]{display:none}/* (1.10.322 U5 「지금 자리」: over the minimap's top edge) */
+.islandPlaceChip span{max-width:100%;padding:3px 10px;border-radius:999px;background:var(--isle-paper,#fff6e3);color:var(--isle-ink,#3b2f22);border:1px solid var(--isle-line,#d8c3a0);box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:.76rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.touchIsland .islandPlaceChip{width:132px}body.touchIsland .islandPlaceChip span{font-size:.66rem;padding:2px 8px}
+body.photoMode .islandPlaceChip,body.placing .islandPlaceChip,body.townhallRoom .islandPlaceChip{visibility:hidden}
 /* v1.10.3 첫 접속 캐릭터 선택 */
 .recordsDialog.genderDialog{width:min(92vw,420px);text-align:center}.genderDialog h2{margin:0 0 14px;font-size:1.1rem}
 .genderChoices{display:grid;grid-template-columns:1fr 1fr;gap:12px}.genderChoice{display:grid;justify-items:center;gap:8px;padding:16px 10px;border-radius:14px;background:#0f172a;border:2px solid #334155;color:#f8fafc;font-weight:850}
@@ -1782,6 +1786,30 @@ body.plazaMode .gameMenuThemes input { accent-color: var(--isle-tag); }
 .gameMenuThemes label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border-radius: 10px; border: 1px solid #334155; cursor: pointer; font-weight: 800; font-size: .86rem; white-space: nowrap; }
 .gameMenuThemes label:has(input:checked) { border-color: #60a5fa; background: rgba(96, 165, 250, .14); }
 .gameMenuThemes label:has(input:focus-visible) { outline: 2px solid #60a5fa; outline-offset: 2px; }
+/* 1.10.322 편의 1 U1·U2: the island's screen in three steps (the words may wrap on a phone), what it is now, the details folded; the slow-device note */
+.gameMenuScreen { flex-direction: column; }
+.gameMenuScreen label { justify-content: flex-start; padding: 7px 10px; word-break: keep-all; }
+.gameMenuScreen input { width: auto; flex: none; margin: 0; }
+.gameMenuScreenNow { margin: -2px 0 0; font-size: .8rem; opacity: .8; }
+.gameMenuMore { display: grid; gap: 8px; }
+.gameMenuMore summary { cursor: pointer; font-size: .84rem; font-weight: 800; }
+.gameMenuMore[open] summary { margin-bottom: 4px; }
+.slowNote { position: absolute; left: 50%; top: calc(max(14px, env(safe-area-inset-top)) + 52px); transform: translateX(-50%); z-index: 30; width: min(420px, calc(100% - 24px)); padding: 12px 14px; border-radius: 14px; background: var(--isle-paper, #fff6e3); color: var(--isle-ink, #3b2f22); border: 1px solid var(--isle-line, #d8c3a0); box-shadow: 0 8px 24px rgba(0, 0, 0, .25); font-size: .92rem; }
+.slowNote p { margin: 0 0 10px; font-weight: 700; }
+.slowNoteRow { display: flex; gap: 8px; justify-content: flex-end; }
+/* 1.10.322 U4 조작법: PC and phone side by side (one under the other on a narrow screen); the first days' band under the top row */
+.controlsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: 10px; }
+.controlsCol h3 { margin: 0 0 6px; font-size: .95rem; }
+.controlsCol dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin: 0; font-size: .88rem; }
+.controlsCol dt { font-weight: 850; }
+.controlsCol dd { margin: 0; }
+.controlsHint { position: absolute; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 48px); transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; max-width: min(640px, calc(100% - 440px)); padding: 4px 6px 4px 12px; font-size: .84rem; font-weight: 800; }
+.controlsHint span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.touchIsland .controlsHint { left: 12px; right: 140px; transform: none; max-width: none; top: calc(max(12px, env(safe-area-inset-top)) + 46px); font-size: .74rem; }
+body.touchIsland .controlsHint span { white-space: normal; }
+body.photoMode .controlsHint, body.placing .controlsHint, body:has(dialog[open]) .controlsHint { visibility: hidden; }
+.plazaStage:has(#controlsHint) .questTracker { top: 96px; }
+body.touchIsland .plazaStage:has(#controlsHint) .questTracker { top: 112px; }
 /* v1.10.63 게임 선택 탭: 멀티게임 / 싱글게임, then 대전게임 / 협동게임 -- only the chosen tab's games and panes show */
 .gameTabs { display: flex; gap: 6px; margin: 12px 0 8px; }
 .gameTab { flex: 1; padding: 10px 8px; border-radius: 12px; background: #0f172a; color: #cbd5e1; border: 1px solid #334155; font-weight: 850; }

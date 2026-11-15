@@ -73,6 +73,23 @@ test('Esc 메뉴: 섬에서 Esc로 열고 닫기, 입력 중에는 열리지 않
     await expect(menu).toBeVisible();
     await page.locator('input[name="gcTheme"][value="light"]').check();
     await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+    // (1.10.322 편의 1) U2 화면 3단계: the two details set together, 「지금 화면」 says what is drawn; back to 자동
+    await page.locator('input[name="gcScreen"][value="min"]').check();
+    await expect(page.locator('#screenNowLine')).toContainText('최대한 가볍게 · 낮음 ·');
+    expect(await page.evaluate(() => [document.getElementById('qualitySelect').value, document.getElementById('renderScaleSelect').value, localStorage.getItem('gc.quality'), localStorage.getItem('gc.renderScale')])).toEqual(['0', '60', '0', '60']);
+    await page.locator('input[name="gcScreen"][value="auto"]').check(); await expect(page.locator('#screenNowLine')).toContainText('지금 화면: 자동');
+    await expect(page.locator('#unstuckBtn')).toBeVisible(); await expect(page.locator('#controlsBtn')).toBeVisible();
+    // U4 조작법: PC (this device) and phone side by side
+    await page.locator('#controlsBtn').click(); const card = page.locator('.controlsCard'); await expect(card).toBeVisible();
+    await expect(card.locator('.controlsCol h3')).toHaveText(['PC (지금 기기)', '폰']); await expect(card.locator('dt').first()).toHaveText('W A S D · 방향키');
+    await card.getByRole('button', { name: '닫기' }).click(); await expect(card).toBeHidden();
+    // U5 지금 자리 over the minimap, U3 막혔을 때 대청마당으로: from far off, put by the arrival place (and the chip says so)
+    await expect.poll(() => page.locator('.islandPlaceChip span').textContent(), { timeout: 10000 }).toMatch(/^대청마당/);
+    await page.evaluate(() => window.PlazaDebug().teleport(-60, -30)); await expect.poll(() => page.evaluate(() => window.PlazaDebug().placeNow().words), { timeout: 10000 }).toMatch(/^이웃골/);
+    await page.locator('#gameMenuBtn').click(); await page.locator('#unstuckBtn').click(); await expect(menu).toBeHidden();
+    await expect.poll(() => page.evaluate(() => { const p = window.PlazaDebug().placeNow(); return Math.hypot(p.x + 22, p.z + 60) < 3; }), { timeout: 10000 }).toBe(true);
+    await page.locator('#gameMenuBtn').click(); await expect(page.locator('#unstuckBtn')).toBeVisible();
+    await page.locator('#unstuckBtn').click(); await expect(page.locator('#toast')).toContainText('조금 뒤에'); /* (once in 20 s; the menu stays) */
     await page.locator('#myInfoBtn').click();
     await expect(page.locator('#myInfoDialog')).toBeVisible();
     await expect(menu).toBeHidden();
