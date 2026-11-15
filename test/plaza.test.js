@@ -27,7 +27,7 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   const app = read('public/app.js');
   const facilities = app.match(/const PLAZA_FACILITIES = \[([\s\S]*?)\n {2}\];/)[1];
   const ids = [...facilities.matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
-  assert.deepEqual(ids.sort(), ['accessories', 'admin', 'attendance', 'avatar', 'board', 'climb', 'donate', 'dye', 'faces', 'games', 'hair', 'jail', 'map', 'missions', 'naming', 'records', 'shop', 'store', 'townhall', 'trader', 'transform']); // v1.10.92 잡화점 // v1.10.91 변신 의상실 // R4 구치소
+  assert.deepEqual(ids.sort(), ['accessories', 'admin', 'attendance', 'avatar', 'board', 'climb', 'donate', 'dye', 'faces', 'games', 'hair', 'jail', 'map', 'missions', 'naming', 'records', 'shop', 'stocks', 'store', 'townhall', 'trader', 'transform']); // v1.10.92 잡화점 // v1.10.91 변신 의상실 // R4 구치소 // v1.10.320 섬 증권거래소
   const terrain = read('public/plaza/island-terrain.js'); // v1.10.7: the facility spots moved with the island's shape
   const mall = require('../public/plaza/island-store'); // v1.10.92 백화점: the shops are its sectors (inside), not island lots
   const floor2 = require('../public/plaza/island-fashion'); // v1.10.211 백화점 개편 A안: the clothes up on the 2nd floor, hair, colour and face at its mirrors, the game skins in the game hall

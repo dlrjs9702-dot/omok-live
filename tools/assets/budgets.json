@@ -73,6 +73,12 @@
     "textures": 0
   },
   "fileOverrides": {
+    "characters/npc_walker_ted_work.glb": { "triangles": 31158, "sourceSha256": "380d43981c5b844836c1c59935161e6ac5f5a559ae44e739aee033fa1269ab64", "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk" },
+    "characters/npc_walker_ted_work_low.glb": { "triangles": 9671, "sourceSha256": "7d7099c737399928f9a15140a892f324deddf65e91e9d6dbea4dde83233cd83a", "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk" },
+    "characters/npc_face_ted.glb": { "meshes": 12, "nodes": 24, "materials": 12, "reason": "assets 102 / 119: an islander's 12 expression pieces, each its own named node (shown one at a time on the Head bone)" },
+    "stocks-v1/stock_exchange.glb": { "meshes": 4, "nodes": 11, "reason": "assets 118 섬 증권거래소: board_screen (its own mesh and material, the board drawn on a canvas), doors, door / clerk / footprint (empty nodes read by the game), roof" },
+    "stocks-v1/stock_exchange_low.glb": { "meshes": 4, "nodes": 11, "reason": "assets 118 섬 증권거래소 Low: the same nodes as the High" },
+    "stocks-v1/stock_exchange_room.glb": { "meshes": 3, "nodes": 10, "reason": "assets 118b 섬 증권거래소 안: exchange_room, front_wall (cut toward the camera), board_screen (a canvas), door_in / board_spot / clerk / walls (empty nodes read by the game)" },
     "farm-v1/spring/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
     "farm-v1/summer/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
     "farm-v1/autumn/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },

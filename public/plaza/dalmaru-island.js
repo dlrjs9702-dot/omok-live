@@ -53,6 +53,9 @@
     board: { ...row(0), kind: 'board' }, map: { ...row(1), kind: 'mapboard' }, attendance: { ...row(4), kind: 'npc' }, donate: { ...row(2), kind: 'donation' },
     chat: spot(PL.chat, 'gazebo'), climb: spot(PL.climb, 'tower'), admin: spot(PL.admin, 'office', { wall: 0xe4e7ec, roof: 0x7b8794 }),
     jail: { ...PL.jail, face: [PL.jail.x, PL.jail.z + 10], kind: 'jail' }, // R4 구치소 (assets 67: 9.8 x 7.4 m; its door toward the camera -- the island's buildings never fade)
+    // v1.10.320 섬 증권거래소 (assets 118; 사용자 22A, notes img/stocks-320 나): 대청마당's water side by 기록의 탑, its door to the fountain
+    // -- the ground 9.6 x 7.7 m with its steps (its `footprint`), from 3.4 behind the spot to 4.3 before it; the door 4.9 out
+    stocks: { x: 10.5, z: -64.5, face: [10.5, -84], kind: 'exchange', size: [9.6, 7.7], front: 3.8 },
   };
   const FACADE = { w: 30, d: 4.6 }; // (assets 55 facade.*: 30 wide, 4.6 out from the cliff)
   function facilityDoor(id) {
@@ -385,6 +388,17 @@
     { const s = FARM.yard.shed; for (const dx of [-1, 0, 1]) for (const dz of [-0.6, 0.6]) out.push({ x: s.x + dx, z: s.z + dz, r: 0.8 }); }
     out.push({ ...FARM.yard.scarecrow, r: 0.35 });
     out.push(...towerSolids()); // (v1.10.250: the islanders' routes and the player keep off 기록의 탑)
+    out.push(...exchangeSolids()); // (v1.10.320: and off the 증권거래소)
+    return out;
+  }
+  // v1.10.320 섬 증권거래소: its ground's edge all round (0.5 m circles every 0.5 m, 0.3 in) and its middle filled -- in its own
+  // frame (lx across, lz toward its front: from -3.4 to +4.3, assets 118 `footprint`)
+  function exchangeSolids() {
+    const s = SPOTS.stocks; const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const c = Math.cos(ry); const sn = Math.sin(ry);
+    const at = (lx, lz) => ({ x: s.x + c * lx + sn * lz, z: s.z - sn * lx + c * lz }); const out = []; const [x0, x1, z0, z1] = [-4.8, 4.8, -3.4, 4.3];
+    for (let lx = x0 + 0.3; lx <= x1 - 0.3 + 1e-6; lx += 0.5) for (const lz of [z0 + 0.3, z1 - 0.3]) out.push({ ...at(lx, lz), r: 0.5 });
+    for (let lz = z0 + 0.8; lz <= z1 - 0.8 + 1e-6; lz += 0.5) for (const lx of [x0 + 0.3, x1 - 0.3]) out.push({ ...at(lx, lz), r: 0.5 });
+    for (let lx = x0 + 1.5; lx <= x1 - 1.5 + 1e-6; lx += 1.6) for (let lz = z0 + 1.5; lz <= z1 - 1.5 + 1e-6; lz += 1.6) out.push({ ...at(lx, lz), r: 1.2 });
     return out;
   }
   const STRUCTURES = { // the pieces of assets 55 that stand once (plaza-scene draws them; solids are theirs)
