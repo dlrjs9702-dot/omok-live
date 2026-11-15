@@ -685,7 +685,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     const hit = P.pick(registry, ids, off, null); if (!hit) return; // characters have no season
     c.assetPending = hit.id; shown[hit.id] = 'loading';
     // v1.10.80 `motions`: a whole character on the common rig moved by the common motion files (the farmer)
-    const base = hit.entry.motions ? registry['character.base'] : null; const clipUrls = Object.values(base?.clips || {});
+    const base = hit.entry.motions ? registry['character.base'] : null; const preset = base ? hit.entry.preset || null : null; /* (1.10.328 주민 성격별 동작, assets 123: its own idle and gaits, their speeds at its size) */
+    const clipUrls = [...new Set([...Object.values(base?.clips || {}), ...Object.values(preset?.clips || {})])];
     // (F3 배회 주민, 2026-10-24: a whole character with a Low file -- the islanders, 31k triangles each -- has both: the Low
     // file's meshes bound by joint name to the High one's bones, one mixer for both, the pair switched by distance as a
     // worn character's (wearLod; a phone's lower tier sooner); a rigged model's two copies cannot be a THREE.LOD)
@@ -712,7 +713,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (who && registry[`npc_face.${who}`]?.url) { c.npcPerson = who; c.wearRec ||= { isHigh: true, high: [], low: [] }; cache.get(registry[`npc_face.${who}`].url).catch(() => {}); }
       if (/^character\.walker\.(hangyeol_(work|off)|isol)$/.test(hit.id)) c.shyFront = true;
       const clips = base ? motions.map((m) => m?.animations?.[0]).filter(Boolean) : gltf.animations;
-      const anim = P.createAnimator(THREE, object, clips, base ? base.animations : hit.entry.animations || {}, { walkSpeed, speeds: (base || hit.entry).speeds, rates: base?.rates });
+      const anim = P.createAnimator(THREE, object, clips, base ? { ...base.animations, ...(preset?.animations || {}) } : hit.entry.animations || {}, { walkSpeed, speeds: preset?.speeds || (base || hit.entry).speeds, rates: preset?.rates || base?.rates });
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown[hit.id] = 'model';
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }

@@ -97,7 +97,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     assert.ok(parsed.get(url) > 0, `${id} ${what} 메시`);
   };
   for (const [id, entry] of Object.entries(REGISTRY)) {
-    for (const url of Object.values(entry.clips || {})) { // v1.10.30 the motions: one clip each, no mesh
+    for (const url of new Set([...Object.values(entry.clips || {}), ...Object.values(entry.preset?.clips || {})])) { // v1.10.30 the motions: one clip each, no mesh (1.10.328: an islander's own, assets 123)
       assert.ok(pack.assets.some((a) => a.url === url), `${id} ${url} 리소스 팩`);
       const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', url)));
       assert.equal(gltf.animations.length, 1, url); parsed.set(url, 0);
@@ -261,6 +261,17 @@ test('AnimationMixer 계층: 속도에 따라 Idle→Walk→Run으로 교차 전
   assert.equal(anim2.state, 'run'); assert.equal(anim2.clip, 'Walk'); // no Run clip: the walk, faster
   const noClips = P.createAnimator(THREE, (await parse(staticGlb())).scene, [], { idle: 'Idle' }, { walkSpeed: 5.2 });
   noClips.update(0.016, 5); assert.equal(noClips.clip, null); // a model without clips just stands
+});
+
+// 1.10.328 주민 성격별 동작 (assets 123): an 어르신's walk and run are one Walk action -- the speed entry by the state asked, not by
+// which action plays (walking at 4.2 m/s was read as running at 6.2: its steps slowed to 0.68x)
+test('같은 Walk를 걷기·달리기가 함께 쓸 때: 걷기는 걷기 속도, 달리기는 달리기 속도와 재생률', async () => {
+  const THREE = await three(); const root = new THREE.Object3D();
+  const clip = (name) => new THREE.AnimationClip(name, 1, [new THREE.NumberKeyframeTrack('.position[x]', [0, 1], [0, 1])]);
+  const anim = P.createAnimator(THREE, root, [clip('Idle_Elder'), clip('Walk_Elder')], { idle: 'Idle_Elder', walk: 'Walk_Elder', run: 'Walk_Elder' }, { walkSpeed: 5.2, speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1, walk: 1, run: 6.2 / 4.2 } });
+  anim.update(0.016, 4.2); assert.equal(anim.state, 'walk'); assert.ok(Math.abs(anim.rate - 1) < 1e-9, `walk ${anim.rate}`);
+  anim.update(0.016, 9); assert.equal(anim.state, 'run'); assert.equal(anim.clip, 'Walk_Elder'); assert.ok(Math.abs(anim.rate - (6.2 / 4.2) * (9 / 6.2)) < 1e-9, `run ${anim.rate}`);
+  anim.dispose();
 });
 
 test('동작 줄이기: 실제 mixer의 Idle만 정지하고 걷기·반응·교차 전환은 유지', async () => {

@@ -111,6 +111,7 @@
     return {
       get state() { return state; },
       get clip() { return current?.getClip().name || null; },
+      get rate() { return current ? current.timeScale : 0; }, // (1.10.328: the playing loop's rate -- tests)
       weights: () => Object.fromEntries(Object.entries(actions).map(([name, action]) => [name, action.isRunning() ? action.getEffectiveWeight() : 0])),
       update(dt, speed, { reduceIdle = false } = {}) {
         speed = Math.max(0, speed || 0);
@@ -119,7 +120,7 @@
           let next = nextGait(state === 'slow' ? 'walk' : state, speed, walkSpeed);
           if (next === 'walk' && actions.slow && speeds.slow && speed < slowBelow * (state === 'slow' ? 1.1 : 0.9)) next = 'slow';
           if (next !== state) { state = next; fadeTo(actionFor(next)); }
-          const moving = current === actions.run ? 'run' : current === actions.slow ? 'slow' : 'walk';
+          const moving = state === 'run' ? (actions.run ? 'run' : 'walk') : state === 'slow' ? 'slow' : 'walk'; /* (1.10.328 assets 123: by the state asked -- an 어르신's walk and run are one Walk action) */
           if (current) current.timeScale = state === 'idle' ? (reduceIdle ? 0 : 1) : (rates[moving] || 1) * Math.min(2, Math.max(0.5, speed / groundSpeed[moving]));
         }
         mixer.update(dt);

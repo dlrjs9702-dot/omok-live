@@ -13584,6 +13584,144 @@
       "lowSrc": "market124:02. Low/xmas-v2/snack_sweetpotato_low.glb",
       "lowSha256": "972b7750a0a3593403f80372bb77bee889edbf227c3c3d813c3a83437b479511",
       "precompressed": true
+    },
+    {
+      "out": "characters/motions/Idle_Brisk.glb",
+      "src": "motions123:01. High/motions/Idle_Brisk.glb",
+      "sha256": "33825e841e1291f1e9bd7e7409ba0bb2755cfd559453b8f365da2634224c66bb",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Idle_Dreamy.glb",
+      "src": "motions123:01. High/motions/Idle_Dreamy.glb",
+      "sha256": "7acc32bed8ed4c681664c0b00008bfdea8a749f796c2cc0d12010525ba5299cd",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Idle_Elder.glb",
+      "src": "motions123:01. High/motions/Idle_Elder.glb",
+      "sha256": "4924d19c3b068ec1a418d5bb3aac51fce88d0308d5d0bcd7496bb1845281da09",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Idle_ElderBrisk.glb",
+      "src": "motions123:01. High/motions/Idle_ElderBrisk.glb",
+      "sha256": "a33a99de286a8858c9b6ad1d01f68390af5d4b2e24d2936de6d0dcb4c243ae8b",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Idle_Formal.glb",
+      "src": "motions123:01. High/motions/Idle_Formal.glb",
+      "sha256": "a60dfb41739eb643665abbcc288f6d7ab664d240d15909d1b9c717d0b61affc9",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Idle_Kid.glb",
+      "src": "motions123:01. High/motions/Idle_Kid.glb",
+      "sha256": "a178703b223a0b729b89b2e3edc91d9409efe3afde961bb9f2a45e933ae60f49",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Idle_Sleuth.glb",
+      "src": "motions123:01. High/motions/Idle_Sleuth.glb",
+      "sha256": "d23fcd31f32f8f04360d70e4075a29cb523ca70c7d5611415fb6ecc6a3ceb213",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Run_Brisk.glb",
+      "src": "motions123:01. High/motions/Run_Brisk.glb",
+      "sha256": "75a1796d64cc2f330cfd744758692270773bd874188fca834ae81129a4478475",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Run_Kid.glb",
+      "src": "motions123:01. High/motions/Run_Kid.glb",
+      "sha256": "dc8e3b4fb387371211cd40804ec1aea7b68397b12e982666ba6d26fcaa2b3635",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_Brisk.glb",
+      "src": "motions123:01. High/motions/SlowWalk_Brisk.glb",
+      "sha256": "1f523f7e07165e2a8e8b85edc3e53d08b01a08f2cff7e0fe4ffa365580f8b4d1",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_Dreamy.glb",
+      "src": "motions123:01. High/motions/SlowWalk_Dreamy.glb",
+      "sha256": "96540d959fcbe0b0342afcb7e099e2de397af67b7a000e1f2cfc71196fe3fddd",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_Elder.glb",
+      "src": "motions123:01. High/motions/SlowWalk_Elder.glb",
+      "sha256": "ba94225f31f717961ad8f66137a2bad0ea9c4ba7a78f6fe0bd8dd97823c9f115",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_ElderBrisk.glb",
+      "src": "motions123:01. High/motions/SlowWalk_ElderBrisk.glb",
+      "sha256": "66c3c06ca5db88a8555a7ddd74aeb7153a6e7f9037721d7269a4d403170b3b4a",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_Formal.glb",
+      "src": "motions123:01. High/motions/SlowWalk_Formal.glb",
+      "sha256": "949b98087dabed4aa18aab2621661ee429540103b1c30bf22519513d1b5867bd",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_Kid.glb",
+      "src": "motions123:01. High/motions/SlowWalk_Kid.glb",
+      "sha256": "d9c1cd2bc88b3fbb32d8176444a6bdd2ab1c090b156a99bf21e1e6ccb812d7e6",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_Sleuth.glb",
+      "src": "motions123:01. High/motions/SlowWalk_Sleuth.glb",
+      "sha256": "b3e604270cb92b6e0fad099722de258e249ccbea37bb112c9cc145324e8ee3b1",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_Brisk.glb",
+      "src": "motions123:01. High/motions/Walk_Brisk.glb",
+      "sha256": "d21a3201e744fa86a9fefd034047f75d3bc02a7bdf3f903a4ddcf0822ea24ccc",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_Dreamy.glb",
+      "src": "motions123:01. High/motions/Walk_Dreamy.glb",
+      "sha256": "525643be0ad8deeeec673ad61995860c2c9aa21457a3cf8f1788bcb294e1aa20",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_Elder.glb",
+      "src": "motions123:01. High/motions/Walk_Elder.glb",
+      "sha256": "25dd8fc8e401f86b6a690ab738cf0ae003d3e30311bb2795cbd6f6a5913e3257",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_ElderBrisk.glb",
+      "src": "motions123:01. High/motions/Walk_ElderBrisk.glb",
+      "sha256": "7df8e09ebb587ab68320ac297949242529d23168af6db38bcaa9aaad174d9a3c",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_Formal.glb",
+      "src": "motions123:01. High/motions/Walk_Formal.glb",
+      "sha256": "923dfa862a9413c6fb3f2844d1225b0f28a9047c53a4bf5cddb43a987a60d1d1",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_Kid.glb",
+      "src": "motions123:01. High/motions/Walk_Kid.glb",
+      "sha256": "ccd550ac3308af4f8c56b9009a96964d9a30f4733b79d0122d31cddc7be1e3b6",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_Sleuth.glb",
+      "src": "motions123:01. High/motions/Walk_Sleuth.glb",
+      "sha256": "c1e8b7dad790fea6990d920c45e2abe3958bddf2d0ce83f90834e8ff47d81ae1",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -13682,6 +13820,7 @@
     "farm115": "115. Game Island yard farming F1 2026-11-10",
     "quarry129": "129. Game Island quarry rocks ore pickaxe 2026-11-15",
     "pickaxe130": "130. Game Island pickaxe motion 2026-11-15",
-    "market124": "124. Game Island xmas market stalls 2026-11-15"
+    "market124": "124. Game Island xmas market stalls 2026-11-15",
+    "motions123": "123. Game Island resident motion presets 2026-11-14"
   }
 }

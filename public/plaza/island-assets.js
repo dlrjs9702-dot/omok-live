@@ -377,6 +377,26 @@
   REGISTRY['facility.stocks'] = { url: '/assets/island/stocks-v1/stock_exchange.glb', low: { url: '/assets/island/stocks-v1/stock_exchange_low.glb' }, near: 70, snow: true, keepNodes: true, rotationY: Math.PI }; /* (its front -Z: turned to the spot's face, as the jail's) */
   REGISTRY['stocks.room'] = { url: '/assets/island/stocks-v1/stock_exchange_room.glb', low: null, near: 40, keepNodes: true, shadows: false };
   REGISTRY['character.walker.ted_work'] = { url: `${CH}/npc_walker_ted_work.glb`, low: { url: `${CH}/npc_walker_ted_work_low.glb` }, rotationY: Math.PI, motions: true, baked: true, scale: 1.04 };
+  // 1.10.328 주민 성격별 동작 (assets 123 presets.json, notes docs/resident-motion-presets-20261114.md): each kind its own Idle,
+  // SlowWalk and Walk (and Run, or the common one; 어르신 run on their Walk, 노을 played faster), made for the common 1 / 4.2 /
+  // 6.2 m/s at full size -- times each islander's size (콩이 0.45: its playback at most 2x, asset-pipeline). The lean stays the looks'
+  const MOTION_PRESETS = Object.freeze({
+    Elder: ['Walk_Elder', 1, { sea_grandpa: 1, kkotnim_work: 0.62, kkotnim_off: 0.62, neuti_work: 0.8, neuti_off: 0.8 }],
+    ElderBrisk: ['Walk_ElderBrisk', 6.2 / 4.2, { noeul_granny: 1 }],
+    Kid: ['Run_Kid', 1, { garam: 0.75, kongi_work: 0.45, kongi_off: 0.45 }],
+    Formal: ['Run', 1, { useong_off: 1.15, useong_work: 1.15, danbi_off: 0.82, danbi_work: 0.82, hansol_off: 0.95, hansol_work: 0.95, saerom_off: 1.12, saerom_work: 1.12, darae_off: 0.86, darae_work: 0.86, hangyeol_off: 0.78, hangyeol_work: 0.78, ted_work: 1.04 }],
+    Sleuth: ['Run', 1, { detective_oh: 1 }],
+    Dreamy: ['Run', 1, { haram: 1, isol: 1, goeun_off: 0.88, goeun_work: 0.88, garak_off: 1.22, garak_work: 1.22, bitna_off: 1.18, bitna_work: 1.18 }],
+    Brisk: ['Run_Brisk', 1, { barami: 1, daon: 1, cheori_off: 0.82, cheori_work: 0.82, bawi_off: 1.28, bawi_work: 1.28, handeul_off: 1.3, handeul_work: 1.3 }],
+  });
+  for (const [kind, [run, runRate, residents]] of Object.entries(MOTION_PRESETS)) {
+    const animations = { idle: `Idle_${kind}`, slow: `SlowWalk_${kind}`, walk: `Walk_${kind}`, run };
+    const clips = Object.fromEntries([...new Set(Object.values(animations))].filter((n) => !MOTIONS.includes(n)).map((n) => [n, `${CH}/motions/${n}.glb`]));
+    for (const [id, size] of Object.entries(residents)) {
+      const entry = REGISTRY[`character.walker.${id}`]; if (!entry) continue;
+      entry.preset = Object.freeze({ kind, animations, clips, speeds: { slow: 1 * size, walk: 4.2 * size, run: 6.2 * size }, rates: { slow: 1, walk: 1, run: runRate } });
+    }
+  }
   REGISTRY['npc_face.ted'] = { url: `${CH}/npc_face_ted.glb`, near: 30, shadows: false };
   const village = (file, extra = {}) => ({ url: `/assets/island/village-v1/${file}.glb`, low: { url: `/assets/island/village-v1/${file}_low.glb` }, near: 50, ...extra });
   for (const s of [0, 1, 2, 3]) { REGISTRY[`village.mural.${s}`] = village(`mural_stage${s}`); REGISTRY[`village.stepstones.${s}`] = village(`stepstones_stage${s}`); }
