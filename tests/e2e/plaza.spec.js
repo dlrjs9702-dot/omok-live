@@ -1939,12 +1939,12 @@ test('채석장: 능선 위 바위 앞에서 곡괭이로 캐면 광석 1개, �
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, isMobile ? '채석장광부m' : '채석장광부'); const { page } = a;
   try {
-    const Q = require('../../public/plaza/island-quarry.js'); const rock = Q.ROCKS[1]; const s = Q.standOf(rock, 'full', 0);
+    const Q = require('../../public/plaza/island-quarry.js'); const rock = Q.ROCKS[(1 + test.info().retry * 2 + (isMobile ? 1 : 0)) % Q.ROCKS.length]; const s = Q.standOf(rock, 'full', 0); /* (a retry, or the other device, its own full rock) */
     await post(request, '/api/test/island/give', a.token, { itemId: 'pickaxe', qty: 1 });
     await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [s.x, s.z]);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().placeNow().words), { timeout: 15000 }).toMatch(/^채석장/);
     await expect.poll(() => spaceOn(page, `quarry:${rock.id}:0`, isMobile), { timeout: 20000 }).toBe(true);
-    await expect(page.locator('#toast')).toContainText('광석 +1', { timeout: 15000 });
+    await expect(page.locator('#toast')).toContainText('광석 +1', { timeout: 30000 }); /* (3.6 s of swings by the clock, then the server's answer -- slow on CI) */
     const bag = (await get(request, '/api/island/bag', a.token)).data; const items = bag.items || bag.bag?.items || [];
     expect(items.filter((e) => e.itemId === 'ore').reduce((n, e) => n + e.qty, 0)).toBe(1);
     expect(items.find((e) => e.itemId === 'pickaxe')?.uses).toBe(Q.PICK_USES - 1);
