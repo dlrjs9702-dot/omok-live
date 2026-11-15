@@ -50,7 +50,8 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   await a.page.locator('#islandBagTab').click();
   await a.page.locator('.islandBagSlot[data-item="firework"]').click(); // (v1.10.195: the slot picked, its bubble)
   await a.page.locator('.islandBagSlot[data-item="firework"]').getByRole('menuitem', { name: '들기' }).click(); // (v1.10.236 빠른 칸, 사용자 「도구처럼 장착한 후에 상호작용키를 누르면 쓰는 걸로」: held, then SPACE)
-  await expect.poll(async () => { if ((await a.page.locator('#plazaHint').textContent()).includes('폭죽 쓰기')) return true; await a.page.evaluate((p) => window.PlazaWarp(p.x + 1.4, p.z + 4), PC); await a.page.waitForTimeout(600); return (await a.page.locator('#plazaHint').textContent()).includes('폭죽 쓰기'); }, { timeout: 20000, intervals: [300] }).toBe(true); // (a step off the other one: beside them SPACE greets)
+  let k = 0; /* (1.10.326 흔들림 §6: an islander or an empty seat within reach takes the hint -- another spot each try) */
+  await expect.poll(async () => { if ((await a.page.locator('#plazaHint').textContent()).includes('폭죽 쓰기')) return true; await a.page.evaluate(([p, k]) => window.PlazaWarp(p.x + 1.4 + 2.5 * k, p.z + 4), [PC, k]); k += 1; await a.page.waitForTimeout(600); return (await a.page.locator('#plazaHint').textContent()).includes('폭죽 쓰기'); }, { timeout: 20000, intervals: [300] }).toBe(true); // (a step off the other one: beside them SPACE greets)
   if (isMobile) await a.page.locator('#islandActBtn').tap(); else { await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space'); }
   // (CI 2026-10-19: on the GitHub runner the other screen's sight of it fails though it holds locally and on SwiftShader --
   // main fails it too; kept as a note there, a failure everywhere else, until it is understood)

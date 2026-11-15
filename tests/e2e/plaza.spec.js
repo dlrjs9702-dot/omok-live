@@ -467,7 +467,7 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   await plain.page.evaluate(() => document.getElementById('climbDialog').close());
   await champs[1].context.close(); // fewer 3D pages while one reloads
   await champs[0].page.reload();
-  await expect.poll(() => islandSettled(champs[0].page), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => islandSettled(champs[0].page), { timeout: 60000 }).toBe(true); /* (1.10.326 흔들림 §6: as 439's) */
   await expect.poll(() => champs[0].page.evaluate(() => window.PlazaDebug().champion), { timeout: 8000 }).toBe(true);
   await expect.poll(() => seen(plain, idA).then((o) => o?.champion), { timeout: 10000 }).toBe(true);
   for (const who of [champs[0], plain]) await expectNoScriptError(who.page);
@@ -1252,7 +1252,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   for (const who of [a,b]) {
     await expect.poll(()=>who.page.evaluate(id=>{
       const d=window.PlazaDebug(); const actor=d.eventResidents.find(e=>e.key===`ev:lost_owner:${id}`);
-      return actor && {n:actor.n,reused:actor.reused,count:d.wanderers.length,
+      return actor && {n:actor.n,reused:actor.reused,count:d.wanderers.filter((q)=>q.n<window.IslandCast.WALKERS.length).length /* (1.10.326 흔들림 §6: the contest hours' 가락 walks too) */,
         near:Math.hypot(actor.x-d.residentReservations[actor.n].hold.x,actor.z-d.residentReservations[actor.n].hold.z)<.01};
     },lost.id),{timeout:60000}).toEqual({n:lost.npc.resident,reused:true,count:10,near:true}); // (달마루섬 is bigger: the walk there takes longer)
   }
@@ -1294,7 +1294,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   for(const who of [a,b]) {
     await expect.poll(()=>who.page.evaluate(n=>{
       const d=window.PlazaDebug(),w=d.wanderers.find(w=>w.n===n);
-      return {count:d.wanderers.length,held:w.held,clear:w.clear,walkable:w.walkable,delay:d.residentReservations[n].delay>0};
+      return {count:d.wanderers.filter((q)=>q.n<window.IslandCast.WALKERS.length).length /* (1.10.326 흔들림 §6: the contest hours' 가락 walks too) */,held:w.held,clear:w.clear,walkable:w.walkable,delay:d.residentReservations[n].delay>0};
     },lost.npc.resident)).toEqual({count:10,held:false,clear:true,walkable:true,delay:true});
     await expectNoScriptError(who.page);
   }

@@ -31,7 +31,7 @@ test('구경 C안: 꽃 색 찾기·벽화 차례로·부두 배웅·허수아비
   const mu = task('painter');
   await goTo(mu.spots[1], '벽화'); await press(); await expect(toast).toHaveText('다시 볼까요?');
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-visit-mural.png` });
-  for (const p of mu.spots) { await goTo(p, '벽화'); await page.waitForTimeout(300); await press(); await page.waitForTimeout(500); }
+  for (const [i, p] of mu.spots.entries()) { await goTo(p, '벽화'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().near)).toBe(`visit:painter:tap:${i}`); await press(); await page.waitForTimeout(500); } /* (1.10.326 흔들림 §6: the three spots share one hint -- their own key, not 300 ms) */
   await expect(line(track.find((t) => t.story === 'painter').name)).toContainText('✓ 돌아가 말해요', { timeout: 10000 });
   // the pier: standing there is not it; the wave until the boat is out -- then done
   const pi = task('fisher');

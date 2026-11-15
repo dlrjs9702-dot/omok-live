@@ -24,4 +24,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RUN: ${{ github.event.workflow_run.id }}
-        run: gh run rerun "$RUN" --failed -R "$GITHUB_REPOSITORY"
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        # (1.10.326, 총괄: only the PR's head commit -- an older commit's rerun would share the PR's concurrency group with the
+        # head's own run and could cancel it)
+        run: |
+          head=$(gh pr list -R "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json headRefOid --jq '.[0].headRefOid // ""')
+          if [ "$head" != "$SHA" ]; then echo "not the open PR's head (${head:-none}) -- skipped"; exit 0; fi
+          gh run rerun "$RUN" --failed -R "$GITHUB_REPOSITORY"

@@ -5187,10 +5187,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     talkView = null; untalk();
     const t = lastTalk; const p = me.root.position;
     if (!mode || !t || overview || riding) return false;
-    const figure = talkFigure(t.id); const at = figure?.getWorldPosition(new THREE.Vector3()) || { x: t.x, z: t.z };
+    const figure = talkFigure(t.id); let at = figure?.getWorldPosition(new THREE.Vector3()) || { x: t.x, z: t.z }; let drawn = Boolean(figure);
+    if (Math.hypot(at.x - p.x, at.z - p.z) > 6) { at = { x: t.x, z: t.z }; drawn = false; } /* (1.10.326 흔들림 §6: a model still drawn where it was held or behind -- the server's spot) */
     if (Math.hypot(at.x - p.x, at.z - p.z) > 6) return false;
     // stepping back only from a person standing loose on the island (a gate or a counter keeps its own spot and reach)
-    talkView = { id: t.id, x: at.x, z: at.z, shot: mode === 'shot', step: Boolean(figure) && (eventObjs.has(t.id) || t.id.startsWith('player:') || t.id.startsWith('resident:')) };
+    talkView = { id: t.id, x: at.x, z: at.z, shot: mode === 'shot', step: drawn && (eventObjs.has(t.id) || t.id.startsWith('player:') || t.id.startsWith('resident:')) };
     me.targetYaw = Math.atan2(at.x - p.x, at.z - p.z);
     const o = eventObjs.get(t.id);
     const walker = t.id.startsWith('resident:') ? wanderers.find((w) => w.n === Number(t.id.slice(9)))?.c : null; // v1.10.91
@@ -5624,6 +5625,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const m = me.root.position;
       for (const [id, st] of Object.entries(R.STATIONS)) {
         if (Math.hypot(st.entry[0] - m.x, st.entry[1] - m.z) > 2.6) continue;
+        const near = best && (eventDoors[best] || doors[best]); if (near && Math.hypot(near.x - m.x, near.z - m.z) < Math.hypot(st.entry[0] - m.x, st.entry[1] - m.z)) continue; /* (1.10.326 흔들림 §6: a nearer person or thing keeps SPACE -- a lost item's owner by the lift) */
         eventDoors['train:enter:' + id] = { x: st.entry[0], z: st.entry[1], name: st.name + ' 승강기' };
         best = 'train:enter:' + id; break;
       }

@@ -575,6 +575,7 @@ test('메신저 B: 안 읽은 곳 줄·새 메시지 ↓·Shift+Enter 줄 바꿈
   await input.fill('첫 줄'); await input.press(isMobile ? 'Enter' : 'Shift+Enter'); await input.pressSequentially('둘째 줄');
   await expect(input).toHaveValue('첫 줄\n둘째 줄'); expect(await input.evaluate((el) => el.offsetHeight)).toBeGreaterThan(h1);
   await send(); await expect(input).toHaveValue('');
+  await expect(box.locator('.chatMessage.pending')).toHaveCount(0); /* (1.10.326 흔들림 §6: the 「보내는 중」 line swapped for the server's -- read the real one) */
   const two = box.locator('.chatMessage.mine .chatMessageText').last(); await expect(two).toHaveText('첫 줄\n둘째 줄');
   expect(await two.evaluate((el) => [getComputedStyle(el).whiteSpace, el.getBoundingClientRect().height > 30])).toEqual(['pre-wrap', true]);
   expect(await input.evaluate((el) => el.offsetHeight)).toBe(h1); // (back to one line)
