@@ -691,6 +691,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.BoxGeometry(1.4, 2.3, 0.1), mat(0x3b3f45), 0, 1.15, 3.75, visual); // the door
       const plaque = new THREE.Group(); plaque.rotation.y = Math.PI; plaque.add(boardText(facility.name, 2.5, 0.62, 3.75, -3.85)); root.add(plaque); // (the board over the door, assets 67: 2.6 x 0.7 m at 3.75 m, its face 3.84 m out -- the model turned half round)
       boxSolids(0, 0, 9.8, 7.4, 0.9); edgeSolids(0, 0, 9.8, 7.4); // (7회차 3 「구치소를 파고들어갈 수 있어」: the walls between the inner circles -- its floor's edge all round, 0.2 m out; the door's steps outside it)
+    } else if (spot.kind === 'exchange') { // v1.10.320 섬 증권거래소 (assets 118 facility.stocks: 9.6 x 7.7 m with its steps, the board over the door; its solids T.structureSolids)
+      depth = 7.7;
+      mesh(new THREE.BoxGeometry(9.2, 6.4, 6.6), mat(0xf1e6cf), 0, 3.2, -0.3, visual); mesh(new THREE.ConeGeometry(6.9, 2.0, 4), mat(0x2f4d7a), 0, 7.4, -0.3, visual).rotation.y = Math.PI / 4;
+      mesh(new THREE.BoxGeometry(6.0, 2.25, 0.2), mat(0x1d2a4a), 0, 4.7, 3.1, visual); mesh(new THREE.BoxGeometry(2.0, 2.6, 0.1), mat(0x8fb3c8), 0, 1.3, 3.05, visual); // (the board, the glass door)
+      mesh(new THREE.BoxGeometry(3.2, 0.36, 1.2), mat(0xd9d2c4), 0, 0.18, 3.7, visual); // (the steps)
+      facilitySign('stand', 3.6, 5.6);
     } else if (spot.kind === 'tower') { // v1.10.1 등반 도전: a tall stone tower on the hill, a landmark from anywhere on the island
       depth = 6.4;
       const stone = mat(0xd8d0c2); const band = mat(0xb8ae9e); const roofM = mat(0x6f8fd8);
@@ -857,7 +863,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       solids.push({ ...at(0, 0.1), r: 0.95 }, { ...at(0, -0.75), r: 0.45 });
       npcs.push(npc);
     }
-    assets.attach(`facility.${facility.id}`, root, visual, spot.kind === 'mapboard' ? (entry) => mapFace?.(entry) : facility.id === 'store' ? (entry) => entry && seeThroughGlass(root) : null);
+    assets.attach(`facility.${facility.id}`, root, visual, spot.kind === 'mapboard' ? (entry) => mapFace?.(entry) : facility.id === 'store' ? (entry) => entry && seeThroughGlass(root) : facility.id === 'stocks' ? (entry) => entry && fitStockScreen(root) : null);
     if (!facility.decor) doors[facility.id] = { ...globalThis.IslandTerrain.facilityDoor(facility.id), name: facility.name };
     // v1.10.38: October's pumpkins either side of a building's door (the hall's on its terrace)
     const hwRy = root.rotation.y + Math.PI;
@@ -1427,7 +1433,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (platform) { const q = R.platformClamp(platform.line, platform.station, x, z); me.root.position.set(q.x, q.y, q.z); correction = null; return; }
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); if (d > 0.3) { me.root.position.set(q.x, ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.84
-    if (mallRoom(mySpace) || mySpace === 'home' || mySpace === 'jail' || mySpace === 'museum') { const R = mallRoom(mySpace) || (mySpace === 'jail' ? jailRoom : mySpace === 'museum' ? museumRoom : homeRoom); const q = R.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, R.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92, 묶음 2
+    if (mallRoom(mySpace) || mySpace === 'home' || mySpace === 'jail' || mySpace === 'museum' || mySpace === 'exchange') { const R = mallRoom(mySpace) || (mySpace === 'jail' ? jailRoom : mySpace === 'museum' ? museumRoom : mySpace === 'exchange' ? exchangeRoom : homeRoom); const q = R.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, R.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92, 묶음 2
     if (d > 0.3) { me.root.position.set(x, heightAt(x, z), z); correction = null; } // the server's word, at once (a short hop)
     else if (d > 0.05) correction = { x, z };
   }
@@ -1458,7 +1464,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         p.x = m.x + ux * keep; p.z = m.z + uz * keep; f.nudge(p.x, p.z);
       }
       o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
-      p.y = o.space === 'townhall' ? ROOM.y : mallRoom(o.space) ? mallRoom(o.space).ROOM.y : o.space === 'home' ? HOME.ROOM.y : o.space === 'jail' ? JAIL.ROOM.y : o.space === 'museum' ? MUS.ROOM.y : heightAt(p.x, p.z);
+      p.y = o.space === 'townhall' ? ROOM.y : mallRoom(o.space) ? mallRoom(o.space).ROOM.y : o.space === 'home' ? HOME.ROOM.y : o.space === 'jail' ? JAIL.ROOM.y : o.space === 'museum' ? MUS.ROOM.y : o.space === 'exchange' ? EX.ROOM.y : heightAt(p.x, p.z);
       o.c.root.visible = o.space === mySpace && (mySpace !== 'home' || o.home === (homeHere?.lot ? `${homeHere.lot.id}${homeHere.floor === 2 ? ':2' : ''}` : null)) && (mySpace !== 'museum' || MUS.roomOf(p.x, p.z, 3) === MUS.roomOf(m.x, m.z, 3)); /* (R8: the same floor; 254: the same museum room) */ // v1.10.84: the 민원실 and the island never show each other (묶음 4: nor two houses)
       // facing: the way they are drawn walking, and the server's facing once they stand
       o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
@@ -2054,7 +2060,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const VIEW_KEY = { out: 'gc.view.out', in: 'gc.view.in' }; const viewPick = { out: 'third', in: 'first' };
   try { for (const k of ['out', 'in']) { const v = localStorage.getItem(VIEW_KEY[k]); if (v === 'first' || v === 'third') viewPick[k] = v; else if (navigator.webdriver && !localStorage.getItem('gc.testRealView')) viewPick[k] = 'third'; } } catch {}
   const viewSide = () => (mySpace === 'island' ? 'out' : 'in');
-  const FP_PLACES = new Set(['island', 'home', 'store', 'fashion', 'furniture', 'petshop', 'townhall', 'jail', 'museum']); // (V1: out and in my house; v1.10.211 the 백화점's four floors, their ceilings with them; V2 the 민원실, the 구치소 and the 박물관 -- every room)
+  const FP_PLACES = new Set(['island', 'home', 'store', 'fashion', 'furniture', 'petshop', 'townhall', 'jail', 'museum', 'exchange']); // (V1: out and in my house; v1.10.211 the 백화점's four floors, their ceilings with them; V2 the 민원실, the 구치소 and the 박물관 -- every room)
   let viewReady = false; // (the states below are declared further on -- read from the first frame on: a first chosen before, at start, threw)
   const fpNow = () => viewReady && FP_PLACES.has(mySpace) && viewPick[viewSide()] === 'first' && !overview && !editView && !riding && !liftRide && !(showOff?.phase === 'hold'); // (v1.10.257: the 자랑 in the third, then back) // (1104 G 「1인칭 낚시는 1인칭 그대로」: a cast in the first stays in it; 문제 기록 1103 3: seated, the first stays -- at the seated eyes, the head turned ±100° from the seat's way)
   let onView = null; let viewSideWas = null;
@@ -4271,6 +4277,64 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   doors['jail:board'] = { ...JAIL.world(-5.6, -0.5), name: '오늘의 반성문' };
   if (doors.jail) { doors.jail.mapName = '구치소'; doors.jail.name = '구치소 들어가기'; }
 
+  // v1.10.320 섬 증권거래소 안 (IslandExchange, assets 118b·119): its room far off like the 구치소's (turned half round) -- one
+  // board (the thirty companies drawn on its screen from the server's view; SPACE before it opens the trade window), the small
+  // counter and 테드 창 behind it (his own model, at work only, now and then his arms folded; a short dry line when spoken to).
+  // The outside model's screen over the door shows the same board.
+  const EX = globalThis.IslandExchange; let exchange = null; let stocksBoard = null; let stocksTex = null;
+  const exchangeRoom = { ROOM: EX.ROOM, clamp: (x, z) => EX.clamp(x, z) };
+  function stocksTexture() {
+    if (stocksTex) return stocksTex; const c = document.createElement('canvas'); c.width = 2400; c.height = 1000;
+    stocksTex = new THREE.CanvasTexture(c); stocksTex.flipY = false; stocksTex.colorSpace = THREE.SRGBColorSpace; paintStocks(); return stocksTex;
+  }
+  function paintStocks() {
+    if (!stocksTex) return; const c = stocksTex.image; const x = c.getContext('2d'); const v = stocksBoard;
+    x.fillStyle = '#0f1830'; x.fillRect(0, 0, c.width, c.height); x.textBaseline = 'middle'; x.textAlign = 'left';
+    x.font = '800 56px system-ui, sans-serif'; x.fillStyle = '#ffd34d'; x.fillText(`섬 증권거래소 · ${v ? (v.open ? '장 열림' : '장 닫힘 · 오전 9시~오후 5시') : '시세 받는 중'}`, 36, 52);
+    const list = (v?.companies || []).slice(0, 30); const colW = c.width / 3; const rowH = (c.height - 110) / 10;
+    list.forEach((co, i) => {
+      const X = Math.floor(i / 10) * colW + 30; const Y = 110 + (i % 10) * rowH + rowH / 2; const name = co.name.length > 8 ? `${co.name.slice(0, 7)}…` : co.name;
+      x.font = '600 42px system-ui, sans-serif'; x.textAlign = 'left';
+      if (co.status === 'gone') { x.fillStyle = '#69728c'; x.fillText(`${name} · 상장 폐지`, X, Y); return; }
+      const ch = co.prevClose ? ((co.price - co.prevClose) / co.prevClose) * 100 : 0;
+      x.fillStyle = co.status === 'cleanup' ? '#f0a35c' : '#e8ecf5'; x.fillText(name, X, Y);
+      x.textAlign = 'right'; x.fillStyle = '#ffffff'; x.fillText(Number(co.price).toLocaleString('ko-KR'), X + colW - 230, Y);
+      x.fillStyle = ch > 0 ? '#ff6b6b' : ch < 0 ? '#5aa9ff' : '#c9ced8'; x.fillText(`${ch > 0 ? '▲' : ch < 0 ? '▼' : '–'}${Math.abs(ch).toFixed(1)}%`, X + colW - 50, Y);
+    });
+    stocksTex.needsUpdate = true;
+  }
+  function fitStockScreen(root) { const sc = root.getObjectByName('board_screen'); if (!sc) return; sc.traverse((o) => { if (o.isMesh) o.material = new THREE.MeshBasicMaterial({ map: stocksTexture(), toneMapped: false }); }); }
+  function setStocksBoard(v) { stocksBoard = v || null; paintStocks(); }
+  function buildExchange() {
+    if (exchange) return exchange;
+    const g = new THREE.Group(); g.position.set(EX.ROOM.x, EX.ROOM.y, EX.ROOM.z); g.rotation.y = Math.PI; scene.add(g);
+    mesh(new THREE.BoxGeometry(60, 0.2, 60), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
+    const room = new THREE.Group(); g.add(room); const standIn = new THREE.Group(); room.add(standIn); const wall = mat(0xf1e6cf);
+    mesh(new THREE.BoxGeometry(10.2, 0.2, 8.2), mat(0x9a7b5a), 0, -0.1, 0, standIn); mesh(new THREE.BoxGeometry(10.2, 4.4, 0.3), wall, 0, 2.2, 4.1, standIn); for (const sd of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 4.4, 8.2), wall, sd * 5.1, 2.2, 0, standIn);
+    const geo = new THREE.PlaneGeometry(6.0, 2.5); const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i += 1) uv.setY(i, 1 - uv.getY(i)); /* (the canvas not flipped, as the model's screen) */
+    const screen = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: stocksTexture(), toneMapped: false })); screen.position.set(0, 2.4, 3.55); screen.rotation.y = Math.PI; standIn.add(screen);
+    mesh(new THREE.BoxGeometry(1.1, 1.05, 0.5), mat(0x2c3a66), EX.CLERK.lx, 0.52, EX.CLERK.lz - 0.75, standIn); // (the small counter)
+    assets.attach('stocks.room', room, standIn, (entry) => { if (!entry) return; fitStockScreen(room); const front = room.getObjectByName('front_wall'); if (front) front.visible = false; }); // (the door's wall toward the camera: not drawn, as the other rooms have none)
+    const t = makeCharacter({ shirt: 0x24305a, hair: 0x1f1a17, skin: 0xffdcbc }); t.root.position.set(EX.CLERK.lx, 0, EX.CLERK.lz); t.root.rotation.y = EX.CLERK.yaw; g.add(t.root);
+    assets.dress(['character.walker.ted_work', 'character.npc'], t); t.headTop = 2.4; t.resident = 'ted'; t.root.userData.resident = 'ted';
+    const at = EX.world(EX.CLERK.lx, EX.CLERK.lz); t.home = { x: at.x, z: at.z, yaw: worldYaw(t.root), id: 'exchange:clerk' };
+    counterKeepers.push({ id: 'exchange:clerk', k: t, spot: () => EX.world(EX.TALK.lx, EX.TALK.lz) }); npcs.push(t);
+    for (const [lx, lz] of [[-2.5, -1], [2.5, -1], [0, 2]]) { const light = new THREE.PointLight(0xfff1d6, 12, 12, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
+    const lid = roomLid(g, { w: 10.2, d: 8.2 }, 0xf1e6cf, EX.ROOM.exit.lx, { H: 4.4 });
+    exchange = { group: g, ted: t, lid, nextArms: performance.now() + 9000 };
+    return exchange;
+  }
+  function tedSay(text) { if (!exchange || !text) return; const t = exchange.ted; disposeTag(t.bubble); t.bubble = makeBubble(text, null); t.bubble.position.y = bubbleY(t); t.bubble.userData.until = Infinity; t.root.add(t.bubble); exchange.quietAt = performance.now() + 4500; }
+  function stepExchange(now) {
+    if (!exchange || mySpace !== 'exchange') return; const t = exchange.ted;
+    if (t.bubble && exchange.quietAt && now > exchange.quietAt) { disposeTag(t.bubble); t.bubble = null; exchange.quietAt = 0; }
+    if (now > exchange.nextArms) { exchange.nextArms = now + 14000 + Math.random() * 10000; t.anim?.play?.('armsCrossed'); } // (now and then, his arms folded)
+  }
+  doors['exchange:exit'] = { ...EX.world(EX.ROOM.exit.lx, EX.ROOM.exit.lz), name: '나가기' };
+  doors['exchange:board'] = { ...EX.world(EX.BOARD.lx, EX.BOARD.lz), name: '시세 보드' };
+  doors['exchange:clerk'] = { ...EX.world(EX.TALK.lx, EX.TALK.lz), name: '테드 창' };
+  if (doors.stocks) { doors.stocks.mapName = '섬 증권거래소'; doors.stocks.name = '섬 증권거래소 들어가기'; }
+
   // v1.10.231 M 박물관 전시관 (IslandMuseum, assets 74): its room far off like the 구치소's (turned half round) -- the hall
   // (its front wall cut away like the 구치소's, or from the door it hid the room), the big tank of the sea's fish, a wall
   // tank for each river fish, a case for each insect and the glass dome the butterflies and dragonflies fly in, the curator
@@ -4432,7 +4496,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   for (const [id, p] of Object.entries(MUS.PASSAGES)) { const inward = p.from === 'hall' ? [Math.sign(p.door.lx) * -0.9, 0] : [0, 0.9]; doors[`museum:go:${id}`] = { ...MUS.worldIn(p.from, p.door.lx + inward[0], p.door.lz + inward[1]), name: p.from === 'hall' ? `${p.sign} 들어가기` : '입구 홀로' }; }
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
     if (placeAim) { const end = placeAim.onEnd; placeTool(null); end?.(); } // (총괄 232 검토: the 배치 도구 never outlives the place it was for)
-    mySpace = ['townhall', 'store', 'fashion', 'furniture', 'petshop', 'home', 'jail', 'museum'].includes(space) ? space : 'island'; quiet(); // (5회차 1: a room's load is not a slow PC)
+    mySpace = ['townhall', 'store', 'fashion', 'furniture', 'petshop', 'home', 'jail', 'museum', 'exchange'].includes(space) ? space : 'island'; quiet(); // (5회차 1: a room's load is not a slow PC)
     if (mySpace === 'home') buildHomeRoom(); else if (homeHere) setHome(null); // (묶음 4: out of a house, its pets go)
     indoors = mySpace !== 'island'; openSky = mySpace === 'petshop'; lightKey = null; /* (v1.10.211: the roof under the sky) */ halloweenCheckedAt = -Infinity; // (bugs 9: the weather stays outside; 3회차 18: the black or the sky at once, not up to 5 s later)
     if (mySpace === 'townhall') buildRoom();
@@ -4442,13 +4506,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (mySpace === 'petshop') buildPetshop();
     if (mySpace === 'jail') buildJail(); else wardenSay(null);
     if (mySpace === 'museum') buildMuseum(); // v1.10.231
+    if (mySpace === 'exchange') buildExchange(); // v1.10.320
     for (const [space, r] of [['store', store], ['fashion', fashion], ['furniture', furniture], ['petshop', petshop]]) if (r) r.group.visible = mySpace === space; /* (v1.10.211 총괄 검토: floor to floor, the one left stayed drawn -- its dark ground 40 m off showed in the roof's sky) */
     if (petshop) for (const h of petshop.pets.values()) h.c.root.visible = mySpace === 'petshop'; // (the yard's pets stand in the world: only on the 3rd floor)
     // the island is not drawn while I am inside (IDEAS: no terrain, trees or sea in the room) -- only what is drawn now
     // is put away, and comes back as it was; the lights stay (they light the room too), people show by their space
-    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root), ...(mySpace === 'home' ? (homeRoomV?.pets || []).map((h) => h.c.root) : [])]); /* (v1.10.232: the house's pets, made just before, stay -- they were hidden till the next placing) */ const here = mySpace === 'store' ? store.group : mySpace === 'fashion' ? fashion.group : mySpace === 'furniture' ? furniture.group : mySpace === 'petshop' ? petshop.group : mySpace === 'home' ? homeRoomV.group : mySpace === 'jail' ? jail.group : mySpace === 'museum' ? museum.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
-    if (mySpace !== 'island' && roomHidden.length) { for (const r of [room, store, furniture, petshop, homeRoomV, jail, museum]) if (r) r.group.visible = r.group === ({ store, furniture, petshop, townhall: room, home: homeRoomV, jail, museum })[mySpace]?.group; } // (from floor to floor: the one I am on)
-    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; if (furniture) furniture.group.visible = true; if (petshop) petshop.group.visible = true; if (homeRoomV) homeRoomV.group.visible = true; if (jail) jail.group.visible = true; if (museum) museum.group.visible = true; }
+    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root), ...(mySpace === 'home' ? (homeRoomV?.pets || []).map((h) => h.c.root) : [])]); /* (v1.10.232: the house's pets, made just before, stay -- they were hidden till the next placing) */ const here = mySpace === 'store' ? store.group : mySpace === 'fashion' ? fashion.group : mySpace === 'furniture' ? furniture.group : mySpace === 'petshop' ? petshop.group : mySpace === 'home' ? homeRoomV.group : mySpace === 'jail' ? jail.group : mySpace === 'museum' ? museum.group : mySpace === 'exchange' ? exchange.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
+    if (mySpace !== 'island' && roomHidden.length) { for (const r of [room, store, furniture, petshop, homeRoomV, jail, museum, exchange]) if (r) r.group.visible = r.group === ({ store, furniture, petshop, townhall: room, home: homeRoomV, jail, museum, exchange })[mySpace]?.group; } // (from floor to floor: the one I am on)
+    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; if (furniture) furniture.group.visible = true; if (petshop) petshop.group.visible = true; if (homeRoomV) homeRoomV.group.visible = true; if (jail) jail.group.visible = true; if (museum) museum.group.visible = true; if (exchange) exchange.group.visible = true; }
     keys.clear(); me.root.position.set(x, spaceFloor(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y; if (mySpace !== 'island' && fpNow()) { camYaw = yawGoal = me.targetYaw - Math.PI; camPitch = pitchGoal = 0; } /* (V1: in the first, in through the door looking into the room) */
     if (mySpace !== 'island') me.root.rotation.y = Math.PI;
     placeCamera(true); return true;
@@ -4472,6 +4537,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (space === 'store') return { id: 'store:exit', key: space, at: STORE.world, ex: STORE.ROOM.exit, wall: STORE.ROOM.d / 2 - 0.1, out: -1, y: STORE.ROOM.y, framed: true };
     if (space === 'jail') return { id: 'jail:exit', key: space, at: JAIL.world, ex: JAIL.ROOM.exit, wall: JAIL.ROOM.d / 2 - 0.1, out: -1, y: JAIL.ROOM.y, shut: jailInmate === true };
     if (space === 'museum') return museumDoorway();
+    if (space === 'exchange') return { id: 'exchange:exit', key: space, at: EX.world, ex: EX.ROOM.exit, wall: EX.ROOM.d / 2 + 0.35, out: -1, y: EX.ROOM.y }; /* (v1.10.320: its own frame drawn -- the model's door wall is not shown) */
     if (space === 'home' && homeHere?.floor === 1) { const st = HOME.stageOf(homeHere.home.stage); const lot = homeHere.lot; return { id: 'home:exit', key: `home:${lot.id}:${st.n}`, at: (lx, lz) => HOME.world(lot, lx, lz), ex: { lx: 0 }, wall: st.hz, out: -1, y: HOME.ROOM.y }; }
     return null;
   }
@@ -4530,7 +4596,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     interact(dw.id);
   }
 
-  const spaceFloor = (x, z) => (mySpace === 'townhall' ? ROOM.y : mallRoom(mySpace) ? mallRoom(mySpace).ROOM.y : mySpace === 'home' ? HOME.ROOM.y : mySpace === 'jail' ? JAIL.ROOM.y : mySpace === 'museum' ? MUS.ROOM.y : heightAt(x, z));
+  const spaceFloor = (x, z) => (mySpace === 'townhall' ? ROOM.y : mallRoom(mySpace) ? mallRoom(mySpace).ROOM.y : mySpace === 'home' ? HOME.ROOM.y : mySpace === 'jail' ? JAIL.ROOM.y : mySpace === 'museum' ? MUS.ROOM.y : mySpace === 'exchange' ? EX.ROOM.y : heightAt(x, z));
   function stepQuestScenes(dt) {
     if (!questScenes || questScenes.departure === null) return;
     questScenes.departure += dt;
@@ -4972,7 +5038,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const p = me.root.position;
     if (platform) { const q = R.platformClamp(platform.line, platform.station, nx, nz); p.set(q.x, q.y, q.z); return; }
     if (mySpace === 'townhall') { [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = globalThis.IslandTerrain.roomClamp(nx, nz); p.set(q.x, ROOM.y, q.z); return; } // v1.10.84
-    if (mallRoom(mySpace) || mySpace === 'home' || mySpace === 'jail' || mySpace === 'museum') { const R = mallRoom(mySpace) || (mySpace === 'jail' ? jailRoom : mySpace === 'museum' ? museumRoom : homeRoom); [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = R.clamp(nx, nz); p.set(q.x, R.ROOM.y, q.z); return; } // v1.10.92, 묶음 2
+    if (mallRoom(mySpace) || mySpace === 'home' || mySpace === 'jail' || mySpace === 'museum' || mySpace === 'exchange') { const R = mallRoom(mySpace) || (mySpace === 'jail' ? jailRoom : mySpace === 'museum' ? museumRoom : mySpace === 'exchange' ? exchangeRoom : homeRoom); [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = R.clamp(nx, nz); p.set(q.x, R.ROOM.y, q.z); return; } // v1.10.92, 묶음 2
     [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
     [nx, nz] = pushOut(nx, nz);
     if (!walkable(nx, nz)) { // the sea, a stream, the pond or a cliff edge: slide along it if one axis still works
@@ -5057,7 +5123,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const TALK_SIDES = [[1, 1], [-1, 1], [1, 0.6], [-1, 0.6]];
   function talkSide(p, t, ux, uz, rx, rz, k) {
     if (mySpace !== 'island') { // (v1.10.234 총괄 #380 검토 「구치소 대화가 벽으로 꽉 막혀요」: 김우성's desk 3.8 m right of the room's middle -- 4.2 m to my right is past its wall; in a room, the first side that stays inside it)
-      const M = mallRoom(mySpace) || (mySpace === 'jail' ? JAIL : mySpace === 'museum' ? MUS : null); if (!M?.local) return TALK_SIDES[0];
+      const M = mallRoom(mySpace) || (mySpace === 'jail' ? JAIL : mySpace === 'museum' ? MUS : mySpace === 'exchange' ? EX : null); if (!M?.local) return TALK_SIDES[0];
       const inside = ([s, f]) => { const q = M.local(p.x - ux * 1.5 * k * f + rx * 4.2 * k * f * s, p.z - uz * 1.5 * k * f + rz * 4.2 * k * f * s); return Math.abs(q.lx) <= M.ROOM.w / 2 - 0.3 && Math.abs(q.lz) <= M.ROOM.d / 2 - 0.3; };
       return TALK_SIDES.find(inside) || TALK_SIDES[0];
     }
@@ -5146,7 +5212,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     else if (showOff?.phase === 'hold') { const v = showPose(p); want.copy(v.want); look.copy(v.look); talkFill.position.lerpVectors(p, v.want, 0.35).setY(p.y + 1.7); talkFill.intensity = 2.2; } // (v1.10.257 자랑: before me; 총괄 #408 the talk's fill on the catch and me -- night)
     me.root.visible = !fp; // (V1: my own body not in my eyes -- the others see it)
     if (homeRoomV?.lid) homeRoomV.lid.visible = fp && mySpace === 'home'; // (V1: the ceiling and the walls up to it -- the first only)
-    for (const [space, r] of [['store', store], ['fashion', fashion], ['furniture', furniture], ['townhall', room], ['jail', jail]]) if (r?.lid) r.lid.visible = fp && mySpace === space;
+    for (const [space, r] of [['store', store], ['fashion', fashion], ['furniture', furniture], ['townhall', room], ['jail', jail], ['exchange', exchange]]) if (r?.lid) r.lid.visible = fp && mySpace === space;
     if (museum?.lids) for (const l of Object.values(museum.lids)) l.visible = fp && mySpace === 'museum'; /* (V2: each room's own -- only the one I am in is drawn) */
     { const fov = fp ? (fpTalk ? FP_TALK_FOV : FP_FOV) : 42; const near = fp ? 0.05 : 0.1; if (camera.fov !== fov || camera.near !== near) { camera.fov = fov; camera.near = near; camera.updateProjectionMatrix(); } } // (near: the walls and pieces never cut at my eyes)
     for (const c of [...[...others.values()].map((o) => o.c), ...wanderers.map((w) => w.c)]) { // (V1: a name tag close by in the first no bigger than at 4 m)
@@ -5431,7 +5497,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npc.wasClose = close;
       animate(npc, dt, false);
     }
-    stepGuideArrow(); stepSnow(); stepVisits(); stepDoorway(dt, moving); stepCountdown(dt); stepInsects(dt, moving); stepNetAim(moving); stepFx(dt); /* (v1.10.260) */ stepPets(); stepPetshop(); stepFashion(); stepRoster(dt); stepLock(); stepHome(dt); stepJail(performance.now()); stepMuseum(performance.now()); // B 47, 묶음 2-2, 묶음 4, R4
+    stepGuideArrow(); stepSnow(); stepVisits(); stepDoorway(dt, moving); stepCountdown(dt); stepInsects(dt, moving); stepNetAim(moving); stepFx(dt); /* (v1.10.260) */ stepPets(); stepPetshop(); stepFashion(); stepRoster(dt); stepLock(); stepHome(dt); stepJail(performance.now()); stepMuseum(performance.now()); stepExchange(performance.now()); // B 47, 묶음 2-2, 묶음 4, R4
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
     for (const [id, door] of Object.entries(doors)) {
@@ -5936,6 +6002,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     else if (mallRoom(mySpace)) { const R = mallRoom(mySpace); const q = R.clamp(x, z); x = q.x; z = q.z; y = R.ROOM.y; } /* (v1.10.211: the four floors) */
     else if (mySpace === 'home') { const q = homeRoom.clamp(x, z); x = q.x; z = q.z; y = HOME.ROOM.y; }
     else if (mySpace === 'jail') { const q = jailRoom.clamp(x, z); x = q.x; z = q.z; y = JAIL.ROOM.y; }
+    else if (mySpace === 'exchange') { const q = exchangeRoom.clamp(x, z); x = q.x; z = q.z; y = EX.ROOM.y; }
     else if (mySpace === 'museum') { const q = museumRoom.clamp(x, z); x = q.x; z = q.z; y = MUS.ROOM.y; }
     else y = heightAt(x, z);
     rising = { from: me.root.position.clone(), to: new THREE.Vector3(x, y, z), at: performance.now() + Math.max(0, (me.anim?.onceLeft?.() || 0.6) * 1000 - 350), space: mySpace }; // (glides off as the clip ends)
@@ -6129,7 +6196,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; if (!lotId || !editView) { setEditZoom(0); if (lotId) editOpen(); } editView = Boolean(lotId); if (!lotId) yardGhost(null); } /* (v1.10.315: each time from the whole yard) */, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ contestKeeperHere: () => Boolean(contestTent?.keeper.root.visible), /* (대회 순위: 가락 at it, or its sign's window) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id, data) => photoAsk(id, data), photoMiss: (id) => photoMiss(id), photoThanks: (id, photo) => photoThanks(id, photo), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setTaxiStops: (s) => { taxiStops = s && typeof s === 'object' ? s : {}; }, setTaxiRide /* (317) */, playPull /* (318) */, setQualityMode, setRenderScale /* (314) */, onAutoTier: (fn) => { onAutoTier = fn; }, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; if (!lotId || !editView) { setEditZoom(0); if (lotId) editOpen(); } editView = Boolean(lotId); if (!lotId) yardGhost(null); } /* (v1.10.315: each time from the whole yard) */, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ contestKeeperHere: () => Boolean(contestTent?.keeper.root.visible), /* (대회 순위: 가락 at it, or its sign's window) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id, data) => photoAsk(id, data), photoMiss: (id) => photoMiss(id), photoThanks: (id, photo) => photoThanks(id, photo), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setTaxiStops: (s) => { taxiStops = s && typeof s === 'object' ? s : {}; }, setTaxiRide /* (317) */, playPull /* (318) */, setStocksBoard, tedSay /* (320) */, setQualityMode, setRenderScale /* (314) */, onAutoTier: (fn) => { onAutoTier = fn; }, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, actCancel: () => { if (!netAimEnd()) actUp(); }, grabTurn: () => turnGrab(), homeEditView: (on) => { if (!on || !editView) { setEditZoom(0); if (on) editOpen(); } editView = Boolean(on); }, editZoom: (z) => { if (z != null) setEditZoom(Number(z)); return editZoom; } /* (v1.10.315: tests, and the window’s buttons) */, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), startTaxi, taxiRiding: () => (taxiRide ? { ...taxiRide.ride } : null), onTaxiEnd: (fn) => { onTaxiEnd = fn; }, /* (v1.10.271) */ setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, feel, feelBlocked, /* (v1.10.263 감정 표현) */ residentTalkFace: (n, f) => faceFor(residentChar(n), f, EM.TALK_FACE_MS), residentTalk: (n, text) => startTalk(residentChar(n), text), /* (v1.10.287) */ residentEmote: (n, id) => { const c = residentChar(n); return c ? emoteRun(c, id) : null; }, /* (v1.10.278 주민 내기: their wave, think, a win's pose, a loss's face) */

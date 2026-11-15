@@ -13410,6 +13410,40 @@
       "src": "yard111:01. High/winter/duck.glb",
       "sha256": "076e8d44b443ded8e13ce3c077816f23709d0702c09bd9354315144d070d80f8",
       "precompressed": true
+    },
+    {
+      "out": "stocks-v1/stock_exchange.glb",
+      "src": "stocks118:01. High/stock_exchange.glb",
+      "sha256": "749409bcfd698821378188c227a46c5a7a7f9c3f1db40f73be11dfb7a2bb567b",
+      "lowSrc": "stocks118:02. Low/stock_exchange_low.glb",
+      "lowSha256": "af595e19096967bb20b0a891c1e5fd10d342ec03d85e3c48373c699cfc3828f2",
+      "precompressed": true
+    },
+    {
+      "out": "stocks-v1/stock_exchange_room.glb",
+      "src": "stocks118:01. High/stock_exchange_room.glb",
+      "sha256": "41d321cbbd30f70a71b0ed678a60bff0d3011108a40b3fc2ba4b9788a121d5d0",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_ted_work.glb",
+      "src": "ted119:01. High/npc_walker_ted_work.glb",
+      "sha256": "380d43981c5b844836c1c59935161e6ac5f5a559ae44e739aee033fa1269ab64",
+      "lowSrc": "ted119:02. Low/npc_walker_ted_work_low.glb",
+      "lowSha256": "7d7099c737399928f9a15140a892f324deddf65e91e9d6dbea4dde83233cd83a",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_ted.glb",
+      "src": "ted119:01. High/npc_face_ted.glb",
+      "sha256": "6ff3640d4edec943073151cb95509a2244fb9057e38ac99e08635b20e2ca6637",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/ArmsCrossed.glb",
+      "src": "ted119:01. High/motions/ArmsCrossed.glb",
+      "sha256": "b94acd9d1e5e035b96c44beced35567e884a5c411856da88c9d5aeda88665011",
+      "precompressed": true
     }
   ],
   "sources": {

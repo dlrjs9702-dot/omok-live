@@ -1549,6 +1549,7 @@
     { id: 'naming', name: '개명소', open: () => openNaming() }, // v1.10.9 작명소
     { id: 'townhall', name: '관공서', open: () => townhallDoor(true) }, // v1.10.10 이벤트 인벤토리; v1.10.84 in through the door (the 민원 창구 inside)
     { id: 'jail', name: '구치소', open: () => jailDoor(true) }, // R4 구치소 반성문
+    { id: 'stocks', name: '섬 증권거래소', open: () => exchangeDoor(true) }, // v1.10.320 섬 주식 (대청마당, 사용자 22A)
     { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
     { id: 'map', name: '안내 지도', open: () => openIslandMap() }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => { openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]); plazaDialog.classList.add('adminMode'); } }, // (v1.10.192: the admin's keeps its own look)
@@ -1982,7 +1983,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'tool:use' ? useHeld() : String(id).startsWith('bed:') ? openBedCell(id) /* (318 마당 농사) */ : id === 'upkeep:box' ? openUpkeepBox() : String(id).startsWith('yardweed:') ? pullYardWeed(id) : String(id).startsWith('trophy:') ? showToast(`🏆 ${plaza.controller?.trophyLine?.(id) || ''}`, 4000) /* (v1.10.251 §3-1) */ :id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : String(id).startsWith('museum:go:') ? museumGo(String(id).slice(10)) /* (v1.10.254 박물관 나누기) */ : String(id).startsWith('museum:plaque:') ? openDexCard(String(id).slice(14)) /* (v1.10.257: a plaque's 설명) */ : String(id).startsWith('taxi:') ? openTaxi(String(id).slice(5)) /* (v1.10.271 섬 택시) */ : id === 'contest:tent' ? openContestTent() : (id === 'board:records' || id === 'board:records:back') ? openRecordTower() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('stall') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'tool:use' ? useHeld() : String(id).startsWith('bed:') ? openBedCell(id) /* (318 마당 농사) */ : id === 'upkeep:box' ? openUpkeepBox() : String(id).startsWith('yardweed:') ? pullYardWeed(id) : String(id).startsWith('trophy:') ? showToast(`🏆 ${plaza.controller?.trophyLine?.(id) || ''}`, 4000) /* (v1.10.251 §3-1) */ :id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : String(id).startsWith('museum:go:') ? museumGo(String(id).slice(10)) /* (v1.10.254 박물관 나누기) */ : String(id).startsWith('museum:plaque:') ? openDexCard(String(id).slice(14)) /* (v1.10.257: a plaque's 설명) */ : String(id).startsWith('taxi:') ? openTaxi(String(id).slice(5)) /* (v1.10.271 섬 택시) */ : id === 'contest:tent' ? openContestTent() : (id === 'board:records' || id === 'board:records:back') ? openRecordTower() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'exchange:exit' ? exchangeDoor(false) : id === 'exchange:board' ? openStocks('board') : id === 'exchange:clerk' ? tedTalk() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('stall') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -4922,6 +4923,82 @@
   // list (size, giver, the first giver, the last three before); the curator's talk -- 「기증해요」 (a kind not on show, or a
   // fish bigger than the one on show: hung in its place after a yes) and 「전시 이야기」
   let museumBusy = false; let museumState = null;
+  // v1.10.320 섬 주식 (lib/island-stocks.js; gamecenter-notes docs/island-stocks-20261114.md): the 증권거래소 -- in at its door on
+  // 대청마당, out at the room's; its board (SPACE before it) the trade window: 시세 (thirty companies, today's line, the change
+  // from yesterday's close; red up, blue down), a company (its week, 사기·팔기 by the share, the fee shown first), 내 주식,
+  // 이번 주 순위 (the first a title, no points); 테드 창 a short line
+  const sEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  let exchangeBusy = false; let stocksTab = 'board'; let stocksView = null;
+  async function exchangeDoor(entering) {
+    if (exchangeBusy) return; exchangeBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const r = await api(entering ? '/api/island/exchange/enter' : '/api/island/exchange/leave', { method: 'POST', body: '{}' });
+      closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
+      if (r.space === 'exchange') refreshStocksBoard(); else stocksView = null;
+    } catch (error) { showToast(error.message); } finally { exchangeBusy = false; }
+  }
+  const stockWon = (n) => `${Math.round(Number(n) || 0).toLocaleString('ko-KR')}P`;
+  const stockPct = (a, b) => (b ? ((a - b) / b) * 100 : 0);
+  const stockSign = (v) => `${v > 0 ? '▲' : v < 0 ? '▼' : '–'} ${Math.abs(v).toFixed(1)}%`;
+  const stockTone = (v) => (v > 0 ? 'stockUp' : v < 0 ? 'stockDown' : 'stockFlat');
+  const stockRid = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
+  function stockSpark(values, w = 96, h = 26) {
+    const v = (values || []).map(Number).filter((x) => Number.isFinite(x) && x > 0); const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('class', 'stockSpark'); svg.setAttribute('aria-hidden', 'true');
+    if (v.length < 2) return svg; const lo = Math.min(...v); const hi = Math.max(...v); const span = hi - lo || 1;
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); p.setAttribute('points', v.map((x, i) => `${((i / (v.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((x - lo) / span) * (h - 4)).toFixed(1)}`).join(' '));
+    p.setAttribute('class', stockTone(v[v.length - 1] - v[0])); svg.append(p); return svg;
+  }
+  async function refreshStocksBoard() { try { stocksView = await api('/api/island/stocks'); plaza.controller?.setStocksBoard?.(stocksView); } catch {} return stocksView; }
+  async function openStocks(tab = stocksTab, code = null) {
+    stocksTab = tab; const d = await refreshStocksBoard(); if (!d) { showToast('시세를 불러오지 못했어요.'); return; }
+    const card = sEl('div', 'mirrorCard stocksCard'); const next = new Date(d.next); const nextText = `${String(next.getHours()).padStart(2, '0')}:00`;
+    const wk = d.mine?.week; card.append(line(`${d.open ? '장 열림' : '장 닫힘 · 매일 오전 9시~오후 5시'} · 다음 값 ${nextText} · 오늘 주문 ${d.mine?.ordersLeft ?? 0}번 남음${wk == null ? '' : ` · 이번 주 수익률 ${stockSign(wk)}`}`, 'lookMeta stocksHead'));
+    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['mine', '내 주식'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
+    const body = sEl('div', 'stocksBody'); card.append(body);
+    if (code) stockDetail(body, d, code);
+    else if (tab === 'mine') {
+      const rows = d.mine?.rows || []; if (!rows.length) body.append(line('아직 가진 주식이 없어요. 시세에서 회사를 골라 사 보세요.', 'lookMeta'));
+      for (const r of rows) { const row = sEl('button', 'stocksRow'); row.type = 'button'; row.append(sEl('span', 'stocksName', r.name), sEl('span', 'stocksQty', `${r.qty.toLocaleString('ko-KR')}주 · 평균 ${stockWon(r.avg)}`), sEl('span', `stocksChange ${stockTone(r.gain)}`, r.status === 'gone' ? '상장 폐지' : `${stockWon(r.value)} ${stockSign(r.gain)}`)); if (r.status !== 'gone') row.addEventListener('click', () => openStocks('board', r.code)); body.append(row); }
+    } else if (tab === 'rank') {
+      let rk = null; try { rk = await api('/api/island/stocks/rank'); } catch {}
+      body.append(line('이번 주 수익률 순위예요. 주가 끝날 때 1위에게 「이번 주 큰손」 칭호를 줘요(포인트 보상은 없어요).', 'lookMeta'));
+      for (const r of rk?.top || []) body.append(sEl('div', `stocksRow stocksRank${r.mine ? ' mine' : ''}`, `${r.rank}위 · ${r.name} · ${stockSign(r.r)}`));
+      if (rk?.me && !rk.top.some((r) => r.mine)) body.append(sEl('div', 'stocksRow stocksRank mine', `내 순위 ${rk.me.rank}위 · ${stockSign(rk.me.r)}`));
+      if (!rk?.top?.length) body.append(line('아직 이번 주에 주식을 산 사람이 없어요.', 'lookMeta'));
+    } else {
+      for (const c of d.companies) {
+        const row = sEl('button', 'stocksRow'); row.type = 'button';
+        if (c.status === 'gone') { row.disabled = true; row.append(sEl('span', 'stocksName', c.name), sEl('span', 'stocksQty', '상장 폐지 · 곧 새 회사가 들어와요'), sEl('span', 'stocksChange stockFlat', '')); body.append(row); continue; }
+        const ch = stockPct(c.price, c.prevClose); const tag = c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : '';
+        row.append(sEl('span', 'stocksName', `${c.name}${tag}`), stockSpark(c.today), sEl('span', 'stocksPrice', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, stockSign(ch)));
+        row.addEventListener('click', () => openStocks('board', c.code)); body.append(row);
+      }
+    }
+    card.append(btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('📈 섬 증권거래소', [card]);
+  }
+  function stockDetail(body, d, code) {
+    const c = d.companies.find((x) => x.code === code); if (!c) { body.append(line('이 회사는 이제 없어요.', 'lookMeta')); return; }
+    const mine = d.mine?.rows?.find((r) => r.code === code); const ch = stockPct(c.price, c.prevClose);
+    body.append(line(`${c.name} · ${c.kindLabel} · 상장가 ${stockWon(c.list)}${c.status === 'cleanup' ? ' · 정리 매매(오늘 뒤 상장 폐지, 팔기만 돼요)' : ''}`, 'lookMeta'));
+    const top = sEl('div', 'stocksDetail'); top.append(sEl('span', 'stocksPrice big', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, `어제보다 ${stockSign(ch)}`)); body.append(top);
+    body.append(line('오늘', 'lookMeta stocksLabel'), stockSpark(c.today, 260, 60), line('지난 7일', 'lookMeta stocksLabel'), stockSpark(c.week, 260, 60));
+    body.append(line(mine ? `가진 주식 ${mine.qty.toLocaleString('ko-KR')}주 · 평균 ${stockWon(mine.avg)} · ${stockSign(mine.gain)}` : '가진 주식이 없어요.', 'lookMeta'));
+    const qty = sEl('input', 'stocksQtyInput'); qty.type = 'number'; qty.min = '1'; qty.max = '1000'; qty.value = '1'; qty.inputMode = 'numeric'; qty.setAttribute('aria-label', '몇 주');
+    const note = line('', 'lookMeta stocksNote'); const fee = (n) => Math.max(1, Math.ceil(c.price * n * 0.005));
+    const preview = () => { const n = Math.max(1, Math.floor(Number(qty.value) || 1)); note.textContent = `사기 ${stockWon(c.price * n + fee(n))} · 팔기 ${stockWon(c.price * n - fee(n))} (수수료 0.5% ${stockWon(fee(n))})`; };
+    qty.addEventListener('input', preview); preview();
+    const order = (side) => async (ev) => {
+      const n = Math.floor(Number(qty.value)); ev.currentTarget.disabled = true;
+      try { const r = await api('/api/island/stocks/order', { method: 'POST', body: JSON.stringify({ code, side, qty: n, requestId: stockRid() }) }); if (Number.isFinite(r.balance)) loadPoints(); showToast(`${r.name} ${n}주를 ${side === 'buy' ? '샀어요' : '팔았어요'}. 수수료 ${stockWon(r.fee)}`); openStocks('board', code); }
+      catch (error) { note.textContent = error.message; ev.currentTarget.disabled = false; }
+    };
+    const row = sEl('div', 'stocksOrder'); row.append(qty, sEl('span', 'lookMeta', '주'));
+    if (c.status !== 'cleanup') row.append(btn('사기', 'primary', order('buy'))); row.append(btn('팔기', 'secondary', order('sell')));
+    if (!d.open) { for (const b of row.querySelectorAll('button')) b.disabled = true; note.textContent = '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 사고팔 수 있어요.'; }
+    body.append(row, note, btn('시세로', 'secondary', () => openStocks('board')));
+  }
+  async function tedTalk() { const d = stocksView || (await refreshStocksBoard()); plaza.controller?.tedSay?.(window.IslandExchange?.lineOf(d, Math.floor(Math.random() * 12)) || '…네.'); }
   async function museumDoor(entering) {
     if (museumBusy) return; museumBusy = true;
     try {
@@ -7140,6 +7217,8 @@
     if (item.reason === 'outfit_retire_refund') return '변신 옷 정리 환불'; // (2026-10-21)
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92
     if (item.reason === 'tax_payment') return '주민세 납부';
+    if (item.reason === 'stock_buy') return '섬 주식 사기'; // v1.10.320
+    if (item.reason === 'stock_sell') return '섬 주식 팔기';
     if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
@@ -7845,6 +7924,7 @@
   }
   myInfoDialog.addEventListener('close', () => hideTryOn('mine'));
   skinShopDialog.addEventListener('close', () => hideTryOn('shop'));
+  byId('myStocksBtn')?.addEventListener('click', () => { myInfoDialog.close(); openStocks('mine'); }); // v1.10.320 내 정보 「주식」: the trade window, my holdings first
   myInfoBtn.addEventListener('click', () => {
     setPointHistoryOpen(false);
     myInfoDialog.showModal(); refreshBirthday(); renderFriends(); // B 47 생일, 묶음 4 친구

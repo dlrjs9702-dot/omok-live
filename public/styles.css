@@ -3729,3 +3729,22 @@ button.pdSeat{font:inherit;color:inherit;cursor:pointer;text-align:left}
 body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)){display:grid;grid-template-columns:1fr 1fr;gap:8px}body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .versus{display:none} /* (윷놀이 C 사진: a 3~4 seat room's cards two a row while seats are taken, PC too) */
 #fillAiNote{display:block;margin:4px auto 0;text-align:center;font-size:12px;color:var(--hp-t2,#94a3b8)}#fillAiNote.hidden{display:none} /* (윷놀이 C: 「AI가 들어가면 참가 포인트 없이 해요」) */
 body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:none} /* (윷놀이 C 사진: two a row the names need the room -- the counts are on the result) */
+
+/* v1.10.320 섬 주식: the 증권거래소 trade window -- 시세 rows (name, today's line, price, change; red up, blue down), 내 주식, 순위, a company's order row */
+.stocksCard{gap:8px}
+.stocksTabs{display:flex;gap:6px;flex-wrap:wrap}
+.stocksBody{display:flex;flex-direction:column;gap:4px;max-height:min(56vh,520px);overflow-y:auto;padding-right:2px}
+.stocksRow{display:grid;grid-template-columns:minmax(0,1.6fr) 96px minmax(0,1fr) minmax(0,.9fr);align-items:center;gap:8px;padding:7px 10px;border-radius:10px;border:1px solid rgba(120,100,70,.18);background:rgba(255,255,255,.55);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.stocksRow:disabled{cursor:default;opacity:.6}
+.stocksRow.stocksRank{display:block;cursor:default}.stocksRow.mine{border-color:#d9a441;background:rgba(255,236,190,.6)}
+.stocksName{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stocksQty{font-size:.86em;opacity:.8}
+.stocksPrice{text-align:right;font-variant-numeric:tabular-nums}.stocksPrice.big{font-size:1.6em;font-weight:800}
+.stocksChange{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.stockUp{color:#d33b3b;stroke:#d33b3b}.stockDown{color:#2f6fd6;stroke:#2f6fd6}.stockFlat{color:#7a7f8a;stroke:#7a7f8a}
+.stockSpark{width:96px;height:26px}.stockSpark polyline{fill:none;stroke-width:2}
+.stocksBody > .stockSpark{width:100%;height:60px}
+.stocksDetail{display:flex;align-items:baseline;gap:12px}
+.stocksOrder{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stocksQtyInput{width:96px;padding:6px 8px;border-radius:8px;border:1px solid rgba(120,100,70,.35);font:inherit}
+@media (max-width:560px){.stocksRow{grid-template-columns:minmax(0,1.4fr) 64px minmax(0,1fr) minmax(0,.9fr);gap:6px;padding:6px 8px}.stockSpark{width:64px}}

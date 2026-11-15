@@ -1679,3 +1679,10 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .pdRoleCard strong{color:var(--role)}
 :root[data-theme="light"] .pdRoleCard span{color:#3d3024}
 :root[data-theme="light"] #fillAiNote{color:var(--hp-t2,#7a6650)}
+:root[data-theme="light"] .stocksRow{border:1px solid rgba(120,100,70,.18);background:rgba(255,255,255,.55);color:inherit}
+:root[data-theme="light"] .stocksRow.mine{border-color:#d9a441;background:rgba(255,236,190,.6)}
+:root[data-theme="light"] .stockUp{color:#d33b3b;stroke:#d33b3b}
+:root[data-theme="light"] .stockDown{color:#2f6fd6;stroke:#2f6fd6}
+:root[data-theme="light"] .stockFlat{color:#7a7f8a;stroke:#7a7f8a}
+:root[data-theme="light"] .stockSpark polyline{fill:none}
+:root[data-theme="light"] .stocksQtyInput{border:1px solid rgba(120,100,70,.35)}
