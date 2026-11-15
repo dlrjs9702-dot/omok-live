@@ -3732,11 +3732,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const g = new THREE.Group(); g.position.set(FURN.ROOM.x, FURN.ROOM.y, FURN.ROOM.z); g.rotation.y = Math.PI; scene.add(g);
     mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
     const put = (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
-    put('mall.floor2', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(FURN.ROOM.w, 0.2, FURN.ROOM.d), mat(0xd9c3a0), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(FURN.ROOM.w, 4, 0.3), mat(0xf2ede4), 0, 2, FURN.ROOM.d / 2, f); });
+    const shell = put('mall.floor2', 0, 0, 0, 0, (f) => { mesh(new THREE.BoxGeometry(30, 0.2, 20), mat(0xd9c3a0), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(30, 4, 0.3), mat(0xf2ede4), 0, 2, 10, f); });
+    shell.scale.set(FURN.ROOM.w / 30, 1, FURN.ROOM.d / 20); /* (v1.10.319 111b: the floor's model is the 30 x 20 room -- stretched to 38 x 26, its height kept) */
     for (const sl of FURN.SLOTS) if (sl.kind === 'floor') put(`shop.rug_zone__${sl.zone}`, sl.lx, 0, sl.lz, 0, (f) => mesh(new THREE.BoxGeometry(4, 0.02, 4), mat(0xe6d6b8), 0, 0.01, 0, f)); // (v1.10.211: one under each plinth, assets 82 README)
     const plinths = {};
     for (const s of [...FURN.SLOTS, ...FURN.BASE_SLOTS, ...FURN.YARD_SLOTS, ...FURN.WEEK_SLOTS]) {
       if (s.plinth === false) { plinths[s.id] = { root: put('shop.price_stand', s.lx, 1.0, s.lz - 0.9, 0), top: 0 }; continue; }
+      if (s.plat) { /* (v1.10.319 111b: a big yard piece at its own size, on a low platform 0.3 m round it -- the price at its front edge) */
+        const [pw, pd] = s.plat; mesh(new THREE.BoxGeometry(pw, 0.1, pd), mat(0xcfc4b0), s.lx, 0.05, s.lz, g);
+        plinths[s.id] = { root: put('shop.price_stand', s.lx, 0.1, s.lz - pd / 2 + 0.15, 0), top: 0.1 }; continue;
+      }
       const small = Boolean(s.good); put(small ? 'shop.plinth_s' : 'shop.plinth_l', s.lx, 0, s.lz, 0, (f) => mesh(new THREE.BoxGeometry(small ? 1.2 : 2.4, 0.14, small ? 1.2 : 2.4), mat(0xcfc4b0), 0, 0.07, 0, f));
       plinths[s.id] = { root: put('shop.price_stand', s.lx, 0.14, s.lz - (small ? 0.5 : 1.1), 0), top: 0.14 };
     }
@@ -3746,9 +3751,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!dressPost(k, 'mall3')) { assets.dress(['character.npc'], k); dressUp(k, { gender: 'female' }, { shirt: 0x8a6a48 }); } // (v1.10.215: the day's 바위·해송)
     liftAt(g, FURN.LIFT);
     signboard('wall', '3층 가구', g, 0, 3.1, FURN.ROOM.d / 2 - 0.2, 0); // (간판: the floor's name on a wall board)
-    for (const [lz, yaw] of [[-3.5, 0], [3.5, Math.PI]]) signboard('plaque', '마당', g, -11.3, 0, lz, yaw);
+    for (const [lz, yaw] of [[-1.8, 0], [1.8, Math.PI]]) signboard('plaque', '마당', g, -11.0, 0, lz, yaw); /* (v1.10.319: the corner both sides of the way from the lift) */
+    signboard('plaque', '큰 마당 물건', g, 15.2, 0, -5.4, 0); signboard('plaque', '큰 마당 물건', g, -0.9, 0, -9.0, Math.PI); /* (111b: the right strip's, and the front band's read from the walk behind it) */
     signboard('plaque', '이번 주 신상', g, 9.0, 0, 0.6, 0); // (v1.10.227: the week's shelf, at its open front corner -- 총괄 검토: behind the clerk it was hidden) // (v1.10.225: the 「마당」 shelf either side of the way from the lift)
-    for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
+    for (const [lx, lz] of [[-12, -5], [0, -5], [12, -5], [-12, 5], [0, 5], [12, 5]]) { const light = new THREE.PointLight(0xfff1d6, 16, 20, 1.2); /* (v1.10.319: spread over 38 x 26, the same six) */ light.position.set(lx, 3.6, lz); g.add(light); }
     furniture = { group: g, plinths, shown: {}, put, keeper: k, lid: roomLid(g, FURN.ROOM, 0xf2ede4) };
     if (furnitureState) setFurniture(furnitureState);
     return furniture;
