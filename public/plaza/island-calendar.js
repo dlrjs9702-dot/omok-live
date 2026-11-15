@@ -54,6 +54,11 @@
         contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 },
       }),
       shop: Object.freeze([['xmas_tree_small', 8], ['xmas_fireplace', 8], ['xmas_snow_globe', 4], ['xmas_stocking', 3], ['xmas_gingerbread_house', 4], ['title_christmas', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
+      // 1.10.329 (notes christmas-boost M1·M5): a light snow on the whole island in the evenings and nights (17:00 to 06:00),
+      // all day on the 24th and 25th -- the 화이트 크리스마스, the island drawn in its winter look; the plaza tree lit on the
+      // first evening at 18:00, its countdown from 17:00
+      snow: Object.freeze({ from: 17, to: 6, white: Object.freeze(['2026-12-24', '2026-12-25']) }),
+      lighting: Object.freeze({ day: '2026-12-19', hour: 18, countFrom: 17 }),
     }),
     // X2 카운트다운 (gamecenter-notes docs/asset-proposal-christmas-20261027.md 「X2 행사 결정」): the year's last night, 18:00 to
     // 01:00 -- the board on 대청마당 and its launchers; at midnight the fireworks, and whoever is round the board from 0:00 to
@@ -140,5 +145,9 @@ market: Object.freeze([['cocoa', '핫초코', 27], ['sweetpotato', '군고구마
   // the day's ranking from each account's best score: [{ account, score, at }] -> sorted, the earlier first on a tie
   const rankOf = (rows) => rows.slice().sort((a, b) => b.score - a.score || a.at - b.at || String(a.account).localeCompare(String(b.account)));
 
-  return { KST, DAY, dayOf, hourOf, weekdayOf, addDays, GOODS, FESTIVALS, TITLES, titleOf, CONTEST, TROPHY, PLACES, festivalDays, festivalAt, festivalOn, festivalOver, nextFestival, contestAt, taskOpen, rankOf, countdownText, kstAt };
+  // 1.10.329: a festival's snow at `ms` -- 'white' (all day, the island its winter look), 'light' (the evening and night's) or null
+  const snowOf = (fest, ms) => { const s = fest?.snow; const d = dayOf(ms); if (!s || d < fest.start || d > fest.end) return null; if (s.white.includes(d)) return 'white'; const h = hourOf(ms); return h >= s.from || h < s.to ? 'light' : null; };
+  // the plaza tree's lighting: 'dark' before it, 'count' its last hour (ms to go), 'lit' after -- null with no lighting that festival
+  const lightingOf = (fest, ms) => { const L = fest?.lighting; if (!L) return null; const at = kstAt(L.day, L.hour); if (ms >= at) return { state: 'lit', at }; return ms >= kstAt(L.day, L.countFrom) ? { state: 'count', at, left: at - ms } : { state: 'dark', at }; };
+  return { snowOf, lightingOf, KST, DAY, dayOf, hourOf, weekdayOf, addDays, GOODS, FESTIVALS, TITLES, titleOf, CONTEST, TROPHY, PLACES, festivalDays, festivalAt, festivalOn, festivalOver, nextFestival, contestAt, taskOpen, rankOf, countdownText, kstAt };
 }));

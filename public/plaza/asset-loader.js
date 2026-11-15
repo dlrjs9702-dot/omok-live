@@ -18,7 +18,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // v1.10.27: a thing's season is its zone's today (island-terrain.js); the neutral plaza shows NEUTRAL_LOOK. Without
   // a day (or the terrain) every target uses its plain `url`.
   const T = globalThis.IslandTerrain;
-  const lookOf = (zone) => (day === null || !T ? null : T.zoneSeason(zone, day) || P.NEUTRAL_LOOK);
+  let white = false; /* (1.10.329 화이트 크리스마스, notes christmas-boost M1: every zone's winter look, drawn only -- the seasons themselves stay) */
+  const lookOf = (zone) => (day === null || !T ? null : (white && zone >= 0 ? 'winter' : T.zoneSeason(zone, day)) || P.NEUTRAL_LOOK);
   const placeOf = new THREE.Vector3();
   // A .gltf names its .bin and textures relative to itself; they are pack files as well, so they too get their
   // revision URL (and with it the resource cache). Already-versioned, data: and blob: URLs pass through.
@@ -537,9 +538,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // v1.10.27: a new day (00:00 KST) -- every season moves one zone clockwise; every structure and batch whose zone's
   // season changed swaps to that season's model (their files are already in the resource cache)
-  function setDay(next) {
-    if (next === day) return;
-    day = next;
+  function setDay(next, nextWhite = false) {
+    if (next === day && Boolean(nextWhite) === white) return;
+    day = next; white = Boolean(nextWhite);
     for (const rec of attaches) { applyAttach(rec); applySnow(rec); }
     for (const rec of batches) applyBatch(rec);
   }

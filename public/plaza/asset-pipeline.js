@@ -361,13 +361,13 @@
   // cannot load leaves every target procedural.
   function createLazyAssets({ registry, off = [], importLoader, options = {}, onError = (what, error) => console.warn('3D 에셋을 쓰지 않습니다:', what, error) }) {
     const ids = enabledIds(registry, off);
-    let day = options.day ?? null; // the season day (island-terrain seasonDay)
+    let day = options.day ?? null; let dayWhite = false; // the season day (island-terrain seasonDay); 1.10.329 its 화이트 크리스마스
     let impl = null; let failed = false; let disposed = false; const queue = [];
     const call = (name, args) => { if (disposed || failed) return; if (impl) impl[name](...args); else if (ids.length) queue.push([name, args]); };
     if (ids.length) {
       Promise.resolve().then(importLoader).then((mod) => {
         if (disposed) return;
-        impl = mod.createIslandAssets({ ...options, day, registry, off, onError });
+        impl = mod.createIslandAssets({ ...options, day, registry, off, onError }); if (dayWhite) impl.setDay(day, true);
         for (const [name, args] of queue.splice(0)) impl[name](...args);
       }).catch((error) => { failed = true; queue.length = 0; onError('loader', error); });
     }
@@ -401,7 +401,7 @@
       // each frame: where the player is (near squares show models, far ones their procedural copies)
       update: (x, z) => { if (impl) impl.update(x, z); },
       // v1.10.27: a new day (00:00 KST): every season moves one zone clockwise
-      setDay: (next) => { day = next; if (impl) impl.setDay(next); },
+      setDay: (next, white = false) => { day = next; dayWhite = Boolean(white); if (impl) impl.setDay(next, dayWhite); }, /* (1.10.329 화이트 크리스마스: every zone's winter look) */
       // v1.10.36 10월 할로윈: night (the windows' glass glows); replayed when the loader comes
       setNight: (on) => call('setNight', [on]),
       setQuality: (tier) => call('setQuality', [tier]),

@@ -136,3 +136,28 @@ test('크리스마스 마켓: 겨울 장식이면 가판대 셋, 앞에서 SPACE
     await who.context.close();
   } finally { await post(request, '/api/admin/island/decor', admin, { mode: 'auto' }); await post(request, '/api/test/festival/clock', null, { at: 0 }); }
 });
+
+// 1.10.329 크리스마스 눈·트리 점등식 (notes christmas-boost M1·M5; IslandCalendar.snowOf·lightingOf), by the festival's clock: the
+// first evening at 17:30 a light snow over the island and the tree's countdown on the board, its bulbs dark; at 18:00 lit; the
+// 24th all day the 화이트 크리스마스 -- every zone's winter look (drawn only: the season the server keeps is the date's)
+test('크리스마스 눈·점등식: 첫 저녁 17:30 눈·점등 카운트다운(전구 꺼짐) → 18시 점등 → 24일 화이트 크리스마스', async ({ browser, request }) => {
+  test.setTimeout(240000);
+  const admin = await adminToken(request); const at = (iso) => post(request, '/api/test/festival/clock', null, { at: Date.parse(`${iso}+09:00`) });
+  try {
+    expect((await post(request, '/api/admin/island/decor', admin, { mode: 'winter' })).status).toBe(200); expect((await at('2026-12-19T17:30:00')).status).toBe(200);
+    const who = await shopper(browser, request, '눈구경', 0, 'female'); const { page } = who;
+    const D = (fn, arg) => page.evaluate(([f, a]) => window.PlazaDebug()[f](a), [fn, arg]);
+    const fresh = async () => { await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true); };
+    await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await fresh();
+    await expect.poll(() => D('xmasSnow'), { timeout: 20000 }).toEqual({ mode: 'light', white: false, falling: true });
+    await expect.poll(async () => { const t = await D('treeLight'); return [t.state, t.board, /^\d\d:\d\d$/.test(t.text || ''), t.glow === null || t.glow === 0]; }, { timeout: 20000 }).toEqual(['count', true, true, true]);
+    await shoot(page, 'xmas-lighting-count');
+    await at('2026-12-19T18:00:05'); await fresh();
+    await expect.poll(async () => { const t = await D('treeLight'); return [t.state, t.board, (t.glow ?? 0) > 0]; }, { timeout: 30000 }).toEqual(['lit', false, true]);
+    await shoot(page, 'xmas-lighting-lit');
+    await at('2026-12-24T12:00:00'); await fresh();
+    await expect.poll(() => D('xmasSnow'), { timeout: 20000 }).toEqual({ mode: 'white', white: true, falling: true });
+    await shoot(page, 'xmas-white'); await expectNoScriptError(page);
+    await who.context.close();
+  } finally { await post(request, '/api/admin/island/decor', admin, { mode: 'auto' }); await post(request, '/api/test/festival/clock', null, { at: 0 }); }
+});
