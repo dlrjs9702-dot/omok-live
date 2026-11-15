@@ -82,8 +82,22 @@ test('택시 문: 타기 0~0.14에 열고 0.86~1에 닫고, 내리기 0~0.12에 
   assert.equal(X.doorOf('exit', 0.12), 1); assert.equal(X.doorOf('exit', 0.79), 1); assert.equal(X.doorOf('exit', 1), 0); assert.equal(X.doorOf('run', 0.5), 0);
 });
 
-test('택시 요금: 집주인 무료, 집 없으면 경제 값(기본 1,000P)', () => {
-  assert.equal(X.fareOf({ hasHome: true }), 0); assert.equal(X.fareOf({ hasHome: false }), 1000); assert.equal(X.fareOf({ hasHome: false, fare: 1500 }), 1500);
+test('택시 요금 (1.10.327): 누구나 경제 값(기본 1,000P), 자유이용권 5,000P, 정류장 쌍별 추가요금 자리(지금은 없음)', () => {
+  assert.equal(X.fareOf({}), 1000); assert.equal(X.fareOf({ fare: 1500 }), 1500); assert.equal(X.fareOf({ hasHome: true }), 1000, '집이 있어도');
+  assert.equal(X.fareOf({ from: 'plaza', to: 'isle' }), 1000); assert.equal(X.DAY_PASS, 5000); assert.deepEqual(X.EXTRA, {});
+});
+
+test('택시 속도 (1.10.327 사용자 「16의 속도」·「다리 위에서도 도로와 동일한 속도」): 달리는 동안 16 m/s, 동쪽 윤슬다리 위도 같음', () => {
+  assert.equal(X.FAST, 16); assert.equal(X.SLOW, X.FAST);
+  for (const from of ['plaza', 'isle']) {
+    const ride = { from, startedAt: 0 }; const dur = X.durationOf(ride); let onBridge = 0; let off = 0;
+    for (let t = X.ENTER + X.EASE + 200; t < dur - X.EXIT - X.EASE - 200; t += 250) {
+      const a = X.poseAt(ride, t); const b = X.poseAt(ride, t + 100); const v = (b.d - a.d) / 0.1; /* (along the road -- a corner's chord is shorter) */
+      const bridge = a.x >= X.BRIDGE.x0 && a.x <= X.BRIDGE.x1 && a.z >= X.BRIDGE.z0 && a.z <= X.BRIDGE.z1;
+      assert.ok(Math.abs(v - 16) < 0.6, `${from} ${t} ms ${v.toFixed(2)} m/s${bridge ? ' (bridge)' : ''}`); if (bridge) onBridge += 1; else off += 1;
+    }
+    assert.ok(onBridge > 3 && off > 20, `${from}: bridge ${onBridge}, road ${off}`);
+  }
 });
 
 // v1.10.286 (notes docs/taxi-fix-20261108.md 6절, 밤에 지붕 위 회색 동그라미): every body and every hair seated by TaxiSit at the seat

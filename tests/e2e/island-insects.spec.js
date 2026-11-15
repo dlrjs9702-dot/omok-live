@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, get, post, standAt, expectNoScriptError, spaceOn } = require('./skin-support');
+const { shopper, get, post, standAt, expectNoScriptError, spaceOn, adminToken } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 const Together = require('../../lib/island-together');
 
@@ -9,9 +9,13 @@ const Together = require('../../lib/island-together');
 // the whole island with my name. PC and phone.
 // (v1.10.240 3b) the insects' clock held for the test -- a new layout (every 10 minutes, at night or rain) never comes in
 // between a pick and its catch (CI: 「the insect gone on the other screen」 on a layout's turn); let go after, whatever the end
-test.afterEach(async ({ request }) => { await request.post('/api/test/insects/hold', { data: { on: false } }).catch(() => {}); });
+test.afterEach(async ({ request }) => { await request.post('/api/test/insects/hold', { data: { on: false } }).catch(() => {}); if (dayAdmin) await request.post('/api/admin/island/time', { headers: { 'X-Session-Token': dayAdmin }, data: { mode: 'auto' } }).catch(() => {}); });
+// (1.10.327, CI 323·326 03:4x KST: at night the layout is the few night insects -- one left drawn with no spot by it, every try
+// for 40 s) the island's day held for the test, its layout the day's
+let dayAdmin = null;
 test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으면 가방·도감·다른 화면에서도 사라짐, 달아남, 박물관 기증', async ({ browser, request, isMobile }) => {
   test.setTimeout(240000);
+  dayAdmin = await adminToken(request); expect((await request.post('/api/admin/island/time', { headers: { 'X-Session-Token': dayAdmin }, data: { mode: 'day' } })).ok()).toBe(true);
   expect((await request.post('/api/test/insects/hold', { data: { on: true } })).ok()).toBe(true);
   const a = await shopper(browser, request, isMobile ? '곤충박사m' : '곤충박사', 0, 'male');
   const b = await shopper(browser, request, isMobile ? '곤충구경m' : '곤충구경', 0, 'female');
