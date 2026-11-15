@@ -26,7 +26,7 @@ test('마당 농사 규칙: 단계 4개(시간의 1/3마다), 퇴비 뒤 두 배
   assert.equal(Farm.stageOf({ ...c, fed: 2 * HOUR }, 7 * HOUR - 1), 2); // (composted at 2 h: 2 h + 5 h twice = 12 h -- ripe at 7 h)
   assert.equal(Farm.ripeAt({ ...c, fed: 2 * HOUR }), 7 * HOUR);
   assert.equal(Farm.stageOf({ ...c, fed: 2 * HOUR }, 7 * HOUR), 3);
-  assert.deepEqual(Farm.upkeepNeed(1), { weed: 30, twig: 10, stone: 5 }); assert.deepEqual(Farm.upkeepNeed(3), { weed: 45, twig: 15, stone: 8 }); assert.deepEqual(Farm.upkeepNeed(4), { weed: 60, twig: 20, stone: 10 });
+  assert.deepEqual(Farm.upkeepNeed(1), { weed: 30, twig: 10, stone: 5, ore: 5 }); assert.deepEqual(Farm.upkeepNeed(3), { weed: 45, twig: 15, stone: 8, ore: 8 }); assert.deepEqual(Farm.upkeepNeed(4), { weed: 60, twig: 20, stone: 10, ore: 10 }); // (1.10.323: 광석 5 a week, the house's size as the rest)
   const mon = Date.parse('2026-11-16T00:00:00+09:00'); assert.equal(Farm.weekOf(mon), '2026-11-16'); assert.equal(Farm.weekOf(mon - 1), '2026-11-09');
   assert.equal(Farm.upkeepState({ since: '2026-11-16' }, 2, mon + HOUR).shabby, false, '첫 주는 빚 없음');
   assert.equal(Farm.upkeepState({ since: '2026-11-09' }, 2, mon + HOUR).shabby, true, '지난주 안 냄');
@@ -84,7 +84,7 @@ test('마당 농사·집 손보기 서버: 텃밭 개수(마당 단계) · 심�
   const B = H.upkeepBoxOf(lot, 1);
   assert.equal((await req('/api/home/upkeep', a, { action: 'give', itemId: 'weed' })).data.error, 'TOO_FAR');
   await stand(a, B.x, B.z + 0.8);
-  await give('weed', 40); await give('branch', 6); await give('twig', 6); await give('stone', 5);
+  await give('weed', 40); await give('branch', 6); await give('twig', 6); await give('stone', 5); await give('ore', 5); /* (1.10.323: 광석 too) */ assert.equal((await req('/api/home/upkeep', a, { action: 'give', itemId: 'ore' })).data.put, 5);
   r = await req('/api/home/upkeep', a, { action: 'give', itemId: 'weed' }); assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.put, 30);
   assert.equal((await req('/api/home/upkeep', a, { action: 'give', itemId: 'weed' })).data.error, 'ENOUGH'); assert.equal(await count(a, 'weed'), 10);
   assert.equal((await req('/api/home/upkeep', a, { action: 'give', itemId: 'branch' })).data.put, 6); assert.equal((await req('/api/home/upkeep', a, { action: 'give', itemId: 'twig' })).data.put, 4);
@@ -95,8 +95,8 @@ test('마당 농사·집 손보기 서버: 텃밭 개수(마당 단계) · 심�
   await req('/api/test/home/farm-time', a, { weeks: 2 });
   assert.equal((await req('/api/home', b)).data.lots.find((l) => l.id === lot.id).shabby, true, '허름함');
   assert.ok((await req('/api/island/mail', a)).data.letters.some((l) => l.id === `upkeep-${Farm.weekOf(Date.now())}` && l.text.includes('잡초 30')), '주간 쪽지');
-  await give('weed', 30); await give('branch', 10); await give('stone', 5);
-  for (const itemId of ['weed', 'branch', 'stone']) { const g = await req('/api/home/upkeep', a, { action: 'give', itemId }); assert.equal(g.status, 200, `${itemId} ${JSON.stringify(g.data)}`); }
+  await give('weed', 30); await give('branch', 10); await give('stone', 5); await give('ore', 5);
+  for (const itemId of ['weed', 'branch', 'stone', 'ore']) { const g = await req('/api/home/upkeep', a, { action: 'give', itemId }); assert.equal(g.status, 200, `${itemId} ${JSON.stringify(g.data)}`); }
   assert.equal((await req('/api/home', b)).data.lots.find((l) => l.id === lot.id).shabby, false, '다 내면 바로 깨끗');
   // 재료로 쓰기: weeds into compost, stones into stepping stones (the 가구 창고)
   await give('weed', 3); r = await req('/api/home/upkeep', a, { action: 'craft', recipe: 'compost' }); assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(await count(a, 'compost'), 1);

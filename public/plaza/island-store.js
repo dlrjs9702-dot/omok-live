@@ -53,6 +53,7 @@
     ...['seed_carrot', 'seed_potato', 'seed_tomato', 'seed_corn', 'seed_pumpkin', 'seed_cabbage'].map((id, k) => [id, gondola(10.8, 'a', k), 'seed_flower_yellow']), // (v1.10.318 마당 농사: the crops' seeds, the third gondola -- a seed bag's look)
     ['fishing_rod', on(-8.0, 9.98, 0, [-2, 1.86, -0.2])], ['bugnet', on(-8.0, 9.98, 0, [-1.2, 1.86, -0.2])], // (hook0 the rod, hook1 the net -- B 47)
     ['fishing_rod_sturdy', on(-8.0, 9.98, 0, [-0.4, 1.86, -0.2]), 'fishing_rod'], ['bugnet_sturdy', on(-8.0, 9.98, 0, [0.4, 1.86, -0.2]), 'bugnet'], // (v1.10.221: the sturdy ones on the next hooks, the same look)
+    ['pickaxe', on(-8.0, 9.98, 0, [1.2, 1.86, -0.2])], // (1.10.323 채석장: the 곡괭이 on the next hook)
     ['bike_mint', [-9.35, 0, -6]], ['bike_red', [-8.45, 0, -6]], ['bike_sky', [-7.55, 0, -6]], ['bike_butter', [-6.65, 0, -6]], // (자전거: by the door)
   ].map(([id, at, look]) => Object.freeze({ id, at: Object.freeze(at), yaw: 0, soon: false, look: look || id }))); // (B 45: the seeds, the sapling and fertilizer on sale)
   const REACH = 1.5; // a good within this of me (on the floor plan) is the one SPACE buys (v1.10.211: the tool wall's hooks and the table's back row, 1.2-1.5 off where one stands)

@@ -13444,6 +13444,98 @@
       "src": "ted119:01. High/motions/ArmsCrossed.glb",
       "sha256": "b94acd9d1e5e035b96c44beced35567e884a5c411856da88c9d5aeda88665011",
       "precompressed": true
+    },
+    {
+      "out": "quarry-v1/ore_chunk.glb",
+      "src": "quarry129:01. High/quarry-v1/ore_chunk.glb",
+      "sha256": "28dbee389660e3173b82786cf0ae19e542b81edb526b03270d59778b83a7be7b",
+      "lowSrc": "quarry129:02. Low/quarry-v1/ore_chunk_low.glb",
+      "lowSha256": "75e76d69f26a6dacd945ab97ae359355804dd3c2621bfe389c4b686aab605b85",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/ore_pile.glb",
+      "src": "quarry129:01. High/quarry-v1/ore_pile.glb",
+      "sha256": "0f4bd02c0ef72847141b9bdbe3e7ea674f42292395e233c9f463c633b4342b9a",
+      "lowSrc": "quarry129:02. Low/quarry-v1/ore_pile_low.glb",
+      "lowSha256": "8e1a47ef6e5cb3d61d69f62e8fb69456f97c5220ee8b678029f1d8f7db1b5eb4",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/pickaxe.glb",
+      "src": "quarry129:01. High/quarry-v1/pickaxe.glb",
+      "sha256": "920a4c0d2ec53a3a531392cfa4d92cc0e12ed70a0ec3eb2895892ab8cb3a74b4",
+      "lowSrc": "quarry129:02. Low/quarry-v1/pickaxe_low.glb",
+      "lowSha256": "66120f58e89dbe383ea6ef71255783397d655e92e2db87d953b38fc50085fd46",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_rock_a.glb",
+      "src": "quarry129:01. High/quarry-v1/quarry_rock_a.glb",
+      "sha256": "6e30c142bf92c0f8060ba6c2534706d46f5f7562fa81e4cf270af3d57e9d1f28",
+      "lowSrc": "quarry129:02. Low/quarry-v1/quarry_rock_a_low.glb",
+      "lowSha256": "e33686fff5969c30ce352163d41fd350913838d7412d912eb26143f9a6743f34",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_rock_a_mined.glb",
+      "src": "quarry129:01. High/quarry-v1/quarry_rock_a_mined.glb",
+      "sha256": "41127e04330e86fbc6bf068980c454d7d61e748dcab8dfd118ac44489cf6ab95",
+      "lowSrc": "quarry129:02. Low/quarry-v1/quarry_rock_a_mined_low.glb",
+      "lowSha256": "0a65a83c4b2fe00b335ae50ec37007f43edc54ca639de893049ac0ef676f152b",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_rock_b.glb",
+      "src": "quarry129:01. High/quarry-v1/quarry_rock_b.glb",
+      "sha256": "f7f01eeb0902178176832011a261bb9d6923fbfea4aac4fbdd570f41663cf45f",
+      "lowSrc": "quarry129:02. Low/quarry-v1/quarry_rock_b_low.glb",
+      "lowSha256": "aa81613d3d723d1583231539f7c33ef457a538f3ba058273541cdbf0d7071cde",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_rock_b_mined.glb",
+      "src": "quarry129:01. High/quarry-v1/quarry_rock_b_mined.glb",
+      "sha256": "d6d44553759b211be17a5fe49884365b0536bb130b857adc68a970a1ac97713f",
+      "lowSrc": "quarry129:02. Low/quarry-v1/quarry_rock_b_mined_low.glb",
+      "lowSha256": "6d8bc7da5ef35247442ec9ea0e8717eec7e08317ee2243930a13c70608708154",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_rock_c.glb",
+      "src": "quarry129:01. High/quarry-v1/quarry_rock_c.glb",
+      "sha256": "f539083463e82b794565e26794df874415e8a4bf86d905ea5241647159eaa913",
+      "lowSrc": "quarry129:02. Low/quarry-v1/quarry_rock_c_low.glb",
+      "lowSha256": "bc459c64d47f13098ef1617aabe535f0cb7b5361a8bc2b2fbaae9925d9819e56",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_rock_c_mined.glb",
+      "src": "quarry129:01. High/quarry-v1/quarry_rock_c_mined.glb",
+      "sha256": "014f12fce60ccec21db7b1b5cbd6abee5bfa92289848bd608a5a1a0a729899ad",
+      "lowSrc": "quarry129:02. Low/quarry-v1/quarry_rock_c_mined_low.glb",
+      "lowSha256": "e54bb4511f01e5a07ac98e77b7a90167eb2e26852a14eb307e4b5e43f8b87322",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/sign_quarry.glb",
+      "src": "quarry129:01. High/quarry-v1/sign_quarry.glb",
+      "sha256": "b1d05bd949de022d6969af2b6f25924897e35ff15fe9465b13019a690d50acf0",
+      "lowSrc": "quarry129:02. Low/quarry-v1/sign_quarry_low.glb",
+      "lowSha256": "49fb9a44b2b6d2ac11c9c0279a0b8c9704b506921730478fc632faab371f724b",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/PickaxeSwing.glb",
+      "src": "pickaxe130:01. High/motions/PickaxeSwing.glb",
+      "sha256": "bb6d49b4274f6fc9283fac30094630a11046f58a1ba6b124962e56691e3570d1",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/PickaxeEnd.glb",
+      "src": "pickaxe130:01. High/motions/PickaxeEnd.glb",
+      "sha256": "8925edd7e4cf88661a655d9b8ea82581044a7fd1fa1cf242e1cc107e89f19cde",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -13539,6 +13631,8 @@
     "fence120": "120. Game Island yard fence diet 2026-11-14",
     "walker121": "121. Game Island resident walker merge 2026-11-14",
     "diet122": "122. Game Island heavy props diet 2026-11-14",
-    "farm115": "115. Game Island yard farming F1 2026-11-10"
+    "farm115": "115. Game Island yard farming F1 2026-11-10",
+    "quarry129": "129. Game Island quarry rocks ore pickaxe 2026-11-15",
+    "pickaxe130": "130. Game Island pickaxe motion 2026-11-15"
   }
 }

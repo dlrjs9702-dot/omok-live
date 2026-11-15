@@ -110,6 +110,20 @@ const IslandMuseum = require('./public/plaza/island-museum'); // v1.10.231 M 박
 const IslandHome = require('./public/plaza/island-home'); // 묶음 4 내 집
 const IslandYard = require('./public/plaza/island-yard'); // v1.10.225 마당 꾸미기
 const IslandFarm = require('./public/plaza/island-farm'); // v1.10.318 마당 농사 F1 + 집 손보기
+const IslandQuarry = require('./public/plaza/island-quarry'); // 1.10.323 Q1 채석장
+// (the rocks' state { id: { left, gen, minedAt } } -- kept in the world store; `gen` makes each ore's claim its own)
+let quarryKept = null; let quarryLoading = null; const quarryPulls = new Map(); // (session token -> a mining under way)
+async function quarryRocks(now = nowMs()) {
+  if (!quarryKept) quarryKept = await (quarryLoading ||= pointStore.worldValue('quarry').then((v) => v && typeof v === 'object' ? v : {}).finally(() => { quarryLoading = null; }));
+  let changed = false; const out = [];
+  for (const r of IslandQuarry.ROCKS) {
+    const k = quarryKept[r.id]; if (!k) { quarryKept[r.id] = { left: IslandQuarry.ORE_PER_ROCK, gen: now }; changed = true; }
+    const st = IslandQuarry.rockState(quarryKept[r.id], now); if (st.regrown) { quarryKept[r.id] = { left: st.left, gen: st.gen }; changed = true; }
+    out.push({ id: r.id, left: Math.max(0, quarryKept[r.id].left), stage: quarryKept[r.id].left > 0 ? 'full' : 'mined' });
+  }
+  if (changed) await pointStore.setWorldValue('quarry', quarryKept);
+  return out;
+}
 const IslandStocks = require('./lib/island-stocks'); // v1.10.320 섬 주식
 const IslandExchange = require('./public/plaza/island-exchange'); // (its room)
 // (Codex 311-320 #1: the market's key -- made once, kept in the world store, never sent anywhere; the prices from it alone)
@@ -1918,7 +1932,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); quarryPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
 // where I was and how far from the place, how old that pose was, and whether my lobby stream was open
 function nearLog(session, what, at, target) {
@@ -1996,7 +2010,7 @@ const IssueLog = require('./lib/issue-log');
 function collectionPose(token,pull=null) {
   const p=plazaPresence.get(token); if(!p) return;
   if(pull) Object.assign(p,{x:pull.pos.x,z:pull.pos.z,yaw:Math.atan2(pull.target.x-pull.pos.x,pull.target.z-pull.pos.z),moving:false,act:pull.anim,actN:pull.at,actAt:pull.at,actMs:pull.ms,actTarget:pull.target});
-  else if (['gather','pickup','pickFruit'].includes(p.act)) { p.act=null; delete p.actAt; delete p.actMs; delete p.actTarget; }
+  else if (['gather','pickup','pickFruit','pickaxe'].includes(p.act)) { p.act=null; delete p.actAt; delete p.actMs; delete p.actTarget; }
   plazaDirty=true;
 }
 const resourcePulls = new Map();
@@ -4740,7 +4754,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.322' });
+    return sendJson(res, 200, { ok: true, version: '1.10.323' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5807,7 +5821,7 @@ async function requestHandler(req, res) {
     session.plazaId ||= crypto.randomUUID().slice(0, 8);
     const account = pointAccountForSession(session);
     const { look, title, delinquent } = lookFor(account, equippedSkinCache.get(account));
-    const collecting = [resourcePulls.get(session.token), weedPulls.get(session.token)].find(p => p && !p.result && nowMs() - p.at < 15000);
+    const collecting = [resourcePulls.get(session.token), weedPulls.get(session.token), quarryPulls.get(session.token)].find(p => p && !p.result && nowMs() - p.at < 15000); /* (1.10.323: mining too) */
     if (!collecting) { const r=resourcePulls.get(session.token); if(r && nowMs()-r.at>15000) resourcePulls.delete(session.token); const w = weedPulls.get(session.token); if (w && !w.result) weedPulls.delete(session.token); }
     const wanted = { x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100 };
     trainService();
@@ -6411,6 +6425,57 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/stocks/rank' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return sendJson(res, 200, await stockRank(stockNow(), account));
+  }
+  // 1.10.323 Q1 채석장 (public/plaza/island-quarry.js): the rocks' state; `start` at a rock's mining spot with a 곡괭이 in the bag
+  // (the swings' time, everyone sees the pose), `finish` after it -- one 광석 into the bag, the pickaxe one use older, the rock one
+  // less (mined out: its mined look till it grows back); a day's own count (DAILY); `cancel` stops
+  if (pathname === '/api/island/quarry' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const { doc } = await pointStore.questDoc(account, 'quarry'); const today = kstDate(nowMs());
+    return sendJson(res, 200, { ok: true, rocks: await quarryRocks(), daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/regrow' && req.method === 'POST') { // (tests: the mined rocks grown back now)
+    await quarryRocks(); for (const k of Object.values(quarryKept)) if (k.left <= 0) k.minedAt = nowMs() - IslandQuarry.REGROW_MS; return sendJson(res, 200, { ok: true, rocks: await quarryRocks() });
+  }
+  if (['/api/island/quarry/start', '/api/island/quarry/finish', '/api/island/quarry/cancel'].includes(pathname) && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const t = session.token;
+    if (!checkRateLimit(`island-quarry:${t}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    if (pathname.endsWith('/cancel')) { if (!quarryPulls.get(t)?.result) quarryPulls.delete(t); collectionPose(t); return sendJson(res, 200, { ok: true }); }
+    const rock = IslandQuarry.rockById(String(body.rock || '')); const spot = Number(body.spot);
+    if (!rock || !Number.isInteger(spot) || spot < 0 || spot >= IslandQuarry.spotCount(rock)) return sendError(res, 400, 'BAD_REQUEST', '바위를 확인해 주세요.');
+    const rocks = await quarryRocks(); const state = rocks.find((r) => r.id === rock.id); const today = kstDate(nowMs());
+    if (pathname.endsWith('/start')) {
+      const at = plazaPresence.get(t); if (!at || (at.space && at.space !== 'island') || trainRiders.has(t) || taxiRides.has(t)) return sendError(res, 409, 'TOO_FAR', '바위 앞에서 다시 시도해 주세요.');
+      const stand = IslandQuarry.standOf(rock, state.stage, spot); if (Math.hypot(at.x - stand.x, at.z - stand.z) > 1.6) return sendError(res, 409, 'TOO_FAR', '바위 앞에서 다시 시도해 주세요.');
+      if (state.left <= 0) return sendError(res, 409, 'MINED', '다 캔 바위예요. 시간이 지나면 다시 광석이 차요.');
+      if ([resourcePulls.get(t), weedPulls.get(t), quarryPulls.get(t)].some((p) => p && !p.result && nowMs() - p.at < 15000)) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.');
+      if ([...quarryPulls].some(([o, p]) => o !== t && !p.result && p.rock === rock.id && p.spot === spot && nowMs() - p.at < 15000)) return sendError(res, 409, 'SPOT_BUSY', '다른 사람이 캐는 자리예요. 옆 자리에서 캐 보세요.');
+      const { doc, bag } = await pointStore.questDoc(account, 'quarry');
+      if (!IslandItems.toolCount(bag, 'pickaxe')) return sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.');
+      if ((doc?.day === today ? doc.n || 0 : 0) >= IslandQuarry.DAILY) return sendError(res, 409, 'DAILY_CAP', `오늘은 광석을 ${IslandQuarry.DAILY}개 캤어요. 내일 다시 캘 수 있어요.`);
+      if (!IslandItems.addToBag(bag, 'ore', 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
+      const pull = { rock: rock.id, spot, at: nowMs(), ms: IslandQuarry.MINE_MS, anim: 'pickaxe', pos: { x: stand.x, z: stand.z }, target: stand.S };
+      quarryPulls.set(t, pull); collectionPose(t, pull);
+      return sendJson(res, 200, { ok: true, ms: pull.ms, stand: { x: stand.x, z: stand.z, yaw: stand.yaw }, stage: state.stage });
+    }
+    // finish
+    const pull = quarryPulls.get(t);
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result);
+    if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
+    if (nowMs() - pull.at < pull.ms - 300) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.');
+    const kept = quarryKept[rock.id]; if (!kept || kept.left <= 0) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, 'MINED', '방금 다 캔 바위예요.'); }
+    const slot = IslandQuarry.ORE_PER_ROCK - kept.left; // (each ore of a rock's fill its own claim: two at once -- one gets it)
+    const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${kept.gen}:${slot}`, itemId: 'ore', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
+    if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.') : sendError(res, 409, 'MINED', '방금 다른 사람이 캐 갔어요.'); }
+    quarryKept[rock.id] = { ...kept, left: kept.left - 1, ...(kept.left - 1 <= 0 ? { minedAt: nowMs() } : {}) };
+    await pointStore.setWorldValue('quarry', quarryKept).catch((error) => console.warn('[quarry]', error.message));
+    const counted = await pointStore.questApply(account, 'quarry', (d) => ({ doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 } })).catch(() => null);
+    const result = { ok: true, ore: 1, left: quarryKept[rock.id].left, stage: quarryKept[rock.id].left > 0 ? 'full' : 'mined', bag: given.bag, worn: given.worn || null, daily: { n: counted?.doc?.n ?? null, max: IslandQuarry.DAILY } };
+    quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t);
+    broadcastIsland('quarry', { rocks: await quarryRocks() });
+    return sendJson(res, 200, result);
   }
   // v1.10.318 마당 농사 F1 (public/plaza/island-farm.js): the owner, in their yard, at one of their beds' cells -- `plant` a seed
   // from the bag (one), `feed` it compost or fertilizer (once, the rest of its growth twice as fast), `harvest` it ripe (its crops
@@ -9860,7 +9925,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.322 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.323 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
