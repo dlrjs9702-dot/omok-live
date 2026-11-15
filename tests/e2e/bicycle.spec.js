@@ -89,7 +89,7 @@ test('자전거: B·빠른 칸(폰)으로 타고 내리기, 다른 사람에게 
 // phone's 상호작용) asks -- 「툇마루섬 마을까지 갈까요? · 1,000P」 -- 타기 pays once; I sit in the car on the road (the keys do
 // nothing, the other screen sees it go), out at 툇마루섬 마을 (v1.10.285; the tests' road 3 s) and back the same way. PC and phone.
 // v1.10.285: the hat away in the car, the stops and the car block, walking islanders step aside.
-test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 마을에서 내림 → 돌아오기, 다른 화면에도 택시', async ({ browser, request, isMobile }) => {
+test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 마을에서 내림 → 자유이용권(5,000P)으로 돌아오기, 다른 화면에도 택시', async ({ browser, request, isMobile }) => {
   test.setTimeout(240000);
   const a = await shopper(browser, request, isMobile ? '택시타m' : '택시타', 0, 'female'); const b = await shopper(browser, request, isMobile ? '택시보m' : '택시보', 0, 'male');
   await grant(request, a, 1_000_000); await buyAndEquip(request, a, ['avatar_x2_hat_coral_tiara', 'avatar_hair_16']); /* (294 문제 기록 「건」: the coral tiara on the vampire sweep) */
@@ -102,11 +102,13 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
     const s = X.stopOf(from); const to = X.stopOf(X.STOPS[from].to);
     await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x, s.out.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain(X.STOPS[from].sign);
     if (from === 'plaza') { await b.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x - 6, s.out.z - 4]); await shot('stop'); }
-    await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.taxiLine')).toHaveText(`${to.label}까지 갈까요? · 1,000P`, { timeout: 15000 });
+    await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.taxiLine')).toHaveText(`${to.label}까지 갈까요?`, { timeout: 15000 });
+    /* (1.10.327 택시 요금: a ride 1,000P or the day's pass 5,000P -- there the first, back the pass) */
+    await expect(dialog.locator('#taxiRideBtn')).toHaveText('한 번 타기 · 1,000P'); await expect(dialog.locator('#taxiPassBtn')).toHaveText('오늘 자유이용권 · 5,000P');
     if (from === 'plaza') await page.evaluate(() => window.PlazaDebug().taxiTrace(true)); /* (294 6: the ride's frames) */
-    const before = await balance(); await dialog.locator('#taxiRideBtn').click();
+    const pass = from === 'isle'; const before = await balance(); await dialog.locator(pass ? '#taxiPassBtn' : '#taxiRideBtn').click();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride?.from)).toBe(from); await expect(dialog).toBeHidden();
-    expect(await balance()).toBe(before - 1000);
+    expect(await balance()).toBe(before - (pass ? 5000 : 1000));
     if (from === 'plaza') {
       await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().taxi.others), { timeout: 15000 }).toBe(1); // (the other screen: my car on its way)
       const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW'); // (the keys do nothing in the car)
@@ -131,6 +133,12 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().taxiStopsShown().find((s) => s.id === 'plaza')), { timeout: 15000 }).toMatchObject({ away: true, standing: false, label: expect.stringMatching(/^🚕 돌아오는 중 · \d+초$/) }); if (process.env.SHOT_DIR) { const sh = X.stopOf('plaza').shelter; await b.page.evaluate(([x, z]) => { const D = window.PlazaDebug(); D.faceTo(x, z); D.camNear([1.2, 2.4, 3.2], [0, 2.4, -5]); }, [sh.x, sh.z]); await b.page.waitForTimeout(900); await b.page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-taxi-stop-away.png` }); } /* (the other screen by the stop: its sign the seconds left) */
   expect((await request.post('/api/test/taxi-run', { data: { ms: 3000, back: false } })).ok()).toBe(true); await ride('isle');
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().taxiStopsShown().find((s) => s.id === 'plaza')), { timeout: 45000 }).toMatchObject({ away: false, standing: true, label: '' }); /* (back in its place: 타기 again) */
+  { /* (1.10.327) the day's pass held: 「오늘 자유이용권 ✓」, 타기 only -- closed without riding */
+    const s = X.stopOf('plaza'); await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x, s.out.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain(X.STOPS.plaza.sign);
+    await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.taxiLine')).toHaveText('툇마루섬 마을까지 갈까요? · 오늘 자유이용권 ✓', { timeout: 15000 });
+    await expect(dialog.locator('#taxiRideBtn')).toHaveText('타기'); await expect(dialog.locator('#taxiPassBtn')).toHaveCount(0); await shot('pass');
+    await dialog.locator('#taxiCloseBtn').click(); await expect(dialog).toBeHidden();
+  }
   // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter and the standing car block -- walked into, I stop at their edge
   { const s = X.stopOf('plaza'); const at = (x, z) => page.evaluate(([x, z]) => window.PlazaDebug().solidsAt(x, z), [x, z]);
     expect(await at(s.x, s.z)).toBe(true); expect(await at(s.shelter.x, s.shelter.z)).toBe(true); expect(await at(s.out.x, s.out.z)).toBe(false); /* (the door's side clear) */

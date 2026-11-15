@@ -4758,7 +4758,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.326' });
+    return sendJson(res, 200, { ok: true, version: '1.10.327' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -7796,16 +7796,20 @@ async function requestHandler(req, res) {
     const entry = plazaPresence.get(session.token); if (entry) { entry.x = spot.x; entry.z = spot.z; entry.ride = null; entry.platform = platform; plazaDirty = true; }
     return sendJson(res, 200, { ok: true, ...spot, platform, stop: docked.stop });
   }
-  // v1.10.271 섬 택시 (notes docs/taxi-20261104.md 2절): at a stop, what the ride costs me (a home owner rides free, else the
-  // economy's taxi:fare); 타기 -- by the stop, not riding already, not on the train, fishing, sitting or in a game -- paid once
+  // v1.10.271 섬 택시 (notes docs/taxi-20261104.md 2절): at a stop, what the ride costs me (1.10.327: the economy's taxi:fare, or
+  // taxi:dayPass for the day); 타기 -- by the stop, not riding already, not on the train, fishing, sitting or in a game -- paid once
   // and the ride kept here: its road and clock (the tests' road 3 s)
   if (pathname === '/api/island/taxi' && (req.method === 'GET' || req.method === 'POST')) {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const body = req.method === 'POST' ? await parseJson(req) : {};
     const from = String((req.method === 'GET' ? new URL(req.url, 'http://x').searchParams.get('from') : body.from) || '');
     if (!IslandTaxi.STOPS[from]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    const hasHome = Boolean((await homeOf(account))?.lot); const fare = IslandTaxi.fareOf({ hasHome, fare: Economy.value('taxi:fare') });
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to: IslandTaxi.STOPS[from].to, fare, home: hasHome, awayS: Math.ceil(taxiAwayMs(from) / 1000) });
+    /* (1.10.327 택시 요금, 사용자: everyone pays -- the base fare a ride, or the day's pass (that Seoul day, any number of rides),
+       the pass's claim the account and the day: bought once a day, and what says I have it) */
+    const fare = IslandTaxi.fareOf({ fare: Economy.value('taxi:fare'), from, to: IslandTaxi.STOPS[from].to }); const dayPass = Math.max(0, Math.round(Number(Economy.value('taxi:dayPass')) || 0));
+    const passDay = kstDate(nowMs()); const passClaim = `taxipass:${account}:${passDay}`; const hasPass = Boolean(await pointStore.settlementOf(passClaim));
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to: IslandTaxi.STOPS[from].to, fare, dayPass, pass: hasPass, awayS: Math.ceil(taxiAwayMs(from) / 1000) });
+    const pay = hasPass ? 'pass' : body.pay === 'pass' ? 'pass' : 'fare';
     const stop = IslandTaxi.stopOf(from); const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > 5.5) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.');
@@ -7818,18 +7822,20 @@ async function requestHandler(req, res) {
     taxiPaying.add(session.token);
     const ride = { from, startedAt, ...(process.env.NODE_ENV === 'test' && taxiTestRunMs ? { runMs: taxiTestRunMs } : {}) };
     taxiStopOut.set(from, ride); let took = false; /* (294: the stop's car taken before the fare -- one of two at once) */
+    let paid = 0;
     try {
-      if (fare > 0) {
-        const out = await pointStore.charge({ userId: account, claimId: `taxi:${account}:${startedAt}`, price: fare, title: `섬 택시 · ${stop.label} → ${IslandTaxi.STOPS[stop.to].label}` }).catch(() => null);
+      const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare;
+      if (price > 0) {
+        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: `taxi:${account}:${startedAt}`, price, title: `섬 택시 · ${stop.label} → ${IslandTaxi.STOPS[stop.to].label}` }).catch(() => null);
         if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-        if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${fare.toLocaleString('ko-KR')}P)`);
-        if (out.applied) notifyPointsChanged([account]);
+        if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${price.toLocaleString('ko-KR')}P)`);
+        if (out.applied) { paid = price; notifyPointsChanged([account]); } /* (a pass already bought today -- by another screen at once: not again) */
       }
       took = true;
     } finally { taxiPaying.delete(session.token); if (!took && taxiStopOut.get(from) === ride) taxiStopOut.delete(from); }
     taxiRides.set(session.token, ride); freeSeat(session.token);
     here.taxi = ride; here.bike = null; plazaDirty = true;
-    return sendJson(res, 200, { ok: true, taxi: ride, fare, to: stop.to, now: nowMs() });
+    return sendJson(res, 200, { ok: true, taxi: ride, fare: paid, pay, pass: pay === 'pass', to: stop.to, now: nowMs() });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) taxiStopOut.clear(); /* (294: every car at its stop) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/train-shift' && req.method === 'POST') { // tests: the trains' clock moved on (ms)
@@ -9957,7 +9963,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.326 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.327 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

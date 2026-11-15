@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.327 택시 손보기
+
+- 속도 13 → 16 m/s(사용자 「16의 속도로 올려」), 동쪽 윤슬다리 위도 같은 속도(SLOW = FAST, 나중 다리에도 느린 구간 없음). 한 번 약 28~29초. 서서 기다리기(317)는 앞 보기 거리가 속도에 따라 늘어 그대로 사람 앞에서 섬(서버 시험 통과).
+- 요금(사용자 2026-11-16): 집이 있어도 냄. 탈 때 「한 번 1,000P / 오늘 자유이용권 5,000P」, 자유이용권은 KST 그날 0~24시 몇 번이든(서버가 계정·날짜로 한 번만 받음). 경제 값 taxi:fare·taxi:dayPass. 정류장 쌍별 추가요금 자리(EXTRA, 지금 비어 있음). 내역 「택시 요금」·「택시 자유이용권」, 카드에 「오늘 자유이용권 ✓」.
+- island-insects e2e: 밤(20~06시)엔 밤 곤충만 적게 나와 새벽 CI가 흔들림 → 시험 동안 섬 시간을 낮으로.
+- 사진: notes img/taxi-327.
+- 다음: 주민 성격별 동작 연결(123).
+
 ## v1.10.326 흔들림 고치기
 
 - patch-speed §6 순서대로: 시험 한 줄 고침 7개(messenger 보류 줄, visit-tasks 자리 키, view-modes·talk-camera 주민 고르기·fov, 광장 챔피언 60 s, 운반 count, fish-tug tug:false, emotes 깜박임), 시간 예산(백화점 문 30·45 s, talk-camera 25 s), game-points-server 시험 파일 둘로.
@@ -29,10 +37,3 @@
 - 채석장 흙·자갈 바닥(59A): 지면 지도 다시 만듦.
 - 사용자 확인 필요: 간식 가격 300P, 김 오르는 효과는 아직 없음.
 - 다음: 흔들림 고치기 PR, 그다음 326.
-
-## v1.10.324 스스로 알려 주는 섬 + 광석 300P
-
-- 검토 ②(docs/direction-ideas-20261110, 7A): 화면 오류(한 종류 한 번, 한 페이지 10개)와 섬 프레임(1분 뒤, 15분마다)을 POST /api/client/report(들어온 사람만, 1분 20번)로 모아 매일 00:10 KST 뒤 Render 로그 [client] 한 줄(오류 상위 20·종류 수, 기기별 fps 10·50·90%·20 아래 비율·단계 분포). 주소·아이디·긴 토큰은 지움, 계정·이름·자리 없음.
-- 광석 판매가 800 → 300P(58A).
-- DB 백업(③)은 60A~63A로 정했고 사용자가 요청할 때 넣어요.
-- 다음: 크리스마스 보강 + 대청마당 다시 배치.

@@ -1,6 +1,6 @@
 'use strict';
-// v1.10.271 섬 택시 서버 (gamecenter-notes docs/taxi-20261104.md 2·3·5절): at the 대청마당 stop, the fare asked (1,000P with no
-// home, free for a home owner), 타기 paid once; riding twice refused, far off refused, too few points refused; while riding
+// v1.10.271 섬 택시 서버 (gamecenter-notes docs/taxi-20261104.md 2·3·5절): at the 대청마당 stop, the fare asked (1,000P; 1.10.327
+// a home owner too, or the day's pass 5,000P), 타기 paid once; riding twice refused, far off refused, too few points refused; while riding
 // the server has me on the road by its clock (what I post does not move me), and after it at the other stop's step out --
 // the next visit starting there too. The tests' road is 3 s.
 const rmAtExit = require('../test-support/rm-at-exit');
@@ -15,7 +15,7 @@ const H = require('../public/plaza/island-home');
 const T = require('../public/plaza/island-terrain');
 const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
-test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 차감·두 번 타기·먼 곳·포인트 부족 막기, 타는 동안 길 위, 끝나면 건너편 정류장', async (t) => {
+test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)·한 번 차감·두 번 타기·먼 곳·포인트 부족 막기, 타는 동안 길 위, 끝나면 건너편 정류장', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('택시손님')); const b = await server.enter(await server.issue('집주인'));
@@ -27,7 +27,7 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   await stand(a, P.x + 12, P.z); assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).data.error, 'TOO_FAR');
   // by the stop: 1,000P, once
   await stand(a, P.out.x, P.out.z);
-  assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, { ok: true, from: 'plaza', to: 'isle', fare: 1000, home: false, awayS: 0 });
+  assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 5000, pass: false, awayS: 0 });
   const before = await balance(a); const rode = await req('/api/island/taxi', a, { from: 'plaza' });
   assert.equal(rode.status, 200, JSON.stringify(rode.data)); assert.equal(rode.data.fare, 1000); assert.equal(rode.data.taxi.runMs, 3000);
   assert.equal(await balance(a), before - 1000);
@@ -44,14 +44,22 @@ test('섬 택시 서버: 요금(집 없음 1,000P·집주인 무료)·한 번 �
   await stand(b, P.out.x + 0.5, P.out.z + 0.5); const b0 = await balance(b); const away = await req('/api/island/taxi', b, { from: 'plaza' });
   assert.equal(away.data.error, 'TAXI_AWAY'); assert.ok(away.data.awayS > 0 && away.data.awayS <= Math.ceil((X.backOf(rode.data.taxi) - Date.now()) / 1000) + 1); assert.equal(await balance(b), b0);
   assert.ok((await req('/api/island/taxi?from=plaza', b)).data.awayS > 0); await req('/api/test/taxi-run', a, { ms: 3000 }); /* (back at its stop) */
-  // a home owner rides free
+  // (1.10.327 택시 요금, 사용자) a home owner pays too; the day's pass (5,000P) bought once -- that day's rides then free, shown so
   const door = T.facilityDoor('townhall'); await stand(b, door.x, door.z); assert.equal((await req('/api/island/townhall/enter', b, {})).status, 200);
   const lot = H.LOTS[3]; assert.equal((await req('/api/home/apply', b, { lot: lot.id, roof: 'red' })).status, 200);
   const ex = T.roomWorld(T.TOWNHALL_ROOM.exit.lx, T.TOWNHALL_ROOM.exit.lz); await stand(b, ex.x, ex.z); await req('/api/island/townhall/leave', b, {});
   await stand(b, P.out.x + 0.5, P.out.z + 0.5); const owner = await balance(b);
-  assert.equal((await req('/api/island/taxi?from=plaza', b)).data.fare, 0);
-  const free = await req('/api/island/taxi', b, { from: 'plaza' }); assert.equal(free.status, 200, JSON.stringify(free.data)); assert.equal(await balance(b), owner);
-  await req('/api/test/taxi-run', a, { ms: 3000 }); /* (294: its car back) */
+  assert.deepEqual((await req('/api/island/taxi?from=plaza', b)).data, { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 5000, pass: false, awayS: 0 }, '집이 있어도 요금');
+  const rideB = async (from, pay) => { /* (b rides from that stop -- and is out at the other by the end) */
+    const S = X.stopOf(from); await stand(b, S.out.x + 0.5, S.out.z + 0.5); const r = await req('/api/island/taxi', b, { from, pay }); assert.equal(r.status, 200, JSON.stringify(r.data));
+    await sleep(X.durationOf(r.data.taxi) + 300); await stand(b, S.out.x, S.out.z); await req('/api/test/taxi-run', a, { ms: 3000 }); /* (294: its car back) */ return r.data;
+  };
+  const bought = await rideB('plaza', 'pass'); assert.deepEqual([bought.fare, bought.pass], [5000, true]); assert.equal(await balance(b), owner - 5000);
+  const history = (await req('/api/points/history?limit=3', b)).data.items; assert.equal(history[0].reason, 'taxipass', '내역 「택시 자유이용권」');
+  await stand(b, I.out.x + 0.5, I.out.z + 0.5); assert.equal((await req('/api/island/taxi?from=isle', b)).data.pass, true);
+  for (const [from, pay] of [['isle', 'fare'], ['plaza', 'pass']]) { /* (the pass held: no fare, and never a second pass the same day) */
+    const again = await rideB(from, pay); assert.deepEqual([again.fare, again.pass], [0, true]); assert.equal(await balance(b), owner - 5000);
+  }
   // the fare is the economy's (the administrator's table); more than I have: refused, nothing taken
   const c = await server.enter(await server.issue('빈손')); await stand(c, P.out.x - 0.6, P.out.z - 0.6); const has = await balance(c);
   const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken; const fare = 1500;

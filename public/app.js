@@ -5568,30 +5568,36 @@
       islandPlaceStatus.textContent = `🌱 섬 가꾸기에 ${pts(amount)} 보탰어요.`; byId('projectGiveAmount').value = ''; showDonationProject(byId('projectGive')); plaza.controller?.setProjects?.(projectsView); loadPoints();
     } catch (error) { islandPlaceStatus.textContent = error.message; } finally { byId('projectGiveBtn').disabled = false; }
   });
-  // v1.10.271 섬 택시 (notes docs/taxi-20261104.md 2절): SPACE by a stop -- where to and what it costs (free for a home owner),
+  // v1.10.271 섬 택시 (notes docs/taxi-20261104.md 2절): SPACE by a stop -- where to and what it costs (1.10.327: a ride or the day's pass),
   // 타기 greyed with why when the points are short; the server takes the fare and gives the ride, the island draws it
   async function openTaxi(from) {
     let q; let balance = null;
     try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); q = await api(`/api/island/taxi?from=${encodeURIComponent(from)}`); balance = (await api('/api/points')).balance; } catch (error) { showToast(error.message); return; }
     const X = window.IslandTaxi; const to = X.STOPS[q.to]?.label || '';
     const card = document.createElement('div'); card.className = 'mirrorCard taxiCard';
-    const line = document.createElement('p'); line.className = 'lookMeta taxiLine'; line.textContent = `${to}까지 갈까요? · ${q.fare ? `${q.fare.toLocaleString('ko-KR')}P` : '무료(집주인)'}`;
+    /* (1.10.327 택시 요금, 사용자: a ride's base fare or the day's pass -- with the pass, 「오늘 자유이용권 ✓」 and 타기 only) */
+    const won = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
+    const line = document.createElement('p'); line.className = 'lookMeta taxiLine'; line.textContent = `${to}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`;
     const status = document.createElement('p'); status.className = 'lookMeta taxiStatus';
     const row = document.createElement('div'); row.className = 'taxiActions';
-    const ride = document.createElement('button'); ride.type = 'button'; ride.className = 'primary'; ride.id = 'taxiRideBtn'; ride.textContent = '타기';
-    const close = document.createElement('button'); close.type = 'button'; close.className = 'secondary'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
-    if (q.fare && Number.isFinite(balance) && balance < q.fare) { ride.disabled = true; status.textContent = `포인트가 모자라요(${q.fare.toLocaleString('ko-KR')}P)`; }
-    if (q.awayS > 0) { ride.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
-    ride.addEventListener('click', async () => {
-      ride.disabled = true;
+    const button = (id, text, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.id = id; b.textContent = text; return b; };
+    const ride = button('taxiRideBtn', q.pass ? '타기' : `한 번 타기 · ${won(q.fare)}`, 'primary'); const pass = q.pass ? null : button('taxiPassBtn', `오늘 자유이용권 · ${won(q.dayPass)}`, 'secondary');
+    const close = button('taxiCloseBtn', '닫기', 'secondary'); close.addEventListener('click', () => plazaDialog.close());
+    const short = (price) => !q.pass && price > 0 && Number.isFinite(balance) && balance < price;
+    if (short(q.fare)) ride.disabled = true; if (pass && short(q.dayPass)) pass.disabled = true;
+    if (short(q.fare)) status.textContent = `포인트가 모자라요(${won(q.fare)})`;
+    if (q.awayS > 0) { ride.disabled = true; if (pass) pass.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
+    const go = async (pay) => {
+      for (const b of [ride, pass]) if (b) b.disabled = true;
       try {
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from }) });
+        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, pay }) });
         plaza.controller?.onTaxiEnd?.(() => showToast(`🚕 ${to}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
-        plazaDialog.close(); if (r.fare) loadPoints(); plazaStage.focus({ preventScroll: true });
-      } catch (error) { status.textContent = error.message; ride.disabled = false; }
-    });
-    row.append(ride, close); card.append(line, status, row); openPlazaWindow('🚕 섬 택시', [card]); ride.focus({ preventScroll: true });
+        plazaDialog.close(); if (r.fare) loadPoints(); if (r.fare && r.pass) showToast('🎫 오늘 자유이용권 ✓ · 오늘은 몇 번이든 타요', 3000); plazaStage.focus({ preventScroll: true });
+      } catch (error) { status.textContent = error.message; ride.disabled = short(q.fare); if (pass) pass.disabled = short(q.dayPass); }
+    };
+    ride.addEventListener('click', () => go(q.pass ? 'pass' : 'fare')); pass?.addEventListener('click', () => go('pass'));
+    row.append(...[ride, pass, close].filter(Boolean)); card.append(line, status, row); openPlazaWindow('🚕 섬 택시', [card]); ride.focus({ preventScroll: true });
   }
   async function openPlaque(id) {
     try {
@@ -7357,6 +7363,8 @@
     if (item.reason === 'stock_sell') return '섬 주식 팔기';
     if (item.reason === 'stock_refund') return '섬 주식 돌려받기'; // (1.10.321: the old market's shares, at what they cost)
     if (item.reason === 'market') return '크리스마스 마켓 간식'; // (1.10.325)
+    if (item.reason === 'taxi') return '택시 요금'; // (1.10.327)
+    if (item.reason === 'taxipass') return '택시 자유이용권';
     if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
