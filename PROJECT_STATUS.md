@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.329 크리스마스 2단계 ①: 첫눈·화이트 크리스마스·점등식
+
+- M1(christmas-boost): 행사 7일 17~06시 섬 전체 가벼운 눈, 24·25일 하루 종일 + 화이트 크리스마스(모든 구역 겨울 모습, 화면만 — 서버 계절은 날짜대로). IslandCalendar.snowOf, 행사 시계를 따름. 눈송이 둥글게.
+- 135 snow_paint: 겨울 땅(눈)에 그린 눈 물결 질감, 옛 알갱이 대신.
+- M5 트리 점등식: 12-19 17시 카운트다운 판(연말 판 자리·모형), 18시 점등(번쩍), 그 뒤 밤마다 전구 반짝임. 그 전 12월엔 트리 전구 꺼짐. IslandCalendar.lightingOf.
+- 고침: asset-pipeline setDay가 둘째 값을 버려 화이트가 모형에 안 가던 것.
+- 사진 notes img/xmas2-329.
+- 다음: M3 주민 겨울 인사·차림, M4 종·캐럴, M2 집 장식(125).
+
 ## v1.10.328 주민 성격별 동작 연결 (에셋 123)
 
 - 123 모션 23개 characters/motions에 복사(SHA256SUMS 일치), 빌드 설정 motions123.
@@ -28,12 +37,3 @@
 - island-insects e2e: 밤(20~06시)엔 밤 곤충만 적게 나와 새벽 CI가 흔들림 → 시험 동안 섬 시간을 낮으로.
 - 사진: notes img/taxi-327.
 - 다음: 주민 성격별 동작 연결(123).
-
-## v1.10.326 흔들림 고치기
-
-- patch-speed §6 순서대로: 시험 한 줄 고침 7개(messenger 보류 줄, visit-tasks 자리 키, view-modes·talk-camera 주민 고르기·fov, 광장 챔피언 60 s, 운반 count, fish-tug tug:false, emotes 깜박임), 시간 예산(백화점 문 30·45 s, talk-camera 25 s), game-points-server 시험 파일 둘로.
-- 게임 한 줄 둘: 역 승강기 입구가 더 가까운 사람·물건을 덮지 않음, 대화 카메라는 모형이 6 m 밖이면 서버 자리로.
-- 확신 낮은 둘(emotes 표정 미리 그리기, resident-faces 팩·긴 줄)은 2주 지켜봄.
-- 기록의 탑 시험: 'board:records'가 뒷면 키의 앞부분이라 뒷면에서 누름이 사라지던 것 → 앞면 키를 정확히 기다림. resident-bets는 325에서 고침(그날 심부름 주민 빼기).
-- rerun-once: 열린 PR의 머리 커밋 실행만 다시 돌림.
-- 다음: 택시 손보기(속도 16·다리 같은 속도·요금).
