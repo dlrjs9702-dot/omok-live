@@ -1934,7 +1934,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
+  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack }) => ({ snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); quarryPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
@@ -4758,7 +4758,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.324' });
+    return sendJson(res, 200, { ok: true, version: '1.10.325' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5939,6 +5939,7 @@ async function requestHandler(req, res) {
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, // v1.10.271 (the road and its clock: every screen draws the same)
+      snack: (() => { const s = plazaPresence.get(session.token)?.snack; return s && nowMs() < s.until && !ride && !taxi ? s : null; })(), /* (1.10.325 크리스마스 마켓: the snack in my hand till its time is up) */
       home: homeInside.has(session.token) ? ((l) => (l && floorOf(session.token) === 2 ? `${l}:2` : l || null))(homeCache.get(homeInside.get(session.token))?.lot) : null, /* (R8: the 2층 is `<lot>:2` -- one sees the people on the same floor) */ // (묶음 4: which house, by its lot -- one sees the people in the same one)
       space: jailInside.has(session.token) ? 'jail' : museumInside.has(session.token) ? 'museum' : exchangeInside.has(session.token) ? 'exchange' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : fashionInside.has(session.token) ? 'fashion' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
@@ -6374,6 +6375,20 @@ async function requestHandler(req, res) {
       await setYardLevel(account, level + 1); notifyPointsChanged([account]); broadcastIsland('homes', { lot: h.lot });
       return sendJson(res, 200, { ok: true, yardLevel: level + 1, limit: IslandYard.limitOf(level + 1) });
     });
+  }
+  // 1.10.325 크리스마스 마켓 (IslandCalendar.PLACES.market, assets 124): while the winter decor is up, a snack bought at a stall's
+  // front -- its price taken once a request -- and held SNACK_MS (everyone sees it in my hand)
+  if (pathname === '/api/island/market/buy' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = nowMs();
+    const body = await parseJson(req); const requestId = String(body.requestId || ''); if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const stall = IslandCalendar.PLACES.market.find((m) => m.id === String(body.stall || '')); if (!stall) return sendError(res, 404, 'NO_STALL', '그런 가판대는 없어요.');
+    const decor = (await pointStore.worldValue('decor'))?.mode || 'auto'; if (!(decor === 'winter' || (decor === 'auto' && IslandTerrain.isWinterFest(now)))) return sendError(res, 409, 'CLOSED', '크리스마스 마켓은 겨울 장식이 있을 때 열려요.');
+    const at = plazaPresence.get(session.token); const buy = { x: stall.x - Math.sin(stall.yaw) * 1.13, z: stall.z - Math.cos(stall.yaw) * 1.13 };
+    if (!at || (at.space && at.space !== 'island') || Math.hypot(at.x - buy.x, at.z - buy.z) > IslandCalendar.PLACES.MARKET_REACH) return sendError(res, 409, 'TOO_FAR', '가판대 앞에서 다시 시도해 주세요.');
+    const out = await pointStore.charge({ userId: account, claimId: `market:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${requestId}`, price: stall.price, title: `크리스마스 마켓 ${stall.name}` }).catch(() => null);
+    if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+    at.snack = { id: stall.id, at: now, until: now + IslandCalendar.PLACES.SNACK_MS }; plazaDirty = true; notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, snack: at.snack, name: stall.name, balance: out.balance ?? null });
   }
   // 1.10.324 스스로 알려 주는 섬: a screen's error or its frame rate, sent by the page itself (a signed-in page only, 20 a minute;
   // what is kept: lib/client-report.js -- no account, name, place or chat)
@@ -8371,6 +8386,10 @@ async function requestHandler(req, res) {
       await apply((doc) => IslandFestival.snowmanShown(doc));
       return sendJson(res, 200, { ok: true, added: r.added, score: r.snowman.score, say: r.say, festival: await view(), snowmen: snowmenFor(account, await pointStore.worldValue(dayKey)) });
     }
+    if (action === 'market' && fest.tasks.market) { // 1.10.325 P1 마켓 들르기: a snack bought at the 크리스마스 마켓 a moment ago
+      const s = plazaPresence.get(session.token)?.snack; if (!s || nowMs() - s.at > IslandCalendar.PLACES.SNACK_MS) return sendError(res, 409, 'NO_SNACK', '크리스마스 마켓에서 간식을 사 주세요.');
+      return sendStamp(await stamp('market'));
+    }
     if (action === 'gather' && fest.tasks.gather) { // X2 성탄 저녁 모임: the last day's evening, round the plaza's tree
       if (!near(P.tree, P.GATHER_R)) return sendError(res, 409, 'TOO_FAR', '광장 트리 곁으로 와 주세요.');
       return sendStamp(await stamp('gather'));
@@ -9938,7 +9957,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.324 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.325 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

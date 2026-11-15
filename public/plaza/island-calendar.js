@@ -50,6 +50,7 @@
         gift: { name: '선물 배달', stamps: 1, perDay: 3 }, // (a gift from the host's sack to the islander named on it)
         snowman: { name: '눈사람 만들기', stamps: 3, perDay: 1 }, // (three balls rolled on the snow field, stacked and dressed)
         gather: { name: '성탄 저녁 모임', stamps: 6, perDay: 1, lastDayFrom: 18, lastDayTo: 22 }, // (the last day's evening, by the plaza's tree)
+        market: { name: '마켓 들르기', stamps: 1, perDay: 1 }, // (1.10.325 P1: a snack bought at the 크리스마스 마켓)
         contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 },
       }),
       shop: Object.freeze([['xmas_tree_small', 8], ['xmas_fireplace', 8], ['xmas_snow_globe', 4], ['xmas_stocking', 3], ['xmas_gingerbread_house', 4], ['title_christmas', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
@@ -89,7 +90,11 @@
     // clear of the gardens and seats) where the snowmen are rolled and the day's stand
     tree: Object.freeze({ x: 0, z: -84 }), GATHER_R: 9, snow: Object.freeze({ x: -18, z: -99, w: 10, d: 7 }),
     // X2 카운트다운: the board where the feast table stood, read from the disc; its two launchers either side; the circle round it
-    board: Object.freeze({ x: 0, z: -98, yaw: Math.PI }), launchers: Object.freeze([Object.freeze({ x: -6, z: -98.5 }), Object.freeze({ x: 6, z: -98.5 })]), COUNT_R: 12 });
+    board: Object.freeze({ x: 0, z: -98, yaw: Math.PI }), launchers: Object.freeze([Object.freeze({ x: -6, z: -98.5 }), Object.freeze({ x: 6, z: -98.5 })]), COUNT_R: 12,
+// 1.10.325 크리스마스 마켓 (notes christmas-boost-20261115 P1, plaza-relayout 54A, assets 124): three stalls east of the contest tent,
+// their fronts (the model's -Z) to the fountain; while the winter decor is up a snack is bought at each (its `buy` spot 1.13 m
+// before it) and held a while -- price 사용자 확인 필요
+market: Object.freeze([['cocoa', '핫초코', 27], ['sweetpotato', '군고구마', 31], ['fishbread', '붕어빵', 35]].map(([id, name, x]) => Object.freeze({ id, name, x, z: -104.5, yaw: Math.atan2(x, -104.5 + 84), price: 300 }))), MARKET_REACH: 2.2, SNACK_MS: 5 * 60000 });
   // a festival's days with the administrator's override ({ [id]: { off, start, end } })
   function festivalDays(f, override = {}) { const o = override[f.id] || {}; return { start: o.start || f.start, end: o.end || f.end, off: Boolean(o.off) }; }
   const kstAt = (day, h = 0) => Date.parse(`${day}T${String(h).padStart(2, '0')}:00:00+09:00`);

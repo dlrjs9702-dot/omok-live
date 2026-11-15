@@ -113,3 +113,26 @@ test('크리스마스 행사: 가판대 덧씌움·선물 자루, 선물 받아 
     if (DIR) { await request.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode: 'auto' } }); await request.post('/api/admin/island/decor', { headers: { 'X-Session-Token': admin }, data: { mode: 'auto' } }); await request.post('/api/admin/island/weather', { headers: { 'X-Session-Token': admin }, data: { mode: 'auto' } }); }
   }
 });
+
+// 1.10.325 크리스마스 마켓 (IslandCalendar.PLACES.market, assets 124): with the winter decor, at the 핫초코 stall's front SPACE buys it --
+// the points down, the snack in my hand -- and in the festival its 「마켓 들르기」 stamp
+test('크리스마스 마켓: 겨울 장식이면 가판대 셋, 앞에서 SPACE로 간식 사기(포인트·손에 듦·마켓 들르기 도장)', async ({ browser, request, isMobile }) => {
+  test.setTimeout(180000);
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-12-20T12:00:00+09:00') })).status).toBe(200);
+  const admin = await adminToken(request);
+  try {
+    expect((await post(request, '/api/admin/island/decor', admin, { mode: 'winter' })).status).toBe(200);
+    const who = await shopper(browser, request, '마켓손님', 300000, 'female'); const { page, token } = who;
+    const C = require('../../public/plaza/island-calendar.js'); const m = C.PLACES.market[0]; const buy = { x: m.x - Math.sin(m.yaw) * 1.13, z: m.z - Math.cos(m.yaw) * 1.13 };
+    await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().doors).filter((k) => k.startsWith('market:')).length), { timeout: 30000 }).toBe(3);
+    const before = (await get(request, '/api/points', token)).data.balance;
+    await look(page, buy, m); await shoot(page, 'xmas-market');
+    await expect.poll(() => spaceOn(page, `market:${m.id}`, isMobile), { timeout: 20000 }).toBe(true);
+    await expect(page.locator('#toast')).toContainText('핫초코를 샀어요', { timeout: 15000 });
+    expect((await get(request, '/api/points', token)).data.balance).toBe(before - m.price);
+    await shoot(page, 'xmas-market-snack'); await expectNoScriptError(page);
+    await who.context.close();
+  } finally { await post(request, '/api/admin/island/decor', admin, { mode: 'auto' }); await post(request, '/api/test/festival/clock', null, { at: 0 }); }
+});
