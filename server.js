@@ -110,6 +110,33 @@ const IslandMuseum = require('./public/plaza/island-museum'); // v1.10.231 M 박
 const IslandHome = require('./public/plaza/island-home'); // 묶음 4 내 집
 const IslandYard = require('./public/plaza/island-yard'); // v1.10.225 마당 꾸미기
 const IslandFarm = require('./public/plaza/island-farm'); // v1.10.318 마당 농사 F1 + 집 손보기
+const IslandStocks = require('./lib/island-stocks'); // v1.10.320 섬 주식
+const stockMarket = IslandStocks.createMarket();
+let stockClock = 0; const stockNow = () => Date.now() + stockClock; // (tests: /api/test/stocks/clock)
+const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', LIMIT: '오늘 주문 20번을 다 썼어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
+// this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
+async function stockRank(now, me = null) {
+  const all = await pointStore.questAll('stocks'); const rows = [];
+  for (const { userId, doc } of all) { const r = IslandStocks.weekReturn(stockMarket, doc, now); if (r !== null && Number.isFinite(r)) rows.push({ userId, r: Math.round(r * 10) / 10 }); }
+  rows.sort((a, b) => b.r - a.r || (a.userId < b.userId ? -1 : 1));
+  const top = await Promise.all(rows.slice(0, 10).map(async (x, i) => ({ rank: i + 1, name: await accountName(x.userId).catch(() => '섬 주민'), r: x.r, mine: x.userId === me })));
+  const at = rows.findIndex((x) => x.userId === me);
+  return { week: IslandStocks.weekOf(now), top, me: at >= 0 ? { rank: at + 1, r: rows[at].r } : null, count: rows.length };
+}
+// 정리 매매 (4A): a letter to everyone holding a company that goes away tomorrow -- once a company, checked each minute
+const stockNoticed = new Set();
+async function stockNotices(now = stockNow()) {
+  const going = stockMarket.view(now).companies.filter((c) => c.status === 'cleanup' && !stockNoticed.has(c.code)); if (!going.length) return;
+  const all = await pointStore.questAll('stocks');
+  for (const c of going) {
+    stockNoticed.add(c.code);
+    const text = `${c.name}${c.bust ? '가 부도를 냈어요' : ' 주가가 상장가의 10% 아래로 떨어졌어요'}. 오늘 하루 정리 매매(팔기만 돼요) 뒤 상장 폐지돼요. 남은 주식은 0이 돼요. 섬 증권거래소 보드에서 팔 수 있어요.`;
+    for (const { userId, doc } of all) {
+      if (!(doc?.h?.[c.code]?.q > 0)) continue;
+      await pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === `stock-${c.code}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `stock-${c.code}`, from: 'office', fromName: '섬 증권거래소', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {});
+    }
+  }
+}
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const FishTug = require('./public/fish-tug.js'); // v1.10.259 대어 줄다리기 and 타이밍 막대 (the page runs the same)
 const fishModes = new Map(); // account -> its last two bite games (never three alike)
@@ -2600,7 +2627,7 @@ async function noticeEvents() {
   for (const [id, title, body] of notes) { if (await pointStore.worldValue(`eventNotice:${id}`)) continue; await pointStore.setWorldValue(`eventNotice:${id}`, nowMs()); await announcementStore.create(title, body, false); posted = true; }
   if (posted) await broadcastAnnouncements().catch(() => {});
 }
-setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); }, 60000).unref?.();
+setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); stockNotices().catch((error) => console.error('정리 매매 알림 실패:', error.message)); }, 60000).unref?.();
 async function contestNote(account, session, contestId, kind, value) {
   const c = await contestState();
   if (c.phase !== 'live' || c.id !== contestId || c.kind !== kind || !Number.isFinite(value) || value < 0 || (c.higher && value <= 0)) return null; // (총괄 검토 2: a score round of 0 is no entry)
@@ -5028,6 +5055,10 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return worldEdit(async () => { const h = await homeOf(account); if (h?.upgradeDay) { const next = { ...h, upgradeDay: '2000-01-01' }; await saveHome(account, next); broadcastIsland('homes', { lot: h.lot }); } return sendJson(res, 200, { ok: true }); });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/stocks/clock' && req.method === 'POST') { // v1.10.320: the market's clock set to `at` (or back: 0)
+    if (!requireSession(req, res)) return; const body = await parseJson(req); const at = Number(body.at);
+    stockClock = Number.isFinite(at) && at > 0 ? at - Date.now() : 0; return sendJson(res, 200, { ok: true, now: stockNow() });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/farm-time' && req.method === 'POST') { // v1.10.318: my beds' cells as if sown `ms` earlier; my upkeep as if begun `weeks` weeks ago (nothing done since), my yard last looked at `days` days ago
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req); const ms = Number(body.ms) || 0; const now = nowMs();
     if (ms) await farmApply(account, (d) => ({ doc: { ...d, beds: Object.fromEntries(Object.entries(d.beds || {}).map(([u, cells]) => [u, cells.map((c) => (c ? { ...c, at: c.at - ms, ...(c.fed ? { fed: c.fed - ms } : {}) } : c))])) } }));
@@ -6287,6 +6318,27 @@ async function requestHandler(req, res) {
       await setYardLevel(account, level + 1); notifyPointsChanged([account]); broadcastIsland('homes', { lot: h.lot });
       return sendJson(res, 200, { ok: true, yardLevel: level + 1, limit: IslandYard.limitOf(level + 1) });
     });
+  }
+  // v1.10.320 섬 주식 (lib/island-stocks.js): the board -- every company's price today and its week, mine, orders left; an order
+  // (whole shares, points taken or paid in the same step as the holdings, once per request); this week's ranking (returns)
+  if (pathname === '/api/island/stocks' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = stockNow();
+    const { doc } = await pointStore.questDoc(account, 'stocks');
+    return sendJson(res, 200, { ...stockMarket.view(now), mine: IslandStocks.mine(stockMarket, doc, now), rules: { fee: IslandStocks.FEE, hold: IslandStocks.HOLD_MAX, orders: IslandStocks.ORDERS_DAY, open: IslandStocks.OPEN, close: IslandStocks.CLOSE }, now });
+  }
+  if (pathname === '/api/island/stocks/order' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = stockNow();
+    const body = await parseJson(req); const requestId = String(body.requestId || '');
+    if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '주문 번호가 올바르지 않아요.');
+    const payKey = `stock:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${requestId}`;
+    const out = await pointStore.questApply(account, 'stocks', (doc) => { const r = IslandStocks.order(stockMarket, doc, { code: String(body.code || ''), side: body.side, qty: body.qty }, now); return r.error ? { error: r.error } : { doc: r.doc, cost: r.cost || 0, reward: r.reward || 0, payKey, reason: r.cost ? 'stock_buy' : 'stock_sell', price: r.price, fee: r.fee, name: r.name, side: body.side, qty: Number(body.qty) }; });
+    if (out?.error) return sendError(res, out.error === 'PAID' ? 409 : 400, out.error, STOCK_ERRORS[out.error] || '주문하지 못했어요.');
+    const { doc } = await pointStore.questDoc(account, 'stocks');
+    return sendJson(res, 200, { ok: true, name: out.name, side: out.side, qty: out.qty, price: out.price, fee: out.fee, balance: out.balance, mine: IslandStocks.mine(stockMarket, doc, now) });
+  }
+  if (pathname === '/api/island/stocks/rank' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    return sendJson(res, 200, await stockRank(stockNow(), account));
   }
   // v1.10.318 마당 농사 F1 (public/plaza/island-farm.js): the owner, in their yard, at one of their beds' cells -- `plant` a seed
   // from the bag (one), `feed` it compost or fertilizer (once, the rest of its growth twice as fast), `harvest` it ripe (its crops

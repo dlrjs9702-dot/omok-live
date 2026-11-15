@@ -7140,6 +7140,8 @@
     if (item.reason === 'outfit_retire_refund') return '변신 옷 정리 환불'; // (2026-10-21)
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92
     if (item.reason === 'tax_payment') return '주민세 납부';
+    if (item.reason === 'stock_buy') return '섬 주식 사기'; // v1.10.320
+    if (item.reason === 'stock_sell') return '섬 주식 팔기';
     if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
