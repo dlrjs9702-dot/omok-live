@@ -3553,7 +3553,7 @@
     const [, uid, slotRaw] = String(id).split(':'); const slot = Number(slotRaw);
     const mine = homesState?.lots?.find((l) => l.mine); const cell = (mine?.farm?.[uid] || [])[slot] || null;
     const items = await bagItems(); const card = document.createElement('div'); card.className = 'mirrorCard farmCard'; const status = line('', 'lookMeta farmStatus'); const row = document.createElement('div'); row.className = 'farmActions';
-    const act = (body, done) => async (ev) => { ev.currentTarget.disabled = true; try { const r = await homePost('/api/home/farm', { uid, slot, ...body }); if (r.bag) drawIslandBag(r.bag); plazaDialog.close(); showToast(done(r)); await refreshHomes(); plazaStage.focus({ preventScroll: true }); } catch (error) { status.textContent = error.message; ev.currentTarget.disabled = false; } };
+    const act = (body, done) => async (ev) => { const btn = ev.currentTarget; /* (Codex 311-320 #10: currentTarget is null after the await -- the button kept) */ btn.disabled = true; try { const r = await homePost('/api/home/farm', { uid, slot, ...body }); if (r.bag) drawIslandBag(r.bag); plazaDialog.close(); showToast(done(r)); await refreshHomes(); plazaStage.focus({ preventScroll: true }); } catch (error) { status.textContent = error.message; btn.disabled = false; } };
     if (!cell) {
       card.append(line('빈 칸이에요. 어떤 씨앗을 심을까요?'));
       const seeds = FARM.ORDER.filter((c) => held(items, FARM.seedId(c)) > 0);
@@ -3575,7 +3575,7 @@
     const items = await bagItems(); const card = document.createElement('div'); card.className = 'mirrorCard upkeepCard'; const status = line('', 'lookMeta upkeepStatus');
     const head = u.done ? '이번 주 집 손보기를 다 했어요. 고마워요!' : u.shabby ? '지난주 손보기를 안 해서 집이 허름해졌어요. 이번 주 것을 다 넣으면 깨끗해져요.' : `이번 주 집 손보기 · 다 넣으면 ${(homesState.upkeepReward || 0).toLocaleString('ko-KR')}P`;
     card.append(line(head));
-    const post = (body, msg) => async (ev) => { ev.currentTarget.disabled = true; try { const r = await homePost('/api/home/upkeep', body); if (r.bag) drawIslandBag(r.bag); plazaDialog.close(); showToast(msg(r)); if (r.reward) loadPoints(); await refreshHomes(); plazaStage.focus({ preventScroll: true }); } catch (error) { status.textContent = error.message; ev.currentTarget.disabled = false; } };
+    const post = (body, msg) => async (ev) => { const btn = ev.currentTarget; btn.disabled = true; try { const r = await homePost('/api/home/upkeep', body); if (r.bag) drawIslandBag(r.bag); plazaDialog.close(); showToast(msg(r)); if (r.reward) loadPoints(); await refreshHomes(); plazaStage.focus({ preventScroll: true }); } catch (error) { status.textContent = error.message; btn.disabled = false; } };
     for (const kind of Object.keys(FARM.UPKEEP)) {
       const row = document.createElement('div'); row.className = 'upkeepRow'; const got = u.given?.[kind] || 0; const need = u.need[kind];
       row.append(line(`${FARM.UPKEEP_NAMES[kind]} ${Math.min(got, need)} / ${need}`, 'lookMeta upkeepCount'));
@@ -4989,9 +4989,9 @@
     const preview = () => { const n = Math.max(1, Math.floor(Number(qty.value) || 1)); note.textContent = `사기 ${stockWon(c.price * n + fee(n))} · 팔기 ${stockWon(c.price * n - fee(n))} (수수료 0.5% ${stockWon(fee(n))})`; };
     qty.addEventListener('input', preview); preview();
     const order = (side) => async (ev) => {
-      const n = Math.floor(Number(qty.value)); ev.currentTarget.disabled = true;
+      const n = Math.floor(Number(qty.value)); const btn = ev.currentTarget; btn.disabled = true; /* (Codex 311-320 #10: kept before the await) */
       try { const r = await api('/api/island/stocks/order', { method: 'POST', body: JSON.stringify({ code, side, qty: n, requestId: stockRid() }) }); if (Number.isFinite(r.balance)) loadPoints(); showToast(`${r.name} ${n}주를 ${side === 'buy' ? '샀어요' : '팔았어요'}. 수수료 ${stockWon(r.fee)}`); openStocks('board', code); }
-      catch (error) { note.textContent = error.message; ev.currentTarget.disabled = false; }
+      catch (error) { note.textContent = error.message; btn.disabled = false; }
     };
     const row = sEl('div', 'stocksOrder'); row.append(qty, sEl('span', 'lookMeta', '주'));
     if (c.status !== 'cleanup') row.append(btn('사기', 'primary', order('buy'))); row.append(btn('팔기', 'secondary', order('sell')));
@@ -5861,6 +5861,7 @@
     const mine = plazaPlayers.find((p) => p.id === plazaMyId); // the server says when my champion mark starts or ends (v1.9.5)
     if (mine && Boolean(mine.champion) !== plazaChampion) { plazaChampion = Boolean(mine.champion); applyPlazaAvatar(); }
     if (mine && Boolean(mine.hoguking) !== plazaHoguking) { plazaHoguking = Boolean(mine.hoguking); applyPlazaAvatar(); } // v1.10.5
+    if (mine?.taxi) plaza.controller?.setTaxiRide?.(mine.taxi); /* (Codex 311-320 #7: my car's road clock from the stream too -- standing, my state goes only every 3 s) */
   }
   function setPlazaPresence(on) {
     if (on && !plazaSendTimer) { plazaVisit += 1; plazaLastSent = null; plazaSendTimer = setInterval(plazaPresenceTick, 125); }
@@ -7219,6 +7220,7 @@
     if (item.reason === 'tax_payment') return '주민세 납부';
     if (item.reason === 'stock_buy') return '섬 주식 사기'; // v1.10.320
     if (item.reason === 'stock_sell') return '섬 주식 팔기';
+    if (item.reason === 'stock_refund') return '섬 주식 돌려받기'; // (1.10.321: the old market's shares, at what they cost)
     if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
@@ -8458,7 +8460,7 @@
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'restart') { serverRestarting(); return; } // 300 (나)
-    if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
+    if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); if (parsed.taxiStops) plaza.controller?.setTaxiStops?.(parsed.taxiStops); /* (Codex 311-320 #7: the empty cars going back) */ plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
