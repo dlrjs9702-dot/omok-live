@@ -143,7 +143,8 @@ function stocksMarket() {
 // 00:10 Seoul (the tax and the interest done); never an account, only sums
 const EconomyLog = require('./lib/economy-log');
 let economyLoggedDay = null; let economyLogReady = false;
-async function logEconomy(now = Date.now()) { const stats = await pointStore.economyStats(14, now); for (const line of EconomyLog.economyLogLines(stats, now, require('./package.json').version)) console.log(line); }
+const bankRates = () => { const keys = ['bank:tier1', 'bank:rate1', 'bank:tier2', 'bank:rate2', 'bank:rate3']; return { ...Object.fromEntries(keys.map((k) => [k.slice(5), Economy.value(k)])), set: keys.filter((k) => Economy.isSet(k)).map((k) => k.slice(5)) }; }; // (1.10.330 사용자 75A: the tiers as used; `set` -- the administrator's saved ones, the defaults not in use)
+async function logEconomy(now = Date.now()) { const stats = { ...(await pointStore.economyStats(14, now)), rates: bankRates() }; for (const line of EconomyLog.economyLogLines(stats, now, require('./package.json').version)) console.log(line); }
 function economyLogTick(now = Date.now()) { if (!economyLogReady) return; clientLogTick(now); const due = EconomyLog.dueDay(now, economyLoggedDay); if (!due) return; economyLoggedDay = due; logEconomy(now).catch((error) => console.error('경제 로그 실패:', error.message)); }
 // 1.10.324 스스로 알려 주는 섬 (lib/client-report.js): the screens' errors and frame rates, summed; once a day after 00:10 Seoul the
 // day's `[client]` line (then started again) -- never an account, only kinds and counts
@@ -4758,7 +4759,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.329' });
+    return sendJson(res, 200, { ok: true, version: '1.10.330' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -9963,7 +9964,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.329 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.330 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

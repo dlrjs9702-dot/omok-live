@@ -10,13 +10,13 @@ const { weeklyPrize, dailyClimbReward } = require('../lib/climb');
 
 // 경제 점검 ⑥ (gamecenter-notes docs/economy-audit-20261025.md, 사용자 2026-10-25): the deposit's interest by tiers, the
 // climbing prizes and the attendance lowered -- each from the economy table (lib/economy.js, its defaults here)
-test('예금 구간 이자: 50만까지 3%, 500만까지 1.5%, 그 위 0.5% — 구간별로 나눠 계산', () => {
+test('예금 구간 이자 (1.10.330 사용자 75A): 50만까지 3%, 500만까지 0.5%, 그 위 0.1% — 구간별로 나눠 계산', () => {
   assert.equal(bankInterest(100_000), 3000);
-  assert.equal(bankInterest(1_000_000), 15_000 + 7500);
-  assert.equal(bankInterest(10_000_000), 15_000 + 67_500 + 25_000);
+  assert.equal(bankInterest(1_000_000), 15_000 + 2500);
+  assert.equal(bankInterest(10_000_000), 15_000 + 22_500 + 5000);
   assert.equal(bankAccrue(100_000, '2026-10-16', '2026-10-17'), 103_000);
   assert.ok(bankAccrue(100_000_000, '2026-01-01', '2026-12-31') < 100_000_000 * 8, '큰 예금은 4% 복리처럼 끝없이 불지 않음');
-  assert.deepEqual(bankTerms(1_000_000), { tiers: [{ upTo: 500_000, percent: 3 }, { upTo: 5_000_000, percent: 1.5 }, { upTo: null, percent: 0.5 }], tomorrow: 22_500 });
+  assert.deepEqual(bankTerms(1_000_000), { tiers: [{ upTo: 500_000, percent: 3 }, { upTo: 5_000_000, percent: 0.5 }, { upTo: null, percent: 0.1 }], tomorrow: 17_500 });
 });
 
 test('등반 상: 주간 20만·15만·10만·4~20위 3만, 하루 최대 3만(같은 곡선)', () => {

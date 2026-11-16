@@ -30,6 +30,9 @@ test('경제 로그: 두 줄, 합계·보유 분포·어제와 14일 사유별 �
     assert.doesNotMatch(line, /guest:|"admin"|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i, '아이디 모양 없음');
     assert.doesNotMatch(line, /닉네임비밀|userId|name/, '이름·메모 없음');
   }
+  // (1.10.330 사용자 75A) yesterday's interest actually added (no ledger row) and the bank's tiers as used, the administrator's marked
+  const y = L.dayOf(now - 86400000); const withBank = JSON.parse(L.economyLogLines({ ...stats, interestPaid: { [y]: 354000, [L.dayOf(now)]: 9 }, rates: { tier1: 500000, rate1: 30, tier2: 5000000, rate2: 5, rate3: 1, set: ['rate2'] } }, now)[0].slice('[economy] '.length));
+  assert.equal(withBank.interestPaid, 354000); assert.deepEqual(withBank.rates, { tier1: 500000, rate1: 30, tier2: 5000000, rate2: 5, rate3: 1, set: ['rate2'] });
   // a strange reason (never expected) is not written as it is
   const odd = L.economyLogLines({ flows: [{ day: L.dayOf(now), reason: 'guest:abc', in: 5, out: 0 }] }, now)[1]; assert.doesNotMatch(odd, /guest:/); assert.match(odd, /"other"/);
   // once a day after 00:10 Seoul

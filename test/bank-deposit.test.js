@@ -18,7 +18,7 @@ test('예금 이자: 자정마다 복리(첫 구간 3%), 같은 날은 그대로
   assert.equal(bankAccrue(100000, '2026-10-15', '2026-10-17'), 106090);
   assert.equal(bankAccrue(10, '2026-10-16', '2026-10-17'), 10); // 0.3P rounds down
   assert.equal(bankAccrue(0, '2026-01-01', '2026-10-17'), 0);
-  assert.equal(bankAccrue(1e15, '2026-01-01', '2028-01-01'), Number.MAX_SAFE_INTEGER);
+  assert.equal(bankAccrue(5e15, '2026-01-01', '2028-01-01'), Number.MAX_SAFE_INTEGER); /* (1.10.330: 0.1% a day past 500만 -- a bigger start to reach the cap in two years) */
   assert.equal(bankAccrue(100000, '2026-10-17', '2026-10-30', '2026-10-17'), bankAccrue(100000, '2026-10-17', '2026-10-23'), '마지막 접속 뒤 7번째 자정부터 없음');
   assert.equal(bankAccrue(100000, '2026-10-24', '2026-10-30', '2026-10-17'), 100000);
 });
@@ -32,6 +32,7 @@ async function storeBehaves(store) {
   assert.equal((await store.bankMove(U, 60000, 'req-in-0002', day1)).applied, false, '같은 요청은 한 번');
   assert.deepEqual(await store.bankView(U, day1), { balance: 40000, deposit: 60000 });
   assert.deepEqual(await store.bankView(U, day3), { balance: 40000, deposit: 63654 }); // 60000 → 61800 → 63654
+  assert.equal((await store.economyStats(14, day3)).interestPaid['2026-10-19'], 3654, '(1.10.330 사용자 75A) 붙은 이자는 붙은 날로 모임 -- 장부 밖');
   assert.equal((await store.bankMove(U, -70000, 'req-out-0001', day3)).reason, 'insufficient');
   assert.deepEqual(await store.bankMove(U, -63654, 'req-out-0002', day3), { applied: true, balance: 103654, deposit: 0 });
   assert.equal((await store.getAccount(U)).balance, 103654);
