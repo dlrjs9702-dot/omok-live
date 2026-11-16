@@ -41,5 +41,14 @@
   // the 관공서's 「잠시 자리 비움」 (147: the townhall's local (1.7, 0, 8.35), turned half round)
   const DOOR = Object.freeze({ lx: -4.70, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze({ lx: -3.38, lz: 0 }), closed: Object.freeze({ x: -4.48, z: 0, w: 0.44, d: 1.40 }) });
   const SIGN = Object.freeze({ lx: 1.7, lz: 8.35, yaw: Math.PI });
-  return { ROOM, FIXTURES, TABLES, REACH, DOOR, SIGN, world, local, inRoom, tableAt, clamp };
+  // (1.10.342 assets 147b den-results.json, measured on the game files: the roulette's pockets -- the wheel at rotation w, pocket n
+  // is at w + POCKETS[n]; the ball in a pocket BALL_IN (dr, dy) from its track; each die's rotation (XYZ) with face v up)
+  const RESULTS = Object.freeze({
+    pockets: [-0.1654, -0.4961, -0.8268, -1.1575, -1.4881, -1.8189, -2.1495, -2.4803, -2.8109, -3.1416, 2.8109, 2.4803, 2.1495, 1.8189, 1.4881, 1.1575, 0.8268, 0.4961, 0.1654],
+    ball: { dr: -0.08, dy: -0.0076 },
+    dice: [[[0, 0, 0], [-3.1416, 0, 0], [0, 0, 1.5708], [0, 0, -1.5708], [-1.5708, 0, 0], [1.5708, 0, 0]],
+      [[0, 0, 0], [-3.1416, -1.0001, 0], [0.5569, 0.4343, 1.3145], [-0.5569, 0.4343, -1.3146], [-1.3145, -0.4343, 0.557], [1.3146, -0.4343, -0.5568]],
+      [[0, 0, 0], [0, -1.1416, 3.1416], [1.2368, 0.472, 0.6519], [-1.2369, 0.472, -0.6518], [-0.6519, -0.472, 1.2367], [0.6518, -0.472, -1.2369]]],
+  });
+  return { ROOM, FIXTURES, TABLES, REACH, DOOR, SIGN, RESULTS, world, local, inRoom, tableAt, clamp };
 }));

@@ -13969,55 +13969,55 @@
     {
       "out": "den-v1/den_room.glb",
       "src": "den147:01. High/den-v1/den_room.glb",
-      "sha256": "36c4f2b49665dd7c804014d8ee8318f79a6d00e0a0f158069e448cd60fa066dc",
+      "sha256": "4545b7d71e4a72e53d28ccb4b5be665875308b9e08f22c8d277ce8a7d24aed81",
       "precompressed": true
     },
     {
       "out": "den-v1/table_dice.glb",
       "src": "den147:01. High/den-v1/table_dice.glb",
-      "sha256": "b3853c4304c4f658c6ff5124cb22d93897b55163617d9a864dda7fb2a6d162e6",
+      "sha256": "7d3c62fd9f34b02afc82b32660292b9ca66ba70b44cc6c55e270902dd67da755",
       "lowSrc": "den147:02. Low/den-v1/table_dice_low.glb",
-      "lowSha256": "5b8d2603bb354be04163b378548debadf4ca1b8506c319ca58a25593d74b788b",
+      "lowSha256": "e4623eaa5c5c5fbc4db02406ef3b89d15b34e824d08e323fff8231d4e438b0c4",
       "precompressed": true
     },
     {
       "out": "den-v1/table_cards.glb",
       "src": "den147:01. High/den-v1/table_cards.glb",
-      "sha256": "14f92441b3b96939a64c470e5e6b00e3705e478eae32068696fd77e0a3ecde5d",
+      "sha256": "2619a990acef4a19b062e20714d6f856370690277e31dc50ff647895619ec3aa",
       "lowSrc": "den147:02. Low/den-v1/table_cards_low.glb",
-      "lowSha256": "31fcc607c2f55f19980b6aaec2548a2508ddbdeeaf16473f650ee18a70401a81",
+      "lowSha256": "00ed7224311ed32b294f057e36c3566b37be2645bd255901d08e135f82ccee23",
       "precompressed": true
     },
     {
       "out": "den-v1/table_roulette.glb",
       "src": "den147:01. High/den-v1/table_roulette.glb",
-      "sha256": "09bce12163b968e3fc9950edc81653adab7cc1d07d442835f9cf65e519d0cee5",
+      "sha256": "ae49814ac597fa0f48e36564347b4e2dd08782aaab1ee12ecd731f78ab6752b0",
       "lowSrc": "den147:02. Low/den-v1/table_roulette_low.glb",
-      "lowSha256": "72d8ce8e479f0a21234ad9eb09505193e1219dbbfbc595b25a796e0e18c655a2",
+      "lowSha256": "7ec2b7c1c9c2fd39ecf45b0b48a575b05031ac8b82e38ad131aa7a579a401056",
       "precompressed": true
     },
     {
       "out": "den-v1/slot_machine.glb",
       "src": "den147:01. High/den-v1/slot_machine.glb",
-      "sha256": "a1896ec7da59b9e602d250b99c473877d87a24c0453dfe8423ef4cc7bfd3faf2",
+      "sha256": "163d8b189402fe40a074733ab5caf0e42aa188ddec0c7ecec5f184dd7a74adcc",
       "lowSrc": "den147:02. Low/den-v1/slot_machine_low.glb",
-      "lowSha256": "baed7fe137c61c39df7c7656de4953c4d34d3afe7426fd26727f1348580e347a",
+      "lowSha256": "3bc7f5387c2da5077be53296bbf6fe48c49f31267a75affca8af603e96f7b5bc",
       "precompressed": true
     },
     {
       "out": "den-v1/secret_door.glb",
       "src": "den147:01. High/den-v1/secret_door.glb",
-      "sha256": "56cd628c75068a723f36db8c80865e3cc9781992cd653516b476aa12527eb1a6",
+      "sha256": "f5316215d8b95302f3ba928128e8072a31e884c5a1ab9e6d877ad4cbb9a428db",
       "lowSrc": "den147:02. Low/den-v1/secret_door_low.glb",
-      "lowSha256": "a7ee1d7895e1a55a3075971a42e13b3f95c19a557e97ce510d8edb3554d43a17",
+      "lowSha256": "b40bf59f2c145df4aed1fcf7459c188472ca4d1651987c1cfd40eaece2514928",
       "precompressed": true
     },
     {
       "out": "den-v1/sign_away.glb",
       "src": "den147:01. High/den-v1/sign_away.glb",
-      "sha256": "4dcad9321ad97085ba20290be4f01a64102222afb9eecdd41770acf728529834",
+      "sha256": "ab30f6fe137807a1abf3292aa138c0d0343ff9bb6b3b09cb2e492a1c2c1f935c",
       "lowSrc": "den147:02. Low/den-v1/sign_away_low.glb",
-      "lowSha256": "d44b67ea07a00e7845c54acc47027eaf8baf6b6f2ba36e1fdba3686d6ca2aa4c",
+      "lowSha256": "7f1d9b2136302b4f97fc3ef0fc7eb27eb2e9f31de87fde11927180529f9d20bd",
       "precompressed": true
     },
     {
