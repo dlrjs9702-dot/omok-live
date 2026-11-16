@@ -94,6 +94,20 @@ test('크리스마스 집 가구 다섯: 도장 가게 몫(가구점 진열 없�
     await request.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode: 'auto' } });
   }
   await through('home:exit', '나가기', 'island');
+  // (1.10.331 M2·M4) with the winter decor: my house in its dressing (125: the wreath, eave lights, window candles), lit at night;
+  // by the plaza's tree the music box (xmas-music.js) playing -- louder there, nothing far off
+  const admin2 = await adminToken(request);
+  try {
+    expect((await request.post('/api/admin/island/decor', { headers: { 'X-Session-Token': admin2 }, data: { mode: 'winter' } })).ok()).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().houseDress()), { timeout: 90000 }).toMatchObject({ shown: expect.any(Number), models: expect.any(Number) });
+    await expect.poll(async () => { const h = await page.evaluate(() => window.PlazaDebug().houseDress()); return h.houses >= 1 && h.shown === h.houses && h.models >= 1; }, { timeout: 90000 }).toBe(true);
+    const front = async () => { if (!process.env.SHOT_DIR) return; await page.evaluate((id) => { const d = window.PlazaDebug(); const L = window.IslandHome.lotById(id); const w = { x: L.x - Math.sin(L.yaw) * 9, z: L.z - Math.cos(L.yaw) * 9 }; d.teleport(w.x, w.z); /* (9 m before its front: the model's -Z turned by the lot) */ const y = Math.atan2(L.x - w.x, L.z - w.z); d.faceYaw(y); d.setCamYaw(y + Math.PI); d.setCamPitch(0.12); }, lot); await page.waitForTimeout(3500); };
+    await page.evaluate(() => window.PlazaDebug().setTime('day')); await front(); if (process.env.SHOT_DIR) await shoot(page, request, 'house-dress-day', true);
+    await page.evaluate(() => window.PlazaDebug().setTime('night')); await expect.poll(() => page.evaluate(() => window.PlazaDebug().houseDress().glow), { timeout: 15000 }).toBe(1);
+    await front(); if (process.env.SHOT_DIR) await shoot(page, request, 'house-dress-night', true);
+    const PC = require('../../public/plaza/island-terrain.js').PLAZA_C || { x: 0, z: 0 }; await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z + 9), [PC.x, PC.z]);
+    await expect.poll(async () => { const m = await page.evaluate(() => window.PlazaDebug().xmasMusic()); return Boolean(m?.playing) && m.level > 0.5; }, { timeout: 20000 }).toBe(true);
+  } finally { await request.post('/api/admin/island/decor', { headers: { 'X-Session-Token': admin2 }, data: { mode: 'auto' } }); await page.evaluate(() => window.PlazaDebug().setTime('auto')).catch(() => {}); }
   await expectNoScriptError(page);
   await a.context.close();
 });

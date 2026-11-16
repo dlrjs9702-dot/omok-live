@@ -4759,7 +4759,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.330' });
+    return sendJson(res, 200, { ok: true, version: '1.10.331' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -8613,7 +8613,8 @@ async function requestHandler(req, res) {
     const decor = (await pointStore.worldValue('decor'))?.mode || 'auto';
     const winter = decor === 'winter' || (decor === 'auto' && IslandTerrain.isWinterFest(now)); const halloween = decor === 'halloween' || (decor === 'auto' && IslandTerrain.isHalloween(now));
     const starSoon = Boolean(star) && star.at - starNow(now) < 6 * 3600000;
-    const moods = [weather === 'rain' && 'rain', weather === 'rainbow' && 'rainbow', phase === 'night' && starSoon && 'stars', ['live', 'soon'].includes(contest.phase) && 'contest', winter && 'winter'].filter(Boolean);
+    const xmas = Boolean(IslandCalendar.festivalAt(festivalNow(), await calendarOverride())?.id?.startsWith('christmas')); /* (1.10.331 M3: the festival's 「메리 크리스마스」) */
+    const moods = [weather === 'rain' && 'rain', weather === 'rainbow' && 'rainbow', phase === 'night' && starSoon && 'stars', ['live', 'soon'].includes(contest.phase) && 'contest', winter && 'winter', xmas && 'xmas'].filter(Boolean);
     const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
     // (대화창 새 단장: the choices are only what can be done today -- the day's story and gift not yet, an errand to do with them)
     // (v1.10.266 대화 나무) their topics open to me today: done today or not, how many left today (3), the hint told or not
@@ -9964,7 +9965,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.330 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.331 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

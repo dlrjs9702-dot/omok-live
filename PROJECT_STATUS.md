@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.331 크리스마스 2단계 ②: 집 장식·오르골·인사
+
+- M2 집 장식(125): 집 단계(오두막·집·큰 집·2층 큰 집)마다 덧씌움, 겨울 장식일 때만 받아옴. glow는 밤에만 — 전구는 정점 색(빨강·초록·금) × 1.7, 창 빛 판은 따뜻한 색 0.75; 낮에는 창 판을 유리 빛으로.
+- M4 소리: public/plaza/xmas-music.js — 오르골 캐럴 셋(Jingle Bells·We Wish You a Merry Christmas·Silent Night, 저작권 끝난 곡)과 24초마다 종, Web Audio 합성. 트리 4 m 안 최대, 24 m 밖 없음. 게임방과 같은 소리 설정.
+- M3 인사: 행사 동안 배회 주민 10명이 자기 말투로 「메리 크리스마스」(대화 60%). 차림(모자·목도리)은 에셋 138 오면 다음 PR.
+- 눈송이 near fade: 카메라 0.8~3 m 안에서 흐려지고 최대 24 px.
+- 사진 notes img/xmas3-331.
+- 다음: 327 몫(M6 썰매 비행·양말 선물 127, P2 눈 요새 128, P3 썰매 언덕).
+
 ## v1.10.330 경제 첫 손보기 (사용자 75A)
 
 - 예금 이자 구간: bank:rate1 30‰ 그대로, bank:rate2 15 → 5‰(50만~500만 1.5% → 0.5%), bank:rate3 5 → 1‰(500만 넘는 부분 0.5% → 0.1%). 기본값만 바꿈 — 관리실에 저장한 값이 있으면 그 값이 쓰여요.
@@ -29,11 +38,3 @@
 - 고침: asset-pipeline setDay가 둘째 값을 버려 화이트가 모형에 안 가던 것.
 - 사진 notes img/xmas2-329.
 - 다음: M3 주민 겨울 인사·차림, M4 종·캐럴, M2 집 장식(125).
-
-## v1.10.328 주민 성격별 동작 연결 (에셋 123)
-
-- 123 모션 23개 characters/motions에 복사(SHA256SUMS 일치), 빌드 설정 motions123.
-- presets.json 7묶음(Elder·ElderBrisk·Kid·Formal·Sleuth·Dreamy·Brisk)을 주민 모형 등록부 preset으로: Idle·SlowWalk·Walk(·Run), speeds × 주민 크기(콩이 0.45는 재생 2배 상한), 노을 run 재생 6.2/4.2. lean은 그대로. 나머지(봄이·두리·반디·마루·물결)는 공통.
-- createAnimator: 속도 항목을 요청한 상태로 고름(어르신은 걷기·달리기가 같은 Walk 액션 — 걷기가 달리기로 읽혀 0.68배로 느려지던 것).
-- 사진·움직이는 그림: notes img/resident-motions-328 (주민 여섯, 공통/프리셋 전·후).
-- 다음: 크리스마스 2단계(326 몫 M1 눈·M3·M4·M5).
