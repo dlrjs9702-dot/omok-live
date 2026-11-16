@@ -50,7 +50,7 @@ test('눈덩이: 겨눈 사람의 가슴 높이를 지나감, 맞음 판정, 행
 
 test('눈싸움 서버: 요새 둘레에서만, 0.8 s 간격, 다섯 번째에 도장 「눈싸움 한 판」 하루 한 번', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'snowfight-')); rmAtExit(dir);
-  const server = await boot(t, dir); const { req } = server; const a = await server.enter(await server.issue('눈싸움')); 
+  const server = await boot(t, dir); const { req } = server; const a = await server.enter(await server.issue('눈싸움'));
   const clock = (iso) => req('/api/test/festival/clock', null, { at: Date.parse(`${iso}+09:00`) });
   const wait = (ms) => new Promise((r) => { setTimeout(r, ms); });
   const throwAt = async (x, z) => { await req('/api/plaza/state', a, { x, z, yaw: 1.57, moving: false, act: 'snow:throw:9', actN: 1 }); return req('/api/island/festival/snowball', a, {}); };
