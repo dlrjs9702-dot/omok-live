@@ -578,10 +578,13 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace; tex.repeat.set((P.hw * 2) / 6, (P.d1 - P.d0) / 6);
     const paveMat2 = keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
     paveMat2.onBeforeCompile = (sh) => { /* (땅·길 ③: the one 6 m tile no longer reads as a grid -- a wide mottle (the grass picture over ~16 m) and a little moss in the darker joints where it is greener; ④ wet in the rain) */
-      Object.assign(sh.uniforms, { tMottle: { value: groundTex.grass }, uRain: rainOn });
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tMottle; uniform float uRain;').replace('#include <map_fragment>', '#include <map_fragment>\n{ float m = texture2D(tMottle, vMapUv / 2.7).r / 0.611; float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114)); float joint = 1.0 - smoothstep(0.3, 0.5, lum);\nfloat mm = smoothstep(0.75, 1.25, m); diffuseColor.rgb *= 0.86 + 0.2 * mm; diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.72, 0.86, 0.6), joint * smoothstep(0.55, 0.9, mm) * 0.8); diffuseColor.rgb *= 1.0 - 0.22 * uRain; }').replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.3, 0.6 * uRain);');
+      Object.assign(sh.uniforms, { tMottle: { value: groundTex.grass }, uRain: rainOn, tStone: { value: groundTex.sandPaint }, tTone: { value: groundTex.mottle }, uGrain: grainOn, uCheap: cheapOn, uPaint: paintOn });
+      /* (1.10.337 사용자 112A 「마당에 쓰는 대리석이 좀 이질감」: the stones given a grain, each its own shade and hue, and darker toward the
+         joints -- as 323's painted grass and soil (assets 135's sand picture round its 0.5 grey, the wide mottle), on the same tiers:
+         높음·중간 with a GPU; the lowest and a software renderer as before) */
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tMottle; uniform float uRain; uniform sampler2D tStone; uniform sampler2D tTone; uniform float uGrain; uniform float uCheap; uniform float uPaint;').replace('#include <map_fragment>', '#include <map_fragment>\n{ float m = texture2D(tMottle, vMapUv / 2.7).r / 0.611; float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114)); float joint = 1.0 - smoothstep(0.3, 0.5, lum);\nif (uGrain > 0.0 && uCheap < 0.5 && uPaint > 0.5) { vec2 w = vMapUv * 6.0; vec3 grain = texture2D(tStone, w / 1.1).rgb / 0.5; vec3 to = texture2D(tTone, w / 1.7).rgb; float edge = 1.0 - smoothstep(0.36, 0.62, lum);\ndiffuseColor.rgb *= mix(vec3(1.0), grain, 0.5) * mix(0.9, 1.08, to.r) * mix(vec3(1.03, 1.0, 0.95), vec3(0.96, 0.99, 1.03), to.g) * (1.0 - 0.16 * edge); }\nfloat mm = smoothstep(0.75, 1.25, m); diffuseColor.rgb *= 0.86 + 0.2 * mm; diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.72, 0.86, 0.6), joint * smoothstep(0.55, 0.9, mm) * 0.8); diffuseColor.rgb *= 1.0 - 0.22 * uRain; }').replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.3, 0.6 * uRain);');
     };
-    paveMat2.customProgramCacheKey = () => 'plaza-pave';
+    paveMat2.customProgramCacheKey = () => 'plaza-pave-337';
     const pave = new THREE.Mesh(keep(new THREE.PlaneGeometry(P.hw * 2, P.d1 - P.d0)), paveMat2); pave.rotation.x = -Math.PI / 2; pave.position.set(P.x, P.h + 0.03, (P.d0 + P.d1) / 2); pave.receiveShadow = true; scene.add(pave);
   } else {
   disc(0, 0, PLAZA_R, paveMat, 0.03, 64);
@@ -830,6 +833,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     for (let k = 0; k < 2; k += 1) instanced(mergeColored([facet(BOX, 0x8f8a7c, 0, 0.8, 0, 2.4, 1.6)]), natureMat, cliffs.filter((c) => c.k === k), (c) => setM(c.x, ground(c.x, c.z) - 0.2, c.z, 1, 1, c.yaw), { cell: 60, target: [`angular.cliff_${'ab'[k]}`] });
     for (const c of cliffs) solids.push({ nature: true, x: c.x, z: c.z, r: 1.2 });
   }
+  // (1.10.337 문제 기록 11-16 A2·A3: no cover on 대청마당's paving -- its rectangle, the fountain's disc and its walks --, in the 관공서
+  // yard, or in the quarry's dug ground -- the wild flowers below, the season's drifts and the ground cover alike)
+  const bareGround = (x, z) => Boolean(T.inPlaza?.(x, z, 1.5)) || Boolean(T.inTownhall?.(x, z, 2)) || Boolean(globalThis.IslandQuarry?.inArea?.(x, z, 2));
   // G4a (assets 112): fallen logs and palms (blocking: the terrain's rounds), tall grass and lily pads / lotus (walked
   // through, on the water) -- where the terrain scattered them; each a plain stand-in until its model is in
   const N4 = nature(); /* (not G: the shared shapes) */
@@ -842,8 +848,11 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const palmGeo = mergeColored([part(new THREE.CylinderGeometry(0.13, 0.22, 4.4, 7), 0x9a7a55, 0, 2.2, 0), crown(SPH, 0x5fae4f, 0, 4.6, 0, 2.6, 0.7)]);
     for (let k = 0; k < 3; k += 1) instanced(palmGeo, natureMat, N4.palms.filter((p) => p.kind === k && settled(p)), (p) => setM(p.x, onMesh(p.x, p.z), p.z, p.s, p.s, p.yaw), { cell: 60, target: [`nature.palm.${k}`] });
     for (const p of N4.palms) if (settled(p)) solids.push({ nature: true, x: p.x, z: p.z, r: 0.3 * p.s });
-    const tallClump = keep(mergeColored([blade(0, 0, 0.95), blade(0.3, 0.25, 0.8), blade(-0.25, -0.3, 0.85), blade(0.1, -0.35, 0.7)])); /* (the instance's size is the model's too: the stand-in made tall, not scaled) */
-    for (let k = 0; k < 3; k += 1) instanced(tallClump, natureMat, N4.grass.filter((g) => g.kind === k && settled(g)), (g) => setM(g.x, onMesh(g.x, g.z), g.z, g.s, g.s, g.yaw), { shadow: false, cell: 60, target: [`ground.tallgrass.${k}`] });
+    /* (1.10.337 문제 기록 11-16 B1 사용자 111A 「장식용 풀이 … 그냥 잡초로 보이는데」: the tall grass clumps read as weeds one cannot pull -- in
+       their places small wild flowers, low and plainly no weed (the weeds alone look like one); off the quarry and the paving as the cover) */
+    const WILD = ['nature.flower.2', 'nature.flower.1', 'nature.flower.4'];
+    const wildStand = keep(mergeColored([part(new THREE.CylinderGeometry(0.015, 0.02, 0.22, 4), 0x6f9a4f, 0, 0.11, 0), part(new THREE.SphereGeometry(0.07, 6, 5), 0xf2e6a0, 0, 0.24, 0)]));
+    for (let k = 0; k < 3; k += 1) instanced(wildStand, natureMat, N4.grass.filter((g) => g.kind === k && settled(g) && !bareGround(g.x, g.z)), (g) => setM(g.x, onMesh(g.x, g.z), g.z, Math.min(1, g.s) * 0.85, Math.min(1, g.s) * 0.85, g.yaw), { shadow: false, cell: 60, target: [WILD[k]] });
     // v1.10.310 덩굴 (assets 112): hung down the steep faces (island-vines.js, tools/vine-spots.js: 총괄 #460 -- along the face, x2.2,
     // a few side by side) -- strands and drapes; the stand-in a thin green sheet of the model's size (its origin at the bottom, its
     // face +z out over the drop, its top tilted back toward the face)
@@ -1034,6 +1043,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       const x = gx + (hash(gx, gz, 21) - 0.5) * 5; const z = gz + (hash(gz, gx, 22) - 0.5) * 5;
       if (hash(x, z, 23) > 0.42 || Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 7 || cliffAt(x, z) > 0.2) continue; /* (검토 2차 3: off the sand -- the cover map's sand reaches about 6 m in) */
       if (walkDist(x, z) < 3.5 || streamDist(x, z) < STREAM_HALF + 2 || onBridge(x, z) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < 6) || Math.hypot(x - POND.x, z - POND.z) < POND.r + 3) continue;
+      if (bareGround(x, z)) continue; /* (1.10.337 문제 기록 11-16 A2·A3: not on 대청마당's paving, the 관공서 yard, nor the quarry) */
       const h = ground(x, z); if ([[1.6, 0], [-1.6, 0], [0, 1.6], [0, -1.6]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue; // level ground only
       spots.push({ x, z, v: Math.min(2, Math.floor(hash(x, z, 24) * 3)), r: hash(x, z, 25) * TAU });
     }
@@ -1056,6 +1066,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       const x = gx + (hash(gx, gz, 41) - 0.5) * 2.6; const z = gz + (hash(gz, gx, 42) - 0.5) * 2.6;
       if (Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 7 || cliffAt(x, z) > 0.2) continue;
       if (walkDist(x, z) < 3 || streamDist(x, z) < STREAM_HALF + 1.6 || onBridge(x, z) || T.inTownhall(x, z, 2) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < 6) || Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5) continue;
+      if (bareGround(x, z)) continue; /* (1.10.337 A2·A3) */
       const h = ground(x, z); if ([[1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue;
       const woods = forestAt(x, z); const r = hash(x, z, 43) * TAU; const s = 0.85 + hash(z, x, 44) * 0.4; const k = hash(x, z, 45);
       if (trees.some((t) => Math.hypot(t.x - x, t.z - z) < 1.3)) continue; // not on a trunk
