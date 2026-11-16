@@ -5211,9 +5211,9 @@
     for (const l of d.letters) {
       const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
       const islander = String(l.from || '').startsWith('resident:'); // (R3 ⑥: an islander's letter -- their name as it is, a neighbour)
-      const office = l.from === 'office' || l.from === 'gamehall'; // (주민세 고지서: from the 관공서, its own stamp, no reply; v1.10.251: 게임관's trophy letter too)
+      const office = l.from === 'office' || l.from === 'gamehall' || l.from === 'santa'; // (주민세 고지서: from the 관공서, its own stamp, no reply; v1.10.251: 게임관's trophy letter too; 1.10.333: 산타's stocking letter)
       const head = el('div', 'mailHead'); const who = el('strong', '', islander || office ? l.fromName : `${l.fromName}님`); if (islander) who.append(el('span', 'smallMuted', ' · 주민'));
-      { const stamp = el('span', `mailStamp${office ? ' office' : ''}`, office ? (l.from === 'gamehall' ? '게임관' : '관공서') : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? (l.from === 'gamehall' ? '#9c5f14' : '#8f2f24') : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
+      { const stamp = el('span', `mailStamp${office ? ' office' : ''}`, office ? (l.from === 'gamehall' ? '게임관' : l.from === 'santa' ? '산타' : '관공서') : islander ? '주민' : '섬'); stamp.setAttribute('aria-hidden', 'true'); const c = office ? (l.from === 'gamehall' ? '#9c5f14' : l.from === 'santa' ? '#c0392b' : '#8f2f24') : islander && globalThis.IslandCast?.WALKERS[Number(String(l.from).slice(9))]?.tagColor; if (c) stamp.style.setProperty('--stamp', c); row.append(stamp); } // (창 2단계: a stamp in the islander's own colour)
       head.append(who, el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));

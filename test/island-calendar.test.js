@@ -50,3 +50,10 @@ test('크리스마스 눈: 저녁·밤 가벼운 눈(17~06시), 24·25일 하루
   assert.equal(C.lightingOf(X, at('2026-12-19T18:00:00')).state, 'lit'); assert.equal(C.lightingOf(X, at('2026-12-30T21:00:00')).state, 'lit');
   assert.equal(C.lightingOf(null, at('2026-12-19T18:00:00')), null);
 });
+
+test('산타 썰매 (1.10.333 M6): 24일 21~22시만, 2분에 한 바퀴', () => {
+  const X = C.FESTIVALS.find((f) => f.id === 'christmas-2026');
+  assert.equal(C.sleighOf(X, at('2026-12-24T20:59:59')), null); assert.equal(C.sleighOf(X, at('2026-12-24T22:00:00')), null); assert.equal(C.sleighOf(X, at('2026-12-25T21:30:00')), null);
+  assert.equal(C.sleighOf(X, at('2026-12-24T21:00:00')).k, 0); assert.equal(C.sleighOf(X, at('2026-12-24T21:01:00')).k, 0.5); assert.equal(C.sleighOf(X, at('2026-12-24T21:02:00')).k, 0);
+  assert.equal(C.sleighOf(null, at('2026-12-24T21:30:00')), null);
+});

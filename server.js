@@ -1357,6 +1357,18 @@ async function residentLetter(account, label, now) {
   // (Codex 검토 P3) one a day for the account, whoever the closest is by then (the closest changing the same day: no second)
   await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => String(l.id).startsWith('resident-') && String(l.id).endsWith(`-${day}`)) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
 }
+// 1.10.333 M6 양말 선물 (notes christmas-boost M6): on the festival's last day (12-25) from 06:00, whoever has a 양말 걸이 hung in
+// their house finds two 사탕 주머니 in the bag and 산타's letter in the 우체통 -- once (the gift's claim and the letter's id by
+// account and festival); a full bag waits for the next look
+async function stockingGift(account, now) {
+  const t = festivalNow(); const fest = IslandCalendar.festivalAt(t, await calendarOverride());
+  if (!fest?.id?.startsWith('christmas') || IslandCalendar.dayOf(t) !== fest.end || IslandCalendar.hourOf(t) < 6) return;
+  const h = await homeOf(account); if (!(h?.pieces || []).some((p) => String(p.id).startsWith('xmas_stocking'))) return;
+  const id = `stocking-${fest.id}`; if (((await pointStore.questDoc(account, 'mail')).doc.letters || []).some((l) => l.id === id)) return;
+  const got = await pointStore.islandGive({ userId: account, claimId: `stocking:${account}:${fest.id}`, itemId: 'candy', qty: 2 }, now).catch(() => null);
+  if (!got || got.reason) return; /* (a full bag: tried again at the next look) */
+  await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id, from: 'santa', fromName: '산타', text: '메리 크리스마스! 걸어 둔 양말에 사탕 주머니 두 개를 넣고 갔어요. 가방을 열어 보세요. 내년에도 양말 걸어 두는 거 잊지 말아요!', itemId: 'candy', itemName: IslandItems.ITEMS.candy?.name || '사탕 주머니', at: now, read: false }, now) } }));
+}
 // 주민세 고지서: each unpaid bill a letter in my 우체통, from the 관공서 (its own stamp) -- once a bill (its id the bill's day)
 const taxMd = (day) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
 async function taxLetters(account, now) {
@@ -4759,7 +4771,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.332' });
+    return sendJson(res, 200, { ok: true, version: '1.10.333' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -7051,6 +7063,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const now = nowMs();
     await residentLetter(account, String(session.label || ''), now); // (R3 ⑥)
     await taxLetters(account, now); // (주민세 고지서)
+    await stockingGift(account, now).catch(() => {}); // (1.10.333 M6: 산타's on the 25th)
     const letters = Together.freshLetters((await pointStore.questDoc(account, 'mail')).doc.letters, now);
     const sent = (await pointStore.questDoc(account, 'mailSent')).doc; const t = Together.seoul(now);
     const people = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt && `guest:${k.id}` !== account).map((k) => ({ id: k.id, label: k.label }));
@@ -9965,7 +9978,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.332 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.333 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
