@@ -1213,6 +1213,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function taxiPush(cars) {
     const p = me.root.position; const t = performance.now(); const dt = Math.min(0.1, Math.max(0, (t - pushAt) / 1000)); pushAt = t;
     for (const car of cars) {
+      if (car.ghost) continue; /* (1.10.340 133A: see-through, it goes by -- no one pushed) */
       const dx = p.x - car.x; const dz = p.z - car.z; const al = dx * Math.sin(car.yaw) + dz * Math.cos(car.yaw); const ac = dx * Math.cos(car.yaw) - dz * Math.sin(car.yaw);
       const HA = 1.2; const HL = 1.95; if (Math.abs(ac) >= HA || Math.abs(al) >= HL) continue;
       const pa = HA - Math.abs(ac); const pl = HL - Math.abs(al); const slow = (car.rate ?? 1) < 0.5;
@@ -6275,11 +6276,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const w = t?.warp; const out = {};
     if (w && finite(w.at, w.tau, w.r0, w.r1, w.ms) && w.ms > 0) out.warp = { at: w.at, tau: w.tau, r0: w.r0, r1: w.r1, ms: w.ms };
     if (Number.isFinite(t?.blockedAt)) out.blockedAt = t.blockedAt;
+    const s = t?.side; if (s && finite(s.at, s.from, s.to, s.ms) && s.ms > 0 && Math.abs(s.to) <= 2 && Math.abs(s.from) <= 2) out.side = { at: s.at, from: s.from, to: s.to, ms: s.ms }; /* (1.10.340 133A: aside) */
+    const g = t?.ghost; if (g && Number.isFinite(g.at)) out.ghost = { at: g.at, until: Number.isFinite(g.until) ? g.until : null }; /* (see-through going by) */
     return out;
   }
   function setTaxiRide(t) {
     if (!taxiRide || !t || t.from !== taxiRide.ride.from || t.startedAt !== taxiRide.ride.startedAt) return;
-    const { warp, blockedAt } = roadClockOf(t); taxiRide.ride.warp = warp; taxiRide.ride.blockedAt = blockedAt;
+    const { warp, blockedAt, side, ghost } = roadClockOf(t); taxiRide.ride.warp = warp; taxiRide.ride.blockedAt = blockedAt; taxiRide.ride.side = side; taxiRide.ride.ghost = ghost;
   }
   function startTaxi(ride) {
     if (taxiRide || riding || !ride || !TX.STOPS[ride.from] || !Number.isFinite(ride.startedAt)) return false;

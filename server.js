@@ -2412,7 +2412,12 @@ let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it
 // plus what it goes before it can stand -- has it ease to a stop (the road's clock, IslandTaxi.warpTo: every screen eases it the
 // same); waiting 2 s, its 「빵」 (ride.blockedAt, on the screens); 4 s, it creeps by at a walk (on their screen they are eased
 // aside); clear, back to its pace. A test's short road (runMs) never waits.
-const TAXI_LOOK = { across: 0.85 + 0.3 + 0.35, nose: 1.95, gap: 3, walk: 1.2, honk: 2000, creep: 4000 };
+// 1.10.340 133A (notes taxi-yield 「길을 막는 사람」): 「빵!」 and 「비켜 주세요~」 after 1 s; after 3 s it goes by -- aside within the road
+// (up to `side` m, passing them `pass` m off: its half width and theirs and a little) at a walk, back to the middle once past; with
+// no room aside (a bridge, a crossing, someone there too) see-through, slowly through, solid again once past. It always moves on
+const TAXI_LOOK = { across: 0.85 + 0.3 + 0.35, nose: 1.95, gap: 3, walk: 1.2, honk: 1000, creep: 3000, pass: 0.85 + 0.35 + 0.1, side: 1.5 };
+const shiftWay = (way, off) => (off ? way.map((p) => IslandTaxi.shifted(p, off)) : way);
+const TAXI_BRIDGE = IslandTaxi.BRIDGE; const taxiNarrow = (way) => way.some((p) => (p.x >= TAXI_BRIDGE.x0 && p.x <= TAXI_BRIDGE.x1 && p.z >= TAXI_BRIDGE.z0 && p.z <= TAXI_BRIDGE.z1) || IslandTaxi.CROSSINGS.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < IslandTaxi.CROSS_HALF + 1.5));
 // (the way ahead: the car's own poses on its time table, 100 ms apart, till `look` metres on -- round a corner too; someone in
 // any of their boxes is in its way)
 function taxiWay(bare, road, look) {
@@ -2422,13 +2427,13 @@ function taxiWay(bare, road, look) {
 }
 // -> { token, stand }: the first one in its way and the last of its poses that keeps a metre between its nose and them (where it
 // should come to stand), or null
-function taxiBlocker(ride, way, now) {
+function taxiBlocker(ride, way, now, across = TAXI_LOOK.across) {
   for (const [token, e] of plazaPresence) {
     if (e.ride || e.platform || e.taxi || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > 5000 || (e.space && e.space !== 'island')) continue;
     const rel = (p) => { const dx = e.x - p.x; const dz = e.z - p.z; return { along: dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw), across: dx * Math.cos(p.yaw) - dz * Math.sin(p.yaw) }; };
-    const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < TAXI_LOOK.across && Math.abs(r.along) < TAXI_LOOK.nose; });
+    const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < across && Math.abs(r.along) < TAXI_LOOK.nose; });
     if (hit < 0) continue;
-    let stand = 0; for (let k = hit; k >= 0; k -= 1) if (rel(way[k]).along > TAXI_LOOK.nose + 1 || Math.abs(rel(way[k]).across) >= TAXI_LOOK.across) { stand = k; break; }
+    let stand = 0; for (let k = hit; k >= 0; k -= 1) if (rel(way[k]).along > TAXI_LOOK.nose + 1 || Math.abs(rel(way[k]).across) >= across) { stand = k; break; }
     return { token, stand };
   }
   return null;
@@ -2439,14 +2444,33 @@ function taxiTick() {
   for (const ride of new Set([...taxiStopOut.values(), ...taxiRides.values()])) {
     if (ride.runMs) continue;
     const p = IslandTaxi.carAt(ride, now);
-    if (!p || !['start', 'run', 'stop', 'back'].includes(p.phase)) { if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; } continue; }
+    if (!p || !['start', 'run', 'stop', 'back'].includes(p.phase)) { if (ride.blockedAt || ride.dodge) { ride.blockedAt = null; ride.dodge = null; plazaDirty = true; } continue; }
     const road = IslandTaxi.roadNow(ride, now); const bare = { from: ride.from, startedAt: ride.startedAt };
     const speedAt = (r) => { const a = IslandTaxi.carAt(bare, r); const b = IslandTaxi.carAt(bare, r + 200); return a && b ? Math.hypot(b.x - a.x, b.z - a.z) / 0.2 : 0; };
     const brake = IslandTaxi.LEAD + IslandTaxi.RAMP / 2 + 200 + late * 2; /* (+ a late tick or two on a busy server) */ const vTable = speedAt(road); const vMax = Math.max(vTable, speedAt(road + brake)); /* (pulling away it is still speeding up as it brakes) */
     const look = TAXI_LOOK.gap + vMax * IslandTaxi.rateOf(ride, now) * (brake / 1000);
-    const who = taxiBlocker(ride, taxiWay(bare, road, look), now); let want = 1;
-    if (who) { if (!ride.blockedAt) { ride.blockedAt = now; plazaDirty = true; } want = now - ride.blockedAt >= TAXI_LOOK.creep && vTable > 0.1 ? Math.min(1, TAXI_LOOK.walk / vTable) : 0; }
-    else if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; }
+    const way = taxiWay(bare, road, look); const dodge = ride.dodge || null; const walk = vTable > 0.1 ? Math.min(1, TAXI_LOOK.walk / vTable) : 1;
+    const ahead = taxiBlocker(ride, way, now); /* (someone on the road's middle in front: still going by them) */
+    const who = dodge?.mode === 'ghost' ? null : dodge ? taxiBlocker(ride, shiftWay(way, dodge.off), now, TAXI_LOOK.pass) : ahead; let want = 1;
+    if (who) {
+      if (!ride.blockedAt) { ride.blockedAt = now; plazaDirty = true; } want = 0;
+      if (now - ride.blockedAt >= TAXI_LOOK.creep) { /* (133A: 3 s -- by them, aside where the road has room, else see-through) */
+        const me = way[0]; const e = plazaPresence.get(who.token); const a = e ? (e.x - me.x) * Math.cos(me.yaw) - (e.z - me.z) * Math.sin(me.yaw) : 0; const s = a >= 0 ? 1 : -1;
+        const cur = dodge?.off || 0; const at = now + IslandTaxi.LEAD;
+        const off = [a - s * TAXI_LOOK.pass, a + s * TAXI_LOOK.pass].filter((o) => Math.abs(o) <= TAXI_LOOK.side).sort((x, y) => Math.abs(x - cur) - Math.abs(y - cur))
+          .find((o) => { const w = shiftWay(way, o); return !taxiNarrow(w) && !taxiBlocker(ride, w, now, TAXI_LOOK.pass); });
+        if (off !== undefined) { ride.side = { at, from: IslandTaxi.sideAt(ride, at), to: Math.round(off * 100) / 100, ms: IslandTaxi.RAMP }; ride.dodge = { mode: 'side', off: ride.side.to }; }
+        else { ride.ghost = { at, until: null }; ride.dodge = { mode: 'ghost', off: cur }; }
+        ride.blockedAt = null; want = walk; plazaDirty = true;
+      }
+    } else {
+      if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; }
+      if (dodge && !ahead) { /* (past them: back to the middle, solid again) */
+        const at = now + IslandTaxi.LEAD; if (dodge.off || IslandTaxi.sideAt(ride, at)) ride.side = { at, from: IslandTaxi.sideAt(ride, at), to: 0, ms: IslandTaxi.RAMP };
+        if (ride.ghost && !ride.ghost.until) ride.ghost = { ...ride.ghost, until: at };
+        ride.dodge = null; plazaDirty = true;
+      } else if (dodge) want = walk; /* (going by at a walk) */
+    }
     const was = ride.warp ? ride.warp.r1 : 1;
     if (want === 0) { /* (to a stand where `who.stand` says -- the ramp shortened to get there, never past it: a late tick still stops short) */
       const at = now + IslandTaxi.LEAD; const tauAt = IslandTaxi.roadNow(ride, at); const r0 = IslandTaxi.rateOf(ride, at); const target = road + who.stand * 100;

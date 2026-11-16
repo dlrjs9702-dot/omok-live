@@ -46,6 +46,13 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     const standing = car(); placeCar(standing, { x: s.x, z: s.z, yaw: s.yaw, phase: 'wait', d: 0 });
     return { id, s, standing, sign };
   });
+  // 1.10.340 133A: a car see-through (its own copies of the materials -- the model's are shared by every car), solid again after
+  function ghostCar(rec, on) {
+    if (Boolean(rec.ghost) === Boolean(on)) return; rec.ghost = Boolean(on);
+    rec.h.traverse((o) => { if (!o.isMesh || o === rec.horn || o === rec.ask || rec.horn?.children?.includes(o) || rec.ask?.children?.includes(o)) return;
+      if (!o.userData.ownMat) { o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone(); o.userData.ownMat = true; for (const m of [].concat(o.material)) made.push(m); }
+      for (const m of [].concat(o.material)) { m.transparent = rec.ghost; m.opacity = rec.ghost ? 0.4 : 1; m.depthWrite = !rec.ghost; m.needsUpdate = true; } });
+  }
   const moving = new Map(); // (294 7) stop id -> its car while out (there, the turn, back)
   let night = false;
   // each frame: `rides` [{ key, ride }] I know of and `out` { stopId: ride } the server's -- one car a stop (294 7): on its ride, then
@@ -56,9 +63,10 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       const p = X.carAt(ride, now); if (!p) continue; live.add(key);
       let rec = moving.get(key); if (!rec) { rec = car(); moving.set(key, rec); }
       placeCar(rec, p); rec.running = ['start', 'run', 'stop', 'back'].includes(p.phase); rec.rate = X.rateOf(ride, now); rec.waitMs = ride.blockedAt ? Math.max(0, now - ride.blockedAt) : 0;
-      /* (317 A2: 「빵」 once the server has had it waiting 2 s for someone in front -- no sound; v1.10.285 honked passing within 2 m) */
-      if (mark && rec.running && rec.waitMs >= 2000) { if (!rec.horn) { rec.horn = mark(); rec.horn.position.y = 3.4; /* (317: over the rider's name) */ rec.h.add(rec.horn); } rec.hornUntil = now + 600; }
-      if (rec.horn) rec.horn.visible = rec.hornUntil > now;
+      /* (317 A2: 「빵」 once the server has had it waiting for someone in front -- no sound; 1.10.340 133A: after 1 s, with 「비켜 주세요~」) */
+      if (mark && rec.running && rec.waitMs >= 1000) { if (!rec.horn) { rec.horn = mark(); rec.horn.position.y = 3.4; /* (317: over the rider's name) */ rec.h.add(rec.horn); } if (tag && !rec.ask) { rec.ask = tag('비켜 주세요~'); rec.ask.position.y = 4.3; rec.h.add(rec.ask); } rec.hornUntil = now + 600; }
+      if (rec.horn) rec.horn.visible = rec.hornUntil > now; if (rec.ask) rec.ask.visible = rec.hornUntil > now;
+      ghostCar(rec, X.ghostAt(ride, now)); /* (133A: no room aside -- see-through going by) */
     }
     for (const [key, rec] of moving) if (!live.has(key)) { group.remove(rec.h); moving.delete(key); } /* (in its place: the standing one again) */
     for (const st of stops) {
@@ -78,6 +86,6 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   const setNight = (on) => { night = Boolean(on); };
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
-  const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by) */
+  const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by) */
   return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible, away: [...moving.keys()].includes(st.id), label: st.said || '' })), /* (294) */ moving: () => [...moving.keys()] };
 }

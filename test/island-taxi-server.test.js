@@ -98,11 +98,37 @@ test('섬 택시 서서 기다리기: 앞에 선 사람 앞에서 섬, 4초 뒤 
   assert.ok(blockedSeen, 'waited for the one in front');
   const stood = X.carAt(ride, ride.warp.at); const closest = (spot.x - stood.x) * Math.sin(stood.yaw) + (spot.z - stood.z) * Math.cos(stood.yaw); /* (where it stood: the last road clock, read when creeping begins -- not the test's own guess between answers) */
   assert.ok(closest > 1.95 + 0.5, `stands short of them (its nose 1.95 m on): ${closest.toFixed(2)} m from its middle`); /* (round the corner too -- 317: it looks along its own way) */
-  assert.ok(creep > 0 && creep < 0.3, `creeping by at a walk after 4 s: ${creep}`); assert.ok(Date.now() - blockedSeen >= 3500);
+  assert.ok(creep > 0 && creep < 0.3, `going by at a walk after 3 s: ${creep}`); assert.ok(Date.now() - blockedSeen >= 2500);
+  /* (1.10.340 133A: by them aside within the road -- 1.3 m off them, never past 1.5 m -- on the server's clock, every screen the same) */
+  assert.equal(ride.dodge?.mode, 'side', JSON.stringify(ride.dodge)); assert.ok(Math.abs(ride.side.to) <= 1.5 && Math.abs(ride.side.to) >= 1, `aside ${ride.side.to}`);
+  { const q = X.carAt(ride, ride.side.at + ride.side.ms + 50); const across = (spot.x - q.x) * Math.cos(q.yaw) - (spot.z - q.z) * Math.sin(q.yaw); assert.ok(Math.abs(across) >= 1.25, `going by ${across.toFixed(2)} m off them`); }
   const late = rode.data.taxi.startedAt + X.durationOf(rode.data.taxi); assert.equal(X.rideOver(ride, late), false, 'the ride later by its wait');
   // off the road: on at its pace again
   let back = null; const t1 = Date.now();
   while (Date.now() - t1 < 5000) { const s = await stand(b, spot.x + 6, spot.z); const r = s.data.taxiStops?.plaza; if (r && !r.blockedAt && r.warp?.r1 === 1) { back = r; break; } await sleep(200); }
-  assert.ok(back, 'on again once clear');
+  assert.ok(back, 'on again once clear'); assert.equal(back.side?.to ?? 0, 0, 'back to the road\'s middle'); assert.equal(back.dodge ?? null, null);
+  await req('/api/test/taxi-run', a, { ms: 3000 });
+});
+
+// 1.10.340 133A: no room aside (a crossing) -- after 3 s see-through, slowly through them, solid again once past; it always arrives
+test('섬 택시 비켜 가기: 건널목에 선 사람은 3초 뒤 반투명으로 천천히 통과, 지나가면 다시 불투명', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-ghost-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('택시탄이2')); const b = await server.enter(await server.issue('건널목이'));
+  await req('/api/test/points-credit', a, { amount: 100000 }); await req('/api/test/taxi-run', a, { ms: 0 });
+  const stand = (who, x, z) => req('/api/plaza/state', who, { x, z, yaw: 0, moving: false });
+  const P = X.stopOf('plaza'); const spot = { x: 0.3, z: -6.7 }; /* (the road at the crossing by the hall's walk, (1.2, -6.3)) */
+  await req('/api/island/npc-grid', a);
+  await stand(a, P.out.x, P.out.z); await stand(b, spot.x, spot.z);
+  assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).status, 200);
+  const t0 = Date.now(); let ghost = null; let solid = null;
+  while (Date.now() - t0 < 30000) {
+    const r = (await stand(b, spot.x, spot.z)).data.taxiStops?.plaza;
+    if (r?.ghost && !ghost) ghost = { ...r.ghost, dodge: r.dodge };
+    if (ghost && r?.ghost?.until) { solid = r; break; }
+    await sleep(200);
+  }
+  assert.ok(ghost, 'see-through at the crossing'); assert.equal(ghost.dodge?.mode, 'ghost');
+  assert.ok(solid, 'solid again once past them'); assert.equal(X.ghostAt(solid, solid.ghost.until + 10), false); assert.equal(X.ghostAt(solid, solid.ghost.until - 10), true);
   await req('/api/test/taxi-run', a, { ms: 3000 });
 });
