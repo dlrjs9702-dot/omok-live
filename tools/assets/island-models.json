@@ -13754,6 +13754,14 @@
       "lowSrc": "xmas125:02. Low/xmas-v2/house_dress_manor2_low.glb",
       "lowSha256": "2f1db351484245ddc595c5776d9522d7ea17dc25adef934409883dae592d4ffa",
       "precompressed": true
+    },
+    {
+      "out": "xmas-v2/santa_sleigh.glb",
+      "src": "xmas127:01. High/xmas-v2/santa_sleigh.glb",
+      "sha256": "eabaed3e787f73d718aec57d8a5673d85fdceba6443ca31d51b31bc2998e0503",
+      "lowSrc": "xmas127:02. Low/xmas-v2/santa_sleigh_low.glb",
+      "lowSha256": "7c91c6dd89242bc00ffae9ad1b4e07bae0ef638eb6a3d6338be66ad892c50c29",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -13854,6 +13862,7 @@
     "pickaxe130": "130. Game Island pickaxe motion 2026-11-15",
     "market124": "124. Game Island xmas market stalls 2026-11-15",
     "motions123": "123. Game Island resident motion presets 2026-11-14",
-    "xmas125": "125. Game Island xmas house dressing 2026-11-15"
+    "xmas125": "125. Game Island xmas house dressing 2026-11-15",
+    "xmas127": "127. Game Island xmas santa sleigh 2026-11-15"
   }
 }

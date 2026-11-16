@@ -176,6 +176,14 @@ test('크리스마스 미리 보기: 이 브라우저만 장식·눈·점등·�
   const other = await b.page.evaluate(() => { const D = window.PlazaDebug(); return [D.treeLight().state, D.xmasSnow().mode, D.assets.shown?.['winter.landmark_winter_tree'] || null]; });
   expect(other).toEqual([null, null, null]);
   expect((await get(request, '/api/island/time', a.token)).data.decor).toBe('auto');
+  /* (1.10.333 M6) the 24th's night: the sleigh round the island in the sky, its model in */
+  await a.page.evaluate(() => localStorage.setItem('gc.xmasPreview', 'eve')); await up(a);
+  await expect.poll(async () => { const s = await a.page.evaluate(() => window.PlazaDebug().sleigh()); return Boolean(s?.shown && s.model && s.y > 30); }, { timeout: 60000 }).toBe(true);
+  if (process.env.SHOT_DIR) { /* (under the way round, the camera tipped up toward where it is now) */
+    const s = await a.page.evaluate(() => window.PlazaDebug().sleigh()); await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x * 0.3, z * 0.3), [s.x, s.z]); /* (~80 m off: it ~30° up) */ await a.page.waitForTimeout(1500);
+    await a.page.evaluate(() => { const d = window.PlazaDebug(); const s = d.sleigh(); d.setCamYaw(Math.atan2(-(s.x - d.x), -(s.z - d.z))); d.setCamPitch(-Math.abs(d.skyMax ?? 0.6)); }); /* (up is negative) */ await a.page.waitForTimeout(300); await shoot(a.page, 'xmas-sleigh');
+  }
+  expect(await b.page.evaluate(() => window.PlazaDebug().sleigh())).toBe(null);
   await a.page.evaluate(() => localStorage.removeItem('gc.xmasPreview')); await up(a);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().treeLight().state), { timeout: 20000 }).toBe(null);
   await expectNoScriptError(a.page); await a.context.close(); await b.context.close();

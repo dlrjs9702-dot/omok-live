@@ -99,6 +99,8 @@
     "xmas-v2/house_dress_manor_low.glb": { "triangles": 1200 },
     "xmas-v2/house_dress_manor2.glb": { "triangles": 3000 },
     "xmas-v2/house_dress_manor2_low.glb": { "triangles": 1200 },
+    "xmas-v2/santa_sleigh.glb": { "nodes": 25, "reason": "assets 127 산타 썰매: one skinned mesh, 22 joints for Fly/Wave (-kn)" },
+    "xmas-v2/santa_sleigh_low.glb": { "nodes": 25, "reason": "assets 127 산타 썰매: one skinned mesh, 22 joints for Fly/Wave (-kn)" },
     "farm-v1/spring/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
     "farm-v1/summer/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
     "farm-v1/autumn/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
