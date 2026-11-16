@@ -13965,6 +13965,68 @@
       "lowSrc": "auction137:02. Low/auction-v1/auction_board_low.glb",
       "lowSha256": "cdbf244270525d9d91ee2815c9f4a19c12951c9d869fa9d7bfd67c21e119ee25",
       "precompressed": true
+    },
+    {
+      "out": "den-v1/den_room.glb",
+      "src": "den147:01. High/den-v1/den_room.glb",
+      "sha256": "36c4f2b49665dd7c804014d8ee8318f79a6d00e0a0f158069e448cd60fa066dc",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/table_dice.glb",
+      "src": "den147:01. High/den-v1/table_dice.glb",
+      "sha256": "b3853c4304c4f658c6ff5124cb22d93897b55163617d9a864dda7fb2a6d162e6",
+      "lowSrc": "den147:02. Low/den-v1/table_dice_low.glb",
+      "lowSha256": "5b8d2603bb354be04163b378548debadf4ca1b8506c319ca58a25593d74b788b",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/table_cards.glb",
+      "src": "den147:01. High/den-v1/table_cards.glb",
+      "sha256": "14f92441b3b96939a64c470e5e6b00e3705e478eae32068696fd77e0a3ecde5d",
+      "lowSrc": "den147:02. Low/den-v1/table_cards_low.glb",
+      "lowSha256": "31fcc607c2f55f19980b6aaec2548a2508ddbdeeaf16473f650ee18a70401a81",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/table_roulette.glb",
+      "src": "den147:01. High/den-v1/table_roulette.glb",
+      "sha256": "09bce12163b968e3fc9950edc81653adab7cc1d07d442835f9cf65e519d0cee5",
+      "lowSrc": "den147:02. Low/den-v1/table_roulette_low.glb",
+      "lowSha256": "72d8ce8e479f0a21234ad9eb09505193e1219dbbfbc595b25a796e0e18c655a2",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/slot_machine.glb",
+      "src": "den147:01. High/den-v1/slot_machine.glb",
+      "sha256": "a1896ec7da59b9e602d250b99c473877d87a24c0453dfe8423ef4cc7bfd3faf2",
+      "lowSrc": "den147:02. Low/den-v1/slot_machine_low.glb",
+      "lowSha256": "baed7fe137c61c39df7c7656de4953c4d34d3afe7426fd26727f1348580e347a",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/secret_door.glb",
+      "src": "den147:01. High/den-v1/secret_door.glb",
+      "sha256": "56cd628c75068a723f36db8c80865e3cc9781992cd653516b476aa12527eb1a6",
+      "lowSrc": "den147:02. Low/den-v1/secret_door_low.glb",
+      "lowSha256": "a7ee1d7895e1a55a3075971a42e13b3f95c19a557e97ce510d8edb3554d43a17",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/sign_away.glb",
+      "src": "den147:01. High/den-v1/sign_away.glb",
+      "sha256": "4dcad9321ad97085ba20290be4f01a64102222afb9eecdd41770acf728529834",
+      "lowSrc": "den147:02. Low/den-v1/sign_away_low.glb",
+      "lowSha256": "d44b67ea07a00e7845c54acc47027eaf8baf6b6f2ba36e1fdba3686d6ca2aa4c",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/note_code.glb",
+      "src": "den147:01. High/den-v1/note_code.glb",
+      "sha256": "0cb761bbfccfa74d2ff5cc953b4373d2b4e91adb8993b6888279231cddb694ef",
+      "lowSrc": "den147:02. Low/den-v1/note_code_low.glb",
+      "lowSha256": "cf22e50cd339fef3c16a142f42e7b238430a4fdace18bd140007088ea52719ab",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -14072,6 +14134,7 @@
     "xmas149": "149. Game Island xmas stamp shop furniture 2026-11-16",
     "fountain148": "148. Game Island fountain crescent 2026-11-16",
     "auction137": "137. Game Island auction board 2026-11-15",
-    "flicker150": "150. Game Island flicker fixes 2026-11-16"
+    "flicker150": "150. Game Island flicker fixes 2026-11-16",
+    "den147": "147. Game Island underground den 2026-11-16"
   }
 }
