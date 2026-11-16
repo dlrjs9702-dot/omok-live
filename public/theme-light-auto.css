@@ -1688,3 +1688,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .stockFlat{color:#7a7f8a;stroke:#7a7f8a}
 :root[data-theme="light"] .stockSpark polyline{fill:none}
 :root[data-theme="light"] .stocksQtyInput{border:1px solid rgba(120,100,70,.35)}
+:root[data-theme="light"] .tedCard .tedWord{border:1px solid rgba(120,100,70,.35)}
+:root[data-theme="light"] .denPaperWord{color:#2b2320}
+:root[data-theme="light"] .denPaperName{color:#2b2320}
+:root[data-theme="light"] .denPaperDate{color:#3b302a}

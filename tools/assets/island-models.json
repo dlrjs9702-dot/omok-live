@@ -2132,13 +2132,11 @@
     },
     {
       "out": "train-v1/train_carriage.glb",
-      "src": "overhaul:refined/22. Game Island tourism train 2026-10-07/01. Carriage/01. High/train_carriage_high.glb",
-      "sha256": "84f36ffc36e33a18d72a26bf43cc2b039ea4e18e5e518f7684c5db1da04a04f7",
-      "lowSrc": "overhaul:refined/22. Game Island tourism train 2026-10-07/01. Carriage/02. Low/train_carriage_low.glb",
-      "lowSha256": "fb172352953c8c285fc90039fbb4b4e396e7c324271901f24ab764c0174c5110",
-      "args": [
-        "-kn"
-      ]
+      "src": "flicker150:06. Kept from game/train-v1/train_carriage.glb",
+      "sha256": "ba620a1be854c9da29e536d1827979513544f6df72796a18ede8878729f33d65",
+      "lowSrc": "flicker150:02. Low/train-v1/train_carriage_low.glb",
+      "lowSha256": "56a3fe6d7d8aca7464b4eabe097e82c3c30c0ebdf019b99000ab88bd01b9b184",
+      "precompressed": true
     },
     {
       "out": "train-v1/train_platform.glb",
@@ -7107,10 +7105,10 @@
     },
     {
       "out": "jail-v1/jail_cell.glb",
-      "src": "jail67:01. High/jail_cell.glb",
-      "sha256": "26970dd8abd670b78d5166e4bd6692ccd939116906fa6a8645335d763bc6438c",
-      "lowSrc": "jail67:02. Low/jail_cell_low.glb",
-      "lowSha256": "26970dd8abd670b78d5166e4bd6692ccd939116906fa6a8645335d763bc6438c",
+      "src": "flicker150:01. High/jail-v1/jail_cell.glb",
+      "sha256": "b26e74b74f9d310ca0591f026a7efdca2f3255f3ecc4abe1fd4fd088aed4464a",
+      "lowSrc": "flicker150:02. Low/jail-v1/jail_cell_low.glb",
+      "lowSha256": "b26e74b74f9d310ca0591f026a7efdca2f3255f3ecc4abe1fd4fd088aed4464a",
       "precompressed": true
     },
     {
@@ -7594,10 +7592,10 @@
     },
     {
       "out": "mall-v2/mall_today_table.glb",
-      "src": "mall82:01. High/mall_today_table.glb",
-      "sha256": "619058df10efa2e1362636247607ff3f98e402d591763da1c6cb562eaabbf806",
-      "lowSrc": "mall82:02. Low/mall_today_table_low.glb",
-      "lowSha256": "37c7a367d2f7bc824f47ba0716bd818dff3f4c78893bc4d2f19d5060ae77847d",
+      "src": "flicker150:01. High/mall-v2/mall_today_table.glb",
+      "sha256": "05c2fa392fa488583be551563d2443630db5d2bb2aca2891854fc0c2d561dced",
+      "lowSrc": "flicker150:02. Low/mall-v2/mall_today_table_low.glb",
+      "lowSha256": "217db1be5d7a249de87050d24ed0edf186f33ae233cfb395efdc0c82778e2e7c",
       "precompressed": true
     },
     {
@@ -7610,10 +7608,10 @@
     },
     {
       "out": "mall-v2/mall_wall_shelf.glb",
-      "src": "mall82:01. High/mall_wall_shelf.glb",
-      "sha256": "537868a5ba578313e37546f3683700df0b0f074ab8d12073eb2f7a9ae673d648",
-      "lowSrc": "mall82:02. Low/mall_wall_shelf_low.glb",
-      "lowSha256": "38ba43779de349db05e15bd8dfed918fd28055758c70b4f4040904a87a92d656",
+      "src": "flicker150:01. High/mall-v2/mall_wall_shelf.glb",
+      "sha256": "2dc653aeaf2f540beb05c5c52413efa9c53de6156522806ccbe064a56c5e14a1",
+      "lowSrc": "flicker150:02. Low/mall-v2/mall_wall_shelf_low.glb",
+      "lowSha256": "fb1a7365113e762b804ed59415fa4d2842d677b7729b807a8e45cb17412e62f2",
       "precompressed": true
     },
     {
@@ -7676,10 +7674,10 @@
     },
     {
       "out": "mall-v2/wear_display_shelf.glb",
-      "src": "mall82:01. High/wear_display_shelf.glb",
-      "sha256": "e8d640e5619158df409f7fc7805dd35dee24fc8177e9eca486fa7d9d20476449",
-      "lowSrc": "mall82:02. Low/wear_display_shelf_low.glb",
-      "lowSha256": "0833e1b5290fdd0d6d57f30b13f611da92135c49be9a8584cabcf5efd58f4f44",
+      "src": "flicker150:01. High/mall-v2/wear_display_shelf.glb",
+      "sha256": "4a85fa04cc632a78289b5472119e33d47b7ee9eb0a192c22e1f4a023cdbbfac0",
+      "lowSrc": "flicker150:02. Low/mall-v2/wear_display_shelf_low.glb",
+      "lowSha256": "fd22ec3a1af8b4ba94ef6929deca5eb0dda973b454a5ab4283c5392e61e2951c",
       "precompressed": true
     },
     {
@@ -9011,8 +9009,8 @@
     },
     {
       "out": "together-v1/mark_note.glb",
-      "src": "emote101:01. High/mark_note.glb",
-      "sha256": "91d22c66fbccf1aba90593824be06c3a1a0618ccba604db032b064cc0dc8b565",
+      "src": "flicker150:01. High/together-v1/mark_note.glb",
+      "sha256": "9a963ed32b3098a442ced13e711ce174f6d0fb042e5cbd8bcda79b007f117a3c",
       "precompressed": true
     },
     {
@@ -13967,6 +13965,68 @@
       "lowSrc": "auction137:02. Low/auction-v1/auction_board_low.glb",
       "lowSha256": "cdbf244270525d9d91ee2815c9f4a19c12951c9d869fa9d7bfd67c21e119ee25",
       "precompressed": true
+    },
+    {
+      "out": "den-v1/den_room.glb",
+      "src": "den147:01. High/den-v1/den_room.glb",
+      "sha256": "36c4f2b49665dd7c804014d8ee8318f79a6d00e0a0f158069e448cd60fa066dc",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/table_dice.glb",
+      "src": "den147:01. High/den-v1/table_dice.glb",
+      "sha256": "b3853c4304c4f658c6ff5124cb22d93897b55163617d9a864dda7fb2a6d162e6",
+      "lowSrc": "den147:02. Low/den-v1/table_dice_low.glb",
+      "lowSha256": "5b8d2603bb354be04163b378548debadf4ca1b8506c319ca58a25593d74b788b",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/table_cards.glb",
+      "src": "den147:01. High/den-v1/table_cards.glb",
+      "sha256": "14f92441b3b96939a64c470e5e6b00e3705e478eae32068696fd77e0a3ecde5d",
+      "lowSrc": "den147:02. Low/den-v1/table_cards_low.glb",
+      "lowSha256": "31fcc607c2f55f19980b6aaec2548a2508ddbdeeaf16473f650ee18a70401a81",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/table_roulette.glb",
+      "src": "den147:01. High/den-v1/table_roulette.glb",
+      "sha256": "09bce12163b968e3fc9950edc81653adab7cc1d07d442835f9cf65e519d0cee5",
+      "lowSrc": "den147:02. Low/den-v1/table_roulette_low.glb",
+      "lowSha256": "72d8ce8e479f0a21234ad9eb09505193e1219dbbfbc595b25a796e0e18c655a2",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/slot_machine.glb",
+      "src": "den147:01. High/den-v1/slot_machine.glb",
+      "sha256": "a1896ec7da59b9e602d250b99c473877d87a24c0453dfe8423ef4cc7bfd3faf2",
+      "lowSrc": "den147:02. Low/den-v1/slot_machine_low.glb",
+      "lowSha256": "baed7fe137c61c39df7c7656de4953c4d34d3afe7426fd26727f1348580e347a",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/secret_door.glb",
+      "src": "den147:01. High/den-v1/secret_door.glb",
+      "sha256": "56cd628c75068a723f36db8c80865e3cc9781992cd653516b476aa12527eb1a6",
+      "lowSrc": "den147:02. Low/den-v1/secret_door_low.glb",
+      "lowSha256": "a7ee1d7895e1a55a3075971a42e13b3f95c19a557e97ce510d8edb3554d43a17",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/sign_away.glb",
+      "src": "den147:01. High/den-v1/sign_away.glb",
+      "sha256": "4dcad9321ad97085ba20290be4f01a64102222afb9eecdd41770acf728529834",
+      "lowSrc": "den147:02. Low/den-v1/sign_away_low.glb",
+      "lowSha256": "d44b67ea07a00e7845c54acc47027eaf8baf6b6f2ba36e1fdba3686d6ca2aa4c",
+      "precompressed": true
+    },
+    {
+      "out": "den-v1/note_code.glb",
+      "src": "den147:01. High/den-v1/note_code.glb",
+      "sha256": "0cb761bbfccfa74d2ff5cc953b4373d2b4e91adb8993b6888279231cddb694ef",
+      "lowSrc": "den147:02. Low/den-v1/note_code_low.glb",
+      "lowSha256": "cf22e50cd339fef3c16a142f42e7b238430a4fdace18bd140007088ea52719ab",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -14074,6 +14134,7 @@
     "xmas149": "149. Game Island xmas stamp shop furniture 2026-11-16",
     "fountain148": "148. Game Island fountain crescent 2026-11-16",
     "auction137": "137. Game Island auction board 2026-11-15",
-    "flicker150": "150. Game Island flicker fixes 2026-11-16"
+    "flicker150": "150. Game Island flicker fixes 2026-11-16",
+    "den147": "147. Game Island underground den 2026-11-16"
   }
 }

@@ -52,7 +52,8 @@ test('섬 증권거래소: 문으로 들어가 보드 SPACE → 시세 30종 →
     // 테드 창
     await page.evaluate(([lx, lz]) => { const w = window.IslandExchange.world(lx, lz); window.PlazaDebug().teleport(w.x, w.z); }, [EX.TALK.lx, EX.TALK.lz - 0.2]);
     await expect.poll(() => spaceOn(page, 'exchange:clerk', isMobile), { timeout: 20000 }).toBe(true);
-    await shot(page, 'exchange-ted');
+    await expect(page.locator('#plazaDialog .tedCard')).toBeVisible({ timeout: 15000 }); await shot(page, 'exchange-ted'); /* (1.10.341: his window -- chips and the word) */
+    await page.evaluate(() => document.getElementById('plazaDialog').close());
     // out
     await page.evaluate(() => { const d = window.PlazaDebug(); const w = d.doors['exchange:exit']; d.teleport(w.x, w.z); });
     await expect.poll(() => spaceOn(page, 'exchange:exit', isMobile), { timeout: 20000 }).toBe(true);
