@@ -29,6 +29,13 @@
     xmas_stocking: { name: '양말 걸이', kind: 'furniture', good: 'xmas_stocking__plain' },
     xmas_gingerbread_house: { name: '과자 집', kind: 'furniture', good: 'xmas_gingerbread_house__plain' },
     title_christmas: { name: '칭호 「메리 크리스마스」', kind: 'title', title: 'title_event_christmas' },
+    // 1.10.338 (사용자 128A, assets 149): six more for the longer festival
+    xmas_check_sofa: { name: '빨간 체크 소파', kind: 'furniture', good: 'xmas_check_sofa__plain' },
+    xmas_gift_pile: { name: '선물 상자 더미', kind: 'furniture', good: 'xmas_gift_pile__plain' },
+    xmas_rocking_reindeer: { name: '루돌프 흔들목마', kind: 'furniture', good: 'xmas_rocking_reindeer__plain' },
+    xmas_snowman_lamp: { name: '눈사람 램프', kind: 'furniture', good: 'xmas_snowman_lamp__plain' },
+    xmas_gingerbread_shelf: { name: '진저브레드 선반', kind: 'furniture', good: 'xmas_gingerbread_shelf__plain' },
+    xmas_rug_snowflake: { name: '크리스마스 러그', kind: 'furniture', good: 'xmas_rug_snowflake__plain' },
   });
   const FESTIVALS = Object.freeze([
     Object.freeze({
@@ -43,8 +50,10 @@
       shop: Object.freeze([['harvest_basket', 3], ['straw_sheaf', 3], ['corn_string', 4], ['persimmon_string', 4], ['feast_table', 8], ['title_harvest', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
     }),
     // X2 (사용자 2026-10-27 「둘로 나눠」, 「모을 수 있는 도장 50개로 넉넉하게」): seven days, 50 stamps to be had for the stall's 37
+    // 1.10.338 (사용자 127A·128A, notes christmas-boost 끝): 12-1 to 12-25 -- its mood, play and tasks from the first; the stall's
+    // prices doubled and six pieces more (assets 149); the 24th and 25th's own (the white days, the sleigh, the stockings, the gathering) as they were
     Object.freeze({
-      id: 'christmas-2026', name: '크리스마스', start: '2026-12-19', end: '2026-12-25',
+      id: 'christmas-2026', name: '크리스마스', start: '2026-12-01', end: '2026-12-25',
       host: '크리스마스 주민', say: '메리 크리스마스! 이웃들에게 선물을 배달하고, 눈사람도 만들고, 성탄 저녁엔 트리 곁에 모여요.',
       tasks: Object.freeze({
         gift: { name: '선물 배달', stamps: 1, perDay: 3 }, // (a gift from the host's sack to the islander named on it)
@@ -54,12 +63,13 @@
         snowfight: { name: '눈싸움 한 판', stamps: 1, perDay: 1 }, // (1.10.334 P2 사용자 97A: five snowballs thrown at the snow forts -- xmas-play.js)
         contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 },
       }),
-      shop: Object.freeze([['xmas_tree_small', 8], ['xmas_fireplace', 8], ['xmas_snow_globe', 4], ['xmas_stocking', 3], ['xmas_gingerbread_house', 4], ['title_christmas', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
+      shop: Object.freeze([['xmas_tree_small', 16], ['xmas_fireplace', 16], ['xmas_snow_globe', 8], ['xmas_stocking', 6], ['xmas_gingerbread_house', 8], ['title_christmas', 20],
+        ['xmas_check_sofa', 16], ['xmas_gift_pile', 8], ['xmas_rocking_reindeer', 14], ['xmas_snowman_lamp', 8], ['xmas_gingerbread_shelf', 12], ['xmas_rug_snowflake', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
       // 1.10.329 (notes christmas-boost M1·M5): a light snow on the whole island in the evenings and nights (17:00 to 06:00),
       // all day on the 24th and 25th -- the 화이트 크리스마스, the island drawn in its winter look; the plaza tree lit on the
-      // first evening at 18:00, its countdown from 17:00
+      // first evening at 18:00 (1.10.338: 12-1), its countdown from 17:00
       snow: Object.freeze({ from: 17, to: 6, white: Object.freeze(['2026-12-24', '2026-12-25']) }),
-      lighting: Object.freeze({ day: '2026-12-19', hour: 18, countFrom: 17 }),
+      lighting: Object.freeze({ day: '2026-12-01', hour: 18, countFrom: 17 }),
       // 1.10.333 M6 산타 썰매 (assets 127): the 24th from 21:00 to 22:00 the sleigh and its four deer round the island in the
       // sky, a lap every two minutes
       sleigh: Object.freeze({ day: '2026-12-24', from: 21, to: 22, lapMs: 120000 }),

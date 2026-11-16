@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.338 크리스마스 12-1~25 확장 + 148 초승달 + 131A 대청마당 눈
+
+- 127A: christmas-2026 시작 12-01(분위기·놀이·할 일·썰매 언덕·눈 요새), 점등 12-01 18시, 24·25 특별한 것 그대로, 관리자 미리 보기 첫날 12-01.
+- 128A: 가판대 12가지 — 기존 tree_small 16·fireplace 16·snow_globe 8·stocking 6·gingerbread_house 8·칭호 20, 새 xmas-v3(에셋 149) check_sofa 16·gift_pile 8·rocking_reindeer 14·snowman_lamp 8·gingerbread_shelf 12·rug_snowflake 10. 램프·흔들목마는 밤에만 빛남, 흔들목마 앉으면 rock 노드 ±8°.
+- 148: plaza_medallion(높음·낮음) 새 초승달로 교체, sha 확인.
+- 131A: 화이트 날 대청마당 얇은 눈 판(분수 둘레 길·네 방향 길은 적게, 분수·수로·화단은 없음) + 트리 윗면 눈. PC·폰 60 fps(화면 상한) 전후 같음.
+- 사진 notes img/xmas7-338.
+- 다음: 섬 경매장(137) + 주식 소식(4가지 확인 대기).
+
 ## v1.10.337 문제 기록 11-16 묶음 (A2·A3·111A·112A)
 
 - A2: 대청마당 포장·분수 원·관공서 마당에 계절 땅 덮개·지면 레이어 안 나옴(island.js bareGround).
@@ -31,10 +40,3 @@
 - 24일 밤 미리 보기는 화이트 크리스마스를 켬; 대청마당은 계절 구역이 아니라 눈 덮개가 원래 없음(사진 white-plaza / white-west).
 - 사진 notes img/xmas6-336.
 - 다음: 1.10.337 문제 기록(A1~A3·111A·112A).
-
-## v1.10.335 주식 장 09~23시·주문 횟수 제한 없음 (긴급)
-
-- lib/island-stocks.js CLOSE 17 → 23, PER_DAY 9 → 15(마감가 23:00). 시세는 틱 번호로 뽑아서 첫날(11-16) 09~17시 값·부도 계획이 그대로(키 두 개로 sha1 확인, 단위 시험).
-- 하루 주문 20번 제한 없앰(LIMIT 오류·「남은 주문 n번」 표시 지움, 하루 횟수는 기록만). 수수료 0.5%·한 회사 1,000주 그대로.
-- 화면·오류 문구 「오전 9시~오후 11시」.
-- 다음: 1.10.336 138 주민 크리스마스 차림·하얀 눈(103A)·앉기·택시 화면 돌리기.
