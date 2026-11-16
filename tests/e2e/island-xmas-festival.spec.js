@@ -148,18 +148,17 @@ test('썰매 언덕·눈싸움: 썰매 타기(꼭대기에서 내려옴, 옆 사
   try {
     const a = await shopper(browser, request, '썰매꾼', 0, 'female'); const b = await shopper(browser, request, '눈싸움상대', 0, 'male');
     for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); }
-    for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.xmasPlay?.()?.shown), { timeout: 60000 }).toBe(true);
-    expect(await a.page.evaluate(() => window.PlazaDebug().xmasPlay().blocked)).toBe(X.solids().length + 2); /* (+ the sled standing by the foot) */
+    for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.xmasPlay?.()?.shown), { timeout: 60000 }).toBe(true);    expect(await a.page.evaluate(() => window.PlazaDebug().xmasPlay().blocked)).toBe(X.solids().length + 2); /* (+ the sled standing by the foot) */
     const P = (who) => who.page.evaluate(() => window.PlazaDebug().xmasPlay());
     // the ride: b by the run-out, watching
     const watch = X.hillPoint(4, -2); await standAt(request, b, watch.x, watch.z);
     const door = X.hillPoint(0, X.HILL.door); await standAt(request, a, door.x, door.z);
     await expect.poll(() => spaceOn(a.page, 'fest:sled'), { timeout: 20000 }).toBe(true);
     const ground = await a.page.evaluate(([x, z]) => window.IslandTerrain.heightAt(x, z), [door.x, door.z]);
-    await expect.poll(async () => { const s = (await P(a)).sled; return Boolean(s && s.y > ground + 2); }, { timeout: 10000 }).toBe(true); /* (on top) */
-    await expect.poll(async () => { const o = (await P(b)).others.find((x) => x.sledding); return Boolean(o?.sled && o.y > ground + 0.5); }, { timeout: 15000 }).toBe(true);
+    await expect.poll(async () => (await P(b)).others.some((o) => o.peak > ground + 0.5), { timeout: 30000 }).toBe(true); /* (b saw a on the sled up on the hill -- drawn on its track) */
     if (process.env.SHOT_DIR) { const h = X.hillPoint(0, 6); await b.page.evaluate(([tx, tz]) => { const d = window.PlazaDebug(); d.setCamYaw(Math.atan2(-(tx - d.x), -(tz - d.z))); d.setCamPitch(0.12); }, [h.x, h.z]); await b.page.waitForTimeout(400); await shoot(b.page, 'xmas-sled-ride'); } /* (b's camera on the hill) */
     await expect.poll(async () => { const s = await P(a); return [s.sled, s.act]; }, { timeout: 20000 }).toEqual([null, null]);
+    expect((await P(a)).peak).toBeGreaterThan(ground + 2); /* (from the top) */
     const end = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; }); const l = X.hillLocal(end.x, end.z);
     expect(l.v).toBeLessThan(-3); expect(Math.abs(l.u)).toBeLessThan(0.5); /* (past the foot, on the run) */
     // the snowballs: a in the west fort, b in the east one, a facing b
@@ -169,10 +168,10 @@ test('썰매 언덕·눈싸움: 썰매 타기(꼭대기에서 내려옴, 옆 사
     for (let k = 0; k < 5; k += 1) {
       const answered = a.page.waitForResponse((r) => r.url().includes('/api/island/festival/snowball'));
       await expect.poll(() => spaceOn(a.page, 'fest:snowball'), { timeout: 15000 }).toBe(true); expect((await answered).status()).toBe(200);
-      if (k === 0) await expect.poll(async () => { const s = await P(b); return [s.snowed, s.act]; }, { timeout: 10000 }).toEqual([true, 'snow:hit']);
+      if (k === 0) await expect.poll(async () => (await P(b)).hits >= 1, { timeout: 15000 }).toBe(true); /* (b's screen: hit -- HitReact, the snow on them) */
       await a.page.waitForTimeout(900);
     }
-    await expect.poll(async () => (await P(a)).others.some((o) => o.snowed), { timeout: 10000 }).toBe(true); /* (b's own word: hit) */
+    await expect.poll(async () => (await P(a)).others.some((o) => o.hits >= 1), { timeout: 20000 }).toBe(true); /* (b's own word: hit -- the snow on them on a's screen too) */
     if (process.env.SHOT_DIR) { await a.page.evaluate((y) => { const d = window.PlazaDebug(); d.setCamYaw(y + Math.PI); d.setCamPitch(0.2); }, Math.atan2(be.x - aw.x, be.z - aw.z)); await a.page.waitForTimeout(300); await shoot(a.page, 'xmas-snowball'); } /* (behind a, toward b: the snow on them) */
     await expect(a.page.locator('#toast')).toContainText('눈싸움 한 판', { timeout: 15000 });
     expect((await get(request, '/api/island/festival', a.token)).data.festival.tasks.find((t) => t.id === 'snowfight').today).toBe(1);
