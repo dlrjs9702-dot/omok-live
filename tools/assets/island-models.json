@@ -13969,55 +13969,55 @@
     {
       "out": "den-v1/den_room.glb",
       "src": "den147:01. High/den-v1/den_room.glb",
-      "sha256": "36c4f2b49665dd7c804014d8ee8318f79a6d00e0a0f158069e448cd60fa066dc",
+      "sha256": "4545b7d71e4a72e53d28ccb4b5be665875308b9e08f22c8d277ce8a7d24aed81",
       "precompressed": true
     },
     {
       "out": "den-v1/table_dice.glb",
       "src": "den147:01. High/den-v1/table_dice.glb",
-      "sha256": "b3853c4304c4f658c6ff5124cb22d93897b55163617d9a864dda7fb2a6d162e6",
+      "sha256": "7d3c62fd9f34b02afc82b32660292b9ca66ba70b44cc6c55e270902dd67da755",
       "lowSrc": "den147:02. Low/den-v1/table_dice_low.glb",
-      "lowSha256": "5b8d2603bb354be04163b378548debadf4ca1b8506c319ca58a25593d74b788b",
+      "lowSha256": "e4623eaa5c5c5fbc4db02406ef3b89d15b34e824d08e323fff8231d4e438b0c4",
       "precompressed": true
     },
     {
       "out": "den-v1/table_cards.glb",
       "src": "den147:01. High/den-v1/table_cards.glb",
-      "sha256": "14f92441b3b96939a64c470e5e6b00e3705e478eae32068696fd77e0a3ecde5d",
+      "sha256": "2619a990acef4a19b062e20714d6f856370690277e31dc50ff647895619ec3aa",
       "lowSrc": "den147:02. Low/den-v1/table_cards_low.glb",
-      "lowSha256": "31fcc607c2f55f19980b6aaec2548a2508ddbdeeaf16473f650ee18a70401a81",
+      "lowSha256": "00ed7224311ed32b294f057e36c3566b37be2645bd255901d08e135f82ccee23",
       "precompressed": true
     },
     {
       "out": "den-v1/table_roulette.glb",
       "src": "den147:01. High/den-v1/table_roulette.glb",
-      "sha256": "09bce12163b968e3fc9950edc81653adab7cc1d07d442835f9cf65e519d0cee5",
+      "sha256": "ae49814ac597fa0f48e36564347b4e2dd08782aaab1ee12ecd731f78ab6752b0",
       "lowSrc": "den147:02. Low/den-v1/table_roulette_low.glb",
-      "lowSha256": "72d8ce8e479f0a21234ad9eb09505193e1219dbbfbc595b25a796e0e18c655a2",
+      "lowSha256": "7ec2b7c1c9c2fd39ecf45b0b48a575b05031ac8b82e38ad131aa7a579a401056",
       "precompressed": true
     },
     {
       "out": "den-v1/slot_machine.glb",
       "src": "den147:01. High/den-v1/slot_machine.glb",
-      "sha256": "a1896ec7da59b9e602d250b99c473877d87a24c0453dfe8423ef4cc7bfd3faf2",
+      "sha256": "163d8b189402fe40a074733ab5caf0e42aa188ddec0c7ecec5f184dd7a74adcc",
       "lowSrc": "den147:02. Low/den-v1/slot_machine_low.glb",
-      "lowSha256": "baed7fe137c61c39df7c7656de4953c4d34d3afe7426fd26727f1348580e347a",
+      "lowSha256": "3bc7f5387c2da5077be53296bbf6fe48c49f31267a75affca8af603e96f7b5bc",
       "precompressed": true
     },
     {
       "out": "den-v1/secret_door.glb",
       "src": "den147:01. High/den-v1/secret_door.glb",
-      "sha256": "56cd628c75068a723f36db8c80865e3cc9781992cd653516b476aa12527eb1a6",
+      "sha256": "f5316215d8b95302f3ba928128e8072a31e884c5a1ab9e6d877ad4cbb9a428db",
       "lowSrc": "den147:02. Low/den-v1/secret_door_low.glb",
-      "lowSha256": "a7ee1d7895e1a55a3075971a42e13b3f95c19a557e97ce510d8edb3554d43a17",
+      "lowSha256": "b40bf59f2c145df4aed1fcf7459c188472ca4d1651987c1cfd40eaece2514928",
       "precompressed": true
     },
     {
       "out": "den-v1/sign_away.glb",
       "src": "den147:01. High/den-v1/sign_away.glb",
-      "sha256": "4dcad9321ad97085ba20290be4f01a64102222afb9eecdd41770acf728529834",
+      "sha256": "ab30f6fe137807a1abf3292aa138c0d0343ff9bb6b3b09cb2e492a1c2c1f935c",
       "lowSrc": "den147:02. Low/den-v1/sign_away_low.glb",
-      "lowSha256": "d44b67ea07a00e7845c54acc47027eaf8baf6b6f2ba36e1fdba3686d6ca2aa4c",
+      "lowSha256": "7f1d9b2136302b4f97fc3ef0fc7eb27eb2e9f31de87fde11927180529f9d20bd",
       "precompressed": true
     },
     {
@@ -14026,6 +14026,382 @@
       "sha256": "0cb761bbfccfa74d2ff5cc953b4373d2b4e91adb8993b6888279231cddb694ef",
       "lowSrc": "den147:02. Low/den-v1/note_code_low.glb",
       "lowSha256": "cf22e50cd339fef3c16a142f42e7b238430a4fdace18bd140007088ea52719ab",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_clay.glb",
+      "src": "ore140:01. High/ore-v1/ore_clay.glb",
+      "sha256": "c6dc3c7982c58f77ede75e8fdad9794591cfc653ac2b94a7f691cf80786d4687",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_clay_low.glb",
+      "lowSha256": "65dbfdafd0b67bae5d1d3f7a68fd80a18f5f5dff50b50a8d3640812167d5e1ac",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_coal.glb",
+      "src": "ore140:01. High/ore-v1/ore_coal.glb",
+      "sha256": "0da71fdec6413efb90ff7b5091bc95a17d4105b9b55ed7f22ae6ae90f8694e06",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_coal_low.glb",
+      "lowSha256": "81dd17c78e619d271ae7355d076347614d2f79c3a5da402eff6af01ed0340ed7",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_copper.glb",
+      "src": "ore140:01. High/ore-v1/ore_copper.glb",
+      "sha256": "6c4bd14464c691641c14c9e745c3ffa13031ca9c7b861239281e5806b3e9771d",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_copper_low.glb",
+      "lowSha256": "a08bada885e46dbcfaa700b7c2d602b90234dc1a189555c7a0ed41a2a613802a",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_crystal.glb",
+      "src": "ore140:01. High/ore-v1/ore_crystal.glb",
+      "sha256": "6af95fe4845c6c5ef7f08994a16a5d277de02eed1461cf738439be1388540cfb",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_crystal_low.glb",
+      "lowSha256": "079e4d354773b3e082e39b96c0ca328b357c7128d7d7e9a5ab35b90ffcddbb1e",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_gold.glb",
+      "src": "ore140:01. High/ore-v1/ore_gold.glb",
+      "sha256": "ff06f348be2a85374984a6739d52e6b9b321710478e5cf124cd8a37975dfa3e7",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_gold_low.glb",
+      "lowSha256": "8251e59127f7987bf2665cc6bf0e38fb4f3253c4c958382d3ef02425ac7f35bc",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_granite.glb",
+      "src": "ore140:01. High/ore-v1/ore_granite.glb",
+      "sha256": "07d3f5d884c94972867de8e1a97085354bbec3aff4af15a0dd4229de489cdbeb",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_granite_low.glb",
+      "lowSha256": "5b1e36cfbdfbe523775cf1f85af6a57e7e96d12da0bbb7b77f531ad9fbc6604a",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_iron.glb",
+      "src": "ore140:01. High/ore-v1/ore_iron.glb",
+      "sha256": "9c3666bb396d4bec0a09c8d9bc461472e21f9a7b1e0fad5df0c7d0fd49551989",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_iron_low.glb",
+      "lowSha256": "bfce2656714162113a3fb06bf6ff5365dbde118820ba5ef833e566fc71ef6350",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_pile.glb",
+      "src": "ore140:01. High/ore-v1/ore_pile.glb",
+      "sha256": "d98d0523dff5b858a48383cea38506762130bd1075d11fe9ff2507e7f5c114ed",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_pile_low.glb",
+      "lowSha256": "fed12c5d35c9d99d557630c1b9cdd7284bc1dc9d24aabad143b50f2cfb52e35b",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/ore_silver.glb",
+      "src": "ore140:01. High/ore-v1/ore_silver.glb",
+      "sha256": "ac5f2270870082fe558b1c0eaf1d622f2a7621fe87f9b988c8f38aa92632922e",
+      "lowSrc": "ore140:02. Low/ore-v1/ore_silver_low.glb",
+      "lowSha256": "54c9470cb8a7748ca52f1fe4fca3bdde7cfebc8644b5724b97de2e69a430bb2c",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_a.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_a.glb",
+      "sha256": "2a1a128a2c259984a4aa7d0d8850a0935c8a6ac5d1b094f4abf585cdc455b907",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_a_low.glb",
+      "lowSha256": "8c1ed2f284de0142ac7c6c7d7cecde00f54d620ba6889da00fa916a9b764e8fa",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_a_crystal.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_a_crystal.glb",
+      "sha256": "3189e5c27809fce60c6a9fe56b595aa12fc7f8342a2b83c05f9df151a3707052",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_a_crystal_low.glb",
+      "lowSha256": "ea034b134bad8e72a28a490d1b0e07c37385bd881eb538372dfb84f739a02897",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_a_mined.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_a_mined.glb",
+      "sha256": "80514697e2bbcae606ab5a74f828b28b467164d3c4ae6f0f95f3269b2ac02b35",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_a_mined_low.glb",
+      "lowSha256": "a54f87603abbeac34f5dc3d54ad1297df932eb40781bbd98c8dff15f1a4e400d",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_a_mined_crystal.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_a_mined_crystal.glb",
+      "sha256": "fd991cb37af8f7cf38f08957dda56e1be09578f6d63efc8d5e6a67359bc9fe9e",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_a_mined_crystal_low.glb",
+      "lowSha256": "ab5ecc7091af5a1ad4473b3bcba71c67eede28589ce77fcb08c3ab889a266d03",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_b.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_b.glb",
+      "sha256": "825f761e452f3dbf1e7eb5835004ec97057ed1bbb57f5139b7340607a2823438",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_b_low.glb",
+      "lowSha256": "d037d5d2ec92f84390c40f1b15f505442731264de4d950a9028a1f0fbed90f40",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_b_crystal.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_b_crystal.glb",
+      "sha256": "7974945de088a1e2025053e572e56bba4362d922008f14b7b0b7494174f7fbdd",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_b_crystal_low.glb",
+      "lowSha256": "66104764793107dbd8e645a2376fc64022483aee6b7f6b3b7354d3c242e1b532",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_b_mined.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_b_mined.glb",
+      "sha256": "bdd4b7c26f7c28418f23d0bcfbd6c3fa09ae2ac6d3532afb3268be2725ce7268",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_b_mined_low.glb",
+      "lowSha256": "2ded1d2cc6d028f80a292e6ca1155816ff7cf59b11a982afd9014cef50a5f29a",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_b_mined_crystal.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_b_mined_crystal.glb",
+      "sha256": "e1ea5bb398d6ab81f01c50c01283975aa3fd6e4380cc08fbf79291446c16c57f",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_b_mined_crystal_low.glb",
+      "lowSha256": "d4283d248b55979a56f41780c06a69179202f2a0c78c799fc82af41d292e1442",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_c.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_c.glb",
+      "sha256": "990408012a8c04adfe164bcf0bf014213a73b76faf62ca34443feaaa4c8b85a3",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_c_low.glb",
+      "lowSha256": "df67fe58ce0961cb83e0c82677ce1aa7423e298424d74818f279035b9c041b52",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_c_crystal.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_c_crystal.glb",
+      "sha256": "7566c63d04dbf8eaa6785bc7de612422b12c44b7ffd88cf73853e7ccbcba3f44",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_c_crystal_low.glb",
+      "lowSha256": "a3f8041451d5c575dc1934a0ecc4cdfbf4150fc33c06a079f3b4d1bbc04e5799",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_c_mined.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_c_mined.glb",
+      "sha256": "3350b78244137cc9e6101c7af7784c8145eb6529085257d684e0b3bb64551ce4",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_c_mined_low.glb",
+      "lowSha256": "433ba6e7f570adb8c9d44710728cf9e95f13ad1c9c99e8dd78267d31ae82ec15",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v1/vein_rock_c_mined_crystal.glb",
+      "src": "ore140:01. High/ore-v1/vein_rock_c_mined_crystal.glb",
+      "sha256": "55915beb3231eaaa9c39c74b2ee010e0d521366db131c4d81dcc9d84428ae495",
+      "lowSrc": "ore140:02. Low/ore-v1/vein_rock_c_mined_crystal_low.glb",
+      "lowSha256": "27734329204efa62897222bc0b506c07435a7228683d7966fd0b3028f0f6cb24",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/ore_cart.glb",
+      "src": "quarry141:01. High/quarry-v2/ore_cart.glb",
+      "sha256": "7257ee2cddfc4b7768e47b3dab4c4dffc70a7c72874105167d391d342fd3cb75",
+      "lowSrc": "quarry141:02. Low/quarry-v2/ore_cart_low.glb",
+      "lowSha256": "feef45e18dd1c62261b07c15262bd5f0cd980c21924dbe0bb971a3e9c8430a9a",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/rock_wall_a.glb",
+      "src": "quarry141:01. High/quarry-v2/rock_wall_a.glb",
+      "sha256": "5aa2bfea0aa59df7391dc618262bce7be6e8b47de8848d86ce9bd40b3a032dbc",
+      "lowSrc": "quarry141:02. Low/quarry-v2/rock_wall_a_low.glb",
+      "lowSha256": "030e8982b24104c01afa09ae00948d122b1e2d35bb8db706700556b21eb71bfc",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/rock_wall_a_far.glb",
+      "src": "quarry141:01. High/quarry-v2/rock_wall_a_far.glb",
+      "sha256": "28ef6016e3c95ec6833a2b8c7d92c846ff57270424f0152152519082915870f1",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/rock_wall_b.glb",
+      "src": "quarry141:01. High/quarry-v2/rock_wall_b.glb",
+      "sha256": "937f99b21fd578e7ba11c8f8c03f6c23f4bb366f1e77234807e1678eda388641",
+      "lowSrc": "quarry141:02. Low/quarry-v2/rock_wall_b_low.glb",
+      "lowSha256": "d5fe8e8911ed12ff4bb1e8813dd67bf84d861b096df8472144221340a57450e5",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/rock_wall_b_far.glb",
+      "src": "quarry141:01. High/quarry-v2/rock_wall_b_far.glb",
+      "sha256": "4f1d5412923a7e6f3a180eccd76ebbe527e28345c350d87ff13d5e178171b5e3",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/rubble_large.glb",
+      "src": "quarry141:01. High/quarry-v2/rubble_large.glb",
+      "sha256": "328f7bbdc43147252c3dfd03b42927695a3605af0fb2e3dffee470df2bcceb2b",
+      "lowSrc": "quarry141:02. Low/quarry-v2/rubble_large_low.glb",
+      "lowSha256": "db394dbdae75f1c0f2f6b75f05009a81efc93a24d78d64ac8eb8871934a6e105",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/rubble_small.glb",
+      "src": "quarry141:01. High/quarry-v2/rubble_small.glb",
+      "sha256": "d5298bb56269301050a316782d2c48da9002a1e0b7104d6a20eb2472d3c2b08b",
+      "lowSrc": "quarry141:02. Low/quarry-v2/rubble_small_low.glb",
+      "lowSha256": "499b6441cf954db8828e48f085508305c755179bf7f870e0a5f6c8654046ecce",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/tool_rack.glb",
+      "src": "quarry141:01. High/quarry-v2/tool_rack.glb",
+      "sha256": "731222773a07f5e26825b342458a9fbc944243e5bded81c028bd9f020cdfb09a",
+      "lowSrc": "quarry141:02. Low/quarry-v2/tool_rack_low.glb",
+      "lowSha256": "835b1f288860cf41ff7bc7f7a4267c2b030e877808e2129fd86e8b1ec8baf18f",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/work_tent.glb",
+      "src": "quarry141:01. High/quarry-v2/work_tent.glb",
+      "sha256": "538d6cc6af383134acc8c7e2895c7be5121b3c228c3476d40ec674cfdd833f3a",
+      "lowSrc": "quarry141:02. Low/quarry-v2/work_tent_low.glb",
+      "lowSha256": "6096bea109d113c3cb856726e8a44a99256a12bb140268f5ffcf43fc90bf38d3",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v2/work_tent_far.glb",
+      "src": "quarry141:01. High/quarry-v2/work_tent_far.glb",
+      "sha256": "a1bd44b38610645c49feb3002cc67f7c71b16511383555ad8eb6e297a3e09763",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/bench_face.glb",
+      "src": "quarry143:01. High/quarry-v3/bench_face.glb",
+      "sha256": "2512e1b020a026f310941b855438517fa9089600f05c778368eeafe3961ec589",
+      "lowSrc": "quarry143:02. Low/quarry-v3/bench_face_low.glb",
+      "lowSha256": "59b4b7062750f812b340521ec4e16ec77dc45fdb12de17ca2d55fb4f2f016885",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/bench_face_end_l.glb",
+      "src": "quarry143:01. High/quarry-v3/bench_face_end_l.glb",
+      "sha256": "de0e97c1368ec7646baaf252f5cc67c443c975122ac9171dc7a0816d09ff8ed9",
+      "lowSrc": "quarry143:02. Low/quarry-v3/bench_face_end_l_low.glb",
+      "lowSha256": "4e9eb3e3567a1fdbdfb5250f08893da863b6031ad57283dd5475093a66cff089",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/bench_face_end_l_far.glb",
+      "src": "quarry143:01. High/quarry-v3/bench_face_end_l_far.glb",
+      "sha256": "e84aba03c5afd83327074f70290a7bc3e77b0e5d449ab3a27b3f3121ed8c9de1",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/bench_face_end_r.glb",
+      "src": "quarry143:01. High/quarry-v3/bench_face_end_r.glb",
+      "sha256": "ca859d9abbd5c03c3174b4f93feb9e16477e4cbbd971ba139995c7368ce41816",
+      "lowSrc": "quarry143:02. Low/quarry-v3/bench_face_end_r_low.glb",
+      "lowSha256": "76869142d353f61b789b2132904e09263f826454a86ed89547bb761f8a6d99ae",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/bench_face_end_r_far.glb",
+      "src": "quarry143:01. High/quarry-v3/bench_face_end_r_far.glb",
+      "sha256": "92db4851df587855ece238d326b726d7bb635777513211f45214e0ec6e6c052e",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/bench_face_far.glb",
+      "src": "quarry143:01. High/quarry-v3/bench_face_far.glb",
+      "sha256": "a49addfc4dd964b3278c37a0d3bf0b97454638ec821b6fdfbefedb87b771634e",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/crane_big.glb",
+      "src": "quarry143:01. High/quarry-v3/crane_big.glb",
+      "sha256": "d91f824b01de0c3bbb578ef36bc45734f5a912ab918d6f9cea0d4f11962985e3",
+      "lowSrc": "quarry143:02. Low/quarry-v3/crane_big_low.glb",
+      "lowSha256": "93ae1b54e7f95d8fd12333f9c620461edd494655f013bb5b522025e8193326e7",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/crane_big_far.glb",
+      "src": "quarry143:01. High/quarry-v3/crane_big_far.glb",
+      "sha256": "7987396dc7836d1caad5fec757d18bb7032f2a224e58754504c5d493acdcf9db",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/crane_small.glb",
+      "src": "quarry143:01. High/quarry-v3/crane_small.glb",
+      "sha256": "8aab001b16d4bb8217ecc22d48d2dbe02adcac011f6f5df34e9345f748a208b1",
+      "lowSrc": "quarry143:02. Low/quarry-v3/crane_small_low.glb",
+      "lowSha256": "bfe46574dc1f022900aff5ae3b49a27fb08751f0c68acd765c630a361161d580",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/crane_small_far.glb",
+      "src": "quarry143:01. High/quarry-v3/crane_small_far.glb",
+      "sha256": "0c83e28c5798ab311b54ccb0564ec506bbdaa9a077d7c95673d67a6cef21422e",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/ore_crate.glb",
+      "src": "quarry143:01. High/quarry-v3/ore_crate.glb",
+      "sha256": "f6a7b3203e72bea817297eb0aeac0ede9dc24c3359dc754afe922a5c91ee90f7",
+      "lowSrc": "quarry143:02. Low/quarry-v3/ore_crate_low.glb",
+      "lowSha256": "41ce3b1e1b539f4576f29b1b8533d74889a1f4d5cafbe5a2a9bf9b32f65e58d8",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/rail_end.glb",
+      "src": "quarry143:01. High/quarry-v3/rail_end.glb",
+      "sha256": "e6179ebbfbedfaa934c144d9b43792d833afa80e92413ed33e2ac431fbedf3be",
+      "lowSrc": "quarry143:02. Low/quarry-v3/rail_end_low.glb",
+      "lowSha256": "89899fef327bca0927122dbc29f78a9ba5da8c0d15bb1f812c70bb2467fe85a2",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/rail_straight_2.glb",
+      "src": "quarry143:01. High/quarry-v3/rail_straight_2.glb",
+      "sha256": "fee2c4a6e245e3923ef66e947eaaeb4d621f635f0e4fc08f93cc41025709ecb1",
+      "lowSrc": "quarry143:02. Low/quarry-v3/rail_straight_2_low.glb",
+      "lowSha256": "a962d8c8acfdadf9d94c5072133991c1b99455bebf3d2a1fa7d6f28c246d0835",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/rope_rail.glb",
+      "src": "quarry143:01. High/quarry-v3/rope_rail.glb",
+      "sha256": "d5d35e499165067b73ef06fb9838eff95ad458539b2a386dc122608a68ffda94",
+      "lowSrc": "quarry143:02. Low/quarry-v3/rope_rail_low.glb",
+      "lowSha256": "929489383092b884fff8aa5c34a9e98238907ecada890080a004bbba32ad54ca",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/rope_rail_post.glb",
+      "src": "quarry143:01. High/quarry-v3/rope_rail_post.glb",
+      "sha256": "8c625a81450cf70b8cfa904e56613e21a75ed82839aac134c671a9e293f36c52",
+      "lowSrc": "quarry143:02. Low/quarry-v3/rope_rail_post_low.glb",
+      "lowSha256": "92ba9b591d38cff3b7eb15c2adf38627c7b739c22e01d27a0563feebda23a984",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/stone_blocks.glb",
+      "src": "quarry143:01. High/quarry-v3/stone_blocks.glb",
+      "sha256": "cfb0d848a9cc9576e41d5f861927960f376e3ac24682c2031ebc94ec988f8e1c",
+      "lowSrc": "quarry143:02. Low/quarry-v3/stone_blocks_low.glb",
+      "lowSha256": "b9c6e7bf4ef85f650735bfa5e419688ca4cb8255b5092198254c8236126fb703",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/view_deck.glb",
+      "src": "quarry143:01. High/quarry-v3/view_deck.glb",
+      "sha256": "7d1fa4102f4dd0dfe1bc9b9cc9dac51c9cf3c5bb06a83c9a2921ee214829ab1b",
+      "lowSrc": "quarry143:02. Low/quarry-v3/view_deck_low.glb",
+      "lowSha256": "e3dd446804b377925dd4cbbcbce36e21d5ce4185a797b7a591e35bbd636eb8e6",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v3/work_lamp.glb",
+      "src": "quarry143:01. High/quarry-v3/work_lamp.glb",
+      "sha256": "9e6ef9fb53162f6b929d68785bcde8d554c53e7754dbd8bb55ddb218d889570f",
+      "lowSrc": "quarry143:02. Low/quarry-v3/work_lamp_low.glb",
+      "lowSha256": "ead48204d7f51e9c311e55639bfc0f58a5d2af6479f902aa9d5584b26fd13cd8",
       "precompressed": true
     }
   ],
@@ -14135,6 +14511,9 @@
     "fountain148": "148. Game Island fountain crescent 2026-11-16",
     "auction137": "137. Game Island auction board 2026-11-15",
     "flicker150": "150. Game Island flicker fixes 2026-11-16",
-    "den147": "147. Game Island underground den 2026-11-16"
+    "den147": "147. Game Island underground den 2026-11-16",
+    "ore140": "140. Game Island ores 8 2026-11-16",
+    "quarry141": "141. Game Island quarry expansion props 2026-11-16",
+    "quarry143": "143. Game Island quarry development props 2026-11-16"
   }
 }

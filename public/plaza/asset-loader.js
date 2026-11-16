@@ -76,7 +76,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   function instance(gltf, entry) {
     if (entry.nightGlow) nightGlowFiles.add(gltf); // (v1.10.223: its `glow` parts lit at night, as windows)
-    const flat = !entry.keepNodes && !gltf.animations?.length && partsOf(gltf); // (S2: `keepNodes` -- a model with a part that moves, its nodes kept)
+    const flat = !entry.keepNodes && !gltf.animations?.length && partsOf(gltf, entry.paint); // (S2: `keepNodes` -- a model with a part that moves, its nodes kept; 1.10.342 `paint`)
     if (flat && flat.length === 1 && flat[0].material.vertexColors) {
       const mesh = new THREE.Mesh(flat[0].geometry, entry.haze ? hazed(flat[0].material, entry.haze) : flat[0].material);
       mesh.applyMatrix4(flat[0].matrix); // its place in the model (a quantized model's dequantizing scale too)
@@ -88,6 +88,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       return object;
     }
     const object = cloneObject(gltf.scene);
+    if (entry.paint) object.traverse((o) => { if (!o.isMesh) return; const list = [].concat(o.material).map((m) => paintedOf(m, entry.paint[m.name])); o.material = Array.isArray(o.material) ? list : list[0]; }); // (1.10.342: kept nodes, the painted material a copy)
     object.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.transparent && /^(window_glass|rail_glass|tank_water)$/.test(m.name)) m.depthWrite = false; /* (assets 59: the plaza channels' water too) */ });
     object.animations = gltf.animations || []; // v1.10.38: a looping prop (the Halloween bats' Flap) plays its own clip
     object.scale.multiplyScalar(entry.scale ?? 1);
@@ -287,8 +288,11 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }
     return geometry;
   }
-  function partsOf(gltf) {
-    if (partsCache.has(gltf)) return partsCache.get(gltf);
+  // (1.10.342 `paint`: a material's own colour by its name -- a copy per material and colour, shared by every model painted so)
+  const painted = new Map();
+  function paintedOf(material, colour) { if (!colour) return material; const key = `${material.uuid}|${colour}`; if (!painted.has(key)) { const m = material.clone(); m.color.set(colour); painted.set(key, m); made.push(m); } return painted.get(key); }
+  function partsOf(gltf, paint = null) {
+    const paintKey = paint ? JSON.stringify(paint) : ''; if (!partsCache.has(gltf)) partsCache.set(gltf, new Map()); const cached = partsCache.get(gltf); if (cached.has(paintKey)) return cached.get(paintKey);
     gltf.scene.updateMatrixWorld(true);
     const meshes = []; gltf.scene.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh) meshes.push(o); });
     // v1.10.36: a model that glows (an emissive material, the jack-o'-lantern's inside) keeps its own materials
@@ -299,9 +303,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const indexed = meshes.every((m) => m.geometry.index);
       const colourOf = (m) => (g) => {
         if (!g.attributes.normal) g.computeVertexNormals();
-        const count = g.attributes.position.count; const colour = new Float32Array(count * 3); const own = g.attributes.color;
+        const count = g.attributes.position.count; const colour = new Float32Array(count * 3); const own = g.attributes.color; const tone = paint?.[m.material.name] ? new THREE.Color(paint[m.material.name]) : m.material.color;
         for (let i = 0; i < count; i += 1) {
-          colour[i * 3] = m.material.color.r * (own ? own.getX(i) : 1); colour[i * 3 + 1] = m.material.color.g * (own ? own.getY(i) : 1); colour[i * 3 + 2] = m.material.color.b * (own ? own.getZ(i) : 1);
+          colour[i * 3] = tone.r * (own ? own.getX(i) : 1); colour[i * 3 + 1] = tone.g * (own ? own.getY(i) : 1); colour[i * 3 + 2] = tone.b * (own ? own.getZ(i) : 1);
         }
         for (const name of Object.keys(g.attributes)) if (!['position', 'normal'].includes(name)) g.deleteAttribute(name);
         g.setAttribute('color', new THREE.BufferAttribute(colour, 3));
@@ -329,7 +333,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       // shared with the loaded file (disposed with it), each with its place in the model
       parts = meshes.map((m) => ({ geometry: m.geometry, material: m.material, matrix: m.matrixWorld.clone() }));
     }
-    partsCache.set(gltf, parts);
+    cached.set(paintKey, parts);
     return parts;
   }
 
@@ -428,7 +432,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           if (!gltf) continue; // this zone's season has no model: its copies stay procedural
           const lowGltf = hit.entry.lowUrl ? models.get(hit.entry.lowUrl) : null;
           if (hit.entry.nightGlow) for (const g of [gltf, lowGltf]) if (g) nightGlowFiles.add(g); /* (316 ④: a batched lamp's glow lit at night, as an attached one's) */
-          const meshesOf = (model, shadow) => partsOf(model).map(({ geometry, material, matrix }) => {
+          const meshesOf = (model, shadow) => partsOf(model, hit.entry.paint).map(({ geometry, material, matrix }) => {
             const im = new THREE.InstancedMesh(geometry, material, count);
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });

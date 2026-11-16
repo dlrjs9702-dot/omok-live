@@ -112,15 +112,17 @@ const IslandHome = require('./public/plaza/island-home'); // 묶음 4 내 집
 const IslandYard = require('./public/plaza/island-yard'); // v1.10.225 마당 꾸미기
 const IslandFarm = require('./public/plaza/island-farm'); // v1.10.318 마당 농사 F1 + 집 손보기
 const IslandQuarry = require('./public/plaza/island-quarry'); // 1.10.323 Q1 채석장
+const IslandOres = require('./lib/island-ores'); // 1.10.342 4a 광석 8가지
 // (the rocks' state { id: { left, gen, minedAt } } -- kept in the world store; `gen` makes each ore's claim its own)
 let quarryKept = null; let quarryLoading = null; const quarryPulls = new Map(); // (session token -> a mining under way)
+let quarryTestPlan = null; let quarryTestDraw = null; // (1.10.342 tests only: /api/test/quarry/plan)
 async function quarryRocks(now = nowMs()) {
   if (!quarryKept) quarryKept = await (quarryLoading ||= pointStore.worldValue('quarry').then((v) => v && typeof v === 'object' ? v : {}).finally(() => { quarryLoading = null; }));
   let changed = false; const out = [];
   for (const r of IslandQuarry.ROCKS) {
     const k = quarryKept[r.id]; if (!k) { quarryKept[r.id] = { left: IslandQuarry.ORE_PER_ROCK, gen: now }; changed = true; }
-    const st = IslandQuarry.rockState(quarryKept[r.id], now); if (st.regrown) { quarryKept[r.id] = { left: st.left, gen: st.gen }; changed = true; }
-    out.push({ id: r.id, left: Math.max(0, quarryKept[r.id].left), stage: quarryKept[r.id].left > 0 ? 'full' : 'mined' });
+    const st = IslandQuarry.rockState(quarryKept[r.id], now, r); /* (1.10.342: its own fill time by its ore) */ if (st.regrown) { quarryKept[r.id] = { left: st.left, gen: st.gen }; changed = true; }
+    out.push({ id: r.id, ore: r.ore, left: Math.max(0, quarryKept[r.id].left), stage: quarryKept[r.id].left > 0 ? 'full' : 'mined' });
   }
   if (changed) await pointStore.setWorldValue('quarry', quarryKept);
   return out;
@@ -1433,7 +1435,7 @@ const FLEA_ERRORS = Object.freeze({ LIMIT: `한 사람이 ${IslandFlea.MINE_MAX}
 let denKeyHeld = null;
 const denKey = () => (denKeyHeld ||= (async () => { let k = await pointStore.worldValue('denKey'); if (typeof k !== 'string' || k.length < 32) { k = crypto.randomBytes(32).toString('hex'); await pointStore.setWorldValue('denKey', k); } return k; })().catch((e) => { denKeyHeld = null; throw e; }));
 const denJailed = async (account, day = kstDate(nowMs())) => { const d = (await pointStore.questDoc(account, 'denJail')).doc; return d.day === day && !d.passed; };
-const DEN_NOTE_SPOTS = (() => { try { return (IslandTerrain.plazaProps?.().seats || []).filter((s) => Number.isFinite(s.x) && Number.isFinite(s.z) && s.z > -250 && !String(s.id).startsWith('c-')).map((s) => ({ x: Math.round(s.x * 100) / 100, z: Math.round(s.z * 100) / 100, id: s.id })); } catch { return []; } })();
+const DEN_NOTE_SPOTS = (() => { try { return (IslandTerrain.plazaProps?.().seats || []).filter((s) => Number.isFinite(s.x) && Number.isFinite(s.z) && s.z > -250 && !String(s.id).startsWith('c-')).map((s) => ({ x: Math.round(s.x * 100) / 100, z: Math.round(s.z * 100) / 100, id: s.id, yaw: Math.round((s.yaw || 0) * 1000) / 1000 })); } catch { return []; } })(); /* (1.10.342: its facing -- the page's SPACE spot before it) */
 const denToday = async (now = nowMs()) => { const day = kstDate(now); const key = await denKey(); return { day, word: IslandDen.wordOf(key, day), note: IslandDen.noteSpot(key, day, DEN_NOTE_SPOTS) }; };
 let denRaid = null; const denRaidDay = { day: null, n: 0 }; const denPlayAt = new Map(); let denRaidAuto = process.env.NODE_ENV !== 'test';
 const denRaidView = (r = denRaid) => (r ? { start: r.start, arrive: r.arrive, hintAt: r.hintAt, searchEnd: r.searchEnd, end: r.end, path: r.path } : null);
@@ -4902,7 +4904,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.341' });
+    return sendJson(res, 200, { ok: true, version: '1.10.342' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6768,7 +6770,11 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, rocks: await quarryRocks(), daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/regrow' && req.method === 'POST') { // (tests: the mined rocks grown back now)
-    await quarryRocks(); for (const k of Object.values(quarryKept)) if (k.left <= 0) k.minedAt = nowMs() - IslandQuarry.REGROW_MS; return sendJson(res, 200, { ok: true, rocks: await quarryRocks() });
+    await quarryRocks(); for (const r of IslandQuarry.ROCKS) { const k = quarryKept[r.id]; if (k && k.left <= 0) k.minedAt = nowMs() - IslandQuarry.regrowOf(r); } return sendJson(res, 200, { ok: true, rocks: await quarryRocks() });
+  }
+  // (tests, review-plan §1-14: the next mining's plan fixed -- each swing's crack and when it lights)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/plan' && req.method === 'POST') {
+    const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; return sendJson(res, 200, { ok: true });
   }
   if (['/api/island/quarry/start', '/api/island/quarry/finish', '/api/island/quarry/cancel'].includes(pathname) && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const t = session.token;
@@ -6787,10 +6793,12 @@ async function requestHandler(req, res) {
       const { doc, bag } = await pointStore.questDoc(account, 'quarry');
       if (!IslandItems.toolCount(bag, 'pickaxe')) return sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.');
       if ((doc?.day === today ? doc.n || 0 : 0) >= IslandQuarry.DAILY) return sendError(res, 409, 'DAILY_CAP', `오늘은 광석을 ${IslandQuarry.DAILY}개 캤어요. 내일 다시 캘 수 있어요.`);
-      if (!IslandItems.addToBag(bag, 'ore', 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
-      const pull = { rock: rock.id, spot, at: nowMs(), ms: IslandQuarry.MINE_MS, anim: 'pickaxe', pos: { x: stand.x, z: stand.z }, target: stand.S };
+      if (!IslandItems.addToBag(bag, `ore_${rock.ore}`, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
+      // (1.10.342 98B: the server's plan -- each swing's crack and when it lights; the ore's light time)
+      const plan = IslandQuarry.planOf(rock, () => crypto.randomInt(0, 1e9) / 1e9).map((p, i) => (quarryTestPlan?.[i] ? { ...p, ...quarryTestPlan[i] } : p)); quarryTestPlan = null;
+      const pull = { rock: rock.id, spot, at: nowMs(), ms: IslandQuarry.MINE_MS, anim: 'pickaxe', pos: { x: stand.x, z: stand.z }, target: stand.S, plan };
       quarryPulls.set(t, pull); collectionPose(t, pull);
-      return sendJson(res, 200, { ok: true, ms: pull.ms, stand: { x: stand.x, z: stand.z, yaw: stand.yaw }, stage: state.stage });
+      return sendJson(res, 200, { ok: true, ms: pull.ms, stand: { x: stand.x, z: stand.z, yaw: stand.yaw }, stage: state.stage, plan, ore: rock.ore });
     }
     // finish
     const pull = quarryPulls.get(t);
@@ -6799,13 +6807,22 @@ async function requestHandler(req, res) {
     if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
     if (nowMs() - pull.at < pull.ms - 300) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.');
     const kept = quarryKept[rock.id]; if (!kept || kept.left <= 0) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, 'MINED', '방금 다 캔 바위예요.'); }
+    // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
+    // older, the rock's ores and the day's count as they were)
+    const judged = IslandQuarry.judge(pull.plan, body.taps);
+    if (!judged.done) {
+      const missed = await pointStore.islandGive({ userId: account, claimId: `quarry-miss:${account}:${pull.at}`, itemId: 'stone', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
+      const result = { ok: true, ore: 0, itemId: missed?.applied ? 'stone' : null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: missed?.bag || null, worn: missed?.worn || null };
+      quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
+    }
+    const oreId = `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0)}`; quarryTestDraw = null;
     const slot = IslandQuarry.ORE_PER_ROCK - kept.left; // (each ore of a rock's fill its own claim: two at once -- one gets it)
-    const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${kept.gen}:${slot}`, itemId: 'ore', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
+    const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${kept.gen}:${slot}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
     if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.') : sendError(res, 409, 'MINED', '방금 다른 사람이 캐 갔어요.'); }
     quarryKept[rock.id] = { ...kept, left: kept.left - 1, ...(kept.left - 1 <= 0 ? { minedAt: nowMs() } : {}) };
     await pointStore.setWorldValue('quarry', quarryKept).catch((error) => console.warn('[quarry]', error.message));
     const counted = await pointStore.questApply(account, 'quarry', (d) => ({ doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 } })).catch(() => null);
-    const result = { ok: true, ore: 1, left: quarryKept[rock.id].left, stage: quarryKept[rock.id].left > 0 ? 'full' : 'mined', bag: given.bag, worn: given.worn || null, daily: { n: counted?.doc?.n ?? null, max: IslandQuarry.DAILY } };
+    const result = { ok: true, ore: 1, itemId: oreId, name: IslandItems.ITEMS[oreId]?.name || '광석', icon: IslandItems.ITEMS[oreId]?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: quarryKept[rock.id].left, stage: quarryKept[rock.id].left > 0 ? 'full' : 'mined', bag: given.bag, worn: given.worn || null, daily: { n: counted?.doc?.n ?? null, max: IslandQuarry.DAILY } };
     quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t);
     broadcastIsland('quarry', { rocks: await quarryRocks() });
     return sendJson(res, 200, result);
@@ -10279,7 +10296,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.341 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.342 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

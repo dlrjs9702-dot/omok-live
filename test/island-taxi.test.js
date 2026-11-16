@@ -138,7 +138,7 @@ test('택시 길 비우기: G4a 새 단단한 자연물은 길 가운데서 0.85
   const N = T.nature(); const R = X.ROUTE; const ends = [R[0], R.at(-1)];
   const far = (o, r, road, stop) => T.lineDist(o.x, o.z, R) > road + r && ends.every(([x, z]) => Math.hypot(o.x - x, o.z - z) > stop + r);
   const before = 510; const added = N.bushes.slice(before); /* (the island's own 510 first; the added after them) */
-  assert.ok(added.length >= 140 /* (1.10.323: the 채석장's ground cleared, 150 → 144) */ && N.rocks.filter((r) => r.g4).length >= 110 && N.logs.length >= 30 && N.palms.length >= 15 && N.grass.length >= 200 && N.lilies.length >= 30, JSON.stringify([added.length, N.logs.length, N.palms.length]));
+  assert.ok(added.length >= 105 /* (1.10.323: the 채석장's ground cleared, 150 → 144; 1.10.342 the whole ridge top (notes §9-4: 45 bushes), 144 → 110) */ && N.rocks.filter((r) => r.g4).length >= 110 && N.logs.length >= 30 && N.palms.length >= 15 && N.grass.length >= 200 && N.lilies.length >= 30, JSON.stringify([added.length, N.logs.length, N.palms.length]));
   const solid = [...added.map((b) => [b, 0.75 * b.s]), ...N.rocks.filter((r) => r.g4).map((r) => [r, r.s]), ...N.logs.map((l) => [l, 1.1]), ...N.palms.map((p) => [p, 0.4])];
   for (const [o, r] of solid) { assert.ok(far(o, r, 3.2, 10), `${o.x},${o.z} by the taxi`); assert.ok(!T.onLot(o.x, o.z, 1), `${o.x},${o.z} on a lot`); }
   // (총괄 #453: the crossings to be -- where a walk meets the road, 6 m of it each side -- 4 m clear of anything new that blocks)

@@ -203,7 +203,7 @@ test.describe('워커 차단', () => {
   test.use({ serviceWorkers: 'block' });
   test('Service Worker가 페이지를 제어하지 못하면 서버에서 따로 받지 않고 입장을 막고 다시 시도만 보인다', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패', { timeout: 20_000 });
+    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패', { timeout: 60_000 }); // (the island's required files come first, then the 10 s wait for control -- 1.10.342's quarry and ores made the files take over 20 s on a CI runner)
     await expect(page.locator('#bootRetry')).toBeVisible();
     expect(await pending(page)).toBe(true);
     expect(await controlled(page)).toBe(false);

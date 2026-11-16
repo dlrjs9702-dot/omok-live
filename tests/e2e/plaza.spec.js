@@ -1935,18 +1935,24 @@ test('간판: 건물마다 문 6 m 안에 이름 간판(밖을 봄), 작은 시�
 
 // 1.10.323 Q1 채석장 (public/plaza/island-quarry.js, assets 129·130): on the ridge, at a rock's mining spot with a 곡괭이 in the bag,
 // SPACE (the phone's 상호작용): the pickaxe taken in hand, the swings, a 광석 into the bag; the 「지금 자리」 chip says 채석장
-test('채석장: 능선 위 바위 앞에서 곡괭이로 캐면 광석 1개, 지금 자리는 채석장', async ({ browser, request, isMobile }) => {
+// 1.10.342 4a (98B, review-plan §1-8·§1-14): the crack-light game -- the plan fixed by the test hook, five cracks on the rock's face
+// in the picture, each swing a real press at its lit crack (PlazaDebug mineAuto: timed in the page), the rock's main ore
+test('채석장: 능선 위 바위 앞에서 곡괭이로 빛나는 금을 맞히면 그 바위의 광석 1개, 지금 자리는 채석장', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, isMobile ? '채석장광부m' : '채석장광부'); const { page } = a;
   try {
-    const Q = require('../../public/plaza/island-quarry.js'); const rock = Q.ROCKS[(1 + test.info().retry * 2 + (isMobile ? 1 : 0)) % Q.ROCKS.length]; const s = Q.standOf(rock, 'full', 0); /* (a retry, or the other device, its own full rock) */
+    const Q = require('../../public/plaza/island-quarry.js'); const Items = require('../../lib/island-items'); const rock = Q.ROCKS[(1 + test.info().retry * 2 + (isMobile ? 1 : 0)) % Q.ROCKS.length]; const s = Q.standOf(rock, 'full', 0); /* (a retry, or the other device, its own full rock) */
     await post(request, '/api/test/island/give', a.token, { itemId: 'pickaxe', qty: 1 });
+    await post(request, '/api/test/quarry/plan', a.token, { plan: [{ spot: 0, at: 400 }, { spot: 3, at: 400 }, { spot: 4, at: 400 }], draw: 0.1 }); /* (draw 0.1: its main ore) */
     await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [s.x, s.z]);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().placeNow().words), { timeout: 15000 }).toMatch(/^채석장/);
     await expect.poll(() => spaceOn(page, `quarry:${rock.id}:0`, isMobile), { timeout: 20000 }).toBe(true);
-    await expect(page.locator('#toast')).toContainText('광석 +1', { timeout: 30000 }); /* (3.6 s of swings by the clock, then the server's answer -- slow on CI) */
+    await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug().mine())), { timeout: 15000 }).toBe(true);
+    expect(await page.evaluate(() => window.PlazaDebug().mineAuto(true))).toBe(true);
+    const game = await page.evaluate(() => window.PlazaDebug().mine()); expect(game.plan.map((p) => p.spot)).toEqual([0, 3, 4]); expect(game.cracks.filter((c) => c.on)).toHaveLength(Q.CRACKS.length); /* (all five in the picture) */
+    const name = Items.ITEMS[`ore_${rock.ore}`].name; await expect(page.locator('#toast')).toContainText(`${name} +1`, { timeout: 30000 }); /* (6 s of swings by the clock, then the server's answer -- slow on CI) */
     const bag = (await get(request, '/api/island/bag', a.token)).data; const items = bag.items || bag.bag?.items || [];
-    expect(items.filter((e) => e.itemId === 'ore').reduce((n, e) => n + e.qty, 0)).toBe(1);
+    expect(items.filter((e) => e.itemId === `ore_${rock.ore}`).reduce((n, e) => n + e.qty, 0)).toBe(1);
     expect(items.find((e) => e.itemId === 'pickaxe')?.uses).toBe(Q.PICK_USES - 1);
     await expectNoScriptError(page);
   } finally { await a.context.close(); }

@@ -2619,7 +2619,7 @@
   // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
   // old emoji) -- the bag and the sale lists; toasts keep the emoji
   const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
-  const GOOD_ICONS = new Set(['bait', 'bait_premium', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge', ...['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage'].map((c) => `seed_${c}`)]); /* (318: the crops' seeds -- assets 115) */
+  const GOOD_ICONS = new Set(['bait', 'bait_premium', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge', ...['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage'].map((c) => `seed_${c}`), ...['granite', 'clay', 'coal', 'iron', 'copper', 'silver', 'crystal', 'gold'].map((o) => `ore_${o}`)]); /* (318: the crops' seeds -- assets 115; 1.10.342: the eight ores -- assets 140 icons) */
   const SHOW_GOODS = new Set(['firework', 'balloon', 'bubbles']); // v1.10.92: 「쓰기」 in the bag, seen by everyone near
   function itemIcon(item) {
     const id = ITEM_ALIAS[item.itemId] || item.itemId;
@@ -3668,12 +3668,13 @@
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); /* (where I stand first) */
       const spec = await api('/api/island/quarry/start', { method: 'POST', body: JSON.stringify({ rock, spot: Number(spot) }) }); started = true;
-      const done = await new Promise((resolve) => { if (!plaza.controller?.mineRock?.(spec, resolve)) resolve(false); });
-      if (!done) { await api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); return; }
-      const body = JSON.stringify({ rock, spot: Number(spot), requestId: crypto.randomUUID() });
+      const { fin, taps } = await new Promise((resolve) => { if (!plaza.controller?.mineRock?.({ ...spec, rock, spot: Number(spot) }, (ok, presses) => resolve({ fin: ok, taps: presses }))) resolve({ fin: false }); }); /* (1.10.342: the crack-light game's presses) */
+      if (!fin) { await api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); return; }
+      const body = JSON.stringify({ rock, spot: Number(spot), taps: taps || [], requestId: crypto.randomUUID() });
       let r; try { r = await api('/api/island/quarry/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; r = await api('/api/island/quarry/finish', { method: 'POST', body }); }
       if (r.bag) drawIslandBag(r.bag); toolWorn(r.worn, r.bag);
-      showToast(`🟠 광석 +1 · 오늘 ${r.daily?.n ?? '-'}/${r.daily?.max ?? '-'}${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, 3000);
+      if (!r.ore) { showToast(`💥 ${r.hits ?? 0}/${r.rounds ?? 3}번 맞혔어요 · 두 번 맞혀야 광석이 나와요${r.itemId ? ' · 🪨 작은 돌 +1' : ''}`, 3500); return; } /* (1.10.342 98B: a missed set -- rubble, the rock and the day's count as they were) */
+      showToast(`${r.icon || '🪨'} ${r.name || '광석'} +1 · 쨍! ${r.hits}/${r.rounds} · 오늘 ${r.daily?.n ?? '-'}/${r.daily?.max ?? '-'}${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, 3200);
     } catch (error) { if (started) api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); showToast(error.message, 3500); }
     finally { mining = false; }
   }

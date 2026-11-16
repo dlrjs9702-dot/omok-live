@@ -49,8 +49,8 @@
 
   // 집 손보기 (사용자 1A 한 주 양, 2A 집 크기에 따라): each week's owing, 큰 집 ×1.5, 2층 큰 집 ×2 (rounded up)
   const UPKEEP = Object.freeze({ weed: 30, twig: 10, stone: 5, ore: 5 }); // (1.10.323 채석장, 사용자 29B·30A: 광석 5 a week, from the quarry's opening)
-  const UPKEEP_NAMES = Object.freeze({ weed: '잡초', twig: '나뭇가지', stone: '작은 돌', ore: '광석' });
-  const UPKEEP_ITEMS = Object.freeze({ weed: ['weed'], twig: ['branch', 'twig'], stone: ['stone'], ore: ['ore'] }); // (the bag's items each counts)
+  const UPKEEP_NAMES = Object.freeze({ weed: '잡초', twig: '나뭇가지', stone: '작은 돌', ore: '화강암' }); /* (1.10.342 review-plan §1-9: the 광석 5 is 화강암 -- the one mined before the eight kinds still counts) */
+  const UPKEEP_ITEMS = Object.freeze({ weed: ['weed'], twig: ['branch', 'twig'], stone: ['stone'], ore: ['ore_granite', 'ore'] }); // (the bag's items each counts)
   const upkeepScale = (stage) => (stage >= 4 ? 2 : stage === 3 ? 1.5 : 1);
   const upkeepNeed = (stage) => Object.fromEntries(Object.entries(UPKEEP).map(([k, n]) => [k, Math.ceil(n * upkeepScale(stage))]));
   const upkeepDone = (given, need) => Object.keys(need).every((k) => (given?.[k] || 0) >= need[k]);
