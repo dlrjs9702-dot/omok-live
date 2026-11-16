@@ -1878,6 +1878,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     doors['board:records:back'] = { x: TOWER.x - fx * 2.6, z: TOWER.z - fz * 2.6, name: '기록의 탑 · 순위 보기' }; /* (양면: from the plaza side too) */
     return T;
   })();
+  // 1.10.338 섬 경매장 (notes island-auction-20261115 51C 「특색있게 화려하게, 잘 보이게」, plaza-relayout 55A; assets 137): the 경매 게시판
+  // by the 물가 거리, across the 「경제 거리」 from the 증권거래소 -- its name on the sign face (FACE: cream, burgundy letters, 1-2 mm before
+  // it), its bulbs and lamps lit at night (the model's `glow`, nightGlow); a stand-in its solids' box (solids.json fallbackBoxes)
+  const AUCTION = globalThis.IslandTerrain.AUCTION_BOARD;
+  const auctionBoard = AUCTION ? (() => {
+    const root = new THREE.Group(); root.position.set(AUCTION.x, heightAt(AUCTION.x, AUCTION.z), AUCTION.z); root.rotation.y = AUCTION.yaw; scene.add(root);
+    const fb = new THREE.Group(); mesh(new THREE.BoxGeometry(3.98, 4.1, 1.04), mat(0x2a3556), 0, 2.05, 0.06, fb); root.add(fb); assets.attach('plaza.auction_board', root, fb);
+    root.add(boardText('섬 경매장', 2.3, 0.42, 3.03, -0.074, ['#f3e6c8', '#7a1f2b'])); return { root };
+  })() : null;
+  void auctionBoard;
   const fmtLeft = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)); const d = Math.floor(m / 1440); const h = Math.floor((m % 1440) / 60); return d ? d + '일 ' + h + '시간' : h ? h + '시간 ' + (m % 60) + '분' : (m % 60) + '분'; };
   function drawRecordFaces(now) {
     const T = recordTower; const d = T.data; const R = globalThis.SoloRanking; if (!d || !R) return;
@@ -4634,6 +4644,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!stocksTex) return; const c = stocksTex.image; const x = c.getContext('2d'); const v = stocksBoard;
     x.fillStyle = '#0f1830'; x.fillRect(0, 0, c.width, c.height); x.textBaseline = 'middle'; x.textAlign = 'left';
     x.font = '800 56px system-ui, sans-serif'; x.fillStyle = '#ffd34d'; x.fillText(`섬 증권거래소 · ${v ? (v.open ? '장 열림' : '장 닫힘 · 오전 9시~오후 11시') : '시세 받는 중'}`, 36, 52);
+    { const nw = v?.news?.[0]; if (nw) { /* (102A 섬 소식: the latest, once its hour's price is up -- right of the title, shortened to fit) */
+      x.font = '700 40px system-ui, sans-serif'; x.textAlign = 'right'; x.fillStyle = nw.pct >= 0 ? '#ff7d7d' : '#6fb0ff'; let t = `📰 ${nw.name}, ${nw.line} ${nw.pct >= 0 ? '▲' : '▼'}${Math.abs(nw.pct)}%`;
+      while (x.measureText(t).width > c.width * 0.5 && t.length > 12) t = `${t.slice(0, t.length - 3)}…`; x.fillText(t, c.width - 36, 54); x.textAlign = 'left'; } }
     const list = (v?.companies || []).slice(0, 30); const colW = c.width / 3; const rowH = (c.height - 110) / 10;
     list.forEach((co, i) => {
       const X = Math.floor(i / 10) * colW + 30; const Y = 110 + (i % 10) * rowH + rowH / 2; const name = co.name.length > 8 ? `${co.name.slice(0, 7)}…` : co.name;

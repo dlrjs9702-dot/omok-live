@@ -13922,6 +13922,14 @@
       "lowSrc": "xmas149:02. Low/xmas-v3/xmas_rug_snowflake_low.glb",
       "lowSha256": "30a6c8e5aed1710667eada5ff0bc74f366f3bbbce98e174e3262f78aca3abdb7",
       "precompressed": true
+    },
+    {
+      "out": "auction-v1/auction_board.glb",
+      "src": "auction137:01. High/auction-v1/auction_board.glb",
+      "sha256": "663bcac7040519e1e08095f4ab69981f9e45184361c43a67ad2b04da2cd9ee3d",
+      "lowSrc": "auction137:02. Low/auction-v1/auction_board_low.glb",
+      "lowSha256": "45ad2fa81b76c45a313e5535525fdb5a3840c189c93cfc8c161a4a6b8b1a696a",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -14027,6 +14035,7 @@
     "xmas128": "128. Game Island xmas sled hill fort 2026-11-15",
     "xmas138": "138. Game Island resident xmas hats scarves 2026-11-16",
     "xmas149": "149. Game Island xmas stamp shop furniture 2026-11-16",
-    "fountain148": "148. Game Island fountain crescent 2026-11-16"
+    "fountain148": "148. Game Island fountain crescent 2026-11-16",
+    "auction137": "137. Game Island auction board 2026-11-15"
   }
 }

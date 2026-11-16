@@ -164,12 +164,22 @@ async function stockRank(now, me = null) {
 }
 // 정리 매매 (4A): a letter to everyone holding a company that goes away tomorrow -- once a company, checked each minute
 const stockNoticed = new Set();
+// 102A 주식 소식: a holder told of their company's news once its hour's price is posted -- an hour's check per session (the first
+// one says nothing old), at most three lines; the page shows them as a notice
+const stockNewsSeen = new Map(); // session token -> { K: the tick last checked, k: the last news told }
+async function stockNewsFor(token, account) {
+  const now = stockNow(); const K = IslandStocks.tickAt(now); const was = stockNewsSeen.get(token); if (K < 0 || was?.K === K) return null;
+  stockNewsSeen.set(token, { K, k: was ? was.k : K });
+  const market = await stocksMarket(); const { doc } = await pointStore.questDoc(account, 'stocks'); const held = new Set(Object.entries(doc?.h || {}).filter(([, x]) => x?.q > 0).map(([c]) => c));
+  const since = was ? was.k : K; const fresh = market.newsOf(now).filter((x) => x.k > since && held.has(x.code)); stockNewsSeen.set(token, { K, k: K });
+  return fresh.length ? fresh.slice(0, 3).map(({ name, line, pct }) => ({ name, line, pct })) : null;
+}
 async function stockNotices(now = stockNow()) {
   const going = (await stocksMarket()).view(now).companies.filter((c) => c.status === 'cleanup' && !stockNoticed.has(c.code)); if (!going.length) return;
   const all = await pointStore.questAll('stocks');
   for (const c of going) {
     let sent = true; /* (Codex 311-320 #6: done only when every holder's letter is in -- a failed one asked again next minute; the letter's id keeps it once) */
-    const text = `${c.name}${c.bust ? '가 부도를 냈어요' : ' 주가가 상장가의 10% 아래로 떨어졌어요'}. 오늘 하루 정리 매매(팔기만 돼요) 뒤 상장 폐지돼요. 남은 주식은 0이 돼요. 섬 증권거래소 보드에서 팔 수 있어요.`;
+    const text = `${c.name}${c.bust ? (c.bustWhy ? ` 부도: ${c.bustWhy}` : '가 부도를 냈어요') : ' 주가가 상장가의 10% 아래로 떨어졌어요'}. 오늘 하루 정리 매매(팔기만 돼요) 뒤 상장 폐지돼요. 남은 주식은 0이 돼요. 섬 증권거래소 보드에서 팔 수 있어요.`; /* (102A: the 부도's reason before it) */
     for (const { userId, doc } of all) {
       if (!(doc?.h?.[c.code]?.q > 0)) continue;
       await pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === `stock-${c.code}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `stock-${c.code}`, from: 'office', fromName: '섬 증권거래소', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => { sent = false; });
@@ -5970,7 +5980,8 @@ async function requestHandler(req, res) {
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
     if ((plazaPresence.get(session.token)?.space || 'island') === 'island') storyArrive(account, spot); // (S1: a story's place)
     const taxNote = await taxNoteOf(account); // (주민세 고지서: a bill whose last day is tomorrow -- said once that day)
-    return sendJson(res, 200, { ok: true, taxNote, id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    const stockNews = await stockNewsFor(session.token, account).catch(() => null); /* (102A: my companies' news, its hour posted) */
+    return sendJson(res, 200, { ok: true, taxNote, ...(stockNews ? { stockNews } : {}), id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {

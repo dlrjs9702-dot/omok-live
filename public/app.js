@@ -5082,6 +5082,7 @@
   const stockPct = (a, b) => (b ? ((a - b) / b) * 100 : 0);
   const stockSign = (v) => `${v > 0 ? '▲' : v < 0 ? '▼' : '–'} ${Math.abs(v).toFixed(1)}%`;
   const stockTone = (v) => (v > 0 ? 'stockUp' : v < 0 ? 'stockDown' : 'stockFlat');
+  const stockNewsText = (x) => `${x.name}, ${x.line} ${x.pct > 0 ? '▲' : x.pct < 0 ? '▼' : '–'}${Math.abs(x.pct)}%`; /* (102A 주식 소식: 「해송 제과, 새 과자가 대박 났어요 ▲32%」) */
   const stockRid = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
   // (1.10.322 섬 주식 보드 고침: the line's colour and the ▲▼ beside it on one basis -- today's first price to now, 「오늘」)
   const stockToday = (c) => { const t = (c.today || []).filter((x) => Number(x) > 0); return t.length ? stockPct(c.price, t[0]) : 0; };
@@ -5096,10 +5097,13 @@
     stocksTab = tab; const d = await refreshStocksBoard(); if (!d) { showToast('시세를 불러오지 못했어요.'); return; }
     const card = sEl('div', 'mirrorCard stocksCard'); const next = new Date(d.next); const nextText = `${String(next.getHours()).padStart(2, '0')}:00`;
     const wk = d.mine?.week; card.append(line(`${d.open ? '장 열림' : '장 닫힘 · 매일 오전 9시~오후 11시'} · 다음 값 ${nextText}${wk == null ? '' : ` · 이번 주 수익률 ${stockSign(wk)}`}`, 'lookMeta stocksHead'));
-    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['mine', '내 주식'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
+    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['news', '섬 소식'], ['mine', '내 주식'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
     const body = sEl('div', 'stocksBody'); card.append(body);
     if (code) stockDetail(body, d, code);
-    else if (tab === 'mine') {
+    else if (tab === 'news') { /* (102A: the day's news, the latest first -- each told only once its hour's price is up) */
+      const list = d.news || []; if (!list.length) body.append(line('오늘은 아직 소식이 없어요. 값이 크게 튈 때 그 까닭이 여기 올라와요.', 'lookMeta'));
+      for (const x of list) { const at = new Date(x.at); const row = sEl('button', 'stocksRow stocksNews'); row.type = 'button'; row.append(sEl('span', 'stocksQty', `${String(at.getHours()).padStart(2, '0')}:00`), sEl('span', `stocksName ${stockTone(x.pct)}`, stockNewsText(x))); row.addEventListener('click', () => openStocks('board', x.code)); body.append(row); }
+    } else if (tab === 'mine') {
       const rows = d.mine?.rows || []; if (!rows.length) body.append(line('아직 가진 주식이 없어요. 시세에서 회사를 골라 사 보세요.', 'lookMeta'));
       for (const r of rows) { const row = sEl('button', 'stocksRow'); row.type = 'button'; row.append(sEl('span', 'stocksName', r.name), sEl('span', 'stocksQty', `${r.qty.toLocaleString('ko-KR')}주 · 평균 ${stockWon(r.avg)}`), sEl('span', `stocksChange ${stockTone(r.gain)}`, r.status === 'gone' ? '상장 폐지' : `${stockWon(r.value)} ${stockSign(r.gain)}`)); if (r.status !== 'gone') row.addEventListener('click', () => openStocks('board', r.code)); body.append(row); }
     } else if (tab === 'rank') {
@@ -5113,7 +5117,7 @@
       for (const c of d.companies) {
         const row = sEl('button', 'stocksRow'); row.type = 'button';
         if (c.status === 'gone') { row.disabled = true; row.append(sEl('span', 'stocksName', c.name), sEl('span', 'stocksQty', '상장 폐지 · 곧 새 회사가 들어와요'), sEl('span', 'stocksChange stockFlat', '')); body.append(row); continue; }
-        const ch = stockToday(c); const tag = c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : '';
+        const ch = stockToday(c); const tag = `${c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : ''}${c.news ? ' · 📰 소식' : ''}`; /* (102A: a line of news today) */
         row.append(sEl('span', 'stocksName', `${c.name}${tag}`), stockSpark(c.today, 96, 26, stockTone(ch)), sEl('span', 'stocksPrice', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, stockSign(ch)));
         row.addEventListener('click', () => openStocks('board', c.code)); body.append(row);
       }
@@ -5124,6 +5128,8 @@
     const c = d.companies.find((x) => x.code === code); if (!c) { body.append(line('이 회사는 이제 없어요.', 'lookMeta')); return; }
     const mine = d.mine?.rows?.find((r) => r.code === code); const ch = stockPct(c.price, c.prevClose);
     body.append(line(`${c.name} · ${c.kindLabel} · 상장가 ${stockWon(c.list)}${c.status === 'cleanup' ? ' · 정리 매매(오늘 뒤 상장 폐지, 팔기만 돼요)' : ''}`, 'lookMeta'));
+    if (c.bustWhy && c.status === 'cleanup') body.append(line(`부도: ${c.bustWhy}`, 'lookMeta stockDown')); /* (102A) */
+    if (c.news) body.append(line(`📰 ${stockNewsText({ name: c.name, ...c.news })}`, `lookMeta ${stockTone(c.news.pct)}`)); /* (102A: today's latest news) */
     const today = stockToday(c); const days = (c.week || []).filter((x) => Number(x) > 0).length; /* (fewer than 7: 「상장 n일째」) */
     const top = sEl('div', 'stocksDetail'); top.append(sEl('span', 'stocksPrice big', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(today)}`, `오늘 ${stockSign(today)}`), sEl('span', `stocksChange ${stockTone(ch)}`, `어제보다 ${stockSign(ch)}`)); body.append(top);
     body.append(line('오늘', 'lookMeta stocksLabel'), stockSpark(c.today, 260, 60, stockTone(today)), line(days < 7 ? `상장 ${Math.max(1, days)}일째` : '지난 7일', 'lookMeta stocksLabel'), stockSpark(c.week, 260, 60));
@@ -5998,6 +6004,7 @@
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
         if (Array.isArray(data.quests)) showQuestTracker(data.quests); // v1.10.37
         if (data.taxNote) showToast(data.taxNote, 6000); // (주민세 고지서: the day before its last day, once)
+        if (Array.isArray(data.stockNews) && data.stockNews.length) showToast(data.stockNews.map((x) => `📰 ${stockNewsText(x)}`).join('\n'), 7000); /* (102A: news of a company I hold, its hour's price posted) */
       })
       .catch(() => {}).finally(() => { if (plazaStateRequest === abort) { plazaStateRequest = null; plazaSending = false; } });
   }

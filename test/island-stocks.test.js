@@ -47,6 +47,30 @@ test('섬 주식 장 9~23시: 첫날 9~17시 값과 부도 계획은 하루 9번
   const m = S.createMarket('day0-a'); const v = m.view(at(0, 23, 5)); assert.equal(v.tick, 14); assert.ok(v.companies.every((c) => c.today.length === 15 || c.status !== 'active'), '23시 값까지 하루 15개');
 });
 
+// 102A 주식 소식 (notes story/stock-news-lines-20261116.json): a jump's line once its hour is posted, by the company (or its industry),
+// up or down as it went; months and the new island kept; the same company never the same line within two weeks; one key, one story
+test('섬 주식 소식: 튄 시간 값이 붙은 뒤에만, 방향 맞음, 달·새 섬 조건, 같은 회사 2주 안 같은 줄 없음, 같은 키면 모두 같음, 부도 까닭', () => {
+  const N = S.NEWS; assert.equal(Object.keys(N.companies).length, 60); assert.deepEqual(Object.values(N.companies).map((c) => c.name), S.POOL.map((p) => p.name), '회사 순서·이름이 시장과 같음');
+  const lines = (c, dir) => (c[dir] || []).map(S.lineText); const m = S.createMarket('news-key'); const n2 = S.createMarket('news-key');
+  const all = []; for (let d = 0; d < 42; d += 1) { const ms = S.tickTime(d * S.PER_DAY + S.PER_DAY - 1) + 60000; const list = m.newsOf(ms); all.push(...list.map((x) => ({ ...x, day: d }))); assert.deepEqual(list, n2.newsOf(ms), '같은 키면 같은 소식'); }
+  assert.ok(all.length > 42 * 4, `6주 소식 ${all.length}`);
+  const byName = new Map(Object.values(N.companies).map((c) => [c.name, c])); const ind = new Map(Object.values(N.industries).map((x) => [x.industry, x]));
+  const last = new Map();
+  for (const x of all.sort((a, b) => a.k - b.k)) {
+    const c = byName.get(x.name.replace(/^새 /, '')); const dir = x.pct >= 0 ? 'up' : 'down'; const pool = [...(c[dir] || []), ...(ind.get(c.industry)[dir] || [])];
+    const found = pool.find((l) => S.lineText(l) === x.line); assert.ok(found, `${x.name} ${dir}: ${x.line}`);
+    if (typeof found === 'object') { if (found.months) assert.ok(found.months.includes(S.monthOf(x.at)), `${x.line} ${S.monthOf(x.at)}월`); assert.notEqual(found.needs, 'newIsland', '새 섬 전에는 새 섬 줄 없음'); }
+    const key = `${x.name.replace(/^새 /, '')}|${x.line}`; if (last.has(key)) assert.ok(x.day - last.get(key) >= 14, `${key} ${last.get(key)}→${x.day}`); last.set(key, x.day);
+    void lines;
+  }
+  // only posted hours: at 10:30 the news of 10:00 and before, none of 11:00
+  const ms = S.tickTime(5 * S.PER_DAY + 1) + 30 * 60000; const K = S.tickAt(ms); for (const x of m.newsOf(ms)) assert.ok(x.k <= K && x.at <= ms, '미리 귀띔 없음');
+  const v = m.view(ms); for (const c of v.companies) if (c.news) assert.ok(c.news.at <= ms);
+  // a 부도's reason, from the list
+  let bust = null; for (let k = 0; k < 8 * 7 * S.PER_DAY && !bust; k += 1) { const vv = m.view(S.tickTime(k) + 1000); bust = vv.companies.find((c) => c.status === 'cleanup' && c.bust) || null; }
+  assert.ok(bust && N.bust.includes(bust.bustWhy), `부도 까닭 ${bust?.bustWhy}`);
+});
+
 test('섬 주식 주문: 1주 단위·수수료 0.5%·한 회사 1,000주·하루 횟수 제한 없음·장 밖 막힘·정리 매매는 팔기만', () => {
   const m = S.createMarket('o'); const t = at(2, 10, 10); const c = m.view(t).companies.find((x) => x.status === 'active');
   assert.equal(S.order(m, {}, { code: c.code, side: 'buy', qty: 1 }, at(2, 8, 30)).error, 'CLOSED');
