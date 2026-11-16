@@ -1398,7 +1398,8 @@ async function fleaHandOver(account, l, claim) {
     const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (owned.some((p) => p.uid === l.piece.uid)) return true;
     if (owned.length >= 300) return false; await pointStore.setWorldValue(`furniture:${account}`, [...owned, { ...l.piece, claim }]); return true;
   }
-  const got = await pointStore.islandGive({ userId: account, claimId: claim, itemId: l.itemId, qty: l.qty, meta: l.sizes ? { sizes: l.sizes } : null, quiet: true });
+  const mark = (account === l.seller ? l.bought : IslandItems.boxFor(l.itemId)) ? { bought: true } : null; /* (1.10.340 「산 것」: a bought fish or insect -- the seller's own back as it was) */
+  const got = await pointStore.islandGive({ userId: account, claimId: claim, itemId: l.itemId, qty: l.qty, meta: l.sizes ? { sizes: l.sizes, ...mark } : mark, quiet: true });
   return !got.reason;
 }
 // the board kept tidy (inside worldEdit): what has been up 3 days goes back to its seller (a full bag: kept for the next look, a
@@ -1410,10 +1411,20 @@ async function fleaTidy(now, account = null) {
     const where = l.kind === 'piece' ? '가구 창고' : '가방';
     await fleaLetter(l.seller, `flea-back-${l.id}`, ok ? `${IslandCast.josa(fleaWhat(l), '이가')} ${IslandFlea.DAYS}일 동안 팔리지 않아 돌려드렸어요. ${where}를 열어 보세요.` : `${IslandCast.josa(fleaWhat(l), '이가')} ${IslandFlea.DAYS}일 동안 팔리지 않았어요. ${where}에 자리가 없어서 맡아 두었어요. 섬 벼룩시장 게시판을 열면 돌려받아요.`, now);
   }
+  const od = IslandFlea.overdue(s, now); /* (review-plan §1-2: money not taken in 3 days -- into the wallet, a letter) */
+  if (od.due.length) {
+    s = od.state; changed = true;
+    for (const x of od.due) {
+      await pointStore.questApply(x.account, 'flea', (doc) => ({ doc: { ...doc, got: (doc.got || 0) + x.net }, reward: x.net, payKey: `flea:auto:${x.id}`, reason: 'flea_sale' })); /* (PAID: paid before, not yet marked) */
+      await fleaLetter(x.account, `flea-auto-${x.id}`, `섬 벼룩시장에서 ${IslandFlea.DAYS}일 동안 받지 않은 판 돈 ${x.net.toLocaleString('ko-KR')}P를 지갑에 넣어 드렸어요.`, now);
+      notifyAccount(x.account, 'flea', { owed: true }); notifyPointsChanged([x.account]);
+    }
+  }
   if (account) for (const l of [...(s.held[account] || [])]) { if (!(await fleaHandOver(account, l, `flea:${l.id}:held`))) break; s = IslandFlea.unhold(s, account, l.id); changed = true; back.push(fleaWhat(l)); }
   if (changed) await pointStore.setWorldValue('flea', s);
   return { state: s, back };
 }
+if (process.env.NODE_ENV !== 'test') setInterval(() => { worldEdit(() => fleaTidy(nowMs())).catch(() => {}); }, 10 * 60 * 1000).unref(); /* (the 3 days' returns and money: on time, not only at the next look) */
 const FLEA_ERRORS = Object.freeze({ LIMIT: `한 사람이 ${IslandFlea.MINE_MAX}개까지 올릴 수 있어요.`, MISSING: '가방에 없는 물건이에요.', QTY: '개수를 다시 정해 주세요.', NOT_SELLABLE: '벼룩시장에 올릴 수 없는 물건이에요.', PAID: '이미 처리된 요청이에요.', POINTS: '포인트가 모자라요.' });
 const taxMd = (day) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
 async function taxLetters(account, now) {
@@ -1931,13 +1942,13 @@ function museumGive(account, itemId, name) {
   const run = museumChain.then(async () => {
     const shown = (await pointStore.worldValue('museum')) || {}; const old = shown[itemId]; const fish = IslandItems.fishOf(itemId);
     if (old && !fish) return { r: 'shown' };
-    const size = fish ? IslandItems.pickSize((await pointStore.islandBag(account)).items || [], itemId, true) : null;
+    const size = fish ? IslandItems.pickSize((await pointStore.questDoc(account, 'museumGiven')).bag || [], itemId, true, true) : null; /* (1.10.340: a caught one -- not one bought at the 벼룩시장) */
     if (fish && size === null) return { r: 'missing' };
     if (old && Number.isFinite(old.size) && !(size > old.size)) return { r: 'smaller', size: old.size };
     const at = nowMs();
     const entry = { by: name, at, ...(fish ? { size, account } : {}), first: old ? old.first || { by: old.by, at: old.at } : { by: name, at }, past: old ? [{ size: old.size ?? null, by: old.by, at: old.at }, ...(old.past || [])].slice(0, 3) : [] };
     await pointStore.setWorldValue('museum', { ...shown, [itemId]: entry }); // (on show first: a failure after it never loses the thing -- Codex review)
-    const out = await pointStore.questApply(account, 'museumGiven', (d, bag) => (fish && IslandItems.pickSize(bag, itemId, true) !== size ? { error: 'MISSING' } : { doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1, largest: true } })).catch(() => null);
+    const out = await pointStore.questApply(account, 'museumGiven', (d, bag) => (fish && IslandItems.pickSize(bag, itemId, true, true) !== size ? { error: 'MISSING' } : { doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1, largest: true, caught: true } })).catch(() => null);
     if (!out?.doc) { await pointStore.setWorldValue('museum', shown); return { r: 'missing' }; }
     if (old?.account && old.account !== account) { // (the one whose fish came down: a letter)
       const dexName = IslandFishing.DEX.find((d) => d.id === itemId)?.name || itemId;
@@ -5193,7 +5204,8 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/flea/expire' && req.method === 'POST') { // 1.10.339 섬 벼룩시장: everything up made 3 days old
     if (!requireSession(req, res)) return;
-    return worldEdit(async () => { const s = await fleaLoad(); await pointStore.setWorldValue('flea', { ...s, list: s.list.map((l) => ({ ...l, until: nowMs() - 1 })) }); return sendJson(res, 200, { ok: true, n: s.list.length }); });
+    return worldEdit(async () => { const s = await fleaLoad(); const old = nowMs() - IslandFlea.DAYS * 86400000 - 1; const owed = Object.fromEntries(Object.entries(s.owed).map(([k, o]) => [k, { ...o, list: (o.list || []).map((x) => ({ ...x, at: old })) }])); /* (and the money waiting) */
+      await pointStore.setWorldValue('flea', { ...s, owed, list: s.list.map((l) => ({ ...l, until: nowMs() - 1 })) }); return sendJson(res, 200, { ok: true, n: s.list.length }); });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/furniture' && req.method === 'POST') { // 묶음 4: pieces straight into my 가구 창고
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
@@ -6529,7 +6541,7 @@ async function requestHandler(req, res) {
       const { bag } = await pointStore.questDoc(account, 'flea'); const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const h = await homeOf(account);
       const placed = new Set([...(h?.pieces || []), ...(h?.yard || [])].map((p) => p.uid));
       const items = bag.filter((e) => IslandFlea.sellable(e.itemId)).map((e) => { const def = IslandItems.itemDef(e.itemId); const sizes = IslandItems.sizesOf(e); const each = sizes ? sizes.slice().reverse().map((cm) => IslandFlea.worth(e.itemId, 1, [cm], now, fleaGood)) : null; /* (a fish: each one's worth, the smallest first -- the order they go in) */
-        return { entryId: e.entryId, itemId: e.itemId, name: def.name, icon: def.icon, qty: Math.min(e.qty, IslandFlea.QTY_MAX), ...(sizes ? { sizes: sizes.slice().reverse(), each } : { unit: IslandFlea.worth(e.itemId, 1, null, now, fleaGood) }) }; }).filter((x) => (x.each ? x.each[0] : x.unit) > 0);
+        return { entryId: e.entryId, itemId: e.itemId, name: def.name, icon: def.icon, qty: Math.min(e.qty, IslandFlea.QTY_MAX), ...(IslandItems.boughtOf(e) ? { bought: true } : {}), ...(sizes ? { sizes: sizes.slice().reverse(), each } : { unit: IslandFlea.worth(e.itemId, 1, null, now, fleaGood) }) }; }).filter((x) => (x.each ? x.each[0] : x.unit) > 0);
       const pieces = owned.filter((p) => !placed.has(p.uid)).map((p) => { const g = IslandFurniture.good(p.id); return { uid: p.uid, id: p.id, name: g?.name || p.id, yard: Boolean(g?.yard), worth: fleaPieceWorth(p) }; }).filter((p) => p.worth > 0);
       return sendJson(res, 200, { ok: true, items, pieces, rules: { fee: IslandFlea.FEE, low: IslandFlea.LOW, high: IslandFlea.HIGH, days: IslandFlea.DAYS, max: IslandFlea.MINE_MAX } });
     }
@@ -6559,7 +6571,7 @@ async function requestHandler(req, res) {
           if (!IslandFlea.sellable(e.itemId)) return { error: 'NOT_SELLABLE' };
           const t = IslandItems.takeEntry(bag, e.entryId, qty); if (!t) return { error: 'QTY' };
           const base = IslandFlea.worth(e.itemId, qty, t.sizes, now, fleaGood); if (!base) return { error: 'NOT_SELLABLE' };
-          const r = IslandFlea.put(s, account, label, { kind: 'item', itemId: e.itemId, qty, sizes: t.sizes }, price, base, now); if (r.error) return { error: r.error, base };
+          const r = IslandFlea.put(s, account, label, { kind: 'item', itemId: e.itemId, qty, sizes: t.sizes, bought: IslandItems.boughtOf(e) }, price, base, now); if (r.error) return { error: r.error, base };
           return { doc: { ...doc, reqs: [...(doc.reqs || []).slice(-19), requestId] }, take: { entryId: e.entryId, qty }, next: r.state, listing: r.listing };
         });
         if (out?.error === 'PRICE') return priceError(out.base);
@@ -6573,11 +6585,11 @@ async function requestHandler(req, res) {
       if (!l) return sendError(res, 409, 'FLEA_GONE', '방금 팔렸거나 내려간 물건이에요.');
       if (l.seller === account) return sendError(res, 409, 'FLEA_OWN', '내가 올린 물건은 살 수 없어요. 「거두기」로 가져갈 수 있어요.');
       if (l.kind === 'piece') { if (((await pointStore.worldValue(`furniture:${account}`)) || []).length >= 300) return sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.'); }
-      else { const { bag } = await pointStore.questDoc(account, 'flea'); if (!IslandItems.addToBag(bag, l.itemId, l.qty, `flea-${l.id}`, l.sizes ? { sizes: l.sizes } : null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방에 자리가 없어요. 가방을 비우고 다시 와 주세요.'); }
+      else { const { bag } = await pointStore.questDoc(account, 'flea'); const mark = IslandItems.boxFor(l.itemId) ? { bought: true } : null; if (!IslandItems.addToBag(bag, l.itemId, l.qty, `flea-${l.id}`, l.sizes ? { sizes: l.sizes, ...mark } : mark, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방에 자리가 없어요. 가방을 비우고 다시 와 주세요.'); }
       const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1 }, cost: l.price, payKey: `flea:buy:${l.id}`, reason: 'flea_buy' }));
       if (paid?.error === 'POINTS') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.');
       if (paid?.error && paid.error !== 'PAID') return sendError(res, 400, `FLEA_${paid.error}`, '사지 못했어요.'); /* (PAID: paid before and not handed over -- handed over now) */
-      s = IslandFlea.sold(s, l); if (!(await fleaHandOver(account, l, `flea:${l.id}:buy`))) s = IslandFlea.hold(s, account, l);
+      s = IslandFlea.sold(s, l, now); if (!(await fleaHandOver(account, l, `flea:${l.id}:buy`))) s = IslandFlea.hold(s, account, l);
       await pointStore.setWorldValue('flea', s);
       const fee = IslandFlea.feeOf(l.price);
       await fleaLetter(l.seller, `flea-sold-${l.id}`, `${IslandCast.josa(fleaWhat(l), '이가')} ${l.price.toLocaleString('ko-KR')}P에 팔렸어요. 섬 벼룩시장 게시판에서 「받기」를 눌러 받아 가세요. (수수료 5% ${fee.toLocaleString('ko-KR')}P를 뗀 ${(l.price - fee).toLocaleString('ko-KR')}P)`, now);

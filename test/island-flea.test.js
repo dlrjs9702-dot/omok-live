@@ -15,7 +15,7 @@ const I = require('../lib/island-items');
 
 test('벼룩시장 규칙: 올릴 수 있는 것, 값 범위, 수수료, 한 사람 10개, 팔리면 받을 돈', () => {
   assert.equal(F.sellable('herb'), true); assert.equal(F.sellable('fish_anchovy'), true); assert.equal(F.sellable('bait'), true); assert.equal(F.sellable('weed'), true);
-  for (const id of ['bugnet', 'fishing_rod', 'pickaxe', 'bike_mint', 'pet_puppy', 'wallet', 'lost', 'trash', 'compost', 'nope']) assert.equal(F.sellable(id), false, id);
+  for (const id of ['bugnet', 'fishing_rod', 'pickaxe', 'bike_mint', 'pet_puppy', 'wallet', 'lost', 'trash', 'compost', 'candy', 'nope']) assert.equal(F.sellable(id), false, id);
   assert.deepEqual(F.range(1000), [500, 20000]); assert.deepEqual(F.range(1), [1, 20]); assert.equal(F.feeOf(1000), 50); assert.equal(F.netOf(1000), 950); assert.equal(F.feeOf(999), 50);
   assert.equal(F.worth('herb', 3, null, Date.now()), I.priceOf('herb') * 3); assert.equal(F.worth('bait', 2, null, Date.now(), () => 300), 600, '잡화는 상점값');
   let s = F.stateOf(null); const now = Date.parse('2026-12-02T12:00:00+09:00');
@@ -23,13 +23,27 @@ test('벼룩시장 규칙: 올릴 수 있는 것, 값 범위, 수수료, 한 사
   for (let k = 0; k < F.MINE_MAX; k += 1) s = F.put(s, 'a', '가', { kind: 'item', itemId: 'herb', qty: 1 }, 4000, 4000, now + k).state;
   assert.equal(F.put(s, 'a', '가', { kind: 'item', itemId: 'herb', qty: 1 }, 4000, 4000, now).error, 'LIMIT'); assert.equal(new Set(s.list.map((l) => l.id)).size, F.MINE_MAX, '번호는 겹치지 않음');
   const l = s.list[0]; assert.equal(l.until - l.at, 3 * 86400000);
-  s = F.sold(s, l); s = F.sold(s, s.list[0]); assert.equal(s.owed.a.amount, 2 * 3800); assert.equal(F.view(s, 'a', now).owed, 7600); assert.equal(F.view(s, 'b', now).list[0].mine, false);
+  s = F.sold(s, l, now); s = F.sold(s, s.list[0], now + 1000); assert.equal(s.owed.a.amount, 2 * 3800);
+  { const od = F.overdue(s, now + 3 * 86400000); assert.equal(od.due.length, 1); assert.equal(od.state.owed.a.amount, 3800); assert.equal(F.overdue(s, now + 1000).due.length, 0); } assert.equal(F.view(s, 'a', now).owed, 7600); assert.equal(F.view(s, 'b', now).list[0].mine, false);
   assert.ok(!JSON.stringify(F.view(s, 'b', now)).includes('"a"'), '파는 사람 계정은 보이지 않음');
-  s = F.claimed(s, 'a'); assert.deepEqual(s.owed.a, { amount: 0, n: 1 });
+  s = F.claimed(s, 'a'); assert.deepEqual(s.owed.a, { amount: 0, n: 1, list: [] });
   assert.equal(F.expired(s, now + 3 * 86400000 + 10).length, s.list.length);
   const bag = [{ entryId: 'f', itemId: 'fish_anchovy', qty: 3, meta: { sizes: [40, 30, 20] } }];
   assert.deepEqual(I.takeEntry(bag, 'f', 2), { keep: [{ entryId: 'f', itemId: 'fish_anchovy', qty: 1, meta: { sizes: [40] } }], sizes: [30, 20] }, '작은 것부터, 크기 그대로');
   assert.equal(I.takeEntry(bag, 'f', 4), null); assert.equal(I.takeEntry(bag, 'x', 1), null);
+});
+
+test('「산 것」(review-plan §1-3): 산 물고기·곤충은 따로 쌓이고, 팔면 낚시왕 셈에서 빠지고, 박물관은 잡은 것만', () => {
+  let bag = I.addToBag([], 'fish_anchovy', 2, 'a', { sizes: [30, 20] });
+  bag = I.addToBag(bag, 'fish_anchovy', 1, 'b', { sizes: [50], bought: true });
+  assert.equal(bag.length, 2, '산 것은 잡은 것과 한 칸에 섞이지 않음'); assert.equal(bag.find((e) => e.meta?.bought).meta.sizes[0], 50);
+  assert.equal(I.pickSize(bag, 'fish_anchovy', true), 50); assert.equal(I.pickSize(bag, 'fish_anchovy', true, true), 30, '박물관은 잡은 것 중 가장 큰 것');
+  assert.deepEqual(I.takeFromBag(bag, 'fish_anchovy', 1, true, true).find((e) => !e.meta?.bought).meta.sizes, [20]);
+  const sale = I.sellAt(bag, 'fisher', 0); assert.equal(sale.sold.find((s) => s.bought).qty, 1); assert.equal(sale.sold.find((s) => !s.bought).qty, 2);
+  const boxed = I.addToBag([], 'insect_' + Object.keys(require('../lib/island-insects').SPECIES)[0], 1, 'i', { bought: true }, { bag: 16, fish: 0, insect: 30 });
+  assert.equal(boxed[0].meta.box, 'insect'); assert.equal(boxed[0].meta.bought, true, '채집통에서도 표시가 남음');
+  const moved = I.fillBox([{ entryId: 'z', itemId: 'fish_anchovy', qty: 1, meta: { sizes: [40], bought: true } }], 'fish', { bag: 16, fish: 30, insect: 0 });
+  assert.equal(moved.entries[0].meta.bought, true, '물고기 통으로 옮겨도 표시가 남음');
 });
 
 test('벼룩시장 서버: 올리기·사기(크기 그대로)·내 물건 못 사기·거두기·받기(5% 뗌)·편지·3일 뒤 돌려받기·가구', async (t) => {
@@ -59,6 +73,7 @@ test('벼룩시장 서버: 올리기·사기(크기 그대로)·내 물건 못 �
   const before = await bal(b); const buy = await req('/api/island/flea/buy', b, { id: put.data.listing.id }); assert.equal(buy.status, 200, JSON.stringify(buy.data));
   assert.equal(await bal(b), before - fish.each[0] * 2);
   assert.deepEqual((await bagOf(b)).find((e) => e.itemId === 'fish_anchovy').sizes, [33.5], '물고기 크기 그대로');
+  assert.equal((await bagOf(b)).find((e) => e.itemId === 'fish_anchovy').meta.bought, true, '「산 것」 표시');
   assert.equal((await req('/api/island/flea/buy', b, { id: put.data.listing.id })).data.error, 'FLEA_GONE');
   // the seller: a letter, money waiting -- 받기 (less 5 %), once
   const mail = (await req('/api/island/mail', a)).data.letters; assert.ok(mail.some((l) => l.fromName === '섬 벼룩시장' && l.text.includes('팔렸어요')), JSON.stringify(mail));
@@ -84,6 +99,11 @@ test('벼룩시장 서버: 올리기·사기(크기 그대로)·내 물건 못 �
   assert.ok(!(await req('/api/island/furniture/mine', a)).data.pieces.some((p) => p.uid === added.uid));
   assert.equal((await req('/api/island/flea/buy', b, { id: pp.data.listing.id })).status, 200);
   assert.ok((await req('/api/island/furniture/mine', b)).data.pieces.some((p) => p.uid === added.uid && p.id === 'aquarium_big__oak'));
+  // money not taken in 3 days: into the wallet by itself, with a letter (review-plan §1-2)
+  const owedNow = (await req('/api/island/flea', a)).data.owed; assert.equal(owedNow, sp.worth - Math.ceil(sp.worth * 0.05));
+  const had2 = await bal(a); await req('/api/test/flea/expire', a, {}); assert.equal((await req('/api/island/flea', b)).data.owed, 0);
+  assert.equal((await req('/api/island/flea', a)).data.owed, 0); assert.equal(await bal(a), had2 + owedNow);
+  assert.ok((await req('/api/island/mail', a)).data.letters.some((l) => l.text.includes('받지 않은 판 돈')));
   // ten at most a seller
   await req('/api/test/island/give', a, { itemId: 'branch', qty: 20 });
   const br = (await req('/api/island/flea/stock', a)).data.items.find((x) => x.itemId === 'branch');

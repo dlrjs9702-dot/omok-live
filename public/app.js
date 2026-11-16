@@ -5154,7 +5154,7 @@
   let fleaTab = 'buy'; let fleaShown = false; const fleaFilter = { cat: '', q: '', sort: 'new' };
   async function refreshFleaBadge() { try { const d = await api('/api/island/flea'); plaza.controller?.setFleaBadge?.(d.owed > 0); return d; } catch { return null; } }
   const fleaLeft = (until) => { const h = Math.max(0, Math.floor((until - Date.now()) / 3600000)); return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간 남음` : h ? `${h}시간 남음` : '곧 내려가요'; };
-  const fleaLabel = (x) => `${x.icon} ${x.name}${x.qty > 1 ? ` ×${x.qty}` : ''}${x.sizes?.length ? ` · ${x.sizes.map((cm) => `${cm}cm`).join(', ')}` : ''}`;
+  const fleaLabel = (x) => `${x.icon} ${x.name}${x.qty > 1 ? ` ×${x.qty}` : ''}${x.sizes?.length ? ` · ${x.sizes.map((cm) => `${cm}cm`).join(', ')}` : ''}${x.bought ? ' · 산 것' : ''}`; /* (1.10.340: a bought one -- not the 낚시왕's or the museum's) */
   const fleaBag = () => api('/api/island/bag').then(drawIslandBag).catch(() => {});
   async function openFlea(tab = fleaTab) {
     fleaTab = tab; let d; try { d = await api('/api/island/flea'); } catch (error) { showToast(error.message || '벼룩시장을 불러오지 못했어요.'); return; }
@@ -5192,7 +5192,7 @@
     const things = [...st.items.map((x) => ({ ...x, key: `i:${x.entryId}` })), ...st.pieces.map((p) => ({ ...p, key: `p:${p.uid}`, icon: p.yard ? '🌳' : '🪑', qty: 1 }))];
     if (!things.length) { body.append(line('올릴 수 있는 물건이 없어요. 가방의 물고기·곤충·채집물·작물·광석·간식이나 놓지 않은 가구를 올릴 수 있어요.', 'lookMeta')); return; }
     const pick = sEl('select', 'fleaPick'); pick.setAttribute('aria-label', '올릴 물건');
-    for (const t of things) pick.append(new Option(`${t.icon} ${t.name}${t.qty > 1 ? ` (${t.qty}개)` : ''}${t.sizes?.length === 1 ? ` ${t.sizes[0]}cm` : ''}${t.uid ? ' · 가구 창고' : ''}`, t.key));
+    for (const t of things) pick.append(new Option(`${t.icon} ${t.name}${t.qty > 1 ? ` (${t.qty}개)` : ''}${t.sizes?.length === 1 ? ` ${t.sizes[0]}cm` : ''}${t.bought ? ' · 산 것' : ''}${t.uid ? ' · 가구 창고' : ''}`, t.key));
     const qty = sEl('input', 'stocksQtyInput fleaQty'); qty.type = 'number'; qty.min = '1'; qty.inputMode = 'numeric'; qty.setAttribute('aria-label', '몇 개');
     const price = sEl('input', 'stocksQtyInput fleaPrice'); price.type = 'number'; price.min = '1'; price.inputMode = 'numeric'; price.setAttribute('aria-label', '값');
     const note = line('', 'lookMeta stocksNote');

@@ -13926,9 +13926,9 @@
     {
       "out": "auction-v1/auction_board.glb",
       "src": "auction137:01. High/auction-v1/auction_board.glb",
-      "sha256": "663bcac7040519e1e08095f4ab69981f9e45184361c43a67ad2b04da2cd9ee3d",
+      "sha256": "6ec142ad3270a24f162f5c2673afa0139374fe9332013ad492416c7da90aee8a",
       "lowSrc": "auction137:02. Low/auction-v1/auction_board_low.glb",
-      "lowSha256": "45ad2fa81b76c45a313e5535525fdb5a3840c189c93cfc8c161a4a6b8b1a696a",
+      "lowSha256": "cdbf244270525d9d91ee2815c9f4a19c12951c9d869fa9d7bfd67c21e119ee25",
       "precompressed": true
     }
   ],
