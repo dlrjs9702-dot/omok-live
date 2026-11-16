@@ -107,6 +107,8 @@
     "xmas-v3/xmas_rocking_reindeer_low.glb": { "nodes": 3, "reason": "assets 149: its `rock` node kept (-kn)" },
     "xmas-v3/xmas_snowman_lamp.glb": { "nodes": 3, "reason": "assets 149: its `light` node kept (-kn)" },
     "xmas-v3/xmas_snowman_lamp_low.glb": { "nodes": 3, "reason": "assets 149: its `light` node kept (-kn)" },
+    "auction-v1/auction_board.glb": { "nodes": 13, "materials": 2, "reason": "assets 137 경매 게시판: nine note slots, the stand and the sign face kept (-kn); primary + glow" },
+    "auction-v1/auction_board_low.glb": { "nodes": 13, "materials": 2, "reason": "assets 137 경매 게시판: nine note slots, the stand and the sign face kept (-kn); primary + glow" },
     "farm-v1/spring/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
     "farm-v1/summer/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
     "farm-v1/autumn/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },

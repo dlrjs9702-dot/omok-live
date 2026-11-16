@@ -493,6 +493,7 @@
   // 묶음 1 대청마당 바닥 (assets 59): the disc (its crescent to the cliff: the file's -Z is north, not turned), ring, kerbs,
   // channels; the gardens in four seasons (each its zone's)
   const PV = '/assets/island/plaza-v1';
+  REGISTRY['plaza.auction_board'] = { url: '/assets/island/auction-v1/auction_board.glb', low: { url: '/assets/island/auction-v1/auction_board_low.glb' }, near: 70, keepNodes: true, nightGlow: true }; /* (1.10.338 섬 경매장, assets 137: its nine note slots, the stand and the sign face kept; the bulbs lit at night) */
   for (const f of ['medallion', 'band_ring', 'curb', 'curb_corner', 'channel', 'channel_end']) REGISTRY[`plaza.${f}`] = { url: `${PV}/plaza_${f}.glb`, low: { url: `${PV}/plaza_${f}_low.glb` }, near: 90, shadows: false };
   const pvSeasons = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${PV}/plaza_${f.replace('{s}', s)}.glb`]));
   for (const f of ['garden_long', 'garden_round', 'garden_long_bare' /* (v1.10.253 assets 104: 기록의 탑's bed, no trees) */]) REGISTRY[`plaza.${f}`] = { seasons: pvSeasons(`${f}_{s}`), low: { seasons: pvSeasons(`${f}_{s}_low`) }, near: 90 };

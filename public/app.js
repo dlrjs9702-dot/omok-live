@@ -2062,7 +2062,7 @@
     plazaStage.classList.toggle('plazaFailed', Boolean(plaza.failed));
     plazaError.classList.toggle('hidden', !plaza.failed);
     if (plaza.failed) return; // the error and its retry, over the island's place
-    if (plaza.controller) { plaza.controller.start(); if (back) { refreshStars(); refreshContest(); } return; } // (their polls stop off the island -- Codex review)
+    if (plaza.controller) { plaza.controller.start(); if (back) { refreshStars(); refreshContest(); refreshFleaBadge(); } return; } // (their polls stop off the island -- Codex review)
     if (plaza.loading) return;
     // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
     // keeps the screen and so the spot it had.
@@ -2077,13 +2077,13 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'tool:use' ? useHeld() : String(id).startsWith('quarry:') ? mineAt(id) /* (1.10.323 채석장) */ : String(id).startsWith('market:') ? buySnack(id) /* (1.10.325 크리스마스 마켓) */ :String(id).startsWith('bed:') ? openBedCell(id) /* (318 마당 농사) */ :id === 'upkeep:box' ? openUpkeepBox() : String(id).startsWith('yardweed:') ? pullYardWeed(id) : String(id).startsWith('trophy:') ? showToast(`🏆 ${plaza.controller?.trophyLine?.(id) || ''}`, 4000) /* (v1.10.251 §3-1) */ :id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : String(id).startsWith('museum:go:') ? museumGo(String(id).slice(10)) /* (v1.10.254 박물관 나누기) */ : String(id).startsWith('museum:plaque:') ? openDexCard(String(id).slice(14)) /* (v1.10.257: a plaque's 설명) */ : String(id).startsWith('taxi:') ? openTaxi(String(id).slice(5)) /* (v1.10.271 섬 택시) */ : id === 'contest:tent' ? openContestTent() : (id === 'board:records' || id === 'board:records:back') ? openRecordTower() : id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'fest:sled' ? plaza.controller?.sledRide?.() /* (1.10.334 썰매 언덕) */ : id === 'fest:snowball' ? festivalSnowball() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'exchange:exit' ? exchangeDoor(false) : id === 'exchange:board' ? openStocks('board') : id === 'exchange:clerk' ? tedTalk() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('stall') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'tool:use' ? useHeld() : String(id).startsWith('quarry:') ? mineAt(id) /* (1.10.323 채석장) */ : String(id).startsWith('market:') ? buySnack(id) /* (1.10.325 크리스마스 마켓) */ :String(id).startsWith('bed:') ? openBedCell(id) /* (318 마당 농사) */ :id === 'upkeep:box' ? openUpkeepBox() : String(id).startsWith('yardweed:') ? pullYardWeed(id) : String(id).startsWith('trophy:') ? showToast(`🏆 ${plaza.controller?.trophyLine?.(id) || ''}`, 4000) /* (v1.10.251 §3-1) */ :id === 'museum' ? museumDoor(true) : id === 'museum:exit' ? museumDoor(false) : String(id).startsWith('museum:go:') ? museumGo(String(id).slice(10)) /* (v1.10.254 박물관 나누기) */ : String(id).startsWith('museum:plaque:') ? openDexCard(String(id).slice(14)) /* (v1.10.257: a plaque's 설명) */ : String(id).startsWith('taxi:') ? openTaxi(String(id).slice(5)) /* (v1.10.271 섬 택시) */ : id === 'contest:tent' ? openContestTent() : (id === 'board:records' || id === 'board:records:back') ? openRecordTower() : id === 'board:flea' ? openFlea() /* (1.10.339 섬 벼룩시장) */ :id === 'museum:curator' ? openCurator() : id === 'museum:board' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : (id === 'fish:spot' || id === 'fish:mouth') ? fishAction() /* (v1.10.224: 강 어귀 낚시터) */ : id === 'farm:harvest' ? harvestFarm() : id === 'farm:board' ? openFarmBoard() : id === 'fest:host' ? (festivalView?.festival ? openFestival('tasks') : openWeekContest()) : id === 'fest:contest' ? openWeekContest() : id === 'fest:stall' ? openFestival('shop') : id === 'fest:harvest' ? festivalTask('harvest') : id === 'fest:feast' ? festivalTask('feast') : id === 'fest:gather' ? festivalTask('gather') : id === 'fest:sack' ? festivalGift() : id === 'fest:snow' ? festivalSnow() : id === 'fest:sled' ? plaza.controller?.sledRide?.() /* (1.10.334 썰매 언덕) */ : id === 'fest:snowball' ? festivalSnowball() : id === 'weedboard' ? (openPlazaWindow('잡초 게시판', [weedBoard()]), plazaDialog.classList.add('boardMode')) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'home:exit' ? homeDoor(null) : id === 'home:stairs_up' || id === 'home:stairs_down' ? homeStairs() :id.startsWith('home:') ? homeDoor(id.slice(5)) : id === 'tool:swing' ? swingNet() : id.startsWith('tank:') ? openTank(id.slice(5)) : id.startsWith('frame:') ? openFrame(id.slice(6)) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id === 'petshop:counter' ? openPetCounter() : id === 'lookout:scope' ? plaza.controller?.lookScope?.(true) /* (v1.10.224 능선 전망대) */ : id === 'works:keeper' ? talkResident(plaza.controller?.roster?.()?.posts.works ?? 19, `영차! 내일이면 ${window.IslandCast?.josa?.(window.IslandProjects?.byId(projectsView?.works?.id)?.thing || '새 시설', '이가') || '새 시설이'} 열려요.`) /* (v1.10.222 총괄 검토 1: no shop there -- their own talk) */ : String(id).startsWith('plaque:') ? openPlaque(String(id).slice(7)) : id === 'pavilion:keeper' ? postTalk('pavilion', '느티 정자', '「정자에 앉아 바람 쐬고 가요. 옛이야기는 또 들려줄게요.」') : id === 'station:keeper' ? postTalk('station', '달마루역', new Date(Date.now() + 9 * 3600000).getUTCDay() === 0 ? '「일요일은 반디가 역을 봐요. 철이 부탁은 월요일에 다시 받아요.」' : '「승강기는 정해진 시각에 다녀요. 일요일엔 반디가 역을 봐요.」') : id === 'fashion:counter' ? postTalk('mall2', '옷·꾸미기', '「옷걸이와 진열장 앞에서 SPACE를 누르면 보여 드려요. 거울 앞 의자에 앉으면 꾸미기예요.」') : id === 'furniture:checkout' ? postTalk('mall3', '가구', '「받침대 위 가구 앞에서 SPACE를 누르면 보여 드려요. 내일은 또 다른 가구가 들어와요.」', [btn('가구 리폼', 'secondary reformOpen', () => openReform())]) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'jail:exit' ? jailDoor(false) : id === 'jail:warden' ? openWarden() : id === 'jail:board' ? openJailBoard() : id === 'exchange:exit' ? exchangeDoor(false) : id === 'exchange:board' ? openStocks('board') : id === 'exchange:clerk' ? tedTalk() : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('stall') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('visit:') ? visitDo(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       plaza.controller.onBike?.((on, why) => { drawQuick(); if (why) showToast(why, 3000); }); /* (v1.10.281: the bike's 빠른 칸 raised while riding) */ refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
-      wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide();
+      wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshFestival(); refreshBirthday(); refreshMail(true); refreshGuide(); refreshFleaBadge();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
       plaza.controller.setHeldTool?.(heldTool); loadQuick(); setTimeout(islandNoticeOnce, 1500); // (1103 4: a note once) (3회차 22: the tool I held, in hand again; v1.10.236 my 빠른 칸)
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setRenderScale?.(renderScaleMode()); /* (314) */ plaza.controller.onAutoTier?.(autoTierNote); watchSlowStart(); showControlsHint(); reportFrames(); /* (1.10.322 U1, U4; 1.10.324 the frame rate) */ api('/api/island/quarry').then((d) => plaza.controller?.setQuarry?.(d.rocks)).catch(() => {}); /* (1.10.323 채석장: the rocks as they are) */ plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
@@ -5082,6 +5082,7 @@
   const stockPct = (a, b) => (b ? ((a - b) / b) * 100 : 0);
   const stockSign = (v) => `${v > 0 ? '▲' : v < 0 ? '▼' : '–'} ${Math.abs(v).toFixed(1)}%`;
   const stockTone = (v) => (v > 0 ? 'stockUp' : v < 0 ? 'stockDown' : 'stockFlat');
+  const stockNewsText = (x) => `${x.name}, ${x.line} ${x.pct > 0 ? '▲' : x.pct < 0 ? '▼' : '–'}${Math.abs(x.pct)}%`; /* (102A 주식 소식: 「해송 제과, 새 과자가 대박 났어요 ▲32%」) */
   const stockRid = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
   // (1.10.322 섬 주식 보드 고침: the line's colour and the ▲▼ beside it on one basis -- today's first price to now, 「오늘」)
   const stockToday = (c) => { const t = (c.today || []).filter((x) => Number(x) > 0); return t.length ? stockPct(c.price, t[0]) : 0; };
@@ -5096,10 +5097,13 @@
     stocksTab = tab; const d = await refreshStocksBoard(); if (!d) { showToast('시세를 불러오지 못했어요.'); return; }
     const card = sEl('div', 'mirrorCard stocksCard'); const next = new Date(d.next); const nextText = `${String(next.getHours()).padStart(2, '0')}:00`;
     const wk = d.mine?.week; card.append(line(`${d.open ? '장 열림' : '장 닫힘 · 매일 오전 9시~오후 11시'} · 다음 값 ${nextText}${wk == null ? '' : ` · 이번 주 수익률 ${stockSign(wk)}`}`, 'lookMeta stocksHead'));
-    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['mine', '내 주식'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
+    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['news', '섬 소식'], ['mine', '내 주식'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
     const body = sEl('div', 'stocksBody'); card.append(body);
     if (code) stockDetail(body, d, code);
-    else if (tab === 'mine') {
+    else if (tab === 'news') { /* (102A: the day's news, the latest first -- each told only once its hour's price is up) */
+      const list = d.news || []; if (!list.length) body.append(line('오늘은 아직 소식이 없어요. 값이 크게 튈 때 그 까닭이 여기 올라와요.', 'lookMeta'));
+      for (const x of list) { const at = new Date(x.at); const row = sEl('button', 'stocksRow stocksNews'); row.type = 'button'; row.append(sEl('span', 'stocksQty', `${String(at.getHours()).padStart(2, '0')}:00`), sEl('span', `stocksName ${stockTone(x.pct)}`, stockNewsText(x))); row.addEventListener('click', () => openStocks('board', x.code)); body.append(row); }
+    } else if (tab === 'mine') {
       const rows = d.mine?.rows || []; if (!rows.length) body.append(line('아직 가진 주식이 없어요. 시세에서 회사를 골라 사 보세요.', 'lookMeta'));
       for (const r of rows) { const row = sEl('button', 'stocksRow'); row.type = 'button'; row.append(sEl('span', 'stocksName', r.name), sEl('span', 'stocksQty', `${r.qty.toLocaleString('ko-KR')}주 · 평균 ${stockWon(r.avg)}`), sEl('span', `stocksChange ${stockTone(r.gain)}`, r.status === 'gone' ? '상장 폐지' : `${stockWon(r.value)} ${stockSign(r.gain)}`)); if (r.status !== 'gone') row.addEventListener('click', () => openStocks('board', r.code)); body.append(row); }
     } else if (tab === 'rank') {
@@ -5113,7 +5117,7 @@
       for (const c of d.companies) {
         const row = sEl('button', 'stocksRow'); row.type = 'button';
         if (c.status === 'gone') { row.disabled = true; row.append(sEl('span', 'stocksName', c.name), sEl('span', 'stocksQty', '상장 폐지 · 곧 새 회사가 들어와요'), sEl('span', 'stocksChange stockFlat', '')); body.append(row); continue; }
-        const ch = stockToday(c); const tag = c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : '';
+        const ch = stockToday(c); const tag = `${c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : ''}${c.news ? ' · 📰 소식' : ''}`; /* (102A: a line of news today) */
         row.append(sEl('span', 'stocksName', `${c.name}${tag}`), stockSpark(c.today, 96, 26, stockTone(ch)), sEl('span', 'stocksPrice', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, stockSign(ch)));
         row.addEventListener('click', () => openStocks('board', c.code)); body.append(row);
       }
@@ -5124,6 +5128,8 @@
     const c = d.companies.find((x) => x.code === code); if (!c) { body.append(line('이 회사는 이제 없어요.', 'lookMeta')); return; }
     const mine = d.mine?.rows?.find((r) => r.code === code); const ch = stockPct(c.price, c.prevClose);
     body.append(line(`${c.name} · ${c.kindLabel} · 상장가 ${stockWon(c.list)}${c.status === 'cleanup' ? ' · 정리 매매(오늘 뒤 상장 폐지, 팔기만 돼요)' : ''}`, 'lookMeta'));
+    if (c.bustWhy && c.status === 'cleanup') body.append(line(`부도: ${c.bustWhy}`, 'lookMeta stockDown')); /* (102A) */
+    if (c.news) body.append(line(`📰 ${stockNewsText({ name: c.name, ...c.news })}`, `lookMeta ${stockTone(c.news.pct)}`)); /* (102A: today's latest news) */
     const today = stockToday(c); const days = (c.week || []).filter((x) => Number(x) > 0).length; /* (fewer than 7: 「상장 n일째」) */
     const top = sEl('div', 'stocksDetail'); top.append(sEl('span', 'stocksPrice big', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(today)}`, `오늘 ${stockSign(today)}`), sEl('span', `stocksChange ${stockTone(ch)}`, `어제보다 ${stockSign(ch)}`)); body.append(top);
     body.append(line('오늘', 'lookMeta stocksLabel'), stockSpark(c.today, 260, 60, stockTone(today)), line(days < 7 ? `상장 ${Math.max(1, days)}일째` : '지난 7일', 'lookMeta stocksLabel'), stockSpark(c.week, 260, 60));
@@ -5141,6 +5147,82 @@
     if (c.status !== 'cleanup') row.append(btn('사기', 'primary', order('buy'))); row.append(btn('팔기', 'secondary', order('sell')));
     if (!d.open) { for (const b of row.querySelectorAll('button')) b.disabled = true; note.textContent = '장이 닫혀 있어요. 매일 오전 9시부터 오후 11시까지 사고팔 수 있어요.'; }
     body.append(row, note, btn('시세로', 'secondary', () => openStocks('board')));
+  }
+  // 1.10.339 섬 벼룩시장 (138A; notes island-auction 49A·50A·135B·136A·137A): the board's window -- 사기 (분류, 이름 찾기, 값 순),
+  // 팔기 (from the bag or the 가구 창고: how many, a price within 0.5~20 times its worth, 5 % kept back when sold), 내 물건 (up, 거두기;
+  // 받을 돈 「받기」). A gold 「받을 돈」 over the board while money waits.
+  let fleaTab = 'buy'; let fleaShown = false; const fleaFilter = { cat: '', q: '', sort: 'new' };
+  async function refreshFleaBadge() { try { const d = await api('/api/island/flea'); plaza.controller?.setFleaBadge?.(d.owed > 0); return d; } catch { return null; } }
+  const fleaLeft = (until) => { const h = Math.max(0, Math.floor((until - Date.now()) / 3600000)); return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간 남음` : h ? `${h}시간 남음` : '곧 내려가요'; };
+  const fleaLabel = (x) => `${x.icon} ${x.name}${x.qty > 1 ? ` ×${x.qty}` : ''}${x.sizes?.length ? ` · ${x.sizes.map((cm) => `${cm}cm`).join(', ')}` : ''}${x.bought ? ' · 산 것' : ''}`; /* (1.10.340: a bought one -- not the 낚시왕's or the museum's) */
+  const fleaBag = () => api('/api/island/bag').then(drawIslandBag).catch(() => {});
+  async function openFlea(tab = fleaTab) {
+    fleaTab = tab; let d; try { d = await api('/api/island/flea'); } catch (error) { showToast(error.message || '벼룩시장을 불러오지 못했어요.'); return; }
+    plaza.controller?.setFleaBadge?.(d.owed > 0); fleaShown = true;
+    if (d.back?.length) { showToast(`맡겨 둔 ${d.back.join(', ')}을(를) 돌려받았어요.`, 5000); fleaBag(); }
+    const card = sEl('div', 'mirrorCard stocksCard fleaCard');
+    card.append(line(`정한 값에 사고파는 곳이에요. 올린 물건은 ${d.rules.days}일 동안 걸려 있고, 팔리면 수수료 ${Math.round(d.rules.fee * 100)}%를 뗀 돈을 여기서 받아요.`, 'lookMeta stocksHead'));
+    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['buy', '사기'], ['sell', '팔기'], ['mine', `내 물건${d.owed ? ' · 💰' : ''}`]]) tabs.append(btn(label, k === tab ? 'primary' : 'secondary', () => openFlea(k))); card.append(tabs);
+    const body = sEl('div', 'stocksBody'); card.append(body);
+    if (tab === 'sell') await fleaSell(body, d); else if (tab === 'mine') fleaMine(body, d); else fleaBuy(body, d);
+    card.append(btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('🏷️ 섬 벼룩시장', [card]);
+  }
+  function fleaBuy(body, d) {
+    const bar = sEl('div', 'stocksOrder fleaBar'); const cat = sEl('select', 'fleaCat'); cat.setAttribute('aria-label', '분류'); cat.append(new Option('모든 분류', '')); for (const [k, v] of Object.entries(d.cats || {})) cat.append(new Option(v, k)); cat.value = fleaFilter.cat;
+    const q = sEl('input', 'fleaSearch'); q.type = 'search'; q.placeholder = '이름 찾기'; q.value = fleaFilter.q; q.setAttribute('aria-label', '이름 찾기');
+    const sort = sEl('select', 'fleaSort'); sort.setAttribute('aria-label', '순서'); for (const [k, v] of [['new', '새로 올린 순'], ['low', '값 낮은 순'], ['high', '값 높은 순']]) sort.append(new Option(v, k)); sort.value = fleaFilter.sort;
+    const list = sEl('div', 'fleaList'); bar.append(cat, q, sort); body.append(bar, list);
+    const draw = () => {
+      Object.assign(fleaFilter, { cat: cat.value, q: q.value.trim(), sort: sort.value }); list.replaceChildren();
+      const rows = d.list.filter((x) => (!fleaFilter.cat || x.cat === fleaFilter.cat) && (!fleaFilter.q || x.name.includes(fleaFilter.q)));
+      if (fleaFilter.sort !== 'new') rows.sort((a, b) => (fleaFilter.sort === 'low' ? a.price - b.price : b.price - a.price));
+      if (!rows.length) list.append(line(d.list.length ? '맞는 물건이 없어요.' : '아직 올라온 물건이 없어요. 「팔기」에서 먼저 올려 보세요.', 'lookMeta'));
+      for (const x of rows) {
+        const row = sEl('div', 'stocksRow fleaRow'); row.dataset.id = x.id; row.append(sEl('span', 'stocksName', fleaLabel(x)), sEl('span', 'stocksQty', `${x.seller} · ${fleaLeft(x.until)}`), sEl('span', 'stocksPrice', stockWon(x.price)));
+        if (x.mine) row.append(sEl('span', 'lookMeta', '내 물건'));
+        else row.append(btn('사기', 'primary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/flea/buy', { method: 'POST', body: JSON.stringify({ id: x.id }) }); loadPoints(); if (r.kind !== 'piece') fleaBag(); showToast(r.held ? `${r.name}을(를) 샀어요. 가방에 자리가 없어 게시판에 맡겨 뒀어요.` : `${r.name}을(를) ${stockWon(r.price)}에 샀어요. ${r.kind === 'piece' ? '가구 창고' : '가방'}를 열어 보세요.`); openFlea('buy'); } catch (error) { showToast(error.message); b.disabled = false; } }));
+        list.append(row);
+      }
+    };
+    cat.addEventListener('change', draw); sort.addEventListener('change', draw); q.addEventListener('input', draw); draw();
+  }
+  async function fleaSell(body, d) {
+    let st; try { st = await api('/api/island/flea/stock'); } catch (error) { body.append(line(error.message, 'lookMeta')); return; }
+    body.append(line(`올린 물건 ${d.mine}/${st.rules.max}개 · 값은 그 물건 값의 ${st.rules.low}~${st.rules.high}배 · 팔리기 전에는 언제든 거둘 수 있어요(수수료 없음).`, 'lookMeta'));
+    const things = [...st.items.map((x) => ({ ...x, key: `i:${x.entryId}` })), ...st.pieces.map((p) => ({ ...p, key: `p:${p.uid}`, icon: p.yard ? '🌳' : '🪑', qty: 1 }))];
+    if (!things.length) { body.append(line('올릴 수 있는 물건이 없어요. 가방의 물고기·곤충·채집물·작물·광석·간식이나 놓지 않은 가구를 올릴 수 있어요.', 'lookMeta')); return; }
+    const pick = sEl('select', 'fleaPick'); pick.setAttribute('aria-label', '올릴 물건');
+    for (const t of things) pick.append(new Option(`${t.icon} ${t.name}${t.qty > 1 ? ` (${t.qty}개)` : ''}${t.sizes?.length === 1 ? ` ${t.sizes[0]}cm` : ''}${t.bought ? ' · 산 것' : ''}${t.uid ? ' · 가구 창고' : ''}`, t.key));
+    const qty = sEl('input', 'stocksQtyInput fleaQty'); qty.type = 'number'; qty.min = '1'; qty.inputMode = 'numeric'; qty.setAttribute('aria-label', '몇 개');
+    const price = sEl('input', 'stocksQtyInput fleaPrice'); price.type = 'number'; price.min = '1'; price.inputMode = 'numeric'; price.setAttribute('aria-label', '값');
+    const note = line('', 'lookMeta stocksNote');
+    const cur = () => things.find((t) => t.key === pick.value);
+    const n = () => Math.max(1, Math.min(cur().qty, Math.floor(Number(qty.value) || 1)));
+    const worth = () => { const t = cur(); return t.uid ? t.worth : t.each ? t.each.slice(0, n()).reduce((a, b) => a + b, 0) : t.unit * n(); }; /* (a fish: the smallest go first) */
+    const span = () => { const w = worth(); return [Math.max(1, Math.ceil(w * st.rules.low)), Math.max(1, Math.floor(w * st.rules.high))]; };
+    const show = () => { const [lo, hi] = span(); const p = Math.floor(Number(price.value) || 0); const fee = Math.ceil(p * st.rules.fee); note.textContent = `값 ${stockWon(lo)}~${stockWon(hi)} (물건 값 ${stockWon(worth())})${p ? ` · 팔리면 ${stockWon(p - fee)}을 받아요(수수료 ${stockWon(fee)})` : ''}`; };
+    const reset = () => { const t = cur(); qty.max = String(t.qty); qty.value = '1'; qty.disabled = t.qty <= 1; price.value = String(worth()); show(); };
+    pick.addEventListener('change', reset); qty.addEventListener('input', show); price.addEventListener('input', show); reset();
+    const go = btn('올리기', 'primary', async (ev) => {
+      const b = ev.currentTarget; b.disabled = true; const t = cur();
+      try { const r = await api('/api/island/flea/list', { method: 'POST', body: JSON.stringify({ requestId: stockRid(), ...(t.uid ? { uid: t.uid } : { entryId: t.entryId, qty: n() }), price: Math.floor(Number(price.value)) }) }); if (r.bag) drawIslandBag(r.bag); showToast(`${r.listing.name}을(를) ${stockWon(r.listing.price)}에 올렸어요.`); openFlea('mine'); }
+      catch (error) { note.textContent = error.message; b.disabled = false; }
+    });
+    const row = sEl('div', 'stocksOrder'); row.append(qty, sEl('span', 'lookMeta', '개'), price, sEl('span', 'lookMeta', 'P'), go);
+    body.append(pick, row, note);
+  }
+  function fleaMine(body, d) {
+    const top = sEl('div', 'stocksDetail fleaOwed'); top.append(sEl('span', 'stocksPrice big', d.owed ? `받을 돈 ${stockWon(d.owed)}` : '받을 돈이 없어요'));
+    if (d.owed) top.append(btn('받기', 'primary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/flea/claim', { method: 'POST', body: '{}' }); loadPoints(); showToast(`판 돈 ${stockWon(r.amount)}을 받았어요.`); openFlea('mine'); } catch (error) { showToast(error.message); b.disabled = false; } }));
+    body.append(top);
+    if (d.held) body.append(line(`가방에 자리가 없어 맡아 둔 물건이 ${d.held}개 있어요. 가방을 비우고 게시판을 다시 열면 돌려받아요.`, 'lookMeta'));
+    const mine = d.list.filter((x) => x.mine); body.append(line(`올린 물건 ${mine.length}/${d.rules.max}개`, 'lookMeta stocksLabel'));
+    if (!mine.length) body.append(line('올린 물건이 없어요. 「팔기」에서 올려 보세요.', 'lookMeta'));
+    for (const x of mine) {
+      const row = sEl('div', 'stocksRow fleaRow'); row.dataset.id = x.id;
+      row.append(sEl('span', 'stocksName', fleaLabel(x)), sEl('span', 'stocksQty', fleaLeft(x.until)), sEl('span', 'stocksPrice', stockWon(x.price)), btn('거두기', 'secondary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/flea/withdraw', { method: 'POST', body: JSON.stringify({ id: x.id }) }); if (r.kind !== 'piece') fleaBag(); showToast(`${r.name}을(를) 거뒀어요. ${r.kind === 'piece' ? '가구 창고' : '가방'}로 돌아왔어요.`); openFlea('mine'); } catch (error) { showToast(error.message); b.disabled = false; } }));
+      body.append(row);
+    }
   }
   async function tedTalk() { const d = stocksView || (await refreshStocksBoard()); plaza.controller?.tedSay?.(window.IslandExchange?.lineOf(d, Math.floor(Math.random() * 12)) || '…네.'); }
   async function museumDoor(entering) {
@@ -5998,6 +6080,7 @@
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
         if (Array.isArray(data.quests)) showQuestTracker(data.quests); // v1.10.37
         if (data.taxNote) showToast(data.taxNote, 6000); // (주민세 고지서: the day before its last day, once)
+        if (Array.isArray(data.stockNews) && data.stockNews.length) showToast(data.stockNews.map((x) => `📰 ${stockNewsText(x)}`).join('\n'), 7000); /* (102A: news of a company I hold, its hour's price posted) */
       })
       .catch(() => {}).finally(() => { if (plazaStateRequest === abort) { plazaStateRequest = null; plazaSending = false; } });
   }
@@ -7379,6 +7462,8 @@
     if (item.reason === 'stock_buy') return '섬 주식 사기'; // v1.10.320
     if (item.reason === 'stock_sell') return '섬 주식 팔기';
     if (item.reason === 'stock_refund') return '섬 주식 돌려받기'; // (1.10.321: the old market's shares, at what they cost)
+    if (item.reason === 'flea_buy') return '섬 벼룩시장 사기'; // (1.10.339)
+    if (item.reason === 'flea_sale') return '섬 벼룩시장 판 돈 받기';
     if (item.reason === 'market') return '크리스마스 마켓 간식'; // (1.10.325)
     if (item.reason === 'taxi') return '택시 요금'; // (1.10.327)
     if (item.reason === 'taxipass') return '택시 자유이용권';
@@ -8642,8 +8727,9 @@
     if (event === 'museum') { if (plaza.controller?.space?.() === 'museum') refreshMuseum(); else museumState = null; return; } // v1.10.231: given somewhere (it pops in its tank)
     if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }
     if (event === 'birthdayCheered') { showToast(`🎉 ${parsed.name}님이 생일을 축하해 줬어요 (올해 ${parsed.count}명)`, 5000); return; }
-    if (event === 'mail') { showToast(`✉️ ${parsed.from}님에게서 편지가 왔어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); return; } // B 47 우체통
+    if (event === 'mail') { showToast(`✉️ ${parsed.office ? `${parsed.from}에서` : `${parsed.from}님에게서`} 편지가 왔어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); return; } // B 47 우체통
     if (event === 'contest') { refreshContest(); return; } // A4 섬 대회, every day (soon, start, end)
+    if (event === 'flea') { if (parsed.owed) refreshFleaBadge(); if (fleaShown && fleaTab !== 'sell' && plazaDialog.open && document.querySelector('.fleaCard')) openFlea(fleaTab); return; } // (1.10.339 섬 벼룩시장: mine sold -- the badge; anything up or gone -- the open window)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plazaStatuesWeek = parsed.week ?? plazaStatuesWeek; plaza.controller?.setStatues?.(plazaStatues, plazaStatuesWeek); return; } // v1.10.5

@@ -3776,5 +3776,15 @@ body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:
 .stocksDetail{display:flex;align-items:baseline;gap:12px}
 .stocksOrder{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .stocksQtyInput{width:96px;padding:6px 8px;border-radius:8px;border:1px solid rgba(120,100,70,.35);font:inherit}
+/* 1.10.339 섬 벼룩시장: the inputs in one row (a phone: they wrap), the rows name · seller · price · button */
+.fleaCard .stocksOrder>input,.fleaCard .stocksOrder>select,.fleaCard .stocksOrder>button{display:inline-block;flex:0 0 auto;width:auto;margin:0}
+.fleaCard .stocksOrder>.fleaQty{width:76px}.fleaCard .stocksOrder>.fleaPrice{width:128px}
+.fleaCard .fleaBar>.fleaSearch{flex:1 1 140px;min-width:0}
+.fleaCard .fleaPick{width:100%}
+.fleaCard .fleaList{display:grid;gap:6px}
+.fleaCard .fleaRow{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) auto auto;cursor:default}
+.fleaCard .fleaRow>button{width:auto;min-width:64px;padding:6px 14px}
+.fleaCard .fleaOwed{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+@media(max-width:520px){.fleaCard .fleaRow{grid-template-columns:minmax(0,1fr) auto;row-gap:2px}.fleaCard .fleaRow>.stocksQty{grid-column:1/-1;grid-row:2;font-size:.78rem;opacity:.75}}
 .stocksCols{display:grid;grid-template-columns:minmax(0,1.6fr) 96px minmax(0,1fr) minmax(0,.9fr);gap:8px;padding:0 11px;font-size:.78rem;opacity:.72}/* (1.10.322: the board's column names) */
 @media (max-width:560px){.stocksRow,.stocksCols{grid-template-columns:minmax(0,1.4fr) 64px minmax(0,1fr) minmax(0,.9fr);gap:6px;padding:6px 8px}.stocksCols{padding:0 9px}.stockSpark{width:64px}}

@@ -126,6 +126,7 @@ async function quarryRocks(now = nowMs()) {
   return out;
 }
 const IslandStocks = require('./lib/island-stocks'); // v1.10.320 섬 주식
+const IslandFlea = require('./lib/island-flea'); // 1.10.339 섬 벼룩시장
 const IslandExchange = require('./public/plaza/island-exchange'); // (its room)
 // (Codex 311-320 #1: the market's key -- made once, kept in the world store, never sent anywhere; the prices from it alone)
 let stockMarketHeld = null;
@@ -164,12 +165,22 @@ async function stockRank(now, me = null) {
 }
 // 정리 매매 (4A): a letter to everyone holding a company that goes away tomorrow -- once a company, checked each minute
 const stockNoticed = new Set();
+// 102A 주식 소식: a holder told of their company's news once its hour's price is posted -- an hour's check per session (the first
+// one says nothing old), at most three lines; the page shows them as a notice
+const stockNewsSeen = new Map(); // session token -> { K: the tick last checked, k: the last news told }
+async function stockNewsFor(token, account) {
+  const now = stockNow(); const K = IslandStocks.tickAt(now); const was = stockNewsSeen.get(token); if (K < 0 || was?.K === K) return null;
+  stockNewsSeen.set(token, { K, k: was ? was.k : K });
+  const market = await stocksMarket(); const { doc } = await pointStore.questDoc(account, 'stocks'); const held = new Set(Object.entries(doc?.h || {}).filter(([, x]) => x?.q > 0).map(([c]) => c));
+  const since = was ? was.k : K; const fresh = market.newsOf(now).filter((x) => x.k > since && held.has(x.code)); stockNewsSeen.set(token, { K, k: K });
+  return fresh.length ? fresh.slice(0, 3).map(({ name, line, pct }) => ({ name, line, pct })) : null;
+}
 async function stockNotices(now = stockNow()) {
   const going = (await stocksMarket()).view(now).companies.filter((c) => c.status === 'cleanup' && !stockNoticed.has(c.code)); if (!going.length) return;
   const all = await pointStore.questAll('stocks');
   for (const c of going) {
     let sent = true; /* (Codex 311-320 #6: done only when every holder's letter is in -- a failed one asked again next minute; the letter's id keeps it once) */
-    const text = `${c.name}${c.bust ? '가 부도를 냈어요' : ' 주가가 상장가의 10% 아래로 떨어졌어요'}. 오늘 하루 정리 매매(팔기만 돼요) 뒤 상장 폐지돼요. 남은 주식은 0이 돼요. 섬 증권거래소 보드에서 팔 수 있어요.`;
+    const text = `${c.name}${c.bust ? (c.bustWhy ? ` 부도: ${c.bustWhy}` : '가 부도를 냈어요') : ' 주가가 상장가의 10% 아래로 떨어졌어요'}. 오늘 하루 정리 매매(팔기만 돼요) 뒤 상장 폐지돼요. 남은 주식은 0이 돼요. 섬 증권거래소 보드에서 팔 수 있어요.`; /* (102A: the 부도's reason before it) */
     for (const { userId, doc } of all) {
       if (!(doc?.h?.[c.code]?.q > 0)) continue;
       await pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === `stock-${c.code}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `stock-${c.code}`, from: 'office', fromName: '섬 증권거래소', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => { sent = false; });
@@ -1371,6 +1382,50 @@ async function stockingGift(account, now) {
   await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id, from: 'santa', fromName: '산타', text: '메리 크리스마스! 걸어 둔 양말에 사탕 주머니 두 개를 넣고 갔어요. 가방을 열어 보세요. 내년에도 양말 걸어 두는 거 잊지 말아요!', itemId: 'candy', itemName: IslandItems.ITEMS.candy?.name || '사탕 주머니', at: now, read: false }, now) } }));
 }
 // 주민세 고지서: each unpaid bill a letter in my 우체통, from the 관공서 (its own stamp) -- once a bill (its id the bill's day)
+// 1.10.339 섬 벼룩시장 (lib/island-flea.js): the board's state (world value `flea`), read and written inside worldEdit only
+const fleaLoad = async () => IslandFlea.stateOf(await pointStore.worldValue('flea'));
+const fleaGood = (id) => Economy.value(`good:${id}`) || IslandItems.ITEMS[id]?.buy || 0; /* (a store good: what the store asks) */
+function fleaPieceWorth(piece) { const g = IslandFurniture.good(piece?.id); if (!g || g.trophy) return 0; return Number(piece.price) > 0 ? Number(piece.price) : Economy.value(g.yard ? `yard:${g.yardShape}` : `furniture:${g.rarity}`) || Economy.value('furniture:base') || 0; }
+const fleaWhat = (l) => `「${l.name}」${l.qty > 1 ? ` ${l.qty}개` : ''}`;
+async function fleaLetter(account, id, text, now) {
+  await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((x) => x.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id, from: 'office', fromName: '섬 벼룩시장', text, itemId: null, itemName: null, at: now, read: false }, now) } }));
+  notifyAccount(account, 'mail', { from: '섬 벼룩시장', office: true });
+}
+// a listing's thing handed to `account` (its seller back, or its buyer): into the bag (a fish its size) or the 가구 창고 -- once a
+// claim (a piece by its uid) -> true, false when there is no room
+async function fleaHandOver(account, l, claim) {
+  if (l.kind === 'piece') {
+    const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; if (owned.some((p) => p.uid === l.piece.uid)) return true;
+    if (owned.length >= 300) return false; await pointStore.setWorldValue(`furniture:${account}`, [...owned, { ...l.piece, claim }]); return true;
+  }
+  const mark = (account === l.seller ? l.bought : IslandItems.boxFor(l.itemId)) ? { bought: true } : null; /* (1.10.340 「산 것」: a bought fish or insect -- the seller's own back as it was) */
+  const got = await pointStore.islandGive({ userId: account, claimId: claim, itemId: l.itemId, qty: l.qty, meta: l.sizes ? { sizes: l.sizes, ...mark } : mark, quiet: true });
+  return !got.reason;
+}
+// the board kept tidy (inside worldEdit): what has been up 3 days goes back to its seller (a full bag: kept for the next look, a
+// letter either way); `account` given -- its own kept things handed over as far as there is room -> { state, back: [names] }
+async function fleaTidy(now, account = null) {
+  let s = await fleaLoad(); let changed = false; const back = [];
+  for (const l of IslandFlea.expired(s, now)) {
+    s = IslandFlea.without(s, l.id); changed = true; const ok = await fleaHandOver(l.seller, l, `flea:${l.id}:back`); if (!ok) s = IslandFlea.hold(s, l.seller, l);
+    const where = l.kind === 'piece' ? '가구 창고' : '가방';
+    await fleaLetter(l.seller, `flea-back-${l.id}`, ok ? `${IslandCast.josa(fleaWhat(l), '이가')} ${IslandFlea.DAYS}일 동안 팔리지 않아 돌려드렸어요. ${where}를 열어 보세요.` : `${IslandCast.josa(fleaWhat(l), '이가')} ${IslandFlea.DAYS}일 동안 팔리지 않았어요. ${where}에 자리가 없어서 맡아 두었어요. 섬 벼룩시장 게시판을 열면 돌려받아요.`, now);
+  }
+  const od = IslandFlea.overdue(s, now); /* (review-plan §1-2: money not taken in 3 days -- into the wallet, a letter) */
+  if (od.due.length) {
+    s = od.state; changed = true;
+    for (const x of od.due) {
+      await pointStore.questApply(x.account, 'flea', (doc) => ({ doc: { ...doc, got: (doc.got || 0) + x.net }, reward: x.net, payKey: `flea:auto:${x.id}`, reason: 'flea_sale' })); /* (PAID: paid before, not yet marked) */
+      await fleaLetter(x.account, `flea-auto-${x.id}`, `섬 벼룩시장에서 ${IslandFlea.DAYS}일 동안 받지 않은 판 돈 ${x.net.toLocaleString('ko-KR')}P를 지갑에 넣어 드렸어요.`, now);
+      notifyAccount(x.account, 'flea', { owed: true }); notifyPointsChanged([x.account]);
+    }
+  }
+  if (account) for (const l of [...(s.held[account] || [])]) { if (!(await fleaHandOver(account, l, `flea:${l.id}:held`))) break; s = IslandFlea.unhold(s, account, l.id); changed = true; back.push(fleaWhat(l)); }
+  if (changed) await pointStore.setWorldValue('flea', s);
+  return { state: s, back };
+}
+if (process.env.NODE_ENV !== 'test') setInterval(() => { worldEdit(() => fleaTidy(nowMs())).catch(() => {}); }, 10 * 60 * 1000).unref(); /* (the 3 days' returns and money: on time, not only at the next look) */
+const FLEA_ERRORS = Object.freeze({ LIMIT: `한 사람이 ${IslandFlea.MINE_MAX}개까지 올릴 수 있어요.`, MISSING: '가방에 없는 물건이에요.', QTY: '개수를 다시 정해 주세요.', NOT_SELLABLE: '벼룩시장에 올릴 수 없는 물건이에요.', PAID: '이미 처리된 요청이에요.', POINTS: '포인트가 모자라요.' });
 const taxMd = (day) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
 async function taxLetters(account, now) {
   const { bills } = await pointStore.taxBills(account); if (!bills.length) return;
@@ -1887,13 +1942,13 @@ function museumGive(account, itemId, name) {
   const run = museumChain.then(async () => {
     const shown = (await pointStore.worldValue('museum')) || {}; const old = shown[itemId]; const fish = IslandItems.fishOf(itemId);
     if (old && !fish) return { r: 'shown' };
-    const size = fish ? IslandItems.pickSize((await pointStore.islandBag(account)).items || [], itemId, true) : null;
+    const size = fish ? IslandItems.pickSize((await pointStore.questDoc(account, 'museumGiven')).bag || [], itemId, true, true) : null; /* (1.10.340: a caught one -- not one bought at the 벼룩시장) */
     if (fish && size === null) return { r: 'missing' };
     if (old && Number.isFinite(old.size) && !(size > old.size)) return { r: 'smaller', size: old.size };
     const at = nowMs();
     const entry = { by: name, at, ...(fish ? { size, account } : {}), first: old ? old.first || { by: old.by, at: old.at } : { by: name, at }, past: old ? [{ size: old.size ?? null, by: old.by, at: old.at }, ...(old.past || [])].slice(0, 3) : [] };
     await pointStore.setWorldValue('museum', { ...shown, [itemId]: entry }); // (on show first: a failure after it never loses the thing -- Codex review)
-    const out = await pointStore.questApply(account, 'museumGiven', (d, bag) => (fish && IslandItems.pickSize(bag, itemId, true) !== size ? { error: 'MISSING' } : { doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1, largest: true } })).catch(() => null);
+    const out = await pointStore.questApply(account, 'museumGiven', (d, bag) => (fish && IslandItems.pickSize(bag, itemId, true, true) !== size ? { error: 'MISSING' } : { doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1, largest: true, caught: true } })).catch(() => null);
     if (!out?.doc) { await pointStore.setWorldValue('museum', shown); return { r: 'missing' }; }
     if (old?.account && old.account !== account) { // (the one whose fish came down: a letter)
       const dexName = IslandFishing.DEX.find((d) => d.id === itemId)?.name || itemId;
@@ -2357,7 +2412,12 @@ let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it
 // plus what it goes before it can stand -- has it ease to a stop (the road's clock, IslandTaxi.warpTo: every screen eases it the
 // same); waiting 2 s, its 「빵」 (ride.blockedAt, on the screens); 4 s, it creeps by at a walk (on their screen they are eased
 // aside); clear, back to its pace. A test's short road (runMs) never waits.
-const TAXI_LOOK = { across: 0.85 + 0.3 + 0.35, nose: 1.95, gap: 3, walk: 1.2, honk: 2000, creep: 4000 };
+// 1.10.340 133A (notes taxi-yield 「길을 막는 사람」): 「빵!」 and 「비켜 주세요~」 after 1 s; after 3 s it goes by -- aside within the road
+// (up to `side` m, passing them `pass` m off: its half width and theirs and a little) at a walk, back to the middle once past; with
+// no room aside (a bridge, a crossing, someone there too) see-through, slowly through, solid again once past. It always moves on
+const TAXI_LOOK = { across: 0.85 + 0.3 + 0.35, nose: 1.95, gap: 3, walk: 1.2, honk: 1000, creep: 3000, pass: 0.85 + 0.35 + 0.1, side: 1.5 };
+const shiftWay = (way, off) => (off ? way.map((p) => IslandTaxi.shifted(p, off)) : way);
+const TAXI_BRIDGE = IslandTaxi.BRIDGE; const taxiNarrow = (way) => way.some((p) => (p.x >= TAXI_BRIDGE.x0 && p.x <= TAXI_BRIDGE.x1 && p.z >= TAXI_BRIDGE.z0 && p.z <= TAXI_BRIDGE.z1) || IslandTaxi.CROSSINGS.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < IslandTaxi.CROSS_HALF + 1.5));
 // (the way ahead: the car's own poses on its time table, 100 ms apart, till `look` metres on -- round a corner too; someone in
 // any of their boxes is in its way)
 function taxiWay(bare, road, look) {
@@ -2367,13 +2427,13 @@ function taxiWay(bare, road, look) {
 }
 // -> { token, stand }: the first one in its way and the last of its poses that keeps a metre between its nose and them (where it
 // should come to stand), or null
-function taxiBlocker(ride, way, now) {
+function taxiBlocker(ride, way, now, across = TAXI_LOOK.across) {
   for (const [token, e] of plazaPresence) {
     if (e.ride || e.platform || e.taxi || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > 5000 || (e.space && e.space !== 'island')) continue;
     const rel = (p) => { const dx = e.x - p.x; const dz = e.z - p.z; return { along: dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw), across: dx * Math.cos(p.yaw) - dz * Math.sin(p.yaw) }; };
-    const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < TAXI_LOOK.across && Math.abs(r.along) < TAXI_LOOK.nose; });
+    const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < across && Math.abs(r.along) < TAXI_LOOK.nose; });
     if (hit < 0) continue;
-    let stand = 0; for (let k = hit; k >= 0; k -= 1) if (rel(way[k]).along > TAXI_LOOK.nose + 1 || Math.abs(rel(way[k]).across) >= TAXI_LOOK.across) { stand = k; break; }
+    let stand = 0; for (let k = hit; k >= 0; k -= 1) if (rel(way[k]).along > TAXI_LOOK.nose + 1 || Math.abs(rel(way[k]).across) >= across) { stand = k; break; }
     return { token, stand };
   }
   return null;
@@ -2384,14 +2444,33 @@ function taxiTick() {
   for (const ride of new Set([...taxiStopOut.values(), ...taxiRides.values()])) {
     if (ride.runMs) continue;
     const p = IslandTaxi.carAt(ride, now);
-    if (!p || !['start', 'run', 'stop', 'back'].includes(p.phase)) { if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; } continue; }
+    if (!p || !['start', 'run', 'stop', 'back'].includes(p.phase)) { if (ride.blockedAt || ride.dodge) { ride.blockedAt = null; ride.dodge = null; plazaDirty = true; } continue; }
     const road = IslandTaxi.roadNow(ride, now); const bare = { from: ride.from, startedAt: ride.startedAt };
     const speedAt = (r) => { const a = IslandTaxi.carAt(bare, r); const b = IslandTaxi.carAt(bare, r + 200); return a && b ? Math.hypot(b.x - a.x, b.z - a.z) / 0.2 : 0; };
     const brake = IslandTaxi.LEAD + IslandTaxi.RAMP / 2 + 200 + late * 2; /* (+ a late tick or two on a busy server) */ const vTable = speedAt(road); const vMax = Math.max(vTable, speedAt(road + brake)); /* (pulling away it is still speeding up as it brakes) */
     const look = TAXI_LOOK.gap + vMax * IslandTaxi.rateOf(ride, now) * (brake / 1000);
-    const who = taxiBlocker(ride, taxiWay(bare, road, look), now); let want = 1;
-    if (who) { if (!ride.blockedAt) { ride.blockedAt = now; plazaDirty = true; } want = now - ride.blockedAt >= TAXI_LOOK.creep && vTable > 0.1 ? Math.min(1, TAXI_LOOK.walk / vTable) : 0; }
-    else if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; }
+    const way = taxiWay(bare, road, look); const dodge = ride.dodge || null; const walk = vTable > 0.1 ? Math.min(1, TAXI_LOOK.walk / vTable) : 1;
+    const ahead = taxiBlocker(ride, way, now); /* (someone on the road's middle in front: still going by them) */
+    const who = dodge?.mode === 'ghost' ? null : dodge ? taxiBlocker(ride, shiftWay(way, dodge.off), now, TAXI_LOOK.pass) : ahead; let want = 1;
+    if (who) {
+      if (!ride.blockedAt) { ride.blockedAt = now; plazaDirty = true; } want = 0;
+      if (now - ride.blockedAt >= TAXI_LOOK.creep) { /* (133A: 3 s -- by them, aside where the road has room, else see-through) */
+        const me = way[0]; const e = plazaPresence.get(who.token); const a = e ? (e.x - me.x) * Math.cos(me.yaw) - (e.z - me.z) * Math.sin(me.yaw) : 0; const s = a >= 0 ? 1 : -1;
+        const cur = dodge?.off || 0; const at = now + IslandTaxi.LEAD;
+        const off = [a - s * TAXI_LOOK.pass, a + s * TAXI_LOOK.pass].filter((o) => Math.abs(o) <= TAXI_LOOK.side).sort((x, y) => Math.abs(x - cur) - Math.abs(y - cur))
+          .find((o) => { const w = shiftWay(way, o); return !taxiNarrow(w) && !taxiBlocker(ride, w, now, TAXI_LOOK.pass); });
+        if (off !== undefined) { ride.side = { at, from: IslandTaxi.sideAt(ride, at), to: Math.round(off * 100) / 100, ms: IslandTaxi.RAMP }; ride.dodge = { mode: 'side', off: ride.side.to }; }
+        else { ride.ghost = { at, until: null }; ride.dodge = { mode: 'ghost', off: cur }; }
+        ride.blockedAt = null; want = walk; plazaDirty = true;
+      }
+    } else {
+      if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; }
+      if (dodge && !ahead) { /* (past them: back to the middle, solid again) */
+        const at = now + IslandTaxi.LEAD; if (dodge.off || IslandTaxi.sideAt(ride, at)) ride.side = { at, from: IslandTaxi.sideAt(ride, at), to: 0, ms: IslandTaxi.RAMP };
+        if (ride.ghost && !ride.ghost.until) ride.ghost = { ...ride.ghost, until: at };
+        ride.dodge = null; plazaDirty = true;
+      } else if (dodge) want = walk; /* (going by at a walk) */
+    }
     const was = ride.warp ? ride.warp.r1 : 1;
     if (want === 0) { /* (to a stand where `who.stand` says -- the ramp shortened to get there, never past it: a late tick still stops short) */
       const at = now + IslandTaxi.LEAD; const tauAt = IslandTaxi.roadNow(ride, at); const r0 = IslandTaxi.rateOf(ride, at); const target = road + who.stand * 100;
@@ -4773,7 +4852,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.339' });
+    return sendJson(res, 200, { ok: true, version: '1.10.340' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5146,6 +5225,11 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/yard' && req.method === 'POST') { // v1.10.225: my yard's level set (1-3)
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const level = Math.min(IslandYard.LEVELS, Math.max(1, Number(body.level) || 1));
     return worldEdit(async () => { await setYardLevel(pointAccountForSession(session), level); return sendJson(res, 200, { ok: true, level }); });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/flea/expire' && req.method === 'POST') { // 1.10.339 섬 벼룩시장: everything up made 3 days old
+    if (!requireSession(req, res)) return;
+    return worldEdit(async () => { const s = await fleaLoad(); const old = nowMs() - IslandFlea.DAYS * 86400000 - 1; const owed = Object.fromEntries(Object.entries(s.owed).map(([k, o]) => [k, { ...o, list: (o.list || []).map((x) => ({ ...x, at: old })) }])); /* (and the money waiting) */
+      await pointStore.setWorldValue('flea', { ...s, owed, list: s.list.map((l) => ({ ...l, until: nowMs() - 1 })) }); return sendJson(res, 200, { ok: true, n: s.list.length }); });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/furniture' && req.method === 'POST') { // 묶음 4: pieces straight into my 가구 창고
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
@@ -5970,7 +6054,8 @@ async function requestHandler(req, res) {
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
     if ((plazaPresence.get(session.token)?.space || 'island') === 'island') storyArrive(account, spot); // (S1: a story's place)
     const taxNote = await taxNoteOf(account); // (주민세 고지서: a bill whose last day is tomorrow -- said once that day)
-    return sendJson(res, 200, { ok: true, taxNote, id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    const stockNews = await stockNewsFor(session.token, account).catch(() => null); /* (102A: my companies' news, its hour posted) */
+    return sendJson(res, 200, { ok: true, taxNote, ...(stockNews ? { stockNews } : {}), id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -6468,6 +6553,90 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/stocks/rank' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     return sendJson(res, 200, await stockRank(stockNow(), account));
+  }
+  // 1.10.339 섬 벼룩시장 (lib/island-flea.js; notes island-auction 49A·50A·134·135B·136A·137A·138A): the board in 대청마당 -- what is
+  // up (GET), what I could put up (/stock), put up (/list), buy (/buy), take back (/withdraw), 받기 (/claim). All one at a time
+  // (worldEdit): a thing sold once, paid once; the buyer's room checked before a point is taken.
+  if (pathname === '/api/island/flea' || pathname.startsWith('/api/island/flea/')) {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = nowMs();
+    const route = pathname.slice('/api/island/flea'.length);
+    if (route === '' && req.method === 'GET') return worldEdit(async () => { const t = await fleaTidy(now, account); return sendJson(res, 200, { ok: true, ...IslandFlea.view(t.state, account, now), back: t.back }); });
+    if (route === '/stock' && req.method === 'GET') {
+      const { bag } = await pointStore.questDoc(account, 'flea'); const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const h = await homeOf(account);
+      const placed = new Set([...(h?.pieces || []), ...(h?.yard || [])].map((p) => p.uid));
+      const items = bag.filter((e) => IslandFlea.sellable(e.itemId)).map((e) => { const def = IslandItems.itemDef(e.itemId); const sizes = IslandItems.sizesOf(e); const each = sizes ? sizes.slice().reverse().map((cm) => IslandFlea.worth(e.itemId, 1, [cm], now, fleaGood)) : null; /* (a fish: each one's worth, the smallest first -- the order they go in) */
+        return { entryId: e.entryId, itemId: e.itemId, name: def.name, icon: def.icon, qty: Math.min(e.qty, IslandFlea.QTY_MAX), ...(IslandItems.boughtOf(e) ? { bought: true } : {}), ...(sizes ? { sizes: sizes.slice().reverse(), each } : { unit: IslandFlea.worth(e.itemId, 1, null, now, fleaGood) }) }; }).filter((x) => (x.each ? x.each[0] : x.unit) > 0);
+      const pieces = owned.filter((p) => !placed.has(p.uid)).map((p) => { const g = IslandFurniture.good(p.id); return { uid: p.uid, id: p.id, name: g?.name || p.id, yard: Boolean(g?.yard), worth: fleaPieceWorth(p) }; }).filter((p) => p.worth > 0);
+      return sendJson(res, 200, { ok: true, items, pieces, rules: { fee: IslandFlea.FEE, low: IslandFlea.LOW, high: IslandFlea.HIGH, days: IslandFlea.DAYS, max: IslandFlea.MINE_MAX } });
+    }
+    if (req.method !== 'POST') return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
+    const body = await parseJson(req); const label = String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24);
+    const priceError = (base) => { const [lo, hi] = IslandFlea.range(base); return sendError(res, 400, 'FLEA_PRICE', `값은 ${lo.toLocaleString('ko-KR')}~${hi.toLocaleString('ko-KR')}P 사이로 정해 주세요.`); };
+    if (route === '/list') {
+      const requestId = String(body.requestId || ''); const price = Number(body.price);
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+      return worldEdit(async () => {
+        const s = (await fleaTidy(now)).state;
+        if (IslandFlea.mineOf(s, account).length >= IslandFlea.MINE_MAX) return sendError(res, 409, 'FLEA_LIMIT', FLEA_ERRORS.LIMIT);
+        if (body.uid) { /* (a piece of furniture not placed) */
+          const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const piece = owned.find((p) => p.uid === String(body.uid));
+          if (!piece) return sendError(res, 404, 'NOT_MINE', '내 가구가 아니에요.');
+          const h = await homeOf(account); if ([...(h?.pieces || []), ...(h?.yard || [])].some((p) => p.uid === piece.uid)) return sendError(res, 409, 'FLEA_PLACED', '집이나 마당에 놓인 가구예요. 먼저 치워 주세요.');
+          const base = fleaPieceWorth(piece); if (!base) return sendError(res, 409, 'FLEA_NOT_SELLABLE', FLEA_ERRORS.NOT_SELLABLE);
+          const g = IslandFurniture.good(piece.id); const r = IslandFlea.put(s, account, label, { kind: 'piece', piece, name: g.name, yard: Boolean(g.yard) }, price, base, now);
+          if (r.error === 'PRICE') return priceError(base); if (r.error) return sendError(res, 409, `FLEA_${r.error}`, FLEA_ERRORS[r.error]);
+          await pointStore.setWorldValue(`furniture:${account}`, owned.filter((p) => p.uid !== piece.uid)); await pointStore.setWorldValue('flea', r.state);
+          broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: r.listing.id, name: r.listing.name, price } });
+        }
+        const qty = Number(body.qty) || 1; if (!Number.isSafeInteger(qty) || qty < 1 || qty > IslandFlea.QTY_MAX) return sendError(res, 400, 'FLEA_QTY', FLEA_ERRORS.QTY);
+        const out = await pointStore.questApply(account, 'flea', (doc, bag) => {
+          if ((doc.reqs || []).includes(requestId)) return { error: 'PAID' };
+          const e = bag.find((x) => x.entryId === String(body.entryId || '')); if (!e) return { error: 'MISSING' };
+          if (!IslandFlea.sellable(e.itemId)) return { error: 'NOT_SELLABLE' };
+          const t = IslandItems.takeEntry(bag, e.entryId, qty); if (!t) return { error: 'QTY' };
+          const base = IslandFlea.worth(e.itemId, qty, t.sizes, now, fleaGood); if (!base) return { error: 'NOT_SELLABLE' };
+          const r = IslandFlea.put(s, account, label, { kind: 'item', itemId: e.itemId, qty, sizes: t.sizes, bought: IslandItems.boughtOf(e) }, price, base, now); if (r.error) return { error: r.error, base };
+          return { doc: { ...doc, reqs: [...(doc.reqs || []).slice(-19), requestId] }, take: { entryId: e.entryId, qty }, next: r.state, listing: r.listing };
+        });
+        if (out?.error === 'PRICE') return priceError(out.base);
+        if (!out?.next) return sendError(res, out?.error === 'PAID' ? 409 : 400, `FLEA_${out?.error || 'FAILED'}`, FLEA_ERRORS[out?.error] || '올리지 못했어요.');
+        await pointStore.setWorldValue('flea', out.next);
+        broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: out.listing.id, name: out.listing.name, price }, bag: out.bag });
+      });
+    }
+    if (route === '/buy') return worldEdit(async () => {
+      let s = (await fleaTidy(now)).state; const l = s.list.find((x) => x.id === String(body.id || ''));
+      if (!l) return sendError(res, 409, 'FLEA_GONE', '방금 팔렸거나 내려간 물건이에요.');
+      if (l.seller === account) return sendError(res, 409, 'FLEA_OWN', '내가 올린 물건은 살 수 없어요. 「거두기」로 가져갈 수 있어요.');
+      if (l.kind === 'piece') { if (((await pointStore.worldValue(`furniture:${account}`)) || []).length >= 300) return sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.'); }
+      else { const { bag } = await pointStore.questDoc(account, 'flea'); const mark = IslandItems.boxFor(l.itemId) ? { bought: true } : null; if (!IslandItems.addToBag(bag, l.itemId, l.qty, `flea-${l.id}`, l.sizes ? { sizes: l.sizes, ...mark } : mark, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방에 자리가 없어요. 가방을 비우고 다시 와 주세요.'); }
+      const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1 }, cost: l.price, payKey: `flea:buy:${l.id}`, reason: 'flea_buy' }));
+      if (paid?.error === 'POINTS') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.');
+      if (paid?.error && paid.error !== 'PAID') return sendError(res, 400, `FLEA_${paid.error}`, '사지 못했어요.'); /* (PAID: paid before and not handed over -- handed over now) */
+      s = IslandFlea.sold(s, l, now); if (!(await fleaHandOver(account, l, `flea:${l.id}:buy`))) s = IslandFlea.hold(s, account, l);
+      await pointStore.setWorldValue('flea', s);
+      const fee = IslandFlea.feeOf(l.price);
+      await fleaLetter(l.seller, `flea-sold-${l.id}`, `${IslandCast.josa(fleaWhat(l), '이가')} ${l.price.toLocaleString('ko-KR')}P에 팔렸어요. 섬 벼룩시장 게시판에서 「받기」를 눌러 받아 가세요. (수수료 5% ${fee.toLocaleString('ko-KR')}P를 뗀 ${(l.price - fee).toLocaleString('ko-KR')}P)`, now);
+      notifyAccount(l.seller, 'flea', { owed: true }); notifyPointsChanged([account]); broadcastIsland('flea', {});
+      return sendJson(res, 200, { ok: true, name: l.name, qty: l.qty, kind: l.kind, price: l.price, balance: paid?.balance ?? null, held: Boolean((s.held[account] || []).some((x) => x.id === l.id)) });
+    });
+    if (route === '/withdraw') return worldEdit(async () => {
+      const s = (await fleaTidy(now)).state; const l = s.list.find((x) => x.id === String(body.id || ''));
+      if (!l || l.seller !== account) return sendError(res, 409, 'FLEA_GONE', '이미 팔렸거나 내려간 물건이에요.');
+      if (!(await fleaHandOver(account, l, `flea:${l.id}:back`))) return sendError(res, 409, l.kind === 'piece' ? 'STORAGE_FULL' : 'BAG_FULL', l.kind === 'piece' ? '가구 창고가 가득 찼어요.' : '가방에 자리가 없어요. 가방을 비우고 다시 거둬 주세요.');
+      await pointStore.setWorldValue('flea', IslandFlea.without(s, l.id)); broadcastIsland('flea', {});
+      return sendJson(res, 200, { ok: true, name: l.name, kind: l.kind });
+    });
+    if (route === '/claim') return worldEdit(async () => {
+      const s = await fleaLoad(); const o = s.owed[account];
+      if (!o?.amount) return sendError(res, 409, 'FLEA_NOTHING', '받을 돈이 없어요.');
+      const payKey = `flea:claim:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${o.n}`;
+      const out = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, got: (doc.got || 0) + o.amount }, reward: o.amount, payKey, reason: 'flea_sale' }));
+      if (out?.error && out.error !== 'PAID') return sendError(res, 400, `FLEA_${out.error}`, '받지 못했어요.'); /* (PAID: paid, not yet marked -- marked now) */
+      await pointStore.setWorldValue('flea', IslandFlea.claimed(s, account)); notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, amount: o.amount, balance: out?.balance ?? null });
+    });
+    return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
   }
   // 1.10.323 Q1 채석장 (public/plaza/island-quarry.js): the rocks' state; `start` at a rock's mining spot with a 곡괭이 in the bag
   // (the swings' time, everyone sees the pose), `finish` after it -- one 광석 into the bag, the pickaxe one use older, the rock one
@@ -9988,7 +10157,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.339 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.340 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

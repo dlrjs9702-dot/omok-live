@@ -94,6 +94,12 @@
     const end = w.at + w.ms; const tauEnd = roadNow(ride, end);
     return road >= tauEnd ? end + (road - tauEnd) / w.r1 : w.at + Math.max(0, road - w.tau) / Math.max(0.05, (w.r0 + w.r1) / 2);
   }
+  // 1.10.340 택시 비켜 가기 (notes taxi-yield 133A): `side` { at, from, to, ms } -- the car's offset to its own right (m), easing
+  // from -> to from server time `at`; `ghost` { at, until } -- see-through while it goes by someone with no room aside. The server
+  // sets each LEAD ms ahead (as `warp`), so every screen -- the rider's too -- has the car in the same place
+  const sideAt = (ride, now) => { const w = ride?.side; if (!w) return 0; const dt = now - w.at; return dt <= 0 ? w.from : dt >= w.ms ? w.to : w.from + (w.to - w.from) * smooth(dt / w.ms); };
+  const ghostAt = (ride, now) => { const g = ride?.ghost; return Boolean(g && now >= g.at && !(g.until && now >= g.until)); };
+  const shifted = (p, off) => (off ? { ...p, x: p.x + Math.cos(p.yaw) * off, z: p.z - Math.sin(p.yaw) * off } : p);
   // where along the road at distance d: the point, the heading (eased across each corner), the lean of a turn
   function along(t, d) {
     let k = 0; let at = 0; while (k < t.ss.length - 1 && at + t.ss[k].len < d) { at += t.ss[k].len; k += 1; }
@@ -106,7 +112,7 @@
   // the ride at `now`: phase enter | start | run | stop | exit | done, where the car is, its heading and lean (back as it goes,
   // forward as it stops, over in a turn), how far the wheels have rolled
   function poseAt(ride, now) {
-    now = roadNow(ride, now); /* (317: on the road's own clock) */
+    const real = now; now = roadNow(ride, now); /* (317: on the road's own clock) */
     const t = tableOf(ride.from, ride.runMs); const e = now - ride.startedAt;
     if (e < ENTER) { const p = along(t, 0); return { phase: 'enter', ...p, d: 0, pitch: 0, roll: 0, k: e / ENTER }; }
     const r = e - ENTER;
@@ -114,7 +120,7 @@
     const i = r / t.step; const i0 = Math.floor(i); const d = t.ds[Math.min(t.ds.length - 1, i0)] + ((t.ds[Math.min(t.ds.length - 1, i0 + 1)] - t.ds[Math.min(t.ds.length - 1, i0)]) * (i - i0));
     const p = along(t, d); const ahead = along(t, Math.min(t.total, d + 3));
     const acc = r < EASE * (t.runMs / (t.ds.length * STEP) || 1) ? 'start' : r > t.runMs - EASE * (t.runMs / (t.ds.length * STEP) || 1) ? 'stop' : 'run';
-    return { phase: acc, ...p, d, pitch: acc === 'start' ? -0.04 : acc === 'stop' ? 0.05 : 0, roll: Math.max(-0.06, Math.min(0.06, wrap(ahead.yaw - p.yaw) * 0.25)), k: d / t.total };
+    return shifted({ phase: acc, ...p, d, pitch: acc === 'start' ? -0.04 : acc === 'stop' ? 0.05 : 0, roll: Math.max(-0.06, Math.min(0.06, wrap(ahead.yaw - p.yaw) * 0.25)), k: d / t.total }, sideAt(ride, real)); /* (340: aside, by server time) */
   }
   // v1.10.294 7: the stop's car for a ride -- its way there (poseAt), then empty: turning round where it let the rider out (TURN
   // ms), the same road back on the same timing reversed, turning round again into its place at its stop; null once it stands
@@ -126,13 +132,13 @@
   const rideOver = (ride, now) => roadNow(ride, now) >= ride.startedAt + durationOf(ride);
   function carAt(ride, now) {
     const p = poseAt(ride, now); if (p.phase !== 'done') return p;
-    now = roadNow(ride, now);
+    const real = now; now = roadNow(ride, now);
     const t = tableOf(ride.from, ride.runMs); const e = now - ride.startedAt - durationOf(ride);
     const turn = (q, k) => ({ phase: 'turn', ...q, yaw: wrap(q.yaw + Math.PI * smooth(k)), d: q.d, pitch: 0, roll: 0, k });
     if (e < TURN) return turn({ ...along(t, t.total), d: t.total }, e / TURN);
     const r = e - TURN; if (r < t.runMs) {
       const i = (t.runMs - r) / t.step; const i0 = Math.floor(i); const at = (j) => t.ds[Math.min(t.ds.length - 1, Math.max(0, j))]; const d = at(i0) + (at(i0 + 1) - at(i0)) * (i - i0);
-      const q = along(t, d); return { phase: 'back', ...q, yaw: wrap(q.yaw + Math.PI), d, pitch: 0, roll: 0, k: 1 - d / t.total };
+      const q = along(t, d); return shifted({ phase: 'back', ...q, yaw: wrap(q.yaw + Math.PI), d, pitch: 0, roll: 0, k: 1 - d / t.total }, sideAt(ride, real));
     }
     const k = (r - t.runMs) / TURN; if (k >= 1) return null;
     const s = along(t, 0); return turn({ ...s, yaw: wrap(s.yaw + Math.PI), d: 0 }, k);
@@ -146,5 +152,5 @@
   // v1.10.294 6a: the screen's clock offset a frame toward the server's -- at most `step` ms, at once past `jump` (a first
   // reading, a sleep): a clock answer moving it tens of ms at once made a moving car jump that far
   const easeClock = (view, server, step = 2, jump = 1000) => (view == null || Math.abs(server - view) > jump ? server : view + Math.max(-step, Math.min(step, server - view)));
-  return { CROSSINGS, CROSS_HALF, CROSS_CLEAR, LEAD, RAMP, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+  return { CROSSINGS, CROSS_HALF, CROSS_CLEAR, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

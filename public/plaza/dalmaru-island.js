@@ -367,6 +367,11 @@
     for (const ch of channels) if (ch.end) out.push({ x: ch.x, z: ch.z, r: 1 }); else for (const d of [-1.5, -0.5, 0.5, 1.5]) out.push({ x: ch.x + d, z: ch.z, r: 0.65 });
     return out;
   }
+  // 1.10.338 섬 경매장 (notes island-auction-20261115 51C, plaza-relayout 55A; assets 137): the 경매 게시판 at (-9, -64), its face (the
+  // model's -Z) east to the 물가 거리-분수 axis -- across the 13 m 「경제 거리」 from the 증권거래소; SPACE at (-6.9, -64), 4 m clear before
+  // it; its plinth's three circles (solids.json, r 0.52 at the model's x -1.45 / 0 / 1.45, z 0.06)
+  const AUCTION_BOARD = Object.freeze({ x: -9, z: -64, yaw: -Math.PI / 2, stand: Object.freeze({ x: -6.9, z: -64 }) });
+  const auctionSolids = () => [-1.45, 0, 1.45].map((u) => { const B = AUCTION_BOARD; return { x: B.x + Math.cos(B.yaw) * u + Math.sin(B.yaw) * 0.06, z: B.z - Math.sin(B.yaw) * u + Math.cos(B.yaw) * 0.06, r: 0.52 }; });
   // v1.10.250 기록의 탑 (assets 100 record_tower): before the 게임관's door, its front (-Z) to the door (+x); its ground 8.55 m along
   // world z (the model's x -4.95 ~ +3.6) and 1.94 m deep (its z -1.385 ~ +0.55 -> world x +1.385 ~ -0.55): circles over it
   // (v1.10.253 탑 자리 옮기기, 사용자 「동상을 가리게 되는 배치야. 그 앞에 있는 화단위로 옮기고 그 화단에 있는 나무는 없애」) on the long
@@ -379,7 +384,7 @@
     return out;
   }
   function structureSolids() {
-    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - 7.3, r: 1.1 }, ...pavingSolids()];
+    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - 7.3, r: 1.1 }, ...pavingSolids(), ...auctionSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
     /* (316 ④ `batch`: drawn instanced -- the map check counts them as seen) */
@@ -625,7 +630,7 @@
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 330 /* (v1.10.230: the village's far corner, r 323) */, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
-    structureSolids, RECORD_TOWER, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
+    structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard,
   });

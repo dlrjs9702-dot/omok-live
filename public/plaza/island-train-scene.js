@@ -54,7 +54,7 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
   function arrivalBoard(sign, id) {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; made.push(texture);
-    const m = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, emissive: 0xffffff, emissiveMap: texture, emissiveIntensity: 0.35 }); made.push(m);
+    const m = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, emissive: 0xffffff, emissiveMap: texture, emissiveIntensity: 0.35, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }); made.push(m); /* (1.10.340 깜빡임: 5 mm before its back -- drawn nearer, notes flicker-signs §2) */
     const back = new THREE.Mesh(G.box, new THREE.MeshStandardMaterial({ color: 0x2f3a44, roughness: 0.7 })); made.push(back.material); back.scale.set(1.5, 0.8, 0.06); back.position.set(0, 1.4, -0.02); sign.add(back);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.7), m); made.push(face.geometry); face.position.set(0, 1.4, -0.055); face.rotation.y = Math.PI; sign.add(face);
     return { id, canvas, texture, face, text: '' };

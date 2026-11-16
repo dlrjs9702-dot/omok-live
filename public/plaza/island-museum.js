@@ -44,8 +44,12 @@
   // same model 1.3 times as tall: 대어 -- the next fish bundle's); the wall tanks (museum.tank_wall, 2 m, its back to the wall)
   const TANK = Object.freeze({ lx: 0, lz: -0.5, yaw: 0, swim: Object.freeze({ x: 2.7, z: 0.95, y0: 0.8, y1: 2.05 }) });
   const BIG = Object.freeze({ lx: 0, lz: 5.4, yaw: 0, tall: 1.3, swim: Object.freeze({ x: 2.6, z: 0.9, y0: 0.9, y1: 2.6 }) });
-  const tankPlaque = (k) => ({ side: k < 11 ? -1 : 1, x: -2.75 + (k < 11 ? k : k - 11) * 0.55 }); // (11 on the front, 10 on the back)
-  const bigPlaque = (k) => ({ x: -1.2 + k * 0.8 }); // (259: the 대어 tank's four, on its front)
+  // (1.10.340 flicker-signs §3 고침 A: the model's own blank plate, ±0.65 m in the middle of each long side, is the tank's name --
+  // 「바다」, 「대어 수조」; the plaques keep ±0.75 m clear: four a side, in two lines on the big tank)
+  const PLAQUE_X = Object.freeze([-2.75, -2.2, -1.65, -1.1, 1.1, 1.65, 2.2, 2.75]);
+  const tankPlaque = (k) => { const i = k < 11 ? k : k - 11; return { side: k < 11 ? -1 : 1, x: PLAQUE_X[i % 8], y: i < 8 ? 0.37 : 0.12 }; }; // (11 on the front, 10 on the back)
+  const bigPlaque = (k) => ({ x: [-1.95, -1.15, 1.15, 1.95][k] }); // (259: the 대어 tank's four, on its front)
+  const NAME_Z = -1.345; // (the names on the blank plates, just before them)
   const wallAt = (side, at) => side === 'west' ? { lx: -(AQUA.w / 2 - 0.45), lz: at, yaw: -Math.PI / 2 } : side === 'east' ? { lx: AQUA.w / 2 - 0.45, lz: at, yaw: Math.PI / 2 } : side === 'back' ? { lx: at, lz: AQUA.d / 2 - 0.45, yaw: 0 } : { lx: at, lz: -(AQUA.d / 2 - 0.45), yaw: Math.PI };
   // each water's wall: the river's the west wall and the front's west end, 거울호수's the back wall either side of the big
   // tank, the pools' the east wall and the front's east end -- 32 places for 25 fish, the first ones of each water used
@@ -122,5 +126,5 @@
   const atDesk = (x, z) => { const t = world(TALK.lx, TALK.lz); return roomOf(x, z) === 'hall' && Math.hypot(x - t.x, z - t.z) <= TALK_R; };
   // a plaque's words: what is on show, its size and who gave it -- or the empty slot's
   const plaqueText = (name, shown, big = false) => (big ? plaqueText(`${name} · 대어`, shown) : !shown?.by ? `${name}\n아직 기증받지 못했어요` : `${name}${Number.isFinite(shown.size) ? ` ${shown.size} cm` : ''}\n${shown.by}님 기증`);
-  return { ROOM, ROOMS, AQUA, BUGS, HALL_HALF, world, local, worldIn, localIn, roomOf, inMuseum, SEA, BIG_SEA, BIGS, bigPlaque, FRESH, WATER_OF, WATERS, WATER_WALLS, INSECTS, FLYERS, TANK, BIG, tankPlaque, WALLS, SPARE_WALLS, WALL_SIGNS, CASES, SPARE_CASES, DOME, SLOTS, DESK, CURATOR, TALK, TALK_R, BENCHES, BOARD, PLANTS, PASSAGES, PASS_R, passage, FIXTURES, clamp, atDesk, plaqueText };
+  return { ROOM, ROOMS, AQUA, BUGS, HALL_HALF, world, local, worldIn, localIn, roomOf, inMuseum, SEA, BIG_SEA, BIGS, bigPlaque, NAME_Z, FRESH, WATER_OF, WATERS, WATER_WALLS, INSECTS, FLYERS, TANK, BIG, tankPlaque, WALLS, SPARE_WALLS, WALL_SIGNS, CASES, SPARE_CASES, DOME, SLOTS, DESK, CURATOR, TALK, TALK_R, BENCHES, BOARD, PLANTS, PASSAGES, PASS_R, passage, FIXTURES, clamp, atDesk, plaqueText };
 }));
