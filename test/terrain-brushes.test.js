@@ -28,6 +28,6 @@ test('동산 다듬기: 모양마다 빈 땅에(길·문·집·계단·다리·�
   // stand on a steep new bank is left out, nothing else moves: no tree or bush on a bank, and the counts as they were
   const N = T.nature(); const onBank = (o) => D.BRUSHES.some((b) => Math.hypot(o.x - b.x, o.z - b.z) < b.r) && Math.hypot(T.heightAt(o.x + 1, o.z) - T.heightAt(o.x - 1, o.z), T.heightAt(o.x, o.z + 1) - T.heightAt(o.x, o.z - 1)) / 2 >= 0.4;
   assert.deepEqual([...N.trees, ...N.bushes].filter(onBank), []);
-  assert.ok(N.trees.length >= 400 && N.bushes.length >= 505 && N.flowers.length >= 60, JSON.stringify([N.trees.length, N.bushes.length, N.flowers.length])); // (1.10.323 채석장: its ground and the 79 m walk took about ten trees, 410 → 407)
+  assert.ok(N.trees.length >= 375 /* (1.10.342: the whole ridge-top quarry, notes §9-4 -- 405 → 382) */ && N.bushes.length >= 505 && N.flowers.length >= 60, JSON.stringify([N.trees.length, N.bushes.length, N.flowers.length])); // (1.10.323 채석장: its ground and the 79 m walk took about ten trees, 410 → 407)
   assert.ok(D.BRUSHES.length >= 4 && Math.abs(T.heightAt(D.BRUSHES[1].x, D.BRUSHES[1].z) - T.heightAt(D.BRUSHES[1].x + D.BRUSHES[1].r + 1, D.BRUSHES[1].z)) > 1); // (a mound does stand)
 });

@@ -286,6 +286,7 @@
     const st = onStairs(x, z); if (st) return Math.max(STAIRS.base + stairRise(st.u), ground(x, z));
     if (inRect(PIER, x, z)) return PIER.deck;
     const dock = onDock(x, z); if (dock) return dock.deck;
+    if (Q && Math.abs(x - Q.DECK.x) < 3 && Math.abs(z - Q.DECK.z) < 3) { const lift = Q.deckLift(x, z); if (lift !== null) return Math.max(ground(Q.DECK.x, Q.DECK.z), SEA) + lift; } // (1.10.342 채석장: the waterfall deck's boards and steps, over its foot)
     return Math.max(ground(x, z), SEA);
   }
   const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2 && !underDrawnRock(x, z));
@@ -464,6 +465,7 @@
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
   if (Q) addNatureBlock((x, z, r) => Q.inArea(x, z, r + 1)); // (1.10.323 채석장: the quarry's ground clear of trees, bushes and rocks)
+  if (Q) { const out = Q.solidsOf().filter((s) => s.quarryProp && !Q.inArea(s.x, s.z, 1)); addNatureBlock((x, z, r) => out.some((s) => Math.hypot(x - s.x, z - s.z) < s.r + r + 1)); } // (1.10.342: and round its props outside it -- the bench faces along the cliff edge)
   function nature() {
     if (natureCache) return natureCache;
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };

@@ -38,9 +38,9 @@ function buildCoverMaps(T, res = 1024) {
   const apronAt = (x, z) => { const out = Math.hypot(Math.max(0, Math.abs(x - P.x) - P.hw), Math.max(0, P.d0 - z, z - P.d1)); return out <= 0 || z < P.d0 ? 0 : 1 - smooth(1.5, 3.4 + 1.1 * Math.sin(x * 0.83) * Math.cos(z * 0.67), out); };
   // (1.10.325 채석장 바닥, 사용자 59A: the quarry's ground bare earth to its frayed edge, gravel round each rock and the ore pile)
   const Q = require('../../public/plaza/island-quarry.js'); const DEG = Math.PI / 180;
-  const quarryAt = (x, z) => { if (!Q.inArea(x, z, 4)) return 0; const r = Math.hypot(x, z); let ang = Math.atan2(z, x) / DEG; if (ang < 0) ang += 360;
-    const ed = Math.min(r - Q.AREA.r0, Q.AREA.r1 - r, (ang - Q.AREA.a0) * DEG * r, (Q.AREA.a1 - ang) * DEG * r); return smooth(-1.5, 1.5, ed + (noise(x * 0.7, z * 0.7) - 0.5) * 2.4); };
-  const quarryStones = [...Q.ROCKS.map((q) => [q.x, q.z, Q.SOLIDS[q.kind].r + 1.2]), [Q.PILE.x, Q.PILE.z, 1.6]];
+  // (1.10.342 §9: four pieces -- how far inside their outline, where two meet no edge: Q.edgeDist; gravel round the stone blocks too)
+  const quarryAt = (x, z) => { if (!Q.inArea(x, z, 4)) return 0; return smooth(-1.5, 1.5, Q.edgeDist(x, z) + (noise(x * 0.7, z * 0.7) - 0.5) * 2.4); };
+  const quarryStones = [...Q.ROCKS.map((q) => [q.x, q.z, Q.SOLIDS[q.kind].r + 1.2]), [Q.PILE.x, Q.PILE.z, 1.6], ...Q.PROPS.filter((p) => p.model === 'stone_blocks').map((p) => [p.x, p.z, 1.6])];
   const quarryGravelAt = (x, z) => { let g = 0; for (const [qx, qz, r] of quarryStones) { const d = Math.hypot(qx - x, qz - z); if (d < r + 1.5) g = Math.max(g, 1 - smooth(r * 0.7, r + 0.4 + 0.5 * noise(x * 1.9, z * 1.9), d)); } return g; };
   const a = new Uint8Array(n * 3); const b = new Uint8Array(n * 3); const gravel = new Uint8Array(n);
   const put = (arr, k, c, v) => { arr[k * 3 + c] = Math.round(Math.max(0, Math.min(1, v)) * 255); };

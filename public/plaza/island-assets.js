@@ -459,6 +459,27 @@
   for (const k of ['a', 'b', 'c']) for (const st of ['', '_mined']) REGISTRY[`quarry.rock_${k}${st}`] = q(`quarry_rock_${k}${st}`, { near: 60 });
   REGISTRY['quarry.ore_chunk'] = q('ore_chunk'); REGISTRY['quarry.ore_pile'] = q('ore_pile', { near: 50 }); REGISTRY['quarry.pickaxe'] = q('pickaxe'); REGISTRY['quarry.sign'] = q('sign_quarry', { near: 40 });
   REGISTRY['good.pickaxe'] = { ...REGISTRY['quarry.pickaxe'], scale: 0.55 }; } // (on the 잡화점's tool wall)
+// 1.10.342 4a 광석 8가지·채석장 전체 (assets 140 ore-v1, 141 quarry-v2, 143 quarry-v3): the eight ores in the hand (finished colours),
+// each rock's vein laid over it at its own transform in its main ore's colour (`paint` on the `ore` material, 140 ore-palette; the
+// crystal its own pillars, their tips lit at night), the pile; the developed look -- the big ones with a far file past 60 m (`lod`)
+{ const OV = '/assets/island/ore-v1'; const V2 = '/assets/island/quarry-v2'; const V3 = '/assets/island/quarry-v3';
+  const ORE_HEX = { granite: '#cfc8bd', clay: '#c06f45', coal: '#2e2b2c', iron: '#8e4a32', copper: '#c27a3e', silver: '#b9c3cf', crystal: '#c9b6f0', gold: '#f0c040' }; /* (140 ore-palette materialColor, 140b/c) */
+  const pair = (dir, file, extra = {}) => ({ url: `${dir}/${file}.glb`, low: { url: `${dir}/${file}_low.glb` }, ...extra });
+  const far = (dir, file, extra = {}) => pair(dir, file, { near: 30, lod: [{ url: `${dir}/${file}_far.glb`, distance: 60 }], ...extra });
+  for (const [ore, hex] of Object.entries(ORE_HEX)) {
+    REGISTRY[`ore.${ore}`] = pair(OV, `ore_${ore}`);
+    for (const k of ['a', 'b', 'c']) for (const st of ['', '_mined']) REGISTRY[`quarry.vein.${ore}.${k}${st}`] = pair(OV, `vein_rock_${k}${st}${ore === 'crystal' ? '_crystal' : ''}`, { near: 60, paint: { ore: hex }, ...(ore === 'crystal' ? { nightGlow: true } : {}) });
+  }
+  REGISTRY['quarry.ore_pile_tint'] = pair(OV, 'ore_pile', { near: 50, paint: { ore: ORE_HEX.copper } });
+  for (const f of ['rock_wall_a', 'rock_wall_b']) REGISTRY[`quarry.${f}`] = far(V2, f);
+  REGISTRY['quarry.work_tent'] = far(V2, 'work_tent', { nightGlow: true });
+  REGISTRY['quarry.ore_cart'] = pair(V2, 'ore_cart', { near: 40, keepNodes: true, paint: { ore: ORE_HEX.coal } }); /* (its own `rail` hidden on 143's -- plaza-scene) */
+  for (const f of ['tool_rack', 'rubble_small', 'rubble_large']) REGISTRY[`quarry.${f}`] = pair(V2, f, { near: 40 });
+  for (const f of ['bench_face', 'bench_face_end_l', 'bench_face_end_r']) REGISTRY[`quarry.${f}`] = far(V3, f);
+  REGISTRY['quarry.crane_big'] = far(V3, 'crane_big', { keepNodes: true, nightGlow: true }); REGISTRY['quarry.crane_small'] = far(V3, 'crane_small', { keepNodes: true }); /* (the boom turns, the wheel turns -- plaza-scene) */
+  for (const f of ['rail_straight_2', 'rail_end', 'rope_rail', 'rope_rail_post', 'stone_blocks']) REGISTRY[`quarry.${f}`] = pair(V3, f, { near: 35 });
+  REGISTRY['quarry.view_deck'] = pair(V3, 'view_deck', { near: 40 }); REGISTRY['quarry.work_lamp'] = pair(V3, 'work_lamp', { near: 40, nightGlow: true });
+  REGISTRY['quarry.ore_crate'] = pair(V3, 'ore_crate', { near: 35, paint: { ore: ORE_HEX.iron } }); }
 // 1.10.325 크리스마스 마켓 (assets 124, IslandCalendar.PLACES.market): the three stalls (keepNodes: vendor, buy, steam, FACE) and the
 // snacks held in the hand (scale 1.8: true to life they read small there -- 124's 192-pose check passed at 1.8)
 { const XM = '/assets/island/xmas-v2'; for (const s of ['cocoa', 'sweetpotato', 'fishbread']) {
