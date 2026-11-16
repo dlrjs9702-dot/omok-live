@@ -493,6 +493,11 @@
   // 묶음 1 대청마당 바닥 (assets 59): the disc (its crescent to the cliff: the file's -Z is north, not turned), ring, kerbs,
   // channels; the gardens in four seasons (each its zone's)
   const PV = '/assets/island/plaza-v1';
+  // 1.10.341 지하 도박장 (assets 147 den-v1): the room below (no Low -- a room, as 118b), its tables and slot machine (their moving
+  // parts kept), the bookcase (its `leaf`), the 관공서's 「잠시 자리 비움」, the day's note
+  REGISTRY['den.room'] = { url: '/assets/island/den-v1/den_room.glb', keepNodes: true, shadows: false };
+  for (const f of ['table_dice', 'table_cards', 'table_roulette', 'slot_machine', 'secret_door']) REGISTRY[`den.${f}`] = { url: `/assets/island/den-v1/${f}.glb`, low: { url: `/assets/island/den-v1/${f}_low.glb` }, near: 20, keepNodes: true };
+  for (const f of ['sign_away', 'note_code']) REGISTRY[`den.${f}`] = { url: `/assets/island/den-v1/${f}.glb`, low: { url: `/assets/island/den-v1/${f}_low.glb` }, near: 30 };
   REGISTRY['plaza.auction_board'] = { url: '/assets/island/auction-v1/auction_board.glb', low: { url: '/assets/island/auction-v1/auction_board_low.glb' }, near: 70, keepNodes: true, nightGlow: true }; /* (1.10.338 섬 경매장, assets 137: its nine note slots, the stand and the sign face kept; the bulbs lit at night) */
   for (const f of ['medallion', 'band_ring', 'curb', 'curb_corner', 'channel', 'channel_end']) REGISTRY[`plaza.${f}`] = { url: `${PV}/plaza_${f}.glb`, low: { url: `${PV}/plaza_${f}_low.glb` }, near: 90, shadows: false };
   const pvSeasons = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${PV}/plaza_${f.replace('{s}', s)}.glb`]));

@@ -3777,6 +3777,14 @@ body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:
 .stocksOrder{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .stocksQtyInput{width:96px;padding:6px 8px;border-radius:8px;border:1px solid rgba(120,100,70,.35);font:inherit}
 /* 1.10.339 섬 벼룩시장: the inputs in one row (a phone: they wrap), the rows name · seller · price · button */
+/* 1.10.341 지하 도박장: 테드's window, a table's, the papers (the note, the 용서장) */
+.tedCard .stocksOrder>input,.denCard .stocksOrder>input,.tedCard .stocksOrder>button,.denCard .stocksOrder>button{display:inline-block;flex:0 0 auto;width:auto;margin:0}
+.tedCard .tedWord{flex:1 1 160px;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid rgba(120,100,70,.35);font:inherit}
+.denCard .denBet{width:96px}.denCard .denNum{width:64px}
+.denPaper{position:relative;max-width:min(92vw,420px);margin:0 auto}.denPaper img{display:block;width:100%;height:auto}
+.denPaperWord{position:absolute;left:0;right:0;top:46%;text-align:center;font:800 clamp(20px,6vw,32px)/1.2 system-ui,sans-serif;color:#2b2320}
+.denPaperName{position:absolute;left:0;right:0;top:24%;text-align:center;font:700 clamp(16px,4.5vw,24px)/1 system-ui,sans-serif;color:#2b2320}
+.denPaperDate{position:absolute;left:0;right:0;top:63%;text-align:center;font:600 clamp(13px,3.5vw,18px)/1 system-ui,sans-serif;color:#3b302a}
 .fleaCard .stocksOrder>input,.fleaCard .stocksOrder>select,.fleaCard .stocksOrder>button{display:inline-block;flex:0 0 auto;width:auto;margin:0}
 .fleaCard .stocksOrder>.fleaQty{width:76px}.fleaCard .stocksOrder>.fleaPrice{width:128px}
 .fleaCard .fleaBar>.fleaSearch{flex:1 1 140px;min-width:0}
