@@ -2132,11 +2132,13 @@
     },
     {
       "out": "train-v1/train_carriage.glb",
-      "src": "flicker150:06. Kept from game/train-v1/train_carriage.glb",
-      "sha256": "ba620a1be854c9da29e536d1827979513544f6df72796a18ede8878729f33d65",
-      "lowSrc": "flicker150:02. Low/train-v1/train_carriage_low.glb",
-      "lowSha256": "fa29cc2a582709d941980a5e281ad13c2ffd2d44a38c23485a1eb97208726c78",
-      "precompressed": true
+      "src": "overhaul:refined/22. Game Island tourism train 2026-10-07/01. Carriage/01. High/train_carriage_high.glb",
+      "sha256": "84f36ffc36e33a18d72a26bf43cc2b039ea4e18e5e518f7684c5db1da04a04f7",
+      "lowSrc": "overhaul:refined/22. Game Island tourism train 2026-10-07/01. Carriage/02. Low/train_carriage_low.glb",
+      "lowSha256": "fb172352953c8c285fc90039fbb4b4e396e7c324271901f24ab764c0174c5110",
+      "args": [
+        "-kn"
+      ]
     },
     {
       "out": "train-v1/train_platform.glb",
@@ -7105,10 +7107,10 @@
     },
     {
       "out": "jail-v1/jail_cell.glb",
-      "src": "flicker150:01. High/jail-v1/jail_cell.glb",
-      "sha256": "d7109c3a5b94ef77bb1806ebbb3556fec89629d0c3a8ac4054fb8ea1054ba485",
-      "lowSrc": "flicker150:02. Low/jail-v1/jail_cell_low.glb",
-      "lowSha256": "d7109c3a5b94ef77bb1806ebbb3556fec89629d0c3a8ac4054fb8ea1054ba485",
+      "src": "jail67:01. High/jail_cell.glb",
+      "sha256": "26970dd8abd670b78d5166e4bd6692ccd939116906fa6a8645335d763bc6438c",
+      "lowSrc": "jail67:02. Low/jail_cell_low.glb",
+      "lowSha256": "26970dd8abd670b78d5166e4bd6692ccd939116906fa6a8645335d763bc6438c",
       "precompressed": true
     },
     {
@@ -7592,10 +7594,10 @@
     },
     {
       "out": "mall-v2/mall_today_table.glb",
-      "src": "flicker150:01. High/mall-v2/mall_today_table.glb",
-      "sha256": "05c2fa392fa488583be551563d2443630db5d2bb2aca2891854fc0c2d561dced",
-      "lowSrc": "flicker150:02. Low/mall-v2/mall_today_table_low.glb",
-      "lowSha256": "64db63eddff0a08d65accdb6d7b906cb7e110c05a1cd7573869dee30c9d05777",
+      "src": "mall82:01. High/mall_today_table.glb",
+      "sha256": "619058df10efa2e1362636247607ff3f98e402d591763da1c6cb562eaabbf806",
+      "lowSrc": "mall82:02. Low/mall_today_table_low.glb",
+      "lowSha256": "37c7a367d2f7bc824f47ba0716bd818dff3f4c78893bc4d2f19d5060ae77847d",
       "precompressed": true
     },
     {
@@ -7608,10 +7610,10 @@
     },
     {
       "out": "mall-v2/mall_wall_shelf.glb",
-      "src": "flicker150:01. High/mall-v2/mall_wall_shelf.glb",
-      "sha256": "48425d57d63a19df46e32ee834d23a004b72b4988bb3f6a43d04aa954002816b",
-      "lowSrc": "flicker150:02. Low/mall-v2/mall_wall_shelf_low.glb",
-      "lowSha256": "a5cca89ec14fbb3a95a53556781e02f48287b9af72f4c3d412835d2667cd3afb",
+      "src": "mall82:01. High/mall_wall_shelf.glb",
+      "sha256": "537868a5ba578313e37546f3683700df0b0f074ab8d12073eb2f7a9ae673d648",
+      "lowSrc": "mall82:02. Low/mall_wall_shelf_low.glb",
+      "lowSha256": "38ba43779de349db05e15bd8dfed918fd28055758c70b4f4040904a87a92d656",
       "precompressed": true
     },
     {
@@ -7674,10 +7676,10 @@
     },
     {
       "out": "mall-v2/wear_display_shelf.glb",
-      "src": "flicker150:01. High/mall-v2/wear_display_shelf.glb",
-      "sha256": "cb019228fc6ead91a1c2b01b1ee6aef7c71610e6ce4eb9ea3d71f0de977b6ed3",
-      "lowSrc": "flicker150:02. Low/mall-v2/wear_display_shelf_low.glb",
-      "lowSha256": "21b99b293a8ffeb7912a37e4f87fa23d551510058c11fb22299013e0c7eddf18",
+      "src": "mall82:01. High/wear_display_shelf.glb",
+      "sha256": "e8d640e5619158df409f7fc7805dd35dee24fc8177e9eca486fa7d9d20476449",
+      "lowSrc": "mall82:02. Low/wear_display_shelf_low.glb",
+      "lowSha256": "0833e1b5290fdd0d6d57f30b13f611da92135c49be9a8584cabcf5efd58f4f44",
       "precompressed": true
     },
     {
@@ -9009,8 +9011,8 @@
     },
     {
       "out": "together-v1/mark_note.glb",
-      "src": "flicker150:01. High/together-v1/mark_note.glb",
-      "sha256": "59aa1019e6b410498aeabebb18d975e50acfa32e185a07e83aeef0895c2da8fe",
+      "src": "emote101:01. High/mark_note.glb",
+      "sha256": "91d22c66fbccf1aba90593824be06c3a1a0618ccba604db032b064cc0dc8b565",
       "precompressed": true
     },
     {

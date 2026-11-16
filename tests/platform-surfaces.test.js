@@ -22,6 +22,9 @@ test('관공서: 실제 High/Low 기단·첫 계단 겹침 분리, 다른 부위
     const ray = new THREE.Raycaster(new THREE.Vector3(0, 2, 6.1), new THREE.Vector3(0, -1, 0));
     const top = name => ray.intersectObjects(meshes.filter(m => m.material.name === name))[0]?.point.y;
     const step = top('marble'), slab = top('marble_trim');
+    if (slab === undefined) { /* (1.10.340 assets 150: the trim under the step cut away in the model itself -- nothing there to lower; the step as it was) */
+      assert.ok(Number.isFinite(step), '첫 계단'); prepareTownhallSurfaces(gltf, url); assert.equal(top('marble'), step, '첫 계단 높이 보존'); assert.equal(top('marble_trim'), undefined); continue;
+    }
     assert.ok(Math.abs(step - slab) < 0.001, '현재 원본의 실제 겹침 재현');
     const snapshot = meshes.filter(m => m.material.name !== 'marble_trim').map(m => [m, m.geometry, m.matrixWorld.clone()]);
     prepareTownhallSurfaces(gltf, '/unrelated.glb'); assert.equal(top('marble_trim'), slab);
