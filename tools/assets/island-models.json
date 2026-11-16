@@ -13762,6 +13762,38 @@
       "lowSrc": "xmas127:02. Low/xmas-v2/santa_sleigh_low.glb",
       "lowSha256": "7c91c6dd89242bc00ffae9ad1b4e07bae0ef638eb6a3d6338be66ad892c50c29",
       "precompressed": true
+    },
+    {
+      "out": "xmas-v2/ride_sled.glb",
+      "src": "xmas128:01. High/xmas-v2/ride_sled.glb",
+      "sha256": "0422ebea7939d3cccfd0d1b6c8d266ea3d60d5d490a4eadf1f2e748600b04054",
+      "lowSrc": "xmas128:02. Low/xmas-v2/ride_sled_low.glb",
+      "lowSha256": "99ab9ec12da0cda43e8527c19de86e8ce66d8a5941475fc287999be30150c698",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/snow_hill.glb",
+      "src": "xmas128:01. High/xmas-v2/snow_hill.glb",
+      "sha256": "7969fa7272ccb79a2a2ee233dc3067134d5cff731d3f4d1af25708d93dee8ca6",
+      "lowSrc": "xmas128:02. Low/xmas-v2/snow_hill_low.glb",
+      "lowSha256": "2ae10142d1da3e782f308e9fba2a24f1ed758d5c2783da30e8df0bac1e0920b0",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/snow_fort_wall.glb",
+      "src": "xmas128:01. High/xmas-v2/snow_fort_wall.glb",
+      "sha256": "b00d3667ba5f59b0373d904e66f3fa92716018fe333a0f261425f4b77a4af7c8",
+      "lowSrc": "xmas128:02. Low/xmas-v2/snow_fort_wall_low.glb",
+      "lowSha256": "e086404527f612110866bce606e7e4a4c3d8a3bc76dc5bcafd499354f0c6b2a8",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/snow_fort_corner.glb",
+      "src": "xmas128:01. High/xmas-v2/snow_fort_corner.glb",
+      "sha256": "0f58e592b7553b7d8481ff18a0fd0803f42d96cc077f2509e117052336a57171",
+      "lowSrc": "xmas128:02. Low/xmas-v2/snow_fort_corner_low.glb",
+      "lowSha256": "864e45c5d461375fdbfe206e2bd29b8d167a35e6189dc67e3186c19ae4647fa8",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -13863,6 +13895,7 @@
     "market124": "124. Game Island xmas market stalls 2026-11-15",
     "motions123": "123. Game Island resident motion presets 2026-11-14",
     "xmas125": "125. Game Island xmas house dressing 2026-11-15",
-    "xmas127": "127. Game Island xmas santa sleigh 2026-11-15"
+    "xmas127": "127. Game Island xmas santa sleigh 2026-11-15",
+    "xmas128": "128. Game Island xmas sled hill fort 2026-11-15"
   }
 }

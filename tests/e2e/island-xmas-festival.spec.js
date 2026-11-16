@@ -137,6 +137,49 @@ test('크리스마스 마켓: 겨울 장식이면 가판대 셋, 앞에서 SPACE
   } finally { await post(request, '/api/admin/island/decor', admin, { mode: 'auto' }); await post(request, '/api/test/festival/clock', null, { at: 0 }); }
 });
 
+// 1.10.334 썰매 언덕·눈 요새 (notes christmas-boost P2·P3, 사용자 18A·95A·96A·97A, assets 128; xmas-play.js): in the festival the
+// hill on the grass south of 대청마당 and the two forts out (blocking); 「썰매 타기」 by its foot puts me on top and down the
+// run -- seen so on the other's screen (on the sled, up on the hill); from one fort at the one in the other, five throws: the
+// other is hit (HitReact, snow on them -- on both screens) and the round's stamp 「눈싸움 한 판」
+test('썰매 언덕·눈싸움: 썰매 타기(꼭대기에서 내려옴, 옆 사람에게도 보임), 요새에서 눈덩이 다섯 번(맞으면 눈 묻음, 도장)', async ({ browser, request }) => {
+  test.setTimeout(process.env.CI ? 420000 : 240000);
+  const X = require('../../public/plaza/xmas-play.js');
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-12-21T12:00:00+09:00') })).status).toBe(200);
+  try {
+    const a = await shopper(browser, request, '썰매꾼', 0, 'female'); const b = await shopper(browser, request, '눈싸움상대', 0, 'male');
+    for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); }
+    for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.xmasPlay?.()?.shown), { timeout: 60000 }).toBe(true);
+    expect(await a.page.evaluate(() => window.PlazaDebug().xmasPlay().blocked)).toBe(X.solids().length + 2); /* (+ the sled standing by the foot) */
+    const P = (who) => who.page.evaluate(() => window.PlazaDebug().xmasPlay());
+    // the ride: b by the run-out, watching
+    const watch = X.hillPoint(4, -2); await standAt(request, b, watch.x, watch.z);
+    const door = X.hillPoint(0, X.HILL.door); await standAt(request, a, door.x, door.z);
+    await expect.poll(() => spaceOn(a.page, 'fest:sled'), { timeout: 20000 }).toBe(true);
+    const ground = await a.page.evaluate(([x, z]) => window.IslandTerrain.heightAt(x, z), [door.x, door.z]);
+    await expect.poll(async () => { const s = (await P(a)).sled; return Boolean(s && s.y > ground + 2); }, { timeout: 10000 }).toBe(true); /* (on top) */
+    await expect.poll(async () => { const o = (await P(b)).others.find((x) => x.sledding); return Boolean(o?.sled && o.y > ground + 0.5); }, { timeout: 15000 }).toBe(true);
+    if (process.env.SHOT_DIR) { const h = X.hillPoint(0, 6); await b.page.evaluate(([tx, tz]) => { const d = window.PlazaDebug(); d.setCamYaw(Math.atan2(-(tx - d.x), -(tz - d.z))); d.setCamPitch(0.12); }, [h.x, h.z]); await b.page.waitForTimeout(400); await shoot(b.page, 'xmas-sled-ride'); } /* (b's camera on the hill) */
+    await expect.poll(async () => { const s = await P(a); return [s.sled, s.act]; }, { timeout: 20000 }).toEqual([null, null]);
+    const end = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; }); const l = X.hillLocal(end.x, end.z);
+    expect(l.v).toBeLessThan(-3); expect(Math.abs(l.u)).toBeLessThan(0.5); /* (past the foot, on the run) */
+    // the snowballs: a in the west fort, b in the east one, a facing b
+    const [W, E] = X.FORTS; const aw = X.turn(W, 0, 1); const be = X.turn(E, 0, 1);
+    await standAt(request, a, aw.x, aw.z); await standAt(request, b, be.x, be.z);
+    await a.page.evaluate((y) => window.PlazaDebug().faceYaw(y), Math.atan2(be.x - aw.x, be.z - aw.z));
+    for (let k = 0; k < 5; k += 1) {
+      const answered = a.page.waitForResponse((r) => r.url().includes('/api/island/festival/snowball'));
+      await expect.poll(() => spaceOn(a.page, 'fest:snowball'), { timeout: 15000 }).toBe(true); expect((await answered).status()).toBe(200);
+      if (k === 0) await expect.poll(async () => { const s = await P(b); return [s.snowed, s.act]; }, { timeout: 10000 }).toEqual([true, 'snow:hit']);
+      await a.page.waitForTimeout(900);
+    }
+    await expect.poll(async () => (await P(a)).others.some((o) => o.snowed), { timeout: 10000 }).toBe(true); /* (b's own word: hit) */
+    if (process.env.SHOT_DIR) { await a.page.evaluate((y) => { const d = window.PlazaDebug(); d.setCamYaw(y + Math.PI); d.setCamPitch(0.2); }, Math.atan2(be.x - aw.x, be.z - aw.z)); await a.page.waitForTimeout(300); await shoot(a.page, 'xmas-snowball'); } /* (behind a, toward b: the snow on them) */
+    await expect(a.page.locator('#toast')).toContainText('눈싸움 한 판', { timeout: 15000 });
+    expect((await get(request, '/api/island/festival', a.token)).data.festival.tasks.find((t) => t.id === 'snowfight').today).toBe(1);
+    for (const who of [a, b]) { await expectNoScriptError(who.page); await who.context.close(); }
+  } finally { await post(request, '/api/test/festival/clock', null, { at: 0 }); }
+});
+
 // 1.10.329 크리스마스 눈·트리 점등식 (notes christmas-boost M1·M5; IslandCalendar.snowOf·lightingOf), by the festival's clock: the
 // first evening at 17:30 a light snow over the island and the tree's countdown on the board, its bulbs dark; at 18:00 lit; the
 // 24th all day the 화이트 크리스마스 -- every zone's winter look (drawn only: the season the server keeps is the date's)
