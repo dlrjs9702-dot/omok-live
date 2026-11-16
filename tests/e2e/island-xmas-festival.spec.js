@@ -161,3 +161,22 @@ test('크리스마스 눈·점등식: 첫 저녁 17:30 눈·점등 카운트다�
     await who.context.close();
   } finally { await post(request, '/api/admin/island/decor', admin, { mode: 'auto' }); await post(request, '/api/test/festival/clock', null, { at: 0 }); }
 });
+
+// 1.10.332 관리자 크리스마스 미리 보기 (총괄 「12-19 전에 미리 보고 들어 보기, 다른 사람 화면은 그대로」): the admin page's choice is kept in
+// that browser (gc.xmasPreview) and the island there shows the decor, the snow, the lit tree and the night -- another screen
+// (another browser) stays as the date has it; nothing on the server changes
+test('크리스마스 미리 보기: 이 브라우저만 장식·눈·점등·밤, 다른 화면은 날짜대로', async ({ browser, request }) => {
+  test.setTimeout(240000);
+  const a = await shopper(browser, request, '미리보기', 0, 'female'); const b = await shopper(browser, request, '옆사람', 0, 'male');
+  const up = async (who) => { await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true); };
+  await a.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.xmasPreview', 'night'); }); await b.page.evaluate(() => localStorage.removeItem('gc.testClassic'));
+  await up(a); await up(b);
+  await expect.poll(async () => { const d = await a.page.evaluate(() => { const D = window.PlazaDebug(); return [D.time().phase, D.treeLight().state, D.xmasSnow().mode, D.assets.shown?.['winter.landmark_winter_tree']]; }); return d; }, { timeout: 60000 }).toEqual(['night', 'lit', 'light', 'model']);
+  await shoot(a.page, 'xmas-preview-night');
+  const other = await b.page.evaluate(() => { const D = window.PlazaDebug(); return [D.treeLight().state, D.xmasSnow().mode, D.assets.shown?.['winter.landmark_winter_tree'] || null]; });
+  expect(other).toEqual([null, null, null]);
+  expect((await get(request, '/api/island/time', a.token)).data.decor).toBe('auto');
+  await a.page.evaluate(() => localStorage.removeItem('gc.xmasPreview')); await up(a);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().treeLight().state), { timeout: 20000 }).toBe(null);
+  await expectNoScriptError(a.page); await a.context.close(); await b.context.close();
+});
