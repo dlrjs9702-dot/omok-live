@@ -50,6 +50,7 @@ const IslandStars = require('./lib/island-stars'); // A4 별똥별
 const IslandContest = require('./lib/island-contest'); // A4 섬 대회 (every day)
 const IslandGather = require('./lib/island-gather'); // G4b 채집 (mushrooms, twigs, the four-leaf clover on fixed spots)
 const IslandCalendar = require('./public/plaza/island-calendar'); // E1 계절 행사 달력
+const XmasPlay = require('./public/plaza/xmas-play'); // 1.10.334 썰매 언덕·눈 요새
 const IslandFestival = require('./lib/island-festival'); // E1 축제 도장
 const Together = require('./lib/island-together'); // B 47 생일·우체통
 const SERVER_VERSION = require('./package.json').version; // (관리자 「문제 기록」에 붙는 버전)
@@ -2319,7 +2320,8 @@ const bigCatchAt = new Map(); const dailyLast = new Map(); let dailyAlways = fal
 // v1.10.44 앉기·이모트 (IDEAS ④): who sits where (first come), and the acts a pose may carry
 const SEATS = new Map([...IslandTerrain.plazaProps().seats, ...IslandFashion.SEATS].map((s) => [s.id, s])); // (v1.10.211: the 꾸미기 mirrors' two chairs)
 const seatTaken = new Map(); // seat id -> session token
-const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow', ...['ready', 'sneak', 'down', 'side', 'jump', 'twist', 'miss', 'cheer', 'peek'].map((a) => `net:${a}`), ...require('./public/plaza/island-emotes.js').ACTS]); // (v1.10.260: the net's moves seen by others) /* (v1.10.263 감정 표현: emote:<id> 16) */
+const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow', ...['ready', 'sneak', 'down', 'side', 'jump', 'twist', 'miss', 'cheer', 'peek'].map((a) => `net:${a}`), ...require('./public/plaza/island-emotes.js').ACTS, ...XmasPlay.ACTS]); /* (1.10.334: a snowball's throw and hit, the sled ride) */
+const snowThrows = new Map(); // 1.10.334 눈싸움: account -> { day, at: [ms] } -- the round's throws so far // (v1.10.260: the net's moves seen by others) /* (v1.10.263 감정 표현: emote:<id> 16) */
 // v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
 // the fish shown on a catch is the server's own result, never the page's word
 const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss', 'fish:show']); // (v1.10.257 자랑: the catch held out -- the server's fish too)
@@ -4771,7 +4773,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.333' });
+    return sendJson(res, 200, { ok: true, version: '1.10.334' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -8410,6 +8412,14 @@ async function requestHandler(req, res) {
       const s = plazaPresence.get(session.token)?.snack; if (!s || nowMs() - s.at > IslandCalendar.PLACES.SNACK_MS) return sendError(res, 409, 'NO_SNACK', '크리스마스 마켓에서 간식을 사 주세요.');
       return sendStamp(await stamp('market'));
     }
+    if (action === 'snowball' && fest.tasks.snowfight) { // 1.10.334 P2 눈싸움 (사용자 97A): no score -- a throw in the forts' ground, 0.8 s apart; a round's fifth the stamp (once a day)
+      if (!at || (at.space || 'island') !== 'island' || !XmasPlay.inFight(at.x, at.z, 1.5)) return sendError(res, 409, 'TOO_FAR', '눈 요새 둘레에서 던져 주세요.');
+      const t = nowMs(); const was = snowThrows.get(account); const list = (was?.day === day ? was.at : []).filter((ms) => t - ms < 10 * 60000);
+      if (list.length && t - list[list.length - 1] < XmasPlay.THROW.gap - 100) return sendError(res, 409, 'TOO_FAST', '조금 천천히 던져요.');
+      list.push(t); snowThrows.set(account, { day, at: list });
+      if (list.length < XmasPlay.THROW.round) return sendJson(res, 200, { ok: true, throws: list.length, of: XmasPlay.THROW.round, added: 0 });
+      snowThrows.delete(account); return sendStamp(await stamp('snowfight'), { throws: XmasPlay.THROW.round, of: XmasPlay.THROW.round });
+    }
     if (action === 'gather' && fest.tasks.gather) { // X2 성탄 저녁 모임: the last day's evening, round the plaza's tree
       if (!near(P.tree, P.GATHER_R)) return sendError(res, 409, 'TOO_FAR', '광장 트리 곁으로 와 주세요.');
       return sendStamp(await stamp('gather'));
@@ -9978,7 +9988,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.333 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.334 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

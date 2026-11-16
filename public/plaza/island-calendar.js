@@ -51,6 +51,7 @@
         snowman: { name: '눈사람 만들기', stamps: 3, perDay: 1 }, // (three balls rolled on the snow field, stacked and dressed)
         gather: { name: '성탄 저녁 모임', stamps: 6, perDay: 1, lastDayFrom: 18, lastDayTo: 22 }, // (the last day's evening, by the plaza's tree)
         market: { name: '마켓 들르기', stamps: 1, perDay: 1 }, // (1.10.325 P1: a snack bought at the 크리스마스 마켓)
+        snowfight: { name: '눈싸움 한 판', stamps: 1, perDay: 1 }, // (1.10.334 P2 사용자 97A: five snowballs thrown at the snow forts -- xmas-play.js)
         contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 },
       }),
       shop: Object.freeze([['xmas_tree_small', 8], ['xmas_fireplace', 8], ['xmas_snow_globe', 4], ['xmas_stocking', 3], ['xmas_gingerbread_house', 4], ['title_christmas', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
