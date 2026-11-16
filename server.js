@@ -1409,6 +1409,16 @@ async function fleaHandOver(account, l, claim) {
 // letter either way); `account` given -- its own kept things handed over as far as there is room -> { state, back: [names] }
 async function fleaTidy(now, account = null) {
   let s = await fleaLoad(); let changed = false; const back = [];
+  if (account) { /* (1.10.344 Codex 331~340 P2-5: my listing whose board save stopped -- up now, once; a piece still in my 창고: dropped) */
+    const p = (await pointStore.questDoc(account, 'flea')).doc.pending;
+    if (p?.listing?.id) {
+      if (!IslandFlea.wasPosted(s, p.listing.id)) {
+        const inStore = p.listing.kind === 'piece' && ((await pointStore.worldValue(`furniture:${account}`)) || []).some((x) => x.uid === p.listing.piece?.uid);
+        if (!inStore) { s = IslandFlea.putUp(s, p.listing); changed = true; }
+      }
+      await pointStore.questApply(account, 'flea', (doc) => (doc.pending?.listing?.id === p.listing.id ? { doc: { ...doc, pending: null } } : null));
+    }
+  }
   for (const l of IslandFlea.reserved(s)) { /* (1.10.343 Codex 331~340 P1-2: inside worldEdit every reservation seen here was left by a stop -- its buyer paid (the buyer's own flea doc says so: written with the charge) gets it, else it is let go) */
     const paid = ((await pointStore.questDoc(l.buyer, 'flea')).doc.paidFor || []).includes(l.id);
     s = paid ? await fleaFinish(s, l, l.buyer, now) : IslandFlea.release(s, l.id); changed = true;
@@ -6721,7 +6731,9 @@ async function requestHandler(req, res) {
           const base = fleaPieceWorth(piece); if (!base) return sendError(res, 409, 'FLEA_NOT_SELLABLE', FLEA_ERRORS.NOT_SELLABLE);
           const g = IslandFurniture.good(piece.id); const r = IslandFlea.put(s, account, label, { kind: 'piece', piece, name: g.name, yard: Boolean(g.yard) }, price, base, now);
           if (r.error === 'PRICE') return priceError(base); if (r.error) return sendError(res, 409, `FLEA_${r.error}`, FLEA_ERRORS[r.error]);
+          await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, pending: { listing: { ...r.listing, seq: r.state.seq } } } })); /* (1.10.344 P2-5: kept before it leaves the 창고 -- a stop after: up at my next look) */
           await pointStore.setWorldValue(`furniture:${account}`, owned.filter((p) => p.uid !== piece.uid)); await pointStore.setWorldValue('flea', r.state);
+          await pointStore.questApply(account, 'flea', (doc) => (doc.pending?.listing?.id === r.listing.id ? { doc: { ...doc, pending: null } } : null));
           broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: r.listing.id, name: r.listing.name, price } });
         }
         const qty = Number(body.qty) || 1; if (!Number.isSafeInteger(qty) || qty < 1 || qty > IslandFlea.QTY_MAX) return sendError(res, 400, 'FLEA_QTY', FLEA_ERRORS.QTY);
@@ -6732,11 +6744,16 @@ async function requestHandler(req, res) {
           const t = IslandItems.takeEntry(bag, e.entryId, qty); if (!t) return { error: 'QTY' };
           const base = IslandFlea.worth(e.itemId, qty, t.sizes, now, fleaGood); if (!base) return { error: 'NOT_SELLABLE' };
           const r = IslandFlea.put(s, account, label, { kind: 'item', itemId: e.itemId, qty, sizes: t.sizes, bought: IslandItems.boughtOf(e) }, price, base, now); if (r.error) return { error: r.error, base };
-          return { doc: { ...doc, reqs: [...(doc.reqs || []).slice(-19), requestId] }, take: { entryId: e.entryId, qty }, next: r.state, listing: r.listing };
+          return { doc: { ...doc, reqs: [...(doc.reqs || []).slice(-19), requestId], pending: { listing: { ...r.listing, seq: r.state.seq } } }, take: { entryId: e.entryId, qty }, next: r.state, listing: r.listing }; /* (1.10.344 P2-5: the take and the listing kept in one step) */
         });
         if (out?.error === 'PRICE') return priceError(out.base);
+        if (out?.error === 'PAID') { /* (1.10.344 P2-5: this request taken before and its board save stopped -- up now from my doc) */
+          const p = (await pointStore.questDoc(account, 'flea')).doc.pending?.listing; const t = await fleaTidy(now, account); const up = p && t.state.list.find((l) => l.id === p.id);
+          if (up) { broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: up.id, name: up.name, price: up.price } }); }
+        }
         if (!out?.next) return sendError(res, out?.error === 'PAID' ? 409 : 400, `FLEA_${out?.error || 'FAILED'}`, FLEA_ERRORS[out?.error] || '올리지 못했어요.');
         await pointStore.setWorldValue('flea', out.next);
+        await pointStore.questApply(account, 'flea', (doc) => (doc.pending?.listing?.id === out.listing.id ? { doc: { ...doc, pending: null } } : null));
         broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: out.listing.id, name: out.listing.name, price }, bag: out.bag });
       });
     }
@@ -6994,11 +7011,11 @@ async function requestHandler(req, res) {
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
-        const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim }] } }; await saveHome(account, next);
+        const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}) }] } }; await saveHome(account, next); /* (1.10.344 P2-6: a 「산 것」 stays one in the tank) */
         return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
       }
       const f = fishes.find((x) => x.fid === String(body.take)); if (!f) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); // (already taken out)
-      const out = await pointStore.islandGive({ userId: account, claimId: claim, itemId: f.itemId, qty: 1, quiet: true }, nowMs());
+      const out = await pointStore.islandGive({ userId: account, claimId: claim, itemId: f.itemId, qty: 1, quiet: true, ...(f.bought ? { meta: { bought: true } } : {}) }, nowMs());
       if (!out.applied && out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요. 잡화점에서 가방을 늘릴 수 있어요.');
       const next = { ...h, tanks: { ...h.tanks, [tank.uid]: fishes.filter((x) => x.fid !== f.fid) } }; await saveHome(account, next);
       return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });

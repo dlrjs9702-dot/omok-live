@@ -3673,7 +3673,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     solids.push(...rings); return { root: play, rings, base, walls: rings.filter((s) => s.kind === 'fort') };
   }
   function sledOf(c, on) { // a rider's sled under them (its front -Z, as the bike's), or none
-    if (!on) { if (c.sled) { c.sled.removeFromParent(); c.sled = null; } return; }
+    if (!on) { if (c.sled) { c.sled.removeFromParent(); assets.detach(c.sled); disposeOwn(c.sled); c.sled = null; } return; } /* (1.10.344 Codex 331~340 P2-7: its loader record and LOD let go -- a new one each ride) */
     if (c.sled) return; const g = new THREE.Group(); g.rotation.y = Math.PI; g.position.y = -XP.HILL.rider; c.root.add(g);
     const fb = new THREE.Group(); mesh(new THREE.BoxGeometry(0.46, 0.2, 1.22), mat(0xc0392b), 0, 0.28, 0, fb); g.add(fb); assets.attach('xmas.ride_sled', g, fb); c.sled = g;
   }
@@ -6309,7 +6309,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   function start() { if (running) return; running = true; last = 0; quiet(); raf = requestAnimationFrame(frame); }
   function stop() {
-    setPhotoMode(false); if (gather?.waitServer) endGather(false);
+    xmasMusic?.stop(); /* (1.10.344 P2-8: the music with the scene) */ setPhotoMode(false); if (gather?.waitServer) endGather(false);
     if (questScenes && (questScenes.departurePending || questScenes.departure !== null)) { questScenes.departurePending = false; questScenes.departure = null; questScenes.boat.visible = false; }
     questDepartureHeld = false; running = false; cancelAnimationFrame(raf); keys.clear();
     near = null; nearName = null; onNear?.(null);
