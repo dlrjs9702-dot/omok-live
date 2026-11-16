@@ -27,8 +27,8 @@ test('근무표: 1년 — 자리마다 매일 그 자리 사람, 한 사람 하�
   // everyone of a post works some days; the 관공서's rest goes round
   for (const p of R.POSTS) for (const n of p.who) assert.ok(all.some((r) => r.posts[p.id] === n), `${p.id} ${n}`);
   assert.deepEqual(new Set(all.slice(0, R.CIVIL.length).map((r) => r.resting)).size, R.CIVIL.length);
-  // 크리스마스 (12/19~25): 바람이 hosts -- not at the plaza those days
-  for (const r of all.filter((x) => x.day >= '2026-12-19' && x.day <= '2026-12-25')) assert.notEqual(r.posts.plaza, 7, r.day);
+  // 크리스마스 (1.10.338 127A: 12/1~25): 바람이 hosts -- not at the plaza those days
+  for (const r of all.filter((x) => x.day >= '2026-12-01' && x.day <= '2026-12-25')) assert.notEqual(r.posts.plaza, 7, r.day);
   assert.equal(R.postOf(23, '2026-11-02'), 'gate'); assert.ok([null, 'museum'].includes(R.postOf(20, '2026-11-02'))); // (마루 at the gate; 한결 the 박물관's some days -- 1103 9)
   // (문제 기록 1103 9) the 박물관: 한결·하람·이솔 in turn; 이솔 hosting the 카운트다운 not there those days
   assert.deepEqual(R.POSTS.find((p) => p.id === 'museum').who, [20, 2, 8]);

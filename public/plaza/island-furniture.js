@@ -55,6 +55,7 @@
     ['choseung_lantern', 'plain', '초승 등불', 'story.choseung_lantern'], // (S2: the last chapter's lamp)
     ['xmas_tree_small', 'plain', '크리스마스 트리', 'xmas.tree_small'], ['xmas_fireplace', 'plain', '벽난로', 'xmas.fireplace'], ['xmas_snow_globe', 'plain', '스노볼', 'xmas.snow_globe'], // (X1 크리스마스, assets 76)
     ['xmas_stocking', 'plain', '양말 걸이', 'xmas.stocking', 'wall'], ['xmas_gingerbread_house', 'plain', '과자 집', 'xmas.gingerbread_house'],
+    ['xmas_check_sofa', 'plain', '빨간 체크 소파', 'xmas.check_sofa'], ['xmas_gift_pile', 'plain', '선물 상자 더미', 'xmas.gift_pile'], ['xmas_rocking_reindeer', 'plain', '루돌프 흔들목마', 'xmas.rocking_reindeer'], ['xmas_snowman_lamp', 'plain', '눈사람 램프', 'xmas.snowman_lamp'], ['xmas_gingerbread_shelf', 'plain', '진저브레드 선반', 'xmas.gingerbread_shelf'], ['xmas_rug_snowflake', 'plain', '크리스마스 러그', 'xmas.rug_snowflake'], // (1.10.338 사용자 128A, assets 149)
   ].map(([shape, variant, name, model, kind = 'floor']) => Object.freeze({ id: `${shape}__${variant}`, shape, variant, name, zone: 'event', rarity: 'event', kind, model, event: true })));
   // v1.10.225 마당 꾸미기 (assets 70 yard-v1): the yard's twelve, always on the 「마당」 shelf, kept in the 가구 창고 with the
   // furniture but placed only outside (island-yard.js) -- priced by economy yard:<shape>

@@ -98,7 +98,7 @@ test('크리스마스 행사: 가판대 덧씌움·선물 자루, 선물 받아 
     // the stall: the six goods; the last evening: the gathering by the plaza's tree (6)
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [front(P.stall, 1.6).x, front(P.stall, 1.6).z]);
     await expect.poll(() => spaceOn(page, 'fest:stall', isMobile), { timeout: 15000 }).toBe(true);
-    const shop = page.locator('#festivalCard'); await expect(shop.locator('.festivalShop li')).toHaveCount(6); await expect(shop.locator('.festivalTab[aria-pressed="true"]')).toHaveText('가판대'); await expect(shop).toContainText('크리스마스 트리');
+    const shop = page.locator('#festivalCard'); await expect(shop.locator('.festivalShop li')).toHaveCount(12); /* (1.10.338 128A: six more) */ await expect(shop).toContainText('루돌프 흔들목마'); await expect(shop.locator('.festivalTab[aria-pressed="true"]')).toHaveText('가판대'); await expect(shop).toContainText('크리스마스 트리');
     if (DIR) await page.screenshot({ path: `${DIR}/${test.info().project.name}-stall-shop.png` });
     await page.locator('#plazaCloseBtn').click();
     expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-12-25T19:00:00+09:00') })).status).toBe(200);
@@ -186,7 +186,7 @@ test('크리스마스 눈·점등식: 첫 저녁 17:30 눈·점등 카운트다�
   test.setTimeout(240000);
   const admin = await adminToken(request); const at = (iso) => post(request, '/api/test/festival/clock', null, { at: Date.parse(`${iso}+09:00`) });
   try {
-    expect((await post(request, '/api/admin/island/decor', admin, { mode: 'winter' })).status).toBe(200); expect((await at('2026-12-19T17:30:00')).status).toBe(200);
+    expect((await post(request, '/api/admin/island/decor', admin, { mode: 'winter' })).status).toBe(200); expect((await at('2026-12-01T17:30:00')).status).toBe(200) /* (1.10.338 127A: the lighting on 12-1) */;
     const who = await shopper(browser, request, '눈구경', 0, 'female'); const { page } = who;
     const D = (fn, arg) => page.evaluate(([f, a]) => window.PlazaDebug()[f](a), [fn, arg]);
     const fresh = async () => { await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true); };
@@ -194,11 +194,12 @@ test('크리스마스 눈·점등식: 첫 저녁 17:30 눈·점등 카운트다�
     await expect.poll(() => D('xmasSnow'), { timeout: 20000 }).toEqual({ mode: 'light', white: false, falling: true });
     await expect.poll(async () => { const t = await D('treeLight'); return [t.state, t.board, /^\d\d:\d\d$/.test(t.text || ''), t.glow === null || t.glow === 0]; }, { timeout: 20000 }).toEqual(['count', true, true, true]);
     await shoot(page, 'xmas-lighting-count');
-    await at('2026-12-19T18:00:05'); await fresh();
+    await at('2026-12-01T18:00:05'); await fresh();
     await expect.poll(async () => { const t = await D('treeLight'); return [t.state, t.board, (t.glow ?? 0) > 0]; }, { timeout: 30000 }).toEqual(['lit', false, true]);
     await shoot(page, 'xmas-lighting-lit');
     await at('2026-12-24T12:00:00'); await fresh();
     await expect.poll(() => D('xmasSnow'), { timeout: 20000 }).toEqual({ mode: 'white', white: true, falling: true });
+    await expect.poll(async () => (await page.evaluate(() => window.PlazaDebug().xmasPlay())).plazaSnow, { timeout: 20000 }).toBe(true); /* (1.10.338 131A: 대청마당 under snow too) */
     await shoot(page, 'xmas-white'); await expectNoScriptError(page);
     await who.context.close();
   } finally { await post(request, '/api/admin/island/decor', admin, { mode: 'auto' }); await post(request, '/api/test/festival/clock', null, { at: 0 }); }

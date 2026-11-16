@@ -544,6 +544,9 @@
   const xv = (file, extra = {}) => ({ url: `${XV}/${file}.glb`, low: { url: `${XV}/${file}_low.glb` }, near: 50, ...extra });
   for (const f of ['tree_small', 'fireplace', 'snow_globe', 'stocking', 'gingerbread_house', 'stall_dress', 'gift_sack']) REGISTRY[`xmas.${f}`] = xv(`xmas_${f}`);
   REGISTRY['snow.ball'] = xv('snow_ball');
+  // 1.10.338 크리스마스 12-1 확장 (사용자 128A, assets 149 xmas-v3): the stamp shop's six new pieces -- the reindeer's `rock` and the lamp's
+  // `light` kept; their `glow` (the snowmen, the red nose) lit at night
+  for (const f of ['check_sofa', 'gift_pile', 'rocking_reindeer', 'snowman_lamp', 'gingerbread_shelf', 'rug_snowflake']) REGISTRY[`xmas.${f}`] = { url: `/assets/island/xmas-v3/xmas_${f}.glb`, low: { url: `/assets/island/xmas-v3/xmas_${f}_low.glb` }, near: 50, ...(f === 'rocking_reindeer' || f === 'snowman_lamp' ? { keepNodes: true, nightGlow: true } : {}) };
   for (const f of ['carrot', 'coal', 'twig', 'bucket', 'scarf']) REGISTRY[`snowman.part.${f}`] = xv(`snowman_part_${f}`, { near: 26 });
   for (const f of ['countdown_board', 'firework_launcher']) REGISTRY[`newyear.${f}`] = xv(`newyear_${f}`, { near: 60 });
   // X2: others' snowmen on the Low files only (twelve on the field), and the gift carried in a hand (B 46's boxes, smaller)

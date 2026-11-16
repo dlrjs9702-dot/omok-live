@@ -174,9 +174,9 @@ test('크리스마스: 선물 배달(받는 이웃 곁에서만), 눈사람(서�
   await clock('2026-12-25T19:00:00'); await stand(P.host); assert.equal((await req('/api/island/festival/gather', a, {})).data.error, 'TOO_FAR');
   await stand({ x: P.tree.x, z: P.tree.z - 7.5 }); const gathered = await req('/api/island/festival/gather', a, {}); assert.equal(gathered.status, 200, JSON.stringify(gathered.data)); assert.equal(gathered.data.festival.stamps, 10);
   assert.deepEqual((await req('/api/island/festival', a)).data.snowmen, []); // (a new day, a new field)
-  // the stall: the title for ten
-  await stand(P.stall); const title = await req('/api/island/festival/buy', a, { id: 'title_christmas' }); assert.equal(title.status, 200, JSON.stringify(title.data));
-  assert.equal((await req('/api/skins/title', a, { skinId: 'title_event_christmas' })).data.avatar.title, '메리 크리스마스');
+  // the stall (1.10.338 사용자 128A: its prices doubled, six pieces more): the title now 20 -- not for ten; the new rug for ten
+  await stand(P.stall); assert.equal((await req('/api/island/festival/buy', a, { id: 'title_christmas' })).data.error, 'NOT_ENOUGH');
+  const rug = await req('/api/island/festival/buy', a, { id: 'xmas_rug_snowflake' }); assert.equal(rug.status, 200, JSON.stringify(rug.data)); assert.equal(rug.data.festival.stamps, 0); assert.equal(rug.data.good.kind, 'furniture');
   await clock('2026-12-26T09:00:00'); assert.equal((await req('/api/island/festival', a)).data.festival, null);
   await clock(0);
 });
