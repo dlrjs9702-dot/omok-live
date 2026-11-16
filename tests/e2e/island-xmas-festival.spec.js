@@ -215,6 +215,10 @@ test('크리스마스 미리 보기: 이 브라우저만 장식·눈·점등·�
   await up(a); await up(b);
   await expect.poll(async () => { const d = await a.page.evaluate(() => { const D = window.PlazaDebug(); return [D.time().phase, D.treeLight().state, D.xmasSnow().mode, D.assets.shown?.['winter.landmark_winter_tree']]; }); return d; }, { timeout: 60000 }).toEqual(['night', 'lit', 'light', 'model']);
   await shoot(a.page, 'xmas-preview-night');
+  /* (1.10.336 assets 138) the islanders near wear their Christmas hats and scarves -- here, by one walking; not on the other screen */
+  await expect.poll(async () => { const w = await a.page.evaluate(() => window.PlazaDebug().wanderers.find((x) => x.visible)); if (w) await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 2, z + 2), [w.x, w.z]); await a.page.waitForTimeout(1500); return a.page.evaluate(() => window.PlazaDebug().xmasPlay().dressed); }, { timeout: 60000 }).toBeGreaterThan(0);
+  await shoot(a.page, 'xmas-resident-dress');
+  expect(await b.page.evaluate(() => window.PlazaDebug().xmasPlay().dressed)).toBe(0);
   const other = await b.page.evaluate(() => { const D = window.PlazaDebug(); return [D.treeLight().state, D.xmasSnow().mode, D.assets.shown?.['winter.landmark_winter_tree'] || null]; });
   expect(other).toEqual([null, null, null]);
   expect((await get(request, '/api/island/time', a.token)).data.decor).toBe('auto');

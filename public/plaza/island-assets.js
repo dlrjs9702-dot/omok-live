@@ -472,7 +472,9 @@
   REGISTRY['xmas.santa_sleigh'] = { url: `${XM}/santa_sleigh.glb`, low: { url: `${XM}/santa_sleigh_low.glb` }, keepNodes: true, scale: 1.8 /* (seen from the ground 60~100 m off: 7 m was a speck) */ };
     // 1.10.334 썰매 언덕·눈 요새 (assets 128): the sled to ride (its `rider` / `seat` kept), the hill (foot at z 0, top +Z), the forts' wall and corner
     REGISTRY['xmas.ride_sled'] = { url: `${XM}/ride_sled.glb`, low: { url: `${XM}/ride_sled_low.glb` }, near: 30, keepNodes: true };
-    for (const s of ['snow_hill', 'snow_fort_wall', 'snow_fort_corner']) REGISTRY[`xmas.${s}`] = { url: `${XM}/${s}.glb`, low: { url: `${XM}/${s}_low.glb` }, near: 50 }; }
+    for (const s of ['snow_hill', 'snow_fort_wall', 'snow_fort_corner']) REGISTRY[`xmas.${s}`] = { url: `${XM}/${s}.glb`, low: { url: `${XM}/${s}_low.glb` }, near: 50 };
+    // 1.10.336 주민 크리스마스 차림 (assets 138): the hats, scarves and head things put on an islander's Head / Neck bone (resident-xmas-fits.js)
+    for (const s of ['santa_hat', 'scarf_red', 'scarf_green', 'scarf_cream', 'bow_bell', 'holly', 'bauble_red', 'bauble_gold', 'bauble_blue', 'star']) REGISTRY[`xmas.resident.${s}`] = { url: `${XM}/resident_${s}.glb`, low: { url: `${XM}/resident_${s}_low.glb` }, near: 40, shadows: false }; }
   REGISTRY['character.farmer'] = { url: `${CH}/npc_farmer.glb`, low: { url: `${CH}/npc_farmer_low.glb` }, rotationY: Math.PI, motions: true };
   // v1.10.92 잡화점 (assets 41 store-v1): the building (front -Z, its door at local z -2.65), the room one walks into
   // (10 x 8 m, its door at local -Z; plaza-scene turns it half round), its keeper (the common rig) and the 23 goods on the shelves
