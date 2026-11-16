@@ -152,7 +152,7 @@ function economyLogTick(now = Date.now()) { if (!economyLogReady) return; client
 const ClientReport = require('./lib/client-report'); const clientReports = ClientReport.createReports(); let clientLoggedDay = null;
 function clientLogTick(now = Date.now()) { const due = EconomyLog.dueDay(now, clientLoggedDay); if (!due) return; if (clientLoggedDay) { console.log(clientReports.line(clientLoggedDay, require('./package.json').version)); clientReports.reset(); } clientLoggedDay = due; }
 let stockClock = 0; const stockNow = () => Date.now() + stockClock; // (tests: /api/test/stocks/clock)
-const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', LIMIT: '오늘 주문 20번을 다 썼어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
+const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 11시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
 // this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
 async function stockRank(now, me = null) {
   const all = await pointStore.questAll('stocks'); const rows = []; const stockMarket = await stocksMarket();
@@ -4773,7 +4773,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.334' });
+    return sendJson(res, 200, { ok: true, version: '1.10.335' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6453,7 +6453,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/stocks' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = stockNow();
     const { doc } = await pointStore.questDoc(account, 'stocks'); const stockMarket = await stocksMarket();
-    return sendJson(res, 200, { ...stockMarket.view(now), mine: IslandStocks.mine(stockMarket, doc, now), rules: { fee: IslandStocks.FEE, hold: IslandStocks.HOLD_MAX, orders: IslandStocks.ORDERS_DAY, open: IslandStocks.OPEN, close: IslandStocks.CLOSE }, now });
+    return sendJson(res, 200, { ...stockMarket.view(now), mine: IslandStocks.mine(stockMarket, doc, now), rules: { fee: IslandStocks.FEE, hold: IslandStocks.HOLD_MAX, open: IslandStocks.OPEN, close: IslandStocks.CLOSE }, now });
   }
   if (pathname === '/api/island/stocks/order' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = stockNow();
@@ -9988,7 +9988,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.334 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.335 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
