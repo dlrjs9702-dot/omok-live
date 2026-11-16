@@ -1,4 +1,5 @@
 'use strict';
+const rmAtExit = require('../test-support/rm-at-exit');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -13,7 +14,7 @@ test('다빈치 코드: 서버는 다른 사람과 관전자에게 숫자를 숨
   const base = `http://127.0.0.1:${port}`;
   const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'davinci-test-password', NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
-  t.after(async () => { proc.kill(); await fs.rm(dir, { recursive: true, force: true }); });
+  t.after(() => { proc.kill(); }); rmAtExit(dir); /* (1.10.332: removed once the server is gone -- right after kill() it was still writing: ENOTEMPTY, CI #482) */
   let ready = false;
   for (let i = 0; i < 80; i++) {
     try { if ((await fetch(`${base}/health`)).ok) { ready = true; break; } } catch {}

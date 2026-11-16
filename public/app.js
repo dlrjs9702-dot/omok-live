@@ -2092,6 +2092,7 @@
       showControlsNotice(); // (v1.10.217: the keys swapped -- told once on a PC)
       plaza.controller?.setLockTip?.(() => showToast('🖱 마우스로 둘러봐요 · Esc로 풀기 · 걷기는 W/A/S/D, 방향키는 시점', 5000)); // (v1.10.217: the first lock, once on this device)
       refreshStory(true); // (S1·S2: the 할 일 line, the little door -- the island up before plazaMode is set)
+      try { const v = localStorage.getItem('gc.xmasPreview'); if (v) plaza.controller.setXmasPreview?.(v); } catch {} /* (1.10.332 관리자 크리스마스 미리 보기: this browser's) */
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -6910,6 +6911,13 @@
   adminTab(aaPref('gc.adminTab', 'accounts'));
   // (섬 환경: the four rows, one 「저장」)
   byId('islandEnvSave').addEventListener('click', () => { for (const id of ['islandTimeForm', 'islandWeatherForm', 'islandSeasonForm', 'islandDecorForm']) byId(id).requestSubmit(); });
+  // 1.10.332 크리스마스 미리 보기 (총괄): this screen only -- the decor, music, snow, lighting and time as they will be; nothing sent,
+  // kept in this browser (gc.xmasPreview) and applied again once the island is up
+  const xmasPreviewOf = () => { try { return localStorage.getItem('gc.xmasPreview') || ''; } catch { return ''; } };
+  const applyXmasPreview = () => plaza.controller?.setXmasPreview?.(xmasPreviewOf() || null);
+  byId('xmasPreviewSelect').value = xmasPreviewOf();
+  byId('xmasPreviewForm').addEventListener('submit', (event) => event.preventDefault());
+  byId('xmasPreviewSelect').addEventListener('change', (event) => { const v = event.target.value; try { if (v) localStorage.setItem('gc.xmasPreview', v); else localStorage.removeItem('gc.xmasPreview'); } catch {} applyXmasPreview(); showToast(v ? '🎄 이 화면에서만 크리스마스 미리 보기를 켰어요' : '크리스마스 미리 보기를 껐어요', 2500); });
   let accountKeys = []; let accountTags = []; let accountShown = 50; let accountOpen = null; const tagSaves = new Map(); // (key id -> its last tag save)
   let accountChip = aaPref('gc.adminChip', 'all'); let accountSortBy = aaPref('gc.adminSort', 'seen');
   const TAG_COLORS = [['red', '빨강'], ['orange', '주황'], ['yellow', '노랑'], ['green', '초록'], ['blue', '파랑'], ['purple', '보라']];
