@@ -146,3 +146,30 @@ test('섬 주식 서버: 사고팔면 포인트가 같이 빠지고 들어옴, �
   assert.ok(rank.top[0].r >= rank.top[1].r); assert.ok(rank.me && rank.me.rank >= 1); assert.equal(rank.top.filter((x) => x.mine).length, 1);
   await req('/api/test/stocks/clock', a, { at: 0 });
 });
+
+test('섬 주식 공정한 값 식(139B): 11-17 09시(틱 15) 전 값은 그대로, 그 뒤로는 「60% 아래 사서 95%에 팔기」의 기대 이익이 0 근처', () => {
+  assert.equal(S.FAIR_FROM, 15); assert.equal(S.tickTime(S.FAIR_FROM), Date.parse('2026-11-17T09:00:00+09:00'));
+  const old = S.createMarket('fair-t', { fairFrom: Infinity }); const now = S.createMarket('fair-t');
+  const before = S.tickTime(S.FAIR_FROM - 1) + 60000; old.upTo(before); now.upTo(before);
+  assert.deepEqual(now.slots.map((s) => s.prices), old.slots.map((s) => s.prices), '틱 14까지 모든 값이 같음');
+  const later = S.tickTime(S.FAIR_FROM + 30) + 60000; old.upTo(later); now.upTo(later);
+  assert.notDeepEqual(now.slots.map((s) => s.prices), old.slots.map((s) => s.prices), '틱 15부터 새 식');
+  // the review's strategy (notes review-plan §1-1): once a day at 21:00, buy below 60 % of the listing, sell at 95 % -- 60 days, 8 keys
+  const DAYS = 60; const seeds = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel'];
+  const run = (secret, fairFrom) => {
+    const m = S.createMarket(secret, { fairFrom }); let cash = 5e6; const h = new Map(); const k0 = S.FAIR_FROM;
+    for (let d = 0; d < DAYS; d += 1) {
+      const k = k0 + d * S.PER_DAY + (21 - S.OPEN); const v = m.view(S.tickTime(k) + 60000);
+      for (const c of v.companies) { if (c.status === 'gone') continue; const mine = h.get(c.code);
+        if (mine && (c.status === 'cleanup' || c.price >= 0.95 * c.list)) { cash += mine.q * c.price * (1 - S.FEE); h.delete(c.code); continue; }
+        if (!mine && c.status === 'active' && c.price <= 0.6 * c.list) { const q = Math.min(S.HOLD_MAX, Math.floor(cash / (c.price * (1 + S.FEE)))); if (q > 0) { cash -= q * c.price * (1 + S.FEE); h.set(c.code, { q }); } } }
+    }
+    const end = S.tickTime(k0 + DAYS * S.PER_DAY - 1) + 60000; let held = 0; for (const [code, x] of h) { const c = m.company(code, end); if (c && c.status !== 'gone') held += c.price * x.q; }
+    return (cash + held - 5e6) / DAYS;
+  };
+  const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const was = seeds.map((s) => run(s, Infinity)); const fair = seeds.map((s) => run(s, S.FAIR_FROM));
+  assert.ok(mean(was) > 1e6 && was.every((g) => g > 0), `옛 식은 하루 100만 P 넘게 찍혔음: ${Math.round(mean(was))}`);
+  assert.ok(Math.abs(mean(fair)) < 2e5, `새 식은 하루 평균 이익이 0 근처: ${Math.round(mean(fair))}`);
+  assert.ok(fair.filter((g) => g < 0).length >= 2, `새 식은 지는 판도 있음: ${fair.map(Math.round)}`);
+});
