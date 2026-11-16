@@ -713,6 +713,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const who = /^character\.walker\.([a-z_]+?)(?:_(?:work|off))?$/.exec(hit.id)?.[1];
       if (who && registry[`npc_face.${who}`]?.url) { c.npcPerson = who; c.wearRec ||= { isHigh: true, high: [], low: [] }; cache.get(registry[`npc_face.${who}`].url).catch(() => {}); }
       if (/^character\.walker\.(hangyeol_(work|off)|isol)$/.test(hit.id)) c.shyFront = true;
+      c.walkerLook = /^character\.walker\.(.+)$/.exec(hit.id)?.[1] || null; /* (1.10.336: its look, for the Christmas pieces) */
       const clips = base ? motions.map((m) => m?.animations?.[0]).filter(Boolean) : gltf.animations;
       const anim = P.createAnimator(THREE, object, clips, base ? { ...base.animations, ...(preset?.animations || {}) } : hit.entry.animations || {}, { walkSpeed, speeds: preset?.speeds || (base || hit.entry).speeds, rates: preset?.rates || base?.rates });
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown[hit.id] = 'model';
@@ -1008,6 +1009,25 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }).catch((error) => onError(entry.url, error));
     return true;
   }
+  // 1.10.336 주민 크리스마스 차림 (assets 138, resident-xmas-fits.js): an islander's hat, scarf or head things on its own Head / Neck
+  // bones -- made once per model on its first `on` (the model's High and Low files, their meshes shared by everyone wearing them), the
+  // Low ones shown while its body is on its Low copy; off hides them. -> whether its look has any
+  function xmasDress(c, on) {
+    const fits = globalThis.ResidentXmasFits?.LOOKS?.[c?.walkerLook]; if (!fits || !c.assetRoot) return false;
+    if (c.xmasWear?.root !== c.assetRoot) {
+      if (!on) return true; const w = { root: c.assetRoot, parts: [] }; c.xmasWear = w;
+      Promise.all(fits.map(([m]) => { const e = registry[`xmas.resident.${m}`]; return e ? Promise.all([cache.get(e.url), e.low?.url ? cache.get(e.low.url).catch(() => null) : null]) : [null, null]; })).then((got) => {
+        if (disposed || c.xmasWear !== w || c.assetRoot !== w.root) return;
+        fits.forEach(([, bone, at, q, s], i) => {
+          const b = w.root.getObjectByName(bone); if (!b) return;
+          for (const [k, g] of [['high', got[i][0]], ['low', got[i][1]]]) { if (!g?.scene) continue; const o = g.scene.clone(); o.position.set(...at); o.quaternion.set(...q); o.scale.set(...s); o.traverse((x) => { if (x.isMesh) { x.castShadow = false; x.frustumCulled = false; } }); b.add(o); w.parts.push({ o, k }); }
+        });
+        showXmas(c);
+      }).catch((error) => onError('xmas.resident', error));
+    }
+    c.xmasOn = Boolean(on); showXmas(c); return true;
+  }
+  function showXmas(c) { const w = c.xmasWear; if (!w) return; const high = c.wearRec?.isHigh !== false; const low = w.parts.some((p) => p.k === 'low'); for (const p of w.parts) p.o.visible = Boolean(c.xmasOn) && (p.k === 'high' ? high || !low : !high); }
   // v1.10.285 (사용자 「모자가 택시를 뚫고 올라와있어」): a hat put away from getting into a taxi to getting out -- mine and
   // everyone's; a character dressed meanwhile starts so (c.hatHidden, applied as its parts come in)
   function hat(c, off) {
@@ -1125,7 +1145,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, props, hat, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, setFade, once, ambient, tick, dispose, debug: () => ({ fade: { on: fadeOn, fading, started: fadeStarts },
+  return { ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, attach, detach, dress, wear, face, props, hat, xmasDress /* (1.10.336) */, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, setFade, once, ambient, tick, dispose, debug: () => ({ fade: { on: fadeOn, fading, started: fadeStarts },
     // (Codex 281~290 #2: each batch filled again with its own matrix -- how many came out different; 0 once the fades are done)
     fillSame: () => { let bad = 0; for (const rec of batches) for (const p of rec.placed || []) { const ims = [...p.groups.values()].flatMap((g) => [...g.high, ...(g.low || [])]); const was = ims.map((im) => [im.count, im.instanceMatrix.array.slice(0, im.count * 16)]); entryMatrix(rec.entry, local); fill(p); if (ims.some((im, k) => im.count !== was[k][0] || im.instanceMatrix.array.slice(0, im.count * 16).some((v, j) => Math.abs(v - was[k][1][j]) > 1e-4))) bad += 1; } return bad; },
     lodsNear: (x, z, r = 80, n = 8) => lods.filter((l) => l.parent && l.levels.length > 1).map((l) => { l.getWorldPosition(placeOf); return { x: +placeOf.x.toFixed(1), z: +placeOf.z.toFixed(1), d: Math.hypot(placeOf.x - x, placeOf.z - z), levels: l.levels.map((v) => +v.distance.toFixed(1)), at: l.userData.lodAt ?? null, fading: Boolean(l.userData.lodRun), name: l.levels[0].object.name || l.parent?.name || '' }; }).filter((l) => l.d <= r).sort((a, b) => a.d - b.d).slice(0, n), glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };

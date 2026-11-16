@@ -73,10 +73,12 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
     if (isMobile) await page.locator('#plazaHint').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
     await expect.poll(async () => (await view()).eye, { timeout: 8000 }).toBeLessThan(standEye - 0.2); expect((await view()).mode).toBe('first');
+    /* (1.10.336 사용자 「앉으면 화면이 고정되는데 … 평소랑 같이 돌아볼 수 있게」: seated, the look turns all the way round -- past 1103 3's ±100°) */
+    const y0 = await page.evaluate(() => window.PlazaDebug().view().yaw);
     if (!isMobile) { await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(2500); await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(400); }
-    else await page.evaluate(() => window.PlazaDebug().setYaw?.(window.PlazaDebug().view().yaw + Math.PI));
-    const off = await page.evaluate((sy) => { const y = window.PlazaDebug().view().yaw; const c = sy - Math.PI; return Math.abs(Math.atan2(Math.sin(y - c), Math.cos(y - c))); }, seat.yaw);
-    expect(off).toBeLessThanOrEqual((100 * Math.PI) / 180 + 0.02);
+    else { await page.evaluate(() => window.PlazaDebug().setCamYaw(window.PlazaDebug().view().yaw + 2.6)); await page.waitForTimeout(400); }
+    const turned = await page.evaluate((a) => Math.abs(window.PlazaDebug().view().yaw - a), y0);
+    expect(turned).toBeGreaterThan((100 * Math.PI) / 180 + 0.2); expect(await page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
     await shot('sit-first');
     await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
     expect((await view()).mode).toBe('first');

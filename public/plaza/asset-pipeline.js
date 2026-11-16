@@ -381,6 +381,7 @@
       wear: (character, plan) => call('wear', [character, plan]),
       face: (character, want) => call('face', [character, want]),
       props: (character, on) => call('props', [character, on]),
+      xmasDress: (character, on) => (impl?.xmasDress && !disposed ? impl.xmasDress(character, on) : false), /* (1.10.336 주민 크리스마스 차림: true when its look has pieces) */
       hat: (character, off) => { character.hatHidden = Boolean(off); call('hat', [character, off]); }, /* (v1.10.285: put away in a taxi -- remembered before the loader is in) */ /* (v1.10.264: an islander's things in hand away during a gesture) */ /* (v1.10.263 감정 표현: the expression's eyes and mouth over the character's own; null its own back) */
       // v1.10.17 nature and props placed many times: does any of `targetIds` have a model to load? (synchronous, so the
       // scene can keep those copies apart from the rest when it bakes), then hand over the placed copies square by

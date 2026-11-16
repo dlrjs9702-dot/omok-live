@@ -13794,6 +13794,86 @@
       "lowSrc": "xmas128:02. Low/xmas-v2/snow_fort_corner_low.glb",
       "lowSha256": "864e45c5d461375fdbfe206e2bd29b8d167a35e6189dc67e3186c19ae4647fa8",
       "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_santa_hat.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_santa_hat.glb",
+      "sha256": "3836866e87361c8ff59a8194df123316ed0f0dae95c27ee609faaa2f82229df8",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_santa_hat_low.glb",
+      "lowSha256": "81b17e902a8070e25ba2bbc46504bca880ec6404b6fe07134daa713fe91b6055",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_scarf_red.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_scarf_red.glb",
+      "sha256": "666a86fc3d980590137158805d4f58a572075418c7c7275d8003632cfe19a8cb",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_scarf_red_low.glb",
+      "lowSha256": "1b7e55f4b70e2377b53db0905e350f443d8f5d7d40d930b5d81bb84ed012a956",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_scarf_green.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_scarf_green.glb",
+      "sha256": "147c3861218d52a2074ac34f8b704f557f2c46a6a7445aae8f6a3291b0bf2ec0",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_scarf_green_low.glb",
+      "lowSha256": "4fded356a34ff9cfafa9558fa2877b76a244b0ed39c5da88464ffd926cd8e521",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_scarf_cream.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_scarf_cream.glb",
+      "sha256": "0f821f3502e3d486343bf20b4674257eb5de399be4ed680ac527fda1b48232b0",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_scarf_cream_low.glb",
+      "lowSha256": "f76fd513400f9e7662bff54faa512d2358bba5916bf091ceafe3fa1abc971732",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_bow_bell.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_bow_bell.glb",
+      "sha256": "78f1af5d7092077406de1ecf0d107c206f8289e77e17e5f874df0f15f32636a9",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_bow_bell_low.glb",
+      "lowSha256": "4fd6f271caf0aa3ec3d00e2cd2b2c65f6c8f11939f3e678ea9245685c78fd554",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_holly.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_holly.glb",
+      "sha256": "c8ba7cd525dfc362f71536f4ba8de5f18bb42b8a98ab7fffe6a16e6eabdc097f",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_holly_low.glb",
+      "lowSha256": "5d5a8b55446eeec29237481b818ee281c3be680c7fc9e2e86d5154a3eddbb346",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_bauble_red.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_bauble_red.glb",
+      "sha256": "012bec3cb485bb03f63c97c193fcf48710ef706fa9aa9b98c24455001e69ab49",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_bauble_red_low.glb",
+      "lowSha256": "65bb5f8676ddd336625ec37925f4a8cd1ac3999ac662850cf38fb27479fbecf6",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_bauble_gold.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_bauble_gold.glb",
+      "sha256": "5b9066c73515b453e7b032ebf813be57a6421a73c492a49487a3b5b482a08d69",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_bauble_gold_low.glb",
+      "lowSha256": "de444299990b3f1b271517d6ea6c60db33e4b3f79269d97b1fc2f49fa1efb66a",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_bauble_blue.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_bauble_blue.glb",
+      "sha256": "4b9a6360a31ea6d600a20966dcd2ca855ed1188ff3de33941a21ef4b01817395",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_bauble_blue_low.glb",
+      "lowSha256": "0f7331976b969874b67f6e6fa2838b2ba5ca29d4bd564a3d8831162c62031aed",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/resident_star.glb",
+      "src": "xmas138:01. High/xmas-v2/resident_star.glb",
+      "sha256": "c1b2dd41cba489e87deb59f0b19cd0992c71124d1b78a72d8b358790454a6c6e",
+      "lowSrc": "xmas138:02. Low/xmas-v2/resident_star_low.glb",
+      "lowSha256": "8275a6960a641e723bab0b2773fa6cedf5df3bd5a6436b1e5edc0b121d1ec9bd",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -13896,6 +13976,7 @@
     "motions123": "123. Game Island resident motion presets 2026-11-14",
     "xmas125": "125. Game Island xmas house dressing 2026-11-15",
     "xmas127": "127. Game Island xmas santa sleigh 2026-11-15",
-    "xmas128": "128. Game Island xmas sled hill fort 2026-11-15"
+    "xmas128": "128. Game Island xmas sled hill fort 2026-11-15",
+    "xmas138": "138. Game Island resident xmas hats scarves 2026-11-16"
   }
 }

@@ -113,6 +113,10 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().taxi.others), { timeout: 15000 }).toBe(1); // (the other screen: my car on its way)
       const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW'); // (the keys do nothing in the car)
       const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
+      /* (1.10.336 사용자 「택시를 타면 화면이 고정되는데 … 돌아볼 수 있게」: turned in the car, the view stays turned -- by the car's way, not put back behind it) */
+      const offCar = () => page.evaluate(() => { const d = window.PlazaDebug(); const v = d.view().yaw - (d.yaw + Math.PI); return Math.atan2(Math.sin(v), Math.cos(v)); });
+      const off0 = await offCar(); await page.evaluate(() => window.PlazaDebug().setCamYaw(window.PlazaDebug().view().yaw + 1.6)); await page.waitForTimeout(1500);
+      const off1 = await offCar(); expect(Math.abs(Math.atan2(Math.sin(off1 - off0 - 1.6), Math.cos(off1 - off0 - 1.6)))).toBeLessThan(0.35);
       expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(true); /* (v1.10.285: the hat away in the car) */
       expect(await page.evaluate(() => window.PlazaDebug().hairCut())).toBe(false); /* (294 C 「대머리야」: the hair its whole shape while the hat is away) */
     }
