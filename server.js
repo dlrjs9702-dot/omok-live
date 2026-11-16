@@ -1409,6 +1409,10 @@ async function fleaHandOver(account, l, claim) {
 // letter either way); `account` given -- its own kept things handed over as far as there is room -> { state, back: [names] }
 async function fleaTidy(now, account = null) {
   let s = await fleaLoad(); let changed = false; const back = [];
+  for (const l of IslandFlea.reserved(s)) { /* (1.10.343 Codex 331~340 P1-2: inside worldEdit every reservation seen here was left by a stop -- its buyer paid (the buyer's own flea doc says so: written with the charge) gets it, else it is let go) */
+    const paid = ((await pointStore.questDoc(l.buyer, 'flea')).doc.paidFor || []).includes(l.id);
+    s = paid ? await fleaFinish(s, l, l.buyer, now) : IslandFlea.release(s, l.id); changed = true;
+  }
   for (const l of IslandFlea.expired(s, now)) {
     s = IslandFlea.without(s, l.id); changed = true; const ok = await fleaHandOver(l.seller, l, `flea:${l.id}:back`); if (!ok) s = IslandFlea.hold(s, l.seller, l);
     const where = l.kind === 'piece' ? '가구 창고' : '가방';
@@ -1418,7 +1422,7 @@ async function fleaTidy(now, account = null) {
   if (od.due.length) {
     s = od.state; changed = true;
     for (const x of od.due) {
-      await pointStore.questApply(x.account, 'flea', (doc) => ({ doc: { ...doc, got: (doc.got || 0) + x.net }, reward: x.net, payKey: `flea:auto:${x.id}`, reason: 'flea_sale' })); /* (PAID: paid before, not yet marked) */
+      await pointStore.questApply(x.account, 'flea', (doc) => ({ doc: { ...doc, got: (doc.got || 0) + x.net }, reward: x.net, payKey: IslandFlea.saleKey(x.id), reason: 'flea_sale' })); /* (PAID: paid before, not yet marked; 1.10.343 P1-3: the sale's own key -- 받기 uses it too) */
       await fleaLetter(x.account, `flea-auto-${x.id}`, `섬 벼룩시장에서 ${IslandFlea.DAYS}일 동안 받지 않은 판 돈 ${x.net.toLocaleString('ko-KR')}P를 지갑에 넣어 드렸어요.`, now);
       notifyAccount(x.account, 'flea', { owed: true }); notifyPointsChanged([x.account]);
     }
@@ -1428,6 +1432,15 @@ async function fleaTidy(now, account = null) {
   return { state: s, back };
 }
 if (process.env.NODE_ENV !== 'test') setInterval(() => { worldEdit(() => fleaTidy(nowMs())).catch(() => {}); }, 10 * 60 * 1000).unref(); /* (the 3 days' returns and money: on time, not only at the next look) */
+// (1.10.343 P1-2) a sale done for `buyer` (paid): off the board, the seller owed, the thing handed over (kept when there is no room),
+// saved, the seller's letter -- the same claim each time, so finishing it twice hands it over once
+async function fleaFinish(s, l, buyer, now) {
+  s = IslandFlea.sold(s, l, now); if (!(await fleaHandOver(buyer, l, `flea:${l.id}:buy`))) s = IslandFlea.hold(s, buyer, IslandFlea.release({ list: [l] }, l.id).list[0]);
+  await pointStore.setWorldValue('flea', s);
+  const fee = IslandFlea.feeOf(l.price);
+  await fleaLetter(l.seller, `flea-sold-${l.id}`, `${IslandCast.josa(fleaWhat(l), '이가')} ${l.price.toLocaleString('ko-KR')}P에 팔렸어요. 섬 벼룩시장 게시판에서 「받기」를 눌러 받아 가세요. (수수료 5% ${fee.toLocaleString('ko-KR')}P를 뗀 ${(l.price - fee).toLocaleString('ko-KR')}P)`, now);
+  notifyAccount(l.seller, 'flea', { owed: true }); return s;
+}
 const FLEA_ERRORS = Object.freeze({ LIMIT: `한 사람이 ${IslandFlea.MINE_MAX}개까지 올릴 수 있어요.`, MISSING: '가방에 없는 물건이에요.', QTY: '개수를 다시 정해 주세요.', NOT_SELLABLE: '벼룩시장에 올릴 수 없는 물건이에요.', PAID: '이미 처리된 요청이에요.', POINTS: '포인트가 모자라요.' });
 // 1.10.341 지하 도박장 (lib/island-den.js, public/plaza/island-den-room.js; notes underground-den-20261116, review-plan §1-5~7):
 // its key (the day's password and the note's bench -- made once, kept, never sent), whose gamble today is not yet written off, the
@@ -4904,7 +4917,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.342' });
+    return sendJson(res, 200, { ok: true, version: '1.10.343' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6731,33 +6744,41 @@ async function requestHandler(req, res) {
       let s = (await fleaTidy(now)).state; const l = s.list.find((x) => x.id === String(body.id || ''));
       if (!l) return sendError(res, 409, 'FLEA_GONE', '방금 팔렸거나 내려간 물건이에요.');
       if (l.seller === account) return sendError(res, 409, 'FLEA_OWN', '내가 올린 물건은 살 수 없어요. 「거두기」로 가져갈 수 있어요.');
+      if (l.buyer && l.buyer !== account) return sendError(res, 409, 'FLEA_BUSY', '다른 사람이 사는 중이에요. 잠시 뒤에 다시 봐 주세요.');
       if (l.kind === 'piece') { if (((await pointStore.worldValue(`furniture:${account}`)) || []).length >= 300) return sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.'); }
       else { const { bag } = await pointStore.questDoc(account, 'flea'); const mark = IslandItems.boxFor(l.itemId) ? { bought: true } : null; if (!IslandItems.addToBag(bag, l.itemId, l.qty, `flea-${l.id}`, l.sizes ? { sizes: l.sizes, ...mark } : mark, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방에 자리가 없어요. 가방을 비우고 다시 와 주세요.'); }
-      const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1 }, cost: l.price, payKey: `flea:buy:${l.id}`, reason: 'flea_buy' }));
-      if (paid?.error === 'POINTS') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.');
-      if (paid?.error && paid.error !== 'PAID') return sendError(res, 400, `FLEA_${paid.error}`, '사지 못했어요.'); /* (PAID: paid before and not handed over -- handed over now) */
-      s = IslandFlea.sold(s, l, now); if (!(await fleaHandOver(account, l, `flea:${l.id}:buy`))) s = IslandFlea.hold(s, account, l);
-      await pointStore.setWorldValue('flea', s);
-      const fee = IslandFlea.feeOf(l.price);
-      await fleaLetter(l.seller, `flea-sold-${l.id}`, `${IslandCast.josa(fleaWhat(l), '이가')} ${l.price.toLocaleString('ko-KR')}P에 팔렸어요. 섬 벼룩시장 게시판에서 「받기」를 눌러 받아 가세요. (수수료 5% ${fee.toLocaleString('ko-KR')}P를 뗀 ${(l.price - fee).toLocaleString('ko-KR')}P)`, now);
-      notifyAccount(l.seller, 'flea', { owed: true }); notifyPointsChanged([account]); broadcastIsland('flea', {});
+      // (1.10.343 Codex 331~340 P1-2: kept for me first, then my own charge -- the listing id in my flea doc with it --, then handed
+      // over; a stop between leaves the reservation, which the tidy finishes for me or lets go -- never another's sale on my charge)
+      if (!l.buyer) { s = IslandFlea.reserve(s, l.id, account, now); await pointStore.setWorldValue('flea', s); }
+      const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1, paidFor: [...(doc.paidFor || []).slice(-49), l.id] }, cost: l.price, payKey: `flea:buy:${l.id}:${account}`, reason: 'flea_buy' }));
+      if (paid?.error && paid.error !== 'PAID') { await pointStore.setWorldValue('flea', IslandFlea.release(s, l.id)); return paid.error === 'POINTS' ? sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.') : sendError(res, 400, `FLEA_${paid.error}`, '사지 못했어요.'); } /* (PAID: my own charge before, not handed over -- handed over now) */
+      s = await fleaFinish(s, l, account, now);
+      notifyPointsChanged([account]); broadcastIsland('flea', {});
       return sendJson(res, 200, { ok: true, name: l.name, qty: l.qty, kind: l.kind, price: l.price, balance: paid?.balance ?? null, held: Boolean((s.held[account] || []).some((x) => x.id === l.id)) });
     });
     if (route === '/withdraw') return worldEdit(async () => {
       const s = (await fleaTidy(now)).state; const l = s.list.find((x) => x.id === String(body.id || ''));
       if (!l || l.seller !== account) return sendError(res, 409, 'FLEA_GONE', '이미 팔렸거나 내려간 물건이에요.');
-      if (!(await fleaHandOver(account, l, `flea:${l.id}:back`))) return sendError(res, 409, l.kind === 'piece' ? 'STORAGE_FULL' : 'BAG_FULL', l.kind === 'piece' ? '가구 창고가 가득 찼어요.' : '가방에 자리가 없어요. 가방을 비우고 다시 거둬 주세요.');
-      await pointStore.setWorldValue('flea', IslandFlea.without(s, l.id)); broadcastIsland('flea', {});
+      if (l.buyer) return sendError(res, 409, 'FLEA_BUSY', '누가 사는 중이에요. 잠시 뒤에 다시 봐 주세요.');
+      // (1.10.343 Codex 331~340 P1-4: off the board and kept for me first -- saved --, then handed back by the 「맡아 둔 것」 claim; a stop
+      // between leaves it kept (handed over at my next look), never on the board to be sold again; no room: back on the board as it was)
+      const off = IslandFlea.hold(IslandFlea.without(s, l.id), account, l); await pointStore.setWorldValue('flea', off);
+      if (!(await fleaHandOver(account, l, `flea:${l.id}:held`))) { await pointStore.setWorldValue('flea', s); return sendError(res, 409, l.kind === 'piece' ? 'STORAGE_FULL' : 'BAG_FULL', l.kind === 'piece' ? '가구 창고가 가득 찼어요.' : '가방에 자리가 없어요. 가방을 비우고 다시 거둬 주세요.'); }
+      await pointStore.setWorldValue('flea', IslandFlea.unhold(off, account, l.id)); broadcastIsland('flea', {});
       return sendJson(res, 200, { ok: true, name: l.name, kind: l.kind });
     });
     if (route === '/claim') return worldEdit(async () => {
       const s = await fleaLoad(); const o = s.owed[account];
       if (!o?.amount) return sendError(res, 409, 'FLEA_NOTHING', '받을 돈이 없어요.');
-      const payKey = `flea:claim:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${o.n}`;
-      const out = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, got: (doc.got || 0) + o.amount }, reward: o.amount, payKey, reason: 'flea_sale' }));
-      if (out?.error && out.error !== 'PAID') return sendError(res, 400, `FLEA_${out.error}`, '받지 못했어요.'); /* (PAID: paid, not yet marked -- marked now) */
+      // (1.10.343 Codex 331~340 P1-3: each sale paid by its own key -- the one the 3 days' auto pay uses --, so a sale is paid once
+      // whichever comes first and whatever stopped between; PAID: paid before, not yet marked -- marked now)
+      const sales = IslandFlea.owedOf(s, account).list; let balance = null;
+      const pay = (amount, payKey) => pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, got: (doc.got || 0) + amount }, reward: amount, payKey, reason: 'flea_sale' }));
+      for (const x of sales.length ? sales : [{ net: o.amount, key: `flea:claim:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${o.n}` }]) {
+        const out = await pay(x.net, x.key || IslandFlea.saleKey(x.id)); if (out?.error && out.error !== 'PAID') return sendError(res, 400, `FLEA_${out.error}`, '받지 못했어요.'); if (out?.balance != null) balance = out.balance;
+      }
       await pointStore.setWorldValue('flea', IslandFlea.claimed(s, account)); notifyPointsChanged([account]);
-      return sendJson(res, 200, { ok: true, amount: o.amount, balance: out?.balance ?? null });
+      return sendJson(res, 200, { ok: true, amount: o.amount, balance });
     });
     return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
   }
@@ -8743,15 +8764,23 @@ async function requestHandler(req, res) {
     }
     if (action === 'buy') { // 가판대: a limited good for stamps -- furniture into 가구 창고, a title to wear
       if (!near(P.stall, P.REACH + 1)) return sendError(res, 409, 'TOO_FAR', '가판대 앞에서 바꿀 수 있어요.');
-      const give = async (g) => { // -> whether it was handed over now (each once: the furniture's claim, the title owned)
+      // (1.10.343 Codex 331~340 P1-1: a piece handed over is kept in the stamp doc -- `handed` -- apart from the 창고, where it may no
+      // longer be (put on the 벼룩시장); a second try hands over only a piece bought within GIVE_RETRY_MS and never marked handed)
+      const GIVE_RETRY_MS = 10 * 60 * 1000; const id = String(body.id || '');
+      const give = async (g) => { // -> whether it is handed over (a title: owned now)
         if (g.kind !== 'furniture') return Boolean(await eventTitleGive(account, g.title));
-        let given = false; await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const claim = `fest:${fest.id}:${g.id}:${account}`; if (!owned.some((p) => p.claim === claim)) { await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id: g.good, at: nowMs(), price: 0, claim }]); given = true; } }); return given;
+        await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const claim = `fest:${fest.id}:${g.id}:${account}`; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id: g.good, at: nowMs(), price: 0, claim }]); });
+        await pointStore.questApply(account, key, (doc) => ((doc.handed || []).includes(g.id) ? null : { doc: { ...doc, handed: [...(doc.handed || []), g.id] } })); return true;
       };
-      const r = await pointStore.questApply(account, key, (doc) => { const b = IslandFestival.buy(fest, doc, String(body.id || '')); return b.error ? { error: b.error } : { doc: b.doc, good: b.good }; });
+      const r = await pointStore.questApply(account, key, (doc) => { const b = IslandFestival.buy(fest, doc, id); return b.error ? { error: b.error } : { doc: { ...b.doc, boughtAt: { ...(doc.boughtAt || {}), [id]: nowMs() } }, good: b.good }; });
       // (C3 ⑦: bought but never handed over -- the stamps spent and then a save failed -- a second try hands it over)
-      const g = r?.error === 'OWNED' ? fest.shop.find((x) => x.id === String(body.id)) : r?.good;
-      if (r?.error && !(g && await give(g))) return sendError(res, 409, r.error, fail[r.error] || '바꿀 수 없어요.');
-      if (!r?.error) await give(g);
+      let g = r?.good;
+      if (r?.error) {
+        const owe = r.error === 'OWNED' ? fest.shop.find((x) => x.id === id) : null; const doc = owe?.kind === 'furniture' ? (await pointStore.questDoc(account, key)).doc : null;
+        const unpaid = Boolean(owe) && (owe.kind !== 'furniture' || (!(doc.handed || []).includes(id) && nowMs() - (Number(doc.boughtAt?.[id]) || 0) < GIVE_RETRY_MS));
+        if (!(unpaid && await give(owe))) return sendError(res, 409, r.error, fail[r.error] || '바꿀 수 없어요.');
+        g = owe;
+      } else await give(g);
       return sendJson(res, 200, { ok: true, good: { id: g.id, name: g.name, kind: g.kind }, festival: IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now) });
     }
     return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
@@ -10296,7 +10325,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.342 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.343 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
