@@ -13722,6 +13722,38 @@
       "src": "motions123:01. High/motions/Walk_Sleuth.glb",
       "sha256": "c1e8b7dad790fea6990d920c45e2abe3958bddf2d0ce83f90834e8ff47d81ae1",
       "precompressed": true
+    },
+    {
+      "out": "xmas-v2/house_dress_hut.glb",
+      "src": "xmas125:01. High/xmas-v2/house_dress_hut.glb",
+      "sha256": "3e8da71c56308828323856c715b283af07afd12d0fee73cfbdf429690c8c8c15",
+      "lowSrc": "xmas125:02. Low/xmas-v2/house_dress_hut_low.glb",
+      "lowSha256": "34a5acf90ad7872c2998533734bf8942bb805be75543f8c48dfee67133ce1fee",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/house_dress_house.glb",
+      "src": "xmas125:01. High/xmas-v2/house_dress_house.glb",
+      "sha256": "d50e5d0654b4045281ea15fd2d157778c56c73cb65e46d6f6ccdde8b184b745b",
+      "lowSrc": "xmas125:02. Low/xmas-v2/house_dress_house_low.glb",
+      "lowSha256": "2b91b97701652f3b23591b3851b3e5897481f9ebd75fca0073460de005247b7d",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/house_dress_manor.glb",
+      "src": "xmas125:01. High/xmas-v2/house_dress_manor.glb",
+      "sha256": "2982410177c5401668d3dec6347a72ba9275d2f785664b5471f2d235a4ee6e20",
+      "lowSrc": "xmas125:02. Low/xmas-v2/house_dress_manor_low.glb",
+      "lowSha256": "94dba4ce5897012ce959a3d854b86f9f152880e5dc0ef139e43171c263039216",
+      "precompressed": true
+    },
+    {
+      "out": "xmas-v2/house_dress_manor2.glb",
+      "src": "xmas125:01. High/xmas-v2/house_dress_manor2.glb",
+      "sha256": "f461ccb7b13d0351c8efff87b6607f5e053b678788edaec5b227e97d18ef65c4",
+      "lowSrc": "xmas125:02. Low/xmas-v2/house_dress_manor2_low.glb",
+      "lowSha256": "2f1db351484245ddc595c5776d9522d7ea17dc25adef934409883dae592d4ffa",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -13821,6 +13853,7 @@
     "quarry129": "129. Game Island quarry rocks ore pickaxe 2026-11-15",
     "pickaxe130": "130. Game Island pickaxe motion 2026-11-15",
     "market124": "124. Game Island xmas market stalls 2026-11-15",
-    "motions123": "123. Game Island resident motion presets 2026-11-14"
+    "motions123": "123. Game Island resident motion presets 2026-11-14",
+    "xmas125": "125. Game Island xmas house dressing 2026-11-15"
   }
 }

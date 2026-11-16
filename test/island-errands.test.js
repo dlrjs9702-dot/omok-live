@@ -95,6 +95,8 @@ test('A-6 주민끼리 수다·섬 소문·상황 대사', () => {
   assert.match(Cast.rumor({ contest: { phase: 'live', name: '낚시 대회' } }, () => 0), /낚시 대회/);
   for (const k of Object.keys(Cast.MOODS)) assert.equal(Cast.MOODS[k].length, 10);
   assert.equal(Cast.walkerLine(0, () => 0, 'day', 1, '', ['rain']), Cast.withTail(Cast.MOODS.rain[0], 0));
+  // (1.10.331 M3) the 크리스마스 festival: each walker's own 「메리 크리스마스」, first among the moods
+  for (const [n, l] of Cast.MOODS.xmas.entries()) { assert.match(l, /^메리 크리스마스/, `${n}`); assert.equal(Cast.walkerLine(n, () => 0.5, 'day', 1, '', ['winter', 'xmas']), Cast.withTail(l, n)); }
 });
 
 // 묶음 1 멀리 심부름 (residents-talk-hills-20261018.md 4): the one to find or bring to lives far from the asker (one of the

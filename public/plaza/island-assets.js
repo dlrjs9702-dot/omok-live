@@ -463,7 +463,10 @@
 // snacks held in the hand (scale 1.8: true to life they read small there -- 124's 192-pose check passed at 1.8)
 { const XM = '/assets/island/xmas-v2'; for (const s of ['cocoa', 'sweetpotato', 'fishbread']) {
   REGISTRY[`xmas.market.${s}`] = { url: `${XM}/market_stall_${s}.glb`, low: { url: `${XM}/market_stall_${s}_low.glb` }, near: 50, keepNodes: true, nightGlow: true };
-  REGISTRY[`xmas.snack.${s}`] = { url: `${XM}/snack_${s}.glb`, low: { url: `${XM}/snack_${s}_low.glb` }, scale: 1.8, keepNodes: true }; } }
+  REGISTRY[`xmas.snack.${s}`] = { url: `${XM}/snack_${s}.glb`, low: { url: `${XM}/snack_${s}_low.glb` }, scale: 1.8, keepNodes: true }; }
+  // 1.10.331 M2 집 장식 (assets 125): a house's December dressing -- the door wreath, the eave lights, the window candles -- laid
+  // over the house of that stage at its own transform (no solids); its `glow` lit at night by plaza-scene
+  for (const s of ['hut', 'house', 'manor', 'manor2']) REGISTRY[`xmas.house_dress.${s}`] = { url: `${XM}/house_dress_${s}.glb`, low: { url: `${XM}/house_dress_${s}_low.glb` }, near: 90 }; }
   REGISTRY['character.farmer'] = { url: `${CH}/npc_farmer.glb`, low: { url: `${CH}/npc_farmer_low.glb` }, rotationY: Math.PI, motions: true };
   // v1.10.92 잡화점 (assets 41 store-v1): the building (front -Z, its door at local z -2.65), the room one walks into
   // (10 x 8 m, its door at local -Z; plaza-scene turns it half round), its keeper (the common rig) and the 23 goods on the shelves
