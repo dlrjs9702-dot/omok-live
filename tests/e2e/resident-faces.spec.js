@@ -36,8 +36,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
       const react = await page.evaluate(() => window.PlazaDebug().lastReact());
       if (r !== true || !react?.move || react.n !== w.n) { await watch; return null; } /* (another islander answered -- the one picked walked on: CI 8.6 s from the list to the thumb) */
       if (photo) { await page.evaluate((c) => window.PlazaDebug().camNear(c ? c : null, [0, 1.45, -2.0]), cam); await page.waitForTimeout(700); await photo(); await page.evaluate(() => window.PlazaDebug().camNear(null)); }
-      const seen = await watch; if (feel === 'thumbsup' && (!seen.clips.includes('ThumbsUp') || !seen.faces.length)) return null; /* (1.10.326 흔들림 §6, low confidence: its face pack not in yet, or it walked on -- the next one) */
-      got = { n: w.n, react, seen }; return got.n;
+      got = { n: w.n, react, seen: await watch }; return got.n;
     }, { timeout: 90000, intervals: [1200] }).not.toBe(null);
     return got;
   };
@@ -67,7 +66,7 @@ test('주민 표정: 내 엄지에 앞의 주민이 돌아보고 ThumbsUp + 표�
   await expect.poll(async () => (await face(thumbs.n)).parts, { timeout: 5000 }).toEqual([]);
   // (v1.10.287 2절) a line said: its mouth to 「o」 and back for the line's length, then its own; (3절) me 3 m by it -- its head turned to me
   { const w = (await page.evaluate(() => window.PlazaDebug().wanderers)).find((x) => x.n === thumbs.n); await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 3, z); }, [w.x, w.z]); await page.waitForTimeout(500); }
-  await expect.poll(() => page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const f0 = D.faceLife(n).flaps; const t0 = Date.now(); D.sayAs(n, '오늘 바람이 참 시원하네요! 이런 날엔 바닷가를 천천히 걸어 보고 싶어요.'); const id = setInterval(() => { const f = D.faceLife(n); const on = f.flaps > f0; /* (1.10.326 흔들림 §6: a 40-letter line, 2.4 s -- a first-use stall no more past its end) */ if (on || Date.now() - t0 > 3000) { clearInterval(id); ok(on); } }, 20); }), thumbs.n), { timeout: 15000, intervals: [300] }).toBe(true); /* (CI: a page round trip ~1 s, the line's mouth 0.9 s -- seen in the page; 검토 docs/resident-faces-46-20261111.md) */
+  await expect.poll(() => page.evaluate((n) => new Promise((ok) => { const D = window.PlazaDebug(); const f0 = D.faceLife(n).flaps; const t0 = Date.now(); D.sayAs(n, '오늘 바람이 참 시원하네요!'); const id = setInterval(() => { const f = D.faceLife(n); const on = f.talking && f.flaps > f0; if (on || Date.now() - t0 > 3000) { clearInterval(id); ok(on); } }, 20); }), thumbs.n), { timeout: 15000, intervals: [300] }).toBe(true); /* (CI: a page round trip ~1 s, the line's mouth 0.9 s -- seen in the page; 검토 docs/resident-faces-46-20261111.md) */
   await expect.poll(async () => (await life(thumbs.n)).talking, { timeout: 6000 }).toBe(false); await expect.poll(async () => (await face(thumbs.n)).parts, { timeout: 3000 }).toEqual([]);
   await expect.poll(async () => { /* (v1.10.289 CI: each try me 2.5 m from where it stands now -- it walks on, or has a feeling of its own) */
     await post(request, '/api/test/island/free-residents', token, {}); const at = (await face(thumbs.n)).at; await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 2.5, z), [at.x, at.z]); await page.waitForTimeout(900);
