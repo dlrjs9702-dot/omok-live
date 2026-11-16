@@ -16,11 +16,11 @@ const S = require('../lib/island-stocks');
 const HOUR = 3600000;
 const at = (day, hour, min = 0) => S.tickTime(day * S.PER_DAY) + (hour - S.OPEN) * HOUR + min * 60000; // (day from the first, Seoul hour)
 
-test('섬 주식 시장: 같은 씨앗 같은 값, 하루 9번(9~17시), 장 시간, 상한 없음, 주에 1~3개 폐지(정리 매매 하루 뒤), 1~3일 뒤 새 회사', () => {
+test('섬 주식 시장: 같은 씨앗 같은 값, 하루 15번(9~23시), 장 시간, 상한 없음, 주에 1~3개 폐지(정리 매매 하루 뒤), 1~3일 뒤 새 회사', () => {
   const a = S.createMarket('t'); const b = S.createMarket('t');
   assert.deepEqual(a.view(at(20, 12, 30)), b.view(at(20, 12, 30)), '같은 씨앗 같은 값');
-  assert.equal(S.tickAt(at(0, 8, 59)), -1); assert.equal(S.tickAt(at(0, 9)), 0); assert.equal(S.tickAt(at(0, 17, 30)), 8); assert.equal(S.tickAt(at(1, 3)), 8); assert.equal(S.tickAt(at(1, 9)), 9);
-  assert.ok(!S.isOpen(at(0, 8, 59)) && S.isOpen(at(0, 9)) && S.isOpen(at(0, 16, 59)) && !S.isOpen(at(0, 17)), '9시~5시 전');
+  assert.equal(S.PER_DAY, 15); assert.equal(S.tickAt(at(0, 8, 59)), -1); assert.equal(S.tickAt(at(0, 9)), 0); assert.equal(S.tickAt(at(0, 17, 30)), 8); assert.equal(S.tickAt(at(0, 23, 30)), 14); assert.equal(S.tickAt(at(1, 3)), 14); assert.equal(S.tickAt(at(1, 9)), 15);
+  assert.ok(!S.isOpen(at(0, 8, 59)) && S.isOpen(at(0, 9)) && S.isOpen(at(0, 17)) && S.isOpen(at(0, 22, 59)) && !S.isOpen(at(0, 23)), '9시~11시 전');
   const v = S.createMarket('t').view(at(0, 9, 5)); assert.equal(v.companies.length, 30); assert.equal(new Set(v.companies.map((c) => c.name)).size, 30);
   assert.ok(v.companies.every((c) => c.price >= 1000 && c.price <= 10000 && c.price % 100 === 0), '상장가 1,000~10,000P');
   // eight weeks: how many went, the hourly moves (some beyond 8 %), every price above 0
@@ -35,7 +35,19 @@ test('섬 주식 시장: 같은 씨앗 같은 값, 하루 9번(9~17시), 장 시
   void weeks;
 });
 
-test('섬 주식 주문: 1주 단위·수수료 0.5%·한 회사 1,000주·하루 20번·장 밖 막힘·정리 매매는 팔기만(상한에서 뺌)', () => {
+// 1.10.335 (사용자 「주식 장은 9시부터 23시로」): the first day (2026-11-16) 09~17 as it was posted with nine a day -- under
+// two keys the thirty companies' prices those hours, and the first weeks' 부도 plans, hashed with the 1.10.334 code
+test('섬 주식 장 9~23시: 첫날 9~17시 값과 부도 계획은 하루 9번이던 때와 같음', () => {
+  for (const [key, prices, plans] of [['day0-a', '42399f1de0f9212ecae239f174e6d7b0c76f460e', 'e7d8c2c91ffbd40dde4f3bbaaa3a147d6620777b'], ['x'.repeat(64), '3ba3eefda3c4173081769aad7ad19bda6ba49b70', 'a5cfdac361d1df1b9ed5921293f9d8a40a523d0d']]) {
+    const m = S.createMarket(key); const rows = [];
+    for (let h = 9; h <= 17; h += 1) rows.push(m.view(S.tickTime(0) + (h - 9) * HOUR + 60000).companies.map((c) => `${c.code}:${c.price}`).join(','));
+    const sha = (s) => require('node:crypto').createHash('sha1').update(s).digest('hex');
+    assert.equal(sha(rows.join('|')), prices, `${key.slice(0, 6)} 첫날 값`); assert.equal(sha([0, 1, 2].map((w) => JSON.stringify(m.planOf(w))).join('|')), plans, '부도 계획');
+  }
+  const m = S.createMarket('day0-a'); const v = m.view(at(0, 23, 5)); assert.equal(v.tick, 14); assert.ok(v.companies.every((c) => c.today.length === 15 || c.status !== 'active'), '23시 값까지 하루 15개');
+});
+
+test('섬 주식 주문: 1주 단위·수수료 0.5%·한 회사 1,000주·하루 횟수 제한 없음·장 밖 막힘·정리 매매는 팔기만', () => {
   const m = S.createMarket('o'); const t = at(2, 10, 10); const c = m.view(t).companies.find((x) => x.status === 'active');
   assert.equal(S.order(m, {}, { code: c.code, side: 'buy', qty: 1 }, at(2, 8, 30)).error, 'CLOSED');
   assert.equal(S.order(m, {}, { code: c.code, side: 'buy', qty: 1.5 }, t).error, 'QTY');
@@ -43,9 +55,8 @@ test('섬 주식 주문: 1주 단위·수수료 0.5%·한 회사 1,000주·하�
   assert.equal(S.order(m, b.doc, { code: c.code, side: 'buy', qty: 991 }, t).error, 'HOLD');
   assert.equal(S.order(m, b.doc, { code: c.code, side: 'sell', qty: 11 }, t).error, 'SHARES');
   const s = S.order(m, b.doc, { code: c.code, side: 'sell', qty: 4 }, t); assert.equal(s.reward, c.price * 4 - Math.max(1, Math.ceil(c.price * 4 * 0.005))); assert.equal(s.doc.h[c.code].q, 6);
-  let doc = s.doc; for (let i = 2; i < 20; i += 1) doc = S.order(m, doc, { code: c.code, side: 'buy', qty: 1 }, t).doc;
-  assert.equal(S.order(m, doc, { code: c.code, side: 'buy', qty: 1 }, t).error, 'LIMIT'); assert.equal(S.mine(m, doc, t).ordersLeft, 0);
-  assert.equal(S.order(m, doc, { code: c.code, side: 'buy', qty: 1 }, at(3, 9, 1)).error, undefined, '다음 날 다시 20번');
+  let doc = s.doc; for (let i = 2; i < 40; i += 1) { const r = S.order(m, doc, { code: c.code, side: 'buy', qty: 1 }, t); assert.equal(r.error, undefined, `${i + 1}번째 주문`); doc = r.doc; } /* (1.10.335 사용자 「주식 거래 횟수 제한을 없애자」) */
+  assert.equal(S.mine(m, doc, t).ordersToday, 40); assert.equal(S.order(m, doc, { code: c.code, side: 'buy', qty: 1 }, at(2, 22, 30)).error, undefined, '밤 10시 반에도');
   // 정리 매매: find a company on its cleanup day -- buying refused, selling free of the day's limit
   const w = S.createMarket('o'); let found = null;
   for (let k = 0; k < 6 * 7 * S.PER_DAY && !found; k += 1) { const v = w.view(S.tickTime(k) + 1000); const x = v.companies.find((y) => y.status === 'cleanup'); if (x && k % S.PER_DAY < S.PER_DAY - 1) found = { x, ms: S.tickTime(k) + 1000 }; }

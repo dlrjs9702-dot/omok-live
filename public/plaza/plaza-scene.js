@@ -4584,7 +4584,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function paintStocks() {
     if (!stocksTex) return; const c = stocksTex.image; const x = c.getContext('2d'); const v = stocksBoard;
     x.fillStyle = '#0f1830'; x.fillRect(0, 0, c.width, c.height); x.textBaseline = 'middle'; x.textAlign = 'left';
-    x.font = '800 56px system-ui, sans-serif'; x.fillStyle = '#ffd34d'; x.fillText(`섬 증권거래소 · ${v ? (v.open ? '장 열림' : '장 닫힘 · 오전 9시~오후 5시') : '시세 받는 중'}`, 36, 52);
+    x.font = '800 56px system-ui, sans-serif'; x.fillStyle = '#ffd34d'; x.fillText(`섬 증권거래소 · ${v ? (v.open ? '장 열림' : '장 닫힘 · 오전 9시~오후 11시') : '시세 받는 중'}`, 36, 52);
     const list = (v?.companies || []).slice(0, 30); const colW = c.width / 3; const rowH = (c.height - 110) / 10;
     list.forEach((co, i) => {
       const X = Math.floor(i / 10) * colW + 30; const Y = 110 + (i % 10) * rowH + rowH / 2; const name = co.name.length > 8 ? `${co.name.slice(0, 7)}…` : co.name;

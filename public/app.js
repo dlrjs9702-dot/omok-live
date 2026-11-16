@@ -5095,7 +5095,7 @@
   async function openStocks(tab = stocksTab, code = null) {
     stocksTab = tab; const d = await refreshStocksBoard(); if (!d) { showToast('시세를 불러오지 못했어요.'); return; }
     const card = sEl('div', 'mirrorCard stocksCard'); const next = new Date(d.next); const nextText = `${String(next.getHours()).padStart(2, '0')}:00`;
-    const wk = d.mine?.week; card.append(line(`${d.open ? '장 열림' : '장 닫힘 · 매일 오전 9시~오후 5시'} · 다음 값 ${nextText} · 오늘 주문 ${d.mine?.ordersLeft ?? 0}번 남음${wk == null ? '' : ` · 이번 주 수익률 ${stockSign(wk)}`}`, 'lookMeta stocksHead'));
+    const wk = d.mine?.week; card.append(line(`${d.open ? '장 열림' : '장 닫힘 · 매일 오전 9시~오후 11시'} · 다음 값 ${nextText}${wk == null ? '' : ` · 이번 주 수익률 ${stockSign(wk)}`}`, 'lookMeta stocksHead'));
     const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['mine', '내 주식'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
     const body = sEl('div', 'stocksBody'); card.append(body);
     if (code) stockDetail(body, d, code);
@@ -5139,7 +5139,7 @@
     };
     const row = sEl('div', 'stocksOrder'); row.append(qty, sEl('span', 'lookMeta', '주'));
     if (c.status !== 'cleanup') row.append(btn('사기', 'primary', order('buy'))); row.append(btn('팔기', 'secondary', order('sell')));
-    if (!d.open) { for (const b of row.querySelectorAll('button')) b.disabled = true; note.textContent = '장이 닫혀 있어요. 매일 오전 9시부터 오후 5시까지 사고팔 수 있어요.'; }
+    if (!d.open) { for (const b of row.querySelectorAll('button')) b.disabled = true; note.textContent = '장이 닫혀 있어요. 매일 오전 9시부터 오후 11시까지 사고팔 수 있어요.'; }
     body.append(row, note, btn('시세로', 'secondary', () => openStocks('board')));
   }
   async function tedTalk() { const d = stocksView || (await refreshStocksBoard()); plaza.controller?.tedSay?.(window.IslandExchange?.lineOf(d, Math.floor(Math.random() * 12)) || '…네.'); }
