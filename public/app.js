@@ -3706,8 +3706,9 @@
       const body = JSON.stringify({ rock, spot: Number(spot), requestId: crypto.randomUUID() });
       let r; try { r = await api('/api/island/quarry/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; r = await api('/api/island/quarry/finish', { method: 'POST', body }); }
       if (r.bag) drawIslandBag(r.bag); toolWorn(r.worn, r.bag);
+      plaza.controller?.mineResult?.(r); /* (1.10.355: the ore off the rock into the bag, a rare one's light) */
       if (!r.ore) { showToast(`💥 ${r.hits ?? 0}/${r.rounds ?? 3}번 맞혔어요 · 두 번 맞혀야 광석이 나와요${r.itemId ? ' · 🪨 작은 돌 +1' : ''}`, 3500); return; } /* (1.10.342 98B: a missed set -- rubble, the rock and the day's count as they were) */
-      showToast(`${r.icon || '🪨'} ${r.name || '광석'} +1 · 쨍! ${r.hits}/${r.rounds} · 오늘 ${r.daily?.n ?? '-'}/${r.daily?.max ?? '-'}${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, 3200);
+      showToast(`${r.icon || '🪨'} ${r.name || '광석'} +1${r.wall ? '' : ` · 오늘 ${r.daily?.n ?? '-'}/${r.daily?.max ?? '-'}`}${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, 3200); /* (1.10.355: 「구리 광석 +1 · 오늘 23/60」) */
     } catch (error) { if (started) api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); showToast(error.message, 3500); }
     finally { mining = false; }
   }
@@ -4602,6 +4603,7 @@
     } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
   }
   function fishLanded(data) { // (the catch: the scene, the card or the note -- a big one after its tug)
+    { /* (1.10.355 잡았을 때: the fish leaps out of the water first -- 「찰방!」, a big one's splash bigger) */ const p = plaza.controller?.fishFeel?.('catch', data.grade === 'big' ? 1.8 : 1); if (p) window.IslandFeel?.word('찰방!', p.x, p.y - 20, 'splash'); window.IslandFeel?.sound('splash'); }
     plaza.controller?.fishResult?.(data.species);
     catchShow(`fish_${data.species}`, data, `${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name}${Number.isFinite(data.size) ? ` ${data.size} cm` : ''} +1${data.best ? ' · 내 최고!' : ''}${data.firstTime ? ' · 도감 등록' : ''}`); toolWorn(data.tool, data.bag); // (v1.10.231 물고기 크기 · 257 잡기 카드)
   }
@@ -4626,9 +4628,13 @@
     fishGame.presses.push({ dir, t: Math.round(performance.now() - fishGame.shownAt) });
     if (fishGame.seq[fishGame.at] !== dir) { // (사용자 지시 10/26: a wrong arrow starts it over -- that press the first again if it is the first one; the server judges the same)
       fishGame.at = dir === fishGame.seq[0] ? 1 : 0; fishArrowMark();
-      fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); return;
+      fishArrowsBox.classList.remove('wrong'); void fishArrowsBox.offsetWidth; fishArrowsBox.classList.add('wrong'); window.IslandFeel?.sound('plop'); return;
     }
     fishGame.at += 1; fishArrowMark();
+    { /* (1.10.355 화살표 타격감: the arrow pops away; in a row the note climbs and the count shows) */
+      const s = fishArrowsBox.querySelectorAll('.fishArrowSeq span')[fishGame.at - 1]; if (s) { s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); }
+      window.IslandFeel?.sound('combo', fishGame.at - 1); if (fishGame.at >= 3 && s) { const r = s.getBoundingClientRect(); window.IslandFeel?.word(`${fishGame.at} 콤보`, r.left + r.width / 2, r.top - 6, 'combo'); }
+    }
     if (fishGame.at === fishGame.seq.length) { const { presses } = fishGame; fishArrowsEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; }); }
   }
   window.addEventListener('keydown', (e) => { if (!fishGame || !FISH_KEYS[e.code]) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) fishArrow(FISH_KEYS[e.code]); }, true);
@@ -4643,17 +4649,23 @@
     fishTimingBox.classList.remove('hidden', 'wrong'); document.body.classList.add('islandFishing'); fishBarMark();
     const bar = fishTimingBox.querySelector('.fishArrowTime i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${ms}ms linear`; bar.style.width = '0%';
     const needle = fishTimingBox.querySelector('.fishTimingNeedle');
-    const tick = () => { const g = fishBar; if (!g) return; if (!(g.hold > performance.now())) needle.style.left = `${window.FishTug.needleAt(g.t.period, performance.now() - g.shownAt) * 100}%`; g.raf = requestAnimationFrame(tick); }; tick(); // (held 0.5 s where a miss was pressed)
+    const zoneEl = fishTimingBox.querySelector('.fishTimingZone');
+    const tick = () => { const g = fishBar; if (!g) return; if (!(g.hold > performance.now())) { const ms = performance.now() - g.shownAt; needle.style.left = `${window.FishTug.needleAt(g.t.period, ms) * 100}%`; zoneEl.classList.toggle('in', window.FishTug.inZone(g.t, g.t.zones[g.hit], ms)); } g.raf = requestAnimationFrame(tick); }; tick(); // (held 0.5 s where a miss was pressed; 1.10.355: the zone glows while the needle is in it)
   }
+  // (1.10.355 낚시 타격감) a word over a panel, and the float's splash and the rod -- the scene's (fishFeel)
+  const fishWordAt = (box, text, kind) => { const r = box.getBoundingClientRect(); window.IslandFeel?.word(text, r.left + r.width / 2, r.top - 8, kind); };
+  function fishHitFeel(box, perfect) { const F = window.IslandFeel; plaza.controller?.fishFeel?.(perfect ? 'perfect' : 'hit'); fishWordAt(box, perfect ? '완벽!' : '찰싹!', perfect ? 'perfect' : 'splash'); F?.sound(perfect ? 'perfect' : 'slap'); F?.shake(box, perfect); F?.vibrate(perfect ? 45 : 25); }
+  function fishMissFeel(box) { const F = window.IslandFeel; plaza.controller?.fishFeel?.('miss'); fishWordAt(box, '첨벙', 'miss'); F?.sound('plop'); }
   function fishTimingEnd() { if (fishBar) cancelAnimationFrame(fishBar.raf); fishBar = null; fishTimingBox.classList.add('hidden'); if (!fishTug) document.body.classList.remove('islandFishing'); }
   function fishBarPress() {
     const g = fishBar; if (!g || fishBusy || g.hold > performance.now()) return; /* (Codex 251-260 #7: the needle held after a miss -- no press on a needle not shown) */ const ms = Math.round(performance.now() - g.shownAt); g.presses.push({ t: ms });
     if (!window.FishTug.inZone(g.t, g.t.zones[g.hit], ms)) { // (총괄 #409: why -- the needle held 0.5 s where it was pressed, a red mark there; the zone as it was)
       const x = window.FishTug.needleAt(g.t.period, ms) * 100; fishTimingBox.querySelector('.fishTimingNeedle').style.left = `${x}%`; g.hold = performance.now() + 500;
       const miss = fishTimingBox.querySelector('.fishTimingMiss'); miss.style.left = `${x}%`; miss.classList.remove('hidden'); clearTimeout(g.missTimer); g.missTimer = setTimeout(() => { miss.classList.add('hidden'); if (fishBar === g) fishBarMark(); }, 500);
-      g.hit = 0; fishTimingBox.classList.remove('wrong'); void fishTimingBox.offsetWidth; fishTimingBox.classList.add('wrong'); return;
+      g.hit = 0; fishTimingBox.classList.remove('wrong'); void fishTimingBox.offsetWidth; fishTimingBox.classList.add('wrong'); fishMissFeel(fishTimingBox); return;
     }
     if (g.hit + 1 === g.t.hits && ms < window.FishTug.timingFloor(g.t)) return; // (the last one sooner than the bar allows: on its next pass -- the server's judge the same)
+    { const mid = g.t.zones[g.hit] + g.t.zone / 2; fishHitFeel(fishTimingBox, Math.abs(window.FishTug.needleAt(g.t.period, ms) - mid) <= g.t.zone * 0.18); } /* (1.10.355: near the zone's middle -- 완벽!) */
     g.hit += 1; if (g.hit < g.t.hits) { fishBarMark(); return; }
     const { presses } = g; fishTimingEnd(); fishBusy = true; pullFish(presses).finally(() => { fishBusy = false; });
   }
@@ -4674,9 +4686,15 @@
       const g = fishTug; if (!g) return; const now = performance.now() - g.t0; const held = g.down != null ? [...g.holds, [g.down, null]] : g.holds;
       for (; g.last + T.STEP_MS <= now; g.last += T.STEP_MS) { T.step(g.plan, g.st, T.heldAt(held, g.last), g.last, T.STEP_MS); if (g.st.dist <= 0 || g.st.tension >= 100) { fishTugEnd(); return; } }
       if (now >= T.LIMIT_MS) { fishTugEnd(); return; }
-      const fight = Boolean(T.fightAt(g.plan, now)); if (fight !== g.fight) { g.fight = fight; fishTugBox.classList.toggle('fight', fight); plaza.controller?.fishTugFight?.(fight); if (fight) try { navigator.vibrate?.(120); } catch {} } // (총괄 #409: the splash on the island too)
+      const fight = Boolean(T.fightAt(g.plan, now)); if (fight !== g.fight) { g.fight = fight; fishTugBox.classList.toggle('fight', fight); plaza.controller?.fishTugFight?.(fight); if (fight) { window.IslandFeel?.vibrate(120); window.IslandFeel?.shake(fishTugBox, true); window.IslandFeel?.sound('splash'); } } // (총괄 #409: the splash on the island too; 1.10.355 a jolt and its 철썩)
       dist.style.setProperty('--p', `${Math.max(0, g.st.dist)}%`); ten.querySelector('i').style.setProperty('--p', `${g.st.tension}%`);
       ten.classList.toggle('warn', g.st.tension >= 50 && g.st.tension < 80); ten.classList.toggle('hot', g.st.tension >= 80);
+      { /* (1.10.355 줄다리기 타격감: the reel clicking while held, the line trembling; the screen's edge reddening with the strain, a heart over 80) */
+        const F = window.IslandFeel; const t = performance.now(); fishTugBox.classList.toggle('reeling', g.down != null);
+        if (g.down != null && !(g.reelAt > t)) { g.reelAt = t + 90; F?.sound('reel'); }
+        F?.edge(g.st.tension >= 50 ? (g.st.tension - 50) / 50 : 0);
+        if (g.st.tension >= 80 && !(g.heartAt > t)) { g.heartAt = t + 780; F?.sound('heart'); }
+      }
       g.raf = requestAnimationFrame(tick);
     };
     fishTug.raf = requestAnimationFrame(tick);
@@ -4688,7 +4706,7 @@
   const tugUp = () => { if (!fishTug || fishTug.down == null) return; fishTug.holds.push([fishTug.down, Math.max(fishTug.down, tugMs())]); fishTug.down = null; fishTugReel.classList.remove('on'); };
   async function fishTugEnd() {
     const g = fishTug; if (!g) return; tugUp(); fishTug = null; cancelAnimationFrame(g.raf);
-    fishTugBox.classList.add('hidden'); fishTugReel.classList.remove('on'); document.body.classList.remove('islandFishing');
+    fishTugBox.classList.add('hidden'); fishTugReel.classList.remove('on'); fishTugBox.classList.remove('reeling'); document.body.classList.remove('islandFishing'); window.IslandFeel?.edge(0);
     fishBusy = true;
     try { fishLanded(await api('/api/island/fish/tug', { method: 'POST', body: JSON.stringify({ fishId, holds: g.holds }) })); }
     catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }

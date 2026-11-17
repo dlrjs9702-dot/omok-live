@@ -3803,3 +3803,43 @@ body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:
 
 /* 1.10.351 주식 개편: the news' whole names, its opened part, the log, the average line, the starred, the card */
 .stocksNews .stocksNewsName{white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all;flex:1 1 auto;min-width:0}.stocksNewsMore{padding:4px 8px 8px;display:grid;gap:4px;justify-items:start}.stocksLog{flex-wrap:wrap;row-gap:2px}.stocksLog .stocksName{white-space:normal}.stocksSums{display:grid;gap:2px;margin:4px 0}.stockAvgLine{stroke:currentColor;stroke-width:1;stroke-dasharray:3 3;opacity:.55}.stocksRow.starred .stocksName{font-weight:700}.stocksInfo{display:grid;gap:4px;margin-bottom:6px}.stocksAlert{flex-wrap:wrap;gap:6px}.stocksAlert{display:flex;align-items:center}.stocksAlert .stocksAlertInput{width:6.5em;max-width:6.5em;flex:0 0 6.5em;min-width:0}
+/* 1.10.355 섬 미니게임 타격감 (island-feel.js): a popping word, a short shake, the catch flying to the bag, the red edge under strain */
+.feelWord{position:fixed;z-index:60;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;font-weight:900;font-size:26px;letter-spacing:-.02em;color:#fff6d8;text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 12px rgba(0,0,0,.45);white-space:nowrap}
+.feelWord.go{animation:feelWordPop .72s cubic-bezier(.2,.9,.3,1.2) forwards}
+.feelWord.still.go{animation:feelWordFade .6s linear forwards}
+.feelWord.feel-perfect{color:#ffd54a;font-size:32px;text-shadow:0 2px 0 #7a4a00,0 0 16px rgba(255,200,60,.8)}
+.feelWord.feel-miss{color:#d9d2c6;font-size:22px}
+.feelWord.feel-splash{color:#d8f3ff;text-shadow:0 2px 0 #1d4f6b,0 0 12px rgba(80,180,255,.6)}
+.feelWord.feel-combo{color:#9fffb4;font-size:22px}
+.feelWord.feel-info{font-size:18px;color:#fff}
+@keyframes feelWordPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}18%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}35%{transform:translate(-50%,-70%) scale(1)}100%{opacity:0;transform:translate(-50%,-150%) scale(1)}}
+@keyframes feelWordFade{0%{opacity:0;transform:translate(-50%,-50%) scale(1)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+.feelShake{animation:feelShake .15s linear}
+.feelShakeHard{animation:feelShake .25s linear}
+@keyframes feelShake{0%,100%{translate:0 0}20%{translate:-4px 1px}40%{translate:3px -2px}60%{translate:-2px 2px}80%{translate:2px -1px}}
+.feelFly{position:fixed;z-index:61;transform:translate(-50%,-50%);font-size:34px;pointer-events:none;transition:transform .58s cubic-bezier(.45,-.25,.6,1),opacity .58s ease-in;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
+.feelFly img{width:44px;height:44px;object-fit:contain;display:block}
+.feelBump{animation:feelBump .3s ease-out}
+@keyframes feelBump{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.feelEdge{position:fixed;inset:0;z-index:55;pointer-events:none;opacity:0;transition:opacity .25s linear;box-shadow:inset 0 0 90px 30px rgba(220,30,30,.55)}
+.feelEdge.beat{animation:feelBeat .8s ease-in-out infinite}
+@keyframes feelBeat{0%,100%{box-shadow:inset 0 0 90px 30px rgba(220,30,30,.55)}25%{box-shadow:inset 0 0 120px 46px rgba(240,20,20,.7)}}
+@media(prefers-reduced-motion:reduce){.feelShake,.feelShakeHard,.feelBump,.feelEdge.beat{animation:none}}
+/* 1.10.355 캐기·낚시 미니게임 다듬기: the bar's zone glowing with the needle in it, an arrow popping, the line trembling as it reels,
+   the three pips over the rock, a phone's big 「캐기」, the other prompts away while mining */
+.fishTimingZone.in{box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 14px 4px rgba(120,255,150,.75);filter:brightness(1.25)}
+.fishArrowSeq span.pop{animation:fishArrowPop .32s ease-out}
+@keyframes fishArrowPop{0%{transform:scale(1)}35%{transform:scale(1.45) translateY(-4px)}100%{transform:scale(1)}}
+.fishTug.reeling .fishTugDist{animation:fishLineTremble .09s linear infinite}
+@keyframes fishLineTremble{0%,100%{translate:0 0}50%{translate:0 1px}}
+.minePips{position:absolute;z-index:6;transform:translate(-50%,-100%);display:flex;gap:6px;padding:3px 10px;border-radius:999px;background:rgba(20,18,14,.62);pointer-events:none;font-weight:900;font-size:18px;line-height:1.2}
+.minePips span{color:#cfc6b6}
+.minePips span.now{color:#fff;text-shadow:0 0 8px rgba(255,255,255,.8)}
+.minePips span.hit{color:#ffd54a;text-shadow:0 0 8px rgba(255,200,60,.8)}
+.minePips span.miss{color:#9a8f80}
+.mineDig{position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;min-width:150px;min-height:62px;padding:10px 22px;border-radius:999px;border:3px solid #fff3c4;background:linear-gradient(#e2a73a,#b6761a);color:#fff;font-weight:900;font-size:22px;box-shadow:0 6px 18px rgba(0,0,0,.4);touch-action:none}
+.mineDig:active{transform:translateX(-50%) scale(.96)}
+body.islandMining .islandStick,body.islandMining .islandCtl{visibility:hidden !important;pointer-events:none}
+body.islandMining .plazaHint{display:none}
+body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
+@media(prefers-reduced-motion:reduce){.fishArrowSeq span.pop,.fishTug.reeling .fishTugDist{animation:none}}

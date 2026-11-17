@@ -120,6 +120,12 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
   const bagOf = async () => { const b = (await req('/api/island/bag', a)).data; return (b.bag?.items || b.items || []).filter((e) => e.itemId === 'stone').reduce((n, e) => n + e.qty, 0); };
   const stones = await bagOf(); const forged = await wallMine('late'); assert.equal(forged.ore, 0, '끝에 몰아 보낸 타격은 늦음'); assert.ok(forged.hits < Q.HITS_NEEDED, `hits ${forged.hits}`); /* (only the last swing's can still fit the trip's allowance) */
   const missed = await wallMine('none'); assert.equal(missed.ore, 0); assert.equal(missed.itemId, null, '벽에서 못 맞히면 작은 돌 없음'); assert.equal(await bagOf(), stones, '작은 돌 그대로');
+  { // (1.10.355 「두 번 맞히면 바로 결과」: after the server's own two timed hits, the finish before the swings' end -- one is not enough)
+    await req('/api/plaza/state', a, { x: ws.x, z: ws.z, yaw: ws.yaw, moving: false }); const s = await req('/api/island/quarry/start', a, { rock: 'wall', spot: 1 }); assert.equal(s.status, 200, JSON.stringify(s.data)); const t0 = Date.now();
+    await pressTimed(s.data.plan.slice(0, 1), t0); assert.equal((await req('/api/island/quarry/finish', a, { rock: 'wall', spot: 1, requestId: crypto.randomUUID() })).data.error, 'COLLECT_TOO_SOON', '한 번은 아직');
+    await new Promise((r) => setTimeout(r, Math.max(0, t0 + Q.ROUND_MS + s.data.plan[1].at + 200 - Date.now()))); assert.equal((await req('/api/island/quarry/tap', a, { round: 1, spot: s.data.plan[1].spot, ms: 200 })).status, 200);
+    const early = await req('/api/island/quarry/finish', a, { rock: 'wall', spot: 1, requestId: crypto.randomUUID() }); assert.equal(early.status, 200, JSON.stringify(early.data)); assert.equal(early.data.ore, 1); assert.ok(Date.now() - t0 < Q.MINE_MS - 300, '끝나기 전에 결과');
+  }
 });
 
 test('채석장 타격 시각 (1.10.351 Codex P1): 서버가 받은 시각과 맞는 것만', () => {

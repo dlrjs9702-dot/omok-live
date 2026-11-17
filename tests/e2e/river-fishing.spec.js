@@ -112,6 +112,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-timing-bar.png` });
   await expect(bar).toBeHidden({ timeout: 20000 });
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_crucian_carp')?.qty || 0, { timeout: 10000 }).toBe(1);
+  { /* (1.10.355 타격감: the miss's 첨벙, a hit's 찰싹! or 완벽!, the catch's 찰방!) */ const words = await page.evaluate(() => window.IslandFeel.shown().map((w) => w.text)); expect(words).toContain('첨벙'); expect(words.some((w) => w === '찰싹!' || w === '완벽!')).toBe(true); expect(words).toContain('찰방!'); }
   await expect(card).toBeVisible({ timeout: 5000 }); await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   expect((await post(request, '/api/test/fish/mode', token, { mode: null })).data.ok).toBe(true);
   // v1.10.259 대어 줄다리기 (docs/fishing-minigames-20261104.md 3절): a big one's arrows bring 「대어다!」 -- not in the bag yet; a
@@ -140,8 +141,11 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.big || false), { timeout: 10000 }).toBe(true); await expect(card).toBeVisible({ timeout: 5000 }); await expect(card.locator('.catchRibbon')).toContainText(['대어!']); await shot('catch-big');
   await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_sturgeon')?.qty || 0, { timeout: 10000 }).toBe(1);
-  await bigBite('salmon'); await space('keydown'); await expect(page.locator('#fishTug .fishTugTension')).toHaveClass(/hot/, { timeout: 20000 }); if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-tug-hot.png` }); /* (at once: it snaps soon after) */
+  expect(await page.evaluate(() => window.IslandFeel.shown().some((w) => /^\d+ 콤보$/.test(w.text)))).toBe(true); /* (1.10.355: the arrows in a row) */
+  await bigBite('salmon'); await space('keydown'); await expect(page.locator('#fishTug .fishTugTension')).toHaveClass(/hot/, { timeout: 20000 });
+  await expect.poll(() => page.evaluate(() => Number(document.querySelector('.feelEdge')?.style.opacity || 0)), { timeout: 5000 }).toBeGreaterThan(0.3); /* (1.10.355: the screen's edge red under the strain) */ if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-tug-hot.png` }); /* (at once: it snaps soon after) */
   await expect(page.locator('#fishTug')).toBeHidden({ timeout: 30000 }); await space('keyup'); await expect(page.locator('#toast')).toHaveText('줄이 끊어졌어요!');
+  expect(await page.evaluate(() => Number(document.querySelector('.feelEdge')?.style.opacity || 0))).toBe(0); /* (and gone with the tug) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   expect(((await get(request, '/api/island/bag', token)).data.items || []).some((e) => e.itemId === 'fish_salmon')).toBe(false);
   // the bag's ⓘ and the 도감's cell: the same 설명

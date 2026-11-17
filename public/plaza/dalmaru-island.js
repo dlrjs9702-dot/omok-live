@@ -308,7 +308,9 @@
       // (5단계: five waters -- the open sea, 윤슬만, the still water (거울호수, 툇마루섬's pond), the waterfall pools, the rivers)
       if (D.coastDist(wx, wz) < 0) return D.inBay(wx, wz) ? 'bay' : 'sea';
       if (D.POOLS.some((p) => Math.hypot(wx - p.x, wz - p.z) < p.r + 0.5)) return 'pool';
-      if (D.lakeDist(wx, wz) < 0.5 || Math.hypot((wx - D.ISLE_POND.x) / D.ISLE_POND.rx, (wz - D.ISLE_POND.z) / D.ISLE_POND.rz) < 1.2) return 'lake';
+      /* (1.10.355 사용자 「고쳐」: 거울호수 is dug wider than its ellipse -- the probe on the lake's own water past lakeDist 0.5 read as a
+         river, three in four of its shore; within 4 m of the ellipse and nearer it than any river, the lake) */
+      if ((D.lakeDist(wx, wz) < 4 && D.lakeDist(wx, wz) < D.riverDist(wx, wz)) || Math.hypot((wx - D.ISLE_POND.x) / D.ISLE_POND.rx, (wz - D.ISLE_POND.z) / D.ISLE_POND.rz) < 1.2) return 'lake';
       return 'river';
     }
     return null;
