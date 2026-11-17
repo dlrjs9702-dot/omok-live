@@ -207,7 +207,7 @@
     // photographer's spot west of it); faces the water)
     mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: 9.9, z: -74.1, face: [0, -84] }, /* (1.10.346 155A C안: across the north walk from the 벼룩시장 board) */
-    hallLamps: [[-2.8, -22], [3.2, -30], [-2.8, -38]], // the three lamps the electrician mends, beside the walk to the water (off it)
+    hallLamps: [[-4.1, -22], [5.0, -30], [-4.1, -38]], // the three lamps the electrician mends, beside the walk to the water (off it; T1 길 넓히기: at the taxi road's walk's outer edge, 4.5 m from its middle at x 0.5)
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
     // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)
     // October's fields (a scarecrow and a hay bale each), its brooms, hay and a cauldron by 거울호수 (island-halloween.js)

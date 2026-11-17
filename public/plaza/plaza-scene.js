@@ -1184,7 +1184,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       blockSign(signboard('stand', '울타리 마을 ↓', scene, -23.5, heightAt(-23.5, 150), 150, 0));
       blockSign(signboard('stand', '울타리 마을', scene, -24.5, heightAt(-24.5, T.STREET_Z - 6), T.STREET_Z - 6, 0));
     }
-    piece('dalmaru.isle_sign', I.x - 4, heightAt(I.x - 4, I.z - 7.3), I.z - 7.3, 0, post); blockSign(signboard('stand', '툇마루섬 · 집터는 관공서에서 신청', scene, I.x - 7.6, heightAt(I.x - 7.6, I.z - 7.3), I.z - 7.3, 0)); // (2회차 15: beside the trunk walk, clear of the cross walk; 간판 beside the board)
+    { const SZ = I.z - 8.3; /* (T1 길 넓히기: 1 m further in, off the taxi road's walk -- dalmaru-island ISLE_SIGN_IN) */ piece('dalmaru.isle_sign', I.x - 4, heightAt(I.x - 4, SZ), SZ, 0, post); blockSign(signboard('stand', '툇마루섬 · 집터는 관공서에서 신청', scene, I.x - 7.6, heightAt(I.x - 7.6, SZ), SZ, 0)); } // (2회차 15: beside the trunk walk, clear of the cross walk; 간판 beside the board)
     // 묶음 1 대청마당 바닥 (assets 59): the disc, ring and kerbs walked over, just above the paving (the kerbs one batch);
     // the channels and gardens walked round (dalmaru-island's pavingSolids)
     if (T.paving) {

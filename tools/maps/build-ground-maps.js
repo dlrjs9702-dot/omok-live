@@ -17,7 +17,8 @@ const OUT = path.join(__dirname, '..', '..', 'public', 'assets', 'island', 'grou
 function buildAll(res = RES) {
   const p = Paths.buildPathMaps(T, res); const c = buildCoverMaps(T, res);
   for (let k = 0; k < res * res; k += 1) p.b[k * 3 + 2] = c.gravel[k];
-  return { 'path-a.png': encodeRgb(p.a, res, res), 'path-b.png': encodeRgb(p.b, res, res), 'cover-a.png': encodeRgb(c.a, res, res), 'cover-b.png': encodeRgb(c.b, res, res), 'shore.png': encodeRgb(buildShoreMap(T, res), res, res) };
+  return { 'path-a.png': encodeRgb(p.a, res, res), 'path-b.png': encodeRgb(p.b, res, res), 'cover-a.png': encodeRgb(c.a, res, res), 'cover-b.png': encodeRgb(c.b, res, res), 'shore.png': encodeRgb(buildShoreMap(T, res), res, res),
+    'road.png': encodeRgb(Paths.buildRoadMap(T, require('../../public/plaza/island-taxi.js'), res), res, res) }; // (T1 길 넓히기: the taxi road's lanes and walks)
 }
 module.exports = { buildAll, OUT };
 

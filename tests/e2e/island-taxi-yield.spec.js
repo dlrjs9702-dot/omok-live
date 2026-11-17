@@ -11,7 +11,7 @@ test('섬 택시 비켜 가기: 건널목에 선 사람 → 빵·비켜 주세�
   await grant(request, a, 100000); expect((await post(request, '/api/test/taxi-run', a.token, { ms: 0 })).status).toBe(200); /* (the real road) */
   try {
     for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
-    const X = require('../../public/plaza/island-taxi.js'); const s = X.stopOf('plaza'); const spot = { x: 0.3, z: -6.7 }; /* (the road at the crossing by the hall's walk) */
+    const X = require('../../public/plaza/island-taxi.js'); const s = X.stopOf('plaza'); const spot = X.CROSSINGS[1]; /* (the road at the crossing by the hall's walk -- T1: by 배 타는 곳, the road moved off (0.3, -6.7)) */
     await b.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [spot.x, spot.z]);
     const { page } = a;
     await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x, s.out.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain(X.STOPS.plaza.sign);

@@ -95,15 +95,16 @@
     // step on, so a round crosses it rather than walking along it, and the strip 1.5~3.2 m beside it as cheap as a walk: the
     // islanders go beside the road and over it where they must (read when the grid is made: island-taxi.js is loaded by then)
     const TX = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi);
-    const route = TX?.ROUTE || []; const crossings = TX?.CROSSINGS || []; const half = TX?.CROSS_HALF ?? 2.2;
+    const route = TX?.ROUTE || []; const crossings = TX?.CROSSINGS || []; const half = TX?.CROSS_HALF ?? 2.2; const LANE = TX?.ROAD?.lane ?? 1.45; const ROADW = TX?.ROAD?.half ?? 3.2;
     /* (건널목: the road's middle within `half` of one is a walk to cross on; a bridge's deck stays as it was -- the way over the stream) */
     const crossingAt = (x, z) => crossings.some((c) => Math.hypot(x - c.x, z - c.z) < half + 0.75);
     for (let s = 1; s < route.length; s += 1) {
       const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const len2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1e-9;
-      const [i0, j0] = cellOf(Math.min(ax, bx) - 3.4, Math.min(az, bz) - 3.4); const [i1, j1] = cellOf(Math.max(ax, bx) + 3.4, Math.max(az, bz) + 3.4);
+      const reach = ROADW + 0.6; const [i0, j0] = cellOf(Math.min(ax, bx) - reach, Math.min(az, bz) - reach); const [i1, j1] = cellOf(Math.max(ax, bx) + reach, Math.max(az, bz) + reach);
       for (let j = Math.max(0, j0); j <= Math.min(N - 1, j1); j += 1) for (let i = Math.max(0, i0); i <= Math.min(N - 1, i1); i += 1) {
         const c = centre(i, j); const u = Math.max(0, Math.min(1, ((c.x - ax) * (bx - ax) + (c.z - az) * (bz - az)) / len2)); const d = Math.hypot(c.x - ax - (bx - ax) * u, c.z - az - (bz - az) * u); const id = j * N + i;
-        if (d < 0.85 + 0.6) { if (crossingAt(c.x, c.z)) cost[id] = 1; else if (!onAnyBridge(c.x, c.z)) cost[id] = TAXI_ROAD_COST; } else if (d >= 1.5 && d <= 3.2 && cost[id] !== TAXI_ROAD_COST) cost[id] = 1;
+        /* (T1 길 넓히기, notes island-expansion §9-4: the two lanes dear but at a 건널목, the walks beside them cheap) */
+        if (d < LANE + 0.2) { if (crossingAt(c.x, c.z)) cost[id] = 1; else if (!onAnyBridge(c.x, c.z)) cost[id] = TAXI_ROAD_COST; } else if (d <= ROADW && cost[id] !== TAXI_ROAD_COST) cost[id] = 1;
       }
     }
     grid = { blocked, cost, comp: connect(blocked) }; building = null;
@@ -208,17 +209,18 @@
   }
 
   // (317 C1) a point within 1.5 m of the taxi road's middle -> 2.3 m from it, its own side first (else the other); null when
-  // neither side is a free cell; any other point as it is
+  // neither side is a free cell; any other point as it is. T1 길 넓히기: a point on the lanes -> the middle of the walk beside them
   function offTaxiRoad(x, z) {
-    const route = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi)?.ROUTE || [];
+    const TX = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi);
+    const route = TX?.ROUTE || []; const LANE = TX?.ROAD?.lane ?? 1.3; const TO = TX?.ROAD ? TX.ROAD.lane + TX.ROAD.walk / 2 : 2.3;
     let best = null;
     for (let s = 1; s < route.length; s += 1) {
       const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const L = Math.hypot(bx - ax, bz - az) || 1e-9; const u = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / (L * L)));
       const px = ax + (bx - ax) * u; const pz = az + (bz - az) * u; const d = Math.hypot(x - px, z - pz); if (!best || d < best.d) best = { d, px, pz, nx: (bz - az) / L, nz: -(bx - ax) / L };
     }
-    if (!best || best.d >= 1.5) return [x, z];
+    if (!best || best.d >= LANE + 0.2) return [x, z];
     const side = Math.sign((x - best.px) * best.nx + (z - best.pz) * best.nz) || 1;
-    for (const k of [side, -side]) { const qx = best.px + best.nx * 2.3 * k; const qz = best.pz + best.nz * 2.3 * k; const [i, j] = cellOf(qx, qz); if (free(i, j) && grid.cost[j * N + i] !== TAXI_ROAD_COST) return [qx, qz]; }
+    for (const k of [side, -side]) { const qx = best.px + best.nx * TO * k; const qz = best.pz + best.nz * TO * k; const [i, j] = cellOf(qx, qz); if (free(i, j) && grid.cost[j * N + i] !== TAXI_ROAD_COST) return [qx, qz]; }
     return null;
   }
   // Stopping places: points on the walks, clear of the grid's blocks and well away from every building door.
