@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.350 체납 불이익 강화 묶음 (notes tax-bill-design 끝, underground-den 끝, island-expansion 끝, issue-log-review-20261116 끝)
+
+- 체납 막기(서버 IN_ARREARS): 주식 주문, 벼룩시장 /list, 도박장 입장·칩 사기, 도장 가게 buy, 택시 자유이용권. 반성문 5줄 + 체납 중 통과마다 3줄(30줄까지, island-jail sentencesOf 23문장 돌려 씀), 다 내면 5줄(jail doc taxEssays). 184A: 체납 반성문 친해도 안 줄음, 체납으로 갇힐 때 하루 한 번 구치소장 호감도 -1·연속 +1씩·하루 -5까지(IslandJail.taxJailTake, point-store affinityTake 0 아래 안 감).
+- 도박장: 테드는 암호·비밀문만, 지하 바 카운터(IslandDenRoom.BAR·atBar) SPACE 「칩 바꾸기」(지갑 전부 5만 이상·돌려받기), 바꾸기 전 탁자 DEN_NOCHIPS, 계단으로 나가면 남은 칩 포인트로(cashed), 카운터 안내 표지판.
+- 채석장: DAILY 60·ORE_PER_ROCK 6(저장된 left 그대로, 다음 차오를 때 6). 화강암 벽(입구 쪽 rock_wall_a를 rock_wall_a_granite로, 칠 곱하기 [1.45,1.5,1.62], 벽면 표지판, 자리 3): 화강암만·안 빔·한도 밖, 실패하면 작은 돌. 화강암 상인 50P.
+- 도구 들었을 때만: doors `tool`(채석장 바위·벽 = 곡괭이), 물가·곤충 안내 없앰, 곡괭이 자동 들기 없앰.
+- 강가 꽃 늘 보이기(빨강·노랑·하양, 심부름 중엔 그 색), 마우스 잠금 중 감정 휠(blocked → 잠금 풀림·다시 잠금, 숫자 1~9).
+- 시험: arrears-penalties(막기·5→8→30→5·호감도 날수), island-jail 5줄, island-den-server 바 흐름, island-quarry(60/6·벽), e2e island-den·fp·emotes·island-tool-rules·island-jail·plaza 채석장/낚시·dalmaru-walk. 사진 notes img/arrears-350.
+
 ## v1.10.349 DB 백업 (사용자 178A·179A, notes direction-ideas 끝)
 
 - lib/db-backup.js: 모든 표(schema public)를 읽기 전용 한 스냅샷에서 커서로 500줄씩 → JSON 줄 → gzip → AES-256-GCM, 열쇠는 RSA-OAEP(SHA-256) 공개 키로 봉인. 파일 끝 줄 {end, rows}로 잘림 확인. DB 없으면 데이터 폴더 JSON 파일.
@@ -30,10 +39,3 @@
 - 시험: island-farm(단계·수리 재료), house-wear(낡음 잠김·부서짐 못 들어감·수리비), yard e2e(낡음 덮개·울타리 막힘·벌레 8→15·흐리게·오늘 알림).
 - 문제 기록 11-17 「이것도 너무 잡초같은데」: 숲 덮개 ground.fern·ground.shrub(109 plant_low, 잡초와 같은 부채 잎)는 숲 한가운데 나무 2.4 m 안에서만 남기고(고사리 61→12, 관목 34→7), 나머지는 토끼풀 덩이·이끼. 잡초 닮은 장식 조사: plant_low(바꿈), ground.tallgrass(111A 때 들꽃), 갈대 angular.grass_*(강·호수 물가 0.2~1.6 m, 잡초가 안 나는 곳, 둠), pilot grass_*·bush_fern(잡초 자신). 사진 notes img/house-wear-348.
 - 남은 것: 벽 위 벌레·벽 얼룩(바닥만), 마당 덧칠 없음; 압류(seized)는 4c.
-
-## v1.10.347 벼룩시장 묶음 (사용자 「여러개 올리기」)
-
-- lib/island-flea.js: bundled(크기 없음·물고기·곤충 아님), put의 unit(개당 값·기준값 개당), reserve(buyQty), partTag(listing:팔린 수), soldPart(판 건마다 owed 한 줄·수수료, 남은 수·값 갱신, 0개면 내려감), shown에 unit·busy.
-- 서버: 올리기에서 묶음은 개당 값(0.5~20배), 사기는 개수(1~남은 수, 넘으면 FLEA_QTY), 구매자 예약에 buyQty, 결제 키·paidFor·전달 claim·편지가 판 건마다(343 원칙 그대로), 정리도 partTag로 끝냄, 거두기는 남은 것만.
-- 창: 팔기에서 개당 값·「n개가 다 팔리면」, 사기에서 개수 칸, 내 물건에 개당 값·남은 수.
-- 시험: flea-stops 묶음(99개 → 60 → 동시에 둘이 30씩(9 남음: 하나만) → 결제 뒤 멈춤 4개 → 남은 5개 → 판 건마다 정산 → 거두기 남은 7개), island-flea e2e 개당 값.
