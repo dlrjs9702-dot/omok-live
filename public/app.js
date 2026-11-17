@@ -5177,12 +5177,13 @@
     const draw = () => {
       Object.assign(fleaFilter, { cat: cat.value, q: q.value.trim(), sort: sort.value }); list.replaceChildren();
       const rows = d.list.filter((x) => (!fleaFilter.cat || x.cat === fleaFilter.cat) && (!fleaFilter.q || x.name.includes(fleaFilter.q)));
-      if (fleaFilter.sort !== 'new') rows.sort((a, b) => (fleaFilter.sort === 'low' ? a.price - b.price : b.price - a.price));
+      const each = (x) => x.unit || x.price; /* (1.10.347: a bundle by its price a piece) */ if (fleaFilter.sort !== 'new') rows.sort((a, b) => (fleaFilter.sort === 'low' ? each(a) - each(b) : each(b) - each(a)));
       if (!rows.length) list.append(line(d.list.length ? '맞는 물건이 없어요.' : '아직 올라온 물건이 없어요. 「팔기」에서 먼저 올려 보세요.', 'lookMeta'));
       for (const x of rows) {
-        const row = sEl('div', 'stocksRow fleaRow'); row.dataset.id = x.id; row.append(sEl('span', 'stocksName', fleaLabel(x)), sEl('span', 'stocksQty', `${x.seller} · ${fleaLeft(x.until)}`), sEl('span', 'stocksPrice', stockWon(x.price)));
+        const row = sEl('div', 'stocksRow fleaRow'); row.dataset.id = x.id; row.append(sEl('span', 'stocksName', fleaLabel(x)), sEl('span', 'stocksQty', `${x.seller} · ${fleaLeft(x.until)}`), sEl('span', 'stocksPrice', x.unit ? `개당 ${stockWon(x.unit)}` : stockWon(x.price)));
+        const cnt = x.unit ? Object.assign(sEl('input', 'stocksQtyInput fleaBuyQty'), { type: 'number', min: '1', max: String(x.qty), value: '1', inputMode: 'numeric' }) : null; if (cnt) { cnt.setAttribute('aria-label', '살 개수'); if (!x.mine) row.append(cnt); } /* (1.10.347 묶음: how many) */
         if (x.mine) row.append(sEl('span', 'lookMeta', '내 물건'));
-        else row.append(btn('사기', 'primary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/flea/buy', { method: 'POST', body: JSON.stringify({ id: x.id }) }); loadPoints(); if (r.kind !== 'piece') fleaBag(); showToast(r.held ? `${r.name}을(를) 샀어요. 가방에 자리가 없어 게시판에 맡겨 뒀어요.` : `${r.name}을(를) ${stockWon(r.price)}에 샀어요. ${r.kind === 'piece' ? '가구 창고' : '가방'}를 열어 보세요.`); openFlea('buy'); } catch (error) { showToast(error.message); b.disabled = false; } }));
+        else row.append(btn('사기', 'primary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/flea/buy', { method: 'POST', body: JSON.stringify({ id: x.id, ...(cnt ? { qty: Math.max(1, Math.min(x.qty, Math.floor(Number(cnt.value) || 1))) } : {}) }) }); loadPoints(); if (r.kind !== 'piece') fleaBag(); showToast(r.held ? `${r.name}을(를) 샀어요. 가방에 자리가 없어 게시판에 맡겨 뒀어요.` : `${r.name}${r.unit ? ` ${r.qty}개` : ''}을(를) ${stockWon(r.price)}에 샀어요. ${r.kind === 'piece' ? '가구 창고' : '가방'}를 열어 보세요.`); openFlea('buy'); } catch (error) { showToast(error.message); b.disabled = false; } }));
         list.append(row);
       }
     };
@@ -5196,21 +5197,21 @@
     const pick = sEl('select', 'fleaPick'); pick.setAttribute('aria-label', '올릴 물건');
     for (const t of things) pick.append(new Option(`${t.icon} ${t.name}${t.qty > 1 ? ` (${t.qty}개)` : ''}${t.sizes?.length === 1 ? ` ${t.sizes[0]}cm` : ''}${t.bought ? ' · 산 것' : ''}${t.uid ? ' · 가구 창고' : ''}`, t.key));
     const qty = sEl('input', 'stocksQtyInput fleaQty'); qty.type = 'number'; qty.min = '1'; qty.inputMode = 'numeric'; qty.setAttribute('aria-label', '몇 개');
-    const price = sEl('input', 'stocksQtyInput fleaPrice'); price.type = 'number'; price.min = '1'; price.inputMode = 'numeric'; price.setAttribute('aria-label', '값');
+    const price = sEl('input', 'stocksQtyInput fleaPrice'); price.type = 'number'; price.min = '1'; price.inputMode = 'numeric'; price.setAttribute('aria-label', '값'); const priceLabel = sEl('span', 'lookMeta', 'P'); /* (1.10.347: 「P (개당)」 for a bundle) */
     const note = line('', 'lookMeta stocksNote');
     const cur = () => things.find((t) => t.key === pick.value);
     const n = () => Math.max(1, Math.min(cur().qty, Math.floor(Number(qty.value) || 1)));
-    const worth = () => { const t = cur(); return t.uid ? t.worth : t.each ? t.each.slice(0, n()).reduce((a, b) => a + b, 0) : t.unit * n(); }; /* (a fish: the smallest go first) */
+    const worth = () => { const t = cur(); return t.uid ? t.worth : t.each ? t.each.slice(0, n()).reduce((a, b) => a + b, 0) : t.bundle ? t.unit : t.unit * n(); }; /* (a fish: the smallest go first; 1.10.347 a bundle: a piece) */
     const span = () => { const w = worth(); return [Math.max(1, Math.ceil(w * st.rules.low)), Math.max(1, Math.floor(w * st.rules.high))]; };
-    const show = () => { const [lo, hi] = span(); const p = Math.floor(Number(price.value) || 0); const fee = Math.ceil(p * st.rules.fee); note.textContent = `값 ${stockWon(lo)}~${stockWon(hi)} (물건 값 ${stockWon(worth())})${p ? ` · 팔리면 ${stockWon(p - fee)}을 받아요(수수료 ${stockWon(fee)})` : ''}`; };
-    const reset = () => { const t = cur(); qty.max = String(t.qty); qty.value = '1'; qty.disabled = t.qty <= 1; price.value = String(worth()); show(); };
+    const show = () => { const [lo, hi] = span(); const p = Math.floor(Number(price.value) || 0); const t = cur(); if (t.bundle) { const all = p * n(); const fee = Math.ceil(all * st.rules.fee); priceLabel.textContent = 'P (개당)'; note.textContent = `개당 값 ${stockWon(lo)}~${stockWon(hi)} (물건 값 개당 ${stockWon(worth())})${p ? ` · ${n()}개가 다 팔리면 ${stockWon(all - fee)}을 받아요(수수료 ${stockWon(fee)}) · 사는 사람이 개수를 골라요` : ''}`; return; } priceLabel.textContent = 'P'; const fee = Math.ceil(p * st.rules.fee); note.textContent = `값 ${stockWon(lo)}~${stockWon(hi)} (물건 값 ${stockWon(worth())})${p ? ` · 팔리면 ${stockWon(p - fee)}을 받아요(수수료 ${stockWon(fee)})` : ''}`; };
+    const reset = () => { const t = cur(); qty.max = String(t.qty); qty.value = t.bundle ? String(t.qty) : '1'; qty.disabled = t.qty <= 1; price.value = String(worth()); show(); };
     pick.addEventListener('change', reset); qty.addEventListener('input', show); price.addEventListener('input', show); reset();
     const go = btn('올리기', 'primary', async (ev) => {
       const b = ev.currentTarget; b.disabled = true; const t = cur();
-      try { const r = await api('/api/island/flea/list', { method: 'POST', body: JSON.stringify({ requestId: stockRid(), ...(t.uid ? { uid: t.uid } : { entryId: t.entryId, qty: n() }), price: Math.floor(Number(price.value)) }) }); if (r.bag) drawIslandBag(r.bag); showToast(`${r.listing.name}을(를) ${stockWon(r.listing.price)}에 올렸어요.`); openFlea('mine'); }
+      try { const r = await api('/api/island/flea/list', { method: 'POST', body: JSON.stringify({ requestId: stockRid(), ...(t.uid ? { uid: t.uid } : { entryId: t.entryId, qty: n() }), price: Math.floor(Number(price.value)) }) }); if (r.bag) drawIslandBag(r.bag); showToast(r.listing.unit ? `${r.listing.name} ${r.listing.qty}개를 개당 ${stockWon(r.listing.unit)}에 올렸어요.` : `${r.listing.name}을(를) ${stockWon(r.listing.price)}에 올렸어요.`); openFlea('mine'); }
       catch (error) { note.textContent = error.message; b.disabled = false; }
     });
-    const row = sEl('div', 'stocksOrder'); row.append(qty, sEl('span', 'lookMeta', '개'), price, sEl('span', 'lookMeta', 'P'), go);
+    const row = sEl('div', 'stocksOrder'); row.append(qty, sEl('span', 'lookMeta', '개'), price, priceLabel, go);
     body.append(pick, row, note);
   }
   function fleaMine(body, d) {
@@ -5222,7 +5223,7 @@
     if (!mine.length) body.append(line('올린 물건이 없어요. 「팔기」에서 올려 보세요.', 'lookMeta'));
     for (const x of mine) {
       const row = sEl('div', 'stocksRow fleaRow'); row.dataset.id = x.id;
-      row.append(sEl('span', 'stocksName', fleaLabel(x)), sEl('span', 'stocksQty', fleaLeft(x.until)), sEl('span', 'stocksPrice', stockWon(x.price)), btn('거두기', 'secondary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/flea/withdraw', { method: 'POST', body: JSON.stringify({ id: x.id }) }); if (r.kind !== 'piece') fleaBag(); showToast(`${r.name}을(를) 거뒀어요. ${r.kind === 'piece' ? '가구 창고' : '가방'}로 돌아왔어요.`); openFlea('mine'); } catch (error) { showToast(error.message); b.disabled = false; } }));
+      row.append(sEl('span', 'stocksName', fleaLabel(x)), sEl('span', 'stocksQty', fleaLeft(x.until)), sEl('span', 'stocksPrice', x.unit ? `개당 ${stockWon(x.unit)} · 남은 ${x.qty}개` : stockWon(x.price)), btn('거두기', 'secondary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/flea/withdraw', { method: 'POST', body: JSON.stringify({ id: x.id }) }); if (r.kind !== 'piece') fleaBag(); showToast(`${r.name}을(를) 거뒀어요. ${r.kind === 'piece' ? '가구 창고' : '가방'}로 돌아왔어요.`); openFlea('mine'); } catch (error) { showToast(error.message); b.disabled = false; } }));
       body.append(row);
     }
   }
