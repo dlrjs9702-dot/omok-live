@@ -5976,6 +5976,28 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     return { want: new THREE.Vector3(c.x, camFloor(c.x, c.z, p.y, c.y), c.z), look };
   }
+  // N1 새 섬 (notes island-expansion §8-4 「안개 밖은 안 그리기」): from its side (the camera past x 200) a top-level thing lying wholly
+  // past the fog -- 230 m off to its nearest edge, all of it fogged -- is not drawn (전망대 drew 500 calls of the main island in
+  // the fog). Never lights, sprites, points, anything with a fog-less material (the sky's, name tags) or what the island keeps
+  // (keepFar); its bounds measured once, again when it moves or gets new children; only what this hid is shown again
+  const farInfo = new WeakMap(); const farHidden = new Set(); let farAt = null; const farBox = new THREE.Box3(); const farSphere = new THREE.Sphere();
+  function farCull(x, z) {
+    const away = x > 200 && !overview && !riding;
+    if (!away && !farHidden.size) return;
+    if (farAt && Math.hypot(x - farAt.x, z - farAt.z) < 4 && away === farAt.away) return; farAt = { x, z, away };
+    for (const o of scene.children) {
+      if (o.userData.keepFar || o.isLight || o.isCamera || o.isSprite || o.isPoints) continue;
+      let f = farInfo.get(o);
+      if (!f || f.n !== o.children.length || f.px !== o.position.x || f.pz !== o.position.z) {
+        let fogless = false; let any = false; o.traverse((m) => { if (m.isSprite || m.isPoints || m.isLight) { fogless = true; return; } if (!m.material) return; any = true; for (const mm of [].concat(m.material)) if (mm.fog === false) fogless = true; });
+        farBox.setFromObject(o); if (farBox.isEmpty()) { farInfo.set(o, { n: o.children.length, px: o.position.x, pz: o.position.z, skip: true }); continue; }
+        farBox.getBoundingSphere(farSphere); f = { n: o.children.length, px: o.position.x, pz: o.position.z, skip: fogless || !any, x: farSphere.center.x, z: farSphere.center.z, r: farSphere.radius }; farInfo.set(o, f);
+      }
+      if (f.skip) continue;
+      const far = away && Math.hypot(f.x - x, f.z - z) - f.r > 230;
+      if (far && o.visible) { o.visible = false; farHidden.add(o); } else if (!far && farHidden.has(o)) { o.visible = true; farHidden.delete(o); }
+    }
+  }
   function placeCamera(snap) {
     const p = me.root.position;
     // The wide sea lobes must still show the island from the carriage.
@@ -6474,6 +6496,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (performance.now() - whiteCheckedAt > 2000) { whiteCheckedAt = performance.now(); /* (wall time: CI's 2.7 fps frames run the scene clock 1/7 as fast -- CI #480) */ const w = xmasSnow() === 'white'; if (w !== whiteNow) { whiteNow = w; setSeasonDay(seasonDayNow); } setPlazaSnow(whiteNow && winterOn); /* (1.10.338 131A) */ stepTreeLights(); dressGlow(); } /* (1.10.329: the 화이트 크리스마스 on and off; the plaza tree's lighting) */
     island.step(clock, Boolean(lessMotion?.matches)); refreshMapBoard(); refreshMinimap(performance.now());
     island.isle2View?.(camera.position.x, camera.position.z, quality <= 0 ? 0.6 : 1); /* (N1 새 섬: in and out by the camera's distance; the lowest tier nearer) */
+    farCull(camera.position.x, camera.position.z);
     drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, dropTop + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
     lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(ambientClock * 1.5 + i) * 0.05; }); shopGlow.value = night ? 1.7 : 0.55; beaconStep(clock); // (S2: 초승등대 at night)
     if (clock - halloweenCheckedAt > 5) { halloweenCheckedAt = clock; setIsland(halloweenOverride ?? (decorMode === 'halloween' ? true : decorMode === 'auto' ? isHalloween(Date.now() + serverOffset) : false), Date.now() + serverOffset); } // (A5: the administrator's decorations)

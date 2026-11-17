@@ -1185,7 +1185,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     ['sea.coastCove', -215, 245], ['sea.peak', -300, 95], ['sea.ridgeRugged', -305, -115]];
   const farHolders = []; // (N1: never culled -- they stand past the fog by design)
   for (const [id, x, z] of FAR) {
-    const holder = new THREE.Group(); holder.position.set(x, -1.1, z); holder.rotation.y = Math.atan2(-x, -z); scene.add(holder); farHolders.push(holder); // its length across the view
+    const holder = new THREE.Group(); holder.position.set(x, -1.1, z); holder.rotation.y = Math.atan2(-x, -z); holder.userData.keepFar = true; scene.add(holder); farHolders.push(holder); // its length across the view
     assets?.attach(id, holder, new THREE.Group());
   }
 
@@ -1333,28 +1333,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     isle2State = next; isle2At = { x, z };
     isle2Root.visible = next === 'full'; if (isle2Far) isle2Far.visible = next === 'far';
     const fog = 180 + 43; /* (a square's half diagonal) */ for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < fog;
-    mainFarCull(x, z);
     return next;
   }
-  // (N1: from 새 섬's side (x over 200) what this island built that lies wholly past the fog -- 230 m from the camera to its
-  // nearest edge -- is not drawn: 전망대 looked over 500 calls of it, all in the fog. Only what this hid is shown again, and
-  // nothing on this island's own side changes)
-  let mainFar = null; const hiddenFar = new Set();
-  function mainFarCull(x, z) {
-    if (!mainFar) {
-      mainFar = []; const skip = new Set([isle2Root, isle2Far, terrain, sea, ...farHolders]);
-      for (const top of scene.children) {
-        if (builtFrom.has(top) || skip.has(top)) continue;
-        const bs = (top.isMesh || top.isInstancedMesh) && top.geometry?.boundingSphere; if (bs && top.position.lengthSq() < 1e-6) { mainFar.push({ o: top, x: bs.center.x, z: bs.center.z, r: bs.radius }); continue; }
-        mainFar.push({ o: top, x: top.position.x, z: top.position.z, r: 30 });
-      }
-    }
-    const away = x > 200;
-    for (const f of mainFar) {
-      const far = away && Math.hypot(f.x - x, f.z - z) - f.r > 230;
-      if (far && f.o.visible) { f.o.visible = false; hiddenFar.add(f.o); } else if (!far && hiddenFar.has(f.o)) { f.o.visible = true; hiddenFar.delete(f.o); }
-    }
-  }
+  for (const o of [isle2Root, isle2Far, terrain, sea]) if (o) o.userData.keepFar = true; // (N1: plaza-scene's far cull leaves these to isle2View)
   function step(clock, lessMotion = false) {
     // (움직임 줄이기: the water never stops -- half as fast, a swell twice as long -- only the flicker goes: the ripple lines and
     // the glinting wobble of the sea; 사용자 「파도가 전혀 안 움직여」, a device with reduced motion had it all still)
