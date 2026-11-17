@@ -53,6 +53,21 @@
     flip: (i = 0) => { noise({ dur: 0.035, vol: 0.22, from: 4200, to: 1600 }); tone({ f: 880 + Math.min(i, 12) * 70, dur: 0.045, vol: 0.08, type: 'triangle' }); }, // (G-게임별 v187 오델로 착: a disc turned -- a little higher each)
     go: () => [67, 74].forEach((n, i) => tone({ f: NOTE(n), dur: 0.18, vol: 0.18, type: 'triangle', at: i * 0.1 })), // (고!: two notes up)
   };
+  // 1.10.355 섬 미니게임 타격감 (notes island-expansion 「캐기 미니게임 다듬기」, fishing-minigames 「타격감」): the pickaxe's 쨍 and 툭,
+  // the line's 찰싹·첨벙·찰방, the reel, the heart under strain, a combo's rising note, the ore off to the bag, a rare one's sparkle
+  Object.assign(SOUNDS, {
+    clink: () => { tone({ f: 2600, f2: 1900, dur: 0.14, vol: 0.16, type: 'triangle' }); tone({ f: 3900, dur: 0.07, vol: 0.06 }); noise({ dur: 0.03, vol: 0.18, from: 7000, to: 3000 }); }, // (쨍: pick on stone)
+    perfect: () => { SOUNDS.clink(); [84, 91].forEach((n, i) => tone({ f: NOTE(n), dur: 0.16, vol: 0.1, type: 'triangle', at: 0.05 + i * 0.06 })); },
+    thud: () => { noise({ dur: 0.12, vol: 0.3, from: 700, to: 160 }); tone({ f: 120, f2: 70, dur: 0.1, vol: 0.2 }); }, // (툭: a dull miss)
+    slap: () => { noise({ dur: 0.07, vol: 0.32, from: 6500, to: 1400 }); tone({ f: 620, f2: 280, dur: 0.06, vol: 0.12 }); }, // (찰싹)
+    plop: () => { tone({ f: 320, f2: 90, dur: 0.2, vol: 0.2 }); noise({ dur: 0.16, vol: 0.18, from: 1300, to: 260 }); }, // (첨벙: a miss in the water)
+    splash: () => { noise({ dur: 0.34, vol: 0.34, from: 5200, to: 500 }); tone({ f: 520, f2: 140, dur: 0.22, vol: 0.14 }); }, // (찰방: out of the water)
+    reel: () => noise({ dur: 0.022, vol: 0.1, from: 3400, to: 2600 }), // (one click of the reel)
+    heart: () => { tone({ f: 72, f2: 50, dur: 0.12, vol: 0.32 }); tone({ f: 66, f2: 46, dur: 0.1, vol: 0.24, at: 0.17 }); },
+    combo: (i = 0) => tone({ f: NOTE(72 + Math.min(i, 12) * 2), dur: 0.1, vol: 0.12, type: 'triangle' }),
+    whoosh: () => noise({ dur: 0.24, vol: 0.14, from: 700, to: 3200 }),
+    sparkle: () => [88, 91, 96, 100].forEach((n, i) => tone({ f: NOTE(n), dur: 0.18, vol: 0.07, type: 'triangle', at: i * 0.05 })),
+  });
   SOUNDS.beep = (hi) => tone({ f: hi ? 1320 : 660, dur: 0.12, vol: 0.16 }); SOUNDS.best = () => [72, 76, 79, 84, 88, 91].forEach((n, i) => tone({ f: NOTE(n), dur: 0.25, vol: 0.13, type: 'triangle', at: i * 0.07 }));
   // v1.10.245 U3 효과음 한 세트: 한판마당's sfx where a room sound is the same thing (its own 소리 setting is the same gc.settings.sound)
   let sfx = null; let unlockSfx = null; import('/reflex/js/audio.js').then((m) => { sfx = m.sfx; unlockSfx = m.unlockAudio; }).catch(() => {});

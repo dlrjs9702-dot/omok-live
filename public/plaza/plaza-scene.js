@@ -2619,6 +2619,56 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     shows.push({ c, kind, t: 0, life: kind === 'firework' ? 2.4 : 5, parts: [], im });
   }
+  // 1.10.355 섬 미니게임 타격감 (notes island-expansion 「캐기 미니게임 다듬기」, fishing-minigames 「타격감」): bits thrown from a point
+  // -- stone chips, sparks, dust, water drops -- one InstancedMesh a burst from a pool kept per kind (as the fireworks'); a rare
+  // ore's column of light; a fish leaping out of the water at the catch. The page's words, shakes and sounds: island-feel.js
+  const FEEL = {
+    chips: { n: 12, size: [0.07, 0.05, 0.08], color: 0x8f877b, speed: 2.2, up: 2.4, g: 9, life: 0.6, opacity: 1 },
+    sparks: { n: 10, r: 0.028, color: 0xffd36a, speed: 3.4, up: 1.4, g: 3, life: 0.34, opacity: 1, add: true },
+    dust: { n: 8, r: 0.09, color: 0xcdbfa9, speed: 0.7, up: 0.45, g: -0.4, life: 0.75, opacity: 0.55, grow: 2.4 },
+    drops: { n: 16, r: 0.045, color: 0xe2f5ff, speed: 1.5, up: 3.1, g: 9, life: 0.7, opacity: 0.9 },
+  };
+  const feelPool = {}; const feels = []; const feelGeo = {}; const feelM = new THREE.Matrix4(); const feelQ = new THREE.Quaternion(); const feelS = new THREE.Vector3(); const feelP = new THREE.Vector3();
+  function feelBurst(kind, at, scale = 1) {
+    const k = FEEL[kind]; if (!k || !at || document.hidden) return null;
+    let im = (feelPool[kind] ||= []).pop();
+    if (!im) {
+      feelGeo[kind] ||= k.size ? new THREE.BoxGeometry(...k.size) : new THREE.SphereGeometry(k.r, 6, 4);
+      im = new THREE.InstancedMesh(feelGeo[kind], new THREE.MeshBasicMaterial({ color: k.color, transparent: true, depthWrite: false, ...(k.add ? { blending: THREE.AdditiveBlending } : {}) }), k.n);
+      im.frustumCulled = false; im.userData.d = new Float32Array(k.n * 7); im.renderOrder = 3;
+    }
+    const d = im.userData.d; const s = Math.max(0.5, Math.min(2.5, scale));
+    for (let i = 0; i < k.n; i += 1) { const a = Math.random() * Math.PI * 2; const v = k.speed * s * (0.45 + Math.random() * 0.75); const o = i * 7; d[o] = at.x; d[o + 1] = at.y; d[o + 2] = at.z; d[o + 3] = Math.cos(a) * v; d[o + 4] = k.up * s * (0.5 + Math.random() * 0.7); d[o + 5] = Math.sin(a) * v; d[o + 6] = Math.random() * Math.PI; }
+    im.material.opacity = k.opacity; scene.add(im); feels.push({ im, kind, t: 0, life: k.life * (0.85 + s * 0.15), s }); return im;
+  }
+  let feelPillarMesh = null; let feelPillarT = -1; let feelFish = null;
+  function feelPillar(at, color = 0xfff1b0) { /* (a rare ore: a column of light up from the rock, 1.4 s) */
+    if (!at) return; if (!feelPillarMesh) { feelPillarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.5, 6, 20, 1, true).translate(0, 3, 0), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })); feelPillarMesh.frustumCulled = false; }
+    feelPillarMesh.material.color.setHex(color); feelPillarMesh.position.copy(at); scene.add(feelPillarMesh); feelPillarT = 0;
+  }
+  function feelFishJump(at, size = 1) { /* (the catch: a fish out of the water and back, 0.7 s -- its shape plain, the real one is in my hands after) */
+    if (!at) return;
+    if (!feelFish) { const g = new THREE.Group(); const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 7).scale(1, 0.55, 2.2), new THREE.MeshStandardMaterial({ color: 0x8fb3c4, roughness: 0.35, metalness: 0.3 })); const tail = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.22, 3).rotateX(-Math.PI / 2).translate(0, 0, -0.42), body.material); g.add(body, tail); feelFish = { g, t: -1 }; }
+    feelFish.at = at.clone(); feelFish.t = 0; feelFish.size = Math.max(0.7, Math.min(2.2, size)); feelFish.g.scale.setScalar(feelFish.size); scene.add(feelFish.g);
+    feelBurst('drops', at, 1.2 * feelFish.size);
+  }
+  function stepFeel(dt) {
+    for (let i = feels.length - 1; i >= 0; i -= 1) {
+      const f = feels[i]; const k = FEEL[f.kind]; f.t += dt; const d = f.im.userData.d; const u = Math.min(1, f.t / f.life);
+      f.im.material.opacity = k.opacity * (1 - u * u);
+      for (let j = 0; j < k.n; j += 1) {
+        const o = j * 7; d[o] += d[o + 3] * dt; d[o + 1] += d[o + 4] * dt; d[o + 2] += d[o + 5] * dt; d[o + 4] -= k.g * dt; d[o + 6] += dt * 9;
+        const sc = (k.grow ? 1 + (k.grow - 1) * u : 1 - u * 0.4) * f.s; feelQ.setFromAxisAngle(Y_UP, d[o + 6]); feelM.compose(feelP.set(d[o], d[o + 1], d[o + 2]), feelQ, feelS.set(sc, sc, sc)); f.im.setMatrixAt(j, feelM);
+      }
+      f.im.instanceMatrix.needsUpdate = true;
+      if (u >= 1) { f.im.removeFromParent(); feelPool[f.kind].push(f.im); feels.splice(i, 1); }
+    }
+    if (feelPillarT >= 0 && feelPillarMesh) { feelPillarT += dt; const u = feelPillarT / 1.4; feelPillarMesh.material.opacity = u < 0.2 ? u * 3 : Math.max(0, 0.6 * (1 - (u - 0.2) / 0.8)); feelPillarMesh.scale.set(1, Math.min(1, u * 4), 1); feelPillarMesh.rotation.y += dt * 2; if (u >= 1) { feelPillarMesh.removeFromParent(); feelPillarT = -1; } }
+    if (feelFish && feelFish.t >= 0) { feelFish.t += dt; const u = feelFish.t / 0.7; const g = feelFish.g; g.position.set(feelFish.at.x + (u - 0.5) * 0.9 * feelFish.size, feelFish.at.y + Math.sin(Math.min(1, u) * Math.PI) * 1.1 * feelFish.size, feelFish.at.z); g.rotation.set(0, Math.PI / 2, (0.5 - u) * 2.2); if (u >= 1) { g.removeFromParent(); feelFish.t = -1; feelBurst('drops', feelFish.at, 0.8 * feelFish.size); } }
+  }
+  const Y_UP = new THREE.Vector3(0, 1, 0);
+  // a point of the world on the page (client px) -- where a word or the bag's flight starts
+  function toClient(p) { const v = feelP.copy(p).project(camera); const r = renderer.domElement.getBoundingClientRect(); return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height }; }
   const showPool = { firework: [], bubbles: [] }; const showGeo = {}; const showM = new THREE.Matrix4(); const showTint = new THREE.Color();
   function showMesh(kind) {
     let im = showPool[kind].pop();
@@ -3115,7 +3165,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the server's answer: the fish (species) or none (missed)
   // v1.10.259 대어 줄다리기: the bite held on while the page's tug lasts (no running out), the reel looping -- fishResult ends it
   function fishTugOn() { const f = fishing; if (!f || f.phase !== 'bite') return; f.phase = 'tug'; f.fight = false; fishAct('reel'); me.anim?.loop?.('fishReel'); }
-  const fishTugFight = (on) => { if (fishing?.phase === 'tug') fishing.fight = Boolean(on); };
+  const fishTugFight = (on) => { if (fishing?.phase === 'tug') { if (on && !fishing.fight) feelBurst('drops', bobberHolder.getWorldPosition(new THREE.Vector3()), 1.8); fishing.fight = Boolean(on); } };
+  // (1.10.355 낚시 타격감) the page's game felt on the water: 'hit' a slap of drops and the rod's tip down a moment, 'perfect' more,
+  // 'miss' a plop, 'catch' the fish leaping out (size: its grade); -> where the float is on the page, for the page's words
+  function fishFeel(kind, size = 1) {
+    const f = fishing; if (!f || !bobberHolder.visible) return null; const at = bobberHolder.getWorldPosition(new THREE.Vector3());
+    if (kind === 'hit' || kind === 'perfect') { feelBurst('drops', at, kind === 'perfect' ? 1.3 : 0.8); f.kick = kind === 'perfect' ? 0.32 : 0.16; }
+    else if (kind === 'miss') feelBurst('drops', at, 0.5);
+    else if (kind === 'catch') feelFishJump(at, size);
+    return toClient(at);
+  }
   function fishResult(species) {
     const f = fishing; if (!f) return;
     f.phase = species ? 'catch' : 'miss'; f.t0 = f.t; f.species = species; fishAct(f.phase);
@@ -3144,7 +3203,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const fight = f.phase === 'tug' && f.fight; tugSplash.visible = fight;
     if (bobberHolder.visible) bobberHolder.position.set(f.water.x + (fight ? Math.sin(clock * 17) * 0.14 : 0), bobberHolder.position.y, f.water.z + (fight ? Math.cos(clock * 13) * 0.14 : 0));
     if (fight) for (const d of tugSplash.children) { const k = ((clock * 1.6 + d.userData.ph) % 1); d.position.set(Math.cos(d.userData.a) * (0.2 + k * 0.6), Math.sin(k * Math.PI) * 0.8, Math.sin(d.userData.a) * (0.2 + k * 0.6)); d.scale.setScalar(1.2 - k * 0.8); }
-    const rodNow = me.holding?.rod?.object; if (rodNow) { rodNow.userData.rest ??= rodNow.rotation.x; rodNow.rotation.x = rodNow.userData.rest + (fight ? Math.sin(clock * 34) * 0.12 : 0); }
+    if (f.kick) f.kick = Math.max(0, f.kick - dt * 1.6); /* (1.10.355: a hit's bend, back in a moment) */
+    const rodNow = me.holding?.rod?.object; if (rodNow) { rodNow.userData.rest ??= rodNow.rotation.x; rodNow.rotation.x = rodNow.userData.rest + (fight ? Math.sin(clock * 34) * 0.12 : 0) + (f.kick || 0); }
     if (fishLine.visible) {
       const body = me.holding?.rod?.object; const rod = fpNow() && fpTool?.visible && fpToolOf === body ? fpTool : body; const from = lineFrom; // (1104 G, 총괄 237 검토: the first person's line from the rod in my hand; 1.10.353 ③: one vector kept)
       if (rod) { rod.updateWorldMatrix(true, false); rod.localToWorld(from.copy(FISH_TIP)); } else from.set(me.root.position.x, me.root.position.y + 1.6, me.root.position.z);
@@ -4457,22 +4517,41 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const m = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.24), new THREE.MeshBasicMaterial({ map: crackTex(), color: CRACK_DIM.clone(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
       m.position.set(at.x - ahead.x * 0.015, at.y, at.z - ahead.z * 0.015); m.rotation.y = face + Math.PI; m.renderOrder = 2; scene.add(m); cracks.push(m);
     }
-    const hint = document.createElement('div'); hint.className = 'mineHint'; hint.style.cssText = 'position:absolute;left:50%;top:14%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(20,18,14,.72);color:#fff3c4;font-weight:800;font-size:15px;pointer-events:none;z-index:5;white-space:nowrap'; host.append(hint);
+    const hint = document.createElement('div'); hint.className = 'mineHint'; hint.style.cssText = 'position:absolute;left:50%;top:12%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(20,18,14,.72);color:#fff3c4;font-weight:800;font-size:15px;pointer-events:none;z-index:5;white-space:nowrap'; host.append(hint);
     const cam = { want: new THREE.Vector3(spec.stand.x - ahead.x * 0.9 + right.x * 2.6, base + 2.1, spec.stand.z - ahead.z * 0.9 + right.z * 2.6), look: new THREE.Vector3(S.x + right.x * 0.2, base + tall * 0.45, S.z + right.z * 0.2) }; /* (from my right side, a little behind and over: me at the left, the rock's face and its cracks clear) */
-    mineGame = { q, plan: spec.plan, cracks, taps: spec.plan.map(() => null), t0: performance.now(), hint, cam, hits: 0, onTap: typeof spec.onTap === 'function' ? spec.onTap : null };
+    // (1.10.355 다듬기: the ring closing in on the crack to light -- its smallest, round the crack, at the light's middle (the bonus);
+    // three pips over the rock, ● hit ✕ missed ○ to come; a phone's big 「캐기」 presses the crack that is lit; the other prompts away)
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.185, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); ring.rotation.y = face + Math.PI; ring.renderOrder = 4; ring.visible = false; scene.add(ring);
+    const pips = document.createElement('div'); pips.className = 'minePips'; pips.setAttribute('aria-hidden', 'true'); host.append(pips);
+    const top = new THREE.Vector3(S.x, base + tall + 0.35, S.z);
+    let pad = null; if (pilotPhone) { pad = document.createElement('button'); pad.type = 'button'; pad.className = 'mineDig'; pad.textContent = '⛏ 캐기'; pad.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const gg = mineGame; if (!gg) return; const ms = performance.now() - gg.t0; const kk = Math.floor(ms / QY.ROUND_MS); if (kk >= 0 && kk < gg.plan.length) minePress(kk, gg.plan[kk].spot, ms); }); host.append(pad); }
+    document.body.classList.add('islandMining');
+    mineGame = { q, plan: spec.plan, cracks, taps: spec.plan.map(() => null), t0: performance.now(), hint, cam, hits: 0, onTap: typeof spec.onTap === 'function' ? spec.onTap : null, ring, pips, top, pad, early: null };
     if (locked()) { lockGameExit = true; document.exitPointerLock?.(); }
     stepMineGame(0);
   }
+  const CRACK_WAIT = new THREE.Color(0xf4efe6); /* (the crack to come: a white glow before its light) */
   function stepMineGame(ms) {
     const g = mineGame; if (!g) return; const k = Math.min(g.plan.length - 1, Math.floor(ms / QY.ROUND_MS)); const r = g.plan[k]; const local = ms - k * QY.ROUND_MS;
-    const on = local >= r.at && local <= r.at + r.light; const b = on ? 1 - Math.abs(local - r.at - r.light / 2) / (r.light / 2) : 0;
-    g.cracks.forEach((m, i) => { const lit = on && i === r.spot && !g.taps[k]; m.material.color.copy(CRACK_DIM).lerp(CRACK_LIT, lit ? 0.55 + 0.45 * b : 0); m.scale.setScalar(lit ? 1.2 + 0.4 * b : 1); });
-    g.hint.textContent = `빛나는 금을 ${pilotPhone ? '눌러요' : '클릭해요'} · ${Math.min(k + 1, g.plan.length)}/${g.plan.length}번째 · 맞힘 ${g.hits}`;
+    const on = local >= r.at && local <= r.at + r.light; const b = on ? 1 - Math.abs(local - r.at - r.light / 2) / (r.light / 2) : 0; const done = Boolean(g.taps[k]);
+    g.cracks.forEach((m, i) => { const mine = i === r.spot && !done; const lit = on && mine; m.material.color.copy(CRACK_DIM).lerp(lit ? CRACK_LIT : CRACK_WAIT, lit ? 0.55 + 0.45 * b : mine && local < r.at ? 0.35 : 0); m.scale.setScalar(lit ? 1.2 + 0.4 * b : 1); });
+    { const c = g.cracks[r.spot]; const u = (local - (r.at - 350)) / (r.light / 2 + 350); /* (from 0.35 s before the light to its middle: 1 at the middle) */
+      g.ring.visible = Boolean(c) && !done && u >= 0 && local <= r.at + r.light + QY.GRACE_MS;
+      if (g.ring.visible) { g.ring.position.copy(c.position); g.ring.scale.setScalar(u < 1 ? 1 + (1 - u) * 2.6 : 1); g.ring.material.color.copy(on ? CRACK_LIT : CRACK_WAIT); g.ring.material.opacity = u < 1 ? 0.35 + 0.6 * u : Math.max(0, 0.95 - (u - 1) * 1.6); } }
+    g.pips.innerHTML = g.plan.map((_, i) => { const t = g.taps[i]; const h = t && t.hit; return `<span class="${h ? 'hit' : t ? 'miss' : i === k ? 'now' : ''}">${h ? '●' : t ? '✕' : '○'}</span>`; }).join('');
+    { const p = toClient(g.top); const hr = host.getBoundingClientRect(); g.pips.style.left = `${p.x - hr.left}px`; g.pips.style.top = `${p.y - hr.top}px`; }
+    g.hint.textContent = `빛나는 금을 ${pilotPhone ? '눌러요' : '클릭해요'} · 고리가 딱 겹칠 때 완벽! · 두 번 맞히면 광석`;
   }
-  function mineWord(text, at, color) {
-    const v = at.clone().project(camera); const rect = renderer.domElement.getBoundingClientRect(); const hostRect = host.getBoundingClientRect();
-    const w = document.createElement('div'); w.textContent = text; w.style.cssText = `position:absolute;left:${rect.left - hostRect.left + ((v.x + 1) / 2) * rect.width}px;top:${rect.top - hostRect.top + ((1 - v.y) / 2) * rect.height}px;transform:translate(-50%,-50%);color:${color};font-weight:900;font-size:26px;text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none;z-index:6;transition:transform .7s ease-out,opacity .7s ease-out`;
-    host.append(w); requestAnimationFrame(() => { w.style.transform = 'translate(-50%,-140%)'; w.style.opacity = '0'; }); setTimeout(() => w.remove(), 800);
+  // a press on crack `spot` in swing k at ms after the start: kept and sent (the server times it), judged here only for the show
+  function minePress(k, spot, ms) {
+    const g = mineGame; if (!g || g.taps[k]) return; const r = g.plan[k]; const after = Math.round(ms - k * QY.ROUND_MS - r.at);
+    g.taps[k] = { spot, ms: after }; g.onTap?.(k, { spot, ms: after }); /* (1.10.351: sent now -- the server times it) */
+    const hit = spot === r.spot && after >= 0 && after <= r.light + QY.GRACE_MS; const perfect = hit && Math.abs(after - r.light / 2) <= QY.BONUS_MS; g.taps[k].hit = hit;
+    const at = g.cracks[spot].position; const p = toClient(at); const F = globalThis.IslandFeel;
+    if (hit) { g.hits += 1; feelBurst('chips', at, perfect ? 1.4 : 1); feelBurst('sparks', at, perfect ? 1.5 : 1); F?.word(perfect ? '완벽!' : '쨍!', p.x, p.y, perfect ? 'perfect' : 'hit'); F?.sound(perfect ? 'perfect' : 'clink'); F?.shake(renderer.domElement, perfect); F?.vibrate(perfect ? 45 : 25); }
+    else { feelBurst('dust', at); F?.word('툭', p.x, p.y, 'miss'); F?.sound('thud'); }
+    stepMineGame(ms);
+    if (g.hits >= QY.HITS_NEEDED && !g.early) g.early = setTimeout(() => { if (mineGame === g && gather?.kind === 'mine') endGather(true); }, 420); /* (두 번 맞히면 바로 결과 -- the server ends it on its own two timed hits) */
   }
   function onMineDown(event) {
     const g = mineGame; if (!g) return; event.stopImmediatePropagation(); event.preventDefault();
@@ -4480,13 +4559,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const rect = renderer.domElement.getBoundingClientRect(); let best = -1; let bestD = MINE_RING;
     g.cracks.forEach((m, i) => { const v = m.position.clone().project(camera); const d = Math.hypot(rect.left + ((v.x + 1) / 2) * rect.width - event.clientX, rect.top + ((1 - v.y) / 2) * rect.height - event.clientY); if (d < bestD) { bestD = d; best = i; } });
     if (best < 0) return; /* (not near a crack: nothing kept -- press again) */
-    const r = g.plan[k]; const after = Math.round(ms - k * QY.ROUND_MS - r.at); g.taps[k] = { spot: best, ms: after }; g.onTap?.(k, g.taps[k]); /* (1.10.351: sent now -- the server times it) */
-    const hit = best === r.spot && after >= 0 && after <= r.light + QY.GRACE_MS; if (hit) g.hits += 1;
-    mineWord(hit ? (Math.abs(after - r.light / 2) <= QY.BONUS_MS ? '쨍!!' : '쨍!') : '틱', g.cracks[best].position, hit ? '#ffe27a' : '#d8d2c8');
-    stepMineGame(ms);
+    minePress(k, best, ms);
   }
   renderer.domElement.addEventListener('pointerdown', onMineDown, true);
-  function endMineGame() { const g = mineGame; if (!g) return; mineGame = null; for (const m of g.cracks) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } g.hint.remove(); }
+  function endMineGame() { const g = mineGame; if (!g) return; mineGame = null; clearTimeout(g.early); for (const m of g.cracks) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } g.ring.removeFromParent(); g.ring.geometry.dispose(); g.ring.material.dispose(); g.hint.remove(); g.pips.remove(); g.pad?.remove(); document.body.classList.remove('islandMining'); lastMine = { q: g.q, at: g.top.clone() }; }
+  // (1.10.355) the server's answer shown: the ore off the rock into the bag, a rare one's column of light; rubble a puff
+  let lastMine = null; const RARE_ORES = new Set(['silver', 'crystal', 'gold']);
+  function mineResult(r) {
+    const m = lastMine; if (!m || !r) return; const F = globalThis.IslandFeel; const p = toClient(m.at);
+    if (r.ore) { const ore = String(r.itemId || '').replace(/^ore_/, ''); F?.flyToBag(r.icon || '🪨', p.x, p.y + 30); if (RARE_ORES.has(ore)) { feelPillar(m.at.clone().setY(m.at.y - 1.6), ore === 'gold' ? 0xffd75e : ore === 'crystal' ? 0xbfe8ff : 0xe8eef2); F?.sound('sparkle'); } }
+    else feelBurst('dust', m.at, 1.4);
+  }
   function mineRock(spec, done) {
     if (!spec?.stand) return false;
     const q = QY && (spec.rock === 'wall' ? quarryWall : quarryRocks.get(spec.rock)); /* (Codex 341-350 #6: the 화강암 벽 too -- its game ran nowhere) */ const plan = Array.isArray(spec.plan) && spec.plan.length ? spec.plan : null;
@@ -6361,6 +6444,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     stepSleigh(dt); // (1.10.333 M6 산타 썰매)
     if (winterOn || xmasMusic) { xmasMusic ||= globalThis.XmasMusic?.create({ isOn: () => window.RoomSound?.isOn?.() ?? true }) || null; const m = me.root.position; xmasMusic?.step(Math.hypot(m.x - PLAZA_C.x, m.z - PLAZA_C.z), winterOn && mySpace === 'island' && !indoors); } /* (1.10.331 M4: the tree's music box and bell) */
     stepShows(dt); // v1.10.92
+    stepFeel(dt); // 1.10.355 타격감
     if (photoMode) hideForPhoto(); // v1.10.43 (bubbles are shown again by their own updates)
     // v1.10.46: the shadow's square moves in whole texels of its map across the light (it followed me smoothly, so the
     // edges of every shadow crawled as I walked -- seen on the town hall's marble)
@@ -6979,7 +7063,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setQuarry, mineRock /* (1.10.323 채석장) */, setMySnack /* (1.10.325 크리스마스 마켓) */, sledRide, snowThrow, setSnowRound: (k) => { snowRound.n = Math.max(0, Number(k) || 0); } /* (1.10.334 썰매 언덕·눈싸움) */, setXmasPreview /* (1.10.332 관리자 미리 보기) */, setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; if (!lotId || !editView) { setEditZoom(0); if (lotId) editOpen(); } editView = Boolean(lotId); if (!lotId) yardGhost(null); } /* (v1.10.315: each time from the whole yard) */, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ contestKeeperHere: () => Boolean(contestTent?.keeper.root.visible), /* (대회 순위: 가락 at it, or its sign's window) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id, data) => photoAsk(id, data), photoMiss: (id) => photoMiss(id), photoThanks: (id, photo) => photoThanks(id, photo), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setTaxiStops: (s) => { taxiStops = s && typeof s === 'object' ? s : {}; }, setTaxiRide /* (317) */, playPull /* (318) */, setStocksBoard, tedSay /* (320) */, setFleaBadge /* (339) */, setDenDoor, setDenNote, setDenRaid, setDenShown, denShow, serverNow: () => viewNow() /* (341) */, setQualityMode, setRenderScale /* (314) */, onAutoTier: (fn) => { onAutoTier = fn; }, screenNow: () => ({ tier: quality, held: qualityHeld, scale: Math.round((renderer.getPixelRatio() / BASE_RATIO) * 100) }) /* (1.10.322 U2: 「지금 화면」 -- the tier and the share drawn) */, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setQuarry, mineRock /* (1.10.323 채석장) */, mineResult, fishFeel /* (1.10.355 타격감) */, setMySnack /* (1.10.325 크리스마스 마켓) */, sledRide, snowThrow, setSnowRound: (k) => { snowRound.n = Math.max(0, Number(k) || 0); } /* (1.10.334 썰매 언덕·눈싸움) */, setXmasPreview /* (1.10.332 관리자 미리 보기) */, setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; if (!lotId || !editView) { setEditZoom(0); if (lotId) editOpen(); } editView = Boolean(lotId); if (!lotId) yardGhost(null); } /* (v1.10.315: each time from the whole yard) */, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ contestKeeperHere: () => Boolean(contestTent?.keeper.root.visible), /* (대회 순위: 가락 at it, or its sign's window) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id, data) => photoAsk(id, data), photoMiss: (id) => photoMiss(id), photoThanks: (id, photo) => photoThanks(id, photo), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setTaxiStops: (s) => { taxiStops = s && typeof s === 'object' ? s : {}; }, setTaxiRide /* (317) */, playPull /* (318) */, setStocksBoard, tedSay /* (320) */, setFleaBadge /* (339) */, setDenDoor, setDenNote, setDenRaid, setDenShown, denShow, serverNow: () => viewNow() /* (341) */, setQualityMode, setRenderScale /* (314) */, onAutoTier: (fn) => { onAutoTier = fn; }, screenNow: () => ({ tier: quality, held: qualityHeld, scale: Math.round((renderer.getPixelRatio() / BASE_RATIO) * 100) }) /* (1.10.322 U2: 「지금 화면」 -- the tier and the share drawn) */, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, actCancel: () => { if (!netAimEnd()) actUp(); }, grabTurn: () => turnGrab(), homeEditView: (on) => { if (!on || !editView) { setEditZoom(0); if (on) editOpen(); } editView = Boolean(on); }, editZoom: (z) => { if (z != null) setEditZoom(Number(z)); return editZoom; } /* (v1.10.315: tests, and the window’s buttons) */, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ setBugsDim, /* (1.10.348 「벌레 흐리게」) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), startTaxi, taxiRiding: () => (taxiRide ? { ...taxiRide.ride } : null), onTaxiEnd: (fn) => { onTaxiEnd = fn; }, /* (v1.10.271) */ setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, feel, feelBlocked, /* (v1.10.263 감정 표현) */ residentTalkFace: (n, f) => faceFor(residentChar(n), f, EM.TALK_FACE_MS), residentTalk: (n, text) => startTalk(residentChar(n), text), /* (v1.10.287) */ residentEmote: (n, id) => { const c = residentChar(n); return c ? emoteRun(c, id) : null; }, /* (v1.10.278 주민 내기: their wave, think, a win's pose, a loss's face) */

@@ -6958,7 +6958,7 @@ async function requestHandler(req, res) {
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result);
     if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
-    if (nowMs() - pull.at < pull.ms - 300) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.');
+    if (nowMs() - pull.at < pull.ms - 300 && !IslandQuarry.judge(pull.plan, pull.taps || []).done) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.'); /* (1.10.355 「두 번 맞히면 바로 결과」: sooner only on the server's own two timed hits) */
     const kept = wall ? { left: 1, gen: 0 } : quarryKept[rock.id]; if (!kept || kept.left <= 0) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, 'MINED', '방금 다 캔 바위예요.'); }
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)

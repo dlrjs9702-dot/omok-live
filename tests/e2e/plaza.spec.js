@@ -1958,6 +1958,9 @@ test('채석장: 능선 위 바위 앞에서 곡괭이로 빛나는 금을 맞�
     const bag = (await get(request, '/api/island/bag', a.token)).data; const items = bag.items || bag.bag?.items || [];
     expect(items.filter((e) => e.itemId === `ore_${rock.ore}`).reduce((n, e) => n + e.qty, 0)).toBe(1);
     expect(items.find((e) => e.itemId === 'pickaxe')?.uses).toBe(Q.PICK_USES - 1);
+    /* (1.10.355 다듬기: each hit's 쨍! or 완벽!; the result after two -- the third swing not waited for: no game left, the other prompts back) */
+    expect(await page.evaluate(() => window.IslandFeel.shown().filter((w) => w.text === '쨍!' || w.text === '완벽!').length)).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => page.evaluate(() => document.body.classList.contains('islandMining')), { timeout: 5000 }).toBe(false);
     // 1.10.351 (Codex 341-350 #6): the 화강암 벽 runs the same game (it never started there), its presses timed by the server
     const ws = Q.standOf(Q.WALL, 'full', isMobile ? 2 : 0); await page.waitForTimeout(1500);
     await post(request, '/api/test/quarry/plan', a.token, { plan: [{ spot: 1, at: 400 }, { spot: 2, at: 400 }, { spot: 0, at: 400 }] });
