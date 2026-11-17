@@ -83,4 +83,9 @@ test('도박장 서버: 쪽지 암호 → 테드에게 → 칩 → 지하 → �
   const jail = (await req('/api/island/jail', a)).data; assert.equal(jail.inmate, true, JSON.stringify(jail)); assert.equal(jail.gamble, true);
   const essay = (await req('/api/island/jail/start', a, {})).data; assert.equal(essay.sentence, J.GAMBLE_FIRST); assert.equal(essay.count, 5);
   await req('/api/test/den', a, { end: true }); assert.equal((await req('/api/island/townhall/enter', b, {})).status, 200, '단속 끝나면 다시 열림');
+  // 1.10.351 (Codex 341-350 #11): past Seoul midnight one still in the cell is let out -- the jail's state and leaving weigh it again
+  assert.equal((await req('/api/island/jail/leave', a, {})).data.error, 'JAILED');
+  await req('/api/test/den', a, { pastDay: true });
+  const after = (await req('/api/island/jail', a)).data; assert.equal(after.gamble, false); assert.equal(after.inmate, 'free', '자정 지나면 풀림');
+  await stand(a, J.world(J.ROOM.exit.lx, J.ROOM.exit.lz)); const out = await req('/api/island/jail/leave', a, {}); assert.equal(out.status, 200, JSON.stringify(out.data));
 });

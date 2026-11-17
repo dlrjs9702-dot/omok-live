@@ -3698,9 +3698,12 @@
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); /* (where I stand first) */
       const spec = await api('/api/island/quarry/start', { method: 'POST', body: JSON.stringify({ rock, spot: Number(spot) }) }); started = true;
-      const { fin, taps } = await new Promise((resolve) => { if (!plaza.controller?.mineRock?.({ ...spec, rock, spot: Number(spot) }, (ok, presses) => resolve({ fin: ok, taps: presses }))) resolve({ fin: false }); }); /* (1.10.342: the crack-light game's presses) */
+      /* (1.10.351 Codex 341-350 P1: each press sent as it happens -- the server times it and judges those, not a list at the end) */
+      const sent = []; const onTap = (round, tap) => { sent.push(api('/api/island/quarry/tap', { method: 'POST', body: JSON.stringify({ round, spot: tap.spot, ms: tap.ms }) }).catch(() => {})); };
+      const { fin } = await new Promise((resolve) => { if (!plaza.controller?.mineRock?.({ ...spec, rock, spot: Number(spot), onTap }, (ok) => resolve({ fin: ok }))) resolve({ fin: false }); });
       if (!fin) { await api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); return; }
-      const body = JSON.stringify({ rock, spot: Number(spot), taps: taps || [], requestId: crypto.randomUUID() });
+      await Promise.all(sent);
+      const body = JSON.stringify({ rock, spot: Number(spot), requestId: crypto.randomUUID() });
       let r; try { r = await api('/api/island/quarry/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; r = await api('/api/island/quarry/finish', { method: 'POST', body }); }
       if (r.bag) drawIslandBag(r.bag); toolWorn(r.worn, r.bag);
       if (!r.ore) { showToast(`💥 ${r.hits ?? 0}/${r.rounds ?? 3}번 맞혔어요 · 두 번 맞혀야 광석이 나와요${r.itemId ? ' · 🪨 작은 돌 +1' : ''}`, 3500); return; } /* (1.10.342 98B: a missed set -- rubble, the rock and the day's count as they were) */
@@ -3747,13 +3750,14 @@
     // (1.10.348 4b: the weekly upkeep holds the house as it is; 고치기 takes it up a step -- 81A)
     const head = u.done ? '이번 주 집 손보기를 다 했어요. 이번 주는 집이 지금 그대로예요.' : `이번 주 집 손보기 · 다 넣으면 ${(homesState.upkeepReward || 0).toLocaleString('ko-KR')}P · 안 하면 다음 주에 한 단계 낡아요`;
     card.append(line(`집 상태: ${u.wear || '깨끗함'}${u.level >= 3 ? ' · 집에 들어갈 수 없어요' : u.level >= 2 ? ' · 손님·꾸미기 잠김' : ''}`, 'lookMeta upkeepWear'), line(head));
+    /* (Codex 341-350 P1: made before the 고치기 button uses it -- a const used before its line threw, the whole box shut) */
+    const post = (body, msg) => async (ev) => { const btn = ev.currentTarget; btn.disabled = true; try { const r = await homePost('/api/home/upkeep', body); if (r.bag) drawIslandBag(r.bag); plazaDialog.close(); showToast(msg(r)); if (r.reward) loadPoints(); await refreshHomes(); plazaStage.focus({ preventScroll: true }); } catch (error) { status.textContent = error.message; btn.disabled = false; } };
     if (u.repair) { // 고치기: what this step asks, from the bag -- 벼룩시장에서 산 것도 돼요
       const r = u.repair; const kinds = Object.entries(r.items).map(([k, q]) => { const have = FARM.REPAIR_ITEMS[k].reduce((s, it) => s + held(items, it), 0); return `${FARM.REPAIR_NAMES[k]} ${Math.min(have, q)}/${q}`; });
       const enough = Object.entries(r.items).every(([k, q]) => FARM.REPAIR_ITEMS[k].reduce((s, it) => s + held(items, it), 0) >= q);
       const rrow = document.createElement('div'); rrow.className = 'upkeepRow upkeepRepair'; rrow.append(line(`한 단계 고치기(${u.wear} → ${FARM.WEAR[u.level - 1]}): ${kinds.join(' · ')}${r.points ? ` · 수리비 ${r.points.toLocaleString('ko-KR')}P` : ''}`, 'lookMeta upkeepCount'));
       const fix = btn('고치기', 'primary', post({ action: 'repair' }, (o) => `집을 고쳤어요. 「${o.from}」 → 「${o.to}」`)); fix.disabled = !enough; rrow.append(fix); card.append(rrow);
     }
-    const post = (body, msg) => async (ev) => { const btn = ev.currentTarget; btn.disabled = true; try { const r = await homePost('/api/home/upkeep', body); if (r.bag) drawIslandBag(r.bag); plazaDialog.close(); showToast(msg(r)); if (r.reward) loadPoints(); await refreshHomes(); plazaStage.focus({ preventScroll: true }); } catch (error) { status.textContent = error.message; btn.disabled = false; } };
     for (const kind of Object.keys(FARM.UPKEEP)) {
       const row = document.createElement('div'); row.className = 'upkeepRow'; const got = u.given?.[kind] || 0; const need = u.need[kind];
       row.append(line(`${FARM.UPKEEP_NAMES[kind]} ${Math.min(got, need)} / ${need}`, 'lookMeta upkeepCount'));

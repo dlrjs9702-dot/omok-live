@@ -4327,7 +4327,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const quarryStandIn = (box, color) => { const f = new THREE.Group(); mesh(new THREE.BoxGeometry(box[0], box[1], box[2]), mat(color), 0, box[3], 0, f); return f; }; /* (the stand-in covers the rock's circle: dalmaru-walk) */
   // (1.10.342: a prop's stand-in -- its solids.json boxes, which cover its circles)
   const shapeStandIn = (model, color) => { const f = new THREE.Group(); for (const [x, y, z, w, h, d] of QY.SHAPES[model]?.b || []) mesh(new THREE.BoxGeometry(w, h, d), mat(color), x, y, z, f); return f; };
-  let quarryWallPlaque = null; /* (1.10.350) */
+  let quarryWallPlaque = null; /* (1.10.350) */ let quarryWall = null; /* (1.10.351: the 화강암 벽 as a mined rock -- { r: WALL, stage, h: its model's holder }) */
   function setQuarry(rocks) {
     if (!QY) return; if (Array.isArray(rocks)) quarryState = new Map(rocks.map((x) => [x.id, x]));
     for (const q of quarryRocks.values()) {
@@ -4387,6 +4387,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (p.model === 'view_deck') y -= QY.deckLift(p.x, p.z) ?? 0; /* (its foot: the boards' height is the terrain's heightAt over it) */
       if (p.model === 'ore_cart') { const r = quarryRailAt(p.x, p.z); if (r && r.d < 1.5) { y = r.y; pitch = r.pitch; } } /* (141 layout: a cart turned as the rail piece under it -- its -Z the rail's way on) */
       const h = new THREE.Group(); h.position.set(p.x, y, p.z); h.rotation.set(pitch, p.yaw, 0, 'YXZ'); quarryGroup.add(h);
+      if (p.model === 'rock_wall_a_granite' && QY.WALL) quarryWall = { r: QY.WALL, stage: 'full', h };
       const f = p.model === 'view_deck' ? (() => { const g = shapeStandIn('view_deck', 0x8a6a48); mesh(new THREE.BoxGeometry(4, 0.1, 3), mat(0x9a7a55), 0, 0.4, 0, g); return g; })() : shapeStandIn(p.model, /^(rock_wall|bench_face)/.test(p.model) ? 0xb7ad9e : 0x8a6a48);
       h.add(f); assets.attach(`quarry.${p.model}`, h, f, (entry) => quarryModelIn(h, p.model, entry));
     }
@@ -4408,7 +4409,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const CRACK_DIM = new THREE.Color(0x2c2620); const CRACK_LIT = new THREE.Color(0xffd65a);
   function startMineGame(q, spec) {
     const face = spec.stand.yaw; const ahead = { x: Math.sin(face), z: Math.cos(face) }; const right = { x: -Math.cos(face), z: Math.sin(face) };
-    const S = QY.standOf(q.r, q.stage, spec.spot)?.S || { x: q.r.x, z: q.r.z }; const base = heightAt(q.r.x, q.r.z); const tall = QY.SOLIDS[q.r.kind].box[1];
+    const S = QY.standOf(q.r, q.stage, spec.spot)?.S || { x: q.r.x, z: q.r.z }; const base = heightAt(q.r.x, q.r.z); const tall = q.r.kind === 'wall' ? QY.SHAPES.rock_wall_a_granite.b[0][4] : QY.SOLIDS[q.r.kind].box[1];
     const ray = new THREE.Raycaster(); q.h.updateMatrixWorld(true); const cracks = [];
     for (const [dx, share] of QY.CRACKS) {
       const px = S.x + right.x * dx; const pz = S.z + right.z * dx; const py = base + share * tall;
@@ -4419,7 +4420,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     const hint = document.createElement('div'); hint.className = 'mineHint'; hint.style.cssText = 'position:absolute;left:50%;top:14%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(20,18,14,.72);color:#fff3c4;font-weight:800;font-size:15px;pointer-events:none;z-index:5;white-space:nowrap'; host.append(hint);
     const cam = { want: new THREE.Vector3(spec.stand.x - ahead.x * 0.9 + right.x * 2.6, base + 2.1, spec.stand.z - ahead.z * 0.9 + right.z * 2.6), look: new THREE.Vector3(S.x + right.x * 0.2, base + tall * 0.45, S.z + right.z * 0.2) }; /* (from my right side, a little behind and over: me at the left, the rock's face and its cracks clear) */
-    mineGame = { q, plan: spec.plan, cracks, taps: spec.plan.map(() => null), t0: performance.now(), hint, cam, hits: 0 };
+    mineGame = { q, plan: spec.plan, cracks, taps: spec.plan.map(() => null), t0: performance.now(), hint, cam, hits: 0, onTap: typeof spec.onTap === 'function' ? spec.onTap : null };
     if (locked()) { lockGameExit = true; document.exitPointerLock?.(); }
     stepMineGame(0);
   }
@@ -4440,7 +4441,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const rect = renderer.domElement.getBoundingClientRect(); let best = -1; let bestD = MINE_RING;
     g.cracks.forEach((m, i) => { const v = m.position.clone().project(camera); const d = Math.hypot(rect.left + ((v.x + 1) / 2) * rect.width - event.clientX, rect.top + ((1 - v.y) / 2) * rect.height - event.clientY); if (d < bestD) { bestD = d; best = i; } });
     if (best < 0) return; /* (not near a crack: nothing kept -- press again) */
-    const r = g.plan[k]; const after = Math.round(ms - k * QY.ROUND_MS - r.at); g.taps[k] = { spot: best, ms: after };
+    const r = g.plan[k]; const after = Math.round(ms - k * QY.ROUND_MS - r.at); g.taps[k] = { spot: best, ms: after }; g.onTap?.(k, g.taps[k]); /* (1.10.351: sent now -- the server times it) */
     const hit = best === r.spot && after >= 0 && after <= r.light + QY.GRACE_MS; if (hit) g.hits += 1;
     mineWord(hit ? (Math.abs(after - r.light / 2) <= QY.BONUS_MS ? '쨍!!' : '쨍!') : '틱', g.cracks[best].position, hit ? '#ffe27a' : '#d8d2c8');
     stepMineGame(ms);
@@ -4449,7 +4450,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function endMineGame() { const g = mineGame; if (!g) return; mineGame = null; for (const m of g.cracks) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } g.hint.remove(); }
   function mineRock(spec, done) {
     if (!spec?.stand) return false;
-    const q = QY && quarryRocks.get(spec.rock); const plan = Array.isArray(spec.plan) && spec.plan.length ? spec.plan : null;
+    const q = QY && (spec.rock === 'wall' ? quarryWall : quarryRocks.get(spec.rock)); /* (Codex 341-350 #6: the 화강암 벽 too -- its game ran nowhere) */ const plan = Array.isArray(spec.plan) && spec.plan.length ? spec.plan : null;
     const ok = startGather({ kind: 'mine', ms: spec.ms, anim: null, clock: true, onStep: plan ? (t) => stepMineGame(t * 1000) : null, onDone: (fin) => { const taps = mineGame?.taps || null; endMineGame(); me.anim?.release?.(); me.anim?.play('pickaxeEnd'); setTimeout(() => { if (!gather) showTool(); }, 500); done(fin, taps); } });
     if (!ok) return false;
     me.root.position.set(spec.stand.x, heightAt(spec.stand.x, spec.stand.z), spec.stand.z); correction = null; me.root.rotation.y = spec.stand.yaw; me.targetYaw = spec.stand.yaw;

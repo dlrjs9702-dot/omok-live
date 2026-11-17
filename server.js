@@ -4961,7 +4961,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.350' });
+    return sendJson(res, 200, { ok: true, version: '1.10.351' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5337,7 +5337,8 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/den/chips' && req.method === 'POST') { const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const account = pointAccountForSession(session); await pointStore.questApply(account, 'den', (doc) => ({ doc: { ...doc, chips: Math.max(0, Number(body.chips) || 0) } })); return sendJson(res, 200, { ok: true }); } // (1.10.346 tests: chips set -- the kick)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/den' && req.method === 'POST') { // 1.10.341: the word and note; a raid now (walkM: its walk), its tick, its end
-    if (!requireSession(req, res)) return; const body = await parseJson(req); const now = nowMs();
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const now = nowMs();
+    if (body.pastDay) await pointStore.questApply(pointAccountForSession(session), 'denJail', (d) => ({ doc: { ...d, day: '2000-01-01' } })); /* (1.10.351 tests: my gambling stay's day over, as after Seoul midnight) */
     if (body.raid) denRaidStart(now, Number(body.walkM) || 8); if (body.tick) await denCatch(now); if (body.end) { denRaid = null; broadcastIsland('den', { raid: null }); }
     return sendJson(res, 200, { ok: true, ...(await denToday(now)), raid: denRaidView(), below: denBelow.size });
   }
@@ -6373,6 +6374,7 @@ async function requestHandler(req, res) {
       freeSeat(session.token); jailInside.add(session.token);
     } else {
       const exit = IslandJail.world(R.exit.lx, R.exit.lz);
+      if (jailInmates.has(session.token) && !(await jailable(session, pointAccountForSession(session)))) jailFree(session.token); /* (1.10.351 Codex 341-350 #11: the reason weighed again -- a gambling day ended at Seoul midnight lets one out, as it would on coming back) */
       if (jailInmates.has(session.token)) return sendError(res, 409, 'JAILED', '오늘 반성문을 마쳐야 나갈 수 있어요.'); /* (293: no paying out of it) */
       if (!jailInside.has(session.token) || Math.hypot(at.x - exit.x, at.z - exit.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       jailInside.delete(session.token); jailFreed.delete(session.token);
@@ -6388,6 +6390,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const log = jailLogNow(); const e = jailEssays.get(session.token);
     const admin = await adminJailOf(account); /* (293: the administrator's reason and time, for the cell's notice) */
+    if (jailInmates.has(session.token) && !(await jailable(session, account))) jailFree(session.token); /* (1.10.351 Codex #11: past Seoul midnight a gambling stay is over -- the cell opens as for one coming back) */
     return sendJson(res, 200, { ok: true, inmate: jailMode(session.token), essay: e ? essayView(e) : null, passed: log.passed, log: jailInside.has(session.token) ? log.list : [], debt: taxDebt.get(account) || 0, admin: admin ? { reason: admin.reason, until: admin.until } : null, gamble: await denJailed(account, kstDate(nowMs())) /* (1.10.341) */, level: await affinityLevelOf(account, JAIL_WARDEN) });
   }
   if (pathname === '/api/island/jail/start' && req.method === 'POST') {
@@ -6885,6 +6888,17 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/plan' && req.method === 'POST') {
     const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; return sendJson(res, 200, { ok: true });
   }
+  // 1.10.351 (Codex 341-350 P1): a press of the crack-light game, kept as the server gets it (IslandQuarry.tapAt) -- finish judges
+  // these, never a list the page sends at the end; one a swing, the first kept
+  if (pathname === '/api/island/quarry/tap' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const t = session.token;
+    if (!checkRateLimit(`island-quarry-tap:${t}`, 90, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); const pull = quarryPulls.get(t); const k = Number(body.round);
+    if (!pull || pull.result || !Number.isInteger(k) || k < 0 || k >= pull.plan.length || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
+    pull.taps ||= pull.plan.map(() => null);
+    if (!pull.taps[k]) pull.taps[k] = IslandQuarry.tapAt(pull.plan, k, { spot: Number(body.spot), ms: Number(body.ms) }, nowMs() - pull.at);
+    return sendJson(res, 200, { ok: true });
+  }
   if (['/api/island/quarry/start', '/api/island/quarry/finish', '/api/island/quarry/cancel'].includes(pathname) && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const t = session.token;
     if (!checkRateLimit(`island-quarry:${t}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
@@ -6919,9 +6933,11 @@ async function requestHandler(req, res) {
     const kept = wall ? { left: 1, gen: 0 } : quarryKept[rock.id]; if (!kept || kept.left <= 0) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, 'MINED', '방금 다 캔 바위예요.'); }
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
-    const judged = IslandQuarry.judge(pull.plan, body.taps);
+    const judged = IslandQuarry.judge(pull.plan, pull.taps || []); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
     if (!judged.done) {
-      const missed = await pointStore.islandGive({ userId: account, claimId: `quarry-miss:${account}:${pull.at}`, itemId: 'stone', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
+      // (1.10.351 Codex 341-350 #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing (nor wears the pickaxe), else
+      // missing on purpose was endless 작은 돌)
+      const missed = wall ? null : await pointStore.islandGive({ userId: account, claimId: `quarry-miss:${account}:${pull.at}`, itemId: 'stone', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
       const result = { ok: true, ore: 0, itemId: missed?.applied ? 'stone' : null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: wall ? null : kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: missed?.bag || null, worn: missed?.worn || null, ...(wall ? { wall: true } : {}) };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
@@ -10454,7 +10470,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.350 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.351 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
