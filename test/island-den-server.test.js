@@ -24,6 +24,9 @@ test('도박장 서버: 쪽지 암호 → 테드에게 → 칩 → 지하 → �
   const bal = async () => (await req('/api/points', a)).data.balance;
   const day = (await req('/api/test/den', a, {})).data;
   assert.ok(day.word && day.note, JSON.stringify(day));
+  // (1.10.346 154A) the admin sees today's word and the bench; a player never (403)
+  const adm = (await req('/api/admin/den/today', server.admin)).data; assert.equal(adm.word, day.word); assert.equal(adm.note.x, day.note.x); assert.match(adm.note.where, /^대청마당 분수에서 .+쪽 \d+ m · 벤치 /);
+  assert.notEqual((await req('/api/admin/den/today', a)).status, 200); assert.ok(!JSON.stringify((await req('/api/island/den', a)).data).includes(day.word), '일반 응답에 암호 없음');
   // the note: read on its bench only
   await stand(b, { x: day.note.x + 20, z: day.note.z }); assert.equal((await req('/api/island/den/note', b, {})).data.error, 'TOO_FAR');
   await stand(b, day.note); assert.equal((await req('/api/island/den/note', b, {})).data.word, day.word);

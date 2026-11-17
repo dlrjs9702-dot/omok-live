@@ -8828,6 +8828,11 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, kind: c.kind, name: c.name, endsIn: IslandCalendar.CONTEST.roundMs, gift: gift?.applied ? '낚시 미끼' : null, stamp });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/weekly/settle' && req.method === 'POST') { const body = await parseJson(req); if (body.all) await settleEventContests(); else await settleEventContest(String(body.day)); /* (all: the minute's settling) */ return sendJson(res, 200, { ok: true, result: await pointStore.worldValue(`eventContestResult:${body.day}`) }); }
+  if (pathname === '/api/admin/den/today' && req.method === 'GET') { // 1.10.346 사용자 154A: today's den word and the note's bench -- the admin only, not logged
+    if (!requireAdmin(req, res)) return; const t = await denToday(); const n = t.note; const dx = n ? n.x - IslandTerrain.PLAZA_C.x : 0; const dz = n ? n.z - IslandTerrain.PLAZA_C.z : 0;
+    const dir = n ? `${dz > 3 ? '북' : dz < -3 ? '남' : ''}${dx > 3 ? '동' : dx < -3 ? '서' : ''}` || '가운데' : null;
+    return sendJson(res, 200, { ok: true, day: t.day, word: t.word, note: n ? { id: n.id, x: n.x, z: n.z, where: `대청마당 분수에서 ${dir}쪽 ${Math.round(Math.hypot(dx, dz))} m · 벤치 ${n.id}` } : null });
+  }
   if (pathname === '/api/admin/calendar' && req.method === 'GET') { if (!requireAdmin(req, res)) return; return sendJson(res, 200, { ok: true, override: await calendarOverride(), festivals: IslandCalendar.FESTIVALS.map((f) => ({ id: f.id, name: f.name, start: f.start, end: f.end })) }); }
   if (pathname === '/api/admin/calendar' && req.method === 'POST') { // 관리자: a festival switched off or its days moved ({ [id]: { off, start, end } }); the contests' forced days
     if (!requireAdmin(req, res)) return; const body = await parseJson(req); const ok = /^\d{4}-\d\d-\d\d$/;

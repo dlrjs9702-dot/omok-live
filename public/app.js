@@ -4421,6 +4421,7 @@
       row.append(name, mk('calStart', o.start, '시작일'), mk('calEnd', o.end, '끝날'), off); return row;
     }));
   }
+  byId('denAdminBox')?.addEventListener('toggle', (event) => { if (!event.target.open) return; const box = byId('denAdminInfo'); box.textContent = '불러오는 중…'; api('/api/admin/den/today').then((d) => { box.textContent = `${d.day} · 암호 「${d.word}」 · 쪽지: ${d.note?.where || '없음'}${d.note ? ` (${d.note.x}, ${d.note.z})` : ''}`; }).catch((error) => { box.textContent = error.message; }); }); // (1.10.346 154A)
   byId('calendarBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/calendar').then(drawCalendar).catch((error) => showToast(error.message)); });
   byId('calendarSave')?.addEventListener('click', async () => {
     const override = {}; for (const row of document.querySelectorAll('#calendarTable [data-festival]')) { const start = row.querySelector('.calStart').value; const end = row.querySelector('.calEnd').value; const off = row.querySelector('.calOff').checked; if (start || end || off) override[row.dataset.festival] = { ...(start ? { start } : {}), ...(end ? { end } : {}), off }; }
