@@ -165,7 +165,7 @@
   // `rock_wall_a_granite`): three spots along its face toward the quarry (local -Z: the walked side), its plaque on that face above them.
   // Granite only, never empty, outside DAILY; the minigame and the pickaxe's wear as at a rock (a miss: a 작은 돌)
   const WALL_SPOTS = Object.freeze([[-0.9, -0.65, 0, -1], [0, -0.65, 0, -1], [0.9, -0.65, 0, -1]].map((s) => Object.freeze(s)));
-  const WALL = (() => { const p = PROPS.find((x) => x.model === 'rock_wall_a_granite'); return Object.freeze({ id: 'wall', kind: 'wall', ore: 'granite', x: p.x, z: p.z, yaw: p.yaw, plaque: Object.freeze({ ...turn(p, 0, -0.68), y: 1.75, yaw: p.yaw + Math.PI }) }); })();
+  const WALL = (() => { const p = PROPS.find((x) => x.model === 'rock_wall_a_granite'); return Object.freeze({ id: 'wall', kind: 'wall', ore: 'granite', x: p.x, z: p.z, yaw: p.yaw, plaque: Object.freeze({ ...turn(p, 0, -0.68), y: 1.75, yaw: p.yaw }) }); })();
   const rockById = (id) => (id === 'wall' ? WALL : ROCKS.find((r) => r.id === id) || null);
   const spotCount = (rock) => (rock.kind === 'wall' ? WALL_SPOTS.length : SPOTS[rock.kind].full.length);
   // a rock's state at `now` from what is kept { left, minedAt, gen }: full again REGROW_MS after it was mined out

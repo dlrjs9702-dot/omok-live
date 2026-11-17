@@ -1946,7 +1946,7 @@ test('채석장: 능선 위 바위 앞에서 곡괭이로 빛나는 금을 맞�
     await post(request, '/api/test/quarry/plan', a.token, { plan: [{ spot: 0, at: 400 }, { spot: 3, at: 400 }, { spot: 4, at: 400 }], draw: 0.1 }); /* (draw 0.1: its main ore) */
     await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [s.x, s.z]);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().placeNow().words), { timeout: 15000 }).toMatch(/^채석장/);
-    await page.waitForTimeout(1000); expect(await page.evaluate(() => window.PlazaDebug().near)).not.toMatch(/^quarry:/); /* (1.10.350 사용자: the rock only with the pickaxe in hand) */
+    await page.waitForTimeout(1000); expect(String(await page.evaluate(() => window.PlazaDebug().near))).not.toMatch(/^quarry:/); /* (1.10.350 사용자: the rock only with the pickaxe in hand) */
     await require('./skin-support').holdTool(page, 'pickaxe');
     await expect.poll(() => spaceOn(page, `quarry:${rock.id}:0`, isMobile), { timeout: 20000 }).toBe(true);
     await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug().mine())), { timeout: 15000 }).toBe(true);

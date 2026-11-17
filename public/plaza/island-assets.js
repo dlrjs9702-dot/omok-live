@@ -472,7 +472,7 @@
   }
   REGISTRY['quarry.ore_pile_tint'] = pair(OV, 'ore_pile', { near: 50, paint: { ore: ORE_HEX.copper } });
   for (const f of ['rock_wall_a', 'rock_wall_b']) REGISTRY[`quarry.${f}`] = far(V2, f);
-  REGISTRY['quarry.rock_wall_a_granite'] = far(V2, 'rock_wall_a', { paint: { primary: '#e6e0d6' } }); /* (1.10.350 화강암 벽: the same wall, granite's pale grey) */
+  REGISTRY['quarry.rock_wall_a_granite'] = far(V2, 'rock_wall_a', { paint: { primary: [1.45, 1.5, 1.62] } }); /* (1.10.350 화강암 벽: the same wall, granite's pale grey) */
   REGISTRY['quarry.work_tent'] = far(V2, 'work_tent', { nightGlow: true });
   REGISTRY['quarry.ore_cart'] = pair(V2, 'ore_cart', { near: 40, keepNodes: true, paint: { ore: ORE_HEX.coal } }); /* (its own `rail` hidden on 143's -- plaza-scene) */
   for (const f of ['tool_rack', 'rubble_small', 'rubble_large']) REGISTRY[`quarry.${f}`] = pair(V2, f, { near: 40 });
