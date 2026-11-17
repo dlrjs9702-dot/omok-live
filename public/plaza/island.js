@@ -903,7 +903,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   let fallTex = null; const falls = [];
   if (T.dalmaru) {
     fallTex = keep(flowTex.clone()); fallTex.needsUpdate = true; fallTex.repeat.set(1.5, 3);
-    const fallMat = keep(new THREE.MeshStandardMaterial({ color: 0xe6f6ff, map: fallTex, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.88, side: THREE.DoubleSide }));
+    const fallMat = keep(new THREE.MeshStandardMaterial({ color: 0xe6f6ff, map: fallTex, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.88, side: THREE.DoubleSide, forceSinglePass: true })); /* (1.10.353 §9 ⓐ: both faces in one pass -- three.js draws a two-sided see-through material back then front, picking its program again twice a frame) */
     const sprayMat = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.35, depthWrite: false }));
     const puffGeo = keep(new THREE.SphereGeometry(0.7, 10, 8)); const ringGeo = keep(new THREE.RingGeometry(1.2, 2.6, 24).rotateX(-Math.PI / 2)); const SEA_Y = T.dalmaru.SEA;
     const pondMat = keep(new THREE.MeshStandardMaterial({ color: 0x7ec8e8, map: fallTex, roughness: 0.25, metalness: 0, transparent: true, opacity: 0.9 }));

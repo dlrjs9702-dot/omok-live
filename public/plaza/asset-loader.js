@@ -93,7 +93,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
     }
     const object = cloneObject(gltf.scene);
     if (entry.paint) object.traverse((o) => { if (!o.isMesh) return; const list = [].concat(o.material).map((m) => paintedOf(m, entry.paint[m.name])); o.material = Array.isArray(o.material) ? list : list[0]; }); // (1.10.342: kept nodes, the painted material a copy)
-    object.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.transparent && /^(window_glass|rail_glass|tank_water)$/.test(m.name)) m.depthWrite = false; /* (assets 59: the plaza channels' water too) */ });
+    object.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.transparent && /^(window_glass|rail_glass|tank_water)$/.test(m.name)) { m.depthWrite = false; if (m.side === THREE.DoubleSide) m.forceSinglePass = true; } /* (assets 59: the plaza channels' water too; 1.10.353 §9 ⓐ: both faces in one pass -- two-sided see-through was drawn back then front, its program picked again twice a draw, 10 a frame for the tanks' water) */ });
     object.animations = gltf.animations || []; // v1.10.38: a looping prop (the Halloween bats' Flap) plays its own clip
     object.scale.multiplyScalar(entry.scale ?? 1);
     object.rotation.y += entry.rotationY || 0;
@@ -154,6 +154,16 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float nightGlow;\nvarying float vGlow;').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.77, 0.42) * vGlow * nightGlow;');
     };
     return material;
+  }
+  // (1.10.353 gpu-weak-audit §9 ⓐ) a material drawn both by a model's own copies and by its batched (instanced) copies had its
+  // program picked again at every switch between them, twice a frame each -- instancing is part of the program. The batched copies
+  // draw a twin instead: one copy a material, shared by every batch of it, its shader patch and night glass kept
+  const instTwin = new Map();
+  function instTwinOf(m) {
+    if (Array.isArray(m)) return m.map(instTwinOf); if (!m) return m;
+    let t = instTwin.get(m);
+    if (!t) { t = m.clone(); t.onBeforeCompile = m.onBeforeCompile; t.userData = { ...m.userData, twinOf: m }; if (m.name === 'glass') { glassMats.add(t); lightGlass(t); } instTwin.set(m, t); made.push(t); }
+    return t;
   }
   function noteGlass(object) { object?.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.name === 'glass' && !glassMats.has(m)) { glassMats.add(m); lightGlass(m); } }); }
   function setNight(on) { night = Boolean(on); nightGlow.value = night ? 0.9 : 0; for (const m of glassMats) lightGlass(m); }
@@ -440,7 +450,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
           const lowGltf = hit.entry.lowUrl ? models.get(hit.entry.lowUrl) : null;
           if (hit.entry.nightGlow) for (const g of [gltf, lowGltf]) if (g) nightGlowFiles.add(g); /* (316 ④: a batched lamp's glow lit at night, as an attached one's) */
           const meshesOf = (model, shadow) => partsOf(model, hit.entry.paint).map(({ geometry, material, matrix }) => {
-            const im = new THREE.InstancedMesh(geometry, material, count);
+            const im = new THREE.InstancedMesh(geometry, instTwinOf(material), count); /* (1.10.353 ⓐ: the batches' own twin) */
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
             im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in
