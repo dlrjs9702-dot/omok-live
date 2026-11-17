@@ -141,7 +141,7 @@ function stocksMarket() {
     // (사용자 「B」: shares bought on 320's market (its public seed) given back at what they cost, before anything else is read)
     const back = await IslandStocks.refundOldStocks(pointStore, (userId, refund) => pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === 'stock-refund-321') ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: 'stock-refund-321', from: 'office', fromName: '섬 증권거래소', text: `섬 주식 시세를 새로 정하면서, 그동안 가지고 있던 주식을 산 값 그대로(수수료 포함) ${refund.toLocaleString('ko-KR')}P로 돌려드렸어요. 가진 주식과 주문 기록은 비워졌어요. 새 시세로 다시 사고팔 수 있어요.`, itemId: null, itemName: null, at: Date.now(), read: false }, Date.now()) } })));
     if (back.length) { console.log(`[stocks] refund accounts=${back.length} points=${back.reduce((n, x) => n + x.refund, 0)}`); notifyPointsChanged(back.filter((x) => x.refund > 0).map((x) => x.userId)); }
-    return IslandStocks.createMarket(key);
+    return IslandStocks.createMarket(key, { newIsland: () => Boolean(IslandTerrain.NEW_ISLE) }); // (1.10.358 N1: 별마루섬 open -- the news lines that wait for it (needs: newIsland) on)
   })().catch((error) => { stockMarketHeld = null; throw error; });
   return stockMarketHeld;
 }

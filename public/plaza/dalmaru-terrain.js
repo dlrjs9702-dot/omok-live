@@ -46,7 +46,7 @@
   // island two thirds the size of this one -- its own coast, a peak (전망대), a south hill, a sea bluff on its east (돌돔), a
   // camp ground's flat, a creek from a spring on the peak's north-west flank to the north-west shore; the bridge to it at z 226
   const NEW_ISLE = Object.freeze({ x: 365, z: 226, r: 145, peak: { x: 393, z: 212, h: 42, s: 70 }, hill: { x: 327, z: 312, h: 14, s: 34 }, bluff: { x: 497, z: 214, h: 13, s: 30 }, camp: { x: 259, z: 250, r: 18, h: 3 }, bridgeZ: 226 });
-  const CREEK = Object.freeze({ name: '새 섬 개울', w: 2.4, pts: [[363, 176], [341, 160], [319, 150], [297, 136], [279, 118], [265, 104]] });
+  const CREEK = Object.freeze({ name: '별마루섬 개울', w: 2.4, pts: [[363, 176], [341, 160], [319, 150], [297, 136], [279, 118], [265, 104]] });
   const newIsleR = (th) => NEW_ISLE.r + 4 * Math.sin(3 * th + 0.5) + 2.5 * Math.sin(7 * th + 1.1) + 1.2 * Math.sin(13 * th);
   /* (+ on its land; far off, a bound -- its coast wobbles 7.7 m at most) */
   const newIsleCoast = (x, z) => { const dx = x - NEW_ISLE.x; const dz = z - NEW_ISLE.z; const d = Math.sqrt(dx * dx + dz * dz); return d > NEW_ISLE.r + 12 ? NEW_ISLE.r + 8 - d : newIsleR(Math.atan2(dz, dx)) - d; };
@@ -253,7 +253,7 @@
     const x = pr * Math.cos(t) + s.lift * 5.5 * Math.sin(t); const z = pr * Math.sin(t) - s.lift * 5.5 * Math.cos(t); const r = Math.hypot(x, z);
     return { x, z, entry: [x - (x / r) * 7, z - (z / r) * 7] };
   };
-  const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루', newIsle: '새 섬', newBridge: '새 섬다리', camp: '캠핑장', peak: '전망대 봉우리', creek: '새 섬 개울' }; /* (N1: working names till 총괄 names them) */
+  const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루', newIsle: '별마루섬', newBridge: '별마루다리', camp: '캠핑장', peak: '전망대 봉우리', creek: '별마루섬 개울' }; /* (N1: 사용자 2026-11-18 「A」 -- 별마루섬, 별마루다리) */
 
   return { VILLAGE, NECK, villageDist, neckDist, CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
     coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap,
