@@ -5131,39 +5131,66 @@
   const stockRid = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
   // (1.10.322 섬 주식 보드 고침: the line's colour and the ▲▼ beside it on one basis -- today's first price to now, 「오늘」)
   const stockToday = (c) => { const t = (c.today || []).filter((x) => Number(x) > 0); return t.length ? stockPct(c.price, t[0]) : 0; };
-  function stockSpark(values, w = 96, h = 26, tone = null) {
+  function stockSpark(values, w = 96, h = 26, tone = null, ref = null) { /* (1.10.351 ③: `ref` -- my average cost, a level line) */
     const v = (values || []).map(Number).filter((x) => Number.isFinite(x) && x > 0); const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('class', 'stockSpark'); svg.setAttribute('aria-hidden', 'true');
-    if (v.length < 2) return svg; const lo = Math.min(...v); const hi = Math.max(...v); const span = hi - lo || 1;
+    if (v.length < 2) return svg; const r = Number(ref) > 0 ? Number(ref) : null; const lo = Math.min(...v, ...(r ? [r] : [])); const hi = Math.max(...v, ...(r ? [r] : [])); const span = hi - lo || 1;
+    if (r) { const y = (h - 2 - ((r - lo) / span) * (h - 4)).toFixed(1); const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line'); ln.setAttribute('x1', '1'); ln.setAttribute('x2', String(w - 1)); ln.setAttribute('y1', y); ln.setAttribute('y2', y); ln.setAttribute('class', 'stockAvgLine'); svg.append(ln); }
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); p.setAttribute('points', v.map((x, i) => `${((i / (v.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((x - lo) / span) * (h - 4)).toFixed(1)}`).join(' '));
     p.setAttribute('class', tone || stockTone(v[v.length - 1] - v[0])); svg.append(p); return svg;
   }
-  async function refreshStocksBoard() { try { stocksView = await api('/api/island/stocks'); plaza.controller?.setStocksBoard?.(stocksView); } catch {} return stocksView; }
+  async function refreshStocksBoard() { try { stocksView = await api('/api/island/stocks'); plaza.controller?.setStocksBoard?.(stocksView); stockAlertsSeen(stocksView); } catch {} return stocksView; }
+  // 1.10.351 ④ 주식 알림 (176A): the alerts kept on the server; each hour's new price (a look at the board once it is due) met --
+  // above or below -- a toast, once that hour for that company
+  let stockAlertTick = null; const stockAlertDone = new Set();
+  function stockAlertsSeen(d) {
+    const al = d?.mine?.alerts || {}; if (!Object.keys(al).length || !Number.isInteger(d.tick)) return;
+    for (const [code, a] of Object.entries(al)) { const c = d.companies.find((x) => x.code === code); if (!c || c.status === 'gone') continue; const key = `${code}:${d.tick}`; if (stockAlertDone.has(key)) continue;
+      const hit = a.above && c.price >= a.above ? `${stockWon(a.above)}을 넘었어요` : a.below && c.price <= a.below ? `${stockWon(a.below)} 밑이에요` : null;
+      if (hit && stockAlertTick !== null && d.tick > stockAlertTick) showToast(`📈 주식 알림 · ${c.name} ${stockWon(c.price)} · ${hit}`, 6000); if (hit) stockAlertDone.add(key); }
+    stockAlertTick = d.tick;
+  }
+  setInterval(() => { if (!document.body.classList.contains('plazaMode') || !stocksView || !Object.keys(stocksView.mine?.alerts || {}).length) return; if (Date.now() < (stocksView.next || 0) + 5000) return; refreshStocksBoard(); }, 30000); /* (an hour's price due: a look) */
   async function openStocks(tab = stocksTab, code = null) {
     stocksTab = tab; const d = await refreshStocksBoard(); if (!d) { showToast('시세를 불러오지 못했어요.'); return; }
     const card = sEl('div', 'mirrorCard stocksCard'); const next = new Date(d.next); const nextText = `${String(next.getHours()).padStart(2, '0')}:00`;
     const wk = d.mine?.week; card.append(line(`${d.open ? '장 열림' : '장 닫힘 · 매일 오전 9시~오후 11시'} · 다음 값 ${nextText}${wk == null ? '' : ` · 이번 주 수익률 ${stockSign(wk)}`}`, 'lookMeta stocksHead'));
-    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['news', '섬 소식'], ['mine', '내 주식'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
+    const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['board', '시세'], ['news', '섬 소식'], ['mine', '내 주식'], ['log', '거래 기록'], ['rank', '이번 주 순위']]) { const b = btn(label, k === tab && !code ? 'primary' : 'secondary', () => openStocks(k)); tabs.append(b); } card.append(tabs);
     const body = sEl('div', 'stocksBody'); card.append(body);
     if (code) stockDetail(body, d, code);
     else if (tab === 'news') { /* (102A: the day's news, the latest first -- each told only once its hour's price is up) */
       const list = d.news || []; if (!list.length) body.append(line('오늘은 아직 소식이 없어요. 값이 크게 튈 때 그 까닭이 여기 올라와요.', 'lookMeta'));
-      for (const x of list) { const at = new Date(x.at); const row = sEl('button', 'stocksRow stocksNews'); row.type = 'button'; row.append(sEl('span', 'stocksQty', `${String(at.getHours()).padStart(2, '0')}:00`), sEl('span', `stocksName ${stockTone(x.pct)}`, stockNewsText(x))); row.addEventListener('click', () => openStocks('board', x.code)); body.append(row); }
+      for (const x of list) { /* (1.10.351 ① 사용자 「주식 이름만 제대로 다 나오게」: the time, the whole name, ▲/▼ % -- pressed, the line and the price then) */
+        const at = new Date(x.at); const row = sEl('button', 'stocksRow stocksNews'); row.type = 'button'; row.setAttribute('aria-expanded', 'false');
+        row.append(sEl('span', 'stocksQty', `${String(at.getHours()).padStart(2, '0')}:00`), sEl('span', 'stocksName stocksNewsName', x.name), sEl('span', `stocksChange ${stockTone(x.pct)}`, `${x.pct > 0 ? '▲' : x.pct < 0 ? '▼' : '–'} ${Math.abs(x.pct)}%`));
+        const more = sEl('div', 'stocksNewsMore hidden'); more.append(line(`📰 ${x.line}`, `lookMeta ${stockTone(x.pct)}`), line(x.price ? `그때 값 ${stockWon(x.price)}` : '', 'lookMeta'), btn('이 회사 보기', 'secondary', () => openStocks('board', x.code)));
+        row.addEventListener('click', () => { const on = more.classList.toggle('hidden'); row.setAttribute('aria-expanded', String(!on)); }); body.append(row, more);
+      }
     } else if (tab === 'mine') {
       const rows = d.mine?.rows || []; if (!rows.length) body.append(line('아직 가진 주식이 없어요. 시세에서 회사를 골라 사 보세요.', 'lookMeta'));
       for (const r of rows) { const row = sEl('button', 'stocksRow'); row.type = 'button'; row.append(sEl('span', 'stocksName', r.name), sEl('span', 'stocksQty', `${r.qty.toLocaleString('ko-KR')}주 · 평균 ${stockWon(r.avg)}`), sEl('span', `stocksChange ${stockTone(r.gain)}`, r.status === 'gone' ? '상장 폐지' : `${stockWon(r.value)} ${stockSign(r.gain)}`)); if (r.status !== 'gone') row.addEventListener('click', () => openStocks('board', r.code)); body.append(row); }
+    } else if (tab === 'log') { /* (1.10.351 ② 사용자 「내가 과거에 뭘 사고 팔아서 얼마 벌었는지」) */
+      const m = d.mine || {}; const s = m.sums || { week: { gain: 0, fee: 0 }, all: { gain: 0, fee: 0 } }; const sign = (v) => `${v > 0 ? '▲' : v < 0 ? '▼' : '–'} ${stockWon(Math.abs(v))}`;
+      const sums = sEl('div', 'stocksSums'); sums.append(line(`이번 주 · 판 거래로 번 돈 ${sign(s.week.gain)} · 수수료 ${stockWon(s.week.fee)}`, `lookMeta ${stockTone(s.week.gain)}`), line(`지금까지 · 번 돈 ${sign(s.all.gain)} · 수수료 ${stockWon(s.all.fee)}`, `lookMeta ${stockTone(s.all.gain)}`)); body.append(sums);
+      body.append(line('이번 업데이트부터 기록돼요. 최근 200건까지 보여요. 번 돈은 판 값에서 평균 산 값(수수료 포함)을 뺀 거예요.', 'lookMeta'));
+      const log = m.log || []; if (!log.length) body.append(line('아직 거래가 없어요.', 'lookMeta'));
+      for (const e of log) { const at = new Date(e.at); const when = `${at.getMonth() + 1}/${at.getDate()} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+        const row = sEl('div', 'stocksRow stocksLog'); row.append(sEl('span', 'stocksQty', when), sEl('span', 'stocksName', e.name), sEl('span', 'stocksQty', `${e.side === 'buy' ? '사기' : '팔기'} ${e.qty.toLocaleString('ko-KR')}주 · ${stockWon(e.price)} · 수수료 ${stockWon(e.fee)}`), sEl('span', `stocksChange ${e.side === 'sell' ? stockTone(e.gain) : 'stockFlat'}`, e.side === 'sell' ? sign(e.gain) : ''));
+        body.append(row); }
     } else if (tab === 'rank') {
       let rk = null; try { rk = await api('/api/island/stocks/rank'); } catch {}
       body.append(line('이번 주 수익률 순위예요. 주가 끝날 때 1위에게 「이번 주 큰손」 칭호를 줘요(포인트 보상은 없어요).', 'lookMeta'));
-      for (const r of rk?.top || []) body.append(sEl('div', `stocksRow stocksRank${r.mine ? ' mine' : ''}`, `${r.rank}위 · ${r.name} · ${stockSign(r.r)}`));
-      if (rk?.me && !rk.top.some((r) => r.mine)) body.append(sEl('div', 'stocksRow stocksRank mine', `내 순위 ${rk.me.rank}위 · ${stockSign(rk.me.r)}`));
+      const pts = (g) => (Number.isFinite(g) ? ` · ${g > 0 ? '▲' : g < 0 ? '▼' : '–'} ${stockWon(Math.abs(g))}` : ''); /* (1.10.351 ⑥: the points beside -- the order by the return) */
+      for (const r of rk?.top || []) body.append(sEl('div', `stocksRow stocksRank${r.mine ? ' mine' : ''}`, `${r.rank}위 · ${r.name} · ${stockSign(r.r)}${pts(r.gain)}`));
+      if (rk?.me && !rk.top.some((r) => r.mine)) body.append(sEl('div', 'stocksRow stocksRank mine', `내 순위 ${rk.me.rank}위 · ${stockSign(rk.me.r)}${pts(rk.me.gain)}`));
       if (!rk?.top?.length) body.append(line('아직 이번 주에 주식을 산 사람이 없어요.', 'lookMeta'));
     } else {
       const head = sEl('div', 'stocksCols'); head.append(sEl('span', 'stocksName', '회사'), sEl('span', 'stocksQty', '오늘'), sEl('span', 'stocksPrice', '지금 값'), sEl('span', 'stocksChange', '오늘')); body.append(head);
-      for (const c of d.companies) {
-        const row = sEl('button', 'stocksRow'); row.type = 'button';
+      const starred = new Set(d.mine?.star || []); const list = [...d.companies].sort((a, b) => Number(starred.has(b.code)) - Number(starred.has(a.code))); /* (1.10.351 ④: the starred first) */
+      for (const c of list) {
+        const row = sEl('button', `stocksRow${starred.has(c.code) ? ' starred' : ''}`); row.type = 'button';
         if (c.status === 'gone') { row.disabled = true; row.append(sEl('span', 'stocksName', c.name), sEl('span', 'stocksQty', '상장 폐지 · 곧 새 회사가 들어와요'), sEl('span', 'stocksChange stockFlat', '')); body.append(row); continue; }
         const ch = stockToday(c); const tag = `${c.status === 'cleanup' ? ' · 정리 매매' : c.newToday ? ' · 신규 상장' : ''}${c.news ? ' · 📰 소식' : ''}`; /* (102A: a line of news today) */
-        row.append(sEl('span', 'stocksName', `${c.name}${tag}`), stockSpark(c.today, 96, 26, stockTone(ch)), sEl('span', 'stocksPrice', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, stockSign(ch)));
+        row.append(sEl('span', 'stocksName', `${starred.has(c.code) ? '★ ' : ''}${c.name}${tag}`), stockSpark(c.today, 96, 26, stockTone(ch)), sEl('span', 'stocksPrice', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(ch)}`, stockSign(ch)));
         row.addEventListener('click', () => openStocks('board', c.code)); body.append(row);
       }
     }
@@ -5172,12 +5199,24 @@
   function stockDetail(body, d, code) {
     const c = d.companies.find((x) => x.code === code); if (!c) { body.append(line('이 회사는 이제 없어요.', 'lookMeta')); return; }
     const mine = d.mine?.rows?.find((r) => r.code === code); const ch = stockPct(c.price, c.prevClose);
-    body.append(line(`${c.name} · ${c.kindLabel} · 상장가 ${stockWon(c.list)}${c.status === 'cleanup' ? ' · 정리 매매(오늘 뒤 상장 폐지, 팔기만 돼요)' : ''}`, 'lookMeta'));
+    { /* (1.10.351 ⑤ 회사 정보: 업종 · 성격 · 상장가 · 상장 날짜 · 최근 소식 3줄) */
+      const info = sEl('div', 'stocksInfo'); const listed = c.listedAt ? new Date(c.listedAt) : null;
+      info.append(line(`${c.name}${c.industry ? ` · ${c.industry}` : ''} · ${c.kindLabel} · 상장가 ${stockWon(c.list)}${listed ? ` · ${listed.getMonth() + 1}월 ${listed.getDate()}일 상장` : ''}${c.status === 'cleanup' ? ' · 정리 매매(오늘 뒤 상장 폐지, 팔기만 돼요)' : ''}`, 'lookMeta'));
+      for (const x of c.recent || []) { const at = new Date(x.at); info.append(line(`${at.getMonth() + 1}/${at.getDate()} ${String(at.getHours()).padStart(2, '0')}:00 · ${x.line} ${x.pct > 0 ? '▲' : x.pct < 0 ? '▼' : '–'}${Math.abs(x.pct)}%`, `lookMeta stocksRecent ${stockTone(x.pct)}`)); }
+      const starred = (d.mine?.star || []).includes(code); const al = d.mine?.alerts?.[code] || {};
+      const watch = sEl('div', 'stocksWatch'); const note2 = line('', 'lookMeta');
+      const save = async (body) => { try { await api('/api/island/stocks/watch', { method: 'POST', body: JSON.stringify({ code, ...body }) }); openStocks('board', code); } catch (error) { note2.textContent = error.message; } };
+      watch.append(btn(starred ? '★ 관심 종목' : '☆ 관심 종목에 넣기', starred ? 'primary' : 'secondary', () => save({ star: !starred })));
+      const up = sEl('input', 'stocksAlertInput stocksAlertAbove'); up.type = 'number'; up.min = '1'; up.placeholder = '넘으면'; up.inputMode = 'numeric'; up.value = al.above || ''; up.setAttribute('aria-label', '이 값을 넘으면 알려 줘');
+      const dn = sEl('input', 'stocksAlertInput stocksAlertBelow'); dn.type = 'number'; dn.min = '1'; dn.placeholder = '밑이면'; dn.inputMode = 'numeric'; dn.value = al.below || ''; dn.setAttribute('aria-label', '이 값 밑이면 알려 줘');
+      const arow = sEl('div', 'stocksOrder stocksAlert'); arow.append(sEl('span', 'lookMeta', '알림'), up, sEl('span', 'lookMeta', 'P 넘으면'), dn, sEl('span', 'lookMeta', 'P 밑이면'), btn('저장', 'secondary', () => save({ above: up.value || null, below: dn.value || null }))); if (al.above || al.below) arow.append(btn('지우기', 'secondary', () => save({ clear: true })));
+      info.append(watch, arow, note2); body.append(info);
+    }
     if (c.bustWhy && c.status === 'cleanup') body.append(line(`부도: ${c.bustWhy}`, 'lookMeta stockDown')); /* (102A) */
     if (c.news) body.append(line(`📰 ${stockNewsText({ name: c.name, ...c.news })}`, `lookMeta ${stockTone(c.news.pct)}`)); /* (102A: today's latest news) */
     const today = stockToday(c); const days = (c.week || []).filter((x) => Number(x) > 0).length; /* (fewer than 7: 「상장 n일째」) */
     const top = sEl('div', 'stocksDetail'); top.append(sEl('span', 'stocksPrice big', stockWon(c.price)), sEl('span', `stocksChange ${stockTone(today)}`, `오늘 ${stockSign(today)}`), sEl('span', `stocksChange ${stockTone(ch)}`, `어제보다 ${stockSign(ch)}`)); body.append(top);
-    body.append(line('오늘', 'lookMeta stocksLabel'), stockSpark(c.today, 260, 60, stockTone(today)), line(days < 7 ? `상장 ${Math.max(1, days)}일째` : '지난 7일', 'lookMeta stocksLabel'), stockSpark(c.week, 260, 60));
+    body.append(line(mine ? `오늘 (점선: 내 평균 산 값 ${stockWon(mine.avg)})` : '오늘', 'lookMeta stocksLabel'), stockSpark(c.today, 260, 60, stockTone(today), mine?.avg), line(days < 7 ? `상장 ${Math.max(1, days)}일째` : '지난 7일', 'lookMeta stocksLabel'), stockSpark(c.week, 260, 60, null, mine?.avg)); /* (1.10.351 ③) */
     body.append(line(mine ? `가진 주식 ${mine.qty.toLocaleString('ko-KR')}주 · 평균 ${stockWon(mine.avg)} · ${stockSign(mine.gain)}` : '가진 주식이 없어요.', 'lookMeta'));
     const qty = sEl('input', 'stocksQtyInput'); qty.type = 'number'; qty.min = '1'; qty.max = '1000'; qty.value = '1'; qty.inputMode = 'numeric'; qty.setAttribute('aria-label', '몇 주');
     const note = line('', 'lookMeta stocksNote'); const fee = (n) => Math.max(1, Math.ceil(c.price * n * 0.005));

@@ -161,11 +161,11 @@ const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사
 // this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
 async function stockRank(now, me = null) {
   const all = await pointStore.questAll('stocks'); const rows = []; const stockMarket = await stocksMarket();
-  for (const { userId, doc } of all) { const r = IslandStocks.weekReturn(stockMarket, doc, now); if (r !== null && Number.isFinite(r)) rows.push({ userId, r: Math.round(r * 10) / 10 }); }
+  for (const { userId, doc } of all) { const r = IslandStocks.weekReturn(stockMarket, doc, now); if (r !== null && Number.isFinite(r)) rows.push({ userId, r: Math.round(r * 10) / 10, gain: IslandStocks.weekGain(stockMarket, doc, now) }); } /* (1.10.351 ⑥: the points beside -- the order still by r) */
   rows.sort((a, b) => b.r - a.r || (a.userId < b.userId ? -1 : 1));
-  const top = await Promise.all(rows.slice(0, 10).map(async (x, i) => ({ rank: i + 1, name: await accountName(x.userId).catch(() => '섬 주민'), r: x.r, mine: x.userId === me })));
+  const top = await Promise.all(rows.slice(0, 10).map(async (x, i) => ({ rank: i + 1, name: await accountName(x.userId).catch(() => '섬 주민'), r: x.r, gain: x.gain, mine: x.userId === me })));
   const at = rows.findIndex((x) => x.userId === me);
-  return { week: IslandStocks.weekOf(now), top, me: at >= 0 ? { rank: at + 1, r: rows[at].r } : null, count: rows.length };
+  return { week: IslandStocks.weekOf(now), top, me: at >= 0 ? { rank: at + 1, r: rows[at].r, gain: rows[at].gain } : null, count: rows.length };
 }
 // 정리 매매 (4A): a letter to everyone holding a company that goes away tomorrow -- once a company, checked each minute
 const stockNoticed = new Set();
@@ -4961,7 +4961,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.351' });
+    return sendJson(res, 200, { ok: true, version: '1.10.352' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6759,6 +6759,13 @@ async function requestHandler(req, res) {
     if (out?.error) return sendError(res, out.error === 'PAID' ? 409 : 400, out.error, STOCK_ERRORS[out.error] || '주문하지 못했어요.');
     const { doc } = await pointStore.questDoc(account, 'stocks');
     return sendJson(res, 200, { ok: true, name: out.name, side: out.side, qty: out.qty, price: out.price, fee: out.fee, balance: out.balance, mine: IslandStocks.mine(stockMarket, doc, now) });
+  }
+  if (pathname === '/api/island/stocks/watch' && req.method === 'POST') { // 1.10.351 ④ 관심 종목·알림 (176A): a star, an alert (above / below; 10 at most), cleared
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    const out = await pointStore.questApply(account, 'stocks', (d) => { const r = IslandStocks.watchSet(d, body); return r.error ? { error: r.error } : { doc: r.doc }; });
+    if (out?.error === 'ALERT_MAX') return sendError(res, 409, 'ALERT_MAX', `알림은 ${IslandStocks.WATCH_MAX}개까지예요.`);
+    if (out?.error) return sendError(res, 400, 'BAD_REQUEST', '값을 다시 정해 주세요.');
+    return sendJson(res, 200, { ok: true, star: out.doc.star || [], alerts: out.doc.alerts || {} });
   }
   if (pathname === '/api/island/stocks/rank' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
@@ -10470,7 +10477,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.351 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.352 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

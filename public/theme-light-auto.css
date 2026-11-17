@@ -1692,3 +1692,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .denPaperWord{color:#2b2320}
 :root[data-theme="light"] .denPaperName{color:#2b2320}
 :root[data-theme="light"] .denPaperDate{color:#3b302a}
+:root[data-theme="light"] .stockAvgLine{stroke:currentColor}

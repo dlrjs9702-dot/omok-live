@@ -3800,3 +3800,6 @@ body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:
 @media (max-width:560px){.stocksRow,.stocksCols{grid-template-columns:minmax(0,1.4fr) 64px minmax(0,1fr) minmax(0,.9fr);gap:6px;padding:6px 8px}.stocksCols{padding:0 9px}.stockSpark{width:64px}}
 /* 1.10.350 감정 표현: the first nine cells' keys (1~9) */
 .emoteWheel.grid .emoteCell{position:relative;left:auto;top:auto}.emoteCell .emoteKey{position:absolute;top:2px;left:4px;font-size:11px;line-height:1;font-weight:700;opacity:.75;pointer-events:none}
+
+/* 1.10.351 주식 개편: the news' whole names, its opened part, the log, the average line, the starred, the card */
+.stocksNews .stocksNewsName{white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all;flex:1 1 auto;min-width:0}.stocksNewsMore{padding:4px 8px 8px;display:grid;gap:4px;justify-items:start}.stocksLog{flex-wrap:wrap;row-gap:2px}.stocksLog .stocksName{white-space:normal}.stocksSums{display:grid;gap:2px;margin:4px 0}.stockAvgLine{stroke:currentColor;stroke-width:1;stroke-dasharray:3 3;opacity:.55}.stocksRow.starred .stocksName{font-weight:700}.stocksInfo{display:grid;gap:4px;margin-bottom:6px}.stocksAlert{flex-wrap:wrap;gap:6px}.stocksAlert{display:flex;align-items:center}.stocksAlert .stocksAlertInput{width:6.5em;max-width:6.5em;flex:0 0 6.5em;min-width:0}
