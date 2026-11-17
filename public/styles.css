@@ -3843,3 +3843,27 @@ body.islandMining .islandStick,body.islandMining .islandCtl{visibility:hidden !i
 body.islandMining .plazaHint{display:none}
 body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 @media(prefers-reduced-motion:reduce){.fishArrowSeq span.pop,.fishTug.reeling .fishTugDist{animation:none}}
+/* 1.10.356 가방 개편: kind tabs (a phone's slide sideways), their counts, the 가구 창고's list, a picked thing's card */
+.islandBagTabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px;margin:0 0 6px;-webkit-overflow-scrolling:touch}
+.islandBagTabs::-webkit-scrollbar{display:none}
+.islandBagTabs.hidden{display:none}
+.bagTab{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;border:2px solid rgba(120,90,50,.35);background:#fffaf0;color:#5a4330;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
+.bagTab i{font-style:normal;min-width:18px;padding:0 5px;border-radius:999px;background:#e9dcc3;color:#5a4330;font-size:11px;line-height:18px;text-align:center}
+.bagTab.on{background:#f2b84b;border-color:#c9862a;color:#3b2a14}
+.bagTab.on i{background:#fff3d6}
+.bagTab.none{opacity:.55}
+.islandBagGrid>.islandBagSlot[hidden]{display:none}
+.islandFurnList{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:4px}
+.islandFurnList.hidden{display:none}
+.furnCell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border-radius:14px;border:2px solid rgba(120,90,50,.25);background:#fffaf0;color:#4a3524;text-align:left;cursor:pointer}
+.furnCell b{font-size:13px}.furnCell small{color:#8a7055;font-weight:700}
+.furnCell.picked{border-color:#c9862a;background:#fff1cf}
+.bagDetail{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:14px;background:rgba(255,250,240,.92);color:#4a3524}
+.bagDetailPic{flex:0 0 auto;width:58px;height:58px;display:grid;place-items:center;border-radius:50%;background:#f3e6cc;font-size:34px}
+.bagDetailPic img{width:46px;height:46px;object-fit:contain}
+.bagDetailText{min-width:0;display:flex;flex-direction:column;gap:3px}
+.bagDetailHead{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:15px}
+.bagDetailKind{padding:1px 8px;border-radius:999px;background:#e9dcc3;font-size:11px;font-weight:800}
+.bagDetailBought{padding:1px 8px;border-radius:999px;background:#d8ecff;color:#1f4f7a;font-size:11px;font-weight:800}
+.bagDetailWords{margin:0;font-size:13px;line-height:1.45}
+.bagDetailUses{margin:0;font-size:12px;color:#7a6650;font-weight:700}

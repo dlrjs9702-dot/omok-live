@@ -2639,6 +2639,7 @@
     if (PLANT_GOODS[item.itemId]) out.push([PLANT_GOODS[item.itemId], () => plantGood(item.itemId)]); // B 45
     if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; out.push([walking ? '집에 두기' : '데리고 다니기', () => choosePet(walking ? null : kind)]); }
     if (item.tool) out.push([heldTool === item.tool ? '넣기' : '들기', () => holdTool(item.tool)]); // (3회차 22: in hand -- v1.10.221: a sturdy one held as its kind)
+    if (item.itemId.startsWith('bike_')) { const riding = Boolean(plaza.controller?.cycling?.()); out.push([riding ? '넣기' : '꺼내기', () => { islandBagDialog.close(); plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); }]); } // (1.10.356 탈것·펫: out to ride, back in)
     if (SHOW_GOODS.has(item.itemId)) out.push([heldTool === item.itemId ? '넣기' : '들기', () => holdTool(item.itemId)]); // (v1.10.236 빠른 칸: held, then 상호작용 uses one -- 사용자 「도구처럼 장착한 후에」)
     if (quickKind(item)) out.push(['빠른 칸에', () => { quickPick = quickKind(item); drawQuick(); showToast('아래 빠른 칸을 누르거나 1~5를 눌러요.', 2500); }]);
     return out;
@@ -2646,8 +2647,7 @@
   function pickBagSlot(i) {
     bagPicked = bagPicked === i ? null : i; const item = bagNow?.items[bagPicked];
     for (const [k, s] of [...document.getElementById('islandBagGrid').children].entries()) { s.classList.toggle('picked', k === bagPicked); s.querySelector('.bagMenu')?.remove(); }
-    const at = item && ISLAND_PLACES[item.at]; byId('islandBagInfo').textContent = item ? `${item.name}${item.sizes?.length ? ` · 가장 큰 ${item.sizes[0]} cm${item.qty > 1 ? ` 외 ${item.qty - 1}마리` : ''}` : item.qty > 1 ? ` ×${item.qty}` : ''}${at ? ` · ${at.title}에서 ${at.verb}` : ''}` : ''; // (v1.10.231: a fish's sizes)
-    if (item && /^(fish|insect)_/.test(item.itemId)) { const i = document.createElement('button'); i.type = 'button'; i.className = 'bagInfoMore'; i.textContent = 'ⓘ'; i.setAttribute('aria-label', `${item.name} 설명`); i.addEventListener('click', (event) => { event.stopPropagation(); openDexCard(item.itemId); }); byId('islandBagInfo').append(' ', i); } // (v1.10.257 설명 카드)
+    byId('islandBagInfo').replaceChildren(...(item ? [bagDetail(item)] : [])); // (1.10.356 가방 개편: its card -- v1.10.231 a fish's sizes, 257 ⓘ in it)
     const acts = item ? bagActions(item) : []; if (!acts.length) return;
     const menu = document.createElement('div'); menu.className = `bagMenu${bagPicked < bagCols() ? ' below' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
     for (const [label, run] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b); }
@@ -2712,6 +2712,58 @@
     foot.append(move);
   }
   let boxGrowNow = null;
+  // 1.10.356 가방 개편 (gamecenter-notes docs/bag-tabs-20261117.md, 사용자 183A): tabs by kind (IslandBagData) over the same slots --
+  // each its count; the last one opened kept on this device; 가구: the 창고's pieces not placed yet (their own list); 도구: their
+  // uses and 들기·넣기; 탈것·펫: 꺼내기·넣기. A thing picked: its picture, name, kind, its few words, where it goes, its size.
+  const BAG_DATA = window.IslandBagData;
+  let bagTab = (() => { try { const t = localStorage.getItem('gc.bagTab'); return BAG_DATA?.TABS.some(([k]) => k === t) ? t : 'all'; } catch { return 'all'; } })();
+  let furnNow = null; let furnAt = 0;
+  function drawBagTabs(bag) {
+    const row = byId('islandBagTabs'); if (!BAG_DATA) { row.classList.add('hidden'); return; }
+    const count = {}; for (const e of bag.items) { const t = BAG_DATA.tabOf(e.itemId); count[t] = (count[t] || 0) + 1; } if (furnNow) count.furniture = furnNow.length;
+    row.replaceChildren(...BAG_DATA.TABS.map(([k, label]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'bagTab'; b.setAttribute('role', 'tab'); b.dataset.tab = k; b.setAttribute('aria-selected', String(k === bagTab)); b.classList.toggle('on', k === bagTab);
+      const n = k === 'all' ? bag.items.length : count[k] || 0; b.append(label); if (n) b.append(Object.assign(document.createElement('i'), { textContent: String(n) })); b.classList.toggle('none', k !== 'all' && !n);
+      b.addEventListener('click', () => setBagTab(k)); return b;
+    }));
+    row.querySelector('.bagTab.on')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }
+  function setBagTab(k) { bagTab = k; try { localStorage.setItem('gc.bagTab', k); } catch {} bagPicked = null; if (bagNow) drawIslandBag(bagNow); }
+  function applyBagTab(bag) {
+    const grid = byId('islandBagGrid'); const furn = byId('islandFurnList'); const onPage = !byId('islandDexGrid').classList.contains('hidden') || Boolean(boxPage);
+    byId('islandBagTabs').classList.toggle('hidden', onPage || !BAG_DATA); if (onPage || !BAG_DATA) { furn.classList.add('hidden'); return; }
+    const furnTab = bagTab === 'furniture'; grid.classList.toggle('hidden', furnTab); furn.classList.toggle('hidden', !furnTab);
+    if (furnTab) { drawFurnList(); return; }
+    for (const s of grid.children) { const item = bag.items[Number(s.dataset.i)]; s.hidden = bagTab !== 'all' && (!item || BAG_DATA.tabOf(item.itemId) !== bagTab); }
+  }
+  async function drawFurnList() {
+    const list = byId('islandFurnList');
+    if (!furnNow || Date.now() - furnAt > 15000) { try { const r = await api('/api/island/furniture/mine'); furnNow = (r.pieces || []).filter((p) => !p.placed); furnAt = Date.now(); } catch { furnNow ||= []; } if (bagTab !== 'furniture') return; if (bagNow) drawBagTabs(bagNow); }
+    const groups = new Map(); for (const p of furnNow) { const g = groups.get(p.id) || { ...p, n: 0 }; g.n += 1; groups.set(p.id, g); }
+    const cells = [...groups.values()].map((p) => { const c = document.createElement('button'); c.type = 'button'; c.className = 'furnCell'; c.dataset.item = p.id; c.setAttribute('role', 'listitem'); c.append(Object.assign(document.createElement('b'), { textContent: p.name || p.id }), Object.assign(document.createElement('small'), { textContent: p.n > 1 ? `×${p.n}` : '' })); c.addEventListener('click', () => { for (const x of list.children) x.classList.toggle('picked', x === c); byId('islandBagInfo').replaceChildren(bagDetail({ itemId: p.id, name: p.name || p.id, qty: p.n, furniture: true })); }); return c; });
+    if (!cells.length) cells.push(Object.assign(document.createElement('p'), { className: 'lookMeta', textContent: '아직 놓지 않은 가구가 없어요. 가구점이나 벼룩시장에서 사면 여기 보여요.' }));
+    list.replaceChildren(...cells);
+  }
+  // a thing's card under the bag: its picture, name and kind, its few words, where it goes (who buys it, 집 손보기, 벼룩시장), a
+  // fish's or an insect's size, 「산 것」
+  function bagDetail(item) {
+    const card = document.createElement('div'); card.className = 'bagDetail';
+    const pic = document.createElement('div'); pic.className = 'bagDetailPic'; pic.append(item.furniture ? Object.assign(document.createElement('span'), { textContent: '🪑' }) : itemIcon(item));
+    const text = document.createElement('div'); text.className = 'bagDetailText';
+    const tab = BAG_DATA?.TABS.find(([k]) => k === (item.furniture ? 'furniture' : BAG_DATA.tabOf(item.itemId)))?.[1] || '';
+    const head = document.createElement('p'); head.className = 'bagDetailHead'; head.append(Object.assign(document.createElement('b'), { textContent: item.name }), item.qty > 1 && !item.usesMax ? ` ×${item.qty}` : '', tab ? Object.assign(document.createElement('span'), { className: 'bagDetailKind', textContent: tab }) : '', item.bought ? Object.assign(document.createElement('span'), { className: 'bagDetailBought', textContent: '산 것' }) : '');
+    text.append(head);
+    const words = BAG_DATA?.wordsOf(item.itemId) || BAG_DATA?.wordsOf(String(item.itemId).split('__')[0]) || ''; if (words) text.append(Object.assign(document.createElement('p'), { className: 'bagDetailWords', textContent: words }));
+    const uses = []; const at = ISLAND_PLACES[item.at];
+    if (item.sizes?.length) uses.push(`가장 큰 ${item.sizes[0]} cm${item.qty > 1 ? ` 외 ${item.qty - 1}마리` : ''}`);
+    if (item.usesMax) uses.push(`남은 ${item.uses}/${item.usesMax}회`);
+    if (at) uses.push(`${at.title}에서 ${at.verb}${item.price ? ` · ${Number(item.price).toLocaleString('ko-KR')}P` : ''}`);
+    if (Object.values(FARM.UPKEEP_ITEMS || {}).some((list) => list.includes(item.itemId)) || Object.values(FARM.REPAIR_ITEMS || {}).some((list) => list.includes(item.itemId))) uses.push('집 손보기 재료');
+    if (item.furniture) uses.push('내 집 꾸미기에서 놓아요');
+    if (uses.length) text.append(Object.assign(document.createElement('p'), { className: 'bagDetailUses', textContent: uses.join(' · ') }));
+    if (/^(fish|insect)_/.test(item.itemId)) { const i = document.createElement('button'); i.type = 'button'; i.className = 'bagInfoMore'; i.textContent = 'ⓘ'; i.setAttribute('aria-label', `${item.name} 설명`); i.addEventListener('click', (event) => { event.stopPropagation(); openDexCard(item.itemId); }); head.append(' ', i); } // (v1.10.257 설명 카드)
+    card.append(pic, text); return card;
+  }
   function drawIslandBag(full) {
     const bag = full.bagOnly ? full : { ...full, items: (full.items || []).filter((e) => !e.box), bagOnly: true };
     if ('boxGrow' in full) boxGrowNow = full.boxGrow;
@@ -2750,6 +2802,7 @@
     }
     if (byId('islandDexGrid').classList.contains('hidden')) document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`; // (v1.10.233: on the 도감's page its own count stays)
     byId('islandBagPoints').textContent = pointBalanceText.textContent || '';
+    drawBagTabs(bag); applyBagTab(bag); /* (1.10.356 가방 개편) */
     if (bagPicked != null && bag.items[bagPicked]) { const k = bagPicked; bagPicked = null; pickBagSlot(k); } else { bagPicked = null; byId('islandBagInfo').textContent = ''; }
     if (boxPage) drawBox(boxPage); /* (297: a box's page again, after the bag -- its 「가방에서 옮기기」 reads the bag now) */
   }

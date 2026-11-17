@@ -7318,8 +7318,9 @@ async function requestHandler(req, res) {
   // my storage: what I bought, newest first
   if (pathname === '/api/island/furniture/mine' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
-    const owned = (await pointStore.worldValue(`furniture:${pointAccountForSession(session)}`)) || [];
-    return sendJson(res, 200, { ok: true, pieces: owned.slice().reverse().map((p) => ({ ...p, ...(() => { const g = IslandFurniture.good(p.id); return g ? { name: g.name, model: g.model, rarity: g.rarity, shape: g.shape } : {}; })() })) });
+    const account = pointAccountForSession(session); const owned = (await pointStore.worldValue(`furniture:${account}`)) || [];
+    const h = await homeOf(account).catch(() => null); const placed = new Set([...(h?.pieces || []), ...(h?.yard || [])].map((p) => p.uid)); /* (1.10.356 가방 가구 탭: what is not placed yet) */
+    return sendJson(res, 200, { ok: true, pieces: owned.slice().reverse().map((p) => ({ ...p, ...(placed.has(p.uid) ? { placed: true } : {}), ...(() => { const g = IslandFurniture.good(p.id); return g ? { name: g.name, model: g.model, rarity: g.rarity, shape: g.shape } : {}; })() })) });
   }
   if (pathname === '/api/island/store' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
