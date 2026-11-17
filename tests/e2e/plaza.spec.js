@@ -1107,6 +1107,8 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   await expect.poll(async () => (await islanders(a.page)).length, { timeout: 15000 }).toBeGreaterThanOrEqual(10);
   await expect.poll(async () => (await islanders(b.page)).length, { timeout: 15000 }).toBeGreaterThanOrEqual(10);
   await a.page.waitForTimeout(1500); // both have heard the server clock (pose answers)
+  // (1.10.355: a person's circle by the door cells -- the same answer as going over every door, at doors' zone edges too)
+  { const chk = await a.page.evaluate(() => window.PlazaDebug().doorRadiusCheck(2000)); expect(chk.points).toBeGreaterThan(2000); expect(chk.bad).toBe(0); }
   // Where an islander's round has it is a pure function of the server clock (island-npcs.js `at`), so the two screens
   // show the same places when they agree on that clock. (v1.10.16: comparing the drawn spots directly measured mostly
   // how far apart the two software-rendered pages' last frames were; what is drawn is checked against the round below.)
