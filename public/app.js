@@ -4421,6 +4421,7 @@
       row.append(name, mk('calStart', o.start, '시작일'), mk('calEnd', o.end, '끝날'), off); return row;
     }));
   }
+  byId('denAdminBox')?.addEventListener('toggle', (event) => { if (!event.target.open) return; const box = byId('denAdminInfo'); box.textContent = '불러오는 중…'; api('/api/admin/den/today').then((d) => { box.textContent = `${d.day} · 암호 「${d.word}」 · 쪽지: ${d.note?.where || '없음'}${d.note ? ` (${d.note.x}, ${d.note.z})` : ''}`; }).catch((error) => { box.textContent = error.message; }); }); // (1.10.346 154A)
   byId('calendarBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/calendar').then(drawCalendar).catch((error) => showToast(error.message)); });
   byId('calendarSave')?.addEventListener('click', async () => {
     const override = {}; for (const row of document.querySelectorAll('#calendarTable [data-festival]')) { const start = row.querySelector('.calStart').value; const end = row.querySelector('.calEnd').value; const off = row.querySelector('.calOff').checked; if (start || end || off) override[row.dataset.festival] = { ...(start ? { start } : {}), ...(end ? { end } : {}), off }; }
@@ -5245,10 +5246,14 @@
     // Chips still held from before can go back to points)
     const card = sEl('div', 'mirrorCard stocksCard tedCard'); const chipsOn = Boolean(d.pass); const cashOnly = !chipsOn && (d.chips || 0) > 0;
     card.append(line(chipsOn || cashOnly ? `가진 칩 ${denWon(d.chips)}개 · 포인트와 칩은 1:1이에요.` : '창구 업무는 주식 거래만 봐 드려요.', 'lookMeta stocksHead'));
-    const amt = sEl('input', 'stocksQtyInput tedAmount'); amt.type = 'number'; amt.min = '1'; amt.value = '1000'; amt.inputMode = 'numeric'; amt.setAttribute('aria-label', '칩 수');
+    const amt = sEl('input', 'stocksQtyInput tedAmount'); amt.type = 'number'; amt.min = '1'; amt.value = String(Math.max(1, d.chips || 1)); amt.inputMode = 'numeric'; amt.setAttribute('aria-label', '칩 수');
     const note = line('', 'lookMeta stocksNote');
-    const change = (side) => async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/den/chips', { method: 'POST', body: JSON.stringify({ side, amount: Math.floor(Number(amt.value)), requestId: stockRid() }) }); loadPoints(); showToast(side === 'buy' ? `칩 ${denWon(amt.value)}개로 바꿨어요.` : `칩 ${denWon(amt.value)}개를 포인트로 돌려받았어요.`); openTed(); } catch (error) { note.textContent = error.message; b.disabled = false; } };
-    const row = sEl('div', 'stocksOrder'); row.append(amt, sEl('span', 'lookMeta', '칩'), ...(chipsOn ? [btn('포인트 → 칩', 'primary', change('buy'))] : []), btn('칩 → 포인트', 'secondary', change('sell'))); if (chipsOn || cashOnly) card.append(row); card.append(note);
+    const change = (side) => async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/den/chips', { method: 'POST', body: JSON.stringify({ side, amount: Math.floor(Number(amt.value)), requestId: stockRid() }) }); loadPoints(); showToast(side === 'buy' ? `지갑 ${denWon(r.bought)}포인트를 모두 칩으로 바꿨어요. 책장 쪽으로 가 보세요.` : `칩 ${denWon(amt.value)}개를 포인트로 돌려받았어요.`); openTed(); } catch (error) { note.textContent = error.message; b.disabled = false; } };
+    // (1.10.346 사용자: 입장은 지갑 포인트 전부를 칩으로 -- 50,000P 이상; 예금은 그대로)
+    const min = d.rules?.entryMin || 50000; const enough = (d.wallet || 0) >= min;
+    if (chipsOn && !d.entry) { card.append(line(enough ? `들어가려면 지갑 포인트 ${denWon(d.wallet)}P를 모두 칩으로 바꿔요. (예금은 그대로예요)` : `…${denWon(min)} 포인트는 있어야 해요. 지금 지갑 ${denWon(d.wallet || 0)}P예요.`, 'lookMeta tedEntry')); if (enough) card.append(btn(`지갑 전부 칩으로 (${denWon(d.wallet)}P)`, 'primary', change('buy'))); }
+    if (chipsOn && d.entry) card.append(line('…책장 쪽으로 가 보세요. 칩이 5,000개 아래가 되면 나가셔야 해요.', 'lookMeta tedEntry'));
+    const row = sEl('div', 'stocksOrder'); row.append(amt, sEl('span', 'lookMeta', '칩'), btn('칩 → 포인트', 'secondary', change('sell'))); if ((d.chips || 0) > 0) card.append(row); card.append(note);
     const word = sEl('input', 'tedWord'); word.type = 'text'; word.maxLength = 20; word.placeholder = '…'; word.setAttribute('aria-label', '테드에게 할 말');
     const say = btn('작게 말하기', 'secondary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/den/word', { method: 'POST', body: JSON.stringify({ word: word.value }) }); plaza.controller?.tedSay?.(r.say); if (r.open) { plaza.controller?.setDenDoor?.(true); plazaDialog.close(); } else b.disabled = false; } catch (error) { note.textContent = error.message; b.disabled = false; } });
     const wrow = sEl('div', 'stocksOrder'); wrow.append(word, say); card.append(wrow);
@@ -5282,6 +5287,7 @@
       try {
         const r = await api('/api/island/den/play', { method: 'POST', body: JSON.stringify({ game: t.id, bet: Math.floor(Number(bet.value)), pick, requestId: stockRid() }) });
         plaza.controller?.denShow?.(k, t.id, r.outcome); denState = { ...denState, chips: r.chips, shown: r.shown };
+        if (r.kicked) { setTimeout(() => { closeIslandWindows(); plaza.controller?.setSpace?.(r.kicked.space, r.kicked.x, r.kicked.z); loadPoints(); showToast(`칩이 5,000개 아래가 되어 테드가 내보냈어요.${r.kicked.refund ? ` 남은 칩 ${denWon(r.kicked.refund)}개는 포인트로 돌려드렸어요.` : ''}`, 5000); }, t.id === 'slots' ? 2400 : t.id === 'roulette' ? 2800 : 1300); } /* (1.10.346 사용자: 칩 5,000 아래 -- 판이 끝난 뒤 나가요) */
         const what = t.id === 'dice' ? `주사위 ${r.outcome.dice.join(' · ')} (합 ${r.outcome.sum}${r.outcome.triple ? ', 세 개 같음' : ''})` : t.id === 'hilo' ? `다음 카드 ${DEN_RANK[r.outcome.next]}` : t.id === 'roulette' ? `${r.outcome.n} ${r.outcome.n === 0 ? '초록' : r.outcome.red ? '빨강' : '검정'}` : r.outcome.reels.map((s) => d.rules?.symbols?.[s] || s).join(' · ');
         setTimeout(() => { out.textContent = `${what} → ${r.back ? `${denWon(r.back)}칩 받았어요` : '잃었어요'} · 가진 칩 ${denWon(r.chips)}개`; card.querySelector('.stocksHead').textContent = `가진 칩 ${denWon(r.chips)}개 · 한 판 1~${denWon(d.rules?.betMax || 5000)}칩`; if (t.id === 'hilo') { const h = card.querySelectorAll('.lookMeta')[1]; if (h) h.textContent = `지금 카드: ${DEN_RANK[r.shown]} · 다음 카드가 더 높을까요, 낮을까요? (같으면 짐)`; } b.disabled = false; }, t.id === 'slots' ? 2200 : t.id === 'roulette' ? 2600 : 1100);
       } catch (error) { out.textContent = error.message; b.disabled = false; }

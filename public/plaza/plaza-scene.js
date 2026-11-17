@@ -1909,8 +1909,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   const fmtLeft = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)); const d = Math.floor(m / 1440); const h = Math.floor((m % 1440) / 60); return d ? d + '일 ' + h + '시간' : h ? h + '시간 ' + (m % 60) + '분' : (m % 60) + '분'; };
   function drawRecordFaces(now) {
-    const T = recordTower; const d = T.data; const R = globalThis.SoloRanking; if (!d || !R) return;
-    const games = d.games || []; if (!games.length) return;
+    const T = recordTower; const d = T.data; const R = globalThis.SoloRanking; const games = d?.games || [];
+    if (!d || !R || !games.length) { /* (1.10.346 총괄 #4: before the board's data or when it failed -- a face that says so, never a dark screen) */
+      if (T.drawnKey === 'loading') return; T.drawnKey = 'loading'; const { c, t } = T.F.board_face; const x = c.getContext('2d'); const W = c.width / 2; const H = c.height / 2; x.setTransform(2, 0, 0, 2, 0, 0);
+      x.fillStyle = '#121a3a'; x.fillRect(0, 0, W, H); x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd34d'; x.font = '900 52px system-ui, sans-serif'; x.fillText('🏆 기록의 탑', W / 2, H / 2 - 40);
+      x.fillStyle = '#f4f5fc'; x.font = '800 36px system-ui, sans-serif'; x.fillText('순위를 불러오는 중', W / 2, H / 2 + 34); x.setTransform(1, 0, 0, 1, 0, 0); t.needsUpdate = true; return;
+    }
     if (now >= T.turnAt) { T.shown = (T.shown + (T.turnAt ? 1 : 0)) % games.length; T.turnAt = now + 6000; }
     const g = games[T.shown]; const left = fmtLeft(d.endsAt - (Date.now() + serverOffset)); const rib = T.ribbon && now < T.ribbon.until ? T.ribbon : null;
     const key = d.week + '|' + T.shown + '|' + JSON.stringify(g) + '|' + left + '|' + (rib ? rib.name : ''); if (key === T.drawnKey) return; T.drawnKey = key;

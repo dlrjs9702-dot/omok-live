@@ -443,6 +443,7 @@
           <p class="lookMeta">미리 보기는 이 화면에만 보여요. 다른 사람과 서버는 그대로예요.</p></div>
           <form id="contestForm" class="joinForm islandTimeForm"><label for="contestTime">매일 섬 대회</label><input id="contestTime" type="time" value="14:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><select id="contestNextKind" aria-label="다음 대회 종목"></select><button class="secondary" type="submit">적용</button></form>
           <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
+          <details id="denAdminBox" class="economyBox"><summary>지하 도박장 오늘</summary><p class="lookMeta">오늘 암호와 쪽지가 놓인 벤치예요. 관리자에게만 보여요.</p><div id="denAdminInfo" class="lookMeta"></div></details>
           <details id="calendarBox" class="economyBox"><summary>행사 달력</summary><p class="lookMeta">행사를 끄거나 기간을 옮길 수 있어요(서울 날짜). 빈칸은 원래 날짜. 매주 대회는 토 낚시·일 곤충 10~22시.</p><div id="calendarTable"></div><button id="calendarSave" class="primary" type="button">저장</button></details>
           </section>
           <section class="adminTab" data-tab="economy" role="tabpanel" aria-label="경제">

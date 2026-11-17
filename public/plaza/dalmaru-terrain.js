@@ -206,7 +206,7 @@
     // walk goes down to 배 타는 곳 (266.5°, its middle 105.3 from the bay's centre -- the walk's edge 102.6; clear of the
     // photographer's spot west of it); faces the water)
     mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
-    omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },
+    omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: 9.9, z: -74.1, face: [0, -84] }, /* (1.10.346 155A C안: across the north walk from the 벼룩시장 board) */
     hallLamps: [[-2.8, -22], [3.2, -30], [-2.8, -38]], // the three lamps the electrician mends, beside the walk to the water (off it)
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
     // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)

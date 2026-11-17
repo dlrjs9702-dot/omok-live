@@ -371,7 +371,11 @@
   // 1.10.338 섬 경매장 (notes island-auction-20261115 51C, plaza-relayout 55A; assets 137): the 경매 게시판 at (-9, -64), its face (the
   // model's -Z) east to the 물가 거리-분수 axis -- across the 13 m 「경제 거리」 from the 증권거래소; SPACE at (-6.9, -64), 4 m clear before
   // it; its plinth's three circles (solids.json, r 0.52 at the model's x -1.45 / 0 / 1.45, z 0.06)
-  const AUCTION_BOARD = Object.freeze({ x: -9, z: -64, yaw: -Math.PI / 2, stand: Object.freeze({ x: -6.9, z: -64 }) });
+  // (1.10.346 사용자 155A C안: from (-9, -64) facing east -- its side to the fountain and the main walk, the birthday corner behind it --
+  // to (-4.1, -68.5) beside the north walk, its face to the fountain; SPACE 2.1 m before it)
+  const AUCTION_BOARD = Object.freeze({ x: -4.1, z: -68.5, yaw: yawTo(-4.1, -68.5, [0, -84]), stand: Object.freeze({ x: -3.56, z: -70.53 }) });
+  // (155A: the birthday corner keeps its one small circle -- it stands only on a birthday; circles across its banner would be walls
+  // nobody sees on the other days, dalmaru-walk unseen)
   const auctionSolids = () => [-1.45, 0, 1.45].map((u) => { const B = AUCTION_BOARD; return { x: B.x + Math.cos(B.yaw) * u + Math.sin(B.yaw) * 0.06, z: B.z - Math.sin(B.yaw) * u + Math.cos(B.yaw) * 0.06, r: 0.52 }; });
   // v1.10.250 기록의 탑 (assets 100 record_tower): before the 게임관's door, its front (-Z) to the door (+x); its ground 8.55 m along
   // world z (the model's x -4.95 ~ +3.6) and 1.94 m deep (its z -1.385 ~ +0.55 -> world x +1.385 ~ -0.55): circles over it
