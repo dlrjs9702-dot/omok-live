@@ -233,6 +233,8 @@ test('마당 농사·집 손보기: 텃밭 칸 SPACE → 심기 → 다 자라�
     const weeds0 = await bag('weed'); await goTo(weed, '잡초 뽑기'); await press();
     await expect.poll(() => bag('weed'), { timeout: 15000 }).toBe(weeds0 + 1);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().yardFarm().doors.filter((k) => k.startsWith('yardweed:')).length), { timeout: 20000 }).toBe(2);
+    // (1.10.351 Codex 341-350 P1: a weathered house's box opens, its 고치기 row in it -- it threw before)
+    await goTo('upkeep:box', '손보기 상자'); await press(); await expect(dialog.locator('.upkeepRepair')).toBeVisible(); await dialog.locator('.upkeepCard button', { hasText: '닫기' }).click();
     // 1.10.348 4b: two weeks missed -- 낡음: 139's overlay on the house, its leaning fence blocks; 145's cockroaches about it (8),
     // their legs turned; 「벌레 흐리게」 (☰) the dots; 부서짐: the next overlay, the December dressing off, 15
     const F = require('../../public/plaza/island-farm.js'); const size = H.stageOf(1).house;

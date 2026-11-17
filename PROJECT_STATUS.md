@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.351 긴급 고침 (Codex 341~350 P1 2 + P2 3, notes docs/codex-review-341-350.md)
+
+- P1 #1 채굴 타이밍 위조: 누를 때마다 POST /api/island/quarry/tap, 서버가 받은 시각과 맞는 것만(IslandQuarry.tapAt, 오간 시간 -150~2000 ms); finish는 서버가 기록한 타격으로 판정(body.taps 안 읽음).
+- P1 #2 손보기 상자: post를 고치기 버튼보다 먼저 선언(낡은 집에서 ReferenceError).
+- P2 #5 화강암 벽 실패 보상 없음(작은 돌·곡괭이 닳음 없음).
+- P2 #6 화강암 벽 미니게임: plaza-scene quarryWall(PROPS rock_wall_a_granite holder)로 시작.
+- P2 #11 도박 구금: 구치소 상태 GET·퇴장 요청에서 jailable 다시 판단, 자정 지나면 풀림.
+- 나머지 P2(#3 #4 #7 #8 #9 #10)는 다음 무게·검토 고침 묶음.
+- 시험: island-quarry 단위(제때 보낸 타격·끝에 몰아 보낸 타격·벽 실패·tapAt), 도박장 단위(자정 지나 풀림), e2e 채석장(바위+화강암 벽 PC·폰), 마당(낡은 집 손보기 상자 열림).
+
 ## v1.10.350 체납 불이익 강화 묶음 (notes tax-bill-design 끝, underground-den 끝, island-expansion 끝, issue-log-review-20261116 끝)
 
 - 체납 막기(서버 IN_ARREARS): 주식 주문, 벼룩시장 /list, 도박장 입장·칩 사기, 도장 가게 buy, 택시 자유이용권. 반성문 5줄 + 체납 중 통과마다 3줄(30줄까지, island-jail sentencesOf 23문장 돌려 씀), 다 내면 5줄(jail doc taxEssays). 184A: 체납 반성문 친해도 안 줄음, 체납으로 갇힐 때 하루 한 번 구치소장 호감도 -1·연속 +1씩·하루 -5까지(IslandJail.taxJailTake, point-store affinityTake 0 아래 안 감).
@@ -29,13 +39,3 @@
 - tools/backup/: fetch.js(관리자 로그인 → DB백업\YYYY-MM-DD.bak → 로그아웃, 개인 키로 열어 확인, 30일 지난 것 지움, backup.log), keygen.js·open.js·restore.js(localhost만)·install-task.ps1(매일 05:30, 놓친 실행은 켜지면 바로)·README(되살리기 연습). 개인 키·설정·백업은 저장소 밖(DB백업\), .gitignore.
 - 시험: test/db-backup(봉인·다른 키·변조, DB 커서 묶음, API 401·403·모든 표·하루 6번, fetch.js 날짜 파일·30일·비밀번호 없으면 FAILED).
 - 남은 것: 관리자 비밀번호는 사용자가 DB백업\config.local.json에 직접, 예약 작업 등록은 총괄이 사용자 확인 뒤, 실제 Postgres 첫 받기 확인.
-
-## v1.10.348 4b 집 낡음·수리·바퀴벌레·오늘 알림 (notes gather-must-ideas §64~126, review-plan §1-12)
-
-- island-farm: WEAR 4단계, wearOf(빠진 주마다 한 단계, 처음 판정은 예전 허름함, 낸 주는 그대로), REPAIR 81A(새 섬 전 통나무 = 나뭇가지 두 배), decayOf·decaySolids(139 solids), BUGS 3/8/15.
-- 서버: upkeepNow가 level·levelWeek 저장 + 단계마다 관공서 편지, 집 들어가기 HOUSE_BROKEN(부서짐 모두)·HOUSE_WORN(낡음 손님), place·yard·style(방문 허용 빼고) 잠김, 손보기 'repair'(여러 종류 한 번에 take, 부서짐 수리비 20,000P payKey), farmView wear, point-store takeAll.
-- 화면: 139 decay-v1 덮개(집 뿌리 자식, 울타리 원 막힘 + 대신 상자), 부서짐부터 125 장식 끔, 145 바퀴벌레(마당 30 m 안·집 안, 세발 걸음·더듬이, 1.6 m 안이면 흩어지고 숨음, 가끔 한 마리 달려옴, 바스락 소리, 집 안 바닥 얼룩), ☰ 「벌레 흐리게」(gc.bugsDim, 점 모델), 「오늘 알림」 창(집·출석·정리 매매·공지; 테스트에서는 gc.testTodayNotice일 때만), 손보기 상자 창 단계·고치기 줄.
-- 에셋: 139 decay-v1 24개, 145 house-bugs-v1 3개 + 덧칠 4장(manifest·budgets·REGISTRY·e2e 제외·파이프라인 목록).
-- 시험: island-farm(단계·수리 재료), house-wear(낡음 잠김·부서짐 못 들어감·수리비), yard e2e(낡음 덮개·울타리 막힘·벌레 8→15·흐리게·오늘 알림).
-- 문제 기록 11-17 「이것도 너무 잡초같은데」: 숲 덮개 ground.fern·ground.shrub(109 plant_low, 잡초와 같은 부채 잎)는 숲 한가운데 나무 2.4 m 안에서만 남기고(고사리 61→12, 관목 34→7), 나머지는 토끼풀 덩이·이끼. 잡초 닮은 장식 조사: plant_low(바꿈), ground.tallgrass(111A 때 들꽃), 갈대 angular.grass_*(강·호수 물가 0.2~1.6 m, 잡초가 안 나는 곳, 둠), pilot grass_*·bush_fern(잡초 자신). 사진 notes img/house-wear-348.
-- 남은 것: 벽 위 벌레·벽 얼룩(바닥만), 마당 덧칠 없음; 압류(seized)는 4c.

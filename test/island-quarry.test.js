@@ -87,12 +87,15 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
     await req('/api/plaza/state', a, { x: stand.x, z: stand.z, yaw: stand.yaw, moving: false });
     if (draw !== null) await req('/api/test/quarry/plan', a, { draw });
     const s = await req('/api/island/quarry/start', a, { rock: rock.id, spot: 0 }); assert.equal(s.status, 200, JSON.stringify(s.data)); assert.equal(s.data.ms, Q.MINE_MS); assert.equal(s.data.plan.length, Q.ROUNDS); assert.equal(s.data.ore, 'granite');
-    const taps = s.data.plan.map((p) => (press ? { spot: p.spot, ms: 200 } : null));
+    const t0 = Date.now(); const taps = s.data.plan.map((p) => ({ spot: p.spot, ms: 200 })); /* (1.10.351: the page's list at finish is not read -- a forged one) */
     const rid = crypto.randomUUID(); assert.equal((await req('/api/island/quarry/finish', a, { rock: rock.id, spot: 0, taps, requestId: rid })).data.error, 'COLLECT_TOO_SOON');
-    await new Promise((r) => setTimeout(r, Q.MINE_MS));
+    if (press) await pressTimed(s.data.plan, t0);
+    await new Promise((r) => setTimeout(r, Math.max(0, t0 + Q.MINE_MS - Date.now())));
     const f = await req('/api/island/quarry/finish', a, { rock: rock.id, spot: 0, taps, requestId: rid }); assert.equal(f.status, 200, JSON.stringify(f.data));
     assert.deepEqual((await req('/api/island/quarry/finish', a, { rock: rock.id, spot: 0, taps, requestId: rid })).data, f.data, '같은 요청은 한 번'); return f.data;
   };
+  // 1.10.351 (Codex 341-350 P1): each press sent when it happens, 200 ms into its light
+  const pressTimed = async (plan, t0) => { for (const [k, p] of plan.entries()) { await new Promise((r) => setTimeout(r, Math.max(0, t0 + k * Q.ROUND_MS + p.at + 200 - Date.now()))); assert.equal((await req('/api/island/quarry/tap', a, { round: k, spot: p.spot, ms: 200 })).status, 200); } };
   const miss = await mine(false); assert.equal(miss.ore, 0); assert.equal(miss.itemId, 'stone'); assert.equal(miss.left, Q.ORE_PER_ROCK, '바위 그대로'); assert.equal(miss.worn.uses, Items.TOOL_USES.pickaxe - 1, '곡괭이만 닳음');
   assert.equal((await req('/api/island/quarry', a)).data.daily.n, 0, '하루 한도 그대로');
   const f1 = await mine(true, 0.1); assert.equal(f1.ore, 1); assert.equal(f1.itemId, 'ore_granite'); assert.equal(f1.name, '화강암'); assert.equal(f1.hits, 3); assert.equal(f1.left, Q.ORE_PER_ROCK - 1); assert.equal(f1.worn.uses, Items.TOOL_USES.pickaxe - 2); assert.equal(f1.daily.n, 1);
@@ -107,7 +110,23 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
   assert.deepEqual([Q.DAILY, Q.ORE_PER_ROCK], [60, 6], '사용자 2026-11-17: 하루 60, 바위 6');
   await req('/api/test/quarry/set', a, { daily: Q.DAILY }); await req('/api/plaza/state', a, { x: stand.x, z: stand.z, yaw: stand.yaw, moving: false });
   assert.equal((await req('/api/island/quarry/start', a, { rock: rock.id, spot: 0 })).data.error, 'DAILY_CAP', '바위는 하루 한도');
-  const ws = Q.standOf(Q.WALL, 'full', 1); const wallMine = async () => { await req('/api/plaza/state', a, { x: ws.x, z: ws.z, yaw: ws.yaw, moving: false }); await req('/api/test/quarry/plan', a, { draw: 0.99 }); const s = await req('/api/island/quarry/start', a, { rock: 'wall', spot: 1 }); assert.equal(s.status, 200, JSON.stringify(s.data)); assert.equal(s.data.ore, 'granite'); const taps = s.data.plan.map((p) => ({ spot: p.spot, ms: 200 })); await new Promise((r) => setTimeout(r, Q.MINE_MS)); const f = await req('/api/island/quarry/finish', a, { rock: 'wall', spot: 1, taps, requestId: crypto.randomUUID() }); assert.equal(f.status, 200, JSON.stringify(f.data)); return f.data; };
+  const ws = Q.standOf(Q.WALL, 'full', 1); const wallMine = async (how = 'press') => { await req('/api/plaza/state', a, { x: ws.x, z: ws.z, yaw: ws.yaw, moving: false }); await req('/api/test/quarry/plan', a, { draw: 0.99 }); const s = await req('/api/island/quarry/start', a, { rock: 'wall', spot: 1 }); assert.equal(s.status, 200, JSON.stringify(s.data)); assert.equal(s.data.ore, 'granite'); const t0 = Date.now(); const taps = s.data.plan.map((p) => ({ spot: p.spot, ms: 200 }));
+    if (how === 'press') await pressTimed(s.data.plan, t0); await new Promise((r) => setTimeout(r, Math.max(0, t0 + Q.MINE_MS - Date.now())));
+    if (how === 'late') for (const [k, p] of s.data.plan.entries()) await req('/api/island/quarry/tap', a, { round: k, spot: p.spot, ms: 200 }); /* (the plan's taps all sent at the end, as Codex's forge) */
+    const f = await req('/api/island/quarry/finish', a, { rock: 'wall', spot: 1, taps, requestId: crypto.randomUUID() }); assert.equal(f.status, 200, JSON.stringify(f.data)); return f.data; };
   const w1 = await wallMine(); assert.equal(w1.itemId, 'ore_granite', '벽은 화강암만 (확률 0.99에도)'); assert.equal(w1.wall, true); assert.equal(w1.left, null); assert.equal(w1.daily.n, Q.DAILY, '한도에 안 들어감');
   const w2 = await wallMine(); assert.equal(w2.itemId, 'ore_granite', '비지 않음');
+  // 1.10.351 Codex 341-350: the plan's taps made up and sent at the end -- a miss (P1); a miss at the wall gives nothing (#5)
+  const bagOf = async () => { const b = (await req('/api/island/bag', a)).data; return (b.bag?.items || b.items || []).filter((e) => e.itemId === 'stone').reduce((n, e) => n + e.qty, 0); };
+  const stones = await bagOf(); const forged = await wallMine('late'); assert.equal(forged.ore, 0, '끝에 몰아 보낸 타격은 늦음'); assert.ok(forged.hits < Q.HITS_NEEDED, `hits ${forged.hits}`); /* (only the last swing's can still fit the trip's allowance) */
+  const missed = await wallMine('none'); assert.equal(missed.ore, 0); assert.equal(missed.itemId, null, '벽에서 못 맞히면 작은 돌 없음'); assert.equal(await bagOf(), stones, '작은 돌 그대로');
+});
+
+test('채석장 타격 시각 (1.10.351 Codex P1): 서버가 받은 시각과 맞는 것만', () => {
+  const plan = [{ spot: 1, at: 400, light: 1000 }, { spot: 2, at: 500, light: 1000 }];
+  assert.deepEqual(Q.tapAt(plan, 0, { spot: 1, ms: 200 }, 400 + 200 + 80), { spot: 1, ms: 200 }, '오간 시간 80 ms');
+  assert.equal(Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 6000).late, true, '끝나고 보낸 것');
+  assert.equal(Q.tapAt(plan, 1, { spot: 2, ms: 500 }, 2000 + 500 + 100).late, true, '서버보다 이른 주장');
+  assert.equal(Q.judge(plan, [Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 6000), Q.tapAt(plan, 1, { spot: 2, ms: 500 }, 6000)]).hits, 0);
+  assert.equal(Q.tapAt(plan, 5, { spot: 1, ms: 1 }, 1), null);
 });
