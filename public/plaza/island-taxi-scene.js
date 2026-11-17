@@ -57,9 +57,10 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   let night = false;
   // each frame: `rides` [{ key, ride }] I know of and `out` { stopId: ride } the server's -- one car a stop (294 7): on its ride, then
   // empty back the same road (IslandTaxi.carAt) -- the standing one away till it is in its place again, its sign the seconds left
+  const live = new Set(); const byStop = {}; /* (1.10.353 재사용 ③: kept between frames, emptied each) */
   function step(now, rides, people = [], out = {}) { // (v1.10.285 people: [{ x, z }] on foot -- a running car within 2 m of one honks)
-    const live = new Set(); const byStop = { ...out }; for (const { ride } of rides) if (!byStop[ride.from] || byStop[ride.from].startedAt <= ride.startedAt) byStop[ride.from] = ride;
-    for (const [key, ride] of Object.entries(byStop)) {
+    live.clear(); for (const k in byStop) delete byStop[k]; Object.assign(byStop, out); for (const { ride } of rides) if (!byStop[ride.from] || byStop[ride.from].startedAt <= ride.startedAt) byStop[ride.from] = ride;
+    for (const key in byStop) { const ride = byStop[key];
       const p = X.carAt(ride, now); if (!p) continue; live.add(key);
       let rec = moving.get(key); if (!rec) { rec = car(); moving.set(key, rec); }
       placeCar(rec, p); rec.running = ['start', 'run', 'stop', 'back'].includes(p.phase); rec.rate = X.rateOf(ride, now); rec.waitMs = ride.blockedAt ? Math.max(0, now - ride.blockedAt) : 0;
@@ -75,7 +76,8 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       const say = left ? `🚕 돌아오는 중 · ${left}초` : ''; /* (294: big, over the stop -- the sign's seconds were too small to read) */
       if (tag && say !== st.said) { st.said = say; if (st.label) { group.remove(st.label); st.label.traverse((o) => { o.material?.map?.dispose?.(); o.material?.dispose?.(); }); st.label = null; } if (say) { st.label = tag(say); st.label.position.set(st.s.shelter.x, groundY(st.s.shelter.x, st.s.shelter.z) + 3.7, st.s.shelter.z); group.add(st.label); } }
     }
-    for (const rec of [...moving.values(), ...stops.map((s) => s.standing)]) for (const m of rec.lights) m.emissiveIntensity = night ? 1.2 : 0;
+    for (const rec of moving.values()) for (const m of rec.lights) m.emissiveIntensity = night ? 1.2 : 0;
+    for (const s of stops) for (const m of s.standing.lights) m.emissiveIntensity = night ? 1.2 : 0;
     lamp.emissiveIntensity = night ? 1.2 : 0;
   }
   // where a rider sits in a ride's car now (their pose then: seated, facing the car's way)

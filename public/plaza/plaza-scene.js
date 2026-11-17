@@ -232,9 +232,24 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // v1.10.2 말풍선: a chat message over its sender for a few seconds (both lines wrap at the bubble's width).
   const BUBBLE_MS = 5500;
-  function makeBubble(text, ring = null) { // (ring: R4 the warden's time left, 0..1, round the bubble's right end)
+  // (1.10.353 재사용 ②: one canvas, texture and sprite a character, drawn again for each line -- the canvas as tall as three lines,
+  // the texture showing its top `h` (repeat/offset); before, a new canvas, texture and GPU upload a line, thrown away 5.5 s later)
+  const BUBBLE_H = 60 + 3 * 50; let bubbleMeasure = null;
+  function bubbleOf(c, text, ring = null) {
+    let k = c.bubbleKit;
+    if (!k) {
+      const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = BUBBLE_H; const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false, depthTest: false, transparent: true })); sprite.renderOrder = 3; k = c.bubbleKit = { canvas, texture, sprite };
+    }
+    const h = drawBubble(k.canvas, text, ring); k.texture.repeat.set(1, h / BUBBLE_H); k.texture.offset.set(0, 1 - h / BUBBLE_H); k.texture.needsUpdate = true;
+    k.sprite.scale.set(2.6, (2.6 * h) / 512, 1); k.sprite.material.opacity = 1; k.sprite.visible = true;
+    k.sprite.userData = { text: String(text), until: performance.now() + BUBBLE_MS, kit: true }; return k.sprite;
+  }
+  // a bubble off its character: a kit's kept for the next line, any other thrown away
+  function dropBubble(b) { if (!b) return; if (b.userData?.kit) b.parent?.remove(b); else disposeTag(b); }
+  function drawBubble(canvas, text, ring) { // -> the height drawn, from the canvas's top
     const font = '700 40px Pretendard, "Malgun Gothic", system-ui, sans-serif';
-    const c0 = document.createElement('canvas').getContext('2d'); c0.font = font;
+    const c0 = (bubbleMeasure ||= document.createElement('canvas').getContext('2d')); c0.font = font;
     const lines = []; let line = ''; let cut = false;
     for (const ch of String(text)) {
       if (c0.measureText(line + ch).width > 420 && line) { lines.push(line); line = ''; if (lines.length === 3) { cut = true; break; } }
@@ -242,35 +257,30 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     if (!cut && line) lines.push(line);
     if (cut) lines[2] = `${lines[2].slice(0, -1)}…`; // three lines at most (7회차 2: about 30 letters -- the islanders' bubble lines are kept that short)
-    const width = Math.min(480, Math.max(...lines.map((l) => c0.measureText(l).width)) + 56);
-    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 60 + lines.length * 50;
-    const c = canvas.getContext('2d'); const left = (512 - width) / 2; const bodyH = canvas.height - 26;
+    const width = Math.min(480, Math.max(...lines.map((l) => c0.measureText(l).width)) + 56); const H = 60 + lines.length * 50;
+    const c = canvas.getContext('2d'); c.clearRect(0, 0, canvas.width, canvas.height); const left = (512 - width) / 2; const bodyH = H - 26;
     c.fillStyle = 'rgba(255,255,255,.96)'; c.strokeStyle = 'rgba(60,48,36,.35)'; c.lineWidth = 3;
-    c.beginPath(); c.roundRect(left, 4, width, bodyH, 26); c.moveTo(244, bodyH + 2); c.lineTo(256, canvas.height - 4); c.lineTo(270, bodyH + 2); c.fill(); c.stroke();
+    c.beginPath(); c.roundRect(left, 4, width, bodyH, 26); c.moveTo(244, bodyH + 2); c.lineTo(256, H - 4); c.lineTo(270, bodyH + 2); c.fill(); c.stroke();
     c.fillStyle = '#2b2220'; c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle';
     lines.forEach((l, i) => c.fillText(l, 256, 4 + bodyH / 2 - (lines.length - 1) * 25 + i * 50)); // v1.10.45: centred in the body (it sat 12 px high)
     if (ring !== null) { const rx = left + width - 14; c.lineWidth = 7; c.strokeStyle = 'rgba(60,48,36,.18)'; c.beginPath(); c.arc(rx, 22, 15, 0, Math.PI * 2); c.stroke(); c.strokeStyle = ring > 0.3 ? '#3f8f5a' : '#c0392b'; c.beginPath(); c.arc(rx, 22, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, ring)); c.stroke(); }
-    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false, depthTest: false, transparent: true }));
-    sprite.scale.set(2.6, (2.6 * canvas.height) / 512, 1); sprite.renderOrder = 3;
-    sprite.userData = { text: String(text), until: performance.now() + BUBBLE_MS };
-    return sprite;
+    return H;
   }
   function say(c, text) {
     if (!c) return;
-    disposeTag(c.bubble);
-    c.bubble = makeBubble(text);
+    dropBubble(c.bubble);
+    c.bubble = bubbleOf(c, text);
     c.bubble.position.y = bubbleY(c);
     c.root.add(c.bubble); startTalk(c, text); /* (v1.10.287) */
   }
   function stepBubble(c, now) {
     const b = c?.bubble; if (!b) return;
     const left = b.userData.until - now;
-    if (left <= 0) { disposeTag(b); c.bubble = null; return; }
+    if (left <= 0) { dropBubble(b); c.bubble = null; return; }
     b.material.opacity = Math.min(1, left / 600);
   }
   const disposeTag = (tag) => { if (!tag) return; tag.material.map.dispose(); tag.material.dispose(); tag.parent?.remove(tag); };
-  const disposeCharacter = (c) => { assets.release(c); disposeTag(c.tag); disposeTag(c.bubble); c.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); c.root.parent?.remove(c.root); };
+  const disposeCharacter = (c) => { assets.release(c); disposeTag(c.tag); dropBubble(c.bubble); if (c.bubbleKit) { disposeTag(c.bubbleKit.sprite); c.bubbleKit = null; } c.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); c.root.parent?.remove(c.root); };
 
 
   // v1.10.0 게임 아일랜드: the island itself (terrain, sea, streams, bridges, walks, woods, harbour) comes from island.js;
@@ -2542,7 +2552,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the fish and the bite; here only what shows -- FishCast (the bobber lands at its cast_line, 0.48 s), FishWait until the
   // bite, then FishBite with the bobber bobbing under a 「!」 for the bite's window; FishCatch (the rod let go at 0.42 s,
   // the fish in the hand at 0.68 s) or FishMiss. The line runs from the rod's tip (FISH_TIP in the rod's own space).
-  const FISH_TIP = new THREE.Vector3(0.08, 1.38, 0);
+  const FISH_TIP = new THREE.Vector3(0.08, 1.38, 0); const lineFrom = new THREE.Vector3(); /* (1.10.353 ③: the line's start, kept) */
   const FISH_HOLD = { default: { at: [0, 0, -0.12], rot: [0, Math.PI / 2, 0] }, giant_tuna: { at: [0.18, -0.12, -0.14], rot: [0, Math.PI / 2, 0] },
     // v1.10.231 assets 85 (its manifest's hand: Hand.R, measured): the flank to the palm, the crab's shell upright, the sturgeon in both hands
     ...Object.fromEntries(Object.entries({ yellowtail: -0.1653, red_seabream: -0.1333, horse_mackerel: -0.1119, filefish: -0.1057, cod: -0.1538, squid: -0.1264, seahorse: -0.1073, crayfish: -0.1064, medaka: -0.0996, masu_salmon: -0.1247 }).map(([sp, z]) => [sp, { at: [0, 0, z], rot: [0, Math.PI / 2, 0] }])),
@@ -2596,20 +2606,39 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function playShow(c, kind) {
     if (!c?.root) return;
     if (kind === 'balloon') { assets.hold(c, 'good.balloon', 0, { key: 'balloon', at: [0, -0.015, 0] }); shows.push({ c, kind, t: 0, life: 30, parts: [] }); return; }
-    const n = kind === 'firework' ? 36 : 14; const parts = [];
+    // (1.10.353 재사용 ①: one InstancedMesh a show -- one draw, not 36 -- taken from a pool kept per kind and given back at its end;
+    // its parts' numbers in the mesh's own Float32Array [x y z vx vy vz delay] a part -- nothing made a frame)
+    const im = showMesh(kind); const n = im.count; const d = im.userData.parts; const p0 = c.root.position;
     for (let i = 0; i < n; i += 1) {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(kind === 'firework' ? 0.07 : 0.11, 8, 6), new THREE.MeshBasicMaterial({ color: kind === 'firework' ? SHOW_COLORS[i % SHOW_COLORS.length] : 0xcfe9ff, transparent: true, opacity: kind === 'firework' ? 1 : 0.55 }));
-      const p = c.root.position; m.position.set(p.x, p.y + (kind === 'firework' ? 4.2 : 1.2), p.z); scene.add(m);
-      const a = (i / n) * Math.PI * 2; const up = kind === 'firework' ? (Math.random() - 0.3) * 3 : 0.5 + Math.random() * 0.6;
-      parts.push({ m, v: kind === 'firework' ? new THREE.Vector3(Math.cos(a) * 3, up, Math.sin(a) * 3) : new THREE.Vector3(Math.cos(a) * 0.4, up, Math.sin(a) * 0.4), delay: kind === 'bubbles' ? Math.random() * 3 : 0 });
+      const a = (i / n) * Math.PI * 2; const up = kind === 'firework' ? (Math.random() - 0.3) * 3 : 0.5 + Math.random() * 0.6; const v = kind === 'firework' ? 3 : 0.4; const k = i * 7;
+      d[k] = p0.x; d[k + 1] = p0.y + (kind === 'firework' ? 4.2 : 1.2); d[k + 2] = p0.z; d[k + 3] = Math.cos(a) * v; d[k + 4] = up; d[k + 5] = Math.sin(a) * v; d[k + 6] = kind === 'bubbles' ? Math.random() * 3 : 0;
     }
-    shows.push({ c, kind, t: 0, life: kind === 'firework' ? 2.4 : 5, parts });
+    shows.push({ c, kind, t: 0, life: kind === 'firework' ? 2.4 : 5, parts: [], im });
+  }
+  const showPool = { firework: [], bubbles: [] }; const showGeo = {}; const showM = new THREE.Matrix4(); const showTint = new THREE.Color();
+  function showMesh(kind) {
+    let im = showPool[kind].pop();
+    if (!im) {
+      const n = kind === 'firework' ? 36 : 14; showGeo[kind] ||= new THREE.SphereGeometry(kind === 'firework' ? 0.07 : 0.11, 8, 6);
+      im = new THREE.InstancedMesh(showGeo[kind], new THREE.MeshBasicMaterial({ color: kind === 'firework' ? 0xffffff : 0xcfe9ff, transparent: true, depthWrite: false }), n);
+      im.frustumCulled = false; im.userData.parts = new Float32Array(n * 7);
+      if (kind === 'firework') for (let i = 0; i < n; i += 1) im.setColorAt(i, showTint.setHex(SHOW_COLORS[i % SHOW_COLORS.length]));
+    }
+    scene.add(im); return im;
   }
   function stepShows(dt) {
     for (let i = shows.length - 1; i >= 0; i -= 1) {
       const s = shows[i]; s.t += dt;
-      for (const p of s.parts) { if (s.t < p.delay) { p.m.visible = false; continue; } p.m.visible = true; p.m.position.addScaledVector(p.v, dt); if (s.kind === 'firework') p.v.y -= 2.2 * dt; p.m.material.opacity = Math.max(0, (s.kind === 'firework' ? 1 : 0.55) * (1 - (s.t - p.delay) / (s.life - p.delay))); }
-      if (s.t >= s.life) { for (const p of s.parts) { scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); } if (s.kind === 'balloon') assets.letGo(s.c, 'balloon'); shows.splice(i, 1); }
+      if (s.im) {
+        const d = s.im.userData.parts; const base = s.kind === 'firework' ? 1 : 0.55; s.im.material.opacity = Math.max(0, base * Math.min(1, (1 - s.t / s.life) * (s.kind === 'firework' ? 1 : 2.5)));
+        for (let j = 0; j < s.im.count; j += 1) {
+          const k = j * 7; const delay = d[k + 6]; let size = 0;
+          if (s.t >= delay) { d[k] += d[k + 3] * dt; d[k + 1] += d[k + 4] * dt; d[k + 2] += d[k + 5] * dt; if (s.kind === 'firework') d[k + 4] -= 2.2 * dt; size = s.kind === 'firework' ? 1 : Math.max(0.15, Math.min(1, (1 - (s.t - delay) / (s.life - delay)) * 1.5)); } /* (a bubble from its own moment, smaller as its own time runs out) */
+          showM.makeScale(size, size, size).setPosition(d[k], d[k + 1], d[k + 2]); s.im.setMatrixAt(j, showM);
+        }
+        s.im.instanceMatrix.needsUpdate = true;
+      }
+      if (s.t >= s.life) { if (s.im) { s.im.removeFromParent(); showPool[s.kind].push(s.im); } if (s.kind === 'balloon') assets.letGo(s.c, 'balloon'); shows.splice(i, 1); }
     }
   }
   // B 47 함께하는 섬: the 우체통 east of the plaza (always; a letter's notice is the app's), the birthday corner north-west
@@ -2681,8 +2710,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // where (x, y, z) of my own frame is in the world (x right, -z ahead: the clips' frame)
   function mine([x, y, z]) { const p = me.root.position; const r = me.root.rotation.y; return new THREE.Vector3(p.x - x * Math.cos(r) - z * Math.sin(r), p.y + y, p.z + x * Math.sin(r) - z * Math.cos(r)); }
   // a short effect: the model where it is, grown a little, gone after ms
-  function fxAt(id, at, yaw, ms, grow = 1.3) { const g = new THREE.Group(); g.position.copy(at); g.rotation.y = yaw; scene.add(g); assets.attach(id, g, null); fxs.push({ g, t: 0, ms, grow }); }
-  function stepFx(dt) { for (let i = fxs.length - 1; i >= 0; i -= 1) { const f = fxs[i]; f.t += dt * 1000; const k = Math.min(1, f.t / f.ms); f.g.scale.setScalar(1 + (f.grow - 1) * k); if (k >= 1) { assets.detach?.(f.g); f.g.removeFromParent(); fxs.splice(i, 1); } } }
+  const fxPool = new Map(); /* (1.10.353 재사용 ④: the swoosh's holder by its id, as the marks') */
+  function fxAt(id, at, yaw, ms, grow = 1.3) { let g = fxPool.get(id)?.pop(); if (!g) { g = new THREE.Group(); assets.attach(id, g, null); } g.position.copy(at); g.rotation.set(0, yaw, 0); g.scale.setScalar(1); scene.add(g); fxs.push({ g, id, t: 0, ms, grow }); }
+  function stepFx(dt) { for (let i = fxs.length - 1; i >= 0; i -= 1) { const f = fxs[i]; f.t += dt * 1000; const k = Math.min(1, f.t / f.ms); f.g.scale.setScalar(1 + (f.grow - 1) * k); if (k >= 1) { f.g.removeFromParent(); const list = fxPool.get(f.id) || []; if (list.length >= 4) assets.detach?.(f.g); else { list.push(f.g); fxPool.set(f.id, list); } fxs.splice(i, 1); } } }
   // its small sounds (WebAudio, quiet): the swish, the bag's close, the flutter inside, a sparkle
   let netAudio = null;
   function netSound(kind) {
@@ -3112,10 +3142,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (fight) for (const d of tugSplash.children) { const k = ((clock * 1.6 + d.userData.ph) % 1); d.position.set(Math.cos(d.userData.a) * (0.2 + k * 0.6), Math.sin(k * Math.PI) * 0.8, Math.sin(d.userData.a) * (0.2 + k * 0.6)); d.scale.setScalar(1.2 - k * 0.8); }
     const rodNow = me.holding?.rod?.object; if (rodNow) { rodNow.userData.rest ??= rodNow.rotation.x; rodNow.rotation.x = rodNow.userData.rest + (fight ? Math.sin(clock * 34) * 0.12 : 0); }
     if (fishLine.visible) {
-      const body = me.holding?.rod?.object; const rod = fpNow() && fpTool?.visible && fpToolOf === body ? fpTool : body; const from = new THREE.Vector3(); // (1104 G, 총괄 237 검토: the first person's line from the rod in my hand)
+      const body = me.holding?.rod?.object; const rod = fpNow() && fpTool?.visible && fpToolOf === body ? fpTool : body; const from = lineFrom; // (1104 G, 총괄 237 검토: the first person's line from the rod in my hand; 1.10.353 ③: one vector kept)
       if (rod) { rod.updateWorldMatrix(true, false); rod.localToWorld(from.copy(FISH_TIP)); } else from.set(me.root.position.x, me.root.position.y + 1.6, me.root.position.z);
-      const to = bobberHolder.position.clone().setY(bobberHolder.position.y + 0.08);
-      const pts = fishLine.geometry.attributes.position; pts.setXYZ(0, from.x, from.y, from.z); pts.setXYZ(1, to.x, to.y, to.z); pts.needsUpdate = true; fishLine.geometry.computeBoundingSphere();
+      const to = bobberHolder.position;
+      const pts = fishLine.geometry.attributes.position; pts.setXYZ(0, from.x, from.y, from.z); pts.setXYZ(1, to.x, to.y + 0.08, to.z); pts.needsUpdate = true; fishLine.geometry.computeBoundingSphere();
     }
   }
   // v1.10.257 자랑 장면 (gamecenter-notes docs/catch-card-20261103.md 9절, assets 97): a good catch -- the page says so
@@ -4835,12 +4865,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function wardenSay(text, leftMs = 0, totalMs = JAIL.SECONDS * 1000) { // the warden's line; with time: a ring counting down (null text: quiet)
     wardenLine = text ? { text, end: leftMs ? performance.now() + leftMs : 0, total: totalMs, shown: -1 } : null;
-    if (!text && jail) { disposeTag(jail.warden.bubble); jail.warden.bubble = null; }
+    if (!text && jail) { dropBubble(jail.warden.bubble); jail.warden.bubble = null; }
   }
   function stepJail(now) {
     if (!jail || mySpace !== 'jail' || !wardenLine) return;
     const w = jail.warden; const left = wardenLine.end ? Math.max(0, wardenLine.end - now) : null; const step = left === null ? 0 : Math.ceil(left / 250);
-    if (step !== wardenLine.shown || !w.bubble) { wardenLine.shown = step; disposeTag(w.bubble); w.bubble = makeBubble(wardenLine.text, left === null ? null : left / wardenLine.total); w.bubble.position.y = bubbleY(w); w.bubble.userData.until = Infinity; w.root.add(w.bubble); }
+    if (step !== wardenLine.shown || !w.bubble) { wardenLine.shown = step; dropBubble(w.bubble); w.bubble = bubbleOf(w, wardenLine.text, left === null ? null : left / wardenLine.total); w.bubble.position.y = bubbleY(w); w.bubble.userData.until = Infinity; w.root.add(w.bubble); }
   }
   doors['jail:exit'] = { ...JAIL.world(JAIL.ROOM.exit.lx, JAIL.ROOM.exit.lz), name: '나가기' };
   doors['jail:board'] = { ...JAIL.world(-5.6, -0.5), name: '오늘의 반성문' };
@@ -4896,10 +4926,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     exchange = { group: g, ted: t, lid, nextArms: performance.now() + 9000 }; buildDenDoor(); /* (1.10.341: the bookcase) */
     return exchange;
   }
-  function tedSay(text) { if (!exchange || !text) return; const t = exchange.ted; disposeTag(t.bubble); t.bubble = makeBubble(text, null); t.bubble.position.y = bubbleY(t); t.bubble.userData.until = Infinity; t.root.add(t.bubble); exchange.quietAt = performance.now() + 4500; }
+  function tedSay(text) { if (!exchange || !text) return; const t = exchange.ted; dropBubble(t.bubble); t.bubble = bubbleOf(t, text, null); t.bubble.position.y = bubbleY(t); t.bubble.userData.until = Infinity; t.root.add(t.bubble); exchange.quietAt = performance.now() + 4500; }
   function stepExchange(now) {
     if (!exchange || mySpace !== 'exchange') return; const t = exchange.ted;
-    if (t.bubble && exchange.quietAt && now > exchange.quietAt) { disposeTag(t.bubble); t.bubble = null; exchange.quietAt = 0; }
+    if (t.bubble && exchange.quietAt && now > exchange.quietAt) { dropBubble(t.bubble); t.bubble = null; exchange.quietAt = 0; }
     if (now > exchange.nextArms) { exchange.nextArms = now + 14000 + Math.random() * 10000; t.anim?.play?.('armsCrossed'); } // (now and then, his arms folded)
   }
   doors['exchange:exit'] = { ...EX.world(EX.ROOM.exit.lx, EX.ROOM.exit.lz), name: '나가기' };
@@ -6584,11 +6614,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (spot && Number.isFinite(spot.x) && Number.isFinite(spot.z)) { me.root.position.set(spot.x, heightAt(spot.x, spot.z), spot.z); correction = null; placeCamera(true); }
     return true;
   }
+  const rideTo = new THREE.Vector3(); const taxiSeat = new THREE.Vector3(); const taxiOut = new THREE.Vector3(); const taxiRides = []; const taxiFoot = []; const taxiMine = { key: 'me', ride: null }; const taxiOthers = new Map(); /* (1.10.353 재사용 ③: kept between frames) */
   function stepRide() {
     if (!riding) return;
     const q = R.seatAt(riding.id, riding.seat, trainNow());
     const u = Math.min(1, (Date.now() - riding.at) / 450);
-    if (u < 1 && riding.from) me.root.position.lerpVectors(riding.from, new THREE.Vector3(q.x, q.y, q.z), u); else me.root.position.set(q.x, q.y, q.z);
+    if (u < 1 && riding.from) me.root.position.lerpVectors(riding.from, rideTo.set(q.x, q.y, q.z), u); else me.root.position.set(q.x, q.y, q.z); /* (1.10.353 ③: one vector kept) */
     me.root.rotation.y = q.yaw; me.targetYaw = q.yaw;
   }
   // v1.10.271 섬 택시: the server's ride (its road and clock) -- I get in, sit by the window the whole way (the keys do nothing,
@@ -6635,8 +6666,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   const taxiOff = (c) => { c.noTuck = false; c.anim?.release?.(); c.anim?.finishOnce?.(); c.tailTucked = false; c.tuckTail?.(false); assets.hat?.(c, false); /* (v1.10.285: out of the car, the hat back) */ };
   function stepTaxi() {
-    const rides = [...(taxiRide ? [{ key: 'me', ride: taxiRide.ride }] : []), ...[...others.entries()].filter(([, o]) => o.taxi).map(([id, o]) => ({ key: id, ride: o.taxi }))];
-    const onFoot = [...(taxiRide ? [] : [me.root.position]), ...[...others.values()].filter((o) => !o.taxi).map((o) => o.c.root.position)]; /* (v1.10.285: who a car honks at) */
+    const rides = taxiRides; rides.length = 0; const onFoot = taxiFoot; onFoot.length = 0; /* (1.10.353 ③: the arrays and each rider's { key, ride } kept) */
+    if (taxiRide) { taxiMine.ride = taxiRide.ride; rides.push(taxiMine); } else onFoot.push(me.root.position);
+    for (const [id, o] of others) { if (o.taxi) { let r = taxiOthers.get(id); if (!r) taxiOthers.set(id, (r = { key: id, ride: null })); r.ride = o.taxi; rides.push(r); } else onFoot.push(o.c.root.position); } /* (v1.10.285: who a car honks at) */
+    if (taxiOthers.size > others.size + 8) for (const id of taxiOthers.keys()) if (!others.has(id)) taxiOthers.delete(id);
     taxiView.setNight(phase === 'night'); taxiView.step(taxiNow(), rides, onFoot, taxiStops); taxiCars = taxiView.cars(); /* (294 7: the server's stops -- their cars out, there and back) */
     if (taxiTrace && taxiRide && taxiTrace.length < 4000) { const q0 = taxiView.seatOf(taxiRide.ride, taxiNow()); taxiTrace.push({ t: performance.now(), x: q0.x, z: q0.z, phase: q0.phase, off: viewOffset, srv: serverOffset, cells: pilot?.counts?.().made ?? null, fades: assets.debug?.().fade?.started ?? null }); }
     if (!taxiRide && mySpace === 'island') taxiPush(taxiCars);
@@ -6646,11 +6679,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       taxiRide = null; taxiOff(me);
       me.root.position.set(out.x, heightAt(out.x, out.z), out.z); correction = null; placeCamera(true); onTaxiEnd?.(); return;
     }
-    const seat = new THREE.Vector3(q.x, q.y, q.z);
+    const seat = taxiSeat.set(q.x, q.y, q.z);
     if (q.phase === 'exit' && !taxiRide.out) { taxiRide.out = true; taxiRide.clips = taxiClipsOut(me, taxiRide.ride); }
     if (taxiRide.clips || (q.phase !== 'enter' && q.phase !== 'exit')) me.root.position.copy(seat);
     else if (q.phase === 'enter') me.root.position.lerpVectors(taxiRide.from, seat, Math.min(1, q.k));
-    else me.root.position.lerpVectors(seat, new THREE.Vector3(out.x, heightAt(out.x, out.z), out.z), Math.min(1, q.k));
+    else me.root.position.lerpVectors(seat, taxiOut.set(out.x, heightAt(out.x, out.z), out.z), Math.min(1, q.k));
     { /* (1.10.336 사용자 「택시를 타면 화면이 고정되는데 … 돌아볼 수 있게」: the view turns with the car -- its turns added to mine -- and is mine to turn; out of the car it goes on from there. Getting in: behind the car, a little to its side, in the first its way) */
       if (taxiRide.carYaw == null) { const want = q.yaw + Math.PI + (fpNow() ? 0 : 0.45); yawGoal = camYaw + Math.atan2(Math.sin(want - camYaw), Math.cos(want - camYaw)); }
       else yawGoal += Math.atan2(Math.sin(q.yaw - taxiRide.carYaw), Math.cos(q.yaw - taxiRide.carYaw));
@@ -6730,13 +6763,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const EM = globalThis.IslandEmotes; const emoting = new Map(); const marks = []; let lastFeel = { id: null, at: 0 }; let lastReact = null;
   const handProps = (c, on) => { for (const k of Object.keys(c.holding || {})) { const o = c.holding[k]?.object; if (o) o.visible = on; } if (c.npcPerson) assets.props(c, on); /* (v1.10.264: an islander's net, jar, can...) */ };
   const markY = (c) => { let y = (c.headTop || 1.85) + EM.MARK_UP; if (c.tag?.visible) y = Math.max(y, c.tag.position.y + c.tag.scale.y + 0.05); if (c.bubble?.visible) y = Math.max(y, c.bubble.position.y + c.bubble.scale.y / 2 + 0.05); return y; }; /* (over the name tag and a chat bubble) */
-  function emoteMark(c, id, ms) { const h = new THREE.Group(); h.scale.setScalar(0.001); c.root.add(h); assets.attach(`emote.mark_${id}`, h, new THREE.Group()); marks.push({ h, c, id, at: performance.now(), until: performance.now() + ms }); }
+  // (1.10.353 재사용 ④: a mark's holder -- its model copied in by assets.attach -- given back to a pool by its id at its end, up to
+  // POOL_KEEP each, and taken again by the next of that mark; before, a new copy every mark, a dance a new note each round)
+  const markPool = new Map(); const POOL_KEEP = 4;
+  const poolTake = (pool, key) => pool.get(key)?.pop() || null;
+  const poolGive = (pool, key, h) => { h.removeFromParent(); const list = pool.get(key) || []; if (list.length >= POOL_KEEP) { assets.detach(h); return; } list.push(h); pool.set(key, list); };
+  function emoteMark(c, id, ms) { let h = poolTake(markPool, id); if (!h) { h = new THREE.Group(); assets.attach(`emote.mark_${id}`, h, new THREE.Group()); } h.scale.setScalar(0.001); h.rotation.set(0, 0, 0); c.root.add(h); marks.push({ h, c, id, at: performance.now(), until: performance.now() + ms }); }
   const markAt = new THREE.Vector3();
   function stepMarks() {
     const now = performance.now(); const calm = lessMotion.matches;
     for (let i = marks.length - 1; i >= 0; i -= 1) {
       const m = marks[i]; const t = now - m.at; const left = m.until - now;
-      if (left <= 0 || !m.c.root.parent) { m.h.removeFromParent(); assets.detach(m.h); marks.splice(i, 1); continue; }
+      if (left <= 0 || !m.c.root.parent) { poolGive(markPool, m.id, m.h); marks.splice(i, 1); continue; }
       const pop = calm || t >= 150 ? 1 : 1.15 * Math.sin((t / 150) * Math.PI / 2); /* (0.15 s up, a little over) */
       m.h.scale.setScalar(Math.max(0.001, EM.MARK_SCALE * pop * Math.min(1, left / 300))); /* (0.3 s away) */
       m.h.position.y = markY(m.c); m.h.rotation.z = calm ? 0 : Math.sin(t / 220) * 0.12;
@@ -6786,10 +6824,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // everyday blinks (4절): every 3~6 s, 0.12 s, within 15 m of the camera -- not in an expression, not my own in the first
   // person. v1.10.287 (notes docs/face-life-20261108.md 1절): sleepy eyes too (half open -> shut a moment); not while the mouth talks
+  // (1.10.353 재사용 ③: me, the others and the shown islanders in one array kept and filled once a frame -- before, blink and talk each
+  // made four arrays and a Set a frame)
+  const frameChars = []; const residentSeen = new Set();
+  function charsNow() {
+    frameChars.length = 0; residentSeen.clear(); frameChars.push(me); for (const o of others.values()) frameChars.push(o.c);
+    const add = (c) => { if (c?.npcPerson && c.root.visible && c.root.parent && !residentSeen.has(c)) { residentSeen.add(c); frameChars.push(c); } };
+    for (const c of posted.values()) add(c); for (const w of wanderers) add(w.c); return frameChars;
+  }
   function stepBlink() {
-    stepTalk(); stepLook();
+    const chars = charsNow(); stepTalk(chars); stepLook(chars);
     const now = performance.now();
-    for (const c of [me, ...[...others.values()].map((o) => o.c), ...residentChars()]) { /* (v1.10.264: the islanders too) */
+    for (const c of chars) { /* (v1.10.264: the islanders too) */
       if (!c?.wearRec) continue;
       if (c.blinkUntil) { if (now >= c.blinkUntil) { c.blinkUntil = 0; if (!c.emoteFace) assets.face(c, null); } continue; }
       if (!c.blinkAt) c.blinkAt = now + 3000 + Math.random() * 3000;
@@ -6802,9 +6848,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // 0.12~0.18 s for its length (EM.talkMs), over whatever face it has (a talk face: c.faceBase); not in a feeling, not my own in the
   // first person, within 15 m of the camera
   function startTalk(c, text) { if (!c || (!c.wearRec && !c.npcPerson)) return; const now = performance.now(); c.talkUntil = now + EM.talkMs(text); c.talkNext ||= now; }
-  function stepTalk() {
+  function stepTalk(chars) {
     const now = performance.now();
-    for (const c of [me, ...[...others.values()].map((o) => o.c), ...residentChars()]) {
+    for (const c of chars) {
       if (!c?.talkUntil) continue;
       const base = c.faceBase || null; const stop = now >= c.talkUntil || emoting.has(c) || (c === me && fpNow()) || c.root.position.distanceTo(camera.position) > EM.BLINK.near;
       if (stop) { c.talkUntil = 0; c.talkNext = 0; if (c.talkO) { c.talkO = false; assets.face(c, base); } continue; }
@@ -6817,19 +6863,22 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // islanders within 15 m of the camera, turned in animate(); not in a feeling or any pose but standing and walking (sitting,
   // fishing, a bike, a taxi, a photo's...), not my own in the first person or the photo mode; the body's own turn (a talk) first
   const GAIT = new Set(['idle', 'walk', 'slow', 'run']); let lookAt = 0;
-  function stepLook() {
+  // (1.10.353 재사용 ③: the eye points kept per character -- c.eyesAt -- and the arrays and vectors kept between turns)
+  const lookW = new THREE.Vector3(); const lookQ = new THREE.Quaternion(); const lookE = new THREE.Euler(); const lookChars = []; const lookPeople = []; const lookOthers = []; const lookSelf = { c: null, x: 0, y: 0, z: 0, yaw: 0 };
+  function stepLook(all) {
     const now = performance.now(); if (now < lookAt) return; lookAt = now + EM.LOOK.every * 1000;
-    const chars = [me, ...[...others.values()].map((o) => o.c), ...residentChars()].filter((c) => c?.assetRoot && c.root.visible !== false);
+    lookChars.length = 0; for (const c of all) if (c?.assetRoot && c.root.visible !== false) lookChars.push(c); const chars = lookChars;
     /* (Codex 281~290 #6: in the world's coordinates -- a counter's clerk stands in its room's group, turned) */
-    const W = new THREE.Vector3(); const Q = new THREE.Quaternion(); const E = new THREE.Euler();
-    const eyes = (c) => { c.root.getWorldPosition(W); return { c, x: W.x, y: W.y + 1.5, z: W.z }; }; const people = chars.map(eyes);
-    const yawOf = (c) => (c.root.parent === scene ? c.root.rotation.y : E.setFromQuaternion(c.root.getWorldQuaternion(Q), 'YXZ').y);
+    const eyes = (c) => { c.root.getWorldPosition(lookW); const e = (c.eyesAt ||= { c, x: 0, y: 0, z: 0 }); e.x = lookW.x; e.y = lookW.y + 1.5; e.z = lookW.z; return e; };
+    lookPeople.length = 0; for (const c of chars) lookPeople.push(eyes(c));
+    const yawOf = (c) => (c.root.parent === scene ? c.root.rotation.y : lookE.setFromQuaternion(c.root.getWorldQuaternion(lookQ), 'YXZ').y);
     const tf = talkView ? talkFigure(talkView.id) : null; const them = tf ? chars.find((c) => c.root === tf) : null;
     for (const c of chars) {
-      const free = c.anim && GAIT.has(c.anim.state) && !emoting.has(c) && !(c === me && (fpNow() || photoMode || sitting || fishing)) && c.root.getWorldPosition(W).distanceTo(camera.position) <= EM.LOOK.cam;
+      const free = c.anim && GAIT.has(c.anim.state) && !emoting.has(c) && !(c === me && (fpNow() || photoMode || sitting || fishing)) && c.root.getWorldPosition(lookW).distanceTo(camera.position) <= EM.LOOK.cam;
       if (!free) { c.lookWant = null; continue; }
-      const partner = them && (c === me ? them : c === them ? me : null); const self = { ...eyes(c), yaw: yawOf(c) };
-      c.lookWant = EM.lookPick(self, people.filter((p) => p.c !== c), partner ? eyes(partner) : null);
+      const partner = them && (c === me ? them : c === them ? me : null); const e = eyes(c); lookSelf.c = c; lookSelf.x = e.x; lookSelf.y = e.y; lookSelf.z = e.z; lookSelf.yaw = yawOf(c);
+      lookOthers.length = 0; for (const p of lookPeople) if (p.c !== c) lookOthers.push(p);
+      c.lookWant = EM.lookPick(lookSelf, lookOthers, partner ? { ...eyes(partner) } : null);
     }
   }
   // v1.10.264 주민 표정 (docs/emotes-20261107.md 5~6절, assets 102): the islanders in their own models -- at a counter
