@@ -1492,7 +1492,7 @@ async function denCatch(now = nowMs()) {
     denBelow.delete(account);
     const out = await pointStore.questApply(account, 'den', (doc) => ({ doc: { ...doc, chips: 0, lost: (doc.lost || 0) + (doc.chips || 0), caught: (doc.caught || 0) + 1 }, taken: doc.chips || 0 })).catch(() => null);
     await pointStore.questApply(account, 'denJail', () => ({ doc: { day, at: now, passed: false } }));
-    for (const [token, s] of sessions) if (pointAccountForSession(s) === account) { denInside.delete(token); exchangeInside.delete(token); if (plazaPresence.has(token) && !trainRiders.has(token) && !taxiRides.has(token)) jailPut(token); }
+    for (const [token, s] of sessions) if (pointAccountForSession(s) === account) { denInside.delete(token); exchangeInside.delete(token); if (plazaPresence.has(token) && !trainRiders.has(token) && !taxiRides.has(token)) { jailPut(token); const acct = pointAccountForSession(sessions.get(token) || {}); if (acct) taxJailPenalty(acct).catch(() => {}); } }
     notifyAccount(account, 'denCaught', { chips: out?.taken || 0 });
   }
   plazaDirty = true;
@@ -1965,6 +1965,14 @@ async function adminJailSet(account, rec, why, name = '', expect = undefined) {
   refreshTaxLooks(); return true;
 }
 // one put in the cell now (a first pose, or the administrator's word while on the island): out of any other room
+// 1.10.350 사용자 184A: taken into the cell for tax -- the warden likes one less: -1 the first day, one more each day in a row, -5 at
+// most; once a Seoul day (jail doc taxJailDay / taxRun); the den's raid and the administrator's cell not counted
+async function taxJailPenalty(account) {
+  const day = kstDate(nowMs()); if (!inArrears(account) || await denJailed(account, day)) return null; let take = 0;
+  await pointStore.questApply(account, 'jail', (d) => { const t = IslandJail.taxJailTake(d.taxJailDay, d.taxRun, day); take = t.take; return t.take ? { doc: { ...d, taxJailDay: day, taxRun: t.run } } : null; });
+  if (take) await pointStore.affinityTake(account, JAIL_WARDEN, take).catch((error) => console.warn('[jail]', error.message));
+  return take;
+}
 function jailPut(token) { freeSeat(token); for (const s of [storeInside, furnitureInside, petshopInside, fashionInside, townhallInside, museumInside, exchangeInside, denInside]) s.delete(token); homeInside.delete(token); jailFreed.delete(token); jailInside.add(token); jailInmates.add(token); plazaDirty = true; }
 async function jailable(session, account) {
   if (session.role === 'admin') return false;
@@ -6048,7 +6056,7 @@ async function requestHandler(req, res) {
     if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token)) {
       const owes = await jailable(session, account);
       if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
-      if (owes) jailPut(session.token);
+      if (owes) { jailPut(session.token); const acct = pointAccountForSession(sessions.get(session.token) || {}); if (acct) taxJailPenalty(acct).catch(() => {}); }
     }
     // (사용자 제보 2026-10-25, 휴대폰: the visit dropped while I stood inside -- the stream gone a while, the phone put away --
     // a first pose from inside a room puts me back in it: the 백화점's floors, the open-to-all rooms off the island, and the
@@ -6386,8 +6394,8 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     if (!jailInmates.has(session.token)) return sendError(res, 409, 'NOT_JAILED', '구경만 하세요.');
     const now = nowMs(); const day = kstDate(now); let e = jailEssays.get(session.token);
-    if (!e || e.day !== day) { const account = pointAccountForSession(session); const gamble = await denJailed(account, day); const close = (await affinityLevelOf(account, JAIL_WARDEN)) >= 2; const tax = !gamble && inArrears(account); const passed = tax ? (await pointStore.questDoc(account, 'jail')).doc.taxEssays || 0 : 0; /* (1.10.350: 5, +3 for each passed in this debt, 30 at most; 친한 사이 one fewer) */
-      e = { day, gamble, tax, sentences: gamble ? IslandJail.gambleSentencesOf(day, 5) : IslandJail.sentencesOf(day, tax ? taxEssayLines(passed) - (close ? 1 : 0) : close ? 2 : 3), i: 0, until: 0 }; jailEssays.set(session.token, e); } /* (1.10.341 121A: the gambling essay -- one frees both) */
+    if (!e || e.day !== day) { const account = pointAccountForSession(session); const gamble = await denJailed(account, day); const close = (await affinityLevelOf(account, JAIL_WARDEN)) >= 2; const tax = !gamble && inArrears(account); const passed = tax ? (await pointStore.questDoc(account, 'jail')).doc.taxEssays || 0 : 0; /* (1.10.350: 5, +3 for each passed in this debt, 30 at most; 184A: no shorter for a friend -- the admin's and the gambling's as they were) */
+      e = { day, gamble, tax, sentences: gamble ? IslandJail.gambleSentencesOf(day, 5) : IslandJail.sentencesOf(day, tax ? taxEssayLines(passed) : close ? 2 : 3), i: 0, until: 0 }; jailEssays.set(session.token, e); } /* (1.10.341 121A: the gambling essay -- one frees both) */
     if (e.until <= now) e.until = now + IslandJail.SECONDS * 1000;
     return sendJson(res, 200, { ok: true, ...essayView(e, now) });
   }
@@ -9741,7 +9749,7 @@ async function requestHandler(req, res) {
         const now = nowMs(); const until = body.until === 'forever' ? null : body.until === 'midnight' ? Date.parse(`${kstDate(now + 86400000)}T00:00:00+09:00`) : Number.isFinite(Number(body.minutes)) && Number(body.minutes) >= 1 && Number(body.minutes) <= 60 * 24 * 30 ? now + Number(body.minutes) * 60000 : NaN;
         if (Number.isNaN(until)) return sendError(res, 400, 'BAD_TIME', '기간을 골라 주세요.');
         await adminJailSet(account, { until, reason, by: '관리자', at: now }, 'send', name);
-        for (const [token, s] of sessions) if (pointAccountForSession(s) === account && plazaPresence.has(token) && !jailInmates.has(token) && !trainRiders.has(token) && !taxiRides.has(token) && await jailable(s, account)) jailPut(token); /* (on the island: at once -- riding, at the next visit) */
+        for (const [token, s] of sessions) if (pointAccountForSession(s) === account && plazaPresence.has(token) && !jailInmates.has(token) && !trainRiders.has(token) && !taxiRides.has(token) && await jailable(s, account)) { jailPut(token); const acct = pointAccountForSession(sessions.get(token) || {}); if (acct) taxJailPenalty(acct).catch(() => {}); } /* (on the island: at once -- riding, at the next visit) */
       } else {
         await adminJailSet(account, null, 'release', name);
         for (const [token, s] of sessions) if (pointAccountForSession(s) === account && jailInmates.has(token) && !(await jailable(s, account))) jailFree(token);
