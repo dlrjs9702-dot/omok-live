@@ -86,7 +86,7 @@
     busk: prop({ ...STAGE, face: BU.face }, 1.5), busker: Object.freeze(buskAt(0.1, 0)),
     buskBenches: Object.freeze([-1, 1].map((s) => prop(buskAt(1.5, 2.1 * s), 0.9, [STAGE.x, STAGE.z]))), buskLamp: prop(buskAt(-1.3, 3), 0.3),
     stationmaster: Object.freeze({ ...PL.stationmaster }),
-    lamps: Object.freeze(PL.hallLamps.map(([x, z]) => Object.freeze({ x, z, r: 0.4 }))), electrician: off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -1.2, 1.9),
+    lamps: Object.freeze(PL.hallLamps.map(([x, z]) => Object.freeze({ x, z, r: 0.4 }))), electrician: off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, 0.6, 1.9), /* (T1: the lamps out at the taxi road's walk's edge -- he stands on that edge, by the walk) */
     toolbox: prop({ ...off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -2.1, 2.6), face: [PLAZA_C.x, PLAZA_C.z] }, 0.4),
     stones: Object.freeze({ ...PL.stones, yaw: stoneYaw }), builder: off(PL.stones, 4.2, -2),
     bookcart: prop(PL.bookcart, 0.8), librarian: off(PL.bookcart, 2.1, -1.1),
@@ -112,6 +112,23 @@
 
   // ---- the walks ----
   const bayAt = (a, r = 101) => [Math.round(r * Math.cos(rad(a)) * 10) / 10, Math.round((D.BAY_Z + r * Math.sin(rad(a))) * 10) / 10];
+  // T1 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A; island-taxi ROAD): the taxi road's two lanes and its walks,
+  // 3.9 m each side of its middle -- nothing solid in it (roadClear); a thing put by rule near it goes out to its edge (roadFoot:
+  // the nearest point on the middle, the road's left-hand normal there, which side the point is on)
+  const TX = (typeof self !== 'undefined' && self.IslandTaxi) || (typeof require === 'function' ? require('./island-taxi.js') : null);
+  const ROAD = TX?.ROAD || { lane: 2.3, walk: 1.6, half: 3.9 };
+  const roadDist = (x, z) => (TX ? lineDist(x, z, TX.ROUTE) : Infinity);
+  const roadClear = (o, r) => roadDist(o.x, o.z) > ROAD.half + r + 0.1;
+  function roadFoot(x, z) {
+    const route = TX?.ROUTE || []; let best = null;
+    for (let i = 1; i < route.length; i += 1) {
+      const [ax, az] = route[i - 1]; const [bx, bz] = route[i]; const dx = bx - ax; const dz = bz - az; const L = Math.hypot(dx, dz) || 1e-9;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (L * L))); const px = ax + dx * t; const pz = az + dz * t; const d = Math.hypot(x - px, z - pz);
+      if (!best || d < best.d) best = { d, x: px, z: pz, nx: dz / L, nz: -dx / L };
+    }
+    if (best) best.side = Math.sign((x - best.x) * best.nx + (z - best.z) * best.nz) || 1;
+    return best;
+  }
   const arc = (a0, a1, step = 6) => { const n = Math.max(1, Math.round(Math.abs(a1 - a0) / step)); return Array.from({ length: n + 1 }, (_, k) => bayAt(a0 + ((a1 - a0) * k) / n)); };
   const doorPt = (id) => { const d = facilityDoor(id); return [d.x, d.z]; };
   const po = (deg, r) => [Math.round(r * Math.cos(rad(deg)) * 10) / 10, Math.round(r * Math.sin(rad(deg)) * 10) / 10];
@@ -336,8 +353,11 @@
       const [x, z] = bayAt(a, r); const yaw = -(rad(a) + Math.PI / 2); // (its length along the shore)
       rails.push({ x, z, yaw });
       // (묶음 5 배치 점검: off the walk (r 99.4-102.6) -- the lamps on its land side, the benches beyond them facing the water)
-      if (k % 3 === 1) { const [lx, lz] = bayAt(a, 103.1); lamps.push({ x: lx, z: lz, r: 0.3 }); }
-      if (k % 6 === 3) { const [bx, bz] = bayAt(a, 104.6); benches.push({ x: bx, z: bz, yaw: Math.atan2(-bx, D.BAY_Z - bz), r: 0.9 }); } // (a bench's +Z, its front, toward the water)
+      // (T1: where the taxi road runs by the water, the lamp on its land-side walk's outer edge and the bench behind it -- out
+      // from the bay till clear of the road)
+      const outward = (r0, room) => { let rr = r0; while (rr < r0 + 9 && roadDist(...bayAt(a, rr)) < ROAD.half + room) rr += 0.2; return bayAt(a, rr); };
+      if (k % 3 === 1) { const [lx, lz] = outward(103.1, 0.55); lamps.push({ x: lx, z: lz, r: 0.3 }); }
+      if (k % 6 === 3) { const [bx, bz] = outward(104.6, 1.3); benches.push({ x: bx, z: bz, yaw: Math.atan2(-bx, D.BAY_Z - bz), r: 0.9 }); } // (a bench's +Z, its front, toward the water)
     }
     return { rails, lamps, benches };
   })();
@@ -390,8 +410,9 @@
     for (let u = -4.45; u <= 3.11; u += 0.8) out.push({ x: R.x + ax * u + bx * 0.42, z: R.z + az * u + bz * 0.42, r: 0.98 });
     return out;
   }
+  const ISLE_SIGN_IN = 8.3; // (툇마루섬's board, its middle this far in from the isle's centre: 7.3 -> 8.3 in T1, off the road's walk -- plaza-scene draws it here)
   function structureSolids() {
-    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - 7.3, r: 1.1 }, ...pavingSolids(), ...auctionSolids()];
+    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - ISLE_SIGN_IN, r: 1.1 }, ...pavingSolids(), ...auctionSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
     /* (316 ④ `batch`: drawn instanced -- the map check counts them as seen) */
@@ -434,7 +455,8 @@
     // where a walk or a door comes in, on a garden, a channel, a place of the plaza's own or the building fronts' 8 m
     const { gardens, channels } = paving(); const placesIn = []; const walkIn = (o) => { if (!o || typeof o !== 'object') return; if (Number.isFinite(o.x) && Number.isFinite(o.z)) { if (inPlaza(o.x, o.z, 2)) placesIn.push(o); } else Object.values(o).forEach(walkIn); }; walkIn(PL);
     const clear = (x, z) => !walkCurves.some((w) => w.pts.some(([a, b]) => Math.hypot(a - x, b - z) < w.w / 2 + 2.5)) && !Object.keys(SPOTS).some((id) => { const d = facilityDoor(id); return d && Math.hypot(d.x - x, d.z - z) < 6; })
-      && !busy(x, z, 6) && !gardens.some((g) => Math.hypot(g.x - x, g.z - z) < (g.kind === 'round' ? 6 : 8)) && !channels.some((c) => Math.hypot(c.x - x, c.z - z) < 4) && !placesIn.some((p) => Math.hypot(p.x - x, p.z - z) < 5) && Math.hypot(x - PL.spawn.x, z - PL.spawn.z) > 6;
+      && !busy(x, z, 6) && !gardens.some((g) => Math.hypot(g.x - x, g.z - z) < (g.kind === 'round' ? 6 : 8)) && !channels.some((c) => Math.hypot(c.x - x, c.z - z) < 4) && !placesIn.some((p) => Math.hypot(p.x - x, p.z - z) < 5) && Math.hypot(x - PL.spawn.x, z - PL.spawn.z) > 6
+      && !(TX && Math.hypot(x - TX.ROUTE[0][0], z - TX.ROUTE[0][1]) < 8); /* (T1 길 넓히기: the taxi's 대청마당 stop -- room for its cars, T2's two -- no group within 8 m) */
     const rim = [];
     for (let x = -36; x <= 36; x += 10) rim.push({ x: PLAZA_C.x + x, z: P.d1 - 3, ax: 1, az: 0, ox: 0, oz: 1 }); // south: along x, the kerb +z
     for (const s of [1, -1]) for (let z = P.d1 - 9; z > P.d0 + 5; z -= 10) rim.push({ x: P.x + s * (P.hw - 3), z, ax: 0, az: 1, ox: s, oz: 0 });
@@ -520,18 +542,22 @@
     const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); /* (1.10.323: the 건널목 kept clear by rule, not by where the seeded trees happened to fall) */
     const atCrossing = (o, r) => (X?.CROSSINGS || []).some((c) => Math.hypot(c.x - o.x, c.z - o.z) < (X.CROSS_CLEAR || 5) + r + 0.1);
     const blocked = (o, r) => natureBlocks.some((fn) => fn(o.x, o.z, r)) || onBank(o, 0.35);
-    const keptTrees = trees.filter((t) => !blocked(t, 1.5) && !atCrossing(t, 0.7)); /* (a tree's trunk: the solid by a 건널목) */ const keptBushes = bushes.filter((b) => !blocked(b, 0.8));
+    /* (T1 길 넓히기: and none in the taxi road -- its lanes and walks; taken out, the others stay where they are) */
+    const keptTrees = trees.filter((t) => !blocked(t, 1.5) && !atCrossing(t, 0.7) && roadClear(t, 0.7)); /* (a tree's trunk: the solid by a 건널목) */ const keptBushes = bushes.filter((b) => !blocked(b, 0.8) && roadClear(b, 0.75 * b.s));
     // the walks' lamps (island-terrain's rule): beside the town walks and the 산책로 (not the 오솔길), every 14 points of
     // their curve -- on standable ground, off 대청마당 (its own lamps), the stairs, the bridges, the 관공서 yard, another
-    // walk, what is built and the trees (after the tufts: the weeds keep their numbers)
+    // walk, what is built and the trees (after the tufts: the weeds keep their numbers). T1: one by the taxi road stands at its
+    // walk's outer edge -- on its own side, else the other
     const lampSpots = [];
     for (const w of walkCurves) { if (w.tier === 'trail') continue; for (let i = 8; i < w.pts.length - 4; i += 14) {
       const [x, z] = w.pts[i]; const [x2, z2] = w.pts[i + 1]; const l = Math.hypot(x2 - x, z2 - z) || 1;
-      const lx = x - ((z2 - z) / l) * (w.w / 2 + 0.8); const lz = z + ((x2 - x) / l) * (w.w / 2 + 0.8);
-      if (!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || walkDist(lx, lz) < 0.2) continue;
-      if (structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4))) continue;
-      if ([...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5)) continue;
-      lampSpots.push({ x: lx, z: lz });
+      const lx0 = x - ((z2 - z) / l) * (w.w / 2 + 0.8); const lz0 = z + ((x2 - x) / l) * (w.w / 2 + 0.8);
+      const foot = roadFoot(lx0, lz0); const atRoad = foot && foot.d < ROAD.half + 0.55;
+      const spots = atRoad ? [foot.side, -foot.side].map((s) => [foot.x + foot.nx * (ROAD.half + 0.55) * s, foot.z + foot.nz * (ROAD.half + 0.55) * s]) : [[lx0, lz0]];
+      const fits = ([lx, lz]) => !(!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || (!atRoad && walkDist(lx, lz) < 0.2) || roadDist(lx, lz) < ROAD.half + 0.5)
+        && !(structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4)))
+        && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4);
+      const at = spots.find(fits); if (at) lampSpots.push({ x: at[0], z: at[1] });
     } }
     // G4a 흩뿌리기 (notes docs/graphics-island-wide-20261108.md G4, assets 112; 사용자 「덤불, 바위들은 뚫고 지나가지 못하게」):
     // more bushes and rocks over the fields and woods, fallen logs in the woods, palms on the sandy shore (all of them block),
@@ -549,7 +575,7 @@
       for (let i = cx - 1; i <= cx + 1; i += 1) for (let j = cz - 1; j <= cz + 1; j += 1) for (const [tx, tz, tr] of cells.get(`${i},${j}`) || []) if (Math.hypot(x - tx, z - tz) <= tr + r + gap) return false;
       return true; };
     const g4 = { logs: [], palms: [], grass: [], lilies: [] };
-    seed = 0x6a41; for (let tries = 0, n = 0; n < 160 && tries < 6000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.55 + rnd() * 0.6; if (room(x, z, 0.75 * s) && solidFree(x, z, 0.75 * s)) { keptBushes.push({ x, z, s }); taken.push([x, z, 0.75 * s]); n += 1; } }
+    seed = 0x6a41; for (let tries = 0, n = 0; n < 160 && tries < 6000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.55 + rnd() * 0.6; if (room(x, z, 0.75 * s) && solidFree(x, z, 0.75 * s)) { keptBushes.push({ x, z, s, g4: true }); taken.push([x, z, 0.75 * s]); n += 1; } } /* (g4: told from the island's own -- T1's road takes some of those out) */
     seed = 0x6a42; for (let tries = 0, n = 0; n < 120 && tries < 6000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.5 + rnd() * 0.7; if (D.coastDist(x, z) > 8 && room(x, z, s) && solidFree(x, z, s) && slopeAt(x, z) < 0.6) { rocks.push({ x, z, s, r: rnd() * 6, g4: true }); taken.push([x, z, s]); n += 1; } }
     seed = 0x6a43; for (const [wx, wz, wr, n0] of woods.map(([wx, wz, wr]) => [wx, wz, wr, Math.round(wr / 4)])) for (let tries = 0, n = 0; n < n0 && tries < n0 * 60; tries += 1) {
       const a = rnd() * TAU; const d = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * d; const z = wz + Math.sin(a) * d; const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU;
@@ -565,7 +591,8 @@
     seed = 0x6a45; for (let tries = 0; g4.grass.length < 240 && tries < 9000 && keptTrees.length; tries += 1) { const t = keptTrees[Math.floor(rnd() * keptTrees.length)]; const a = rnd() * TAU; const d = 0.75 * t.s + 0.1 + rnd() * 0.2; const x = t.x + Math.cos(a) * d; const z = t.z + Math.sin(a) * d; const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; const s = 0.85 + rnd() * 0.3; if (roomBut(x, z, 0.3, t) && clearOf(x, z) && walkDist(x, z) > 1.2) { g4.grass.push({ x, z, kind, yaw, s }); taken.push([x, z, 0.3]); } }
     seed = 0x6a46; for (let tries = 0; g4.lilies.length < 36 && tries < 6000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const inLake = D.lakeDist(x, z) < -2 && D.lakeDist(x, z) > -11; const inRiver = D.riverDist(x, z) < -0.8;
       if ((inLake || inRiver) && !onBridge(x, z) && Math.hypot(x - PL.dock.x, z - PL.dock.z) > 10 && g4.lilies.every((l) => Math.hypot(l.x - x, l.z - z) > 2.2)) g4.lilies.push({ x, z, kind: Math.floor(rnd() * 4), yaw: rnd() * TAU }); }
-    natureCache = { ...g4, trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts: tufts.filter((t) => !onBank(t, 0.5)), rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
+    g4.grass = g4.grass.filter((g) => roadClear(g, 0.2)); /* (T1: the road's lanes and walks bare -- the flowers, tufts (the weeds keep their numbers) and rocks too) */
+    natureCache = { ...g4, trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3) && roadClear(p, 0.2)), bushes: keptBushes, tufts: tufts.filter((t) => !onBank(t, 0.5) && roadClear(t, 0.2)), rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5 && roadClear(r, r.s)) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free

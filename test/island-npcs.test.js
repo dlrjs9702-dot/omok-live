@@ -182,7 +182,7 @@ test('택시 C1: 멈출 자리는 택시 길 밖, 건너기는 건널목에서�
       if (q.d < 6) { if (inAt && side !== null && q.side !== side && !T.onBridge(inAt.x, inAt.z)) assert.ok(X.CROSSINGS.some((c) => Math.hypot(inAt.x - c.x, inAt.z - c.z) < 6), `${n} crossed at ${inAt.x.toFixed(1)},${inAt.z.toFixed(1)}`); side = q.side; }
       if (inAt && !T.onBridge(inAt.x, inAt.z)) { along += run; worst = Math.max(worst, run); } inAt = null; run = 0; } }
   }
-  assert.ok(along < 120 && worst < 12, `along the road's middle ${along} m, longest ${worst} m`);
+  assert.ok(along < 80 + 10 * X.CROSSINGS.length && worst < 12, `along the road's middle ${along} m, longest ${worst} m`); /* (T1: twelve 건널목, each walked over -- the sum by their number; one long run still under 12 m) */
   const solids = [...T.natureSolids(), ...T.villageSolids(), ...(T.structureSolids?.() || [])];
   for (const c of X.CROSSINGS) for (const o of solids) assert.ok(Math.hypot(c.x - o.x, c.z - o.z) - (o.r || 0) > X.CROSS_CLEAR, `건널목 ${c.x},${c.z}: ${o.x.toFixed(1)},${o.z.toFixed(1)}`);
 });

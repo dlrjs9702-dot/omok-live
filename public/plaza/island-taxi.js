@@ -10,17 +10,26 @@
   // the road, 대청마당 -> 툇마루섬 마을; the other way is the same road backwards. v1.10.285 (notes docs/taxi-fix-20261108.md, 사용자
   // 「뚫고 지나가버려」): found once on a 0.5 m grid (the walks' middles preferred, every solid at least the car's half width +
   // 0.3 m off, no water but the bridges, no stairs) and straightened, its points 4 m apart at most -- test/island-taxi.test.js walks
-  // it every half metre both ways. The island end at the user's own spot (문제 기록 「택시 위치」 -13.3, 173.1: the village front)
-  const ROUTE = [[8,-53],[4.4,-52.6],[0.8,-52.2],[0.7,-48.5],[0.7,-44.7],[0.6,-40.9],[0.6,-37.1],[0.5,-33.3],[0.5,-29.5],[0.5,-25.7],[0.4,-21.9],[0.4,-18.1],[0.3,-14.3],[0.3,-10.5],[0.3,-6.7],[3.3,-5.2],[7.1,-4.8],[10.9,-4.4],[14.7,-4],[18.5,-3.6],[22.3,-3.2],[25.7,-2.1],[29.1,-0.9],[32.5,0.3],[35.9,1.4],[39.3,2.6],[42.8,3.8],[46.2,5.8],[49.6,7.8],[53,9.8],[56.4,11.8],[59.8,13.8],[62.3,16],[64.8,18.3],[67.3,20.5],[69.8,22.8],[72.3,25],[74.8,27.3],[76.8,30.1],[78.9,32.9],[81,35.8],[83.1,38.6],[85.2,41.4],[87.3,44.3],[88.8,47.3],[90.3,50.3],[91.8,53.3],[93.3,56.3],[94.3,59.1],[95.3,62],[96.3,64.9],[97.3,67.8],[97.8,71.3],[98.4,74.8],[99,78.3],[99.6,81.8],[100.2,85.3],[100.8,88.8],[100.7,92.4],[100.6,96],[100.5,99.6],[100.4,103.2],[100.3,106.8],[99.6,110.6],[98.9,114.4],[98.3,118.3],[97.1,121.9],[96,125.5],[94.9,129.1],[93.8,132.8],[92.3,135.8],[89.8,137.8],[87.3,139.8],[83.3,139.8],[79.4,139.9],[75.4,139.9],[71.5,140],[67.5,140],[63.6,140.1],[59.6,140.1],[55.7,140.2],[51.8,140.3],[47.8,140.3],[43.9,140.4],[39.9,140.4],[36,140.5],[32,140.5],[28.1,140.6],[24.1,140.6],[20.2,140.7],[16.3,140.8],[12.3,140.8],[8.4,140.9],[4.4,140.9],[0.5,141],[-3.5,141],[-7.4,141.1],[-11.4,141.1],[-15.3,141.2],[-19.2,141.3],[-19.3,145.2],[-19.4,149.1],[-19.4,153.1],[-19.5,157],[-19.6,160.9],[-19.6,164.9],[-19.7,168.8],[-19.7,172.8],[-16.5,172.9],[-13.3,173.1]];
+  // it every half metre both ways. The island end at the user's own spot (문제 기록 「택시 위치」 -13.3, 173.1: the village front).
+  // T1 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A): the middle moved toward land where the water is close --
+  // 물가 거리 d 53~112 by 2.6 m (the bay's railing now the walk's outer edge), the east shore d 187~245 by 2 m, 툇마루섬 d 332~345
+  // by 2 m north -- eased over 10 m (work/t1-roads/route.cjs)
+  const ROUTE = [[8,-53],[4.4,-52.6],[0.8,-52.2],[0.7,-48.5],[0.7,-44.7],[0.6,-40.9],[0.6,-37.1],[0.5,-33.3],[0.5,-29.5],[0.5,-25.7],[0.4,-21.9],[0.4,-18.1],[0.4,-16.2],[0.6,-14.3],[1.2,-12.4],[2.1,-10],[2.5,-8.4],[4,-7.7],[7.8,-7.3],[11.6,-6.9],[15.4,-6.5],[19.2,-6.1],[22.9,-5.7],[26.5,-4.6],[30,-3.4],[33.3,-2.2],[36.7,-1.1],[40.2,0.1],[43.9,1.4],[47.1,3.3],[50.5,5.3],[53.9,7.3],[57.3,9.3],[58.5,10.2],[59.6,11.4],[60.7,12.6],[62,14.9],[63.1,16.6],[64.4,18],[67.3,20.5],[70.2,23.1],[73,25.7],[74.8,27.3],[77.1,30.5],[79.4,33.6],[81.6,36.6],[83.9,39.6],[86.3,42.8],[87.3,44.3],[89,47.7],[90.7,51.2],[92.4,54.6],[93.3,56.3],[94.6,59.9],[95.3,62],[96.1,63.6],[98.2,66.7],[99,68.3],[99.6,70.1],[100.3,74],[101,78],[101.6,81.9],[102.2,85.4],[102.8,88.7],[102.7,92.5],[102.6,96.1],[102.5,99.7],[102.4,103.3],[102.3,107],[101.7,110.5],[101,114.3],[100.4,117.8],[100.1,119.3],[98.9,123],[97.8,126.5],[96.9,129.2],[96.1,131],[95.4,132.4],[94.5,133.6],[92.8,135.6],[90.9,136.9],[88,139.2],[86.3,139.8],[82.3,139.8],[78.4,139.9],[74.4,139.9],[70.5,140],[66.5,140],[62.6,140.1],[58.6,140.1],[54.7,140.2],[50.8,140.3],[46.8,140.3],[42.9,140.4],[38.9,140.4],[35,140.5],[31,140.5],[27.1,140.6],[24.6,140.6],[22.6,140.4],[21.2,140.1],[17.7,139.2],[15.8,138.9],[14.3,138.8],[10.3,138.9],[6.4,138.9],[2.4,139],[0.5,139.1],[-1,139.4],[-3.5,140.1],[-5.5,140.7],[-7.4,141.1],[-11.4,141.1],[-15.3,141.2],[-19.2,141.3],[-19.3,145.2],[-19.4,149.1],[-19.4,153.1],[-19.5,157],[-19.6,160.9],[-19.6,164.9],[-19.7,168.8],[-19.7,172.8],[-16,172.9],[-13.3,173.1]];
   const BRIDGE = { x0: 38, x1: 81, z0: 136, z1: 144 }; // (the east 윤슬다리: slower there until 1.10.327 -- SLOW is FAST now)
   // v1.10.317 C1 건널목 (notes docs/taxi-yield-20261109.md, 사용자 「큰길을 건너는 자리는 건널목 몇 곳으로 모아요」): where the islanders go
   // over the road -- where their rounds did cross (before the stop and 대청마당, the bend by the hall's walk, off the bridge's
   // west end, the 툇마루섬 end toward the house street), each slid along the road to the nearest place with nothing solid
   // within 5 m; elsewhere they keep to its sides (island-npcs). CROSS_HALF: the crossing's half width along the road. Nothing
-  // solid is put within CROSS_CLEAR of one (dalmaru-island taxiClear)
-  const CROSSINGS = Object.freeze([[2.4, -52.4], [1.2, -6.3], [36.4, 140.5], [-10.9, 141.1]].map(([x, z]) => Object.freeze({ x, z })));
+  // solid is put within CROSS_CLEAR of one (dalmaru-island taxiClear). T1: eleven -- the two stops' fronts, four of the stops to
+  // come (T3: 배 타는 곳, 박물관, 달끝나루, 툇마루섬 갈림길; 물가 거리 has none -- the bay's railing is the walk's edge there, within
+  // 5 m of any), the bridge's west end, the 툇마루섬 house walk, three on the east shore (its middle, two where rounds cross by
+  // the bend -- the bay-side walk there runs out at the water)
+  // ROAD (T1 171A): two lanes of 2.3 m and a walk of 1.6 m each side -- 3.9 m from the middle to the walk's outer edge; the
+  // ground's road map (island-paths buildRoadMap) paints it, nothing solid stands in it (dalmaru-island roadClear)
+  const CROSSINGS = Object.freeze([[2.4,-52.4],[0.8,-13.7],[92.7,55.1],[102.5,101],[88.4,138.9],[36.4,140.5],[-10.9,141.1],[-19.3,146.5],[-19.7,168],[96.7,129.7],[100.1,119.3]].map(([x, z]) => Object.freeze({ x, z })));
   const CROSS_CLEAR = 5;
   const CROSS_HALF = 2.2;
+  const ROAD = Object.freeze({ lane: 2.3, walk: 1.6, half: 3.9 });
   const STOPS = {
     plaza: { id: 'plaza', label: '대청마당', to: 'isle', sign: '🚕 섬 택시 · 툇마루섬 마을까지' },
     isle: { id: 'isle', label: '툇마루섬 마을', to: 'plaza', sign: '🚕 섬 택시 · 대청마당까지' },
@@ -152,5 +161,5 @@
   // v1.10.294 6a: the screen's clock offset a frame toward the server's -- at most `step` ms, at once past `jump` (a first
   // reading, a sleep): a clock answer moving it tens of ms at once made a moving car jump that far
   const easeClock = (view, server, step = 2, jump = 1000) => (view == null || Math.abs(server - view) > jump ? server : view + Math.max(-step, Math.min(step, server - view)));
-  return { CROSSINGS, CROSS_HALF, CROSS_CLEAR, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+  return { CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

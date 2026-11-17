@@ -137,7 +137,7 @@ test('화면 시계: 장면마다 2 ms까지 따라가고, 1초 넘게 차이 �
 test('택시 길 비우기: G4a 새 단단한 자연물은 길 가운데서 0.85+3.2 m·정류장 10 m·걷는 길 2.5 m·건널목·집터 밖, 길가 옛 바위·자갈은 지나감', () => {
   const N = T.nature(); const R = X.ROUTE; const ends = [R[0], R.at(-1)];
   const far = (o, r, road, stop) => T.lineDist(o.x, o.z, R) > road + r && ends.every(([x, z]) => Math.hypot(o.x - x, o.z - z) > stop + r);
-  const before = 510; const added = N.bushes.slice(before); /* (the island's own 510 first; the added after them) */
+  const added = N.bushes.filter((b) => b.g4); /* (the added ones marked -- T1's road took some of the island's own 510 out) */
   assert.ok(added.length >= 105 /* (1.10.323: the 채석장's ground cleared, 150 → 144; 1.10.342 the whole ridge top (notes §9-4: 45 bushes), 144 → 110) */ && N.rocks.filter((r) => r.g4).length >= 110 && N.logs.length >= 30 && N.palms.length >= 15 && N.grass.length >= 200 && N.lilies.length >= 30, JSON.stringify([added.length, N.logs.length, N.palms.length]));
   const solid = [...added.map((b) => [b, 0.75 * b.s]), ...N.rocks.filter((r) => r.g4).map((r) => [r, r.s]), ...N.logs.map((l) => [l, 1.1]), ...N.palms.map((p) => [p, 0.4])];
   for (const [o, r] of solid) { assert.ok(far(o, r, 3.2, 10), `${o.x},${o.z} by the taxi`); assert.ok(!T.onLot(o.x, o.z, 1), `${o.x},${o.z} on a lot`); }
@@ -148,6 +148,24 @@ test('택시 길 비우기: G4a 새 단단한 자연물은 길 가운데서 0.85
   for (const s of T.natureSolids()) assert.ok(T.lineDist(s.x, s.z, R) > s.r + 0.85 + 0.3, `${s.x},${s.z} on the road`);
   for (const r of N.rocks) { if (['shore', 'rock_small'].includes(T.rockKind(r))) assert.equal(T.rockBlocks(r), false); else if (!r.g4 && !far(r, 0.8 * r.s, 4.05, 10)) assert.equal(T.rockBlocks(r), false, 'an older rock by the road'); }
   assert.ok(N.lilies.every((l) => T.dalmaru.lakeDist(l.x, l.z) < 0 || T.dalmaru.riverDist(l.x, l.z) < 0), 'lily pads on the water');
+});
+// T1 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A): two lanes of 2.3 m and a walk of 1.6 m each side; nothing
+// solid within the 3.9 m (the bay's railing posts at its outer edge aside); the stop at 대청마당 with no bench, bed or lamp within
+// 8 m; 10~12 건널목 on the road's middle; the road map paints the lanes and walks off the bridges and 대청마당's paving
+test('T1 길 넓히기: 차선 2.3 m×2 + 인도 1.6 m×2, 그 안에 단단한 것 없음, 대청마당 정류장 8 m 비움, 건널목 10~12곳, 땅 지도 찻길', () => {
+  assert.deepEqual({ ...X.ROAD }, { lane: 2.3, walk: 1.6, half: 3.9 });
+  const R = X.ROUTE; const P = T.plazaProps();
+  const solids = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids(), ...P.benches, ...P.lamps, ...P.beds];
+  for (const s of solids) { const edge = T.lineDist(s.x, s.z, R) - (s.r || 0.5); if (T.onBridge(s.x, s.z)) continue; assert.ok(edge > X.ROAD.half - 0.15, `${s.x.toFixed(1)},${s.z.toFixed(1)} in the road (${edge.toFixed(2)})`); }
+  for (const o of [...P.benches, ...P.lamps, ...P.beds]) assert.ok(Math.hypot(o.x - R[0][0], o.z - R[0][1]) > 8 - 1.2, `${o.x},${o.z} by the 대청마당 stop`);
+  assert.ok(X.CROSSINGS.length >= 10 && X.CROSSINGS.length <= 12, `${X.CROSSINGS.length} crossings`);
+  for (const c of X.CROSSINGS) assert.ok(T.lineDist(c.x, c.z, R) < 0.1, `crossing ${c.x},${c.z} off the middle`);
+  for (const p of T.nature().lampSpots) assert.ok(T.lineDist(p.x, p.z, R) > X.ROAD.half + 0.3, `lamp ${p.x},${p.z} in the road`);
+  const Paths = require('../public/plaza/island-paths.js'); const res = 512; const size = T.GROUND.size; const map = Paths.buildRoadMap(T, X, res);
+  const at = (x, z) => { const i = Math.floor((x + size / 2) / (size / res)); const j = Math.floor((z + size / 2) / (size / res)); const k = (j * res + i) * 3; return { off: (map[k] / 255 * 2 - 1) * Paths.ROAD_RANGE, on: map[k + 1] > 127, cross: map[k + 2] / 255 }; };
+  const mid = at(0.6, -30); assert.ok(mid.on && Math.abs(mid.off) < 0.8, JSON.stringify(mid)); assert.ok(!at(0.6 + 6, -30).on, 'painted 6 m out');
+  assert.ok(at(36.4, 140.5).cross > 0.9 || !at(36.4, 140.5).on, 'the bridge end crossing'); assert.ok(at(0.8, -13.7).cross > 0.9, 'the 배 타는 곳 crossing');
+  assert.ok(!at(60, 140).on, 'painted on the bridge'); assert.ok(!at(6, -53).on, 'painted on 대청마당');
 });
 // v1.10.317 택시 서서 기다리기: the road's clock -- no warp the table's own time; a change set LEAD ms ahead, eased over its ramp,
 // never backwards and never a jump; standing (0) the car stays where it stopped; creeping (a little) it goes on slowly; the

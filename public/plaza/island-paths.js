@@ -102,5 +102,42 @@
     for (let k = 0; k < res * res; k += 1) { a[k * 3] = field[k * 4]; a[k * 3 + 1] = field[k * 4 + 1]; a[k * 3 + 2] = field[k * 4 + 2]; b[k * 3] = field[k * 4 + 3]; b[k * 3 + 1] = join[k]; }
     return { a, b, box };
   }
-  return { EDGE_RANGE, ALONG_PERIOD, TIER, buildPathField, junctionsOf, buildJunctionField, paintedWalks, buildPathMaps };
+  // T1 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A): the taxi road as its own map -- the ground's shader paints two
+  // lanes, a kerb and a walk each side from it, over the walks:
+  //   road  R the signed distance from the road's middle (metres, + its right), ±ROAD_RANGE over 0..255, unbroken out to
+  //         ROAD_RANGE -- across the middle it runs straight, so filtered texels still find a thin line, and its slope gives the
+  //         road's direction (the dashes)
+  //         G where it is painted (1 within MASK of the middle)   B a 건널목 (1 within CROSS_HALF of one, along)
+  // A filtered texel between the road and none reads a mixed R -- so where, is told by G alone. Not painted on a bridge or
+  // 대청마당's paving (each has its own floor) nor out on the sea
+  const ROAD_RANGE = 5; const MASK = 4.4; /* (±5 m in 8 bits: 3.9 cm a step -- 10 m showed steps along a bend's lines) */
+  function buildRoadMap(T, X, res = 1024) {
+    const size = T.GROUND.size; const x0 = -size / 2; const z0 = -size / 2; const cell = size / res; const n = res * res;
+    const out = new Uint8Array(n * 3); const best = new Float32Array(n).fill(Infinity); for (let k = 0; k < n; k += 1) out[k * 3] = 255;
+    const P = T.dalmaru?.PLAZA; const plazaDist = P ? (x, z) => Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1) : () => 1;
+    const keep = (x, z) => !T.onBridge(x, z) && plazaDist(x, z) >= -0.2 && T.coastDist(x, z) > -1.5;
+    const route = X.ROUTE; const crossAlong = []; let total = 0;
+    const segs = route.slice(1).map((q, i) => { const p = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); const s = { p, q, len, at: total }; total += len; return s; });
+    const footOf = (x, z) => { let b = null; for (const s of segs) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len || 1e-9))); const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (!b || d < b.d) b = { d, along: s.at + s.len * t }; } return b; };
+    for (const c of X.CROSSINGS || []) crossAlong.push(footOf(c.x, c.z).along);
+    const reach = ROAD_RANGE;
+    for (const s of segs) {
+      if (!s.len) continue; const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1];
+      const i0 = Math.max(0, Math.floor((Math.min(s.p[0], s.q[0]) - reach - x0) / cell)); const i1 = Math.min(res - 1, Math.ceil((Math.max(s.p[0], s.q[0]) + reach - x0) / cell));
+      const j0 = Math.max(0, Math.floor((Math.min(s.p[1], s.q[1]) - reach - z0) / cell)); const j1 = Math.min(res - 1, Math.ceil((Math.max(s.p[1], s.q[1]) + reach - z0) / cell));
+      for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) {
+        const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell; const k = j * res + i;
+        const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len)));
+        const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (d >= best[k] || d >= reach) continue;
+        best[k] = d;
+        const side = Math.sign((x - s.p[0]) * dz - (z - s.p[1]) * dx) || 1; /* (+: the road's right, heading p -> q) */
+        const along = s.at + s.len * t; const cross = crossAlong.reduce((w, a) => Math.max(w, 1 - Math.max(0, Math.min(1, (Math.abs(along - a) - (X.CROSS_HALF ?? 2.2)) / 0.4))), 0);
+        out[k * 3] = Math.max(0, Math.min(255, Math.round(((side * d) / ROAD_RANGE * 0.5 + 0.5) * 255)));
+        out[k * 3 + 1] = d < MASK ? 255 : 0; out[k * 3 + 2] = d < MASK ? Math.round(cross * 255) : 0;
+      }
+    }
+    for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) { const k = j * res + i; if (out[k * 3 + 1] && !keep(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell)) { out[k * 3 + 1] = 0; out[k * 3 + 2] = 0; } }
+    return out;
+  }
+  return { EDGE_RANGE, ALONG_PERIOD, TIER, ROAD_RANGE, buildPathField, junctionsOf, buildJunctionField, paintedWalks, buildPathMaps, buildRoadMap };
 }));

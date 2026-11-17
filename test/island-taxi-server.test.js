@@ -117,7 +117,7 @@ test('섬 택시 비켜 가기: 건널목에 선 사람은 3초 뒤 반투명으
   const a = await server.enter(await server.issue('택시탄이2')); const b = await server.enter(await server.issue('건널목이'));
   await req('/api/test/points-credit', a, { amount: 100000 }); await req('/api/test/taxi-run', a, { ms: 0 });
   const stand = (who, x, z) => req('/api/plaza/state', who, { x, z, yaw: 0, moving: false });
-  const P = X.stopOf('plaza'); const spot = { x: 0.3, z: -6.7 }; /* (the road at the crossing by the hall's walk, (1.2, -6.3)) */
+  const P = X.stopOf('plaza'); const spot = X.CROSSINGS[1]; /* (the road at the crossing by the hall's walk -- T1: by 배 타는 곳, the road moved off (0.3, -6.7)) */
   await req('/api/island/npc-grid', a);
   await stand(a, P.out.x, P.out.z); await stand(b, spot.x, spot.z);
   assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).status, 200);
