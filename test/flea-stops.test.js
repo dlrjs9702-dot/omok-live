@@ -24,7 +24,7 @@ test('벼룩시장 멈춤: 결제 뒤 멈추면 낸 사람이 받음(다른 사�
   await req('/api/test/island/give', a, { itemId: 'herb', qty: 9 });
 
   // P1-2: B's charge saved, the handing over stops -- C cannot buy it on B's charge; B gets it (once), charged once
-  const id1 = await put(2, 8000);
+  const id1 = await put(2, 4000); /* (1.10.347: herbs go up as a bundle -- the price a piece) */
   const b0 = await bal(b); const c0 = await bal(c);
   await fail('islandGive'); assert.notEqual((await req('/api/island/flea/buy', b, { id: id1 })).status, 200);
   assert.equal(await bal(b), b0 - 8000, 'B는 한 번 냄');
@@ -36,7 +36,7 @@ test('벼룩시장 멈춤: 결제 뒤 멈추면 낸 사람이 받음(다른 사�
   const c1 = await bal(c); assert.equal((await req('/api/island/flea/buy', c, { id: id2 })).status, 200); assert.equal(await bal(c), c1 - 4000); assert.equal(await count(c, 'herb'), 1);
 
   // P1-4: 거두기 -- the thing back, then the board's save stops: not on the board to be sold again, and not given twice
-  const id3 = await put(3, 12000); assert.equal(await count(a, 'herb'), 3);
+  const id3 = await put(3, 4000); assert.equal(await count(a, 'herb'), 3);
   await fail('setWorldValue', 1); assert.notEqual((await req('/api/island/flea/withdraw', a, { id: id3 })).status, 200);
   assert.equal(await count(a, 'herb'), 6, '돌려받음'); assert.ok(!(await req('/api/island/flea', c)).data.list.some((x) => x.id === id3), '게시판에서 내려감');
   assert.equal((await req('/api/island/flea/buy', c, { id: id3 })).data.error, 'FLEA_GONE');
@@ -111,4 +111,35 @@ test('P2 6·8: 산 물고기 표시가 수조·선물로 옮겨도 남음, 오�
   globalThis.AudioContext = class { constructor() { this.state = 'running'; this.destination = node(); } get currentTime() { return clock; } createGain() { return node(); } createOscillator() { made += 1; return node(); } resume() { return Promise.resolve(); } };
   const M = require('../public/plaza/xmas-music.js'); const box = M.create();
   box.step(1, true); clock = 600; made = 0; box.step(1, true); assert.ok(made < 30, `${made}개`); delete globalThis.AudioContext;
+});
+test('1.10.347 묶음: 잡초 99개를 개당 값으로 · 사는 사람이 개수 · 남은 수보다 많이 사기(동시에 둘) 막힘 · 판 건마다 수수료·정산 · 멈춰도 그 사람만 · 거두기는 남은 것만', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'flea-bulk-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('잡초상인')); const b = await server.enter(await server.issue('잡초손님')); const c = await server.enter(await server.issue('잡초손님둘'));
+  const bal = async (who) => (await req('/api/points', who)).data.balance;
+  const count = async (who, id) => ((await req('/api/island/bag', who)).data.items || []).filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
+  await req('/api/test/island/give', a, { itemId: 'weed', qty: 99 });
+  const e = (await req('/api/island/flea/stock', a)).data.items.find((x) => x.itemId === 'weed'); assert.equal(e.bundle, true, '잡초는 묶음'); const unit = e.unit * 2;
+  const put = await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), entryId: e.entryId, qty: 99, price: unit }); assert.equal(put.status, 200, JSON.stringify(put.data)); assert.equal(put.data.listing.unit, unit); assert.equal(put.data.listing.qty, 99);
+  const id = put.data.listing.id; assert.equal((await req('/api/island/flea', b)).data.list.find((x) => x.id === id).unit, unit);
+  assert.equal((await req('/api/island/flea', a)).data.mine, 1, '99개 한 묶음이 한 칸');
+  const b0 = await bal(b); const one = await req('/api/island/flea/buy', b, { id, qty: 60 }); assert.equal(one.status, 200, JSON.stringify(one.data)); assert.equal(one.data.qty, 60); assert.equal(one.data.left, 39);
+  assert.equal(await bal(b), b0 - unit * 60, '산 만큼만'); assert.equal(await count(b, 'weed'), 60);
+  assert.equal((await req('/api/island/flea/buy', c, { id, qty: 40 })).data.error, 'FLEA_QTY', '남은 39개보다 많이');
+  // two at once for 30 each of 39: one gets 30, the other is refused (9 left) -- never 60
+  const c0 = await bal(c); const b1 = await bal(b); const [x, y] = await Promise.all([req('/api/island/flea/buy', b, { id, qty: 30 }), req('/api/island/flea/buy', c, { id, qty: 30 })]);
+  assert.equal([x, y].filter((r) => r.status === 200).length, 1, JSON.stringify([x.data, y.data])); assert.ok([x, y].some((r) => ['FLEA_QTY', 'FLEA_BUSY'].includes(r.data.error)));
+  assert.equal((await count(b, 'weed')) + (await count(c, 'weed')), 90); assert.equal((b1 - await bal(b)) + (c0 - await bal(c)), unit * 30);
+  // a part's handing over stops after its charge: the tidy finishes it for that buyer only
+  const left = (await req('/api/island/flea', c)).data.list.find((l) => l.id === id).qty; assert.equal(left, 9);
+  const c1 = await bal(c); const cw = await count(c, 'weed'); await req('/api/test/store/fail', null, { method: 'islandGive' }); assert.notEqual((await req('/api/island/flea/buy', c, { id, qty: 4 })).status, 200);
+  assert.equal(await bal(c), c1 - unit * 4); assert.equal((await req('/api/island/flea/buy', b, { id, qty: 5 })).status, 200, '정리 뒤 남은 5개');
+  assert.equal(await count(c, 'weed'), cw + 4, '낸 사람이 받음'); assert.ok(!(await req('/api/island/flea', b)).data.list.some((l) => l.id === id), '다 팔리면 내려감');
+  // the seller: each part its own sale, the fee by part, 받기 once
+  const fee = (p) => Math.ceil(p * 0.05); const want = [60, 30, 4, 5].reduce((s, k) => s + unit * k - fee(unit * k), 0);
+  assert.equal((await req('/api/island/flea', a)).data.owed, want); const a0 = await bal(a); assert.equal((await req('/api/island/flea/claim', a, {})).status, 200); assert.equal(await bal(a), a0 + want);
+  // withdraw: only what is left
+  await req('/api/test/island/give', a, { itemId: 'weed', qty: 10 }); const e2 = (await req('/api/island/flea/stock', a)).data.items.find((z) => z.itemId === 'weed');
+  const p2 = (await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), entryId: e2.entryId, qty: 10, price: unit })).data.listing.id; assert.equal((await req('/api/island/flea/buy', b, { id: p2, qty: 3 })).status, 200);
+  const wa = await count(a, 'weed'); assert.equal((await req('/api/island/flea/withdraw', a, { id: p2 })).status, 200); assert.equal(await count(a, 'weed'), wa + 7, '남은 7개만');
 });

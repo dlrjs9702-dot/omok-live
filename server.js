@@ -1420,7 +1420,7 @@ async function fleaTidy(now, account = null) {
     }
   }
   for (const l of IslandFlea.reserved(s)) { /* (1.10.343 Codex 331~340 P1-2: inside worldEdit every reservation seen here was left by a stop -- its buyer paid (the buyer's own flea doc says so: written with the charge) gets it, else it is let go) */
-    const paid = ((await pointStore.questDoc(l.buyer, 'flea')).doc.paidFor || []).includes(l.id);
+    const paid = ((await pointStore.questDoc(l.buyer, 'flea')).doc.paidFor || []).includes(l.unit ? IslandFlea.partTag(l) : l.id); /* (1.10.347: a bundle's part by its tag) */
     s = paid ? await fleaFinish(s, l, l.buyer, now) : IslandFlea.release(s, l.id); changed = true;
   }
   for (const l of IslandFlea.expired(s, now)) {
@@ -1445,6 +1445,13 @@ if (process.env.NODE_ENV !== 'test') setInterval(() => { worldEdit(() => fleaTid
 // (1.10.343 P1-2) a sale done for `buyer` (paid): off the board, the seller owed, the thing handed over (kept when there is no room),
 // saved, the seller's letter -- the same claim each time, so finishing it twice hands it over once
 async function fleaFinish(s, l, buyer, now) {
+  if (l.unit) { /* (1.10.347 묶음: the part reserved -- `buyQty` of it -- as a sale of its own: its claim, its owed line, its letter; the rest stays up) */
+    const count = Math.min(l.qty, l.buyQty || l.qty); const at = l.taken || 0; const part = { ...IslandFlea.release({ list: [l] }, l.id).list[0], id: `${l.id}.${at}`, qty: count, price: l.unit * count };
+    s = IslandFlea.soldPart(s, l, count, now); if (!(await fleaHandOver(buyer, part, `flea:${l.id}:buy:${at}`))) s = IslandFlea.hold(s, buyer, part);
+    await pointStore.setWorldValue('flea', s); const fee = IslandFlea.feeOf(part.price);
+    await fleaLetter(l.seller, `flea-sold-${part.id}`, `${IslandCast.josa(fleaWhat(part), '이가')} ${part.price.toLocaleString('ko-KR')}P(개당 ${l.unit.toLocaleString('ko-KR')}P)에 팔렸어요. 섬 벼룩시장 게시판에서 「받기」를 눌러 받아 가세요. (수수료 5% ${fee.toLocaleString('ko-KR')}P를 뗀 ${(part.price - fee).toLocaleString('ko-KR')}P)`, now);
+    notifyAccount(l.seller, 'flea', { owed: true }); return s;
+  }
   s = IslandFlea.sold(s, l, now); if (!(await fleaHandOver(buyer, l, `flea:${l.id}:buy`))) s = IslandFlea.hold(s, buyer, IslandFlea.release({ list: [l] }, l.id).list[0]);
   await pointStore.setWorldValue('flea', s);
   const fee = IslandFlea.feeOf(l.price);
@@ -6726,7 +6733,7 @@ async function requestHandler(req, res) {
       const { bag } = await pointStore.questDoc(account, 'flea'); const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const h = await homeOf(account);
       const placed = new Set([...(h?.pieces || []), ...(h?.yard || [])].map((p) => p.uid));
       const items = bag.filter((e) => IslandFlea.sellable(e.itemId)).map((e) => { const def = IslandItems.itemDef(e.itemId); const sizes = IslandItems.sizesOf(e); const each = sizes ? sizes.slice().reverse().map((cm) => IslandFlea.worth(e.itemId, 1, [cm], now, fleaGood)) : null; /* (a fish: each one's worth, the smallest first -- the order they go in) */
-        return { entryId: e.entryId, itemId: e.itemId, name: def.name, icon: def.icon, qty: Math.min(e.qty, IslandFlea.QTY_MAX), ...(IslandItems.boughtOf(e) ? { bought: true } : {}), ...(sizes ? { sizes: sizes.slice().reverse(), each } : { unit: IslandFlea.worth(e.itemId, 1, null, now, fleaGood) }) }; }).filter((x) => (x.each ? x.each[0] : x.unit) > 0);
+        return { entryId: e.entryId, itemId: e.itemId, name: def.name, icon: def.icon, qty: Math.min(e.qty, IslandFlea.QTY_MAX), ...(IslandFlea.bundled(e.itemId, sizes) ? { bundle: true } : {}), ...(IslandItems.boughtOf(e) ? { bought: true } : {}), ...(sizes ? { sizes: sizes.slice().reverse(), each } : { unit: IslandFlea.worth(e.itemId, 1, null, now, fleaGood) }) }; }).filter((x) => (x.each ? x.each[0] : x.unit) > 0);
       const pieces = owned.filter((p) => !placed.has(p.uid)).map((p) => { const g = IslandFurniture.good(p.id); return { uid: p.uid, id: p.id, name: g?.name || p.id, yard: Boolean(g?.yard), worth: fleaPieceWorth(p) }; }).filter((p) => p.worth > 0);
       return sendJson(res, 200, { ok: true, items, pieces, rules: { fee: IslandFlea.FEE, low: IslandFlea.LOW, high: IslandFlea.HIGH, days: IslandFlea.DAYS, max: IslandFlea.MINE_MAX } });
     }
@@ -6757,8 +6764,8 @@ async function requestHandler(req, res) {
           const e = bag.find((x) => x.entryId === String(body.entryId || '')); if (!e) return { error: 'MISSING' };
           if (!IslandFlea.sellable(e.itemId)) return { error: 'NOT_SELLABLE' };
           const t = IslandItems.takeEntry(bag, e.entryId, qty); if (!t) return { error: 'QTY' };
-          const base = IslandFlea.worth(e.itemId, qty, t.sizes, now, fleaGood); if (!base) return { error: 'NOT_SELLABLE' };
-          const r = IslandFlea.put(s, account, label, { kind: 'item', itemId: e.itemId, qty, sizes: t.sizes, bought: IslandItems.boughtOf(e) }, price, base, now); if (r.error) return { error: r.error, base };
+          const bundle = IslandFlea.bundled(e.itemId, t.sizes); /* (1.10.347: things alike -- `price` a piece) */ const base = bundle ? IslandFlea.worth(e.itemId, 1, null, now, fleaGood) : IslandFlea.worth(e.itemId, qty, t.sizes, now, fleaGood); if (!base) return { error: 'NOT_SELLABLE' };
+          const r = IslandFlea.put(s, account, label, { kind: 'item', itemId: e.itemId, qty, sizes: t.sizes, bought: IslandItems.boughtOf(e), unit: bundle }, price, base, now); if (r.error) return { error: r.error, base };
           return { doc: { ...doc, reqs: [...(doc.reqs || []).slice(-19), requestId], pending: { listing: { ...r.listing, seq: r.state.seq } } }, take: { entryId: e.entryId, qty }, next: r.state, listing: r.listing }; /* (1.10.344 P2-5: the take and the listing kept in one step) */
         });
         if (out?.error === 'PRICE') return priceError(out.base);
@@ -6769,7 +6776,7 @@ async function requestHandler(req, res) {
         if (!out?.next) return sendError(res, out?.error === 'PAID' ? 409 : 400, `FLEA_${out?.error || 'FAILED'}`, FLEA_ERRORS[out?.error] || '올리지 못했어요.');
         await pointStore.setWorldValue('flea', out.next);
         await pointStore.questApply(account, 'flea', (doc) => (doc.pending?.listing?.id === out.listing.id ? { doc: { ...doc, pending: null } } : null));
-        broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: out.listing.id, name: out.listing.name, price }, bag: out.bag });
+        broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: out.listing.id, name: out.listing.name, price: out.listing.price, qty: out.listing.qty, ...(out.listing.unit ? { unit: out.listing.unit } : {}) }, bag: out.bag });
       });
     }
     if (route === '/buy') return worldEdit(async () => {
@@ -6778,15 +6785,18 @@ async function requestHandler(req, res) {
       if (l.seller === account) return sendError(res, 409, 'FLEA_OWN', '내가 올린 물건은 살 수 없어요. 「거두기」로 가져갈 수 있어요.');
       if (l.buyer && l.buyer !== account) return sendError(res, 409, 'FLEA_BUSY', '다른 사람이 사는 중이에요. 잠시 뒤에 다시 봐 주세요.');
       if (l.kind === 'piece') { if (((await pointStore.worldValue(`furniture:${account}`)) || []).length >= 300) return sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.'); }
-      else { const { bag } = await pointStore.questDoc(account, 'flea'); const mark = IslandItems.boxFor(l.itemId) ? { bought: true } : null; if (!IslandItems.addToBag(bag, l.itemId, l.qty, `flea-${l.id}`, l.sizes ? { sizes: l.sizes, ...mark } : mark, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방에 자리가 없어요. 가방을 비우고 다시 와 주세요.'); }
+      const count = l.unit ? (l.buyer === account && l.buyQty ? l.buyQty : Math.floor(Number(body.qty) || l.qty)) : l.qty; /* (1.10.347 묶음: how many -- 1 to what is left) */
+      if (l.unit && (!Number.isSafeInteger(count) || count < 1 || count > l.qty)) return sendError(res, 409, 'FLEA_QTY', `남은 ${l.qty}개보다 많이 살 수 없어요. 개수를 다시 정해 주세요.`);
+      else if (l.kind !== 'piece') { const { bag } = await pointStore.questDoc(account, 'flea'); const mark = IslandItems.boxFor(l.itemId) ? { bought: true } : null; if (!IslandItems.addToBag(bag, l.itemId, count, `flea-${l.id}`, l.sizes ? { sizes: l.sizes, ...mark } : mark, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방에 자리가 없어요. 가방을 비우고 다시 와 주세요.'); }
       // (1.10.343 Codex 331~340 P1-2: kept for me first, then my own charge -- the listing id in my flea doc with it --, then handed
       // over; a stop between leaves the reservation, which the tidy finishes for me or lets go -- never another's sale on my charge)
-      if (!l.buyer) { s = IslandFlea.reserve(s, l.id, account, now); await pointStore.setWorldValue('flea', s); }
-      const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1, paidFor: [...(doc.paidFor || []).slice(-49), l.id] }, cost: l.price, payKey: `flea:buy:${l.id}:${account}`, reason: 'flea_buy' }));
+      if (!l.buyer) { s = IslandFlea.reserve(s, l.id, account, now, l.unit ? count : null); await pointStore.setWorldValue('flea', s); }
+      const lr = s.list.find((x) => x.id === l.id) || l; const tag = l.unit ? IslandFlea.partTag(l) : l.id; const cost = l.unit ? l.unit * count : l.price; const partId = l.unit ? `${l.id}.${l.taken || 0}` : l.id; /* (1.10.347: each part its own charge -- the part's tag in my doc with it) */
+      const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1, paidFor: [...(doc.paidFor || []).slice(-49), tag] }, cost, payKey: l.unit ? `flea:buy:${tag}:${account}` : `flea:buy:${l.id}:${account}`, reason: 'flea_buy' }));
       if (paid?.error && paid.error !== 'PAID') { await pointStore.setWorldValue('flea', IslandFlea.release(s, l.id)); return paid.error === 'POINTS' ? sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.') : sendError(res, 400, `FLEA_${paid.error}`, '사지 못했어요.'); } /* (PAID: my own charge before, not handed over -- handed over now) */
-      s = await fleaFinish(s, l, account, now);
+      s = await fleaFinish(s, lr, account, now);
       notifyPointsChanged([account]); broadcastIsland('flea', {});
-      return sendJson(res, 200, { ok: true, name: l.name, qty: l.qty, kind: l.kind, price: l.price, balance: paid?.balance ?? null, held: Boolean((s.held[account] || []).some((x) => x.id === l.id)) });
+      return sendJson(res, 200, { ok: true, name: l.name, qty: count, kind: l.kind, price: cost, ...(l.unit ? { unit: l.unit, left: l.qty - count } : {}), balance: paid?.balance ?? null, held: Boolean((s.held[account] || []).some((x) => x.id === partId)) });
     });
     if (route === '/withdraw') return worldEdit(async () => {
       const s = (await fleaTidy(now)).state; const l = s.list.find((x) => x.id === String(body.id || ''));

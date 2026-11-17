@@ -21,12 +21,12 @@ test('섬 벼룩시장: 게시판 SPACE → 팔기로 올리기 → 다른 사�
     const fit2 = await page.evaluate(() => document.querySelector('#plazaDialog .fleaCard').scrollWidth <= document.querySelector('#plazaDialog .fleaCard').clientWidth + 1); expect(fit2).toBe(true);
     await a.context.close(); return;
   }
-  // 팔기: the herbs, two of them, 8,000P
+  // 팔기: the herbs, two of them, 4,000P a piece (1.10.347: things alike go up as a bundle, priced a piece)
   await page.locator('#plazaDialog .stocksTabs button', { hasText: '팔기' }).click();
   const pick = page.locator('#plazaDialog .fleaPick'); await expect(pick).toBeVisible();
   const herbKey = await pick.evaluate((s) => [...s.options].find((o) => o.textContent.includes('희귀 약재')).value); await pick.selectOption(herbKey);
-  await page.locator('#plazaDialog .fleaQty').fill('2'); await page.locator('#plazaDialog .fleaPrice').fill('8000');
-  await expect(page.locator('#plazaDialog .stocksNote')).toContainText('팔리면 7,600P');
+  await page.locator('#plazaDialog .fleaQty').fill('2'); await page.locator('#plazaDialog .fleaPrice').fill('4000');
+  await expect(page.locator('#plazaDialog .stocksNote')).toContainText('2개가 다 팔리면 7,600P');
   await page.locator('#plazaDialog button', { hasText: '올리기' }).click();
   await expect(page.locator('#plazaDialog .fleaRow')).toContainText('희귀 약재 ×2'); /* (내 물건) */
   // someone else buys it: the seller's board shows money waiting
