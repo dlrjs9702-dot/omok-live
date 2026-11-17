@@ -4128,7 +4128,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const lot = HOME.lotById(l.id); if (!lot) continue;
       yardsMoved = noteYard(l) || yardsMoved; // (v1.10.225: its yard, whatever else changed)
       const decay = l.owner !== null ? globalThis.IslandFarm.decayOf(l.wear || 0) : null; /* (1.10.348 4b: 낡음 / 부서짐 over the house) */
-      const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}:${l.stage}:${l.building}:${decay}`; const lv = l.yardLevel || 1; const was = homesShown.get(l.id); if (was?.key === key && was.lv === lv) continue; // (v1.10.230: its fence's level too)
+      const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}:${l.stage}:${l.building}`; const lv = l.yardLevel || 1; const was = homesShown.get(l.id); if (was?.key === key && was.lv === lv && was.decay === decay) continue; // (v1.10.230: its fence's level too; 1.10.348: its overlay -- kept apart from the key the specs read)
       if (was) { was.root.removeFromParent(); occlusion.remove(was.root); const k = buildingRoots.indexOf(was.root); if (k >= 0) buildingRoots.splice(k, 1); }
       const root = new THREE.Group(); root.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); root.rotation.y = lot.yaw; homesGroup.add(root); // (the model's front, -Z, toward the walk)
       const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot, l.owner !== null ? HOME.stageOf(l.stage).n : 2); const who = l.owner || '이웃';
@@ -4160,7 +4160,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       { const [, , gz] = YARD.fenceOf(1); const name = [...who].length > 8 ? `${[...who].slice(0, 7).join('')}…` : who; signboard('plaque', l.owner !== null ? (l.mine ? '내 집' : [...name].length > 3 ? `${name}의\n집` : `${name}의 집`) : '빈 집터', root, YARD.GATE / 2 + 0.9, 0, gz - 0.4, 0, { scale: 1.5, colors: ['#fffaf0', '#3b2410'], glow: 0.45 }); // (v1.10.231 총괄: a light board, dark-brown bold words, read from about 5 m -- half again as big, a long name on two lines)
         for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), mat(0x8a6a48), sx * (YARD.GATE / 2 + 0.1), 0.6, gz, root);
         const lv = l.owner !== null ? l.yardLevel || 1 : 1; if (lv < YARD.LEVELS) { const [x0, x1, , z1] = YARD.fenceOf(YARD.LEVELS); for (const [sx, sz] of [[x0, gz], [x1, gz], [x0, z1], [x1, z1]]) mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), mat(0xc9a77a), sx, 0.3, sz, root); } }
-      homesShown.set(l.id, { key, lv, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
+      homesShown.set(l.id, { key, lv, decay, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
     }
     if (yardsMoved) drawYards();
     drawFarm(lots); /* (318: the beds' crops, the box, the yard weeds, 허름함) */
