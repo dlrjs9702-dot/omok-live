@@ -5,6 +5,7 @@ const fsp = require('fs/promises');
 const crypto = require('crypto');
 const { getGame, hasGame, pointPolicy } = require('./lib/games');
 const { buildActionTimer, currentTurnSeat } = require('./lib/action-timer');
+const DbBackup = require('./lib/db-backup'); // 1.10.349 DB 백업
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 const OLDMAID_SEATS = ['1', '2', '3', '4'];
@@ -8884,6 +8885,16 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, kind: c.kind, name: c.name, endsIn: IslandCalendar.CONTEST.roundMs, gift: gift?.applied ? '낚시 미끼' : null, stamp });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/weekly/settle' && req.method === 'POST') { const body = await parseJson(req); if (body.all) await settleEventContests(); else await settleEventContest(String(body.day)); /* (all: the minute's settling) */ return sendJson(res, 200, { ok: true, result: await pointStore.worldValue(`eventContestResult:${body.day}`) }); }
+  if (pathname === '/api/admin/backup' && req.method === 'GET') { // 1.10.349 DB 백업 (notes 178A·179A): every table, gzipped, sealed with the public key -- the admin only; the log keeps its size and time alone
+    if (!requireAdmin(req, res)) return;
+    const publicKey = DbBackup.publicKeyFrom(); if (!publicKey) return sendError(res, 503, 'BACKUP_KEY_MISSING', '백업 공개 키가 없어요.');
+    if (!checkRateLimit('admin-backup', 6, 24 * 60 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_BACKUPS', '오늘은 백업을 충분히 받았어요. 내일 다시 받아 주세요.');
+    const started = Date.now(); const at = new Date(nowMs()).toISOString(); let bytes = 0;
+    const out = DbBackup.stream({ databaseUrl: DATABASE_URL, dataDir: DATA_DIR, publicKey, at }); out.on('data', (c) => { bytes += c.length; });
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="island-${kstDate(nowMs())}.bak"`, 'Cache-Control': 'no-store' });
+    require('stream').pipeline(out, res, (error) => console.log(`[backup] ${error ? 'failed' : 'ok'} bytes=${bytes} ms=${Date.now() - started}`));
+    return;
+  }
   if (pathname === '/api/admin/den/today' && req.method === 'GET') { // 1.10.346 사용자 154A: today's den word and the note's bench -- the admin only, not logged
     if (!requireAdmin(req, res)) return; const t = await denToday(); const n = t.note; const dx = n ? n.x - IslandTerrain.PLAZA_C.x : 0; const dz = n ? n.z - IslandTerrain.PLAZA_C.z : 0;
     const dir = n ? `${dz > 3 ? '북' : dz < -3 ? '남' : ''}${dx > 3 ? '동' : dx < -3 ? '서' : ''}` || '가운데' : null;
