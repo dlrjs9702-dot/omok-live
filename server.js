@@ -8414,8 +8414,8 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, phase: c.phase, kind: c.kind, id: c.id });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/store/fail' && req.method === 'POST') { // (Codex 검토 5차 P3-4: a save failing half way -- the store's `method` throws once, after `skip` calls)
-    const { method, skip = 0 } = await parseJson(req); const real = pointStore[method]; if (typeof real !== 'function') return sendError(res, 400, 'BAD_REQUEST', '없는 저장소 함수예요.');
-    let left = Number(skip) || 0; pointStore[method] = async (...args) => { if (left > 0) { left -= 1; return real.apply(pointStore, args); } pointStore[method] = real; throw new Error('test store failure'); };
+    const { method, skip = 0, key = null } = await parseJson(req); const real = pointStore[method]; if (typeof real !== 'function') return sendError(res, 400, 'BAD_REQUEST', '없는 저장소 함수예요.');
+    let left = Number(skip) || 0; pointStore[method] = async (...args) => { if (key !== null && args[0] !== key && args[1] !== key) return real.apply(pointStore, args); /* (1.10.345: `key` -- only that save; a background one passes) */ if (left > 0) { left -= 1; return real.apply(pointStore, args); } pointStore[method] = real; throw new Error('test store failure'); };
     return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {

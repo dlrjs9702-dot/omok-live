@@ -19,7 +19,7 @@ test('벼룩시장 멈춤: 결제 뒤 멈추면 낸 사람이 받음(다른 사�
   for (const label of ['사는이', '끼어든이']) { const key = (await req('/api/admin/keys', server.admin)).data.keys.find((k) => k.label === label); await req(`/api/admin/keys/${key.id}/points`, server.admin, { amount: 900000, category: 'other', memo: '시험', requestId: crypto.randomUUID() }); }
   const bal = async (who) => (await req('/api/points', who)).data.balance;
   const count = async (who, id) => ((await req('/api/island/bag', who)).data.items || []).filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
-  const fail = (method, skip = 0) => req('/api/test/store/fail', null, { method, skip });
+  const fail = (method, skip = 0, key = method === 'setWorldValue' ? 'flea' : null) => req('/api/test/store/fail', null, { method, skip, key }); /* (1.10.345: only the board's own save -- a background save never takes it) */
   const put = async (qty, price) => { const e = (await req('/api/island/flea/stock', a)).data.items.find((x) => x.itemId === 'herb'); const r = await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), entryId: e.entryId, qty, price }); assert.equal(r.status, 200, JSON.stringify(r.data)); return r.data.listing.id; };
   await req('/api/test/island/give', a, { itemId: 'herb', qty: 9 });
 
@@ -64,7 +64,7 @@ test('도장 가게 멈춤: 가구 전달 기록이 남아, 벼룩시장에 맡�
   await req('/api/test/festival/clock', null, { at: Date.parse('2026-11-26T19:00:00+09:00') });
   await stand(P.feast); assert.equal((await req('/api/island/festival/feast', a, {})).data.festival.stamps, 3);
   // the stamps spent and the piece put in; marking it handed over stops -- the second try hands it over once (no second piece)
-  await stand(P.stall); await req('/api/test/store/fail', null, { method: 'questApply', skip: 1 });
+  await stand(P.stall); await req('/api/test/store/fail', null, { method: 'questApply', skip: 1, key: 'fest:harvest-2026' });
   assert.notEqual((await req('/api/island/festival/buy', a, { id: 'straw_sheaf' })).status, 200); assert.equal((await pieces()).length, 1);
   const retry = await req('/api/island/festival/buy', a, { id: 'straw_sheaf' }); assert.equal(retry.status, 200, JSON.stringify(retry.data)); assert.equal((await pieces()).length, 1, '하나만');
   // put on the 벼룩시장 (out of the 창고), asked again: OWNED -- nothing new
@@ -79,7 +79,7 @@ test('도장 가게 멈춤: 가구 전달 기록이 남아, 벼룩시장에 맡�
 test('P2 5: 올리기 저장이 멈춰도 물건은 안 사라짐 -- 같은 요청 다시·다음에 볼 때 한 번 올라감 (물건·가구)', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'flea-list-stops-')); rmAtExit(dir);
   const server = await boot(t, dir); const { req } = server; const a = await server.enter(await server.issue('올리는이'));
-  const fail = (method, skip = 0) => req('/api/test/store/fail', null, { method, skip });
+  const fail = (method, skip = 0, key = method === 'setWorldValue' ? 'flea' : null) => req('/api/test/store/fail', null, { method, skip, key }); /* (1.10.345: only the board's own save -- a background save never takes it) */
   await req('/api/test/island/give', a, { itemId: 'herb', qty: 4 });
   const e = (await req('/api/island/flea/stock', a)).data.items.find((x) => x.itemId === 'herb'); const requestId = crypto.randomUUID();
   await fail('setWorldValue'); assert.notEqual((await req('/api/island/flea/list', a, { requestId, entryId: e.entryId, qty: 2, price: 8000 })).status, 200);
@@ -90,7 +90,7 @@ test('P2 5: 올리기 저장이 멈춰도 물건은 안 사라짐 -- 같은 요�
   // a piece: out of the 창고, the board's save stops -- up at the next look, once
   const added = (await req('/api/test/home/furniture', a, { ids: ['aquarium_big__oak'] })).data.pieces[0];
   const worth = (await req('/api/island/flea/stock', a)).data.pieces.find((p) => p.uid === added.uid).worth;
-  await fail('setWorldValue', 1); assert.notEqual((await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), uid: added.uid, price: worth })).status, 200);
+  await fail('setWorldValue'); assert.notEqual((await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), uid: added.uid, price: worth })).status, 200); /* (the board's save: the 창고's is another key) */
   assert.ok(!(await req('/api/island/furniture/mine', a)).data.pieces.some((p) => p.uid === added.uid));
   assert.equal((await mine()).filter((x) => x.kind === 'piece').length, 1, '다음에 볼 때 올라감'); assert.equal((await mine()).filter((x) => x.kind === 'piece').length, 1, '한 번만');
 });
