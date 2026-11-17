@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.355 캐기+낚시 미니게임 다듬기 (사용자 2026-11-17, notes island-expansion 「캐기 미니게임 다듬기」, fishing-minigames 「타격감」) + playerRadiusAt + 거울호수
+
+- 같은 효과 도구: public/island-feel.js(글자·흔들림·진동·소리·가방으로 날기·빨간 가장자리, 효과음은 gc.settings.sound, 흔들림·진동은 gc.lessMotion), room-sound 섬 소리(쨍·툭·찰싹·첨벙·찰방·릴·심장·콤보·휙·반짝), plaza-scene feelBurst(조각·불꽃·먼지·물방울 InstancedMesh 풀)·feelPillar·feelFishJump.
+- 캐기: 줄어드는 고리(빛 가운데에 딱 겹침 = 보너스), 기다림 흰빛 → 빛 금빛, 바위 위 세 칸(●✕○), 맞힘 쨍!/완벽!, 놓침 툭+먼지, 두 번 맞히면 바로 결과(서버: 스스로 잰 두 번이면 일찍 finish 허용), 광석 가방으로 날기·드문 광석 빛기둥, 「광석 +1 · 오늘 n/60」, 캐는 동안 다른 안내 숨김(islandMining), 폰 큰 「캐기」 단추(빛나는 금).
+- 낚시: 타이밍 막대 칸 빛남·찰싹!/완벽!(낚싯대 끝 휨)·첨벙, 화살표 톡 튀기·콤보 소리·n 콤보, 줄다리기 릴 소리·줄 떨림·장력 빨간 가장자리·심장·힘쓸 때 큰 물보라와 진동, 잡았을 때 물고기 튀어 오름+찰방!. 판정은 서버 그대로.
+- playerRadiusAt: 문을 칸으로 0.5초마다 다시 담고 3x3 칸만(10.3 → 0.7 kB/프레임), 모든 문 훑기와 같은 답(doorRadiusCheck e2e).
+- 거울호수 fishWater: 호숫가 탐침이 타원 4 m 안·강보다 가까우면 lake(호숫가 lake 84→303, river 271→52, 밖 변화 없음).
+- 영상·사진 notes img/minigames-355.
+
 ## v1.10.354 지형 높이 함수 호출 줄이기 (총괄 2026-11-17: 353 다음 작은 PR)
 
 - island-npcs pointMemo: createWalkers의 walkable을 정확한 (x, z) 기억 표(1024칸, 타입 배열, 할당 없음)로 감쌈 -- 같은 점은 같은 답, 프레임마다 실제 계산 약 20 → 7회(나머지 13회는 기억).
@@ -28,13 +37,3 @@
 - §9 ⓐ 셰이더 다시 고르기 0회/프레임: 수조 물·폭포·유리 forceSinglePass, 묶음(인스턴스) 복사본 재질 쌍둥이(asset-loader instTwinOf, propBatch batchTwin, 거품 고리 foamInst), 그림자 깊이 재질(기차 기둥, 뼈대 모델). 섬 전체 320 → 257 kB/프레임.
 - 재사용(kB/프레임): 폭죽 21.7 → 2.2, 비눗방울 6.6 → 1.4, 말풍선 2.1 → 0.5(+텍스처 재사용), 깜빡·입·시선·택시 4.3 → 1.7, 감정 표시·그물 0.8 → 0.2. 측정 work/alloc-353/a.cjs.
 - Codex 341~350 P2: #3 묶음 구매 requestId(buyReqs), #4 맡기기 pending은 게시판 저장 뒤에 지우고 새 올리기 전 복구, #7 되살리기 TRUNCATE 한 번·외래 키 순서(restoreOrder), #8·#9 도장 가구와 stampHanded를 setWorldValues로 한 번에·353 뒤 구매는 시간 제한 없이 다시 받기, #10 islandUse 재시도도 bought.
-
-## v1.10.352 주식 개편 (사용자 176A, notes island-stocks 끝 「주식 개편 패치」)
-
-- ① 섬 소식: 한 줄(시각·회사 이름 전부·▲/▼%), 누르면 소식 문장·그때 값(newsOf price)·회사 보기.
-- ② 거래 기록: order()가 stocks 문서에 log(최근 200건: 시각·회사·사기/팔기·주 수·값·수수료·판 거래의 gain=판 값-평균 산 값), tw(이번 주)·tot(지금까지) 합계. 「이번 업데이트부터 기록돼요」.
-- ③ 회사 그래프(오늘·지난 7일)에 내 평균 산 값 점선.
-- ④ 관심 종목(별표, 시세 위로)·알림(회사마다 넘으면/밑이면 하나, 10개까지) POST /api/island/stocks/watch, 문서에 저장; 값이 새로 붙을 때 화면 알림(창 열려 있을 때, 다음 값 시각 뒤 30초마다 한 번 확인).
-- ⑤ 회사 정보 카드: 업종(소식 json)·성격·상장가·상장 날짜·최근 소식 3줄.
-- ⑥ 이번 주 순위 줄마다 번 돈 ▲/▼ P(weekGain, 순위·칭호는 수익률 그대로).
-- 시험: island-stocks 단위(기록·gain·합계·200건·weekGain·watchSet·회사 정보·소식 값), e2e PC·폰(카드·평균선·별표·알림·거래 기록·순위 P·소식 펼치기). 사진 notes img/stocks-351.
