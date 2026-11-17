@@ -4918,12 +4918,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const tables = DEN.TABLES.map((t) => { const h = new THREE.Group(); h.position.set(t.lx, 0, t.lz); room.add(h); const fb = new THREE.Group(); mesh(new THREE.BoxGeometry(t.id === 'slots' ? 0.7 : 1.4, t.id === 'slots' ? 1.6 : 0.9, t.id === 'slots' ? 0.6 : 0.9), mat(0x1f4a2e), 0, t.id === 'slots' ? 0.8 : 0.45, 0, fb); h.add(fb);
       const rec = { t, h, nodes: {} }; assets.attach(t.model, h, fb, (entry) => { rec.nodes = {}; if (!entry) return; h.traverse((o) => { if (o.name) { rec.nodes[o.name] = o; o.userData.r0 ||= o.rotation.clone(); o.userData.p0 ||= o.position.clone(); } }); if (t.id === 'hilo') { faceCard(rec.nodes.card_face_shown, den?.shown || 7); } }); return rec; });
     for (const [lx, lz] of [[-2.5, -1], [2, 1], [-2.5, 2.5]]) { const light = new THREE.PointLight(0xffc77a, 9, 10, 1.4); light.position.set(lx, 2.4, lz); g.add(light); }
+    if (DEN.BAR) signboard('plaque', '칩 바꾸기 · 지갑 전부를 칩으로', g, DEN.BAR.NOTE.lx, DEN.BAR.top, DEN.BAR.NOTE.lz, -Math.PI / 2, { scale: 0.7, colors: ['#f3e6c4', '#3b2410'] }); /* (1.10.350: no bartender yet -- the counter's 안내 종이) */
     const lid = roomLid(g, { w: 9.2, d: 7.2 }, 0x3a2a2a, DEN.ROOM.exit.lx, { H: 2.8 });
     den = { group: g, tables, lamps, lid, anims: [], shown: 7 };
     return den;
   }
   doors['den:exit'] = { ...DEN.world(DEN.ROOM.exit.lx, DEN.ROOM.exit.lz), name: '계단 · 올라가기' };
   DEN.TABLES.forEach((t, k) => { doors[`den:table:${k}`] = { ...DEN.world(t.spot.lx, t.spot.lz), name: `${t.name} · 하기` }; });
+  if (DEN.BAR) doors['den:bar'] = { ...DEN.world(DEN.BAR.stand.lx, DEN.BAR.stand.lz), name: '바 카운터 · 칩 바꾸기' }; /* (1.10.350 사용자 「안쪽 바텐더에게」) */
   function denTween(node, axis, to, ms, delay = 0, kind = 'rotation') { if (!node || !den) return; den.anims.push({ node, axis, kind, from: node[kind][axis], to, t0: performance.now() + delay, ms }); }
   // a play's draw shown on its table (the server's outcome): the dice tumbling, the card turned, the wheel and its ball, the reels
   function denShow(k, game, o) {

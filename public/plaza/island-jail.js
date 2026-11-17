@@ -59,10 +59,11 @@
   function sentencesOf(day, count = 3) {
     // (Codex 검토 #12: a day that is no date, or more than the pool -- never a loop without end: a sound start, at most
     // as many tries as the pool has)
-    const n = Math.max(0, Math.min(POOL.length, Math.floor(Number(count) || 0))); const d = dayNumber(day);
-    const out = []; let k = (Number.isFinite(d) ? d : 0) * 7;
-    for (let tries = 0; out.length < n && tries < POOL.length * 2; tries += 1) { const s = POOL[((k % POOL.length) + POOL.length) % POOL.length]; if (!out.includes(s)) out.push(s); k += 5; }
-    return out;
+    // (1.10.350 체납 반성문 30줄까지: past the pool's 23 the day's order again from its start)
+    const n = Math.max(0, Math.min(60, Math.floor(Number(count) || 0))); const d = dayNumber(day);
+    const order = []; let k = (Number.isFinite(d) ? d : 0) * 7;
+    for (let tries = 0; order.length < POOL.length && tries < POOL.length * 2; tries += 1) { const s = POOL[((k % POOL.length) + POOL.length) % POOL.length]; if (!order.includes(s)) order.push(s); k += 5; }
+    return Array.from({ length: n }, (_, i) => order[i % order.length]);
   }
   // 1.10.341 도박 반성문 (사용자 121A: 누아르풍, 「다시는 지하에 내려가지 않겠습니다…」로 시작, 보통 것보다 길게): its first line always,
   // then four of the rest by the day

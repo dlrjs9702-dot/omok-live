@@ -50,5 +50,9 @@
       [[0, 0, 0], [-3.1416, -1.0001, 0], [0.5569, 0.4343, 1.3145], [-0.5569, 0.4343, -1.3146], [-1.3145, -0.4343, 0.557], [1.3146, -0.4343, -0.5568]],
       [[0, 0, 0], [0, -1.1416, 3.1416], [1.2368, 0.472, 0.6519], [-1.2369, 0.472, -0.6518], [-0.6519, -0.472, 1.2367], [0.6518, -0.472, -1.2369]]],
   });
-  return { ROOM, FIXTURES, TABLES, REACH, DOOR, SIGN, RESULTS, world, local, inRoom, tableAt, clamp };
+  // 1.10.350 칩 바꾸기 (사용자 「안쪽 바텐더에게」, notes underground-den 끝): the bar (147's first block, x 3.5 z -0.65, 0.75 x 3.4) -- one
+  // stands before its stools (x 2.8) anywhere along it; no bartender yet: the counter, its 안내 종이 (NOTE, on the counter's top)
+  const BAR = Object.freeze({ lx: 3.5, lz: -0.65, stand: Object.freeze({ lx: 2.0, lz: -0.5 }), top: 1.05, NOTE: Object.freeze({ lx: 3.3, lz: -0.2 }) });
+  const atBar = (x, z) => { const { lx, lz } = local(x, z); return lx >= 1.4 && lx <= 3.2 && lz >= -2.5 && lz <= 1.2; };
+  return { ROOM, FIXTURES, TABLES, REACH, DOOR, SIGN, RESULTS, BAR, world, local, inRoom, tableAt, atBar, clamp };
 }));
