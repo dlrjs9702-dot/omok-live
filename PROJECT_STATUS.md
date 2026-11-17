@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.352 주식 개편 (사용자 176A, notes island-stocks 끝 「주식 개편 패치」)
+
+- ① 섬 소식: 한 줄(시각·회사 이름 전부·▲/▼%), 누르면 소식 문장·그때 값(newsOf price)·회사 보기.
+- ② 거래 기록: order()가 stocks 문서에 log(최근 200건: 시각·회사·사기/팔기·주 수·값·수수료·판 거래의 gain=판 값-평균 산 값), tw(이번 주)·tot(지금까지) 합계. 「이번 업데이트부터 기록돼요」.
+- ③ 회사 그래프(오늘·지난 7일)에 내 평균 산 값 점선.
+- ④ 관심 종목(별표, 시세 위로)·알림(회사마다 넘으면/밑이면 하나, 10개까지) POST /api/island/stocks/watch, 문서에 저장; 값이 새로 붙을 때 화면 알림(창 열려 있을 때, 다음 값 시각 뒤 30초마다 한 번 확인).
+- ⑤ 회사 정보 카드: 업종(소식 json)·성격·상장가·상장 날짜·최근 소식 3줄.
+- ⑥ 이번 주 순위 줄마다 번 돈 ▲/▼ P(weekGain, 순위·칭호는 수익률 그대로).
+- 시험: island-stocks 단위(기록·gain·합계·200건·weekGain·watchSet·회사 정보·소식 값), e2e PC·폰(카드·평균선·별표·알림·거래 기록·순위 P·소식 펼치기). 사진 notes img/stocks-351.
+
 ## v1.10.351 긴급 고침 (Codex 341~350 P1 2 + P2 3, notes docs/codex-review-341-350.md)
 
 - P1 #1 채굴 타이밍 위조: 누를 때마다 POST /api/island/quarry/tap, 서버가 받은 시각과 맞는 것만(IslandQuarry.tapAt, 오간 시간 -150~2000 ms); finish는 서버가 기록한 타격으로 판정(body.taps 안 읽음).
@@ -31,11 +41,3 @@
 - 도구 들었을 때만: doors `tool`(채석장 바위·벽 = 곡괭이), 물가·곤충 안내 없앰, 곡괭이 자동 들기 없앰.
 - 강가 꽃 늘 보이기(빨강·노랑·하양, 심부름 중엔 그 색), 마우스 잠금 중 감정 휠(blocked → 잠금 풀림·다시 잠금, 숫자 1~9).
 - 시험: arrears-penalties(막기·5→8→30→5·호감도 날수), island-jail 5줄, island-den-server 바 흐름, island-quarry(60/6·벽), e2e island-den·fp·emotes·island-tool-rules·island-jail·plaza 채석장/낚시·dalmaru-walk. 사진 notes img/arrears-350.
-
-## v1.10.349 DB 백업 (사용자 178A·179A, notes direction-ideas 끝)
-
-- lib/db-backup.js: 모든 표(schema public)를 읽기 전용 한 스냅샷에서 커서로 500줄씩 → JSON 줄 → gzip → AES-256-GCM, 열쇠는 RSA-OAEP(SHA-256) 공개 키로 봉인. 파일 끝 줄 {end, rows}로 잘림 확인. DB 없으면 데이터 폴더 JSON 파일.
-- 서버 GET /api/admin/backup: 관리자만, 하루 6번, 공개 키 BACKUP_PUBLIC_KEY 또는 tools/backup/backup-public.pem(없으면 503), 로그는 크기·시간만.
-- tools/backup/: fetch.js(관리자 로그인 → DB백업\YYYY-MM-DD.bak → 로그아웃, 개인 키로 열어 확인, 30일 지난 것 지움, backup.log), keygen.js·open.js·restore.js(localhost만)·install-task.ps1(매일 05:30, 놓친 실행은 켜지면 바로)·README(되살리기 연습). 개인 키·설정·백업은 저장소 밖(DB백업\), .gitignore.
-- 시험: test/db-backup(봉인·다른 키·변조, DB 커서 묶음, API 401·403·모든 표·하루 6번, fetch.js 날짜 파일·30일·비밀번호 없으면 FAILED).
-- 남은 것: 관리자 비밀번호는 사용자가 DB백업\config.local.json에 직접, 예약 작업 등록은 총괄이 사용자 확인 뒤, 실제 Postgres 첫 받기 확인.
