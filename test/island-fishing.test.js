@@ -156,3 +156,10 @@ test('기념사진 서버: 장소 근처에서만 기록, 처음 한 번 표시,
   const dex = (await req('/api/island/dex', sa)).data;
   const e = dex.entries.find((x) => x.id === 'photo_plaza'); assert.equal(e.kind, 'photo'); assert.ok(e.first > 0); assert.equal(dex.found, 1);
 });
+
+test('거울호수 낚시 (1.10.355 사용자 「고쳐」): 호숫가 자리는 대부분 호수, 강이 드나드는 곳만 강', () => {
+  const D = T.dalmaru; assert.ok(D, '달마루섬'); const c = {};
+  for (let x = D.LAKE.x - 30; x <= D.LAKE.x + 30; x += 0.5) for (let z = D.LAKE.z - 26; z <= D.LAKE.z + 26; z += 0.5) {
+    if (D.lakeDist(x, z) >= 6) continue; const w = T.fishWater(x, z); if (w) c[w] = (c[w] || 0) + 1;
+  }
+  assert.ok(c.lake >= 280, JSON.stringify(c)); assert.ok((c.river || 0) <= 60, JSON.stringify(c)); /* (2026-11-18: lake 303, river 52 -- the west river in and out) */});
