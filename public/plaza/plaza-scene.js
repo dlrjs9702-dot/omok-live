@@ -1533,7 +1533,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); c.player = true; // v1.10.37: seen from far (asset-loader wearMaterial)
         c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
         c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking, p.delinquent); c.tag.material.fog = false; c.root.add(c.tag); fitTag(c); scene.add(c.root); assets.dress('character.player', c); dressUp(c, p.look || {});
-        o = { c, key, champion: Boolean(p.champion), track: createTrack(), follow: createFollower({ maxSpeed: 12 }) } /* (the fastest anyone goes: a bike with Shift, 2026-10-21) */; others.set(p.id, o);
+        o = { c, key, champion: Boolean(p.champion), track: createTrack(), follow: createFollower({ maxSpeed: 12 }) } /* (the fastest anyone goes: a bike with Shift, 2026-10-21) */; c.player = true; /* (1.10.352 186A: a player is never hidden by distance) */ others.set(p.id, o);
       }
       // v1.10.8: every pose goes into their track (stamped with the server time it was taken); the newest one and its
       // walking speed also feed my collision's look-ahead (v1.9.9)
@@ -1970,7 +1970,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const fast = T.ribbon && now < T.ribbon.until; const head = Math.floor(t * (fast ? 32 : 8)) % 32; T.bulbs.forEach((ms, k) => { const on = lit ? ((k - head + 32) % 32) < 6 : true; const e = lit ? (on ? 2.2 : 0.25) : 0.35; for (const m of ms) m.emissiveIntensity = e; T.lit.value[k] = e; }); /* (316 ①: the merged bulbs read T.lit) */
     for (const m of T.glows) m.emissiveIntensity = lit ? 1.6 : 0.3;
     if (auctionBoard) for (const m of auctionBoard.glows) m.emissiveIntensity = lit ? 1.8 : 0; /* (1.10.339 벼룩시장 게시판: its bulbs at night) */
-    drawRecordFaces(now);
+    if (me && mySpace === 'island' && Math.hypot(me.root.position.x - TOWER.x, me.root.position.z - TOWER.z) < 180) drawRecordFaces(now); /* (1.10.352 무게 ⑦: its 930만-pixel board drawn again only within the fog and outdoors -- once seen again, at once) */
   }
   function stepContestTent() { // (an event refresh may stand the 거리 악단 figure up again while the tent stands)
     if (!contestTent?.root.visible) return; placeKeeper(); const t = performance.now() / 1000; for (const [k, fl] of contestTent.flags().entries()) fl.o.rotation.z = fl.z + Math.sin(t * 2.2 + k * 1.7) * 0.12; /* (v1.10.241: the flags in the wind) */ for (const m of contestTent.glows) m.emissiveIntensity = night ? 0.9 : 0; const o = eventObjs.get('ev:quest_npc:busker');
@@ -2178,7 +2178,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     else b.crank.rotation.x -= ride ? speed / 4 * 2 * Math.PI * dt : 0;
   }
   const isTyping = (el) => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-  const isBlocked = () => Boolean(blocked?.()) || !running;
+  // (1.10.352 무게 ⑤ gpu-weak-audit: `dialog[open]` looked up three times a frame over 6,700 elements -- once a frame now; a window
+  // opened within a frame is seen the next)
+  let blockedFrame = -1; let blockedNow = false;
+  const isBlocked = () => { const f = renderer.info.render.frame; if (f !== blockedFrame) { blockedFrame = f; blockedNow = Boolean(blocked?.()); } return blockedNow || !running; };
   const onKeyDown = (event) => {
     if (editView && running && (event.code === 'KeyQ' || event.code === 'KeyE') && !event.ctrlKey && !event.metaKey && !event.altKey && !isTyping(event.target)) { event.preventDefault(); yawGoal += (event.code === 'KeyQ' ? 1 : -1) * (Math.PI / 12); return; } // (v1.10.315 꾸미기: Q/E turn the room or yard round, 15° a press -- its window open too)
     if (isBlocked() || isTyping(event.target) || placeAim) return; // (v1.10.232: the tool's keys are app.js's)
@@ -5954,8 +5957,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // (kept on this device: 'auto', or 0 1 2)
   // v1.10.290 6: the steps themselves are AssetPipeline.qualityGovernor (~9 s slow down, 60 s fast up, held after flip-flops);
   // `tierAt` the times of every change (문제 기록 counts the last 10 minutes), `onAutoTier` app.js's once-a-day note
-  const QUALITY_QUIET = 10000; const gov = AssetPipeline.qualityGovernor(2); let tierAt = []; let onAutoTier = null;
+  const QUALITY_QUIET = 10000; const gov = AssetPipeline.qualityGovernor(2); let tierAt = []; let onAutoTier = null; let shadowFrame = 0;
   let quality = 2; let slowTime = 0; let sampled = 0; let qualityHeld = false; let quietUntil = performance.now() + QUALITY_QUIET; // tests may hold a tier (debug().holdQuality)
+  // (1.10.352 187A) the tier the governor fell to, kept on this device for its GPU -- where the next visit starts; 7 days on, once
+  // from 「높음」 again; a tier picked in ☰ (qualityHeld) first. Not in automated tests
+  const TIER_KEY = 'gc.autoTier'; const TIER_DAYS = 7 * 86400000; const tierGpu = String(made.gpu || '');
+  const tierKept = () => { try { const v = JSON.parse(localStorage.getItem(TIER_KEY) || 'null'); return v && v.gpu === tierGpu && Date.now() - v.since < TIER_DAYS ? v : null; } catch { return null; } };
+  const tierKeep = (tier) => { if (navigator.webdriver) return; try { const v = tierKept(); localStorage.setItem(TIER_KEY, JSON.stringify({ gpu: tierGpu, tier, since: v ? v.since : Date.now() })); } catch {} };
   function resetFrameSample() { last = 0; sampled = 0; slowTime = 0; gov.reset(); }
   document.addEventListener('visibilitychange', resetFrameSample);
   const quiet = () => { quietUntil = performance.now() + QUALITY_QUIET; resetFrameSample(); };
@@ -5984,10 +5992,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (sampled < 3) return;
     gov.tier = quality; const to = gov.step(performance.now() / 1000, { slow: slowTime / sampled > 0.5, fast: slowTime / sampled < 0.1, secs: sampled });
     sampled = 0; slowTime = 0; if (to === null) return;
-    const up = to > quality; setTier(to); if (up) quiet(); /* (a step up measured again only after its own load) */ onAutoTier?.(to);
+    const up = to > quality; setTier(to); if (up) { quietUntil = performance.now() + 3000; resetFrameSample(); } /* (a step up measured again after its load -- 3 s, 187A: heavy within 10 s goes back) */ tierKeep(to); onAutoTier?.(to);
   }
   function setQualityMode(mode) { // 'auto', or a fixed tier
-    if (mode === 'auto') { qualityHeld = false; quiet(); return; }
+    if (mode === 'auto') { qualityHeld = false; const kept = navigator.webdriver ? null : tierKept(); if (kept && kept.tier < quality) { setTier(kept.tier); gov.tier = kept.tier; } quiet(); return; } /* (1.10.352 187A: start where this device fell to) */
     qualityHeld = true; setTier(Math.max(0, Math.min(2, Number(mode) || 0)));
   }
   // v1.10.29 고래 (해상 풍경 결정 2026-10-05): now and then -- every WHALE_EVERY seconds or so -- a whale breaches once
@@ -6301,8 +6309,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // edges of every shadow crawled as I walked -- seen on the town hall's marble)
     const texel = (sun.shadow.camera.right - sun.shadow.camera.left) / sun.shadow.mapSize.x; const at = me.root.position;
     const a = at.dot(SUN_U); const b = at.dot(SUN_V);
-    sun.target.position.copy(at).addScaledVector(SUN_U, Math.round(a / texel) * texel - a).addScaledVector(SUN_V, Math.round(b / texel) * texel - b);
-    sun.position.copy(sun.target.position).add(SUN_OFF);
+    // (1.10.352 사용자 185A: 「중간」 -- the shadow map drawn every other frame, the sun's square moved only then: shadows as sharp, a
+    // walker's at 30 a second; 「높음」 every frame as before)
+    const halfShadow = quality === 1 && renderer.shadowMap.enabled; shadowFrame = (shadowFrame + 1) % 2; renderer.shadowMap.autoUpdate = !halfShadow; if (halfShadow && shadowFrame === 0) renderer.shadowMap.needsUpdate = true;
+    if (!halfShadow || shadowFrame === 0) {
+      sun.target.position.copy(at).addScaledVector(SUN_U, Math.round(a / texel) * texel - a).addScaledVector(SUN_V, Math.round(b / texel) * texel - b);
+      sun.position.copy(sun.target.position).add(SUN_OFF);
+    }
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
     assets.tick(dt, me.root.position.x, me.root.position.z, Boolean(lessMotion?.matches) || indoors); // one-off actions keep playing; ambient flakes stop (and none fall indoors)
     if (pilot) { pilot.setOutdoors(mySpace === 'island'); /* (G1: the island's tone outside only) */ pilot.group.visible = mySpace === 'island'; if (pilot.group.visible) pilot.step(lessMotion?.matches ? 0 : dt, performance.now(), pilotThings(performance.now()), taxiRide ? taxiAhead() : me.root.position); /* (294 6b: riding, the grass made where the car will be in 1.5 s) */ } /* (v1.10.275 그래픽 시범) */
@@ -6338,18 +6351,24 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // sun's shadow square (round me, 3 m over) rests -- no clip, no turn; on waking the rest is played on at once (half a
   // second at most), so their pose is where it would have been. Me never; the 85 m hide stays as it was.
   const restFrustum = new THREE.Frustum(); const restM = new THREE.Matrix4(); const restBall = new THREE.Sphere(new THREE.Vector3(), 2.5); let restFrame = -1; let restReach = 0;
-  const restCount = { resting: 0, frame: -1 };
+  const restCount = { resting: 0, frame: -1 }; const NPC_FAR = 85;
   function resting(c) {
     if (c === me || !me) return false;
     const f = renderer.info.render.frame;
     if (f !== restFrame) { restFrame = f; restM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); restFrustum.setFromProjectionMatrix(restM); const sc = sun.shadow.camera; restReach = Math.max(sc.right - sc.left, sc.top - sc.bottom) * Math.SQRT1_2 + 3; restCount.frame = f; restCount.resting = 0; }
     c.root.getWorldPosition(restBall.center); restBall.center.y += 1;
+    if (!c.player && Math.hypot(restBall.center.x - me.root.position.x, restBall.center.z - me.root.position.z) > NPC_FAR) { restCount.resting += 1; return true; } /* (1.10.352 사용자 186A: an islander or a keeper standing past 85 m -- as the walkers -- not drawn) */
     if (restFrustum.intersectsSphere(restBall)) return false;
     const at = me.root.position; if (Math.hypot(restBall.center.x - at.x, restBall.center.z - at.z) <= restReach) return false;
     restCount.resting += 1; return true;
   }
+  // (1.10.352 무게 ② gpu-weak-audit: one resting is not drawn either -- its model hidden (no main or shadow pass, no bone texture
+  // sent), not its root: the game's own `root.visible` (the 85 m hide, a post's islander) still means what it meant. Only one we
+  // hid is shown again -- a statue's model stays hidden. Indoors the island's are all out of frame and the shadow square: hidden)
+  const restHide = (c, on) => { const a = c.assetRoot; if (!a) return; if (on && a.visible) { a.visible = false; c.restHidden = a; } else if (!on && c.restHidden) { if (c.restHidden === a) a.visible = true; c.restHidden = null; } };
   function animate(c, dt, moving, speed = moving ? SPEED : 0) {
-    if (resting(c)) { c.restDt = Math.min(0.5, (c.restDt || 0) + dt); return; }
+    if (resting(c)) { c.restDt = Math.min(0.5, (c.restDt || 0) + dt); restHide(c, true); return; }
+    restHide(c, false);
     if (c.restDt) { dt += c.restDt; c.restDt = 0; }
     const yaw = c.root.rotation.y;
     const target = c.targetYaw ?? yaw;
@@ -6507,6 +6526,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     projects: () => ({ scope: Boolean(scope), beams: uplightBeams.filter((b) => b.visible).length, bridge: Boolean(globalThis.IslandTerrain.bridges.some((b) => b.project === 'bridge')), night: Boolean(night), seats: SEATS.filter((s) => String(s.id).startsWith('pm-')).length, bits: [...projectBits.keys()].sort(), keeper: Boolean(worksKeeper?.root.visible), dropTop, plaques: Object.keys(doors).filter((k) => k.startsWith('plaque:')) }), /* (v1.10.222) */
     whatAt: (nx, ny) => { /* (v1.10.239: what the house's room shows at a screen point -- its layer, the mesh, where in the room) */ const R = homeRoomV; if (!R) return []; raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera); return raycaster.intersectObject(R.group, true).filter((h) => h.object.visible).slice(0, 4).map((h) => { const layer = Object.entries(R.layers).find(([, l]) => { let o = h.object; while (o) { if (o === l.root) return true; o = o.parent; } return false; })?.[0] || (R.lid && (() => { let o = h.object; while (o) { if (o === R.lid) return true; o = o.parent; } return false; })() ? 'lid' : 'other'); const p = R.group.worldToLocal(h.point.clone()); const names = []; for (let o = h.object; o && o !== R.group && names.length < 3; o = o.parent) if (o.name) names.push(o.name); return { layer, names, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), d: +h.distance.toFixed(2) }; }); },
     contestTent: () => (contestTent ? { shown: contestTent.root.visible, keeper: contestTent.keeper.root.visible, resident: contestTent.keeper.resident || null, name: contestTent.name, sign: contestTent.sign?.userData.boardText || null, plate: Boolean(contestTent.plate()), flags: contestTent.flags().length, door: eventDoors['contest:tent'] || null, buskerShown: Boolean(eventObjs.get('ev:quest_npc:busker')?.npc?.root.visible) } : null), /* (v1.10.238) */
+    frozenMoved: () => island.frozenMoved?.() || null, /* (1.10.352 무게 ①: the island's frozen objects none moved since) */
     houseLook: (id) => { const r = homesShown.get(id)?.root; const dg = r?.children.find((c) => c.userData.decay); return r ? { decay: dg?.userData.decay || null, decayModel: Boolean(dg?.userData.loaded), dress: r.children.some((c) => c.userData.dress) } : null; }, /* (1.10.348 4b) */
     bugs: () => [...bugSets.values()].map((s) => ({ key: s.key, n: s.bugs.length, dim: s.dim, shown: s.bugs.filter((b) => b.h.visible).length, legs: s.bugs.reduce((k, b) => k + b.nodes.filter((n) => n.leg).length, 0), decals: (s.decals || []).length })), /* (1.10.348 4b 바퀴벌레) */
     fpHeld: () => ({ hand: fpHand.visible, of: !fpTool?.visible ? null : fpToolOf === me.holding?.catch?.object ? 'catch' : fpToolOf === me.holding?.rod?.object ? 'rod' : 'other', caught: Boolean(me.holding?.catch?.object?.parent) }), /* (1104 G: what the first person's hand holds) */

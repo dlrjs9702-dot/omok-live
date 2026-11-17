@@ -85,6 +85,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       object.rotation.y += entry.rotationY || 0;
       if (Array.isArray(entry.offset)) object.position.set(...entry.offset);
       if (entry.shadows !== false) { mesh.castShadow = true; mesh.receiveShadow = true; }
+      mesh.updateMatrix(); mesh.matrixAutoUpdate = false; /* (1.10.352 무게 ①: its place in the model never changes -- the outer group still free) */
       return object;
     }
     const object = cloneObject(gltf.scene);
@@ -95,6 +96,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     object.rotation.y += entry.rotationY || 0;
     if (Array.isArray(entry.offset)) object.position.set(...entry.offset);
     if (entry.shadows !== false) object.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    /* (1.10.352 무게 ①, gpu-weak-audit §4 ①: a model whose parts never move -- no kept nodes, no clip of its own, no bones, not a
+       character's -- its parts' matrices made once; the model's own group (placed, held, turned by the page) still free) */
+    if (!entry.keepNodes && !gltf.animations?.length && !entry.motions && !entry.baked) { let boned = false; object.traverse((o) => { if (o.isBone || o.isSkinnedMesh) boned = true; }); if (!boned) object.traverse((o) => { if (o !== object) { o.updateMatrix(); o.matrixAutoUpdate = false; } }); }
     return object;
   }
 
@@ -659,12 +663,17 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       for (const i of p.moving) { p.share[i] = P.fadeStep(p.share[i], p.flags[i] === 1, ms); if (p.share[i] === p.flags[i]) p.moving.delete(i); }
       fill(p); n += p.moving.size; if (!p.moving.size) fadingCells.delete(p); // (fill: each square its own matrix since 313 A1)
     }
-    fading = n + lods.filter((l) => l.userData.lodRun).length + wearing.filter((w) => w.run).length;
+    for (const l of lods) if (l.userData.lodRun) n += 1; for (const w of wearing) if (w.run) n += 1; fading = n; /* (1.10.352 ⑨: no arrays made each frame) */
   }
   // an LOD object's level by my distance (the batches' band back toward the nearer one); a change cross-fades both levels
+  // (1.10.352 무게 ④ gpu-weak-audit: the 351 LOD objects' distances read only when I moved past 1 m or 0.2 s went by -- between, only
+  // the ones fading or new)
+  const lodFull = { x: Infinity, z: Infinity, t: 0 };
   function lodLevels(x, z, ms) {
+    const now = performance.now(); const full = Math.hypot(x - lodFull.x, z - lodFull.z) > 1 || now - lodFull.t > 200; if (full) { lodFull.x = x; lodFull.z = z; lodFull.t = now; }
     for (const lod of lods) {
       if (!lod.parent) continue;
+      if (!full && !lod.userData.lodRun && lod.userData.lodAt !== undefined) continue;
       const lv = lod.levels; if (lv.length < 2) continue;
       lod.getWorldPosition(placeOf); const d = Math.hypot(placeOf.x - x, placeOf.z - z); const cur = lod.userData.lodAt; let want = 0;
       for (let k = 1; k < lv.length; k += 1) { if (d >= (cur !== undefined && cur >= k ? lv[k].distance / P.HIGH_BAND : lv[k].distance)) want = k; else break; }
