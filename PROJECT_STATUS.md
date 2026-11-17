@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.356 가방 개편: 종류별 탭 + 골라 팔기 (사용자 2026-11-17, notes docs/bag-tabs-20261117.md)
+
+- 탭: public/island-bag-data.js(193개 물건의 탭과 설명, work/bag356/make-data.cjs가 notes story/bag-items·bag-descriptions json에서 만듦), app.js drawBagTabs·applyBagTab(칸 hidden)·gc.bagTab 기억·가구 탭 drawFurnList(/api/island/furniture/mine placed:false만).
+- 설명 칸 bagDetail: 그림·이름·종류·설명·쓰는 곳(파는 곳·값, 집 손보기 재료, 벼룩시장)·크기·산 것. 자전거 꺼내기·넣기.
+- 골라 팔기: 창 두 칸(왼쪽 내 가방+종류 탭, 오른쪽 팔 물건 −/+/전부, 다 옮기기, 끌어 놓기), 안 받는 것은 흐리게 이유, 합계 → 한 번 더 확인. 좁은 폰은 위아래. 창 폭 640px.
+- 서버: /api/island/sell pick [{entryId, qty}] 1~64개, lib/island-items sellPicked(고른 수만, 물고기는 작은 것부터, 나머지는 가방에), requestId 그대로.
+- 시험: island-items 단위 「골라 팔기」, island-bag.spec 탭·개수·설명·기억·가구 탭(PC·폰), plaza.spec 관공서·노점 새 흐름.
+
 ## v1.10.355 캐기+낚시 미니게임 다듬기 (사용자 2026-11-17, notes island-expansion 「캐기 미니게임 다듬기」, fishing-minigames 「타격감」) + playerRadiusAt + 거울호수
 
 - 같은 효과 도구: public/island-feel.js(글자·흔들림·진동·소리·가방으로 날기·빨간 가장자리, 효과음은 gc.settings.sound, 흔들림·진동은 gc.lessMotion), room-sound 섬 소리(쨍·툭·찰싹·첨벙·찰방·릴·심장·콤보·휙·반짝), plaza-scene feelBurst(조각·불꽃·먼지·물방울 InstancedMesh 풀)·feelPillar·feelFishJump.
@@ -30,10 +38,3 @@
 - 지형 함수(dalmaru-terrain·island)와 서버 공식은 그대로.
 - 측정(work/alloc-353/a.cjs, 처음 자리 가만히, PC): 지형 58.3 → 19.0 kB/프레임, 섬 전체 255 → 205; CPU 4배 느리게: 지형 61 → 18, 전체 329 → 277, fps 17.5 → 18.3.
 - 시험: island-npc-walk 단위(pointMemo 같은 답·덜 계산, 실제 걷기 기억 적중), e2e 주민·낚시·택시(bicycle 택시 화면 돌리기 시험 훅 carYaw).
-
-## v1.10.353 무게·검토 고침 (gpu-weak-audit, 사용자 185A~190A, Codex 341~350 P2 나머지, 재사용 1~4, §9 ⓐ)
-
-- 무게: 화면 밖·85 m 밖 캐릭터 안 그림(186A 서 있는 NPC 85 m), 섬·모델 부품 행렬 얼리기, LOD·열린 창 판정 줄이기, 기록의 탑 먼 곳 건너뜀, 185A 중간 그림자 격 프레임, 187A 화질 기억(gc.autoTier, 7일·기기마다)·다시 올리기, 189A 방은 장면에서 떼기, 방 글자 판·뼈대 텍스처 정리, 지형 높이·문 목록 가비지 줄이기, [client] 로그 재시작에도 이어짐(clientReport), 190A 앱 배지는 메신저 창만.
-- §9 ⓐ 셰이더 다시 고르기 0회/프레임: 수조 물·폭포·유리 forceSinglePass, 묶음(인스턴스) 복사본 재질 쌍둥이(asset-loader instTwinOf, propBatch batchTwin, 거품 고리 foamInst), 그림자 깊이 재질(기차 기둥, 뼈대 모델). 섬 전체 320 → 257 kB/프레임.
-- 재사용(kB/프레임): 폭죽 21.7 → 2.2, 비눗방울 6.6 → 1.4, 말풍선 2.1 → 0.5(+텍스처 재사용), 깜빡·입·시선·택시 4.3 → 1.7, 감정 표시·그물 0.8 → 0.2. 측정 work/alloc-353/a.cjs.
-- Codex 341~350 P2: #3 묶음 구매 requestId(buyReqs), #4 맡기기 pending은 게시판 저장 뒤에 지우고 새 올리기 전 복구, #7 되살리기 TRUNCATE 한 번·외래 키 순서(restoreOrder), #8·#9 도장 가구와 stampHanded를 setWorldValues로 한 번에·353 뒤 구매는 시간 제한 없이 다시 받기, #10 islandUse 재시도도 bought.

@@ -4976,7 +4976,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.355' });
+    return sendJson(res, 200, { ok: true, version: '1.10.356' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -7318,8 +7318,9 @@ async function requestHandler(req, res) {
   // my storage: what I bought, newest first
   if (pathname === '/api/island/furniture/mine' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
-    const owned = (await pointStore.worldValue(`furniture:${pointAccountForSession(session)}`)) || [];
-    return sendJson(res, 200, { ok: true, pieces: owned.slice().reverse().map((p) => ({ ...p, ...(() => { const g = IslandFurniture.good(p.id); return g ? { name: g.name, model: g.model, rarity: g.rarity, shape: g.shape } : {}; })() })) });
+    const account = pointAccountForSession(session); const owned = (await pointStore.worldValue(`furniture:${account}`)) || [];
+    const h = await homeOf(account).catch(() => null); const placed = new Set([...(h?.pieces || []), ...(h?.yard || [])].map((p) => p.uid)); /* (1.10.356 가방 가구 탭: what is not placed yet) */
+    return sendJson(res, 200, { ok: true, pieces: owned.slice().reverse().map((p) => ({ ...p, ...(placed.has(p.uid) ? { placed: true } : {}), ...(() => { const g = IslandFurniture.good(p.id); return g ? { name: g.name, model: g.model, rarity: g.rarity, shape: g.shape } : {}; })() })) });
   }
   if (pathname === '/api/island/store' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
@@ -7716,7 +7717,8 @@ async function requestHandler(req, res) {
     if (!atCounter && !atStall && (!at || !spot || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
-    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
+    if (body.pick != null && (!Array.isArray(body.pick) || !body.pick.length || body.pick.length > 64 || body.pick.some((p) => typeof p?.entryId !== 'string' || !Number.isSafeInteger(p?.qty) || p.qty < 1))) return sendError(res, 400, 'BAD_REQUEST', '팔 물건을 다시 골라 주세요.'); /* (1.10.356 골라 팔기: [{ entryId, qty }]) */
+    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost(), ...(body.pick ? { pick: body.pick } : {}) }, nowMs()); // a lost thing whose owner has gone: lost and found
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
@@ -10507,7 +10509,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.355 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.356 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

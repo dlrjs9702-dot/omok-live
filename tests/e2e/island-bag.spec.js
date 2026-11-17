@@ -25,6 +25,17 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await page.locator('.islandBagSlot[data-item="bread"]').click(); await expect(page.locator('#islandBagInfo')).toContainText('빵');
   await expect(page.locator('.bagMenu')).toHaveCount(0); // (bread does nothing in the bag)
   await page.locator('.islandBagSlot[data-item="bugnet"]').click(); await expect(page.locator('.islandBagSlot[data-item="bugnet"] .bagMenu [role="menuitem"]')).toHaveText(['들기', '빠른 칸에']); // (v1.10.236 빠른 칸)
+  /* (1.10.356 가방 탭, notes docs/bag-tabs-20261117.md) ten tabs, counts on those with things; 물고기: the goby alone, its card with its kind
+     and words; kept when the bag opens again; 가구: the list of pieces not put down; a phone's row slides sideways */
+  const tabs = page.locator('#islandBagTabs .bagTab'); await expect(tabs).toHaveCount(10); await expect(tabs.first()).toHaveText('전체4');
+  await expect(page.locator('.bagTab[data-tab="fish"] i')).toHaveText('1'); await expect(page.locator('.bagTab[data-tab="tool"] i')).toHaveText('1'); await expect(page.locator('.bagTab[data-tab="ore"]')).toHaveClass(/none/);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('islandBagTabs')).overflowX)).toBe('auto');
+  await page.locator('.bagTab[data-tab="fish"]').click(); await expect(page.locator('.islandBagSlot:not([hidden])')).toHaveCount(1); await expect(page.locator('.islandBagSlot:not([hidden])')).toHaveAttribute('data-item', 'fish_goby');
+  await page.locator('.islandBagSlot[data-item="fish_goby"]').click(); await expect(page.locator('#islandBagInfo .bagDetailKind')).toHaveText('물고기'); await expect(page.locator('#islandBagInfo .bagDetailWords')).not.toBeEmpty();
+  await tab(); await expect(bag).toBeHidden(); await tab(); await expect(bag).toBeVisible(); await expect(page.locator('.bagTab.on')).toHaveAttribute('data-tab', 'fish'); await expect(page.locator('.islandBagSlot:not([hidden])')).toHaveCount(1);
+  await page.locator('.bagTab[data-tab="furniture"]').click(); await expect(page.locator('#islandFurnList')).toBeVisible(); await expect(page.locator('#islandBagGrid')).toBeHidden(); await expect(page.locator('#islandFurnList')).toContainText('아직 놓지 않은 가구가 없어요');
+  if (process.env.ZZ_SHOT) { await page.locator('.bagTab[data-tab="all"]').click(); await page.locator('.islandBagSlot[data-item="fish_goby"]').click(); await page.waitForTimeout(400); await page.screenshot({ path: `${process.env.ZZ_SHOT}-bag-tabs-${isMobile ? 'phone' : 'pc'}.png` }); }
+  await page.locator('.bagTab[data-tab="all"]').click(); await expect(page.locator('.islandBagSlot:not([hidden])')).toHaveCount(16);
   // Shift+D (keys, 문제 기록 1103 10: W/A/S/D as the arrows): the first one a place on
   const first = await order();
   await page.locator('.islandBagSlot').first().focus(); await page.keyboard.press('Shift+KeyD');
