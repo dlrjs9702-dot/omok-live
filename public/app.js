@@ -3714,8 +3714,15 @@
   async function openUpkeepBox() {
     await refreshHomes(); const u = homesState?.upkeep; if (!u) { showToast('내 집 앞에서 열 수 있어요.'); return; }
     const items = await bagItems(); const card = document.createElement('div'); card.className = 'mirrorCard upkeepCard'; const status = line('', 'lookMeta upkeepStatus');
-    const head = u.done ? '이번 주 집 손보기를 다 했어요. 고마워요!' : u.shabby ? '지난주 손보기를 안 해서 집이 허름해졌어요. 이번 주 것을 다 넣으면 깨끗해져요.' : `이번 주 집 손보기 · 다 넣으면 ${(homesState.upkeepReward || 0).toLocaleString('ko-KR')}P`;
-    card.append(line(head));
+    // (1.10.348 4b: the weekly upkeep holds the house as it is; 고치기 takes it up a step -- 81A)
+    const head = u.done ? '이번 주 집 손보기를 다 했어요. 이번 주는 집이 지금 그대로예요.' : `이번 주 집 손보기 · 다 넣으면 ${(homesState.upkeepReward || 0).toLocaleString('ko-KR')}P · 안 하면 다음 주에 한 단계 낡아요`;
+    card.append(line(`집 상태: ${u.wear || '깨끗함'}${u.level >= 3 ? ' · 집에 들어갈 수 없어요' : u.level >= 2 ? ' · 손님·꾸미기 잠김' : ''}`, 'lookMeta upkeepWear'), line(head));
+    if (u.repair) { // 고치기: what this step asks, from the bag -- 벼룩시장에서 산 것도 돼요
+      const r = u.repair; const kinds = Object.entries(r.items).map(([k, q]) => { const have = FARM.REPAIR_ITEMS[k].reduce((s, it) => s + held(items, it), 0); return `${FARM.REPAIR_NAMES[k]} ${Math.min(have, q)}/${q}`; });
+      const enough = Object.entries(r.items).every(([k, q]) => FARM.REPAIR_ITEMS[k].reduce((s, it) => s + held(items, it), 0) >= q);
+      const rrow = document.createElement('div'); rrow.className = 'upkeepRow upkeepRepair'; rrow.append(line(`한 단계 고치기(${u.wear} → ${FARM.WEAR[u.level - 1]}): ${kinds.join(' · ')}${r.points ? ` · 수리비 ${r.points.toLocaleString('ko-KR')}P` : ''}`, 'lookMeta upkeepCount'));
+      const fix = btn('고치기', 'primary', post({ action: 'repair' }, (o) => `집을 고쳤어요. 「${o.from}」 → 「${o.to}」`)); fix.disabled = !enough; rrow.append(fix); card.append(rrow);
+    }
     const post = (body, msg) => async (ev) => { const btn = ev.currentTarget; btn.disabled = true; try { const r = await homePost('/api/home/upkeep', body); if (r.bag) drawIslandBag(r.bag); plazaDialog.close(); showToast(msg(r)); if (r.reward) loadPoints(); await refreshHomes(); plazaStage.focus({ preventScroll: true }); } catch (error) { status.textContent = error.message; btn.disabled = false; } };
     for (const kind of Object.keys(FARM.UPKEEP)) {
       const row = document.createElement('div'); row.className = 'upkeepRow'; const got = u.given?.[kind] || 0; const need = u.need[kind];

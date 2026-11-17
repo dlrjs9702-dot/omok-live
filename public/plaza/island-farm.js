@@ -63,11 +63,26 @@
   const prevWeek = (week) => new Date(Date.parse(`${week}T00:00:00Z`) - 7 * 24 * H).toISOString().slice(0, 10);
   // the house's state from the upkeep record { week, given, done: [weeks done] } at `now`: this week's owing and given, and
   // 허름함 when the week before was owed and not done (first week of a new house: owed from the next)
+  // 1.10.348 4b (notes gather-must-ideas §64·81A, 사용자 2026-11-16): the house's wear -- each owed week not done (logged in or not, 80B)
+  // one step down, from the week it was turned on (the old 허름함 its start); the week's upkeep only holds it; repair takes it up
+  const WEAR = Object.freeze(['깨끗함', '허름함', '낡음', '부서짐']); const WEAR_MAX = 3; /* (4 압류 · 5 처분: 4c) */
+  const nextWeek = (week) => new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 24 * H).toISOString().slice(0, 10);
+  function wearOf(doc, now) {
+    const week = weekOf(now); const done = new Set(doc?.done || []); const since = doc?.since || week;
+    if (!doc?.levelWeek) return { level: since < week && !done.has(prevWeek(week)) && !done.has(week) ? 1 : 0, levelWeek: week, dropped: [] }; /* (its first look: as 허름함 was) */
+    let level = Math.max(0, Math.min(WEAR_MAX, Number(doc.level) || 0)); const dropped = [];
+    for (let w = doc.levelWeek; w < week; w = nextWeek(w)) if (w >= since && !done.has(w) && level < WEAR_MAX) { level += 1; dropped.push({ week: w, level }); }
+    return { level, levelWeek: week, dropped };
+  }
+  // 81A: up one step from each -- before the new island its 통나무 asked as twice the 나뭇가지; 143A: things bought at the 벼룩시장 count
+  const REPAIR = Object.freeze({ 1: { items: { twig: 10, stone: 10 } }, 2: { items: { granite: 10, iron: 3, log: 5 } }, 3: { items: { granite: 20, iron: 10, log: 10 }, points: 20000 } });
+  const REPAIR_ITEMS = Object.freeze({ twig: ['branch', 'twig'], stone: ['stone'], granite: ['ore_granite', 'ore'], iron: ['ore_iron'], log: ['log'] });
+  const REPAIR_NAMES = Object.freeze({ twig: '나뭇가지', stone: '작은 돌', granite: '화강암', iron: '철광석', log: '통나무' });
+  function repairNeed(level, logs = false) { const r = REPAIR[level]; if (!r) return null; const items = { ...r.items }; if (!logs && items.log) { items.twig = (items.twig || 0) + items.log * 2; delete items.log; } return { items, points: r.points || 0 }; }
   function upkeepState(doc, stage, now) {
     const week = weekOf(now); const need = upkeepNeed(stage); const given = doc?.week === week ? { ...doc.given } : {};
-    const done = new Set(doc?.done || []); const since = doc?.since || week;
-    const shabby = since < week && !done.has(prevWeek(week)) && !done.has(week);
-    return { week, need, given, done: done.has(week), shabby };
+    const done = new Set(doc?.done || []); const { level } = wearOf(doc, now);
+    return { week, need, given, done: done.has(week), level, wear: WEAR[level], shabby: level >= 1, worn: level >= 2, broken: level >= 3, repair: repairNeed(level) };
   }
 
   // 재료로 쓰기 (사용자 3B): what goes in, what comes out (a bag item, or a yard good into the 가구 창고)
@@ -97,5 +112,5 @@
     return out;
   }
 
-  return { CROPS, ORDER, seedId, cropId, cropOfSeed, SLOTS, BEDS, bedsFor, stageOf, ripe, ripeAt, leftWord, UPKEEP, UPKEEP_NAMES, UPKEEP_ITEMS, upkeepNeed, upkeepScale, upkeepDone, upkeepState, weekOf, dayOf, prevWeek, CRAFTS, YARD_WEEDS, growYardWeeds };
+  return { CROPS, ORDER, seedId, cropId, cropOfSeed, SLOTS, BEDS, bedsFor, stageOf, ripe, ripeAt, leftWord, UPKEEP, UPKEEP_NAMES, UPKEEP_ITEMS, upkeepNeed, upkeepScale, upkeepDone, upkeepState, WEAR, WEAR_MAX, wearOf, REPAIR, REPAIR_ITEMS, REPAIR_NAMES, repairNeed, nextWeek, weekOf, dayOf, prevWeek, CRAFTS, YARD_WEEDS, growYardWeeds };
 }));
