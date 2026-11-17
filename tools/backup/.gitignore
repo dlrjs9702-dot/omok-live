@@ -1,0 +1,6 @@
+# 1.10.349: never in the repo -- backups, their opened lines, private keys, the local config
+*.bak
+*.bak.part
+*.jsonl
+*private*
+config.local.json

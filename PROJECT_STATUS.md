@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.349 DB 백업 (사용자 178A·179A, notes direction-ideas 끝)
+
+- lib/db-backup.js: 모든 표(schema public)를 읽기 전용 한 스냅샷에서 커서로 500줄씩 → JSON 줄 → gzip → AES-256-GCM, 열쇠는 RSA-OAEP(SHA-256) 공개 키로 봉인. 파일 끝 줄 {end, rows}로 잘림 확인. DB 없으면 데이터 폴더 JSON 파일.
+- 서버 GET /api/admin/backup: 관리자만, 하루 6번, 공개 키 BACKUP_PUBLIC_KEY 또는 tools/backup/backup-public.pem(없으면 503), 로그는 크기·시간만.
+- tools/backup/: fetch.js(관리자 로그인 → DB백업\YYYY-MM-DD.bak → 로그아웃, 개인 키로 열어 확인, 30일 지난 것 지움, backup.log), keygen.js·open.js·restore.js(localhost만)·install-task.ps1(매일 05:30, 놓친 실행은 켜지면 바로)·README(되살리기 연습). 개인 키·설정·백업은 저장소 밖(DB백업\), .gitignore.
+- 시험: test/db-backup(봉인·다른 키·변조, DB 커서 묶음, API 401·403·모든 표·하루 6번, fetch.js 날짜 파일·30일·비밀번호 없으면 FAILED).
+- 남은 것: 관리자 비밀번호는 사용자가 DB백업\config.local.json에 직접, 예약 작업 등록은 총괄이 사용자 확인 뒤, 실제 Postgres 첫 받기 확인.
+
 ## v1.10.348 4b 집 낡음·수리·바퀴벌레·오늘 알림 (notes gather-must-ideas §64~126, review-plan §1-12)
 
 - island-farm: WEAR 4단계, wearOf(빠진 주마다 한 단계, 처음 판정은 예전 허름함, 낸 주는 그대로), REPAIR 81A(새 섬 전 통나무 = 나뭇가지 두 배), decayOf·decaySolids(139 solids), BUGS 3/8/15.
@@ -29,11 +37,3 @@
 - 서버: 올리기에서 묶음은 개당 값(0.5~20배), 사기는 개수(1~남은 수, 넘으면 FLEA_QTY), 구매자 예약에 buyQty, 결제 키·paidFor·전달 claim·편지가 판 건마다(343 원칙 그대로), 정리도 partTag로 끝냄, 거두기는 남은 것만.
 - 창: 팔기에서 개당 값·「n개가 다 팔리면」, 사기에서 개수 칸, 내 물건에 개당 값·남은 수.
 - 시험: flea-stops 묶음(99개 → 60 → 동시에 둘이 30씩(9 남음: 하나만) → 결제 뒤 멈춤 4개 → 남은 5개 → 판 건마다 정산 → 거두기 남은 7개), island-flea e2e 개당 값.
-
-## v1.10.346 에셋 150d · 154A · 155A · 기록의 탑 불러오는 중 · 도박장 입장 규칙
-
-- 에셋 150d: UV를 지키며 다시 묶은 36파일(기록의 탑·증권거래소·대회 간판 Low·트로피 15종)을 넣어 150 깜빡임 고침을 다시 살림(UV 빠짐 0, painted-faces-uv 통과).
-- 기록의 탑: 자료 받기 전·실패 때 「🏆 기록의 탑 · 순위를 불러오는 중」.
-- 154A: 관리실 섬 운영 「지하 도박장 오늘」 — 오늘 암호·쪽지 벤치(관리자 API /api/admin/den/today만).
-- 155A C안: 벼룩시장 게시판 (−4.1, −68.5) 정면이 분수, SPACE (−3.56, −70.53); 생일 코너 (9.9, −74.1) 분수 쪽(막힘 원은 그대로 하나 — 생일에만 서 있어서).
-- 도박장 입장(사용자): 그날 암호 + 지갑 전부를 칩으로(5만 이상, DEN_MIN), 입장은 그날 바꾼 사람·칩 5,000 이상(DEN_ENTRY), 판 뒤 칩 5,000 아래면 남은 칩 1:1 포인트·거래소로(kicked), 다시는 지갑 전부.
