@@ -31,6 +31,8 @@ test('도박장 서버: 쪽지 암호 → 테드에게 → 칩 → 지하 → �
   await stand(a, T.facilityDoor('stocks')); assert.equal((await req('/api/island/exchange/enter', a, {})).status, 200);
   await stand(a, DR.DOOR.stand ? EX.world(DR.DOOR.stand.lx, DR.DOOR.stand.lz) : {}); assert.equal((await req('/api/island/den/enter', a, {})).data.error, 'DEN_SHUT', '암호 전에는 그냥 책장');
   await stand(a, EX.world(EX.TALK.lx, EX.TALK.lz));
+  assert.equal((await req('/api/island/den/chips', a, { side: 'buy', amount: 1000, requestId: crypto.randomUUID() })).data.error, 'DEN_PASS', '1.10.345: 암호 전에는 칩을 안 바꿔 줌');
+  assert.equal((await req('/api/island/den', a)).data.chips, 0);
   assert.equal((await req('/api/island/den/word', a, { word: '아무 말' })).data.open, false);
   assert.equal((await req('/api/island/den/word', a, { word: day.word.replace(/\s+/g, '') })).data.open, true, '띄어쓰기 없이도');
   const before = await bal(); const rid = crypto.randomUUID();

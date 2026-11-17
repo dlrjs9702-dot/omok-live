@@ -1496,7 +1496,7 @@ function denTick(now = nowMs()) {
   if (Math.random() < IslandDen.raidChance()) denRaidStart(now);
 }
 setInterval(() => { try { denTick(); } catch {} }, IslandDen.RAID.tick).unref?.();
-const DEN_ERRORS = Object.freeze({ GAME: '그런 판은 없어요.', BET: `한 판에 ${IslandDen.BET_MIN}~${IslandDen.BET_MAX.toLocaleString('ko-KR')}칩까지 걸 수 있어요.`, PICK: '거는 곳을 골라 주세요.', CHIPS: '칩이 모자라요. 테드에게 바꿔 오세요.', PAID: '이미 처리된 요청이에요.', POINTS: '포인트가 모자라요.' });
+const DEN_ERRORS = Object.freeze({ GAME: '그런 판은 없어요.', BET: `한 판에 ${IslandDen.BET_MIN}~${IslandDen.BET_MAX.toLocaleString('ko-KR')}칩까지 걸 수 있어요.`, PICK: '거는 곳을 골라 주세요.', CHIPS: '칩이 모자라요. 테드에게 바꿔 오세요.', PASS: '…무슨 말씀이신지. 창구 업무만 봐 드려요.', PAID: '이미 처리된 요청이에요.', POINTS: '포인트가 모자라요.' });
 const taxMd = (day) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
 async function taxLetters(account, now) {
   const { bills } = await pointStore.taxBills(account); if (!bills.length) return;
@@ -4927,7 +4927,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.344' });
+    return sendJson(res, 200, { ok: true, version: '1.10.345' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6638,7 +6638,8 @@ async function requestHandler(req, res) {
     if (route === 'chips') {
       if (!nearEx(IslandExchange.TALK.lx, IslandExchange.TALK.lz, 2.5)) return sendError(res, 409, 'TOO_FAR', '테드 앞에서 바꿔 주세요.');
       const amount = Number(body.amount); const buy = body.side !== 'sell'; if (!Number.isSafeInteger(amount) || amount < 1 || amount > IslandDen.CHIPS_MAX) return sendError(res, 400, 'DEN_AMOUNT', '칩 수를 다시 정해 주세요.');
-      const out = await pointStore.questApply(account, 'den', (doc) => { const chips = doc.chips || 0; if (!buy && chips < amount) return { error: 'CHIPS' }; if (buy && chips + amount > IslandDen.CHIPS_MAX) return { error: 'BET' }; return { doc: { ...doc, chips: chips + (buy ? amount : -amount) }, ...(buy ? { cost: amount } : { reward: amount }), payKey, reason: buy ? 'den_chips' : 'den_cash' }; });
+      const today = (await denToday(now)).day; /* (1.10.345 사용자: points -> chips only for one who said today's word -- 입장 자격 first) */
+      const out = await pointStore.questApply(account, 'den', (doc) => { const chips = doc.chips || 0; if (buy && doc.pass !== today) return { error: 'PASS' }; if (!buy && chips < amount) return { error: 'CHIPS' }; if (buy && chips + amount > IslandDen.CHIPS_MAX) return { error: 'BET' }; return { doc: { ...doc, chips: chips + (buy ? amount : -amount) }, ...(buy ? { cost: amount } : { reward: amount }), payKey, reason: buy ? 'den_chips' : 'den_cash' }; });
       if (out?.error) return sendError(res, 409, `DEN_${out.error}`, DEN_ERRORS[out.error] || '바꾸지 못했어요.');
       notifyPointsChanged([account]); return sendJson(res, 200, { ok: true, chips: out.doc.chips, balance: out.balance });
     }
@@ -8413,8 +8414,8 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, phase: c.phase, kind: c.kind, id: c.id });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/store/fail' && req.method === 'POST') { // (Codex 검토 5차 P3-4: a save failing half way -- the store's `method` throws once, after `skip` calls)
-    const { method, skip = 0 } = await parseJson(req); const real = pointStore[method]; if (typeof real !== 'function') return sendError(res, 400, 'BAD_REQUEST', '없는 저장소 함수예요.');
-    let left = Number(skip) || 0; pointStore[method] = async (...args) => { if (left > 0) { left -= 1; return real.apply(pointStore, args); } pointStore[method] = real; throw new Error('test store failure'); };
+    const { method, skip = 0, key = null } = await parseJson(req); const real = pointStore[method]; if (typeof real !== 'function') return sendError(res, 400, 'BAD_REQUEST', '없는 저장소 함수예요.');
+    let left = Number(skip) || 0; pointStore[method] = async (...args) => { if (key !== null && args[0] !== key && args[1] !== key) return real.apply(pointStore, args); /* (1.10.345: `key` -- only that save; a background one passes) */ if (left > 0) { left -= 1; return real.apply(pointStore, args); } pointStore[method] = real; throw new Error('test store failure'); };
     return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
@@ -10342,7 +10343,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.344 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.345 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

@@ -23,6 +23,7 @@ test('지하 도박장: 쪽지 → 테드에게 암호·칩 → 지하 주사위
   // the exchange, 테드: the word, chips
   await through('stocks', 'exchange');
   await press('exchange:clerk'); await expect(page.locator('#plazaDialog .tedCard')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#plazaDialog .tedAmount')).toHaveCount(0); await expect(page.locator('#plazaDialog button', { hasText: '포인트 → 칩' })).toHaveCount(0); /* (1.10.345: no chips before the word) */
   await page.locator('#plazaDialog .tedWord').fill(day.word); await page.locator('#plazaDialog button', { hasText: '작게 말하기' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().den().open), { timeout: 10000 }).toBe(true);
   await press('exchange:clerk'); await expect(page.locator('#plazaDialog .tedCard')).toBeVisible({ timeout: 15000 });

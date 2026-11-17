@@ -5241,11 +5241,14 @@
   }
   async function openTed() {
     tedTalk(); const d = await refreshDen(); if (!d) return;
-    const card = sEl('div', 'mirrorCard stocksCard tedCard'); card.append(line(`가진 칩 ${denWon(d.chips)}개 · 포인트와 칩은 1:1이에요.`, 'lookMeta stocksHead'));
+    // (1.10.345 사용자: 「입장 자격을 확인한 후에」 -- the chips only once today's word is said; before it his usual counter and the word.
+    // Chips still held from before can go back to points)
+    const card = sEl('div', 'mirrorCard stocksCard tedCard'); const chipsOn = Boolean(d.pass); const cashOnly = !chipsOn && (d.chips || 0) > 0;
+    card.append(line(chipsOn || cashOnly ? `가진 칩 ${denWon(d.chips)}개 · 포인트와 칩은 1:1이에요.` : '창구 업무는 주식 거래만 봐 드려요.', 'lookMeta stocksHead'));
     const amt = sEl('input', 'stocksQtyInput tedAmount'); amt.type = 'number'; amt.min = '1'; amt.value = '1000'; amt.inputMode = 'numeric'; amt.setAttribute('aria-label', '칩 수');
     const note = line('', 'lookMeta stocksNote');
     const change = (side) => async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/den/chips', { method: 'POST', body: JSON.stringify({ side, amount: Math.floor(Number(amt.value)), requestId: stockRid() }) }); loadPoints(); showToast(side === 'buy' ? `칩 ${denWon(amt.value)}개로 바꿨어요.` : `칩 ${denWon(amt.value)}개를 포인트로 돌려받았어요.`); openTed(); } catch (error) { note.textContent = error.message; b.disabled = false; } };
-    const row = sEl('div', 'stocksOrder'); row.append(amt, sEl('span', 'lookMeta', '칩'), btn('포인트 → 칩', 'primary', change('buy')), btn('칩 → 포인트', 'secondary', change('sell'))); card.append(row, note);
+    const row = sEl('div', 'stocksOrder'); row.append(amt, sEl('span', 'lookMeta', '칩'), ...(chipsOn ? [btn('포인트 → 칩', 'primary', change('buy'))] : []), btn('칩 → 포인트', 'secondary', change('sell'))); if (chipsOn || cashOnly) card.append(row); card.append(note);
     const word = sEl('input', 'tedWord'); word.type = 'text'; word.maxLength = 20; word.placeholder = '…'; word.setAttribute('aria-label', '테드에게 할 말');
     const say = btn('작게 말하기', 'secondary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/den/word', { method: 'POST', body: JSON.stringify({ word: word.value }) }); plaza.controller?.tedSay?.(r.say); if (r.open) { plaza.controller?.setDenDoor?.(true); plazaDialog.close(); } else b.disabled = false; } catch (error) { note.textContent = error.message; b.disabled = false; } });
     const wrow = sEl('div', 'stocksOrder'); wrow.append(word, say); card.append(wrow);
