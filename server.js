@@ -156,11 +156,9 @@ function economyLogTick(now = Date.now()) { if (!economyLogReady) return; client
 // day's `[client]` line (then started again) -- never an account, only kinds and counts
 const ClientReport = require('./lib/client-report'); const clientReports = ClientReport.createReports(); let clientLoggedDay = null;
 let clientSaved = -1; let clientSavedAt = 0; /* (1.10.352: the reports' count last kept, and when) */
-process.once('SIGTERM', () => { /* (1.10.352: a deploy's stop -- what is not kept yet, then out as before; a listener here takes Node's own exit away, so it exits itself, 1.5 s at most) */
-  const out = () => process.exit(0); setTimeout(out, 1500).unref?.();
-  if (!economyLogReady || clientReports.count() === clientSaved) { out(); return; }
-  Promise.resolve(pointStore.setWorldValue('clientReport', { day: clientLoggedDay, state: clientReports.state() })).catch(() => {}).finally(out);
-});
+/* (1.10.352: a deploy's stop keeps what is not kept yet -- inside shutdown() below, which tells the open streams first; 1.10.353:
+   its own SIGTERM listener exited before them) */
+const clientReportFlush = () => (!economyLogReady || clientReports.count() === clientSaved ? Promise.resolve() : Promise.resolve(pointStore.setWorldValue('clientReport', { day: clientLoggedDay, state: clientReports.state() })).catch(() => {}));
 function clientLogTick(now = Date.now()) {
   const due = EconomyLog.dueDay(now, clientLoggedDay);
   if (due) { if (clientLoggedDay) { console.log(clientReports.line(clientLoggedDay, require('./package.json').version)); clientReports.reset(); } clientLoggedDay = due; clientSaved = -1; }
@@ -2654,7 +2652,7 @@ plazaSpotTimer.unref?.();
    spots saved; out 1.5 s later, 3 s at most) */
 function shutdown() {
   for (const e of [...lobbyStreams, ...[...streams.values()].flatMap((s) => [...s])]) { try { sseWrite(e.res, 'restart', { at: nowMs() }); } catch {} }
-  savePlazaSpots().finally(() => setTimeout(() => process.exit(0), 1500)); setTimeout(() => process.exit(0), 3000).unref();
+  Promise.allSettled([savePlazaSpots(), clientReportFlush()]).finally(() => setTimeout(() => process.exit(0), 1500)); setTimeout(() => process.exit(0), 3000).unref(); /* (1.10.352: the screens' report kept too) */
 }
 process.once('SIGTERM', shutdown);
 
