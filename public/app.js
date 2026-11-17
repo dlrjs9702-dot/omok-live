@@ -2990,19 +2990,56 @@
     if (!islandBagDialog.open) islandBagDialog.showModal();
     try { const bag = await api('/api/island/bag'); drawIslandBag(bag); showBikes(bag); } catch (error) { showToast(error.message); }
   }
-  function drawIslandPlace(bag) {
-    const list = document.getElementById('islandPlaceList'); list.replaceChildren();
-    const takes = ISLAND_PLACES[islandPlace].takes || [islandPlace]; const mine = bag.items.filter((item) => takes.includes(item.at));
-    let total = 0;
-    for (const item of mine) {
-      const row = document.createElement('div'); row.className = 'islandPlaceRow'; row.setAttribute('role', 'listitem');
-      const what = document.createElement('span'); what.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
-      const worth = document.createElement('strong'); worth.textContent = `${(item.qty * item.price).toLocaleString('ko-KR')}P`;
-      row.append(what, worth); list.append(row); total += item.qty * item.price;
+  // 1.10.356 골라 팔기 (사용자 2026-11-17; notes docs/bag-tabs-20261117.md 「잡화점 골라 팔기」): the place's window, every seller the
+  // same -- left my bag (its kinds as the bag's tabs), right 「팔 물건」. A thing tapped (a PC: dragged too) goes right whole; a stack's
+  // count set there (− n + · 전부); tapped there, back. 「다 옮기기」: all the place takes. What it does not take: dim, why under it.
+  // Below: the total and the place's verb -- pressed, once more to be sure; sent as a list (the server sells only those)
+  let placeBag = null; const placePick = new Map(); let placeTab = 'all'; let placeSure = false;
+  const placeTakes = () => ISLAND_PLACES[islandPlace].takes || [islandPlace];
+  const placeTakesItem = (item) => placeTakes().includes(item.at) && item.price > 0; /* (fmtP: the one further down, the same) */
+  function drawIslandPlace(bag, keepPick = false) {
+    placeBag = bag; if (!keepPick) placePick.clear();
+    for (const [id, n] of [...placePick]) { const e = bag.items.find((x) => x.entryId === id); if (!e || !placeTakesItem(e)) placePick.delete(id); else if (n > e.qty) placePick.set(id, e.qty); }
+    placeSure = false; drawPlaceSides();
+  }
+  function placeMove(item, n) { const now = placePick.get(item.entryId) || 0; const next = Math.max(0, Math.min(item.qty, n == null ? item.qty : now + n)); if (next) placePick.set(item.entryId, next); else placePick.delete(item.entryId); placeSure = false; drawPlaceSides(); }
+  function drawPlaceSides() {
+    const bag = placeBag; if (!bag) return; const list = document.getElementById('islandPlaceList'); const verb = ISLAND_PLACES[islandPlace].verb;
+    const mine = document.createElement('section'); mine.className = 'placeSide placeMine'; mine.setAttribute('aria-label', '내 가방');
+    const sell = document.createElement('section'); sell.className = 'placeSide placeSell'; sell.setAttribute('aria-label', '팔 물건');
+    // left: the bag by kind
+    const kinds = new Set(bag.items.map((e) => BAG_DATA?.tabOf(e.itemId) || 'etc')); const tabs = document.createElement('div'); tabs.className = 'placeTabs';
+    for (const [k, label] of (BAG_DATA?.TABS || [['all', '전체']]).filter(([k]) => k === 'all' || kinds.has(k))) { const b = document.createElement('button'); b.type = 'button'; b.className = `bagTab${k === placeTab ? ' on' : ''}`; b.textContent = label; b.addEventListener('click', () => { placeTab = k; drawPlaceSides(); }); tabs.append(b); }
+    const left = document.createElement('div'); left.className = 'placeItems';
+    for (const item of bag.items) {
+      if (placeTab !== 'all' && (BAG_DATA?.tabOf(item.itemId) || 'etc') !== placeTab) continue; const takes = placeTakesItem(item); const rest = item.qty - (placePick.get(item.entryId) || 0); if (takes && rest <= 0) continue;
+      const b = document.createElement('button'); b.type = 'button'; b.className = `placeItem${takes ? '' : ' no'}`; b.dataset.item = item.itemId; b.disabled = !takes; b.draggable = takes;
+      b.append(itemIcon(item), Object.assign(document.createElement('span'), { textContent: `${item.name}${rest > 1 ? ` ×${rest}` : ''}` }));
+      if (!takes) b.append(Object.assign(document.createElement('small'), { textContent: item.at && ISLAND_PLACES[item.at] ? `${ISLAND_PLACES[item.at].title}에서 받아요` : '팔 수 없어요' }));
+      else { b.title = `${fmtP(item.price)} · 눌러서 팔 물건으로`; b.addEventListener('click', () => placeMove(item, null)); b.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/plain', item.entryId); event.dataTransfer.effectAllowed = 'move'; }); }
+      left.append(b);
     }
-    if (!mine.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '맡길 물건이 없습니다.'; list.append(empty); }
-    islandPlaceSubmit.textContent = `${ISLAND_PLACES[islandPlace].verb} +${total.toLocaleString('ko-KR')}P`;
-    islandPlaceSubmit.disabled = !mine.length;
+    if (!left.children.length) left.append(Object.assign(document.createElement('p'), { className: 'emptyState', textContent: '가방에 더 없어요.' }));
+    mine.append(Object.assign(document.createElement('h3'), { textContent: '내 가방' }), tabs, left);
+    // right: what goes, its counts, the total
+    const head = document.createElement('div'); head.className = 'placeSellHead'; head.append(Object.assign(document.createElement('h3'), { textContent: '팔 물건' }));
+    const all = document.createElement('button'); all.type = 'button'; all.className = 'ghost tiny'; all.id = 'placeAllBtn'; all.textContent = '다 옮기기'; all.disabled = !bag.items.some(placeTakesItem);
+    all.addEventListener('click', () => { for (const e of bag.items) if (placeTakesItem(e)) placePick.set(e.entryId, e.qty); placeSure = false; drawPlaceSides(); }); head.append(all);
+    const right = document.createElement('div'); right.className = 'placeItems placeGoing'; let total = 0;
+    for (const item of bag.items) {
+      const n = placePick.get(item.entryId); if (!n) continue; total += n * item.price;
+      const row = document.createElement('div'); row.className = 'islandPlaceRow'; row.setAttribute('role', 'listitem'); row.dataset.item = item.itemId;
+      const what = document.createElement('button'); what.type = 'button'; what.className = 'placeBack'; what.title = '가방으로 되돌리기'; what.append(itemIcon(item), ` ${item.name} ×${n}`); what.addEventListener('click', () => placeMove(item, -n));
+      row.append(what);
+      if (item.qty > 1) { const step = document.createElement('span'); step.className = 'placeStep'; const btn = (t, d, label) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'ghost tiny'; x.textContent = t; x.setAttribute('aria-label', label); x.addEventListener('click', () => placeMove(item, d)); return x; }; step.append(btn('−', -1, '하나 덜'), btn('+', 1, '하나 더'), btn('전부', null, '전부')); row.append(step); }
+      row.append(Object.assign(document.createElement('strong'), { textContent: fmtP(n * item.price) })); right.append(row);
+    }
+    if (!placePick.size) right.append(Object.assign(document.createElement('p'), { className: 'emptyState', textContent: '왼쪽 물건을 눌러 여기로 옮겨요.' }));
+    for (const el of [sell, right]) { el.addEventListener('dragover', (event) => { event.preventDefault(); sell.classList.add('dropAt'); }); el.addEventListener('dragleave', () => sell.classList.remove('dropAt')); el.addEventListener('drop', (event) => { event.preventDefault(); sell.classList.remove('dropAt'); const e = bag.items.find((x) => x.entryId === event.dataTransfer.getData('text/plain')); if (e && placeTakesItem(e)) placeMove(e, null); }); }
+    sell.append(head, right);
+    list.replaceChildren(mine, sell);
+    islandPlaceSubmit.textContent = placeSure ? `${verb}할까요? +${fmtP(total)}` : `${verb} +${fmtP(total)}`; islandPlaceSubmit.classList.toggle('sure', placeSure);
+    islandPlaceSubmit.disabled = !placePick.size;
   }
   // v1.10.86 주민세: the 세금 창구 (its own clerk) -- what I owe (체납) and paying it; tonight's tax as a guide
   const taxRow = document.getElementById('islandTaxRow'); const taxDialog = document.getElementById('taxDialog'); const taxStatus = document.getElementById('taxStatus');
@@ -3048,15 +3085,18 @@
     try { drawIslandPlace(await api('/api/island/bag')); } catch (error) { islandPlaceStatus.textContent = error.message; }
   }
   islandPlaceSubmit.addEventListener('click', async () => {
-    const place = islandPlace; islandPlaceSubmit.disabled = true;
-    if (islandPlaceRequest?.place !== place) islandPlaceRequest = { place, id: crypto.randomUUID() };
+    const place = islandPlace; if (!placePick.size) return;
+    if (!placeSure) { placeSure = true; drawPlaceSides(); return; } /* (1.10.356: pressed once more to be sure) */
+    islandPlaceSubmit.disabled = true;
+    const pick = [...placePick].map(([entryId, qty]) => ({ entryId, qty })); const key = JSON.stringify(pick);
+    if (islandPlaceRequest?.place !== place || islandPlaceRequest.key !== key) islandPlaceRequest = { place, key, id: crypto.randomUUID() }; /* (a lost answer: the same list, the same request) */
     try {
       const p = plaza.controller?.pose?.(); // my position first, so the server knows I am at the counter
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place: ISLAND_PLACES[place].send || place, requestId: islandPlaceRequest.id }) });
+      const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place: ISLAND_PLACES[place].send || place, requestId: islandPlaceRequest.id, pick }) });
       islandPlaceRequest = null; if (place === 'office') guideDone('deliver');
       islandPlaceStatus.textContent = `+${Number(data.paid || 0).toLocaleString('ko-KR')}P${data.capped ? ' · 오늘은 여기까지 받습니다' : ''}`;
-      drawIslandPlace(data.bag); loadPoints();
+      drawIslandPlace(data.bag); if (data.bag) drawIslandBag(data.bag); loadPoints();
     } catch (error) {
       islandPlaceStatus.textContent = error.message;
       if (error.status === 409 || error.status === 400) { islandPlaceRequest = null; islandPlaceSubmit.disabled = false; }

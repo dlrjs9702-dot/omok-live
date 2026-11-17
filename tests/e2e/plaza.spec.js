@@ -1008,9 +1008,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect(page.locator('#plazaHint')).toHaveText(/^SPACE · 앉아서 민원 창구 업무( · 단비)?$/); /* (v1.10.283: its clerk named -- none on her resting day) */
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:desk');
-  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
+  /* (1.10.356 골라 팔기: nothing goes till moved -- 「다 옮기기」 all the place takes; the herbs and the goby dim, the 상인's) */
+  await expect(page.locator('#islandPlaceSubmit')).toBeDisabled(); await expect(page.locator('.placeItem.no[data-item="herb"] small')).toHaveText('상인에서 받아요');
+  await page.locator('#placeAllBtn').click(); await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
   await expect(page.locator('#islandPlaceDialog.counterMode .counterSay')).toContainText('정산해 드려요'); // (창 3단계: the clerk's words in a speech bubble)
-  await page.locator('#islandPlaceSubmit').click();
+  await page.locator('#islandPlaceSubmit').click(); await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산할까요? +14,000P'); await page.locator('#islandPlaceSubmit').click(); /* (once more to be sure) */
   await expect(page.locator('#islandPlaceStatus')).toContainText('+14,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000); // v1.10.35 단가: 쓰레기 1,000 × 4 + 지갑 10,000
@@ -1037,10 +1039,13 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   else await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
   await expect(page.locator('#plazaHint')).toHaveText(DAL ? 'SPACE · 노점 · 물고기도 받아요' : 'SPACE · 상인');
   await page.keyboard.press('Space');
-  await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(2); await expect(page.locator('#islandPlaceList')).toContainText('망둥어 ×2'); /* (the fish's row by the herbs) */
+  /* (1.10.356 골라 팔기: the goby alone moved, one back; then all -- the fish's row by the herbs) */
+  await page.locator('.placeItem[data-item="fish_goby"]').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(1); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toContainText('망둥어 ×2');
+  await page.locator('.islandPlaceRow[data-item="fish_goby"] button[aria-label="하나 덜"]').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toContainText('망둥어 ×1');
+  await page.locator('#placeAllBtn').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(2); await expect(page.locator('#islandPlaceList')).toContainText('망둥어 ×2');
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name === 'chromium' ? 'pc' : 'phone'}-stall-fish.png` });
   expect(Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, ''))).toBeGreaterThan(8000);
-  await page.locator('#islandPlaceSubmit').click();
+  await page.locator('#islandPlaceSubmit').click(); await page.locator('#islandPlaceSubmit').click(); /* (once more to be sure) */
   await expect(page.locator('#islandPlaceStatus')).toContainText(/^\+[\d,]+P/); /* (a fish is paid by its size -- a few P off the window's guess) */
   const stallPaid = Number((await page.locator('#islandPlaceStatus').textContent()).split('P')[0].replace(/[^0-9]/g, '')); expect(stallPaid).toBeGreaterThan(8000);
   await page.locator('#islandPlaceCloseBtn').click();

@@ -3867,3 +3867,26 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .bagDetailBought{padding:1px 8px;border-radius:999px;background:#d8ecff;color:#1f4f7a;font-size:11px;font-weight:800}
 .bagDetailWords{margin:0;font-size:13px;line-height:1.45}
 .bagDetailUses{margin:0;font-size:12px;color:#7a6650;font-weight:700}
+/* 1.10.356 골라 팔기: my bag on the left, 「팔 물건」 on the right (a narrow phone: one over the other) */
+#islandPlaceDialog:has(.placeSide){width:min(94vw,640px)}
+#islandPlaceList:has(.placeSide){display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.placeSide{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px;border-radius:14px;background:rgba(255,250,240,.75);border:2px solid rgba(120,90,50,.18)}
+.placeSide h3{margin:0;font-size:14px;color:#5a4330}
+.placeSell.dropAt{border-color:#c9862a;background:#fff1cf}
+.placeSellHead{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.placeTabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.placeTabs::-webkit-scrollbar{display:none}
+.placeTabs .bagTab{padding:3px 9px;font-size:12px}
+.placeItems{display:flex;flex-direction:column;gap:5px;max-height:38vh;overflow:auto}
+.placeItem{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:5px 8px;border-radius:12px;border:2px solid rgba(120,90,50,.2);background:#fffaf0;color:#4a3524;text-align:left;font-weight:700;cursor:pointer}
+.placeItem img,.placeBack img{width:24px;height:24px;object-fit:contain}
+.placeItem.no{opacity:.5;cursor:not-allowed}
+.placeItem small{flex-basis:100%;font-size:11px;color:#8a7055;font-weight:700}
+.placeGoing .islandPlaceRow{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"what price" "step step";align-items:center;gap:4px 6px}
+.placeGoing .islandPlaceRow .placeBack{grid-area:what;min-width:0;text-align:left}
+.placeGoing .islandPlaceRow>strong{grid-area:price;white-space:nowrap}
+.placeGoing .islandPlaceRow .placeStep{grid-area:step;justify-self:end}
+.placeBack{display:inline-flex;align-items:center;gap:4px;border:0;background:none;color:inherit;font-weight:800;cursor:pointer;padding:0}
+.placeStep{display:inline-flex;gap:3px;margin-left:auto}
+#islandPlaceSubmit.sure{background:#e0952e;color:#fff;border-color:#b06a12}
+@media (max-width:560px){#islandPlaceList:has(.placeSide){grid-template-columns:1fr}.placeItems{max-height:26vh}}
