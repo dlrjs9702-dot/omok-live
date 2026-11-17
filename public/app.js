@@ -1906,6 +1906,8 @@
   try { byId('mouseSensInput').value = String(Math.max(0.3, Math.min(3, Number(localStorage.getItem('gc.mouseSens')) || 1))); } catch {}
   byId('mouseSensInput').addEventListener('input', (event) => { try { localStorage.setItem('gc.mouseSens', event.target.value); } catch {} plaza.controller?.setMouseSens?.(event.target.value); });
   // v1.10.218 B4: the first person's walking bob (on unless turned off here; kept on this device)
+  try { byId('bugsDimToggle').checked = localStorage.getItem('gc.bugsDim') === 'on'; } catch {} /* (1.10.348 4b 「벌레 흐리게」: the cockroaches as black dots) */
+  byId('bugsDimToggle').addEventListener('change', (event) => { try { localStorage.setItem('gc.bugsDim', event.target.checked ? 'on' : 'off'); } catch {} plaza.controller?.setBugsDim?.(event.target.checked); });
   try { byId('walkBobToggle').checked = localStorage.getItem('gc.walkBob') !== 'off'; } catch {}
   byId('walkBobToggle').addEventListener('change', (event) => { try { localStorage.setItem('gc.walkBob', event.target.checked ? 'on' : 'off'); } catch {} plaza.controller?.setWalkBob?.(event.target.checked); });
   byId('motionSelect').value = motionMode();
@@ -3638,7 +3640,39 @@
   async function refreshHomes() {
     const ask = api('/api/home').catch(() => null); homesAsk = ask; const r = await ask;
     if (homesAsk !== ask) { await homesAsk; return; }
-    if (r) { homesState = r; if (Number.isFinite(r.now)) homesOffset = r.now - Date.now(); plaza.controller?.setHomes?.(r.lots); yardWeedNote(r); }
+    if (r) { homesState = r; if (Number.isFinite(r.now)) homesOffset = r.now - Date.now(); plaza.controller?.setHomes?.(r.lots); yardWeedNote(r); todayNotice(r); }
+  }
+  // 1.10.348 4b 「오늘 알림」 (notes review-plan §1-12): the day's first look at the island -- one window, a part each, instead of
+  // the windows and toasts one after another: my house (only with this week's upkeep left, or not 깨끗함), today's 출석 not yet
+  // stamped, the stocks I hold in 정리 매매, the notices not yet seen (each opened from its 보기)
+  let todayNoticeBusy = false;
+  async function todayNotice(r) {
+    if (todayNoticeBusy || !plaza.controller || document.querySelector('dialog[open]')) return;
+    try { if (navigator.webdriver && !localStorage.getItem('gc.testTodayNotice')) return; } catch { return; } /* (tests: only the one that asks for it) */
+    const now = Date.now() + homesOffset; const key = `gc.todayNotice.${FARM.dayOf(now)}`; try { if (localStorage.getItem(key)) return; } catch { return; }
+    todayNoticeBusy = true;
+    try {
+      const [att, st, ev] = await Promise.all([api('/api/points/attendance/month').catch(() => null), api('/api/island/stocks').catch(() => null), api('/api/events').catch(() => null)]);
+      if (document.querySelector('dialog[open]')) return; /* (another window came up meanwhile: the next look) */
+      try { localStorage.setItem(key, '1'); } catch {}
+      const card = document.createElement('div'); card.className = 'mirrorCard todayNotice'; const part = (title) => { const s = document.createElement('section'); s.className = 'todayNoticePart'; const h = document.createElement('strong'); h.textContent = title; s.append(h); card.append(s); return s; };
+      const u = r.upkeep;
+      if (u && (!u.done || u.level > 0)) {
+        const s = part(`🏠 내 집 · ${u.wear || '깨끗함'}`);
+        if (u.level >= 3) s.append(line('집이 부서져서 들어갈 수 없어요.', 'lookMeta')); else if (u.level >= 2) s.append(line('집이 낡아서 손님을 받을 수 없고 꾸미기도 잠겼어요.', 'lookMeta'));
+        if (!u.done) { const left = Object.entries(u.need || {}).map(([k, q]) => [k, q - (u.given?.[k] || 0)]).filter(([, q]) => q > 0); const days = Math.max(1, Math.ceil((Date.parse(`${FARM.nextWeek(u.week)}T00:00:00+09:00`) - now) / 86400000));
+          s.append(line(`이번 주 손보기 남은 것: ${left.map(([k, q]) => `${FARM.UPKEEP_NAMES[k] || k} ${q}`).join(' · ') || '없음'}`), line(u.level >= 3 ? `${days}일 안에 다 넣지 않으면 그대로 부서진 채예요.` : `${days}일 안에 다 넣지 않으면 집이 한 단계 낡아요.`, 'lookMeta')); }
+        if (u.repair) s.append(line(`고치기(${u.wear} → ${FARM.WEAR[u.level - 1]}): ${Object.entries(u.repair.items).map(([k, q]) => `${FARM.REPAIR_NAMES[k]} ${q}`).join(' · ')}${u.repair.points ? ` · 수리비 ${u.repair.points.toLocaleString('ko-KR')}P` : ''}`, 'lookMeta'));
+        s.append(line('집 문 앞 손보기 상자에서 넣고 고쳐요.', 'lookMeta'));
+      }
+      if (att && !(att.days || []).includes(att.today)) { const s = part('📅 출석 도장'); s.append(line(`오늘 출석 도장을 아직 안 찍었어요. +${Number(att.pay || 0).toLocaleString('ko-KR')}P`), btn('출석하러 가기', 'secondary', () => openAttendanceCard())); }
+      const cleanup = (st?.mine?.rows || []).filter((x) => x.status === 'cleanup' && x.qty > 0);
+      if (cleanup.length) { const s = part('📈 정리 매매'); for (const x of cleanup) s.append(line(`${x.name} ${x.qty}주 · 오늘이 지나면 상장 폐지돼요. 증권거래소에서 오늘 안에 팔 수 있어요.`)); }
+      const notes = (ev?.events || []).filter((e) => !e.claimed && !eventHiddenToday(ev.account, e.id));
+      if (notes.length) { const s = part('📢 공지·이벤트'); for (const e of notes.slice(0, 4)) { const row = document.createElement('div'); row.className = 'todayNoticeRow'; row.append(line(e.title), btn('보기', 'secondary', () => { plazaDialog.close(); eventAccount = ev.account; openEventDialog(e); })); s.append(row); } }
+      if (!card.children.length) return;
+      card.append(btn('닫기', 'primary', () => plazaDialog.close())); openPlazaWindow('오늘 알림', [card]);
+    } finally { todayNoticeBusy = false; }
   }
   // (318 내 마당 잡초, 사용자 3B 「이웃 주민 한마디」: once a day, my yard's weeds many -- a neighbour says so)
   function yardWeedNote(r) {

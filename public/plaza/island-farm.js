@@ -79,6 +79,18 @@
   const REPAIR_ITEMS = Object.freeze({ twig: ['branch', 'twig'], stone: ['stone'], granite: ['ore_granite', 'ore'], iron: ['ore_iron'], log: ['log'] });
   const REPAIR_NAMES = Object.freeze({ twig: '나뭇가지', stone: '작은 돌', granite: '화강암', iron: '철광석', log: '통나무' });
   function repairNeed(level, logs = false) { const r = REPAIR[level]; if (!r) return null; const items = { ...r.items }; if (!logs && items.log) { items.twig = (items.twig || 0) + items.log * 2; delete items.log; } return { items, points: r.points || 0 }; }
+  // 4b the look (assets 139 decay-v1): 낡음 / 부서짐 laid over the house (압류 in 4c); what it blocks, in the house's own frame
+  // (139 solids.json: the leaning fence's three circles, 압류 the rope's posts and line before the steps); 145 바퀴벌레 each level
+  const decayOf = (level) => (level >= 5 ? null : level >= 4 ? 'seized' : level >= 3 ? 'broken' : level >= 2 ? 'worn' : null);
+  const DECAY_FENCE = Object.freeze({ hut: [[-2.554, -2.509], [-2.121, -2.588], [-1.689, -2.667]], house: [[-2.972, -3.208], [-2.421, -3.308], [-1.871, -3.408]], manor: [[-5.222, -5.608], [-4.671, -5.708], [-4.121, -5.808]], manor2: [[-5.222, -5.608], [-4.671, -5.708], [-4.121, -5.808]] });
+  const DECAY_ROPE_Z = Object.freeze({ hut: -2.9, house: -3.9, manor: -6.15, manor2: -6.15 });
+  function decaySolids(size, decay) { /* [[x, z, r]] -- the house's frame */
+    if (!decay || !DECAY_FENCE[size]) return [];
+    const out = DECAY_FENCE[size].map(([x, z]) => [x, z, 0.32]);
+    if (decay === 'seized') { const z = DECAY_ROPE_Z[size]; out.push([-1.05, z, 0.16], [1.05, z, 0.16], ...[-0.75, -0.45, -0.15, 0.15, 0.45, 0.75].map((x) => [x, z, 0.13])); }
+    return out;
+  }
+  const BUGS = Object.freeze([0, 3, 8, 15, 25, 25]);
   function upkeepState(doc, stage, now) {
     const week = weekOf(now); const need = upkeepNeed(stage); const given = doc?.week === week ? { ...doc.given } : {};
     const done = new Set(doc?.done || []); const { level } = wearOf(doc, now);
@@ -112,5 +124,5 @@
     return out;
   }
 
-  return { CROPS, ORDER, seedId, cropId, cropOfSeed, SLOTS, BEDS, bedsFor, stageOf, ripe, ripeAt, leftWord, UPKEEP, UPKEEP_NAMES, UPKEEP_ITEMS, upkeepNeed, upkeepScale, upkeepDone, upkeepState, WEAR, WEAR_MAX, wearOf, REPAIR, REPAIR_ITEMS, REPAIR_NAMES, repairNeed, nextWeek, weekOf, dayOf, prevWeek, CRAFTS, YARD_WEEDS, growYardWeeds };
+  return { CROPS, ORDER, seedId, cropId, cropOfSeed, SLOTS, BEDS, bedsFor, stageOf, ripe, ripeAt, leftWord, UPKEEP, UPKEEP_NAMES, UPKEEP_ITEMS, upkeepNeed, upkeepScale, upkeepDone, upkeepState, WEAR, WEAR_MAX, wearOf, REPAIR, REPAIR_ITEMS, REPAIR_NAMES, repairNeed, decayOf, decaySolids, BUGS, nextWeek, weekOf, dayOf, prevWeek, CRAFTS, YARD_WEEDS, growYardWeeds };
 }));

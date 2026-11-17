@@ -519,6 +519,12 @@
   REGISTRY['den.room'] = { url: '/assets/island/den-v1/den_room.glb', keepNodes: true, shadows: false };
   for (const f of ['table_dice', 'table_cards', 'table_roulette', 'slot_machine', 'secret_door']) REGISTRY[`den.${f}`] = { url: `/assets/island/den-v1/${f}.glb`, low: { url: `/assets/island/den-v1/${f}_low.glb` }, near: 20, keepNodes: true };
   for (const f of ['sign_away', 'note_code']) REGISTRY[`den.${f}`] = { url: `/assets/island/den-v1/${f}.glb`, low: { url: `/assets/island/den-v1/${f}_low.glb` }, near: 30 };
+  // 1.10.348 4b 집 낡음·부서짐 (assets 139 decay-v1): laid over the house at its own transform, the stage's one (it holds the ones
+  // before; 압류 for 4c); 바퀴벌레 (assets 145 house-bugs-v1): its legs and antennae their own nodes (turned by plaza-scene),
+  // 0.16 m in the game (125B: the files' 0.12 m x1.333), the 「벌레 흐리게」 dot
+  for (const st of ['worn', 'broken', 'seized']) for (const s of ['hut', 'house', 'manor', 'manor2']) REGISTRY[`decay.${st}.${s}`] = { url: `/assets/island/decay-v1/house_${st}_${s}.glb`, low: { url: `/assets/island/decay-v1/house_${st}_${s}_low.glb` }, near: 60 };
+  REGISTRY['bug.cockroach'] = { url: '/assets/island/house-bugs-v1/cockroach.glb', low: { url: '/assets/island/house-bugs-v1/cockroach_low.glb' }, near: 8, keepNodes: true, scale: 1.333, shadows: false };
+  REGISTRY['bug.cockroach_dot'] = { url: '/assets/island/house-bugs-v1/cockroach_dot.glb', scale: 1.333, shadows: false };
   REGISTRY['plaza.auction_board'] = { url: '/assets/island/auction-v1/auction_board.glb', low: { url: '/assets/island/auction-v1/auction_board_low.glb' }, near: 70, keepNodes: true, nightGlow: true }; /* (1.10.338 섬 경매장, assets 137: its nine note slots, the stand and the sign face kept; the bulbs lit at night) */
   for (const f of ['medallion', 'band_ring', 'curb', 'curb_corner', 'channel', 'channel_end']) REGISTRY[`plaza.${f}`] = { url: `${PV}/plaza_${f}.glb`, low: { url: `${PV}/plaza_${f}_low.glb` }, near: 90, shadows: false };
   const pvSeasons = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${PV}/plaza_${f.replace('{s}', s)}.glb`]));
