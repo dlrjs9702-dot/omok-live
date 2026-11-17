@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.354 지형 높이 함수 호출 줄이기 (총괄 2026-11-17: 353 다음 작은 PR)
+
+- island-npcs pointMemo: createWalkers의 walkable을 정확한 (x, z) 기억 표(1024칸, 타입 배열, 할당 없음)로 감쌈 -- 같은 점은 같은 답, 프레임마다 실제 계산 약 20 → 7회(나머지 13회는 기억).
+- plaza-scene stepWanderers: 주민 땅 높이는 걸음이 움직였을 때만 다시(c.groundX/Z/Y), 85 m 밖(그리지 않음)은 높이 안 구함.
+- plaza-scene canFishHere: 낚시 자리 판정은 내가 움직였을 때만.
+- 지형 함수(dalmaru-terrain·island)와 서버 공식은 그대로.
+- 측정(work/alloc-353/a.cjs, 처음 자리 가만히, PC): 지형 58.3 → 19.0 kB/프레임, 섬 전체 255 → 205; CPU 4배 느리게: 지형 61 → 18, 전체 329 → 277, fps 17.5 → 18.3.
+- 시험: island-npc-walk 단위(pointMemo 같은 답·덜 계산, 실제 걷기 기억 적중), e2e 주민·낚시·택시(bicycle 택시 화면 돌리기 시험 훅 carYaw).
+
 ## v1.10.353 무게·검토 고침 (gpu-weak-audit, 사용자 185A~190A, Codex 341~350 P2 나머지, 재사용 1~4, §9 ⓐ)
 
 - 무게: 화면 밖·85 m 밖 캐릭터 안 그림(186A 서 있는 NPC 85 m), 섬·모델 부품 행렬 얼리기, LOD·열린 창 판정 줄이기, 기록의 탑 먼 곳 건너뜀, 185A 중간 그림자 격 프레임, 187A 화질 기억(gc.autoTier, 7일·기기마다)·다시 올리기, 189A 방은 장면에서 떼기, 방 글자 판·뼈대 텍스처 정리, 지형 높이·문 목록 가비지 줄이기, [client] 로그 재시작에도 이어짐(clientReport), 190A 앱 배지는 메신저 창만.
@@ -29,13 +38,3 @@
 - ⑤ 회사 정보 카드: 업종(소식 json)·성격·상장가·상장 날짜·최근 소식 3줄.
 - ⑥ 이번 주 순위 줄마다 번 돈 ▲/▼ P(weekGain, 순위·칭호는 수익률 그대로).
 - 시험: island-stocks 단위(기록·gain·합계·200건·weekGain·watchSet·회사 정보·소식 값), e2e PC·폰(카드·평균선·별표·알림·거래 기록·순위 P·소식 펼치기). 사진 notes img/stocks-351.
-
-## v1.10.351 긴급 고침 (Codex 341~350 P1 2 + P2 3, notes docs/codex-review-341-350.md)
-
-- P1 #1 채굴 타이밍 위조: 누를 때마다 POST /api/island/quarry/tap, 서버가 받은 시각과 맞는 것만(IslandQuarry.tapAt, 오간 시간 -150~2000 ms); finish는 서버가 기록한 타격으로 판정(body.taps 안 읽음).
-- P1 #2 손보기 상자: post를 고치기 버튼보다 먼저 선언(낡은 집에서 ReferenceError).
-- P2 #5 화강암 벽 실패 보상 없음(작은 돌·곡괭이 닳음 없음).
-- P2 #6 화강암 벽 미니게임: plaza-scene quarryWall(PROPS rock_wall_a_granite holder)로 시작.
-- P2 #11 도박 구금: 구치소 상태 GET·퇴장 요청에서 jailable 다시 판단, 자정 지나면 풀림.
-- 나머지 P2(#3 #4 #7 #8 #9 #10)는 다음 무게·검토 고침 묶음.
-- 시험: island-quarry 단위(제때 보낸 타격·끝에 몰아 보낸 타격·벽 실패·tapAt), 도박장 단위(자정 지나 풀림), e2e 채석장(바위+화강암 벽 PC·폰), 마당(낡은 집 손보기 상자 열림).

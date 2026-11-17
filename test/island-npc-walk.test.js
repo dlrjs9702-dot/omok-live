@@ -175,3 +175,17 @@ test('배회 NPC 이동: 정확히 같은 자리에 겹쳐 생겨도 서로 비�
   assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= SEP * 0.9);
   for (const w of [a, b]) { assert.ok(T.walkable(w.x, w.z)); assert.ok(walkers.clear(w.x, w.z)); }
 });
+
+test('1.10.354 지형 호출 줄이기: 걷기 땅 판정 기억 -- 같은 점은 같은 답, 바닥 계산은 덜', () => {
+  let calls = 0; const counted = (x, z) => { calls += 1; return T.walkable(x, z); };
+  const m = P.pointMemo(counted, 64);
+  const pts = []; for (let i = 0; i < 400; i += 1) pts.push([Math.sin(i * 1.7) * 140, Math.cos(i * 0.9) * 140]);
+  for (const [x, z] of pts) assert.equal(m(x, z), T.walkable(x, z), `${x},${z}`);
+  const first = calls; for (const [x, z] of pts.slice(-30)) assert.equal(m(x, z), T.walkable(x, z)); /* (the last few still in the table: asked again, not worked out) */
+  assert.ok(calls - first < 30, `다시 물은 점은 계산 안 함 (${calls - first})`); assert.ok(m.hits > 0);
+  assert.equal(m(0.1 + 1e-12, 5), T.walkable(0.1 + 1e-12, 5), '아주 가까운 다른 점은 따로');
+  // a walk of the real walkers asks fewer ground answers than it gets
+  const w = P.createWalkers({ walkable: T.walkable, solidsNear: () => [] }); for (let n = 0; n < Math.min(6, P.COUNT); n += 1) w.add(n, 0);
+  for (let k = 1; k <= 300; k += 1) w.step(k * 33, 1 / 30);
+  const s = w.walkMemo(); assert.ok(s.hits > 0 && s.misses > 0, JSON.stringify(s));
+});
