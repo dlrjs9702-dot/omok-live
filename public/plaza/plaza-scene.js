@@ -2182,8 +2182,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const isTyping = (el) => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
   // (1.10.352 무게 ⑤ gpu-weak-audit: `dialog[open]` looked up three times a frame over 6,700 elements -- once a frame now; a window
   // opened within a frame is seen the next)
-  let blockedFrame = -1; let blockedNow = false;
-  const isBlocked = () => { const f = renderer.info.render.frame; if (f !== blockedFrame) { blockedFrame = f; blockedNow = Boolean(blocked?.()); } return blockedNow || !running; };
+  let blockedAt = -1; let blockedNow = false; /* (by the time, not the render count: a frame not drawn must not keep an old answer) */
+  const isBlocked = () => { const t = Math.floor(performance.now() / 4); if (t !== blockedAt) { blockedAt = t; blockedNow = Boolean(blocked?.()); } return blockedNow || !running; };
   const onKeyDown = (event) => {
     if (editView && running && (event.code === 'KeyQ' || event.code === 'KeyE') && !event.ctrlKey && !event.metaKey && !event.altKey && !isTyping(event.target)) { event.preventDefault(); yawGoal += (event.code === 'KeyQ' ? 1 : -1) * (Math.PI / 12); return; } // (v1.10.315 꾸미기: Q/E turn the room or yard round, 15° a press -- its window open too)
     if (isBlocked() || isTyping(event.target) || placeAim) return; // (v1.10.232: the tool's keys are app.js's)

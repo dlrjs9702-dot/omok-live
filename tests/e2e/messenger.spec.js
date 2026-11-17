@@ -311,13 +311,13 @@ test('메신저 알림 옮기기: 폰은 새 구독이 실패하면 옛 구독 �
   await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
   const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
   const fakeSub = { endpoint: `https://fcm.googleapis.com/fcm/send/move-${stamp}`, p256dh: Buffer.concat([Buffer.from([4]), require('node:crypto').randomBytes(64)]).toString('base64url'), auth: require('node:crypto').randomBytes(16).toString('base64url') };
-  await context.addInitScript((fake) => { /* (1.10.352: the root worker (the island's) with a subscription from before; this device's new one fails until the test says) */
+  await context.addInitScript((fake) => { /* (an old /messenger worker with a subscription; this device's new one fails until the test says) */
     Object.defineProperty(Notification, 'permission', { get: () => 'granted' });
     const ok = () => sessionStorage.getItem('subOk') === '1'; let sub = null;
     PushManager.prototype.getSubscription = function () { return Promise.resolve(sub); };
     PushManager.prototype.subscribe = function () { sessionStorage.setItem('subTried', '1'); if (!ok()) return Promise.reject(new Error('no push service')); sub = { endpoint: fake.endpoint, toJSON: () => ({ endpoint: fake.endpoint, keys: { p256dh: fake.p256dh, auth: fake.auth } }), unsubscribe: () => { sub = null; return Promise.resolve(true); } }; return Promise.resolve(sub); };
     const real = navigator.serviceWorker.getRegistrations.bind(navigator.serviceWorker);
-    const old = { scope: `${location.origin}/`, pushManager: { getSubscription: () => Promise.resolve({ unsubscribe: () => { sessionStorage.setItem('oldGone', '1'); return Promise.resolve(true); } }) }, unregister: () => { sessionStorage.setItem('oldUnreg', '1'); return Promise.resolve(true); } };
+    const old = { scope: `${location.origin}/messenger`, pushManager: { getSubscription: () => Promise.resolve({ unsubscribe: () => { sessionStorage.setItem('oldGone', '1'); return Promise.resolve(true); } }) }, unregister: () => { sessionStorage.setItem('oldUnreg', '1'); return Promise.resolve(true); } };
     navigator.serviceWorker.getRegistrations = async () => (sessionStorage.getItem('oldUnreg') ? real() : [...await real(), old]);
   }, fakeSub);
   await context.route('**/api/messenger/push', async (route) => { if (route.request().method() !== 'GET') return route.continue(); const real = await (await route.fetch()).json(); return route.fulfill({ json: { ...real, key: 'BKey' } }); });
@@ -331,10 +331,10 @@ test('메신저 알림 옮기기: 폰은 새 구독이 실패하면 옛 구독 �
     await expect(sel).toHaveValue('push'); await expect.poll(gone).toEqual([null, null, '1']); expect(await device()).toMatchObject({ mode: 'push', on: false });
     // next time it works: the new one first, then the old let go
     await m.evaluate(() => sessionStorage.setItem('subOk', '1')); await m.reload(); await expect(sel).toHaveValue('push');
-    await expect.poll(gone).toEqual(['1', null, '1']); await expect.poll(async () => (await device()).on).toBe(true); /* (1.10.352: the root worker kept -- the island's) */
+    await expect.poll(gone).toEqual(['1', '1', '1']); await expect.poll(async () => (await device()).on).toBe(true);
   } else {
     // a PC on 열어 둘 때만: the old subscription just goes, no new one asked for
-    await expect(sel).toHaveValue('open'); await expect.poll(gone).toEqual(['1', null, null]); expect(await device()).toMatchObject({ mode: 'open', on: false }); /* (1.10.352: the root worker kept) */
+    await expect(sel).toHaveValue('open'); await expect.poll(gone).toEqual(['1', '1', null]); expect(await device()).toMatchObject({ mode: 'open', on: false });
     // 닫아도 받기 that fails: back on 열어 둘 때만, said so
     await sel.selectOption('push'); await expect(m.locator('#toast')).toHaveText('no push service'); await expect(sel).toHaveValue('open'); expect(await device()).toMatchObject({ mode: 'open', on: false });
     await m.evaluate(() => sessionStorage.setItem('subOk', '1')); await sel.selectOption('push'); await expect(m.locator('#toast')).toHaveText('창을 닫아도 새 메시지를 알려 드려요.');
