@@ -98,7 +98,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
     object.scale.multiplyScalar(entry.scale ?? 1);
     object.rotation.y += entry.rotationY || 0;
     if (Array.isArray(entry.offset)) object.position.set(...entry.offset);
-    if (entry.shadows !== false) object.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    if (entry.shadows !== false) object.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; depthOf(o); } }); /* (1.10.353 ⓐ: a skinned one its kind's depth material too) */
     /* (1.10.352 무게 ①, gpu-weak-audit §4 ①: a model whose parts never move -- no kept nodes, no clip of its own, no bones, not a
        character's -- its parts' matrices made once; the model's own group (placed, held, turned by the page) still free) */
     if (!entry.keepNodes && !gltf.animations?.length && !entry.motions && !entry.baked) { let boned = false; object.traverse((o) => { if (o.isBone || o.isSkinnedMesh) boned = true; }); if (!boned) object.traverse((o) => { if (o !== object) { o.updateMatrix(); o.matrixAutoUpdate = false; } }); }
@@ -593,7 +593,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
     const hit = P.pick(registry, ids, off, null); if (!hit) return; creatures.add(c);
     cache.get(hit.entry.url).then((gltf) => {
       if (disposed || !gltf || c.gone) { creatures.delete(c); return; }
-      const object = cloneObject(gltf.scene); place(object, hit.entry); c.root.add(object); object.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      const object = cloneObject(gltf.scene); place(object, hit.entry); c.root.add(object); object.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; depthOf(o); } }); /* (1.10.353 ⓐ) */
       c.mixer = new THREE.AnimationMixer(object); for (const clip of gltf.animations) c.actions[clip.name] = c.mixer.clipAction(clip);
       const w = c.want; c.now = null; c.play(w);
     }).catch((error) => onError(hit.id, error));

@@ -898,6 +898,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   const bedAt = (T.dalmaru ? ground : land); // (달마루섬: the river's own bed)
   instanced(pebble, natureMat, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.05, r.z, r.s, r.s * 0.7, r.along), { cell: 60, color: (r, c) => c.set(0xb8b0a4), target: 'nature.riverBank' });
   const foam = keep(new THREE.MeshStandardMaterial({ color: 0xe9f7ff, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }));
+  const foamInst = keep(foam.clone()); /* (1.10.353 §9 ⓐ: the bend rocks' batched rings their own -- shared with the falls' plain rings, its program was picked again twice a frame; its opacity follows foam's in step) */
   // 달마루섬 5단계 폭포: at each pool a sheet from the ridge's lip (the steepest way up from the pool) down to its water,
   // the river's water texture running down it, foam where it lands and a little spray
   let fallTex = null; const falls = [];
@@ -918,7 +919,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       falls.push({ sheet, puffs });
     }
   }
-  instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
+  instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foamInst, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
   instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, onMesh(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });
   // v1.10.73 마을 환경정비사업 ① 길 3단계 (IDEAS #future-path-tiers): laid along each walk's one centre line instead of the
   // random kerb tiles, pebbles and flowers -- 마을 길 (the hall, the shop street, and the walks within TOWN_R of the plaza):
@@ -1231,7 +1232,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     // (움직임 줄이기: the water never stops -- half as fast, a swell twice as long -- only the flicker goes: the ripple lines and
     // the glinting wobble of the sea; 사용자 「파도가 전혀 안 움직여」, a device with reduced motion had it all still)
     if (lessMotion) clock *= 0.5; seaLines.value = lessMotion ? 0 : seaLinesOn; seaRipple.value = lessMotion ? 0 : 1;
-    flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+    flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; foamInst.opacity = foam.opacity; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   // 1.10.352 무게 ① (gpu-weak-audit §4 ①: 6,586 still objects' matrices made each frame): what this built is frozen -- its local
   // matrix made once (matrixAutoUpdate false; the world matrices still follow a parent). Not the boats nor the falls' puffs (step
   // moves them); things attached later (models in the holders) keep their own updates

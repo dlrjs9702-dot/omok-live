@@ -595,6 +595,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // each -- now one instanced batch per 40 m square and kind, as the island's trees. `look` is the stand-in, built once:
   // each of its meshes one instanced mesh of every copy (shown only without a model). Their seats, circles and the
   // winter overlays' holders stay apart, as before.
+  // (1.10.353 gpu-weak-audit §9 ⓐ: the stand-ins' shared colours (mat()) are drawn by plain meshes too -- a batch draws a twin of
+  // its material, one a material, else its program is picked again at each switch, twice a frame; as asset-loader's instTwinOf)
+  const batchTwins = new Map();
+  const batchTwin = (m) => { if (!m || Array.isArray(m)) return m; let t = batchTwins.get(m); if (!t) { t = m.clone(); t.onBeforeCompile = m.onBeforeCompile; batchTwins.set(m, t); } return t; };
   function propBatch(id, spots, look, shadow = true, size = 40) {
     if (!spots.length) return [];
     look.updateMatrixWorld(true); const parts = []; look.traverse((o) => { if (o.isMesh) parts.push(o); });
@@ -602,7 +606,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const squares = new Map();
     for (const s of spots) { const k = `${Math.floor(s.x / size)},${Math.floor(s.z / size)}`; if (!squares.has(k)) squares.set(k, []); squares.get(k).push(m.compose(new THREE.Vector3(s.x, s.y, s.z), s.pitch ? q.setFromEuler(new THREE.Euler(s.pitch, s.yaw || 0, 0, 'YXZ')) : q.setFromAxisAngle(up, s.yaw || 0), one).clone()); } /* (1.10.342 `pitch`: the quarry's rail pieces tilted as the ground runs) */
     const cells = [...squares.values()].map((matrices) => {
-      const procedural = parts.map((o) => { const im = new THREE.InstancedMesh(o.geometry.clone().applyMatrix4(o.matrixWorld), o.material, matrices.length); matrices.forEach((mm, i) => im.setMatrixAt(i, mm)); im.castShadow = o.castShadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); return im; });
+      const procedural = parts.map((o) => { const im = new THREE.InstancedMesh(o.geometry.clone().applyMatrix4(o.matrixWorld), batchTwin(o.material), matrices.length); matrices.forEach((mm, i) => im.setMatrixAt(i, mm)); im.castShadow = o.castShadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); return im; });
       const x = matrices.reduce((n, mm) => n + mm.elements[12], 0) / matrices.length; const z = matrices.reduce((n, mm) => n + mm.elements[14], 0) / matrices.length;
       return { x, z, parent: scene, procedural, matrices, colors: null, shadow };
     });
