@@ -5545,7 +5545,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const { c, w } of wanderers) {
       if (c.hitUntil > nowMs) { if (c.hitAt) { const k = Math.min(1, (nowMs - c.hitStart) / 120) * Math.min(1, (c.hitUntil - nowMs) / 500); c.root.position.set(c.hitAt.x + c.knock.x * k, 0, c.hitAt.z + c.knock.z * k); c.root.position.y = heightAt(c.root.position.x, c.root.position.z); } c.targetYaw = c.hitYaw; c.lookAt = null; animate(c, dt, false, 0); continue; } // (3회차 22: struck by a net, where it was struck; 313 A8 knocked back and on it again)
       if (c.rejoin > 0) { c.rejoin -= dt; const k = Math.min(1, dt / Math.max(dt, c.rejoin)); const p = c.root.position; p.x += (w.x - p.x) * k; p.z += (w.z - p.z) * k; p.y = heightAt(p.x, p.z); } // (then back to its shared walk)
-      else if (Math.hypot(w.x - m.x, w.z - m.z) >= 85) { c.root.position.x = w.x; c.root.position.z = w.z; } // (1.10.354: past 85 m it is not drawn -- below -- so not its ground either; asked when it comes near)
       else { if (c.groundX !== w.x || c.groundZ !== w.z) { c.groundX = w.x; c.groundZ = w.z; c.groundY = heightAt(w.x, w.z); } c.root.position.set(w.x, c.groundY, w.z); } // the exact ground (slopes, bridge decks) every frame -- 1.10.354: asked again only when the walk moved (one standing still kept its answer)
       { /* (v1.10.285: a taxi near -- stepped aside, eased in and out; their shared walk goes on under it) */
         c.asideMoving = asideStep(c, asideOf(w, taxiCars), dt); /* (317 A4: at a walk, the legs going) */
