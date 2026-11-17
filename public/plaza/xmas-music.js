@@ -40,6 +40,8 @@
         level = want; out.gain.setTargetAtTime(want * VOLUME, now, 0.4);
         if (!want) { if (playing && out.gain.value < 0.002) playing = false; return; }
         if (!playing) { playing = true; at = now + 0.2; note = 0; nextBell = now + 3; }
+        if (at < now) at = now + 0.05; /* (1.10.344 Codex 331~340 P2-8: back from a long pause -- on from now, the missed notes not all made at once) */
+        if (nextBell < now - 1) nextBell = now + 1;
         while (at < now + 0.6) { /* (the next notes scheduled a little ahead) */
           const s = SONGS[song]; const [m, b] = s.notes[note]; tine(freq(m + BOX_UP), at, 0.5); at += b * s.beat; note += 1;
           if (note >= s.notes.length) { note = 0; song = (song + 1) % SONGS.length; at += GAP; }

@@ -75,3 +75,40 @@ test('도장 가게 멈춤: 가구 전달 기록이 남아, 벼룩시장에 맡�
   assert.equal((await req('/api/island/flea/withdraw', a, { id: listed.data.listing.id })).status, 200); assert.equal((await pieces()).length, 1, '거두면 하나');
   await req('/api/test/festival/clock', null, { at: 0 });
 });
+
+test('P2 5: 올리기 저장이 멈춰도 물건은 안 사라짐 -- 같은 요청 다시·다음에 볼 때 한 번 올라감 (물건·가구)', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'flea-list-stops-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server; const a = await server.enter(await server.issue('올리는이'));
+  const fail = (method, skip = 0) => req('/api/test/store/fail', null, { method, skip });
+  await req('/api/test/island/give', a, { itemId: 'herb', qty: 4 });
+  const e = (await req('/api/island/flea/stock', a)).data.items.find((x) => x.itemId === 'herb'); const requestId = crypto.randomUUID();
+  await fail('setWorldValue'); assert.notEqual((await req('/api/island/flea/list', a, { requestId, entryId: e.entryId, qty: 2, price: 8000 })).status, 200);
+  const again = await req('/api/island/flea/list', a, { requestId, entryId: e.entryId, qty: 2, price: 8000 }); assert.equal(again.status, 200, JSON.stringify(again.data));
+  const mine = () => req('/api/island/flea', a).then((r) => r.data.list.filter((x) => x.mine));
+  assert.equal((await mine()).length, 1, '한 번 올라감'); assert.equal((await mine())[0].qty, 2);
+  assert.equal(((await req('/api/island/bag', a)).data.items.find((x) => x.itemId === 'herb') || {}).qty, 2, '가방은 두 개만 빠짐');
+  // a piece: out of the 창고, the board's save stops -- up at the next look, once
+  const added = (await req('/api/test/home/furniture', a, { ids: ['aquarium_big__oak'] })).data.pieces[0];
+  const worth = (await req('/api/island/flea/stock', a)).data.pieces.find((p) => p.uid === added.uid).worth;
+  await fail('setWorldValue', 1); assert.notEqual((await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), uid: added.uid, price: worth })).status, 200);
+  assert.ok(!(await req('/api/island/furniture/mine', a)).data.pieces.some((p) => p.uid === added.uid));
+  assert.equal((await mine()).filter((x) => x.kind === 'piece').length, 1, '다음에 볼 때 올라감'); assert.equal((await mine()).filter((x) => x.kind === 'piece').length, 1, '한 번만');
+});
+
+test('P2 6·8: 산 물고기 표시가 수조·선물로 옮겨도 남음, 오래 멈춘 뒤 음악이 몰아서 나지 않음', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bought-mark-')); rmAtExit(dir);
+  const { JsonPointStore } = require('../lib/point-store');
+  const store = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 0 }); await store.init();
+  const u = 'guest:00000000-0000-4000-8000-0000000000f1'; const v = 'guest:00000000-0000-4000-8000-0000000000f2'; await store.ensureAccount(u); await store.ensureAccount(v);
+  await store.islandGive({ userId: u, claimId: 'test:bought', itemId: 'fish_anchovy', qty: 1, meta: { sizes: [30], bought: true }, quiet: true });
+  const used = await store.islandUse({ userId: u, requestId: 'hometank-00000001', itemId: 'fish_anchovy', keep: true }); assert.equal(used.applied, true); assert.equal(used.bought, true, '수조에 넣을 때 산 것임을 앎');
+  await store.islandGive({ userId: u, claimId: 'test:bought2', itemId: 'fish_anchovy', qty: 1, meta: { sizes: [31], bought: true }, quiet: true });
+  await store.islandGive({ userId: u, claimId: 'test:wrap', itemId: 'gift_wrap', qty: 1, quiet: true });
+  assert.equal((await store.islandGift({ userId: u, to: v, itemId: 'fish_anchovy', requestId: 'gift-00000001' })).applied, true);
+  assert.equal((await store.islandBag(v)).items.find((e) => e.itemId === 'fish_anchovy').meta.bought, true, '선물로 받아도 산 것');
+  // 8: the music box -- a 10 minutes' pause makes the next notes only (not ten minutes of them at once)
+  let made = 0; let clock = 0; const node = () => ({ connect: (x) => x || node(), gain: { value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {}, setTargetAtTime() {}, cancelScheduledValues() {} }, frequency: { setValueAtTime() {} }, start() {}, stop() {} });
+  globalThis.AudioContext = class { constructor() { this.state = 'running'; this.destination = node(); } get currentTime() { return clock; } createGain() { return node(); } createOscillator() { made += 1; return node(); } resume() { return Promise.resolve(); } };
+  const M = require('../public/plaza/xmas-music.js'); const box = M.create();
+  box.step(1, true); clock = 600; made = 0; box.step(1, true); assert.ok(made < 30, `${made}개`); delete globalThis.AudioContext;
+});
