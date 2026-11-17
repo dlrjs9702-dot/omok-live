@@ -185,6 +185,7 @@ function waterTexture() {
 export function buildIsland(scene, { mat, mesh, solids, assets = null, software = false, pilotTrees = false }) {
   const disposables = [];
   const keep = (x) => { disposables.push(x); return x; };
+  const builtFrom = new Set(scene.children); const INST_DEPTH = new THREE.MeshDepthMaterial(); /* (1.10.352 무게 ①: what was there before -- the rest is the island's, frozen at the end) */
 
   // v1.10.29 계절 바닥: the ground follows the four season zones (island-terrain seasonZoneAt / zoneSeason) like the
   // models on it -- each zone's grass and walks take the colours of that season's ground tiles (360 refinement v2
@@ -702,7 +703,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
         if (color) { const c = color(item, tint); im.setColorAt(i, c); colors.push(c.clone()); }
         matrices.push(m4.clone());
       });
-      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; parent.add(im);
+      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; if (shadow && !(material.alphaTest > 0)) im.customDepthMaterial = INST_DEPTH; /* (1.10.352 §9-1: the batches' own shadow-depth material) */ parent.add(im);
       const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; parent.add(e); return e; });
       if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
     }
@@ -897,12 +898,13 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   const bedAt = (T.dalmaru ? ground : land); // (달마루섬: the river's own bed)
   instanced(pebble, natureMat, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.05, r.z, r.s, r.s * 0.7, r.along), { cell: 60, color: (r, c) => c.set(0xb8b0a4), target: 'nature.riverBank' });
   const foam = keep(new THREE.MeshStandardMaterial({ color: 0xe9f7ff, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }));
+  const foamInst = keep(foam.clone()); /* (1.10.353 §9 ⓐ: the bend rocks' batched rings their own -- shared with the falls' plain rings, its program was picked again twice a frame; its opacity follows foam's in step) */
   // 달마루섬 5단계 폭포: at each pool a sheet from the ridge's lip (the steepest way up from the pool) down to its water,
   // the river's water texture running down it, foam where it lands and a little spray
   let fallTex = null; const falls = [];
   if (T.dalmaru) {
     fallTex = keep(flowTex.clone()); fallTex.needsUpdate = true; fallTex.repeat.set(1.5, 3);
-    const fallMat = keep(new THREE.MeshStandardMaterial({ color: 0xe6f6ff, map: fallTex, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.88, side: THREE.DoubleSide }));
+    const fallMat = keep(new THREE.MeshStandardMaterial({ color: 0xe6f6ff, map: fallTex, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.88, side: THREE.DoubleSide, forceSinglePass: true })); /* (1.10.353 §9 ⓐ: both faces in one pass -- three.js draws a two-sided see-through material back then front, picking its program again twice a frame) */
     const sprayMat = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.35, depthWrite: false }));
     const puffGeo = keep(new THREE.SphereGeometry(0.7, 10, 8)); const ringGeo = keep(new THREE.RingGeometry(1.2, 2.6, 24).rotateX(-Math.PI / 2)); const SEA_Y = T.dalmaru.SEA;
     const pondMat = keep(new THREE.MeshStandardMaterial({ color: 0x7ec8e8, map: fallTex, roughness: 0.25, metalness: 0, transparent: true, opacity: 0.9 }));
@@ -917,7 +919,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       falls.push({ sheet, puffs });
     }
   }
-  instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
+  instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foamInst, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
   instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, onMesh(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });
   // v1.10.73 마을 환경정비사업 ① 길 3단계 (IDEAS #future-path-tiers): laid along each walk's one centre line instead of the
   // random kerb tiles, pebbles and flowers -- 마을 길 (the hall, the shop street, and the walks within TOWN_R of the plaza):
@@ -1230,7 +1232,14 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     // (움직임 줄이기: the water never stops -- half as fast, a swell twice as long -- only the flicker goes: the ripple lines and
     // the glinting wobble of the sea; 사용자 「파도가 전혀 안 움직여」, a device with reduced motion had it all still)
     if (lessMotion) clock *= 0.5; seaLines.value = lessMotion ? 0 : seaLinesOn; seaRipple.value = lessMotion ? 0 : 1;
-    flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+    flowTex.offset.y = -clock * 0.16; shoreTime.value = clock; if (seaSun) sunDir.value.subVectors(seaSun.position, seaSun.target.position).normalize(); /* (파도: the wash and the sea's ripple -- still with 움직임 줄이기) */ if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; foamInst.opacity = foam.opacity; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+  // 1.10.352 무게 ① (gpu-weak-audit §4 ①: 6,586 still objects' matrices made each frame): what this built is frozen -- its local
+  // matrix made once (matrixAutoUpdate false; the world matrices still follow a parent). Not the boats nor the falls' puffs (step
+  // moves them); things attached later (models in the holders) keep their own updates
+  const moving = new Set([...boats, ...falls.flatMap((w) => w.puffs)]); const frozen = [];
+  for (const top of scene.children) if (!builtFrom.has(top)) top.traverse((o) => { if (moving.has(o)) return; o.updateMatrix(); o.matrixAutoUpdate = false; frozen.push(o); });
+  for (const m of moving) m.traverse((o) => { o.matrixAutoUpdate = true; });
+  const frozenMoved = () => { const p = new THREE.Vector3(); const q = new THREE.Quaternion(); const s = new THREE.Vector3(); const m = new THREE.Matrix4(); let bad = 0; for (const o of frozen) { if (o.matrixAutoUpdate) continue; m.compose(o.position, o.quaternion, o.scale); if (!m.equals(o.matrix)) { m.decompose(p, q, s); if (p.distanceTo(o.position) > 1e-4 || s.distanceTo(o.scale) > 1e-4 || Math.abs(q.dot(o.quaternion)) < 0.99999) bad += 1; } } return { frozen: frozen.filter((o) => !o.matrixAutoUpdate).length, moved: bad }; };
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { frozenMoved /* (1.10.352 무게 ①: the debug's check) */, setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

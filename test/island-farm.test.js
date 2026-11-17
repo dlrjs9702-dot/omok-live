@@ -36,6 +36,9 @@ test('마당 농사 규칙: 단계 4개(시간의 1/3마다), 퇴비 뒤 두 배
   const wk = (s) => Farm.wearOf(s, mon + HOUR);
   assert.deepEqual([wk({ since: '2026-10-26', levelWeek: '2026-10-26', level: 0 }).level, wk({ since: '2026-11-09', levelWeek: '2026-11-09', level: 0 }).level, wk({ since: '2026-11-02', levelWeek: '2026-11-02', level: 1, done: ['2026-11-09'] }).level], [3, 1, 2], '빠진 주마다 한 단계, 낸 주는 그대로, 부서짐까지');
   assert.equal(wk({ since: '2026-11-02', levelWeek: '2026-11-16', level: 2 }).level, 2, '이번 주는 아직 안 셈');
+  // (총괄 2026-11-17, 사용자 「압류 처분은 새 섬 이후로」: 4c 전에는 부서짐이 끝 -- 몇 주를 더 빠져도, 저장된 단계가 4여도 압류 없음)
+  const long = wk({ since: '2026-06-01', levelWeek: '2026-06-01', level: 3 }); assert.equal(long.level, Farm.WEAR_MAX); assert.equal(Farm.WEAR_MAX, 3); assert.equal(Farm.decayOf(long.level), 'broken', '부서짐에 머묾');
+  assert.equal(wk({ since: '2026-06-01', levelWeek: '2026-11-16', level: 4 }).level, 3, '저장된 4도 부서짐으로'); assert.equal(Farm.WEAR.length, 4, '압류 이름 없음');
   assert.deepEqual(Farm.repairNeed(1), { items: { twig: 10, stone: 10 }, points: 0 }); assert.deepEqual(Farm.repairNeed(2), { items: { granite: 10, iron: 3, twig: 10 }, points: 0 }, '새 섬 전: 통나무 대신 나뭇가지 두 배');
   assert.deepEqual(Farm.repairNeed(3), { items: { granite: 20, iron: 10, twig: 20 }, points: 20000 }); assert.equal(Farm.repairNeed(0), null);
   const box = [-5, 5, -5, 5]; const free = () => true;

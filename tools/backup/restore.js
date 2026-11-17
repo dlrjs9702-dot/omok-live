@@ -15,8 +15,15 @@ async function main() {
   const { Client } = require('pg'); const client = new Client({ connectionString: url }); await client.connect();
   try {
     await client.query('BEGIN');
-    for (const [t, rows] of Object.entries(p.tables)) {
-      const name = `"${t.replace(/"/g, '""')}"`; await client.query(`TRUNCATE ${name}`);
+    // (1.10.353 Codex 341-350 #7: all emptied in one TRUNCATE -- tables that point at each other together -- then filled parents
+    // first, by the target's own foreign keys)
+    const q = (t) => `"${t.replace(/"/g, '""')}"`; const tables = Object.keys(p.tables);
+    const deps = (await client.query(`SELECT tc.table_name AS child, ccu.table_name AS parent FROM information_schema.table_constraints tc
+      JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
+      WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'`)).rows;
+    if (tables.length) await client.query(`TRUNCATE ${tables.map(q).join(', ')}`);
+    for (const t of B.restoreOrder(tables, deps)) {
+      const rows = p.tables[t]; const name = q(t);
       for (const r of rows) {
         const cols = Object.keys(r); const vals = cols.map((c) => (r[c] !== null && typeof r[c] === 'object' ? JSON.stringify(r[c]) : r[c]));
         await client.query(`INSERT INTO ${name} (${cols.map((c) => `"${c.replace(/"/g, '""')}"`).join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')})`, vals);

@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.353 무게·검토 고침 (gpu-weak-audit, 사용자 185A~190A, Codex 341~350 P2 나머지, 재사용 1~4, §9 ⓐ)
+
+- 무게: 화면 밖·85 m 밖 캐릭터 안 그림(186A 서 있는 NPC 85 m), 섬·모델 부품 행렬 얼리기, LOD·열린 창 판정 줄이기, 기록의 탑 먼 곳 건너뜀, 185A 중간 그림자 격 프레임, 187A 화질 기억(gc.autoTier, 7일·기기마다)·다시 올리기, 189A 방은 장면에서 떼기, 방 글자 판·뼈대 텍스처 정리, 지형 높이·문 목록 가비지 줄이기, [client] 로그 재시작에도 이어짐(clientReport), 190A 앱 배지는 메신저 창만.
+- §9 ⓐ 셰이더 다시 고르기 0회/프레임: 수조 물·폭포·유리 forceSinglePass, 묶음(인스턴스) 복사본 재질 쌍둥이(asset-loader instTwinOf, propBatch batchTwin, 거품 고리 foamInst), 그림자 깊이 재질(기차 기둥, 뼈대 모델). 섬 전체 320 → 257 kB/프레임.
+- 재사용(kB/프레임): 폭죽 21.7 → 2.2, 비눗방울 6.6 → 1.4, 말풍선 2.1 → 0.5(+텍스처 재사용), 깜빡·입·시선·택시 4.3 → 1.7, 감정 표시·그물 0.8 → 0.2. 측정 work/alloc-353/a.cjs.
+- Codex 341~350 P2: #3 묶음 구매 requestId(buyReqs), #4 맡기기 pending은 게시판 저장 뒤에 지우고 새 올리기 전 복구, #7 되살리기 TRUNCATE 한 번·외래 키 순서(restoreOrder), #8·#9 도장 가구와 stampHanded를 setWorldValues로 한 번에·353 뒤 구매는 시간 제한 없이 다시 받기, #10 islandUse 재시도도 bought.
+
 ## v1.10.352 주식 개편 (사용자 176A, notes island-stocks 끝 「주식 개편 패치」)
 
 - ① 섬 소식: 한 줄(시각·회사 이름 전부·▲/▼%), 누르면 소식 문장·그때 값(newsOf price)·회사 보기.
@@ -32,12 +39,3 @@
 - P2 #11 도박 구금: 구치소 상태 GET·퇴장 요청에서 jailable 다시 판단, 자정 지나면 풀림.
 - 나머지 P2(#3 #4 #7 #8 #9 #10)는 다음 무게·검토 고침 묶음.
 - 시험: island-quarry 단위(제때 보낸 타격·끝에 몰아 보낸 타격·벽 실패·tapAt), 도박장 단위(자정 지나 풀림), e2e 채석장(바위+화강암 벽 PC·폰), 마당(낡은 집 손보기 상자 열림).
-
-## v1.10.350 체납 불이익 강화 묶음 (notes tax-bill-design 끝, underground-den 끝, island-expansion 끝, issue-log-review-20261116 끝)
-
-- 체납 막기(서버 IN_ARREARS): 주식 주문, 벼룩시장 /list, 도박장 입장·칩 사기, 도장 가게 buy, 택시 자유이용권. 반성문 5줄 + 체납 중 통과마다 3줄(30줄까지, island-jail sentencesOf 23문장 돌려 씀), 다 내면 5줄(jail doc taxEssays). 184A: 체납 반성문 친해도 안 줄음, 체납으로 갇힐 때 하루 한 번 구치소장 호감도 -1·연속 +1씩·하루 -5까지(IslandJail.taxJailTake, point-store affinityTake 0 아래 안 감).
-- 도박장: 테드는 암호·비밀문만, 지하 바 카운터(IslandDenRoom.BAR·atBar) SPACE 「칩 바꾸기」(지갑 전부 5만 이상·돌려받기), 바꾸기 전 탁자 DEN_NOCHIPS, 계단으로 나가면 남은 칩 포인트로(cashed), 카운터 안내 표지판.
-- 채석장: DAILY 60·ORE_PER_ROCK 6(저장된 left 그대로, 다음 차오를 때 6). 화강암 벽(입구 쪽 rock_wall_a를 rock_wall_a_granite로, 칠 곱하기 [1.45,1.5,1.62], 벽면 표지판, 자리 3): 화강암만·안 빔·한도 밖, 실패하면 작은 돌. 화강암 상인 50P.
-- 도구 들었을 때만: doors `tool`(채석장 바위·벽 = 곡괭이), 물가·곤충 안내 없앰, 곡괭이 자동 들기 없앰.
-- 강가 꽃 늘 보이기(빨강·노랑·하양, 심부름 중엔 그 색), 마우스 잠금 중 감정 휠(blocked → 잠금 풀림·다시 잠금, 숫자 1~9).
-- 시험: arrears-penalties(막기·5→8→30→5·호감도 날수), island-jail 5줄, island-den-server 바 흐름, island-quarry(60/6·벽), e2e island-den·fp·emotes·island-tool-rules·island-jail·plaza 채석장/낚시·dalmaru-walk. 사진 notes img/arrears-350.

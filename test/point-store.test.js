@@ -582,3 +582,11 @@ test('worldValues: 여러 값을 한 번에, 없는 값은 null (JSON·PostgreSQ
     assert.deepEqual(await store.worldValues([]), {});
   }
 });
+test('수조 넣기 재시도 (1.10.353 Codex 341-350 #10): 같은 요청 다시도 산 것 표시를 돌려줌', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'use-bought-')); const s = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 0 }); await s.init();
+  const u = `guest:${crypto.randomUUID()}`; await s.ensureAccount?.(u);
+  assert.equal((await s.islandGive({ userId: u, claimId: 'give-bought-1', itemId: 'fish_carp', qty: 1, meta: { bought: true } })).applied, true);
+  const first = await s.islandUse({ userId: u, requestId: 'hometank-req-0001', itemId: 'fish_carp', keep: true }); assert.equal(first.applied, true); assert.equal(first.bought, true);
+  const again = await s.islandUse({ userId: u, requestId: 'hometank-req-0001', itemId: 'fish_carp', keep: true }); assert.equal(again.already, true); assert.equal(again.bought, true, '다시 해도 산 것');
+  await fs.rm(dir, { recursive: true, force: true });
+});

@@ -226,6 +226,10 @@ test('자동 화질: 느림 9초 뒤 내림, 60초 빠르면 올림, 내린 뒤 
   const back = run(fast, 66); assert.equal(back.length, 1); assert.ok(back[0][0] - holdEnd >= 54); assert.equal(g.tier, 2); /* (after the hold, 60 s fast again) */
   const h = P.qualityGovernor(0); assert.deepEqual([h.step(3, slow), h.step(6, slow), h.step(9, slow)], [null, null, null]); /* (already lowest) */
   const u = P.qualityGovernor(1); let ut = 0; let to = null; while (to === null && ut < 100) { ut += 3; to = u.step(ut, fast); } assert.equal(to, 2); assert.equal(ut, 60); /* (never stepped down here: up after 60 s fast) */
+  // (1.10.352 사용자 187A) heavy again within 10 s of a step up: down at once (no three slow runs), that tier not tried for 30 min
+  assert.equal(u.step(ut + 6, slow), 1, '올린 뒤 10초 안에 무거우면 바로 내림');
+  let vt = ut + 6; let again = null; while (again === null && vt < ut + 6 + 1700) { vt += 3; again = u.step(vt, fast); } assert.equal(again, null, '30분 동안 다시 안 올림');
+  vt = ut + 6 + 1803; let later = null; for (let k = 0; k < 30 && later === null; k += 1) { vt += 3; later = u.step(vt, fast); } assert.equal(later, 2, '30분 뒤에는 다시 올려 봄');
 });
 
 test('실제 GLB: 정적 모델과 리깅 모델을 읽고, 복제본은 지오메트리를 공유하되 뼈대는 각자 갖는다', async () => {

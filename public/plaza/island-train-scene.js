@@ -34,7 +34,7 @@ export function trainScene({ scene, assets, solids, vcMat, signboard }) {
     group.add(new THREE.Mesh(beam(r, 0, 0.12, R.SURFACE, 0.001), line));
   }
 
-  const pillars = new THREE.InstancedMesh(G.cyl, steel, pillarAt.length);
+  const pillars = new THREE.InstancedMesh(G.cyl, steel, pillarAt.length); pillars.customDepthMaterial = new THREE.MeshDepthMaterial(); /* (1.10.353 §9 ⓐ: its own shadow-depth material -- on three.js's shared one, among the plain casters, its program was picked again twice a frame) */
   const m4 = new THREE.Matrix4(); const q0 = new THREE.Quaternion();
   pillarAt.forEach((p, i) => { const h = p.top - p.foot; pillars.setMatrixAt(i, m4.compose(new THREE.Vector3(p.x, p.foot + h / 2, p.z), q0, new THREE.Vector3(0.22, h, 0.22))); });
   pillars.computeBoundingSphere(); pillars.castShadow = true; group.add(pillars);

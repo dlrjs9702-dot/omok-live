@@ -161,19 +161,21 @@
   // (`slow`: over half that time below 35 fps, `fast`: under a tenth). Down after GOV.DOWN_RUNS slow samples in a row (~9 s);
   // up after GOV.UP_AFTER s fast, never within GOV.NO_UP s of a step down; two steps within GOV.FLIP_WINDOW s hold it from stepping
   // up GOV.HOLD s (a slow screen still steps down). Times in seconds. `step` gives the new tier or null.
-  const GOV = Object.freeze({ DOWN_RUNS: 3, UP_AFTER: 60, NO_UP: 120, FLIP_WINDOW: 300, HOLD: 600 });
+  const GOV = Object.freeze({ DOWN_RUNS: 3, UP_AFTER: 60, NO_UP: 120, FLIP_WINDOW: 300, HOLD: 600, UP_TRY: 13, UP_BLOCK: 1800 }); /* (1.10.352 187A: a step up heavy again within 10 s (+3 s quiet) -- down at once, that tier not tried for 30 min) */
   function qualityGovernor(tier = 2) {
-    const g = { tier, slowRuns: 0, fastFor: 0, downAt: -Infinity, holdUntil: -Infinity, changes: [] };
+    const g = { tier, slowRuns: 0, fastFor: 0, downAt: -Infinity, holdUntil: -Infinity, changes: [], upAt: -Infinity, upTier: null, blocked: {} };
     const change = (now, to) => {
+      if (to > g.tier) { g.upAt = now; g.upTier = to; } else g.upTier = null;
       g.tier = to; g.slowRuns = 0; g.fastFor = 0; g.changes = g.changes.filter((t) => now - t < GOV.HOLD).concat(now);
       if (g.changes.filter((t) => now - t < GOV.FLIP_WINDOW).length >= 2) g.holdUntil = now + GOV.HOLD;
       return to;
     };
     g.reset = () => { g.slowRuns = 0; g.fastFor = 0; };
     g.step = (now, { slow, fast, secs = 3 }) => {
+      if (slow && g.tier > 0 && g.upTier === g.tier && now - g.upAt <= GOV.UP_TRY) { g.blocked[g.tier] = now + GOV.UP_BLOCK; g.downAt = now; g.fastFor = 0; return change(now, g.tier - 1); } /* (1.10.352 187A: the step up failed) */
       if (slow && g.tier > 0) { g.fastFor = 0; g.slowRuns += 1; if (g.slowRuns < GOV.DOWN_RUNS) return null; g.downAt = now; return change(now, g.tier - 1); } /* (Codex 281~290 #4: held too -- a slow screen still steps down) */
       if (now < g.holdUntil) { g.reset(); return null; }
-      if (fast && g.tier < 2) { g.slowRuns = 0; g.fastFor += secs; return g.fastFor >= GOV.UP_AFTER && now - g.downAt >= GOV.NO_UP ? change(now, g.tier + 1) : null; }
+      if (fast && g.tier < 2) { g.slowRuns = 0; g.fastFor += secs; return g.fastFor >= GOV.UP_AFTER && now - g.downAt >= GOV.NO_UP && !(g.blocked[g.tier + 1] > now) ? change(now, g.tier + 1) : null; }
       g.reset(); return null;
     };
     return g;
