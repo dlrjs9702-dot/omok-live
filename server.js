@@ -155,7 +155,23 @@ function economyLogTick(now = Date.now()) { if (!economyLogReady) return; client
 // 1.10.324 스스로 알려 주는 섬 (lib/client-report.js): the screens' errors and frame rates, summed; once a day after 00:10 Seoul the
 // day's `[client]` line (then started again) -- never an account, only kinds and counts
 const ClientReport = require('./lib/client-report'); const clientReports = ClientReport.createReports(); let clientLoggedDay = null;
-function clientLogTick(now = Date.now()) { const due = EconomyLog.dueDay(now, clientLoggedDay); if (!due) return; if (clientLoggedDay) { console.log(clientReports.line(clientLoggedDay, require('./package.json').version)); clientReports.reset(); } clientLoggedDay = due; }
+let clientSaved = -1; let clientSavedAt = 0; /* (1.10.352: the reports' count last kept, and when) */
+process.once('SIGTERM', () => { /* (1.10.352: a deploy's stop -- what is not kept yet, then out as before; a listener here takes Node's own exit away, so it exits itself, 1.5 s at most) */
+  const out = () => process.exit(0); setTimeout(out, 1500).unref?.();
+  if (!economyLogReady || clientReports.count() === clientSaved) { out(); return; }
+  Promise.resolve(pointStore.setWorldValue('clientReport', { day: clientLoggedDay, state: clientReports.state() })).catch(() => {}).finally(out);
+});
+function clientLogTick(now = Date.now()) {
+  const due = EconomyLog.dueDay(now, clientLoggedDay);
+  if (due) { if (clientLoggedDay) { console.log(clientReports.line(clientLoggedDay, require('./package.json').version)); clientReports.reset(); } clientLoggedDay = due; clientSaved = -1; }
+  if (clientReports.count() !== clientSaved && (clientSaved < 0 || now - clientSavedAt >= 600000)) { clientSaved = clientReports.count(); clientSavedAt = now; pointStore.setWorldValue('clientReport', { day: clientLoggedDay, state: clientReports.state() }).catch(() => {}); } /* (1.10.352: kept over a restart -- every 10 minutes at most) */
+}
+// (1.10.352) at start: the same day's samples taken up again; a day a restart skipped printed now
+async function clientLogResume() {
+  const kept = await pointStore.worldValue('clientReport').catch(() => null); if (!kept?.day || !kept.state) return;
+  if (kept.day === clientLoggedDay) { clientReports.restore(kept.state); clientSaved = clientReports.count(); return; }
+  if (kept.day < clientLoggedDay && Number(kept.state.reports) > 0) { const was = ClientReport.createReports(); was.restore(kept.state); console.log(was.line(kept.day, require('./package.json').version)); }
+}
 let stockClock = 0; const stockNow = () => Date.now() + stockClock; // (tests: /api/test/stocks/clock)
 const STOCK_ERRORS = Object.freeze({ QTY: '주식 수를 1주부터 1,000주 사이로 적어 주세요.', CLOSED: '장이 닫혀 있어요. 매일 오전 9시부터 오후 11시까지 열려요.', GONE: '상장 폐지된 회사예요.', CLEANUP: '정리 매매 중이라 팔기만 할 수 있어요.', HOLD: '한 회사 주식은 1,000주까지 가질 수 있어요.', SHARES: '가진 주식이 모자라요.', POINTS: '포인트가 모자라요.', PAID: '이미 처리된 주문이에요.', SIDE: '사기·팔기를 골라 주세요.' });
 // this week's ranking: every holder's return (%), the best first; ties by account. (3: shown, the first a title only)
@@ -2878,7 +2894,7 @@ async function noticeEvents() {
   if (posted) await broadcastAnnouncements().catch(() => {});
 }
 setInterval(() => { settleEventContests().catch((error) => console.error('매주 대회 정산 실패:', error.message)); noticeEvents().catch((error) => console.error('행사 공지 실패:', error.message)); stockNotices().catch((error) => console.error('정리 매매 알림 실패:', error.message)); economyLogTick(); }, 60000).unref?.();
-setTimeout(() => { economyLoggedDay = EconomyLog.dueDay(Date.now(), null); clientLoggedDay = economyLoggedDay || EconomyLog.dayOf(Date.now() - 86400000); economyLogReady = true; logEconomy().catch((error) => console.error('경제 로그 실패:', error.message)); }, 60000).unref?.(); // (a minute after the start; that day counted if past 00:10)
+setTimeout(() => { economyLoggedDay = EconomyLog.dueDay(Date.now(), null); clientLoggedDay = economyLoggedDay || EconomyLog.dayOf(Date.now() - 86400000); clientLogResume().catch(() => {}); economyLogReady = true; logEconomy().catch((error) => console.error('경제 로그 실패:', error.message)); }, 60000).unref?.(); // (a minute after the start; that day counted if past 00:10)
 async function contestNote(account, session, contestId, kind, value) {
   const c = await contestState();
   if (c.phase !== 'live' || c.id !== contestId || c.kind !== kind || !Number.isFinite(value) || value < 0 || (c.higher && value <= 0)) return null; // (총괄 검토 2: a score round of 0 is no entry)

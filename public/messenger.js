@@ -717,10 +717,11 @@
   async function setupPush() {
     if (!('serviceWorker' in navigator)) return;
     try {
-      // (메신저 3절 2) the app's own worker (sw.js, scope /) takes the push: an icon badge set by a worker reaches only the apps
-      // inside its scope -- the old /messenger worker's never reached the island app's icon. Its subscription moves over.
-      pushReg = await navigator.serviceWorker.register('/sw.js');
-      const old = (await navigator.serviceWorker.getRegistrations()).find((r) => new URL(r.scope).pathname === '/messenger');
+      // (1.10.352 사용자 「메신저에만 숫자 표시가 뜨게」) the messenger's own worker (messenger-sw.js, scope /messenger) takes the push:
+      // an icon badge set by a worker reaches every app inside its scope -- the root one's (scope /) lit the island app's icon too.
+      // The root's subscription moves over; the root worker itself stays (the island's) -- only its subscription goes.
+      pushReg = await navigator.serviceWorker.register('/messenger-sw.js', { scope: '/messenger' });
+      const old = (await navigator.serviceWorker.getRegistrations()).find((r) => new URL(r.scope).pathname === '/');
       const saved = savedAlert(); const { key, on, mode, moved: movedNow } = await api('/api/messenger/push'); pushKey = key || null;
       alertMode = window.MessengerAlert.alertChoice(saved, keptLogin() ? mode : null, keptLogin()); const moved = movedNow && !saved;
       if (!saved && keptLogin() && mode) alertStore.set(mode); /* (the first time: the server's way taken over once) */
@@ -729,7 +730,7 @@
       // tried again next time. (10절: a device not on 닫아도 받기 wants no subscription at all -- the old one just goes)
       const oldSub = old ? await old.pushManager.getSubscription().catch(() => null) : null;
       const kept = oldSub && granted() && alertMode === 'push' && pushKey && !(await subscribe(pushKey).then(() => true, () => false));
-      if (old && !kept) { await oldSub?.unsubscribe().catch(() => {}); await old.unregister().catch(() => {}); }
+      if (old && !kept) await oldSub?.unsubscribe().catch(() => {}); /* (1.10.352: never unregistered -- the island's worker) */
       if (alertMode !== 'push') { const sub = await browserSub(); if (sub) await sub.unsubscribe().catch(() => {}); } // (열어 둘 때만 / 안 받기: nothing left in the browser either)
       else if (granted() && pushKey) await subscribe(pushKey).catch(() => {}); // (닫아도 받기 and allowed: made now, or the one there sent again -- 검토 2026-11-06: a new login is a new device, and the subscription moves to it)
       pushOn = alertMode === 'push' && granted() && Boolean(await browserSub()); void on;

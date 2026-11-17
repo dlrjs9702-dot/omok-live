@@ -21,6 +21,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   let white = false; /* (1.10.329 화이트 크리스마스, notes christmas-boost M1: every zone's winter look, drawn only -- the seasons themselves stay) */
   const lookOf = (zone) => (day === null || !T ? null : (white && zone >= 0 ? 'winter' : T.zoneSeason(zone, day)) || P.NEUTRAL_LOOK);
   const placeOf = new THREE.Vector3();
+// (1.10.352 무게 §9-1: the batched and the skinned meshes' own shadow-depth material, one for each kind -- no shader picked again as they alternate)
+const DEPTH_INST = new THREE.MeshDepthMaterial(); const DEPTH_SKIN = new THREE.MeshDepthMaterial();
+const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.alphaTest > 0 || m.alphaToCoverage || (m.displacementMap && m.displacementScale !== 0)) return o; if (o.isInstancedMesh) o.customDepthMaterial = DEPTH_INST; else if (o.isSkinnedMesh) o.customDepthMaterial = DEPTH_SKIN; return o; };
   // A .gltf names its .bin and textures relative to itself; they are pack files as well, so they too get their
   // revision URL (and with it the resource cache). Already-versioned, data: and blob: URLs pass through.
   const manager = new THREE.LoadingManager();
@@ -441,7 +444,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
             im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in
-            im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true; im.matrixAutoUpdate = false; /* (316 ③: at the cell's origin for good -- its copies carry their places) */
+            im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true; im.matrixAutoUpdate = false; if (shadow) depthOf(im); /* (316 ③: at the cell's origin for good -- its copies carry their places) */
             cell.parent.add(im); invalidateOcclusion(cell.parent); return im; // (a building's batched parts: its sight boxes again)
           });
           const high = meshesOf(gltf, cell.shadow && entry.shadows !== false); const low = lowGltf ? meshesOf(lowGltf, false) : hit.entry.hideFar ? [] : null; /* (G2 덤불 `hideFar`: an empty Low -- past it nothing, the fade's dither taking it out) */
@@ -717,7 +720,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
           if (skeleton.bones.some((b) => !b)) { low.length = 0; break; } // (another rig: the High one alone, as before)
           const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
-          m.frustumCulled = false; m.castShadow = true; m.visible = false; low.push(m);
+          m.frustumCulled = false; m.castShadow = true; depthOf(m); m.visible = false; low.push(m);
         }
         if (low.length) { const rec = { c, high, low, isHigh: true }; wearing.push(rec); c.wearRec = rec; for (const m of high) m.userData.lod = 'high'; for (const m of low) m.userData.lod = 'low'; } /* (v1.10.264: a face piece hidden stays hidden across the switch) */
       }
@@ -835,7 +838,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const bones = new Map(); object.traverse(o => { if (o.isBone) bones.set(norm(o.name), o); });
       const high = []; const low = [];
       const prepare = (mesh) => {
-        mesh.frustumCulled = false; mesh.castShadow = true;
+        mesh.frustumCulled = false; mesh.castShadow = true; depthOf(mesh);
         const list = [].concat(mesh.material).map(source => { const rec = wearMaterial(source, null, c.player); mats.push(rec); return rec.material; });
         mesh.material = Array.isArray(mesh.material) ? list : list[0];
       };
@@ -936,10 +939,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
           if (skeleton.bones.some((b) => !b)) throw new Error(`rig mismatch: ${m.name}`);
           const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
-          m.frustumCulled = false; m.castShadow = true; own(m, colors); into.push(m);
+          m.frustumCulled = false; m.castShadow = true; depthOf(m); own(m, colors); into.push(m);
         }
       };
-      object.updateMatrixWorld(true); object.traverse((o) => { if (o.isSkinnedMesh) { if (!body.baked) o.geometry = slimmedGeometry(o, base.entry.slim); o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } }); // (v1.10.93 체형)
+      object.updateMatrixWorld(true); object.traverse((o) => { if (o.isSkinnedMesh) { if (!body.baked) o.geometry = slimmedGeometry(o, base.entry.slim); o.frustumCulled = false; o.castShadow = true; depthOf(o); own(o, null); high.push(o); } }); // (v1.10.93 체형)
       const lowBody = body.lowUrl ? byUrl.get(body.lowUrl) : null;
       if (lowBody) adopt(lowBody, null, low, null, false, body.baked);
       let sleeve = null; // v1.10.228: the top's (or the outfit's) own colour, for the first person's cuff
@@ -1082,7 +1085,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         for (const m of list) {
           m.geometry = slimmedGeometry(m, registry['character.base']?.slim);
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone())); if (skeleton.bones.some((b) => !b)) continue;
-          const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix); m.frustumCulled = false;
+          const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix); m.frustumCulled = false; depthOf(m);
           const mats = [].concat(m.material).map((x) => { const r = wearMaterial(x, colors?.[x.name] || c.wearPlan?.tint?.[x.name], c.player); (c.wearMats ||= []).push(r); return r.material; }); m.material = Array.isArray(m.material) ? mats : mats[0];
           m.userData.expression = id; m.visible = Boolean(c.faceOn?.includes(id)); made.push(m); /* (loaded late: shown only if still wanted) */
         }

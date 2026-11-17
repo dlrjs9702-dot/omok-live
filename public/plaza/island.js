@@ -185,7 +185,7 @@ function waterTexture() {
 export function buildIsland(scene, { mat, mesh, solids, assets = null, software = false, pilotTrees = false }) {
   const disposables = [];
   const keep = (x) => { disposables.push(x); return x; };
-  const builtFrom = new Set(scene.children); /* (1.10.352 무게 ①: what was there before -- the rest is the island's, frozen at the end) */
+  const builtFrom = new Set(scene.children); const INST_DEPTH = new THREE.MeshDepthMaterial(); /* (1.10.352 무게 ①: what was there before -- the rest is the island's, frozen at the end) */
 
   // v1.10.29 계절 바닥: the ground follows the four season zones (island-terrain seasonZoneAt / zoneSeason) like the
   // models on it -- each zone's grass and walks take the colours of that season's ground tiles (360 refinement v2
@@ -703,7 +703,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
         if (color) { const c = color(item, tint); im.setColorAt(i, c); colors.push(c.clone()); }
         matrices.push(m4.clone());
       });
-      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; parent.add(im);
+      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; if (shadow && !(material.alphaTest > 0)) im.customDepthMaterial = INST_DEPTH; /* (1.10.352 §9-1: the batches' own shadow-depth material) */ parent.add(im);
       const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; parent.add(e); return e; });
       if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
     }

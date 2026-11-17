@@ -1336,6 +1336,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; textures.push(texture);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9, ...SIGN_PUSH })); face.position.set(0, y, z); face.rotation.y = Math.PI; face.userData.boardText = text; return face;
   }
+  // (1.10.352 무게 ⑥ §9-2: a board taken down for good -- its texture, material and plane let go, and out of `textures`)
+  function dropBoard(face) { if (!face) return; face.removeFromParent(); const m = face.material; const t = m?.map; if (t) { t.dispose(); const k = textures.indexOf(t); if (k >= 0) textures.splice(k, 1); } m?.dispose?.(); face.geometry?.dispose?.(); }
   function plaque(text, x, y, z, yaw, h) {
     const font = '800 64px Pretendard, "Malgun Gothic", system-ui, sans-serif';
     const probe = document.createElement('canvas').getContext('2d'); probe.font = font;
@@ -3583,7 +3585,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     for (const [story, v] of visits) if (!seen.has(story)) { scene.remove(v.root); v.run?.end?.(false); visits.delete(story); }
     riverFlowersShow(); /* (1.10.350: the riverside flowers stand always -- the errand's own colours while it is on) */
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('visit:')) delete eventDoors[k];
+    for (const k in eventDoors) if (k.startsWith('visit:')) delete eventDoors[k];
     for (const v of visits.values()) { // the SPACEs by the things (what each does, never which is right)
       const t = v.task; const d = (act, i, p, name) => { eventDoors[`visit:${v.story}:${act}:${i}`] = { x: p.x, z: p.z, name }; };
       if (t.type === 'pick' && t.spots) t.spots.forEach((p, i) => d('choose', i, p, t.options ? `${COLOR_KO[t.options[i]] || ''} 꽃 · 냄새 맡기` : `허수아비 · ${i === t.shown ? '세우기' : '살펴보기'}`));
@@ -5125,7 +5127,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     museum.shownRoom = here; for (const [id, r] of Object.entries(museum.rooms)) r.visible = id === here;
   }
   // a plaque's face (its words changed: a new face)
-  function setPlaque(pl, text) { if (pl.face?.userData.boardText === text) return; if (pl.face) pl.face.removeFromParent(); pl.face = boardText(text, pl.w, pl.h, pl.y, pl.z, ['#fbf6ea', '#3a2a1a']); pl.p.add(pl.face); }
+  function setPlaque(pl, text) { if (pl.face?.userData.boardText === text) return; if (pl.face) dropBoard(pl.face); pl.face = boardText(text, pl.w, pl.h, pl.y, pl.z, ['#fbf6ea', '#3a2a1a']); pl.p.add(pl.face); }
   const swimmerOf = (s) => { const h = new THREE.Group(); s.parent.add(h); if (s.kind === 'big') h.userData.museumSlot = `fish_${s.sp}`; /* (Codex 251-260 #9: each 대어 its own -- they share a holder) */ const f = new THREE.Group(); h.add(f); mesh(new THREE.BoxGeometry(0.06, 0.1, 0.3), mat(0xb8c4cc), 0, 0, 0, f); assets.attach(`fish.${s.sp}`, h, f); h.userData.ph = Math.random() * TAU; return h; };
   function insectIn(parent, sp) { const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Rest', now: null, gone: false, play(name) { c.want = name; if (!c.mixer || c.now === name) return; const next = c.actions[name] || c.actions.Rest || c.actions.Crawl; if (!next) return; next.reset().fadeIn(0.15).play(); c.actions[c.now]?.fadeOut(0.15); c.now = name; } }; parent.add(c.root); assets.creature([`insect.${sp}`], c); c.root.userData.ph = Math.random() * TAU; return c; }
   // app.js: what is on show (GET /api/island/museum) -- each slot shown or empty, its plaque; one new since the last a 「톡」
@@ -5141,9 +5143,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (on && before && x.size !== (before.exhibits || []).find((e) => e.id === id)?.size) s.pop = now; // (a bigger one hung)
     }
     const flyers = MUS.FLYERS.filter((sp) => shown.get(`insect_${sp}`)?.by);
-    if (flyers.join() !== museum.flyerIds) { for (const f of museum.flyers) { f.gone = true; f.root.removeFromParent(); } museum.flyers = flyers.map((sp) => insectIn(museum.rooms.insects, sp)); museum.flyerIds = flyers.join(); } // (room-local: round the dome)
+    if (flyers.join() !== museum.flyerIds) { for (const f of museum.flyers) { f.gone = true; f.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); f.root.removeFromParent(); } /* (1.10.352 §9-2: their bone textures let go) */ museum.flyers = flyers.map((sp) => insectIn(museum.rooms.insects, sp)); museum.flyerIds = flyers.join(); } // (room-local: round the dome)
     setPlaque(museum.domePlaque, `나비 정원\n${flyers.length ? `${flyers.length}종이 날아요` : '아직 기증받지 못했어요'}`);
-    if (museum.boardFace) museum.boardFace.removeFromParent(); museum.boardFace = boardText(`섬 박물관\n전시 ${d.shown}/${d.total}`, 1.15, 0.85, 1.35, -0.045); museum.board.add(museum.boardFace);
+    if (museum.boardFace) dropBoard(museum.boardFace); museum.boardFace = boardText(`섬 박물관\n전시 ${d.shown}/${d.total}`, 1.15, 0.85, 1.35, -0.045); museum.board.add(museum.boardFace);
 
   }
   function stepMuseum(now) {
@@ -5183,6 +5185,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root), ...(mySpace === 'home' ? (homeRoomV?.pets || []).map((h) => h.c.root) : [])]); /* (v1.10.232: the house's pets, made just before, stay -- they were hidden till the next placing) */ const here = mySpace === 'store' ? store.group : mySpace === 'fashion' ? fashion.group : mySpace === 'furniture' ? furniture.group : mySpace === 'petshop' ? petshop.group : mySpace === 'home' ? homeRoomV.group : mySpace === 'jail' ? jail.group : mySpace === 'museum' ? museum.group : mySpace === 'exchange' ? exchange.group : mySpace === 'den' ? den.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
     if (mySpace !== 'island' && roomHidden.length) { for (const r of [room, store, furniture, petshop, homeRoomV, jail, museum, exchange, den]) if (r) r.group.visible = r.group === ({ store, furniture, petshop, townhall: room, home: homeRoomV, jail, museum, exchange, den })[mySpace]?.group; } // (from floor to floor: the one I am on)
     if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; if (furniture) furniture.group.visible = true; if (petshop) petshop.group.visible = true; if (homeRoomV) homeRoomV.group.visible = true; if (jail) jail.group.visible = true; if (museum) museum.group.visible = true; if (exchange) exchange.group.visible = true; if (den) den.group.visible = true; }
+    { // (1.10.352 사용자 189A, gpu-weak-audit ⑥: a room I am not in is taken off the scene -- kept in memory, back at once -- so its
+      // hundreds of objects are not walked each frame; the one I am in on it)
+      const rooms = { townhall: room, store, fashion, furniture, petshop, home: homeRoomV, jail, museum, exchange, den };
+      for (const [space, r] of Object.entries(rooms)) { const g = r?.group; if (!g) continue; if (space === mySpace) { if (!g.parent) scene.add(g); } else if (g.parent === scene) scene.remove(g); }
+    }
     keys.clear(); me.root.position.set(x, spaceFloor(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y; if (mySpace !== 'island' && fpNow()) { camYaw = yawGoal = me.targetYaw - Math.PI; camPitch = pitchGoal = 0; } /* (V1: in the first, in through the door looking into the room) */
     if (mySpace !== 'island') me.root.rotation.y = Math.PI;
     placeCamera(true); return true;
@@ -5601,7 +5608,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // Movement with circle collisions.
   // The radius of a character standing at (x, z): smaller near any facility's door.
   const playerRadiusAt = (x, z) => {
-    for (const door of Object.values(doors)) if (Math.hypot(door.x - x, door.z - z) < DOOR_ZONE) return DOOR_PLAYER_R;
+    for (const id in doors) { const door = doors[id]; if (Math.hypot(door.x - x, door.z - z) < DOOR_ZONE) return DOOR_PLAYER_R; } /* (1.10.352 ⑨) */
     return PLAYER_R;
   };
   // Other players as circles where they are drawn right now (their glide toward the server's position). Kept in one
@@ -6181,7 +6188,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     stepGuideArrow(); stepSnow(); stepXmasPlay(); stepVisits(); stepDoorway(dt, moving); stepCountdown(dt); stepInsects(dt, moving); stepNetAim(moving); stepFx(dt); /* (v1.10.260) */ stepPets(); stepPetshop(); stepFashion(); stepRoster(dt); stepLock(); stepHome(dt); stepJail(performance.now()); stepMuseum(performance.now()); stepExchange(performance.now()); stepDen(performance.now()); stepDenDoor(dt); stepRaid(dt); /* (1.10.341) */ // B 47, 묶음 2-2, 묶음 4, R4
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
-    for (const [id, door] of Object.entries(doors)) {
+    for (const id in doors) { const door = doors[id]; /* (1.10.352 ⑨) */
       if (door.tool && heldTool !== door.tool) continue; /* (1.10.350: a door needing a tool -- only with it in hand) */
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < bestD) { best = id; bestD = d; }
@@ -6189,7 +6196,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const atDoor = best && bestD < 1 ? best : null; // (206 CI: in the evening an islander stood in the 관공서 doorway -- SPACE talked, never went in)
     const lookDir = fpNow() ? { x: -Math.sin(camYaw), z: -Math.cos(camYaw) } : null; // (V1: the first -- someone to talk to is the one I look at)
     const talkish = (id, door) => /^(resident|player):/.test(id) || id.startsWith('ev:quest_npc:') || Boolean(door?.name?.startsWith('말 걸기')); // (an islander, a lost thing's owner, the tourist)
-    for (const [id, door] of Object.entries(eventDoors)) { // v1.10.11: an event right by me comes first
+    for (const id in eventDoors) { const door = eventDoors[id]; // v1.10.11: an event right by me comes first (1.10.352 ⑨: no array)
       if (id === 'tool:stow') continue;
       if (lookDir && talkish(id, door)) { const dx = door.x - me.root.position.x; const dz = door.z - me.root.position.z; if ((dx * lookDir.x + dz * lookDir.z) / (Math.hypot(dx, dz) || 1) < FP_CONE) continue; } // (206 총괄 검토: the stow note stands where I am -- picked as the nearest, it flickered off every other frame)
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
@@ -6201,7 +6208,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (best && eventDoors[best]?.resource) for (const [id, door] of Object.entries(eventDoors)) if (!door.resource && !door.plain && door.name?.startsWith('말 걸기') && Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z) < EVENT_REACH && facing(door.x, door.z)) { best = id; break; }
     // v1.10.47 관광열차: on board, SPACE gets off at a stop (between stops the hint says which comes next); by a stop's
     // boarding spot, SPACE gets on the train standing there (or the hint says when the next one comes)
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('train:')) delete eventDoors[k];
+    for (const k in eventDoors) if (k.startsWith('train:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
     if (taxiRide) { const m = me.root.position; const to = TX.STOPS[TX.STOPS[taxiRide.ride.from].to]; eventDoors['train:taxi'] = { x: m.x, z: m.z, name: `🚕 ${to.label}까지 가는 중`, plain: true }; best = 'train:taxi'; } // (v1.10.271: no 내리기 -- two stops only)
     else if (riding) {
@@ -6224,10 +6231,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
     }
     // v1.10.92 잡화점: in the store, the good nearest me (within reach) is what SPACE buys
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('good:')) delete eventDoors[k];
+    for (const k in eventDoors) if (k.startsWith('good:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // (last frame's good, picked above)
     if (mySpace === 'store' && !best) { const s = STORE.goodAt(me.root.position.x, me.root.position.z); if (s) { const w = STORE.world(s.at[0], s.at[2]); const g = goodsPrices[s.id]; const on = Boolean(g?.price) && !s.soon; eventDoors[`good:${s.id}`] = { x: w.x, z: w.z, name: on ? `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P` : `${g?.name || '물건'} · 곧 판매`, plain: !on }; /* (prices: the server's, app.js) */ best = `good:${s.id}`; } }
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('furn:') || k.startsWith('adopt:') || k === 'petshop:counter' || k === 'fashion:counter' || k === 'furniture:checkout' || k === 'jail:warden' || k === 'museum:curator') delete eventDoors[k];
+    for (const k in eventDoors) if (k.startsWith('furn:') || k.startsWith('adopt:') || k === 'petshop:counter' || k === 'fashion:counter' || k === 'furniture:checkout' || k === 'jail:warden' || k === 'museum:curator') delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
     if (mySpace === 'petshop' && !best && petshopState && petshop) { const m = me.root.position; let pick = null; let pd = PETS.REACH; for (const [slot, h] of petshop.pets) { const d = Math.hypot(h.c.root.position.x - m.x, h.c.root.position.z - m.z); if (d < pd) { pd = d; pick = slot; } } const p = pick && petshopState.pets.find((x) => x.slot === pick); if (p) { const h = petshop.pets.get(pick).c.root.position; eventDoors[`adopt:${pick}`] = { x: h.x, z: h.z, name: `${p.name} · ${Number(p.price).toLocaleString('ko-KR')}P` }; best = `adopt:${pick}`; } }
     if (mySpace === 'petshop' && !best) { const m = me.root.position; const w = PETS.world(PETS.COUNTER_KEEPER[0], PETS.COUNTER_KEEPER[1] - 2.3); if (Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['petshop:counter'] = { x: w.x, z: w.z, name: postName('roof') ? `${postName('roof')} · 펫샵` : '펫샵 점원' }; best = 'petshop:counter'; } } // (v1.10.191: the keeper tells where today's are -- nothing on sale)
@@ -6238,7 +6245,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (mySpace === 'jail' && !best) { const m = me.root.position; const w = JAIL.world(JAIL.TALK.lx, JAIL.TALK.lz); if (jailInmate === true || Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['jail:warden'] = { x: jailInmate === true ? m.x : w.x, z: jailInmate === true ? m.z : w.z, name: jailInmate === true ? '김우성 구치소장 · 반성문' : '김우성 구치소장' }; /* (사용자 2026-10-26: his name) */ best = 'jail:warden'; } } // (R4: from anywhere in the cell)
     if (mySpace === 'museum' && !best) { const m = me.root.position; const w = MUS.world(MUS.TALK.lx, MUS.TALK.lz); if (Math.hypot(w.x - m.x, w.z - m.z) < 1.8) { eventDoors['museum:curator'] = { x: w.x, z: w.z, name: `${postName('museum') ? `박물관 · ${postName('museum')}` : '박물관 관장'} · 말 걸기` }; best = 'museum:curator'; } } // v1.10.231
     if (mySpace === 'furniture' && !best && furnitureState) { const s = FURN.placeAt(me.root.position.x, me.root.position.z); const d = s && furnitureState.items[s.id]; if (d) { const w = FURN.world(s.lx, s.lz); eventDoors[`furn:${s.id}`] = { x: w.x, z: w.z, name: d.sold ? '팔렸어요 · 내일 새 가구가 들어와요' : `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`, plain: d.sold }; best = `furn:${s.id}`; } }
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('tank:') || k.startsWith('frame:')) delete eventDoors[k];
+    for (const k in eventDoors) if (k.startsWith('tank:') || k.startsWith('frame:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
     // (6회차 B3: a seat picked above gives way to a tank I stand nearer -- the sofa's seats 1.12 m apart reached the tank beside it)
     const seatDoor = best?.startsWith('seat:') ? doorOf(best) : null; const seatD = seatDoor ? Math.hypot(seatDoor.x - me.root.position.x, seatDoor.z - me.root.position.z) : null;
@@ -6247,7 +6254,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       for (const p of homeHere.home.pieces) { const shape = HOME.shapeOf(p.id); if (!HOME.TANKS[shape] && shape !== 'picture_frame') continue; const b = HOME.boxOf(p); const d = Math.hypot(Math.max(b.x0 - lx, 0, lx - b.x1), Math.max(b.z0 - lz, 0, lz - b.z1)); if (d < pd) { pd = d; pick = p; } }
       if (pick) { const shape = HOME.shapeOf(pick.id); const w = HOME.world(homeHere.lot, pick.x, pick.z); const key = `${shape === 'picture_frame' ? 'frame' : 'tank'}:${pick.uid}`; eventDoors[key] = { x: w.x, z: w.z, name: shape === 'picture_frame' ? '액자 · 기념사진 걸기' : shape === 'insect_case' ? '곤충 상자 · 넣고 꺼내기' : '수조 · 물고기 넣고 꺼내기' }; best = key; }
     }
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('insect:') || k.startsWith('tool:')) delete eventDoors[k];
+    for (const k in eventDoors) if (k.startsWith('insect:') || k.startsWith('tool:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
     // (3회차 22) the net in hand: SPACE swings it -- over a weed, by an islander or a seat too (a door still comes first);
     // a bug by me without it in hand: how to catch it
@@ -6257,7 +6264,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (mySpace === 'island' && heldTool === 'bugnet' && (!best || best === weedKey || handsFull(best)) && !gather && !fishing) { const m = me.root.position; const h = nearInsect(); eventDoors['tool:swing'] = { x: m.x, z: m.z, name: h ? `휘두르기 · ${h.b.name}` : '휘두르기' }; best = 'tool:swing'; }
     /* (1.10.350: a bug without the net in hand -- nothing said) */
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
+    for (const k in eventDoors) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
     if ((!best || eventDoors[best]?.resource) && !gather && !fishing) { // v1.10.91 주민 대화: an islander by me (not one an event holds) talks -- A-6: walking too
       const m = me.root.position; let who = null; let wd = 2.2; const overWeed = Boolean(best); // (묶음 3: over a weed only the one I face)

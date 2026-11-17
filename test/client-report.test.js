@@ -40,3 +40,11 @@ test('화면 보고 서버: 들어온 사람만, 1분에 20번, 하루 줄에 �
   const line = (await req('/api/test/client-report', a)).data.line;
   assert.match(line, /TypeError: q @ app\.js:3:4/); assert.doesNotMatch(line, /보고하는사람|guest:|"userId"/);
 });
+
+test('하루 표본은 다시 켜져도 이어짐 (1.10.352): state → restore가 같은 줄, 한도 안에서만', () => {
+  const a = C.createReports(); a.add({ kind: 'error', text: 'TypeError: x is undefined', device: 'phone' }); a.add({ kind: 'perf', fps: 42.5, tier: 1, scale: 75, device: 'pc' }); a.add({ kind: 'perf', fps: 18, tier: 0, device: 'phone' });
+  const b = C.createReports(); b.restore(JSON.parse(JSON.stringify(a.state())));
+  assert.equal(b.line('2026-11-17', 'v'), a.line('2026-11-17', 'v')); assert.equal(b.count(), 3);
+  b.restore(null); assert.equal(b.count(), 0, '없는 것은 빈 하루');
+  b.restore({ errors: [['', { n: 1 }], ['ok', { n: 2, pc: 2, phone: 0 }]], perf: { pc: [{ fps: -1 }, { fps: 30, tier: 2, scale: 100 }] }, reports: 3 }); const s = b.summary('d', 'v'); assert.equal(s.kinds, 1); assert.equal(s.perf.pc.n, 1);
+});

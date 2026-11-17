@@ -98,9 +98,9 @@
   // (CI 3차: each river's box, grown past its half width and ground()'s 2.2 m bank by a metre more -- outside every box no
   // river is near enough to cut the ground, and its distance need not be worked out)
   const RIVER_BOX = RIVERS.map((r) => { const m = r.w / 2 + 3.2; const xs = r.pts.map((p) => p[0]); const zs = r.pts.map((p) => p[1]); return [Math.min(...xs) - m, Math.max(...xs) + m, Math.min(...zs) - m, Math.max(...zs) + m]; });
-  const nearRiver = (x, z) => RIVER_BOX.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
+  const nearRiver = (x, z) => { for (let i = 0; i < RIVER_BOX.length; i += 1) { const b = RIVER_BOX[i]; if (x > b[0] && x < b[1] && z > b[2] && z < b[3]) return true; } return false; }; /* (1.10.352 ⑨: no callback a call) */
   const lakeDist = (x, z) => (Math.hypot((x - LAKE.x) / LAKE.rx, (z - LAKE.z) / LAKE.rz) - 1) * Math.min(LAKE.rx, LAKE.rz);
-  const poolDist = (x, z) => { let d = Infinity; for (const p of POOLS) d = Math.min(d, Math.hypot(x - p.x, z - p.z) - p.r); return d; };
+  const poolDist = (x, z) => { let d = Infinity; for (let i = 0; i < POOLS.length; i += 1) { const p = POOLS[i]; const dx = x - p.x; const dz = z - p.z; const e = Math.sqrt(dx * dx + dz * dz) - p.r; if (e < d) d = e; } return d; };
   const islePondDist = (x, z) => (Math.hypot((x - ISLE_POND.x) / ISLE_POND.rx, (z - ISLE_POND.z) / ISLE_POND.rz) - 1) * ISLE_POND.rz;
 
   // 동산 다듬기 (gamecenter-notes docs/terrain-paint-design-20261025.md 3, 사용자 「진행해」: no baked height picture -- shapes
@@ -117,8 +117,8 @@
   ].map((b) => Object.freeze(b)));
   function brushAt(x, z) {
     let add = 0;
-    for (const b of BRUSHES) {
-      const d = Math.hypot(x - b.x, z - b.z); if (d >= b.r) continue;
+    for (let i = 0; i < BRUSHES.length; i += 1) { const b = BRUSHES[i]; /* (1.10.352 ⑨) */
+      const bx = x - b.x; const bz = z - b.z; const d = Math.sqrt(bx * bx + bz * bz); if (d >= b.r) continue;
       const p = 0.5 + 0.5 * Math.cos((Math.PI * d) / b.r); // (1 in the middle, 0 at the rim, smooth both ends)
       if (b.kind === 'mound') add += b.h * p;
       else if (b.kind === 'hollow') add -= b.h * p;
@@ -151,11 +151,11 @@
     if (cd < beach) h = lerp(SEA - 0.3, h, cd / beach);
     return h;
   }
+  const cutAt = (h, dist, depth, bank) => (dist < bank ? lerp(Math.min(h, SEA - depth), h, smooth(-0.5, bank, dist)) : h); /* (1.10.352 ⑨: no closure made each call) */
   function ground(x, z) {
     let h = landHeight(x, z);
-    const cut = (dist, depth, bank) => { if (dist < bank) h = lerp(Math.min(h, SEA - depth), h, smooth(-0.5, bank, dist)); };
-    cut(nearRiver(x, z) ? riverDist(x, z) : Infinity, 0.9, 2.2); cut(lakeDist(x, z), 1.6, 3); cut(poolDist(x, z), 1.8, 2.5); cut(islePondDist(x, z), 0.8, 1.5);
-    for (const f of HEAD_PONDS) { const d = Math.hypot(x - f.x, z - f.z) - f.r; if (d < 1.2) h = lerp(Math.min(h, f.y - 0.6), h, smooth(-0.3, 1.2, d)); } // (2회차 18: the ponds over the falls)
+    h = cutAt(h, nearRiver(x, z) ? riverDist(x, z) : Infinity, 0.9, 2.2); h = cutAt(h, lakeDist(x, z), 1.6, 3); h = cutAt(h, poolDist(x, z), 1.8, 2.5); h = cutAt(h, islePondDist(x, z), 0.8, 1.5);
+    for (let i = 0; i < HEAD_PONDS.length; i += 1) { const f = HEAD_PONDS[i]; const fx = x - f.x; const fz = z - f.z; const d = Math.sqrt(fx * fx + fz * fz) - f.r; if (d < 1.2) h = lerp(Math.min(h, f.y - 0.6), h, smooth(-0.3, 1.2, d)); } // (2회차 18: the ponds over the falls)
     return h;
   }
   const heightAt = (x, z) => Math.max(ground(x, z), SEA);
