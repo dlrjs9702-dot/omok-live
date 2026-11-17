@@ -3841,5 +3841,5 @@ body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:
 .mineDig:active{transform:translateX(-50%) scale(.96)}
 body.islandMining .islandStick,body.islandMining .islandCtl{visibility:hidden !important;pointer-events:none}
 body.islandMining .plazaHint{display:none}
-body.islandMining .quickBar{visibility:hidden}
+body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 @media(prefers-reduced-motion:reduce){.fishArrowSeq span.pop,.fishTug.reeling .fishTugDist{animation:none}}

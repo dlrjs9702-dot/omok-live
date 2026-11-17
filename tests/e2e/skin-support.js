@@ -29,7 +29,7 @@ async function shopper(browser, request, label, points = 0, gender = 'male', pre
   let issued = (await post(request, '/api/admin/keys', admin, { label })).data;
   // a long run (a 40-minute shard) outlives the cached admin session (30 minutes without input): log in again
   if (!issued.html) { cachedAdmin = null; issued = (await post(request, '/api/admin/keys', await adminToken(request), { label })).data; }
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, ...(process.env.VIDEO_DIR ? { recordVideo: { dir: process.env.VIDEO_DIR, size: { width: 1280, height: 900 } } } : {}) }); /* (1.10.355: VIDEO_DIR -- the run's screens recorded, for a short clip of a game) */
   if (prepareContext) await prepareContext(context);
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
