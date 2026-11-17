@@ -3799,4 +3799,4 @@ body:not(.roomPlaying) .players:has(#greenPlayer:not(.hidden)) .seatNum{display:
 .stocksCols{display:grid;grid-template-columns:minmax(0,1.6fr) 96px minmax(0,1fr) minmax(0,.9fr);gap:8px;padding:0 11px;font-size:.78rem;opacity:.72}/* (1.10.322: the board's column names) */
 @media (max-width:560px){.stocksRow,.stocksCols{grid-template-columns:minmax(0,1.4fr) 64px minmax(0,1fr) minmax(0,.9fr);gap:6px;padding:6px 8px}.stocksCols{padding:0 9px}.stockSpark{width:64px}}
 /* 1.10.350 감정 표현: the first nine cells' keys (1~9) */
-.emoteWheel.grid .emoteCell{position:relative}.emoteCell .emoteKey{position:absolute;top:2px;left:4px;font-size:11px;line-height:1;font-weight:700;opacity:.75;pointer-events:none}
+.emoteWheel.grid .emoteCell{position:relative;left:auto;top:auto}.emoteCell .emoteKey{position:absolute;top:2px;left:4px;font-size:11px;line-height:1;font-weight:700;opacity:.75;pointer-events:none}
