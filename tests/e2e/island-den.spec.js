@@ -27,8 +27,8 @@ test('지하 도박장: 쪽지 → 테드에게 암호·칩 → 지하 주사위
   await page.locator('#plazaDialog .tedWord').fill(day.word); await page.locator('#plazaDialog button', { hasText: '작게 말하기' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().den().open), { timeout: 10000 }).toBe(true);
   await press('exchange:clerk'); await expect(page.locator('#plazaDialog .tedCard')).toBeVisible({ timeout: 15000 });
-  await page.locator('#plazaDialog .tedAmount').fill('1000'); await page.locator('#plazaDialog button', { hasText: '포인트 → 칩' }).click();
-  await expect(page.locator('#plazaDialog .tedCard .stocksHead')).toContainText('가진 칩 1,000개', { timeout: 10000 });
+  await page.locator('#plazaDialog button', { hasText: '지갑 전부 칩으로' }).click(); /* (1.10.346: the whole wallet, 50,000P at least) */
+  await expect(page.locator('#plazaDialog .tedCard .tedEntry')).toContainText('책장 쪽으로', { timeout: 10000 });
   await page.evaluate(() => document.getElementById('plazaDialog').close());
   // down the stairs, the dice
   await through('den:door', 'den');

@@ -38,17 +38,33 @@ test('도박장 서버: 쪽지 암호 → 테드에게 → 칩 → 지하 → �
   assert.equal((await req('/api/island/den', a)).data.chips, 0);
   assert.equal((await req('/api/island/den/word', a, { word: '아무 말' })).data.open, false);
   assert.equal((await req('/api/island/den/word', a, { word: day.word.replace(/\s+/g, '') })).data.open, true, '띄어쓰기 없이도');
-  const before = await bal(); const rid = crypto.randomUUID();
-  const ch = await req('/api/island/den/chips', a, { side: 'buy', amount: 3000, requestId: rid }); assert.equal(ch.status, 200, JSON.stringify(ch.data)); assert.equal(ch.data.chips, 3000);
-  assert.equal(await bal(), before - 3000); assert.equal((await req('/api/island/den/chips', a, { side: 'buy', amount: 3000, requestId: rid })).status, 409, '같은 요청은 한 번');
+  // (1.10.346 사용자: 입장은 지갑 전부를 칩으로, 50,000P 이상 -- the bookcase shut before it)
+  await stand(a, EX.world(DR.DOOR.stand.lx, DR.DOOR.stand.lz)); assert.equal((await req('/api/island/den/enter', a, {})).data.error, 'DEN_ENTRY', '칩으로 바꾸기 전에는 못 내려감'); await stand(a, EX.world(EX.TALK.lx, EX.TALK.lz));
+  { // (c, its own: the whole 100,000P in, 10,000 back -- a wallet under 50,000P: Ted's line, nothing changed)
+    const c = await server.enter(await server.issue('빈지갑손님')); await stand(c, T.facilityDoor('stocks')); await req('/api/island/exchange/enter', c, {}); await stand(c, EX.world(EX.TALK.lx, EX.TALK.lz)); assert.equal((await req('/api/island/den/word', c, { word: day.word })).data.open, true);
+    assert.equal((await req('/api/island/den/chips', c, { side: 'buy', requestId: crypto.randomUUID() })).status, 200); assert.equal((await req('/api/island/den/chips', c, { side: 'sell', amount: 10000, requestId: crypto.randomUUID() })).status, 200); /* (its whole 100,000P in, 10,000 back: a wallet under 50,000P) */
+    const bb = (await req('/api/points', c)).data.balance; assert.equal(bb, 10000); const no = await req('/api/island/den/chips', c, { side: 'buy', requestId: crypto.randomUUID() }); assert.equal(no.data.error, 'DEN_MIN', JSON.stringify(no.data)); assert.equal((await req('/api/points', c)).data.balance, bb);
+  }
+  const before = await bal(); const rid = crypto.randomUUID(); const look = (await req('/api/island/den', a)).data; assert.equal(look.wallet, before); assert.equal(look.entry, false);
+  const ch = await req('/api/island/den/chips', a, { side: 'buy', amount: 3000, requestId: rid }); assert.equal(ch.status, 200, JSON.stringify(ch.data)); assert.equal(ch.data.chips, before, '지갑 전부'); assert.equal(ch.data.entry, true);
+  assert.equal(await bal(), 0, '지갑이 0'); assert.equal((await req('/api/island/den/chips', a, { side: 'buy', requestId: rid })).status, 409, '같은 요청은 한 번');
   // down the stairs, a play
   await stand(a, EX.world(DR.DOOR.stand.lx, DR.DOOR.stand.lz)); const down = await req('/api/island/den/enter', a, {}); assert.equal(down.status, 200, JSON.stringify(down.data)); assert.equal(down.data.space, 'den');
   const dice = DR.TABLES.find((x) => x.id === 'dice'); await stand(a, DR.world(dice.spot.lx, dice.spot.lz));
   assert.equal((await req('/api/island/den/play', a, { game: 'roulette', bet: 10, pick: 'red', requestId: crypto.randomUUID() })).data.error, 'TOO_FAR', '룰렛은 룰렛 앞에서');
   const p1 = await req('/api/island/den/play', a, { game: 'dice', bet: 100, pick: 'big', requestId: crypto.randomUUID() }); assert.equal(p1.status, 200, JSON.stringify(p1.data));
-  assert.equal(p1.data.outcome.dice.length, 3); assert.equal(p1.data.chips, 3000 - 100 + p1.data.back); assert.ok(p1.data.back === 0 || p1.data.back === 196);
+  assert.equal(p1.data.outcome.dice.length, 3); assert.equal(p1.data.chips, before - 100 + p1.data.back); assert.ok(p1.data.back === 0 || p1.data.back === 196);
   assert.equal((await req('/api/island/den/play', a, { game: 'dice', bet: 100, pick: 'big', requestId: crypto.randomUUID() })).data.error, 'DEN_FAST', '1초에 한 판');
-  assert.equal(await bal(), before - 3000, '판은 칩으로만');
+  assert.equal(await bal(), 0, '판은 칩으로만');
+  // (1.10.346) money into the wallet while below stays there; below 5,000 chips after a play -- the rest back 1:1, out to the exchange
+  await req('/api/test/points-credit', a, { amount: 10000 }); assert.equal(await bal(), 10000, '지하에 있는 동안 들어온 돈은 지갑에 그대로');
+  await req('/api/test/den/chips', a, { chips: 3 }); await new Promise((r) => { setTimeout(r, 1100); });
+  const low = await req('/api/island/den/play', a, { game: 'dice', bet: 1, pick: 'big', requestId: crypto.randomUUID() }); assert.equal(low.status, 200, JSON.stringify(low.data));
+  assert.equal(low.data.kicked?.space, 'exchange', '칩 5,000 아래 -- 쫓겨남'); assert.equal(await bal(), 10000 + low.data.kicked.refund, '남은 칩은 포인트로'); assert.equal((await req('/api/island/den', a)).data.chips, 0);
+  await stand(a, EX.world(DR.DOOR.stand.lx, DR.DOOR.stand.lz)); assert.equal((await req('/api/island/den/enter', a, {})).data.error, 'DEN_ENTRY', '다시 들어오려면 다시 지갑 전부');
+  await req('/api/test/points-credit', a, { amount: 60000 }); await stand(a, EX.world(EX.TALK.lx, EX.TALK.lz)); assert.equal((await req('/api/island/den/chips', a, { side: 'buy', requestId: crypto.randomUUID() })).status, 200);
+  await stand(a, EX.world(DR.DOOR.stand.lx, DR.DOOR.stand.lz)); const again = await req('/api/island/den/enter', a, {}); assert.equal(again.status, 200, JSON.stringify(again.data));
+  await stand(a, DR.world(dice.spot.lx, dice.spot.lz)); /* (back at the dice for the raid below) */
   // a raid: the 관공서 shut; they come down -- chips taken, the cell, the gambling essay
   await req('/api/test/den', a, { raid: true, walkM: 2 });
   await stand(b, T.facilityDoor('townhall')); assert.equal((await req('/api/island/townhall/enter', b, {})).data.error, 'TOWNHALL_AWAY');

@@ -1496,7 +1496,7 @@ function denTick(now = nowMs()) {
   if (Math.random() < IslandDen.raidChance()) denRaidStart(now);
 }
 setInterval(() => { try { denTick(); } catch {} }, IslandDen.RAID.tick).unref?.();
-const DEN_ERRORS = Object.freeze({ GAME: '그런 판은 없어요.', BET: `한 판에 ${IslandDen.BET_MIN}~${IslandDen.BET_MAX.toLocaleString('ko-KR')}칩까지 걸 수 있어요.`, PICK: '거는 곳을 골라 주세요.', CHIPS: '칩이 모자라요. 테드에게 바꿔 오세요.', PASS: '…무슨 말씀이신지. 창구 업무만 봐 드려요.', PAID: '이미 처리된 요청이에요.', POINTS: '포인트가 모자라요.' });
+const DEN_ERRORS = Object.freeze({ GAME: '그런 판은 없어요.', BET: `한 판에 ${IslandDen.BET_MIN}~${IslandDen.BET_MAX.toLocaleString('ko-KR')}칩까지 걸 수 있어요.`, PICK: '거는 곳을 골라 주세요.', CHIPS: '칩이 모자라요. 테드에게 바꿔 오세요.', PASS: '…무슨 말씀이신지. 창구 업무만 봐 드려요.', MIN: `…${IslandDen.ENTRY_MIN.toLocaleString('ko-KR')} 포인트는 있어야 해요.`, PAID: '이미 처리된 요청이에요.', POINTS: '포인트가 모자라요.' });
 const taxMd = (day) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
 async function taxLetters(account, now) {
   const { bills } = await pointStore.taxBills(account); if (!bills.length) return;
@@ -5301,6 +5301,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const level = Math.min(IslandYard.LEVELS, Math.max(1, Number(body.level) || 1));
     return worldEdit(async () => { await setYardLevel(pointAccountForSession(session), level); return sendJson(res, 200, { ok: true, level }); });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/den/chips' && req.method === 'POST') { const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const account = pointAccountForSession(session); await pointStore.questApply(account, 'den', (doc) => ({ doc: { ...doc, chips: Math.max(0, Number(body.chips) || 0) } })); return sendJson(res, 200, { ok: true }); } // (1.10.346 tests: chips set -- the kick)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/den' && req.method === 'POST') { // 1.10.341: the word and note; a raid now (walkM: its walk), its tick, its end
     if (!requireSession(req, res)) return; const body = await parseJson(req); const now = nowMs();
     if (body.raid) denRaidStart(now, Number(body.walkM) || 8); if (body.tick) await denCatch(now); if (body.end) { denRaid = null; broadcastIsland('den', { raid: null }); }
@@ -6603,7 +6604,8 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/den' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const t = await denToday();
     const { doc } = await pointStore.questDoc(account, 'den');
-    return sendJson(res, 200, { ok: true, chips: doc.chips || 0, pass: doc.pass === t.day, shown: doc.shown || 7, note: t.note, raid: denRaidView(), rules: { betMax: IslandDen.BET_MAX, symbols: IslandDen.SYMBOLS, triple: IslandDen.TRIPLE, diceBack: IslandDen.DICE_BACK } });
+    const wallet = (await pointStore.getAccount(account))?.balance ?? 0; /* (1.10.346: what 「지갑 전부」 would be) */
+    return sendJson(res, 200, { ok: true, chips: doc.chips || 0, pass: doc.pass === t.day, entry: doc.entry === t.day && (doc.chips || 0) >= IslandDen.KICK_BELOW, wallet, shown: doc.shown || 7, note: t.note, raid: denRaidView(), rules: { entryMin: IslandDen.ENTRY_MIN, kickBelow: IslandDen.KICK_BELOW, betMax: IslandDen.BET_MAX, symbols: IslandDen.SYMBOLS, triple: IslandDen.TRIPLE, diceBack: IslandDen.DICE_BACK } });
   }
   if (pathname.startsWith('/api/island/den/') && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = nowMs();
@@ -6620,6 +6622,7 @@ async function requestHandler(req, res) {
       const t = await denToday(now); const { doc } = await pointStore.questDoc(account, 'den');
       if (!nearEx(IslandDenRoom.DOOR.stand.lx, IslandDenRoom.DOOR.stand.lz, 1.8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       if (doc.pass !== t.day) return sendError(res, 409, 'DEN_SHUT', '그냥 책장이에요.');
+      if (doc.entry !== t.day || (doc.chips || 0) < IslandDen.KICK_BELOW) return sendError(res, 409, 'DEN_ENTRY', '…먼저 테드에게 지갑을 칩으로 바꿔 오세요.'); /* (1.10.346: 지갑 전부를 칩으로 바꾼 날만) */
       exchangeInside.delete(session.token); denInside.add(session.token); denBelow.set(account, now);
       const spot = IslandDenRoom.world(IslandDenRoom.ROOM.entry.lx, IslandDenRoom.ROOM.entry.lz);
       plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'den', moving: false, at: now, act: null, seat: null }); plazaDirty = true;
@@ -6637,11 +6640,14 @@ async function requestHandler(req, res) {
     const payKey = `den:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${requestId}`;
     if (route === 'chips') {
       if (!nearEx(IslandExchange.TALK.lx, IslandExchange.TALK.lz, 2.5)) return sendError(res, 409, 'TOO_FAR', '테드 앞에서 바꿔 주세요.');
-      const amount = Number(body.amount); const buy = body.side !== 'sell'; if (!Number.isSafeInteger(amount) || amount < 1 || amount > IslandDen.CHIPS_MAX) return sendError(res, 400, 'DEN_AMOUNT', '칩 수를 다시 정해 주세요.');
-      const today = (await denToday(now)).day; /* (1.10.345 사용자: points -> chips only for one who said today's word -- 입장 자격 first) */
-      const out = await pointStore.questApply(account, 'den', (doc) => { const chips = doc.chips || 0; if (buy && doc.pass !== today) return { error: 'PASS' }; if (!buy && chips < amount) return { error: 'CHIPS' }; if (buy && chips + amount > IslandDen.CHIPS_MAX) return { error: 'BET' }; return { doc: { ...doc, chips: chips + (buy ? amount : -amount) }, ...(buy ? { cost: amount } : { reward: amount }), payKey, reason: buy ? 'den_chips' : 'den_cash' }; });
+      const buy = body.side !== 'sell'; const today = (await denToday(now)).day; /* (1.10.345 사용자: points -> chips only for one who said today's word -- 입장 자격 first) */
+      // (1.10.346 사용자: 입장은 지갑 포인트 전부를 칩으로 -- ENTRY_MIN 이상, 예금은 그대로; chips -> points 1:1 as before)
+      const amount = buy ? (await pointStore.getAccount(account))?.balance ?? 0 : Number(body.amount);
+      if (!buy && (!Number.isSafeInteger(amount) || amount < 1 || amount > IslandDen.CHIPS_MAX)) return sendError(res, 400, 'DEN_AMOUNT', '칩 수를 다시 정해 주세요.');
+      if (buy && amount < IslandDen.ENTRY_MIN) { const d = (await pointStore.questDoc(account, 'den')).doc; return sendError(res, 409, d.pass === today ? 'DEN_MIN' : 'DEN_PASS', d.pass === today ? DEN_ERRORS.MIN : DEN_ERRORS.PASS); }
+      const out = await pointStore.questApply(account, 'den', (doc) => { const chips = doc.chips || 0; if (buy && doc.pass !== today) return { error: 'PASS' }; if (!buy && chips < amount) return { error: 'CHIPS' }; return { doc: { ...doc, chips: chips + (buy ? amount : -amount), ...(buy ? { entry: today } : {}) }, ...(buy ? { cost: amount } : { reward: amount }), payKey, reason: buy ? 'den_chips' : 'den_cash' }; });
       if (out?.error) return sendError(res, 409, `DEN_${out.error}`, DEN_ERRORS[out.error] || '바꾸지 못했어요.');
-      notifyPointsChanged([account]); return sendJson(res, 200, { ok: true, chips: out.doc.chips, balance: out.balance });
+      notifyPointsChanged([account]); return sendJson(res, 200, { ok: true, chips: out.doc.chips, balance: out.balance, entry: out.doc.entry === today && out.doc.chips >= IslandDen.KICK_BELOW, ...(buy ? { bought: amount } : {}) });
     }
     if (route === 'play') {
       const table = at && denInside.has(session.token) ? IslandDenRoom.tableAt(at.x, at.z) : null; const game = String(body.game || '');
@@ -6656,7 +6662,15 @@ async function requestHandler(req, res) {
         return { doc: { ...doc, chips: chips - bet + r.back, shown, reqs: [...(doc.reqs || []).slice(-19), requestId], plays: (doc.plays || 0) + 1 }, outcome: r.outcome, back: r.back, bet };
       });
       if (out?.error) return sendError(res, out.error === 'PAID' ? 409 : 400, `DEN_${out.error}`, DEN_ERRORS[out.error] || '하지 못했어요.');
-      return sendJson(res, 200, { ok: true, game, outcome: out.outcome, back: out.back, bet: out.bet, chips: out.doc.chips, shown: out.doc.shown });
+      let kicked = null;
+      if (out.doc.chips < IslandDen.KICK_BELOW) { /* (1.10.346 사용자: 칩이 5,000 아래 -- the play over, the rest back 1:1, out to the exchange; in again only with the whole wallet again) */
+        const left = out.doc.chips; const back = await pointStore.questApply(account, 'den', (doc) => ({ doc: { ...doc, chips: 0, entry: null }, ...(doc.chips > 0 ? { reward: doc.chips, payKey: `${payKey}:kick`, reason: 'den_cash' } : {}) })).catch(() => null);
+        denInside.delete(session.token); exchangeInside.add(session.token); if (![...denInside].some((tk) => { const s = sessions.get(tk); return s && pointAccountForSession(s) === account; })) denBelow.delete(account);
+        const spot = IslandExchange.world(IslandDenRoom.DOOR.stand.lx, IslandDenRoom.DOOR.stand.lz); const cur = plazaPresence.get(session.token) || at;
+        plazaPresence.set(session.token, { ...cur, x: spot.x, z: spot.z, space: 'exchange', moving: false, at: now, act: null, seat: null }); plazaDirty = true; notifyPointsChanged([account]);
+        kicked = { refund: back ? left : 0, space: 'exchange', x: spot.x, z: spot.z };
+      }
+      return sendJson(res, 200, { ok: true, game, outcome: out.outcome, back: out.back, bet: out.bet, chips: kicked ? 0 : out.doc.chips, shown: out.doc.shown, ...(kicked ? { kicked } : {}) });
     }
     return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
   }
