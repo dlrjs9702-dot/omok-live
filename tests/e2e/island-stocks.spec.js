@@ -51,7 +51,7 @@ test('섬 증권거래소: 문으로 들어가 보드 SPACE → 시세 30종 →
     await expect(page.locator('.stocksCard .stocksAlertAbove')).toHaveValue(String(price * 3), { timeout: 15000 });
     await shot(page, 'exchange-company-card');
     // ④ starred first on the board; ② 거래 기록: the sale and the buy, the sums
-    await page.locator('.stocksCard').getByRole('button', { name: '시세' }).click(); await expect(page.locator('.stocksCard .stocksRow').first()).toHaveClass(/starred/);
+    await page.locator('.stocksCard').getByRole('button', { name: '시세', exact: true }).click(); await expect(page.locator('.stocksCard .stocksRow').first()).toHaveClass(/starred/);
     await page.locator('.stocksCard').getByRole('button', { name: '거래 기록' }).click(); await expect(page.locator('.stocksCard .stocksLog')).toHaveCount(2); await expect(page.locator('.stocksCard .stocksLog').first()).toContainText('팔기 1주');
     await expect(page.locator('.stocksCard .stocksSums')).toContainText('이번 주'); await expect(page.locator('.stocksCard')).toContainText('이번 업데이트부터 기록돼요'); await shot(page, 'exchange-log');
     // ① 섬 소식: whole names (not cut, the phone too), pressed open
