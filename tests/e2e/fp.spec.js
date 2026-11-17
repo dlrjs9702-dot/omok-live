@@ -69,7 +69,7 @@ test('조작·1인칭: W/A/S/D 걷기·방향키 시점·마우스 보기·감�
         await expect.poll(async () => (await pl()).relocks, { timeout: 10000 }).toBe(r1 + 1); expect((await pl()).want).toBe(true);
         await page.evaluate(() => { if (document.pointerLockElement) document.exitPointerLock(); else document.dispatchEvent(new Event('pointerlockchange')); }); /* (taken for real or not -- let go not by the game) */
         await expect.poll(async () => (await pl()).want, { timeout: 5000 }).toBe(false);
-        await page.keyboard.press('Shift'); await page.waitForTimeout(200); expect((await pl()).relocks).toBe(r0 + 1); /* (mine let go: a key takes nothing) */
+        await page.keyboard.press('Shift'); await page.waitForTimeout(200); expect((await pl()).relocks).toBe(r1 + 1); /* (mine let go: a key takes nothing; 1.10.350: counted from the emote's relock) */
         const y1 = (await view()).yaw; await page.evaluate(() => window.PlazaDebug().lookBy(100, 0)); await page.waitForTimeout(500); expect(y1 - (await view()).yaw).toBeGreaterThan(turned * 1.6);
       }
     }
