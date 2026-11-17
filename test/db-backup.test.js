@@ -75,3 +75,12 @@ test('DB 백업 API: 관리자만(손님 403·없음 401), 데이터 폴더 표 
   const f = await run(); assert.notEqual(f.code, 0); assert.match(fs.readFileSync(path.join(home, 'backup.log'), 'utf8'), /FAILED .*adminPassword/);
   assert.match(server.logs(), /\[backup\] ok bytes=\d+ ms=\d+/); /* (the log: its size and time alone) */
 });
+
+test('되살리기 순서 (1.10.353 Codex #7): 외래 키가 가리키는 표 먼저, 자기 참조·고리는 막지 않음', () => {
+  const deps = [{ child: 'bank_deposits', parent: 'point_accounts' }, { child: 'point_ledger', parent: 'point_accounts' }, { child: 'tree', parent: 'tree' }, { child: 'a', parent: 'b' }, { child: 'b', parent: 'a' }];
+  const order = B.restoreOrder(['bank_deposits', 'point_accounts', 'point_ledger', 'tree', 'a', 'b'], deps);
+  assert.ok(order.indexOf('point_accounts') < order.indexOf('bank_deposits'), '계정이 예금보다 먼저');
+  assert.ok(order.indexOf('point_accounts') < order.indexOf('point_ledger'));
+  assert.deepEqual([...order].sort(), ['a', 'b', 'bank_deposits', 'point_accounts', 'point_ledger', 'tree'], '모두 한 번씩');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'tools', 'backup', 'restore.js'), 'utf8'), /TRUNCATE \$\{tables\.map\(q\)\.join\(', '\)\}/, '한 번에 비움');
+});

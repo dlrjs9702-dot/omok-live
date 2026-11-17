@@ -51,8 +51,29 @@ test('벼룩시장 멈춤: 결제 뒤 멈추면 낸 사람이 받음(다른 사�
   const id4 = await put(1, 6000); assert.equal((await req('/api/island/flea/buy', b, { id: id4 })).status, 200);
   const a1 = await bal(a); await req('/api/test/flea/expire', a, {}); await fail('setWorldValue'); assert.notEqual((await req('/api/island/flea', a)).status, 200); /* (the look's tidy pays, its save stops) */
   assert.equal(await bal(a), a1 + 5700, '자동 지급 한 번');
-  const again = await req('/api/island/flea/claim', a, {}); assert.ok(again.data.error === 'FLEA_NOTHING' || again.status === 200, JSON.stringify(again.data));
+  const again = await req('/api/island/flea/claim', a, {}); assert.equal(again.data.error === 'FLEA_NOTHING' || again.status === 200, true, JSON.stringify(again.data));
   assert.equal(await bal(a), a1 + 5700, '받기가 또 주지 않음');
+
+  // 1.10.353 Codex 341-350 #3: a bundle's buy asked again with the same request id (its answer lost) -- that answer, one part bought;
+  // the same request twice at once -- one part
+  await req('/api/test/island/give', a, { itemId: 'herb', qty: 9 }); const id5 = await put(6, 3000);
+  const b1 = await bal(b); const h1 = await count(b, 'herb'); const rid = crypto.randomUUID();
+  const one = await req('/api/island/flea/buy', b, { id: id5, qty: 2, requestId: rid }); assert.equal(one.status, 200, JSON.stringify(one.data));
+  const two = await req('/api/island/flea/buy', b, { id: id5, qty: 2, requestId: rid }); assert.equal(two.status, 200); assert.equal(two.data.again, true); assert.equal(two.data.qty, 2);
+  assert.equal(await bal(b), b1 - 6000, '한 번만 냄'); assert.equal(await count(b, 'herb'), h1 + 2, '두 개만');
+  const rid2 = crypto.randomUUID(); const both = await Promise.all([1, 2].map(() => req('/api/island/flea/buy', b, { id: id5, qty: 1, requestId: rid2 })));
+  assert.deepEqual(both.map((r) => r.status), [200, 200]); assert.equal(await bal(b), b1 - 9000, '동시에 두 번도 한 번'); assert.equal(await count(b, 'herb'), h1 + 3);
+});
+
+test('Codex 341-350 #4: 올리기 저장이 멈춘 뒤 새 요청으로 올려도 먼저 것이 덮이지 않고 둘 다 올라감', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'flea-pending-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server; const a = await server.enter(await server.issue('두번올리는이'));
+  await req('/api/test/island/give', a, { itemId: 'herb', qty: 3 }); await req('/api/test/island/give', a, { itemId: 'stone', qty: 5 });
+  const entry = async (id) => (await req('/api/island/flea/stock', a)).data.items.find((x) => x.itemId === id);
+  await req('/api/test/store/fail', null, { method: 'setWorldValue', key: 'flea' });
+  assert.notEqual((await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), entryId: (await entry('herb')).entryId, qty: 2, price: 8000 })).status, 200);
+  const herb = await entry('stone'); const r = await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), entryId: herb.entryId, qty: 1, price: 900 }); assert.equal(r.status, 200, JSON.stringify(r.data));
+  const mine = (await req('/api/island/flea', a)).data.list.filter((x) => x.mine); assert.deepEqual(mine.map((x) => x.name).length, 2, JSON.stringify(mine));
 });
 
 test('도장 가게 멈춤: 가구 전달 기록이 남아, 벼룩시장에 맡긴 뒤 다시 사도 새로 안 줌 · 표시 저장이 멈추면 한 번만 줌', async (t) => {
@@ -63,11 +84,12 @@ test('도장 가게 멈춤: 가구 전달 기록이 남아, 벼룩시장에 맡�
   const pieces = async () => (await req('/api/island/furniture/mine', a)).data.pieces.filter((p) => p.id.startsWith('straw_sheaf'));
   await req('/api/test/festival/clock', null, { at: Date.parse('2026-11-26T19:00:00+09:00') });
   await stand(P.feast); assert.equal((await req('/api/island/festival/feast', a, {})).data.festival.stamps, 3);
-  // the stamps spent and the piece put in; marking it handed over stops -- the second try hands it over once (no second piece)
-  await stand(P.stall); await req('/api/test/store/fail', null, { method: 'questApply', skip: 1, key: 'fest:harvest-2026' });
-  assert.notEqual((await req('/api/island/festival/buy', a, { id: 'straw_sheaf' })).status, 200); assert.equal((await pieces()).length, 1);
-  const retry = await req('/api/island/festival/buy', a, { id: 'straw_sheaf' }); assert.equal(retry.status, 200, JSON.stringify(retry.data)); assert.equal((await pieces()).length, 1, '하나만');
-  // put on the 벼룩시장 (out of the 창고), asked again: OWNED -- nothing new
+  // (1.10.353 Codex 341-350 #8·#9) the stamps spent; the piece and its 「handed」 mark go in one save -- that save stops: nothing
+  // given, and a later try (however late: no 10 minutes for a purchase made so) hands it over once
+  await stand(P.stall); await req('/api/test/store/fail', null, { method: 'setWorldValues' });
+  assert.notEqual((await req('/api/island/festival/buy', a, { id: 'straw_sheaf' })).status, 200); assert.equal((await pieces()).length, 0, '멈추면 아무것도 안 줌');
+  const retry = await req('/api/island/festival/buy', a, { id: 'straw_sheaf' }); assert.equal(retry.status, 200, JSON.stringify(retry.data)); assert.equal((await pieces()).length, 1, '다시 하면 하나');
+  assert.equal((await req('/api/island/festival/buy', a, { id: 'straw_sheaf' })).data.error, 'OWNED'); assert.equal((await pieces()).length, 1, '세 번째는 OWNED');  // put on the 벼룩시장 (out of the 창고), asked again: OWNED -- nothing new
   const piece = (await pieces())[0]; const worth = (await req('/api/island/flea/stock', a)).data.pieces.find((p) => p.uid === piece.uid)?.worth;
   assert.ok(worth > 0, '도장 가구도 벼룩시장에 올릴 수 있음');
   const listed = await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), uid: piece.uid, price: worth }); assert.equal(listed.status, 200, JSON.stringify(listed.data)); assert.equal((await pieces()).length, 0);

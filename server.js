@@ -1425,7 +1425,7 @@ async function fleaHandOver(account, l, claim) {
 // the board kept tidy (inside worldEdit): what has been up 3 days goes back to its seller (a full bag: kept for the next look, a
 // letter either way); `account` given -- its own kept things handed over as far as there is room -> { state, back: [names] }
 async function fleaTidy(now, account = null) {
-  let s = await fleaLoad(); let changed = false; const back = [];
+  let s = await fleaLoad(); let changed = false; const back = []; let pendingDone = null;
   if (account) { /* (1.10.344 Codex 331~340 P2-5: my listing whose board save stopped -- up now, once; a piece still in my 창고: dropped) */
     const p = (await pointStore.questDoc(account, 'flea')).doc.pending;
     if (p?.listing?.id) {
@@ -1433,7 +1433,7 @@ async function fleaTidy(now, account = null) {
         const inStore = p.listing.kind === 'piece' && ((await pointStore.worldValue(`furniture:${account}`)) || []).some((x) => x.uid === p.listing.piece?.uid);
         if (!inStore) { s = IslandFlea.putUp(s, p.listing); changed = true; }
       }
-      await pointStore.questApply(account, 'flea', (doc) => (doc.pending?.listing?.id === p.listing.id ? { doc: { ...doc, pending: null } } : null));
+      pendingDone = p.listing.id; /* (1.10.353 Codex 341-350 #4: let go only after the board is saved below -- a stop between kept both before) */
     }
   }
   for (const l of IslandFlea.reserved(s)) { /* (1.10.343 Codex 331~340 P1-2: inside worldEdit every reservation seen here was left by a stop -- its buyer paid (the buyer's own flea doc says so: written with the charge) gets it, else it is let go) */
@@ -1456,6 +1456,7 @@ async function fleaTidy(now, account = null) {
   }
   if (account) for (const l of [...(s.held[account] || [])]) { if (!(await fleaHandOver(account, l, `flea:${l.id}:held`))) break; s = IslandFlea.unhold(s, account, l.id); changed = true; back.push(fleaWhat(l)); }
   if (changed) await pointStore.setWorldValue('flea', s);
+  if (pendingDone) await pointStore.questApply(account, 'flea', (doc) => (doc.pending?.listing?.id === pendingDone ? { doc: { ...doc, pending: null } } : null)); /* (#4: the board holds it now) */
   return { state: s, back };
 }
 if (process.env.NODE_ENV !== 'test') setInterval(() => { worldEdit(() => fleaTidy(nowMs())).catch(() => {}); }, 10 * 60 * 1000).unref(); /* (the 3 days' returns and money: on time, not only at the next look) */
@@ -6810,7 +6811,8 @@ async function requestHandler(req, res) {
       const requestId = String(body.requestId || ''); const price = Number(body.price);
       if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       return worldEdit(async () => {
-        const s = (await fleaTidy(now)).state;
+        const pend = (await pointStore.questDoc(account, 'flea')).doc.pending?.listing || null; /* (the retry below answers with it) */
+        const s = (await fleaTidy(now, account)).state; /* (1.10.353 Codex #4: my unfinished putting-up first -- a new one then never writes over its pending) */
         if (IslandFlea.mineOf(s, account).length >= IslandFlea.MINE_MAX) return sendError(res, 409, 'FLEA_LIMIT', FLEA_ERRORS.LIMIT);
         if (body.uid) { /* (a piece of furniture not placed) */
           const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const piece = owned.find((p) => p.uid === String(body.uid));
@@ -6836,7 +6838,7 @@ async function requestHandler(req, res) {
         });
         if (out?.error === 'PRICE') return priceError(out.base);
         if (out?.error === 'PAID') { /* (1.10.344 P2-5: this request taken before and its board save stopped -- up now from my doc) */
-          const p = (await pointStore.questDoc(account, 'flea')).doc.pending?.listing; const t = await fleaTidy(now, account); const up = p && t.state.list.find((l) => l.id === p.id);
+          const up = pend && s.list.find((l) => l.id === pend.id); /* (#4: put up by the tidy above) */
           if (up) { broadcastIsland('flea', {}); return sendJson(res, 200, { ok: true, listing: { id: up.id, name: up.name, price: up.price } }); }
         }
         if (!out?.next) return sendError(res, out?.error === 'PAID' ? 409 : 400, `FLEA_${out?.error || 'FAILED'}`, FLEA_ERRORS[out?.error] || '올리지 못했어요.');
@@ -6847,6 +6849,10 @@ async function requestHandler(req, res) {
     }
     if (route === '/buy') return worldEdit(async () => {
       let s = (await fleaTidy(now)).state; const l = s.list.find((x) => x.id === String(body.id || ''));
+      // (1.10.353 Codex 341-350 #3: the purchase's own id -- its result kept with the charge, a retry (an answer lost, or the same
+      // request twice at once: worldEdit runs them one after another) gets that result, never a second part bought)
+      const rid = typeof body.requestId === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(body.requestId) ? body.requestId : null;
+      if (rid) { const { doc } = await pointStore.questDoc(account, 'flea'); const was = doc?.buyReqs?.[rid]; if (was) return sendJson(res, 200, { ok: true, ...was.result, balance: null, again: true }); }
       if (!l) return sendError(res, 409, 'FLEA_GONE', '방금 팔렸거나 내려간 물건이에요.');
       if (l.seller === account) return sendError(res, 409, 'FLEA_OWN', '내가 올린 물건은 살 수 없어요. 「거두기」로 가져갈 수 있어요.');
       if (l.buyer && l.buyer !== account) return sendError(res, 409, 'FLEA_BUSY', '다른 사람이 사는 중이에요. 잠시 뒤에 다시 봐 주세요.');
@@ -6858,7 +6864,9 @@ async function requestHandler(req, res) {
       // over; a stop between leaves the reservation, which the tidy finishes for me or lets go -- never another's sale on my charge)
       if (!l.buyer) { s = IslandFlea.reserve(s, l.id, account, now, l.unit ? count : null); await pointStore.setWorldValue('flea', s); }
       const lr = s.list.find((x) => x.id === l.id) || l; const tag = l.unit ? IslandFlea.partTag(l) : l.id; const cost = l.unit ? l.unit * count : l.price; const partId = l.unit ? `${l.id}.${l.taken || 0}` : l.id; /* (1.10.347: each part its own charge -- the part's tag in my doc with it) */
-      const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1, paidFor: [...(doc.paidFor || []).slice(-49), tag] }, cost, payKey: l.unit ? `flea:buy:${tag}:${account}` : `flea:buy:${l.id}:${account}`, reason: 'flea_buy' }));
+      const kept = { name: l.name, qty: count, kind: l.kind, price: cost, ...(l.unit ? { unit: l.unit, left: l.qty - count } : {}), held: false }; /* (#3: what a retry of this request is answered) */
+      const reqsWith = (doc) => Object.fromEntries([...Object.entries(doc.buyReqs || {}).sort((a, b) => b[1].at - a[1].at).slice(0, 19), [rid, { at: now, result: kept }]]); /* (its own field: doc.reqs is the putting-up's list) */
+      const paid = await pointStore.questApply(account, 'flea', (doc) => ({ doc: { ...doc, bought: (doc.bought || 0) + 1, paidFor: [...(doc.paidFor || []).slice(-49), tag], ...(rid ? { buyReqs: reqsWith(doc) } : {}) }, cost, payKey: l.unit ? `flea:buy:${tag}:${account}` : `flea:buy:${l.id}:${account}`, reason: 'flea_buy' }));
       if (paid?.error && paid.error !== 'PAID') { await pointStore.setWorldValue('flea', IslandFlea.release(s, l.id)); return paid.error === 'POINTS' ? sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 모자라요.') : sendError(res, 400, `FLEA_${paid.error}`, '사지 못했어요.'); } /* (PAID: my own charge before, not handed over -- handed over now) */
       s = await fleaFinish(s, lr, account, now);
       notifyPointsChanged([account]); broadcastIsland('flea', {});
@@ -8920,17 +8928,25 @@ async function requestHandler(req, res) {
       // (1.10.343 Codex 331~340 P1-1: a piece handed over is kept in the stamp doc -- `handed` -- apart from the 창고, where it may no
       // longer be (put on the 벼룩시장); a second try hands over only a piece bought within GIVE_RETRY_MS and never marked handed)
       const GIVE_RETRY_MS = 10 * 60 * 1000; const id = String(body.id || '');
+      // (1.10.353 Codex 341-350 #8·#9: the piece and its 「handed」 mark -- world `stampHanded:<me>` -- saved together (setWorldValues),
+      // so a piece handed over is always marked; a purchase made so (doc.atomic) is then handed over on any later try, however late)
+      const handedKey = `stampHanded:${account}`; const tagOf = (g) => `${fest.id}:${g.id}`;
       const give = async (g) => { // -> whether it is handed over (a title: owned now)
         if (g.kind !== 'furniture') return Boolean(await eventTitleGive(account, g.title));
-        await worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const claim = `fest:${fest.id}:${g.id}:${account}`; if (!owned.some((p) => p.claim === claim)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, { uid: crypto.randomUUID(), id: g.good, at: nowMs(), price: 0, claim }]); });
-        await pointStore.questApply(account, key, (doc) => ((doc.handed || []).includes(g.id) ? null : { doc: { ...doc, handed: [...(doc.handed || []), g.id] } })); return true;
+        await worldEdit(async () => {
+          const marks = (await pointStore.worldValue(handedKey)) || []; if (marks.includes(tagOf(g))) return;
+          const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const claim = `fest:${fest.id}:${g.id}:${account}`;
+          await pointStore.setWorldValues({ [`furniture:${account}`]: owned.some((p) => p.claim === claim) ? owned : [...owned, { uid: crypto.randomUUID(), id: g.good, at: nowMs(), price: 0, claim }], [handedKey]: [...marks.slice(-199), tagOf(g)] });
+        });
+        await pointStore.questApply(account, key, (doc) => ((doc.handed || []).includes(g.id) ? null : { doc: { ...doc, handed: [...(doc.handed || []), g.id] } })).catch(() => null); return true; /* (the old mark too -- what earlier tries read) */
       };
-      const r = await pointStore.questApply(account, key, (doc) => { const b = IslandFestival.buy(fest, doc, id); return b.error ? { error: b.error } : { doc: { ...b.doc, boughtAt: { ...(doc.boughtAt || {}), [id]: nowMs() } }, good: b.good }; });
+      const r = await pointStore.questApply(account, key, (doc) => { const b = IslandFestival.buy(fest, doc, id); return b.error ? { error: b.error } : { doc: { ...b.doc, boughtAt: { ...(doc.boughtAt || {}), [id]: nowMs() }, atomic: { ...(doc.atomic || {}), [id]: true } }, good: b.good }; });
       // (C3 ⑦: bought but never handed over -- the stamps spent and then a save failed -- a second try hands it over)
       let g = r?.good;
       if (r?.error) {
         const owe = r.error === 'OWNED' ? fest.shop.find((x) => x.id === id) : null; const doc = owe?.kind === 'furniture' ? (await pointStore.questDoc(account, key)).doc : null;
-        const unpaid = Boolean(owe) && (owe.kind !== 'furniture' || (!(doc.handed || []).includes(id) && nowMs() - (Number(doc.boughtAt?.[id]) || 0) < GIVE_RETRY_MS));
+        const marked = owe?.kind === 'furniture' && (((await pointStore.worldValue(handedKey)) || []).includes(tagOf(owe)) || (doc.handed || []).includes(id));
+        const unpaid = Boolean(owe) && (owe.kind !== 'furniture' || (!marked && (doc.atomic?.[id] || nowMs() - (Number(doc.boughtAt?.[id]) || 0) < GIVE_RETRY_MS))); /* (bought before 353: the old 10 minutes) */
         if (!(unpaid && await give(owe))) return sendError(res, 409, r.error, fail[r.error] || '바꿀 수 없어요.');
         g = owe;
       } else await give(g);
