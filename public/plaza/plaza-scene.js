@@ -3579,6 +3579,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       else { const p = task.at || task.from; sparkle(root, p.x, p.z, task.type === 'timed' ? 2.2 : 1.6); }
     }
     for (const [story, v] of visits) if (!seen.has(story)) { scene.remove(v.root); v.run?.end?.(false); visits.delete(story); }
+    riverFlowersShow(); /* (1.10.350: the riverside flowers stand always -- the errand's own colours while it is on) */
     for (const k of Object.keys(eventDoors)) if (k.startsWith('visit:')) delete eventDoors[k];
     for (const v of visits.values()) { // the SPACEs by the things (what each does, never which is right)
       const t = v.task; const d = (act, i, p, name) => { eventDoors[`visit:${v.story}:${act}:${i}`] = { x: p.x, z: p.z, name }; };
@@ -3591,6 +3592,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       else if (t.type === 'knock') d('tap', 0, t.at, `큰 호박 · 두드리기 (${t.run?.k || 0}/${t.times})`);
       else if (t.type === 'candy') { if (t.run?.basket) d('door', 0, t.door, '꽃님 댁 · 문 두드리기'); else d('basket', 0, t.basket, '바구니 · 사탕 넣기'); }
     }
+  }
+  // 1.10.350 강가 꽃 늘 보이기 (사용자 「퀘스트 할 때만 꽃이 잠깐 노출될 게 아니라 계속 노출」, notes issue-log-review 끝): 꽃님's errand's
+  // three clumps by the river (lib/island-quests TASK.flowers: the place and its three spots) stand always -- red, yellow, white; while
+  // the errand is on, its own clumps (the drawn colours) in their place. Walked through as before; SPACE (냄새 맡기) only with the errand
+  let riverFlowers = null;
+  function riverFlowersShow() {
+    const F = globalThis.IslandTerrain?.dalmaru?.PLACES?.quests?.flowers; if (!F) return;
+    if (!riverFlowers) {
+      riverFlowers = new THREE.Group(); scene.add(riverFlowers);
+      [[0, 2], [2.5, 0], [0, -2]].forEach(([dx, dz], i) => { const p = { x: F.x + dx, z: F.z + dz }; const c = ['red', 'yellow', 'white'][i];
+        for (let k = 0; k < 5; k += 1) { const a = k * 1.3; const fb = new THREE.Group(); mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 5), mat(0x4f8a3c), 0, 0.22, 0, fb); mesh(new THREE.SphereGeometry(0.17, 8, 6), mat(COLOR_HEX[c] || 0xffffff), 0, 0.5, 0, fb); thing(riverFlowers, `plant.flower_stage3_${c}`, p.x + Math.sin(a) * 0.45 * (k ? 1 : 0), p.z + Math.cos(a) * 0.45 * (k ? 1 : 0), a, fb); } });
+    }
+    riverFlowers.visible = ![...visits.values()].some((v) => v.task.type === 'pick' && v.task.options && v.task.spots);
   }
   // a timing run here: resolves true when it is done as asked (then the server's 「finish」), false when given up or walked off
   function visitRun(story) {
