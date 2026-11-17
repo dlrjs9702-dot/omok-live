@@ -290,7 +290,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   // (1.10.342 `paint`: a material's own colour by its name -- a copy per material and colour, shared by every model painted so)
   const painted = new Map();
-  function paintedOf(material, colour) { if (!colour) return material; const key = `${material.uuid}|${colour}`; if (!painted.has(key)) { const m = material.clone(); m.color.set(colour); painted.set(key, m); made.push(m); } return painted.get(key); }
+  function paintedOf(material, colour) { if (!colour) return material; const key = `${material.uuid}|${colour}`; if (!painted.has(key)) { const m = material.clone(); if (Array.isArray(colour)) m.color.setRGB(colour[0], colour[1], colour[2]); else m.color.set(colour); /* (1.10.350: [r, g, b] -- a multiplier, over 1 to lighten a vertex-coloured one) */ painted.set(key, m); made.push(m); } return painted.get(key); }
   function partsOf(gltf, paint = null) {
     const paintKey = paint ? JSON.stringify(paint) : ''; if (!partsCache.has(gltf)) partsCache.set(gltf, new Map()); const cached = partsCache.get(gltf); if (cached.has(paintKey)) return cached.get(paintKey);
     gltf.scene.updateMatrixWorld(true);

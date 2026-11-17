@@ -18,7 +18,7 @@ test('도구 들기 규칙: 낚싯대를 들어야 낚시, 든 동안 잡초·�
   // by the water: not in hand -- how; in hand -- a cast
   const pier = { x: T.PIER.x + T.PIER.ux * 7, z: T.PIER.z + T.PIER.uz * 7 };
   await page.evaluate((p) => window.PlazaWarp(p.x, p.z), pier); await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
-  await expect(hint).toHaveText('가방에서 낚싯대를 들면 낚시할 수 있어요', { timeout: 10000 });
+  await page.waitForTimeout(1000); expect(await page.evaluate(() => window.PlazaDebug().near)).not.toBe('fish:spot'); /* (1.10.350 사용자: without the rod in hand nothing is said by the water) */
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); await page.waitForTimeout(800);
   expect(await page.evaluate(() => window.PlazaDebug().fishing())).toBe(null);
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name}-rod-hint.png` });

@@ -59,10 +59,11 @@
   function sentencesOf(day, count = 3) {
     // (Codex 검토 #12: a day that is no date, or more than the pool -- never a loop without end: a sound start, at most
     // as many tries as the pool has)
-    const n = Math.max(0, Math.min(POOL.length, Math.floor(Number(count) || 0))); const d = dayNumber(day);
-    const out = []; let k = (Number.isFinite(d) ? d : 0) * 7;
-    for (let tries = 0; out.length < n && tries < POOL.length * 2; tries += 1) { const s = POOL[((k % POOL.length) + POOL.length) % POOL.length]; if (!out.includes(s)) out.push(s); k += 5; }
-    return out;
+    // (1.10.350 체납 반성문 30줄까지: past the pool's 23 the day's order again from its start)
+    const n = Math.max(0, Math.min(60, Math.floor(Number(count) || 0))); const d = dayNumber(day);
+    const order = []; let k = (Number.isFinite(d) ? d : 0) * 7;
+    for (let tries = 0; order.length < POOL.length && tries < POOL.length * 2; tries += 1) { const s = POOL[((k % POOL.length) + POOL.length) % POOL.length]; if (!order.includes(s)) order.push(s); k += 5; }
+    return Array.from({ length: n }, (_, i) => order[i % order.length]);
   }
   // 1.10.341 도박 반성문 (사용자 121A: 누아르풍, 「다시는 지하에 내려가지 않겠습니다…」로 시작, 보통 것보다 길게): its first line always,
   // then four of the rest by the day
@@ -72,7 +73,11 @@
     '주사위는 언제나 집 편이었습니다.', '쪽지를 찾아 헤매던 시간에 잡초를 뽑겠습니다.', '재즈가 끝나도 계산은 남는다는 것을 압니다.', '안개 낀 골목 대신 햇빛 드는 길로 가겠습니다.',
     '빈 관공서를 보면 서둘러 집으로 가겠습니다.', '카드 한 장에 하루를 걸지 않겠습니다.', '섬의 밤은 지하보다 밝습니다.']);
   function gambleSentencesOf(day, count = 5) { const rest = []; const d = dayNumber(day); let k = (Number.isFinite(d) ? d : 0) * 3; for (let t = 0; rest.length < count - 1 && t < GAMBLE_POOL.length * 2; t += 1) { const s = GAMBLE_POOL[((k % GAMBLE_POOL.length) + GAMBLE_POOL.length) % GAMBLE_POOL.length]; if (!rest.includes(s)) rest.push(s); k += 4; } return [GAMBLE_FIRST, ...rest]; }
+  // 1.10.350 사용자 184A: a day taken in for tax -- the warden's points taken: -1 the first day, one more each day in a row, -5 at most;
+  // nothing more the same day (lastDay, run: kept in the jail doc)
+  const TAX_TAKE_MAX = 5;
+  function taxJailTake(lastDay, run, day) { const yesterday = new Date(Date.parse(`${day}T00:00:00Z`) - 86400000).toISOString().slice(0, 10); if (lastDay === day) return { run: run || 1, take: 0 }; const next = lastDay === yesterday ? (run || 0) + 1 : 1; return { run: next, take: Math.min(TAX_TAKE_MAX, next) }; }
   const normalize = (text) => String(text || '').replace(/[.。]+\s*$/, '').replace(/\s+/g, ' ').trim();
   const same = (typed, sentence) => normalize(typed) === normalize(sentence);
-  return { ROOM, CELL, WARDEN, PROPS, FIXTURES, TALK, world, local, inJail, inCell, clamp, SECONDS, POOL, sentencesOf, GAMBLE_FIRST, GAMBLE_POOL, gambleSentencesOf, normalize, same };
+  return { ROOM, CELL, WARDEN, PROPS, FIXTURES, TALK, world, local, inJail, inCell, clamp, SECONDS, POOL, sentencesOf, GAMBLE_FIRST, GAMBLE_POOL, gambleSentencesOf, TAX_TAKE_MAX, taxJailTake, normalize, same };
 }));

@@ -1445,7 +1445,7 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await b.page.evaluate((p) => window.PlazaWarp(p.x, p.z), pierAt(DAL ? 4 : 10, DAL ? 1 : 2.5));
   const seen = () => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act?.startsWith('fish:'))?.act || null);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
-  await expect(page.locator('#plazaHint')).toHaveText('가방에서 낚싯대를 들면 낚시할 수 있어요', { timeout: 10000 }); // (206 Q2 5: not in hand, no cast)
+  await page.waitForTimeout(1000); expect(await page.evaluate(() => window.PlazaDebug().near)).not.toBe('fish:spot'); // (206 Q2 5: not in hand, no cast; 1.10.350: and nothing said)
   await require('./skin-support').holdTool(page, 'fishing_rod');
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 낚시', { timeout: 10000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
@@ -1946,6 +1946,8 @@ test('채석장: 능선 위 바위 앞에서 곡괭이로 빛나는 금을 맞�
     await post(request, '/api/test/quarry/plan', a.token, { plan: [{ spot: 0, at: 400 }, { spot: 3, at: 400 }, { spot: 4, at: 400 }], draw: 0.1 }); /* (draw 0.1: its main ore) */
     await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [s.x, s.z]);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().placeNow().words), { timeout: 15000 }).toMatch(/^채석장/);
+    await page.waitForTimeout(1000); expect(String(await page.evaluate(() => window.PlazaDebug().near))).not.toMatch(/^quarry:/); /* (1.10.350 사용자: the rock only with the pickaxe in hand) */
+    await require('./skin-support').holdTool(page, 'pickaxe');
     await expect.poll(() => spaceOn(page, `quarry:${rock.id}:0`, isMobile), { timeout: 20000 }).toBe(true);
     await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug().mine())), { timeout: 15000 }).toBe(true);
     expect(await page.evaluate(() => window.PlazaDebug().mineAuto(true))).toBe(true);

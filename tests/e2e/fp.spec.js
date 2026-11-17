@@ -61,9 +61,15 @@ test('조작·1인칭: W/A/S/D 걷기·방향키 시점·마우스 보기·감�
         await page.evaluate(() => window.PlazaDebug().lockWant(true)); const r0 = (await pl()).relocks;
         await page.keyboard.press('Escape'); await expect.poll(async () => (await pl()).ok, { timeout: 10000 }).toBe(false); expect((await pl()).relocks).toBe(r0); /* (open: not while it is) */
         await page.keyboard.press('Escape'); await expect.poll(async () => (await pl()).relocks, { timeout: 10000 }).toBe(r0 + 1); expect((await pl()).want).toBe(true);
+        // (1.10.350 사용자 「마우스가 사라지는 상태에서 t를 눌러 감정표현을 할 때 뭘 고를 수가 없어」) T with the lock wanted: the wheel open lets
+        // it go (the arrow to pick with), its cells numbered; 3 picks without the mouse -- closed, the lock taken again at that key
+        await page.locator('#plazaStage').focus(); await page.keyboard.press('t'); await expect(page.locator('#emoteWheel')).toBeVisible();
+        await expect.poll(async () => (await pl()).ok, { timeout: 5000 }).toBe(false); await expect(page.locator('#emoteWheel .emoteCell .emoteKey')).toHaveCount(9);
+        const r1 = (await pl()).relocks; await page.keyboard.press('3'); await expect(page.locator('#emoteWheel')).toBeHidden();
+        await expect.poll(async () => (await pl()).relocks, { timeout: 10000 }).toBe(r1 + 1); expect((await pl()).want).toBe(true);
         await page.evaluate(() => { if (document.pointerLockElement) document.exitPointerLock(); else document.dispatchEvent(new Event('pointerlockchange')); }); /* (taken for real or not -- let go not by the game) */
         await expect.poll(async () => (await pl()).want, { timeout: 5000 }).toBe(false);
-        await page.keyboard.press('Shift'); await page.waitForTimeout(200); expect((await pl()).relocks).toBe(r0 + 1); /* (mine let go: a key takes nothing) */
+        await page.keyboard.press('Shift'); await page.waitForTimeout(200); expect((await pl()).relocks).toBe(r1 + 1); /* (mine let go: a key takes nothing; 1.10.350: counted from the emote's relock) */
         const y1 = (await view()).yaw; await page.evaluate(() => window.PlazaDebug().lookBy(100, 0)); await page.waitForTimeout(500); expect(y1 - (await view()).yaw).toBeGreaterThan(turned * 1.6);
       }
     }

@@ -48,9 +48,9 @@ test('채석장 자리: 네 조각 안 바위 32개(광석 차등), 캐는 자�
   assert.equal(Q.inArea(122.5, -79), false, '폭포 머리 연못 밖'); const at = (a, r) => [Math.cos((a * Math.PI) / 180) * r, Math.sin((a * Math.PI) / 180) * r];
   assert.ok(Q.edgeDist(...at(320, 155)) > 3, '가운데·폭포 목 이음은 가장자리 아님'); assert.ok(Math.abs(Q.edgeDist(...at(320, 140))) < 0.5, '진짜 가장자리');
   assert.equal(Q.deckLift(Q.DECK.x, Q.DECK.z), 0.45, '전망 발판 위'); assert.ok(T.heightAt(Q.DECK.x, Q.DECK.z) > T.heightAt(Q.DECK.x + 3, Q.DECK.z) + 0.2, '발판 높이로 섬');
-  // the items: the eight ores (흔함 200P, 보통 300P at the merchant; the rare ones not his), the 곡괭이, the week's 손보기 화강암 5
+  // the items: the eight ores (흔함 200P -- 화강암 50P since 1.10.350 사용자 182 --, 보통 300P at the merchant; the rare ones not his), the 곡괭이, the week's 손보기 화강암 5
   assert.equal(Items.ITEMS.ore.name, '광석'); assert.equal(Items.TOOL_KIND.pickaxe, 'pickaxe'); assert.equal(Items.TOOL_USES.pickaxe, 40); assert.ok(Items.QUICK_KINDS.includes('pickaxe'));
-  assert.deepEqual(Ores.ORES.map((o) => `${o.id}:${Items.ITEMS[`ore_${o.id}`].at}:${Items.ITEMS[`ore_${o.id}`].price}`), ['granite:merchant:200', 'clay:merchant:200', 'coal:merchant:300', 'iron:merchant:300', 'copper:merchant:300', 'silver:null:800', 'crystal:null:1000', 'gold:null:2000']);
+  assert.deepEqual(Ores.ORES.map((o) => `${o.id}:${Items.ITEMS[`ore_${o.id}`].at}:${Items.ITEMS[`ore_${o.id}`].price}`), ['granite:merchant:50', 'clay:merchant:200', 'coal:merchant:300', 'iron:merchant:300', 'copper:merchant:300', 'silver:null:800', 'crystal:null:1000', 'gold:null:2000']);
   assert.equal(Farm.upkeepNeed(1).ore, 5); assert.equal(Farm.upkeepNeed(4).ore, 10); assert.equal(Farm.UPKEEP_NAMES.ore, '화강암'); assert.deepEqual(Farm.UPKEEP_ITEMS.ore, ['ore_granite', 'ore']);
 });
 
@@ -95,11 +95,19 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
   };
   const miss = await mine(false); assert.equal(miss.ore, 0); assert.equal(miss.itemId, 'stone'); assert.equal(miss.left, Q.ORE_PER_ROCK, '바위 그대로'); assert.equal(miss.worn.uses, Items.TOOL_USES.pickaxe - 1, '곡괭이만 닳음');
   assert.equal((await req('/api/island/quarry', a)).data.daily.n, 0, '하루 한도 그대로');
-  const f1 = await mine(true, 0.1); assert.equal(f1.ore, 1); assert.equal(f1.itemId, 'ore_granite'); assert.equal(f1.name, '화강암'); assert.equal(f1.hits, 3); assert.equal(f1.left, 1); assert.equal(f1.worn.uses, Items.TOOL_USES.pickaxe - 2); assert.equal(f1.daily.n, 1);
+  const f1 = await mine(true, 0.1); assert.equal(f1.ore, 1); assert.equal(f1.itemId, 'ore_granite'); assert.equal(f1.name, '화강암'); assert.equal(f1.hits, 3); assert.equal(f1.left, Q.ORE_PER_ROCK - 1); assert.equal(f1.worn.uses, Items.TOOL_USES.pickaxe - 2); assert.equal(f1.daily.n, 1);
+  await req('/api/test/quarry/set', a, { rock: rock.id, left: 1 }); /* (1.10.350: six a rock -- the last one) */
   const f2 = await mine(true, 0.86); assert.equal(f2.itemId, 'ore_coal', '한 단계 위(보통: 석탄·철·구리)'); assert.equal(f2.left, 0); assert.equal(f2.stage, 'mined');
   const bag = (await req('/api/island/bag', a)).data; const items = bag.bag?.items || bag.items || []; const count = (id) => items.filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
   assert.equal(count('ore_granite'), 1); assert.equal(count('ore_coal'), 1); assert.equal(count('stone'), 1);
   assert.equal((await req('/api/island/quarry/start', a, { rock: rock.id, spot: 0 })).data.error, 'MINED');
   assert.equal((await req('/api/island/quarry', a)).data.rocks.find((r) => r.id === rock.id).stage, 'mined');
   const back = (await req('/api/test/quarry/regrow', a, {})).data; assert.equal(back.rocks.find((r) => r.id === rock.id).left, Q.ORE_PER_ROCK, '다시 자람');
+  // 1.10.350 화강암 벽 (사용자 182): granite only, never empty, outside the day's count -- the rocks shut at DAILY, the wall not
+  assert.deepEqual([Q.DAILY, Q.ORE_PER_ROCK], [60, 6], '사용자 2026-11-17: 하루 60, 바위 6');
+  await req('/api/test/quarry/set', a, { daily: Q.DAILY }); await req('/api/plaza/state', a, { x: stand.x, z: stand.z, yaw: stand.yaw, moving: false });
+  assert.equal((await req('/api/island/quarry/start', a, { rock: rock.id, spot: 0 })).data.error, 'DAILY_CAP', '바위는 하루 한도');
+  const ws = Q.standOf(Q.WALL, 'full', 1); const wallMine = async () => { await req('/api/plaza/state', a, { x: ws.x, z: ws.z, yaw: ws.yaw, moving: false }); await req('/api/test/quarry/plan', a, { draw: 0.99 }); const s = await req('/api/island/quarry/start', a, { rock: 'wall', spot: 1 }); assert.equal(s.status, 200, JSON.stringify(s.data)); assert.equal(s.data.ore, 'granite'); const taps = s.data.plan.map((p) => ({ spot: p.spot, ms: 200 })); await new Promise((r) => setTimeout(r, Q.MINE_MS)); const f = await req('/api/island/quarry/finish', a, { rock: 'wall', spot: 1, taps, requestId: crypto.randomUUID() }); assert.equal(f.status, 200, JSON.stringify(f.data)); return f.data; };
+  const w1 = await wallMine(); assert.equal(w1.itemId, 'ore_granite', '벽은 화강암만 (확률 0.99에도)'); assert.equal(w1.wall, true); assert.equal(w1.left, null); assert.equal(w1.daily.n, Q.DAILY, '한도에 안 들어감');
+  const w2 = await wallMine(); assert.equal(w2.itemId, 'ore_granite', '비지 않음');
 });

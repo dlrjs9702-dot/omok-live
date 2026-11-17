@@ -17,12 +17,12 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
   await expect(page.locator('#plazaDialog')).toContainText('세금은 나가서 관공서 세금 창구에서'); await expect(page.locator('#wardenCard button', { hasText: '세금' })).toHaveCount(0); /* (293: no paying from the cell) */
   await page.locator('#wardenCard button', { hasText: '시작' }).click();
   // each sentence: over the warden's head, typed into the island chat
-  for (let k = 0; k < 3; k += 1) {
+  for (let k = 0; k < 5; k += 1) { /* (1.10.350: the tax essay 5 lines) */
     const essay = (await get(request, '/api/island/jail', who.token)).data.essay;
     expect(essay.i).toBe(k);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().jail().line), { timeout: 10000 }).toContain(essay.sentence);
     await page.evaluate((text) => { const input = document.getElementById('islandChatInput'); input.value = text; input.form.requestSubmit(); }, essay.sentence);
-    if (k < 2) await expect.poll(async () => (await get(request, '/api/island/jail', who.token)).data.essay?.i, { timeout: 10000 }).toBe(k + 1);
+    if (k < 4) await expect.poll(async () => (await get(request, '/api/island/jail', who.token)).data.essay?.i, { timeout: 10000 }).toBe(k + 1);
   }
   await expect(page.locator('#toast')).toContainText('반성문 통과', { timeout: 10000 });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().jail()), { timeout: 10000 }).toMatchObject({ inmate: 'free', door: 1.75 }); // (swung out, toward the room)
@@ -34,7 +34,7 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
     await page.waitForTimeout(400); await spaceOn(page, 'jail:board', isMobile); await page.waitForTimeout(400);
     return page.locator('#jailBoardCard').isVisible();
   }, { timeout: 30000, intervals: [300] }).toBe(true);
-  await expect(page.locator('#jailBoardCard li', { hasText: `${isMobile ? '반성문m' : '반성문'}:` })).toHaveCount(3); // (one server: others' too)
+  await expect(page.locator('#jailBoardCard li', { hasText: `${isMobile ? '반성문m' : '반성문'}:` })).toHaveCount(5); // (one server: others' too; 1.10.350: five lines)
   await page.keyboard.press('Escape');
   // out at the room's door: back on the island by the 구치소
   await expect.poll(async () => {

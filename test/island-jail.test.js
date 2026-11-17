@@ -51,15 +51,15 @@ test('구치소 서버: 체납자는 철창 안에서 시작, 반성문 3문장 
   const cell = J.world(0, 3); const look = (await req('/api/plaza/state', rich, { x: cell.x, z: cell.z, yaw: 0 })).data;
   assert.ok(J.inJail(look.x, look.z) && !J.inCell(look.x, look.z));
   assert.equal((await req('/api/island/jail/start', rich, {})).data.error, 'NOT_JAILED');
-  // the essay: wrong, too late, then right three times
-  const s = (await req('/api/island/jail/start', poor, {})).data; assert.deepEqual([s.i, s.count], [0, 3]); assert.ok(s.left > 15000);
-  const chat = async (text) => (await req('/api/lobby/chat', poor, { text })).data.jail;
+  // the essay: wrong, too late, then right five times (1.10.350: the tax essay starts at 5)
+  const s = (await req('/api/island/jail/start', poor, {})).data; assert.deepEqual([s.i, s.count], [0, 5]); assert.ok(s.left > 15000);
+  const chat = async (text) => { await new Promise((r) => { setTimeout(r, 900); }); /* (1.10.350: the chat's 6 in 5 s -- the longer essay paced as typed) */ return (await req('/api/lobby/chat', poor, { text })).data.jail; };
   assert.deepEqual([(await chat('모르겠어요')).say, (await req('/api/island/jail', poor)).data.essay.i], ['다시.', 0]);
   await req('/api/test/jail', poor, { expire: true });
   const late = await chat(s.sentence); assert.deepEqual([late.say, late.i], ['다시.', 0], '시간 초과면 같은 문장 다시');
-  let said = late; for (let k = 0; k < 2; k += 1) { said = await chat(said.sentence); assert.deepEqual([said.say, said.i], ['좋습니다.', k + 1]); }
+  let said = late; for (let k = 0; k < 4; k += 1) { said = await chat(said.sentence); assert.deepEqual([said.say, said.i], ['좋습니다.', k + 1]); }
   const done = await chat(said.sentence); assert.equal(done.passed, true); assert.ok(done.say);
-  const board = (await req('/api/island/jail', rich)).data; assert.equal(board.passed, 1); assert.equal(board.log.length, 5, '구경꾼은 안에서 그날 반성문 기록을 봄');
+  const board = (await req('/api/island/jail', rich)).data; assert.equal(board.passed, 1); assert.equal(board.log.length, 7, '구경꾼은 안에서 그날 반성문 기록을 봄');
   assert.equal((await req('/api/island/jail', newbie)).data.log.length, 0, '밖에서는 안 보임');
   // let out: through the open cell, out at the room's door; the same day, not taken again
   const free = (await req('/api/plaza/state', poor, { x: cell.x, z: cell.z + 0.5, yaw: 0 })).data; assert.equal(free.jail.inmate, 'free'); assert.ok(J.inCell(free.x, free.z));
@@ -92,7 +92,7 @@ test('관리자 구치소: 보내면 섬에서 바로 감방, 사유 필수, 반
   assert.equal((await req('/api/island/jail/leave', a, {})).data.error, 'JAILED');
   assert.ok((await req('/api/admin/economy', server.admin)).data.history.some((h) => h.key === 'jail' && /보낼사람/.test(h.label)), '변경 이력');
   // the essay frees it that day; the next day (its time still running) the cell again
-  const essay = async () => { let s = (await req('/api/island/jail/start', a, {})).data; for (;;) { const r = (await req('/api/lobby/chat', a, { text: s.sentence })).data.jail; if (r.passed) return r; s = r; } };
+  const essay = async () => { let s = (await req('/api/island/jail/start', a, {})).data; for (;;) { await new Promise((r) => { setTimeout(r, 900); }); /* (1.10.350: the chat's 6 in 5 s -- the longer essay paced as typed) */ const r = (await req('/api/lobby/chat', a, { text: s.sentence })).data.jail; if (r.passed) return r; s = r; } };
   assert.equal((await essay()).passed, true); assert.equal((await req('/api/island/jail', a)).data.inmate, 'free');
   await req('/api/plaza/leave', a, {}); assert.equal((await req('/api/plaza/state', a, { x: gate.x, z: gate.z, yaw: 0 })).data.jail, null, '그날은 다시 안 갇힘');
   await req('/api/test/jail', a, { passedDay: '2000-01-01' }); await req('/api/plaza/leave', a, {});

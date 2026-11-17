@@ -1492,7 +1492,7 @@ async function denCatch(now = nowMs()) {
     denBelow.delete(account);
     const out = await pointStore.questApply(account, 'den', (doc) => ({ doc: { ...doc, chips: 0, lost: (doc.lost || 0) + (doc.chips || 0), caught: (doc.caught || 0) + 1 }, taken: doc.chips || 0 })).catch(() => null);
     await pointStore.questApply(account, 'denJail', () => ({ doc: { day, at: now, passed: false } }));
-    for (const [token, s] of sessions) if (pointAccountForSession(s) === account) { denInside.delete(token); exchangeInside.delete(token); if (plazaPresence.has(token) && !trainRiders.has(token) && !taxiRides.has(token)) jailPut(token); }
+    for (const [token, s] of sessions) if (pointAccountForSession(s) === account) { denInside.delete(token); exchangeInside.delete(token); if (plazaPresence.has(token) && !trainRiders.has(token) && !taxiRides.has(token)) { jailPut(token); const acct = pointAccountForSession(sessions.get(token) || {}); if (acct) taxJailPenalty(acct).catch(() => {}); } }
     notifyAccount(account, 'denCaught', { chips: out?.taken || 0 });
   }
   plazaDirty = true;
@@ -1903,6 +1903,12 @@ const furnitureView = (st, account) => ({ day: st.day, perDay: Economy.value('fu
 // 20,000P (lib/point-store.js taxCollect); what it cannot pay is owed, up to 200,000P. Anyone owing is a 체납자: that title
 // over any other, and the 줄무늬 outfit in white and black over whatever is worn, until it is paid at the 민원 창구.
 const taxDebt = new Map(); // account -> what it owes
+// 1.10.350 체납 불이익 강화 (notes tax-bill-design 끝, 사용자 2026-11-17): while owing, these are refused (the money made elsewhere --
+// 벼룩시장 buying and its takings, the stocks one holds -- stays); the tax essay grows (TAX_ESSAY)
+const inArrears = (account) => taxDebt.get(account) > 0;
+const ARREARS_WORD = '체납 중이라 이용할 수 없어요. 관공서 세금 창구에서 먼저 내 주세요.';
+const TAX_ESSAY = Object.freeze({ first: 5, more: 3, max: 30 });
+const taxEssayLines = (passed) => Math.min(TAX_ESSAY.max, TAX_ESSAY.first + TAX_ESSAY.more * Math.max(0, Math.floor(Number(passed) || 0)));
 const PRISON_OUTFIT = 'avatar_outfit_2';
 function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
@@ -1959,6 +1965,14 @@ async function adminJailSet(account, rec, why, name = '', expect = undefined) {
   refreshTaxLooks(); return true;
 }
 // one put in the cell now (a first pose, or the administrator's word while on the island): out of any other room
+// 1.10.350 사용자 184A: taken into the cell for tax -- the warden likes one less: -1 the first day, one more each day in a row, -5 at
+// most; once a Seoul day (jail doc taxJailDay / taxRun); the den's raid and the administrator's cell not counted
+async function taxJailPenalty(account) {
+  const day = kstDate(nowMs()); if (!inArrears(account) || await denJailed(account, day)) return null; let take = 0;
+  await pointStore.questApply(account, 'jail', (d) => { const t = IslandJail.taxJailTake(d.taxJailDay, d.taxRun, day); take = t.take; return t.take ? { doc: { ...d, taxJailDay: day, taxRun: t.run } } : null; });
+  if (take) await pointStore.affinityTake(account, JAIL_WARDEN, take).catch((error) => console.warn('[jail]', error.message));
+  return take;
+}
 function jailPut(token) { freeSeat(token); for (const s of [storeInside, furnitureInside, petshopInside, fashionInside, townhallInside, museumInside, exchangeInside, denInside]) s.delete(token); homeInside.delete(token); jailFreed.delete(token); jailInside.add(token); jailInmates.add(token); plazaDirty = true; }
 async function jailable(session, account) {
   if (session.role === 'admin') return false;
@@ -1981,7 +1995,7 @@ async function jailTyped(session, text) {
   if (e.i < e.sentences.length) { e.until = now + IslandJail.SECONDS * 1000; return { say: '좋습니다.', ...essayView(e, now) }; }
   jailFree(session.token); log.passed += 1;
   const level = await affinityLevelOf(account, JAIL_WARDEN);
-  await pointStore.questApply(account, 'jail', (d) => (d.day === day ? null : { doc: { day } }));
+  await pointStore.questApply(account, 'jail', (d) => (d.day === day ? null : { doc: { ...d, day, ...(e.tax ? { taxEssays: (d.taxEssays || 0) + 1 } : {}) } })); /* (1.10.350: a tax essay counted -- the next day's longer) */
   const gamble = e.gamble === true; if (gamble) await pointStore.questApply(account, 'denJail', (d) => (d.day === day && !d.passed ? { doc: { ...d, passed: true } } : null)); /* (1.10.341 123A: 우성 takes it up, 마루's 용서장 comes back) */
   await pointStore.affinityAdd(account, day, [{ n: JAIL_WARDEN, delta: IslandCast.GAIN.story }]); // (Codex 검토 #6, 해당 없음: the warden is a keeper -- the level rewards are the walking islanders' only)
   return { passed: true, gamble, say: gamble ? '시장님 도장이 찍힌 용서장이 왔어요. 이번만이에요.' : IslandCast.passLine(Math.random, level, String(session.label || '')) };
@@ -4947,7 +4961,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.349' });
+    return sendJson(res, 200, { ok: true, version: '1.10.350' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6042,7 +6056,7 @@ async function requestHandler(req, res) {
     if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token)) {
       const owes = await jailable(session, account);
       if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
-      if (owes) jailPut(session.token);
+      if (owes) { jailPut(session.token); const acct = pointAccountForSession(sessions.get(session.token) || {}); if (acct) taxJailPenalty(acct).catch(() => {}); }
     }
     // (사용자 제보 2026-10-25, 휴대폰: the visit dropped while I stood inside -- the stream gone a while, the phone put away --
     // a first pose from inside a room puts me back in it: the 백화점's floors, the open-to-all rooms off the island, and the
@@ -6380,16 +6394,18 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     if (!jailInmates.has(session.token)) return sendError(res, 409, 'NOT_JAILED', '구경만 하세요.');
     const now = nowMs(); const day = kstDate(now); let e = jailEssays.get(session.token);
-    if (!e || e.day !== day) { const account = pointAccountForSession(session); const gamble = await denJailed(account, day); const close = (await affinityLevelOf(account, JAIL_WARDEN)) >= 2; e = { day, gamble, sentences: gamble ? IslandJail.gambleSentencesOf(day, 5) : IslandJail.sentencesOf(day, close ? 2 : 3), i: 0, until: 0 }; jailEssays.set(session.token, e); } /* (1.10.341 121A: the gambling essay -- one frees both) */
+    if (!e || e.day !== day) { const account = pointAccountForSession(session); const gamble = await denJailed(account, day); const close = (await affinityLevelOf(account, JAIL_WARDEN)) >= 2; const tax = !gamble && inArrears(account); const passed = tax ? (await pointStore.questDoc(account, 'jail')).doc.taxEssays || 0 : 0; /* (1.10.350: 5, +3 for each passed in this debt, 30 at most; 184A: no shorter for a friend -- the admin's and the gambling's as they were) */
+      e = { day, gamble, tax, sentences: gamble ? IslandJail.gambleSentencesOf(day, 5) : IslandJail.sentencesOf(day, tax ? taxEssayLines(passed) : close ? 2 : 3), i: 0, until: 0 }; jailEssays.set(session.token, e); } /* (1.10.341 121A: the gambling essay -- one frees both) */
     if (e.until <= now) e.until = now + IslandJail.SECONDS * 1000;
     return sendJson(res, 200, { ok: true, ...essayView(e, now) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/jail' && req.method === 'POST') { // past the first day; owing (this account only: not a day's tax for all); the time up
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
     if (body.veteran === true) jailVeterans.add(pointAccountForSession(session));
-    if (Number.isSafeInteger(body.debt)) { taxDebt.set(pointAccountForSession(session), body.debt); refreshTaxLooks(); }
+    if (Number.isSafeInteger(body.debt)) { taxDebt.set(pointAccountForSession(session), body.debt); refreshTaxLooks(); if (body.debt === 0) await pointStore.questApply(pointAccountForSession(session), 'jail', (d) => (d.taxEssays ? { doc: { ...d, taxEssays: 0 } } : null)); } /* (1.10.350: 0 -- as paid off) */
+    if (Number.isSafeInteger(body.taxEssays)) await pointStore.questApply(pointAccountForSession(session), 'jail', (d) => ({ doc: { ...d, taxEssays: body.taxEssays } })); /* (1.10.350) */
     const e = jailEssays.get(session.token); if (body.expire === true && e) e.until = nowMs() - 1;
-    const acc = pointAccountForSession(session); if (typeof body.passedDay === 'string') await pointStore.questApply(acc, 'jail', () => ({ doc: { day: body.passedDay } })); /* (293: the essay passed that day -- "yesterday") */
+    const acc = pointAccountForSession(session); if (typeof body.passedDay === 'string') await pointStore.questApply(acc, 'jail', (d) => ({ doc: { ...d, day: body.passedDay } })); /* (293: the essay passed that day -- "yesterday") */
     if (body.adminExpire === true) { const j = (await adminJails())[acc]; if (j) await adminJailSet(acc, { ...j, until: nowMs() - 1 }, 'test'); } /* (293: its time over) */
     return sendJson(res, 200, { ok: true });
   }
@@ -6647,7 +6663,7 @@ async function requestHandler(req, res) {
       const t = await denToday(now); const { doc } = await pointStore.questDoc(account, 'den');
       if (!nearEx(IslandDenRoom.DOOR.stand.lx, IslandDenRoom.DOOR.stand.lz, 1.8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       if (doc.pass !== t.day) return sendError(res, 409, 'DEN_SHUT', '그냥 책장이에요.');
-      if (doc.entry !== t.day || (doc.chips || 0) < IslandDen.KICK_BELOW) return sendError(res, 409, 'DEN_ENTRY', '…먼저 테드에게 지갑을 칩으로 바꿔 오세요.'); /* (1.10.346: 지갑 전부를 칩으로 바꾼 날만) */
+      if (inArrears(account)) return sendError(res, 409, 'IN_ARREARS', ARREARS_WORD); /* (1.10.350 체납: no going down; 1.10.350: the chips changed below, at the bar) */
       exchangeInside.delete(session.token); denInside.add(session.token); denBelow.set(account, now);
       const spot = IslandDenRoom.world(IslandDenRoom.ROOM.entry.lx, IslandDenRoom.ROOM.entry.lz);
       plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'den', moving: false, at: now, act: null, seat: null }); plazaDirty = true;
@@ -6659,13 +6675,16 @@ async function requestHandler(req, res) {
       denInside.delete(session.token); exchangeInside.add(session.token); if (![...denInside].some((t) => { const s = sessions.get(t); return s && pointAccountForSession(s) === account; })) denBelow.delete(account);
       const spot = IslandExchange.world(IslandDenRoom.DOOR.stand.lx, IslandDenRoom.DOOR.stand.lz);
       plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'exchange', moving: false, at: now, act: null, seat: null }); plazaDirty = true;
-      return sendJson(res, 200, { ok: true, space: 'exchange', x: spot.x, z: spot.z });
+      /* (1.10.350: up the stairs -- the chips left back as points, 1:1; to play again, the whole wallet at the bar again) */
+      let cashed = 0; const back = await pointStore.questApply(account, 'den', (doc) => (doc.chips > 0 ? (cashed = doc.chips, { doc: { ...doc, chips: 0, entry: null }, reward: doc.chips, payKey: `den:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:leave:${now}`, reason: 'den_cash' }) : null)).catch(() => null);
+      if (back && cashed) notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, space: 'exchange', x: spot.x, z: spot.z, cashed: back ? cashed : 0 });
     }
     const requestId = String(body.requestId || ''); if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const payKey = `den:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${requestId}`;
     if (route === 'chips') {
-      if (!nearEx(IslandExchange.TALK.lx, IslandExchange.TALK.lz, 2.5)) return sendError(res, 409, 'TOO_FAR', '테드 앞에서 바꿔 주세요.');
-      const buy = body.side !== 'sell'; const today = (await denToday(now)).day; /* (1.10.345 사용자: points -> chips only for one who said today's word -- 입장 자격 first) */
+      if (!at || !denInside.has(session.token) || !IslandDenRoom.atBar(at.x, at.z)) return sendError(res, 409, 'TOO_FAR', '바 카운터 앞에서 바꿔 주세요.'); /* (1.10.350: the bar below, not 테드) */
+      const buy = body.side !== 'sell'; if (buy && inArrears(account)) return sendError(res, 409, 'IN_ARREARS', ARREARS_WORD); const today = (await denToday(now)).day; /* (1.10.345 사용자: points -> chips only for one who said today's word -- 입장 자격 first) */
       // (1.10.346 사용자: 입장은 지갑 포인트 전부를 칩으로 -- ENTRY_MIN 이상, 예금은 그대로; chips -> points 1:1 as before)
       const amount = buy ? (await pointStore.getAccount(account))?.balance ?? 0 : Number(body.amount);
       if (!buy && (!Number.isSafeInteger(amount) || amount < 1 || amount > IslandDen.CHIPS_MAX)) return sendError(res, 400, 'DEN_AMOUNT', '칩 수를 다시 정해 주세요.');
@@ -6677,6 +6696,7 @@ async function requestHandler(req, res) {
     if (route === 'play') {
       const table = at && denInside.has(session.token) ? IslandDenRoom.tableAt(at.x, at.z) : null; const game = String(body.game || '');
       if (!table || table.id !== game) return sendError(res, 409, 'TOO_FAR', '판 앞에서 해 주세요.');
+      { const d = (await pointStore.questDoc(account, 'den')).doc; if (d.entry !== (await denToday(now)).day || !(d.chips > 0)) return sendError(res, 409, 'DEN_NOCHIPS', '먼저 바 카운터에서 지갑을 칩으로 바꿔 주세요.'); } /* (1.10.350: no table before the bar) */
       if (now - (denPlayAt.get(account) || 0) < 1000) return sendError(res, 429, 'DEN_FAST', '천천히 해 주세요.'); denPlayAt.set(account, now);
       const rand = () => crypto.randomInt(0, 2 ** 32) / 2 ** 32; const pick = game === 'roulette' && /^\d+$/.test(String(body.pick)) ? Number(body.pick) : body.pick;
       const out = await pointStore.questApply(account, 'den', (doc) => {
@@ -6730,6 +6750,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const now = stockNow();
     const body = await parseJson(req); const requestId = String(body.requestId || '');
     if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '주문 번호가 올바르지 않아요.');
+    if (inArrears(account)) return sendError(res, 409, 'IN_ARREARS', ARREARS_WORD); /* (1.10.350 체납: no buying or selling -- what one holds stays) */
     const payKey = `stock:${crypto.createHash('sha1').update(account).digest('hex').slice(0, 16)}:${requestId}`; const stockMarket = await stocksMarket();
     const out = await pointStore.questApply(account, 'stocks', (doc) => { const r = IslandStocks.order(stockMarket, doc, { code: String(body.code || ''), side: body.side, qty: body.qty }, now); return r.error ? { error: r.error } : { doc: r.doc, cost: r.cost || 0, reward: r.reward || 0, payKey, reason: r.cost ? 'stock_buy' : 'stock_sell', price: r.price, fee: r.fee, name: r.name, side: body.side, qty: Number(body.qty) }; });
     if (out?.error) return sendError(res, out.error === 'PAID' ? 409 : 400, out.error, STOCK_ERRORS[out.error] || '주문하지 못했어요.');
@@ -6759,6 +6780,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const label = String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24);
     const priceError = (base) => { const [lo, hi] = IslandFlea.range(base); return sendError(res, 400, 'FLEA_PRICE', `값은 ${lo.toLocaleString('ko-KR')}~${hi.toLocaleString('ko-KR')}P 사이로 정해 주세요.`); };
     if (route === '/list') {
+      if (inArrears(account)) return sendError(res, 409, 'IN_ARREARS', ARREARS_WORD); /* (1.10.350 체납: no listing -- buying and taking one's takings stay) */
       const requestId = String(body.requestId || ''); const price = Number(body.price);
       if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       return worldEdit(async () => {
@@ -6850,6 +6872,12 @@ async function requestHandler(req, res) {
     const { doc } = await pointStore.questDoc(account, 'quarry'); const today = kstDate(nowMs());
     return sendJson(res, 200, { ok: true, rocks: await quarryRocks(), daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/set' && req.method === 'POST') { // (1.10.350 tests: a rock's ores left; my day's count)
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); await quarryRocks();
+    if (typeof body.rock === 'string' && quarryKept[body.rock] && Number.isInteger(body.left)) quarryKept[body.rock] = { ...quarryKept[body.rock], left: body.left };
+    if (Number.isInteger(body.daily)) await pointStore.questApply(pointAccountForSession(session), 'quarry', () => ({ doc: { day: kstDate(nowMs()), n: body.daily } }));
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/regrow' && req.method === 'POST') { // (tests: the mined rocks grown back now)
     await quarryRocks(); for (const r of IslandQuarry.ROCKS) { const k = quarryKept[r.id]; if (k && k.left <= 0) k.minedAt = nowMs() - IslandQuarry.regrowOf(r); } return sendJson(res, 200, { ok: true, rocks: await quarryRocks() });
   }
@@ -6864,16 +6892,17 @@ async function requestHandler(req, res) {
     if (pathname.endsWith('/cancel')) { if (!quarryPulls.get(t)?.result) quarryPulls.delete(t); collectionPose(t); return sendJson(res, 200, { ok: true }); }
     const rock = IslandQuarry.rockById(String(body.rock || '')); const spot = Number(body.spot);
     if (!rock || !Number.isInteger(spot) || spot < 0 || spot >= IslandQuarry.spotCount(rock)) return sendError(res, 400, 'BAD_REQUEST', '바위를 확인해 주세요.');
-    const rocks = await quarryRocks(); const state = rocks.find((r) => r.id === rock.id); const today = kstDate(nowMs());
+    const wall = rock.kind === 'wall'; /* (1.10.350 화강암 벽: never empty, outside the day's count) */
+    const rocks = await quarryRocks(); const state = wall ? { stage: 'full', left: 1 } : rocks.find((r) => r.id === rock.id); const today = kstDate(nowMs());
     if (pathname.endsWith('/start')) {
       const at = plazaPresence.get(t); if (!at || (at.space && at.space !== 'island') || trainRiders.has(t) || taxiRides.has(t)) return sendError(res, 409, 'TOO_FAR', '바위 앞에서 다시 시도해 주세요.');
       const stand = IslandQuarry.standOf(rock, state.stage, spot); if (Math.hypot(at.x - stand.x, at.z - stand.z) > 1.6) return sendError(res, 409, 'TOO_FAR', '바위 앞에서 다시 시도해 주세요.');
-      if (state.left <= 0) return sendError(res, 409, 'MINED', '다 캔 바위예요. 시간이 지나면 다시 광석이 차요.');
+      if (!wall && state.left <= 0) return sendError(res, 409, 'MINED', '다 캔 바위예요. 시간이 지나면 다시 광석이 차요.');
       if ([resourcePulls.get(t), weedPulls.get(t), quarryPulls.get(t)].some((p) => p && !p.result && nowMs() - p.at < 15000)) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.');
       if ([...quarryPulls].some(([o, p]) => o !== t && !p.result && p.rock === rock.id && p.spot === spot && nowMs() - p.at < 15000)) return sendError(res, 409, 'SPOT_BUSY', '다른 사람이 캐는 자리예요. 옆 자리에서 캐 보세요.');
       const { doc, bag } = await pointStore.questDoc(account, 'quarry');
       if (!IslandItems.toolCount(bag, 'pickaxe')) return sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.');
-      if ((doc?.day === today ? doc.n || 0 : 0) >= IslandQuarry.DAILY) return sendError(res, 409, 'DAILY_CAP', `오늘은 광석을 ${IslandQuarry.DAILY}개 캤어요. 내일 다시 캘 수 있어요.`);
+      if (!wall && (doc?.day === today ? doc.n || 0 : 0) >= IslandQuarry.DAILY) return sendError(res, 409, 'DAILY_CAP', `오늘은 광석을 ${IslandQuarry.DAILY}개 캤어요. 내일 다시 캘 수 있어요.`);
       if (!IslandItems.addToBag(bag, `ore_${rock.ore}`, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
       // (1.10.342 98B: the server's plan -- each swing's crack and when it lights; the ore's light time)
       const plan = IslandQuarry.planOf(rock, () => crypto.randomInt(0, 1e9) / 1e9).map((p, i) => (quarryTestPlan?.[i] ? { ...p, ...quarryTestPlan[i] } : p)); quarryTestPlan = null;
@@ -6887,13 +6916,20 @@ async function requestHandler(req, res) {
     if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result);
     if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
     if (nowMs() - pull.at < pull.ms - 300) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.');
-    const kept = quarryKept[rock.id]; if (!kept || kept.left <= 0) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, 'MINED', '방금 다 캔 바위예요.'); }
+    const kept = wall ? { left: 1, gen: 0 } : quarryKept[rock.id]; if (!kept || kept.left <= 0) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, 'MINED', '방금 다 캔 바위예요.'); }
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
     const judged = IslandQuarry.judge(pull.plan, body.taps);
     if (!judged.done) {
       const missed = await pointStore.islandGive({ userId: account, claimId: `quarry-miss:${account}:${pull.at}`, itemId: 'stone', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
-      const result = { ok: true, ore: 0, itemId: missed?.applied ? 'stone' : null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: missed?.bag || null, worn: missed?.worn || null };
+      const result = { ok: true, ore: 0, itemId: missed?.applied ? 'stone' : null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: wall ? null : kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: missed?.bag || null, worn: missed?.worn || null, ...(wall ? { wall: true } : {}) };
+      quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
+    }
+    if (wall) { /* (1.10.350 화강암 벽: granite only, its own claim a mining; the rock state and the day's count untouched) */
+      const given = await pointStore.islandGive({ userId: account, claimId: `quarry-wall:${account}:${pull.at}`, itemId: 'ore_granite', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
+      if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, given?.reason === 'full' ? 'BAG_FULL' : 'COLLECT_NOT_STARTED', given?.reason === 'full' ? '가방이 가득 찼어요.' : '다시 시도해 주세요.'); }
+      const { doc } = await pointStore.questDoc(account, 'quarry');
+      const result = { ok: true, ore: 1, itemId: 'ore_granite', name: IslandItems.ITEMS.ore_granite?.name || '화강암', icon: IslandItems.ITEMS.ore_granite?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', wall: true, bag: given.bag, worn: given.worn || null, daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
     const oreId = `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0)}`; quarryTestDraw = null;
@@ -7616,6 +7652,7 @@ async function requestHandler(req, res) {
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '지갑과 예금을 합쳐도 모자라요. 나눠서는 낼 수 없어요.', { debt: out.debt, bills: out.bills });
     if (out.reason === 'none') return sendError(res, 409, 'NOTHING_TO_PAY', '낼 고지서가 없어요.', { debt: out.debt, bills: out.bills });
     taxDebt.set(account, out.debt);
+    if (!(out.debt > 0)) await pointStore.questApply(account, 'jail', (d) => (d.taxEssays ? { doc: { ...d, taxEssays: 0 } } : null)); /* (1.10.350: all paid -- the essay 5 lines again) */
     if (out.applied) { notifyPointsChanged([account]); refreshTaxLooks(); }
     return sendJson(res, 200, { ok: true, ...out });
   }
@@ -8237,6 +8274,7 @@ async function requestHandler(req, res) {
     if (here.bike) return sendError(res, 409, 'TAXI_BIKE', '자전거에서 내려 주세요.');
     const startedAt = nowMs();
     { const away = taxiAwayMs(from, startedAt); if (away > 0) return sendError(res, 409, 'TAXI_AWAY', `택시가 돌아오는 중이에요 · 약 ${Math.ceil(away / 1000)}초`, { awayS: Math.ceil(away / 1000) }); } /* (294: no charge) */
+    if (pay === 'pass' && !hasPass && inArrears(account)) return sendError(res, 409, 'IN_ARREARS', ARREARS_WORD); /* (1.10.350 체납: no 자유이용권 -- a single fare stays) */
     // (v1.10.283 Codex #3: two at once -- the second is refused before anything is paid)
     if (taxiPaying.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     taxiPaying.add(session.token);
@@ -8838,6 +8876,7 @@ async function requestHandler(req, res) {
       return sendStamp(await stamp('feast'));
     }
     if (action === 'buy') { // 가판대: a limited good for stamps -- furniture into 가구 창고, a title to wear
+      if (inArrears(account)) return sendError(res, 409, 'IN_ARREARS', ARREARS_WORD); /* (1.10.350 체납: no 도장 가게) */
       if (!near(P.stall, P.REACH + 1)) return sendError(res, 409, 'TOO_FAR', '가판대 앞에서 바꿀 수 있어요.');
       // (1.10.343 Codex 331~340 P1-1: a piece handed over is kept in the stamp doc -- `handed` -- apart from the 창고, where it may no
       // longer be (put on the 벼룩시장); a second try hands over only a piece bought within GIVE_RETRY_MS and never marked handed)
@@ -9710,7 +9749,7 @@ async function requestHandler(req, res) {
         const now = nowMs(); const until = body.until === 'forever' ? null : body.until === 'midnight' ? Date.parse(`${kstDate(now + 86400000)}T00:00:00+09:00`) : Number.isFinite(Number(body.minutes)) && Number(body.minutes) >= 1 && Number(body.minutes) <= 60 * 24 * 30 ? now + Number(body.minutes) * 60000 : NaN;
         if (Number.isNaN(until)) return sendError(res, 400, 'BAD_TIME', '기간을 골라 주세요.');
         await adminJailSet(account, { until, reason, by: '관리자', at: now }, 'send', name);
-        for (const [token, s] of sessions) if (pointAccountForSession(s) === account && plazaPresence.has(token) && !jailInmates.has(token) && !trainRiders.has(token) && !taxiRides.has(token) && await jailable(s, account)) jailPut(token); /* (on the island: at once -- riding, at the next visit) */
+        for (const [token, s] of sessions) if (pointAccountForSession(s) === account && plazaPresence.has(token) && !jailInmates.has(token) && !trainRiders.has(token) && !taxiRides.has(token) && await jailable(s, account)) { jailPut(token); const acct = pointAccountForSession(sessions.get(token) || {}); if (acct) taxJailPenalty(acct).catch(() => {}); } /* (on the island: at once -- riding, at the next visit) */
       } else {
         await adminJailSet(account, null, 'release', name);
         for (const [token, s] of sessions) if (pointAccountForSession(s) === account && jailInmates.has(token) && !(await jailable(s, account))) jailFree(token);
@@ -10415,7 +10454,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.349 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.350 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
