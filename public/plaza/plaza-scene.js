@@ -4313,6 +4313,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const quarryStandIn = (box, color) => { const f = new THREE.Group(); mesh(new THREE.BoxGeometry(box[0], box[1], box[2]), mat(color), 0, box[3], 0, f); return f; }; /* (the stand-in covers the rock's circle: dalmaru-walk) */
   // (1.10.342: a prop's stand-in -- its solids.json boxes, which cover its circles)
   const shapeStandIn = (model, color) => { const f = new THREE.Group(); for (const [x, y, z, w, h, d] of QY.SHAPES[model]?.b || []) mesh(new THREE.BoxGeometry(w, h, d), mat(color), x, y, z, f); return f; };
+  let quarryWallPlaque = null; /* (1.10.350) */
   function setQuarry(rocks) {
     if (!QY) return; if (Array.isArray(rocks)) quarryState = new Map(rocks.map((x) => [x.id, x]));
     for (const q of quarryRocks.values()) {
@@ -4323,7 +4324,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         q.f = quarryStandIn(QY.SOLIDS[q.r.kind].box, 0xb7ad9e); q.h.add(q.f); assets.attach(`quarry.rock_${q.r.kind}${st === 'mined' ? '_mined' : ''}`, q.h, q.f); q.stage = st;
         q.v = new THREE.Group(); q.h.add(q.v); const none = new THREE.Group(); q.v.add(none); assets.attach(`quarry.vein.${q.r.ore || 'granite'}.${q.r.kind}${st === 'mined' ? '_mined' : ''}`, q.v, none); /* (1.10.342 assets 140: its main ore's vein over it, the same transform) */
       }
-      for (let i = 0; i < QY.spotCount(q.r); i += 1) { const s = QY.standOf(q.r, st, i); doors[`quarry:${q.r.id}:${i}`] = { x: s.x, z: s.z, name: st === 'mined' ? '다 캔 바위 · 다시 차는 중' : `바위 캐기 · ${QUARRY_ORE_NAMES[q.r.ore] || '광석'}` }; }
+      for (let i = 0; i < QY.spotCount(q.r); i += 1) { const s = QY.standOf(q.r, st, i); doors[`quarry:${q.r.id}:${i}`] = { x: s.x, z: s.z, tool: 'pickaxe', name: st === 'mined' ? '다 캔 바위 · 다시 차는 중' : `바위 캐기 · ${QUARRY_ORE_NAMES[q.r.ore] || '광석'}` }; }
+    }
+    // 1.10.350 화강암 벽 (사용자 182): its spots along the face (granite only, never empty) and its plaque on the face above them
+    if (QY.WALL) {
+      for (let i = 0; i < QY.spotCount(QY.WALL); i += 1) { const s = QY.standOf(QY.WALL, 'full', i); doors[`quarry:wall:${i}`] = { x: s.x, z: s.z, tool: 'pickaxe', name: '화강암 벽 캐기 · 화강암만 나와요' }; }
+      if (!quarryWallPlaque) { const p = QY.WALL.plaque; quarryWallPlaque = new THREE.Group(); quarryWallPlaque.position.set(p.x, heightAt(p.x, p.z), p.z); quarryGroup.add(quarryWallPlaque); signboard('plaque', '화강암 채석 벽', quarryWallPlaque, 0, p.y, 0, p.yaw, { scale: 1.2, colors: ['#efe9dc', '#3b3127'] }); }
     }
   }
   const QUARRY_ORE_NAMES = { granite: '화강암', clay: '점토', coal: '석탄', iron: '철광석', copper: '구리 광석', silver: '은 광석', crystal: '수정', gold: '금 광석' };
@@ -6153,6 +6159,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
     for (const [id, door] of Object.entries(doors)) {
+      if (door.tool && heldTool !== door.tool) continue; /* (1.10.350: a door needing a tool -- only with it in hand) */
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < bestD) { best = id; bestD = d; }
     }
@@ -6225,7 +6232,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // seat taken -- a door, an islander, a counter, my tank still are)
     const handsFull = (id) => { const d = eventDoors[id]; return Boolean(d?.resource) || id.startsWith('weed:') || id.startsWith('ev:lost_item:') || Boolean(d?.sit); };
     if (mySpace === 'island' && heldTool === 'bugnet' && (!best || best === weedKey || handsFull(best)) && !gather && !fishing) { const m = me.root.position; const h = nearInsect(); eventDoors['tool:swing'] = { x: m.x, z: m.z, name: h ? `휘두르기 · ${h.b.name}` : '휘두르기' }; best = 'tool:swing'; }
-    else if (mySpace === 'island' && !best && !gather && !fishing) { const h = nearInsect(); if (h) { const p = h.c.root.position; eventDoors[`insect:${h.b.id}`] = { x: p.x, z: p.z, name: `${h.b.name} · ${insectNet ? '가방에서 잠자리채를 들면 잡을 수 있어요' : '잠자리채가 있으면 잡을 수 있어요'}`, plain: true }; best = `insect:${h.b.id}`; } }
+    /* (1.10.350: a bug without the net in hand -- nothing said) */
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
@@ -6252,7 +6259,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // (Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」) the rod in hand to cast -- else how
     if (fishing || (!best && !gather && mySpace === 'island' && globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z))) {
       const w = fishing ? fishing.water : waterFrom(me.root.position.x, me.root.position.z);
-      if (w && !fishing && heldTool !== 'fishing_rod') { eventDoors['fish:spot'] = { x: w.x, z: w.z, name: '가방에서 낚싯대를 들면 낚시할 수 있어요', plain: true }; best = 'fish:spot'; }
+      if (w && !fishing && heldTool !== 'fishing_rod') delete eventDoors['fish:spot']; /* (1.10.350: the water without the rod in hand -- nothing said) */
       else if (w) { eventDoors['fish:spot'] = fishing?.phase === 'tug' ? { x: w.x, z: w.z, name: '대어다! 누르고 버티기', plain: true } : fishing?.phase === 'bite' ? { x: w.x, z: w.z, name: fishing.hits ? `입질! 초록 칸에서 ${fishing.hits}번` : `입질! 화살표 ${fishing.arrows}개를 순서대로${document.body.classList.contains('touchIsland') ? '' : ' (WASD도 돼요)'}`, plain: true } /* (3회차 4: the arrows pull it in; 259 the bar's hits, the tug) */ : { x: w.x, z: w.z, name: fishing ? '그만하기' : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
     } else delete eventDoors['fish:spot'];
     // (2회차 11: holding a piece, the hint says how to let go and turn it -- not the seat or tank in front)

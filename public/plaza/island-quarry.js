@@ -5,7 +5,7 @@
 // - Mining: with a 곡괭이 (잡화점) in the hand, at one of a rock's mining spots (assets 129 mine-spots, the spot of the rock's stage
 //   now: a mined rock's are about 11 cm further in), SPACE: three swings (PickaxeSwing 1.2 s each), then one 광석 into the bag and
 //   the pickaxe one use older. A rock gives ORE_PER_ROCK, then stands 「mined」 (its own model) until it grows back.
-// - 사용자 확인 필요 (proposed, 총괄): ORE_PER_ROCK 2, REGROW_MS 3 h, DAILY 6 a person.
+// - 사용자 2026-11-17: 하루 60, 바위 6 (ORE_PER_ROCK 6, DAILY 60 a person; REGROW_MS 3 h). The 화강암 벽 (WALL, 사용자 182): granite only, never empty, outside DAILY.
 // 1.10.342 4a 채석장 전체 (notes island-expansion §9, 사용자 88A~98B; assets 140 ores, 141 quarry-v2, 143 quarry-v3): the whole ridge
 // top from 290° to 343° -- four pieces (AREA), 32 rocks each with its main ore (lib/island-ores.js: how often it comes, how long the
 // rock takes to fill), the developed look (walls, carts on a 132 m rail, tents, the bench faces along the cliff edge, the cranes, the
@@ -61,7 +61,7 @@
   // 1.10.342 the developed look: each model (quarry.<model>: 141 quarry-v2, 143 quarry-v3) where it stands; the rail apart (walked
   // over, not solid -- its two end buffers are)
   const PROPS = Object.freeze([
-    ['rock_wall_a',90.61,-137.42,-3.725], ['rock_wall_a',98.6,-131.8,-3.784], ['rock_wall_a',106.24,-125.72,-3.843], ['rock_wall_a',139.3,-43.7,1.875],
+    ['rock_wall_a_granite',90.61,-137.42,-3.725] /* (1.10.350: the 화강암 벽) */, ['rock_wall_a',98.6,-131.8,-3.784], ['rock_wall_a',106.24,-125.72,-3.843], ['rock_wall_a',139.3,-43.7,1.875],
     ['rock_wall_b',83.24,-141.88,-3.672], ['rock_wall_b',112.19,-120.31,-3.892], ['ore_cart',60,-133.5,-2.008], ['ore_cart',86.6,-117.5,-2.222],
     ['ore_cart',127.8,-89.5,-2.537], ['ore_cart',140.7,-56.8,-2.832], ['work_tent',59.1,-149.3,0], ['work_tent',125,-100.2,0],
     ['work_tent',138.3,-78,0], ['tool_rack',57.7,-142,0], ['bench_face_end_r',65.21,-117.64,-3.672], ['bench_face',68.06,-116.01,-3.672],
@@ -95,6 +95,7 @@
   ].map(([k, x, z, yaw]) => Object.freeze({ model: k === 'e' ? 'rail_end' : 'rail_straight_2', x, z, yaw }))); /* (assets 143 rail-layout.json: 67 pieces, 132 m) */
   const SHAPES = Object.freeze({
     rock_wall_a: { c: [[-1.35,0,0.65],[-0.45,0,0.65],[0.45,0,0.65],[1.35,0,0.65]], b: [[-1.35,1.15,0,1.3,2.3,1.3],[-0.45,1.15,0,1.3,2.3,1.3],[0.45,1.15,0,1.3,2.3,1.3],[1.35,1.15,0,1.3,2.3,1.3]] },
+    rock_wall_a_granite: { c: [[-1.35,0,0.65],[-0.45,0,0.65],[0.45,0,0.65],[1.35,0,0.65]], b: [[-1.35,1.15,0,1.3,2.3,1.3],[-0.45,1.15,0,1.3,2.3,1.3],[0.45,1.15,0,1.3,2.3,1.3],[1.35,1.15,0,1.3,2.3,1.3]] },
     rock_wall_b: { c: [[-1,0.9,0.65],[-0.2,0.9,0.65],[0.9,0.9,0.65],[0.9,0,0.65],[0.9,-0.95,0.65]], b: [[-1,1.15,0.9,1.3,2.3,1.3],[-0.2,1.15,0.9,1.3,2.3,1.3],[0.9,1.15,0.9,1.3,2.3,1.3],[0.9,1.15,0,1.3,2.3,1.3],[0.9,1.15,-0.95,1.3,2.3,1.3]] },
     ore_cart: { c: [[0,-0.35,0.55],[0,0.35,0.55]], b: [[0,0.56,-0.35,1.1,1.12,1.1],[0,0.56,0.35,1.1,1.12,1.1]] },
     tool_rack: { c: [[0,0.02,0.7]], b: [[0,0.8,0.02,1.4,1.6,1.4]] },
@@ -124,7 +125,7 @@
   // assets 130: the pickaxe's tip at the hit, in the player's own frame (x right, y up, -z ahead) -- the player stands so it lands on the spot
   const HIT_TIP = Object.freeze([0.08, 0.4, -1.0]);
   const SWING_MS = 1200; const SWINGS = 3; const MINE_MS = 2000 * 3; /* (1.10.342: ROUNDS x ROUND_MS -- the crack-light game) */ const END_MS = 1000;
-  const ORE_PER_ROCK = 2; const REGROW_MS = 3 * 3600000; const DAILY = 6; // (사용자 확인 필요; 1.10.342: a rock's own fill time by its ore -- regrowOf)
+  const ORE_PER_ROCK = 6; const REGROW_MS = 3 * 3600000; const DAILY = 60; // (사용자 2026-11-17: 하루 60, 바위 6 -- a rock already kept keeps its left till it fills again; 1.10.342: a rock's own fill time by its ore -- regrowOf)
   // 1.10.342 the crack-light game (98B, review-plan §1-8): ROUNDS swings of ROUND_MS; in each one crack lights at `at` ms for the
   // ore's LIGHT (lib/island-ores: 1.0 / 0.8 / 0.6 s) -- the cracks five points on the rock's face toward the miner: [right of the
   // hit, height share of the rock] (the page finds the surface by a ray); a press while lit or GRACE_MS after hits, within BONUS_MS of
@@ -146,7 +147,7 @@
   const PICK_USES = 40; // (a pickaxe: 40 ores)
   // a spot in the world: the surface point, outward, and where to stand (origin = S - R(yaw) HIT_TIP, facing -n)
   function spotOf(rock, stage, i) {
-    const s = SPOTS[rock.kind]?.[stage === 'mined' ? 'mined' : 'full']?.[i]; if (!s) return null;
+    const s = (rock.kind === 'wall' ? WALL_SPOTS : SPOTS[rock.kind]?.[stage === 'mined' ? 'mined' : 'full'])?.[i]; if (!s) return null;
     const c = Math.cos(rock.yaw); const sn = Math.sin(rock.yaw); const rot = (x, z) => ({ x: x * c + z * sn, z: -x * sn + z * c }); /* (THREE's rotation.y) */
     const p = rot(s[0], s[1]); const n = rot(s[2], s[3]); const S = { x: rock.x + p.x, z: rock.z + p.z };
     const yaw = Math.atan2(-n.x, -n.z); /* (facing -n: the player's -Z... the characters face +Z at yaw 0 -- see standOf) */
@@ -160,11 +161,16 @@
     const t = HIT_TIP; const forward = -t[2]; const side = t[0];
     return { x: Math.round((sp.S.x - ahead.x * forward - right.x * side) * 1000) / 1000, z: Math.round((sp.S.z - ahead.z * forward - right.z * side) * 1000) / 1000, yaw: face, S: sp.S };
   }
-  const rockById = (id) => ROCKS.find((r) => r.id === id) || null;
-  const spotCount = (rock) => SPOTS[rock.kind].full.length;
+  // 1.10.350 화강암 벽 (사용자 182 C+B, notes island-expansion 끝): the rock wall by the entrance (141 rock_wall_a, painted granite --
+  // `rock_wall_a_granite`): three spots along its face toward the quarry (local -Z: the walked side), its plaque on that face above them.
+  // Granite only, never empty, outside DAILY; the minigame and the pickaxe's wear as at a rock (a miss: a 작은 돌)
+  const WALL_SPOTS = Object.freeze([[-0.9, -0.65, 0, -1], [0, -0.65, 0, -1], [0.9, -0.65, 0, -1]].map((s) => Object.freeze(s)));
+  const WALL = (() => { const p = PROPS.find((x) => x.model === 'rock_wall_a_granite'); return Object.freeze({ id: 'wall', kind: 'wall', ore: 'granite', x: p.x, z: p.z, yaw: p.yaw, plaque: Object.freeze({ ...turn(p, 0, -0.68), y: 1.75, yaw: p.yaw + Math.PI }) }); })();
+  const rockById = (id) => (id === 'wall' ? WALL : ROCKS.find((r) => r.id === id) || null);
+  const spotCount = (rock) => (rock.kind === 'wall' ? WALL_SPOTS.length : SPOTS[rock.kind].full.length);
   // a rock's state at `now` from what is kept { left, minedAt, gen }: full again REGROW_MS after it was mined out
   function rockState(kept, now, rock = null) { const k = kept || {}; const left = Number.isInteger(k.left) ? k.left : ORE_PER_ROCK; if (left <= 0 && Number.isFinite(k.minedAt) && now - k.minedAt >= (rock ? regrowOf(rock) : REGROW_MS)) return { left: ORE_PER_ROCK, gen: now, stage: 'full', regrown: true }; return { left, gen: k.gen || 0, stage: left > 0 ? 'full' : 'mined', minedAt: k.minedAt ?? null }; }
   // the solids round a rock (its circle, turned with it: centred) and the sign's and pile's
   const solidsOf = () => [...ROCKS.map((r) => ({ x: r.x, z: r.z, r: SOLIDS[r.kind].r, quarry: r.id })), { x: SIGN.x, z: SIGN.z, r: SOLIDS.sign.r }, { x: PILE.x, z: PILE.z, r: SOLIDS.pile.r }, ...propSolids()];
-  return { AREA, inArea, edgeDist, po, WALK, ROCKS, SIGN, PILE, SPOTS, SOLIDS, PROPS, RAIL, SHAPES, BATCHED, DECK, deckLift, HIT_TIP, SWING_MS, SWINGS, MINE_MS, END_MS, ORE_PER_ROCK, REGROW_MS, DAILY, PICK_USES, ROUNDS, ROUND_MS, GRACE_MS, BONUS_MS, HITS_NEEDED, CRACKS, lightOf, regrowOf, planOf, judge, spotOf, standOf, rockById, spotCount, rockState, solidsOf, turn };
+  return { WALL, WALL_SPOTS, AREA, inArea, edgeDist, po, WALK, ROCKS, SIGN, PILE, SPOTS, SOLIDS, PROPS, RAIL, SHAPES, BATCHED, DECK, deckLift, HIT_TIP, SWING_MS, SWINGS, MINE_MS, END_MS, ORE_PER_ROCK, REGROW_MS, DAILY, PICK_USES, ROUNDS, ROUND_MS, GRACE_MS, BONUS_MS, HITS_NEEDED, CRACKS, lightOf, regrowOf, planOf, judge, spotOf, standOf, rockById, spotCount, rockState, solidsOf, turn };
 }));

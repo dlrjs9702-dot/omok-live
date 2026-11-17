@@ -3693,11 +3693,7 @@
   let mining = false;
   async function mineAt(id) {
     if (mining) return; const [, rock, spot] = String(id).split(':'); let started = false;
-    if (heldTool !== 'pickaxe') {
-      const b = await api('/api/island/bag').catch(() => null); const items = b?.items || b?.bag?.items || [];
-      if (!items.some((e) => e.tool === 'pickaxe')) { showToast('곡괭이가 있어야 캘 수 있어요. 백화점 1층 잡화점에서 살 수 있어요.', 4000); return; }
-      holdTool('pickaxe');
-    }
+    if (heldTool !== 'pickaxe') return; /* (1.10.350: only with the pickaxe in hand -- the spot is not offered otherwise; no taking it up by itself) */
     mining = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); /* (where I stand first) */
