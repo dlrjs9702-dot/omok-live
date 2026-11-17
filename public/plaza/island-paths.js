@@ -94,8 +94,8 @@
   }
   // the ground's maps (one texel per GROUND/res metres, row 0 at the ground's north edge): where paint goes and how --
   //   path-a  R inside the edge, G/B the course's phase      path-b  R tier, G where walks meet (B: the cover map's gravel)
-  function buildPathMaps(T, res = 1024) {
-    const size = T.GROUND.size; const box = { x0: -size / 2, z0: -size / 2, size, res };
+  function buildPathMaps(T, res = 1024, at = null) { // (at { x0, z0, size }: another square than the ground's -- N1 new island's)
+    const size = at?.size ?? T.GROUND.size; const box = { x0: at?.x0 ?? -size / 2, z0: at?.z0 ?? -size / 2, size, res };
     const { curves, paintable } = paintedWalks(T);
     const field = buildPathField(curves, { ...box, keep: paintable }); const join = buildJunctionField(junctionsOf(curves), box);
     const a = new Uint8Array(res * res * 3); const b = new Uint8Array(res * res * 3);
@@ -111,8 +111,8 @@
   // A filtered texel between the road and none reads a mixed R -- so where, is told by G alone. Not painted on a bridge or
   // 대청마당's paving (each has its own floor) nor out on the sea
   const ROAD_RANGE = 5; const MASK = 4.4; /* (±5 m in 8 bits: 3.9 cm a step -- 10 m showed steps along a bend's lines) */
-  function buildRoadMap(T, X, res = 1024) {
-    const size = T.GROUND.size; const x0 = -size / 2; const z0 = -size / 2; const cell = size / res; const n = res * res;
+  function buildRoadMap(T, X, res = 1024, at = null) {
+    const size = at?.size ?? T.GROUND.size; const x0 = at?.x0 ?? -size / 2; const z0 = at?.z0 ?? -size / 2; const cell = size / res; const n = res * res;
     const out = new Uint8Array(n * 3); const best = new Float32Array(n).fill(Infinity); for (let k = 0; k < n; k += 1) out[k * 3] = 255;
     const P = T.dalmaru?.PLAZA; const plazaDist = P ? (x, z) => Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1) : () => 1;
     const keep = (x, z) => !T.onBridge(x, z) && plazaDist(x, z) >= -0.2 && T.coastDist(x, z) > -1.5;

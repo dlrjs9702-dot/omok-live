@@ -14,8 +14,8 @@ function noise(x, z) {
   return (hash(i, j) * (1 - ux) + hash(i + 1, j) * ux) * (1 - uz) + (hash(i, j + 1) * (1 - ux) + hash(i + 1, j + 1) * ux) * uz;
 }
 
-function buildCoverMaps(T, res = 1024) {
-  const size = T.GROUND.size; const x0 = -size / 2; const z0 = -size / 2; const cell = size / res; const n = res * res;
+function buildCoverMaps(T, res = 1024, box = null) { // (box { x0, z0, size }: another square than the ground's -- N1 new island's)
+  const size = box?.size ?? T.GROUND.size; const x0 = box?.x0 ?? -size / 2; const z0 = box?.z0 ?? -size / 2; const cell = size / res; const n = res * res;
   const P = T.dalmaru.PLAZA; const plazaDist = (x, z) => Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1);
   // (v1.10.230: the ground 590 m across -- the open sea, 16 m and more out, is sand everywhere and rock where a cliff's band
   // runs over it; worked out at a glance, its height left alone. The same bytes as before, a quarter of the work)

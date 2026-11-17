@@ -19,7 +19,9 @@ test('땅에 칠하는 길: 길 그림은 칠할 수 있는 곳에만, 갈림길
   const { curves, paintable } = P.paintedWalks(T);
   assert.ok(curves.length > 30 && curves.every((c) => c.pts.slice(0, -1).every(([x, z]) => paintable(x, z)))); // (a hall's way ends on the paving's rim)
   const { a, b, box } = P.buildPathMaps(T, 1024); /* (the game's own resolution: a trail is 1.4 m wide) */ const cell = box.size / box.res;
-  const at = (x, z) => { const i = Math.floor((x - box.x0) / cell); const j = Math.floor((z - box.z0) / cell); return { inside: a[(j * box.res + i) * 3], tier: b[(j * box.res + i) * 3], join: b[(j * box.res + i) * 3 + 1] }; };
+  const at0 = (x, z) => { const i = Math.floor((x - box.x0) / cell); const j = Math.floor((z - box.z0) / cell); return { inside: a[(j * box.res + i) * 3], tier: b[(j * box.res + i) * 3], join: b[(j * box.res + i) * 3 + 1] }; };
+  /* (N1 새 섬: its walks on its own maps' square, GROUND2 -- read there) */ const G2 = T.GROUND2; const m2 = G2 ? P.buildPathMaps(T, 768, G2) : null;
+  const at = (x, z) => { const out = x < box.x0 || z < box.z0 || x >= box.x0 + box.size || z >= box.z0 + box.size || (G2 && T.isle2Cell(x, z)); if (!out || !m2) return at0(x, z); const c2 = m2.box.size / m2.box.res; const i = Math.floor((x - m2.box.x0) / c2); const j = Math.floor((z - m2.box.z0) / c2); return { inside: m2.a[(j * m2.box.res + i) * 3], tier: m2.b[(j * m2.box.res + i) * 3], join: m2.b[(j * m2.box.res + i) * 3 + 1] }; };
   // every walk is painted along its middle (its own tier, or a wider walk's where the two run together)
   for (const c of curves) for (const [x, z] of c.pts.filter((_, k) => k % 7 === 3)) { const v = at(x, z); assert.ok(v.inside > 127 && v.tier > 0, `${c.tier} ${x.toFixed(1)},${z.toFixed(1)}`); }
   const joins = P.junctionsOf(curves); assert.ok(joins.length >= 8);

@@ -130,3 +130,32 @@ test('자동 다리: 양 끝이 각자 둑 높이에 닿는다 (단차 10cm 미�
     assert.ok(T.heightAt(b.x, b.z) > Math.max(b.e0, b.e1) + 0.3);
   }
 });
+
+// N1 새 섬 (gamecenter-notes docs/island-expansion-20261115.md §8, 163A~166A): over the sea east of the village, two thirds of
+// this island's land; 새 섬다리 from shore to shore; its walks walkable all along (none steeper than 0.6) and its creek's water
+// beside them; the creek fished as a river; its wood as many as its land (each marked isle2, the main island's counts kept);
+// the server's bound past its east end; its own ground square on the main ground's lattice
+test('N1 새 섬: 땅 넓이 2/3, 새 섬다리 양끝 뭍, 길 모두 걸을 수 있음, 개울 물·낚시, 숲 isle2, 서버 범위 540, 땅 그물 격자', { skip }, () => {
+  const D = T.dalmaru; const I = D.NEW_ISLE;
+  let area = 0; for (let x = 200; x < 530; x += 2.5) for (let z = 60; z < 390; z += 2.5) if (D.newIsleCoast(x, z) > 0) area += 6.25;
+  assert.ok(area > 62000 && area < 70000, `area ${area}`);
+  const br = T.bridges.find((b) => b.isle2); assert.ok(br, 'the bridge');
+  for (const s of [-1, 1]) { const x = br.x + s * (br.half - 1); assert.ok(D.coastDist(x, br.z) > 0, `end ${x} on land`); }
+  assert.ok(T.walkable(br.x, br.z) && T.heightAt(br.x, br.z) > 2, 'over the water on its deck');
+  const walks = T.walkCurves.filter((w) => w.pts.some(([x]) => x > 150));
+  assert.ok(walks.length >= 6, `${walks.length} walks`);
+  for (const w of walks) for (const [x, z] of w.pts) { assert.ok(T.walkable(x, z), `walk ${x.toFixed(1)},${z.toFixed(1)}`); if (!T.onBridge(x, z)) assert.ok(D.slopeAt(x, z) < 0.6, `steep ${x.toFixed(1)},${z.toFixed(1)}`); }
+  const [cx, cz] = D.CREEK.pts[2]; assert.ok(D.inCreek(cx, cz) && !T.walkable(cx, cz), 'the creek is water');
+  assert.ok(D.CREEK.pts.every(([x, z], k, a) => !k || D.ground(x, z) < D.ground(...a[k - 1])), 'the creek runs down');
+  assert.equal(T.fishWater(cx + 2.6, cz - 1.5), 'river');
+  assert.ok(Math.abs(T.heightAt(I.peak.x, I.peak.z) - 43.7) < 0.5 && Math.abs(T.heightAt(I.camp.x, I.camp.z) - I.camp.h) < 0.01, 'the peak and the camp ground');
+  const N = T.nature(); const on2 = (a) => a.filter((o) => o.isle2);
+  assert.ok(on2(N.trees).length >= 600 && on2(N.bushes).length >= 500 && on2(N.rocks).length >= 160 && on2(N.grass).length >= 1000, JSON.stringify([on2(N.trees).length, on2(N.bushes).length, on2(N.rocks).length]));
+  assert.ok([...N.trees, ...N.bushes, ...N.rocks].every((o) => Boolean(o.isle2) === D.newIsleCoast(o.x, o.z) > 0), 'isle2 exactly on it');
+  assert.ok(N.trees.filter((t) => !t.isle2).length >= 360 && N.bushes.filter((b) => !b.isle2).length >= 600, 'the main island kept');
+  assert.equal(T.harvestTrees().some((t) => D.newIsleCoast(t.x, t.z) > 0), false, 'no fruit there (N2)');
+  assert.equal(T.ISLAND_RADIUS, 540);
+  const G = T.GROUND2; assert.equal((G.x0 + 295) % 2.5, 0); assert.equal((G.z0 + 295) % 2.5, 0); assert.equal(G.size / G.seg, 2.5);
+  assert.ok(T.isle2Cell(I.x, I.z) && !T.isle2Cell(0, 0) && !T.isle2Cell(150, 236), 'its cells');
+  assert.ok(T.AREAS.newIsle && T.AREAS.newIsle.label === D.NAMES.newIsle);
+});

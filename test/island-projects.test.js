@@ -129,7 +129,7 @@ test('강 어귀 다리(224): 잔치마루 길에서 다리까지 길, 다리 �
   assert.ok(W > 0);
   const walk = T.walkCurves.find((w) => Math.hypot(w.pts[0][0] - 115.2, w.pts[0][1] - 9.3) < 0.5); assert.ok(walk, '다리로 가는 길'); assert.equal(walk.w, 2.8);
   const end = walk.pts[walk.pts.length - 1]; assert.ok(Math.hypot(end[0] - (B.x + B.ux * B.half), end[1] - (B.z + B.uz * B.half)) < 2.5, '길 끝이 다리 남쪽 끝');
-  assert.equal(T.bridges.filter((b) => !b.project).length, 4, '길이 강을 건너지 않음: 저절로 생기는 다리 없음');
+  assert.equal(T.bridges.filter((b) => !b.project && b.x < 150).length, 4, '길이 강을 건너지 않음: 저절로 생기는 다리 없음'); /* (N1: 새 섬다리 and its creek's footbridge apart) */
   assert.equal(reach(), false, '열리기 전엔 둔덕에 못 감');
   const e = P.bridgeEntry(T); T.bridges.push(e);
   try { assert.equal(reach(), true, '열리면 다리로 건너감'); } finally { T.bridges.splice(T.bridges.indexOf(e), 1); }

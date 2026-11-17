@@ -42,6 +42,14 @@
     const s = smooth(240, 262, z); const n = 1 - smooth(204, 222, z); const w = 1 - smooth(-140, -120, x); const e = smooth(140, 160, x);
     return s * (4.5 * Math.sin(x * 0.058 + 0.8) - 7 * Math.exp(-(((x - 138) / 13) ** 2))) + n * 1.8 * Math.sin(x * 0.05 + 2) + w * 3.5 * Math.sin(z * 0.075 + 1.3) + e * 4 * Math.sin(z * 0.07 + 0.4);
   };
+  // N1 새 섬 (notes docs/island-expansion-20261115.md §8, 163A~166A; 사용자 「자연 구역」): over the sea east of the village, the
+  // island two thirds the size of this one -- its own coast, a peak (전망대), a south hill, a sea bluff on its east (돌돔), a
+  // camp ground's flat, a creek from a spring on the peak's north-west flank to the north-west shore; the bridge to it at z 226
+  const NEW_ISLE = Object.freeze({ x: 365, z: 226, r: 145, peak: { x: 393, z: 212, h: 42, s: 70 }, hill: { x: 327, z: 312, h: 14, s: 34 }, bluff: { x: 497, z: 214, h: 13, s: 30 }, camp: { x: 259, z: 250, r: 18, h: 3 }, bridgeZ: 226 });
+  const CREEK = Object.freeze({ name: '새 섬 개울', w: 2.4, pts: [[363, 176], [341, 160], [319, 150], [297, 136], [279, 118], [265, 104]] });
+  const newIsleR = (th) => NEW_ISLE.r + 4 * Math.sin(3 * th + 0.5) + 2.5 * Math.sin(7 * th + 1.1) + 1.2 * Math.sin(13 * th);
+  /* (+ on its land; far off, a bound -- its coast wobbles 7.7 m at most) */
+  const newIsleCoast = (x, z) => { const dx = x - NEW_ISLE.x; const dz = z - NEW_ISLE.z; const d = Math.sqrt(dx * dx + dz * dz); return d > NEW_ISLE.r + 12 ? NEW_ISLE.r + 8 - d : newIsleR(Math.atan2(dz, dx)) - d; };
   const smax = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.max(a, b) + (h * h * k) / 4; }; // (a soft union: the neck meets the isle and the field in a curve)
   const RIDGE = { a0: (184 * Math.PI) / 180, a1: (356 * Math.PI) / 180, inner: 128, top: 22 }; // 달마루 능선: angles round the north, the cliff's foot radius, the ridge's height
   const PLAZA = { x: 0, z: -84, hw: 44, d0: -112, d1: -52, h: 1.2 }; // 대청마당: a terrace before the cliff (half width, north and south edges)
@@ -68,9 +76,10 @@
     // (the village counts only where it could: its box's distance bounds it from above -- the wobble 2.3 and the soft union's 2.5
     // at most -- and the soft union is the isle itself once the village is 12 below it; the same answer, no seam, a third of the cost)
     const ox = Math.max(VILLAGE.x0 - x, 0, x - VILLAGE.x1); const oz = Math.max(NECK.z0 - NECK.hw - z, 0, z - VILLAGE.z1);
-    if (11 - Math.hypot(ox, oz) <= isle - 12) return Math.max(crescent, isle, cape); // (the bends 8.5 at most, the soft union 2.5)
+    const isle2 = newIsleCoast(x, z); // (N1 새 섬)
+    if (11 - Math.hypot(ox, oz) <= isle - 12) return Math.max(crescent, isle, cape, isle2); // (the bends 8.5 at most, the soft union 2.5)
     const village = smax(-villageDist(x, z) + villageWob(x, z), -neckDist(x, z) + 1.2 * Math.sin(z * 0.09), 10);
-    return Math.max(crescent, smax(isle, village, 12), cape);
+    return Math.max(crescent, smax(isle, village, 12), cape, isle2);
   }
   const inBay = (x, z) => Math.hypot(x, z - BAY_Z) < bayR(Math.atan2(z - BAY_Z, x)) && Math.hypot(x, z) < outerR(Math.atan2(z, x)) + 4 && z < TIP_Z;
 
@@ -130,9 +139,22 @@
     return add;
   }
   const landHeight = lastOf(landHeightOf);
+  // N1 새 섬's own ground (the review's formula, §8-2): fields rising from the shore, the peak, hill and bluff as round rises,
+  // the camp ground flat at 3 m (blended over 14 m), its beaches 7 m of sand -- but where the land stands over 6 m, a 1.2 m
+  // drop (the bluff's sea cliff); the creek's bed 0.7 m down, its banks over 5 m
+  const creekDist = (x, z) => lineDist(x, z, CREEK.pts) - CREEK.w / 2;
+  function newIsleHeight(x, z, cd) {
+    let h = 0.6 + 0.9 * smooth(0, 40, cd) + 0.3 * Math.sin(x * 0.07) * Math.cos(z * 0.06);
+    for (const p of [NEW_ISLE.peak, NEW_ISLE.hill, NEW_ISLE.bluff]) { const dx = x - p.x; const dz = z - p.z; h += p.h * Math.exp(-(dx * dx + dz * dz) / (p.s * p.s)); }
+    const C = NEW_ISLE.camp; const dc = Math.hypot(x - C.x, z - C.z); if (dc < C.r + 14) h = lerp(C.h, h, smooth(C.r, C.r + 14, dc));
+    const beach = h > 6 ? 1.2 : 7; if (cd < beach) h = lerp(SEA - 0.3, h, cd / beach);
+    const cr = lineDist(x, z, CREEK.pts); if (cr < 5) h -= 0.7 * (1 - smooth(1.5, 5, cr));
+    return h;
+  }
   function landHeightOf(x, z) {
     const cd = coastDist(x, z);
     if (cd < 0) return SEA - 0.35 + cd * 0.35; // the sea floor going down
+    if (newIsleCoast(x, z) >= cd) return newIsleHeight(x, z, cd); // (N1: the new island's land -- its own formula)
     const r = Math.hypot(x, z);
     const onIsle = isleDist(x, z) < ISLE.r + 4;
     // the fields: rise gently away from 윤슬만 and the coast, a little roll
@@ -175,7 +197,8 @@
   });
   HEAD_PONDS.push(...FALLS.map((f) => f.pond));
   const inHeadPond = (x, z) => HEAD_PONDS.some((f) => Math.hypot(x - f.x, z - f.z) < f.r + 0.3 && ground(x, z) < f.y);
-  const isWater = (x, z) => ground(x, z) < SEA || inHeadPond(x, z);
+  const inCreek = (x, z) => Math.abs(x - 314) < 60 && Math.abs(z - 140) < 48 && creekDist(x, z) < 0; // (N1 새 섬's creek: its water, over its bed -- a box first)
+  const isWater = (x, z) => ground(x, z) < SEA || inHeadPond(x, z) || inCreek(x, z);
   // walkable: on land above the water, not on the cliff faces (too steep)
   function slopeAt(x, z) { const e = 1; return Math.hypot(ground(x + e, z) - ground(x - e, z), ground(x, z + e) - ground(x, z - e)) / (2 * e); }
   const walkable = (x, z) => !isWater(x, z) && slopeAt(x, z) < 0.9;
@@ -188,6 +211,9 @@
   }
   const BRIDGE_Z = 140; // 윤슬다리 (assets 55 bridge.yunseul, 50 m): centred over the 45 m of water between 툇마루섬 and each cape, 2.5 m on land at each end
   const BRIDGES = [-1, 1].map((sgn) => ({ x: sgn * 59.35, z: BRIDGE_Z, length: 42, ends: [[sgn * 38.35, BRIDGE_Z], [sgn * 80.35, BRIDGE_Z]] })); // (the model is 50 m: drawn to this length)
+  // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
+  // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
+  BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true });
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
   const PLACES = {
@@ -227,8 +253,9 @@
     const x = pr * Math.cos(t) + s.lift * 5.5 * Math.sin(t); const z = pr * Math.sin(t) - s.lift * 5.5 * Math.cos(t); const r = Math.hypot(x, z);
     return { x, z, entry: [x - (x / r) * 7, z - (z / r) * 7] };
   };
-  const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };
+  const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루', newIsle: '새 섬', newBridge: '새 섬다리', camp: '캠핑장', peak: '전망대 봉우리', creek: '새 섬 개울' }; /* (N1: working names till 총괄 names them) */
 
   return { VILLAGE, NECK, villageDist, neckDist, CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
-    coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap };
+    coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap,
+    NEW_ISLE, CREEK, newIsleCoast, creekDist, inCreek };
 }));
