@@ -401,8 +401,21 @@
   // MAX_OFF: stuck in a pocket further than this from the round (props packed together) -- put back on the round.
   // TOP: the fastest an islander is ever drawn going (catching up with its round after stepping round something: a jog)
   const WALKER = { R: 0.42, SEP: 0.9, SWEEP: 0.22, RETURN: 2.5, WARP: 1.5, MAX_OFF: 5, TOP: 4 };
-  function createWalkers({ walkable, solidsNear, poseAt = at }) {
-    const { R, SEP, SWEEP, RETURN, WARP, MAX_OFF, TOP } = WALKER;
+  // 1.10.354 (지형 호출 줄이기): the ground's answer for a point asked again -- the exact (x, z) kept in a small table, nothing made
+  // a call. A frame's walk starts where the last one ended and a blocked step asks its neighbours again; walkable() costs some six
+  // ground evaluations (water, the slope's four, the coast), each boxing numbers. The ground never changes: the same answers.
+  function pointMemo(f, size = 1024) {
+    const xs = new Float64Array(size).fill(NaN); const zs = new Float64Array(size); const vs = new Uint8Array(size);
+    const buf = new Float64Array(2); const bits = new Uint32Array(buf.buffer); const mask = size - 1;
+    const memo = (x, z) => {
+      buf[0] = x; buf[1] = z; let h = Math.imul(bits[0] ^ Math.imul(bits[1], 0x9e3779b1) ^ Math.imul(bits[2], 0x85ebca6b) ^ bits[3], 0xc2b2ae35); h = (h ^ (h >>> 15)) & mask;
+      if (xs[h] === x && zs[h] === z) { memo.hits += 1; return vs[h] === 1; }
+      const v = Boolean(f(x, z)); xs[h] = x; zs[h] = z; vs[h] = v ? 1 : 0; memo.misses += 1; return v;
+    };
+    memo.hits = 0; memo.misses = 0; return memo;
+  }
+  function createWalkers({ walkable: groundWalkable, solidsNear, poseAt = at }) {
+    const { R, SEP, SWEEP, RETURN, WARP, MAX_OFF, TOP } = WALKER; const walkable = pointMemo(groundWalkable); /* (1.10.354) */
     // out of every circle it stands in; a point can be in two (a fence next to a tree), so settle a few times
     function pushOut(x, z, r = R) {
       for (let pass = 0; pass < 3; pass += 1) {
@@ -570,11 +583,11 @@
         if (moved > dt * 0.3) w.heading = Math.atan2(w.x - w.px, w.z - w.pz);
       }
     }
-    return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
+    return { list, add, step, pushOut, move, clear, resyncs: () => resyncs, walkMemo: () => ({ hits: walkable.hits, misses: walkable.misses }) };
   }
 
   // the islanders walking about the island now (X2 선물 배달 picks from these) -- all of them for now; 주민 근무표 changes
   // only this when some keep a shop part of the day
   const walking = () => Array.from({ length: count() }, (_, n) => n);
-  return { get COUNT() { return count(); }, WALKER, round, at, residentAt, walking, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { get COUNT() { return count(); }, WALKER, round, at, residentAt, walking, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, pointMemo /* (1.10.354; tests) */, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

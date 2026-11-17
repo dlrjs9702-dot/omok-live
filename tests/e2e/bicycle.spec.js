@@ -115,6 +115,8 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
       /* (1.10.336 사용자 「택시를 타면 화면이 고정되는데 … 돌아볼 수 있게」: turned in the car, the view stays turned -- by the car's way, not put back behind it) */
       const offCar = () => page.evaluate(() => { const d = window.PlazaDebug(); const v = d.view().yaw - (d.yaw + Math.PI); return Math.atan2(Math.sin(v), Math.cos(v)); });
+      /* (1.10.353 CI: turned before the ride's first frame put the view behind the car and me on its way -- that frame first) */
+      await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.carYaw), { timeout: 15000 }).not.toBe(null);
       const off0 = await offCar(); await page.evaluate(() => window.PlazaDebug().setCamYaw(window.PlazaDebug().view().yaw + 1.6));
       /* (polled: on CI's ~3 frames a second the camera's easing takes a while -- held turned, never put back behind the car) */
       await expect.poll(async () => { const off1 = await offCar(); return Math.abs(Math.atan2(Math.sin(off1 - off0 - 1.6), Math.cos(off1 - off0 - 1.6))); }, { timeout: 6000 }).toBeLessThan(0.35);
