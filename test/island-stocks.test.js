@@ -90,6 +90,29 @@ test('섬 주식 주문: 1주 단위·수수료 0.5%·한 회사 1,000주·하�
   const out = S.order(w, full, { code: found.x.code, side: 'sell', qty: 5 }, found.ms); assert.ok(out.reward > 0, '정리 매매 팔기는 하루 상한과 상관없이'); assert.equal(out.doc.d.n, 20);
 });
 
+test('주식 개편 (1.10.351): 거래 기록 200건·판 거래의 번 돈(평균 산 값)·이번 주·지금까지 합계, 이번 주 번 돈 P, 관심 종목·알림 10개, 회사 정보·소식 그때 값', () => {
+  const m = S.createMarket('o'); const t = at(2, 10, 10); const c = m.view(t).companies.find((x) => x.status === 'active'); const fee = (n) => Math.max(1, Math.ceil(c.price * n * 0.005));
+  const b = S.order(m, {}, { code: c.code, side: 'buy', qty: 10 }, t); const s = S.order(m, b.doc, { code: c.code, side: 'sell', qty: 4 }, t);
+  const basis4 = b.cost - Math.round((b.cost * 6) / 10); assert.equal(s.gain, c.price * 4 - fee(4) - basis4, '판 값 - 평균 산 값(수수료 포함)');
+  assert.deepEqual(s.doc.log.map((e) => [e.side, e.qty, e.price, e.fee]), [['sell', 4, c.price, fee(4)], ['buy', 10, c.price, fee(10)]], '최근 것이 위');
+  assert.equal(s.doc.log[0].name, c.name); assert.equal(s.doc.log[1].gain, undefined, '산 것은 번 돈 없음');
+  const v = S.mine(m, s.doc, t); assert.deepEqual(v.sums.week, { gain: s.gain, fee: fee(10) + fee(4) }); assert.deepEqual(v.sums.all, v.sums.week);
+  assert.equal(S.mine(m, s.doc, at(9, 10, 10)).sums.week.gain, 0, '다음 주는 이번 주 합계 0'); assert.equal(S.mine(m, s.doc, at(9, 10, 10)).sums.all.gain, s.gain, '지금까지는 그대로');
+  let doc = s.doc; for (let i = 0; i < 205; i += 1) doc = S.order(m, doc, { code: c.code, side: i % 2 ? 'sell' : 'buy', qty: 1 }, t).doc; assert.equal(doc.log.length, S.LOG_MAX, '200건까지');
+  // ⑥ the week's points: the same basis as the return
+  const r = S.weekReturn(m, b.doc, t); const g = S.weekGain(m, b.doc, t); assert.ok(Number.isFinite(r) && Number.isInteger(g)); assert.equal(Math.sign(g), Math.sign(Math.round(r * 1000)) || 0);
+  // ④ stars and alerts
+  let wdoc = S.watchSet({}, { code: c.code, star: true }).doc; assert.deepEqual(wdoc.star, [c.code]);
+  wdoc = S.watchSet(wdoc, { code: c.code, above: 5000 }).doc; assert.deepEqual(wdoc.alerts[c.code], { above: 5000 });
+  assert.equal(S.watchSet(wdoc, { code: c.code, above: 'x' }).error, 'ALERT'); assert.equal(S.watchSet(wdoc, { code: 'nope' }).error, 'GONE');
+  for (let i = 0; i < 9; i += 1) wdoc = S.watchSet(wdoc, { code: `${(i + 1) % 30}.9`, below: 100 }).doc; assert.equal(Object.keys(wdoc.alerts).length, 10);
+  assert.equal(S.watchSet(wdoc, { code: '29.9', below: 100 }).error, 'ALERT_MAX', '10개까지'); assert.ok(S.watchSet(wdoc, { code: c.code, below: 50 }).doc, '있는 것 고치기는 됨');
+  assert.equal(Object.keys(S.watchSet(wdoc, { code: c.code, clear: true }).doc.alerts).length, 9);
+  // ⑤ the company: industry, listing day, the last three news; ① a news line's price then
+  const v2 = m.view(at(6, 20)); const cc = v2.companies.find((x) => x.status === 'active'); assert.ok(cc.industry, '업종'); assert.equal(cc.listedAt, S.tickTime(0)); assert.ok(cc.recent.length <= 3);
+  for (const x of S.createMarket('o').newsOf(at(6, 20))) assert.ok(x.price > 0, '소식 그때 값');
+});
+
 test('Codex 311~320: 시세는 서버 키로(키마다 다름, 키 없으면 안 만듦) · 종목 코드는 정규형만(1,000주 우회 막힘) · 늦은 주간 정산은 그 주 자료로', () => {
   // #1: the key makes the prices; no public default
   assert.throws(() => S.createMarket(), TypeError);

@@ -44,10 +44,24 @@ test('섬 증권거래소: 문으로 들어가 보드 SPACE → 시세 30종 →
     await expect(page.locator('.stocksCard').locator('.lookMeta').filter({ hasText: '가진 주식 3주' })).toBeVisible({ timeout: 15000 });
     await page.locator('.stocksCard .stocksQtyInput').fill('1'); await page.locator('.stocksCard').getByRole('button', { name: '팔기', exact: true }).click();
     await expect(page.locator('.stocksCard').locator('.lookMeta').filter({ hasText: '가진 주식 2주' })).toBeVisible({ timeout: 15000 });
+    // (1.10.351 주식 개편) ⑤ the card (업종 · 상장일), ③ my average line, ④ the star and an alert kept
+    await expect(page.locator('.stocksCard .stocksInfo')).toContainText('상장'); await expect(page.locator('.stocksCard .stockAvgLine').first()).toBeAttached();
+    await page.locator('.stocksCard').getByRole('button', { name: '☆ 관심 종목에 넣기' }).click(); await expect(page.locator('.stocksCard').getByRole('button', { name: '★ 관심 종목' })).toBeVisible({ timeout: 15000 });
+    await page.locator('.stocksCard .stocksAlertAbove').fill(String(price * 3)); await page.locator('.stocksCard .stocksAlert').getByRole('button', { name: '저장' }).click();
+    await expect(page.locator('.stocksCard .stocksAlertAbove')).toHaveValue(String(price * 3), { timeout: 15000 });
+    await shot(page, 'exchange-company-card');
+    // ④ starred first on the board; ② 거래 기록: the sale and the buy, the sums
+    await page.locator('.stocksCard').getByRole('button', { name: '시세' }).click(); await expect(page.locator('.stocksCard .stocksRow').first()).toHaveClass(/starred/);
+    await page.locator('.stocksCard').getByRole('button', { name: '거래 기록' }).click(); await expect(page.locator('.stocksCard .stocksLog')).toHaveCount(2); await expect(page.locator('.stocksCard .stocksLog').first()).toContainText('팔기 1주');
+    await expect(page.locator('.stocksCard .stocksSums')).toContainText('이번 주'); await expect(page.locator('.stocksCard')).toContainText('이번 업데이트부터 기록돼요'); await shot(page, 'exchange-log');
+    // ① 섬 소식: whole names (not cut, the phone too), pressed open
+    await page.locator('.stocksCard').getByRole('button', { name: '섬 소식' }).click(); const newsRows = page.locator('.stocksCard .stocksNews');
+    if (await newsRows.count()) { expect(await page.locator('.stocksCard .stocksNewsName').evaluateAll((els) => els.every((e) => e.scrollWidth <= e.clientWidth + 1))).toBe(true); await newsRows.first().click(); await expect(page.locator('.stocksCard .stocksNewsMore').first()).toBeVisible(); await expect(page.locator('.stocksCard .stocksNewsMore').first()).toContainText('그때 값'); await shot(page, 'exchange-news'); }
     // 내 주식, the ranking
     await page.locator('.stocksCard').getByRole('button', { name: '내 주식' }).click(); await expect(page.locator('.stocksCard .stocksRow')).toHaveCount(1);
     await shot(page, 'exchange-mine');
     await page.locator('.stocksCard').getByRole('button', { name: '이번 주 순위' }).click(); await expect(page.locator('.stocksCard .stocksRank.mine').first()).toBeVisible();
+    await expect(page.locator('.stocksCard .stocksRank.mine').first()).toContainText(/[▲▼–] [\d,]+P/); /* (1.10.351 ⑥: the points beside) */
     await page.locator('.stocksCard').getByRole('button', { name: '닫기' }).click();
     // 테드 창
     await page.evaluate(([lx, lz]) => { const w = window.IslandExchange.world(lx, lz); window.PlazaDebug().teleport(w.x, w.z); }, [EX.TALK.lx, EX.TALK.lz - 0.2]);
