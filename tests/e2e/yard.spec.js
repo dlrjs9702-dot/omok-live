@@ -233,6 +233,23 @@ test('마당 농사·집 손보기: 텃밭 칸 SPACE → 심기 → 다 자라�
     const weeds0 = await bag('weed'); await goTo(weed, '잡초 뽑기'); await press();
     await expect.poll(() => bag('weed'), { timeout: 15000 }).toBe(weeds0 + 1);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().yardFarm().doors.filter((k) => k.startsWith('yardweed:')).length), { timeout: 20000 }).toBe(2);
+    // 1.10.348 4b: two weeks missed -- 낡음: 139's overlay on the house, its leaning fence blocks; 145's cockroaches about it (8),
+    // their legs turned; 「벌레 흐리게」 (☰) the dots; 부서짐: the next overlay, the December dressing off, 15
+    const F = require('../../public/plaza/island-farm.js'); const size = H.stageOf(1).house;
+    await expect.poll(() => page.evaluate((id) => window.PlazaDebug().houseLook(id), lot), { timeout: 30000 }).toMatchObject({ decay: 'worn', decayModel: true });
+    { const [x, z] = F.decaySolids(size, 'worn')[1]; const c = Math.cos(L.yaw); const s = Math.sin(L.yaw); expect(await page.evaluate(([px, pz]) => window.PlazaDebug().solidAt(px, pz, 0), [L.x + x * c + z * s, L.z - x * s + z * c])).toBe(true); }
+    await expect.poll(() => page.evaluate((k) => window.PlazaDebug().bugs().find((s) => s.key === k), `yard:${lot}`), { timeout: 20000 }).toMatchObject({ n: 8, dim: false });
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().bugs()[0]?.legs || 0), { timeout: 30000 }).toBeGreaterThan(0);
+    await shot('worn-bugs', 2500);
+    await page.evaluate(() => { const t = document.getElementById('bugsDimToggle'); t.checked = true; t.dispatchEvent(new Event('change')); });
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().bugs()[0]?.dim), { timeout: 10000 }).toBe(true);
+    // (「오늘 알림」, the day's first look -- off in tests unless asked: asked here, the homes broadcast's look brings it up)
+    await page.evaluate(() => { document.querySelectorAll('dialog[open]').forEach((d) => d.close()); localStorage.setItem('gc.testTodayNotice', '1'); for (const k of Object.keys(localStorage)) if (k.startsWith('gc.todayNotice.')) localStorage.removeItem(k); });
+    await post(request, '/api/test/home/farm-time', token, { level: 3 }); /* (its 'homes' broadcast draws it again) */
+    await expect.poll(() => page.evaluate((id) => window.PlazaDebug().houseLook(id), lot), { timeout: 30000 }).toMatchObject({ decay: 'broken', dress: false });
+    await expect(page.locator('#plazaDialog .todayNotice')).toContainText('내 집 · 부서짐', { timeout: 20000 }); await expect(page.locator('#plazaDialog .todayNotice')).toContainText('수리비 20,000P'); await shot('today-notice', 800);
+    await page.locator('#plazaDialog .todayNotice button', { hasText: '닫기' }).click();
+    await expect.poll(() => page.evaluate((k) => window.PlazaDebug().bugs().find((s) => s.key === k)?.n, `yard:${lot}`), { timeout: 20000 }).toBe(15);
     await expectNoScriptError(page);
   } finally { if (lot) await post(request, '/api/test/home/release', token, { lot }).catch(() => {}); await a.context.close(); }
 });

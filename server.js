@@ -1824,13 +1824,25 @@ async function upkeepNow(owner, h) {
     await pointStore.questApply(owner, 'mail', (d) => ((d.letters || []).some((l) => l.id === `upkeep-${week}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `upkeep-${week}`, from: 'office', fromName: '관공서', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {});
     const out = await upkeepApply(owner, (d) => (d.letter === week ? null : { doc: { ...d, letter: week } })).catch(() => null); doc = out?.doc || doc;
   }
+  { // (1.10.348 4b: the wear up to this week -- kept, and a 관공서 letter for each step down)
+    const w = IslandFarm.wearOf(doc, now);
+    if (doc.since && (w.levelWeek !== doc.levelWeek || w.level !== (doc.level || 0))) {
+      const out = await upkeepApply(owner, (d) => { const x = IslandFarm.wearOf(d, now); return x.levelWeek === d.levelWeek && x.level === (d.level || 0) ? null : { doc: { ...d, level: x.level, levelWeek: x.levelWeek } }; }).catch(() => null); doc = out?.doc || doc;
+      for (const dr of w.dropped) { const what = IslandFarm.WEAR[dr.level]; const hurt = dr.level >= 3 ? ' 이제 집에 들어갈 수 없어요.' : dr.level >= 2 ? ' 손님을 받을 수 없고 꾸미기도 잠겨요.' : '';
+        const text = `${dr.week}부터 한 주 손보기를 하지 않아서 집이 「${what}」이 됐어요.${hurt} 집 문 앞 손보기 상자에서 수리 재료를 넣으면 한 단계씩 고쳐져요.`;
+        await pointStore.questApply(owner, 'mail', (d) => ((d.letters || []).some((l) => l.id === `wear-${dr.week}-${dr.level}`) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: `wear-${dr.week}-${dr.level}`, from: 'office', fromName: '관공서', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {}); }
+    }
+  }
   return { doc, weeds: doc.weeds?.list || [] };
 }
+// (1.10.348) a house's wear now: 0 깨끗함 ... 3 부서짐
+async function houseWear(owner) { const h = await homeOf(owner); if (!h) return 0; const up = await upkeepNow(owner, h); return IslandFarm.wearOf(up.doc, nowMs()).level; }
+const WEAR_LOCK = '집이 낡아서 꾸미기가 잠겼어요. 집 문 앞 손보기 상자에서 고쳐 주세요.';
 // a lot's farm and upkeep as everyone sees them: the beds' cells, 허름함, the yard's weeds
 async function farmView(owner, h) {
   const beds = (await farmDocOf(owner)).beds || {}; const up = await upkeepNow(owner, h);
   return { farm: Object.fromEntries((h?.yard || []).filter((p) => IslandYard.shapeOf(p.id) === 'farm_bed').map((p) => [p.uid, (beds[p.uid] || []).map((c) => (c ? { crop: c.crop, at: c.at, fed: c.fed || null } : null))])),
-    shabby: IslandFarm.upkeepState(up.doc, homeStage(h).n, nowMs()).shabby, weeds: up.weeds };
+    shabby: IslandFarm.upkeepState(up.doc, homeStage(h).n, nowMs()).shabby, wear: IslandFarm.wearOf(up.doc, nowMs()).level /* (1.10.348: everyone sees its look) */, weeds: up.weeds };
 }
 // 친구 (docs/friends-20261020.md): world 'friends:<account>' = { list: [account], incoming: [{ from, at }] }; both say
 // yes; 50 at most; accounts that log in only (not an entry file's guest)
@@ -4934,7 +4946,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.347' });
+    return sendJson(res, 200, { ok: true, version: '1.10.348' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5286,7 +5298,7 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/farm-time' && req.method === 'POST') { // v1.10.318: my beds' cells as if sown `ms` earlier; my upkeep as if begun `weeks` weeks ago (nothing done since), my yard last looked at `days` days ago
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req); const ms = Number(body.ms) || 0; const now = nowMs();
     if (ms) await farmApply(account, (d) => ({ doc: { ...d, beds: Object.fromEntries(Object.entries(d.beds || {}).map(([u, cells]) => [u, cells.map((c) => (c ? { ...c, at: c.at - ms, ...(c.fed ? { fed: c.fed - ms } : {}) } : c))])) } }));
-    if (body.weeks || body.days) await upkeepApply(account, (d) => ({ doc: { ...d, ...(body.weeks ? { since: IslandFarm.weekOf(now - Number(body.weeks) * 7 * 86400000), week: null, given: {}, done: [], letter: null } : {}), ...(body.days ? { weeds: { list: d.weeds?.list || [], day: IslandFarm.dayOf(now - Number(body.days) * 86400000) } } : {}) } }));
+    if (body.weeks || body.days || Number.isInteger(body.level)) await upkeepApply(account, (d) => ({ doc: { ...d, ...(body.weeks ? { since: IslandFarm.weekOf(now - Number(body.weeks) * 7 * 86400000), levelWeek: IslandFarm.weekOf(now - Number(body.weeks) * 7 * 86400000), level: 0, week: null, given: {}, done: [], letter: null } : {}), ...(Number.isInteger(body.level) ? { level: body.level, levelWeek: IslandFarm.weekOf(now), since: d.since || IslandFarm.weekOf(now) } : {}), /* (1.10.348: the wear counted from then; or set) */ ...(body.days ? { weeds: { list: d.weeds?.list || [], day: IslandFarm.dayOf(now - Number(body.days) * 86400000) } } : {}) } }));
     const h = await homeOf(account); if (h?.lot) broadcastIsland('homes', { lot: h.lot }); /* (every screen draws it again) */
     return sendJson(res, 200, { ok: true });
   }
@@ -6464,6 +6476,9 @@ async function requestHandler(req, res) {
     const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
     if (!at || homeInside.has(session.token) || storeInside.has(session.token) || townhallInside.has(session.token) || Math.hypot(at.x - d.x, at.z - d.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '문 앞에서 다시 시도해 주세요.');
     if (!await mayVisit(owner, account)) return sendError(res, 403, 'NOT_WELCOME', '지금은 손님을 받지 않는 집이에요.');
+    { const wear = await houseWear(owner); /* (1.10.348 4b: 부서짐 -- nobody in; 낡음 -- no guests) */
+      if (wear >= 3) return sendError(res, 409, 'HOUSE_BROKEN', owner === account ? '집이 부서져서 들어갈 수 없어요. 집 문 앞 손보기 상자에서 고쳐 주세요.' : '부서진 집이라 들어갈 수 없어요.');
+      if (wear >= 2 && owner !== account) return sendError(res, 409, 'HOUSE_WORN', '낡은 집이라 지금은 손님을 받지 않아요.'); }
     freeSeat(session.token); homeInside.set(session.token, owner); homeFloor.delete(session.token); // (in by the door: the 1층)
     const en = IslandHome.entryOf((await homeOf(owner))?.stage); const spot = IslandHome.world(lot, en[0], en[1]);
     plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'home', home: lot.id, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
@@ -6501,6 +6516,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/home/place' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     if (homeInside.get(session.token) !== account) return sendError(res, 409, 'NOT_INSIDE', '내 집 안에서만 할 수 있어요.');
+    if (await houseWear(account) >= 2) return sendError(res, 409, 'HOUSE_WORN', WEAR_LOCK); /* (1.10.348 4b: 낡음 -- 꾸미기 잠김) */
     const body = await parseJson(req);
     return worldEdit(async () => {
       const h = await homeOf(account); const owned = (await pointStore.worldValue(`furniture:${account}`)) || [];
@@ -6533,6 +6549,7 @@ async function requestHandler(req, res) {
   // turned) or put back; the same rules as the screen (island-yard.js), and how many the yard's level holds
   if (pathname === '/api/home/yard' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (await houseWear(account) >= 2) return sendError(res, 409, 'HOUSE_WORN', WEAR_LOCK); /* (1.10.348 4b: the yard's decorating too) */
     const body = await parseJson(req); const at = plazaPresence.get(session.token);
     return worldEdit(async () => {
       const h = await homeOf(account); const lot = h && IslandHome.lotById(h.lot); if (!lot) return sendError(res, 404, 'NO_HOME', '아직 집이 없어요.');
@@ -6954,6 +6971,20 @@ async function requestHandler(req, res) {
       broadcastIsland('homes', { lot: lot.id });
       return sendJson(res, 200, { ok: true, put: out.n, upkeep: IslandFarm.upkeepState(out.doc, stage, now), reward: out.finished ? reward : 0, bag: out.bag });
     }
+    if (body.action === 'repair') { // (1.10.348 4b 81A: one step up -- the kinds taken in one step, 부서짐's 수리비 with them; 143A: bought ones count)
+      const out = await upkeepApply(account, (d, bag) => {
+        const w = IslandFarm.wearOf(d, now); const need = IslandFarm.repairNeed(w.level); if (!need) return { error: 'CLEAN' }; const take = []; const short = [];
+        for (const [kind, count] of Object.entries(need.items)) { let left = count; for (const id of IslandFarm.REPAIR_ITEMS[kind]) { const k = Math.min(left, bagCount(bag, id)); if (k > 0) { take.push({ itemId: id, qty: k }); left -= k; } } if (left > 0) short.push(`${IslandFarm.REPAIR_NAMES[kind]} ${left}`); }
+        if (short.length) return { error: 'MISSING', short };
+        return { doc: { ...d, level: w.level - 1, levelWeek: w.levelWeek }, take, ...(need.points ? { cost: need.points, payKey: `repair:${account}:${w.levelWeek}:${w.level}`, reason: 'house_repair' } : {}), from: w.level };
+      });
+      if (out?.error === 'CLEAN') return sendError(res, 409, 'HOUSE_CLEAN', '고칠 곳이 없는 깨끗한 집이에요.');
+      if (out?.error === 'MISSING') return sendError(res, 409, 'REPAIR_MISSING', `수리 재료가 모자라요: ${out.short.join(' · ')}`);
+      if (out?.error === 'POINTS') return sendError(res, 409, 'INSUFFICIENT_POINTS', '수리비가 모자라요.');
+      if (!out?.doc) return sendError(res, 409, 'REPAIR_FAILED', '고치지 못했어요. 다시 시도해 주세요.');
+      if (out.cost) notifyPointsChanged([account]); broadcastIsland('homes', { lot: lot.id });
+      return sendJson(res, 200, { ok: true, from: IslandFarm.WEAR[out.from], to: IslandFarm.WEAR[out.doc.level], upkeep: IslandFarm.upkeepState(out.doc, stage, now), bag: out.bag });
+    }
     if (body.action === 'craft') {
       const r = IslandFarm.CRAFTS[body.recipe]; if (!r) return sendError(res, 400, 'BAD_RECIPE', '만들 것을 골라 주세요.');
       const [itemId, qty] = Object.entries(r.takes)[0];
@@ -7005,6 +7036,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     return worldEdit(async () => {
       const h = await homeOf(account); if (!h) return sendError(res, 404, 'NO_HOME', '아직 집이 없어요.');
+      if (Object.keys(body).some((k) => k !== 'visit') && await houseWear(account) >= 2) return sendError(res, 409, 'HOUSE_WORN', WEAR_LOCK); /* (1.10.348: the room's look -- 방문 허용 still free) */
       const next = { ...h };
       if (body.visit != null) { if (!IslandHome.VISITS.includes(body.visit)) return sendError(res, 400, 'BAD_STYLE', '방문 허용을 확인해 주세요.'); next.visit = body.visit; }
       for (const [k, list] of [['floor', IslandHome.FLOORS], ['wall', IslandHome.WALLS], ['roof', IslandHome.ROOFS]]) {
@@ -10372,7 +10404,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.347 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.348 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

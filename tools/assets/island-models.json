@@ -14403,6 +14403,116 @@
       "lowSrc": "quarry143:02. Low/quarry-v3/work_lamp_low.glb",
       "lowSha256": "ead48204d7f51e9c311e55639bfc0f58a5d2af6479f902aa9d5584b26fd13cd8",
       "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_broken_house.glb",
+      "src": "decay139:01. High/decay-v1/house_broken_house.glb",
+      "sha256": "545b044f4d5b6d62cbebbaca1c294b426c2e5b289f56ef927b55136e27dabe2c",
+      "lowSrc": "decay139:02. Low/decay-v1/house_broken_house_low.glb",
+      "lowSha256": "fe8e8f575622c2843f159223750a334befcfa99a636d1d5b4f1d4bdac385dfbb",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_broken_hut.glb",
+      "src": "decay139:01. High/decay-v1/house_broken_hut.glb",
+      "sha256": "a77026590d5a9aa322e3db791b879cb17ddc1aba5332684db7cc2e9053ec650c",
+      "lowSrc": "decay139:02. Low/decay-v1/house_broken_hut_low.glb",
+      "lowSha256": "e7a6b72044956c09609395d08487bbb58e97ffb9a86f19a76b6d4e0c28e8408f",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_broken_manor.glb",
+      "src": "decay139:01. High/decay-v1/house_broken_manor.glb",
+      "sha256": "6c1d3e683fc4bbca894774553fad4829e072cd852e606688290b542d0ea474ff",
+      "lowSrc": "decay139:02. Low/decay-v1/house_broken_manor_low.glb",
+      "lowSha256": "a3b82241decb7adb47f7ca130413dda1bfbc7ec7bfc38e693bbf1c82d3367544",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_broken_manor2.glb",
+      "src": "decay139:01. High/decay-v1/house_broken_manor2.glb",
+      "sha256": "f27ac74f72e5827515ee3fa3b8215655b83f21f94836f5fee9c6c27d91c8b23a",
+      "lowSrc": "decay139:02. Low/decay-v1/house_broken_manor2_low.glb",
+      "lowSha256": "c9de4ef02ce4018ae5ad86a65fbca73fa0e6b7771b36076c43fc791507b07992",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_seized_house.glb",
+      "src": "decay139:01. High/decay-v1/house_seized_house.glb",
+      "sha256": "af49cf3453e958c5d94c6ecf692067210691ea3853435190a75e94eee004db90",
+      "lowSrc": "decay139:02. Low/decay-v1/house_seized_house_low.glb",
+      "lowSha256": "15262d1be0c21b16be0ac4ba5412b4761e191eeb3cb1f7f9058609a9528d8ea6",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_seized_hut.glb",
+      "src": "decay139:01. High/decay-v1/house_seized_hut.glb",
+      "sha256": "b729379018950cd2625a46f1099cf850484e128dbf2b2c113af63fd94841ef4c",
+      "lowSrc": "decay139:02. Low/decay-v1/house_seized_hut_low.glb",
+      "lowSha256": "c32ff8ddcbe760b34d61ac807594801c0a12bbe66291b128512f8ab1979dd3dc",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_seized_manor.glb",
+      "src": "decay139:01. High/decay-v1/house_seized_manor.glb",
+      "sha256": "097dcfb420247ca13a8a643882a97fcc53f133a1cb2a76ca003c8ac831fd808f",
+      "lowSrc": "decay139:02. Low/decay-v1/house_seized_manor_low.glb",
+      "lowSha256": "b4c9b43029f7a91c3dbd4068da5c490a1516856a739b68ea80eec81c7c634f34",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_seized_manor2.glb",
+      "src": "decay139:01. High/decay-v1/house_seized_manor2.glb",
+      "sha256": "b4e9eb57d5b371065ee2fafe5988864b981cb1a5a8e0c193eb568c7a6ca73cbb",
+      "lowSrc": "decay139:02. Low/decay-v1/house_seized_manor2_low.glb",
+      "lowSha256": "2ddf557c474d42e41643e99a3c86c511989716751b0c92309b1d62e4dc9663ad",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_worn_house.glb",
+      "src": "decay139:01. High/decay-v1/house_worn_house.glb",
+      "sha256": "578852560fbb270847afbc73fd2afaac2101810c0260616f94ce0255d0cbabd7",
+      "lowSrc": "decay139:02. Low/decay-v1/house_worn_house_low.glb",
+      "lowSha256": "fd1d2fb1782ec73643822335299910759e6fc66b007eb0194260648ebd6bc6ad",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_worn_hut.glb",
+      "src": "decay139:01. High/decay-v1/house_worn_hut.glb",
+      "sha256": "8ccb9f0be088c4cf9a8f823e8665e06e5f3c9bc15b062d8ff72412569282758e",
+      "lowSrc": "decay139:02. Low/decay-v1/house_worn_hut_low.glb",
+      "lowSha256": "49f3eb3388ca56d356a59d8c36cfa4ae815a2dc69788adc21517cf2416cb2425",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_worn_manor.glb",
+      "src": "decay139:01. High/decay-v1/house_worn_manor.glb",
+      "sha256": "55f9b499a87c4e6c2b6ddceb8d90a75b4036850857d864a2286247a862001951",
+      "lowSrc": "decay139:02. Low/decay-v1/house_worn_manor_low.glb",
+      "lowSha256": "c4f458d41ee9609334ab3851642c7c8cf190e820d63c1ccfc62f5855affacd0e",
+      "precompressed": true
+    },
+    {
+      "out": "decay-v1/house_worn_manor2.glb",
+      "src": "decay139:01. High/decay-v1/house_worn_manor2.glb",
+      "sha256": "6919e91b6518f744452861873c9834ba40dbfef3653da0d76b3b820accec9736",
+      "lowSrc": "decay139:02. Low/decay-v1/house_worn_manor2_low.glb",
+      "lowSha256": "2790831637ecf2ee4b74c64a11a5fd2aeb35c1f4bd167fa155354c366940eb0b",
+      "precompressed": true
+    },
+    {
+      "out": "house-bugs-v1/cockroach.glb",
+      "src": "bugs145:01. High/house-bugs-v1/cockroach.glb",
+      "sha256": "e2c452eb115453964cfce46cae94e15b5fe6a69499dde91055d56e2dc2237ce0",
+      "lowSrc": "bugs145:02. Low/house-bugs-v1/cockroach_low.glb",
+      "lowSha256": "15f94bd2501e3c036b1865e713bc3fc8f86ce03e6d3dda1a2ed7b4485254e1b8",
+      "precompressed": true
+    },
+    {
+      "out": "house-bugs-v1/cockroach_dot.glb",
+      "src": "bugs145:01. High/house-bugs-v1/cockroach_dot.glb",
+      "sha256": "0391a2a3a51b8f792fe4dece5050f1736910c1c06177cd4477aa4957a65e2256",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -14514,6 +14624,8 @@
     "den147": "147. Game Island underground den 2026-11-16",
     "ore140": "140. Game Island ores 8 2026-11-16",
     "quarry141": "141. Game Island quarry expansion props 2026-11-16",
-    "quarry143": "143. Game Island quarry development props 2026-11-16"
+    "quarry143": "143. Game Island quarry development props 2026-11-16",
+    "decay139": "139. Game Island house decay overlays 2026-11-16",
+    "bugs145": "145. Game Island house cockroach 2026-11-16"
   }
 }

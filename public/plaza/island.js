@@ -1070,10 +1070,14 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       const h = ground(x, z); if ([[1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue;
       const woods = forestAt(x, z); const r = hash(x, z, 43) * TAU; const s = 0.85 + hash(z, x, 44) * 0.4; const k = hash(x, z, 45);
       if (trees.some((t) => Math.hypot(t.x - x, t.z - z) < 1.3)) continue; // not on a trunk
+      // (1.10.348 문제 기록 11-17 「이것도 너무 잡초같은데」: the fern / shrub cover is 109's plant_low, a fan of leaves like the
+      // weeds -- and weeds grow in the woods' grass too (IslandWeeds.fits keeps only off a tree's round). Only right under a tree
+      // (within 2.4 m of its trunk, in the woods' heart) it stays; elsewhere the low clover clump or flat moss)
+      const underTree = woods > 0.5 && trees.some((t) => Math.hypot(t.x - x, t.z - z) < 2.4);
       if (woods > 0.25) {
         if (k < 0.5) flat.moss.push({ x, z, r, s: s * 1.3 });
-        else if (k < 0.78) low.fern.push({ x, z, r, s });
-        else if (k < 0.88) low.shrub.push({ x, z, r, s: s * 0.9 });
+        else if (k < 0.78) (underTree ? low.fern : low.flowers).push({ x, z, r, s });
+        else if (k < 0.88) (underTree ? low.shrub : flat.moss).push({ x, z, r, s: underTree ? s * 0.9 : s * 1.3 });
       } else if (k < 0.45) flat.season.push({ x, z, r, s: s * 1.2 });
       else if (k < 0.52 && woods > 0.05) low.flowers.push({ x, z, r, s });
     }
@@ -1081,7 +1085,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const lay = (list, id, parent) => instanced(speck, natureMat, list, (p) => setM(p.x, onMesh(p.x, p.z) + (parent === coverFlat && pilotTrees ? 0.09 : 0.005), p.z, p.s, p.s, p.r), { shadow: false, cell: PATH_CELL, target: id, parent }); /* (v1.10.284 G1: the flat ones over the grass's ground sheet, as the season's layers) */
     lay(flat.season, 'ground.season', coverFlat); lay(flat.moss, 'ground.moss', coverFlat);
     lay(low.fern, 'ground.fern', coverLow); lay(low.shrub, 'ground.shrub', coverLow); lay(low.flowers, 'ground.flowers', coverLow);
-    coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length };
+    coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length, ferns: low.fern.slice(0, 40).map((p) => [Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10]) /* (1.10.348: where they stay -- photos) */ };
   }
   const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; grainOn.value = software ? 0 : GRAIN; cheapOn.value = tier >= 1 ? 0 : 1; }; // (B 48: the grain from tier 1; 5회차 1: tier 0 one cheap grain)
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);

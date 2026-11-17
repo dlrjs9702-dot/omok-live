@@ -2955,6 +2955,8 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .plazaDialog.stampMode{width:min(440px,calc(100vw - 32px));background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
 .plazaDialog.stampMode .recordsDialogHead{background:none;border-bottom:1px dashed var(--isle-line);color:var(--isle-ink)}
 .stampCard{display:grid;gap:12px;padding:6px 2px;border:0;box-shadow:none}
+/* 1.10.348 4b 「오늘 알림」: a part each, apart */
+.todayNotice{display:grid;gap:12px}.todayNoticePart{display:grid;gap:4px;justify-items:start}.todayNoticePart p{margin:0}.todayNoticeRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .stampHead{display:flex;justify-content:space-between;align-items:baseline}.stampHead strong{font-size:1.05rem}.stampCount{color:var(--isle-soft);font-weight:700}
 .stampGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .stampWeekday{text-align:center;font-size:.75rem;color:var(--isle-soft);font-weight:700}

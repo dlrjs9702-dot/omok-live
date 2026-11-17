@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.348 4b 집 낡음·수리·바퀴벌레·오늘 알림 (notes gather-must-ideas §64~126, review-plan §1-12)
+
+- island-farm: WEAR 4단계, wearOf(빠진 주마다 한 단계, 처음 판정은 예전 허름함, 낸 주는 그대로), REPAIR 81A(새 섬 전 통나무 = 나뭇가지 두 배), decayOf·decaySolids(139 solids), BUGS 3/8/15.
+- 서버: upkeepNow가 level·levelWeek 저장 + 단계마다 관공서 편지, 집 들어가기 HOUSE_BROKEN(부서짐 모두)·HOUSE_WORN(낡음 손님), place·yard·style(방문 허용 빼고) 잠김, 손보기 'repair'(여러 종류 한 번에 take, 부서짐 수리비 20,000P payKey), farmView wear, point-store takeAll.
+- 화면: 139 decay-v1 덮개(집 뿌리 자식, 울타리 원 막힘 + 대신 상자), 부서짐부터 125 장식 끔, 145 바퀴벌레(마당 30 m 안·집 안, 세발 걸음·더듬이, 1.6 m 안이면 흩어지고 숨음, 가끔 한 마리 달려옴, 바스락 소리, 집 안 바닥 얼룩), ☰ 「벌레 흐리게」(gc.bugsDim, 점 모델), 「오늘 알림」 창(집·출석·정리 매매·공지; 테스트에서는 gc.testTodayNotice일 때만), 손보기 상자 창 단계·고치기 줄.
+- 에셋: 139 decay-v1 24개, 145 house-bugs-v1 3개 + 덧칠 4장(manifest·budgets·REGISTRY·e2e 제외·파이프라인 목록).
+- 시험: island-farm(단계·수리 재료), house-wear(낡음 잠김·부서짐 못 들어감·수리비), yard e2e(낡음 덮개·울타리 막힘·벌레 8→15·흐리게·오늘 알림).
+- 문제 기록 11-17 「이것도 너무 잡초같은데」: 숲 덮개 ground.fern·ground.shrub(109 plant_low, 잡초와 같은 부채 잎)는 숲 한가운데 나무 2.4 m 안에서만 남기고(고사리 61→12, 관목 34→7), 나머지는 토끼풀 덩이·이끼. 잡초 닮은 장식 조사: plant_low(바꿈), ground.tallgrass(111A 때 들꽃), 갈대 angular.grass_*(강·호수 물가 0.2~1.6 m, 잡초가 안 나는 곳, 둠), pilot grass_*·bush_fern(잡초 자신). 사진 notes img/house-wear-348.
+- 남은 것: 벽 위 벌레·벽 얼룩(바닥만), 마당 덧칠 없음; 압류(seized)는 4c.
+
 ## v1.10.347 벼룩시장 묶음 (사용자 「여러개 올리기」)
 
 - lib/island-flea.js: bundled(크기 없음·물고기·곤충 아님), put의 unit(개당 값·기준값 개당), reserve(buyQty), partTag(listing:팔린 수), soldPart(판 건마다 owed 한 줄·수수료, 남은 수·값 갱신, 0개면 내려감), shown에 unit·busy.
@@ -27,10 +37,3 @@
 - 154A: 관리실 섬 운영 「지하 도박장 오늘」 — 오늘 암호·쪽지 벤치(관리자 API /api/admin/den/today만).
 - 155A C안: 벼룩시장 게시판 (−4.1, −68.5) 정면이 분수, SPACE (−3.56, −70.53); 생일 코너 (9.9, −74.1) 분수 쪽(막힘 원은 그대로 하나 — 생일에만 서 있어서).
 - 도박장 입장(사용자): 그날 암호 + 지갑 전부를 칩으로(5만 이상, DEN_MIN), 입장은 그날 바꾼 사람·칩 5,000 이상(DEN_ENTRY), 판 뒤 칩 5,000 아래면 남은 칩 1:1 포인트·거래소로(kicked), 다시는 지갑 전부.
-
-## v1.10.345 긴급: 시세판·순위판 남색(에셋 150 UV 빠짐) + 테드 칩 입장 자격
-
-- 원인: 1.10.340 에셋 150 재내보내기에서 그림을 끼우는 면의 UV(TEXCOORD_0)가 빠져 캔버스의 한 점(남색 바탕)만 보임. 36파일(기록의 탑·_low, 증권거래소·_low·방, 대회 간판 _low, 마당 트로피 15종·_low).
-- 고침: 그 36파일만 340 전(48e1602b~1) 것으로 되돌리고 island-models.json의 그 파일 sha·src도 되돌림(그 면들의 150 깜빡임 고침도 같이 빠짐 → 에셋에 -kv -vtf로 다시 묶기 요청).
-- 막기: test/painted-faces-uv.test.js(board_face·board_honor·board_ticker·board_screen·sign_plate·trophy_plate 면은 UV가 있어야 함).
-- 테드(사용자 「입장 자격을 확인한 후에」): 그날 암호를 맞힌 사람만 포인트 → 칩(서버 DEN_PASS), 창에서도 암호 전엔 칩 줄을 숨김. 이미 가진 칩은 칩 → 포인트로 돌려받을 수 있음.
