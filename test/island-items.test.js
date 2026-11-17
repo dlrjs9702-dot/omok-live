@@ -70,3 +70,20 @@ test('만료 분실물: 가방 수령 장소와 실제 관공서 정산 기준�
   assert.deepEqual(sale.keep, [bag[0]]);
   assert.equal(I.bagView(sale.keep, Date.now(), ['active-event']).items[0].at, 'owner');
 });
+
+test('골라 팔기 (1.10.356): 고른 것만, 고른 개수만, 물고기는 작은 것부터, 안 사는 것·고르지 않은 것은 그대로', () => {
+  const now = Date.parse('2026-11-18T12:00:00+09:00');
+  const bag = [{ entryId: 'w', itemId: 'weed', qty: 10 }, { entryId: 't', itemId: 'trash', qty: 3 }, { entryId: 'b', itemId: 'bait', qty: 2 }];
+  const all = I.sellAt(bag, 'office', 0, null, now); const one = I.sellPicked(bag, [{ entryId: 'w', qty: 4 }], 'office', 0, null, now);
+  assert.equal(one.paid, 4 * I.priceOf('weed', now)); assert.deepEqual(one.sold, [{ itemId: 'weed', qty: 4, price: I.priceOf('weed', now) }]);
+  assert.deepEqual(one.keep.map((e) => [e.entryId, e.qty]), [['w', 6], ['t', 3], ['b', 2]], '나머지는 제자리');
+  assert.ok(all.paid > one.paid);
+  const none = I.sellPicked(bag, [{ entryId: 'b', qty: 2 }], 'office', 0, null, now); assert.equal(none.paid, 0); assert.deepEqual(none.keep.map((e) => [e.entryId, e.qty]), [['w', 10], ['t', 3], ['b', 2]], '안 사는 것은 그대로');
+  const over = I.sellPicked(bag, [{ entryId: 't', qty: 99 }, { entryId: 'zz', qty: 1 }], 'office', 0, null, now); assert.equal(over.sold.find((s) => s.itemId === 'trash').qty, 3, '가진 만큼만');
+  // a fish's picked ones: its smallest sizes; the rest keep theirs
+  const fish = [{ entryId: 'f', itemId: 'fish_crucian_carp', qty: 3, meta: { sizes: [30, 12, 20] } }];
+  const f = I.sellPicked(fish, [{ entryId: 'f', qty: 2 }], ['merchant', 'fisher'], 0, null, now); assert.equal(f.sold.reduce((n, s) => n + s.qty, 0), 2);
+  assert.deepEqual(f.keep.map((e) => [e.qty, e.meta.sizes]), [[1, [30]]], '큰 것이 남음');
+  // the day's limit still stops it: what it stopped stays
+  const capped = I.sellPicked([{ entryId: 't', itemId: 'trash', qty: 5 }], [{ entryId: 't', qty: 5 }], 'office', 0, null, now, 2500); assert.equal(capped.sold[0].qty, 2); assert.equal(capped.capped, true); assert.deepEqual(capped.keep.map((e) => e.qty), [3]);
+});

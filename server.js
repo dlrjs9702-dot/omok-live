@@ -7716,7 +7716,8 @@ async function requestHandler(req, res) {
     if (!atCounter && !atStall && (!at || !spot || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
-    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
+    if (body.pick != null && (!Array.isArray(body.pick) || !body.pick.length || body.pick.length > 64 || body.pick.some((p) => typeof p?.entryId !== 'string' || !Number.isSafeInteger(p?.qty) || p.qty < 1))) return sendError(res, 400, 'BAD_REQUEST', '팔 물건을 다시 골라 주세요.'); /* (1.10.356 골라 팔기: [{ entryId, qty }]) */
+    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost(), ...(body.pick ? { pick: body.pick } : {}) }, nowMs()); // a lost thing whose owner has gone: lost and found
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
