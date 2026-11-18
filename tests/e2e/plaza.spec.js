@@ -995,7 +995,7 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   for (const [itemId, qty] of [['trash', 3], ['herb', 2], ['wallet', 1], ['trash', 1], ['fish_goby', 2]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200); /* (v1.10.291: and fish -- the 노점 takes them) */
   await page.keyboard.press('KeyI');
   await expect(page.locator('#islandBagDialog')).toBeVisible();
-  await expect(page.locator('#islandBagCount')).toHaveText('4/16');
+  await expect(page.locator('#islandBagCount')).toHaveText('5/16'); /* (362: the two gobies a slot each) */
   await expect(page.locator('#islandBagGrid [data-item="trash"]')).toContainText('×4');
   await page.locator('#islandBagCloseBtn').click();
   const before = (await get(request, '/api/points', a.token)).data.balance;
@@ -1039,10 +1039,10 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   else await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
   await expect(page.locator('#plazaHint')).toHaveText(DAL ? 'SPACE · 노점 · 물고기도 받아요' : 'SPACE · 상인');
   await page.keyboard.press('Space');
-  /* (1.10.356 골라 팔기: the goby alone moved, one back; then all -- the fish's row by the herbs) */
-  await page.locator('.placeItem[data-item="fish_goby"]').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(1); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toContainText('망둥어 ×2');
-  await page.locator('.islandPlaceRow[data-item="fish_goby"] button[aria-label="하나 덜"]').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toContainText('망둥어 ×1');
-  await page.locator('#placeAllBtn').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(2); await expect(page.locator('#islandPlaceList')).toContainText('망둥어 ×2');
+  /* (1.10.356 골라 팔기: a goby alone moved, back again; then all -- the fish's rows by the herbs. 362: a fish one a slot -- each goby its own row, ×1) */
+  await page.locator('.placeItem[data-item="fish_goby"]').first().click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(1); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toContainText('망둥어 ×1');
+  await page.locator('.islandPlaceRow[data-item="fish_goby"] .placeBack').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(0);
+  await page.locator('#placeAllBtn').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(3); await expect(page.locator('#islandPlaceList .islandPlaceRow[data-item="fish_goby"]')).toHaveCount(2);
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name === 'chromium' ? 'pc' : 'phone'}-stall-fish.png` });
   expect(Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, ''))).toBeGreaterThan(8000);
   await page.locator('#islandPlaceSubmit').click(); await page.locator('#islandPlaceSubmit').click(); /* (once more to be sure) */
