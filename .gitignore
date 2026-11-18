@@ -9,6 +9,8 @@ data/match-records.json
 .DS_Store
 .playwright-mcp/
 graphify-out/
+# 364: tools/screen-check/capture.cjs shots (local only)
+work/screens-*/
 # 364: pack files' size·mtime·revision (tools/warm-asset-manifest.js at npm install; the server's start reads it)
 .cache/
 
