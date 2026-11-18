@@ -40,8 +40,9 @@ test('달마루섬 2단계: 보이는 것 = 막는 것, 뜨거나 묻힌 것 없
   // far side (x 480) the server keeps where one is (ISLAND_RADIUS 540); back over, out again
   const isle = () => page.evaluate(() => window.PlazaDebug().isle2());
   await page.evaluate(() => window.PlazaDebug().teleport(0, 236)); await expect.poll(async () => (await isle()).state).toBe('none');
-  await page.evaluate(() => { const d = window.PlazaDebug(); d.teleport(158, 226); d.setCamYaw(-Math.PI / 2); }); await page.waitForTimeout(600);
-  await page.locator('#plazaStage').focus(); await page.keyboard.down('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().x), { timeout: 40000 }).toBeGreaterThan(232); await page.keyboard.up('KeyW');
+  await page.evaluate(() => { const d = window.PlazaDebug(); d.teleport(163, 226); d.setCamYaw(-Math.PI / 2); }); await page.waitForTimeout(600);
+  /* (run, Shift: CI's ~3 frames a second walked 40 m of the 70 in 40 s) */
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('Shift'); await page.keyboard.down('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().x), { timeout: 90000 }).toBeGreaterThan(230); await page.keyboard.up('KeyW'); await page.keyboard.up('Shift');
   expect(await page.evaluate(() => Math.abs(window.PlazaDebug().z - 226))).toBeLessThan(2); /* (straight over -- nothing turned it aside) */
   await expect.poll(async () => (await isle()).state).toBe('full'); expect((await isle()).shown).toBeGreaterThan(5);
   await page.evaluate(() => window.PlazaDebug().teleport(480, 230)); await page.waitForTimeout(2500);

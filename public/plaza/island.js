@@ -760,28 +760,25 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     if (!c) { const group = new THREE.Group(); group.name = 'isle2-cell'; (parent === scene ? isle2Root : parent).add(group); c = { group, x: (cx + 0.5) * 60, z: (cz + 0.5) * 60, inner: parent !== scene }; isle2Cells.set(key, c); }
     return c.group;
   };
-  const instanced = (geometry, material, list, place, opts = {}) => {
-    if (!maps2 || !list.some((it) => it.isle2)) { instancedOne(geometry, material, list, place, opts); return; }
-    instancedOne(geometry, material, list.filter((it) => !it.isle2), place, opts);
-    const by = new Map(); for (const it of list) { if (!it.isle2) continue; const k = `${Math.floor(it.x / 60)},${Math.floor(it.z / 60)}`; if (!by.has(k)) by.set(k, []); by.get(k).push(it); }
-    for (const items of by.values()) instancedOne(geometry, material, items, place, { ...opts, parent: isle2Cell(opts.parent || scene, items[0].x, items[0].z), isle2: true });
-  };
-  const instancedOne = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [], parent = scene, isle2 = false } = {}) => { // v1.10.73 parent: a group shown by quality
+  /* (one list per kind as before -- the model loader's lists the same; a 새 섬 item's square under its group: `where`) */
+  const instanced = (geometry, material, list, place, opts = {}) => instancedOne(geometry, material, list, place, maps2 && list.some((it) => it.isle2) ? { ...opts, where: (it) => (it.isle2 ? isle2Cell(opts.parent || scene, it.x, it.z) : null) } : opts);
+  const instancedOne = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [], parent = scene, where = null } = {}) => { // v1.10.73 parent: a group shown by quality
     if (!list.length) return;
     const g = target && assets?.wants(target) ? { target, cells: [] } : null;
     if (material === natureMat && !g) {
       for (const item of list) {
         place(item, 0);
-        const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}${isle2 ? `,${parent.uuid}` : ''}`; /* (N1: 새 섬's into its own square's group) */ if (isle2) bakedParent.set(key, parent);
+        const own = where?.(item); const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}${own ? `,${own.uuid}` : ''}`; /* (N1: 새 섬's into its own square's group) */ if (own) bakedParent.set(key, own);
         if (!baked.has(key)) baked.set(key, []);
         baked.get(key).push({ geometry, matrix: m4.clone(), color: color ? color(item, tint).clone() : null });
       }
       return;
     }
     keep(geometry);
-    const cells = new Map();
-    for (const item of list) { const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)}`; if (!cells.has(key)) cells.set(key, []); cells.get(key).push(item); }
+    const cells = new Map(); const cellParent = new Map();
+    for (const item of list) { const own = where?.(item); const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)}${own ? `,${own.uuid}` : ''}`; if (!cells.has(key)) { cells.set(key, []); cellParent.set(key, own || parent); } cells.get(key).push(item); }
     for (const [key, items] of cells) {
+      const parentNow = cellParent.get(key);
       const im = new THREE.InstancedMesh(geometry, material, items.length);
       const matrices = []; const colors = [];
       items.forEach((item, i) => {
@@ -789,9 +786,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
         if (color) { const c = color(item, tint); im.setColorAt(i, c); colors.push(c.clone()); }
         matrices.push(m4.clone());
       });
-      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; if (shadow && !(material.alphaTest > 0)) im.customDepthMaterial = INST_DEPTH; /* (1.10.352 §9-1: the batches' own shadow-depth material) */ parent.add(im);
-      const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; parent.add(e); return e; });
-      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
+      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; if (shadow && !(material.alphaTest > 0)) im.customDepthMaterial = INST_DEPTH; /* (1.10.352 §9-1: the batches' own shadow-depth material) */ parentNow.add(im);
+      const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; parentNow.add(e); return e; });
+      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent: parentNow, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
     }
     if (g) groups.push(g);
   };
