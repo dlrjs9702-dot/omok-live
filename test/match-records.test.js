@@ -89,7 +89,7 @@ test('head-to-head only tallies direct two-person matches between exactly those 
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('authenticated records: completion, duplicate guard, rematch, rename, reissue, team and no secrets', { timeout:35000 }, async t => {
+test('authenticated records: completion, duplicate guard, rematch, rename, reissue, team and no secrets', { timeout:60000 }, async t => {
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'match-records-api-'));
   const port=await new Promise((resolve,reject) => {
     const s=net.createServer(); s.once('error',reject);
@@ -101,9 +101,7 @@ test('authenticated records: completion, duplicate guard, rematch, rename, reiss
     stdio:['ignore','pipe','pipe'] });
   let log=''; proc.stdout.on('data',chunk => log+=chunk);proc.stderr.on('data',chunk => log+=chunk);
   t.after(async () => {proc.kill('SIGTERM');await new Promise(resolve => {if(proc.exitCode!==null)resolve();else{proc.once('exit',resolve);setTimeout(resolve,1500).unref();}});await fs.rm(dir,{recursive:true,force:true});});
-  let ready=false;
-  for(let n=0;n<100;n++){if(proc.exitCode!==null)break;try{if((await fetch(base+'/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,75));}
-  assert.ok(ready,log);
+  await require('../test-support/wait-ready').waitReady(base,proc); /* (362, #513: up to 30 s -- the 7.5 s wait ran out on CI twice in a row, the server's start ~11 s there) */ void log;
   async function req(route,token,body,method='POST') {
     const headers={};if(token)headers['X-Session-Token']=token;if(body!==undefined)headers['Content-Type']='application/json';
     const r=await fetch(base+route,{method,headers,...(body===undefined?{}:{body:JSON.stringify(body)})});

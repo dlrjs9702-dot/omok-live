@@ -9,7 +9,7 @@ const { spawn } = require('node:child_process');
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('administrator sees per-person online, game and spectator status without leaking private game data', { timeout: 25000 }, async t => {
+test('administrator sees per-person online, game and spectator status without leaking private game data', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-presence-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -27,13 +27,7 @@ test('administrator sees per-person online, game and spectator status without le
     await new Promise(resolve => { if (proc.exitCode !== null) resolve(); else { proc.once('exit', resolve); setTimeout(resolve, 2000).unref(); } });
     await fs.rm(dir, { recursive: true, force: true });
   });
-  let started = false;
-  for (let i = 0; i < 90; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { const res = await fetch(base + '/health'); if (res.ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  assert.ok(started, `test server failed: ${output}`);
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (362: up to 30 s, as boot -- 9 s ran out under CI's load) */ void output;
   async function req(route, token, body, method = 'POST') {
     const headers = {};
     if (token) headers['X-Session-Token'] = token;

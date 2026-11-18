@@ -2616,7 +2616,7 @@
   const islandPlaceDialog = document.getElementById('islandPlaceDialog');
   const islandPlaceSubmit = document.getElementById('islandPlaceSubmit');
   const islandPlaceStatus = document.getElementById('islandPlaceStatus');
-  let islandPlace = null; let islandPlaceRequest = null;
+  let islandPlace = null; let islandPlaceRequest = null; let sellBusy = false;
   const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' }, fisher: { title: '백화점 1층 노점', verb: '판매' }, stall: { title: '노점 · 물고기도 받아요', verb: '판매', takes: ['merchant', 'fisher'], send: 'merchant' } }; /* (v1.10.291: fish at the 백화점's 노점, not 물결 -- `takes` its rows, `send` the server's place) */ // (v1.10.193: the 어부's name) // v1.10.42 어부: fish
   // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
   // old emoji) -- the bag and the sale lists; toasts keep the emoji
@@ -2774,7 +2774,7 @@
       slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
       if (item) {
         slot.title = item.usesMax ? `${item.name} · ${item.uses}/${item.usesMax}회` : item.name; slot.setAttribute('aria-label', item.usesMax ? `${item.name} 남은 ${item.uses}회` : `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = true;
-        const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
+        const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : item.sizes?.length === 1 ? `${item.sizes[0]}cm` : ''; /* (362 사용자 3A: a fish one a slot -- its size, as in its box) */ if (item.sizes?.length === 1 && item.qty === 1) { qty.classList.add('bagSize'); slot.title = `${item.name} · ${item.sizes[0]} cm`; slot.setAttribute('aria-label', `${item.name} ${item.sizes[0]} cm`); }
         slot.append(itemIcon(item), qty);
         if ((item.tool || item.itemId) === heldTool) slot.classList.add('inHand');
         if (item.usesMax) { /* (v1.10.221 도구 닳기: its catches left, a bar; the sturdy one ringed) */ const bar = document.createElement('i'); bar.className = 'toolUses'; bar.style.setProperty('--left', String(item.uses / item.usesMax)); bar.classList.toggle('low', item.uses <= 5); slot.append(bar); slot.classList.toggle('sturdy', item.itemId.endsWith('_sturdy')); }
@@ -3027,19 +3027,35 @@
     all.addEventListener('click', () => { for (const e of bag.items) if (placeTakesItem(e)) placePick.set(e.entryId, e.qty); placeSure = false; drawPlaceSides(); }); head.append(all);
     const right = document.createElement('div'); right.className = 'placeItems placeGoing'; let total = 0;
     for (const item of bag.items) {
-      const n = placePick.get(item.entryId); if (!n) continue; total += n * item.price;
+      const n = placePick.get(item.entryId); if (!n) continue; const worth = item.sizePrices?.length ? item.sizePrices.slice(-n).reduce((s, v) => s + v, 0) : n * item.price; total += worth; /* (362 Codex 351-360 #4: a fish by its size -- the smallest first, as the server sells) */
       const row = document.createElement('div'); row.className = 'islandPlaceRow'; row.setAttribute('role', 'listitem'); row.dataset.item = item.itemId;
       const what = document.createElement('button'); what.type = 'button'; what.className = 'placeBack'; what.title = '가방으로 되돌리기'; what.append(itemIcon(item), ` ${item.name} ×${n}`); what.addEventListener('click', () => placeMove(item, -n));
       row.append(what);
       if (item.qty > 1) { const step = document.createElement('span'); step.className = 'placeStep'; const btn = (t, d, label) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'ghost tiny'; x.textContent = t; x.setAttribute('aria-label', label); x.addEventListener('click', () => placeMove(item, d)); return x; }; step.append(btn('−', -1, '하나 덜'), btn('+', 1, '하나 더'), btn('전부', null, '전부')); row.append(step); }
-      row.append(Object.assign(document.createElement('strong'), { textContent: fmtP(n * item.price) })); right.append(row);
+      row.append(Object.assign(document.createElement('strong'), { textContent: fmtP(worth) })); right.append(row);
     }
     if (!placePick.size) right.append(Object.assign(document.createElement('p'), { className: 'emptyState', textContent: '왼쪽 물건을 눌러 여기로 옮겨요.' }));
     for (const el of [sell, right]) { el.addEventListener('dragover', (event) => { event.preventDefault(); sell.classList.add('dropAt'); }); el.addEventListener('dragleave', () => sell.classList.remove('dropAt')); el.addEventListener('drop', (event) => { event.preventDefault(); sell.classList.remove('dropAt'); const e = bag.items.find((x) => x.entryId === event.dataTransfer.getData('text/plain')); if (e && placeTakesItem(e)) placeMove(e, null); }); }
     sell.append(head, right);
     list.replaceChildren(mine, sell);
     islandPlaceSubmit.textContent = placeSure ? `${verb}할까요? +${fmtP(total)}` : `${verb} +${fmtP(total)}`; islandPlaceSubmit.classList.toggle('sure', placeSure);
-    islandPlaceSubmit.disabled = !placePick.size;
+    islandPlaceSubmit.disabled = !placePick.size || sellBusy;
+  }
+  // 362 광석 값 (사용자 1A): the 잡화점's ores and stone -- each its price (three times the merchant's), 1 · 5 · 10 at a time
+  async function openOreShop() {
+    let list; try { list = (await api('/api/island/store/ores')).ores; } catch (error) { showToast(error.message); return; }
+    const rows = list.map((o) => {
+      const row = document.createElement('div'); row.className = 'islandPlaceRow oreShopRow'; row.dataset.item = o.id;
+      const what = document.createElement('span'); what.append(itemIcon({ itemId: o.id, icon: o.icon }), ` ${o.name} · ${fmtP(o.price)}`); row.append(what);
+      for (const n of [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = `${n}개`; b.addEventListener('click', async () => {
+        b.disabled = true;
+        try { const r = await api('/api/island/store/ores', { method: 'POST', body: JSON.stringify({ itemId: o.id, qty: n, requestId: crypto.randomUUID() }) }); if (r.bag) drawIslandBag(r.bag); loadPoints(); showToast(`${o.name} ${n}개를 샀어요 · -${fmtP(o.price * n)}`); }
+        catch (error) { showToast(error.message); } finally { b.disabled = false; }
+      }); row.append(b); }
+      return row;
+    });
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '상인이 사는 값보다 비싸요. 더 싸게 사려면 벼룩시장을 둘러보세요.'; /* (the times-that is the administrator's to change) */
+    openPlazaWindow('⛏️ 재료 사기', [note, ...rows]);
   }
   // v1.10.86 주민세: the 세금 창구 (its own clerk) -- what I owe (체납) and paying it; tonight's tax as a guide
   const taxRow = document.getElementById('islandTaxRow'); const taxDialog = document.getElementById('taxDialog'); const taxStatus = document.getElementById('taxStatus');
@@ -3085,21 +3101,22 @@
     try { drawIslandPlace(await api('/api/island/bag')); } catch (error) { islandPlaceStatus.textContent = error.message; }
   }
   islandPlaceSubmit.addEventListener('click', async () => {
-    const place = islandPlace; if (!placePick.size) return;
+    const place = islandPlace; if (!placePick.size || sellBusy) return; /* (362 Codex 351-360 #3: one sale at a time -- a pick changed meanwhile re-enabled the button, a second took the first's request) */
     if (!placeSure) { placeSure = true; drawPlaceSides(); return; } /* (1.10.356: pressed once more to be sure) */
-    islandPlaceSubmit.disabled = true;
+    islandPlaceSubmit.disabled = true; sellBusy = true;
     const pick = [...placePick].map(([entryId, qty]) => ({ entryId, qty })); const key = JSON.stringify(pick);
     if (islandPlaceRequest?.place !== place || islandPlaceRequest.key !== key) islandPlaceRequest = { place, key, id: crypto.randomUUID() }; /* (a lost answer: the same list, the same request) */
+    const request = islandPlaceRequest; /* (this call's own) */
     try {
       const p = plaza.controller?.pose?.(); // my position first, so the server knows I am at the counter
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place: ISLAND_PLACES[place].send || place, requestId: islandPlaceRequest.id, pick }) });
-      islandPlaceRequest = null; if (place === 'office') guideDone('deliver');
+      const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place: ISLAND_PLACES[place].send || place, requestId: request.id, pick }) });
+      if (islandPlaceRequest === request) islandPlaceRequest = null; sellBusy = false; if (place === 'office') guideDone('deliver');
       islandPlaceStatus.textContent = `+${Number(data.paid || 0).toLocaleString('ko-KR')}P${data.capped ? ' · 오늘은 여기까지 받습니다' : ''}`;
       drawIslandPlace(data.bag); if (data.bag) drawIslandBag(data.bag); loadPoints();
     } catch (error) {
-      islandPlaceStatus.textContent = error.message;
-      if (error.status === 409 || error.status === 400) { islandPlaceRequest = null; islandPlaceSubmit.disabled = false; }
+      islandPlaceStatus.textContent = error.message; sellBusy = false;
+      if (error.status === 409 || error.status === 400) { if (islandPlaceRequest === request) islandPlaceRequest = null; islandPlaceSubmit.disabled = false; }
       else islandPlaceSubmit.disabled = false; // a lost answer: the same request is sent again
     }
   });
@@ -4241,6 +4258,8 @@
   }
   // a tank or the insect case: what is in it (꺼내기 -- back to the bag) and what of my bag fits (넣기)
   const tankBox = document.createElement('div'); tankBox.className = 'homeTank'; tankBox.id = 'homeTank';
+  // (362: a fish one a slot -- lists that send a kind show one row a kind, the count summed)
+  const bagKinds = (items) => { const m = new Map(); for (const e of items) { const k = m.get(e.itemId); if (k) k.qty += e.qty; else m.set(e.itemId, { ...e }); } return [...m.values()]; };
   async function openTank(uid) {
     const H = window.IslandHome; const p = homeInside?.home.pieces.find((x) => x.uid === uid); if (!p) return;
     const shape = H.shapeOf(p.id); const T = H.TANKS[shape]; const inside = homeInside.home.tanks[uid] || [];
@@ -4254,7 +4273,9 @@
     const now = document.createElement('div'); now.className = 'giftList';
     for (const f of inside) now.append(btn(`${homeInside.names?.[f.itemId] || f.itemId} · 꺼내기`, 'ghost', () => act({ take: f.fid })));
     const can = document.createElement('div'); can.className = 'giftList';
-    for (const item of bag.items.filter((e) => H.fits(shape, e.itemId))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); }
+    { /* (362: a fish one a slot -- one row a kind with all its count, as the server takes a kind) */
+      for (const item of bagKinds(bag.items.filter((x) => H.fits(shape, x.itemId)))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); }
+    }
     const what = T.insects ? '곤충' : '물고기';
     tankBox.replaceChildren(line(`${!T.insects && (inside.some((f) => H.FISH_ROOM[f.itemId]) || bag.items.some((e) => H.FISH_ROOM[e.itemId] && H.fits(shape, e.itemId))) ? `${H.tankUsed(inside)}/${T.slots}칸 · ${inside.length}마리 · 참치는 6칸` : `${inside.length}/${T.slots}마리`}${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
     openPlazaWindow(T.insects ? '곤충 상자' : '수조', [tankBox]);
@@ -4329,14 +4350,16 @@
       try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); }
       catch (error) { showToast(error.message, 4000); grow.disabled = false; }
     });
-    /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 30 → 60 → 90 → 120) */
+    /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 362: 50 → 100 → 200) */
     const boxBtns = BOX_BTNS.map(([, kind]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost hidden'; b.id = `boxGrowBtn-${kind}`; b.addEventListener('click', async () => {
       b.disabled = true;
       try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind, to: Number(b.dataset.to) }) }); /* (Codex 291~300 #2: the size on the button -- sent again, never the one after) */ plazaDialog.close(); showToast(r.already ? `${BOX_TITLE[kind]}은 이미 ${r.slots}칸이에요.` : `${BOX_TITLE[kind]}이 ${r.slots}칸이 됐어요! 잡은 ${kind === 'fish' ? '물고기는' : '곤충은'} 통에 먼저 들어가요.`, 4500); loadPoints(); }
       catch (error) { showToast(error.message, 4000); b.disabled = false; }
     }); return b; });
     api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.dataset.to = String(next.slots); b.textContent = `${BOX_TITLE[kind]} ${bag.boxes?.[kind] ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
-    lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
+    /* (362 광석 값, 사용자 1A: the ores and the stone sold here too, at three times what the merchant pays -- dearer than the 벼룩시장) */
+    const oreBtn = document.createElement('button'); oreBtn.type = 'button'; oreBtn.className = 'ghost'; oreBtn.id = 'oreShopBtn'; oreBtn.textContent = '⛏️ 재료 사기'; oreBtn.addEventListener('click', () => openOreShop());
+    lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns, oreBtn); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
   }
   const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';
   let goodBusy = false;
@@ -5127,7 +5150,7 @@
       const bag = await api('/api/island/bag'); const wraps = bag.items.filter((e) => e.itemId === 'gift_wrap').reduce((n, e) => n + e.qty, 0);
       const head = document.createElement('p'); head.className = 'lostRequestLine'; head.textContent = wraps ? `${name}님에게 무엇을 선물할까요? (포장지 ${wraps}장)` : '선물 포장지가 필요해요. 잡화점에서 살 수 있어요.';
       const list = document.createElement('div'); list.className = 'giftList';
-      if (wraps) for (const item of bag.items.filter((e) => !['lost', 'wallet', 'gift_wrap'].includes(e.itemId))) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
+      if (wraps) for (const item of bagKinds(bag.items.filter((e) => !['lost', 'wallet', 'gift_wrap'].includes(e.itemId)))) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
         b.addEventListener('click', async () => { try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/gift', { method: 'POST', body: JSON.stringify({ plazaId, itemId: item.itemId, requestId: crypto.randomUUID() }) }); plazaDialog.close(); showToast(`🎁 ${name}님에게 ${item.name}을(를) 선물했어요.`); plaza.controller?.emote?.('bow'); } catch (error) { showToast(error.message, 4000); } });
         list.append(b); }
       const close = document.createElement('button'); close.type = 'button'; close.className = 'primary'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
@@ -5253,7 +5276,11 @@
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); p.setAttribute('points', v.map((x, i) => `${((i / (v.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((x - lo) / span) * (h - 4)).toFixed(1)}`).join(' '));
     p.setAttribute('class', tone || stockTone(v[v.length - 1] - v[0])); svg.append(p); return svg;
   }
-  async function refreshStocksBoard() { try { stocksView = await api('/api/island/stocks'); plaza.controller?.setStocksBoard?.(stocksView); stockAlertsSeen(stocksView); } catch {} return stocksView; }
+  async function refreshStocksBoard() { try { stocksView = await api('/api/island/stocks'); alertView = stocksView; plaza.controller?.setStocksBoard?.(stocksView); stockAlertsSeen(stocksView); } catch {} return stocksView; }
+  /* (362 Codex 351-360 #5: out of the exchange stocksView is let go -- the alerts stopped there; they keep their own view, looked at
+     once on the island and again as each hour's price is due) */
+  let alertView = null; let alertAsked = 0;
+  async function refreshStockAlerts() { try { alertView = await api('/api/island/stocks'); stockAlertsSeen(alertView); } catch {} }
   // 1.10.351 ④ 주식 알림 (176A): the alerts kept on the server; each hour's new price (a look at the board once it is due) met --
   // above or below -- a toast, once that hour for that company
   let stockAlertTick = null; const stockAlertDone = new Set();
@@ -5264,7 +5291,12 @@
       if (hit && stockAlertTick !== null && d.tick > stockAlertTick) showToast(`📈 주식 알림 · ${c.name} ${stockWon(c.price)} · ${hit}`, 6000); if (hit) stockAlertDone.add(key); }
     stockAlertTick = d.tick;
   }
-  setInterval(() => { if (!document.body.classList.contains('plazaMode') || !stocksView || !Object.keys(stocksView.mine?.alerts || {}).length) return; if (Date.now() < (stocksView.next || 0) + 5000) return; refreshStocksBoard(); }, 30000); /* (an hour's price due: a look) */
+  setInterval(() => {
+    if (!document.body.classList.contains('plazaMode')) return;
+    if (!alertView) { if (Date.now() - alertAsked > 600000) { alertAsked = Date.now(); refreshStockAlerts(); } return; } /* (once on the island; again 10 min after a failed look) */
+    if (!Object.keys(alertView.mine?.alerts || {}).length || Date.now() < (alertView.next || 0) + 5000) return;
+    if (stocksView) refreshStocksBoard(); else refreshStockAlerts();
+  }, 30000); /* (an hour's price due: a look) */
   async function openStocks(tab = stocksTab, code = null) {
     stocksTab = tab; const d = await refreshStocksBoard(); if (!d) { showToast('시세를 불러오지 못했어요.'); return; }
     const card = sEl('div', 'mirrorCard stocksCard'); const next = new Date(d.next); const nextText = `${String(next.getHours()).padStart(2, '0')}:00`;
@@ -5602,7 +5634,7 @@
     const bag = await api('/api/island/bag').catch(() => ({ items: [] })); const wraps = bag.items.filter((e) => e.itemId === 'gift_wrap').reduce((n, e) => n + e.qty, 0);
     const item = el('select'); item.setAttribute('aria-label', '함께 보낼 선물');
     item.append(new Option(wraps ? `선물 없이 (포장지 ${wraps}장)` : '선물 없이 (선물은 포장지가 있어야 해요)', ''));
-    if (wraps) for (const e of bag.items.filter((x) => !['lost', 'wallet', 'gift_wrap'].includes(x.itemId))) item.append(new Option(`🎁 ${e.name} ×${e.qty}`, e.itemId));
+    if (wraps) for (const e of bagKinds(bag.items.filter((x) => !['lost', 'wallet', 'gift_wrap'].includes(x.itemId)))) item.append(new Option(`🎁 ${e.name} ×${e.qty}`, e.itemId));
     const send = el('button', 'primary', `보내기 (오늘 ${d.left}통 남음)`); send.type = 'submit'; send.disabled = d.left <= 0;
     const status = el('p', 'smallMuted'); status.setAttribute('role', 'status');
     form.append(to, text, item, send, status);

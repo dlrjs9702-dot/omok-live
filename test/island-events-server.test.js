@@ -104,7 +104,7 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   const blue=(await all()).find(e=>e.type==='mushroom_blue');
   for(let k=0;k<3;k+=1){assert.equal((await pick(blue)).status,200);await req('/api/test/island/events',a,{grow:blue.id});}
   assert.equal((await bag(a)).find(e=>e.itemId==='mushroom_blue').qty,3);await req('/api/island/resource/cancel',a,{});
-  const stick=(await all()).find(e=>e.type==='twig_branch');assert.equal((await pick(stick)).status,200);assert.equal((await bag(a)).find(e=>e.itemId==='branch').qty,1);
+  const stick=(await all()).find(e=>e.type==='twig_branch');const got=await pick(stick);assert.equal(got.status,200);const nb=(await bag(a)).find(e=>e.itemId==='branch').qty;assert.ok(nb>=1&&nb<=3,String(nb));assert.equal(got.data.item.qty,nb); /* (362: a twig pick 1~3, the toast's count) */
   const previousIds=(await all()).map(e=>e.id);await server.stop();server=await boot(t,dir);req=server.req;a=await server.enter(ka);
   assert.equal((await bag(a)).find(e=>e.itemId==='berry').qty,1);
   assert.ok((await all()).every(e=>!previousIds.includes(e.id)));

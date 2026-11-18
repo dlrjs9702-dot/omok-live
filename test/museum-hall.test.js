@@ -23,9 +23,10 @@ test('물고기 크기: 범위·드문 큰 끝, 가방 크기 목록, 작은 것
   }
   assert.ok(Math.abs(F.sizeMult('anchovy', 6) - 0.8) < 1e-9 && Math.abs(F.sizeMult('anchovy', 15) - 1.3) < 1e-9);
   let bag = I.addToBag([], 'fish_carp', 1, 'a', { size: 40 }); bag = I.addToBag(bag, 'fish_carp', 1, 'b', { size: 70.5 }); bag = I.addToBag(bag, 'fish_carp', 1, 'c', { size: 55 });
-  assert.deepEqual([bag.length, bag[0].qty, I.sizesOf(bag[0])], [1, 3, [70.5, 55, 40]]);
-  assert.deepEqual(I.sizesOf(I.takeFromBag(bag, 'fish_carp', 1)[0]), [70.5, 55], '작은 것부터');
-  assert.deepEqual(I.sizesOf(I.takeFromBag(bag, 'fish_carp', 1, true)[0]), [55, 40], '박물관은 가장 큰 것');
+  const all = (b) => b.flatMap((e) => I.sizesOf(e)).sort((x, y) => y - x); /* (362: one a slot -- the sizes over the slots) */
+  assert.deepEqual([bag.length, bag.every((e) => e.qty === 1), all(bag)], [3, true, [70.5, 55, 40]]);
+  assert.deepEqual(all(I.takeFromBag(bag, 'fish_carp', 1)), [70.5, 55], '작은 것부터');
+  assert.deepEqual(all(I.takeFromBag(bag, 'fish_carp', 1, true)), [55, 40], '박물관은 가장 큰 것');
   assert.equal(I.pickSize(bag, 'fish_carp', true), 70.5);
   assert.deepEqual(I.sizesOf({ itemId: 'fish_carp', qty: 2, meta: null }), [F.midSize('carp'), F.midSize('carp')], '옛 물고기는 가운데 값');
   const sale = I.sellAt(bag, 'fisher', 0);
@@ -122,5 +123,5 @@ test('낚시 크기: 서버가 정한 크기, 내 최고, 도감 최고 크기',
   const one = await catchOne(30.2); assert.deepEqual([one.size, one.best], [30.2, true]); assert.equal(one.price, I.fishPrice('fish_mackerel', 30.2));
   assert.deepEqual([(await catchOne(25)).best, (await catchOne(41.5)).best], [false, true]);
   assert.equal((await req('/api/island/dex', sa)).data.entries.find((e) => e.id === 'fish_mackerel').best.size, 41.5);
-  assert.deepEqual(I.sizesOf((await req('/api/island/bag', sa)).data.items.find((e) => e.itemId === 'fish_mackerel')), [41.5, 30.2, 25]);
+  assert.deepEqual((await req('/api/island/bag', sa)).data.items.filter((e) => e.itemId === 'fish_mackerel').flatMap((e) => I.sizesOf(e)).sort((a, b) => b - a), [41.5, 30.2, 25]); /* (362: one a slot) */
 });

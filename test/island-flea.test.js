@@ -36,7 +36,7 @@ test('벼룩시장 규칙: 올릴 수 있는 것, 값 범위, 수수료, 한 사
 test('「산 것」(review-plan §1-3): 산 물고기·곤충은 따로 쌓이고, 팔면 낚시왕 셈에서 빠지고, 박물관은 잡은 것만', () => {
   let bag = I.addToBag([], 'fish_anchovy', 2, 'a', { sizes: [30, 20] });
   bag = I.addToBag(bag, 'fish_anchovy', 1, 'b', { sizes: [50], bought: true });
-  assert.equal(bag.length, 2, '산 것은 잡은 것과 한 칸에 섞이지 않음'); assert.equal(bag.find((e) => e.meta?.bought).meta.sizes[0], 50);
+  assert.equal(bag.length, 3, '362: 한 마리 한 칸'); assert.equal(bag.filter((e) => e.meta?.bought).length, 1, '산 것 표시는 그 한 마리만'); assert.equal(bag.find((e) => e.meta?.bought).meta.sizes[0], 50);
   assert.equal(I.pickSize(bag, 'fish_anchovy', true), 50); assert.equal(I.pickSize(bag, 'fish_anchovy', true, true), 30, '박물관은 잡은 것 중 가장 큰 것');
   assert.deepEqual(I.takeFromBag(bag, 'fish_anchovy', 1, true, true).find((e) => !e.meta?.bought).meta.sizes, [20]);
   const sale = I.sellAt(bag, 'fisher', 0); assert.equal(sale.sold.find((s) => s.bought).qty, 1); assert.equal(sale.sold.find((s) => !s.bought).qty, 2);

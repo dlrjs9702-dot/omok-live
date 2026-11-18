@@ -7,19 +7,14 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-test('할리갈리 서버: 6인 자리, 관전자 권한, 동시 종 입력과 실시간 차례', { timeout: 30000 }, async t => {
+test('할리갈리 서버: 6인 자리, 관전자 권한, 동시 종 입력과 실시간 차례', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'halli-server-'));
-  const port = await new Promise(resolve => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
+  const port = await require('../test-support/free-port')(); /* (362: claimed -- a closed listen(0) port could be another file's) */
   const base = `http://127.0.0.1:${port}`;
   const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'halli-test-password', NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { proc.kill(); await fs.rm(dir, { recursive: true, force: true }); });
-  let ready = false;
-  for (let i = 0; i < 80; i++) {
-    try { if ((await fetch(`${base}/health`)).ok) { ready = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  assert.equal(ready, true);
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (362: up to 30 s, as boot -- 8 s ran out under CI's load) */
   async function req(route, token, body, method = 'POST') {
     const response = await fetch(base + route, { method, headers: {
       ...(token ? { 'X-Session-Token': token } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },

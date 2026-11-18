@@ -57,10 +57,10 @@ test('G4b 채집 표: 버섯 6·나뭇가지 2·네잎클로버와 잡초(자기
   for (const [k, row] of Object.entries(G.TABLE)) assert.ok(I.itemDef(row.item), `${k} -> ${row.item}`);
   assert.equal(TYPES.weed, undefined); assert.equal(Object.keys(G.KINDS).filter((k) => k.startsWith('mushroom_')).length, 6);
 });
-test('생활 경제: 단가 유지·공용 재생 공급 530,000P/h 이하, 개인 일일 상한 없음', () => { // (1103 4: trash 8·6 -> 32·28, +24·22 at 1,000P six an hour; the 경제 값 to turn it down)
+test('생활 경제: 단가 유지·공용 재생 공급 565,000P/h 이하, 개인 일일 상한 없음', () => { // (1103 4: trash 8·6 -> 32·28, +24·22 at 1,000P six an hour; the 경제 값 to turn it down)
   const I=require('../lib/island-items');let hourly=0;
-  for(const [type,count] of Object.entries(RESOURCE_COUNTS)){const d=TYPES[type];hourly+=count*(d.points || I.priceOf(d.item))*(d.qty||1)*3600000/REGEN_MS[type];}
-  assert.ok(hourly<=530000,String(hourly));assert.ok(hourly>=520000,String(hourly)); /* (1.10.332 사용자 78A: twigs 34 -> 60 spots, 3 h -> 2 h -- 526,667/h) */assert.equal(I.DAILY_CAP,Infinity); /* (G4b: the random six 「버섯」 36,000/h went into the 83 collectables, about 31,700/h) */
+  for(const [type,count] of Object.entries(RESOURCE_COUNTS)){const d=TYPES[type];hourly+=count*(d.points || I.priceOf(d.item))*(d.pick?(d.pick[0]+d.pick[1])/2:(d.qty||1))*3600000/REGEN_MS[type];} /* (362: a twig pick 1~3, its average) */
+  assert.ok(hourly<=565000,String(hourly));assert.ok(hourly>=555000,String(hourly)); /* (1.10.332 사용자 78A: twigs 34 -> 60 spots, 3 h -> 2 h -- 526,667/h; 362 사용자 1A 2A: 2 a pick, 1 h -- twigs 12,000 -> 48,000/h, 560,167/h) */assert.equal(I.DAILY_CAP,Infinity); /* (G4b: the random six 「버섯」 36,000/h went into the 83 collectables, about 31,700/h) */
 });
 
 test('공용 이벤트: 분실물은 주운 사람만 주인에게 돌려주고, 돌려주면 끝난다', () => {

@@ -512,7 +512,7 @@ diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·
     const C = T.dalmaru.CREEK; const pts = []; for (let i = 1; i < C.pts.length; i += 1) { const [ax, az] = C.pts[i - 1]; const [bx, bz] = C.pts[i]; const L = Math.hypot(bx - ax, bz - az); for (let s = 0; s < L; s += 1) pts.push([ax + ((bx - ax) * s) / L, az + ((bz - az) * s) / L]); } pts.push(C.pts.at(-1));
     const half = C.w / 2 + 0.35; const P = []; const U = []; const I = []; let along = 0;
     pts.forEach(([x, z], k) => { const [px, pz] = pts[Math.max(0, k - 1)]; const [nx, nz] = pts[Math.min(pts.length - 1, k + 1)]; const l = Math.hypot(nx - px, nz - pz) || 1; const ox = -(nz - pz) / l * half; const oz = (nx - px) / l * half; if (k) along += Math.hypot(x - pts[k - 1][0], z - pts[k - 1][1]);
-      const y = Math.max(ground(x, z) + 0.45, -0.6 + 0.03); P.push(x + ox, y, z + oz, x - ox, y, z - oz); U.push(0, along / 4, 1, along / 4); if (k) { const a = (k - 1) * 2; I.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } }); /* (wound to face up) */
+      const y = T.creekWaterY ? T.creekWaterY(x, z) : Math.max(ground(x, z) + 0.45, -0.6 + 0.03); P.push(x + ox, y, z + oz, x - ox, y, z - oz); U.push(0, along / 4, 1, along / 4); if (k) { const a = (k - 1) * 2; I.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } }); /* (wound to face up) */
     const cg = keep(new THREE.BufferGeometry()); cg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); cg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); cg.setIndex(I); cg.computeVertexNormals();
     const cw = new THREE.Mesh(cg, water); cw.name = 'isle2-creek'; cw.receiveShadow = true; isle2Root.add(cw);
   }

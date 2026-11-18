@@ -7,6 +7,9 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   test.setTimeout(240000); // (v1.10.259: two big ones' tugs, up to 25 s each)
   const who = await shopper(browser, request, '강낚시', 500000, 'male');
   const { page, token } = who;
+  /* (#513 CI: a phone's catch missed three tries running with only 「놓쳤습니다.」 shown -- the server's own answers, which code) */
+  const fishSaid = []; page.on('response', async (r) => { if (/\/api\/island\/fish\/(start|finish|tug)/.test(r.url())) fishSaid.push(`${new URL(r.url()).pathname.split('/').pop()} ${r.status()} ${(await r.text().catch(() => '')).slice(0, 140)}`); });
+  const said = (error) => { error.message += `\nfish: ${fishSaid.slice(-6).join(' | ')}`; throw error; };
   expect((await post(request, '/api/test/island/give', token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (낚싯대는 잡화점에서)
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await page.reload(); // (294: the catch card stays till I end it -- no test hold)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
@@ -44,10 +47,10 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
     expect(hits).toEqual([true, true, true, true]);
     await expect(page.locator('#islandStick')).toBeHidden();
   }
-  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish', size: 40 })).data.ok).toBe(true);
+  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish', size: 40, slack: 20000 })).data.ok).toBe(true); /* (#513 trace: the presses at 5.8 s by the page's bite, the window 5.7 s -- the phone's checks above took ~4 s on CI: FISH_LATE) */
   await pressFishArrows(page, isMobile); // (3회차 4: the bite's arrows)
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_catfish')?.qty || 0, { timeout: 10000 }).toBe(1)
-    .catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')}`; throw error; }); // (CI #293 once on a phone: which -- late or wrong -- to find why)
+    .catch(async (error) => { error.message += `\ntoast: ${await page.locator('#toast').textContent().catch(() => '?')}`; said(error); }); // (CI #293 once on a phone: which -- late or wrong -- to find why)
   // (9절 자랑 장면, assets 97) the first catfish held out: the camera before me, the third person, the catch in hand -- the card then
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().showOff()?.phase || null), { timeout: 8000 }).toBe('hold');
   expect(await page.evaluate(() => window.PlazaDebug().showOff())).toMatchObject({ kind: 'fish', big: false, fp: false });
@@ -75,7 +78,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
   await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); await expect(page.locator('#plazaHint')).toHaveText(/순서대로( \(WASD도 돼요\))?$/);
-  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish', size: 55.5 })).data.ok).toBe(true);
+  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish', size: 55.5, slack: 20000 })).data.ok).toBe(true);
   await pressFishArrows(page, isMobile);
   await expect(card).toBeVisible({ timeout: 10000 }); await expect(card.locator('.catchRibbon')).toHaveText(['신기록!']);
   await expect(card.locator('.catchLines')).toContainText('지난 최고 40 cm → +15.5 cm'); await shot('catch-best');
@@ -101,7 +104,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   expect((await post(request, '/api/test/fish/mode', token, { mode: 'timing' })).data.ok).toBe(true);
   await castNow();
   if (!isMobile) { await page.keyboard.press('t'); await expect(page.locator('#toast')).toContainText('지금은 할 수 없어요'); await expect(page.locator('#emoteWheel')).toBeHidden(); } /* (v1.10.263: no wheel while fishing) */
-  await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); expect((await post(request, '/api/test/fish/bite', token, { species: 'crucian_carp', slack: 20000, biteAgo: 2000 })).data.ok).toBe(true); /* (265: the server's bite before the page's, as for a player -- set after it, a quick last hit came "sooner than the bar allows" by the server's clock: FISH_WRONG) */
+  { const pageBite = Date.now(); await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); expect((await post(request, '/api/test/fish/bite', token, { species: 'crucian_carp', slack: 20000, biteAgo: Date.now() - pageBite + 2000 })).data.ok).toBe(true); } /* (#513: biteAgo from the page's bite, not this request's arrival -- a slow phone's call put the server's after it) */ /* (265: the server's bite before the page's, as for a player -- set after it, a quick last hit came "sooner than the bar allows" by the server's clock: FISH_WRONG) */
   const bar = page.locator('#fishTiming'); await expect(bar).toBeVisible({ timeout: 10000 }); await expect(page.locator('#plazaHint')).toHaveText(/^입질! 초록 칸에서 [2-5]번$/); /* (the cast's own fish's grade: 2~5) */
   /* (the player: one miss away from the zone, then each press in it -- by the bar's own clock and FishTug.inZone, as the page and the
      server judge it, not the needle a slow frame drew; 265 흔들림: at CI's 2.7 fps the drawing was a third of a second behind) */
@@ -111,7 +114,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect(bar).toHaveClass(/wrong/, { timeout: 10000 }); await expect(bar.locator('.fishTimingMiss')).toBeVisible(); // (총괄 #409: where it was pressed, the needle held there 0.5 s)
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-timing-bar.png` });
   await expect(bar).toBeHidden({ timeout: 20000 });
-  await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_crucian_carp')?.qty || 0, { timeout: 10000 }).toBe(1);
+  await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_crucian_carp')?.qty || 0, { timeout: 10000 }).toBe(1).catch(said);
   { /* (1.10.355 타격감: the miss's 첨벙, a hit's 찰싹! or 완벽!, the catch's 찰방!) */ const words = await page.evaluate(() => window.IslandFeel.shown().map((w) => w.text)); expect(words).toContain('첨벙'); expect(words.some((w) => w === '찰싹!' || w === '완벽!')).toBe(true); expect(words).toContain('찰방!'); }
   await expect(card).toBeVisible({ timeout: 5000 }); await card.locator('#catchCloseBtn').click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   expect((await post(request, '/api/test/fish/mode', token, { mode: null })).data.ok).toBe(true);
@@ -120,8 +123,8 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   // hands; then one held throughout -- the line snaps, nothing caught
   const bigBite = async (species) => {
     await castNow();
-    await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); await expect(page.locator('#plazaHint')).toHaveText(/순서대로( \(WASD도 돼요\))?$/);
-    expect((await post(request, '/api/test/fish/bite', token, { species, size: 150, slack: 20000, biteAgo: 2000 })).data.ok).toBe(true); await pressFishArrows(page, isMobile);
+    const pageBite = Date.now(); await page.evaluate(() => window.PlazaDebug().fishBiteNow(14)); await expect(page.locator('#plazaHint')).toHaveText(/순서대로( \(WASD도 돼요\))?$/);
+    expect((await post(request, '/api/test/fish/bite', token, { species, size: 150, slack: 20000, biteAgo: Date.now() - pageBite + 2000 })).data.ok).toBe(true); await pressFishArrows(page, isMobile);
     await expect(page.locator('#fishTug')).toBeVisible({ timeout: 10000 }); await expect(page.locator('#fishTug .fishTugTitle')).toContainText('대어다!');
     expect(await page.evaluate(() => window.PlazaDebug().fishing()?.phase)).toBe('tug');
   };
