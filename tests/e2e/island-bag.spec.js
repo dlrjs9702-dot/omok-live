@@ -84,6 +84,7 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await post(request, '/api/test/points-credit', token, { amount: 500000 });
   const buy = page.locator('#boxGrowBtn-fish');
   await expect.poll(async () => { if (await buy.isVisible()) return true; await spaceOn(page, 'mall:store', isMobile); await page.waitForTimeout(800); return buy.isVisible(); }, { timeout: 30000, intervals: [500] }).toBe(true);
+  await expect(page.locator('#oreShopBtn')).toBeVisible(); /* (362 광석 값: the keeper sells the ores too -- its list in the next window) */
   await expect(buy).toHaveText('물고기 통 사기 · 50칸 300,000P'); await buy.click(); /* (362: 50 → 100 → 200) */
   await expect.poll(async () => (await get(request, '/api/island/bag', token)).data.boxes.fish).toBe(50);
   expect((await post(request, '/api/test/island/give', token, { itemId: 'fish_mackerel', qty: 1 })).data.applied).toBe(true);

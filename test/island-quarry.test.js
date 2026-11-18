@@ -50,7 +50,8 @@ test('채석장 자리: 네 조각 안 바위 32개(광석 차등), 캐는 자�
   assert.equal(Q.deckLift(Q.DECK.x, Q.DECK.z), 0.45, '전망 발판 위'); assert.ok(T.heightAt(Q.DECK.x, Q.DECK.z) > T.heightAt(Q.DECK.x + 3, Q.DECK.z) + 0.2, '발판 높이로 섬');
   // the items: the eight ores (흔함 200P -- 화강암 50P since 1.10.350 사용자 182 --, 보통 300P at the merchant; the rare ones not his), the 곡괭이, the week's 손보기 화강암 5
   assert.equal(Items.ITEMS.ore.name, '광석'); assert.equal(Items.TOOL_KIND.pickaxe, 'pickaxe'); assert.equal(Items.TOOL_USES.pickaxe, 40); assert.ok(Items.QUICK_KINDS.includes('pickaxe'));
-  assert.deepEqual(Ores.ORES.map((o) => `${o.id}:${Items.ITEMS[`ore_${o.id}`].at}:${Items.ITEMS[`ore_${o.id}`].price}`), ['granite:merchant:50', 'clay:merchant:200', 'coal:merchant:300', 'iron:merchant:300', 'copper:merchant:300', 'silver:null:800', 'crystal:null:1000', 'gold:null:2000']);
+  assert.deepEqual(Ores.ORES.map((o) => `${o.id}:${Items.ITEMS[`ore_${o.id}`].at}:${Items.ITEMS[`ore_${o.id}`].price}`), ['granite:merchant:50', 'clay:merchant:600', 'coal:merchant:900', 'iron:merchant:900', 'copper:merchant:900', 'silver:merchant:1500', 'crystal:merchant:1800', 'gold:merchant:3600']); /* (362 광석 값 사용자 1A: the merchant buys all eight) */
+  { const E = require('../lib/economy'); assert.equal(E.value('ore:shopMul'), 3); assert.deepEqual(['stone', 'ore_granite', 'ore_clay', 'ore_iron', 'ore_gold'].map((id) => E.shopOrePrice(id)), [300, 150, 1800, 2700, 10800], '잡화점은 상인 값의 3배'); assert.equal(Items.ITEMS.stone.price, 100); }
   assert.equal(Farm.upkeepNeed(1).ore, 5); assert.equal(Farm.upkeepNeed(4).ore, 10); assert.equal(Farm.UPKEEP_NAMES.ore, '화강암'); assert.deepEqual(Farm.UPKEEP_ITEMS.ore, ['ore_granite', 'ore']);
 });
 

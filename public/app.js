@@ -3041,6 +3041,22 @@
     islandPlaceSubmit.textContent = placeSure ? `${verb}할까요? +${fmtP(total)}` : `${verb} +${fmtP(total)}`; islandPlaceSubmit.classList.toggle('sure', placeSure);
     islandPlaceSubmit.disabled = !placePick.size || sellBusy;
   }
+  // 362 광석 값 (사용자 1A): the 잡화점's ores and stone -- each its price (three times the merchant's), 1 · 5 · 10 at a time
+  async function openOreShop() {
+    let list; try { list = (await api('/api/island/store/ores')).ores; } catch (error) { showToast(error.message); return; }
+    const rows = list.map((o) => {
+      const row = document.createElement('div'); row.className = 'islandPlaceRow oreShopRow'; row.dataset.item = o.id;
+      const what = document.createElement('span'); what.append(itemIcon({ itemId: o.id, icon: o.icon }), ` ${o.name} · ${fmtP(o.price)}`); row.append(what);
+      for (const n of [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = `${n}개`; b.addEventListener('click', async () => {
+        b.disabled = true;
+        try { const r = await api('/api/island/store/ores', { method: 'POST', body: JSON.stringify({ itemId: o.id, qty: n, requestId: crypto.randomUUID() }) }); if (r.bag) drawIslandBag(r.bag); loadPoints(); showToast(`${o.name} ${n}개를 샀어요 · -${fmtP(o.price * n)}`); }
+        catch (error) { showToast(error.message); } finally { b.disabled = false; }
+      }); row.append(b); }
+      return row;
+    });
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '상인이 사는 값보다 비싸요. 더 싸게 사려면 벼룩시장을 둘러보세요.'; /* (the times-that is the administrator's to change) */
+    openPlazaWindow('⛏️ 광석 사기', [note, ...rows]);
+  }
   // v1.10.86 주민세: the 세금 창구 (its own clerk) -- what I owe (체납) and paying it; tonight's tax as a guide
   const taxRow = document.getElementById('islandTaxRow'); const taxDialog = document.getElementById('taxDialog'); const taxStatus = document.getElementById('taxStatus');
   async function openTax() {
@@ -4330,14 +4346,16 @@
       try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); }
       catch (error) { showToast(error.message, 4000); grow.disabled = false; }
     });
-    /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 30 → 60 → 90 → 120) */
+    /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 362: 50 → 100 → 200) */
     const boxBtns = BOX_BTNS.map(([, kind]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost hidden'; b.id = `boxGrowBtn-${kind}`; b.addEventListener('click', async () => {
       b.disabled = true;
       try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind, to: Number(b.dataset.to) }) }); /* (Codex 291~300 #2: the size on the button -- sent again, never the one after) */ plazaDialog.close(); showToast(r.already ? `${BOX_TITLE[kind]}은 이미 ${r.slots}칸이에요.` : `${BOX_TITLE[kind]}이 ${r.slots}칸이 됐어요! 잡은 ${kind === 'fish' ? '물고기는' : '곤충은'} 통에 먼저 들어가요.`, 4500); loadPoints(); }
       catch (error) { showToast(error.message, 4000); b.disabled = false; }
     }); return b; });
     api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.dataset.to = String(next.slots); b.textContent = `${BOX_TITLE[kind]} ${bag.boxes?.[kind] ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
-    lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
+    /* (362 광석 값, 사용자 1A: the ores and the stone sold here too, at three times what the merchant pays -- dearer than the 벼룩시장) */
+    const oreBtn = document.createElement('button'); oreBtn.type = 'button'; oreBtn.className = 'ghost'; oreBtn.id = 'oreShopBtn'; oreBtn.textContent = '⛏️ 광석 사기'; oreBtn.addEventListener('click', () => openOreShop());
+    lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns, oreBtn); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
   }
   const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';
   let goodBusy = false;

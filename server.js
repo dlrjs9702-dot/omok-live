@@ -6303,6 +6303,21 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, kind, slots: to, next: IslandItems.BOX_GROW.find((n) => n > to) || null, balance: out.balance ?? null });
     });
   }
+  // 362 광석 값 (사용자 1A, notes gather-must-ideas 끝): the 잡화점 (the 백화점 1층) sells every ore and the stone at what the merchant pays
+  // times `ore:shopMul` -- dearer than the 벼룩시장; GET the list, POST one (1, 5 or 10)
+  if (pathname === '/api/island/store/ores' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const ORE_SHOP = ['stone', ...IslandOres.ORES.map((o) => `ore_${o.id}`)];
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ores: ORE_SHOP.map((id) => ({ id, name: IslandItems.ITEMS[id].name, icon: IslandItems.ITEMS[id].icon, price: Economy.shopOrePrice(id) })) });
+    const body = await parseJson(req); const itemId = String(body.itemId || ''); const qty = Number(body.qty);
+    if (!ORE_SHOP.includes(itemId)) return sendError(res, 400, 'BAD_REQUEST', '파는 광석이 아니에요.'); if (![1, 5, 10].includes(qty)) return sendError(res, 400, 'BAD_QTY', '수량을 확인해 주세요.');
+    if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 살 수 있어요.');
+    let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId, qty, unit: Economy.shopOrePrice(itemId), shopOre: true }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+    if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+    if (out.applied) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, itemId, qty, bag: out.bag, balance: out.balance ?? null });
+  }
   // 297 가방에서 옮기기 (총괄 #447): what the bag held before the box was bought -- into the box as far as it has room
   if (pathname === '/api/island/box/fill' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
