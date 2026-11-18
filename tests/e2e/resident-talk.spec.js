@@ -41,7 +41,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const holdOn = (p, n) => p.evaluate((n) => window.PlazaDebug().residentReservations[n]?.hold?.eventId || null, n);
   await post(request, '/api/test/island/free-residents', token, {}); // (CI: no resident still held by an earlier test's event)
   const view = (await get(request, '/api/island/errands', token)).data;
-  expect(view.total).toBe(3);
+  expect(view.total).toBe(4); // (v1.10.366: the three errands and one 재료 부탁)
   // someone with nothing for me: held for the talk on both screens, the choices, still held past the old stop, let go on closing
   const idle = [...Array(10).keys()].find((n) => !(n in view.marks));
   await talkTo(idle);
@@ -118,7 +118,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   await expect(page.locator('#plazaDialogTitle')).not.toHaveText('');
   // (asked -- or, a slow runner having talked twice, reminded; T: in any walker's register; T2: their own word first, the ask
   // typed out after it)
-  await lines(); await expect(page.locator('.lostRequestLine').filter({ hasText: /전해 줄래|전해 주겠|전해 주게|못 봤|사다 줄래|사다 주겠|사다 주게|필요한데|아직 못/ }).first()).toBeVisible();
+  await lines(); await expect(page.locator('.lostRequestLine').filter({ hasText: /전해 줄래|전해 주겠|전해 주게|못 봤|사다 줄래|사다 주겠|사다 주게|필요한데|아직 못|\d+개/ }).first()).toBeVisible();
   await expect(page.locator('#plazaDialogTitle')).toHaveAttribute('data-hearts', '♥'); // 호감도 (the first talk of the day +1; v1.10.193 2차: the hearts by the name)
   // (Q 부탁 받기: the ask's note -- what, what it pays, today -- and 「할게요!」 / 「다음에요」; nothing started by talking)
   await expect(page.locator('#plazaDialog .questNote')).toContainText('오늘 안에');
