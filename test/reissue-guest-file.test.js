@@ -107,11 +107,7 @@ async function startServer(t, envOverrides = {}) {
     await fs.rm(dir, { recursive: true, force: true });
   });
   let alive = false;
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { alive = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); alive = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(alive, `server did not start: ${output}`);
   async function req(route, method = 'GET', session, data) {
     const headers = {};
@@ -134,7 +130,7 @@ async function startServer(t, envOverrides = {}) {
   return { req, enter };
 }
 
-test('old entry token authenticates on Render destination with the same account and records identity', { timeout: 25000 }, async t => {
+test('old entry token authenticates on Render destination with the same account and records identity', { timeout: 55000 }, async t => {
   const { req, enter } = await startServer(t, {
     RENDER_EXTERNAL_URL: 'https://omok-live.onrender.com',
     PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
@@ -168,7 +164,7 @@ test('old entry token authenticates on Render destination with the same account 
   assert.equal((await req('/api/admin/keys', 'GET', admin)).data.keys.length, 1);
 });
 
-test('v1.7.22: RENDER_EXTERNAL_HOSTNAME alone still beats an old PUBLIC_BASE_URL for the entry-file address', { timeout: 25000 }, async t => {
+test('v1.7.22: RENDER_EXTERNAL_HOSTNAME alone still beats an old PUBLIC_BASE_URL for the entry-file address', { timeout: 55000 }, async t => {
   const { req } = await startServer(t, {
     RENDER_EXTERNAL_URL: '',
     RENDER_EXTERNAL_HOSTNAME: 'omok-live.onrender.com',
@@ -180,7 +176,7 @@ test('v1.7.22: RENDER_EXTERNAL_HOSTNAME alone still beats an old PUBLIC_BASE_URL
   assert.match(issued.data.html, /action="https:\/\/omok-live\.onrender\.com\/island\/guest-entry"/);
 });
 
-test('only administrator can reissue: old entry and active session are invalidated, replacement works', { timeout: 25000 }, async t => {
+test('only administrator can reissue: old entry and active session are invalidated, replacement works', { timeout: 55000 }, async t => {
   const { req, enter } = await startServer(t);
   const login = await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' });
   assert.equal(login.status, 200);

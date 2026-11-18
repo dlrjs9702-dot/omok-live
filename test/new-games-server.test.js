@@ -9,7 +9,7 @@ const { spawn } = require('node:child_process');
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room actions', { timeout: 30000 }, async t => {
+test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room actions', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-new-games-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -28,11 +28,7 @@ test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room act
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 100; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(`${base}/health`)).ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `Server did not start: ${output}`);
 
   async function req(route, token, body, method = 'POST') {

@@ -9,7 +9,7 @@ const { spawn } = require('node:child_process');
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('Bingo API supports 3-player authoritative turns, duplicate protection, refresh and rematch reset', { timeout: 30000 }, async t => {
+test('Bingo API supports 3-player authoritative turns, duplicate protection, refresh and rematch reset', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-bingo-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -28,11 +28,7 @@ test('Bingo API supports 3-player authoritative turns, duplicate protection, ref
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 90; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { const res = await fetch(`${base}/health`); if (res.ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `test server failed to start: ${output}`);
 
   async function req(route, token, body, method = 'POST') {
@@ -146,7 +142,7 @@ test('Bingo API supports 3-player authoritative turns, duplicate protection, ref
   assert.notDeepEqual(newHostBoard, boards['1']);
 });
 
-test('Bingo grid size and number-pool are host-configurable (v1.6.66) and generate matching boards', { timeout: 30000 }, async t => {
+test('Bingo grid size and number-pool are host-configurable (v1.6.66) and generate matching boards', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-bingo-config-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -165,11 +161,7 @@ test('Bingo grid size and number-pool are host-configurable (v1.6.66) and genera
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 90; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { const res = await fetch(`${base}/health`); if (res.ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `test server failed to start: ${output}`);
 
   async function req(route, token, body, method = 'POST') {
@@ -224,7 +216,7 @@ test('Bingo grid size and number-pool are host-configurable (v1.6.66) and genera
   assert.equal((await req('/api/room/set-bingo-grid', host, { gridSize: 5 })).data.error, 'INVALID_BINGO_GRID');
 });
 
-test('Bingo resign (v1.6.49) ends the match immediately and credits every other seated player as the winner, as an array', { timeout: 30000 }, async t => {
+test('Bingo resign (v1.6.49) ends the match immediately and credits every other seated player as the winner, as an array', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-bingo-resign-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -243,11 +235,7 @@ test('Bingo resign (v1.6.49) ends the match immediately and credits every other 
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 90; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { const res = await fetch(`${base}/health`); if (res.ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `test server failed to start: ${output}`);
 
   async function req(route, token, body, method = 'POST') {

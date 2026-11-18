@@ -19,11 +19,7 @@ async function startServer(dataDir, port, preload) {
   let output = '';
   proc.stdout.on('data', chunk => { output += chunk; });
   proc.stderr.on('data', chunk => { output += chunk; });
-  for (let i = 0; i < 100; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(`http://127.0.0.1:${port}/health`)).ok) return proc; } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  try { await require('../test-support/wait-ready').waitReady(`http://127.0.0.1:${port}`, proc); return proc; } catch { /* (its kill and throw below) */ } /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   proc.kill('SIGTERM'); // (2026-10-25: one that never came up was left running -- its piped output held the whole test run open for hours)
   throw new Error(`server failed: ${output}`);
 }

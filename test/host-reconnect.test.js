@@ -33,16 +33,7 @@ async function serverFixture(t) {
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let ready = false;
-  for (let i = 0; i < 120; i++) {
-    if (child.exitCode !== null) break;
-    try {
-      if ((await fetch(base + '/health')).ok) {
-        ready = true;
-        break;
-      }
-    } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, child); ready = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(ready, logs);
 
   async function req(route, token, body, method = 'POST') {
@@ -86,7 +77,7 @@ async function serverFixture(t) {
 
 // v1.9.10: a waiting room nobody else is in is not entered by itself when the entry file is opened again -- that visit
 // starts on Game Island (it used to drop people into an old omok room). Joining the room again still gives the host role back.
-test('a guest host of an empty waiting room starts on Game Island, and joining it again keeps host-only setup', { timeout: 35000 }, async t => {
+test('a guest host of an empty waiting room starts on Game Island, and joining it again keeps host-only setup', { timeout: 65000 }, async t => {
   const { req, enter, guest } = await serverFixture(t);
   const host = await guest('방장');
   const created = await req('/api/rooms', host.session, { gameType: 'bingo' });
@@ -105,7 +96,7 @@ test('a guest host of an empty waiting room starts on Game Island, and joining i
   assert.equal((await req('/api/room/set-bingo-target', host.session, { targetLines: 2 })).status, 200);
 });
 
-test('a guest host comes straight back to a waiting room where someone is still waiting', { timeout: 35000 }, async t => {
+test('a guest host comes straight back to a waiting room where someone is still waiting', { timeout: 65000 }, async t => {
   const { req, enter, guest } = await serverFixture(t);
   const host = await guest('방장');
   const friend = await guest('친구');
@@ -120,7 +111,7 @@ test('a guest host comes straight back to a waiting room where someone is still 
   assert.equal(restored.me.roomCode, roomCode);
 });
 
-test('host and player seats reconnect in a non-numbered game, preserving server-side roles', { timeout: 35000 }, async t => {
+test('host and player seats reconnect in a non-numbered game, preserving server-side roles', { timeout: 65000 }, async t => {
   const { req, enter, guest } = await serverFixture(t);
   const host = await guest('방장');
   const player = await guest('플레이어');

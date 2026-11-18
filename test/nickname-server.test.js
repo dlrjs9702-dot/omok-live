@@ -35,10 +35,7 @@ async function boot(t, dir) {
     await new Promise(resolve => { child.once('exit', resolve); setTimeout(resolve, 4000).unref(); });
   };
   t.after(stop);
-  for (let i = 0; i < 120 && child.exitCode === null; i += 1) {
-    try { if ((await fetch(base + '/health')).ok) break; } catch {}
-    await sleep(100);
-  }
+  await require('../test-support/wait-ready').waitReady(base, child); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   let ip = 0;
   async function req(route, token, body) {
     const headers = { 'X-Forwarded-For': `10.66.${Math.floor(++ip / 200) % 200}.${ip % 200 + 1}` };

@@ -64,7 +64,7 @@ test('PostgreSQL changes label and hashed secret in one active-only update witho
   assert.doesNotMatch(JSON.stringify(changed), /token_hash|tokenHash|new-super-secret/);
 });
 
-test('admin rename endpoint validates input, invalidates prior file and active session, and issues updated HTML', { timeout: 25000 }, async t => {
+test('admin rename endpoint validates input, invalidates prior file and active session, and issues updated HTML', { timeout: 55000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'omok-rename-server-'));
   const freePort = await new Promise((resolve, reject) => {
     const socket = net.createServer();
@@ -93,11 +93,7 @@ test('admin rename endpoint validates input, invalidates prior file and active s
     await fs.rm(dir, { recursive: true, force: true });
   });
   let running = false;
-  for (let n = 0; n < 100; n++) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { running = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); running = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(running, `server start failed: ${output}`);
   async function request(route, method = 'GET', session, payload) {
     const headers = {};

@@ -31,10 +31,7 @@ async function serverFixture(t) {
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let ready = false;
-  for (let i = 0; i < 120 && child.exitCode === null; i += 1) {
-    try { if ((await fetch(base + '/health')).ok) { ready = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, child); ready = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(ready, logs);
   let ip = 1;
   async function req(route, token, body, method = 'POST') {
@@ -80,7 +77,7 @@ async function threeInAMatch(t, dropVia) {
   return { ...fx, a, b, c, nextRound: state };
 }
 
-test('a refresh/dropped page keeps its seat through the next round and gets it back on re-entry', { timeout: 40_000 }, async t => {
+test('a refresh/dropped page keeps its seat through the next round and gets it back on re-entry', { timeout: 70000 }, async t => {
   const { req, enter, c, nextRound } = await threeInAMatch(t, async ({ req: request }, player) => {
     assert.equal((await request('/api/session/release', null, { sessionToken: player.session })).status, 200); // pagehide
     await new Promise(resolve => setTimeout(resolve, 1700)); // past the 1 s release grace
@@ -91,7 +88,7 @@ test('a refresh/dropped page keeps its seat through the next round and gets it b
   assert.equal(mine?.me?.seat, '3', '끊겼다 돌아온 사람은 다음 판에서도 같은 좌석');
 });
 
-test('an explicit logout gives the seat up once that match has ended (existing rule)', { timeout: 40_000 }, async t => {
+test('an explicit logout gives the seat up once that match has ended (existing rule)', { timeout: 70000 }, async t => {
   const { req, enter, a, c, nextRound } = await threeInAMatch(t, async ({ req: request }, player) => {
     assert.equal((await request('/api/logout', player.session, {})).status, 200);
   });

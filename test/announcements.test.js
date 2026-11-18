@@ -81,7 +81,7 @@ test('PostgreSQL announcement storage migrates pin metadata and uses pinned orde
   assert.match(sql, /title LIKE '%닉네임%변경%안내%'/);
 });
 
-test('announcement API permits members to read but only admins to create/update/delete', { timeout: 25000 }, async t => {
+test('announcement API permits members to read but only admins to create/update/delete', { timeout: 55000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-notices-api-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -100,11 +100,7 @@ test('announcement API permits members to read but only admins to create/update/
     await fs.rm(dir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 90; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { const response = await fetch(base + '/health'); if (response.ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `test server failed to start: ${output}`);
   async function request(route, token, body, method = 'POST') {
     const headers = {};

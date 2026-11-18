@@ -27,11 +27,7 @@ for (const count of [2, 3]) test(`${count}인 첫뻑→2연뻑→자뻑: 즉시 
     await fs.rm(dir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i += 1) {
-    try { if ((await fetch(`${base}/health`)).ok) break; } catch {}
-    if (proc.exitCode !== null) throw new Error(output);
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   let ip = 1;
   async function api(route, token, body, method = 'POST') {
     const res = await fetch(base + route, {

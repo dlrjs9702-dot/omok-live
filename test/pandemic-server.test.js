@@ -10,7 +10,7 @@ const { spawn } = require('node:child_process');
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 // 팬데믹을 실제 서버로: 방 생성·좌석·설정·시작, 비공개 정보(카드 더미 순서)가 응답에 없는지, 행동 권한, 새로고침 뒤에도 같은 상태.
-test('팬데믹 API: 3인 시작, 더미 순서 비공개, 차례 밖 행동 거부, 행동 적용, 관전자 제한', { timeout: 40000 }, async t => {
+test('팬데믹 API: 3인 시작, 더미 순서 비공개, 차례 밖 행동 거부, 행동 적용, 관전자 제한', { timeout: 70000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-pandemic-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -27,11 +27,7 @@ test('팬데믹 API: 3인 시작, 더미 순서 비공개, 차례 밖 행동 거
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 90; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { const res = await fetch(`${base}/health`); if (res.ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `서버 시작 실패: ${output}`);
 
   let ip = 0;

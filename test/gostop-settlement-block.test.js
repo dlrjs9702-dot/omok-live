@@ -11,7 +11,7 @@ const { spawn } = require('node:child_process');
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 // IDEAS backlog 4: the next hand of 고스톱·맞고 must not start until the finished hand's points are settled.
-test('고스톱 정산이 실패하는 동안 다음 판은 시작되지 않고, 복구 뒤 정산은 한 번만 반영된다', { timeout: 40_000 }, async t => {
+test('고스톱 정산이 실패하는 동안 다음 판은 시작되지 않고, 복구 뒤 정산은 한 번만 반영된다', { timeout: 70000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gostop-settle-block-'));
   const port = await freePort();
   const proc = spawn(process.execPath, ['server.js'], {
@@ -33,11 +33,7 @@ test('고스톱 정산이 실패하는 동안 다음 판은 시작되지 않고,
     await fs.rm(dir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i += 1) {
-    try { if ((await fetch(`${base}/health`)).ok) break; } catch {}
-    if (proc.exitCode !== null) throw new Error(output);
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   let ip = 1;
   async function api(route, token, body, method = 'POST') {
     const res = await fetch(base + route, {

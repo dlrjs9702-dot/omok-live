@@ -81,7 +81,7 @@ test('full board without a winning line is a draw', () => {
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('Connect Four server supports public join, spectators, turn enforcement, real gravity, victory, rematch and existing guest files', { timeout: 30000 }, async t => {
+test('Connect Four server supports public join, spectators, turn enforcement, real gravity, victory, rematch and existing guest files', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'connect4-server-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -104,11 +104,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 100; i++) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `Server did not start: ${output}`);
   async function req(route, session, body, method = 'POST') {
     const headers = {};

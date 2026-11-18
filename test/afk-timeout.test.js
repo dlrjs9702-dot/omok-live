@@ -45,11 +45,7 @@ async function serverFixture(t, extraEnv = {}) {
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let ready = false;
-  for (let i = 0; i < 120; i += 1) {
-    if (child.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { ready = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, child); ready = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(ready, logs);
   async function req(route, token, body, method = 'POST') {
     const headers = {};
@@ -69,7 +65,7 @@ async function serverFixture(t, extraEnv = {}) {
   return { req, login };
 }
 
-test('a connected seat that sits on its own turn past the AFK timeout is paused exactly like a disconnect', { timeout: 30000 }, async t => {
+test('a connected seat that sits on its own turn past the AFK timeout is paused exactly like a disconnect', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t);
   const a = await login();
   const b = await login();
@@ -105,7 +101,7 @@ test('a connected seat that sits on its own turn past the AFK timeout is paused 
   assert.equal(state.game.paused, false);
 });
 
-test('an idle-flagged seat that comes back (present) lifts the pause itself; nobody else can lift it for them', { timeout: 30000 }, async t => {
+test('an idle-flagged seat that comes back (present) lifts the pause itself; nobody else can lift it for them', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t, { AFK_TIMEOUT_MS: '600' });
   const a = await login();
   const b = await login();
@@ -133,7 +129,7 @@ test('an idle-flagged seat that comes back (present) lifts the pause itself; nob
   assert.equal((await req('/api/room/move', a, { x: 2, y: 3 })).status, 200);
 });
 
-test('a free-for-all numbered-seat game (bingo) gets the same AFK pause for whichever seat is up', { timeout: 30000 }, async t => {
+test('a free-for-all numbered-seat game (bingo) gets the same AFK pause for whichever seat is up', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t);
   const a = await login();
   const b = await login();
@@ -163,7 +159,7 @@ test('a free-for-all numbered-seat game (bingo) gets the same AFK pause for whic
   assert.deepEqual(state.game.disconnectedAtEnd, [idleSeat]);
 });
 
-test('Twenty Questions skips an idle challenger turn instead of pausing the whole room', { timeout: 30000 }, async t => {
+test('Twenty Questions skips an idle challenger turn instead of pausing the whole room', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t);
   const a = await login();
   const b = await login();
@@ -190,7 +186,7 @@ test('Twenty Questions skips an idle challenger turn instead of pausing the whol
   assert.equal(nextAction.data.state.game.pendingQuestion.seat, '3');
 });
 
-test('Twenty Questions gives a disconnected challenger a grace window, then skips only that turn', { timeout: 30000 }, async t => {
+test('Twenty Questions gives a disconnected challenger a grace window, then skips only that turn', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t);
   const a = await login();
   const b = await login();
@@ -217,7 +213,7 @@ test('Twenty Questions gives a disconnected challenger a grace window, then skip
   assert.equal(nextAction.status, 200);
 });
 
-test('Twenty Questions voids an idle drawer round with no score and automatically advances', { timeout: 30000 }, async t => {
+test('Twenty Questions voids an idle drawer round with no score and automatically advances', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t);
   const a = await login();
   const b = await login();
@@ -242,7 +238,7 @@ test('Twenty Questions voids an idle drawer round with no score and automaticall
   assert.equal((await req('/api/room/twenty-secret', b, { secret: '다음 라운드 정답' })).status, 200);
 });
 
-test('Twenty Questions gives a disconnected drawer 60 seconds to return, then voids and advances instead of pausing', { timeout: 30000 }, async t => {
+test('Twenty Questions gives a disconnected drawer 60 seconds to return, then voids and advances instead of pausing', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t);
   const a = await login();
   const b = await login();
@@ -272,7 +268,7 @@ test('Twenty Questions gives a disconnected drawer 60 seconds to return, then vo
   assert.equal((await req('/api/room/twenty-secret', b, { secret: '계속 진행' })).status, 200);
 });
 
-test('liar and pictionary are exempt from the AFK watch (they already run their own phase-deadline tick)', { timeout: 30000 }, async t => {
+test('liar and pictionary are exempt from the AFK watch (they already run their own phase-deadline tick)', { timeout: 60000 }, async t => {
   const { req, login } = await serverFixture(t);
   const tokens = [await login(), await login(), await login()];
   const created = await req('/api/rooms', tokens[0], { gameType: 'liar' });
