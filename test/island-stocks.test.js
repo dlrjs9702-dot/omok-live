@@ -63,6 +63,11 @@ test('섬 주식 소식: 튄 시간 값이 붙은 뒤에만, 방향 맞음, 달�
     const key = `${x.name.replace(/^새 /, '')}|${x.line}`; if (last.has(key)) assert.ok(x.day - last.get(key) >= 14, `${key} ${last.get(key)}→${x.day}`); last.set(key, x.day);
     void lines;
   }
+  // (1.10.358 N1: 별마루섬 open -- its lines come; the boat's (N3) not till it runs)
+  const open = S.createMarket('news-key', { newIsland: () => true }); const seenNeeds = new Set();
+  const need = (x) => { const c = byName.get(x.name.replace(/^새 /, '')); const dir = x.pct >= 0 ? 'up' : 'down'; const f = [...(c[dir] || []), ...(ind.get(c.industry)[dir] || [])].find((l) => S.lineText(l) === x.line); return typeof f === 'object' ? f.needs : undefined; };
+  for (let d = 0; d < 120; d += 1) for (const x of open.newsOf(S.tickTime(d * S.PER_DAY + S.PER_DAY - 1) + 60000)) { const nd = need(x); if (nd) seenNeeds.add(nd); }
+  assert.ok(seenNeeds.has('newIsland') && !seenNeeds.has('boat'), JSON.stringify([...seenNeeds]));
   // only posted hours: at 10:30 the news of 10:00 and before, none of 11:00
   const ms = S.tickTime(5 * S.PER_DAY + 1) + 30 * 60000; const K = S.tickAt(ms); for (const x of m.newsOf(ms)) assert.ok(x.k <= K && x.at <= ms, '미리 귀띔 없음');
   const v = m.view(ms); for (const c of v.companies) if (c.news) assert.ok(c.news.at <= ms);

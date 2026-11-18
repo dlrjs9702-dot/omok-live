@@ -141,7 +141,7 @@ function stocksMarket() {
     // (사용자 「B」: shares bought on 320's market (its public seed) given back at what they cost, before anything else is read)
     const back = await IslandStocks.refundOldStocks(pointStore, (userId, refund) => pointStore.questApply(userId, 'mail', (d) => ((d.letters || []).some((l) => l.id === 'stock-refund-321') ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id: 'stock-refund-321', from: 'office', fromName: '섬 증권거래소', text: `섬 주식 시세를 새로 정하면서, 그동안 가지고 있던 주식을 산 값 그대로(수수료 포함) ${refund.toLocaleString('ko-KR')}P로 돌려드렸어요. 가진 주식과 주문 기록은 비워졌어요. 새 시세로 다시 사고팔 수 있어요.`, itemId: null, itemName: null, at: Date.now(), read: false }, Date.now()) } })));
     if (back.length) { console.log(`[stocks] refund accounts=${back.length} points=${back.reduce((n, x) => n + x.refund, 0)}`); notifyPointsChanged(back.filter((x) => x.refund > 0).map((x) => x.userId)); }
-    return IslandStocks.createMarket(key);
+    return IslandStocks.createMarket(key, { newIsland: () => Boolean(IslandTerrain.NEW_ISLE) }); // (1.10.358 N1: 별마루섬 open -- the news lines that wait for it (needs: newIsland) on)
   })().catch((error) => { stockMarketHeld = null; throw error; });
   return stockMarketHeld;
 }
@@ -4976,7 +4976,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.358' });
+    return sendJson(res, 200, { ok: true, version: '1.10.359' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -10509,7 +10509,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.358 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.359 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

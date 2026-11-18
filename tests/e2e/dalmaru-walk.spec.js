@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, expectNoScriptError } = require('./skin-support');
+const { shopper, get, expectNoScriptError } = require('./skin-support');
 
 // 달마루섬 개편 2단계 (gamecenter-notes docs/dalmaru-implementation-20261019.md 0. 원칙 — 단계마다 사용자 확인 대신 자동 검사):
 // on the preview island with its walks and buildings, what is drawn blocks and what blocks is drawn, nothing floats or
@@ -36,6 +36,18 @@ test('달마루섬 2단계: 보이는 것 = 막는 것, 뜨거나 묻힌 것 없
   const fall = () => page.evaluate(() => window.PlazaDebug().environment.water);
   expect((await fall()).falls).toBe(2);
   const f0 = (await fall()).fall; await expect.poll(async () => (await fall()).fall).not.toBe(f0);
+  // N1 새 섬 (notes island-expansion §8): far off it, out; walked over 새 섬다리 (no rail or solid in the way), all of it in; on its
+  // far side (x 480) the server keeps where one is (ISLAND_RADIUS 540); back over, out again
+  const isle = () => page.evaluate(() => window.PlazaDebug().isle2());
+  await page.evaluate(() => window.PlazaDebug().teleport(0, 236)); await expect.poll(async () => (await isle()).state).toBe('none');
+  await page.evaluate(() => { const d = window.PlazaDebug(); d.teleport(163, 226); d.setCamYaw(-Math.PI / 2); }); await page.waitForTimeout(600);
+  /* (run, Shift: CI's ~3 frames a second walked 40 m of the 70 in 40 s) */
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('Shift'); await page.keyboard.down('KeyW'); await expect.poll(() => page.evaluate(() => window.PlazaDebug().x), { timeout: 90000 }).toBeGreaterThan(230); await page.keyboard.up('KeyW'); await page.keyboard.up('Shift');
+  expect(await page.evaluate(() => Math.abs(window.PlazaDebug().z - 226))).toBeLessThan(2); /* (straight over -- nothing turned it aside) */
+  await expect.poll(async () => (await isle()).state).toBe('full'); expect((await isle()).shown).toBeGreaterThan(5);
+  await page.evaluate(() => window.PlazaDebug().teleport(480, 230)); await page.waitForTimeout(2500);
+  await expect.poll(async () => (await get(request, '/api/test/plaza-snapshot', who.token)).data.players?.find((p) => p.name === '한바퀴')?.x ?? 0, { timeout: 15000 }).toBeGreaterThan(470);
+  await page.evaluate(() => window.PlazaDebug().teleport(0, 236)); await expect.poll(async () => (await isle()).state).toBe('none');
   await expectNoScriptError(page);
   await who.context.close();
 });

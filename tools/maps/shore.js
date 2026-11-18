@@ -5,8 +5,8 @@
 // B what the shore is (255 sand, 128 rock and cliff, 64 built: 물가 거리's rail, the pier, the dock)
 const SEA = -0.6; const RANGE = 12;
 
-function buildShoreMap(T, res = 1024) {
-  const size = T.GROUND.size; const x0 = -size / 2; const z0 = -size / 2; const cell = size / res; const n = res * res;
+function buildShoreMap(T, res = 1024, box = null) { // (box { x0, z0, size }: another square than the ground's -- N1 new island's)
+  const size = box?.size ?? T.GROUND.size; const x0 = box?.x0 ?? -size / 2; const z0 = box?.z0 ?? -size / 2; const cell = size / res; const n = res * res;
   const h = new Float32Array(n);
   for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) h[j * res + i] = T.meshGroundHeight(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell);
   // two-pass chamfer distance (in texels) to the other side of the sea's height, each side

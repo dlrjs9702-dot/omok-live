@@ -13,12 +13,35 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.359 N1 별마루섬 땅·다리·숲길 (notes docs/island-expansion-20261115.md §8, 163A~166A)
+
+- 땅: dalmaru-terrain NEW_ISLE (365, 226) 반지름 145(해안 물결), 봉우리 (393, 212) 43.7 m · 남쪽 언덕 17.5 m · 동쪽 갯바위 18.4 m · 캠핑장 평지 (259, 250) 3 m, 개울 CREEK 6점(샘 27.6 m → 북서 해안, 바닥 0.7 m 낮춤, 물은 inCreek, 낚시 river). coastDist에 한 항. 넓이 66,100 ㎡.
+- 다리: BRIDGES 세 번째(별마루다리, 윤슬다리 모델 61.75 m, z 226, 165.25~227). 마을 거리 (98, 236) → 다리 이어짐.
+- 길: 다리 머리→캠핑장(walk 3), 부두 쪽(walk 2.6), 숲길 고리 701 m·산길 168 m·개울 옆 길(trail). 개울 건너는 곳 작은 다리 자동.
+- 숲: 나무 630·덤불 525·바위 170·통나무 40·꽃 210·긴 풀 1,050(모두 isle2, 자기 씨앗으로 맨 뒤에 — 본섬 자연물 그대로, 열매 나무 없음).
+- 그리기: 별마루섬 땅 그물(GROUND2 215/72.5/305, 122칸, 본섬 2.5 m 격자 위; 본섬 그물은 해안 14 m 안 칸을 뺌), 땅 지도 isle2-* 6장(768), 바다 판 1,300·별마루섬 바닷가 물결, 개울 물 띠, 멀리 모양(10 m 그물 한 덩어리).
+- 넣고 빼기: island.isle2View — 해안에서 110 m 안 전부(나갈 때 125)·160 m 안 멀리 모양·밖은 없음, 전부일 때 60 m 칸이 180 m 밖이면 안 그림; 별마루섬 쪽(x>200)에선 본섬의 안개 밖(230 m) 정적 물체 안 그림. 폰 가장 낮은 단계 0.6배.
+- 서버 위치 한계 330 → 540. 원경 coastLong (318, 75) → (330, −95). 미니맵 땅 그림 x −200~530·z −200~385, 안내 지도 가운데 (150, 92) 폭 585. AREAS 「별마루섬」. 이름 사용자 「A」(NAMES 두 줄). 주식 소식: newIsland 켬, 배 줄 2개는 boat(N3).
+- 측정(work/n1-isle/p.cjs, gpu-20261117 탐침 그대로, PC 1600×900 높음, Chrome D3D11 RX 570, 358 0f795261 대 N1 -- 358의 땅 고침 뒤라 땅까지 그려진 값): 그리기 수(탐침 단위)·프레임 ms 중앙값
+
+| 자리 | 358 | N1 |
+|---|---|---|
+| 대청마당 | 604 · 7.9 | 604 · 7.1 |
+| 정류장 앞 | 816 · 8.7 | 816 · 7.9 |
+| 집 거리 | 320 · 6.0 | 324 · 5.6 |
+| 캠핑장(별마루섬) | 56 · 5.1 | 400 · 5.5 |
+| 전망대 봉우리(별마루섬) | 164 · 5.6 | 536 · 5.6 |
+| 다리 머리(별마루섬) | 72 · 5.2 | 332 · 5.4 |
+
+  통과선: 본섬 세 자리 ±5 % 안, 새 세 자리 정류장(816) 아래.
+
 ## v1.10.358 긴급: 폰에서 땅 안 보임 (사용자 갤럭시 폴드, live 1.10.357)
 
 - 원인: 땅 셰이더의 텍스처가 17칸(우리 15 + three.js dfgLUT + 해 그림자). 356까지는 16칸으로 딱 한도였고, 357의 tRoad(찻길 지도)가 넘겨서 MAX_TEXTURE_IMAGE_UNITS 16인 폰에서 프로그램 연결이 실패함(PC는 32라 멀쩡).
 - 고침: 회색 결 그림 grass·soil·sand 세 장을 ground-v1/ground.grains.png 한 장으로(R 풀 64 px 4×4 · G 흙 256 · B 모래 32 px 8×8, tools/ground-grains.py). 셰이더는 GRASS/SOIL/SAND 매크로로 채널·배율만 바꿔 같은 값을 읽음 → 15칸.
 - 재발 막기: test/ground-samplers.test.js(땅 sampler + 2 ≤ 15).
 - 확인: 브라우저에서 땅 프로그램의 실제 sampler 15개(PC·폰 프로필), 모습 같음.
+- 357 사진·CI가 멀쩡했던 까닭: Playwright 헤드리스 Chromium은 SwiftShader라 MAX_TEXTURE_IMAGE_UNITS 32. 이 PC의 Chrome(ANGLE D3D11, RX 570)과 대부분의 폰·PC 브라우저는 16이라, 357은 그쪽에서 모두 땅이 안 보였을 것.
 
 ## v1.10.357 T1 택시 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A~175A)
 
@@ -29,11 +52,3 @@
 - 주민 격자: 차선(2.5 m 안)은 건널목 말고 비쌈, 인도(3.9 m까지) 싸게; offTaxiRoad는 인도 가운데(3.1 m)로.
 - 차는 아직 길 가운데로 달림(차선 지키기·마주 지나기는 T2).
 - 시험: island-taxi 「T1 길 넓히기」, npcs 건널목 합 기준(건널목 수만큼), G4a 덤불 g4 표시.
-
-## v1.10.356 가방 개편: 종류별 탭 + 골라 팔기 (사용자 2026-11-17, notes docs/bag-tabs-20261117.md)
-
-- 탭: public/island-bag-data.js(193개 물건의 탭과 설명, work/bag356/make-data.cjs가 notes story/bag-items·bag-descriptions json에서 만듦), app.js drawBagTabs·applyBagTab(칸 hidden)·gc.bagTab 기억·가구 탭 drawFurnList(/api/island/furniture/mine placed:false만).
-- 설명 칸 bagDetail: 그림·이름·종류·설명·쓰는 곳(파는 곳·값, 집 손보기 재료, 벼룩시장)·크기·산 것. 자전거 꺼내기·넣기.
-- 골라 팔기: 창 두 칸(왼쪽 내 가방+종류 탭, 오른쪽 팔 물건 −/+/전부, 다 옮기기, 끌어 놓기), 안 받는 것은 흐리게 이유, 합계 → 한 번 더 확인. 좁은 폰은 위아래. 창 폭 640px.
-- 서버: /api/island/sell pick [{entryId, qty}] 1~64개, lib/island-items sellPicked(고른 수만, 물고기는 작은 것부터, 나머지는 가방에), requestId 그대로.
-- 시험: island-items 단위 「골라 팔기」, island-bag.spec 탭·개수·설명·기억·가구 탭(PC·폰), plaza.spec 관공서·노점 새 흐름.

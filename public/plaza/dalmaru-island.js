@@ -10,7 +10,8 @@
   if (root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain); // (묶음 3: the only island)
 }(typeof self !== 'undefined' ? self : this, (D, C) => {
   const { TAU, smooth, lerp, catmull, lineDist } = C;
-  const Q = (typeof self !== 'undefined' && self.IslandQuarry) || (typeof require === 'function' ? require('./island-quarry') : null); // (1.10.323 채석장)
+  const ISLE2 = D.NEW_ISLE; // (N1 새 섬: dalmaru-terrain's)
+  const Q =(typeof self !== 'undefined' && self.IslandQuarry) || (typeof require === 'function' ? require('./island-quarry') : null); // (1.10.323 채석장)
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
   // 묶음 4 내 집: 툇마루섬's twelve lots -- 2회차 15: laid out again on the isle widened toward 윤슬만 so that a 큰 집 (with
@@ -182,6 +183,16 @@
     ...HOME_LOTS.map((l) => { const s = Math.cos(l.yaw); return { tier: 'trail', w: 1.4, pts: [[l.x, l.z - s * 6.9], [l.x, STREET_Z - s * 2.5]] }; }),
     { tier: 'walk', w: 2.8, pts: [stairsAt(35.6, 1.7), stairsAt(36, -1.5), stairsAt(36, -4.5), stairsAt(35.8, -6.4), po(STAIRS_TOP_DEG + 4, 138) /* (문제 기록 4회차: on the top's fill, not its edge, and toward the ridge from where the stairs now end -- 216° stayed when they moved) */, ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
     ...(Q ? [{ tier: 'trail', w: 2.4, pts: Q.WALK.map((p) => [p.x, p.z]) }] : []), // (1.10.323 채석장, 28A: from 영웅마루역 on along the ridge, r 150, 79 m east into the quarry)
+    // N1 새 섬 (notes island-expansion §8-2): the village street on east to 새 섬다리 (the open land past the east lots), and over
+    // it the walk from the bridge head to the camp ground, the way to the pier, the forest loop round the island, the path up
+    // the peak and the one by the creek -- 자연 구역: the walks round the camp, the rest 오솔길
+    { tier: 'walk', w: 5, pts: [[98, STREET_Z], [140, 232], [162.5, ISLE2.bridgeZ], [196, ISLE2.bridgeZ], [229.5, ISLE2.bridgeZ]] }, /* (on over 새 섬다리, as the walks over 윤슬다리) */
+    { tier: 'walk', w: 3, pts: [[229.5, ISLE2.bridgeZ], [240, 236], [243, 248]] },
+    { tier: 'walk', w: 2.6, pts: [[243, 248], [249, 236], [262, 231.5], [277, 240], [278.5, 252], [273, 262], [259, 268.5], [245, 262], [243, 248]] }, /* (round the camp ground's flat: where its walks meet) */
+    { tier: 'walk', w: 2.6, pts: [[249, 236], [243, 222], [236, 208], [235.5, 202]] }, /* (on to the forest loop by the pier's root -- N3's pier on from here) */
+    { tier: 'trail', w: 2.4, pts: [[273, 262], [293, 296], [327, 338], [375, 352], [427, 334], [469, 292], [489, 236], [477, 178], [441, 128], [389, 102], [333, 104], [289, 126], [259, 160], [240, 188], [235.5, 202]] },
+    { tier: 'trail', w: 2.4, pts: [[277, 240], [297, 232], [319, 244], [341, 228], [335, 208], [357, 198], [371, 216], [393, 212], [414, 201], [437, 191], [460, 184], [477, 178]] }, /* (over the peak and down its east side to the loop) */
+    { tier: 'trail', w: 2, pts: [[284.5, 131.1], [298, 144], [320, 156.5], [340, 166.5], [359.5, 180], [358, 196.5]] }, /* (on the creek's north-east bank all the way: from the loop past its footbridge, by the spring, up to the peak's path) */
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
   const walkDist = (x, z) => { let d = Infinity; for (const w of walkCurves) d = Math.min(d, lineDist(x, z, w.pts) - w.w / 2); return d; };
@@ -245,7 +256,7 @@
     return h;
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
-  const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z); // (2회차 18: the ponds over the falls are water too)
+  const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z) || D.inCreek(x, z); // (2회차 18: the ponds over the falls are water too; N1: 새 섬's creek)
   const slopeAt = (x, z) => Math.hypot(ground(x + 1, z) - ground(x - 1, z), ground(x, z + 1) - ground(x, z - 1)) / 2;
   // (동산 다듬기: the scenery is picked on the ground as it was before the 동산 shapes -- the same seeded picks, so nothing
   // moves; only what then stands on a steep new bank is left out, afterwards)
@@ -258,7 +269,7 @@
   const YB = { rise: 3.2, top: 0.43 }; // the model's deck: rise * sin(πt) over its ends, its planks' top 0.43 over that
   const bridges = D.BRIDGES.map((b) => {
     const ends = b.ends.map(([x, z]) => D.ground(x, z));
-    return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_yunseul' };
+    return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_yunseul', ...(b.isle2 ? { isle2: true } : {}) };
   });
   for (const walk of walkCurves) {
     let run = null;
@@ -271,7 +282,7 @@
       if (!bridges.some((o) => Math.hypot(o.x - run.x, o.z - run.z) < 6)) bridges.push({ x: run.x, z: run.z, ux, uz, half, w: Math.max(2.6, walk.w), deck: Math.max(...ends, SEA + 0.6) + 0.1, e0: ends[0] + 0.02, e1: ends[1] + 0.02 });
       run = null;
     };
-    walk.pts.forEach(([x, z], i) => { const d = D.riverDist(x, z); if (d < 0.8) { if (!run || d < run.d) run = { d, i, x, z }; } else if (run) add(); });
+    walk.pts.forEach(([x, z], i) => { const d = Math.min(D.riverDist(x, z), D.creekDist(x, z) + 0.6); /* (N1: over 새 섬's creek too -- its banks the less) */ if (d < 0.8) { if (!run || d < run.d) run = { d, i, x, z }; } else if (run) add(); });
     if (run) add();
   }
   function onBridge(x, z) {
@@ -557,7 +568,7 @@
       const fits = ([lx, lz]) => !(!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || (!atRoad && walkDist(lx, lz) < 0.2) || roadDist(lx, lz) < ROAD.half + 0.5)
         && !(structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4)))
         && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4);
-      const at = spots.find(fits); if (at) lampSpots.push({ x: at[0], z: at[1] });
+      const at = spots.find(fits); if (at) lampSpots.push({ x: at[0], z: at[1], ...(D.newIsleCoast(at[0], at[1]) > -5 ? { isle2: true } : {}) }); /* (N1: 새 섬's shown with it) */
     } }
     // G4a 흩뿌리기 (notes docs/graphics-island-wide-20261108.md G4, assets 112; 사용자 「덤불, 바위들은 뚫고 지나가지 못하게」):
     // more bushes and rocks over the fields and woods, fallen logs in the woods, palms on the sandy shore (all of them block),
@@ -592,7 +603,22 @@
     seed = 0x6a46; for (let tries = 0; g4.lilies.length < 36 && tries < 6000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const inLake = D.lakeDist(x, z) < -2 && D.lakeDist(x, z) > -11; const inRiver = D.riverDist(x, z) < -0.8;
       if ((inLake || inRiver) && !onBridge(x, z) && Math.hypot(x - PL.dock.x, z - PL.dock.z) > 10 && g4.lilies.every((l) => Math.hypot(l.x - x, l.z - z) > 2.2)) g4.lilies.push({ x, z, kind: Math.floor(rnd() * 4), yaw: rnd() * TAU }); }
     g4.grass = g4.grass.filter((g) => roadClear(g, 0.2)); /* (T1: the road's lanes and walks bare -- the flowers, tufts (the weeds keep their numbers) and rocks too) */
-    natureCache = { ...g4, trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3) && roadClear(p, 0.2)), bushes: keptBushes, tufts: tufts.filter((t) => !onBank(t, 0.5) && roadClear(t, 0.2)), rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5 && roadClear(r, r.s)) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
+    // N1 새 섬's wood (notes island-expansion §8-4, 164A: as many as its land -- about 630 trees): each kind on its own seed after
+    // everything above, so nothing on this island moves; on its land 4 m in from the shore, slopes under 0.6 (a wooded hill),
+    // off its walks, the creek, the bridge, the camp ground's flat, the peak's top (the lookout, N2) and the pier's root (N3).
+    // What blocks keeps 2.5 m off the walks (as G4a). Each marked isle2 -- the scene puts it in and out with the island
+    const PIER2 = { x: 230, z: 197.3 }; const I2 = { trees: [], bushes: [], rocks: [], flowers: [], grass: [], logs: [] };
+    const isle2Free = (x, z, r) => D.newIsleCoast(x, z) > 4 + r && slopeAt(x, z) < 0.6 && D.creekDist(x, z) > 1.5 + r && !onBridge(x, z) && Math.hypot(x - ISLE2.camp.x, z - ISLE2.camp.z) > ISLE2.camp.r + 1 + r
+      && Math.hypot(x - ISLE2.peak.x, z - ISLE2.peak.z) > 9 + r && Math.hypot(x - PIER2.x, z - PIER2.z) > 8 + r && walkDist(x, z) > 1.6 + r;
+    const at2 = () => { const a = rnd() * TAU; const d = Math.sqrt(rnd()) * (ISLE2.r + 8); return [ISLE2.x + Math.cos(a) * d, ISLE2.z + Math.sin(a) * d]; };
+    seed = 0x15e201; for (let tries = 0; I2.trees.length < 630 && tries < 24000; tries += 1) { const [x, z] = at2(); const s = 0.8 + rnd() * 0.6; if (room(x, z, 1.6, 1.4) && isle2Free(x, z, 0.8)) { I2.trees.push({ x, z, s, isle2: true }); taken.push([x, z, 1.6]); } }
+    seed = 0x15e202; for (let tries = 0; I2.bushes.length < 525 && tries < 20000; tries += 1) { const [x, z] = at2(); const s = 0.55 + rnd() * 0.6; if (room(x, z, 0.75 * s) && isle2Free(x, z, 0.75 * s) && walkDist(x, z) > 2.5 + 0.75 * s) { I2.bushes.push({ x, z, s, isle2: true }); taken.push([x, z, 0.75 * s]); } }
+    seed = 0x15e203; for (let tries = 0; I2.rocks.length < 170 && tries < 12000; tries += 1) { const [x, z] = at2(); const s = 0.5 + rnd() * 0.7; if (room(x, z, s) && isle2Free(x, z, s) && walkDist(x, z) > 2.5 + s) { I2.rocks.push({ x, z, s, r: rnd() * 6, g4: true, isle2: true }); taken.push([x, z, s]); } }
+    seed = 0x15e204; for (let tries = 0; I2.logs.length < 40 && tries < 6000; tries += 1) { const [x, z] = at2(); const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; if (room(x, z, 1.1, 0.4) && isle2Free(x, z, 1.1) && walkDist(x, z) > 3.6) { I2.logs.push({ x, z, kind, yaw, isle2: true }); taken.push([x, z, 1.1]); } }
+    seed = 0x15e205; for (let tries = 0, k = 0; I2.flowers.length < 210 && tries < 6000; tries += 1) { const [x, z] = at2(); if (isle2Free(x, z, 0.1)) { I2.flowers.push({ x, z, c: k % 5, isle2: true }); k += 1; } }
+    seed = 0x15e206; for (let tries = 0; I2.grass.length < 1050 && tries < 30000 && I2.trees.length; tries += 1) { const t = I2.trees[Math.floor(rnd() * I2.trees.length)]; const a = rnd() * TAU; const d = 0.75 * t.s + 0.1 + rnd() * 0.9; const x = t.x + Math.cos(a) * d; const z = t.z + Math.sin(a) * d; const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; const s = 0.85 + rnd() * 0.3; if (roomBut(x, z, 0.3, t) && isle2Free(x, z, 0.2)) { I2.grass.push({ x, z, kind, yaw, s, isle2: true }); taken.push([x, z, 0.3]); } }
+    g4.grass.push(...I2.grass); g4.logs.push(...I2.logs);
+    natureCache = { ...g4, trees: [...keptTrees, ...I2.trees], flowers: [...flowers.filter((p) => !blocked(p, 0.3) && roadClear(p, 0.2)), ...I2.flowers], bushes: [...keptBushes, ...I2.bushes], tufts: tufts.filter((t) => !onBank(t, 0.5) && roadClear(t, 0.2)), rocks: [...rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5 && roadClear(r, r.s)), ...I2.rocks] /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free
@@ -610,7 +636,7 @@
     };
     const add = (t, p) => out.push({ x: t.x, z: t.z, s: 1, yaw: -Math.atan2(0.515, 0.53), approach: p });
     for (const t of n.trees) { if (out.length === 20) break; const p = approachOf(t); if (!p || out.some((o) => Math.hypot(t.x - o.x, t.z - o.z) < 14)) continue; add(t, p); }
-    for (const t of n.trees) { if (C.treeKind(t) !== 'fruit' || out.some((o) => Math.hypot(o.x - t.x, o.z - t.z) < 5)) continue; const p = approachOf(t); if (p) add(t, p); }
+    for (const t of n.trees) { if (t.isle2 || C.treeKind(t) !== 'fruit' || out.some((o) => Math.hypot(o.x - t.x, o.z - t.z) < 5)) continue; const p = approachOf(t); if (p) add(t, p); } /* (N1: none on 새 섬 -- what grows there is N2's) */
     harvestOf = n; harvestCache = out; return out;
   }
   // the shore within a few metres of the water (sea or 윤슬만, not the cliffs) -- where the tide leaves things, and the
@@ -645,7 +671,8 @@
     ...n.rocks.filter((r) => rockBlocks(r) && settledSpot(r.x, r.z)).map((r) => ({ x: r.x, z: r.z, r: 0.8 * r.s })), ...n.logs.flatMap(logRounds), ...n.palms.map((p) => ({ x: p.x, z: p.z, r: 0.3 * p.s }))]; }; // (as the scene walks round them: island.js; G4a the rocks, logs and palms too)
   const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ...(Q ? [['quarry', { x: 90, z: -123, label: '채석장' }]] : []) /* (1.10.323) */,['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
-    ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
+    ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }],
+    ...(ISLE2 ? [['newIsle', { x: ISLE2.x, z: ISLE2.z, label: D.NAMES.newIsle }]] : [])]); /* (N1 새 섬) */
 
   // (문제 기록 3회차 8 「있을 필요 없는 곳에도 돌·잡초, 하늘에 떠 있네」) where a small scattered piece -- a stone, a flower, a weed
   // -- sits: the drawn ground within its 0.3 m round never more than 0.09 m below its middle (no edge of it hangs in the air),
@@ -663,7 +690,10 @@
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
-    fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 330 /* (v1.10.230: the village's far corner, r 323) */, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
+    fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
+    /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
+       (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
+    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,

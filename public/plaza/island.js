@@ -247,7 +247,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
     // (1.10.323 땅 질감, assets 135, 사용자 45A: painted grass, sand and soil -- grey round 0.5 -- and a wide mottle (data) that keeps
     // them from repeating; read only on the 높음·중간 tiers (uCheap 0, a GPU), the lowest and a software renderer as before)
     const p = (file, srgb) => { const url = `/assets/island/ground-paint-v1/${file}.webp`; const x = keep(loader.load(window.GameBoot?.assetUrl?.(url) ?? url)); x.wrapS = x.wrapT = THREE.RepeatWrapping; x.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; return x; };
-    const g = { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), grains: t('ground.grains', true) /* (1.10.359: the three in one -- tools/ground-grains.py) */, edge: t('ground.grass_soil_edge_mask', false, true) };
+    const g = { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), grains: t('ground.grains', true) /* (1.10.358: the three in one -- tools/ground-grains.py) */, edge: t('ground.grass_soil_edge_mask', false, true) };
     if (software) return { ...g, grassPaint: g.grass, sandPaint: g.grass, soilPaint: g.grass, snowPaint: g.grass, mottle: g.grass }; /* (never read there: not fetched) */
     return { ...g, grassPaint: p('ground.grass_paint', true), sandPaint: p('ground.sand_paint', true), soilPaint: p('ground.soil_paint', true), snowPaint: p('ground.snow_paint', true) /* (1.10.329: the snowfield's, 135) */, mottle: p('ground.mottle', false) };
   })();
@@ -401,12 +401,14 @@ diffuseColor.rgb = mix(diffuseColor.rgb, col, rc);
 }
 }
 }`);
-  const grained = (material, path) => {
+  // (N1 새 섬: `own` -- another ground's maps and their square { x0, z0, size }: the same shader, its own pictures)
+  const grained = (material, path, own = null) => {
+    const M = own?.maps || maps; const box = own?.box ? new THREE.Vector3(own.box.x0, own.box.z0, own.box.size) : new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE);
     material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tGrains: { value: groundTex.grains } /* (1.10.359: grass, soil and sand in one -- phones' 16 texture units) */, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
+      Object.assign(shader.uniforms, { tGrains: { value: groundTex.grains } /* (1.10.358: grass, soil and sand in one -- phones' 16 texture units) */, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
         ...(maps && !path ? { tGrassPaint: { value: groundTex.grassPaint }, tSandPaint: { value: groundTex.sandPaint }, tSoilPaint: { value: groundTex.soilPaint }, tSnowPaint: { value: groundTex.snowPaint }, tMottle: { value: groundTex.mottle }, uPaint: paintOn } : {}),
-        uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
-        ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: plazaBox }, tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tRoad: { value: maps.road }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB }, tShore: { value: maps.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
+        uPathBox: { value: box }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
+        ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: own ? new THREE.Vector4(0, 0, 0, 0) : plazaBox }, tPathA: { value: M.pathA }, tPathB: { value: M.pathB }, tRoad: { value: M.road }, tCoverA: { value: M.coverA }, tCoverB: { value: M.coverB }, tShore: { value: M.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
         uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0x9c8a74) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
         uSand: { value: new THREE.Color(0xf1dfae) }, uWet: { value: new THREE.Color(0xd8c48f) }, uClover: { value: new THREE.Color(0x7fb35a) }, uRain: rainOn });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -462,8 +464,39 @@ diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.setAttribute('aGround', new THREE.BufferAttribute(grains, 2)); geo.computeVertexNormals();
   seasonal(geo.attributes.color, (i) => [pos.getX(i), pos.getZ(i)], (i) => [0, grassy[i]]);
+  // (N1 새 섬: the cells within 14 m of its coast are its own ground's -- left out of this one, none drawn twice)
+  const keepCells = (g, seg, half, x0, z0, keep) => { const idx = g.index.array; const out = []; const st = (half * 2) / seg; for (let iz = 0; iz < seg; iz += 1) for (let ix = 0; ix < seg; ix += 1) { if (!keep(x0 + (ix + 0.5) * st, z0 + (iz + 0.5) * st)) continue; const o = (iz * seg + ix) * 6; for (let k = 0; k < 6; k += 1) out.push(idx[o + k]); } g.setIndex(out); };
+  if (T.isle2Cell) keepCells(geo, SEG, SIZE / 2, -SIZE / 2, -SIZE / 2, (x, z) => !T.isle2Cell(x, z));
   const terrain = new THREE.Mesh(geo, keep(grained(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), false)));
   terrain.receiveShadow = true; scene.add(terrain);
+  // N1 새 섬 (notes island-expansion §8): its ground -- the same 2.5 m lattice and shader, its own maps (isle2-*); under a root
+  // of its own the scene puts in and out (isle2: setIsle2)
+  const G2 = T.GROUND2; const maps2 = maps && G2 ? { pathA: mapTex('isle2-path-a'), pathB: mapTex('isle2-path-b'), coverA: mapTex('isle2-cover-a'), coverB: mapTex('isle2-cover-b'), shore: mapTex('isle2-shore'), road: mapTex('isle2-road') } : null;
+  const isle2Root = new THREE.Group(); isle2Root.name = 'isle2'; if (maps2) scene.add(isle2Root);
+  if (maps2) {
+    const g2 = keep(new THREE.PlaneGeometry(G2.size, G2.size, G2.seg, G2.seg)); g2.rotateX(-Math.PI / 2); g2.translate(G2.x0 + G2.size / 2, 0, G2.z0 + G2.size / 2);
+    const p2 = g2.attributes.position; const col2 = new Float32Array(p2.count * 3); const gr2 = new Float32Array(p2.count * 2);
+    for (let i = 0; i < p2.count; i += 1) { const x = p2.getX(i); const z = p2.getZ(i); p2.setY(i, ground(x, z)); c.copy(grass).lerp(grass2, 0.5 + 0.5 * Math.sin(x * 0.21 + z * 0.17) * Math.cos(z * 0.13)); col2.set([c.r, c.g, c.b], i * 3); gr2[i * 2] = 1; }
+    g2.setAttribute('color', new THREE.BufferAttribute(col2, 3)); g2.setAttribute('aGround', new THREE.BufferAttribute(gr2, 2)); g2.computeVertexNormals();
+    seasonal(g2.attributes.color, (i) => [p2.getX(i), p2.getZ(i)], () => [0, 1]);
+    keepCells(g2, G2.seg, G2.size / 2, G2.x0, G2.z0, (x, z) => T.isle2Cell(x, z));
+    const t2 = new THREE.Mesh(g2, keep(grained(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), false, { maps: maps2, box: G2 })));
+    t2.receiveShadow = true; t2.name = 'isle2-ground'; isle2Root.add(t2);
+  }
+  // (N1 E7 멀리 모양: the island in one piece seen from 110~160 m off -- a 10 m mesh of its land, sand by the shore, rock where
+  // steep, the wood as a raised canopy (its trees about 5 m) over the rest; one draw)
+  const isle2Far = (() => {
+    if (!maps2) return null; const D = T.dalmaru; const N = 31; const st = G2.size / (N - 1);
+    const fg = keep(new THREE.PlaneGeometry(G2.size, G2.size, N - 1, N - 1)); fg.rotateX(-Math.PI / 2); fg.translate(G2.x0 + G2.size / 2, 0, G2.z0 + G2.size / 2);
+    const fp = fg.attributes.position; const fc = new Float32Array(fp.count * 3); const fcol = new THREE.Color();
+    for (let i = 0; i < fp.count; i += 1) {
+      const x = fp.getX(i); const z = fp.getZ(i); const cd = D.newIsleCoast(x, z); const h = ground(x, z); const steep = D.slopeAt(x, z) > 0.9; const wood = cd > 6 && !steep;
+      fp.setY(i, cd < -1 ? Math.min(h, -1.2) : h + (wood ? 4.5 : 0)); fcol.set(cd < 3 ? 0xe8d6a6 : steep ? 0xa89f90 : wood ? 0x5f8f4c : 0x8cc96c); fc.set([fcol.r, fcol.g, fcol.b], i * 3);
+    }
+    fg.setAttribute('color', new THREE.BufferAttribute(fc, 3)); fg.computeVertexNormals();
+    keepCells(fg, N - 1, G2.size / 2, G2.x0, G2.z0, (x, z) => T.dalmaru.newIsleCoast(x, z) > -st);
+    const m = new THREE.Mesh(fg, keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }))); m.name = 'isle2-far'; m.visible = false; scene.add(m); return m;
+  })();
 
   // Sea and the pond and streams (flat water a little under the banks).
   // v1.10.13 흐르는 물: the streams carry a soft pattern of light ripples and a few sun glints that drifts from the
@@ -473,7 +506,17 @@ diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·
   const water = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, map: flowTex, roughness: 0.55, metalness: 0 }));
   const pondTex = keep(flowTex.clone()); pondTex.needsUpdate = true; pondTex.repeat.set(2.5, 2.5);
   const pondWater = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, map: pondTex, roughness: 0.55, metalness: 0 }));
-  const sea = new THREE.Mesh(keep(new THREE.PlaneGeometry(900, 900)), mat(0x6cbfe2, { roughness: 0.3 }));
+  // (N1 새 섬 개울: its water a ribbon down its bed -- 0.45 m over the bed's middle, a little wider than the water's own width
+  // so it meets the banks; never under the sea's face at the mouth; the streams' flowing picture along it)
+  if (maps2 && T.dalmaru?.CREEK) {
+    const C = T.dalmaru.CREEK; const pts = []; for (let i = 1; i < C.pts.length; i += 1) { const [ax, az] = C.pts[i - 1]; const [bx, bz] = C.pts[i]; const L = Math.hypot(bx - ax, bz - az); for (let s = 0; s < L; s += 1) pts.push([ax + ((bx - ax) * s) / L, az + ((bz - az) * s) / L]); } pts.push(C.pts.at(-1));
+    const half = C.w / 2 + 0.35; const P = []; const U = []; const I = []; let along = 0;
+    pts.forEach(([x, z], k) => { const [px, pz] = pts[Math.max(0, k - 1)]; const [nx, nz] = pts[Math.min(pts.length - 1, k + 1)]; const l = Math.hypot(nx - px, nz - pz) || 1; const ox = -(nz - pz) / l * half; const oz = (nx - px) / l * half; if (k) along += Math.hypot(x - pts[k - 1][0], z - pts[k - 1][1]);
+      const y = Math.max(ground(x, z) + 0.45, -0.6 + 0.03); P.push(x + ox, y, z + oz, x - ox, y, z - oz); U.push(0, along / 4, 1, along / 4); if (k) { const a = (k - 1) * 2; I.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } }); /* (wound to face up) */
+    const cg = keep(new THREE.BufferGeometry()); cg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); cg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); cg.setIndex(I); cg.computeVertexNormals();
+    const cw = new THREE.Mesh(cg, water); cw.name = 'isle2-creek'; cw.receiveShadow = true; isle2Root.add(cw);
+  }
+  const sea = new THREE.Mesh(keep(new THREE.PlaneGeometry(1300, 1300)), mat(0x6cbfe2, { roughness: 0.3 })); // (N1 새 섬: 900 -> 1,300 -- its east end x 516 and the fog's 130 m past it)
   sea.rotation.x = -Math.PI / 2; sea.position.y = -0.6; sea.receiveShadow = true; scene.add(sea);
   // (파도 시범 검토 3~5) the sea by the shore map: clear teal and half seen through where it is shallow, the open sea's own
   // colour a couple of metres down (by the time of day: blue by day, navy-violet in the evening, deep navy at night); lines
@@ -483,11 +526,13 @@ diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·
   if (maps) {
     sea.material = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, transparent: true })); // (its own: mat() hands out shared ones)
     sea.material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uRipple: seaRipple, uClear: seaClear, tNoise: { value: groundTex.grass } });
+      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uRipple: seaRipple, uClear: seaClear, tNoise: { value: groundTex.grass },
+        ...(maps2 ? { tShore2: { value: maps2.shore }, uPathBox2: { value: new THREE.Vector3(G2.x0, G2.z0, G2.size) } } : {}) });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vSeaXZ;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeaXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uRipple; uniform float uClear; uniform sampler2D tNoise; varying vec2 vSeaXZ;')
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>${maps2 ? '\nuniform sampler2D tShore2; uniform vec3 uPathBox2;' : ''}\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uRipple; uniform float uClear; uniform sampler2D tNoise; varying vec2 vSeaXZ;`)
         .replace('#include <color_fragment>', `#include <color_fragment>
 vec2 suv = (vSeaXZ - uPathBox.xy) / uPathBox.z; vec3 sh = (suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) ? texture2D(tShore, suv).rgb : vec3(0.0, 1.0, 0.0);
+${maps2 ? `vec2 suv2 = (vSeaXZ - uPathBox2.xy) / uPathBox2.z; if (!(suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) && suv2.x > 0.0 && suv2.x < 1.0 && suv2.y > 0.0 && suv2.y < 1.0) sh = texture2D(tShore2, suv2).rgb; // (N1 새 섬's shore, past the ground's square)` : ''}
 float sd = (sh.r * 2.0 - 1.0) * ${SHORE_RANGE.toFixed(1)}; float shallow = 1.0 - smoothstep(0.0, 0.7, sh.g); // (0..2.1 m)
 diffuseColor.rgb = mix(uDeepSea, uShallowSea, shallow); diffuseColor.a = mix(1.0, uClear, shallow);
 float ln = texture2D(tNoise, vSeaXZ / 7.0 + vec2(uShoreTime * 0.004, 0.0)).r / 0.611; float ln2 = texture2D(tNoise, vSeaXZ / 2.9).r / 0.611; // (검토 2차 6: broken, of changing width, fewer, fainter further out)
@@ -697,6 +742,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // its tint in the vertex colours -- a few dozen draw calls for the whole island's greenery instead of one per kind
   // per square. Still culled square by square when off screen.
   const baked = new Map(); // `${cx},${cz},${shadow}` -> [{ geometry, matrix, color }]
+  const bakedParent = new Map(); // (N1: a 새 섬 square's baked mesh -> its group)
   // v1.10.17: a list given a `target` (registry ids, e.g. ['nature.tree.round', 'nature.tree']) that has a model to load
   // is kept apart and handed to `assets.batch`, which shows the model for its copies near the player (asset-loader.js).
   // v1.10.18: such a list is not baked but drawn as one InstancedMesh per square (its tint per copy) -- the same one draw
@@ -706,21 +752,33 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   const groups = []; // { target, cells: [{ x, z, parent, procedural: [InstancedMesh], matrices, colors, shadow }] }
   // v1.10.29 `extra`: [[geometry, material, shadow]] more procedural meshes drawn with the same matrices (a lamp's bulb,
   // its geometry already lifted onto the pole) -- a model replaces all of them together.
-  const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [], parent = scene } = {}) => { // v1.10.73 parent: a group shown by quality
+  // N1 새 섬 (notes island-expansion §8-4, 164A): what stands on it (marked isle2) goes into a group of its own per parent and
+  // 60 m square under the island's root -- shown only near it, and a square past the fog (180 m) not drawn (isle2View)
+  const isle2Cells = new Map(); // `${parent.id},${cx},${cz}` -> { group, x, z }
+  const isle2Cell = (parent, x, z) => {
+    const cx = Math.floor(x / 60); const cz = Math.floor(z / 60); const key = `${parent.id},${cx},${cz}`; let c = isle2Cells.get(key);
+    if (!c) { const group = new THREE.Group(); group.name = 'isle2-cell'; (parent === scene ? isle2Root : parent).add(group); c = { group, x: (cx + 0.5) * 60, z: (cz + 0.5) * 60, inner: parent !== scene }; isle2Cells.set(key, c); }
+    return c.group;
+  };
+  /* (one list per kind as before -- the model loader's lists the same; a 새 섬 item's square under its group: `where`) */
+  const instanced = (geometry, material, list, place, opts = {}) => instancedOne(geometry, material, list, place, maps2 && list.some((it) => it.isle2) ? { ...opts, where: (it) => (it.isle2 ? isle2Cell(opts.parent || scene, it.x, it.z) : null) } : opts);
+  const instancedOne = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [], parent = scene, where = null } = {}) => { // v1.10.73 parent: a group shown by quality
+    if (!list.length) return;
     const g = target && assets?.wants(target) ? { target, cells: [] } : null;
     if (material === natureMat && !g) {
       for (const item of list) {
         place(item, 0);
-        const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}`;
+        const own = where?.(item); const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}${own ? `,${own.uuid}` : ''}`; /* (N1: 새 섬's into its own square's group) */ if (own) bakedParent.set(key, own);
         if (!baked.has(key)) baked.set(key, []);
         baked.get(key).push({ geometry, matrix: m4.clone(), color: color ? color(item, tint).clone() : null });
       }
       return;
     }
     keep(geometry);
-    const cells = new Map();
-    for (const item of list) { const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)}`; if (!cells.has(key)) cells.set(key, []); cells.get(key).push(item); }
+    const cells = new Map(); const cellParent = new Map();
+    for (const item of list) { const own = where?.(item); const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)}${own ? `,${own.uuid}` : ''}`; if (!cells.has(key)) { cells.set(key, []); cellParent.set(key, own || parent); } cells.get(key).push(item); }
     for (const [key, items] of cells) {
+      const parentNow = cellParent.get(key);
       const im = new THREE.InstancedMesh(geometry, material, items.length);
       const matrices = []; const colors = [];
       items.forEach((item, i) => {
@@ -728,9 +786,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
         if (color) { const c = color(item, tint); im.setColorAt(i, c); colors.push(c.clone()); }
         matrices.push(m4.clone());
       });
-      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; if (shadow && !(material.alphaTest > 0)) im.customDepthMaterial = INST_DEPTH; /* (1.10.352 §9-1: the batches' own shadow-depth material) */ parent.add(im);
-      const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; parent.add(e); return e; });
-      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
+      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; if (shadow && !(material.alphaTest > 0)) im.customDepthMaterial = INST_DEPTH; /* (1.10.352 §9-1: the batches' own shadow-depth material) */ parentNow.add(im);
+      const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; parentNow.add(e); return e; });
+      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent: parentNow, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
     }
     if (g) groups.push(g);
   };
@@ -1049,7 +1107,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const geo = keep(new THREE.BufferGeometry());
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.computeBoundingSphere();
-    const m = new THREE.Mesh(geo, natureMat); m.castShadow = key.split(',')[2] === '1'; m.receiveShadow = true; scene.add(m);
+    const m = new THREE.Mesh(geo, natureMat); m.castShadow = key.split(',')[2] === '1'; m.receiveShadow = true; (bakedParent.get(key) || scene).add(m);
   }
 
   // Lamps along the main walks, benches beside them.
@@ -1120,10 +1178,11 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // v1.10.29 원경 (섬 밖 원경 결정 2026-10-05): far land, mountain ridges, a peak, a glacier and ice floes out at sea, well
   // past the coast (about 300-330 from the plaza) so they never stand in front of the island or its buildings; they
   // only rise over the horizon, pale with distance (the entries' haze). Not land anyone can reach.
-  const FAR = [['sea.glacier', 0, -320], ['sea.floe', -80, -280], ['sea.floe', 85, -272], ['sea.ridgeSoft', 235, -225], ['sea.coastLong', 318, 75],
+  const FAR = [['sea.glacier', 0, -320], ['sea.floe', -80, -280], ['sea.floe', 85, -272], ['sea.ridgeSoft', 235, -225], ['sea.coastLong', ...(T.GROUND2 ? [330, -95] : [318, 75])] /* (N1: off 새 섬's north-west shore -- 7 m from it at (318, 75)) */,
     ['sea.coastCove', -215, 245], ['sea.peak', -300, 95], ['sea.ridgeRugged', -305, -115]];
+  const farHolders = []; // (N1: never culled -- they stand past the fog by design)
   for (const [id, x, z] of FAR) {
-    const holder = new THREE.Group(); holder.position.set(x, -1.1, z); holder.rotation.y = Math.atan2(-x, -z); scene.add(holder); // its length across the view
+    const holder = new THREE.Group(); holder.position.set(x, -1.1, z); holder.rotation.y = Math.atan2(-x, -z); holder.userData.keepFar = true; scene.add(holder); farHolders.push(holder); // its length across the view
     assets?.attach(id, holder, new THREE.Group());
   }
 
@@ -1131,23 +1190,26 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.
   // 달마루섬 미리보기: the new island's map drawn once from its ground (1 dot per 2 m): sand by the sea, grass, the cliff
   // rock, fresh water -- then its walks, 대청마당 and bridges on top
-  let landImage = null; const LAND_NZ = 500;
+  // (N1 새 섬: out to x 530 and z 385 -- its part, past x 200, a dot per 2 m: the island's own 1 m kept, the first draw short)
+  let landImage = null; const LAND_NX = T.GROUND2 ? 730 : 400; const LAND_NZ = T.GROUND2 ? 585 : 500;
   function dalmaruLand() {
     if (landImage) return landImage;
-    const D = T.dalmaru; const N = 400; const NZ = LAND_NZ; const cv = document.createElement('canvas'); /* (창 2단계 검토: 1 m a pixel, drawn smoothed -- the coast no longer in steps; v1.10.230 down to z 300, the 울타리 마을 in it) */ cv.width = N; cv.height = NZ; const g = cv.getContext('2d'); const img = g.createImageData(N, NZ);
+    const D = T.dalmaru; const N = LAND_NX; const NZ = LAND_NZ; const cv = document.createElement('canvas'); /* (창 2단계 검토: 1 m a pixel, drawn smoothed -- the coast no longer in steps; v1.10.230 down to z 300, the 울타리 마을 in it) */ cv.width = N; cv.height = NZ; const g = cv.getContext('2d'); const img = g.createImageData(N, NZ);
     const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
-    const SEA_C = rgb(0x7fcbe9); const SAND = rgb(0xf1dfae); const GRASS = rgb(0x9fd67f); const ROCK = rgb(0xb7ad9e); const FRESH = rgb(0x5fb4e0);
+    const SEA_C = rgb(0x7fcbe9); const SAND = rgb(0xf1dfae); const GRASS = rgb(0x9fd67f); const ROCK = rgb(0xb7ad9e); const FRESH = rgb(0x5fb4e0); const FOREST = rgb(0x84bf6a);
     const cliffs = new Uint8Array(200 * 200); for (let j = 0; j < 200; j += 1) for (let i = 0; i < 200; i += 1) cliffs[j * 200 + i] = cliffAt(-200 + i * 2 + 1, -200 + j * 2 + 1) > 0.5 ? 1 : 0; // (the cliffs on the old 2 m grid: the costly part, as before)
-    const at = (x, z) => { const cd = D.coastDist(x, z); return cd < 0 ? SEA_C : D.isWater(x, z) ? FRESH : z < 200 && cliffs[Math.min(199, Math.floor((z + 200) / 2)) * 200 + Math.min(199, Math.floor((x + 200) / 2))] ? ROCK : cd < 4 ? SAND : GRASS; };
+    const at = (x, z) => { const cd = D.coastDist(x, z); return cd < 0 ? SEA_C : D.isWater(x, z) ? FRESH : x < 200 && z < 200 && cliffs[Math.min(199, Math.floor((z + 200) / 2)) * 200 + Math.min(199, Math.floor((x + 200) / 2))] ? ROCK : cd < 4 ? SAND : D.newIsleCoast?.(x, z) > 0 && D.slopeAt(x, z) > 0.9 ? ROCK : D.newIsleCoast?.(x, z) > 4 ? FOREST : GRASS; };
     for (let j = 0; j < NZ; j += 1) for (let i = 0; i < N; i += 1) {
-      img.data.set([...at(-200 + i + 0.5, -200 + j + 0.5), 255], (j * N + i) * 4);
+      const x = -200 + i + 0.5; const z = -200 + j + 0.5;
+      if (x > 200 && (i % 2 || j % 2)) { img.data.copyWithin((j * N + i) * 4, (((j >> 1) << 1) * N + ((i >> 1) << 1)) * 4, (((j >> 1) << 1) * N + ((i >> 1) << 1)) * 4 + 4); continue; } /* (past x 200 a dot per 2 m: the even one's colour) */
+      img.data.set([...at(x, z), 255], (j * N + i) * 4);
     }
     g.putImageData(img, 0, 0); landImage = cv; return cv;
   }
   function drawGround(ctx, w, h, X, Z, s) {
     ctx.fillStyle = '#7fcbe9'; ctx.fillRect(-2 * w, -2 * h, 5 * w, 5 * h); // the sea (wide enough for a turned minimap)
     if (T.MAP === 'dalmaru') {
-      ctx.imageSmoothingEnabled = true; ctx.drawImage(dalmaruLand(), X(-200), Z(-200), 400 * s, LAND_NZ * s);
+      ctx.imageSmoothingEnabled = true; ctx.drawImage(dalmaruLand(), X(-200), Z(-200), LAND_NX * s, LAND_NZ * s);
       for (const wk of walkCurves) { ctx.beginPath(); wk.pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.strokeStyle = '#e8d2a2'; ctx.lineWidth = (wk.w + 1) * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); }
       const P = T.dalmaru.PLAZA; ctx.fillStyle = '#f3e6c8'; ctx.fillRect(X(P.x - P.hw), Z(P.d0), P.hw * 2 * s, (P.d1 - P.d0) * s); ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 2; ctx.strokeRect(X(P.x - P.hw), Z(P.d0), P.hw * 2 * s, (P.d1 - P.d0) * s);
       for (const b of bridges) { ctx.beginPath(); ctx.moveTo(X(b.x - b.ux * b.half), Z(b.z - b.uz * b.half)); ctx.lineTo(X(b.x + b.ux * b.half), Z(b.z + b.uz * b.half)); ctx.strokeStyle = '#b07a4f'; ctx.lineWidth = b.w * s; ctx.stroke(); }
@@ -1178,8 +1240,10 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // (the 안내 지도 window: wheel, drag, pinch). The names stay one size however close, each above its dot -- below,
   // right or left of it when that is taken, left out when all are (closer in, there is room). Returns the scale and centre it drew at.
   function drawMap(ctx, w, h, me, view = {}) {
-    const DAL = T.MAP === 'dalmaru'; const zoom = view.zoom || 1; const cx = view.x || 0; const cz = view.z ?? (DAL ? 45 : 0); const u = Math.min(w, h);
-    const s = (u / (DAL ? 470 : 236)) * zoom; /* (달마루섬: about twice across; v1.10.230 the 울타리 마을 south of the ring in it too -- 470 across, its middle 45 m south) */ const X = (x) => w / 2 + (x - cx) * s; const Z = (z) => h / 2 + (z - cz) * s;
+    /* (N1 새 섬 (notes island-expansion §8-1): the board 760 m across with it -- x -230..530, z -200..385, its middle (150, 92)) */
+    const DAL = T.MAP === 'dalmaru'; const WIDE = DAL && T.GROUND2; const DAL_SPAN = WIDE ? 585 : 470;
+    const zoom = view.zoom || 1; const cx = view.x ?? (WIDE ? 150 : 0); const cz = view.z ?? (DAL ? (WIDE ? 92 : 45) : 0); const u = Math.min(w, h);
+    const s = (u / (DAL ? DAL_SPAN : 236)) * zoom; /* (달마루섬: about twice across; v1.10.230 the 울타리 마을 south of the ring in it too -- 470 across, its middle 45 m south) */ const X = (x) => w / 2 + (x - cx) * s; const Z = (z) => h / 2 + (z - cz) * s;
     drawGround(ctx, w, h, X, Z, s);
     const font = (k) => `800 ${Math.round(u / k)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1253,6 +1317,22 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     return { turn, shown };
   }
 
+  // N1 새 섬 넣고 빼기 (notes island-expansion §3·§8-4): by how far the camera is off its coast -- all of it within 110 m (out at
+  // 125), its one-piece far shape within 160 m (out at 170), else nothing; with all of it in, a 60 m square more than 180 m off
+  // (in the fog) not drawn. `scale`: the quality's (a phone's lowest 0.6); returns the state
+  let isle2State = 'none'; let isle2At = null;
+  function isle2View(x, z, scale = 1) {
+    if (!maps2) return 'none';
+    const off = -T.dalmaru.newIsleCoast(x, z); const FULL = 110 * scale; const FAR = 160;
+    const next = off < (isle2State === 'full' ? FULL + 15 : FULL) ? 'full' : off < (isle2State === 'none' ? FAR : FAR + 10) ? 'far' : 'none';
+    const moved = !isle2At || Math.hypot(x - isle2At.x, z - isle2At.z) > 4;
+    if (next === isle2State && !moved) return next;
+    isle2State = next; isle2At = { x, z };
+    isle2Root.visible = next === 'full'; if (isle2Far) isle2Far.visible = next === 'far';
+    const fog = 180 + 43; /* (a square's half diagonal) */ for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < fog;
+    return next;
+  }
+  for (const o of [isle2Root, isle2Far, terrain, sea]) if (o) o.userData.keepFar = true; // (N1: plaza-scene's far cull leaves these to isle2View)
   function step(clock, lessMotion = false) {
     // (움직임 줄이기: the water never stops -- half as fast, a swell twice as long -- only the flicker goes: the ripple lines and
     // the glinting wobble of the sea; 사용자 「파도가 전혀 안 움직여」, a device with reduced motion had it all still)
@@ -1266,5 +1346,5 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   for (const m of moving) m.traverse((o) => { o.matrixAutoUpdate = true; });
   const frozenMoved = () => { const p = new THREE.Vector3(); const q = new THREE.Quaternion(); const s = new THREE.Vector3(); const m = new THREE.Matrix4(); let bad = 0; for (const o of frozen) { if (o.matrixAutoUpdate) continue; m.compose(o.position, o.quaternion, o.scale); if (!m.equals(o.matrix)) { m.decompose(p, q, s); if (p.distanceTo(o.position) > 1e-4 || s.distanceTo(o.scale) > 1e-4 || Math.abs(q.dot(o.quaternion)) < 0.99999) bad += 1; } } return { frozen: frozen.filter((o) => !o.matrixAutoUpdate).length, moved: bad }; };
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { frozenMoved /* (1.10.352 무게 ①: the debug's check) */, setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { frozenMoved /* (1.10.352 무게 ①: the debug's check) */, setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, isle2View, isle2Info: () => ({ state: isle2State, cells: isle2Cells.size, shown: [...isle2Cells.values()].filter((c) => c.group.visible).length, root: isle2Root.visible, far: Boolean(isle2Far?.visible) }), setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

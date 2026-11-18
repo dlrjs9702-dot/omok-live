@@ -18,7 +18,17 @@ function buildAll(res = RES) {
   const p = Paths.buildPathMaps(T, res); const c = buildCoverMaps(T, res);
   for (let k = 0; k < res * res; k += 1) p.b[k * 3 + 2] = c.gravel[k];
   return { 'path-a.png': encodeRgb(p.a, res, res), 'path-b.png': encodeRgb(p.b, res, res), 'cover-a.png': encodeRgb(c.a, res, res), 'cover-b.png': encodeRgb(c.b, res, res), 'shore.png': encodeRgb(buildShoreMap(T, res), res, res),
-    'road.png': encodeRgb(Paths.buildRoadMap(T, require('../../public/plaza/island-taxi.js'), res), res, res) }; // (T1 길 넓히기: the taxi road's lanes and walks)
+    'road.png': encodeRgb(Paths.buildRoadMap(T, require('../../public/plaza/island-taxi.js'), res), res, res), // (T1 길 넓히기: the taxi road's lanes and walks)
+    ...buildIsle2() };
+}
+// N1 새 섬: the same maps over its own square (GROUND2), 768 texels -- 0.4 m a texel, as the island's own
+const RES2 = 768;
+function buildIsle2(res = RES2) {
+  const box = T.GROUND2; if (!box) return {};
+  const p = Paths.buildPathMaps(T, res, box); const c = buildCoverMaps(T, res, box);
+  for (let k = 0; k < res * res; k += 1) p.b[k * 3 + 2] = c.gravel[k];
+  return { 'isle2-path-a.png': encodeRgb(p.a, res, res), 'isle2-path-b.png': encodeRgb(p.b, res, res), 'isle2-cover-a.png': encodeRgb(c.a, res, res), 'isle2-cover-b.png': encodeRgb(c.b, res, res), 'isle2-shore.png': encodeRgb(buildShoreMap(T, res, box), res, res),
+    'isle2-road.png': encodeRgb(Paths.buildRoadMap(T, require('../../public/plaza/island-taxi.js'), res, box), res, res) };
 }
 module.exports = { buildAll, OUT };
 
