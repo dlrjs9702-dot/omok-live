@@ -4258,6 +4258,8 @@
   }
   // a tank or the insect case: what is in it (꺼내기 -- back to the bag) and what of my bag fits (넣기)
   const tankBox = document.createElement('div'); tankBox.className = 'homeTank'; tankBox.id = 'homeTank';
+  // (362: a fish one a slot -- lists that send a kind show one row a kind, the count summed)
+  const bagKinds = (items) => { const m = new Map(); for (const e of items) { const k = m.get(e.itemId); if (k) k.qty += e.qty; else m.set(e.itemId, { ...e }); } return [...m.values()]; };
   async function openTank(uid) {
     const H = window.IslandHome; const p = homeInside?.home.pieces.find((x) => x.uid === uid); if (!p) return;
     const shape = H.shapeOf(p.id); const T = H.TANKS[shape]; const inside = homeInside.home.tanks[uid] || [];
@@ -4271,7 +4273,9 @@
     const now = document.createElement('div'); now.className = 'giftList';
     for (const f of inside) now.append(btn(`${homeInside.names?.[f.itemId] || f.itemId} · 꺼내기`, 'ghost', () => act({ take: f.fid })));
     const can = document.createElement('div'); can.className = 'giftList';
-    for (const item of bag.items.filter((e) => H.fits(shape, e.itemId))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); }
+    { /* (362: a fish one a slot -- one row a kind with all its count, as the server takes a kind) */
+      for (const item of bagKinds(bag.items.filter((x) => H.fits(shape, x.itemId)))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); }
+    }
     const what = T.insects ? '곤충' : '물고기';
     tankBox.replaceChildren(line(`${!T.insects && (inside.some((f) => H.FISH_ROOM[f.itemId]) || bag.items.some((e) => H.FISH_ROOM[e.itemId] && H.fits(shape, e.itemId))) ? `${H.tankUsed(inside)}/${T.slots}칸 · ${inside.length}마리 · 참치는 6칸` : `${inside.length}/${T.slots}마리`}${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
     openPlazaWindow(T.insects ? '곤충 상자' : '수조', [tankBox]);
@@ -5146,7 +5150,7 @@
       const bag = await api('/api/island/bag'); const wraps = bag.items.filter((e) => e.itemId === 'gift_wrap').reduce((n, e) => n + e.qty, 0);
       const head = document.createElement('p'); head.className = 'lostRequestLine'; head.textContent = wraps ? `${name}님에게 무엇을 선물할까요? (포장지 ${wraps}장)` : '선물 포장지가 필요해요. 잡화점에서 살 수 있어요.';
       const list = document.createElement('div'); list.className = 'giftList';
-      if (wraps) for (const item of bag.items.filter((e) => !['lost', 'wallet', 'gift_wrap'].includes(e.itemId))) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
+      if (wraps) for (const item of bagKinds(bag.items.filter((e) => !['lost', 'wallet', 'gift_wrap'].includes(e.itemId)))) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
         b.addEventListener('click', async () => { try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/gift', { method: 'POST', body: JSON.stringify({ plazaId, itemId: item.itemId, requestId: crypto.randomUUID() }) }); plazaDialog.close(); showToast(`🎁 ${name}님에게 ${item.name}을(를) 선물했어요.`); plaza.controller?.emote?.('bow'); } catch (error) { showToast(error.message, 4000); } });
         list.append(b); }
       const close = document.createElement('button'); close.type = 'button'; close.className = 'primary'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
@@ -5630,7 +5634,7 @@
     const bag = await api('/api/island/bag').catch(() => ({ items: [] })); const wraps = bag.items.filter((e) => e.itemId === 'gift_wrap').reduce((n, e) => n + e.qty, 0);
     const item = el('select'); item.setAttribute('aria-label', '함께 보낼 선물');
     item.append(new Option(wraps ? `선물 없이 (포장지 ${wraps}장)` : '선물 없이 (선물은 포장지가 있어야 해요)', ''));
-    if (wraps) for (const e of bag.items.filter((x) => !['lost', 'wallet', 'gift_wrap'].includes(x.itemId))) item.append(new Option(`🎁 ${e.name} ×${e.qty}`, e.itemId));
+    if (wraps) for (const e of bagKinds(bag.items.filter((x) => !['lost', 'wallet', 'gift_wrap'].includes(x.itemId)))) item.append(new Option(`🎁 ${e.name} ×${e.qty}`, e.itemId));
     const send = el('button', 'primary', `보내기 (오늘 ${d.left}통 남음)`); send.type = 'submit'; send.disabled = d.left <= 0;
     const status = el('p', 'smallMuted'); status.setAttribute('role', 'status');
     form.append(to, text, item, send, status);
