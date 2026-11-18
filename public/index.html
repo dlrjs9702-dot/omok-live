@@ -20,6 +20,11 @@
   <link rel="stylesheet" href="/theme-light.css" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__" data-setup="__SETUP_TICKET__" data-account="__ACCOUNT_TOKEN__" data-entry-notice="__ENTRY_NOTICE__" data-browsers="__BROWSERS__">
+  <div id="loadingCover" class="loadingCover hidden" role="status" aria-live="polite"><!-- 366 로딩 화면: the first island entry after 「게임 접속」 -->
+    <picture><source media="(max-aspect-ratio: 1/1)" type="image/webp" srcset="/loading/loading-1080x1920.webp" /><source media="(max-aspect-ratio: 1/1)" srcset="/loading/loading-1080x1920.png" /><source type="image/webp" srcset="/loading/loading-1920x1080.webp" /><img src="/loading/loading-1920x1080.png" alt="" /></picture>
+    <h2 class="loadingTitle">섬으로 가는 중…</h2>
+    <div class="loadingFoot"><div class="loadingBar"><i id="loadingBarFill"></i></div><p id="loadingStep" class="loadingStep">연결</p><p id="loadingTip" class="loadingTip"></p></div>
+  </div>
   <main class="shell">
     <section id="gateView" class="gate card">
       <div class="brandMark"><picture><source type="image/webp" srcset="/brand/brand-mark.webp 1x, /brand/brand-mark@2x.webp 2x, /brand/brand-mark@3x.webp 3x" /><img src="/brand/brand-mark.png" srcset="/brand/brand-mark@2x.png 2x, /brand/brand-mark@3x.png 3x" width="121" height="96" alt="" /></picture></div><!-- 366 에셋 153: the island picture (was two stones) -->
@@ -451,6 +456,9 @@
           <p class="lookMeta">미리 보기는 이 화면에만 보여요. 다른 사람과 서버는 그대로예요.</p></div>
           <form id="contestForm" class="joinForm islandTimeForm"><label for="contestTime">매일 섬 대회</label><input id="contestTime" type="time" value="14:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><select id="contestNextKind" aria-label="다음 대회 종목"></select><button class="secondary" type="submit">적용</button></form>
           <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
+          <details id="loadingTipsAdmin" class="economyBox"><summary>로딩 팁</summary><p class="lookMeta">섬에 처음 들어갈 때 로딩 화면에 한 줄씩 나와요. 한 줄 60자 안, 저장하면 바로 적용(배포 없음). 기본 팁은 켜고 끄기만, 새 기능을 기다리는 팁은 그 기능이 나오면 보여요.</p>
+          <form id="loadingTipForm" class="joinForm"><input id="loadingTipInput" maxlength="60" placeholder="새 팁 한 줄" aria-label="새 팁" /><button class="primary" type="submit">추가</button></form><p id="loadingTipStatus" class="lookMeta" role="status"></p>
+          <h4>내 팁</h4><ol id="loadingTipOwn" class="ieList"></ol><h4>기본 팁</h4><ol id="loadingTipDefaults" class="ieList"></ol></details>
           <details id="islandEventAdmin" class="economyBox"><summary>섬 이벤트 (깜짝)</summary><p class="lookMeta">섬 화면에 큰 알림 띠와 소리로 알려요. 같은 대상·같은 종류는 한 번에 하나, 배수는 겹치지 않고 큰 것 하나(최대 3배), 확률은 50%까지. 잡화점에서 산 물건은 이벤트 값을 받지 않아요.</p>
           <form id="islandEventForm" class="stackForm islandEventForm"><label>종류 <select id="ieKind"><option value="sell">판매 값 배수</option><option value="catch">잡히는 양·확률 배수</option><option value="notice">알림만</option></select></label>
           <label>대상 <select id="ieTarget"></select></label><label id="ieItemRow" class="hidden">물건 <select id="ieItem"></select></label><label id="ieGemsRow" class="hidden"><input type="checkbox" id="ieGems" /> 보석 포함</label>
@@ -1498,6 +1506,7 @@
   </section>
   <script id="assetManifest" type="application/json">__ASSET_MANIFEST__</script>
   <script src="/browser-gate.js"></script>
+  <script src="/loading-cover.js"></script>
   <script src="/game-boot.js"></script>
   <script src="/session-lock.js"></script>
   <script src="/recent-action.js"></script>

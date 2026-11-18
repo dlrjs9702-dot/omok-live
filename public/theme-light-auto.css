@@ -1727,3 +1727,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .islandEventItem{background:#7c2d12e6;color:#fff7ed;border:1px solid #fdba74;box-shadow:0 4px 14px #0006}
 :root[data-theme="light"] .islandEventBand{background:linear-gradient(135deg,#f97316,#db2777);color:#fff;box-shadow:0 12px 40px #0008}
 :root[data-theme="light"] .islandPlaceEvent{color:#fb923c}
+:root[data-theme="light"] .loadingCover{background:#f4ede0}
+:root[data-theme="light"] .loadingTitle{color:#fff}
+:root[data-theme="light"] .loadingBar{background:#ffffff40}
+:root[data-theme="light"] .loadingBar i{background:linear-gradient(90deg,#fde68a,#f59e0b)}
+:root[data-theme="light"] .loadingStep{color:#fff}
+:root[data-theme="light"] .loadingTip{color:#fff}

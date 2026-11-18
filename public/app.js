@@ -4617,6 +4617,22 @@
   });
   new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c, next, kinds }) => { const sel = byId('contestNextKind'); if (sel && next && kinds) { sel.replaceChildren(...Object.entries(kinds).map(([k, name]) => { const o = document.createElement('option'); o.value = k; o.textContent = `다음: ${name}`; return o; })); sel.value = next.kind; sel.dataset.day = String(next.day); } /* (v1.10.238: the next contest's game) */ byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
  api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  { // 366 관리자 「로딩 팁」: add a line, change or remove my own, switch any on or off (the server keeps them, live at once)
+    const send = async (body) => { try { drawTips(await api('/api/admin/loading-tips', { method: 'POST', body: JSON.stringify(body) })); byId('loadingTipStatus').textContent = '저장했어요.'; } catch (error) { byId('loadingTipStatus').textContent = error.message; } };
+    const row = (t, own) => {
+      const li = document.createElement('li'); const box = document.createElement('input'); box.type = 'checkbox'; box.checked = t.on; box.setAttribute('aria-label', '켜기'); box.addEventListener('change', () => send({ id: t.id, on: box.checked }));
+      li.append(box, ` ${t.text}${t.waiting ? ' (기능이 나오면)' : ''}`);
+      if (own) {
+        const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'ghost'; edit.textContent = '고치기'; edit.addEventListener('click', () => { const v = prompt('팁 고치기 (60자 안)', t.text); if (v != null && v.trim() && v.trim() !== t.text) send({ id: t.id, text: v.trim() }); });
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'ghost'; del.textContent = '지우기'; del.addEventListener('click', () => { if (confirm(`「${t.text}」 팁을 지울까요?`)) send({ id: t.id, remove: true }); });
+        li.append(' ', edit, ' ', del);
+      }
+      return li;
+    };
+    function drawTips(d) { byId('loadingTipOwn').replaceChildren(...(d.own || []).map((t) => row(t, true))); byId('loadingTipDefaults').replaceChildren(...(d.defaults || []).map((t) => row(t, false))); }
+    byId('loadingTipsAdmin')?.addEventListener('toggle', () => { if (byId('loadingTipsAdmin').open) api('/api/admin/loading-tips').then(drawTips).catch((error) => { byId('loadingTipStatus').textContent = error.message; }); });
+    byId('loadingTipForm')?.addEventListener('submit', (event) => { event.preventDefault(); const v = byId('loadingTipInput').value.trim(); if (!v) return; send({ add: v }).then(() => { byId('loadingTipInput').value = ''; }); });
+  }
   { // 364 관리자 「섬 이벤트」 (notes docs/admin-island-events-20261118.md): open one (now or at a time), the list, end one at once
     let ie = null; const opt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; };
     const kindOf = () => byId('ieKind').value; const minutesOf = () => (byId('ieMinutes').value === 'custom' ? Number(byId('ieMinutesCustom').value) : Number(byId('ieMinutes').value));
@@ -14340,7 +14356,27 @@
     try { if (local(DEVICE_KEY)) { const d = await api('/api/account/device-login', { method: 'POST', headers: { 'X-Messenger-Device': local(DEVICE_KEY) }, body: '{}' }); accountToken.set(d.accountToken); enterWithAccount(); return; } } catch {}
     location.reload();
   }
+  byId('accountPlayBtn').addEventListener('click', () => { try { sessionStorage.setItem('gc.coverNext', '1'); } catch { /* (no storage: no cover) */ } }); /* (366: the next page -- the island's first entry -- shows the loading cover) */
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
+  { // 366 로딩 화면 (notes docs/install-button-20261118.md): the island picture, 「섬으로 가는 중…」, a bar by steps and one tip, over the
+    // page until the island is drawn, its files have stopped coming and ten frames run smooth (LoadingCover.state) -- or 20 s
+    let want = false; try { want = sessionStorage.getItem('gc.coverNext') === '1' && localStorage.getItem('gc.testClassic') !== '1'; sessionStorage.removeItem('gc.coverNext'); } catch { /* none */ } /* (the classic lobby -- tests' gc.testClassic -- has no island to wait for) */
+    const cover = byId('loadingCover');
+    if (want && cover && window.LoadingCover && document.body.dataset.session && !/^__/.test(document.body.dataset.session)) {
+      const L = window.LoadingCover; const t0 = performance.now(); let lastFile = performance.now(); const frames = []; let prev = performance.now();
+      cover.classList.remove('hidden');
+      let obs = null; try { obs = new PerformanceObserver((list) => { for (const e of list.getEntries()) if (/\/assets\/island\//.test(e.name)) lastFile = performance.now(); }); obs.observe({ type: 'resource', buffered: true }); } catch { /* (old browsers: the 20 s cap) */ }
+      api('/api/island/loading-tips').then((d) => { let last = null; try { last = sessionStorage.getItem('gc.lastTip'); } catch {} const tip = L.pickTip(d.tips || [], last); byId('loadingTip').textContent = tip ? `💡 ${tip}` : ''; try { sessionStorage.setItem('gc.lastTip', tip); } catch {} }).catch(() => {});
+      const tick = (now) => {
+        frames.push(now - prev); prev = now; if (frames.length > L.FRAMES) frames.shift();
+        const s = L.state({ entered: true, running: Boolean(window.PlazaDebug?.()?.running), quietMs: now - lastFile, frames, elapsed: now - t0 });
+        byId('loadingBarFill').style.width = `${Math.round(s.progress * 100)}%`; byId('loadingStep').textContent = s.lift ? '준비 완료' : `${s.label} 중…`;
+        if (s.lift) { obs?.disconnect(); cover.classList.add('lifting'); setTimeout(() => { cover.classList.add('hidden'); cover.classList.remove('lifting'); }, 700); return; }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+  }
   { // v1.10.258 (총괄, 폴드) 「앱으로 설치」 on the first screen and in ☰ -- the messenger's: shown only when Chrome offers the
     // install (Chrome's own menu won't put a second app of one site on a phone that has the messenger's), never in the app
     // 364 (user A, notes docs/install-button-20261118.md): 「📲 게임 설치」 always on the account card and in ☰ (never in the

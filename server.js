@@ -2547,6 +2547,7 @@ const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free
 // 364 관리자 「섬 이벤트」 (lib/island-admin-events.js): the list kept in worldValue('adminEvents'); the server applies them (sales,
 // draws), the island's screens are told when one starts or ends (and on entry); what they paid over the base points, by event
 const AdminEvents = require('./lib/island-admin-events');
+const LoadingTips = require('./lib/loading-tips'); // (366 로딩 팁)
 let adminEvents = []; const adminEventExtra = new Map(); let adminEventsShown = '';
 const GATHERED = new Set(Object.values(IslandGather.TABLE).map((k) => k.item).filter((id) => id !== 'weed'));
 const gatherGroupOf = (itemId) => (GATHERED.has(itemId) ? 'gathered' : null);
@@ -9663,6 +9664,18 @@ async function requestHandler(req, res) {
   }
   // v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②): the table, a change (checked against each value's range, kept with
   // who/when/before), and putting one back (a change to the value it had before)
+  // 366 로딩 팁: the lines the loading screen may show (the defaults whose feature is in the game, less those switched off, and
+  // the admin's own); the admin's list and one change at a time (kept in worldValue loadingTips, live without a deploy)
+  if (pathname === '/api/island/loading-tips' && req.method === 'GET') return sendJson(res, 200, { ok: true, tips: LoadingTips.shown(await pointStore.worldValue('loadingTips')) });
+  if (pathname === '/api/admin/loading-tips' && (req.method === 'GET' || req.method === 'POST')) {
+    if (!requireAdmin(req, res)) return;
+    if (req.method === 'POST') {
+      const body = await parseJson(req); const out = await worldEdit(async () => { const r = LoadingTips.change(await pointStore.worldValue('loadingTips'), body); if (r.error) return r; await pointStore.setWorldValue('loadingTips', r.doc); return r; });
+      if (out.error) return sendError(res, 400, 'BAD_TIP', { TEXT: `팁은 1~${LoadingTips.TEXT_MAX}자예요.`, FULL: '팁이 너무 많아요.', NO_TIP: '없는 팁이에요.', DEFAULT: '기본 팁은 켜고 끄기만 돼요.', NOTHING: '바꿀 것이 없어요.' }[out.error] || '다시 확인해 주세요.');
+      console.log(`[loading-tips] ${body.add != null ? 'add' : body.remove ? `remove ${body.id}` : typeof body.on === 'boolean' ? `${body.on ? 'on' : 'off'} ${body.id}` : `edit ${body.id}`} by admin`);
+    }
+    return sendJson(res, 200, { ok: true, ...LoadingTips.adminView(await pointStore.worldValue('loadingTips')) });
+  }
   // 364 관리자 「섬 이벤트」: the list (and the picker's words), a new one (now or at a time), and ending one at once
   if (pathname === '/api/admin/island-events' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;

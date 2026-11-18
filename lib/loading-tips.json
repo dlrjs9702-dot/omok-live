@@ -1,0 +1,302 @@
+[
+ {
+  "text": "입질이 오면 화살표에 맞춰 낚싯대를 당겨요.",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "계절과 물마다 사는 물고기가 달라요.",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "대왕 참치는 아주 드물어요. 만나면 큰 행운이에요.",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "잡은 물고기는 먼저 물고기 통으로 들어가요.",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "물고기 통과 곤충 채집통은 잡화점에서 100칸, 200칸으로 늘려요.",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "가방 속 물고기는 한 마리가 한 칸을 차지해요.",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "잠자리채를 누르고 있으면 살금살금 다가가요.",
+  "topic": "insect",
+  "needs": null
+ },
+ {
+  "text": "손을 떼는 순간 잠자리채를 휘둘러요.",
+  "topic": "insect",
+  "needs": null
+ },
+ {
+  "text": "뛰거나 자전거를 타면 곤충이 달아나요.",
+  "topic": "insect",
+  "needs": null
+ },
+ {
+  "text": "조준 원이 초록일 때 휘두르면 잡혀요.",
+  "topic": "insect",
+  "needs": "insectPatch"
+ },
+ {
+  "text": "원이 가장 작을 때 휘두르면 완벽!",
+  "topic": "insect",
+  "needs": "insectPatch"
+ },
+ {
+  "text": "바위가 반짝이는 순간 맞히면 더 좋은 광석이 나와요.",
+  "topic": "quarry",
+  "needs": null
+ },
+ {
+  "text": "채석장 바위는 하루 60번까지 캘 수 있어요.",
+  "topic": "quarry",
+  "needs": null
+ },
+ {
+  "text": "화강암 벽은 하루 60번 한도에 들어가지 않아요.",
+  "topic": "quarry",
+  "needs": null
+ },
+ {
+  "text": "달빛석·루비·사파이어·에메랄드가 아주 드물게 나와요.",
+  "topic": "quarry",
+  "needs": "gems"
+ },
+ {
+  "text": "나무 밑에서 나뭇가지와 잔가지를 1~3개씩 주워요.",
+  "topic": "gather",
+  "needs": null
+ },
+ {
+  "text": "주운 가지는 1시간이면 다시 떨어져요.",
+  "topic": "gather",
+  "needs": null
+ },
+ {
+  "text": "잡화점 재료는 3배 값이에요. 직접 모으면 훨씬 싸요.",
+  "topic": "gather",
+  "needs": null
+ },
+ {
+  "text": "잡초는 관공서 민원 창구에서 한 포기 310P로 정산해요.",
+  "topic": "gather",
+  "needs": null
+ },
+ {
+  "text": "집이 낡으면 잡초·잔가지·작은 돌·화강암으로 손봐요.",
+  "topic": "home",
+  "needs": null
+ },
+ {
+  "text": "집 손보기 재료는 매주 들어요. 미리 모아 두면 편해요.",
+  "topic": "home",
+  "needs": null
+ },
+ {
+  "text": "집 수리는 1단계부터 3단계까지 있어요.",
+  "topic": "home",
+  "needs": null
+ },
+ {
+  "text": "은행에 맡긴 돈에는 이자가 붙어요.",
+  "topic": "money",
+  "needs": null
+ },
+ {
+  "text": "세금을 밀리면 불이익이 있어요. 제때 내요.",
+  "topic": "money",
+  "needs": null
+ },
+ {
+  "text": "주식값은 9시부터 17시까지 매시간 바뀌어요.",
+  "topic": "money",
+  "needs": null
+ },
+ {
+  "text": "매일 출석하면 포인트, 7일 연속이면 더 받아요.",
+  "topic": "money",
+  "needs": null
+ },
+ {
+  "text": "가끔 값이 2배가 되는 깜짝 이벤트가 열려요.",
+  "topic": "money",
+  "needs": "events"
+ },
+ {
+  "text": "먼 길은 자전거가 걷기·뛰기보다 빨라요.",
+  "topic": "ride",
+  "needs": null
+ },
+ {
+  "text": "택시와 열차로도 섬 곳곳을 다닐 수 있어요.",
+  "topic": "ride",
+  "needs": null
+ },
+ {
+  "text": "벼룩시장에서 다른 사람과 물건을 사고팔아요.",
+  "topic": "people",
+  "needs": null
+ },
+ {
+  "text": "벼룩시장에서 산 물고기는 순위·박물관에 못 들어가요.",
+  "topic": "people",
+  "needs": null
+ },
+ {
+  "text": "물고기·곤충을 박물관에 기증하면 도감이 채워져요.",
+  "topic": "people",
+  "needs": null
+ },
+ {
+  "text": "별똥별은 밤 8시부터 새벽 4시 사이에 떨어져요.",
+  "topic": "night",
+  "needs": null
+ },
+ {
+  "text": "떨어지는 20초 안에 소원을 빌면 다음 날 별 조각이 와요.",
+  "topic": "night",
+  "needs": "stars"
+ },
+ {
+  "text": "별 조각을 모아 별 가구를 만들어요.",
+  "topic": "night",
+  "needs": "stars"
+ },
+ {
+  "text": "우레와 안개는 뛰어서는 못 따돌려요. 자전거로 도망쳐요.",
+  "topic": "island",
+  "needs": "tiger"
+ },
+ {
+  "text": "늪에서는 자전거도 느려져요. 호랑이를 조심해요.",
+  "topic": "island",
+  "needs": "tiger"
+ },
+ {
+  "text": "캠핑장과 꼭대기 전망대는 안전한 곳이에요.",
+  "topic": "island",
+  "needs": "tiger"
+ },
+ {
+  "text": "호랑이에게 잡히면 물건 2개를 잃고 집 앞으로 가요.",
+  "topic": "island",
+  "needs": "tiger"
+ },
+ {
+  "text": "벽에 끼었다면 ☰ 메뉴의 막혔을 때 단추를 눌러요.",
+  "topic": "misc",
+  "needs": "unstuck363"
+ },
+ {
+  "text": "초승달 모양 달마루섬에 온 걸 반겨요.",
+  "topic": "island",
+  "needs": null
+ },
+ {
+  "text": "별마루다리를 건너면 숲과 산의 별마루섬이에요.",
+  "topic": "island",
+  "needs": null
+ },
+ {
+  "text": "남쪽 바다 건너에는 작은 툇마루섬이 있어요.",
+  "topic": "island",
+  "needs": null
+ },
+ {
+  "text": "윤슬만 물결이 반짝이면 잠깐 쉬어 가요.",
+  "topic": "island",
+  "needs": null
+ },
+ {
+  "text": "거울호수에 낚싯대를 던지며 한숨 돌려요.",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "광장 한 바퀴 산책으로 하루를 열어 봐요.",
+  "topic": "island",
+  "needs": null
+ },
+ {
+  "text": "초승역에서 열차를 기다리는 시간도 여행이에요.",
+  "topic": "ride",
+  "needs": null
+ },
+ {
+  "text": "백화점 1층 잡화점, 구경 삼아 들러 봐요.",
+  "topic": "misc",
+  "needs": null
+ },
+ {
+  "text": "매주 잡초 1위에게는 제초왕 동상이 서요.",
+  "topic": "people",
+  "needs": null
+ },
+ {
+  "text": "어흥! 큰 소리가 들리면 우레가 가까이 있어요.",
+  "topic": "island",
+  "needs": "tiger"
+ },
+ {
+  "text": "그르릉… 조용한 소리는 작은 백호 안개예요.",
+  "topic": "island",
+  "needs": "tiger"
+ },
+ {
+  "text": "밤하늘을 올려다보면 별똥별을 만날지도 몰라요.",
+  "topic": "night",
+  "needs": null
+ },
+ {
+  "text": "반짝이는 별 조각은 가끔만 찾아오는 선물이에요.",
+  "topic": "night",
+  "needs": "stars"
+ },
+ {
+  "text": "새 계절이 오면 물가부터 들러 봐요.",
+  "topic": "season",
+  "needs": null
+ },
+ {
+  "text": "도감이 한 칸씩 채워지는 기쁨을 누려요.",
+  "topic": "people",
+  "needs": null
+ },
+ {
+  "text": "오늘 잡은 첫 물고기, 박물관에 보여 줄까요?",
+  "topic": "fishing",
+  "needs": null
+ },
+ {
+  "text": "잠자리채 들고 살금살금, 숨도 살짝 참아요.",
+  "topic": "insect",
+  "needs": null
+ },
+ {
+  "text": "채석장 곡괭이 소리로 부지런한 하루를 열어요.",
+  "topic": "quarry",
+  "needs": null
+ },
+ {
+  "text": "나무 그늘 아래서 가지 줍는 소소한 즐거움.",
+  "topic": "gather",
+  "needs": null
+ },
+ {
+  "text": "오늘도 달마루섬에서 느긋한 하루 보내요.",
+  "topic": "misc",
+  "needs": null
+ }
+]
