@@ -3122,6 +3122,9 @@
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   islandBagDialog.addEventListener('close', () => { bagSortReset(); quickPick = null; quickMenu = null; drawQuick(); }); // (v1.10.236: a slot-to-be let go)
+  /* (361: 「← 가방」, and ESC or a phone's back on a page (도감, 기념사진, 받은 것, a box) -- the bag again, not shut) */
+  byId('islandBagBackBtn').addEventListener('click', () => openIslandBag());
+  islandBagDialog.addEventListener('cancel', (event) => { if (byId('islandDexGrid').classList.contains('hidden')) return; event.preventDefault(); openIslandBag(); });
   byId('islandDexFoundOnly').addEventListener('change', () => showDex('dex')); // (v1.10.233 「찾은 것만」)
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given'], ...BOX_BTNS]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
@@ -4901,6 +4904,7 @@
     grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
     byId('islandBagSort').classList.toggle('hidden', Boolean(on)); bagSortReset(); // (v1.10.233, 사용자: 「정리」 the bag's only -- in the 도감 it sorted the bag and the count went wrong)
     byId('islandDexTabs').classList.toggle('hidden', on !== 'dex');
+    byId('islandBagBackBtn').classList.toggle('hidden', !on); /* (361 사용자 「통 들 보다가 다시 가방으로 나갈 수가 없어」: on any page, back to the bag first) */
     const asked = ++dexAsked; if (!on) return; /* (Codex 261-270 #12: only the last request draws -- a late answer does not cover the tab now shown) */
     if (boxPage) { drawBox(boxPage); return; }
     try {

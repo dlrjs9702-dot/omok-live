@@ -97,7 +97,10 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   expect((await get(request, '/api/island/bag', token)).data.items.filter((e) => /^fish_/.test(e.itemId)).every((e) => e.box === 'fish')).toBe(true);
   await cell.click(); if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-fishbox-${isMobile ? 'phone' : 'pc'}.png` });
   await page.locator('.boxRelease').click(); await expect(page.locator('#islandBagCount')).toHaveText('1/30'); await expect(page.locator('.boxCell[data-item="fish_mackerel"]')).toHaveCount(0);
-  await page.locator('#islandFishBoxBtn').click(); await expect(page.locator('#islandBagCount')).toHaveText('3/32'); await expect(page.locator('#quickInBag')).toBeVisible(); /* (back to the bag: the goby gone from it) */
+  /* (361 사용자 「통 들 보다가 다시 가방으로 나갈 수가 없어」: 「← 가방」 on the box's page; ESC (a phone's back the same 'cancel') the bag again, not shut) */
+  await page.locator('#islandBagBackBtn').click(); await expect(page.locator('#islandBagCount')).toHaveText('3/32'); await expect(page.locator('#quickInBag')).toBeVisible(); await expect(page.locator('#islandBagBackBtn')).toBeHidden(); /* (back to the bag: the goby gone from it) */
+  await page.locator('#islandFishBoxBtn').click(); await expect(page.locator('#islandBagTitle')).toHaveText('물고기 통');
+  await page.evaluate(() => document.getElementById('islandBagDialog').dispatchEvent(new Event('cancel', { cancelable: true }))); await expect(page.locator('#islandBagTitle')).toHaveText('가방'); await expect(page.locator('#islandBagDialog')).toBeVisible();
   await expectNoScriptError(page);
   await who.context.close();
 });
