@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.358 긴급: 폰에서 땅 안 보임 (사용자 갤럭시 폴드, live 1.10.357)
+
+- 원인: 땅 셰이더의 텍스처가 17칸(우리 15 + three.js dfgLUT + 해 그림자). 356까지는 16칸으로 딱 한도였고, 357의 tRoad(찻길 지도)가 넘겨서 MAX_TEXTURE_IMAGE_UNITS 16인 폰에서 프로그램 연결이 실패함(PC는 32라 멀쩡).
+- 고침: 회색 결 그림 grass·soil·sand 세 장을 ground-v1/ground.grains.png 한 장으로(R 풀 64 px 4×4 · G 흙 256 · B 모래 32 px 8×8, tools/ground-grains.py). 셰이더는 GRASS/SOIL/SAND 매크로로 채널·배율만 바꿔 같은 값을 읽음 → 15칸.
+- 재발 막기: test/ground-samplers.test.js(땅 sampler + 2 ≤ 15).
+- 확인: 브라우저에서 땅 프로그램의 실제 sampler 15개(PC·폰 프로필), 모습 같음.
+
 ## v1.10.357 T1 택시 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A~175A)
 
 - 길: island-taxi ROUTE 110→125점, 물가 거리 d 53~112 뭍 쪽 2.6 m·동쪽 물가 d 187~245 2 m·툇마루섬 d 332~345 북쪽 2 m(앞뒤 10 m 부드럽게, work/t1-roads/route.cjs). ROAD { lane 2.3, walk 1.6, half 3.9 }.
@@ -30,12 +37,3 @@
 - 골라 팔기: 창 두 칸(왼쪽 내 가방+종류 탭, 오른쪽 팔 물건 −/+/전부, 다 옮기기, 끌어 놓기), 안 받는 것은 흐리게 이유, 합계 → 한 번 더 확인. 좁은 폰은 위아래. 창 폭 640px.
 - 서버: /api/island/sell pick [{entryId, qty}] 1~64개, lib/island-items sellPicked(고른 수만, 물고기는 작은 것부터, 나머지는 가방에), requestId 그대로.
 - 시험: island-items 단위 「골라 팔기」, island-bag.spec 탭·개수·설명·기억·가구 탭(PC·폰), plaza.spec 관공서·노점 새 흐름.
-
-## v1.10.355 캐기+낚시 미니게임 다듬기 (사용자 2026-11-17, notes island-expansion 「캐기 미니게임 다듬기」, fishing-minigames 「타격감」) + playerRadiusAt + 거울호수
-
-- 같은 효과 도구: public/island-feel.js(글자·흔들림·진동·소리·가방으로 날기·빨간 가장자리, 효과음은 gc.settings.sound, 흔들림·진동은 gc.lessMotion), room-sound 섬 소리(쨍·툭·찰싹·첨벙·찰방·릴·심장·콤보·휙·반짝), plaza-scene feelBurst(조각·불꽃·먼지·물방울 InstancedMesh 풀)·feelPillar·feelFishJump.
-- 캐기: 줄어드는 고리(빛 가운데에 딱 겹침 = 보너스), 기다림 흰빛 → 빛 금빛, 바위 위 세 칸(●✕○), 맞힘 쨍!/완벽!, 놓침 툭+먼지, 두 번 맞히면 바로 결과(서버: 스스로 잰 두 번이면 일찍 finish 허용), 광석 가방으로 날기·드문 광석 빛기둥, 「광석 +1 · 오늘 n/60」, 캐는 동안 다른 안내 숨김(islandMining), 폰 큰 「캐기」 단추(빛나는 금).
-- 낚시: 타이밍 막대 칸 빛남·찰싹!/완벽!(낚싯대 끝 휨)·첨벙, 화살표 톡 튀기·콤보 소리·n 콤보, 줄다리기 릴 소리·줄 떨림·장력 빨간 가장자리·심장·힘쓸 때 큰 물보라와 진동, 잡았을 때 물고기 튀어 오름+찰방!. 판정은 서버 그대로.
-- playerRadiusAt: 문을 칸으로 0.5초마다 다시 담고 3x3 칸만(10.3 → 0.7 kB/프레임), 모든 문 훑기와 같은 답(doorRadiusCheck e2e).
-- 거울호수 fishWater: 호숫가 탐침이 타원 4 m 안·강보다 가까우면 lake(호숫가 lake 84→303, river 271→52, 밖 변화 없음).
-- 영상·사진 notes img/minigames-355.
