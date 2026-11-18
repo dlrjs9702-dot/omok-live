@@ -1925,6 +1925,9 @@ body.islandFishing .plazaHint{display:none}
 .talkHearts{margin-left:2px;color:#d9930f}
 .plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
 .plazaDialog.talkMode .lostRequest.talkWaiting .talkChoices{opacity:.6;pointer-events:none} /* (v1.10.240: an answer on its way) */
+.plazaDialog.talkMode .lostRequest .talkDots{animation:talkDots .6s ease-in-out infinite alternate} /* (361 50540f40: my pick at once, their 「…」 till the answer) */
+@keyframes talkDots{from{opacity:.35}to{opacity:.9}}
+@media (prefers-reduced-motion:reduce){.plazaDialog.talkMode .lostRequest .talkDots{animation:none;opacity:.6}}
 .plazaDialog.talkMode .lostRequest button.ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}.plazaDialog.talkMode .lostRequest button.ghost:hover{background:var(--isle-hover)} /* (U: 「다음에요」·「물고기 팔기」 -- a paper second button) */
 .plazaDialog.talkMode .talkActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto}
 .lostRequestLine.talkPending{display:none}

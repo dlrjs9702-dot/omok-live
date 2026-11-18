@@ -24,6 +24,9 @@
     { x: -3.2, z: -2.6, w: 1.8, d: 0.5 }, { x: 2.6, z: -3.2, w: 1.8, d: 0.5 }, { x: -6.4, z: -0.5, w: 0.3, d: 1.5 },
   ].map((f) => Object.freeze(f)));
   const TALK = Object.freeze({ lx: 3.8, lz: -1.6 }); // where one talks to the warden from (before the desk)
+  // (361 문제 기록 4cd68300 「구치소 내부 의자도 앉을 수 있는 의자로」) the two benches, two places each, toward the cell (local +Z: the
+  // world's -Z, yaw π -- the room turned half round)
+  const SEATS = Object.freeze(PROPS.filter((p) => p.id === 'jail.bench').flatMap((p, k) => [-0.45, 0.45].map((o, i) => Object.freeze({ id: `jail-${k}-${i}`, ...world(p.x + o, p.z), yaw: Math.PI, y: ROOM.y, room: 'jail' }))));
   // where one may stand: an inmate (the cell shut) in the cell; anyone else in the room, out of the cell and what stands
   // ('free': one let out today, the cell open -- in it too)
   function clamp(x, z, inmate = false) {
@@ -33,6 +36,7 @@
       return world(Math.max(c.x0 + 0.35, Math.min(c.x1 - 0.35, lx)), Math.max(c.z0 + 0.35, Math.min(c.z1 - 0.35, lz)));
     }
     const e = world(ROOM.entry.lx, ROOM.entry.lz);
+    const seat = inmate !== true && SEATS.find((s) => Math.abs(s.x - Number(x)) < 0.05 && Math.abs(s.z - Number(z)) < 0.05); if (seat) return { x: seat.x, z: seat.z }; // (361: sat on a bench -- on it)
     let { lx, lz } = local(fin(x, e.x), fin(z, e.z));
     lx = Math.max(-ROOM.w / 2 + 0.45, Math.min(ROOM.w / 2 - 0.45, lx)); lz = Math.max(-ROOM.d / 2 + 0.45, Math.min(ROOM.d / 2 - 0.45, lz));
     const stands = inmate === 'free' ? FIXTURES.slice(1) : FIXTURES;
@@ -79,5 +83,5 @@
   function taxJailTake(lastDay, run, day) { const yesterday = new Date(Date.parse(`${day}T00:00:00Z`) - 86400000).toISOString().slice(0, 10); if (lastDay === day) return { run: run || 1, take: 0 }; const next = lastDay === yesterday ? (run || 0) + 1 : 1; return { run: next, take: Math.min(TAX_TAKE_MAX, next) }; }
   const normalize = (text) => String(text || '').replace(/[.。]+\s*$/, '').replace(/\s+/g, ' ').trim();
   const same = (typed, sentence) => normalize(typed) === normalize(sentence);
-  return { ROOM, CELL, WARDEN, PROPS, FIXTURES, TALK, world, local, inJail, inCell, clamp, SECONDS, POOL, sentencesOf, GAMBLE_FIRST, GAMBLE_POOL, gambleSentencesOf, TAX_TAKE_MAX, taxJailTake, normalize, same };
+  return { ROOM, CELL, WARDEN, PROPS, FIXTURES, TALK, SEATS, world, local, inJail, inCell, clamp, SECONDS, POOL, sentencesOf, GAMBLE_FIRST, GAMBLE_POOL, gambleSentencesOf, TAX_TAKE_MAX, taxJailTake, normalize, same };
 }));

@@ -13759,6 +13759,30 @@
       "precompressed": true
     },
     {
+      "out": "characters/motions/Idle_Photo.glb",
+      "src": "photo151:01. High/motions/Idle_Photo.glb",
+      "sha256": "6ae27773c4cd8f9d38149b54ebd6b17b2b3c9a43db5c5e45effd7be9470dd23a",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk_Photo.glb",
+      "src": "photo151:01. High/motions/SlowWalk_Photo.glb",
+      "sha256": "9d7865b0d761190caf0825f059aa27d959ddd27eedd44703c6005d08f78e674b",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Walk_Photo.glb",
+      "src": "photo151:01. High/motions/Walk_Photo.glb",
+      "sha256": "061be465772b3758daa05bad44f797a4ff8221e206c3891d742f9c81f588ffc4",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Run_Photo.glb",
+      "src": "photo151:01. High/motions/Run_Photo.glb",
+      "sha256": "2aae62d1d35fc9478ed68a44ce7db8171c302852d51dfa7528c4660737b90cb4",
+      "precompressed": true
+    },
+    {
       "out": "xmas-v2/house_dress_hut.glb",
       "src": "xmas125:01. High/xmas-v2/house_dress_hut.glb",
       "sha256": "3e8da71c56308828323856c715b283af07afd12d0fee73cfbdf429690c8c8c15",
@@ -14626,6 +14650,7 @@
     "quarry141": "141. Game Island quarry expansion props 2026-11-16",
     "quarry143": "143. Game Island quarry development props 2026-11-16",
     "decay139": "139. Game Island house decay overlays 2026-11-16",
-    "bugs145": "145. Game Island house cockroach 2026-11-16"
+    "bugs145": "145. Game Island house cockroach 2026-11-16",
+    "photo151": "151. Game Island issue fixes 2026-11-18"
   }
 }
