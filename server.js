@@ -6307,7 +6307,7 @@ async function requestHandler(req, res) {
   // times `ore:shopMul` -- dearer than the 벼룩시장; GET the list, POST one (1, 5 or 10)
   if (pathname === '/api/island/store/ores' && (req.method === 'GET' || req.method === 'POST')) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
-    const ORE_SHOP = ['stone', ...IslandOres.ORES.map((o) => `ore_${o.id}`)];
+    const ORE_SHOP = Object.keys(IslandItems.ITEMS).filter((id) => IslandItems.ITEMS[id].shop); /* (the materials: `shop: true` -- never fish or insects) */
     if (req.method === 'GET') return sendJson(res, 200, { ok: true, ores: ORE_SHOP.map((id) => ({ id, name: IslandItems.ITEMS[id].name, icon: IslandItems.ITEMS[id].icon, price: Economy.shopOrePrice(id) })) });
     const body = await parseJson(req); const itemId = String(body.itemId || ''); const qty = Number(body.qty);
     if (!ORE_SHOP.includes(itemId)) return sendError(res, 400, 'BAD_REQUEST', '파는 광석이 아니에요.'); if (![1, 5, 10].includes(qty)) return sendError(res, 400, 'BAD_QTY', '수량을 확인해 주세요.');

@@ -3055,7 +3055,7 @@
       return row;
     });
     const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '상인이 사는 값보다 비싸요. 더 싸게 사려면 벼룩시장을 둘러보세요.'; /* (the times-that is the administrator's to change) */
-    openPlazaWindow('⛏️ 광석 사기', [note, ...rows]);
+    openPlazaWindow('⛏️ 재료 사기', [note, ...rows]);
   }
   // v1.10.86 주민세: the 세금 창구 (its own clerk) -- what I owe (체납) and paying it; tonight's tax as a guide
   const taxRow = document.getElementById('islandTaxRow'); const taxDialog = document.getElementById('taxDialog'); const taxStatus = document.getElementById('taxStatus');
@@ -4354,7 +4354,7 @@
     }); return b; });
     api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.dataset.to = String(next.slots); b.textContent = `${BOX_TITLE[kind]} ${bag.boxes?.[kind] ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
     /* (362 광석 값, 사용자 1A: the ores and the stone sold here too, at three times what the merchant pays -- dearer than the 벼룩시장) */
-    const oreBtn = document.createElement('button'); oreBtn.type = 'button'; oreBtn.className = 'ghost'; oreBtn.id = 'oreShopBtn'; oreBtn.textContent = '⛏️ 광석 사기'; oreBtn.addEventListener('click', () => openOreShop());
+    const oreBtn = document.createElement('button'); oreBtn.type = 'button'; oreBtn.className = 'ghost'; oreBtn.id = 'oreShopBtn'; oreBtn.textContent = '⛏️ 재료 사기'; oreBtn.addEventListener('click', () => openOreShop());
     lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns, oreBtn); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');
   }
   const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';

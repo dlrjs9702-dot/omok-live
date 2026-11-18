@@ -73,7 +73,11 @@ test('물고기 통 사기·놓아주기: 1층에서만, 50 → 100 → 200(362)
     const list = (await req('/api/island/store/ores', a)).data.ores; assert.deepEqual(list.find((o) => o.id === 'ore_iron'), { id: 'ore_iron', name: '철광석', icon: '🟤', price: 2700 }); assert.equal(list.find((o) => o.id === 'stone').price, 300);
     const before = await balance(); const r = await req('/api/island/store/ores', a, { itemId: 'ore_iron', qty: 5, requestId: crypto.randomUUID() }); assert.equal(r.status, 200, JSON.stringify(r.data));
     assert.equal(await balance(), before - 5 * 2700); assert.equal(r.data.bag.items.filter((x) => x.itemId === 'ore_iron').reduce((n, x) => n + x.qty, 0), 5);
-    assert.equal((await req('/api/island/store/ores', a, { itemId: 'bread', qty: 1, requestId: crypto.randomUUID() })).data.error, 'BAD_REQUEST', '광석·돌만');
+    assert.equal((await req('/api/island/store/ores', a, { itemId: 'bread', qty: 1, requestId: crypto.randomUUID() })).data.error, 'BAD_REQUEST', '재료만');
+    /* (사용자 「물고기 곤충은 제외, 집 만들기 … 재료들에만」: the `shop: true` materials -- the repair's and upkeep's, the ores; no fish, insect or 채집물) */
+    const ids = list.map((o) => o.id); for (const id of ['stone', 'twig', 'branch', 'weed', 'compost', 'ore_granite', 'ore_gold']) assert.ok(ids.includes(id), id);
+    assert.ok(ids.every((id) => !id.startsWith('fish_') && !id.startsWith('insect_') && !['herb', 'berry', 'mushroom'].includes(id)), ids.join()); assert.equal(list.find((o) => o.id === 'compost').price, 2790);
+    assert.equal((await req('/api/island/store/ores', a, { itemId: 'fish_goby', qty: 1, requestId: crypto.randomUUID() })).data.error, 'BAD_REQUEST', '물고기 안 팖');
   }
   assert.equal((await req('/api/test/island/give', a, { itemId: 'fish_goby', qty: 1 })).data.applied, true);
   const fish = (await bag()).items.find((x) => x.itemId === 'fish_goby'); assert.equal(fish.box, 'fish');
