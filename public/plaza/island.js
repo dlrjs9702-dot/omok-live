@@ -247,7 +247,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
     // (1.10.323 땅 질감, assets 135, 사용자 45A: painted grass, sand and soil -- grey round 0.5 -- and a wide mottle (data) that keeps
     // them from repeating; read only on the 높음·중간 tiers (uCheap 0, a GPU), the lowest and a software renderer as before)
     const p = (file, srgb) => { const url = `/assets/island/ground-paint-v1/${file}.webp`; const x = keep(loader.load(window.GameBoot?.assetUrl?.(url) ?? url)); x.wrapS = x.wrapT = THREE.RepeatWrapping; x.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; return x; };
-    const g = { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), edge: t('ground.grass_soil_edge_mask', false, true) };
+    const g = { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), grains: t('ground.grains', true) /* (1.10.359: the three in one -- tools/ground-grains.py) */, edge: t('ground.grass_soil_edge_mask', false, true) };
     if (software) return { ...g, grassPaint: g.grass, sandPaint: g.grass, soilPaint: g.grass, snowPaint: g.grass, mottle: g.grass }; /* (never read there: not fetched) */
     return { ...g, grassPaint: p('ground.grass_paint', true), sandPaint: p('ground.sand_paint', true), soilPaint: p('ground.soil_paint', true), snowPaint: p('ground.snow_paint', true) /* (1.10.329: the snowfield's, 135) */, mottle: p('ground.mottle', false) };
   })();
@@ -310,7 +310,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.97, 0.99, 1.0), band * holes * s
 { // 땅 종류
 vec2 guv = (vGroundXZ - uPathBox.xy) / uPathBox.z; vec3 ca = texture2D(tCoverA, guv).rgb; vec3 cb = texture2D(tCoverB, guv).rgb; float gravel = texture2D(tPathB, guv).b;
 if (uPlazaC.y > 0.0) { float pdC = max(max(abs(vGroundXZ.x - uPlazaC.x) - uPlazaC.y, uPlazaC.z - vGroundXZ.y), vGroundXZ.y - uPlazaC.w); gravel = max(gravel, 1.0 - smoothstep(0.5, 1.4, pdC)); } // (땅·길 ① 4: the gravel apron's map stops ~0.75 m short of 대청마당's paving -- a light grass strip ran between them; the apron now reaches the paving)
-float nz = (texture2D(tGrass, vGroundXZ / 9.0).r / 0.611 - 1.0) * 0.45 + (texture2D(tSand, vGroundXZ / 2.3).r / 0.701 - 1.0) * 0.18; // (검토 2차 2·3: the grain pictures' own randomness, coarse and fine -- a product of waves made a lattice)
+float nz = (GRASS(vGroundXZ / 9.0).r / 0.611 - 1.0) * 0.45 + (SAND(vGroundXZ / 2.3).r / 0.701 - 1.0) * 0.18; // (검토 2차 2·3: the grain pictures' own randomness, coarse and fine -- a product of waves made a lattice)
 vec3 grass = diffuseColor.rgb; float snow = smoothstep(0.45, 0.7, min(grass.r, min(grass.g, grass.b))); gSnow = snow;
 vec3 sandC = uSand; vec3 earthC = uEarth; vec3 forestC = uForest; vec3 gravelC = uGravel;
 if (uGrain > 0.0 && uCheap < 0.5 && uPaint > 0.5) { // (1.10.323 땅 질감, assets 135: 높음·중간 -- each painted picture over its 0.5 grey, the wide mottle in place of the 33 m patches; none on the snow)
@@ -320,7 +320,7 @@ grass = mix(grass * mix(vec3(1.0), texture2D(tGrassPaint, vGroundXZ / 3.2).rgb /
 sandC = uSand * mix(vec3(1.0), texture2D(tSandPaint, vGroundXZ / 2.6).rgb / 0.5, 0.75) * half_;
 earthC = uEarth * soilP * half_; forestC = uForest * mix(vec3(1.0), soilP, 0.5) * half_; gravelC = uGravel * soilP * half_;
 } else {
-float wm = texture2D(tGrass, vGroundXZ / 33.0).r / 0.611; grass = mix(grass * mix(vec3(1.05, 1.03, 0.9), vec3(0.93, 0.98, 0.95), smoothstep(0.75, 1.25, wm)), grass, snow); // (땅·길 ⑤: the meadow's wide patches, 10~40 m -- a little warmer, a little cooler; none on the snow)
+float wm = GRASS(vGroundXZ / 33.0).r / 0.611; grass = mix(grass * mix(vec3(1.05, 1.03, 0.9), vec3(0.93, 0.98, 0.95), smoothstep(0.75, 1.25, wm)), grass, snow); // (땅·길 ⑤: the meadow's wide patches, 10~40 m -- a little warmer, a little cooler; none on the snow)
 }
 #define KIND(w) smoothstep(0.24, 0.72, (w) + nz)
 float wet = 1.0 - smoothstep(${(SEA_PLANE_Y + 0.08).toFixed(2)}, ${(SEA_PLANE_Y + 0.45).toFixed(2)}, vWorldY); // (Codex 검토 2차: edges low to high -- reversed is undefined in GLSL)
@@ -335,7 +335,7 @@ col = mix(col, mix(uRock, grass, 0.65 * snow), KIND(cb.r)); // (검토 2차 1: s
 { // (땅·길 ② 절벽: a face steeper than ~50° is rock by its slope -- the 0.38 m map ran down a 2.5 m face in streaks -- in faint bands by
 // height and with a grain seen from the side, the soil picture laid on the face)
 float upN = (vec4(normalize(vNormal), 0.0) * viewMatrix).y; float steep = 1.0 - smoothstep(0.52, 0.66, upN);
-if (steep > 0.0) { float bands = 0.92 + 0.08 * sin(vWorldY * 2.6 + nz * 5.0) + 0.04 * sin(vWorldY * 7.3 + nz * 9.0); vec3 side = texture2D(tSoil, vec2(vGroundXZ.x * 0.7 + vGroundXZ.y * 0.7, vWorldY) / 2.2).rgb / 0.319;
+if (steep > 0.0) { float bands = 0.92 + 0.08 * sin(vWorldY * 2.6 + nz * 5.0) + 0.04 * sin(vWorldY * 7.3 + nz * 9.0); vec3 side = SOIL(vec2(vGroundXZ.x * 0.7 + vGroundXZ.y * 0.7, vWorldY) / 2.2).rgb / 0.319;
 vec3 rockC = uRock * 1.08 * bands * mix(vec3(1.0), side, 0.22); col = mix(col, mix(rockC, grass, 0.55 * snow), steep); }
 }
 #endif
@@ -350,7 +350,7 @@ diffuseColor.rgb = col; gw = vec2(1.0 - max(max(KIND(ca.g), KIND(cb.r)), max(KIN
 vec4 pm = vec4(texture2D(tPathA, (vGroundXZ - uPathBox.xy) / uPathBox.z).rgb, texture2D(tPathB, (vGroundXZ - uPathBox.xy) / uPathBox.z).r);
 if (pm.a > 0.15) {
 float inside = (pm.r * 2.0 - 1.0) * ${globalThis.IslandPaths.EDGE_RANGE.toFixed(2)}; // metres inside its edge
-float fray = (texture2D(tGrass, vGroundXZ / 5.0).r / 0.611 - 1.0) * 0.3 + (texture2D(tSand, vGroundXZ / 1.6).r / 0.701 - 1.0) * 0.12; // (검토 3차 1: the grain pictures' randomness -- a product of waves zigzagged the edge)
+float fray = (GRASS(vGroundXZ / 5.0).r / 0.611 - 1.0) * 0.3 + (SAND(vGroundXZ / 1.6).r / 0.701 - 1.0) * 0.12; // (검토 3차 1: the grain pictures' randomness -- a product of waves zigzagged the edge)
 float cover = smoothstep(-0.08, 0.14, inside + fray); // (검토 ⓪-2: a crisp edge -- on a phone a wide blend read as smudged grass)
 float along = atan(pm.b * 2.0 - 1.0, pm.g * 2.0 - 1.0) / 6.2831853 * ${globalThis.IslandPaths.ALONG_PERIOD.toFixed(1)};
 vec3 pc = pm.a > 0.9 ? uTown : pm.a > 0.55 ? uWalk : uTrail;
@@ -372,7 +372,7 @@ float pd = max(max(abs(vGroundXZ.x - uPlazaC.x) - uPlazaC.y, uPlazaC.z - vGround
 float wp = uPlazaC.y > 0.0 ? 1.0 - smoothstep(4.0, 12.0, pd) : 0.0;
 if (wp > 0.0) pc = mix(pc, texture2D(tPlaza, vec2(vGroundXZ.x - (uPlazaC.x - uPlazaC.y), uPlazaC.w - vGroundXZ.y) / 6.0).rgb, wp);
 }
-if (uGrain > 0.0 && uCheap < 0.5) pc *= mix(vec3(1.0), texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, uGrain * (pm.a > 0.9 ? 0.35 : 0.9));
+if (uGrain > 0.0 && uCheap < 0.5) pc *= mix(vec3(1.0), SOIL(vGroundXZ / 1.4).rgb / 0.319, uGrain * (pm.a > 0.9 ? 0.35 : 0.9));
 if (pm.a <= 0.9) { // (땅·길 ③: an earth walk's gravel -- dots in 14 cm cells, some light some dark -- and a darker rim at its edge)
 vec2 gq = vGroundXZ * 7.0; float gh = fract(sin(dot(floor(gq), vec2(41.3, 289.1))) * 43758.5453); float gdot = step(0.84, gh) * (1.0 - smoothstep(0.14, 0.32, length(fract(gq) - 0.5)));
 pc = mix(pc, pc * (gh > 0.92 ? 1.16 : 0.8), gdot * 0.85); pc *= mix(0.84, 1.0, smoothstep(0.02, 0.4, inside));
@@ -388,7 +388,7 @@ float rc = smoothstep(0.35, 0.75, rd.g) * (1.0 - smoothstep(3.86, 3.94, ao));
 if (rc > 0.0) {
 vec3 col;
 if (ao < 2.3) {
-col = vec3(0.40, 0.41, 0.43) * (0.94 + 0.12 * texture2D(tSand, vGroundXZ / 1.1).r);
+col = vec3(0.40, 0.41, 0.43) * (0.94 + 0.12 * SAND(vGroundXZ / 1.1).r);
 float zebra = rd.b * (1.0 - smoothstep(2.0, 2.06, ao)) * smoothstep(0.42, 0.47, abs(fract(off / 0.9) - 0.5) * 2.0 - 0.0);
 col = mix(col, vec3(0.94, 0.93, 0.89), max(zebra, (1.0 - rd.b) * (1.0 - smoothstep(0.05, 0.08, abs(ao - 2.1)))));
 col = mix(col, vec3(0.96, 0.78, 0.26), (1.0 - rd.b) * (1.0 - smoothstep(0.06, 0.09, ao)));
@@ -403,7 +403,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, col, rc);
 }`);
   const grained = (material, path) => {
     material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
+      Object.assign(shader.uniforms, { tGrains: { value: groundTex.grains } /* (1.10.359: grass, soil and sand in one -- phones' 16 texture units) */, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
         ...(maps && !path ? { tGrassPaint: { value: groundTex.grassPaint }, tSandPaint: { value: groundTex.sandPaint }, tSoilPaint: { value: groundTex.soilPaint }, tSnowPaint: { value: groundTex.snowPaint }, tMottle: { value: groundTex.mottle }, uPaint: paintOn } : {}),
         uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
         ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: plazaBox }, tPathA: { value: maps.pathA }, tPathB: { value: maps.pathB }, tRoad: { value: maps.road }, tCoverA: { value: maps.coverA }, tCoverB: { value: maps.coverB }, tShore: { value: maps.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
@@ -413,18 +413,22 @@ diffuseColor.rgb = mix(diffuseColor.rgb, col, rc);
 attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;`).replace('#include <begin_vertex>', `#include <begin_vertex>
 vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz; vWorldY = (modelMatrix * vec4(transformed, 1.0)).y;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
-uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; uniform float uCheap; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
+uniform sampler2D tGrains;
+#define GRASS(uv) vec3(texture2D(tGrains, (uv) * 0.25).r)
+#define SOIL(uv) vec3(texture2D(tGrains, (uv)).g)
+#define SAND(uv) vec3(texture2D(tGrains, (uv) * 0.125).b)
+ uniform sampler2D tEdge; uniform float uGrain; uniform float uCheap; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
 uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPlaza; uniform vec4 uPlazaC; uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tRoad; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea;' : ''}
 uniform vec3 uForest; uniform vec3 uEarth; uniform vec3 uGravel; uniform vec3 uRock; uniform vec3 uSand; uniform vec3 uWet; uniform vec3 uClover; uniform float uRain;${maps && !path ? ' uniform sampler2D tGrassPaint; uniform sampler2D tSandPaint; uniform sampler2D tSoilPaint; uniform sampler2D tSnowPaint; uniform sampler2D tMottle; uniform float uPaint;' : ''}`).replace('#include <color_fragment>', `#include <color_fragment>
 vec2 gw = vGround; float gWet = 0.0; float gSnow = 0.0; // (the grass and the sand share, for the grains: the vertex's, or the cover map's; how wet: 파도)${paintCover(path)}
 if (uGrain > 0.0) {
-vec3 gGrass = texture2D(tGrass, vGroundXZ / 2.4).rgb / 0.611; // (each over its own mean: the colours keep their brightness, only the grain shows)${path ? `
+vec3 gGrass = GRASS(vGroundXZ / 2.4).rgb / 0.611; // (each over its own mean: the colours keep their brightness, only the grain shows)${path ? `
 float gCover = texture2D(tEdge, vGround).a; // the path: x along it, y across (1 at its grass edge)
-diffuseColor.rgb *= mix(vec3(1.0), mix(texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, gGrass, gCover), uGrain);
+diffuseColor.rgb *= mix(vec3(1.0), mix(SOIL(vGroundXZ / 1.4).rgb / 0.319, gGrass, gCover), uGrain);
 diffuseColor.a *= 1.0 - 0.85 * gCover * step(0.001, vGround.y); // the island's grass shows through in tufts
 }` : `
 vec3 gGrain = mix(vec3(1.0), gGrass, 0.6); // (5회차 1: the lowest tier keeps this one grain -- one sample -- not a flat colour)
-if (uCheap < 0.5) gGrain = ${maps ? 'mix(vec3(1.0), mix(mix(vec3(1.0), gGrass, gw.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, gw.y), uPaint > 0.5 ? 0.0 : 1.0); /* (1.10.323: 높음·중간 -- the painted ground in its place; 1.10.329 the snow painted too: no old grain) */' : 'mix(mix(vec3(1.0), gGrass, gw.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, gw.y);'}
+if (uCheap < 0.5) gGrain = ${maps ? 'mix(vec3(1.0), mix(mix(vec3(1.0), gGrass, gw.x), SAND(vGroundXZ / 1.4).rgb / 0.701, gw.y), uPaint > 0.5 ? 0.0 : 1.0); /* (1.10.323: 높음·중간 -- the painted ground in its place; 1.10.329 the snow painted too: no old grain) */' : 'mix(mix(vec3(1.0), gGrass, gw.x), SAND(vGroundXZ / 1.4).rgb / 0.701, gw.y);'}
 diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
 }`}${paintPath(path)}${shoreWash(path)}
 diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·길 ④ 비: the ground wet -- darker and shining; colour only, nothing reflected)`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.28, gWet);'); // (파도: wet sand shines)
