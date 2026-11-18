@@ -6812,10 +6812,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (taxiRide.clips || (q.phase !== 'enter' && q.phase !== 'exit')) me.root.position.copy(seat);
     else if (q.phase === 'enter') me.root.position.lerpVectors(taxiRide.from, seat, Math.min(1, q.k));
     else me.root.position.lerpVectors(seat, taxiOut.set(out.x, heightAt(out.x, out.z), out.z), Math.min(1, q.k));
-    { /* (1.10.336 사용자 「택시를 타면 화면이 고정되는데 … 돌아볼 수 있게」: the view turns with the car -- its turns added to mine -- and is mine to turn; out of the car it goes on from there. Getting in: behind the car, a little to its side, in the first its way) */
-      if (taxiRide.carYaw == null) { const want = q.yaw + Math.PI + (fpNow() ? 0 : 0.45); yawGoal = camYaw + Math.atan2(Math.sin(want - camYaw), Math.cos(want - camYaw)); }
-      else yawGoal += Math.atan2(Math.sin(q.yaw - taxiRide.carYaw), Math.cos(q.yaw - taxiRide.carYaw));
-      taxiRide.carYaw = q.yaw; }
+    /* (1.10.360 사용자 「택시가 방향을 바꿀 때마다 시점이 조금씩 돌아가서 멀미 … 아예 시점을 건드리지 않게, 플레이어가 둔 그대로」: the view is
+       only mine -- getting in, on the way and out the game turns it never (1.10.336 turned it with the car, and swung it behind
+       the car at the start); it only follows where the car is. carYaw: the car's heading, kept for the tests' look) */
+    taxiRide.carYaw = q.yaw;
     me.root.rotation.y = q.yaw; me.targetYaw = q.yaw;
   }
   function setPlatform(result) {

@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.360 길 고침(문제 기록 8e1f13a5·ba1a3bd5) + 택시 시점 고정(사용자 11-18)
+
+- 길 위 풀: 바람 풀(G1)이 road.png 마스크도 읽음(island-pilot-scene; 땅 그림 밖 별마루섬에선 안 읽음). 키 큰 풀·땅 장식은 bareGround에 길 3.9 m + 0.4. 바닷가 자리(shoreSpots)도 길 밖(쓰레기 병이 차선 위에 생기던 것). ba1a3bd5(툇마루섬 길 오른쪽 절반이 풀밭)는 같은 원인: 길 50 m마다 9곳, 풀이 난 점 고치기 전 8곳 → 0곳.
+- 인도까지 바닷물: 물가 거리 등에서 인도 바깥 끝이 바다 높이 이하(최저 −0.98)였음. dalmaru-island roadBank: 길 띠와 그 밖 0.5 m를 바다 위 0.75 m로, 그 밖은 모래 비탈 0.3(약 2.5 m). 올리기만, 다리 끝 4 m 안은 그대로, 8 m 칸 격자로 빠르게. shore 맵은 길 + 1 m를 「지은 곳」(파도 없음).
+- 모래사장: cover 맵에서 길 바깥 ~ 바다 사이를 모래로(길이 해안 12 m 안일 때). 바다 → 모래 → 난간/연석 → 인도.
+- 택시 시점: plaza-scene에서 탈 때 차 뒤로 돌리기·달리는 동안 차 방향 더하기를 뺌. carYaw는 시험용 기록으로만 남김. 자전거·열차는 원래 카메라를 안 돌림.
+- 시험: bicycle.spec 택시 「차가 돌아도 카메라 yaw 그대로, 내가 돌리면 유지」, dalmaru-walk(뜨거나 묻힌 것 0), 단위 땅 지도·택시·자연물. 땅 sampler 15 그대로.
+
 ## v1.10.359 N1 별마루섬 땅·다리·숲길 (notes docs/island-expansion-20261115.md §8, 163A~166A)
 
 - 땅: dalmaru-terrain NEW_ISLE (365, 226) 반지름 145(해안 물결), 봉우리 (393, 212) 43.7 m · 남쪽 언덕 17.5 m · 동쪽 갯바위 18.4 m · 캠핑장 평지 (259, 250) 3 m, 개울 CREEK 6점(샘 27.6 m → 북서 해안, 바닥 0.7 m 낮춤, 물은 inCreek, 낚시 river). coastDist에 한 항. 넓이 66,100 ㎡.
@@ -42,13 +50,3 @@
 - 재발 막기: test/ground-samplers.test.js(땅 sampler + 2 ≤ 15).
 - 확인: 브라우저에서 땅 프로그램의 실제 sampler 15개(PC·폰 프로필), 모습 같음.
 - 357 사진·CI가 멀쩡했던 까닭: Playwright 헤드리스 Chromium은 SwiftShader라 MAX_TEXTURE_IMAGE_UNITS 32. 이 PC의 Chrome(ANGLE D3D11, RX 570)과 대부분의 폰·PC 브라우저는 16이라, 357은 그쪽에서 모두 땅이 안 보였을 것.
-
-## v1.10.357 T1 택시 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A~175A)
-
-- 길: island-taxi ROUTE 110→125점, 물가 거리 d 53~112 뭍 쪽 2.6 m·동쪽 물가 d 187~245 2 m·툇마루섬 d 332~345 북쪽 2 m(앞뒤 10 m 부드럽게, work/t1-roads/route.cjs). ROAD { lane 2.3, walk 1.6, half 3.9 }.
-- 칠하기: 땅 지도 road.png(island-paths buildRoadMap: R 가운데부터 부호 있는 거리 ±5 m, G 칠할 곳, B 건널목), island.js 땅 셰이더가 차선(아스팔트·노란 중앙선·흰 가장자리선·건널목 흰 줄)·연석·인도(돌) 칠함. 다리·대청마당 바닥·바다엔 안 칠함.
-- 건널목 4→11곳(종점 앞 2, 배 타는 곳, 박물관, 달끝나루, 동쪽 물가 3, 윤슬다리 서쪽, 툇마루섬 집 길, 갈림길). 물가 거리는 난간이 5 m 안이라 없음.
-- 옮김: 물가 거리 가로등·벤치(뭍 쪽 인도 밖), 길가 가로등(인도 바깥 끝, 안 되면 건너편), 전기공 가로등 3개(x 0.5±4.5)와 전기공, 툇마루섬 안내판 1 m 북쪽, 대청마당 정류장 8 m 안 꽃밭 묶음 2개 없앰. 나무·덤불·바위·꽃·풀(잡초 번호 그대로)은 길 3.9 m 밖만 남김.
-- 주민 격자: 차선(2.5 m 안)은 건널목 말고 비쌈, 인도(3.9 m까지) 싸게; offTaxiRoad는 인도 가운데(3.1 m)로.
-- 차는 아직 길 가운데로 달림(차선 지키기·마주 지나기는 T2).
-- 시험: island-taxi 「T1 길 넓히기」, npcs 건널목 합 기준(건널목 수만큼), G4a 덤불 g4 표시.
