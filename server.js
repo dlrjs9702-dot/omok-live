@@ -10433,7 +10433,11 @@ async function storageLog() {
   const { line, warn } = StorageReport.logLine(await storageReport()); storageLoggedDay = day; (warn ? console.warn : console.log)(line);
 }
 
+// 364 켜짐 시간 (Render: npm start → listen ~80 s, here ~9 s): a [boot] line at each stage, ms since the process began, so the
+// next start on Render says where its time goes (the code's load -- the island's grids --, the stores, the rest)
+const bootMarks = []; const bootMark = (stage) => { bootMarks.push(`${stage} ${Math.round(process.uptime() * 1000)}`); };
 async function main() {
+  bootMark('modules');
   // v1.10.256 주소 옮기기: the old service, MOVED_TO set, only points to the new address -- before any store opens the database
   if (process.env.MOVED_TO) return require('./lib/moved').startMoved({ to: process.env.MOVED_TO, port: PORT, host: HOST });
   await fsp.mkdir(DATA_DIR, { recursive: true });
@@ -10443,7 +10447,8 @@ async function main() {
     .replace(/(src|href)="(\/[^"?#]+\.(?:js|css))"/g, (_, attr, url) => `${attr}="${hashedUrl(codeRevs, url)}"`)
     .replace('__HEROSURV_ASSETS__', escapeAttr(HEROSURV_ASSETS));
   messengerTemplate = (await fsp.readFile(path.join(PUBLIC_DIR, 'messenger.html'), 'utf8')).replace(/(src|href)="(\/[^"?#]+\.(?:js|css))"/g, (_, attr, url) => `${attr}="${hashedUrl(codeRevs, url)}"`);
-  const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]));
+  const packStats = {}; const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]), { cacheFile: process.env.NODE_ENV === 'test' ? null : path.join(__dirname, '.cache', 'asset-manifest.json'), stats: packStats }); /* (364: sizes·mtimes kept -- npm install warms it) */
+  bootMark(`assets(${packStats.hashed} hashed/${packStats.reused} kept)`);
   assetPackVersion = pack.version;
   assetManifestJson.on = JSON.stringify({ enabled: true, ...pack, assetsOff: islandAssetsOff }).replace(/</g, '\\u003c');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
@@ -10452,7 +10457,9 @@ async function main() {
   setInterval(() => { messengerStore.purgePhotos().then(() => messengerStore.photoRooms()).then((rooms) => { if (rooms.length) console.log(`[messenger-photos] kept ${rooms.reduce((s, r) => s + r.size, 0) >> 20} MB in ${rooms.length} rooms; most: ${rooms.slice(0, 5).map((r) => `${String(r.room).slice(0, 8)} ${r.n}장 ${(r.size / 1048576).toFixed(1)} MB`).join(', ')}`); }).catch((error) => console.warn('[messenger-photos]', error.message)); }, 60 * 60 * 1000).unref(); // v1.10.233: photos 7 days, then gone (one never sent: a day)
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
+  bootMark('stores-before-points');
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
+  bootMark('points');
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
   walkerTimeMode = (await pointStore.worldValue('time'))?.mode || 'auto'; // (R3 ③: the islanders' round by the held time of day)
@@ -10561,13 +10568,14 @@ async function main() {
     const tracked = { petOf, bagSlots, boxSlots, stockNoticed, stockNewsSeen, fishModes, fishModeForced, sessions, activeGuestSessions, rooms, streams, lobbyStreams, rateLimits, invitations, islandInviteIntents, equippedSkinCache, eventAudience, rewardTestAccounts, codeRevs, vendorCache, hwatuCache, testNotices, photoUploading, accountTokens, setupTickets, liveEntryKeys, messengerStreams, climbs, errandStages, storyDocs, taxNoted, soloFirsts, plazaPresence, plazaLastPos, townhallInside, storeInside, furnitureInside, petshopInside, fashionInside, homeInside, homeFloor, yardLevels, farmDocs, petReadFailedAt, taxDebt, jailInside, exchangeInside, denInside, denBelow, museumInside, jailInmates, jailFreed, jailEssays, jailVeterans, visitNoted, resourcePulls, weedPulls, questCache, soloGames, reflexRuns, residentBets, betChains, puzzleStarts, cardRuns, herosurvRuns, plazaSpots, townhallPass, fishCasts, bigCatchAt, seatTaken, snowThrows, insectShown, showUsed, trainVisitors, trainRiders, taxiRides, taxiPaying, unstuckAt, taxiStopOut, talkNow, eventRounds, contestPasses, inflightEntryIds, expiredEntries };
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.363 실행: http://${HOST}:${PORT}`));
+  bootMark('before-listen');
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.363 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
   // the first collection time out and the visitors' first requests 500: two minutes in, then every five as before)
   if (process.env.NODE_ENV !== 'test') { setTimeout(() => collectTaxes(), 120_000).unref?.(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
-  setImmediate(() => GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths, groundCover)); // (5회차 6: the ground's grid built once now, not in someone's first pose)
+  setImmediate(() => { const t0 = Date.now(); GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths, groundCover); console.log(`[boot] ground speed map ${Date.now() - t0} ms (after listening)`); }); // (5회차 6: the ground's grid built once now, not in someone's first pose)
 }
 
 main().catch((err) => {
