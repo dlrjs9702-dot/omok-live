@@ -10539,6 +10539,10 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
+  { /* 1.10.363 메모리 (운영 OOM 11-18 13:18Z): a [mem] line every 5 min and at 80 % of the limit, with the biggest of these by entries */
+    const tracked = { petOf, bagSlots, boxSlots, stockNoticed, stockNewsSeen, fishModes, fishModeForced, sessions, activeGuestSessions, rooms, streams, lobbyStreams, rateLimits, invitations, islandInviteIntents, equippedSkinCache, eventAudience, rewardTestAccounts, codeRevs, vendorCache, hwatuCache, testNotices, photoUploading, accountTokens, setupTickets, liveEntryKeys, messengerStreams, climbs, errandStages, storyDocs, taxNoted, soloFirsts, plazaPresence, plazaLastPos, townhallInside, storeInside, furnitureInside, petshopInside, fashionInside, homeInside, homeFloor, yardLevels, farmDocs, petReadFailedAt, taxDebt, jailInside, exchangeInside, denInside, denBelow, museumInside, jailInmates, jailFreed, jailEssays, jailVeterans, visitNoted, resourcePulls, weedPulls, questCache, soloGames, reflexRuns, residentBets, betChains, puzzleStarts, cardRuns, herosurvRuns, plazaSpots, townhallPass, fishCasts, bigCatchAt, seatTaken, snowThrows, insectShown, showUsed, trainVisitors, trainRiders, taxiRides, taxiPaying, unstuckAt, taxiStopOut, talkNow, eventRounds, contestPasses, inflightEntryIds, expiredEntries };
+    if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])) }).tick();
+  }
   server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.362 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
