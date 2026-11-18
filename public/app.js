@@ -2618,7 +2618,7 @@
   // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
   // old emoji) -- the bag and the sale lists; toasts keep the emoji
   const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
-  const GOOD_ICONS = new Set(['bait', 'bait_premium', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge', ...['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage'].map((c) => `seed_${c}`), ...['granite', 'clay', 'coal', 'iron', 'copper', 'silver', 'crystal', 'gold'].map((o) => `ore_${o}`), 'star_fragment', 'star_fragment_shiny']); /* (366: assets 154 star fragments) */ /* (318: the crops' seeds -- assets 115; 1.10.342: the eight ores -- assets 140 icons) */
+  const GOOD_ICONS = new Set(['bait', 'bait_premium', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge', ...['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage'].map((c) => `seed_${c}`), ...['granite', 'clay', 'coal', 'iron', 'copper', 'silver', 'crystal', 'gold', 'sandstone', 'tin', 'jade', 'obsidian'].map((o) => `ore_${o}`), ...['moonstone', 'ruby', 'sapphire', 'emerald'].map((g) => `gem_${g}`) /* (366 광석 개편 2) */, 'star_fragment', 'star_fragment_shiny']); /* (366: assets 154 star fragments) */ /* (318: the crops' seeds -- assets 115; 1.10.342: the eight ores -- assets 140 icons) */
   const SHOW_GOODS = new Set(['firework', 'balloon', 'bubbles']); // v1.10.92: 「쓰기」 in the bag, seen by everyone near
   function itemIcon(item) {
     const id = ITEM_ALIAS[item.itemId] || item.itemId;
@@ -3819,7 +3819,8 @@
       if (r.bag) drawIslandBag(r.bag); toolWorn(r.worn, r.bag);
       plaza.controller?.mineResult?.(r); /* (1.10.355: the ore off the rock into the bag, a rare one's light) */
       if (!r.ore) { showToast(`💥 ${r.hits ?? 0}/${r.rounds ?? 3}번 맞혔어요 · 두 번 맞혀야 광석이 나와요${r.itemId ? ' · 🪨 작은 돌 +1' : ''}`, 3500); return; } /* (1.10.342 98B: a missed set -- rubble, the rock and the day's count as they were) */
-      showToast(`${r.icon || '🪨'} ${r.name || '광석'} +1${r.wall ? '' : ` · 오늘 ${r.daily?.n ?? '-'}/${r.daily?.max ?? '-'}`}${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, 3200); /* (1.10.355: 「구리 광석 +1 · 오늘 23/60」) */
+      if (r.firstGem) { lastGemCardAt = Date.now(); gemCardShow(r); return; } /* (366: the first of a gem -- its card) */
+      showToast(`${r.gem ? '✨ ' : ''}${r.icon || '🪨'} ${r.name || '광석'} +1${r.wall ? '' : ` · 오늘 ${r.daily?.n ?? '-'}/${r.daily?.max ?? '-'}`}${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, r.gem ? 4500 : 3200); /* (1.10.355: 「구리 광석 +1 · 오늘 23/60」) */
     } catch (error) { if (started) api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); showToast(error.message, 3500); }
     finally { mining = false; }
   }
@@ -4893,7 +4894,7 @@
   // best before; 「더보기」 turns it to the kind's 설명. 3 s on its own (not turned) it shrinks to the one-line note, at Esc and
   // on the next cast too; it never stops moving or the rod. A plain catch: the note only (tapped: the same 설명 card). The
   // 설명 alone from the bag's ⓘ, a 도감 cell, a museum plaque. 「움직임 줄이기」: no sparkle, no count -- the border only.
-  const catchCard = byId('catchCard'); let catchTimer = null; let catchNote = ''; let catchAsk = 0;
+  const catchCard = byId('catchCard'); let catchTimer = null; let catchNote = ''; let catchAsk = 0; let lastGemCardAt = 0; /* (366: my own gem card up -- the island's notice of it not over it) */
   const lessMotionNow = () => motionMode() === 'on' || (motionMode() === 'auto' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches));
   const dexPic = (id) => (id.startsWith('insect_') ? `/assets/dex/${id}.svg` : `/assets/dex/${id}.png`);
   const GRADE_KO = { common: '흔함', normal: '보통', rare: '드묾', big: '대어' };
@@ -4933,6 +4934,18 @@
       /* (294 사용자 「내가 직접 꺼야 끝나는 걸로」: no closing of its own -- ✕, 「확인」, Esc, walking or a tap on the island end it) */
     };
     if (showing) catchTimer = setTimeout(reveal, insect ? 1000 : 1100); else reveal();
+  }
+  // (366 광석 개편 2, user 2A: an account's first of each gem -- the same card, its own picture and line, no 더보기)
+  function gemCardShow(r) {
+    const g = r.firstGem; catchClose(false); catchNote = ''; catchAsk += 1; catchHost();
+    catchCard.dataset.id = ''; catchCard.className = `catchCard is-first isGem${lessMotionNow() ? ' calm' : ''}`;
+    catchCard.querySelector('.catchRibbons').replaceChildren(catchEl('span', 'catchRibbon first', g.title));
+    for (const img of catchCard.querySelectorAll('.catchPic')) img.src = g.card;
+    for (const h of catchCard.querySelectorAll('.catchName')) h.textContent = r.name;
+    catchCard.querySelector('.catchSize').textContent = `${r.icon || '💎'} 가방에 넣었어요`;
+    catchCard.querySelector('.catchLines').replaceChildren(...(g.line ? [catchEl('li', null, g.line)] : []));
+    catchCard.querySelector('#catchMoreBtn').classList.add('hidden');
+    window.RoomSound?.play('right');
   }
   // the 설명 (the card's back): its picture and name, grade, one line, the island's story (found only), where and when,
   // its size and my best, the museum's
@@ -9122,6 +9135,7 @@
       return; } // v1.10.251 기록의 탑: a new week's 1st
     if (event === 'homes') { refreshHomes(); return; } // 묶음 4: a house new somewhere, or its roof
     if (event === 'quarry') { plaza.controller?.setQuarry?.(parsed.rocks); return; } // (1.10.323 채석장: a rock mined out or grown back)
+    if (event === 'gemFound') { if (document.body.classList.contains('plazaMode') && Date.now() - lastGemCardAt > 8000 && parsed.text) showToast(`💎 ${parsed.text}`, 5000); return; } // (366: someone's first of a gem -- the island told; mine has its card)
     if (event === 'homeInside') { if (homeInside && homeInside.home?.lot === parsed.lot && !homeInside.mine) api('/api/home/inside').then((r) => { if (homeInside?.home?.lot === parsed.lot) showHome(r, true); }).catch(() => {}); return; } // v1.10.226: the house I visit changed (a piece placed, a colour)
     if (event === 'friends') { showToast(parsed.kind === 'request' ? `${parsed.name || '이웃'}님이 친구 신청을 했어요 · 내 정보 「친구」에서 수락할 수 있어요` : '친구 신청이 받아들여졌어요', 5000); if (myInfoDialog.open) renderFriends(); return; } // 묶음 4 친구
     if (event === 'furniture') { if (plaza.controller?.space?.() === 'furniture') refreshFurniture(); else furnitureState = null; return; } // 묶음 2: a piece sold somewhere

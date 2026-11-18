@@ -45,6 +45,9 @@
     ['a', 120.0, -106.6, 'iron'], ['b', 105.5, -95.7, 'coal'], ['a', 131.3, -91.9, 'copper'], ['c', 136.2, -84.5, 'crystal'], ['b', 143.2, -71.4, 'iron'],
     ['a', 145.1, -63.7, 'iron'], ['c', 147.1, -56.2, 'copper'], ['b', 149.6, -49.2, 'gold'], ['a', 129.3, -69.9, 'iron'], ['c', 132.2, -63.1, 'iron'],
     ['b', 135.3, -56.1, 'copper'], ['a', 138.4, -49.6, 'silver'],
+    /* (366 광석 개편 2, assets 155 new-rocks.json -- checked with 구현 11-18: in AREA, ≥ 5.2 m from every rock, off props, rails and edges) */
+    ['c', 67, -138, 'sandstone'], ['b', 126, -96.5, 'jade'], ['a', 76, -140.5, 'tin'], ['c', 66.5, -124, 'sandstone'],
+    ['b', 132.5, -50.5, 'obsidian'], ['a', 67, -148.5, 'sandstone'], ['c', 126, -65, 'jade'], ['b', 104.5, -101.5, 'tin'],
   ].map(([kind, x, z, ore], i) => Object.freeze({ id: `r${i}`, kind, x, z, ore, yaw: Math.round(((i * 2.39) % (Math.PI * 2)) * 100) / 100 })));
   // (1.10.342: where it was, at the ridge walk's end -- the walk unchanged (92A), the sign the place it leads to; §9-2's (54.3, -143.0) by
   // the west way in would leave the walk's end in the open)
@@ -125,14 +128,14 @@
   // assets 130: the pickaxe's tip at the hit, in the player's own frame (x right, y up, -z ahead) -- the player stands so it lands on the spot
   const HIT_TIP = Object.freeze([0.08, 0.4, -1.0]);
   const SWING_MS = 1200; const SWINGS = 3; const MINE_MS = 2000 * 3; /* (1.10.342: ROUNDS x ROUND_MS -- the crack-light game) */ const END_MS = 1000;
-  const ORE_PER_ROCK = 6; const REGROW_MS = 3 * 3600000; const DAILY = 60; // (사용자 2026-11-17: 하루 60, 바위 6 -- a rock already kept keeps its left till it fills again; 1.10.342: a rock's own fill time by its ore -- regrowOf)
+  const ORE_PER_ROCK = 8; /* (366 광석 개편 2: 6 -> 8) */ const REGROW_MS = 3 * 3600000; const DAILY = 60; // (사용자 2026-11-17: 하루 60, 바위 6 -- a rock already kept keeps its left till it fills again; 1.10.342: a rock's own fill time by its ore -- regrowOf)
   // 1.10.342 the crack-light game (98B, review-plan §1-8): ROUNDS swings of ROUND_MS; in each one crack lights at `at` ms for the
   // ore's LIGHT (lib/island-ores: 1.0 / 0.8 / 0.6 s) -- the cracks five points on the rock's face toward the miner: [right of the
   // hit, height share of the rock] (the page finds the surface by a ray); a press while lit or GRACE_MS after hits, within BONUS_MS of
   // the light's middle a bonus; HITS_NEEDED of the swings give the ore
   const ROUNDS = 3; const ROUND_MS = 2000; const GRACE_MS = 300; const BONUS_MS = 150; const HITS_NEEDED = 2;
   const CRACKS = Object.freeze([[-0.34, 0.3], [0.34, 0.34], [-0.18, 0.62], [0.22, 0.7], [0, 0.48]].map((c) => Object.freeze(c)));
-  const LIGHT = Object.freeze({ 0: 1000, 1: 1000, 2: 800, 3: 600 }); const TIER = Object.freeze({ granite: 0, clay: 0, coal: 1, iron: 1, copper: 1, silver: 2, crystal: 2, gold: 3 });
+  const LIGHT = Object.freeze({ 0: 1000, 1: 1000, 2: 800, 3: 600 }); const TIER = Object.freeze({ granite: 0, clay: 0, sandstone: 0, coal: 1, iron: 1, copper: 1, tin: 1, silver: 2, crystal: 2, jade: 2, gold: 3, obsidian: 3 }); /* (366: 사암·주석·옥·흑요석) */
   const lightOf = (rock) => LIGHT[TIER[rock?.ore] ?? 0];
   const REGROW = Object.freeze({ 0: 3 * 3600000, 1: 3 * 3600000, 2: 6 * 3600000, 3: 12 * 3600000 });
   const regrowOf = (rock) => REGROW[TIER[rock?.ore] ?? 0];

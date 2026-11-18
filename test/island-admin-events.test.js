@@ -68,9 +68,9 @@ test('확률: 배수를 곱하되 최대 50 %; 낚시 대어·드문 것, 채석
   let seed = 7; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const share = (m) => { let rare = 0; let big = 0; const N = 20000; for (let i = 0; i < N; i += 1) { const id = Fishing.draw(rnd, { water: 'sea', season: 'summer', night: false, rareMult: m }); if (Fishing.SPECIES[id].grade === 'rare') rare += 1; if (Fishing.SPECIES[id].grade === 'big') big += 1; } return { rare: rare / N, big: big / N }; };
   const s1 = share(1); const s3 = share(3); assert.ok(s3.rare > s1.rare * 2.2 && s3.rare <= 0.52, `드문 것 ${s1.rare} → ${s3.rare}`); assert.ok(s3.big > s1.big * 2 && s3.big < 0.05, `대어 ${s1.big} → ${s3.big}`);
-  const tier1 = Ores.ORES.find((o) => o.tier === 1).id; assert.equal(Ores.drawOre(tier1, 0.8), tier1, '보통: 85 % 그대로'); assert.notEqual(Ores.drawOre(tier1, 0.8, false, 2), tier1, '×2: 위 단계 30 %');
-  assert.equal(Ores.drawOre(tier1, 0.55, true), tier1, '보너스: 30 %'); assert.notEqual(Ores.drawOre(tier1, 0.55, true, 3), tier1, '보너스 ×3: 50 %');
-  assert.equal(Ores.drawOre(tier1, 0.45, true, 3), tier1, '보너스 30 % ×3 = 90 %가 아니라 50 %에서 멈춤');
+  const tier1 = Ores.ORES.find((o) => o.tier === 1).id; assert.equal(Ores.drawOre(tier1, 0.79), tier1, '보통: 80 % 그대로 (366)'); assert.notEqual(Ores.drawOre(tier1, 0.79, false, 2), tier1, '×2: 위 단계 40 %');
+  assert.equal(Ores.drawOre(tier1, 0.6, true), tier1, '보너스: 35 %'); assert.notEqual(Ores.drawOre(tier1, 0.6, true, 3), tier1, '보너스 ×3: 50 %');
+  assert.equal(Ores.drawOre(tier1, 0.45, true, 3), tier1, '보너스 35 % ×3 = 105 %가 아니라 50 %에서 멈춤');
 });
 
 test('관리자 API: 관리자만, 열기·겹침 거절·목록·끝내기', async (t) => {

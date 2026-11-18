@@ -464,13 +464,17 @@
 // each rock's vein laid over it at its own transform in its main ore's colour (`paint` on the `ore` material, 140 ore-palette; the
 // crystal its own pillars, their tips lit at night), the pile; the developed look -- the big ones with a far file past 60 m (`lod`)
 { const OV = '/assets/island/ore-v1'; const V2 = '/assets/island/quarry-v2'; const V3 = '/assets/island/quarry-v3';
-  const ORE_HEX = { granite: '#cfc8bd', clay: '#c06f45', coal: '#2e2b2c', iron: '#8e4a32', copper: '#c27a3e', silver: '#b9c3cf', crystal: '#c9b6f0', gold: '#f0c040' }; /* (140 ore-palette materialColor, 140b/c) */
+  const ORE_HEX = { granite: '#cfc8bd', clay: '#c06f45', coal: '#2e2b2c', iron: '#8e4a32', copper: '#c27a3e', silver: '#b9c3cf', crystal: '#c9b6f0', gold: '#f0c040',
+    sandstone: '#d4ad72', tin: '#8f99a0', jade: '#4fa673', obsidian: '#2b2238' }; /* (140 ore-palette materialColor, 140b/c; 366 광석 개편 2: 155 palette155) */
   const pair = (dir, file, extra = {}) => ({ url: `${dir}/${file}.glb`, low: { url: `${dir}/${file}_low.glb` }, ...extra });
   const far = (dir, file, extra = {}) => pair(dir, file, { near: 30, lod: [{ url: `${dir}/${file}_far.glb`, distance: 60 }], ...extra });
+  const O2 = '/assets/island/ore-v2'; const NEW = ['sandstone', 'tin', 'jade', 'obsidian'];
   for (const [ore, hex] of Object.entries(ORE_HEX)) {
-    REGISTRY[`ore.${ore}`] = pair(OV, `ore_${ore}`);
-    for (const k of ['a', 'b', 'c']) for (const st of ['', '_mined']) REGISTRY[`quarry.vein.${ore}.${k}${st}`] = pair(OV, `vein_rock_${k}${st}${ore === 'crystal' ? '_crystal' : ''}`, { near: 60, paint: { ore: hex }, ...(ore === 'crystal' ? { nightGlow: true } : {}) });
+    REGISTRY[`ore.${ore}`] = pair(NEW.includes(ore) ? O2 : OV, `ore_${ore}`);
+    /* (366: 사암·주석·옥 on 140's veins in their colour; 흑요석 its own veins -- black glass where the crystal's pillars stand) */
+    for (const k of ['a', 'b', 'c']) for (const st of ['', '_mined']) REGISTRY[`quarry.vein.${ore}.${k}${st}`] = ore === 'obsidian' ? pair(O2, `vein_rock_${k}${st}_obsidian`, { near: 60, paint: { ore: hex } }) : pair(OV, `vein_rock_${k}${st}${ore === 'crystal' ? '_crystal' : ''}`, { near: 60, paint: { ore: hex }, ...(ore === 'crystal' ? { nightGlow: true } : {}) });
   }
+  for (const g of ['moonstone', 'ruby', 'sapphire', 'emerald']) REGISTRY[`gem.${g}`] = pair(O2, `gem_${g}`); // (366: the gems in the hand -- their sparkles glow)
   REGISTRY['quarry.ore_pile_tint'] = pair(OV, 'ore_pile', { near: 50, paint: { ore: ORE_HEX.copper } });
   // 366 별 조각·별 가구 (assets 154 star-v1, README §2): the two fragments, the lamp (its `light` node kept), the floor mobile, the rug
   // (its High only, as the shop's rugs -- a flat piece's Low goes thin from afar) and the yard's star; their stars `glass`, lit at

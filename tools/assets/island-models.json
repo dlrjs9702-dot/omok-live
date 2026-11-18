@@ -14583,6 +14583,118 @@
       "src": "star154:01. High/star-v1/star_rug.glb",
       "sha256": "1c87cc324194c165ce2b58c87757efb732fa38a37ef7b6c6423ca58e98d016a1",
       "precompressed": true
+    },
+    {
+      "out": "ore-v2/gem_emerald.glb",
+      "src": "ores155:01. High/ore-v2/gem_emerald.glb",
+      "sha256": "e941d0f674121132dfac8a570bc554b07c34a256b90bd065cf8ef90b19cbc599",
+      "lowSrc": "ores155:02. Low/ore-v2/gem_emerald_low.glb",
+      "lowSha256": "e941d0f674121132dfac8a570bc554b07c34a256b90bd065cf8ef90b19cbc599",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/gem_moonstone.glb",
+      "src": "ores155:01. High/ore-v2/gem_moonstone.glb",
+      "sha256": "d91abc249e8a64c59ca2e3e925d80980926b04b7b4182f5956cb54774f4fe463",
+      "lowSrc": "ores155:02. Low/ore-v2/gem_moonstone_low.glb",
+      "lowSha256": "bca63dcf9cc3c96e85bff2192c732cc48f823041045854250dfc790b7e175e10",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/gem_ruby.glb",
+      "src": "ores155:01. High/ore-v2/gem_ruby.glb",
+      "sha256": "a59dd6d2b02e523a6745eb6361f8e2c9bfcae21c92cf1867d38e24543bb8948f",
+      "lowSrc": "ores155:02. Low/ore-v2/gem_ruby_low.glb",
+      "lowSha256": "fcc9d532aaeeb58530ff042928df8482347efa6dc9cde2fb83a39b0528d16eee",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/gem_sapphire.glb",
+      "src": "ores155:01. High/ore-v2/gem_sapphire.glb",
+      "sha256": "90e04b8c6ff4f1098752757a5ea4f5eae401b6802db297c8920a26fe4681bff7",
+      "lowSrc": "ores155:02. Low/ore-v2/gem_sapphire_low.glb",
+      "lowSha256": "7f4b12ac27457ba57a015d6a8cfc7ccf03f99bc25179e3cdfd0983e3afe98563",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/ore_jade.glb",
+      "src": "ores155:01. High/ore-v2/ore_jade.glb",
+      "sha256": "9d165a69bd392ecbe9f330c9eb0414e0e3c3907738c8f8e64502aa568937750d",
+      "lowSrc": "ores155:02. Low/ore-v2/ore_jade_low.glb",
+      "lowSha256": "5fea491884bbfd8f83a01bd9954f3e05af9a63ac03ef1d60c03016227c744a3b",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/ore_obsidian.glb",
+      "src": "ores155:01. High/ore-v2/ore_obsidian.glb",
+      "sha256": "3b85aa30f8b829ae0828c981d71be069ca2f0e9ee3b2318f4204a0f6de22b89e",
+      "lowSrc": "ores155:02. Low/ore-v2/ore_obsidian_low.glb",
+      "lowSha256": "6981a6412ddbe38f1a89cb4352be280c893e9ef13baa8bf66831faadfe7fe1f9",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/ore_sandstone.glb",
+      "src": "ores155:01. High/ore-v2/ore_sandstone.glb",
+      "sha256": "7a31f54365115be605adc688ea36f7b40a73e65f35bb336333298a4896e0f984",
+      "lowSrc": "ores155:02. Low/ore-v2/ore_sandstone_low.glb",
+      "lowSha256": "650b1ad11369e959d4887e896ae2238216faa0b3a64272561dccaebb7a22cacd",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/ore_tin.glb",
+      "src": "ores155:01. High/ore-v2/ore_tin.glb",
+      "sha256": "2032896166603b4e79d11d29d1882dafaded174ec49996fdde11f8a10c7c968c",
+      "lowSrc": "ores155:02. Low/ore-v2/ore_tin_low.glb",
+      "lowSha256": "b839fe08404a64d0323f584dc0e833d72c0c4988b2500c123d1e7cdbad8dcb59",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/vein_rock_a_mined_obsidian.glb",
+      "src": "ores155:01. High/ore-v2/vein_rock_a_mined_obsidian.glb",
+      "sha256": "3a8ca9a560f49bb4e1abb3c23e004d0851629066ca3a3bd00b143de7fce671e7",
+      "lowSrc": "ores155:02. Low/ore-v2/vein_rock_a_mined_obsidian_low.glb",
+      "lowSha256": "6bd0acda3518e146aa63ad8a564be7694475ed7d126f3ca276e38afc36ff9181",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/vein_rock_a_obsidian.glb",
+      "src": "ores155:01. High/ore-v2/vein_rock_a_obsidian.glb",
+      "sha256": "dee5db99a0ce90efc4c53ce4d7702f8455dc395d5c77891a3b4b61e3cc27bccf",
+      "lowSrc": "ores155:02. Low/ore-v2/vein_rock_a_obsidian_low.glb",
+      "lowSha256": "99273b23b9f054d0ff535f61ded791fd528193d0c48189516cfd0c8041cba7bd",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/vein_rock_b_mined_obsidian.glb",
+      "src": "ores155:01. High/ore-v2/vein_rock_b_mined_obsidian.glb",
+      "sha256": "02e744342c9a40c4199e05c78d5ab9879bc813f3341574280b493cd2e534976d",
+      "lowSrc": "ores155:02. Low/ore-v2/vein_rock_b_mined_obsidian_low.glb",
+      "lowSha256": "376b2dd9ba2ebb9a1f4e02f2213f40317fa2e50930be40eec6effe861dd37e1d",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/vein_rock_b_obsidian.glb",
+      "src": "ores155:01. High/ore-v2/vein_rock_b_obsidian.glb",
+      "sha256": "1b3b5a33b9c775776bcdcfabdbf0c4c4876923f00d5d066db59ae86bd13d0fa3",
+      "lowSrc": "ores155:02. Low/ore-v2/vein_rock_b_obsidian_low.glb",
+      "lowSha256": "055f842b7711bbb0022feeee5e90eb365891e14dc61ee84a838cb9c03e3075d7",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/vein_rock_c_mined_obsidian.glb",
+      "src": "ores155:01. High/ore-v2/vein_rock_c_mined_obsidian.glb",
+      "sha256": "fc0a141e4bb38925f78503ad4816d8ae9dc99939276d78568c268bd31472178d",
+      "lowSrc": "ores155:02. Low/ore-v2/vein_rock_c_mined_obsidian_low.glb",
+      "lowSha256": "e5ed717ebf85e995059751491d0e12005aa5b732e49f621c95ba10c85469786d",
+      "precompressed": true
+    },
+    {
+      "out": "ore-v2/vein_rock_c_obsidian.glb",
+      "src": "ores155:01. High/ore-v2/vein_rock_c_obsidian.glb",
+      "sha256": "eec39bfb9b5235b88596e533d9484bc07df6f9274d6be2e2868fb5e4756bf039",
+      "lowSrc": "ores155:02. Low/ore-v2/vein_rock_c_obsidian_low.glb",
+      "lowSha256": "42828920cd319cc302db594b82bae2a3344ebcd1e2fd938f9ef4891981c1cc50",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -14698,6 +14810,7 @@
     "decay139": "139. Game Island house decay overlays 2026-11-16",
     "bugs145": "145. Game Island house cockroach 2026-11-16",
     "photo151": "151. Game Island issue fixes 2026-11-18",
-    "star154": "154. Game Island star fragments furniture 2026-11-18"
+    "star154": "154. Game Island star fragments furniture 2026-11-18",
+    "ores155": "155. Game Island ore overhaul 2 2026-11-18"
   }
 }

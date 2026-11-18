@@ -4454,7 +4454,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!quarryWallPlaque) { const p = QY.WALL.plaque; quarryWallPlaque = new THREE.Group(); quarryWallPlaque.position.set(p.x, heightAt(p.x, p.z), p.z); quarryGroup.add(quarryWallPlaque); signboard('plaque', '화강암 채석 벽', quarryWallPlaque, 0, p.y, 0, p.yaw, { scale: 1.2, colors: ['#efe9dc', '#3b3127'] }); }
     }
   }
-  const QUARRY_ORE_NAMES = { granite: '화강암', clay: '점토', coal: '석탄', iron: '철광석', copper: '구리 광석', silver: '은 광석', crystal: '수정', gold: '금 광석' };
+  const QUARRY_ORE_NAMES = { granite: '화강암', clay: '점토', coal: '석탄', iron: '철광석', copper: '구리 광석', silver: '은 광석', crystal: '수정', gold: '금 광석', sandstone: '사암', tin: '주석 광석', jade: '옥', obsidian: '흑요석' }; /* (366 광석 개편 2) */
   // 1.10.342 the developed look (assets 141/143, IslandQuarry.PROPS): one holder each for the big ones -- the cart on the rail (its own
   // `rail` hidden, tilted as the rail runs), the cranes' boom and wheel turning slowly; the small ones repeated (instanced: propBatch);
   // the rail laid piece after piece, each tilted from its start's ground to its end's (assets 143: the ballast down to -0.15 hides the
@@ -4573,10 +4573,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   renderer.domElement.addEventListener('pointerdown', onMineDown, true);
   function endMineGame() { const g = mineGame; if (!g) return; mineGame = null; clearTimeout(g.early); for (const m of g.cracks) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } g.ring.removeFromParent(); g.ring.geometry.dispose(); g.ring.material.dispose(); g.hint.remove(); g.pips.remove(); g.pad?.remove(); document.body.classList.remove('islandMining'); lastMine = { q: g.q, at: g.top.clone() }; }
   // (1.10.355) the server's answer shown: the ore off the rock into the bag, a rare one's column of light; rubble a puff
-  let lastMine = null; const RARE_ORES = new Set(['silver', 'crystal', 'gold']);
+  let lastMine = null; const RARE_ORES = new Set(['silver', 'crystal', 'gold', 'jade', 'obsidian']); const GEM_LIGHT = { moonstone: 0xcfe2ff, ruby: 0xff4a64, sapphire: 0x4f7dff, emerald: 0x37d37f }; /* (366: a gem's own colour) */
   function mineResult(r) {
     const m = lastMine; if (!m || !r) return; const F = globalThis.IslandFeel; const p = toClient(m.at);
-    if (r.ore) { const ore = String(r.itemId || '').replace(/^ore_/, ''); F?.flyToBag(r.icon || '🪨', p.x, p.y + 30); if (RARE_ORES.has(ore)) { feelPillar(m.at.clone().setY(m.at.y - 1.6), ore === 'gold' ? 0xffd75e : ore === 'crystal' ? 0xbfe8ff : 0xe8eef2); F?.sound('sparkle'); } }
+    if (r.ore) { const ore = String(r.itemId || '').replace(/^ore_/, ''); F?.flyToBag(r.icon || '🪨', p.x, p.y + 30); if (r.gem && GEM_LIGHT[r.gem]) { feelPillar(m.at.clone().setY(m.at.y - 1.6), GEM_LIGHT[r.gem]); F?.sound('sparkle'); } else if (RARE_ORES.has(ore)) { feelPillar(m.at.clone().setY(m.at.y - 1.6), ore === 'gold' ? 0xffd75e : ore === 'crystal' ? 0xbfe8ff : ore === 'jade' ? 0x6fd59a : ore === 'obsidian' ? 0x8a6bd0 : 0xe8eef2); F?.sound('sparkle'); } }
     else feelBurst('dust', m.at, 1.4);
   }
   function mineRock(spec, done) {
