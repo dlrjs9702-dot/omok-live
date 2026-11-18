@@ -1925,6 +1925,9 @@ body.islandFishing .plazaHint{display:none}
 .talkHearts{margin-left:2px;color:#d9930f}
 .plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
 .plazaDialog.talkMode .lostRequest.talkWaiting .talkChoices{opacity:.6;pointer-events:none} /* (v1.10.240: an answer on its way) */
+.plazaDialog.talkMode .lostRequest .talkDots{animation:talkDots .6s ease-in-out infinite alternate} /* (361 50540f40: my pick at once, their 「…」 till the answer) */
+@keyframes talkDots{from{opacity:.35}to{opacity:.9}}
+@media (prefers-reduced-motion:reduce){.plazaDialog.talkMode .lostRequest .talkDots{animation:none;opacity:.6}}
 .plazaDialog.talkMode .lostRequest button.ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}.plazaDialog.talkMode .lostRequest button.ghost:hover{background:var(--isle-hover)} /* (U: 「다음에요」·「물고기 팔기」 -- a paper second button) */
 .plazaDialog.talkMode .talkActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto}
 .lostRequestLine.talkPending{display:none}
@@ -2057,7 +2060,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .catchCard.calm,.catchCard.calm *{animation:none!important;transition:none!important}
 .toast.tappable{pointer-events:auto;cursor:pointer}.toast.tappable::after{content:" · 눌러서 설명";opacity:.7}
 .bagInfoMore{padding:0 8px;min-height:28px;border-radius:99px;font-weight:900}
-#islandBagDialog:not([data-page="box"]) #islandBoxFoot,#islandBagDialog[data-page="box"] #quickInBag,#islandBagDialog[data-page="box"] .islandBagFoot>button:not(#islandFishBoxBtn):not(#islandBugBoxBtn){display:none} /* (총괄 #447) */
+#islandBagDialog:not([data-page="box"]) #islandBoxFoot,#islandBagDialog[data-page="box"] #quickInBag,#islandBagDialog[data-page="box"] .islandBagFoot>button:not(#islandFishBoxBtn):not(#islandBugBoxBtn):not(#islandBagBackBtn){display:none} /* (총괄 #447) */
 .islandDexCell.boxCell{font:inherit;font-size:.8rem;cursor:pointer}.islandDexCell.boxCell.picked{outline:3px solid #3f8f6a;outline-offset:1px}.islandDexCell.boxCell.grade-rare,.islandDexCell.boxCell.grade-big{border-style:solid} /* (297 통: a fish's own size under it) */
 .islandDexCell.opens{cursor:pointer}.islandDexCell.opens:focus-visible{outline:3px solid #3f8f6a;outline-offset:2px}
 /* v1.10.256 관리자 저장 공간: one line and a bar (orange past 80 %, red past 90 %), the biggest tables when opened */

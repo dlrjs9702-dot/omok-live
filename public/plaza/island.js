@@ -701,6 +701,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
 
   // Harbour: pier on posts, a few boats, the breakwater and its lighthouse. (달마루섬 미리보기: not there -- 달끝나루 comes in step 2)
   const pier = new THREE.Group(); pier.position.set(PIER.x, 0, PIER.z); pier.rotation.y = Math.atan2(PIER.ux, PIER.uz); scene.add(pier);
+  pier.visible = !T.dalmaru; /* (361 문제 기록 c114b222 「다리가 깜빡여」, 에셋 151: on 달마루섬 its own 달끝나루 model (plaza-scene) stands on the same PIER, its deck the same 0.69 -- two decks in one plane for 20 m; the old one not drawn there) */
   const pierDeck = mesh(keep(new THREE.BoxGeometry(PIER.w, 0.2, PIER.half * 2)), plank, 0, PIER.deck - 0.1, 0, pier);
   const pierPosts = new THREE.Group(); pier.add(pierPosts);
   for (let u = -PIER.half + 1; u <= PIER.half; u += 3) for (const s of [-1, 1]) mesh(keep(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 8)), post, s * (PIER.w / 2 - 0.15), -0.6, u, pierPosts);

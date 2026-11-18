@@ -14,6 +14,10 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
   const inCell = () => page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandJail.inCell(d.x, d.z); });
   expect(await inCell()).toBe(true);
   await expect(page.locator('#wardenCard')).toBeVisible({ timeout: 15000 });
+  /* (361 문제 기록 a6797d63: the warden turned to the cell while I am in it -- not his back to me) */
+  const toCell = await page.evaluate(() => { const J = window.IslandJail; return Math.round(Math.atan2(J.CELL.stand.lx - J.WARDEN.lx, J.CELL.stand.lz - J.WARDEN.lz) * 100) / 100; });
+  const turnOff = (want) => page.evaluate((w) => { const y = window.PlazaDebug().jail().warden; return Math.abs(Math.atan2(Math.sin(y - w), Math.cos(y - w))); }, want);
+  await expect.poll(() => turnOff(toCell), { timeout: 10000 }).toBeLessThan(0.03);
   await expect(page.locator('#plazaDialog')).toContainText('세금은 나가서 관공서 세금 창구에서'); await expect(page.locator('#wardenCard button', { hasText: '세금' })).toHaveCount(0); /* (293: no paying from the cell) */
   await page.locator('#wardenCard button', { hasText: '시작' }).click();
   // each sentence: over the warden's head, typed into the island chat
@@ -36,6 +40,12 @@ test('구치소: 체납자는 철창 안에서 시작, 반성문 3문장을 채�
   }, { timeout: 30000, intervals: [300] }).toBe(true);
   await expect(page.locator('#jailBoardCard li', { hasText: `${isMobile ? '반성문m' : '반성문'}:` })).toHaveCount(5); // (one server: others' too; 1.10.350: five lines)
   await page.keyboard.press('Escape');
+  /* (361 문제 기록 4cd68300 「구치소 내부 의자도 앉을 수 있는 의자로」: a bench seat -- sat on, kept there past the server's word; the warden back to his desk) */
+  await expect.poll(() => turnOff(Math.PI), { timeout: 10000 }).toBeLessThan(0.03);
+  const seat = await page.evaluate(() => window.IslandJail.SEATS[0]);
+  await expect.poll(async () => { if (await page.evaluate(() => window.PlazaDebug().act().act) === 'sit') return 'sit'; await page.evaluate((s) => { const d = window.PlazaDebug(); d.teleport(s.x, s.z + 0.9); }, seat); await page.waitForTimeout(400); await spaceOn(page, `seat:${seat.id}`, isMobile); await page.waitForTimeout(800); return page.evaluate(() => window.PlazaDebug().act().act); }, { timeout: 30000, intervals: [300] }).toBe('sit');
+  await page.waitForTimeout(2500); expect(await page.evaluate(() => [window.PlazaDebug().x, window.PlazaDebug().z])).toEqual([seat.x, seat.z]);
+  await page.evaluate(() => window.PlazaDebug().standUpNow()); await page.waitForTimeout(800);
   // out at the room's door: back on the island by the 구치소
   await expect.poll(async () => {
     if (await page.evaluate(() => window.PlazaDebug().space) === 'island') return 'island';

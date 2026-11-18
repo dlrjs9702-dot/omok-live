@@ -217,7 +217,9 @@
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
   const PLACES = {
-    niches: [[270, 14], [261, 10], [279, 10], [253, 7], [287, 7], [246, 7], [294, 7]].map(([a, m], i) => ({ ...deg(RIDGE.inner - 1.5, a), m, now: i < 3 })), // 기부 1위·2위·대회 우승 now, the rest empty
+    // (361 문제 기록 a3933cc0 「동상들 끼리의 거리가 너무 멀어 … 좁혀서」: 3 m between the frames (0.85 m × m wide) at 126.5 m -- was ~10 m;
+    // the cliff on either side left for more)
+    niches: [[270, 14], [264, 10], [276, 10], [259.4, 7], [280.6, 7], [255.3, 7], [284.7, 7]].map(([a, m], i) => ({ ...deg(RIDGE.inner - 1.5, a), m, now: i < 3 })), // 기부 1위·2위·대회 우승 now, the rest empty
     facadeTownhall: deg(RIDGE.inner - 2, 235), facadeMall: deg(RIDGE.inner - 2, 305),
     stairs: { from: deg(RIDGE.inner - 2, 226), to: deg(RIDGE.inner - 2, 210.5) }, // up the cliff face westward beside 관공서 (문제 기록 3회차 11: on along the ridge, its foot 2 m and more off the hall's front)
     lighthouse: { x: -96, z: 144 }, pier: { x: 98, z: 150, yaw: Math.PI * 0.75 }, dock: { x: 0, z: 3.5 }, // (its gangway onto the beach)

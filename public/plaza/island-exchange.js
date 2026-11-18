@@ -18,7 +18,7 @@
   const FIXTURES = Object.freeze([ // what one walks round: x, z centre, w, d (118b `walls.blocks`, and 테드 himself)
     { x: 0, z: 3.55, w: 6.6, d: 0.5 } /* the board's stand */, { x: 2.3, z: -0.52, w: 2.2, d: 0.56 }, { x: -2.3, z: -0.52, w: 2.2, d: 0.56 } /* benches */,
     { x: -3.95, z: 2.2, w: 1.22, d: 0.64 } /* the counter */, { x: 4.1, z: 3.2, w: 0.7, d: 0.7 }, { x: 4.2, z: -3.2, w: 0.7, d: 0.7 }, { x: -4.2, z: -3.2, w: 0.7, d: 0.7 } /* planters */,
-    { x: -3.95, z: 2.95, w: 0.6, d: 0.6 } /* 테드 */, { x: -4.48, z: 0, w: 0.44, d: 1.40 } /* (1.10.341 assets 147: the bookcase door, shut) */,
+    { x: -3.95, z: 2.95, w: 0.6, d: 0.6 } /* 테드 */, { x: 4.48, z: 1.9, w: 0.44, d: 1.40 } /* (1.10.341 assets 147: the bookcase door, shut -- 361: by the back planter, IslandDen DOOR) */,
   ].map((f) => Object.freeze(f)));
   function clamp(x, z) {
     const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);

@@ -2497,7 +2497,7 @@ const fishCasts = new Map(); // v1.10.42 낚시: session token -> { id, species,
 // ponytail: in memory, a restart forgets both (a 10-minute news, a no-repeat), a store when they must outlive one
 const bigCatchAt = new Map(); const dailyLast = new Map(); let dailyAlways = false; let dailySnow = false; // (tests: the day's line every time, its first; snow where one stands)
 // v1.10.44 앉기·이모트 (IDEAS ④): who sits where (first come), and the acts a pose may carry
-const SEATS = new Map([...IslandTerrain.plazaProps().seats, ...IslandFashion.SEATS].map((s) => [s.id, s])); // (v1.10.211: the 꾸미기 mirrors' two chairs)
+const SEATS = new Map([...IslandTerrain.plazaProps().seats, ...IslandFashion.SEATS, ...IslandJail.SEATS].map((s) => [s.id, s])); // (v1.10.211: the 꾸미기 mirrors' two chairs)
 const seatTaken = new Map(); // seat id -> session token
 const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow', ...['ready', 'sneak', 'down', 'side', 'jump', 'twist', 'miss', 'cheer', 'peek'].map((a) => `net:${a}`), ...require('./public/plaza/island-emotes.js').ACTS, ...XmasPlay.ACTS]); /* (1.10.334: a snowball's throw and hit, the sled ride) */
 const snowThrows = new Map(); // 1.10.334 눈싸움: account -> { day, at: [ms] } -- the round's throws so far // (v1.10.260: the net's moves seen by others) /* (v1.10.263 감정 표현: emote:<id> 16) */
@@ -4976,7 +4976,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.360' });
+    return sendJson(res, 200, { ok: true, version: '1.10.361' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -9149,28 +9149,30 @@ async function requestHandler(req, res) {
     if (back === undefined) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (!post && !state?.hold) { const seen = IslandNpcs.residentAt(n, nowMs() - back, state); islandEvents.residentTalk(n, who, Math.atan2(pos.x - seen.x, pos.z - seen.z), back); residentsChanged(); } // (held where I reached them)
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
-    await storyPay(account, day).catch(() => {}); // (Codex 검토 5차 P3-4 ③: a chapter's 호감도 owed from before -- paid with this talk)
-    const c = IslandCast.RESIDENTS[n]; const before = await pointStore.affinityOf(account); const level = IslandCast.levelOf(before[n] || 0); // (the words go by the level before this talk)
-    const now = nowMs(); const phase = islandPhase((await pointStore.worldValue('time'))?.mode, now);
-    const weather = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode || 'auto').kind;
-    const contest = await contestState(); const star = IslandStars.around(starNow(now)).next;
-    const decor = (await pointStore.worldValue('decor'))?.mode || 'auto';
+    // (361 문제 기록 50540f40 「대화 선택지 0.5초 늦음」: the reads that do not wait on each other, together -- were one after another)
+    const [before, timeV, weatherV, contest, decorV, calendarV] = await Promise.all([storyPay(account, day).catch(() => {}).then(() => pointStore.affinityOf(account)) /* (Codex 검토 5차 P3-4 ③: a chapter's 호감도 owed from before -- paid with this talk, then read) */, pointStore.worldValue('time'), pointStore.worldValue('weather'), contestState(), pointStore.worldValue('decor'), calendarOverride()]);
+    const c = IslandCast.RESIDENTS[n]; const level = IslandCast.levelOf(before[n] || 0); // (the words go by the level before this talk)
+    const now = nowMs(); const phase = islandPhase(timeV?.mode, now);
+    const weather = IslandWeather.weatherAt(now, weatherV?.mode || 'auto').kind;
+    const star = IslandStars.around(starNow(now)).next;
+    const decor = decorV?.mode || 'auto';
     const winter = decor === 'winter' || (decor === 'auto' && IslandTerrain.isWinterFest(now)); const halloween = decor === 'halloween' || (decor === 'auto' && IslandTerrain.isHalloween(now));
     const starSoon = Boolean(star) && star.at - starNow(now) < 6 * 3600000;
-    const xmas = Boolean(IslandCalendar.festivalAt(festivalNow(), await calendarOverride())?.id?.startsWith('christmas')); /* (1.10.331 M3: the festival's 「메리 크리스마스」) */
+    const xmas = Boolean(IslandCalendar.festivalAt(festivalNow(), calendarV)?.id?.startsWith('christmas')); /* (1.10.331 M3: the festival's 「메리 크리스마스」) */
     const moods = [weather === 'rain' && 'rain', weather === 'rainbow' && 'rainbow', phase === 'night' && starSoon && 'stars', ['live', 'soon'].includes(contest.phase) && 'contest', winter && 'winter', xmas && 'xmas'].filter(Boolean);
     const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
     // (대화창 새 단장: the choices are only what can be done today -- the day's story and gift not yet, an errand to do with them)
     // (v1.10.266 대화 나무) their topics open to me today: done today or not, how many left today (3), the hint told or not
     const talksToday = async () => {
-      const lvl = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); const doc = await storyDoc(account); const tm = (await pointStore.questDoc(account, 'talkmem')).doc || {};
+      const [aff, doc, tmDoc] = await Promise.all([pointStore.affinityOf(account), storyDoc(account), pointStore.questDoc(account, 'talkmem')]); const lvl = IslandCast.levelOf(aff[n] || 0); const tm = tmDoc.doc || {};
       const done = tm.day === day ? tm.started?.[n] || [] : []; const told = tm.day === day && tm.hintFrom?.[n] === day;
       return { topics: IslandTalks.openTopics(n, { level: lvl, storyDone: Number(doc.chapters?.[n]) || 0 }).map((id) => ({ id, label: IslandTalks.labelOf(n, id), done: done.includes(id), fresh: !tm.last?.[n]?.[id] })), left: Math.max(0, IslandTalks.PER_DAY - done.length), hintTold: told };
     };
     const sendTalk = async (view) => {
-      const mem = (await pointStore.questDoc(account, 'resmem')).doc; const errands = IslandErrands.errandsOf(errandDay(), errandWalkers);
-      const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
-      return sendJson(res, 200, { ...view, talks: await talksToday(), today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${errandDay()}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(await storyDoc(account), n, level), final: n === 5 && IslandStory.finalOpen(await storyDoc(account), IslandCast.levelOf(before[4] || 0)) } });
+      const errands = IslandErrands.errandsOf(errandDay(), errandWalkers);
+      const [memDoc, claimed, bag, talks, sdoc] = await Promise.all([pointStore.questDoc(account, 'resmem'), pointStore.claimedEvents(account, errands.map((e) => e.id)), pointStore.islandBag(account), talksToday(), storyDoc(account)]); /* (361: together) */
+      const mem = memDoc.doc; const done = new Set(claimed); const goods = new Set((bag.items || []).map((e) => e.itemId));
+      return sendJson(res, 200, { ...view, talks, today: { asked: mem?.asked?.[n] === day, gifted: mem?.gifted?.[n] === day, errand: Boolean(IslandErrands.talk(errands, errandStages.get(`${errandDay()}|${account}`) || {}, done, n, goods)), story: IslandStory.talkState(sdoc, n, level), final: n === 5 && IslandStory.finalOpen(sdoc, IslandCast.levelOf(before[4] || 0)) } });
     };
     // S1 이야기 부탁: their next chapter offered once my 호감도 has reached it (「할게요!」 starts it -- one on the island at a
     // time, 「다음에요」 keeps nothing), the islander it sends me to (that step done), back to them: their thanks and the story
@@ -10509,7 +10511,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.360 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.361 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

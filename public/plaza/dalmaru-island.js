@@ -340,7 +340,17 @@
     if (inRect(PIER, x, z)) return PIER.deck;
     const dock = onDock(x, z); if (dock) return dock.deck;
     if (Q && Math.abs(x - Q.DECK.x) < 3 && Math.abs(z - Q.DECK.z) < 3) { const lift = Q.deckLift(x, z); if (lift !== null) return Math.max(ground(Q.DECK.x, Q.DECK.z), SEA) + lift; } // (1.10.342 채석장: the waterfall deck's boards and steps, over its foot)
-    return Math.max(ground(x, z), SEA);
+    const g = Math.max(ground(x, z), SEA); if (Math.abs(x) >= 290 || Math.abs(z) >= 290 || !bulgy(x, z)) return g; /* (the main ground's mesh only -- 별마루섬 its own) */
+    // (361 문제 기록 2d83e547·618fce8f 「공중에 떠있어」, 사용자 1A: on a cliff's top edge the drawn ground (its 2 m cells) already goes down
+    // -- one stood up to 1.1 m over it; there one stands on what is drawn, eased in from 0.1 m over it to all of it at 0.35 m)
+    const gap = g - Math.max(meshGroundHeight(x, z), SEA); return gap > 0.1 ? g - smooth(0.1, 0.35, gap) * gap : g;
+  }
+  // (the drawn cells where the ground rises over the drawn one by more than 0.1 m somewhere inside -- looked at once each, 3 x 3 points)
+  const bulgeCells = new Map();
+  function bulgy(x, z) {
+    const i = Math.floor((x + HALF) / STEP); const j = Math.floor((z + HALF) / STEP); const key = i * 65536 + j; let v = bulgeCells.get(key);
+    if (v === undefined) { v = false; const cx = i * STEP - HALF; const cz = j * STEP - HALF; for (let a = 1; a <= 3 && !v; a += 1) for (let b = 1; b <= 3 && !v; b += 1) { const px = cx + (STEP * a) / 4; const pz = cz + (STEP * b) / 4; if (Math.max(ground(px, pz), SEA) - Math.max(meshGroundHeight(px, pz), SEA) > 0.1) v = true; } bulgeCells.set(key, v); }
+    return v;
   }
   const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2 && !underDrawnRock(x, z));
   // (문제 기록 4회차 「통과할 수 있는 산맥」) round the stairs the ridge's face is steeper than the 2.5 m ground mesh: where the

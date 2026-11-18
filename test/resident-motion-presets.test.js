@@ -15,7 +15,8 @@ const EXPECT = { // (presets.json: kind -> run clip, run rate, islanders and siz
   Kid: ['Run_Kid', 1, { garam: 0.75, kongi_work: 0.45, kongi_off: 0.45 }],
   Formal: ['Run', 1, { useong_off: 1.15, danbi_work: 0.82, hansol_off: 0.95, saerom_work: 1.12, darae_off: 0.86, hangyeol_work: 0.78, ted_work: 1.04 }],
   Sleuth: ['Run', 1, { detective_oh: 1 }],
-  Dreamy: ['Run', 1, { haram: 1, isol: 1, goeun_off: 0.88, garak_work: 1.22, bitna_off: 1.18 }],
+  Dreamy: ['Run', 1, { haram: 1, isol: 1, goeun_off: 0.88, garak_work: 1.22 }],
+  Photo: ['Run_Photo', 1, { bitna_off: 1.18, bitna_work: 1.18 }], /* (361, assets 151: 빛나's own -- the camera arm held) */
   Brisk: ['Run_Brisk', 1, { barami: 1, daon: 1, cheori_off: 0.82, bawi_work: 1.28, handeul_off: 1.3 }],
 };
 

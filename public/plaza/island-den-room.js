@@ -39,7 +39,9 @@
   }
   // the bookcase door in the exchange room (147: 118b local (-4.70, 0, 0), turned -π/2; one stands at (-3.38, 0) to go down) and
   // the 관공서's 「잠시 자리 비움」 (147: the townhall's local (1.7, 0, 8.35), turned half round)
-  const DOOR = Object.freeze({ lx: -4.70, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze({ lx: -3.38, lz: 0 }), closed: Object.freeze({ x: -4.48, z: 0, w: 0.44, d: 1.40 }) });
+  // (361 문제 기록 3c7be8cf 「비밀문 근처 복잡」, 사용자 3A: off its place between 테드's counter and the bench -- to the other wall by the
+  // back planter, mirrored: +X, turned +π/2, 1.9 m toward the board)
+  const DOOR = Object.freeze({ lx: 4.70, lz: 1.9, yaw: Math.PI / 2, stand: Object.freeze({ lx: 3.38, lz: 1.9 }), closed: Object.freeze({ x: 4.48, z: 1.9, w: 0.44, d: 1.40 }) });
   const SIGN = Object.freeze({ lx: 1.7, lz: 8.35, yaw: Math.PI });
   // (1.10.342 assets 147b den-results.json, measured on the game files: the roulette's pockets -- the wheel at rotation w, pocket n
   // is at w + POCKETS[n]; the ball in a pocket BALL_IN (dr, dy) from its track; each die's rotation (XYZ) with face v up)

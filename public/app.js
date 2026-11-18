@@ -3122,6 +3122,9 @@
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   islandBagDialog.addEventListener('close', () => { bagSortReset(); quickPick = null; quickMenu = null; drawQuick(); }); // (v1.10.236: a slot-to-be let go)
+  /* (361: 「← 가방」, and ESC or a phone's back on a page (도감, 기념사진, 받은 것, a box) -- the bag again, not shut) */
+  byId('islandBagBackBtn').addEventListener('click', () => openIslandBag());
+  islandBagDialog.addEventListener('cancel', (event) => { if (byId('islandDexGrid').classList.contains('hidden')) return; event.preventDefault(); openIslandBag(); });
   byId('islandDexFoundOnly').addEventListener('change', () => showDex('dex')); // (v1.10.233 「찾은 것만」)
   for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo'], ['islandGivenBtn', 'given'], ...BOX_BTNS]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
@@ -4901,6 +4904,7 @@
     grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
     byId('islandBagSort').classList.toggle('hidden', Boolean(on)); bagSortReset(); // (v1.10.233, 사용자: 「정리」 the bag's only -- in the 도감 it sorted the bag and the count went wrong)
     byId('islandDexTabs').classList.toggle('hidden', on !== 'dex');
+    byId('islandBagBackBtn').classList.toggle('hidden', !on); /* (361 사용자 「통 들 보다가 다시 가방으로 나갈 수가 없어」: on any page, back to the bag first) */
     const asked = ++dexAsked; if (!on) return; /* (Codex 261-270 #12: only the last request draws -- a late answer does not cover the tab now shown) */
     if (boxPage) { drawBox(boxPage); return; }
     try {
@@ -6047,6 +6051,7 @@
     for (const note of done.stages || []) showToast(`💛 ${note}`, 6000);
   }
   function showResidentTalk(data, first) {
+    talkPick = null; /* (361: a pick answered here, not by the server) */
     if (data.storyTalk && !data.storyTree) { talkPast = []; data = { ...data, ...storyTreeView(data, data.storyOffer ? 'offer' : 'done', data.storyOffer ? data.storyTalk : data.storyTalk.done, 'o1') }; }
     const tree = data.storyTree; const asks = Boolean(tree?.replies?.some((r) => r[3]?.accept));
     showErrands(data);
@@ -6063,7 +6068,7 @@
     const list = document.createElement('div'); list.className = 'talkChoices';
     const fill = (choices) => list.replaceChildren(...choices.map(([topic, label, choice]) => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label; if (choice != null) b.dataset.choice = choice;
-      b.addEventListener('click', () => (topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'more' || topic === 'back' ? (fill(talkSlots(data, topic === 'more')), list.querySelector('button')?.focus())
+      b.addEventListener('click', () => (talkPick = label, b.classList.add('picked'), topic === 'board' ? openStoryBook('lighthouse') : topic === 'bye' ? plazaDialog.close() : topic === 'more' || topic === 'back' ? (fill(talkSlots(data, topic === 'more')), list.querySelector('button')?.focus())
         : topic === 'tree' ? askTree(data.n, choice) : topic === 'sreply' ? storyReply(data, Number(choice)) : topic === 'reply' ? askTree(data.n, data.talk.id, Number(choice), [data.say.at(-1), label], data.talk.node) : askResident(data.n, topic, choice)));
       return b;
     }));
@@ -6107,16 +6112,23 @@
     }
   }
   let residentTopic = null; /* (v1.10.264: what was asked -- its answer's face) */
+  // (361 문제 기록 50540f40 「대화 선택지 0.5초 늦음」: the answer comes from the server -- what I picked shows at once, under it their 「…」)
+  let talkPick = null;
+  function talkEcho() {
+    const pick = talkPick; talkPick = null; const list = lostCard.querySelector('.talkChoices'); if (!pick || !list) return;
+    const mine = document.createElement('p'); mine.className = 'talkPast mine talkEcho'; mine.textContent = pick;
+    const dots = document.createElement('p'); dots.className = 'lostRequestLine talkDots'; dots.textContent = '「…」'; list.before(mine, dots);
+  }
   async function askResident(n, topic, choice = null, say = null) { // (say: a story tree's last words in place of the answer's)
-    if (residentBusy) return; residentBusy = true; residentTopic = topic; lostCard.classList.add('talkWaiting'); // (v1.10.240: an answer on its way -- the choices faded, not pressed twice)
+    if (residentBusy) return; residentBusy = true; residentTopic = topic; lostCard.classList.add('talkWaiting'); talkEcho(); // (v1.10.240: an answer on its way -- the choices faded, not pressed twice)
     try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic, ...(choice != null ? (topic === 'gift' ? { itemId: choice } : topic === 'accept' ? { errand: choice } : { choice }) : {}) }) }); if (data.bag) drawIslandBag(data.bag); if (say) data.say = say; if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
-    catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
+    catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); lostCard.querySelectorAll('.talkEcho, .talkDots').forEach((e) => e.remove()); }
   }
   // v1.10.267 대화 나무: a topic begun (reply null) or my reply at the node the server has me at
   async function askTree(n, id, reply = null, past = [], node = null) { // (node: the one my reply answers -- Codex 261-270 #3)
-    if (residentBusy) return; residentBusy = true; residentTopic = 'talk'; lostCard.classList.add('talkWaiting');
+    if (residentBusy) return; residentBusy = true; residentTopic = 'talk'; lostCard.classList.add('talkWaiting'); talkEcho();
     try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic: 'talk', talk: id, ...(reply != null ? { reply, ...(node != null ? { node } : {}) } : {}) }) }); talkPast = reply != null ? past : []; if (residentTalk?.n === n) showResidentTalk(data, false); }
-    catch (error) { showToast(error.message); if (error.status === 409 && !['TALK_DONE', 'TALK_TIRED', 'TALK_CLOSED', 'TALK_STALE'].includes(error.data?.error)) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); }
+    catch (error) { showToast(error.message); if (error.status === 409 && !['TALK_DONE', 'TALK_TIRED', 'TALK_CLOSED', 'TALK_STALE'].includes(error.data?.error)) plazaDialog.close(); } finally { residentBusy = false; lostCard.classList.remove('talkWaiting'); lostCard.querySelectorAll('.talkEcho, .talkDots').forEach((e) => e.remove()); }
   }
   async function talkResident(n, lead = null) { // (lead: a line of the place before their own words -- 바위 at the works)
     guideDone('talk'); // B 47 안내
