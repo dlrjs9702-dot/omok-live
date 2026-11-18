@@ -30,6 +30,11 @@ async function main() {
       }
       console.log(`${t}: ${rows.length}`);
     }
+    // (362 Codex 351-360 #8: the serial columns' sequences after the rows put in -- point_ledger.seq went on from 1, under the restored
+    // ones, the newest history sorted below the old and a page's edge losing rows)
+    const serials = (await client.query(`SELECT table_name AS t, column_name AS c, pg_get_serial_sequence(quote_ident(table_name), column_name) AS s FROM information_schema.columns
+      WHERE table_schema = 'public' AND column_default LIKE 'nextval(%'`)).rows.filter((r) => r.s && tables.includes(r.t));
+    for (const { t, c, s } of serials) { const col = `"${c.replace(/"/g, '""')}"`; await client.query(`SELECT setval($1, COALESCE((SELECT MAX(${col}) FROM ${q(t)}), 1), (SELECT MAX(${col}) IS NOT NULL FROM ${q(t)}))`, [s]); console.log(`${t}.${c}: 순번 이어 감`); }
     await client.query('COMMIT'); console.log('되살리기 끝');
   } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { await client.end(); }
 }

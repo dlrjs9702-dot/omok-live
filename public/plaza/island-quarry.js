@@ -147,10 +147,13 @@
   // 1.10.351 (Codex 341-350 P1): a press as the server got it -- `since` ms after the mining started there. The page's own `ms` (after
   // its light came on) counts only when it fits the server's clock: the server's is later by the trip there and back (0..LAG_MAX), so a
   // list made up from the plan and sent at the end is too late and judged a miss
-  const LAG_MIN = -150; const LAG_MAX = 2000;
+  // (362 Codex 351-360 P1 #2: within those 2 s the page's `ms` was taken as it said -- a press ~2 s late told as the light's middle was a
+  // bonus. Now never earlier than the server's own time less LAG_ALLOW, a trip there and back: a made-up `ms` gains that at most)
+  const LAG_MIN = -150; const LAG_MAX = 2000; const LAG_ALLOW = 450;
   function tapAt(plan, k, tap, since) {
     const r = plan?.[k]; if (!r || !tap || !Number.isInteger(tap.spot) || !Number.isFinite(tap.ms) || !Number.isFinite(since)) return null;
-    const lag = (since - k * ROUND_MS - r.at) - tap.ms; return lag >= LAG_MIN && lag <= LAG_MAX ? { spot: tap.spot, ms: tap.ms } : { spot: tap.spot, ms: null, late: true };
+    const server = since - k * ROUND_MS - r.at; const lag = server - tap.ms;
+    return lag >= LAG_MIN && lag <= LAG_MAX ? { spot: tap.spot, ms: Math.max(tap.ms, server - LAG_ALLOW) } : { spot: tap.spot, ms: null, late: true };
   }
   const PICK_USES = 40; // (a pickaxe: 40 ores)
   // a spot in the world: the surface point, outward, and where to stand (origin = S - R(yaw) HIT_TIP, facing -n)
@@ -180,5 +183,5 @@
   function rockState(kept, now, rock = null) { const k = kept || {}; const left = Number.isInteger(k.left) ? k.left : ORE_PER_ROCK; if (left <= 0 && Number.isFinite(k.minedAt) && now - k.minedAt >= (rock ? regrowOf(rock) : REGROW_MS)) return { left: ORE_PER_ROCK, gen: now, stage: 'full', regrown: true }; return { left, gen: k.gen || 0, stage: left > 0 ? 'full' : 'mined', minedAt: k.minedAt ?? null }; }
   // the solids round a rock (its circle, turned with it: centred) and the sign's and pile's
   const solidsOf = () => [...ROCKS.map((r) => ({ x: r.x, z: r.z, r: SOLIDS[r.kind].r, quarry: r.id })), { x: SIGN.x, z: SIGN.z, r: SOLIDS.sign.r }, { x: PILE.x, z: PILE.z, r: SOLIDS.pile.r }, ...propSolids()];
-  return { WALL, WALL_SPOTS, AREA, inArea, edgeDist, po, WALK, ROCKS, SIGN, PILE, SPOTS, SOLIDS, PROPS, RAIL, SHAPES, BATCHED, DECK, deckLift, HIT_TIP, SWING_MS, SWINGS, MINE_MS, END_MS, ORE_PER_ROCK, REGROW_MS, DAILY, PICK_USES, ROUNDS, ROUND_MS, GRACE_MS, BONUS_MS, HITS_NEEDED, CRACKS, lightOf, regrowOf, planOf, judge, tapAt, LAG_MIN, LAG_MAX, spotOf, standOf, rockById, spotCount, rockState, solidsOf, turn };
+  return { WALL, WALL_SPOTS, AREA, inArea, edgeDist, po, WALK, ROCKS, SIGN, PILE, SPOTS, SOLIDS, PROPS, RAIL, SHAPES, BATCHED, DECK, deckLift, HIT_TIP, SWING_MS, SWINGS, MINE_MS, END_MS, ORE_PER_ROCK, REGROW_MS, DAILY, PICK_USES, ROUNDS, ROUND_MS, GRACE_MS, BONUS_MS, HITS_NEEDED, CRACKS, lightOf, regrowOf, planOf, judge, tapAt, LAG_MIN, LAG_MAX, LAG_ALLOW, spotOf, standOf, rockById, spotCount, rockState, solidsOf, turn };
 }));

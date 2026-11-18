@@ -113,6 +113,8 @@ test('주식 개편 (1.10.351): 거래 기록 200건·판 거래의 번 돈(평�
   for (let i = 0; i < 9; i += 1) wdoc = S.watchSet(wdoc, { code: `${(i + 1) % 30}.9`, below: 100 }).doc; assert.equal(Object.keys(wdoc.alerts).length, 10);
   assert.equal(S.watchSet(wdoc, { code: '29.9', below: 100 }).error, 'ALERT_MAX', '10개까지'); assert.ok(S.watchSet(wdoc, { code: c.code, below: 50 }).doc, '있는 것 고치기는 됨');
   assert.equal(Object.keys(S.watchSet(wdoc, { code: c.code, clear: true }).doc.alerts).length, 9);
+  /* (362 Codex 351-360 #6: the gone companies' alerts let go when one is set -- the 10 not taken for good) */
+  const onlyLive = (code) => code === c.code || code === '29.9'; const freed = S.watchSet(wdoc, { code: '29.9', below: 100 }, onlyLive); assert.ok(freed.doc, '폐지된 알림은 빠지고 새 알림 됨'); assert.deepEqual(Object.keys(freed.doc.alerts).sort(), [c.code, '29.9'].sort());
   // ⑤ the company: industry, listing day, the last three news; ① a news line's price then
   const v2 = m.view(at(6, 20)); const cc = v2.companies.find((x) => x.status === 'active'); assert.ok(cc.industry, '업종'); assert.equal(cc.listedAt, S.tickTime(0)); assert.ok(cc.recent.length <= 3);
   for (const x of S.createMarket('o').newsOf(at(6, 20))) assert.ok(x.price > 0, '소식 그때 값');

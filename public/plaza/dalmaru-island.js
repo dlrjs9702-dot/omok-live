@@ -282,6 +282,13 @@
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
   const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z) || D.inCreek(x, z); // (2회차 18: the ponds over the falls are water too; N1: 새 섬's creek)
+  // (N1 새 섬 개울) its water's face: 0.45 m over its bed at the middle nearest, never under the sea's -- the drawn ribbon (island.js)
+  // and the fishing float (362 Codex 351-360 #7: the float lay at the sea's height, under the ground up the creek) read the same
+  function creekWaterY(x, z) {
+    const C = D.CREEK; if (!C) return SEA; let best = Infinity; let gx = x; let gz = z;
+    for (let i = 1; i < C.pts.length; i += 1) { const [ax, az] = C.pts[i - 1]; const [bx, bz] = C.pts[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1))); const px = ax + dx * t; const pz = az + dz * t; const d = Math.hypot(x - px, z - pz); if (d < best) { best = d; gx = px; gz = pz; } }
+    return Math.max(ground(gx, gz) + 0.45, SEA + 0.03);
+  }
   const slopeAt = (x, z) => Math.hypot(ground(x + 1, z) - ground(x - 1, z), ground(x, z + 1) - ground(x, z - 1)) / 2;
   // (동산 다듬기: the scenery is picked on the ground as it was before the 동산 shapes -- the same seeded picks, so nothing
   // moves; only what then stands on a steep new bank is left out, afterwards)
@@ -721,7 +728,7 @@
   return Object.freeze({
     ...C,
     MAP: 'dalmaru', HOME_LOTS, onLot, STREET_Z, GATE_BACK, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
-    coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, settledSpot, heightAt, walkable,
+    coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, creekWaterY, meshGroundHeight, settledSpot, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,

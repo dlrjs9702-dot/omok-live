@@ -2588,7 +2588,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const D = T.dalmaru;
       for (let k = 0; k < 24; k += 1) for (const r of [1.6, 2.4, 3.2]) {
         const a = (k / 24) * TAU; const wx = x + Math.sin(a) * r; const wz = z + Math.cos(a) * r; const g = D.ground(wx, wz);
-        if (D.isWater(wx, wz) && D.coastDist(wx, wz) >= 0 && !T.onBridge(wx, wz) && (!best || g < best.cd)) best = { x: wx, z: wz, cd: g, yaw: a, y: D.SEA };
+        if (D.isWater(wx, wz) && D.coastDist(wx, wz) >= 0 && !T.onBridge(wx, wz) && (!best || g < best.cd)) best = { x: wx, z: wz, cd: g, yaw: a, y: D.inCreek?.(wx, wz) && T.creekWaterY ? T.creekWaterY(wx, wz) : D.SEA }; /* (362 Codex #7: the creek's own face) */
       }
       if (best) return best;
     }

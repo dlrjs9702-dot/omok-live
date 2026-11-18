@@ -97,8 +97,8 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
   // 1.10.351 (Codex 341-350 P1): each press sent when it happens, 200 ms into its light
   const pressTimed = async (plan, t0) => { for (const [k, p] of plan.entries()) { await new Promise((r) => setTimeout(r, Math.max(0, t0 + k * Q.ROUND_MS + p.at + 200 - Date.now()))); assert.equal((await req('/api/island/quarry/tap', a, { round: k, spot: p.spot, ms: 200 })).status, 200); } };
   const miss = await mine(false); assert.equal(miss.ore, 0); assert.equal(miss.itemId, 'stone'); assert.equal(miss.left, Q.ORE_PER_ROCK, '바위 그대로'); assert.equal(miss.worn.uses, Items.TOOL_USES.pickaxe - 1, '곡괭이만 닳음');
-  assert.equal((await req('/api/island/quarry', a)).data.daily.n, 0, '하루 한도 그대로');
-  const f1 = await mine(true, 0.1); assert.equal(f1.ore, 1); assert.equal(f1.itemId, 'ore_granite'); assert.equal(f1.name, '화강암'); assert.equal(f1.hits, 3); assert.equal(f1.left, Q.ORE_PER_ROCK - 1); assert.equal(f1.worn.uses, Items.TOOL_USES.pickaxe - 2); assert.equal(f1.daily.n, 1);
+  assert.equal((await req('/api/island/quarry', a)).data.daily.n, 1, '362 Codex P1 #1: 작은 돌도 하루 한도에 셈(일부러 놓쳐 남기기 막음)'); assert.equal(miss.daily.n, 1);
+  const f1 = await mine(true, 0.1); assert.equal(f1.ore, 1); assert.equal(f1.itemId, 'ore_granite'); assert.equal(f1.name, '화강암'); assert.equal(f1.hits, 3); assert.equal(f1.left, Q.ORE_PER_ROCK - 1); assert.equal(f1.worn.uses, Items.TOOL_USES.pickaxe - 2); assert.equal(f1.daily.n, 2);
   await req('/api/test/quarry/set', a, { rock: rock.id, left: 1 }); /* (1.10.350: six a rock -- the last one) */
   const f2 = await mine(true, 0.86); assert.equal(f2.itemId, 'ore_coal', '한 단계 위(보통: 석탄·철·구리)'); assert.equal(f2.left, 0); assert.equal(f2.stage, 'mined');
   const bag = (await req('/api/island/bag', a)).data; const items = bag.bag?.items || bag.items || []; const count = (id) => items.filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
@@ -135,4 +135,7 @@ test('채석장 타격 시각 (1.10.351 Codex P1): 서버가 받은 시각과 �
   assert.equal(Q.tapAt(plan, 1, { spot: 2, ms: 500 }, 2000 + 500 + 100).late, true, '서버보다 이른 주장');
   assert.equal(Q.judge(plan, [Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 6000), Q.tapAt(plan, 1, { spot: 2, ms: 500 }, 6000)]).hits, 0);
   assert.equal(Q.tapAt(plan, 5, { spot: 1, ms: 1 }, 1), null);
+  // 362 Codex 351-360 P1 #2: a press 1.5 s after the light's middle told as its middle (500) -- judged at the server's time less a trip
+  const forged = Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 400 + 500 + 1500); assert.equal(forged.ms, 1500 - Q.LAG_ALLOW + 500); assert.equal(Q.judge(plan, [forged, null]).bonus, 0, '보너스 아님');
+  assert.equal(Q.judge(plan, [Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 400 + 500 + 200), null]).bonus, 1, '오간 시간 200 ms 정직한 가운데는 보너스');
 });

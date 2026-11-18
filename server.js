@@ -88,7 +88,7 @@ require('./lib/island-items').setSizeHook(() => [Economy.value('fish:sizeMin'), 
 const bagSlots = new Map();
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 // v1.10.297 물고기 통·곤충 채집통: each account's boxes (world 'boxSlots': { account: { fish: 30.., insect: 30.. } }), 'account|kind'
-const boxSlots = new Map(); const BOX_KEY = { fish: 'keepnet', insect: 'bugbox' }; const BOX_NAME = { fish: '물고기 통', insect: '곤충 채집통' };
+const boxSlots = new Map(); const BOX_KINDS = require('./lib/island-items').BOX_KINDS; /* (362: the box kinds' one table) */ const BOX_KEY = Object.fromEntries(Object.entries(BOX_KINDS).map(([k, v]) => [k, v.key])); const BOX_NAME = Object.fromEntries(Object.entries(BOX_KINDS).map(([k, v]) => [k, v.name]));
 require('./lib/island-items').setBoxHook((account, kind) => boxSlots.get(`${account}|${kind}`));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandDaily = require('./lib/island-daily'); // v1.10.242 주민 날마다 말
@@ -6777,7 +6777,8 @@ async function requestHandler(req, res) {
   }
   if (pathname === '/api/island/stocks/watch' && req.method === 'POST') { // 1.10.351 ④ 관심 종목·알림 (176A): a star, an alert (above / below; 10 at most), cleared
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
-    const out = await pointStore.questApply(account, 'stocks', (d) => { const r = IslandStocks.watchSet(d, body); return r.error ? { error: r.error } : { doc: r.doc }; });
+    const live = (code) => { const c = stockMarket.company(code, nowMs()); return Boolean(c && c.status !== 'gone' && c.code === code); }; /* (362 Codex #6: a gone company's alert let go) */
+    const out = await pointStore.questApply(account, 'stocks', (d) => { const r = IslandStocks.watchSet(d, body, live); return r.error ? { error: r.error } : { doc: r.doc }; });
     if (out?.error === 'ALERT_MAX') return sendError(res, 409, 'ALERT_MAX', `알림은 ${IslandStocks.WATCH_MAX}개까지예요.`);
     if (out?.error) return sendError(res, 400, 'BAD_REQUEST', '값을 다시 정해 주세요.');
     return sendJson(res, 200, { ok: true, star: out.doc.star || [], alerts: out.doc.alerts || {} });
@@ -6967,7 +6968,9 @@ async function requestHandler(req, res) {
       // (1.10.351 Codex 341-350 #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing (nor wears the pickaxe), else
       // missing on purpose was endless 작은 돌)
       const missed = wall ? null : await pointStore.islandGive({ userId: account, claimId: `quarry-miss:${account}:${pull.at}`, itemId: 'stone', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
-      const result = { ok: true, ore: 0, itemId: missed?.applied ? 'stone' : null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: wall ? null : kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: missed?.bag || null, worn: missed?.worn || null, ...(wall ? { wall: true } : {}) };
+      /* (362 Codex 351-360 P1 #1: a 작은 돌 (300P) for a pickaxe use (2,000P / 40) -- missing on purpose was +250P each, endless; it counts in the day's 60 now) */
+      const counted = missed?.applied ? await pointStore.questApply(account, 'quarry', (d) => ({ doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 } })).catch(() => null) : null;
+      const result = { ok: true, ore: 0, itemId: missed?.applied ? 'stone' : null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: wall ? null : kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: missed?.bag || null, worn: missed?.worn || null, ...(wall ? { wall: true } : {}), ...(counted ? { daily: { n: counted.doc?.n ?? null, max: IslandQuarry.DAILY } } : {}) };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
     if (wall) { /* (1.10.350 화강암 벽: granite only, its own claim a mining; the rock state and the day's count untouched) */
@@ -10429,6 +10432,16 @@ async function main() {
   await projectsNow().catch((error) => console.error('섬 가꾸기 상태 읽기 실패:', error.message)); // v1.10.222 (after the goals are known)
   for (const [account, n] of Object.entries((await pointStore.worldValue('bagSlots')) || {})) bagSlots.set(account, n); // v1.10.195
   for (const [account, kinds] of Object.entries((await pointStore.worldValue('boxSlots')) || {})) for (const [kind, n] of Object.entries(kinds || {})) boxSlots.set(`${account}|${kind}`, n); // v1.10.297
+  { // 362 (사용자 2A): a box bought at the old sizes kept at its new one -- 30 -> 50, 60·90 -> 100, 120 -> 200 (IslandItems.boxOf reads it so too)
+    const all = (await pointStore.worldValue('boxSlots')) || {}; let stepped = 0; const next = {};
+    for (const [account, kinds] of Object.entries(all)) { next[account] = {}; for (const [kind, n] of Object.entries(kinds || {})) { const s = IslandItems.BOX_STEP[n] ?? n; if (s !== n) stepped += 1; next[account][kind] = s; boxSlots.set(`${account}|${kind}`, s); } }
+    if (stepped) { await pointStore.setWorldValue('boxSlots', next).catch((error) => console.error('통 크기 올리기 실패:', error.message)); console.log(`[box-step] ${stepped} boxes stepped up to 50/100/200`); }
+  }
+  { // 362 (사용자 3A): the bags' old fish stacks, one fish a slot -- each account once (again: nothing to do), no fish lost
+    let n = 0; const sum = { split: 0, toBox: 0, left: 0 };
+    for (const account of await pointStore.fishStackOwners().catch(() => [])) { const r = await pointStore.islandFishSplit(account).catch((error) => { console.error('물고기 나누기 실패:', error.message); return null; }); if (!r) continue; n += 1; for (const k of Object.keys(sum)) sum[k] += r[k]; }
+    if (n) console.log(`[fish-split] ${n} bags: ${sum.split} to their own slot, ${sum.toBox} into the fish box, ${sum.left} left stacked (no room)`);
+  }
   // v1.10.91 변신 따로 판매 A안: the set owners get their transformation (idempotent; new owners of a whole set after this buy it)
   if (!(await pointStore.worldValue('transformGrant'))) {
     const sets = SkinCatalog.SKINS.filter((s) => s.slot === 'transform').map((s) => ({ tf: s.id, items: require('./public/plaza/character-transformations.js').find(s.transform).items }));

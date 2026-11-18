@@ -84,19 +84,20 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await post(request, '/api/test/points-credit', token, { amount: 500000 });
   const buy = page.locator('#boxGrowBtn-fish');
   await expect.poll(async () => { if (await buy.isVisible()) return true; await spaceOn(page, 'mall:store', isMobile); await page.waitForTimeout(800); return buy.isVisible(); }, { timeout: 30000, intervals: [500] }).toBe(true);
-  await expect(buy).toHaveText('물고기 통 사기 · 30칸 200,000P'); await buy.click();
-  await expect.poll(async () => (await get(request, '/api/island/bag', token)).data.boxes.fish).toBe(30);
+  await expect(buy).toHaveText('물고기 통 사기 · 50칸 300,000P'); await buy.click(); /* (362: 50 → 100 → 200) */
+  await expect.poll(async () => (await get(request, '/api/island/bag', token)).data.boxes.fish).toBe(50);
   expect((await post(request, '/api/test/island/give', token, { itemId: 'fish_mackerel', qty: 1 })).data.applied).toBe(true);
   await tab(); await expect(page.locator('#islandBagCount')).toHaveText('4/32'); /* (the fish not in the bag) */
-  await page.locator('#islandFishBoxBtn').click(); await expect(page.locator('#islandBagTitle')).toHaveText('물고기 통'); await expect(page.locator('#islandBagCount')).toHaveText('1/30');
+  await expect(page.locator('.islandBagSlot[data-item="fish_goby"] small')).toHaveText(/^\d+(\.\d+)?cm$/); /* (362 사용자 3A: the bag's fish one a slot, its size as in its box) */
+  await page.locator('#islandFishBoxBtn').click(); await expect(page.locator('#islandBagTitle')).toHaveText('물고기 통'); await expect(page.locator('#islandBagCount')).toHaveText('1/50');
   const cell = page.locator('.boxCell[data-item="fish_mackerel"]'); await expect(cell.locator('small')).toHaveText(/^\d+(\.\d+)? cm$/);
   /* (총괄 #447) the box's own line, not the bag's 빠른 칸 or foot buttons; the goby from before it was bought: 「가방에서 옮기기」 */
   await expect(page.locator('#quickInBag')).toBeHidden(); await expect(page.locator('#islandDexBtn')).toBeHidden(); await expect(page.locator('#islandBagGrow')).toBeHidden();
-  await expect(page.locator('#islandBoxFoot')).toContainText('통 늘리기: 백화점 1층 잡화점 · 다음 60칸 500,000P');
-  await page.locator('#boxFillBtn').click(); await expect(page.locator('#islandBagCount')).toHaveText('2/30'); await expect(page.locator('#boxFillBtn')).toBeDisabled();
+  await expect(page.locator('#islandBoxFoot')).toContainText('통 늘리기: 백화점 1층 잡화점 · 다음 100칸 800,000P');
+  await page.locator('#boxFillBtn').click(); await expect(page.locator('#islandBagCount')).toHaveText('2/50'); await expect(page.locator('#boxFillBtn')).toBeDisabled();
   expect((await get(request, '/api/island/bag', token)).data.items.filter((e) => /^fish_/.test(e.itemId)).every((e) => e.box === 'fish')).toBe(true);
   await cell.click(); if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-fishbox-${isMobile ? 'phone' : 'pc'}.png` });
-  await page.locator('.boxRelease').click(); await expect(page.locator('#islandBagCount')).toHaveText('1/30'); await expect(page.locator('.boxCell[data-item="fish_mackerel"]')).toHaveCount(0);
+  await page.locator('.boxRelease').click(); await expect(page.locator('#islandBagCount')).toHaveText('1/50'); await expect(page.locator('.boxCell[data-item="fish_mackerel"]')).toHaveCount(0);
   /* (361 사용자 「통 들 보다가 다시 가방으로 나갈 수가 없어」: 「← 가방」 on the box's page; ESC (a phone's back the same 'cancel') the bag again, not shut) */
   await page.locator('#islandBagBackBtn').click(); await expect(page.locator('#islandBagCount')).toHaveText('3/32'); await expect(page.locator('#quickInBag')).toBeVisible(); await expect(page.locator('#islandBagBackBtn')).toBeHidden(); /* (back to the bag: the goby gone from it) */
   await page.locator('#islandFishBoxBtn').click(); await expect(page.locator('#islandBagTitle')).toHaveText('물고기 통');

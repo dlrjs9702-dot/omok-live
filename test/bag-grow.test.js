@@ -37,7 +37,7 @@ test('물고기 통·곤충 채집통: 통 먼저, 가득 차면 가방, 팔기�
   assert.deepEqual(I.reorderBag(e, [...bagIds].reverse()).map((x) => x.entryId), [...[...bagIds].reverse(), ...e.filter((x) => x.meta?.box).map((x) => x.entryId)]);
   assert.equal(I.reorderBag(e, e.map((x) => x.entryId)), null); // (the boxes' entries are not the bag's to order)
   assert.deepEqual(I.sortBag(e).slice(-3).map((x) => x.meta?.box), ['fish', 'fish', 'insect']);
-  assert.deepEqual(I.addToBag([], 'fish_goby', 2, 'x', { sizes: [20, 25] }, 16).map((x) => x.qty), [2]); // (no box: as before)
+  assert.deepEqual(I.addToBag([], 'fish_goby', 2, 'x', { sizes: [20, 25] }, 16).map((x) => [x.qty, x.meta.sizes]), [[1, [20]], [1, [25]]]); // (no box: 362 one a slot in the bag too)
   // 가방에서 옮기기 (총괄 #447): what the bag held before -- into the box as far as it has room, the biggest first
   const before = [{ entryId: 'b', itemId: 'bread', qty: 1 }, { entryId: 'g', itemId: 'fish_goby', qty: 3, meta: { sizes: [30, 25, 20] } }, { entryId: 'l', itemId: 'insect_ladybird', qty: 4 }];
   const f = I.fillBox(before, 'fish', { bag: 16, fish: 2, insect: 0 }); assert.equal(f.moved, 2);
@@ -52,28 +52,28 @@ test('물고기 통·곤충 채집통: 통 먼저, 가득 차면 가방, 팔기�
   assert.deepEqual(g.entries.map((x) => [x.qty, x.meta?.box || '-']), [[3, '-'], [I.STACK_MAX, 'insect']]);
 });
 
-test('물고기 통 사기·놓아주기: 1층에서만, 30 → 60 → 90 → 120, 값은 한 번씩, 잡은 물고기는 통으로', async (t) => {
+test('물고기 통 사기·놓아주기: 1층에서만, 50 → 100 → 200(362), 값은 한 번씩, 잡은 물고기는 통으로', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'keepnet-')); rmAtExit(dir);
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('통손님')); await req('/api/test/points-credit', a, { amount: 4000000 });
   const bag = async () => (await req('/api/island/bag', a)).data;
-  assert.deepEqual((await bag()).boxGrow, { fish: { slots: 30, price: 200000 }, insect: { slots: 30, price: 200000 } }); assert.deepEqual((await bag()).boxes, { fish: 0, insect: 0 });
+  assert.deepEqual((await bag()).boxGrow, { fish: { slots: 50, price: 300000 }, insect: { slots: 50, price: 300000 } }); assert.deepEqual((await bag()).boxes, { fish: 0, insect: 0 });
   assert.equal((await req('/api/island/box/grow', a, { kind: 'fish' })).data.error, 'TOO_FAR');
   await req('/api/plaza/state', a, { ...T.facilityDoor('store'), yaw: 0, moving: false }); assert.equal((await req('/api/island/store/enter', a, {})).status, 200);
   assert.equal((await req('/api/island/box/grow', a, { kind: 'shoe' })).data.error, 'BAD_BOX');
   // Codex 291~300 #2: the size asked for -- sent again (no answer, two presses) it is ok at no charge; never the step after it
   const balance = async () => (await req('/api/skins', a)).data.balance;
-  assert.equal((await req('/api/island/box/grow', a, { kind: 'fish', to: 30 })).data.slots, 30); const paid30 = await balance();
-  const again = await req('/api/island/box/grow', a, { kind: 'fish', to: 30 }); assert.deepEqual([again.status, again.data.slots, again.data.already], [200, 30, true]); assert.equal(await balance(), paid30);
-  assert.equal((await req('/api/island/box/grow', a, { kind: 'fish', to: 90 })).data.error, 'STALE_BOX'); assert.equal(await balance(), paid30);
-  assert.equal((await req('/api/island/box/grow', a, { kind: 'fish', to: 60 })).data.slots, 60);
-  for (const n of [90, 120]) { const g = await req('/api/island/box/grow', a, { kind: 'fish' }); assert.equal(g.data.slots, n, JSON.stringify(g.data)); } /* (a page from before `to`: the next step) */
+  assert.equal((await req('/api/island/box/grow', a, { kind: 'fish', to: 50 })).data.slots, 50); const paid30 = await balance();
+  const again = await req('/api/island/box/grow', a, { kind: 'fish', to: 50 }); assert.deepEqual([again.status, again.data.slots, again.data.already], [200, 50, true]); assert.equal(await balance(), paid30);
+  assert.equal((await req('/api/island/box/grow', a, { kind: 'fish', to: 200 })).data.error, 'STALE_BOX'); assert.equal(await balance(), paid30);
+  assert.equal((await req('/api/island/box/grow', a, { kind: 'fish', to: 100 })).data.slots, 100);
+  for (const n of [200]) { const g = await req('/api/island/box/grow', a, { kind: 'fish' }); assert.equal(g.data.slots, n, JSON.stringify(g.data)); } /* (a page from before `to`: the next step) */
   assert.equal((await req('/api/island/box/grow', a, { kind: 'fish' })).data.error, 'BOX_TOP'); assert.equal((await bag()).boxGrow.fish, null);
   assert.equal((await req('/api/test/island/give', a, { itemId: 'fish_goby', qty: 1 })).data.applied, true);
   const fish = (await bag()).items.find((x) => x.itemId === 'fish_goby'); assert.equal(fish.box, 'fish');
   assert.equal((await req('/api/island/box/release', a, { entryId: 'nope' })).status, 409);
   const r = await req('/api/island/box/release', a, { entryId: fish.entryId }); assert.equal(r.status, 200); assert.equal(r.data.bag.items.some((x) => x.itemId === 'fish_goby'), false);
-  assert.deepEqual((await bag()).boxes, { fish: 120, insect: 0 });
+  assert.deepEqual((await bag()).boxes, { fish: 200, insect: 0 });
   assert.equal((await req('/api/island/box/fill', a, { kind: 'insect' })).status, 409); // (no 곤충 채집통)
 });
 

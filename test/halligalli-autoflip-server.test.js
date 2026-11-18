@@ -9,17 +9,14 @@ const net = require('node:net');
 const { spawn } = require('node:child_process');
 
 // v1.7.5: 실제 서버 시계로 자동 뒤집기가 약 5초 뒤에 일어나고, 공개 마감(deadlineAt)이 그와 일치하는지 확인한다.
-test('할리갈리 서버: 무응답 5초 뒤 자동 뒤집기, 5초 전 직접 뒤집기는 중복되지 않는다', { timeout: 40_000 }, async t => {
+test('할리갈리 서버: 무응답 5초 뒤 자동 뒤집기, 5초 전 직접 뒤집기는 중복되지 않는다', { timeout: 70_000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'halli-auto-'));
-  const port = await new Promise(resolve => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
+  const port = await require('../test-support/free-port')(); /* (362: claimed -- a closed listen(0) port could be another file's) */
   const base = `http://127.0.0.1:${port}`;
   const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'halli-auto-pw', NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { proc.kill(); await fs.rm(dir, { recursive: true, force: true }); });
-  for (let i = 0; i < 80; i++) {
-    try { if ((await fetch(`${base}/health`)).ok) break; } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (362: up to 30 s, as boot -- 8 s ran out under CI's load and the login failed as 「fetch failed」) */
   async function req(route, token, body, method = 'POST') {
     const response = await fetch(base + route, { method, headers: {
       ...(token ? { 'X-Session-Token': token } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
