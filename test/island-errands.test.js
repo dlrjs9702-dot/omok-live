@@ -21,10 +21,10 @@ test('주민: 열 명 모두 이름·설정·대사, 이야기 주민도 대사,
 test('심부름: 하루 세 개(같은 날 같음, 부탁하는 사람 다름), 찾기는 찾고 알리면, 전하기는 전하면 한 번 사례', () => {
   const day = '2026-10-18'; const es = E.errandsOf(day);
   assert.deepEqual(E.errandsOf(day), es); assert.notDeepEqual(E.errandsOf('2026-10-19').map((e) => e.id), es.map((e) => e.id));
-  assert.equal(es.length, 3); assert.equal(new Set(es.map((e) => e.from)).size, 3); for (const e of es) if (e.kind !== 'buy') assert.notEqual(e.from, e.to);
+  assert.equal(es.length, 4, '세 개 + 366 재료 부탁'); assert.equal(es.filter((e) => e.kind !== 'material').length, E.PER_DAY); assert.equal(new Set(es.map((e) => e.from)).size, 4); for (const e of es) if (e.kind !== 'buy' && e.kind !== 'material') assert.notEqual(e.from, e.to);
   // v1.10.92 잡화점: at most one 'buy' a day, over a month every kind comes
   const month = Array.from({ length: 30 }, (_, i) => E.errandsOf(`2026-11-${String(i + 1).padStart(2, '0')}`));
-  assert.ok(month.every((d) => d.filter((e) => e.kind === 'buy').length <= 1)); assert.deepEqual([...new Set(month.flat().map((e) => e.kind))].sort(), ['buy', 'deliver', 'find']);
+  assert.ok(month.every((d) => d.filter((e) => e.kind === 'buy').length <= 1)); assert.deepEqual([...new Set(month.flat().map((e) => e.kind))].sort(), ['buy', 'deliver', 'find', 'material']);
   for (const e of month.flat().filter((x) => x.kind === 'buy')) assert.ok(E.BUY_GOODS.includes(e.good) && e.from === e.to);
   // both kinds, made up by hand
   const find = { id: 'errand_x_0', kind: 'find', from: 0, to: 1, reward: 2000, why: '할 말이 있어요' };
@@ -52,6 +52,25 @@ test('심부름: 하루 세 개(같은 날 같음, 부탁하는 사람 다름), 
   assert.deepEqual(E.marks([buy], st, done), {}); assert.equal(E.talk([buy], st, done, 6).pay, null);
   assert.deepEqual(E.marks([buy], st, done, new Set(['milk'])), { 6: 'ready' });
   r = E.talk([buy], st, done, 6, new Set(['milk'])); assert.equal(r.take, 'milk'); assert.equal(r.pay, buy);
+});
+
+// 366 「재료 부탁」 (총괄: the new ores, the gems, star fragments): one more a day, its own seed -- the three as they were
+test('재료 부탁: 하루 하나 더, 그 주민 말로 부탁·까닭·고마움, 가방에 그만큼 있어야 표시·받음', () => {
+  const month = Array.from({ length: 60 }, (_, i) => E.errandsOf(new Date(Date.UTC(2026, 10, 1) + i * 86400000).toISOString().slice(0, 10)));
+  const mats = month.map((d) => d.filter((e) => e.kind === 'material')); assert.ok(mats.every((m) => m.length === 1), '날마다 하나');
+  const all = mats.flat(); const ids = new Set(E.MATERIALS.map((m) => m.id));
+  for (const e of all) { assert.ok(ids.has(e.good), e.good); assert.equal(e.from, e.to); assert.ok(e.count >= 1 && e.count <= 5); assert.match(e.id, /_m$/); }
+  assert.ok(new Set(all.map((e) => e.cat)).size === 3, '광석·드문 것·별 조각이 다 나옴'); assert.ok(all.some((e) => e.good.startsWith('gem_')) || E.MATERIALS.some((m) => m.id === 'gem_moonstone'));
+  assert.ok(E.MATERIALS.some((m) => m.id === 'ore_obsidian') && E.MATERIALS.some((m) => m.id === 'gem_ruby') && !E.MATERIALS.some((m) => m.id === 'ore_granite'));
+  const mat = { id: 'errand_x_m', kind: 'material', from: 0, to: 0, reward: 2000, good: 'ore_iron', count: 3, cat: 'ore', thing: '철광석', far: 0, where: null, say: 0 };
+  let r = E.talk([mat], {}, new Set(), 0); assert.equal(r.offer, mat); assert.equal(r.say[0], '철광석 3개만 구해 줄래요? 꽃!'); assert.match(r.say[1], /화분 받침/);
+  assert.equal(E.title(mat), '봄이에게 철광석 3개 갖다 주기');
+  const st = E.accept([mat], {}, new Set(), 0, mat.id).stages;
+  assert.deepEqual(E.marks([mat], st, new Set(), new Map([['ore_iron', 2]])), {}, '두 개로는 아직');
+  r = E.talk([mat], st, new Set(), 0, new Map([['ore_iron', 2]])); assert.equal(r.pay, null); assert.match(r.say[0], /혹시 철광석 3개 있어요/);
+  assert.deepEqual(E.marks([mat], st, new Set(), new Map([['ore_iron', 3]])), { 0: 'ready' });
+  r = E.talk([mat], st, new Set(), 0, new Map([['ore_iron', 4]])); assert.equal(r.pay, mat); assert.equal(r.take, 'ore_iron'); assert.equal(r.takeQty, 3); assert.match(r.say[0], /고마워요/);
+  assert.equal(E.talk([mat], r.stages, new Set([mat.id]), 0, new Map([['ore_iron', 4]])), null, '끝난 뒤');
 });
 
 async function affinityBehaves(store, reopen) {
@@ -104,7 +123,7 @@ test('A-6 주민끼리 수다·섬 소문·상황 대사', () => {
 test('멀리 심부름: 상대는 부탁한 주민에게서 먼 주민, 거리 단계 보상, 어디 있는지 말로 힌트', () => {
   const Npcs = require('../public/plaza/island-npcs');
   const apart = (a, b) => { const p = Npcs.homeOf(a); const q = Npcs.homeOf(b); return Math.hypot(p.x - q.x, p.z - q.z); };
-  const month = Array.from({ length: 30 }, (_, i) => E.errandsOf(`2026-11-${String(i + 1).padStart(2, '0')}`)).flat().filter((e) => e.kind !== 'buy');
+  const month = Array.from({ length: 30 }, (_, i) => E.errandsOf(`2026-11-${String(i + 1).padStart(2, '0')}`)).flat().filter((e) => e.kind !== 'buy' && e.kind !== 'material');
   for (const e of month) {
     const rank = Cast.WALKERS.map((_, n) => n).filter((n) => n !== e.from).sort((a, b) => apart(e.from, b) - apart(e.from, a)).indexOf(e.to);
     assert.ok(rank < 3, `${e.id}: ${rank}`); assert.ok([0, 1, 2].includes(e.far) && e.where);

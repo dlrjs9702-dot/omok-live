@@ -70,9 +70,11 @@ test('물고기 통 사기·놓아주기: 1층에서만, 50 → 100 → 200(362)
   for (const n of [200]) { const g = await req('/api/island/box/grow', a, { kind: 'fish' }); assert.equal(g.data.slots, n, JSON.stringify(g.data)); } /* (a page from before `to`: the next step) */
   assert.equal((await req('/api/island/box/grow', a, { kind: 'fish' })).data.error, 'BOX_TOP'); assert.equal((await bag()).boxGrow.fish, null);
   { /* (362 광석 값 사용자 1A: the 잡화점 sells the ores and the stone at three times what the merchant pays) */
-    const list = (await req('/api/island/store/ores', a)).data.ores; assert.deepEqual(list.find((o) => o.id === 'ore_iron'), { id: 'ore_iron', name: '철광석', icon: '🟤', price: 2700 }); assert.equal(list.find((o) => o.id === 'stone').price, 300);
+    const list = (await req('/api/island/store/ores', a)).data.ores; assert.deepEqual(list.find((o) => o.id === 'ore_iron'), { id: 'ore_iron', name: '철광석', icon: '🟤', price: 3600 }); assert.equal(list.find((o) => o.id === 'stone').price, 300);
+    assert.ok(list.some((o) => o.id === 'ore_obsidian') && !list.some((o) => o.id.startsWith('gem_')), '366: 새 광석은 팔고 보석은 안 팖');
+    assert.equal((await req('/api/island/store/ores', a, { itemId: 'gem_ruby', qty: 1, requestId: crypto.randomUUID() })).data.error, 'BAD_REQUEST', '보석은 못 삼');
     const before = await balance(); const r = await req('/api/island/store/ores', a, { itemId: 'ore_iron', qty: 5, requestId: crypto.randomUUID() }); assert.equal(r.status, 200, JSON.stringify(r.data));
-    assert.equal(await balance(), before - 5 * 2700); assert.equal(r.data.bag.items.filter((x) => x.itemId === 'ore_iron').reduce((n, x) => n + x.qty, 0), 5);
+    assert.equal(await balance(), before - 5 * 3600); assert.equal(r.data.bag.items.filter((x) => x.itemId === 'ore_iron').reduce((n, x) => n + x.qty, 0), 5);
     assert.equal((await req('/api/island/store/ores', a, { itemId: 'bread', qty: 1, requestId: crypto.randomUUID() })).data.error, 'BAD_REQUEST', '재료만');
     /* (사용자 「물고기 곤충은 제외, 집 만들기 … 재료들에만」: the `shop: true` materials -- the repair's and upkeep's, the ores; no fish, insect or 채집물) */
     const ids = list.map((o) => o.id); for (const id of ['stone', 'twig', 'branch', 'weed', 'compost', 'ore_granite', 'ore_gold']) assert.ok(ids.includes(id), id);

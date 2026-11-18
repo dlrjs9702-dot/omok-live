@@ -2049,6 +2049,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .catchName{margin:0;font-size:1.3rem}
 .catchSize{margin:0;font-size:1.6rem;font-weight:900;font-variant-numeric:tabular-nums;color:#a8641c;min-height:1.2em}
 .catchLines{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.92rem;color:var(--isle-soft)}
+.catchCard.isGem .catchFront .catchPic{width:184px;height:184px;border-radius:14px}
 .catchBackHead{display:flex;gap:12px;align-items:center}.catchBackHead .catchPic{width:72px;height:72px;object-fit:contain}
 .catchBack.unfound .catchPic{filter:brightness(0) opacity(.45)}
 .catchGrade{color:var(--isle-tag);font-weight:700}

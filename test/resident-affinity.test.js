@@ -131,3 +131,23 @@ test('심부름 받기: 말 걸면 쪽지만, 다음에요는 기록 없음, 할
   assert.equal((await req('/api/island/errand/drop', a, { id: e.id })).status, 409);
   assert.equal((await talk({ topic: 'errand' })).data.offer?.id, e.id, '그만둔 부탁은 다시 부탁');
 });
+
+// 366 「재료 부탁」: today's fourth errand -- so many of a material from my bag, taken all at once, its merchant value and more
+test('재료 부탁: 모자라면 다시 부탁, 그만큼 있으면 한꺼번에 가져가고 상인 값 + 사례', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'errand-material-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('재료꾼'));
+  await req('/api/test/island/free-residents', a, {});
+  const talkTo = async (n, body) => { for (let i = 0; i < 6; i += 1) { const w = await serverAt(req, a, n); const [dx, dz] = SIDES[i % SIDES.length]; await req('/api/plaza/state', a, { x: w.x + dx, z: w.z + dz, yaw: 0, moving: false }); const r = await req('/api/island/resident/talk', a, { n, ...body }); if (r.status !== 409 || r.data.error !== 'TOO_FAR') return r; } throw new Error('never by them'); };
+  const askers = Object.entries((await req('/api/island/errands', a)).data.marks || {}).filter(([, m]) => m === 'new').map(([k]) => Number(k));
+  let n = null; let offer = null; for (const k of askers) { const o = (await talkTo(k, { topic: 'errand' })).data.offer; if (o?.id?.endsWith('_m')) { n = k; offer = o; break; } }
+  assert.ok(offer, `재료 부탁이 있음 (${askers.join(',')})`); const m = offer.title.match(/에게 (.+) (\d)개 갖다 주기$/); assert.ok(m, offer.title);
+  const Items = require('../lib/island-items'); const id = Object.keys(Items.ITEMS).find((k) => Items.ITEMS[k].name === m[1] && /^(ore|gem)_|^star_fragment$/.test(k)); const count = Number(m[2]); assert.ok(id, m[1]);
+  assert.equal(offer.reward, 2000 + Items.ITEMS[id].price * count, '상인 값 × 개수 + 2,000');
+  await talkTo(n, { topic: 'accept', errand: offer.id });
+  const qty = async () => { const b = (await req('/api/island/bag', a)).data; return (b.bag?.items || b.items || []).filter((x) => x.itemId === id).reduce((s, x) => s + x.qty, 0); };
+  if (count > 1) { await req('/api/test/island/give', a, { itemId: id, qty: count - 1 }); const short = (await talkTo(n, {})).data; assert.equal(short.finished, null, '모자라면 아직'); assert.equal(await qty(), count - 1, '안 가져감'); }
+  await req('/api/test/island/give', a, { itemId: id, qty: count === 1 ? 2 : 2 }); const have = await qty();
+  const done = (await talkTo(n, {})).data; assert.equal(done.finished?.reward, offer.reward, JSON.stringify(done)); assert.equal(await qty(), have - count, '그만큼 가져감');
+  assert.equal((await talkTo(n, {})).data.finished, null, '한 번만');
+});

@@ -116,7 +116,8 @@ const IslandQuarry = require('./public/plaza/island-quarry'); // 1.10.323 Q1 채
 const IslandOres = require('./lib/island-ores'); // 1.10.342 4a 광석 8가지
 // (the rocks' state { id: { left, gen, minedAt } } -- kept in the world store; `gen` makes each ore's claim its own)
 let quarryKept = null; let quarryLoading = null; const quarryPulls = new Map(); // (session token -> a mining under way)
-let quarryTestPlan = null; let quarryTestDraw = null; // (1.10.342 tests only: /api/test/quarry/plan)
+let quarryTestPlan = null; let quarryTestDraw = null; let quarryTestGem = null; // (1.10.342 tests only: /api/test/quarry/plan; 366 the gem's roll)
+const GEM_CARDS = require('./lib/gem-cards.json'); // (366 보석 첫 발견: 총괄's words, notes content-20261118 gem-cards.json)
 async function quarryRocks(now = nowMs()) {
   if (!quarryKept) quarryKept = await (quarryLoading ||= pointStore.worldValue('quarry').then((v) => v && typeof v === 'object' ? v : {}).finally(() => { quarryLoading = null; }));
   let changed = false; const out = [];
@@ -1289,13 +1290,14 @@ const errandStages = new Map(); // `<day>|<account>` -> { [errand id]: stage }
 // errand its good's price on top -- what the offer shows and what the end pays (`before`: my 호감도 with each islander)
 function errandPay(e, before) {
   const asker = IslandCast.levelOf(before[e.from] || 0); const pct = asker >= 3 ? Economy.value('affinity:bestieErrand') : asker >= 2 ? Economy.value('affinity:closeErrand') : 100;
-  return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0);
+  return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0) + (e.kind === 'material' ? (Economy.priceOf(e.good) ?? IslandItems.ITEMS[e.good]?.price ?? 0) * e.count : 0); /* (366 재료 부탁: what the merchant would pay for them, and more) */
 }
+const bagCounts = (items) => { const m = new Map(); for (const e of items || []) m.set(e.itemId, (m.get(e.itemId) || 0) + (Number(e.qty) || 0)); return m; };
 async function errandView(account) {
   const day = errandDay(); const errands = IslandErrands.errandsOf(day, errandWalkers);
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
-  const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
+  const goods = bagCounts((await pointStore.islandBag(account)).items); /* (366 재료 부탁: so many of each) */
   return { marks: IslandErrands.marks(errands, stages, done, goods), track: IslandErrands.track(errands, stages, done).map((t) => { const e = errands.find((x) => x.id === t.id); return { ...t, reward: Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0) }; }), done: done.size, total: errands.length };
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
@@ -5022,7 +5024,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.365' });
+    return sendJson(res, 200, { ok: true, version: '1.10.366' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6982,7 +6984,7 @@ async function requestHandler(req, res) {
   }
   // (tests, review-plan §1-14: the next mining's plan fixed -- each swing's crack and when it lights)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/plan' && req.method === 'POST') {
-    const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; return sendJson(res, 200, { ok: true });
+    const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; quarryTestGem = Number.isFinite(body.gem) ? Math.max(0, Math.min(0.999, Number(body.gem))) : quarryTestDraw !== null ? 0.999 : null; /* (366: a test's ore draw -- no gem unless asked) */ return sendJson(res, 200, { ok: true });
   }
   // 1.10.351 (Codex 341-350 P1): a press of the crack-light game, kept as the server gets it (IslandQuarry.tapAt) -- finish judges
   // these, never a list the page sends at the end; one a swing, the first kept
@@ -7046,15 +7048,22 @@ async function requestHandler(req, res) {
       const result = { ok: true, ore: 1, itemId: 'ore_granite', name: IslandItems.ITEMS.ore_granite?.name || '화강암', icon: IslandItems.ITEMS.ore_granite?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', wall: true, bag: given.bag, worn: given.worn || null, daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
-    const oreId = `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
+    // 366 광석 개편 2: a gem first (‰ by economy gem:*, an event's 「채석 위 단계」 too), else the ore as before
+    const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(`gem:${g.id}`), Economy.value(`gem:${g.id}:bonus`)]]));
+    const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'), gemPms); quarryTestGem = null;
+    const oreId = gem ? `gem_${gem}` : `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
     const slot = IslandQuarry.ORE_PER_ROCK - kept.left; // (each ore of a rock's fill its own claim: two at once -- one gets it)
     const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${kept.gen}:${slot}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
     if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.') : sendError(res, 409, 'MINED', '방금 다른 사람이 캐 갔어요.'); }
     quarryKept[rock.id] = { ...kept, left: kept.left - 1, ...(kept.left - 1 <= 0 ? { minedAt: nowMs() } : {}) };
     await pointStore.setWorldValue('quarry', quarryKept).catch((error) => console.warn('[quarry]', error.message));
     const counted = await pointStore.questApply(account, 'quarry', (d) => ({ doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 } })).catch(() => null);
-    const result = { ok: true, ore: 1, itemId: oreId, name: IslandItems.ITEMS[oreId]?.name || '광석', icon: IslandItems.ITEMS[oreId]?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: quarryKept[rock.id].left, stage: quarryKept[rock.id].left > 0 ? 'full' : 'mined', bag: given.bag, worn: given.worn || null, daily: { n: counted?.doc?.n ?? null, max: IslandQuarry.DAILY } };
+    // (366 user 2A: an account's first of each gem -- its card here, and the island told once, by the name it shows)
+    const stamp = nowMs(); const firstOf = gem ? await pointStore.questApply(account, 'gems', (d) => (d[gem] ? null : { doc: { ...d, [gem]: stamp } })).catch(() => null) : null;
+    const firstGem = firstOf?.doc?.[gem] === stamp ? { id: gem, title: GEM_CARDS[gem]?.title || '첫 보석이에요!', line: GEM_CARDS[gem]?.line || '', card: `/assets/items/cards/gem_${gem}_card.webp` } : null;
+    const result = { ok: true, ore: 1, itemId: oreId, name: IslandItems.ITEMS[oreId]?.name || '광석', icon: IslandItems.ITEMS[oreId]?.icon || '🪨', ...(gem ? { gem } : {}), ...(firstGem ? { firstGem } : {}), hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: quarryKept[rock.id].left, stage: quarryKept[rock.id].left > 0 ? 'full' : 'mined', bag: given.bag, worn: given.worn || null, daily: { n: counted?.doc?.n ?? null, max: IslandQuarry.DAILY } };
     quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t);
+    if (firstGem) { const lines = GEM_CARDS[gem]?.notices || []; const text = (lines[crypto.randomInt(0, Math.max(1, lines.length))] || '{name}님이 보석을 캤어요!').replace('{name}', (await soloNames())(account)); broadcastIsland('gemFound', { gem, text }); }
     broadcastIsland('quarry', { rocks: await quarryRocks() });
     return sendJson(res, 200, result);
   }
@@ -9416,13 +9425,17 @@ async function requestHandler(req, res) {
       errandStages.set(key, a.stages);
       return sendTalk(view(a.say, { errand: true, accepted: { id: a.took.id, title: IslandErrands.title(a.took) }, ...(await errandView(account)) }));
     }
-    const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId)); // v1.10.92: what I carry, for a 'buy' errand
+    const goods = bagCounts((await pointStore.islandBag(account)).items); // v1.10.92: what I carry, for a 'buy' errand (366: how many, for a 재료 부탁)
     // (Codex review: the bought thing is handed over before the reward is kept -- a thing already handed over for an
     // unpaid errand counts as carried, so the next talk pays it; its hand-over id is the same, so it is never taken twice)
     const useId = (id) => `errand-${id}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64);
-    for (const e of errands) if (e.kind === 'buy' && !done.has(e.id) && await pointStore.settlementOf(`island_use:${useId(e.id)}`)) goods.add(e.good);
+    for (const e of errands) if (e.kind === 'buy' && !done.has(e.id) && await pointStore.settlementOf(`island_use:${useId(e.id)}`)) goods.set(e.good, Math.max(1, goods.get(e.good) || 0));
+    // (366 재료 부탁: the materials taken all at once with a note of it -- handed over and not yet paid, the next talk pays)
+    const mDay = errandDay(); const matDoc = (await pointStore.questDoc(account, 'errandmat')).doc || {}; const matGiven = (id) => matDoc.day === mDay && Boolean(matDoc.given?.[id]);
+    for (const e of errands) if (e.kind === 'material' && !done.has(e.id) && matGiven(e.id)) goods.set(e.good, Math.max(e.count, goods.get(e.good) || 0));
     let r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n, goods);
-    if (r?.take) { const used = await pointStore.islandUse({ userId: account, requestId: useId(r.pay.id), itemId: r.take }); if (!used.applied && !used.already) r = null; } // (gone meanwhile)
+    if (r?.take && r.pay.kind === 'material') { if (!matGiven(r.pay.id)) { const e = r.pay; const out = await pointStore.questApply(account, 'errandmat', (d, bag) => (d.day === mDay && d.given?.[e.id] ? null : bagCount(bag, e.good) < e.count ? { error: 'MISSING' } : { doc: { day: mDay, given: { ...(d.day === mDay ? d.given : {}), [e.id]: nowMs() } }, take: { itemId: e.good, qty: e.count } })).catch(() => null); if (!out?.doc?.given?.[e.id]) r = null; } }
+    else if (r?.take) { const used = await pointStore.islandUse({ userId: account, requestId: useId(r.pay.id), itemId: r.take }); if (!used.applied && !used.already) r = null; } // (gone meanwhile)
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
@@ -10650,7 +10663,7 @@ async function main() {
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.365 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.366 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
