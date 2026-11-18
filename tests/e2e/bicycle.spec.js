@@ -113,13 +113,15 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
       await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().taxi.others), { timeout: 15000 }).toBe(1); // (the other screen: my car on its way)
       const at = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z })); await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW'); // (the keys do nothing in the car)
       const still = await page.evaluate(() => window.PlazaDebug().train().taxi.ride); expect(still?.from).toBe('plaza'); void at; await shot('ride');
-      /* (1.10.336 사용자 「택시를 타면 화면이 고정되는데 … 돌아볼 수 있게」: turned in the car, the view stays turned -- by the car's way, not put back behind it) */
-      const offCar = () => page.evaluate(() => { const d = window.PlazaDebug(); const v = d.view().yaw - (d.yaw + Math.PI); return Math.atan2(Math.sin(v), Math.cos(v)); });
-      /* (1.10.353 CI: turned before the ride's first frame put the view behind the car and me on its way -- that frame first) */
-      await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.carYaw), { timeout: 15000 }).not.toBe(null);
-      const off0 = await offCar(); await page.evaluate(() => window.PlazaDebug().setCamYaw(window.PlazaDebug().view().yaw + 1.6));
-      /* (polled: on CI's ~3 frames a second the camera's easing takes a while -- held turned, never put back behind the car) */
-      await expect.poll(async () => { const off1 = await offCar(); return Math.abs(Math.atan2(Math.sin(off1 - off0 - 1.6), Math.cos(off1 - off0 - 1.6))); }, { timeout: 6000 }).toBeLessThan(0.35);
+      /* (1.10.360 사용자 「택시가 방향을 바꿀 때마다 시점이 돌아가서 멀미 … 아예 시점을 건드리지 않게」: the car turns, the view's yaw stays where I
+         left it; turned by me, it stays turned) */
+      const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a)); const carYaw = () => page.evaluate(() => window.PlazaDebug().train().taxi.carYaw); const viewYaw = () => page.evaluate(() => window.PlazaDebug().view().yaw);
+      await expect.poll(carYaw, { timeout: 15000 }).not.toBe(null);
+      const yaw0 = await viewYaw(); const car0 = await carYaw();
+      await expect.poll(async () => Math.abs(wrap((await carYaw()) - car0)), { timeout: 20000 }).toBeGreaterThan(0.3); /* (the car has turned) */
+      expect(Math.abs(wrap((await viewYaw()) - yaw0))).toBeLessThan(0.02);
+      await page.evaluate(() => window.PlazaDebug().setCamYaw(window.PlazaDebug().view().yaw + 1.6));
+      await expect.poll(async () => Math.abs(wrap((await viewYaw()) - yaw0 - 1.6)), { timeout: 6000 }).toBeLessThan(0.05);
       expect(await page.evaluate(() => window.PlazaDebug().hatHidden())).toBe(true); /* (v1.10.285: the hat away in the car) */
       expect(await page.evaluate(() => window.PlazaDebug().hairCut())).toBe(false); /* (294 C 「대머리야」: the hair its whole shape while the hat is away) */
     }
