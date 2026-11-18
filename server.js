@@ -2548,6 +2548,15 @@ const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free
 // draws), the island's screens are told when one starts or ends (and on entry); what they paid over the base points, by event
 const AdminEvents = require('./lib/island-admin-events');
 const LoadingTips = require('./lib/loading-tips'); // (366 로딩 팁)
+// 366 별 조각: the stars that fell from this moment on bring a fragment; those before it the 300P they were wished for --
+// the moment this version first started (kept in worldValue starsFragmentFrom; a test server's own)
+let starsFromAt = null;
+async function starsFragmentFrom() {
+  if (starsFromAt != null) return starsFromAt;
+  const kept = await pointStore.worldValue('starsFragmentFrom').catch(() => null);
+  if (Number.isFinite(kept?.at)) starsFromAt = kept.at; else { starsFromAt = nowMs(); await pointStore.setWorldValue('starsFragmentFrom', { at: starsFromAt }).catch(() => {}); }
+  return starsFromAt;
+}
 let adminEvents = []; const adminEventExtra = new Map(); let adminEventsShown = '';
 const GATHERED = new Set(Object.values(IslandGather.TABLE).map((k) => k.item).filter((id) => id !== 'weed'));
 const gatherGroupOf = (itemId) => (GATHERED.has(itemId) ? 'gathered' : null);
@@ -7151,8 +7160,9 @@ async function requestHandler(req, res) {
       if (owedNow) return reply(owedNow, null);
       if (r.item) { const bag = (await pointStore.questDoc(account, 'upkeep')).bag || []; const after = IslandItems.takeFromBag(bag, itemId, qty); if (after && !IslandItems.addToBag(after, r.item, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.'); } /* (room for what is made, checked first) */
       const uid = `y${now.toString(36)}${crypto.randomBytes(3).toString('hex')}`;
-      const out = await upkeepApply(account, (d, bag) => { if (bagCount(bag, itemId) < qty) return { error: 'MISSING' }; const n = (d.crafted || 0) + 1; return { doc: { ...d, crafted: n, owed: [...(d.owed || []), { n, recipe: body.recipe, at: now, ...(r.item ? { item: r.item } : { good: r.good, uid }) }] }, take: { itemId, qty } }; });
-      if (!out?.doc) return sendError(res, 409, 'MISSING', `${IslandItems.ITEMS[itemId]?.name || itemId} ${qty}개가 있어야 해요.`);
+      const takes = Object.entries(r.takes).map(([id, n]) => ({ itemId: id, qty: n })); /* (366 별 가구: a recipe of more than one -- the fragments and the shiny one -- all taken in the one step) */
+      const out = await upkeepApply(account, (d, bag) => { if (takes.some((t) => bagCount(bag, t.itemId) < t.qty)) return { error: 'MISSING' }; const n = (d.crafted || 0) + 1; return { doc: { ...d, crafted: n, owed: [...(d.owed || []), { n, recipe: body.recipe, at: now, ...(r.item ? { item: r.item } : { good: r.good, uid }) }] }, take: takes.length === 1 ? takes[0] : takes }; });
+      if (!out?.doc) return sendError(res, 409, 'MISSING', `${takes.map((t) => `${IslandItems.ITEMS[t.itemId]?.name || t.itemId} ${t.qty}개`).join(', ')}가 있어야 해요.`);
       return reply(out.doc.owed[out.doc.owed.length - 1], out.bag);
     }
     return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
@@ -9470,13 +9480,18 @@ async function requestHandler(req, res) {
   // gifts for the wishes of the Seoul day before are paid once (until the 우체통). Wishes live in the account's 'stars' doc.
   if (pathname === '/api/island/stars' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
-    const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0;
+    const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0; const frags = { star_fragment: 0, star_fragment_shiny: 0 }; let full = false; let bag = null;
+    const from = await starsFragmentFrom();
     for (const st of IslandStars.wishesDue((await pointStore.questDoc(account, 'stars')).doc.wished || [], now)) { // (every day before, not only yesterday -- Codex review)
-      const out = await pointStore.claimEvent({ eventId: `star_gift_${IslandStars.slotOfId(st.id)}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' });
-      if (out.applied) gift += out.amount;
+      const slot = IslandStars.slotOfId(st.id);
+      if (st.at < from) { const out = await pointStore.claimEvent({ eventId: `star_gift_${slot}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' }); if (out.applied) gift += out.amount; continue; } // (366: wished before the release -- 300P as promised)
+      // 366 별 조각 (notes star-wish-20261118): one fragment, the shiny one by economy star:shinyPct -- the same for a claim asked again
+      const itemId = IslandStars.shinyOf(account, slot, Economy.value('star:shinyPct')) ? 'star_fragment_shiny' : 'star_fragment';
+      const g = await pointStore.islandGive({ userId: account, claimId: `star_gift_${slot}`, itemId, qty: 1, quiet: true }, nowMs()).catch(() => null);
+      if (g?.applied) { frags[itemId] += 1; bag = g.bag || bag; } else if (g?.reason === 'full') { full = true; break; }
     }
     if (gift) notifyPointsChanged([account]);
-    return sendJson(res, 200, { ok: true, ...IslandStars.around(now), serverNow: now, gift, wishMs: IslandStars.WISH_MS });
+    return sendJson(res, 200, { ok: true, ...IslandStars.around(now), serverNow: now, gift, fragments: Object.entries(frags).map(([itemId, n]) => ({ itemId, n })).filter((f) => f.n), ...(full ? { full: true } : {}), ...(bag ? { bag } : {}), wishMs: IslandStars.WISH_MS });
   }
   if (pathname === '/api/island/stars/wish' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
@@ -10628,6 +10643,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
   adminEvents = AdminEvents.prune(await pointStore.worldValue('adminEvents').catch(() => null) || [], nowMs()); /* (364 섬 이벤트: those kept) */
+  await starsFragmentFrom(); /* (366: the switch to star fragments fixed at this version's first start) */
   setInterval(() => { try { adminEventsTick(); } catch (error) { console.error('[island-event] tick', error.message); } }, 15000).unref();
   { /* 1.10.363 메모리 (운영 OOM 11-18 13:18Z): a [mem] line every 5 min and at 80 % of the limit, with the biggest of these by entries */
     const tracked = { petOf, bagSlots, boxSlots, stockNoticed, stockNewsSeen, fishModes, fishModeForced, sessions, activeGuestSessions, rooms, streams, lobbyStreams, rateLimits, invitations, islandInviteIntents, equippedSkinCache, eventAudience, rewardTestAccounts, codeRevs, vendorCache, hwatuCache, testNotices, photoUploading, accountTokens, setupTickets, liveEntryKeys, messengerStreams, climbs, errandStages, storyDocs, taxNoted, soloFirsts, plazaPresence, plazaLastPos, townhallInside, storeInside, furnitureInside, petshopInside, fashionInside, homeInside, homeFloor, yardLevels, farmDocs, petReadFailedAt, taxDebt, jailInside, exchangeInside, denInside, denBelow, museumInside, jailInmates, jailFreed, jailEssays, jailVeterans, visitNoted, resourcePulls, weedPulls, questCache, soloGames, reflexRuns, residentBets, betChains, puzzleStarts, cardRuns, herosurvRuns, plazaSpots, townhallPass, fishCasts, bigCatchAt, seatTaken, snowThrows, insectShown, showUsed, trainVisitors, trainRiders, taxiRides, taxiPaying, unstuckAt, taxiStopOut, talkNow, eventRounds, contestPasses, inflightEntryIds, expiredEntries };

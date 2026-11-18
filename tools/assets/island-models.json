@@ -14537,6 +14537,52 @@
       "src": "bugs145:01. High/house-bugs-v1/cockroach_dot.glb",
       "sha256": "0391a2a3a51b8f792fe4dece5050f1736910c1c06177cd4477aa4957a65e2256",
       "precompressed": true
+    },
+    {
+      "out": "star-v1/item_star_fragment.glb",
+      "src": "star154:01. High/star-v1/item_star_fragment.glb",
+      "sha256": "60e99c10aec0aaf32b9c5fe4a33b7e3bff2667d6cf49c9e3f44de1ea093dcfc6",
+      "lowSrc": "star154:02. Low/star-v1/item_star_fragment_low.glb",
+      "lowSha256": "06a52d3981b947adbd9f7fc9973a829535263fe16f87092d6b6a52dde00480eb",
+      "precompressed": true
+    },
+    {
+      "out": "star-v1/item_star_fragment_shiny.glb",
+      "src": "star154:01. High/star-v1/item_star_fragment_shiny.glb",
+      "sha256": "c8e37e9096ca3449100e5bf900c215d430f0edc9c805f5c082e81369ed43414c",
+      "lowSrc": "star154:02. Low/star-v1/item_star_fragment_shiny_low.glb",
+      "lowSha256": "649aabdfad3656691040351143c4b0c999fc4817d9cea76ed042242f10a25fd1",
+      "precompressed": true
+    },
+    {
+      "out": "star-v1/star_lamp.glb",
+      "src": "star154:01. High/star-v1/star_lamp.glb",
+      "sha256": "ac8e33c0d17ce6dc63c8c20cc1bf2765042a6dbd57cac286073b829ac65fc259",
+      "lowSrc": "star154:02. Low/star-v1/star_lamp_low.glb",
+      "lowSha256": "e96038e6d051559c924f5b1feaf28d4ce2afc0c157adb474874b18932a9c3bac",
+      "precompressed": true
+    },
+    {
+      "out": "star-v1/star_mobile.glb",
+      "src": "star154:01. High/star-v1/star_mobile.glb",
+      "sha256": "0a649ff434126afcfec5a1f37448d7e3707ccfb0e539c3bbcdb1311577134b0f",
+      "lowSrc": "star154:02. Low/star-v1/star_mobile_low.glb",
+      "lowSha256": "671bcfec286ef9d31a8ccdc2a7d2b4a5e7d9742ae40747c0a938f0de7cb36675",
+      "precompressed": true
+    },
+    {
+      "out": "star-v1/star_ornament.glb",
+      "src": "star154:01. High/star-v1/star_ornament.glb",
+      "sha256": "de0bd8569883fcd5e2c46f4b78c114415864f1f6c79c9fa52db2e6db2eae645a",
+      "lowSrc": "star154:02. Low/star-v1/star_ornament_low.glb",
+      "lowSha256": "8cc34366f24ad07f89d5965ca8b16daf34f9d3d39b2e326024110f18f06c798f",
+      "precompressed": true
+    },
+    {
+      "out": "star-v1/star_rug.glb",
+      "src": "star154:01. High/star-v1/star_rug.glb",
+      "sha256": "1c87cc324194c165ce2b58c87757efb732fa38a37ef7b6c6423ca58e98d016a1",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -14651,6 +14697,7 @@
     "quarry143": "143. Game Island quarry development props 2026-11-16",
     "decay139": "139. Game Island house decay overlays 2026-11-16",
     "bugs145": "145. Game Island house cockroach 2026-11-16",
-    "photo151": "151. Game Island issue fixes 2026-11-18"
+    "photo151": "151. Game Island issue fixes 2026-11-18",
+    "star154": "154. Game Island star fragments furniture 2026-11-18"
   }
 }

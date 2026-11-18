@@ -2618,7 +2618,7 @@
   // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
   // old emoji) -- the bag and the sale lists; toasts keep the emoji
   const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
-  const GOOD_ICONS = new Set(['bait', 'bait_premium', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge', ...['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage'].map((c) => `seed_${c}`), ...['granite', 'clay', 'coal', 'iron', 'copper', 'silver', 'crystal', 'gold'].map((o) => `ore_${o}`)]); /* (318: the crops' seeds -- assets 115; 1.10.342: the eight ores -- assets 140 icons) */
+  const GOOD_ICONS = new Set(['bait', 'bait_premium', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge', ...['carrot', 'potato', 'tomato', 'corn', 'pumpkin', 'cabbage'].map((c) => `seed_${c}`), ...['granite', 'clay', 'coal', 'iron', 'copper', 'silver', 'crystal', 'gold'].map((o) => `ore_${o}`), 'star_fragment', 'star_fragment_shiny']); /* (366: assets 154 star fragments) */ /* (318: the crops' seeds -- assets 115; 1.10.342: the eight ores -- assets 140 icons) */
   const SHOW_GOODS = new Set(['firework', 'balloon', 'bubbles']); // v1.10.92: 「쓰기」 in the bag, seen by everyone near
   function itemIcon(item) {
     const id = ITEM_ALIAS[item.itemId] || item.itemId;
@@ -3878,7 +3878,8 @@
     }
     card.append(line('재료로 쓰기', 'lookMeta upkeepHead'));
     const crafts = document.createElement('div'); crafts.className = 'upkeepCrafts';
-    for (const [key, r] of Object.entries(FARM.CRAFTS)) { const [itemId, qty] = Object.entries(r.takes)[0]; const b = btn(`${r.name} 만들기 · ${({ weed: '잡초', stone: '작은 돌', branch: '나뭇가지' })[itemId]} ${qty}개`, 'secondary', post({ action: 'craft', recipe: key }, (o) => `${o.made}을(를) 만들었어요.${o.good ? ' 가구 창고에 넣었어요.' : ''}`)); b.disabled = held(items, itemId) < qty; crafts.append(b); }
+    const NAMES = { weed: '잡초', stone: '작은 돌', branch: '나뭇가지', star_fragment: '별 조각', star_fragment_shiny: '반짝이는 별 조각' }; /* (366: the star furniture -- more than one kind a recipe) */
+    for (const [key, r] of Object.entries(FARM.CRAFTS)) { const takes = Object.entries(r.takes); const b = btn(`${r.name} 만들기 · ${takes.map(([id, n]) => `${NAMES[id] || id} ${n}개`).join(' + ')}`, 'secondary', post({ action: 'craft', recipe: key }, (o) => `${o.made}을(를) 만들었어요.${o.good ? ' 가구 창고에 넣었어요.' : ''}`)); b.disabled = takes.some(([id, n]) => held(items, id) < n); crafts.append(b); }
     card.append(crafts, status, btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('🧰 손보기 상자', [card]);
   }
   let yardWeedBusy = false;
@@ -4528,6 +4529,9 @@
     clearTimeout(starPoll); if (!document.body.classList.contains('plazaMode')) return;
     api('/api/island/stars').then((d) => {
       if (d.gift) showToast(`어젯밤 별똥별에 빈 소원이 선물로 왔어요 · +${Number(d.gift).toLocaleString('ko-KR')}P`, 5000);
+      /* (366: from the release on, star fragments -- now and then a shiny one; a full bag keeps them for the next look) */
+      const frags = (d.fragments || []).filter((f) => f.n > 0); if (frags.length) { showToast(`🌠 어젯밤 소원이 선물로 왔어요 · ${frags.map((f) => `${f.itemId === 'star_fragment_shiny' ? '✨ 반짝이는 별 조각' : '별 조각'} ${f.n}개`).join(', ')}`, 6000); if (d.bag) drawIslandBag(d.bag); }
+      if (d.full) showToast('가방이 가득 차서 별 조각을 다 받지 못했어요. 가방을 비우면 다음에 받아요.', 6000);
       const offset = d.serverNow - Date.now(); starTimers.forEach(clearTimeout); starTimers = [];
       for (const st of [d.now, d.next].filter(Boolean)) { const wait = st.at - offset - Date.now(); if (wait < 120000) starTimers.push(setTimeout(() => showStar(st, d.wishMs - Math.max(0, -wait)), Math.max(0, wait))); }
       starPoll = setTimeout(refreshStars, 60000);

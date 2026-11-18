@@ -102,6 +102,11 @@
     compost: { name: '퇴비', takes: { weed: 3 }, item: 'compost', note: '텃밭 한 칸을 두 배 빨리' },
     stepping_stones: { name: '징검돌', takes: { stone: 6 }, good: 'yard_stepping_stones__plain', note: '마당 물건' },
     fence_wood: { name: '나무 울타리', takes: { branch: 4 }, good: 'yard_fence_wood__plain', note: '마당 물건' },
+    // 366 별 가구 (notes docs/star-wish-20261118.md): from the star fragments a wish brings (and the shiny one for the two bigger)
+    star_lamp: { name: '별빛 램프', takes: { star_fragment: 5 }, good: 'star_lamp__plain', note: '집 가구' },
+    star_mobile: { name: '별 모빌', takes: { star_fragment: 8 }, good: 'star_mobile__plain', note: '집 가구' },
+    star_rug: { name: '별자리 러그', takes: { star_fragment: 10, star_fragment_shiny: 1 }, good: 'star_rug__plain', note: '집 가구' },
+    star_ornament: { name: '마당 별 장식', takes: { star_fragment: 6, star_fragment_shiny: 1 }, good: 'yard_star_ornament__plain', note: '마당 물건' },
   });
 
   // 내 마당 잡초 (사용자 3B): GROW a day (00:00 Asia/Seoul), up to MAX; their places in the yard's own ground (lot-local),
