@@ -83,13 +83,15 @@ test('Esc 메뉴: 섬에서 Esc로 열고 닫기, 입력 중에는 열리지 않
     await page.locator('#controlsBtn').click(); const card = page.locator('.controlsCard'); await expect(card).toBeVisible();
     await expect(card.locator('.controlsCol h3')).toHaveText(['PC (지금 기기)', '폰']); await expect(card.locator('dt').first()).toHaveText('W A S D · 방향키');
     await card.getByRole('button', { name: '닫기' }).click(); await expect(card).toBeHidden();
-    // U5 지금 자리 over the minimap, U3 막혔을 때 대청마당으로: from far off, put by the arrival place (and the chip says so)
+    // U5 지금 자리 over the minimap, U3 막혔을 때 (364: the nearest free spot within 15 m, not 대청마당): from far off, moved a little
     await expect.poll(() => page.locator('.islandPlaceChip span').textContent(), { timeout: 10000 }).toMatch(/^대청마당/);
     await page.evaluate(() => window.PlazaDebug().teleport(-60, -30)); await expect.poll(() => page.evaluate(() => window.PlazaDebug().placeNow().words), { timeout: 10000 }).toMatch(/^이웃골/);
+    await expect(page.locator('#unstuckBtn')).toHaveText('막혔을 때 빠져나오기');
     await page.locator('#gameMenuBtn').click(); await page.locator('#unstuckBtn').click(); await expect(menu).toBeHidden();
-    await expect.poll(() => page.evaluate(() => { const p = window.PlazaDebug().placeNow(); return Math.hypot(p.x + 22, p.z + 60) < 3; }), { timeout: 10000 }).toBe(true);
+    await expect(page.locator('#toast')).toContainText('근처 빈 자리로 옮겼어요');
+    await expect.poll(() => page.evaluate(() => { const p = window.PlazaDebug().placeNow(); return Math.hypot(p.x + 60, p.z + 30) <= 15.5; }), { timeout: 10000 }).toBe(true);
     await page.locator('#gameMenuBtn').click(); await expect(page.locator('#unstuckBtn')).toBeVisible();
-    await page.locator('#unstuckBtn').click(); await expect(page.locator('#toast')).toContainText('조금 뒤에'); /* (once in 20 s; the menu stays) */
+    await page.locator('#unstuckBtn').click(); await expect(page.locator('#toast')).toContainText('10분에 한 번'); /* (once in 10 minutes; the menu stays) */
     await page.locator('#myInfoBtn').click();
     await expect(page.locator('#myInfoDialog')).toBeVisible();
     await expect(menu).toBeHidden();
@@ -988,6 +990,8 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
 
 // v1.10.10 이벤트 인벤토리: the bag (I or the 「가방」 tab) shows what I carry; the town hall settles trash and found
 // wallets, the trader buys herbs, berries and mushrooms -- each takes only its own things.
+let islandEventOpen = null; /* (364: an island event this file opened is ended even when its test fails -- the server is shared) */
+test.afterEach(async ({ request }) => { if (!islandEventOpen) return; const id = islandEventOpen; islandEventOpen = null; await post(request, '/api/admin/island-events/end', await require('./skin-support').adminToken(request), { id }).catch(() => {}); });
 test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·지갑만, 상인은 약재만 받아 포인트로 바꾼다', async ({ browser, request }) => {
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '가방손님');
@@ -1038,7 +1042,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   if (DAL) await require('./skin-support').intoMall(page, 'mall:stall'); // (달마루섬: the trader is the 백화점's 노점)
   else await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
   await expect(page.locator('#plazaHint')).toHaveText(DAL ? 'SPACE · 노점 · 물고기도 받아요' : 'SPACE · 상인');
+  /* (364 관리자 섬 이벤트: opened -- the band and the line on the island, 「2배 적용 중」 in the 노점's window, the herbs paid twice) */
+  const admin = await require('./skin-support').adminToken(request); const opened = await post(request, '/api/admin/island-events', admin, { kind: 'sell', target: 'item', item: 'herb', mult: 2, minutes: 30, text: '약재 값 2배!' }); expect(opened.status, JSON.stringify(opened.data)).toBe(200); islandEventOpen = opened.data.list.find((e) => e.item === 'herb' && !e.closedAt).id;
+  await expect(page.locator('#islandEventBand')).toContainText('약재 값 2배', { timeout: 30000 }); await expect(page.locator('#islandEventLine')).toContainText(/약재 값 2배 · 남은 \d+분/);
   await page.keyboard.press('Space');
+  await expect(page.locator('#islandPlaceEvent')).toContainText('약재 값 2배 적용 중');
   /* (1.10.356 골라 팔기: a goby alone moved, back again; then all -- the fish's rows by the herbs. 362: a fish one a slot -- each goby its own row, ×1) */
   await page.locator('.placeItem[data-item="fish_goby"]').first().click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(1); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toContainText('망둥어 ×1');
   await page.locator('.islandPlaceRow[data-item="fish_goby"] .placeBack').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(0);
@@ -1047,8 +1055,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   expect(Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, ''))).toBeGreaterThan(8000);
   await page.locator('#islandPlaceSubmit').click(); await page.locator('#islandPlaceSubmit').click(); /* (once more to be sure) */
   await expect(page.locator('#islandPlaceStatus')).toContainText(/^\+[\d,]+P/); /* (a fish is paid by its size -- a few P off the window's guess) */
-  const stallPaid = Number((await page.locator('#islandPlaceStatus').textContent()).split('P')[0].replace(/[^0-9]/g, '')); expect(stallPaid).toBeGreaterThan(8000);
+  const stallPaid = Number((await page.locator('#islandPlaceStatus').textContent()).split('P')[0].replace(/[^0-9]/g, '')); expect(stallPaid).toBeGreaterThan(16000); /* (364: the herbs 4,000 × 2 doubled) */
+  await expect(page.locator('#islandPlaceStatus')).toContainText('이벤트 +8,000P');
   await page.locator('#islandPlaceCloseBtn').click();
+  expect((await post(request, '/api/admin/island-events/end', admin, { id: islandEventOpen })).status).toBe(200); islandEventOpen = null;
+  await expect(page.locator('#islandEventLine')).toBeHidden({ timeout: 30000 }); /* (ended: off the island's top) */
   await page.locator('#islandBagTab').click();
   await expect(page.locator('#islandBagCount')).toHaveText('0/16');
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000 + stallPaid); // + 약재 4,000 × 2 and the fish

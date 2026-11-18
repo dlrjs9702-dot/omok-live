@@ -34,7 +34,7 @@ async function serverFixture(t) {
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let ready = false;
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 300; i++) {
     if (child.exitCode !== null) break;
     // A parallel fixture can bind the released port before our child does. Never accept its health response.
     try { if (logs.includes(`실행: ${base}`) && (await fetch(base + '/health')).ok) { ready = true; break; } } catch {}
@@ -98,7 +98,7 @@ test('team engine reuses regular omok with strict 1-2-3-4 turns and team victori
   assert.equal(game.paused, false);
 });
 
-test('team room accepts four distinct seats, pauses, resumes and protects turns', { timeout: 35000 }, async t => {
+test('team room accepts four distinct seats, pauses, resumes and protects turns', { timeout: 65000 }, async t => {
   const { req, guest, enter, admin } = await serverFixture(t);
   const a = await guest('하나');
   const b = await guest('둘');

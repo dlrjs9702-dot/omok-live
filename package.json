@@ -1,12 +1,13 @@
 {
   "name": "omok-live",
-  "version": "1.10.363",
+  "version": "1.10.364",
   "private": true,
   "description": "입장 파일 + 공용 방/채팅 + 오목/오델로 기반 실시간 보드게임 서버",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
+    "postinstall": "node tools/warm-asset-manifest.js",
     "dev": "node --watch server.js",
     "test": "node --test --require ./test-support/quiet-assert.js --test-timeout=120000 --test-force-exit",
     "test:e2e": "node scripts/run-playwright.js",

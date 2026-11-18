@@ -62,7 +62,7 @@ test('Sec-CH-UA 헤더를 브랜드 목록으로 읽는다', () => {
   assert.equal(parseSecChUa('garbage'), null);
 });
 
-test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 쓰지 않으며, Chrome은 게임과 리소스 목록을 받는다', { timeout: 30_000 }, async t => {
+test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 쓰지 않으며, Chrome은 게임과 리소스 목록을 받는다', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'browser-gate-'));
   const port = await new Promise(resolve => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
   const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
@@ -76,7 +76,7 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
     await fs.rm(dir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
 
   const chrome = { 'User-Agent': UA.chrome, 'Sec-CH-UA': '"Google Chrome";v="130", "Chromium";v="130", "Not?A_Brand";v="99"' };
   const edge = { 'User-Agent': UA.edge, 'Sec-CH-UA': '"Microsoft Edge";v="130", "Chromium";v="130", "Not?A_Brand";v="99"' };

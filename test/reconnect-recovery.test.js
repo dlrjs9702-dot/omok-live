@@ -43,11 +43,7 @@ async function serverFixture(t) {
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let ready = false;
-  for (let i = 0; i < 120; i++) {
-    if (child.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { ready = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, child); ready = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(ready, logs);
   async function req(route, token, body, method = 'POST') {
     const headers = {};
@@ -109,7 +105,7 @@ async function othello(fx, labels = ['가', '나']) {
 // v1.10.29: on a reload the old page's beacon may arrive after the new page's first heartbeat; the new page may then
 // be quiet for longer than the grace (a slow PC preparing resources) -- it must keep its session. The page's own
 // release (the tab really closed) still frees it.
-test('새로고침: 이전 페이지의 해제 요청이 새 페이지 heartbeat보다 늦게 와도 세션 유지, 같은 페이지의 해제는 그대로 해제', { timeout: 30000 }, async t => {
+test('새로고침: 이전 페이지의 해제 요청이 새 페이지 heartbeat보다 늦게 와도 세션 유지, 같은 페이지의 해제는 그대로 해제', { timeout: 60000 }, async t => {
   const fx = await serverFixture(t);
   const a = await fx.guest('늦은해제');
   assert.equal((await fx.req('/api/session/heartbeat', a.session, { page: 'old' })).status, 200);
@@ -122,7 +118,7 @@ test('새로고침: 이전 페이지의 해제 요청이 새 페이지 heartbeat
   assert.equal((await fx.req('/api/session/heartbeat', a.session, { page: 'new' })).status, 401, '닫힌 페이지의 세션은 해제');
 });
 
-test('새로고침: pagehide 해제 요청 뒤 같은 세션으로 이어 가면 좌석·판·차례가 그대로다', { timeout: 30000 }, async t => {
+test('새로고침: pagehide 해제 요청 뒤 같은 세션으로 이어 가면 좌석·판·차례가 그대로다', { timeout: 60000 }, async t => {
   const fx = await serverFixture(t);
   const { a, b } = await othello(fx);
   const first = (await room(fx.req, a.session)).game;
@@ -149,7 +145,7 @@ test('새로고침: pagehide 해제 요청 뒤 같은 세션으로 이어 가면
   await resumed.close();
 });
 
-test('닫힌 탭: 해제 요청 뒤 이어 가지 않으면 유예 후 해제되고, 같은 입장키는 유예 중에도 바로 다시 들어온다', { timeout: 30000 }, async t => {
+test('닫힌 탭: 해제 요청 뒤 이어 가지 않으면 유예 후 해제되고, 같은 입장키는 유예 중에도 바로 다시 들어온다', { timeout: 60000 }, async t => {
   const fx = await serverFixture(t);
   const { b } = await othello(fx);
   // Closed tab: nobody resumes the session.
@@ -174,7 +170,7 @@ test('닫힌 탭: 해제 요청 뒤 이어 가지 않으면 유예 후 해제되
   assert.equal((await fx.enterRaw(d.key)).status, 409);
 });
 
-test('재입장: 관전자는 관전자로, 종료된 판의 참가자는 원래 좌석으로 돌아온다(중복 참가자 없음)', { timeout: 30000 }, async t => {
+test('재입장: 관전자는 관전자로, 종료된 판의 참가자는 원래 좌석으로 돌아온다(중복 참가자 없음)', { timeout: 60000 }, async t => {
   const fx = await serverFixture(t);
   const { a, b, code } = await othello(fx);
   const spectator = await fx.guest('관전');
@@ -208,7 +204,7 @@ test('재입장: 관전자는 관전자로, 종료된 판의 참가자는 원래
   assert.equal(state.game.endReason ?? null, null);
 });
 
-test('다음 판: 스스로 나간 자리는 비워지고, 연결만 끊긴 자리는 돌아올 때까지 유지된다', { timeout: 40000 }, async t => {
+test('다음 판: 스스로 나간 자리는 비워지고, 연결만 끊긴 자리는 돌아올 때까지 유지된다', { timeout: 70000 }, async t => {
   const fx = await serverFixture(t);
   const [a, b, c] = [await fx.guest('일'), await fx.guest('이'), await fx.guest('삼')];
   const created = await fx.req('/api/rooms', a.session, { gameType: 'bingo' });
@@ -239,7 +235,7 @@ test('다음 판: 스스로 나간 자리는 비워지고, 연결만 끊긴 자�
   assert.equal(state.players['2'].connected, true);
 });
 
-test('차례 시계: 다른 참가자의 새로고침으로 일시정지된 동안 멈추고 60초로 초기화되지 않는다', { timeout: 30000 }, async t => {
+test('차례 시계: 다른 참가자의 새로고침으로 일시정지된 동안 멈추고 60초로 초기화되지 않는다', { timeout: 60000 }, async t => {
   const fx = await serverFixture(t);
   const { a, b } = await othello(fx);
   const pageA = await fx.stream(a.session);

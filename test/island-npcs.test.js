@@ -75,7 +75,7 @@ test('주민 길 격자 API: 서버가 만든 그대로, 같으면 304', { timeo
     fs.rmSync(dir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 200; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 100)); }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   const res = await fetch(`${base}/api/island/npc-grid`, { headers: { 'Accept-Encoding': 'gzip' } });
   assert.equal(res.status, 200); assert.equal(res.headers.get('content-encoding'), 'gzip');
   // (as a page makes it: the train's stations and line clear their trees first -- island-train.js, loaded before

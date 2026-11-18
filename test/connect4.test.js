@@ -81,7 +81,7 @@ test('full board without a winning line is a draw', () => {
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('Connect Four server supports public join, spectators, turn enforcement, real gravity, victory, rematch and existing guest files', { timeout: 30000 }, async t => {
+test('Connect Four server supports public join, spectators, turn enforcement, real gravity, victory, rematch and existing guest files', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'connect4-server-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -104,11 +104,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 100; i++) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `Server did not start: ${output}`);
   async function req(route, session, body, method = 'POST') {
     const headers = {};
@@ -127,7 +123,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   const challenger = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.10.363');
+  assert.equal(health.data.version, '1.10.364');
   const entry = await req('/api/admin/keys', host, { label: '사목손님' });
   assert.equal(entry.status, 201);
   assert.match(entry.data.html, /사목손님/);
@@ -165,7 +161,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
       assert.equal(move.data.state.game.status, 'finished');
       assert.equal(move.data.state.game.winner, 'black');
       assert.equal(move.data.state.game.winningLine.length, 4);
-      // (v1.10.363 G1: the hand's start and end for the result's 「시간」, the same for everyone)
+      // (v1.10.364 G1: the hand's start and end for the result's 「시간」, the same for everyone)
       const hc = move.data.state.handClock; assert.ok(hc?.startedAt && hc.finishedAt && hc.finishedAt >= hc.startedAt, JSON.stringify(hc));
     }
     if (i < 6) assert.ok(move.data.state.handClock?.startedAt && !move.data.state.handClock.finishedAt); // (under way: a start, no end)
@@ -184,7 +180,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   assert.equal(keys.data.keys.find(k => k.id === entry.data.key.id).label, '사목손님');
 });
 
-// (v1.10.363 Codex 10판 ①) a rematch with the same key (a game with no round): the ended clock gives way to a new one
+// (v1.10.364 Codex 10판 ①) a rematch with the same key (a game with no round): the ended clock gives way to a new one
 test('hand clock: a new hand under the same key starts a new clock', async () => {
   const src = await fs.readFile(path.join(__dirname, '..', 'server.js'), 'utf8'); const a = src.indexOf('function handClockOf('); const b = a + src.slice(a).search(/\r?\n\}\r?\n/) + src.slice(a).match(/\r?\n\}/)[0].length;
   const clock = require('node:vm').runInNewContext(`(${src.slice(a, b)})`, { nowMs: () => 0 }); const handClockOf = (room, now) => ({ ...clock(room, now) }); /* (this realm's object) */

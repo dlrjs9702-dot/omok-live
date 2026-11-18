@@ -38,11 +38,7 @@ async function serverFixture(t) {
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let ready = false;
-  for (let i = 0; i < 120; i++) {
-    if (child.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { ready = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, child); ready = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(ready, logs);
   async function req(route, token, body, method = 'POST') {
     const headers = {};
@@ -71,7 +67,7 @@ async function serverFixture(t) {
   return { req, enter, guest };
 }
 
-test('a paused 2-seat game (othello): any connected participant can end it, and a later reconnect does not overturn the result', { timeout: 35000 }, async t => {
+test('a paused 2-seat game (othello): any connected participant can end it, and a later reconnect does not overturn the result', { timeout: 65000 }, async t => {
   const { req, enter, guest } = await serverFixture(t);
   const a = await guest('가');
   const b = await guest('나');
@@ -115,7 +111,7 @@ test('a paused 2-seat game (othello): any connected participant can end it, and 
   assert.equal(stillFinished.game.winner, 'black');
 });
 
-test('a spectator cannot end a paused game', { timeout: 35000 }, async t => {
+test('a spectator cannot end a paused game', { timeout: 65000 }, async t => {
   const { req, guest } = await serverFixture(t);
   const a = await guest('가');
   const b = await guest('나');
@@ -131,7 +127,7 @@ test('a spectator cannot end a paused game', { timeout: 35000 }, async t => {
   assert.equal((await req('/api/room/end-game', spectator.session, {})).data.error, 'SPECTATOR');
 });
 
-test('a 3+ player free-for-all (bingo): ending a paused match records every still-connected seat as a win', { timeout: 35000 }, async t => {
+test('a 3+ player free-for-all (bingo): ending a paused match records every still-connected seat as a win', { timeout: 65000 }, async t => {
   const { req, guest } = await serverFixture(t);
   const a = await guest('가');
   const b = await guest('나');

@@ -99,12 +99,17 @@
   // the twelve insects (lib/island-insects.js, bag items insect_<id>)
   const INSECTS = new Set(['butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_blue', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail'].map((s) => `insect_${s}`));
   const FISH_SIZE = { fish_anchovy: 'small', fish_crucian_carp: 'small', fish_gizzard_shad: 'small', fish_goby: 'small', fish_mackerel: 'small', fish_pale_chub: 'small', fish_smelt: 'small', fish_sweetfish: 'small', fish_pufferfish: 'small',
-    fish_carp: 'medium', fish_catfish: 'medium', fish_cutlassfish: 'medium', fish_eel: 'medium', fish_flatfish: 'medium', fish_mandarin_fish: 'medium', fish_mullet: 'medium', fish_octopus: 'medium', fish_rockfish: 'medium', fish_sea_bass: 'medium', fish_stingray: 'medium', fish_giant_tuna: 'large' };
-  const BOTTOM = new Set(['fish_octopus', 'fish_stingray', 'fish_flatfish']); // (they keep to the sand)
+    fish_carp: 'medium', fish_catfish: 'medium', fish_cutlassfish: 'medium', fish_eel: 'medium', fish_flatfish: 'medium', fish_mandarin_fish: 'medium', fish_mullet: 'medium', fish_octopus: 'medium', fish_rockfish: 'medium', fish_sea_bass: 'medium', fish_stingray: 'medium', fish_giant_tuna: 'large',
+    // 364 (user 「수조에 대형 물고기 안들어가나지금?」): the other 29 of the fifty by their biggest size (lib/island-fishing SIZES):
+    // up to 30 cm small, up to 80 medium, more large (test/home-tank-fish.test.js keeps every species here)
+    fish_horse_mackerel: 'small', fish_filefish: 'small', fish_blue_crab: 'small', fish_seahorse: 'small', fish_crayfish: 'small', fish_medaka: 'small', fish_bagrid_catfish: 'small', fish_minnow: 'small', fish_bitterling: 'small', fish_bluegill: 'small', fish_aucha_perch: 'small',
+    fish_red_seabream: 'medium', fish_cod: 'medium', fish_squid: 'medium', fish_masu_salmon: 'medium', fish_barbel_steed: 'medium', fish_bass: 'medium', fish_rainbow_trout: 'medium',
+    fish_yellowtail: 'large', fish_snakehead: 'large', fish_salmon: 'large', fish_golden_carp: 'large', fish_sturgeon: 'large', fish_dotdom: 'large', fish_giant_squid: 'large', fish_sunfish: 'large', fish_giant_octopus: 'large', fish_king_catfish: 'large', fish_taimen: 'large' };
+  const BOTTOM = new Set(['fish_octopus', 'fish_stingray', 'fish_flatfish', 'fish_blue_crab', 'fish_crayfish']); // (they keep to the sand; 364: the crab and the crayfish)
   const SIZE_RANK = { small: 1, medium: 2, large: 3 };
   // v1.10.227 (사용자 2026-11-02 「대신 여러마리 못넣게 참치가 자리를 많이차지하는걸로」): the giant tuna takes six of a tank's
   // places -- in the big and pillar tanks too now (one, and two others), the wall tank two (one with more already keeps them)
-  const FISH_ROOM = { fish_giant_tuna: 6 };
+  const FISH_ROOM = { fish_giant_tuna: 6, fish_sturgeon: 6, fish_dotdom: 6, fish_giant_squid: 6, fish_sunfish: 6, fish_giant_octopus: 6, fish_king_catfish: 6, fish_taimen: 6 }; // (364: every one of 150 cm and more, as the tuna)
   const fishRoom = (id) => FISH_ROOM[id] || 1;
   const tankUsed = (fishes = []) => fishes.reduce((n, f) => n + fishRoom(f.itemId), 0);
   const fits = (tankShape, id) => { const t = TANKS[tankShape]; return Boolean(t && (t.insects ? INSECTS.has(id) : FISH_SIZE[id] && (SIZE_RANK[FISH_SIZE[id]] <= SIZE_RANK[t.biggest] || (FISH_ROOM[id] && t.biggest === 'medium')))); };

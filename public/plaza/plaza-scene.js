@@ -4708,7 +4708,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const fr = new THREE.Group(); root.add(fr); const fb = new THREE.Group(); fr.add(fb); mesh(new THREE.BoxGeometry(0.16, 0.06, 0.05), mat(0x9fb8c8), 0, 0, 0, fb);
       if (T.insects) { assets.attach(`together.${fish.itemId}`, fr, fb); fr.position.set(0, T.min[1], 0); continue; } // (the insect sits)
       const tuna = Boolean(HOME.FISH_ROOM[fish.itemId]) && T.biggest === 'medium'; // (v1.10.227)
-      assets.attach(`fish.${fish.itemId.slice(5)}`, fr, fb); fr.scale.setScalar(tuna ? (T.cylinder ? 0.45 : 0.55) : T.fishScale || 1);
+      const base = tuna ? (T.cylinder ? 0.45 : 0.55) : T.fishScale || 1;
+      /* (364: the fifty in tanks -- a model taller or longer than 80 % of the tank's swim space made smaller to fit it: the sunfish and
+         the giant octopus are 1.3~1.4 m tall, the giant squid 1.6 m long; never bigger than before) */
+      const fitTank = (entry) => { if (!entry) return; fr.scale.setScalar(1); fr.updateWorldMatrix(true, true); const box = new THREE.Box3().setFromObject(fr); const ws = fr.getWorldScale(new THREE.Vector3()).x || 1; const size = box.getSize(new THREE.Vector3()).divideScalar(ws);
+        const h = Math.max(size.y, 1e-3); const len = Math.max(size.x, size.z, 1e-3); const roomH = T.max[1] - T.min[1]; const roomL = T.max[0] - T.min[0];
+        fr.scale.setScalar(Math.min(base, (0.8 * roomH) / h, (0.8 * roomL) / len)); };
+      fr.scale.setScalar(base); assets.attach(`fish.${fish.itemId.slice(5)}`, fr, fb, fitTank); /* (the scale first: a model already loaded calls fitTank at once) */
       const bottom = HOME.BOTTOM.has(fish.itemId); fr.position.copy(tuna ? tunaTo(T, null) : swimTo(T, bottom)); v.swim.push({ root: fr, T, bottom, tuna, to: tuna ? tunaTo(T, fr.position) : swimTo(T, bottom), speed: 0.12 + Math.random() * 0.12, phase: Math.random() * 6 });
     }
     if (T && !T.insects && !ghost) for (let k = 0; k < 4; k += 1) { const b = mesh(new THREE.SphereGeometry(0.025, 6, 4), mat(0xeaf6ff, { transparent: true, opacity: 0.6 }), T.min[0] * 0.6, T.min[1] + Math.random() * (T.max[1] - T.min[1]), 0, root); b.castShadow = false; v.bubbles.push(b); }

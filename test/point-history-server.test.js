@@ -11,7 +11,7 @@ const { spawn } = require('node:child_process');
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 // v1.7.0: GET /api/points/history is the caller's own ledger only, newest first, paged, read-only.
-test('로비 포인트 내역 API: 본인 조회·정렬·페이지·격리·읽기 전용', { timeout: 40_000 }, async (t) => {
+test('로비 포인트 내역 API: 본인 조회·정렬·페이지·격리·읽기 전용', { timeout: 70000 }, async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'point-history-'));
   const port = await freePort();
   const proc = spawn(process.execPath, ['server.js'], {
@@ -28,11 +28,7 @@ test('로비 포인트 내역 API: 본인 조회·정렬·페이지·격리·읽
     await fs.rm(dir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i += 1) {
-    try { if ((await fetch(`${base}/health`)).ok) break; } catch {}
-    if (proc.exitCode !== null) throw new Error(output);
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   let ip = 1;
   async function api(route, token, body, method = body === undefined ? 'GET' : 'POST') {
     const res = await fetch(base + route, {

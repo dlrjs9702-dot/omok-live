@@ -27,7 +27,7 @@ test('문제 기록 저장: 옛 기록 사진 옮기기, 해결 7일·30일 정�
   const child = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'), env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: PASSWORD, NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let logs = ''; child.stdout.on('data', (d) => { logs += d; }); child.stderr.on('data', (d) => { logs += d; });
   t.after(async () => { if (child.exitCode === null) { child.kill('SIGTERM'); await new Promise((resolve) => { child.once('exit', resolve); setTimeout(resolve, 4000).unref(); }); } });
-  for (let i = 0; i < 120 && child.exitCode === null; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await sleep(100); }
+  await require('../test-support/wait-ready').waitReady(base, child); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.equal(child.exitCode, null, logs);
   const req = async (route, token, body) => {
     const headers = { 'X-Forwarded-For': '10.77.0.1' }; if (token) headers['X-Session-Token'] = token; if (body !== undefined) headers['Content-Type'] = 'application/json';

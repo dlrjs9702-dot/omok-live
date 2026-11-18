@@ -9,13 +9,13 @@ const { spawn } = require('node:child_process');
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('liar server keeps roles/word private and restores phase on reconnect', { timeout: 30000 }, async t => {
+test('liar server keeps roles/word private and restores phase on reconnect', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-liar-'));
   const port = await freePort(); const base = `http://127.0.0.1:${port}`;
   const proc = spawn(process.execPath, ['server.js'], { cwd:path.resolve(__dirname,'..'), env:{...process.env,PORT:String(port),HOST:'127.0.0.1',DATA_DIR:dataDir,DATABASE_URL:'',ADMIN_PASSWORD:'liar-test-secret',NODE_ENV:'test'}, stdio:['ignore','pipe','pipe'] });
   let output=''; proc.stdout.on('data',c=>output+=c); proc.stderr.on('data',c=>output+=c);
   t.after(async()=>{proc.kill('SIGTERM');await new Promise(r=>{if(proc.exitCode!==null)r();else{proc.once('exit',r);setTimeout(r,2000).unref();}});await fs.rm(dataDir,{recursive:true,force:true});});
-  let ready=false; for(let i=0;i<90;i+=1){if(proc.exitCode!==null)break;try{const r=await fetch(`${base}/health`);if(r.ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}
+  let ready=false; await require('../test-support/wait-ready').waitReady(base, proc); ready = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(ready, `server failed: ${output}`);
   async function req(route,token,body,method='POST'){const headers={};if(token)headers['X-Session-Token']=token;if(body!==undefined)headers['Content-Type']='application/json';const r=await fetch(base+route,{method,headers,...(body!==undefined?{body:JSON.stringify(body)}:{})});let data={};try{data=await r.json();}catch{}return{status:r.status,data};}
   async function login(){const r=await req('/api/admin/login',null,{password:'liar-test-secret'});assert.equal(r.status,200);return r.data.sessionToken;}

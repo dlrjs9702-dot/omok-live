@@ -9,7 +9,7 @@ const zlib = require('node:zlib');
 const { spawn } = require('node:child_process');
 
 // v1.8.6: the public hwatu pictures are served gzipped with a long cache; only card-shaped names are reachable.
-test('공개 화투 그림은 압축·장기 캐시로 내려가고, 카드 이름 형식이 아닌 경로는 열리지 않는다', { timeout: 30_000 }, async t => {
+test('공개 화투 그림은 압축·장기 캐시로 내려가고, 카드 이름 형식이 아닌 경로는 열리지 않는다', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'hwatu-serve-'));
   const port = await new Promise(resolve => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
   const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
@@ -23,7 +23,7 @@ test('공개 화투 그림은 압축·장기 캐시로 내려가고, 카드 이�
     await fs.rm(dir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
 
   const raw = await fs.readFile(path.join(__dirname, '..', 'public', 'hwatu', 'm08-gwang.svg'));
   const zipped = await fetch(`${base}/hwatu/m08-gwang.svg`, { headers: { 'Accept-Encoding': 'gzip' } });

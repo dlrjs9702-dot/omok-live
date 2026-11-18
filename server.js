@@ -68,11 +68,11 @@ async function insectsNow(now) {
   // (Codex 검토 #3) a request begun in the last 10 minutes and finished in these never takes the layout back (it would
   // bring back this layout's caught ones): it gets the current one
   if (epoch < insectEpoch) return { epoch: insectEpoch, list: insectList };
-  const key = `${epoch}:${held}:${night}:${rain}`;
+  const rareMult = catchMultNow('insect_rare'); const key = `${epoch}:${held}:${night}:${rain}:${rareMult}`; /* (364 섬 이벤트: a new layout when it starts or ends -- the same epoch keeps the caught ones gone) */
   if (key !== insectKey) {
     insectEpoch = epoch;
     if (!insectKey || !insectKey.startsWith(`${epoch}:`)) { insectGone.clear(); insectCaught.clear(); insectMoved.clear(); } // (a new layout: all back)
-    insectKey = key; insectList = IslandInsects.layout(epoch, insectSpots, { at: (x, z) => ({ season: (Number.isInteger(held) ? IslandTerrain.zoneSeason(IslandTerrain.seasonZoneAt(x, z), held) : IslandTerrain.seasonAt(x, z, now)) || 'summer', night, rain }) }).map((x) => ({ ...x, ...(insectMoved.get(x.id) || {}) })); // (260: the ones run off where they went)
+    insectKey = key; insectList = IslandInsects.layout(epoch, insectSpots, { at: (x, z) => ({ season: (Number.isInteger(held) ? IslandTerrain.zoneSeason(IslandTerrain.seasonZoneAt(x, z), held) : IslandTerrain.seasonAt(x, z, now)) || 'summer', night, rain }), rareMult }).map((x) => ({ ...x, ...(insectMoved.get(x.id) || {}) })); // (260: the ones run off where they went)
   }
   return { epoch, list: insectList };
 }
@@ -2543,6 +2543,24 @@ const trainRiders = new Map(); let trainShift = 0; let trainTraffic = IslandTrai
 const taxiRides = new Map(); // v1.10.271 섬 택시: session token -> { from, startedAt, runMs? } while riding
 const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time per session)
 const unstuckAt = new Map(); // (1.10.322 U3: session token -> when it last asked to be put on 대청마당)
+const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free spot, 10 minutes apart)
+// 364 관리자 「섬 이벤트」 (lib/island-admin-events.js): the list kept in worldValue('adminEvents'); the server applies them (sales,
+// draws), the island's screens are told when one starts or ends (and on entry); what they paid over the base points, by event
+const AdminEvents = require('./lib/island-admin-events');
+let adminEvents = []; const adminEventExtra = new Map(); let adminEventsShown = '';
+const GATHERED = new Set(Object.values(IslandGather.TABLE).map((k) => k.item).filter((id) => id !== 'weed'));
+const gatherGroupOf = (itemId) => (GATHERED.has(itemId) ? 'gathered' : null);
+const itemNameOf = (id) => IslandItems.ITEMS[id]?.name || id;
+const adminEventsView = (now = nowMs()) => AdminEvents.view(adminEvents, now, itemNameOf);
+const catchMultNow = (target) => AdminEvents.catchMult(adminEvents, target, nowMs());
+const saveAdminEvents = () => pointStore.setWorldValue('adminEvents', adminEvents);
+function adminEventsTick(now = nowMs()) { // (every 15 s: a start or an end tells the island's screens and the log)
+  const shown = adminEventsView(now).filter((e) => e.running).map((e) => e.id).join(',');
+  for (const e of adminEvents) if (!e.closedAt && !e.endedLogged && e.endAt <= now) { e.endedLogged = true; e.extra = adminEventExtra.get(e.id) || 0; console.log(`[island-event] end ${e.id} ${e.kind}${e.target ? ` ${e.target}${e.item ? `:${e.item}` : ''} x${e.mult}` : ''} extra ${adminEventExtra.get(e.id) || 0}P`); if (adminEventExtra.get(e.id)) console.log(`[economy] island-event ${e.id} extra +${adminEventExtra.get(e.id)}P`); saveAdminEvents().catch(() => {}); }
+  if (shown !== adminEventsShown) { adminEventsShown = shown; broadcastIsland('islandEvents', { list: adminEventsView(now), at: now }); }
+}
+// (364) a reason the unstuck move is refused now, or null -- N2a fills it in: not while a tiger chases me
+const stuckRefuse = (session) => null; // eslint-disable-line no-unused-vars
 // v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
 // (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
 const taxiStopOut = new Map();
@@ -4994,7 +5012,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.363' });
+    return sendJson(res, 200, { ok: true, version: '1.10.364' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6026,6 +6044,7 @@ async function requestHandler(req, res) {
     sseWrite(res, 'announcements', { items: await announcementStore.list() });
     sseWrite(res, 'plaza', plazaSnapshot()); // who is already in the plaza (v1.9.3)
     sseWrite(res, 'statues', statueSnapshot()); // v1.10.5: the donation statues on show
+    sseWrite(res, 'islandEvents', { list: adminEventsView(), at: nowMs(), entry: true }); // (364 섬 이벤트: those running, told on entry)
 
     const heartbeat = setInterval(() => {
       const current = sessions.get(session.token);
@@ -6685,11 +6704,15 @@ async function requestHandler(req, res) {
     const inside = [exchangeInside, denInside, museumInside, jailInside, storeInside, townhallInside, furnitureInside, petshopInside, fashionInside].some((s) => s.has(t)) || homeInside.has(t);
     if (inside || (at.space && at.space !== 'island')) return sendError(res, 409, 'INSIDE', '건물 안에서는 문으로 나가 주세요.');
     if (taxiRides.has(t) || trainRiders.has(t) || trainVisitors.has(t) || at.ride || at.platform || at.taxi) return sendError(res, 409, 'RIDING', '택시나 열차에서는 쓸 수 없어요. 내린 뒤 다시 눌러 주세요.');
-    const last = unstuckAt.get(t) || 0; if (nowMs() - last < 20000) return sendError(res, 429, 'TOO_SOON', '조금 뒤에 다시 눌러 주세요.');
-    const S = IslandTerrain.SPAWN; const spot = plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
+    const refused = stuckRefuse(session); if (refused) return sendError(res, 409, 'NOT_NOW', refused);
+    const wait = IslandUnstuck.waitMinutes(unstuckAt.get(t) || 0, nowMs()); if (wait) return sendError(res, 429, 'TOO_SOON', `10분에 한 번 쓸 수 있어요. ${wait}분 뒤에 다시 눌러 주세요.`);
+    // 364 (user A): the nearest free spot within 15 m (standable, a free cell of the islanders' grid -- off trees, rocks, props,
+    // buildings and lots); none: 대청마당's arrival place as before
+    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && IslandNpcs.free(x, z) });
+    const S = IslandTerrain.SPAWN; const spot = near || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
     unstuckAt.set(t, nowMs()); freeSeat(t);
     plazaPresence.set(t, { ...at, x: spot.x, z: spot.z, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
-    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z });
+    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z, where: near ? 'near' : 'plaza' });
   }
   // 1.10.341 지하 도박장: the day's note (on its bench), the word to 테드 (the bookcase opens -- for that account, that day), down and up
   // the stairs, 테드's chips (points one for one, once a request), a play at a table (chips only, a second apart), the raid as it stands
@@ -7013,7 +7036,7 @@ async function requestHandler(req, res) {
       const result = { ok: true, ore: 1, itemId: 'ore_granite', name: IslandItems.ITEMS.ore_granite?.name || '화강암', icon: IslandItems.ITEMS.ore_granite?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', wall: true, bag: given.bag, worn: given.worn || null, daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
-    const oreId = `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0)}`; quarryTestDraw = null;
+    const oreId = `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
     const slot = IslandQuarry.ORE_PER_ROCK - kept.left; // (each ore of a rock's fill its own claim: two at once -- one gets it)
     const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${kept.gen}:${slot}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
     if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.') : sendError(res, 409, 'MINED', '방금 다른 사람이 캐 갔어요.'); }
@@ -7754,12 +7777,14 @@ async function requestHandler(req, res) {
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
     if (body.pick != null && (!Array.isArray(body.pick) || !body.pick.length || body.pick.length > 64 || body.pick.some((p) => typeof p?.entryId !== 'string' || !Number.isSafeInteger(p?.qty) || p.qty < 1))) return sendError(res, 400, 'BAD_REQUEST', '팔 물건을 다시 골라 주세요.'); /* (1.10.356 골라 팔기: [{ entryId, qty }]) */
-    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost(), ...(body.pick ? { pick: body.pick } : {}) }, nowMs()); // a lost thing whose owner has gone: lost and found
+    const sellNow = nowMs(); const mults = AdminEvents.activeAt(adminEvents, sellNow).some((e) => e.kind === 'sell') ? AdminEvents.sellTable(adminEvents, Object.keys(IslandItems.ITEMS), sellNow, gatherGroupOf) : null; /* (364 섬 이벤트: the largest matching, ×3 at most; 「산 것」 never) */
+    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost(), ...(body.pick ? { pick: body.pick } : {}), ...(mults ? { mults } : {}) }, sellNow); // a lost thing whose owner has gone: lost and found
+    if (result.applied) for (const [itemId, extra] of Object.entries(result.extraBy || {})) { const src = AdminEvents.sellSource(adminEvents, itemId, sellNow, gatherGroupOf); if (src) adminEventExtra.set(src.id, (adminEventExtra.get(src.id) || 0) + extra); }
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
     const weeds = (result.sold || []).find((x) => x.itemId === 'weed'); if (result.applied && weeds) islandProgress('weed_submit', account, weeds.qty);
-    return sendJson(res, 200, { ok: true, paid: result.paid, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
+    return sendJson(res, 200, { ok: true, paid: result.paid, extra: result.extra || 0, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
   }
   // v1.10.31 잡초: every weed out now ([id, x, z]); start / finish pulling one
   // v1.10.37 혼자 하는 게임 — 지뢰찾기 (IDEAS 「솔로 게임」): the board is the server's; a clear is a record (best time and
@@ -8122,7 +8147,7 @@ async function requestHandler(req, res) {
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
-    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain, hot: IslandFishing.isHot(kstDate(now), water) }); /* (v1.10.266 오늘의 물때) */
+    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain, hot: IslandFishing.isHot(kstDate(now), water), rareMult: catchMultNow('fish_rare') }); /* (v1.10.266 오늘의 물때; 364 섬 이벤트) */
     const seq = IslandFishing.arrowSeq(); // (Codex 검토 #1: the arrows are the server's, checked at the pull)
     const arrows = IslandFishing.arrowsFor(c.species); // (3회차 4: the arrows at the bite, and the time for them)
     // v1.10.259 입질 게임 반반: the arrows or the 타이밍 막대 (a test server: the arrows unless a test asks -- /api/test/fish/mode)
@@ -8536,7 +8561,7 @@ async function requestHandler(req, res) {
     const gather = IslandGather.KINDS[claimed.event?.type] || null; /* (G4b 채집: no daily cap -- 사용자 「추천대로」, v1.10.35) */
     let outcome;
     try {
-      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null, dexEntry: IslandFishing.DEX_IDS.has(claimed.item) ? claimed.item : null }, nowMs());
+      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: isResource && ['twig', 'branch', 'mushroom', 'mushroom_blue'].includes(claimed.item) ? Math.round(claimed.qty * catchMultNow('pick')) : claimed.qty /* (364 섬 이벤트 「나뭇가지·버섯」) */, meta: claimed.meta || null, dexEntry: IslandFishing.DEX_IDS.has(claimed.item) ? claimed.item : null }, nowMs());
       else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : isResource ? `event:${id}:${pull.generation}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
     } catch (error) { islandEvents.settle(claimed, false, account); throw error; }
     if (outcome.reason) {
@@ -9638,6 +9663,31 @@ async function requestHandler(req, res) {
   }
   // v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②): the table, a change (checked against each value's range, kept with
   // who/when/before), and putting one back (a change to the value it had before)
+  // 364 관리자 「섬 이벤트」: the list (and the picker's words), a new one (now or at a time), and ending one at once
+  if (pathname === '/api/admin/island-events' && (req.method === 'GET' || req.method === 'POST')) {
+    if (!requireAdmin(req, res)) return;
+    const now = nowMs();
+    if (req.method === 'POST') {
+      const body = await parseJson(req); const v = AdminEvents.validate(body, now, IslandItems.ITEMS);
+      if (v.error) return sendError(res, 400, 'BAD_EVENT', { KIND: '종류를 골라 주세요.', TEXT: `알림 글은 1~${AdminEvents.TEXT_MAX}자예요.`, TIME: '시간은 5분~6시간이에요.', START: '시작은 지금부터 7일 안이에요.', MULT: '배수를 골라 주세요.', TARGET: '대상을 골라 주세요.', ITEM: '팔 수 있는 물건을 골라 주세요.' }[v.error] || '다시 확인해 주세요.');
+      if (AdminEvents.overlaps(adminEvents, v.event)) return sendError(res, 409, 'EVENT_OVERLAP', '같은 대상·같은 종류의 이벤트가 그 시간에 이미 있어요.');
+      v.event.by = '관리자'; adminEvents = AdminEvents.prune([...adminEvents, v.event], now); await saveAdminEvents();
+      const e = v.event; console.log(`[island-event] open ${e.id} ${e.kind}${e.target ? ` ${e.target}${e.item ? `:${e.item}` : ''}${e.gems ? '+gems' : ''} x${e.mult}` : ''} ${new Date(e.startAt).toISOString()} → ${new Date(e.endAt).toISOString()} by admin`);
+      adminEventsTick(now);
+    }
+    return sendJson(res, 200, { ok: true, now, list: adminEvents.map((e) => ({ ...e, label: AdminEvents.labelOf(e, itemNameOf), extra: adminEventExtra.get(e.id) || e.extra || 0 })).sort((a, b) => b.startAt - a.startAt),
+      templates: require('./lib/island-event-notices.json').templates, sell: AdminEvents.SELL, catch: AdminEvents.CATCH, mults: AdminEvents.MULTS,
+      items: Object.entries(IslandItems.ITEMS).filter(([, d]) => d.price > 0 && !d.good).map(([id, d]) => ({ id, name: d.name })).sort((a, b) => a.name.localeCompare(b.name, 'ko')) });
+  }
+  if (pathname === '/api/admin/island-events/end' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); const now = nowMs(); const e = adminEvents.find((x) => x.id === body.id && !x.closedAt);
+    if (!e) return sendError(res, 404, 'NO_EVENT', '이미 끝났거나 없는 이벤트예요.');
+    e.closedAt = now; e.endedLogged = true; e.extra = adminEventExtra.get(e.id) || 0; await saveAdminEvents();
+    console.log(`[island-event] close ${e.id} by admin extra ${e.extra}P`); if (e.extra) console.log(`[economy] island-event ${e.id} extra +${e.extra}P`);
+    adminEventsTick(now);
+    return sendJson(res, 200, { ok: true });
+  }
   if (pathname === '/api/admin/economy' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;
     if (req.method === 'POST') {
@@ -10433,7 +10483,11 @@ async function storageLog() {
   const { line, warn } = StorageReport.logLine(await storageReport()); storageLoggedDay = day; (warn ? console.warn : console.log)(line);
 }
 
+// 364 켜짐 시간 (Render: npm start → listen ~80 s, here ~9 s): a [boot] line at each stage, ms since the process began, so the
+// next start on Render says where its time goes (the code's load -- the island's grids --, the stores, the rest)
+const bootMarks = []; const bootMark = (stage) => { bootMarks.push(`${stage} ${Math.round(process.uptime() * 1000)}`); };
 async function main() {
+  bootMark('modules');
   // v1.10.256 주소 옮기기: the old service, MOVED_TO set, only points to the new address -- before any store opens the database
   if (process.env.MOVED_TO) return require('./lib/moved').startMoved({ to: process.env.MOVED_TO, port: PORT, host: HOST });
   await fsp.mkdir(DATA_DIR, { recursive: true });
@@ -10443,7 +10497,8 @@ async function main() {
     .replace(/(src|href)="(\/[^"?#]+\.(?:js|css))"/g, (_, attr, url) => `${attr}="${hashedUrl(codeRevs, url)}"`)
     .replace('__HEROSURV_ASSETS__', escapeAttr(HEROSURV_ASSETS));
   messengerTemplate = (await fsp.readFile(path.join(PUBLIC_DIR, 'messenger.html'), 'utf8')).replace(/(src|href)="(\/[^"?#]+\.(?:js|css))"/g, (_, attr, url) => `${attr}="${hashedUrl(codeRevs, url)}"`);
-  const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]));
+  const packStats = {}; const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]), { cacheFile: process.env.NODE_ENV === 'test' ? null : path.join(__dirname, '.cache', 'asset-manifest.json'), stats: packStats }); /* (364: sizes·mtimes kept -- npm install warms it) */
+  bootMark(`assets(${packStats.hashed} hashed/${packStats.reused} kept)`);
   assetPackVersion = pack.version;
   assetManifestJson.on = JSON.stringify({ enabled: true, ...pack, assetsOff: islandAssetsOff }).replace(/</g, '\\u003c');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
@@ -10452,7 +10507,9 @@ async function main() {
   setInterval(() => { messengerStore.purgePhotos().then(() => messengerStore.photoRooms()).then((rooms) => { if (rooms.length) console.log(`[messenger-photos] kept ${rooms.reduce((s, r) => s + r.size, 0) >> 20} MB in ${rooms.length} rooms; most: ${rooms.slice(0, 5).map((r) => `${String(r.room).slice(0, 8)} ${r.n}장 ${(r.size / 1048576).toFixed(1)} MB`).join(', ')}`); }).catch((error) => console.warn('[messenger-photos]', error.message)); }, 60 * 60 * 1000).unref(); // v1.10.233: photos 7 days, then gone (one never sent: a day)
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
+  bootMark('stores-before-points');
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
+  bootMark('points');
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
   walkerTimeMode = (await pointStore.worldValue('time'))?.mode || 'auto'; // (R3 ③: the islanders' round by the held time of day)
@@ -10557,17 +10614,20 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
+  adminEvents = AdminEvents.prune(await pointStore.worldValue('adminEvents').catch(() => null) || [], nowMs()); /* (364 섬 이벤트: those kept) */
+  setInterval(() => { try { adminEventsTick(); } catch (error) { console.error('[island-event] tick', error.message); } }, 15000).unref();
   { /* 1.10.363 메모리 (운영 OOM 11-18 13:18Z): a [mem] line every 5 min and at 80 % of the limit, with the biggest of these by entries */
     const tracked = { petOf, bagSlots, boxSlots, stockNoticed, stockNewsSeen, fishModes, fishModeForced, sessions, activeGuestSessions, rooms, streams, lobbyStreams, rateLimits, invitations, islandInviteIntents, equippedSkinCache, eventAudience, rewardTestAccounts, codeRevs, vendorCache, hwatuCache, testNotices, photoUploading, accountTokens, setupTickets, liveEntryKeys, messengerStreams, climbs, errandStages, storyDocs, taxNoted, soloFirsts, plazaPresence, plazaLastPos, townhallInside, storeInside, furnitureInside, petshopInside, fashionInside, homeInside, homeFloor, yardLevels, farmDocs, petReadFailedAt, taxDebt, jailInside, exchangeInside, denInside, denBelow, museumInside, jailInmates, jailFreed, jailEssays, jailVeterans, visitNoted, resourcePulls, weedPulls, questCache, soloGames, reflexRuns, residentBets, betChains, puzzleStarts, cardRuns, herosurvRuns, plazaSpots, townhallPass, fishCasts, bigCatchAt, seatTaken, snowThrows, insectShown, showUsed, trainVisitors, trainRiders, taxiRides, taxiPaying, unstuckAt, taxiStopOut, talkNow, eventRounds, contestPasses, inflightEntryIds, expiredEntries };
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.363 실행: http://${HOST}:${PORT}`));
+  bootMark('before-listen');
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.364 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
   // the first collection time out and the visitors' first requests 500: two minutes in, then every five as before)
   if (process.env.NODE_ENV !== 'test') { setTimeout(() => collectTaxes(), 120_000).unref?.(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
-  setImmediate(() => GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths, groundCover)); // (5회차 6: the ground's grid built once now, not in someone's first pose)
+  setImmediate(() => { const t0 = Date.now(); GroundSpeed.factorAt(IslandTerrain, 0, 0, IslandPaths, groundCover); console.log(`[boot] ground speed map ${Date.now() - t0} ms (after listening)`); }); // (5회차 6: the ground's grid built once now, not in someone's first pose)
 }
 
 main().catch((err) => {

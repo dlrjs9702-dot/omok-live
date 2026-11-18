@@ -82,7 +82,7 @@ test('리소스 매니페스트: 실제 public 폴더의 게임 리소스를 담
 
 // v1.10.14 emergency off switch: ASSET_CACHE=off (Render environment, no code change) gives every page the "off"
 // manifest and tells leftover workers to remove themselves; both answers are never cached.
-test('긴급 비활성화 스위치: ASSET_CACHE=off면 페이지와 /asset-cache.json이 꺼짐을 알린다', { timeout: 30_000 }, async t => {
+test('긴급 비활성화 스위치: ASSET_CACHE=off면 페이지와 /asset-cache.json이 꺼짐을 알린다', { timeout: 60000 }, async t => {
   const net = require('node:net');
   const { spawn } = require('node:child_process');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-off-'));
@@ -98,7 +98,7 @@ test('긴급 비활성화 스위치: ASSET_CACHE=off면 페이지와 /asset-cach
     fs.rmSync(dir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
 
   const flag = await fetch(`${base}/asset-cache.json`);
   assert.equal(flag.headers.get('cache-control'), 'no-store');

@@ -1,0 +1,118 @@
+'use strict';
+// 364 화면 자동 점검 (user 「A」: before a release; 총괄's work/claude-tools/screencheck.mjs reads the shots): a local test server on its
+// own port, a player taken to ~25 fixed spots of the island, each shot on a PC (1920×1080) and a Pixel 5, at High and Low quality, and
+// three of them again at night -> work/screens-<version>/*.png + spots.json { file: "place/what" }. Never in CI (not a spec).
+// One heavy job at a time on this PC: it waits while 구현's tests run and takes assets/.heavy-lock as the asset session's heavy.sh does.
+//   node tools/screen-check/capture.cjs [--only plaza,camp] [--devices pc,phone] [--quality high,low] [--no-night] [--no-gpu]
+const fs = require('node:fs'); const path = require('node:path'); const os = require('node:os'); const { spawn, execFileSync } = require('node:child_process');
+const ROOT = path.resolve(__dirname, '..', '..');
+const { chromium, devices, request: pwRequest } = require('@playwright/test');
+const { waitReady } = require(path.join(ROOT, 'test-support', 'wait-ready'));
+const freePort = require(path.join(ROOT, 'test-support', 'free-port'));
+const arg = (name, def) => { const i = process.argv.indexOf(`--${name}`); return i < 0 ? def : process.argv[i + 1]; };
+const has = (name) => process.argv.includes(`--${name}`);
+const VERSION = require(path.join(ROOT, 'package.json')).version; const OUT = path.join(ROOT, 'work', `screens-${VERSION}`);
+const LOCK = process.env.HEAVY_LOCK || path.join(ROOT, '..', 'assets', '.heavy-lock'); const ADMIN = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'screen-check-password';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// where: `area` (IslandTerrain.AREAS), `place` (dalmaru PLACES), `door` (a facility's door), `xz`, `near` (the nearest standable to an
+// area -- the shore by the bay), `bridge` (a bridge's middle), `taxi` (the taxi road's middle), `lot` (a house lot); `inside`: walked in
+const SPOTS = [
+  { id: 'plaza', label: '대청마당/광장 전체', area: 'plaza' }, { id: 'village', label: '이웃골/마을 집들', area: 'village' },
+  { id: 'notice', label: '알림마루/게시판 언덕', area: 'notice' }, { id: 'quarry', label: '채석장/바위와 레일', area: 'quarry' },
+  { id: 'bay', label: '윤슬만/물가', near: 'bay' }, { id: 'lake', label: '거울호수/호숫가', near: 'lake' },
+  { id: 'west', label: '푸른숲골/숲', area: 'west' }, { id: 'east', label: '잔치마루/잔치터', area: 'east' }, { id: 'ridge', label: '달마루 능선/능선 위', area: 'ridge' },
+  { id: 'isle', label: '툇마루섬/섬과 정원', area: 'isle' }, { id: 'lighthouse', label: '초승등대/등대', place: 'lighthouse' }, { id: 'pier', label: '달끝나루/나루', place: 'pier' },
+  { id: 'station', label: '초승역/역과 승강장', place: 'stationmaster' }, { id: 'museum', label: '박물관/바깥', place: 'museum' },
+  { id: 'townhall', label: '관공서/정문', door: 'townhall' }, { id: 'townhall-inside', label: '관공서/안 민원실', inside: 'townhall' },
+  { id: 'mall-inside', label: '백화점/1층 안 노점', inside: 'mall' }, { id: 'house', label: '이웃골/집터와 마당', lot: 0 },
+  { id: 'taxi-road', label: '택시 길/차선과 인도', taxi: true }, { id: 'isle2-bridge', label: '별마루다리/다리 위', bridge: 'isle2' },
+  { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true },
+];
+const NIGHT = ['plaza', 'bay', 'camp'];
+
+function testsRunning() { // (as heavy.sh: a node test run of 구현's -- playwright, node --test, npm test)
+  try { return Number(execFileSync('powershell', ['-NoProfile', '-Command', "@(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'playwright test|cli.js.? test|node --test|npm-cli.js. test' -and $_.Name -eq 'node.exe' }).Count"], { encoding: 'utf8' }).trim()) || 0; } catch { return 0; }
+}
+async function lockBegin() {
+  for (;;) {
+    if (testsRunning()) { console.log('(waiting: 구현\'s tests are running)'); await sleep(30000); continue; }
+    try { fs.mkdirSync(LOCK); fs.writeFileSync(path.join(LOCK, 'owner'), `screen-check ${process.pid} ${new Date().toTimeString().slice(0, 8)}\n`); return; } catch { /* held */ }
+    try { const st = fs.statSync(LOCK); if (Date.now() - st.mtimeMs > 40 * 60000) { const pid = Number(fs.readFileSync(path.join(LOCK, 'owner'), 'utf8').trim().split(/\s+/).at(-2)); let alive = false; try { process.kill(pid, 0); alive = true; } catch {} if (!alive) { fs.rmSync(LOCK, { recursive: true, force: true }); continue; } } } catch {}
+    console.log('(waiting: another heavy job holds the lock)'); await sleep(15000);
+  }
+}
+const lockTouch = () => { try { const t = new Date(); fs.utimesSync(LOCK, t, t); fs.utimesSync(path.join(LOCK, 'owner'), t, t); } catch {} };
+const lockEnd = () => { try { fs.rmSync(LOCK, { recursive: true, force: true }); } catch {} };
+
+async function enter(browser, api, base, device, quality) {
+  const admin = (await (await api.post('/api/admin/login', { data: { password: ADMIN } })).json()).sessionToken;
+  const issued = await (await api.post('/api/admin/keys', { headers: { 'X-Session-Token': admin }, data: { label: `점검${device}${quality}` } })).json();
+  const ctx = await browser.newContext(device === 'phone' ? { ...devices['Pixel 5'] } : { viewport: { width: 1920, height: 1080 } });
+  await ctx.addInitScript((q) => { try { localStorage.setItem('gc.quality', q); localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.qualityNote', new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)); } catch {} }, quality === 'high' ? '2' : '0');
+  const page = await ctx.newPage(); /* (from a blank page, as the e2e's shopper: the entry file's form posts itself) */
+  await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
+  const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
+  await api.post('/api/avatar/gender', { headers: { 'X-Session-Token': token }, data: { gender: 'female' } });
+  await page.waitForFunction(() => window.PlazaDebug?.()?.running, null, { timeout: 120000 });
+  return { ctx, page, token };
+}
+// the spot's standing point and the way to look, worked out in the page from the island's own tables
+const resolve = (page, spot) => page.evaluate((s) => {
+  const T = window.IslandTerrain; const D = T.dalmaru; const ok = (x, z) => T.walkable(x, z) && !(D?.isWater?.(x, z));
+  const nearest = (x, z, max = 60) => { if (ok(x, z)) return { x, z }; for (let r = 1; r <= max; r += 1) for (let k = 0; k < 32; k += 1) { const a = (k / 32) * Math.PI * 2; const px = x + Math.cos(a) * r; const pz = z + Math.sin(a) * r; if (ok(px, pz)) return { x: px, z: pz, look: { x, z } }; } return null; };
+  let p = null;
+  if (s.area) p = nearest(T.AREAS[s.area].x, T.AREAS[s.area].z);
+  else if (s.place) { const q = D.PLACES[s.place]; p = q && nearest(q.x, q.z); }
+  else if (s.door) { const d = T.facilityDoor(s.door); p = nearest(d.x, d.z + 6); if (p) p.look = { x: d.x, z: d.z - 4 }; }
+  else if (s.near) { const a = T.AREAS[s.near] || { x: D.NEW_ISLE.x, z: D.NEW_ISLE.z }; p = nearest(a.x, a.z, 90); }
+  else if (s.bridge) { const b = D.BRIDGES.find((x) => x.isle2); p = { x: b.x, z: b.z, look: { x: b.ends[1][0], z: b.ends[1][1] } }; }
+  else if (s.taxi) { const R = window.IslandTaxi?.ROUTE || []; const m = R[Math.floor(R.length / 2)]; p = m && nearest(m[0] + 4, m[1] + 4); if (p) p.look = { x: m[0], z: m[1] }; }
+  else if (s.lot != null) { const l = T.HOME_LOTS[s.lot]; p = nearest(l.x, l.z + 9); if (p) p.look = { x: l.x, z: l.z }; }
+  else if (s.camp) { const c = D.NEW_ISLE.camp; p = nearest(c.x - 10, c.z); if (p) p.look = { x: c.x, z: c.z }; }
+  else if (s.peak) { const c = D.NEW_ISLE.peak; p = nearest(c.x, c.z); }
+  return p;
+}, spot);
+
+async function goInside(page, spot) {
+  if (spot.inside === 'mall') { await require(path.join(ROOT, 'tests', 'e2e', 'skin-support')).intoMall?.(page, 'mall:stall'); return; }
+  await page.evaluate(() => window.PlazaDebug().place('townhall')); await sleep(1500); await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.PlazaDebug().space === 'townhall', null, { timeout: 30000 });
+}
+async function goOut(page) {
+  const space = await page.evaluate(() => window.PlazaDebug().space); if (space === 'island') return;
+  if (space === 'store') { await require(path.join(ROOT, 'tests', 'e2e', 'skin-support')).outOfMall(page).catch(() => {}); return; } /* (the 백화점's own way out) */
+  await page.evaluate(() => window.PlazaDebug().place('room:exit')); await sleep(1200); await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.PlazaDebug().space === 'island', null, { timeout: 30000 }).catch(() => {});
+}
+
+(async () => {
+  const only = arg('only', '').split(',').filter(Boolean); const devs = arg('devices', 'pc,phone').split(','); const quals = arg('quality', 'high,low').split(',');
+  const spots = SPOTS.filter((s) => !only.length || only.includes(s.id));
+  await lockBegin(); const touch = setInterval(lockTouch, 5 * 60000);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'screen-check-')); const port = await freePort(); const base = `http://127.0.0.1:${port}`;
+  const server = spawn(process.execPath, ['server.js'], { cwd: ROOT, env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: ADMIN, NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const map = {}; let browser = null;
+  try {
+    await waitReady(base, server, 60000); fs.mkdirSync(OUT, { recursive: true });
+    browser = await chromium.launch({ args: has('no-gpu') ? [] : ['--use-angle=d3d11'] }); const api = await pwRequest.newContext({ baseURL: base });
+    for (const device of devs) for (const quality of quals) {
+      const { ctx, page } = await enter(browser, api, base, device, quality);
+      for (const night of has('no-night') ? [false] : [false, true]) {
+        { const admin = (await (await api.post('/api/admin/login', { data: { password: ADMIN } })).json()).sessionToken; await api.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode: night ? 'night' : 'day' } }); await sleep(2500); } /* (the island's own time: day shots by day whatever the clock) */
+        for (const spot of spots.filter((s) => !night || NIGHT.includes(s.id))) {
+          const file = `${device}-${quality}-${spot.id}${night ? '-night' : ''}.png`;
+          try {
+            if (spot.inside) await goInside(page, spot); else { await goOut(page); const p = await resolve(page, spot); if (!p) throw new Error('no standing point'); await page.evaluate((q) => { const d = window.PlazaDebug(); d.teleport(q.x, q.z); if (q.look) d.setCamYaw?.(Math.atan2(q.look.x - q.x, q.look.z - q.z) + Math.PI); d.setCamPitch?.(0.3); }, p); }
+            await sleep(3500); await page.screenshot({ path: path.join(OUT, file) }); map[file] = `${spot.label}${night ? ' (밤)' : ''}`; console.log('shot', file);
+          } catch (error) { console.log('skip', file, error.message.split('\n')[0]); }
+          if (spot.inside) await goOut(page);
+        }
+      }
+      await ctx.close();
+    }
+    fs.writeFileSync(path.join(OUT, 'spots.json'), JSON.stringify(map, null, 1)); console.log(`${Object.keys(map).length} shots -> ${OUT}`);
+  } finally {
+    clearInterval(touch); await browser?.close().catch(() => {}); server.kill(); lockEnd(); fs.rmSync(dir, { recursive: true, force: true });
+  }
+})().catch((error) => { console.error(error); lockEnd(); process.exit(1); });

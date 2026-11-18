@@ -16,7 +16,7 @@ const portAvailable = () => new Promise((resolve, reject) => {
   });
 });
 
-test('Twenty Questions HTTP: host starts, secret stays private, turns and two-round tie', { timeout: 30000 }, async t => {
+test('Twenty Questions HTTP: host starts, secret stays private, turns and two-round tie', { timeout: 60000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'twenty-http-'));
   const port = await portAvailable();
   const base = `http://127.0.0.1:${port}`;
@@ -39,11 +39,7 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
     await fs.rm(dir, { recursive: true, force: true });
   });
   let running = false;
-  for (let i = 0; i < 100; i++) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { running = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); running = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(running, `Server did not start: ${output}`);
   async function req(route, session, body, method = 'POST') {
     const headers = {};
@@ -61,7 +57,7 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
   const guest = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.10.363');
+  assert.equal(health.data.version, '1.10.364');
   const created = await req('/api/rooms', host, { gameType: 'twentyquestions', visibility: 'public' });
   assert.equal(created.status, 201);
   const listing = await req('/api/rooms/public', guest, undefined, 'GET');

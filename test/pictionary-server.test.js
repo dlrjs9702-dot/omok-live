@@ -9,7 +9,7 @@ const { spawn } = require('node:child_process');
 
 const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
-test('Pictionary API isolates the secret word, gates drawing to the drawer, scores guesses and restores strokes on reconnect', { timeout: 30000 }, async t => {
+test('Pictionary API isolates the secret word, gates drawing to the drawer, scores guesses and restores strokes on reconnect', { timeout: 60000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-pictionary-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -28,11 +28,7 @@ test('Pictionary API isolates the secret word, gates drawing to the drawer, scor
     await fs.rm(dataDir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 90; i += 1) {
-    if (proc.exitCode !== null) break;
-    try { const res = await fetch(`${base}/health`); if (res.ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `test server failed to start: ${output}`);
 
   async function req(route, token, body, method = 'POST') {

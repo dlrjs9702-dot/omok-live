@@ -32,11 +32,7 @@ async function withServer(t) {
     await fs.rm(dir, { recursive: true, force: true });
   });
   let started = false;
-  for (let i = 0; i < 100; i++) {
-    if (proc.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { started = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await require('../test-support/wait-ready').waitReady(base, proc); started = true; /* (364: up to 30 s -- the server starts in ~11 s on CI) */
   assert.ok(started, `server did not start: ${output}`);
   async function req(route, token, body, method = 'POST') {
     const headers = {};
@@ -65,7 +61,7 @@ async function withServer(t) {
 }
 
 // Invites target one live member rather than exposing a private room's join code in public data.
-test('private rooms remain hidden; only the named lobby recipient can accept an invite', { timeout: 25000 }, async t => {
+test('private rooms remain hidden; only the named lobby recipient can accept an invite', { timeout: 55000 }, async t => {
   const { base, req, guest } = await withServer(t);
   const host = await guest('방장');
   const target = await guest('초대받는 사람');
@@ -113,7 +109,7 @@ test('private rooms remain hidden; only the named lobby recipient can accept an 
   assert.equal(passwordJoin.data.state.me.roomCode, null);
 });
 
-test('public listings, spectator click-join and targeted invite accept/decline with lobby SSE', { timeout: 30000 }, async t => {
+test('public listings, spectator click-join and targeted invite accept/decline with lobby SSE', { timeout: 60000 }, async t => {
   const { base, req, admin, guest } = await withServer(t);
   const host = await guest('우성');
   const target = await guest('지희');

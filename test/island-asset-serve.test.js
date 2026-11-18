@@ -13,7 +13,7 @@ const { staticGlb } = require('../test-support/gltf-fixture.js');
 // its bare 'three' resolved by the page's import map; code by content hash, immutable only for the current hash);
 // model files and their buffers/textures are served with their types and join the game resource pack (manifest +
 // revision) like any other asset; ISLAND_ASSETS_OFF reaches the page.
-test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 팩 포함, 개별 비활성화 전달', { timeout: 30_000 }, async t => {
+test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 팩 포함, 개별 비활성화 전달', { timeout: 60000 }, async t => {
   const root = path.resolve(__dirname, '..');
   const fixtureDir = path.join(root, 'public', 'assets', 'island', `__test-${process.pid}`);
   const files = {
@@ -41,7 +41,7 @@ test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 �
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
+  await require('../test-support/wait-ready').waitReady(base, proc); /* (364: up to 30 s -- the server starts in ~11 s on CI) */
 
   // the page: hashed code URLs, and an import map (allowed by its CSP hash) for 'three' and every module path
   const home = await fetch(`${base}/`);
