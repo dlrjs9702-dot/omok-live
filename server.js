@@ -2543,6 +2543,9 @@ const trainRiders = new Map(); let trainShift = 0; let trainTraffic = IslandTrai
 const taxiRides = new Map(); // v1.10.271 섬 택시: session token -> { from, startedAt, runMs? } while riding
 const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time per session)
 const unstuckAt = new Map(); // (1.10.322 U3: session token -> when it last asked to be put on 대청마당)
+const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free spot, 10 minutes apart)
+// (364) a reason the unstuck move is refused now, or null -- N2a fills it in: not while a tiger chases me
+const stuckRefuse = (session) => null; // eslint-disable-line no-unused-vars
 // v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
 // (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
 const taxiStopOut = new Map();
@@ -6685,11 +6688,15 @@ async function requestHandler(req, res) {
     const inside = [exchangeInside, denInside, museumInside, jailInside, storeInside, townhallInside, furnitureInside, petshopInside, fashionInside].some((s) => s.has(t)) || homeInside.has(t);
     if (inside || (at.space && at.space !== 'island')) return sendError(res, 409, 'INSIDE', '건물 안에서는 문으로 나가 주세요.');
     if (taxiRides.has(t) || trainRiders.has(t) || trainVisitors.has(t) || at.ride || at.platform || at.taxi) return sendError(res, 409, 'RIDING', '택시나 열차에서는 쓸 수 없어요. 내린 뒤 다시 눌러 주세요.');
-    const last = unstuckAt.get(t) || 0; if (nowMs() - last < 20000) return sendError(res, 429, 'TOO_SOON', '조금 뒤에 다시 눌러 주세요.');
-    const S = IslandTerrain.SPAWN; const spot = plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
+    const refused = stuckRefuse(session); if (refused) return sendError(res, 409, 'NOT_NOW', refused);
+    const wait = IslandUnstuck.waitMinutes(unstuckAt.get(t) || 0, nowMs()); if (wait) return sendError(res, 429, 'TOO_SOON', `10분에 한 번 쓸 수 있어요. ${wait}분 뒤에 다시 눌러 주세요.`);
+    // 364 (user A): the nearest free spot within 15 m (standable, a free cell of the islanders' grid -- off trees, rocks, props,
+    // buildings and lots); none: 대청마당's arrival place as before
+    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && IslandNpcs.free(x, z) });
+    const S = IslandTerrain.SPAWN; const spot = near || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
     unstuckAt.set(t, nowMs()); freeSeat(t);
     plazaPresence.set(t, { ...at, x: spot.x, z: spot.z, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
-    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z });
+    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z, where: near ? 'near' : 'plaza' });
   }
   // 1.10.341 지하 도박장: the day's note (on its bench), the word to 테드 (the bookcase opens -- for that account, that day), down and up
   // the stairs, 테드's chips (points one for one, once a request), a play at a table (chips only, a second apart), the raid as it stands

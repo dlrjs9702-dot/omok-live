@@ -1895,9 +1895,9 @@
     x.addEventListener('click', () => { try { localStorage.setItem('gc.hintClosed', '1'); } catch {} bar.remove(); plazaStage.focus({ preventScroll: true }); });
     bar.append(words, more, x); plazaStage.append(bar);
   }
-  // U3 막혔을 때 대청마당으로 (☰ 환경설정 맨 위, on the island only): the server puts me on 대청마당
+  // U3 막혔을 때 (☰ 환경설정 맨 위, on the island only): the server puts me on the nearest free spot (364), or 대청마당 when none is near
   byId('unstuckBtn').addEventListener('click', async () => {
-    try { const r = await api('/api/island/unstuck', { method: 'POST', body: '{}' }); byId('gameMenuDialog').close(); plaza.controller?.correctTo?.(r.x, r.z); plazaLastSent = null; showToast('대청마당으로 왔어요.', 2800); plazaStage.focus({ preventScroll: true }); }
+    try { const r = await api('/api/island/unstuck', { method: 'POST', body: '{}' }); byId('gameMenuDialog').close(); plaza.controller?.correctTo?.(r.x, r.z); plazaLastSent = null; showToast(r.where === 'near' ? '근처 빈 자리로 옮겼어요.' : '근처에 빈 자리가 없어 대청마당으로 왔어요.', 2800); plazaStage.focus({ preventScroll: true }); }
     catch (error) { showToast(error.message, 3500); }
   });
   // 사용자 「파도가 전혀 안 움직여」: 「움직임 줄이기」 -- the device's setting (default), or on/off whatever it says, kept on this device
