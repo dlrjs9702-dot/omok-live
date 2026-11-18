@@ -41,6 +41,7 @@
 - 고침: 회색 결 그림 grass·soil·sand 세 장을 ground-v1/ground.grains.png 한 장으로(R 풀 64 px 4×4 · G 흙 256 · B 모래 32 px 8×8, tools/ground-grains.py). 셰이더는 GRASS/SOIL/SAND 매크로로 채널·배율만 바꿔 같은 값을 읽음 → 15칸.
 - 재발 막기: test/ground-samplers.test.js(땅 sampler + 2 ≤ 15).
 - 확인: 브라우저에서 땅 프로그램의 실제 sampler 15개(PC·폰 프로필), 모습 같음.
+- 357 사진·CI가 멀쩡했던 까닭: Playwright 헤드리스 Chromium은 SwiftShader라 MAX_TEXTURE_IMAGE_UNITS 32. 이 PC의 Chrome(ANGLE D3D11, RX 570)과 대부분의 폰·PC 브라우저는 16이라, 357은 그쪽에서 모두 땅이 안 보였을 것.
 
 ## v1.10.357 T1 택시 길 넓히기 (notes docs/island-expansion-20261115.md §9, 171A~175A)
 
