@@ -119,6 +119,10 @@ test('마당 농사·집 손보기 서버: 텃밭 개수(마당 단계) · 심�
   await give('stone', 6); r = await req('/api/home/upkeep', a, { action: 'craft', recipe: 'stepping_stones' }); assert.equal(r.data.good, Y.goodId('stepping_stones'));
   await give('stone', 6); const r2 = await req('/api/home/upkeep', a, { action: 'craft', recipe: 'stepping_stones' }); assert.equal(r2.status, 200, JSON.stringify(r2.data)); assert.notEqual(r2.data.uid, r.data.uid, '만들 때마다 하나씩');
   assert.equal(r2.data.owed, undefined, '빚진 것 없이 바로 받음');
+  // (366 별 가구: two kinds in one recipe -- both needed, both taken)
+  await give('star_fragment', 10); assert.equal((await req('/api/home/upkeep', a, { action: 'craft', recipe: 'star_rug' })).data.error, 'MISSING', '반짝이 없으면 못 만듦');
+  await give('star_fragment_shiny', 1); const rug = await req('/api/home/upkeep', a, { action: 'craft', recipe: 'star_rug' }); assert.equal(rug.status, 200, JSON.stringify(rug.data)); assert.equal(rug.data.good, 'star_rug__plain');
+  assert.equal(await count(a, 'star_fragment'), 0); assert.equal(await count(a, 'star_fragment_shiny'), 0);
   // the yard's weeds: two days, six; a neighbour pulls one
   await req('/api/test/home/farm-time', a, { days: 2 });
   const weeds = (await req('/api/home', b)).data.lots.find((l) => l.id === lot.id).weeds; assert.equal(weeds.length, 6);

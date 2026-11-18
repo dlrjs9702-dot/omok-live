@@ -55,6 +55,7 @@
     ['choseung_lantern', 'plain', '초승 등불', 'story.choseung_lantern'], // (S2: the last chapter's lamp)
     ['xmas_tree_small', 'plain', '크리스마스 트리', 'xmas.tree_small'], ['xmas_fireplace', 'plain', '벽난로', 'xmas.fireplace'], ['xmas_snow_globe', 'plain', '스노볼', 'xmas.snow_globe'], // (X1 크리스마스, assets 76)
     ['xmas_stocking', 'plain', '양말 걸이', 'xmas.stocking', 'wall'], ['xmas_gingerbread_house', 'plain', '과자 집', 'xmas.gingerbread_house'],
+    ['star_lamp', 'plain', '별빛 램프', 'star.lamp'], ['star_mobile', 'plain', '별 모빌', 'star.mobile'], ['star_rug', 'plain', '별자리 러그', 'star.rug'], // (366 별 가구: made from star fragments at the 손보기 상자, assets 154)
     ['xmas_check_sofa', 'plain', '빨간 체크 소파', 'xmas.check_sofa'], ['xmas_gift_pile', 'plain', '선물 상자 더미', 'xmas.gift_pile'], ['xmas_rocking_reindeer', 'plain', '루돌프 흔들목마', 'xmas.rocking_reindeer'], ['xmas_snowman_lamp', 'plain', '눈사람 램프', 'xmas.snowman_lamp'], ['xmas_gingerbread_shelf', 'plain', '진저브레드 선반', 'xmas.gingerbread_shelf'], ['xmas_rug_snowflake', 'plain', '크리스마스 러그', 'xmas.rug_snowflake'], // (1.10.338 사용자 128A, assets 149)
   ].map(([shape, variant, name, model, kind = 'floor']) => Object.freeze({ id: `${shape}__${variant}`, shape, variant, name, zone: 'event', rarity: 'event', kind, model, event: true })));
   // v1.10.225 마당 꾸미기 (assets 70 yard-v1): the yard's twelve, always on the 「마당」 shelf, kept in the 가구 창고 with the
@@ -75,7 +76,9 @@
   const TROPHY_GOODS = Object.freeze(Object.entries(TROPHY_SYMS).flatMap(([sym, title]) => (sym === 'star' ? ['gold'] : ['gold', 'silver', 'bronze']).map((metal) => Object.freeze({
     id: `yard_trophy_${sym}__${metal}`, shape: `yard_trophy_${sym}`, yardShape: `trophy_${sym}`, variant: metal, name: `${title} ${({ gold: '금', silver: '은', bronze: '동' })[metal]} 트로피`,
     zone: 'yard', rarity: 'trophy', kind: 'yard', model: `yard.trophy_${sym}`, yard: true, trophy: true, metal }))));
-  const byId = new Map([...GOODS, ...EVENT_GOODS, ...YARD_GOODS, ...TROPHY_GOODS].map((g) => [g.id, g]));
+  // (366 마당 별 장식: made from star fragments, never on the 「마당」 shelf -- as a trophy, kept and placed in the yard)
+  const CRAFT_YARD = Object.freeze([Object.freeze({ id: 'yard_star_ornament__plain', shape: 'yard_star_ornament', yardShape: 'star_ornament', variant: 'plain', name: '마당 별 장식', zone: 'yard', rarity: 'craft', kind: 'yard', model: 'yard.star_ornament', yard: true, craft: true })]);
+  const byId = new Map([...GOODS, ...EVENT_GOODS, ...YARD_GOODS, ...TROPHY_GOODS, ...CRAFT_YARD].map((g) => [g.id, g]));
   // always on sale, no end to them (and not counted in a day's three)
   const BASE = Object.freeze(['stool__oak', 'floor_cushion__red', 'plant_pot__terracotta', 'dining_chair__oak']);
 

@@ -24,7 +24,8 @@ const SPOTS = [
   { id: 'west', label: '푸른숲골/숲', area: 'west' }, { id: 'east', label: '잔치마루/잔치터', area: 'east' }, { id: 'ridge', label: '달마루 능선/능선 위', area: 'ridge' },
   { id: 'isle', label: '툇마루섬/섬과 정원', area: 'isle' }, { id: 'lighthouse', label: '초승등대/등대', place: 'lighthouse' }, { id: 'pier', label: '달끝나루/나루', place: 'pier' },
   { id: 'station', label: '초승역/역과 승강장', place: 'stationmaster' }, { id: 'museum', label: '박물관/바깥', place: 'museum' },
-  { id: 'townhall', label: '관공서/정문', door: 'townhall' }, { id: 'townhall-inside', label: '관공서/안 민원실', inside: 'townhall' },
+  { id: 'townhall', label: '관공서/정문', door: 'townhall' }, { id: 'townhall-gate', label: '관공서/마당 정문과 시장(밖에서)', gate: true },
+  { id: 'crosswalk', label: '택시 길/건널목 정면', crossing: 0 }, { id: 'townhall-inside', label: '관공서/안 민원실', inside: 'townhall' },
   { id: 'mall-inside', label: '백화점/1층 안 노점', inside: 'mall' }, { id: 'house', label: '이웃골/집터와 마당', lot: 0 },
   { id: 'taxi-road', label: '택시 길/차선과 인도', taxi: true }, { id: 'isle2-bridge', label: '별마루다리/다리 위', bridge: 'isle2' },
   { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true },
@@ -45,33 +46,58 @@ async function lockBegin() {
 const lockTouch = () => { try { const t = new Date(); fs.utimesSync(LOCK, t, t); fs.utimesSync(path.join(LOCK, 'owner'), t, t); } catch {} };
 const lockEnd = () => { try { fs.rmSync(LOCK, { recursive: true, force: true }); } catch {} };
 
+// (365, 총괄's first run: the phone pass got no entry file from /api/admin/keys -- every call came from one address and logged in
+// again: one admin login kept, each call its own address, the key asked again with a new label when none came back)
+let ipN = 0; const ip = () => `100.73.${process.pid % 250}.${(++ipN % 250) + 1}`;
+let adminTok = null;
+async function adminPost(api, route, data) {
+  for (let k = 0; k < 4; k += 1) {
+    if (!adminTok) adminTok = (await (await api.post('/api/admin/login', { headers: { 'X-Forwarded-For': ip() }, data: { password: ADMIN } })).json()).sessionToken;
+    const res = await api.post(route, { headers: { 'X-Session-Token': adminTok, 'X-Forwarded-For': ip() }, data: typeof data === 'function' ? data(k) : data });
+    const body = await res.json().catch(() => ({})); if (res.ok()) return body;
+    if (res.status() === 401 || res.status() === 403) adminTok = null; await sleep(2000 * (k + 1));
+  }
+  throw new Error(`${route}: no answer after 4 tries`);
+}
 async function enter(browser, api, base, device, quality) {
-  const admin = (await (await api.post('/api/admin/login', { data: { password: ADMIN } })).json()).sessionToken;
-  const issued = await (await api.post('/api/admin/keys', { headers: { 'X-Session-Token': admin }, data: { label: `점검${device}${quality}` } })).json();
+  const issued = await adminPost(api, '/api/admin/keys', (k) => ({ label: `점검${device}${quality}${k ? k : ''}` }));
+  if (!issued.html) throw new Error('no entry file');
   const ctx = await browser.newContext(device === 'phone' ? { ...devices['Pixel 5'] } : { viewport: { width: 1920, height: 1080 } });
   await ctx.addInitScript((q) => { try { localStorage.setItem('gc.quality', q); localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.qualityNote', new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)); } catch {} }, quality === 'high' ? '2' : '0');
   const page = await ctx.newPage(); /* (from a blank page, as the e2e's shopper: the entry file's form posts itself) */
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
   const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
-  await api.post('/api/avatar/gender', { headers: { 'X-Session-Token': token }, data: { gender: 'female' } });
+  await api.post('/api/avatar/gender', { headers: { 'X-Session-Token': token, 'X-Forwarded-For': ip() }, data: { gender: 'female' } });
   await page.waitForFunction(() => window.PlazaDebug?.()?.running, null, { timeout: 120000 });
   return { ctx, page, token };
 }
 // the spot's standing point and the way to look, worked out in the page from the island's own tables
+// (365, 총괄's first run: 「nearest walkable」 stood the player inside the fountain, a tree, the notice board and put the camera on
+// the museum's roof -- now a point 6~24 m from what the shot is of, standable AND a free cell of the islanders' walk grid (off
+// trees, rocks, props, buildings), with the camera's side behind it open too, looking at the thing)
 const resolve = (page, spot) => page.evaluate((s) => {
-  const T = window.IslandTerrain; const D = T.dalmaru; const ok = (x, z) => T.walkable(x, z) && !(D?.isWater?.(x, z));
-  const nearest = (x, z, max = 60) => { if (ok(x, z)) return { x, z }; for (let r = 1; r <= max; r += 1) for (let k = 0; k < 32; k += 1) { const a = (k / 32) * Math.PI * 2; const px = x + Math.cos(a) * r; const pz = z + Math.sin(a) * r; if (ok(px, pz)) return { x: px, z: pz, look: { x, z } }; } return null; };
-  let p = null;
-  if (s.area) p = nearest(T.AREAS[s.area].x, T.AREAS[s.area].z);
-  else if (s.place) { const q = D.PLACES[s.place]; p = q && nearest(q.x, q.z); }
-  else if (s.door) { const d = T.facilityDoor(s.door); p = nearest(d.x, d.z + 6); if (p) p.look = { x: d.x, z: d.z - 4 }; }
-  else if (s.near) { const a = T.AREAS[s.near] || { x: D.NEW_ISLE.x, z: D.NEW_ISLE.z }; p = nearest(a.x, a.z, 90); }
-  else if (s.bridge) { const b = D.BRIDGES.find((x) => x.isle2); p = { x: b.x, z: b.z, look: { x: b.ends[1][0], z: b.ends[1][1] } }; }
-  else if (s.taxi) { const R = window.IslandTaxi?.ROUTE || []; const m = R[Math.floor(R.length / 2)]; p = m && nearest(m[0] + 4, m[1] + 4); if (p) p.look = { x: m[0], z: m[1] }; }
-  else if (s.lot != null) { const l = T.HOME_LOTS[s.lot]; p = nearest(l.x, l.z + 9); if (p) p.look = { x: l.x, z: l.z }; }
-  else if (s.camp) { const c = D.NEW_ISLE.camp; p = nearest(c.x - 10, c.z); if (p) p.look = { x: c.x, z: c.z }; }
-  else if (s.peak) { const c = D.NEW_ISLE.peak; p = nearest(c.x, c.z); }
-  return p;
+  const T = window.IslandTerrain; const D = T.dalmaru; const N = window.IslandNpcs;
+  const ok = (x, z) => T.walkable(x, z) && !(D?.isWater?.(x, z)); const free = (x, z) => ok(x, z) && (!N?.free || N.free(x, z));
+  const viewOf = (tx, tz, rMin = 6, rMax = 24) => {
+    for (let r = rMin; r <= rMax; r += 2) for (let k = 0; k < 24; k += 1) {
+      const a = (k / 24) * Math.PI * 2; const ux = Math.cos(a); const uz = Math.sin(a); const x = tx + ux * r; const z = tz + uz * r;
+      if (free(x, z) && free(x + ux * 3, z + uz * 3) && ok(x + ux * 6, z + uz * 6)) return { x, z, look: { x: tx, z: tz } };
+    }
+    for (let r = 1; r <= 60; r += 1) for (let k = 0; k < 32; k += 1) { const a = (k / 32) * Math.PI * 2; const x = tx + Math.cos(a) * r; const z = tz + Math.sin(a) * r; if (free(x, z)) return { x, z, look: { x: tx, z: tz } }; }
+    return null;
+  };
+  if (s.area) return viewOf(T.AREAS[s.area].x, T.AREAS[s.area].z);
+  if (s.place) { const q = D.PLACES[s.place]; return q && viewOf(q.x, q.z, 10, 30); }
+  if (s.door) { const d = T.facilityDoor(s.door); return viewOf(d.x, d.z, 7, 20); }
+  if (s.near) { const a = T.AREAS[s.near] || { x: D.NEW_ISLE.x, z: D.NEW_ISLE.z }; return viewOf(a.x, a.z, 6, 90); }
+  if (s.bridge) { const b = D.BRIDGES.find((x) => x.isle2); return { x: b.x, z: b.z, look: { x: b.ends[1][0], z: b.ends[1][1] } }; }
+  if (s.taxi) { const R = window.IslandTaxi?.ROUTE || []; const m = R[Math.floor(R.length / 2)]; return m && viewOf(m[0], m[1], 6, 16); }
+  if (s.lot != null) { const l = T.HOME_LOTS[s.lot]; return viewOf(l.x, l.z, 8, 22); }
+  if (s.camp) { const c = D.NEW_ISLE.camp; return viewOf(c.x, c.z, 8, 24); }
+  if (s.peak) { const c = D.NEW_ISLE.peak; return viewOf(c.x, c.z, 4, 20); }
+  if (s.gate) { const Y = T.TOWNHALL.yard; const g = T.townhallWorld(0, Y.z1); const o = T.townhallWorld(0, Y.z1 + 9); return { x: o.x, z: o.z, look: g }; } /* (365 #4: the gate and the mayor from outside the wall) */
+  if (s.crossing != null) { const c = window.IslandTaxi?.CROSSINGS?.[s.crossing]; return c && viewOf(c.x, c.z, 7, 14); } /* (365 #5: a 건널목 face on -- do its bars stop at the kerb?) */
+  return null;
 }, spot);
 
 async function goInside(page, spot) {
@@ -99,12 +125,13 @@ async function goOut(page) {
     for (const device of devs) for (const quality of quals) {
       const { ctx, page } = await enter(browser, api, base, device, quality);
       for (const night of has('no-night') ? [false] : [false, true]) {
-        { const admin = (await (await api.post('/api/admin/login', { data: { password: ADMIN } })).json()).sessionToken; await api.post('/api/admin/island/time', { headers: { 'X-Session-Token': admin }, data: { mode: night ? 'night' : 'day' } }); await sleep(2500); } /* (the island's own time: day shots by day whatever the clock) */
+        await adminPost(api, '/api/admin/island/time', { mode: night ? 'night' : 'day' }); await sleep(2500); /* (the island's own time: day shots by day whatever the clock) */
         for (const spot of spots.filter((s) => !night || NIGHT.includes(s.id))) {
           const file = `${device}-${quality}-${spot.id}${night ? '-night' : ''}.png`;
           try {
             if (spot.inside) await goInside(page, spot); else { await goOut(page); const p = await resolve(page, spot); if (!p) throw new Error('no standing point'); await page.evaluate((q) => { const d = window.PlazaDebug(); d.teleport(q.x, q.z); if (q.look) d.setCamYaw?.(Math.atan2(q.look.x - q.x, q.look.z - q.z) + Math.PI); d.setCamPitch?.(0.3); }, p); }
             await sleep(3500); await page.screenshot({ path: path.join(OUT, file) }); map[file] = `${spot.label}${night ? ' (밤)' : ''}`; console.log('shot', file);
+            fs.writeFileSync(path.join(OUT, 'spots.json'), JSON.stringify(map, null, 1)); /* (365: as it goes -- a run cut short keeps what it took) */
           } catch (error) { console.log('skip', file, error.message.split('\n')[0]); }
           if (spot.inside) await goOut(page);
         }

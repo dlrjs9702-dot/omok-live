@@ -74,14 +74,14 @@
     trophy_fish: [0.44, 0.32, 0.55], trophy_bug: [0.44, 0.32, 0.55], harvest_basket: [0.7, 0.72, 0.73], choseung_lantern: [0.28, 0.28, 0.48], straw_sheaf: [0.47, 0.49, 1.09], corn_string: [0.54, 0.14, 0.57], persimmon_string: [0.9, 0.08, 0.94], feast_table: [1.1, 1.1, 0.5],
     // X1 크리스마스 (assets 76 README): the fireplace's back 0.25 behind its origin (against a wall), the stocking rack hung
     xmas_tree_small: [0.88, 0.9, 1.6], xmas_fireplace: [1.45, 0.65, 1.22], xmas_snow_globe: [0.29, 0.3, 0.36], xmas_stocking: [0.63, 0.08, 0.5], xmas_gingerbread_house: [0.5, 0.5, 0.37],
-  xmas_check_sofa: [1.9, 0.84, 0.81], xmas_gift_pile: [0.865, 0.596, 0.791], xmas_rocking_reindeer: [0.413, 0.976, 1.128], xmas_snowman_lamp: [0.3, 0.321, 0.575], xmas_gingerbread_shelf: [1.106, 0.438, 1.865], xmas_rug_snowflake: [1.9, 1.9, 0.024] }; // (1.10.338 assets 149)
+  xmas_check_sofa: [1.9, 0.84, 0.81], xmas_gift_pile: [0.865, 0.596, 0.791], xmas_rocking_reindeer: [0.413, 0.976, 1.128], xmas_snowman_lamp: [0.3, 0.321, 0.575], xmas_gingerbread_shelf: [1.106, 0.438, 1.865], xmas_rug_snowflake: [1.9, 1.9, 0.024], star_lamp: [0.3, 0.3, 0.513], star_mobile: [0.731, 0.727, 1.779], star_rug: [2, 1.4, 0.04] }; /* (366 별 가구, assets 154 islandHome) */ // (1.10.338 assets 149)
   const HUNG = new Set(['picture_frame', 'wall_clock', 'curtain_window', 'wall_shelf', 'corn_string', 'persimmon_string', 'xmas_stocking']); // (their backs on a wall, at the height made)
-  const FLAT = new Set(['rug_round', 'xmas_rug_snowflake']); // (under the rest)
+  const FLAT = new Set(['rug_round', 'xmas_rug_snowflake', 'star_rug']); // (under the rest)
   // 207 집 꾸미기 (gamecenter-notes docs/home-tabletop-20261029.md 1): a small thing whose footprint is all inside one of these
   // stands on its top -- the height its model's top really is (rays down over its middle, 2 cm: not the size's height, a
   // vase or a lip stands above some); the nightstand (its lamp), toy box (toys), TV stand (the TV) and feast table (dishes)
   // have no clear top. Moved on a top by 0.05 m
-  const SMALL = new Set(['insect_case', 'radio', 'moon_lamp', 'shell_lamp', 'mini_lighthouse', 'choseung_lantern', 'trophy_fish', 'trophy_bug', 'xmas_snow_globe', 'xmas_gingerbread_house']);
+  const SMALL = new Set(['insect_case', 'radio', 'moon_lamp', 'shell_lamp', 'mini_lighthouse', 'choseung_lantern', 'trophy_fish', 'trophy_bug', 'xmas_snow_globe', 'xmas_gingerbread_house', 'star_lamp']);
   const TOPS = { desk: 0.765, dresser: 0.85, coffee_table: 0.45, dining_table: 0.78, counter: 0.89, soban: 0.34 };
   const TOP_SIZE = { insect_case: [0.36, 0.24] }; // (V1, assets 86: on a top the 곤충 상자 is the small tabletop one -- its own footprint there)
   // where one sits (assets 57 manifest seats, model local: x, height, z) -- 'lie' and 'floor' sit too for now

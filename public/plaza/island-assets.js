@@ -472,6 +472,13 @@
     for (const k of ['a', 'b', 'c']) for (const st of ['', '_mined']) REGISTRY[`quarry.vein.${ore}.${k}${st}`] = pair(OV, `vein_rock_${k}${st}${ore === 'crystal' ? '_crystal' : ''}`, { near: 60, paint: { ore: hex }, ...(ore === 'crystal' ? { nightGlow: true } : {}) });
   }
   REGISTRY['quarry.ore_pile_tint'] = pair(OV, 'ore_pile', { near: 50, paint: { ore: ORE_HEX.copper } });
+  // 366 별 조각·별 가구 (assets 154 star-v1, README §2): the two fragments, the lamp (its `light` node kept), the floor mobile, the rug
+  // (its High only, as the shop's rugs -- a flat piece's Low goes thin from afar) and the yard's star; their stars `glass`, lit at
+  // night by the loader as the 118 windows (no nightGlow)
+  { const SV = '/assets/island/star-v1';
+    REGISTRY['star.fragment'] = pair(SV, 'item_star_fragment'); REGISTRY['star.fragment_shiny'] = pair(SV, 'item_star_fragment_shiny');
+    REGISTRY['star.lamp'] = pair(SV, 'star_lamp', { near: 26, keepNodes: true }); REGISTRY['star.mobile'] = pair(SV, 'star_mobile', { near: 26 });
+    REGISTRY['star.rug'] = pair(SV, 'star_rug', { near: 26, low: null }); REGISTRY['yard.star_ornament'] = pair(SV, 'star_ornament', { near: 50 }); }
   for (const f of ['rock_wall_a', 'rock_wall_b']) REGISTRY[`quarry.${f}`] = far(V2, f);
   REGISTRY['quarry.rock_wall_a_granite'] = far(V2, 'rock_wall_a', { paint: { primary: [1.45, 1.5, 1.62] } }); /* (1.10.350 화강암 벽: the same wall, granite's pale grey) */
   REGISTRY['quarry.work_tent'] = far(V2, 'work_tent', { nightGlow: true });
