@@ -260,9 +260,9 @@
   // the walk's edge at least 0.75 m over the sea, then down to the water as a beach (0.3 m a metre, about 2.5 m of sand). Only ever
   // raised; never within 4 m of a bridge's ends (their decks lie on the ground as it was). A grid of the road's pieces (8 m) for speed
   const BANK_TOP = SEA + 0.75; const BANK_SLOPE = 0.3; const BANK_REACH = ROAD.half + 0.5 + (BANK_TOP - SEA + 0.5) / BANK_SLOPE;
-  let bankGrid = null;
+  const BANK_ROUND = 1.0; let bankGrid = null; /* (a rounded max over 1 m: path-paving's slabs over the 2 m mesh cells) */
   function roadBank(x, z, h) {
-    if (h >= BANK_TOP || !TX) return h;
+    if (h >= BANK_TOP + BANK_ROUND || !TX) return h;
     if (!bankGrid) {
       bankGrid = new Map(); const R = TX.ROUTE;
       for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i];
@@ -273,8 +273,12 @@
     const R = TX.ROUTE; let d = Infinity;
     for (const i of segs) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
-    const top = d <= ROAD.half + 0.5 ? BANK_TOP : BANK_TOP - (d - ROAD.half - 0.5) * BANK_SLOPE;
-    return Math.max(h, top);
+    const e = d - ROAD.half - 0.5; const drop = e <= -0.5 ? 0 : e >= 0.5 ? e : (e + 0.5) ** 2 / 2; /* (the bank's edge rounded over 1 m too) */
+    const top = BANK_TOP - drop * BANK_SLOPE;
+    /* (a rounded max: where the bank meets the ground no sharp crease -- the 마을 길 slabs lean flat over it) */
+    /* (none on a flattened pad -- the stations' stand level, as before the rounding -- eased in over its 5 m edge) */
+    let k = BANK_ROUND; for (const p of PADS) { if (Math.abs(x - p.x) >= p.r + 5 || Math.abs(z - p.z) >= p.r + 5) continue; k = Math.min(k, BANK_ROUND * smooth(p.r, p.r + 5, Math.hypot(x - p.x, z - p.z))); }
+    const gap = Math.abs(h - top); return Math.max(h, top) + (gap < k ? ((k - gap) ** 2) / (4 * k) : 0);
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
   const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z) || D.inCreek(x, z); // (2회차 18: the ponds over the falls are water too; N1: 새 섬's creek)
