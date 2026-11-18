@@ -9,7 +9,7 @@ const path = require('node:path');
 const T = require('../public/plaza/island-terrain.js');
 
 const ON = T.MAP === 'dalmaru';
-test('땅 지도 그림: 들어 있는 PNG = 지금 섬 자료로 다시 만든 것(바이트까지)', { skip: !ON && '달마루섬 전용', timeout: 300000 /* (1.10.360: every map built again -- ~70 s here, past the 120 s limit on CI's runners twice) */ }, () => {
+test('땅 지도 그림: 들어 있는 PNG = 지금 섬 자료로 다시 만든 것(바이트까지)', { skip: !ON && '달마루섬 전용' }, () => {
   const { buildAll, OUT } = require('../tools/maps/build-ground-maps.js');
   for (const [name, bytes] of Object.entries(buildAll())) assert.ok(Buffer.compare(fs.readFileSync(path.join(OUT, name)), bytes) === 0, `${name}: run node tools/maps/build-ground-maps.js`);
 });

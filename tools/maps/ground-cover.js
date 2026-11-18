@@ -34,7 +34,10 @@ function buildCoverMaps(T, res = 1024, box = null) { // (box { x0, z0, size }: a
   for (const k of ['mailbox', 'guide', 'busker', 'painter', 'librarian', 'grandpa', 'electrician', 'builder']) if (V[k]?.x !== undefined) worn.push([V[k].x, V[k].z, 1.2]);
   const wornAt = (x, z) => { let w = 0; for (const [wx, wz, r] of worn) { const d = Math.hypot(wx - x, wz - z); if (d < r + 1) w = Math.max(w, 1 - smooth(r * 0.55, r + 0.6 * noise(x * 2.1, z * 2.1), d)); } return w; };
   const flowers = T.nature().flowers || [];
-  const flowerAt = (x, z) => { let f = 0; for (const p of flowers) { const d = Math.hypot(p.x - x, p.z - z); if (d < 2.6) f = Math.max(f, 1 - smooth(1.2, 2.4, d + 0.5 * noise(x * 1.7, z * 1.7))); } return f; };
+  /* (1.10.360: the flowers in 8 m buckets as the trees -- every pixel asked them all, a sixth of the build; the same answer) */
+  const flowerBuckets = new Map(); for (const p of flowers) { const k = `${Math.floor(p.x / 8)},${Math.floor(p.z / 8)}`; if (!flowerBuckets.has(k)) flowerBuckets.set(k, []); flowerBuckets.get(k).push(p); }
+  const flowersNear = (x, z) => { const bx = Math.floor(x / 8); const bz = Math.floor(z / 8); const out = []; for (let a = -1; a <= 1; a += 1) for (let c = -1; c <= 1; c += 1) for (const p of flowerBuckets.get(`${bx + a},${bz + c}`) || []) out.push(p); return out; };
+  const flowerAt = (x, z) => { let f = 0; for (const p of flowersNear(x, z)) { const d = Math.hypot(p.x - x, p.z - z); if (d < 2.6) f = Math.max(f, 1 - smooth(1.2, 2.4, d + 0.5 * noise(x * 1.7, z * 1.7))); } return f; };
   const apronAt = (x, z) => { const out = Math.hypot(Math.max(0, Math.abs(x - P.x) - P.hw), Math.max(0, P.d0 - z, z - P.d1)); return out <= 0 || z < P.d0 ? 0 : 1 - smooth(1.5, 3.4 + 1.1 * Math.sin(x * 0.83) * Math.cos(z * 0.67), out); };
   // (1.10.325 채석장 바닥, 사용자 59A: the quarry's ground bare earth to its frayed edge, gravel round each rock and the ore pile)
   const Q = require('../../public/plaza/island-quarry.js'); const DEG = Math.PI / 180;
@@ -42,6 +45,9 @@ function buildCoverMaps(T, res = 1024, box = null) { // (box { x0, z0, size }: a
   const quarryAt = (x, z) => { if (!Q.inArea(x, z, 4)) return 0; return smooth(-1.5, 1.5, Q.edgeDist(x, z) + (noise(x * 0.7, z * 0.7) - 0.5) * 2.4); };
   const quarryStones = [...Q.ROCKS.map((q) => [q.x, q.z, Q.SOLIDS[q.kind].r + 1.2]), [Q.PILE.x, Q.PILE.z, 1.6], ...Q.PROPS.filter((p) => p.model === 'stone_blocks').map((p) => [p.x, p.z, 1.6])];
   const quarryGravelAt = (x, z) => { let g = 0; for (const [qx, qz, r] of quarryStones) { const d = Math.hypot(qx - x, qz - z); if (d < r + 1.5) g = Math.max(g, 1 - smooth(r * 0.7, r + 0.4 + 0.5 * noise(x * 1.9, z * 1.9), d)); } return g; };
+  /* (1.10.360: the 8 m cells with the taxi road within 30 m -- the beach band reads its foot only there, it reaches 21.9 m) */
+  const roadNear = new Set(); const ROUTE = T.roadFoot ? require('../../public/plaza/island-taxi.js').ROUTE : [];
+  for (let s = 1; s < ROUTE.length; s += 1) { const [ax, az] = ROUTE[s - 1]; const [bx, bz] = ROUTE[s]; for (let cx = Math.floor((Math.min(ax, bx) - 30) / 8); cx <= Math.floor((Math.max(ax, bx) + 30) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - 30) / 8); cz <= Math.floor((Math.max(az, bz) + 30) / 8); cz += 1) roadNear.add(`${cx},${cz}`); }
   const a = new Uint8Array(n * 3); const b = new Uint8Array(n * 3); const gravel = new Uint8Array(n);
   const put = (arr, k, c, v) => { arr[k * 3 + c] = Math.round(Math.max(0, Math.min(1, v)) * 255); };
   for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) {
@@ -53,7 +59,7 @@ function buildCoverMaps(T, res = 1024, box = null) { // (box { x0, z0, size }: a
     let sand = cd < 9 && cliff < 0.5 ? smooth(8.5, 4, cd + (n1 - 0.5) * 1.6) : h[k] < SEA - 0.3 ? 1 : 0;
     // (T1 고침, 문제 기록 11-18 「모래사장 구간, 인도 구간 명확히」: where the taxi road runs by the sea, the ground between its walk's
     // outer edge and the water is beach -- sea, sand, the railing or kerb, the walk)
-    if (T.roadFoot && cd < 18 && cliff < 0.5) { const f = T.roadFoot(x, z); const half = T.ROAD.half; if (f && f.d > half - 0.05 && f.d < half + 18 && T.coastDist(f.x, f.z) < half + 12 && cd < T.coastDist(f.x, f.z)) sand = Math.max(sand, smooth(half - 0.05, half + 0.35, f.d)); }
+    if (T.roadFoot && cd < 18 && cliff < 0.5 && roadNear.has(`${Math.floor(x / 8)},${Math.floor(z / 8)}`)) { const f = T.roadFoot(x, z); const half = T.ROAD.half; if (f && f.d > half - 0.05 && f.d < half + 18 && T.coastDist(f.x, f.z) < half + 12 && cd < T.coastDist(f.x, f.z)) sand = Math.max(sand, smooth(half - 0.05, half + 0.35, f.d)); }
     // (검토 2차 1: rock only where the ground is near upright -- the slopes keep their grass, a thin band of earth at the steepest)
     const rock = Math.max(cliff > 0.4 && cd < 3.5 ? smooth(3.5, 0.5, cd + (n1 - 0.5)) : 0, smooth(1.9, 2.8, slope + (n1 - 0.5) * 0.3));
     // (동산 다듬기 검토 3차: the banks are grass only -- earth patches on them read as stickers or a cow's coat)
