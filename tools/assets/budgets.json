@@ -87,6 +87,8 @@
     "xmas-v2/snack_fishbread_low.glb": { "nodes": 2, "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)" },
     "xmas-v2/market_stall_cocoa.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
     "xmas-v2/market_stall_cocoa_low.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
+    "star-v1/star_lamp.glb": { "nodes": 3, "reason": "assets 154 별빛 램프: its light node kept (keepNodes) for a small point light at night" },
+    "star-v1/star_lamp_low.glb": { "nodes": 3, "reason": "assets 154 별빛 램프: its light node kept (keepNodes) for a small point light at night" },
     "xmas-v2/market_stall_sweetpotato.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
     "xmas-v2/market_stall_sweetpotato_low.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
     "xmas-v2/market_stall_fishbread.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
