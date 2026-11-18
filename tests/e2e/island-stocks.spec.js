@@ -33,7 +33,7 @@ test('섬 증권거래소: 문으로 들어가 보드 SPACE → 시세 30종 →
     expect(await win.locator('.stocksRow:not([disabled])').evaluateAll((rows) => rows.every((r) => { const line = r.querySelector('.stockSpark polyline'); const ch = r.querySelector('.stocksChange'); return !line || [...ch.classList].includes(line.getAttribute('class')); }))).toBe(true);
     // a company: buy 3, the points down by price x 3 + the fee; sell 1
     const bal = async () => (await get(request, '/api/points', token)).data.balance; const before = await bal();
-    await win.locator('.stocksRow:not([disabled])').first().click();
+    await win.locator('.stocksRow:not([disabled])').filter({ hasNotText: '정리 매매' }).first().click(); /* (#514 CI 3/3: the first open row was in 정리 매매 -- sell only, no 「사기」; which one is, by the server's random key) */
     const priceText = await win.locator('.stocksPrice.big').textContent(); const price = Number(priceText.replace(/[^0-9]/g, ''));
     await expect(win.locator('.stocksDetail')).toContainText('오늘'); await expect(win.locator('.stocksDetail')).toContainText('어제보다');
     await expect(win.locator('.stocksLabel').nth(1)).toHaveText(/^(상장 [1-6]일째|지난 7일)$/); /* (fewer than 7 days listed: 「상장 n일째」) */

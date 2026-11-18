@@ -213,6 +213,7 @@ const fishModeForced = new Map(); // (tests) session token -> the bite game aske
 const fishStillThere = (session, c) => { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return Boolean(at) && Math.hypot(at.x - c.at.x, at.z - c.at.z) <= IslandFishing.MOVE_R; };
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
+const PageChunks = require('./lib/page-chunks'); // (1.10.363 메모리: the entry page in shared pieces)
 const IslandTerrain = require('./public/plaza/island-terrain.js');
 const IslandPaths = require('./public/plaza/island-paths.js'); const GroundSpeed = require('./public/plaza/ground-speed.js'); // (5회차 6: the ground's speed)
 // ... by the ground maps' own cover (forest floor, sand), built at the speed grid once -- as the ground shows it
@@ -438,22 +439,26 @@ function escapeAttr(value) {
     .replace(/>/g, '&gt;');
 }
 
+// 1.10.363 메모리: the page cut once per manifest switch (on/off) into shared bytes (lib/page-chunks.js) -- only the
+// session's few values are made per load (was ~2.3 MB of copies a load: eight .replace() over the ~550 KB page)
+const INDEX_KEYS = ['__SESSION_TOKEN__', '__SESSION_ROLE__', '__SESSION_LABEL__', '__SETUP_TICKET__', '__ACCOUNT_TOKEN__', '__ENTRY_NOTICE__', '__BROWSERS__', '__ASSET_MANIFEST__'];
+const indexParts = { on: null, off: null, of: null };
+function indexPartsFor(on) {
+  if (indexParts.of !== indexTemplate) Object.assign(indexParts, { on: null, off: null, of: indexTemplate });
+  const k = on ? 'on' : 'off';
+  return (indexParts[k] ??= PageChunks.split(indexTemplate, INDEX_KEYS, { __ASSET_MANIFEST__: assetManifestJson[k] }));
+}
 function sendIndex(res, bootstrap = {}) {
-  const html = indexTemplate
-    .replace('__SESSION_TOKEN__', escapeAttr(bootstrap.sessionToken || ''))
-    .replace('__SESSION_ROLE__', escapeAttr(bootstrap.role || ''))
-    .replace('__SESSION_LABEL__', escapeAttr(bootstrap.label || ''))
-    .replace('__SETUP_TICKET__', escapeAttr(bootstrap.setupTicket || ''))
-    .replace('__ACCOUNT_TOKEN__', escapeAttr(bootstrap.accountToken || ''))
-    .replace('__ENTRY_NOTICE__', escapeAttr(bootstrap.entryNotice || ''))
-    .replace('__BROWSERS__', escapeAttr(ALLOWED_BROWSERS.join(' ')))
-    .replace('__ASSET_MANIFEST__', () => (assetCacheEnabled ? assetManifestJson.on : assetManifestJson.off));
+  const { chunks, length } = PageChunks.fill(indexPartsFor(assetCacheEnabled), {
+    __SESSION_TOKEN__: bootstrap.sessionToken, __SESSION_ROLE__: bootstrap.role, __SESSION_LABEL__: bootstrap.label, __SETUP_TICKET__: bootstrap.setupTicket,
+    __ACCOUNT_TOKEN__: bootstrap.accountToken, __ENTRY_NOTICE__: bootstrap.entryNotice, __BROWSERS__: ALLOWED_BROWSERS.join(' '),
+  }, escapeAttr);
   res.writeHead(200, securityHeaders({
     'Content-Type': 'text/html; charset=utf-8',
-    'Content-Length': Buffer.byteLength(html),
+    'Content-Length': length,
     'Cache-Control': 'no-store',
   }));
-  res.end(html);
+  res.cork(); for (const c of chunks) res.write(c); res.end();
 }
 
 // v1.10.61 두 세계 영웅전 page: the asset host it fetches the big files from is the one other origin it may connect to;
@@ -1030,9 +1035,22 @@ async function pushNew(room, from, fromLabel, text) {
   }
   if (gone.length) await worldEdit(async () => pointStore.setWorldValue('messengerPush', ((await pointStore.worldValue('messengerPush')) || []).filter((s) => !gone.includes(s.endpoint))));
 }
+// 1.10.363 메모리 (운영 OOM 11-18): a stream nobody reads (a phone put away, its connection still open) kept every frame
+// queued -- the plaza's snapshot 6~7 times a second, 5~6 MB a minute each (soak: 5 such pages, live heap 60 → 116 MB in 2
+// minutes). Now a frame is made once for everyone; the plaza's (the latest wins) skips a page already behind; and a page
+// SSE_BACKLOG_MAX behind is closed (its page opens the stream again when it reads: req 'close' tidies up as for any end).
+const SSE_BEHIND = 256 * 1024;
+const SSE_BACKLOG_MAX = 2 * 1024 * 1024;
+const sseFrame = (event, data) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+function sseSend(res, frame, { skipIfBehind = false } = {}) {
+  const queued = res.writableLength || 0;
+  if (queued > SSE_BACKLOG_MAX) { sseClosed += 1; res.destroy(); return false; }
+  if (skipIfBehind && queued > SSE_BEHIND) { sseSkipped += 1; return false; }
+  res.write(frame); return true;
+}
+let sseClosed = 0; let sseSkipped = 0; // (counted into the [mem] line)
 function sseWrite(res, event, data) {
-  res.write(`event: ${event}\n`);
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
+  return sseSend(res, sseFrame(event, data));
 }
 
 function trimLobbyMessages() {
@@ -2149,9 +2167,9 @@ const plazaTicker = setInterval(() => {
   prunePlazaPresence();
   if (!plazaDirty) return;
   plazaDirty = false;
-  const snapshot = plazaSnapshot();
+  const frame = sseFrame('plaza', plazaSnapshot()); // (1.10.363: one string for every page, a page behind skips this one)
   for (const entry of [...lobbyStreams]) {
-    try { sseWrite(entry.res, 'plaza', snapshot); } catch { lobbyStreams.delete(entry); }
+    try { sseSend(entry.res, frame, { skipIfBehind: true }); } catch { lobbyStreams.delete(entry); }
   }
 }, PLAZA_TICK_MS);
 plazaTicker.unref?.();
@@ -2236,7 +2254,7 @@ async function projectGive(account, name, amount, requestId) {
     await pointStore.setWorldValue('projects', s); projectsState = s; broadcastIsland('projects', IslandProjects.view(s, projectGoal)); return s;
   });
 }
-function broadcastIsland(type, data) { for (const entry of [...lobbyStreams]) { try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } } }
+function broadcastIsland(type, data) { const frame = sseFrame(type, data); /* (1.10.363: made once) */ for (const entry of [...lobbyStreams]) { try { sseSend(entry.res, frame); } catch { lobbyStreams.delete(entry); } } }
 async function weedState(now = nowMs()) {
   let state = await pointStore.islandWeeds();
   const today = kstDate(now);
@@ -4976,7 +4994,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.362' });
+    return sendJson(res, 200, { ok: true, version: '1.10.363' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -10539,7 +10557,11 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.362 실행: http://${HOST}:${PORT}`));
+  { /* 1.10.363 메모리 (운영 OOM 11-18 13:18Z): a [mem] line every 5 min and at 80 % of the limit, with the biggest of these by entries */
+    const tracked = { petOf, bagSlots, boxSlots, stockNoticed, stockNewsSeen, fishModes, fishModeForced, sessions, activeGuestSessions, rooms, streams, lobbyStreams, rateLimits, invitations, islandInviteIntents, equippedSkinCache, eventAudience, rewardTestAccounts, codeRevs, vendorCache, hwatuCache, testNotices, photoUploading, accountTokens, setupTickets, liveEntryKeys, messengerStreams, climbs, errandStages, storyDocs, taxNoted, soloFirsts, plazaPresence, plazaLastPos, townhallInside, storeInside, furnitureInside, petshopInside, fashionInside, homeInside, homeFloor, yardLevels, farmDocs, petReadFailedAt, taxDebt, jailInside, exchangeInside, denInside, denBelow, museumInside, jailInmates, jailFreed, jailEssays, jailVeterans, visitNoted, resourcePulls, weedPulls, questCache, soloGames, reflexRuns, residentBets, betChains, puzzleStarts, cardRuns, herosurvRuns, plazaSpots, townhallPass, fishCasts, bigCatchAt, seatTaken, snowThrows, insectShown, showUsed, trainVisitors, trainRiders, taxiRides, taxiPaying, unstuckAt, taxiStopOut, talkNow, eventRounds, contestPasses, inflightEntryIds, expiredEntries };
+    if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
+  }
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.363 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
