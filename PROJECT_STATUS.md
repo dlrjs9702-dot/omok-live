@@ -13,6 +13,20 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.361 문제 기록 묶음(notes docs/issue-log-review-20261118.md, 사용자 「넣어」·「361 전부 A」) + 에셋 151 + 가방 돌아가기
+
+- 낚싯대(090e3a14·a7dbc058): 들고 다닐 때 ROD_CARRY 돌림(끝 오른 0.11·위 0.89·앞 0.45), 던질 때는 rot 0.
+- 도박장 1·3인칭(a7f35fb1): FP_PLACES·천장 lid에 den.
+- 선택지 늦음(50540f40): 고른 말 바로 표시 + 「…」, 서버 대화의 DB 읽기를 Promise.all로.
+- 초승역 판(8d449da3): 크림 종이·갈색 글.
+- 소장(a6797d63): 내가 철창 안이면 철창 쪽으로 돌아봄(아니면 책상 앞), 구치소 의자(4cd68300): 벤치 2개 × 2자리(IslandJail.SEATS, 서버 SEATS, clamp가 앉은 자리 허용).
+- 동상(a3933cc0·0f995a22): 벽감 간격 ~10 m → 3 m, 빈 벽감마다 「○○ 자리 · 곧 새겨질 자리」 명판, 명판 0.9 → 0.42 m·2 m 앞(발이 안 가려짐).
+- 툇마루섬 안내판(70b45159) 글 쪽이 찻길로. 박물관(975ab8e0) 9×7.2 m를 원 하나 대신 벽 따라 막음.
+- 에셋 151: 옛 잔교(island.js) 달마루섬에서 숨김(c114b222 두 갑판 같은 평면), 빛나 Photo 동작 4개(5dffd074, sha 4/4).
+- 1A 절벽 끝(2d83e547·618fce8f): 그려진 땅이 0.1 m 넘게 낮은 칸만 서는 높이를 그려진 땅으로(0.35 m에서 다). 2A 턱(4f5588e0): 걸음을 0.3 m마다 확인(설 수 없음·0.9 m 넘게 떨어짐이면 막음, 3 m 넘는 점프는 도착점만). 3A 책장(3c7be8cf): 오른쪽 벽 가운데 → 왼쪽 벽 뒤 화분 옆(4.70, 1.9). 4A 퀘스트 표시: 코드 없음, 다음 문제 기록에 주민·부탁 적어 달라고.
+- 가방(사용자 11-18): 통·도감·기념사진·받은 것 창 「← 가방」, ESC·폰 뒤로가기(cancel)는 가방으로.
+- 확인 못 함: ff5b6754 도박장 묻힘(발 1 cm, 안개 층 영향 없음).
+
 ## v1.10.360 길 고침(문제 기록 8e1f13a5·ba1a3bd5) + 택시 시점 고정(사용자 11-18)
 
 - 길 위 풀: 바람 풀(G1)이 road.png 마스크도 읽음(island-pilot-scene; 땅 그림 밖 별마루섬에선 안 읽음). 키 큰 풀·땅 장식은 bareGround에 길 3.9 m + 0.4. 바닷가 자리(shoreSpots)도 길 밖(쓰레기 병이 차선 위에 생기던 것). ba1a3bd5(툇마루섬 길 오른쪽 절반이 풀밭)는 같은 원인: 길 50 m마다 9곳, 풀이 난 점 고치기 전 8곳 → 0곳.
@@ -42,11 +56,3 @@
 | 다리 머리(별마루섬) | 72 · 5.2 | 332 · 5.4 |
 
   통과선: 본섬 세 자리 ±5 % 안, 새 세 자리 정류장(816) 아래.
-
-## v1.10.358 긴급: 폰에서 땅 안 보임 (사용자 갤럭시 폴드, live 1.10.357)
-
-- 원인: 땅 셰이더의 텍스처가 17칸(우리 15 + three.js dfgLUT + 해 그림자). 356까지는 16칸으로 딱 한도였고, 357의 tRoad(찻길 지도)가 넘겨서 MAX_TEXTURE_IMAGE_UNITS 16인 폰에서 프로그램 연결이 실패함(PC는 32라 멀쩡).
-- 고침: 회색 결 그림 grass·soil·sand 세 장을 ground-v1/ground.grains.png 한 장으로(R 풀 64 px 4×4 · G 흙 256 · B 모래 32 px 8×8, tools/ground-grains.py). 셰이더는 GRASS/SOIL/SAND 매크로로 채널·배율만 바꿔 같은 값을 읽음 → 15칸.
-- 재발 막기: test/ground-samplers.test.js(땅 sampler + 2 ≤ 15).
-- 확인: 브라우저에서 땅 프로그램의 실제 sampler 15개(PC·폰 프로필), 모습 같음.
-- 357 사진·CI가 멀쩡했던 까닭: Playwright 헤드리스 Chromium은 SwiftShader라 MAX_TEXTURE_IMAGE_UNITS 32. 이 PC의 Chrome(ANGLE D3D11, RX 570)과 대부분의 폰·PC 브라우저는 16이라, 357은 그쪽에서 모두 땅이 안 보였을 것.
