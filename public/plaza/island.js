@@ -919,7 +919,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   }
   // (1.10.337 문제 기록 11-16 A2·A3: no cover on 대청마당's paving -- its rectangle, the fountain's disc and its walks --, in the 관공서
   // yard, or in the quarry's dug ground -- the wild flowers below, the season's drifts and the ground cover alike)
-  const bareGround = (x, z) => Boolean(T.inPlaza?.(x, z, 1.5)) || Boolean(T.inTownhall?.(x, z, 2)) || Boolean(globalThis.IslandQuarry?.inArea?.(x, z, 2));
+  const bareGround = (x, z) => Boolean(T.inPlaza?.(x, z, 1.5)) || Boolean(T.inTownhall?.(x, z, 2)) || Boolean(globalThis.IslandQuarry?.inArea?.(x, z, 2))
+    || (T.roadDist ? T.roadDist(x, z) < T.ROAD.half + 0.4 : false); /* (T1 고침, 문제 기록 11-18 「도로, 인도 위에도 흔들리는 풀들」: none on the taxi road's lanes and walks) */
   // G4a (assets 112): fallen logs and palms (blocking: the terrain's rounds), tall grass and lily pads / lotus (walked
   // through, on the water) -- where the terrain scattered them; each a plain stand-in until its model is in
   const N4 = nature(); /* (not G: the shared shapes) */

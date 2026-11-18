@@ -50,7 +50,10 @@ function buildCoverMaps(T, res = 1024, box = null) { // (box { x0, z0, size }: a
     if (cdOf[k] < FAR) { put(a, k, 2, 1); if (T.cliffAt(x, z) > 0.4) put(b, k, 0, 1); continue; } // (the open sea)
     const hx = (h[j * res + Math.min(res - 1, i + 1)] - h[j * res + Math.max(0, i - 1)]) / (2 * cell); const hz = (h[Math.min(res - 1, j + 1) * res + i] - h[Math.max(0, j - 1) * res + i]) / (2 * cell);
     const slope = Math.hypot(hx, hz); const cd = T.coastDist(x, z); const cliff = T.cliffAt(x, z); const n1 = noise(x * 0.9, z * 0.9);
-    const sand = cd < 9 && cliff < 0.5 ? smooth(8.5, 4, cd + (n1 - 0.5) * 1.6) : h[k] < SEA - 0.3 ? 1 : 0;
+    let sand = cd < 9 && cliff < 0.5 ? smooth(8.5, 4, cd + (n1 - 0.5) * 1.6) : h[k] < SEA - 0.3 ? 1 : 0;
+    // (T1 고침, 문제 기록 11-18 「모래사장 구간, 인도 구간 명확히」: where the taxi road runs by the sea, the ground between its walk's
+    // outer edge and the water is beach -- sea, sand, the railing or kerb, the walk)
+    if (T.roadFoot && cd < 18 && cliff < 0.5) { const f = T.roadFoot(x, z); const half = T.ROAD.half; if (f && f.d > half - 0.05 && f.d < half + 18 && T.coastDist(f.x, f.z) < half + 12 && cd < T.coastDist(f.x, f.z)) sand = Math.max(sand, smooth(half - 0.05, half + 0.35, f.d)); }
     // (검토 2차 1: rock only where the ground is near upright -- the slopes keep their grass, a thin band of earth at the steepest)
     const rock = Math.max(cliff > 0.4 && cd < 3.5 ? smooth(3.5, 0.5, cd + (n1 - 0.5)) : 0, smooth(1.9, 2.8, slope + (n1 - 0.5) * 0.3));
     // (동산 다듬기 검토 3차: the banks are grass only -- earth patches on them read as stickers or a cow's coat)

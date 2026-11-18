@@ -25,7 +25,8 @@ function buildShoreMap(T, res = 1024, box = null) { // (box { x0, z0, size }: an
   // built shore too, to its edge and a metre more: no wash over it, as the design's 인공 물가)
   const walks = T.dalmaru ? require('../../public/plaza/island-paths').paintedWalks(T).curves : [];
   const segDist = (px, pz, ax, az, bx, bz) => { const dx = bx - ax; const dz = bz - az; const l = dx * dx + dz * dz || 1; const u = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l)); return Math.hypot(px - ax - u * dx, pz - az - u * dz); };
-  const onWalk = (x, z) => walks.some((w) => { for (let s = 1; s < w.pts.length; s += 1) if (segDist(x, z, w.pts[s - 1][0], w.pts[s - 1][1], w.pts[s][0], w.pts[s][1]) <= w.w / 2 + 1) return true; return false; });
+  const onWalk = (x, z) => walks.some((w) => { for (let s = 1; s < w.pts.length; s += 1) if (segDist(x, z, w.pts[s - 1][0], w.pts[s - 1][1], w.pts[s][0], w.pts[s][1]) <= w.w / 2 + 1) return true; return false; })
+    || (T.roadDist ? T.roadDist(x, z) <= T.ROAD.half + 1 : false); /* (T1 고침, 문제 기록 11-18 「인도까지 바닷물이 올라와」: the taxi road's lanes and walks, a metre more, built shore -- no wash) */
   const out = new Uint8Array(n * 3);
   for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) {
     const k = j * res + i; const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell;

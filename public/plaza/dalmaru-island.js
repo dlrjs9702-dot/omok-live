@@ -253,7 +253,28 @@
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
     // (문제 기록 4회차: 2.4 m deep it fell between the 2.5 m mesh's points -- drawn 7 m under where one stood at the top; 5 m deep)
     const edge = Math.max(-along - 0.4, along - 5, -out - 1.5, out - 9); if (edge < 2.5) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2.5, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
-    return h;
+    return roadBank(x, z, h);
+  }
+  // T1 고침 (문제 기록 11-18 「인도까지 바닷물이 올라와 … 모래사장 구간, 인도 구간 명확히」): where the taxi road runs by the sea its
+  // lanes and walks lay at the sea's height and under it -- the road now on a low bank: the ground under them and half a metre past
+  // the walk's edge at least 0.75 m over the sea, then down to the water as a beach (0.3 m a metre, about 2.5 m of sand). Only ever
+  // raised; never within 4 m of a bridge's ends (their decks lie on the ground as it was). A grid of the road's pieces (8 m) for speed
+  const BANK_TOP = SEA + 0.75; const BANK_SLOPE = 0.3; const BANK_REACH = ROAD.half + 0.5 + (BANK_TOP - SEA + 0.5) / BANK_SLOPE;
+  let bankGrid = null;
+  function roadBank(x, z, h) {
+    if (h >= BANK_TOP || !TX) return h;
+    if (!bankGrid) {
+      bankGrid = new Map(); const R = TX.ROUTE;
+      for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i];
+        for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(i); } }
+    }
+    const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
+    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < b.length / 2 + 4 && Math.abs(z - b.z) < 2.8 + 4) return h;
+    const R = TX.ROUTE; let d = Infinity;
+    for (const i of segs) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
+    if (d >= BANK_REACH) return h;
+    const top = d <= ROAD.half + 0.5 ? BANK_TOP : BANK_TOP - (d - ROAD.half - 0.5) * BANK_SLOPE;
+    return Math.max(h, top);
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
   const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z) || D.inCreek(x, z); // (2회차 18: the ponds over the falls are water too; N1: 새 섬's creek)
@@ -645,7 +666,7 @@
   function shoreSpots() {
     if (shoreCells) return shoreCells;
     shoreCells = [];
-    for (let x = -D.R_OUT; x <= D.R_OUT; x += 2) for (let z = -D.R_OUT; z <= D.R_OUT; z += 2) { const cd = D.coastDist(x, z); if (cd > 2.6 && cd < 9 && cliffAt(x, z) < 0.3 && walkable(x, z)) shoreCells.push({ x, z, cd }); }
+    for (let x = -D.R_OUT; x <= D.R_OUT; x += 2) for (let z = -D.R_OUT; z <= D.R_OUT; z += 2) { const cd = D.coastDist(x, z); if (cd > 2.6 && cd < 9 && cliffAt(x, z) < 0.3 && walkable(x, z) && roadClear({ x, z }, 0.5)) shoreCells.push({ x, z, cd }); } /* (T1 고침: none on the taxi road -- the beach's litter lay on its lanes) */
     return shoreCells;
   }
   // G4a: which rock is which (island.js draws each so) -- the shore's low stones and the pebble walked over, the rest block;
@@ -693,7 +714,8 @@
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
-    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
+    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2,
+    ROAD, roadDist, roadFoot, /* (T1 고침: the taxi road's band -- the scene's grass and decor, the shore and cover maps keep off it) */ SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,

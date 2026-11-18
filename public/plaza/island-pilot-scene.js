@@ -85,13 +85,14 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
   const REACH = phone ? 25 : 45; const PER_M2 = phone ? 5 : 8; const MAX_CELLS = phone ? 24 : 48; const SIDE = 512; const TIER = [0, 0.35, 1];
   let quality = 2; let mapsRead = null; let solidGrid = null;
   function readMaps() { // -> { path, gravel, bare, sand, rock, forest, shore } sampler, or null until island.js's pictures are in
-    if (mapsRead) return mapsRead; const m = groundMaps?.(); const imgs = m && [m.pathA, m.pathB, m.coverA, m.coverB, m.shore].map((t) => t?.image);
+    if (mapsRead) return mapsRead; const m = groundMaps?.(); const imgs = m && [m.pathA, m.pathB, m.coverA, m.coverB, m.shore, ...(m.road ? [m.road] : [])].map((t) => t?.image); /* (T1 고침: and the taxi road's -- no grass on its lanes and walks) */
     if (!imgs || imgs.some((im) => !im?.width)) return null;
     const c = document.createElement('canvas'); c.width = c.height = SIDE; const g = c.getContext('2d', { willReadFrequently: true });
     const data = imgs.map((im) => { g.clearRect(0, 0, SIDE, SIDE); g.drawImage(im, 0, 0, SIDE, SIDE); return g.getImageData(0, 0, SIDE, SIDE).data; });
     const S = T.GROUND.size; const at = (d, ch, x, z) => { const u = ((x + S / 2) / S) * SIDE - 0.5; const v = ((z + S / 2) / S) * SIDE - 0.5; const i = Math.max(0, Math.min(SIDE - 2, Math.floor(u))); const j = Math.max(0, Math.min(SIDE - 2, Math.floor(v))); const fu = Math.max(0, Math.min(1, u - i)); const fv = Math.max(0, Math.min(1, v - j)); const p = (a, b) => d[((j + b) * SIDE + i + a) * 4 + ch]; return (p(0, 0) * (1 - fu) + p(1, 0) * fu) * (1 - fv) + (p(0, 1) * (1 - fu) + p(1, 1) * fu) * fv; };
-    const [pa, pb, ca, cb, sh] = data;
-    mapsRead = (x, z) => ({ path: at(pa, 0, x, z), gravel: at(pb, 2, x, z), forest: at(ca, 0, x, z), bare: at(ca, 1, x, z), sand: at(ca, 2, x, z), rock: at(cb, 0, x, z), shore: at(sh, 0, x, z) });
+    const [pa, pb, ca, cb, sh, rd] = data;
+    /* (N1: past the ground's own square -- 별마루섬 -- no reading: the edge texels would be read there) */
+    mapsRead = (x, z) => (Math.abs(x) > S / 2 || Math.abs(z) > S / 2 ? null : { path: at(pa, 0, x, z), gravel: at(pb, 2, x, z), forest: at(ca, 0, x, z), bare: at(ca, 1, x, z), sand: at(ca, 2, x, z), rock: at(cb, 0, x, z), shore: at(sh, 0, x, z), road: rd ? at(rd, 1, x, z) : 0 });
     return mapsRead;
   }
   function nearSolid(x, z) { // (a 4 m grid of the island's solids, made once)
@@ -100,7 +101,7 @@ vec3 pilotTone(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); float x
     for (let a = i - 2; a <= i + 2; a += 1) for (let b = j - 2; b <= j + 2; b += 1) for (const s of solidGrid.get(`${a},${b}`) || []) if (Math.hypot(x - s.x, z - s.z) < (s.r || 0.5) + 0.12) return true;
     return false;
   }
-  const thickAt = (x, z) => { const m = readMaps(); if (!m) return 0; const k = P.grassFrom(m(x, z)); return k > 0 && !(T.inPlaza && T.inPlaza(x, z)) && !T.inTownhall?.(x, z, 0.3) /* (313 A4 「관공서 바닥에도 돌을 뚫고 풀이」: its paved yard and walls) */ && !globalThis.IslandQuarry?.inArea?.(x, z, 1) /* (1.10.337 A3 「채석장에는 잡초가 안자라게」: its dug ground) */ && T.walkable(x, z) && !nearSolid(x, z) ? k : 0; };
+  const thickAt = (x, z) => { const m = readMaps(); if (!m) return 0; const at = m(x, z); if (!at || at.road > 40) return 0; const k = P.grassFrom(at); return k > 0 && !(T.inPlaza && T.inPlaza(x, z)) && !T.inTownhall?.(x, z, 0.3) /* (313 A4 「관공서 바닥에도 돌을 뚫고 풀이」: its paved yard and walls) */ && !globalThis.IslandQuarry?.inArea?.(x, z, 1) /* (1.10.337 A3 「채석장에는 잡초가 안자라게」: its dug ground) */ && T.walkable(x, z) && !nearSolid(x, z) ? k : 0; };
   // the drawn ground's own height (its mesh's triangles, 2.5 m) -- the smooth heightAt left the sheet under it on a slope
   const groundY = (x, z) => (T.meshGroundHeight ? T.meshGroundHeight(x, z) : T.heightAt(x, z));
   const cellMap = new Map(); // 'i,j' -> { mesh, sheet, n (its blades), d }
