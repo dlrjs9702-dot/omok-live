@@ -1977,10 +1977,7 @@
       fullscreenBtn.textContent = on ? '창 모드' : '전체화면'; fullscreenBtn.setAttribute('aria-pressed', String(on));
     });
   }
-  // v1.10.66 홈 화면 앱: where a page cannot go fullscreen (an iPhone), the menu tells how to get the same -- the island
-  // icon on the home screen opens without the address bar. Not shown once opened that way.
-  const homeApp = window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: fullscreen)').matches || navigator.standalone === true;
-  byId('homeAppHint').classList.toggle('hidden', Boolean(document.fullscreenEnabled || homeApp));
+  // (v1.10.66 홈 화면 앱's iPhone line in the menu: in 364's 📲 게임 설치 guide card now)
   // v1.10.63 메뉴 (IDEAS 2026-10-11): no account bar; as in other games, Esc opens one window -- 내 정보, 환경설정
   // (theme, fullscreen), 관리자 창 for an admin, 접속 종료. The ☰ button opens it where there is no Esc (a phone).
   // Esc does this only with nothing else to close or cancel: an open window, typing, the photo mode, a gathering.
@@ -14285,12 +14282,33 @@
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
   { // v1.10.258 (총괄, 폴드) 「앱으로 설치」 on the first screen and in ☰ -- the messenger's: shown only when Chrome offers the
     // install (Chrome's own menu won't put a second app of one site on a phone that has the messenger's), never in the app
-    let installPrompt = null; const buttons = [byId('installAppBtn'), byId('menuInstallBtn')];
-    const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone);
-    const show = (on) => { for (const b of buttons) b?.classList.toggle('hidden', !on || standalone()); };
-    window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; show(true); });
-    for (const b of buttons) b?.addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; show(false); });
-    window.addEventListener('appinstalled', () => show(false));
+    // 364 (user A, notes docs/install-button-20261118.md): 「📲 게임 설치」 always on the account card and in ☰ (never in the
+    // installed app) -- Chrome's own prompt when it offers one, else a card of how this device does it (and the others)
+    let installPrompt = null; const offered = [byId('installAppBtn')]; const always = [byId('accountInstallBtn'), byId('menuInstallBtn')];
+    const standalone = () => Boolean(window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: fullscreen)').matches || navigator.standalone);
+    const show = () => { for (const b of offered) b?.classList.toggle('hidden', !installPrompt || standalone()); for (const b of always) b?.classList.toggle('hidden', standalone()); };
+    const ua = navigator.userAgent || ''; const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const WAYS = [
+      ['android', '안드로이드 Chrome', ['오른쪽 위 ⋮ 메뉴를 눌러요.', '「앱 설치」 또는 「홈 화면에 추가」를 눌러요.']],
+      ['ios', '아이폰·아이패드 Safari', ['아래(아이패드는 위)의 공유 버튼 □↑을 눌러요.', '「홈 화면에 추가」를 눌러요.']],
+      ['samsung', '삼성 인터넷', ['아래 ≡ 메뉴를 눌러요.', '「페이지 추가」 → 「홈 화면」을 눌러요.']],
+      ['pc', 'PC Chrome·Edge', ['주소창 오른쪽의 설치 아이콘(⊕)을 눌러요.', '없으면 ⋮(Edge는 …) 메뉴 → 「앱」 → 「이 사이트를 앱으로 설치」를 눌러요.']],
+    ];
+    const mine = /SamsungBrowser/.test(ua) ? 'samsung' : ios ? 'ios' : /Android/.test(ua) ? 'android' : 'pc';
+    const guide = () => {
+      const d = byId('installGuideDialog'); const [, name, steps] = WAYS.find(([k]) => k === mine);
+      byId('installGuideTitle').textContent = `📲 게임 설치 · ${name}`; byId('installGuideMine').replaceChildren(...steps.map((s) => Object.assign(document.createElement('li'), { textContent: s })));
+      byId('installGuideOthers').querySelector('dl').replaceChildren(...WAYS.filter(([k]) => k !== mine).flatMap(([, n, s]) => [Object.assign(document.createElement('dt'), { textContent: n }), Object.assign(document.createElement('dd'), { textContent: s.join(' ') })]));
+      if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+    };
+    byId('installGuideClose')?.addEventListener('click', () => byId('installGuideDialog').close());
+    window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; show(); });
+    for (const b of [...offered, ...always]) b?.addEventListener('click', async () => {
+      if (!installPrompt) { if (b.id !== 'installAppBtn') guide(); return; }
+      installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; show();
+    });
+    window.addEventListener('appinstalled', () => { installPrompt = null; show(); });
+    show();
   }
   // 메신저 단독 창 (gamecenter-notes docs/messenger-standalone-20261025.md B안): the messenger is its own page now
   // (/messenger, public/messenger.js) -- open beside the game or without it, an app of its own. Here only its buttons (내 계정

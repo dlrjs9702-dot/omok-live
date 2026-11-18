@@ -3893,3 +3893,5 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .placeStep{display:inline-flex;gap:3px;margin-left:auto}
 #islandPlaceSubmit.sure{background:#e0952e;color:#fff;border-color:#b06a12}
 @media (max-width:560px){#islandPlaceList:has(.placeSide){grid-template-columns:1fr}.placeItems{max-height:26vh}}
+/* 364 📲 게임 설치: the guide card (this device's steps first, the others folded) */
+.installGuide h3{margin:0 0 6px}.installGuideSteps{margin:10px 0;padding-left:1.4em;display:grid;gap:6px;font-weight:700}.installGuideList{margin:8px 0 0;display:grid;gap:4px}.installGuideList dt{font-weight:800;margin-top:6px}.installGuideList dd{margin:0;opacity:.85}.installGuide #installGuideClose{width:100%;margin-top:14px}
