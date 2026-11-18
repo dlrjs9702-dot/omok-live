@@ -990,6 +990,8 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
 
 // v1.10.10 이벤트 인벤토리: the bag (I or the 「가방」 tab) shows what I carry; the town hall settles trash and found
 // wallets, the trader buys herbs, berries and mushrooms -- each takes only its own things.
+let islandEventOpen = null; /* (364: an island event this file opened is ended even when its test fails -- the server is shared) */
+test.afterEach(async ({ request }) => { if (!islandEventOpen) return; const id = islandEventOpen; islandEventOpen = null; await post(request, '/api/admin/island-events/end', await require('./skin-support').adminToken(request), { id }).catch(() => {}); });
 test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·지갑만, 상인은 약재만 받아 포인트로 바꾼다', async ({ browser, request }) => {
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '가방손님');
@@ -1040,7 +1042,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   if (DAL) await require('./skin-support').intoMall(page, 'mall:stall'); // (달마루섬: the trader is the 백화점's 노점)
   else await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
   await expect(page.locator('#plazaHint')).toHaveText(DAL ? 'SPACE · 노점 · 물고기도 받아요' : 'SPACE · 상인');
+  /* (364 관리자 섬 이벤트: opened -- the band and the line on the island, 「2배 적용 중」 in the 노점's window, the herbs paid twice) */
+  const admin = await require('./skin-support').adminToken(request); const opened = await post(request, '/api/admin/island-events', admin, { kind: 'sell', target: 'item', item: 'herb', mult: 2, minutes: 30, text: '약재 값 2배!' }); expect(opened.status, JSON.stringify(opened.data)).toBe(200); islandEventOpen = opened.data.list.find((e) => e.item === 'herb' && !e.closedAt).id;
+  await expect(page.locator('#islandEventBand')).toContainText('약재 값 2배', { timeout: 30000 }); await expect(page.locator('#islandEventLine')).toContainText(/약재 값 2배 · 남은 \d+분/);
   await page.keyboard.press('Space');
+  await expect(page.locator('#islandPlaceEvent')).toContainText('약재 값 2배 적용 중');
   /* (1.10.356 골라 팔기: a goby alone moved, back again; then all -- the fish's rows by the herbs. 362: a fish one a slot -- each goby its own row, ×1) */
   await page.locator('.placeItem[data-item="fish_goby"]').first().click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(1); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toContainText('망둥어 ×1');
   await page.locator('.islandPlaceRow[data-item="fish_goby"] .placeBack').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(0);
@@ -1049,8 +1055,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   expect(Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, ''))).toBeGreaterThan(8000);
   await page.locator('#islandPlaceSubmit').click(); await page.locator('#islandPlaceSubmit').click(); /* (once more to be sure) */
   await expect(page.locator('#islandPlaceStatus')).toContainText(/^\+[\d,]+P/); /* (a fish is paid by its size -- a few P off the window's guess) */
-  const stallPaid = Number((await page.locator('#islandPlaceStatus').textContent()).split('P')[0].replace(/[^0-9]/g, '')); expect(stallPaid).toBeGreaterThan(8000);
+  const stallPaid = Number((await page.locator('#islandPlaceStatus').textContent()).split('P')[0].replace(/[^0-9]/g, '')); expect(stallPaid).toBeGreaterThan(16000); /* (364: the herbs 4,000 × 2 doubled) */
+  await expect(page.locator('#islandPlaceStatus')).toContainText('이벤트 +8,000P');
   await page.locator('#islandPlaceCloseBtn').click();
+  expect((await post(request, '/api/admin/island-events/end', admin, { id: islandEventOpen })).status).toBe(200); islandEventOpen = null;
+  await expect(page.locator('#islandEventLine')).toBeHidden({ timeout: 30000 }); /* (ended: off the island's top) */
   await page.locator('#islandBagTab').click();
   await expect(page.locator('#islandBagCount')).toHaveText('0/16');
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000 + stallPaid); // + 약재 4,000 × 2 and the fish

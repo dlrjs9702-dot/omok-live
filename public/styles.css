@@ -3895,3 +3895,8 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 @media (max-width:560px){#islandPlaceList:has(.placeSide){grid-template-columns:1fr}.placeItems{max-height:26vh}}
 /* 364 📲 게임 설치: the guide card (this device's steps first, the others folded) */
 .installGuide h3{margin:0 0 6px}.installGuideSteps{margin:10px 0;padding-left:1.4em;display:grid;gap:6px;font-weight:700}.installGuideList{margin:8px 0 0;display:grid;gap:4px}.installGuideList dt{font-weight:800;margin-top:6px}.installGuideList dd{margin:0;opacity:.85}.installGuide #installGuideClose{width:100%;margin-top:14px}
+/* 364 관리자 섬 이벤트: the line on the island's top while one runs, the band when one starts, the sell window's note */
+.islandEventLine{position:absolute;top:calc(env(safe-area-inset-top,0px) + 54px);left:50%;transform:translateX(-50%);z-index:6;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:min(92vw,720px);pointer-events:none}.islandEventItem{background:#7c2d12e6;color:#fff7ed;border:1px solid #fdba74;border-radius:999px;padding:4px 12px;font-size:.85rem;font-weight:800;box-shadow:0 4px 14px #0006}
+.islandEventBand{position:absolute;top:calc(env(safe-area-inset-top,0px) + 92px);left:50%;transform:translateX(-50%);z-index:7;display:grid;gap:4px;text-align:center;width:min(92vw,560px);padding:14px 18px;border-radius:18px;background:linear-gradient(135deg,#f97316,#db2777);color:#fff;box-shadow:0 12px 40px #0008;pointer-events:none;animation:islandEventIn .45s ease-out}.islandEventBand strong{font-size:1.35rem}.islandEventBand small{opacity:.9}
+@keyframes islandEventIn{from{transform:translate(-50%,-14px);opacity:0}to{transform:translateX(-50%);opacity:1}}
+.islandPlaceEvent{margin:2px 0 6px;color:#fb923c;font-weight:800}

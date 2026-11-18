@@ -1,0 +1,141 @@
+{
+ "note": "364 관리자 섬 이벤트 알림 틀 (notes docs/content-20261118/event-notices.json, 총괄): {time} {target} {mult}",
+ "templates": [
+  {
+   "kind": "sell",
+   "text": "지금부터 {time} 동안 {target} 값이 {mult}!"
+  },
+  {
+   "kind": "sell",
+   "text": "꽥! {time} 동안 {target} 값이 {mult}예요!"
+  },
+  {
+   "kind": "sell",
+   "text": "{target} 팔 때예요! {time} 동안 {mult}"
+  },
+  {
+   "kind": "sell",
+   "text": "상인이 {target} 값을 {mult}로 쳐 줘요"
+  },
+  {
+   "kind": "sell",
+   "text": "{time} 동안만! {target} 값이 {mult}로 올라요"
+  },
+  {
+   "kind": "sell",
+   "text": "꽥! {target} 값 {mult}, 지금 팔러 가요"
+  },
+  {
+   "kind": "sell",
+   "text": "주머니 속 {target}, 지금 팔면 {mult}!"
+  },
+  {
+   "kind": "sell",
+   "text": "{time} 동안 {target} 값이 쑥! {mult}예요"
+  },
+  {
+   "kind": "sell",
+   "text": "오늘은 {target} 장날! {time} 동안 {mult}"
+  },
+  {
+   "kind": "sell",
+   "text": "{target} 모아 둔 분, {mult} 값에 파세요"
+  },
+  {
+   "kind": "sell",
+   "text": "시장님 선물! {time} 동안 {target} {mult}"
+  },
+  {
+   "kind": "sell",
+   "text": "{time} 동안 {target} 값이 {mult}로 반짝!"
+  },
+  {
+   "kind": "catch",
+   "text": "{time} 동안 희귀한 {target}, 더 잘 나와요"
+  },
+  {
+   "kind": "catch",
+   "text": "꽥! {time} 동안 {target} 잡히는 양이 {mult}!"
+  },
+  {
+   "kind": "catch",
+   "text": "윤슬만이 들썩여요! {target} 잘 잡혀요"
+  },
+  {
+   "kind": "catch",
+   "text": "별마루섬 숲에 {target}, {time} 동안 {mult}"
+  },
+  {
+   "kind": "catch",
+   "text": "거울호수에 {target} 몰려왔어요! {time} 동안"
+  },
+  {
+   "kind": "catch",
+   "text": "{time} 동안 채석장에서 {target} {mult}!"
+  },
+  {
+   "kind": "catch",
+   "text": "운 좋은 {time}! 희귀한 {target} 노려 봐요"
+  },
+  {
+   "kind": "catch",
+   "text": "꽥꽥! 오늘 {target} 운이 {mult}예요"
+  },
+  {
+   "kind": "catch",
+   "text": "{target} 찾기 좋은 날, {time} 동안 {mult}"
+  },
+  {
+   "kind": "catch",
+   "text": "그물이랑 낚싯대 챙겨요! {target} {mult}"
+  },
+  {
+   "kind": "catch",
+   "text": "{time} 동안 귀한 {target}, 쏙쏙 나와요"
+  },
+  {
+   "kind": "catch",
+   "text": "툇마루섬에도 {target} 가득! {time} 동안"
+  },
+  {
+   "kind": "notice",
+   "text": "오늘 저녁 대청마당에서 작은 공연이 열려요"
+  },
+  {
+   "kind": "notice",
+   "text": "꽥! 내일은 섬 청소의 날이에요"
+  },
+  {
+   "kind": "notice",
+   "text": "초승역에 손님이 왔어요, 마중 가요"
+  },
+  {
+   "kind": "notice",
+   "text": "광장에서 시장님이 기다려요, 꽥!"
+  },
+  {
+   "kind": "notice",
+   "text": "오늘 밤 거울호수에 별이 가득 떠요"
+  },
+  {
+   "kind": "notice",
+   "text": "별마루다리 산책 주간이 시작됐어요"
+  },
+  {
+   "kind": "notice",
+   "text": "윤슬만 노을이 예쁜 날, 함께 봐요"
+  },
+  {
+   "kind": "notice",
+   "text": "꽥꽥! 마을 잔치 준비를 도와주세요"
+  },
+  {
+   "kind": "notice",
+   "text": "{time} 뒤 광장에서 깜짝 발표가 있어요"
+  },
+  {
+   "kind": "notice",
+   "text": "별마루섬 숲에 반딧불이 찾아왔어요"
+  }
+ ]
+}

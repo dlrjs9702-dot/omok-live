@@ -3094,6 +3094,7 @@
     byId('yardGrowBtn').classList.add('hidden'); if (place === 'office') refreshHomes().then(() => { byId('yardGrowBtn').classList.toggle('hidden', !homesState?.mine); }); // (v1.10.225: once there is a house)
     if (place === 'office') refreshHomes().then(() => { const m = homesState?.mine; const b = byId('homeApplyBtn'); b.textContent = !m ? '내 집 신청' : m.upgradeDay ? '집 넓히는 중 · 내일 완성' : (m.stage || 2) < window.IslandHome.TOP_STAGE ? '집 넓히기' : '내 집'; b.disabled = Boolean(m && (m.upgradeDay || (m.stage || 2) >= window.IslandHome.TOP_STAGE)); }); // (묶음 4-2; v1.10.193 사용자 「2층 큰 집을 사려는데 살 곳이 없어」: up to the 2층 큰 집, not the 작은 집 only)
     document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
+    { /* (364 섬 이벤트: 「…적용 중」 under the title while one raises what is sold) */ const t = byId('islandPlaceTitle'); let ev = byId('islandPlaceEvent'); if (!ev) { ev = document.createElement('p'); ev.id = 'islandPlaceEvent'; ev.className = 'lookMeta islandPlaceEvent'; t.after(ev); } ev.textContent = islandSellEventNote(); ev.classList.toggle('hidden', !ev.textContent); }
     if (!islandPlaceDialog.open) islandPlaceDialog.showModal();
     try { drawIslandPlace(await api('/api/island/bag')); } catch (error) { islandPlaceStatus.textContent = error.message; }
   }
@@ -3109,7 +3110,7 @@
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place: ISLAND_PLACES[place].send || place, requestId: request.id, pick }) });
       if (islandPlaceRequest === request) islandPlaceRequest = null; sellBusy = false; if (place === 'office') guideDone('deliver');
-      islandPlaceStatus.textContent = `+${Number(data.paid || 0).toLocaleString('ko-KR')}P${data.capped ? ' · 오늘은 여기까지 받습니다' : ''}`;
+      islandPlaceStatus.textContent = `+${Number(data.paid || 0).toLocaleString('ko-KR')}P${data.extra > 0 ? ` (🎉 이벤트 +${Number(data.extra).toLocaleString('ko-KR')}P)` : ''}${data.capped ? ' · 오늘은 여기까지 받습니다' : ''}`;
       drawIslandPlace(data.bag); if (data.bag) drawIslandBag(data.bag); loadPoints();
     } catch (error) {
       islandPlaceStatus.textContent = error.message; sellBusy = false;
@@ -4616,6 +4617,40 @@
   });
   new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c, next, kinds }) => { const sel = byId('contestNextKind'); if (sel && next && kinds) { sel.replaceChildren(...Object.entries(kinds).map(([k, name]) => { const o = document.createElement('option'); o.value = k; o.textContent = `다음: ${name}`; return o; })); sel.value = next.kind; sel.dataset.day = String(next.day); } /* (v1.10.238: the next contest's game) */ byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
  api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  { // 364 관리자 「섬 이벤트」 (notes docs/admin-island-events-20261118.md): open one (now or at a time), the list, end one at once
+    let ie = null; const opt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; };
+    const kindOf = () => byId('ieKind').value; const minutesOf = () => (byId('ieMinutes').value === 'custom' ? Number(byId('ieMinutesCustom').value) : Number(byId('ieMinutes').value));
+    const fillTargets = () => {
+      if (!ie) return; const k = kindOf(); const t = byId('ieTarget'); t.replaceChildren(...(k === 'notice' ? [] : Object.entries(k === 'sell' ? ie.sell : ie.catch).map(([v, n]) => opt(v, n))));
+      t.disabled = k === 'notice'; byId('ieMult').disabled = k === 'notice'; byId('ieItemRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'item')); byId('ieGemsRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'ore'));
+      byId('ieTemplate').replaceChildren(opt('', '알림 틀 고르기 (선택)'), ...ie.templates.filter((x) => x.kind === k).map((x, i) => opt(String(i), x.text)));
+    };
+    const fillText = () => {
+      const k = kindOf(); const pick = ie?.templates.filter((x) => x.kind === k)[Number(byId('ieTemplate').value)]; if (!pick || byId('ieTemplate').value === '') return;
+      const m = minutesOf(); const time = m >= 60 ? `${m / 60 === Math.floor(m / 60) ? m / 60 : (m / 60).toFixed(1)}시간` : `${m}분`; const tSel = byId('ieTarget'); const target = tSel.value === 'item' ? byId('ieItem').selectedOptions[0]?.textContent || '' : tSel.selectedOptions[0]?.textContent || ''; const mult = `${byId('ieMult').value}배`;
+      byId('ieText').value = pick.text.replace(/\{time\}/g, time).replace(/\{target\}/g, target).replace(/\{mult\}/g, mult).slice(0, 80);
+    };
+    const drawList = () => {
+      const now = ie?.now || Date.now(); const when = (ms) => new Date(ms).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      byId('ieList').replaceChildren(...(ie?.list || []).slice(0, 20).map((e) => {
+        const li = document.createElement('li'); const state = e.closedAt ? '끝냄' : e.endAt <= now ? '끝' : e.startAt > now ? '예정' : '진행 중';
+        li.textContent = `${state} · ${e.label} · ${when(e.startAt)} ~ ${when(e.closedAt || e.endAt)}${e.extra ? ` · 더 나간 ${Number(e.extra).toLocaleString('ko-KR')}P` : ''}${e.text && e.kind !== 'notice' ? ` · 「${e.text}」` : ''}`;
+        if (!e.closedAt && e.endAt > now) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '끝내기'; b.addEventListener('click', async () => { if (!confirm(`「${e.label}」 이벤트를 지금 끝낼까요?`)) return; try { await api('/api/admin/island-events/end', { method: 'POST', body: JSON.stringify({ id: e.id }) }); await loadIe(); } catch (error) { byId('ieStatus').textContent = error.message; } }); li.append(' ', b); }
+        return li;
+      }));
+    };
+    const loadIe = async () => { ie = await api('/api/admin/island-events'); byId('ieItem').replaceChildren(...ie.items.map((x) => opt(x.id, x.name))); const k = kindOf(); const tv = byId('ieTarget').value; fillTargets(); if (kindOf() === k && tv) byId('ieTarget').value = tv; drawList(); };
+    byId('islandEventAdmin')?.addEventListener('toggle', () => { if (byId('islandEventAdmin').open) loadIe().catch((error) => { byId('ieStatus').textContent = error.message; }); });
+    byId('ieKind')?.addEventListener('change', () => { fillTargets(); byId('ieText').value = ''; });
+    byId('ieTarget')?.addEventListener('change', () => { fillTargets(); fillText(); });
+    for (const id of ['ieTemplate', 'ieMult', 'ieItem']) byId(id)?.addEventListener('change', fillText);
+    byId('ieMinutes')?.addEventListener('change', () => { byId('ieMinutesCustom').classList.toggle('hidden', byId('ieMinutes').value !== 'custom'); fillText(); });
+    byId('islandEventForm')?.addEventListener('submit', async (event) => {
+      event.preventDefault(); const k = kindOf(); const start = byId('ieStart').value ? new Date(byId('ieStart').value).getTime() : null;
+      const body = { kind: k, minutes: minutesOf(), text: byId('ieText').value.trim(), ...(start ? { startAt: start } : {}), ...(k === 'notice' ? {} : { target: byId('ieTarget').value, mult: Number(byId('ieMult').value) }), ...(k === 'sell' && byId('ieTarget').value === 'item' ? { item: byId('ieItem').value } : {}), ...(k === 'sell' && byId('ieTarget').value === 'ore' ? { gems: byId('ieGems').checked } : {}) };
+      try { ie = await api('/api/admin/island-events', { method: 'POST', body: JSON.stringify(body) }); byId('ieStatus').textContent = start ? '예약했어요.' : '열었어요. 섬 화면에 알림이 떠요.'; drawList(); } catch (error) { byId('ieStatus').textContent = error.message; }
+    });
+  }
   for (const [form, select, path, label] of [['islandSeasonForm', 'islandSeasonSelect', '/api/admin/island/season', '계절 회전'], ['islandDecorForm', 'islandDecorSelect', '/api/admin/island/decor', '이벤트 장식']]) { // A5 관리자
     byId(form)?.addEventListener('submit', async (event) => { event.preventDefault(); const mode = byId(select).value; try { await api(path, { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`${label}: ${byId(select).selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); } });
   }
@@ -9015,6 +9050,31 @@
     }
   }
 
+  // 364 관리자 「섬 이벤트」 (notes docs/admin-island-events-20261118.md 2B): the running ones on the island's top (「🎉 잡초 값 2배 · 남은
+  // 42분」), a big band and a sound when one starts -- once each in this tab, a late comer's on entry --, 「…적용 중」 in the sell window
+  let islandEventList = []; let islandEventTicker = null; let islandEventBandTimer = null;
+  const islandEventSeen = (() => { try { return new Set(JSON.parse(sessionStorage.getItem('gc.islandEventsSeen') || '[]')); } catch { return new Set(); } })();
+  const islandEventsRunning = () => islandEventList.filter((e) => e.startLocal <= Date.now() && Date.now() < e.endLocal);
+  const islandEventLeft = (e) => { const m = Math.max(1, Math.ceil((e.endLocal - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60 ? `${m % 60}분` : ''}`.trim() : `${m}분`; };
+  function paintIslandEventLine() {
+    const line = byId('islandEventLine'); if (!line) return; const run = islandEventsRunning();
+    line.replaceChildren(...run.map((e) => sEl('span', 'islandEventItem', `🎉 ${e.label} · 남은 ${islandEventLeft(e)}`))); line.classList.toggle('hidden', !run.length);
+    if (run.length && !islandEventTicker) islandEventTicker = setInterval(paintIslandEventLine, 20000); else if (!run.length && islandEventTicker) { clearInterval(islandEventTicker); islandEventTicker = null; }
+  }
+  function islandEventsSet(data) {
+    const skew = Number.isFinite(data?.at) ? Date.now() - data.at : 0; /* (the server's clock to mine) */
+    islandEventList = (Array.isArray(data?.list) ? data.list : []).map((e) => ({ ...e, startLocal: e.startAt + skew, endLocal: e.endAt + skew }));
+    const fresh = islandEventsRunning().filter((e) => !islandEventSeen.has(e.id));
+    if (fresh.length) {
+      for (const e of fresh) islandEventSeen.add(e.id); try { sessionStorage.setItem('gc.islandEventsSeen', JSON.stringify([...islandEventSeen].slice(-50))); } catch { /* (private mode: shown again next time) */ }
+      const e = fresh[0]; const band = byId('islandEventBand');
+      if (band) { band.replaceChildren(sEl('strong', '', `🎉 ${e.label}`), ...(e.text && e.text !== e.label ? [sEl('span', '', e.text)] : []), sEl('small', '', `남은 ${islandEventLeft(e)}`)); band.classList.remove('hidden'); clearTimeout(islandEventBandTimer); islandEventBandTimer = setTimeout(() => band.classList.add('hidden'), 7000); }
+      window.RoomSound?.play('bell');
+    }
+    paintIslandEventLine();
+  }
+  // (the sell window: the events that raise what this place buys, 「…적용 중」)
+  const islandSellEventNote = () => { const run = islandEventsRunning().filter((e) => e.kind === 'sell'); return run.length ? `🎉 ${run.map((e) => e.label).join(' · ')} 적용 중 (잡화점에서 산 것은 원래 값)` : ''; };
   function handleLobbySseBlock(block) {
     if (!block || block.startsWith(':')) return;
     let event = 'message';
@@ -9057,6 +9117,7 @@
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plazaStatuesWeek = parsed.week ?? plazaStatuesWeek; plaza.controller?.setStatues?.(plazaStatues, plazaStatuesWeek); return; } // v1.10.5
+    if (event === 'islandEvents') { islandEventsSet(parsed); return; } // 364 관리자 섬 이벤트 (started, ended; on entry)
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };
       // Announced from the stream only: the first snapshot after entering the lobby is just the baseline.
