@@ -247,7 +247,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
     // (1.10.323 땅 질감, assets 135, 사용자 45A: painted grass, sand and soil -- grey round 0.5 -- and a wide mottle (data) that keeps
     // them from repeating; read only on the 높음·중간 tiers (uCheap 0, a GPU), the lowest and a software renderer as before)
     const p = (file, srgb) => { const url = `/assets/island/ground-paint-v1/${file}.webp`; const x = keep(loader.load(window.GameBoot?.assetUrl?.(url) ?? url)); x.wrapS = x.wrapT = THREE.RepeatWrapping; x.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; return x; };
-    const g = { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), grains: t('ground.grains', true) /* (1.10.359: the three in one -- tools/ground-grains.py) */, edge: t('ground.grass_soil_edge_mask', false, true) };
+    const g = { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), grains: t('ground.grains', true) /* (1.10.358: the three in one -- tools/ground-grains.py) */, edge: t('ground.grass_soil_edge_mask', false, true) };
     if (software) return { ...g, grassPaint: g.grass, sandPaint: g.grass, soilPaint: g.grass, snowPaint: g.grass, mottle: g.grass }; /* (never read there: not fetched) */
     return { ...g, grassPaint: p('ground.grass_paint', true), sandPaint: p('ground.sand_paint', true), soilPaint: p('ground.soil_paint', true), snowPaint: p('ground.snow_paint', true) /* (1.10.329: the snowfield's, 135) */, mottle: p('ground.mottle', false) };
   })();
@@ -405,7 +405,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, col, rc);
   const grained = (material, path, own = null) => {
     const M = own?.maps || maps; const box = own?.box ? new THREE.Vector3(own.box.x0, own.box.z0, own.box.size) : new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE);
     material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tGrains: { value: groundTex.grains } /* (1.10.359: grass, soil and sand in one -- phones' 16 texture units) */, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
+      Object.assign(shader.uniforms, { tGrains: { value: groundTex.grains } /* (1.10.358: grass, soil and sand in one -- phones' 16 texture units) */, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
         ...(maps && !path ? { tGrassPaint: { value: groundTex.grassPaint }, tSandPaint: { value: groundTex.sandPaint }, tSoilPaint: { value: groundTex.soilPaint }, tSnowPaint: { value: groundTex.snowPaint }, tMottle: { value: groundTex.mottle }, uPaint: paintOn } : {}),
         uPathBox: { value: box }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
         ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: own ? new THREE.Vector4(0, 0, 0, 0) : plazaBox }, tPathA: { value: M.pathA }, tPathB: { value: M.pathB }, tRoad: { value: M.road }, tCoverA: { value: M.coverA }, tCoverB: { value: M.coverB }, tShore: { value: M.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),

@@ -1,4 +1,4 @@
-# 1.10.359 땅 텍스처 칸 줄이기 (phones' 16 texture units: the ground's shader reached 17 with 1.10.357's road map): the three grey
+# 1.10.358 땅 텍스처 칸 줄이기 (phones' 16 texture units: the ground's shader reached 17 with 1.10.357's road map): the three grey
 # grain pictures in one -- R grass (64 px, tiled 4 x 4), G soil (256 px), B sand (32 px, tiled 8 x 8) -- 256 x 256, sRGB like
 # them. island.js reads each channel at its own scale (GRASS / SOIL / SAND), the same as the three were read.
 # Run: python -I tools/ground-grains.py  (writes public/assets/island/ground-v1/ground.grains.png)
