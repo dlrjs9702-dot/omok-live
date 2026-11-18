@@ -141,19 +141,21 @@
   // the page's presses ([{ spot, ms after its light came on } | null] a swing) judged: hits, bonus hits, done (the ore)
   function judge(plan, taps) {
     let hits = 0; let bonus = 0;
-    (plan || []).forEach((r, i) => { const p = Array.isArray(taps) ? taps[i] : null; if (!p || p.spot !== r.spot || !Number.isFinite(p.ms) || p.ms < 0 || p.ms > r.light + GRACE_MS) return; hits += 1; if (Math.abs(p.ms - r.light / 2) <= BONUS_MS) bonus += 1; });
+    (plan || []).forEach((r, i) => { const p = Array.isArray(taps) ? taps[i] : null; if (!p || p.spot !== r.spot || !Number.isFinite(p.ms) || p.ms < 0 || p.ms > r.light + GRACE_MS) return; hits += 1; const b = Number.isFinite(p.bonusMs) ? p.bonusMs : p.ms; if (Math.abs(b - r.light / 2) <= BONUS_MS) bonus += 1; }); /* (362: the bonus by the server's floor -- bonusMs) */
     return { hits, bonus, done: hits >= HITS_NEEDED };
   }
   // 1.10.351 (Codex 341-350 P1): a press as the server got it -- `since` ms after the mining started there. The page's own `ms` (after
   // its light came on) counts only when it fits the server's clock: the server's is later by the trip there and back (0..LAG_MAX), so a
   // list made up from the plan and sent at the end is too late and judged a miss
   // (362 Codex 351-360 P1 #2: within those 2 s the page's `ms` was taken as it said -- a press ~2 s late told as the light's middle was a
-  // bonus. Now never earlier than the server's own time less LAG_ALLOW, a trip there and back: a made-up `ms` gains that at most)
+  // bonus, the better ore. The bonus now by a time never earlier than the server's own less LAG_ALLOW (a trip there and back): a made-up
+  // `ms` gains that at most. A plain hit keeps the page's own time within the 2 s -- at CI's ~3 frames a second (and a slow phone's
+  // trip) an honest press came in up to ~1.5 s late and the server's floor alone made every press a miss)
   const LAG_MIN = -150; const LAG_MAX = 2000; const LAG_ALLOW = 450;
   function tapAt(plan, k, tap, since) {
     const r = plan?.[k]; if (!r || !tap || !Number.isInteger(tap.spot) || !Number.isFinite(tap.ms) || !Number.isFinite(since)) return null;
     const server = since - k * ROUND_MS - r.at; const lag = server - tap.ms;
-    return lag >= LAG_MIN && lag <= LAG_MAX ? { spot: tap.spot, ms: Math.max(tap.ms, server - LAG_ALLOW) } : { spot: tap.spot, ms: null, late: true };
+    return lag >= LAG_MIN && lag <= LAG_MAX ? { spot: tap.spot, ms: tap.ms, bonusMs: Math.max(tap.ms, server - LAG_ALLOW) } : { spot: tap.spot, ms: null, late: true };
   }
   const PICK_USES = 40; // (a pickaxe: 40 ores)
   // a spot in the world: the surface point, outward, and where to stand (origin = S - R(yaw) HIT_TIP, facing -n)

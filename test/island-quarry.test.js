@@ -131,12 +131,12 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
 
 test('채석장 타격 시각 (1.10.351 Codex P1): 서버가 받은 시각과 맞는 것만', () => {
   const plan = [{ spot: 1, at: 400, light: 1000 }, { spot: 2, at: 500, light: 1000 }];
-  assert.deepEqual(Q.tapAt(plan, 0, { spot: 1, ms: 200 }, 400 + 200 + 80), { spot: 1, ms: 200 }, '오간 시간 80 ms');
+  assert.deepEqual(Q.tapAt(plan, 0, { spot: 1, ms: 200 }, 400 + 200 + 80), { spot: 1, ms: 200, bonusMs: 200 }, '오간 시간 80 ms');
   assert.equal(Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 6000).late, true, '끝나고 보낸 것');
   assert.equal(Q.tapAt(plan, 1, { spot: 2, ms: 500 }, 2000 + 500 + 100).late, true, '서버보다 이른 주장');
   assert.equal(Q.judge(plan, [Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 6000), Q.tapAt(plan, 1, { spot: 2, ms: 500 }, 6000)]).hits, 0);
   assert.equal(Q.tapAt(plan, 5, { spot: 1, ms: 1 }, 1), null);
   // 362 Codex 351-360 P1 #2: a press 1.5 s after the light's middle told as its middle (500) -- judged at the server's time less a trip
-  const forged = Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 400 + 500 + 1500); assert.equal(forged.ms, 1500 - Q.LAG_ALLOW + 500); assert.equal(Q.judge(plan, [forged, null]).bonus, 0, '보너스 아님');
+  const forged = Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 400 + 500 + 1500); assert.equal(forged.bonusMs, 1500 - Q.LAG_ALLOW + 500); assert.deepEqual([Q.judge(plan, [forged, null]).hits, Q.judge(plan, [forged, null]).bonus], [1, 0], '맞기는 하지만 보너스 아님(느린 폰의 정직한 타격도 맞음)');
   assert.equal(Q.judge(plan, [Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 400 + 500 + 200), null]).bonus, 1, '오간 시간 200 ms 정직한 가운데는 보너스');
 });
