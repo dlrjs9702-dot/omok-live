@@ -2,8 +2,6 @@
 :root[data-theme="light"]{color:#33281d;background:#f4ede0}
 :root[data-theme="light"] body{background:radial-gradient(circle at 15% 10%,#efe4d0 0,#f4ede0 42%,#eadfcb 100%);color:#33281d}
 :root[data-theme="light"] .card{background:rgba(17,24,39,.92);border:1px solid rgba(179,156,124,.16);box-shadow:0 24px 70px rgba(0,0,0,.28)}
-:root[data-theme="light"] .brandMark span:first-child{background:#090909;box-shadow:inset -4px -4px 8px #000,inset 4px 4px 7px #4b5563}
-:root[data-theme="light"] .brandMark span:last-child{background:#fff;border:1px solid #d1d5db}
 :root[data-theme="light"] .eyebrow{color:#7a6650}
 :root[data-theme="light"] .lead,:root[data-theme="light"] .muted{color:#5e4d3b}
 :root[data-theme="light"] .ruleNote,:root[data-theme="light"] .smallMuted{color:#7a6650}

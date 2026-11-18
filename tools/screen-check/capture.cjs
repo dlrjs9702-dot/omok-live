@@ -24,7 +24,8 @@ const SPOTS = [
   { id: 'west', label: '푸른숲골/숲', area: 'west' }, { id: 'east', label: '잔치마루/잔치터', area: 'east' }, { id: 'ridge', label: '달마루 능선/능선 위', area: 'ridge' },
   { id: 'isle', label: '툇마루섬/섬과 정원', area: 'isle' }, { id: 'lighthouse', label: '초승등대/등대', place: 'lighthouse' }, { id: 'pier', label: '달끝나루/나루', place: 'pier' },
   { id: 'station', label: '초승역/역과 승강장', place: 'stationmaster' }, { id: 'museum', label: '박물관/바깥', place: 'museum' },
-  { id: 'townhall', label: '관공서/정문', door: 'townhall' }, { id: 'townhall-inside', label: '관공서/안 민원실', inside: 'townhall' },
+  { id: 'townhall', label: '관공서/정문', door: 'townhall' }, { id: 'townhall-gate', label: '관공서/마당 정문과 시장(밖에서)', gate: true },
+  { id: 'crosswalk', label: '택시 길/건널목 정면', crossing: 0 }, { id: 'townhall-inside', label: '관공서/안 민원실', inside: 'townhall' },
   { id: 'mall-inside', label: '백화점/1층 안 노점', inside: 'mall' }, { id: 'house', label: '이웃골/집터와 마당', lot: 0 },
   { id: 'taxi-road', label: '택시 길/차선과 인도', taxi: true }, { id: 'isle2-bridge', label: '별마루다리/다리 위', bridge: 'isle2' },
   { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true },
@@ -94,6 +95,8 @@ const resolve = (page, spot) => page.evaluate((s) => {
   if (s.lot != null) { const l = T.HOME_LOTS[s.lot]; return viewOf(l.x, l.z, 8, 22); }
   if (s.camp) { const c = D.NEW_ISLE.camp; return viewOf(c.x, c.z, 8, 24); }
   if (s.peak) { const c = D.NEW_ISLE.peak; return viewOf(c.x, c.z, 4, 20); }
+  if (s.gate) { const Y = T.TOWNHALL.yard; const g = T.townhallWorld(0, Y.z1); const o = T.townhallWorld(0, Y.z1 + 9); return { x: o.x, z: o.z, look: g }; } /* (365 #4: the gate and the mayor from outside the wall) */
+  if (s.crossing != null) { const c = window.IslandTaxi?.CROSSINGS?.[s.crossing]; return c && viewOf(c.x, c.z, 7, 14); } /* (365 #5: a 건널목 face on -- do its bars stop at the kerb?) */
   return null;
 }, spot);
 
