@@ -2176,7 +2176,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // train, among people (3 within 5 m) -- on a bridge it rides on (문제 기록 2회차 6); bumping into
   // something just stops it. Everyone sees it (the pose's `bike`, the colour). Under a rider: the frame, two wheels
   // turning with the ground and the crank turning with BikeRide (one turn a loop, its rate the speed / 4).
-  const BIKE_SPEED = 9; const BIKE_FAST = 12; const BIKE = { wheelR: 0.24, front: [0, 0.24, -0.42], rear: [0, 0.24, 0.42], crank: [0, 0.27, 0.02] };
+  const BIKE_SPEED = 9; const BIKE_FAST = 12; const SWAMP_BIKE = 4.3; /* (1.10.375 N2a, notes 「호랑이 결정 2차」: 늪 속 자전거 4.3 m/s -- a run's 0.7) */ const BIKE = { wheelR: 0.24, front: [0, 0.24, -0.42], rear: [0, 0.24, 0.42], crank: [0, 0.27, 0.02] };
   let bikes = []; let cycling = null; let onBike = null; // (the colours in my bag; the one I ride; the app's ear)
   function bikeWhy() { // why not here, or null
     if (mySpace !== 'island') return '실내에서는 자전거에서 내려요.';
@@ -6429,7 +6429,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const len = Math.hypot(ix, iz); ix /= len; iz /= len;
       const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // keys are relative to the view
       const wx = ix * cos + iz * sin; const wz = -ix * sin + iz * cos;
-      if (grab) stepGrab(dt, wx, wz); else { const v = paceSpeed() * (mySpace === 'island' ? globalThis.GroundSpeed?.factorAt(globalThis.IslandTerrain, me.root.position.x, me.root.position.z, undefined, island.speedCover?.()) ?? 1 : 1); // (5회차 6: faster on a walk, slower in the woods)
+      if (grab) stepGrab(dt, wx, wz); else { const v = cycling && mySpace === 'island' && globalThis.Isle2Props?.inSwamp(me.root.position.x, me.root.position.z) ? SWAMP_BIKE /* (1.10.375 N2a 늪: a bike there slower than a run -- the tigers' catch) */ : paceSpeed() * (mySpace === 'island' ? globalThis.GroundSpeed?.factorAt(globalThis.IslandTerrain, me.root.position.x, me.root.position.z, undefined, island.speedCover?.()) ?? 1 : 1); // (5회차 6: faster on a walk, slower in the woods)
         tryMove(me.root.position.x + wx * v * dt, me.root.position.z + wz * v * dt);
         me.targetYaw = fpNow() ? camYaw + Math.PI : Math.atan2(wx, wz); }
     } else if (grab) { stepGrab(dt, 0, 0);
