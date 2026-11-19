@@ -11,7 +11,7 @@ const T = require(path.join(ROOT, 'public/plaza/island-terrain.js')); require(pa
 const D = T.dalmaru; const I = D.NEW_ISLE;
 const hash = (a, b, k) => { const v = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
 const r2 = (v) => Math.round(v * 100) / 100; const r3 = (v) => Math.round(v * 1000) / 1000;
-const glbExtras = (file, node) => { const b = fs.readFileSync(path.join(ROOT, 'public/assets/island', file)); const j = JSON.parse(b.toString('utf8', 20, 20 + b.readUInt32LE(12))); return j.nodes.find((n) => n.name === node)?.extras || {}; };
+const glbExtras = (file, node) => { const b = fs.readFileSync(path.join(ROOT, '..', 'assets/152. Game Island byeolmaru tigers 2026-11-18/01. High', file)); /* (the asset folder's: the swamp meshes are not in the game -- drawn by island.js) */ const j = JSON.parse(b.toString('utf8', 20, 20 + b.readUInt32LE(12))); return j.nodes.find((n) => n.name === node)?.extras || {}; };
 const toWorld = (x, z, yaw, u, v) => [x + u * Math.cos(yaw) + v * Math.sin(yaw), z - u * Math.sin(yaw) + v * Math.cos(yaw)];
 
 // ---- the fence: the contour IN m in from the coast, every 2.4 m ----
@@ -36,6 +36,10 @@ const KINDS = ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_s
 const FENCE = segs.filter((s) => s.keep).map((s) => { const h = hash(s.x, s.z, 3); const kind = s === gate ? 4 : h < 0.07 ? 1 : h < 0.14 ? 2 : h < 0.2 ? 3 : 0; return [r2(s.x), r2(s.z), r3(s.yaw), kind]; });
 const CORNERS = []; for (let i = 0; i < segs.length; i += 1) { const p = segs[(i + segs.length - 1) % segs.length]; const s = segs[i]; if (p.keep !== s.keep) { CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); continue; } /* (a run's end, by a cliff or the creek: its post) */ if (!p.keep || !s.keep) continue; let turn = Math.abs(s.yaw - p.yaw); turn = Math.min(turn, Math.PI * 2 - turn); if (turn > (10 * Math.PI) / 180) CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); }
 
+// ---- the warning board (152b/152e sign_tiger): outside the gate, beside the walk, facing whoever comes over 별마루다리 ----
+const SIGN = (() => { const nx = -Math.sin(gate.yaw); const nz = -Math.cos(gate.yaw); const tx = Math.cos(gate.yaw); const tz = -Math.sin(gate.yaw);
+  for (const side of [3.2, -3.2, 3.8, -3.8]) { const x = gate.x + nx * 2.6 + tx * side; const z = gate.z + nz * 2.6 + tz * side; if (T.walkable(x, z) && T.walkDist(x, z) > 0.6 && !T.onBridge?.(x, z)) return [r2(x), r2(z), r3(gate.yaw)]; }
+  return null; })();
 // ---- the spring cave (157): its README's place ----
 const CAVE = { x: 363, z: 176, yaw: 0.942 };
 const caveSolids = JSON.parse(fs.readFileSync(path.join(ROOT, '..', 'assets/157. Game Island creek spring cave 2026-11-20/04. Specifications/solids.json'), 'utf8')).spring_cave;
@@ -83,17 +87,17 @@ const segCircles = (r, zc = 0) => [-1.05, -0.7, -0.35, 0, 0.35, 0.7, 1.05].map((
 const CIRCLES = {
   fence_segment: segCircles(0.22), fence_palisade_b: segCircles(0.38), fence_palisade_e: segCircles(0.42, 0.15), fence_stonewall: segCircles(0.28, 0.03),
   fence_gate: [[-1.05, 0, 0.2], [1.05, 0, 0.2]], /* (the people's way between: a body 0.45 round -- 0.8 m to go through, the leaf's 1 m opening) */
-  fence_corner: [[0, 0, 0.2]], tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
+  fence_corner: [[0, 0, 0.2]], sign_tiger: [[-0.85, 0, 0.15], [0.85, 0, 0.15]], tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
   campfire: [[0, 0, 0.6]], log_bench: [[-0.45, 0.05, 0.22], [0.45, 0.05, 0.22]], log_stool: [[0, 0, 0.25]],
   spring_cave: [...caveSolids.rock, ...caveSolids.water],
 };
 const BOXES = {
   fence_segment: [2.5, 1.6, 0.5, 0], fence_palisade_b: [2.5, 1.6, 0.8, 0], fence_palisade_e: [2.5, 1.5, 0.95, 0.15], fence_stonewall: [2.5, 1.4, 0.6, 0.03], fence_gate: null,
-  fence_corner: [0.42, 2.08, 0.42, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
+  fence_corner: [0.42, 2.08, 0.42, 0], sign_tiger: [1.9, 2.33, 0.2, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
 };
 const CAVE_BOXES = caveSolids.rockBoxes;
 
-const data = { FENCE, CORNERS, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+const data = { FENCE, CORNERS, SIGN, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES
@@ -117,6 +121,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
     for (const [x, z] of DATA.CORNERS) all.push(...circlesAt('fence_corner', x, z, 0));
     for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
     if (DATA.ROCK) all.push(...circlesAt('tiger_rock', DATA.ROCK[0], DATA.ROCK[1], DATA.ROCK[2]));
+    if (DATA.SIGN) all.push(...circlesAt('sign_tiger', DATA.SIGN[0], DATA.SIGN[1], DATA.SIGN[2]));
     for (const [x, z, yaw, k] of DATA.DECO) if (DECO_KINDS[k] === 'swamp_stones') all.push(...circlesAt('swamp_stones', x, z, yaw));
     all.push(...circlesAt('spring_cave', DATA.CAVE.x, DATA.CAVE.z, DATA.CAVE.yaw));
     return all;
