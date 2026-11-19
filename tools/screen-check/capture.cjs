@@ -122,7 +122,9 @@ async function goOut(page) {
   await lockBegin(); const touch = setInterval(lockTouch, 5 * 60000);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'screen-check-')); const port = await freePort(); const base = `http://127.0.0.1:${port}`;
   const server = spawn(process.execPath, ['server.js'], { cwd: ROOT, env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: ADMIN, NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const map = {}; let browser = null;
+  /* (Codex 361~370 #19: a part run (--only) adds to the index already there -- it had written over the other shots' places) */
+  let map = {}; if (only.length) { try { map = JSON.parse(fs.readFileSync(path.join(OUT, 'spots.json'), 'utf8')) || {}; } catch { map = {}; } }
+  let browser = null;
   try {
     await waitReady(base, server, 60000); fs.mkdirSync(OUT, { recursive: true });
     browser = await chromium.launch({ args: has('no-gpu') ? [] : ['--use-angle=d3d11'] }); const api = await pwRequest.newContext({ baseURL: base });

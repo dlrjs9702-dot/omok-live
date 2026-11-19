@@ -40,7 +40,7 @@ test('수조 물 서버: 민물 붕어를 넣은 수조에 망둑어는 TANK_WAT
   const lot = H.LOTS[6]; assert.equal((await req('/api/home/apply', a, { lot: lot.id, roof: 'blue' })).status, 200);
   const ex = T.roomWorld(T.TOWNHALL_ROOM.exit.lx, T.TOWNHALL_ROOM.exit.lz); await stand(ex.x, ex.z); await req('/api/island/townhall/leave', a, {});
   const [tank] = (await req('/api/test/home/furniture', a, { ids: ['fish_tank__oak'] })).data.pieces;
-  await req('/api/test/island/give', a, { itemId: 'fish_crucian_carp', qty: 1 }); await req('/api/test/island/give', a, { itemId: 'fish_goby', qty: 1 });
+  await req('/api/test/island/give', a, { itemId: 'fish_crucian_carp', qty: 1, meta: { size: 41.5 } }); await req('/api/test/island/give', a, { itemId: 'fish_goby', qty: 1 });
   const d = H.doorOf(lot, 1); await stand(d.x, d.z); assert.equal((await req('/api/home/enter', a, { lot: lot.id })).status, 200);
   assert.equal((await req('/api/home/place', a, { uid: tank.uid, x: 2, z: 2, rot: 0 })).status, 200);
   const put = (itemId, n) => req('/api/home/tank', a, { tank: tank.uid, put: itemId, requestId: `tank-water-${n}-0001` });
@@ -48,5 +48,7 @@ test('수조 물 서버: 민물 붕어를 넣은 수조에 망둑어는 TANK_WAT
   r = await put('fish_goby', 2); assert.equal(r.status, 409); assert.equal(r.data.error, 'TANK_WATER'); assert.match(r.data.message, /민물 수조예요/);
   const fid = (await req('/api/home/inside', a)).data.home.tanks[tank.uid][0].fid;
   assert.equal((await req('/api/home/tank', a, { tank: tank.uid, take: fid, requestId: 'tank-water-3-0001' })).status, 200);
+  /* (Codex 361~370 #1: out of the tank at its own length -- 41.5 cm, not the kind's middle) */
+  const back = JSON.stringify((await req('/api/island/bag', a)).data.items.filter((e) => e.itemId === 'fish_crucian_carp')); assert.match(back, /41\.5/, back);
   r = await put('fish_goby', 4); assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(H.tankWater(r.data.home.tanks[tank.uid]), 'sea');
 });

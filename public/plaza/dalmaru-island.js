@@ -818,17 +818,26 @@
   // like the one the unstuck move left. (검토 369 P1: a search from each asked point froze the server up to 73 s on the open meadow far
   // from a walk -- now one fill from the walks over the free cells, made once a nature (the server makes it at its start), then a look-up)
   let openOf = null; let openCells = null; const OPEN_N = ISLE2 ? Math.ceil(2 * (ISLE2.r + 14)) : 0; const ox0 = ISLE2 ? ISLE2.x - ISLE2.r - 14 : 0; const oz0 = ISLE2 ? ISLE2.z - ISLE2.r - 14 : 0;
-  function openTable() {
-    const n = nature(); if (openOf === n && openCells) return openCells; openOf = n;
-    const N = OPEN_N; const state = new Uint8Array(N * N); /* 0 unseen, 1 blocked, 2 open */ const q = new Int32Array(N * N); let head = 0; let tail = 0;
-    const freeAt = (i, j) => { const x = ox0 + i + 0.5; const z = oz0 + j + 0.5; return walkable(x, z) && isle2Clear(x, z, 0.6); };
-    for (const w of isle2Walks().main.concat(isle2Walks().narrow)) for (const [x, z] of w.pts) { const i = Math.floor(x - ox0); const j = Math.floor(z - oz0); if (i < 0 || j < 0 || i >= N || j >= N) continue; const id = j * N + i; if (state[id]) continue; if (freeAt(i, j)) { state[id] = 2; q[tail++] = id; } else state[id] = 1; }
-    while (head < tail) {
-      const id = q[head++]; const i = id % N; const j = (id - i) / N;
-      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di; const nj = j + dj; if (ni < 0 || nj < 0 || ni >= N || nj >= N) continue; const nid = nj * N + ni; if (state[nid]) continue; if (freeAt(ni, nj)) { state[nid] = 2; q[tail++] = nid; } else state[nid] = 1; }
+  /* (Codex 361~370 #16: the fill kept as a build that can stop and go on -- the server runs it in 20 ms slices after it listens (isle2OpenWarm),
+     nothing else held up; a look before it is done finishes it there) */
+  let openBuild = null;
+  function openStep(budgetMs = Infinity) {
+    const n = nature(); if (openOf === n && openCells) return true;
+    if (!openBuild || openBuild.n !== n) {
+      const N = OPEN_N; const state = new Uint8Array(N * N); /* 0 unseen, 1 blocked, 2 open */ const q = new Int32Array(N * N); let tail = 0;
+      const freeAt = (i, j) => { const x = ox0 + i + 0.5; const z = oz0 + j + 0.5; return walkable(x, z) && isle2Clear(x, z, 0.6); };
+      for (const w of isle2Walks().main.concat(isle2Walks().narrow)) for (const [x, z] of w.pts) { const i = Math.floor(x - ox0); const j = Math.floor(z - oz0); if (i < 0 || j < 0 || i >= N || j >= N) continue; const id = j * N + i; if (state[id]) continue; if (freeAt(i, j)) { state[id] = 2; q[tail++] = id; } else state[id] = 1; }
+      openBuild = { n, N, state, q, head: 0, tail, freeAt };
     }
-    openCells = state; return state;
+    const b = openBuild; const { N, state, q, freeAt } = b; const until = Date.now() + budgetMs; let k = 0;
+    while (b.head < b.tail) {
+      const id = q[b.head++]; const i = id % N; const j = (id - i) / N;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di; const nj = j + dj; if (ni < 0 || nj < 0 || ni >= N || nj >= N) continue; const nid = nj * N + ni; if (state[nid]) continue; if (freeAt(ni, nj)) { state[nid] = 2; q[b.tail++] = nid; } else state[nid] = 1; }
+      if ((++k & 63) === 0 && Date.now() >= until) return false;
+    }
+    openOf = n; openCells = state; openBuild = null; return true;
   }
+  function openTable() { openStep(); return openCells; }
   function isle2Open(x, z) {
     if (!isle2Clear(x, z)) return false; const t = openTable(); const i = Math.floor(x - ox0); const j = Math.floor(z - oz0);
     return i >= 0 && j >= 0 && i < OPEN_N && j < OPEN_N && t[j * OPEN_N + i] === 2;
@@ -861,7 +870,7 @@
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
-    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */, isle2Zone, ISLE2_ZONES /* (1.10.369 구역) */, onIsle2, isle2Clear, isle2Open, ISLE2_BRIDGE_HEAD: Object.freeze({ x: 233, z: 228 }) /* (1.10.369 막혔을 때: 별마루섬's own way out) */,
+    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */, isle2Zone, ISLE2_ZONES /* (1.10.369 구역) */, onIsle2, isle2Clear, isle2Open, isle2OpenWarm: (ms = 20) => openStep(ms) /* (Codex 361~370 #16) */, ISLE2_BRIDGE_HEAD: Object.freeze({ x: 233, z: 228 }) /* (1.10.369 막혔을 때: 별마루섬's own way out) */,
     ROAD, roadDist, roadFoot, /* (T1 고침: the taxi road's band -- the scene's grass and decor, the shore and cover maps keep off it) */ SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),

@@ -1296,7 +1296,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     /* (N1 새 섬 (notes island-expansion §8-1): the board 760 m across with it -- x -230..530, z -200..385, its middle (150, 92)) */
     const DAL = T.MAP === 'dalmaru'; const WIDE = DAL && T.GROUND2; const DAL_SPAN = WIDE ? 585 : 470;
     const zoom = view.zoom || 1; const cx = view.x ?? (WIDE ? 150 : 0); const cz = view.z ?? (DAL ? (WIDE ? 92 : 45) : 0); const u = Math.min(w, h);
-    const s = (u / (DAL ? DAL_SPAN : 236)) * zoom; /* (달마루섬: about twice across; v1.10.230 the 울타리 마을 south of the ring in it too -- 470 across, its middle 45 m south) */ const X = (x) => w / 2 + (x - cx) * s; const Z = (z) => h / 2 + (z - cz) * s;
+    const s = (WIDE ? Math.min(w / 760, h / DAL_SPAN) : u / (DAL ? DAL_SPAN : 236)) * zoom; /* (Codex 361~370 #17: the board 760 m wide, 585 m tall -- a tall phone's whole view cut 87 m off each side by the shorter edge's 585) */ /* (달마루섬: about twice across; v1.10.230 the 울타리 마을 south of the ring in it too -- 470 across, its middle 45 m south) */ const X = (x) => w / 2 + (x - cx) * s; const Z = (z) => h / 2 + (z - cz) * s;
     drawGround(ctx, w, h, X, Z, s);
     const font = (k) => `800 ${Math.round(u / k)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

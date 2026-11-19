@@ -165,3 +165,18 @@ test('1.10.347 묶음: 잡초 99개를 개당 값으로 · 사는 사람이 개�
   const p2 = (await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), entryId: e2.entryId, qty: 10, price: unit })).data.listing.id; assert.equal((await req('/api/island/flea/buy', b, { id: p2, qty: 3 })).status, 200);
   const wa = await count(a, 'weed'); assert.equal((await req('/api/island/flea/withdraw', a, { id: p2 })).status, 200); assert.equal(await count(a, 'weed'), wa + 7, '남은 7개만');
 });
+
+// Codex 361~370 #2: a 「산 것」 (the 잡화점's stone) through the 벼룩시장 stays 「산 것」 for its buyer -- else a sell event paid it three times
+test('벼룩시장 산 것: 잡화점에서 산 돌을 다른 사람이 사도 「산 것」 표시가 남음', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'flea-bought-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('돌파는이')); const b = await server.enter(await server.issue('돌사는이'));
+  { const key = (await req('/api/admin/keys', server.admin)).data.keys.find((k) => k.label === '돌사는이'); await req(`/api/admin/keys/${key.id}/points`, server.admin, { amount: 900000, category: 'other', memo: '시험', requestId: crypto.randomUUID() }); }
+  await req('/api/test/island/give', a, { itemId: 'stone', qty: 3, meta: { bought: true } });
+  const e = (await req('/api/island/flea/stock', a)).data.items.find((x) => x.itemId === 'stone'); assert.ok(e, '올릴 수 있음');
+  const unit = require('../lib/island-items').ITEMS.stone.price;
+  const l = await req('/api/island/flea/list', a, { requestId: crypto.randomUUID(), entryId: e.entryId, qty: 3, price: unit }); assert.equal(l.status, 200, JSON.stringify(l.data));
+  const got = await req('/api/island/flea/buy', b, { id: l.data.listing.id, qty: 3 }); assert.equal(got.status, 200, JSON.stringify(got.data));
+  const stones = ((await req('/api/island/bag', b)).data.items || []).filter((x) => x.itemId === 'stone'); assert.equal(stones.reduce((n, x) => n + x.qty, 0), 3);
+  assert.ok(stones.every((x) => x.meta?.bought), JSON.stringify(stones));
+});

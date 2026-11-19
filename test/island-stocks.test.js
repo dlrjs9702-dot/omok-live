@@ -198,6 +198,10 @@ test('섬 주식 서버: 사고팔면 포인트가 같이 빠지고 들어옴, �
   await req('/api/test/stocks/clock', a, { at: at(2, 16, 0) });
   const rank = (await req('/api/island/stocks/rank', a)).data; assert.equal(rank.count, 2); assert.equal(rank.top.length, 2);
   assert.ok(rank.top[0].r >= rank.top[1].r); assert.ok(rank.me && rank.me.rank >= 1); assert.equal(rank.top.filter((x) => x.mine).length, 1);
+  /* (Codex 361~370 #10: a second company's alert -- the first one's still-trading check ran into a ReferenceError, a 500) */
+  const w1 = await req('/api/island/stocks/watch', a, { code: co.code, above: co.price * 2 }); assert.equal(w1.status, 200, JSON.stringify(w1.data));
+  const w2 = await req('/api/island/stocks/watch', a, { code: other.code, below: 1, star: true }); assert.equal(w2.status, 200, JSON.stringify(w2.data));
+  assert.deepEqual(Object.keys(w2.data.alerts).sort(), [co.code, other.code].sort()); assert.deepEqual(w2.data.star, [other.code]);
   await req('/api/test/stocks/clock', a, { at: 0 });
 });
 
