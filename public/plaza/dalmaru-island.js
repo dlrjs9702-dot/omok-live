@@ -681,7 +681,8 @@
     const PIER2 = { x: 230, z: 197.3 }; const I2 = { trees: [], bushes: [], rocks: [], flowers: [], grass: [], logs: [] };
     const A = ANCIENT; const KEEP = 18; const offAncient = (x, z, r) => Math.hypot(x - A.x, z - A.z) > KEEP + r;
     const isle2Free = (x, z, r) => D.newIsleCoast(x, z) > 4 + r && slopeAt(x, z) < 0.6 && D.creekDist(x, z) > 1.5 + r && !onBridge(x, z) && Math.hypot(x - ISLE2.camp.x, z - ISLE2.camp.z) > ISLE2.camp.r + 1 + r
-      && Math.hypot(x - ISLE2.peak.x, z - ISLE2.peak.z) > 9 + r && Math.hypot(x - PIER2.x, z - PIER2.z) > 8 + r && walkDist(x, z) > 1.6 + r && offAncient(x, z, r) && !natureBlocks.some((fn) => fn(x, z, r));
+      && Math.hypot(x - ISLE2.peak.x, z - ISLE2.peak.z) > 9 + r && Math.hypot(x - PIER2.x, z - PIER2.z) > 8 + r && walkDist(x, z) > 1.6 + r && offAncient(x, z, r) && !natureBlocks.some((fn) => fn(x, z, r))
+      && !isle2PropsNear(x, z, r); /* (1.10.375 N2a-1: off the fence, the cave, the camp's pieces, 우레's rock and the swamps -- isle2-props.js) */
     const at2 = () => { const a = rnd() * TAU; const d = Math.sqrt(rnd()) * (ISLE2.r + 8); return [ISLE2.x + Math.cos(a) * d, ISLE2.z + Math.sin(a) * d]; };
     // the zone of a point off a 2 m grid made once, and each zone's land (m²)
     const ZG = 2; const zx0 = ISLE2.x - ISLE2.r - 14; const zz0 = ISLE2.z - ISLE2.r - 14; const ZN = Math.ceil((2 * (ISLE2.r + 14)) / ZG); const ZK = [null, 'hill', 'deep', 'walk', 'trail']; const zgrid = new Uint8Array(ZN * ZN); const zoneArea = { hill: 0, deep: 0, walk: 0, trail: 0 };
@@ -801,8 +802,21 @@
   const logRounds = (l) => LOG_ROUNDS[l.kind].map(([u, r]) => ({ x: l.x + Math.cos(l.yaw) * u, z: l.z - Math.sin(l.yaw) * u, r }));
   let solidsOf = null; let solidsCache = null; // (G4a: worked out once per nature -- asked for often)
   const natureSolids = () => { const n = nature(); if (solidsOf === n) return solidsCache; solidsOf = n; return (solidsCache = natureSolidsOf(n)); };
+  // 1.10.375 N2a-1 별마루섬's still pieces (public/plaza/isle2-props.js, made by tools/isle2-props.cjs): their circles among the island's solids, and
+  // a look-up of whether a point is near one (nature() keeps its trees, bushes and rocks off them; a swamp's ground left open)
+  const isle2Props = () => (ISLE2 ? (typeof self !== 'undefined' && self.Isle2Props) || (typeof require === 'function' ? require('./isle2-props.js') : null) : null);
+  let propsHash = null;
+  function isle2PropsNear(x, z, r) {
+    const P = isle2Props(); if (!P) return false;
+    if (!propsHash) { propsHash = new Map(); for (const o of P.solids()) { const k = `${Math.floor(o.x / 8)},${Math.floor(o.z / 8)}`; let l = propsHash.get(k); if (!l) propsHash.set(k, (l = [])); l.push(o); }
+      propsHash.swamps = P.SWAMPS.map(([sx, sz], i) => ({ x: sx, z: sz, r: Math.max(...P.SWAMP_OUTLINES[i].map(([ox, oz]) => Math.hypot(ox - sx, oz - sz))) })); }
+    const cx = Math.floor(x / 8); const cz = Math.floor(z / 8);
+    for (let i = cx - 1; i <= cx + 1; i += 1) for (let j = cz - 1; j <= cz + 1; j += 1) for (const o of propsHash.get(`${i},${j}`) || []) if (Math.hypot(o.x - x, o.z - z) < o.r + r + 0.5) return true;
+    return propsHash.swamps.some((s) => Math.hypot(s.x - x, s.z - z) < s.r + r + 1);
+  }
+  const isle2PropSolids = () => isle2Props()?.solids() || [];
   const natureSolidsOf = (n) => { const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 })),
-    ...n.rocks.filter((r) => rockBlocks(r) && settledSpot(r.x, r.z)).map((r) => ({ x: r.x, z: r.z, r: 0.8 * r.s })), ...n.logs.flatMap(logRounds), ...n.palms.map((p) => ({ x: p.x, z: p.z, r: 0.3 * p.s })), ...forestSolids(n)]; }; // (as the scene walks round them: island.js; G4a the rocks, logs and palms too)
+    ...n.rocks.filter((r) => rockBlocks(r) && settledSpot(r.x, r.z)).map((r) => ({ x: r.x, z: r.z, r: 0.8 * r.s })), ...n.logs.flatMap(logRounds), ...n.palms.map((p) => ({ x: p.x, z: p.z, r: 0.3 * p.s })), ...forestSolids(n), ...isle2PropSolids()]; }; /* (1.10.375: 별마루섬's fence, cave, camp pieces, rock) */ // (as the scene walks round them: island.js; G4a the rocks, logs and palms too)
   // (1.10.369, 총괄) a free point on 별마루섬 -- past the islanders' walk grid (±200 m) every point there read as blocked (the unstuck
   // move, the screen check): off every solid there by `margin`, its solids in 8 m squares made once a nature
   let clearOf2 = null; let clearHash = null;

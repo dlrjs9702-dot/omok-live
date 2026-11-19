@@ -1,0 +1,131 @@
+'use strict';
+// 1.10.375 N2a-1 별마루섬 (notes docs/island-expansion-20261115.md 「별마루섬 호랑이」; assets 136 · 152 · 152c · 157): where the island's still
+// pieces stand -- the fence round it 4 m in from its coast (2.4 m a piece, 152c's three kinds mixed in, a corner post where it turns, the
+// people's gate where the walk from 별마루다리 crosses it, none over the creek's mouth or on a cliff), the swamps (off the walks, the camp,
+// the peak and the creek) with reeds and 152c's pieces round them, 우레's rock below the lookout, the camp's fire, benches and stools, and
+// 157's spring cave at the creek's head. Written to public/plaza/isle2-props.js (made once here: the server starts without working it out).
+// node tools/isle2-props.cjs [--check]  (--check: fails when the file is not what this makes -- test/isle2-props.test.js)
+const fs = require('node:fs'); const path = require('node:path');
+const ROOT = path.join(__dirname, '..'); const OUT = path.join(ROOT, 'public/plaza/isle2-props.js');
+const T = require(path.join(ROOT, 'public/plaza/island-terrain.js')); require(path.join(ROOT, 'public/plaza/island-train.js'));
+const D = T.dalmaru; const I = D.NEW_ISLE;
+const hash = (a, b, k) => { const v = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
+const r2 = (v) => Math.round(v * 100) / 100; const r3 = (v) => Math.round(v * 1000) / 1000;
+const glbExtras = (file, node) => { const b = fs.readFileSync(path.join(ROOT, 'public/assets/island', file)); const j = JSON.parse(b.toString('utf8', 20, 20 + b.readUInt32LE(12))); return j.nodes.find((n) => n.name === node)?.extras || {}; };
+const toWorld = (x, z, yaw, u, v) => [x + u * Math.cos(yaw) + v * Math.sin(yaw), z - u * Math.sin(yaw) + v * Math.cos(yaw)];
+
+// ---- the fence: the contour IN m in from the coast, every 2.4 m ----
+const IN = 4; const SEG = 2.4; const ring = [];
+for (let k = 0; k < 720; k += 1) {
+  const a = (k / 720) * Math.PI * 2; const ux = Math.cos(a); const uz = Math.sin(a); let s = 0;
+  for (; s < 260; s += 2) if (D.newIsleCoast(I.x + ux * s, I.z + uz * s) <= IN) break;
+  let lo = Math.max(0, s - 2); let hi = s; for (let n = 0; n < 12; n += 1) { const m = (lo + hi) / 2; if (D.newIsleCoast(I.x + ux * m, I.z + uz * m) <= IN) hi = m; else lo = m; }
+  ring.push([I.x + ux * hi, I.z + uz * hi]);
+}
+const pts = [ring[0]]; { let acc = 0; for (let k = 1; k <= ring.length; k += 1) { const a = ring[k - 1]; const b = ring[k % ring.length]; const d = Math.hypot(b[0] - a[0], b[1] - a[1]); let t0 = 0; while (acc + d - t0 >= SEG) { const t = t0 + (SEG - acc); pts.push([a[0] + (b[0] - a[0]) * (t / d), a[1] + (b[1] - a[1]) * (t / d)]); t0 = t; acc = 0; } acc += d - t0; } }
+const steep = (x, z) => D.slopeAt(x, z) > 0.9; const wet = (x, z) => D.creekDist(x, z) < 3 || D.inCreek(x, z);
+const segs = [];
+for (let i = 0; i < pts.length; i += 1) {
+  const a = pts[i]; const b = pts[(i + 1) % pts.length]; const mx = (a[0] + b[0]) / 2; const mz = (a[1] + b[1]) / 2; const tx = (b[0] - a[0]) / SEG; const tz = (b[1] - a[1]) / SEG;
+  let nx = tz; let nz = -tx; if (nx * (mx - I.x) + nz * (mz - I.z) < 0) { nx = -nx; nz = -nz; }
+  const keep = ![a, b, [mx, mz]].some(([x, z]) => steep(x, z) || wet(x, z));
+  segs.push({ i, x: mx, z: mz, yaw: Math.atan2(-nx, -nz), keep, walk: T.walkDist(mx, mz) });
+}
+const gate = segs.filter((s) => s.keep).sort((p, q) => p.walk - q.walk)[0]; /* (the walk from 별마루다리: the only one it crosses) */
+const KINDS = ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate'];
+const FENCE = segs.filter((s) => s.keep).map((s) => { const h = hash(s.x, s.z, 3); const kind = s === gate ? 4 : h < 0.07 ? 1 : h < 0.14 ? 2 : h < 0.2 ? 3 : 0; return [r2(s.x), r2(s.z), r3(s.yaw), kind]; });
+const CORNERS = []; for (let i = 0; i < segs.length; i += 1) { const p = segs[(i + segs.length - 1) % segs.length]; const s = segs[i]; if (p.keep !== s.keep) { CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); continue; } /* (a run's end, by a cliff or the creek: its post) */ if (!p.keep || !s.keep) continue; let turn = Math.abs(s.yaw - p.yaw); turn = Math.min(turn, Math.PI * 2 - turn); if (turn > (10 * Math.PI) / 180) CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); }
+
+// ---- the spring cave (157): its README's place ----
+const CAVE = { x: 363, z: 176, yaw: 0.942 };
+const caveSolids = JSON.parse(fs.readFileSync(path.join(ROOT, '..', 'assets/157. Game Island creek spring cave 2026-11-20/04. Specifications/solids.json'), 'utf8')).spring_cave;
+
+// ---- the camp (136): the fire in its middle, two benches facing it, three stools round it ----
+const C = I.camp; const CAMP = [[C.x, C.z, 0, 0]];
+for (const [ang, kind, d] of [[0.3, 1, 2.6], [Math.PI + 0.3, 1, 2.6], [1.9, 2, 2.3], [4.2, 2, 2.3], [5.3, 2, 2.4]]) { const x = C.x + Math.cos(ang) * d; const z = C.z + Math.sin(ang) * d; const yaw = Math.atan2(-(C.x - x), -(C.z - z)); CAMP.push([r2(x), r2(z), r3(yaw), kind]); } /* (each one's -Z, the way a seat faces, toward the fire) */
+const CAMP_KINDS = ['campfire', 'log_bench', 'log_stool'];
+
+// ---- 우레's rock (152b): below the lookout, seen from the walk -- 4~9 m off it, flat, nothing on it ----
+/* (from the walks and the ground alone -- nature() keeps its trees off these pieces (isle2Props.near), so nothing here may read it back) */
+const clearOf = (x, z) => D.creekDist(x, z) > 6 && Math.hypot(x - CAVE.x, z - CAVE.z) > 14;
+let ROCK = null; { let best = Infinity; for (let x = I.peak.x - 50; x <= I.peak.x + 50; x += 2) for (let z = I.peak.z - 50; z <= I.peak.z + 50; z += 2) {
+  const dp = Math.hypot(x - I.peak.x, z - I.peak.z); if (dp < 16 || dp > 45) continue; const wd = T.walkDist(x, z); if (wd < 4 || wd > 9 || D.slopeAt(x, z) > 0.3 || !T.walkable(x, z) || !clearOf(x, z, 2.2)) continue;
+  const score = Math.abs(dp - 28) + Math.abs(wd - 6); if (score < best) { best = score; ROCK = [r2(x), r2(z)]; } }
+  const g = [0, 0]; let w = Infinity; for (let a = 0; a < 64; a += 1) { const ang = (a / 64) * Math.PI * 2; const d = T.walkDist(ROCK[0] + Math.cos(ang) * 5, ROCK[1] + Math.sin(ang) * 5); if (d < w) { w = d; g[0] = Math.cos(ang); g[1] = Math.sin(ang); } }
+  ROCK.push(r3(Math.atan2(-g[0], -g[1]))); } /* (its -Z -- the way 우레 lies facing -- toward the walk) */
+
+// ---- the swamps (152): off the walks, the camp, the peak, the creek, the coast; 40 m apart; their outlines in the world ----
+const SWAMP_KINDS = ['swamp_a', 'swamp_b', 'swamp_c']; const SIZE = [3.1, 4.3, 5.9];
+const outlineOf = (k) => { const o = glbExtras(`byeolmaru-v1/${SWAMP_KINDS[k]}.glb`, SWAMP_KINDS[k]).outline; const out = []; for (let i = 0; i < o.length; i += 2) out.push([o[i], o[i + 1]]); return out; };
+const cands = []; for (let x = I.x - I.r; x <= I.x + I.r; x += 4) for (let z = I.z - I.r; z <= I.z + I.r; z += 4) {
+  if (D.newIsleCoast(x, z) < 14 || D.slopeAt(x, z) > 0.22 || D.creekDist(x, z) < 8 || Math.hypot(x - C.x, z - C.z) < C.r + 14 || Math.hypot(x - I.peak.x, z - I.peak.z) < 22 || Math.hypot(x - T.ANCIENT.x, z - T.ANCIENT.z) < 28 || Math.hypot(x - CAVE.x, z - CAVE.z) < 18 || (ROCK && Math.hypot(x - ROCK[0], z - ROCK[1]) < 12)) continue;
+  cands.push({ x, z, h: hash(x, z, 9) }); }
+cands.sort((p, q) => p.h - q.h); const SWAMPS = []; const SWAMP_OUTLINES = [];
+for (const c of cands) {
+  if (SWAMPS.length >= 6) break; const kind = SWAMPS.length % 3; const yaw = hash(c.x, c.z, 11) * Math.PI * 2; const ol = outlineOf(kind).map(([u, v]) => toWorld(c.x, c.z, yaw, u, v));
+  if (ol.some(([x, z]) => T.walkDist(x, z) < 4 || D.slopeAt(x, z) > 0.3 || !T.walkable(x, z))) continue; if (T.walkDist(c.x, c.z) < 6 + SIZE[kind]) continue;
+  if (SWAMPS.some(([x, z]) => Math.hypot(x - c.x, z - c.z) < 40)) continue;
+  SWAMPS.push([c.x, c.z, r3(yaw), kind]); SWAMP_OUTLINES.push(ol.map(([x, z]) => [r2(x), r2(z)]));
+}
+// reeds (3~5 a swamp, just outside its outline) and 152c's pieces (lilies on the pool, the rest at the edge; one heap of stones a second swamp)
+const REED_KINDS = ['reeds_a', 'reeds_b', 'reeds_c']; const DECO_KINDS = ['swamp_lily_a', 'swamp_lily_b', 'swamp_fungus', 'swamp_grass_a', 'swamp_grass_b', 'swamp_planks', 'swamp_stones'];
+const REEDS = []; const DECO = [];
+SWAMPS.forEach(([sx, sz, syaw], s) => {
+  const ol = SWAMP_OUTLINES[s]; const n = 3 + Math.floor(hash(sx, sz, 21) * 3); const step = Math.floor(ol.length / n);
+  for (let k = 0; k < n; k += 1) { const [x, z] = ol[(k * step + s) % ol.length]; const dx = x - sx; const dz = z - sz; const d = Math.hypot(dx, dz) || 1; REEDS.push([r2(x + (dx / d) * 0.6), r2(z + (dz / d) * 0.6), r3(hash(x, z, 23) * Math.PI * 2), Math.floor(hash(x, z, 24) * 3)]); }
+  const lilies = 1 + Math.floor(hash(sx, sz, 25) * 2); for (let k = 0; k < lilies; k += 1) { const a = hash(sx, sz, 26 + k) * Math.PI * 2; DECO.push([r2(sx + Math.cos(a) * 0.7), r2(sz + Math.sin(a) * 0.7), r3(a), k % 2]); }
+  const edge = [2, 3, 4, 5].filter((_, k) => hash(sx, sz, 30 + k) < 0.6); if (s % 2 === 1) edge.push(6);
+  edge.forEach((kind, k) => { const [x, z] = ol[(Math.floor(ol.length / 2) + k * 3 + s) % ol.length]; const dx = x - sx; const dz = z - sz; const d = Math.hypot(dx, dz) || 1; const out = kind === 6 ? 1.6 : 0.9; DECO.push([r2(x + (dx / d) * out), r2(z + (dz / d) * out), r3(hash(x, z, 33) * Math.PI * 2), kind]); });
+});
+
+// ---- what blocks: each kind's circles [x, z, r] in its own frame (README boxes as circles), and its stand-in box [w, h, d, z] ----
+const segCircles = (r, zc = 0) => [-1.05, -0.7, -0.35, 0, 0.35, 0.7, 1.05].map((x) => [x, zc, r]);
+const CIRCLES = {
+  fence_segment: segCircles(0.22), fence_palisade_b: segCircles(0.38), fence_palisade_e: segCircles(0.42, 0.15), fence_stonewall: segCircles(0.28, 0.03),
+  fence_gate: [[-1.05, 0, 0.2], [1.05, 0, 0.2]], /* (the people's way between: a body 0.45 round -- 0.8 m to go through, the leaf's 1 m opening) */
+  fence_corner: [[0, 0, 0.2]], tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
+  campfire: [[0, 0, 0.6]], log_bench: [[-0.45, 0.05, 0.22], [0.45, 0.05, 0.22]], log_stool: [[0, 0, 0.25]],
+  spring_cave: [...caveSolids.rock, ...caveSolids.water],
+};
+const BOXES = {
+  fence_segment: [2.5, 1.6, 0.5, 0], fence_palisade_b: [2.5, 1.6, 0.8, 0], fence_palisade_e: [2.5, 1.5, 0.95, 0.15], fence_stonewall: [2.5, 1.4, 0.6, 0.03], fence_gate: null,
+  fence_corner: [0.42, 2.08, 0.42, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
+};
+const CAVE_BOXES = caveSolids.rockBoxes;
+
+const data = { FENCE, CORNERS, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
+// 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
+// fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES
+// what blocks of each kind in its own frame [x, z, r] (rotation.y = yaw, as forest156), BOXES the stand-ins drawn without the model [w, h, d, z].
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.Isle2Props = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, () => {
+  'use strict';
+  const FENCE_KINDS = ${JSON.stringify(KINDS)}; const CAMP_KINDS = ${JSON.stringify(CAMP_KINDS)}; const SWAMP_KINDS = ${JSON.stringify(SWAMP_KINDS)}; const REED_KINDS = ${JSON.stringify(REED_KINDS)}; const DECO_KINDS = ${JSON.stringify(DECO_KINDS)};
+  const DATA = ${JSON.stringify(data)};
+  const CIRCLES = ${JSON.stringify(CIRCLES)};
+  const BOXES = ${JSON.stringify(BOXES)}; const CAVE_BOXES = ${JSON.stringify(CAVE_BOXES)};
+  const circlesAt = (kind, x, z, yaw = 0, s = 1) => { const c = Math.cos(yaw); const n = Math.sin(yaw); return (CIRCLES[kind] || []).map(([u, v, r]) => ({ x: x + (u * c + v * n) * s, z: z + (-u * n + v * c) * s, r: r * s })); };
+  // every circle of every piece, in the world (the island's solids)
+  let all = null;
+  function solids() {
+    if (all) return all; all = [];
+    for (const [x, z, yaw, k] of DATA.FENCE) all.push(...circlesAt(FENCE_KINDS[k], x, z, yaw));
+    for (const [x, z] of DATA.CORNERS) all.push(...circlesAt('fence_corner', x, z, 0));
+    for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
+    if (DATA.ROCK) all.push(...circlesAt('tiger_rock', DATA.ROCK[0], DATA.ROCK[1], DATA.ROCK[2]));
+    for (const [x, z, yaw, k] of DATA.DECO) if (DECO_KINDS[k] === 'swamp_stones') all.push(...circlesAt('swamp_stones', x, z, yaw));
+    all.push(...circlesAt('spring_cave', DATA.CAVE.x, DATA.CAVE.z, DATA.CAVE.yaw));
+    return all;
+  }
+  // in a swamp (a bike there slowed): inside any outline
+  const inPoly = (x, z, p) => { let inside = false; for (let i = 0, j = p.length - 1; i < p.length; j = i, i += 1) { const [xi, zi] = p[i]; const [xj, zj] = p[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside; } return inside; };
+  const inSwamp = (x, z) => DATA.SWAMPS.some(([sx, sz], i) => Math.hypot(x - sx, z - sz) < 7 && inPoly(x, z, DATA.SWAMP_OUTLINES[i]));
+  return Object.freeze({ ...DATA, FENCE_KINDS, CAMP_KINDS, SWAMP_KINDS, REED_KINDS, DECO_KINDS, CIRCLES, BOXES, CAVE_BOXES, circlesAt, solids, inSwamp });
+});
+`;
+if (process.argv.includes('--check')) { const now = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') : ''; if (now !== text) { console.error('isle2-props.js is stale: run node tools/isle2-props.cjs'); process.exit(1); } console.log('isle2-props ok'); }
+else { fs.writeFileSync(OUT, text); console.log(`fence ${FENCE.length} (gate at ${r2(gate.x)},${r2(gate.z)} walk ${r2(gate.walk)}), corners ${CORNERS.length}, swamps ${SWAMPS.length}, reeds ${REEDS.length}, deco ${DECO.length}, rock ${JSON.stringify(ROCK)}, camp ${CAMP.length}`); }
