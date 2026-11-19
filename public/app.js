@@ -3080,12 +3080,15 @@
       const what = document.createElement('span'); what.append(itemIcon({ itemId: o.id, icon: o.icon }), ` ${o.name} · ${fmtP(o.price)}`); row.append(what);
       /* (1.10.370 개수 칸: − [n] + then 「사기」 -- the 1 · 5 · 10 kept as quick picks into it) */
       const box = window.CountBox ? CountBox.make({ value: 1, max: 99, label: `${o.name} 개수`, zero: false }) : null; if (box) row.append(box);
+      /* (Codex 361~370 #4: an order whose answer never came -- the same order number again, so the server pays it once; a new one only after a clear yes or no) */
+      let pendingRid = null;
       for (const pick of [1, 5, 10, 'buy']) { const b = document.createElement('button'); b.type = 'button'; b.className = pick === 'buy' ? 'secondary tiny' : 'ghost tiny'; b.textContent = pick === 'buy' ? '사기' : `${pick}개`; if (pick !== 'buy' && !box) b.dataset.n = String(pick); b.addEventListener('click', async () => {
         if (pick !== 'buy' && box) { box.setCount(pick); return; }
         const n = pick === 'buy' ? (box ? box.count() : 1) : pick;
         b.disabled = true;
-        try { const r = await api('/api/island/store/ores', { method: 'POST', body: JSON.stringify({ itemId: o.id, qty: n, requestId: crypto.randomUUID() }) }); if (r.bag) drawIslandBag(r.bag); loadPoints(); showToast(`${o.name} ${n}개를 샀어요 · -${fmtP(o.price * n)}`); }
-        catch (error) { showToast(error.message); } finally { b.disabled = false; }
+        pendingRid ||= crypto.randomUUID();
+        try { const r = await api('/api/island/store/ores', { method: 'POST', body: JSON.stringify({ itemId: o.id, qty: n, requestId: pendingRid }) }); pendingRid = null; if (r.bag) drawIslandBag(r.bag); loadPoints(); showToast(`${o.name} ${r.qty || n}개를 샀어요 · -${fmtP(o.price * (r.qty || n))}`); }
+        catch (error) { if (error.status && error.status < 500) pendingRid = null; showToast(error.message); } finally { b.disabled = false; }
       }); row.append(b); }
       return row;
     });

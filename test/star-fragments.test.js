@@ -48,11 +48,15 @@ test('소원: 다음 날 별 조각 한 번(다시 봐도 더 안 줌), 바꾸�
   for (const s of [a, b]) assert.equal((await req('/api/island/stars/wish', s, { id: star })).status, 200);
   // A: the next day (36 h on) -- a fragment, once
   await req('/api/test/island/star-now', a, { plusMs: 36 * 3600000 });
+  /* (Codex 361~370 #5: the old claim's record not read -- held, nothing paid under a new claim; the next look pays it) */
+  await req('/api/test/store/fail', null, { method: 'settlementOf' }); const held = (await req('/api/island/stars', a)).data; assert.deepEqual(held.fragments, [], '읽지 못하면 보류');
   const got = (await req('/api/island/stars', a)).data; assert.equal(got.gift, 0); assert.equal(got.fragments.length, 1); assert.equal(got.fragments[0].n, 1);
   const bag = (await req('/api/island/bag', a)).data.items; assert.equal(bag.filter((e) => /^star_fragment/.test(e.itemId)).reduce((n, e) => n + e.qty, 0), 1);
   assert.deepEqual((await req('/api/island/stars', a)).data.fragments, [], '한 번만');
   // B wished before the switch: the switch moved after the star (as if B's wish came before the release) -- 300P
   await server.stop(); const file = path.join(dir, 'points.json'); const data = JSON.parse(await fs.readFile(file, 'utf8'));
+  /* (Codex 361~370 #7: the wish's shiny chance kept with it -- the default 10 % here) */
+  const bDoc = Object.entries(data.quests || {}).find(([k, d]) => k.endsWith('|stars') && (d.wished || []).includes(star))?.[1]; assert.equal(bDoc?.pct?.[star], 10, JSON.stringify(bDoc));
   data.island.world.starsFragmentFrom = { at: Date.now() + 10 * 86400000 }; await fs.writeFile(file, JSON.stringify(data));
   server = await boot(t, dir); ({ req } = server); b = await server.enter(keyB);
   await req('/api/test/island/star-now', b, { plusMs: 36 * 3600000 });

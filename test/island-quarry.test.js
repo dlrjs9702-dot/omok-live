@@ -113,6 +113,14 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
   const miss = await mine(false); assert.equal(miss.ore, 0); assert.equal(miss.itemId, 'stone'); assert.equal(miss.left, Q.ORE_PER_ROCK, '바위 그대로'); assert.equal(miss.worn.uses, Items.TOOL_USES.pickaxe - 1, '곡괭이만 닳음');
   assert.equal((await req('/api/island/quarry', a)).data.daily.n, 1, '362 Codex P1 #1: 작은 돌도 하루 한도에 셈(일부러 놓쳐 남기기 막음)'); assert.equal(miss.daily.n, 1);
   const f1 = await mine(true, 0.1); assert.equal(f1.ore, 1); assert.equal(f1.itemId, 'ore_granite'); assert.equal(f1.name, '화강암'); assert.equal(f1.hits, 3); assert.equal(f1.left, Q.ORE_PER_ROCK - 1); assert.equal(f1.worn.uses, Items.TOOL_USES.pickaxe - 2); assert.equal(f1.daily.n, 2);
+  /* (Codex 361~370 #9: the rock's save lost after an ore went out -- its count back as before: that slot answers MINED once and the rock moves past it,
+     never stuck there) */
+  await req('/api/test/quarry/set', a, { rock: rock.id, left: Q.ORE_PER_ROCK });
+  { await req('/api/plaza/state', a, { x: stand.x, z: stand.z, yaw: stand.yaw, moving: false }); await req('/api/test/quarry/plan', a, { draw: 0.1 });
+    const s = await req('/api/island/quarry/start', a, { rock: rock.id, spot: 0 }); assert.equal(s.status, 200, JSON.stringify(s.data)); const t0 = Date.now(); await pressTimed(s.data.plan, t0);
+    await new Promise((r) => setTimeout(r, Math.max(0, t0 + Q.MINE_MS - Date.now())));
+    const f = await req('/api/island/quarry/finish', a, { rock: rock.id, spot: 0, taps: [], requestId: crypto.randomUUID() }); assert.equal(f.data.error, 'MINED', JSON.stringify(f.data));
+    assert.equal((await req('/api/island/quarry', a)).data.rocks.find((r) => r.id === rock.id).left, Q.ORE_PER_ROCK - 1, '그 자리를 지나감'); }
   await req('/api/test/quarry/set', a, { rock: rock.id, left: 1 }); /* (1.10.350: six a rock -- the last one) */
   const f2 = await mine(true, 0.82); assert.equal(f2.itemId, 'ore_coal', '한 단계 위 20 %(보통: 석탄·철·구리·주석)'); assert.equal(f2.left, 0); assert.equal(f2.stage, 'mined');
   const bag = (await req('/api/island/bag', a)).data; const items = bag.bag?.items || bag.items || []; const count = (id) => items.filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
