@@ -30,7 +30,7 @@ jobs:
   part:
     name: e2e part (${{ matrix.group }})
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }} # (A안: a draft runs nothing)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # (1.10.371: 26.04 runners have no Playwright font packages -- install-deps failed, PR 521)
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -149,7 +149,7 @@ jobs:
     name: e2e (${{ matrix.gate }})
     needs: part
     if: ${{ always() && needs.part.result != 'skipped' }} # (A안: a draft's parts skipped -- the gates too, not a red X; Ready runs them)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # (1.10.371: 26.04 runners have no Playwright font packages -- install-deps failed, PR 521)
     timeout-minutes: 5
     strategy:
       fail-fast: false # (CI 3차: all four fail together -- one failing gate used to cancel the other three)

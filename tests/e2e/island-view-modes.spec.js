@@ -257,6 +257,11 @@ test('가려도 내 캐릭터 보이기: 숲속에서 나무가 가리면 내 �
   expect(found, '나무에 가리는 숲속 자리').not.toBeNull();
   await expect.poll(() => page.evaluate(() => window.PlazaSee().on), { timeout: 5000 }).toBe(1);
   const s = await page.evaluate(() => window.PlazaSee()); expect(s.radius).toBeGreaterThan(30); expect(s.depth).toBeGreaterThan(2);
+  /* (1.10.371 §3 숲의 빛·공기: in the wood its fog nearer, the leaves falling, and by day the shafts -- at night the fireflies) */
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().forestAir().wood), { timeout: 15000 }).toBeGreaterThan(0.2);
+  const air = await page.evaluate(() => ({ ...window.PlazaDebug().forestAir(), phase: window.PlazaDebug().time().phase }));
+  expect(air.fogFar, JSON.stringify(air)).toBeLessThan(165); expect(air.fogNear).toBeLessThan(65); expect(air.leaves).toBeGreaterThan(0);
+  if (air.phase === 'night') expect(air.fireflies).toBeGreaterThan(0); else expect(air.shafts).toBeGreaterThan(0);
   const toggle = async () => { if (isMobile) await page.locator('#islandViewTab').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyV'); } };
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().view().mode)).toBe('first');
   await expect.poll(() => page.evaluate(() => window.PlazaSee().on), { timeout: 5000 }).toBe(0);
