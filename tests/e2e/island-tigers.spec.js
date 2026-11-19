@@ -18,17 +18,26 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
   // the tigers' clock at 9시 (both awake, whenever the test runs); 우레 10 m off, 안개 far away
   const kst = new Date(Date.now() + 9 * 3600000); const shift = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, 0, 0) - Date.now();
   try {
+    // (1.10.377) at 별마루다리's gate its leaf opens; the two signs' words
+    const gate = P.FENCE.find((f) => P.FENCE_KINDS[f[3]] === 'fence_gate');
+    await standAt(request, who, gate[0] + Math.sin(gate[2]) * 1.5, gate[1] + Math.cos(gate[2]) * 1.5);
+    await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.gateOpen ?? 0), { timeout: 10000 }).toBeGreaterThan(0.8);
+    expect(await page.evaluate(() => window.PlazaTigers()?.signs)).toEqual(['별마루섬 자연 구역', P.SIGN_TRAIL[3].join(' / ')]);
     await standAt(request, who, spot.x, spot.z);
     const on = await post(request, '/api/test/tigers', who.token, { on: true, clockShift: shift, place: { id: 'angae', x: T.dalmaru.NEW_ISLE.x + 60, z: T.dalmaru.NEW_ISLE.z - 60 } });
     expect(on.data.on).toBe(true);
     // first out of his sight (45 m) till his file is in, then 10 m off: he comes -- the warning on
     await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 45, z: spot.z } });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.shown?.find((t) => t.id === 'ure')?.loaded), { timeout: 60000 }).toBe(true);
-    await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 10, z: spot.z } });
+    await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 18, z: spot.z } });
     const caught = page.waitForFunction(() => /잡혔어요/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 60000 });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.warn?.id || null), { timeout: 20000 }).toBe('ure');
     expect(await page.evaluate(() => document.getElementById('tigerWarn')?.classList.contains('on'))).toBe(true);
+    // (377) caught: five seconds covered, 「이송 중」 -- then his words
+    await expect.poll(() => page.evaluate(() => document.getElementById('tigerTransfer')?.classList.contains('on') ?? false), { timeout: 60000 }).toBe(true);
+    expect(await page.evaluate(() => document.querySelector('#tigerTransfer .tigerTransferGo')?.textContent)).toBe('이송 중');
     await caught;
+    expect(await page.evaluate(() => document.getElementById('tigerTransfer').classList.contains('on'))).toBe(false);
     const toast = await page.evaluate(() => document.getElementById('toast').textContent);
     expect(toast).toContain('우레에게 잡혔어요'); expect(toast).toContain('큰일 날 뻔했어요'); expect(toast).toContain('잡초'); expect(toast).toContain('나뭇가지'); expect(toast).not.toContain('낚싯대');
     // in front of the mayor, on my screen and the server's

@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.377 N2a 남은 것 (총괄: 동굴 물 재질, 글자 안내판, 다리 문 열림)
+
+- 동굴 물: asset-loader `swap` 항목 + setSwapMaterials -- island.js가 157 파일 재질 water/water_fall/water_foam을 개울 물(water clone, vertexColors)·폭포(fallMat)·거품(foam)으로 바꿔 줌. spring.cave에 `swap: true`.
+- 안내판: 136 sign_reserve·sign_trail(+_low) 다시 넣음(sha256 확인). 자리는 tools/isle2-props.cjs(SIGN_RESERVE 문 안쪽 길 옆, SIGN_TRAIL 캠핑장 가장자리 길 옆, 화살 셋을 캠핑장·전망대·별마루다리에 가장 가깝게 돌림), 막힘 원 추가(땅 지도 그대로). 글자는 plaza-scene boardText로 FACE 자리 1.5 mm 앞(「별마루섬 자연 구역」, 화살마다 갈 곳).
+- 다리 문: fence_gate를 묶음에서 빼고 plaza-scene에서 따로 붙임(keepNodes), 사람(나·다른 사람)이 2.6 m 안이면 leaf가 +Y로 1.45 rad 열림.
+- 호랑이 조정(사용자 직접): 달리기 우레 12(「우레 속도 1 업」)·안개 11 m/s, 포기 25초, 크기 1.6→2.4배(걷기·달리기·Stalk 재생 속도, 앞발 거리 2.1/1.73, 잡힘 반지름 2.4/2.1, 몸 여유 0.9 m), 덮치기는 멈추지 않고 달리던 대로 앞으로 곧게(0.84 s에 앞발, 도약 = 예상 자리까지, 최대 달리기 0.84 s + 클립 도약), 잡히면 5초 #tigerTransfer 「이송 중」(빨간 깜빡임) 뒤 시장님 말. 15 m/s 넘는 순간 이동은 속도 0. 시뮬레이션(25초 안 잡힘): 뛰기 6.2는 둘 다 15/20/25 m 거의 다 잡힘(2.7~14 s), 자전거 9는 우레 1/15·안개 9/15, Shift 12는 0.
+- 시험: island-tigers.spec에 문 열림·안내판 글자 확인 추가.
+
 ## v1.10.376 N2a-2 별마루섬 호랑이 (152e, notes island-expansion 「별마루섬 호랑이」~「잡히면 가는 곳 바꿈」)
 
 - 서버: lib/island-tigers.js -- 1 m 땅 칸(목책 2 m 안, 막힘 0.7 m 밖, 캠핑장·전망대·문 12 m 빼고, 가장 큰 덩어리), 별마루섬 사람 따라 흐름 길찾기, 0.1 s마다. 우레 8.0 m/s(크게 돎)·볼 25 m, 안개 7.0 m/s(바짝 꺾음)·볼 18 m. Stalk(1.8 s, 뛰거나 8 m 안이면 바로 Run) → Run → Pounce(앞발 0.84 s, 맞을 곳 예측, 길 막히면 안 덮침) → 10 s 포기. 쉬는 때 KST 우레 12~14 바위 위 Nap(1.44 m 위), 안개 4~6 늪가 Doze, 갈대 옆 Crouch.
@@ -29,11 +37,3 @@
 - 자전거: 늪 안에서는 4.3 m/s.
 - 에셋: island-models.json sources byeolmaru152·byeolmaru152e·newisle136·spring157, 50 파일(sha256 확인), budgets 예외(문·동굴·모닥불·의자).
 - 남은 것: 호랑이(152e, 1.10.376 N2a-2), 동굴 물 재질, 글자 안내판(sign_reserve/trail), 부두 문(N3).
-
-## v1.10.374 메신저 프로필 사진 (notes docs/messenger-profile-photo-20261119.md) + Codex 봇 지적 3건 + AGENTS.md
-
-- 저장소: 한 계정 한 장(덮어쓰기, 버전 v) -- JSON은 messenger-avatars 폴더(계정 해시 이름)+meta, PostgreSQL은 messenger_avatars 표(백업에 들어감).
-- API: GET /api/messenger/avatars/:id(메신저 허용 계정만, private 1년 캐시·버전 주소), POST /api/messenger/avatar(WebP·JPEG, 64KB, 내용 머리 확인, 바꾸기 5분에 3번·시도 5분 20번), POST /api/messenger/avatar/clear. GET /api/messenger에 photos {id: v}.
-- 화면: 「내 프로필」(고르기 → 정사각 자르기 끌기·크기·휠 → 256x256 WebP, 안 되면 JPEG → 저장, 기본으로), 사진은 머리글로 받아 data: 주소로 캐시, 방 목록(1:1 상대)·말풍선 이름 옆·멤버 줄·사람 고르기·1:1 알림 아이콘, 누르면 크게 보기.
-- Codex 봇: #521 개수 칸 −/+/전부는 포커스를 안 가져감(첫 누름 살림), #522 숲 소리는 장면 stop()에서 끔, #523 답 없는 재료 주문은 수량도 고정·서버는 저장된 qty.
-- AGENTS.md:56 효과음·BGM 금지 문장 삭제(사용자 2026-11-20 직접).

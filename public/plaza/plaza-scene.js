@@ -1373,6 +1373,37 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; textures.push(texture);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9, ...SIGN_PUSH })); face.position.set(0, y, z); face.rotation.y = Math.PI; face.userData.boardText = text; return face;
   }
+  // 1.10.377 N2a 별마루섬's two signs (assets 136; places isle2-props.js): the reserve's board inside the gate with its title, the trail post at the
+  // camp's edge with its three arrows' places -- the letters painted at the README's FACE spots, 1.5 mm in front of each board
+  const isle2Signs = [];
+  (() => {
+    const P2 = globalThis.Isle2Props; if (!P2?.SIGN_RESERVE && !P2?.SIGN_TRAIL) return;
+    const INK = ['#efe6cf', '#2f4a2c'];
+    const place = (id, [x, z, yaw], standIn, faces) => {
+      const g = new THREE.Group(); g.position.set(x, heightAt(x, z), z); g.rotation.y = yaw; scene.add(g);
+      const v = new THREE.Group(); g.add(v); standIn(v); assets.attach(id, g, v);
+      for (const [text, fx, fy, fz, ry, w, h] of faces) { const f = new THREE.Group(); f.position.set(fx, fy, fz); f.rotation.y = ry; f.add(boardText(text, w, h, 0, -0.0015, INK)); g.add(f); }
+      g.userData.signboard = faces.map((k) => k[0]).join(' / '); isle2Signs.push(g); return g;
+    };
+    if (P2.SIGN_RESERVE) place('newisle.sign_reserve', P2.SIGN_RESERVE, (v) => { for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.14, 1.9, 0.14), mat(0x6b4a30), s * 0.66, 0.95, 0, v); mesh(new THREE.BoxGeometry(1.5, 0.6, 0.08), mat(0x3f5a3a), 0, 1.45, 0, v); },
+      [['별마루섬 자연 구역', 0, 1.5, -0.061, 0, 1.2, 0.3]]);
+    if (P2.SIGN_TRAIL) { const [x, z, yaw, names] = P2.SIGN_TRAIL; place('newisle.sign_trail', [x, z, yaw], (v) => { mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.6, 8), mat(0x6b4a30), 0, 0.8, 0, v); },
+      [[names[0], 0.3, 1.4, -0.068, 0, 0.5, 0.12], [names[1], -0.294, 1.19, -0.092, (150 * Math.PI) / 180, 0.5, 0.12], [names[2], 0.227, 0.98, 0.207, (-55 * Math.PI) / 180, 0.5, 0.12]]); }
+  })();
+  // 1.10.377 N2a 별마루다리's people gate (assets 152 fence_gate: its leaf hinged at x -0.52, opened turning +Y): on its own with its nodes kept, the
+  // leaf swinging open while anyone stands within 2.6 m of it and shut again after
+  const isle2Gate = (() => {
+    const P2 = globalThis.Isle2Props; const f = P2?.FENCE?.find((a) => P2.FENCE_KINDS[a[3]] === 'fence_gate'); if (!f) return null;
+    const g = new THREE.Group(); g.position.set(f[0], heightAt(f[0], f[1]), f[1]); g.rotation.y = f[2]; scene.add(g);
+    const v = new THREE.Group(); g.add(v); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.24, 2.42, 0.24), mat(0x8a6440), s * 1.08, 1.21, 0, v); mesh(new THREE.BoxGeometry(2.4, 0.16, 0.2), mat(0x8a6440), 0, 2.34, 0, v);
+    assets.attach('byeolmaru.fence_gate', g, v);
+    let open = 0; let leaves = []; let lookedAt = 0;
+    return { g, at: { x: f[0], z: f[1] }, open: () => open, step(dt, people) {
+      const now = performance.now(); if (now - lookedAt > 1000) { lookedAt = now; leaves = []; g.traverse((o) => { if (o.name === 'leaf') leaves.push(o); }); }
+      const near = people.some((p) => Math.hypot(p.x - f[0], p.z - f[1]) < 2.6); open += ((near ? 1 : 0) - open) * (1 - Math.exp(-dt * 6));
+      for (const l of leaves) { l.rotation.y = open * 1.45; l.updateMatrix?.(); l.matrixAutoUpdate = true; }
+    } };
+  })();
   // (1.10.352 무게 ⑥ §9-2: a board taken down for good -- its texture, material and plane let go, and out of `textures`)
   function dropBoard(face) { if (!face) return; face.removeFromParent(); const m = face.material; const t = m?.map; if (t) { t.dispose(); const k = textures.indexOf(t); if (k >= 0) textures.splice(k, 1); } m?.dispose?.(); face.geometry?.dispose?.(); }
   function plaque(text, x, y, z, yaw, h) {
@@ -6630,6 +6661,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       forestAir.step(dt, { me: { x: p.x, y: p.y, z: p.z }, sunDir: sunDirNow, phase, quality, lessMotion: Boolean(lessMotion?.matches), outdoors, season: globalThis.IslandTerrain.seasonAt?.(p.x, p.z, Date.now() + serverOffset) || 'summer', now, woodNow: island.isle2Wood?.() || 0, sound: !photoMode });
       woodLight();
       tigerView.step(dt, p, outdoors); /* (1.10.376 N2a-2 별마루섬 호랑이: tigers-view.js) */
+      if (isle2Gate && Math.hypot(p.x - isle2Gate.at.x, p.z - isle2Gate.at.z) < 60) { const people = [p]; for (const o of others.values()) people.push(o.c.root.position); isle2Gate.step(dt, people); } /* (1.10.377: the gate's leaf) */
     }
     farCull(camera.position.x, camera.position.z);
     drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, dropTop + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
@@ -7224,7 +7256,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
   }
   return { readiness /* (368 로딩 안정화) */, seeThrough: () => ({ on: +SEE.on.value.toFixed(2), want: seeWant, radius: Math.round(SEE.radius.value), depth: +SEE.depth.value.toFixed(1), blocked: seeBlocked(me.root.position) }) /* (1.10.369 §6: tests) */, setQuarry, mineRock /* (1.10.323 채석장) */, mineResult, fishFeel /* (1.10.355 타격감) */, setMySnack /* (1.10.325 크리스마스 마켓) */, sledRide, snowThrow, setSnowRound: (k) => { snowRound.n = Math.max(0, Number(k) || 0); } /* (1.10.334 썰매 언덕·눈싸움) */, setXmasPreview /* (1.10.332 관리자 미리 보기) */, setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; if (!lotId || !editView) { setEditZoom(0); if (lotId) editOpen(); } editView = Boolean(lotId); if (!lotId) yardGhost(null); } /* (v1.10.315: each time from the whole yard) */, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ contestKeeperHere: () => Boolean(contestTent?.keeper.root.visible), /* (대회 순위: 가락 at it, or its sign's window) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id, data) => photoAsk(id, data), photoMiss: (id) => photoMiss(id), photoThanks: (id, photo) => photoThanks(id, photo), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setTaxiStops: (s) => { taxiStops = s && typeof s === 'object' ? s : {}; }, setTaxiRide /* (317) */,
-    setTigers: (list) => tigerView.set(list), tigers: () => tigerView.debug(), /* (1.10.376 N2a-2: the server's two; caught -- whatever I was doing ends, off the bike, in front of 마루 시장님) */
+    setTigers: (list) => tigerView.set(list), tigers: () => ({ ...tigerView.debug(), gateOpen: isle2Gate ? Math.round(isle2Gate.open() * 100) / 100 : null, signs: isle2Signs.map((g) => g.userData.signboard) }), /* (377: the gate's leaf, the signs' words) */ /* (1.10.376 N2a-2: the server's two; caught -- whatever I was doing ends, off the bike, in front of 마루 시장님) */
     tigerCaught: (x, z) => { if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop?.(); actLock = 0; if (cycling) { cycling = null; onBike?.(false, null); } keys.clear(); correctTo(x, z); placeCamera(true); }, playPull /* (318) */, setStocksBoard, tedSay /* (320) */, setFleaBadge /* (339) */, setDenDoor, setDenNote, setDenRaid, setDenShown, denShow, serverNow: () => viewNow() /* (341) */, setQualityMode, setRenderScale /* (314) */, onAutoTier: (fn) => { onAutoTier = fn; }, screenNow: () => ({ tier: quality, held: qualityHeld, scale: Math.round((renderer.getPixelRatio() / BASE_RATIO) * 100) }) /* (1.10.322 U2: 「지금 화면」 -- the tier and the share drawn) */, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, actCancel: () => { if (!netAimEnd()) actUp(); }, grabTurn: () => turnGrab(), homeEditView: (on) => { if (!on || !editView) { setEditZoom(0); if (on) editOpen(); } editView = Boolean(on); }, editZoom: (z) => { if (z != null) setEditZoom(Number(z)); return editZoom; } /* (v1.10.315: tests, and the window’s buttons) */, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)

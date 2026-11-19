@@ -2145,6 +2145,22 @@
       "nodes": 25,
       "textures": 4,
       "reason": "1.10.376 N2a-2 152e 안개: 반사실 호랑이(사용자 152d 1A) -- 뼈 22 + 루트·메시 노드, 색·노멀 WebP 그림 2장, 동작 10"
+    },
+    "newisle-v1/sign_reserve.glb": {
+      "nodes": 3,
+      "reason": "1.10.377 N2a 136 sign_reserve: its FACE nodes (the game paints the letters there)"
+    },
+    "newisle-v1/sign_reserve_low.glb": {
+      "nodes": 3,
+      "reason": "1.10.377 N2a 136 sign_reserve_low: its FACE nodes (the game paints the letters there)"
+    },
+    "newisle-v1/sign_trail.glb": {
+      "nodes": 5,
+      "reason": "1.10.377 N2a 136 sign_trail: its FACE nodes (the game paints the letters there)"
+    },
+    "newisle-v1/sign_trail_low.glb": {
+      "nodes": 5,
+      "reason": "1.10.377 N2a 136 sign_trail_low: its FACE nodes (the game paints the letters there)"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

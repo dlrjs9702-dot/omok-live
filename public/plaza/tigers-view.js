@@ -7,11 +7,11 @@ import * as THREE from '/vendor/three/three.module.js';
 // Near one that is awake: its warning -- 우레 from 25 m 「어흥!」 loud, 안개 only from 12 m a low 「그르릉」 -- a sound (the game's sound
 // on) and the screen's edges going red. `debug()` for the tests and photos.
 const DEFS = {
-  ure: { name: '우레', model: 'byeolmaru.tiger', walk: 1.66, run: 7.28, stalk: 0.59, warn: 25, say: '어흥!' },
-  angae: { name: '안개', model: 'byeolmaru.tiger_angae', walk: 1.33, run: 5.82, stalk: 0.46, warn: 12, say: '그르릉…' },
+  ure: { name: '우레', model: 'byeolmaru.tiger', walk: 2.5, run: 10.92, stalk: 0.89, warn: 25, say: '어흥!' }, /* (377: the clips' no-slide paces at 2.4x) */
+  angae: { name: '안개', model: 'byeolmaru.tiger_angae', walk: 1.99, run: 8.74, stalk: 0.7, warn: 12, say: '그르릉…' },
 };
-const LEAP_FROM = 0.42; const PAW_S = 0.84; const RESTING = new Set(['Nap', 'Doze']);
-const leapAt = (s, len) => { if (s <= LEAP_FROM) return 0; if (s >= PAW_S) return len; const u = (s - LEAP_FROM) / (PAW_S - LEAP_FROM); return len * u * u * (3 - 2 * u); };
+const PAW_S = 0.84; const RESTING = new Set(['Nap', 'Doze']);
+const leapAt = (s, len) => (s <= 0 ? 0 : s >= PAW_S ? len : (len * s) / PAW_S); /* (377: on from the run, as lib/island-tigers.js) */
 const angleTo = (a, b) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 
 export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles = () => false, T = globalThis.IslandTerrain }) {
