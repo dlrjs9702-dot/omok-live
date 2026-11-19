@@ -7058,9 +7058,9 @@ async function requestHandler(req, res) {
       const result = { ok: true, ore: 1, itemId: 'ore_granite', name: IslandItems.ITEMS.ore_granite?.name || '화강암', icon: IslandItems.ITEMS.ore_granite?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', wall: true, bag: given.bag, worn: given.worn || null, daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
-    // 366 광석 개편 2: a gem first (‰ by economy gem:*, an event's 「채석 위 단계」 too), else the ore as before
+    // 366 광석 개편 2: a gem first (‰ by economy gem:* -- 369: no event raises it), else the ore as before
     const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(`gem:${g.id}`), Economy.value(`gem:${g.id}:bonus`)]]));
-    const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'), gemPms); quarryTestGem = null;
+    const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, 1 /* (369 검토 #2, 사용자 A: no event on the gems -- 「채석 위 단계」 the ore's stage only) */, gemPms); quarryTestGem = null;
     const oreId = gem ? `gem_${gem}` : `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
     const slot = IslandQuarry.ORE_PER_ROCK - kept.left; // (each ore of a rock's fill its own claim: two at once -- one gets it)
     const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${kept.gen}:${slot}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);

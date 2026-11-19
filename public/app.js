@@ -4655,7 +4655,7 @@
        kind's change and on loading only; a target's change shows its rows) */
     const syncRows = () => { const k = kindOf(); const t = byId('ieTarget'); t.disabled = k === 'notice'; byId('ieMult').disabled = k === 'notice'; byId('ieItemRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'item')); byId('ieGemsRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'ore')); };
     const rebuildTargets = () => {
-      if (!ie) return; const k = kindOf(); byId('ieTarget').replaceChildren(...(k === 'notice' ? [] : Object.entries(k === 'sell' ? ie.sell : ie.catch).map(([v, n]) => opt(v, n))));
+      if (!ie) return; const k = kindOf(); byId('ieTarget').replaceChildren(...(k === 'notice' ? [] : Object.entries(k === 'sell' ? ie.sell : ie.catch).map(([v, n]) => opt(v, v === 'quarry_up' ? `${n} — 광석 단계만(보석 확률은 그대로)` : n)))); /* (369 사용자 A) */
       byId('ieTemplate').replaceChildren(opt('', '알림 틀 고르기 (선택)'), ...ie.templates.filter((x) => x.kind === k).map((x, i) => opt(String(i), x.text))); syncRows();
     };
     const fillText = () => {
