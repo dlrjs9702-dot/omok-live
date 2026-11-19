@@ -643,6 +643,9 @@ async function readBody(req) {
 
 // v1.10.233 메신저 사진: a photo's bytes, its own way in (the 48 KB of the JSON calls stays as it is)
 const PHOTO_MAX = 2 * 1024 * 1024;
+// 1.10.373 메신저 프로필 사진: the page makes a 256x256 WebP (20~40 KB; JPEG where the browser makes no WebP) -- what the bytes start with checked too
+const AVATAR_MAX = 64 * 1024; const AVATAR_TYPES = ['image/webp', 'image/jpeg'];
+const avatarBytesOk = (b, type) => (type === 'image/webp' ? b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP' : b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff);
 async function readRaw(req, max) {
   let size = 0; const chunks = [];
   for await (const chunk of req) { size += chunk.length; if (size > max) throw Object.assign(new Error('too large'), { status: 413 }); chunks.push(chunk); }
@@ -5209,6 +5212,24 @@ async function requestHandler(req, res) {
       if (!p.bytes) return sendError(res, 410, 'PHOTO_GONE', '7일이 지나 사라진 사진입니다.');
       res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': p.bytes.length, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' }); return res.end(p.bytes); // (an hour: an unsent photo leaves the others' browsers soon -- 총괄)
     }
+    // 1.10.373 프로필 사진 (notes docs/messenger-profile-photo-20261119.md): a permitted account's picture, to the messenger's accounts only (this
+    // block's login and permission checks; no public address) -- its version in the address, kept a year; mine set (256x256 WebP or JPEG, 64 KB at
+    // most, 3 changes in 5 minutes) or back to the letter circle
+    const avatar = pathname.match(/^\/api\/messenger\/avatars\/([^/]{1,80})$/);
+    if (avatar && req.method === 'GET') {
+      const id = decodeURIComponent(avatar[1]); if (!allowed.has(id)) return sendError(res, 404, 'AVATAR_NOT_FOUND', '사진이 없어요.');
+      const a = await messengerStore.avatarOf(id); if (!a) return sendError(res, 404, 'AVATAR_NOT_FOUND', '사진이 없어요.');
+      res.writeHead(200, { 'Content-Type': a.type, 'Content-Length': a.bytes.length, 'Cache-Control': 'private, max-age=31536000, immutable', ETag: `"${a.v}"`, 'X-Content-Type-Options': 'nosniff' }); return res.end(a.bytes);
+    }
+    if (pathname === '/api/messenger/avatar' && req.method === 'POST') {
+      if (!checkRateLimit('messenger-avatar-try:' + key.id, 20, 5 * 60 * 1000)) return sendError(res, 429, 'AVATAR_RATE_LIMIT', '잠시 후 다시 해 주세요.'); /* (tries, refused ones too) */
+      const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase(); if (!AVATAR_TYPES.includes(type)) return sendError(res, 415, 'AVATAR_TYPE', 'WebP나 JPEG 사진만 올릴 수 있어요.');
+      let bytes; try { bytes = await readRaw(req, AVATAR_MAX); } catch (error) { return sendError(res, error.status === 413 ? 413 : 400, 'AVATAR_TOO_BIG', '사진이 너무 커요.'); }
+      if (!avatarBytesOk(bytes, type)) return sendError(res, 415, 'AVATAR_TYPE', 'WebP나 JPEG 사진만 올릴 수 있어요.');
+      if (!checkRateLimit('messenger-avatar:' + key.id, 3, 5 * 60 * 1000)) return sendError(res, 429, 'AVATAR_RATE_LIMIT', '프로필 사진은 5분에 3번까지 바꿀 수 있어요.'); /* (changes kept) */
+      return sendJson(res, 200, { ok: true, v: await messengerStore.setAvatar(key.id, bytes, type) });
+    }
+    if (pathname === '/api/messenger/avatar/clear' && req.method === 'POST') { await messengerStore.clearAvatar(key.id); return sendJson(res, 200, { ok: true }); }
     const names = (ids) => ids.map((id) => `${nameOf(id)}님`).join(', ');
     const invitees = (list) => { // other permitted accounts only
       if (!Array.isArray(list) || list.length > MESSENGER_ROOM_MAX) return null;
@@ -5268,7 +5289,9 @@ async function requestHandler(req, res) {
     }
     if (pathname === '/api/messenger' && req.method === 'GET') {
       const rooms = (await messengerStore.roomsOf(key.id)).sort((a, b) => Number((b.pinned || []).includes(key.id)) - Number((a.pinned || []).includes(key.id)) || String(b.lastAt).localeCompare(String(a.lastAt))); // v1.10.90: pinned first
-      return sendJson(res, 200, { ok: true, me: key.id, rooms: rooms.map(view), people });
+      /* (1.10.373 프로필 사진: each permitted account's picture version -- 0 or none: the letter circle) */
+      const photos = Object.fromEntries(Object.entries(await messengerStore.avatarVersions()).filter(([id]) => allowed.has(id)));
+      return sendJson(res, 200, { ok: true, me: key.id, rooms: rooms.map(view), people, photos });
     }
     if (pathname === '/api/messenger/rooms' && req.method === 'POST') {
       if (!checkRateLimit('messenger-room:' + key.id, 10, 60 * 60 * 1000)) return sendError(res, 429, 'RATE_LIMIT', '방을 너무 많이 만들고 있습니다. 잠시 뒤 다시 시도해 주세요.');

@@ -285,3 +285,44 @@ test('메신저 A1: 사진 여러 장 있는 방에서 보내고 받아도 맨 �
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-photo-room.png` });
   await context.close();
 });
+
+// 1.10.373 프로필 사진 (사용자 「메신저 프로필 사진 하나 넣어서 사용할 수 잇게」): A picks a picture in 「내 프로필」, cuts it square and saves -- B sees it
+// on the 1:1 room's row and by A's line, pressed it opens big; 「기본으로」 -- the letter circle again. PC and phone.
+test('메신저 프로필 사진: 고르기·자르기·저장 → 방 목록·말풍선에 보임·크게 보기 → 기본으로', async ({ browser, request, isMobile }, info) => {
+  test.setTimeout(180000);
+  const admin = (await api(request, '/api/admin/login', { body: { password: adminPassword } })).data.sessionToken;
+  const stamp = `${Date.now().toString(36)}${info.project.name.length}`;
+  const make = async (tag) => {
+    const loginId = `f${tag}_${stamp}`.slice(0, 20); const nickname = `${{ a: '얼굴', b: '친구' }[tag]}${(Date.now() + info.project.name.length) % 100000}`;
+    await api(request, '/api/account/signup', { body: { realName: tag, loginId, password: 'secret123', nickname } });
+    const signup = (await api(request, '/api/admin/signups', { token: admin })).data.signups.find((s) => s.loginId === loginId);
+    await api(request, `/api/admin/signups/${signup.id}/approve`, { token: admin, body: {} });
+    const id = (await api(request, '/api/admin/keys', { token: admin })).data.keys.find((k) => k.loginId === loginId).id;
+    await api(request, `/api/admin/keys/${id}/messenger`, { token: admin, body: { allowed: true } });
+    const context = await browser.newContext({ ...(info.project.use || {}), extraHTTPHeaders: { 'X-Forwarded-For': ip() } });
+    const page = await context.newPage(); await page.goto('/messenger');
+    await page.locator('#mLoginId').fill(loginId); await page.locator('#mLoginPw').fill('secret123'); await page.locator('#mLogin').getByRole('button', { name: '로그인' }).click();
+    await expect(page.locator('#mApp')).toBeVisible(); return { context, page, nickname };
+  };
+  const a = await make('a'); const b = await make('b');
+  try {
+    await a.page.reload(); await expect(a.page.locator('#mApp')).toBeVisible();
+    await a.page.locator('#mProfileBtn').click(); await expect(a.page.locator('#mProfile')).toBeVisible();
+    await a.page.locator('#mProfilePick').setInputFiles('public/icons/icon-192.png'); await expect(a.page.locator('#mProfileCrop')).toBeVisible();
+    await a.page.locator('#mProfileZoom').fill('1.5'); await a.page.locator('#mProfileSave').click();
+    await expect(a.page.locator('#mProfileStatus')).toHaveText('프로필 사진을 바꿨어요.'); await expect(a.page.locator('#mProfileNow .messengerAvatar.withPhoto')).toHaveCount(1);
+    // a 1:1 room with B and a line
+    await a.page.locator('#messengerDmBtn').click(); await a.page.locator('#messengerPeople button', { hasText: b.nickname }).click(); await a.page.locator('#messengerPick').getByRole('button', { name: /대화 시작/ }).click();
+    await a.page.locator('#messengerInput').fill('내 사진 보여요?'); await a.page.locator('#messengerForm').getByRole('button', { name: '보내기' }).click();
+    await expect(a.page.locator('#messengerMessages .chatMessage.mine')).toContainText('내 사진 보여요?');
+    // B: A's picture on the row and by the line; pressed -- big
+    await b.page.reload(); await expect(b.page.locator('#mApp')).toBeVisible();
+    const row = b.page.locator('#messengerRoomList button', { hasText: a.nickname }); await expect(row.locator('.messengerAvatar.withPhoto')).toHaveCount(1);
+    await row.click(); const face = b.page.locator('#messengerMessages .chatMessageHead .messengerAvatar.withPhoto').first(); await expect(face).toBeVisible();
+    await face.click(); await expect(b.page.locator('#messengerViewer')).toBeVisible(); await b.page.locator('#messengerViewerClose').click();
+    if (process.env.SHOT_DIR) await b.page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-profile-photo.png` });
+    // 기본으로: the letter circle again
+    await a.page.locator('#mProfileClear').click(); await expect(a.page.locator('#mProfileStatus')).toHaveText('기본 동그라미로 돌렸어요.'); await expect(a.page.locator('#mProfileNow .messengerAvatar.withPhoto')).toHaveCount(0);
+    await b.page.reload(); await expect(b.page.locator('#mApp')).toBeVisible(); await expect(b.page.locator('#messengerRoomList button', { hasText: a.nickname }).locator('.messengerAvatar')).not.toHaveClass(/withPhoto/);
+  } finally { await a.context.close(); await b.context.close(); }
+});

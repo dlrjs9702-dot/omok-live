@@ -25,6 +25,7 @@
         <label id="mAlertPick" class="mThemePick hidden">알림 <select id="mAlert" aria-label="알림 방식"><option value="open">열어 둘 때만</option><option value="push">닫아도 받기</option><option value="off">안 받기</option></select></label>
         <button id="mPushBtn" type="button" class="secondary tiny hidden">알림 켜기</button>
         <button id="mInstallBtn" type="button" class="secondary tiny hidden">앱으로 설치</button>
+        <button id="mProfileBtn" type="button" class="ghost tiny hidden" aria-expanded="false" aria-controls="mProfile">내 프로필</button>
         <button id="mDevicesBtn" type="button" class="ghost tiny hidden" aria-expanded="false" aria-controls="mDevices">로그인된 기기</button>
         <button id="mLogoutBtn" type="button" class="ghost tiny hidden">로그아웃</button>
         <!-- 메신저 정리 12절: in the island app's 서랍 (?embed=1) only these two -->
@@ -46,6 +47,18 @@
       <strong>로그인 유지 중인 기기</strong>
       <ul id="mDeviceList"></ul>
       <button id="mDropOthers" type="button" class="ghost tiny">이 기기 말고 모두 끊기</button>
+    </section>
+    <!-- 1.10.373 프로필 사진: 고르기(폰은 사진첩·카메라) → 정사각으로 자르기(끌어서 위치, 크기) → 저장 · 기본으로 -->
+    <section id="mProfile" class="mProfile isle-paper hidden" aria-label="내 프로필">
+      <strong>내 프로필 사진</strong>
+      <div class="mProfileRow"><span id="mProfileNow" class="mProfileNow"></span><span class="mProfileBtns"><button id="mProfilePickBtn" type="button" class="secondary tiny">사진 고르기</button><button id="mProfileClear" type="button" class="ghost tiny">기본으로</button></span></div>
+      <input id="mProfilePick" type="file" accept="image/*" hidden />
+      <div id="mProfileCrop" class="mProfileCrop hidden">
+        <canvas id="mProfileCanvas" width="512" height="512" role="img" aria-label="자를 자리 · 끌어서 옮겨요"></canvas>
+        <label class="mProfileZoom">크기 <input id="mProfileZoom" type="range" min="1" max="4" step="0.01" value="1" /></label>
+        <div class="noticeFormActions"><button id="mProfileSave" type="button" class="primary tiny">저장</button><button id="mProfileCancel" type="button" class="ghost tiny">취소</button></div>
+      </div>
+      <p id="mProfileStatus" class="mStatus" role="status"></p>
     </section>
     <div id="mApp" class="messengerBody mApp hidden">
       <section class="messengerRooms" aria-label="대화방">
