@@ -11,6 +11,7 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
   test.setTimeout(240000);
   const who = await shopper(browser, request, '호랑이', 0, 'male'); const { page } = who;
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); }); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
   for (const [itemId, qty] of [['fishing_rod', 1], ['weed', 5], ['branch', 2]]) expect((await post(request, '/api/test/island/give', who.token, { itemId, qty })).status).toBe(200);
   const s = P.SWAMPS[1]; const spot = { x: s[0] + 18, z: s[1] };
@@ -20,9 +21,10 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
     await standAt(request, who, spot.x, spot.z);
     const on = await post(request, '/api/test/tigers', who.token, { on: true, clockShift: shift, place: { id: 'angae', x: T.dalmaru.NEW_ISLE.x + 60, z: T.dalmaru.NEW_ISLE.z - 60 } });
     expect(on.data.on).toBe(true);
-    await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 10, z: spot.z } });
-    // he comes: drawn here (his own file loaded), the warning on
+    // first out of his sight (45 m) till his file is in, then 10 m off: he comes -- the warning on
+    await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 45, z: spot.z } });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.shown?.find((t) => t.id === 'ure')?.loaded), { timeout: 60000 }).toBe(true);
+    await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 10, z: spot.z } });
     const caught = page.waitForFunction(() => /잡혔어요/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 60000 });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.warn?.id || null), { timeout: 20000 }).toBe('ure');
     expect(await page.evaluate(() => document.getElementById('tigerWarn')?.classList.contains('on'))).toBe(true);

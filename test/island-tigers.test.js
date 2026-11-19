@@ -41,6 +41,9 @@ test('별마루섬 호랑이: 캠핑장·전망대·문 둘레 12 m는 안 들�
   const noon = Date.UTC(2026, 10, 20, 3, 30, 0); const s = P.SWAMPS[1]; g.place('ure', s[0] + 10, s[1], noon); g.place('angae', I.x + 300, I.z, noon);
   for (let k = 0; k < 30; k += 1) g.tick(noon + k * 100, [{ token: 'q', x: s[0] + 14, z: s[1] }]);
   assert.notEqual(g.state()[0].mode, 'stalk'); assert.notEqual(g.state()[0].mode, 'chase'); assert.equal(g.state()[0].target, null);
+  // from 30 m off he walks to his rock and naps on it (lifted onto it)
+  g.place('ure', P.ROCK[0] - 30, P.ROCK[1] - 20, noon); let k = 0; for (; k < 600 && g.state()[0].mode !== 'rest'; k += 1) g.tick(noon + k * 100, []);
+  const v = g.view()[0]; assert.equal(v.clip, 'Nap', `${k / 10} s`); assert.deepEqual([v.x, v.z, v.lift], [P.ROCK[0], P.ROCK[1], 1.44]);
 });
 
 test('덮치기: 0.42초까지 제자리, 0.84초에 앞발이 닿을 거리, 그 뒤는 그대로', () => {
