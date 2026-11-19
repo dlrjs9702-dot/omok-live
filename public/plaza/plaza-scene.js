@@ -6051,7 +6051,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function placeCamera(snap) {
     const p = me.root.position;
     // The wide sea lobes must still show the island from the carriage.
-    scene.fog.far = overview ? 2000 : riding ? 600 : 175;
+    /* (검토 369 #4: on the lowest tier by 별마루섬 its fog ends where its drawn wood does, over 15 m -- island.isle2FogFar) */
+    scene.fog.far = overview ? 2000 : riding ? 600 : Math.min(175, island.isle2FogFar?.() ?? 175); scene.fog.near = Math.min(70, scene.fog.far - 15);
     const far = overview ? 1100 : riding ? 650 : VIEW_FAR;
     if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
     if (photoCam) { const c = photoCam; camera.position.set(c.cam[0], c.cam[1], c.cam[2]); camera.lookAt(c.at[0], c.at[1], c.at[2]); if (camera.fov !== c.fov || camera.near !== 0.1) { camera.fov = c.fov; camera.near = 0.1; camera.updateProjectionMatrix(); } return; } /* (1.10.340 debug photoCam: a far sign through a narrow lens -- flicker-signs' check) */
@@ -6136,9 +6137,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let seeOf = null; let seeHash = null; let seeAncient = null; const seeP = new THREE.Vector3(); const seeSize = new THREE.Vector2();
   function seeTrees() {
     const n = globalThis.IslandTerrain?.nature?.(); if (!n) return null; if (seeOf === n) return seeHash; seeOf = n; seeHash = new Map();
-    const add = (x, z, r, top) => { const k = `${Math.floor(x / 8)},${Math.floor(z / 8)}`; let l = seeHash.get(k); if (!l) seeHash.set(k, (l = [])); l.push([x, z, r * r, heightAt(x, z) + top]); };
-    for (const t of n.trees) add(t.x, t.z, 2.4 * t.s, 5.6 * t.s);
-    for (const o of n.forest?.big || []) add(o.x, o.z, (o.kind === 'tree_big_oak' ? 5.6 : o.kind === 'tree_big_pine' ? 4.4 : 3.3) * o.s, 14.5 * o.s);
+    /* (검토 369 P3: a tree is its trunk (thin) up to its crown's foot, then its crown -- not a crown-wide pillar from the ground, which opened
+       the hole when I only stood beside one) */
+    const add = (x, z, trunk, r, base, top) => { const k = `${Math.floor(x / 8)},${Math.floor(z / 8)}`; let l = seeHash.get(k); if (!l) seeHash.set(k, (l = [])); const g = heightAt(x, z); l.push([x, z, trunk * trunk, r * r, g + base, g + top]); };
+    for (const t of n.trees) add(t.x, t.z, 0.35 * t.s, 2.4 * t.s, 1.4 * t.s, 5.6 * t.s);
+    const BIG = { tree_big_oak: [1.1, 5.6, 4.5], tree_big_pine: [0.55, 4.4, 7.5], tree_big_fir: [0.6, 3.3, 2.5] }; /* (trunk r, crown r, crown foot) */
+    for (const o of n.forest?.big || []) { const [tr, cr, foot] = BIG[o.kind] || [0.6, 3.5, 3]; add(o.x, o.z, tr * o.s, cr * o.s, foot * o.s, 14.5 * o.s); }
     const A = n.forest?.ancient; seeAncient = A ? { x: A.x, z: A.z, y: heightAt(A.x, A.z) } : null; return seeHash;
   }
   let seeWide = false; // (the camera itself inside a crown: the whole screen leaves -- the hole made wider)
@@ -6149,14 +6153,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const u = s / L; const x = c.x + (px - c.x) * u; const y = c.y + (py - c.y) * u; const z = c.z + (pz - c.z) * u;
       if (seeAncient) { const d = Math.hypot(x - seeAncient.x, z - seeAncient.z); if ((d < 9.5 && y < seeAncient.y + 16) || (d < 17.5 && y > seeAncient.y + 18 && y < seeAncient.y + 40)) { seeWide = s === 0; return true; } } // (its trunk, fins and arches; its crown)
       const cx = Math.floor(x / 8); const cz = Math.floor(z / 8);
-      for (let i = cx - 1; i <= cx + 1; i += 1) for (let j = cz - 1; j <= cz + 1; j += 1) for (const [tx, tz, r2, top] of hash.get(`${i},${j}`) || []) { const dx = x - tx; const dz = z - tz; if (dx * dx + dz * dz < r2 && y < top) { seeWide = s === 0; return true; } }
+      for (let i = cx - 1; i <= cx + 1; i += 1) for (let j = cz - 1; j <= cz + 1; j += 1) for (const [tx, tz, t2, r2, base, top] of hash.get(`${i},${j}`) || []) { const dx = x - tx; const dz = z - tz; const d2 = dx * dx + dz * dz; if (y < top && (y < base ? d2 < t2 : d2 < r2)) { seeWide = s === 0; return true; } }
     }
     return false;
   }
   let seeCheckedAt = -Infinity; let seeWant = 0;
+  let photoMode = false; /* (v1.10.43 기념사진 모드 -- declared here: seeStep reads it from the first frame, before the photo code below) */
   function seeStep(p) {
-    if (clock - seeCheckedAt > 0.1) { seeCheckedAt = clock; const third = mySpace === 'island' && !fpNow(); seeWant = third && seeBlocked(p) ? 1 : 0; SEE.near.value = third ? 1 : 0; } /* (ten times a second: the line, a few hundred steps at most; the near fade in the third person outside) */
-    const on = SEE.on.value; SEE.on.value = Math.max(0, Math.min(1, on + (seeWant ? 1 : -1) * camDt / 0.2)); if (!SEE.on.value) return;
+    if (clock - seeCheckedAt > 0.1) { seeCheckedAt = clock; const third = mySpace === 'island' && !fpNow() && !photoMode; /* (검토 369: a photo the trees whole) */ seeWant = third && seeBlocked(p) ? 1 : 0; SEE.near.value = third ? 1 : 0; } /* (ten times a second: the line, a few hundred steps at most; the near fade in the third person outside) */
+    const on = SEE.on.value; SEE.on.value = photoMode ? 0 : Math.max(0, Math.min(1, on + (seeWant ? 1 : -1) * camDt / 0.2)); if (photoMode) SEE.near.value = 0; if (!SEE.on.value) return;
     camera.updateMatrixWorld(); seeP.set(p.x, p.y + 1.1, p.z).project(camera); renderer.getDrawingBufferSize(seeSize);
     SEE.center.value.set(((seeP.x + 1) / 2) * seeSize.x, ((seeP.y + 1) / 2) * seeSize.y); SEE.radius.value = (seeWide ? 0.22 : 0.13) * seeSize.y; /* (the camera in a crown: a little wider -- the near fade takes the leaves round the camera) */
     seeP.set(p.x, p.y + 1.1, p.z).applyMatrix4(camera.matrixWorldInverse); SEE.depth.value = Math.max(0, -seeP.z - 0.8);
@@ -7159,7 +7164,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // v1.10.43 기념사진 모드 (IDEAS ③): I stay put (the camera turns, up to the sky), every name tag and bubble hidden; the
   // shot is the canvas alone (no page UI), drawn and read in the same task, saved as a PNG on the PC (nothing uploaded)
-  let photoMode = false; const photoHidden = new Set();
+  const photoHidden = new Set(); /* (photoMode itself above seeStep, which reads it from the first frame) */
   function setPhotoMode(on) {
     if (on === photoMode) return true;
     // v1.10.81 즉시 촬영: the photo mode is its own state now (it took the gathering lock before) -- it can open in the

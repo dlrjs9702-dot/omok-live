@@ -200,7 +200,7 @@
     // overhead (`narrow`: not a 산책길 -- the zones' own)
     { tier: 'trail', w: 1.5, narrow: true, pts: [[243, 222], [246, 217], [248, 213]] }, /* (to the clearing's edge, 20 m from the trunk -- off its roots) */
     { tier: 'trail', w: 1.5, narrow: true, pts: [[319, 244], [314, 262], [304, 280], [293, 296]] },
-    { tier: 'trail', w: 1.5, narrow: true, pts: [[414, 201], [421, 230], [433, 262], [455, 306]] },
+    { tier: 'trail', w: 1.5, narrow: true, pts: [[414, 201], [421, 230], [433, 262], [457.5, 307.3]] }, /* (onto the east trail's band -- no end in the air: walk-ends.test) */
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, ...(w.narrow ? { narrow: true } : {}), pts: catmull(w.pts, 0.8) }));
   // (1.10.369: each curve's box first -- one farther than the nearest so far is skipped; the same distance, some 10x quicker)
@@ -707,7 +707,7 @@
     const nRock = targetOf('rock'); seed = 0x15e203;
     for (let tries = 0; I2.rocks.length < nRock && tries < nRock * 40; tries += 1) { const p = pick('rock'); const s = 0.5 + rnd() * 0.7; if (p && room(p.x, p.z, s) && isle2Free(p.x, p.z, s) && lane(p.x, p.z, p.zn, s)) { I2.rocks.push({ x: p.x, z: p.z, s, r: rnd() * 6, g4: true, isle2: true }); taken.push([p.x, p.z, s]); tally('rock', p.zn); } }
     const nLog = targetOf('log'); seed = 0x15e204;
-    for (let tries = 0; I2.logs.length < nLog && tries < nLog * 60; tries += 1) { const p = pick('log'); const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; if (p && room(p.x, p.z, 1.1, 0.4) && isle2Free(p.x, p.z, 1.1) && lane(p.x, p.z, p.zn, 1.1)) { I2.logs.push({ x: p.x, z: p.z, kind, yaw, isle2: true }); taken.push([p.x, p.z, 1.1]); tally('log', p.zn); } }
+    for (let tries = 0; I2.logs.length < nLog && tries < nLog * 60; tries += 1) { const p = pick('log'); const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; if (p && room(p.x, p.z, 1.1, 0.4) && isle2Free(p.x, p.z, 1.1) && lane(p.x, p.z, null, 1.1) /* (a log the full lane, by a trail too: lying along it, it blocks -- island-taxi.test) */) { I2.logs.push({ x: p.x, z: p.z, kind, yaw, isle2: true }); taken.push([p.x, p.z, 1.1]); tally('log', p.zn); } }
     const nFlower = targetOf('flower'); seed = 0x15e205;
     for (let tries = 0, k = 0; I2.flowers.length < nFlower && tries < nFlower * 40; tries += 1) { const p = pick('flower'); if (p && isle2Free(p.x, p.z, 0.1) && Math.hypot(p.x - A.x, p.z - A.z) > 6) { I2.flowers.push({ x: p.x, z: p.z, c: k % 5, isle2: true }); k += 1; tally('flower', p.zn); } }
     /* (the wild flowers at a tree's foot: on the open ground only -- 동산, 산책길; 숲속's floor is ferns and moss -- 369 §9 무게: they were 1,400 of 456 triangles each) */
@@ -814,15 +814,24 @@
     for (let i = cx - 2; i <= cx + 2; i += 1) for (let j = cz - 2; j <= cz + 2; j += 1) for (const o of clearHash.get(`${i},${j}`) || []) if (Math.hypot(o.x - x, o.z - z) < o.r + margin) return false;
     return true;
   }
-  // (369 검토 #7) and open: from it a way of free cells (1 m, off the solids by 0.6) to a walk within 40 m -- not a pocket among roots
-  // and trunks like the one the unstuck move left
-  function isle2Open(x, z) {
-    if (!isle2Clear(x, z)) return false; const seen = new Set([`${Math.round(x)},${Math.round(z)}`]); const q = [[Math.round(x), Math.round(z)]];
-    while (q.length && seen.size < 6000) {
-      const [cx, cz] = q.shift(); if (walkDist(cx, cz) < 0.5) return true;
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = cx + dx; const nz = cz + dz; const k = `${nx},${nz}`; if (seen.has(k) || Math.hypot(nx - x, nz - z) > 40) continue; seen.add(k); if (walkable(nx, nz) && isle2Clear(nx, nz, 0.6)) q.push([nx, nz]); }
+  // (369 검토 #7) and open: joined to the island's walks by free cells (1 m, off the solids by 0.6) -- not a pocket among roots and trunks
+  // like the one the unstuck move left. (검토 369 P1: a search from each asked point froze the server up to 73 s on the open meadow far
+  // from a walk -- now one fill from the walks over the free cells, made once a nature (the server makes it at its start), then a look-up)
+  let openOf = null; let openCells = null; const OPEN_N = ISLE2 ? Math.ceil(2 * (ISLE2.r + 14)) : 0; const ox0 = ISLE2 ? ISLE2.x - ISLE2.r - 14 : 0; const oz0 = ISLE2 ? ISLE2.z - ISLE2.r - 14 : 0;
+  function openTable() {
+    const n = nature(); if (openOf === n && openCells) return openCells; openOf = n;
+    const N = OPEN_N; const state = new Uint8Array(N * N); /* 0 unseen, 1 blocked, 2 open */ const q = new Int32Array(N * N); let head = 0; let tail = 0;
+    const freeAt = (i, j) => { const x = ox0 + i + 0.5; const z = oz0 + j + 0.5; return walkable(x, z) && isle2Clear(x, z, 0.6); };
+    for (const w of isle2Walks().main.concat(isle2Walks().narrow)) for (const [x, z] of w.pts) { const i = Math.floor(x - ox0); const j = Math.floor(z - oz0); if (i < 0 || j < 0 || i >= N || j >= N) continue; const id = j * N + i; if (state[id]) continue; if (freeAt(i, j)) { state[id] = 2; q[tail++] = id; } else state[id] = 1; }
+    while (head < tail) {
+      const id = q[head++]; const i = id % N; const j = (id - i) / N;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + di; const nj = j + dj; if (ni < 0 || nj < 0 || ni >= N || nj >= N) continue; const nid = nj * N + ni; if (state[nid]) continue; if (freeAt(ni, nj)) { state[nid] = 2; q[tail++] = nid; } else state[nid] = 1; }
     }
-    return false;
+    openCells = state; return state;
+  }
+  function isle2Open(x, z) {
+    if (!isle2Clear(x, z)) return false; const t = openTable(); const i = Math.floor(x - ox0); const j = Math.floor(z - oz0);
+    return i >= 0 && j >= 0 && i < OPEN_N && j < OPEN_N && t[j * OPEN_N + i] === 2;
   }
   // (1.10.367 N1b) the forest's: the big trees' trunks, the mossy rocks, the fallen logs and 별지기 느티's trunk and roots (assets 156
   // solids.json -- its arches walked under); the ferns walked through

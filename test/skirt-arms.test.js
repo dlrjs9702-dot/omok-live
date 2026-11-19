@@ -17,7 +17,8 @@ test('치마 옷: 앉기·걷기에서 팔을 조금 더 벌린다 (다른 옷�
   globalThis.AssetPipeline = require('../public/plaza/asset-pipeline'); globalThis.CharacterTransformations = require('../public/plaza/character-transformations');
   let code = fs.readFileSync(path.join(__dirname, '../public/plaza/asset-loader.js'), 'utf8');
   code = code.replace(/from '(\/vendor\/three\/[^']+)'/g, (_, url) => 'from ' + JSON.stringify(pathToFileURL(url.includes('addons/') ? require.resolve('three/' + url.split('/vendor/three/')[1]) : path.join(path.dirname(require.resolve('three')), 'three.module.js')).href))
-    .replace(/import \{ preparePlatformSurfaces, prepareTownhallSurfaces \} from '\.\/platform-surfaces.js';/, 'const preparePlatformSurfaces=g=>g,prepareTownhallSurfaces=g=>g;');
+    .replace(/import \{ preparePlatformSurfaces, prepareTownhallSurfaces \} from '\.\/platform-surfaces.js';/, 'const preparePlatformSurfaces=g=>g,prepareTownhallSurfaces=g=>g;')
+    .replace(/import \{ seeThrough, SEE_IDS \} from '\.\/see-through.js';/, 'const seeThrough=m=>m,SEE_IDS=/(?!)/;'); /* (1.10.369 §6: the trees' hole -- not this test's) */
   const { createIslandAssets } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
   const layer = createIslandAssets({ registry: assets.REGISTRY });
   const dressed = async (look) => {

@@ -23,7 +23,8 @@ test('길 끝: 허공에서 끝나는 길 없음 (다른 길·마당·문·다�
   T.walkCurves.forEach((w, wi) => {
     for (const [x, z] of [w.pts[0], w.pts[w.pts.length - 1]]) {
       const onWalk = T.walkCurves.some((o, oi) => { if (oi === wi) return false; let d = Infinity; for (let i = 1; i < o.pts.length; i += 1) d = Math.min(d, seg(x, z, ...o.pts[i - 1], ...o.pts[i])); return d < o.w / 2 + 0.7; }); // (a band with its soft edge, 0.35 m out, touches it)
-      if (onWalk || T.inPlaza(x, z, 0.5) || T.inTownhall(x, z, 0.5) || near(x, z, doors, 3) || near(x, z, homeDoors, 2.5) || near(x, z, bridgeEnds, 2) || near(x, z, stairs, 2.5) || near(x, z, stations, 4) || near(x, z, places, 6)) continue;
+      const atAncient = T.ANCIENT && Math.hypot(x - T.ANCIENT.x, z - T.ANCIENT.z) < 22; /* (1.10.369: a 오솔길 to 별지기 느티's clearing ends at its edge, off its roots) */
+      if (onWalk || atAncient || T.inPlaza(x, z, 0.5) || T.inTownhall(x, z, 0.5) || near(x, z, doors, 3) || near(x, z, homeDoors, 2.5) || near(x, z, bridgeEnds, 2) || near(x, z, stairs, 2.5) || near(x, z, stations, 4) || near(x, z, places, 6)) continue;
       loose.push(`walk ${wi} (${w.tier}) ${x.toFixed(1)},${z.toFixed(1)}`);
     }
   });

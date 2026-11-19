@@ -60,7 +60,8 @@ test('달마루섬 길: 모든 장소가 대청마당에서 길로 이어지고,
   const dead = [];
   W.forEach((w, i) => { for (const [x, z] of [w.pts[0], w.pts[w.pts.length - 1]]) {
     const p = { x, z };
-    if (inPlaza(x, z) || W.some((o, j) => j !== i && near(p, o, w.w / 2 + 0.3)) || all.some((q) => Math.hypot(q.x - x, q.z - z) <= REACH + w.w / 2)) continue;
+    const atAncient = T.ANCIENT && Math.hypot(x - T.ANCIENT.x, z - T.ANCIENT.z) < 22; /* (1.10.369: the 오솔길 into 별지기 느티's clearing ends at its edge) */
+    if (atAncient || inPlaza(x, z) || W.some((o, j) => j !== i && near(p, o, w.w / 2 + 0.3)) || all.some((q) => Math.hypot(q.x - x, q.z - z) <= REACH + w.w / 2)) continue;
     dead.push(`길${i + 1} 끝(${Math.round(x)},${Math.round(z)})`);
   } });
   assert.deepEqual({ cut, unreached, dead }, { cut: [], unreached: [], dead: [] });

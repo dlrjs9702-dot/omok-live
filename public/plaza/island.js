@@ -4,7 +4,7 @@
 // Everything is generated once from fixed numbers (no assets, no randomness between visits) so every player walks the
 // same island; the map board draws the same shapes. Later land reclamation changes coastR() and the map follows.
 import * as THREE from '/vendor/three/three.module.js';
-import { seeThrough } from './see-through.js'; // (1.10.369 §6: the stand-in trees and bushes too)
+import { seeThrough, SEE_IDS } from './see-through.js'; // (1.10.369 §6: the stand-in trees and bushes too)
 
 // v1.10.7: the island's shape lives in island-terrain.js (loaded before the app; the server uses the same file).
 const T = globalThis.IslandTerrain;
@@ -770,11 +770,13 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   const instanced = (geometry, material, list, place, opts = {}) => instancedOne(geometry, material, list, place, maps2 && list.some((it) => it.isle2) ? { ...opts, cell: Math.min(opts.cell ?? 40, 40), where: (it) => (it.isle2 ? isle2Cell(opts.parent || scene, it.x, it.z) : null) } : opts);
   const instancedOne = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [], parent = scene, where = null } = {}) => { // v1.10.73 parent: a group shown by quality
     if (!list.length) return;
+    /* (검토 369 #5: the hole round me only on the trees and bushes -- the loader's own list; rocks, flowers, grass and the far clumps plain, no `discard`) */
+    if (material === natureMat && target && [].concat(target).some((id) => SEE_IDS.test(id))) material = natureSee;
     const g = target && assets?.wants(target) ? { target, cells: [] } : null;
-    if (material === natureMat && !g) {
+    if ((material === natureMat || material === natureSee) && !g) {
       for (const item of list) {
         place(item, 0);
-        const own = where?.(item); const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}${own ? `,${own.uuid}` : ''}`; /* (N1: 새 섬's into its own square's group) */ if (own) bakedParent.set(key, own);
+        const own = where?.(item); const key = `${material === natureSee ? 'see:' : ''}${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}${own ? `,${own.uuid}` : ''}`; /* (N1: 새 섬's into its own square's group) */ if (own) bakedParent.set(key, own);
         if (!baked.has(key)) baked.set(key, []);
         baked.get(key).push({ geometry, matrix: m4.clone(), color: color ? color(item, tint).clone() : null });
       }
@@ -804,7 +806,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // from its position (not the seeded placement), so trees stay where they were -- their circles, events and the
   // islanders' paths are unchanged.
   const hash = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
-  const natureMat = keep(seeThrough(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }))); /* (1.10.369 §6: the hole round me) */
+  const natureMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+  const natureSee = keep(seeThrough(natureMat)); /* (1.10.369 §6: the hole round me -- the trees' and bushes' copy, instancedOne picks it by target) */
   // (문제 기록 3회차 8: the scattered pieces on the ground as drawn -- the 2 m mesh, not the formula, which on the ridge's slopes
   // stood metres off it -- and the small ones only where they sit: T.settledSpot)
   const onMesh = (x, z) => T.meshGroundHeight(x, z); const settled = (p) => T.settledSpot(p.x, p.z);
@@ -1157,7 +1160,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const geo = keep(new THREE.BufferGeometry());
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.computeBoundingSphere();
-    const m = new THREE.Mesh(geo, natureMat); m.castShadow = key.split(',')[2] === '1'; m.receiveShadow = true; (bakedParent.get(key) || scene).add(m);
+    const m = new THREE.Mesh(geo, key.startsWith('see:') ? natureSee : natureMat); m.castShadow = key.split(',')[2] === '1'; m.receiveShadow = true; (bakedParent.get(key) || scene).add(m);
   }
 
   // Lamps along the main walks, benches beside them.
@@ -1370,17 +1373,22 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // N1 새 섬 넣고 빼기 (notes island-expansion §3·§8-4): by how far the camera is off its coast -- all of it within 110 m (out at
   // 125), its one-piece far shape within 160 m (out at 170), else nothing; with all of it in, a 60 m square more than 180 m off
   // (in the fog) not drawn. `scale`: the quality's (a phone's lowest 0.6); returns the state
-  let isle2State = 'none'; let isle2At = null;
+  let isle2State = 'none'; let isle2At = null; let isle2FogFar = null;
+  const ISLE2_RING = [[0, 0], [12, 0], [-12, 0], [0, 12], [0, -12], [8.5, 8.5], [-8.5, 8.5], [8.5, -8.5], [-8.5, -8.5]];
   function isle2View(x, z, scale = 1) {
-    if (!maps2) return 'none';
+    if (!maps2) { isle2FogFar = null; return 'none'; }
     const off = -T.dalmaru.newIsleCoast(x, z); const FULL = 110 * scale; const FAR = 160;
     const next = off < (isle2State === 'full' ? FULL + 15 : FULL) ? 'full' : off < (isle2State === 'none' ? FAR : FAR + 10) ? 'far' : 'none';
-    const moved = !isle2At || Math.hypot(x - isle2At.x, z - isle2At.z) > 4;
+    const moved = !isle2At || Math.hypot(x - isle2At.x, z - isle2At.z) > 4 || isle2At.scale !== scale; /* (a quality changed where I stand: its cut and fog now) */
     if (next === isle2State && !moved) return next;
-    isle2State = next; isle2At = { x, z };
+    isle2State = next; isle2At = { x, z, scale };
     isle2Root.visible = next === 'full'; if (isle2Far) isle2Far.visible = next === 'far';
-    /* (a square's half diagonal; 1.10.369 §9 무게: the lowest tier the nearer, and in the wood (숲속, 오솔길) nearer still -- its canopy hides what is farther) */
-    const inWood = ['deep', 'trail'].includes(T.isle2Zone?.(x, z)); const fog = (scale < 1 ? (inWood ? 70 : 130) : (inWood ? 150 : 180)) + 43; for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < fog;
+    /* (a square's half diagonal; 1.10.369 §9 무게: the lowest tier the nearer, and in the wood (숲속, 오솔길) nearer still -- its canopy hides what is farther.
+       검토 369 #4: how much wood, from nine points within 12 m -- no jump at a zone's edge; on the lowest tier the fog ends where every square is
+       still drawn (a 40 m square's half diagonal 28.3 m under the 43), fading over its last 15 m -- no square popping in the clear past the cut) */
+    const wood = ISLE2_RING.filter(([dx, dz]) => ['deep', 'trail'].includes(T.isle2Zone?.(x + dx, z + dz))).length / ISLE2_RING.length;
+    const cut = scale < 1 ? 130 - 60 * wood : 180 - 30 * wood; for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < cut + 43;
+    isle2FogFar = next === 'full' && scale < 1 ? Math.round(cut + 14) : null;
     return next;
   }
   for (const o of [isle2Root, isle2Far, terrain, sea]) if (o) o.userData.keepFar = true; // (N1: plaza-scene's far cull leaves these to isle2View)
@@ -1397,5 +1405,5 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   for (const m of moving) m.traverse((o) => { o.matrixAutoUpdate = true; });
   const frozenMoved = () => { const p = new THREE.Vector3(); const q = new THREE.Quaternion(); const s = new THREE.Vector3(); const m = new THREE.Matrix4(); let bad = 0; for (const o of frozen) { if (o.matrixAutoUpdate) continue; m.compose(o.position, o.quaternion, o.scale); if (!m.equals(o.matrix)) { m.decompose(p, q, s); if (p.distanceTo(o.position) > 1e-4 || s.distanceTo(o.scale) > 1e-4 || Math.abs(q.dot(o.quaternion)) < 0.99999) bad += 1; } } return { frozen: frozen.filter((o) => !o.matrixAutoUpdate).length, moved: bad }; };
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { frozenMoved /* (1.10.352 무게 ①: the debug's check) */, texturesPending: () => Math.max(0, texCount.started - texCount.ended) /* (368) */, setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, isle2View, isle2Info: () => ({ state: isle2State, cells: isle2Cells.size, shown: [...isle2Cells.values()].filter((c) => c.group.visible).length, root: isle2Root.visible, far: Boolean(isle2Far?.visible) }), setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { frozenMoved /* (1.10.352 무게 ①: the debug's check) */, texturesPending: () => Math.max(0, texCount.started - texCount.ended) /* (368) */, setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, isle2View, isle2FogFar: () => isle2FogFar, isle2Info: () => ({ state: isle2State, cells: isle2Cells.size, shown: [...isle2Cells.values()].filter((c) => c.group.visible).length, root: isle2Root.visible, far: Boolean(isle2Far?.visible) }), setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

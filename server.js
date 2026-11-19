@@ -5028,7 +5028,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.368' });
+    return sendJson(res, 200, { ok: true, version: '1.10.369' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6726,13 +6726,14 @@ async function requestHandler(req, res) {
     // buildings and lots); none: 대청마당's arrival place as before
     // (1.10.369, 총괄: 별마루섬 lies past the islanders' grid -- every point there read as blocked, so it was always 대청마당: there off its own
     // solids (isle2Clear), and with none free its bridge head)
+    unstuckAt.set(t, nowMs()); /* (검토 369: the 10 minutes from the press -- before the search, not after it) */
     const isle2 = Boolean(IslandTerrain.onIsle2?.(at.x, at.z));
     /* (369 검토 #7: a spot on the open island -- the islanders' grid's main connected part; on 별마루섬 a way of free cells to a walk -- not a pocket
        walled in like the one left, then 10 minutes' wait) */
     const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && (IslandTerrain.onIsle2?.(x, z) ? IslandTerrain.isle2Open(x, z) : (IslandNpcs.open ? IslandNpcs.open(x, z) : IslandNpcs.free(x, z))) });
     const S = isle2 ? IslandTerrain.ISLE2_BRIDGE_HEAD : IslandTerrain.SPAWN; const head = !near && isle2 ? IslandUnstuck.nearestFree({ x: S.x, z: S.z, ok: (x, z) => plazaStandable(x, z) && IslandTerrain.isle2Open(x, z) }) : null;
     const spot = near || head || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
-    unstuckAt.set(t, nowMs()); freeSeat(t);
+    freeSeat(t);
     plazaPresence.set(t, { ...at, x: spot.x, z: spot.z, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
     return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z, where: near ? 'near' : isle2 ? 'bridge' : 'plaza' });
   }
@@ -10687,7 +10688,7 @@ async function main() {
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.368 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.369 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); setTimeout(() => { try { IslandTerrain.isle2Open?.(IslandTerrain.ISLE2_BRIDGE_HEAD.x, IslandTerrain.ISLE2_BRIDGE_HEAD.z); } catch { /* (made on the first ask instead) */ } }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

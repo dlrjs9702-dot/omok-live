@@ -25,5 +25,8 @@ test('막힘에서 나온 자리는 열린 곳(369 검토 #7): 별마루섬은 �
   const A = T.ANCIENT; assert.equal(T.isle2Open(A.x, A.z), false, '줄기 안은 열린 곳이 아님');
   const tree = T.nature().forest.big.find((o) => T.isle2Zone(o.x, o.z) === 'deep');
   const spot = U.nearestFree({ x: tree.x, z: tree.z, ok: (x, z) => T.walkable(x, z) && T.isle2Open(x, z) }); assert.ok(spot, '숲속에서도 열린 자리');
+  // (검토 369 P1: the open meadow 56 m from a walk took 73 s with a search a point -- one table now: under 100 ms, a spot by it)
+  T.isle2Open(B.x, B.z); const t0 = Date.now(); const meadow = U.nearestFree({ x: 365, z: 286, ok: (x, z) => T.walkable(x, z) && T.isle2Open(x, z) });
+  assert.ok(Date.now() - t0 < 100, `${Date.now() - t0} ms`); assert.ok(meadow && Math.hypot(meadow.x - 365, meadow.z - 286) <= 15, '동산 한가운데도 열린 곳');
   const N = require('../public/plaza/island-npcs.js'); const S = T.SPAWN; const sp = U.nearestFree({ x: S.x, z: S.z, ok: (x, z) => N.open(x, z) }); assert.ok(sp, '대청마당 둘레는 큰 덩어리');
 });
