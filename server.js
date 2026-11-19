@@ -9496,12 +9496,17 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0; const frags = { star_fragment: 0, star_fragment_shiny: 0 }; let full = false; let bag = null;
     const from = await starsFragmentFrom();
+    const starTag = crypto.createHash('sha1').update(account).digest('hex').slice(0, 16); // (369 검토 P1: the fragment's claim each account's own -- craft's)
     for (const st of IslandStars.wishesDue((await pointStore.questDoc(account, 'stars')).doc.wished || [], now)) { // (every day before, not only yesterday -- Codex review)
       const slot = IslandStars.slotOfId(st.id);
       if (st.at < from) { const out = await pointStore.claimEvent({ eventId: `star_gift_${slot}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' }); if (out.applied) gift += out.amount; continue; } // (366: wished before the release -- 300P as promised)
       // 366 별 조각 (notes star-wish-20261118): one fragment, the shiny one by economy star:shinyPct -- the same for a claim asked again
       const itemId = IslandStars.shinyOf(account, slot, Economy.value('star:shinyPct')) ? 'star_fragment_shiny' : 'star_fragment';
-      const g = await pointStore.islandGive({ userId: account, claimId: `star_gift_${slot}`, itemId, qty: 1, quiet: true }, nowMs()).catch(() => null);
+      /* (369 검토 P1: `star_gift_<slot>` had no account in it -- island gives' claims are the store's, one for everyone, so only the first
+         wisher of a star got one, the others none, asked again every look. Each account its own now; whoever was paid under the old one
+         is not paid again) */
+      const old = await pointStore.settlementOf(`island_give:star_gift_${slot}`).catch(() => null); if (old?.userId === account) continue;
+      const g = await pointStore.islandGive({ userId: account, claimId: `star_gift:${starTag}:${slot}`, itemId, qty: 1, quiet: true }, nowMs()).catch(() => null);
       if (g?.applied) { frags[itemId] += 1; bag = g.bag || bag; } else if (g?.reason === 'full') { full = true; break; }
     }
     if (gift) notifyPointsChanged([account]);
