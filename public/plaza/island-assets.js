@@ -687,7 +687,7 @@
   // always while it is near enough to be in the sun's map), Low past it; the far mesh's clumps and the tree's picture one level
   // each, no shadows (its quads' own -- README)
   { const F = '/assets/island/forest156'; const f156 = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${F}/${s}/${f}.glb`]));
-    for (const k of ['tree_big_fir', 'tree_big_pine', 'tree_big_oak']) REGISTRY[`forest.${k}`] = { seasons: f156(k), low: { seasons: f156(`${k}_low`) }, near: 40 };
+    for (const k of ['tree_big_fir', 'tree_big_pine', 'tree_big_oak']) REGISTRY[`forest.${k}`] = { seasons: f156(k), low: { seasons: f156(`${k}_low`) }, near: 25 }; /* (1.10.369 §9: three times as many -- High within 25 m) */
     for (const k of ['rock_mossy_a', 'rock_mossy_b', 'log_fallen_big', 'log_fallen_mid']) REGISTRY[`forest.${k}`] = { seasons: f156(k), low: { seasons: f156(`${k}_low`) }, near: 40 };
     for (const k of ['fern_wide', 'fern_tall']) REGISTRY[`forest.${k}`] = { seasons: f156(k), near: 25, shadows: false, hideFar: 25 };
     REGISTRY['forest.tree_ancient'] = { seasons: f156('tree_ancient'), low: { seasons: f156('tree_ancient_low') }, near: 70 };

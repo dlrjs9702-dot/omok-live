@@ -2550,6 +2550,7 @@ const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free
 // draws), the island's screens are told when one starts or ends (and on entry); what they paid over the base points, by event
 const AdminEvents = require('./lib/island-admin-events');
 const LoadingTips = require('./lib/loading-tips'); // (366 로딩 팁)
+let loadingTipsShown = null; // (369 검토 #8: the shown list, in memory -- made on the first ask and on the administrator's save)
 // 366 별 조각: the stars that fell from this moment on bring a fragment; those before it the 300P they were wished for --
 // the moment this version first started (kept in worldValue starsFragmentFrom; a test server's own)
 let starsFromAt = null;
@@ -2565,6 +2566,9 @@ const gatherGroupOf = (itemId) => (GATHERED.has(itemId) ? 'gathered' : null);
 const itemNameOf = (id) => IslandItems.ITEMS[id]?.name || id;
 const adminEventsView = (now = nowMs()) => AdminEvents.view(adminEvents, now, itemNameOf);
 const catchMultNow = (target) => AdminEvents.catchMult(adminEvents, target, nowMs());
+// (364) each item's sell multiplier now ({ itemId: ×1.5~3 } -- 「산 것」 left out by the selling), or null with no sell event; 369 (사용자 잡초 3배 화면):
+// the bag's view carries it too, so the sell window's sum is what is paid
+const sellMultsNow = (now = nowMs()) => (AdminEvents.activeAt(adminEvents, now).some((e) => e.kind === 'sell') ? AdminEvents.sellTable(adminEvents, Object.keys(IslandItems.ITEMS), now, gatherGroupOf) : null);
 const saveAdminEvents = () => pointStore.setWorldValue('adminEvents', adminEvents);
 function adminEventsTick(now = nowMs()) { // (every 15 s: a start or an end tells the island's screens and the log)
   const shown = adminEventsView(now).filter((e) => e.running).map((e) => e.id).join(',');
@@ -5024,7 +5028,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.368' });
+    return sendJson(res, 200, { ok: true, version: '1.10.369' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6330,7 +6334,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
     const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxOf(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297)
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow });
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow() });
   }
   // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
   if (pathname === '/api/island/box/grow' && req.method === 'POST') {
@@ -6720,11 +6724,18 @@ async function requestHandler(req, res) {
     const wait = IslandUnstuck.waitMinutes(unstuckAt.get(t) || 0, nowMs()); if (wait) return sendError(res, 429, 'TOO_SOON', `10분에 한 번 쓸 수 있어요. ${wait}분 뒤에 다시 눌러 주세요.`);
     // 364 (user A): the nearest free spot within 15 m (standable, a free cell of the islanders' grid -- off trees, rocks, props,
     // buildings and lots); none: 대청마당's arrival place as before
-    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && IslandNpcs.free(x, z) });
-    const S = IslandTerrain.SPAWN; const spot = near || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
-    unstuckAt.set(t, nowMs()); freeSeat(t);
+    // (1.10.369, 총괄: 별마루섬 lies past the islanders' grid -- every point there read as blocked, so it was always 대청마당: there off its own
+    // solids (isle2Clear), and with none free its bridge head)
+    unstuckAt.set(t, nowMs()); /* (검토 369: the 10 minutes from the press -- before the search, not after it) */
+    const isle2 = Boolean(IslandTerrain.onIsle2?.(at.x, at.z));
+    /* (369 검토 #7: a spot on the open island -- the islanders' grid's main connected part; on 별마루섬 a way of free cells to a walk -- not a pocket
+       walled in like the one left, then 10 minutes' wait) */
+    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && (IslandTerrain.onIsle2?.(x, z) ? IslandTerrain.isle2Open(x, z) : (IslandNpcs.open ? IslandNpcs.open(x, z) : IslandNpcs.free(x, z))) });
+    const S = isle2 ? IslandTerrain.ISLE2_BRIDGE_HEAD : IslandTerrain.SPAWN; const head = !near && isle2 ? IslandUnstuck.nearestFree({ x: S.x, z: S.z, ok: (x, z) => plazaStandable(x, z) && IslandTerrain.isle2Open(x, z) }) : null;
+    const spot = near || head || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
+    freeSeat(t);
     plazaPresence.set(t, { ...at, x: spot.x, z: spot.z, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
-    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z, where: near ? 'near' : 'plaza' });
+    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z, where: near ? 'near' : isle2 ? 'bridge' : 'plaza' });
   }
   // 1.10.341 지하 도박장: the day's note (on its bench), the word to 테드 (the bookcase opens -- for that account, that day), down and up
   // the stairs, 테드's chips (points one for one, once a request), a play at a table (chips only, a second apart), the raid as it stands
@@ -7048,9 +7059,9 @@ async function requestHandler(req, res) {
       const result = { ok: true, ore: 1, itemId: 'ore_granite', name: IslandItems.ITEMS.ore_granite?.name || '화강암', icon: IslandItems.ITEMS.ore_granite?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', wall: true, bag: given.bag, worn: given.worn || null, daily: { n: doc?.day === today ? doc.n || 0 : 0, max: IslandQuarry.DAILY } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
-    // 366 광석 개편 2: a gem first (‰ by economy gem:*, an event's 「채석 위 단계」 too), else the ore as before
+    // 366 광석 개편 2: a gem first (‰ by economy gem:* -- 369: no event raises it), else the ore as before
     const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(`gem:${g.id}`), Economy.value(`gem:${g.id}:bonus`)]]));
-    const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'), gemPms); quarryTestGem = null;
+    const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, 1 /* (369 검토 #2, 사용자 A: no event on the gems -- 「채석 위 단계」 the ore's stage only) */, gemPms); quarryTestGem = null;
     const oreId = gem ? `gem_${gem}` : `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
     const slot = IslandQuarry.ORE_PER_ROCK - kept.left; // (each ore of a rock's fill its own claim: two at once -- one gets it)
     const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${kept.gen}:${slot}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
@@ -7798,14 +7809,14 @@ async function requestHandler(req, res) {
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
     if (body.pick != null && (!Array.isArray(body.pick) || !body.pick.length || body.pick.length > 64 || body.pick.some((p) => typeof p?.entryId !== 'string' || !Number.isSafeInteger(p?.qty) || p.qty < 1))) return sendError(res, 400, 'BAD_REQUEST', '팔 물건을 다시 골라 주세요.'); /* (1.10.356 골라 팔기: [{ entryId, qty }]) */
-    const sellNow = nowMs(); const mults = AdminEvents.activeAt(adminEvents, sellNow).some((e) => e.kind === 'sell') ? AdminEvents.sellTable(adminEvents, Object.keys(IslandItems.ITEMS), sellNow, gatherGroupOf) : null; /* (364 섬 이벤트: the largest matching, ×3 at most; 「산 것」 never) */
+    const sellNow = nowMs(); const mults = sellMultsNow(sellNow); /* (364 섬 이벤트: the largest matching, ×3 at most; 「산 것」 never) */
     const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost(), ...(body.pick ? { pick: body.pick } : {}), ...(mults ? { mults } : {}) }, sellNow); // a lost thing whose owner has gone: lost and found
     if (result.applied) for (const [itemId, extra] of Object.entries(result.extraBy || {})) { const src = AdminEvents.sellSource(adminEvents, itemId, sellNow, gatherGroupOf); if (src) adminEventExtra.set(src.id, (adminEventExtra.get(src.id) || 0) + extra); }
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
     const weeds = (result.sold || []).find((x) => x.itemId === 'weed'); if (result.applied && weeds) islandProgress('weed_submit', account, weeds.qty);
-    return sendJson(res, 200, { ok: true, paid: result.paid, extra: result.extra || 0, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
+    return sendJson(res, 200, { ok: true, paid: result.paid, extra: result.extra || 0, sold: result.sold, capped: result.capped, bag: result.bag ? { ...result.bag, sellMults: mults } : result.bag, balance: result.balance ?? result.balanceAfter });
   }
   // v1.10.31 잡초: every weed out now ([id, x, z]); start / finish pulling one
   // v1.10.37 혼자 하는 게임 — 지뢰찾기 (IDEAS 「솔로 게임」): the board is the server's; a clear is a record (best time and
@@ -9497,18 +9508,21 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0; const frags = { star_fragment: 0, star_fragment_shiny: 0 }; let full = false; let bag = null;
     const from = await starsFragmentFrom();
     const starTag = crypto.createHash('sha1').update(account).digest('hex').slice(0, 16); // (369 검토 P1: the fragment's claim each account's own -- craft's)
+    const settled = new Set(); // (369 검토 #4: a wish paid -- now or before -- off the doc after, so a look every 60 s does not ask the store again for each)
     for (const st of IslandStars.wishesDue((await pointStore.questDoc(account, 'stars')).doc.wished || [], now)) { // (every day before, not only yesterday -- Codex review)
       const slot = IslandStars.slotOfId(st.id);
-      if (st.at < from) { const out = await pointStore.claimEvent({ eventId: `star_gift_${slot}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' }); if (out.applied) gift += out.amount; continue; } // (366: wished before the release -- 300P as promised)
-      // 366 별 조각 (notes star-wish-20261118): one fragment, the shiny one by economy star:shinyPct -- the same for a claim asked again
-      const itemId = IslandStars.shinyOf(account, slot, Economy.value('star:shinyPct')) ? 'star_fragment_shiny' : 'star_fragment';
+      if (st.at < from) { const out = await pointStore.claimEvent({ eventId: `star_gift_${slot}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' }); if (out.applied) gift += out.amount; settled.add(st.id); continue; } // (366: wished before the release -- 300P as promised)
+      // 366 별 조각 (notes star-wish-20261118): one fragment, the shiny one by economy star:shinyPct -- the same for a claim asked again;
+      // 369 검토 #3: raised by a 「별똥별 반짝이」 event running when that star fell
+      const itemId = IslandStars.shinyOf(account, slot, IslandStars.shinyPctAt(Economy.value('star:shinyPct'), adminEvents, st.at)) ? 'star_fragment_shiny' : 'star_fragment';
       /* (369 검토 P1: `star_gift_<slot>` had no account in it -- island gives' claims are the store's, one for everyone, so only the first
          wisher of a star got one, the others none, asked again every look. Each account its own now; whoever was paid under the old one
          is not paid again) */
-      const old = await pointStore.settlementOf(`island_give:star_gift_${slot}`).catch(() => null); if (old?.userId === account) continue;
+      const old = await pointStore.settlementOf(`island_give:star_gift_${slot}`).catch(() => null); if (old?.userId === account) { settled.add(st.id); continue; }
       const g = await pointStore.islandGive({ userId: account, claimId: `star_gift:${starTag}:${slot}`, itemId, qty: 1, quiet: true }, nowMs()).catch(() => null);
-      if (g?.applied) { frags[itemId] += 1; bag = g.bag || bag; } else if (g?.reason === 'full') { full = true; break; }
+      if (g?.applied) { frags[itemId] += 1; bag = g.bag || bag; settled.add(st.id); } else if (g?.reason === 'full') { full = true; break; } else if (g && g.applied === false && g.userId === account) settled.add(st.id); /* (given before: its record) */
     }
+    if (settled.size) await pointStore.questApply(account, 'stars', (d) => ({ doc: { ...d, wished: (d.wished || []).filter((id) => !settled.has(id)) } })).catch(() => {});
     if (gift) notifyPointsChanged([account]);
     return sendJson(res, 200, { ok: true, ...IslandStars.around(now), serverNow: now, gift, fragments: Object.entries(frags).map(([itemId, n]) => ({ itemId, n })).filter((f) => f.n), ...(full ? { full: true } : {}), ...(bag ? { bag } : {}), wishMs: IslandStars.WISH_MS });
   }
@@ -9700,11 +9714,16 @@ async function requestHandler(req, res) {
   // who/when/before), and putting one back (a change to the value it had before)
   // 366 로딩 팁: the lines the loading screen may show (the defaults whose feature is in the game, less those switched off, and
   // the admin's own); the admin's list and one change at a time (kept in worldValue loadingTips, live without a deploy)
-  if (pathname === '/api/island/loading-tips' && req.method === 'GET') return sendJson(res, 200, { ok: true, tips: LoadingTips.shown(await pointStore.worldValue('loadingTips')) });
+  /* (369 검토 #8: asked with no session -- the list kept in memory, made again on the administrator's save; 30 a minute a place) */
+  if (pathname === '/api/island/loading-tips' && req.method === 'GET') {
+    if (!checkRateLimit(`loading-tips:${clientIp(req)}`, 30, 60 * 1000)) return sendError(res, 429, 'RATE_LIMIT', '잠시 후 다시 시도해 주세요.');
+    loadingTipsShown ||= LoadingTips.shown(await pointStore.worldValue('loadingTips'));
+    return sendJson(res, 200, { ok: true, tips: loadingTipsShown });
+  }
   if (pathname === '/api/admin/loading-tips' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;
     if (req.method === 'POST') {
-      const body = await parseJson(req); const out = await worldEdit(async () => { const r = LoadingTips.change(await pointStore.worldValue('loadingTips'), body); if (r.error) return r; await pointStore.setWorldValue('loadingTips', r.doc); return r; });
+      const body = await parseJson(req); const out = await worldEdit(async () => { const r = LoadingTips.change(await pointStore.worldValue('loadingTips'), body); if (r.error) return r; await pointStore.setWorldValue('loadingTips', r.doc); loadingTipsShown = LoadingTips.shown(r.doc); return r; });
       if (out.error) return sendError(res, 400, 'BAD_TIP', { TEXT: `팁은 1~${LoadingTips.TEXT_MAX}자예요.`, FULL: '팁이 너무 많아요.', NO_TIP: '없는 팁이에요.', DEFAULT: '기본 팁은 켜고 끄기만 돼요.', NOTHING: '바꿀 것이 없어요.' }[out.error] || '다시 확인해 주세요.');
       console.log(`[loading-tips] ${body.add != null ? 'add' : body.remove ? `remove ${body.id}` : typeof body.on === 'boolean' ? `${body.on ? 'on' : 'off'} ${body.id}` : `edit ${body.id}`} by admin`);
     }
@@ -10669,7 +10688,7 @@ async function main() {
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.368 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.369 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); setTimeout(() => { try { IslandTerrain.isle2Open?.(IslandTerrain.ISLE2_BRIDGE_HEAD.x, IslandTerrain.ISLE2_BRIDGE_HEAD.z); } catch { /* (made on the first ask instead) */ } }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

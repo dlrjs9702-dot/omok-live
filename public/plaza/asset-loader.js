@@ -10,6 +10,7 @@ import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '/vendor/three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
+import { seeThrough, SEE_IDS } from './see-through.js'; // (1.10.369 §6 가려도 내 캐릭터 보이기)
 import { preparePlatformSurfaces, prepareTownhallSurfaces } from './platform-surfaces.js';
 
 const P = globalThis.AssetPipeline;
@@ -451,15 +452,18 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
           if (!gltf) continue; // this zone's season has no model: its copies stay procedural
           const lowGltf = hit.entry.lowUrl ? models.get(hit.entry.lowUrl) : null;
           if (hit.entry.nightGlow) for (const g of [gltf, lowGltf]) if (g) nightGlowFiles.add(g); /* (316 ④: a batched lamp's glow lit at night, as an attached one's) */
-          const meshesOf = (model, shadow) => partsOf(model, hit.entry.paint).map(({ geometry, material, matrix }) => {
-            const im = new THREE.InstancedMesh(geometry, instTwinOf(material), count); /* (1.10.353 ⓐ: the batches' own twin) */
+          /* (1.10.369 §6: a tree's or bush's batch -- the hole round me; 검토 369: its near (High) copies only -- a `discard` costs a tile GPU its
+             early depth test, and the Low and far ones are never between the camera and me) */
+          const see = [].concat(rec.ids).some((id) => SEE_IDS.test(id));
+          const meshesOf = (model, shadow, seeHere = false) => partsOf(model, hit.entry.paint).map(({ geometry, material, matrix }) => {
+            const im = new THREE.InstancedMesh(geometry, seeHere ? seeThrough(instTwinOf(material)) : instTwinOf(material), count); /* (1.10.353 ⓐ: the batches' own twin) */
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
             im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in
             im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true; im.matrixAutoUpdate = false; if (shadow) depthOf(im); /* (316 ③: at the cell's origin for good -- its copies carry their places) */
             cell.parent.add(im); invalidateOcclusion(cell.parent); return im; // (a building's batched parts: its sight boxes again)
           });
-          const high = meshesOf(gltf, cell.shadow && entry.shadows !== false); const low = lowGltf ? meshesOf(lowGltf, false) : hit.entry.hideFar ? [] : null; /* (G2 덤불 `hideFar`: an empty Low -- past it nothing, the fade's dither taking it out) */
+          const high = meshesOf(gltf, cell.shadow && entry.shadows !== false, see); const low = lowGltf ? meshesOf(lowGltf, false) : hit.entry.hideFar ? [] : null; /* (the Low copies plain; a model with no Low -- most trees -- one level at every distance, so its one copy keeps the hole) */ /* (G2 덤불 `hideFar`: an empty Low -- past it nothing, the fade's dither taking it out) */
           /* (v1.10.290: the copies on their way between the two -- their own instanced meshes on the same buffers, each its share) */
           const fadeMeshes = (meshes) => meshes.map((src) => { const geo = new THREE.BufferGeometry(); geo.index = src.geometry.index; for (const [k, a] of Object.entries(src.geometry.attributes)) geo.setAttribute(k, a); geo.groups = src.geometry.groups; geo.boundingBox = src.geometry.boundingBox; geo.boundingSphere = src.geometry.boundingSphere; geo.setAttribute('lodFade', new THREE.InstancedBufferAttribute(new Float32Array(count), 1)); const im = new THREE.InstancedMesh(geo, instFadeOf(src.material), count); im.userData.part = src.userData.part; im.boundingSphere = src.boundingSphere; im.count = 0; im.visible = false; im.castShadow = false; im.receiveShadow = true; im.matrixAutoUpdate = false; cell.parent.add(im); return im; });
           const canFade = Boolean(low) && [...high, ...low].every((im) => fadeable(im.material));

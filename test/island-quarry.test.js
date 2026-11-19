@@ -125,6 +125,11 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
   assert.deepEqual(g1.firstGem, { id: 'moonstone', title: '첫 달빛석이에요!', line: require('../lib/gem-cards.json').moonstone.line, card: '/assets/items/cards/gem_moonstone_card.webp' });
   const g2 = await mine(true, 0.1, 0.001); assert.equal(g2.itemId, 'gem_moonstone'); assert.equal(g2.firstGem, undefined, '두 번째는 카드 없음');
   assert.equal((await mine(true, 0.1)).itemId, 'ore_granite', '정한 광석 뽑기에는 보석 없음');
+  // 369 검토 #2 (사용자 A): 「채석 위 단계」 ×3 raises the ore's stage only -- a gem draw that the event would have tripled (moonstone 1.5 % with the
+  // bonus, 0.02 under ×3) stays no gem
+  const ev = await req('/api/admin/island-events', server.admin, { kind: 'catch', target: 'quarry_up', mult: 3, minutes: 30, text: '채석 위 단계 3배' }); assert.equal(ev.status, 200, JSON.stringify(ev.data));
+  const between = g2.bonus > 0 ? 0.03 : 0.01; /* (the same presses as g2: moonstone 15‰ with the bonus or 5‰ without -- ×3 45‰ / 15‰; a draw between) */
+  const gx = await mine(true, 0.1, between); assert.equal(gx.gem, undefined, `이벤트가 있어도 보석 확률 그대로 (보너스 ${gx.bonus})`); assert.match(gx.itemId, /^ore_/);
   // 1.10.350 화강암 벽 (사용자 182): granite only, never empty, outside the day's count -- the rocks shut at DAILY, the wall not
   assert.deepEqual([Q.DAILY, Q.ORE_PER_ROCK], [60, 8], '사용자 2026-11-17: 하루 60 · 366 바위 8');
   await req('/api/test/quarry/set', a, { daily: Q.DAILY }); await req('/api/plaza/state', a, { x: stand.x, z: stand.z, yaw: stand.yaw, moving: false });

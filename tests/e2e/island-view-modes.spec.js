@@ -222,3 +222,43 @@ test('로딩 화면: 게임 접속 뒤 처음 섬에 들어갈 때 그림·제�
   await expect(cover).toBeHidden({ timeout: 15000 }); expect(await page.locator('#loadingTip').isVisible()).toBe(false);
   await expectNoScriptError(page); await who.context.close();
 });
+
+// 1.10.369 (사용자 「이벤트 누르면 그 공지창이 뜨게 해」): the island event's chip on the top is a button -- its card (the admin's words, from when
+// to when) held open till 닫기. PC and phone.
+test('섬 이벤트 칩: 누르면 그 공지 카드가 뜨고 닫기로 닫힘', async ({ browser, request, isMobile }) => {
+  test.setTimeout(process.env.CI ? 180000 : 90000);
+  const who = await shopper(browser, request, isMobile ? '칩m' : '칩', 0, 'female'); const { page } = who;
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  const admin = await require('./skin-support').adminToken(request);
+  const opened = await post(request, '/api/admin/island-events', admin, { kind: 'sell', target: 'weed', mult: 3, minutes: 30, text: '잡초 값이 3배예요!' }); expect(opened.status, JSON.stringify(opened.data)).toBe(200);
+  const id = opened.data.list.find((e) => e.target === 'weed' && !e.closedAt).id;
+  try {
+    const chip = page.locator('#islandEventLine .islandEventItem').first(); await expect(chip).toContainText('잡초', { timeout: 30000 });
+    await page.waitForTimeout(7500); /* (the opening band gone first) */ await chip.click();
+    const band = page.locator('#islandEventBand'); await expect(band).toBeVisible(); await expect(band).toContainText('잡초 값이 3배예요!'); await expect(band).toContainText(/\d{2}:\d{2} ~ \d{2}:\d{2}/);
+    if (isMobile) expect((await chip.boundingBox()).height).toBeGreaterThanOrEqual(43);
+    await band.locator('.islandEventClose').click(); await expect(band).toBeHidden();
+  } finally { await post(request, '/api/admin/island-events/end', admin, { id }); }
+  await expectNoScriptError(page); await who.context.close();
+});
+
+// 1.10.369 N1b §6 가려도 내 캐릭터 보이기 (사용자 「거려지는 곳 근처만 투명처리」): in 별마루섬's 숲속 a tree on the line from the camera to me opens
+// the hole round me (on 1, a circle of the screen); the first person has none. PC and phone.
+test('가려도 내 캐릭터 보이기: 숲속에서 나무가 가리면 내 둘레만 뚫리고, 1인칭에서는 꺼짐', async ({ browser, request, isMobile }) => {
+  test.setTimeout(process.env.CI ? 240000 : 150000);
+  const who = await shopper(browser, request, isMobile ? '숲속m' : '숲속', 0, 'female'); const { page } = who;
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.removeItem('gc.view.out'); }); await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  // a spot in the wood where a tree stands between the camera and me: tried in turn over the 숲속 squares
+  const spots = []; for (let x = 300; x <= 440; x += 12) for (let z = 120; z <= 330; z += 12) if (T.isle2Zone?.(x, z) === 'deep' && T.walkable(x, z)) spots.push([x, z]);
+  let found = null;
+  for (const [x, z] of spots.slice(0, 40)) { await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x, z); }, [x, z]); await page.waitForTimeout(700); if ((await page.evaluate(() => window.PlazaSee()))?.blocked) { found = [x, z]; break; } }
+  expect(found, '나무에 가리는 숲속 자리').not.toBeNull();
+  await expect.poll(() => page.evaluate(() => window.PlazaSee().on), { timeout: 5000 }).toBe(1);
+  const s = await page.evaluate(() => window.PlazaSee()); expect(s.radius).toBeGreaterThan(30); expect(s.depth).toBeGreaterThan(2);
+  const toggle = async () => { if (isMobile) await page.locator('#islandViewTab').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyV'); } };
+  await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().view().mode)).toBe('first');
+  await expect.poll(() => page.evaluate(() => window.PlazaSee().on), { timeout: 5000 }).toBe(0);
+  await expectNoScriptError(page); await who.context.close();
+});

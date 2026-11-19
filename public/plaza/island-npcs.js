@@ -591,5 +591,7 @@
   // the islanders walking about the island now (X2 선물 배달 picks from these) -- all of them for now; 주민 근무표 changes
   // only this when some keep a shop part of the day
   const walking = () => Array.from({ length: count() }, (_, n) => n);
-  return { get COUNT() { return count(); }, WALKER, round, at, residentAt, walking, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, pointMemo /* (1.10.354; tests) */, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { get COUNT() { return count(); }, WALKER, round, at, residentAt, walking, homeOf, hangout, setPhaseOf, findPath, stopPlaces, buildGrid, buildGridSlice, packGrid, useGrid, hasGrid: () => Boolean(grid), createWalkers, pointMemo /* (1.10.354; tests) */, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); },
+    /* (369 검토 #7: the unstuck move's spot on the island's main connected part -- not a pocket walled in like the one it left) */
+    open: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); if (!free(i, j)) return false; if (grid.main == null) { const n = new Map(); for (const c of grid.comp) if (c >= 0) n.set(c, (n.get(c) || 0) + 1); grid.main = [...n].sort((a, b) => b[1] - a[1])[0]?.[0] ?? -1; } return grid.comp[j * N + i] === grid.main; } };
 }));
