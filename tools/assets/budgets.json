@@ -7,7 +7,8 @@
   "allowedExtensions": [
     "KHR_mesh_quantization",
     "EXT_meshopt_compression",
-    "KHR_texture_transform"
+    "KHR_texture_transform",
+    "EXT_texture_webp"
   ],
   "pilot106": {
     "nodes": 2,
@@ -2112,9 +2113,42 @@
     "newisle-v1/log_stool_low.glb": {
       "nodes": 3,
       "reason": "1.10.375 N2a-1 assets 136: log_stool -- its seat point"
+    },
+    "byeolmaru-v1/sign_tiger.glb": {
+      "nodes": 2,
+      "textures": 2,
+      "reason": "1.10.376 N2a-2 152e 안내판: 두 호랑이 얼굴 그림(WebP 1장)과 그 재질"
+    },
+    "byeolmaru-v1/sign_tiger_low.glb": {
+      "nodes": 2,
+      "textures": 2,
+      "reason": "1.10.376 N2a-2 152e 안내판: 두 호랑이 얼굴 그림(WebP 1장)과 그 재질"
+    },
+    "byeolmaru-v1/tiger.glb": {
+      "nodes": 25,
+      "triangles": 17964,
+      "textures": 4,
+      "reason": "1.10.376 N2a-2 152e 우레: 반사실 호랑이(사용자 152d 1A) -- 뼈 22 + 루트·메시 노드, 색·노멀 WebP 그림 2장, 동작 10"
+    },
+    "byeolmaru-v1/tiger_low.glb": {
+      "nodes": 25,
+      "textures": 4,
+      "reason": "1.10.376 N2a-2 152e 우레: 반사실 호랑이(사용자 152d 1A) -- 뼈 22 + 루트·메시 노드, 색·노멀 WebP 그림 2장, 동작 10"
+    },
+    "byeolmaru-v1/tiger_angae.glb": {
+      "nodes": 25,
+      "triangles": 17964,
+      "textures": 4,
+      "reason": "1.10.376 N2a-2 152e 안개: 반사실 호랑이(사용자 152d 1A) -- 뼈 22 + 루트·메시 노드, 색·노멀 WebP 그림 2장, 동작 10"
+    },
+    "byeolmaru-v1/tiger_angae_low.glb": {
+      "nodes": 25,
+      "textures": 4,
+      "reason": "1.10.376 N2a-2 152e 안개: 반사실 호랑이(사용자 152d 1A) -- 뼈 22 + 루트·메시 노드, 색·노멀 WebP 그림 2장, 동작 10"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
   "$transformationChoices": "Pack30 explicit fidelity exception applies only to listed transformation file hashes and measured triangle counts. Human5 current only, nonhuman16 current/native; GPU performance remains unverified.",
-  "$motion36": "v1.10.79 assets 36: the shoulder-repaired 운동복·후드 bodies and outfits are delivered meshopt-compressed with float positions and sparse weight edits; repacking would undo the verified weights, so these exact bytes (sha) are kept without KHR_mesh_quantization."
+  "$motion36": "v1.10.79 assets 36: the shoulder-repaired 운동복·후드 bodies and outfits are delivered meshopt-compressed with float positions and sparse weight edits; repacking would undo the verified weights, so these exact bytes (sha) are kept without KHR_mesh_quantization.",
+  "$webp": "1.10.376 N2a-2 (에셋 152e): 호랑이·안내판 그림은 WebP(EXT_texture_webp, three.js GLTFLoader가 직접 읽음). 새 텍스처 에셋도 파일별 예외로만."
 }

@@ -234,6 +234,7 @@ const betSay = (n, key, vals = {}, k = 0) => IslandCast.withTail(IslandBets.line
 const betPick = (n, game, skill, vals, t = IslandBets.targetOf(game, skill)) => { /* (v1.10.291: the day's mark, betGoalsToday) */ const own = BET_LINES[n]?.goal && ['whack', 'rhythm'].includes(game) && t != null ? IslandBets.lineOf(n, 'goal', { ...vals, goal: t.toLocaleString('ko-KR') }, BET_LINES) : t != null ? IslandBets.rule(game, skill, t) : '';
   return IslandCast.withTail([IslandBets.lineOf(n, 'pick', vals, BET_LINES), own].filter(Boolean).join(' '), n); };
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
+const IslandTigers = require('./lib/island-tigers'); // 1.10.376 N2a-2 별마루섬 호랑이
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const nextWeekOf = (week) => new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10); // v1.10.89
@@ -2150,7 +2151,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack }) => ({ snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
+  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, tigers: tigerSim.view() /* (1.10.376 별마루섬 호랑이) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack }) => ({ snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); quarryPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); denInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
@@ -2181,6 +2182,35 @@ const plazaTicker = setInterval(() => {
   }
 }, PLAZA_TICK_MS);
 plazaTicker.unref?.();
+// 1.10.376 N2a-2 별마루섬 호랑이 (lib/island-tigers.js; notes island-expansion 「별마루섬 호랑이」): 우레 and 안개 moved here, 10 times a second, among
+// whoever is on 별마루섬 outdoors (not on a train or in a taxi); every screen near is sent the poses with the plaza's. Off in the tests
+// till /api/test/tigers turns them on (they would catch the island tests' walkers). Caught: two random things out of the bag (in the
+// same step as the doc), whatever was being done ends, and everyone starts again in front of 마루 시장님 at the 관공서.
+const tigerSim = IslandTigers.createTigers({ T: IslandTerrain, P: require('./public/plaza/isle2-props.js') });
+tigerSim.setOn(process.env.NODE_ENV !== 'test');
+const TIGER_TICK_MS = 100;
+const tigerTicker = setInterval(() => {
+  if (!tigerSim.isOn()) return;
+  const I = IslandTerrain.dalmaru?.NEW_ISLE; if (!I) return; const people = []; let near = false;
+  for (const [token, p] of plazaPresence) {
+    if ((p.space || 'island') !== 'island' || p.ride || p.platform || p.taxi || trainRiders.has(token) || taxiRides.has(token) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+    if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z });
+  }
+  const events = tigerSim.tick(nowMs(), people); if (near) plazaDirty = true;
+  for (const e of events) if (e.type === 'catch') tigerCatch(e.token, e.tiger).catch((error) => console.error('호랑이 잡기 실패:', error.message));
+}, TIGER_TICK_MS);
+tigerTicker.unref?.();
+const tigerSpot = () => { const TH = IslandTerrain.TOWNHALL; const p = IslandTerrain.townhallWorld(0, TH.yard.z1 + 3.2); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; }; /* (before the mayor in his gate, facing him) */
+async function tigerCatch(token, def) {
+  const session = sessions.get(token); const at = plazaPresence.get(token); if (!session || !at) return;
+  const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs();
+  resourcePulls.delete(token); weedPulls.delete(token); quarryPulls.delete(token); fishCasts.delete(token); freeSeat(token);
+  plazaPresence.set(token, { ...at, x: spot.x, z: spot.z, moving: false, at: now, act: null, seat: null }); plazaLastPos.set(token, { x: spot.x, z: spot.z }); plazaDirty = true;
+  const out = account ? await pointStore.questApply(account, 'tiger', (doc, bag) => { const pick = IslandTigers.losePick(bag, IslandItems);
+    return { doc: { caught: (doc.caught || 0) + 1, at: now, by: def.id }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost: pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId) }; }).catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }) : null;
+  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}`); /* (no account in the log) */
+  notifyAccount(account, 'tigerCaught', { by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}) });
+}
 
 // v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
 // the events near them (with each pose answer), so no screen holds the whole island's list; when one is solved every
@@ -9161,6 +9191,8 @@ async function requestHandler(req, res) {
     await pointStore.setWorldValue('calendar', override); calendarCache = override;
     return sendJson(res, 200, { ok: true, override });
   }
+  // (1.10.376 별마루섬 호랑이, tests: on or off, one put somewhere, their rest hours' clock shifted; the state read back)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs()); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/festival/clock' && req.method === 'POST') { const body = await parseJson(req); festivalClock = Number(body.at) ? { at: Number(body.at), set: nowMs(), tick: Boolean(body.tick) } : null; return sendJson(res, 200, { ok: true }); } // (tests: the festival's own clock -- held, or running on from there: X2 카운트다운's last seconds)
   // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,
   // the island's totals), yesterday's island pull count and today's weeds, yesterday's two best hand-ins (named as they
@@ -10764,6 +10796,8 @@ async function main() {
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');
+  /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
+  if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
   server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.375 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
