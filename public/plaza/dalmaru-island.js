@@ -752,7 +752,7 @@
   const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ...(Q ? [['quarry', { x: 90, z: -123, label: '채석장' }]] : []) /* (1.10.323) */,['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }],
-    ...(ISLE2 ? [['newIsle', { x: ISLE2.x, z: ISLE2.z, label: D.NAMES.newIsle }], ['ancient', { x: ANCIENT.x, z: ANCIENT.z, label: ANCIENT.name }]] : [])]); /* (N1 새 섬; 1.10.367 별지기 느티) */
+    ...(ISLE2 ? [['newIsle', { x: ISLE2.x, z: ISLE2.z, label: D.NAMES.newIsle }], ['ancient', { x: ANCIENT.x, z: ANCIENT.z, label: ANCIENT.name, r: 25 /* (368: its name only within 25 m of the trunk) */ }]] : [])]); /* (N1 새 섬; 1.10.367 별지기 느티) */
 
   // (문제 기록 3회차 8 「있을 필요 없는 곳에도 돌·잡초, 하늘에 떠 있네」) where a small scattered piece -- a stone, a flower, a weed
   // -- sits: the drawn ground within its 0.3 m round never more than 0.09 m below its middle (no edge of it hangs in the air),

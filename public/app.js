@@ -4274,11 +4274,14 @@
     for (const f of inside) now.append(btn(`${homeInside.names?.[f.itemId] || f.itemId} · 꺼내기`, 'ghost', () => act({ take: f.fid })));
     const can = document.createElement('div'); can.className = 'giftList';
     { /* (362: a fish one a slot -- one row a kind with all its count, as the server takes a kind) */
-      for (const item of bagKinds(bag.items.filter((x) => H.fits(shape, x.itemId)))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); }
+      for (const item of bagKinds(bag.items.filter((x) => H.fits(shape, x.itemId) && (T.insects || H.waterFits(inside, x.itemId))))) { const b = btn('', 'ghost', () => act({ put: item.itemId })); b.append(itemIcon(item), ` ${item.name} ×${item.qty} · 넣기`); can.append(b); } /* (368: a tank's water -- only its own fish offered) */
     }
     const what = T.insects ? '곤충' : '물고기';
-    tankBox.replaceChildren(line(`${!T.insects && (inside.some((f) => H.FISH_ROOM[f.itemId]) || bag.items.some((e) => H.FISH_ROOM[e.itemId] && H.fits(shape, e.itemId))) ? `${H.tankUsed(inside)}/${T.slots}칸 · ${inside.length}마리 · 참치는 6칸` : `${inside.length}/${T.slots}마리`}${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
-    openPlazaWindow(T.insects ? '곤충 상자' : '수조', [tankBox]);
+    /* (368 민물·바다 수조 1A 2A: the title says its water and places; a mixed one only gives fish back) */
+    const water = T.insects ? null : H.tankWater(inside);
+    const waterLine = water === 'mixed' ? [line('민물과 바다 물고기가 섞인 수조예요. 꺼내기만 할 수 있고, 다 비우면 첫 물고기로 다시 정해져요.')] : water ? [line(`${H.WATER_WORD[water]} 수조예요. ${H.WATER_WORD[water]} 물고기만 넣어요.`)] : T.insects ? [] : [line('처음 넣는 물고기로 민물·바다 수조가 정해져요.')];
+    tankBox.replaceChildren(line(`${!T.insects && (inside.some((f) => H.FISH_ROOM[f.itemId]) || bag.items.some((e) => H.FISH_ROOM[e.itemId] && H.fits(shape, e.itemId))) ? `${H.tankUsed(inside)}/${T.slots}칸 · ${inside.length}마리 · 참치는 6칸` : `${inside.length}/${T.slots}마리`}${T.insects ? '' : ` · ${{ small: '작은', medium: '중간까지', large: '큰 것까지' }[T.biggest]} 물고기`}`, 'lostRequestLine'), ...waterLine, ...(inside.length ? [now] : []), line(can.children.length ? `가방의 ${what}` : water === 'mixed' ? '섞인 수조에는 더 넣을 수 없어요.' : `가방에 넣을 수 있는 ${what}가 없어요.`), can);
+    openPlazaWindow(T.insects ? '곤충 상자' : water === 'mixed' ? '섞인 수조' : water ? `${H.WATER_WORD[water]} 수조 · ${H.tankUsed(inside)}/${T.slots}칸` : '수조', [tankBox]);
   }
   // a frame: one of my 기념사진 (the places I took one) hung in it
   async function openFrame(uid) {
@@ -6505,6 +6508,7 @@
     plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, hoguking: plazaHoguking, delinquent: Boolean(plazaAvatar?.delinquent), name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
+  window.PlazaReady = () => plaza.controller?.readiness?.() ?? null; /* (368 로딩 안정화: the scene's own word, light enough to ask every frame -- the loading cover's) */
   // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
   window.PlazaWarp = async (x, z) => {
     if (plazaDeparture) await plazaDeparture;
@@ -14377,23 +14381,33 @@
   byId('accountPlayBtn').addEventListener('click', () => { try { sessionStorage.setItem('gc.coverNext', '1'); } catch { /* (no storage: no cover) */ } }); /* (366: the next page -- the island's first entry -- shows the loading cover) */
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
   { // 366 로딩 화면 (notes docs/install-button-20261118.md): the island picture, 「섬으로 가는 중…」, a bar by steps and one tip, over the
-    // page until the island is drawn, its files have stopped coming and ten frames run smooth (LoadingCover.state) -- or 20 s
-    let want = false; try { want = sessionStorage.getItem('gc.coverNext') === '1' && localStorage.getItem('gc.testClassic') !== '1'; sessionStorage.removeItem('gc.coverNext'); } catch { /* none */ } /* (the classic lobby -- tests' gc.testClassic -- has no island to wait for) */
-    const cover = byId('loadingCover');
-    if (want && cover && window.LoadingCover && document.body.dataset.session && !/^__/.test(document.body.dataset.session)) {
-      const L = window.LoadingCover; const t0 = performance.now(); let lastFile = performance.now(); const frames = []; let prev = performance.now();
-      cover.classList.remove('hidden');
-      let obs = null; try { obs = new PerformanceObserver((list) => { for (const e of list.getEntries()) if (/\/assets\/island\//.test(e.name)) lastFile = performance.now(); }); obs.observe({ type: 'resource', buffered: true }); } catch { /* (old browsers: the 20 s cap) */ }
-      api('/api/island/loading-tips').then((d) => { let last = null; try { last = sessionStorage.getItem('gc.lastTip'); } catch {} const tip = L.pickTip(d.tips || [], last); byId('loadingTip').textContent = tip ? `💡 ${tip}` : ''; try { sessionStorage.setItem('gc.lastTip', tip); } catch {} }).catch(() => {});
+    // page until the island is ready and ten frames run smooth (LoadingCover.state) -- or 20 s.
+    // 368 로딩 안정화 (사용자 「이런것도 로딩창 중 다 안정화 되고 넘어가게 할 순 없어?」): `ready` is the scene's own word (PlazaReady: every
+    // ground picture arrived, no model still coming, the shaders compiled), not files gone quiet; and on a place change (gc:place --
+    // a room's door, a taxi, the train, the boat, a reconnect, a reload) the same cover, short (no tip, five smooth frames, 8 s at
+    // most) -- only if the scene is not ready two frames on (a quick in and out: no flash)
+    let want = false; try { want = sessionStorage.getItem('gc.coverNext') === '1'; sessionStorage.removeItem('gc.coverNext'); } catch { /* none */ }
+    const classic = () => { try { return localStorage.getItem('gc.testClassic') === '1'; } catch { return false; } }; /* (the classic lobby -- tests' gc.testClassic -- has no island to wait for) */
+    const cover = byId('loadingCover'); const L = window.LoadingCover; let active = false;
+    const inGame = () => Boolean(document.body.dataset.session && !/^__/.test(document.body.dataset.session)) && !classic();
+    const show = (short) => {
+      if (active || !cover || !L) return; active = true;
+      const t0 = performance.now(); const frames = []; let prev = performance.now(); let most = 0; const need = short ? L.SHORT.FRAMES : L.FRAMES;
+      cover.classList.toggle('short', short); cover.classList.remove('hidden', 'lifting'); cover.querySelector('.loadingTitle').textContent = short ? '불러오는 중…' : '섬으로 가는 중…';
+      if (!short) api('/api/island/loading-tips').then((d) => { let last = null; try { last = sessionStorage.getItem('gc.lastTip'); } catch {} const tip = L.pickTip(d.tips || [], last); byId('loadingTip').textContent = tip ? `💡 ${tip}` : ''; try { sessionStorage.setItem('gc.lastTip', tip); } catch {} }).catch(() => {});
       const tick = (now) => {
-        frames.push(now - prev); prev = now; if (frames.length > L.FRAMES) frames.shift();
-        const s = L.state({ entered: true, running: Boolean(window.PlazaDebug?.()?.running), quietMs: now - lastFile, frames, elapsed: now - t0 });
+        frames.push(now - prev); prev = now; if (frames.length > need) frames.shift();
+        const r = window.PlazaReady?.(); const waiting = r ? r.textures + r.files : 0; most = Math.max(most, waiting);
+        const s = L.state({ entered: true, running: Boolean(r?.running), ready: Boolean(r?.ready), waiting, mostWaiting: most, frames, elapsed: now - t0, short });
         byId('loadingBarFill').style.width = `${Math.round(s.progress * 100)}%`; byId('loadingStep').textContent = s.lift ? '준비 완료' : `${s.label} 중…`;
-        if (s.lift) { obs?.disconnect(); cover.classList.add('lifting'); setTimeout(() => { cover.classList.add('hidden'); cover.classList.remove('lifting'); }, 700); return; }
+        cover.dataset.step = String(s.step); /* (tests: where it is) */
+        if (s.lift) { cover.classList.add('lifting'); setTimeout(() => { cover.classList.add('hidden'); cover.classList.remove('lifting', 'short'); active = false; }, short ? 350 : 700); return; }
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
-    }
+    };
+    if (want && inGame()) show(false);
+    window.addEventListener('gc:place', () => { if (active || !inGame()) return; requestAnimationFrame(() => requestAnimationFrame(() => { const r = window.PlazaReady?.(); if (r && !r.ready && !active) show(true); })); });
   }
   { // v1.10.258 (총괄, 폴드) 「앱으로 설치」 on the first screen and in ☰ -- the messenger's: shown only when Chrome offers the
     // install (Chrome's own menu won't put a second app of one site on a phone that has the messenger's), never in the app

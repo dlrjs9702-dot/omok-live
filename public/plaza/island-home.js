@@ -114,6 +114,14 @@
   const tankUsed = (fishes = []) => fishes.reduce((n, f) => n + fishRoom(f.itemId), 0);
   const fits = (tankShape, id) => { const t = TANKS[tankShape]; return Boolean(t && (t.insects ? INSECTS.has(id) : FISH_SIZE[id] && (SIZE_RANK[FISH_SIZE[id]] <= SIZE_RANK[t.biggest] || (FISH_ROOM[id] && t.biggest === 'medium')))); };
   const tankRoom = (tankShape, fishes, id) => { const t = TANKS[tankShape]; return Boolean(t) && tankUsed(fishes) + fishRoom(id) <= t.slots; };
+  // 368 민물·바다 수조 (notes fish-keepnet-20261109.md 끝, 사용자 2026-11-19 1A 2A): the first fish sets a tank's water, then only fish of that
+  // water go in; an emptied tank is free again. A tank already holding both (before this) is 「섞임」 -- its fish stay, taken out but
+  // none put in. Which water: lib/island-fishing WATER_OF (the dex's) -- these 25 fresh, the rest sea (test/home-tank-water.test.js)
+  const FRESH_FISH = new Set(['crucian_carp', 'pale_chub', 'smelt', 'sweetfish', 'carp', 'catfish', 'eel', 'mandarin_fish', 'crayfish', 'medaka', 'bagrid_catfish', 'minnow', 'bitterling', 'bluegill', 'aucha_perch', 'masu_salmon', 'barbel_steed', 'bass', 'rainbow_trout', 'snakehead', 'salmon', 'golden_carp', 'sturgeon', 'king_catfish', 'taimen'].map((s) => `fish_${s}`));
+  const waterOf = (id) => (FISH_SIZE[id] ? (FRESH_FISH.has(id) ? 'fresh' : 'sea') : null);
+  const tankWater = (fishes = []) => { const w = new Set(fishes.map((f) => waterOf(f.itemId)).filter(Boolean)); return w.size > 1 ? 'mixed' : w.size ? [...w][0] : null; }; // null: empty (or insects) -- today's look
+  const waterFits = (fishes, id) => { const w = tankWater(fishes); return !w || (w !== 'mixed' && w === waterOf(id)); };
+  const WATER_WORD = Object.freeze({ fresh: '민물', sea: '바다' });
   const shapeOf = (goodId) => String(goodId || '').split('__')[0];
   // a placed piece's floor box (room-local): its footprint turned by rot quarters about (x, z)
   // (v1.10.315 배치 도구 1단계: `rot` in quarter turns, a sixth of one -- 15° -- the finest; turned between the quarters, the box
@@ -225,5 +233,5 @@
     const anyDir = ANY_DIR.has(shapeOf(p.id));
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - SIT_BELOW, yaw: a, anyDir }; /* (yaw: the piece's front, the room turned half round) */ });
   }
-  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, upkeepBoxOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn, WALL_REACH, aimAt, pieceAt, turnBy, FINE, onTurn };
+  return { FISH_ROOM, fishRoom, tankUsed, tankRoom, waterOf, tankWater, waterFits, WATER_WORD /* (368 민물·바다 수조) */, LOTS, lotById, upperLot, STAIRS, onFloor, floorView, doorOf, upkeepBoxOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, snapPos, clamp, seatsOf, SMALL, TOPS, TOP_SIZE, topBox, supportOf, liftOf, heldOn, WALL_REACH, aimAt, pieceAt, turnBy, FINE, onTurn };
 }));

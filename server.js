@@ -2841,7 +2841,7 @@ const CONTEST_TIPS = Object.freeze({
   spider: ['같은 무늬끼리 먼저 이어 줘요.', '빈 줄이 생기면 큰 숫자 줄을 옮겨 둬요.'],
   reaction: ['색이 바뀌기 전에 누르면 처음부터예요. 참아요.', '눈은 깜빡이지 말고 손끝에 힘을 살짝 실어요.'],
 });
-const areaNear = (x, z, max = 60) => { let best = null; let bd = max; for (const [key, a] of Object.entries(IslandTerrain.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { bd = d; best = { key, label: a.label, x: a.x, z: a.z }; } } return best; };
+const areaNear = (x, z, max = 60) => { let best = null; let bd = max; for (const [key, a] of Object.entries(IslandTerrain.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd && !(a.r && d > a.r) /* (368: a name with its own reach) */) { bd = d; best = { key, label: a.label, x: a.x, z: a.z }; } } return best; };
 const daySeed = (s) => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
 // what each hint kind can say now -> { kind: { vals, at? } } (a kind left out has nothing true to say)
 async function talkHints(account, n, pos, now) {
@@ -7225,6 +7225,7 @@ async function requestHandler(req, res) {
         const itemId = String(body.put); if (!IslandHome.FISH_SIZE[itemId] && !IslandHome.INSECTS.has(itemId)) return sendError(res, 400, 'BAD_FISH', '물고기를 확인해 주세요.');
         if (fishes.some((f) => f.claim === claim)) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) });
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
+        if (!T.insects && !IslandHome.waterFits(fishes, itemId)) { const w = IslandHome.tankWater(fishes); return sendError(res, 409, 'TANK_WATER', w === 'mixed' ? '섞인 수조예요. 꺼내기만 할 수 있고, 다 비우면 다시 넣을 수 있어요.' : `${IslandHome.WATER_WORD[w]} 수조예요. ${IslandHome.WATER_WORD[w]} 물고기만 넣어요.`); } /* (368 민물·바다 수조: the first fish sets the water) */
         if (!IslandHome.tankRoom(IslandHome.shapeOf(tank.id), fishes, itemId)) return sendError(res, 409, 'TANK_FULL', T.insects ? '곤충 상자에는 한 마리만 넣어요.' : IslandHome.FISH_ROOM[itemId] || fishes.some((f) => IslandHome.FISH_ROOM[f.itemId]) ? '참치는 자리를 많이 차지해서 더 못 넣어요.' : '수조가 가득 찼어요.'); // (v1.10.227: a tuna six places)
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
