@@ -766,7 +766,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     return c.group;
   };
   /* (one list per kind as before -- the model loader's lists the same; a 새 섬 item's square under its group: `where`) */
-  const instanced = (geometry, material, list, place, opts = {}) => instancedOne(geometry, material, list, place, maps2 && list.some((it) => it.isle2) ? { ...opts, where: (it) => (it.isle2 ? isle2Cell(opts.parent || scene, it.x, it.z) : null) } : opts);
+  /* (1.10.369 §9 무게: 별마루섬's thick wood in 40 m batches -- a 60 m one just touching the view or the sun's shadow box was drawn whole, twice; 30 m was over the 316 draw count) */
+  const instanced = (geometry, material, list, place, opts = {}) => instancedOne(geometry, material, list, place, maps2 && list.some((it) => it.isle2) ? { ...opts, cell: Math.min(opts.cell ?? 40, 40), where: (it) => (it.isle2 ? isle2Cell(opts.parent || scene, it.x, it.z) : null) } : opts);
   const instancedOne = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [], parent = scene, where = null } = {}) => { // v1.10.73 parent: a group shown by quality
     if (!list.length) return;
     const g = target && assets?.wants(target) ? { target, cells: [] } : null;
@@ -1377,7 +1378,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     if (next === isle2State && !moved) return next;
     isle2State = next; isle2At = { x, z };
     isle2Root.visible = next === 'full'; if (isle2Far) isle2Far.visible = next === 'far';
-    const fog = 180 + 43; /* (a square's half diagonal) */ for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < fog;
+    const fog = (scale < 1 ? 130 : 180) + 43; /* (a square's half diagonal; 1.10.369 §9 무게: the lowest tier the nearer -- 별마루섬's thick wood, past 130 m in the fog) */ for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < fog;
     return next;
   }
   for (const o of [isle2Root, isle2Far, terrain, sea]) if (o) o.userData.keepFar = true; // (N1: plaza-scene's far cull leaves these to isle2View)
