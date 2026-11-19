@@ -28,6 +28,14 @@ test('별 조각: 상인 값·잡화점 안 팖, 반짝이는 확률은 계정·
   assert.deepEqual(Home.SIZE.star_rug, [2, 1.4, 0.04]); assert.ok(Yard.ITEMS.star_ornament.glow);
 });
 
+test('별똥별 반짝이 이벤트(369 검토 #3): 그 별이 떨어질 때 열린 잡기 이벤트가 반짝이는 조각 확률을 올림, 밖이면 그대로', () => {
+  const ev = [{ id: 'e1', kind: 'catch', target: 'star', mult: 2, startAt: 1000, endAt: 5000 }];
+  assert.equal(Stars.shinyPctAt(10, ev, 2000), 20); assert.equal(Stars.shinyPctAt(10, ev, 6000), 10, '이벤트 밖'); assert.equal(Stars.shinyPctAt(10, [], 2000), 10);
+  assert.equal(Stars.shinyPctAt(10, [{ ...ev[0], target: 'pick' }], 2000), 10, '다른 대상');
+  // over many accounts the shiny share follows it
+  let n = 0; for (let s = 0; s < 4000; s += 1) if (Stars.shinyOf(`acc${s}`, 7, Stars.shinyPctAt(10, ev, 2000))) n += 1; assert.ok(n > 650 && n < 950, `${n}/4000`);
+});
+
 test('소원: 다음 날 별 조각 한 번(다시 봐도 더 안 줌), 바꾸기 전에 빈 소원은 300P', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'star-frag-')); rmAtExit(dir);
   let server = await boot(t, dir); let { req } = server;
@@ -74,4 +82,7 @@ test('소원 별 조각: 같은 별에 빈 두 계정이 둘 다 받고, 옛 cla
   // the one paid under the old claim (whichever of the three it is) has none now; the other two one each
   assert.equal(got.reduce((x, y) => x + y, 0), 2, `새로 받은 수 ${got}`); assert.equal(inBags.filter((n) => n === 1).length, 2, `가방 ${inBags}`);
   for (const s of [a, b, c]) assert.equal(await fragsOf(s), 0, '다시 봐도 더 안 줌');
+  // (369 검토 #4: a paid wish off the doc -- a look every 60 s asks the store for none of them again)
+  await server.stop(); const after = JSON.parse(await fs.readFile(file, 'utf8'));
+  for (const [k, d] of Object.entries(after.quests || {})) if (k.endsWith('|stars')) assert.ok(!(d.wished || []).includes(star), `${k.slice(0, 6)}… 받은 소원은 목록에서 빠짐`);
 });

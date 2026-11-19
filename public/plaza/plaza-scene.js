@@ -6195,7 +6195,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const compiled = !textures && !files && compiledEpoch >= 0;
     /* (groundReady: the ground's pictures in and the first compile done -- what the short cover waits for; a model streaming in near me
        comes in as before 368, under no cover: CI #519) */
-    return { running, textures, files, compiled, ready: running && compiled, groundReady: running && !textures && compiledEpoch >= 0, place: placeGen };
+    return { running, textures, files, compiled, ready: running && compiled, groundReady: running && !textures /* (369 검토 #5: not the compile's -- where the first never ran, every place change brought the cover back for 8 s) */, place: placeGen };
   }
   function placeMoved(force = false) {
     const { x, z } = me.root.position; const jump = !Number.isFinite(placeWas.x) || Math.hypot(x - placeWas.x, z - placeWas.z) > 30; placeWas.x = x; placeWas.z = z;

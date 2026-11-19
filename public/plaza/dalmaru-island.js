@@ -814,6 +814,16 @@
     for (let i = cx - 2; i <= cx + 2; i += 1) for (let j = cz - 2; j <= cz + 2; j += 1) for (const o of clearHash.get(`${i},${j}`) || []) if (Math.hypot(o.x - x, o.z - z) < o.r + margin) return false;
     return true;
   }
+  // (369 검토 #7) and open: from it a way of free cells (1 m, off the solids by 0.6) to a walk within 40 m -- not a pocket among roots
+  // and trunks like the one the unstuck move left
+  function isle2Open(x, z) {
+    if (!isle2Clear(x, z)) return false; const seen = new Set([`${Math.round(x)},${Math.round(z)}`]); const q = [[Math.round(x), Math.round(z)]];
+    while (q.length && seen.size < 6000) {
+      const [cx, cz] = q.shift(); if (walkDist(cx, cz) < 0.5) return true;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = cx + dx; const nz = cz + dz; const k = `${nx},${nz}`; if (seen.has(k) || Math.hypot(nx - x, nz - z) > 40) continue; seen.add(k); if (walkable(nx, nz) && isle2Clear(nx, nz, 0.6)) q.push([nx, nz]); }
+    }
+    return false;
+  }
   // (1.10.367 N1b) the forest's: the big trees' trunks, the mossy rocks, the fallen logs and 별지기 느티's trunk and roots (assets 156
   // solids.json -- its arches walked under); the ferns walked through
   const forestSolids = (n) => { const F156 = (typeof self !== 'undefined' && self.Forest156) || (typeof require === 'function' ? require('./forest156.js') : null); const f = n.forest; if (!F156 || !f) return [];
@@ -842,7 +852,7 @@
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
-    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */, isle2Zone, ISLE2_ZONES /* (1.10.369 구역) */, onIsle2, isle2Clear, ISLE2_BRIDGE_HEAD: Object.freeze({ x: 233, z: 228 }) /* (1.10.369 막혔을 때: 별마루섬's own way out) */,
+    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */, isle2Zone, ISLE2_ZONES /* (1.10.369 구역) */, onIsle2, isle2Clear, isle2Open, ISLE2_BRIDGE_HEAD: Object.freeze({ x: 233, z: 228 }) /* (1.10.369 막혔을 때: 별마루섬's own way out) */,
     ROAD, roadDist, roadFoot, /* (T1 고침: the taxi road's band -- the scene's grass and decor, the shore and cover maps keep off it) */ SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),

@@ -18,3 +18,12 @@ test('별마루섬 막힘: 숲속에서 가까운 빈 자리를 찾고(나무 �
   const B = T.ISLE2_BRIDGE_HEAD; assert.equal(T.onIsle2(B.x, B.z), true);
   const head = U.nearestFree({ x: B.x, z: B.z, ok: (x, z) => T.walkable(x, z) && T.isle2Clear(x, z) }); assert.ok(head && Math.hypot(head.x - B.x, head.z - B.z) <= 15, '다리 머리 둘레 빈 자리');
 });
+
+test('막힘에서 나온 자리는 열린 곳(369 검토 #7): 별마루섬은 빈 칸으로 길까지 이어지고, 본섬은 주민 격자의 큰 덩어리', () => {
+  const B = T.ISLE2_BRIDGE_HEAD; assert.equal(T.isle2Open(B.x, B.z), true, '다리 머리는 길로 이어짐');
+  // a point walled in: inside 별지기 느티's trunk ring is no way out
+  const A = T.ANCIENT; assert.equal(T.isle2Open(A.x, A.z), false, '줄기 안은 열린 곳이 아님');
+  const tree = T.nature().forest.big.find((o) => T.isle2Zone(o.x, o.z) === 'deep');
+  const spot = U.nearestFree({ x: tree.x, z: tree.z, ok: (x, z) => T.walkable(x, z) && T.isle2Open(x, z) }); assert.ok(spot, '숲속에서도 열린 자리');
+  const N = require('../public/plaza/island-npcs.js'); const S = T.SPAWN; const sp = U.nearestFree({ x: S.x, z: S.z, ok: (x, z) => N.open(x, z) }); assert.ok(sp, '대청마당 둘레는 큰 덩어리');
+});

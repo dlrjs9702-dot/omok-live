@@ -2550,6 +2550,7 @@ const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free
 // draws), the island's screens are told when one starts or ends (and on entry); what they paid over the base points, by event
 const AdminEvents = require('./lib/island-admin-events');
 const LoadingTips = require('./lib/loading-tips'); // (366 로딩 팁)
+let loadingTipsShown = null; // (369 검토 #8: the shown list, in memory -- made on the first ask and on the administrator's save)
 // 366 별 조각: the stars that fell from this moment on bring a fragment; those before it the 300P they were wished for --
 // the moment this version first started (kept in worldValue starsFragmentFrom; a test server's own)
 let starsFromAt = null;
@@ -6726,8 +6727,10 @@ async function requestHandler(req, res) {
     // (1.10.369, 총괄: 별마루섬 lies past the islanders' grid -- every point there read as blocked, so it was always 대청마당: there off its own
     // solids (isle2Clear), and with none free its bridge head)
     const isle2 = Boolean(IslandTerrain.onIsle2?.(at.x, at.z));
-    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && (IslandTerrain.onIsle2?.(x, z) ? IslandTerrain.isle2Clear(x, z) : IslandNpcs.free(x, z)) });
-    const S = isle2 ? IslandTerrain.ISLE2_BRIDGE_HEAD : IslandTerrain.SPAWN; const head = !near && isle2 ? IslandUnstuck.nearestFree({ x: S.x, z: S.z, ok: (x, z) => plazaStandable(x, z) && IslandTerrain.isle2Clear(x, z) }) : null;
+    /* (369 검토 #7: a spot on the open island -- the islanders' grid's main connected part; on 별마루섬 a way of free cells to a walk -- not a pocket
+       walled in like the one left, then 10 minutes' wait) */
+    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && (IslandTerrain.onIsle2?.(x, z) ? IslandTerrain.isle2Open(x, z) : (IslandNpcs.open ? IslandNpcs.open(x, z) : IslandNpcs.free(x, z))) });
+    const S = isle2 ? IslandTerrain.ISLE2_BRIDGE_HEAD : IslandTerrain.SPAWN; const head = !near && isle2 ? IslandUnstuck.nearestFree({ x: S.x, z: S.z, ok: (x, z) => plazaStandable(x, z) && IslandTerrain.isle2Open(x, z) }) : null;
     const spot = near || head || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
     unstuckAt.set(t, nowMs()); freeSeat(t);
     plazaPresence.set(t, { ...at, x: spot.x, z: spot.z, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
@@ -9504,18 +9507,21 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0; const frags = { star_fragment: 0, star_fragment_shiny: 0 }; let full = false; let bag = null;
     const from = await starsFragmentFrom();
     const starTag = crypto.createHash('sha1').update(account).digest('hex').slice(0, 16); // (369 검토 P1: the fragment's claim each account's own -- craft's)
+    const settled = new Set(); // (369 검토 #4: a wish paid -- now or before -- off the doc after, so a look every 60 s does not ask the store again for each)
     for (const st of IslandStars.wishesDue((await pointStore.questDoc(account, 'stars')).doc.wished || [], now)) { // (every day before, not only yesterday -- Codex review)
       const slot = IslandStars.slotOfId(st.id);
-      if (st.at < from) { const out = await pointStore.claimEvent({ eventId: `star_gift_${slot}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' }); if (out.applied) gift += out.amount; continue; } // (366: wished before the release -- 300P as promised)
-      // 366 별 조각 (notes star-wish-20261118): one fragment, the shiny one by economy star:shinyPct -- the same for a claim asked again
-      const itemId = IslandStars.shinyOf(account, slot, Economy.value('star:shinyPct')) ? 'star_fragment_shiny' : 'star_fragment';
+      if (st.at < from) { const out = await pointStore.claimEvent({ eventId: `star_gift_${slot}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' }); if (out.applied) gift += out.amount; settled.add(st.id); continue; } // (366: wished before the release -- 300P as promised)
+      // 366 별 조각 (notes star-wish-20261118): one fragment, the shiny one by economy star:shinyPct -- the same for a claim asked again;
+      // 369 검토 #3: raised by a 「별똥별 반짝이」 event running when that star fell
+      const itemId = IslandStars.shinyOf(account, slot, IslandStars.shinyPctAt(Economy.value('star:shinyPct'), adminEvents, st.at)) ? 'star_fragment_shiny' : 'star_fragment';
       /* (369 검토 P1: `star_gift_<slot>` had no account in it -- island gives' claims are the store's, one for everyone, so only the first
          wisher of a star got one, the others none, asked again every look. Each account its own now; whoever was paid under the old one
          is not paid again) */
-      const old = await pointStore.settlementOf(`island_give:star_gift_${slot}`).catch(() => null); if (old?.userId === account) continue;
+      const old = await pointStore.settlementOf(`island_give:star_gift_${slot}`).catch(() => null); if (old?.userId === account) { settled.add(st.id); continue; }
       const g = await pointStore.islandGive({ userId: account, claimId: `star_gift:${starTag}:${slot}`, itemId, qty: 1, quiet: true }, nowMs()).catch(() => null);
-      if (g?.applied) { frags[itemId] += 1; bag = g.bag || bag; } else if (g?.reason === 'full') { full = true; break; }
+      if (g?.applied) { frags[itemId] += 1; bag = g.bag || bag; settled.add(st.id); } else if (g?.reason === 'full') { full = true; break; } else if (g && g.applied === false && g.userId === account) settled.add(st.id); /* (given before: its record) */
     }
+    if (settled.size) await pointStore.questApply(account, 'stars', (d) => ({ doc: { ...d, wished: (d.wished || []).filter((id) => !settled.has(id)) } })).catch(() => {});
     if (gift) notifyPointsChanged([account]);
     return sendJson(res, 200, { ok: true, ...IslandStars.around(now), serverNow: now, gift, fragments: Object.entries(frags).map(([itemId, n]) => ({ itemId, n })).filter((f) => f.n), ...(full ? { full: true } : {}), ...(bag ? { bag } : {}), wishMs: IslandStars.WISH_MS });
   }
@@ -9707,11 +9713,16 @@ async function requestHandler(req, res) {
   // who/when/before), and putting one back (a change to the value it had before)
   // 366 로딩 팁: the lines the loading screen may show (the defaults whose feature is in the game, less those switched off, and
   // the admin's own); the admin's list and one change at a time (kept in worldValue loadingTips, live without a deploy)
-  if (pathname === '/api/island/loading-tips' && req.method === 'GET') return sendJson(res, 200, { ok: true, tips: LoadingTips.shown(await pointStore.worldValue('loadingTips')) });
+  /* (369 검토 #8: asked with no session -- the list kept in memory, made again on the administrator's save; 30 a minute a place) */
+  if (pathname === '/api/island/loading-tips' && req.method === 'GET') {
+    if (!checkRateLimit(`loading-tips:${clientIp(req)}`, 30, 60 * 1000)) return sendError(res, 429, 'RATE_LIMIT', '잠시 후 다시 시도해 주세요.');
+    loadingTipsShown ||= LoadingTips.shown(await pointStore.worldValue('loadingTips'));
+    return sendJson(res, 200, { ok: true, tips: loadingTipsShown });
+  }
   if (pathname === '/api/admin/loading-tips' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;
     if (req.method === 'POST') {
-      const body = await parseJson(req); const out = await worldEdit(async () => { const r = LoadingTips.change(await pointStore.worldValue('loadingTips'), body); if (r.error) return r; await pointStore.setWorldValue('loadingTips', r.doc); return r; });
+      const body = await parseJson(req); const out = await worldEdit(async () => { const r = LoadingTips.change(await pointStore.worldValue('loadingTips'), body); if (r.error) return r; await pointStore.setWorldValue('loadingTips', r.doc); loadingTipsShown = LoadingTips.shown(r.doc); return r; });
       if (out.error) return sendError(res, 400, 'BAD_TIP', { TEXT: `팁은 1~${LoadingTips.TEXT_MAX}자예요.`, FULL: '팁이 너무 많아요.', NO_TIP: '없는 팁이에요.', DEFAULT: '기본 팁은 켜고 끄기만 돼요.', NOTHING: '바꿀 것이 없어요.' }[out.error] || '다시 확인해 주세요.');
       console.log(`[loading-tips] ${body.add != null ? 'add' : body.remove ? `remove ${body.id}` : typeof body.on === 'boolean' ? `${body.on ? 'on' : 'off'} ${body.id}` : `edit ${body.id}`} by admin`);
     }
