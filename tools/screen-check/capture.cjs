@@ -77,7 +77,10 @@ async function enter(browser, api, base, device, quality) {
 // trees, rocks, props, buildings), with the camera's side behind it open too, looking at the thing)
 const resolve = (page, spot) => page.evaluate((s) => {
   const T = window.IslandTerrain; const D = T.dalmaru; const N = window.IslandNpcs;
-  const ok = (x, z) => T.walkable(x, z) && !(D?.isWater?.(x, z)); const free = (x, z) => ok(x, z) && (!N?.free || N.free(x, z));
+  const ok = (x, z) => T.walkable(x, z) && !(D?.isWater?.(x, z));
+  /* (367: 별마루섬 lies past the islanders' grid (±200 m) -- every point there read as blocked: off its solids instead) */
+  const isle2 = (x, z) => Boolean(D?.newIsleCoast && D.newIsleCoast(x, z) > -2); const solids = T.natureSolids();
+  const free = (x, z) => ok(x, z) && (isle2(x, z) ? solids.every((o) => Math.abs(o.x - x) > 4 || Math.abs(o.z - z) > 4 || Math.hypot(o.x - x, o.z - z) > o.r + 1.2) : (!N?.free || N.free(x, z)));
   const viewOf = (tx, tz, rMin = 6, rMax = 24) => {
     for (let r = rMin; r <= rMax; r += 2) for (let k = 0; k < 24; k += 1) {
       const a = (k / 24) * Math.PI * 2; const ux = Math.cos(a); const uz = Math.sin(a); const x = tx + ux * r; const z = tz + uz * r;
