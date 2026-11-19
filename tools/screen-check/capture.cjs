@@ -29,6 +29,7 @@ const SPOTS = [
   { id: 'mall-inside', label: '백화점/1층 안 노점', inside: 'mall' }, { id: 'house', label: '이웃골/집터와 마당', lot: 0 },
   { id: 'taxi-road', label: '택시 길/차선과 인도', taxi: true }, { id: 'isle2-bridge', label: '별마루다리/다리 위', bridge: 'isle2' },
   { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true }, { id: 'ancient', label: '별마루섬/별지기 느티', area: 'ancient' } /* (1.10.367 N1b) */,
+  { id: 'isle2-dense-a', label: '별마루섬/숲 안쪽(남서)', xz: [300, 271] }, { id: 'isle2-dense-b', label: '별마루섬/숲 안쪽(가운데)', xz: [340, 251] }, { id: 'isle2-dense-c', label: '별마루섬/숲 안쪽(북)', xz: [330, 131] },
 ];
 const NIGHT = ['plaza', 'bay', 'camp'];
 
@@ -90,6 +91,7 @@ const resolve = (page, spot) => page.evaluate((s) => {
     return null;
   };
   if (s.area) return viewOf(T.AREAS[s.area].x, T.AREAS[s.area].z);
+  if (s.xz) return viewOf(s.xz[0], s.xz[1], 2, 12); /* (367: a point of the forest -- standing in it, not off at its edge) */
   if (s.place) { const q = D.PLACES[s.place]; return q && viewOf(q.x, q.z, 10, 30); }
   if (s.door) { const d = T.facilityDoor(s.door); return viewOf(d.x, d.z, 7, 20); }
   if (s.near) { const a = T.AREAS[s.near] || { x: D.NEW_ISLE.x, z: D.NEW_ISLE.z }; return viewOf(a.x, a.z, 6, 90); }
@@ -133,7 +135,7 @@ async function goOut(page) {
           const file = `${device}-${quality}-${spot.id}${night ? '-night' : ''}.png`;
           try {
             if (spot.inside) await goInside(page, spot); else { await goOut(page); const p = await resolve(page, spot); if (!p) throw new Error('no standing point'); await page.evaluate((q) => { const d = window.PlazaDebug(); d.teleport(q.x, q.z); if (q.look) d.setCamYaw?.(Math.atan2(q.look.x - q.x, q.look.z - q.z) + Math.PI); d.setCamPitch?.(0.3); }, p); }
-            await sleep(3500); await page.screenshot({ path: path.join(OUT, file) }); map[file] = `${spot.label}${night ? ' (밤)' : ''}`; console.log('shot', file);
+            await sleep(3500); await page.waitForFunction(() => document.getElementById('loadingCover')?.classList.contains('hidden') !== false, null, { timeout: 25000 }).catch(() => {}); /* (368: a place change's short cover gone first) */ await page.screenshot({ path: path.join(OUT, file) }); map[file] = `${spot.label}${night ? ' (밤)' : ''}`; console.log('shot', file);
             fs.writeFileSync(path.join(OUT, 'spots.json'), JSON.stringify(map, null, 1)); /* (365: as it goes -- a run cut short keeps what it took) */
           } catch (error) { console.log('skip', file, error.message.split('\n')[0]); }
           if (spot.inside) await goOut(page);

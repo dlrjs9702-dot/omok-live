@@ -48,3 +48,30 @@ test('소원: 다음 날 별 조각 한 번(다시 봐도 더 안 줌), 바꾸�
   await req('/api/test/island/star-now', b, { plusMs: 36 * 3600000 });
   const old = (await req('/api/island/stars', b)).data; assert.equal(old.gift, 300); assert.deepEqual(old.fragments, []);
 });
+
+// 369 검토 P1: the fragment's claim was `star_gift_<slot>` for everyone -- only the first wisher of a star got one. Each account its own
+// claim now; one paid under the old one is not paid again
+test('소원 별 조각: 같은 별에 빈 두 계정이 둘 다 받고, 옛 claim으로 이미 받은 계정은 다시 안 받음', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'star-frag2-')); rmAtExit(dir);
+  let server = await boot(t, dir); let { req } = server;
+  const keys = [await server.issue('별둘A'), await server.issue('별둘B'), await server.issue('별둘C')];
+  let [a, b, c] = await Promise.all(keys.map((k) => server.enter(k)));
+  for (const s of [a, b, c]) await req('/api/plaza/state', s, { x: 0, z: -80, yaw: 0, moving: false });
+  const star = (await req('/api/test/island/star-now', a, {})).data.id; const slot = Stars.slotOfId(star);
+  for (const s of [a, b, c]) assert.equal((await req('/api/island/stars/wish', s, { id: star })).status, 200);
+  // C as paid under the old claim (before this fix): its record under `island_give:star_gift_<slot>`
+  await server.stop(); const file = path.join(dir, 'points.json'); const data = JSON.parse(await fs.readFile(file, 'utf8'));
+  const wishers = Object.keys(data.quests || {}).filter((k) => k.endsWith('|stars')).map((k) => k.slice(0, -'|stars'.length)); assert.equal(wishers.length, 3, '셋이 빔');
+  const cId = wishers[2]; /* (one of the three, paid under the old claim) */
+  data.settlements[`island_give:star_gift_${slot}`] = { kind: 'island_give', settlementId: `island_give:star_gift_${slot}`, at: new Date().toISOString(), userId: cId, itemId: 'star_fragment', qty: 1 };
+  await fs.writeFile(file, JSON.stringify(data));
+  server = await boot(t, dir); ({ req } = server); [a, b, c] = await Promise.all(keys.map((k) => server.enter(k)));
+  await req('/api/test/island/star-now', a, { plusMs: 36 * 3600000 });
+  const fragsOf = async (s) => ((await req('/api/island/stars', s)).data.fragments || []).reduce((n, f) => n + f.n, 0);
+  const got = []; for (const s of [a, b, c]) got.push(await fragsOf(s));
+  const bagFrags = async (s) => ((await req('/api/island/bag', s)).data.items || []).filter((e) => /^star_fragment/.test(e.itemId)).reduce((n, e) => n + e.qty, 0);
+  const inBags = []; for (const s of [a, b, c]) inBags.push(await bagFrags(s));
+  // the one paid under the old claim (whichever of the three it is) has none now; the other two one each
+  assert.equal(got.reduce((x, y) => x + y, 0), 2, `새로 받은 수 ${got}`); assert.equal(inBags.filter((n) => n === 1).length, 2, `가방 ${inBags}`);
+  for (const s of [a, b, c]) assert.equal(await fragsOf(s), 0, '다시 봐도 더 안 줌');
+});

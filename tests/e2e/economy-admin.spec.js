@@ -28,3 +28,22 @@ test('경제 값 관리: 바꾸기 확인창, 변경 이력, 되돌리기', asyn
   await expect(page.locator('#economyHistory li').first()).toContainText('잡초: 420 → 310');
   await expect(weed).toHaveValue('');
 });
+
+// 368 (사용자 「판매 값 배수 중 대상이 잡초에서 다른걸로 변경이 안돼」): the island event's target picked stays picked -- 광석 shows the 보석 row and is
+// what is sent; 물건 하나 shows the item row
+test('섬 이벤트 관리: 판매 값 대상이 잡초에서 광석·물건 하나로 바뀌고, 그 줄이 보이고, 보내는 값도 그것', async ({ page }) => {
+  await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
+  await page.goto('/');
+  await page.locator('#adminPassword').fill(adminPassword);
+  await page.getByRole('button', { name: '관리자로 입장' }).click();
+  await page.locator('#adminTabs [data-tab="island"]').click(); await page.locator('#islandEventAdmin summary').click();
+  await page.locator('#ieKind').selectOption('sell'); await expect(page.locator('#ieTarget option')).not.toHaveCount(0);
+  await page.locator('#ieTarget').selectOption('ore'); await expect(page.locator('#ieTarget')).toHaveValue('ore'); await expect(page.locator('#ieGemsRow')).toBeVisible(); await expect(page.locator('#ieItemRow')).toBeHidden();
+  await page.locator('#ieTarget').selectOption('item'); await expect(page.locator('#ieTarget')).toHaveValue('item'); await expect(page.locator('#ieItemRow')).toBeVisible(); await expect(page.locator('#ieGemsRow')).toBeHidden();
+  await page.locator('#ieTarget').selectOption('ore');
+  const [req] = await Promise.all([page.waitForRequest((r) => r.url().endsWith('/api/admin/island-events') && r.method() === 'POST'), page.locator('#islandEventForm').evaluate((f) => f.requestSubmit())]);
+  expect(JSON.parse(req.postData())).toMatchObject({ kind: 'sell', target: 'ore' });
+  await expect(page.locator('#ieStatus')).toContainText(/열었어요|예약했어요/);
+  page.once('dialog', (d) => d.accept()); await page.locator('#ieList li', { hasText: '광석' }).first().getByRole('button', { name: '끝내기' }).click(); /* (the next tests' island free of it) */
+  await expect(page.locator('#ieList li', { hasText: '광석' }).first()).toContainText('끝냄');
+});

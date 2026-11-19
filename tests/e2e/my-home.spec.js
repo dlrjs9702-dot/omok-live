@@ -108,6 +108,7 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
   await expect(tankBox.locator('button', { hasText: '넣기' })).toHaveCount(1);
   await tankBox.locator('button', { hasText: '넣기' }).click();
   await expect(tankBox).toContainText('1/3마리', { timeout: 10000 });
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('바다 수조 · 1/3칸'); expect((await post(request, '/api/home/tank', a.token, { tank, put: 'fish_crucian_carp', requestId: crypto.randomUUID() })).data.error).toBe('TANK_WATER'); /* (368 민물·바다 수조: the goby made it a sea tank -- a crucian carp refused) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().home().fish), { timeout: 10000 }).toBe(1);
   const bagQty = async (id) => ((await get(request, '/api/island/bag', a.token)).data.items.filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0));
   expect(await bagQty('fish_goby')).toBe(1);

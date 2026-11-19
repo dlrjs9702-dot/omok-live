@@ -201,13 +201,24 @@ test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 �
 test('로딩 화면: 게임 접속 뒤 처음 섬에 들어갈 때 그림·제목·막대·팁이 덮였다가 걷힌다', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const who = await shopper(browser, request, isMobile ? '로딩m' : '로딩', 0, 'female'); const { page } = who;
-  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); sessionStorage.setItem('gc.coverNext', '1'); }); await page.reload();
+  // (368 로딩 안정화, 사용자 「로딩창 중 다 안정화 되고 넘어가게」: one ground picture held back 3 s -- out of the resource cache, so it
+  // comes from the network -- and the cover stays up until it is in; the old rule lifted on 1.5 s of quiet with the ground bare)
+  let releasedAt = 0; const HOLD = '**/assets/island/ground-v2/cover-a.png*';
+  await who.context.route(HOLD, async (route) => { await new Promise((r) => setTimeout(r, 3000)); releasedAt = Date.now(); await route.continue(); });
+  await page.evaluate(async () => { for (const k of await caches.keys()) { const c = await caches.open(k); for (const r of await c.keys()) if (r.url.includes('/ground-v2/cover-a.png')) await c.delete(r); } localStorage.removeItem('gc.testClassic'); sessionStorage.setItem('gc.coverNext', '1'); });
+  await page.reload();
   const cover = page.locator('#loadingCover');
   await expect(cover).toBeVisible({ timeout: 15000 }); await expect(cover.locator('.loadingTitle')).toHaveText('섬으로 가는 중…');
   await expect(page.locator('#loadingTip')).toContainText('💡', { timeout: 10000 });
   expect(await cover.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none'); /* (never takes a click) */
+  await expect.poll(() => page.evaluate(() => window.PlazaReady?.()?.running ?? false), { timeout: 60000 }).toBe(true);
+  if (!releasedAt) { expect(await page.evaluate(() => window.PlazaReady().ready)).toBe(false); await expect(cover).toBeVisible(); } /* (the picture still held: not ready, still covered) */
   await expect(cover).toBeHidden({ timeout: 40000 });
-  expect(await page.evaluate(() => window.PlazaDebug()?.running)).toBe(true);
-  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); await expect(cover).toBeHidden(); /* (only after 「게임 접속」: a reload goes straight in) */
+  expect(releasedAt, '덮개는 붙잡힌 땅 그림이 온 뒤에야 걷힘').toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.PlazaReady())).toMatchObject({ running: true, textures: 0, ready: true });
+  await who.context.unroute(HOLD);
+  // a reload (not after 「게임 접속」): only the short cover -- no tip -- and only while not ready
+  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaReady?.()?.ready ?? false), { timeout: 60000 }).toBe(true);
+  await expect(cover).toBeHidden({ timeout: 15000 }); expect(await page.locator('#loadingTip').isVisible()).toBe(false);
   await expectNoScriptError(page); await who.context.close();
 });

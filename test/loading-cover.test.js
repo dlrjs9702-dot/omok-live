@@ -1,5 +1,5 @@
 'use strict';
-// 366 로딩 화면 + 관리자 로딩 팁: the cover's rule (steps, files quiet, ten smooth frames, 20 s), the tips (only what is in the game,
+// 366 로딩 화면 + 관리자 로딩 팁: the cover's rule (steps, the scene ready -- 368 --, ten smooth frames, 20 s; the short one), the tips (only what is in the game,
 // switched off, the admin's own -- 60 characters), the API (the list for anyone, the changes for the admin)
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,15 +11,22 @@ const Tips = require('../lib/loading-tips');
 const rmAtExit = require('../test-support/rm-at-exit');
 const { boot } = require('../test-support/test-server');
 
-test('걷히는 때: 섬이 그려지고 파일이 1.5초 멈추고 10장면 연속 50 ms 안 -- 아니면 20초', () => {
+test('걷히는 때(368): 장면이 「준비됨」(땅 그림·모델 다 옴, 셰이더 컴파일) 뒤 10장면 연속 50 ms 안 -- 아니면 20초, 파일이 멈춘 것만으로는 안 걷힘', () => {
   const smooth = Array(10).fill(16); const rough = [...Array(9).fill(16), 80];
   assert.deepEqual([L.state({ entered: true, elapsed: 100 }).step, L.state({ entered: true, elapsed: 100 }).lift], [1, false]);
-  assert.equal(L.state({ entered: true, running: true, quietMs: 500, frames: smooth, elapsed: 3000 }).lift, false, '파일이 아직 옴');
-  assert.equal(L.state({ entered: true, running: true, quietMs: 2000, frames: rough, elapsed: 3000 }).lift, false, '느린 장면이 하나');
-  assert.equal(L.state({ entered: true, running: true, quietMs: 2000, frames: smooth.slice(0, 9), elapsed: 3000 }).lift, false, '10장면이 안 됨');
-  const ready = L.state({ entered: true, running: true, quietMs: 2000, frames: smooth, elapsed: 3000 }); assert.deepEqual([ready.step, ready.lift, ready.progress, ready.label], [4, true, 1, '준비 완료']);
+  assert.equal(L.state({ entered: true, running: true, ready: false, waiting: 0, frames: smooth, elapsed: 9000 }).lift, false, '조용해도 준비 안 됨(늦은 땅 그림·컴파일)이면 안 걷힘');
+  assert.equal(L.state({ entered: true, running: true, ready: false, waiting: 3, frames: smooth, elapsed: 3000 }).lift, false, '그림이 아직 옴');
+  assert.equal(L.state({ entered: true, running: true, ready: true, frames: rough, elapsed: 3000 }).lift, false, '느린 장면이 하나');
+  assert.equal(L.state({ entered: true, running: true, ready: true, frames: smooth.slice(0, 9), elapsed: 3000 }).lift, false, '10장면이 안 됨');
+  const ready = L.state({ entered: true, running: true, ready: true, frames: smooth, elapsed: 3000 }); assert.deepEqual([ready.step, ready.lift, ready.progress, ready.label], [4, true, 1, '준비 완료']);
   const cap = L.state({ entered: true, running: false, elapsed: 20000 }); assert.deepEqual([cap.lift, cap.timedOut], [true, true], '20초면 그냥 열어요');
-  const a = L.state({ entered: true, running: true, quietMs: 300, elapsed: 2000 }).progress; const b = L.state({ entered: true, running: true, quietMs: 1200, elapsed: 2000 }).progress; assert.ok(b > a && b < 0.75, '막대는 앞으로만');
+  const a = L.state({ entered: true, running: true, ready: false, waiting: 8, mostWaiting: 10, elapsed: 2000 }).progress; const b = L.state({ entered: true, running: true, ready: false, waiting: 2, mostWaiting: 10, elapsed: 2000 }).progress; assert.ok(b > a && b < 0.75, '막대는 남은 것이 줄수록 앞으로');
+  // the short one (a place change that is not ready): five frames under 100 ms, 8 s at most
+  const slowPhone = Array(5).fill(48); assert.equal(L.state({ entered: true, running: true, ready: true, frames: slowPhone, elapsed: 600, short: true }).lift, true, '짧은 덮개: 느린 폰 20 fps도 걷힘');
+  assert.equal(L.state({ entered: true, running: true, ready: true, frames: [...Array(4).fill(30), 250], elapsed: 600, short: true }).lift, false, '짧은 덮개: 컴파일 걸림 하나면 기다림');
+  assert.equal(L.state({ entered: true, running: true, ready: true, readyMs: 1600, frames: Array(5).fill(370), elapsed: 2500, short: true }).lift, true, '짧은 덮개: 느린 기계(2.7 fps)도 준비 1.5초면 걷힘');
+  assert.equal(L.state({ entered: true, running: true, ready: true, readyMs: 1600, frames: Array(10).fill(370), elapsed: 2500 }).lift, false, '첫 입장 덮개는 그대로 부드러운 장면을 기다림');
+  assert.equal(L.state({ entered: true, running: true, ready: false, frames: slowPhone, elapsed: 7999, short: true }).lift, false); assert.deepEqual(L.state({ entered: true, running: true, ready: false, elapsed: 8000, short: true }).timedOut, true, '짧은 덮개는 8초면 열어요');
   assert.equal(L.pickTip(['a', 'b'], 'a', () => 0.9), 'b', '같은 팁 두 번 연속 없음'); assert.equal(L.pickTip(['a'], 'a'), 'a');
 });
 

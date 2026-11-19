@@ -2841,7 +2841,7 @@ const CONTEST_TIPS = Object.freeze({
   spider: ['같은 무늬끼리 먼저 이어 줘요.', '빈 줄이 생기면 큰 숫자 줄을 옮겨 둬요.'],
   reaction: ['색이 바뀌기 전에 누르면 처음부터예요. 참아요.', '눈은 깜빡이지 말고 손끝에 힘을 살짝 실어요.'],
 });
-const areaNear = (x, z, max = 60) => { let best = null; let bd = max; for (const [key, a] of Object.entries(IslandTerrain.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { bd = d; best = { key, label: a.label, x: a.x, z: a.z }; } } return best; };
+const areaNear = (x, z, max = 60) => { let best = null; let bd = max; for (const [key, a] of Object.entries(IslandTerrain.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd && !(a.r && d > a.r) /* (368: a name with its own reach) */) { bd = d; best = { key, label: a.label, x: a.x, z: a.z }; } } return best; };
 const daySeed = (s) => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
 // what each hint kind can say now -> { kind: { vals, at? } } (a kind left out has nothing true to say)
 async function talkHints(account, n, pos, now) {
@@ -5024,7 +5024,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.367' });
+    return sendJson(res, 200, { ok: true, version: '1.10.368' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -7225,6 +7225,7 @@ async function requestHandler(req, res) {
         const itemId = String(body.put); if (!IslandHome.FISH_SIZE[itemId] && !IslandHome.INSECTS.has(itemId)) return sendError(res, 400, 'BAD_FISH', '물고기를 확인해 주세요.');
         if (fishes.some((f) => f.claim === claim)) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) });
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
+        if (!T.insects && !IslandHome.waterFits(fishes, itemId)) { const w = IslandHome.tankWater(fishes); return sendError(res, 409, 'TANK_WATER', w === 'mixed' ? '섞인 수조예요. 꺼내기만 할 수 있고, 다 비우면 다시 넣을 수 있어요.' : `${IslandHome.WATER_WORD[w]} 수조예요. ${IslandHome.WATER_WORD[w]} 물고기만 넣어요.`); } /* (368 민물·바다 수조: the first fish sets the water) */
         if (!IslandHome.tankRoom(IslandHome.shapeOf(tank.id), fishes, itemId)) return sendError(res, 409, 'TANK_FULL', T.insects ? '곤충 상자에는 한 마리만 넣어요.' : IslandHome.FISH_ROOM[itemId] || fishes.some((f) => IslandHome.FISH_ROOM[f.itemId]) ? '참치는 자리를 많이 차지해서 더 못 넣어요.' : '수조가 가득 찼어요.'); // (v1.10.227: a tuna six places)
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
@@ -9495,12 +9496,17 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0; const frags = { star_fragment: 0, star_fragment_shiny: 0 }; let full = false; let bag = null;
     const from = await starsFragmentFrom();
+    const starTag = crypto.createHash('sha1').update(account).digest('hex').slice(0, 16); // (369 검토 P1: the fragment's claim each account's own -- craft's)
     for (const st of IslandStars.wishesDue((await pointStore.questDoc(account, 'stars')).doc.wished || [], now)) { // (every day before, not only yesterday -- Codex review)
       const slot = IslandStars.slotOfId(st.id);
       if (st.at < from) { const out = await pointStore.claimEvent({ eventId: `star_gift_${slot}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' }); if (out.applied) gift += out.amount; continue; } // (366: wished before the release -- 300P as promised)
       // 366 별 조각 (notes star-wish-20261118): one fragment, the shiny one by economy star:shinyPct -- the same for a claim asked again
       const itemId = IslandStars.shinyOf(account, slot, Economy.value('star:shinyPct')) ? 'star_fragment_shiny' : 'star_fragment';
-      const g = await pointStore.islandGive({ userId: account, claimId: `star_gift_${slot}`, itemId, qty: 1, quiet: true }, nowMs()).catch(() => null);
+      /* (369 검토 P1: `star_gift_<slot>` had no account in it -- island gives' claims are the store's, one for everyone, so only the first
+         wisher of a star got one, the others none, asked again every look. Each account its own now; whoever was paid under the old one
+         is not paid again) */
+      const old = await pointStore.settlementOf(`island_give:star_gift_${slot}`).catch(() => null); if (old?.userId === account) continue;
+      const g = await pointStore.islandGive({ userId: account, claimId: `star_gift:${starTag}:${slot}`, itemId, qty: 1, quiet: true }, nowMs()).catch(() => null);
       if (g?.applied) { frags[itemId] += 1; bag = g.bag || bag; } else if (g?.reason === 'full') { full = true; break; }
     }
     if (gift) notifyPointsChanged([account]);
@@ -10663,7 +10669,7 @@ async function main() {
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.367 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.368 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); });
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
