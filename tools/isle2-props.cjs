@@ -11,7 +11,7 @@ const T = require(path.join(ROOT, 'public/plaza/island-terrain.js')); require(pa
 const D = T.dalmaru; const I = D.NEW_ISLE;
 const hash = (a, b, k) => { const v = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
 const r2 = (v) => Math.round(v * 100) / 100; const r3 = (v) => Math.round(v * 1000) / 1000;
-const glbExtras = (file, node) => { const b = fs.readFileSync(path.join(ROOT, '..', 'assets/152. Game Island byeolmaru tigers 2026-11-18/01. High', file)); /* (the asset folder's: the swamp meshes are not in the game -- drawn by island.js) */ const j = JSON.parse(b.toString('utf8', 20, 20 + b.readUInt32LE(12))); return j.nodes.find((n) => n.name === node)?.extras || {}; };
+const SRC = JSON.parse(fs.readFileSync(path.join(__dirname, 'isle2-props-sources.json'), 'utf8')); /* (from the asset folders, outside the repo: 152 swamp_a/b/c's outlines -- the swamp meshes are not in the game, island.js draws them -- and 157's solids.json) */
 const toWorld = (x, z, yaw, u, v) => [x + u * Math.cos(yaw) + v * Math.sin(yaw), z - u * Math.sin(yaw) + v * Math.cos(yaw)];
 
 // ---- the fence: the contour IN m in from the coast, every 2.4 m ----
@@ -42,7 +42,7 @@ const SIGN = (() => { const nx = -Math.sin(gate.yaw); const nz = -Math.cos(gate.
   return null; })();
 // ---- the spring cave (157): its README's place ----
 const CAVE = { x: 363, z: 176, yaw: 0.942 };
-const caveSolids = JSON.parse(fs.readFileSync(path.join(ROOT, '..', 'assets/157. Game Island creek spring cave 2026-11-20/04. Specifications/solids.json'), 'utf8')).spring_cave;
+const caveSolids = SRC.caveSolids;
 
 // ---- the camp (136): the fire in its middle, two benches facing it, three stools round it ----
 const C = I.camp; const CAMP = [[C.x, C.z, 0, 0]];
@@ -60,7 +60,7 @@ let ROCK = null; { let best = Infinity; for (let x = I.peak.x - 50; x <= I.peak.
 
 // ---- the swamps (152): off the walks, the camp, the peak, the creek, the coast; 40 m apart; their outlines in the world ----
 const SWAMP_KINDS = ['swamp_a', 'swamp_b', 'swamp_c']; const SIZE = [3.1, 4.3, 5.9];
-const outlineOf = (k) => { const o = glbExtras(`byeolmaru-v1/${SWAMP_KINDS[k]}.glb`, SWAMP_KINDS[k]).outline; const out = []; for (let i = 0; i < o.length; i += 2) out.push([o[i], o[i + 1]]); return out; };
+const outlineOf = (k) => { const o = SRC.swampOutlines[SWAMP_KINDS[k]]; const out = []; for (let i = 0; i < o.length; i += 2) out.push([o[i], o[i + 1]]); return out; };
 const cands = []; for (let x = I.x - I.r; x <= I.x + I.r; x += 4) for (let z = I.z - I.r; z <= I.z + I.r; z += 4) {
   if (D.newIsleCoast(x, z) < 14 || D.slopeAt(x, z) > 0.22 || D.creekDist(x, z) < 8 || Math.hypot(x - C.x, z - C.z) < C.r + 14 || Math.hypot(x - I.peak.x, z - I.peak.z) < 22 || Math.hypot(x - T.ANCIENT.x, z - T.ANCIENT.z) < 28 || Math.hypot(x - CAVE.x, z - CAVE.z) < 18 || (ROCK && Math.hypot(x - ROCK[0], z - ROCK[1]) < 12)) continue;
   cands.push({ x, z, h: hash(x, z, 9) }); }
