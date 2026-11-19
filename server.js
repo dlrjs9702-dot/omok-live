@@ -6421,7 +6421,7 @@ async function requestHandler(req, res) {
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
     if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
     if (out.applied) notifyPointsChanged([account]);
-    return sendJson(res, 200, { ok: true, itemId, qty, bag: out.bag, balance: out.balance ?? null });
+    return sendJson(res, 200, { ok: true, itemId, qty: Number.isSafeInteger(out.qty) ? out.qty : qty /* (374 Codex 봇 #523: an order asked again -- what was kept, not what was asked now) */, bag: out.bag, balance: out.balance ?? null });
   }
   // 297 가방에서 옮기기 (총괄 #447): what the bag held before the box was bought -- into the box as far as it has room
   if (pathname === '/api/island/box/fill' && req.method === 'POST') {

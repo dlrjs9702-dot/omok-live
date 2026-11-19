@@ -51,7 +51,9 @@ test('개수 칸: 팔 물건에 37을 쓰면 미리보기와 정산이 37개 값
   await expect(row).toContainText('×40');
   const box = row.locator('.countBoxInput'); await expect(box).toHaveValue('40');
   expect(await box.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
-  await box.fill('37'); await box.press('Enter');
+  /* (374 Codex 봇 #521: typed, then + pressed straight away -- the press counts, from what was typed) */
+  await box.fill('20'); await row.getByRole('button', { name: /하나 더/ }).click(); await expect(row).toContainText('×21'); await expect(row.locator('.countBoxInput')).toHaveValue('21');
+  await row.locator('.countBoxInput').fill('37'); await row.locator('.countBoxInput').press('Enter');
   await expect(row).toContainText('×37'); await expect(row.locator('.countBoxInput')).toHaveValue('37');
   const price = (await S.get(request, '/api/island/bag', who.token)).data.items.find((e) => e.itemId === 'herb').price;
   const preview = Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, '')); expect(preview).toBe(37 * price);

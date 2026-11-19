@@ -3059,7 +3059,7 @@
       if (item.qty > 1) { /* (1.10.370 개수 칸: − [n] + · 전부 -- the count typed too; 0 or empty back to the bag) */
         const step = document.createElement('span'); step.className = 'placeStep';
         const box = window.CountBox ? CountBox.make({ value: n, max: item.qty, label: `${item.name} 개수`, onSet: (v) => placeMove(item, v - (placePick.get(item.entryId) || 0)) }) : document.createElement('span');
-        const all = document.createElement('button'); all.type = 'button'; all.className = 'ghost tiny'; all.textContent = '전부'; all.setAttribute('aria-label', '전부'); all.addEventListener('click', () => placeMove(item, null));
+        const all = document.createElement('button'); all.type = 'button'; all.className = 'ghost tiny'; all.textContent = '전부'; all.setAttribute('aria-label', '전부'); all.addEventListener('mousedown', (e) => e.preventDefault()); /* (374: as the box's − and +, never takes the focus -- the box not left first) */ all.addEventListener('click', () => placeMove(item, null));
         step.append(box, all); row.append(step);
       }
       if (placeMult(item) > 1) row.append(Object.assign(document.createElement('span'), { className: 'placeEventMult', textContent: `🎉 ${placeMult(item)}배` }));
@@ -3086,9 +3086,10 @@
         if (pick !== 'buy' && box) { box.setCount(pick); return; }
         const n = pick === 'buy' ? (box ? box.count() : 1) : pick;
         b.disabled = true;
-        pendingRid ||= crypto.randomUUID();
-        try { const r = await api('/api/island/store/ores', { method: 'POST', body: JSON.stringify({ itemId: o.id, qty: n, requestId: pendingRid }) }); pendingRid = null; if (r.bag) drawIslandBag(r.bag); loadPoints(); showToast(`${o.name} ${r.qty || n}개를 샀어요 · -${fmtP(o.price * (r.qty || n))}`); }
-        catch (error) { if (error.status && error.status < 500) pendingRid = null; showToast(error.message); } finally { b.disabled = false; }
+        /* (374 Codex 봇 #523: an order with no answer keeps its count too -- asked again as it was; the count shown is what the server kept) */
+        pendingRid ||= { id: crypto.randomUUID(), qty: n };
+        try { const r = await api('/api/island/store/ores', { method: 'POST', body: JSON.stringify({ itemId: o.id, qty: pendingRid.qty, requestId: pendingRid.id }) }); pendingRid = null; if (r.bag) drawIslandBag(r.bag); loadPoints(); const got = Number(r.qty) || n; showToast(`${o.name} ${got}개를 샀어요 · -${fmtP(o.price * got)}`); }
+        catch (error) { if (error.status && error.status < 500) pendingRid = null; else if (pendingRid && pendingRid.qty !== n) box?.setCount(pendingRid.qty); showToast(error.message); } finally { b.disabled = false; }
       }); row.append(b); }
       return row;
     });
