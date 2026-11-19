@@ -1,6 +1,8 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, adminToken, spaceOn, expectNoScriptError } = require('./skin-support');
+const { shopper, adminToken, spaceOn, expectNoScriptError, post } = require('./skin-support');
 test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
+// (2026-11-20: the real 수확제 (11-20~26) moves the islanders to its stalls -- the festival's clock held before it here, back after)
+test.afterEach(async ({ request }) => { await post(request, '/api/test/festival/clock', null, { at: 0 }); });
 
 // v1.10.213 주민 근무표 A (assets 84·83·88): every post in its islander's own model -- the story islanders where their
 // stories stand, the mayor at the 관공서 gate, the 관공서's three desks, the jail's warden -- and the ten walking ones in
@@ -8,6 +10,7 @@ test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.
 // no rain -- put back after). PC and phone.
 test('주민 모습: 자리마다 그 주민 모델, 서 있기·대화 가까이·걷기', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.SHOT_DIR ? 600000 : 240000);
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-12T12:00:00+09:00') })).status).toBe(200);
   const who = await shopper(browser, request, isMobile ? '주민구경m' : '주민구경', 0, 'female'); const { page } = who;
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.setItem('gc.view.out', 'third'); });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);

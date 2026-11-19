@@ -1,6 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, adminToken, spaceOn, expectNoScriptError, walkStory } = require('./skin-support');
 test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
+// (2026-11-20: the real 수확제 (11-20~26) -- its start story was in the book before 「행사 이야기 none yet」. The festival's clock held before it here, back after)
+test.afterEach(async ({ request }) => { await post(request, '/api/test/festival/clock', null, { at: 0 }); });
 
 // v1.10.277 시험 정리 2차 (docs/test-audit-20261107.md §6): S1 and S2 one player -- S2 sets its story (every chapter done) and
 // reloads, as its own spec did.
@@ -13,6 +15,7 @@ test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.
 // (ZZ_SHOT: the island's own models, and the lighthouse at night)
 test('섬 이야기: 이야기 부탁 → 할 일 → ✓ → 쪽지·이야기 책; 장면: 섬 일지 → 등대 아래 문 → 결론 듣기 → 수사판 도장', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 900000 : 600000);
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-12T12:00:00+09:00') })).status).toBe(200);
   const who = await shopper(browser, request, isMobile ? '이야기폰' : '이야기손', 200000, 'female'); const { page, token } = who;
   { // S1
     await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); });
