@@ -4644,10 +4644,12 @@
   { // 364 관리자 「섬 이벤트」 (notes docs/admin-island-events-20261118.md): open one (now or at a time), the list, end one at once
     let ie = null; const opt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; };
     const kindOf = () => byId('ieKind').value; const minutesOf = () => (byId('ieMinutes').value === 'custom' ? Number(byId('ieMinutesCustom').value) : Number(byId('ieMinutes').value));
-    const fillTargets = () => {
-      if (!ie) return; const k = kindOf(); const t = byId('ieTarget'); t.replaceChildren(...(k === 'notice' ? [] : Object.entries(k === 'sell' ? ie.sell : ie.catch).map(([v, n]) => opt(v, n))));
-      t.disabled = k === 'notice'; byId('ieMult').disabled = k === 'notice'; byId('ieItemRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'item')); byId('ieGemsRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'ore'));
-      byId('ieTemplate').replaceChildren(opt('', '알림 틀 고르기 (선택)'), ...ie.templates.filter((x) => x.kind === k).map((x, i) => opt(String(i), x.text)));
+    /* (368 사용자 「판매 값 배수 중 대상이 잡초에서 다른걸로 변경이 안돼」: a target picked rebuilt the list -- back to its first. The list made on a
+       kind's change and on loading only; a target's change shows its rows) */
+    const syncRows = () => { const k = kindOf(); const t = byId('ieTarget'); t.disabled = k === 'notice'; byId('ieMult').disabled = k === 'notice'; byId('ieItemRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'item')); byId('ieGemsRow').classList.toggle('hidden', !(k === 'sell' && t.value === 'ore')); };
+    const rebuildTargets = () => {
+      if (!ie) return; const k = kindOf(); byId('ieTarget').replaceChildren(...(k === 'notice' ? [] : Object.entries(k === 'sell' ? ie.sell : ie.catch).map(([v, n]) => opt(v, n))));
+      byId('ieTemplate').replaceChildren(opt('', '알림 틀 고르기 (선택)'), ...ie.templates.filter((x) => x.kind === k).map((x, i) => opt(String(i), x.text))); syncRows();
     };
     const fillText = () => {
       const k = kindOf(); const pick = ie?.templates.filter((x) => x.kind === k)[Number(byId('ieTemplate').value)]; if (!pick || byId('ieTemplate').value === '') return;
@@ -4663,10 +4665,10 @@
         return li;
       }));
     };
-    const loadIe = async () => { ie = await api('/api/admin/island-events'); byId('ieItem').replaceChildren(...ie.items.map((x) => opt(x.id, x.name))); const k = kindOf(); const tv = byId('ieTarget').value; fillTargets(); if (kindOf() === k && tv) byId('ieTarget').value = tv; drawList(); };
+    const loadIe = async () => { ie = await api('/api/admin/island-events'); byId('ieItem').replaceChildren(...ie.items.map((x) => opt(x.id, x.name))); const k = kindOf(); const tv = byId('ieTarget').value; rebuildTargets(); if (kindOf() === k && tv) { byId('ieTarget').value = tv; syncRows(); } drawList(); };
     byId('islandEventAdmin')?.addEventListener('toggle', () => { if (byId('islandEventAdmin').open) loadIe().catch((error) => { byId('ieStatus').textContent = error.message; }); });
-    byId('ieKind')?.addEventListener('change', () => { fillTargets(); byId('ieText').value = ''; });
-    byId('ieTarget')?.addEventListener('change', () => { fillTargets(); fillText(); });
+    byId('ieKind')?.addEventListener('change', () => { rebuildTargets(); byId('ieText').value = ''; });
+    byId('ieTarget')?.addEventListener('change', () => { syncRows(); fillText(); });
     for (const id of ['ieTemplate', 'ieMult', 'ieItem']) byId(id)?.addEventListener('change', fillText);
     byId('ieMinutes')?.addEventListener('change', () => { byId('ieMinutesCustom').classList.toggle('hidden', byId('ieMinutes').value !== 'custom'); fillText(); });
     byId('islandEventForm')?.addEventListener('submit', async (event) => {
@@ -14392,13 +14394,13 @@
     const inGame = () => Boolean(document.body.dataset.session && !/^__/.test(document.body.dataset.session)) && !classic();
     const show = (short) => {
       if (active || !cover || !L) return; active = true;
-      const t0 = performance.now(); const frames = []; let prev = performance.now(); let most = 0; const need = short ? L.SHORT.FRAMES : L.FRAMES;
+      const t0 = performance.now(); const frames = []; let prev = performance.now(); let most = 0; let readySince = 0; const need = short ? L.SHORT.FRAMES : L.FRAMES;
       cover.classList.toggle('short', short); cover.classList.remove('hidden', 'lifting'); cover.querySelector('.loadingTitle').textContent = short ? '불러오는 중…' : '섬으로 가는 중…';
       if (!short) api('/api/island/loading-tips').then((d) => { let last = null; try { last = sessionStorage.getItem('gc.lastTip'); } catch {} const tip = L.pickTip(d.tips || [], last); byId('loadingTip').textContent = tip ? `💡 ${tip}` : ''; try { sessionStorage.setItem('gc.lastTip', tip); } catch {} }).catch(() => {});
       const tick = (now) => {
         frames.push(now - prev); prev = now; if (frames.length > need) frames.shift();
-        const r = window.PlazaReady?.(); const waiting = r ? r.textures + r.files : 0; most = Math.max(most, waiting);
-        const s = L.state({ entered: true, running: Boolean(r?.running), ready: Boolean(r?.ready), waiting, mostWaiting: most, frames, elapsed: now - t0, short });
+        const r = window.PlazaReady?.(); const waiting = r ? r.textures + r.files : 0; most = Math.max(most, waiting); readySince = r?.ready ? readySince || now : 0;
+        const s = L.state({ entered: true, running: Boolean(r?.running), ready: Boolean(r?.ready), readyMs: readySince ? now - readySince : 0, waiting, mostWaiting: most, frames, elapsed: now - t0, short });
         byId('loadingBarFill').style.width = `${Math.round(s.progress * 100)}%`; byId('loadingStep').textContent = s.lift ? '준비 완료' : `${s.label} 중…`;
         cover.dataset.step = String(s.step); /* (tests: where it is) */
         if (s.lift) { cover.classList.add('lifting'); setTimeout(() => { cover.classList.add('hidden'); cover.classList.remove('lifting', 'short'); active = false; }, short ? 350 : 700); return; }

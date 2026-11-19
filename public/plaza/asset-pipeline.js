@@ -67,6 +67,7 @@
         return byUrl.get(url);
       },
       status: () => Object.fromEntries(state),
+      pending: () => { let n = 0; for (const v of state.values()) if (v === 'loading') n += 1; return n; }, // (368: asked every frame under the loading cover -- no object made)
       // frees what was loaded (the caller says how); later `get`s load again
       clear(free) { for (const p of byUrl.values()) p.then((value) => { if (value) free?.(value); }); byUrl.clear(); state.clear(); },
     };

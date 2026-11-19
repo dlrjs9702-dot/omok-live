@@ -12,14 +12,14 @@
 }(typeof self !== 'undefined' ? self : this, () => {
   const STEPS = Object.freeze(['연결', '섬 그리기', '주민·물건', '준비 완료']);
   const CAP_MS = 20000; const FRAMES = 10; const FRAME_MS = 50;
-  const SHORT = Object.freeze({ CAP_MS: 8000, FRAMES: 5, FRAME_MS: 100 }); /* (a slow phone's 20~25 fps -- 40~50 ms -- would sit out the 8 s every door: the hitches waited out are 200 ms and more) */
+  const SHORT = Object.freeze({ CAP_MS: 8000, FRAMES: 5, FRAME_MS: 100, READY_MS: 1500 }); /* (a slow phone's 20~25 fps -- 40~50 ms -- would sit out the 8 s every door: the hitches waited out are 200 ms and more) */
   // s: { entered, running, ready, waiting (things still coming), frames: [ms...], elapsed, short } -> { step (0..4 done), label, progress 0..1, lift, timedOut }
   function state(s) {
     const need = s.short ? SHORT.FRAMES : FRAMES; const cap = s.short ? SHORT.CAP_MS : CAP_MS; const ms = s.short ? SHORT.FRAME_MS : FRAME_MS;
     const frames = Array.isArray(s.frames) ? s.frames.slice(-need) : [];
     const smooth = frames.length >= need && frames.every((f) => f < ms);
     const done = [Boolean(s.entered), Boolean(s.entered && s.running), Boolean(s.entered && s.running && s.ready), false];
-    done[3] = done[2] && smooth;
+    done[3] = done[2] && (smooth || (s.short && Number(s.readyMs) >= SHORT.READY_MS)); /* (the short one: ready 1.5 s is enough -- a slow machine's frames never under 100 ms kept it the whole 8 s, CI #519) */
     const step = done.filter(Boolean).length; const timedOut = Number(s.elapsed) >= cap;
     const waiting = Math.max(0, Number(s.waiting) || 0); const most = Math.max(waiting, Number(s.mostWaiting) || 0);
     const partial = step === 2 ? (most ? (1 - waiting / most) * 0.8 : 0) : step === 3 ? Math.min(1, frames.filter((f) => f < ms).length / need) * 0.9 : 0;

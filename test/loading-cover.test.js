@@ -24,6 +24,8 @@ test('걷히는 때(368): 장면이 「준비됨」(땅 그림·모델 다 옴, 
   // the short one (a place change that is not ready): five frames under 100 ms, 8 s at most
   const slowPhone = Array(5).fill(48); assert.equal(L.state({ entered: true, running: true, ready: true, frames: slowPhone, elapsed: 600, short: true }).lift, true, '짧은 덮개: 느린 폰 20 fps도 걷힘');
   assert.equal(L.state({ entered: true, running: true, ready: true, frames: [...Array(4).fill(30), 250], elapsed: 600, short: true }).lift, false, '짧은 덮개: 컴파일 걸림 하나면 기다림');
+  assert.equal(L.state({ entered: true, running: true, ready: true, readyMs: 1600, frames: Array(5).fill(370), elapsed: 2500, short: true }).lift, true, '짧은 덮개: 느린 기계(2.7 fps)도 준비 1.5초면 걷힘');
+  assert.equal(L.state({ entered: true, running: true, ready: true, readyMs: 1600, frames: Array(10).fill(370), elapsed: 2500 }).lift, false, '첫 입장 덮개는 그대로 부드러운 장면을 기다림');
   assert.equal(L.state({ entered: true, running: true, ready: false, frames: slowPhone, elapsed: 7999, short: true }).lift, false); assert.deepEqual(L.state({ entered: true, running: true, ready: false, elapsed: 8000, short: true }).timedOut, true, '짧은 덮개는 8초면 열어요');
   assert.equal(L.pickTip(['a', 'b'], 'a', () => 0.9), 'b', '같은 팁 두 번 연속 없음'); assert.equal(L.pickTip(['a'], 'a'), 'a');
 });
