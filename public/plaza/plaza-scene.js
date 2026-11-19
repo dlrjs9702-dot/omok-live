@@ -6176,7 +6176,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let photoMode = false; /* (v1.10.43 기념사진 모드 -- declared here: seeStep reads it from the first frame, before the photo code below) */
   function seeStep(p) {
     if (clock - seeCheckedAt > 0.1) { seeCheckedAt = clock; const third = mySpace === 'island' && !fpNow() && !photoMode; /* (검토 369: a photo the trees whole) */ seeWant = third && seeBlocked(p) ? 1 : 0; SEE.near.value = third ? 1 : 0; } /* (ten times a second: the line, a few hundred steps at most; the near fade in the third person outside) */
-    const on = SEE.on.value; SEE.on.value = photoMode ? 0 : Math.max(0, Math.min(1, on + (seeWant ? 1 : -1) * camDt / 0.2)); if (photoMode) SEE.near.value = 0; if (!SEE.on.value) return;
+    const on = SEE.on.value; SEE.on.value = photoMode ? 0 : Math.max(0, Math.min(1, on + (seeWant ? 1 : -1) * camDt / 0.2)); if (photoMode) SEE.near.value = 0; if (!SEE.on.value && !SEE.near.value) return; /* (1.10.373: the near fade's circle round me kept where I am too) */
     camera.updateMatrixWorld(); seeP.set(p.x, p.y + 1.1, p.z).project(camera); renderer.getDrawingBufferSize(seeSize);
     SEE.center.value.set(((seeP.x + 1) / 2) * seeSize.x, ((seeP.y + 1) / 2) * seeSize.y); SEE.radius.value = (seeWide ? 0.22 : 0.13) * seeSize.y; /* (the camera in a crown: a little wider -- the near fade takes the leaves round the camera) */
     seeP.set(p.x, p.y + 1.1, p.z).applyMatrix4(camera.matrixWorldInverse); SEE.depth.value = Math.max(0, -seeP.z - 0.8);
