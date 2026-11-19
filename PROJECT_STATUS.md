@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.375 N2a-1 별마루섬 소품 (152/152c 목책·문·늪·안내판, 136 캠핑장, 157 샘 동굴)
+
+- 자료: public/plaza/isle2-props.js(tools/isle2-props.cjs가 만듦, --check로 확인) -- 목책 349조각(fence_segment/palisade_b/palisade_e/stonewall), 문 1(다리 길 위, 몸 지나갈 틈 0.8 m), 안내판(sign_tiger, 152 무텍스처), 늪 6(바깥선·갈대 24·꾸미기 26), 캠핑장 6(모닥불·통나무 의자), 샘 동굴(개울 머리), 우레 바위(봉우리 아래).
+- 막힘: 소품 원·상자를 natureSolids에 넣고, 자연물(나무·덤불·숲)은 소품을 비켜 놓음(isle2PropsNear). 본섬 자연물 자리는 그대로(땅 지도 바뀐 곳은 별마루섬 쪽만).
+- 그리기: island.js 인스턴스 대신 상자 → REGISTRY byeolmaru.*/newisle.*/spring.cave(계절 4), 늪 진흙은 바깥선에서 직접 만든 메시(가장자리 투명).
+- 자전거: 늪 안에서는 4.3 m/s.
+- 에셋: island-models.json sources byeolmaru152·byeolmaru152e·newisle136·spring157, 50 파일(sha256 확인), budgets 예외(문·동굴·모닥불·의자).
+- 남은 것: 호랑이(152e, 1.10.376 N2a-2), 동굴 물 재질, 글자 안내판(sign_reserve/trail), 부두 문(N3).
+
 ## v1.10.374 메신저 프로필 사진 (notes docs/messenger-profile-photo-20261119.md) + Codex 봇 지적 3건 + AGENTS.md
 
 - 저장소: 한 계정 한 장(덮어쓰기, 버전 v) -- JSON은 messenger-avatars 폴더(계정 해시 이름)+meta, PostgreSQL은 messenger_avatars 표(백업에 들어감).
@@ -27,9 +36,3 @@
 - see-through.js: 가까운 것 흐리기는 내 둘레 원(구멍 반지름 2배) 안, 카메라 3.5 m 안만, 반쯤이 없이 깔끔하게 자름(step). 구멍 가장자리 디더는 격자 없는 interleaved gradient noise.
 - plaza-scene seeStep: 구멍이 꺼져 있어도 가까운 것 흐리기 원의 자리(center·radius)는 계속 갱신.
 - 사진: work/screens-371b (PC·폰 오솔길 점무늬 없음).
-
-## v1.10.372 Codex 361~370 검토 고침 (notes docs/codex-review-361-370.md, 19건 모두 맞음)
-
-- P1: #1 수조 물고기 길이(islandUse가 꺼낸 크기를 claim과 함께, 수조 size, 꺼낼 때 meta.size), #2 벼룩시장 「산 것」 이어받기(fleaHandOver·가방 여유), #3 주민 부탁 단계는 지급 뒤에만, #4 재료 사기 같은 주문 번호 유지, #5 옛 별 선물 기록 못 읽으면 보류, #6 starsFragmentFrom 읽기 오류는 덮어쓰지 않음, #7 소원 때 반짝이 확률 저장(stars.pct), #8 빗맞힘 하루 횟수 먼저, #9 이미 나간 바위 칸은 지나감.
-- P2: #10 stocks/watch stockMarket, #11 골라 팔기 상한 PICK_MAX 464, #12 잡화점 재료 단가 상한 1천만, #13 섞인 수조 잠금(tankMixed), #14 판매 행사 추가액을 행사에 저장(paid), #15 건너뛴 SSE 연결에 최신 한 건, #16 별마루섬 열린 칸 표 20 ms 조각(isle2OpenWarm), #17 세로 화면 전체 지도 min(w/760, h/585).
-- P3: #18 채집 3배 응답 수량, #19 capture --only가 spots.json에 덧붙임.
