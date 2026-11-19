@@ -10,9 +10,13 @@ import * as THREE from '/vendor/three/three.module.js';
 // 3 m, in the third person; `near` 0 in the first, where a tree walked up to stays)
 export const SEE = { center: { value: new THREE.Vector2(-1e5, -1e5) }, radius: { value: 0 }, depth: { value: 0 }, on: { value: 0 }, near: { value: 0 } };
 const copies = new WeakMap();
-const CHUNK = 'uniform vec2 uSeeC; uniform float uSeeR; uniform float uSeeD; uniform float uSeeOn; uniform float uSeeNear;\nfloat seeBayer(vec2 p) { const float B[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0); ivec2 q = ivec2(mod(floor(p), 4.0)); return (B[q.y * 4 + q.x] + 0.5) / 16.0; }';
+/* (1.10.373 총괄 「방충망처럼 보여요」: the 4x4 Bayer grid read as a screen's mesh where it was half way -- a fine noise without a grid
+   (interleaved gradient noise) in its place, and the near fade only round me on the screen (twice the hole's circle) -- a trunk by the
+   camera off to the side stays whole; within 3.5 m of the camera; cut clean, never half way -- a dither half way, on a trunk lying along the
+   view, is what looked like a screen) */
+const CHUNK = 'uniform vec2 uSeeC; uniform float uSeeR; uniform float uSeeD; uniform float uSeeOn; uniform float uSeeNear;\nfloat seeBayer(vec2 p) { return fract(52.9829189 * fract(dot(floor(p), vec2(0.06711056, 0.00583715)))); }';
 /* (three's vViewPosition is -mvPosition: its z the distance in front of the camera) */
-const HOLE = '\n  { float seeZ = vViewPosition.z; float seeK = uSeeOn > 0.0 ? uSeeOn * (1.0 - smoothstep(uSeeR * 0.55, uSeeR, length(gl_FragCoord.xy - uSeeC))) * step(seeZ, uSeeD) : 0.0; seeK = max(seeK, uSeeNear * (1.0 - smoothstep(3.0, 6.0, seeZ))); if (seeK > 0.0 && seeK > seeBayer(gl_FragCoord.xy)) discard; }';
+const HOLE = '\n  { float seeZ = vViewPosition.z; float seeK = uSeeOn > 0.0 ? uSeeOn * (1.0 - smoothstep(uSeeR * 0.55, uSeeR, length(gl_FragCoord.xy - uSeeC))) * step(seeZ, uSeeD) : 0.0; seeK = max(seeK, uSeeNear * step(seeZ, 3.5) * step(length(gl_FragCoord.xy - uSeeC), uSeeR * 2.0)); if (seeK > 0.0 && seeK > seeBayer(gl_FragCoord.xy)) discard; }';
 // a see-through copy of a material (one a source), its own patches kept
 export function seeThrough(m) {
   if (!m || Array.isArray(m) || m.isShaderMaterial || m.userData?.seeThrough) return m;

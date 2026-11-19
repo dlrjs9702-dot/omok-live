@@ -116,6 +116,9 @@ test('이야기 17명 서버: 밤 장은 밤에만 ✓, 10~26 주민 이름(말 
 test('이야기 부탁: 단계 → 제안·할게요, 한 번에 하나, 곳에 가면 ✓, 돌아가 쪽지(+호감도), 다른 주민에게 말 걸기 장, 그만둘래요, 행사 이야기', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'story-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
+  /* (2026-11-20: the real 수확제 began -- the looks before the 행사 part handed its start story out early. The festival's clock before it, as when
+     this was written; the 행사 part sets its own) */
+  await req('/api/test/festival/clock', null, { at: Date.parse('2026-11-12T12:00:00+09:00') });
   const a = await server.enter(await server.issue('이야기손님'));
   await req('/api/test/island/free-residents', a, {});
   // (CI X2·Q2 「never by them」: where they are by the server's own count -- each hold paused their round (its delay), which
