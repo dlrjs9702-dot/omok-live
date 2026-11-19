@@ -719,8 +719,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   // v1.10.2 미니맵: a small round map in the top-right corner of the island view (redrawn about 8 times a second).
   const minimap = document.createElement('canvas'); minimap.className = 'islandMinimap'; minimap.width = 176; minimap.height = 176;
-  minimap.setAttribute('role', 'img'); minimap.setAttribute('aria-label', '미니맵');
+  minimap.setAttribute('role', 'button'); minimap.setAttribute('aria-label', '미니맵 · 누르면 전체 지도'); minimap.tabIndex = -1;
   host.append(minimap);
+  /* (1.10.370: a tap or a click on it opens the 전체 지도 (app.js) -- not a camera drag or a walk under it) */
+  for (const type of ['pointerdown', 'pointerup', 'touchstart', 'mousedown']) minimap.addEventListener(type, (e) => e.stopPropagation(), { passive: true });
+  minimap.addEventListener('click', (e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('gc:minimap')); });
   let minimapAt = 0; let minimapTurn = 0; let minimapShown = 0; let mapMarkers = []; let festMarks = []; // (X2: the snow field) // markers: the events near me (v1.10.11)
   function refreshMinimap(now) {
     if (now - minimapAt < 120) return;
@@ -6814,7 +6817,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r), rise: heightAt(camera.position.x, camera.position.z) - me.root.position.y }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, y: o.c.root.position.y, lifting: Boolean(o.liftRide), /* (the lift ride they are drawn on: its length and the heights it passes -- a slow page's few frames may miss its middle) */ ride: o.liftRide ? { ms: o.liftRide.ms, ys: [0.3, 0.5, 0.7].map((u) => { const q = new THREE.Vector3(); liftPath({ ...o.liftRide, start: Date.now() - u * o.liftRide.ms }, q); return +q.y.toFixed(2); }) } : null,tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {}, shown: o.c.root.visible })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
-  const drawMap = (canvas, view) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z }, view);
+  /* (1.10.370 전체 지도: `onMe` puts its middle on me; my way as an arrow) */
+  const drawMap = (canvas, view) => { const p = me.root.position; if (view?.onMe) Object.assign(view, { x: p.x, z: p.z }); return island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: p.x, z: p.z, yaw: me.root.rotation.y }, view); };
   // v1.10.2: a chat message over someone's head ('me' or another player's id)
   const speak = (id, text) => say(id === 'me' ? me : others.get(id)?.c, text);
   const setStatuesPublic = (list, week) => setStatues(list, week);

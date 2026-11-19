@@ -75,6 +75,9 @@ test('물고기 통 사기·놓아주기: 1층에서만, 50 → 100 → 200(362)
     assert.equal((await req('/api/island/store/ores', a, { itemId: 'gem_ruby', qty: 1, requestId: crypto.randomUUID() })).data.error, 'BAD_REQUEST', '보석은 못 삼');
     const before = await balance(); const r = await req('/api/island/store/ores', a, { itemId: 'ore_iron', qty: 5, requestId: crypto.randomUUID() }); assert.equal(r.status, 200, JSON.stringify(r.data));
     assert.equal(await balance(), before - 5 * 3600); assert.equal(r.data.bag.items.filter((x) => x.itemId === 'ore_iron').reduce((n, x) => n + x.qty, 0), 5);
+    /* (1.10.370 개수 칸: any count 1~99 -- 37 bought, 100 or 2.5 refused) */
+    const r37 = await req('/api/island/store/ores', a, { itemId: 'stone', qty: 37, requestId: crypto.randomUUID() }); assert.equal(r37.status, 200, JSON.stringify(r37.data)); assert.equal(r37.data.qty, 37);
+    for (const qty of [100, 2.5, 0]) assert.equal((await req('/api/island/store/ores', a, { itemId: 'stone', qty, requestId: crypto.randomUUID() })).data.error, 'BAD_QTY', String(qty));
     assert.equal((await req('/api/island/store/ores', a, { itemId: 'bread', qty: 1, requestId: crypto.randomUUID() })).data.error, 'BAD_REQUEST', '재료만');
     /* (사용자 「물고기 곤충은 제외, 집 만들기 … 재료들에만」: the `shop: true` materials -- the repair's and upkeep's, the ores; no fish, insect or 채집물) */
     const ids = list.map((o) => o.id); for (const id of ['stone', 'twig', 'branch', 'weed', 'compost', 'ore_granite', 'ore_gold']) assert.ok(ids.includes(id), id);

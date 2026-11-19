@@ -1664,16 +1664,39 @@
   // (문제 기록 3회차 14 「안내 지도가 너무 지저분해. 크게 확대해서 볼 수 있게」) the map window as wide as the screen, drawn at
   // its own size; the wheel or a pinch brings it closer round the point under it (to 6x), a drag moves it
   const islandMapView = { zoom: 1, x: 0, z: 0 }; let islandMapAt = null;
+  /* (1.10.370 전체 지도: the middle kept in the whole drawn world -- 별마루섬 too, not ±200 -- at the scale it will be drawn: MapView) */
+  function clampMap() {
+    const canvas = byId('islandMapCanvas'); if (!islandMapAt || !globalThis.MapView) return;
+    const s = (islandMapAt.s / (islandMapAt.zoom || 1)) * Math.max(1, Math.min(6, islandMapView.zoom)); MapView.clamp(islandMapView, canvas.width / 2 / s, canvas.height / 2 / s);
+  }
   function drawIslandMap() {
     const canvas = byId('islandMapCanvas'); const r = canvas.getBoundingClientRect(); const k = Math.min(2, window.devicePixelRatio || 1);
     if (r.width && (canvas.width !== Math.round(r.width * k) || canvas.height !== Math.round(r.height * k))) { canvas.width = Math.round(r.width * k); canvas.height = Math.round(r.height * k); }
     islandMapAt = plaza.controller?.drawMap?.(canvas, islandMapView) || null;
+    if (islandMapAt && islandMapView.onMe) { islandMapView.onMe = false; const was = [islandMapView.x, islandMapView.z]; clampMap(); if (was[0] !== islandMapView.x || was[1] !== islandMapView.z) islandMapAt = plaza.controller?.drawMap?.(canvas, islandMapView) || islandMapAt; } /* (opened on me: by an edge, as far as the world goes) */
   }
+  /* (1.10.370: it opens on me, close enough to read what is round me; 「전체 보기」 the whole) */
   function openIslandMap() {
-    Object.assign(islandMapView, { zoom: 1, x: 0, z: 0 });
+    Object.assign(islandMapView, { zoom: globalThis.MapView?.ZOOM.OPEN || 3, x: null, z: null, onMe: true });
     openPlazaWindow('안내 지도', [byId('islandMapCard')]); plazaDialog.classList.add('mapMode');
     requestAnimationFrame(drawIslandMap);
   }
+  const islandMapOpen = () => plazaDialog.open && plazaDialog.classList.contains('mapMode');
+  const zoomMapBy = (f) => { if (!islandMapAt) return; islandMapView.zoom = Math.max(1, Math.min(6, islandMapView.zoom * f)); clampMap(); drawIslandMap(); };
+  byId('islandMapIn').addEventListener('click', () => zoomMapBy(1.5));
+  byId('islandMapOut').addEventListener('click', () => zoomMapBy(1 / 1.5));
+  byId('islandMapAll').addEventListener('click', () => { Object.assign(islandMapView, { zoom: 1 }); const W = globalThis.MapView?.WORLD; if (W) Object.assign(islandMapView, { x: (W.x0 + W.x1) / 2, z: (W.z0 + W.z1) / 2 }); clampMap(); drawIslandMap(); });
+  byId('islandMapMe').addEventListener('click', () => { Object.assign(islandMapView, { x: null, z: null, onMe: true }); drawIslandMap(); });
+  /* (1.10.370 사용자 「M 으로 전체 지도 펼칠 수 있게」: M on the island opens it and closes it -- not while typing (the key in a box to type in
+     never reaches here), not in a building or a game room, nor over another window; Esc closes it as every window) */
+  window.addEventListener('keydown', (event) => {
+    if (event.code !== 'KeyM' || event.isComposing || event.repeat || event.ctrlKey || event.metaKey || event.altKey || !document.body.classList.contains('plazaMode')) return;
+    if (islandMapOpen()) { if (event.target === document.body || event.target === plazaStage || plazaDialog.contains(event.target)) { event.preventDefault(); plazaDialog.close(); } return; }
+    if (document.querySelector('dialog[open]') || document.body.classList.contains('townhallRoom') || document.body.classList.contains('roomMode')) return;
+    if (event.target !== document.body && event.target !== plazaStage) return;
+    event.preventDefault(); openIslandMap();
+  });
+  window.addEventListener('gc:minimap', () => { if (!islandMapOpen() && !document.querySelector('dialog[open]')) openIslandMap(); }); /* (a tap or a click on the minimap: plaza-scene) */
   {
     const canvas = byId('islandMapCanvas'); const pointers = new Map(); let pinch = null;
     // the point under (px, py) -- CSS pixels on the canvas -- stays under it at the new zoom
@@ -1684,7 +1707,6 @@
       const z = Math.max(1, Math.min(6, zoom)); const s = (islandMapAt.s / islandMapView.zoom) * z;
       Object.assign(islandMapView, { zoom: z, x: wx - dx / s, z: wz - dy / s }); clampMap(); drawIslandMap();
     };
-    const clampMap = () => { const lim = 200 * (1 - 1 / islandMapView.zoom); islandMapView.x = Math.max(-lim, Math.min(lim, islandMapView.x)); islandMapView.z = Math.max(-lim, Math.min(lim, islandMapView.z)); };
     const local = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     canvas.addEventListener('wheel', (e) => { e.preventDefault(); const [x, y] = local(e); zoomAt(x, y, islandMapView.zoom * Math.exp(-e.deltaY / 400)); }, { passive: false });
     canvas.addEventListener('pointerdown', (e) => { pointers.set(e.pointerId, local(e)); pinch = null; try { canvas.setPointerCapture(e.pointerId); } catch { /* not a live pointer */ } });
@@ -3034,7 +3056,12 @@
       const row = document.createElement('div'); row.className = 'islandPlaceRow'; row.setAttribute('role', 'listitem'); row.dataset.item = item.itemId;
       const what = document.createElement('button'); what.type = 'button'; what.className = 'placeBack'; what.title = '가방으로 되돌리기'; what.append(itemIcon(item), ` ${item.name} ×${n}`); what.addEventListener('click', () => placeMove(item, -n));
       row.append(what);
-      if (item.qty > 1) { const step = document.createElement('span'); step.className = 'placeStep'; const btn = (t, d, label) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'ghost tiny'; x.textContent = t; x.setAttribute('aria-label', label); x.addEventListener('click', () => placeMove(item, d)); return x; }; step.append(btn('−', -1, '하나 덜'), btn('+', 1, '하나 더'), btn('전부', null, '전부')); row.append(step); }
+      if (item.qty > 1) { /* (1.10.370 개수 칸: − [n] + · 전부 -- the count typed too; 0 or empty back to the bag) */
+        const step = document.createElement('span'); step.className = 'placeStep';
+        const box = window.CountBox ? CountBox.make({ value: n, max: item.qty, label: `${item.name} 개수`, onSet: (v) => placeMove(item, v - (placePick.get(item.entryId) || 0)) }) : document.createElement('span');
+        const all = document.createElement('button'); all.type = 'button'; all.className = 'ghost tiny'; all.textContent = '전부'; all.setAttribute('aria-label', '전부'); all.addEventListener('click', () => placeMove(item, null));
+        step.append(box, all); row.append(step);
+      }
       if (placeMult(item) > 1) row.append(Object.assign(document.createElement('span'), { className: 'placeEventMult', textContent: `🎉 ${placeMult(item)}배` }));
       row.append(Object.assign(document.createElement('strong'), { textContent: fmtP(worth) })); right.append(row);
     }
@@ -3051,7 +3078,11 @@
     const rows = list.map((o) => {
       const row = document.createElement('div'); row.className = 'islandPlaceRow oreShopRow'; row.dataset.item = o.id;
       const what = document.createElement('span'); what.append(itemIcon({ itemId: o.id, icon: o.icon }), ` ${o.name} · ${fmtP(o.price)}`); row.append(what);
-      for (const n of [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = `${n}개`; b.addEventListener('click', async () => {
+      /* (1.10.370 개수 칸: − [n] + then 「사기」 -- the 1 · 5 · 10 kept as quick picks into it) */
+      const box = window.CountBox ? CountBox.make({ value: 1, max: 99, label: `${o.name} 개수`, zero: false }) : null; if (box) row.append(box);
+      for (const pick of [1, 5, 10, 'buy']) { const b = document.createElement('button'); b.type = 'button'; b.className = pick === 'buy' ? 'secondary tiny' : 'ghost tiny'; b.textContent = pick === 'buy' ? '사기' : `${pick}개`; if (pick !== 'buy' && !box) b.dataset.n = String(pick); b.addEventListener('click', async () => {
+        if (pick !== 'buy' && box) { box.setCount(pick); return; }
+        const n = pick === 'buy' ? (box ? box.count() : 1) : pick;
         b.disabled = true;
         try { const r = await api('/api/island/store/ores', { method: 'POST', body: JSON.stringify({ itemId: o.id, qty: n, requestId: crypto.randomUUID() }) }); if (r.bag) drawIslandBag(r.bag); loadPoints(); showToast(`${o.name} ${n}개를 샀어요 · -${fmtP(o.price * n)}`); }
         catch (error) { showToast(error.message); } finally { b.disabled = false; }

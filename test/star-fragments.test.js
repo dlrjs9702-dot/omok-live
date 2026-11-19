@@ -33,6 +33,7 @@ test('별똥별 반짝이 이벤트(369 검토 #3): 그 별이 떨어질 때 열
   assert.equal(Stars.shinyPctAt(10, ev, 2000), 20); assert.equal(Stars.shinyPctAt(10, ev, 6000), 10, '이벤트 밖'); assert.equal(Stars.shinyPctAt(10, [], 2000), 10);
   assert.equal(Stars.shinyPctAt(10, [{ ...ev[0], target: 'pick' }], 2000), 10, '다른 대상');
   const closed = [{ ...ev[0], closedAt: 3000 }]; assert.equal(Stars.shinyPctAt(10, closed, 2000), 20, '일찍 끝낸 이벤트도 그동안 떨어진 별에는'); assert.equal(Stars.shinyPctAt(10, closed, 3500), 10, '끝낸 뒤는 아님');
+  assert.equal(Stars.shinyPctAt(10, [{ ...ev[0], closedAt: 9000 }], 7000), 10, '끝날 시각 뒤에 늦게 끝내도 늘어나지 않음 (370)');
   // over many accounts the shiny share follows it
   let n = 0; for (let s = 0; s < 4000; s += 1) if (Stars.shinyOf(`acc${s}`, 7, Stars.shinyPctAt(10, ev, 2000))) n += 1; assert.ok(n > 650 && n < 950, `${n}/4000`);
 });

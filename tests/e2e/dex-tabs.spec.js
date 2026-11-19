@@ -35,3 +35,29 @@ test('도감 탭: 바다·민물·곤충·기념, 찾은 것만, 창 안 스크�
   await page.locator('#islandDexBtn').click(); await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true'); await expect(page.locator('#islandBagSort')).toBeHidden();
   await who.context.close();
 });
+
+// 1.10.370 개수 칸 (사용자 「개수 딱 내가 몇개인지 쓸 수 있는 칸 추가해.」): 40 herbs moved to 「팔 물건」, 37 typed into the box -- the row and the
+// window's sum 37 of them, the sale pays exactly that and 3 stay in the bag. PC and phone (the box 16px: no zoom on a phone)
+test('개수 칸: 팔 물건에 37을 쓰면 미리보기와 정산이 37개 값, 3개는 가방에 남음', async ({ browser, request, isMobile }) => {
+  test.setTimeout(process.env.CI ? 240000 : 150000);
+  const who = await shopper(browser, request, isMobile ? '개수칸m' : '개수칸', 0, 'female'); const { page } = who;
+  expect((await post(request, '/api/test/island/give', who.token, { itemId: 'herb', qty: 40 })).status).toBe(200);
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); });
+  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
+  const S = require('./skin-support'); await S.intoMall(page, 'mall:stall', isMobile);
+  if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
+  const row = page.locator('.islandPlaceRow[data-item="herb"]'); /* (the window's bag drawn again once it arrives: pressed till the row holds) */
+  await expect.poll(async () => { if (!(await row.count())) await page.locator('.placeItem[data-item="herb"]').first().click(); await page.waitForTimeout(500); return row.count(); }, { timeout: 20000 }).toBe(1);
+  await expect(row).toContainText('×40');
+  const box = row.locator('.countBoxInput'); await expect(box).toHaveValue('40');
+  expect(await box.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
+  await box.fill('37'); await box.press('Enter');
+  await expect(row).toContainText('×37'); await expect(row.locator('.countBoxInput')).toHaveValue('37');
+  const price = (await S.get(request, '/api/island/bag', who.token)).data.items.find((e) => e.itemId === 'herb').price;
+  const preview = Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, '')); expect(preview).toBe(37 * price);
+  await page.locator('#islandPlaceSubmit').click(); await page.locator('#islandPlaceSubmit').click();
+  await expect(page.locator('#islandPlaceStatus')).toContainText(/^\+[\d,]+P/);
+  expect(Number((await page.locator('#islandPlaceStatus').textContent()).split('P')[0].replace(/[^0-9]/g, ''))).toBe(preview);
+  const left = (await S.get(request, '/api/island/bag', who.token)).data.items.filter((e) => e.itemId === 'herb').reduce((n, e) => n + e.qty, 0); expect(left).toBe(3);
+  await who.context.close();
+});

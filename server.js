@@ -2660,7 +2660,31 @@ setInterval(taxiTick, 100).unref?.();
 function trainService() { const snapshot = trainTraffic.advance(trainNow()); IslandTrain.setService(snapshot); return snapshot; }
 const trainNow = () => nowMs() + trainShift;
 const trainDocked = (stopId, id = null, line = null) => { trainService(); const candidates = IslandTrain.TRAINS.map((t) => IslandTrain.trainAt(t.id, trainNow())).filter((st) => st.stop && st.wait > 0.7 && st.wait <= IslandTrain.DWELL - 0.7 && (!stopId || st.stop === stopId) && (id === null || st.id === id) && (!line || st.line === line)); return candidates[0] || null; };
-function freeSeat(token) { for (const [id, t] of seatTaken) if (t === token) seatTaken.delete(id); }
+function freeSeat(token) { for (const [id, t] of seatTaken) if (t === token) seatTaken.delete(id); seatSince.delete(token); }
+/* (1.10.370 택시: why one cannot ride now -- each its own words, and the log says which and for how long. A cast left behind (its
+   spot more than 8 m off, or 3 minutes past its bite) and a seat left behind (its seat more than 4 m off me) are let go here
+   instead: a lost answer or a closed page left them, and they kept the taxi refused) */
+const seatSince = new Map(); // session token -> when its seat was taken
+const TAXI_BUSY_WORDS = { train: '기차를 타고 있을 때는 택시를 탈 수 없어요.', platform: '승강장에서는 택시를 탈 수 없어요. 승강장에서 나와 주세요.', fishing: '낚시하는 중에는 택시를 탈 수 없어요.', seat: '앉아 있을 때는 택시를 탈 수 없어요. 일어나서 다시 해 주세요.', room: '게임 방에 있을 때는 택시를 탈 수 없어요.' };
+function taxiBusyOf(session, here, now = nowMs()) {
+  const token = session.token; const age = (at) => (Number.isFinite(at) ? Math.round((now - at) / 1000) : null);
+  if (trainRiders.has(token)) return { reason: 'train', ageS: age(trainRiders.get(token).at) };
+  if (trainVisitors.has(token)) return { reason: 'platform', ageS: age(trainVisitors.get(token).at) };
+  const cast = fishCasts.get(token);
+  if (cast) {
+    const stale = (cast.at && Math.hypot(cast.at.x - here.x, cast.at.z - here.z) > 8) || now - (cast.biteAt || now) > 180_000;
+    if (!stale) return { reason: 'fishing', ageS: age(cast.castAt) };
+    fishCasts.delete(token); console.log(`[taxi] healed fishing age=${age(cast.castAt) ?? '-'}s`);
+  }
+  const held = here.seat; /* (sitting as my last pose says -- as before) */
+  if (held) {
+    const s = SEATS.get(held); const stale = s && Math.hypot(s.x - here.x, s.z - here.z) > 4;
+    if (!stale) return { reason: 'seat', ageS: age(seatSince.get(token)) };
+    console.log(`[taxi] healed seat age=${age(seatSince.get(token)) ?? '-'}s`); freeSeat(token); here.seat = null; if (here.act === 'sit') here.act = null;
+  }
+  if (getCurrentRoom(session)) return { reason: 'room', ageS: null };
+  return null;
+}
 const TOWNHALL_GATE_OUT = (() => { const p = IslandTerrain.townhallWorld(0, IslandTerrain.TOWNHALL.yard.z1 + 1.4); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; })();
 // 문제 기록 2회차: the key signing the picture links (made once, kept in the world store, never sent anywhere)
 let shotKeyHeld = null;
@@ -5028,7 +5052,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.369' });
+    return sendJson(res, 200, { ok: true, version: '1.10.370' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6363,7 +6387,7 @@ async function requestHandler(req, res) {
     const ORE_SHOP = Object.keys(IslandItems.ITEMS).filter((id) => IslandItems.ITEMS[id].shop); /* (the materials: `shop: true` -- never fish or insects) */
     if (req.method === 'GET') return sendJson(res, 200, { ok: true, ores: ORE_SHOP.map((id) => ({ id, name: IslandItems.ITEMS[id].name, icon: IslandItems.ITEMS[id].icon, price: Economy.shopOrePrice(id) })) });
     const body = await parseJson(req); const itemId = String(body.itemId || ''); const qty = Number(body.qty);
-    if (!ORE_SHOP.includes(itemId)) return sendError(res, 400, 'BAD_REQUEST', '파는 광석이 아니에요.'); if (![1, 5, 10].includes(qty)) return sendError(res, 400, 'BAD_QTY', '수량을 확인해 주세요.');
+    if (!ORE_SHOP.includes(itemId)) return sendError(res, 400, 'BAD_REQUEST', '파는 광석이 아니에요.'); if (!Number.isInteger(qty) || qty < 1 || qty > 99) return sendError(res, 400, 'BAD_QTY', '수량을 확인해 주세요.'); /* (1.10.370 개수 칸: any count 1~99, not only 1 · 5 · 10) */
     if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 살 수 있어요.');
     let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId, qty, unit: Economy.shopOrePrice(itemId), shopOre: true }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
@@ -8185,7 +8209,7 @@ async function requestHandler(req, res) {
     // v1.10.259 입질 게임 반반: the arrows or the 타이밍 막대 (a test server: the arrows unless a test asks -- /api/test/fish/mode)
     const last = fishModes.get(account) || []; const mode = fishModeForced.get(session.token) || (process.env.NODE_ENV === 'test' ? 'arrows' : IslandFishing.pickMode(Math.random, last)); fishModes.set(account, [mode, last[0]].filter(Boolean));
     const timing = mode === 'timing' ? IslandFishing.timingFor(c.species) : null;
-    fishCasts.set(session.token, { id, ...c, seq, arrowN: arrows, mode, timing, at: { x: at.x, z: at.z }, done: null }); // (arrowN: as many as the page was told)
+    fishCasts.set(session.token, { id, ...c, seq, arrowN: arrows, mode, timing, at: { x: at.x, z: at.z }, done: null, castAt: now }); // (arrowN: as many as the page was told)
     return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: timing ? FishTug.timingMs(timing) : IslandFishing.arrowMs(arrows), arrows, seq, mode, timing, bait: bait ? IslandItems.ITEMS[bait].name : null });
   }
   if (pathname === '/api/island/fish/finish' && req.method === 'POST') {
@@ -8410,7 +8434,7 @@ async function requestHandler(req, res) {
     const stop = IslandTaxi.stopOf(from); const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > 5.5) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.');
-    if (trainRiders.has(session.token) || trainVisitors.has(session.token) || fishCasts.has(session.token) || here.seat || getCurrentRoom(session)) return sendError(res, 409, 'TAXI_BUSY', '지금은 택시를 탈 수 없어요.');
+    { const busy = taxiBusyOf(session, here); if (busy) { console.log(`[taxi] busy reason=${busy.reason} age=${busy.ageS ?? '-'}s`); return sendError(res, 409, 'TAXI_BUSY', TAXI_BUSY_WORDS[busy.reason], { reason: busy.reason }); } }
     if (here.bike) return sendError(res, 409, 'TAXI_BIKE', '자전거에서 내려 주세요.');
     const startedAt = nowMs();
     { const away = taxiAwayMs(from, startedAt); if (away > 0) return sendError(res, 409, 'TAXI_AWAY', `택시가 돌아오는 중이에요 · 약 ${Math.ceil(away / 1000)}초`, { awayS: Math.ceil(away / 1000) }); } /* (294: no charge) */
@@ -8454,7 +8478,7 @@ async function requestHandler(req, res) {
     if (!at || Math.hypot(at.x - seat.x, at.z - seat.z) > 2.8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     const holder = seatTaken.get(seat.id);
     if (holder && holder !== session.token && plazaPresence.has(holder)) return sendError(res, 409, 'SEAT_TAKEN', '다른 사람이 앉아 있습니다.');
-    freeSeat(session.token); seatTaken.set(seat.id, session.token);
+    freeSeat(session.token); seatTaken.set(seat.id, session.token); seatSince.set(session.token, nowMs());
     return sendJson(res, 200, { ok: true, seat: seat.id });
   }
   if (pathname === '/api/island/stand' && req.method === 'POST') {
@@ -10688,7 +10712,7 @@ async function main() {
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.369 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); setTimeout(() => { try { IslandTerrain.isle2Open?.(IslandTerrain.ISLE2_BRIDGE_HEAD.x, IslandTerrain.ISLE2_BRIDGE_HEAD.z); } catch { /* (made on the first ask instead) */ } }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.370 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ try { IslandTerrain.isle2Open?.(IslandTerrain.ISLE2_BRIDGE_HEAD.x, IslandTerrain.ISLE2_BRIDGE_HEAD.z); } catch { /* (made on the first ask instead) */ } }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

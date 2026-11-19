@@ -1308,16 +1308,31 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       const [x, y] = at; taken.push({ x, y, w: bw, h: bh });
       ctx.lineWidth = u / 110; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y);
     };
-    const dots = Object.values(AREAS).map((a) => [X(a.x), Z(a.z), a.label]);
+    const dots = [...Object.values(AREAS), ...(WIDE ? isle2MapPlaces() : [])].map((a) => [X(a.x), Z(a.z), a.label]);
     for (const [px, pz] of dots) { ctx.beginPath(); ctx.arc(px, pz, u / 70, 0, TAU); ctx.fillStyle = '#5b4632'; ctx.fill(); }
     if (me) { // mine first: never the one left out
       const mx = X(me.x); const mz = Z(me.z);
+      if (Number.isFinite(me.yaw)) { /* (1.10.370 전체 지도: the way I face, an arrow out of my dot -- the map's +x right, +z down) */
+        const fx = Math.sin(me.yaw); const fz = Math.cos(me.yaw); const r = u / 46; const tip = r * 2.3; const side = r * 0.95;
+        ctx.beginPath(); ctx.moveTo(mx + fx * tip, mz + fz * tip); ctx.lineTo(mx - fz * side, mz + fx * side); ctx.lineTo(mx + fz * side, mz - fx * side); ctx.closePath();
+        ctx.fillStyle = '#e8443c'; ctx.fill(); ctx.lineWidth = u / 160; ctx.strokeStyle = '#fff'; ctx.stroke();
+      }
       ctx.beginPath(); ctx.arc(mx, mz, u / 46, 0, TAU); ctx.fillStyle = '#e8443c'; ctx.fill(); ctx.lineWidth = u / 160; ctx.strokeStyle = '#fff'; ctx.stroke();
       taken.push({ x: mx, y: mz, w: u / 23, h: u / 23 }); label('현재 위치', mx, mz, 34, '#b3261e', u / 22);
     }
     for (const [px, pz] of dots) taken.push({ x: px, y: pz, w: u / 35, h: u / 35 }); // (no name over another's dot)
     for (const [px, pz, text] of dots) label(text, px, pz, 30, '#3d2f22', u / 24);
-    return { s, x: cx, z: cz };
+    return { s, x: cx, z: cz, zoom };
+  }
+  /* (1.10.370 전체 지도: 별마루섬's own names on the board only -- 캠핑장, 전망대 봉우리, its creek and 별마루다리; not areas: where-am-I is as before) */
+  let isle2Places = null;
+  function isle2MapPlaces() {
+    if (isle2Places) return isle2Places; const D = T.dalmaru; const I = D.NEW_ISLE; const N = D.NAMES || {}; const out = [];
+    if (I?.camp) out.push({ x: I.camp.x, z: I.camp.z, label: N.camp || '캠핑장' });
+    if (I?.peak) out.push({ x: I.peak.x, z: I.peak.z, label: N.peak || '전망대 봉우리' });
+    const C = D.CREEK?.pts; if (C?.length) { const [x, z] = C[Math.floor(C.length / 2)]; out.push({ x, z, label: N.creek || '개울' }); }
+    const br = bridges.find((b) => b.isle2); if (br) out.push({ x: br.x, z: br.z, label: N.newBridge || '별마루다리' });
+    isle2Places = out; return out;
   }
 
   // v1.10.2 미니맵: the ground around me (about 80 m across), turned with the camera so the way I look is always up,
