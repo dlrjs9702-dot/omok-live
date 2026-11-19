@@ -149,12 +149,20 @@
     const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l)) : 0;
     return Math.hypot(px - ax - dx * t, pz - az - dz * t);
   }
+  /* (1.10.371 부팅 무게: a long line's 16-segment chunks each in a box, made once -- a chunk whose box is farther than the nearest so far is
+     skipped whole; the same distance. nature()'s taxi-road checks were a third of the server's start) */
+  const lineChunks = new WeakMap(); const CHUNK = 16;
+  function chunksOf(pts) {
+    let c = lineChunks.get(pts); if (c) return c; c = [];
+    for (let s = 0; s < pts.length - 1; s += CHUNK) { let x0 = Infinity; let x1 = -Infinity; let z0 = Infinity; let z1 = -Infinity; const e = Math.min(pts.length - 1, s + CHUNK); for (let i = s; i <= e; i += 1) { const [x, z] = pts[i]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; } c.push([s, e, x0, x1, z0, z1]); }
+    lineChunks.set(pts, c); return c;
+  }
   function lineDist(px, pz, pts) {
-    let best = Infinity;
-    for (let i = 0; i < pts.length - 1; i += 1) {
-      const a = pts[i]; const b = pts[i + 1];
-      if (Math.abs(px - a[0]) > best + 3 && Math.abs(px - b[0]) > best + 3) continue;
-      best = Math.min(best, segDist(px, pz, a[0], a[1], b[0], b[1]));
+    let best = Infinity; if (!pts || pts.length < 2) return best;
+    if (pts.length <= CHUNK + 1) { for (let i = 0; i < pts.length - 1; i += 1) { const a = pts[i]; const b = pts[i + 1]; if (Math.abs(px - a[0]) > best + 3 && Math.abs(px - b[0]) > best + 3) continue; best = Math.min(best, segDist(px, pz, a[0], a[1], b[0], b[1])); } return best; }
+    for (const [s, e, x0, x1, z0, z1] of chunksOf(pts)) {
+      const dx = px < x0 ? x0 - px : px > x1 ? px - x1 : 0; const dz = pz < z0 ? z0 - pz : pz > z1 ? pz - z1 : 0; if (dx * dx + dz * dz >= best * best) continue;
+      for (let i = s; i < e; i += 1) { const a = pts[i]; const b = pts[i + 1]; best = Math.min(best, segDist(px, pz, a[0], a[1], b[0], b[1])); }
     }
     return best;
   }
