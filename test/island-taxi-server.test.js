@@ -132,3 +132,21 @@ test('섬 택시 비켜 가기: 건널목에 선 사람은 3초 뒤 반투명으
   assert.ok(solid, 'solid again once past them'); assert.equal(X.ghostAt(solid, solid.ghost.until + 10), false); assert.equal(X.ghostAt(solid, solid.ghost.until - 10), true);
   await req('/api/test/taxi-run', a, { ms: 3000 });
 });
+
+// 1.10.370 택시 못 타는 이유: each its own words (reason), and a seat left behind -- its seat far off me -- let go at the stop instead of
+// refusing the ride (총괄: TAXI_BUSY reasons + self-heal)
+test('섬 택시 못 타는 이유: 게임 방은 그 이유로 막고, 멀리 두고 온 의자는 정류장에서 풀려 탐', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-busy-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('의자두고온이')); const b = await server.enter(await server.issue('방에있는이'));
+  for (const who of [a, b]) await req('/api/test/points-credit', who, { amount: 100000 });
+  const P = X.stopOf('plaza'); const seat = T.plazaProps().seats.find((s) => s.id === 'b8');
+  // A sits on a bench 13 m off the stop, then its page (stuck in the sit) is at the stop: the seat let go, the ride taken
+  await req('/api/plaza/state', a, { x: seat.x, z: seat.z, yaw: 0, moving: false }); assert.equal((await req('/api/island/sit', a, { seat: 'b8' })).status, 200);
+  await req('/api/plaza/state', a, { x: P.out.x, z: P.out.z, yaw: 0, moving: false, act: 'sit', seat: 'b8', actN: 1 });
+  const rode = await req('/api/island/taxi', a, { from: 'plaza' }); assert.equal(rode.status, 200, JSON.stringify(rode.data));
+  // B in a game room: refused, the reason said
+  await req('/api/plaza/state', b, { x: P.out.x + 0.5, z: P.out.z + 0.5, yaw: 0, moving: false });
+  assert.equal((await req('/api/rooms', b, { gameType: 'othello', visibility: 'public' })).status, 201);
+  const busy = await req('/api/island/taxi', b, { from: 'plaza' }); assert.equal(busy.data.error, 'TAXI_BUSY'); assert.equal(busy.data.reason, 'room', JSON.stringify(busy.data)); assert.match(busy.data.message, /게임 방/);
+});

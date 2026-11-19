@@ -2998,6 +2998,14 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .plazaDialog.boardMode .noticeCount{background:#c0392b;color:#fff}.plazaDialog.boardMode .announcementDetails summary{color:#9a5b2c}
 .plazaDialog.mailMode textarea{background:#fffdf6 repeating-linear-gradient(transparent 0 23px,rgba(140,170,200,.35) 23px 24px);line-height:24px;border-left:3px double rgba(200,90,90,.45);padding-left:12px}/* (창 2단계 검토) the map printed on the paper: a little muted, the paper's grain over it; a yellowed edge and the folds' shade */
 .plazaDialog.mapMode .islandMapCard canvas{filter:saturate(.78) sepia(.14) contrast(.97)}
+/* (1.10.370 전체 지도: +/− and 전체 보기 for a PC without a wheel, 내 위치 back on me) */
+.islandMapTools{display:none}
+.plazaDialog.mapMode .islandMapTools{display:flex;gap:6px;position:absolute;left:14px;bottom:14px;z-index:2}
+.plazaDialog.mapMode .islandMapTools button{min-width:40px;min-height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--isle-line,#c9b48a);background:#fffaf0;color:var(--isle-ink,#3d2f22);font-weight:800;font-size:15px;cursor:pointer}
+.plazaDialog.mapMode .islandMapTools button:focus-visible{outline:3px solid #2f6fc0;outline-offset:2px}
+@media (pointer:coarse){.plazaDialog.mapMode .islandMapTools button{min-height:44px;min-width:44px}}
+/* (1.10.370: the minimap opens the 전체 지도 -- a tap on a phone, a click on a PC) */
+.plazaStage canvas.islandMinimap{pointer-events:auto;cursor:pointer}
 .plazaDialog.mapMode .islandMapCard{box-shadow:inset 0 0 0 3px rgba(201,170,110,.55),inset 0 0 26px rgba(120,90,40,.4);border-radius:4px}
 .plazaDialog.mapMode .islandMapCard::before{content:"";position:absolute;inset:6px;pointer-events:none;z-index:1;mix-blend-mode:multiply;opacity:.35;background:radial-gradient(circle at 13% 27%,rgba(120,90,50,.18) 0 1px,transparent 2px),radial-gradient(circle at 71% 63%,rgba(120,90,50,.15) 0 1px,transparent 2px);background-size:7px 9px,11px 13px}
 /* (창 2단계 검토) the cork: grains of uneven size and spacing, not a grid of holes */
@@ -3892,6 +3900,12 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .placeGoing .islandPlaceRow .placeStep{grid-area:step;justify-self:end}
 .placeBack{display:inline-flex;align-items:center;gap:4px;border:0;background:none;color:inherit;font-weight:800;cursor:pointer;padding:0}
 .placeStep{display:inline-flex;gap:3px;margin-left:auto}
+/* (1.10.370 개수 칸: − [n] + -- 16px so a phone never zooms into it, its width fixed so typing never moves the row) */
+.countBox{display:inline-flex;align-items:center;gap:3px}
+.countBoxInput{width:3.4em;min-height:30px;padding:2px 4px;text-align:center;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;border:1px solid var(--isle-line,#c9b48a);border-radius:8px;background:#fffaf0;color:var(--isle-ink,#3d2f22)}
+.countBoxInput:focus-visible{outline:3px solid #2f6fc0;outline-offset:1px}
+@media (pointer:coarse){.countBoxInput{min-height:40px;width:3.8em}}
+.oreShopRow .countBox{margin-left:auto}
 #islandPlaceSubmit.sure{background:#e0952e;color:#fff;border-color:#b06a12}
 @media (max-width:560px){#islandPlaceList:has(.placeSide){grid-template-columns:1fr}.placeItems{max-height:26vh}}
 /* 364 📲 게임 설치: the guide card (this device's steps first, the others folded) */
