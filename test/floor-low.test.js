@@ -15,6 +15,7 @@ test('Low로 바뀌어도 넓은 바닥이 사라지지 않는다 (가구점·�
   const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
   await MeshoptDecoder.ready;
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).register(() => ({ name: 'test_blank_texture', loadTexture: () => Promise.resolve(new THREE.Texture()) })); /* (v1.10.272 99b: a textured model -- node decodes no images) */
+  loader.pluginCallbacks.unshift(loader.pluginCallbacks.pop()); /* (1.10.376 152e: before three's own EXT_texture_webp one) */
   const upArea = async (url) => {
     const b = fs.readFileSync(path.join(__dirname, '../public', url));
     const gltf = await loader.parseAsync(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), ''); gltf.scene.updateMatrixWorld(true);
