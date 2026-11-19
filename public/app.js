@@ -14399,8 +14399,9 @@
       if (!short) api('/api/island/loading-tips').then((d) => { let last = null; try { last = sessionStorage.getItem('gc.lastTip'); } catch {} const tip = L.pickTip(d.tips || [], last); byId('loadingTip').textContent = tip ? `💡 ${tip}` : ''; try { sessionStorage.setItem('gc.lastTip', tip); } catch {} }).catch(() => {});
       const tick = (now) => {
         frames.push(now - prev); prev = now; if (frames.length > need) frames.shift();
-        const r = window.PlazaReady?.(); const waiting = r ? r.textures + r.files : 0; most = Math.max(most, waiting); readySince = r?.ready ? readySince || now : 0;
-        const s = L.state({ entered: true, running: Boolean(r?.running), ready: Boolean(r?.ready), readyMs: readySince ? now - readySince : 0, waiting, mostWaiting: most, frames, elapsed: now - t0, short });
+        const r = window.PlazaReady?.(); const ok = short ? Boolean(r?.groundReady) : Boolean(r?.ready); /* (CI #519: the short one waits for the ground only) */
+        const waiting = r ? r.textures + (short ? 0 : r.files) : 0; most = Math.max(most, waiting); readySince = ok ? readySince || now : 0;
+        const s = L.state({ entered: true, running: Boolean(r?.running), ready: ok, readyMs: readySince ? now - readySince : 0, waiting, mostWaiting: most, frames, elapsed: now - t0, short });
         byId('loadingBarFill').style.width = `${Math.round(s.progress * 100)}%`; byId('loadingStep').textContent = s.lift ? '준비 완료' : `${s.label} 중…`;
         cover.dataset.step = String(s.step); /* (tests: where it is) */
         if (s.lift) { cover.classList.add('lifting'); setTimeout(() => { cover.classList.add('hidden'); cover.classList.remove('lifting', 'short'); active = false; }, short ? 350 : 700); return; }
@@ -14409,7 +14410,7 @@
       requestAnimationFrame(tick);
     };
     if (want && inGame()) show(false);
-    window.addEventListener('gc:place', () => { if (active || !inGame()) return; requestAnimationFrame(() => requestAnimationFrame(() => { const r = window.PlazaReady?.(); if (r && !r.ready && !active) show(true); })); });
+    window.addEventListener('gc:place', () => { if (active || !inGame()) return; requestAnimationFrame(() => requestAnimationFrame(() => { const r = window.PlazaReady?.(); if (r && !r.groundReady && !active) show(true); })); }); /* (CI #519: only when the ground is not in -- the user's bare pink ground; models stream in as before) */
   }
   { // v1.10.258 (총괄, 폴드) 「앱으로 설치」 on the first screen and in ☰ -- the messenger's: shown only when Chrome offers the
     // install (Chrome's own menu won't put a second app of one site on a phone that has the messenger's), never in the app

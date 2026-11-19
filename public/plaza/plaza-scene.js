@@ -6150,16 +6150,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // for what is in the scene (compileAsync, once more after anything new came in). A place change -- a jump of 30 m in a frame (a
   // room's door, a taxi, the train, the boat, a warp) or the scene started again (a reconnect) -- counts up `place` and tells the
   // page (gc:place), which covers the screen again only if the scene is not ready (app.js, LoadingCover)
-  let placeGen = 0; let loadEpoch = 0; let compiledEpoch = -1; let compiling = false; const placeWas = { x: NaN, z: NaN };
+  let placeGen = 0; let compiledEpoch = -1; let compiling = false; const placeWas = { x: NaN, z: NaN };
+  // (CI #519 quarry-phone, 총괄: three's compile walks the whole scene -- hidden rooms, far levels, fading copies too -- and with no
+  // parallel compile (a software renderer, a weak phone) it held the page for seconds; once more after every load it fell in the middle
+  // of a game. Now once, the first entry's, under its cover; later what comes compiles as it is first drawn, as before 368)
   function readiness() {
     const textures = Number(island.texturesPending?.()) || 0; const files = Number(assets.pending?.()) || 0;
-    if (textures || files) loadEpoch += compiledEpoch === loadEpoch || compiling ? 1 : 0; /* (a compile under way when more came in: once more after it) */
-    else if (compiledEpoch !== loadEpoch && !compiling) {
-      compiling = true; const epoch = loadEpoch; const done = () => { compiling = false; compiledEpoch = epoch; };
+    if (!textures && !files && compiledEpoch < 0 && !compiling) {
+      compiling = true; const done = () => { compiling = false; compiledEpoch = 0; };
       try { const p = renderer.compileAsync ? renderer.compileAsync(scene, camera) : renderer.compile(scene, camera); if (p && typeof p.then === 'function') p.then(done, done); else done(); } catch { done(); }
     }
-    const compiled = !textures && !files && compiledEpoch === loadEpoch;
-    return { running, textures, files, compiled, ready: running && compiled, place: placeGen };
+    const compiled = !textures && !files && compiledEpoch >= 0;
+    /* (groundReady: the ground's pictures in and the first compile done -- what the short cover waits for; a model streaming in near me
+       comes in as before 368, under no cover: CI #519) */
+    return { running, textures, files, compiled, ready: running && compiled, groundReady: running && !textures && compiledEpoch >= 0, place: placeGen };
   }
   function placeMoved(force = false) {
     const { x, z } = me.root.position; const jump = !Number.isFinite(placeWas.x) || Math.hypot(x - placeWas.x, z - placeWas.z) > 30; placeWas.x = x; placeWas.z = z;
