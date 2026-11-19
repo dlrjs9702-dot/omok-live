@@ -693,6 +693,18 @@
     REGISTRY['forest.tree_ancient'] = { seasons: f156('tree_ancient'), low: { seasons: f156('tree_ancient_low') }, near: 70 };
     for (const k of ['conifer', 'broad', 'mixed']) REGISTRY[`forest.clump_${k}`] = { seasons: f156(`forest_clump_${k}`), shadows: false };
     REGISTRY['forest.tree_ancient_far'] = { seasons: f156('tree_ancient_far'), shadows: false }; }
+  // 1.10.375 N2a-1 별마루섬's still pieces (assets 152 · 152c byeolmaru-v1, 136 newisle-v1, 157 spring157; places: isle2-props.js): the fence's kinds,
+  // its people's gate and corner posts, 우레's rock, the swamps' reeds and 152c's pieces (faded past 40 m as the weeds), the camp's fire, benches and
+  // stools, the spring cave -- one season's file for them all but the cave's; High near, Low past it
+  { const B1 = '/assets/island/byeolmaru-v1'; const N1 = '/assets/island/newisle-v1';
+    const two = (dir, f) => ({ url: `${dir}/${f}.glb`, low: { url: `${dir}/${f}_low.glb` } });
+    for (const k of ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_corner']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 30 };
+    REGISTRY['byeolmaru.tiger_rock'] = { ...two(B1, 'tiger_rock'), near: 40 }; REGISTRY['byeolmaru.sign_tiger'] = { ...two(B1, 'sign_tiger'), near: 40 }; /* (152e's board) */
+    for (const k of ['reeds_a', 'reeds_b', 'reeds_c', 'swamp_lily_a', 'swamp_lily_b', 'swamp_fungus', 'swamp_grass_a', 'swamp_grass_b', 'swamp_planks']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 25, shadows: false, hideFar: 40 };
+    REGISTRY['byeolmaru.swamp_stones'] = { ...two(B1, 'swamp_stones'), near: 30 };
+    for (const k of ['campfire', 'log_bench', 'log_stool']) REGISTRY[`newisle.${k}`] = { ...two(N1, k), near: 30 };
+    const S = (low) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/spring157/${s}/spring_cave${low}.glb`]));
+    REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40 }; }
   ['lotus_pink', 'lotus_white'].forEach((f, k) => { REGISTRY[`water.lotus.${k}`] = { seasons: n112(f, 'lily_pads'), near: 30, shadows: false }; });
   // G4b 채집 (assets 112; lib/island-gather.js): the collectables lying on their spots -- four of the six mushrooms, the twigs and the
   // four-leaf clover (the other two mushrooms the 106 pilot's, pilot.mushroom_*); one model at every distance

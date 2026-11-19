@@ -73,98 +73,398 @@
     "textures": 0
   },
   "fileOverrides": {
-    "forest156/autumn/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
-    "forest156/autumn/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
-    "forest156/spring/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
-    "forest156/spring/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
-    "forest156/summer/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
-    "forest156/summer/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
-    "forest156/winter/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
-    "forest156/winter/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
-    "characters/npc_walker_ted_work.glb": { "triangles": 31158, "sourceSha256": "380d43981c5b844836c1c59935161e6ac5f5a559ae44e739aee033fa1269ab64", "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk" },
-    "characters/npc_walker_ted_work_low.glb": { "triangles": 9671, "sourceSha256": "7d7099c737399928f9a15140a892f324deddf65e91e9d6dbea4dde83233cd83a", "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk" },
-    "characters/npc_face_ted.glb": { "meshes": 12, "nodes": 24, "materials": 12, "reason": "assets 102 / 119: an islander's 12 expression pieces, each its own named node (shown one at a time on the Head bone)" },
-    "stocks-v1/stock_exchange.glb": { "meshes": 4, "nodes": 11, "reason": "assets 118 섬 증권거래소: board_screen (its own mesh and material, the board drawn on a canvas), doors, door / clerk / footprint (empty nodes read by the game), roof" },
-    "stocks-v1/stock_exchange_low.glb": { "meshes": 4, "nodes": 11, "reason": "assets 118 섬 증권거래소 Low: the same nodes as the High" },
-    "stocks-v1/stock_exchange_room.glb": { "meshes": 3, "nodes": 10, "reason": "assets 118b 섬 증권거래소 안: exchange_room, front_wall (cut toward the camera), board_screen (a canvas), door_in / board_spot / clerk / walls (empty nodes read by the game)" },
-    "xmas-v2/snack_cocoa.glb": { "nodes": 2, "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)" },
-    "xmas-v2/snack_cocoa_low.glb": { "nodes": 2, "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)" },
-    "xmas-v2/snack_sweetpotato.glb": { "nodes": 2, "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)" },
-    "xmas-v2/snack_sweetpotato_low.glb": { "nodes": 2, "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)" },
-    "xmas-v2/snack_fishbread.glb": { "nodes": 2, "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)" },
-    "xmas-v2/snack_fishbread_low.glb": { "nodes": 2, "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)" },
-    "xmas-v2/market_stall_cocoa.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
-    "xmas-v2/market_stall_cocoa_low.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
-    "star-v1/star_lamp.glb": { "nodes": 3, "reason": "assets 154 별빛 램프: its light node kept (keepNodes) for a small point light at night" },
-    "star-v1/star_lamp_low.glb": { "nodes": 3, "reason": "assets 154 별빛 램프: its light node kept (keepNodes) for a small point light at night" },
-    "xmas-v2/market_stall_sweetpotato.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
-    "xmas-v2/market_stall_sweetpotato_low.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
-    "xmas-v2/market_stall_fishbread.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
-    "xmas-v2/market_stall_fishbread_low.glb": { "nodes": 6, "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)" },
-    "xmas-v2/house_dress_hut.glb": { "triangles": 3000 },
-    "xmas-v2/house_dress_hut_low.glb": { "triangles": 1200 },
-    "xmas-v2/house_dress_house.glb": { "triangles": 3000 },
-    "xmas-v2/house_dress_house_low.glb": { "triangles": 1200 },
-    "xmas-v2/house_dress_manor.glb": { "triangles": 3000 },
-    "xmas-v2/house_dress_manor_low.glb": { "triangles": 1200 },
-    "xmas-v2/house_dress_manor2.glb": { "triangles": 3000 },
-    "xmas-v2/house_dress_manor2_low.glb": { "triangles": 1200 },
-    "xmas-v2/santa_sleigh.glb": { "nodes": 25, "reason": "assets 127 산타 썰매: one skinned mesh, 22 joints for Fly/Wave (-kn)" },
-    "xmas-v2/santa_sleigh_low.glb": { "nodes": 25, "reason": "assets 127 산타 썰매: one skinned mesh, 22 joints for Fly/Wave (-kn)" },
-    "xmas-v2/ride_sled.glb": { "nodes": 4, "reason": "assets 128 탈 썰매: the seat / rider anchors kept (-kn) for the ride" },
-    "xmas-v2/ride_sled_low.glb": { "nodes": 4, "reason": "assets 128 탈 썰매: the seat / rider anchors kept (-kn) for the ride" },
-    "xmas-v3/xmas_rocking_reindeer.glb": { "nodes": 3, "reason": "assets 149: its `rock` node kept (-kn)" },
-    "xmas-v3/xmas_rocking_reindeer_low.glb": { "nodes": 3, "reason": "assets 149: its `rock` node kept (-kn)" },
-    "xmas-v3/xmas_snowman_lamp.glb": { "nodes": 3, "reason": "assets 149: its `light` node kept (-kn)" },
-    "xmas-v3/xmas_snowman_lamp_low.glb": { "nodes": 3, "reason": "assets 149: its `light` node kept (-kn)" },
-    "auction-v1/auction_board.glb": { "nodes": 13, "materials": 2, "reason": "assets 137 경매 게시판: nine note slots, the stand and the sign face kept (-kn); primary + glow" },
-    "auction-v1/auction_board_low.glb": { "nodes": 13, "materials": 2, "reason": "assets 137 경매 게시판: nine note slots, the stand and the sign face kept (-kn); primary + glow" },
-    "den-v1/den_room.glb": { "meshes": 5, "nodes": 13, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/table_dice.glb": { "meshes": 5, "nodes": 9, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/table_dice_low.glb": { "meshes": 5, "nodes": 9, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/table_cards.glb": { "meshes": 6, "nodes": 10, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/table_cards_low.glb": { "meshes": 6, "nodes": 10, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/table_roulette.glb": { "meshes": 3, "nodes": 7, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/table_roulette_low.glb": { "meshes": 3, "nodes": 7, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/slot_machine.glb": { "meshes": 5, "nodes": 6, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/slot_machine_low.glb": { "meshes": 5, "nodes": 6, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/secret_door.glb": { "meshes": 3, "nodes": 4, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "den-v1/secret_door_low.glb": { "meshes": 3, "nodes": 4, "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras" },
-    "house-bugs-v1/cockroach.glb": { "meshes": 12, "nodes": 13, "reason": "assets 145 바퀴벌레: legs and antennae as their own nodes (wiggled by code)" },
-    "house-bugs-v1/cockroach_low.glb": { "meshes": 9, "nodes": 10, "reason": "assets 145 바퀴벌레: legs and antennae as their own nodes (wiggled by code)" },
-    "house-bugs-v1/cockroach_dot.glb": { "nodes": 2, "reason": "assets 145 바퀴벌레: legs and antennae as their own nodes (wiggled by code)" },
-    "quarry-v2/ore_cart.glb": { "meshes": 2, "nodes": 5, "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp" },
-    "quarry-v2/ore_cart_low.glb": { "meshes": 2, "nodes": 5, "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp" },
-    "quarry-v2/tool_rack.glb": { "nodes": 2, "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp" },
-    "quarry-v2/tool_rack_low.glb": { "nodes": 2, "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp" },
-    "quarry-v2/work_tent.glb": { "nodes": 3, "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp" },
-    "quarry-v2/work_tent_low.glb": { "nodes": 3, "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp" },
-    "quarry-v3/crane_big.glb": { "meshes": 2, "nodes": 7, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/crane_big_low.glb": { "meshes": 2, "nodes": 7, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/crane_small.glb": { "meshes": 2, "nodes": 6, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/crane_small_low.glb": { "meshes": 2, "nodes": 6, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/ore_crate.glb": { "nodes": 3, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/ore_crate_low.glb": { "nodes": 3, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/rail_end.glb": { "nodes": 4, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/rail_end_low.glb": { "nodes": 4, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/rail_straight_2.glb": { "nodes": 4, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/rail_straight_2_low.glb": { "nodes": 4, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/view_deck.glb": { "nodes": 4, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/view_deck_low.glb": { "nodes": 4, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/work_lamp.glb": { "nodes": 3, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "quarry-v3/work_lamp_low.glb": { "nodes": 3, "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load" },
-    "farm-v1/spring/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
-    "farm-v1/summer/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
-    "farm-v1/autumn/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
-    "farm-v1/winter/farm_bed.glb": { "nodes": 20, "meshes": 7, "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on" },
-    "yard-v2/spring/arch_vines.glb": { "triangles": 15000 },
-    "yard-v2/summer/arch_vines.glb": { "triangles": 15000 },
-    "yard-v2/autumn/arch_vines.glb": { "triangles": 15000 },
-    "yard-v2/winter/arch_vines.glb": { "triangles": 15000 },
-    "taxi-v1/taxi_island.glb": { "meshes": 23, "nodes": 74, "textures": 2 },
-    "taxi-v1/taxi_island_low.glb": { "meshes": 23, "nodes": 74, "textures": 2 },
-    "taxi-v1/taxi_stop.glb": { "meshes": 2, "nodes": 7, "textures": 2 },
-    "taxi-v1/taxi_stop_low.glb": { "meshes": 2, "nodes": 7, "textures": 2 },
+    "forest156/autumn/tree_ancient.glb": {
+      "triangles": 14272,
+      "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only"
+    },
+    "forest156/autumn/tree_ancient_far.glb": {
+      "textures": 2,
+      "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only"
+    },
+    "forest156/spring/tree_ancient.glb": {
+      "triangles": 14272,
+      "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only"
+    },
+    "forest156/spring/tree_ancient_far.glb": {
+      "textures": 2,
+      "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only"
+    },
+    "forest156/summer/tree_ancient.glb": {
+      "triangles": 14272,
+      "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only"
+    },
+    "forest156/summer/tree_ancient_far.glb": {
+      "textures": 2,
+      "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only"
+    },
+    "forest156/winter/tree_ancient.glb": {
+      "triangles": 14272,
+      "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only"
+    },
+    "forest156/winter/tree_ancient_far.glb": {
+      "textures": 2,
+      "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only"
+    },
+    "characters/npc_walker_ted_work.glb": {
+      "triangles": 31158,
+      "sourceSha256": "380d43981c5b844836c1c59935161e6ac5f5a559ae44e739aee033fa1269ab64",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk"
+    },
+    "characters/npc_walker_ted_work_low.glb": {
+      "triangles": 9671,
+      "sourceSha256": "7d7099c737399928f9a15140a892f324deddf65e91e9d6dbea4dde83233cd83a",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk"
+    },
+    "characters/npc_face_ted.glb": {
+      "meshes": 12,
+      "nodes": 24,
+      "materials": 12,
+      "reason": "assets 102 / 119: an islander's 12 expression pieces, each its own named node (shown one at a time on the Head bone)"
+    },
+    "stocks-v1/stock_exchange.glb": {
+      "meshes": 4,
+      "nodes": 11,
+      "reason": "assets 118 섬 증권거래소: board_screen (its own mesh and material, the board drawn on a canvas), doors, door / clerk / footprint (empty nodes read by the game), roof"
+    },
+    "stocks-v1/stock_exchange_low.glb": {
+      "meshes": 4,
+      "nodes": 11,
+      "reason": "assets 118 섬 증권거래소 Low: the same nodes as the High"
+    },
+    "stocks-v1/stock_exchange_room.glb": {
+      "meshes": 3,
+      "nodes": 10,
+      "reason": "assets 118b 섬 증권거래소 안: exchange_room, front_wall (cut toward the camera), board_screen (a canvas), door_in / board_spot / clerk / walls (empty nodes read by the game)"
+    },
+    "xmas-v2/snack_cocoa.glb": {
+      "nodes": 2,
+      "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)"
+    },
+    "xmas-v2/snack_cocoa_low.glb": {
+      "nodes": 2,
+      "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)"
+    },
+    "xmas-v2/snack_sweetpotato.glb": {
+      "nodes": 2,
+      "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)"
+    },
+    "xmas-v2/snack_sweetpotato_low.glb": {
+      "nodes": 2,
+      "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)"
+    },
+    "xmas-v2/snack_fishbread.glb": {
+      "nodes": 2,
+      "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)"
+    },
+    "xmas-v2/snack_fishbread_low.glb": {
+      "nodes": 2,
+      "reason": "assets 124 크리스마스 마켓: the snack node kept (-kn)"
+    },
+    "xmas-v2/market_stall_cocoa.glb": {
+      "nodes": 6,
+      "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)"
+    },
+    "xmas-v2/market_stall_cocoa_low.glb": {
+      "nodes": 6,
+      "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)"
+    },
+    "star-v1/star_lamp.glb": {
+      "nodes": 3,
+      "reason": "assets 154 별빛 램프: its light node kept (keepNodes) for a small point light at night"
+    },
+    "star-v1/star_lamp_low.glb": {
+      "nodes": 3,
+      "reason": "assets 154 별빛 램프: its light node kept (keepNodes) for a small point light at night"
+    },
+    "xmas-v2/market_stall_sweetpotato.glb": {
+      "nodes": 6,
+      "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)"
+    },
+    "xmas-v2/market_stall_sweetpotato_low.glb": {
+      "nodes": 6,
+      "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)"
+    },
+    "xmas-v2/market_stall_fishbread.glb": {
+      "nodes": 6,
+      "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)"
+    },
+    "xmas-v2/market_stall_fishbread_low.glb": {
+      "nodes": 6,
+      "reason": "assets 124 크리스마스 마켓: vendor / buy / steam / FACE anchors kept (-kn)"
+    },
+    "xmas-v2/house_dress_hut.glb": {
+      "triangles": 3000
+    },
+    "xmas-v2/house_dress_hut_low.glb": {
+      "triangles": 1200
+    },
+    "xmas-v2/house_dress_house.glb": {
+      "triangles": 3000
+    },
+    "xmas-v2/house_dress_house_low.glb": {
+      "triangles": 1200
+    },
+    "xmas-v2/house_dress_manor.glb": {
+      "triangles": 3000
+    },
+    "xmas-v2/house_dress_manor_low.glb": {
+      "triangles": 1200
+    },
+    "xmas-v2/house_dress_manor2.glb": {
+      "triangles": 3000
+    },
+    "xmas-v2/house_dress_manor2_low.glb": {
+      "triangles": 1200
+    },
+    "xmas-v2/santa_sleigh.glb": {
+      "nodes": 25,
+      "reason": "assets 127 산타 썰매: one skinned mesh, 22 joints for Fly/Wave (-kn)"
+    },
+    "xmas-v2/santa_sleigh_low.glb": {
+      "nodes": 25,
+      "reason": "assets 127 산타 썰매: one skinned mesh, 22 joints for Fly/Wave (-kn)"
+    },
+    "xmas-v2/ride_sled.glb": {
+      "nodes": 4,
+      "reason": "assets 128 탈 썰매: the seat / rider anchors kept (-kn) for the ride"
+    },
+    "xmas-v2/ride_sled_low.glb": {
+      "nodes": 4,
+      "reason": "assets 128 탈 썰매: the seat / rider anchors kept (-kn) for the ride"
+    },
+    "xmas-v3/xmas_rocking_reindeer.glb": {
+      "nodes": 3,
+      "reason": "assets 149: its `rock` node kept (-kn)"
+    },
+    "xmas-v3/xmas_rocking_reindeer_low.glb": {
+      "nodes": 3,
+      "reason": "assets 149: its `rock` node kept (-kn)"
+    },
+    "xmas-v3/xmas_snowman_lamp.glb": {
+      "nodes": 3,
+      "reason": "assets 149: its `light` node kept (-kn)"
+    },
+    "xmas-v3/xmas_snowman_lamp_low.glb": {
+      "nodes": 3,
+      "reason": "assets 149: its `light` node kept (-kn)"
+    },
+    "auction-v1/auction_board.glb": {
+      "nodes": 13,
+      "materials": 2,
+      "reason": "assets 137 경매 게시판: nine note slots, the stand and the sign face kept (-kn); primary + glow"
+    },
+    "auction-v1/auction_board_low.glb": {
+      "nodes": 13,
+      "materials": 2,
+      "reason": "assets 137 경매 게시판: nine note slots, the stand and the sign face kept (-kn); primary + glow"
+    },
+    "den-v1/den_room.glb": {
+      "meshes": 5,
+      "nodes": 13,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/table_dice.glb": {
+      "meshes": 5,
+      "nodes": 9,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/table_dice_low.glb": {
+      "meshes": 5,
+      "nodes": 9,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/table_cards.glb": {
+      "meshes": 6,
+      "nodes": 10,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/table_cards_low.glb": {
+      "meshes": 6,
+      "nodes": 10,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/table_roulette.glb": {
+      "meshes": 3,
+      "nodes": 7,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/table_roulette_low.glb": {
+      "meshes": 3,
+      "nodes": 7,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/slot_machine.glb": {
+      "meshes": 5,
+      "nodes": 6,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/slot_machine_low.glb": {
+      "meshes": 5,
+      "nodes": 6,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/secret_door.glb": {
+      "meshes": 3,
+      "nodes": 4,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "den-v1/secret_door_low.glb": {
+      "meshes": 3,
+      "nodes": 4,
+      "reason": "assets 147 지하 도박장: named nodes kept (-kn -km -ke) -- the moving parts (cup, dice, card, wheel, ball, reels, lever, leaf) and the room's places, walls extras"
+    },
+    "house-bugs-v1/cockroach.glb": {
+      "meshes": 12,
+      "nodes": 13,
+      "reason": "assets 145 바퀴벌레: legs and antennae as their own nodes (wiggled by code)"
+    },
+    "house-bugs-v1/cockroach_low.glb": {
+      "meshes": 9,
+      "nodes": 10,
+      "reason": "assets 145 바퀴벌레: legs and antennae as their own nodes (wiggled by code)"
+    },
+    "house-bugs-v1/cockroach_dot.glb": {
+      "nodes": 2,
+      "reason": "assets 145 바퀴벌레: legs and antennae as their own nodes (wiggled by code)"
+    },
+    "quarry-v2/ore_cart.glb": {
+      "meshes": 2,
+      "nodes": 5,
+      "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp"
+    },
+    "quarry-v2/ore_cart_low.glb": {
+      "meshes": 2,
+      "nodes": 5,
+      "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp"
+    },
+    "quarry-v2/tool_rack.glb": {
+      "nodes": 2,
+      "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp"
+    },
+    "quarry-v2/tool_rack_low.glb": {
+      "nodes": 2,
+      "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp"
+    },
+    "quarry-v2/work_tent.glb": {
+      "nodes": 3,
+      "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp"
+    },
+    "quarry-v2/work_tent_low.glb": {
+      "nodes": 3,
+      "reason": "assets 141 채석장 소품: named nodes kept (-kn) -- the cart's load/rail, the rack's take, the tent's bench/lamp"
+    },
+    "quarry-v3/crane_big.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/crane_big_low.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/crane_small.glb": {
+      "meshes": 2,
+      "nodes": 6,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/crane_small_low.glb": {
+      "meshes": 2,
+      "nodes": 6,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/ore_crate.glb": {
+      "nodes": 3,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/ore_crate_low.glb": {
+      "nodes": 3,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/rail_end.glb": {
+      "nodes": 4,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/rail_end_low.glb": {
+      "nodes": 4,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/rail_straight_2.glb": {
+      "nodes": 4,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/rail_straight_2_low.glb": {
+      "nodes": 4,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/view_deck.glb": {
+      "nodes": 4,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/view_deck_low.glb": {
+      "nodes": 4,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/work_lamp.glb": {
+      "nodes": 3,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "quarry-v3/work_lamp_low.glb": {
+      "nodes": 3,
+      "reason": "assets 143 채석장 개발 소품: named connectors kept -- rail_a/rail_b, the cranes' boom/hook/wheel, the deck's view/steps, lamp/load"
+    },
+    "farm-v1/spring/farm_bed.glb": {
+      "nodes": 20,
+      "meshes": 7,
+      "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on"
+    },
+    "farm-v1/summer/farm_bed.glb": {
+      "nodes": 20,
+      "meshes": 7,
+      "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on"
+    },
+    "farm-v1/autumn/farm_bed.glb": {
+      "nodes": 20,
+      "meshes": 7,
+      "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on"
+    },
+    "farm-v1/winter/farm_bed.glb": {
+      "nodes": 20,
+      "meshes": 7,
+      "reason": "assets 115 텃밭: the frame, six soil cells (soil_0..5, the wet soil swapped per cell in F2) and the six empty slot nodes the crops stand on"
+    },
+    "yard-v2/spring/arch_vines.glb": {
+      "triangles": 15000
+    },
+    "yard-v2/summer/arch_vines.glb": {
+      "triangles": 15000
+    },
+    "yard-v2/autumn/arch_vines.glb": {
+      "triangles": 15000
+    },
+    "yard-v2/winter/arch_vines.glb": {
+      "triangles": 15000
+    },
+    "taxi-v1/taxi_island.glb": {
+      "meshes": 23,
+      "nodes": 74,
+      "textures": 2
+    },
+    "taxi-v1/taxi_island_low.glb": {
+      "meshes": 23,
+      "nodes": 74,
+      "textures": 2
+    },
+    "taxi-v1/taxi_stop.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "textures": 2
+    },
+    "taxi-v1/taxi_stop_low.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "textures": 2
+    },
     "additions-v1/facilities/faces.glb": {
       "materials": 15
     },
@@ -1730,6 +2030,88 @@
       "nodes": 24,
       "materials": 12,
       "reason": "v1.10.264 assets 102: an islander's 12 expression pieces, each its own named node (shown one at a time on the Head bone)"
+    },
+    "byeolmaru-v1/fence_gate.glb": {
+      "meshes": 2,
+      "nodes": 6,
+      "reason": "1.10.375 N2a-1 assets 152: the people's gate -- its leaf a mesh of its own (turned open by the game), stand_in / stand_out empty nodes"
+    },
+    "byeolmaru-v1/fence_gate_low.glb": {
+      "meshes": 2,
+      "nodes": 6,
+      "reason": "1.10.375 N2a-1 assets 152: the people's gate -- its leaf a mesh of its own (turned open by the game), stand_in / stand_out empty nodes"
+    },
+    "spring157/spring/spring_cave.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "spring157/spring/spring_cave_low.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "spring157/summer/spring_cave.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "spring157/summer/spring_cave_low.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "spring157/autumn/spring_cave.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "spring157/autumn/spring_cave_low.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "spring157/winter/spring_cave.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "spring157/winter/spring_cave_low.glb": {
+      "meshes": 4,
+      "nodes": 4,
+      "materials": 4,
+      "reason": "1.10.375 N2a-1 assets 157: the spring cave -- rock, water, water_fall, water_foam each its own (the creek's water, fall and foam materials given to them)"
+    },
+    "newisle-v1/campfire.glb": {
+      "nodes": 3,
+      "reason": "1.10.375 N2a-1 assets 136: campfire -- its embers (glow) and the flame point"
+    },
+    "newisle-v1/campfire_low.glb": {
+      "nodes": 3,
+      "reason": "1.10.375 N2a-1 assets 136: campfire -- its embers (glow) and the flame point"
+    },
+    "newisle-v1/log_bench.glb": {
+      "nodes": 4,
+      "reason": "1.10.375 N2a-1 assets 136: log_bench -- its seat points"
+    },
+    "newisle-v1/log_bench_low.glb": {
+      "nodes": 4,
+      "reason": "1.10.375 N2a-1 assets 136: log_bench -- its seat points"
+    },
+    "newisle-v1/log_stool.glb": {
+      "nodes": 3,
+      "reason": "1.10.375 N2a-1 assets 136: log_stool -- its seat point"
+    },
+    "newisle-v1/log_stool_low.glb": {
+      "nodes": 3,
+      "reason": "1.10.375 N2a-1 assets 136: log_stool -- its seat point"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

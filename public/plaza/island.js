@@ -999,6 +999,41 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       if (A) instancedOne(mergeColored([crown(SPH, 0x5c9a4c, 0, 28, 0, 34, 17), part(new THREE.CylinderGeometry(2.5, 3.5, 20, 6), 0x6f4f34, 0, 10, 0)]), natureMat, [A], (o) => setM(o.x, ground(o.x, o.z), o.z, 1, 1, o.yaw), { ...onFar, target: ['forest.tree_ancient_far'] });
     }
   }
+  // 1.10.375 N2a-1 별마루섬's still pieces (isle2-props.js, made by tools/isle2-props.cjs; assets 136 · 152 · 152c · 157): the fence round the island and
+  // its people's gate, the corner posts, the camp's fire / benches / stools, 우레's rock, the swamps' reeds and 152c's pieces, 157's spring cave -- each
+  // a stand-in box of what blocks (its circles inside: dalmaru-walk) until its model comes; the swamps' mud drawn here, laid on the ground
+  const P2 = globalThis.Isle2Props;
+  if (P2 && maps2) {
+    const B = P2.BOXES; const WOOD = 0x8a6440; const STONE = 0x8f8a7c;
+    const box = (kind, color) => { const [w, h, d, zc] = B[kind]; return mergeColored([part(new THREE.BoxGeometry(w, h, d), color, 0, h / 2, zc)]); };
+    const rows = (list, kind, k) => list.filter((a) => a[3] === k).map(([x, z, yaw]) => ({ x, z, yaw, isle2: true }));
+    const onGround = (o) => setM(o.x, onMesh(o.x, o.z), o.z, 1, 1, o.yaw || 0);
+    P2.FENCE_KINDS.forEach((kind, k) => {
+      const geo = kind === 'fence_gate' ? mergeColored([part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, -1.08, 1.21, 0), part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, 1.08, 1.21, 0), part(new THREE.BoxGeometry(2.4, 0.16, 0.2), WOOD, 0, 2.34, 0)]) : box(kind, k === 3 ? STONE : WOOD);
+      instanced(geo, natureMat, rows(P2.FENCE, kind, k), onGround, { cell: 60, target: [`byeolmaru.${kind}`] });
+    });
+    instanced(box('fence_corner', WOOD), natureMat, P2.CORNERS.map(([x, z]) => ({ x, z, isle2: true })), onGround, { cell: 60, target: ['byeolmaru.fence_corner'] });
+    P2.CAMP_KINDS.forEach((kind, k) => instanced(box(kind, kind === 'campfire' ? 0x6f5a48 : WOOD), natureMat, rows(P2.CAMP, kind, k), onGround, { cell: 60, target: [`newisle.${kind}`] }));
+    if (P2.ROCK) instanced(box('tiger_rock', STONE), natureMat, [{ x: P2.ROCK[0], z: P2.ROCK[1], yaw: P2.ROCK[2], isle2: true }], onGround, { cell: 60, target: ['byeolmaru.tiger_rock'] });
+    if (P2.SIGN) instanced(box('sign_tiger', 0xc9a26b), natureMat, [{ x: P2.SIGN[0], z: P2.SIGN[1], yaw: P2.SIGN[2], isle2: true }], onGround, { cell: 60, target: ['byeolmaru.sign_tiger'] }); /* (호랑이 출몰 -- outside the gate, beside the walk) */
+    P2.REED_KINDS.forEach((kind, k) => instanced(mergeColored([crown(CONE, 0x6f8f3f, 0, 0.6, 0, 0.7, 1.2)]), natureMat, rows(P2.REEDS, kind, k), onGround, { shadow: false, cell: 60, target: [`byeolmaru.${kind}`] }));
+    P2.DECO_KINDS.forEach((kind, k) => { const lily = kind.startsWith('swamp_lily');
+      instanced(kind === 'swamp_stones' ? box(kind, STONE) : mergeColored([crown(SPH, lily ? 0x5f9a4a : 0x7a8f45, 0, lily ? 0.02 : 0.3, 0, 0.8, lily ? 0.06 : 0.6)]), natureMat, rows(P2.DECO, kind, k),
+        (o) => setM(o.x, onMesh(o.x, o.z) + (lily ? 0.045 : 0), o.z, 1, 1, o.yaw), { shadow: kind === 'swamp_stones', cell: 60, target: [`byeolmaru.${kind}`] }); });
+    { const C = P2.CAVE; const y = T.creekWaterY ? T.creekWaterY(C.x, C.z) : onMesh(C.x, C.z); /* (its origin the creek's first water -- 157 README) */
+      instanced(mergeColored(P2.CAVE_BOXES.map((b) => part(new THREE.BoxGeometry(b.w, b.h, b.d), STONE, b.x, b.y, b.z))), natureMat, [{ x: C.x, z: C.z, yaw: C.yaw, isle2: true }], (o) => setM(o.x, y, o.z, 1, 1, o.yaw), { cell: 60, target: ['spring.cave'] }); }
+    // the swamps' mud (152's own is a ring laid on the ground -- drawn here the same way: its outline, the ground under each point + 3 cm, soft at its rim)
+    const mud = keep(new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    P2.SWAMPS.forEach(([sx, sz], i) => {
+      const ol = P2.SWAMP_OUTLINES[i]; const RINGS = [[0, 0.16, 1], [0.45, 0.16, 1], [0.7, 0.03, 1], [1, 0.03, 0]]; /* (share of the way out, lift, alpha) */ const pos = []; const col = []; const idx = [];
+      const MUD = new THREE.Color(0x4f5530); const POOL = new THREE.Color(0x2f3f38);
+      RINGS.forEach(([f, lift, a], r) => ol.forEach(([ox, oz]) => { const x = sx + (ox - sx) * f; const z = sz + (oz - sz) * f; pos.push(x, onMesh(x, z) + 0.03 + (r < 2 ? 0.015 : 0), z); const c = r < 2 ? POOL : MUD; col.push(c.r, c.g, c.b, a); }));
+      const n = ol.length; for (let r = 0; r < RINGS.length - 1; r += 1) for (let k = 0; k < n; k += 1) { const a = r * n + k; const b = r * n + ((k + 1) % n); idx.push(a, a + n, b, b, a + n, b + n); }
+      const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4)); g.setIndex(idx); g.computeVertexNormals();
+      if (g.attributes.normal.getY(n) < 0) { for (let t = 0; t < idx.length; t += 3) [idx[t + 1], idx[t + 2]] = [idx[t + 2], idx[t + 1]]; g.setIndex(idx); g.computeVertexNormals(); } /* (the outline's turn either way: facing up) */
+      const m = new THREE.Mesh(g, mud); m.receiveShadow = true; m.renderOrder = 1; isle2Cell(scene, sx, sz).add(m);
+    });
+  }
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut
   // line (decoration only -- nothing here is walked around). Spaced from each curve, so they follow every walk.

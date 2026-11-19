@@ -676,8 +676,9 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(cached, asset.url + ' is not downloaded before a set is worn').not.toContain(asset.url);
   }
   for (const [url] of files) expect(cached).toContain(url);
+  const KEEP_PARTS = { 'spring.cave': 4 }; /* (1.10.375 N2a-1: the cave's stone and its three see-through water pieces, kept apart) */
   for (const b of d.assets.batches) {
-    expect(b.placed).toBe(true); expect(b.parts).toBe(b.ids[0].startsWith('halloween.') ? b.parts : 1); // v1.10.39: the Halloween decor keeps its glowing material apart (not flattened)
+    expect(b.placed).toBe(true); expect(b.parts, b.ids[0]).toBe(b.ids[0].startsWith('halloween.') ? b.parts : (KEEP_PARTS[b.ids[0]] ?? 1)); // v1.10.39: the Halloween decor keeps its glowing material apart (not flattened)
     expect(b.procedural).toBe(0); // the island never turns procedural with distance
     expect(b.near + b.far).toBe(b.copies); // every copy drawn exactly once (High or Low), no doubles
   }

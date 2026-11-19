@@ -15095,6 +15095,306 @@
       "lowSrc": "forest156:02. Low/forest156/winter/tree_big_pine_low.glb",
       "lowSha256": "b636bdb859e55c25811b451c929fe931ebe2cbfe8279427fae38bbd03b4181a7",
       "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_corner.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/fence_corner.glb",
+      "sha256": "b8c07250ea8ed3c0427de160b4105dcc8292ff03965ec8e34a8f3d7bab21a6b8",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_gate.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/fence_gate.glb",
+      "sha256": "8b9f7e70752e0aea333040cd9ae7a12e4404e65f731577a662fa60700f8837b4",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_palisade_b.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/fence_palisade_b.glb",
+      "sha256": "d869692e66640e7325b7b99c8eb792103ca4993b60cb1a4418b5aeacd8516137",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_palisade_e.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/fence_palisade_e.glb",
+      "sha256": "f21e1a1c21ae42152aac062eed536ee08a437b2dae58271466c9309739864905",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_segment.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/fence_segment.glb",
+      "sha256": "d5c469d23f2ebada3cd31109e86a032b4d0d1d06a94ff25ae4870e1d0cd23dd4",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_stonewall.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/fence_stonewall.glb",
+      "sha256": "48b0210ed1c1630aa60061c61d1b42e08945b62512426caf77472ded531f32bd",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/reeds_a.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/reeds_a.glb",
+      "sha256": "6b618ea4567468bb7e9e689028de98300808c1728450320a46cfa3e1895a03f1",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/reeds_b.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/reeds_b.glb",
+      "sha256": "70bd9d957922970660ee089c6ca0b92142a0169f62c5b8e747c047b6e5e808f2",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/reeds_c.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/reeds_c.glb",
+      "sha256": "707ec5fa3a63ef658e095bf4828e040c5c12c5db0a87073e52ffeb2e2b8dd623",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_fungus.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/swamp_fungus.glb",
+      "sha256": "eaa7dbccbb3e754e170428c4f36786563409c46c7e3eafaecccfb51107093466",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_grass_a.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/swamp_grass_a.glb",
+      "sha256": "55ad01a0ab4ae6f715839aa73bf8ba617556b6b21999b20defbb11ff0c977f6a",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_grass_b.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/swamp_grass_b.glb",
+      "sha256": "8fbf44db84aa57bfe654bbbf15b5dd2bac5629c2fe4f5190b38c65cec64cc4af",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_lily_a.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/swamp_lily_a.glb",
+      "sha256": "b892620146bdbe70bbe3bda0e47a160cde34a14a8aafc64a2812cf5d3d90e071",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_lily_b.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/swamp_lily_b.glb",
+      "sha256": "9b231b68161caa455558e820c74a346ee1cc94ee6e77dcb56383f20cc1bfc8ec",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_planks.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/swamp_planks.glb",
+      "sha256": "db4877b89aab971d456504937a8203445def688d3486ffd5d451f1a68295231a",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_stones.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/swamp_stones.glb",
+      "sha256": "fa6ee42bf899d872442c9f7388a55e827b7a95b340a69f513d793ef181da4b35",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/tiger_rock.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/tiger_rock.glb",
+      "sha256": "571f9ef2f297c742de3fb72a6083ad091e8f86a1e8b6f7e2568c7c94117a1330",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_corner_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/fence_corner_low.glb",
+      "sha256": "8d35d1a07374340c96ca933b75e67fe92ea4b9379f9abfd53c512861910ebc9b",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_gate_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/fence_gate_low.glb",
+      "sha256": "462f74532cabd304326de389e847761818704593503a9dfc4402f9e6b58b8d5b",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_palisade_b_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/fence_palisade_b_low.glb",
+      "sha256": "cf12414f6919bf6d208c843d68c480904609922a46d60cbb5d115b38543d08c7",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_palisade_e_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/fence_palisade_e_low.glb",
+      "sha256": "14bb8ab2e0858a70d2d4d2f7774f96a07cf58aef4dedc11938caad1cba7054f0",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_segment_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/fence_segment_low.glb",
+      "sha256": "b3854bb03f522e31104d7917b5a1c27478c4e61a3ddb60386262426ab5724a53",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_stonewall_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/fence_stonewall_low.glb",
+      "sha256": "5bf1073d98470cadbb2520cf0d1e76217831ad7f0bfcb20bf2baf9290e0dc7b4",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/reeds_a_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/reeds_a_low.glb",
+      "sha256": "5be74e76be9d1a8d2fdbb12a8a6448c7733c6ea1c3e3646cb2ead88a6aa2010c",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/reeds_b_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/reeds_b_low.glb",
+      "sha256": "e1293d7bbacad39011b731ac81e039bb4637ef3bdfcc9aa2fadcdbc0dc3a6b5d",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/reeds_c_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/reeds_c_low.glb",
+      "sha256": "b31ded7c942db9fc9e2fa5c2b796bbd96e29fd173368c8b4078e07f97e0f8e35",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_fungus_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/swamp_fungus_low.glb",
+      "sha256": "906f89d0c80d9b12b78d6186a0cca7251a2f39eb00373056465bc06822c10c50",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_grass_a_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/swamp_grass_a_low.glb",
+      "sha256": "efe75841dca8068dcd3842d787c8024013a99c228df96bdc15978975fc180960",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_grass_b_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/swamp_grass_b_low.glb",
+      "sha256": "73cf9b5d5a02d8f08e8c8c4b4c2bfd50262a7da1ebcdf669844beefaa336ad97",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_lily_a_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/swamp_lily_a_low.glb",
+      "sha256": "4d12f264b0268a5313f6c2249f02e95ae8eec785f9a4f664ecef6ce2736bf3f5",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_lily_b_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/swamp_lily_b_low.glb",
+      "sha256": "3aefef12fc401dff1c8f4ddcb80342484cad20d878094b5bb06425fb0102775c",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_planks_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/swamp_planks_low.glb",
+      "sha256": "195b0f3037cf19e91f9d59138d51957265b4390ba8c402f2ba62ee863f3a932a",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/swamp_stones_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/swamp_stones_low.glb",
+      "sha256": "dc48dac0cff2de01e87b3bdf3048e02c0a3dc00e72769bdfbe3a797a18a00c31",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/tiger_rock_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/tiger_rock_low.glb",
+      "sha256": "79a3eae46b94ff79bdbd5e3d95d79d2558d6d415d7c441451af1b2ecf4e00ad7",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/sign_tiger.glb",
+      "src": "byeolmaru152:01. High/byeolmaru-v1/sign_tiger.glb",
+      "sha256": "e16642a336f3ba7ee0b6446671ceb3ed95b5b9aaa8722bbca845fa3eca4e4334",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/sign_tiger_low.glb",
+      "src": "byeolmaru152:02. Low/byeolmaru-v1/sign_tiger_low.glb",
+      "sha256": "d2745cacdfcf3797a1407e84a171b52c4f9b0ed51a9780a642baad64da777f16",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/campfire.glb",
+      "src": "newisle136:01. High/newisle-v1/campfire.glb",
+      "sha256": "82a446e94f5d0e583d45d44581f9c78a7387031e94cd5de301726d8d6e3c2a29",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/log_bench.glb",
+      "src": "newisle136:01. High/newisle-v1/log_bench.glb",
+      "sha256": "b9267d8223404c718486cc7cb9a527e9d960db2bc0e4829e05c08fb10c2f592a",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/log_stool.glb",
+      "src": "newisle136:01. High/newisle-v1/log_stool.glb",
+      "sha256": "f1bf5056ad4775ac560ee84d71b8172fcc63fdeffb5df35530571c91c29f3294",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/campfire_low.glb",
+      "src": "newisle136:02. Low/newisle-v1/campfire_low.glb",
+      "sha256": "77556b81bd148458ea40d8f01cb3a2fb242eabc4cd7e14dafc713ac5d304565e",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/log_bench_low.glb",
+      "src": "newisle136:02. Low/newisle-v1/log_bench_low.glb",
+      "sha256": "8ed035c9f6eb419fa1beecc33988d4639da6965b21c10d83399f50c918bf61eb",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/log_stool_low.glb",
+      "src": "newisle136:02. Low/newisle-v1/log_stool_low.glb",
+      "sha256": "f0579e0cb0edf833368ddda2b3c8b01a159d2f93915eebf9fddd06961c60a7e3",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/autumn/spring_cave.glb",
+      "src": "spring157:01. High/spring157/autumn/spring_cave.glb",
+      "sha256": "f1ed8149bcce1be7d8c306dda96e7a419e428d2d25f9334d30b01baffbcabca5",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/spring/spring_cave.glb",
+      "src": "spring157:01. High/spring157/spring/spring_cave.glb",
+      "sha256": "89dc34cd4bd987c4325e913d45daaf0851651a8d9a4a945dfb4894295fef5d6e",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/summer/spring_cave.glb",
+      "src": "spring157:01. High/spring157/summer/spring_cave.glb",
+      "sha256": "48408b8e14f9499c81369c81383c16208d2cfc61f2e71706827638cbf2954744",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/winter/spring_cave.glb",
+      "src": "spring157:01. High/spring157/winter/spring_cave.glb",
+      "sha256": "3896a4959a262c9aff36c5137f354fb3fd4786f5c8bdbd697e5c60683bcde441",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/autumn/spring_cave_low.glb",
+      "src": "spring157:02. Low/spring157/autumn/spring_cave_low.glb",
+      "sha256": "eb8020ae19f651e9aca492a99a227531b9d586950956b5893ad59b6b5b9cacf4",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/spring/spring_cave_low.glb",
+      "src": "spring157:02. Low/spring157/spring/spring_cave_low.glb",
+      "sha256": "c282925770e73e82df0dbe885eed605fe96949655c2c16a957d7c1ad06813531",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/summer/spring_cave_low.glb",
+      "src": "spring157:02. Low/spring157/summer/spring_cave_low.glb",
+      "sha256": "9c72d91625661036b137632d2f9d9725900f9d2d7744063121d2e43358f49403",
+      "precompressed": true
+    },
+    {
+      "out": "spring157/winter/spring_cave_low.glb",
+      "src": "spring157:02. Low/spring157/winter/spring_cave_low.glb",
+      "sha256": "882748aa855abba2037aeeafef1aadb323f49a55db872f7019d3b283850cd2b7",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -15212,6 +15512,10 @@
     "photo151": "151. Game Island issue fixes 2026-11-18",
     "star154": "154. Game Island star fragments furniture 2026-11-18",
     "ores155": "155. Game Island ore overhaul 2 2026-11-18",
-    "forest156": "156. Game Island byeolmaru forest 2026-11-18"
+    "forest156": "156. Game Island byeolmaru forest 2026-11-18",
+    "byeolmaru152": "152. Game Island byeolmaru tigers 2026-11-18",
+    "byeolmaru152e": "152e. Game Island tigers refine 2026-11-19",
+    "newisle136": "136. Game Island new isle camp props mushrooms 2026-11-15",
+    "spring157": "157. Game Island creek spring cave 2026-11-20"
   }
 }
