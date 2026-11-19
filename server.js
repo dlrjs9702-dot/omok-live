@@ -2565,6 +2565,9 @@ const gatherGroupOf = (itemId) => (GATHERED.has(itemId) ? 'gathered' : null);
 const itemNameOf = (id) => IslandItems.ITEMS[id]?.name || id;
 const adminEventsView = (now = nowMs()) => AdminEvents.view(adminEvents, now, itemNameOf);
 const catchMultNow = (target) => AdminEvents.catchMult(adminEvents, target, nowMs());
+// (364) each item's sell multiplier now ({ itemId: ×1.5~3 } -- 「산 것」 left out by the selling), or null with no sell event; 369 (사용자 잡초 3배 화면):
+// the bag's view carries it too, so the sell window's sum is what is paid
+const sellMultsNow = (now = nowMs()) => (AdminEvents.activeAt(adminEvents, now).some((e) => e.kind === 'sell') ? AdminEvents.sellTable(adminEvents, Object.keys(IslandItems.ITEMS), now, gatherGroupOf) : null);
 const saveAdminEvents = () => pointStore.setWorldValue('adminEvents', adminEvents);
 function adminEventsTick(now = nowMs()) { // (every 15 s: a start or an end tells the island's screens and the log)
   const shown = adminEventsView(now).filter((e) => e.running).map((e) => e.id).join(',');
@@ -6330,7 +6333,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
     const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxOf(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297)
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow });
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow() });
   }
   // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
   if (pathname === '/api/island/box/grow' && req.method === 'POST') {
@@ -7802,14 +7805,14 @@ async function requestHandler(req, res) {
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
     if (body.pick != null && (!Array.isArray(body.pick) || !body.pick.length || body.pick.length > 64 || body.pick.some((p) => typeof p?.entryId !== 'string' || !Number.isSafeInteger(p?.qty) || p.qty < 1))) return sendError(res, 400, 'BAD_REQUEST', '팔 물건을 다시 골라 주세요.'); /* (1.10.356 골라 팔기: [{ entryId, qty }]) */
-    const sellNow = nowMs(); const mults = AdminEvents.activeAt(adminEvents, sellNow).some((e) => e.kind === 'sell') ? AdminEvents.sellTable(adminEvents, Object.keys(IslandItems.ITEMS), sellNow, gatherGroupOf) : null; /* (364 섬 이벤트: the largest matching, ×3 at most; 「산 것」 never) */
+    const sellNow = nowMs(); const mults = sellMultsNow(sellNow); /* (364 섬 이벤트: the largest matching, ×3 at most; 「산 것」 never) */
     const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost(), ...(body.pick ? { pick: body.pick } : {}), ...(mults ? { mults } : {}) }, sellNow); // a lost thing whose owner has gone: lost and found
     if (result.applied) for (const [itemId, extra] of Object.entries(result.extraBy || {})) { const src = AdminEvents.sellSource(adminEvents, itemId, sellNow, gatherGroupOf); if (src) adminEventExtra.set(src.id, (adminEventExtra.get(src.id) || 0) + extra); }
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
     const weeds = (result.sold || []).find((x) => x.itemId === 'weed'); if (result.applied && weeds) islandProgress('weed_submit', account, weeds.qty);
-    return sendJson(res, 200, { ok: true, paid: result.paid, extra: result.extra || 0, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
+    return sendJson(res, 200, { ok: true, paid: result.paid, extra: result.extra || 0, sold: result.sold, capped: result.capped, bag: result.bag ? { ...result.bag, sellMults: mults } : result.bag, balance: result.balance ?? result.balanceAfter });
   }
   // v1.10.31 잡초: every weed out now ([id, x, z]); start / finish pulling one
   // v1.10.37 혼자 하는 게임 — 지뢰찾기 (IDEAS 「솔로 게임」): the board is the server's; a clear is a record (best time and

@@ -1045,6 +1045,9 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   /* (364 관리자 섬 이벤트: opened -- the band and the line on the island, 「2배 적용 중」 in the 노점's window, the herbs paid twice) */
   const admin = await require('./skin-support').adminToken(request); const opened = await post(request, '/api/admin/island-events', admin, { kind: 'sell', target: 'item', item: 'herb', mult: 2, minutes: 30, text: '약재 값 2배!' }); expect(opened.status, JSON.stringify(opened.data)).toBe(200); islandEventOpen = opened.data.list.find((e) => e.item === 'herb' && !e.closedAt).id;
   await expect(page.locator('#islandEventBand')).toContainText('약재 값 2배', { timeout: 30000 }); await expect(page.locator('#islandEventLine')).toContainText(/약재 값 2배 · 남은 \d+분/);
+  /* (369 사용자 「이벤트 누르면 그 공지창이 뜨게 해」: the chip opens the event's card -- its words and from when to when -- held till 닫기) */
+  await page.locator('#islandEventLine .islandEventItem').first().click(); await expect(page.locator('#islandEventBand')).toContainText('약재 값 2배!'); await expect(page.locator('#islandEventBand')).toContainText(/\d{2}:\d{2} ~ \d{2}:\d{2}/);
+  await page.waitForTimeout(7500); await expect(page.locator('#islandEventBand')).toBeVisible(); /* (not the 7 s band: held) */ await page.locator('#islandEventBand .islandEventClose').click(); await expect(page.locator('#islandEventBand')).toBeHidden();
   await page.keyboard.press('Space');
   await expect(page.locator('#islandPlaceEvent')).toContainText('약재 값 2배 적용 중');
   /* (1.10.356 골라 팔기: a goby alone moved, back again; then all -- the fish's rows by the herbs. 362: a fish one a slot -- each goby its own row, ×1) */
@@ -1053,9 +1056,12 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.locator('#placeAllBtn').click(); await expect(page.locator('#islandPlaceList .islandPlaceRow')).toHaveCount(3); await expect(page.locator('#islandPlaceList .islandPlaceRow[data-item="fish_goby"]')).toHaveCount(2);
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${test.info().project.name === 'chromium' ? 'pc' : 'phone'}-stall-fish.png` });
   expect(Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, ''))).toBeGreaterThan(8000);
+  /* (369 사용자 「잡초 값 3배」 화면: the window's sum is the event's -- the herbs' row 2배 and doubled, the whole what is then paid) */
+  await expect(page.locator('.islandPlaceRow[data-item="herb"] .placeEventMult')).toHaveText('🎉 2배'); const previewTotal = Number((await page.locator('#islandPlaceSubmit').textContent()).replace(/[^0-9]/g, ''));
   await page.locator('#islandPlaceSubmit').click(); await page.locator('#islandPlaceSubmit').click(); /* (once more to be sure) */
   await expect(page.locator('#islandPlaceStatus')).toContainText(/^\+[\d,]+P/); /* (a fish is paid by its size -- a few P off the window's guess) */
   const stallPaid = Number((await page.locator('#islandPlaceStatus').textContent()).split('P')[0].replace(/[^0-9]/g, '')); expect(stallPaid).toBeGreaterThan(16000); /* (364: the herbs 4,000 × 2 doubled) */
+  expect(stallPaid, '정산 = 미리보기(이벤트 값)').toBe(previewTotal);
   await expect(page.locator('#islandPlaceStatus')).toContainText('이벤트 +8,000P');
   await page.locator('#islandPlaceCloseBtn').click();
   expect((await post(request, '/api/admin/island-events/end', admin, { id: islandEventOpen })).status).toBe(200); islandEventOpen = null;

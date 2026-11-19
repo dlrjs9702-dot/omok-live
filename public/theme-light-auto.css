@@ -1725,6 +1725,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .placeBack{border:0;background:none;color:inherit}
 :root[data-theme="light"] #islandPlaceSubmit.sure{background:#e0952e;color:#fff;border-color:#b06a12}
 :root[data-theme="light"] .islandEventItem{background:#7c2d12e6;color:#fff7ed;border:1px solid #fdba74;box-shadow:0 4px 14px #0006}
+:root[data-theme="light"] .placeEventMult{color:#c2410c;background:#ffedd5}
+:root[data-theme="light"] .islandEventItem:focus-visible{outline:3px solid #fde68a}
+:root[data-theme="light"] .islandEventBand .islandEventClose{color:#fff;border-color:#ffffffaa}
 :root[data-theme="light"] .islandEventBand{background:linear-gradient(135deg,#f97316,#db2777);color:#fff;box-shadow:0 12px 40px #0008}
 :root[data-theme="light"] .islandPlaceEvent{color:#fb923c}
 :root[data-theme="light"] .loadingCover{background:#f4ede0}

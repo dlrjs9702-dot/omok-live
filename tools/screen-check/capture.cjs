@@ -29,7 +29,7 @@ const SPOTS = [
   { id: 'mall-inside', label: '백화점/1층 안 노점', inside: 'mall' }, { id: 'house', label: '이웃골/집터와 마당', lot: 0 },
   { id: 'taxi-road', label: '택시 길/차선과 인도', taxi: true }, { id: 'isle2-bridge', label: '별마루다리/다리 위', bridge: 'isle2' },
   { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true }, { id: 'ancient', label: '별마루섬/별지기 느티', area: 'ancient' } /* (1.10.367 N1b) */,
-  { id: 'isle2-dense-a', label: '별마루섬/숲 안쪽(남서)', xz: [300, 271] }, { id: 'isle2-dense-b', label: '별마루섬/숲 안쪽(가운데)', xz: [340, 251] }, { id: 'isle2-dense-c', label: '별마루섬/숲 안쪽(북)', xz: [330, 131] },
+  { id: 'isle2-dense-a', label: '별마루섬/숲 안쪽(남서)', xz: [300, 271] }, { id: 'isle2-dense-b', label: '별마루섬/숲 안쪽(가운데)', xz: [340, 251] }, { id: 'isle2-dense-c', label: '별마루섬/숲 안쪽(북)', xz: [330, 131] }, { id: 'isle2-tunnel', label: '별마루섬/오솔길 터널', xz: [309, 271] } /* (369) */,
 ];
 const NIGHT = ['plaza', 'bay', 'camp'];
 
