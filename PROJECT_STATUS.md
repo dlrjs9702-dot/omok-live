@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.373 가려도 보이기 점무늬 (총괄 급함, Codex 자문 371 화면 「방충망」)
+
+- 원인: 371 햇살 줄기가 아니라 369 가까운 것 흐리기(near fade)의 4x4 Bayer 디더 -- 시선 방향으로 누운 큰 줄기가 3~6 m 구간에 길게 걸려 반쯤 뚫린 채 점무늬로 보임(햇살 줄기는 가산 반투명이라 점 없음).
+- see-through.js: 가까운 것 흐리기는 내 둘레 원(구멍 반지름 2배) 안, 카메라 3.5 m 안만, 반쯤이 없이 깔끔하게 자름(step). 구멍 가장자리 디더는 격자 없는 interleaved gradient noise.
+- plaza-scene seeStep: 구멍이 꺼져 있어도 가까운 것 흐리기 원의 자리(center·radius)는 계속 갱신.
+- 사진: work/screens-371b (PC·폰 오솔길 점무늬 없음).
+
 ## v1.10.372 Codex 361~370 검토 고침 (notes docs/codex-review-361-370.md, 19건 모두 맞음)
 
 - P1: #1 수조 물고기 길이(islandUse가 꺼낸 크기를 claim과 함께, 수조 size, 꺼낼 때 meta.size), #2 벼룩시장 「산 것」 이어받기(fleaHandOver·가방 여유), #3 주민 부탁 단계는 지급 뒤에만, #4 재료 사기 같은 주문 번호 유지, #5 옛 별 선물 기록 못 읽으면 보류, #6 starsFragmentFrom 읽기 오류는 덮어쓰지 않음, #7 소원 때 반짝이 확률 저장(stars.pct), #8 빗맞힘 하루 횟수 먼저, #9 이미 나간 바위 칸은 지나감.
@@ -25,10 +32,3 @@
 - 햇살 줄기 10개(교차 평면 한 묶음, 12 m 칸 해시 자리라 걸어도 그대로, 해 방향으로 기울기, 낮만), 떨어지는 잎 24/40/64(계절 색, 겨울·움직임 줄이기 없음), 밤 반딧불이 16/28/40(각자 깜빡임). 숲 밖에서는 그리기 0, 오솔길 터널 PC High 398 → 403 draws.
 - 소리(WebAudio, RoomSound 켬일 때만, 화면 숨김 끔, 사진 모드 끔): 바람(필터 노이즈), 개울(creekDist 28 m 안), 낮 새소리·밤 풀벌레.
 - 부팅 무게: lineDist 16구간 상자 건너뛰기(같은 값) -- nature() 2.18 → 1.92 s(로컬). CI 러너 ubuntu-24.04 고정(26.04는 Playwright 글꼴 패키지 없음).
-
-## v1.10.370 전체 지도(M) + 개수 칸 + 택시 이유 + 369 뒷일
-
-- 전체 지도(사용자 「M 으로 전체 지도 펼칠 수 있게. 확대해서 볼 수도 있게.」): M 열고 닫기(입력 칸·건물·게임 방·다른 창에서는 안 함, Esc 닫기), 미니맵 누르면 열림(전에는 눌리지 않았음 → 충돌 없음), public/map-view.js 범위 = 그려진 세계 x −230~530·z −200~385(별마루섬까지), 열 때 내 자리·3배, −/+/전체 보기/내 위치 단추, 내 방향 화살표, 별마루섬 이름(캠핑장·전망대 봉우리·개울·별마루다리).
-- 개수 칸(사용자 「개수 딱 내가 몇개인지 쓸 수 있는 칸」): public/count-box.js 하나로 − [n] +, Enter·떠날 때 정함, 1~최대, 0·빈 칸은 빼기, 16px(폰 확대 없음). 팔 물건 줄, 잡화점 재료 사기(1·5·10은 빠른 고르기, 서버 1~99).
-- 택시 TAXI_BUSY 이유(train·platform·fishing·seat·room, reason 필드와 말), 8 m 밖이거나 입질 3분 지난 낚시·4 m 밖 의자는 그 자리에서 풀기, `[taxi] busy reason=… age=…s` 로그.
-- 369 뒷일: 늦게 끝낸 반짝이 이벤트는 끝날 시각까지만, 부팅 별마루섬 표 데우기는 test에서 안 함.
