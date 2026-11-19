@@ -10,6 +10,7 @@ import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '/vendor/three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
+import { seeThrough, SEE_IDS } from './see-through.js'; // (1.10.369 §6 가려도 내 캐릭터 보이기)
 import { preparePlatformSurfaces, prepareTownhallSurfaces } from './platform-surfaces.js';
 
 const P = globalThis.AssetPipeline;
@@ -451,8 +452,9 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
           if (!gltf) continue; // this zone's season has no model: its copies stay procedural
           const lowGltf = hit.entry.lowUrl ? models.get(hit.entry.lowUrl) : null;
           if (hit.entry.nightGlow) for (const g of [gltf, lowGltf]) if (g) nightGlowFiles.add(g); /* (316 ④: a batched lamp's glow lit at night, as an attached one's) */
+          const see = [].concat(rec.ids).some((id) => SEE_IDS.test(id)); /* (1.10.369 §6: a tree's or bush's batch -- the hole round me) */
           const meshesOf = (model, shadow) => partsOf(model, hit.entry.paint).map(({ geometry, material, matrix }) => {
-            const im = new THREE.InstancedMesh(geometry, instTwinOf(material), count); /* (1.10.353 ⓐ: the batches' own twin) */
+            const im = new THREE.InstancedMesh(geometry, see ? seeThrough(instTwinOf(material)) : instTwinOf(material), count); /* (1.10.353 ⓐ: the batches' own twin) */
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
             im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in

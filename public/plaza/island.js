@@ -4,6 +4,7 @@
 // Everything is generated once from fixed numbers (no assets, no randomness between visits) so every player walks the
 // same island; the map board draws the same shapes. Later land reclamation changes coastR() and the map follows.
 import * as THREE from '/vendor/three/three.module.js';
+import { seeThrough } from './see-through.js'; // (1.10.369 §6: the stand-in trees and bushes too)
 
 // v1.10.7: the island's shape lives in island-terrain.js (loaded before the app; the server uses the same file).
 const T = globalThis.IslandTerrain;
@@ -476,8 +477,7 @@ diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·
   // N1 새 섬 (notes island-expansion §8): its ground -- the same 2.5 m lattice and shader, its own maps (isle2-*); under a root
   // of its own the scene puts in and out (isle2: setIsle2)
   const G2 = T.GROUND2; const maps2 = maps && G2 ? { pathA: mapTex('isle2-path-a'), pathB: mapTex('isle2-path-b'), coverA: mapTex('isle2-cover-a'), coverB: mapTex('isle2-cover-b'), shore: mapTex('isle2-shore'), road: mapTex('isle2-road') } : null;
-  const isle2Root = new THREE.Group(); isle2Root.name = 'isle2'; if (maps2) scene.add(isle2Root);
-  if (maps2) {
+  const isle2Root = new THREE.Group(); isle2Root.name = 'isle2'; if (maps2) scene.add(isle2Root);  if (maps2) {
     const g2 = keep(new THREE.PlaneGeometry(G2.size, G2.size, G2.seg, G2.seg)); g2.rotateX(-Math.PI / 2); g2.translate(G2.x0 + G2.size / 2, 0, G2.z0 + G2.size / 2);
     const p2 = g2.attributes.position; const col2 = new Float32Array(p2.count * 3); const gr2 = new Float32Array(p2.count * 2);
     for (let i = 0; i < p2.count; i += 1) { const x = p2.getX(i); const z = p2.getZ(i); p2.setY(i, ground(x, z)); c.copy(grass).lerp(grass2, 0.5 + 0.5 * Math.sin(x * 0.21 + z * 0.17) * Math.cos(z * 0.13)); col2.set([c.r, c.g, c.b], i * 3); gr2[i * 2] = 1; }
@@ -804,7 +804,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // from its position (not the seeded placement), so trees stay where they were -- their circles, events and the
   // islanders' paths are unchanged.
   const hash = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
-  const natureMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+  const natureMat = keep(seeThrough(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }))); /* (1.10.369 §6: the hole round me) */
   // (문제 기록 3회차 8: the scattered pieces on the ground as drawn -- the 2 m mesh, not the formula, which on the ridge's slopes
   // stood metres off it -- and the small ones only where they sit: T.settledSpot)
   const onMesh = (x, z) => T.meshGroundHeight(x, z); const settled = (p) => T.settledSpot(p.x, p.z);
@@ -830,11 +830,12 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // stay, each season keeping every kind), never two of a kind side by side as a rule of the hash
   const ANGULAR_TREES = ['block', 'stack', 'spire'];
   const angularTree = (t) => ['round', 'tiered', 'pine', 'sapling'].includes(globalThis.IslandTerrain.treeKind(t)) && hash(t.x, t.z, 40) < 0.34 ? ANGULAR_TREES[Math.min(2, Math.floor(hash(t.x, t.z, 41) * 3))] : null;
+  const byParent = (every) => [[every, scene]];
   // v1.10.29: stumps come in two models (short, tall), each stump's from its place
   TREE_KINDS.forEach(([name, , parts], k) => {
     const every = trees.filter((t) => kindOf(t) === k && !angularTree(t) && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z));
     const geo = mergeColored(parts);
-    for (const [all, parent] of [[every, scene]]) { /* (v1.10.310: the pilot patch's trees are the island's again) */
+    for (const [all, parent] of byParent(every)) { /* (v1.10.310: the pilot patch's trees are the island's again) */
       const splits = name === 'stump' ? [0, 1].map((v) => [all.filter((t) => (hash(t.x, t.z, 18) < 0.5 ? 0 : 1) === v), [`nature.tree.stump.${v}`, 'nature.tree.stump', 'nature.tree']]) : [[all, [`nature.tree.${name}`, 'nature.tree']]];
       for (const [list, target] of splits) {
         if (!list.length) continue;
@@ -849,7 +850,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   for (const name of ANGULAR_TREES) {
     const every = trees.filter((t) => angularTree(t) === name && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z)); if (!every.length) continue;
     const geo = mergeColored(ANGULAR_STAND[name]);
-    for (const [list, parent] of [[every, scene]]) {
+    for (const [list, parent] of byParent(every)) {
       if (!list.length) continue;
       instanced(geo, natureMat, list, (t) => setM(t.x, onMesh(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
         { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target: [`angular.tree_${name}`], parent });
@@ -1378,7 +1379,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     if (next === isle2State && !moved) return next;
     isle2State = next; isle2At = { x, z };
     isle2Root.visible = next === 'full'; if (isle2Far) isle2Far.visible = next === 'far';
-    const fog = (scale < 1 ? 130 : 180) + 43; /* (a square's half diagonal; 1.10.369 §9 무게: the lowest tier the nearer -- 별마루섬's thick wood, past 130 m in the fog) */ for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < fog;
+    /* (a square's half diagonal; 1.10.369 §9 무게: the lowest tier the nearer, and in the wood (숲속, 오솔길) nearer still -- its canopy hides what is farther) */
+    const inWood = ['deep', 'trail'].includes(T.isle2Zone?.(x, z)); const fog = (scale < 1 ? (inWood ? 70 : 130) : (inWood ? 150 : 180)) + 43; for (const c of isle2Cells.values()) c.group.visible = next === 'full' && Math.hypot(c.x - x, c.z - z) < fog;
     return next;
   }
   for (const o of [isle2Root, isle2Far, terrain, sea]) if (o) o.userData.keepFar = true; // (N1: plaza-scene's far cull leaves these to isle2View)

@@ -6510,7 +6510,8 @@
     plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, hoguking: plazaHoguking, delinquent: Boolean(plazaAvatar?.delinquent), name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
-  window.PlazaReady = () => plaza.controller?.readiness?.() ?? null; /* (368 로딩 안정화: the scene's own word, light enough to ask every frame -- the loading cover's) */
+  window.PlazaReady = () => plaza.controller?.readiness?.() ?? null;
+  window.PlazaSee = () => plaza.controller?.seeThrough?.() ?? null; /* (1.10.369 §6 가려도 내 캐릭터 보이기: tests) */ /* (368 로딩 안정화: the scene's own word, light enough to ask every frame -- the loading cover's) */
   // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
   window.PlazaWarp = async (x, z) => {
     if (plazaDeparture) await plazaDeparture;

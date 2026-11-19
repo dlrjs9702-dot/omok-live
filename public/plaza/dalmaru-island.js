@@ -710,8 +710,9 @@
     for (let tries = 0; I2.logs.length < nLog && tries < nLog * 60; tries += 1) { const p = pick('log'); const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; if (p && room(p.x, p.z, 1.1, 0.4) && isle2Free(p.x, p.z, 1.1) && lane(p.x, p.z, p.zn, 1.1)) { I2.logs.push({ x: p.x, z: p.z, kind, yaw, isle2: true }); taken.push([p.x, p.z, 1.1]); tally('log', p.zn); } }
     const nFlower = targetOf('flower'); seed = 0x15e205;
     for (let tries = 0, k = 0; I2.flowers.length < nFlower && tries < nFlower * 40; tries += 1) { const p = pick('flower'); if (p && isle2Free(p.x, p.z, 0.1) && Math.hypot(p.x - A.x, p.z - A.z) > 6) { I2.flowers.push({ x: p.x, z: p.z, c: k % 5, isle2: true }); k += 1; tally('flower', p.zn); } }
-    seed = 0x15e206; const nGrass = Math.round(I2.trees.length * 1.6);
-    for (let tries = 0; I2.grass.length < nGrass && tries < nGrass * 30 && I2.trees.length; tries += 1) { const t = I2.trees[Math.floor(rnd() * I2.trees.length)]; const a = rnd() * TAU; const d = 0.75 * t.s + 0.1 + rnd() * 0.9; const x = t.x + Math.cos(a) * d; const z = t.z + Math.sin(a) * d; const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; const s = 0.85 + rnd() * 0.3; if (roomBut(x, z, 0.3, t) && isle2Free(x, z, 0.2)) { I2.grass.push({ x, z, kind, yaw, s, isle2: true }); taken.push([x, z, 0.3]); } }
+    /* (the wild flowers at a tree's foot: on the open ground only -- 동산, 산책길; 숲속's floor is ferns and moss -- 369 §9 무게: they were 1,400 of 456 triangles each) */
+    seed = 0x15e206; const openTrees = I2.trees.filter((t) => ['hill', 'walk'].includes(zoneOf(t.x, t.z))); const nGrass = Math.round(openTrees.length * 1.6);
+    for (let tries = 0; I2.grass.length < nGrass && tries < nGrass * 30 && openTrees.length; tries += 1) { const t = openTrees[Math.floor(rnd() * openTrees.length)]; const a = rnd() * TAU; const d = 0.75 * t.s + 0.1 + rnd() * 0.9; const x = t.x + Math.cos(a) * d; const z = t.z + Math.sin(a) * d; const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; const s = 0.85 + rnd() * 0.3; if (roomBut(x, z, 0.3, t) && isle2Free(x, z, 0.2)) { I2.grass.push({ x, z, kind, yaw, s, isle2: true }); taken.push([x, z, 0.3]); } }
     const F156 = (typeof self !== 'undefined' && self.Forest156) || (typeof require === 'function' ? require('./forest156.js') : null);
     const forest = { big: [], ferns: [], mossy: [], fallen: [], ancient: null };
     if (F156) {
@@ -802,6 +803,17 @@
   const natureSolids = () => { const n = nature(); if (solidsOf === n) return solidsCache; solidsOf = n; return (solidsCache = natureSolidsOf(n)); };
   const natureSolidsOf = (n) => { const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 })),
     ...n.rocks.filter((r) => rockBlocks(r) && settledSpot(r.x, r.z)).map((r) => ({ x: r.x, z: r.z, r: 0.8 * r.s })), ...n.logs.flatMap(logRounds), ...n.palms.map((p) => ({ x: p.x, z: p.z, r: 0.3 * p.s })), ...forestSolids(n)]; }; // (as the scene walks round them: island.js; G4a the rocks, logs and palms too)
+  // (1.10.369, 총괄) a free point on 별마루섬 -- past the islanders' walk grid (±200 m) every point there read as blocked (the unstuck
+  // move, the screen check): off every solid there by `margin`, its solids in 8 m squares made once a nature
+  let clearOf2 = null; let clearHash = null;
+  const onIsle2 = (x, z) => Boolean(ISLE2) && D.newIsleCoast(x, z) > -2;
+  function isle2Clear(x, z, margin = 1.2) {
+    if (!onIsle2(x, z)) return false; const n = nature();
+    if (clearOf2 !== n) { clearOf2 = n; clearHash = new Map(); for (const o of natureSolids()) { if (!onIsle2(o.x, o.z)) continue; const k = `${Math.floor(o.x / 8)},${Math.floor(o.z / 8)}`; let l = clearHash.get(k); if (!l) clearHash.set(k, (l = [])); l.push(o); } }
+    const cx = Math.floor(x / 8); const cz = Math.floor(z / 8);
+    for (let i = cx - 2; i <= cx + 2; i += 1) for (let j = cz - 2; j <= cz + 2; j += 1) for (const o of clearHash.get(`${i},${j}`) || []) if (Math.hypot(o.x - x, o.z - z) < o.r + margin) return false;
+    return true;
+  }
   // (1.10.367 N1b) the forest's: the big trees' trunks, the mossy rocks, the fallen logs and 별지기 느티's trunk and roots (assets 156
   // solids.json -- its arches walked under); the ferns walked through
   const forestSolids = (n) => { const F156 = (typeof self !== 'undefined' && self.Forest156) || (typeof require === 'function' ? require('./forest156.js') : null); const f = n.forest; if (!F156 || !f) return [];
@@ -830,7 +842,7 @@
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
-    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */, isle2Zone, ISLE2_ZONES /* (1.10.369 구역) */,
+    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */, isle2Zone, ISLE2_ZONES /* (1.10.369 구역) */, onIsle2, isle2Clear, ISLE2_BRIDGE_HEAD: Object.freeze({ x: 233, z: 228 }) /* (1.10.369 막혔을 때: 별마루섬's own way out) */,
     ROAD, roadDist, roadFoot, /* (T1 고침: the taxi road's band -- the scene's grass and decor, the shore and cover maps keep off it) */ SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),

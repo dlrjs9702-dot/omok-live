@@ -6720,11 +6720,15 @@ async function requestHandler(req, res) {
     const wait = IslandUnstuck.waitMinutes(unstuckAt.get(t) || 0, nowMs()); if (wait) return sendError(res, 429, 'TOO_SOON', `10분에 한 번 쓸 수 있어요. ${wait}분 뒤에 다시 눌러 주세요.`);
     // 364 (user A): the nearest free spot within 15 m (standable, a free cell of the islanders' grid -- off trees, rocks, props,
     // buildings and lots); none: 대청마당's arrival place as before
-    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && IslandNpcs.free(x, z) });
-    const S = IslandTerrain.SPAWN; const spot = near || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
+    // (1.10.369, 총괄: 별마루섬 lies past the islanders' grid -- every point there read as blocked, so it was always 대청마당: there off its own
+    // solids (isle2Clear), and with none free its bridge head)
+    const isle2 = Boolean(IslandTerrain.onIsle2?.(at.x, at.z));
+    const near = IslandUnstuck.nearestFree({ x: at.x, z: at.z, ok: (x, z) => plazaStandable(x, z) && (IslandTerrain.onIsle2?.(x, z) ? IslandTerrain.isle2Clear(x, z) : IslandNpcs.free(x, z)) });
+    const S = isle2 ? IslandTerrain.ISLE2_BRIDGE_HEAD : IslandTerrain.SPAWN; const head = !near && isle2 ? IslandUnstuck.nearestFree({ x: S.x, z: S.z, ok: (x, z) => plazaStandable(x, z) && IslandTerrain.isle2Clear(x, z) }) : null;
+    const spot = near || head || plazaSafeSpot(Math.round((S.x + (Math.random() - 0.5) * 3) * 100) / 100, Math.round((S.z + Math.random() * 0.8) * 100) / 100) || { x: S.x, z: S.z };
     unstuckAt.set(t, nowMs()); freeSeat(t);
     plazaPresence.set(t, { ...at, x: spot.x, z: spot.z, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
-    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z, where: near ? 'near' : 'plaza' });
+    return sendJson(res, 200, { ok: true, x: spot.x, z: spot.z, where: near ? 'near' : isle2 ? 'bridge' : 'plaza' });
   }
   // 1.10.341 지하 도박장: the day's note (on its bench), the word to 테드 (the bookcase opens -- for that account, that day), down and up
   // the stairs, 테드's chips (points one for one, once a request), a play at a table (chips only, a second apart), the raid as it stands
