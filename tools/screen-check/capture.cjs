@@ -28,7 +28,7 @@ const SPOTS = [
   { id: 'crosswalk', label: '택시 길/건널목 정면', crossing: 0 }, { id: 'townhall-inside', label: '관공서/안 민원실', inside: 'townhall' },
   { id: 'mall-inside', label: '백화점/1층 안 노점', inside: 'mall' }, { id: 'house', label: '이웃골/집터와 마당', lot: 0 },
   { id: 'taxi-road', label: '택시 길/차선과 인도', taxi: true }, { id: 'isle2-bridge', label: '별마루다리/다리 위', bridge: 'isle2' },
-  { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true },
+  { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true }, { id: 'ancient', label: '별마루섬/별지기 느티', area: 'ancient' } /* (1.10.367 N1b) */,
 ];
 const NIGHT = ['plaza', 'bay', 'camp'];
 
@@ -77,7 +77,10 @@ async function enter(browser, api, base, device, quality) {
 // trees, rocks, props, buildings), with the camera's side behind it open too, looking at the thing)
 const resolve = (page, spot) => page.evaluate((s) => {
   const T = window.IslandTerrain; const D = T.dalmaru; const N = window.IslandNpcs;
-  const ok = (x, z) => T.walkable(x, z) && !(D?.isWater?.(x, z)); const free = (x, z) => ok(x, z) && (!N?.free || N.free(x, z));
+  const ok = (x, z) => T.walkable(x, z) && !(D?.isWater?.(x, z));
+  /* (367: 별마루섬 lies past the islanders' grid (±200 m) -- every point there read as blocked: off its solids instead) */
+  const isle2 = (x, z) => Boolean(D?.newIsleCoast && D.newIsleCoast(x, z) > -2); const solids = T.natureSolids();
+  const free = (x, z) => ok(x, z) && (isle2(x, z) ? solids.every((o) => Math.abs(o.x - x) > 4 || Math.abs(o.z - z) > 4 || Math.hypot(o.x - x, o.z - z) > o.r + 1.2) : (!N?.free || N.free(x, z)));
   const viewOf = (tx, tz, rMin = 6, rMax = 24) => {
     for (let r = rMin; r <= rMax; r += 2) for (let k = 0; k < 24; k += 1) {
       const a = (k / 24) * Math.PI * 2; const ux = Math.cos(a); const uz = Math.sin(a); const x = tx + ux * r; const z = tz + uz * r;

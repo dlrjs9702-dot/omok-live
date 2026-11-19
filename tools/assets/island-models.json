@@ -14695,6 +14695,406 @@
       "lowSrc": "ores155:02. Low/ore-v2/vein_rock_c_obsidian_low.glb",
       "lowSha256": "42828920cd319cc302db594b82bae2a3344ebcd1e2fd938f9ef4891981c1cc50",
       "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/fern_tall.glb",
+      "src": "forest156:01. High/forest156/autumn/fern_tall.glb",
+      "sha256": "fe82d7e6ba84200b8488d30939e1fc36a26dfd2659e2c65ed23d69ab2df7601f",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/fern_wide.glb",
+      "src": "forest156:01. High/forest156/autumn/fern_wide.glb",
+      "sha256": "ca9f67dd15702987d9009b33cb13e425c549b0d351fcfeb8abe00b683e038692",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/forest_clump_broad.glb",
+      "src": "forest156:02. Low/forest156/autumn/forest_clump_broad.glb",
+      "sha256": "7ef4792d11161fe3ada55e556c3ad543d41304c11252a9ec82ef1591e010ad04",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/forest_clump_conifer.glb",
+      "src": "forest156:02. Low/forest156/autumn/forest_clump_conifer.glb",
+      "sha256": "23cd3891598a2f11acbbc8939472bec1b46ff59c1d07c2751ef8c057007fd355",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/forest_clump_mixed.glb",
+      "src": "forest156:02. Low/forest156/autumn/forest_clump_mixed.glb",
+      "sha256": "70bbf5e952179e3cbb0c918ad66c8905134d6b8b0b75c857754bab7501a8f96e",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/log_fallen_big.glb",
+      "src": "forest156:01. High/forest156/autumn/log_fallen_big.glb",
+      "sha256": "81a719e7e74807b3e78e381eaa8d60d6b3931fdda2b8821694bb194dbfb46fef",
+      "lowSrc": "forest156:02. Low/forest156/autumn/log_fallen_big_low.glb",
+      "lowSha256": "e19b3fb147e8763934af5f574f0f87650c46e773b0d603cee8fd512e9351fd3d",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/log_fallen_mid.glb",
+      "src": "forest156:01. High/forest156/autumn/log_fallen_mid.glb",
+      "sha256": "4949c5350cfb83c5f13621b4266940f3d6f70d2663d40b22ceee5cece0d32a06",
+      "lowSrc": "forest156:02. Low/forest156/autumn/log_fallen_mid_low.glb",
+      "lowSha256": "e2433b1f5d0cb978f67f528d76985a9ed8ed8a74b121923aaed122fee1ee2e02",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/rock_mossy_a.glb",
+      "src": "forest156:01. High/forest156/autumn/rock_mossy_a.glb",
+      "sha256": "0990acf368921f37f057a32c578c37a0ad11c2ff5e74d846f1d08cb173d947ac",
+      "lowSrc": "forest156:02. Low/forest156/autumn/rock_mossy_a_low.glb",
+      "lowSha256": "a731e922e1a766afe83351c9f71e96907fd72fc964841fac322d64eb81f3aa8e",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/rock_mossy_b.glb",
+      "src": "forest156:01. High/forest156/autumn/rock_mossy_b.glb",
+      "sha256": "b5dc1564ef4d73541736e11d3934db5ec2fa669a3b9799c6c4c1a9b69b937e8c",
+      "lowSrc": "forest156:02. Low/forest156/autumn/rock_mossy_b_low.glb",
+      "lowSha256": "252d777d51b7685c1501dd8aa9abde03c76e0eaa153583317bb74847d429f0a0",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/tree_ancient.glb",
+      "src": "forest156:01. High/forest156/autumn/tree_ancient.glb",
+      "sha256": "fa99d1fc3b992606438e9cab7fe2bb832577b97c6cdc4313ecf290d2a783c6ae",
+      "lowSrc": "forest156:02. Low/forest156/autumn/tree_ancient_low.glb",
+      "lowSha256": "729815e31691eab2552faa2a7e6217295d5926dd20fd727c796b9f4e10f11cc9",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/tree_ancient_far.glb",
+      "src": "forest156:02. Low/forest156/autumn/tree_ancient_far.glb",
+      "sha256": "94c6522bbbdde57440fc6313dc8575ce96d2e3a47affc0243f5a66161bc472d8",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/tree_big_fir.glb",
+      "src": "forest156:01. High/forest156/autumn/tree_big_fir.glb",
+      "sha256": "17a10d8a5506e547bd4c605bccfabf8f97d4c26d43a2797f6dd808897fae423c",
+      "lowSrc": "forest156:02. Low/forest156/autumn/tree_big_fir_low.glb",
+      "lowSha256": "c9832687ac0dcde4ef30b46a9e30a183f73303d89f2c8142bf8466064bbff8ac",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/tree_big_oak.glb",
+      "src": "forest156:01. High/forest156/autumn/tree_big_oak.glb",
+      "sha256": "8c8f4b073f33cf77f4ac446529c617fa7344d8a5447791ba32a0216bb50c6aeb",
+      "lowSrc": "forest156:02. Low/forest156/autumn/tree_big_oak_low.glb",
+      "lowSha256": "47528f7931749469cf26884966bf265d7d613fa7929a5a67fc7aba7049788578",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/autumn/tree_big_pine.glb",
+      "src": "forest156:01. High/forest156/autumn/tree_big_pine.glb",
+      "sha256": "1501c96285b8888ca4e7a6549e9276b2bd765033f55d2fa6096e4c7ec49827cb",
+      "lowSrc": "forest156:02. Low/forest156/autumn/tree_big_pine_low.glb",
+      "lowSha256": "61ddc396c1f52aa76234213c2d4415ef1d7e0d9503eddf0029c476c696f1bbb0",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/fern_tall.glb",
+      "src": "forest156:01. High/forest156/spring/fern_tall.glb",
+      "sha256": "6a19d8f5bdb78081fe32f30c0050db01fe652a58aa71728131bd0fc36dfe244f",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/fern_wide.glb",
+      "src": "forest156:01. High/forest156/spring/fern_wide.glb",
+      "sha256": "febd5ec8010246d820ad7cde2a9d15942cf9242ed89f1bd01d6914fead4a22d6",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/forest_clump_broad.glb",
+      "src": "forest156:02. Low/forest156/spring/forest_clump_broad.glb",
+      "sha256": "de2778461a68ed61317233b1ded9a475325598b805e1173e235eede60a256cb8",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/forest_clump_conifer.glb",
+      "src": "forest156:02. Low/forest156/spring/forest_clump_conifer.glb",
+      "sha256": "6edc2264d7d5b52a325d03a468f7b3dae8b4dbad7ee41cfd3e3d97c5d0dfae52",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/forest_clump_mixed.glb",
+      "src": "forest156:02. Low/forest156/spring/forest_clump_mixed.glb",
+      "sha256": "c90df253368f9e8159e4f7c22f03e406a26f90100b6eefa3f4954ea3f16c1547",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/log_fallen_big.glb",
+      "src": "forest156:01. High/forest156/spring/log_fallen_big.glb",
+      "sha256": "a5bb7fc1c0adf6e21704daa226d0eb4578bf90ffd94f01d63fb9c575653a8a48",
+      "lowSrc": "forest156:02. Low/forest156/spring/log_fallen_big_low.glb",
+      "lowSha256": "9ff0d01767d9ed6bd317c7803cef210aa3f802f042b20fa72daa0bddad9de674",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/log_fallen_mid.glb",
+      "src": "forest156:01. High/forest156/spring/log_fallen_mid.glb",
+      "sha256": "a9033f7ff6e976ae2b1901ad4b9df74d4ead17d71cfe86fa92ddab59171903d1",
+      "lowSrc": "forest156:02. Low/forest156/spring/log_fallen_mid_low.glb",
+      "lowSha256": "e7a97a23de2b240071a24c712c5406bd1da7e8edbe82725a6e5c5de8b0844304",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/rock_mossy_a.glb",
+      "src": "forest156:01. High/forest156/spring/rock_mossy_a.glb",
+      "sha256": "8854ac176e0a1d278a29e7e118b7d4176e96193e690ccbbab4af19150a670ccf",
+      "lowSrc": "forest156:02. Low/forest156/spring/rock_mossy_a_low.glb",
+      "lowSha256": "21962ab375acaad4e2f043a08003424b930a01f34e272d544ab3d6c3847ea736",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/rock_mossy_b.glb",
+      "src": "forest156:01. High/forest156/spring/rock_mossy_b.glb",
+      "sha256": "33494d7bbc9d02543a71e3463da1a34b599e524ced5e61d1f8ca0c40dd47f0f1",
+      "lowSrc": "forest156:02. Low/forest156/spring/rock_mossy_b_low.glb",
+      "lowSha256": "b43543f36a3496014129fe9b2db605a77876ce813645f7afd700d004f2b13467",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/tree_ancient.glb",
+      "src": "forest156:01. High/forest156/spring/tree_ancient.glb",
+      "sha256": "468333ebeb291323580dfc0e7124c1a96f3eae251eedfbe35620aaf8fa257d02",
+      "lowSrc": "forest156:02. Low/forest156/spring/tree_ancient_low.glb",
+      "lowSha256": "1c80ca215097365464a7c46e41d8c18333e9611a3022a15f11d9baece5960ab6",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/tree_ancient_far.glb",
+      "src": "forest156:02. Low/forest156/spring/tree_ancient_far.glb",
+      "sha256": "947e305d6ca7c4a485e80c229454106f01bf41a9e7c697e37e82a1c205fcc4d0",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/tree_big_fir.glb",
+      "src": "forest156:01. High/forest156/spring/tree_big_fir.glb",
+      "sha256": "9e68342e56a0cd30bc9b4cd2676416d969e40806a6a299050adbf71783ba1ecf",
+      "lowSrc": "forest156:02. Low/forest156/spring/tree_big_fir_low.glb",
+      "lowSha256": "d3bd5d4281f671911788122eab8bff54ee91cc72f42423ee3b35761a441c59f7",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/tree_big_oak.glb",
+      "src": "forest156:01. High/forest156/spring/tree_big_oak.glb",
+      "sha256": "b1180ad46eaa25fcb7c07c0ce21ff7e284b421e8b238734163f9a1cb847aca24",
+      "lowSrc": "forest156:02. Low/forest156/spring/tree_big_oak_low.glb",
+      "lowSha256": "6d1d3fbfed21b81626000312a168c0b5f0f5cdb4da182fdb1254436203b33285",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/spring/tree_big_pine.glb",
+      "src": "forest156:01. High/forest156/spring/tree_big_pine.glb",
+      "sha256": "5dc353e8121c31e1631c7d663044afe8428604d219517e55b6c13d8dcff126f5",
+      "lowSrc": "forest156:02. Low/forest156/spring/tree_big_pine_low.glb",
+      "lowSha256": "267f9cab2a80600ee33fec070b8b4d2639a612db213f49698f9946f44d5b8458",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/fern_tall.glb",
+      "src": "forest156:01. High/forest156/summer/fern_tall.glb",
+      "sha256": "2f4e94fe4f7b9f548ca2be8d8ce6aff86ebec824f5bbf2b61a477dab73633912",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/fern_wide.glb",
+      "src": "forest156:01. High/forest156/summer/fern_wide.glb",
+      "sha256": "003fbe7e8cbd19a43143db063c9ef1c5b941738e1297e6915803ca259719b8ee",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/forest_clump_broad.glb",
+      "src": "forest156:02. Low/forest156/summer/forest_clump_broad.glb",
+      "sha256": "79ddfa19c230aab8f091b41e258e699893287ade0a34fc8b861e314b2f7f315d",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/forest_clump_conifer.glb",
+      "src": "forest156:02. Low/forest156/summer/forest_clump_conifer.glb",
+      "sha256": "eb7f28dcd7ccba5d51b789b4cd1797fc2749a6324fad8aaa57d8adad01a0c72a",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/forest_clump_mixed.glb",
+      "src": "forest156:02. Low/forest156/summer/forest_clump_mixed.glb",
+      "sha256": "c5e44cfe67088cf7443e72482dc04b37738663e10dae1c0e468d05a95e92a45c",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/log_fallen_big.glb",
+      "src": "forest156:01. High/forest156/summer/log_fallen_big.glb",
+      "sha256": "8d801b02b347418fb0985e3997940bd340fefb2962857a731be270f5d50ec821",
+      "lowSrc": "forest156:02. Low/forest156/summer/log_fallen_big_low.glb",
+      "lowSha256": "e10830346f8ffbbb4b8d9b341f1b795acf2556a0974a63f8abda61fdef1cef4e",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/log_fallen_mid.glb",
+      "src": "forest156:01. High/forest156/summer/log_fallen_mid.glb",
+      "sha256": "742ac38ba803122916811224627cb14209fac27391678972bf2e6102c374105c",
+      "lowSrc": "forest156:02. Low/forest156/summer/log_fallen_mid_low.glb",
+      "lowSha256": "60ce0804d30af55608759d1cec989ae7cd19a8b369f7c9b946fa6b22fb14d2f5",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/rock_mossy_a.glb",
+      "src": "forest156:01. High/forest156/summer/rock_mossy_a.glb",
+      "sha256": "96448c5c9339eee90a4c304bd74556b0b9ddbbd67f7809f5641abbd8add4c650",
+      "lowSrc": "forest156:02. Low/forest156/summer/rock_mossy_a_low.glb",
+      "lowSha256": "bae963dd396aa98a74785f8a34682c5b285db1bd5dc310dfd846510774a9756c",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/rock_mossy_b.glb",
+      "src": "forest156:01. High/forest156/summer/rock_mossy_b.glb",
+      "sha256": "b419c32486a44ba8ca4124f6f45b916d8815212cc71dd171584cc7ca214a2c68",
+      "lowSrc": "forest156:02. Low/forest156/summer/rock_mossy_b_low.glb",
+      "lowSha256": "2ae117fd24fcf8b671eb2ce5741aea7250683b0b7df2d93e64688b3361b9b211",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/tree_ancient.glb",
+      "src": "forest156:01. High/forest156/summer/tree_ancient.glb",
+      "sha256": "48f3f75dacb233b7523dc80ccc9a28841674b30798850497d2133477d9f9cf72",
+      "lowSrc": "forest156:02. Low/forest156/summer/tree_ancient_low.glb",
+      "lowSha256": "332aa692737084afd36a6c0cca35a9b720a35866bc13837569719c4db634ff39",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/tree_ancient_far.glb",
+      "src": "forest156:02. Low/forest156/summer/tree_ancient_far.glb",
+      "sha256": "cdc3444b441d8b384307dbbaf07a0f44d6506a39e95be47e50abd3d400ed44e1",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/tree_big_fir.glb",
+      "src": "forest156:01. High/forest156/summer/tree_big_fir.glb",
+      "sha256": "e3fbb83f3efe5f49ed5407867ce871f816388bf950b7d79f6964f890bcb9d8d1",
+      "lowSrc": "forest156:02. Low/forest156/summer/tree_big_fir_low.glb",
+      "lowSha256": "2fbd6f927a5eab5e871b5d31d7fee3369e84d209b7716972cd75b489c636796d",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/tree_big_oak.glb",
+      "src": "forest156:01. High/forest156/summer/tree_big_oak.glb",
+      "sha256": "64dcf19624d03b79729d6988b1c95959e148f10c990f3e48dffc2de78f47f8b6",
+      "lowSrc": "forest156:02. Low/forest156/summer/tree_big_oak_low.glb",
+      "lowSha256": "288a86048a96530c850b3683c175c0d781f5c164b02915fb8f26a4e0c713ba4a",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/summer/tree_big_pine.glb",
+      "src": "forest156:01. High/forest156/summer/tree_big_pine.glb",
+      "sha256": "7808fe3ed9bcc685c703a9db693493f181da26a3d1e7236a16fcbbefeadb77b7",
+      "lowSrc": "forest156:02. Low/forest156/summer/tree_big_pine_low.glb",
+      "lowSha256": "d462fb72701448e16bbb0ab1a8b045e97dbc0f690171a7528b13e8a6a8116d86",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/fern_tall.glb",
+      "src": "forest156:01. High/forest156/winter/fern_tall.glb",
+      "sha256": "ac15adf192f6234ccd46b196d098102218b90f09ffdc29087ba3a8ebc1d0138b",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/fern_wide.glb",
+      "src": "forest156:01. High/forest156/winter/fern_wide.glb",
+      "sha256": "a60d777373853fd07d96d7c163ddf4a22753957e672fe9c0a4921aab4b7e4bf6",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/forest_clump_broad.glb",
+      "src": "forest156:02. Low/forest156/winter/forest_clump_broad.glb",
+      "sha256": "01daacd9b38ab31a6c8885f781704cc779179c3a7a0eb8fad81ef2ef138aec5e",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/forest_clump_conifer.glb",
+      "src": "forest156:02. Low/forest156/winter/forest_clump_conifer.glb",
+      "sha256": "3d9c1c215dc976f6bf024c207fb6c74205788c4ff837080cfb7543efa0698448",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/forest_clump_mixed.glb",
+      "src": "forest156:02. Low/forest156/winter/forest_clump_mixed.glb",
+      "sha256": "7d3595e8908ac8286cfbbf872946ca50737cfc1cfabac5460e72d6f247221af8",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/log_fallen_big.glb",
+      "src": "forest156:01. High/forest156/winter/log_fallen_big.glb",
+      "sha256": "f3fa77cf1bdbe14d643d29ddc92e615c8f604047ffb2db105a73c9a2f10d43e9",
+      "lowSrc": "forest156:02. Low/forest156/winter/log_fallen_big_low.glb",
+      "lowSha256": "c4a4ba8f0f73df6417bb1b165d2cf72bcf155cdd9bb81ab24b8cb92794f0b723",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/log_fallen_mid.glb",
+      "src": "forest156:01. High/forest156/winter/log_fallen_mid.glb",
+      "sha256": "090f2cac000c04cd79c3235cb3e2a93be997d535c66c84ba48cc4ba756d00970",
+      "lowSrc": "forest156:02. Low/forest156/winter/log_fallen_mid_low.glb",
+      "lowSha256": "022b36911a3b874fd531744cbce87248e44e2d54b9081e525f9ac73958c78370",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/rock_mossy_a.glb",
+      "src": "forest156:01. High/forest156/winter/rock_mossy_a.glb",
+      "sha256": "fea9bbb19e2c61842293f815aefbd021a830dec48825b6f1d216f0d6471a6c3d",
+      "lowSrc": "forest156:02. Low/forest156/winter/rock_mossy_a_low.glb",
+      "lowSha256": "74cb7bd5115d10a831cf057fa5424fab373cfe14aa0b2d629a4c4b7f91012126",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/rock_mossy_b.glb",
+      "src": "forest156:01. High/forest156/winter/rock_mossy_b.glb",
+      "sha256": "e6a2c9005d8254b96cdb344b7366f3b1daeb54270eeb61dc13607afab55615cf",
+      "lowSrc": "forest156:02. Low/forest156/winter/rock_mossy_b_low.glb",
+      "lowSha256": "6d25dd0d4cc443340b3f0fcd9a7f7ac51dfa7a9c3990859108a48ceb9eb8ddc1",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/tree_ancient.glb",
+      "src": "forest156:01. High/forest156/winter/tree_ancient.glb",
+      "sha256": "a053aa645aa525f24d78127f5407d3c02c695f9db4e1e52753038e5db1a70310",
+      "lowSrc": "forest156:02. Low/forest156/winter/tree_ancient_low.glb",
+      "lowSha256": "da76c0b4bddd16262cf873368e00ccbd974fdb478c1840549b21be31fc446d4f",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/tree_ancient_far.glb",
+      "src": "forest156:02. Low/forest156/winter/tree_ancient_far.glb",
+      "sha256": "01b2d128574af3913f034223b92112ce7a233bc9e9dba6eb4b63097d1de142ab",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/tree_big_fir.glb",
+      "src": "forest156:01. High/forest156/winter/tree_big_fir.glb",
+      "sha256": "546bc6495b960fb41a23b51451cdf447b249851e47b130bfd65fdb942b795478",
+      "lowSrc": "forest156:02. Low/forest156/winter/tree_big_fir_low.glb",
+      "lowSha256": "91da262003bcc4d551b25446a7b09ead7ff35f98d048c45b7eaf0f3e1fa5e89e",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/tree_big_oak.glb",
+      "src": "forest156:01. High/forest156/winter/tree_big_oak.glb",
+      "sha256": "0b8547ce9840f55e2a4c2f28e3a31ebb6642bd8da6e45070c502ed4509546859",
+      "lowSrc": "forest156:02. Low/forest156/winter/tree_big_oak_low.glb",
+      "lowSha256": "cc8321d49f043629c9612bc8e05db9def3c07cc6b0929563ff3a146db1774af0",
+      "precompressed": true
+    },
+    {
+      "out": "forest156/winter/tree_big_pine.glb",
+      "src": "forest156:01. High/forest156/winter/tree_big_pine.glb",
+      "sha256": "a4fe6fb894158d5b3b234fde34798a16b1d711971f70aa01a29ace950a49e3f1",
+      "lowSrc": "forest156:02. Low/forest156/winter/tree_big_pine_low.glb",
+      "lowSha256": "b636bdb859e55c25811b451c929fe931ebe2cbfe8279427fae38bbd03b4181a7",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -14811,6 +15211,7 @@
     "bugs145": "145. Game Island house cockroach 2026-11-16",
     "photo151": "151. Game Island issue fixes 2026-11-18",
     "star154": "154. Game Island star fragments furniture 2026-11-18",
-    "ores155": "155. Game Island ore overhaul 2 2026-11-18"
+    "ores155": "155. Game Island ore overhaul 2 2026-11-18",
+    "forest156": "156. Game Island byeolmaru forest 2026-11-18"
   }
 }

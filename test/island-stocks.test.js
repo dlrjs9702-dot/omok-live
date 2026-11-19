@@ -227,3 +227,21 @@ test('섬 주식 공정한 값 식(139B): 11-17 09시(틱 15) 전 값은 그대�
   assert.ok(Math.abs(mean(fair)) < 2e5, `새 식은 하루 평균 이익이 0 근처: ${Math.round(mean(fair))}`);
   assert.ok(fair.filter((g) => g < 0).length >= 2, `새 식은 지는 판도 있음: ${fair.map(Math.round)}`);
 });
+
+test('섬 주식 부도는 상장가 아래만(1.10.367 1A): 11-23 09시 전 값·부도는 그대로, 그 뒤 부도는 모두 종가 < 상장가, 주 1~3번 넘지 않음', () => {
+  assert.equal(S.tickTime(S.BUST_FROM), Date.parse('2026-11-23T09:00:00+09:00'));
+  const old = S.createMarket('bust-t', { bustFrom: Infinity }); const now = S.createMarket('bust-t');
+  const before = S.tickTime(S.BUST_FROM - 1) + 60000; old.upTo(before); now.upTo(before);
+  assert.equal(JSON.stringify(now.slots.map((s) => [s.gen, s.prices, s.past.map((p) => p.prices)])), JSON.stringify(old.slots.map((s) => [s.gen, s.prices, s.past.map((p) => p.prices)])), '컷오버 전 모든 값(지난 회사 포함)이 바이트 그대로');
+  assert.deepEqual(now.busts, old.busts, '컷오버 전 부도도 그대로');
+  // after it, over 40 weeks and four keys: every 부도 under its listing price, never more than its week's plan
+  let seen = 0;
+  for (const key of ['bust-a', 'bust-b', 'bust-c', 'bust-d']) {
+    const m = S.createMarket(key); const end = S.tickTime(S.BUST_FROM + 40 * 7 * S.PER_DAY) + 60000; m.upTo(end);
+    const after = m.busts.filter((b) => b.k >= S.BUST_FROM); seen += after.length;
+    for (const b of after) assert.ok(b.price < b.list, `${key} 틱 ${b.k} 자리 ${b.slot}: 종가 ${b.price} < 상장가 ${b.list}`);
+    const weekOfK = (k) => Math.floor(Math.floor(k / S.PER_DAY) / 7); const per = new Map(); for (const b of after) per.set(weekOfK(b.k), (per.get(weekOfK(b.k)) || 0) + 1);
+    for (const [w, n] of per) assert.ok(n <= m.planOf(w).n, `${key} ${w}주 부도 ${n}번 <= 계획 ${m.planOf(w).n}`);
+  }
+  assert.ok(seen >= 40, `부도는 그래도 일어남: ${seen}번`);
+});

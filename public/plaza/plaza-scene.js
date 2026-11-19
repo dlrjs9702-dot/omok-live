@@ -1183,6 +1183,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       blockSign(signboard('stand', '울타리 마을 ↓', scene, -23.5, heightAt(-23.5, 150), 150, 0));
       blockSign(signboard('stand', '울타리 마을', scene, -24.5, heightAt(-24.5, T.STREET_Z - 6), T.STREET_Z - 6, 0));
     }
+    if (T.ANCIENT?.sign) { const s = T.ANCIENT.sign; blockSign(signboard('stand', `${T.ANCIENT.name} · 천 년 된 거목`, scene, s.x, heightAt(s.x, s.z), s.z, s.yaw)); } /* (1.10.367 N1b §8: at its clearing's edge, read from the forest loop) */
     { const SZ = I.z - 8.3; /* (T1 길 넓히기: 1 m further in, off the taxi road's walk -- dalmaru-island ISLE_SIGN_IN) */ piece('dalmaru.isle_sign', I.x - 4, heightAt(I.x - 4, SZ), SZ, 0, post); blockSign(signboard('stand', '툇마루섬 · 집터는 관공서에서 신청', scene, I.x - 7.6, heightAt(I.x - 7.6, SZ), SZ, Math.PI)); /* (361 문제 기록 70b45159 「길에서 반대편을 향하고 있어서」: its words to the taxi road) */ } // (2회차 15: beside the trunk walk, clear of the cross walk; 간판 beside the board)
     // 묶음 1 대청마당 바닥 (assets 59): the disc, ring and kerbs walked over, just above the paving (the kerbs one batch);
     // the channels and gardens walked round (dalmaru-island's pavingSolids)
