@@ -26,18 +26,18 @@
   // the 34 fish: the sea's in the big tank, the fresh water's each on its water's wall -- the river's, 거울호수's, the pools'
   // (where it is caught first: lib/island-fishing's TABLE, the unit test holds them together); the 12 insects a case each
   const SEA = Object.freeze(['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna', 'mullet', 'flatfish', 'sea_bass', 'gizzard_shad', 'rockfish',
-    'yellowtail', 'red_seabream', 'horse_mackerel', 'filefish', 'cod', 'squid', 'blue_crab', 'seahorse']);
+    'yellowtail', 'red_seabream', 'horse_mackerel', 'filefish', 'cod', 'squid', 'blue_crab', 'seahorse', 'striped_beakperch' /* (1.10.378: 별마루섬's 돌돔) */]);
   const FRESH = Object.freeze(['crucian_carp', 'carp', 'pale_chub', 'sweetfish', 'catfish', 'mandarin_fish', 'eel', 'smelt', 'crayfish', 'medaka', 'bagrid_catfish', 'masu_salmon', 'sturgeon',
-    'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp', 'minnow', 'bitterling', 'bluegill', 'barbel_steed', 'bass', 'rainbow_trout', 'aucha_perch']);
+    'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp', 'minnow', 'bitterling', 'bluegill', 'barbel_steed', 'bass', 'rainbow_trout', 'aucha_perch', 'lenok', 'kumgang_minnow' /* (378: 별마루섬's creek) */]);
   // (v1.10.259: the river's wall holds 12 -- 빙어 and 송사리, the lake's too, moved to its wall)
   const WATER_OF = Object.freeze({ masu_salmon: 'pool', sturgeon: 'lake', smelt: 'lake', medaka: 'lake', king_catfish: 'lake', bitterling: 'lake', bluegill: 'lake', bass: 'lake',
-    taimen: 'pool', golden_carp: 'pool', minnow: 'pool', rainbow_trout: 'pool', aucha_perch: 'pool' }); // (the rest the river's)
+    taimen: 'pool', golden_carp: 'pool', minnow: 'pool', rainbow_trout: 'pool', aucha_perch: 'pool', lenok: 'creek', kumgang_minnow: 'creek' }); // (the rest the river's)
   // v1.10.259 (docs/museum-wings-20261104.md): the sea's 대어 in the 대어 tank behind the big one; every 대어's plaque says so
   const BIG_SEA = Object.freeze(['dotdom', 'giant_squid', 'sunfish', 'giant_octopus']);
   const BIGS = new Set(['giant_tuna', 'sturgeon', ...BIG_SEA, 'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp']);
-  const WATERS = Object.freeze([['river', '강'], ['lake', '거울호수'], ['pool', '폭포 웅덩이']].map(([id, name]) => Object.freeze({ id, name })));
+  const WATERS = Object.freeze([['river', '강'], ['lake', '거울호수'], ['pool', '폭포 웅덩이'], ['creek', '별마루섬 개울'] /* (378) */].map(([id, name]) => Object.freeze({ id, name })));
   const INSECTS = Object.freeze(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail',
-    ...['butterfly_yellow','honeybee','hawkmoth_hummingbird','jewel_beetle','longhorn_giant','water_strider','mantis','cricket','moth_silk','winter_moth','snow_springtail','snow_scorpionfly']]); // (v1.10.261: the twelve spare cases filled)
+    ...['butterfly_yellow','honeybee','hawkmoth_hummingbird','jewel_beetle','longhorn_giant','water_strider','mantis','cricket','moth_silk','winter_moth','snow_springtail','snow_scorpionfly'], 'moth_longtail', 'stag_giant' /* (378: 별마루섬's two, by the side walls) */]); // (v1.10.261: the twelve spare cases filled)
   const FLYERS = Object.freeze(['butterfly_cabbage', 'butterfly_blue', 'butterfly_swallowtail', 'dragonfly_red', 'dragonfly_emperor']); // (in the dome too)
   // the aquarium (28 x 18): the big tank in the middle (assets 74 museum.tank_big: 6.2 x 2.6, its long side across), where
   // its fish swim (tank-local) and its plaques, a row along each long side of its base; the big fish's tank behind it (the
@@ -56,17 +56,19 @@
   const WATER_WALLS = Object.freeze({
     river: Object.freeze([...[-6, -4, -2, 0, 2, 4, 6].map((z) => wallAt('west', z)), ...[-12, -10, -8, -6, -4].map((x) => wallAt('front', x))].map((s) => Object.freeze(s))),
     lake: Object.freeze([-12, -10, -8, -6, 6, 8, 10, 12].map((x) => Object.freeze(wallAt('back', x)))),
-    pool: Object.freeze([...[-6, -4, -2, 0, 2, 4, 6].map((z) => wallAt('east', z)), ...[4, 6, 8, 10, 12].map((x) => wallAt('front', x))].map((s) => Object.freeze(s))),
+    pool: Object.freeze([...[-6, -4, -2, 0, 2, 4, 6].map((z) => wallAt('east', z)), ...[4, 6].map((x) => wallAt('front', x))].map((s) => Object.freeze(s))),
+    creek: Object.freeze([8, 10, 12].map((x) => Object.freeze(wallAt('front', x)))), /* (1.10.378: 별마루섬 개울 -- the front's east end, the pools' last three, never used) */
   });
   const SPARE_WALL = 2; // (each water: two more tanks, glass and water only -- for the next fish)
   const freshIn = (water) => FRESH.filter((sp) => (WATER_OF[sp] || 'river') === water);
   const WALLS = Object.freeze(FRESH.map((sp) => WATER_WALLS[WATER_OF[sp] || 'river'][freshIn(WATER_OF[sp] || 'river').indexOf(sp)]));
   const SPARE_WALLS = Object.freeze(WATERS.flatMap((w) => WATER_WALLS[w.id].slice(freshIn(w.id).length, freshIn(w.id).length + SPARE_WALL)));
-  const WALL_SIGNS = Object.freeze({ river: Object.freeze({ lx: -(AQUA.w / 2 - 0.3), lz: 0, yaw: -Math.PI / 2 }), lake: Object.freeze({ lx: -9, lz: AQUA.d / 2 - 0.3, yaw: 0 }), pool: Object.freeze({ lx: AQUA.w / 2 - 0.3, lz: 0, yaw: Math.PI / 2 }) });
+  const WALL_SIGNS = Object.freeze({ river: Object.freeze({ lx: -(AQUA.w / 2 - 0.3), lz: 0, yaw: -Math.PI / 2 }), lake: Object.freeze({ lx: -9, lz: AQUA.d / 2 - 0.3, yaw: 0 }), pool: Object.freeze({ lx: AQUA.w / 2 - 0.3, lz: 0, yaw: Math.PI / 2 }), creek: Object.freeze({ lx: 10, lz: -(AQUA.d / 2 - 0.3), yaw: Math.PI }) /* (378) */ });
   // the insect hall (18 x 14): a row of cases by the back wall, a row by the front either side of the door (museum.insect_case),
   // their plaques toward the middle; the insects in the back row's first twelve, the rest glass for the next ones
   const CASE_SPOTS = Object.freeze([...[-7.8, -6.6, -5.4, -4.2, -3.0, -1.8, -0.6, 0.6, 1.8, 3.0, 4.2, 5.4, 6.6, 7.8].map((lx) => [lx, BUGS.d / 2 - 0.9, 0]),
-    ...[-7.8, -6.6, -5.4, -4.2, -3.0, 3.0, 4.2, 5.4, 6.6, 7.8].map((lx) => [lx, -(BUGS.d / 2 - 0.9), Math.PI])].map(([lx, lz, yaw]) => Object.freeze({ lx, lz, yaw })));
+    ...[-7.8, -6.6, -5.4, -4.2, -3.0, 3.0, 4.2, 5.4, 6.6, 7.8].map((lx) => [lx, -(BUGS.d / 2 - 0.9), Math.PI]),
+    [-(BUGS.w / 2 - 0.9), 0, -Math.PI / 2], [BUGS.w / 2 - 0.9, 0, Math.PI / 2] /* (1.10.378: one by each side wall, facing in) */].map(([lx, lz, yaw]) => Object.freeze({ lx, lz, yaw })));
   const CASES = Object.freeze(CASE_SPOTS.slice(0, INSECTS.length));
   const SPARE_CASES = Object.freeze(CASE_SPOTS.slice(INSECTS.length));
   const DOME = Object.freeze({ lx: 0, lz: 0.4, yaw: 0, r: 1.3, y0: 0.6, y1: 1.5 }); // (its plaque toward the door)

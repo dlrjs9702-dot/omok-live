@@ -8274,7 +8274,7 @@ async function requestHandler(req, res) {
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
-    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain, hot: IslandFishing.isHot(kstDate(now), water), rareMult: catchMultNow('fish_rare') }); /* (v1.10.266 오늘의 물때; 364 섬 이벤트) */
+    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain, hot: IslandFishing.isHot(kstDate(now), water), rareMult: catchMultNow('fish_rare'), isle2: IslandFishing.isle2Water(water, at.x, at.z) }); /* (v1.10.266 오늘의 물때; 364 섬 이벤트; 378 별마루섬's own fish) */
     const seq = IslandFishing.arrowSeq(); // (Codex 검토 #1: the arrows are the server's, checked at the pull)
     const arrows = IslandFishing.arrowsFor(c.species); // (3회차 4: the arrows at the bite, and the time for them)
     // v1.10.259 입질 게임 반반: the arrows or the 타이밍 막대 (a test server: the arrows unless a test asks -- /api/test/fish/mode)
