@@ -6726,7 +6726,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   function start() { if (running) return; running = true; last = 0; quiet(); placeWas.x = NaN; /* (368: started again -- a place change) */ raf = requestAnimationFrame(frame); }
   function stop() {
-    xmasMusic?.stop(); /* (1.10.344 P2-8: the music with the scene) */ setPhotoMode(false); if (gather?.waitServer) endGather(false);
+    xmasMusic?.stop(); /* (1.10.344 P2-8: the music with the scene) */ forestAir.stop(); /* (374 Codex 봇 #522: the wood's sound with it -- into the game hall or a room it went on, deaf to the sound switch there; the next frame after start() makes it again) */ setPhotoMode(false); if (gather?.waitServer) endGather(false);
     if (questScenes && (questScenes.departurePending || questScenes.departure !== null)) { questScenes.departurePending = false; questScenes.departure = null; questScenes.boat.visible = false; }
     questDepartureHeld = false; running = false; cancelAnimationFrame(raf); keys.clear();
     near = null; nearName = null; onNear?.(null);

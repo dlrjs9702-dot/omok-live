@@ -643,6 +643,9 @@ async function readBody(req) {
 
 // v1.10.233 메신저 사진: a photo's bytes, its own way in (the 48 KB of the JSON calls stays as it is)
 const PHOTO_MAX = 2 * 1024 * 1024;
+// 1.10.373 메신저 프로필 사진: the page makes a 256x256 WebP (20~40 KB; JPEG where the browser makes no WebP) -- what the bytes start with checked too
+const AVATAR_MAX = 64 * 1024; const AVATAR_TYPES = ['image/webp', 'image/jpeg'];
+const avatarBytesOk = (b, type) => (type === 'image/webp' ? b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP' : b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff);
 async function readRaw(req, max) {
   let size = 0; const chunks = [];
   for await (const chunk of req) { size += chunk.length; if (size > max) throw Object.assign(new Error('too large'), { status: 413 }); chunks.push(chunk); }
@@ -5057,7 +5060,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.373' });
+    return sendJson(res, 200, { ok: true, version: '1.10.374' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -5209,6 +5212,24 @@ async function requestHandler(req, res) {
       if (!p.bytes) return sendError(res, 410, 'PHOTO_GONE', '7일이 지나 사라진 사진입니다.');
       res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': p.bytes.length, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' }); return res.end(p.bytes); // (an hour: an unsent photo leaves the others' browsers soon -- 총괄)
     }
+    // 1.10.373 프로필 사진 (notes docs/messenger-profile-photo-20261119.md): a permitted account's picture, to the messenger's accounts only (this
+    // block's login and permission checks; no public address) -- its version in the address, kept a year; mine set (256x256 WebP or JPEG, 64 KB at
+    // most, 3 changes in 5 minutes) or back to the letter circle
+    const avatar = pathname.match(/^\/api\/messenger\/avatars\/([^/]{1,80})$/);
+    if (avatar && req.method === 'GET') {
+      const id = decodeURIComponent(avatar[1]); if (!allowed.has(id)) return sendError(res, 404, 'AVATAR_NOT_FOUND', '사진이 없어요.');
+      const a = await messengerStore.avatarOf(id); if (!a) return sendError(res, 404, 'AVATAR_NOT_FOUND', '사진이 없어요.');
+      res.writeHead(200, { 'Content-Type': a.type, 'Content-Length': a.bytes.length, 'Cache-Control': 'private, max-age=31536000, immutable', ETag: `"${a.v}"`, 'X-Content-Type-Options': 'nosniff' }); return res.end(a.bytes);
+    }
+    if (pathname === '/api/messenger/avatar' && req.method === 'POST') {
+      if (!checkRateLimit('messenger-avatar-try:' + key.id, 20, 5 * 60 * 1000)) return sendError(res, 429, 'AVATAR_RATE_LIMIT', '잠시 후 다시 해 주세요.'); /* (tries, refused ones too) */
+      const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase(); if (!AVATAR_TYPES.includes(type)) return sendError(res, 415, 'AVATAR_TYPE', 'WebP나 JPEG 사진만 올릴 수 있어요.');
+      let bytes; try { bytes = await readRaw(req, AVATAR_MAX); } catch (error) { return sendError(res, error.status === 413 ? 413 : 400, 'AVATAR_TOO_BIG', '사진이 너무 커요.'); }
+      if (!avatarBytesOk(bytes, type)) return sendError(res, 415, 'AVATAR_TYPE', 'WebP나 JPEG 사진만 올릴 수 있어요.');
+      if (!checkRateLimit('messenger-avatar:' + key.id, 3, 5 * 60 * 1000)) return sendError(res, 429, 'AVATAR_RATE_LIMIT', '프로필 사진은 5분에 3번까지 바꿀 수 있어요.'); /* (changes kept) */
+      return sendJson(res, 200, { ok: true, v: await messengerStore.setAvatar(key.id, bytes, type) });
+    }
+    if (pathname === '/api/messenger/avatar/clear' && req.method === 'POST') { await messengerStore.clearAvatar(key.id); return sendJson(res, 200, { ok: true }); }
     const names = (ids) => ids.map((id) => `${nameOf(id)}님`).join(', ');
     const invitees = (list) => { // other permitted accounts only
       if (!Array.isArray(list) || list.length > MESSENGER_ROOM_MAX) return null;
@@ -5268,7 +5289,9 @@ async function requestHandler(req, res) {
     }
     if (pathname === '/api/messenger' && req.method === 'GET') {
       const rooms = (await messengerStore.roomsOf(key.id)).sort((a, b) => Number((b.pinned || []).includes(key.id)) - Number((a.pinned || []).includes(key.id)) || String(b.lastAt).localeCompare(String(a.lastAt))); // v1.10.90: pinned first
-      return sendJson(res, 200, { ok: true, me: key.id, rooms: rooms.map(view), people });
+      /* (1.10.373 프로필 사진: each permitted account's picture version -- 0 or none: the letter circle) */
+      const photos = Object.fromEntries(Object.entries(await messengerStore.avatarVersions()).filter(([id]) => allowed.has(id)));
+      return sendJson(res, 200, { ok: true, me: key.id, rooms: rooms.map(view), people, photos });
     }
     if (pathname === '/api/messenger/rooms' && req.method === 'POST') {
       if (!checkRateLimit('messenger-room:' + key.id, 10, 60 * 60 * 1000)) return sendError(res, 429, 'RATE_LIMIT', '방을 너무 많이 만들고 있습니다. 잠시 뒤 다시 시도해 주세요.');
@@ -6398,7 +6421,7 @@ async function requestHandler(req, res) {
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
     if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
     if (out.applied) notifyPointsChanged([account]);
-    return sendJson(res, 200, { ok: true, itemId, qty, bag: out.bag, balance: out.balance ?? null });
+    return sendJson(res, 200, { ok: true, itemId, qty: Number.isSafeInteger(out.qty) ? out.qty : qty /* (374 Codex 봇 #523: an order asked again -- what was kept, not what was asked now) */, bag: out.bag, balance: out.balance ?? null });
   }
   // 297 가방에서 옮기기 (총괄 #447): what the bag held before the box was bought -- into the box as far as it has room
   if (pathname === '/api/island/box/fill' && req.method === 'POST') {
@@ -10741,7 +10764,7 @@ async function main() {
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.373 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.374 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

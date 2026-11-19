@@ -20,7 +20,9 @@
     const doc = globalThis.document; const wrap = doc.createElement('span'); wrap.className = 'countBox';
     let cur = value; /* (left unchanged: nothing redrawn -- a click on − or + right after still lands) */
     const set = (n) => { const v = zero ? n : Math.max(1, n); input.value = String(v || ''); if (v === cur) return; cur = v; onSet?.(v); };
-    const btn = (text, aria, d) => { const b = doc.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = text; b.setAttribute('aria-label', aria); b.addEventListener('click', () => set(Math.max(zero ? 0 : 1, Math.min(max, cur + d)))); return b; };
+    /* (1.10.374 Codex 봇 #521: a number typed, then − or + pressed -- the box's leaving set it and drew the row anew, the press lost. The buttons
+       never take the focus now (the box is not left), and they count from what is typed) */
+    const btn = (text, aria, d) => { const b = doc.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = text; b.setAttribute('aria-label', aria); b.addEventListener('mousedown', (e) => e.preventDefault()); b.addEventListener('click', () => { done = true; set(Math.max(zero ? 0 : 1, Math.min(max, (parse(input.value, max, cur) || 0) + d))); }); return b; };
     const input = doc.createElement('input'); input.type = 'text'; input.inputMode = 'numeric'; input.pattern = '[0-9]*'; input.autocomplete = 'off'; input.enterKeyHint = 'done';
     input.className = 'countBoxInput'; input.value = String(value); input.setAttribute('aria-label', `${label} (1~${max})`); input.size = String(max).length + 1;
     let done = false; const commit = () => { if (done) return; done = true; set(parse(input.value, max, cur)); };

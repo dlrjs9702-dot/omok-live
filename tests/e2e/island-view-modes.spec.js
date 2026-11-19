@@ -7,8 +7,12 @@ const T = require('../../public/plaza/island-terrain.js'); const DAL = T.MAP ===
 // (at my eyes, my body hidden, W walks where I look); indoors the first by default; the third chosen there is kept for
 // indoors, the outside's choice for outside. PC and phone. (v1.10.237, B7: the one-time notice on this first island; the first
 // person's fishing, PC)
+// (2026-11-20: the real 수확제 (11-20~26) -- its 「이야기 책에 새 행사 이야기가 생겼어요」 toast lay over 「시점」 in the layout check. The festival's
+// clock held before it for that test, back after every test here)
+test.afterEach(async ({ request }) => { await post(request, '/api/test/festival/clock', null, { at: 0 }); });
 test('시점: 밖 3인칭 기본 → 1인칭, 실내 1인칭 기본, 밖·안 따로 기억', async ({ browser, request, isMobile }) => {
   test.setTimeout(process.env.CI ? 300000 : 180000);
+  expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-11-12T12:00:00+09:00') })).status).toBe(200);
   const who = await shopper(browser, request, isMobile ? '시점m' : '시점', 0, 'female'); const { page } = who;
   await page.evaluate((shots) => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testRealView', '1'); localStorage.removeItem('gc.view.out'); localStorage.removeItem('gc.view.in'); if (!shots) localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }, Boolean(process.env.SHOT_DIR));
   expect((await post(request, '/api/test/notices', who.token, { on: true })).status).toBe(200); // (문제 기록 1103 4: the one-time 섬 소식 -- its seen kept: unit island-notice-server)

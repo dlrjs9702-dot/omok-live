@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.374 메신저 프로필 사진 (notes docs/messenger-profile-photo-20261119.md) + Codex 봇 지적 3건 + AGENTS.md
+
+- 저장소: 한 계정 한 장(덮어쓰기, 버전 v) -- JSON은 messenger-avatars 폴더(계정 해시 이름)+meta, PostgreSQL은 messenger_avatars 표(백업에 들어감).
+- API: GET /api/messenger/avatars/:id(메신저 허용 계정만, private 1년 캐시·버전 주소), POST /api/messenger/avatar(WebP·JPEG, 64KB, 내용 머리 확인, 바꾸기 5분에 3번·시도 5분 20번), POST /api/messenger/avatar/clear. GET /api/messenger에 photos {id: v}.
+- 화면: 「내 프로필」(고르기 → 정사각 자르기 끌기·크기·휠 → 256x256 WebP, 안 되면 JPEG → 저장, 기본으로), 사진은 머리글로 받아 data: 주소로 캐시, 방 목록(1:1 상대)·말풍선 이름 옆·멤버 줄·사람 고르기·1:1 알림 아이콘, 누르면 크게 보기.
+- Codex 봇: #521 개수 칸 −/+/전부는 포커스를 안 가져감(첫 누름 살림), #522 숲 소리는 장면 stop()에서 끔, #523 답 없는 재료 주문은 수량도 고정·서버는 저장된 qty.
+- AGENTS.md:56 효과음·BGM 금지 문장 삭제(사용자 2026-11-20 직접).
+
 ## v1.10.373 가려도 보이기 점무늬 (총괄 급함, Codex 자문 371 화면 「방충망」)
 
 - 원인: 371 햇살 줄기가 아니라 369 가까운 것 흐리기(near fade)의 4x4 Bayer 디더 -- 시선 방향으로 누운 큰 줄기가 3~6 m 구간에 길게 걸려 반쯤 뚫린 채 점무늬로 보임(햇살 줄기는 가산 반투명이라 점 없음).
@@ -25,10 +33,3 @@
 - P1: #1 수조 물고기 길이(islandUse가 꺼낸 크기를 claim과 함께, 수조 size, 꺼낼 때 meta.size), #2 벼룩시장 「산 것」 이어받기(fleaHandOver·가방 여유), #3 주민 부탁 단계는 지급 뒤에만, #4 재료 사기 같은 주문 번호 유지, #5 옛 별 선물 기록 못 읽으면 보류, #6 starsFragmentFrom 읽기 오류는 덮어쓰지 않음, #7 소원 때 반짝이 확률 저장(stars.pct), #8 빗맞힘 하루 횟수 먼저, #9 이미 나간 바위 칸은 지나감.
 - P2: #10 stocks/watch stockMarket, #11 골라 팔기 상한 PICK_MAX 464, #12 잡화점 재료 단가 상한 1천만, #13 섞인 수조 잠금(tankMixed), #14 판매 행사 추가액을 행사에 저장(paid), #15 건너뛴 SSE 연결에 최신 한 건, #16 별마루섬 열린 칸 표 20 ms 조각(isle2OpenWarm), #17 세로 화면 전체 지도 min(w/760, h/585).
 - P3: #18 채집 3배 응답 수량, #19 capture --only가 spots.json에 덧붙임.
-
-## v1.10.371 N1b §3 숲의 빛·공기
-
-- public/plaza/forest-air.js: 숲 정도(island.isle2Wood, 12 m 둘레 9점의 숲속·오솔길 몫)를 1.5초(벽시계)로 따라감. 빛: 하늘빛을 초록 쪽 30 %, 밝기 −20 %, 해 −35 %, 안개 색 숲빛 60 %, 안개 175 → 90 m·70 → 18 m(바탕 빛은 setIsland가 정하고 그 위에 woodLight).
-- 햇살 줄기 10개(교차 평면 한 묶음, 12 m 칸 해시 자리라 걸어도 그대로, 해 방향으로 기울기, 낮만), 떨어지는 잎 24/40/64(계절 색, 겨울·움직임 줄이기 없음), 밤 반딧불이 16/28/40(각자 깜빡임). 숲 밖에서는 그리기 0, 오솔길 터널 PC High 398 → 403 draws.
-- 소리(WebAudio, RoomSound 켬일 때만, 화면 숨김 끔, 사진 모드 끔): 바람(필터 노이즈), 개울(creekDist 28 m 안), 낮 새소리·밤 풀벌레.
-- 부팅 무게: lineDist 16구간 상자 건너뛰기(같은 값) -- nature() 2.18 → 1.92 s(로컬). CI 러너 ubuntu-24.04 고정(26.04는 Playwright 글꼴 패키지 없음).

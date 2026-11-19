@@ -38,7 +38,7 @@
     gen += 1; state = { rooms: [], people: [], me: '' }; current = null; last = 0; msgs = []; readsKey = '';
     clearBox(); list.replaceChildren(); app.classList.remove('inRoom', 'picking'); pick.classList.add('hidden'); baseTitle = '아일랜드 메신저'; blink.seen(); document.title = baseTitle;
     app.classList.add('hidden'); loginForm.classList.remove('hidden'); byId('mLoginStatus').textContent = message;
-    for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices', 'mAlertPick']) byId(id).classList.add('hidden');
+    for (const id of ['mLogoutBtn', 'mDevicesBtn', 'mPushBtn', 'mDevices', 'mAlertPick', 'mProfileBtn', 'mProfile']) byId(id).classList.add('hidden');
   }
   const fail = (err) => { if (err.status === 401) { accountToken.set(''); deviceToken.set(''); showLogin('다시 로그인해 주세요.'); } else if (err.status === 403) showLogin(err.message); else showToast(err.message, 4000); };
   const when = (at) => { const d = new Date(at); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); };
@@ -61,7 +61,8 @@
       const time = document.createElement('time'); time.textContent = room.last ? when(room.last.at) : ''; side.append(time);
       if (room.muted) { const m = document.createElement('span'); m.textContent = '🔕'; m.title = '알림 꺼짐'; side.append(m); }
       if (room.unread > 0 && room.id !== current?.id) { const n = document.createElement('span'); n.className = 'messengerUnread'; n.textContent = room.unread > 99 ? '99+' : room.unread; side.append(n); }
-      b.append(main, side);
+      const other = room.kind === 'dm' ? room.members.find((m) => m.id !== state.me) : null; /* (1.10.373: a 1:1 room the other person's picture) */
+      b.append(avatarOf(other?.label || room.name, other?.id || null), main, side);
       b.setAttribute('aria-current', String(room.id === current?.id)); b.addEventListener('click', () => openRoom(room)); li.append(b); return li;
     }));
     if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
@@ -83,13 +84,14 @@
     for (const r of now) {
       if (r.muted || !r.last || r.last.system || r.last.mine || !(r.seq > (seen.get(r.id) ?? 0))) continue;
       const title = r.kind === 'dm' ? r.last.label : r.name; const body = (r.kind === 'dm' ? r.last.text : `${r.last.label}: ${r.last.text}`).slice(0, 120);
-      pushReg.showNotification(title, { body, tag: r.id, renotify: true, icon: '/icons/icon-192.png', badge: '/icons/badge-96.png', data: { room: r.id } }).catch(() => {});
+      const face = r.kind === 'dm' ? (() => { const o = r.members.find((m) => m.id !== state.me); const k = o && avatarKey(o.id); return k ? avatarData.get(k) : null; })() : null; /* (1.10.373: a 1:1 room's notice with their picture, once it is here) */
+      pushReg.showNotification(title, { body, tag: r.id, renotify: true, icon: face || '/icons/icon-192.png', badge: '/icons/badge-96.png', data: { room: r.id } }).catch(() => {});
     }
   }
   function line(msg, same) { // `same`: the same person just before -- the name once (카톡)
     if (msg.system) { const p = document.createElement('p'); p.className = 'messengerSystem'; p.textContent = msg.text; return p; }
     const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
-    if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who); item.append(head); }
+    if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; if (msg.from !== state.me) head.append(avatarButton(msg.label, msg.from)); /* (1.10.373: their face by the name) */ head.append(who); item.append(head); }
     const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); if (msg.deleted) text.textContent = '삭제된 메시지입니다'; else text.append(...linked(msg.text));
     if (msg.sticker && !msg.deleted) { text.classList.add('messengerSticker'); text.replaceChildren(stickerImg(msg.sticker, msg.text)); } // (v1.10.279: the picture alone, no bubble)
     const grid = !msg.deleted && photoGrid(msg); if (grid) { text.classList.add('withPhotos'); if (msg.text === PHOTO_ONLY) text.replaceChildren(grid); else text.prepend(grid); } // (v1.10.233: photos, a grid)
@@ -477,7 +479,7 @@
   });
   document.addEventListener('focusin', (e) => { if (asking && !askBack.contains(e.target)) (askInput.hidden ? askOk : askInput).focus(); });
   function showHead() {
-    byId('messengerRoomName').textContent = current.name; byId('messengerMembers').textContent = current.members.map((m) => m.label).join(' · ');
+    byId('messengerRoomName').textContent = current.name; byId('messengerMembers').replaceChildren(...current.members.flatMap((m, i) => { const one = document.createElement('span'); one.className = 'messengerMember'; one.append(avatarButton(m.label, m.id), document.createTextNode(m.label)); return i ? [document.createTextNode(' · '), one] : [one]; })); /* (1.10.373: each with their picture) */
     const group = current.kind !== 'dm';
     byId('messengerInviteBtn').classList.toggle('hidden', !group); byId('messengerRenameBtn').classList.toggle('hidden', !group);
     byId('messengerMuteBtn').textContent = current.muted ? '알림 켜기' : '알림 끄기';
@@ -554,7 +556,25 @@
   let chosen = []; let pickRows = [];
   const peopleBox = byId('messengerPeople'); const pickFind = byId('messengerPickFind'); const pickGo = byId('messengerPickGo');
   const AVATAR = ['#8a6a4a', '#4f6d8a', '#5f7d4e', '#8a4f6d', '#9a5a26', '#5a5f8a'];
-  const avatarOf = (label) => { const s = document.createElement('span'); s.className = 'messengerAvatar'; s.setAttribute('aria-hidden', 'true'); s.textContent = [...String(label || '?').trim()][0] || '?'; let h = 0; for (const c of String(label)) h = (h * 31 + c.codePointAt(0)) >>> 0; s.style.background = AVATAR[h % AVATAR.length]; return s; };
+  // 1.10.373 프로필 사진 (notes docs/messenger-profile-photo-20261119.md): a person's picture where the letter circle was -- asked with my
+  // headers (an <img> could not send them) as a data: address, kept by its version (state.photos), every circle of that person filled
+  // once it comes; pressed, it opens big. None: the letter circle as before.
+  const avatarData = new Map(); const avatarAsk = new Map(); // `${id}:${v}` -> data url
+  const avatarKey = (id) => (state.photos?.[id] ? `${id}:${state.photos[id]}` : null);
+  function avatarLoad(id) {
+    const k = avatarKey(id); if (!k) return Promise.resolve(null); if (avatarData.has(k)) return Promise.resolve(avatarData.get(k)); if (avatarAsk.has(k)) return avatarAsk.get(k);
+    const ask = fetch(`/api/messenger/avatars/${encodeURIComponent(id)}?v=${state.photos[id]}`, { headers: headers(), cache: 'default' }).then(async (res) => { if (!res.ok) return null; const blob = await res.blob(); return new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ok(null); r.readAsDataURL(blob); }); })
+      .then((u) => { if (u) { avatarData.set(k, u); for (const el of document.querySelectorAll(`[data-avatar-id="${CSS.escape(id)}"]`)) paintAvatar(el, u); } return u; }).catch(() => null).finally(() => avatarAsk.delete(k));
+    avatarAsk.set(k, ask); return ask;
+  }
+  const paintAvatar = (s, u) => { s.style.backgroundImage = `url("${u}")`; s.classList.add('withPhoto'); s.textContent = ''; };
+  const avatarOf = (label, id = null) => {
+    const s = document.createElement('span'); s.className = 'messengerAvatar'; s.setAttribute('aria-hidden', 'true'); s.textContent = [...String(label || '?').trim()][0] || '?'; let h = 0; for (const c of String(label)) h = (h * 31 + c.codePointAt(0)) >>> 0; s.style.background = AVATAR[h % AVATAR.length];
+    const k = id && avatarKey(id); if (k) { s.dataset.avatarId = id; if (avatarData.has(k)) paintAvatar(s, avatarData.get(k)); else avatarLoad(id); }
+    return s;
+  };
+  // pressed (a person's own circle, not the picker's row): the picture big, in the photo viewer
+  const avatarButton = (label, id) => { const s = avatarOf(label, id); if (!id || !state.photos?.[id]) return s; s.removeAttribute('aria-hidden'); s.setAttribute('role', 'button'); s.tabIndex = 0; s.setAttribute('aria-label', `${label} 프로필 사진 크게 보기`); const open = (e) => { e.stopPropagation(); avatarLoad(id).then((u) => { if (u) openViewer({ local: [{ url: u }] }, 0); }); }; s.addEventListener('click', open); s.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } }); return s; };
   const roomNameOf = (labels) => { // 「지우, 한별, 솔」 (20자 안: 넘치면 「지우, 한별 외 3명」)
     const all = labels.join(', '); if (all.length <= 20) return all;
     for (let k = labels.length - 1; k >= 1; k -= 1) { const s = `${labels.slice(0, k).join(', ')} 외 ${labels.length - k}명`; if (s.length <= 20) return s; }
@@ -590,7 +610,7 @@
       const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'messengerPerson'; b.setAttribute('aria-pressed', 'false');
       const name = document.createElement('span'); name.className = 'messengerPersonName'; name.textContent = p.label;
       const mark = document.createElement('span'); mark.className = 'messengerPersonMark'; mark.setAttribute('aria-hidden', 'true');
-      b.append(avatarOf(p.label), name, mark); b.addEventListener('click', () => togglePerson(p)); li.append(b); return { p, li, b };
+      b.append(avatarOf(p.label, p.id), name, mark); b.addEventListener('click', () => togglePerson(p)); li.append(b); return { p, li, b };
     });
     peopleBox.replaceChildren(...pickRows.map((r) => r.li));
     if (!people.length) peopleBox.innerHTML = '<li class="smallMuted messengerPeopleNone">함께할 수 있는 사람이 없습니다. 메신저는 관리자가 허용한 계정끼리 씁니다.</li>';
@@ -656,7 +676,7 @@
     if (!accountToken.get() && !deviceToken.get()) { showLogin(); return; }
     if (!await refresh()) return;
     loginForm.classList.add('hidden'); app.classList.remove('hidden'); byId('mLogoutBtn').classList.remove('hidden');
-    byId('mDevicesBtn').classList.toggle('hidden', !deviceToken.get());
+    byId('mDevicesBtn').classList.toggle('hidden', !deviceToken.get()); byId('mProfileBtn').classList.remove('hidden'); /* (1.10.373) */
     wantStream(true); timers = [setInterval(() => { if (!streamUp) pull(); }, 3000), setInterval(() => refresh(), 30000)];
     const room = new URLSearchParams(location.search).get('room') || roomOfOpen(location.href); const r = room && state.rooms.find((x) => x.id === room); if (r) openRoom(r); // (a notice tapped; the 서랍's 「메신저 앱으로 열기」)
     // (opened by web+gcmessenger:) the 서랍 that asked is told the app is up -- as an app or a tab -- and closes its own tab
@@ -693,6 +713,54 @@
     } catch (err) { fail(err); }
   });
   byId('mDropOthers').addEventListener('click', async () => { try { await api('/api/messenger/devices/drop', { all: true }); byId('mDevices').classList.add('hidden'); showToast('다른 기기의 로그인을 모두 끊었어요.'); } catch (err) { fail(err); } });
+
+  // ---- 1.10.373 내 프로필 사진 (notes docs/messenger-profile-photo-20261119.md): a picture chosen (a phone: its album or camera), made square
+  // here -- dragged to place, the slider (or the wheel) for its size, the circle it will show in -- and sent as a 256x256 WebP (a JPEG where the
+  // browser makes no WebP), 20~40 KB; 「기본으로」 back to the letter circle
+  {
+    const panel = byId('mProfile'); const btn = byId('mProfileBtn'); const nowBox = byId('mProfileNow'); const status = byId('mProfileStatus');
+    const crop = byId('mProfileCrop'); const cv = byId('mProfileCanvas'); const zoom = byId('mProfileZoom'); const pick = byId('mProfilePick');
+    let img = null; let view = { s: 1, x: 0, y: 0 }; /* (s: times the size that just covers the square; x, y: the picture's middle moved, in its pixels) */
+    const meLabel = () => state.rooms.flatMap((r) => r.members || []).find((m) => m.id === state.me)?.label || state.people.find((p) => p.id === state.me)?.label || '나';
+    const showNow = () => nowBox.replaceChildren(avatarButton(meLabel(), state.me));
+    const iw = () => img.width || img.naturalWidth; const ih = () => img.height || img.naturalHeight;
+    const scaleFor = (W) => Math.max(W / iw(), W / ih()) * view.s;
+    const clampView = () => { const s = scaleFor(cv.width); const hw = cv.width / 2 / s; const hh = cv.height / 2 / s; view.x = Math.max(hw - iw() / 2, Math.min(iw() / 2 - hw, view.x)); view.y = Math.max(hh - ih() / 2, Math.min(ih() / 2 - hh, view.y)); };
+    const paint = (ctx, W) => { const s = scaleFor(W); const cx = iw() / 2 + view.x; const cy = ih() / 2 + view.y; ctx.clearRect(0, 0, W, W); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, W / 2 - cx * s, W / 2 - cy * s, iw() * s, ih() * s); };
+    function draw() { if (!img) return; clampView(); const ctx = cv.getContext('2d'); paint(ctx, cv.width); ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.rect(0, 0, cv.width, cv.height); ctx.arc(cv.width / 2, cv.height / 2, cv.width / 2 - 2, 0, Math.PI * 2); ctx.fill('evenodd'); ctx.restore(); }
+    const close = () => { crop.classList.add('hidden'); img = null; pick.value = ''; };
+    btn.addEventListener('click', () => { const open = panel.classList.toggle('hidden') === false; btn.setAttribute('aria-expanded', String(open)); status.textContent = ''; if (open) showNow(); else close(); });
+    byId('mProfilePickBtn').addEventListener('click', () => pick.click());
+    pick.addEventListener('change', async () => {
+      const file = pick.files?.[0]; if (!file) return; status.textContent = '';
+      try { img = window.createImageBitmap ? await createImageBitmap(file, { imageOrientation: 'from-image' }) : await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(file); }); }
+      catch { status.textContent = '이 사진은 열 수 없어요.'; return; }
+      view = { s: 1, x: 0, y: 0 }; zoom.value = '1'; crop.classList.remove('hidden'); draw();
+    });
+    zoom.addEventListener('input', () => { view.s = Number(zoom.value) || 1; draw(); });
+    cv.addEventListener('wheel', (e) => { if (!img) return; e.preventDefault(); view.s = Math.max(1, Math.min(4, view.s * Math.exp(-e.deltaY / 500))); zoom.value = String(view.s); draw(); }, { passive: false });
+    let drag = null;
+    cv.addEventListener('pointerdown', (e) => { if (!img) return; drag = { x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch {} });
+    cv.addEventListener('pointermove', (e) => { if (!drag) return; const k = cv.width / (cv.getBoundingClientRect().width || cv.width) / scaleFor(cv.width); view.x -= (e.clientX - drag.x) * k; view.y -= (e.clientY - drag.y) * k; drag = { x: e.clientX, y: e.clientY }; draw(); });
+    for (const t of ['pointerup', 'pointercancel']) cv.addEventListener(t, () => { drag = null; });
+    byId('mProfileCancel').addEventListener('click', close);
+    const blobOf = (c, type, q) => new Promise((ok) => c.toBlob((b) => ok(b), type, q));
+    byId('mProfileSave').addEventListener('click', async () => {
+      if (!img) return; const out = document.createElement('canvas'); out.width = out.height = 256; paint(out.getContext('2d'), 256);
+      let blob = await blobOf(out, 'image/webp', 0.85); if (!blob || blob.type !== 'image/webp') blob = await blobOf(out, 'image/jpeg', 0.85);
+      if (blob && blob.size > 60 * 1024) blob = await blobOf(out, blob.type, 0.6);
+      if (!blob) { status.textContent = '사진을 만들지 못했어요.'; return; }
+      byId('mProfileSave').disabled = true; status.textContent = '올리는 중…';
+      try {
+        const res = await fetch('/api/messenger/avatar', { method: 'POST', cache: 'no-store', headers: { ...headers(), 'Content-Type': blob.type }, body: blob });
+        const data = await res.json().catch(() => ({})); if (!res.ok) throw Object.assign(new Error(data.message || '올리지 못했어요.'), { status: res.status });
+        state.photos = { ...(state.photos || {}), [state.me]: data.v }; close(); showNow(); status.textContent = '프로필 사진을 바꿨어요.'; refresh();
+      } catch (err) { if (err.status === 401 || err.status === 403) fail(err); else status.textContent = err.message; } finally { byId('mProfileSave').disabled = false; }
+    });
+    byId('mProfileClear').addEventListener('click', async () => {
+      try { await api('/api/messenger/avatar/clear', {}); const photos = { ...(state.photos || {}) }; delete photos[state.me]; state.photos = photos; close(); showNow(); status.textContent = '기본 동그라미로 돌렸어요.'; refresh(); } catch (err) { fail(err); }
+    });
+  }
 
   // ---- ③ 알림 (Web Push, the app's worker) ----
   // 다음 메신저 묶음 (docs/messenger-speed-photo-20261103.md 10절) 알림 방식, 기기마다: 「열어 둘 때만」 (a PC's default) -- no push
