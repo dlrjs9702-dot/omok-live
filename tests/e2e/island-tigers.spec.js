@@ -18,6 +18,11 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
   // the tigers' clock at 9시 (both awake, whenever the test runs); 우레 10 m off, 안개 far away
   const kst = new Date(Date.now() + 9 * 3600000); const shift = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, 0, 0) - Date.now();
   try {
+    // (1.10.377) at 별마루다리's gate its leaf opens; the two signs' words
+    const gate = P.FENCE.find((f) => P.FENCE_KINDS[f[3]] === 'fence_gate');
+    await standAt(request, who, gate[0] + Math.sin(gate[2]) * 1.5, gate[1] + Math.cos(gate[2]) * 1.5);
+    await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.gateOpen ?? 0), { timeout: 10000 }).toBeGreaterThan(0.8);
+    expect(await page.evaluate(() => window.PlazaTigers()?.signs)).toEqual(['별마루섬 자연 구역', P.SIGN_TRAIL[3].join(' / ')]);
     await standAt(request, who, spot.x, spot.z);
     const on = await post(request, '/api/test/tigers', who.token, { on: true, clockShift: shift, place: { id: 'angae', x: T.dalmaru.NEW_ISLE.x + 60, z: T.dalmaru.NEW_ISLE.z - 60 } });
     expect(on.data.on).toBe(true);

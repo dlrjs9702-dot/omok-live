@@ -40,6 +40,20 @@ const CORNERS = []; for (let i = 0; i < segs.length; i += 1) { const p = segs[(i
 const SIGN = (() => { const nx = -Math.sin(gate.yaw); const nz = -Math.cos(gate.yaw); const tx = Math.cos(gate.yaw); const tz = -Math.sin(gate.yaw);
   for (const side of [3.2, -3.2, 3.8, -3.8]) { const x = gate.x + nx * 2.6 + tx * side; const z = gate.z + nz * 2.6 + tz * side; if (T.walkable(x, z) && T.walkDist(x, z) > 0.6 && !T.onBridge?.(x, z)) return [r2(x), r2(z), r3(gate.yaw)]; }
   return null; })();
+// ---- 136's two signs (1.10.377): the reserve's board just inside the gate beside the walk, facing whoever comes in (its title); the trail
+// post at the camp's edge by the walk from the bridge, its three arrows turned to point nearest the camp, the lookout and 별마루다리 ----
+const SIGN_RESERVE = (() => { const nx = Math.sin(gate.yaw); const nz = Math.cos(gate.yaw); const tx = Math.cos(gate.yaw); const tz = -Math.sin(gate.yaw);
+  for (const side of [3.2, -3.2, 3.8, -3.8, 4.6, -4.6]) { const x = gate.x + nx * 4 + tx * side; const z = gate.z + nz * 4 + tz * side; if (T.walkable(x, z) && T.walkDist(x, z) > 0.9 && D.newIsleCoast(x, z) > IN + 0.5) return [r2(x), r2(z), r3(gate.yaw)]; }
+  return null; })();
+const SIGN_TRAIL = (() => {
+  const B = T.ISLE2_BRIDGE_HEAD; let at = null;
+  for (let a = 0; a < 360; a += 3) { const ang = (a * Math.PI) / 180; const x = I.camp.x + Math.cos(ang) * (I.camp.r - 4); const z = I.camp.z + Math.sin(ang) * (I.camp.r - 4); const wd = T.walkDist(x, z); if (wd < 1.4 || wd > 3 || !T.walkable(x, z)) continue; const d = Math.hypot(x - B.x, z - B.z); if (!at || d < at.d) at = { x, z, d }; }
+  if (!at) return null;
+  const dest = [[I.camp.x, I.camp.z], [I.peak.x, I.peak.z], [B.x, B.z]]; const NAMES = [D.NAMES.camp, '전망대', D.NAMES.newBridge]; const ARROWS = [[1, 0], [-0.866, -0.5], [0.574, 0.819]];
+  const perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]; let best = null;
+  for (let deg = 0; deg < 360; deg += 1) { const yaw = (deg * Math.PI) / 180; const c = Math.cos(yaw); const n = Math.sin(yaw);
+    for (const p of perms) { let err = 0; ARROWS.forEach(([u, v], i) => { const wx = u * c + v * n; const wz = -u * n + v * c; const [gx, gz] = dest[p[i]]; let d = Math.atan2(wx, wz) - Math.atan2(gx - at.x, gz - at.z); while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; err += Math.abs(d); }); if (!best || err < best.err) best = { err, yaw, p }; } }
+  return [r2(at.x), r2(at.z), r3(best.yaw), best.p.map((k) => NAMES[k])]; })();
 // ---- the spring cave (157): its README's place ----
 const CAVE = { x: 363, z: 176, yaw: 0.942 };
 const caveSolids = SRC.caveSolids;
@@ -87,7 +101,7 @@ const segCircles = (r, zc = 0) => [-1.05, -0.7, -0.35, 0, 0.35, 0.7, 1.05].map((
 const CIRCLES = {
   fence_segment: segCircles(0.22), fence_palisade_b: segCircles(0.38), fence_palisade_e: segCircles(0.42, 0.15), fence_stonewall: segCircles(0.28, 0.03),
   fence_gate: [[-1.05, 0, 0.2], [1.05, 0, 0.2]], /* (the people's way between: a body 0.45 round -- 0.8 m to go through, the leaf's 1 m opening) */
-  fence_corner: [[0, 0, 0.2]], sign_tiger: [[-0.85, 0, 0.15], [0.85, 0, 0.15]], tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
+  fence_corner: [[0, 0, 0.2]], sign_tiger: [[-0.85, 0, 0.15], [0.85, 0, 0.15]], sign_reserve: [[-0.66, 0.12, 0.17], [0.66, 0.12, 0.17]], sign_trail: [[0, 0.15, 0.18]] /* (136 README's solids) */, tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
   campfire: [[0, 0, 0.6]], log_bench: [[-0.45, 0.05, 0.22], [0.45, 0.05, 0.22]], log_stool: [[0, 0, 0.25]],
   spring_cave: [...caveSolids.rock, ...caveSolids.water],
 };
@@ -97,7 +111,7 @@ const BOXES = {
 };
 const CAVE_BOXES = caveSolids.rockBoxes;
 
-const data = { FENCE, CORNERS, SIGN, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+const data = { FENCE, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES
@@ -122,6 +136,8 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
     for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
     if (DATA.ROCK) all.push(...circlesAt('tiger_rock', DATA.ROCK[0], DATA.ROCK[1], DATA.ROCK[2]));
     if (DATA.SIGN) all.push(...circlesAt('sign_tiger', DATA.SIGN[0], DATA.SIGN[1], DATA.SIGN[2]));
+    if (DATA.SIGN_RESERVE) all.push(...circlesAt('sign_reserve', DATA.SIGN_RESERVE[0], DATA.SIGN_RESERVE[1], DATA.SIGN_RESERVE[2]));
+    if (DATA.SIGN_TRAIL) all.push(...circlesAt('sign_trail', DATA.SIGN_TRAIL[0], DATA.SIGN_TRAIL[1], DATA.SIGN_TRAIL[2]));
     for (const [x, z, yaw, k] of DATA.DECO) if (DECO_KINDS[k] === 'swamp_stones') all.push(...circlesAt('swamp_stones', x, z, yaw));
     all.push(...circlesAt('spring_cave', DATA.CAVE.x, DATA.CAVE.z, DATA.CAVE.yaw));
     return all;

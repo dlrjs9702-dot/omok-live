@@ -15373,6 +15373,30 @@
       "precompressed": true
     },
     {
+      "out": "newisle-v1/sign_reserve.glb",
+      "src": "newisle136:01. High/newisle-v1/sign_reserve.glb",
+      "sha256": "c189aa575c89d8953b98bb0413f66eb871d41551d9fc5df24fcee7b756aed96d",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/sign_reserve_low.glb",
+      "src": "newisle136:02. Low/newisle-v1/sign_reserve_low.glb",
+      "sha256": "db65334f49a14c5519203e5109e363763cd7f450b865ac807502ffad7d05e600",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/sign_trail.glb",
+      "src": "newisle136:01. High/newisle-v1/sign_trail.glb",
+      "sha256": "55ecbc956bfd8312fca618ae75c44bf9dd785a81a4d39e9bc0ab9fe969f6f036",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/sign_trail_low.glb",
+      "src": "newisle136:02. Low/newisle-v1/sign_trail_low.glb",
+      "sha256": "bd9dcbca49dc1997160dd0fc32780e357b49e1910d30e1f0b36503d2e6558b76",
+      "precompressed": true
+    },
+    {
       "out": "spring157/autumn/spring_cave.glb",
       "src": "spring157:01. High/spring157/autumn/spring_cave.glb",
       "sha256": "f1ed8149bcce1be7d8c306dda96e7a419e428d2d25f9334d30b01baffbcabca5",

@@ -1009,6 +1009,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const rows = (list, kind, k) => list.filter((a) => a[3] === k).map(([x, z, yaw]) => ({ x, z, yaw, isle2: true }));
     const onGround = (o) => setM(o.x, onMesh(o.x, o.z), o.z, 1, 1, o.yaw || 0);
     P2.FENCE_KINDS.forEach((kind, k) => {
+      if (kind === 'fence_gate') return; /* (1.10.377: the gate on its own in plaza-scene -- its leaf opens as one comes near) */
       const geo = kind === 'fence_gate' ? mergeColored([part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, -1.08, 1.21, 0), part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, 1.08, 1.21, 0), part(new THREE.BoxGeometry(2.4, 0.16, 0.2), WOOD, 0, 2.34, 0)]) : box(kind, k === 3 ? STONE : WOOD);
       instanced(geo, natureMat, rows(P2.FENCE, kind, k), onGround, { cell: 60, target: [`byeolmaru.${kind}`] });
     });
@@ -1076,6 +1077,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   if (T.dalmaru) {
     fallTex = keep(flowTex.clone()); fallTex.needsUpdate = true; fallTex.repeat.set(1.5, 3);
     const fallMat = keep(new THREE.MeshStandardMaterial({ color: 0xe6f6ff, map: fallTex, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.88, side: THREE.DoubleSide, forceSinglePass: true })); /* (1.10.353 §9 ⓐ: both faces in one pass -- three.js draws a two-sided see-through material back then front, picking its program again twice a frame) */
+    /* (1.10.377 N2a 157 개울 샘 동굴 README: its water the creek's own, darkened inside by its COLOR_0 -- flowing with the creek; its falling water and foam
+       the falls' -- the loader swaps them in by the file's names) */
+    const caveWater = keep(water.clone()); caveWater.vertexColors = true; assets?.setSwapMaterials?.({ water: caveWater, water_fall: fallMat, water_foam: foam });
     const sprayMat = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.35, depthWrite: false }));
     const puffGeo = keep(new THREE.SphereGeometry(0.7, 10, 8)); const ringGeo = keep(new THREE.RingGeometry(1.2, 2.6, 24).rotateX(-Math.PI / 2)); const SEA_Y = T.dalmaru.SEA;
     const pondMat = keep(new THREE.MeshStandardMaterial({ color: 0x7ec8e8, map: fallTex, roughness: 0.25, metalness: 0, transparent: true, opacity: 0.9 }));

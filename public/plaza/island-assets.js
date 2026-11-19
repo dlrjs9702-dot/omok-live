@@ -698,13 +698,13 @@
   // stools, the spring cave -- one season's file for them all but the cave's; High near, Low past it
   { const B1 = '/assets/island/byeolmaru-v1'; const N1 = '/assets/island/newisle-v1';
     const two = (dir, f) => ({ url: `${dir}/${f}.glb`, low: { url: `${dir}/${f}_low.glb` } });
-    for (const k of ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_corner']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 30 };
+    for (const k of ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_corner']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 30, ...(k === 'fence_gate' ? { keepNodes: true } : {}) }; /* (1.10.377: the gate's leaf a node of its own -- it opens) */
     REGISTRY['byeolmaru.tiger_rock'] = { ...two(B1, 'tiger_rock'), near: 40 }; REGISTRY['byeolmaru.sign_tiger'] = { ...two(B1, 'sign_tiger'), near: 40 }; /* (152e's board) */
     for (const k of ['reeds_a', 'reeds_b', 'reeds_c', 'swamp_lily_a', 'swamp_lily_b', 'swamp_fungus', 'swamp_grass_a', 'swamp_grass_b', 'swamp_planks']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 25, shadows: false, hideFar: 40 };
     REGISTRY['byeolmaru.swamp_stones'] = { ...two(B1, 'swamp_stones'), near: 30 };
-    for (const k of ['campfire', 'log_bench', 'log_stool']) REGISTRY[`newisle.${k}`] = { ...two(N1, k), near: 30 };
+    for (const k of ['campfire', 'log_bench', 'log_stool', 'sign_reserve', 'sign_trail' /* (1.10.377: their letters by plaza-scene, at the FACE spots) */]) REGISTRY[`newisle.${k}`] = { ...two(N1, k), near: 30 };
     const S = (low) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/spring157/${s}/spring_cave${low}.glb`]));
-    REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40 };
+    REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40, swap: true /* (1.10.377: its water, falling water and foam the creek's -- island.js setSwapMaterials) */ };
     /* (1.10.376 N2a-2 별마루섬 호랑이, assets 152e: 우레 and 안개 -- their own rig and ten clips (tigers-view.js, assets.creature), 1.6x (사용자 2A; 안개's
        0.8 is in its file), facing -Z in the file; the far file on the lowest quality) */
     for (const k of ['tiger', 'tiger_angae']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), scale: 1.6, rotationY: Math.PI }; }
