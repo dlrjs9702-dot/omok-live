@@ -73,6 +73,14 @@
     "textures": 0
   },
   "fileOverrides": {
+    "forest156/autumn/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
+    "forest156/autumn/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
+    "forest156/spring/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
+    "forest156/spring/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
+    "forest156/summer/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
+    "forest156/summer/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
+    "forest156/winter/tree_ancient.glb": { "triangles": 14272, "reason": "1.10.367 assets 156 §8: 별지기 느티 (40 m, 35 m crown, arched roots) -- one tree on the island, High within 70 m only" },
+    "forest156/winter/tree_ancient_far.glb": { "textures": 2, "reason": "1.10.367 assets 156: 별지기 느티 far picture -- two crossed quads, one 256 picture (alpha mask), on the far mesh only" },
     "characters/npc_walker_ted_work.glb": { "triangles": 31158, "sourceSha256": "380d43981c5b844836c1c59935161e6ac5f5a559ae44e739aee033fa1269ab64", "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk" },
     "characters/npc_walker_ted_work_low.glb": { "triangles": 9671, "sourceSha256": "7d7099c737399928f9a15140a892f324deddf65e91e9d6dbea4dde83233cd83a", "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk" },
     "characters/npc_face_ted.glb": { "meshes": 12, "nodes": 24, "materials": 12, "reason": "assets 102 / 119: an islander's 12 expression pieces, each its own named node (shown one at a time on the Head bone)" },

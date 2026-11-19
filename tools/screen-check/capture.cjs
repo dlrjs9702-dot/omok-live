@@ -28,7 +28,7 @@ const SPOTS = [
   { id: 'crosswalk', label: '택시 길/건널목 정면', crossing: 0 }, { id: 'townhall-inside', label: '관공서/안 민원실', inside: 'townhall' },
   { id: 'mall-inside', label: '백화점/1층 안 노점', inside: 'mall' }, { id: 'house', label: '이웃골/집터와 마당', lot: 0 },
   { id: 'taxi-road', label: '택시 길/차선과 인도', taxi: true }, { id: 'isle2-bridge', label: '별마루다리/다리 위', bridge: 'isle2' },
-  { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true },
+  { id: 'isle2-forest', label: '별마루섬/숲길', near: 'newIsle' }, { id: 'camp', label: '별마루섬/캠핑장', camp: true }, { id: 'lookout', label: '별마루섬/전망대 봉우리', peak: true }, { id: 'ancient', label: '별마루섬/별지기 느티', area: 'ancient' } /* (1.10.367 N1b) */,
 ];
 const NIGHT = ['plaza', 'bay', 'camp'];
 

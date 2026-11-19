@@ -948,6 +948,48 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const padGeo = mergeColored([part(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 9), 0x5f9e4f, 0, 0.015, 0)]);
     for (let k = 0; k < 4; k += 1) instanced(padGeo, natureMat, N4.lilies.filter((l) => l.kind === k), (l) => setM(l.x, T.streamWaterHeight(l.x, l.z) + 0.01, l.z, 1, 1, l.yaw), { shadow: false, cell: 60, target: [k < 2 ? `water.lily.${k}` : `water.lotus.${k - 2}`] });
   }
+  // 1.10.367 N1b 별마루섬 숲 (notes docs/byeolmaru-forest-n1b-20261118.md, assets 156): where the terrain put them (dalmaru-island
+  // nature().forest) -- the big trees, mossy rocks and fallen logs (blocking: forest156.js's circles), the ferns (walked through,
+  // gone past 25 m), 별지기 느티 (40 m; its stand-in its trunk, crown and root boxes) -- each a plain stand-in until its model is in;
+  // seen from afar (멀리 모양) the wood as clumps over the far mesh's canopy, 별지기 느티 a picture standing out of it
+  const F156 = globalThis.Forest156; const FOREST = N4.forest;
+  if (F156 && FOREST) {
+    const bark = 0x7a5638; const DEG = Math.PI / 180;
+    const FOREST_STAND = {
+      tree_big_fir: [trunk(4, 0.55, bark), crown(CONE, 0x3f7f55, 0, 6, 0, 6.2, 6), crown(CONE, 0x4a8c5f, 0, 9.2, 0, 4.6, 5), crown(CONE, 0x56996a, 0, 12, 0, 3, 4.2)],
+      tree_big_pine: [trunk(8, 0.5, 0xa0583a), crown(SPH, 0x4f8a50, 0, 9, 0, 7, 2.6), crown(SPH, 0x5a965a, 1.5, 11.2, 0.8, 4.5, 2)],
+      tree_big_oak: [trunk(5, 1.08, bark), crown(SPH, 0x5f9e4f, 0, 8, 0, 10.5, 7), crown(SPH, 0x6aab58, 1.5, 10, 1, 6, 4)],
+      rock_mossy_a: [facet(OCT, 0x8f8a7c, 0, 0.55, 0, 2.0, 1.3)],
+      rock_mossy_b: [facet(OCT, 0x8f8a7c, -0.55, 0.45, -0.05, 1.9, 0.9), facet(OCT, 0x8a8576, 0.8, 0.4, 0.15, 1.5, 0.8)],
+      log_fallen_big: [part(new THREE.CylinderGeometry(0.55, 0.6, 7.2, 8), 0x7a5a3c, 0, 0.55, 0, { rz: Math.PI / 2 })],
+      log_fallen_mid: [part(new THREE.CylinderGeometry(0.4, 0.42, 4.4, 8), 0x7a5a3c, 0, 0.4, 0, { rz: Math.PI / 2 })],
+      fern_wide: [crown(CONE, 0x4f9a4a, 0, 0.3, 0, 1.6, 0.6)], fern_tall: [crown(CONE, 0x4f9a4a, 0, 0.45, 0, 1.0, 0.9)],
+    };
+    const lowest = (o) => Math.min(...F156.circlesAt(o.kind, o.x, o.z, o.yaw, o.s).map((c) => onMesh(c.x, c.z))); /* (a rock or log on a slope: down to its lowest round -- none of it in the air) */
+    for (const [kind, parts] of Object.entries(FOREST_STAND)) {
+      const list = [...FOREST.big, ...FOREST.mossy, ...FOREST.fallen, ...FOREST.ferns].filter((o) => o.kind === kind); const fern = kind.startsWith('fern'); const low = kind.startsWith('rock') || kind.startsWith('log');
+      instanced(mergeColored(parts), natureMat, list, (o) => setM(o.x, (low ? lowest(o) : onMesh(o.x, o.z)) - (fern ? 0.02 : 0.1), o.z, o.s, o.s, o.yaw), { shadow: !fern, cell: 60, target: [`forest.${kind}`] });
+    }
+    const A = FOREST.ancient;
+    if (A) {
+      const boxes = F156.ANCIENT_BOXES.map(([x, z, len, w, y0, y1, yaw]) => part(new THREE.BoxGeometry(len, Math.max(0.2, y1 - y0), w), 0x6f4f34, x, (y0 + y1) / 2, z, { ry: -yaw * DEG }));
+      const stand = [part(new THREE.CylinderGeometry(2.5, F156.ANCIENT_TRUNK_R, 18, 10), 0x6f4f34, 0, 9, 0, { shade: [0.75, 1] }), crown(SPH, 0x5c9a4c, 0, 28, 0, 34, 17), crown(SPH, 0x68a756, 4, 34, -3, 20, 10), ...boxes];
+      instanced(mergeColored(stand), natureMat, [A], (o) => setM(o.x, onMesh(o.x, o.z), o.z, 1, 1, o.yaw), { cell: 60, target: ['forest.tree_ancient'] });
+    }
+    for (const o of [...FOREST.big, ...FOREST.mossy, ...FOREST.fallen]) for (const c of F156.circlesAt(o.kind, o.x, o.z, o.yaw, o.s)) solids.push({ nature: true, ...c });
+    if (A) for (const c of F156.circlesAt('tree_ancient', A.x, A.z, A.yaw, 1)) solids.push({ nature: true, ...c });
+    if (isle2Far) { /* (멀리 모양: a clump every ~40 m of the wood, off the camp ground, the peak's top and the tree's own place) */
+      const D2 = T.dalmaru; const I2 = D2.NEW_ISLE; const clumps = [];
+      for (let x = G2.x0 + 20; x < G2.x0 + G2.size; x += 40) for (let z = G2.z0 + 20; z < G2.z0 + G2.size; z += 40) {
+        const cx = x + (hash(x, z, 61) - 0.5) * 16; const cz = z + (hash(x, z, 62) - 0.5) * 16;
+        if (D2.newIsleCoast(cx, cz) < 14 || D2.slopeAt(cx, cz) > 0.9 || Math.hypot(cx - I2.camp.x, cz - I2.camp.z) < I2.camp.r + 10 || Math.hypot(cx - I2.peak.x, cz - I2.peak.z) < 14 || (A && Math.hypot(cx - A.x, cz - A.z) < 22)) continue;
+        clumps.push({ x: cx, z: cz, k: Math.min(2, Math.floor(hash(cx, cz, 63) * 3)), yaw: hash(cx, cz, 64) * TAU, s: 0.9 + hash(cx, cz, 65) * 0.3 });
+      }
+      const onFar = { shadow: false, cell: 400, where: () => isle2Far };
+      ['conifer', 'broad', 'mixed'].forEach((name, k) => instancedOne(mergeColored([crown(SPH, [0x4a7f4f, 0x5f8f4c, 0x557f4a][k], 0, 5, 0, 20, 10)]), natureMat, clumps.filter((c) => c.k === k), (c) => setM(c.x, ground(c.x, c.z) + 2, c.z, c.s, c.s, c.yaw), { ...onFar, target: [`forest.clump_${name}`] }));
+      if (A) instancedOne(mergeColored([crown(SPH, 0x5c9a4c, 0, 28, 0, 34, 17), part(new THREE.CylinderGeometry(2.5, 3.5, 20, 6), 0x6f4f34, 0, 10, 0)]), natureMat, [A], (o) => setM(o.x, ground(o.x, o.z), o.z, 1, 1, o.yaw), { ...onFar, target: ['forest.tree_ancient_far'] });
+    }
+  }
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut
   // line (decoration only -- nothing here is walked around). Spaced from each curve, so they follow every walk.

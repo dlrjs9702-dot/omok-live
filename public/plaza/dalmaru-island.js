@@ -11,6 +11,8 @@
 }(typeof self !== 'undefined' ? self : this, (D, C) => {
   const { TAU, smooth, lerp, catmull, lineDist } = C;
   const ISLE2 = D.NEW_ISLE; // (N1 새 섬: dalmaru-terrain's)
+  // (1.10.367 N1b §8) 별지기 느티: on the flat north-east of the bridge head (the dock 30 m, the camp ground's edge 34 m), 20 m off the forest loop -- seen from 별마루다리 and the train's viaduct
+  const ANCIENT = Object.freeze({ x: 261, z: 197, yaw: 0, name: '별지기 느티', sign: Object.freeze({ x: 246, z: 193, yaw: Math.PI / 2 }) }); /* (its board at the clearing's edge, read from the forest loop) */
   const Q =(typeof self !== 'undefined' && self.IslandQuarry) || (typeof require === 'function' ? require('./island-quarry') : null); // (1.10.323 채석장)
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
@@ -659,8 +661,40 @@
     seed = 0x15e204; for (let tries = 0; I2.logs.length < 40 && tries < 6000; tries += 1) { const [x, z] = at2(); const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; if (room(x, z, 1.1, 0.4) && isle2Free(x, z, 1.1) && walkDist(x, z) > 3.6) { I2.logs.push({ x, z, kind, yaw, isle2: true }); taken.push([x, z, 1.1]); } }
     seed = 0x15e205; for (let tries = 0, k = 0; I2.flowers.length < 210 && tries < 6000; tries += 1) { const [x, z] = at2(); if (isle2Free(x, z, 0.1)) { I2.flowers.push({ x, z, c: k % 5, isle2: true }); k += 1; } }
     seed = 0x15e206; for (let tries = 0; I2.grass.length < 1050 && tries < 30000 && I2.trees.length; tries += 1) { const t = I2.trees[Math.floor(rnd() * I2.trees.length)]; const a = rnd() * TAU; const d = 0.75 * t.s + 0.1 + rnd() * 0.9; const x = t.x + Math.cos(a) * d; const z = t.z + Math.sin(a) * d; const kind = Math.floor(rnd() * 3); const yaw = rnd() * TAU; const s = 0.85 + rnd() * 0.3; if (roomBut(x, z, 0.3, t) && isle2Free(x, z, 0.2)) { I2.grass.push({ x, z, kind, yaw, s, isle2: true }); taken.push([x, z, 0.3]); } }
+    // 1.10.367 N1b 숲 다듬기 (notes docs/byeolmaru-forest-n1b-20261118.md §1·2·8, assets 156): the wood's three layers -- big
+    // trees (10~15 m) over the trees above, ferns, mossy rocks and fallen logs under them -- and 별지기 느티 (40 m) in a clearing
+    // of its own near the bridge head. Each on its own seed after all the rest, so nothing placed before moves; only what stood
+    // within its 18 m (its roots reach 17.5 m) taken out. The edges of the walks a little open, the inside thick; the camp
+    // ground, the lookout and the creek's banks open (N2a)
+    const F156 = (typeof self !== 'undefined' && self.Forest156) || (typeof require === 'function' ? require('./forest156.js') : null);
+    const forest = { big: [], ferns: [], mossy: [], fallen: [], ancient: null };
+    if (F156) {
+      const A = ANCIENT; const KEEP = 18; const offAncient = (x, z, r) => Math.hypot(x - A.x, z - A.z) > KEEP + r;
+      for (const k of ['trees', 'bushes', 'rocks', 'logs', 'grass']) I2[k] = I2[k].filter((o) => offAncient(o.x, o.z, 0)); I2.flowers = I2.flowers.filter((o) => Math.hypot(o.x - A.x, o.z - A.z) > 6);
+      forest.ancient = { x: A.x, z: A.z, yaw: A.yaw, isle2: true };
+      const open = (x, z, r) => isle2Free(x, z, r) && offAncient(x, z, r) && !natureBlocks.some((fn) => fn(x, z, r));
+      const BIG = [['tree_big_fir', 0.4, 0.75, 0.3], ['tree_big_pine', 0.3, 0.8, 0.3], ['tree_big_oak', 0.3, 0.85, 0.25]];
+      seed = 0x15e207; for (let tries = 0; forest.big.length < 150 && tries < 12000; tries += 1) {
+        const [x, z] = at2(); const pick = rnd(); const [kind, , s0, ds] = BIG[pick < 0.4 ? 0 : pick < 0.7 ? 1 : 2]; const s = s0 + rnd() * ds; const yaw = rnd() * TAU; const thick = rnd();
+        const r = F156.CIRCLES[kind][0][2] * s; const wd = walkDist(x, z);
+        if (wd < 5 + r || (wd < 12 && thick > 0.35) || D.creekDist(x, z) < 6 + r || Math.hypot(x - ISLE2.camp.x, z - ISLE2.camp.z) < ISLE2.camp.r + 14 || Math.hypot(x - ISLE2.peak.x, z - ISLE2.peak.z) < 24) continue;
+        if (room(x, z, r, 1.0) && open(x, z, r)) { forest.big.push({ x, z, s, yaw, kind, isle2: true }); taken.push([x, z, r]); }
+      }
+      seed = 0x15e208; for (let tries = 0; forest.mossy.length < 60 && tries < 6000; tries += 1) {
+        const [x, z] = at2(); const kind = rnd() < 0.6 ? 'rock_mossy_a' : 'rock_mossy_b'; const s = 0.8 + rnd() * 0.4; const yaw = rnd() * TAU; const cs = F156.circlesAt(kind, x, z, yaw, s);
+        if (walkDist(x, z) > 4 && slopeAt(x, z) < 0.45 && cs.every((c) => room(c.x, c.z, c.r, 0.6) && open(c.x, c.z, c.r))) { forest.mossy.push({ x, z, s, yaw, kind, isle2: true }); for (const c of cs) taken.push([c.x, c.z, c.r]); }
+      }
+      seed = 0x15e209; for (let tries = 0; forest.fallen.length < 24 && tries < 6000; tries += 1) {
+        const [x, z] = at2(); const kind = rnd() < 0.7 ? 'log_fallen_big' : 'log_fallen_mid'; const yaw = rnd() * TAU; const cs = F156.circlesAt(kind, x, z, yaw, 1); const hs = cs.map((c) => meshGroundHeight(c.x, c.z));
+        if (Math.max(...hs) - Math.min(...hs) < 0.7 && cs.every((c) => walkDist(c.x, c.z) > 2.5 + c.r && room(c.x, c.z, c.r, 0.4) && open(c.x, c.z, c.r))) { forest.fallen.push({ x, z, s: 1, yaw, kind, isle2: true }); for (const c of cs) taken.push([c.x, c.z, c.r]); }
+      }
+      seed = 0x15e20a; for (let tries = 0; forest.ferns.length < 420 && tries < 12000; tries += 1) {
+        const [x, z] = at2(); const kind = rnd() < 0.55 ? 'fern_wide' : 'fern_tall'; const s = 0.8 + rnd() * 0.4; const yaw = rnd() * TAU;
+        if (walkDist(x, z) > 2.2 && room(x, z, 0.35, 0.15) && open(x, z, 0.5)) { forest.ferns.push({ x, z, s, yaw, kind, isle2: true }); taken.push([x, z, 0.35]); }
+      }
+    }
     g4.grass.push(...I2.grass); g4.logs.push(...I2.logs);
-    natureCache = { ...g4, trees: [...keptTrees, ...I2.trees], flowers: [...flowers.filter((p) => !blocked(p, 0.3) && roadClear(p, 0.2)), ...I2.flowers], bushes: [...keptBushes, ...I2.bushes], tufts: tufts.filter((t) => !onBank(t, 0.5) && roadClear(t, 0.2)), rocks: [...rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5 && roadClear(r, r.s)), ...I2.rocks] /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
+    natureCache = { ...g4, forest, trees: [...keptTrees, ...I2.trees], flowers: [...flowers.filter((p) => !blocked(p, 0.3) && roadClear(p, 0.2)), ...I2.flowers], bushes: [...keptBushes, ...I2.bushes], tufts: tufts.filter((t) => !onBank(t, 0.5) && roadClear(t, 0.2)), rocks: [...rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5 && roadClear(r, r.s)), ...I2.rocks] /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free
@@ -710,11 +744,15 @@
   let solidsOf = null; let solidsCache = null; // (G4a: worked out once per nature -- asked for often)
   const natureSolids = () => { const n = nature(); if (solidsOf === n) return solidsCache; solidsOf = n; return (solidsCache = natureSolidsOf(n)); };
   const natureSolidsOf = (n) => { const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 })),
-    ...n.rocks.filter((r) => rockBlocks(r) && settledSpot(r.x, r.z)).map((r) => ({ x: r.x, z: r.z, r: 0.8 * r.s })), ...n.logs.flatMap(logRounds), ...n.palms.map((p) => ({ x: p.x, z: p.z, r: 0.3 * p.s }))]; }; // (as the scene walks round them: island.js; G4a the rocks, logs and palms too)
+    ...n.rocks.filter((r) => rockBlocks(r) && settledSpot(r.x, r.z)).map((r) => ({ x: r.x, z: r.z, r: 0.8 * r.s })), ...n.logs.flatMap(logRounds), ...n.palms.map((p) => ({ x: p.x, z: p.z, r: 0.3 * p.s })), ...forestSolids(n)]; }; // (as the scene walks round them: island.js; G4a the rocks, logs and palms too)
+  // (1.10.367 N1b) the forest's: the big trees' trunks, the mossy rocks, the fallen logs and 별지기 느티's trunk and roots (assets 156
+  // solids.json -- its arches walked under); the ferns walked through
+  const forestSolids = (n) => { const F156 = (typeof self !== 'undefined' && self.Forest156) || (typeof require === 'function' ? require('./forest156.js') : null); const f = n.forest; if (!F156 || !f) return [];
+    return [...[...f.big, ...f.mossy, ...f.fallen].flatMap((o) => F156.circlesAt(o.kind, o.x, o.z, o.yaw, o.s)), ...(f.ancient ? F156.circlesAt('tree_ancient', f.ancient.x, f.ancient.z, f.ancient.yaw, 1) : [])]; };
   const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ...(Q ? [['quarry', { x: 90, z: -123, label: '채석장' }]] : []) /* (1.10.323) */,['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }],
-    ...(ISLE2 ? [['newIsle', { x: ISLE2.x, z: ISLE2.z, label: D.NAMES.newIsle }]] : [])]); /* (N1 새 섬) */
+    ...(ISLE2 ? [['newIsle', { x: ISLE2.x, z: ISLE2.z, label: D.NAMES.newIsle }], ['ancient', { x: ANCIENT.x, z: ANCIENT.z, label: ANCIENT.name }]] : [])]); /* (N1 새 섬; 1.10.367 별지기 느티) */
 
   // (문제 기록 3회차 8 「있을 필요 없는 곳에도 돌·잡초, 하늘에 떠 있네」) where a small scattered piece -- a stone, a flower, a weed
   // -- sits: the drawn ground within its 0.3 m round never more than 0.09 m below its middle (no edge of it hangs in the air),
@@ -735,7 +773,7 @@
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
-    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2,
+    GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */,
     ROAD, roadDist, roadFoot, /* (T1 고침: the taxi road's band -- the scene's grass and decor, the shore and cover maps keep off it) */ SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),

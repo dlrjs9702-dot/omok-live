@@ -298,5 +298,10 @@
   "text": "오늘도 달마루섬에서 느긋한 하루 보내요.",
   "topic": "misc",
   "needs": null
+ },
+ {
+  "text": "별마루다리를 건너면 바로 앞 숲에 40 m 별지기 느티가 서 있어요.",
+  "topic": "island",
+  "needs": "forest367"
  }
 ]
