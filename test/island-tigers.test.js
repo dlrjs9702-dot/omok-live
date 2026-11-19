@@ -48,6 +48,6 @@ test('별마루섬 호랑이: 캠핑장·전망대·문 둘레 12 m는 안 들�
 
 test('덮치기: 달리던 그대로 앞으로 곧게, 0.84초에 앞발이 닿을 거리, 그 뒤는 그대로; 포기 25초, 크기 2.4배', () => {
   assert.equal(Tg.leapAt(0, 9), 0); assert.ok(Math.abs(Tg.leapAt(0.42, 9) - 4.5) < 1e-9); assert.equal(Tg.leapAt(0.84, 9), 9); assert.equal(Tg.leapAt(1.2, 9), 9);
-  assert.equal(Tg.GIVE_UP_S, 25); assert.equal(Tg.SCALE, 2.4); assert.ok(Tg.TIGERS.every((t) => t.speed === 11));
+  assert.equal(Tg.GIVE_UP_S, 25); assert.equal(Tg.SCALE, 2.4); assert.deepEqual(Tg.TIGERS.map((t) => t.speed), [12, 11]); /* (우레 「속도 1 업」) */
   assert.equal(Tg.restingAt(Tg.TIGERS[0], Date.UTC(2026, 10, 20, 3, 0, 0)), true); assert.equal(Tg.restingAt(Tg.TIGERS[1], Date.UTC(2026, 10, 19, 19, 30, 0)), true); assert.equal(Tg.restingAt(Tg.TIGERS[1], Date.UTC(2026, 10, 20, 3, 0, 0)), false);
 });
