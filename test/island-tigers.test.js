@@ -36,7 +36,7 @@ test('별마루섬 호랑이: 캠핑장·전망대·문 둘레 12 m는 안 들�
     return null;
   };
   const walked = chase(4.2, 15); assert.ok(walked !== null && walked < 12, `걷기 ${walked}`);
-  assert.equal(chase(9, 10), null, '자전거는 따돌림');
+  assert.equal(chase(12, 10), null, '자전거(Shift 12)는 따돌림'); /* (377 사용자 「속도를 11까지」: faster than a bike's 9) */
   // 우레 asleep 12~14시: he does not hunt one beside him
   const noon = Date.UTC(2026, 10, 20, 3, 30, 0); const s = P.SWAMPS[1]; g.place('ure', s[0] + 10, s[1], noon); g.place('angae', I.x + 300, I.z, noon);
   for (let k = 0; k < 30; k += 1) g.tick(noon + k * 100, [{ token: 'q', x: s[0] + 14, z: s[1] }]);
@@ -46,7 +46,8 @@ test('별마루섬 호랑이: 캠핑장·전망대·문 둘레 12 m는 안 들�
   const v = g.view()[0]; assert.equal(v.clip, 'Nap', `${k / 10} s`); assert.deepEqual([v.x, v.z, v.lift], [P.ROCK[0], P.ROCK[1], 1.44]);
 });
 
-test('덮치기: 0.42초까지 제자리, 0.84초에 앞발이 닿을 거리, 그 뒤는 그대로', () => {
-  assert.equal(Tg.leapAt(0.3, 3), 0); assert.ok(Tg.leapAt(0.63, 3) > 1 && Tg.leapAt(0.63, 3) < 2); assert.equal(Tg.leapAt(0.84, 3), 3); assert.equal(Tg.leapAt(1.2, 3), 3);
+test('덮치기: 달리던 그대로 앞으로 곧게, 0.84초에 앞발이 닿을 거리, 그 뒤는 그대로; 포기 25초, 크기 2.4배', () => {
+  assert.equal(Tg.leapAt(0, 9), 0); assert.ok(Math.abs(Tg.leapAt(0.42, 9) - 4.5) < 1e-9); assert.equal(Tg.leapAt(0.84, 9), 9); assert.equal(Tg.leapAt(1.2, 9), 9);
+  assert.equal(Tg.GIVE_UP_S, 25); assert.equal(Tg.SCALE, 2.4); assert.ok(Tg.TIGERS.every((t) => t.speed === 11));
   assert.equal(Tg.restingAt(Tg.TIGERS[0], Date.UTC(2026, 10, 20, 3, 0, 0)), true); assert.equal(Tg.restingAt(Tg.TIGERS[1], Date.UTC(2026, 10, 19, 19, 30, 0)), true); assert.equal(Tg.restingAt(Tg.TIGERS[1], Date.UTC(2026, 10, 20, 3, 0, 0)), false);
 });

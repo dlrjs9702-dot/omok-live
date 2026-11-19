@@ -3928,3 +3928,11 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 @keyframes tigerPulse{0%,100%{filter:none}50%{filter:brightness(1.35)}}
 @keyframes tigerSay{0%{opacity:0;transform:translateX(-50%) scale(.85)}12%{opacity:1;transform:translateX(-50%) scale(1.08)}70%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){#tigerWarn.on{animation:none}#tigerWarn.say span{animation:none;opacity:1}}
+/* 1.10.377 호랑이에게 잡히면: five seconds covered -- who caught me, and 「이송 중」 blinking red -- then in front of the mayor */
+#tigerTransfer{position:fixed;inset:0;z-index:60;display:none;place-content:center;justify-items:center;gap:14px;background:radial-gradient(circle at 50% 45%,#2a0707f2,#050101fa);color:#ffe6df;text-align:center;padding:16px}
+#tigerTransfer.on{display:grid}
+#tigerTransfer p{margin:0}
+.tigerTransferWho{font-weight:800;font-size:clamp(1.1rem,3.6vw,1.6rem)}
+.tigerTransferGo{font-weight:900;font-size:clamp(1.8rem,7vw,3.4rem);letter-spacing:.12em;color:#ff3b30;animation:tigerBlink .8s steps(2,start) infinite;text-shadow:0 0 18px #ff3b3099}
+@keyframes tigerBlink{to{visibility:hidden}}
+@media(prefers-reduced-motion:reduce){.tigerTransferGo{animation:none}}

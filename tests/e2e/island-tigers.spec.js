@@ -29,11 +29,15 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
     // first out of his sight (45 m) till his file is in, then 10 m off: he comes -- the warning on
     await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 45, z: spot.z } });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.shown?.find((t) => t.id === 'ure')?.loaded), { timeout: 60000 }).toBe(true);
-    await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 10, z: spot.z } });
+    await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 18, z: spot.z } });
     const caught = page.waitForFunction(() => /잡혔어요/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 60000 });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.warn?.id || null), { timeout: 20000 }).toBe('ure');
     expect(await page.evaluate(() => document.getElementById('tigerWarn')?.classList.contains('on'))).toBe(true);
+    // (377) caught: five seconds covered, 「이송 중」 -- then his words
+    await expect.poll(() => page.evaluate(() => document.getElementById('tigerTransfer')?.classList.contains('on') ?? false), { timeout: 60000 }).toBe(true);
+    expect(await page.evaluate(() => document.querySelector('#tigerTransfer .tigerTransferGo')?.textContent)).toBe('이송 중');
     await caught;
+    expect(await page.evaluate(() => document.getElementById('tigerTransfer').classList.contains('on'))).toBe(false);
     const toast = await page.evaluate(() => document.getElementById('toast').textContent);
     expect(toast).toContain('우레에게 잡혔어요'); expect(toast).toContain('큰일 날 뻔했어요'); expect(toast).toContain('잡초'); expect(toast).toContain('나뭇가지'); expect(toast).not.toContain('낚싯대');
     // in front of the mayor, on my screen and the server's

@@ -1742,3 +1742,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .loadingTip{color:#fff}
 :root[data-theme="light"] #tigerWarn{box-shadow:inset 0 0 calc(40px + 120px * var(--tiger-k,0)) calc(6px + 26px * var(--tiger-k,0)) rgba(200,28,28,.75)}
 :root[data-theme="light"] #tigerWarn span{background:#2a0b0bcc;color:#ffe1d6}
+:root[data-theme="light"] #tigerTransfer{background:radial-gradient(circle at 50% 45%,#2a0707f2,#050101fa);color:#ffe6df}
+:root[data-theme="light"] .tigerTransferGo{color:#ff3b30}

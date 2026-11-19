@@ -707,7 +707,7 @@
     REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40, swap: true /* (1.10.377: its water, falling water and foam the creek's -- island.js setSwapMaterials) */ };
     /* (1.10.376 N2a-2 별마루섬 호랑이, assets 152e: 우레 and 안개 -- their own rig and ten clips (tigers-view.js, assets.creature), 1.6x (사용자 2A; 안개's
        0.8 is in its file), facing -Z in the file; the far file on the lowest quality) */
-    for (const k of ['tiger', 'tiger_angae']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), scale: 1.6, rotationY: Math.PI }; }
+    for (const k of ['tiger', 'tiger_angae']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), scale: 2.4 /* (377 사용자 「크기를 지금의 1.5배로」: 1.6 -> 2.4) */, rotationY: Math.PI }; }
   ['lotus_pink', 'lotus_white'].forEach((f, k) => { REGISTRY[`water.lotus.${k}`] = { seasons: n112(f, 'lily_pads'), near: 30, shadows: false }; });
   // G4b 채집 (assets 112; lib/island-gather.js): the collectables lying on their spots -- four of the six mushrooms, the twigs and the
   // four-leaf clover (the other two mushrooms the 106 pilot's, pilot.mushroom_*); one model at every distance
