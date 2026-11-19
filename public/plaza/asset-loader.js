@@ -597,7 +597,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
   const creatures = new Set();
   function creature(ids, c) {
     const hit = P.pick(registry, ids, off, null); if (!hit) return; creatures.add(c);
-    cache.get(hit.entry.url).then((gltf) => {
+    cache.get(c.low && hit.entry.low?.url ? hit.entry.low.url : hit.entry.url).then((gltf) => { /* (1.10.376: a holder asking for the far file -- the tigers on the lowest quality) */
       if (disposed || !gltf || c.gone) { creatures.delete(c); return; }
       const object = cloneObject(gltf.scene); place(object, hit.entry); c.root.add(object); object.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; depthOf(o); } }); /* (1.10.353 ⓐ) */
       c.mixer = new THREE.AnimationMixer(object); for (const clip of gltf.animations) c.actions[clip.name] = c.mixer.clipAction(clip);

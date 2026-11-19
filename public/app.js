@@ -6553,6 +6553,7 @@
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
   window.PlazaReady = () => plaza.controller?.readiness?.() ?? null;
+  window.PlazaTigers = () => plaza.controller?.tigers?.() ?? null; /* (1.10.376 N2a-2: tests and photos) */
   window.PlazaSee = () => plaza.controller?.seeThrough?.() ?? null; /* (1.10.369 §6 가려도 내 캐릭터 보이기: tests) */ /* (368 로딩 안정화: the scene's own word, light enough to ask every frame -- the loading cover's) */
   // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
   window.PlazaWarp = async (x, z) => {
@@ -9181,7 +9182,7 @@
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'restart') { serverRestarting(); return; } // 300 (나)
-    if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); if (parsed.taxiStops) plaza.controller?.setTaxiStops?.(parsed.taxiStops); /* (Codex 311-320 #7: the empty cars going back) */ plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
+    if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); if (parsed.taxiStops) plaza.controller?.setTaxiStops?.(parsed.taxiStops); plaza.controller?.setTigers?.(parsed.tigers || []); /* (1.10.376 별마루섬 호랑이) */ /* (Codex 311-320 #7: the empty cars going back) */ plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
@@ -9207,6 +9208,10 @@
     if (event === 'contest') { refreshContest(); return; } // A4 섬 대회, every day (soon, start, end)
     if (event === 'den') { denRaidEvents += 1; denRaidSeen(parsed.raid || null); return; } // (1.10.341: a raid begun or over)
     if (event === 'townhallOut') { if (plaza.controller?.space?.() === 'townhall') { closeIslandWindows(); plaza.controller?.setSpace?.('island', parsed.x, parsed.z); document.body.classList.remove('townhallRoom'); } showToast('관공서가 갑자기 문을 닫았어요. 「잠시 자리 비움」', 5000); return; }
+    if (event === 'tigerCaught') { /* (1.10.376 N2a-2 잡히면, 사용자 「집이 있든 없든 시장님앞으로」: whatever I was doing ends, in front of 마루 시장님 at the 관공서 -- his word and what the tiger took) */
+      closeIslandWindows(); plaza.controller?.tigerCaught?.(Number(parsed.x), Number(parsed.z)); plazaLastSent = null; if (parsed.bag) drawIslandBag(parsed.bag);
+      const lost = Array.isArray(parsed.lost) && parsed.lost.length ? `호랑이에게 ${parsed.lost.join(', ')}을(를) 잃었어요.` : '다행히 잃은 물건은 없어요.';
+      showToast(`${parsed.by || '호랑이'}에게 잡혔어요! 마루 시장님: 「큰일 날 뻔했어요!」 ${lost}`, 9000); return; }
     if (event === 'denCaught') { showToast(`단속에 걸렸어요! 칩 ${Number(parsed.chips || 0).toLocaleString('ko-KR')}개를 빼앗기고 구치소로 가요.`, 7000); return; }
     if (event === 'flea') { if (parsed.owed) refreshFleaBadge(); if (fleaShown && fleaTab !== 'sell' && plazaDialog.open && document.querySelector('.fleaCard')) openFlea(fleaTab); return; } // (1.10.339 섬 벼룩시장: mine sold -- the badge; anything up or gone -- the open window)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)

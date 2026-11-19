@@ -704,7 +704,10 @@
     REGISTRY['byeolmaru.swamp_stones'] = { ...two(B1, 'swamp_stones'), near: 30 };
     for (const k of ['campfire', 'log_bench', 'log_stool']) REGISTRY[`newisle.${k}`] = { ...two(N1, k), near: 30 };
     const S = (low) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/spring157/${s}/spring_cave${low}.glb`]));
-    REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40 }; }
+    REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40 };
+    /* (1.10.376 N2a-2 별마루섬 호랑이, assets 152e: 우레 and 안개 -- their own rig and ten clips (tigers-view.js, assets.creature), 1.6x (사용자 2A; 안개's
+       0.8 is in its file), facing -Z in the file; the far file on the lowest quality) */
+    for (const k of ['tiger', 'tiger_angae']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), scale: 1.6, rotationY: Math.PI }; }
   ['lotus_pink', 'lotus_white'].forEach((f, k) => { REGISTRY[`water.lotus.${k}`] = { seasons: n112(f, 'lily_pads'), near: 30, shadows: false }; });
   // G4b 채집 (assets 112; lib/island-gather.js): the collectables lying on their spots -- four of the six mushrooms, the twigs and the
   // four-leaf clover (the other two mushrooms the 106 pilot's, pilot.mushroom_*); one model at every distance

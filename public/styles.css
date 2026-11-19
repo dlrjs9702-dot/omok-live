@@ -3920,3 +3920,11 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .loadingTitle{position:relative;margin:0;padding:calc(env(safe-area-inset-top,0px) + 6vh) 16px 0;text-align:center;color:#fff;font-size:clamp(1.5rem,4.5vw,2.6rem);font-weight:900;text-shadow:0 2px 10px #0009}
 .loadingFoot{position:relative;grid-row:3;display:grid;gap:8px;justify-items:center;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 5vh)}.loadingBar{width:min(560px,86vw);height:10px;border-radius:999px;background:#ffffff40;overflow:hidden}.loadingBar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#fde68a,#f59e0b);transition:width .3s ease}
 .loadingStep{margin:0;color:#fff;font-weight:800;text-shadow:0 1px 6px #0009}.loadingTip{margin:0;max-width:min(640px,90vw);text-align:center;color:#fff;font-size:.95rem;text-shadow:0 1px 6px #000b}
+/* 1.10.376 N2a-2 별마루섬 호랑이: a tiger near and awake -- the screen's edges go red (stronger the nearer), its name and sound in the middle top */
+#tigerWarn{position:fixed;inset:0;pointer-events:none;z-index:40;opacity:0;transition:opacity .4s;box-shadow:inset 0 0 calc(40px + 120px * var(--tiger-k,0)) calc(6px + 26px * var(--tiger-k,0)) rgba(200,28,28,.75)}
+#tigerWarn.on{opacity:1;animation:tigerPulse 1.1s ease-in-out infinite}
+#tigerWarn span{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 14%);transform:translateX(-50%);padding:6px 16px;border-radius:999px;background:#2a0b0bcc;color:#ffe1d6;font-weight:900;font-size:clamp(1.1rem,3.4vw,1.8rem);letter-spacing:.04em;opacity:0;white-space:nowrap}
+#tigerWarn.say span{animation:tigerSay 2.4s ease-out forwards}
+@keyframes tigerPulse{0%,100%{filter:none}50%{filter:brightness(1.35)}}
+@keyframes tigerSay{0%{opacity:0;transform:translateX(-50%) scale(.85)}12%{opacity:1;transform:translateX(-50%) scale(1.08)}70%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){#tigerWarn.on{animation:none}#tigerWarn.say span{animation:none;opacity:1}}

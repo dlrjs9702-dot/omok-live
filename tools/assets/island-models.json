@@ -15302,14 +15302,38 @@
     },
     {
       "out": "byeolmaru-v1/sign_tiger.glb",
-      "src": "byeolmaru152:01. High/byeolmaru-v1/sign_tiger.glb",
-      "sha256": "e16642a336f3ba7ee0b6446671ceb3ed95b5b9aaa8722bbca845fa3eca4e4334",
+      "src": "byeolmaru152e:01. High/byeolmaru-v1/sign_tiger.glb",
+      "sha256": "b0a761e454c14ba426b9017fb720c97fe619b37b1cc539c8c3a3c8a82f785a49",
       "precompressed": true
     },
     {
       "out": "byeolmaru-v1/sign_tiger_low.glb",
-      "src": "byeolmaru152:02. Low/byeolmaru-v1/sign_tiger_low.glb",
-      "sha256": "d2745cacdfcf3797a1407e84a171b52c4f9b0ed51a9780a642baad64da777f16",
+      "src": "byeolmaru152e:02. Low/byeolmaru-v1/sign_tiger_low.glb",
+      "sha256": "707cb016192ab21513bef97667aecc7724197e237ab345a5b9b4a3673f789ec8",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/tiger.glb",
+      "src": "byeolmaru152e:01. High/byeolmaru-v1/tiger.glb",
+      "sha256": "a9dcfa81a1f74c7e968a0e7f8274dd33b8e9b1e2140239b3c5a1fba190ca2bd1",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/tiger_low.glb",
+      "src": "byeolmaru152e:02. Low/byeolmaru-v1/tiger_low.glb",
+      "sha256": "90dc29851e71d43db4e0e914338b2e55be27f54347d156f8ef075df3dd089ed8",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/tiger_angae.glb",
+      "src": "byeolmaru152e:01. High/byeolmaru-v1/tiger_angae.glb",
+      "sha256": "091f6647afc33df6bf9c1fa3090d59d7660f81ce13be29c2f68ce70f6365bf0d",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/tiger_angae_low.glb",
+      "src": "byeolmaru152e:02. Low/byeolmaru-v1/tiger_angae_low.glb",
+      "sha256": "8d7b04fe50eeb91e6298dca60721c414330a5b7cb15ea8c3b3a1c817ca1b0702",
       "precompressed": true
     },
     {
