@@ -100,6 +100,10 @@ test('크리스마스 행사: 가판대 덧씌움·선물 자루, 선물 받아 
     await expect.poll(() => spaceOn(page, 'fest:stall', isMobile), { timeout: 15000 }).toBe(true);
     const shop = page.locator('#festivalCard'); await expect(shop.locator('.festivalShop li')).toHaveCount(12); /* (1.10.338 128A: six more) */ await expect(shop).toContainText('루돌프 흔들목마'); await expect(shop.locator('.festivalTab[aria-pressed="true"]')).toHaveText('가판대'); await expect(shop).toContainText('크리스마스 트리');
     if (DIR) await page.screenshot({ path: `${DIR}/${test.info().project.name}-stall-shop.png` });
+    /* (381 총괄: each line's own where -- 「마켓 들르기」·「눈싸움 한 판」 said 「요리 대회 칸에서」; the daily 섬 대회 in the weekend contests' place) */
+    await shop.locator('.festivalTab[data-tab="tasks"]').click();
+    await expect(shop.locator('li', { hasText: '마켓 들르기' }).locator('.festivalTaskHow')).toContainText('크리스마스 마켓'); await expect(shop.locator('li', { hasText: '눈싸움 한 판' }).locator('.festivalTaskHow')).toContainText('눈 요새');
+    await expect(shop.locator('li', { hasText: '섬 대회 참가' })).toHaveCount(1); await expect(shop).not.toContainText('매주 대회 참가');
     await page.locator('#plazaCloseBtn').click();
     expect((await post(request, '/api/test/festival/clock', null, { at: Date.parse('2026-12-25T19:00:00+09:00') })).status).toBe(200);
     await page.reload();
