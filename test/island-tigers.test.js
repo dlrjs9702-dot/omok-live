@@ -46,6 +46,37 @@ test('별마루섬 호랑이: 캠핑장·전망대·문 둘레 12 m는 안 들�
   const v = g.view()[0]; assert.equal(v.clip, 'Nap', `${k / 10} s`); assert.deepEqual([v.x, v.z, v.lift], [P.ROCK[0], P.ROCK[1], 1.44]);
 });
 
+// 1.10.381 호랑이 지능 ①~④ (사용자 결정 12 「전부」, 「크기를 키워서 나무에 끼는 구간」): the body's ways, unstuck, the chase, the two together
+test('381 몸에 맞는 길·끼임: 10분 돌아다녀도 머리·엉덩이가 나무에 드는 때 1.5 % 아래, 1초 넘게 서면 뒤로 빠져 다른 길', () => {
+  let seed = 7; const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const g = Tg.createTigers({ T, P, rand }); g.warm(); const now0 = Date.UTC(2026, 10, 20, 0, 0, 0); g.setClockShift(0);
+  const inTree = (t) => { const fx = Math.sin(t.yaw); const fz = Math.cos(t.yaw); return !T.isle2Clear(t.x + fx * 1.4, t.z + fz * 1.4, 0.5) || !T.isle2Clear(t.x - fx * 1.3, t.z - fz * 1.3, 0.6); };
+  let moving = 0; let inside = 0; const still = [0, 0]; let longest = 0;
+  for (let k = 0; k < 6000; k += 1) {
+    g.tick(now0 + k * 100, []);
+    g.state().forEach((t, i) => { if (t.mode !== 'roam' && t.mode !== 'toRest') { still[i] = 0; return; } moving += 1; if (inTree(t)) inside += 1; const v = g.view()[i]; still[i] = v.sp > 0 ? 0 : still[i] + 1; longest = Math.max(longest, still[i]); });
+  }
+  assert.ok(moving > 3000, `${moving}`); assert.ok(inside / moving < 0.015, `${((100 * inside) / moving).toFixed(1)} %`);
+  assert.ok(longest <= 25, `서 있던 가장 긴 때 ${longest / 10} s`); /* (stuck a second, then backing off -- never standing there long) */
+});
+
+test('381 쫓기·협공: 둘이 같은 사람을 쫓으면 가까운 쪽이 몰고 먼 쪽이 막음, 캠핑장으로 들어가면 마지막 본 곳에서 둘러봄', () => {
+  let seed = 3; const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const g = Tg.createTigers({ T, P, rand }); g.warm(); const now0 = Date.UTC(2026, 10, 20, 0, 0, 0); g.setClockShift(0); const I = T.dalmaru.NEW_ISLE;
+  // one standing in the open: 우레 10 m one side, 안개 15 m the other (both within sight)
+  let spot = null; for (let x = 330; x <= 460 && !spot; x += 4) for (let z = 140; z <= 320 && !spot; z += 4) if (g.huntable(x, z) && g.open(x - 10, z) && g.open(x + 15, z)) spot = { x, z };
+  assert.ok(spot); g.place('ure', spot.x - 10, spot.z, now0); g.place('angae', spot.x + 15, spot.z, now0);
+  let roles = null; for (let k = 0; k < 15 && !roles; k += 1) { g.tick(now0 + k * 100, [{ token: 'p', x: spot.x, z: spot.z }]); const st = g.state(); if (st[0].role && st[1].role) roles = st.map((t) => t.role); }
+  assert.deepEqual(roles, ['drive', 'block']);
+  // into the camp (safe): the chase turns to a search where they were last seen, then a look round
+  g.place('ure', I.camp.x + I.camp.r + 24, I.camp.z, now0 + 5000); g.place('angae', I.x + 300, I.z, now0 + 5000);
+  const at = { x: I.camp.x + I.camp.r + 5, z: I.camp.z }; let mode = null;
+  for (let k = 0; k < 5; k += 1) g.tick(now0 + 5000 + k * 100, [{ token: 'q', x: at.x, z: at.z }]);
+  assert.ok(['stalk', 'chase'].includes(g.state()[0].mode), g.state()[0].mode);
+  const seen = []; for (let k = 5; k < 200; k += 1) { g.tick(now0 + 5000 + k * 100, [{ token: 'q', x: I.camp.x, z: I.camp.z }]); mode = g.state()[0].mode; if (!seen.includes(mode)) seen.push(mode); }
+  assert.ok(seen.includes('search'), seen.join(',')); assert.ok(!g.huntable(I.camp.x, I.camp.z));
+});
+
 test('덮치기: 달리던 그대로 앞으로 곧게, 0.84초에 앞발이 닿을 거리, 그 뒤는 그대로; 포기 25초, 크기 2.4배', () => {
   assert.equal(Tg.leapAt(0, 9), 0); assert.ok(Math.abs(Tg.leapAt(0.42, 9) - 4.5) < 1e-9); assert.equal(Tg.leapAt(0.84, 9), 9); assert.equal(Tg.leapAt(1.2, 9), 9);
   assert.equal(Tg.GIVE_UP_S, 25); assert.equal(Tg.SCALE, 2.4); assert.deepEqual(Tg.TIGERS.map((t) => t.speed), [12, 11]); /* (우레 「속도 1 업」) */
