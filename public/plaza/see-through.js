@@ -8,8 +8,12 @@ import * as THREE from '/vendor/three/three.module.js';
 // The shadows' own depth materials are not patched: the shadows stay whole.
 // (총괄 369 검토: a camera inside a big crown showed a flat wall of leaves -- what is within 6 m of the camera fades out too, gone by
 // 3 m, in the third person; `near` 0 in the first, where a tree walked up to stays)
-export const SEE = { center: { value: new THREE.Vector2(-1e5, -1e5) }, radius: { value: 0 }, depth: { value: 0 }, on: { value: 0 }, near: { value: 0 } };
-const copies = new WeakMap();
+/* (380 사용자 「건물, 절벽 등에만」: `cliff` -- the coast's cliff models get the same hole, on while one stands on the line from the camera to me;
+   on both islands, the trees' `on` still 별마루섬's only. The ground's own cliffs need none: the camera stays inside them and sees out
+   (plaza-scene camFloor, 문제 기록 7)) */
+export const SEE = { center: { value: new THREE.Vector2(-1e5, -1e5) }, radius: { value: 0 }, depth: { value: 0 }, on: { value: 0 }, near: { value: 0 }, cliff: { value: 0 } };
+const NO_NEAR = { value: 0 };
+const copies = new WeakMap(); const cliffCopies = new WeakMap();
 /* (1.10.373 총괄 「방충망처럼 보여요」: the 4x4 Bayer grid read as a screen's mesh where it was half way -- a fine noise without a grid
    (interleaved gradient noise) in its place, and the near fade only round me on the screen (twice the hole's circle) -- a trunk by the
    camera off to the side stays whole; within 3.5 m of the camera; cut clean, never half way -- a dither half way, on a trunk lying along the
@@ -17,18 +21,22 @@ const copies = new WeakMap();
 const CHUNK = 'uniform vec2 uSeeC; uniform float uSeeR; uniform float uSeeD; uniform float uSeeOn; uniform float uSeeNear;\nfloat seeBayer(vec2 p) { return fract(52.9829189 * fract(dot(floor(p), vec2(0.06711056, 0.00583715)))); }';
 /* (three's vViewPosition is -mvPosition: its z the distance in front of the camera) */
 const HOLE = '\n  { float seeZ = vViewPosition.z; float seeK = uSeeOn > 0.0 ? uSeeOn * (1.0 - smoothstep(uSeeR * 0.55, uSeeR, length(gl_FragCoord.xy - uSeeC))) * step(seeZ, uSeeD) : 0.0; seeK = max(seeK, uSeeNear * step(seeZ, 3.5) * step(length(gl_FragCoord.xy - uSeeC), uSeeR * 2.0)); if (seeK > 0.0 && seeK > seeBayer(gl_FragCoord.xy)) discard; }';
+// the hole put into a shader being compiled (`cliff`: on by SEE.cliff, without the near fade)
+function seePatch(sh, cliff = false) {
+  Object.assign(sh.uniforms, { uSeeC: SEE.center, uSeeR: SEE.radius, uSeeD: SEE.depth, uSeeOn: cliff ? SEE.cliff : SEE.on, uSeeNear: cliff ? NO_NEAR : SEE.near });
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${CHUNK}`).replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>${HOLE}`);
+}
 // a see-through copy of a material (one a source), its own patches kept
-export function seeThrough(m) {
+export function seeThrough(m, cliff = false) {
   if (!m || Array.isArray(m) || m.isShaderMaterial || m.userData?.seeThrough) return m;
-  let f = copies.get(m); if (f) return f;
+  const cache = cliff ? cliffCopies : copies; let f = cache.get(m); if (f) return f;
   f = m.clone(); const base = m.onBeforeCompile; const key = m.customProgramCacheKey?.bind(m);
   f.userData = { ...m.userData, seeThrough: true };
-  f.onBeforeCompile = (sh, r) => {
-    base?.call(f, sh, r); Object.assign(sh.uniforms, { uSeeC: SEE.center, uSeeR: SEE.radius, uSeeD: SEE.depth, uSeeOn: SEE.on, uSeeNear: SEE.near });
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${CHUNK}`).replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>${HOLE}`);
-  };
-  f.customProgramCacheKey = () => `${key ? key() : ''}|see`;
-  copies.set(m, f); return f;
+  f.onBeforeCompile = (sh, r) => { base?.call(f, sh, r); seePatch(sh, cliff); };
+  f.customProgramCacheKey = () => `${key ? key() : ''}|see${cliff ? '-cliff' : ''}`;
+  cache.set(m, f); return f;
 }
+// (380) the coast's cliffs' batches: by SEE.cliff
+export const SEE_CLIFF_IDS = /^angular\.cliff_/;
 // the targets whose batches see through: the trees and bushes everywhere, 별마루섬's big ones and 별지기 느티 (not their far pictures)
 export const SEE_IDS = /^(nature\.tree|angular\.tree_|tree\.harvest|tree\.fruitLayer|forest\.tree_(big_fir|big_pine|big_oak|ancient)$|nature\.bush|angular\.bush)/;

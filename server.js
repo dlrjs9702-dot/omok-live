@@ -1725,6 +1725,10 @@ async function climbRankingView(week, account) {
 // seconds while standing; the server sends everyone in the lobby one snapshot at most every PLAZA_TICK_MS.
 const PLAZA_TICK_MS = 150;
 const PLAZA_STALE_MS = 15000;
+/* (380 자리 비움, 총괄 결정 11 「1분으로」: no key, click or touch for a minute (the page's own count, sent with each pose; a walk is input) -- the
+   server marks one away: drawn see-through with 「자리 비움」, and the others pass through them (here and on every screen). Tests shorten it.) */
+let plazaAwayMs = 60000;
+const plazaAway = (e, now = nowMs()) => Boolean(e && Number.isFinite(e.activeAt) && !e.ride && !e.taxi && !e.platform && now - e.activeAt >= plazaAwayMs);
 const STREAM_GRACE_MS = 4000; // (a lobby stream closed: how long a page that still poses -- every 3 s standing -- keeps its visit)
 const PLAZA_BOUND = IslandTerrain.ISLAND_RADIUS; // v1.10.0: the whole island (130; 달마루섬 200)
 const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
@@ -1737,6 +1741,8 @@ const plazaLastPos = new Map(); // session token -> { x, z }
 // Only the sender moves: out of anyone else it overlaps, to the nearest spot on that person's circle (a few passes for
 // a crowd). Returns the corrected position.
 function plazaSeparate(token, x, z, prev) {
+  /* (380: one away stays where they are, someone standing on them or not -- pushed out only once they walk off) */
+  if (prev && plazaAway(plazaPresence.get(token)) && Math.hypot(x - prev.x, z - prev.z) < 0.01) return { x: Math.round(prev.x * 100) / 100, z: Math.round(prev.z * 100) / 100 };
   // First the path since my last position: if it runs into someone I was not touching, I stop at the contact on my
   // side (two people walking at each other can never swap places between two updates).
   // (Entering the plaza again -- a reconnect, coming back from a room -- starts without a previous position.)
@@ -1745,7 +1751,7 @@ function plazaSeparate(token, x, z, prev) {
     if (len2 > 1e-8) {
       let tHit = 1;
       for (const [other, entry] of plazaPresence) {
-        if (other === token || entry.ride || entry.platform || entry.taxi) continue; /* (v1.10.271: a taxi passes people by) */
+        if (other === token || entry.ride || entry.platform || entry.taxi || plazaAway(entry)) continue; /* (v1.10.271: a taxi passes people by; 380 one away too) */
         const fx = prev.x - entry.x; const fz = prev.z - entry.z;
         const c = fx * fx + fz * fz - PLAZA_SERVER_MIN * PLAZA_SERVER_MIN;
         if (c <= 0) continue; // already overlapping at the start: the separation below handles it
@@ -1760,7 +1766,7 @@ function plazaSeparate(token, x, z, prev) {
   for (let pass = 0; pass < 4; pass += 1) {
     let moved = false;
     for (const [other, entry] of plazaPresence) {
-      if (other === token || entry.ride || entry.platform || entry.taxi) continue; /* (v1.10.271: a taxi passes people by) */
+      if (other === token || entry.ride || entry.platform || entry.taxi || plazaAway(entry)) continue; /* (v1.10.271: a taxi passes people by; 380 one away too) */
       let dx = x - entry.x; let dz = z - entry.z; let d = Math.hypot(dx, dz);
       if (d >= PLAZA_SERVER_MIN) continue;
       if (d < 1e-4) { dx = (prev?.x ?? x + 1) - entry.x; dz = (prev?.z ?? z) - entry.z; d = Math.hypot(dx, dz); }
@@ -2143,7 +2149,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, tigers: tigerSim.view() /* (1.10.376 별마루섬 호랑이) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack }) => ({ snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
+  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, tigers: tigerSim.view() /* (1.10.376 별마루섬 호랑이) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack, activeAt }) => ({ away: plazaAway({ activeAt, ride, taxi, platform }) /* (380 자리 비움) */, snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); quarryPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); denInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
@@ -2163,6 +2169,7 @@ function prunePlazaPresence(now = nowMs()) {
 }
 const plazaTicker = setInterval(() => {
   prunePlazaPresence();
+  { const now = nowMs(); for (const e of plazaPresence.values()) { const away = plazaAway(e, now); if (Boolean(e.awayShown) !== away) { e.awayShown = away; plazaDirty = true; } } } /* (380: one turning away at a minute's quiet -- every screen told then) */
   /* (Codex 361~370 #15: a page that skipped a frame (behind) is marked -- once it has caught up it gets the latest even if nothing has changed
      since, else someone's last step or leaving stayed unseen there) */
   const missed = [...lobbyStreams].filter((e) => e.missed);
@@ -6297,6 +6304,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
       // (Codex 검토 #8) m/s since the last pose, walking (a warp is not a run): by the sender's clock when both poses have
       // one (poses bunched on the way would look faster), else by arrival
+      activeAt: (() => { const was = plazaPresence.get(session.token); const idle = Number(body.idle); if (body.moving === true || !Number.isFinite(idle) || !was || Math.hypot(spot.x - was.x, spot.z - was.z) > 0.05) return receivedAt; return Math.max(receivedAt - Math.max(0, Math.min(idle, 86400000)), Math.min(was.activeAt ?? receivedAt, receivedAt)); })(), /* (380 자리 비움: my last input by the page's count -- a walk, a move or an old page without the count is input now) */
       held: IslandItems.QUICK_KINDS.includes(body.held) && !ride && !taxi && !platform ? body.held : null, /* (v1.10.236: in my hand, seen by the others) */ bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) / GroundSpeed.factorAt(IslandTerrain, spot.x, spot.z, IslandPaths, groundCover) : 0; })(), // (5회차 6: as fast as the ground lets one -- a walk on a path is no run)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
@@ -9177,6 +9185,7 @@ async function requestHandler(req, res) {
   }
   // (1.10.376 별마루섬 호랑이, tests: on or off, one put somewhere, their rest hours' clock shifted; the state read back)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs()); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/away' && req.method === 'POST') { const body = await parseJson(req); plazaAwayMs = Number.isFinite(body.ms) && body.ms > 0 ? body.ms : 60000; return sendJson(res, 200, { ok: true, ms: plazaAwayMs }); } /* (380 자리 비움, tests: the minute shortened) */
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/festival/clock' && req.method === 'POST') { const body = await parseJson(req); festivalClock = Number(body.at) ? { at: Number(body.at), set: nowMs(), tick: Boolean(body.tick) } : null; return sendJson(res, 200, { ok: true }); } // (tests: the festival's own clock -- held, or running on from there: X2 카운트다운's last seconds)
   // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,
   // the island's totals), yesterday's island pull count and today's weeds, yesterday's two best hand-ins (named as they

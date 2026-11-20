@@ -70,3 +70,40 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   await expectNoScriptError(a.page);
   await a.context.close(); await b.context.close();
 });
+
+// 1.10.380 자리 비움 (총괄 결정 11 「1분」, shortened here): one quiet at the bait shelf turns 「자리 비움」 on the other's screen (the pill,
+// see-through) -- the other stands right on their spot (no push from either side) and buys the same bait with SPACE; a key and they are back
+test('자리 비움: 1분 입력 없으면 반투명·「자리 비움」, 그 자리에 다른 사람이 서서 같은 물건을 삼', async ({ browser, request, isMobile }, testInfo) => {
+  test.skip(isMobile, 'PC 전용 검증');
+  test.setTimeout(process.env.CI ? 360000 : 180000);
+  const { post, standForGood, intoMall } = require('./skin-support');
+  const a = await shopper(browser, request, '사는이', 100000, 'male');
+  const b = await shopper(browser, request, '쉬는이', 100000, 'female');
+  try {
+    for (const w of [a, b]) { await w.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await w.page.reload(); await expect.poll(() => w.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
+    for (const w of [b, a]) await intoMall(w.page);
+    await standForGood(b.page, 'bait', '낚시 미끼 · 300P');
+    expect((await post(request, '/api/test/away', a.token, { ms: 4000 })).data.ms).toBe(4000);
+    const spot = await b.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+    const away = () => a.page.evaluate(() => window.PlazaDebug().awayState()[0] || null);
+    await expect.poll(away, { timeout: 30000 }).toMatchObject({ away: true, pill: true });
+    expect((await away()).ghost).toBeGreaterThan(0.9);
+    await a.page.bringToFront(); await a.page.waitForTimeout(800); await a.page.screenshot({ path: testInfo.outputPath('away.png') });
+    // on their very spot: kept there (my screen and the server), the bait's prompt (not a greeting)
+    await standForGood(a.page, 'bait', '낚시 미끼 · 300P');
+    await a.page.waitForTimeout(2000);
+    const at = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+    expect(Math.hypot(at.x - spot.x, at.z - spot.z)).toBeLessThan(0.15);
+    await expect(a.page.locator('#plazaHint')).toContainText('낚시 미끼');
+    const before = (await get(request, '/api/points', a.token)).data.balance;
+    await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+    await a.page.locator('#goodCard').getByRole('button', { name: /^1개/ }).click();
+    await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'bait')?.qty || 0).toBe(1);
+    expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 300);
+    await a.page.keyboard.press('Escape');
+    // back: a key on their page -- the pill and the see-through gone on mine
+    await b.page.bringToFront(); await b.page.locator('#plazaStage').focus(); await b.page.keyboard.press('KeyQ');
+    await expect.poll(away, { timeout: 20000 }).toMatchObject({ away: false, pill: false, ghost: 0 });
+    for (const w of [a, b]) await expectNoScriptError(w.page);
+  } finally { await post(request, '/api/test/away', a.token, { ms: 0 }); await a.context.close(); await b.context.close(); }
+});
