@@ -7173,7 +7173,7 @@ async function requestHandler(req, res) {
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
     // 366 광석 개편 2: a gem first (‰ by economy gem:* -- 369: no event raises it), else the ore as before
-    const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(`gem:${g.id}`), Economy.value(`gem:${g.id}:bonus`)]]));
+    const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(Economy.gemKey(g)), Economy.value(Economy.gemKey(g, true))]])); /* (383 #11: the ‱ gems' own keys) */
     const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, 1 /* (369 검토 #2, 사용자 A: no event on the gems -- 「채석 위 단계」 the ore's stage only) */, gemPms); quarryTestGem = null;
     const oreId = gem ? `gem_${gem}` : `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
     const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${account}:${pull.at}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null); /* (379: this mining's own claim -- the rock never runs out) */
