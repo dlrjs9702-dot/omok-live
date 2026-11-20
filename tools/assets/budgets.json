@@ -2217,6 +2217,54 @@
       "nodes": 6,
       "textures": 2,
       "reason": "1.10.386 assets 160 마당 창고: its doors (door_l, door_r) a node and mesh of their own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "bike-v1/bike_frame__mint.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_frame__red.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_frame__sky.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_frame__butter.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_wheel.glb": {
+      "nodes": 2,
+      "reason": "1.10.387 assets 161 자전거 바퀴: its mesh under a pivot node at the axle, turned by the game"
+    },
+    "bike-v1/bike_crank.glb": {
+      "nodes": 2,
+      "reason": "1.10.387 assets 161 자전거 크랭크: its mesh under a pivot node at the axle, turned by the game"
+    },
+    "bike-v1/bike_frame__mint_low.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_frame__red_low.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_frame__sky_low.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_frame__butter_low.glb": {
+      "nodes": 4,
+      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+    },
+    "bike-v1/bike_wheel_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.387 assets 161 자전거 바퀴: its mesh under a pivot node at the axle, turned by the game"
+    },
+    "bike-v1/bike_crank_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.387 assets 161 자전거 크랭크: its mesh under a pivot node at the axle, turned by the game"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
