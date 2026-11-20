@@ -1732,10 +1732,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   // CI 3차 검토: t never goes back (the server keeps the newest pose by it) -- a better clock reading can move serverOffset back
   let poseT = 0; const poseClock = () => (poseT = Math.max(poseT + 1, Math.round(Date.now() + serverOffset)));
-  /* (380 자리 비움, 총괄 결정 11 「1분」: how long since my last key, click, touch or wheel -- the server decides who is away from it and the moves) */
-  let lastInputAt = performance.now(); const onAnyInput = () => { lastInputAt = performance.now(); };
-  const INPUT_EVENTS = ['keydown', 'pointerdown', 'pointermove', 'wheel', 'touchstart'];
-  const pose = () => ({ idle: Math.round(performance.now() - lastInputAt), t: Number.isFinite(clockRtt) ? poseClock() : undefined,x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: sitting ? sitting.yaw : me.root.rotation.y, moving: (keys.size > 0 || Boolean(stick)) && !isBlocked() && !riding && !liftRide && !sledRun, /* (5회차: the phone's stick walks too -- it said standing) */ act: myAct.act, actN: myAct.n, seat: myAct.seat, bike: cycling, held: mySpace === 'island' && !cycling ? heldTool : null }); // (v1.10.236: what is in my hand) // v1.10.44 act, 자전거
+  const pose = () => ({ t: Number.isFinite(clockRtt) ? poseClock() : undefined,x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: sitting ? sitting.yaw : me.root.rotation.y, moving: (keys.size > 0 || Boolean(stick)) && !isBlocked() && !riding && !liftRide && !sledRun, /* (5회차: the phone's stick walks too -- it said standing) */ act: myAct.act, actN: myAct.n, seat: myAct.seat, bike: cycling, held: mySpace === 'island' && !cycling ? heldTool : null }); // (v1.10.236: what is in my hand) // v1.10.44 act, 자전거
 
   // v1.10.30 공통 캐릭터: put a character in the common-rig look (island-assets wardrobeOf -> asset-loader wear) --
   // a player by their look (gender, the items worn, face, dyes), a keeper, visitor or islander in its own colours
@@ -2308,7 +2305,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const onKeyUp = (event) => { if (event.code === 'Space') actUp(); keys.delete(WALK_KEYS[event.code]); camKeys.delete(LOOK_KEYS[event.key]); if (event.key === 'Shift') { shifts.delete(event.code); if (!shifts.size) paceUp(); } };
   const onBlur = () => { keys.clear(); camKeys.clear(); paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); netAimEnd(); }; // (총괄 #410: the window left with SPACE down -- no keyup comes: the aim ends, no swing)
   window.addEventListener('keydown', onKeyDown);
-  for (const e of INPUT_EVENTS) window.addEventListener(e, onAnyInput, { capture: true, passive: true }); /* (380) */
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
 
@@ -6810,8 +6806,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     returning.clear();
     occlusion.dispose(); assets.dispose();
     for (const o of others.values()) disposeCharacter(o.c); others.clear(); disposeWanderers();
-    window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur); for (const e of INPUT_EVENTS) window.removeEventListener(e, onAnyInput, { capture: true });
-    renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
+    window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);    renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
     renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('wheel', onWheel); renderer.domElement.removeEventListener('pointerup', onUp); renderer.domElement.removeEventListener('pointercancel', onUp);
     scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
     mats.forEach((m) => m.dispose()); vcMat.dispose(); textures.forEach((t) => t.dispose()); island.dispose(); decor.dispose(); yard.dispose(); train.dispose();

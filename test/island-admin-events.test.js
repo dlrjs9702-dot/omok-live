@@ -84,4 +84,12 @@ test('관리자 API: 관리자만, 열기·겹침 거절·목록·끝내기', as
   assert.equal((await req('/api/admin/island-events/end', admin, { id: ev.id })).status, 200);
   assert.ok((await req('/api/admin/island-events', admin)).data.list.find((e) => e.id === ev.id).closedAt, '끝냄');
   assert.equal((await req('/api/admin/island-events/end', admin, { id: ev.id })).data.error, 'NO_EVENT');
+  /* (383 Codex 371~380 #16: a sale's extra counted once by its request -- the same sale again (a retry) adds nothing to the event's sum) */
+  const T = require('../public/plaza/island-terrain.js'); const Store = require('../public/plaza/island-store.js');
+  const e2 = await req('/api/admin/island-events', admin, { kind: 'sell', target: 'item', item: 'herb', mult: 2, minutes: 60, text: '약재 값 2배!' }); assert.equal(e2.status, 200, JSON.stringify(e2.data)); const id2 = e2.data.list.find((e) => e.item === 'herb' && !e.closedAt).id;
+  await req('/api/test/island/give', guest, { itemId: 'herb', qty: 3 }); const stand = (p) => req('/api/plaza/state', guest, { x: p.x, z: p.z, yaw: 0, moving: false });
+  await stand(T.facilityDoor('store')); await req('/api/island/store/enter', guest, {}); await stand(Store.sectorPoint('mall:stall'));
+  const sold = await req('/api/island/sell', guest, { place: 'merchant', requestId: 'event-sale-0000-0001' }); assert.equal(sold.status, 200, JSON.stringify(sold.data)); assert.ok(sold.data.extra > 0, JSON.stringify(sold.data));
+  const sumOf = async () => (await req('/api/admin/island-events', admin)).data.list.find((e) => e.id === id2).extra; assert.equal(await sumOf(), sold.data.extra);
+  await req('/api/island/sell', guest, { place: 'merchant', requestId: 'event-sale-0000-0001' }); assert.equal(await sumOf(), sold.data.extra, '같은 판매 다시: 그대로');
 });

@@ -45,6 +45,9 @@ test('내 집: 수조는 크기·칸, 곤충 상자는 곤충 하나', () => {
   assert.ok(H.fits('fish_tank', 'fish_goby')); assert.ok(!H.fits('fish_tank', 'fish_giant_tuna')); assert.ok(H.fits('aquarium_wall', 'fish_giant_tuna'));
   assert.ok(!H.fits('fish_tank', 'insect_ladybird')); assert.ok(H.fits('insect_case', 'insect_ladybird')); assert.ok(!H.fits('insect_case', 'fish_goby'));
   assert.equal(H.TANKS.insect_case.slots, 1);
+  /* (383 Codex 371~380 #13: every insect of the 도감 goes in a case -- 별마루섬's two and the later ones too) */
+  for (const id of Object.keys(require('../lib/island-insects').SPECIES)) assert.ok(H.fits('insect_case', `insect_${id}`), id);
+  assert.ok(!H.INSECTS.has('insect_case__oak'), '가구는 곤충 아님'); assert.ok(!H.INSECTS.has('fish_goby'));
 });
 
 test('내 집: 앉을 자리는 가구를 따라 돌고, 서 있는 자리는 가구 밖', () => {

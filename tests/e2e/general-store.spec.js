@@ -101,8 +101,8 @@ test('자리 비움: 1분 입력 없으면 반투명·「자리 비움」, 그 �
     await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'bait')?.qty || 0).toBe(1);
     expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 300);
     await a.page.keyboard.press('Escape');
-    // back: a key on their page -- the pill and the see-through gone on mine
-    await b.page.bringToFront(); await b.page.locator('#plazaStage').focus(); await b.page.keyboard.press('KeyQ');
+    // back: a step (383 Codex #8: what the server sees -- a move or an action, not the page's own count) -- the pill and the see-through gone on mine
+    await b.page.bringToFront(); await b.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 1.2, z), [spot.x, spot.z]);
     await expect.poll(away, { timeout: 20000 }).toMatchObject({ away: false, pill: false, ghost: 0 });
     for (const w of [a, b]) await expectNoScriptError(w.page);
   } finally { await post(request, '/api/test/away', a.token, { ms: 0 }); await a.context.close(); await b.context.close(); }

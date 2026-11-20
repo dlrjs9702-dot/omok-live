@@ -915,6 +915,9 @@ function requireSession(req, res) {
     sendError(res, 401, 'AUTH_REQUIRED', '입장 권한이 없습니다. 관리자라면 비밀번호로, 게스트라면 발급받은 입장 파일로 다시 들어와 주세요.');
     return null;
   }
+  /* (383 Codex 371~380 #8 자리 비움: an action the server gets -- a POST other than the pose itself -- is activity; the page's own idle count is not
+     believed) */
+  if (req.method === 'POST' && !String(req.url || '').startsWith('/api/plaza/state')) { const e = plazaPresence.get(session.token); if (e) e.activeAt = nowMs(); }
   return session;
 }
 
@@ -1725,7 +1728,7 @@ async function climbRankingView(week, account) {
 // seconds while standing; the server sends everyone in the lobby one snapshot at most every PLAZA_TICK_MS.
 const PLAZA_TICK_MS = 150;
 const PLAZA_STALE_MS = 15000;
-/* (380 자리 비움, 총괄 결정 11 「1분으로」: no key, click or touch for a minute (the page's own count, sent with each pose; a walk is input) -- the
+/* (380 자리 비움, 총괄 결정 11 「1분으로」: a minute with no move and no action the server sees (383 Codex #8: not the page's own count) -- the
    server marks one away: drawn see-through with 「자리 비움」, and the others pass through them (here and on every screen). Tests shorten it.) */
 let plazaAwayMs = 60000;
 const plazaAway = (e, now = nowMs()) => Boolean(e && Number.isFinite(e.activeAt) && !e.ride && !e.taxi && !e.platform && now - e.activeAt >= plazaAwayMs);
@@ -2149,7 +2152,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, tigers: tigerSim.view() /* (1.10.376 별마루섬 호랑이) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack, activeAt }) => ({ away: plazaAway({ activeAt, ride, taxi, platform }) /* (380 자리 비움) */, snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
+  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack, activeAt }) => ({ away: plazaAway({ activeAt, ride, taxi, platform }) /* (380 자리 비움) */, snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); quarryPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); denInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
@@ -2185,7 +2188,9 @@ plazaTicker.unref?.();
 // whoever is on 별마루섬 outdoors (not on a train or in a taxi); every screen near is sent the poses with the plaza's. Off in the tests
 // till /api/test/tigers turns them on (they would catch the island tests' walkers). Caught: two random things out of the bag (in the
 // same step as the doc), whatever was being done ends, and everyone starts again in front of 마루 시장님 at the 관공서.
-const tigerSim = IslandTigers.createTigers({ T: IslandTerrain, P: require('./public/plaza/isle2-props.js') });
+const Isle2Props = require('./public/plaza/isle2-props.js');
+const SWAMP_BIKE_MAX = 4.3 * 1.3; /* (383 Codex #7: the screen's 늪 자전거 4.3 m/s (plaza-scene SWAMP_BIKE), a third more for the poses' timing) */
+const tigerSim = IslandTigers.createTigers({ T: IslandTerrain, P: Isle2Props });
 tigerSim.setOn(process.env.NODE_ENV !== 'test');
 const TIGER_TICK_MS = 100;
 const tigerTicker = setInterval(() => {
@@ -2195,20 +2200,30 @@ const tigerTicker = setInterval(() => {
     if ((p.space || 'island') !== 'island' || p.ride || p.platform || p.taxi || trainRiders.has(token) || taxiRides.has(token) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
     if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z });
   }
-  const events = tigerSim.tick(nowMs(), people); if (near) plazaDirty = true;
+  const events = tigerSim.tick(nowMs(), people);
+  /* (383 Codex 371~380 #15: the two tigers' places only to those near 별마루섬, in their own small frame -- not the whole plaza to everyone ten times a second) */
+  if (near) { const frame = sseFrame('tigers', { list: tigerSim.view() }); for (const entry of [...lobbyStreams]) { const p = plazaPresence.get(entry.sessionToken); if (!p || (p.space || 'island') !== 'island' || !Number.isFinite(p.x) || Math.hypot(p.x - I.x, p.z - I.z) >= I.r + 160) continue; try { sseSend(entry.res, frame, { skipIfBehind: true }); } catch { lobbyStreams.delete(entry); } } }
   for (const e of events) if (e.type === 'catch') tigerCatch(e.token, e.tiger).catch((error) => console.error('호랑이 잡기 실패:', error.message));
 }, TIGER_TICK_MS);
 tigerTicker.unref?.();
 const tigerSpot = () => { const TH = IslandTerrain.TOWNHALL; const p = IslandTerrain.townhallWorld(0, TH.yard.z1 + 3.2); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; }; /* (before the mayor in his gate, facing him) */
+/* (383 Codex 371~380 #2: one catch an account at a time -- both tigers' paws in one tick, or a second within the 8 s after, never takes two more) */
+const tigerCaughtAt = new Map(); const TIGER_CATCH_GAP_MS = 8000;
 async function tigerCatch(token, def) {
   const session = sessions.get(token); const at = plazaPresence.get(token); if (!session || !at) return;
   const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs();
+  const who = account || token; if (now - (tigerCaughtAt.get(who) || 0) < TIGER_CATCH_GAP_MS) return; tigerCaughtAt.set(who, now);
   resourcePulls.delete(token); weedPulls.delete(token); quarryPulls.delete(token); fishCasts.delete(token); freeSeat(token);
-  plazaPresence.set(token, { ...at, x: spot.x, z: spot.z, moving: false, at: now, act: null, seat: null }); plazaLastPos.set(token, { x: spot.x, z: spot.z }); plazaDirty = true;
-  const out = account ? await pointStore.questApply(account, 'tiger', (doc, bag) => { const pick = IslandTigers.losePick(bag, IslandItems);
-    return { doc: { caught: (doc.caught || 0) + 1, at: now, by: def.id }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost: pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId) }; }).catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }) : null;
-  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}`); /* (no account in the log) */
-  notifyAccount(account, 'tigerCaught', { by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}) });
+  /* (383 #5: the move kept as the account's spot for a reconnect, and a pose sent before it (its time older) no longer puts them back in the wood) */
+  plazaPresence.set(token, { ...at, x: spot.x, z: spot.z, moving: false, at: now, sentT: now, act: null, seat: null }); plazaLastPos.set(token, { x: spot.x, z: spot.z }); notePlazaSpot(account, spot.x, spot.z, now); plazaDirty = true;
+  /* (383 #6: the bag's loss saved first, this catch's own id kept in the doc (a retry never takes twice), up to five tries; the word only after it) */
+  const id = `${now}:${def.id}`;
+  const take = () => pointStore.questApply(account, 'tiger', (doc, bag) => { if (doc.lastId === id) return { error: 'DONE' }; const pick = IslandTigers.losePick(bag, IslandItems); const lost = pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId);
+    return { doc: { caught: (doc.caught || 0) + 1, at: now, by: def.id, lastId: id, lastLost: lost }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost }; });
+  let out = null;
+  for (let k = 0; account && k < 5 && !out; k += 1) { out = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }); if (out?.error === 'DONE') out = { lost: (await pointStore.questDoc(account, 'tiger')).doc?.lastLost || [] }; else if (out?.error) out = { lost: [] }; /* (a try that had saved before its answer was lost: what it took) */ if (!out) await new Promise((r) => { setTimeout(r, 2000 * (k + 1)); }); }
+  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' unsaved' : ''}`); /* (no account in the log) */
+  notifyAccount(account, 'tigerCaught', { by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { unsaved: true } : {}) });
 }
 
 // v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
@@ -2613,7 +2628,8 @@ function adminEventsTick(now = nowMs()) { // (every 15 s: a start or an end tell
   if (shown !== adminEventsShown) { adminEventsShown = shown; broadcastIsland('islandEvents', { list: adminEventsView(now), at: now }); }
 }
 // (364) a reason the unstuck move is refused now, or null -- N2a fills it in: not while a tiger chases me
-const stuckRefuse = (session) => null; // eslint-disable-line no-unused-vars
+/* (383 Codex 371~380 #9: a tiger stalking, chasing or springing at me -- the unstuck move is no way out of it) */
+const stuckRefuse = (session) => (tigerSim.isOn() && tigerSim.state().some((t) => t.target === session.token && ['stalk', 'chase', 'pounce', 'attack'].includes(t.mode)) ? '호랑이가 쫓고 있어요! 지금은 쓸 수 없어요.' : null);
 // v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
 // (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
 const taxiStopOut = new Map();
@@ -5091,7 +5107,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.381' });
+    return sendJson(res, 200, { ok: true, version: '1.10.382' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6290,6 +6306,13 @@ async function requestHandler(req, res) {
       const late = ((IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) || IslandJail.inJail(Number(body.x), Number(body.z), 2) || IslandMuseum.inMuseum(Number(body.x), Number(body.z), 2) || IslandExchange.inRoom(Number(body.x), Number(body.z), 2)) && plazaPresence.get(session.token)) || heldNewer(); // v1.10.84: a pose from the room after going out (CI 3차 검토: or from before the one I hold)
       spot = late ? { x: late.x, z: late.z } : collecting ? collecting.pos : plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
       if (IslandTerrain.inTownhallYard(spot.x, spot.z) && !passesGate(session)) spot = { ...TOWNHALL_GATE_OUT }; // v1.10.41: not let in yet
+      { /* (383 Codex 371~380 #7: a bike in 별마루섬's swamp at the swamp's own pace on the server too -- the tigers chase where the server has one) */
+        const was = plazaPresence.get(session.token);
+        if (body.bike && was && (was.space || 'island') === 'island' && Isle2Props.inSwamp(spot.x, spot.z)) {
+          const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : nowMs() - was.at; const max = SWAMP_BIKE_MAX * Math.max(0.05, Math.min(2, ms / 1000)) + 0.5;
+          const d = Math.hypot(spot.x - was.x, spot.z - was.z); if (d > max) spot = { x: Math.round((was.x + ((spot.x - was.x) / d) * max) * 100) / 100, z: Math.round((was.z + ((spot.z - was.z) / d) * max) * 100) / 100 };
+        }
+      }
       plazaLastPos.set(session.token, spot);
       notePlazaSpot(account, spot.x, spot.z);
     }
@@ -6306,7 +6329,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
       // (Codex 검토 #8) m/s since the last pose, walking (a warp is not a run): by the sender's clock when both poses have
       // one (poses bunched on the way would look faster), else by arrival
-      activeAt: (() => { const was = plazaPresence.get(session.token); const idle = Number(body.idle); if (body.moving === true || !Number.isFinite(idle) || !was || Math.hypot(spot.x - was.x, spot.z - was.z) > 0.05) return receivedAt; return Math.max(receivedAt - Math.max(0, Math.min(idle, 86400000)), Math.min(was.activeAt ?? receivedAt, receivedAt)); })(), /* (380 자리 비움: my last input by the page's count -- a walk, a move or an old page without the count is input now) */
+      activeAt: (() => { const was = plazaPresence.get(session.token); if (!was || Math.hypot(spot.x - was.x, spot.z - was.z) > 0.05) return receivedAt; return Math.min(was.activeAt ?? receivedAt, receivedAt); })(), /* (380 자리 비움; 383 Codex #8: by what the server sees -- a move (the place changed) or an action (requireSession) -- never the page's own count or its 「moving」) */
       held: IslandItems.QUICK_KINDS.includes(body.held) && !ride && !taxi && !platform ? body.held : null, /* (v1.10.236: in my hand, seen by the others) */ bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) / GroundSpeed.factorAt(IslandTerrain, spot.x, spot.z, IslandPaths, groundCover) : 0; })(), // (5회차 6: as fast as the ground lets one -- a walk on a path is no run)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
@@ -7088,7 +7111,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const t = session.token;
     if (!checkRateLimit(`island-quarry-tap:${t}`, 90, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req); const pull = quarryPulls.get(t); const k = Number(body.round);
-    if (!pull || pull.result || !Number.isInteger(k) || k < 0 || k >= pull.plan.length || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
+    if (!pull || pull.result || pull.finishing || !Number.isInteger(k) || k < 0 || k >= pull.plan.length || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); /* (383 Codex 371~380 #1: no press once its finish is judged) */
     pull.taps ||= pull.plan.map(() => null);
     if (!pull.taps[k]) pull.taps[k] = IslandQuarry.tapAt(pull.plan, k, { spot: Number(body.spot), ms: Number(body.ms) }, nowMs() - pull.at);
     return sendJson(res, 200, { ok: true });
@@ -7109,6 +7132,9 @@ async function requestHandler(req, res) {
       if ([resourcePulls.get(t), weedPulls.get(t), quarryPulls.get(t)].some((p) => p && !p.result && nowMs() - p.at < 15000)) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.');
       if ([...quarryPulls].some(([o, p]) => o !== t && !p.result && p.rock === rock.id && p.spot === spot && nowMs() - p.at < 15000)) return sendError(res, 409, 'SPOT_BUSY', '다른 사람이 캐는 자리예요. 옆 자리에서 캐 보세요.');
       const { doc, bag } = await pointStore.questDoc(account, 'quarry');
+      /* (383 Codex 371~380 #10: the spot looked at again after the bag's wait -- two at once both passed the first look; from here to its keeping no wait) */
+      if ([...quarryPulls].some(([o, p]) => o !== t && !p.result && p.rock === rock.id && p.spot === spot && nowMs() - p.at < 15000)) return sendError(res, 409, 'SPOT_BUSY', '다른 사람이 캐는 자리예요. 옆 자리에서 캐 보세요.');
+      if ([resourcePulls.get(t), weedPulls.get(t), quarryPulls.get(t)].some((p) => p && !p.result && nowMs() - p.at < 15000)) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.');
       if (!IslandItems.toolCount(bag, 'pickaxe')) return sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.');
       void doc; void today; /* (379 사용자 「광석 캐기 제한을 없애고」: no day's cap -- the rocks' eight pieces and their fill time stay) */
       if (!IslandItems.addToBag(bag, `ore_${rock.ore}`, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
@@ -7122,8 +7148,10 @@ async function requestHandler(req, res) {
     const pull = quarryPulls.get(t);
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result);
+    if (pull?.finishing && !pull.result) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.'); /* (383 Codex 371~380 #1: a second finish while the first is paying -- never a second judgement; its retry with the same requestId gets the one result) */
     if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
     if (nowMs() - pull.at < pull.ms - 300 && !IslandQuarry.judge(pull.plan, pull.taps || []).done) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.'); /* (1.10.355 「두 번 맞히면 바로 결과」: sooner only on the server's own two timed hits) */
+    pull.finishing = true; pull.requestId = body.requestId; /* (383 #1: judged now, before any wait -- a late press or a second finish can not turn this one's miss into a hit too) */
     const kept = { left: IslandQuarry.ORE_PER_ROCK, gen: 0 }; /* (379 사용자 「이것도 없애」: a rock never empties, never fills again -- every mining its own claim, as the wall's) */
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
@@ -7147,7 +7175,7 @@ async function requestHandler(req, res) {
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
     // 366 광석 개편 2: a gem first (‰ by economy gem:* -- 369: no event raises it), else the ore as before
-    const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(`gem:${g.id}`), Economy.value(`gem:${g.id}:bonus`)]]));
+    const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(Economy.gemKey(g)), Economy.value(Economy.gemKey(g, true))]])); /* (383 #11: the ‱ gems' own keys) */
     const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, 1 /* (369 검토 #2, 사용자 A: no event on the gems -- 「채석 위 단계」 the ore's stage only) */, gemPms); quarryTestGem = null;
     const oreId = gem ? `gem_${gem}` : `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
     const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${account}:${pull.at}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null); /* (379: this mining's own claim -- the rock never runs out) */
@@ -7159,7 +7187,7 @@ async function requestHandler(req, res) {
     const result = { ok: true, ore: 1, itemId: oreId, name: IslandItems.ITEMS[oreId]?.name || '광석', icon: IslandItems.ITEMS[oreId]?.icon || '🪨', ...(gem ? { gem } : {}), ...(firstGem ? { firstGem } : {}), hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: kept.left, stage: 'full', bag: given.bag, worn: given.worn || null, daily: { n: counted?.doc?.n ?? null, max: null /* (379) */ } };
     quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t);
     if (firstGem) { const lines = GEM_CARDS[gem]?.notices || []; const text = (lines[crypto.randomInt(0, Math.max(1, lines.length))] || '{name}님이 보석을 캤어요!').replace('{name}', (await soloNames())(account)); broadcastIsland('gemFound', { gem, text }); }
-    broadcastIsland('quarry', { rocks: await quarryRocks() });
+    /* (383 Codex 371~380 #17: the rocks never change since 379 (always full) -- no list to every screen after each mining) */
     return sendJson(res, 200, result);
   }
   // v1.10.318 마당 농사 F1 (public/plaza/island-farm.js): the owner, in their yard, at one of their beds' cells -- `plant` a seed
@@ -7326,12 +7354,16 @@ async function requestHandler(req, res) {
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
-        const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) }] } }; await saveHome(account, next); /* (1.10.344 P2-6: a 「산 것」 stays one in the tank; Codex 361~370 #1: and its length) */
+        const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) }] } }; /* (1.10.344 P2-6: a 「산 것」 stays one in the tank; Codex 361~370 #1: and its length) */
+        /* (383 Codex 371~380 #3: the tank not saved -- the fish back in the bag (its own claim), never gone between the two) */
+        try { await saveHome(account, next); } catch (error) { if (out.applied) await pointStore.islandGive({ userId: account, claimId: `hometank-back-${body.requestId}`, itemId, qty: 1, quiet: true, ...((out.bought || Number.isFinite(out.size)) ? { meta: { ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) } } : {}) }, nowMs()).catch((e) => console.error('수조 되돌리기 실패:', e.message)); throw error; }
         return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
       }
       const f = fishes.find((x) => x.fid === String(body.take)); if (!f) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); // (already taken out)
       const meta = { ...(f.bought ? { bought: true } : {}), ...(Number.isFinite(f.size) ? { size: f.size } : {}) }; /* (Codex 361~370 #1: the 120 cm carp back as 120 cm, not the kind's middle) */
-      const out = await pointStore.islandGive({ userId: account, claimId: claim, itemId: f.itemId, qty: 1, quiet: true, ...(Object.keys(meta).length ? { meta } : {}) }, nowMs());
+      /* (383 Codex 371~380 #3: the bag's claim by the fish itself -- a tank save that failed after it, pressed again (a new request), gives no second fish
+         and takes this one out of the tank) */
+      const out = await pointStore.islandGive({ userId: account, claimId: `home_tank_take_${f.fid}`, itemId: f.itemId, qty: 1, quiet: true, ...(Object.keys(meta).length ? { meta } : {}) }, nowMs());
       if (!out.applied && out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요. 잡화점에서 가방을 늘릴 수 있어요.');
       /* (Codex 361~370 #13: a mixed tank stays mixed -- take-out only -- till its last fish is out, not as soon as one kind is gone) */
       const rest = fishes.filter((x) => x.fid !== f.fid); const mixed = !T.insects && rest.length > 0 && (Boolean(h.tankMixed?.[tank.uid]) || IslandHome.tankWater(fishes) === 'mixed');
@@ -7900,7 +7932,9 @@ async function requestHandler(req, res) {
     if (body.pick != null && (!Array.isArray(body.pick) || !body.pick.length || body.pick.length > IslandItems.PICK_MAX /* (Codex 361~370 #11: every box at its largest) */ || body.pick.some((p) => typeof p?.entryId !== 'string' || !Number.isSafeInteger(p?.qty) || p.qty < 1))) return sendError(res, 400, 'BAD_REQUEST', '팔 물건을 다시 골라 주세요.'); /* (1.10.356 골라 팔기: [{ entryId, qty }]) */
     const sellNow = nowMs(); const mults = sellMultsNow(sellNow); /* (364 섬 이벤트: the largest matching, ×3 at most; 「산 것」 never) */
     const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, fish: Boolean(atStall), activeLost: islandEvents.activeLost(), ...(body.pick ? { pick: body.pick } : {}), ...(mults ? { mults } : {}) }, sellNow); // a lost thing whose owner has gone: lost and found
-    if (result.applied) { let paidMore = false; for (const [itemId, extra] of Object.entries(result.extraBy || {})) { const src = AdminEvents.sellSource(adminEvents, itemId, sellNow, gatherGroupOf); if (src) { adminEventExtra.set(src.id, (adminEventExtra.get(src.id) || 0) + extra); src.paid = adminEventExtra.get(src.id); paidMore = true; } } if (paidMore) saveAdminEvents().catch(() => {}); } /* (Codex 361~370 #14: the running sum kept with the event -- a restart mid-event no longer drops it) */
+    /* (Codex 361~370 #14: the running sum kept with the event -- a restart mid-event no longer drops it; 383 Codex 371~380 #16: each sale's extra by its
+       own request -- counted once, and a retry of one whose count was not saved (the sale's record keeps its extra) counts it then) */
+    if (result.applied || result.extraBy) { let paidMore = false; for (const [itemId, extra] of Object.entries(result.extraBy || {})) { const src = AdminEvents.sellSource(adminEvents, itemId, sellNow, gatherGroupOf); if (!src) continue; src.sales ||= {}; const k = `${body.requestId}:${itemId}`; if (src.sales[k] !== undefined) continue; src.sales[k] = extra; src.paid = (Number(src.paidBase) || 0) + Object.values(src.sales).reduce((n, v) => n + v, 0); adminEventExtra.set(src.id, src.paid); paidMore = true; } if (paidMore) saveAdminEvents().catch(() => {}); }
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
@@ -8682,7 +8716,7 @@ async function requestHandler(req, res) {
     const gather = IslandGather.KINDS[claimed.event?.type] || null; /* (G4b 채집: no daily cap -- 사용자 「추천대로」, v1.10.35) */
     let outcome; let giveQty = null;
     try {
-      giveQty = isResource && ['twig', 'branch', 'mushroom', 'mushroom_blue'].includes(claimed.item) ? Math.round(claimed.qty * catchMultNow('pick')) : claimed.qty; /* (364 섬 이벤트 「나뭇가지·버섯」; Codex 361~370 #18: once, for the bag and the answer) */
+      giveQty = isResource && (['twig', 'branch'].includes(claimed.item) || /^mushroom/.test(claimed.item)) /* (383 Codex 371~380 #12: every mushroom -- 별마루섬's three too) */ ? Math.round(claimed.qty * catchMultNow('pick')) : claimed.qty; /* (364 섬 이벤트 「나뭇가지·버섯」; Codex 361~370 #18: once, for the bag and the answer) */
       if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: giveQty, meta: claimed.meta || null, dexEntry: IslandFishing.DEX_IDS.has(claimed.item) ? claimed.item : null }, nowMs());
       else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : isResource ? `event:${id}:${pull.generation}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
     } catch (error) { islandEvents.settle(claimed, false, account); throw error; }
@@ -9187,6 +9221,11 @@ async function requestHandler(req, res) {
   }
   // (1.10.376 별마루섬 호랑이, tests: on or off, one put somewhere, their rest hours' clock shifted; the state read back)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs()); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers/catch' && req.method === 'POST') { /* (383 tests: both tigers' paws in one tick on me -- Codex 371~380 #2·#5·#6) */
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
+    await Promise.all(IslandTigers.TIGERS.filter((d) => (body.both ? true : d.id === body.id)).map((d) => tigerCatch(session.token, d)));
+    return sendJson(res, 200, { ok: true, spot: tigerSpot(), here: plazaPresence.get(session.token) ? { x: plazaPresence.get(session.token).x, z: plazaPresence.get(session.token).z } : null });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/away' && req.method === 'POST') { const body = await parseJson(req); plazaAwayMs = Number.isFinite(body.ms) && body.ms > 0 ? body.ms : 60000; return sendJson(res, 200, { ok: true, ms: plazaAwayMs }); } /* (380 자리 비움, tests: the minute shortened) */
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/festival/clock' && req.method === 'POST') { const body = await parseJson(req); festivalClock = Number(body.at) ? { at: Number(body.at), set: nowMs(), tick: Boolean(body.tick) } : null; return sendJson(res, 200, { ok: true }); } // (tests: the festival's own clock -- held, or running on from there: X2 카운트다운's last seconds)
   // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,
@@ -9536,10 +9575,18 @@ async function requestHandler(req, res) {
     const useId = (id) => `errand-${id}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64);
     for (const e of errands) if (e.kind === 'buy' && !done.has(e.id) && await pointStore.settlementOf(`island_use:${useId(e.id)}`)) goods.set(e.good, Math.max(1, goods.get(e.good) || 0));
     // (366 재료 부탁: the materials taken all at once with a note of it -- handed over and not yet paid, the next talk pays)
-    const mDay = errandDay(); const matDoc = (await pointStore.questDoc(account, 'errandmat')).doc || {}; const matGiven = (id) => matDoc.day === mDay && Boolean(matDoc.given?.[id]);
+    const mDay = errandDay(); let matDoc = (await pointStore.questDoc(account, 'errandmat')).doc || {};
+    /* (383 Codex 371~380 #4: materials handed over on a day gone by (23:59, its pay not kept) -- paid now, by the errand kept with them (its pay's own
+       id: never twice), then that day's note cleared) */
+    if (matDoc.day && matDoc.day !== mDay && Object.keys(matDoc.given || {}).length) {
+      let paid = true; const oldDay = matDoc.day;
+      for (const [id, v] of Object.entries(matDoc.given)) { if (!v?.e) continue; const out = await pointStore.claimEvent({ eventId: id, userId: account, amount: errandPay(v.e, before), title: `주민 심부름 · ${IslandErrands.title(v.e)}` }).catch(() => { paid = false; return null; }); if (out?.applied) notifyPointsChanged([account]); }
+      if (paid) { await pointStore.questApply(account, 'errandmat', (d) => (d.day === oldDay ? { doc: { day: mDay, given: {} } } : null)).catch(() => {}); matDoc = (await pointStore.questDoc(account, 'errandmat')).doc || {}; }
+    }
+    const matGiven = (id) => matDoc.day === mDay && Boolean(matDoc.given?.[id]);
     for (const e of errands) if (e.kind === 'material' && !done.has(e.id) && matGiven(e.id)) goods.set(e.good, Math.max(e.count, goods.get(e.good) || 0));
     let r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n, goods);
-    if (r?.take && r.pay.kind === 'material') { if (!matGiven(r.pay.id)) { const e = r.pay; const out = await pointStore.questApply(account, 'errandmat', (d, bag) => (d.day === mDay && d.given?.[e.id] ? null : bagCount(bag, e.good) < e.count ? { error: 'MISSING' } : { doc: { day: mDay, given: { ...(d.day === mDay ? d.given : {}), [e.id]: nowMs() } }, take: { itemId: e.good, qty: e.count } })).catch(() => null); if (!out?.doc?.given?.[e.id]) r = null; } }
+    if (r?.take && r.pay.kind === 'material') { if (!matGiven(r.pay.id)) { const e = r.pay; const out = await pointStore.questApply(account, 'errandmat', (d, bag) => (d.day === mDay && d.given?.[e.id] ? null : bagCount(bag, e.good) < e.count ? { error: 'MISSING' } : { doc: { day: mDay, given: { ...(d.day === mDay ? d.given : {}), [e.id]: { at: nowMs(), e: { id: e.id, kind: e.kind, from: e.from, to: e.to, good: e.good, count: e.count, far: e.far || 0 } } } }, take: { itemId: e.good, qty: e.count } })).catch(() => null); /* (383 #4: the errand kept with them -- paid on a later day if not today) */ if (!out?.doc?.given?.[e.id]) r = null; } }
     else if (r?.take) { const used = await pointStore.islandUse({ userId: account, requestId: useId(r.pay.id), itemId: r.take }); if (!used.applied && !used.already) r = null; } // (gone meanwhile)
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
@@ -10783,7 +10830,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
   adminEvents = AdminEvents.prune(await pointStore.worldValue('adminEvents').catch(() => null) || [], nowMs()); /* (364 섬 이벤트: those kept) */
-  for (const e of adminEvents) if (!e.endedLogged && Number(e.paid) > 0) adminEventExtra.set(e.id, Number(e.paid)); /* (Codex 361~370 #14: what a running event had paid over the base before the restart) */
+  for (const e of adminEvents) if (!e.endedLogged && Number(e.paid) > 0) { adminEventExtra.set(e.id, Number(e.paid)); if (!e.sales && e.paidBase === undefined) e.paidBase = Number(e.paid); } /* (Codex 361~370 #14: what a running event had paid over the base before the restart; 383 #16: an event from before the per-sale counts keeps its sum as the base) */
   await starsFragmentFrom().catch((error) => console.warn(`[stars] fragmentFrom not read: ${error?.message || error}`)); /* (366: the switch to star fragments fixed at this version's first start; Codex 361~370 #6: not read -- asked again on a look) */
   setInterval(() => { try { adminEventsTick(); } catch (error) { console.error('[island-event] tick', error.message); } }, 15000).unref();
   { /* 1.10.363 메모리 (운영 OOM 11-18 13:18Z): a [mem] line every 5 min and at 80 % of the limit, with the biggest of these by entries */
@@ -10793,7 +10840,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.381 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.382 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
