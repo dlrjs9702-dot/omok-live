@@ -9017,7 +9017,7 @@ async function requestHandler(req, res) {
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); const P = IslandCalendar.PLACES;
     const near = (p, r) => Boolean(at) && (at.space || 'island') === 'island' && Math.hypot(at.x - p.x, at.z - p.z) <= r;
     const fail = { BAD_TASK: '알 수 없는 할 일이에요.', TASK_CLOSED: '지금은 할 수 없는 일이에요.', TASK_DONE: '오늘은 이만큼이면 충분해요. 내일 또 와 주세요!', BAD_GOOD: '그런 물건은 없어요.', OWNED: '이미 받은 물건이에요.', NOT_ENOUGH: '도장이 모자라요.', GIFT_HELD: '들고 있는 선물부터 배달해 주세요.', NO_GIFT: '먼저 행사 주민에게서 선물을 받아 와요.', WRONG_RESIDENT: '이 선물은 다른 이웃 몫이에요.', NO_RESIDENT: '지금은 선물 받을 이웃이 없어요.', NOT_ROLLING: '먼저 눈덩이를 굴려 주세요.', TOO_SHORT: '조금 더 굴려 주세요.', SNOW_STACKED: '눈덩이 셋을 다 쌓았어요. 꾸며 주세요!', SNOW_NOT_STACKED: '눈덩이 셋을 먼저 굴려 쌓아 주세요.', NOT_ROLLED: '걸어 다니며 굴려요 — 3 m 넘게 굴려 주세요.', SNOW_BARE: '하나라도 붙여 꾸며 주세요.' };
-    const stamp = async (task) => { const r = await pointStore.questApply(account, key, (doc) => { const a = IslandFestival.award(fest, doc, task, now); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); return r?.error ? { error: r.error } : { added: r.added, view: IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now) }; };
+    const stamp = async (task, n = null) => { const r = await pointStore.questApply(account, key, (doc) => { const a = IslandFestival.award(fest, doc, task, now, n); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); return r?.error ? { error: r.error } : { added: r.added, view: IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now) }; };
     const sendStamp = (r, extra = {}) => (r.error ? sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.') : sendJson(res, 200, { ok: true, added: r.added, festival: r.view, ...extra }));
     if (action === 'harvest') { // 밭 수확: at the farm's field, a vegetable and a stamp (three a day)
       const F = IslandTerrain.FARM; if (!at || (at.space || 'island') !== 'island' || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있어요.');
@@ -9028,7 +9028,7 @@ async function requestHandler(req, res) {
     }
     if (action === 'cook') { // 요리 대회: three things from the bag, by the host -- judged, taken, two stamps (once a day)
       if (!near(P.host, P.REACH + 1)) return sendError(res, 409, 'TOO_FAR', '행사 주민 곁에서 요리를 내 주세요.');
-      const items = Array.isArray(body.items) ? body.items.map(String) : []; const judged = IslandFestival.judgeCook(items);
+      const items = Array.isArray(body.items) ? body.items.map(String) : []; const judged = IslandFestival.judgeCook(items, day); /* (381 결정 15: today's theme +30, stamps by the score) */
       if (judged.error) return sendError(res, 400, 'BAD_RECIPE', '먹을 것 세 가지(밭 채소·열매·버섯·약재·물고기)를 골라 주세요.');
       if (((await pointStore.questDoc(account, key)).doc?.days?.[day]?.cook || 0) >= 1) return sendError(res, 409, 'TASK_DONE', fail.TASK_DONE);
       const need = items.reduce((m, id) => m.set(id, (m.get(id) || 0) + 1), new Map()); const bag = (await pointStore.islandBag(account)).items || [];
@@ -9044,9 +9044,9 @@ async function requestHandler(req, res) {
       }
       // (C4 P3-1: two cooks at once from two tabs both pass the day's check -- the one not stamped, or a stamp that failed to
       // save, gives its things back)
-      let r; try { r = await stamp('cook'); } catch (error) { await giveBack(); throw error; }
+      let r; try { r = await stamp('cook', judged.stamps); } catch (error) { await giveBack(); throw error; }
       if (r.error) await giveBack();
-      return sendStamp(r, { score: judged.score, say: judged.say, bag: (await pointStore.islandBag(account)).items });
+      return sendStamp(r, { score: judged.score, say: judged.say, theme: judged.theme, themed: judged.themed, bag: (await pointStore.islandBag(account)).items });
     }
     const view = async () => IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now);
     const apply = async (fn) => pointStore.questApply(account, key, (doc) => { const r = fn(doc); return r.error ? { error: r.error } : r; });

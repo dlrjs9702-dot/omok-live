@@ -1874,6 +1874,9 @@ test('계절 행사: 수확제 기간에 대청마당 가판대·행사 주민, 
     let turn = 0; await expect.poll(async () => { const a2 = P.host.yaw + [0, 0.5, -0.5, 0.9, -0.9][turn++ % 5]; await page.evaluate(([x, z, a]) => window.PlazaWarp(x + Math.sin(a) * 1.0, z + Math.cos(a) * 1.0), [P.host.x, P.host.z, a2]); await page.waitForTimeout(300); return spaceOn(page, 'fest:host', isMobile); }, { timeout: 20000 }).toBe(true);
     const card = page.locator('#festivalCard'); await expect(card).toContainText('수확제'); await expect(card).toContainText('밭 수확'); await expect(card.locator('.festivalStamps')).toHaveText('도장 0개');
     await expect(card).toContainText('섬 대회 참가'); await expect(card).toContainText('매일 14:00 섬 대회'); await expect(card).not.toContainText('매주 대회 참가'); /* (381 사용자 결정 14: the daily 섬 대회 in the weekend contests' place) */
+    await expect(card.locator('li', { hasText: '요리 대회' }).locator('.festivalBadge').first()).toHaveText('도장 1~3개');
+    await card.locator('.festivalTab[data-tab="cook"]').click(); await expect(card.locator('.festivalTheme')).toHaveText('오늘의 주제 · 버섯이 든 요리 (맞으면 +30점)'); /* (381 결정 15: 11-21's theme) */
+    await card.locator('.festivalTab[data-tab="tasks"]').click();
     await expect(card.locator('li', { hasText: '밭 수확' }).locator('.festivalTaskHow')).toHaveText('밭에서 SPACE'); await expect(card.locator('li', { hasText: '섬 대회 참가' }).locator('.festivalTaskHow')).not.toContainText('요리 대회');
     await page.locator('#plazaCloseBtn').click();
     // the farm: the festival's harvest, a stamp

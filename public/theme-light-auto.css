@@ -1145,6 +1145,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .festivalTasks li.done .festivalTaskName::after{color:#2f6b20}
 :root[data-theme="light"] .festivalPick,:root[data-theme="light"] .plazaDialog .festivalCard select.festivalPick{border:1px solid #c9a46f;background:#fffdf8;color:#3a2716}
 :root[data-theme="light"] .festivalCard button:disabled{color:#6f563c;background:#f1e6d2;border:1px solid #d9c3a0}
+:root[data-theme="light"] .festivalTheme{background:#ffe6b3;color:#6b3f00}
+:root[data-theme="light"] .festivalCookResult{color:#6b3f00}
 :root[data-theme="light"] .gamehallToday{background:url("/assets/gamehall/today-frame-left.svg") left center/auto 100% no-repeat,url("/assets/gamehall/today-frame-right.svg") right center/auto 100% no-repeat,linear-gradient(135deg,var(--g1),var(--g2))}
 :root[data-theme="light"] .inspectList button.note-fix{border-left:4px solid #ef4444}
 :root[data-theme="light"] .inspectList button.note-check{border-left:4px solid #f59e0b}

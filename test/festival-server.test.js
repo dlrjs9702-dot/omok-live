@@ -38,6 +38,8 @@ test('수확제: 할 일마다 도장(하루 한도), 요리 심사, 마지막 �
   assert.equal((await req('/api/island/festival/cook', a, { items: ['harvest', 'trash', 'harvest'] })).data.error, 'BAD_RECIPE');
   const cooked = await req('/api/island/festival/cook', a, { items: ['harvest', 'harvest', 'harvest'] }); assert.equal(cooked.status, 200, JSON.stringify(cooked.data));
   assert.ok(cooked.data.score > 0 && cooked.data.say); assert.equal(cooked.data.festival.stamps, 5); assert.equal(await vegetables(), 0);
+  /* (381 결정 15: 11-20's theme 약재 -- three vegetables do not fit it: 100 points, two stamps; the theme on the window's view) */
+  assert.deepEqual([cooked.data.theme.name, cooked.data.themed, cooked.data.score, cooked.data.added], ['약재가 든 요리', false, 100, 2]); assert.equal(cooked.data.festival.cookTheme.name, '약재가 든 요리');
   assert.equal((await req('/api/island/festival/cook', a, { items: ['harvest', 'harvest', 'harvest'] })).data.error, 'TASK_DONE');
   // the feast only on the last day's evening
   await stand(P.feast); assert.equal((await req('/api/island/festival/feast', a, {})).data.error, 'TASK_CLOSED');
