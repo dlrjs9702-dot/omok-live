@@ -116,7 +116,7 @@ const IslandQuarry = require('./public/plaza/island-quarry'); // 1.10.323 Q1 채
 const IslandOres = require('./lib/island-ores'); // 1.10.342 4a 광석 8가지
 // (the rocks' state { id: { left, gen, minedAt } } -- kept in the world store; `gen` makes each ore's claim its own)
 let quarryKept = null; let quarryLoading = null; const quarryPulls = new Map(); // (session token -> a mining under way)
-let quarryTestPlan = null; let quarryTestDraw = null; let quarryTestGem = null; // (1.10.342 tests only: /api/test/quarry/plan; 366 the gem's roll)
+let quarryTestPlan = null; let quarryTestDraw = null; let quarryTestGem = null; const quarryLastJudged = new Map(); /* (385 tests: the last finish's presses as judged) */ // (1.10.342 tests only: /api/test/quarry/plan; 366 the gem's roll)
 const GEM_CARDS = require('./lib/gem-cards.json'); // (366 보석 첫 발견: 총괄's words, notes content-20261118 gem-cards.json)
 /* (379 사용자 「바위 하나에 8조각 … 다시 차는 데 시간이 걸리는 건 … 이것도 없애」: every rock always full -- no pieces to count, no fill time, nothing
    kept in the store; the old 'quarry' world value left as it was, read by nothing) */
@@ -227,6 +227,11 @@ const betPick = (n, game, skill, vals, t = IslandBets.targetOf(game, skill)) => 
   return IslandCast.withTail([IslandBets.lineOf(n, 'pick', vals, BET_LINES), own].filter(Boolean).join(' '), n); };
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
 const IslandTigers = require('./lib/island-tigers'); // 1.10.376 N2a-2 별마루섬 호랑이
+/* (385 부팅 무게 2: the island's scenery and the islanders' walk grid as made before from this same code -- lib/boot-cache.js; read before
+   island-events, whose first look at the island makes them) */
+const BootCache = require('./lib/boot-cache');
+const bootCache = (process.env.BOOT_CACHE_ONLY && !process.env.BOOT_CACHE_READ) || process.env.BOOT_CACHE === 'off' ? null : BootCache.read(); /* (BOOT_CACHE_READ: test/boot-cache.test.js -- what a read start holds, written out) */
+if (bootCache) { IslandTerrain.presetNature?.(bootCache.nature, bootCache.natureBlocks); IslandNpcs.useGrid(bootCache.grid); }
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const nextWeekOf = (week) => new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10); // v1.10.89
@@ -2263,6 +2268,10 @@ const fixedPost = (n) => Object.entries(IslandRoster.FIXED).find(([, m]) => m ==
 const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n) ?? fixedPost(n);
 const talkable = (n) => Number.isInteger(n) && Boolean(IslandCast.RESIDENTS[n]) && (walksToday(n) || postToday(n) != null);
 const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform&&!p.taxi), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
+/* (385: both made by now -- kept for the next start when they were not read; BOOT_CACHE_ONLY (postinstall, tools/warm-boot-cache.js) stops here) */
+const bootCacheUsed = Boolean(bootCache) && IslandTerrain.nature() === bootCache.nature;
+if (!bootCacheUsed && !process.env.BOOT_CACHE_ONLY && process.env.BOOT_CACHE !== 'off' && process.env.NODE_ENV !== 'test') BootCache.write({ nature: IslandTerrain.nature(), natureBlocks: IslandTerrain.natureBlockCount?.() ?? 0, grid: IslandNpcs.packGrid() });
+if (process.env.BOOT_CACHE_ONLY) { const out = process.env.BOOT_CACHE_OUT || BootCache.FILE; BootCache.write({ nature: IslandTerrain.nature(), natureBlocks: IslandTerrain.natureBlockCount?.() ?? 0, grid: IslandNpcs.packGrid() }, out); console.log(`[boot-cache] written ${out} (${bootCacheUsed ? 'read' : 'made'})`); process.exit(0); }
 function broadcastIslandRemoved(ids) {
   if (!ids.length) return;
   for (const entry of [...lobbyStreams]) {
@@ -5118,7 +5127,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.384' });
+    return sendJson(res, 200, { ok: true, version: '1.10.385' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -7114,8 +7123,10 @@ async function requestHandler(req, res) {
     await quarryRocks(); for (const r of IslandQuarry.ROCKS) { const k = quarryKept[r.id]; if (k && k.left <= 0) k.minedAt = nowMs() - IslandQuarry.regrowOf(r); } return sendJson(res, 200, { ok: true, rocks: await quarryRocks() });
   }
   // (tests, review-plan §1-14: the next mining's plan fixed -- each swing's crack and when it lights)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/last' && req.method === 'GET') { const session = requireSession(req, res); if (!session) return; return sendJson(res, 200, quarryLastJudged.get(session.token) || null); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/plan' && req.method === 'POST') {
-    const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; quarryTestGem = Number.isFinite(body.gem) ? Math.max(0, Math.min(0.999, Number(body.gem))) : quarryTestDraw !== null ? 0.999 : null; /* (366: a test's ore draw -- no gem unless asked) */ return sendJson(res, 200, { ok: true });
+    /* (385: a test's `light` too -- quarry-phone gives CI's slow phone a longer light) */
+    const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)), ...(Number.isFinite(Number(p.light)) && p.light ? { light: Math.max(300, Math.min(1800, Number(p.light))) } : {}) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; quarryTestGem = Number.isFinite(body.gem) ? Math.max(0, Math.min(0.999, Number(body.gem))) : quarryTestDraw !== null ? 0.999 : null; /* (366: a test's ore draw -- no gem unless asked) */ return sendJson(res, 200, { ok: true });
   }
   // 1.10.351 (Codex 341-350 P1): a press of the crack-light game, kept as the server gets it (IslandQuarry.tapAt) -- finish judges
   // these, never a list the page sends at the end; one a swing, the first kept
@@ -7177,6 +7188,7 @@ async function requestHandler(req, res) {
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
     const judged = IslandQuarry.judge(pull.plan, quarryTaps(pull)); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
+    if (process.env.NODE_ENV === 'test') quarryLastJudged.set(t, { at: pull.at, shownAt: pull.shownAt ?? null, finishAt: nowMs(), plan: pull.plan, presses: pull.presses || [], taps: quarryTaps(pull), judged }); /* (385 총괄: what the server saw each round -- /api/test/quarry/last) */
     if (!judged.done) {
       // (1.10.351 Codex 341-350 #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing (nor wears the pickaxe), else
       // missing on purpose was endless 작은 돌)
@@ -10728,7 +10740,7 @@ async function storageLog() {
 // next start on Render says where its time goes (the code's load -- the island's grids --, the stores, the rest)
 const bootMarks = []; const bootMark = (stage) => { bootMarks.push(`${stage} ${Math.round(process.uptime() * 1000)}`); };
 async function main() {
-  bootMark('modules');
+  bootMark(`modules(boot-cache ${bootCacheUsed ? 'read' : `made: ${BootCache.readWhy() === 'read' ? 'blocks' : BootCache.readWhy()}`})`); /* (385: none = the build's file not here -- made and written now) */
   // v1.10.256 주소 옮기기: the old service, MOVED_TO set, only points to the new address -- before any store opens the database
   if (process.env.MOVED_TO) return require('./lib/moved').startMoved({ to: process.env.MOVED_TO, port: PORT, host: HOST });
   await fsp.mkdir(DATA_DIR, { recursive: true });
@@ -10739,7 +10751,7 @@ async function main() {
     .replace('__HEROSURV_ASSETS__', escapeAttr(HEROSURV_ASSETS));
   messengerTemplate = (await fsp.readFile(path.join(PUBLIC_DIR, 'messenger.html'), 'utf8')).replace(/(src|href)="(\/[^"?#]+\.(?:js|css))"/g, (_, attr, url) => `${attr}="${hashedUrl(codeRevs, url)}"`);
   const packStats = {}; const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]), { cacheFile: process.env.NODE_ENV === 'test' ? null : path.join(__dirname, '.cache', 'asset-manifest.json'), stats: packStats }); /* (364: sizes·mtimes kept -- npm install warms it) */
-  bootMark(`assets(${packStats.hashed} hashed/${packStats.reused} kept)`);
+  bootMark(`assets(${packStats.hashed} hashed/${packStats.reused} kept, cache ${packStats.cache || '-'}${packStats.sameCommit ? ' same commit' : ''})`); /* (385: none = the build's file not here) */
   assetPackVersion = pack.version;
   assetManifestJson.on = JSON.stringify({ enabled: true, ...pack, assetsOff: islandAssetsOff }).replace(/</g, '\\u003c');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
@@ -10868,7 +10880,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.384 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.385 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
