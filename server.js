@@ -116,7 +116,7 @@ const IslandQuarry = require('./public/plaza/island-quarry'); // 1.10.323 Q1 채
 const IslandOres = require('./lib/island-ores'); // 1.10.342 4a 광석 8가지
 // (the rocks' state { id: { left, gen, minedAt } } -- kept in the world store; `gen` makes each ore's claim its own)
 let quarryKept = null; let quarryLoading = null; const quarryPulls = new Map(); // (session token -> a mining under way)
-let quarryTestPlan = null; let quarryTestDraw = null; let quarryTestGem = null; // (1.10.342 tests only: /api/test/quarry/plan; 366 the gem's roll)
+let quarryTestPlan = null; let quarryTestDraw = null; let quarryTestGem = null; const quarryLastJudged = new Map(); /* (385 tests: the last finish's presses as judged) */ // (1.10.342 tests only: /api/test/quarry/plan; 366 the gem's roll)
 const GEM_CARDS = require('./lib/gem-cards.json'); // (366 보석 첫 발견: 총괄's words, notes content-20261118 gem-cards.json)
 /* (379 사용자 「바위 하나에 8조각 … 다시 차는 데 시간이 걸리는 건 … 이것도 없애」: every rock always full -- no pieces to count, no fill time, nothing
    kept in the store; the old 'quarry' world value left as it was, read by nothing) */
@@ -7123,8 +7123,10 @@ async function requestHandler(req, res) {
     await quarryRocks(); for (const r of IslandQuarry.ROCKS) { const k = quarryKept[r.id]; if (k && k.left <= 0) k.minedAt = nowMs() - IslandQuarry.regrowOf(r); } return sendJson(res, 200, { ok: true, rocks: await quarryRocks() });
   }
   // (tests, review-plan §1-14: the next mining's plan fixed -- each swing's crack and when it lights)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/last' && req.method === 'GET') { const session = requireSession(req, res); if (!session) return; return sendJson(res, 200, quarryLastJudged.get(session.token) || null); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quarry/plan' && req.method === 'POST') {
-    const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; quarryTestGem = Number.isFinite(body.gem) ? Math.max(0, Math.min(0.999, Number(body.gem))) : quarryTestDraw !== null ? 0.999 : null; /* (366: a test's ore draw -- no gem unless asked) */ return sendJson(res, 200, { ok: true });
+    /* (385: a test's `light` too -- quarry-phone gives CI's slow phone a longer light) */
+    const body = await parseJson(req); quarryTestPlan = Array.isArray(body.plan) ? body.plan.slice(0, IslandQuarry.ROUNDS).map((p) => ({ spot: Math.max(0, Math.min(IslandQuarry.CRACKS.length - 1, Number(p.spot) || 0)), at: Math.max(0, Math.min(900, Number(p.at) || 400)), ...(Number.isFinite(Number(p.light)) && p.light ? { light: Math.max(300, Math.min(1800, Number(p.light))) } : {}) })) : null; quarryTestDraw = Number.isFinite(body.draw) ? Math.max(0, Math.min(0.999, Number(body.draw))) : null; quarryTestGem = Number.isFinite(body.gem) ? Math.max(0, Math.min(0.999, Number(body.gem))) : quarryTestDraw !== null ? 0.999 : null; /* (366: a test's ore draw -- no gem unless asked) */ return sendJson(res, 200, { ok: true });
   }
   // 1.10.351 (Codex 341-350 P1): a press of the crack-light game, kept as the server gets it (IslandQuarry.tapAt) -- finish judges
   // these, never a list the page sends at the end; one a swing, the first kept
@@ -7186,6 +7188,7 @@ async function requestHandler(req, res) {
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
     const judged = IslandQuarry.judge(pull.plan, quarryTaps(pull)); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
+    if (process.env.NODE_ENV === 'test') quarryLastJudged.set(t, { at: pull.at, shownAt: pull.shownAt ?? null, finishAt: nowMs(), plan: pull.plan, presses: pull.presses || [], taps: quarryTaps(pull), judged }); /* (385 총괄: what the server saw each round -- /api/test/quarry/last) */
     if (!judged.done) {
       // (1.10.351 Codex 341-350 #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing (nor wears the pickaxe), else
       // missing on purpose was endless 작은 돌)
