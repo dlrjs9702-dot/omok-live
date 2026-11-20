@@ -30,3 +30,13 @@ test('호랑이 잡기 서버: 두 마리 같은 순간이어도 한 번(물건 
   const after = ((await req('/api/island/bag', a)).data.bag?.items || (await req('/api/island/bag', a)).data.items || []).filter((e) => ['weed', 'branch', 'berry'].includes(e.itemId)).reduce((n, e) => n + e.qty, 0);
   assert.equal(after, 8, '8초 안 두 번째 잡기는 없음');
 });
+
+// 383 Codex 371~380 #7: on a bike in 별마루섬's swamp the server too keeps to the swamp's 4.3 m/s (the tigers chase where the server has one)
+test('늪 자전거 서버: 늪 안으로 한 번에 멀리 간 위치는 늪 속도만큼만', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'swamp-bike-')); rmAtExit(dir);
+  const { req, issue, enter } = await boot(t, dir); const a = await enter(await issue('늪자전거'));
+  const [sx, sz] = P.SWAMPS[0]; assert.ok(P.inSwamp(sx, sz)); const t0 = Date.now();
+  await req('/api/plaza/state', a, { x: sx + 8, z: sz, yaw: 0, moving: true, bike: 'mint', t: t0 });
+  const r = await req('/api/plaza/state', a, { x: sx, z: sz, yaw: 0, moving: true, bike: 'mint', t: t0 + 100 }); assert.equal(r.status, 200, JSON.stringify(r.data));
+  const here = (await req('/api/test/tigers/catch', a, { id: 'none' })).data.here; assert.ok(Math.hypot(here.x - (sx + 8), here.z - sz) < 1.2, JSON.stringify(here));
+});

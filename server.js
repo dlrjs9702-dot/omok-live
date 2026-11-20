@@ -915,6 +915,9 @@ function requireSession(req, res) {
     sendError(res, 401, 'AUTH_REQUIRED', '입장 권한이 없습니다. 관리자라면 비밀번호로, 게스트라면 발급받은 입장 파일로 다시 들어와 주세요.');
     return null;
   }
+  /* (383 Codex 371~380 #8 자리 비움: an action the server gets -- a POST other than the pose itself -- is activity; the page's own idle count is not
+     believed) */
+  if (req.method === 'POST' && !String(req.url || '').startsWith('/api/plaza/state')) { const e = plazaPresence.get(session.token); if (e) e.activeAt = nowMs(); }
   return session;
 }
 
@@ -1725,7 +1728,7 @@ async function climbRankingView(week, account) {
 // seconds while standing; the server sends everyone in the lobby one snapshot at most every PLAZA_TICK_MS.
 const PLAZA_TICK_MS = 150;
 const PLAZA_STALE_MS = 15000;
-/* (380 자리 비움, 총괄 결정 11 「1분으로」: no key, click or touch for a minute (the page's own count, sent with each pose; a walk is input) -- the
+/* (380 자리 비움, 총괄 결정 11 「1분으로」: a minute with no move and no action the server sees (383 Codex #8: not the page's own count) -- the
    server marks one away: drawn see-through with 「자리 비움」, and the others pass through them (here and on every screen). Tests shorten it.) */
 let plazaAwayMs = 60000;
 const plazaAway = (e, now = nowMs()) => Boolean(e && Number.isFinite(e.activeAt) && !e.ride && !e.taxi && !e.platform && now - e.activeAt >= plazaAwayMs);
@@ -2185,7 +2188,9 @@ plazaTicker.unref?.();
 // whoever is on 별마루섬 outdoors (not on a train or in a taxi); every screen near is sent the poses with the plaza's. Off in the tests
 // till /api/test/tigers turns them on (they would catch the island tests' walkers). Caught: two random things out of the bag (in the
 // same step as the doc), whatever was being done ends, and everyone starts again in front of 마루 시장님 at the 관공서.
-const tigerSim = IslandTigers.createTigers({ T: IslandTerrain, P: require('./public/plaza/isle2-props.js') });
+const Isle2Props = require('./public/plaza/isle2-props.js');
+const SWAMP_BIKE_MAX = 4.3 * 1.3; /* (383 Codex #7: the screen's 늪 자전거 4.3 m/s (plaza-scene SWAMP_BIKE), a third more for the poses' timing) */
+const tigerSim = IslandTigers.createTigers({ T: IslandTerrain, P: Isle2Props });
 tigerSim.setOn(process.env.NODE_ENV !== 'test');
 const TIGER_TICK_MS = 100;
 const tigerTicker = setInterval(() => {
@@ -6298,6 +6303,13 @@ async function requestHandler(req, res) {
       const late = ((IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) || IslandJail.inJail(Number(body.x), Number(body.z), 2) || IslandMuseum.inMuseum(Number(body.x), Number(body.z), 2) || IslandExchange.inRoom(Number(body.x), Number(body.z), 2)) && plazaPresence.get(session.token)) || heldNewer(); // v1.10.84: a pose from the room after going out (CI 3차 검토: or from before the one I hold)
       spot = late ? { x: late.x, z: late.z } : collecting ? collecting.pos : plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
       if (IslandTerrain.inTownhallYard(spot.x, spot.z) && !passesGate(session)) spot = { ...TOWNHALL_GATE_OUT }; // v1.10.41: not let in yet
+      { /* (383 Codex 371~380 #7: a bike in 별마루섬's swamp at the swamp's own pace on the server too -- the tigers chase where the server has one) */
+        const was = plazaPresence.get(session.token);
+        if (body.bike && was && (was.space || 'island') === 'island' && Isle2Props.inSwamp(spot.x, spot.z)) {
+          const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : nowMs() - was.at; const max = SWAMP_BIKE_MAX * Math.max(0.05, Math.min(2, ms / 1000)) + 0.5;
+          const d = Math.hypot(spot.x - was.x, spot.z - was.z); if (d > max) spot = { x: Math.round((was.x + ((spot.x - was.x) / d) * max) * 100) / 100, z: Math.round((was.z + ((spot.z - was.z) / d) * max) * 100) / 100 };
+        }
+      }
       plazaLastPos.set(session.token, spot);
       notePlazaSpot(account, spot.x, spot.z);
     }
@@ -6314,7 +6326,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
       // (Codex 검토 #8) m/s since the last pose, walking (a warp is not a run): by the sender's clock when both poses have
       // one (poses bunched on the way would look faster), else by arrival
-      activeAt: (() => { const was = plazaPresence.get(session.token); const idle = Number(body.idle); if (body.moving === true || !Number.isFinite(idle) || !was || Math.hypot(spot.x - was.x, spot.z - was.z) > 0.05) return receivedAt; return Math.max(receivedAt - Math.max(0, Math.min(idle, 86400000)), Math.min(was.activeAt ?? receivedAt, receivedAt)); })(), /* (380 자리 비움: my last input by the page's count -- a walk, a move or an old page without the count is input now) */
+      activeAt: (() => { const was = plazaPresence.get(session.token); if (!was || Math.hypot(spot.x - was.x, spot.z - was.z) > 0.05) return receivedAt; return Math.min(was.activeAt ?? receivedAt, receivedAt); })(), /* (380 자리 비움; 383 Codex #8: by what the server sees -- a move (the place changed) or an action (requireSession) -- never the page's own count or its 「moving」) */
       held: IslandItems.QUICK_KINDS.includes(body.held) && !ride && !taxi && !platform ? body.held : null, /* (v1.10.236: in my hand, seen by the others) */ bike, speed: (() => { const was = plazaPresence.get(session.token); if (!was || body.moving !== true || (was.space || 'island') !== 'island') return 0; const ms = Number.isFinite(body.t) && Number.isFinite(was.sentT) ? body.t - was.sentT : receivedAt - was.at; return ms >= 50 && ms <= 2000 ? Math.hypot(spot.x - was.x, spot.z - was.z) / (ms / 1000) / GroundSpeed.factorAt(IslandTerrain, spot.x, spot.z, IslandPaths, groundCover) : 0; })(), // (5회차 6: as fast as the ground lets one -- a walk on a path is no run)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
