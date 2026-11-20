@@ -1133,7 +1133,18 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .questMore{border:1px solid var(--isle-line);background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 2px 6px rgba(74,56,40,.2)}
 :root[data-theme="light"] .festivalTab,:root[data-theme="light"] .snowPart{background:#fff6e3;color:#4a3420;border:1px solid #c9a46f}
 :root[data-theme="light"] .festivalTab[aria-pressed="true"],:root[data-theme="light"] .snowPart[aria-pressed="true"]{background:var(--isle-tag);color:#fff;border-color:var(--isle-tag)}
-:root[data-theme="light"] .festivalTasks li,:root[data-theme="light"] .festivalShop li{background:rgba(179,156,124,.12)}
+:root[data-theme="light"] .festivalTasks li,:root[data-theme="light"] .festivalShop li{background:#fffdf8;border:1px solid #e3c99c;color:#3a2716}
+:root[data-theme="light"] .festivalCard,:root[data-theme="light"] .plazaDialog.boardMode .card.festivalCard{background:#fff7e8;color:#3a2716;border:1px solid #d8b98a}
+:root[data-theme="light"] .festivalCard .festivalHead h3{color:#3a2716}
+:root[data-theme="light"] .festivalCard .smallMuted,:root[data-theme="light"] .festivalCard .emptyState{color:#5b4127}
+:root[data-theme="light"] .festivalStamps{background:#f5dc9a;color:#4a3208}
+:root[data-theme="light"] .festivalBadge{background:#f3e3c3;color:#4a3208}
+:root[data-theme="light"] .festivalToday{background:#dfeed3;color:#24421a}
+:root[data-theme="light"] .festivalTaskHow{color:#5b4127}
+:root[data-theme="light"] .festivalTasks li.done{background:#eef6e6}
+:root[data-theme="light"] .festivalTasks li.done .festivalTaskName::after{color:#2f6b20}
+:root[data-theme="light"] .festivalPick,:root[data-theme="light"] .plazaDialog .festivalCard select.festivalPick{border:1px solid #c9a46f;background:#fffdf8;color:#3a2716}
+:root[data-theme="light"] .festivalCard button:disabled{color:#6f563c;background:#f1e6d2;border:1px solid #d9c3a0}
 :root[data-theme="light"] .gamehallToday{background:url("/assets/gamehall/today-frame-left.svg") left center/auto 100% no-repeat,url("/assets/gamehall/today-frame-right.svg") right center/auto 100% no-repeat,linear-gradient(135deg,var(--g1),var(--g2))}
 :root[data-theme="light"] .inspectList button.note-fix{border-left:4px solid #ef4444}
 :root[data-theme="light"] .inspectList button.note-check{border-left:4px solid #f59e0b}
