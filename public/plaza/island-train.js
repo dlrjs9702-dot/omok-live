@@ -237,10 +237,9 @@
   }
   // no tree under a rail low enough to touch it (a tree stands up to about 9 m)
   const liftSites = Object.keys(STATIONS).map(liftOf);
-  T.addNatureBlock((x,z,radius) => Object.entries(STATIONS).some(([id,st]) => {
-    const lift=liftOf(id);
-    return T.segDist(x,z,...st.entry,lift.x,lift.z)<1+radius || Math.hypot(x-lift.x,z-lift.z)<1.5+radius;
-  }));
+  /* (384 부팅 무게: the lifts made once above, not again for every tree tried -- 18 ground heights a station a try, a seventh of the start) */
+  const liftList = Object.keys(STATIONS).map((id, i) => [STATIONS[id], liftSites[i]]);
+  T.addNatureBlock((x,z,radius) => liftList.some(([st, lift]) => T.segDist(x,z,...st.entry,lift.x,lift.z)<1+radius || Math.hypot(x-lift.x,z-lift.z)<1.5+radius));
   T.addTreeBlock((x, z) => liftSites.some(p => Math.hypot(p.x-x,p.z-z)<2.5) || Object.values(LINES).some(({ route: r }) => { for (let i = 0; i < r.S.length; i += 2) { if (Math.abs(r.xs[i] - x) > 5 || Math.abs(r.zs[i] - z) > 5) continue; if (Math.hypot(r.xs[i] - x, r.zs[i] - z) < 5 && r.ys[i] - T.heightAt(x, z) < 11) return true; } return false; }));
   // (I8-1, 문제 기록 8회차 1 「승강장 아래 땅이 깜빡거려」: the walk in to the lift lay on the ground v1.10.160 levelled to its very
   // height -- the two drawn in turn. Its deck stands this much over the station's ground: more than the levelling's 5 cm)
