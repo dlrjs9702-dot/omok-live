@@ -10811,11 +10811,13 @@ async function main() {
   } catch (error) {
     console.error('포인트 계정 초기화 실패:', error);
   }
+  bootMark('accounts'); /* (384 부팅 무게: the notices' part apart -- 382's 15 s were there) */
   if (process.env.NODE_ENV !== 'test') {
     await announcementStore.seedReleases(releaseAnnouncements);
     const notices = await announcementStore.list();
     const nicknamePinned = notices.some(item => item.pinned && /닉네임.*변경.*안내/.test(item.title));
     console.log(`공지사항 동기화: ${notices.length}개 · 닉네임 변경안내 고정 ${nicknamePinned ? '확인' : '미확인'}`);
+    bootMark('notices');
   }
 
   const server = http.createServer((req, res) => {

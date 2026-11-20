@@ -78,7 +78,42 @@ test('PostgreSQL announcement storage migrates pin metadata and uses pinned orde
   assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS announcements_release_key_idx/);
   assert.match(sql, /ORDER BY pinned DESC, created_at DESC/);
   assert.match(sql, /ON CONFLICT DO NOTHING/);
-  assert.match(sql, /title LIKE '%닉네임%변경%안내%'/);
+});
+
+test('384 PostgreSQL release seeding reads once and writes only what differs', async () => {
+  const store = new PostgresAnnouncementStore('postgres://example.invalid/db');
+  const table = [
+    { id: 'n1', title: '닉네임 변경안내', body: '안내', pinned: false, release_key: null, created_at: new Date('2026-08-01T00:00:00Z') },
+    { id: 'old', title: '[업데이트] v9.9.7 예전 제목', body: '예전', pinned: false, release_key: null, created_at: new Date('2026-08-30T00:00:00Z') },
+  ];
+  const calls = [];
+  store.pool = {
+    async query(sql, params = []) {
+      sql = String(sql); calls.push(sql);
+      if (/^SELECT/.test(sql)) return { rowCount: table.length, rows: table.map((row) => ({ ...row })) };
+      if (/^INSERT/.test(sql.trim())) { table.push({ id: params[0], title: params[1], body: params[2], pinned: false, release_key: params[3], created_at: new Date(params[4]) }); return { rowCount: 1, rows: [] }; }
+      const row = table.find((r) => r.id === params[0]);
+      if (/SET release_key/.test(sql)) row.release_key = params[1];
+      else if (/SET title/.test(sql)) Object.assign(row, { title: params[1], body: params[2], created_at: new Date(params[3]) });
+      else if (/SET pinned=true/.test(sql)) row.pinned = true;
+      return { rowCount: 1, rows: [] };
+    },
+  };
+  const releases = [
+    { key: 'v9.9.7', title: '[업데이트] v9.9.7 새 제목', body: '새 내용', publishedAt: '2026-08-30T00:00:00Z' },
+    { key: 'v9.9.8', title: '[업데이트] v9.9.8 닉네임 변경 추가', body: '변경 내용', publishedAt: '2026-08-31T00:00:00Z' },
+    { key: 'v9.9.9', title: '[업데이트] v9.9.9 테스트', body: '변경 내용', publishedAt: '2026-09-01T00:00:00Z' },
+  ];
+  assert.equal(await store.seedReleases(releases), true);
+  assert.equal(calls.filter((sql) => /^SELECT/.test(sql)).length, 1, 'one read');
+  await store.seedReleases(releases); /* (the old title row got its key; now its title, body and date) */
+  calls.length = 0;
+  assert.equal(await store.seedReleases(releases), false, 'nothing left to write');
+  assert.deepEqual(calls.map((sql) => sql.slice(0, 6)), ['SELECT'], 'a start with nothing new is one query');
+  assert.equal(table.length, 4);
+  assert.equal(table.find((r) => r.id === 'old').title, '[업데이트] v9.9.7 새 제목');
+  assert.equal(table.find((r) => r.id === 'n1').pinned, true);
+  assert.equal(table.find((r) => r.release_key === 'v9.9.8').pinned, false);
 });
 
 test('announcement API permits members to read but only admins to create/update/delete', { timeout: 55000 }, async t => {
