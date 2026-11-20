@@ -573,8 +573,13 @@
   addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
   if (Q) addNatureBlock((x, z, r) => Q.inArea(x, z, r + 1)); // (1.10.323 채석장: the quarry's ground clear of trees, bushes and rocks)
   if (Q) { const out = Q.solidsOf().filter((s) => s.quarryProp && !Q.inArea(s.x, s.z, 1)); addNatureBlock((x, z, r) => out.some((s) => Math.hypot(x - s.x, z - s.z) < s.r + r + 1)); } // (1.10.342: and round its props outside it -- the bench faces along the cliff edge)
+  /* (385 부팅 무게 2, lib/boot-cache.js: the server's start hands in what this made before from the same code -- taken when the same
+     blocks are in, else made as ever) */
+  let naturePreset = null; const presetNature = (made, blocks) => { naturePreset = made && { made, blocks }; };
+  const natureBlockCount = () => natureBlocks.length;
   function nature() {
     if (natureCache) return natureCache;
+    if (naturePreset) { const p = naturePreset; naturePreset = null; if (p.blocks === natureBlocks.length) return (natureCache = p.made); }
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
     const R = D.R_OUT + 5;
   const built = (x, z) => onHouse(x, z) || ISLE_GARDENS.some((g) => Math.hypot(x - g.x, z - g.z) < 4) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < (b.kind === 'facade' ? 18 : b.kind === 'hall' ? 13 : 7))
@@ -886,7 +891,7 @@
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
     GROUND2: Object.freeze({ x0: 215, z0: 72.5, size: 305, seg: 122 }), isle2Cell: (x, z) => D.newIsleCoast(x, z) > -14, NEW_ISLE: ISLE2, ANCIENT /* (1.10.367 별지기 느티) */, isle2Zone, ISLE2_ZONES /* (1.10.369 구역) */, onIsle2, isle2Clear, isle2Open, isle2OpenWarm: (ms = 20) => openStep(ms) /* (Codex 361~370 #16) */, ISLE2_BRIDGE_HEAD: Object.freeze({ x: 233, z: 228 }) /* (1.10.369 막혔을 때: 별마루섬's own way out) */,
     ROAD, roadDist, roadFoot, /* (T1 고침: the taxi road's band -- the scene's grass and decor, the shore and cover maps keep off it) */ SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
-    seasonZoneAt, seasonAt, nature, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
+    seasonZoneAt, seasonAt, nature, presetNature, natureBlockCount, natureSolids, rockKind, rockBlocks, logRounds, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, RECORD_TOWER, AUCTION_BOARD, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard,

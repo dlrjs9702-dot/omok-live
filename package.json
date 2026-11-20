@@ -7,7 +7,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "node tools/warm-asset-manifest.js",
+    "postinstall": "node tools/warm-asset-manifest.js && node tools/warm-boot-cache.js",
     "dev": "node --watch server.js",
     "test": "node --test --require ./test-support/quiet-assert.js --test-timeout=120000 --test-force-exit",
     "test:e2e": "node scripts/run-playwright.js",

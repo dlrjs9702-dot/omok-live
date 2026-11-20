@@ -227,6 +227,11 @@ const betPick = (n, game, skill, vals, t = IslandBets.targetOf(game, skill)) => 
   return IslandCast.withTail([IslandBets.lineOf(n, 'pick', vals, BET_LINES), own].filter(Boolean).join(' '), n); };
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
 const IslandTigers = require('./lib/island-tigers'); // 1.10.376 N2a-2 별마루섬 호랑이
+/* (385 부팅 무게 2: the island's scenery and the islanders' walk grid as made before from this same code -- lib/boot-cache.js; read before
+   island-events, whose first look at the island makes them) */
+const BootCache = require('./lib/boot-cache');
+const bootCache = (process.env.BOOT_CACHE_ONLY && !process.env.BOOT_CACHE_READ) || process.env.BOOT_CACHE === 'off' ? null : BootCache.read(); /* (BOOT_CACHE_READ: test/boot-cache.test.js -- what a read start holds, written out) */
+if (bootCache) { IslandTerrain.presetNature?.(bootCache.nature, bootCache.natureBlocks); IslandNpcs.useGrid(bootCache.grid); }
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const nextWeekOf = (week) => new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10); // v1.10.89
@@ -2263,6 +2268,10 @@ const fixedPost = (n) => Object.entries(IslandRoster.FIXED).find(([, m]) => m ==
 const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n) ?? fixedPost(n);
 const talkable = (n) => Number.isInteger(n) && Boolean(IslandCast.RESIDENTS[n]) && (walksToday(n) || postToday(n) != null);
 const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform&&!p.taxi), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
+/* (385: both made by now -- kept for the next start when they were not read; BOOT_CACHE_ONLY (postinstall, tools/warm-boot-cache.js) stops here) */
+const bootCacheUsed = Boolean(bootCache) && IslandTerrain.nature() === bootCache.nature;
+if (!bootCacheUsed && !process.env.BOOT_CACHE_ONLY && process.env.BOOT_CACHE !== 'off' && process.env.NODE_ENV !== 'test') BootCache.write({ nature: IslandTerrain.nature(), natureBlocks: IslandTerrain.natureBlockCount?.() ?? 0, grid: IslandNpcs.packGrid() });
+if (process.env.BOOT_CACHE_ONLY) { const out = process.env.BOOT_CACHE_OUT || BootCache.FILE; BootCache.write({ nature: IslandTerrain.nature(), natureBlocks: IslandTerrain.natureBlockCount?.() ?? 0, grid: IslandNpcs.packGrid() }, out); console.log(`[boot-cache] written ${out} (${bootCacheUsed ? 'read' : 'made'})`); process.exit(0); }
 function broadcastIslandRemoved(ids) {
   if (!ids.length) return;
   for (const entry of [...lobbyStreams]) {
@@ -10728,7 +10737,7 @@ async function storageLog() {
 // next start on Render says where its time goes (the code's load -- the island's grids --, the stores, the rest)
 const bootMarks = []; const bootMark = (stage) => { bootMarks.push(`${stage} ${Math.round(process.uptime() * 1000)}`); };
 async function main() {
-  bootMark('modules');
+  bootMark(`modules(boot-cache ${bootCacheUsed ? 'read' : `made: ${BootCache.readWhy() === 'read' ? 'blocks' : BootCache.readWhy()}`})`); /* (385: none = the build's file not here -- made and written now) */
   // v1.10.256 주소 옮기기: the old service, MOVED_TO set, only points to the new address -- before any store opens the database
   if (process.env.MOVED_TO) return require('./lib/moved').startMoved({ to: process.env.MOVED_TO, port: PORT, host: HOST });
   await fsp.mkdir(DATA_DIR, { recursive: true });
@@ -10739,7 +10748,7 @@ async function main() {
     .replace('__HEROSURV_ASSETS__', escapeAttr(HEROSURV_ASSETS));
   messengerTemplate = (await fsp.readFile(path.join(PUBLIC_DIR, 'messenger.html'), 'utf8')).replace(/(src|href)="(\/[^"?#]+\.(?:js|css))"/g, (_, attr, url) => `${attr}="${hashedUrl(codeRevs, url)}"`);
   const packStats = {}; const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]), { cacheFile: process.env.NODE_ENV === 'test' ? null : path.join(__dirname, '.cache', 'asset-manifest.json'), stats: packStats }); /* (364: sizes·mtimes kept -- npm install warms it) */
-  bootMark(`assets(${packStats.hashed} hashed/${packStats.reused} kept)`);
+  bootMark(`assets(${packStats.hashed} hashed/${packStats.reused} kept, cache ${packStats.cache || '-'}${packStats.sameCommit ? ' same commit' : ''})`); /* (385: none = the build's file not here) */
   assetPackVersion = pack.version;
   assetManifestJson.on = JSON.stringify({ enabled: true, ...pack, assetsOff: islandAssetsOff }).replace(/</g, '\\u003c');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
