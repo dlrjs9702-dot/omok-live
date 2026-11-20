@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.385 부팅 무게 2(총괄: 입력 해시 키로 결과 미리 만들기, 바이트 같음)
+
+- 섬 나무·덤불·바위 배치(nature)와 주민 길 격자: 빌드(postinstall tools/warm-boot-cache.js)에서 서버를 BOOT_CACHE_ONLY로 띄워 .cache/boot-cache.json에 저장, 시작 때 public/plaza·lib·server.js 내용 해시가 같으면 읽기만(island-events 전에 넣어 두기, 이벤트 순서 그대로). 다르거나 깨졌으면 예전처럼 만들고 파일을 씀.
+- 바이트 같음: 읽어서 쥔 상태를 다시 쓴 파일 = 새로 만든 파일(test/boot-cache.test.js). 이 PC 모듈 4.9 → 0.86 s, 단위 전체 1149 → 816 s(시험 서버도 읽음).
+- 에셋 목록: 같은 커밋(RENDER_GIT_COMMIT)에서 만든 목록은 크기가 같으면 파일 시각과 상관없이 믿기(Render는 업로드로 시각이 바뀌어 매번 3943개 다시 해시, 약 8.7 s).
+- [boot] 줄: modules(boot-cache read | made: none/other/broken), assets(… cache kept/none/broken, same commit).
+
 ## v1.10.384 부팅 무게(총괄 384: 382 [boot] points → before-listen 15.3 s)
 
 - 원인: 「닉네임 중복」→「공지사항 동기화」 줄 사이 14.5 s(379 재시작 6.3 s). PostgreSQL seedReleases가 출시 공지 550개마다 SELECT(제목 LIKE 전체 훑기)+UPDATE — 시작마다 1,100번 왕복, 모든 줄을 매번 다시 씀.
@@ -31,9 +38,3 @@
 - 비탈(사용자 「허공에 떠 있는 티」): 네 발 땅 높이로 앞뒤 기울이기·옆 8°까지·가장 낮은 발 안 뜨게.
 - 자리 비움인 사람도 잡힘(사용자 결정 27 A): 그때는 화면에 남겨 두었다가 돌아와 처음 입력하면 「자리를 비운 사이 …잡혔어요」를 다시, 그 뒤 seen.
 - 측정(그려진 몸 자리): 어디든 닿음 6.72 % → 2.58 %, 나무·덤불 2.51 → 1.82 %, 바위 4.55 → 0.75 %, 잡은 횟수 17 → 15(36번). 엉덩이 나머지는 등뼈 휘기로 나중.
-
-## v1.10.382 Codex 371~380 검토 고침(18건 중 16건, #14·#18은 1.10.383 호랑이 묶음) -- notes docs/codex-review-371-380.md 「구현 확인」
-
-- P1: #1 채석 종료 즉시 판정 확정(finishing, 겹친 종료 COLLECT_BUSY, 그 뒤 타격 거절), #2 호랑이 포획 계정마다 8초에 한 번, #3 수조 꺼내기 fid 청구·넣기 저장 실패 때 되돌림, #4 날 지난 재료 인계는 다음 날 첫 대화에서 지급(부탁 ID로 한 번).
-- P2: #5 이송 자리 notePlazaSpot·sentT, #6 포획 저장 id·최대 5번·저장 뒤 알림(실패면 「가방은 그대로예요」), #7 서버 늪 자전거 4.3×1.3 m/s, #8 자리 비움은 서버가 본 위치 변화·POST 행동만(화면 idle 지움), #9 쫓기는 중 막혔을 때 NOT_NOW, #10 채굴 자리 조회 뒤 재검사, #11 ‱ 보석 새 키 gem10k(옛 ‰ 무시)·관리 화면 적용값, #12 3배 행사 mushroom*, #13 집 곤충 상자 insect_<종> 전부, #15 호랑이는 'tigers' 프레임으로 별마루섬 근처에만(광장 스냅숏에서 뺌), #16 판매 정산에 extraBy·행사 누계 판매별 한 번. P3: #17 채석 뒤 바위 방송 없음.
-- 시험: island-quarry(동시 종료·같은 자리), island-tigers-server(새: 두 마리·늦은 이동·늪·막혔을 때), home-tank-water(저장 실패), resident-affinity(자정 재료), economy(옛 ‰), island-home(26종), island-admin-events(같은 판매 다시), e2e 잡화점 자리 비움(돌아오기 한 걸음).
