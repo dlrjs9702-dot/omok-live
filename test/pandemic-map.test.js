@@ -1,5 +1,5 @@
 'use strict';
-const test = require('node:test');
+const test = require('node:test').skip; /* (2026-11-20 사용자 결정 9 B: 팬데믹 전용 시험은 팬데믹을 다시 켤 때까지 건너뜀(CI 흔들림 「팬데믹 4인: pending 복구…」, 원인 조사는 그때). 되살릴 때 이 표시를 지워요.) */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

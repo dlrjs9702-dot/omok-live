@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+test.skip(true, '2026-11-20 사용자 결정 9 B: 팬데믹 전용 시험은 팬데믹을 다시 켤 때까지 건너뜀(CI 흔들림 「팬데믹 4인: pending 복구…」, 원인 조사는 그때). 되살릴 때 이 표시를 지워요.');
 const { shopper, post, expectNoScriptError } = require('./skin-support');
 
 // v1.10.199 팬데믹 공통 틀 (gamecenter-notes docs/gamehall-audit-20261025.md, 총괄 검토): while a game is played the seat cards are
