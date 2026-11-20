@@ -2998,7 +2998,7 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .plazaDialog.mapMode .islandMapCard{position:relative;background:#f4e9cf;border:0;padding:6px;box-shadow:inset 0 0 22px rgba(120,90,40,.35)}
 .plazaDialog.mapMode .islandMapCard::after{content:"";position:absolute;inset:6px;pointer-events:none;background:linear-gradient(90deg,transparent calc(33.3% - 1px),rgba(90,60,20,.18) 33.3%,rgba(255,255,255,.25) calc(33.3% + 1px),transparent calc(33.3% + 3px),transparent calc(66.6% - 1px),rgba(90,60,20,.18) 66.6%,rgba(255,255,255,.25) calc(66.6% + 1px),transparent calc(66.6% + 3px)),linear-gradient(0deg,transparent calc(50% - 1px),rgba(90,60,20,.16) 50%,rgba(255,255,255,.22) calc(50% + 1px),transparent calc(50% + 3px))}.plazaDialog.stampMode .recordsDialogHead h2,.plazaDialog.mailMode .recordsDialogHead h2,.plazaDialog.mapMode .recordsDialogHead h2{color:var(--isle-ink);text-shadow:none;background:none}
 .plazaDialog.stampMode .recordsDialogHead .ghost,.plazaDialog.mailMode .recordsDialogHead .ghost,.plazaDialog.mapMode .recordsDialogHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
-.plazaDialog.stampMode .stampBtn,.plazaDialog.mailMode button.primary{background:#c98a1e;color:#fff;border-color:transparent}
+.plazaDialog.stampMode .stampBtn,.plazaDialog.mailMode button.primary{background:var(--isle-btn);color:#fff;border-color:transparent} /* (1.10.388 U1 B7: the island's one main button colour -- #c98a1e under white was 2.9:1) */
 .plazaDialog.stampMode .stampBtn:disabled{background:#e7d6b4;color:var(--isle-soft)}
 .plazaDialog.boardMode .noticeEmpty,.plazaDialog.boardMode .emptyState{color:#fff6e3;font-weight:700;text-shadow:0 1px 2px rgba(40,24,10,.6)}
 .plazaDialog.boardMode .noticeCount{background:#c0392b;color:#fff}.plazaDialog.boardMode .announcementDetails summary{color:#9a5b2c}
@@ -3130,7 +3130,7 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.ghost,
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.primary,button[type="submit"]:not(.ghost):not(.secondary)){background:var(--isle-btn);color:#fff;border:1px solid transparent}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinTab[aria-selected="true"],.furniturePiece.selected,button.selected){background:#f0dcb6;border-color:var(--isle-tag);outline:none}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
-body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input,textarea)::placeholder{color:#a08b72}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input,textarea)::placeholder{color:var(--isle-soft)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input[type="checkbox"],input[type="radio"]){accent-color:var(--isle-tag)}
 /* what sat on dark boxes: paper cards */
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinCard,.myPetRow,.pointHistoryRow,.issueItem,.dressBar,.bankSums>div,.islandTaxRow,.taxBill,.missionItem,.rankingList>li,.climbRanking>li,.donationRanking>*,.islandPlaceRow){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
@@ -3682,7 +3682,7 @@ body.roomPlaying .boardNote::before{content:"✦";font-size:18px;line-height:1;c
 .recordTowerGames{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
 .recordTowerRow{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center}
 .recordTowerChip{flex:0 0 auto;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid #c4a77d;background:#fbf3e2;color:#5a4632;font:inherit;font-size:.85rem;font-weight:800;cursor:pointer;scroll-snap-align:start}
-.recordTowerChip.selected{background:#9c5f14;border-color:#9c5f14;color:#fff}
+.recordTowerChip.selected{background:#f0dcb6;border-color:var(--isle-tag);box-shadow:inset 0 0 0 1px var(--isle-tag);color:var(--isle-ink)} /* (1.10.388 U1 B4, 사용자 결정 43 「A」: the chosen chip honey, a dark line, ink -- the sheets' rule painted its back honey under the old white, 1.3:1) */
 .recordTowerList{list-style:none;margin:8px 0;padding:0;display:grid;gap:4px;max-height:min(46vh,520px);overflow-y:auto}
 .recordTowerRowItem{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;align-items:center;gap:8px;min-height:40px;padding:4px 12px;border-radius:12px;background:#fffaf0;border:1px solid #e2d4bd;color:#3d2f20;font-weight:700}
 .recordTowerRowItem b{font-variant-numeric:tabular-nums;text-align:center}.recordTowerRowItem span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recordTowerRowItem strong{font-variant-numeric:tabular-nums}
@@ -3942,3 +3942,61 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .tigerTransferGo{font-weight:900;font-size:clamp(1.8rem,7vw,3.4rem);letter-spacing:.12em;color:#ff3b30;animation:tigerBlink .8s steps(2,start) infinite;text-shadow:0 0 18px #ff3b3099}
 @keyframes tigerBlink{to{visibility:hidden}}
 @media(prefers-reduced-motion:reduce){.tigerTransferGo{animation:none}}
+/* 1.10.388 섬 화면 정리 U1·U2 (사용자 결정 43 「A」, gamecenter-notes docs/ui-review-20261121.md §2·§4): what still came out of the
+   dark palette inside the island's paper windows, and the words faded by opacity -- the softest ink is --isle-soft (4.9:1 on paper),
+   never paler, never see-through. The names below are the review's (A·B·P). The token step itself is U3. */
+:root{--isle-select:#f0dcb6;--isle-value:#8a4b00;--isle-danger:#9b2c1f}
+/* A1 옷가게 거르기 칸: paper, its tags paper pills; B14 its count; B3 the points; A9 (사용자 결정 43 ⑥ A) one brown 「구매」, the rest paper */
+body.plazaMode .dressing>.skinShopBody .skinFilterBar{background:var(--isle-paper)}
+body.plazaMode .dressTags i{background:#f2e3c4;color:var(--isle-ink)}
+body.plazaMode .skinCount{opacity:1;color:var(--isle-soft)}
+body.plazaMode .dressPoints{color:var(--isle-value)}
+body.plazaMode .dressBar :is(.dressWear,.dressGift,.dressClose){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+body.plazaMode .dressBar .dressBuy{background:var(--isle-btn);color:#fff}
+body.plazaMode .dressBar button:disabled{opacity:1;background:#fffaf0;color:var(--isle-soft);border:1px dashed var(--isle-line)}
+/* A2 캐릭터 선택: a paper sheet (index.html isle-sheet), the two faces paper cards, the chosen one brown-lined, 「확정」 the main button inside the sheet */
+body.plazaMode .genderChoice{background:#fffaf0;border-color:var(--isle-line);color:var(--isle-ink)}
+body.plazaMode .genderChoice[aria-checked="true"]{background:var(--isle-select);border-color:var(--isle-tag);box-shadow:0 0 0 3px rgba(138,106,74,.25)}
+body.plazaMode .isle-sheet.genderDialog #genderConfirmBtn{display:block;width:calc(100% - 32px);margin:6px 16px 0}
+body.plazaMode .isle-sheet.genderDialog #genderConfirmBtn:disabled{opacity:1;background:#fffaf0;color:var(--isle-soft);border:1px dashed var(--isle-line)}
+/* A4 출석 「섬 안내」, A5 조작법 띠, A11 「화면이 느려요」: paper buttons (the note's 「최대한 가볍게」 the main one) */
+.plazaDialog.stampMode button.ghost,body.plazaMode :is(.controlsHint,.slowNote) button.ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
+.plazaDialog.stampMode button.ghost:hover,body.plazaMode :is(.controlsHint,.slowNote) button.ghost:hover{background:var(--isle-hover)}
+body.plazaMode .slowNote button.primary{background:var(--isle-btn);color:#fff;border:1px solid transparent}
+/* P1 폰: the band's buttons never fold to one letter a line; on a phone its words over its buttons */
+.controlsHint button{flex:0 0 auto;white-space:nowrap}
+body.touchIsland .controlsHint{flex-wrap:wrap;justify-content:flex-end;right:172px}
+body.touchIsland .controlsHint span{flex:1 1 100%}
+/* A6 환경설정 라디오, A7 「접속 종료」 (the island's danger: paper, red words and line), B13 지금 화면 */
+body.plazaMode .gameMenuDialog{color-scheme:light}
+body.plazaMode .gameMenuDialog input:is([type="radio"],[type="checkbox"]){background:transparent;border:0;accent-color:var(--isle-btn)}
+body.plazaMode .gameMenuDialog button.danger{background:#fffaf0;color:var(--isle-danger);border:1px solid var(--isle-danger)}
+body.plazaMode .gameMenuDialog button.danger:hover{background:#fbe9e4}
+body.plazaMode .gameMenuScreenNow{opacity:1;color:var(--isle-soft)}
+/* B1 기부 머리의 보유 포인트 (on the wood: cream), B2 its empty line (on a paper card: soft ink) */
+#donationDialog .skinShopBalance{color:#fff1c9}
+#donationDialog #donationRanking>.emptyState{color:var(--isle-soft)}
+/* B19 게시판 공지를 펼친 글 */
+.plazaDialog.boardMode .announcementDetails p{color:var(--isle-ink)}
+/* U2 흐린 글: B5 채팅 빈 글, B8 노점 못 파는 줄 (dashed, its reason soft ink), B9 앞으로 올 출석 날, B10 가방 빈 탭, B11 잠긴 장,
+   B12 증권 표 머리, B15 가방의 빈 글, B20 박물관 빈 자리, B21 변신 의상실 값·등급 */
+body.plazaMode .chatEmpty{color:var(--isle-soft)}
+.placeItem.no{opacity:1;border-style:dashed;color:var(--isle-soft)}
+.placeItem small{color:var(--isle-soft)}
+.stampDay.later{opacity:1;background:transparent}
+.bagTab.none{opacity:1;color:var(--isle-soft)}
+.bagTab.none i{display:none}
+.bagTab.on.none{color:#3b2a14}
+.storyChapter.locked h4{opacity:1;color:var(--isle-soft)}
+.storyPieceCell.locked{opacity:1;color:var(--isle-soft)}
+.stocksCols{opacity:1;color:var(--isle-soft)}
+.stocksCols .stocksQty{opacity:1;font-size:inherit}
+.stocksRow:disabled{opacity:1;border-style:dashed}
+.stocksRow:disabled :is(.stocksName,.stocksQty){opacity:1;color:var(--isle-soft)}
+/* (the same check after these: the 우체통's words -- its placeholder, a letter's date over the paper's blue line, 「새 편지」 in yellow) */
+body.plazaMode .plazaDialog:not(.adminMode) :is(input,textarea)::placeholder{color:var(--isle-soft)}
+.plazaDialog.mailMode .mailHead .smallMuted{color:var(--isle-ink)}
+.mailLetter.unread .mailHead strong::after{color:var(--isle-value)}
+#islandBagDialog .lookMeta{color:var(--isle-soft)}
+body.plazaMode .museumItem.empty{opacity:1;color:var(--isle-soft);border-style:dashed}
+body.plazaMode .tfRow small{opacity:1;color:var(--isle-soft)}
