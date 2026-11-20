@@ -4,7 +4,7 @@
 // Everything is generated once from fixed numbers (no assets, no randomness between visits) so every player walks the
 // same island; the map board draws the same shapes. Later land reclamation changes coastR() and the map follows.
 import * as THREE from '/vendor/three/three.module.js';
-import { seeThrough, SEE_IDS } from './see-through.js'; // (1.10.369 §6: the stand-in trees and bushes too)
+import { seeThrough, SEE_IDS, SEE_CLIFF_IDS } from './see-through.js'; // (1.10.369 §6: the stand-in trees and bushes too)
 
 // v1.10.7: the island's shape lives in island-terrain.js (loaded before the app; the server uses the same file).
 const T = globalThis.IslandTerrain;
@@ -772,6 +772,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     if (!list.length) return;
     /* (검토 369 #5: the hole round me only on the trees and bushes -- the loader's own list; rocks, flowers, grass and the far clumps plain, no `discard`) */
     if (material === natureMat && target && [].concat(target).some((id) => SEE_IDS.test(id))) material = natureSee;
+    else if (material === natureMat && target && [].concat(target).some((id) => SEE_CLIFF_IDS.test(id))) material = natureCliffSee; /* (380: the stand-in cliffs by SEE.cliff) */
     const g = target && assets?.wants(target) ? { target, cells: [] } : null;
     if ((material === natureMat || material === natureSee) && !g) {
       for (const item of list) {
@@ -808,6 +809,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   const hash = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
   const natureMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
   const natureSee = keep(seeThrough(natureMat)); /* (1.10.369 §6: the hole round me -- the trees' and bushes' copy, instancedOne picks it by target) */
+  const natureCliffSee = keep(seeThrough(natureMat, true)); /* (380: the cliffs' -- by SEE.cliff) */
   // (문제 기록 3회차 8: the scattered pieces on the ground as drawn -- the 2 m mesh, not the formula, which on the ridge's slopes
   // stood metres off it -- and the small ones only where they sit: T.settledSpot)
   const onMesh = (x, z) => T.meshGroundHeight(x, z); const settled = (p) => T.settledSpot(p.x, p.z);
@@ -913,6 +915,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // 묶음 5: reeds on the river's and the lake's banks (decoration -- nothing to walk round), cliff pieces on the cliff
   // edges facing the sea (walked round: there is no going over the edge anyway)
   const Dm = T.dalmaru;
+  const seeCliffs = []; /* (380 「건물, 절벽 등에만」: the coast's cliff models, seen through when one hides me) */
   if (Dm?.riverDist) {
     const reeds = []; const cliffs = [];
     for (let x = -160; x < 160; x += 2) for (let z = -160; z < 200; z += 2) {
@@ -926,6 +929,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     for (let k = 0; k < 4; k += 1) instanced(reedGeo, natureMat, reeds.filter((r) => r.k === k), (r) => setM(r.x, onMesh(r.x, r.z) - 0.02, r.z, 1, 1, hash(r.x, r.z, 48) * TAU), { shadow: false, cell: 60, target: [`angular.grass_${'abcd'[k]}`] });
     for (let k = 0; k < 2; k += 1) instanced(mergeColored([facet(BOX, 0x8f8a7c, 0, 0.8, 0, 2.4, 1.6)]), natureMat, cliffs.filter((c) => c.k === k), (c) => setM(c.x, ground(c.x, c.z) - 0.2, c.z, 1, 1, c.yaw), { cell: 60, target: [`angular.cliff_${'ab'[k]}`] });
     for (const c of cliffs) solids.push({ nature: true, x: c.x, z: c.z, r: 1.2 });
+    for (const c of cliffs) seeCliffs.push({ x: c.x, z: c.z, y: ground(c.x, c.z) - 0.2 }); /* (380) */
   }
   // (1.10.337 문제 기록 11-16 A2·A3: no cover on 대청마당's paving -- its rectangle, the fountain's disc and its walks --, in the 관공서
   // yard, or in the quarry's dug ground -- the wild flowers below, the season's drifts and the ground cover alike)
@@ -1459,5 +1463,5 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   for (const m of moving) m.traverse((o) => { o.matrixAutoUpdate = true; });
   const frozenMoved = () => { const p = new THREE.Vector3(); const q = new THREE.Quaternion(); const s = new THREE.Vector3(); const m = new THREE.Matrix4(); let bad = 0; for (const o of frozen) { if (o.matrixAutoUpdate) continue; m.compose(o.position, o.quaternion, o.scale); if (!m.equals(o.matrix)) { m.decompose(p, q, s); if (p.distanceTo(o.position) > 1e-4 || s.distanceTo(o.scale) > 1e-4 || Math.abs(q.dot(o.quaternion)) < 0.99999) bad += 1; } } return { frozen: frozen.filter((o) => !o.matrixAutoUpdate).length, moved: bad }; };
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { frozenMoved /* (1.10.352 무게 ①: the debug's check) */, texturesPending: () => Math.max(0, texCount.started - texCount.ended) /* (368) */, setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, isle2View, isle2FogFar: () => isle2FogFar, isle2Wood: () => isle2WoodNow, isle2Info: () => ({ state: isle2State, cells: isle2Cells.size, shown: [...isle2Cells.values()].filter((c) => c.group.visible).length, root: isle2Root.visible, far: Boolean(isle2Far?.visible) }), setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { frozenMoved /* (1.10.352 무게 ①: the debug's check) */, texturesPending: () => Math.max(0, texCount.started - texCount.ended) /* (368) */, setGroundPaint: (on) => { paintOn.value = on ? 1 : 0; } /* (1.10.323 땅 질감) */, seeCliffs /* (380: the coast's cliffs -- where they stand, for the line from the camera to me) */, groundMaps: () => maps /* (v1.10.284 G1: where grass grows -- the pilot reads these pictures once) */, setRain: (v) => { rainOn.value = Math.max(0, Math.min(1, Number(v) || 0)); }, /* (땅·길 ④) */ speedCover, waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null, shore: shoreTime.value, lines: seaLines.value, ripple: seaRipple.value }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { painted: PAINTED, stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, isle2View, isle2FogFar: () => isle2FogFar, isle2Wood: () => isle2WoodNow, isle2Info: () => ({ state: isle2State, cells: isle2Cells.size, shown: [...isle2Cells.values()].filter((c) => c.group.visible).length, root: isle2Root.visible, far: Boolean(isle2Far?.visible) }), setSeaPhase, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

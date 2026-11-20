@@ -10,7 +10,7 @@ import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '/vendor/three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
-import { seeThrough, SEE_IDS } from './see-through.js'; // (1.10.369 §6 가려도 내 캐릭터 보이기)
+import { seeThrough, SEE_IDS, SEE_CLIFF_IDS } from './see-through.js'; // (1.10.369 §6 가려도 내 캐릭터 보이기)
 import { preparePlatformSurfaces, prepareTownhallSurfaces } from './platform-surfaces.js';
 
 const P = globalThis.AssetPipeline;
@@ -458,9 +458,9 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
           if (hit.entry.nightGlow) for (const g of [gltf, lowGltf]) if (g) nightGlowFiles.add(g); /* (316 ④: a batched lamp's glow lit at night, as an attached one's) */
           /* (1.10.369 §6: a tree's or bush's batch -- the hole round me; 검토 369: its near (High) copies only -- a `discard` costs a tile GPU its
              early depth test, and the Low and far ones are never between the camera and me) */
-          const see = [].concat(rec.ids).some((id) => SEE_IDS.test(id));
+          const see = [].concat(rec.ids).some((id) => SEE_IDS.test(id)) ? 'tree' : [].concat(rec.ids).some((id) => SEE_CLIFF_IDS.test(id)) ? 'cliff' : false; /* (380: the cliffs' and rock walls' by SEE.cliff) */
           const meshesOf = (model, shadow, seeHere = false) => partsOf(model, hit.entry.paint).map(({ geometry, material, matrix }) => {
-            const im = new THREE.InstancedMesh(geometry, seeHere ? seeThrough(instTwinOf(swapOf(material, hit.entry))) : instTwinOf(swapOf(material, hit.entry)), count); /* (1.10.353 ⓐ: the batches' own twin) */ /* (377: a swapped one, the scene's) */
+            const im = new THREE.InstancedMesh(geometry, seeHere ? seeThrough(instTwinOf(swapOf(material, hit.entry)), seeHere === 'cliff') : instTwinOf(swapOf(material, hit.entry)), count); /* (1.10.353 ⓐ: the batches' own twin) */ /* (377: a swapped one, the scene's) */
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
             im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in
