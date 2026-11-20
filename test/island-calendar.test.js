@@ -5,6 +5,30 @@ const assert = require('node:assert/strict');
 const C = require('../public/plaza/island-calendar');
 const at = (s) => Date.parse(`${s}+09:00`);
 
+// 381 사용자 결정 14 「A, 매일 하는 대회 섬대회로」: the weekend contests off -- their line hidden and closed; 「섬 대회 참가」 in its place, once a day
+test('행사 할 일: 주말 대회가 꺼져 있으면 「매주 대회 참가」는 안 보이고, 「섬 대회 참가」 도장 1개 하루 1번', () => {
+  const F = require('../lib/island-festival'); assert.equal(C.CONTEST.on, false);
+  for (const s of ['2026-11-21T15:00:00', '2026-12-05T15:00:00']) {
+    const fest = C.festivalAt(at(s)); const ids = F.view(fest, null, at(s)).tasks.map((t) => t.id);
+    assert.ok(!ids.includes('contest'), ids.join(',')); assert.ok(ids.includes('islandContest'), ids.join(',')); assert.equal(C.taskOpen(fest, 'contest', at(s)), false);
+    const t = F.view(fest, null, at(s)).tasks.find((x) => x.id === 'islandContest'); assert.deepEqual([t.name, t.stamps, t.perDay], ['섬 대회 참가', 1, 1]);
+    const one = F.award(fest, null, 'islandContest', at(s)); assert.equal(one.added, 1); assert.equal(F.award(fest, one.doc, 'islandContest', at(s)).error, 'TASK_DONE');
+    assert.equal(F.award(fest, one.doc, 'islandContest', at(s) + 86400000).added, 1); /* (the next day again) */
+  }
+});
+
+// 381 사용자 결정 15 A: the cooking -- a theme a day (Seoul's date, the list in turn), +30 when it fits, stamps 1 / 2 / 3 at 90 and 140
+test('요리 대회: 매일 주제(날짜로 차례), 맞으면 +30점·「오늘 주제에 딱 맞아요!」, 도장 90점 미만 1·90~139 2·140 이상 3', () => {
+  const F = require('../lib/island-festival');
+  const days = Array.from({ length: F.COOK_THEMES.length }, (_, k) => C.addDays('2026-11-20', k)); assert.equal(new Set(days.map((d) => F.cookTheme(d).id)).size, F.COOK_THEMES.length);
+  assert.deepEqual([F.cookStamps(89), F.cookStamps(90), F.cookStamps(139), F.cookStamps(140)], [1, 2, 2, 3]);
+  const veg = ['harvest', 'harvest', 'harvest']; const vegDay = days.find((d) => F.cookTheme(d).id === 'veg2'); const other = days.find((d) => F.cookTheme(d).id === 'herb');
+  const a = F.judgeCook(veg, vegDay); const b = F.judgeCook(veg, other); assert.equal(a.themed, true); assert.equal(b.themed, false); assert.equal(a.score - b.score, F.THEME_BONUS);
+  assert.ok(a.say.startsWith('오늘 주제에 딱 맞아요!')); assert.ok(!b.say.includes('주제')); assert.equal(a.stamps, F.cookStamps(a.score));
+  const fishDay = days.find((d) => F.cookTheme(d).id === 'fish'); assert.equal(F.judgeCook(['fish_goby', 'berry', 'mushroom'], fishDay).themed, true); assert.equal(F.judgeCook(['berry', 'berry', 'berry'], fishDay).themed, false);
+  const view = F.view(C.festivalAt(Date.parse(`${vegDay}T12:00:00+09:00`)), null, Date.parse(`${vegDay}T12:00:00+09:00`)); assert.equal(view.cookTheme.name, '밭 채소 두 가지 이상');
+});
+
 test('행사 달력: 수확제는 서울 날짜 11/20 00:00 ~ 11/26 23:59, 마지막 날, 다음 행사, 관리자 끄기·옮기기', () => {
   assert.equal(C.festivalAt(at('2026-11-19T23:59:59')), null);
   assert.equal(C.festivalAt(at('2026-11-20T00:00:00')).id, 'harvest-2026');

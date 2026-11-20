@@ -45,7 +45,8 @@
         harvest: { name: '밭 수확', stamps: 1, perDay: 3 },
         cook: { name: '요리 대회', stamps: 2, perDay: 1 },
         feast: { name: '주민 잔치', stamps: 3, perDay: 1, lastDayFrom: 18, lastDayTo: 22 }, // (the last day's evening, by the feast table)
-        contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 }, // (a contest day in the festival: a round started)
+        contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 }, // (a contest day in the festival: a round started -- 381: shown only while CONTEST.on)
+        islandContest: { name: '섬 대회 참가', stamps: 1, perDay: 1 }, // (381 사용자 결정 14 「A, 매일 하는 대회 섬대회로」: a record in the day's 섬 대회)
       }),
       shop: Object.freeze([['harvest_basket', 3], ['straw_sheaf', 3], ['corn_string', 4], ['persimmon_string', 4], ['feast_table', 8], ['title_harvest', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
     }),
@@ -62,6 +63,7 @@
         market: { name: '마켓 들르기', stamps: 1, perDay: 1 }, // (1.10.325 P1: a snack bought at the 크리스마스 마켓)
         snowfight: { name: '눈싸움 한 판', stamps: 1, perDay: 1 }, // (1.10.334 P2 사용자 97A: five snowballs thrown at the snow forts -- xmas-play.js)
         contest: { name: '매주 대회 참가', stamps: 1, perDay: 1 },
+        islandContest: { name: '섬 대회 참가', stamps: 1, perDay: 1 }, // (381)
       }),
       shop: Object.freeze([['xmas_tree_small', 16], ['xmas_fireplace', 16], ['xmas_snow_globe', 8], ['xmas_stocking', 6], ['xmas_gingerbread_house', 8], ['title_christmas', 20],
         ['xmas_check_sofa', 16], ['xmas_gift_pile', 8], ['xmas_rocking_reindeer', 14], ['xmas_snowman_lamp', 8], ['xmas_gingerbread_shelf', 12], ['xmas_rug_snowflake', 10]].map(([id, stamps]) => Object.freeze({ id, stamps, ...GOODS[id] }))),
@@ -143,6 +145,7 @@ market: Object.freeze([['cocoa', '핫초코', 27], ['sweetpotato', '군고구마
   // a festival task allowed now (the feast only on the last day's evening)
   function taskOpen(fest, task, ms) {
     const t = fest?.tasks?.[task]; if (!t) return false;
+    if (task === 'contest' && !CONTEST.on) return false; /* (381: the weekend contests off -- their line can not be done) */
     if (t.midnight) { const z = kstAt(fest.end); return ms >= z && ms < z + 10 * 60 * 1000; } // (X2: the new year's first ten minutes)
     if (t.lastDayFrom === undefined) return true;
     const h = hourOf(ms); return dayOf(ms) === fest.end && h >= t.lastDayFrom && h < t.lastDayTo;

@@ -3420,16 +3420,18 @@
         body.append(el('p', 'smallMuted', `「${f.say}」 도장은 이 행사 가판대에서만 쓰고, 행사가 끝나면 사라져요${f.daysLeft <= 1 ? ' — 곧 끝나요!' : ''}.`));
         const list = el('ul', 'festivalTasks');
         /* (378 사용자 「잘 안읽혀」: each row its parts -- the task's name, its stamps, today's count, then where/how in a line of its own) */
-        for (const t of f.tasks) { const li = el('li', t.today >= t.perDay ? 'done' : ''); const how = t.id === 'feast' ? '마지막 날 저녁 6~10시, 잔칫상 둘레' : t.id === 'harvest' ? '밭에서 SPACE' : t.id === 'gift' ? '행사 주민 곁 선물 자루에서 받아, 적힌 이웃에게' : t.id === 'snowman' ? '대청마당 남서쪽 눈밭에서 굴리고 쌓고 꾸미기' : t.id === 'gather' ? '마지막 날 저녁 6~10시, 광장 트리 곁' : t.id === 'contest' ? '토·일 대회 날, 여기서 대회 시작' : '요리 대회 칸에서';
-          li.append(el('strong', 'festivalTaskName', t.name), el('span', 'festivalBadge', `도장 ${t.stamps}개`), el('span', 'festivalBadge festivalToday', `오늘 ${t.today}/${t.perDay}`), el('small', 'festivalTaskHow', how)); list.append(li); }
+        for (const t of f.tasks) { const li = el('li', t.today >= t.perDay ? 'done' : ''); const how = t.id === 'feast' ? '마지막 날 저녁 6~10시, 잔칫상 둘레' : t.id === 'harvest' ? '밭에서 SPACE' : t.id === 'gift' ? '행사 주민 곁 선물 자루에서 받아, 적힌 이웃에게' : t.id === 'snowman' ? '대청마당 남서쪽 눈밭에서 굴리고 쌓고 꾸미기' : t.id === 'gather' ? '마지막 날 저녁 6~10시, 광장 트리 곁' : t.id === 'contest' ? '토·일 대회 날, 여기서 대회 시작' : t.id === 'islandContest' ? `매일 ${festivalView.contestTime || '14:00'} 섬 대회, 행사 가판대 옆 천막에서 참가해 기록을 남기면` /* (381) */ : t.id === 'market' ? '대회 천막 동쪽 크리스마스 마켓에서 간식 하나 사기' : t.id === 'snowfight' ? '대청마당 남쪽 눈 요새에서 눈덩이 다섯 번 던지기' /* (381 총괄: these two said 「요리 대회 칸에서」) */ : t.id === 'cook' ? '요리 대회 칸에서' : '';
+          li.append(el('strong', 'festivalTaskName', t.name), el('span', 'festivalBadge', t.id === 'cook' ? '도장 1~3개' : `도장 ${t.stamps}개`) /* (381 결정 15: the cooking's by its score) */, el('span', 'festivalBadge festivalToday', `오늘 ${t.today}/${t.perDay}`), el('small', 'festivalTaskHow', how)); list.append(li); }
         body.append(list);
       } else if (which === 'cook') {
         const bag = (await api('/api/island/bag').catch(() => ({ items: [] }))).items || []; if (mine !== drawn) return;
         const ok = bag.filter((e) => ['harvest', 'berry', 'mushroom', 'herb'].includes(e.itemId) || /^fish_/.test(e.itemId));
-        body.append(el('p', 'smallMuted', '가방의 먹을 것 세 가지로 요리를 내면 심사해요(하루 한 번, 도장 2개). 재료는 써요.'));
+        /* (381 사용자 결정 15 A: today's theme by the host, +30 when the pot fits it; stamps by the score) */
+        if (f.cookTheme) body.append(el('p', 'festivalTheme', `오늘의 주제 · ${f.cookTheme.name} (맞으면 +30점)`));
+        body.append(el('p', 'smallMuted', '가방의 먹을 것 세 가지로 요리를 내면 심사해요(하루 한 번). 90점 미만 도장 1개, 90~139점 2개, 140점 이상 3개. 재료는 써요.'));
         const picks = [0, 1, 2].map(() => { const s = el('select', 'festivalPick'); s.append(new Option('재료 고르기', '')); for (const e of ok) s.append(new Option(`${e.name} (${e.qty})`, e.itemId)); return s; });
         const go = el('button', 'primary', '요리 내기'); go.type = 'button';
-        go.addEventListener('click', async () => { const items = picks.map((s) => s.value); if (items.some((v) => !v)) { showToast('재료 세 가지를 골라 주세요.'); return; } const r = await festivalPost('cook', { items }); if (r) { showToast(`🍲 ${r.score}점 · 도장 +${r.added}`); body.append(el('p', 'festivalSay', `「${r.say}」`)); go.disabled = true; } });
+        go.addEventListener('click', async () => { const items = picks.map((s) => s.value); if (items.some((v) => !v)) { showToast('재료 세 가지를 골라 주세요.'); return; } const r = await festivalPost('cook', { items }); if (r) { showToast(`🍲 ${r.score}점 · 도장 +${r.added}`); body.append(el('p', 'festivalSay', `「${r.say}」`), el('p', 'festivalCookResult', `${r.score}점${r.themed ? ' (주제 +30)' : ''} · 도장 ${r.added}개를 받았어요`)); go.disabled = true; } });
         if (!ok.length) body.append(el('p', 'emptyState', '가방에 요리할 재료가 없어요. 밭 채소·열매·버섯·약재·물고기를 모아 와요.'));
         else body.append(...picks, go);
       } else {

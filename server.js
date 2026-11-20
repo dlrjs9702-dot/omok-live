@@ -3014,7 +3014,9 @@ async function contestNote(account, session, contestId, kind, value) {
   const row = contestBoard.rows.get(account) || { account, name: String(session.label || '게스트'), score: null, at: 0 };
   const score = IslandContest.merge(kind, row.score, value); if (score !== row.score) { row.score = score; row.at = contestNow(); }
   contestBoard.rows.set(account, row);
-  return { score: row.score, rank: IslandContest.rank([...contestBoard.rows.values()], c.kind).indexOf(row) + 1 };
+  /* (381 사용자 결정 14 「A, 매일 하는 대회 섬대회로」: a festival on -- a record in the day's 섬 대회 is its 「섬 대회 참가」 stamp, once a day) */
+  let stamp = null; try { const now = festivalNow(); const fest = IslandCalendar.festivalAt(now, await calendarOverride()); if (fest?.tasks.islandContest) { const out = await pointStore.questApply(account, `fest:${fest.id}`, (doc) => { const a = IslandFestival.award(fest, doc, 'islandContest', now); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); if (!out?.error) stamp = out.added; } } catch (error) { console.error('섬 대회 도장 실패:', error.message); }
+  return { score: row.score, rank: IslandContest.rank([...contestBoard.rows.values()], c.kind).indexOf(row) + 1, ...(stamp ? { stamp } : {}) };
 }
 // (v1.10.238 대회 천막: 「참가하기」 at the tent's keeper -- by the tent, the contest live -- gives this account a pass for the
 // contest; a contest round then opens on it (its game, its level), 「다시 하기」 too, from the game screen off the island)
@@ -5089,7 +5091,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.380' });
+    return sendJson(res, 200, { ok: true, version: '1.10.381' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -9004,7 +9006,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const now = festivalNow(); const override = await calendarOverride();
     const fest = IslandCalendar.festivalAt(now, override); const next = fest ? null : IslandCalendar.nextFestival(now, override);
     const snowmen = fest?.tasks.snowman ? snowmenFor(account, await pointStore.worldValue(`snowmen:${fest.id}:${IslandCalendar.dayOf(now)}`)) : null; // (X2: the day's snowmen on the field)
-    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, snowmen, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES, now }); // (X2 카운트다운: the board's seconds by the server's clock)
+    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, snowmen, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES, now, contestTime: ((c) => `${c.hour}:${String(c.minute).padStart(2, '0')}`)(IslandContest.config((await pointStore.worldValue('contest'))?.config)) /* (381: the 섬 대회's time, in its line's hint) */ }); // (X2 카운트다운: the board's seconds by the server's clock)
   }
   if (pathname.startsWith('/api/island/festival/') && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
@@ -9015,7 +9017,7 @@ async function requestHandler(req, res) {
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); const P = IslandCalendar.PLACES;
     const near = (p, r) => Boolean(at) && (at.space || 'island') === 'island' && Math.hypot(at.x - p.x, at.z - p.z) <= r;
     const fail = { BAD_TASK: '알 수 없는 할 일이에요.', TASK_CLOSED: '지금은 할 수 없는 일이에요.', TASK_DONE: '오늘은 이만큼이면 충분해요. 내일 또 와 주세요!', BAD_GOOD: '그런 물건은 없어요.', OWNED: '이미 받은 물건이에요.', NOT_ENOUGH: '도장이 모자라요.', GIFT_HELD: '들고 있는 선물부터 배달해 주세요.', NO_GIFT: '먼저 행사 주민에게서 선물을 받아 와요.', WRONG_RESIDENT: '이 선물은 다른 이웃 몫이에요.', NO_RESIDENT: '지금은 선물 받을 이웃이 없어요.', NOT_ROLLING: '먼저 눈덩이를 굴려 주세요.', TOO_SHORT: '조금 더 굴려 주세요.', SNOW_STACKED: '눈덩이 셋을 다 쌓았어요. 꾸며 주세요!', SNOW_NOT_STACKED: '눈덩이 셋을 먼저 굴려 쌓아 주세요.', NOT_ROLLED: '걸어 다니며 굴려요 — 3 m 넘게 굴려 주세요.', SNOW_BARE: '하나라도 붙여 꾸며 주세요.' };
-    const stamp = async (task) => { const r = await pointStore.questApply(account, key, (doc) => { const a = IslandFestival.award(fest, doc, task, now); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); return r?.error ? { error: r.error } : { added: r.added, view: IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now) }; };
+    const stamp = async (task, n = null) => { const r = await pointStore.questApply(account, key, (doc) => { const a = IslandFestival.award(fest, doc, task, now, n); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); return r?.error ? { error: r.error } : { added: r.added, view: IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now) }; };
     const sendStamp = (r, extra = {}) => (r.error ? sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.') : sendJson(res, 200, { ok: true, added: r.added, festival: r.view, ...extra }));
     if (action === 'harvest') { // 밭 수확: at the farm's field, a vegetable and a stamp (three a day)
       const F = IslandTerrain.FARM; if (!at || (at.space || 'island') !== 'island' || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있어요.');
@@ -9026,7 +9028,7 @@ async function requestHandler(req, res) {
     }
     if (action === 'cook') { // 요리 대회: three things from the bag, by the host -- judged, taken, two stamps (once a day)
       if (!near(P.host, P.REACH + 1)) return sendError(res, 409, 'TOO_FAR', '행사 주민 곁에서 요리를 내 주세요.');
-      const items = Array.isArray(body.items) ? body.items.map(String) : []; const judged = IslandFestival.judgeCook(items);
+      const items = Array.isArray(body.items) ? body.items.map(String) : []; const judged = IslandFestival.judgeCook(items, day); /* (381 결정 15: today's theme +30, stamps by the score) */
       if (judged.error) return sendError(res, 400, 'BAD_RECIPE', '먹을 것 세 가지(밭 채소·열매·버섯·약재·물고기)를 골라 주세요.');
       if (((await pointStore.questDoc(account, key)).doc?.days?.[day]?.cook || 0) >= 1) return sendError(res, 409, 'TASK_DONE', fail.TASK_DONE);
       const need = items.reduce((m, id) => m.set(id, (m.get(id) || 0) + 1), new Map()); const bag = (await pointStore.islandBag(account)).items || [];
@@ -9042,9 +9044,9 @@ async function requestHandler(req, res) {
       }
       // (C4 P3-1: two cooks at once from two tabs both pass the day's check -- the one not stamped, or a stamp that failed to
       // save, gives its things back)
-      let r; try { r = await stamp('cook'); } catch (error) { await giveBack(); throw error; }
+      let r; try { r = await stamp('cook', judged.stamps); } catch (error) { await giveBack(); throw error; }
       if (r.error) await giveBack();
-      return sendStamp(r, { score: judged.score, say: judged.say, bag: (await pointStore.islandBag(account)).items });
+      return sendStamp(r, { score: judged.score, say: judged.say, theme: judged.theme, themed: judged.themed, bag: (await pointStore.islandBag(account)).items });
     }
     const view = async () => IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now);
     const apply = async (fn) => pointStore.questApply(account, key, (doc) => { const r = fn(doc); return r.error ? { error: r.error } : r; });
@@ -10791,7 +10793,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.380 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.381 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
