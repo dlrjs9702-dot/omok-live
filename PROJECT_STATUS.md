@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.387 펫 태우기·새 자전거(사용자 결정 26·33·34, 에셋 161)
+
+- 자전거: 에셋 161 몸체 4색·바퀴·크랭크(1.25배, 앞 짐받이+나무 상자, 뒤 고리), BIKE 숫자(wheelR 0.30, 바퀴 ±0.525, BikeRide 속도/5), 새 BikeRide·BikeIdle.
+- 펫(걷기는 그대로, 뛰기·자전거일 때): 작은 변신 8·새 → 머리 위 HeadSit / 메타몽 → 뛰면 머리 위·자전거면 상자 BasketSit / 강아지·고양이·여우·토끼(옛 펫 포함) → 뛰면 Run, 자전거면 상자 / 곰·판다·소·돼지·양 → 따라오다 6 m 넘게 멀어지면 옆에 / 스파이더맨 → WebSwing(위로 흰 줄)·자전거면 KiteHang(고리에서 흰 줄) / 배트맨 Glide / 슈퍼맨 Fly / 아이언맨 FlyRepulsor / 캡틴 Sprint(이동 속도/6). 펫마다 앉는 자리 보정(README §2·§3).
+- 뛰는 중은 내 달리기 상태로, 다른 화면은 자세의 run으로(느린 화면의 땅 속도로 가르지 않음). 내 1인칭에선 머리 위 펫 숨김.
+- 새 동작 클립 8개(MOTIONS·animations), 옛 펫·메타몽 GLB 32개 새 클립(옛 클립 그대로), 빌드 목록 갱신. 시험용 /api/test/pet.
+
 ## v1.10.386 마당 창고(사용자 결정 19~21·24·32, 에셋 160 붉은 헛간)
 
 - 짓기·넓히기: 관공서 민원실 「마당 창고 짓기/넓히기」 — 경제 값 storehouse:price_1~4(10만·30만·50만·100만, 관리자 창에서 수정), 단계와 값을 한 번에(questApply cost, 단계마다 한 번). 20 → 40 → 60 → 100칸.
@@ -28,11 +35,3 @@
 - 바이트 같음: 읽어서 쥔 상태를 다시 쓴 파일 = 새로 만든 파일(test/boot-cache.test.js). 이 PC 모듈 4.9 → 0.86 s, 단위 전체 1149 → 816 s(시험 서버도 읽음).
 - 에셋 목록: 같은 커밋(RENDER_GIT_COMMIT)에서 만든 목록은 크기가 같으면 파일 시각과 상관없이 믿기(Render는 업로드로 시각이 바뀌어 매번 3943개 다시 해시, 약 8.7 s).
 - [boot] 줄: modules(boot-cache read | made: none/other/broken), assets(… cache kept/none/broken, same commit).
-
-## v1.10.384 부팅 무게(총괄 384: 382 [boot] points → before-listen 15.3 s)
-
-- 원인: 「닉네임 중복」→「공지사항 동기화」 줄 사이 14.5 s(379 재시작 6.3 s). PostgreSQL seedReleases가 출시 공지 550개마다 SELECT(제목 LIKE 전체 훑기)+UPDATE — 시작마다 1,100번 왕복, 모든 줄을 매번 다시 씀.
-- 고침: 한 번 읽고 바뀐 줄만 쓰기(JSON 저장소와 같은 규칙, 닉네임 안내 고정은 이미 고정이면 안 씀). 역 리프트(island-train)는 시작 때 만든 것 사용 — 나무 자리 시도마다 역마다 땅 높이 18번이던 것. nature·주민 길 격자 해시 같음, 이 PC 2.04 → 1.51 s(Render 약 16배).
-- [boot] 줄에 accounts·notices 표시.
-- 메모리: heapUsed 4~6시간 31~48 MB 평평, rss 처음 한 시간 175~235 MB 뒤 평평, 379의 327 MB는 꺼지기 2분 전 한 번(heap 38 그대로) — 누수 아님.
-- 남은 무게(나중): 주민 길 격자 이 PC 1.9 s(Render 약 30 s), 산책길 거리 계산(Render 약 10 s).

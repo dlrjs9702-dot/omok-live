@@ -4793,26 +4793,26 @@
     },
     {
       "out": "together-v1/pet_puppy.glb",
-      "src": "together47:01. High/pet_puppy.glb",
-      "sha256": "7bec3be9d7c6447ae928155a71f4480530c4f142fe86362c2fbe467a280cb54a",
-      "lowSrc": "together47:02. Low/pet_puppy_low.glb",
-      "lowSha256": "c40564b0893fa34d5a6a25968cef917a6b9cc784eb41059eb3c2815e7d0e486d",
+      "src": "petbike161:01. High/pets/together-v1/pet_puppy.glb",
+      "sha256": "d9ced11ad124a32576b0a259ad6bd7e18ae2fb96c49df8a0917aba1344cb893b",
+      "lowSrc": "petbike161:02. Low/pets/together-v1/pet_puppy_low.glb",
+      "lowSha256": "f72aa26e1ba4a0034dd408ba1fd09eb0d348f0afbd4bac74225d81c07045677a",
       "precompressed": true
     },
     {
       "out": "together-v1/pet_kitten.glb",
-      "src": "together47:01. High/pet_kitten.glb",
-      "sha256": "dffd00af925e4b82a8a519a65aa4eb32fee6b67fe3f826323a38304abe800ee8",
-      "lowSrc": "together47:02. Low/pet_kitten_low.glb",
-      "lowSha256": "bf89a7f1994a1ef4ae8a8b3ecdfe6989fd6fbefb45c1506297fc73caed862a61",
+      "src": "petbike161:01. High/pets/together-v1/pet_kitten.glb",
+      "sha256": "b3ccbd7f041de6c11b91f2bb2c99cdb3556a7b45430714840123f8cae138f58d",
+      "lowSrc": "petbike161:02. Low/pets/together-v1/pet_kitten_low.glb",
+      "lowSha256": "be451cbf2eb6e7db880207be2c7c7500aed86b72e0ef8eaa90e3a4b87d70e5bb",
       "precompressed": true
     },
     {
       "out": "together-v1/pet_bird.glb",
-      "src": "together47:01. High/pet_bird.glb",
-      "sha256": "10c26ff3e45ce172c58224b2db9298fbef420721ace66db325f525aea58552a6",
-      "lowSrc": "together47:02. Low/pet_bird_low.glb",
-      "lowSha256": "744c10c6f53898eafcd4be1847b28af1c253b80ccf666da416a4285a03c586da",
+      "src": "petbike161:01. High/pets/together-v1/pet_bird.glb",
+      "sha256": "d5465356d738808254aed6c66fcc7814b72e5639a07748c3d5bcaa329a995549",
+      "lowSrc": "petbike161:02. Low/pets/together-v1/pet_bird_low.glb",
+      "lowSha256": "211807529e7c2b53200e375a146ca761636388d9c396ea609019e1e087f9d0ee",
       "precompressed": true
     },
     {
@@ -6405,166 +6405,166 @@
     },
     {
       "out": "petshop-v1/pet_bird__blue.glb",
-      "src": "petshop60:01. High/pet_bird__blue.glb",
-      "sha256": "2a500af996f9a54a8e2ae67351aae03a714c15e5917d1d140c602047a3d864a6",
-      "lowSrc": "petshop60:02. Low/pet_bird__blue_low.glb",
-      "lowSha256": "30bf6ecdfa3dc29d9b3f1804a632c242d8708fd74a77689592dcba4f422ef48b",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_bird__blue.glb",
+      "sha256": "ba8704745961295c3764ccb08b924c0995c7cbb640b269c785b017f6e27b763b",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_bird__blue_low.glb",
+      "lowSha256": "7f8a9a212d1428387818271a2079fcc60dbfe4b34ead22dab126f26fd4e8e6d8",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_bird__green.glb",
-      "src": "petshop60:01. High/pet_bird__green.glb",
-      "sha256": "9906e3caae4d0fe3ff9a1663b2645f2a6439e9a47f08920f593a4404cbc1d643",
-      "lowSrc": "petshop60:02. Low/pet_bird__green_low.glb",
-      "lowSha256": "042e41f14687291153e8f12b02e669c8876732d1d89206b0607745384b8a15b1",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_bird__green.glb",
+      "sha256": "5def757503fc482900d8db805fa6173fc42c6a0dca7f3f4d5ce33c4045a39a0c",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_bird__green_low.glb",
+      "lowSha256": "5c5f92e4ca54de0a62d67185c57c44fc46cc8112e126096992a211f7631e7c27",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_bird__pink.glb",
-      "src": "petshop60:01. High/pet_bird__pink.glb",
-      "sha256": "f9f598413935c8743a034fabda4facc3847167cb80cfcff155693587792babd2",
-      "lowSrc": "petshop60:02. Low/pet_bird__pink_low.glb",
-      "lowSha256": "c1df5e59d180515904b94aecd5efd54943e011f8b0a9c016586babb50179cc7b",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_bird__pink.glb",
+      "sha256": "b7bb5840ff5b1afb59c7d413a319eab26dd0202f8b5b3cef32b46bac584759ff",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_bird__pink_low.glb",
+      "lowSha256": "e5d4977e5d0de0dc42422f89903eed804263363785e740b13a3197a64f0961d9",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_bird__yellow.glb",
-      "src": "petshop60:01. High/pet_bird__yellow.glb",
-      "sha256": "05b2ed5132069c4b76f088140b0c3ad2abdfa4a8cfc857d482bf29efc77d365d",
-      "lowSrc": "petshop60:02. Low/pet_bird__yellow_low.glb",
-      "lowSha256": "7cb64819ef6ed0bdea9de3fe1ced518da918c48755df3ef79be191c0aa76205e",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_bird__yellow.glb",
+      "sha256": "8c94e6f8d65ccda54a41fb874881ae5276db27ebe4f9d0c1639ee38b27e77fd9",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_bird__yellow_low.glb",
+      "lowSha256": "6793eee514b8cadfdeac08ff78cb917a9883cb9c3d2e07e3a110a265c388e282",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_kitten__black.glb",
-      "src": "petshop60:01. High/pet_kitten__black.glb",
-      "sha256": "df8d5c7e97e53a793db95b207c6b5ca6f463d69c2bd4bb84f742dcbdc00f4104",
-      "lowSrc": "petshop60:02. Low/pet_kitten__black_low.glb",
-      "lowSha256": "1296b5c2d3958e247928ba4a14f07f4d6b768a05bf3dcfa762e1c257db9c5bd9",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_kitten__black.glb",
+      "sha256": "c2e957cc9a5ea15444770de224be3fd5801b2bd237cd0290d098aa11961cac4c",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_kitten__black_low.glb",
+      "lowSha256": "a3d5282a965b7c8fdacf21104fd141981b51485ca358bbf13c4d8171e70dc515",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_kitten__cheese.glb",
-      "src": "petshop60:01. High/pet_kitten__cheese.glb",
-      "sha256": "19452c0095ffe81644ace7326744d81fe0dda62244fa6582b87d4fd2604f6815",
-      "lowSrc": "petshop60:02. Low/pet_kitten__cheese_low.glb",
-      "lowSha256": "f5939e7ce40e8ac97f6e4cc12351eb2aaffd27449a47d9dc66c6d9a302339499",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_kitten__cheese.glb",
+      "sha256": "096f067323d3e4051275685a3c943c41b9788a854105090f68b28377523bcbac",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_kitten__cheese_low.glb",
+      "lowSha256": "0c1d4c890d82c9e4ec7ed93cf4b6928ce00d73c0403f602d6a38874e4a30b83c",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_kitten__grey.glb",
-      "src": "petshop60:01. High/pet_kitten__grey.glb",
-      "sha256": "892944ec82ce14f3746f79bd46aca7aeaaad3437d54e72eabc8a0a71476832f7",
-      "lowSrc": "petshop60:02. Low/pet_kitten__grey_low.glb",
-      "lowSha256": "fe465a0c8184491a75bdc858f018ed5b0d66da295d4e87c53279b73a33e6d6e0",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_kitten__grey.glb",
+      "sha256": "a1916d97864fe0f695933787f02218da1c2bbcd668e99528fd2fcecd494e62b9",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_kitten__grey_low.glb",
+      "lowSha256": "390d35a54612d2b0665cf46bf694530a2496b65436f7b3cbeb7e7445f819f11a",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_kitten__white.glb",
-      "src": "petshop60:01. High/pet_kitten__white.glb",
-      "sha256": "10c1e450ad4ceb1188640473ff80e948a1c326c7e02c43dde73f4899940742c8",
-      "lowSrc": "petshop60:02. Low/pet_kitten__white_low.glb",
-      "lowSha256": "baa523ae63edeb08b7d6d574246cee9815f9e6b413cc355a9514fc8d0aa6eb89",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_kitten__white.glb",
+      "sha256": "7ff143bacb3f98b3f2e138dbc14abff4d0d40ad984575db53d8ef177d8905ea8",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_kitten__white_low.glb",
+      "lowSha256": "c41859d006d305a6caacaee8a71767589a11f23c7a166f4a0dec843ac2635ed4",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_puppy__black.glb",
-      "src": "petshop60:01. High/pet_puppy__black.glb",
-      "sha256": "7236c030bd08fe1923a9142bf8639a11cb74d27a7f2bcc316f8134c978736d69",
-      "lowSrc": "petshop60:02. Low/pet_puppy__black_low.glb",
-      "lowSha256": "62ce7bc673fd37a8e0a375675f5990093679e8adaba37cb38331f67b3f3dfda1",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_puppy__black.glb",
+      "sha256": "38f549698f84216ab4cad3de40c6b8e9e5978505d68b0ae1948d446031969802",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_puppy__black_low.glb",
+      "lowSha256": "e6d362b3583426f98162972d8452e2c9561c7d4271f840ee5ac36f93b225151d",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_puppy__choco.glb",
-      "src": "petshop60:01. High/pet_puppy__choco.glb",
-      "sha256": "5ef603e2009833f3cbd9ee3484098155e35acbd27cd9ebc0dae1e62d87fd18ca",
-      "lowSrc": "petshop60:02. Low/pet_puppy__choco_low.glb",
-      "lowSha256": "618199041245e0a6a1f2c496d335cebd8714f3afad6ec6a4cf6c4f26905b2cb8",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_puppy__choco.glb",
+      "sha256": "ebf2101f1a96e9ea7dadcdce3078074323be4910ee54d3ef13f48d5964f7391c",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_puppy__choco_low.glb",
+      "lowSha256": "ec13da80ee91f4d1f2b2ca48234c43d18baceff77fb859b7f826d723af9eacde",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_puppy__tan.glb",
-      "src": "petshop60:01. High/pet_puppy__tan.glb",
-      "sha256": "760f02f056a8b1bbe509d3c42ec13e87b709292afdf260abddb25b5e82deba97",
-      "lowSrc": "petshop60:02. Low/pet_puppy__tan_low.glb",
-      "lowSha256": "f69daa6d1f3a2d3db3b4e1357d5227f3518a341dff1ef76713ad593136ec824d",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_puppy__tan.glb",
+      "sha256": "b9647e1baf34c6cfbd15895a64ae7723116a5d1b8590d9e31c7238e584847df1",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_puppy__tan_low.glb",
+      "lowSha256": "c54bd6a1b1cbe42c1caaea23f601b66bc6d86c297ce93b63a1a2654c0f677ce1",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_puppy__white.glb",
-      "src": "petshop60:01. High/pet_puppy__white.glb",
-      "sha256": "abc668d55e2a82882be8e6db874f20282fdfc28b5ae2455beb09a3dd7422e723",
-      "lowSrc": "petshop60:02. Low/pet_puppy__white_low.glb",
-      "lowSha256": "d63735d19448af334c90f6302c7c871f6b88ab90f3c37d97b5ad6893ff6ea282",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_puppy__white.glb",
+      "sha256": "d3d01bc1d93c6614da6eac6118c669c3f67933bf3c5201a3e17bf8e201b709e7",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_puppy__white_low.glb",
+      "lowSha256": "502db8fab96d95ca790f192fa5daa901a4790aba3ca7d6709f8c291e66893c3e",
       "precompressed": true
     },
     {
       "out": "petshop-v1/pet_ditto.glb",
-      "src": "ditto65:01. High/pet_ditto.glb",
-      "sha256": "d6e9cc9379c8e80405625f008bf50f6566f0c4c3e966dccb2a7f1b43dbd7f279",
-      "lowSrc": "ditto65:02. Low/pet_ditto_low.glb",
-      "lowSha256": "1c02b39417208a447488c1c5a652592f20a0697de68507caf66de41bc69a900e",
+      "src": "petbike161:01. High/pets/petshop-v1/pet_ditto.glb",
+      "sha256": "39b8488c8506f768f29e53492337f907a43bd2c7f11be989577b0e0268e2108d",
+      "lowSrc": "petbike161:02. Low/pets/petshop-v1/pet_ditto_low.glb",
+      "lowSha256": "b13a48879272ef44c0251120f2ce1101a48958845a9e145c8d5a6c4b27353137",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_crank.glb",
-      "src": "flicker150:01. High/bike-v1/bike_crank.glb",
-      "sha256": "25845a0de1c520495181171dfbcf33a971040c2a7bc48fd7d8a25b499a139254",
-      "lowSrc": "bike61:02. Low/bike_crank__base_low.glb",
-      "lowSha256": "86fd30746de4cca99696c4f04b30767aaf98234238286c148481da7b3c8173fc",
+      "src": "petbike161:01. High/bike_crank__base.glb",
+      "sha256": "2160788bf4e349d2abcbe4e579bcc46e59b021a9a2e73e1299e47bcda14708c9",
+      "lowSrc": "petbike161:02. Low/bike_crank__base_low.glb",
+      "lowSha256": "186087f2eb3731f369591843d4efae884ab1ecb8b90ddcd4cb6b1cc3a214012a",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__butter.glb",
-      "src": "bike61:01. High/bike_frame__butter.glb",
-      "sha256": "8530ffea3398d5dbab08366fc610c00b58c3ea8877fb781229b5d41fea7ea2fd",
-      "lowSrc": "bike61:02. Low/bike_frame__butter_low.glb",
-      "lowSha256": "19c854f6419af70d8f24605f8514ca7c3b46992c1e44e5d1f5b74ac79120f440",
+      "src": "petbike161:01. High/bike_frame__butter.glb",
+      "sha256": "900c58fcaa608682f0ec9d08a726c109c4f5ddde3e7479d6ebf723648563bd85",
+      "lowSrc": "petbike161:02. Low/bike_frame__butter_low.glb",
+      "lowSha256": "44221eaa143f37f293b640f39dc3b9910211baded54b93ef20670ca8b06420fe",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__mint.glb",
-      "src": "bike61:01. High/bike_frame__mint.glb",
-      "sha256": "41ef3d9a1bcf0eab998d8905e508bd3b14e31aa0e0096c05ed6606568292c3e7",
-      "lowSrc": "bike61:02. Low/bike_frame__mint_low.glb",
-      "lowSha256": "8ec2b4a317cb7a4d9b71d5a5446d34a554e136b968bdc70e2e62a9f7950a677c",
+      "src": "petbike161:01. High/bike_frame__mint.glb",
+      "sha256": "8073b6d71e2f01ac6d0647a436707f2f3dd072c09e5078bf9e51bd568a0a5d0d",
+      "lowSrc": "petbike161:02. Low/bike_frame__mint_low.glb",
+      "lowSha256": "e4ba76f3cd104809ebd315ce31a5c570e019d8322da7b8248937cf86dd6707a3",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__red.glb",
-      "src": "bike61:01. High/bike_frame__red.glb",
-      "sha256": "96d6350761a201b401551feb3065955b54f3ae3186369f961df764903c307740",
-      "lowSrc": "bike61:02. Low/bike_frame__red_low.glb",
-      "lowSha256": "b8cd04cf02a134890a5bd573e306aea670edd858399775a280ad36c06e307b2c",
+      "src": "petbike161:01. High/bike_frame__red.glb",
+      "sha256": "0081978a6c16f352da0da590a90685c7dc8a8cdeb6771aa0ab2e053a7b06f648",
+      "lowSrc": "petbike161:02. Low/bike_frame__red_low.glb",
+      "lowSha256": "b10430e4fcaecbb2435ab4087a7f57c8388b487ca1bfd9a5dd19c297ca491f6a",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__sky.glb",
-      "src": "bike61:01. High/bike_frame__sky.glb",
-      "sha256": "c2c2c19a8ffd8c089ff22caffae21b254615426a9adfd052420f57e95e936e4c",
-      "lowSrc": "bike61:02. Low/bike_frame__sky_low.glb",
-      "lowSha256": "0ac466a7f3b9389239b1f2c3590c7315694f4d5e59d6e288296cee27a3974961",
+      "src": "petbike161:01. High/bike_frame__sky.glb",
+      "sha256": "a7727c405ea59a2e728ccc3d178d6b9e5b913c0b1e26a8d575d53f4ea7a6af1f",
+      "lowSrc": "petbike161:02. Low/bike_frame__sky_low.glb",
+      "lowSha256": "b8f652504685b3ac0a913951f3058992d666468e006f96a36c330f11f9f7e832",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_wheel.glb",
-      "src": "flicker150:01. High/bike-v1/bike_wheel.glb",
-      "sha256": "28799872f267c5a8acaefe0bce96dcad6a5f080540a20046d824b3ecf5a8d983",
-      "lowSrc": "bike61:02. Low/bike_wheel__base_low.glb",
-      "lowSha256": "0e0743b75d095827966096fa7efdc2440741af074998a3abcda33ba2f786cc48",
+      "src": "petbike161:01. High/bike_wheel__base.glb",
+      "sha256": "8e00dd2ed88f8b3128c699fe8253ef3d72ec1b8e5f0fdf4462c9b5dc6fd7be51",
+      "lowSrc": "petbike161:02. Low/bike_wheel__base_low.glb",
+      "lowSha256": "5b71b8e5299a6f22832e6a551c59fac391abd7409a5aa189bf9f6a9b9e5e11f4",
       "precompressed": true
     },
     {
       "out": "characters/motions/BikeRide.glb",
-      "src": "bike61:01. High/motions/BikeRide.glb",
-      "sha256": "0adb933aa7c719d03dc23fd14da3cc0839fcd8cd74da2d6db7f38b22f6ad8974",
+      "src": "petbike161:01. High/motions/BikeRide.glb",
+      "sha256": "1f304e61d34ebe0dbbae903a3715d40e541ee0e23dc6a9a57d8f742788487369",
       "precompressed": true
     },
     {
       "out": "characters/motions/BikeIdle.glb",
-      "src": "bike61:01. High/motions/BikeIdle.glb",
-      "sha256": "ec58698855c520ad6a2a6f471f9b85a0b82f099b6a82ff748718397dcaa0186e",
+      "src": "petbike161:01. High/motions/BikeIdle.glb",
+      "sha256": "cc9fbafee27a9249811448488e49e4bfd494a8a729d77a169f23b4ac74b8b56a",
       "precompressed": true
     },
     {
@@ -15551,6 +15551,54 @@
       "lowSrc": "storehouse160:02. Low/storehouse_4_low.glb",
       "lowSha256": "89d7e7635e63a85f5fcb3bcef868f1bb32a6cbefeebcd3b90bc3732b8ecdd35a",
       "precompressed": true
+    },
+    {
+      "out": "characters/motions/HeadSit.glb",
+      "src": "petbike161:01. High/motions/HeadSit.glb",
+      "sha256": "753298797d72257f554e60c5e95e7fa6b7f7b806adc5f8d675855aa62fd2a1f9",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/BasketSit.glb",
+      "src": "petbike161:01. High/motions/BasketSit.glb",
+      "sha256": "ca49bfce9ce27779f3d30f80f70ce19e6cc0b9ae9efc15a9cd121c0452c78946",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/WebSwing.glb",
+      "src": "petbike161:01. High/motions/WebSwing.glb",
+      "sha256": "57110ba9b8dde917ca151f8f39ffa4f643a51a36c589fdbea93bb6e512f728f4",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/KiteHang.glb",
+      "src": "petbike161:01. High/motions/KiteHang.glb",
+      "sha256": "5acc2ee03600e035b4e7672a94517dc731addd3e04952e289918d7fa26291ac7",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Glide.glb",
+      "src": "petbike161:01. High/motions/Glide.glb",
+      "sha256": "1c695ae412c330537ed41f6b040a2b14704067c996b9d2a3d6f7bd105811d0ba",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Fly.glb",
+      "src": "petbike161:01. High/motions/Fly.glb",
+      "sha256": "4682fedbc24661582c7d0625a3565515b9df2ac64443d7a41ce80c28ee66738e",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/FlyRepulsor.glb",
+      "src": "petbike161:01. High/motions/FlyRepulsor.glb",
+      "sha256": "e288147f82a0ce5f36af919ae3396ec545df65a4f637a6fe501a9c3cc93697fb",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/Sprint.glb",
+      "src": "petbike161:01. High/motions/Sprint.glb",
+      "sha256": "5100d7d71a6c0c2765613208f4f00cbfa46ee947b31ec694fdb9a7412cf50cd6",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -15677,6 +15725,7 @@
     "fish132": "132. Game Island new isle fish 3 2026-11-15",
     "tiger158": "158. Game Island tiger running pounce 2026-11-20",
     "tiger159": "159. Game Island tiger attacks 2026-11-20",
-    "storehouse160": "160. Game Island yard storehouse 2026-11-20"
+    "storehouse160": "160. Game Island yard storehouse 2026-11-20",
+    "petbike161": "161. Game Island pet bike 2026-11-20"
   }
 }

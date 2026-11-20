@@ -2163,7 +2163,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack, activeAt }) => ({ away: plazaAway({ activeAt, ride, taxi, platform }) /* (380 자리 비움) */, snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
+  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack, activeAt, run }) => ({ run: Boolean(run) || undefined, away: plazaAway({ activeAt, ride, taxi, platform }) /* (380 자리 비움) */, snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); quarryPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); denInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
@@ -5133,7 +5133,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.386' });
+    return sendJson(res, 200, { ok: true, version: '1.10.387' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6353,7 +6353,7 @@ async function requestHandler(req, res) {
     else plazaPresence.set(session.token, {
       pet: pet || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
-      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
+      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, run: !collecting && body.moving === true && body.run === true /* (1.10.387 펫 태우기: running -- the pets on other screens) */, at: receivedAt, poseAt, sentT: Number.isFinite(body.t) ? body.t : undefined,
       // (Codex 검토 #8) m/s since the last pose, walking (a warp is not a run): by the sender's clock when both poses have
       // one (poses bunched on the way would look faster), else by arrival
       activeAt: (() => { const was = plazaPresence.get(session.token); if (!was || Math.hypot(spot.x - was.x, spot.z - was.z) > 0.05) return receivedAt; return Math.min(was.activeAt ?? receivedAt, receivedAt); })(), /* (380 자리 비움; 383 Codex #8: by what the server sees -- a move (the place changed) or an action (requireSession) -- never the page's own count or its 「moving」) */
@@ -7822,6 +7822,13 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, doc: (await betDoc(account)) });
   }
   // B 47 반려동물: which of mine walks with me (one bought at the 잡화점, a name of up to 10 characters), or none
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/pet' && req.method === 'POST') { // (1.10.387 tests and photos: any pet kind walking with me -- a transformation's too -- without its buying)
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    const doc = body.kind ? { kind: String(body.kind), ...(body.coat ? { coat: String(body.coat) } : {}), name: String(body.name || '') } : {};
+    await pointStore.questApply(account, 'pet', () => ({ doc })); petOf.set(account, petView(doc));
+    for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
+    plazaDirty = true; return sendJson(res, 200, { ok: true, pet: petOf.get(account) });
+  }
   if (pathname === '/api/island/pet' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const body = await parseJson(req);
@@ -10954,7 +10961,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.386 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.387 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

@@ -20,6 +20,15 @@ test('반려동물: 서버가 기억해 섬에 들어오면 처음부터 같이 
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')?.kind), { timeout: 30000 }).toBe('kitten');
   const aId = await a.page.evaluate(() => window.PlazaDebug().myId);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id)?.name, aId), { timeout: 30000 }).toBe('나비');
+  // 1.10.387 펫 태우기 (사용자 결정 26·34, assets 161): on the bike the kitten in its front crate -- its BasketSit -- on both screens; off, it walks again
+  expect((await post(request, '/api/test/island/give', a.token, { itemId: 'bike_red', qty: 1 })).status).toBe(200);
+  await a.page.reload(); /* (the bag's bikes as the page starts) */ await expect.poll(() => a.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('KeyB'); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().cycling), { timeout: 15000 }).toBe('red');
+  await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.role} ${p.clip}`; }), { timeout: 20000 }).toBe('basket BasketSit');
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id)?.role, aId), { timeout: 30000 }).toBe('basket');
+  { const [me, pet] = await a.page.evaluate(() => { const d = window.PlazaDebug(); return [{ x: d.x, z: d.z }, d.pets().find((x) => x.key === 'me')]; }); expect(Math.hypot(pet.x - me.x, pet.z - me.z)).toBeLessThan(1.2); } /* (in the crate before the rider) */
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('KeyB'); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().cycling), { timeout: 15000 }).toBe(null);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((x) => x.key === 'me')?.role), { timeout: 20000 }).toBe('follow');
   expect((await post(request, '/api/island/pet', a.token, { kind: null })).status).toBe(200);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().some((p) => p.key === id), aId), { timeout: 30000 }).toBe(false);
   for (const w of [a, b]) await expectNoScriptError(w.page);
