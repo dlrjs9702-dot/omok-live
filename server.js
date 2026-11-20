@@ -2200,15 +2200,23 @@ const tigerTicker = setInterval(() => {
 }, TIGER_TICK_MS);
 tigerTicker.unref?.();
 const tigerSpot = () => { const TH = IslandTerrain.TOWNHALL; const p = IslandTerrain.townhallWorld(0, TH.yard.z1 + 3.2); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; }; /* (before the mayor in his gate, facing him) */
+/* (383 Codex 371~380 #2: one catch an account at a time -- both tigers' paws in one tick, or a second within the 8 s after, never takes two more) */
+const tigerCaughtAt = new Map(); const TIGER_CATCH_GAP_MS = 8000;
 async function tigerCatch(token, def) {
   const session = sessions.get(token); const at = plazaPresence.get(token); if (!session || !at) return;
   const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs();
+  const who = account || token; if (now - (tigerCaughtAt.get(who) || 0) < TIGER_CATCH_GAP_MS) return; tigerCaughtAt.set(who, now);
   resourcePulls.delete(token); weedPulls.delete(token); quarryPulls.delete(token); fishCasts.delete(token); freeSeat(token);
-  plazaPresence.set(token, { ...at, x: spot.x, z: spot.z, moving: false, at: now, act: null, seat: null }); plazaLastPos.set(token, { x: spot.x, z: spot.z }); plazaDirty = true;
-  const out = account ? await pointStore.questApply(account, 'tiger', (doc, bag) => { const pick = IslandTigers.losePick(bag, IslandItems);
-    return { doc: { caught: (doc.caught || 0) + 1, at: now, by: def.id }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost: pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId) }; }).catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }) : null;
-  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}`); /* (no account in the log) */
-  notifyAccount(account, 'tigerCaught', { by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}) });
+  /* (383 #5: the move kept as the account's spot for a reconnect, and a pose sent before it (its time older) no longer puts them back in the wood) */
+  plazaPresence.set(token, { ...at, x: spot.x, z: spot.z, moving: false, at: now, sentT: now, act: null, seat: null }); plazaLastPos.set(token, { x: spot.x, z: spot.z }); notePlazaSpot(account, spot.x, spot.z, now); plazaDirty = true;
+  /* (383 #6: the bag's loss saved first, this catch's own id kept in the doc (a retry never takes twice), up to five tries; the word only after it) */
+  const id = `${now}:${def.id}`;
+  const take = () => pointStore.questApply(account, 'tiger', (doc, bag) => { if (doc.lastId === id) return { error: 'DONE' }; const pick = IslandTigers.losePick(bag, IslandItems); const lost = pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId);
+    return { doc: { caught: (doc.caught || 0) + 1, at: now, by: def.id, lastId: id, lastLost: lost }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost }; });
+  let out = null;
+  for (let k = 0; account && k < 5 && !out; k += 1) { out = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }); if (out?.error === 'DONE') out = { lost: (await pointStore.questDoc(account, 'tiger')).doc?.lastLost || [] }; else if (out?.error) out = { lost: [] }; /* (a try that had saved before its answer was lost: what it took) */ if (!out) await new Promise((r) => { setTimeout(r, 2000 * (k + 1)); }); }
+  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' unsaved' : ''}`); /* (no account in the log) */
+  notifyAccount(account, 'tigerCaught', { by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { unsaved: true } : {}) });
 }
 
 // v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
@@ -7088,7 +7096,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const t = session.token;
     if (!checkRateLimit(`island-quarry-tap:${t}`, 90, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req); const pull = quarryPulls.get(t); const k = Number(body.round);
-    if (!pull || pull.result || !Number.isInteger(k) || k < 0 || k >= pull.plan.length || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
+    if (!pull || pull.result || pull.finishing || !Number.isInteger(k) || k < 0 || k >= pull.plan.length || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); /* (383 Codex 371~380 #1: no press once its finish is judged) */
     pull.taps ||= pull.plan.map(() => null);
     if (!pull.taps[k]) pull.taps[k] = IslandQuarry.tapAt(pull.plan, k, { spot: Number(body.spot), ms: Number(body.ms) }, nowMs() - pull.at);
     return sendJson(res, 200, { ok: true });
@@ -7122,8 +7130,10 @@ async function requestHandler(req, res) {
     const pull = quarryPulls.get(t);
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result);
+    if (pull?.finishing && !pull.result) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.'); /* (383 Codex 371~380 #1: a second finish while the first is paying -- never a second judgement; its retry with the same requestId gets the one result) */
     if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
     if (nowMs() - pull.at < pull.ms - 300 && !IslandQuarry.judge(pull.plan, pull.taps || []).done) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.'); /* (1.10.355 「두 번 맞히면 바로 결과」: sooner only on the server's own two timed hits) */
+    pull.finishing = true; pull.requestId = body.requestId; /* (383 #1: judged now, before any wait -- a late press or a second finish can not turn this one's miss into a hit too) */
     const kept = { left: IslandQuarry.ORE_PER_ROCK, gen: 0 }; /* (379 사용자 「이것도 없애」: a rock never empties, never fills again -- every mining its own claim, as the wall's) */
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
@@ -9187,6 +9197,11 @@ async function requestHandler(req, res) {
   }
   // (1.10.376 별마루섬 호랑이, tests: on or off, one put somewhere, their rest hours' clock shifted; the state read back)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs()); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers/catch' && req.method === 'POST') { /* (383 tests: both tigers' paws in one tick on me -- Codex 371~380 #2·#5·#6) */
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
+    await Promise.all(IslandTigers.TIGERS.filter((d) => (body.both ? true : d.id === body.id)).map((d) => tigerCatch(session.token, d)));
+    return sendJson(res, 200, { ok: true, spot: tigerSpot(), here: plazaPresence.get(session.token) ? { x: plazaPresence.get(session.token).x, z: plazaPresence.get(session.token).z } : null });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/away' && req.method === 'POST') { const body = await parseJson(req); plazaAwayMs = Number.isFinite(body.ms) && body.ms > 0 ? body.ms : 60000; return sendJson(res, 200, { ok: true, ms: plazaAwayMs }); } /* (380 자리 비움, tests: the minute shortened) */
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/festival/clock' && req.method === 'POST') { const body = await parseJson(req); festivalClock = Number(body.at) ? { at: Number(body.at), set: nowMs(), tick: Boolean(body.tick) } : null; return sendJson(res, 200, { ok: true }); } // (tests: the festival's own clock -- held, or running on from there: X2 카운트다운's last seconds)
   // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,

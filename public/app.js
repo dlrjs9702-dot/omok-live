@@ -9214,8 +9214,8 @@
     if (event === 'den') { denRaidEvents += 1; denRaidSeen(parsed.raid || null); return; } // (1.10.341: a raid begun or over)
     if (event === 'townhallOut') { if (plaza.controller?.space?.() === 'townhall') { closeIslandWindows(); plaza.controller?.setSpace?.('island', parsed.x, parsed.z); document.body.classList.remove('townhallRoom'); } showToast('관공서가 갑자기 문을 닫았어요. 「잠시 자리 비움」', 5000); return; }
     if (event === 'tigerCaught') { /* (1.10.376 N2a-2 잡히면, 사용자 「집이 있든 없든 시장님앞으로」: whatever I was doing ends, in front of 마루 시장님 at the 관공서 -- his word and what the tiger took) */
-      closeIslandWindows(); plaza.controller?.tigerCaught?.(Number(parsed.x), Number(parsed.z)); plazaLastSent = null; if (parsed.bag) drawIslandBag(parsed.bag);
-      const lost = Array.isArray(parsed.lost) && parsed.lost.length ? `호랑이에게 ${parsed.lost.join(', ')}을(를) 잃었어요.` : '다행히 잃은 물건은 없어요.';
+      closeIslandWindows(); plaza.controller?.tigerCaught?.(Number(parsed.x), Number(parsed.z)); plazaLastSent = null; if (parsed.bag) drawIslandBag(parsed.bag); /* (383 Codex #6: `unsaved` -- the bag could not be saved: never 「잃은 물건은 없어요」) */
+      const lost = parsed.unsaved ? '가방은 그대로예요.' : Array.isArray(parsed.lost) && parsed.lost.length ? `호랑이에게 ${parsed.lost.join(', ')}을(를) 잃었어요.` : '다행히 잃은 물건은 없어요.';
       /* (377 사용자 「5초 로딩창을 띄우고 이송중[빨간 깜빡임] 후 시장 앞에서 리스폰」: five seconds covered, then in front of 마루 시장님 with his word) */
       let cover = byId('tigerTransfer'); if (!cover) { cover = document.createElement('div'); cover.id = 'tigerTransfer'; cover.setAttribute('role', 'status'); cover.innerHTML = '<p class="tigerTransferWho"></p><p class="tigerTransferGo">이송 중</p>'; document.body.appendChild(cover); }
       cover.querySelector('.tigerTransferWho').textContent = `${parsed.by || '호랑이'}에게 잡혔어요!`; cover.classList.add('on'); clearTimeout(cover.timer);

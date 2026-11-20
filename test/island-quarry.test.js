@@ -128,6 +128,14 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
   const bag = (await req('/api/island/bag', a)).data; const items = bag.bag?.items || bag.items || []; const count = (id) => items.filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
   assert.equal(count('ore_granite'), 1); assert.equal(count(f2.itemId), 1); assert.equal(count('stone'), 1);
   assert.ok((await req('/api/island/quarry', a)).data.rocks.every((r) => r.stage === 'full' && r.left === Q.ORE_PER_ROCK), '모든 바위 늘 가득');
+  { /* (383 Codex 371~380 #1: two finishes at once (a retry crossing the first) -- one judgement, one payment; a press after its finish is not kept) */
+    await req('/api/plaza/state', a, { x: stand.x, z: stand.z, yaw: stand.yaw, moving: false });
+    const s = await req('/api/island/quarry/start', a, { rock: rock.id, spot: 0 }); assert.equal(s.status, 200, JSON.stringify(s.data)); await new Promise((r) => setTimeout(r, Q.MINE_MS + 60));
+    const before = { stone: count('stone') }; const both = await Promise.all([0, 1].map(() => req('/api/island/quarry/finish', a, { rock: rock.id, spot: 0, requestId: crypto.randomUUID() })));
+    assert.deepEqual(both.map((r) => r.status).sort(), [200, 409], JSON.stringify(both.map((r) => r.data)));
+    assert.equal((await req('/api/island/quarry/tap', a, { round: 2, spot: s.data.plan[2].spot, ms: 200 })).status, 409, '끝난 뒤 누름은 안 받음');
+    const b2 = (await req('/api/island/bag', a)).data; const after = (b2.bag?.items || b2.items || []).filter((e) => e.itemId === 'stone').reduce((n, e) => n + e.qty, 0); const ores = (b2.bag?.items || b2.items || []).filter((e) => /^(ore|gem)_/.test(e.itemId)).reduce((n, e) => n + e.qty, 0);
+    assert.equal(after, before.stone + 1, '작은 돌 하나만'); assert.equal(ores, 2, '광석은 그대로(f1·f2)'); }
   // 366 광석 개편 2: a gem instead of the ore -- the first of each its card (once an account), the island told
   const g1 = await mine(true, 0.1, 0.001); assert.equal(g1.itemId, 'gem_moonstone'); assert.equal(g1.gem, 'moonstone'); assert.equal(g1.name, '달빛석');
   assert.deepEqual(g1.firstGem, { id: 'moonstone', title: '첫 달빛석이에요!', line: require('../lib/gem-cards.json').moonstone.line, card: '/assets/items/cards/gem_moonstone_card.webp' });
