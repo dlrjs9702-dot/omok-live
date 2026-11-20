@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.388 섬 화면 정리 U1+U2(사용자 결정 43 「A」, gamecenter-notes docs/ui-review-20261121.md §2·§4)
+
+- U1 튀는 남색: 옷가게 거르기 칸(A1)·캐릭터 선택(A2, isle-sheet + 「확정」 주 단추, 창 안으로)·출석 「섬 안내」(A4)·조작법 띠(A5)·환경설정 라디오(A6)·「접속 종료」 종이 바탕 붉은 글(A7)·게임 설치 창(A8)·「화면이 느려요」(A11). 옷가게 아래 단추(A9, 결정 43 ⑥ A): 「구매」 주 단추 하나 + 종이 단추.
+- U1 안 보이던 글: 기부 머리 포인트(B1)·기부 빈 글(B2)·옷가게 포인트(B3)·기록의 탑 고른 칩 꿀색+진한 테두리+먹 글자(B4, 결정 43 ② A)·공지 본문(B19)·출석·우체통·메신저 주 단추 #9c5f14(B7). 폰 조작법 띠 단추 글자 세로 섬(P1) → 한 줄, 띠는 글 위·단추 아래.
+- U2 흐린 글: 투명도 대신 --isle-soft(B5·B6·B8~B15, B20·B21, 이야기 조각·상장 폐지 줄·우체통 날짜·「새 편지」).
+- 토큰 --isle-select·--isle-value·--isle-danger(U3에서 넓혀 씀). 관리자 창(A3·B16)은 U6.
+
 ## v1.10.387 펫 태우기·새 자전거(사용자 결정 26·33·34, 에셋 161)
 
 - 자전거: 에셋 161 몸체 4색·바퀴·크랭크(1.25배, 앞 짐받이+나무 상자, 뒤 고리), BIKE 숫자(wheelR 0.30, 바퀴 ±0.525, BikeRide 속도/5), 새 BikeRide·BikeIdle.
@@ -28,10 +35,3 @@
 - 모양: 에셋 160 storehouse_1~4(High·Low), 막는 원 두 줄, 지붕은 집 지붕 색(roof 재질 setRGB linear), 겨울 눈, 4단계 등 밤에 켜짐. 집터마다 따로 그림.
 - 주민 머리 위 표시 남음(문제 기록 5e510d4d·d783b6d1, notes issue-quest-mark-20261120): 걷는 주민을 이벤트(분실물 주인·사진 손님)에 빌릴 때 옛 심부름 표시를 지움, 부탁 표시 높이를 표시가 바뀔 때마다 다시 맞춤(fitQuestTag). 디버그 headMarks, resident-talk e2e 한 걸음.
 - 시험: 단위 island-storehouse(규칙·모양·서버), e2e yard.spec 「마당 창고」.
-
-## v1.10.385 부팅 무게 2(총괄: 입력 해시 키로 결과 미리 만들기, 바이트 같음)
-
-- 섬 나무·덤불·바위 배치(nature)와 주민 길 격자: 빌드(postinstall tools/warm-boot-cache.js)에서 서버를 BOOT_CACHE_ONLY로 띄워 .cache/boot-cache.json에 저장, 시작 때 public/plaza·lib·server.js 내용 해시가 같으면 읽기만(island-events 전에 넣어 두기, 이벤트 순서 그대로). 다르거나 깨졌으면 예전처럼 만들고 파일을 씀.
-- 바이트 같음: 읽어서 쥔 상태를 다시 쓴 파일 = 새로 만든 파일(test/boot-cache.test.js). 이 PC 모듈 4.9 → 0.86 s, 단위 전체 1149 → 816 s(시험 서버도 읽음).
-- 에셋 목록: 같은 커밋(RENDER_GIT_COMMIT)에서 만든 목록은 크기가 같으면 파일 시각과 상관없이 믿기(Render는 업로드로 시각이 바뀌어 매번 3943개 다시 해시, 약 8.7 s).
-- [boot] 줄: modules(boot-cache read | made: none/other/broken), assets(… cache kept/none/broken, same commit).
