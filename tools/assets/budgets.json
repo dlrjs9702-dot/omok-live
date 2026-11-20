@@ -2161,6 +2161,14 @@
     "newisle-v1/sign_trail_low.glb": {
       "nodes": 5,
       "reason": "1.10.377 N2a 136 sign_trail_low: its FACE nodes (the game paints the letters there)"
+    },
+    "together-v1/insect_moth_longtail.glb": {
+      "nodes": 2,
+      "reason": "1.10.378 N2b 131: the still one (as 105)"
+    },
+    "together-v1/insect_stag_giant.glb": {
+      "nodes": 2,
+      "reason": "1.10.378 N2b 131: the still one (as 105)"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

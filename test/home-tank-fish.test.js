@@ -7,7 +7,7 @@ const F = require('../lib/island-fishing');
 const H = require('../public/plaza/island-home');
 
 test('수조: 50종 모두 크기가 있고, 가장 큰 크기로 정한 등급·자리, 어느 수조엔 들어감', () => {
-  const ids = Object.keys(F.SPECIES); assert.equal(ids.length, 50);
+  const ids = Object.keys(F.SPECIES); assert.equal(ids.length, 53); /* (1.10.378: 별마루섬's three) */
   const first21 = ['anchovy', 'crucian_carp', 'gizzard_shad', 'goby', 'mackerel', 'pale_chub', 'smelt', 'sweetfish', 'pufferfish', 'carp', 'catfish', 'cutlassfish', 'eel', 'flatfish', 'mandarin_fish', 'mullet', 'octopus', 'rockfish', 'sea_bass', 'stingray', 'giant_tuna'];
   for (const id of ids) {
     const key = `fish_${id}`; const max = F.SIZES[id][1]; const size = H.FISH_SIZE[key];

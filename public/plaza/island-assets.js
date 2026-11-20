@@ -281,7 +281,7 @@
   // v1.10.90 낚시 도감 21종 (assets 40): eight river fish and five sea fish, held the same way as the first eight
   for (const s of ['crucian_carp', 'carp', 'pale_chub', 'sweetfish', 'catfish', 'mandarin_fish', 'eel', 'smelt', 'mullet', 'flatfish', 'sea_bass', 'gizzard_shad', 'rockfish']) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`);
   for (const s of ['yellowtail', 'red_seabream', 'horse_mackerel', 'filefish', 'cod', 'squid', 'blue_crab', 'seahorse', 'crayfish', 'medaka', 'bagrid_catfish', 'masu_salmon', 'sturgeon']) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`); // v1.10.231 assets 85: 13 more (the 도감 34)
-  for (const s of ['dotdom', 'giant_squid', 'sunfish', 'giant_octopus', 'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp', 'minnow', 'bitterling', 'bluegill', 'barbel_steed', 'bass', 'rainbow_trout', 'aucha_perch']) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`); // v1.10.259 assets 91 (big 9) and 93 (fresh 7)
+  for (const s of ['dotdom', 'giant_squid', 'sunfish', 'giant_octopus', 'snakehead', 'salmon', 'king_catfish', 'taimen', 'golden_carp', 'minnow', 'bitterling', 'bluegill', 'barbel_steed', 'bass', 'rainbow_trout', 'aucha_perch', 'lenok', 'kumgang_minnow', 'striped_beakperch' /* (1.10.378 assets 132: 별마루섬's three) */]) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`); // v1.10.259 assets 91 (big 9) and 93 (fresh 7)
   REGISTRY['landmark.halloween.pedestal'] = { url: `${HWL}/pedestal.glb`, low: { url: `${HWL}/pedestal_low.glb` }, near: 70 };
   REGISTRY['landmark.halloween.lantern'] = { url: `${HWL}/jack_o_lantern.glb`, low: { url: `${HWL}/jack_o_lantern_low.glb` }, near: 70 };
   // v1.10.39 섬 전체 할로윈 꾸미기 (Codex decor pack 2026-10-07): the batches of island-halloween.js, at their stand-ins'
@@ -712,6 +712,8 @@
   // G4b 채집 (assets 112; lib/island-gather.js): the collectables lying on their spots -- four of the six mushrooms, the twigs and the
   // four-leaf clover (the other two mushrooms the 106 pilot's, pilot.mushroom_*); one model at every distance
   for (const f of ['mushroom_brown_cap', 'mushroom_red_cone', 'mushroom_bolete', 'mushroom_blue', 'branch_fork', 'twigs', 'clover_four_leaf']) REGISTRY[`gather.${f}`] = { seasons: n112(f), near: 30, shadows: false };
+  // 1.10.378 N2b 별마루섬 버섯 (assets 136 newisle-v1): one file all seasons, High near; the glowing one lit at night
+  for (const f of ['mushroom_glow', 'mushroom_parasol', 'mushroom_lionsmane']) REGISTRY[`gather.${f}`] = { url: `/assets/island/newisle-v1/${f}.glb`, low: { url: `/assets/island/newisle-v1/${f}_low.glb` }, near: 30, shadows: false, ...(f === 'mushroom_glow' ? { nightGlow: true } : {}) };
   // v1.10.318 집 손보기 「작은 돌」 (lib/island-gather.js stone): the island's own pebble (109), a hand's size by the rocks
   REGISTRY['gather.rock_pebble'] = { seasons: n109('rock_pebble'), scale: 0.35, near: 30, shadows: false }; /* (0.78 m across -> about 0.27 m) */
   // v1.10.318 마당 농사 F1 (assets 115 farm-v1, 4 seasons, Low = High): the 텃밭 (a yard good) and what grows on its cells -- the
@@ -756,8 +758,8 @@
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   // (3회차 1 곤충 크기, 사용자 2026-10-23: every one 0.3 m on its longest side -- about 1.5 fists; INSECT_LONG: as made, m)
   const INSECT_LONG = { butterfly_cabbage: 0.205, butterfly_swallowtail: 0.205, butterfly_blue: 0.205, dragonfly_red: 0.28, dragonfly_emperor: 0.28, cicada: 0.159, rhinoceros_beetle: 0.187, stag_beetle: 0.207, ladybird: 0.134, firefly: 0.147, grasshopper: 0.197, snail: 0.138,
-    butterfly_yellow: 0.2, honeybee: 0.14, hawkmoth_hummingbird: 0.2, moth_silk: 0.26, winter_moth: 0.15, mantis: 0.26, jewel_beetle: 0.17, longhorn_giant: 0.16, water_strider: 0.167, cricket: 0.17, snow_springtail: 0.13, snow_scorpionfly: 0.14 }; // (v1.10.261 assets 105: twelve more -- the longhorn by its body, the water strider 1.2x)
-  for (const s of ["butterfly_yellow","honeybee","hawkmoth_hummingbird","moth_silk","winter_moth","mantis","jewel_beetle","longhorn_giant","water_strider","cricket","snow_springtail","snow_scorpionfly"]) REGISTRY[`together.insect_${s}`] = { url: `/assets/island/together-v1/insect_${s}.glb`, near: 40 }; // (v1.10.261: their still ones -- the case, the museum)
+    butterfly_yellow: 0.2, honeybee: 0.14, hawkmoth_hummingbird: 0.2, moth_silk: 0.26, winter_moth: 0.15, mantis: 0.26, jewel_beetle: 0.17, longhorn_giant: 0.16, water_strider: 0.167, cricket: 0.17, snow_springtail: 0.13, snow_scorpionfly: 0.14, moth_longtail: 0.268, stag_giant: 0.24 /* (1.10.378 N2b assets 131: 별마루섬's two) */ }; // (v1.10.261 assets 105: twelve more -- the longhorn by its body, the water strider 1.2x)
+  for (const s of ["butterfly_yellow","honeybee","hawkmoth_hummingbird","moth_silk","winter_moth","mantis","jewel_beetle","longhorn_giant","water_strider","cricket","snow_springtail","snow_scorpionfly","moth_longtail","stag_giant"]) REGISTRY[`together.insect_${s}`] = { url: `/assets/island/together-v1/insect_${s}.glb`, near: 40 }; // (v1.10.261: their still ones -- the case, the museum)
   // v1.10.260 곤충 손맛 (assets 103): the net with its bag (open, closed, the socket a catch goes in -- its nodes kept), the
   // swing's streaks (from my feet), the leaves, the dust and the pollen
   REGISTRY['together.tool_bugnet'] = { url: '/assets/island/together-v1/tool_bugnet_v2.glb', low: { url: '/assets/island/together-v1/tool_bugnet_v2_low.glb' }, near: 40, keepNodes: true };

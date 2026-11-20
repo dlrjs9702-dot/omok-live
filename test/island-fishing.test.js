@@ -26,7 +26,11 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
   const WATERS = ['sea', 'bay', 'river', 'lake', 'pool']; const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
   for (const [water, id] of [['bay', 'seahorse'], ['pool', 'masu_salmon'], ['lake', 'sturgeon']]) { assert.ok(SEASONS.some((s) => F.listFor(water, s).includes(id)), id); for (const w of WATERS.filter((x) => x !== water)) assert.ok(SEASONS.every((s) => !F.listFor(w, s).includes(id)), `${id} ${w}`); }
   assert.ok(!SEASONS.some((s) => F.listFor('lake', s).includes('crayfish')), '가재는 호수 없음');
-  assert.equal(Object.keys(F.SPECIES).length, 50); for (const id of Object.keys(F.SPECIES)) assert.ok(WATERS.some((w) => SEASONS.some((s) => F.listFor(w, s).includes(id))), `${id} 어딘가`);
+  assert.equal(Object.keys(F.SPECIES).length, 53); for (const id of Object.keys(F.SPECIES)) assert.ok(WATERS.some((w) => SEASONS.some((s) => F.listFor(w, s, undefined, 'river').includes(id) || F.listFor(w, s, undefined, 'rock').includes(id))), `${id} 어딘가`);
+  // (1.10.378 N2b) 별마루섬's own three: only with its water there -- the creek's two (a river there), 돌돔 by its east rocky shore
+  for (const id of ['lenok', 'kumgang_minnow', 'striped_beakperch']) assert.ok(WATERS.every((w) => SEASONS.every((s) => !F.listFor(w, s).includes(id))), `${id}: 별마루섬에서만`);
+  assert.ok(F.listFor('river', 'summer', false, 'river').includes('lenok') && F.listFor('sea', 'summer', false, 'rock').includes('striped_beakperch') && !F.listFor('sea', 'summer', false, 'river').includes('striped_beakperch'));
+  assert.equal(F.isle2Water('river', 0, 0), null); assert.equal(F.isle2Water('river', 330, 150), 'river'); assert.equal(F.isle2Water('sea', 500, 214), 'rock'); assert.equal(F.isle2Water('sea', 300, 330), null);
   // (사용자 2026-11-03, catch-card 7·8절) every water and season: one big one at least, drawn first at exactly 0.8% (the 1% cap),
   // the rest among the others; seven kinds or more by day, the big one in, the night ones out
   assert.ok(F.BIG_P === 0.008);

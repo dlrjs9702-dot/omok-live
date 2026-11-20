@@ -15443,6 +15443,82 @@
       "src": "spring157:02. Low/spring157/winter/spring_cave_low.glb",
       "sha256": "882748aa855abba2037aeeafef1aadb323f49a55db872f7019d3b283850cd2b7",
       "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_moth_longtail.glb",
+      "src": "insect131:01. High/insect_moth_longtail.glb",
+      "sha256": "e098aaf01514a10e04372a233214e03c9f35aae1d0ff8157006e72d94902a64c",
+      "lowSrc": "insect131:02. Low/insect_moth_longtail_low.glb",
+      "lowSha256": "c9f104b819700b6a1e2c7f9acb5d08ff7179e9bc854bce7fbb59ecb321544f53",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_moth_longtail.glb",
+      "src": "insect131:01. High/still/insect_moth_longtail.glb",
+      "sha256": "ce1f9910d6fab45676329403c087b8565aaf125fe46bbe9193d06dbca5ec32e6",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_stag_giant.glb",
+      "src": "insect131:01. High/insect_stag_giant.glb",
+      "sha256": "e3fff980a87ff6efe64585a8d84ae8afbcc436bac206aba0a5ec6d397e4293de",
+      "lowSrc": "insect131:02. Low/insect_stag_giant_low.glb",
+      "lowSha256": "eb985af8d321a83d04e81c7592f022c7aa339710783991c717f7c8b51a1ead5c",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_stag_giant.glb",
+      "src": "insect131:01. High/still/insect_stag_giant.glb",
+      "sha256": "94ac3fac5d7e1467596bf9ce6bd4a02cc23e8e6082edc2f165ad56b1917a1caf",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_lenok.glb",
+      "src": "fish132:High/fish_lenok.glb",
+      "sha256": "e13ffd266ca72157c2f2ef4ba96f73d53c9a5edcd9ce40ce4a4974d5e684c5c2",
+      "lowSrc": "fish132:Low/fish_lenok_low.glb",
+      "lowSha256": "595f294c6443592bc8d6e0b7b29fbeea90096bc253747e314cbbca7d77ccc860",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_kumgang_minnow.glb",
+      "src": "fish132:High/fish_kumgang_minnow.glb",
+      "sha256": "23076e4d71c58f9f640b8fe6afe8cf1a9ab81f8e181391480d29d8f0180a8a0d",
+      "lowSrc": "fish132:Low/fish_kumgang_minnow_low.glb",
+      "lowSha256": "fe784994087bcf8eb689451d58326e30e6fbd6dbba6cf201c4f2f3592f9dac2f",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_striped_beakperch.glb",
+      "src": "fish132:High/fish_striped_beakperch.glb",
+      "sha256": "b88dcf946335f5f35acbfc89878fdc365cfc103a65974a13071ba905222b46ea",
+      "lowSrc": "fish132:Low/fish_striped_beakperch_low.glb",
+      "lowSha256": "5b5543f43ed86f278e8191621a52681d4bcd302452df4b0458fbcff00c365f42",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/mushroom_glow.glb",
+      "src": "newisle136:01. High/newisle-v1/mushroom_glow.glb",
+      "sha256": "4de906f0947af4b3383e8aee6c2cb363ef86a50fce037f0e5b1dc68a9e61e34c",
+      "lowSrc": "newisle136:02. Low/newisle-v1/mushroom_glow_low.glb",
+      "lowSha256": "0ef1cfd132379a827a8a34479cdf79544be1b840e23168b51e6ab5749ba32be1",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/mushroom_parasol.glb",
+      "src": "newisle136:01. High/newisle-v1/mushroom_parasol.glb",
+      "sha256": "9941fe88b907bd261742d36d9fcd487d7821915bf2c16f6111dd08b2e0f50d0f",
+      "lowSrc": "newisle136:02. Low/newisle-v1/mushroom_parasol_low.glb",
+      "lowSha256": "cb9d69f5a93907a342f66ede1ecb17da9ae8f1ed95cf9d9031507f174a6670ec",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/mushroom_lionsmane.glb",
+      "src": "newisle136:01. High/newisle-v1/mushroom_lionsmane.glb",
+      "sha256": "8c66f591de564d48d2b404754f24a1924a48f778ce5ca84000031cf9a1199515",
+      "lowSrc": "newisle136:02. Low/newisle-v1/mushroom_lionsmane_low.glb",
+      "lowSha256": "051145c66925943e5ada40b2162531a0f23eb30932df3604e64d46295ebf8c30",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -15564,6 +15640,8 @@
     "byeolmaru152": "152. Game Island byeolmaru tigers 2026-11-18",
     "byeolmaru152e": "152e. Game Island tigers refine 2026-11-19",
     "newisle136": "136. Game Island new isle camp props mushrooms 2026-11-15",
-    "spring157": "157. Game Island creek spring cave 2026-11-20"
+    "spring157": "157. Game Island creek spring cave 2026-11-20",
+    "insect131": "131. Game Island rare insects new isle 2026-11-15",
+    "fish132": "132. Game Island new isle fish 3 2026-11-15"
   }
 }

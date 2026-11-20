@@ -25,7 +25,7 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
     return who.page.evaluate(() => window.PlazaDebug().space);
   }, { timeout: 90000, intervals: [300] }).toBe('museum');
   await goIn(b); await goIn(a);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().museum()?.board || ''), { timeout: 15000 }).toMatch(/전시 \d+\/74/); // (v1.10.259: 50 fish and 12 insects; v1.10.261 24 insects)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().museum()?.board || ''), { timeout: 15000 }).toMatch(/전시 \d+\/79/); // (v1.10.259: 50 fish and 12 insects; v1.10.261 24 insects; 1.10.378 별마루섬's five)
   const empty = (await get(request, '/api/island/museum', a.token)).data.exhibits.find((x) => !x.by);
   if (empty) expect((await page.evaluate((id) => window.PlazaDebug().museum().slots[id], empty.id)).plaque).toContain('아직 기증받지 못했어요');
   // the curator: 「기증해요」 -> the fish
@@ -48,7 +48,7 @@ test('박물관 전시관: 문으로 들어가 관장에게 기증하면 그 수
   await expect.poll(async () => { if (await page.locator('#plazaDialog').isVisible()) await page.keyboard.press('Escape'); await page.waitForTimeout(300); return page.locator('#plazaDialog').isVisible(); }, { timeout: 15000 }).toBe(false);
   // (v1.10.254 박물관 나누기) the fish's in the aquarium, through the hall's west doorway: its counts by the doorway, b (in the
   // hall) not drawn there; back to the hall the same way
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().museum()?.counts.aquarium || ''), { timeout: 15000 }).toMatch(/물고기 \d+ \/ 50/); // (v1.10.259: 50 fish)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().museum()?.counts.aquarium || ''), { timeout: 15000 }).toMatch(/물고기 \d+ \/ 53/); // (v1.10.259: 50 fish; 1.10.378 53)
   const room = () => page.evaluate(() => window.PlazaDebug().museum()?.room);
   const through = async (id, want) => expect.poll(async () => {
     if (await room() === want) return want;

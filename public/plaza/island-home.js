@@ -104,7 +104,8 @@
     // up to 30 cm small, up to 80 medium, more large (test/home-tank-fish.test.js keeps every species here)
     fish_horse_mackerel: 'small', fish_filefish: 'small', fish_blue_crab: 'small', fish_seahorse: 'small', fish_crayfish: 'small', fish_medaka: 'small', fish_bagrid_catfish: 'small', fish_minnow: 'small', fish_bitterling: 'small', fish_bluegill: 'small', fish_aucha_perch: 'small',
     fish_red_seabream: 'medium', fish_cod: 'medium', fish_squid: 'medium', fish_masu_salmon: 'medium', fish_barbel_steed: 'medium', fish_bass: 'medium', fish_rainbow_trout: 'medium',
-    fish_yellowtail: 'large', fish_snakehead: 'large', fish_salmon: 'large', fish_golden_carp: 'large', fish_sturgeon: 'large', fish_dotdom: 'large', fish_giant_squid: 'large', fish_sunfish: 'large', fish_giant_octopus: 'large', fish_king_catfish: 'large', fish_taimen: 'large' };
+    fish_yellowtail: 'large', fish_snakehead: 'large', fish_salmon: 'large', fish_golden_carp: 'large', fish_sturgeon: 'large', fish_dotdom: 'large', fish_giant_squid: 'large', fish_sunfish: 'large', fish_giant_octopus: 'large', fish_king_catfish: 'large', fish_taimen: 'large',
+    fish_lenok: 'medium', fish_kumgang_minnow: 'small', fish_striped_beakperch: 'medium' /* (1.10.378 별마루섬's three: 70 / 12 / 55 cm) */ };
   const BOTTOM = new Set(['fish_octopus', 'fish_stingray', 'fish_flatfish', 'fish_blue_crab', 'fish_crayfish']); // (they keep to the sand; 364: the crab and the crayfish)
   const SIZE_RANK = { small: 1, medium: 2, large: 3 };
   // v1.10.227 (사용자 2026-11-02 「대신 여러마리 못넣게 참치가 자리를 많이차지하는걸로」): the giant tuna takes six of a tank's
@@ -117,7 +118,7 @@
   // 368 민물·바다 수조 (notes fish-keepnet-20261109.md 끝, 사용자 2026-11-19 1A 2A): the first fish sets a tank's water, then only fish of that
   // water go in; an emptied tank is free again. A tank already holding both (before this) is 「섞임」 -- its fish stay, taken out but
   // none put in. Which water: lib/island-fishing WATER_OF (the dex's) -- these 25 fresh, the rest sea (test/home-tank-water.test.js)
-  const FRESH_FISH = new Set(['crucian_carp', 'pale_chub', 'smelt', 'sweetfish', 'carp', 'catfish', 'eel', 'mandarin_fish', 'crayfish', 'medaka', 'bagrid_catfish', 'minnow', 'bitterling', 'bluegill', 'aucha_perch', 'masu_salmon', 'barbel_steed', 'bass', 'rainbow_trout', 'snakehead', 'salmon', 'golden_carp', 'sturgeon', 'king_catfish', 'taimen'].map((s) => `fish_${s}`));
+  const FRESH_FISH = new Set(['crucian_carp', 'pale_chub', 'smelt', 'sweetfish', 'carp', 'catfish', 'eel', 'mandarin_fish', 'crayfish', 'medaka', 'bagrid_catfish', 'minnow', 'bitterling', 'bluegill', 'aucha_perch', 'masu_salmon', 'barbel_steed', 'bass', 'rainbow_trout', 'snakehead', 'salmon', 'golden_carp', 'sturgeon', 'king_catfish', 'taimen', 'lenok', 'kumgang_minnow' /* (378: 별마루섬's creek) */].map((s) => `fish_${s}`));
   const waterOf = (id) => (FISH_SIZE[id] ? (FRESH_FISH.has(id) ? 'fresh' : 'sea') : null);
   const tankWater = (fishes = []) => { const w = new Set(fishes.map((f) => waterOf(f.itemId)).filter(Boolean)); return w.size > 1 ? 'mixed' : w.size ? [...w][0] : null; }; // null: empty (or insects) -- today's look
   const waterFits = (fishes, id) => { const w = tankWater(fishes); return !w || (w !== 'mixed' && w === waterOf(id)); };

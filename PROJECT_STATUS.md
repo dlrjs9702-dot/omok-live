@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.378 N2b 별마루섬 곤충 131·물고기 132·버섯 136 (notes island-expansion 46A·47A·E14)
+
+- 곤충: lib/island-insects SPECIES moth_longtail(희귀, 밤·여름, 나무·풀)·stag_giant(희귀, 밤·여름~가을, 나무), `isle2: true` -- spotsOf가 별마루섬 자리에 isle2 표시, layout은 그 자리에서만. INSECT_LONG 0.268·0.24, together.insect_ 정지 모델, 도감 아이콘 SVG.
+- 물고기: lib/island-fishing SPECIES lenok(희귀 4,200)·kumgang_minnow(흔함 350)·striped_beakperch(희귀 4,500), SIZES, ISLE2 표(개울=river 사계절 둘, 갯바위=동쪽 절벽 (497,214) 45 m 안 바다 봄~가을 돌돔), isle2Water, 서버 낚시 cast에 isle2. 손 at 132 manifest. 집 수조 크기·민물.
+- 버섯: lib/island-gather KINDS mushroom_glow(공유 2)·mushroom_parasol(5)·mushroom_lionsmane(3), group isle2_mushroom 12자리(별마루섬 쓰러진 나무·큰 나무·나무 둘레, 앞 자리들 그대로), 재생 12시간(섬 공용 공급 565,000P/h 안). 가방 물건 발광 버섯 8,000·우산버섯 3,000·노루궁뎅이 5,000. 발광 버섯 nightGlow.
+- 박물관: 곤충관 양쪽 벽 상자 2(26), 바다 수조 22번째 돌돔, 새 물 「별마루섬 개울」 벽 수조(앞벽 동쪽 x 8·10, 여분 12).
+- 도감 글(79종), 가방 탭·설명.
+- 행사 창(사용자 「잘 안읽혀」): .festivalCard 크림 바탕·진한 글씨(보드 투명 카드 위로), 할 일 줄 이름·도장 배지·오늘 n/m 배지·방법 줄, 재료 고르기 크림 칸, 못 바꾸는 단추도 읽히게. 대비 8.4:1 이상(PC·폰 사진 확인).
+
 ## v1.10.377 N2a 남은 것 (총괄: 동굴 물 재질, 글자 안내판, 다리 문 열림)
 
 - 동굴 물: asset-loader `swap` 항목 + setSwapMaterials -- island.js가 157 파일 재질 water/water_fall/water_foam을 개울 물(water clone, vertexColors)·폭포(fallMat)·거품(foam)으로 바꿔 줌. spring.cave에 `swap: true`.
@@ -28,12 +37,3 @@
 - 화면: public/plaza/tigers-view.js -- 별마루섬 근처에서만 불러옴(파일 island.later 묶음, 가장 낮은 화질은 Low), 1.6배, 서버 자세로 따라감, Pounce 앞으로 가는 뿌리 움직임 빼고 서버 도약 곡선, 안개 노멀 그림은 우레 것 공유, 경고(#tigerWarn 빨간 가장자리 + WebAudio 소리).
 - 에셋 152e: tiger/tiger_angae(+_low), sign_tiger(+_low) 152e로 바꿈; budgets EXT_texture_webp 허용·파일별 예외; asset-loader creature c.low.
 - 시험: test/island-tigers.test.js, tests/e2e/island-tigers.spec.js(경고·잡힘·물건 2개·시장님 앞). 테스트 서버에서는 /api/test/tigers로만 켬.
-
-## v1.10.375 N2a-1 별마루섬 소품 (152/152c 목책·문·늪·안내판, 136 캠핑장, 157 샘 동굴)
-
-- 자료: public/plaza/isle2-props.js(tools/isle2-props.cjs가 만듦, --check로 확인) -- 목책 349조각(fence_segment/palisade_b/palisade_e/stonewall), 문 1(다리 길 위, 몸 지나갈 틈 0.8 m), 안내판(sign_tiger, 152 무텍스처), 늪 6(바깥선·갈대 24·꾸미기 26), 캠핑장 6(모닥불·통나무 의자), 샘 동굴(개울 머리), 우레 바위(봉우리 아래).
-- 막힘: 소품 원·상자를 natureSolids에 넣고, 자연물(나무·덤불·숲)은 소품을 비켜 놓음(isle2PropsNear). 본섬 자연물 자리는 그대로(땅 지도 바뀐 곳은 별마루섬 쪽만).
-- 그리기: island.js 인스턴스 대신 상자 → REGISTRY byeolmaru.*/newisle.*/spring.cave(계절 4), 늪 진흙은 바깥선에서 직접 만든 메시(가장자리 투명).
-- 자전거: 늪 안에서는 4.3 m/s.
-- 에셋: island-models.json sources byeolmaru152·byeolmaru152e·newisle136·spring157, 50 파일(sha256 확인), budgets 예외(문·동굴·모닥불·의자).
-- 남은 것: 호랑이(152e, 1.10.376 N2a-2), 동굴 물 재질, 글자 안내판(sign_reserve/trail), 부두 문(N3).

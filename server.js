@@ -5090,7 +5090,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.377' });
+    return sendJson(res, 200, { ok: true, version: '1.10.378' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -8274,7 +8274,7 @@ async function requestHandler(req, res) {
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
-    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain, hot: IslandFishing.isHot(kstDate(now), water), rareMult: catchMultNow('fish_rare') }); /* (v1.10.266 오늘의 물때; 364 섬 이벤트) */
+    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain, hot: IslandFishing.isHot(kstDate(now), water), rareMult: catchMultNow('fish_rare'), isle2: IslandFishing.isle2Water(water, at.x, at.z) }); /* (v1.10.266 오늘의 물때; 364 섬 이벤트; 378 별마루섬's own fish) */
     const seq = IslandFishing.arrowSeq(); // (Codex 검토 #1: the arrows are the server's, checked at the pull)
     const arrows = IslandFishing.arrowsFor(c.species); // (3회차 4: the arrows at the bite, and the time for them)
     // v1.10.259 입질 게임 반반: the arrows or the 타이밍 막대 (a test server: the arrows unless a test asks -- /api/test/fish/mode)
@@ -10798,7 +10798,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.377 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.378 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
