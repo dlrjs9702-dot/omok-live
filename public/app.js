@@ -9187,7 +9187,8 @@
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'restart') { serverRestarting(); return; } // 300 (나)
-    if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); if (parsed.taxiStops) plaza.controller?.setTaxiStops?.(parsed.taxiStops); plaza.controller?.setTigers?.(parsed.tigers || []); /* (1.10.376 별마루섬 호랑이) */ /* (Codex 311-320 #7: the empty cars going back) */ plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
+    if (event === 'tigers') { plaza.controller?.setTigers?.(Array.isArray(parsed.list) ? parsed.list : []); return; } /* (383 Codex #15: their own frame, only near 별마루섬) */
+    if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); if (parsed.taxiStops) plaza.controller?.setTaxiStops?.(parsed.taxiStops); /* (1.10.376 별마루섬 호랑이: 383 Codex #15 in their own 'tigers' frame) */ /* (Codex 311-320 #7: the empty cars going back) */ plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
