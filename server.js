@@ -8712,7 +8712,7 @@ async function requestHandler(req, res) {
     const gather = IslandGather.KINDS[claimed.event?.type] || null; /* (G4b 채집: no daily cap -- 사용자 「추천대로」, v1.10.35) */
     let outcome; let giveQty = null;
     try {
-      giveQty = isResource && ['twig', 'branch', 'mushroom', 'mushroom_blue'].includes(claimed.item) ? Math.round(claimed.qty * catchMultNow('pick')) : claimed.qty; /* (364 섬 이벤트 「나뭇가지·버섯」; Codex 361~370 #18: once, for the bag and the answer) */
+      giveQty = isResource && (['twig', 'branch'].includes(claimed.item) || /^mushroom/.test(claimed.item)) /* (383 Codex 371~380 #12: every mushroom -- 별마루섬's three too) */ ? Math.round(claimed.qty * catchMultNow('pick')) : claimed.qty; /* (364 섬 이벤트 「나뭇가지·버섯」; Codex 361~370 #18: once, for the bag and the answer) */
       if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: giveQty, meta: claimed.meta || null, dexEntry: IslandFishing.DEX_IDS.has(claimed.item) ? claimed.item : null }, nowMs());
       else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : isResource ? `event:${id}:${pull.generation}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
     } catch (error) { islandEvents.settle(claimed, false, account); throw error; }

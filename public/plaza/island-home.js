@@ -97,7 +97,9 @@
     insect_case_desk: { min: [-0.04, 0.12, -0.005], max: [0.04, 0.15, 0.005], slots: 1, insects: true }, // (assets 86: the tabletop one's perch -- drawn on a top, the same piece)
   };
   // the twelve insects (lib/island-insects.js, bag items insect_<id>)
-  const INSECTS = new Set(['butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_blue', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail'].map((s) => `insect_${s}`));
+  /* (383 Codex 371~380 #13: every insect of the 도감 -- the bag's insect_<id> are exactly lib/island-insects.js SPECIES (26 now, 별마루섬's 왕사슴벌레
+     and 긴꼬리산누에나방 too); a list here had stopped at the first twelve) */
+  const INSECTS = Object.freeze({ has: (id) => /^insect_[a-z]+(?:_[a-z]+)*$/.test(String(id)) }); /* (no furniture: insect_case__oak's double _ is not a kind) */
   const FISH_SIZE = { fish_anchovy: 'small', fish_crucian_carp: 'small', fish_gizzard_shad: 'small', fish_goby: 'small', fish_mackerel: 'small', fish_pale_chub: 'small', fish_smelt: 'small', fish_sweetfish: 'small', fish_pufferfish: 'small',
     fish_carp: 'medium', fish_catfish: 'medium', fish_cutlassfish: 'medium', fish_eel: 'medium', fish_flatfish: 'medium', fish_mandarin_fish: 'medium', fish_mullet: 'medium', fish_octopus: 'medium', fish_rockfish: 'medium', fish_sea_bass: 'medium', fish_stingray: 'medium', fish_giant_tuna: 'large',
     // 364 (user 「수조에 대형 물고기 안들어가나지금?」): the other 29 of the fifty by their biggest size (lib/island-fishing SIZES):
