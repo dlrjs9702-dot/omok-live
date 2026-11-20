@@ -7,8 +7,8 @@ import * as THREE from '/vendor/three/three.module.js';
 // Near one that is awake: its warning -- 우레 from 25 m 「어흥!」 loud, 안개 only from 12 m a low 「그르릉」 -- a sound (the game's sound
 // on) and the screen's edges going red. `debug()` for the tests and photos.
 const DEFS = {
-  ure: { name: '우레', model: 'byeolmaru.tiger', speed: 13 /* (382 결정 16 A) */, walk: 2.5, run: 10.92, stalk: 0.89, warn: 25, say: '어흥!' }, /* (377: the clips' no-slide paces at 2.4x; 379 speed: the server's run -- the Run played at speed/run) */
-  angae: { name: '안개', model: 'byeolmaru.tiger_angae', speed: 12 /* (382) */, walk: 1.99, run: 8.74, stalk: 0.7, warn: 12, say: '그르릉…' },
+  ure: { name: '우레', model: 'byeolmaru.tiger', size: 1 /* (383: its paws' spread; 안개 0.82 -- paw 1.73 vs 2.1) */, speed: 13 /* (382 결정 16 A) */, walk: 2.5, run: 10.92, stalk: 0.89, warn: 25, say: '어흥!' }, /* (377: the clips' no-slide paces at 2.4x; 379 speed: the server's run -- the Run played at speed/run) */
+  angae: { name: '안개', model: 'byeolmaru.tiger_angae', size: 0.82, speed: 12 /* (382) */, walk: 1.99, run: 8.74, stalk: 0.7, warn: 12, say: '그르릉…' },
 };
 const PAW_S = 0.84; const RESTING = new Set(['Nap', 'Doze']);
 const leapAt = (s, len) => (s <= 0 ? 0 : s >= PAW_S ? len : (len * s) / PAW_S); /* (377: on from the run, as lib/island-tigers.js) */
@@ -65,7 +65,19 @@ export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles =
         if (Math.hypot(tx - h.x, tz - h.z) > 10) { h.x = tx; h.z = tz; } else { const k = 1 - Math.exp(-dt * 8); h.x += (tx - h.x) * k; h.z += (tz - h.z) * k; }
         h.yaw += angleTo(h.yaw, st.yaw) * (1 - Math.exp(-dt * 10));
       }
-      h.c.root.position.set(h.x, heightAt(h.x, h.z) + (st.lift || 0), h.z); h.c.root.rotation.y = h.yaw;
+      { /* (383 사용자 「호랑이들이 비탈에서 너무 허공에 떠있는 티가 나는데」: the ground under its four paws -- the body tilted along the slope (pitch), a
+           little across it (roll, at most 8°), eased over a few frames, and set so no paw is in the air; a leap's and a lunge's flight and the nap on
+           the rock as they were) */
+        const air = Boolean(st.leap) || st.attack?.kind === 'Lunge' || (st.lift || 0) > 0 || RESTING.has(st.clip);
+        let y = heightAt(h.x, h.z) + (st.lift || 0); let tp = 0; let tr = 0; const S = def.size || 1; const F = 1.2 * S; const B = 1.15 * S; const W = 0.32 * S;
+        const fx = Math.sin(h.yaw); const fz = Math.cos(h.yaw); const lx = Math.cos(h.yaw); const lz = -Math.sin(h.yaw); /* (forward; its left, three's +x) */
+        const g = (u, v) => heightAt(h.x + fx * u + lx * v, h.z + fz * u + lz * v); let paws = null;
+        if (!air) { paws = [[F, W, g(F, W)], [F, -W, g(F, -W)], [-B, W, g(-B, W)], [-B, -W, g(-B, -W)]]; const front = (paws[0][2] + paws[1][2]) / 2; const back = (paws[2][2] + paws[3][2]) / 2; const left = (paws[0][2] + paws[2][2]) / 2; const right = (paws[1][2] + paws[3][2]) / 2;
+          tp = Math.atan2(front - back, F + B); tr = Math.max(-0.14, Math.min(0.14, Math.atan2(left - right, 2 * W))); y = (front * B + back * F) / (F + B); }
+        const k = 1 - Math.exp(-dt * 9); h.pitch = (h.pitch || 0) + (tp - (h.pitch || 0)) * k; h.roll = (h.roll || 0) + (tr - (h.roll || 0)) * k;
+        if (paws) { const tp2 = Math.tan(h.pitch); const tr2 = Math.tan(h.roll); const gap = Math.min(...paws.map(([u, v, gy]) => y + u * tp2 + v * tr2 - gy)); if (gap > 0) y -= gap; } /* (the lowest paw on the ground, never floating) */
+        h.c.root.rotation.order = 'YXZ'; h.c.root.position.set(h.x, y, h.z); h.c.root.rotation.set(-h.pitch, h.yaw, h.roll);
+      }
       const again = Boolean(st.attack) && h.attackAt !== st.attack.at; if (st.attack) h.attackAt = st.attack.at; /* (382: a new attack of the same kind plays from its start) */
       h.c.play(st.clip, again);
       const a = h.c.actions[st.clip];

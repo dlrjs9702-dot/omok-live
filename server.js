@@ -2192,7 +2192,7 @@ const Isle2Props = require('./public/plaza/isle2-props.js');
 const SWAMP_BIKE_MAX = 4.3 * 1.3; /* (383 Codex #7: the screen's 늪 자전거 4.3 m/s (plaza-scene SWAMP_BIKE), a third more for the poses' timing) */
 const tigerSim = IslandTigers.createTigers({ T: IslandTerrain, P: Isle2Props });
 tigerSim.setOn(process.env.NODE_ENV !== 'test');
-const TIGER_TICK_MS = 100;
+const TIGER_TICK_MS = 100; let tigerFrozen = false; /* (tests: /api/test/tigers { freeze }) */
 const tigerTicker = setInterval(() => {
   if (!tigerSim.isOn()) return;
   const I = IslandTerrain.dalmaru?.NEW_ISLE; if (!I) return; const people = []; let near = false;
@@ -2200,7 +2200,7 @@ const tigerTicker = setInterval(() => {
     if ((p.space || 'island') !== 'island' || p.ride || p.platform || p.taxi || trainRiders.has(token) || taxiRides.has(token) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
     if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z });
   }
-  const events = tigerSim.tick(nowMs(), people);
+  const events = tigerFrozen ? [] : tigerSim.tick(nowMs(), people); /* (tests' photos: held where they were put) */
   /* (383 Codex 371~380 #15: the two tigers' places only to those near 별마루섬, in their own small frame -- not the whole plaza to everyone ten times a second) */
   if (near) { const frame = sseFrame('tigers', { list: tigerSim.view() }); for (const entry of [...lobbyStreams]) { const p = plazaPresence.get(entry.sessionToken); if (!p || (p.space || 'island') !== 'island' || !Number.isFinite(p.x) || Math.hypot(p.x - I.x, p.z - I.z) >= I.r + 160) continue; try { sseSend(entry.res, frame, { skipIfBehind: true }); } catch { lobbyStreams.delete(entry); } } }
   for (const e of events) if (e.type === 'catch') tigerCatch(e.token, e.tiger).catch((error) => console.error('호랑이 잡기 실패:', error.message));
@@ -9220,7 +9220,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, override });
   }
   // (1.10.376 별마루섬 호랑이, tests: on or off, one put somewhere, their rest hours' clock shifted; the state read back)
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs()); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (typeof body.freeze === 'boolean') tigerFrozen = body.freeze; /* (383 photos: held where put, facing place.yaw) */ if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs(), Number.isFinite(body.place.yaw) ? body.place.yaw : undefined); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers/catch' && req.method === 'POST') { /* (383 tests: both tigers' paws in one tick on me -- Codex 371~380 #2·#5·#6) */
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
     await Promise.all(IslandTigers.TIGERS.filter((d) => (body.both ? true : d.id === body.id)).map((d) => tigerCatch(session.token, d)));
